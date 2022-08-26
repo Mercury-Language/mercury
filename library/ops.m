@@ -133,6 +133,49 @@
 
 :- func init_mercury_op_table = (ops.mercury_op_table::uo) is det.
 
+    % The implementations of the op_table type class for mercury_op_tables.
+    % Each predicate or function here implements the method whose name
+    % is the name of the predicate or function without the
+    % "mercury_op_table" prefix, and (in some cases) with the "search"
+    % replaced by "lookup". (Actually, all the methods that can fail
+    % *should* have the "lookup" part of their name replaced by "search").
+    % The Table argument is not needed by any of the predicates and functions,
+    % since it is implicitly init_mercury_op_table.
+    %
+:- pred mercury_op_table_search_infix_op(string::in,
+    ops.priority::out, ops.assoc::out, ops.assoc::out) is semidet.
+:- pred mercury_op_table_search_prefix_op(string::in,
+    ops.priority::out, ops.assoc::out) is semidet.
+:- pred mercury_op_table_search_binary_prefix_op(string::in,
+    ops.priority::out, ops.assoc::out, ops.assoc::out) is semidet.
+:- pred mercury_op_table_search_postfix_op(string::in,
+    ops.priority::out, ops.assoc::out) is semidet.
+:- pred mercury_op_table_search_op(string::in) is semidet.
+:- pred mercury_op_table_search_op_infos(string::in,
+    op_info::out, list(op_info)::out) is semidet.
+:- pred mercury_op_table_lookup_operator_term(ops.priority::out,
+    ops.assoc::out, ops.assoc::out) is det.
+:- func mercury_op_table_max_priority = ops.priority.
+:- func mercury_op_table_arg_priority = ops.priority.
+
+    % These predicates do the same job as the corresponding
+    % mercury_op_table_search_* predicates, but instead of looking up
+    % the operarator name in the Mercury op_table, they get it from
+    % their callers, who presumably got them by calling
+    % mercury_op_table_search_op_infos.
+    %
+    % This allows the cost of the table lookup to be paid just once
+    % even if you are looking for more than one kind of op.
+    %
+:- pred mercury_op_table_infix_op(op_info::in, list(op_info)::in,
+    ops.priority::out, ops.assoc::out, ops.assoc::out) is semidet.
+:- pred mercury_op_table_prefix_op(op_info::in, list(op_info)::in,
+    ops.priority::out, ops.assoc::out) is semidet.
+:- pred mercury_op_table_binary_prefix_op(op_info::in, list(op_info)::in,
+    ops.priority::out, ops.assoc::out, ops.assoc::out) is semidet.
+:- pred mercury_op_table_postfix_op(op_info::in, list(op_info)::in,
+    ops.priority::out, ops.assoc::out) is semidet.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -153,13 +196,13 @@
 :- pred adjust_priority_for_assoc(ops.priority::in, ops.assoc::in,
     ops.priority::out) is det.
 
-:- func mercury_max_priority(mercury_op_table) = ops.priority.
-
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module int.
+
+%---------------------------------------------------------------------------%
 
 :- type mercury_op_table
     --->    mercury_op_table.
@@ -182,7 +225,104 @@ init_mercury_op_table = ops.mercury_op_table.
     ops.priority::out, ops.assoc::out, ops.assoc::out) is semidet.
 
 lookup_mercury_infix_op(_OpTable, Name, Priority, LeftAssoc, RightAssoc) :-
-    ops.op_table(Name, Info, MaybeOtherInfo),
+    mercury_op_table_search_infix_op(Name, Priority, LeftAssoc, RightAssoc).
+
+:- pred lookup_mercury_prefix_op(mercury_op_table::in,
+    string::in, ops.priority::out, ops.assoc::out) is semidet.
+
+lookup_mercury_prefix_op(_OpTable, Name, Priority, LeftAssoc) :-
+    mercury_op_table_search_prefix_op(Name, Priority, LeftAssoc).
+
+:- pred lookup_mercury_binary_prefix_op(mercury_op_table::in, string::in,
+    ops.priority::out, ops.assoc::out, ops.assoc::out) is semidet.
+
+lookup_mercury_binary_prefix_op(_OpTable, Name, Priority,
+        LeftAssoc, RightAssoc) :-
+    mercury_op_table_search_binary_prefix_op(Name, Priority,
+        LeftAssoc, RightAssoc).
+
+:- pred lookup_mercury_postfix_op(mercury_op_table::in,
+    string::in, ops.priority::out, ops.assoc::out) is semidet.
+
+lookup_mercury_postfix_op(_OpTable, Name, Priority, LeftAssoc) :-
+    mercury_op_table_search_postfix_op(Name, Priority, LeftAssoc).
+
+:- pred lookup_mercury_op(mercury_op_table::in, string::in) is semidet.
+
+lookup_mercury_op(_OpTable, Name) :-
+    mercury_op_table_search_op(Name).
+
+:- pred lookup_mercury_op_infos(mercury_op_table::in, string::in,
+    op_info::out, list(op_info)::out) is semidet.
+
+lookup_mercury_op_infos(_OpTable, Name, Info, OtherInfos) :-
+    mercury_op_table_search_op_infos(Name, Info, OtherInfos).
+
+:- pred lookup_mercury_operator_term(mercury_op_table::in,
+    ops.priority::out, ops.assoc::out, ops.assoc::out) is det.
+
+lookup_mercury_operator_term(_OpTable, Priority, LeftAssoc, RightAssoc) :-
+    mercury_op_table_lookup_operator_term(Priority, LeftAssoc, RightAssoc).
+
+:- func mercury_max_priority(mercury_op_table) = ops.priority.
+
+mercury_max_priority(_Table) =
+    mercury_op_table_max_priority.
+
+:- func mercury_arg_priority(mercury_op_table) = ops.priority.
+
+mercury_arg_priority(_Table) =
+    mercury_op_table_arg_priority.
+
+%---------------------------------------------------------------------------%
+
+:- pragma inline(pred(mercury_op_table_search_infix_op/4)).
+:- pragma inline(pred(mercury_op_table_search_prefix_op/3)).
+:- pragma inline(pred(mercury_op_table_search_binary_prefix_op/4)).
+:- pragma inline(pred(mercury_op_table_search_postfix_op/3)).
+:- pragma inline(pred(mercury_op_table_search_op/1)).
+:- pragma inline(pred(mercury_op_table_search_op_infos/3)).
+:- pragma inline(pred(mercury_op_table_lookup_operator_term/3)).
+:- pragma inline(func(mercury_op_table_max_priority/0)).
+:- pragma inline(func(mercury_op_table_arg_priority/0)).
+
+mercury_op_table_search_infix_op(Name, Priority, LeftAssoc, RightAssoc) :-
+    ops.mercury_op_table(Name, Info, MaybeOtherInfo),
+    mercury_op_table_infix_op(Info, MaybeOtherInfo, Priority,
+        LeftAssoc, RightAssoc).
+
+mercury_op_table_search_prefix_op(Name, Priority, LeftAssoc) :-
+    ops.mercury_op_table(Name, Info, MaybeOtherInfo),
+    mercury_op_table_prefix_op(Info, MaybeOtherInfo, Priority, LeftAssoc).
+
+mercury_op_table_search_binary_prefix_op(Name, Priority,
+        LeftAssoc, RightAssoc) :-
+    ops.mercury_op_table(Name, Info, MaybeOtherInfo),
+    mercury_op_table_binary_prefix_op(Info, MaybeOtherInfo, Priority,
+        LeftAssoc, RightAssoc).
+
+mercury_op_table_search_postfix_op(Name, Priority, LeftAssoc) :-
+    ops.mercury_op_table(Name, Info, MaybeOtherInfo),
+    mercury_op_table_postfix_op(Info, MaybeOtherInfo, Priority, LeftAssoc).
+
+mercury_op_table_search_op(Name) :-
+    ops.mercury_op_table(Name, _, _).
+
+mercury_op_table_search_op_infos(Name, Info, OtherInfos) :-
+    ops.mercury_op_table(Name, Info, OtherInfos).
+
+mercury_op_table_lookup_operator_term(120, y, x).
+    % Left associative, lower priority than everything except record syntax.
+
+mercury_op_table_max_priority = 1200.
+
+mercury_op_table_arg_priority = 999.
+    % This needs to be less than the priority of the ','/2 operator.
+
+%---------------------------------------------------------------------------%
+
+mercury_op_table_infix_op(Info, MaybeOtherInfo, Priority,
+        LeftAssoc, RightAssoc) :-
     ( if
         Info = op_info(Class, PriorityPrime),
         Class = infix(LeftAssocPrime, RightAssocPrime)
@@ -201,11 +341,7 @@ lookup_mercury_infix_op(_OpTable, Name, Priority, LeftAssoc, RightAssoc) :-
         fail
     ).
 
-:- pred lookup_mercury_prefix_op(mercury_op_table::in,
-    string::in, ops.priority::out, ops.assoc::out) is semidet.
-
-lookup_mercury_prefix_op(_OpTable, Name, Priority, LeftAssoc) :-
-    ops.op_table(Name, Info, MaybeOtherInfo),
+mercury_op_table_prefix_op(Info, MaybeOtherInfo, Priority, LeftAssoc) :-
     ( if
         Info = op_info(prefix(LeftAssocPrime), PriorityPrime)
     then
@@ -220,12 +356,8 @@ lookup_mercury_prefix_op(_OpTable, Name, Priority, LeftAssoc) :-
         fail
     ).
 
-:- pred lookup_mercury_binary_prefix_op(mercury_op_table::in, string::in,
-    ops.priority::out, ops.assoc::out, ops.assoc::out) is semidet.
-
-lookup_mercury_binary_prefix_op(_OpTable, Name, Priority,
+mercury_op_table_binary_prefix_op(Info, MaybeOtherInfo, Priority,
         LeftAssoc, RightAssoc) :-
-    ops.op_table(Name, Info, MaybeOtherInfo),
     ( if
         Info = op_info(Class, PriorityPrime),
         Class = binary_prefix(LeftAssocPrime, RightAssocPrime)
@@ -244,11 +376,7 @@ lookup_mercury_binary_prefix_op(_OpTable, Name, Priority,
         fail
     ).
 
-:- pred lookup_mercury_postfix_op(mercury_op_table::in,
-    string::in, ops.priority::out, ops.assoc::out) is semidet.
-
-lookup_mercury_postfix_op(_OpTable, Name, Priority, LeftAssoc) :-
-    ops.op_table(Name, Info, MaybeOtherInfo),
+mercury_op_table_postfix_op(Info, MaybeOtherInfo, Priority, LeftAssoc) :-
     ( if
         Info = op_info(postfix(LeftAssocPrime), PriorityPrime)
     then
@@ -263,23 +391,6 @@ lookup_mercury_postfix_op(_OpTable, Name, Priority, LeftAssoc) :-
         fail
     ).
 
-:- pred lookup_mercury_op(mercury_op_table::in, string::in) is semidet.
-
-lookup_mercury_op(_OpTable, Name) :-
-    ops.op_table(Name, _, _).
-
-:- pred lookup_mercury_op_infos(mercury_op_table::in, string::in,
-    op_info::out, list(op_info)::out) is semidet.
-
-lookup_mercury_op_infos(_OpTable, Name, Info, OtherInfos) :-
-    ops.op_table(Name, Info, OtherInfos).
-
-:- pred lookup_mercury_operator_term(mercury_op_table::in,
-    ops.priority::out, ops.assoc::out, ops.assoc::out) is det.
-
-lookup_mercury_operator_term(_OpTable, 120, y, x).
-    % Left associative, lower priority than everything except record syntax.
-
 %---------------------------------------------------------------------------%
 
 :- pragma inline(pred(adjust_priority_for_assoc/3)).
@@ -287,16 +398,10 @@ lookup_mercury_operator_term(_OpTable, 120, y, x).
 adjust_priority_for_assoc(Priority, y, Priority).
 adjust_priority_for_assoc(Priority, x, Priority - 1).
 
-mercury_max_priority(_Table) = 1200.
+:- pred mercury_op_table(string::in, op_info::out, list(op_info)::out)
+    is semidet.
 
-:- func mercury_arg_priority(mercury_op_table) = ops.priority.
-
-mercury_arg_priority(_Table) = 999.
-    % This needs to be less than the priority of the ','/2 operator.
-
-:- pred op_table(string::in, op_info::out, list(op_info)::out) is semidet.
-
-op_table(Op, Info, OtherInfos) :-
+mercury_op_table(Op, Info, OtherInfos) :-
     % NOTE: Changes here may require changes to doc/reference_manual.texi.
 
     % (*) means that the operator is not useful in Mercury

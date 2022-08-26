@@ -876,8 +876,9 @@ expand_format_op(Op, Args, EnclosingPriority, Doc) :-
     % wrap an open_group/close_group pair around the argument.
     (
         Args = [ArgA],
+        ops.mercury_op_table_search_op_infos(Op, OpInfo, OtherOpInfos),
         ( if
-            ops.lookup_prefix_op(ops.init_mercury_op_table, Op, Pri, AssocA)
+            ops.mercury_op_table_prefix_op(OpInfo, OtherOpInfos, Pri, AssocA)
         then
             OpPriority = Pri,
             adjust_priority_for_assoc(OpPriority, AssocA, PriorityArgA),
@@ -888,7 +889,7 @@ expand_format_op(Op, Args, EnclosingPriority, Doc) :-
                     format_univ(ArgA)
                 ])
         else if
-            ops.lookup_postfix_op(ops.init_mercury_op_table, Op, Pri, AssocA)
+            ops.mercury_op_table_postfix_op(OpInfo, OtherOpInfos, Pri, AssocA)
         then
             OpPriority = Pri,
             adjust_priority_for_assoc(OpPriority, AssocA, PriorityArgA),
@@ -903,8 +904,9 @@ expand_format_op(Op, Args, EnclosingPriority, Doc) :-
         )
     ;
         Args = [ArgA, ArgB],
+        ops.mercury_op_table_search_op_infos(Op, OpInfo, OtherOpInfos),
         ( if
-            ops.lookup_infix_op(ops.init_mercury_op_table, Op, Pri,
+            ops.mercury_op_table_infix_op(OpInfo, OtherOpInfos, Pri,
                 AssocA, AssocB)
         then
             OpPriority = Pri,
@@ -926,7 +928,7 @@ expand_format_op(Op, Args, EnclosingPriority, Doc) :-
                     ])
                 ])
         else if
-            ops.lookup_binary_prefix_op(ops.init_mercury_op_table, Op, Pri,
+            ops.mercury_op_table_binary_prefix_op(OpInfo, OtherOpInfos, Pri,
                 AssocA, AssocB)
         then
             OpPriority = Pri,

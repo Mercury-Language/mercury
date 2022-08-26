@@ -725,7 +725,7 @@ write_univ(Stream, NonCanon, Univ, !State) :-
 
 do_write_univ(Stream, NonCanon, Univ, !State) :-
     do_write_univ_prio(Stream, NonCanon, Univ,
-        ops.mercury_max_priority(ops.init_mercury_op_table) + 1, !State).
+        ops.mercury_op_table_max_priority + 1, !State).
 
 :- pred do_write_univ_prio(Stream, deconstruct.noncanon_handling, univ,
     ops.priority, State, State)
@@ -1174,7 +1174,7 @@ select_remaining_op_info_and_print(Stream, NonCanon, [],
         Priority, Functor, Args, !State) :-
     ( if
         Args = [],
-        Priority =< ops.mercury_max_priority(ops.init_mercury_op_table)
+        Priority =< ops.mercury_op_table_max_priority
     then
         put(Stream, '(', !State),
         term_io.quote_atom(Stream, Functor, !State),

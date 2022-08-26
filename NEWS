@@ -289,6 +289,24 @@ Changes to the Mercury standard library
 
     - pred `sorted_keys_match/2`
 
+### Changes to the `ops` module
+
+* The following predicates and functions have been added:
+
+    - func `mercury_op_table_arg_priority/0`
+    - func `mercury_op_table_max_priority/0`
+    - pred `mercury_op_table_binary_prefix_op/5`
+    - pred `mercury_op_table_infix_op/5`
+    - pred `mercury_op_table_lookup_operator_term/3`
+    - pred `mercury_op_table_postfix_op/4`
+    - pred `mercury_op_table_prefix_op/4`
+    - pred `mercury_op_table_search_binary_prefix_op/4`
+    - pred `mercury_op_table_search_infix_op/4`
+    - pred `mercury_op_table_search_op/1`
+    - pred `mercury_op_table_search_op_infos/3`
+    - pred `mercury_op_table_search_postfix_op/3`
+    - pred `mercury_op_table_search_prefix_op/3`
+
 ### Changes to the `pretty_printer` module
 
 * The following predicates have been added:
