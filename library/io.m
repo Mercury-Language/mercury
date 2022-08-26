@@ -2350,6 +2350,9 @@
 
 :- pragma foreign_import_module("C", time).   % For ML_construct_time_t.
 :- pragma foreign_import_module("C", string).
+% mercury_std{in,out,err} are defined in io.stream_ops.
+% This foreign_import_module is needed with LIBRARY_INTERMODULE = no.
+:- pragma foreign_import_module("C", io.stream_ops).
 
 %---------------------------------------------------------------------------%
 %
