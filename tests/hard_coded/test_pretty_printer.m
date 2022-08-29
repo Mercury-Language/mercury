@@ -32,14 +32,64 @@
 
 main(!IO) :-
     setup_pretty_printer(!IO),
-    test_cases(TestCases),
-    list.foldl(run_test_case, TestCases, !IO).
+    batch0(!IO),
+    batch1(!IO).
+
+:- pred batch0(io::di, io::uo) is det.
+
+batch0(!IO) :-
+    LineWidths = [16, 19],
+    MaxLines = [10],
+    Limits = [linear(1000)],
+    batch_0_test_cases(Batch0),
+    list.foldl(run_test_case(LineWidths, MaxLines, Limits, do_print_value),
+        Batch0, !IO).
+
+:- pred batch1(io::di, io::uo) is det.
+
+batch1(!IO) :-
+    LineWidths = [78, 38],
+    MaxLines = [10, 3],
+    Limits = [linear(100), linear(10), linear(1),
+        triangular(100), triangular(10), triangular(1)],
+    batch_1_test_cases(Batch1),
+    list.foldl(run_test_case(LineWidths, MaxLines, Limits, do_not_print_value),
+        Batch1, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred test_cases(list(test_case)::out) is det.
+:- pred batch_0_test_cases(list(test_case)::out) is det.
 
-test_cases(Docs) :-
+batch_0_test_cases(Docs) :-
+    PrioOpTree = mk_prio_op_tree,
+    Docs = [
+        test_case("prio_op_tree",    td_univ(univ(PrioOpTree)))
+    ].
+
+%---------------------------------------------------------------------------%
+
+:- type prio_op_tree
+    --->    a
+    ;       b
+    ;       c
+    ;       d
+    ;       - prio_op_tree                      % prefix  x  200
+    ;       prio_op_tree ** prio_op_tree        % infix  xy  200
+    ;       prio_op_tree * prio_op_tree         % infix  yx  400
+    ;       prio_op_tree + prio_op_tree         % infix  yx  500
+    ;       prio_op_tree = prio_op_tree         % infix  xx  700
+    ;       node(prio_op_tree, prio_op_tree).
+
+:- func mk_prio_op_tree = prio_op_tree.
+
+mk_prio_op_tree =
+    (node((b * c) * (a ** b + c), a + -b + node(c, d))) + a.
+
+%---------------------------------------------------------------------------%
+
+:- pred batch_1_test_cases(list(test_case)::out) is det.
+
+batch_1_test_cases(Docs) :-
     List = 1..100,
     ListUniv = list.map(func(X) = univ(X), List),
     MapStr = list.foldl(
@@ -68,17 +118,17 @@ test_cases(Docs) :-
     ]),
 
     Docs = [
-        test_case("list",            format(List)),
-        test_case("list_univ",       format_list(ListUniv, str(", "))),
-        test_case("map_float",       format(MapFloat)),
-        test_case("map_hext_str",    format(MapStr)),
-        test_case("op_tree",         format(OpTree)),
-        test_case("church",          format(Church)),
-        test_case("lazy_countdown",  lazy_countdown(100)),
-        test_case("tuple",           format(Tuple)),
-        test_case("square",          format(Square)),
-        test_case("noncanon",        NonCanonTest),
-        test_case("indent",          IndentTest)
+        test_case("list",            td_univ(univ(List))),
+        test_case("list_univ",       td_univ_list(ListUniv, str(", "))),
+        test_case("map_float",       td_univ(univ(MapFloat))),
+        test_case("map_hext_str",    td_univ(univ(MapStr))),
+        test_case("op_tree",         td_univ(univ(OpTree))),
+        test_case("church",          td_univ(univ(Church))),
+        test_case("lazy_countdown",  td_doc(lazy_countdown(100))),
+        test_case("tuple",           td_univ(univ((Tuple)))),
+        test_case("square",          td_univ(univ((Square)))),
+        test_case("noncanon",        td_univ(univ(NonCanonTest))),
+        test_case("indent",          td_univ(univ(IndentTest)))
     ].
 
 %---------------------------------------------------------------------------%

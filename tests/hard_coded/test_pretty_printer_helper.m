@@ -11,7 +11,9 @@
 :- interface.
 
 :- import_module io.
+:- import_module list.
 :- import_module pretty_printer.
+:- import_module univ.
 
 %---------------------------------------------------------------------------%
 
@@ -19,22 +21,31 @@
 
 %---------------------------------------------------------------------------%
 
-:- type test_case
-    --->    test_case(string, doc).
+:- type maybe_print_test_value
+    --->    do_not_print_value
+    ;       do_print_value.
 
-:- pred run_test_case(test_case::in, io::di, io::uo) is det.
+:- type test_case
+    --->    test_case(string, test_data).
+
+:- type test_data
+    --->    td_univ(univ)
+    ;       td_univ_list(list(univ), doc)
+    ;       td_doc(doc).
+
+:- pred run_test_case(list(int)::in, list(int)::in,
+    list(func_symbol_limit)::in, maybe_print_test_value::in, test_case::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module string.
 :- import_module term_io.
 :- import_module type_desc.
-:- import_module univ.
 
 %---------------------------------------------------------------------------%
 
@@ -147,17 +158,28 @@ same_map_type(_, _, _).
 
 %---------------------------------------------------------------------------%
 
-run_test_case(TestCase, !IO) :-
-    TestCase = test_case(Name, Doc),
+run_test_case(LineWidths, MaxLines, Limits, MaybePrintDoc, TestCase, !IO) :-
+    TestCase = test_case(Name, TestData),
     io.nl(!IO),
     io.write_string("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n", !IO),
     io.format("Test case %s\n", [s(Name)], !IO),
     io.write_string("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n", !IO),
-
-    LineWidths = [78, 38],
-    MaxLines = [10, 3],
-    Limits = [linear(100), linear(10), linear(1),
-        triangular(100), triangular(10), triangular(1)],
+    (
+        TestData = td_univ(Univ),
+        Value = univ_value(Univ),
+        Doc = format(Value),
+        (
+            MaybePrintDoc = do_not_print_value
+        ;
+            MaybePrintDoc = do_print_value,
+            io.print_line(Value, !IO)
+        )
+    ;
+        TestData = td_univ_list(UnivList, SepDoc),
+        Doc = format_list(UnivList, SepDoc)
+    ;
+        TestData = td_doc(Doc)
+    ),
     run_test_case_loop_1(Doc, LineWidths, MaxLines, Limits, !IO).
 
 :- pred run_test_case_loop_1(doc::in, list(int)::in, list(int)::in,   

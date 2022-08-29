@@ -1,5 +1,32 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Test case prio_op_tree
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+node(b * c * (a ** b + c), a + - b + node(c, d)) + a
+
+line width = 16, max lines = 10, limit = linear(1000)
+|--------------|
+node(
+  b * c * 
+    (a ** b + 
+      c), 
+  a + -b + 
+    node(c, 
+      d)) + 
+  a
+|--------------|
+
+line width = 19, max lines = 10, limit = linear(1000)
+|-----------------|
+node(
+  b * c * 
+    (a ** b + c), 
+  a + -b + 
+    node(c, d)) + 
+  a
+|-----------------|
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Test case list
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -1503,206 +1530,195 @@ Test case noncanon
 
 line width = 78, max lines = 10, limit = linear(100)
 |----------------------------------------------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-non_canonical_bool(43)
-
+docs(
+  [format_univ(univ_cons(non_canonical_bool(0))), nl, 
+    format_univ(univ_cons(non_canonical_bool(1))), nl, 
+    format_univ(univ_cons(non_canonical_bool(42))), nl, 
+    format_univ(univ_cons(non_canonical_bool(43))), nl])
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 10, limit = linear(10)
 |----------------------------------------------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-non_canonical_bool(43)
-
+docs(
+  [format_univ(univ_cons(non_canonical_bool(0))), nl, 
+    format_univ(univ_cons(non_canonical_bool(...))), ...])
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 10, limit = linear(1)
 |----------------------------------------------------------------------------|
-non_canonical_bool(...)
-...
-...
-...
-
+docs(...)
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 10, limit = triangular(100)
 |----------------------------------------------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-non_canonical_bool(43)
-
+docs(
+  [format_univ(univ_cons(non_canonical_bool(0))), nl, 
+    format_univ(univ_cons(non_canonical_bool(1))), nl, 
+    format_univ(univ_cons(non_canonical_bool(42))), nl, 
+    format_univ(univ_cons(non_canonical_bool(43))), nl])
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 10, limit = triangular(10)
 |----------------------------------------------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-non_canonical_bool(43)
-
+docs(
+  [format_univ(univ_cons(non_canonical_bool(0))), nl, 
+    format_univ(univ_cons(non_canonical_bool(1))), nl, 
+    format_univ(univ_cons(non_canonical_bool(42))), nl, 
+    format_univ(univ_cons(...)), nl])
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 10, limit = triangular(1)
 |----------------------------------------------------------------------------|
-non_canonical_bool(...)
-...
-...
-...
-
+docs(...)
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 3, limit = linear(100)
 |----------------------------------------------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-...
+docs(
+  [format_univ(univ_cons(non_canonical_bool(0))), nl, 
+    format_univ(univ_cons(non_canonical_bool(1))), nl, 
+    ...
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 3, limit = linear(10)
 |----------------------------------------------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-...
+docs(
+  [format_univ(univ_cons(non_canonical_bool(0))), nl, 
+    format_univ(univ_cons(non_canonical_bool(...))), ...])
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 3, limit = linear(1)
 |----------------------------------------------------------------------------|
-non_canonical_bool(...)
-...
-...
-...
+docs(...)
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 3, limit = triangular(100)
 |----------------------------------------------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-...
+docs(
+  [format_univ(univ_cons(non_canonical_bool(0))), nl, 
+    format_univ(univ_cons(non_canonical_bool(1))), nl, 
+    ...
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 3, limit = triangular(10)
 |----------------------------------------------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-...
+docs(
+  [format_univ(univ_cons(non_canonical_bool(0))), nl, 
+    format_univ(univ_cons(non_canonical_bool(1))), nl, 
+    ...
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 3, limit = triangular(1)
 |----------------------------------------------------------------------------|
-non_canonical_bool(...)
-...
-...
-...
+docs(...)
 |----------------------------------------------------------------------------|
 
 line width = 38, max lines = 10, limit = linear(100)
 |------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-non_canonical_bool(43)
-
+docs(
+  [format_univ(
+      univ_cons(
+        non_canonical_bool(0))), nl, 
+    format_univ(
+      univ_cons(
+        non_canonical_bool(1))), nl, 
+    format_univ(
+      univ_cons(
+        non_canonical_bool(42))), nl, 
+    ...
 |------------------------------------|
 
 line width = 38, max lines = 10, limit = linear(10)
 |------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-non_canonical_bool(43)
-
+docs(
+  [format_univ(
+      univ_cons(
+        non_canonical_bool(0))), nl, 
+    format_univ(
+      univ_cons(
+        non_canonical_bool(...))), ...])
 |------------------------------------|
 
 line width = 38, max lines = 10, limit = linear(1)
 |------------------------------------|
-non_canonical_bool(...)
-...
-...
-...
-
+docs(...)
 |------------------------------------|
 
 line width = 38, max lines = 10, limit = triangular(100)
 |------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-non_canonical_bool(43)
-
+docs(
+  [format_univ(
+      univ_cons(
+        non_canonical_bool(0))), nl, 
+    format_univ(
+      univ_cons(
+        non_canonical_bool(1))), nl, 
+    format_univ(
+      univ_cons(
+        non_canonical_bool(42))), nl, 
+    ...
 |------------------------------------|
 
 line width = 38, max lines = 10, limit = triangular(10)
 |------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-non_canonical_bool(43)
-
+docs(
+  [format_univ(
+      univ_cons(
+        non_canonical_bool(0))), nl, 
+    format_univ(
+      univ_cons(
+        non_canonical_bool(1))), nl, 
+    format_univ(
+      univ_cons(
+        non_canonical_bool(42))), nl, 
+    ...
 |------------------------------------|
 
 line width = 38, max lines = 10, limit = triangular(1)
 |------------------------------------|
-non_canonical_bool(...)
-...
-...
-...
-
+docs(...)
 |------------------------------------|
 
 line width = 38, max lines = 3, limit = linear(100)
 |------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-...
+docs(
+  [format_univ(
+      univ_cons(
+        ...
 |------------------------------------|
 
 line width = 38, max lines = 3, limit = linear(10)
 |------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-...
+docs(
+  [format_univ(
+      univ_cons(
+        ...
 |------------------------------------|
 
 line width = 38, max lines = 3, limit = linear(1)
 |------------------------------------|
-non_canonical_bool(...)
-...
-...
-...
+docs(...)
 |------------------------------------|
 
 line width = 38, max lines = 3, limit = triangular(100)
 |------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-...
+docs(
+  [format_univ(
+      univ_cons(
+        ...
 |------------------------------------|
 
 line width = 38, max lines = 3, limit = triangular(10)
 |------------------------------------|
-non_canonical_bool(0)
-non_canonical_bool(1)
-non_canonical_bool(42)
-...
+docs(
+  [format_univ(
+      univ_cons(
+        ...
 |------------------------------------|
 
 line width = 38, max lines = 3, limit = triangular(1)
 |------------------------------------|
-non_canonical_bool(...)
-...
-...
-...
+docs(...)
 |------------------------------------|
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1711,216 +1727,200 @@ Test case indent
 
 line width = 78, max lines = 10, limit = linear(100)
 |----------------------------------------------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_ three 
-_1__2__3__4_ four 
-_1__2__3__4__5_ five 
+docs(
+  [str("indentation test:"), 
+    docs(
+      [pp_internal(add_indent("_1_")), 
+        docs(
+          [nl, str(" one "), 
+            docs(
+              [pp_internal(add_indent("_2_")), 
+                docs(
+                  [nl, str(" two "), 
+                    ...
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 10, limit = linear(10)
 |----------------------------------------------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_ three 
-_1__2__3__4_ four 
-_1__2__3__4__5_ five 
+docs(
+  [str("indentation test:"), 
+    docs([pp_internal(add_indent("_1_")), docs(...), ...])])
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 10, limit = linear(1)
 |----------------------------------------------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_ three 
-_1__2__3__4_ four 
-_1__2__3__4__5_ five 
+docs(...)
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 10, limit = triangular(100)
 |----------------------------------------------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_ three 
-_1__2__3__4_ four 
-_1__2__3__4__5_ five 
+docs(
+  [str("indentation test:"), 
+    docs(
+      [pp_internal(add_indent("_1_")), 
+        docs(
+          [nl, str(" one "), 
+            docs(
+              [pp_internal(add_indent("_2_")), 
+                docs(
+                  [nl, str(" two "), 
+                    ...
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 10, limit = triangular(10)
 |----------------------------------------------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_ three 
-_1__2__3__4_ four 
-_1__2__3__4__5_ five 
+docs(
+  [str("indentation test:"), 
+    docs(
+      [pp_internal(add_indent("_1_")), docs([nl, str(...), ...]), 
+        pp_internal(remove_indent)])])
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 10, limit = triangular(1)
 |----------------------------------------------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_ three 
-_1__2__3__4_ four 
-_1__2__3__4__5_ five 
+docs(...)
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 3, limit = linear(100)
 |----------------------------------------------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_...
+docs(
+  [str("indentation test:"), 
+    docs(
+      ...
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 3, limit = linear(10)
 |----------------------------------------------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_...
+docs(
+  [str("indentation test:"), 
+    docs([pp_internal(add_indent("_1_")), docs(...), ...])])
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 3, limit = linear(1)
 |----------------------------------------------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_...
+docs(...)
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 3, limit = triangular(100)
 |----------------------------------------------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_...
+docs(
+  [str("indentation test:"), 
+    docs(
+      ...
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 3, limit = triangular(10)
 |----------------------------------------------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_...
+docs(
+  [str("indentation test:"), 
+    docs(
+      ...
 |----------------------------------------------------------------------------|
 
 line width = 78, max lines = 3, limit = triangular(1)
 |----------------------------------------------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_...
+docs(...)
 |----------------------------------------------------------------------------|
 
 line width = 38, max lines = 10, limit = linear(100)
 |------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_ three 
-_1__2__3__4_ four 
-_1__2__3__4__5_ five 
+docs(
+  [str("indentation test:"), 
+    docs(
+      [pp_internal(
+          add_indent("_1_")), 
+        docs(
+          [nl, str(" one "), 
+            docs(
+              [pp_internal(
+                  add_indent("_2_")), 
+                ...
 |------------------------------------|
 
 line width = 38, max lines = 10, limit = linear(10)
 |------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_ three 
-_1__2__3__4_ four 
-_1__2__3__4__5_ five 
+docs(
+  [str("indentation test:"), 
+    docs(
+      [pp_internal(
+          add_indent("_1_")), 
+        docs(...), ...])])
 |------------------------------------|
 
 line width = 38, max lines = 10, limit = linear(1)
 |------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_ three 
-_1__2__3__4_ four 
-_1__2__3__4__5_ five 
+docs(...)
 |------------------------------------|
 
 line width = 38, max lines = 10, limit = triangular(100)
 |------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_ three 
-_1__2__3__4_ four 
-_1__2__3__4__5_ five 
+docs(
+  [str("indentation test:"), 
+    docs(
+      [pp_internal(
+          add_indent("_1_")), 
+        docs(
+          [nl, str(" one "), 
+            docs(
+              [pp_internal(
+                  add_indent("_2_")), 
+                ...
 |------------------------------------|
 
 line width = 38, max lines = 10, limit = triangular(10)
 |------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_ three 
-_1__2__3__4_ four 
-_1__2__3__4__5_ five 
+docs(
+  [str("indentation test:"), 
+    docs(
+      [pp_internal(
+          add_indent("_1_")), 
+        docs([nl, str(...), ...]), 
+        pp_internal(remove_indent)])])
 |------------------------------------|
 
 line width = 38, max lines = 10, limit = triangular(1)
 |------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_ three 
-_1__2__3__4_ four 
-_1__2__3__4__5_ five 
+docs(...)
 |------------------------------------|
 
 line width = 38, max lines = 3, limit = linear(100)
 |------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_...
+docs(
+  [str("indentation test:"), 
+    docs(
+      ...
 |------------------------------------|
 
 line width = 38, max lines = 3, limit = linear(10)
 |------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_...
+docs(
+  [str("indentation test:"), 
+    docs(
+      ...
 |------------------------------------|
 
 line width = 38, max lines = 3, limit = linear(1)
 |------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_...
+docs(...)
 |------------------------------------|
 
 line width = 38, max lines = 3, limit = triangular(100)
 |------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_...
+docs(
+  [str("indentation test:"), 
+    docs(
+      ...
 |------------------------------------|
 
 line width = 38, max lines = 3, limit = triangular(10)
 |------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_...
+docs(
+  [str("indentation test:"), 
+    docs(
+      ...
 |------------------------------------|
 
 line width = 38, max lines = 3, limit = triangular(1)
 |------------------------------------|
-indentation test:
-_1_ one 
-_1__2_ two 
-_1__2__3_...
+docs(...)
 |------------------------------------|
