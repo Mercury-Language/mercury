@@ -772,9 +772,11 @@ expand_format_univ(Canonicalize, FMap, Univ, Doc, !Limit, CurrentPri) :-
         ( if
             type_ctor_and_args(type_of(Value), TypeCtorDesc, ArgTypeDescs),
             ModuleName = type_ctor_module_name(TypeCtorDesc),
+            map.search(FMap, ModuleName, FMapTypeArity),
             TypeName = type_ctor_name(TypeCtorDesc),
-            Arity = list.length(ArgTypeDescs),
-            get_formatter(FMap, ModuleName, TypeName, Arity, Formatter)
+            map.search(FMapTypeArity, TypeName, FMapArity),
+            list.length(ArgTypeDescs, Arity),
+            map.search(FMapArity, Arity, Formatter)
         then
             decrement_func_limit(!Limit),
             Doc0 = Formatter(Univ, ArgTypeDescs),
@@ -784,14 +786,6 @@ expand_format_univ(Canonicalize, FMap, Univ, Doc, !Limit, CurrentPri) :-
             expand_format_term(Name, Args, Doc, !Limit, CurrentPri)
         )
     ).
-
-:- pred get_formatter(formatter_map::in, string::in, string::in, int::in,
-    formatter::out) is semidet.
-
-get_formatter(FMap, ModuleName, TypeName, Arity, Formatter) :-
-    map.search(FMap, ModuleName, FMapTypeArity),
-    map.search(FMapTypeArity, TypeName, FMapArity),
-    map.search(FMapArity, Arity, Formatter).
 
 %---------------------%
 
