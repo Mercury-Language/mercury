@@ -2067,6 +2067,28 @@
     %
 :- func make_io_error(string) = io.error.
 
+    % make_io_error_from_system_error(SystemError, Prefix, Error, !IO):
+    %
+    % Construct an io.error value given a system error and an error message
+    % prefix, which may be the empty string. The error message will be
+    % constructed by appending Prefix and the error message retrieved from the
+    % system for SystemError.
+    %
+    % On C backends, the io.system_error must be an errno value,
+    % not a Windows error code.
+    %
+:- pred make_io_error_from_system_error(io.system_error::in, string::in,
+    io.error::out, io::di, io::uo) is det.
+
+    % make_io_error_from_windows_error(SystemError, Prefix, Error, !IO):
+    %
+    % Construct an io.error value from the given Windows system error and error
+    % message prefix. This predicate may only be called when using a C backend
+    % running on Windows. On other platforms, it throws an exception.
+    %
+:- pred make_io_error_from_windows_error(io.system_error::in, string::in,
+    io.error::out, io::di, io::uo) is det.
+
     % Return an error message for the error value.
     %
 :- func error_message(io.error) = string.
@@ -2275,24 +2297,21 @@
 :- pred is_error(system_error::in, string::in, maybe(io.error)::out,
     io::di, io::uo) is det.
 
-    % is_maybe_win32_error(Error, MessagePrefix, MaybeIOError, !IO):
-    % Same as is_error except that Error is a Win32 error value on Windows.
+    % is_error_maybe_win32(Error, IsWin32Error, MessagePrefix, MaybeIOError,
+    %   !IO):
+    % Same as is_error except that IsWin32Error is `yes' if Error originates
+    % from a Win32 system error code, `no' otherwise.
     %
-:- pred is_maybe_win32_error(system_error::in, string::in,
+:- pred is_error_maybe_win32(system_error::in, bool::in, string::in,
     maybe(io.error)::out, io::di, io::uo) is det.
 
-    % Make an io.error from a system error and message prefix.
-    % On Windows, the system error is assumed to be a errno value.
+    % make_io_error_from_maybe_win32_error(Error, IsWin32Error, Prefix,
+    %   IOError, !IO):
+    % Helper to call either make_io_error_from_system_error or
+    % make_io_error_from_windows_error.
     %
-:- pred make_io_error_from_system_error(io.system_error::in, string::in,
-    io.error::out, io::di, io::uo) is det.
-
-    % Make an io.error from a system error and message prefix.
-    % On Windows, the system error is assumed to be a Windows system error
-    % code obtained by calling GetLastError().
-    %
-:- pred make_io_error_from_maybe_win32_error(io.system_error::in, string::in,
-    io.error::out, io::di, io::uo) is det.
+:- pred make_io_error_from_maybe_win32_error(system_error::in, bool::in,
+    string::in, io.error::out, io::di, io::uo) is det.
 
     % For use by bitmap.m, and other standard library modules
     % that want to do I/O.
@@ -4904,6 +4923,40 @@ report_tabling_statistics(!IO) :-
 
 make_io_error(Error) = io_error_string(Error).
 
+make_io_error_from_system_error(Error, Prefix, IOError, !IO) :-
+    SysErrStyle = native_system_error_style,
+    (
+        ( SysErrStyle = syserr_errno
+        ; SysErrStyle = syserr_errno_or_win32
+        ),
+        make_errno_message(Error, Prefix, Msg, !IO),
+        IOError = io_error_errno(Msg, Error)
+    ;
+        SysErrStyle = syserr_exception_object,
+        get_exception_object_message(Error, Msg0, !IO),
+        ( if Prefix = "" then
+            Msg = Msg0
+        else
+            Msg = Prefix ++ Msg0
+        ),
+        IOError = io_error_exception_object(Msg, Error)
+    ).
+
+make_io_error_from_windows_error(Error, Prefix, IOError, !IO) :-
+    SysErrStyle = native_system_error_style,
+    (
+        SysErrStyle = syserr_errno_or_win32,
+        make_win32_error_message(Error, Prefix, Msg, !IO),
+        IOError = io_error_win32(Msg, Error)
+    ;
+        ( SysErrStyle = syserr_errno
+        ; SysErrStyle = syserr_exception_object
+        ),
+        error("io.make_io_error_from_windows_error: inapplicable platform")
+    ).
+
+%---------------------%
+
 error_message(Error) = Msg :-
     error_message(Error, Msg).
 
@@ -5891,52 +5944,23 @@ is_error(Error, Prefix, MaybeError, !IO) :-
         MaybeError = yes(IOError)
     ).
 
-is_maybe_win32_error(Error, Prefix, MaybeError, !IO) :-
+is_error_maybe_win32(Error, IsWin32Error, Prefix, MaybeError, !IO) :-
     ( if is_success(Error) then
         MaybeError = no
     else
-        make_io_error_from_maybe_win32_error(Error, Prefix, IOError, !IO),
+        make_io_error_from_maybe_win32_error(Error, IsWin32Error, Prefix,
+            IOError, !IO),
         MaybeError = yes(IOError)
     ).
 
-make_io_error_from_system_error(Error, Prefix, IOError, !IO) :-
-    SysErrStyle = native_system_error_style,
+make_io_error_from_maybe_win32_error(Error, IsWin32Error, Prefix, IOError,
+        !IO) :-
     (
-        ( SysErrStyle = syserr_errno
-        ; SysErrStyle = syserr_errno_or_win32
-        ),
-        make_errno_message(Error, Prefix, Msg, !IO),
-        IOError = io_error_errno(Msg, Error)
+        IsWin32Error = yes,
+        make_io_error_from_windows_error(Error, Prefix, IOError, !IO)
     ;
-        SysErrStyle = syserr_exception_object,
-        get_exception_object_message(Error, Msg0, !IO),
-        ( if Prefix = "" then
-            Msg = Msg0
-        else
-            Msg = Prefix ++ Msg0
-        ),
-        IOError = io_error_exception_object(Msg, Error)
-    ).
-
-make_io_error_from_maybe_win32_error(Error, Prefix, IOError, !IO) :-
-    SysErrStyle = native_system_error_style,
-    (
-        SysErrStyle = syserr_errno,
-        make_errno_message(Error, Prefix, Msg, !IO),
-        IOError = io_error_errno(Msg, Error)
-    ;
-        SysErrStyle = syserr_errno_or_win32,
-        make_win32_error_message(Error, Prefix, Msg, !IO),
-        IOError = io_error_win32(Msg, Error)
-    ;
-        SysErrStyle = syserr_exception_object,
-        get_exception_object_message(Error, Msg0, !IO),
-        ( if Prefix = "" then
-            Msg = Msg0
-        else
-            Msg = Prefix ++ Msg0
-        ),
-        IOError = io_error_exception_object(Msg, Error)
+        IsWin32Error = no,
+        make_io_error_from_system_error(Error, Prefix, IOError, !IO)
     ).
 
 :- pred throw_on_error(system_error::in, string::in, io::di, io::uo) is det.
