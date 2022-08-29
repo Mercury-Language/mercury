@@ -365,7 +365,12 @@ indent(Indent, Docs) =
     ]).
 
 indent(Docs) =
-    indent("  ", Docs).
+    indent(std_indent, Docs).
+
+:- func std_indent = string.
+:- pragma inline(func(std_indent/0)).
+
+std_indent = "  ".
 
 group(Docs) =
     docs([pp_internal(open_group), docs(Docs), pp_internal(close_group)]).
@@ -376,10 +381,14 @@ format(X) = format_univ(univ(X)).
 
 format_arg(Doc) =
     docs([
-        pp_internal(
-            set_op_priority(ops.arg_priority(ops.init_mercury_op_table))),
+        pp_internal(set_arg_priority),
         Doc
     ]).
+
+:- func set_arg_priority = pp_internal.
+:- pragma inline(func(set_arg_priority/0)).
+
+set_arg_priority = set_op_priority(ops.mercury_op_table_arg_priority).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -475,19 +484,18 @@ do_put_docs(Stream, Canonicalize, FMap, LineWidth, [HeadDoc0 | TailDocs0],
         ;
             (
                 HeadDoc0 = format_univ(Univ),
-                expand_format_univ(Canonicalize, FMap, Univ, HeadDoc1,
+                expand_format_univ(Canonicalize, FMap, Univ, TailDocs0, Docs,
                     !Limit, !.Pri)
             ;
                 HeadDoc0 = format_list(Univs, Sep),
-                expand_format_list(Univs, Sep, HeadDoc1, !Limit)
+                expand_format_list(Univs, Sep, TailDocs0, Docs, !Limit)
             ;
                 HeadDoc0 = format_term(Name, Univs),
-                expand_format_term(Name, Univs, HeadDoc1, !Limit, !.Pri)
+                expand_format_term(Name, Univs, TailDocs0, Docs, !Limit, !.Pri)
             ;
                 HeadDoc0 = format_susp(Susp),
-                expand_format_susp(Susp, HeadDoc1, !Limit)
-            ),
-            Docs = [HeadDoc1 | TailDocs0]
+                expand_format_susp(Susp, TailDocs0, Docs, !Limit)
+            )
         ;
             HeadDoc0 = pp_internal(Internal),
             (
@@ -675,19 +683,19 @@ expand_docs_to_line_end(Canonicalize, FMap,
         ;
             (
                 HeadDoc0 = format_univ(HeadUniv),
-                expand_format_univ(Canonicalize, FMap, HeadUniv, HeadDoc1,
-                    !Limit, !.Pri)
+                expand_format_univ(Canonicalize, FMap, HeadUniv,
+                    TailDocs0, Docs1, !Limit, !.Pri)
             ;
                 HeadDoc0 = format_list(HeadUnivs, Sep),
-                expand_format_list(HeadUnivs, Sep, HeadDoc1, !Limit)
+                expand_format_list(HeadUnivs, Sep, TailDocs0, Docs1, !Limit)
             ;
                 HeadDoc0 = format_term(Name, HeadUnivs),
-                expand_format_term(Name, HeadUnivs, HeadDoc1, !Limit, !.Pri)
+                expand_format_term(Name, HeadUnivs, TailDocs0, Docs1, !Limit,
+                    !.Pri)
             ;
                 HeadDoc0 = format_susp(HeadSusp),
-                expand_format_susp(HeadSusp, HeadDoc1, !Limit)
+                expand_format_susp(HeadSusp, TailDocs0, Docs1, !Limit)
             ),
-            Docs1 = [HeadDoc1 | TailDocs0],
             expand_docs_to_line_end(Canonicalize, FMap, Docs1, Docs,
                 !.OpenGroups, !Limit, !Pri, !RemainingWidth)
         ;
@@ -757,16 +765,17 @@ output_indentation(Stream, indent_nonempty(IndentStack, Indent),
     % that succeeds, otherwise use the generic pretty- printer. If the
     % pretty-printer limit has been exhausted, then generate only "...".
     %
-:- pred expand_format_univ(noncanon_handling, formatter_map, univ, doc,
-    func_symbol_limit, func_symbol_limit, ops.priority).
-:- mode expand_format_univ(in(canonicalize), in, in, out, in, out, in)
-    is det.
-:- mode expand_format_univ(in(include_details_cc), in, in, out, in, out, in)
-    is cc_multi.
+:- pred expand_format_univ(noncanon_handling, formatter_map, univ,
+    list(doc), list(doc), func_symbol_limit, func_symbol_limit, ops.priority).
+:- mode expand_format_univ(in(canonicalize), in, in,
+    in, out, in, out, in) is det.
+:- mode expand_format_univ(in(include_details_cc), in, in,
+    in, out, in, out, in) is cc_multi.
 
-expand_format_univ(Canonicalize, FMap, Univ, Doc, !Limit, CurrentPri) :-
+expand_format_univ(Canonicalize, FMap, Univ, TailDocs, Docs,
+        !Limit, CurrentPri) :-
     ( if func_limit_reached(!.Limit) then
-        Doc = ellipsis
+        Docs = [ellipsis | TailDocs]
     else
         Value = univ_value(Univ),
         ( if
@@ -780,10 +789,10 @@ expand_format_univ(Canonicalize, FMap, Univ, Doc, !Limit, CurrentPri) :-
         then
             decrement_func_limit(!Limit),
             Doc0 = Formatter(Univ, ArgTypeDescs),
-            set_func_limit_in_doc(!.Limit, Doc0, Doc)
+            set_func_limit_in_doc(!.Limit, Doc0, TailDocs, Docs)
         else
             deconstruct(Value, Canonicalize, Name, _Arity, Args),
-            expand_format_term(Name, Args, Doc, !Limit, CurrentPri)
+            expand_format_term(Name, Args, TailDocs, Docs, !Limit, CurrentPri)
         )
     ).
 
@@ -791,61 +800,93 @@ expand_format_univ(Canonicalize, FMap, Univ, Doc, !Limit, CurrentPri) :-
 
     % Expand a list of univs into docs using the given separator.
     %
-:- pred expand_format_list(list(univ)::in, doc::in, doc::out,
-    func_symbol_limit::in, func_symbol_limit::out) is det.
+:- pred expand_format_list(list(univ)::in, doc::in, list(doc)::in,
+    list(doc)::out, func_symbol_limit::in, func_symbol_limit::out) is det.
 
-expand_format_list([], _Sep, docs([]), !Limit).
-expand_format_list([Univ | Univs], Sep, Doc, !Limit) :-
+expand_format_list([], _Sep, TailDocs, Docs, !Limit) :-
+    Docs = TailDocs.
+expand_format_list([HeadUniv | TailUnivs], Sep, TailDocs, Docs, !Limit) :-
     ( if func_limit_reached(!.Limit) then
-        Doc = ellipsis
+        Docs = [ellipsis | TailDocs]
     else
         (
-            Univs = [],
-            Doc = format_arg(group([nl, format_univ(Univ)]))
+            TailUnivs = [],
+            Docs = [
+                pp_internal(set_arg_priority),
+                pp_internal(open_group),
+                nl,
+                format_univ(HeadUniv),
+                pp_internal(close_group)
+                | TailDocs
+            ]
         ;
-            Univs = [_ | _],
-            Doc = docs([
-                format_arg(group([nl, format_univ(Univ), Sep])),
-                format_list(Univs, Sep)
-            ])
+            TailUnivs = [_ | _],
+            Docs = [
+                pp_internal(set_arg_priority),
+                pp_internal(open_group),
+                nl,
+                format_univ(HeadUniv),
+                Sep,
+                pp_internal(close_group),
+                format_list(TailUnivs, Sep)
+                | TailDocs
+            ]
         )
     ).
 
     % Expand a name and list of univs into docs corresponding to Mercury
     % term syntax.
     %
-:- pred expand_format_term(string::in, list(univ)::in, doc::out,
+:- pred expand_format_term(string::in, list(univ)::in,
+    list(doc)::in, list(doc)::out,
     func_symbol_limit::in, func_symbol_limit::out, ops.priority::in) is det.
 
-expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
+expand_format_term(Name, Args, TailDocs, Docs, !Limit, CurrentPri) :-
     ( if Args = [] then
-        Doc0 = str(term_io.quoted_atom(Name))
+        HeadDoc0 = str(term_io.quoted_atom(Name)),
+        decrement_func_limit(!Limit),
+        set_func_limit_in_doc(!.Limit, HeadDoc0, TailDocs, Docs)
     else if func_limit_reached(!.Limit) then
-        Doc0 = ellipsis
-    else if expand_format_op(Name, Args, CurrentPri, OpDoc) then
-        Doc0 = OpDoc
-    else if Name = "{}" then
-        Doc0 = docs([
-            str("{"), indent([format_list(Args, str(", "))]), str("}")
-        ])
+        HeadDoc0 = ellipsis,
+        % There *should* be no point im decrementing !Limit even further.
+        decrement_func_limit(!Limit),
+        set_func_limit_in_doc(!.Limit, HeadDoc0, TailDocs, Docs)
+    else if expand_format_op(Name, Args, CurrentPri, OpDocs) then
+        decrement_func_limit(!Limit),
+        set_func_limit_in_docs(!.Limit, OpDocs, TailDocs, Docs)
     else
-        Doc0 = group([
-            nl,
-            str(term_io.quoted_atom(Name)),
-            str("("), indent([format_list(Args, str(", "))]), str(")")
-        ])
-    ),
-    % XXX Doing this looks wrong when we take the Doc0 = ellipsis path above.
-    decrement_func_limit(!Limit),
-    set_func_limit_in_doc(!.Limit, Doc0, Doc).
+        ( if Name = "{}" then
+            HeadDocs0 = [
+                str("{"),
+                pp_internal(add_indent(std_indent)),
+                format_list(Args, str(", ")),
+                pp_internal(remove_indent),
+                str("}")
+            ]
+        else
+            HeadDocs0 = [
+                pp_internal(open_group),
+                nl,
+                str(term_io.quoted_atom(Name)),
+                str("("),
+                pp_internal(add_indent(std_indent)),
+                format_list(Args, str(", ")),
+                pp_internal(remove_indent),
+                str(")"),
+                pp_internal(close_group)
+            ]
+        ),
+        decrement_func_limit(!Limit),
+        set_func_limit_in_docs(!.Limit, HeadDocs0, TailDocs, Docs)
+    ).
 
     % Expand a function symbol name and list of univs representing its
     % arguments into docs corresponding to Mercury operator syntax.
     %
 :- pred expand_format_op(string::in, list(univ)::in, ops.priority::in,
-    doc::out) is semidet.
+    list(doc)::out) is semidet.
 
-expand_format_op(Op, Args, EnclosingPriority, Doc) :-
+expand_format_op(Op, Args, EnclosingPriority, Docs) :-
     % XXX With one exception, all the set_op_priority pp_internals are
     % created here. They are intended set the priority of one argument,
     % which in this case is equivalent to setting the priority from
@@ -865,23 +906,25 @@ expand_format_op(Op, Args, EnclosingPriority, Doc) :-
         then
             OpPriority = Pri,
             adjust_priority_for_assoc(OpPriority, AssocA, PriorityArgA),
-            Doc0 =
-                group([
-                    str(Op),
-                    pp_internal(set_op_priority(PriorityArgA)),
-                    format_univ(ArgA)
-                ])
+            Docs0 = [
+                pp_internal(open_group),
+                str(Op),
+                pp_internal(set_op_priority(PriorityArgA)),
+                format_univ(ArgA),
+                pp_internal(close_group)
+            ]
         else if
             ops.mercury_op_table_postfix_op(OpInfo, OtherOpInfos, Pri, AssocA)
         then
             OpPriority = Pri,
             adjust_priority_for_assoc(OpPriority, AssocA, PriorityArgA),
-            Doc0 =
-                group([
-                    pp_internal(set_op_priority(PriorityArgA)),
-                    format_univ(ArgA),
-                    str(Op)
-                ])
+            Docs0 = [
+                pp_internal(open_group),
+                pp_internal(set_op_priority(PriorityArgA)),
+                format_univ(ArgA),
+                str(Op),
+                pp_internal(close_group)
+            ]
         else
             fail
         )
@@ -895,21 +938,22 @@ expand_format_op(Op, Args, EnclosingPriority, Doc) :-
             OpPriority = Pri,
             adjust_priority_for_assoc(OpPriority, AssocA, PriorityArgA),
             adjust_priority_for_assoc(OpPriority, AssocB, PriorityArgB),
-            Doc0 =
-                group([
-                    pp_internal(set_op_priority(PriorityArgA)),
-                    format_univ(ArgA),
-                    ( if Op = "." then
-                        str(Op)
-                    else
-                        docs([str(" "), str(Op), str(" ")])
-                    ),
-                    indent([
-                        nl,
-                        pp_internal(set_op_priority(PriorityArgB)),
-                        format_univ(ArgB)
-                    ])
-                ])
+            Docs0 = [
+                pp_internal(open_group),
+                pp_internal(set_op_priority(PriorityArgA)),
+                format_univ(ArgA),
+                ( if Op = "." then
+                    str(Op)
+                else
+                    docs([str(" "), str(Op), str(" ")])
+                ),
+                pp_internal(add_indent(std_indent)),
+                nl,
+                pp_internal(set_op_priority(PriorityArgB)),
+                format_univ(ArgB),
+                pp_internal(remove_indent),
+                pp_internal(close_group)
+            ]
         else if
             ops.mercury_op_table_binary_prefix_op(OpInfo, OtherOpInfos, Pri,
                 AssocA, AssocB)
@@ -917,41 +961,42 @@ expand_format_op(Op, Args, EnclosingPriority, Doc) :-
             OpPriority = Pri,
             adjust_priority_for_assoc(OpPriority, AssocA, PriorityArgA),
             adjust_priority_for_assoc(OpPriority, AssocB, PriorityArgB),
-            Doc0 =
-                group([
-                    str(Op),
-                    str(" "),
-                    pp_internal(set_op_priority(PriorityArgA)),
-                    format_univ(ArgA),
-                    str(" "),
-                    indent([
-                        pp_internal(set_op_priority(PriorityArgB)),
-                        format_univ(ArgB)
-                    ])
-                ])
+            Docs0 = [
+                pp_internal(open_group),
+                str(Op),
+                str(" "),
+                pp_internal(set_op_priority(PriorityArgA)),
+                format_univ(ArgA),
+                str(" "),
+                pp_internal(add_indent(std_indent)),
+                pp_internal(set_op_priority(PriorityArgB)),
+                format_univ(ArgB),
+                pp_internal(remove_indent),
+                pp_internal(close_group)
+            ]
         else
             fail
         )
     ),
     % Add parentheses around a doc if required by operator priority.
     ( if OpPriority > EnclosingPriority then
-        Doc = docs([str("("), Doc0, str(")")])
+        Docs = [str("(") | Docs0] ++ [str(")")]
     else
-        Doc = Doc0
+        Docs = Docs0
     ).
 
 %---------------------%
 
-:- pred expand_format_susp(((func) = doc)::in, doc::out,
+:- pred expand_format_susp(((func) = doc)::in, list(doc)::in, list(doc)::out,
     func_symbol_limit::in, func_symbol_limit::out) is det.
 
-expand_format_susp(Susp, Doc, !Limit) :-
+expand_format_susp(Susp, TailDocs, Docs, !Limit) :-
     ( if func_limit_reached(!.Limit) then
-        Doc = ellipsis
+        Docs = [ellipsis | TailDocs]
     else
         decrement_func_limit(!Limit),
-        Doc0 = apply(Susp),
-        set_func_limit_in_doc(!.Limit, Doc0, Doc)
+        HeadDoc0 = apply(Susp),
+        set_func_limit_in_doc(!.Limit, HeadDoc0, TailDocs, Docs)
     ).
 
 %---------------------%
@@ -962,14 +1007,23 @@ ellipsis = str("...").
 
 %---------------------%
 
-    % Update the limits properly after processing a pp_term.
+    % Update the limits properly after processing a term.
     %
 :- pred set_func_limit_in_doc(func_symbol_limit::in,
-    doc::in, doc::out) is det.
+    doc::in, list(doc)::in, list(doc)::out) is det.
 
-set_func_limit_in_doc(linear(_), Doc, Doc).
-set_func_limit_in_doc(Limit @ triangular(_), Doc0, Doc) :-
-    Doc = docs([Doc0, pp_internal(set_limit(Limit))]).
+set_func_limit_in_doc(linear(_), HeadDoc, TailDocs, [HeadDoc | TailDocs]).
+set_func_limit_in_doc(Limit @ triangular(_), HeadDoc0, TailDocs, Docs) :-
+    Docs = [HeadDoc0, pp_internal(set_limit(Limit)) | TailDocs].
+
+    % Update the limits properly after processing a term.
+    %
+:- pred set_func_limit_in_docs(func_symbol_limit::in,
+    list(doc)::in, list(doc)::in, list(doc)::out) is det.
+
+set_func_limit_in_docs(linear(_), HeadDocs, TailDocs, HeadDocs ++ TailDocs).
+set_func_limit_in_docs(Limit @ triangular(_), HeadDocs0, TailDocs, Docs) :-
+    Docs = HeadDocs0 ++ [pp_internal(set_limit(Limit)) | TailDocs].
 
     % Succeeds if the pretty-printer state limits have been used up.
     %
