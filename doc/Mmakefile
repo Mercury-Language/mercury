@@ -216,7 +216,7 @@ mercury_library.html: library.texi_pp
 mercury_user_guide/index.html: user_guide.texi_pp
 	$(TEXI2HTML_SPLIT) $<
 mercury_ref/index.html: reference_manual.texi_pp
-	$(TEXI2HTML_SPLIT) $<
+	$(TEXI2HTML_SPLIT) --split=chapter --no-headers $<
 mercury_trans_guide/index.html: transition_guide.texi_pp
 	$(TEXI2HTML_SPLIT) $<
 mercury_faq/index.html: faq.texi_pp
@@ -419,6 +419,7 @@ clean_texi:
 	rm -f mercury_*.info*
 	rm -f mercury_faq.html mercury_library.html mercury_ref.html \
 		mercury_trans_guide.html mercury_user_guide.html
+	rm -rf $(TEXINFO_INFO_FILES:%.info=%)
 
 .PHONY: clean_text_files
 clean_text_files:

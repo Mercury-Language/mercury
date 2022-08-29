@@ -109,7 +109,7 @@ Although there are a few differences,
 by and large if the syntax of a program is accepted by a Prolog system,
 it will be accepted by Mercury.
 There are however a few extra operators defined by the Mercury term parser
-(see the ``Builtin operators'' section of the ``Syntax'' chapter of the
+(see the ``Operators'' section of the ``Syntax'' chapter of the
 Mercury Language Reference Manual).
 
 In addition, Mercury implements both existential and universal quantification
@@ -125,6 +125,9 @@ and
 @example
 all Vars Goal
 @end example
+
+String literals are atomic;
+they are not abbreviations for lists of character codes.
 
 The constructor for lists in Mercury is @samp{[|]/2}, not @samp{./2}.
 
