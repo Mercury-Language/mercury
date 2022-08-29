@@ -3675,7 +3675,8 @@ read_binary_from_text_input_stream(Stream, Result, !IO) :-
             ( if NewLineChar = '\n' then
                 Result = ok(T)
             else
-                Result = error(io_error_string("io.read_binary: missing newline"))
+                Result = error(
+                    io_error_string("io.read_binary: missing newline"))
             )
         ;
             NewLineRes = eof,
