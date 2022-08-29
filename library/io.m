@@ -136,9 +136,13 @@
 :- type io.error.
 
     % A system-dependent error value.
+    %
     % For C backends, this is either an errno value (e.g. ENOENT)
     % or a Windows system error code (e.g. ERROR_FILE_NOT_FOUND).
-    % For the Java and C# backends, this is an exception object.
+    % A value of 0 represents success in both cases.
+    %
+    % For the Java and C# backends, this is an exception object or null,
+    % where null represents no error.
     %
 :- type system_error.
 :- pragma foreign_type(c, system_error, "MR_Integer",
@@ -2108,7 +2112,8 @@
     %
 :- pred get_windows_error(io.error::in, io.system_error::out) is semidet.
 
-    % As above, but only if the system error is a C# or Java exception object.
+    % As above, but only if the system error is a C# or Java exception object,
+    % or null.
     %
 :- pred get_exception_object_error(io.error::in, io.system_error::out)
     is semidet.
@@ -2130,10 +2135,12 @@
     % "System error 0xN" where 0xN is a hexadecimal number.
     %
     % For the C# backend, ErrorName will be the fully qualified class name
-    % of an exception object, e.g. "System.IO.FileNotFoundException".
+    % of an exception object, e.g. "System.IO.FileNotFoundException",
+    % or "null".
     %
     % For the Java backend, ErrorName will be the fully qualified class name
-    % of an exception object, e.g. "java.io.FileNotFoundException".
+    % of an exception object, e.g. "java.io.FileNotFoundException",
+    % or "null".
     %
 :- pred get_system_error_name(io.error::in, string::out) is semidet.
 
@@ -5063,13 +5070,21 @@ system_error_win32_error_name(_, _) :-
     system_error_exception_name(Exception::in, Name::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
 "
-    Name = Exception.GetType().FullName;
+    if (Exception == null) {
+        Name = ""null"";
+    } else {
+        Name = Exception.GetType().FullName;
+    }
 ").
 :- pragma foreign_proc("Java",
     system_error_exception_name(Exception::in, Name::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
 "
-    Name = Exception.getClass().getName();
+    if (Exception == null) {
+        Name = ""null"";
+    } else {
+        Name = Exception.getClass().getName();
+    }
 ").
 
 system_error_exception_name(_, _) :-
@@ -6079,15 +6094,23 @@ make_win32_error_message(_, _, _, !IO) :-
     get_exception_object_message(Exception::in, Msg::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
 "
-    Msg = Exception.Message;
+    if (Exception == null) {
+        Msg = ""null"";
+    } else {
+        Msg = Exception.Message;
+    }
 ").
 :- pragma foreign_proc("Java",
     get_exception_object_message(Exception::in, Msg::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
 "
-    Msg = Exception.getMessage();
-    if (Msg == null) {
+    if (Exception == null) {
         Msg = ""null"";
+    } else {
+        Msg = Exception.getMessage();
+        if (Msg == null) {
+            Msg = ""null"";
+        }
     }
 ").
 
