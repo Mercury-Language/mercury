@@ -4979,9 +4979,18 @@ system_error_errno_name(_, _) :-
     [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
 "
 #ifdef MR_WIN32
-    const char *str = MR_win32_error_name(ErrorCode);
-    if (str != NULL) {
-        Name = (MR_String) str;
+    const char *suffix = MR_win32_error_name(ErrorCode);
+    if (suffix != NULL) {
+        const char prefix[6] = ""ERROR_"";
+        size_t prefix_len;
+        size_t suffix_len;
+
+        prefix_len = sizeof(prefix);
+        suffix_len = strlen(suffix);
+        MR_allocate_aligned_string_msg(Name, prefix_len + suffix_len,
+            MR_ALLOC_ID);
+        MR_memcpy(Name, prefix, prefix_len);
+        MR_memcpy(Name + prefix_len, suffix, suffix_len + 1); // include NUL
     } else {
         Name = MR_make_string(MR_ALLOC_ID, ""System error 0x%X"", ErrorCode);
     }

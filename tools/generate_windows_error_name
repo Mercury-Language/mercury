@@ -1787,7 +1787,8 @@ MR_win32_error_name(DWORD errcode)
 EOF
 
 for name in $names ; do
-    echo "    case $name: return \"$name\";"
+    shortname=${name#ERROR_}
+    echo "    case $name: return \"$shortname\";"
 done
 
 cat <<EOF
