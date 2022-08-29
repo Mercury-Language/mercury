@@ -154,7 +154,8 @@
     % call write_doc on the result.
     %
 :- pred write_doc_formatted(T::in, io::di, io::uo) is det.
-:- pred write_doc_formatted(io.output_stream::in, T::in, io::di, io::uo) is det.
+:- pred write_doc_formatted(io.output_stream::in, T::in,
+    io::di, io::uo) is det.
 
     % write_doc(Doc, !IO):
     % write_doc(FileStream, Doc, !IO):
@@ -174,9 +175,8 @@
     % of noncanonical types (see the documentation of the noncanon_handling
     % type for details).
     %
-:- pred put_doc(Stream, noncanon_handling, formatter_map, pp_params,
-    doc, State, State)
-    <= stream.writer(Stream, string, State).
+:- pred put_doc(Stream, noncanon_handling, formatter_map, pp_params, doc,
+    State, State) <= stream.writer(Stream, string, State).
 :- mode put_doc(in, in(canonicalize), in, in, in, di, uo) is det.
 :- mode put_doc(in, in(include_details_cc), in, in, in, di, uo) is cc_multi.
 
@@ -765,24 +765,24 @@ output_indentation(Stream, indent_nonempty(IndentStack, Indent),
     is cc_multi.
 
 expand_format_univ(Canonicalize, FMap, Univ, Doc, !Limit, CurrentPri) :-
-    ( if
-        limit_overrun(!.Limit)
-    then
+    ( if func_limit_reached(!.Limit) then
         Doc = ellipsis
-    else if
-        Value = univ_value(Univ),
-        type_ctor_and_args(type_of(Value), TypeCtorDesc, ArgTypeDescs),
-        ModuleName = type_ctor_module_name(TypeCtorDesc),
-        TypeName = type_ctor_name(TypeCtorDesc),
-        Arity = list.length(ArgTypeDescs),
-        get_formatter(FMap, ModuleName, TypeName, Arity, Formatter)
-    then
-        decrement_limit(!Limit),
-        Doc0 = Formatter(Univ, ArgTypeDescs),
-        set_func_symbol_limit_correctly(!.Limit, Doc0, Doc)
     else
-        deconstruct(univ_value(Univ), Canonicalize, Name, _Arity, Args),
-        expand_format_term(Name, Args, Doc, !Limit, CurrentPri)
+        Value = univ_value(Univ),
+        ( if
+            type_ctor_and_args(type_of(Value), TypeCtorDesc, ArgTypeDescs),
+            ModuleName = type_ctor_module_name(TypeCtorDesc),
+            TypeName = type_ctor_name(TypeCtorDesc),
+            Arity = list.length(ArgTypeDescs),
+            get_formatter(FMap, ModuleName, TypeName, Arity, Formatter)
+        then
+            decrement_func_limit(!Limit),
+            Doc0 = Formatter(Univ, ArgTypeDescs),
+            set_func_limit_in_doc(!.Limit, Doc0, Doc)
+        else
+            deconstruct(Value, Canonicalize, Name, _Arity, Args),
+            expand_format_term(Name, Args, Doc, !Limit, CurrentPri)
+        )
     ).
 
 :- pred get_formatter(formatter_map::in, string::in, string::in, int::in,
@@ -802,7 +802,7 @@ get_formatter(FMap, ModuleName, TypeName, Arity, Formatter) :-
 
 expand_format_list([], _Sep, docs([]), !Limit).
 expand_format_list([Univ | Univs], Sep, Doc, !Limit) :-
-    ( if limit_overrun(!.Limit) then
+    ( if func_limit_reached(!.Limit) then
         Doc = ellipsis
     else
         (
@@ -826,7 +826,7 @@ expand_format_list([Univ | Univs], Sep, Doc, !Limit) :-
 expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
     ( if Args = [] then
         Doc0 = str(term_io.quoted_atom(Name))
-    else if limit_overrun(!.Limit) then
+    else if func_limit_reached(!.Limit) then
         Doc0 = ellipsis
     else if expand_format_op(Name, Args, CurrentPri, OpDoc) then
         Doc0 = OpDoc
@@ -841,20 +841,9 @@ expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
             str("("), indent([format_list(Args, str(", "))]), str(")")
         ])
     ),
-    decrement_limit(!Limit),
-    set_func_symbol_limit_correctly(!.Limit, Doc0, Doc).
-
-:- pred expand_format_susp(((func) = doc)::in, doc::out,
-    func_symbol_limit::in, func_symbol_limit::out) is det.
-
-expand_format_susp(Susp, Doc, !Limit) :-
-    ( if limit_overrun(!.Limit) then
-        Doc = ellipsis
-    else
-        decrement_limit(!Limit),
-        Doc0 = apply(Susp),
-        set_func_symbol_limit_correctly(!.Limit, Doc0, Doc)
-    ).
+    % XXX Doing this looks wrong when we take the Doc0 = ellipsis path above.
+    decrement_func_limit(!Limit),
+    set_func_limit_in_doc(!.Limit, Doc0, Doc).
 
     % Expand a function symbol name and list of univs representing its
     % arguments into docs corresponding to Mercury operator syntax.
@@ -959,6 +948,20 @@ expand_format_op(Op, Args, EnclosingPriority, Doc) :-
 
 %---------------------%
 
+:- pred expand_format_susp(((func) = doc)::in, doc::out,
+    func_symbol_limit::in, func_symbol_limit::out) is det.
+
+expand_format_susp(Susp, Doc, !Limit) :-
+    ( if func_limit_reached(!.Limit) then
+        Doc = ellipsis
+    else
+        decrement_func_limit(!Limit),
+        Doc0 = apply(Susp),
+        set_func_limit_in_doc(!.Limit, Doc0, Doc)
+    ).
+
+%---------------------%
+
 :- func ellipsis = doc.
 
 ellipsis = str("...").
@@ -967,28 +970,29 @@ ellipsis = str("...").
 
     % Update the limits properly after processing a pp_term.
     %
-:- pred set_func_symbol_limit_correctly(func_symbol_limit::in,
+:- pred set_func_limit_in_doc(func_symbol_limit::in,
     doc::in, doc::out) is det.
 
-set_func_symbol_limit_correctly(linear(_), Doc, Doc).
-set_func_symbol_limit_correctly(Limit @ triangular(_), Doc0, Doc) :-
+set_func_limit_in_doc(linear(_), Doc, Doc).
+set_func_limit_in_doc(Limit @ triangular(_), Doc0, Doc) :-
     Doc = docs([Doc0, pp_internal(set_limit(Limit))]).
 
     % Succeeds if the pretty-printer state limits have been used up.
     %
-:- pred limit_overrun(func_symbol_limit::in) is semidet.
+:- pred func_limit_reached(func_symbol_limit::in) is semidet.
 
-limit_overrun(linear(N)) :-
+func_limit_reached(linear(N)) :-
     N =< 0.
-limit_overrun(triangular(N)) :-
+func_limit_reached(triangular(N)) :-
     N =< 0.
 
     % Reduce the pretty-printer limit by one.
     %
-:- pred decrement_limit(func_symbol_limit::in, func_symbol_limit::out) is det.
+:- pred decrement_func_limit(func_symbol_limit::in, func_symbol_limit::out)
+    is det.
 
-decrement_limit(linear(N), linear(N - 1)).
-decrement_limit(triangular(N), triangular(N - 1)).
+decrement_func_limit(linear(N), linear(N - 1)).
+decrement_func_limit(triangular(N), triangular(N - 1)).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
