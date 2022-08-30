@@ -307,6 +307,7 @@ ORDINARY_PROGS = \
 	pragma_export \
 	pragma_foreign_export \
 	pragma_inline \
+	pretty_printer_stress_test \
 	pretty_printing \
 	prince_frameopt \
 	print_bigint \

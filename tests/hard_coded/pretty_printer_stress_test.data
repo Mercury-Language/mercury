@@ -1,0 +1,3661 @@
+data(
+module libs.options,
+interface,
+
+import_module libs.optimization_options,
+
+import_module char,
+import_module cord,
+import_module getopt,
+import_module io,
+import_module list,
+import_module set,
+
+pred option_defaults(option::out, option_data::out) is nondet,
+pred short_option(char::in, option::out) is semidet,
+pred long_option(string::in, option::out) is semidet,
+
+pred special_handler(option::in, special_data::in,
+    option_table::in, maybe_option_table::out,
+    cord(optimization_option)::in, cord(optimization_option)::out) is semidet,
+
+func style_warning_options = list(option),
+func non_style_warning_options = list(option),
+
+pred inconsequential_options(set(option)::out) is det,
+
+pred option_table_add_mercury_library_directory(string::in,
+    option_table::in, option_table::out) is det,
+
+pred option_table_add_search_library_files_directory(string::in,
+    option_table::in, option_table::out) is det,
+
+pred set_all_options_to(list(option)::in, option_data::in,
+    option_table::in, option_table::out) is det,
+
+pred options_help(io.text_output_stream::in, io::di, io::uo) is det,
+
+type option
+
+    --->    inhibit_warnings
+    ;       inhibit_style_warnings
+    ;       warn_accumulator_swaps
+    ;       halt_at_warn
+    ;       halt_at_warn_make_int
+    ;       halt_at_warn_make_opt
+
+    ;       halt_at_syntax_errors
+    ;       halt_at_auto_parallel_failure
+    ;       halt_at_invalid_interface
+    ;       warn_singleton_vars
+    ;       warn_overlapping_scopes
+    ;       warn_det_decls_too_lax
+    ;       warn_inferred_erroneous
+    ;       warn_nothing_exported
+    ;       warn_unused_args
+    ;       warn_interface_imports
+    ;       warn_interface_imports_in_parents
+    ;       warn_missing_opt_files
+    ;       warn_missing_trans_opt_files
+    ;       warn_missing_trans_opt_deps
+    ;       warn_inconsistent_pred_order_clauses
+    ;       warn_inconsistent_pred_order_foreign_procs
+    ;       warn_non_contiguous_decls
+    ;       warn_non_contiguous_clauses
+    ;       warn_non_contiguous_foreign_procs
+    ;       warn_non_stratification
+    ;       warn_unification_cannot_succeed
+    ;       warn_simple_code
+    ;       warn_duplicate_calls
+    ;       warn_implicit_stream_calls
+    ;       warn_missing_module_name
+    ;       warn_wrong_module_name
+    ;       warn_smart_recompilation
+    ;       warn_undefined_options_variables
+    ;       warn_suspicious_recursion
+    ;       warn_non_tail_recursion_self
+    ;       warn_non_tail_recursion_mutual
+    ;       warn_non_tail_recursion
+    ;       warn_obvious_non_tail_recursion
+    ;       warn_target_code
+    ;       warn_up_to_date
+    ;       warn_stubs
+    ;       warn_dead_procs
+    ;       warn_dead_preds
+    ;       warn_table_with_inline
+    ;       warn_non_term_special_preds
+    ;       warn_known_bad_format_calls
+    ;       warn_only_one_format_string_error
+    ;       warn_unknown_format_calls
+    ;       warn_obsolete
+    ;       warn_insts_without_matching_type
+    ;       warn_insts_with_functors_without_type
+    ;       warn_unused_imports
+    ;       warn_unused_interface_imports
+    ;       inform_ite_instead_of_switch
+    ;       inform_incomplete_switch
+    ;       inform_incomplete_switch_threshold
+    ;       warn_unresolved_polymorphism
+    ;       warn_suspicious_foreign_procs
+    ;       warn_suspicious_foreign_code
+    ;       warn_state_var_shadowing
+    ;       warn_unneeded_mode_specific_clause
+    ;       warn_suspected_occurs_check_failure
+    ;       warn_potentially_ambiguous_pragma
+    ;       warn_ambiguous_pragma
+    ;       warn_stdlib_shadowing
+    ;       inform_inferred
+    ;       inform_inferred_types
+    ;       inform_inferred_modes
+    ;       inform_suboptimal_packing
+    ;       print_error_spec_id
+    ;       inform_ignored_pragma_errors
+
+    ;       verbose
+    ;       very_verbose
+    ;       verbose_errors
+    ;       verbose_recompilation
+    ;       find_all_recompilation_reasons
+    ;       verbose_make
+    ;       verbose_commands
+    ;       output_compile_error_lines
+    ;       report_cmd_line_args
+    ;       report_cmd_line_args_in_doterr
+    ;       statistics
+    ;       detailed_statistics
+    ;       proc_size_statistics
+    ;       limit_error_contexts
+    ;       debug_types
+    ;       debug_types_pred_name
+    ;       debug_modes
+    ;       debug_modes_statistics
+    ;       debug_modes_minimal
+    ;       debug_modes_verbose
+    ;       debug_modes_pred_id
+    ;       debug_dep_par_conj
+    ;       debug_det
+    ;       debug_code_gen_pred_id
+    ;       debug_dead_proc_elim
+    ;       debug_higher_order_specialization
+    ;       debug_opt
+    ;       debug_term
+    ;       debug_opt_pred_id
+    ;       debug_opt_pred_name
+    ;       debug_pd
+    ;       debug_liveness
+    ;       debug_stack_opt
+    ;       debug_make
+    ;       debug_closure
+    ;       debug_trail_usage
+    ;       debug_mode_constraints
+    ;       debug_intermodule_analysis
+    ;       debug_mm_tabling_analysis
+    ;       debug_indirect_reuse
+    ;       debug_type_rep
+
+    ;       only_opmode_make_short_interface
+    ;       only_opmode_make_interface
+    ;       only_opmode_make_private_interface
+    ;       only_opmode_make_optimization_interface
+    ;       only_opmode_make_transitive_opt_interface
+    ;       only_opmode_make_analysis_registry
+    ;       only_opmode_make_xml_documentation
+    ;       only_opmode_generate_source_file_mapping
+    ;       only_opmode_generate_dependency_file
+    ;       only_opmode_generate_dependencies
+    ;       generate_module_order
+    ;       generate_standalone_interface
+    ;       only_opmode_convert_to_mercury
+    ;       only_opmode_typecheck_only
+    ;       only_opmode_errorcheck_only
+    ;       only_opmode_target_code_only
+    ;       only_opmode_compile_only
+    ;       compile_to_shared_lib
+    ;       only_opmode_output_grade_string
+    ;       only_opmode_output_link_command
+    ;       only_opmode_output_shared_lib_link_command
+    ;       only_opmode_output_stdlib_grades
+    ;       only_opmode_output_libgrades
+    ;       only_opmode_output_cc
+    ;       only_opmode_output_c_compiler_type
+    ;       only_opmode_output_csharp_compiler
+    ;       only_opmode_output_csharp_compiler_type
+    ;       only_opmode_output_cflags
+    ;       only_opmode_output_library_link_flags
+    ;       only_opmode_output_grade_defines
+    ;       only_opmode_output_c_include_directory_flags
+    ;       only_opmode_output_target_arch
+    ;       only_opmode_output_java_class_dir
+    ;       only_opmode_output_stdlib_modules
+
+    ;       error_output_suffix
+    ;       progress_output_suffix
+    ;       inference_output_suffix
+    ;       debug_output_suffix
+    ;       recompile_output_suffix
+
+    ;       smart_recompilation
+
+    ;       generate_item_version_numbers
+
+    ;       generate_mmc_make_module_dependencies
+    ;       trace_level
+    ;       trace_optimized
+    ;       trace_prof
+    ;       trace_table_io
+    ;       trace_table_io_only_retry
+    ;       trace_table_io_states
+    ;       trace_table_io_require
+    ;       trace_table_io_all
+    ;       trace_goal_flags
+    ;       prof_optimized
+    ;       exec_trace_tail_rec
+    ;       suppress_trace
+    ;       force_disable_tracing
+
+    ;       delay_death
+    ;       delay_death_max_vars
+
+    ;       stack_trace_higher_order
+    ;       force_disable_ssdebug
+    ;       generate_bytecode
+    ;       line_numbers
+    ;       line_numbers_around_foreign_code
+    ;       line_numbers_for_c_headers
+    ;       type_repns_for_humans
+    ;       auto_comments
+    ;       frameopt_comments
+    ;       max_error_line_width
+    ;       show_definitions
+    ;       show_definition_line_counts
+    ;       show_definition_extents
+    ;       show_local_type_repns
+    ;       show_all_type_repns
+    ;       show_developer_type_repns
+    ;       show_dependency_graph
+    ;       imports_graph
+    ;       dump_trace_counts
+    ;       dump_hlds
+    ;       dump_hlds_pred_id
+    ;       dump_hlds_pred_name
+    ;       dump_hlds_pred_name_order
+    ;       dump_hlds_spec_preds
+    ;       dump_hlds_spec_preds_for
+    ;       dump_hlds_alias
+    ;       dump_hlds_options
+    ;       dump_hlds_inst_limit
+    ;       dump_hlds_file_suffix
+    ;       dump_same_hlds
+    ;       dump_mlds
+    ;       dump_mlds_pred_name
+    ;       verbose_dump_mlds
+    ;       dump_options_file
+    ;       mode_constraints
+    ;       simple_mode_constraints
+    ;       prop_mode_constraints
+    ;       compute_goal_modes
+    ;       benchmark_modes
+    ;       benchmark_modes_repeat
+    ;       unneeded_code_debug
+    ;       unneeded_code_debug_pred_name
+    ;       common_struct_preds
+
+    ;       reorder_conj
+    ;       reorder_disj
+    ;       fully_strict
+    ;       strict_sequential
+    ;       allow_stubs
+    ;       infer_types
+    ;       infer_modes
+    ;       infer_det
+    ;       infer_all
+    ;       type_inference_iteration_limit
+    ;       mode_inference_iteration_limit
+    ;       event_set_file_name
+
+    ;       grade
+
+    ;       target
+    ;       compile_to_c
+    ;       java
+    ;       java_only
+    ;       csharp
+    ;       csharp_only
+
+    ;       exec_trace
+    ;       decl_debug
+
+    ;       profiling
+    ;       time_profiling
+    ;       memory_profiling
+    ;       deep_profiling
+    ;       profile_calls
+    ;       profile_time
+    ;       profile_memory
+    ;       profile_deep
+    ;       use_activation_counts
+
+    ;       pre_prof_transforms_simplify
+
+    ;       pre_implicit_parallelism_simplify
+
+    ;       coverage_profiling
+    ;       coverage_profiling_via_calls
+    ;       coverage_profiling_static
+
+    ;       profile_deep_coverage_after_goal
+    ;       profile_deep_coverage_branch_ite
+    ;       profile_deep_coverage_branch_switch
+    ;       profile_deep_coverage_branch_disj
+
+    ;       profile_deep_coverage_use_portcounts
+    ;       profile_deep_coverage_use_trivial
+
+    ;       profile_for_feedback
+
+    ;       use_zeroing_for_ho_cycles
+    ;       use_lots_of_ho_specialization
+
+    ;       deep_profile_tail_recursion
+    ;       record_term_sizes_as_words
+    ;       record_term_sizes_as_cells
+    ;       experimental_complexity
+
+    ;       gc
+    ;       parallel
+    ;       threadscope
+    ;       use_trail
+    ;       use_minimal_model_stack_copy
+    ;       use_minimal_model_own_stacks
+    ;       minimal_model_debug
+    ;       pregenerated_dist
+    ;       single_prec_float
+    ;       type_layout
+    ;       maybe_thread_safe_opt
+    ;       extend_stacks_when_needed
+    ;       stack_segments
+    ;       use_regions
+    ;       use_alloc_regions
+    ;       use_regions_debug
+    ;       use_regions_profiling
+    ;       source_to_source_debug
+    ;       ssdb_trace_level
+    ;       link_ssdb_libs
+
+    ;       num_ptag_bits
+    ;       bits_per_word
+    ;       bytes_per_word
+
+    ;       conf_low_ptag_bits
+    ;       unboxed_float
+    ;       unboxed_int64s
+    ;       unboxed_no_tag_types
+    ;       arg_pack_bits
+    ;       pack_everything
+    ;       allow_direct_args
+    ;       allow_double_word_fields
+    ;       allow_double_word_ints
+    ;       allow_packing_dummies
+    ;       allow_packing_ints
+    ;       allow_packing_chars
+    ;       allow_packing_local_sectags
+    ;       allow_packing_remote_sectags
+    ;       allow_packing_mini_types
+    ;       allow_packed_unify_compare
+    ;       sync_term_size
+
+    ;       gcc_non_local_gotos
+    ;       gcc_global_registers
+    ;       asm_labels
+    ;       use_float_registers
+
+    ;       highlevel_code
+    ;       det_copy_out
+    ;       nondet_copy_out
+    ;       put_commit_in_own_func
+    ;       put_nondet_env_on_heap
+
+    ;       backend_foreign_languages
+
+    ;       stack_trace
+
+    ;       basic_stack_layout
+
+    ;       agc_stack_layout
+
+    ;       procid_stack_layout
+
+    ;       trace_stack_layout
+
+    ;       body_typeinfo_liveness
+
+    ;       can_compare_constants_as_ints
+
+    ;       pretest_equality_cast_pointers
+
+    ;       delay_partial_instantiations
+
+    ;       allow_defn_of_builtins
+
+    ;       type_ctor_info
+
+    ;       type_ctor_layout
+
+    ;       type_ctor_functors
+
+    ;       new_type_class_rtti
+
+    ;       rtti_line_numbers
+
+    ;       disable_minimal_model_stack_copy_pneg
+    ;       disable_minimal_model_stack_copy_cut
+    ;       use_minimal_model_stack_copy_pneg
+    ;       use_minimal_model_stack_copy_cut
+
+    ;       disable_trail_ops
+
+    ;       size_region_ite_fixed
+    ;       size_region_disj_fixed
+
+    ;       size_region_commit_fixed
+
+    ;       size_region_ite_protect
+    ;       size_region_ite_snapshot
+    ;       size_region_semi_disj_protect
+    ;       size_region_disj_snapshot
+    ;       size_region_commit_entry
+
+    ;       allow_multi_arm_switches
+
+    ;       type_check_constraints
+
+    ;       low_level_debug
+    ;       table_debug
+    ;       trad_passes
+    ;       parallel_liveness
+    ;       parallel_code_gen
+    ;       reclaim_heap_on_failure
+    ;       reclaim_heap_on_semidet_failure
+    ;       reclaim_heap_on_nondet_failure
+    ;       have_delay_slot
+    ;       num_real_r_regs
+    ;       num_real_f_regs
+    ;       num_real_r_temps
+    ;       num_real_f_temps
+    ;       max_jump_table_size
+    ;       max_specialized_do_call_closure
+    ;       max_specialized_do_call_class_method
+    ;       compare_specialization
+    ;       should_pretest_equality
+    ;       fact_table_max_array_size
+
+    ;       fact_table_hash_percent_full
+
+    ;       prefer_switch
+    ;       prefer_while_loop_over_jump_self
+    ;       prefer_while_loop_over_jump_mutual
+    ;       opt_no_return_calls
+    ;       debug_class_init
+
+    ;       optopt_allow_inlining
+    ;       inlining
+    ;       optopt_inline_simple
+    ;       optopt_inline_builtins
+    ;       optopt_inline_single_use
+    ;       optopt_inline_call_cost
+    ;       optopt_inline_compound_threshold
+    ;       optopt_inline_simple_threshold
+    ;       optopt_inline_vars_threshold
+    ;       optopt_intermod_inline_simple_threshold
+    ;       optopt_inline_linear_tail_rec_sccs
+    ;       optopt_inline_linear_tail_rec_sccs_max_extra
+    ;       optopt_from_ground_term_threshold
+    ;       optopt_enable_const_struct_poly
+    ;       optopt_enable_const_struct_user
+    ;       optopt_common_struct
+    ;       optopt_constraint_propagation
+    ;       optopt_local_constraint_propagation
+    ;       optopt_optimize_unused_args
+    ;       optopt_intermod_unused_args
+    ;       optopt_optimize_higher_order
+    ;       optopt_higher_order_size_limit
+    ;       optopt_higher_order_arg_limit
+    ;       optopt_unneeded_code
+    ;       optopt_unneeded_code_copy_limit
+    ;       optopt_type_specialization
+    ;       optopt_user_guided_type_specialization
+    ;       optopt_introduce_accumulators
+    ;       optopt_optimize_constructor_last_call_accumulator
+    ;       optopt_optimize_constructor_last_call_null
+    ;       optopt_optimize_constructor_last_call
+    ;       optopt_optimize_duplicate_calls
+    ;       optopt_constant_propagation
+    ;       optopt_excess_assign
+    ;       optopt_test_after_switch
+    ;       optopt_optimize_format_calls
+    ;       optopt_optimize_saved_vars_const
+    ;       optopt_optimize_saved_vars_cell
+    ;       optopt_optimize_saved_vars_cell_loop
+    ;       optopt_optimize_saved_vars_cell_full_path
+    ;       optopt_optimize_saved_vars_cell_on_stack
+    ;       optopt_optimize_saved_vars_cell_candidate_headvars
+    ;       optopt_optimize_saved_vars_cell_cv_store_cost
+    ;       optopt_optimize_saved_vars_cell_cv_load_cost
+    ;       optopt_optimize_saved_vars_cell_fv_store_cost
+    ;       optopt_optimize_saved_vars_cell_fv_load_cost
+    ;       optopt_optimize_saved_vars_cell_op_ratio
+    ;       optopt_optimize_saved_vars_cell_node_ratio
+    ;       optopt_optimize_saved_vars_cell_all_path_node_ratio
+    ;       optopt_optimize_saved_vars_cell_include_all_candidates
+    ;       optimize_saved_vars
+    ;       optopt_loop_invariants
+    ;       optopt_delay_construct
+    ;       optopt_follow_code
+    ;       optopt_optimize_dead_procs
+    ;       optopt_deforestation
+    ;       optopt_deforestation_depth_limit
+    ;       optopt_deforestation_cost_factor
+    ;       optopt_deforestation_vars_threshold
+    ;       optopt_deforestation_size_threshold
+    ;       optopt_untuple
+    ;       optopt_tuple
+    ;       optopt_tuple_trace_counts_file
+    ;       optopt_tuple_costs_ratio
+    ;       optopt_tuple_min_args
+    ;       optopt_inline_par_builtins
+    ;       optopt_always_specialize_in_dep_par_conjs
+    ;       optopt_allow_some_paths_only_waits
+    ;       optopt_region_analysis
+
+    ;       optopt_smart_indexing
+    ;         optopt_dense_switch_req_density
+    ;         optopt_lookup_switch_req_density
+    ;         optopt_dense_switch_size
+    ;         optopt_lookup_switch_size
+    ;         optopt_string_trie_switch_size
+    ;         optopt_string_hash_switch_size
+    ;         optopt_string_binary_switch_size
+    ;         optopt_tag_switch_size
+    ;         optopt_try_switch_size
+    ;         optopt_binary_switch_size
+    ;         optopt_switch_single_rec_base_first
+    ;         optopt_switch_multi_rec_base_first
+
+    ;         optopt_smart_atomic_indexing
+    ;         optopt_smart_string_indexing
+    ;         optopt_smart_tag_indexing
+    ;         optopt_smart_float_indexing
+
+    ;       optopt_static_ground_cells
+    ;       optopt_static_ground_floats
+    ;       optopt_static_ground_int64s
+    ;       optopt_static_code_addresses
+
+    ;       optopt_use_atomic_cells
+    ;       optopt_middle_rec
+    ;       optopt_simple_neg
+    ;       optopt_allow_hijacks
+
+    ;       optopt_optimize_mlds_tailcalls
+    ;       optopt_optimize_initializations
+    ;       optopt_eliminate_unused_mlds_assigns
+    ;       optopt_eliminate_local_vars
+    ;       optopt_generate_trail_ops_inline
+
+    ;       optopt_common_data
+    ;       optopt_common_layout_data
+    ;       optopt_optimize
+    ;       optopt_optimize_peep
+    ;       optopt_optimize_peep_mkword
+    ;       optopt_optimize_jumps
+    ;       optopt_optimize_fulljumps
+    ;       optopt_pessimize_tailcalls
+    ;       optopt_checked_nondet_tailcalls
+    ;       optopt_use_local_vars
+    ;       optopt_local_var_access_threshold
+    ;       optopt_standardize_labels
+    ;       optopt_optimize_labels
+    ;       optopt_optimize_dups
+    ;       optopt_optimize_proc_dups
+    ;       optopt_optimize_frames
+    ;       optopt_optimize_delay_slot
+    ;       optopt_optimize_reassign
+    ;       optopt_optimize_repeat
+    ;       optopt_layout_compression_limit
+
+    ;       optopt_use_macro_for_redo_fail
+    ;       optopt_emit_c_loops
+    ;       optopt_procs_per_c_function
+    ;       everything_in_one_c_function
+    ;       optopt_local_thread_engine_base
+    ;       optopt_inline_alloc
+    ;       optopt_c_optimize
+
+    ;       default_opt_level
+    ;       opt_level
+    ;       opt_space
+    ;       intermodule_optimization
+    ;       read_opt_files_transitively
+    ;       use_opt_files
+    ;       use_trans_opt_files
+    ;       transitive_optimization
+    ;       intermodule_analysis
+    ;       analysis_repeat
+    ;       analysis_file_cache
+
+    ;       analyse_trail_usage
+    ;       optimize_trail_usage
+    ;       optimize_region_ops
+    ;       analyse_mm_tabling
+
+    ;       structure_sharing_analysis
+    ;           structure_sharing_widening
+    ;       structure_reuse_analysis
+    ;           structure_reuse_constraint
+    ;           structure_reuse_constraint_arg
+    ;           structure_reuse_max_conditions
+    ;           structure_reuse_repeat
+    ;           structure_reuse_free_cells
+
+    ;       termination
+    ;       termination_check
+    ;       termination_check_verbose
+    ;       termination_single_args
+    ;       termination_norm
+    ;       termination_error_limit
+    ;       termination_path_limit
+
+    ;       termination2
+    ;       termination2_check
+    ;       termination2_check_verbose
+    ;       termination2_norm
+    ;       widening_limit
+    ;       arg_size_analysis_only
+    ;       propagate_failure_constrs
+    ;       term2_maximum_matrix_size
+
+    ;       analyse_exceptions
+    ;       analyse_closures
+
+    ;       target_debug
+
+    ;       cc
+    ;       cflags
+    ;       quoted_cflag
+    ;       c_include_directory
+    ;       ansi_c
+
+    ;       gcc_flags
+    ;       quoted_gcc_flag
+    ;       clang_flags
+    ;       quoted_clang_flag
+    ;       msvc_flags
+    ;       quoted_msvc_flag
+
+    ;       cflags_for_warnings
+    ;       cflags_for_optimization
+    ;       cflags_for_ansi
+    ;       cflags_for_regs
+    ;       cflags_for_gotos
+    ;       cflags_for_threads
+    ;       cflags_for_debug
+    ;       cflags_for_sanitizers
+    ;       cflags_for_pic
+    ;       cflags_for_lto
+    ;       c_flag_to_name_object_file
+    ;       object_file_extension
+    ;       pic_object_file_extension
+    ;       c_compiler_type
+    ;       csharp_compiler_type
+
+    ;       java_compiler
+    ;       java_interpreter
+    ;       java_compiler_flags
+    ;       quoted_java_compiler_flag
+    ;       java_classpath
+    ;       java_object_file_extension
+    ;       java_runtime_flags
+    ;       quoted_java_runtime_flag
+
+    ;       csharp_compiler
+    ;       csharp_flags
+    ;       quoted_csharp_flag
+    ;       cli_interpreter
+
+    ;       output_file_name
+    ;       ld_flags
+    ;       quoted_ld_flag
+    ;       ld_libflags
+    ;       quoted_ld_libflag
+    ;       link_library_directories
+    ;       runtime_link_library_directories
+    ;       default_runtime_library_directory
+    ;       link_libraries
+    ;       link_objects
+    ;       mercury_library_directories
+    ;       mercury_library_directory_special
+    ;       search_library_files_directories
+    ;       search_library_files_directory_special
+    ;       mercury_libraries
+    ;       mercury_library_special
+    ;       mercury_standard_library_directory
+    ;       mercury_standard_library_directory_special
+    ;       init_file_directories
+    ;       init_files
+    ;       trace_init_files
+    ;       linkage
+    ;       linkage_special
+    ;       mercury_linkage
+    ;       mercury_linkage_special
+    ;       strip
+    ;       demangle
+    ;       main
+    ;       allow_undefined
+    ;       use_readline
+    ;       runtime_flags
+    ;       extra_initialization_functions
+    ;       frameworks
+    ;       framework_directories
+    ;       sign_assembly
+    ;       cstack_reserve_size
+
+    ;       shared_library_extension
+    ;       library_extension
+    ;       executable_file_extension
+    ;       link_executable_command
+    ;       link_shared_lib_command
+    ;       create_archive_command
+    ;       create_archive_command_output_flag
+    ;       create_archive_command_flags
+    ;       ranlib_command
+    ;       ranlib_flags
+    ;       mkinit_command
+    ;       mkinit_erl_command
+    ;       demangle_command
+    ;       filtercc_command
+    ;       filterjavac_command
+    ;       trace_libs
+    ;       thread_libs
+    ;       hwloc_libs
+    ;       hwloc_static_libs
+    ;       shared_libs
+    ;       math_lib
+    ;       readline_libs
+    ;       linker_opt_separator
+    ;       linker_thread_flags
+    ;       shlib_linker_thread_flags
+    ;       linker_lto_flags
+    ;       linker_static_flags
+    ;       linker_strip_flag
+    ;       linker_link_lib_flag
+    ;       linker_link_lib_suffix
+    ;       shlib_linker_link_lib_flag
+    ;       shlib_linker_link_lib_suffix
+    ;       linker_debug_flags
+    ;       shlib_linker_debug_flags
+    ;       linker_sanitizer_flags
+    ;       linker_trace_flags
+    ;       shlib_linker_trace_flags
+    ;       linker_path_flag
+    ;       linker_rpath_flag
+    ;       linker_rpath_separator
+    ;       shlib_linker_rpath_flag
+    ;       shlib_linker_rpath_separator
+    ;       linker_allow_undefined_flag
+    ;       linker_error_undefined_flag
+    ;       shlib_linker_use_install_name
+    ;       shlib_linker_install_name_flag
+    ;       shlib_linker_install_name_path
+    ;       strip_executable_command
+    ;       strip_executable_shared_flags
+    ;       strip_executable_static_flags
+    ;       java_archive_command
+
+    ;       only_opmode_make
+    ;       rebuild
+    ;       keep_going
+    ;       jobs
+    ;       track_flags
+    ;       invoked_by_mmc_make
+    ;       extra_init_command
+    ;       pre_link_command
+    ;       install_prefix
+    ;       use_symlinks
+    ;       mercury_configuration_directory
+    ;       mercury_configuration_directory_special
+    ;       install_command
+    ;       install_command_dir_option
+    ;       detect_libgrades
+    ;       libgrades
+    ;       libgrades_include_components
+    ;       libgrades_exclude_components
+    ;       lib_linkages
+    ;       flags_file
+    ;       options_files
+    ;       config_file
+    ;       options_search_directories
+    ;       use_subdirs
+    ;       use_grade_subdirs
+    ;       search_directories
+    ;       intermod_directories
+    ;       use_search_directories_for_intermod
+    ;       libgrade_install_check
+    ;       order_make_by_timestamp
+    ;       show_make_times
+    ;       extra_library_header
+    ;       restricted_command_line
+    ;       env_type
+    ;       host_env_type
+    ;       system_env_type
+    ;       target_env_type
+
+    ;       filenames_from_stdin
+    ;       typecheck_ambiguity_warn_limit
+    ;       typecheck_ambiguity_error_limit
+    ;       help
+    ;       version
+    ;       target_arch
+    ;       cross_compiling
+    ;       local_module_id
+    ;       analysis_file_cache_dir
+    ;       compiler_sufficiently_recent
+
+    ;       experiment
+    ;       experiment1
+    ;       experiment2
+    ;       experiment3
+    ;       experiment4
+    ;       experiment5
+
+    ;       ignore_par_conjunctions
+    ;       control_granularity
+    ;       distance_granularity
+    ;       implicit_parallelism
+    ;       feedback_file
+    ;       par_loop_control
+    ;       par_loop_control_preserve_tail_recursion,
+
+type option_table == option_table(option),
+type maybe_option_table == maybe_option_table(option),
+
+implementation,
+
+import_module libs.compute_grade,
+import_module libs.shell_util,
+
+import_module assoc_list,
+import_module bool,
+import_module dir,
+import_module map,
+import_module maybe,
+import_module pair,
+import_module solutions,
+import_module string,
+
+pragma no_determinism_warning(pred(option_defaults/2)),
+
+option_defaults(opt, data) :-
+    optdef(category, opt, data),
+
+type option_category
+    --->    oc_warn
+    ;       oc_verbosity
+    ;       oc_opmode
+    ;       oc_aux_output
+    ;       oc_semantics
+    ;       oc_grade
+    ;       oc_internal
+    ;       oc_codegen
+    ;       oc_spec_opt
+    ;       oc_opt
+    ;       oc_target_comp
+    ;       oc_link
+    ;       oc_buildsys
+    ;       oc_misc,
+
+pred option_defaults_2(option_category, assoc_list(option, option_data)),
+mode option_defaults_2(in, out) is det,
+
+option_defaults_2(category, optsdatas) :-
+        ( pred((opt - data)::out) is nondet :-
+            optdef(cat, opt, data),
+            cat = category
+        ),
+    solutions(pred, optsdatas),
+
+pred optdef(option_category, option, option_data),
+mode optdef(out, in, out) is det,
+mode optdef(out, out, out) is multi,
+
+optdef(oc_warn, inhibit_warnings,                       bool_special),
+optdef(oc_warn, inhibit_style_warnings,                 bool_special),
+optdef(oc_warn, warn_accumulator_swaps,                 bool(yes)),
+optdef(oc_warn, halt_at_warn,                           bool(no)),
+optdef(oc_warn, halt_at_warn_make_int,                  bool(no)),
+optdef(oc_warn, halt_at_warn_make_opt,                  bool(no)),
+optdef(oc_warn, halt_at_syntax_errors,                  bool(no)),
+optdef(oc_warn, halt_at_auto_parallel_failure,          bool(no)),
+optdef(oc_warn, halt_at_invalid_interface,              bool(yes)),
+optdef(oc_warn, warn_singleton_vars,                    bool(yes)),
+optdef(oc_warn, warn_overlapping_scopes,                bool(yes)),
+optdef(oc_warn, warn_det_decls_too_lax,                 bool(yes)),
+optdef(oc_warn, warn_inferred_erroneous,                bool(yes)),
+optdef(oc_warn, warn_nothing_exported,                  bool(yes)),
+optdef(oc_warn, warn_unused_args,                       bool(no)),
+optdef(oc_warn, warn_interface_imports,                 bool(yes)),
+optdef(oc_warn, warn_interface_imports_in_parents,      bool(no)),
+optdef(oc_warn, warn_inconsistent_pred_order_clauses,   bool(no)),
+optdef(oc_warn, warn_inconsistent_pred_order_foreign_procs, bool(no)),
+optdef(oc_warn, warn_non_contiguous_decls,              bool(yes)),
+optdef(oc_warn, warn_non_contiguous_clauses,            bool(no)),
+
+optdef(oc_warn, warn_non_contiguous_foreign_procs,      bool(no)),
+optdef(oc_warn, warn_non_stratification,                bool(no)),
+optdef(oc_warn, warn_missing_opt_files,                 bool(yes)),
+optdef(oc_warn, warn_missing_trans_opt_files,           bool(no)),
+optdef(oc_warn, warn_missing_trans_opt_deps,            bool(yes)),
+optdef(oc_warn, warn_unification_cannot_succeed,        bool(yes)),
+optdef(oc_warn, warn_simple_code,                       bool(yes)),
+optdef(oc_warn, warn_duplicate_calls,                   bool(no)),
+optdef(oc_warn, warn_implicit_stream_calls,             bool(no)),
+optdef(oc_warn, warn_missing_module_name,               bool(yes)),
+optdef(oc_warn, warn_wrong_module_name,                 bool(yes)),
+optdef(oc_warn, error_output_suffix,                    string("")),
+optdef(oc_warn, progress_output_suffix,                 string("")),
+optdef(oc_warn, inference_output_suffix,                string("")),
+optdef(oc_warn, debug_output_suffix,                    string("")),
+optdef(oc_warn, recompile_output_suffix,                string("")),
+optdef(oc_warn, warn_smart_recompilation,               bool(yes)),
+optdef(oc_warn, warn_undefined_options_variables,       bool(yes)),
+optdef(oc_warn, warn_suspicious_recursion,              bool(no)),
+optdef(oc_warn, warn_non_tail_recursion_self,           bool(no)),
+optdef(oc_warn, warn_non_tail_recursion_mutual,         bool(no)),
+optdef(oc_warn, warn_non_tail_recursion,                maybe_string_special),
+optdef(oc_warn, warn_obvious_non_tail_recursion,        bool(no)),
+optdef(oc_warn, warn_target_code,                       bool(yes)),
+optdef(oc_warn, warn_up_to_date,                        bool(yes)),
+optdef(oc_warn, warn_stubs,                             bool(yes)),
+optdef(oc_warn, warn_dead_procs,                        bool(no)),
+optdef(oc_warn, warn_dead_preds,                        bool(no)),
+optdef(oc_warn, warn_table_with_inline,                 bool(yes)),
+optdef(oc_warn, warn_non_term_special_preds,            bool(yes)),
+optdef(oc_warn, warn_known_bad_format_calls,            bool(yes)),
+optdef(oc_warn, warn_only_one_format_string_error,      bool(yes)),
+optdef(oc_warn, warn_unknown_format_calls,              bool(no)),
+optdef(oc_warn, warn_obsolete,                          bool(yes)),
+optdef(oc_warn, warn_insts_without_matching_type,       bool(yes)),
+optdef(oc_warn, warn_insts_with_functors_without_type,  bool(no)),
+optdef(oc_warn, warn_unused_imports,                    bool(no)),
+
+optdef(oc_warn, warn_unused_interface_imports,          bool(yes)),
+
+optdef(oc_warn, inform_ite_instead_of_switch,           bool(no)),
+optdef(oc_warn, inform_incomplete_switch,               bool(no)),
+optdef(oc_warn, inform_incomplete_switch_threshold,     int(0)),
+optdef(oc_warn, warn_unresolved_polymorphism,           bool(yes)),
+optdef(oc_warn, warn_suspicious_foreign_procs,          bool(no)),
+optdef(oc_warn, warn_suspicious_foreign_code,           bool(no)),
+optdef(oc_warn, warn_state_var_shadowing,               bool(yes)),
+optdef(oc_warn, warn_unneeded_mode_specific_clause,     bool(yes)),
+optdef(oc_warn, warn_suspected_occurs_check_failure,    bool(yes)),
+optdef(oc_warn, warn_potentially_ambiguous_pragma,      bool(no)),
+optdef(oc_warn, warn_ambiguous_pragma,                  bool(yes)),
+optdef(oc_warn, warn_stdlib_shadowing,                  bool(yes)),
+optdef(oc_warn, inform_inferred,                        bool_special),
+optdef(oc_warn, inform_inferred_types,                  bool(yes)),
+optdef(oc_warn, inform_inferred_modes,                  bool(yes)),
+optdef(oc_warn, inform_suboptimal_packing,              bool(no)),
+optdef(oc_warn, print_error_spec_id,                    bool(no)),
+optdef(oc_warn, inform_ignored_pragma_errors,           bool(no)),
+
+optdef(oc_verbosity, verbose,                           bool(no)),
+optdef(oc_verbosity, very_verbose,                      bool(no)),
+optdef(oc_verbosity, verbose_errors,                    bool(no)),
+optdef(oc_verbosity, verbose_recompilation,             bool(no)),
+optdef(oc_verbosity, find_all_recompilation_reasons,    bool(no)),
+optdef(oc_verbosity, verbose_make,                      bool(yes)),
+optdef(oc_verbosity, verbose_commands,                  bool(no)),
+optdef(oc_verbosity, output_compile_error_lines,        int(15)),
+optdef(oc_verbosity, report_cmd_line_args,              bool(no)),
+optdef(oc_verbosity, report_cmd_line_args_in_doterr,    bool(no)),
+optdef(oc_verbosity, statistics,                        bool(no)),
+optdef(oc_verbosity, detailed_statistics,               bool(no)),
+optdef(oc_verbosity, proc_size_statistics,              string("")),
+optdef(oc_verbosity, limit_error_contexts,              accumulating([])),
+optdef(oc_verbosity, debug_types,                       bool(no)),
+optdef(oc_verbosity, debug_types_pred_name,             accumulating([])),
+optdef(oc_verbosity, debug_modes,                       bool(no)),
+optdef(oc_verbosity, debug_modes_statistics,            bool(no)),
+optdef(oc_verbosity, debug_modes_minimal,               bool(no)),
+optdef(oc_verbosity, debug_modes_verbose,               bool(no)),
+optdef(oc_verbosity, debug_modes_pred_id,               int(-1)),
+optdef(oc_verbosity, debug_dep_par_conj,                accumulating([])),
+optdef(oc_verbosity, debug_det,                         bool(no)),
+optdef(oc_verbosity, debug_code_gen_pred_id,            int(-1)),
+optdef(oc_verbosity, debug_term,                        bool(no)),
+optdef(oc_verbosity, debug_dead_proc_elim,              bool(no)),
+optdef(oc_verbosity, debug_higher_order_specialization, bool(no)),
+optdef(oc_verbosity, debug_opt,                         bool(no)),
+optdef(oc_verbosity, debug_opt_pred_id,                 accumulating([])),
+optdef(oc_verbosity, debug_opt_pred_name,               accumulating([])),
+optdef(oc_verbosity, debug_pd,                          bool(no)),
+optdef(oc_verbosity, debug_liveness,                    int(-1)),
+optdef(oc_verbosity, debug_stack_opt,                   int(-1)),
+optdef(oc_verbosity, debug_make,                        bool(no)),
+optdef(oc_verbosity, debug_closure,                     bool(no)),
+optdef(oc_verbosity, debug_trail_usage,                 bool(no)),
+optdef(oc_verbosity, debug_mode_constraints,            bool(no)),
+optdef(oc_verbosity, debug_intermodule_analysis,        bool(no)),
+optdef(oc_verbosity, debug_mm_tabling_analysis,         bool(no)),
+optdef(oc_verbosity, debug_indirect_reuse,              bool(no)),
+optdef(oc_verbosity, debug_type_rep,                    bool(no)),
+
+optdef(oc_opmode, only_opmode_generate_source_file_mapping, bool(no)),
+optdef(oc_opmode, only_opmode_generate_dependency_file, bool(no)),
+optdef(oc_opmode, only_opmode_generate_dependencies,    bool(no)),
+optdef(oc_opmode, generate_module_order,                bool(no)),
+optdef(oc_opmode, generate_standalone_interface,        maybe_string(no)),
+optdef(oc_opmode, only_opmode_make_short_interface,     bool(no)),
+optdef(oc_opmode, only_opmode_make_interface,           bool(no)),
+optdef(oc_opmode, only_opmode_make_private_interface,   bool(no)),
+optdef(oc_opmode, only_opmode_make_optimization_interface, bool(no)),
+optdef(oc_opmode, only_opmode_make_transitive_opt_interface, bool(no)),
+optdef(oc_opmode, only_opmode_make_analysis_registry,   bool(no)),
+optdef(oc_opmode, only_opmode_make_xml_documentation,   bool(no)),
+optdef(oc_opmode, only_opmode_convert_to_mercury,       bool(no)),
+optdef(oc_opmode, only_opmode_typecheck_only,           bool(no)),
+optdef(oc_opmode, only_opmode_errorcheck_only,          bool(no)),
+optdef(oc_opmode, only_opmode_target_code_only,         bool(no)),
+optdef(oc_opmode, only_opmode_compile_only,             bool(no)),
+optdef(oc_opmode, compile_to_shared_lib,                bool(no)),
+optdef(oc_opmode, only_opmode_output_grade_string,      bool(no)),
+optdef(oc_opmode, only_opmode_output_link_command,      bool(no)),
+optdef(oc_opmode, only_opmode_output_shared_lib_link_command, bool(no)),
+optdef(oc_opmode, only_opmode_output_stdlib_grades,     bool(no)),
+optdef(oc_opmode, only_opmode_output_libgrades,         bool(no)),
+optdef(oc_opmode, only_opmode_output_cc,                bool(no)),
+optdef(oc_opmode, only_opmode_output_c_compiler_type,   bool(no)),
+optdef(oc_opmode, only_opmode_output_csharp_compiler,   bool(no)),
+optdef(oc_opmode, only_opmode_output_csharp_compiler_type, bool(no)),
+optdef(oc_opmode, only_opmode_output_cflags,            bool(no)),
+optdef(oc_opmode, only_opmode_output_library_link_flags, bool(no)),
+optdef(oc_opmode, only_opmode_output_grade_defines,     bool(no)),
+optdef(oc_opmode, only_opmode_output_c_include_directory_flags, bool(no)),
+optdef(oc_opmode, only_opmode_output_target_arch,       bool(no)),
+optdef(oc_opmode, only_opmode_output_java_class_dir,    bool(no)),
+optdef(oc_opmode, only_opmode_output_stdlib_modules,    bool(no)),
+
+optdef(oc_aux_output, smart_recompilation,              bool(no)),
+optdef(oc_aux_output, generate_item_version_numbers,    bool(no)),
+optdef(oc_aux_output, generate_mmc_make_module_dependencies, bool(no)),
+optdef(oc_aux_output, trace_level,                      string("default")),
+optdef(oc_aux_output, trace_optimized,                  bool(no)),
+optdef(oc_aux_output, trace_prof,                       bool(no)),
+optdef(oc_aux_output, trace_table_io,                   bool(no)),
+optdef(oc_aux_output, trace_table_io_only_retry,        bool(no)),
+optdef(oc_aux_output, trace_table_io_states,            bool(no)),
+optdef(oc_aux_output, trace_table_io_require,           bool(no)),
+optdef(oc_aux_output, trace_table_io_all,               bool(no)),
+optdef(oc_aux_output, trace_goal_flags,                 accumulating([])),
+optdef(oc_aux_output, prof_optimized,                   bool(no)),
+optdef(oc_aux_output, exec_trace_tail_rec,              bool(no)),
+optdef(oc_aux_output, suppress_trace,                   string("")),
+optdef(oc_aux_output, force_disable_tracing,            bool(no)),
+optdef(oc_aux_output, delay_death,                      bool(yes)),
+optdef(oc_aux_output, delay_death_max_vars,             int(1000)),
+optdef(oc_aux_output, stack_trace_higher_order,         bool(no)),
+optdef(oc_aux_output, force_disable_ssdebug,            bool(no)),
+optdef(oc_aux_output, generate_bytecode,                bool(no)),
+optdef(oc_aux_output, line_numbers,                     bool(no)),
+optdef(oc_aux_output, line_numbers_around_foreign_code, bool(yes)),
+optdef(oc_aux_output, line_numbers_for_c_headers,       bool(no)),
+optdef(oc_aux_output, type_repns_for_humans,            bool(no)),
+optdef(oc_aux_output, auto_comments,                    bool(no)),
+optdef(oc_aux_output, frameopt_comments,                bool(no)),
+optdef(oc_aux_output, max_error_line_width,             maybe_int(yes(79))),
+optdef(oc_aux_output, show_definitions,                 bool(no)),
+optdef(oc_aux_output, show_definition_line_counts,      bool(no)),
+optdef(oc_aux_output, show_definition_extents,          bool(no)),
+optdef(oc_aux_output, show_local_type_repns,            bool(no)),
+optdef(oc_aux_output, show_all_type_repns,              bool(no)),
+optdef(oc_aux_output, show_developer_type_repns,        bool(no)),
+optdef(oc_aux_output, show_dependency_graph,            bool(no)),
+optdef(oc_aux_output, imports_graph,                    bool(no)),
+optdef(oc_aux_output, dump_trace_counts,                accumulating([])),
+optdef(oc_aux_output, dump_hlds,                        accumulating([])),
+optdef(oc_aux_output, dump_hlds_pred_id,                accumulating([])),
+optdef(oc_aux_output, dump_hlds_pred_name,              accumulating([])),
+optdef(oc_aux_output, dump_hlds_pred_name_order,        bool(no)),
+optdef(oc_aux_output, dump_hlds_spec_preds,             bool(no)),
+optdef(oc_aux_output, dump_hlds_spec_preds_for,         accumulating([])),
+optdef(oc_aux_output, dump_hlds_alias,                  string("")),
+optdef(oc_aux_output, dump_hlds_options,                string("")),
+optdef(oc_aux_output, dump_hlds_inst_limit,             int(100)),
+optdef(oc_aux_output, dump_hlds_file_suffix,            string("")),
+optdef(oc_aux_output, dump_same_hlds,                   bool(no)),
+optdef(oc_aux_output, dump_mlds,                        accumulating([])),
+optdef(oc_aux_output, dump_mlds_pred_name,              accumulating([])),
+optdef(oc_aux_output, verbose_dump_mlds,                accumulating([])),
+optdef(oc_aux_output, dump_options_file,                string("")),
+optdef(oc_aux_output, mode_constraints,                 bool(no)),
+optdef(oc_aux_output, simple_mode_constraints,          bool(no)),
+optdef(oc_aux_output, prop_mode_constraints,            bool(no)),
+optdef(oc_aux_output, compute_goal_modes,               bool(no)),
+optdef(oc_aux_output, benchmark_modes,                  bool(no)),
+optdef(oc_aux_output, benchmark_modes_repeat,           int(1)),
+optdef(oc_aux_output, unneeded_code_debug,              bool(no)),
+optdef(oc_aux_output, unneeded_code_debug_pred_name,    accumulating([])),
+optdef(oc_aux_output, common_struct_preds,              string("")),
+
+optdef(oc_semantics, strict_sequential,                 special),
+optdef(oc_semantics, reorder_conj,                      bool(yes)),
+optdef(oc_semantics, reorder_disj,                      bool(yes)),
+optdef(oc_semantics, fully_strict,                      bool(yes)),
+optdef(oc_semantics, allow_stubs,                       bool(no)),
+optdef(oc_semantics, infer_types,                       bool(no)),
+optdef(oc_semantics, infer_modes,                       bool(no)),
+optdef(oc_semantics, infer_det,                         bool(yes)),
+optdef(oc_semantics, infer_all,                         bool_special),
+optdef(oc_semantics, type_inference_iteration_limit,    int(60)),
+optdef(oc_semantics, mode_inference_iteration_limit,    int(30)),
+optdef(oc_semantics, event_set_file_name,               string("")),
+
+optdef(oc_grade, grade,                                 string_special),
+
+optdef(oc_grade, target,                                string("c")),
+optdef(oc_grade, compile_to_c,                          special),
+optdef(oc_grade, csharp,                                special),
+optdef(oc_grade, csharp_only,                           special),
+optdef(oc_grade, java,                                  special),
+optdef(oc_grade, java_only,                             special),
+
+optdef(oc_grade, exec_trace,                            bool(no)),
+optdef(oc_grade, decl_debug,                            bool(no)),
+
+optdef(oc_grade, profiling,                             bool_special),
+optdef(oc_grade, time_profiling,                        special),
+optdef(oc_grade, memory_profiling,                      special),
+optdef(oc_grade, deep_profiling,                        special),
+optdef(oc_grade, profile_calls,                         bool(no)),
+optdef(oc_grade, profile_time,                          bool(no)),
+optdef(oc_grade, profile_memory,                        bool(no)),
+optdef(oc_grade, profile_deep,                          bool(no)),
+optdef(oc_grade, use_activation_counts,                 bool(no)),
+optdef(oc_grade, pre_prof_transforms_simplify,          bool(no)),
+optdef(oc_grade, pre_implicit_parallelism_simplify,     bool(no)),
+optdef(oc_grade, coverage_profiling,                    bool(yes)),
+optdef(oc_grade, coverage_profiling_via_calls,          bool(no)),
+optdef(oc_grade, coverage_profiling_static,             bool(no)),
+optdef(oc_grade, profile_deep_coverage_after_goal,      bool(yes)),
+optdef(oc_grade, profile_deep_coverage_branch_ite,      bool(yes)),
+optdef(oc_grade, profile_deep_coverage_branch_switch,   bool(yes)),
+optdef(oc_grade, profile_deep_coverage_branch_disj,     bool(yes)),
+optdef(oc_grade, profile_deep_coverage_use_portcounts,  bool(no)),
+optdef(oc_grade, profile_deep_coverage_use_trivial,     bool(no)),
+optdef(oc_grade, profile_for_feedback,                  bool(no)),
+optdef(oc_grade, use_zeroing_for_ho_cycles,             bool(yes)),
+optdef(oc_grade, use_lots_of_ho_specialization,         bool(no)),
+optdef(oc_grade, deep_profile_tail_recursion,           bool(no)),
+optdef(oc_grade, record_term_sizes_as_words,            bool(no)),
+optdef(oc_grade, record_term_sizes_as_cells,            bool(no)),
+optdef(oc_grade, experimental_complexity,               string("")),
+
+optdef(oc_grade, gc,                                    string("boehm")),
+optdef(oc_grade, parallel,                              bool(no)),
+optdef(oc_grade, threadscope,                           bool(no)),
+optdef(oc_grade, use_trail,                             bool(no)),
+optdef(oc_grade, maybe_thread_safe_opt,                 string("no")),
+optdef(oc_grade, extend_stacks_when_needed,             bool(no)),
+optdef(oc_grade, stack_segments,                        bool(no)),
+optdef(oc_grade, use_regions,                           bool(no)),
+optdef(oc_grade, use_alloc_regions,                     bool(yes)),
+optdef(oc_grade, use_regions_debug,                     bool(no)),
+optdef(oc_grade, use_regions_profiling,                 bool(no)),
+optdef(oc_grade, use_minimal_model_stack_copy,          bool(no)),
+optdef(oc_grade, use_minimal_model_own_stacks,          bool(no)),
+optdef(oc_grade, minimal_model_debug,                   bool(no)),
+optdef(oc_grade, pregenerated_dist,                     bool(no)),
+optdef(oc_grade, single_prec_float,                     bool(no)),
+optdef(oc_grade, type_layout,                           bool(yes)),
+optdef(oc_grade, source_to_source_debug,                bool(no)),
+optdef(oc_grade, ssdb_trace_level,                      string("default")),
+optdef(oc_grade, link_ssdb_libs,                        bool(no)),
+
+optdef(oc_grade, num_ptag_bits,                         int(-1)),
+
+optdef(oc_grade, bits_per_word,                         int(32)),
+
+optdef(oc_grade, bytes_per_word,                        int(4)),
+
+optdef(oc_grade, conf_low_ptag_bits,                    int(2)),
+
+optdef(oc_grade, unboxed_float,                         bool(no)),
+optdef(oc_grade, unboxed_int64s,                        bool(no)),
+optdef(oc_grade, unboxed_no_tag_types,                  bool(yes)),
+optdef(oc_grade, arg_pack_bits,                         int(-1)),
+
+optdef(oc_grade, pack_everything,                       bool(no)),
+optdef(oc_grade, allow_direct_args,                     bool(yes)),
+optdef(oc_grade, allow_double_word_fields,              bool(yes)),
+optdef(oc_grade, allow_double_word_ints,                bool(no)),
+optdef(oc_grade, allow_packing_dummies,                 bool(no)),
+optdef(oc_grade, allow_packing_ints,                    bool(no)),
+optdef(oc_grade, allow_packing_chars,                   bool(no)),
+optdef(oc_grade, allow_packing_local_sectags,           bool(no)),
+optdef(oc_grade, allow_packing_remote_sectags,          bool(no)),
+optdef(oc_grade, allow_packing_mini_types,              bool(no)),
+optdef(oc_grade, allow_packed_unify_compare,            bool(no)),
+optdef(oc_grade, sync_term_size,                        int(8)),
+
+optdef(oc_grade, gcc_non_local_gotos,                   bool(yes)),
+optdef(oc_grade, gcc_global_registers,                  bool(yes)),
+optdef(oc_grade, asm_labels,                            bool(yes)),
+optdef(oc_grade, use_float_registers,                   bool(yes)),
+
+optdef(oc_grade, highlevel_code,                        bool(no)),
+optdef(oc_grade, det_copy_out,                          bool(no)),
+optdef(oc_grade, nondet_copy_out,                       bool(no)),
+optdef(oc_grade, put_commit_in_own_func,                bool(no)),
+optdef(oc_grade, put_nondet_env_on_heap,                bool(no)),
+
+optdef(oc_internal, backend_foreign_languages,          accumulating([])),
+
+optdef(oc_internal, stack_trace,                        bool(no)),
+optdef(oc_internal, basic_stack_layout,                 bool(no)),
+optdef(oc_internal, agc_stack_layout,                   bool(no)),
+optdef(oc_internal, procid_stack_layout,                bool(no)),
+optdef(oc_internal, trace_stack_layout,                 bool(no)),
+optdef(oc_internal, body_typeinfo_liveness,             bool(no)),
+optdef(oc_internal, can_compare_constants_as_ints,      bool(no)),
+optdef(oc_internal, pretest_equality_cast_pointers,     bool(no)),
+optdef(oc_internal, delay_partial_instantiations,       bool(no)),
+optdef(oc_internal, allow_defn_of_builtins,             bool(no)),
+optdef(oc_internal, type_ctor_info,                     bool(yes)),
+optdef(oc_internal, type_ctor_layout,                   bool(yes)),
+optdef(oc_internal, type_ctor_functors,                 bool(yes)),
+optdef(oc_internal, rtti_line_numbers,                  bool(yes)),
+optdef(oc_internal, new_type_class_rtti,                bool(no)),
+optdef(oc_internal, disable_minimal_model_stack_copy_pneg, bool(no)),
+optdef(oc_internal, disable_minimal_model_stack_copy_cut, bool(no)),
+optdef(oc_internal, use_minimal_model_stack_copy_pneg,  bool(no)),
+optdef(oc_internal, use_minimal_model_stack_copy_cut,   bool(no)),
+optdef(oc_internal, disable_trail_ops,                  bool(no)),
+
+optdef(oc_internal, size_region_ite_fixed,              int(4)),
+optdef(oc_internal, size_region_disj_fixed,             int(4)),
+optdef(oc_internal, size_region_commit_fixed,           int(5)),
+optdef(oc_internal, size_region_ite_protect,            int(1)),
+optdef(oc_internal, size_region_ite_snapshot,           int(3)),
+optdef(oc_internal, size_region_semi_disj_protect,      int(1)),
+optdef(oc_internal, size_region_disj_snapshot,          int(3)),
+optdef(oc_internal, size_region_commit_entry,           int(1)),
+optdef(oc_internal, allow_multi_arm_switches,           bool(yes)),
+optdef(oc_internal, type_check_constraints,             bool(no)),
+
+optdef(oc_codegen, low_level_debug,                     bool(no)),
+optdef(oc_codegen, table_debug,                         bool(no)),
+optdef(oc_codegen, trad_passes,                         bool(yes)),
+optdef(oc_codegen, parallel_liveness,                   bool(no)),
+optdef(oc_codegen, parallel_code_gen,                   bool(no)),
+optdef(oc_codegen, reclaim_heap_on_failure,             bool_special),
+optdef(oc_codegen, reclaim_heap_on_semidet_failure,     bool(yes)),
+optdef(oc_codegen, reclaim_heap_on_nondet_failure,      bool(yes)),
+optdef(oc_codegen, have_delay_slot,                     bool(no)),
+
+optdef(oc_codegen, num_real_r_regs,                     int(5)),
+optdef(oc_codegen, num_real_f_regs,                     int(0)),
+optdef(oc_codegen, num_real_r_temps,                    int(5)),
+optdef(oc_codegen, num_real_f_temps,                    int(0)),
+
+optdef(oc_codegen, max_jump_table_size,                 int(0)),
+
+optdef(oc_codegen, max_specialized_do_call_closure,     int(5)),
+
+optdef(oc_codegen, max_specialized_do_call_class_method, int(6)),
+
+optdef(oc_codegen, compare_specialization,              int(-1)),
+
+optdef(oc_codegen, should_pretest_equality,             bool(yes)),
+optdef(oc_codegen, fact_table_max_array_size,           int(1024)),
+optdef(oc_codegen, fact_table_hash_percent_full,        int(90)),
+optdef(oc_codegen, prefer_switch,                       bool(yes)),
+optdef(oc_codegen, prefer_while_loop_over_jump_self,    bool(yes)),
+optdef(oc_codegen, prefer_while_loop_over_jump_mutual,  bool(no)),
+optdef(oc_codegen, opt_no_return_calls,                 bool(yes)),
+optdef(oc_codegen, debug_class_init,                    bool(no)),
+
+optdef(oc_spec_opt, default_opt_level,                  string("-o2")),
+optdef(oc_spec_opt, opt_level,                          int_special),
+optdef(oc_spec_opt, opt_space,                          special),
+optdef(oc_spec_opt, intermodule_optimization,           bool(no)),
+optdef(oc_spec_opt, read_opt_files_transitively,        bool(yes)),
+optdef(oc_spec_opt, use_opt_files,                      bool(no)),
+optdef(oc_spec_opt, use_trans_opt_files,                bool(no)),
+optdef(oc_spec_opt, transitive_optimization,            bool(no)),
+optdef(oc_spec_opt, intermodule_analysis,               bool(no)),
+optdef(oc_spec_opt, analysis_repeat,                    int(0)),
+optdef(oc_spec_opt, analysis_file_cache,                bool(no)),
+optdef(oc_spec_opt, termination_check,                  bool(no)),
+optdef(oc_spec_opt, termination_check_verbose,          bool(no)),
+optdef(oc_spec_opt, structure_sharing_analysis,         bool(no)),
+optdef(oc_spec_opt, structure_sharing_widening,         int(0)),
+optdef(oc_spec_opt, structure_reuse_analysis,           bool(no)),
+optdef(oc_spec_opt, structure_reuse_constraint,
+                                        string("within_n_cells_difference")),
+optdef(oc_spec_opt, structure_reuse_constraint_arg,     int(0)),
+optdef(oc_spec_opt, structure_reuse_max_conditions,     int(10)),
+optdef(oc_spec_opt, structure_reuse_repeat,             int(0)),
+optdef(oc_spec_opt, structure_reuse_free_cells,         bool(no)),
+optdef(oc_spec_opt, termination,                        bool(no)),
+optdef(oc_spec_opt, termination_single_args,            int(0)),
+optdef(oc_spec_opt, termination_norm,                   string("total")),
+optdef(oc_spec_opt, termination_error_limit,            int(3)),
+optdef(oc_spec_opt, termination_path_limit,             int(256)),
+optdef(oc_spec_opt, termination2,                       bool(no)),
+optdef(oc_spec_opt, termination2_norm,                  string("total")),
+optdef(oc_spec_opt, termination2_check,                 bool(no)),
+optdef(oc_spec_opt, termination2_check_verbose,         bool(no)),
+optdef(oc_spec_opt, widening_limit,                     int(4)),
+optdef(oc_spec_opt, arg_size_analysis_only,             bool(no)),
+optdef(oc_spec_opt, propagate_failure_constrs,          bool(yes)),
+optdef(oc_spec_opt, term2_maximum_matrix_size,          int(70)),
+
+optdef(oc_spec_opt, analyse_exceptions,                 bool(no)),
+optdef(oc_spec_opt, analyse_closures,                   bool(no)),
+optdef(oc_spec_opt, analyse_trail_usage,                bool(no)),
+optdef(oc_spec_opt, optimize_trail_usage,               bool(no)),
+optdef(oc_spec_opt, optimize_region_ops,                bool(no)),
+optdef(oc_spec_opt, analyse_mm_tabling,                 bool(no)),
+
+optdef(oc_opt, optopt_allow_inlining,                   bool_special),
+optdef(oc_opt, inlining,                                bool_special),
+optdef(oc_opt, optopt_inline_simple,                    bool_special),
+optdef(oc_opt, optopt_inline_builtins,                  bool_special),
+optdef(oc_opt, optopt_inline_single_use,                bool_special),
+optdef(oc_opt, optopt_inline_call_cost,                 int_special),
+optdef(oc_opt, optopt_inline_compound_threshold,        int_special),
+optdef(oc_opt, optopt_inline_simple_threshold,          int_special),
+
+optdef(oc_opt, optopt_inline_vars_threshold,            int_special),
+optdef(oc_opt, optopt_intermod_inline_simple_threshold, int_special),
+
+optdef(oc_opt, optopt_inline_linear_tail_rec_sccs,      bool_special),
+optdef(oc_opt, optopt_inline_linear_tail_rec_sccs_max_extra, int_special),
+optdef(oc_opt, optopt_from_ground_term_threshold,       int_special),
+optdef(oc_opt, optopt_enable_const_struct_poly,         bool_special),
+optdef(oc_opt, optopt_enable_const_struct_user,         bool_special),
+optdef(oc_opt, optopt_common_struct,                    bool_special),
+optdef(oc_opt, optopt_constraint_propagation,           bool_special),
+optdef(oc_opt, optopt_local_constraint_propagation,     bool_special),
+optdef(oc_opt, optopt_optimize_duplicate_calls,         bool_special),
+optdef(oc_opt, optopt_constant_propagation,             bool_special),
+optdef(oc_opt, optopt_excess_assign,                    bool_special),
+optdef(oc_opt, optopt_test_after_switch,                bool_special),
+optdef(oc_opt, optopt_optimize_format_calls,            bool_special),
+optdef(oc_opt, optopt_loop_invariants,                  bool_special),
+optdef(oc_opt, optopt_optimize_saved_vars_const,        bool_special),
+optdef(oc_opt, optopt_optimize_saved_vars_cell,         bool_special),
+optdef(oc_opt, optopt_optimize_saved_vars_cell_loop,    bool_special),
+optdef(oc_opt, optopt_optimize_saved_vars_cell_full_path, bool_special),
+optdef(oc_opt, optopt_optimize_saved_vars_cell_on_stack, bool_special),
+optdef(oc_opt, optopt_optimize_saved_vars_cell_candidate_headvars, bool_special),
+optdef(oc_opt, optopt_optimize_saved_vars_cell_cv_store_cost, int_special),
+optdef(oc_opt, optopt_optimize_saved_vars_cell_cv_load_cost, int_special),
+optdef(oc_opt, optopt_optimize_saved_vars_cell_fv_store_cost, int_special),
+optdef(oc_opt, optopt_optimize_saved_vars_cell_fv_load_cost, int_special),
+optdef(oc_opt, optopt_optimize_saved_vars_cell_op_ratio, int_special),
+optdef(oc_opt, optopt_optimize_saved_vars_cell_node_ratio, int_special),
+optdef(oc_opt, optopt_optimize_saved_vars_cell_all_path_node_ratio, int_special),
+optdef(oc_opt, optopt_optimize_saved_vars_cell_include_all_candidates, bool_special),
+optdef(oc_opt, optimize_saved_vars,                     bool_special),
+optdef(oc_opt, optopt_delay_construct,                  bool_special),
+optdef(oc_opt, optopt_follow_code,                      bool_special),
+optdef(oc_opt, optopt_optimize_unused_args,             bool_special),
+optdef(oc_opt, optopt_intermod_unused_args,             bool_special),
+optdef(oc_opt, optopt_optimize_higher_order,            bool_special),
+optdef(oc_opt, optopt_higher_order_size_limit,          int_special),
+optdef(oc_opt, optopt_higher_order_arg_limit,           int_special),
+optdef(oc_opt, optopt_unneeded_code,                    bool_special),
+optdef(oc_opt, optopt_unneeded_code_copy_limit,         int_special),
+optdef(oc_opt, optopt_type_specialization,              bool_special),
+optdef(oc_opt, optopt_user_guided_type_specialization,  bool_special),
+optdef(oc_opt, optopt_introduce_accumulators,           bool_special),
+optdef(oc_opt, optopt_optimize_constructor_last_call_accumulator, bool_special),
+optdef(oc_opt, optopt_optimize_constructor_last_call_null, bool_special),
+optdef(oc_opt, optopt_optimize_constructor_last_call,   bool_special),
+optdef(oc_opt, optopt_optimize_dead_procs,              bool_special),
+optdef(oc_opt, optopt_deforestation,                    bool_special),
+optdef(oc_opt, optopt_deforestation_depth_limit,        int_special),
+optdef(oc_opt, optopt_deforestation_cost_factor,        int_special),
+optdef(oc_opt, optopt_deforestation_vars_threshold,     int_special),
+optdef(oc_opt, optopt_deforestation_size_threshold,     int_special),
+optdef(oc_opt, optopt_untuple,                          bool_special),
+optdef(oc_opt, optopt_tuple,                            bool_special),
+optdef(oc_opt, optopt_tuple_trace_counts_file,          string_special),
+optdef(oc_opt, optopt_tuple_costs_ratio,                int_special),
+optdef(oc_opt, optopt_tuple_min_args,                   int_special),
+optdef(oc_opt, optopt_inline_par_builtins,              bool_special),
+optdef(oc_opt, optopt_always_specialize_in_dep_par_conjs, bool_special),
+optdef(oc_opt, optopt_allow_some_paths_only_waits,      bool_special),
+optdef(oc_opt, optopt_region_analysis,                  bool_special),
+
+optdef(oc_opt, optopt_smart_indexing,                   bool_special),
+optdef(oc_opt, optopt_smart_atomic_indexing,            bool_special),
+optdef(oc_opt, optopt_smart_string_indexing,            bool_special),
+optdef(oc_opt, optopt_smart_tag_indexing,               bool_special),
+optdef(oc_opt, optopt_smart_float_indexing,             bool_special),
+optdef(oc_opt, optopt_dense_switch_req_density,         int_special),
+
+optdef(oc_opt, optopt_lookup_switch_req_density,        int_special),
+
+optdef(oc_opt, optopt_dense_switch_size,                int_special),
+optdef(oc_opt, optopt_lookup_switch_size,               int_special),
+optdef(oc_opt, optopt_string_trie_switch_size,          int_special),
+optdef(oc_opt, optopt_string_hash_switch_size,          int_special),
+optdef(oc_opt, optopt_string_binary_switch_size,        int_special),
+optdef(oc_opt, optopt_tag_switch_size,                  int_special),
+optdef(oc_opt, optopt_try_switch_size,                  int_special),
+optdef(oc_opt, optopt_binary_switch_size,               int_special),
+optdef(oc_opt, optopt_switch_single_rec_base_first,     bool_special),
+optdef(oc_opt, optopt_switch_multi_rec_base_first,      bool_special),
+optdef(oc_opt, optopt_static_ground_cells,              bool_special),
+optdef(oc_opt, optopt_static_ground_floats,             bool_special),
+optdef(oc_opt, optopt_static_ground_int64s,             bool_special),
+optdef(oc_opt, optopt_static_code_addresses,            bool_special),
+optdef(oc_opt, optopt_use_atomic_cells,                 bool_special),
+optdef(oc_opt, optopt_middle_rec,                       bool_special),
+optdef(oc_opt, optopt_simple_neg,                       bool_special),
+optdef(oc_opt, optopt_allow_hijacks,                    bool_special),
+
+optdef(oc_opt, optopt_optimize_mlds_tailcalls,          bool_special),
+optdef(oc_opt, optopt_optimize_initializations,         bool_special),
+optdef(oc_opt, optopt_eliminate_unused_mlds_assigns,    bool_special),
+optdef(oc_opt, optopt_eliminate_local_vars,             bool_special),
+optdef(oc_opt, optopt_generate_trail_ops_inline,        bool_special),
+
+optdef(oc_opt, optopt_common_data,                      bool_special),
+optdef(oc_opt, optopt_common_layout_data,               bool_special),
+optdef(oc_opt, optopt_optimize,                         bool_special),
+optdef(oc_opt, optopt_optimize_peep,                    bool_special),
+optdef(oc_opt, optopt_optimize_peep_mkword,             bool_special),
+optdef(oc_opt, optopt_optimize_jumps,                   bool_special),
+optdef(oc_opt, optopt_optimize_fulljumps,               bool_special),
+optdef(oc_opt, optopt_pessimize_tailcalls,              bool_special),
+optdef(oc_opt, optopt_checked_nondet_tailcalls,         bool_special),
+optdef(oc_opt, optopt_use_local_vars,                   bool_special),
+optdef(oc_opt, optopt_local_var_access_threshold,       int_special),
+optdef(oc_opt, optopt_standardize_labels,               bool_special),
+optdef(oc_opt, optopt_optimize_labels,                  bool_special),
+optdef(oc_opt, optopt_optimize_dups,                    bool_special),
+optdef(oc_opt, optopt_optimize_proc_dups,               bool_special),
+optdef(oc_opt, optopt_optimize_frames,                  bool_special),
+optdef(oc_opt, optopt_optimize_delay_slot,              bool_special),
+optdef(oc_opt, optopt_optimize_reassign,                bool_special),
+optdef(oc_opt, optopt_optimize_repeat,                  int_special),
+optdef(oc_opt, optopt_layout_compression_limit,         int_special),
+
+optdef(oc_opt, optopt_use_macro_for_redo_fail,          bool_special),
+optdef(oc_opt, optopt_emit_c_loops,                     bool_special),
+optdef(oc_opt, optopt_procs_per_c_function,             int_special),
+optdef(oc_opt, everything_in_one_c_function,            special),
+optdef(oc_opt, optopt_local_thread_engine_base,         bool_special),
+optdef(oc_opt, optopt_inline_alloc,                     bool_special),
+optdef(oc_opt, optopt_c_optimize,                       bool_special),
+
+optdef(oc_target_comp, target_debug,                    bool(no)),
+
+optdef(oc_target_comp, cc,                              string("gcc")),
+
+optdef(oc_target_comp, c_include_directory,             accumulating([])),
+
+optdef(oc_target_comp, ansi_c,                          bool(yes)),
+optdef(oc_target_comp, cflags,                          accumulating([])),
+optdef(oc_target_comp, quoted_cflag,                    string_special),
+optdef(oc_target_comp, gcc_flags,                       accumulating([])),
+optdef(oc_target_comp, quoted_gcc_flag,                 string_special),
+optdef(oc_target_comp, clang_flags,                     accumulating([])),
+optdef(oc_target_comp, quoted_clang_flag,               string_special),
+optdef(oc_target_comp, msvc_flags,                      accumulating([])),
+optdef(oc_target_comp, quoted_msvc_flag,                string_special),
+
+optdef(oc_target_comp, cflags_for_warnings,             string("")),
+
+optdef(oc_target_comp, cflags_for_sanitizers,           string("")),
+optdef(oc_target_comp, cflags_for_optimization,         string("-o")),
+optdef(oc_target_comp, cflags_for_ansi,                 string("")),
+optdef(oc_target_comp, cflags_for_regs,                 string("")),
+optdef(oc_target_comp, cflags_for_gotos,                string("")),
+optdef(oc_target_comp, cflags_for_threads,              string("")),
+optdef(oc_target_comp, cflags_for_debug,                string("-g")),
+optdef(oc_target_comp, cflags_for_pic,                  string("")),
+optdef(oc_target_comp, cflags_for_lto,                  string("")),
+optdef(oc_target_comp, c_flag_to_name_object_file,      string("-o ")),
+optdef(oc_target_comp, object_file_extension,           string(".o")),
+optdef(oc_target_comp, pic_object_file_extension,       string(".o")),
+optdef(oc_target_comp, c_compiler_type,                 string("gcc")),
+optdef(oc_target_comp, csharp_compiler_type,            string("mono")),
+
+optdef(oc_target_comp, java_compiler,                   string("javac")),
+optdef(oc_target_comp, java_interpreter,                string("java")),
+optdef(oc_target_comp, java_compiler_flags,             accumulating([])),
+optdef(oc_target_comp, quoted_java_compiler_flag,       string_special),
+optdef(oc_target_comp, java_classpath,                  accumulating([])),
+optdef(oc_target_comp, java_object_file_extension,      string(".class")),
+optdef(oc_target_comp, java_runtime_flags,              accumulating([])),
+optdef(oc_target_comp, quoted_java_runtime_flag,        string_special),
+
+optdef(oc_target_comp, csharp_compiler,                 string("csc")),
+optdef(oc_target_comp, csharp_flags,                    accumulating([])),
+optdef(oc_target_comp, quoted_csharp_flag,              string_special),
+optdef(oc_target_comp, cli_interpreter,                 string("")),
+
+optdef(oc_link, output_file_name,                       string("")),
+
+optdef(oc_link, ld_flags,                               accumulating([])),
+optdef(oc_link, quoted_ld_flag,                         string_special),
+optdef(oc_link, ld_libflags,                            accumulating([])),
+optdef(oc_link, quoted_ld_libflag,                      string_special),
+optdef(oc_link, link_library_directories,               accumulating([])),
+optdef(oc_link, runtime_link_library_directories,       accumulating([])),
+optdef(oc_link, default_runtime_library_directory,      bool(yes)),
+optdef(oc_link, link_libraries,                         accumulating([])),
+optdef(oc_link, link_objects,                           accumulating([])),
+optdef(oc_link, mercury_library_directory_special,      string_special),
+optdef(oc_link, mercury_library_directories,            accumulating([])),
+optdef(oc_link, search_library_files_directory_special, string_special),
+optdef(oc_link, search_library_files_directories,       accumulating([])),
+optdef(oc_link, mercury_library_special,                string_special),
+optdef(oc_link, mercury_libraries,                      accumulating([])),
+optdef(oc_link, mercury_standard_library_directory,     maybe_string(no)),
+
+optdef(oc_link, mercury_standard_library_directory_special, maybe_string_special),
+optdef(oc_link, init_file_directories,                  accumulating([])),
+optdef(oc_link, init_files,                             accumulating([])),
+optdef(oc_link, trace_init_files,                       accumulating([])),
+optdef(oc_link, linkage,                                string("shared")),
+optdef(oc_link, linkage_special,                        string_special),
+optdef(oc_link, mercury_linkage,                        string("shared")),
+optdef(oc_link, mercury_linkage_special,                string_special),
+optdef(oc_link, demangle,                               bool(yes)),
+optdef(oc_link, strip,                                  bool(yes)),
+optdef(oc_link, main,                                   bool(yes)),
+optdef(oc_link, allow_undefined,                        bool(yes)),
+optdef(oc_link, use_readline,                           bool(yes)),
+optdef(oc_link, runtime_flags,                          accumulating([])),
+optdef(oc_link, extra_initialization_functions,         bool(no)),
+optdef(oc_link, frameworks,                             accumulating([])),
+optdef(oc_link, framework_directories,                  accumulating([])),
+optdef(oc_link, sign_assembly,                          string("")),
+optdef(oc_link, cstack_reserve_size,                    int(-1)),
+
+optdef(oc_link, shared_library_extension,               string(".so")),
+
+optdef(oc_link, library_extension,                      string(".a")),
+optdef(oc_link, executable_file_extension,              string("")),
+optdef(oc_link, link_executable_command,                string("gcc")),
+optdef(oc_link, link_shared_lib_command,                string("gcc -shared")),
+optdef(oc_link, create_archive_command,                 string("ar")),
+optdef(oc_link, create_archive_command_output_flag,     string("")),
+optdef(oc_link, create_archive_command_flags,           accumulating([])),
+
+optdef(oc_link, ranlib_command,                         string("")),
+optdef(oc_link, ranlib_flags,                           string("")),
+optdef(oc_link, mkinit_command,                         string("mkinit")),
+optdef(oc_link, mkinit_erl_command,                     string("mkinit_erl")),
+optdef(oc_link, demangle_command,                       string("mdemangle")),
+optdef(oc_link, filtercc_command,                       string("mfiltercc")),
+optdef(oc_link, filterjavac_command,                    string("mfilterjavac")),
+optdef(oc_link, trace_libs,                             string("")),
+optdef(oc_link, thread_libs,                            string("")),
+optdef(oc_link, hwloc_libs,                             string("")),
+optdef(oc_link, hwloc_static_libs,                      string("")),
+optdef(oc_link, shared_libs,                            string("")),
+optdef(oc_link, math_lib,                               string("")),
+optdef(oc_link, readline_libs,                          string("")),
+optdef(oc_link, linker_opt_separator,                   string("")),
+optdef(oc_link, linker_debug_flags,                     string("-g")),
+optdef(oc_link, shlib_linker_debug_flags,               string("-g")),
+optdef(oc_link, linker_sanitizer_flags,                 string("")),
+optdef(oc_link, linker_trace_flags,                     string("")),
+optdef(oc_link, shlib_linker_trace_flags,               string("")),
+optdef(oc_link, linker_thread_flags,                    string("")),
+optdef(oc_link, shlib_linker_thread_flags,              string("")),
+optdef(oc_link, linker_lto_flags,                       string("")),
+optdef(oc_link, linker_static_flags,                    string("-static")),
+optdef(oc_link, linker_strip_flag,                      string("-s")),
+optdef(oc_link, linker_link_lib_flag,                   string("-l")),
+optdef(oc_link, linker_link_lib_suffix,                 string("")),
+optdef(oc_link, shlib_linker_link_lib_flag,             string("-l")),
+optdef(oc_link, shlib_linker_link_lib_suffix,           string("")),
+optdef(oc_link, linker_path_flag,                       string("-l")),
+optdef(oc_link, linker_rpath_flag,                      string("-wl,-rpath")),
+optdef(oc_link, linker_rpath_separator,                 string(" -wl,-rpath")),
+optdef(oc_link, shlib_linker_rpath_flag,                string("-wl,-rpath")),
+optdef(oc_link, shlib_linker_rpath_separator,           string(" -wl,-rpath")),
+optdef(oc_link, linker_allow_undefined_flag,            string("")),
+optdef(oc_link, linker_error_undefined_flag,      string("-wl,-no-undefined")),
+optdef(oc_link, shlib_linker_use_install_name,          bool(no)),
+optdef(oc_link, shlib_linker_install_name_flag,   string("-install_name ")),
+optdef(oc_link, shlib_linker_install_name_path,         string("")),
+optdef(oc_link, strip_executable_command,               string("")),
+optdef(oc_link, strip_executable_shared_flags,          string("")),
+optdef(oc_link, strip_executable_static_flags,          string("")),
+optdef(oc_link, java_archive_command,                   string("jar")),
+
+optdef(oc_buildsys, only_opmode_make,                   bool(no)),
+optdef(oc_buildsys, rebuild,                            bool(no)),
+optdef(oc_buildsys, keep_going,                         bool(no)),
+optdef(oc_buildsys, jobs,                               int(1)),
+optdef(oc_buildsys, track_flags,                        bool(no)),
+optdef(oc_buildsys, invoked_by_mmc_make,                bool(no)),
+optdef(oc_buildsys, pre_link_command,                   maybe_string(no)),
+optdef(oc_buildsys, extra_init_command,                 maybe_string(no)),
+optdef(oc_buildsys, install_prefix,                     string("/usr/local/")),
+optdef(oc_buildsys, use_symlinks,                       bool(yes)),
+
+optdef(oc_buildsys, mercury_configuration_directory_special, string_special),
+optdef(oc_buildsys, mercury_configuration_directory,    maybe_string(no)),
+optdef(oc_buildsys, install_command,                    string("cp")),
+optdef(oc_buildsys, install_command_dir_option,         string("-r")),
+optdef(oc_buildsys, detect_libgrades,                   bool(yes)),
+optdef(oc_buildsys, libgrades,                          accumulating([])),
+optdef(oc_buildsys, libgrades_include_components,       accumulating([])),
+optdef(oc_buildsys, libgrades_exclude_components,       accumulating([])),
+optdef(oc_buildsys, lib_linkages,                       accumulating([])),
+optdef(oc_buildsys, flags_file,                         file_special),
+optdef(oc_buildsys, options_files,          accumulating(["mercury.options"])),
+
+optdef(oc_buildsys, config_file,                        maybe_string(yes(""))),
+
+optdef(oc_buildsys, options_search_directories,         accumulating(["."])),
+optdef(oc_buildsys, use_subdirs,                        bool(no)),
+optdef(oc_buildsys, use_grade_subdirs,                  bool(no)),
+optdef(oc_buildsys, search_directories,                 accumulating(["."])),
+optdef(oc_buildsys, intermod_directories,               accumulating([])),
+optdef(oc_buildsys, use_search_directories_for_intermod, bool(yes)),
+optdef(oc_buildsys, libgrade_install_check,             bool(yes)),
+optdef(oc_buildsys, order_make_by_timestamp,            bool(no)),
+optdef(oc_buildsys, show_make_times,                    bool(no)),
+optdef(oc_buildsys, extra_library_header,               accumulating([])),
+optdef(oc_buildsys, restricted_command_line,            bool(no)),
+optdef(oc_buildsys, env_type,                           string_special),
+optdef(oc_buildsys, host_env_type,                      string("posix")),
+optdef(oc_buildsys, system_env_type,                    string("")),
+optdef(oc_buildsys, target_env_type,                    string("posix")),
+
+optdef(oc_misc, filenames_from_stdin,                   bool(no)),
+optdef(oc_misc, typecheck_ambiguity_warn_limit,         int(50)),
+optdef(oc_misc, typecheck_ambiguity_error_limit,        int(3000)),
+optdef(oc_misc, help,                                   bool(no)),
+optdef(oc_misc, version,                                bool(no)),
+optdef(oc_misc, target_arch,                            string("")),
+optdef(oc_misc, cross_compiling,                        bool(no)),
+optdef(oc_misc, local_module_id,                        accumulating([])),
+optdef(oc_misc, analysis_file_cache_dir,                string("")),
+optdef(oc_misc, compiler_sufficiently_recent,           bool(no)),
+optdef(oc_misc, experiment,                             string("")),
+optdef(oc_misc, experiment1,                            bool(no)),
+optdef(oc_misc, experiment2,                            bool(no)),
+optdef(oc_misc, experiment3,                            bool(no)),
+optdef(oc_misc, experiment4,                            bool(no)),
+optdef(oc_misc, experiment5,                            bool(no)),
+optdef(oc_misc, ignore_par_conjunctions,                bool(no)),
+optdef(oc_misc, control_granularity,                    bool(no)),
+optdef(oc_misc, distance_granularity,                   int(0)),
+optdef(oc_misc, implicit_parallelism,                   bool(no)),
+optdef(oc_misc, feedback_file,                          string("")),
+optdef(oc_misc, par_loop_control,                       bool(no)),
+optdef(oc_misc, par_loop_control_preserve_tail_recursion, bool(no)),
+
+short_option('c', only_opmode_compile_only),
+short_option('c', only_opmode_target_code_only),
+short_option('d', dump_hlds),
+short_option('d', dump_hlds_alias),
+short_option('e', only_opmode_errorcheck_only),
+short_option('e', verbose_errors),
+short_option('f', only_opmode_generate_source_file_mapping),
+short_option('f', framework_directories),
+short_option('h', help),
+short_option('h', highlevel_code),
+short_option('i', only_opmode_make_interface),
+short_option('j', jobs),
+short_option('i', search_directories),
+short_option('k', keep_going),
+short_option('l', link_libraries),
+short_option('l', link_library_directories),
+short_option('m', only_opmode_make),
+short_option('m', only_opmode_generate_dependencies),
+short_option('n', line_numbers),
+short_option('n', debug_modes),
+short_option('o', output_file_name),
+short_option('o', opt_level),
+short_option('p', profiling),
+short_option('p', only_opmode_convert_to_mercury),
+short_option('r', rebuild),
+short_option('r', runtime_link_library_directories),
+short_option('s', grade),
+short_option('s', statistics),
+short_option('t', debug_types),
+short_option('t', only_opmode_typecheck_only),
+short_option('v', verbose),
+short_option('v', very_verbose),
+short_option('w', inhibit_warnings),
+short_option('x', only_opmode_make_xml_documentation),
+short_option('?', help),
+
+long_option("inhibit-warnings",         inhibit_warnings),
+long_option("inhibit-style-warnings",   inhibit_style_warnings),
+long_option("warn-accumulator-swaps",   warn_accumulator_swaps),
+long_option("halt-at-warn",             halt_at_warn),
+long_option("halt-at-warn-make-int",  halt_at_warn_make_int),
+long_option("halt-at-warn-make-interface",  halt_at_warn_make_int),
+long_option("halt-at-warn-make-opt",    halt_at_warn_make_opt),
+long_option("halt-at-syntax-errors",    halt_at_syntax_errors),
+long_option("halt-at-auto-parallel-failure", halt_at_auto_parallel_failure),
+long_option("halt-at-invalid-interface",    halt_at_invalid_interface),
+long_option("warn-singleton-variables", warn_singleton_vars),
+long_option("warn-singleton-vars",      warn_singleton_vars),
+long_option("warn-overlapping-scopes",  warn_overlapping_scopes),
+long_option("warn-det-decls-too-lax",   warn_det_decls_too_lax),
+long_option("warn-inferred-erroneous",  warn_inferred_erroneous),
+long_option("warn-nothing-exported",    warn_nothing_exported),
+long_option("warn-unused-args",         warn_unused_args),
+long_option("warn-interface-imports",   warn_interface_imports),
+long_option("warn-interface-imports-in-parents",
+                                        warn_interface_imports_in_parents),
+long_option("warn-inconsistent-pred-order",
+                    warn_inconsistent_pred_order_clauses),
+long_option("warn-inconsistent-pred-order-clauses",
+                    warn_inconsistent_pred_order_clauses),
+long_option("warn-inconsistent-pred-order-foreign-procs",
+                    warn_inconsistent_pred_order_foreign_procs),
+long_option("warn-non-contiguous-decls",    warn_non_contiguous_decls),
+long_option("warn-non-contiguous-clauses",  warn_non_contiguous_clauses),
+long_option("warn-non-contiguous-foreign-procs",
+                                        warn_non_contiguous_foreign_procs),
+long_option("warn-non-stratification",  warn_non_stratification),
+long_option("warn-missing-opt-files",   warn_missing_opt_files),
+long_option("warn-missing-trans-opt-files", warn_missing_trans_opt_files),
+long_option("warn-missing-trans-opt-deps",  warn_missing_trans_opt_deps),
+long_option("warn-unification-cannot-succeed",
+                                        warn_unification_cannot_succeed),
+long_option("warn-simple-code",         warn_simple_code),
+long_option("warn-duplicate-calls",     warn_duplicate_calls),
+long_option("warn-implicit-stream-calls",   warn_implicit_stream_calls),
+long_option("warn-missing-module-name", warn_missing_module_name),
+long_option("warn-wrong-module-name",   warn_wrong_module_name),
+long_option("warn-smart-recompilation", warn_smart_recompilation),
+long_option("warn-undefined-options-variables",
+                                        warn_undefined_options_variables),
+long_option("warn-undefined-options-vars",
+                                        warn_undefined_options_variables),
+long_option("warn-suspicious-recursion", warn_suspicious_recursion),
+long_option("warn-non-tail-recursion-self",
+                                        warn_non_tail_recursion_self),
+long_option("warn-non-tail-recursion-mutual",
+                                        warn_non_tail_recursion_mutual),
+long_option("warn-non-tail-recursion",  warn_non_tail_recursion),
+long_option("warn-obvious-non-tail-recursion",
+                                        warn_obvious_non_tail_recursion),
+long_option("warn-target-code",         warn_target_code),
+long_option("warn-up-to-date",          warn_up_to_date),
+long_option("warn-stubs",               warn_stubs),
+long_option("warn-dead-procs",          warn_dead_procs),
+long_option("warn-dead-procedures",     warn_dead_procs),
+long_option("warn-dead-preds",          warn_dead_preds),
+long_option("warn-dead-predicates",     warn_dead_preds),
+long_option("warn-table-with-inline",   warn_table_with_inline),
+long_option("warn-non-term-special-preds", warn_non_term_special_preds),
+long_option("warn-known-bad-format-calls", warn_known_bad_format_calls),
+long_option("warn-only-one-format-string-error",
+                    warn_only_one_format_string_error),
+long_option("warn-unknown-format-calls", warn_unknown_format_calls),
+long_option("warn-obsolete",            warn_obsolete),
+long_option("warn-insts-without-matching-type",
+                                        warn_insts_without_matching_type),
+long_option("warn-insts-with-functors-without-type",
+                    warn_insts_with_functors_without_type),
+long_option("warn-unused-imports",      warn_unused_imports),
+long_option("warn-unused-interface-imports",    warn_unused_interface_imports),
+long_option("inform-ite-instead-of-switch", inform_ite_instead_of_switch),
+long_option("inform-incomplete-switch", inform_incomplete_switch),
+long_option("inform-incomplete-switch-threshold",
+                    inform_incomplete_switch_threshold),
+long_option("warn-unresolved-polymorphism", warn_unresolved_polymorphism),
+long_option("warn-suspicious-foreign-procs", warn_suspicious_foreign_procs),
+long_option("warn-suspicious-foreign-code", warn_suspicious_foreign_code),
+long_option("warn-state-var-shadowing", warn_state_var_shadowing),
+long_option("warn-unneeded-mode-specific-clause",
+                                        warn_unneeded_mode_specific_clause),
+long_option("warn-suspected-occurs-failure",
+                                        warn_suspected_occurs_check_failure),
+long_option("warn-suspected-occurs-check-failure",
+                                        warn_suspected_occurs_check_failure),
+long_option("warn-potentially-ambiguous-pragma",
+                                        warn_potentially_ambiguous_pragma),
+long_option("warn-potentially-ambiguous-pragmas",
+                                        warn_potentially_ambiguous_pragma),
+long_option("warn-ambiguous-pragma",    warn_ambiguous_pragma),
+long_option("warn-ambiguous-pragmas",   warn_ambiguous_pragma),
+long_option("warn-stdlib-shadowing",    warn_stdlib_shadowing),
+long_option("inform-inferred",          inform_inferred),
+long_option("inform-inferred-types",    inform_inferred_types),
+long_option("inform-inferred-modes",    inform_inferred_modes),
+long_option("inform-suboptimal-packing",    inform_suboptimal_packing),
+long_option("print-error-spec-id",      print_error_spec_id),
+long_option("inform-ignored-pragma-errors", inform_ignored_pragma_errors),
+
+long_option("verbose",                  verbose),
+long_option("very-verbose",             very_verbose),
+long_option("verbose-error-messages",   verbose_errors),
+long_option("verbose-recompilation",    verbose_recompilation),
+long_option("find-all-recompilation-reasons",
+                                        find_all_recompilation_reasons),
+long_option("verbose-make",             verbose_make),
+long_option("verbose-commands",         verbose_commands),
+long_option("output-compile-error-lines",   output_compile_error_lines),
+long_option("report-cmd-line-args",     report_cmd_line_args),
+long_option("report-cmd-line-args-in-doterr",
+                                        report_cmd_line_args_in_doterr),
+long_option("statistics",               statistics),
+long_option("detailed-statistics",      detailed_statistics),
+long_option("proc-size-statistics",     proc_size_statistics),
+long_option("limit-error-contexts",     limit_error_contexts),
+long_option("debug-types",              debug_types),
+long_option("debug-types-pred-name",    debug_types_pred_name),
+long_option("debug-modes",              debug_modes),
+long_option("debug-modes-statistics",   debug_modes_statistics),
+long_option("debug-modes-minimal",      debug_modes_minimal),
+long_option("debug-modes-verbose",      debug_modes_verbose),
+long_option("debug-modes-pred-id",      debug_modes_pred_id),
+long_option("debug-dep-par-conj",       debug_dep_par_conj),
+long_option("debug-determinism",        debug_det),
+long_option("debug-det",                debug_det),
+long_option("debug-code-gen-pred-id",   debug_code_gen_pred_id),
+long_option("debug-termination",        debug_term),
+long_option("debug-term",               debug_term),
+long_option("debug-dead-proc-elim",     debug_dead_proc_elim),
+long_option("debug-higher-order-specialization",
+                                        debug_higher_order_specialization),
+long_option("debug-opt",                debug_opt),
+long_option("debug-opt-pred-id",        debug_opt_pred_id),
+long_option("debug-opt-pred-name",      debug_opt_pred_name),
+long_option("debug-pd",                 debug_pd),
+long_option("debug-liveness",           debug_liveness),
+long_option("debug-stack-opt",          debug_stack_opt),
+long_option("debug-make",               debug_make),
+long_option("debug-closure",            debug_closure),
+long_option("debug-trail-usage",        debug_trail_usage),
+long_option("debug-mode-constraints",   debug_mode_constraints),
+long_option("debug-intermodule-analysis",   debug_intermodule_analysis),
+long_option("debug-mm-tabling-analysis",    debug_mm_tabling_analysis),
+long_option("debug-indirect-reuse",         debug_indirect_reuse),
+long_option("debug-type-rep",               debug_type_rep),
+
+long_option("generate-source-file-mapping",
+    only_opmode_generate_source_file_mapping),
+long_option("generate-dependency-file", only_opmode_generate_dependency_file),
+long_option("generate-dependencies",    only_opmode_generate_dependencies),
+long_option("generate-module-order",    generate_module_order),
+long_option("generate-standalone-interface", generate_standalone_interface),
+long_option("make-short-interface",     only_opmode_make_short_interface),
+long_option("make-short-int",           only_opmode_make_short_interface),
+long_option("make-interface",           only_opmode_make_interface),
+long_option("make-int",                 only_opmode_make_interface),
+long_option("make-private-interface",   only_opmode_make_private_interface),
+long_option("make-priv-int",            only_opmode_make_private_interface),
+long_option("make-optimization-interface",
+    only_opmode_make_optimization_interface),
+long_option("make-optimisation-interface",
+    only_opmode_make_optimization_interface),
+long_option("make-opt-int",
+    only_opmode_make_optimization_interface),
+long_option("make-transitive-optimization-interface",
+    only_opmode_make_transitive_opt_interface),
+long_option("make-transitive-optimisation-interface",
+    only_opmode_make_transitive_opt_interface),
+long_option("make-trans-opt",
+    only_opmode_make_transitive_opt_interface),
+long_option("make-analysis-registry",   only_opmode_make_analysis_registry),
+long_option("make-xml-doc",             only_opmode_make_xml_documentation),
+long_option("make-xml-documentation",   only_opmode_make_xml_documentation),
+long_option("convert-to-mercury",       only_opmode_convert_to_mercury),
+long_option("convert-to-mercury",       only_opmode_convert_to_mercury),
+long_option("pretty-print",             only_opmode_convert_to_mercury),
+long_option("typecheck-only",           only_opmode_typecheck_only),
+long_option("errorcheck-only",          only_opmode_errorcheck_only),
+long_option("target-code-only",         only_opmode_target_code_only),
+long_option("compile-only",             only_opmode_compile_only),
+long_option("compile-to-shared-lib",    compile_to_shared_lib),
+long_option("output-grade-string",      only_opmode_output_grade_string),
+long_option("output-link-command",      only_opmode_output_link_command),
+long_option("output-shared-lib-link-command",
+    only_opmode_output_shared_lib_link_command),
+long_option("output-stdlib-grades",     only_opmode_output_stdlib_grades),
+long_option("output-libgrades",         only_opmode_output_libgrades),
+long_option("output-cc",                only_opmode_output_cc),
+long_option("output-cc-type",           only_opmode_output_c_compiler_type),
+long_option("output-c-compiler-type",   only_opmode_output_c_compiler_type),
+long_option("output-csharp-compiler",   only_opmode_output_csharp_compiler),
+long_option("output-csharp-compiler-type",
+    only_opmode_output_csharp_compiler_type),
+long_option("output-cflags",            only_opmode_output_cflags),
+long_option("output-library-link-flags",
+    only_opmode_output_library_link_flags),
+long_option("output-grade-defines",     only_opmode_output_grade_defines),
+long_option("output-c-include-directory-flags",
+    only_opmode_output_c_include_directory_flags),
+long_option("output-c-include-dir-flags",
+    only_opmode_output_c_include_directory_flags),
+long_option("output-target-arch",       only_opmode_output_target_arch),
+long_option("output-class-directory",   only_opmode_output_java_class_dir),
+long_option("output-class-dir",         only_opmode_output_java_class_dir),
+long_option("output-java-class-directory",  only_opmode_output_java_class_dir),
+long_option("output-java-class-dir",        only_opmode_output_java_class_dir),
+long_option("output-stdlib-modules",    only_opmode_output_stdlib_modules),
+
+long_option("smart-recompilation",      smart_recompilation),
+long_option("generate-mmc-make-module-dependencies",
+                                        generate_mmc_make_module_dependencies),
+long_option("generate-mmc-deps",        generate_mmc_make_module_dependencies),
+long_option("ssdb-trace",               ssdb_trace_level),
+long_option("link-ssdb-libs",           link_ssdb_libs),
+long_option("link-ssdebug-libs",        link_ssdb_libs),
+long_option("trace",                    trace_level),
+long_option("trace-optimised",          trace_optimized),
+long_option("trace-optimized",          trace_optimized),
+long_option("trace-prof",               trace_prof),
+long_option("trace-table-io",           trace_table_io),
+long_option("trace-table-io-only-retry",    trace_table_io_only_retry),
+long_option("trace-table-io-states",    trace_table_io_states),
+long_option("trace-table-io-require",   trace_table_io_require),
+long_option("trace-table-io-all",       trace_table_io_all),
+long_option("trace-flag",               trace_goal_flags),
+long_option("profile-optimised",        prof_optimized),
+long_option("profile-optimized",        prof_optimized),
+long_option("exec-trace-tail-rec",      exec_trace_tail_rec),
+long_option("suppress-trace",           suppress_trace),
+long_option("force-disable-tracing",    force_disable_tracing),
+long_option("delay-death",              delay_death),
+long_option("delay-death-max-vars",     delay_death_max_vars),
+long_option("stack-trace-higher-order", stack_trace_higher_order),
+long_option("force-disable-ssdebug",    force_disable_ssdebug),
+long_option("generate-bytecode",        generate_bytecode),
+long_option("line-numbers",             line_numbers),
+long_option("line-numbers-around-foreign-code",
+                                        line_numbers_around_foreign_code),
+long_option("line-numbers-for-c-headers", line_numbers_for_c_headers),
+long_option("type-repns-for-humans",    type_repns_for_humans),
+long_option("auto-comments",            auto_comments),
+long_option("frameopt-comments",        frameopt_comments),
+long_option("max-error-line-width",     max_error_line_width),
+long_option("show-definitions",         show_definitions),
+long_option("show-definition-line-counts",  show_definition_line_counts),
+long_option("show-definition-extents",  show_definition_extents),
+long_option("show-all-type-repns",              show_all_type_repns),
+long_option("show-all-type-representations",    show_all_type_repns),
+long_option("show-local-type-repns",            show_local_type_repns),
+long_option("show-local-type-representations",  show_local_type_repns),
+long_option("show-developer-type-repns",            show_developer_type_repns),
+long_option("show-developer-type-representations",  show_developer_type_repns),
+long_option("show-dependency-graph",    show_dependency_graph),
+long_option("imports-graph",            imports_graph),
+long_option("dump-trace-counts",        dump_trace_counts),
+long_option("dump-hlds",                dump_hlds),
+long_option("hlds-dump",                dump_hlds),
+long_option("dump-hlds-pred-id",        dump_hlds_pred_id),
+long_option("dump-hlds-pred-name",      dump_hlds_pred_name),
+long_option("dump-hlds-pred-name-order", dump_hlds_pred_name_order),
+long_option("dump-hlds-alias",          dump_hlds_alias),
+long_option("dump-hlds-spec-preds",     dump_hlds_spec_preds),
+long_option("dump-hlds-spec-preds-for", dump_hlds_spec_preds_for),
+long_option("dump-hlds-options",        dump_hlds_options),
+long_option("dump-hlds-inst-limit",     dump_hlds_inst_limit),
+long_option("dump-hlds-file-suffix",    dump_hlds_file_suffix),
+long_option("dump-same-hlds",           dump_same_hlds),
+long_option("dump-mlds",                dump_mlds),
+long_option("dump-mlds-pred-name",      dump_mlds_pred_name),
+long_option("mlds-dump",                dump_mlds),
+long_option("verbose-dump-mlds",        verbose_dump_mlds),
+long_option("verbose-mlds-dump",        verbose_dump_mlds),
+long_option("dump-options-file",        dump_options_file),
+long_option("mode-constraints",         mode_constraints),
+long_option("simple-mode-constraints",  simple_mode_constraints),
+long_option("prop-mode-constraints",    prop_mode_constraints),
+long_option("compute-goal-modes",       compute_goal_modes),
+long_option("propagate-mode-constraints",   prop_mode_constraints),
+long_option("benchmark-modes",          benchmark_modes),
+long_option("benchmark-modes-repeat",   benchmark_modes_repeat),
+long_option("unneeded-code-debug",      unneeded_code_debug),
+long_option("unneeded-code-debug-pred-name",  unneeded_code_debug_pred_name),
+long_option("common-struct-preds",      common_struct_preds),
+
+long_option("reorder-conj",         reorder_conj),
+long_option("reorder-disj",         reorder_disj),
+long_option("fully-strict",         fully_strict),
+long_option("strict-sequential",    strict_sequential),
+long_option("allow-stubs",          allow_stubs),
+long_option("infer-all",            infer_all),
+long_option("infer-types",          infer_types),
+long_option("infer-modes",          infer_modes),
+long_option("infer-determinism",    infer_det),
+long_option("infer-det",            infer_det),
+long_option("type-inference-iteration-limit", type_inference_iteration_limit),
+long_option("mode-inference-iteration-limit", mode_inference_iteration_limit),
+long_option("event-set-file-name",  event_set_file_name),
+
+long_option("grade",                grade),
+
+long_option("target",               target),
+long_option("compile-to-c",         compile_to_c),
+long_option("compile-to-c",         compile_to_c),
+long_option("java",                 java),
+long_option("java",                 java),
+long_option("java-only",            java_only),
+long_option("java-only",            java_only),
+long_option("csharp",               csharp),
+long_option("c#",                   csharp),
+long_option("csharp-only",          csharp_only),
+long_option("c#-only",              csharp_only),
+
+long_option("debug",                exec_trace),
+long_option("decl-debug",           decl_debug),
+long_option("ssdb",                 source_to_source_debug),
+long_option("ss-debug",             source_to_source_debug),
+long_option("source-to-source-debug", source_to_source_debug),
+
+long_option("profiling",            profiling),
+long_option("time-profiling",       time_profiling),
+long_option("memory-profiling",     memory_profiling),
+long_option("deep-profiling",       deep_profiling),
+long_option("profile-calls",        profile_calls),
+long_option("profile-time",         profile_time),
+long_option("profile-memory",       profile_memory),
+long_option("profile-deep",         profile_deep),
+long_option("use-activation-counts",    use_activation_counts),
+long_option("pre-prof-transforms-simplify", pre_prof_transforms_simplify),
+long_option("pre-implicit-parallelism-simplify",
+    pre_implicit_parallelism_simplify),
+long_option("coverage-profiling",   coverage_profiling),
+long_option("coverage-profiling-via-calls",
+    coverage_profiling_via_calls),
+long_option("coverage-profiling-static",
+    coverage_profiling_static),
+long_option("profile-deep-coverage-after-goal",
+    profile_deep_coverage_after_goal),
+long_option("profile-deep-coverage-branch-ite",
+    profile_deep_coverage_branch_ite),
+long_option("profile-deep-coverage-branch-switch",
+    profile_deep_coverage_branch_switch),
+long_option("profile-deep-coverage-branch-disj",
+    profile_deep_coverage_branch_disj),
+long_option("profile-deep-coverage-use-portcounts",
+    profile_deep_coverage_use_portcounts),
+long_option("profile-deep-coverage-use-trivial",
+    profile_deep_coverage_use_trivial),
+long_option("profile-for-implicit-parallelism",
+    profile_for_feedback),
+long_option("profile-for-feedback",
+    profile_for_feedback),
+long_option("use-zeroing-for-ho-cycles",
+    use_zeroing_for_ho_cycles),
+long_option("use-lots-of-ho-specialization",
+    use_lots_of_ho_specialization),
+long_option("deep-profile-tail-recursion",
+    deep_profile_tail_recursion),
+long_option("record-term-sizes-as-words", record_term_sizes_as_words),
+long_option("record-term-sizes-as-cells", record_term_sizes_as_cells),
+long_option("experimental-complexity",  experimental_complexity),
+
+long_option("gc",                   gc),
+long_option("garbage-collection",   gc),
+long_option("parallel",             parallel),
+long_option("use-trail",            use_trail),
+long_option("type-layout",          type_layout),
+long_option("maybe-thread-safe",    maybe_thread_safe_opt),
+long_option("extend-stacks-when-needed",    extend_stacks_when_needed),
+long_option("stack-segments",       stack_segments),
+long_option("use-regions",          use_regions),
+long_option("use-alloc-regions",    use_alloc_regions),
+long_option("use-regions-debug",    use_regions_debug),
+long_option("use-regions-profiling",use_regions_profiling),
+
+long_option("use-minimal-model-stack-copy", use_minimal_model_stack_copy),
+long_option("use-minimal-model-own-stacks", use_minimal_model_own_stacks),
+long_option("minimal-model-debug",  minimal_model_debug),
+long_option("pregenerated-dist",    pregenerated_dist),
+long_option("single-prec-float",    single_prec_float),
+long_option("single-precision-float",   single_prec_float),
+long_option("num-tag-bits",         num_ptag_bits),
+long_option("num-ptag-bits",        num_ptag_bits),
+long_option("bits-per-word",        bits_per_word),
+long_option("bytes-per-word",       bytes_per_word),
+long_option("conf-low-tag-bits",    conf_low_ptag_bits),
+long_option("conf-low-ptag-bits",   conf_low_ptag_bits),
+long_option("unboxed-float",        unboxed_float),
+long_option("unboxed-int64s",       unboxed_int64s),
+long_option("unboxed-no-tag-types", unboxed_no_tag_types),
+long_option("arg-pack-bits",        arg_pack_bits),
+long_option("pack-everything",      pack_everything),
+long_option("allow-direct-args",    allow_direct_args),
+long_option("allow-double-word-fields", allow_double_word_fields),
+long_option("allow-double-word-ints", allow_double_word_ints),
+long_option("allow-packing-dummies", allow_packing_dummies),
+long_option("allow-packing-ints",   allow_packing_ints),
+long_option("allow-packing-chars",  allow_packing_chars),
+long_option("allow-packing-local-sectags",  allow_packing_local_sectags),
+long_option("allow-packing-remote-sectags", allow_packing_remote_sectags),
+long_option("allow-packing-mini-types",     allow_packing_mini_types),
+long_option("allow-packed-unify-compare",   allow_packed_unify_compare),
+long_option("sync-term-size",       sync_term_size),
+
+long_option("gcc-non-local-gotos",  gcc_non_local_gotos),
+long_option("gcc-global-registers", gcc_global_registers),
+long_option("asm-labels",           asm_labels),
+long_option("use-float-registers",  use_float_registers),
+
+long_option("highlevel-code",       highlevel_code),
+long_option("high-level-code",      highlevel_code),
+long_option("highlevel-c",          highlevel_code),
+long_option("highlevel-c",          highlevel_code),
+long_option("high-level-c",         highlevel_code),
+long_option("high-level-c",         highlevel_code),
+long_option("det-copy-out",         det_copy_out),
+long_option("nondet-copy-out",      nondet_copy_out),
+long_option("put-commit-in-own-func",   put_commit_in_own_func),
+long_option("put-nondet-env-on-heap",   put_nondet_env_on_heap),
+
+long_option("backend-foreign-languages", backend_foreign_languages),
+long_option("agc-stack-layout",     agc_stack_layout),
+long_option("basic-stack-layout",   basic_stack_layout),
+long_option("procid-stack-layout",  procid_stack_layout),
+long_option("trace-stack-layout",   trace_stack_layout),
+long_option("body-typeinfo-liveness",   body_typeinfo_liveness),
+long_option("can-compare-constants-as-ints",  can_compare_constants_as_ints),
+long_option("pretest-equality-cast-pointers", pretest_equality_cast_pointers),
+long_option("delay-partial-instantiations",   delay_partial_instantiations),
+long_option("allow-defn-of-builtins",         allow_defn_of_builtins),
+long_option("type-ctor-info",       type_ctor_info),
+long_option("type-ctor-layout",     type_ctor_layout),
+long_option("type-ctor-functors",   type_ctor_functors),
+long_option("new-type-class-rtti",  new_type_class_rtti),
+long_option("rtti-line-numbers",    rtti_line_numbers),
+long_option("disable-mm-pneg",      disable_minimal_model_stack_copy_pneg),
+long_option("disable-mm-cut",       disable_minimal_model_stack_copy_cut),
+long_option("disable-trail-ops",    disable_trail_ops),
+long_option("size-region-ite-fixed",            size_region_ite_fixed),
+long_option("size-region-disj-fixed",           size_region_disj_fixed),
+long_option("size-region-commit-fixed",         size_region_commit_fixed),
+long_option("size-region-ite-protect",          size_region_ite_protect),
+long_option("size-region-ite-snapshot",         size_region_ite_snapshot),
+long_option("size-region-semi-disj-protect",    size_region_semi_disj_protect),
+long_option("size-region-disj-snapshot",        size_region_disj_snapshot),
+long_option("size-region-commit-entry",         size_region_commit_entry),
+long_option("allow-multi-arm-switches", allow_multi_arm_switches),
+long_option("type-check-constraints",   type_check_constraints),
+
+long_option("low-level-debug",      low_level_debug),
+long_option("table-debug",          table_debug),
+long_option("trad-passes",          trad_passes),
+long_option("parallel-liveness",    parallel_liveness),
+long_option("parallel-code-gen",    parallel_code_gen),
+long_option("reclaim-heap-on-failure",  reclaim_heap_on_failure),
+long_option("reclaim-heap-on-semidet-failure",
+                                    reclaim_heap_on_semidet_failure),
+long_option("reclaim-heap-on-nondet-failure",
+                                    reclaim_heap_on_nondet_failure),
+long_option("branch-delay-slot",    have_delay_slot),
+long_option("have-delay-slot",      have_delay_slot),
+long_option("num-real-r-regs",      num_real_r_regs),
+long_option("num-real-f-regs",      num_real_f_regs),
+long_option("num-real-r-temps",     num_real_r_temps),
+long_option("num-real-f-temps",     num_real_f_temps),
+long_option("num-real-temps",       num_real_r_temps),
+long_option("max-jump-table-size",  max_jump_table_size),
+
+long_option("compare-specialization",   compare_specialization),
+long_option("should-pretest-equality",  should_pretest_equality),
+long_option("fact-table-max-array-size",fact_table_max_array_size),
+long_option("fact-table-hash-percent-full",
+                    fact_table_hash_percent_full),
+long_option("prefer-switch",        prefer_switch),
+long_option("prefer-while-loop-over-jump-self",
+                                    prefer_while_loop_over_jump_self),
+long_option("prefer-while-loop-over-jump-mutual",
+                                    prefer_while_loop_over_jump_mutual),
+long_option("opt-no-return-calls",  opt_no_return_calls),
+long_option("debug-class-init",     debug_class_init),
+
+long_option("default-opt-level",    default_opt_level),
+long_option("opt-level",            opt_level),
+long_option("optimization-level",   opt_level),
+long_option("optimisation-level",   opt_level),
+long_option("opt-space",            opt_space),
+long_option("optimize-space",       opt_space),
+long_option("optimise-space",       opt_space),
+long_option("intermod-opt",        intermodule_optimization),
+long_option("intermodule-optimization", intermodule_optimization),
+long_option("intermodule-optimisation", intermodule_optimization),
+long_option("read-opt-files-transitively", read_opt_files_transitively),
+long_option("use-opt-files",        use_opt_files),
+long_option("use-trans-opt-files",  use_trans_opt_files),
+long_option("transitive-intermodule-optimization",
+                    transitive_optimization),
+long_option("transitive-intermodule-optimisation",
+                    transitive_optimization),
+long_option("trans-intermod-opt",   transitive_optimization),
+long_option("intermodule-analysis", intermodule_analysis),
+long_option("analysis-repeat",      analysis_repeat),
+long_option("analysis-file-cache",  analysis_file_cache),
+
+long_option("inlining",             inlining),
+long_option("inline-simple",        optopt_inline_simple),
+long_option("inline-builtins",      optopt_inline_builtins),
+long_option("inline-single-use",    optopt_inline_single_use),
+long_option("inline-call-cost",     optopt_inline_call_cost),
+long_option("inline-compound-threshold",    optopt_inline_compound_threshold),
+long_option("inline-simple-threshold",      optopt_inline_simple_threshold),
+long_option("intermod-inline-simple-threshold",
+                                    optopt_intermod_inline_simple_threshold),
+long_option("inline-linear-tail-rec-sccs", optopt_inline_linear_tail_rec_sccs),
+long_option("inline-linear-tail-rec-sccs-max-extra",
+                                 optopt_inline_linear_tail_rec_sccs_max_extra),
+long_option("from-ground-term-threshold",
+                                    optopt_from_ground_term_threshold),
+long_option("inline-vars-threshold",        optopt_inline_vars_threshold),
+
+long_option("const-struct",         optopt_enable_const_struct_user),
+long_option("common-struct",        optopt_common_struct),
+long_option("excess-assign",        optopt_excess_assign),
+long_option("test-after-switch",    optopt_test_after_switch),
+long_option("optimize-format-calls",         optopt_optimize_format_calls),
+long_option("optimize-duplicate-calls", optopt_optimize_duplicate_calls),
+long_option("optimise-duplicate-calls", optopt_optimize_duplicate_calls),
+long_option("optimise-constant-propagation", optopt_constant_propagation),
+long_option("optimize-constant-propagation", optopt_constant_propagation),
+long_option("optimize-saved-vars",  optimize_saved_vars),
+long_option("optimise-saved-vars",  optimize_saved_vars),
+long_option("loop-invariants",      optopt_loop_invariants),
+long_option("optimize-saved-vars-const",    optopt_optimize_saved_vars_const),
+long_option("optimise-saved-vars-const",    optopt_optimize_saved_vars_const),
+long_option("optimize-saved-vars-cell", optopt_optimize_saved_vars_cell),
+long_option("optimise-saved-vars-cell", optopt_optimize_saved_vars_cell),
+long_option("osv-loop",             optopt_optimize_saved_vars_cell_loop),
+long_option("osv-full-path",        optopt_optimize_saved_vars_cell_full_path),
+long_option("osv-on-stack",         optopt_optimize_saved_vars_cell_on_stack),
+long_option("osv-cand-head",
+                        optopt_optimize_saved_vars_cell_candidate_headvars),
+
+long_option("osv-cvstore-cost",
+                        optopt_optimize_saved_vars_cell_cv_store_cost),
+long_option("osv-cvload-cost",
+                        optopt_optimize_saved_vars_cell_cv_load_cost),
+long_option("osv-fvstore-cost",
+                        optopt_optimize_saved_vars_cell_fv_store_cost),
+long_option("osv-fvload-cost",
+                        optopt_optimize_saved_vars_cell_fv_load_cost),
+long_option("osv-op-ratio",
+                        optopt_optimize_saved_vars_cell_op_ratio),
+long_option("osv-node-ratio",
+                        optopt_optimize_saved_vars_cell_node_ratio),
+long_option("osv-allpath-node-ratio",
+                        optopt_optimize_saved_vars_cell_all_path_node_ratio),
+long_option("osv-all-cand",
+                    optopt_optimize_saved_vars_cell_include_all_candidates),
+long_option("delay-construct",      optopt_delay_construct),
+long_option("delay-constructs",     optopt_delay_construct),
+long_option("follow-code",          optopt_follow_code),
+long_option("constraint-propagation",   optopt_constraint_propagation),
+long_option("local-constraint-propagation",
+                                     optopt_local_constraint_propagation),
+long_option("optimize-unused-args", optopt_optimize_unused_args),
+long_option("optimise-unused-args", optopt_optimize_unused_args),
+long_option("intermod-unused-args", optopt_intermod_unused_args),
+long_option("optimize-higher-order",    optopt_optimize_higher_order),
+long_option("optimise-higher-order",    optopt_optimize_higher_order),
+long_option("higher-order-size-limit",  optopt_higher_order_size_limit),
+long_option("higher-order-arg-limit",   optopt_higher_order_arg_limit),
+long_option("unneeded-code",        optopt_unneeded_code),
+long_option("unneeded-code-copy-limit", optopt_unneeded_code_copy_limit),
+long_option("type-specialization",  optopt_type_specialization),
+long_option("type-specialisation",  optopt_type_specialization),
+long_option("user-guided-type-specialization",
+                    optopt_user_guided_type_specialization),
+long_option("user-guided-type-specialisation",
+                    optopt_user_guided_type_specialization),
+
+long_option("fixed-user-guided-type-specialization",
+                    optopt_user_guided_type_specialization),
+long_option("introduce-accumulators",   optopt_introduce_accumulators),
+long_option("optimise-constructor-last-call-accumulator",
+                    optopt_optimize_constructor_last_call_accumulator),
+long_option("optimize-constructor-last-call-accumulator",
+                    optopt_optimize_constructor_last_call_accumulator),
+long_option("optimise-constructor-last-call-null",
+                    optopt_optimize_constructor_last_call_null),
+long_option("optimize-constructor-last-call-null",
+                    optopt_optimize_constructor_last_call_null),
+long_option("optimise-constructor-last-call",
+                    optopt_optimize_constructor_last_call),
+long_option("optimize-constructor-last-call",
+                    optopt_optimize_constructor_last_call),
+long_option("optimize-dead-procs",  optopt_optimize_dead_procs),
+long_option("optimise-dead-procs",  optopt_optimize_dead_procs),
+long_option("deforestation",        optopt_deforestation),
+long_option("deforestation-depth-limit",    optopt_deforestation_depth_limit),
+long_option("deforestation-cost-factor",    optopt_deforestation_cost_factor),
+long_option("deforestation-vars-threshold",
+                                    optopt_deforestation_vars_threshold),
+long_option("deforestation-size-threshold",
+                                    optopt_deforestation_size_threshold),
+
+long_option("untuple",              optopt_untuple),
+long_option("tuple",                optopt_tuple),
+long_option("tuple-trace-counts-file",  optopt_tuple_trace_counts_file),
+long_option("tuple-costs-ratio",    optopt_tuple_costs_ratio),
+long_option("tuple-min-args",       optopt_tuple_min_args),
+long_option("inline-par-builtins",  optopt_inline_par_builtins),
+long_option("always-specialize-in-dep-par-conjs",
+                                    optopt_always_specialize_in_dep_par_conjs),
+long_option("allow-some-paths-only-waits",
+                                    optopt_allow_some_paths_only_waits),
+long_option("region-analysis",      optopt_region_analysis),
+
+long_option("smart-indexing",       optopt_smart_indexing),
+long_option("smart-atomic-indexing", optopt_smart_atomic_indexing),
+long_option("smart-string-indexing", optopt_smart_string_indexing),
+long_option("smart-tag-indexing",    optopt_smart_tag_indexing),
+long_option("smart-float-indexing",  optopt_smart_float_indexing),
+long_option("dense-switch-req-density", optopt_dense_switch_req_density),
+long_option("lookup-switch-req-density",optopt_lookup_switch_req_density),
+long_option("dense-switch-size",    optopt_dense_switch_size),
+long_option("lookup-switch-size",   optopt_lookup_switch_size),
+long_option("string-switch-size",   optopt_string_hash_switch_size),
+long_option("string-trie-size",     optopt_string_trie_switch_size),
+long_option("string-trie-switch-size",      optopt_string_trie_switch_size),
+long_option("string-hash-switch-size",      optopt_string_hash_switch_size),
+long_option("string-binary-switch-size",    optopt_string_binary_switch_size),
+long_option("tag-switch-size",      optopt_tag_switch_size),
+long_option("try-switch-size",      optopt_try_switch_size),
+long_option("binary-switch-size",   optopt_binary_switch_size),
+long_option("switch-single-rec-base-first",
+                                    optopt_switch_single_rec_base_first),
+long_option("switch-multi-rec-base-first",
+                                    optopt_switch_multi_rec_base_first),
+long_option("static-ground-terms",  optopt_static_ground_cells),
+
+long_option("use-atomic-cells",     optopt_use_atomic_cells),
+long_option("middle-rec",           optopt_middle_rec),
+long_option("simple-neg",           optopt_simple_neg),
+long_option("allow-hijacks",        optopt_allow_hijacks),
+
+long_option("mlds-optimize",        optopt_optimize),
+long_option("mlds-optimise",        optopt_optimize),
+long_option("mlds-peephole",        optopt_optimize_peep),
+long_option("optimize-tailcalls",   optopt_optimize_mlds_tailcalls),
+long_option("optimise-tailcalls",   optopt_optimize_mlds_tailcalls),
+long_option("optimize-initializations", optopt_optimize_initializations),
+long_option("optimise-initializations", optopt_optimize_initializations),
+long_option("eliminate-unused-mlds-assigns",
+                                    optopt_eliminate_unused_mlds_assigns),
+long_option("eliminate-local-vars", optopt_eliminate_local_vars),
+long_option("generate-trail-ops-inline", optopt_generate_trail_ops_inline),
+
+long_option("common-data",          optopt_common_data),
+long_option("common-layout-data",   optopt_common_layout_data),
+long_option("llds-optimize",        optopt_optimize),
+long_option("llds-optimise",        optopt_optimize),
+long_option("optimize-peep",        optopt_optimize_peep),
+long_option("optimise-peep",        optopt_optimize_peep),
+long_option("optimize-peep-mkword", optopt_optimize_peep_mkword),
+long_option("optimise-peep-mkword", optopt_optimize_peep_mkword),
+long_option("optimize-jumps",       optopt_optimize_jumps),
+long_option("optimise-jumps",       optopt_optimize_jumps),
+long_option("optimize-fulljumps",   optopt_optimize_fulljumps),
+long_option("optimise-fulljumps",   optopt_optimize_fulljumps),
+long_option("pessimize-tailcalls",  optopt_pessimize_tailcalls),
+long_option("checked-nondet-tailcalls", optopt_checked_nondet_tailcalls),
+long_option("use-local-vars",       optopt_use_local_vars),
+long_option("local-var-access-threshold", optopt_local_var_access_threshold),
+long_option("standardise-labels",   optopt_standardize_labels),
+long_option("standardize-labels",   optopt_standardize_labels),
+long_option("optimize-labels",      optopt_optimize_labels),
+long_option("optimise-labels",      optopt_optimize_labels),
+long_option("optimize-dups",        optopt_optimize_dups),
+long_option("optimise-dups",        optopt_optimize_dups),
+long_option("optimize-proc-dups",   optopt_optimize_proc_dups),
+long_option("optimise-proc-dups",   optopt_optimize_proc_dups),
+
+long_option("optimize-frames",      optopt_optimize_frames),
+long_option("optimise-frames",      optopt_optimize_frames),
+long_option("optimize-delay-slot",  optopt_optimize_delay_slot),
+long_option("optimise-delay-slot",  optopt_optimize_delay_slot),
+long_option("optimize-reassign",    optopt_optimize_reassign),
+long_option("optimise-reassign",    optopt_optimize_reassign),
+long_option("optimize-repeat",      optopt_optimize_repeat),
+long_option("optimise-repeat",      optopt_optimize_repeat),
+long_option("layout-compression-limit",      optopt_layout_compression_limit),
+
+long_option("use-macro-for-redo-fail",  optopt_use_macro_for_redo_fail),
+long_option("emit-c-loops",         optopt_emit_c_loops),
+long_option("procs-per-c-function", optopt_procs_per_c_function),
+long_option("procs-per-c-function", optopt_procs_per_c_function),
+long_option("everything-in-one-c-function", everything_in_one_c_function),
+long_option("everything-in-one-c-function", everything_in_one_c_function),
+long_option("inline-alloc",         optopt_inline_alloc),
+long_option("local-thread-engine-base", optopt_local_thread_engine_base),
+
+long_option("enable-termination",   termination),
+long_option("enable-term",          termination),
+long_option("check-termination",    termination_check),
+long_option("check-term",           termination_check),
+long_option("chk-term",             termination_check),
+long_option("verbose-check-termination", termination_check_verbose),
+long_option("verb-check-term",      termination_check_verbose),
+long_option("verb-chk-term",        termination_check_verbose),
+long_option("termination-single-argument-analysis",
+                    termination_single_args),
+long_option("term-single-arg",      termination_single_args),
+long_option("termination-norm",     termination_norm),
+long_option("term-norm",            termination_norm),
+long_option("termination-error-limit",  termination_error_limit),
+long_option("term-err-limit",       termination_error_limit),
+long_option("termination-path-limit",   termination_path_limit),
+long_option("term-path-limit",      termination_path_limit),
+long_option("enable-termination2",  termination2),
+long_option("enable-term2",         termination2),
+long_option("check-termination2",   termination2_check),
+long_option("check-term2",          termination2_check),
+long_option("chk-term2",            termination2_check),
+long_option("verbose-check-termination2", termination2_check_verbose),
+long_option("verb-check-term2",     termination2_check_verbose),
+long_option("verb-chk-term2",       termination2_check_verbose),
+long_option("termination2-widening-limit", widening_limit),
+long_option("term2-widening-limit",     widening_limit),
+long_option("arg-size-analysis-only",   arg_size_analysis_only),
+long_option("termination2-propagate-failure-constraints",
+                    propagate_failure_constrs),
+long_option("term2-propagate-failure-constraints",
+                    propagate_failure_constrs),
+long_option("term2-propagate-failure-constrs", propagate_failure_constrs),
+long_option("termination2-norm", termination2_norm),
+long_option("term2-norm", termination2_norm),
+long_option("termination2-maximum-matrix-size", term2_maximum_matrix_size),
+long_option("term2-max-matrix-size", term2_maximum_matrix_size),
+long_option("analyse-exceptions",   analyse_exceptions),
+long_option("analyse-closures",     analyse_closures),
+long_option("analyse-local-closures",   analyse_closures),
+long_option("analyse-trail-usage",  analyse_trail_usage),
+long_option("optimize-trail-usage", optimize_trail_usage),
+long_option("optimize-region-ops",  optimize_region_ops),
+long_option("analyse-mm-tabling",   analyse_mm_tabling),
+
+long_option("structure-sharing",    structure_sharing_analysis),
+long_option("structure-sharing-widening", structure_sharing_widening),
+long_option("structure-reuse",      structure_reuse_analysis),
+long_option("ctgc",                 structure_reuse_analysis),
+long_option("structure-reuse-constraint", structure_reuse_constraint),
+long_option("ctgc-constraint",      structure_reuse_constraint),
+long_option("structure-reuse-constraint-arg", structure_reuse_constraint_arg),
+long_option("ctgc-constraint-arg",  structure_reuse_constraint_arg),
+long_option("structure-reuse-max-conditions", structure_reuse_max_conditions),
+long_option("structure-reuse-repeat", structure_reuse_repeat),
+long_option("structure-reuse-free-cells", structure_reuse_free_cells),
+
+long_option("target-debug",         target_debug),
+
+long_option("cc",                   cc),
+long_option("c-optimise",           optopt_c_optimize),
+long_option("c-optimize",           optopt_c_optimize),
+
+long_option("c-debug",              target_debug),
+long_option("c-include-directory",  c_include_directory),
+long_option("c-include-dir",        c_include_directory),
+long_option("ansi-c",               ansi_c),
+long_option("cflags",               cflags),
+long_option("cflag",                quoted_cflag),
+
+long_option("gcc-flags",            gcc_flags),
+long_option("gcc-flag",             quoted_gcc_flag),
+long_option("clang-flags",          clang_flags),
+long_option("clang-flag",           quoted_clang_flag),
+long_option("msvc-flags",           msvc_flags),
+long_option("msvc-flag",            quoted_msvc_flag),
+
+long_option("cflags-for-warnings",  cflags_for_warnings),
+long_option("cflags-for-optimization",  cflags_for_optimization),
+long_option("cflags-for-ansi",      cflags_for_ansi),
+long_option("cflags-for-regs",      cflags_for_regs),
+long_option("cflags-for-gotos",     cflags_for_gotos),
+long_option("cflags-for-threads",   cflags_for_threads),
+long_option("cflags-for-debug",     cflags_for_debug),
+long_option("cflags-for-sanitizers", cflags_for_sanitizers),
+long_option("cflags-for-pic",       cflags_for_pic),
+long_option("cflags-for-lto",       cflags_for_lto),
+long_option("c-flag-to-name-object-file", c_flag_to_name_object_file),
+long_option("object-file-extension",    object_file_extension),
+long_option("pic-object-file-extension", pic_object_file_extension),
+long_option("c-compiler-type",      c_compiler_type),
+long_option("csharp-compiler-type", csharp_compiler_type),
+
+long_option("java-compiler",        java_compiler),
+long_option("javac",                java_compiler),
+long_option("java-interpreter",     java_interpreter),
+long_option("javac-flags",          java_compiler_flags),
+long_option("javac-flag",           quoted_java_compiler_flag),
+long_option("java-flags",           java_compiler_flags),
+long_option("java-flag",            quoted_java_compiler_flag),
+
+long_option("java-debug",           target_debug),
+long_option("java-classpath",       java_classpath),
+long_option("java-object-file-extension", java_object_file_extension),
+long_option("java-runtime-flags",   java_runtime_flags),
+long_option("java-runtime-flag",    quoted_java_runtime_flag),
+
+long_option("csharp-compiler",      csharp_compiler),
+long_option("csharp-flags",         csharp_flags),
+long_option("csharp-flag",          quoted_csharp_flag),
+long_option("cli-interpreter",      cli_interpreter),
+
+long_option("output-file",          output_file_name),
+long_option("ld-flags",             ld_flags),
+long_option("ld-flag",              quoted_ld_flag),
+long_option("ld-libflags",          ld_libflags),
+long_option("ld-libflag",           quoted_ld_libflag),
+long_option("library-directory",    link_library_directories),
+long_option("runtime-library-directory", runtime_link_library_directories),
+long_option("default-runtime-library-directory",
+                                    default_runtime_library_directory),
+long_option("library",              link_libraries),
+long_option("link-object",          link_objects),
+long_option("mercury-library",      mercury_library_special),
+long_option("ml",                   mercury_library_special),
+long_option("mercury-library-directory", mercury_library_directory_special),
+long_option("mld",                  mercury_library_directory_special),
+long_option("search-library-files-directory",
+                search_library_files_directory_special),
+long_option("search-lib-files-dir",
+                search_library_files_directory_special),
+long_option("mercury-standard-library-directory",
+                mercury_standard_library_directory_special),
+long_option("mercury-stdlib-dir",
+                mercury_standard_library_directory_special),
+long_option("init-file-directory",  init_file_directories),
+long_option("init-file",            init_files),
+long_option("trace-init-file",      trace_init_files),
+long_option("linkage",              linkage_special),
+long_option("mercury-linkage",      mercury_linkage_special),
+long_option("demangle",             demangle),
+long_option("strip",                strip),
+long_option("main",                 main),
+long_option("allow-undefined",      allow_undefined),
+long_option("use-readline",         use_readline),
+long_option("runtime-flags",        runtime_flags),
+long_option("extra-initialization-functions",
+                    extra_initialization_functions),
+long_option("extra-inits",      extra_initialization_functions),
+long_option("framework",        frameworks),
+long_option("framework-directory", framework_directories),
+long_option("sign-assembly", sign_assembly),
+long_option("cstack-reserve-size", cstack_reserve_size),
+
+long_option("shared-library-extension", shared_library_extension),
+long_option("library-extension",    library_extension),
+long_option("executable-file-extension", executable_file_extension),
+long_option("create-archive-command",   create_archive_command),
+long_option("create-archive-command-output-flag",
+                    create_archive_command_output_flag),
+long_option("create-archive-command-flags", create_archive_command_flags),
+long_option("link-executable-command",  link_executable_command),
+long_option("link-shared-lib-command",  link_shared_lib_command),
+long_option("ranlib-command",       ranlib_command),
+long_option("ranlib-flags",         ranlib_flags),
+long_option("mkinit-command",       mkinit_command),
+long_option("mkinit-erl-command",   mkinit_erl_command),
+long_option("demangle-command",     demangle_command),
+long_option("filtercc-command",     filtercc_command),
+long_option("filterjavac-command",  filterjavac_command),
+long_option("trace-libs",           trace_libs),
+long_option("thread-libs",          thread_libs),
+long_option("hwloc-libs",           hwloc_libs),
+long_option("hwloc-static-libs",    hwloc_static_libs),
+long_option("shared-libs",          shared_libs),
+long_option("math-lib",             math_lib),
+long_option("readline-libs",        readline_libs),
+long_option("linker-opt-separator", linker_opt_separator),
+long_option("linker-debug-flags",   linker_debug_flags),
+long_option("shlib-linker-debug-flags", shlib_linker_debug_flags),
+long_option("linker-sanitizer-flags", linker_sanitizer_flags),
+long_option("linker-trace-flags",   linker_trace_flags),
+long_option("shlib-linker-trace-flags", shlib_linker_trace_flags),
+long_option("linker-thread-flags",  linker_thread_flags),
+long_option("shlib-linker-thread-flags", shlib_linker_thread_flags),
+long_option("linker-lto-flags",     linker_lto_flags),
+long_option("linker-static-flags",  linker_static_flags),
+long_option("linker-strip-flag",    linker_strip_flag),
+long_option("linker-link-lib-flag", linker_link_lib_flag),
+long_option("linker-link-lib-suffix",   linker_link_lib_suffix),
+long_option("shlib-linker-link-lib-flag", shlib_linker_link_lib_flag),
+long_option("shlib-linker-link-lib-suffix", shlib_linker_link_lib_suffix),
+long_option("linker-path-flag",     linker_path_flag),
+long_option("linker-rpath-flag",    linker_rpath_flag),
+long_option("linker-rpath-separator",   linker_rpath_separator),
+long_option("shlib-linker-rpath-flag",  shlib_linker_rpath_flag),
+long_option("shlib-linker-rpath-separator", shlib_linker_rpath_separator),
+long_option("linker-allow-undefined-flag", linker_allow_undefined_flag),
+long_option("linker-error-undefined-flag", linker_error_undefined_flag),
+long_option("shlib-linker-use-install-name", shlib_linker_use_install_name),
+long_option("shlib-linker-install-name-flag", shlib_linker_install_name_flag),
+long_option("shlib-linker-install-name-path", shlib_linker_install_name_path),
+long_option("strip-executable-command", strip_executable_command),
+long_option("strip-executable-shared-flags", strip_executable_shared_flags),
+long_option("strip-executable-static-flags", strip_executable_static_flags),
+long_option("java-archive-command", java_archive_command),
+
+long_option("make",                 only_opmode_make),
+long_option("keep-going",           keep_going),
+long_option("rebuild",              rebuild),
+long_option("jobs",                 jobs),
+long_option("track-flags",          track_flags),
+long_option("track-options",        track_flags),
+long_option("invoked-by-mmc-make",  invoked_by_mmc_make),
+long_option("pre-link-command",     pre_link_command),
+long_option("extra-init-command",   extra_init_command),
+long_option("mercury-configuration-directory",
+                mercury_configuration_directory_special),
+long_option("mercury-config-dir",
+                mercury_configuration_directory_special),
+long_option("install-prefix",       install_prefix),
+long_option("install-command",      install_command),
+long_option("install-command-dir-option", install_command_dir_option),
+long_option("use-symlinks",         use_symlinks),
+long_option("library-grade",        libgrades),
+long_option("detect-libgrades",     detect_libgrades),
+long_option("libgrade",             libgrades),
+long_option("libgrades-include-component", libgrades_include_components),
+long_option("libgrades-include",           libgrades_include_components),
+long_option("libgrades-exclude-component", libgrades_exclude_components),
+long_option("libgrades-exclude",           libgrades_exclude_components),
+long_option("library-linkage",      lib_linkages),
+long_option("lib-linkage",          lib_linkages),
+long_option("flags",                flags_file),
+long_option("flags-file",           flags_file),
+long_option("options-file",         options_files),
+long_option("config-file",          config_file),
+long_option("options-search-directory", options_search_directories),
+long_option("use-subdirs",          use_subdirs),
+long_option("use-grade-subdirs",    use_grade_subdirs),
+long_option("search-directory",     search_directories),
+long_option("intermod-directory",   intermod_directories),
+long_option("use-search-directories-for-intermod",
+                    use_search_directories_for_intermod),
+long_option("libgrade-install-check", libgrade_install_check),
+long_option("order-make-by-timestamp", order_make_by_timestamp),
+long_option("show-make-times",      show_make_times),
+long_option("extra-lib-header",     extra_library_header),
+long_option("extra-library-header", extra_library_header),
+long_option("restricted-command-line", restricted_command_line),
+long_option("env-type",                env_type),
+long_option("host-env-type",           host_env_type),
+long_option("system-env-type",         system_env_type),
+long_option("target-env-type",         target_env_type),
+
+long_option("typecheck-ambiguity-warn-limit",
+                                    typecheck_ambiguity_warn_limit),
+long_option("typecheck-ambiguity-error-limit",
+                                    typecheck_ambiguity_error_limit),
+long_option("help",                 help),
+long_option("version",              version),
+long_option("filenames-from-stdin", filenames_from_stdin),
+long_option("fullarch",             target_arch),
+long_option("target-arch",          target_arch),
+long_option("cross-compiling",      cross_compiling),
+long_option("local-module-id",      local_module_id),
+long_option("analysis-file-cache-dir",  analysis_file_cache_dir),
+long_option("bug-intermod-2002-06-13",  compiler_sufficiently_recent),
+long_option("bug-intermod-2006-09-28",  compiler_sufficiently_recent),
+long_option("bug-foreign_import-2002-08-06", compiler_sufficiently_recent),
+long_option("install-opt-files-2002-08-30", compiler_sufficiently_recent),
+long_option("read-config-file-2003-03-01", compiler_sufficiently_recent),
+
+long_option("no-noncompact-ho-call-2004-01-15", compiler_sufficiently_recent),
+long_option("trace-io-builtins-2006-08-14", compiler_sufficiently_recent),
+long_option("compound-compare-builtins-2007-07-09",
+                                    compiler_sufficiently_recent),
+
+long_option("no-det-warning-compound-compare-2007-07-17",
+                                    compiler_sufficiently_recent),
+long_option("foreign-enum-switch-fix",
+                                    compiler_sufficiently_recent),
+long_option("failing-disjunct-in-switch-dup-fix",
+                                    compiler_sufficiently_recent),
+long_option("store-at-ref-impure-2008-09-11",
+                                    compiler_sufficiently_recent),
+long_option("java-export-ref-out",  compiler_sufficiently_recent),
+long_option("java-generics-2010-04-13",
+                                    compiler_sufficiently_recent),
+long_option("strip-executable-2014-05-05",
+                                    compiler_sufficiently_recent),
+long_option("trace-goal-only-locals-2017-07-05",
+                                    compiler_sufficiently_recent),
+long_option("no-reserved-addrs",
+                                    compiler_sufficiently_recent),
+long_option("builtin-lt-gt-2018-10-08",
+                                    compiler_sufficiently_recent),
+long_option("fixed-contiguity-2018-10-19",
+                                    compiler_sufficiently_recent),
+long_option("simplest-msg-2019-09-22",
+                                    compiler_sufficiently_recent),
+long_option("unqual-foreign-enums-in-int-files-2019-10-04",
+                                    compiler_sufficiently_recent),
+long_option("obsolete-proc-2019-10-23",
+                                    compiler_sufficiently_recent),
+long_option("type-repn-int3-2020-03-22",
+                                    compiler_sufficiently_recent),
+long_option("github-85--2020-03-24",
+                                    compiler_sufficiently_recent),
+long_option("foreign-proc-typeinfo-2020-04-08",
+                                    compiler_sufficiently_recent),
+long_option("ushift-2020-04-30",
+                                    compiler_sufficiently_recent),
+long_option("unsigned_lt-2020-05-02",
+                                    compiler_sufficiently_recent),
+long_option("format-uint-2020-05-23",
+                                    compiler_sufficiently_recent),
+long_option("mmake-all-2020-05-25",
+                                    compiler_sufficiently_recent),
+long_option("unsigned-lt-2020-05-25",
+                                    compiler_sufficiently_recent),
+long_option("may-ignore-without-warning-2020-08-18",
+                                    compiler_sufficiently_recent),
+long_option("prolog-is-2020-08-21",
+                                    compiler_sufficiently_recent),
+long_option("partial-inst-copy-2021-01-04",
+                                    compiler_sufficiently_recent),
+long_option("mantis-bug-529-2021-02-25",
+                                    compiler_sufficiently_recent),
+long_option("subtype-opt-2022-02-19",
+                                    compiler_sufficiently_recent),
+long_option("typespec-pragma-2022-07-20",
+                                    compiler_sufficiently_recent),
+long_option("experiment",           experiment),
+long_option("experiment1",          experiment1),
+long_option("experiment2",          experiment2),
+long_option("experiment3",          experiment3),
+long_option("experiment4",          experiment4),
+long_option("experiment5",          experiment5),
+long_option("ignore-par-conjunctions",
+                                    ignore_par_conjunctions),
+long_option("control-granularity",  control_granularity),
+long_option("distance-granularity", distance_granularity),
+long_option("implicit-parallelism", implicit_parallelism),
+long_option("feedback-file",        feedback_file),
+long_option("par-loop-control",     par_loop_control),
+long_option("par-loop-control-preserve-tail-recursion",
+                                    par_loop_control_preserve_tail_recursion),
+
+special_handler(option, specialdata, !.optiontable, result, !optoptions) :-
+    require_switch_arms_semidet [option]
+    (
+        (
+            option = grade,
+            specialdata = string(grade),
+            ( if convert_grade_option(grade, !optiontable) then
+                result = ok(!.optiontable)
+            else
+                result = error("invalid grade `" ++ grade ++ "'")
+            )
+        ;
+            option = linkage_special,
+            specialdata = string(flag),
+            ( if ( flag = "shared" ; flag = "static" ) then
+                map.det_update(mercury_linkage, string(flag), !optiontable),
+                map.det_update(linkage, string(flag), !optiontable),
+                result = ok(!.optiontable)
+            else
+                result = error("argument of `--linkage' should be " ++
+                    "either ""shared"" or ""static"", not """ ++ flag ++ """.")
+            )
+        ;
+            option = mercury_linkage_special,
+            specialdata = string(flag),
+            ( if ( flag = "shared" ; flag = "static" ) then
+                map.det_update(mercury_linkage, string(flag), !optiontable),
+                result = ok(!.optiontable)
+            else
+                result = error("argument of `--mercury-linkage' should be " ++
+                    "either ""shared"" or ""static"", not """ ++ flag ++ """.")
+            )
+        )
+    ;
+        (
+            option = compile_to_c,
+            specialdata = none,
+            map.set(target, string("c"), !optiontable),
+            map.set(only_opmode_target_code_only, bool(yes), !optiontable)
+        ;
+            option = java,
+            specialdata = none,
+            map.set(target, string("java"), !optiontable)
+        ;
+            option = java_only,
+            specialdata = none,
+            map.set(target, string("java"), !optiontable),
+            map.set(only_opmode_target_code_only, bool(yes), !optiontable)
+        ;
+            option = csharp,
+            specialdata = none,
+            map.set(target, string("csharp"), !optiontable)
+        ;
+            option = csharp_only,
+            specialdata = none,
+            map.set(target, string("csharp"), !optiontable),
+            map.set(only_opmode_target_code_only, bool(yes), !optiontable)
+        ;
+            option = profiling,
+            specialdata = bool(profile),
+            map.set(profile_time, bool(profile), !optiontable),
+            map.set(profile_calls, bool(profile), !optiontable),
+            map.set(profile_memory, bool(no), !optiontable),
+            map.set(profile_deep, bool(no), !optiontable)
+        ;
+            option = time_profiling,
+            specialdata = none,
+            map.set(profile_time, bool(yes), !optiontable),
+            map.set(profile_calls, bool(yes), !optiontable),
+            map.set(profile_memory, bool(no), !optiontable),
+            map.set(profile_deep, bool(no), !optiontable)
+        ;
+            option = memory_profiling,
+            specialdata = none,
+            map.set(profile_time, bool(no), !optiontable),
+            map.set(profile_calls, bool(yes), !optiontable),
+            map.set(profile_memory, bool(yes), !optiontable),
+            map.set(profile_deep, bool(no), !optiontable)
+        ;
+            option = deep_profiling,
+            specialdata = none,
+            map.set(profile_time, bool(no), !optiontable),
+            map.set(profile_calls, bool(no), !optiontable),
+            map.set(profile_memory, bool(no), !optiontable),
+            map.set(profile_deep, bool(yes), !optiontable)
+        ;
+            option = inlining,
+            specialdata = bool(inline),
+            (
+                inline = yes,
+                compoundthreshold = 10
+            ;
+                inline = no,
+                compoundthreshold = 0
+            ),
+            inlineopts = cord.from_list([
+                oo_inline_simple(inline),
+                oo_inline_builtins(inline),
+                oo_inline_single_use(inline),
+                oo_inline_compound_threshold(compoundthreshold)
+            ]),
+            !:optoptions = !.optoptions ++ inlineopts
+        ;
+            option = reclaim_heap_on_failure,
+            specialdata = bool(reclaim),
+            map.set(reclaim_heap_on_semidet_failure, bool(reclaim),
+                !optiontable),
+            map.set(reclaim_heap_on_nondet_failure, bool(reclaim),
+                !optiontable)
+        ;
+            option = strict_sequential,
+            specialdata = none,
+            override_options([
+                    reorder_conj - bool(no),
+                    reorder_disj - bool(no),
+                    fully_strict - bool(yes)
+                ], !optiontable)
+        ;
+            option = inhibit_warnings,
+            specialdata = bool(inhibit),
+            bool.not(inhibit, enable),
+            set_all_options_to(style_warning_options, bool(enable),
+                !optiontable),
+            set_all_options_to(non_style_warning_options, bool(enable),
+                !optiontable)
+        ;
+            option = inhibit_style_warnings,
+            specialdata = bool(inhibit),
+            bool.not(inhibit, enable),
+            set_all_options_to(style_warning_options, bool(enable),
+                !optiontable)
+        ;
+            option = warn_non_tail_recursion,
+            specialdata = maybe_string(maybereccalls0),
+            (
+                maybereccalls0 = yes(reccalls0),
+                reccalls = to_lower(reccalls0),
+                (
+                    reccalls = "none",
+                    warnselfrec = no,
+                    warnmutualrec = no
+                ;
+                    reccalls = "self",
+                    warnselfrec = yes,
+                    warnmutualrec = no
+                ;
+                    ( reccalls = "self-and-mutual"
+                    ; reccalls = "both"
+                    ; reccalls = "all"
+                    ),
+                    warnselfrec = yes,
+                    warnmutualrec = yes
+                )
+            ;
+                maybereccalls0 = no,
+                warnselfrec = no,
+                warnmutualrec = no
+            ),
+            map.set(warn_non_tail_recursion_self, bool(warnselfrec),
+                !optiontable),
+            map.set(warn_non_tail_recursion_mutual, bool(warnmutualrec),
+                !optiontable)
+        ;
+            option = infer_all,
+            specialdata = bool(infer),
+            override_options([
+                    infer_types                     -   bool(infer),
+                    infer_modes                     -   bool(infer),
+                    infer_det                       -   bool(infer)
+                ], !optiontable)
+        ;
+            option = optimize_saved_vars,
+            specialdata = bool(optimize),
+            savedvarsopts = cord.from_list([
+                oo_opt_saved_vars_const(optimize),
+                oo_opt_svcell(optimize)
+            ]),
+            !:optoptions = !.optoptions ++ savedvarsopts
+        ;
+            option = mercury_library_directory_special,
+            specialdata = string(dir),
+            option_table_add_mercury_library_directory(dir, !optiontable)
+        ;
+            option = search_library_files_directory_special,
+            specialdata = string(dir),
+            option_table_add_search_library_files_directory(dir, !optiontable)
+        ;
+            option = mercury_library_special,
+            specialdata = string(lib),
+            list.foldl(append_to_accumulating_option, [
+                    link_libraries                  - lib,
+                    mercury_libraries               - lib,
+                    init_files                      - (lib ++ ".init")
+                ], !optiontable)
+        ;
+            option = mercury_standard_library_directory_special,
+            specialdata = maybe_string(stdlibdir),
+            maybestdlibdir = maybe_string(stdlibdir),
+            map.set(mercury_standard_library_directory, maybestdlibdir,
+                !optiontable),
+            map.set(mercury_configuration_directory, maybestdlibdir,
+                !optiontable)
+        ;
+            option = mercury_configuration_directory_special,
+            specialdata = string(confdir),
+            map.set(mercury_configuration_directory,
+                maybe_string(yes(confdir)), !optiontable)
+        ;
+            option = quoted_cflag,
+            specialdata = string(flag),
+            handle_quoted_flag(cflags, flag, !optiontable)
+        ;
+            option = quoted_gcc_flag,
+            specialdata = string(flag),
+            handle_quoted_flag(gcc_flags, flag, !optiontable)
+        ;
+            option = quoted_clang_flag,
+            specialdata = string(flag),
+            handle_quoted_flag(clang_flags, flag, !optiontable)
+        ;
+            option = quoted_msvc_flag,
+            specialdata = string(flag),
+            handle_quoted_flag(msvc_flags, flag, !optiontable)
+        ;
+            option = quoted_java_compiler_flag,
+            specialdata = string(flag),
+            handle_quoted_flag(java_compiler_flags, flag, !optiontable)
+        ;
+            option = quoted_java_runtime_flag,
+            specialdata = string(flag),
+            handle_quoted_flag(java_runtime_flags, flag, !optiontable)
+        ;
+            option = quoted_csharp_flag,
+            specialdata = string(flag),
+            handle_quoted_flag(csharp_flags, flag, !optiontable)
+        ;
+            option = quoted_ld_flag,
+            specialdata = string(flag),
+            handle_quoted_flag(ld_flags, flag, !optiontable)
+        ;
+            option = quoted_ld_libflag,
+            specialdata = string(flag),
+            handle_quoted_flag(ld_libflags, flag, !optiontable)
+        ;
+            option = env_type,
+            specialdata = string(envtypestr),
+            override_options([
+                    host_env_type   - string(envtypestr),
+                    system_env_type - string(envtypestr),
+                    target_env_type - string(envtypestr)
+                ], !optiontable)
+        ;
+            option = inform_inferred,
+            specialdata = bool(inform),
+            override_options([
+                    inform_inferred_types -   bool(inform),
+                    inform_inferred_modes -   bool(inform)
+                ], !optiontable)
+        ),
+        result = ok(!.optiontable)
+    ;
+        (
+            option = optopt_allow_inlining,
+            specialdata = bool(bool),
+            optoption = oo_allow_inlining(bool)
+        ;
+            option = optopt_inline_simple,
+            specialdata = bool(bool),
+            optoption = oo_inline_simple(bool)
+        ;
+            option = optopt_inline_builtins,
+            specialdata = bool(bool),
+            optoption = oo_inline_builtins(bool)
+        ;
+            option = optopt_inline_single_use,
+            specialdata = bool(bool),
+            optoption = oo_inline_single_use(bool)
+        ;
+            option = optopt_inline_linear_tail_rec_sccs,
+            specialdata = bool(bool),
+            optoption = oo_inline_linear_tail_rec_sccs(bool)
+        ;
+            option = optopt_enable_const_struct_poly,
+            specialdata = bool(bool),
+            optoption = oo_enable_const_struct_poly(bool)
+        ;
+            option = optopt_enable_const_struct_user,
+            specialdata = bool(bool),
+            optoption = oo_enable_const_struct_user(bool)
+        ;
+            option = optopt_common_struct,
+            specialdata = bool(bool),
+            optoption = oo_opt_common_structs(bool)
+        ;
+            option = optopt_constraint_propagation,
+            specialdata = bool(bool),
+            optoption = oo_prop_constraints(bool)
+        ;
+            option = optopt_local_constraint_propagation,
+            specialdata = bool(bool),
+            optoption = oo_prop_local_constraints(bool)
+        ;
+            option = optopt_optimize_duplicate_calls,
+            specialdata = bool(bool),
+            optoption = oo_opt_dup_calls(bool)
+        ;
+            option = optopt_constant_propagation,
+            specialdata = bool(bool),
+            optoption = oo_prop_constants(bool)
+        ;
+            option = optopt_excess_assign,
+            specialdata = bool(bool),
+            optoption = oo_elim_excess_assigns(bool)
+        ;
+            option = optopt_test_after_switch,
+            specialdata = bool(bool),
+            optoption = oo_opt_test_after_switch(bool)
+        ;
+            option = optopt_optimize_format_calls,
+            specialdata = bool(bool),
+            optoption = oo_opt_format_calls(bool)
+        ;
+            option = optopt_loop_invariants,
+            specialdata = bool(bool),
+            optoption = oo_opt_loop_invariants(bool)
+        ;
+            option = optopt_optimize_saved_vars_const,
+            specialdata = bool(bool),
+            optoption = oo_opt_saved_vars_const(bool)
+        ;
+            option = optopt_optimize_saved_vars_cell,
+            specialdata = bool(bool),
+            optoption = oo_opt_svcell(bool)
+        ;
+            option = optopt_optimize_saved_vars_cell_loop,
+            specialdata = bool(bool),
+            optoption = oo_opt_svcell_loop(bool)
+        ;
+            option = optopt_optimize_saved_vars_cell_full_path,
+            specialdata = bool(bool),
+            optoption = oo_opt_svcell_full_path(bool)
+        ;
+            option = optopt_optimize_saved_vars_cell_on_stack,
+            specialdata = bool(bool),
+            optoption = oo_opt_svcell_on_stack(bool)
+        ;
+            option = optopt_optimize_saved_vars_cell_candidate_headvars,
+            specialdata = bool(bool),
+            optoption = oo_opt_svcell_candidate_headvars(bool)
+        ;
+            option = optopt_optimize_saved_vars_cell_include_all_candidates,
+            specialdata = bool(bool),
+            optoption = oo_opt_svcell_all_candidates(bool)
+        ;
+            option = optopt_delay_construct,
+            specialdata = bool(bool),
+            optoption = oo_delay_constructs(bool)
+        ;
+            option = optopt_follow_code,
+            specialdata = bool(bool),
+            optoption = oo_opt_follow_code(bool)
+        ;
+            option = optopt_optimize_unused_args,
+            specialdata = bool(bool),
+            optoption = oo_opt_unused_args(bool)
+        ;
+            option = optopt_intermod_unused_args,
+            specialdata = bool(bool),
+            optoption = oo_opt_unused_args_intermod(bool)
+        ;
+            option = optopt_optimize_higher_order,
+            specialdata = bool(bool),
+            optoption = oo_opt_higher_order(bool)
+        ;
+            option = optopt_unneeded_code,
+            specialdata = bool(bool),
+            optoption = oo_opt_unneeded_code(bool)
+        ;
+            option = optopt_type_specialization,
+            specialdata = bool(bool),
+            optoption = oo_spec_types(bool)
+        ;
+            option = optopt_user_guided_type_specialization,
+            specialdata = bool(bool),
+            optoption = oo_spec_types_user_guided(bool)
+        ;
+            option = optopt_introduce_accumulators,
+            specialdata = bool(bool),
+            optoption = oo_introduce_accumulators(bool)
+        ;
+            option = optopt_optimize_constructor_last_call_accumulator,
+            specialdata = bool(bool),
+            optoption = oo_opt_lcmc_accumulator(bool)
+        ;
+            option = optopt_optimize_constructor_last_call_null,
+            specialdata = bool(bool),
+            optoption = oo_opt_lcmc_null(bool)
+        ;
+            option = optopt_optimize_constructor_last_call,
+            specialdata = bool(bool),
+            optoption = oo_opt_lcmc(bool)
+        ;
+            option = optopt_optimize_dead_procs,
+            specialdata = bool(bool),
+            optoption = oo_opt_dead_procs(bool)
+        ;
+            option = optopt_deforestation,
+            specialdata = bool(bool),
+            optoption = oo_deforest(bool)
+        ;
+            option = optopt_untuple,
+            specialdata = bool(bool),
+            optoption = oo_untuple(bool)
+        ;
+            option = optopt_tuple,
+            specialdata = bool(bool),
+            optoption = oo_tuple(bool)
+        ;
+            option = optopt_inline_par_builtins,
+            specialdata = bool(bool),
+            optoption = oo_inline_par_builtins(bool)
+        ;
+            option = optopt_always_specialize_in_dep_par_conjs,
+            specialdata = bool(bool),
+            optoption = oo_spec_in_all_dep_par_conjs(bool)
+        ;
+            option = optopt_allow_some_paths_only_waits,
+            specialdata = bool(bool),
+            optoption = oo_allow_some_paths_only_waits(bool)
+        ;
+            option = optopt_region_analysis,
+            specialdata = bool(bool),
+            optoption = oo_analyse_regions(bool)
+        ;
+            option = optopt_smart_indexing,
+            specialdata = bool(bool),
+            optoption = oo_use_smart_indexing(bool)
+        ;
+            option = optopt_smart_atomic_indexing,
+            specialdata = bool(bool),
+            optoption = oo_use_smart_indexing_atomic(bool)
+        ;
+            option = optopt_smart_string_indexing,
+            specialdata = bool(bool),
+            optoption = oo_use_smart_indexing_string(bool)
+        ;
+            option = optopt_smart_tag_indexing,
+            specialdata = bool(bool),
+            optoption = oo_use_smart_indexing_tag(bool)
+        ;
+            option = optopt_smart_float_indexing,
+            specialdata = bool(bool),
+            optoption = oo_use_smart_indexing_float(bool)
+        ;
+            option = optopt_switch_single_rec_base_first,
+            specialdata = bool(bool),
+            optoption = oo_put_base_first_single_rec(bool)
+        ;
+            option = optopt_switch_multi_rec_base_first,
+            specialdata = bool(bool),
+            optoption = oo_put_base_first_multi_rec(bool)
+        ;
+            option = optopt_static_ground_cells,
+            specialdata = bool(bool),
+            optoption = oo_use_static_ground_cells(bool)
+        ;
+            option = optopt_static_ground_floats,
+            specialdata = bool(bool),
+            optoption = oo_use_static_ground_floats(bool)
+        ;
+            option = optopt_static_ground_int64s,
+            specialdata = bool(bool),
+            optoption = oo_use_static_ground_int64s(bool)
+        ;
+            option = optopt_static_code_addresses,
+            specialdata = bool(bool),
+            optoption = oo_use_static_code_addresses(bool)
+        ;
+            option = optopt_use_atomic_cells,
+            specialdata = bool(bool),
+            optoption = oo_use_atomic_cells(bool)
+        ;
+            option = optopt_middle_rec,
+            specialdata = bool(bool),
+            optoption = oo_opt_middle_rec(bool)
+        ;
+            option = optopt_simple_neg,
+            specialdata = bool(bool),
+            optoption = oo_opt_simple_neg(bool)
+        ;
+            option = optopt_allow_hijacks,
+            specialdata = bool(bool),
+            optoption = oo_allow_hijacks(bool)
+        ;
+            option = optopt_optimize_mlds_tailcalls,
+            specialdata = bool(bool),
+            optoption = oo_opt_mlds_tailcalls(bool)
+        ;
+            option = optopt_optimize_initializations,
+            specialdata = bool(bool),
+            optoption = oo_opt_initializations(bool)
+        ;
+            option = optopt_eliminate_unused_mlds_assigns,
+            specialdata = bool(bool),
+            optoption = oo_elim_unused_mlds_assigns(bool)
+        ;
+            option = optopt_eliminate_local_vars,
+            specialdata = bool(bool),
+            optoption = oo_elim_local_vars(bool)
+        ;
+            option = optopt_generate_trail_ops_inline,
+            specialdata = bool(bool),
+            optoption = oo_gen_trail_ops_inline(bool)
+        ;
+            option = optopt_common_data,
+            specialdata = bool(bool),
+            optoption = oo_use_common_data(bool)
+        ;
+            option = optopt_common_layout_data,
+            specialdata = bool(bool),
+            optoption = oo_use_common_layout_data(bool)
+        ;
+            option = optopt_optimize,
+            specialdata = bool(bool),
+            optoption = oo_optimize(bool)
+        ;
+            option = optopt_optimize_peep,
+            specialdata = bool(bool),
+            optoption = oo_opt_peep(bool)
+        ;
+            option = optopt_optimize_peep_mkword,
+            specialdata = bool(bool),
+            optoption = oo_opt_peep_mkword(bool)
+        ;
+            option = optopt_optimize_jumps,
+            specialdata = bool(bool),
+            optoption = oo_opt_jumps(bool)
+        ;
+            option = optopt_optimize_fulljumps,
+            specialdata = bool(bool),
+            optoption = oo_opt_fulljumps(bool)
+        ;
+            option = optopt_pessimize_tailcalls,
+            specialdata = bool(bool),
+            optoption = oo_pessimize_tailcalls(bool)
+        ;
+            option = optopt_checked_nondet_tailcalls,
+            specialdata = bool(bool),
+            optoption = oo_opt_checked_nondet_tailcalls(bool)
+        ;
+            option = optopt_use_local_vars,
+            specialdata = bool(bool),
+            optoption = oo_use_local_vars(bool)
+        ;
+            option = optopt_standardize_labels,
+            specialdata = bool(bool),
+            optoption = oo_standardize_labels(bool)
+        ;
+            option = optopt_optimize_labels,
+            specialdata = bool(bool),
+            optoption = oo_opt_labels(bool)
+        ;
+            option = optopt_optimize_dups,
+            specialdata = bool(bool),
+            optoption = oo_opt_dups(bool)
+        ;
+            option = optopt_optimize_proc_dups,
+            specialdata = bool(bool),
+            optoption = oo_opt_proc_dups(bool)
+        ;
+            option = optopt_optimize_frames,
+            specialdata = bool(bool),
+            optoption = oo_opt_frames(bool)
+        ;
+            option = optopt_optimize_delay_slot,
+            specialdata = bool(bool),
+            optoption = oo_opt_delay_slot(bool)
+        ;
+            option = optopt_optimize_reassign,
+            specialdata = bool(bool),
+            optoption = oo_opt_reassign(bool)
+        ;
+            option = optopt_use_macro_for_redo_fail,
+            specialdata = bool(bool),
+            optoption = oo_use_macro_for_redo_fail(bool)
+        ;
+            option = optopt_emit_c_loops,
+            specialdata = bool(bool),
+            optoption = oo_emit_c_loops(bool)
+        ;
+            option = optopt_local_thread_engine_base,
+            specialdata = bool(bool),
+            optoption = oo_use_local_thread_engine_base(bool)
+        ;
+            option = optopt_inline_alloc,
+            specialdata = bool(bool),
+            optoption = oo_inline_alloc(bool)
+        ;
+            option = optopt_c_optimize,
+            specialdata = bool(bool),
+            optoption = oo_opt_c(bool)
+        ;
+            option = optopt_inline_call_cost,
+            specialdata = int(n),
+            optoption = oo_inline_call_cost(n)
+        ;
+            option = optopt_inline_compound_threshold,
+            specialdata = int(n),
+            optoption = oo_inline_compound_threshold(n)
+        ;
+            option = optopt_inline_simple_threshold,
+            specialdata = int(n),
+            optoption = oo_inline_simple_threshold(n)
+        ;
+            option = optopt_inline_vars_threshold,
+            specialdata = int(n),
+            optoption = oo_inline_vars_threshold(n)
+        ;
+            option = optopt_intermod_inline_simple_threshold,
+            specialdata = int(n),
+            optoption = oo_intermod_inline_simple_threshold(n)
+        ;
+            option = optopt_inline_linear_tail_rec_sccs_max_extra,
+            specialdata = int(n),
+            optoption = oo_inline_linear_tail_rec_sccs_max_extra(n)
+        ;
+            option = optopt_from_ground_term_threshold,
+            specialdata = int(n),
+            optoption = oo_from_ground_term_threshold(n)
+        ;
+            option = optopt_optimize_saved_vars_cell_cv_store_cost,
+            specialdata = int(n),
+            optoption = oo_opt_svcell_cv_store_cost(n)
+        ;
+            option = optopt_optimize_saved_vars_cell_cv_load_cost,
+            specialdata = int(n),
+            optoption = oo_opt_svcell_cv_load_cost(n)
+        ;
+            option = optopt_optimize_saved_vars_cell_fv_store_cost,
+            specialdata = int(n),
+            optoption = oo_opt_svcell_fv_store_cost(n)
+        ;
+            option = optopt_optimize_saved_vars_cell_fv_load_cost,
+            specialdata = int(n),
+            optoption = oo_opt_svcell_fv_load_cost(n)
+        ;
+            option = optopt_optimize_saved_vars_cell_op_ratio,
+            specialdata = int(n),
+            optoption = oo_opt_svcell_op_ratio(n)
+        ;
+            option = optopt_optimize_saved_vars_cell_node_ratio,
+            specialdata = int(n),
+            optoption = oo_opt_svcell_node_ratio(n)
+        ;
+            option = optopt_optimize_saved_vars_cell_all_path_node_ratio,
+            specialdata = int(n),
+            optoption = oo_opt_svcell_all_path_node_ratio(n)
+        ;
+            option = optopt_higher_order_size_limit,
+            specialdata = int(n),
+            optoption = oo_higher_order_size_limit(n)
+        ;
+            option = optopt_higher_order_arg_limit,
+            specialdata = int(n),
+            optoption = oo_higher_order_arg_limit(n)
+        ;
+            option = optopt_unneeded_code_copy_limit,
+            specialdata = int(n),
+            optoption = oo_opt_unneeded_code_copy_limit(n)
+        ;
+            option = optopt_deforestation_depth_limit,
+            specialdata = int(n),
+            optoption = oo_deforestation_depth_limit(n)
+        ;
+            option = optopt_deforestation_cost_factor,
+            specialdata = int(n),
+            optoption = oo_deforestation_cost_factor(n)
+        ;
+            option = optopt_deforestation_vars_threshold,
+            specialdata = int(n),
+            optoption = oo_deforestation_vars_threshold(n)
+        ;
+            option = optopt_deforestation_size_threshold,
+            specialdata = int(n),
+            optoption = oo_deforestation_size_threshold(n)
+        ;
+            option = optopt_tuple_costs_ratio,
+            specialdata = int(n),
+            optoption = oo_tuple_costs_ratio(n)
+        ;
+            option = optopt_tuple_min_args,
+            specialdata = int(n),
+            optoption = oo_tuple_min_args(n)
+        ;
+            option = optopt_dense_switch_req_density,
+            specialdata = int(n),
+            optoption = oo_dense_switch_req_density(n)
+        ;
+            option = optopt_lookup_switch_req_density,
+            specialdata = int(n),
+            optoption = oo_lookup_switch_req_density(n)
+        ;
+            option = optopt_dense_switch_size,
+            specialdata = int(n),
+            optoption = oo_dense_switch_size(n)
+        ;
+            option = optopt_lookup_switch_size,
+            specialdata = int(n),
+            optoption = oo_lookup_switch_size(n)
+        ;
+            option = optopt_string_trie_switch_size,
+            specialdata = int(n),
+            optoption = oo_string_trie_switch_size(n)
+        ;
+            option = optopt_string_hash_switch_size,
+            specialdata = int(n),
+            optoption = oo_string_hash_switch_size(n)
+        ;
+            option = optopt_string_binary_switch_size,
+            specialdata = int(n),
+            optoption = oo_string_binary_switch_size(n)
+        ;
+            option = optopt_tag_switch_size,
+            specialdata = int(n),
+            optoption = oo_tag_switch_size(n)
+        ;
+            option = optopt_try_switch_size,
+            specialdata = int(n),
+            optoption = oo_try_switch_size(n)
+        ;
+            option = optopt_binary_switch_size,
+            specialdata = int(n),
+            optoption = oo_binary_switch_size(n)
+        ;
+            option = optopt_local_var_access_threshold,
+            specialdata = int(n),
+            optoption = oo_local_var_access_threshold(n)
+        ;
+            option = optopt_optimize_repeat,
+            specialdata = int(n),
+            optoption = oo_opt_repeat(n)
+        ;
+            option = optopt_layout_compression_limit,
+            specialdata = int(n),
+            optoption = oo_layout_compression_limit(n)
+        ;
+            option = optopt_procs_per_c_function,
+            specialdata = int(n),
+            optoption = oo_procs_per_c_function(n)
+        ;
+            option = everything_in_one_c_function,
+            specialdata = none,
+            optoption = oo_use_just_one_c_func(yes)
+        ;
+            option = optopt_tuple_trace_counts_file,
+            specialdata = string(str),
+            optoption = oo_tuple_trace_counts_file(str)
+        ;
+            option = opt_level,
+            specialdata = int(n),
+            optoption = oo_opt_level(n)
+        ;
+            option = opt_space,
+            specialdata = none,
+            optoption = oo_opt_for_space
+        ),
+        cord.snoc(optoption, !optoptions),
+        result = ok(!.optiontable)
+    ),
+
+style_warning_options = [
+    warn_inconsistent_pred_order_clauses,
+    warn_inconsistent_pred_order_foreign_procs,
+    warn_non_contiguous_decls,
+    warn_non_contiguous_clauses,
+    warn_non_contiguous_foreign_procs,
+    warn_simple_code,
+    warn_duplicate_calls,
+    warn_implicit_stream_calls,
+    warn_non_tail_recursion_self,
+    warn_non_tail_recursion_mutual,
+    warn_obvious_non_tail_recursion,
+    warn_dead_procs,
+    warn_dead_preds,
+    warn_known_bad_format_calls,
+    warn_unknown_format_calls,
+    warn_insts_without_matching_type,
+    warn_insts_with_functors_without_type,
+    inform_ite_instead_of_switch,
+    inform_incomplete_switch,
+    warn_suspicious_foreign_procs,
+    warn_state_var_shadowing,
+    warn_unneeded_mode_specific_clause,
+    inform_suboptimal_packing
+],
+
+non_style_warning_options = [
+    warn_accumulator_swaps,
+    warn_singleton_vars,
+    warn_overlapping_scopes,
+    warn_det_decls_too_lax,
+    warn_inferred_erroneous,
+    warn_nothing_exported,
+    warn_unused_args,
+    warn_interface_imports,
+    warn_interface_imports_in_parents,
+    warn_missing_opt_files,
+    warn_missing_trans_opt_files,
+    warn_missing_trans_opt_deps,
+    warn_non_stratification,
+    warn_unification_cannot_succeed,
+    warn_missing_module_name,
+    warn_wrong_module_name,
+    warn_smart_recompilation,
+    warn_undefined_options_variables,
+    warn_target_code,
+    warn_up_to_date,
+    warn_stubs,
+    warn_table_with_inline,
+    warn_non_term_special_preds,
+    warn_suspected_occurs_check_failure,
+    warn_potentially_ambiguous_pragma,
+    warn_ambiguous_pragma,
+    inform_inferred_types
+],
+
+inconsequential_options(inconsequentialoptions) :-
+    option_defaults_2(oc_warn, warningoptions),
+    option_defaults_2(oc_verbosity, verbosityoptions),
+    option_defaults_2(oc_internal, internaluseoptions),
+    option_defaults_2(oc_buildsys, buildsystemoptions),
+    assoc_list.keys(warningoptions, warningkeys),
+    assoc_list.keys(verbosityoptions, verbositykeys),
+    assoc_list.keys(internaluseoptions, internalusekeys),
+    assoc_list.keys(buildsystemoptions, buildsystemkeys),
+    keys = warningkeys ++ verbositykeys ++ internalusekeys ++ buildsystemkeys,
+    inconsequentialoptions = set.list_to_set(keys),
+
+option_table_add_mercury_library_directory(dir, !optiontable) :-
+
+    list.foldl(append_to_accumulating_option, [
+        search_directories          - dir.make_path_name(dir, "ints"),
+        c_include_directory         - dir.make_path_name(dir, "inc"),
+        mercury_library_directories - dir
+    ], !optiontable),
+
+option_table_add_search_library_files_directory(dir, !optiontable) :-
+
+    list.foldl(append_to_accumulating_option, [
+        search_directories          - dir,
+        c_include_directory         - dir,
+        search_library_files_directories - dir
+    ], !optiontable),
+
+pred append_to_accumulating_option(pair(option, string)::in,
+    option_table::in, option_table::out) is det,
+
+append_to_accumulating_option(option - value, !optiontable) :-
+    getopt.lookup_accumulating_option(!.optiontable, option, values0),
+    values = values0 ++ [value],
+    map.set(option, accumulating(values), !optiontable),
+
+pred override_options(list(pair(option, option_data))::in,
+    option_table::in, option_table::out) is det,
+
+override_options([], !optiontable),
+override_options([option - value | optionsvalues], !optiontable) :-
+    map.set(option, value, !optiontable),
+    override_options(optionsvalues, !optiontable),
+
+set_all_options_to([], value, !optiontable),
+set_all_options_to([option | options], value, !optiontable) :-
+    map.set(option, value, !optiontable),
+    set_all_options_to(options, value, !optiontable),
+
+pred handle_quoted_flag(option::in, string::in,
+    option_table::in, option_table::out) is det,
+
+handle_quoted_flag(option, flag, !optiontable) :-
+    append_to_accumulating_option(option - quote_shell_cmd_arg(flag),
+        !optiontable),
+
+options_help(stream, !io) :-
+    io.write_string(stream, "\t-?, -h, --help\n", !io),
+    io.write_string(stream, "\t\tprint this usage message.\n", !io),
+    options_help_warning(stream, !io),
+    options_help_verbosity(stream, !io),
+    options_help_output(stream, !io),
+    options_help_aux_output(stream, !io),
+    options_help_semantics(stream, !io),
+    options_help_termination(stream, !io),
+    options_help_ctgc(stream, !io),
+    options_help_compilation_model(stream, !io),
+    options_help_code_generation(stream, !io),
+    options_help_optimization(stream, !io),
+    options_help_hlds_hlds_optimization(stream, !io),
+    options_help_hlds_llds_optimization(stream, !io),
+    options_help_llds_llds_optimization(stream, !io),
+    options_help_mlds_mlds_optimization(stream, !io),
+    options_help_output_optimization(stream, !io),
+    options_help_target_code_compilation(stream, !io),
+    options_help_link(stream, !io),
+    options_help_build_system(stream, !io),
+    options_help_misc(stream, !io)
+).

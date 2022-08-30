@@ -318,6 +318,14 @@
 
 %---------------------------------------------------------------------------%
 
+    % Consider {add,remove}_indent as (), and {inc,dec}_std_indent as [].
+    % The indent-related operations must occur as balanced pairs, meaning
+    % that matching sequences such as (([])), ([][]) and [([])] are allowed,
+    % but non-matching sequences such as ([)] are not.
+    %
+    % Since the definition of the pp_internal type is private to this module,
+    % code outside this module cannot violate this requirement; only code
+    % inside this module can. If it does, that is a bug.
 :- type pp_internal
     --->    open_group
             % Mark the start of a group.
@@ -326,10 +334,19 @@
             % Mark the end of a group.
 
     ;       add_indent(string)
-            % Extend the current indentation.
-
+            % Extend the current indent stack with the given string.
     ;       remove_indent
-            % Restore indentation to before the last indent/1.
+            % Restore indentation to before the last add_indent/1.
+            
+            % Calling the two operations above {inc,dec}_user_indent
+            % would be more consistent with the two operations below,
+            % but the hard_coded/test_pretty_printer test case references
+            % these names, even though they are supposed to be private.
+
+    ;       inc_std_indent
+            % Add a standard indentation level.
+    ;       dec_std_indent
+            % Remove a standard indentation level.
 
     ;       set_op_priority(ops.priority)
             % Set the current priority for printing operator terms with the
@@ -345,18 +362,6 @@
 :- type formatter_map == map(string, map(string, map(int, formatter))).
 
 %---------------------------------------------------------------------------%
-
-:- type indent_stack
-    --->    indent_empty
-    ;       indent_nonempty(indent_stack, string).
-
-:- func count_indent_codepoints(indent_stack) = int.
-
-count_indent_codepoints(indent_empty) = 0.
-count_indent_codepoints(indent_nonempty(IndentStack, Indent)) =
-    count_indent_codepoints(IndentStack) + string.count_codepoints(Indent).
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 indent(Indent, Docs) =
@@ -367,12 +372,11 @@ indent(Indent, Docs) =
     ]).
 
 indent(Docs) =
-    indent(std_indent, Docs).
-
-:- func std_indent = string.
-:- pragma inline(func(std_indent/0)).
-
-std_indent = "  ".
+    docs([
+        pp_internal(inc_std_indent),
+        docs(Docs),
+        pp_internal(dec_std_indent)
+    ]).
 
 group(Docs) =
     docs([pp_internal(open_group), docs(Docs), pp_internal(close_group)]).
@@ -524,16 +528,17 @@ do_put_docs(Stream, Canonicalize, FMap, LineWidth, [HeadDoc0 | TailDocs0],
                 (
                     Internal = close_group
                 ;
-                    Internal = add_indent(Indent),
-                    !:Indents = indent_nonempty(!.Indents, Indent)
+                    Internal = add_indent(IndentStr),
+                    increment_user_indent(IndentStr, !Indents)
                 ;
                     Internal = remove_indent,
-                    (
-                        !.Indents = indent_empty,
-                        unexpected($pred, "cannot pop empty indent stack")
-                    ;
-                        !.Indents = indent_nonempty(!:Indents, _PoppedIndent)
-                    )
+                    decrement_user_indent(!Indents)
+                ;
+                    Internal = inc_std_indent,
+                    increment_std_indent(!Indents)
+                ;
+                    Internal = dec_std_indent,
+                    decrement_std_indent(!Indents)
                 ;
                     Internal = set_limit(Limit),
                     !:Limit = Limit
@@ -600,6 +605,8 @@ output_current_group(Stream, LineWidth, Indents, [HeadDoc0 | TailDocs0], Docs,
         ;
             ( Internal = add_indent(_)
             ; Internal = remove_indent
+            ; Internal = inc_std_indent
+            ; Internal = dec_std_indent
             ; Internal = set_op_priority(_)
             ; Internal = set_limit(_)
             ),
@@ -712,6 +719,10 @@ expand_docs_to_line_end(Canonicalize, FMap,
                 ;
                     Internal = remove_indent
                 ;
+                    Internal = inc_std_indent
+                ;
+                    Internal = dec_std_indent
+                ;
                     Internal = open_group,
                     % XXX This is probably a bug, because if !.OpenGroups = 0,
                     % then it will *stay* at 0 even *after* this opening
@@ -753,21 +764,85 @@ expand_docs_to_line_end(Canonicalize, FMap,
 
 format_nl(Stream, LineWidth, Indents, RemainingWidth, !RemainingLines, !IO) :-
     stream.put(Stream, "\n", !IO),
-    output_indentation(Stream, Indents, LineWidth, RemainingWidth, !IO),
+    RemainingWidth = LineWidth - count_indent_codepoints(Indents),
+    output_indent_stack(Stream, Indents, !IO),
     !:RemainingLines = !.RemainingLines - 1.
 
-:- pred output_indentation(Stream::in, indent_stack::in, int::in, int::out,
-    State::di, State::uo) is det
-    <= stream.writer(Stream, string, State).
-:- pragma type_spec(pred(output_indentation/6),
+:- pred output_indent_stack(Stream::in, indent_stack::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
+:- pragma type_spec(pred(output_indent_stack/4),
     (Stream = io.output_stream, State = io.state)).
 
-output_indentation(_Stream, indent_empty, !RemainingWidth, !IO).
-output_indentation(Stream, indent_nonempty(IndentStack, Indent),
-        !RemainingWidth, !IO) :-
-    output_indentation(Stream, IndentStack, !RemainingWidth, !IO),
-    stream.put(Stream, Indent, !IO),
-    !:RemainingWidth = !.RemainingWidth - string.count_codepoints(Indent).
+output_indent_stack(Stream, IndentStack, !IO) :-
+    (
+        IndentStack = indent_empty
+    ;
+        IndentStack = indent_user(PrevStack, IndentStr, _NumCPs),
+        output_indent_stack(Stream, PrevStack, !IO),
+        stream.put(Stream, IndentStr, !IO)
+    ;
+        IndentStack = indent_std(PrevStack, IndentLevels, _NumCPs),
+        output_indent_stack(Stream, PrevStack, !IO),
+        output_std_indent_levels(Stream, IndentLevels, !IO)
+    ).
+
+:- pred output_std_indent_levels(Stream::in, int::in,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
+:- pragma type_spec(pred(output_std_indent_levels/4),
+    (Stream = io.output_stream, State = io.state)).
+
+output_std_indent_levels(Stream, NumLevels, !IO) :-
+    % We try to amortize the overhead of stream.put over as large a part
+    % of the overall indentation as we can.
+    ( if NumLevels >= 30 then
+        ( if std_indent(30, IndentStr) then
+            stream.put(Stream, IndentStr, !IO),
+            output_std_indent_levels(Stream, NumLevels - 30, !IO)
+        else
+            unexpected($pred, "std_indent failed 30+")
+        )
+    else if NumLevels > 0 then
+        ( if std_indent(NumLevels, IndentStr) then
+            stream.put(Stream, IndentStr, !IO)
+        else
+            unexpected($pred, "std_indent failed <30")
+        )
+    else
+        true
+    ).
+
+:- pred std_indent(int::in, string::out) is semidet.
+
+std_indent(1,  "  ").
+std_indent(2,  "    ").
+std_indent(3,  "      ").
+std_indent(4,  "        ").
+std_indent(5,  "          ").
+std_indent(6,  "            ").
+std_indent(7,  "              ").
+std_indent(8,  "                ").
+std_indent(9,  "                  ").
+std_indent(10, "                    ").
+std_indent(11, "                      ").
+std_indent(12, "                        ").
+std_indent(13, "                          ").
+std_indent(14, "                            ").
+std_indent(15, "                              ").
+std_indent(16, "                                ").
+std_indent(17, "                                  ").
+std_indent(18, "                                    ").
+std_indent(19, "                                      ").
+std_indent(20, "                                        ").
+std_indent(21, "                                          ").
+std_indent(22, "                                            ").
+std_indent(23, "                                              ").
+std_indent(24, "                                                ").
+std_indent(25, "                                                  ").
+std_indent(26, "                                                    ").
+std_indent(27, "                                                      ").
+std_indent(28, "                                                        ").
+std_indent(29, "                                                          ").
+std_indent(30, "                                                            ").
 
 %---------------------%
 
@@ -868,9 +943,9 @@ expand_format_term(Name, Args, TailDocs, Docs, !Limit, CurrentPri) :-
         ( if Name = "{}" then
             HeadDocs0 = [
                 str("{"),
-                pp_internal(add_indent(std_indent)),
+                pp_internal(inc_std_indent),
                 format_list(Args, str(", ")),
-                pp_internal(remove_indent),
+                pp_internal(dec_std_indent),
                 str("}")
             ]
         else
@@ -879,9 +954,9 @@ expand_format_term(Name, Args, TailDocs, Docs, !Limit, CurrentPri) :-
                 nl,
                 str(term_io.quoted_atom(Name)),
                 str("("),
-                pp_internal(add_indent(std_indent)),
+                pp_internal(inc_std_indent),
                 format_list(Args, str(", ")),
-                pp_internal(remove_indent),
+                pp_internal(dec_std_indent),
                 str(")"),
                 pp_internal(close_group)
             ]
@@ -957,11 +1032,11 @@ expand_format_op(Op, Args, EnclosingPriority, Docs) :-
                 else
                     docs([str(" "), str(Op), str(" ")])
                 ),
-                pp_internal(add_indent(std_indent)),
+                pp_internal(inc_std_indent),
                 nl,
                 pp_internal(set_op_priority(PriorityArgB)),
                 format_univ(ArgB),
-                pp_internal(remove_indent),
+                pp_internal(dec_std_indent),
                 pp_internal(close_group)
             ]
         else if
@@ -978,10 +1053,10 @@ expand_format_op(Op, Args, EnclosingPriority, Docs) :-
                 pp_internal(set_op_priority(PriorityArgA)),
                 format_univ(ArgA),
                 str(" "),
-                pp_internal(add_indent(std_indent)),
+                pp_internal(inc_std_indent),
                 pp_internal(set_op_priority(PriorityArgB)),
                 format_univ(ArgB),
-                pp_internal(remove_indent),
+                pp_internal(dec_std_indent),
                 pp_internal(close_group)
             ]
         else
@@ -1051,6 +1126,104 @@ func_limit_reached(triangular(N)) :-
 
 decrement_func_limit(linear(N), linear(N - 1)).
 decrement_func_limit(triangular(N), triangular(N - 1)).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- type indent_stack
+    --->    indent_empty
+            % No indent at all. Number of code points is zero.
+    ;       indent_user(
+                % The indentation after which this indentation is added.
+                user_prevstack          :: indent_stack,
+
+                % Indentation added by a non-standard indent() function.
+                user_indent_string      :: string,
+
+                % The total number of code points in user_prevstack and
+                % user_extra_indent. Must be the sum of
+                % count_indent_codepoints(user_prevstack) and
+                % string.count_codepoints(user_indent_string).
+                user_total_code_points  :: int
+            )
+    ;       indent_std(
+                % The indentation after which this indentation is added.
+                std_prevstack           :: indent_stack,
+
+                % The number of extra standard indent levels added
+                % after std_prevstack. Each indent level consists of two
+                % spaces.
+                std_extra_indent_levels :: int,
+
+                % The total number of code points in user_prevstack and
+                % user_extra_indent. Must be the sum of
+                % count_indent_codepoints(user_prevstack) and
+                % 2 * std_extra_indent_levels.
+                std_total_code_points   :: int
+            ).
+
+:- func count_indent_codepoints(indent_stack) = int.
+
+count_indent_codepoints(indent_empty) = 0.
+count_indent_codepoints(indent_user(_PrevStack, _Str, NumCPs)) = NumCPs.
+count_indent_codepoints(indent_std(_PrevStack, _NL, NumCPs)) = NumCPs.
+
+:- pred increment_user_indent(string::in, indent_stack::in, indent_stack::out)
+    is det.
+
+increment_user_indent(IndentStr, IndentStack0, IndentStack) :-
+    NumCPs0 = count_indent_codepoints(IndentStack0),
+    NumCPs = NumCPs0 + string.count_codepoints(IndentStr),
+    IndentStack = indent_user(IndentStack0, IndentStr, NumCPs).
+
+:- pred decrement_user_indent(indent_stack::in, indent_stack::out) is det.
+
+decrement_user_indent(IndentStack0, IndentStack) :-
+    (
+        IndentStack0 = indent_user(IndentStack, _, _)
+    ;
+        ( IndentStack0 = indent_empty
+        ; IndentStack0 = indent_std(_, _, _)
+        ),
+        unexpected($pred, "last indent is not user indent")
+    ).
+
+:- pred increment_std_indent(indent_stack::in, indent_stack::out) is det.
+
+increment_std_indent(IndentStack0, IndentStack) :-
+    (
+        IndentStack0 = indent_user(_, _, NumCPs0),
+        NumCPs = NumCPs0 + 2,
+        IndentStack = indent_std(IndentStack0, 1, NumCPs)
+    ;
+        IndentStack0 = indent_empty,
+        NumCPs = 2,
+        IndentStack = indent_std(IndentStack0, 1, NumCPs)
+    ;
+        IndentStack0 = indent_std(PrevStack, NumLevels0, NumCPs0),
+        NumLevels = NumLevels0 + 1,
+        NumCPs = NumCPs0 + 2,
+        IndentStack = indent_std(PrevStack, NumLevels, NumCPs)
+    ).
+
+:- pred decrement_std_indent(indent_stack::in, indent_stack::out) is det.
+
+decrement_std_indent(IndentStack0, IndentStack) :-
+    (
+        IndentStack0 = indent_std(PrevStack, NumLevels0, NumCPs0),
+        NumLevels = NumLevels0 - 1,
+        ( if NumLevels > 0 then
+            NumCPs = NumCPs0 - 2,
+            IndentStack = indent_std(PrevStack, NumLevels, NumCPs)
+        else
+            IndentStack = indent_empty
+        )
+    ;
+        ( IndentStack0 = indent_empty
+        ; IndentStack0 = indent_user(_, _, _)
+        ),
+        unexpected($pred, "last indent is not std indent")
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
