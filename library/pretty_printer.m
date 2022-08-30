@@ -425,7 +425,7 @@ write_doc(Stream, Doc, !IO) :-
 %---------------------------------------------------------------------------%
 
 put_doc(Stream, Canonicalize, FMap, Params, Doc, !IO) :-
-    Pri = ops.max_priority(ops.init_mercury_op_table),
+    Pri = ops.mercury_op_table_max_priority,
     Params = pp_params(LineWidth, MaxLines, Limit),
     RemainingWidth = LineWidth,
     Indents = indent_empty,
