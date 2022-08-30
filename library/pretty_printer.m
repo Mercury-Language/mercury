@@ -1216,7 +1216,7 @@ decrement_std_indent(IndentStack0, IndentStack) :-
             NumCPs = NumCPs0 - 2,
             IndentStack = indent_std(PrevStack, NumLevels, NumCPs)
         else
-            IndentStack = indent_empty
+            IndentStack = PrevStack
         )
     ;
         ( IndentStack0 = indent_empty
