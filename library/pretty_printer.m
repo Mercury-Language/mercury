@@ -179,6 +179,8 @@
     State, State) <= stream.writer(Stream, string, State).
 :- mode put_doc(in, in(canonicalize), in, in, in, di, uo) is det.
 :- mode put_doc(in, in(include_details_cc), in, in, in, di, uo) is cc_multi.
+:- pragma type_spec(pred(put_doc/7),
+    (Stream = io.output_stream, State = io.state)).
 
 %---------------------------------------------------------------------------%
 %
@@ -448,6 +450,8 @@ put_doc(Stream, Canonicalize, FMap, Params, Doc, !IO) :-
     in, out, in, out, in, out, in, out, in, out, di, uo) is det.
 :- mode do_put_docs(in, in(include_details_cc), in, in, in,
     in, out, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
+:- pragma type_spec(pred(do_put_docs/17),
+    (Stream = io.output_stream, State = io.state)).
 
 do_put_docs(_Stream, _Canonicalize, _FMap, _LineWidth, [],
         !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO).
@@ -552,6 +556,8 @@ do_put_docs(Stream, Canonicalize, FMap, LineWidth, [HeadDoc0 | TailDocs0],
     list(doc)::in, list(doc)::out, open_groups::in, int::in, int::out,
     int::in, int::out, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
+:- pragma type_spec(pred(output_current_group/12),
+    (Stream = io.output_stream, State = io.state)).
 
 output_current_group(_Stream, _LineWidth, _Indents, [], [],
         _OpenGroups, !RemainingWidth, !RemainingLines, !IO).
@@ -742,6 +748,8 @@ expand_docs_to_line_end(Canonicalize, FMap,
 :- pred format_nl(Stream::in, int::in, indent_stack::in, int::out,
     int::in, int::out, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
+:- pragma type_spec(pred(format_nl/8),
+    (Stream = io.output_stream, State = io.state)).
 
 format_nl(Stream, LineWidth, Indents, RemainingWidth, !RemainingLines, !IO) :-
     stream.put(Stream, "\n", !IO),
@@ -751,6 +759,8 @@ format_nl(Stream, LineWidth, Indents, RemainingWidth, !RemainingLines, !IO) :-
 :- pred output_indentation(Stream::in, indent_stack::in, int::in, int::out,
     State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
+:- pragma type_spec(pred(output_indentation/6),
+    (Stream = io.output_stream, State = io.state)).
 
 output_indentation(_Stream, indent_empty, !RemainingWidth, !IO).
 output_indentation(Stream, indent_nonempty(IndentStack, Indent),
