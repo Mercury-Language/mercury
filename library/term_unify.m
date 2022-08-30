@@ -19,7 +19,6 @@
 :- interface.
 
 :- import_module list.
-:- import_module map.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -80,6 +79,7 @@
 
 :- implementation.
 
+:- import_module map.
 :- import_module term_context.
 :- import_module term_subst.
 :- import_module term_vars.
@@ -103,7 +103,7 @@ unify_terms(TermX, TermY, !Subst) :-
                     true
                 else
                     not var_occurs_in_subst_term(Y, !.Subst,
-                        SubstTermBoundToX), 
+                        SubstTermBoundToX),
                     map.det_insert(Y, SubstTermBoundToX, !Subst)
                 )
             )
@@ -116,7 +116,7 @@ unify_terms(TermX, TermY, !Subst) :-
                     true
                 else
                     not var_occurs_in_subst_term(X, !.Subst,
-                        SubstTermBoundToY), 
+                        SubstTermBoundToY),
                     map.det_insert(X, SubstTermBoundToY, !Subst)
                 )
             else
