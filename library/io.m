@@ -5929,6 +5929,7 @@ interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
 ").
 
 :- pred is_success(system_error::in) is semidet.
+:- pragma inline(pred(is_success/1)).
 
 :- pragma foreign_proc("C",
     is_success(Error::in),
@@ -5951,6 +5952,8 @@ interpret_maybe_incomplete_result_code(ResultCode, Error, IncompleteBytes,
 "
     SUCCESS_INDICATOR = (Error == null);
 ").
+
+:- pragma inline(pred(is_error/5)).
 
 is_error(Error, Prefix, MaybeError, !IO) :-
     ( if is_success(Error) then
@@ -5979,16 +5982,7 @@ make_io_error_from_maybe_win32_error(Error, IsWin32Error, Prefix, IOError,
         make_io_error_from_system_error(Error, Prefix, IOError, !IO)
     ).
 
-:- pred throw_on_error(system_error::in, string::in, io::di, io::uo) is det.
-
-throw_on_error(Error, Prefix, !IO) :-
-    is_error(Error, Prefix, MaybeIOError, !IO),
-    (
-        MaybeIOError = yes(IOError),
-        throw(IOError)
-    ;
-        MaybeIOError = no
-    ).
+:- pragma inline(pred(throw_on_output_error/3)).
 
 throw_on_output_error(Error, !IO) :-
     throw_on_error(Error, "error writing to output file: ", !IO).
@@ -5997,6 +5991,19 @@ throw_on_output_error(Error, !IO) :-
 
 throw_on_close_error(Error, !IO) :-
     throw_on_error(Error, "error closing file: ", !IO).
+
+:- pred throw_on_error(system_error::in, string::in, io::di, io::uo) is det.
+:- pragma inline(pred(throw_on_error/4)).
+
+throw_on_error(Error, Prefix, !IO) :-
+    % This follows the logic of is_error, but does not construct
+    % a MaybeError as an intermediate data structure.
+    ( if is_success(Error) then
+        true
+    else
+        make_io_error_from_system_error(Error, Prefix, IOError, !IO),
+        throw(IOError)
+    ).
 
 %---------------------------------------------------------------------------%
 
