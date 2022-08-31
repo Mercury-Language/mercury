@@ -795,23 +795,21 @@ output_std_indent_levels(Stream, NumLevels, !IO) :-
     % We try to amortize the overhead of stream.put over as large a part
     % of the overall indentation as we can.
     ( if NumLevels >= 30 then
-        ( if std_indent(30, IndentStr) then
-            stream.put(Stream, IndentStr, !IO),
-            output_std_indent_levels(Stream, NumLevels - 30, !IO)
-        else
-            unexpected($pred, "std_indent failed 30+")
-        )
+        std_indent_30(IndentStr),
+        stream.put(Stream, IndentStr, !IO),
+        output_std_indent_levels(Stream, NumLevels - 30, !IO)
     else if NumLevels > 0 then
         ( if std_indent(NumLevels, IndentStr) then
             stream.put(Stream, IndentStr, !IO)
         else
-            unexpected($pred, "std_indent failed <30")
+            unexpected($pred, "std_indent failed")
         )
     else
         true
     ).
 
 :- pred std_indent(int::in, string::out) is semidet.
+:- pred std_indent_30(string::out) is det.
 
 std_indent(1,  "  ").
 std_indent(2,  "    ").
@@ -842,7 +840,7 @@ std_indent(26, "                                                    ").
 std_indent(27, "                                                      ").
 std_indent(28, "                                                        ").
 std_indent(29, "                                                          ").
-std_indent(30, "                                                            ").
+std_indent_30( "                                                            ").
 
 %---------------------%
 
@@ -1141,7 +1139,7 @@ decrement_func_limit(triangular(N), triangular(N - 1)).
                 user_indent_string      :: string,
 
                 % The total number of code points in user_prevstack and
-                % user_extra_indent. Must be the sum of
+                % user_indent_string. Must be the sum of
                 % count_indent_codepoints(user_prevstack) and
                 % string.count_codepoints(user_indent_string).
                 user_total_code_points  :: int
@@ -1157,7 +1155,7 @@ decrement_func_limit(triangular(N), triangular(N - 1)).
 
                 % The total number of code points in user_prevstack and
                 % user_extra_indent. Must be the sum of
-                % count_indent_codepoints(user_prevstack) and
+                % count_indent_codepoints(std_prevstack) and
                 % 2 * std_extra_indent_levels.
                 std_total_code_points   :: int
             ).
