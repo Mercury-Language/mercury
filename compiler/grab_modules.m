@@ -22,8 +22,8 @@
 %
 % The roles of the interface files (.int0, .int3, .int2 and .int) that
 % this module reads in are documented (to the extent that they are documented
-% anywhere) in the modules that creates them, which are comp_unit_interface.m
-% and write_module_interface_files.m.
+% anywhere) in the modules that create them, which are comp_unit_interface.m
+% and (to a limited extent) write_module_interface_files.m.
 %
 % XXX The file notes/interface_files.html contains (a start on) some
 % more comprehensive documentation.
