@@ -93,6 +93,29 @@
 :- type module_name_context == map(module_name, prog_context).
 :- type module_names_contexts == one_or_more_map(module_name, prog_context).
 
+    % Maps from module names to the includes, imports or uses
+    % in the named section. The code creating these maps will have
+    % detected and diagnosed any duplicate entries of the same kind
+    % of declaration for the same module in the same section.
+    % However, unlike include_module_maps or import_and_or_use_maps,
+    % which summarize the information in the first two of the maps below
+    % (for include_module_map) or the last four (for import_and_or_use_map),
+    % these maps may contain redundant entries as long as they are all
+    % in *different* maps (such as the module name A occurring in both
+    % the int_import_context_map and the int_use_context_map of module B).
+:- type int_incl_context_map
+    --->    int_incl_context_map(module_name_context).
+:- type imp_incl_context_map
+    --->    imp_incl_context_map(module_name_context).
+:- type int_import_context_map
+    --->    int_import_context_map(module_name_context).
+:- type int_use_context_map
+    --->    int_use_context_map(module_name_context).
+:- type imp_import_context_map
+    --->    imp_import_context_map(module_name_context).
+:- type imp_use_context_map
+    --->    imp_use_context_map(module_name_context).
+
 %---------------------%
 
 % The module being compiled can have another module made available to it
@@ -176,9 +199,9 @@
 % We use cords of items instead of lists of items where we may need to add
 % items to an already-existing partial parse tree.
 %
-% The contexts of module declarations below may be term.dummy_context
+% The contexts of module declarations below may be term_context.dummy_context
 % if the actual context isn't known, but if the recorded context is
-% not term.dummy_context, then it is valid.
+% not term_context.dummy_context, then it is valid.
 
 :- type parse_tree_src
     --->    parse_tree_src(
@@ -413,17 +436,17 @@
                 % The set of modules mentioned in `:- include_module'
                 % declarations in the interface and implementation,
                 % and their locations.
-                pti0_int_includes           :: module_names_contexts,
-                pti0_imp_includes           :: module_names_contexts,
+                pti0_int_includes           :: int_incl_context_map,
+                pti0_imp_includes           :: imp_incl_context_map,
                 pti0_include_map            :: include_module_map,
 
                 % The set of modules mentioned in `:- import_module'
                 % declarations in the interface and implementation,
                 % and their locations.
-                pti0_int_imports            :: module_names_contexts,
-                pti0_int_uses               :: module_names_contexts,
-                pti0_imp_imports            :: module_names_contexts,
-                pti0_imp_uses               :: module_names_contexts,
+                pti0_int_imports            :: int_import_context_map,
+                pti0_int_uses               :: int_use_context_map,
+                pti0_imp_imports            :: imp_import_context_map,
+                pti0_imp_uses               :: imp_use_context_map,
                 pti0_import_use_map         :: import_and_or_use_map,
 
                 % `:- pragma foreign_import_module' declarations
@@ -572,13 +595,11 @@
 
                 % The set of modules mentioned in `:- include_module'
                 % declarations in the interface, and their locations.
-                pti3_int_includes           :: module_names_contexts,
-                pti3_include_map            :: include_module_map,
+                pti3_int_includes           :: int_incl_context_map,
 
                 % The set of modules mentioned in `:- import_module'
                 % declarations in the interface, and their locations.
-                pti3_int_imports            :: module_names_contexts,
-                pti3_import_use_map         :: import_and_or_use_map,
+                pti3_int_imports            :: int_import_context_map,
 
                 % Type, inst and mode definitions, all of which are
                 % in the interface.

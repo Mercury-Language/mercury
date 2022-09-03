@@ -1763,7 +1763,7 @@ get_ambiguity_checkables_int2(ParseTreeInt2, Checkables) :-
 
 get_ambiguity_checkables_int3(ParseTreeInt3, Checkables) :-
     ParseTreeInt3 = parse_tree_int3(_ModuleName, _ModuleNameContext,
-        _Incls, _InclMap, _Avails, _AvailMap,
+        _InclMap, _ImportUseMap,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, _IntInstances, _TypeRepnMap),
     type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,

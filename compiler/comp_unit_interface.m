@@ -148,20 +148,19 @@ generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
         _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
         _ImpInitialises, _ImpFinalises, _ImpMutables),
 
-    map.foldl2(acc_int_includes, OrigInclMap,
-        one_or_more_map.init, IntInclMap, map.init, InclMap),
+    map.foldl(acc_int_includes, OrigInclMap, map.init, IntInclMap0),
+    IntInclMap = int_incl_context_map(IntInclMap0),
     IntTypeClasses = list.map(make_typeclass_abstract_for_int3,
         OrigIntTypeClasses),
     IntInstances = list.map(make_instance_abstract, OrigIntInstances),
     (
         IntInstances = [],
-        one_or_more_map.init(IntImportMap),
-        map.init(ImportUseMap)
+        map.init(IntImportMap0)
     ;
         IntInstances = [_ | _],
-        map.foldl2(acc_int_imports, OrigImportUseMap,
-            one_or_more_map.init, IntImportMap, map.init, ImportUseMap)
+        map.foldl(acc_int_imports, OrigImportUseMap, map.init, IntImportMap0)
     ),
+    IntImportMap = int_import_context_map(IntImportMap0),
     map.foldl(make_type_ctor_checked_defn_abstract_for_int3,
         TypeCtorCheckedMap, map.init, IntTypeCtorCheckedMap),
     map.foldl(make_inst_ctor_checked_defn_abstract_for_int3,
@@ -172,7 +171,7 @@ generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
     decide_repns_for_simple_types_for_int3(ModuleName, TypeCtorCheckedMap,
         IntTypeRepnMap),
     OrigParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
-        IntInclMap, InclMap, IntImportMap, ImportUseMap,
+        IntInclMap, IntImportMap,
         IntTypeCtorCheckedMap, IntInstCtorCheckedMap, IntModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap),
     % Any Specs this can generate would be better reported
@@ -181,32 +180,28 @@ generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
         [], _Specs).
 
 :- pred acc_int_includes(module_name::in, include_module_info::in,
-    module_names_contexts::in, module_names_contexts::out,
-    include_module_map::in, include_module_map::out) is det.
+    module_name_context::in, module_name_context::out) is det.
 
-acc_int_includes(ModuleName, InclInfo, !ContextMap, !IncludeMap) :-
+acc_int_includes(ModuleName, InclInfo, !ContextMap) :-
     InclInfo = include_module_info(Section, Context),
     (
         Section = ms_interface,
-        one_or_more_map.add(ModuleName, Context, !ContextMap),
-        map.det_insert(ModuleName, InclInfo, !IncludeMap)
+        map.det_insert(ModuleName, Context, !ContextMap)
     ;
         Section = ms_implementation
     ).
 
 :- pred acc_int_imports(module_name::in, maybe_implicit_import_and_or_use::in,
-    module_names_contexts::in, module_names_contexts::out,
-    import_and_or_use_map::in, import_and_or_use_map::out) is det.
+    module_name_context::in, module_name_context::out) is det.
 
-acc_int_imports(ModuleName, ImportUseInfo, !ContextMap, !ImportUseMap) :-
+acc_int_imports(ModuleName, ImportUseInfo, !ContextMap) :-
     (
         ImportUseInfo = implicit_avail(_, _)
     ;
         ImportUseInfo = explicit_avail(SectionImportAndOrUse),
         (
             SectionImportAndOrUse = int_import(Context),
-            one_or_more_map.add(ModuleName, Context, !ContextMap),
-            map.det_insert(ModuleName, ImportUseInfo, !ImportUseMap)
+            map.det_insert(ModuleName, Context, !ContextMap)
         ;
             ( SectionImportAndOrUse = int_use(_)
             ; SectionImportAndOrUse = imp_import(_)
@@ -483,7 +478,7 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
     ),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
-        IntInclMap, ImpInclMap, InclMap,
+        IntInclsMap, ImpInclsMap, InclMap,
         _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
@@ -498,6 +493,11 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
         ImpDeclPragmas, _ImpImplPragmas, ImpPromises,
         _ImpInitialises, _ImpFinalises, ImpMutables),
 
+    GetFirstContext = (pred(one_or_more(Context, _)::in, Context::out) is det),
+    map.map_values_only(GetFirstContext, IntInclsMap, IntInclMap0),
+    map.map_values_only(GetFirstContext, ImpInclsMap, ImpInclMap0),
+    IntInclMap = int_incl_context_map(IntInclMap0),
+    ImpInclMap = imp_incl_context_map(ImpInclMap0),
     import_and_or_use_map_to_explicit_int_imp_import_use_maps(ImportUseMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap),
     map.keys_as_set(IntFIMSpecMap, IntFIMSpecs0),
@@ -878,7 +878,7 @@ generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
     % Since everything we put into a .int file should be fully module
     % qualified, we convert all import_modules into use_modules.
     one_or_more_map.merge(IntImportMap, IntUseMap, IntImportUseMap),
-    one_or_more_map.merge(ImpImportMap, ImpUseMap, ImpImportUseMap1),
+    one_or_more_map.merge(ImpImportMap, ImpUseMap, ImpImportUseMap0),
     map.filter_map_values(
         make_imports_into_uses_maybe_implicit(ImpNeededModules),
         ImportUseMap0, ImportUseMap),
@@ -886,11 +886,11 @@ generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
         % This gets the same result as the else case, only more quickly.
         map.init(ImpImportUseMap)
     else
-        one_or_more_map.select(ImpImportUseMap1, ImpNeededModules,
-            ImpImportUseMap0),
+        one_or_more_map.select(ImpImportUseMap0, ImpNeededModules,
+            ImpImportUseMap1),
         map.keys(IntImportUseMap, IntImportUseModules),
         list.foldl(one_or_more_map.delete, IntImportUseModules,
-            ImpImportUseMap0, ImpImportUseMap)
+            ImpImportUseMap1, ImpImportUseMap)
         % This sanity check is commented out, because it causes the failure
         % of tests/valid/int_imp_test.m. While the parse_tree_module_src field
         % that holds ImportUseMap0 is guaranteed to be free of a module

@@ -163,7 +163,7 @@ module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
 module_qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
         !Info, !Specs) :-
     OrigParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
-        IntInclMap, InclMap, IntImportedMap, ImportUseMap,
+        InclMap, ImportUseMap,
         IntTypeDefnMap0, IntInstDefnMap0, IntModeDefnMap0,
         IntTypeClasses0, IntInstances0, IntTypeRepns0),
 
@@ -182,7 +182,7 @@ module_qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
         IntTypeRepns0, IntTypeRepns, !Info, !Specs),
 
     ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
-        IntInclMap, InclMap, IntImportedMap, ImportUseMap,
+        InclMap, ImportUseMap,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances, IntTypeRepns).
 

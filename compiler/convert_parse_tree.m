@@ -217,14 +217,16 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
         "trying to convert non-ifk_int0 parse_tree_int to parse_tree_int0"),
 
     classify_include_modules(IntIncls, ImpIncls,
-        IntInclMap, ImpInclMap, InclMap, !Specs),
+        _IntInclsMap, _ImpInclsMap, IntInclMap, ImpInclMap, InclMap, !Specs),
 
     accumulate_imports_uses_maps(IntAvails,
-        one_or_more_map.init, IntImportMap, one_or_more_map.init, IntUseMap),
+        one_or_more_map.init, IntImportsMap, one_or_more_map.init, IntUsesMap),
     accumulate_imports_uses_maps(ImpAvails,
-        one_or_more_map.init, ImpImportMap, one_or_more_map.init, ImpUseMap),
-    classify_int_imp_import_use_modules(ModuleName, IntImportMap, IntUseMap,
-        ImpImportMap, ImpUseMap, SectionImportUseMap, !Specs),
+        one_or_more_map.init, ImpImportsMap, one_or_more_map.init, ImpUsesMap),
+    classify_int_imp_import_use_modules(ModuleName,
+        IntImportsMap, IntUsesMap, ImpImportsMap, ImpUsesMap,
+        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap,
+        SectionImportUseMap, !Specs),
     import_and_or_use_map_section_to_maybe_implicit(SectionImportUseMap,
         ImportUseMap),
 
@@ -364,7 +366,7 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
         "trying to convert non-ifk_int1 parse_tree_int to parse_tree_int1"),
 
     classify_include_modules(IntIncls, ImpIncls,
-        IntInclMap, ImpInclMap, InclMap, !Specs),
+        IntInclsMap, ImpInclsMap, _IntInclMap, _ImpInclMap, InclMap, !Specs),
 
     accumulate_imports_uses_maps(IntAvails,
         one_or_more_map.init, IntImportMap, one_or_more_map.init, IntUseMap),
@@ -383,7 +385,8 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
         true
     ),
     classify_int_imp_import_use_modules(ModuleName,
-        map.init, IntUseMap, map.init, ImpUseMap, SectionImportUseMap, !Specs),
+        map.init, IntUseMap, map.init, ImpUseMap,
+        _, _, _, _, SectionImportUseMap, !Specs),
     import_and_or_use_map_section_to_maybe_implicit(SectionImportUseMap,
         ImportUseMap),
 
@@ -427,7 +430,7 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
         IntModeDefnMap, ImpModeDefnMap, IntModeCheckedMap, !Specs),
 
     ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
-        MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
+        MaybeVersionNumbers, IntInclsMap, ImpInclsMap, InclMap,
         IntUseMap, ImpUseMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         IntTypeCheckedMap, IntInstCheckedMap, IntModeCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
@@ -590,7 +593,7 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
         !:Specs = [ImpInclSpec | !.Specs]
     ),
     classify_include_modules(IntIncls, [],
-        IntInclMap, _ImpInclMap, InclMap, !Specs),
+        IntInclsMap, _ImpInclsMap, _IntInclMap, _ImpInclMap, InclMap, !Specs),
 
     accumulate_imports_uses_maps(IntAvails,
         one_or_more_map.init, IntImportMap, one_or_more_map.init, IntUseMap),
@@ -619,7 +622,8 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
         !:Specs = [ImpAvailSpec | !.Specs]
     ),
     classify_int_imp_import_use_modules(ModuleName,
-        map.init, IntUseMap, map.init, map.init, SectionImportUseMap, !Specs),
+        map.init, IntUseMap, map.init, map.init,
+        _, _, _, _, SectionImportUseMap, !Specs),
     import_and_or_use_map_section_to_maybe_implicit(SectionImportUseMap,
         ImportUseMap),
 
@@ -651,7 +655,7 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
         IntModeDefnMap, ImpModeDefnMap, IntModeCheckedMap, !Specs),
 
     ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
-        MaybeVersionNumbers, IntInclMap, InclMap, IntUseMap, ImportUseMap,
+        MaybeVersionNumbers, IntInclsMap, InclMap, IntUseMap, ImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
         IntTypeCheckedMap, IntInstCheckedMap, IntModeCheckedMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap).
@@ -770,14 +774,15 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
         !:Specs = [VNSpec | !.Specs]
     ),
 
-    classify_include_modules(IntIncls, [],
-        IntInclMap, _ImpInclMap, InclMap, !Specs),
+    classify_include_modules(IntIncls, [], _IntInclsMap, _ImpInclsMap,
+        IntInclMap, _ImpInclMap, _InclMap, !Specs),
+
     accumulate_imports_uses_maps(IntAvails,
-        one_or_more_map.init, IntImportMap, one_or_more_map.init, IntUseMap),
-    ( if map.is_empty(IntUseMap) then
+        one_or_more_map.init, IntImportsMap, one_or_more_map.init, IntUsesMap),
+    ( if map.is_empty(IntUsesMap) then
         true
     else
-        IntUseContextLists = map.values(IntUseMap),
+        IntUseContextLists = map.values(IntUsesMap),
         one_or_more.condense(IntUseContextLists, IntUseContexts),
         IntUsePieces = [words("A .int3 file may not contain any"),
             decl("use_module"), words("declarations."), nl],
@@ -787,11 +792,9 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
         !:Specs = [IntUseSpec | !.Specs]
     ),
     classify_int_imp_import_use_modules(ModuleName,
-        IntImportMap, map.init, map.init, map.init,
-        SectionImportUseMap, !Specs),
-    import_and_or_use_map_section_to_maybe_implicit(SectionImportUseMap,
-        ImportUseMap),
-
+        IntImportsMap, map.init, map.init, map.init,
+        IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap,
+        _SectionImportUseMap, !Specs),
     (
         IntFIMs = []
     ;
@@ -865,7 +868,7 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
         )
     ),
     ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
-        IntInclMap, InclMap, IntImportMap, ImportUseMap,
+        IntInclMap, IntImportMap,
         IntTypeCheckedMap, IntInstCheckedMap, IntModeCheckedMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap).
 
@@ -1394,11 +1397,11 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
         ItemBlocks),
 
-    one_or_more_map.init(IntImportMap0),
-    one_or_more_map.init(IntUseMap0),
+    one_or_more_map.init(IntImportsMap0),
+    one_or_more_map.init(IntUsesMap0),
     map.init(IntFIMSpecMap0),
-    one_or_more_map.init(ImpImportMap0),
-    one_or_more_map.init(ImpUseMap0),
+    one_or_more_map.init(ImpImportsMap0),
+    one_or_more_map.init(ImpUsesMap0),
     map.init(ImpFIMSpecMap0),
 
     IntImplicitAvailNeeds0 = init_implicit_avail_needs,
@@ -1406,7 +1409,7 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
 
     classify_src_items_in_blocks(ItemBlocks,
         [], IntIncls,
-        IntImportMap0, IntImportMap, IntUseMap0, IntUseMap,
+        IntImportsMap0, IntImportsMap, IntUsesMap0, IntUsesMap,
         IntFIMSpecMap0, IntFIMSpecMap,
 
         [], RevIntTypeDefns, [], RevIntInstDefns, [], RevIntModeDefns,
@@ -1419,7 +1422,7 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         set.init, IntSelfFIMLangs,
 
         [], ImpIncls,
-        ImpImportMap0, ImpImportMap, ImpUseMap0, ImpUseMap,
+        ImpImportsMap0, ImpImportsMap, ImpUsesMap0, ImpUsesMap,
         ImpFIMSpecMap0, ImpFIMSpecMap1,
         [], RevImpTypeDefns, [], RevImpInstDefns, [], RevImpModeDefns,
         [], RevImpTypeClasses, [], RevImpInstances0,
@@ -1432,8 +1435,8 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
 
         !Specs),
 
-    classify_include_modules(IntIncls, ImpIncls, IntInclMap, ImpInclMap,
-        InclMap, !Specs),
+    classify_include_modules(IntIncls, ImpIncls, IntInclsMap, ImpInclsMap,
+        _IntInclMap, _ImpInclMap, InclMap, !Specs),
 
     list.reverse(RevIntTypeDefns, IntTypeDefns),
     list.reverse(RevIntInstDefns, IntInstDefns),
@@ -1510,8 +1513,10 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     ImpFinalises = IntFinalises ++ ImpFinalises0,
     ImpMutables = IntMutables ++ ImpMutables0,
 
+    % XXX Consider using _IntImportMap etc instead of IntImportsMap etc.
     classify_int_imp_import_use_modules(ModuleName,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap,
+        IntImportsMap, IntUsesMap, ImpImportsMap, ImpUsesMap,
+        _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap,
         SectionImportUseMap, !Specs),
     import_and_or_use_map_section_to_maybe_implicit(SectionImportUseMap,
         ImportUseMap0),
@@ -1527,8 +1532,8 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         ImpFIMSpecMap1, ImpFIMSpecMap, !Specs),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
-        IntInclMap, ImpInclMap, InclMap,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
+        IntInclsMap, ImpInclsMap, InclMap,
+        IntImportsMap, IntUsesMap, ImpImportsMap, ImpUsesMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
@@ -1959,7 +1964,7 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 classify_src_items_in_blocks([],
-        !IntIncls, !IntImportMap, !IntUseMap, !IntFIMSpecMap,
+        !IntIncls, !IntImportsMap, !IntUsesMap, !IntFIMSpecMap,
         !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
@@ -1967,7 +1972,7 @@ classify_src_items_in_blocks([],
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntImplicitAvailNeeds, !IntSelfFIMLangs,
-        !ImpIncls, !ImpImportMap, !ImpUseMap, !ImpFIMSpecMap,
+        !ImpIncls, !ImpImportsMap, !ImpUsesMap, !ImpFIMSpecMap,
         !RevImpTypeDefns, !RevImpInstDefns, !RevImpModeDefns,
         !RevImpTypeClasses, !RevImpInstances,
         !RevImpPredDecls, !RevImpModeDecls, !RevImpClauses,
@@ -1976,7 +1981,7 @@ classify_src_items_in_blocks([],
         !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
         !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !Specs).
 classify_src_items_in_blocks([ItemBlock | ItemBlocks],
-        !IntIncls, !IntImportMap, !IntUseMap, !IntFIMSpecMap,
+        !IntIncls, !IntImportsMap, !IntUsesMap, !IntFIMSpecMap,
         !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
@@ -1984,7 +1989,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntImplicitAvailNeeds, !IntSelfFIMLangs,
-        !ImpIncls, !ImpImportMap, !ImpUseMap, !ImpFIMSpecMap,
+        !ImpIncls, !ImpImportsMap, !ImpUsesMap, !ImpFIMSpecMap,
         !RevImpTypeDefns, !RevImpInstDefns, !RevImpModeDefns,
         !RevImpTypeClasses, !RevImpInstances,
         !RevImpPredDecls, !RevImpModeDecls, !RevImpClauses,
@@ -1996,7 +2001,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
     (
         Section = ms_interface,
         !:IntIncls = !.IntIncls ++ Incls,
-        accumulate_imports_uses_maps(Avails, !IntImportMap, !IntUseMap),
+        accumulate_imports_uses_maps(Avails, !IntImportsMap, !IntUsesMap),
         list.foldl2(classify_foreign_import_module, FIMs, !IntFIMSpecMap,
             !Specs),
         classify_src_items_int(Items,
@@ -2010,7 +2015,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
     ;
         Section = ms_implementation,
         !:ImpIncls = !.ImpIncls ++ Incls,
-        accumulate_imports_uses_maps(Avails, !ImpImportMap, !ImpUseMap),
+        accumulate_imports_uses_maps(Avails, !ImpImportsMap, !ImpUsesMap),
         list.foldl2(classify_foreign_import_module, FIMs, !ImpFIMSpecMap,
             !Specs),
         classify_src_items_imp(Items,
@@ -2023,7 +2028,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
             !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !Specs)
     ),
     classify_src_items_in_blocks(ItemBlocks,
-        !IntIncls, !IntImportMap, !IntUseMap, !IntFIMSpecMap,
+        !IntIncls, !IntImportsMap, !IntUsesMap, !IntFIMSpecMap,
         !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
@@ -2031,7 +2036,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntImplicitAvailNeeds, !IntSelfFIMLangs,
-        !ImpIncls, !ImpImportMap, !ImpUseMap, !ImpFIMSpecMap,
+        !ImpIncls, !ImpImportsMap, !ImpUsesMap, !ImpFIMSpecMap,
         !RevImpTypeDefns, !RevImpInstDefns, !RevImpModeDefns,
         !RevImpTypeClasses, !RevImpInstances,
         !RevImpPredDecls, !RevImpModeDecls, !RevImpClauses,

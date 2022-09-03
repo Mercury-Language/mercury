@@ -302,13 +302,17 @@ collect_mq_info_in_parse_tree_int0(ReadWhy0, ParseTreeInt0, !Info) :-
     mq_info_set_modules(Modules, !Info),
 
     mq_info_get_imported_modules(!.Info, ImportedModules0),
-    list.foldl(collect_mq_info_in_int0_import_or_use, map.keys(IntImportMap),
+    IntImportMap = int_import_context_map(IntImportMap0),
+    IntUseMap = int_use_context_map(IntUseMap0),
+    ImpImportMap = imp_import_context_map(ImpImportMap0),
+    ImpUseMap = imp_use_context_map(ImpUseMap0),
+    list.foldl(collect_mq_info_in_int0_import_or_use, map.keys(IntImportMap0),
         ImportedModules0, ImportedModules1),
-    list.foldl(collect_mq_info_in_int0_import_or_use, map.keys(IntUseMap),
+    list.foldl(collect_mq_info_in_int0_import_or_use, map.keys(IntUseMap0),
         ImportedModules1, ImportedModules2),
-    list.foldl(collect_mq_info_in_int0_import_or_use, map.keys(ImpImportMap),
+    list.foldl(collect_mq_info_in_int0_import_or_use, map.keys(ImpImportMap0),
         ImportedModules2, ImportedModules3),
-    list.foldl(collect_mq_info_in_int0_import_or_use, map.keys(ImpUseMap),
+    list.foldl(collect_mq_info_in_int0_import_or_use, map.keys(ImpUseMap0),
         ImportedModules3, ImportedModules),
     mq_info_set_imported_modules(ImportedModules, !Info),
 
@@ -709,17 +713,19 @@ collect_mq_info_in_parse_tree_int3(Role, ParseTreeInt3, !Info) :-
     Permissions = module_permissions(PermInInt, PermInImp),
 
     ParseTreeInt3 = parse_tree_int3(_ModuleName, _ModuleNameContext,
-        _IntInclMap, InclMap, IntImportMap, _ImportUseMap,
+        IntInclMap, IntImportMap,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances, _IntTypeRepns),
 
     mq_info_get_modules(!.Info, Modules0),
-    map.foldl(collect_mq_info_in_included_module_info(Permissions),
-        InclMap, Modules0, Modules),
+    IntInclMap = int_incl_context_map(IntInclMap0),
+    list.foldl(collect_mq_info_in_int_incl_context(Permissions),
+        map.keys(IntInclMap0), Modules0, Modules),
     mq_info_set_modules(Modules, !Info),
 
     mq_info_get_imported_modules(!.Info, ImportedModules0),
-    list.foldl(collect_mq_info_in_int3_import, map.keys(IntImportMap),
+    IntImportMap = int_import_context_map(IntImportMap0),
+    list.foldl(collect_mq_info_in_int3_import, map.keys(IntImportMap0),
         ImportedModules0, ImportedModules),
     mq_info_set_imported_modules(ImportedModules, !Info),
 
@@ -771,6 +777,7 @@ mode_ctor_to_mq_id(ModeCtor) = Id :-
 collect_mq_info_in_included_module_info(IntPermissions, ModuleName, InclInfo,
         !Modules) :-
     InclInfo = include_module_info(Section, _Context),
+    % XXX Why do we test Section if we do the same thing for both int and imp?
     (
         Section = ms_interface,
         Arity = 0,
@@ -780,6 +787,13 @@ collect_mq_info_in_included_module_info(IntPermissions, ModuleName, InclInfo,
         Arity = 0,
         id_set_insert(IntPermissions, mq_id(ModuleName, Arity), !Modules)
     ).
+
+:- pred collect_mq_info_in_int_incl_context(module_permissions::in,
+    module_name::in, module_id_set::in, module_id_set::out) is det.
+
+collect_mq_info_in_int_incl_context(IntPermissions, ModuleName, !Modules) :-
+    Arity = 0,
+    id_set_insert(IntPermissions, mq_id(ModuleName, Arity), !Modules).
 
 :- pred collect_mq_info_in_int0_import_or_use(module_name::in,
     set(module_name)::in, set(module_name)::out) is det.
