@@ -357,23 +357,19 @@ mercury_format_cons_id(Lang, NeedsBrackets, ConsId, S, !U) :-
         add_strings(["<type_ctor_info for ",
             ModuleString, ".", Type, "/", ArityString, ">"], S, !U)
     ;
-        ConsId = base_typeclass_info_const(ModuleName, ClassId, InstanceNum,
-            InstanceString),
-        ModuleString = sym_name_to_string(ModuleName),
+        ConsId = base_typeclass_info_const(ModuleSymName, ClassId,
+            InstanceNum, InstanceStr),
+        ModuleNameStr = sym_name_to_string(ModuleSymName),
         ClassId = class_id(ClassName, ClassArity),
-        add_string("<base_typeclass_info for ", S, !U),
-        add_string("class_id(", S, !U),
-        mercury_format_sym_name(ClassName, S, !U),
-        add_string(", ", S, !U),
-        add_int(ClassArity, S, !U),
-        add_string(")", S, !U),
-        ( if ModuleString \= "some bogus module name" then
-            add_strings([" from module ", ModuleString], S, !U)
-        else
-            true
-        ),
-        add_format(", instance number %d (%s)>",
-            [i(InstanceNum), s(InstanceString)], S, !U)
+        string.format("class_id(%s, %d)",
+            [s(mercury_sym_name_to_string(ClassName)), i(ClassArity)],
+            ClassStr),
+        string.format("from module %s, instance number %d (%s)",
+            [s(ModuleNameStr), i(InstanceNum), s(InstanceStr)],
+            ModuleInstanceStr),
+        string.format("<base_typeclass_info for %s, %s>",
+            [s(ClassStr), s(ModuleInstanceStr)], ConsIdStr),
+        add_string(ConsIdStr, S, !U)
     ;
         ConsId = type_info_cell_constructor(_),
         add_string("<type_info_cell_constructor>", S, !U)

@@ -65,7 +65,6 @@
 :- import_module char.
 :- import_module io.
 :- import_module list.
-:- import_module string.
 :- import_module term.
 :- import_module unit.
 
@@ -153,8 +152,6 @@
     pred add_lambda_eval_method(lambda_eval_method::in, S::in,
         U::di, U::uo) is det,
     pred add_escaped_string(string::in, S::in, U::di, U::uo) is det,
-    pred add_format(string::in, list(poly_type)::in, S::in,
-        U::di, U::uo) is det,
     % The add_list predicate calls the predicate argument to add each
     % element of the list to the specified stream, printing the specified
     % separator between each pair of elements.
@@ -174,6 +171,7 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module bool.
+:- import_module string.
 :- import_module term_io.
 
 %---------------------------------------------------------------------------%
@@ -266,7 +264,6 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_eval_method/4) is write_eval_eval_method,
     pred(add_lambda_eval_method/4) is write_lambda_eval_method,
     pred(add_escaped_string/4) is write_escaped_string,
-    pred(add_format/5) is write_format,
     pred(add_list/6) is write_out_list
 ].
 
@@ -292,7 +289,6 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_eval_method/4) is output_eval_eval_method,
     pred(add_lambda_eval_method/4) is output_lambda_eval_method,
     pred(add_escaped_string/4) is output_escaped_string,
-    pred(add_format/5) is output_format,
     pred(add_list/6) is output_list
 ].
 
@@ -438,14 +434,6 @@ write_lambda_eval_method(LambdaEvalMethod, Stream, !IO) :-
 
 write_escaped_string(Str, Stream, !IO) :-
     term_io.write_escaped_string(Stream, Str, !IO).
-
-:- pred write_format(string::in, list(poly_type)::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-write_format(FormatStr, PolyTypes, Stream, !IO) :-
-    disable_warning [unknown_format_calls] (
-        io.format(Stream, FormatStr, PolyTypes, !IO)
-    ).
 
 %-------------%
 
@@ -597,14 +585,6 @@ output_eval_eval_method(EvalMethod, _, !Str) :-
 
 output_lambda_eval_method(lambda_normal, _, !Str) :-
     output_string("normal", unit, !Str).
-
-:- pred output_format(string::in, list(poly_type)::in, unit::in,
-    string::di, string::uo) is det.
-
-output_format(Format, Items, _, Str0, Str) :-
-    disable_warning [unknown_format_calls] (
-        Str = Str0 ++ string.format(Format, Items)
-    ).
 
 :- pred output_list(
     pred(T, unit, string, string)::in(pred(in, in, di, uo) is det),
