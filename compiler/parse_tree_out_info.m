@@ -443,7 +443,9 @@ write_escaped_string(Str, Stream, !IO) :-
     io.text_output_stream::in, io::di, io::uo) is det.
 
 write_format(FormatStr, PolyTypes, Stream, !IO) :-
-    io.format(Stream, FormatStr, PolyTypes, !IO).
+    disable_warning [unknown_format_calls] (
+        io.format(Stream, FormatStr, PolyTypes, !IO)
+    ).
 
 %-------------%
 
@@ -600,7 +602,9 @@ output_lambda_eval_method(lambda_normal, _, !Str) :-
     string::di, string::uo) is det.
 
 output_format(Format, Items, _, Str0, Str) :-
-    Str = Str0 ++ string.format(Format, Items).
+    disable_warning [unknown_format_calls] (
+        Str = Str0 ++ string.format(Format, Items)
+    ).
 
 :- pred output_list(
     pred(T, unit, string, string)::in(pred(in, in, di, uo) is det),

@@ -447,7 +447,9 @@ put_char(Stream, Char, !State) :-
     ).
 
 format(Stream, FormatString, Arguments, !State) :-
-    string.format(FormatString, Arguments, String),
+    disable_warning [unknown_format_calls] (
+        string.format(FormatString, Arguments, String)
+    ),
     put(Stream, String, !State).
 
 nl(Stream, !State) :-

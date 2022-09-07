@@ -44,11 +44,7 @@ MGNUCFLAGS-io                   += --no-ansi
 # in the I/O state. However, until we delete that field, the initialization
 # of the I/O state must still initialize the globals, which unavoidably
 # calls a now-obsolete predicate.
-MCFLAGS-io                      += --no-warn-unknown-format-calls \
-                                    --no-warn-obsolete
-MCFLAGS-stream                  += --no-warn-unknown-format-calls
-MCFLAGS-stream.string_writer    += --no-warn-unknown-format-calls
-MCFLAGS-string                  += --no-warn-unknown-format-calls
+MCFLAGS-io                      += --no-warn-obsolete
 
 MCFLAGS-mer_std                 += --no-warn-nothing-exported
 

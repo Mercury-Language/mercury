@@ -427,7 +427,9 @@ then
         :- pred my_uint_xor(uint32::in, uint32::out) is det.
 
         my_uint_xor(A, B) :-
-            561u32 = uint32.xor(A, B).
+            disable_warning [[unknown_format_calls]] (
+                561u32 = uint32.xor(A, B)
+            ).
 
         :- pred p(t::out) is det.
 

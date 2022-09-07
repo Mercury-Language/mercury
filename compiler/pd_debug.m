@@ -87,7 +87,9 @@ pd_debug_message(PDInfo, Fmt, Args, !IO) :-
         DebugPD = yes,
         module_info_get_name(ModuleInfo, ModuleName),
         get_debug_output_stream(Globals, ModuleName, Stream, !IO),
-        io.format(Stream, Fmt, Args, !IO),
+        disable_warning [unknown_format_calls] (
+            io.format(Stream, Fmt, Args, !IO)
+        ),
         io.flush_output(Stream, !IO)
     ).
 
@@ -102,7 +104,9 @@ pd_debug_message_context(PDInfo, Context, Fmt, Args, !IO) :-
         module_info_get_name(ModuleInfo, ModuleName),
         get_debug_output_stream(Globals, ModuleName, Stream, !IO),
         prog_out.write_context(Stream, Context, !IO),
-        io.format(Stream, Fmt, Args, !IO),
+        disable_warning [unknown_format_calls] (
+            io.format(Stream, Fmt, Args, !IO)
+        ),
         io.flush_output(Stream, !IO)
     ).
 

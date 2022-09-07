@@ -95,11 +95,6 @@ MCFLAGS-make.module_target                += --no-ansi-c
 MCFLAGS-make.program_target               += --no-ansi-c
 MCFLAGS-make.util                         += --no-ansi-c --no-halt-at-warn
 
-# These modules provide general-purpose wrappers around string.format
-# in which the format strings are known only by their callers.
-MCFLAGS-transform_hlds.pd_debug           = --no-warn-unknown-format-calls
-MCFLAGS-parse_tree.parse_tree_out_info    = --no-warn-unknown-format-calls
-
 MCFLAGS-analysis                             += --no-warn-implicit-stream-calls
 MCFLAGS-analysis.file                        += --no-warn-implicit-stream-calls
 MCFLAGS-backend_libs.bytecode_data           += --no-warn-implicit-stream-calls

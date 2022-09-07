@@ -3798,10 +3798,14 @@ write_binary(binary_output_stream(Stream), Term, !IO) :-
 
 format(FormatString, Arguments, !IO) :-
     output_stream(Stream, !IO),
-    io.format(Stream, FormatString, Arguments, !IO).
+    disable_warning [unknown_format_calls] (
+        io.format(Stream, FormatString, Arguments, !IO)
+    ).
 
 format(Stream, FormatString, Arguments, !IO) :-
-    string.format(FormatString, Arguments, String),
+    disable_warning [unknown_format_calls] (
+        string.format(FormatString, Arguments, String)
+    ),
     write_string(Stream, String, !IO).
 
 %---------------------------------------------------------------------------%

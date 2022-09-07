@@ -6185,7 +6185,9 @@ float_to_string(Float, unsafe_promise_unique(String)) :-
 :- func float_to_string_loop(int, float) = (string) is det.
 
 float_to_string_loop(Prec, Float) = String :-
-    format("%#." ++ int_to_string(Prec) ++ "g", [f(Float)], Tmp),
+    disable_warning [unknown_format_calls] (
+        format("%#." ++ int_to_string(Prec) ++ "g", [f(Float)], Tmp)
+    ),
     ( if Prec = max_precision then
         String = Tmp
     else
@@ -6267,7 +6269,9 @@ string_ops_noncanon(NonCanon, OpsTable, X, String) :-
 %
 
 format(S1, PT) = S2 :-
-    format(S1, PT, S2).
+    disable_warning [unknown_format_calls] (
+        format(S1, PT, S2)
+    ).
 
 format(FormatString, PolyList, String) :-
     format.format_impl(FormatString, PolyList, String).
