@@ -9,39 +9,51 @@
 % File: det_analysis.m - the determinism analysis pass.
 % Main authors: conway, fjh, zs.
 %
-% This pass has three components:
+% This pass has three components.
 %
-% - Segregate the procedures into those that have determinism declarations,
-%   and those that don't.
+% - We partition the procedures of that need determinism analysis into
+%   the procedures that have determinism declarations (call these
+%   DeclaredProcs), and the procedures that don't (call these UndeclaredProcs).
+%   (Procedures imported from other modules do not need determinism analysis,
+%   since we have their declarations and do *not* have their definitions.
+%   And some procedures created by the compiler already have their determinism
+%   information filled in.)
 %
-% - A step of performing a local inference pass on each procedure
-%   without a determinism declaration is iterated until a fixpoint is reached.
+% - We perform a fixpoint iteration on the procedures in UndeclaredProcs.
+%   Each iteration of this fixpoint process infers the determinism of
+%   all these procedures, assuming that the declared determinisms of the
+%   DeclaredProcs and the currently recorded inferred determinisms of the
+%   UndeclaredProcs are all correct. If these assumptions are all correct,
+%   this will compute the same determinism for all the UndeclaredProcs
+%   as their currently recorded inferred determinisms. This is the fixpoint,
+%   since any further iterations would get the same result.
 %
-% - A checking step is performed on all the procedures that have determinism
-%   declarations to ensure that they are at least as deterministic as their
-%   declaration. This uses a form of the local inference pass.
+%   The inferred determinism fields of the proc_infos of UndeclaredProcs
+%   initially contain "erroneous", the determinism that makes the most
+%   assertions about the number of the solutions of the procedure. These are
+%   "has at least one solution", "has at most one solution" and "has at most
+%   zero solutions". Each iteration before we reach the fixpoint will show
+%   one or more of these tentative assertions to be unjustified, and we then
+%   delete these assertions from their recorded inferred determinism.
+%   Since we have a finite number of assertions (three) for each procedure,
+%   and each iteration before the fixpoint will delete at least one,
+%   the fixpoint iteration is guaranteed to terminate.
 %
-% If we are to avoid global inference for predicates with declarations, then
-% it must be an error, not just a warning, if the determinism checking step
-% detects that the determinism annotation was wrong. If we were to issue just
-% a warning, then we would have to override the determinism annotation, and
-% that would force us to re-check the inferred determinism for all calling
-% predicates.
+% - We then infer the determinism of all the DeclaredProcs, and report
+%   any results that are not at least as deterministic as their declarations.
 %
-% Alternately, we could leave it as a warning, but then we would have to
-% _make_ the predicate deterministic (or semideterministic) by inserting
-% run-time checking code which calls error/1 if the predicate really isn't
-% deterministic (semideterministic).
+%---------------------------------------------------------------------------%
 %
-% Determinism has three components:
+% Determinism has three-ish components:
 %
-%   whether a goal can fail
-%   whether a goal has more than one possible solution
-%   whether a goal occurs in a context where only the first solution
-%       is required
+%   1:  whether a goal can fail
+%   2a: whether a goal can have more than zero solution
+%   2b: whether a goal can have more than one solution
+%   3:  whether a goal occurs in a context where only the first solution
+%           is required
 %
-% The first two components are synthesized attributes: they are inferred
-% bottom-up. The last component is an inherited attribute: it is propagated
+% Components 1, 2a and 2b are synthesized attributes: they are inferred
+% bottom-up. Component 3 is an inherited attribute: it is propagated
 % top-down.
 %
 %---------------------------------------------------------------------------%
@@ -175,8 +187,9 @@
 %---------------------------------------------------------------------------%
 
 determinism_pass(!ModuleInfo, Specs) :-
-    module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    determinism_declarations(!.ModuleInfo, PredIds,
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+    module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds0),
+    determinism_declarations(PredIdTable0, ValidPredIds0,
         DeclaredProcs, UndeclaredProcs, NoInferProcs),
     list.foldl(set_non_inferred_proc_determinism, NoInferProcs, !ModuleInfo),
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -221,14 +234,13 @@ determinism_check_proc(ProcId, PredId, !ModuleInfo, Specs) :-
 %---------------------------------------------------------------------------%
 
 :- pred determinism_inference_to_fixpoint(module_info::in, module_info::out,
-    pred_proc_list::in, bool::in, list(error_spec)::out) is det.
+    list(pred_proc_id)::in, bool::in, list(error_spec)::out) is det.
 
 determinism_inference_to_fixpoint(!ModuleInfo, PredProcIds, Debug, Specs) :-
     % Iterate until a fixpoint is reached. This can be expensive if a module
     % has many predicates with undeclared determinisms. If this ever becomes
     % a problem, we should switch to doing iterations only on strongly
     % connected components of the dependency graph.
-
     determinism_inference_one_pass(PredProcIds, Debug, !ModuleInfo, [], Specs1,
         unchanged, Changed),
     trace [io(!IO)] (
@@ -255,7 +267,7 @@ determinism_inference_to_fixpoint(!ModuleInfo, PredProcIds, Debug, Specs) :-
         Specs = Specs1
     ).
 
-:- pred determinism_inference_one_pass(pred_proc_list::in, bool::in,
+:- pred determinism_inference_one_pass(list(pred_proc_id)::in, bool::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out,
     maybe_changed::in, maybe_changed::out) is det.
@@ -287,7 +299,7 @@ determinism_inference_one_pass([proc(PredId, ProcId) | PredProcs], Debug,
         !Changed).
 
 :- pred determinism_final_pass(module_info::in, module_info::out,
-    pred_proc_list::in, pred_proc_list::in, bool::in,
+    list(pred_proc_id)::in, list(pred_proc_id)::in, bool::in,
     list(error_spec)::out) is det.
 
 determinism_final_pass(!ModuleInfo, UndeclaredProcs, DeclaredProcs, Debug,
@@ -392,9 +404,9 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
             output_mercury, should_not_module_qualify, proc(PredId, ProcId)),
         IOStatePieces = [words("In")] ++ IOStateProcPieces ++ [suffix(":"), nl,
             words("error: invalid determinism for a predicate"),
-            words("with I/O state arguments.")],
+            words("with I/O state arguments."), nl],
         IOStateVerbosePieces = [words("Valid determinisms are "),
-            words("det, cc_multi and erroneous.")],
+            words("det, cc_multi and erroneous."), nl],
         IOStateSpec = error_spec($pred, severity_error, phase_detism_check,
             [simple_msg(ProcContext,
                 [always(IOStatePieces),
@@ -429,7 +441,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
             ExportPieces = [words("Error:"),
                 pragma_decl("foreign_export"), words("declaration"),
                 words("for a procedure that has a determinism of"),
-                fixed(determinism_to_string(NewDetism) ++ ".")],
+                fixed(determinism_to_string(NewDetism)), suffix("."), nl],
             ExportSpec = simplest_spec($pred, severity_error,
                 phase_detism_check, PragmaContext, ExportPieces),
             !:Specs = [ExportSpec | !.Specs]
@@ -880,7 +892,7 @@ det_infer_par_conj(Goals0, Goals, GoalInfo, InstMap0, SolnContext,
         ),
         Rest = "The current implementation supports only "
             ++ "single-solution non-failing parallel conjunctions.",
-        Pieces = [words(First), words(Rest)],
+        Pieces = [words(First), words(Rest), nl],
         det_diagnose_conj(Goals, InstMap0, detism_det, [], !DetInfo, GoalMsgs),
         sort_error_msgs(GoalMsgs, SortedGoalMsgs),
         Spec = error_spec($pred, severity_error, phase_detism_check,
@@ -1238,7 +1250,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
                 words("foreign clauses that have a"),
                 quote("will_not_throw_exception"), words("attribute."),
                 words("This attribute cannot be applied"),
-                words("to erroneous procedures.")],
+                words("to erroneous procedures."), nl],
             WillNotThrowSpec = error_spec($pred, severity_error,
                 phase_detism_check,
                 [simplest_msg(ProcContext, WillNotThrowPieces)]),
@@ -1288,7 +1300,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
             output_mercury, should_not_module_qualify, proc(PredId, ProcId)),
         Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
             words("error:"), pragma_decl("foreign_proc(...)"),
-            words("for a procedure without a determinism declaration.")],
+            words("for a procedure without a determinism declaration."), nl],
         Spec = simplest_spec($pred, severity_error, phase_detism_check,
             Context, Pieces),
         det_info_add_error_spec(Spec, !DetInfo),
@@ -1585,7 +1597,7 @@ det_infer_atomic_goal(Goal0, Goal, InstMap0,
         DetismStr = determinism_to_string(Detism),
         Pieces = [words("Error: atomic goal has determinism"),
             quote(DetismStr), suffix(","),
-            words("should be det or cc_multi.")],
+            words("should be det or cc_multi."), nl],
         Spec = simplest_spec($pred, severity_error, phase_detism_check,
             Context, Pieces),
         det_info_add_error_spec(Spec, !DetInfo)
@@ -1649,7 +1661,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                     words("scope is nested inside another.")],
                 NestedOuterPieces = [words("This is the outer"),
                     quote("promise_equivalent_solution_sets"),
-                    words("scope.")],
+                    words("scope."), nl],
                 NestedSeverity = severity_conditional(warn_simple_code, yes,
                     severity_warning, no),
                 NestedSpec = conditional_spec($pred, warn_simple_code, yes,
@@ -1670,7 +1682,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                     words("this"), quote("arbitrary"),
                     words("scope is not nested inside a"),
                     quote("promise_equivalent_solution_sets"),
-                    words("scope.")],
+                    words("scope."), nl],
                 ArbitrarySpec = simplest_spec($pred, severity_error,
                     phase_detism_check, Context, ArbitraryPieces),
                 det_info_add_error_spec(ArbitrarySpec, !DetInfo)
@@ -1701,10 +1713,10 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                         quote("promise_equivalent_solution_sets"),
                         words("scope it is nested inside overlap on"),
                         words(OverlapVarStr)] ++
-                        list_to_pieces(OverlapVarNames) ++ [suffix(".")],
+                        list_to_pieces(OverlapVarNames) ++ [suffix("."), nl],
                     OverlapPromisePieces = [words("This is the outer"),
                         quote("promise_equivalent_solution_sets"),
-                        words("scope.")],
+                        words("scope."), nl],
                     OverlapSpec = error_spec($pred, severity_error,
                         phase_detism_check,
                         [simplest_msg(Context, OverlapPieces),
@@ -1760,7 +1772,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             ),
             MissingPieces = [words("Error: the"), quote(MissingKindStr),
                 words(BindsWords), words(MissingListStr)]
-                ++ list_to_pieces(MissingVarNames) ++ [suffix(".")],
+                ++ list_to_pieces(MissingVarNames) ++ [suffix("."), nl],
             MissingSpec = simplest_spec($pred, severity_error,
                 phase_detism_check, Context, MissingPieces),
             det_info_add_error_spec(MissingSpec, !DetInfo)
@@ -1793,7 +1805,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             ),
             ExtraPieces = [words("Error: the"), quote(ExtraKindStr),
                 words("goal lists"), words(ExtraListStr)] ++
-                list_to_pieces(ExtraVarNames) ++ [suffix(".")],
+                list_to_pieces(ExtraVarNames) ++ [suffix("."), nl],
             ExtraSpec = simplest_spec($pred, severity_error,
                 phase_detism_check, Context, ExtraPieces),
             det_info_add_error_spec(ExtraSpec, !DetInfo)
@@ -1829,7 +1841,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             DetismStr = determinism_to_string(Detism),
             Pieces = [words("Error: trace goal has determinism"),
                 quote(DetismStr), suffix(","),
-                words("should be det or cc_multi.")],
+                words("should be det or cc_multi."), nl],
             Spec = simplest_spec($pred, severity_error, phase_detism_check,
                 Context, Pieces),
             det_info_add_error_spec(Spec, !DetInfo)
@@ -1912,7 +1924,7 @@ det_find_matching_non_cc_mode(DetInfo, PredId, CcProcId, NonCcProcId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, ProcIdsInfos),
-    det_find_matching_non_cc_mode_procs(ModuleInfo, PredInfo, ProcIdsInfos, 
+    det_find_matching_non_cc_mode_procs(ModuleInfo, PredInfo, ProcIdsInfos,
         CcProcId, NonCcProcId).
 
 :- pred det_find_matching_non_cc_mode_procs(module_info::in, pred_info::in,
@@ -1974,7 +1986,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
             Pieces1 = [words(ErrorMsg),
                 words("unification for non-canonical type"),
                 qual_top_ctor_of_type(Type),
-                words("is not guaranteed to succeed.")],
+                words("is not guaranteed to succeed."), nl],
             VerbosePieces = [words("Since the type has a user-defined"),
                 words("equality predicate, I must presume that"),
                 words("there is more than one possible concrete"),
@@ -1986,7 +1998,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                 words("backtracking over all possible"),
                 words("representations, but I'm not going to do that"),
                 words("implicitly. (If that's really what you want,"),
-                words("you must do it explicitly.)")],
+                words("you must do it explicitly.)"), nl],
             Spec = error_spec($pred, severity_error, phase_detism_check,
                 [simple_msg(Context,
                     [always(Pieces0 ++ Pieces1),
@@ -2031,7 +2043,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                     words("backtracking over all possible"),
                     words("representations, but I'm not going to do that"),
                     words("implicitly. (If that's really what you want,"),
-                    words("you must do it explicitly.)")],
+                    words("you must do it explicitly.)"), nl],
                 det_info_get_module_info(!.DetInfo, ModuleInfo),
                 ContextMsgs = failing_contexts_description(ModuleInfo,
                     VarTable, FailingContextsA ++ FailingContextsB),
@@ -2118,22 +2130,22 @@ det_get_soln_context(DeclaredDetism, SolnContext) :-
     % - UndeclaredProcs holds the procedures that don't have declarations
     %   whose determinism needs to be inferred.
     %
-    % - NoInferProcs holds the procedures whose determinism is already
-    %   known, and which should not be processed further.
+    % - NoInferProcs holds the procedures whose determinism is already known,
+    %   and which should not be processed further.
     %
-:- pred determinism_declarations(module_info::in, list(pred_id)::in,
-    pred_proc_list::out, pred_proc_list::out, pred_proc_list::out) is det.
+:- pred determinism_declarations(pred_id_table::in, list(pred_id)::in,
+    list(pred_proc_id)::out, list(pred_proc_id)::out, list(pred_proc_id)::out)
+    is det.
 
-determinism_declarations(ModuleInfo, PredIds,
+determinism_declarations(PredIdTable, PredIds,
         DeclaredProcs, UndeclaredProcs, NoInferProcs) :-
-    module_info_get_pred_id_table(ModuleInfo, PredIdTable),
     determinism_declarations_preds(PredIdTable, PredIds,
         [], DeclaredProcs, [], UndeclaredProcs, [], NoInferProcs).
 
 :- pred determinism_declarations_preds(pred_id_table::in, list(pred_id)::in,
-    pred_proc_list::in, pred_proc_list::out,
-    pred_proc_list::in, pred_proc_list::out,
-    pred_proc_list::in, pred_proc_list::out) is det.
+    list(pred_proc_id)::in, list(pred_proc_id)::out,
+    list(pred_proc_id)::in, list(pred_proc_id)::out,
+    list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
 determinism_declarations_preds(_PredIdTable, [],
         !DeclaredProcs, !UndeclaredProcs, !NoInferProcs).
@@ -2148,9 +2160,9 @@ determinism_declarations_preds(PredIdTable, [PredId | PredIds],
 
 :- pred determinism_declarations_procs(pred_id::in, pred_info::in,
     list(proc_id)::in,
-    pred_proc_list::in, pred_proc_list::out,
-    pred_proc_list::in, pred_proc_list::out,
-    pred_proc_list::in, pred_proc_list::out) is det.
+    list(pred_proc_id)::in, list(pred_proc_id)::out,
+    list(pred_proc_id)::in, list(pred_proc_id)::out,
+    list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
 determinism_declarations_procs(_PredId, _PredInfo, [],
         !DeclaredProcs, !UndeclaredProcs, !NoInferProcs).
