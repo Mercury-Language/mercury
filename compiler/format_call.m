@@ -12,16 +12,26 @@
 %
 % This module has two related jobs.
 %
-% - The first job is to generate warnings about calls to string.format,
-%   io.format and stream.string_writer.format in which the format string
-%   and the supplied lists of values do not agree.
+% - The first job is to check calls to
+%
+%   - the Mercury library predicates and functions string.format,
+%     io.format and stream.string_writer.format, and
+%
+%   - any user-written predicates or functions which have a format_call pragma
+%
+%   to see whether the format string and the supplied lists of values agree,
+%   and to generate warnings for calls in which they do not.
 %
 %   The difficult part of this job is actually finding the values of the
 %   variables representing the format string and the list of values to be
 %   printed.
 %
-% - The second job is to try to transform well formed calls into code
+% - The second job is to try to transform well formed calls to
+%   string.format, io.format and stream.string_writer.format into code
 %   that interprets the format string at compile time, rather than runtime.
+%   (We cannot do the same for user-written predicates or functions with
+%   format_call pragmas, because we don't know what the callee intends to do
+%   with the checked arguments.)
 %
 % Our general approach to the first job is a backwards traversal of the
 % procedure body. During this traversal, we assign an id to every conjunction
@@ -98,7 +108,7 @@
 %
 % If there are any such replacements, we perform a second backward traversal
 % of the procedure body, looking for the goals to be replaced (which we
-% identity by goal_id), and replace them.
+% identify by goal_id), and replace them.
 %
 % For each call we want to optimize, we also want to delete the code that
 % constructs the format string and the lists of poly_types. The first pass
@@ -120,13 +130,11 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
-
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 
 :- import_module list.
 :- import_module maybe.
@@ -137,11 +145,10 @@
     --->    do_not_generate_implicit_stream_warnings
     ;       generate_implicit_stream_warnings.
 
-:- pred is_format_call(module_name::in, string::in, list(prog_var)::in)
-    is semidet.
+:- pred is_format_call(pred_info::in, list(prog_var)::in) is semidet.
 
-:- pred analyze_and_optimize_format_calls(module_info::in,
-    maybe_generate_implicit_stream_warnings::in,
+:- pred analyze_and_optimize_format_calls(module_info::in, pred_info::in,
+    proc_info::in, maybe_generate_implicit_stream_warnings::in,
     hlds_goal::in, maybe(hlds_goal)::out, list(error_spec)::out,
     var_table::in, var_table::out) is det.
 
@@ -156,10 +163,10 @@
 :- import_module check_hlds.simplify.simplify_goal_call.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
@@ -167,11 +174,15 @@
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_db.
@@ -179,7 +190,9 @@
 :- import_module bool.
 :- import_module counter.
 :- import_module getopt.
+:- import_module int.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set_tree234.
@@ -193,13 +206,8 @@
     --->    format_call_site(
                 fcs_goal_id                 :: goal_id,
                 fcs_goal_info               :: hlds_goal_info,
-                fcs_string_var              :: prog_var,
-                fcs_values_var              :: prog_var,
                 fcs_call_kind               :: format_call_kind,
                 fcs_called_pred_id          :: pred_id,
-                fcs_called_pred_module      :: module_name,
-                fcs_called_pred_name        :: string,
-                fcs_called_pred_arity       :: arity,
                 fcs_call_context            :: prog_context,
                 fcs_containing_conj         :: conj_id,
                 fcs_warn_unknown_format     :: maybe_warn_unknown_format
@@ -227,14 +235,14 @@
             % The string variables being appended together,
             % and the id of the goal that does the appending.
     ;       string_append_list(goal_id, prog_var).
-            % The variables holding the list skeleton of the list of string
+            % The variable holding the list skeleton of the list of string
             % variables being appended together,
             % and the id of the goal that does the appending.
 
     % Maps each variable representing a format string
     % - either to the format string itself,
     % - or to the method of its construction.
-:- type string_map          == map(prog_var, string_state).
+:- type string_map == map(prog_var, string_state).
 
 :- type list_skeleton_state
     --->    list_skeleton_nil
@@ -245,7 +253,7 @@
 
     % Maps each variable participating in the skeleton of the list of values
     % to be printed to its value.
-:- type list_skeleton_map   == map(prog_var, list_skeleton_state).
+:- type list_skeleton_map == map(prog_var, list_skeleton_state).
 
     % Maps each variable representing a polytype in the list of values to be
     % printed to an abstract representation of that polytype, with the
@@ -254,11 +262,11 @@
     %
     % For example, when we find the unification X = string.poly_type.s(Y),
     % we add to the list_element_map an entry mapping X to apt_s(Y).
-:- type list_element_map    == map(prog_var, abstract_poly_type).
+:- type list_element_map == map(prog_var, abstract_poly_type).
 
     % Maps each variable defined in terms of another variable to the variable
     % it is assigned from.
-:- type fc_eqv_map          == map(prog_var, prog_var).
+:- type fc_eqv_map == map(prog_var, prog_var).
 
     % The knowledge we have recorded from assign and construct unifications
     % in a given conjunction.
@@ -284,16 +292,19 @@
 :- type format_call_kind
     --->    kind_string_format(
                 sf_context              :: prog_context,
+                sf_fmt_str_values       :: fmt_str_val_vars,
                 sf_result_var           :: prog_var
             )
     ;       kind_io_format_nostream(
                 iofns_context           :: prog_context,
+                iofns_fmt_str_values    :: fmt_str_val_vars,
                 iofns_io_in_var         :: prog_var,
                 iofns_io_out_var        :: prog_var
             )
     ;       kind_io_format_stream(
                 iofs_context            :: prog_context,
                 iofs_stream_var         :: prog_var,
+                iofs_fmt_str_values     :: fmt_str_val_vars,
                 iofs_io_in_var          :: prog_var,
                 iofs_io_out_var         :: prog_var
             )
@@ -301,45 +312,167 @@
                 ssw_context             :: prog_context,
                 ssw_tc_info_var         :: prog_var,
                 ssw_stream_var          :: prog_var,
+                ssw_fmt_str_values      :: fmt_str_val_vars,
                 ssw_in_var              :: prog_var,
                 ssw_out_var             :: prog_var
+            )
+    ;       kind_pragma(
+                p_context               :: prog_context,
+                p_fmt_str_values        :: one_or_more(fmt_str_val_vars)
             ).
+
+:- inst format_call_kind_opt for format_call_kind/0
+    --->    kind_string_format(ground, ground, ground)
+    ;       kind_io_format_nostream(ground, ground, ground, ground)
+    ;       kind_io_format_stream(ground, ground, ground, ground, ground)
+    ;       kind_stream_string_writer(ground, ground, ground,
+                ground, ground, ground).
+
+:- type fmt_str_val_vars
+    --->    fmt_str_val_vars(
+                % If this is a call to a predicate or function that has
+                % a format_call pragma that specifies more than one pair
+                % of <format string, values list> argument positions,
+                % this field will contain yes({N, ArgNumFS, ArgNumVL})
+                % if this structure corresponds to the Nth such pair containing
+                % <ArgNumFS, ArgNumVL>. Otherwise, this field will contain no.
+                maybe({int, int, int}),
+
+                % The variable holding a format string, and the associated
+                % variable holding the values list.
+                prog_var,
+                prog_var
+            ).
+
+:- pred get_fmt_str_val_vars_from_format_call_kind(format_call_kind::in,
+    fmt_str_val_vars::out, list(fmt_str_val_vars)::out) is det.
+
+get_fmt_str_val_vars_from_format_call_kind(Kind, FmtStrVal, FmtStrVals) :-
+    (
+        ( Kind = kind_string_format(_, FmtStrVal, _)
+        ; Kind = kind_io_format_nostream(_, FmtStrVal, _, _)
+        ; Kind = kind_io_format_stream(_, _, FmtStrVal, _, _)
+        ; Kind = kind_stream_string_writer(_, _, _, FmtStrVal, _, _)
+        ),
+        FmtStrVals = []
+    ;
+        Kind = kind_pragma(_, OoMFmtStrVals),
+        OoMFmtStrVals = one_or_more(FmtStrVal, FmtStrVals)
+    ).
+
+:- func get_relevant_vars_from_format_call_kind(format_call_kind)
+    = set_of_progvar.
+
+get_relevant_vars_from_format_call_kind(Kind) = Vars :-
+    get_fmt_str_val_vars_from_format_call_kind(Kind, FmtStrVal, FmtStrVals),
+    BaseSet = get_relevant_vars_from_fmt_str_val_vars(FmtStrVal),
+    AddedSets = list.map(get_relevant_vars_from_fmt_str_val_vars, FmtStrVals),
+    set_of_var.union_list([BaseSet | AddedSets], Vars).
+
+:- func get_relevant_vars_from_fmt_str_val_vars(fmt_str_val_vars)
+    = set_of_progvar.
+
+get_relevant_vars_from_fmt_str_val_vars(FmtStrVal) = Vars :-
+    FmtStrVal = fmt_str_val_vars(_, VarFS, VarVL),
+    set_of_var.list_to_set([VarFS, VarVL], Vars).
 
 %---------------------------------------------------------------------------%
 
-is_format_call(ModuleName, Name, Args) :-
-    % NOTE The logic here must match the test logic of
-    % is_format_call_kind_and_vars below.
+is_format_call(PredInfo, ArgVars) :-
+    ModuleName = pred_info_module(PredInfo),
+    Name = pred_info_name(PredInfo),
+    ( if is_builtin_format_call(ModuleName, Name, ArgVars) then
+        true
+    else
+        pred_info_get_format_call(PredInfo, MaybeFormatCall),
+        (
+            MaybeFormatCall = yes(_FormatCall)
+        ;
+            MaybeFormatCall = no,
+            fail
+        )
+    ).
+
+:- pred is_builtin_format_call(module_name::in, string::in, list(prog_var)::in)
+    is semidet.
+
+is_builtin_format_call(ModuleName, Name, ArgVars) :-
+    % NOTE The logic here must match the test logic of the
+    % is_builtin_format_call_kind_and_vars predicate below.
     Name = "format",
     ( if
         ModuleName = mercury_string_module
     then
-        Args = [_FormatStringVar, _FormattedValuesVar, _ResultVar]
+        ArgVars = [_FmtStrVar, _FmtValuesVar, _ResultVar]
     else if
         ModuleName = mercury_io_module
     then
         (
-            Args = [_FormatStringVar, _FormattedValuesVar, _IOIn, _IOOut]
+            ArgVars = [_FmtStrVar, _FmtValuesVar, _IOIn, _IOOut]
         ;
-            Args = [_StreamVar, _FormatStringVar, _FormattedValuesVar,
+            ArgVars = [_StreamVar, _FmtStrVar, _FmtValuesVar,
                 _IOIn, _IOOut]
         )
     else if
         ModuleName = mercury_std_lib_module_name(
             qualified(unqualified("stream"), "string_writer"))
     then
-        Args = [_TC_InfoVarForStream, _StreamVar, _FormatStringVar,
-            _FormattedValuesVar, _StateInVar, _StateOutVar]
+        ArgVars = [_TypeClassInfoVarForStream, _StreamVar, _FmtStrVar,
+            _FmtValuesVar, _StateInVar, _StateOutVar]
     else
         fail
     ).
 
-:- pred is_format_call_kind_and_vars(module_name::in, string::in,
-    list(prog_var)::in, hlds_goal_info::in,
-    format_call_kind::out, prog_var::out, prog_var::out) is semidet.
+%---------------------%
 
-is_format_call_kind_and_vars(ModuleName, Name, Args, GoalInfo,
-        Kind, FormatStringVar, FormattedValuesVar) :-
+:- pred is_format_call_kind_and_vars(pred_info::in,
+    module_name::in, string::in, list(prog_var)::in, hlds_goal_info::in,
+    format_call_kind::out) is semidet.
+
+is_format_call_kind_and_vars(PredInfo, ModuleName, Name, ArgVars, GoalInfo,
+        Kind) :-
+    ( if
+        is_builtin_format_call_kind_and_vars(ModuleName, Name, ArgVars,
+            GoalInfo, KindPrime)
+    then
+        Kind = KindPrime
+    else
+        pred_info_get_format_call(PredInfo, MaybeFormatCall),
+        (
+            MaybeFormatCall = yes(FormatCall),
+            FormatCall = format_call(Context, OoMFmtStrValArgs),
+            one_or_more.length(OoMFmtStrValArgs, NumFmtStrValArgs),
+            one_or_more.map_foldl(arg_nums_to_vars(ArgVars, NumFmtStrValArgs),
+                OoMFmtStrValArgs, OoMFmtStrValVars, 1, _),
+            Kind = kind_pragma(Context, OoMFmtStrValVars)
+        ;
+            MaybeFormatCall = no,
+            fail
+        )
+    ).
+
+:- pred arg_nums_to_vars(list(prog_var)::in, int::in,
+    format_string_values::in, fmt_str_val_vars::out, int::in, int::out) is det.
+
+arg_nums_to_vars(ArgVars, NumFormatStringValues,
+        FormatStringValues, FmtStrVal, !Pos) :-
+    FormatStringValues = format_string_values(OrigArgNumFS, OrigArgNumVL,
+        CurArgNumFS, CurArgNumVL),
+    list.det_index1(ArgVars, CurArgNumFS, VarFS),
+    list.det_index1(ArgVars, CurArgNumVL, VarVL),
+    ( if NumFormatStringValues = 1 then
+        MaybePos = no
+    else
+        MaybePos = yes({!.Pos, OrigArgNumFS, OrigArgNumVL})
+    ),
+    FmtStrVal = fmt_str_val_vars(MaybePos, VarFS, VarVL),
+    !:Pos = !.Pos + 1.
+
+:- pred is_builtin_format_call_kind_and_vars(module_name::in, string::in,
+    list(prog_var)::in, hlds_goal_info::in, format_call_kind::out) is semidet.
+
+is_builtin_format_call_kind_and_vars(ModuleName, Name, ArgVars, GoalInfo,
+        Kind) :-
     % If you modify this code to recognize any previously unrecognized
     % predicates, then you also need to update the call tree of
     % get_implicit_dependencies_* in module_imports.m. That code tests whether
@@ -347,28 +480,32 @@ is_format_call_kind_and_vars(ModuleName, Name, Args, GoalInfo,
     % the need to implicitly import the modules that contain the predicates
     % that implement their optimized versions.
     %
-    % NOTE The test logic here must be duplicated in is_format_call above.
+    % NOTE The test logic here must be duplicated in the is_builtin_format_call
+    % predicate above.
     Name = "format",
     ( if
         ModuleName = mercury_string_module
     then
         % We have these arguments regardless of whether we call the
         % predicate or function version of string.format.
-        Args = [FormatStringVar, FormattedValuesVar, ResultVar],
+        ArgVars = [FmtStrVar, FmtValuesVar, ResultVar],
         Context = goal_info_get_context(GoalInfo),
-        Kind = kind_string_format(Context, ResultVar)
+        FmtStrValVars = fmt_str_val_vars(no, FmtStrVar, FmtValuesVar),
+        Kind = kind_string_format(Context, FmtStrValVars, ResultVar)
     else if
         ModuleName = mercury_io_module
     then
         (
-            Args = [FormatStringVar, FormattedValuesVar, IOIn, IOOut],
+            ArgVars = [FmtStrVar, FmtValuesVar, IOIn, IOOut],
             Context = goal_info_get_context(GoalInfo),
-            Kind = kind_io_format_nostream(Context, IOIn, IOOut)
+            FmtStrValVars = fmt_str_val_vars(no, FmtStrVar, FmtValuesVar),
+            Kind = kind_io_format_nostream(Context, FmtStrValVars, IOIn, IOOut)
         ;
-            Args = [StreamVar, FormatStringVar, FormattedValuesVar,
-                IOIn, IOOut],
+            ArgVars = [StreamVar, FmtStrVar, FmtValuesVar, IOIn, IOOut],
             Context = goal_info_get_context(GoalInfo),
-            Kind = kind_io_format_stream(Context, StreamVar, IOIn, IOOut)
+            FmtStrValVars = fmt_str_val_vars(no, FmtStrVar, FmtValuesVar),
+            Kind = kind_io_format_stream(Context, StreamVar, FmtStrValVars,
+                IOIn, IOOut)
         )
     else if
         ModuleName = mercury_std_lib_module_name(
@@ -376,19 +513,20 @@ is_format_call_kind_and_vars(ModuleName, Name, Args, GoalInfo,
     then
         % Since we do this check after polymorphism, there will have been
         % a typeclassinfo inserted at the front of the argument list.
-        Args = [TC_InfoVarForStream, StreamVar, FormatStringVar,
-            FormattedValuesVar, StateInVar, StateOutVar],
+        ArgVars = [TypeClassInfoVarForStream, StreamVar,
+            FmtStrVar, FmtValuesVar, StateInVar, StateOutVar],
         Context = goal_info_get_context(GoalInfo),
-        Kind = kind_stream_string_writer(Context, TC_InfoVarForStream,
-            StreamVar, StateInVar, StateOutVar)
+        FmtStrValVars = fmt_str_val_vars(no, FmtStrVar, FmtValuesVar),
+        Kind = kind_stream_string_writer(Context, TypeClassInfoVarForStream,
+            StreamVar, FmtStrValVars, StateInVar, StateOutVar)
     else
         fail
     ).
 
 %---------------------------------------------------------------------------%
 
-analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
-        Goal0, MaybeGoal, Specs, !VarTable) :-
+analyze_and_optimize_format_calls(ModuleInfo, PredInfo, ProcInfo,
+        GenImplicitStreamWarnings, Goal0, MaybeGoal, Specs, !VarTable) :-
     map.init(ConjMaps0),
     counter.init(0, Counter0),
     fill_goal_id_slots_in_proc_body(ModuleInfo, !.VarTable, _, Goal0, Goal1),
@@ -432,8 +570,9 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
         ShouldOptFormatCalls = do_not_opt_format_calls
     ),
     list.foldl3(
-        check_format_call_site(ModuleInfo, GenImplicitStreamWarnings,
-            ShouldOptFormatCalls, ConjMaps, PredMap),
+        check_format_call_site(ModuleInfo, PredInfo, ProcInfo,
+            GenImplicitStreamWarnings, ShouldOptFormatCalls,
+            ConjMaps, PredMap),
         FormatCallSites, map.init, GoalIdMap, [], Specs, !VarTable),
     ( if map.is_empty(GoalIdMap) then
         % We have not found anything to improve in Goal1.
@@ -459,25 +598,25 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
         MaybeGoal = yes(Goal)
     ).
 
-:- pred check_format_call_site(module_info::in,
+:- pred check_format_call_site(module_info::in, pred_info::in, proc_info::in,
     maybe_generate_implicit_stream_warnings::in, maybe_opt_format_calls::in,
     conj_maps::in, conj_pred_map::in, format_call_site::in,
     fc_goal_id_map::in, fc_goal_id_map::out,
     list(error_spec)::in, list(error_spec)::out,
     var_table::in, var_table::out) is det.
 
-check_format_call_site(ModuleInfo, ImplicitStreamWarnings, OptFormatCalls,
-        ConjMaps, PredMap, FormatCallSite, !GoalIdMap, !Specs, !VarTable) :-
-    FormatCallSite = format_call_site(GoalId, GoalInfo, StringVar, ValuesVar,
-        CallKind, PredId, ModuleName, Name, Arity, Context, CurId,
-        WarnUnknownFormat),
+check_format_call_site(ModuleInfo, PredInfo, ProcInfo, ImplicitStreamWarnings,
+        OptFormatCalls, ConjMaps, PredMap, FormatCallSite,
+        !GoalIdMap, !Specs, !VarTable) :-
+    FormatCallSite = format_call_site(GoalId, GoalInfo, Kind, CalleePredId,
+        _Context, _CurId, _WarnUnknownFormat),
     (
         ImplicitStreamWarnings = do_not_generate_implicit_stream_warnings
     ;
         ImplicitStreamWarnings = generate_implicit_stream_warnings,
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
         maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
-            PredId, PredInfo, GoalInfo, MaybeImplicitStreamSpec),
+            CalleePredId, CalleePredInfo, GoalInfo, MaybeImplicitStreamSpec),
         (
             MaybeImplicitStreamSpec = no
         ;
@@ -486,76 +625,95 @@ check_format_call_site(ModuleInfo, ImplicitStreamWarnings, OptFormatCalls,
         )
     ),
 
-    SymName = qualified(ModuleName, Name),
-    module_info_get_globals(ModuleInfo, Globals),
-
-    follow_format_string(ConjMaps, PredMap, CurId, StringVar,
-        FormatStringResult),
     (
-        FormatStringResult = follow_string_result(_, _, _)
+        ( Kind = kind_string_format(_, FmtStrVal, _)
+        ; Kind = kind_io_format_nostream(_, FmtStrVal, _, _)
+        ; Kind = kind_io_format_stream(_, _, FmtStrVal, _, _)
+        ; Kind = kind_stream_string_writer(_, _, _, FmtStrVal, _, _)
+        ),
+        check_fmt_str_val_vars(ModuleInfo, PredInfo, ProcInfo,
+            ConjMaps, PredMap, FormatCallSite, FmtStrVal, CheckResult),
+        (
+            CheckResult = ok3(FormatSpecs, ToDeleteVars, ToDeleteGoals),
+            (
+                OptFormatCalls = do_not_opt_format_calls
+            ;
+                OptFormatCalls = opt_format_calls,
+                merge_adjacent_const_strs(FormatSpecs, FormatSpecsOpt),
+                create_replacement_goal(ModuleInfo, GoalId, Kind,
+                    FormatSpecsOpt, ToDeleteVars, ToDeleteGoals,
+                    !GoalIdMap, !VarTable)
+            )
+        ;
+            CheckResult = error3(CheckSpecs),
+            !:Specs = CheckSpecs ++ !.Specs
+        )
     ;
-        FormatStringResult = no_follow_string_result,
-        (
-            WarnUnknownFormat = do_not_warn_unknown_format
-        ;
-            WarnUnknownFormat = warn_unknown_format,
-            UnknownFormatPieces = [words("Unknown format string in call to"),
-                qual_sym_name_arity(sym_name_arity(SymName, Arity)),
-                suffix("."), nl],
-            UnknownFormatSpec = simplest_spec($pred, severity_warning,
-                phase_simplify(report_in_any_mode),
-                Context, UnknownFormatPieces),
-            !:Specs = [UnknownFormatSpec | !.Specs]
-        )
-    ),
+        Kind = kind_pragma(_, OoMFmtStrVars),
+        OoMFmtStrVars = one_or_more(HeadFmtStrVal, TailFmtStrVals),
+        check_fmt_str_val_vars(ModuleInfo, PredInfo, ProcInfo,
+            ConjMaps, PredMap, FormatCallSite, HeadFmtStrVal, HeadCheckResult),
+        list.map(
+            check_fmt_str_val_vars(ModuleInfo, PredInfo, ProcInfo,
+                ConjMaps, PredMap, FormatCallSite),
+            TailFmtStrVals, TailCheckResults),
+        HeadCheckSpecs = get_any_errors3(HeadCheckResult),
+        TailCheckSpecLists = list.map(get_any_errors3, TailCheckResults),
+        CheckSpecs = HeadCheckSpecs ++ list.condense(TailCheckSpecLists),
+        !:Specs = CheckSpecs ++ !.Specs
+    ).
 
-    follow_list_skeleton(ConjMaps, PredMap, CurId, ValuesVar, SkeletonResult),
-    ( if
-        SkeletonResult = follow_skeleton_result(PolytypeVars0, SkeletonVars0),
-        list.map(follow_poly_type(ConjMaps, PredMap, CurId), PolytypeVars0,
-            MaybeAbstractPolyTypes0),
-        project_all_yes(MaybeAbstractPolyTypes0, AbstractPolyTypes0)
-    then
-        PolyTypesToDeleteVars0 =
-            [StringVar, ValuesVar | SkeletonVars0] ++ PolytypeVars0,
-        MaybePolyTypesInfo = yes({AbstractPolyTypes0, PolyTypesToDeleteVars0})
-    else
-        MaybePolyTypesInfo = no,
-        (
-            WarnUnknownFormat = do_not_warn_unknown_format
-        ;
-            WarnUnknownFormat = warn_unknown_format,
-            UnknownFormatValuesPieces =
-                [words("Unknown format values in call to"),
-                qual_sym_name_arity(sym_name_arity(SymName, Arity)),
-                suffix("."), nl],
-            UnknownFormatValuesSpec = simplest_spec($pred, severity_warning,
-                phase_simplify(report_in_any_mode),
-                Context, UnknownFormatValuesPieces),
-            !:Specs = [UnknownFormatValuesSpec | !.Specs]
-        )
-    ),
+:- pred check_fmt_str_val_vars(module_info::in, pred_info::in, proc_info::in,
+    conj_maps::in, conj_pred_map::in, format_call_site::in,
+    fmt_str_val_vars::in,
+    maybe3(list(compiler_format_spec), list(prog_var), list(goal_id))::out)
+    is det.
 
+check_fmt_str_val_vars(ModuleInfo, PredInfo, ProcInfo, ConjMaps, PredMap,
+        FormatCallSite, FmtStrValVars, Result) :-
+    FormatCallSite = format_call_site(_GoalId, _GoalInfo, _Kind, PredId,
+        Context, _CurId, _WarnUnknownFormat),
+    FmtStrValVars = fmt_str_val_vars(MaybePos, StringVar, ValuesVar),
+    follow_format_string_handle_unknown(ModuleInfo, ConjMaps, PredMap,
+        FormatCallSite, StringVar, FormatStringResult),
+    follow_values_handle_unknown(ModuleInfo, ConjMaps, PredMap,
+        FormatCallSite, ValuesVar, ValuesResult),
     ( if
-        FormatStringResult = follow_string_result(FormatString,
-            FormatStringToDeleteVars, ToDeleteGoals),
-        MaybePolyTypesInfo = yes({AbstractPolyTypes, PolyTypeToDeleteVars})
+        FormatStringResult = ok3(FormatString, ToDeleteVarsFS, ToDeleteGoals),
+        ValuesResult = ok2(AbstractPolyTypes, ToDeleteVarsVL)
     then
         string.to_char_list(FormatString, FormatStringChars),
-        parse_and_optimize_format_string(FormatStringChars, AbstractPolyTypes,
-            Context, MaybeSpecs),
+        parse_format_string_abstract(FormatStringChars, AbstractPolyTypes,
+            Context, MaybeFormatSpecs),
         (
-            MaybeSpecs = error(HeadError, TailErrors),
+            MaybeFormatSpecs = error(HeadError, TailErrors),
+            module_info_get_globals(ModuleInfo, Globals),
             globals.lookup_bool_option(Globals, warn_known_bad_format_calls,
                 WarnKnownBadFormatCalls),
             (
-                WarnKnownBadFormatCalls = no
+                WarnKnownBadFormatCalls = no,
+                Result = error3([])
             ;
                 WarnKnownBadFormatCalls = yes,
+                PredNamePieces = describe_one_pred_name(ModuleInfo,
+                    should_module_qualify, PredId),
+                (
+                    MaybePos = no,
+                    PragmaPieces = []
+                ;
+                    MaybePos = yes({Pos, ArgNumFS, ArgNumVL}),
+                    % XXX Any ideas for better wording?
+                    PragmaPieces = [words("when considering the"),
+                        nth_fixed(Pos), words("entry in its"),
+                        pragma_decl("format_call"), words("declaration,"),
+                        words("which places the format string as the"),
+                        nth_fixed(ArgNumFS), words("argument, and"),
+                        words("the values list as the"),
+                        nth_fixed(ArgNumVL), words("argument")]
+                ),
                 PrefixPieces = [words("Mismatched format and values"),
-                    words("in call to"),
-                    qual_sym_name_arity(sym_name_arity(SymName, Arity)),
-                    suffix(":"), nl],
+                    words("in call to")] ++ PredNamePieces ++ PragmaPieces ++
+                    [suffix(":"), nl],
                 globals.lookup_bool_option(Globals,
                     warn_only_one_format_string_error,
                     WarnOnlyOneFormatStringError),
@@ -568,26 +726,30 @@ check_format_call_site(ModuleInfo, ImplicitStreamWarnings, OptFormatCalls,
                         list.map(string_format_error_to_words, TailErrors)]
                 ),
 
-                BadFormatSpec = simplest_spec($pred, severity_warning,
+                MismatchSpec = simplest_spec($pred, severity_warning,
                     phase_simplify(report_in_any_mode),
                     Context, PrefixPieces ++ ErrorPieces),
-                !:Specs = [BadFormatSpec | !.Specs]
+                Result = error3([MismatchSpec])
             )
         ;
-            MaybeSpecs = ok(Specs),
-            (
-                OptFormatCalls = do_not_opt_format_calls
-            ;
-                OptFormatCalls = opt_format_calls,
-                ToDeleteVars =
-                    FormatStringToDeleteVars ++ PolyTypeToDeleteVars,
-                create_replacement_goal(ModuleInfo, GoalId, CallKind,
-                    Specs, ToDeleteVars, ToDeleteGoals, !GoalIdMap, !VarTable)
-            )
+            MaybeFormatSpecs = ok(FormatSpecs),
+            ToDeleteVars = ToDeleteVarsFS ++ ToDeleteVarsVL,
+            Result = ok3(FormatSpecs, ToDeleteVars, ToDeleteGoals)
         )
     else
-        % Any error message has already been generated, if asked for.
-        true
+        ( if
+            FormatStringResult = error3(_),
+            ValuesResult = error2(_),
+            format_call_is_checked_in_parent(PredInfo, ProcInfo,
+                StringVar, ValuesVar)
+        then
+            Specs = []
+        else
+            Specs =
+                get_any_errors3(FormatStringResult) ++
+                get_any_errors2(ValuesResult)
+        ),
+        Result = error3(Specs)
     ).
 
 :- pred project_all_yes(list(maybe(T))::in, list(T)::out) is semidet.
@@ -602,6 +764,39 @@ string_format_error_to_words(Error) =
     words(string_format_error_to_msg(Error)).
 
 %---------------------------------------------------------------------------%
+
+:- pred follow_format_string_handle_unknown(module_info::in,
+    conj_maps::in, conj_pred_map::in, format_call_site::in, prog_var::in,
+    maybe3(string, list(prog_var), list(goal_id))::out) is det.
+
+follow_format_string_handle_unknown(ModuleInfo, ConjMaps, PredMap,
+        FormatCallSite, StringVar, Result) :-
+    FormatCallSite = format_call_site(_GoalId, _GoalInfo, _Kind, PredId,
+        Context, CurId, WarnUnknownFormat),
+    follow_format_string(ConjMaps, PredMap, CurId, StringVar,
+        FormatStringResult),
+    (
+        FormatStringResult = follow_string_result(FormatString,
+            ToDeleteVars0, ToDeleteGoals),
+        ToDeleteVars = [StringVar | ToDeleteVars0],
+        Result = ok3(FormatString, ToDeleteVars, ToDeleteGoals)
+    ;
+        FormatStringResult = no_follow_string_result,
+        (
+            WarnUnknownFormat = do_not_warn_unknown_format,
+            Specs = []
+        ;
+            WarnUnknownFormat = warn_unknown_format,
+            PredNamePieces = describe_one_pred_name(ModuleInfo,
+                should_module_qualify, PredId),
+            Pieces = [words("Unknown format string in call to")] ++
+                PredNamePieces ++ [suffix("."), nl],
+            Spec = simplest_spec($pred, severity_warning,
+                phase_simplify(report_in_any_mode), Context, Pieces),
+            Specs = [Spec]
+        ),
+        Result = error3(Specs)
+    ).
 
 :- type follow_string_result
     --->    no_follow_string_result
@@ -696,6 +891,42 @@ project_all_follow_string_results([HeadResult | TailResults],
     ToDeleteVars = HeadToDeleteVars ++ TailToDeleteVars,
     ToDeleteGoals = HeadToDeleteGoals ++ TailToDeleteGoals.
 
+%---------------------%
+
+:- pred follow_values_handle_unknown(module_info::in, conj_maps::in,
+    conj_pred_map::in, format_call_site::in, prog_var::in,
+    maybe2(list(abstract_poly_type), list(prog_var))::out) is det.
+
+follow_values_handle_unknown(ModuleInfo, ConjMaps, PredMap, FormatCallSite,
+        ValuesVar, Result) :-
+    FormatCallSite = format_call_site(_GoalId, _GoalInfo, _Kind, PredId,
+        Context, CurId, WarnUnknownFormat),
+    follow_list_skeleton(ConjMaps, PredMap, CurId, ValuesVar, SkeletonResult),
+    ( if
+        SkeletonResult = follow_skeleton_result(PolyTypeVars, SkeletonVars),
+        list.map(follow_poly_type(ConjMaps, PredMap, CurId), PolyTypeVars,
+            MaybeAbstractPolyTypes),
+        project_all_yes(MaybeAbstractPolyTypes, AbstractPolyTypes)
+    then
+        PolyTypesToDeleteVars = [ValuesVar | SkeletonVars] ++ PolyTypeVars,
+        Result = ok2(AbstractPolyTypes, PolyTypesToDeleteVars)
+    else
+        (
+            WarnUnknownFormat = do_not_warn_unknown_format,
+            Specs = []
+        ;
+            WarnUnknownFormat = warn_unknown_format,
+            PredNamePieces = describe_one_pred_name(ModuleInfo,
+                should_module_qualify, PredId),
+            Pieces = [words("Unknown format values in call to")] ++
+                PredNamePieces ++ [suffix("."), nl],
+            Spec = simplest_spec($pred, severity_warning,
+                phase_simplify(report_in_any_mode), Context, Pieces),
+            Specs = [Spec]
+        ),
+        Result = error2(Specs)
+    ).
+
 :- type follow_skeleton_result
     --->    no_follow_skeleton_result
     ;       follow_skeleton_result(
@@ -744,23 +975,59 @@ follow_list_skeleton(ConjMaps, PredMap, CurId, ListVar, Result) :-
 :- pred follow_poly_type(conj_maps::in, conj_pred_map::in,
     conj_id::in, prog_var::in, maybe(abstract_poly_type)::out) is det.
 
-follow_poly_type(ConjMaps, PredMap, CurId, PolytypeVar,
+follow_poly_type(ConjMaps, PredMap, CurId, PolyTypeVar,
         MaybeAbstractPolyType) :-
     ConjMap = get_conj_map(ConjMaps, CurId),
     ConjMap = conj_map(_, _, ElementMap, EqvMap),
-    ( if map.search(EqvMap, PolytypeVar, EqvVar) then
+    ( if map.search(EqvMap, PolyTypeVar, EqvVar) then
         follow_poly_type(ConjMaps, PredMap, CurId, EqvVar,
             MaybeAbstractPolyType)
-    else if map.search(ElementMap, PolytypeVar, AbstractPolyType) then
+    else if map.search(ElementMap, PolyTypeVar, AbstractPolyType) then
         MaybeAbstractPolyType = yes(AbstractPolyType)
     else if map.search(PredMap, CurId, PredId) then
-        follow_poly_type(ConjMaps, PredMap, PredId, PolytypeVar,
+        follow_poly_type(ConjMaps, PredMap, PredId, PolyTypeVar,
             MaybeAbstractPolyType)
     else
         MaybeAbstractPolyType = no
     ).
 
+%---------------------%
+
+:- pred format_call_is_checked_in_parent(pred_info::in, proc_info::in,
+    prog_var::in, prog_var::in) is semidet.
+
+format_call_is_checked_in_parent(PredInfo, ProcInfo, VarFS, VarVL) :-
+    pred_info_get_format_call(PredInfo, MaybeFormatCall),
+    MaybeFormatCall = yes(FormatCall),
+    FormatCall = format_call(_Context, OoMFormatStringsValues),
+    FormatStringsValues = one_or_more_to_list(OoMFormatStringsValues),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    format_call_is_checked_in_parent_loop(HeadVars, FormatStringsValues,
+        VarFS, VarVL).
+
+:- pred format_call_is_checked_in_parent_loop(list(prog_var)::in,
+    list(format_string_values)::in, prog_var::in, prog_var::in) is semidet.
+
+format_call_is_checked_in_parent_loop(_, [], _, _) :-
+    fail.
+format_call_is_checked_in_parent_loop(HeadVars, [FSV | FSVs], VarFS, VarVL) :-
+    FSV = format_string_values(_OrigArgNumFS, _OrigArgNumVL,
+        CurArgNumFS, CurArgNumVL),
+    list.det_index1(HeadVars, CurArgNumFS, HeadArgVarFS),
+    list.det_index1(HeadVars, CurArgNumVL, HeadArgVarVL),
+    ( if
+        HeadArgVarFS = VarFS,
+        HeadArgVarVL = VarVL
+    then
+        true
+    else
+        format_call_is_checked_in_parent_loop(HeadVars, FSVs, VarFS, VarVL)
+    ).
+
 %---------------------------------------------------------------------------%
+%
+% This is the backwards traversal described at the top of this module.
+%
 
 :- type format_call_traverse_params
     --->    format_call_traverse_params(
@@ -891,17 +1158,16 @@ format_call_traverse_conj(Params, [Goal | Goals], CurId, !FormatCallSites,
         ModuleName = pred_info_module(PredInfo),
         Name = pred_info_name(PredInfo),
         ( if
-            is_format_call_kind_and_vars(ModuleName, Name, ArgVars, GoalInfo,
-                Kind, StringVar, ValuesVar)
+            is_format_call_kind_and_vars(PredInfo, ModuleName, Name, ArgVars,
+                GoalInfo, Kind)
         then
-            Arity = pred_info_orig_arity(PredInfo),
             GoalId = goal_info_get_goal_id(GoalInfo),
             Context = goal_info_get_context(GoalInfo),
-            FormatCallSite = format_call_site(GoalId, GoalInfo,
-                StringVar, ValuesVar, Kind, PredId,
-                ModuleName, Name, Arity, Context, CurId, WarnUnknownFormat),
+            FormatCallSite = format_call_site(GoalId, GoalInfo, Kind, PredId,
+                Context, CurId, WarnUnknownFormat),
             !:FormatCallSites = [FormatCallSite | !.FormatCallSites],
-            set_of_var.insert_list([StringVar, ValuesVar], !RelevantVars)
+            set_of_var.union(get_relevant_vars_from_format_call_kind(Kind),
+                !RelevantVars)
         else if
             ModuleName = mercury_string_module
         then
@@ -1520,7 +1786,7 @@ opt_format_call_sites_in_switch([Case0 | Cases0], [Case | Cases], !GoalIdMap,
 %---------------------------------------------------------------------------%
 
 :- pred create_replacement_goal(module_info::in, goal_id::in,
-    format_call_kind::in, list(compiler_format_spec)::in,
+    format_call_kind::in(format_call_kind_opt), list(compiler_format_spec)::in,
     list(prog_var)::in, list(goal_id)::in,
     fc_goal_id_map::in, fc_goal_id_map::out,
     var_table::in, var_table::out) is det.
@@ -1532,26 +1798,28 @@ create_replacement_goal(ModuleInfo, GoalId, CallKind, Specs,
     % its definition from being thrown away by dead_pred_elim before execution
     % gets here.
     (
-        CallKind = kind_string_format(Context, ResultVar),
+        CallKind = kind_string_format(Context, _FmtStrValVars, ResultVar),
         create_string_format_replacement(ModuleInfo, Specs, Context,
             ResultVar, ReplacementGoal, !VarTable)
     ;
         (
-            CallKind = kind_io_format_nostream(Context, IOInVar, IOOutVar),
+            CallKind = kind_io_format_nostream(Context, _FmtStrValVars,
+                IOInVar, IOOutVar),
             MaybeStreamVar = no
         ;
             CallKind = kind_io_format_stream(Context, StreamVar,
-                IOInVar, IOOutVar),
+                _FmtStrValVars, IOInVar, IOOutVar),
             MaybeStreamVar = yes(StreamVar)
         ),
         create_io_format_replacement(ModuleInfo, Specs, Context,
             MaybeStreamVar, IOInVar, IOOutVar, ReplacementGoal, !VarTable)
     ;
         CallKind = kind_stream_string_writer(Context,
-            TC_InfoVarForStream, StreamVar, StateInVar, StateOutVar),
+            TypeClassInfoVarForStream, StreamVar, _FmtStrValVars,
+            StateInVar, StateOutVar),
         create_stream_string_writer_format_replacement(ModuleInfo, Specs,
-            Context, TC_InfoVarForStream, StreamVar, StateInVar, StateOutVar,
-            ReplacementGoal, !VarTable)
+            Context, TypeClassInfoVarForStream, StreamVar,
+            StateInVar, StateOutVar, ReplacementGoal, !VarTable)
     ),
     FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
         list.sort(ToDeleteVars), list.sort(ToDeleteGoals)),

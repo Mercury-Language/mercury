@@ -313,7 +313,8 @@ gather_stats_in_item_decl_pragma(ItemDeclPragmaInfo, !ItemStats) :-
         !ItemStats ^ item_num_pragma_term2 :=
             !.ItemStats ^ item_num_pragma_term2 + 1
     ;
-        ( Pragma = decl_pragma_type_spec(_)
+        ( Pragma = decl_pragma_format_call(_)
+        ; Pragma = decl_pragma_type_spec(_)
         ; Pragma = decl_pragma_obsolete_pred(_)
         ; Pragma = decl_pragma_obsolete_proc(_)
         ; Pragma = decl_pragma_oisu(_)

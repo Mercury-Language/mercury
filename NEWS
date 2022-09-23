@@ -609,6 +609,12 @@ Changes to the Mercury standard library
 Changes to the Mercury language
 -------------------------------
 
+* The new pragma `format_call` can now be used to ask the compiler
+  to perform the same checks on calls to a named predicate or function
+  as the compiler performs on calls to string.format, io.format and
+  stream.string_writer.format. These checks test whether the format string
+  matches the provided list of values.
+
 * You can now disable another kind of warning with a disable_warning scope.
   Code such as
 

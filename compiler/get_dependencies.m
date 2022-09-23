@@ -96,11 +96,11 @@
     % XXX We currently discover the need to import the modules needed
     % to compile away format strings by traversing all parts of all clauses,
     % and checking every predicate name and functor name to see whether
-    % it could refer to any of the predicates recognized by the is_format_call
-    % predicate. This is inefficient. It is also a bit unpredictable, since
-    % it will lead us to implicitly import those modules even if a call
-    % to unqualified("format") eventually turns out to call some other
-    % predicate of that name.
+    % it *could* refer to any of the predicates recognized by the
+    % is_builtin_format_call predicate. This is inefficient. It is also
+    % a bit unpredictable, since it will lead us to implicitly import
+    % those modules even if a call to unqualified("format") eventually
+    % turns out to call some other predicate of that name.
     %
     % We should therefore consider ALWAYS implicitly importing the predicates
     % needed by format_call.m.

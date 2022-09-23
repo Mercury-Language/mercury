@@ -1418,6 +1418,7 @@ replace_in_decl_pragma_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
     ;
         ( Pragma0 = decl_pragma_obsolete_pred(_)
         ; Pragma0 = decl_pragma_obsolete_proc(_)
+        ; Pragma0 = decl_pragma_format_call(_)
         ; Pragma0 = decl_pragma_oisu(_)
         ; Pragma0 = decl_pragma_terminates(_)
         ; Pragma0 = decl_pragma_does_not_terminate(_)

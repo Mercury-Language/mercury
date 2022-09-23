@@ -20,6 +20,7 @@ MCFLAGS-duplicate_const		= --warn-duplicate-calls
 MCFLAGS-empty_interface		= -E
 
 MCFLAGS-disabled_warning    	= --warn-unknown-format-calls
+MCFLAGS-format_call_warning    	= --warn-unknown-format-calls
 
 MCFLAGS-unused_args_analysis    = \
 				--intermodule-analysis \

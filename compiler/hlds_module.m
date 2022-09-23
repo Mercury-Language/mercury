@@ -377,6 +377,8 @@
     pred_target_names::out) is det.
 :- pred module_info_get_structure_reuse_preds(module_info::in,
     set(pred_id)::out) is det.
+:- pred module_info_get_format_call_pragma_preds(module_info::in,
+    set(pred_id)::out) is det.
 :- pred module_info_get_exported_enums(module_info::in,
     list(exported_enum_info)::out) is det.
 :- pred module_info_get_event_set(module_info::in, event_set::out) is det.
@@ -472,6 +474,8 @@
 :- pred module_info_set_user_final_pred_target_names(pred_target_names::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_structure_reuse_preds(set(pred_id)::in,
+    module_info::in, module_info::out) is det.
+:- pred module_info_set_format_call_pragma_preds(set(pred_id)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_exported_enums(list(exported_enum_info)::in,
     module_info::in, module_info::out) is det.
@@ -970,6 +974,21 @@
                 % for structure reuse predicates to `.trans_opt' files.
                 mri_structure_reuse_preds       :: set(pred_id),
 
+                % The set of predicates in the HLDS that have
+                % a format_call pragma.
+                %
+                % This set is filled in by add_pragma.m when the HLDS
+                % is first constructed. Usually, this set will be empty,
+                % but if it is not, the check_pragma_format_call_preds pass
+                % will check all these pragmas for errors.
+                %
+                % This pass must be after type and mode analysis (since it
+                % needs to know the types and modes of procedure arguments),
+                % and must be before the simplification pass at the end of
+                % semantic analysis (since that is when format_call.m's code
+                % uses this info, relying on it having being checked).
+                mri_format_call_pragma_preds    :: set(pred_id),
+
                 % Enumeration types that have been exported to a foreign
                 % language.
                 mri_exported_enums              :: list(exported_enum_info),
@@ -1138,6 +1157,7 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
     UserInitPredTargetNames = pred_target_names(map.init),
     UserFinalPredTargetNames = pred_target_names(map.init),
     set.init(StructureReusePredIds),
+    set.init(FormatCallPragmaPredIds),
     ExportedEnums = [],
     EventSet = event_set("", map.init),
     map.init(OISUMap),
@@ -1182,6 +1202,7 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
         UserInitPredTargetNames,
         UserFinalPredTargetNames,
         StructureReusePredIds,
+        FormatCallPragmaPredIds,
         ExportedEnums,
         EventSet,
         OISUMap,
@@ -1372,6 +1393,8 @@ module_info_get_user_final_pred_target_names(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_user_final_pred_target_names.
 module_info_get_structure_reuse_preds(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_structure_reuse_preds.
+module_info_get_format_call_pragma_preds(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_format_call_pragma_preds.
 module_info_get_exported_enums(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_exported_enums.
 module_info_get_event_set(MI, X) :-
@@ -1502,6 +1525,8 @@ module_info_set_user_final_pred_target_names(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_user_final_pred_target_names := X.
 module_info_set_structure_reuse_preds(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_structure_reuse_preds := X.
+module_info_set_format_call_pragma_preds(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_format_call_pragma_preds := X.
 module_info_set_exported_enums(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_exported_enums := X.
 module_info_set_event_set(X, !MI) :-

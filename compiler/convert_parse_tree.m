@@ -1092,6 +1092,7 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
         ;
             ( DeclPragma = decl_pragma_obsolete_pred(_)
             ; DeclPragma = decl_pragma_obsolete_proc(_)
+            ; DeclPragma = decl_pragma_format_call(_)
             ; DeclPragma = decl_pragma_oisu(_)
             ; DeclPragma = decl_pragma_check_termination(_)
             ),
@@ -1322,6 +1323,7 @@ classify_trans_opt_items([Item | Items], !TermInfos, !Term2Infos,
         ;
             ( DeclPragma = decl_pragma_obsolete_pred(_)
             ; DeclPragma = decl_pragma_obsolete_proc(_)
+            ; DeclPragma = decl_pragma_format_call(_)
             ; DeclPragma = decl_pragma_type_spec(_)
             ; DeclPragma = decl_pragma_oisu(_)
             ; DeclPragma = decl_pragma_terminates(_)

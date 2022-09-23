@@ -79,6 +79,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.check_for_missing_type_defns.
+:- import_module check_hlds.check_pragma_format_call.
 :- import_module check_hlds.check_promise.
 :- import_module check_hlds.check_typeclass.
 :- import_module check_hlds.clause_to_proc.
@@ -712,6 +713,9 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
                 !Specs, !IO),
             maybe_dump_hlds(!.HLDS, 62, "try", !DumpInfo, !IO),
 
+            check_pragma_format_call(Verbose, Stats, !HLDS, !Specs, !IO),
+            maybe_dump_hlds(!.HLDS, 63, "format_call", !DumpInfo, !IO),
+
             maybe_simplify(yes, simplify_pass_frontend, Verbose, Stats,
                 !HLDS, !Specs, !IO),
             maybe_dump_hlds(!.HLDS, 65, "frontend_simplify", !DumpInfo, !IO),
@@ -1191,6 +1195,29 @@ process_try_goals(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO)
     ),
     maybe_report_stats(Stats, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred check_pragma_format_call(bool::in, bool::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+check_pragma_format_call(Verbose, Stats, !HLDS, !Specs, !IO) :-
+    module_info_get_format_call_pragma_preds(!.HLDS, FormatCallPredIds),
+    ( if set.is_empty(FormatCallPredIds) then
+        true
+    else
+        module_info_get_globals(!.HLDS, Globals),
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
+        maybe_write_string(Verbose,
+            "% Checking format_call pragmas...\n", !IO),
+        check_pragma_format_call_preds(FormatCallPredIds, !HLDS,
+            [], CheckSpecs),
+        !:Specs = CheckSpecs ++ !.Specs,
+        maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 

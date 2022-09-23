@@ -146,11 +146,14 @@ mercury_output_item_decl_pragma(Info, Stream, ItemDeclPragma, !IO) :-
     maybe_output_line_number(Info, Context, Stream, !IO),
     Lang = get_output_lang(Info),
     (
-        Pragma = decl_pragma_obsolete_pred(ObsoletePredInfo),
-        mercury_output_pragma_obsolete_pred(Stream, ObsoletePredInfo, !IO)
+        Pragma = decl_pragma_obsolete_pred(ObsPredInfo),
+        mercury_output_pragma_obsolete_pred(Stream, ObsPredInfo, !IO)
     ;
-        Pragma = decl_pragma_obsolete_proc(ObsoleteProcInfo),
-        mercury_output_pragma_obsolete_proc(Stream, Lang, ObsoleteProcInfo, !IO)
+        Pragma = decl_pragma_obsolete_proc(ObsProcInfo),
+        mercury_output_pragma_obsolete_proc(Stream, Lang, ObsProcInfo, !IO)
+    ;
+        Pragma = decl_pragma_format_call(FormatCallInfo),
+        mercury_output_pragma_format_call(Stream, FormatCallInfo, !IO)
     ;
         Pragma = decl_pragma_type_spec(TypeSpecInfo),
         mercury_output_pragma_type_spec(Stream, Lang, TypeSpecInfo, !IO)
@@ -1110,6 +1113,38 @@ wrapped_sym_name_arity_to_string(SNA) = Str :-
     SNA = sym_name_arity(SymName, Arity),
     Str = mercury_bracketed_sym_name_to_string(SymName) ++
         "/" ++ string.int_to_string(Arity).
+
+%---------------------------------------------------------------------------%
+%
+% Output a format_call pragma.
+%
+
+:- pred mercury_output_pragma_format_call(io.text_output_stream::in,
+    pragma_info_format_call::in, io::di, io::uo) is det.
+
+mercury_output_pragma_format_call(Stream, FormatCallInfo, !IO) :-
+    FormatCallInfo = pragma_info_format_call(PredSpec, OoMFormatArgsSpecs),
+    PredSpec = pred_pf_name_arity(PF, PredName, Arity),
+    PredStr = mercury_pred_pf_name_arity_to_string(PF, PredName, Arity),
+    OoMFormatArgsSpecs = one_or_more(HeadFormatArgsSpec, TailFormatArgsSpecs),
+    (
+        TailFormatArgsSpecs = [],
+        SecondArgStr = format_string_values_to_string(HeadFormatArgsSpec)
+    ;
+        TailFormatArgsSpecs = [_ | _],
+        ArgsSpecsStrs = list.map(format_string_values_to_string,
+            [HeadFormatArgsSpec | TailFormatArgsSpecs]),
+        ArgsSpecsStr = string.join_list(", ", ArgsSpecsStrs),
+        string.format("[%s]", [s(ArgsSpecsStr)], SecondArgStr)
+    ),
+    io.format(Stream, ":- pragma format_call(%s, [%s]).\n",
+        [s(PredStr), s(SecondArgStr)], !IO).
+
+:- func format_string_values_to_string(format_string_values) = string.
+
+format_string_values_to_string(FormatStringValues) = Str :-
+    FormatStringValues = format_string_values(OrigFS, OrigVL, _CurFS, _CurVL),
+    string.format("format_string_values(%d, %d)", [i(OrigFS), i(OrigVL)], Str).
 
 %---------------------------------------------------------------------------%
 %

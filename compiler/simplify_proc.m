@@ -233,8 +233,8 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
             SimplifyTasks ^ do_warn_implicit_streams = warn_implicit_streams,
             ImplicitStreamWarnings = generate_implicit_stream_warnings
         ),
-        simplify_proc_analyze_and_format_calls(!ModuleInfo,
-            ImplicitStreamWarnings, PredId, ProcId, FormatSpecs, !ProcInfo)
+        simplify_proc_analyze_and_format_calls(!ModuleInfo, PredId, PredInfo0,
+            ProcId, !ProcInfo, ImplicitStreamWarnings, FormatSpecs)
     else
         % Either there are no format calls to check, or we don't want to
         % optimize them and would ignore the added messages anyway.
@@ -404,16 +404,17 @@ simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- pred simplify_proc_analyze_and_format_calls(
-    module_info::in, module_info::out,
-    maybe_generate_implicit_stream_warnings::in, pred_id::in, proc_id::in,
-    list(error_spec)::out, proc_info::in, proc_info::out) is det.
+    module_info::in, module_info::out, pred_id::in, pred_info::in,
+    proc_id::in, proc_info::in, proc_info::out,
+    maybe_generate_implicit_stream_warnings::in, list(error_spec)::out) is det.
 
-simplify_proc_analyze_and_format_calls(!ModuleInfo, ImplicitStreamWarnings,
-        PredId, ProcId, FormatSpecs, !ProcInfo) :-
+simplify_proc_analyze_and_format_calls(!ModuleInfo, PredId, PredInfo0,
+        ProcId, !ProcInfo, ImplicitStreamWarnings, FormatSpecs) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_var_table(!.ProcInfo, VarTable0),
-    analyze_and_optimize_format_calls(!.ModuleInfo, ImplicitStreamWarnings,
-        Goal0, MaybeGoal, FormatSpecs, VarTable0, VarTable),
+    analyze_and_optimize_format_calls(!.ModuleInfo, PredInfo0, !.ProcInfo,
+        ImplicitStreamWarnings, Goal0, MaybeGoal, FormatSpecs,
+        VarTable0, VarTable),
     (
         MaybeGoal = yes(Goal),
         proc_info_set_goal(Goal, !ProcInfo),
@@ -435,20 +436,16 @@ simplify_proc_analyze_and_format_calls(!ModuleInfo, ImplicitStreamWarnings,
 
         % Put the new proc_info back into !ModuleInfo, since some of the
         % following code could otherwise find obsolete information in there.
+        pred_info_set_proc_info(ProcId, !.ProcInfo, PredInfo0, PredInfo1),
 
         % Remove the has_format_call marker from the pred_info before
         % putting it back, since any optimizable format calls will already
         % have been optimized. Since currently there is no program
         % transformation that inserts calls to these predicates,
-        % there is no point in invoking find_format_call again later.
-
-        module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-        pred_info_set_proc_info(ProcId, !.ProcInfo, PredInfo0, PredInfo1),
-
+        % there is no point in trying to optimize format_calls again later.
         pred_info_get_markers(PredInfo1, Markers1),
         remove_marker(marker_has_format_call, Markers1, Markers),
         pred_info_set_markers(Markers, PredInfo1, PredInfo),
-
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ;
         MaybeGoal = no

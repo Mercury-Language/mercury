@@ -128,10 +128,20 @@
     % Parse the entire format string. Return either a list of things to be
     % formatted and printed, or a list of error messages.
     %
-:- pred parse_and_optimize_format_string(list(char)::in,
+:- pred parse_format_string_abstract(list(char)::in,
     list(abstract_poly_type)::in, prog_context::in,
     maybe_errors(list(compiler_format_spec), string_format_error)::out)
     is det.
+
+    % Optimize the code that we will generate from this call to a format
+    % predicate by merging together any adjacent string constant specifiers.
+    % When we parse the format string at runtime, we don't do this, since
+    % the time the time taken by this merging would almost certainly be greater
+    % than the time saved by it, but at compile time, we spread the cost
+    % over many executions.
+    %
+:- pred merge_adjacent_const_strs(list(compiler_format_spec)::in,
+    list(compiler_format_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -143,27 +153,15 @@
 
 %---------------------------------------------------------------------------%
 
-parse_and_optimize_format_string(Chars, PolyTypes, Context,
-        MaybeMergedSpecs) :-
+parse_format_string_abstract(Chars, PolyTypes, Context, MaybeSpecs) :-
     compiler_parse_format_string(Chars, PolyTypes, Context, 1, Specs, Errors),
     (
         Errors = [HeadError | TailErrors],
-        MaybeMergedSpecs = error(HeadError, TailErrors)
+        MaybeSpecs = error(HeadError, TailErrors)
     ;
         Errors = [],
-        merge_adjacent_const_strs(Specs, FlatSpecs),
-        MaybeMergedSpecs = ok(FlatSpecs)
+        MaybeSpecs = ok(Specs)
     ).
-
-    % Optimize the code that we will generate from this call to a format
-    % predicate by merging together any adjacent string constant specifiers.
-    % When we parse the format string at runtime, we don't do this, since
-    % the time the time taken by this merging would almost certainly be greater
-    % than the time saved by it, but at compile time, we spread the cost
-    % over many executions.
-    %
-:- pred merge_adjacent_const_strs(list(compiler_format_spec)::in,
-    list(compiler_format_spec)::out) is det.
 
 merge_adjacent_const_strs([], []).
 merge_adjacent_const_strs([HeadSpec | TailSpecs], MergedSpecs) :-

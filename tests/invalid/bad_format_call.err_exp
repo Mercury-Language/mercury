@@ -1,0 +1,51 @@
+bad_format_call.m:041: Error: in the second argument of `:- pragma format_call'
+bad_format_call.m:041:   declaration for predicate `arg_num_test_1'/4:
+bad_format_call.m:041:   the first argument of `format_string_values' specifies
+bad_format_call.m:041:   argument number -2, but argument numbers start at 1.
+bad_format_call.m:041: Error: in the second argument of `:- pragma format_call'
+bad_format_call.m:041:   declaration for predicate `arg_num_test_1'/4:
+bad_format_call.m:041:   the second argument of `format_string_values'
+bad_format_call.m:041:   specifies argument number 5, but the predicate has
+bad_format_call.m:041:   only 4 arguments.
+bad_format_call.m:047: Error: in the second argument of `:- pragma format_call'
+bad_format_call.m:047:   declaration for function `arg_num_test_2'/2:
+bad_format_call.m:047:   the first argument of `format_string_values' specifies
+bad_format_call.m:047:   argument number 3, but the function has only 2
+bad_format_call.m:047:   arguments.
+bad_format_call.m:047: Error: in the second argument of `:- pragma format_call'
+bad_format_call.m:047:   declaration for function `arg_num_test_2'/2:
+bad_format_call.m:047:   the second argument of `format_string_values'
+bad_format_call.m:047:   specifies argument number -4, but argument numbers
+bad_format_call.m:047:   start at 1.
+bad_format_call.m:055: Error: in the second argument of `:- pragma format_call'
+bad_format_call.m:055:   declaration for predicate `type_test_1'/4:
+bad_format_call.m:055:   the first argument of `format_string_values' specifies
+bad_format_call.m:055:   argument number 2 as holding a format string, but the
+bad_format_call.m:055:   type of that argument is not `string'.
+bad_format_call.m:055: Error: in the second argument of `:- pragma format_call'
+bad_format_call.m:055:   declaration for predicate `type_test_1'/4:
+bad_format_call.m:055:   the second argument of `format_string_values'
+bad_format_call.m:055:   specifies argument number 3 as holding a values list,
+bad_format_call.m:055:   but the type of that argument is not
+bad_format_call.m:055:   `list(poly_type)'.
+bad_format_call.m:061: Error: in the second argument of `:- pragma format_call'
+bad_format_call.m:061:   declaration for function `type_test_2'/2:
+bad_format_call.m:061:   the first argument of `format_string_values' specifies
+bad_format_call.m:061:   argument number 2 as holding a format string, but the
+bad_format_call.m:061:   type of that argument is not `string'.
+bad_format_call.m:061: Error: in the second argument of `:- pragma format_call'
+bad_format_call.m:061:   declaration for function `type_test_2'/2:
+bad_format_call.m:061:   the second argument of `format_string_values'
+bad_format_call.m:061:   specifies argument number 1 as holding a values list,
+bad_format_call.m:061:   but the type of that argument is not
+bad_format_call.m:061:   `list(poly_type)'.
+bad_format_call.m:070: Error: in the second argument of `:- pragma format_call'
+bad_format_call.m:070:   declaration for predicate `mode_test_1'/5:
+bad_format_call.m:070:   the first argument of `format_string_values' specifies
+bad_format_call.m:070:   argument number 2 as holding a format string, but that
+bad_format_call.m:070:   argument is not input.
+bad_format_call.m:078: Error: in the second argument of `:- pragma format_call'
+bad_format_call.m:078:   declaration for function `mode_test_2'/3:
+bad_format_call.m:078:   the second argument of `format_string_values'
+bad_format_call.m:078:   specifies argument number 3 as holding a values list,
+bad_format_call.m:078:   but that argument is not input.

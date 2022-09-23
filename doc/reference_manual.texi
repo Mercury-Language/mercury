@@ -11957,6 +11957,8 @@ with implementation-dependent semantics
                                 about too loose determinism declarations.
 * No dead predicate warnings::  Pragmas can be used to suppress warnings
                                 about unused predicates.
+* Format calls ::               Pragmas for requesting extra checking of calls
+                                to formatting predicates and functions.
 * Source file name::            The @samp{source_file} pragma and
                                 @samp{#@var{line}} directives provide support
                                 for preprocessors and other tools that
@@ -12193,6 +12195,258 @@ either directly or indirectly.
 @samp{pragma consider_used} declarations are intended for use in situations
 in which the code that was intended to call such a predicate or function
 is not yet written.
+
+@node Format calls
+@section Format calls
+
+The @samp{format_call} pragma asks the compiler
+to perform the same checks on calls to the named predicate or function
+as it performs for calls to the following
+formatting predicates and function in the Mercury standard library.
+
+The Mercury standard library has a function and a predicate
+to format a given sequence of values according to a format string,
+like this:
+
+@example
+    string.format("Count = %d, Total = %5.2f, Average = %5.2f\n",
+        [i(Count), f(Total), f(Total/float(Count))], FormatStr)
+
+    FormatStr = string.format("Count = %d, Total = %5.2f, Average = %5.2f\n",
+        [i(Count), f(Total), f(Total/float(Count))])
+@end example
+
+@noindent
+and predicates that immediately output the resulting formatted string,
+like this:
+
+@example
+    io.format(
+        "Count = %d, Total = %5.2f, Average = %5.2f\n",
+        [i(Count), f(Total), f(Total/float(Count))], !IO)
+
+    io.format(OutputStream,
+        "Count = %d, Total = %5.2f, Average = %5.2f\n",
+        [i(Count), f(Total), f(Total/float(Count))], !IO)
+
+    stream.string_writer.format(StringWriterStream,
+        "Count = %d, Total = %5.2f, Average = %5.2f\n",
+        [i(Count), f(Total), f(Total/float(Count))], !StringWriterState)
+@end example
+
+@noindent
+These four predicates and one function
+all take a format string argument, and a values_to_format argument.
+The format string argument in all the examples above is
+@example
+        "Count = %d, Total = %5.2f, Average = 5.2%f\n"
+@end example
+@noindent
+while the values_to_format argument is
+@example
+        [i(Count), f(Total), f(Total/float(Count))]
+@end example
+
+In this example, @code{%d} means that the corresponding value
+should be output as a signed integer, using as many characters as needed,
+and @code{%5.2f} means that the corresponding value
+should be formatted as a floating point number,
+using five characters, of which two are after the decimal point.
+
+Mercury does not allow
+values of different types to be stored in the same list,
+so the elements of that list are actually values of the @code{poly_type} type,
+whose definition in the @code{string} module of the standard library is
+@example
+:- type poly_type
+    --->    f(float)
+    ;       i(int)
+    ;       i8(int8)
+    ;       i16(int16)
+    ;       i32(int32)
+    ;       i64(int64)
+    ;       u(uint)
+    ;       u8(uint8)
+    ;       u16(uint16)
+    ;       u32(uint32)
+    ;       u64(uint64)
+    ;       s(string)
+    ;       c(char).
+@end example
+@noindent
+As you can see, each function symbol in this type
+wraps up a value of a builtin type,
+and thus converts it to the same @code{poly_type} type. 
+
+With one exception,
+every occurrence of a percent sign in the format string
+is intended to start a @emph{conversion specifier},
+which specifies how the corresponding entry in the value list
+should be converted to a string.
+(The exception is that the double percent sign @code{%%}
+simply says that the output should be a single percent sign;
+the doubling up escapes
+the special conversion-introduction role of the character.)
+Each conversion specifier consists of a percent sign,
+zero or more non-alphabetic characters such as @samp{5},
+and an alphabetic @emph{conversion character} such as @code{d} or @code{f}.
+
+The format string and the values list must match.
+There should be exactly one element in the value list
+for each conversion specifier,
+and the Nth value in the value list must satisfy
+the requirements of the Nth conversion specifier in the format string.
+
+For example, the call
+@example
+    string.format("Count = %d, Total = %5.2f, Average = %5.2f\n",
+        [i(Count), f(Total/float(Count))], FormatStr)
+@end example
+@noindent
+would not work, because the format string contains three conversion specifiers,
+but the value list contains only two values.
+
+The call
+@example
+    string.format("Count = %f, Total = %d, Average = %5.2f\n",
+        [i(Count), f(Total), f(Total/float(Count))], FormatStr)
+@end example
+@noindent
+would not work either,
+because the first specifier's conversion character, @code{f},
+requires the corresponding value to have the form @code{f(Float)},
+but the corresponding value is @code{i(Count)}.
+The conversion character in the second specifier, @code{d},
+accepts any signed integer as the value,
+so the second value could be any of @code{i(Int)}, @code{i8(Int8)},
+@code{i16(Int16)}, @code{i32(Int32)}, or @code{i64(Int64)},
+but not @code{f(Float)}.
+
+For the full set of the rules, please see the documentation
+of @code{string.format} in the Mercury Library Reference Manual;
+the same rules apply to @code{io.format}
+and @code{stream.string_writer.format)} as well.
+
+the Mercury compiler checks calls
+to the formatting predicates and function in the Mercury standard library,
+specifically
+
+@table @asis
+@item predicate @code{io.format/4}
+@item predicate @code{io.format/5}
+@item predicate @code{stream.string_writer.format/5}
+@item function @code{string.format/2}
+@item predicate @code{string.format/3}
+@end table
+
+for inconsistencies between the format string and the value list,
+generating a report for each such inconsistency.
+This improves both program reliability
+(because programmers get the problem brought to their attention
+even if the bad call is never executed)
+and programmer productivity
+(because programmers don't have to write test cases
+just to force the execution of all calls to these predicates).
+However, the compiler can perform this check
+only if the predicate or function
+containing the call to the formatting predicate or function 
+also constructs the format string and the value list.
+Most calls to formatting predicates satisfy this condition, but not all.
+
+The main exceptions are predicates intended for logging,
+whose general logic follows this general pattern:
+
+@example
+maybe_log_message(LogInfo, FormatString, Values, !IO) :-
+    log_info_should_log(LogInfo, ShouldLog),
+    (
+        ShouldLog = no
+    ;
+        ShouldLog = yes,
+        io.format(FormatString, Values, !IO),
+        io.flush_output(!IO)
+    ).
+@end example
+
+In this case, the compiler cannot check
+the call to @code{io.format} in this predicate,
+because the format string and the values list both come from the caller.
+If some caller supplies format string and values list arguments
+that are inconsistent with one another,
+the call to @code{io.format} will throw an exception.
+
+The purpose of the @samp{format_call} pragma is to remedy this.
+The pragma
+@example
+:- pragma format_call(pred(maybe_log_message/5),
+    format_string_values(2, 3)).
+@end example
+@noindent
+tells the compiler that calls to this predicate
+should be checked the same way
+as calls to the four formatting predicates and one formatting function
+listed the above,
+with the format string in the second argument,
+and the values in list in the third.
+This way, while @code{maybe_log_message} cannot ensure
+that @code{FormatString} and @code{Values} will match,
+its @emph{callers} can do so.
+
+In general, this pragma may take these four forms.
+
+@example
+:- pragma format_call(pred(@var{Name}/@var{Arity}),
+    format_string_values(@var{FormatStringArgNum}, @var{(ValuesArgNum})).
+:- pragma format_call(func(@var{Name}/@var{Arity}),
+    format_string_values(@var{FormatStringArgNum}, @var{ValuesArgNum})).
+:- pragma format_call(pred(@var{Name}/@var{Arity}),
+    [format_string_values(@var{FS1}, @var{V1}), ...).
+:- pragma format_call(func(@var{Name}/@var{Arity}),
+    [format_string_values(@var{FS1}, @var{V1}), ...).
+@end example
+
+The first form is the one in the example above,
+while the second is the function version.
+The third and fourth forms differ from the first and second respectively
+by having the second argument being not a single
+@code{format_string_values(@var{FormatStringArgNum}, @var{ValuesArgNum})} term,
+but a list of two or more such terms.
+(One such term is also allowed,
+but in that case, there is no need for the list.)
+This latter capability is intended for use in situations
+where predicate or function concerned
+contains several (possibly conditionally executed) calls
+to formatting predicates or functions
+whose format strings and values come from the caller,
+like this:
+
+@example
+:- maybe_quad_log_message(LogInfo,
+        FmtA, ValuesA1, ValuesA2,
+        FmtB, ValuesB1, ValuesB2, !IO) :-
+    ...
+    io.format(FmtA, ValuesA1, !IO),
+    ...
+    io.format(FmtA, ValuesA2, !IO),
+    ...
+    io.format(FmtB, ValuesB1, !IO),
+    ...
+    io.format(FmtB, ValuesB2, !IO),
+    ...
+@end example
+
+In such cases, programmers can include a @code{format_string_values} entry
+describing the argument numbers that act as the sources
+for each such call, like this:
+
+@example
+:- pragma format_call(pred(maybe_quad_log_message/5),
+    [format_string_values(2, 3), format_string_values(2, 4),
+    format_string_values(5, 6), format_string_values(5, 7)]).
+@end example
+
+This will ask the compiler to check the compatibility
+of all four listed argument pairs at all call sites.
 
 @node Source file name
 @section Source file name

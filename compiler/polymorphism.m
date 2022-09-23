@@ -196,6 +196,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
@@ -208,6 +209,7 @@
 :- import_module io.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -283,15 +285,35 @@ fixup_pred_polymorphism(PredId, !ExistsCastPredIds, !ModuleInfo) :-
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_get_var_table(ClausesInfo0, VarTable0),
     clauses_info_get_headvars(ClausesInfo0, HeadVars),
-
-    pred_info_get_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes0),
     proc_arg_vector_partition_poly_args(HeadVars, ExtraHeadVarList,
         OldHeadVarList),
-
-    lookup_var_types(VarTable0, ExtraHeadVarList, ExtraArgTypes),
-    ArgTypes = ExtraArgTypes ++ ArgTypes0,
-    pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes,
-        PredInfo0, PredInfo1),
+    % We need ExistQVars whether or not ExtraHeadVarList is empty or not.
+    pred_info_get_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes0),
+    (
+        ExtraHeadVarList = [],
+        PredInfo2 = PredInfo0
+    ;
+        ExtraHeadVarList = [_ | _],
+        lookup_var_types(VarTable0, ExtraHeadVarList, ExtraArgTypes),
+        ArgTypes = ExtraArgTypes ++ ArgTypes0,
+        pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes,
+            PredInfo0, PredInfo1),
+        pred_info_get_format_call(PredInfo1, MaybeFormatCall1),
+        (
+            MaybeFormatCall1 = no,
+            PredInfo2 = PredInfo1
+        ;
+            MaybeFormatCall1 = yes(format_call(Context, OoMFormatStrsValues1)),
+            % Update the argument numbers in the format_call field 
+            % to account for the new arguments we just added at the front
+            % of the argument list.
+            list.length(ExtraHeadVarList, NumExtraHeadVars),
+            one_or_more.map(increment_arg_nums(NumExtraHeadVars),
+                OoMFormatStrsValues1, OoMFormatStrsValues2),
+            MaybeFormatCall2 = yes(format_call(Context, OoMFormatStrsValues2)),
+            pred_info_set_format_call(MaybeFormatCall2, PredInfo1, PredInfo2)
+        )
+    ),
 
     % If the clauses bind some existentially quantified type variables,
     % introduce exists_casts goals for affected head variables, including
@@ -306,13 +328,22 @@ fixup_pred_polymorphism(PredId, !ExistsCastPredIds, !ModuleInfo) :-
         type_list_subsumes(ArgTypes0, OldHeadVarTypes, Subn),
         not map.is_empty(Subn)
     then
-        pred_info_set_existq_tvar_binding(Subn, PredInfo1, PredInfo),
+        pred_info_set_existq_tvar_binding(Subn, PredInfo2, PredInfo),
         !:ExistsCastPredIds = [PredId | !.ExistsCastPredIds]
     else
-        PredInfo = PredInfo1
+        PredInfo = PredInfo2
     ),
 
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
+
+:- pred increment_arg_nums(int::in,
+    format_string_values::in, format_string_values::out) is det.
+
+increment_arg_nums(Inc, FSV0, FSV) :-
+    FSV0 = format_string_values(OrigFormatStrArgNum, OrigValuesListArgNum,
+        CurFormatStrArgNum, CurValuesListArgNum),
+    FSV = format_string_values(OrigFormatStrArgNum, OrigValuesListArgNum,
+        CurFormatStrArgNum + Inc, CurValuesListArgNum + Inc).
 
 %---------------------------------------------------------------------------%
 

@@ -120,6 +120,9 @@
 % Expand try goals.
 :- include_module try_expand.
 
+% Check the information in format_call pragmas.
+:- include_module check_pragma_format_call.
+
 % Warnings about simple code.
 :- include_module simplify.
 

@@ -2444,6 +2444,7 @@
 :- type decl_pragma
     --->    decl_pragma_obsolete_pred(pragma_info_obsolete_pred)
     ;       decl_pragma_obsolete_proc(pragma_info_obsolete_proc)
+    ;       decl_pragma_format_call(pragma_info_format_call)
     ;       decl_pragma_type_spec(pragma_info_type_spec)
     ;       decl_pragma_oisu(pragma_info_oisu)
     ;       decl_pragma_terminates(pred_pfu_name_arity)
@@ -2789,6 +2790,12 @@
     --->    pragma_info_obsolete_proc(
                 proc_pf_name_modes,
                 list(sym_name_arity)
+            ).
+
+:- type pragma_info_format_call
+    --->    pragma_info_format_call(
+                pred_pf_name_arity,
+                one_or_more(format_string_values)
             ).
 
 :- type pragma_info_require_feature_set

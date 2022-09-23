@@ -437,6 +437,39 @@ tabled_eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 
 %---------------------------------------------------------------------------%
 %
+% Stuff for the `format_call' pragma.
+%
+
+:- interface.
+
+:- type format_string_values
+    --->    format_string_values(
+                % The format_call pragma allows users to specify pairs of
+                % argument numbers, the first specifying the arg containing
+                % the format string, the second the arg containing the
+                % values list (as a list of poly_types).
+
+                % The first pair of arguments contain the argument numbers
+                % given by the user. The first user-visible arg is arg 1,
+                % the second is arg 2, and so on.
+                %
+                % All error messages generated for invalid argument numbers
+                % use this pair.
+                fsv_user_fs     :: int,
+                fsv_user_vl     :: int,
+
+                % The second pair of arguments is derived from the first pair,
+                % but are incremented by the number of any additional
+                % type_info and/or typeclass_info arguments added by the
+                % polymorphism pass. The code of check_pragma_format_call.m
+                % finds the argument types and modes to check by indexing
+                % into argument lists using these numbers.
+                fsv_cur_fs      :: int,
+                fsv_cur_vl      :: int
+            ).
+
+%---------------------------------------------------------------------------%
+%
 % Stuff for the `type_spec' pragma.
 %
 

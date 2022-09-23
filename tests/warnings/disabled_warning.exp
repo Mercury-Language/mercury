@@ -1,1 +1,2 @@
-disabled_warning.m:026: Unknown format string in call to `string.format'/3.
+disabled_warning.m:026: Unknown format string in call to predicate
+disabled_warning.m:026:   `string.format'/3.

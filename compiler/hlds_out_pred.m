@@ -95,6 +95,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -180,6 +181,15 @@ write_pred(Info, Stream, Lang, ModuleInfo, PredId, PredInfo, !IO) :-
             list.foldl(write_obsolete_in_favour_of(Stream),
                 ObsoleteInFavourOf, !IO)
         ),
+        pred_info_get_format_call(PredInfo, MaybeFormatCall),
+        (
+            MaybeFormatCall = no
+        ;
+            MaybeFormatCall = yes(FormatCall),
+            FormatCall = format_call(_Context, OoMFormatStringValues),
+            FormatStringValues = one_or_more_to_list(OoMFormatStringValues),
+            output_format_string_values(Stream, FormatStringValues, !IO)
+        ),
         write_pred_types(Stream, VarNamePrint, TVarSet, VarTable, RttiVarMaps,
             ProofMap, ConstraintMap, ExternalTypeParams, !IO),
         write_pred_proc_var_name_remap(Stream, VarNameSrc, VarNameRemap, !IO),
@@ -225,6 +235,18 @@ write_pred(Info, Stream, Lang, ModuleInfo, PredId, PredInfo, !IO) :-
     else
         true
     ).
+
+:- pred output_format_string_values(io.text_output_stream::in,
+    list(format_string_values)::in, io::di, io::uo) is det.
+
+output_format_string_values(_, [], !IO).
+output_format_string_values(Stream, [FmtStringValue | FmtStringValues], !IO) :-
+    FmtStringValue = format_string_values(OrigFmtStr, OrigValues,
+        CurFmtStr, CurValues),
+    io.format(Stream,
+        "%% format call: format string in arg %d/%d, values in arg %d/%d\n",
+        [i(OrigFmtStr), i(CurFmtStr), i(OrigValues), i(CurValues)], !IO),
+    output_format_string_values(Stream, FmtStringValues, !IO).
 
 %---------------------%
 

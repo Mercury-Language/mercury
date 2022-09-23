@@ -1437,6 +1437,9 @@ decl_pragma_desc_pieces(Pragma) = Pieces :-
         Pragma = decl_pragma_obsolete_proc(_),
         Pieces = [pragma_decl("obsolete_proc"), words("declaration")]
     ;
+        Pragma = decl_pragma_format_call(_),
+        Pieces = [pragma_decl("format_call"), words("declaration")]
+    ;
         Pragma = decl_pragma_type_spec(_),
         Pieces = [pragma_decl("type_spec"), words("declaration")]
     ;

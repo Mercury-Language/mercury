@@ -1,0 +1,58 @@
+format_call_warning.m:030: Mismatched format and values in call to predicate
+format_call_warning.m:030:   `format_call_warning.maybe_log_msg'/10 when
+format_call_warning.m:030:   considering the first entry in its
+format_call_warning.m:030:   `:- pragma format_call' declaration, which places
+format_call_warning.m:030:   the format string as the third argument, and the
+format_call_warning.m:030:   values list as the fourth argument:
+format_call_warning.m:030:   There is no second conversion specifier, but there
+format_call_warning.m:030:   is an extra input.
+format_call_warning.m:030: Mismatched format and values in call to predicate
+format_call_warning.m:030:   `format_call_warning.maybe_log_msg'/10 when
+format_call_warning.m:030:   considering the second entry in its
+format_call_warning.m:030:   `:- pragma format_call' declaration, which places
+format_call_warning.m:030:   the format string as the third argument, and the
+format_call_warning.m:030:   values list as the fifth argument:
+format_call_warning.m:030:   There is no second conversion specifier, but there
+format_call_warning.m:030:   is an extra input.
+format_call_warning.m:030: Mismatched format and values in call to predicate
+format_call_warning.m:030:   `format_call_warning.maybe_log_msg'/10 when
+format_call_warning.m:030:   considering the third entry in its
+format_call_warning.m:030:   `:- pragma format_call' declaration, which places
+format_call_warning.m:030:   the format string as the sixth argument, and the
+format_call_warning.m:030:   values list as the seventh argument:
+format_call_warning.m:030:   The first conversion specifier uses the specifier
+format_call_warning.m:030:   character `f', but the corresponding input is a
+format_call_warning.m:030:   string. The only specifier applicable to strings
+format_call_warning.m:030:   is %s.
+format_call_warning.m:030: Mismatched format and values in call to predicate
+format_call_warning.m:030:   `format_call_warning.maybe_log_msg'/10 when
+format_call_warning.m:030:   considering the fourth entry in its
+format_call_warning.m:030:   `:- pragma format_call' declaration, which places
+format_call_warning.m:030:   the format string as the sixth argument, and the
+format_call_warning.m:030:   values list as the eighth argument:
+format_call_warning.m:030:   The first conversion specifier uses the specifier
+format_call_warning.m:030:   character `f', but the corresponding input is a
+format_call_warning.m:030:   string. The only specifier applicable to strings
+format_call_warning.m:030:   is %s.
+format_call_warning.m:035: Mismatched format and values in call to predicate
+format_call_warning.m:035:   `format_call_warning.maybe_log_msg'/10 when
+format_call_warning.m:035:   considering the second entry in its
+format_call_warning.m:035:   `:- pragma format_call' declaration, which places
+format_call_warning.m:035:   the format string as the third argument, and the
+format_call_warning.m:035:   values list as the fifth argument:
+format_call_warning.m:035:   There is no second conversion specifier, but there
+format_call_warning.m:035:   is an extra input.
+format_call_warning.m:045: Mismatched format and values in call to predicate
+format_call_warning.m:045:   `format_call_warning.maybe_log_simple_msg'/6:
+format_call_warning.m:045:   The second conversion specifier uses the specifier
+format_call_warning.m:045:   character `f', but the corresponding input is a
+format_call_warning.m:045:   string. The only specifier applicable to strings
+format_call_warning.m:045:   is %s.
+format_call_warning.m:048: Mismatched format and values in call to predicate
+format_call_warning.m:048:   `format_call_warning_helper.maybe_log_imported_msg'/6:
+format_call_warning.m:048:   The first conversion specifier uses the specifier
+format_call_warning.m:048:   character `s', but the corresponding input is a
+format_call_warning.m:048:   float. The specifiers applicable to floats are %f,
+format_call_warning.m:048:   %e, %E, %g and %G.
+format_call_warning.m:083: Unknown format values in call to predicate
+format_call_warning.m:083:   `io.format'/4.

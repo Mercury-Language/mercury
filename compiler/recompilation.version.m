@@ -950,6 +950,11 @@ gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId) :-
         MaybePredOrFunc = pfu_to_maybe_pred_or_func(PFU),
         MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
     ;
+        DeclPragma = decl_pragma_format_call(FormatCallInfo),
+        FormatCallInfo = pragma_info_format_call(PredNameArity, _),
+        PredNameArity = pred_pf_name_arity(PF, Name, user_arity(Arity)),
+        MaybePredOrFuncId = yes(yes(PF) - sym_name_arity(Name, Arity))
+    ;
         DeclPragma = decl_pragma_oisu(_),
         % XXX Unlike all the other decl_pragmas, the oisu (order-independent
         % state update) pragma is about a type, not a predicate or function.

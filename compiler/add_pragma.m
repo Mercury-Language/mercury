@@ -125,6 +125,7 @@
 :- import_module io.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -226,6 +227,11 @@ add_decl_pragma(ItemMercuryStatus, ItemPragmaInfo,
         Pragma = decl_pragma_obsolete_proc(ObsoleteProcInfo),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
         mark_proc_as_obsolete(ObsoleteProcInfo, PredStatus, Context,
+            !ModuleInfo, !Specs)
+    ;
+        Pragma = decl_pragma_format_call(FormatCallInfo),
+        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+        mark_pred_as_format_call(FormatCallInfo, PredStatus, Context,
             !ModuleInfo, !Specs)
     ;
         Pragma = decl_pragma_type_spec(TypeSpecInfo),
@@ -384,6 +390,65 @@ mark_proc_as_obsolete(ObsoleteProcInfo, PragmaStatus, Context,
     ;
         MaybePredId = error1(Specs),
         !:Specs = Specs ++ !.Specs
+    ).
+
+%---------------------%
+
+:- pred mark_pred_as_format_call(pragma_info_format_call::in,
+    pred_status::in, prog_context::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+mark_pred_as_format_call(FormatCallInfo, PragmaStatus, Context,
+        !ModuleInfo, !Specs) :-
+    FormatCallInfo = pragma_info_format_call(PredSpec, OoMArgSpecs),
+    PredSpec = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+    look_up_pragma_pf_sym_arity(!.ModuleInfo, is_fully_qualified,
+        lfh_user_error, Context, "format_call",
+        PredOrFunc, SymName, UserArity, MaybePredId),
+    (
+        MaybePredId = error1(PredIdSpecs),
+        !:Specs = PredIdSpecs ++ !.Specs
+    ;
+        MaybePredId = ok1(PredId),
+        module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+        map.lookup(PredIdTable0, PredId, PredInfo0),
+        % ZZZ vice versa
+        ( if
+            pred_info_is_exported(PredInfo0),
+            pred_status_is_exported(PragmaStatus) = no
+        then
+            pragma_status_error(pf_to_string(PredOrFunc), SymName, UserArity,
+                Context, "format_call", !Specs)
+        else
+            true
+        ),
+        pred_info_get_format_call(PredInfo0, MaybeFormatCall0),
+        (
+            MaybeFormatCall0 = no,
+            % Record the presence of the format_call pragma for this pred.
+            FormatCall = format_call(Context, OoMArgSpecs),
+            pred_info_set_format_call(yes(FormatCall), PredInfo0, PredInfo),
+            map.det_update(PredId, PredInfo, PredIdTable0, PredIdTable),
+            module_info_set_pred_id_table(PredIdTable, !ModuleInfo),
+            % Record this pragma as needing to be checked by the
+            % check_pragma_format_call_preds pass.
+            module_info_get_format_call_pragma_preds(!.ModuleInfo, FCPreds0),
+            set.insert(PredId, FCPreds0, FCPreds),
+            module_info_set_format_call_pragma_preds(FCPreds, !ModuleInfo)
+        ;
+            MaybeFormatCall0 = yes(format_call(OldContext, _)),
+            FirstPieces = [words("Error: duplicate"),
+                pragma_decl("format_call"), words("declaration for"),
+                unqual_pf_sym_name_user_arity(PredSpec), suffix("."), nl],
+            FirstMsg = simplest_msg(Context, FirstPieces),
+            SecondPieces = [words("The original"),
+                pragma_decl("format_call"), words("declaration"),
+                words("was here."), nl],
+            SecondMsg = simplest_msg(OldContext, SecondPieces),
+            Spec = error_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, [FirstMsg, SecondMsg]),
+            !:Specs = [Spec | !.Specs]
+        )
     ).
 
 %---------------------%
@@ -1908,7 +1973,7 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
                 describe_one_pred_name(ModuleInfo, should_module_qualify),
                 PredIds),
             PredIdPieces = component_list_to_line_pieces(PredIdPiecesList,
-                [suffix("."), nl]),
+                [suffix("."), nl_indent_delta(-1)]),
             MainPieces = StartPieces ++ PredIdPieces,
             VerbosePieces = [words("An explicit module qualifier"),
                 words("may be necessary to select the right match."), nl],

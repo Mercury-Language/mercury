@@ -729,11 +729,11 @@ det_infer_goal_expr(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         ),
         GoalExpr = switch(Var, SwitchCanFail, Cases)
     ;
-        GoalExpr0 = plain_call(PredId, ProcId0, Args, Builtin, UnifyContext,
+        GoalExpr0 = plain_call(PredId, ProcId0, ArgVars, Builtin, UnifyContext,
             Name),
-        det_infer_call(PredId, ProcId0, ProcId, Args, GoalInfo, SolnContext,
+        det_infer_call(PredId, ProcId0, ProcId, ArgVars, GoalInfo, SolnContext,
             RightFailingContexts, Detism, GoalFailingContexts, !DetInfo),
-        GoalExpr = plain_call(PredId, ProcId, Args, Builtin, UnifyContext,
+        GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin, UnifyContext,
             Name)
     ;
         GoalExpr0 = generic_call(GenericCall, _ArgVars, _Modes, _MaybArgRegs,
@@ -768,7 +768,7 @@ det_infer_goal_expr(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         GoalExpr = scope(Reason, Goal)
     ;
         GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId,
-            _Args, _ExtraArgs, _MaybeTraceRuntimeCond, PragmaCode),
+            _ArgVars, _ExtraArgVars, _MaybeTraceRuntimeCond, PragmaCode),
         det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
             GoalInfo, SolnContext, RightFailingContexts, Detism,
             GoalFailingContexts, !DetInfo),
@@ -1106,7 +1106,7 @@ det_infer_switch_cases([Case0 | Cases0], [Case | Cases], Var, InstMap0,
     list(failing_context)::in, determinism::out, list(failing_context)::out,
     det_info::in, det_info::out) is det.
 
-det_infer_call(PredId, ProcId0, ProcId, Args, GoalInfo, SolnContext,
+det_infer_call(PredId, ProcId0, ProcId, ArgVars, GoalInfo, SolnContext,
         RightFailingContexts, Detism, GoalFailingContexts, !DetInfo) :-
     % For calls, just look up the determinism entry associated with
     % the called predicate.
@@ -1118,9 +1118,7 @@ det_infer_call(PredId, ProcId0, ProcId, Args, GoalInfo, SolnContext,
     % We do the following so that simplify.m knows whether to invoke
     % format_call.m *without* first having to traverse the procedure body.
     det_info_get_module_info(!.DetInfo, ModuleInfo),
-    CalleeModuleName = pred_info_module(CalleePredInfo),
-    CalleeName = pred_info_name(CalleePredInfo),
-    ( if is_format_call(CalleeModuleName, CalleeName, Args) then
+    ( if is_format_call(CalleePredInfo, ArgVars) then
         det_info_set_has_format_call(!DetInfo)
     else
         true

@@ -1647,6 +1647,7 @@ qualify_decl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
     ;
         ( Pragma0 = decl_pragma_obsolete_pred(_)
         ; Pragma0 = decl_pragma_obsolete_proc(_)
+        ; Pragma0 = decl_pragma_format_call(_)
         ; Pragma0 = decl_pragma_terminates(_)
         ; Pragma0 = decl_pragma_does_not_terminate(_)
         ; Pragma0 = decl_pragma_check_termination(_)

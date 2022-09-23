@@ -58,6 +58,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module set.
 
@@ -266,10 +267,9 @@
 :- type arg_loc
     --->    reg(reg_type, int).
 
-    % Are calls from a predicate with the given import_status always fully
-    % qualified. For calls occurring in `.opt' files this will return
-    % `is_fully_qualified', otherwise `may_be_partially_qualified'.
-    % XXX Obsolete documentation.
+    % Are calls from a predicate with the pred_markers always fully
+    % qualified? Basically, this function tests for the presence or absence
+    % of marker_calls_are_fully_qualified.
     %
 :- func calls_are_fully_qualified(pred_markers) = is_fully_qualified.
 
@@ -437,11 +437,13 @@
     ;       marker_has_format_call
             % The body of this predicate contains calls to predicates
             % recognized by format_call.is_format_call. This marker is set
-            % if applicable during typechecking, when the predicate body
-            % has to be traversed anyway. It is used by later passes
-            % that optimize correct format calls and/or warn about incorrect
-            % (or at least not verifiably correct) format calls, which
-            % would be no-ops on predicates that do not have this marker.
+            % (if applicable) during determinism analysis, when the predicate
+            % body has to be traversed anyway. It is used by the simplification
+            % pass at the end of semantic analysis, both to warn about
+            % incorrect (or at least not verifiably correct) format calls,
+            % and to optimize correct format calls. Neither the warnings
+            % nor the optimizations can be applicable to predicates that
+            % do not contain format calls, as shown by not having this marker.
 
     ;       marker_has_rhs_lambda
             % The body of this predicate contains a unification whose
@@ -481,6 +483,19 @@
                 decl_section,
                 maybe_predmode_decl,
                 item_seq_num
+            ).
+
+:- type format_call
+    --->    format_call(
+                % The context of the format_call pragma whose into
+                % this field of the pred_info records. We use this
+                % to generate more informative error messages in cases of
+                % duplicate format_call pragmas.
+                prog_context,
+
+                % The <format string arg #, values list arg #> pairs
+                % listed in that pragma.
+                one_or_more(format_string_values)
             ).
 
     % pred_info_init(PredOrFunc, PredModuleName, PredName, Arity, Context,
@@ -537,7 +552,8 @@
     tsubst::out, external_type_params::out, constraint_proof_map::out,
     constraint_map::out, list(prog_constraint)::out, inst_graph_info::out,
     list(arg_modes_map)::out, map(prog_var, string)::out, set(assert_id)::out,
-    maybe(list(sym_name_arity))::out, list(mer_type)::out) is det.
+    maybe(list(sym_name_arity))::out, maybe(format_call)::out,
+    list(mer_type)::out) is det.
 
 :- pred pred_create(module_name::in, string::in, arity::in, pred_or_func::in,
     pred_origin::in, pred_status::in, pred_markers::in, list(mer_type)::in,
@@ -547,8 +563,8 @@
     tsubst::in, external_type_params::in, constraint_proof_map::in,
     constraint_map::in, list(prog_constraint)::in, inst_graph_info::in,
     list(arg_modes_map)::in, map(prog_var, string)::in, set(assert_id)::in,
-    maybe(list(sym_name_arity))::in, list(mer_type)::in,
-    pred_info::out) is det.
+    maybe(list(sym_name_arity))::in, maybe(format_call)::in,
+    list(mer_type)::in, pred_info::out) is det.
 
 %---------------------%
 
@@ -645,6 +661,8 @@
     set(assert_id)::out) is det.
 :- pred pred_info_get_obsolete_in_favour_of(pred_info::in,
     maybe(list(sym_name_arity))::out) is det.
+:- pred pred_info_get_format_call(pred_info::in,
+    maybe(format_call)::out) is det.
 :- pred pred_info_get_instance_method_arg_types(pred_info::in,
     list(mer_type)::out) is det.
 :- pred pred_info_get_clauses_info(pred_info::in,
@@ -700,6 +718,8 @@
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_obsolete_in_favour_of(
     maybe(list(sym_name_arity))::in,
+    pred_info::in, pred_info::out) is det.
+:- pred pred_info_set_format_call(maybe(format_call)::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_instance_method_arg_types(list(mer_type)::in,
     pred_info::in, pred_info::out) is det.
@@ -1145,6 +1165,32 @@ marker_name(marker_fact_table_semantic_errors, "fact_table_semantic_errors").
                 % as obsolete, this will be "no".
                 psi_obsolete_in_favour_of       :: maybe(list(sym_name_arity)),
 
+                % If this field contains yes(FormatCall), then this predicate
+                % has a format_call pragma, and FormatCall contains both the
+                % <format string, values list> argument number pairs
+                % specified in that pragma, and the context of that pragma.
+                % If this field contains no, then the predicate does not have
+                % a format_call pragma.
+                %
+                % When the HLDS is first created, the argument numbers
+                % in the format_string_values structures in the list
+                % refer to the position of the arguments in the visible
+                % argument list. (The numbering starts at 1.) When polymorphism
+                % adds compiler-generated arguments to the start of the
+                % argument list, it increments all the argument numbers
+                % in this field to compensate.
+                %
+                % Some optimizations may also add or delete arguments,
+                % but they don't have to update this field, because
+                %
+                % - this field is used only by format_call.m, during the
+                %   simplification pass done at the end of the front end,
+                %
+                % - optimizations that can change argument lists are
+                %   all run *after* the front end, and therefore after
+                %   all code that cares about the value of this field.
+                psi_format_call                 :: maybe(format_call),
+
                 % If this predicate is a class method implementation, this
                 % list records the argument types before substituting the type
                 % variables for the instance.
@@ -1172,12 +1218,14 @@ pred_info_init(PredOrFunc, PredModuleName, PredName, PredFormArity, Context,
     % argument VarNameRemap
     set.init(Assertions),
     ObsoleteInFavourOf = maybe.no,
+    FormatCall = maybe.no,
     InstanceMethodArgTypes = [],
     PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
         Kinds, ExistQVarBindings, HeadTypeParams,
         ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
-        VarNameRemap, Assertions, ObsoleteInFavourOf, InstanceMethodArgTypes),
+        VarNameRemap, Assertions, ObsoleteInFavourOf, FormatCall,
+        InstanceMethodArgTypes),
 
     % argument PredModuleName
     % argument PredName
@@ -1234,13 +1282,15 @@ pred_info_create(PredOrFunc, PredModuleName, PredName,
     % argument VarNameRemap
     % argument Assertions
     ObsoleteInFavourOf = maybe.no,
+    FormatCall = maybe.no,
     InstanceMethodArgTypes = [],
 
     PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
         Kinds, ExistQVarBindings, HeadTypeParams,
         ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
-        VarNameRemap, Assertions, ObsoleteInFavourOf, InstanceMethodArgTypes),
+        VarNameRemap, Assertions, ObsoleteInFavourOf, FormatCall,
+        InstanceMethodArgTypes),
 
     % The VarSet and ExplicitVarTypes fields are not needed after typechecking.
     varset.init(VarSet),
@@ -1281,7 +1331,7 @@ pred_prepare_to_clone(PredInfo, ModuleName, PredName, Arity, PredOrFunc,
         CurUserDecl, GoalType, Kinds, ExistQVarBindings, HeadTypeParams,
         ClassProofs, ClassConstraintMap, UnprovenBodyConstraints,
         InstGraphInfo, ArgModesMaps, VarNameRemap, Assertions,
-        ObsoleteInFavourOf, InstanceMethodArgTypes) :-
+        ObsoleteInFavourOf, FormatCall, InstanceMethodArgTypes) :-
     PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo),
@@ -1289,7 +1339,8 @@ pred_prepare_to_clone(PredInfo, ModuleName, PredName, Arity, PredOrFunc,
         Kinds, ExistQVarBindings, HeadTypeParams,
         ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
-        VarNameRemap, Assertions, ObsoleteInFavourOf, InstanceMethodArgTypes).
+        VarNameRemap, Assertions, ObsoleteInFavourOf, FormatCall,
+        InstanceMethodArgTypes).
 
 pred_create(ModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
@@ -1297,12 +1348,13 @@ pred_create(ModuleName, PredName, Arity, PredOrFunc,
         CurUserDecl, GoalType, Kinds, ExistQVarBindings, HeadTypeParams,
         ClassProofs, ClassConstraintMap, UnprovenBodyConstraints,
         InstGraphInfo, ArgModesMaps, VarNameRemap, Assertions,
-        ObsoleteInFavourOf, InstanceMethodArgTypes, PredInfo) :-
+        ObsoleteInFavourOf, FormatCall, InstanceMethodArgTypes, PredInfo) :-
     PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
         Kinds, ExistQVarBindings, HeadTypeParams,
         ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
-        VarNameRemap, Assertions, ObsoleteInFavourOf, InstanceMethodArgTypes),
+        VarNameRemap, Assertions, ObsoleteInFavourOf, FormatCall,
+        InstanceMethodArgTypes),
     PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
@@ -1474,6 +1526,8 @@ pred_info_get_assertions(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_assertions.
 pred_info_get_obsolete_in_favour_of(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_obsolete_in_favour_of.
+pred_info_get_format_call(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_format_call.
 pred_info_get_instance_method_arg_types(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_instance_method_arg_types.
 pred_info_get_clauses_info(!.PI, X) :-
@@ -1577,6 +1631,8 @@ pred_info_set_assertions(X, !PI) :-
     !PI ^ pi_pred_sub_info ^ psi_assertions := X.
 pred_info_set_obsolete_in_favour_of(X, !PI) :-
     !PI ^ pi_pred_sub_info ^ psi_obsolete_in_favour_of := X.
+pred_info_set_format_call(X, !PI) :-
+    !PI ^ pi_pred_sub_info ^ psi_format_call := X.
 pred_info_set_instance_method_arg_types(X, !PI) :-
     !PI ^ pi_pred_sub_info ^ psi_instance_method_arg_types := X.
 pred_info_set_clauses_info(X, !PI) :-
