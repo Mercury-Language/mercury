@@ -19,6 +19,8 @@
 
 :- implementation.
 
+:- import_module int.
+
 maybe_log_imported_msg(CurLogLevel, MsgLevel,
         FormatStr, ValuesList, !IO) :-
     Diff = MsgLevel - CurLogLevel,
