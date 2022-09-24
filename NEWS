@@ -548,7 +548,7 @@ Changes to the Mercury standard library
 
 ### New `term_context` module
 
-* This new module defines the term_context type, and contains predicates
+* This new module defines the `term_context` type, and contains predicates
   and functions that operate on that type.
 
 ### New `term_int` module
@@ -611,22 +611,22 @@ Changes to the Mercury language
 
 * The new pragma `format_call` can now be used to ask the compiler
   to perform the same checks on calls to a named predicate or function
-  as the compiler performs on calls to string.format, io.format and
-  stream.string_writer.format. These checks test whether the format string
+  as the compiler performs on calls to `string.format`, `io.format` and
+  `stream.string_writer.format`. These checks test whether the format string
   matches the provided list of values.
 
-* You can now disable another kind of warning with a disable_warning scope.
+* You can now disable another kind of warning with a `disable_warning` scope.
   Code such as
 
-    disable_warning [unknown_format_calls] (
-        ...
-    )
+      disable_warning [unknown_format_calls] (
+          ...
+      )
 
-  will disable warnings about any calls in the scope to string.format,
-  io.format and/or stream.string_writer.format for which the compiler
+  will disable warnings about any calls in the scope to `string.format`,
+  `io.format` and/or `stream.string_writer.format` for which the compiler
   cannot tell whether there are any mismatches between the format string
   and the supplied values, even if the module is compiled with
-  --warn-unknown-format-calls.
+  `--warn-unknown-format-calls`.
 
 Changes to the Mercury compiler
 -------------------------------
