@@ -52,6 +52,11 @@
     %
 :- func throw(T) = _ is erroneous.
 :- pred throw(T::in) is erroneous.
+% The termination analyzer can infer termination of throw/1 itself but
+% declaring it to be terminating here means that all of the standard library
+% will treat it as terminating as well.
+:- pragma terminates(func(throw/1)).
+:- pragma terminates(pred(throw/1)).
 
     % rethrow(ExceptionResult):
     %
@@ -298,12 +303,6 @@
 :- pragma no_inline(pred(throw/1)).
 :- pragma no_inline(func(rethrow/1)).
 :- pragma no_inline(pred(rethrow/1)).
-
-% The termination analyzer can infer termination of throw/1 itself but
-% declaring it to be terminating here means that all of the standard library
-% will treat it as terminating as well.
-:- pragma terminates(func(throw/1)).
-:- pragma terminates(pred(throw/1)).
 
 throw(Exception) = _ :-
     throw(Exception).

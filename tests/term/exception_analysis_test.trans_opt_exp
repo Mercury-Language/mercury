@@ -14,7 +14,7 @@
 :- pragma termination2_info(exception_analysis_test.test2((builtin.in), (builtin.in)), constraints([eq([term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1))]), not_set, can_loop).
 :- pragma termination2_info(exception_analysis_test.test3((builtin.in), (builtin.in)), constraints([eq([term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1))]), not_set, can_loop).
 :- pragma termination2_info(exception_analysis_test.test4((builtin.in), (builtin.in)), constraints([eq([term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1))]), not_set, can_loop).
-:- pragma termination2_info(exception_analysis_test.wrap_equals((builtin.in), (builtin.in)), constraints([]), not_set, can_loop).
+:- pragma termination2_info(exception_analysis_test.wrap_equals((builtin.in), (builtin.in)), constraints([]), not_set, cannot_loop).
 
 :- pragma exceptions(predicate, (exception_analysis_test.mutual_test1), 2, 0, conditional).
 :- pragma exceptions(predicate, (exception_analysis_test.mutual_test2), 2, 0, conditional).

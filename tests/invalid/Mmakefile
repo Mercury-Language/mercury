@@ -236,6 +236,7 @@ SINGLEMODULE_PROGS = \
 	polymorphic_unification \
 	pragma_c_code_dup_var \
 	pragma_c_code_no_det \
+	pragma_export \
 	promise_equivalent_clauses \
 	promise_equivalent_solutions_test \
 	promise_equivalent_solutions_test_2 \

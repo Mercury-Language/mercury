@@ -1,0 +1,6 @@
+pragma_export.m:013: Error: `:- pragma memo' declaration in module interface.
+pragma_export.m:014: Error: `:- pragma consider_used' declaration in module
+pragma_export.m:014:   interface.
+pragma_export.m:018: Error: since the predicate `memoproc2'/3 is not exported,
+pragma_export.m:018:   the `:- pragma obsolete' declaration for it may not be
+pragma_export.m:018:   exported either.

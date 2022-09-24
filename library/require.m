@@ -41,6 +41,13 @@
 :- pred error(string::in, string::in) is erroneous.
 :- func func_error(string, string) = _ is erroneous.
 
+% We declare error to be terminating so that all of the standard library
+% will treat it as terminating.
+:- pragma terminates(pred(error/1)).
+:- pragma terminates(pred(error/2)).
+:- pragma terminates(func(func_error/1)).
+:- pragma terminates(func(func_error/2)).
+
 %---------------------------------------------------------------------------%
 
     % sorry(Module, What):
@@ -160,13 +167,6 @@
 :- pragma no_inline(pred(error/2)).
 :- pragma no_inline(func(func_error/1)).
 :- pragma no_inline(func(func_error/2)).
-
-% We declare error to be terminating so that all of the standard library
-% will treat it as terminating.
-:- pragma terminates(pred(error/1)).
-:- pragma terminates(pred(error/2)).
-:- pragma terminates(func(func_error/1)).
-:- pragma terminates(func(func_error/2)).
 
 error(Message) :-
     throw(software_error(Message)).

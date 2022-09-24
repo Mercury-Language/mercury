@@ -1,9 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% Check that pragmas that assert facts about the termination of
+% mutually recursive predicates do not conflict with each other.
+% Also check that we get a warning for a decl pragma for an exported predicate
+% that is itself not exported.
+%---------------------------------------------------------------------------%
 
-    % Check termination pragmas do not conflict with each other when
-    % analysing mutually recursive predicates.
 :- module pragma_term_conflict.
 
 :- interface.
@@ -13,7 +16,6 @@
 :- implementation.
 
 :- pred b is det.
-
 :- pred c is det.
 
 :- pragma terminates(a/0).
