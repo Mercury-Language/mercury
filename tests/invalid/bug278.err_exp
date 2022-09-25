@@ -1,6 +1,6 @@
 bug278.m:032: In clause for `build_map((pred(in, out, in, out) is semidet), in,
 bug278.m:032:   out, in, out)':
-bug278.m:032:   mode error: argument 5 did not get sufficiently instantiated.
+bug278.m:032:   mode error: argument 3 did not get sufficiently instantiated.
 bug278.m:032:   Final instantiatedness of `LambdaHeadVar__5' was `free',
 bug278.m:032:   expected final instantiatedness was `ground'.
 bug278.m:032: In clause for predicate `build_map'/5:

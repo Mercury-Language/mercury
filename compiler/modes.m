@@ -1447,17 +1447,16 @@ modecheck_final_insts_gmb(InferModes, GroundMatchesBound,
         proc_info_arglives(ModuleInfo, ProcInfo, ArgLives),
         normalise_insts(ModuleInfo, ArgTypes, VarFinalInsts0, VarFinalInsts1),
         maybe_clobber_insts(VarFinalInsts1, ArgLives, VarFinalInsts2),
-        check_final_insts(InferModes, GroundMatchesBound,
-            HeadVars, VarFinalInsts2, FinalInsts0, 1, no, Changed1, !ModeInfo),
+        check_final_insts(InferModes, GroundMatchesBound, HeadVars,
+            VarFinalInsts2, FinalInsts0, 1, no, Changed1, !ModeInfo),
         FinalInsts = VarFinalInsts2,
         mode_info_get_changed_flag(!.ModeInfo, Changed2),
         bool.or_list([Changed0, Changed1, Changed2], Changed),
         mode_info_set_changed_flag(Changed, !ModeInfo)
     ;
         InferModes = do_not_infer_modes,
-        check_final_insts(InferModes, GroundMatchesBound,
-            HeadVars, VarFinalInsts0, FinalInsts0, 1,
-            no, _Changed1, !ModeInfo),
+        check_final_insts(InferModes, GroundMatchesBound, HeadVars,
+            VarFinalInsts0, FinalInsts0, 1, no, _Changed1, !ModeInfo),
         FinalInsts = FinalInsts0
     ).
 

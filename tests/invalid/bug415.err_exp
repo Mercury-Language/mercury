@@ -1,7 +1,7 @@
 bug415.m:046: In clause for `ip_chunk_2(in(list.list((I =< ground))), in,
 bug415.m:046:   in(list.list((I =< ground))), in, out(list.list((I =<
 bug415.m:046:   ground))))':
-bug415.m:046:   mode error: argument 6 became too instantiated.
+bug415.m:046:   mode error: argument 5 became too instantiated.
 bug415.m:046:   Final instantiatedness of `HeadVar__5' was
 bug415.m:046:     bound(
 bug415.m:046:       []

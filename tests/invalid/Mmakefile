@@ -212,6 +212,7 @@ SINGLEMODULE_PROGS = \
 	missing_det_decls \
 	mixed_up_streams \
 	mode_decl_in_wrong_section \
+	mode_error_arg_number \
 	mode_inf \
 	modes_erroneous \
 	mostly_uniq1 \

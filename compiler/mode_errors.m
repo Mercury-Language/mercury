@@ -585,14 +585,14 @@ mode_error_unify_var_poly_to_spec(ModeInfo, Var, VarInst) = Spec :-
 :- func mode_error_unify_var_functor_to_spec(mode_info, prog_var,
     cons_id, list(prog_var), mer_inst, list(mer_inst)) = error_spec.
 
-mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, Args,
+mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, ArgVars,
         InstX, ArgInsts) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     FunctorConsIdStr = functor_cons_id_to_string(ModuleInfo,
-        vns_var_table(VarTable), print_name_only, ConsId, Args),
+        vns_var_table(VarTable), print_name_only, ConsId, ArgVars),
     ConsIdStr = mercury_cons_id_to_string(output_mercury,
         does_not_need_brackets, ConsId),
     FakeTermInst = defined_inst(user_inst(unqualified(ConsIdStr), ArgInsts)),
@@ -1601,7 +1601,7 @@ mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
 :- func mode_error_unexpected_final_inst_to_spec(mode_info, int, prog_var,
     mer_inst, mer_inst, final_inst_error) = error_spec.
 
-mode_error_unexpected_final_inst_to_spec(ModeInfo, ArgNum, Var,
+mode_error_unexpected_final_inst_to_spec(ModeInfo, RawArgNum, Var,
         ActualInst, ExpectedInst, Reason) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
@@ -1617,8 +1617,22 @@ mode_error_unexpected_final_inst_to_spec(ModeInfo, ArgNum, Var,
         % I don't think this can happen. But just in case...
         Problem = "had the wrong instantiatedness."
     ),
-    Pieces = [words("mode error: argument"), fixed(int_to_string(ArgNum)),
-        words(Problem), nl,
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    mode_info_get_pred_id(ModeInfo, PredId),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_polymorphism_added_args(PredInfo, NumPolyAddedArgs),
+    ArgNum = RawArgNum - NumPolyAddedArgs,
+    ( if ArgNum >= 1 then
+        ArgNumPieces = [words("argument"), int_fixed(ArgNum)]
+    else
+        % This should not happen. All code that passes around
+        % compiler-generated arguments is of course also compiler generated,
+        % and that code is supposed to be "correct by construction".
+        % This is here in case that supposition turns out to be mistaken.
+        ArgNumPieces = [words("compiler-generated argument"),
+            int_fixed(RawArgNum)]
+    ),
+    Pieces = [words("mode error:")] ++ ArgNumPieces ++ [words(Problem), nl,
         words("Final instantiatedness of"),
         quote(mercury_var_to_name_only(VarTable, Var)), words("was") |
         report_inst(ModeInfo, quote_short_inst, [suffix(","), nl],

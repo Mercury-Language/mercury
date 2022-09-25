@@ -1,7 +1,7 @@
 merge_ground_any.m:019: In clause for `pass(in,
 merge_ground_any.m:019:   in(merge_ground_any.hpair(ground, any)),
 merge_ground_any.m:019:   out(merge_ground_any.hpair(ground, any)))':
-merge_ground_any.m:019:   mode error: argument 5 did not get sufficiently
+merge_ground_any.m:019:   mode error: argument 3 did not get sufficiently
 merge_ground_any.m:019:   instantiated.
 merge_ground_any.m:019:   Final instantiatedness of `HeadVar__3' was
 merge_ground_any.m:019:     bound(

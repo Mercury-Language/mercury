@@ -359,6 +359,7 @@ polymorphism_update_arg_types(PredId, !ExistsCastPredIds, !ModuleInfo) :-
         OldHeadVarList),
     % We need ExistQVars whether or not ExtraHeadVarList is empty or not.
     pred_info_get_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes0),
+    list.length(ExtraHeadVarList, NumExtraHeadVars),
     (
         ExtraHeadVarList = [],
         PredInfo2 = PredInfo0
@@ -377,7 +378,6 @@ polymorphism_update_arg_types(PredId, !ExistsCastPredIds, !ModuleInfo) :-
             % Update the argument numbers in the format_call field 
             % to account for the new arguments we just added at the front
             % of the argument list.
-            list.length(ExtraHeadVarList, NumExtraHeadVars),
             one_or_more.map(increment_arg_nums(NumExtraHeadVars),
                 OoMFormatStrsValues1, OoMFormatStrsValues2),
             MaybeFormatCall2 = yes(format_call(Context, OoMFormatStrsValues2)),
@@ -398,12 +398,14 @@ polymorphism_update_arg_types(PredId, !ExistsCastPredIds, !ModuleInfo) :-
         type_list_subsumes(ArgTypes0, OldHeadVarTypes, Subn),
         not map.is_empty(Subn)
     then
-        pred_info_set_existq_tvar_binding(Subn, PredInfo2, PredInfo),
+        pred_info_set_existq_tvar_binding(Subn, PredInfo2, PredInfo3),
         !:ExistsCastPredIds = [PredId | !.ExistsCastPredIds]
     else
-        PredInfo = PredInfo2
+        PredInfo3 = PredInfo2
     ),
 
+    pred_info_set_polymorphism_added_args(NumExtraHeadVars,
+        PredInfo3, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 :- pred increment_arg_nums(int::in,

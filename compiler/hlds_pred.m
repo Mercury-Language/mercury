@@ -546,8 +546,9 @@
 :- pred pred_prepare_to_clone(pred_info::in,
     module_name::out, string::out, arity::out, pred_or_func::out,
     pred_origin::out, pred_status::out, pred_markers::out, list(mer_type)::out,
-    tvarset::out, tvarset::out, existq_tvars::out, prog_constraints::out,
-    clauses_info::out, proc_table::out, prog_context::out,
+    tvarset::out, tvarset::out, existq_tvars::out, int::out,
+    prog_constraints::out, clauses_info::out,
+    proc_table::out, prog_context::out,
     maybe(cur_user_decl_info)::out, goal_type::out, tvar_kind_map::out,
     tsubst::out, external_type_params::out, constraint_proof_map::out,
     constraint_map::out, list(prog_constraint)::out, inst_graph_info::out,
@@ -557,7 +558,7 @@
 
 :- pred pred_create(module_name::in, string::in, arity::in, pred_or_func::in,
     pred_origin::in, pred_status::in, pred_markers::in, list(mer_type)::in,
-    tvarset::in, tvarset::in, existq_tvars::in, prog_constraints::in,
+    tvarset::in, tvarset::in, existq_tvars::in, int::in, prog_constraints::in,
     clauses_info::in, proc_table::in, prog_context::in,
     maybe(cur_user_decl_info)::in, goal_type::in, tvar_kind_map::in,
     tsubst::in, external_type_params::in, constraint_proof_map::in,
@@ -641,6 +642,8 @@
     existq_tvars::out) is det.
 :- pred pred_info_get_existq_tvar_binding(pred_info::in,
     tsubst::out) is det.
+:- pred pred_info_get_polymorphism_added_args(pred_info::in,
+    int::out) is det.
 :- pred pred_info_get_external_type_params(pred_info::in,
     external_type_params::out) is det.
 :- pred pred_info_get_class_context(pred_info::in,
@@ -697,6 +700,8 @@
 :- pred pred_info_set_tvar_kind_map(tvar_kind_map::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_existq_tvar_binding(tsubst::in,
+    pred_info::in, pred_info::out) is det.
+:- pred pred_info_set_polymorphism_added_args(int::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_external_type_params(external_type_params::in,
     pred_info::in, pred_info::out) is det.
@@ -1119,6 +1124,14 @@ marker_name(marker_fact_table_semantic_errors, "fact_table_semantic_errors").
                 % at the end of the polymorphism stage.
                 psi_existq_tvar_binding         :: tsubst,
 
+                % The number of type_info and/or typeclass_info arguments
+                % added by the polymorphism pass. This field is set
+                % at the end of that pass.
+                %
+                % XXX ARGVEC: When we use argvecs to record the predicate's
+                % argument vector, we should be able to delete this field.
+                psi_polymorphism_added_args     :: int,
+
                 % The set of type variables which the body of the predicate
                 % can't bind, and whose type_infos are produced elsewhere.
                 % This includes universally quantified head types (the
@@ -1208,6 +1221,7 @@ pred_info_init(PredOrFunc, PredModuleName, PredName, PredFormArity, Context,
     % XXX kind inference:
     % we assume all tvars have kind `star'.
     map.init(ExistQVarBindings),
+    PolymorphismAddedArgs = 0,
     type_vars_in_types(ArgTypes, TVars),
     list.delete_elems(TVars, ExistQVars, HeadTypeParams),
     % argument ClassProofs
@@ -1221,7 +1235,7 @@ pred_info_init(PredOrFunc, PredModuleName, PredName, PredFormArity, Context,
     FormatCall = maybe.no,
     InstanceMethodArgTypes = [],
     PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
-        Kinds, ExistQVarBindings, HeadTypeParams,
+        Kinds, ExistQVarBindings, PolymorphismAddedArgs, HeadTypeParams,
         ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
         VarNameRemap, Assertions, ObsoleteInFavourOf, FormatCall,
@@ -1272,6 +1286,7 @@ pred_info_create(PredOrFunc, PredModuleName, PredName,
     % XXX kind inference:
     % we assume all tvars have kind `star'.
     map.init(ExistQVarBindings),
+    PolymorphismAddedArgs = 0,
     type_vars_in_types(ArgTypes, TVars),
     list.delete_elems(TVars, ExistQVars, HeadTypeParams),
     map.init(ClassProofs),
@@ -1286,7 +1301,7 @@ pred_info_create(PredOrFunc, PredModuleName, PredName,
     InstanceMethodArgTypes = [],
 
     PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
-        Kinds, ExistQVarBindings, HeadTypeParams,
+        Kinds, ExistQVarBindings, PolymorphismAddedArgs, HeadTypeParams,
         ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
         VarNameRemap, Assertions, ObsoleteInFavourOf, FormatCall,
@@ -1327,7 +1342,8 @@ pred_info_create(PredOrFunc, PredModuleName, PredName,
 
 pred_prepare_to_clone(PredInfo, ModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
-        ExistQVars, ClassContext, ClausesInfo, ProcTable, Context,
+        ExistQVars, PolymorphismAddedArgs,
+        ClassContext, ClausesInfo, ProcTable, Context,
         CurUserDecl, GoalType, Kinds, ExistQVarBindings, HeadTypeParams,
         ClassProofs, ClassConstraintMap, UnprovenBodyConstraints,
         InstGraphInfo, ArgModesMaps, VarNameRemap, Assertions,
@@ -1336,7 +1352,7 @@ pred_prepare_to_clone(PredInfo, ModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo),
     PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
-        Kinds, ExistQVarBindings, HeadTypeParams,
+        Kinds, ExistQVarBindings, PolymorphismAddedArgs, HeadTypeParams,
         ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
         VarNameRemap, Assertions, ObsoleteInFavourOf, FormatCall,
@@ -1344,13 +1360,14 @@ pred_prepare_to_clone(PredInfo, ModuleName, PredName, Arity, PredOrFunc,
 
 pred_create(ModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
-        ExistQVars, ClassContext, ClausesInfo, ProcTable, Context,
+        ExistQVars, PolymorphismAddedArgs,
+        ClassContext, ClausesInfo, ProcTable, Context,
         CurUserDecl, GoalType, Kinds, ExistQVarBindings, HeadTypeParams,
         ClassProofs, ClassConstraintMap, UnprovenBodyConstraints,
         InstGraphInfo, ArgModesMaps, VarNameRemap, Assertions,
         ObsoleteInFavourOf, FormatCall, InstanceMethodArgTypes, PredInfo) :-
     PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
-        Kinds, ExistQVarBindings, HeadTypeParams,
+        Kinds, ExistQVarBindings, PolymorphismAddedArgs, HeadTypeParams,
         ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
         VarNameRemap, Assertions, ObsoleteInFavourOf, FormatCall,
@@ -1506,6 +1523,8 @@ pred_info_get_exist_quant_tvars(!.PI, X) :-
     X = !.PI ^ pi_exist_quant_tvars.
 pred_info_get_existq_tvar_binding(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_existq_tvar_binding.
+pred_info_get_polymorphism_added_args(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_polymorphism_added_args.
 pred_info_get_external_type_params(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_external_type_params.
 pred_info_get_class_context(!.PI, X) :-
@@ -1576,6 +1595,8 @@ pred_info_set_tvar_kind_map(X, !PI) :-
     ).
 pred_info_set_existq_tvar_binding(X, !PI) :-
     !PI ^ pi_pred_sub_info ^ psi_existq_tvar_binding := X.
+pred_info_set_polymorphism_added_args(X, !PI) :-
+    !PI ^ pi_pred_sub_info ^ psi_polymorphism_added_args := X.
 pred_info_set_external_type_params(X, !PI) :-
     ( if
         private_builtin.pointer_equal(X,

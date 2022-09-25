@@ -452,12 +452,13 @@
                 % it found the error. On the other hand, some errors
                 % are caught by predicates that help process many kinds
                 % of HLDS goals, and they need their caller to tell them
-                % e.g. where the insts they handle come from. The reason
-                % this field exists is probably because Fergus thought that
-                % it is easier to stuff this information into the mode_info,
-                % which those general-purpose predicates have already got,
-                % than to pass them in separate arguments, even though
-                % the latter would be semantically cleaner.
+                % e.g. where the insts they handle come from.
+                %
+                % XXX The reason this field exists is probably because
+                % Fergus thought that it is easier to stuff this informatio
+                % into the mode_info, which those general-purpose predicates
+                % have already got, than to pass them in separate arguments,
+                % even though the latter would be semantically cleaner.
 /*  5 */        mi_mode_context             :: mode_context,
 
                 % The line number of the subgoal we are currently checking.
@@ -467,7 +468,7 @@
                 % referenced again after deep backtracking TO THE CURRENT
                 % EXECUTION POINT. These are the variables which need to be
                 % made mostly_unique rather than unique when we get to a
-                % nondet disjunction or a nondet call.  We do not include
+                % nondet disjunction or a nondet call. We do not include
                 % variables which may be referenced again after backtracking
                 % to a point EARLIER THAN the current execution point, since
                 % those variables will *already* have been marked as
