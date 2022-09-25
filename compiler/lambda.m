@@ -390,8 +390,7 @@ expand_lambda(RegWrapperProc, LHSVar, RHS0, UnifyMode,
     RHS0 = rhs_lambda_goal(_Purity, _Groundness, PredOrFunc, EvalMethod,
         RHSNonLocals, VarsModes, Detism, LambdaGoal),
     assoc_list.keys(VarsModes, Vars),
-    Unification0 = construct(Var, _, ArgVars0, ArgUnifyModes0,
-        _, _, _),
+    Unification0 = construct(Var, _, ArgVars0, ArgUnifyModes0, _, _, _),
     trace [compiletime(flag("lambda_sanity_check"))]
     (
         expect(unify(LHSVar, Var), $pred, "LHSVar != Var"),
