@@ -991,8 +991,8 @@ implementation_defined_literals.m replaces unifications
 of the form <code>Var = $name</code>
 by unifications to string or integer constants.
 <li>
-polymorphism.m handles
-the introduction of type_info arguments for polymorphic predicates
+polymorphism.m, with the help of polymorphism_clause.m and polymorphism_goal.m,
+handles the introduction of type_info arguments for polymorphic predicates
 and introduction of typeclass_info arguments
 for typeclass-constrained predicates.
 This phase needs to come before mode analysis

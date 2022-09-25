@@ -44,6 +44,8 @@
 % Polymorphism transformation.
 :- include_module introduce_exists_casts.
 :- include_module polymorphism.
+:- include_module polymorphism_clause.
+:- include_module polymorphism_goal.
 :- include_module polymorphism_info.
 :- include_module polymorphism_lambda.
 :- include_module polymorphism_post_copy.

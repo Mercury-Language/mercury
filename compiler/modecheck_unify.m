@@ -58,7 +58,7 @@
 :- import_module check_hlds.modecheck_goal.
 :- import_module check_hlds.modecheck_util.
 :- import_module check_hlds.modes.
-:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.polymorphism_goal.
 :- import_module check_hlds.polymorphism_lambda.
 :- import_module check_hlds.proc_requests.
 :- import_module check_hlds.type_util.
