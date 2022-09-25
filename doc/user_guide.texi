@@ -7705,6 +7705,25 @@ The list will be ordered on the starting line numbers
 of the predicates and functions.
 
 @sp 1
+@item --show-local-call-tree
+@findex --show-local-call-tree
+Construct the call tree of the predicates and functions
+defined in the module. Each node of this tree is a local
+predicate or function, and each node has edges linking it to the
+nodes of the other local predicates and functions it refers to.
+Write out to @file{@var{module}.local_call_tree} a list of these nodes.
+Put these nodes into the order in which they are encountered
+by a depth-first left-to-right traversal of the bodies
+(as reordered by mode analysis),
+of the first procedure of each predicate or function,
+starting the traversal at the exported predicates and/or functions
+of the module.
+List the callees of each node in the same order.
+Write a flattened form of this call tree, containing just
+the predicates and functions in the same traversal order,
+to @file{@var{module}.local_call_tree_order}.
+
+@sp 1
 @item --show-local-type-representations
 @findex --show-local-type-representations
 Write out information about the representations of all types

@@ -81,6 +81,7 @@
 :- include_module goal_path.
 :- include_module goal_util.
 :- include_module headvar_names.
+:- include_module hlds_call_tree.
 :- include_module hlds_defns.
 :- include_module hlds_code_util.
 :- include_module hlds_statistics.

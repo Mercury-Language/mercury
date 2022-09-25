@@ -1818,11 +1818,13 @@ output_needed_map_entry(Stream, ModuleInfo, Entity - MaybeNeeded, !IO) :-
 entity_to_string(ModuleInfo, Entity) = Str :-
     (
         Entity = entity_proc(PredProcId),
-        ProcDesc = describe_proc_from_id(ModuleInfo, PredProcId),
+        ProcDesc = describe_proc_from_id(include_module_name,
+            ModuleInfo, PredProcId),
         string.format("%s", [s(ProcDesc)], Str)
     ;
         Entity = entity_table_struct(PredProcId),
-        ProcDesc = describe_proc_from_id(ModuleInfo, PredProcId),
+        ProcDesc = describe_proc_from_id(include_module_name,
+            ModuleInfo, PredProcId),
         string.format("table_struct %s", [s(ProcDesc)], Str)
     ;
         Entity = entity_type_ctor(ModuleName, TypeName, TypeArity),

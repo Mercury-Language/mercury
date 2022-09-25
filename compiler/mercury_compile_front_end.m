@@ -111,6 +111,7 @@
 :- import_module hlds.du_type_layout.
 :- import_module hlds.goal_mode.
 :- import_module hlds.hlds_clauses.
+:- import_module hlds.hlds_call_tree.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_statistics.
@@ -701,6 +702,8 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
                 !Specs, !IO),
             maybe_dump_hlds(!.HLDS, 55, "unique_modes", !DumpInfo, !IO),
 
+            maybe_write_call_tree(Verbose, Stats, !.HLDS, !IO),
+
             check_stratification(Verbose, Stats, !HLDS, FoundStratError,
                 !Specs, !IO),
             maybe_dump_hlds(!.HLDS, 60, "stratification", !DumpInfo, !IO),
@@ -1094,6 +1097,53 @@ check_unique_modes(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
         maybe_write_string(Verbose, "% Program is unique-mode-correct.\n", !IO)
     ),
     maybe_report_stats(Stats, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_write_call_tree(bool::in, bool::in,
+    module_info::in, io::di, io::uo) is det.
+
+maybe_write_call_tree(Verbose, Stats, HLDS, !IO) :-
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, show_local_call_tree, ShowCallTree),
+    (
+        ShowCallTree = yes,
+        maybe_write_string(Verbose, "% Writing call_tree...", !IO),
+        module_info_get_name(HLDS, ModuleName),
+        module_name_to_file_name(Globals, $pred, do_create_dirs,
+            ext_other(other_ext(".local_call_tree")),
+            ModuleName, TreeFileName, !IO),
+        module_name_to_file_name(Globals, $pred, do_create_dirs,
+            ext_other(other_ext(".local_call_tree_order")),
+            ModuleName, OrderFileName, !IO),
+        io.open_output(TreeFileName, TreeResult, !IO),
+        (
+            TreeResult = ok(TreeFileStream),
+            io.open_output(OrderFileName, OrderResult, !IO),
+            (
+                OrderResult = ok(OrderFileStream),
+                hlds.hlds_call_tree.write_local_call_tree(TreeFileStream,
+                    OrderFileStream, HLDS, !IO),
+                io.close_output(TreeFileStream, !IO),
+                io.close_output(OrderFileStream, !IO),
+                maybe_write_string(Verbose, " done.\n", !IO)
+            ;
+                OrderResult = error(IOError),
+                io.close_output(TreeFileStream, !IO),
+                ErrorMsg = "unable to write local call tree order: " ++
+                    io.error_message(IOError),
+                report_error(ErrorMsg, !IO)
+            )
+        ;
+            TreeResult = error(IOError),
+            ErrorMsg = "unable to write local call tree: " ++
+                io.error_message(IOError),
+            report_error(ErrorMsg, !IO)
+        ),
+        maybe_report_stats(Stats, !IO)
+    ;
+        ShowCallTree = no
+    ).
 
 %---------------------------------------------------------------------------%
 

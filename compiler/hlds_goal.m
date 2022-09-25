@@ -736,10 +736,15 @@
 %
 
     % Initially all unifications are represented as
-    % unify(prog_var, unify_rhs, _, _, _), but mode analysis replaces
-    % these with various special cases (construct/deconstruct/assign/
-    % simple_test/complicated_unify).
+    % unify(LHSVar, RHS, _, Unification, _) where the Unification
+    % is initialized to complicated_unify but is not meaningful.
+    % Mode analysis makes the Unification field meaningful, which means
+    % most unifications end up being constructs, deconstructs, assigns and
+    % simple_tests, with only a few remaining as complicated_unify.
+    % Until that pass, the compiler should pay attention *only* the RHS field.
     %
+    % The lambda pass in the middle end replaces all rhs_lambda_goal
+    % unifications with construct unifications using a closure_cons cons_id.
 :- type unify_rhs
     --->    rhs_var(prog_var)
     ;       rhs_functor(
@@ -815,10 +820,11 @@
     --->    construct(
                 % A construction unification is a unification with a functor
                 % or lambda expression which binds the LHS variable,
-                % e.g. Y = f(X) where the top node of Y is output,
-                % Constructions are written using `:=', e.g. Y := f(X).
+                % e.g. X = f(Y1, Y2) where the top node of X is output,
+                %
+                % In HLDS dumps, constructions are written as `X <= f(Y1, Y2)'.
 
-                % The variable being constructed, e.g. Y in above example.
+                % The variable being constructed, e.g. X in above example.
                 construct_cell_var      :: prog_var,
 
                 % The cons_id of the functor f/1 in the above example.
@@ -828,7 +834,7 @@
                 % of the unify goal.
                 construct_cons_id       :: cons_id,
 
-                % The list of argument variables; [X] in the above example.
+                % The list of argument variables; [Y1, Y2] in the example.
                 % For a unification with a lambda expression, this is the list
                 % of the non-local variables of the lambda expression.
                 construct_args          :: list(prog_var),
@@ -854,18 +860,21 @@
     ;       deconstruct(
                 % A deconstruction unification is a unification with a functor
                 % for which the LHS variable was already bound,
-                % e.g. Y = f(X) where the top node of Y is input.
-                % Deconstructions are written using `==', e.g. Y == f(X).
+                % e.g. X = f(Y1, Y2) where the top node of Y is input.
                 % Note that deconstruction of lambda expressions is
                 % a mode error.
+                %
+                % In HLDS dump, deconstructions that cannot fail are written
+                % as `X => f(Y1, Y2)', while deconstructions that can fail
+                % are written as `X ?= f(Y1, Y2)'.
 
-                % The variable being deconstructed, e.g. Y in the example.
+                % The variable being deconstructed, e.g. X in the example.
                 deconstruct_cell_var    :: prog_var,
 
                 % The cons_id of the functor, e.g. f/1 in the example.
                 deconstruct_cons_id     :: cons_id,
 
-                % The list of argument variables, e.g. [X] in the example.
+                % The list of argument variables, e.g. [Y1, Y2] in the example.
                 deconstruct_args        :: list(prog_var),
 
                 % The lists of modes of the argument sub-unifications.
@@ -874,32 +883,43 @@
                 % Whether or not the unification could possibly fail.
                 deconstruct_can_fail    :: can_fail,
 
-                % Can compile time GC this cell, i.e. explicitly deallocate it
-                % after the deconstruction.
+                % Can we apply compile time GC to this cell? In other words,
+                % can we explicitly deallocate it after the deconstruction?
                 deconstruct_can_cgc     :: can_cgc
             )
 
     ;       assign(
-                % Y = X where the top node of Y is output, written Y := X.
+                % X = Y where the top node of X is output.
+                %
+                % In HLDS dumps, assigments are written as `X := Y'.
 
                 assign_to_var           :: prog_var,
                 assign_from_var         :: prog_var
             )
 
     ;       simple_test(
-                % Y = X where the type of X and Y is an atomic type and
-                % they are both input, written Y == X.
+                % X = Y where the type of X and Y is an atomic type and
+                %
+                % In HLDS dumps, simple tests are written as `X == Y'.
 
                 test_var1               :: prog_var,
                 test_var2               :: prog_var
             )
 
     ;       complicated_unify(
-                % Y = X where the type of Y and X is not an atomic type,
-                % and where the top-level node of both Y and X is input.
+                % X = Y where the type of X and Y is not an atomic type,
+                % and where the top-level node of both X and Y is input.
                 % May involve bi-directional data flow. Implemented using
                 % an out-of-line call to a compiler generated unification
                 % predicate for that type & mode.
+                %
+                % There is no special syntax to denote complicated unifications
+                % in HLDS dumps.
+                %
+                % The simplification pass at the end of semantic analysis
+                % replaces complicated unifications with other kinds of goals,
+                % usually calls. They should not be encountered by any later
+                % compiler passes.
 
                 % The mode of the unification.
                 compl_unify_mode        :: unify_mode,

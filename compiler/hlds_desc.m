@@ -50,10 +50,24 @@
     %
 :- func describe_var(var_table, prog_var) = string.
 
+    % This type is isomorphic to should_module_qualify in hlds_error_util.m,
+    % but we want to allow that module and this one to be used independently
+    % of each other.
+:- type include_module_name
+    --->    do_not_include_module_name
+    ;       include_module_name.
+
+    % Return a description of the given predicate.
+    %
+:- func describe_pred_from_id(include_module_name, module_info, pred_id)
+    = string.
+:- func describe_pred(include_module_name, pred_info) = string.
+
     % Return a description of the given procedure of the given predicate.
     %
-:- func describe_proc_from_id(module_info, pred_proc_id) = string.
-:- func describe_proc(pred_info, proc_id) = string.
+:- func describe_proc_from_id(include_module_name, module_info, pred_proc_id)
+    = string.
+:- func describe_proc(include_module_name, pred_info, proc_id) = string.
 
 %-----------------------------------------------------------------------------%
 
@@ -65,7 +79,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_util.
 
 :- import_module string.
 :- import_module term_context.
@@ -196,6 +209,21 @@ describe_goal(ModuleInfo, VarTable, Goal) = FullDesc :-
     Line = term_context.context_line(Context),
     FullDesc = Desc ++ "@" ++ int_to_string(Line).
 
+:- func describe_cast(cast_kind) = string.
+
+describe_cast(CastType) = Desc :-
+    (
+        ( CastType = unsafe_type_cast
+        ; CastType = unsafe_type_inst_cast
+        ; CastType = equiv_type_cast
+        ; CastType = exists_cast
+        ),
+        Desc = "cast"
+    ;
+        CastType = subtype_coerce,
+        Desc = "coerce"
+    ).
+
 %---------------------------------------------------------------------------%
 
 describe_args(_, []) = "".
@@ -211,18 +239,15 @@ describe_var(VarTable, Var) =
 
 %---------------------------------------------------------------------------%
 
-describe_proc_from_id(ModuleInfo, PredProcId) = ProcDesc :-
-    PredProcId = proc(PredId, ProcId),
+describe_pred_from_id(IncludeModuleName, ModuleInfo, PredId) = PredDesc :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcDesc = describe_proc(PredInfo, ProcId).
+    PredDesc = describe_pred(IncludeModuleName, PredInfo).
 
-describe_proc(PredInfo, ProcId) = ProcDesc :-
+describe_pred(IncludeModuleName, PredInfo) = ProcDesc :-
     % XXX This function should subcontract its work to pred_name.m.
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    Arity0 = pred_info_orig_arity(PredInfo),
-    adjust_func_arity(PredOrFunc, Arity, Arity0),
+    user_arity(Arity) = pred_info_user_arity(PredInfo),
     pred_info_get_origin(PredInfo, Origin),
     ( if Origin = origin_compiler(made_for_uci(SpecialId, TypeCtor)) then
         FullPredName = string.format("%s_for_%s",
@@ -231,10 +256,17 @@ describe_proc(PredInfo, ProcId) = ProcDesc :-
     else
         FullPredName = PredName
     ),
-    ProcDesc = string.format("%s %s.%s/%d-%d",
-        [s(pred_or_func_to_str(PredOrFunc)),
-        s(sym_name_to_string(ModuleName)),
-        s(FullPredName), i(Arity), i(proc_id_to_int(ProcId))]).
+    (
+        IncludeModuleName = do_not_include_module_name,
+        ProcDesc = string.format("%s %s/%d",
+            [s(pred_or_func_to_str(PredOrFunc)), s(FullPredName), i(Arity)])
+    ;
+        IncludeModuleName = include_module_name,
+        ModuleName = pred_info_module(PredInfo),
+        ProcDesc = string.format("%s %s.%s/%d",
+            [s(pred_or_func_to_str(PredOrFunc)),
+            s(sym_name_to_string(ModuleName)), s(FullPredName), i(Arity)])
+    ).
 
 :- func arg_type_ctor_name_to_string(type_ctor) = string.
 
@@ -245,20 +277,15 @@ arg_type_ctor_name_to_string(TypeCtor) = TypeCtorStr :-
 
 %---------------------------------------------------------------------------%
 
-:- func describe_cast(cast_kind) = string.
+describe_proc_from_id(IncludeModuleName, ModuleInfo, PredProcId) = ProcDesc :-
+    PredProcId = proc(PredId, ProcId),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    ProcDesc = describe_proc(IncludeModuleName, PredInfo, ProcId).
 
-describe_cast(CastType) = Desc :-
-    (
-        ( CastType = unsafe_type_cast
-        ; CastType = unsafe_type_inst_cast
-        ; CastType = equiv_type_cast
-        ; CastType = exists_cast
-        ),
-        Desc = "cast"
-    ;
-        CastType = subtype_coerce,
-        Desc = "coerce"
-    ).
+describe_proc(IncludeModuleName, PredInfo, ProcId) = ProcDesc :-
+    PredDesc = describe_pred(IncludeModuleName, PredInfo),
+    ProcDesc = string.format("%s-%d",
+        [s(PredDesc), i(proc_id_to_int(ProcId))]).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_desc.

@@ -51,8 +51,7 @@
     %
     %   cons
     %   tuple_cons
-    %   int*_const
-    %   uint*_const
+    %   some_int_const
     %   float_const
     %   char_const
     %   string_const

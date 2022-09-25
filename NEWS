@@ -640,6 +640,13 @@ Changes to the Mercury compiler
   with that name and arity, and the pragma does not specify which one
   it is for.
 
+* We have added a new option `--show-local-call-tree`
+  that tells the compiler to output a representation of the call tree
+  of the predicates and functions of the module as ordered by a depth-first
+  left-to-right traversal of the bodies of the first (i.e. main) procedures
+  of those predicates and functions. This can suggest a good order
+  for the positions of those predicates and functions in the source code.
+
 * The deprecated option `--trail-segments` has been deleted and the grade
   component `trseg` is no longer accepted as a synonym for `tr`.
 

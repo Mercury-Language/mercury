@@ -380,6 +380,7 @@
     ;       show_definitions
     ;       show_definition_line_counts
     ;       show_definition_extents
+    ;       show_local_call_tree
     ;       show_local_type_repns
     ;       show_all_type_repns
     ;       show_developer_type_repns
@@ -1427,6 +1428,7 @@ optdef(oc_aux_output, max_error_line_width,             maybe_int(yes(79))).
 optdef(oc_aux_output, show_definitions,                 bool(no)).
 optdef(oc_aux_output, show_definition_line_counts,      bool(no)).
 optdef(oc_aux_output, show_definition_extents,          bool(no)).
+optdef(oc_aux_output, show_local_call_tree,             bool(no)).
 optdef(oc_aux_output, show_local_type_repns,            bool(no)).
 optdef(oc_aux_output, show_all_type_repns,              bool(no)).
 optdef(oc_aux_output, show_developer_type_repns,        bool(no)).
@@ -2374,6 +2376,7 @@ long_option("max-error-line-width",     max_error_line_width).
 long_option("show-definitions",         show_definitions).
 long_option("show-definition-line-counts",  show_definition_line_counts).
 long_option("show-definition-extents",  show_definition_extents).
+long_option("show-local-call-tree",     show_local_call_tree).
 long_option("show-all-type-repns",              show_all_type_repns).
 long_option("show-all-type-representations",    show_all_type_repns).
 long_option("show-local-type-repns",            show_local_type_repns).
@@ -4836,6 +4839,22 @@ options_help_aux_output(Stream, !IO) :-
         "\tfirst and last lines, to `<module>.defn_extents'.",
         "\tThe list will be ordered on the starting line numbers",
         "\tof the predicates and functions.",
+        "--show-local-call-tree",
+        "\tConstruct the call tree of the predicates and functions",
+        "\tdefined in the module. Each node of this tree is a local",
+        "\tpredicate or function, and each node has edges linking it to the",
+        "\tnodes of the other local predicates and functions it refers to.",
+        "\tWrite out to `<module>.local_call_tree' a list of these nodes.",
+        "\tPut these nodes into the order in which they are encountered",
+        "\tby a depth-first left-to-right traversal of the bodies",
+        "\t(as reordered by mode analysis),",
+        "\tof the first procedure of each predicate or function,",
+        "\tstarting the traversal at the exported predicates and/or functions",
+        "\tof the module.",
+        "\tList the callees of each node in the same order.",
+        "\tWrite a flattened form of this call tree, containing just",
+        "\tthe predicates and functions in the same traversal order,",
+        "\tto `<module>.local_call_tree_order'.",
         "--show-local-type-representations",
         "\tWrite out information about the representations of all types",
         "\tdefined in the module being compiled to `<module>.type_repns'.",

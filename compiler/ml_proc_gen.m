@@ -1282,7 +1282,7 @@ ml_gen_tscc_proc_code(ModuleInfo, Target, ConstStructMap, TsccCodeModel,
         ),
 
         PredProcId = proc(_PredId, ProcId),
-        ProcDesc = describe_proc(PredInfo, ProcId),
+        ProcDesc = describe_proc(include_module_name, PredInfo, ProcId),
         ProcIdInTscc = proc_id_in_tscc(ProcNumInTscc),
         ProcDescComment = string.format("proc %d in TSCC: %s",
             [i(ProcNumInTscc), s(ProcDesc)]),
@@ -1367,7 +1367,8 @@ construct_tscc_entry_proc(ModuleInfo, LoopKind, PredProcCodes,
         NonEntryTsccInLocalVarDefns ++ EntryTsccOutLocalVarDefns,
 
     EntryIdInTscc = proc_id_in_tscc(EntryIdInTsccNum),
-    EntryProcDesc = describe_proc_from_id(ModuleInfo, EntryProc),
+    EntryProcDesc = describe_proc_from_id(include_module_name,
+        ModuleInfo, EntryProc),
     Comment0 = string.format("The code for TSCC PROC %d: %s.",
         [i(EntryIdInTsccNum), s(EntryProcDesc)]),
     CommentStmt0 = ml_stmt_atomic(comment(Comment0), EntryProcContext),
@@ -1926,7 +1927,8 @@ describe_pred_proc_ids(ModuleInfo, Msg, PredProcIds, !StartCommentStmts) :-
 :- func pred_proc_id_desc(module_info, pred_proc_id) = mlds_stmt.
 
 pred_proc_id_desc(ModuleInfo, PredProcId) = DescStmt :-
-    Comment = "  " ++ describe_proc_from_id(ModuleInfo, PredProcId),
+    Comment = "  " ++ describe_proc_from_id(include_module_name,
+        ModuleInfo, PredProcId),
     DescStmt = ml_stmt_atomic(comment(Comment), dummy_context).
 
 %---------------------------------------------------------------------------%

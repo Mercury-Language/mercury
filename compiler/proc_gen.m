@@ -1401,7 +1401,7 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 
 push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    PushMsg = describe_proc(PredInfo, ProcId).
+    PushMsg = describe_proc(include_module_name, PredInfo, ProcId).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
