@@ -51,16 +51,12 @@
     %
 :- pred maybe_set_line_num(io.text_output_stream::in,
     maybe_set_line_numbers::in, string::in, int::in, io::di, io::uo) is det.
-:- pred maybe_set_line_num_cur_stream(maybe_set_line_numbers::in,
-    string::in, int::in, io::di, io::uo) is det.
 
     % always_set_line_num(Stream, FileName, LineNum, !IO):
     %
     % As maybe_set_line_num, but always generate a #line directive.
     %
 :- pred always_set_line_num(io.text_output_stream::in, string::in, int::in,
-    io::di, io::uo) is det.
-:- pred always_set_line_num_cur_stream(string::in, int::in,
     io::di, io::uo) is det.
 
     % maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeFileName, !IO):
@@ -81,15 +77,11 @@
     %
 :- pred maybe_reset_line_num(io.text_output_stream::in,
     maybe_set_line_numbers::in, maybe(string)::in, io::di, io::uo) is det.
-:- pred maybe_reset_line_num_cur_stream(maybe_set_line_numbers::in,
-    maybe(string)::in, io::di, io::uo) is det.
 
     % As maybe_reset_line_num, but always generate a #line directive.
     %
 :- pred always_reset_line_num(io.text_output_stream::in,
     maybe(string)::in, io::di, io::uo) is det.
-:- pred always_reset_line_num_cur_stream(maybe(string)::in,
-    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -109,8 +101,6 @@
     %
 :- pred output_quoted_string(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
-:- pred output_quoted_string_cur_stream(string::in,
-    io::di, io::uo) is det.
 
     % As above, but for the specified language.
     %
@@ -123,15 +113,6 @@
     is det.
 :- mode output_quoted_string_lang(in, in, in, di, uo) is det.
 
-:- pred output_quoted_string_lang_cur_stream(literal_language, string, io, io).
-:- mode output_quoted_string_lang_cur_stream(in(bound(literal_c)), in, di, uo)
-    is det.
-:- mode output_quoted_string_lang_cur_stream(in(bound(literal_java)), in,
-    di, uo) is det.
-:- mode output_quoted_string_lang_cur_stream(in(bound(literal_csharp)), in,
-    di, uo) is det.
-:- mode output_quoted_string_lang_cur_stream(in, in, di, uo) is det.
-
     % output_quoted_multi_string is like list.foldl(output_quoted_string)
     % except that a null character will be written between each string
     % in the list.
@@ -139,23 +120,17 @@
 :- type multi_string == list(string).
 :- pred output_quoted_multi_string(io.text_output_stream::in,
     multi_string::in, io::di, io::uo) is det.
-:- pred output_quoted_multi_string_cur_stream(multi_string::in,
-    io::di, io::uo) is det.
 
     % As above, but for the specified language.
     %
 :- pred output_quoted_multi_string_lang(io.text_output_stream::in,
     literal_language::in, multi_string::in, io::di, io::uo) is det.
-:- pred output_quoted_multi_string_lang_cur_stream(literal_language::in,
-    multi_string::in, io::di, io::uo) is det.
 
     % Print out a char suitably escaped for use as a C char literal.
     % This doesn't actually print out the enclosing single quotes --
     % that is the caller's responsibility.
     %
 :- pred output_quoted_char(io.text_output_stream::in, char::in,
-    io::di, io::uo) is det.
-:- pred output_quoted_char_cur_stream(char::in,
     io::di, io::uo) is det.
 
     % Convert a string to a form that is suitably escaped for use as a
@@ -179,49 +154,41 @@
     %
 :- pred output_int_expr(io.text_output_stream::in, int::in,
     io::di, io::uo) is det.
-:- pred output_int_expr_cur_stream(int::in, io::di, io::uo) is det.
 
     % Write out a uint as a C expression.
     %
 :- pred output_uint_expr(io.text_output_stream::in, uint::in,
     io::di, io::uo) is det.
-:- pred output_uint_expr_cur_stream(uint::in, io::di, io::uo) is det.
 
     % Write out an int8 as a C expression.
     %
 :- pred output_int8_expr(io.text_output_stream::in, int8::in,
     io::di, io::uo) is det.
-:- pred output_int8_expr_cur_stream(int8::in, io::di, io::uo) is det.
 
     % Write out a uint8 as a C expression.
     %
 :- pred output_uint8_expr(io.text_output_stream::in, uint8::in,
     io::di, io::uo) is det.
-:- pred output_uint8_expr_cur_stream(uint8::in, io::di, io::uo) is det.
 
     % Write out an int16 as a C expression.
     %
 :- pred output_int16_expr(io.text_output_stream::in, int16::in,
     io::di, io::uo) is det.
-:- pred output_int16_expr_cur_stream(int16::in, io::di, io::uo) is det.
 
     % Write out a uint16 as a C expression.
     %
 :- pred output_uint16_expr(io.text_output_stream::in, uint16::in,
     io::di, io::uo) is det.
-:- pred output_uint16_expr_cur_stream(uint16::in, io::di, io::uo) is det.
 
     % Write out an int32 as a C expression.
     %
 :- pred output_int32_expr(io.text_output_stream::in, int32::in,
     io::di, io::uo) is det.
-:- pred output_int32_expr_cur_stream(int32::in, io::di, io::uo) is det.
 
     % Write out a uint32 as a C expression.
     %
 :- pred output_uint32_expr(io.text_output_stream::in, uint32::in,
     io::di, io::uo) is det.
-:- pred output_uint32_expr_cur_stream(uint32::in, io::di, io::uo) is det.
 
     % Convert a uint64 to a string suitable for use as a C uint64_t literal.
     % Note that the result is not suitable for use with C# or Java.
@@ -232,7 +199,6 @@
     %
 :- pred output_int64_expr(io.text_output_stream::in, int64::in,
     io::di, io::uo) is det.
-:- pred output_int64_expr_cur_stream(int64::in, io::di, io::uo) is det.
 
     % Convert a uint64 to a string suitable for use as a C uint64_t literal.
     % Note that the result is not suitable for use with C# or Java.
@@ -243,7 +209,6 @@
     %
 :- pred output_uint64_expr(io.text_output_stream::in, uint64::in,
     io::di, io::uo) is det.
-:- pred output_uint64_expr_cur_stream(uint64::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -260,7 +225,6 @@
     %
 :- pred output_float_literal(io.text_output_stream::in, float::in,
     io::di, io::uo) is det.
-:- pred output_float_literal_cur_stream(float::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -318,11 +282,9 @@
 
 :- pred output_pragma_pack_push(io.text_output_stream::in,
     io::di, io::uo) is det.
-:- pred output_pragma_pack_push_cur_stream(io::di, io::uo) is det.
 
 :- pred output_pragma_pack_pop(io.text_output_stream::in,
     io::di, io::uo) is det.
-:- pred output_pragma_pack_pop_cur_stream(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -384,10 +346,6 @@ maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line, !IO) :-
         MaybeSetLineNumbers = dont_set_line_numbers
     ).
 
-maybe_set_line_num_cur_stream(MaybeSetLineNumbers, File, Line, !IO) :-
-    io.output_stream(Stream, !IO),
-    maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line, !IO).
-
 %---------------------%
 
 always_set_line_num(Stream, File, Line, !IO) :-
@@ -412,10 +370,6 @@ always_set_line_num(Stream, File, Line, !IO) :-
         always_reset_line_num(Stream, no, !IO)
     ).
 
-always_set_line_num_cur_stream(File, Line, !IO) :-
-    io.output_stream(Stream, !IO),
-    always_set_line_num(Stream, File, Line, !IO).
-
 %---------------------%
 
 maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeFileName, !IO) :-
@@ -425,10 +379,6 @@ maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeFileName, !IO) :-
     ;
         MaybeSetLineNumbers = dont_set_line_numbers
     ).
-
-maybe_reset_line_num_cur_stream(MaybeSetLineNumbers, MaybeFileName, !IO) :-
-    io.output_stream(Stream, !IO),
-    maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeFileName, !IO).
 
 %---------------------%
 
@@ -461,10 +411,6 @@ always_reset_line_num(Stream, MaybeFileName, !IO) :-
     else
         true
     ).
-
-always_reset_line_num_cur_stream(MaybeFileName, !IO) :-
-    io.output_stream(Stream, !IO),
-    always_reset_line_num(Stream, MaybeFileName, !IO).
 
 %---------------------%
 
@@ -519,10 +465,6 @@ can_print_directly(_, no, !IO).
 output_quoted_string(Stream, Str, !IO) :-
     output_quoted_string_lang(Stream, literal_c, Str, !IO).
 
-output_quoted_string_cur_stream(Str, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_quoted_string(Stream, Str, !IO).
-
 %---------------------%
 
 :- pragma inline(pred(output_quoted_string_lang/5)).
@@ -560,18 +502,10 @@ do_output_quoted_string_lang(Stream, Lang, Str, Cur, !IO) :-
         true
     ).
 
-output_quoted_string_lang_cur_stream(Lang, S, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_quoted_string_lang(Stream, Lang, S, !IO).
-
 %---------------------%
 
 output_quoted_multi_string(Stream, Strs, !IO) :-
     output_quoted_multi_string_lang(Stream, literal_c, Strs, !IO).
-
-output_quoted_multi_string_cur_stream(Str, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_quoted_multi_string(Stream, Str, !IO).
 
 %---------------------%
 
@@ -580,10 +514,6 @@ output_quoted_multi_string_lang(Stream, Lang, [Str | Strs], !IO) :-
     output_quoted_string_lang(Stream, Lang, Str, !IO),
     output_quoted_char_lang(Stream, Lang, char.det_from_int(0), !IO),
     output_quoted_multi_string_lang(Stream, Lang, Strs, !IO).
-
-output_quoted_multi_string_lang_cur_stream(Lang, S, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_quoted_multi_string_lang(Stream, Lang, S, !IO).
 
 %---------------------%
 
@@ -602,10 +532,6 @@ output_quoted_char(Stream, Char, !IO) :-
 output_quoted_char_lang(Stream, Lang, Char, !IO) :-
     EscapedCharStr = quote_char_lang(Lang, Char),
     io.write_string(Stream, EscapedCharStr, !IO).
-
-output_quoted_char_cur_stream(Char, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_quoted_char(Stream, Char, !IO).
 
 %---------------------%
 
@@ -844,10 +770,6 @@ output_int_expr(Stream, N, !IO) :-
         )
     ).
 
-output_int_expr_cur_stream(N, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_int_expr(Stream, N, !IO).
-
 %---------------------------------------------------------------------------%
 %
 % Unsigned integer literals.
@@ -859,10 +781,6 @@ output_uint_expr(Stream, N, !IO) :-
     io.write_string(Stream, "(MR_Unsigned) ", !IO),
     io.write_uint(Stream, N, !IO),
     io.write_string(Stream, "U", !IO).
-
-output_uint_expr_cur_stream(N, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_uint_expr(Stream, N, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -876,36 +794,20 @@ output_int8_expr(Stream, N, !IO) :-
     io.write_int8(Stream, N, !IO),
     io.write_string(Stream, ")", !IO).
 
-output_int8_expr_cur_stream(N, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_int8_expr(Stream, N, !IO).
-
 output_uint8_expr(Stream, N, !IO) :-
     io.write_string(Stream, "UINT8_C(", !IO),
     io.write_uint8(Stream, N, !IO),
     io.write_string(Stream, ")", !IO).
-
-output_uint8_expr_cur_stream(N, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_uint8_expr(Stream, N, !IO).
 
 output_int16_expr(Stream, N, !IO) :-
     io.write_string(Stream, "INT16_C(", !IO),
     io.write_int16(Stream, N, !IO),
     io.write_string(Stream, ")", !IO).
 
-output_int16_expr_cur_stream(N, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_int16_expr(Stream, N, !IO).
-
 output_uint16_expr(Stream, N, !IO) :-
     io.write_string(Stream, "UINT16_C(", !IO),
     io.write_uint16(Stream, N, !IO),
     io.write_string(Stream, ")", !IO).
-
-output_uint16_expr_cur_stream(N, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_uint16_expr(Stream, N, !IO).
 
 output_int32_expr(Stream, N, !IO) :-
     ( if N = min_int32 then
@@ -916,18 +818,10 @@ output_int32_expr(Stream, N, !IO) :-
         io.write_string(Stream, ")", !IO)
     ).
 
-output_int32_expr_cur_stream(N, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_int32_expr(Stream, N, !IO).
-
 output_uint32_expr(Stream, N, !IO) :-
     io.write_string(Stream, "UINT32_C(", !IO),
     io.write_uint32(Stream, N, !IO),
     io.write_string(Stream, ")", !IO).
-
-output_uint32_expr_cur_stream(N, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_uint32_expr(Stream, N, !IO).
 
 make_int64_literal(N) = Literal :-
     ( if N = min_int64 then
@@ -946,10 +840,6 @@ output_int64_expr(Stream, N, !IO) :-
         io.write_string(Stream, ")", !IO)
     ).
 
-output_int64_expr_cur_stream(N, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_int64_expr(Stream, N, !IO).
-
 make_uint64_literal(N) = Literal :-
     NStr = uint64_to_string(N),
     string.format("UINT64_C(%s)", [s(NStr)], Literal).
@@ -958,10 +848,6 @@ output_uint64_expr(Stream, N, !IO) :-
     io.write_string(Stream, "UINT64_C(", !IO),
     io.write_uint64(Stream, N, !IO),
     io.write_string(Stream, ")", !IO).
-
-output_uint64_expr_cur_stream(N, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_uint64_expr(Stream, N, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -979,10 +865,6 @@ make_float_literal(Float) = string.format("%#.17g", [f(Float)]).
 
 output_float_literal(Stream, Float, !IO) :-
     io.write_string(Stream, make_float_literal(Float), !IO).
-
-output_float_literal_cur_stream(N, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_float_literal(Stream, N, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -1098,18 +980,10 @@ output_pragma_pack_push(Stream, !IO) :-
     io.write_string(Stream, "#pragma pack(push, MR_BYTES_PER_WORD)\n", !IO),
     io.write_string(Stream, "#endif\n", !IO).
 
-output_pragma_pack_push_cur_stream(!IO) :-
-    io.output_stream(Stream, !IO),
-    output_pragma_pack_push(Stream, !IO).
-
 output_pragma_pack_pop(Stream, !IO) :-
     io.write_string(Stream, "#ifdef MR_MSVC\n", !IO),
     io.write_string(Stream, "#pragma pack(pop)\n", !IO),
     io.write_string(Stream, "#endif\n", !IO).
-
-output_pragma_pack_pop_cur_stream(!IO) :-
-    io.output_stream(Stream, !IO),
-    output_pragma_pack_pop(Stream, !IO).
 
 %---------------------------------------------------------------------------%
 
