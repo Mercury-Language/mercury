@@ -72,11 +72,9 @@ polymorphism_process_clause_info(PredInfo0, ExtraArgModes,
     !.ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
         _VarTable, _RttiVarMaps, TVarNameMap, HeadVars0, ClausesRep0,
         ItemNumbers, HaveForeignClauses, HadSyntaxErrors),
-
-    setup_headvars(PredInfo0, HeadVars0, HeadVars,
-        ExtraArgModes, UnconstrainedTVars,
-        ExtraTypeInfoHeadVars, ExistTypeClassInfoHeadVars, !Info),
-
+    setup_headvars(PredInfo0, HeadVars0, HeadVars, ExtraArgModes,
+        UnconstrainedTVars, ExtraTypeInfoHeadVars,
+        ExistTypeClassInfoHeadVars, !Info),
     ( if pred_info_is_imported(PredInfo0) then
         % We get here only if we need only the *interface* of this predicate,
         % not its code. If PredInfo0 is *opt*-imported, then the call to
@@ -92,7 +90,6 @@ polymorphism_process_clause_info(PredInfo0, ExtraArgModes,
             Clauses0, Clauses, !Info),
         set_clause_list(Clauses, ClausesRep)
     ),
-
     % Set the new values of the fields in clauses_info.
     poly_info_get_var_table(!.Info, VarTable),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps),
@@ -115,102 +112,26 @@ polymorphism_process_clause_info(PredInfo0, ExtraArgModes,
     list(tvar)::out, list(prog_var)::out, list(prog_var)::out,
     poly_info::in, poly_info::out) is det.
 
-setup_headvars(PredInfo, !HeadVars, ExtraArgModes,
-        UnconstrainedTVars, ExtraHeadTypeInfoVars,
+setup_headvars(PredInfo, !HeadVars, !:ExtraArgModes,
+        AllUnconstrainedTVars, AllExtraHeadTypeInfoVars,
         ExistHeadTypeClassInfoVars, !Info) :-
     pred_info_get_origin(PredInfo, Origin),
-    ExtraArgModes0 = poly_arg_vector_init : poly_arg_vector(mer_mode),
+    !:ExtraArgModes = poly_arg_vector_init,
     ( if
         Origin = origin_user(OriginUser),
         OriginUser = user_made_instance_method(_, InstanceMethodConstraints)
     then
-        setup_headvars_instance_method(PredInfo,
-            InstanceMethodConstraints, !HeadVars,
-            UnconstrainedTVars, ExtraHeadTypeInfoVars,
-            ExistHeadTypeClassInfoVars,
-            ExtraArgModes0, ExtraArgModes, !Info)
+        setup_instance_method_headvars(PredInfo, InstanceMethodConstraints,
+            ClassContext, InstanceTVars,
+            InstanceUnconstrainedTVars, InstanceUnconstrainedTypeInfoVars,
+            !HeadVars, !ExtraArgModes, !Info)
     else
         pred_info_get_class_context(PredInfo, ClassContext),
         InstanceTVars = [],
         InstanceUnconstrainedTVars = [],
-        InstanceUnconstrainedTypeInfoVars = [],
-        setup_headvars_2(PredInfo, ClassContext, InstanceTVars,
-            InstanceUnconstrainedTVars, InstanceUnconstrainedTypeInfoVars,
-            !HeadVars, UnconstrainedTVars,
-            ExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars,
-            ExtraArgModes0, ExtraArgModes, !Info)
-    ).
+        InstanceUnconstrainedTypeInfoVars = []
+    ),
 
-    % For class method implementations, do_call_class_method in
-    % runtime/mercury_ho_call.c takes the type_infos and typeclass_infos
-    % from the typeclass_info and pastes them onto the front of the
-    % argument list. We need to match that order here.
-    %
-:- pred setup_headvars_instance_method(pred_info::in,
-    instance_method_constraints::in,
-    proc_arg_vector(prog_var)::in, proc_arg_vector(prog_var)::out,
-    list(tvar)::out, list(prog_var)::out, list(prog_var)::out,
-    poly_arg_vector(mer_mode)::in, poly_arg_vector(mer_mode)::out,
-    poly_info::in, poly_info::out) is det.
-
-setup_headvars_instance_method(PredInfo,
-        InstanceMethodConstraints, !HeadVars,
-        UnconstrainedTVars, ExtraHeadTypeInfoVars,
-        ExistHeadTypeClassInfoVars, !ExtraArgModes, !Info) :-
-    InstanceMethodConstraints = instance_method_constraints(_,
-        InstanceTypes, InstanceConstraints, ClassContext),
-
-    type_vars_in_types(InstanceTypes, InstanceTVars),
-    get_unconstrained_tvars(InstanceTVars, InstanceConstraints,
-        UnconstrainedInstanceTVars),
-    pred_info_get_arg_types(PredInfo, ArgTypeVarSet, _, _),
-    make_head_vars(UnconstrainedInstanceTVars,
-        ArgTypeVarSet, UnconstrainedInstanceTypeInfoVars, !Info),
-    make_typeclass_info_head_vars(do_record_type_info_locns,
-        InstanceConstraints, InstanceHeadTypeClassInfoVars, !Info),
-
-    proc_arg_vector_set_instance_type_infos(UnconstrainedInstanceTypeInfoVars,
-        !HeadVars),
-    proc_arg_vector_set_instance_typeclass_infos(InstanceHeadTypeClassInfoVars,
-         !HeadVars),
-
-    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    list.foldl(rtti_reuse_typeclass_info_var,
-        InstanceHeadTypeClassInfoVars, RttiVarMaps0, RttiVarMaps),
-    poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
-
-    in_mode(InMode),
-    list.duplicate(list.length(UnconstrainedInstanceTypeInfoVars),
-        InMode, UnconstrainedInstanceTypeInfoModes),
-    list.duplicate(list.length(InstanceHeadTypeClassInfoVars),
-        InMode, InstanceHeadTypeClassInfoModes),
-    poly_arg_vector_set_instance_type_infos(
-        UnconstrainedInstanceTypeInfoModes, !ExtraArgModes),
-    poly_arg_vector_set_instance_typeclass_infos(
-        InstanceHeadTypeClassInfoModes, !ExtraArgModes),
-
-    % XXX Move this call to the caller, factor it out of the if-then-else,
-    % moving it to *after* the if-then-else, and then inline the call.
-    setup_headvars_2(PredInfo, ClassContext,
-        InstanceTVars,
-        UnconstrainedInstanceTVars, UnconstrainedInstanceTypeInfoVars,
-        !HeadVars,
-        UnconstrainedTVars, ExtraHeadTypeInfoVars,
-        ExistHeadTypeClassInfoVars, !ExtraArgModes, !Info).
-
-:- pred setup_headvars_2(pred_info::in, prog_constraints::in,
-    list(tvar)::in, list(tvar)::in, list(prog_var)::in,
-    proc_arg_vector(prog_var)::in, proc_arg_vector(prog_var)::out,
-    list(tvar)::out, list(prog_var)::out, list(prog_var)::out,
-    poly_arg_vector(mer_mode)::in, poly_arg_vector(mer_mode)::out,
-    poly_info::in, poly_info::out) is det.
-
-setup_headvars_2(PredInfo, ClassContext,
-        InstanceTVars, UnconstrainedInstanceTVars,
-        UnconstrainedInstanceTypeInfoVars, HeadVars0,
-        HeadVars, AllUnconstrainedTVars,
-        AllExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars,
-        !ExtraArgModes, !Info) :-
     % Grab the appropriate fields from the pred_info.
     pred_info_get_arg_types(PredInfo, ArgTypeVarSet, ExistQVars, ArgTypes),
 
@@ -231,10 +152,8 @@ setup_headvars_2(PredInfo, ClassContext,
     % is no distinction between the internal views and the external view, so
     % we just use the constraints from the class context.
     ClassContext = constraints(UnivConstraints, ExistConstraints),
-    prog_type.constraint_list_get_tvars(UnivConstraints,
-        UnivConstrainedTVars),
-    prog_type.constraint_list_get_tvars(ExistConstraints,
-        ExistConstrainedTVars),
+    constraint_list_get_tvars(UnivConstraints, UnivConstrainedTVars),
+    constraint_list_get_tvars(ExistConstraints, ExistConstrainedTVars),
     poly_info_get_constraint_map(!.Info, ConstraintMap),
     get_improved_exists_head_constraints(ConstraintMap, ExistConstraints,
         ActualExistConstraints),
@@ -263,9 +182,8 @@ setup_headvars_2(PredInfo, ClassContext,
         UnconstrainedTVars1),
 
     % Typeinfos for the instance tvars have already been introduced by
-    % setup_headvars_instance_method.
-    list.delete_elems(UnconstrainedTVars1, InstanceTVars,
-        UnconstrainedTVars2),
+    % setup_instance_method_headvars.
+    list.delete_elems(UnconstrainedTVars1, InstanceTVars, UnconstrainedTVars2),
     list.remove_dups(UnconstrainedTVars2, UnconstrainedTVars),
 
     (
@@ -280,27 +198,25 @@ setup_headvars_2(PredInfo, ClassContext,
             UnconstrainedUnivTVars),
         list.delete_elems(UnconstrainedTVars, UnconstrainedUnivTVars,
             UnconstrainedExistTVars),
-        make_head_vars(UnconstrainedExistTVars, ArgTypeVarSet,
+        make_head_vars(ArgTypeVarSet, UnconstrainedExistTVars,
             ExistHeadTypeInfoVars, !Info)
     ),
 
-    make_head_vars(UnconstrainedUnivTVars, ArgTypeVarSet,
-        UnivHeadTypeInfoVars, !Info),
+    make_head_vars(ArgTypeVarSet, UnconstrainedUnivTVars, UnivHeadTypeInfoVars,
+        !Info),
     ExtraHeadTypeInfoVars = UnivHeadTypeInfoVars ++ ExistHeadTypeInfoVars,
 
-    AllExtraHeadTypeInfoVars = UnconstrainedInstanceTypeInfoVars
-        ++ ExtraHeadTypeInfoVars,
-    list.condense([UnconstrainedInstanceTVars, UnconstrainedUnivTVars,
+    AllExtraHeadTypeInfoVars =
+        InstanceUnconstrainedTypeInfoVars ++ ExtraHeadTypeInfoVars,
+    list.condense([InstanceUnconstrainedTVars, UnconstrainedUnivTVars,
         UnconstrainedExistTVars], AllUnconstrainedTVars),
 
-    proc_arg_vector_set_univ_type_infos(UnivHeadTypeInfoVars,
-        HeadVars0, HeadVars1),
-    proc_arg_vector_set_exist_type_infos(ExistHeadTypeInfoVars,
-        HeadVars1, HeadVars2),
+    proc_arg_vector_set_univ_type_infos(UnivHeadTypeInfoVars, !HeadVars),
+    proc_arg_vector_set_exist_type_infos(ExistHeadTypeInfoVars, !HeadVars),
     proc_arg_vector_set_univ_typeclass_infos(UnivHeadTypeClassInfoVars,
-        HeadVars2, HeadVars3),
+        !HeadVars),
     proc_arg_vector_set_exist_typeclass_infos(ExistHeadTypeClassInfoVars,
-        HeadVars3, HeadVars),
+        !HeadVars),
 
     % Figure out the modes of the introduced type_info and typeclass_info
     % arguments.
@@ -337,9 +253,9 @@ setup_headvars_2(PredInfo, ClassContext,
             UnconstrainedExistTVars, ExistTypeLocns, !RttiVarMaps),
 
         list.map(var_as_type_info_locn,
-            UnconstrainedInstanceTypeInfoVars, UnconstrainedInstanceTypeLocns),
+            InstanceUnconstrainedTypeInfoVars, InstanceUnconstrainedTypeLocns),
         list.foldl_corresponding(rtti_det_insert_type_info_locn,
-            UnconstrainedInstanceTVars, UnconstrainedInstanceTypeLocns,
+            InstanceUnconstrainedTVars, InstanceUnconstrainedTypeLocns,
             !RttiVarMaps),
 
         list.foldl(rtti_reuse_typeclass_info_var, UnivHeadTypeClassInfoVars,
@@ -348,27 +264,74 @@ setup_headvars_2(PredInfo, ClassContext,
         poly_info_set_rtti_varmaps(!.RttiVarMaps, !Info)
     ).
 
+    % For class method implementations, do_call_class_method in
+    % runtime/mercury_ho_call.c takes the type_infos and typeclass_infos
+    % from the typeclass_info and pastes them onto the front of the
+    % argument list. We need to match that order here.
+    %
+:- pred setup_instance_method_headvars(pred_info::in,
+    instance_method_constraints::in, prog_constraints::out, list(tvar)::out,
+    list(tvar)::out, list(prog_var)::out,
+    proc_arg_vector(prog_var)::in, proc_arg_vector(prog_var)::out,
+    poly_arg_vector(mer_mode)::in, poly_arg_vector(mer_mode)::out,
+    poly_info::in, poly_info::out) is det.
+
+setup_instance_method_headvars(PredInfo, InstanceMethodConstraints,
+        ClassContext, InstanceTVars, InstanceUnconstrainedTVars,
+        InstanceUnconstrainedTypeInfoVars, !HeadVars, !ExtraArgModes, !Info) :-
+    InstanceMethodConstraints = instance_method_constraints(_,
+        InstanceTypes, InstanceConstraints, ClassContext),
+
+    type_vars_in_types(InstanceTypes, InstanceTVars),
+    get_unconstrained_tvars(InstanceTVars, InstanceConstraints,
+        InstanceUnconstrainedTVars),
+    pred_info_get_arg_types(PredInfo, ArgTypeVarSet, _, _),
+    make_head_vars(ArgTypeVarSet, InstanceUnconstrainedTVars,
+        InstanceUnconstrainedTypeInfoVars, !Info),
+    make_typeclass_info_head_vars(do_record_type_info_locns,
+        InstanceConstraints, InstanceHeadTypeClassInfoVars, !Info),
+
+    proc_arg_vector_set_instance_type_infos(InstanceUnconstrainedTypeInfoVars,
+        !HeadVars),
+    proc_arg_vector_set_instance_typeclass_infos(InstanceHeadTypeClassInfoVars,
+         !HeadVars),
+
+    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+    list.foldl(rtti_reuse_typeclass_info_var,
+        InstanceHeadTypeClassInfoVars, RttiVarMaps0, RttiVarMaps),
+    poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
+
+    in_mode(InMode),
+    list.duplicate(list.length(InstanceUnconstrainedTypeInfoVars),
+        InMode, InstanceUnconstrainedTypeInfoModes),
+    list.duplicate(list.length(InstanceHeadTypeClassInfoVars),
+        InMode, InstanceHeadTypeClassInfoModes),
+    poly_arg_vector_set_instance_type_infos(
+        InstanceUnconstrainedTypeInfoModes, !ExtraArgModes),
+    poly_arg_vector_set_instance_typeclass_infos(
+        InstanceHeadTypeClassInfoModes, !ExtraArgModes).
+
 %---------------------------------------------------------------------------%
 
-:- pred make_head_vars(list(tvar)::in, tvarset::in,
-    list(prog_var)::out, poly_info::in, poly_info::out) is det.
+:- pred make_head_vars(tvarset::in, list(tvar)::in, list(prog_var)::out,
+    poly_info::in, poly_info::out) is det.
 
-make_head_vars([], _, [], !Info).
-make_head_vars([TypeVar | TypeVars], TypeVarSet, TypeInfoVars, !Info) :-
+make_head_vars(_, [], [], !Info).
+make_head_vars(TypeVarSet, [TypeVar | TypeVars], [TypeInfoVar | TypeInfoVars],
+        !Info) :-
     poly_info_get_tvar_kind_map(!.Info, TVarKindMap),
     get_tvar_kind(TVarKindMap, TypeVar, Kind),
     Type = type_variable(TypeVar, Kind),
-    new_type_info_var(Type, type_info, Var, !Info),
+    new_type_info_var(Type, type_info, TypeInfoVar, !Info),
     ( if varset.search_name(TypeVarSet, TypeVar, TypeVarName) then
         VarName = "TypeInfo_for_" ++ TypeVarName,
         poly_info_get_var_table(!.Info, VarTable0),
-        update_var_name(Var, VarName, VarTable0, VarTable),
+        update_var_name(TypeInfoVar, VarName, VarTable0, VarTable),
         poly_info_set_var_table(VarTable, !Info)
     else
         true
     ),
-    make_head_vars(TypeVars, TypeVarSet, TypeInfoVars1, !Info),
-    TypeInfoVars = [Var | TypeInfoVars1].
+    make_head_vars(TypeVarSet, TypeVars, TypeInfoVars, !Info).
 
 :- pred var_as_type_info_locn(prog_var::in, type_info_locn::out) is det.
 
@@ -419,7 +382,8 @@ polymorphism_process_clause(PredInfo0, OldHeadVars, NewHeadVars,
         ExistTypeClassInfoHeadVars, Goal1, Goal2, !Info),
 
     pred_info_get_exist_quant_tvars(PredInfo0, ExistQVars),
-    requantify_clause_goal(NewHeadVars, ExistQVars, Goal2, Goal, !Info),
+    requantify_clause_goal_if_needed(NewHeadVars, ExistQVars,
+        Goal2, Goal, !Info),
     !Clause ^ clause_body := Goal.
 
     % Generate code to produce the values of type_infos and typeclass_infos
@@ -495,25 +459,25 @@ produce_clause_existq_tvars(PredInfo, HeadVars, UnconstrainedTVars,
     conj_list_to_goal(GoalList, GoalInfo, Goal).
 
     % If the pred we are processing is a polymorphic predicate, or contains
-    % polymorphically-typed goals, we may need to fix up the quantification
-    % (nonlocal variables) of the goal so that it includes the extra type_info
-    % variables and typeclass_info variables that we added to the headvars
-    % or the arguments of existentially typed predicate calls, function calls
-    % and deconstruction unifications.
+    % polymorphically-typed goals, we may need to recompute the set of
+    % nonlocals variables of each goal so that it includes the extra type_info
+    % variables and typeclass_info variables that we added to the headvars,
+    % or to the arguments of existentially typed predicate calls,
+    % function calls and deconstruction unifications.
     %
     % Type(class)-infos added for ground types passed to predicate calls,
     % function calls and existentially typed construction unifications
     % do not require requantification because they are local to the conjunction
     % containing the type(class)-info construction and the goal which uses the
-    % type(class)-info. The nonlocals for those goals are adjusted by
-    % the code which creates/alters them. However, reusing a type_info changes
-    % it from being local to nonlocal.
+    % type(class)-info. The nonlocals for those goals are adjusted by the code
+    % which creates/alters them. However, reusing a type_info changes it
+    % from being local to nonlocal.
     %
-:- pred requantify_clause_goal(proc_arg_vector(prog_var)::in,
+:- pred requantify_clause_goal_if_needed(proc_arg_vector(prog_var)::in,
     existq_tvars::in, hlds_goal::in, hlds_goal::out,
     poly_info::in, poly_info::out) is det.
 
-requantify_clause_goal(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
+requantify_clause_goal_if_needed(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
     ( if
         % Optimize a common case.
         ExistQVars = [],
