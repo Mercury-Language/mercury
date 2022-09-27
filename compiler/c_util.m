@@ -88,75 +88,51 @@
 % String and character handling.
 %
 
-    % Chooses between C and Java literal syntax.
-    %
-    % XXX This type should not exist. It would be better if all the predicates
-    % below that take an argument this type were replaced by three separate
-    % predicates, one for each language, with a "_c", "_csharp" or "_java"
-    % suffix. That way,
-    %
-    % - each predicate would be easier to read, and easier to check whether
-    %   it does the right thing for its language, without distractions by code
-    %   that matters only for the other two languages, and
-    %
-    % - there would be no danger of requiring a switch on the language,
-    %   potentially on every character output, if one forgets to add
-    %   a language-specialized mode for a predicate.
-    %
-:- type literal_language
-    --->    literal_c
-    ;       literal_java
-    ;       literal_csharp.
-
-    % Print out a string suitably escaped for use as a C string literal.
-    % This doesn't actually print out the enclosing double quotes --
-    % that is the caller's responsibility.
-    %
-:- pred output_quoted_string_c(io.text_output_stream::in, string::in,
-    io::di, io::uo) is det.
-
     % Convert a string to a form that is suitably escaped for use as a
-    % C string literal. This doesn't actually add the enclosing double quotes
-    % -- that is the caller's responsibility.
+    % C string literal. This doesn't actually add the enclosing double quotes;
+    % that is the caller's responsibility.
     %
 :- func quote_string_c(string) = string.
 
-    % As above, but for the specified language.
+    % Print out a string suitably escaped for use as a string literal in
+    % C/Java/C#C/Java/C#. This doesn't actually print out the enclosing
+    % double quotes; that is the caller's responsibility.
     %
-:- pred output_quoted_string_lang(io.text_output_stream, literal_language,
-    string, io, io).
-:- mode output_quoted_string_lang(in, in(bound(literal_c)), in, di, uo) is det.
-:- mode output_quoted_string_lang(in, in(bound(literal_java)), in, di, uo)
-    is det.
-:- mode output_quoted_string_lang(in, in(bound(literal_csharp)), in, di, uo)
-    is det.
-:- mode output_quoted_string_lang(in, in, in, di, uo) is det.
+:- pred output_quoted_string_c(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+:- pred output_quoted_string_java(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+:- pred output_quoted_string_csharp(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-    % output_quoted_multi_string_c is like list.foldl(output_quoted_string_c)
-    % except that a null character will be written between each string
-    % in the list.
+    % output_quoted_multi_string_LANG does the same job as
+    % list.foldl(output_quoted_string_LANG), but it also writes
+    % a null character after each string in the list.
     %
 :- type multi_string == list(string).
 :- pred output_quoted_multi_string_c(io.text_output_stream::in,
     multi_string::in, io::di, io::uo) is det.
+:- pred output_quoted_multi_string_java(io.text_output_stream::in,
+    multi_string::in, io::di, io::uo) is det.
+:- pred output_quoted_multi_string_csharp(io.text_output_stream::in,
+    multi_string::in, io::di, io::uo) is det.
 
-    % As above, but for the specified language.
+    % Convert a character to a form that is suitably escaped for use as a
+    % C character literal. This doesn't actually add the enclosing single
+    % quotes; that is the caller's responsibility.
     %
-:- pred output_quoted_multi_string_lang(io.text_output_stream::in,
-    literal_language::in, multi_string::in, io::di, io::uo) is det.
+:- func quote_char_c(char) = string.
 
-    % Print out a char suitably escaped for use as a C char literal.
-    % This doesn't actually print out the enclosing single quotes --
+    % Print out a char suitably escaped for use as a char literal in C/Java/C#.
+    % This doesn't actually print out the enclosing single quotes;
     % that is the caller's responsibility.
     %
 :- pred output_quoted_char_c(io.text_output_stream::in, char::in,
     io::di, io::uo) is det.
-
-    % Convert a character to a form that is suitably escaped for use as a
-    % C character literal. This doesn't actually add the enclosing single
-    % quotes -- that is the caller's responsibility.
-    %
-:- func quote_char_c(char) = string.
+:- pred output_quoted_char_java(io.text_output_stream::in, char::in,
+    io::di, io::uo) is det.
+:- pred output_quoted_char_csharp(io.text_output_stream::in, char::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -478,6 +454,10 @@ can_print_without_quoting(_, no, !IO).
 % String and character handling.
 %
 
+quote_string_c(String) = QuotedString :-
+    string.foldl(quote_one_char_acc_c, String, [], RevQuotedChars),
+    string.from_rev_char_list(RevQuotedChars, QuotedString).
+
 output_quoted_string_c(Stream, Str, !IO) :-
     % output_quoted_string_c should just call quote_string_c, and write out
     % what it returns. It should leave the processing required for MSVC
@@ -485,109 +465,121 @@ output_quoted_string_c(Stream, Str, !IO) :-
     % on its own. (When breaking up <"abcd"> into <"ab", "cd">, we print
     % the two inner quotes, but leave printing the two outer quotes to
     % the caller.)
-    output_quoted_string_lang(Stream, literal_c, Str, !IO).
-
-%---------------------%
-
-quote_string_c(String) = QuotedString :-
-    string.foldl(quote_one_char_c, String, [], RevQuotedChars),
-    string.from_rev_char_list(RevQuotedChars, QuotedString).
-
-%---------------------%
-
-:- pragma inline(pred(output_quoted_string_lang/5)).
-
-output_quoted_string_lang(Stream, Lang, Str, !IO) :-
-    (
-        Lang = literal_c,
-        % Avoid a limitation in the MSVC compiler, which requires
-        % string literals to be no longer than 2048 chars. However,
-        % it will accept a string longer than 2048 chars if we output
-        % the string in chunks, as in e.g. "part a" "part b". Go figure!
-        % XXX How does "limit is 2048" translate to "get me 160 codepoints"?
-        string.split_by_codepoint(Str, 160, Left, Right),
-        do_output_quoted_string_lang(Stream, Lang, Left, 0, !IO),
-        ( if Right = "" then
-            true
-        else
-            io.write_string(Stream, "\" \"", !IO),
-            output_quoted_string_lang(Stream, Lang, Right, !IO)
-        )
-    ;
-        ( Lang = literal_java
-        ; Lang = literal_csharp
-        ),
-        do_output_quoted_string_lang(Stream, Lang, Str, 0, !IO)
+    %
+    % Avoid a limitation in the MSVC compiler, which requires
+    % string literals to be no longer than 2048 chars. However,
+    % it will accept a string longer than 2048 chars if we output
+    % the string in chunks, as in e.g. "part a" "part b". Go figure!
+    % XXX How does "limit is 2048" translate to "get me 160 codepoints"?
+    string.split_by_codepoint(Str, 160, Left, Right),
+    output_quoted_string_loop_c(Stream, Left, 0, !IO),
+    ( if Right = "" then
+        true
+    else
+        io.write_string(Stream, "\" \"", !IO),
+        output_quoted_string_c(Stream, Right, !IO)
     ).
 
-:- pred do_output_quoted_string_lang(io.text_output_stream::in,
-    literal_language::in, string::in, int::in, io::di, io::uo) is det.
+%---------------------%
 
-do_output_quoted_string_lang(Stream, Lang, Str, Cur, !IO) :-
+output_quoted_string_java(Stream, Str, !IO) :-
+    output_quoted_string_loop_java(Stream, Str, 0, !IO).
+
+output_quoted_string_csharp(Stream, Str, !IO) :-
+    output_quoted_string_loop_csharp(Stream, Str, 0, !IO).
+
+%---------------------%
+
+:- pred output_quoted_string_loop_c(io.text_output_stream::in,
+    string::in, int::in, io::di, io::uo) is det.
+
+output_quoted_string_loop_c(Stream, Str, Cur, !IO) :-
     ( if string.unsafe_index_next(Str, Cur, Next, Char) then
-        output_quoted_char_lang(Stream, Lang, Char, !IO),
-        do_output_quoted_string_lang(Stream, Lang, Str, Next, !IO)
+        output_quoted_char_c(Stream, Char, !IO),
+        output_quoted_string_loop_c(Stream, Str, Next, !IO)
+    else
+        true
+    ).
+
+:- pred output_quoted_string_loop_java(io.text_output_stream::in,
+    string::in, int::in, io::di, io::uo) is det.
+
+output_quoted_string_loop_java(Stream, Str, Cur, !IO) :-
+    ( if string.unsafe_index_next(Str, Cur, Next, Char) then
+        output_quoted_char_java(Stream, Char, !IO),
+        output_quoted_string_loop_java(Stream, Str, Next, !IO)
+    else
+        true
+    ).
+
+:- pred output_quoted_string_loop_csharp(io.text_output_stream::in,
+    string::in, int::in, io::di, io::uo) is det.
+
+output_quoted_string_loop_csharp(Stream, Str, Cur, !IO) :-
+    ( if string.unsafe_index_next(Str, Cur, Next, Char) then
+        output_quoted_char_csharp(Stream, Char, !IO),
+        output_quoted_string_loop_csharp(Stream, Str, Next, !IO)
     else
         true
     ).
 
 %---------------------%
 
-output_quoted_multi_string_c(Stream, Strs, !IO) :-
-    output_quoted_multi_string_lang(Stream, literal_c, Strs, !IO).
+output_quoted_multi_string_c(_Stream, [], !IO).
+output_quoted_multi_string_c(Stream, [Str | Strs], !IO) :-
+    output_quoted_string_c(Stream, Str, !IO),
+    output_quoted_char_c(Stream, char.det_from_int(0), !IO),
+    output_quoted_multi_string_c(Stream, Strs, !IO).
+
+output_quoted_multi_string_java(_Stream, [], !IO).
+output_quoted_multi_string_java(Stream, [Str | Strs], !IO) :-
+    output_quoted_string_java(Stream, Str, !IO),
+    output_quoted_char_java(Stream, char.det_from_int(0), !IO),
+    output_quoted_multi_string_java(Stream, Strs, !IO).
+
+output_quoted_multi_string_csharp(_Stream, [], !IO).
+output_quoted_multi_string_csharp(Stream, [Str | Strs], !IO) :-
+    output_quoted_string_csharp(Stream, Str, !IO),
+    output_quoted_char_csharp(Stream, char.det_from_int(0), !IO),
+    output_quoted_multi_string_csharp(Stream, Strs, !IO).
 
 %---------------------%
 
-output_quoted_multi_string_lang(_Stream, _Lang, [], !IO).
-output_quoted_multi_string_lang(Stream, Lang, [Str | Strs], !IO) :-
-    output_quoted_string_lang(Stream, Lang, Str, !IO),
-    output_quoted_char_lang(Stream, Lang, char.det_from_int(0), !IO),
-    output_quoted_multi_string_lang(Stream, Lang, Strs, !IO).
+quote_char_c(Char) = QuotedCharStr :-
+    quote_one_char_acc_c(Char, [], RevQuotedCharStr),
+    string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
+
+:- func quote_char_java(char) = string.
+
+quote_char_java(Char) = QuotedCharStr :-
+    quote_one_char_acc_java(Char, [], RevQuotedCharStr),
+    string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
+
+:- func quote_char_csharp(char) = string.
+
+quote_char_csharp(Char) = QuotedCharStr :-
+    quote_one_char_acc_csharp(Char, [], RevQuotedCharStr),
+    string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
 
 %---------------------%
 
 output_quoted_char_c(Stream, Char, !IO) :-
-    output_quoted_char_lang(Stream, literal_c, Char, !IO).
+    EscapedCharStr = quote_char_c(Char),
+    io.write_string(Stream, EscapedCharStr, !IO).
 
-:- pred output_quoted_char_lang(io.text_output_stream, literal_language, char,
-    io, io).
-:- mode output_quoted_char_lang(in, in(bound(literal_c)), in, di, uo) is det.
-:- mode output_quoted_char_lang(in, in(bound(literal_java)), in, di, uo)
-    is det.
-:- mode output_quoted_char_lang(in, in(bound(literal_csharp)), in, di, uo)
-    is det.
-:- mode output_quoted_char_lang(in, in, in, di, uo) is det.
+output_quoted_char_java(Stream, Char, !IO) :-
+    EscapedCharStr = quote_char_java(Char),
+    io.write_string(Stream, EscapedCharStr, !IO).
 
-output_quoted_char_lang(Stream, Lang, Char, !IO) :-
-    EscapedCharStr = quote_char_lang(Lang, Char),
+output_quoted_char_csharp(Stream, Char, !IO) :-
+    EscapedCharStr = quote_char_csharp(Char),
     io.write_string(Stream, EscapedCharStr, !IO).
 
 %---------------------%
 
-quote_char_c(Char) = quote_char_lang(literal_c, Char).
+:- pred quote_one_char_acc_c(char::in, list(char)::in, list(char)::out) is det.
 
-:- func quote_char_lang(literal_language, char) = string.
-:- mode quote_char_lang(in(bound(literal_c)), in) = out is det.
-:- mode quote_char_lang(in(bound(literal_java)), in) = out is det.
-:- mode quote_char_lang(in(bound(literal_csharp)), in) = out is det.
-:- mode quote_char_lang(in, in) = out is det.
-
-quote_char_lang(Lang, Char) = QuotedCharStr :-
-    (
-        Lang = literal_c,
-        quote_one_char_c(Char, [], RevQuotedCharStr)
-    ;
-        Lang = literal_java,
-        quote_one_char_java(Char, [], RevQuotedCharStr)
-    ;
-        Lang = literal_csharp,
-        quote_one_char_csharp(Char, [], RevQuotedCharStr)
-    ),
-    string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
-
-:- pred quote_one_char_c(char::in, list(char)::in, list(char)::out) is det.
-
-quote_one_char_c(Char, RevChars0, RevChars) :-
+quote_one_char_acc_c(Char, RevChars0, RevChars) :-
     ( if
         escape_special_char(Char, EscapeChar)
     then
@@ -619,9 +611,10 @@ quote_one_char_c(Char, RevChars0, RevChars) :-
         )
     ).
 
-:- pred quote_one_char_java(char::in, list(char)::in, list(char)::out) is det.
+:- pred quote_one_char_acc_java(char::in, list(char)::in, list(char)::out)
+    is det.
 
-quote_one_char_java(Char, RevChars0, RevChars) :-
+quote_one_char_acc_java(Char, RevChars0, RevChars) :-
     ( if
         java_escape_special_char(Char, RevEscapeChars)
     then
@@ -646,10 +639,10 @@ quote_one_char_java(Char, RevChars0, RevChars) :-
         )
     ).
 
-:- pred quote_one_char_csharp(char::in, list(char)::in, list(char)::out)
+:- pred quote_one_char_acc_csharp(char::in, list(char)::in, list(char)::out)
     is det.
 
-quote_one_char_csharp(Char, RevChars0, RevChars) :-
+quote_one_char_acc_csharp(Char, RevChars0, RevChars) :-
     ( if
         escape_special_char(Char, EscapeChar)
     then
@@ -669,6 +662,8 @@ quote_one_char_csharp(Char, RevChars0, RevChars) :-
             reverse_prepend(EscapeChars, RevChars0, RevChars)
         )
     ).
+
+%---------------------%
 
 :- pred java_escape_special_char(char::in, list(char)::out) is semidet.
 
