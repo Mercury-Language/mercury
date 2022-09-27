@@ -580,18 +580,9 @@ output_quoted_char_csharp(Stream, Char, !IO) :-
 :- pred quote_one_char_acc_c(char::in, list(char)::in, list(char)::out) is det.
 
 quote_one_char_acc_c(Char, RevChars0, RevChars) :-
-    ( if
-        escape_special_char(Char, EscapeChar)
-    then
-        RevChars = [EscapeChar, '\\' | RevChars0]
-    else if
-        Char = '?'
-    then
-        % Avoid trigraphs by escaping the question marks.
-        RevChars = ['?', '\\' | RevChars0]
-    else if
-        is_c_source_char(Char)
-    then
+    ( if escape_special_char_c(Char, RevChars0, RevChars1) then
+        RevChars = RevChars1
+    else if is_source_char_c_java_csharp(Char) then
         RevChars = [Char | RevChars0]
     else
         char.to_int(Char, CharInt),
@@ -615,17 +606,9 @@ quote_one_char_acc_c(Char, RevChars0, RevChars) :-
     is det.
 
 quote_one_char_acc_java(Char, RevChars0, RevChars) :-
-    ( if
-        java_escape_special_char(Char, RevEscapeChars)
-    then
-        list.append(RevEscapeChars, RevChars0, RevChars)
-    else if
-        escape_special_char(Char, EscapeChar)
-    then
-        RevChars = [EscapeChar, '\\' | RevChars0]
-    else if
-        is_c_source_char(Char)
-    then
+    ( if escape_special_char_java(Char, RevChars0, RevChars1) then
+        RevChars = RevChars1
+    else if is_source_char_c_java_csharp(Char) then
         RevChars = [Char | RevChars0]
     else
         char.to_int(Char, CharInt),
@@ -643,13 +626,9 @@ quote_one_char_acc_java(Char, RevChars0, RevChars) :-
     is det.
 
 quote_one_char_acc_csharp(Char, RevChars0, RevChars) :-
-    ( if
-        escape_special_char(Char, EscapeChar)
-    then
-        RevChars = [EscapeChar, '\\' | RevChars0]
-    else if
-        is_c_source_char(Char)
-    then
+    ( if escape_special_char_csharp(Char, RevChars0, RevChars1) then
+        RevChars = RevChars1
+    else if is_source_char_c_java_csharp(Char) then
         RevChars = [Char | RevChars0]
     else
         char.to_int(Char, CharInt),
@@ -665,30 +644,69 @@ quote_one_char_acc_csharp(Char, RevChars0, RevChars) :-
 
 %---------------------%
 
-:- pred java_escape_special_char(char::in, list(char)::out) is semidet.
+:- pred escape_special_char_c(char::in, list(char)::in, list(char)::out)
+    is semidet.
+:- pragma inline(pred(escape_special_char_c/3)).
 
-java_escape_special_char('\a', ['7', '0', '0', '\\']).
-java_escape_special_char('\v', ['3', '1', '0', '\\']).
+escape_special_char_c(Char, RevChars0, RevChars) :-
+    ( Char = '"',    RevChars = ['"', '\\'  | RevChars0]
+    ; Char = '''',   RevChars = ['''', '\\' | RevChars0]
+    ; Char = ('\\'), RevChars = ['\\', '\\' | RevChars0]
+    ; Char = '\n',   RevChars = ['n', '\\'  | RevChars0]
+    ; Char = '\t',   RevChars = ['t', '\\'  | RevChars0]
+    ; Char = '\b',   RevChars = ['b', '\\'  | RevChars0]
+    ; Char = '\a',   RevChars = ['a', '\\'  | RevChars0]
+    ; Char = '\v',   RevChars = ['v', '\\'  | RevChars0]
+    ; Char = '\r',   RevChars = ['r', '\\'  | RevChars0]
+    ; Char = '\f',   RevChars = ['f', '\\'  | RevChars0]
+    ; Char = '?',    RevChars = ['?', '\\'  | RevChars0]   % Avoid trigraphs.
+    ).
 
-:- pred escape_special_char(char::in, char::out) is semidet.
+:- pred escape_special_char_java(char::in, list(char)::in, list(char)::out)
+    is semidet.
+:- pragma inline(pred(escape_special_char_java/3)).
 
-escape_special_char('"', '"').
-escape_special_char('''', '''').
-escape_special_char('\\', '\\').
-escape_special_char('\n', 'n').
-escape_special_char('\t', 't').
-escape_special_char('\b', 'b').
-escape_special_char('\a', 'a'). % not in Java
-escape_special_char('\v', 'v'). % not in Java
-escape_special_char('\r', 'r').
-escape_special_char('\f', 'f').
+escape_special_char_java(Char, RevChars0, RevChars) :-
+    ( Char = '"',    RevChars = ['"', '\\'  | RevChars0]
+    ; Char = '''',   RevChars = ['''', '\\' | RevChars0]
+    ; Char = ('\\'), RevChars = ['\\', '\\' | RevChars0]
+    ; Char = '\n',   RevChars = ['n', '\\'  | RevChars0]
+    ; Char = '\t',   RevChars = ['t', '\\'  | RevChars0]
+    ; Char = '\b',   RevChars = ['b', '\\'  | RevChars0]
+    ; Char = '\a',   RevChars = ['7', '0', '0', '\\' | RevChars0]
+    ; Char = '\v',   RevChars = ['3', '1', '0', '\\' | RevChars0]
+    ; Char = '\r',   RevChars = ['r', '\\'  | RevChars0]
+    ; Char = '\f',   RevChars = ['f', '\\'  | RevChars0]
+    ).
+
+:- pred escape_special_char_csharp(char::in, list(char)::in, list(char)::out)
+    is semidet.
+:- pragma inline(pred(escape_special_char_csharp/3)).
+
+escape_special_char_csharp(Char, RevChars0, RevChars) :-
+    ( Char = '"',    RevChars = ['"', '\\'  | RevChars0]
+    ; Char = '''',   RevChars = ['''', '\\' | RevChars0]
+    ; Char = ('\\'), RevChars = ['\\', '\\' | RevChars0]
+    ; Char = '\n',   RevChars = ['n', '\\'  | RevChars0]
+    ; Char = '\t',   RevChars = ['t', '\\'  | RevChars0]
+    ; Char = '\b',   RevChars = ['b', '\\'  | RevChars0]
+    ; Char = '\a',   RevChars = ['a', '\\'  | RevChars0]
+    ; Char = '\v',   RevChars = ['v', '\\'  | RevChars0]
+    ; Char = '\r',   RevChars = ['r', '\\'  | RevChars0]
+    ; Char = '\f',   RevChars = ['f', '\\'  | RevChars0]
+    ).
+
+%---------------------%
 
     % This succeeds iff the specified character is allowed as an (unescaped)
-    % character in standard-conforming C source code.
+    % character in standard-conforming C source code. The rules happen to be
+    % the same for Java and C# (and most other C-family languages).
+    % XXX Do they actually have the same rules with respect to graphic
+    % characters?
     %
-:- pred is_c_source_char(char::in) is semidet.
+:- pred is_source_char_c_java_csharp(char::in) is semidet.
 
-is_c_source_char(Char) :-
+is_source_char_c_java_csharp(Char) :-
     ( char.is_alnum(Char)
     ; string.contains_char(c_graphic_chars, Char)
     ).
@@ -700,6 +718,8 @@ is_c_source_char(Char) :-
 :- func c_graphic_chars = string.
 
 c_graphic_chars = " !\"#%&'()*+,-./:;<=>?[\\]^_{|}~".
+
+%---------------------%
 
     % Convert a character to the corresponding C octal escape code.
     % XXX This assumes that the target language compiler's representation
