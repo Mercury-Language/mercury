@@ -90,6 +90,19 @@
 
     % Chooses between C and Java literal syntax.
     %
+    % XXX This type should not exist. It would be better if all the predicates
+    % below that take an argument this type were replaced by three separate
+    % predicates, one for each language, with a "_c", "_csharp" or "_java"
+    % suffix. That way,
+    %
+    % - each predicate would be easier to read, and easier to check whether
+    %   it does the right thing for its language, without distractions by code
+    %   that matters only for the other two languages, and
+    %
+    % - there would be no danger of requiring a switch on the language,
+    %   potentially on every character output, if one forgets to add
+    %   a language-specialized mode for a predicate.
+    %
 :- type literal_language
     --->    literal_c
     ;       literal_java
@@ -356,7 +369,7 @@ always_set_line_num(Stream, File, Line, !IO) :-
         io.write_string(Stream, "#line ", !IO),
         io.write_int(Stream, Line, !IO),
         io.write_string(Stream, " """, !IO),
-        can_print_directly(File, CanPrint, !IO),
+        can_print_without_quoting(File, CanPrint, !IO),
         (
             CanPrint = yes,
             io.write_string(Stream, File, !IO)
@@ -399,7 +412,7 @@ always_reset_line_num(Stream, MaybeFileName, !IO) :-
         io.write_string(Stream, "#line ", !IO),
         io.write_int(Stream, Line + 1, !IO),
         io.write_string(Stream, " """, !IO),
-        can_print_directly(FileName, CanPrint, !IO),
+        can_print_without_quoting(FileName, CanPrint, !IO),
         (
             CanPrint = yes,
             io.write_string(Stream, FileName, !IO)
@@ -418,42 +431,44 @@ always_reset_line_num(Stream, MaybeFileName, !IO) :-
     % io.write_string, rather than output_quoted_string. The latter can take
     % more than 7% of the compiler's runtime!
     %
-:- pred can_print_directly(string::in, bool::out, io::di, io::uo) is det.
+:- pred can_print_without_quoting(string::in, bool::out,
+    io::di, io::uo) is det.
 
-can_print_directly(_, no, !IO).
+can_print_without_quoting(_, no, !IO).
 
 :- pragma foreign_proc("C",
-    can_print_directly(Str::in, CanPrintDirectly::out, _IO0::di, _IO::uo),
+    can_print_without_quoting(Str::in, CanPrintWithoutQuoting::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "{
     static  MR_String   last_string;
-    static  MR_bool     last_can_print_directly;
-    MR_bool             can_print_directly;
+    static  MR_bool     last_can_print_without_quoting;
+    MR_bool             can_print_without_quoting;
     const char          *s;
     int                 len;
 
     /* We cache the result of the last decision. */
     if (Str == last_string) {
-        CanPrintDirectly = last_can_print_directly;
+        CanPrintWithoutQuoting = last_can_print_without_quoting;
     } else {
-        can_print_directly = MR_TRUE;
+        can_print_without_quoting = MR_TRUE;
 
         for (s = Str; *s != '\\0'; s++) {
-            if (! (isalnum((int)*s) || *s == '_' || *s == '/' || *s == '.')) {
-                can_print_directly = MR_FALSE;
+            if (! (isalnum((int) *s) || *s == '_' || *s == '/' || *s == '.')) {
+                can_print_without_quoting = MR_FALSE;
                 break;
             }
         }
 
         len = s - Str;
         if (len >= 512) {
-            can_print_directly = MR_FALSE;
+            can_print_without_quoting = MR_FALSE;
         }
 
-        CanPrintDirectly = can_print_directly;
+        CanPrintWithoutQuoting = can_print_without_quoting;
 
         last_string = Str;
-        last_can_print_directly = CanPrintDirectly;
+        last_can_print_without_quoting = CanPrintWithoutQuoting;
     }
 }").
 
@@ -550,19 +565,22 @@ quote_char(Char) = quote_char_lang(literal_c, Char).
 :- mode quote_char_lang(in, in) = out is det.
 
 quote_char_lang(Lang, Char) = QuotedCharStr :-
-    quote_one_char(Lang, Char, [], RevQuotedCharStr),
+    (
+        Lang = literal_c,
+        quote_one_char_c(Char, [], RevQuotedCharStr)
+    ;
+        Lang = literal_java,
+        quote_one_char_java(Char, [], RevQuotedCharStr)
+    ;
+        Lang = literal_csharp,
+        quote_one_char_csharp(Char, [], RevQuotedCharStr)
+    ),
     string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
 
-:- pred quote_one_char(literal_language, char, list(char), list(char)).
-:- mode quote_one_char(in(bound(literal_c)), in, in, out) is det.
-:- mode quote_one_char(in(bound(literal_java)), in, in, out) is det.
-:- mode quote_one_char(in(bound(literal_csharp)), in, in, out) is det.
-:- mode quote_one_char(in, in, in, out) is det.
+:- pred quote_one_char_java(char::in, list(char)::in, list(char)::out) is det.
 
-quote_one_char(Lang, Char, RevChars0, RevChars) :-
-    % quote_one_char_c is a specialized version of this code.
+quote_one_char_java(Char, RevChars0, RevChars) :-
     ( if
-        Lang = literal_java,
         java_escape_special_char(Char, RevEscapeChars)
     then
         list.append(RevEscapeChars, RevChars0, RevChars)
@@ -571,57 +589,48 @@ quote_one_char(Lang, Char, RevChars0, RevChars) :-
     then
         RevChars = [EscapeChar, '\\' | RevChars0]
     else if
-        Lang = literal_c,
-        Char = '?'
+        is_c_source_char(Char)
     then
-        % Avoid trigraphs by escaping the question marks.
-        RevChars = ['?', '\\' | RevChars0]
+        RevChars = [Char | RevChars0]
+    else
+        char.to_int(Char, CharInt),
+        ( if CharInt = 0 then
+            RevChars = ['0', '\\' | RevChars0]
+        else if CharInt >= 0x80 then
+            RevChars = [Char | RevChars0]
+        else
+            octal_escape_any_char(Char, EscapeChars),
+            reverse_prepend(EscapeChars, RevChars0, RevChars)
+        )
+    ).
+
+:- pred quote_one_char_csharp(char::in, list(char)::in, list(char)::out)
+    is det.
+
+quote_one_char_csharp(Char, RevChars0, RevChars) :-
+    ( if
+        escape_special_char(Char, EscapeChar)
+    then
+        RevChars = [EscapeChar, '\\' | RevChars0]
     else if
         is_c_source_char(Char)
     then
         RevChars = [Char | RevChars0]
-    else if
-        char.to_int(Char, 0)
-    then
-        RevChars = ['0', '\\' | RevChars0]
-    else if
-        Int = char.to_int(Char),
-        Int >= 0x80
-    then
-        (
-            Lang = literal_c,
-            ( if char.to_utf8(Char, CodeUnits) then
-                list.map(octal_escape_any_int, CodeUnits, EscapeCharss),
-                list.condense(EscapeCharss, EscapeChars),
-                reverse_prepend(EscapeChars, RevChars0, RevChars)
-            else
-                unexpected($pred, "invalid Unicode code point")
-            )
-        ;
-            Lang = literal_java,
-            RevChars = [Char | RevChars0]
-        ;
-            Lang = literal_csharp,
-            RevChars = [Char | RevChars0]
-        )
     else
-        (
-            Lang = literal_c,
-            octal_escape_any_char(Char, EscapeChars)
-        ;
-            Lang = literal_java,
-            octal_escape_any_char(Char, EscapeChars)
-        ;
-            Lang = literal_csharp,
-            unicode_escape_any_char(Char, EscapeChars)
-        ),
-        reverse_prepend(EscapeChars, RevChars0, RevChars)
+        char.to_int(Char, CharInt),
+        ( if CharInt = 0 then
+            RevChars = ['0', '\\' | RevChars0]
+        else if CharInt >= 0x80 then
+            RevChars = [Char | RevChars0]
+        else
+            unicode_escape_any_char(CharInt, EscapeChars),
+            reverse_prepend(EscapeChars, RevChars0, RevChars)
+        )
     ).
 
 :- pred quote_one_char_c(char::in, list(char)::in, list(char)::out) is det.
 
 quote_one_char_c(Char, RevChars0, RevChars) :-
-    % This is a specialized version of quote_one_char.
     ( if
         escape_special_char(Char, EscapeChar)
     then
@@ -635,24 +644,22 @@ quote_one_char_c(Char, RevChars0, RevChars) :-
         is_c_source_char(Char)
     then
         RevChars = [Char | RevChars0]
-    else if
-        char.to_int(Char, 0)
-    then
-        RevChars = ['0', '\\' | RevChars0]
-    else if
-        Int = char.to_int(Char),
-        Int >= 0x80
-    then
-        ( if char.to_utf8(Char, CodeUnits) then
-            list.map(octal_escape_any_int, CodeUnits, EscapeCharss),
-            list.condense(EscapeCharss, EscapeChars),
-            reverse_prepend(EscapeChars, RevChars0, RevChars)
-        else
-            unexpected($pred, "invalid Unicode code point")
-        )
     else
-        octal_escape_any_char(Char, EscapeChars),
-        reverse_prepend(EscapeChars, RevChars0, RevChars)
+        char.to_int(Char, CharInt),
+        ( if CharInt = 0 then
+            RevChars = ['0', '\\' | RevChars0]
+        else if CharInt >= 0x80 then
+            ( if char.to_utf8(Char, CodeUnits) then
+                list.map(octal_escape_any_int, CodeUnits, EscapeCharss),
+                list.condense(EscapeCharss, EscapeChars),
+                reverse_prepend(EscapeChars, RevChars0, RevChars)
+            else
+                unexpected($pred, "invalid Unicode code point")
+            )
+        else
+            octal_escape_any_char(Char, EscapeChars),
+            reverse_prepend(EscapeChars, RevChars0, RevChars)
+        )
     ).
 
 :- pred java_escape_special_char(char::in, list(char)::out) is semidet.
@@ -708,11 +715,10 @@ octal_escape_any_int(Int, EscapeCodeChars) :-
     string.pad_left(OctalString0, '0', 3, OctalString),
     EscapeCodeChars = ['\\' | string.to_char_list(OctalString)].
 
-:- pred unicode_escape_any_char(char::in, list(char)::out) is det.
+:- pred unicode_escape_any_char(int::in, list(char)::out) is det.
 
-unicode_escape_any_char(Char, EscapeCodeChars) :-
-    char.to_int(Char, Int),
-    string.format("\\u%04x", [i(Int)], HexString),
+unicode_escape_any_char(CharInt, EscapeCodeChars) :-
+    string.format("\\u%04x", [i(CharInt)], HexString),
     string.to_char_list(HexString, EscapeCodeChars).
 
 %---------------------------------------------------------------------------%
