@@ -1610,9 +1610,8 @@ write_fact_args(_, [], !IO).
 write_fact_args(OutputStream, [FactArg | FactArgs], !IO) :-
     (
         FactArg = fact_arg_string(String),
-        io.write_string(OutputStream, """", !IO),
-        c_util.output_quoted_string_c(OutputStream, String, !IO),
-        io.write_string(OutputStream, """, ", !IO)
+        output_quoted_string_c(OutputStream, String, !IO),
+        io.write_string(OutputStream, ", ", !IO)
     ;
         FactArg = fact_arg_int(Int),
         io.write_int(OutputStream, Int, !IO),
@@ -2506,9 +2505,7 @@ write_hash_table_loop(Stream, HashTable, CurIndex, MaxIndex, !IO) :-
             HashEntry = hash_entry(Key, Index, Next),
             (
                 Key = fact_arg_string(String),
-                io.write_string(Stream, """", !IO),
-                c_util.output_quoted_string_c(Stream, String, !IO),
-                io.write_string(Stream, """", !IO)
+                output_quoted_string_c(Stream, String, !IO)
             ;
                 Key = fact_arg_int(Int),
                 io.write_int(Stream, Int, !IO)

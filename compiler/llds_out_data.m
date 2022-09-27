@@ -1496,16 +1496,16 @@ output_rval_const(Info, Const, Stream, !IO) :-
         c_util.output_float_literal(Stream, FloatVal, !IO)
     ;
         Const = llconst_string(String),
-        io.write_string(Stream, "MR_string_const(""", !IO),
-        c_util.output_quoted_string_c(Stream, String, !IO),
-        io.write_string(Stream, """, ", !IO),
+        io.write_string(Stream, "MR_string_const(", !IO),
+        output_quoted_string_c(Stream, String, !IO),
+        io.write_string(Stream, ", ", !IO),
         io.write_int(Stream, string.count_utf8_code_units(String), !IO),
         io.write_string(Stream, ")", !IO)
     ;
         Const = llconst_multi_string(Strings),
-        io.write_string(Stream, "MR_string_const(""", !IO),
-        c_util.output_quoted_multi_string_c(Stream, Strings, !IO),
-        io.write_string(Stream, """, ", !IO),
+        io.write_string(Stream, "MR_string_const(", !IO),
+        output_quoted_multi_string_c(Stream, Strings, !IO),
+        io.write_string(Stream, ", ", !IO),
 
         % The "+1" is for the NULL character.
         SumLengths = (func(S, L0) = L0 + string.count_utf8_code_units(S) + 1),

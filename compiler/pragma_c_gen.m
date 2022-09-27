@@ -546,14 +546,12 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         ThreadSafe = proc_not_thread_safe,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         Name = pred_info_name(PredInfo),
-        MangledName = c_util.quote_string_c(Name),
-        ObtainLockStr = "\tMR_OBTAIN_GLOBAL_LOCK("""
-            ++ MangledName ++ """);\n",
+        MangledName = quote_string_c(Name),
+        ObtainLockStr = "\tMR_OBTAIN_GLOBAL_LOCK(" ++ MangledName ++ ");\n",
         ObtainLock = foreign_proc_raw_code(cannot_branch_away,
             proc_does_not_affect_liveness, live_lvals_info(set.init),
             ObtainLockStr),
-        ReleaseLockStr = "\tMR_RELEASE_GLOBAL_LOCK("""
-            ++ MangledName ++ """);\n",
+        ReleaseLockStr = "\tMR_RELEASE_GLOBAL_LOCK(" ++ MangledName ++ ");\n",
         ReleaseLock = foreign_proc_raw_code(cannot_branch_away,
             proc_does_not_affect_liveness, live_lvals_info(set.init),
             ReleaseLockStr)

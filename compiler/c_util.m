@@ -89,14 +89,18 @@
 %
 
     % Convert a string to a form that is suitably escaped for use as a
-    % C string literal. This doesn't actually add the enclosing double quotes;
-    % that is the caller's responsibility.
+    % C string literal, and add double quotes around it.
     %
 :- func quote_string_c(string) = string.
 
+    % Convert a string to a form that is suitably escaped for use as a
+    % C string literal. This doesn't actually add the enclosing double quotes;
+    % that is the caller's responsibility.
+    %
+:- func prepare_to_quote_string_c(string) = string.
+
     % Print out a string suitably escaped for use as a string literal in
-    % C/Java/C#C/Java/C#. This doesn't actually print out the enclosing
-    % double quotes; that is the caller's responsibility.
+    % C/Java/C#C/Java/C#, without double quotes around it.
     %
 :- pred output_quoted_string_c(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
@@ -105,9 +109,21 @@
 :- pred output_quoted_string_csharp(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
 
-    % output_quoted_multi_string_LANG does the same job as
-    % list.foldl(output_quoted_string_LANG), but it also writes
-    % a null character after each string in the list.
+    % Print out a string suitably escaped for use as a string literal in
+    % C/Java/C#C/Java/C#. This doesn't actually print out the enclosing
+    % double quotes; that is the caller's responsibility.
+    %
+:- pred output_to_be_quoted_string_c(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+:- pred output_to_be_quoted_string_java(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+:- pred output_to_be_quoted_string_csharp(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+
+    % output_to_be_quoted_multi_string_LANG does the same job as
+    % list.foldl(output_to_be_quoted_string_LANG), but it also writes
+    % a null character after each string in the list, and adds double quotes
+    % around the whole lot.
     %
 :- type multi_string == list(string).
 :- pred output_quoted_multi_string_c(io.text_output_stream::in,
@@ -118,20 +134,35 @@
     multi_string::in, io::di, io::uo) is det.
 
     % Convert a character to a form that is suitably escaped for use as a
-    % C character literal. This doesn't actually add the enclosing single
-    % quotes; that is the caller's responsibility.
+    % C character literal, and add single quotes around it.
     %
 :- func quote_char_c(char) = string.
 
-    % Print out a char suitably escaped for use as a char literal in C/Java/C#.
-    % This doesn't actually print out the enclosing single quotes;
-    % that is the caller's responsibility.
+    % Convert a character to a form that is suitably escaped for use as a
+    % C character literal. This doesn't actually add the enclosing single
+    % quotes; that is the caller's responsibility.
+    %
+:- func prepare_to_quote_char_c(char) = string.
+
+    % Print out a char suitably escaped for use as a char literal in C/Java/C#,
+    % with single quotes around it.
     %
 :- pred output_quoted_char_c(io.text_output_stream::in, char::in,
     io::di, io::uo) is det.
 :- pred output_quoted_char_java(io.text_output_stream::in, char::in,
     io::di, io::uo) is det.
 :- pred output_quoted_char_csharp(io.text_output_stream::in, char::in,
+    io::di, io::uo) is det.
+
+    % Print out a char suitably escaped for use as a char literal in C/Java/C#.
+    % This doesn't actually print out the enclosing single quotes;
+    % that is the caller's responsibility.
+    %
+:- pred output_to_be_quoted_char_c(io.text_output_stream::in, char::in,
+    io::di, io::uo) is det.
+:- pred output_to_be_quoted_char_java(io.text_output_stream::in, char::in,
+    io::di, io::uo) is det.
+:- pred output_to_be_quoted_char_csharp(io.text_output_stream::in, char::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -352,7 +383,7 @@ always_set_line_num(Stream, File, Line, !IO) :-
             io.write_string(Stream, File, !IO)
         ;
             CanPrint = no,
-            output_quoted_string_c(Stream, File, !IO)
+            output_to_be_quoted_string_c(Stream, File, !IO)
         ),
         io.write_string(Stream, """\n", !IO)
     else
@@ -395,7 +426,7 @@ always_reset_line_num(Stream, MaybeFileName, !IO) :-
             io.write_string(Stream, FileName, !IO)
         ;
             CanPrint = no,
-            output_quoted_string_c(Stream, FileName, !IO)
+            output_to_be_quoted_string_c(Stream, FileName, !IO)
         ),
         io.write_string(Stream, """\n", !IO)
     else
@@ -405,8 +436,8 @@ always_reset_line_num(Stream, MaybeFileName, !IO) :-
 %---------------------%
 
     % Decide whether the given string can be printed directly, using
-    % io.write_string, rather than output_quoted_string. The latter can take
-    % more than 7% of the compiler's runtime!
+    % io.write_string, rather than output_quoted_string_LANG. The latter
+    % can take more than 7% of the compiler's runtime!
     %
 :- pred can_print_without_quoting(string::in, bool::out,
     io::di, io::uo) is det.
@@ -455,16 +486,40 @@ can_print_without_quoting(_, no, !IO).
 %
 
 quote_string_c(String) = QuotedString :-
+    string.foldl(quote_one_char_acc_c, String, ['"'], RevQuotedChars0),
+    RevQuotedChars = ['"' | RevQuotedChars0],
+    string.from_rev_char_list(RevQuotedChars, QuotedString).
+
+prepare_to_quote_string_c(String) = QuotedString :-
     string.foldl(quote_one_char_acc_c, String, [], RevQuotedChars),
     string.from_rev_char_list(RevQuotedChars, QuotedString).
 
+%---------------------%
+
 output_quoted_string_c(Stream, Str, !IO) :-
-    % output_quoted_string_c should just call quote_string_c, and write out
-    % what it returns. It should leave the processing required for MSVC
-    % to a separate predicate, since what we do now does not make sense
-    % on its own. (When breaking up <"abcd"> into <"ab", "cd">, we print
-    % the two inner quotes, but leave printing the two outer quotes to
-    % the caller.)
+    io.write_char(Stream, '"', !IO),
+    output_to_be_quoted_string_c(Stream, Str, !IO),
+    io.write_char(Stream, '"', !IO).
+
+output_quoted_string_java(Stream, Str, !IO) :-
+    io.write_char(Stream, '"', !IO),
+    output_to_be_quoted_string_java(Stream, Str, !IO),
+    io.write_char(Stream, '"', !IO).
+
+output_quoted_string_csharp(Stream, Str, !IO) :-
+    io.write_char(Stream, '"', !IO),
+    output_to_be_quoted_string_csharp(Stream, Str, !IO),
+    io.write_char(Stream, '"', !IO).
+
+%---------------------%
+
+output_to_be_quoted_string_c(Stream, Str, !IO) :-
+    % output_to_be_quoted_string_c should just call quote_string_c,
+    % and write out what it returns. It should leave the processing required
+    % for MSVC to a separate predicate, since what we do now does not
+    % make sense on its own. (When breaking up <"abcd"> into <"ab", "cd">,
+    % we print the two inner quotes, but leave printing the two outer quotes
+    % to the caller.)
     %
     % Avoid a limitation in the MSVC compiler, which requires
     % string literals to be no longer than 2048 chars. However,
@@ -472,107 +527,158 @@ output_quoted_string_c(Stream, Str, !IO) :-
     % the string in chunks, as in e.g. "part a" "part b". Go figure!
     % XXX How does "limit is 2048" translate to "get me 160 codepoints"?
     string.split_by_codepoint(Str, 160, Left, Right),
-    output_quoted_string_loop_c(Stream, Left, 0, !IO),
+    output_to_be_quoted_string_loop_c(Stream, Left, 0, !IO),
     ( if Right = "" then
         true
     else
         io.write_string(Stream, "\" \"", !IO),
-        output_quoted_string_c(Stream, Right, !IO)
+        output_to_be_quoted_string_c(Stream, Right, !IO)
     ).
 
-%---------------------%
+output_to_be_quoted_string_java(Stream, Str, !IO) :-
+    output_to_be_quoted_string_loop_java(Stream, Str, 0, !IO).
 
-output_quoted_string_java(Stream, Str, !IO) :-
-    output_quoted_string_loop_java(Stream, Str, 0, !IO).
-
-output_quoted_string_csharp(Stream, Str, !IO) :-
-    output_quoted_string_loop_csharp(Stream, Str, 0, !IO).
+output_to_be_quoted_string_csharp(Stream, Str, !IO) :-
+    output_to_be_quoted_string_loop_csharp(Stream, Str, 0, !IO).
 
 %---------------------%
 
-:- pred output_quoted_string_loop_c(io.text_output_stream::in,
+:- pred output_to_be_quoted_string_loop_c(io.text_output_stream::in,
     string::in, int::in, io::di, io::uo) is det.
 
-output_quoted_string_loop_c(Stream, Str, Cur, !IO) :-
+output_to_be_quoted_string_loop_c(Stream, Str, Cur, !IO) :-
     ( if string.unsafe_index_next(Str, Cur, Next, Char) then
-        output_quoted_char_c(Stream, Char, !IO),
-        output_quoted_string_loop_c(Stream, Str, Next, !IO)
+        output_to_be_quoted_char_c(Stream, Char, !IO),
+        output_to_be_quoted_string_loop_c(Stream, Str, Next, !IO)
     else
         true
     ).
 
-:- pred output_quoted_string_loop_java(io.text_output_stream::in,
+:- pred output_to_be_quoted_string_loop_java(io.text_output_stream::in,
     string::in, int::in, io::di, io::uo) is det.
 
-output_quoted_string_loop_java(Stream, Str, Cur, !IO) :-
+output_to_be_quoted_string_loop_java(Stream, Str, Cur, !IO) :-
     ( if string.unsafe_index_next(Str, Cur, Next, Char) then
-        output_quoted_char_java(Stream, Char, !IO),
-        output_quoted_string_loop_java(Stream, Str, Next, !IO)
+        output_to_be_quoted_char_java(Stream, Char, !IO),
+        output_to_be_quoted_string_loop_java(Stream, Str, Next, !IO)
     else
         true
     ).
 
-:- pred output_quoted_string_loop_csharp(io.text_output_stream::in,
+:- pred output_to_be_quoted_string_loop_csharp(io.text_output_stream::in,
     string::in, int::in, io::di, io::uo) is det.
 
-output_quoted_string_loop_csharp(Stream, Str, Cur, !IO) :-
+output_to_be_quoted_string_loop_csharp(Stream, Str, Cur, !IO) :-
     ( if string.unsafe_index_next(Str, Cur, Next, Char) then
-        output_quoted_char_csharp(Stream, Char, !IO),
-        output_quoted_string_loop_csharp(Stream, Str, Next, !IO)
+        output_to_be_quoted_char_csharp(Stream, Char, !IO),
+        output_to_be_quoted_string_loop_csharp(Stream, Str, Next, !IO)
     else
         true
     ).
 
 %---------------------%
 
-output_quoted_multi_string_c(_Stream, [], !IO).
-output_quoted_multi_string_c(Stream, [Str | Strs], !IO) :-
-    output_quoted_string_c(Stream, Str, !IO),
-    output_quoted_char_c(Stream, char.det_from_int(0), !IO),
-    output_quoted_multi_string_c(Stream, Strs, !IO).
+output_quoted_multi_string_c(Stream, Strs, !IO) :-
+    io.write_char(Stream, '"', !IO),
+    output_to_be_quoted_multi_string_c(Stream, Strs, !IO),
+    io.write_char(Stream, '"', !IO).
 
-output_quoted_multi_string_java(_Stream, [], !IO).
-output_quoted_multi_string_java(Stream, [Str | Strs], !IO) :-
-    output_quoted_string_java(Stream, Str, !IO),
-    output_quoted_char_java(Stream, char.det_from_int(0), !IO),
-    output_quoted_multi_string_java(Stream, Strs, !IO).
+output_quoted_multi_string_java(Stream, Strs, !IO) :-
+    io.write_char(Stream, '"', !IO),
+    output_to_be_quoted_multi_string_java(Stream, Strs, !IO),
+    io.write_char(Stream, '"', !IO).
 
-output_quoted_multi_string_csharp(_Stream, [], !IO).
-output_quoted_multi_string_csharp(Stream, [Str | Strs], !IO) :-
-    output_quoted_string_csharp(Stream, Str, !IO),
-    output_quoted_char_csharp(Stream, char.det_from_int(0), !IO),
-    output_quoted_multi_string_csharp(Stream, Strs, !IO).
+output_quoted_multi_string_csharp(Stream, Strs, !IO) :-
+    io.write_char(Stream, '"', !IO),
+    output_to_be_quoted_multi_string_csharp(Stream, Strs, !IO),
+    io.write_char(Stream, '"', !IO).
+
+%---------------------%
+
+:- pred output_to_be_quoted_multi_string_c(io.text_output_stream::in,
+    multi_string::in, io::di, io::uo) is det.
+
+output_to_be_quoted_multi_string_c(_Stream, [], !IO).
+output_to_be_quoted_multi_string_c(Stream, [Str | Strs], !IO) :-
+    output_to_be_quoted_string_c(Stream, Str, !IO),
+    output_to_be_quoted_char_c(Stream, char.det_from_int(0), !IO),
+    output_to_be_quoted_multi_string_c(Stream, Strs, !IO).
+
+:- pred output_to_be_quoted_multi_string_java(io.text_output_stream::in,
+    multi_string::in, io::di, io::uo) is det.
+
+output_to_be_quoted_multi_string_java(_Stream, [], !IO).
+output_to_be_quoted_multi_string_java(Stream, [Str | Strs], !IO) :-
+    output_to_be_quoted_string_java(Stream, Str, !IO),
+    output_to_be_quoted_char_java(Stream, char.det_from_int(0), !IO),
+    output_to_be_quoted_multi_string_java(Stream, Strs, !IO).
+
+:- pred output_to_be_quoted_multi_string_csharp(io.text_output_stream::in,
+    multi_string::in, io::di, io::uo) is det.
+
+output_to_be_quoted_multi_string_csharp(_Stream, [], !IO).
+output_to_be_quoted_multi_string_csharp(Stream, [Str | Strs], !IO) :-
+    output_to_be_quoted_string_csharp(Stream, Str, !IO),
+    output_to_be_quoted_char_csharp(Stream, char.det_from_int(0), !IO),
+    output_to_be_quoted_multi_string_csharp(Stream, Strs, !IO).
 
 %---------------------%
 
 quote_char_c(Char) = QuotedCharStr :-
+    quote_one_char_acc_c(Char, [''''], RevQuotedCharStr0),
+    RevQuotedCharStr = ['''' | RevQuotedCharStr0],
+    string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
+
+%---------------------%
+
+prepare_to_quote_char_c(Char) = QuotedCharStr :-
     quote_one_char_acc_c(Char, [], RevQuotedCharStr),
     string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
 
-:- func quote_char_java(char) = string.
+:- func prepare_to_quote_char_java(char) = string.
 
-quote_char_java(Char) = QuotedCharStr :-
+prepare_to_quote_char_java(Char) = QuotedCharStr :-
     quote_one_char_acc_java(Char, [], RevQuotedCharStr),
     string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
 
-:- func quote_char_csharp(char) = string.
+:- func prepare_to_quote_char_csharp(char) = string.
 
-quote_char_csharp(Char) = QuotedCharStr :-
+prepare_to_quote_char_csharp(Char) = QuotedCharStr :-
     quote_one_char_acc_csharp(Char, [], RevQuotedCharStr),
     string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
 
 %---------------------%
 
 output_quoted_char_c(Stream, Char, !IO) :-
-    EscapedCharStr = quote_char_c(Char),
-    io.write_string(Stream, EscapedCharStr, !IO).
+    EscapedCharStr = prepare_to_quote_char_c(Char),
+    io.write_char(Stream, '''', !IO),
+    io.write_string(Stream, EscapedCharStr, !IO),
+    io.write_char(Stream, '''', !IO).
 
 output_quoted_char_java(Stream, Char, !IO) :-
-    EscapedCharStr = quote_char_java(Char),
-    io.write_string(Stream, EscapedCharStr, !IO).
+    EscapedCharStr = prepare_to_quote_char_java(Char),
+    io.write_char(Stream, '''', !IO),
+    io.write_string(Stream, EscapedCharStr, !IO),
+    io.write_char(Stream, '''', !IO).
 
 output_quoted_char_csharp(Stream, Char, !IO) :-
-    EscapedCharStr = quote_char_csharp(Char),
+    EscapedCharStr = prepare_to_quote_char_csharp(Char),
+    io.write_char(Stream, '''', !IO),
+    io.write_string(Stream, EscapedCharStr, !IO),
+    io.write_char(Stream, '''', !IO).
+
+%---------------------%
+
+output_to_be_quoted_char_c(Stream, Char, !IO) :-
+    EscapedCharStr = prepare_to_quote_char_c(Char),
+    io.write_string(Stream, EscapedCharStr, !IO).
+
+output_to_be_quoted_char_java(Stream, Char, !IO) :-
+    EscapedCharStr = prepare_to_quote_char_java(Char),
+    io.write_string(Stream, EscapedCharStr, !IO).
+
+output_to_be_quoted_char_csharp(Stream, Char, !IO) :-
+    EscapedCharStr = prepare_to_quote_char_csharp(Char),
     io.write_string(Stream, EscapedCharStr, !IO).
 
 %---------------------%

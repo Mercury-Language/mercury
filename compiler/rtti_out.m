@@ -220,7 +220,10 @@ output_rtti_data_decl_chunk(Info, Stream, Group, RttiIds, !DeclSet, !IO) :-
 
     io.write_string(Stream, LinkageStr, !IO),
     io.write_string(Stream, c_data_const_string(Globals, InclCodeAddr), !IO),
-    c_util.output_quoted_string_c(Stream, CType, !IO),
+    % XXX This is likely to be a bug. If CType contains characters that
+    % require escaping before being put into a string (which we don't do here),
+    % then it wouldn't be acceptable as a C name for a type.
+    output_to_be_quoted_string_c(Stream, CType, !IO),
     io.nl(Stream, !IO),
 
     output_rtti_data_decl_chunk_entries(Stream, IsArray, RttiIds,
@@ -363,12 +366,11 @@ output_type_class_decl_defn(Info, Stream, TCDecl, !DeclSet, !IO) :-
     list.length(MethodIds, NumMethodIds),
     output_generic_rtti_data_defn_start(Info, Stream, TCIdRttiId,
         !DeclSet, !IO),
-    io.write_string(Stream, " = {\n\t""", !IO),
-    c_util.output_quoted_string_c(Stream, sym_name_to_string(ModuleSymName),
-        !IO),
-    io.write_string(Stream, """,\n\t""", !IO),
-    c_util.output_quoted_string_c(Stream, ClassName, !IO),
-    io.write_string(Stream, """,\n\t", !IO),
+    io.write_string(Stream, " = {\n\t", !IO),
+    output_quoted_string_c(Stream, sym_name_to_string(ModuleSymName), !IO),
+    io.write_string(Stream, ",\n\t", !IO),
+    output_quoted_string_c(Stream, ClassName, !IO),
+    io.write_string(Stream, ",\n\t", !IO),
     io.write_int(Stream, Arity, !IO),
     io.write_string(Stream, ",\n\t", !IO),
     io.write_int(Stream, NumTVarNames, !IO),
@@ -429,18 +431,18 @@ output_type_class_decl_defn(Info, Stream, TCDecl, !DeclSet, !IO) :-
     string::in, io::di, io::uo) is det.
 
 output_type_class_id_tvar_name(Stream, TVarName, !IO) :-
-    io.write_string(Stream, "\t""", !IO),
-    c_util.output_quoted_string_c(Stream, TVarName, !IO),
-    io.write_string(Stream, """,\n", !IO).
+    io.write_string(Stream, "\t", !IO),
+    output_quoted_string_c(Stream, TVarName, !IO),
+    io.write_string(Stream, ",\n", !IO).
 
 :- pred output_type_class_id_method_id(io.text_output_stream::in,
     tc_method_id::in, io::di, io::uo) is det.
 
 output_type_class_id_method_id(Stream, MethodId, !IO) :-
     MethodId = tc_method_id(MethodName, MethodArity, PredOrFunc),
-    io.write_string(Stream, "\t{ """, !IO),
-    c_util.output_quoted_string_c(Stream, MethodName, !IO),
-    io.write_string(Stream, """, ", !IO),
+    io.write_string(Stream, "\t{ ", !IO),
+    output_quoted_string_c(Stream, MethodName, !IO),
+    io.write_string(Stream, ", ", !IO),
     io.write_int(Stream, MethodArity, !IO),
     io.write_string(Stream, ", ", !IO),
     io.write_string(Stream, mr_pred_or_func_to_string(PredOrFunc), !IO),
@@ -822,13 +824,13 @@ output_type_ctor_data_defn(Info, Stream, TypeCtorData, !DeclSet, !IO) :-
     io.write_string(Stream, ",\n\t", !IO),
     % MR_type_ctor_compare_pred
     output_static_code_addr(CompareCodeAddr, Stream, !IO),
-    io.write_string(Stream, ",\n\t""", !IO),
+    io.write_string(Stream, ",\n\t", !IO),
     % MR_type_ctor_module_name
-    c_util.output_quoted_string_c(Stream, sym_name_to_string(Module), !IO),
-    io.write_string(Stream, """,\n\t""", !IO),
+    output_quoted_string_c(Stream, sym_name_to_string(Module), !IO),
+    io.write_string(Stream, ",\n\t", !IO),
     % MR_type_ctor_name
-    c_util.output_quoted_string_c(Stream, TypeName, !IO),
-    io.write_string(Stream, """,\n\t", !IO),
+    output_quoted_string_c(Stream, TypeName, !IO),
+    io.write_string(Stream, ",\n\t", !IO),
     % MR_type_ctor_functors
     (
         MaybeFunctorsName = yes(FunctorsName),
@@ -997,10 +999,10 @@ output_enum_functor_defn(Info, Stream, RttiTypeCtor, EnumFunctor,
     output_generic_rtti_data_defn_start(Info, Stream,
         ctor_rtti_id(RttiTypeCtor, type_ctor_enum_functor_desc(Ordinal)),
         !DeclSet, !IO),
-    io.write_string(Stream, " = {\n\t""", !IO),
+    io.write_string(Stream, " = {\n\t", !IO),
     % MR_enum_functor_name
-    c_util.output_quoted_string_c(Stream, FunctorName, !IO),
-    io.write_string(Stream, """,\n\t", !IO),
+    output_quoted_string_c(Stream, FunctorName, !IO),
+    io.write_string(Stream, ",\n\t", !IO),
     % MR_enum_functor_value -- XXX MAKE_FIELD_UNSIGNED
     io.write_int32(Stream, int32.cast_from_uint32(Value), !IO),
     io.write_string(Stream, "\n};\n", !IO).
@@ -1016,10 +1018,10 @@ output_foreign_enum_functor_defn(Info, Stream, RttiTypeCtor,
     RttiId = ctor_rtti_id(RttiTypeCtor,
         type_ctor_foreign_enum_functor_desc(FunctorOrdinal)),
     output_generic_rtti_data_defn_start(Info, Stream, RttiId, !DeclSet, !IO),
-    io.write_string(Stream, " = {\n\t""", !IO),
+    io.write_string(Stream, " = {\n\t", !IO),
     % MR_foreign_enum_functor_name
-    c_util.output_quoted_string_c(Stream, FunctorName, !IO),
-    io.write_string(Stream, """,\n\t", !IO),
+    output_quoted_string_c(Stream, FunctorName, !IO),
+    io.write_string(Stream, ",\n\t", !IO),
     % MR_foreign_enum_functor_ordinal -- XXX MAKE_FIELD_UNSIGNED
     io.write_int32(Stream, int32.cast_from_uint32(FunctorOrdinal), !IO),
     io.write_string(Stream, ",\n\t", !IO),
@@ -1042,10 +1044,10 @@ output_notag_functor_defn(Info, Stream, RttiTypeCtor, NotagFunctor,
     output_generic_rtti_data_defn_start(Info, Stream,
         ctor_rtti_id(RttiTypeCtor, type_ctor_notag_functor_desc),
         !DeclSet, !IO),
-    io.write_string(Stream, " = {\n\t""", !IO),
+    io.write_string(Stream, " = {\n\t", !IO),
     % MR_notag_functor_name
-    c_util.output_quoted_string_c(Stream, FunctorName, !IO),
-    io.write_string(Stream, """,\n\t", !IO),
+    output_quoted_string_c(Stream, FunctorName, !IO),
+    io.write_string(Stream, ",\n\t", !IO),
     % MR_notag_functor_arg_type
     (
         ArgType = plain(ArgTypeInfo),
@@ -1112,10 +1114,10 @@ output_du_functor_defn(Info, Stream, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
     output_generic_rtti_data_defn_start(Info, Stream,
         ctor_rtti_id(RttiTypeCtor, type_ctor_du_functor_desc(Ordinal)),
         !DeclSet, !IO),
-    io.write_string(Stream, " = {\n\t""", !IO),
+    io.write_string(Stream, " = {\n\t", !IO),
     % MR_du_functor_name
-    c_util.output_quoted_string_c(Stream, FunctorName, !IO),
-    io.write_string(Stream, """,\n\t", !IO),
+    output_quoted_string_c(Stream, FunctorName, !IO),
+    io.write_string(Stream, ",\n\t", !IO),
     % MR_du_functor_orig_arity -- XXX MAKE_FIELD_UNSIGNED
     io.write_int16(Stream, int16.cast_from_uint16(OrigArity), !IO),
     io.write_string(Stream, ",\n\t", !IO),
@@ -1924,9 +1926,7 @@ output_ctor_rtti_id(Stream, RttiTypeCtor, RttiName, !IO) :-
 output_maybe_quoted_string(MaybeName, Stream, !IO) :-
     (
         MaybeName = yes(Name),
-        io.write_string(Stream, """", !IO),
-        c_util.output_quoted_string_c(Stream, Name, !IO),
-        io.write_string(Stream, """", !IO)
+        output_quoted_string_c(Stream, Name, !IO)
     ;
         MaybeName = no,
         io.write_string(Stream, "NULL", !IO)
@@ -2024,7 +2024,10 @@ output_rtti_id_storage_type_name(Info, Stream, RttiId, BeingDefined,
     io.write_string(Stream, c_data_const_string(Globals, InclCodeAddr), !IO),
 
     rtti_id_c_type(RttiId, CType, IsArray),
-    c_util.output_quoted_string_c(Stream, CType, !IO),
+    % XXX This is likely to be a bug. If CType contains characters that
+    % require escaping before being put into a string (which we don't do here),
+    % then it wouldn't be acceptable as a C name for a type.
+    output_to_be_quoted_string_c(Stream, CType, !IO),
     io.write_string(Stream, " ", !IO),
     output_rtti_id(Stream, RttiId, !IO),
     (

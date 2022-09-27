@@ -731,14 +731,10 @@ output_rval_const_for_csharp(Info, Stream, Const, !IO) :-
         c_util.output_float_literal(Stream, FloatVal, !IO)
     ;
         Const = mlconst_string(String),
-        io.write_string(Stream, """", !IO),
-        c_util.output_quoted_string_csharp(Stream, String, !IO),
-        io.write_string(Stream, """", !IO)
+        output_quoted_string_csharp(Stream, String, !IO)
     ;
         Const = mlconst_multi_string(String),
-        io.write_string(Stream, """", !IO),
-        c_util.output_quoted_multi_string_csharp(Stream, String, !IO),
-        io.write_string(Stream, """", !IO)
+        output_quoted_multi_string_csharp(Stream, String, !IO)
     ;
         Const = mlconst_named_const(TargetPrefixes, NamedConst),
         io.write_string(Stream, TargetPrefixes ^ csharp_prefix, !IO),

@@ -487,7 +487,7 @@ dump_const(MaybeProcLabel, Const) = Str :-
         Str = float_to_string(F)
     ;
         Const = llconst_string(S),
-        Str = """" ++ quote_string_c(S) ++ """"
+        Str = quote_string_c(S)
     ;
         Const = llconst_multi_string(_S),
         Str = "multi_string(...)"

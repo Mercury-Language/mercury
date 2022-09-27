@@ -125,12 +125,12 @@ output_complexity_arg_info_array(Stream, [Arg | Args], !IO) :-
 output_init_complexity_proc_list(_, [], !IO).
 output_init_complexity_proc_list(Stream, [Info | Infos], !IO) :-
     Info = complexity_proc_info(ProcNum, FullProcName, ArgInfos),
+    list.filter(complexity_arg_is_profiled, ArgInfos, ProfiledArgInfos),
     io.write_string(Stream, "\tMR_init_complexity_proc(", !IO),
     io.write_int(Stream, ProcNum, !IO),
-    io.write_string(Stream, ", """, !IO),
-    c_util.output_quoted_string_c(Stream, FullProcName, !IO),
-    io.write_string(Stream, """, ", !IO),
-    list.filter(complexity_arg_is_profiled, ArgInfos, ProfiledArgInfos),
+    io.write_string(Stream, ", ", !IO),
+    output_quoted_string_c(Stream, FullProcName, !IO),
+    io.write_string(Stream, ", ", !IO),
     io.write_int(Stream, list.length(ProfiledArgInfos), !IO),
     io.write_string(Stream, ", ", !IO),
     io.write_int(Stream, list.length(ArgInfos), !IO),
@@ -332,16 +332,16 @@ output_table_steps(Stream, [StepDesc | StepDescs], !IO) :-
     table_trie_step_to_c(Step, StepType, MaybeEnumRange),
     (
         MaybeEnumRange = no,
-        io.write_int(Stream, -1, !IO)
+        EnumRange = -1
     ;
-        MaybeEnumRange = yes(EnumRange),
-        io.write_int(Stream, EnumRange, !IO)
+        MaybeEnumRange = yes(EnumRange)
     ),
-    io.write_string(Stream, "{ """, !IO),
-    c_util.output_quoted_string_c(Stream, VarName, !IO),
-    io.write_string(Stream, """, ", !IO),
+    io.write_string(Stream, "{ ", !IO),
+    output_quoted_string_c(Stream, VarName, !IO),
+    io.write_string(Stream, ", ", !IO),
     io.write_string(Stream, StepType, !IO),
     io.write_string(Stream, ", ", !IO),
+    io.write_int(Stream, EnumRange, !IO),
     io.write_string(Stream, " },\n", !IO),
     output_table_steps(Stream, StepDescs, !IO).
 

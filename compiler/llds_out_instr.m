@@ -603,18 +603,18 @@ output_instruction(Info, Stream, Instr, LabelOutputInfo, !IO) :-
             FrameInfo = ordinary_frame(Msg, Num),
             (
                 MaybeFailCont = yes(FailCont),
-                io.write_string(Stream, "\tMR_mkframe(""", !IO),
-                c_util.output_quoted_string_c(Stream, Msg, !IO),
-                io.write_string(Stream, """, ", !IO),
+                io.write_string(Stream, "\tMR_mkframe(", !IO),
+                output_quoted_string_c(Stream, Msg, !IO),
+                io.write_string(Stream, ", ", !IO),
                 io.write_int(Stream, Num, !IO),
                 io.write_string(Stream, ",\n\t\t", !IO),
                 output_code_addr(Stream, FailCont, !IO),
                 io.write_string(Stream, ");\n", !IO)
             ;
                 MaybeFailCont = no,
-                io.write_string(Stream, "\tMR_mkframe_no_redoip(""", !IO),
-                c_util.output_quoted_string_c(Stream, Msg, !IO),
-                io.write_string(Stream, """, ", !IO),
+                io.write_string(Stream, "\tMR_mkframe_no_redoip(", !IO),
+                output_quoted_string_c(Stream, Msg, !IO),
+                io.write_string(Stream, ", ", !IO),
                 io.write_int(Stream, Num, !IO),
                 io.write_string(Stream, ");\n", !IO)
             )

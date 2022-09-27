@@ -1291,7 +1291,7 @@ output_proc_static_slot(Info, Stream, ProcStatic, !Slot, !IO) :-
     ;
         AutoComments = no_auto_comments
     ),
-    quote_and_write_string(Stream, FileName, !IO),
+    output_quoted_string_c(Stream, FileName, !IO),
     io.write_string(Stream, ",", !IO),
     io.write_int(Stream, LineNumber, !IO),
     io.write_string(Stream, ",", !IO),
@@ -1722,7 +1722,7 @@ output_threadscope_string_table_slot(Info, Stream, String, !Slot, !IO) :-
         AutoComments = no_auto_comments
     ),
     io.write_string(Stream, "{ ", !IO),
-    quote_and_write_string(Stream, String, !IO),
+    output_quoted_string_c(Stream, String, !IO),
     io.write_string(Stream, ", 0},\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -1753,11 +1753,11 @@ output_alloc_site_slot(_Info, Stream, AllocSite, !Slot, !IO) :-
     io.write_string(Stream,
         proc_label_to_c_string(add_label_prefix, ProcLabel), !IO),
     io.write_string(Stream, ", ", !IO),
-    quote_and_write_string(Stream, FileName, !IO),
+    output_quoted_string_c(Stream, FileName, !IO),
     io.write_string(Stream, ", ", !IO),
     io.write_int(Stream, LineNumber, !IO),
     io.write_string(Stream, ", ", !IO),
-    quote_and_write_string(Stream, TypeMsg, !IO),
+    output_quoted_string_c(Stream, TypeMsg, !IO),
     io.write_string(Stream, ", ", !IO),
     io.write_int(Stream, Words, !IO),
     io.write_string(Stream, "},\n", !IO).
@@ -2464,13 +2464,13 @@ output_closure_layout_data_defn(_Info, Stream, ClosureData, !DeclSet, !IO) :-
     io.write_string(Stream, " = {\n{\n", !IO),
     output_proc_id(Stream, ClosureProcLabel, PredOrigin, !IO),
     io.write_string(Stream, "},\n", !IO),
-    quote_and_write_string(Stream, sym_name_to_string(ModuleName), !IO),
+    output_quoted_string_c(Stream, sym_name_to_string(ModuleName), !IO),
     io.write_string(Stream, ",\n", !IO),
-    quote_and_write_string(Stream, FileName, !IO),
+    output_quoted_string_c(Stream, FileName, !IO),
     io.write_string(Stream, ",\n", !IO),
     io.write_int(Stream, LineNumber, !IO),
     io.write_string(Stream, ",\n", !IO),
-    quote_and_write_string(Stream, GoalPath, !IO),
+    output_quoted_string_c(Stream, GoalPath, !IO),
     io.write_string(Stream, "\n};\n", !IO),
     decl_set_insert(decl_layout_id(LayoutName), !DeclSet).
 
@@ -2484,13 +2484,13 @@ output_proc_id(Stream, ProcLabel, Origin, !IO) :-
         PredName = layout_origin_name(Origin, PredName0),
         io.write_string(Stream, mr_pred_or_func_to_string(PredOrFunc), !IO),
         io.write_string(Stream, ",\n", !IO),
-        quote_and_write_string(Stream,
+        output_quoted_string_c(Stream,
             sym_name_to_string(DeclaringModule), !IO),
         io.write_string(Stream, ",\n", !IO),
-        quote_and_write_string(Stream,
+        output_quoted_string_c(Stream,
             sym_name_to_string(DefiningModule), !IO),
         io.write_string(Stream, ",\n", !IO),
-        quote_and_write_string(Stream, PredName, !IO),
+        output_quoted_string_c(Stream, PredName, !IO),
         io.write_string(Stream, ",\n", !IO),
         io.write_int(Stream, Arity, !IO),
         io.write_string(Stream, ",\n", !IO),
@@ -2502,14 +2502,14 @@ output_proc_id(Stream, ProcLabel, Origin, !IO) :-
         TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
         PredName0 = uci_pred_name(SpecialPredId, TypeCtor),
         PredName = layout_origin_name(Origin, PredName0),
-        quote_and_write_string(Stream, TypeName, !IO),
+        output_quoted_string_c(Stream, TypeName, !IO),
         io.write_string(Stream, ",\n", !IO),
-        quote_and_write_string(Stream, sym_name_to_string(TypeModule), !IO),
+        output_quoted_string_c(Stream, sym_name_to_string(TypeModule), !IO),
         io.write_string(Stream, ",\n", !IO),
-        quote_and_write_string(Stream,
+        output_quoted_string_c(Stream,
             sym_name_to_string(DefiningModule), !IO),
         io.write_string(Stream, ",\n", !IO),
-        quote_and_write_string(Stream, PredName, !IO),
+        output_quoted_string_c(Stream, PredName, !IO),
         io.write_string(Stream, ",\n", !IO),
         io.write_int(Stream, TypeArity, !IO),
         io.write_string(Stream, ",\n", !IO),
@@ -2635,7 +2635,7 @@ output_module_layout_data_defn(Info, Stream, Data, !DeclSet, !IO) :-
     io.write_string(Stream, " = {\n", !IO),
     io.write_int(Stream, layout_version_number, !IO),
     io.write_string(Stream, ",\n", !IO),
-    quote_and_write_string(Stream, sym_name_to_string(ModuleName), !IO),
+    output_quoted_string_c(Stream, sym_name_to_string(ModuleName), !IO),
     io.write_string(Stream, ",\n", !IO),
     io.write_int(Stream, StringTableSize, !IO),
     io.write_string(Stream, ",\n", !IO),
@@ -2699,7 +2699,7 @@ output_module_layout_data_defn(Info, Stream, Data, !DeclSet, !IO) :-
         ;
             MaybeEventInfoB = yes({EventSetNameB, MaxNumAttrB, NumEventSpecsB,
                 EventSetDescLayoutNameB, EventSpecsLayoutNameB}),
-            quote_and_write_string(Stream, EventSetNameB, !IO),
+            output_quoted_string_c(Stream, EventSetNameB, !IO),
             io.write_string(Stream, ",\n", !IO),
             output_layout_name(Stream, EventSetDescLayoutNameB, !IO),
             io.write_string(Stream, ",\n", !IO),
@@ -3001,9 +3001,7 @@ output_module_string_table_chars(Stream, CurIndex, Count, String, !IO) :-
             char.to_int(Char, Int),
             Int =< 0x7f
         then
-            io.write_char(Stream, '''', !IO),
-            c_util.output_quoted_char_c(Stream, Char, !IO),
-            io.write_char(Stream, '''', !IO),
+            output_quoted_char_c(Stream, Char, !IO),
             io.write_string(Stream, ", ", !IO)
         else if
             char.to_utf8(Char, Codes)
@@ -3021,9 +3019,7 @@ output_module_string_table_chars(Stream, CurIndex, Count, String, !IO) :-
                 Count + 1, String, !IO)
         )
     else
-        io.write_char(Stream, '''', !IO),
-        c_util.output_quoted_char_c(Stream, char.det_from_int(0), !IO),
-        io.write_char(Stream, '''', !IO)
+        output_quoted_char_c(Stream, char.det_from_int(0), !IO)
     ).
 
 :- pred output_multi_byte_char_codes(io.text_output_stream::in, list(int)::in,
@@ -3098,7 +3094,7 @@ output_file_layout_data_defn(Info, Stream, ModuleName, FileNum, FileLayout,
     output_layout_name_storage_type_name(Stream, FileLayoutName,
         being_defined, !IO),
     io.write_string(Stream, " = {\n", !IO),
-    quote_and_write_string(Stream, FileName, !IO),
+    output_quoted_string_c(Stream, FileName, !IO),
     io.write_string(Stream, ",\n", !IO),
     io.write_int(Stream, VectorLengths, !IO),
     io.write_string(Stream, ",\n", !IO),
@@ -3349,14 +3345,6 @@ output_layout_name_in_vector(Stream, Prefix, Name, !IO) :-
     io.write_string(Stream, Prefix, !IO),
     output_layout_name(Stream, Name, !IO),
     io.write_string(Stream, ",\n", !IO).
-
-:- pred quote_and_write_string(io.text_output_stream::in, string::in,
-    io::di, io::uo) is det.
-
-quote_and_write_string(Stream, String, !IO) :-
-    io.write_string(Stream, """", !IO),
-    c_util.output_quoted_string_c(Stream, String, !IO),
-    io.write_string(Stream, """", !IO).
 
 :- pred long_length(list(T)::in, int::out) is det.
 
