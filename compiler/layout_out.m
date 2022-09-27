@@ -3002,7 +3002,7 @@ output_module_string_table_chars(Stream, CurIndex, Count, String, !IO) :-
             Int =< 0x7f
         then
             io.write_char(Stream, '''', !IO),
-            c_util.output_quoted_char(Stream, Char, !IO),
+            c_util.output_quoted_char_c(Stream, Char, !IO),
             io.write_char(Stream, '''', !IO),
             io.write_string(Stream, ", ", !IO)
         else if
@@ -3022,7 +3022,7 @@ output_module_string_table_chars(Stream, CurIndex, Count, String, !IO) :-
         )
     else
         io.write_char(Stream, '''', !IO),
-        c_util.output_quoted_char(Stream, char.det_from_int(0), !IO),
+        c_util.output_quoted_char_c(Stream, char.det_from_int(0), !IO),
         io.write_char(Stream, '''', !IO)
     ).
 
@@ -3355,7 +3355,7 @@ output_layout_name_in_vector(Stream, Prefix, Name, !IO) :-
 
 quote_and_write_string(Stream, String, !IO) :-
     io.write_string(Stream, """", !IO),
-    c_util.output_quoted_string(Stream, String, !IO),
+    c_util.output_quoted_string_c(Stream, String, !IO),
     io.write_string(Stream, """", !IO).
 
 :- pred long_length(list(T)::in, int::out) is det.

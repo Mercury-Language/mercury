@@ -473,7 +473,7 @@ ml_gen_obtain_release_global_lock(Info, ThreadSafe, PredId,
     then
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         Name = pred_info_name(PredInfo),
-        MangledName = c_util.quote_string(Name),
+        MangledName = c_util.quote_string_c(Name),
         string.append_list(["\tMR_OBTAIN_GLOBAL_LOCK(""",
             MangledName, """);\n"], ObtainLock),
         string.append_list(["\tMR_RELEASE_GLOBAL_LOCK(""",

@@ -112,8 +112,14 @@
     % This doesn't actually print out the enclosing double quotes --
     % that is the caller's responsibility.
     %
-:- pred output_quoted_string(io.text_output_stream::in, string::in,
+:- pred output_quoted_string_c(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
+
+    % Convert a string to a form that is suitably escaped for use as a
+    % C string literal. This doesn't actually add the enclosing double quotes
+    % -- that is the caller's responsibility.
+    %
+:- func quote_string_c(string) = string.
 
     % As above, but for the specified language.
     %
@@ -126,12 +132,12 @@
     is det.
 :- mode output_quoted_string_lang(in, in, in, di, uo) is det.
 
-    % output_quoted_multi_string is like list.foldl(output_quoted_string)
+    % output_quoted_multi_string_c is like list.foldl(output_quoted_string_c)
     % except that a null character will be written between each string
     % in the list.
     %
 :- type multi_string == list(string).
-:- pred output_quoted_multi_string(io.text_output_stream::in,
+:- pred output_quoted_multi_string_c(io.text_output_stream::in,
     multi_string::in, io::di, io::uo) is det.
 
     % As above, but for the specified language.
@@ -143,20 +149,14 @@
     % This doesn't actually print out the enclosing single quotes --
     % that is the caller's responsibility.
     %
-:- pred output_quoted_char(io.text_output_stream::in, char::in,
+:- pred output_quoted_char_c(io.text_output_stream::in, char::in,
     io::di, io::uo) is det.
-
-    % Convert a string to a form that is suitably escaped for use as a
-    % C string literal. This doesn't actually add the enclosing double quotes
-    % -- that is the caller's responsibility.
-    %
-:- func quote_string(string) = string.
 
     % Convert a character to a form that is suitably escaped for use as a
     % C character literal. This doesn't actually add the enclosing single
     % quotes -- that is the caller's responsibility.
     %
-:- func quote_char(char) = string.
+:- func quote_char_c(char) = string.
 
 %---------------------------------------------------------------------------%
 %
@@ -245,6 +245,7 @@
 %
 % The following predicates all take as input an operator, and return the name
 % of the corresponding C operator that can be used to implement it.
+%
 
     % The operator returned will be either a prefix operator or a macro
     % or function name. The operand needs to be placed in parentheses
@@ -375,7 +376,7 @@ always_set_line_num(Stream, File, Line, !IO) :-
             io.write_string(Stream, File, !IO)
         ;
             CanPrint = no,
-            output_quoted_string(Stream, File, !IO)
+            output_quoted_string_c(Stream, File, !IO)
         ),
         io.write_string(Stream, """\n", !IO)
     else
@@ -418,7 +419,7 @@ always_reset_line_num(Stream, MaybeFileName, !IO) :-
             io.write_string(Stream, FileName, !IO)
         ;
             CanPrint = no,
-            output_quoted_string(Stream, FileName, !IO)
+            output_quoted_string_c(Stream, FileName, !IO)
         ),
         io.write_string(Stream, """\n", !IO)
     else
@@ -477,8 +478,20 @@ can_print_without_quoting(_, no, !IO).
 % String and character handling.
 %
 
-output_quoted_string(Stream, Str, !IO) :-
+output_quoted_string_c(Stream, Str, !IO) :-
+    % output_quoted_string_c should just call quote_string_c, and write out
+    % what it returns. It should leave the processing required for MSVC
+    % to a separate predicate, since what we do now does not make sense
+    % on its own. (When breaking up <"abcd"> into <"ab", "cd">, we print
+    % the two inner quotes, but leave printing the two outer quotes to
+    % the caller.)
     output_quoted_string_lang(Stream, literal_c, Str, !IO).
+
+%---------------------%
+
+quote_string_c(String) = QuotedString :-
+    string.foldl(quote_one_char_c, String, [], RevQuotedChars),
+    string.from_rev_char_list(RevQuotedChars, QuotedString).
 
 %---------------------%
 
@@ -491,6 +504,7 @@ output_quoted_string_lang(Stream, Lang, Str, !IO) :-
         % string literals to be no longer than 2048 chars. However,
         % it will accept a string longer than 2048 chars if we output
         % the string in chunks, as in e.g. "part a" "part b". Go figure!
+        % XXX How does "limit is 2048" translate to "get me 160 codepoints"?
         string.split_by_codepoint(Str, 160, Left, Right),
         do_output_quoted_string_lang(Stream, Lang, Left, 0, !IO),
         ( if Right = "" then
@@ -519,7 +533,7 @@ do_output_quoted_string_lang(Stream, Lang, Str, Cur, !IO) :-
 
 %---------------------%
 
-output_quoted_multi_string(Stream, Strs, !IO) :-
+output_quoted_multi_string_c(Stream, Strs, !IO) :-
     output_quoted_multi_string_lang(Stream, literal_c, Strs, !IO).
 
 %---------------------%
@@ -532,7 +546,7 @@ output_quoted_multi_string_lang(Stream, Lang, [Str | Strs], !IO) :-
 
 %---------------------%
 
-output_quoted_char(Stream, Char, !IO) :-
+output_quoted_char_c(Stream, Char, !IO) :-
     output_quoted_char_lang(Stream, literal_c, Char, !IO).
 
 :- pred output_quoted_char_lang(io.text_output_stream, literal_language, char,
@@ -550,13 +564,7 @@ output_quoted_char_lang(Stream, Lang, Char, !IO) :-
 
 %---------------------%
 
-quote_string(String) = QuotedString :-
-    string.foldl(quote_one_char_c, String, [], RevQuotedChars),
-    string.from_rev_char_list(RevQuotedChars, QuotedString).
-
-%---------------------%
-
-quote_char(Char) = quote_char_lang(literal_c, Char).
+quote_char_c(Char) = quote_char_lang(literal_c, Char).
 
 :- func quote_char_lang(literal_language, char) = string.
 :- mode quote_char_lang(in(bound(literal_c)), in) = out is det.
@@ -576,6 +584,40 @@ quote_char_lang(Lang, Char) = QuotedCharStr :-
         quote_one_char_csharp(Char, [], RevQuotedCharStr)
     ),
     string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
+
+:- pred quote_one_char_c(char::in, list(char)::in, list(char)::out) is det.
+
+quote_one_char_c(Char, RevChars0, RevChars) :-
+    ( if
+        escape_special_char(Char, EscapeChar)
+    then
+        RevChars = [EscapeChar, '\\' | RevChars0]
+    else if
+        Char = '?'
+    then
+        % Avoid trigraphs by escaping the question marks.
+        RevChars = ['?', '\\' | RevChars0]
+    else if
+        is_c_source_char(Char)
+    then
+        RevChars = [Char | RevChars0]
+    else
+        char.to_int(Char, CharInt),
+        ( if CharInt = 0 then
+            RevChars = ['0', '\\' | RevChars0]
+        else if CharInt >= 0x80 then
+            ( if char.to_utf8(Char, CodeUnits) then
+                list.map(octal_escape_any_int, CodeUnits, EscapeCharss),
+                list.condense(EscapeCharss, EscapeChars),
+                reverse_prepend(EscapeChars, RevChars0, RevChars)
+            else
+                unexpected($pred, "invalid Unicode code point")
+            )
+        else
+            octal_escape_any_char(Char, EscapeChars),
+            reverse_prepend(EscapeChars, RevChars0, RevChars)
+        )
+    ).
 
 :- pred quote_one_char_java(char::in, list(char)::in, list(char)::out) is det.
 
@@ -624,40 +666,6 @@ quote_one_char_csharp(Char, RevChars0, RevChars) :-
             RevChars = [Char | RevChars0]
         else
             unicode_escape_any_char(CharInt, EscapeChars),
-            reverse_prepend(EscapeChars, RevChars0, RevChars)
-        )
-    ).
-
-:- pred quote_one_char_c(char::in, list(char)::in, list(char)::out) is det.
-
-quote_one_char_c(Char, RevChars0, RevChars) :-
-    ( if
-        escape_special_char(Char, EscapeChar)
-    then
-        RevChars = [EscapeChar, '\\' | RevChars0]
-    else if
-        Char = '?'
-    then
-        % Avoid trigraphs by escaping the question marks.
-        RevChars = ['?', '\\' | RevChars0]
-    else if
-        is_c_source_char(Char)
-    then
-        RevChars = [Char | RevChars0]
-    else
-        char.to_int(Char, CharInt),
-        ( if CharInt = 0 then
-            RevChars = ['0', '\\' | RevChars0]
-        else if CharInt >= 0x80 then
-            ( if char.to_utf8(Char, CodeUnits) then
-                list.map(octal_escape_any_int, CodeUnits, EscapeCharss),
-                list.condense(EscapeCharss, EscapeChars),
-                reverse_prepend(EscapeChars, RevChars0, RevChars)
-            else
-                unexpected($pred, "invalid Unicode code point")
-            )
-        else
-            octal_escape_any_char(Char, EscapeChars),
             reverse_prepend(EscapeChars, RevChars0, RevChars)
         )
     ).

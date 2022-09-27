@@ -1632,7 +1632,7 @@ unop_debug(bitwise_complement(int_type_uint64), "bitwise_complement(uint64)").
 debug_cstring(Str, !IO) :-
     io.output_stream(Stream, !IO),
     io.write_char(Stream, '"', !IO),
-    c_util.output_quoted_string(Stream, Str, !IO),
+    c_util.output_quoted_string_c(Stream, Str, !IO),
     io.write_char(Stream, '"', !IO),
     % XXX: We need the trailing space in case something follows
     % the string as a bytecode argument. This is not very elegant.

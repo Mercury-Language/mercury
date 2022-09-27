@@ -1035,12 +1035,12 @@ mlds_output_rval_const(_Opts, Stream, Const, !IO) :-
         % "assignment discards qualifiers from pointer target type".
         io.write_string(Stream, "(MR_String) ", !IO),
         io.write_string(Stream, """", !IO),
-        c_util.output_quoted_string(Stream, String, !IO),
+        c_util.output_quoted_string_c(Stream, String, !IO),
         io.write_string(Stream, """", !IO)
     ;
         Const = mlconst_multi_string(String),
         io.write_string(Stream, """", !IO),
-        c_util.output_quoted_multi_string(Stream, String, !IO),
+        c_util.output_quoted_multi_string_c(Stream, String, !IO),
         io.write_string(Stream, """", !IO)
     ;
         Const = mlconst_named_const(_TargetPrefixes, NamedConst),
