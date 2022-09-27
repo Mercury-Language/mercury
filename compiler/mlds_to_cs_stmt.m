@@ -742,7 +742,7 @@ output_atomic_stmt_for_csharp(Info, Stream, Indent, AtomicStmt,
         ;
             ArgRvalsTypes = [HeadArgRvalType | TailArgRvalsTypes],
             io.format(Stream, "%s\n", [s(Start)], !IO),
-            output_init_args_for_csharp(Info, Stream, Indent + 1,
+            output_init_args_for_csharp(Info, Stream, Indent + 2,
                 HeadArgRvalType, TailArgRvalsTypes, !IO),
             output_n_indents(Stream, Indent + 1, !IO),
             io.format(Stream, "%s;\n", [s(End)], !IO)
