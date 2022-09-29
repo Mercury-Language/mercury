@@ -211,21 +211,13 @@ output_rtti_data_decl_chunk(Info, Stream, Group, RttiIds, !DeclSet, !IO) :-
         unexpected($pred, "empty list")
     ),
     Group = data_group(CType, IsArray, Linkage),
-
     io.nl(Stream, !IO),
     output_rtti_type_decl(Stream, RttiId, !DeclSet, !IO),
     Globals = Info ^ lout_globals,
     LinkageStr = c_data_linkage_string(Linkage, no),
     InclCodeAddr = rtti_id_would_include_code_addr(RttiId),
-
-    io.write_string(Stream, LinkageStr, !IO),
-    io.write_string(Stream, c_data_const_string(Globals, InclCodeAddr), !IO),
-    % XXX This is likely to be a bug. If CType contains characters that
-    % require escaping before being put into a string (which we don't do here),
-    % then it wouldn't be acceptable as a C name for a type.
-    output_to_be_quoted_string_c(Stream, CType, !IO),
-    io.nl(Stream, !IO),
-
+    ConstStr = c_data_const_string(Globals, InclCodeAddr),
+    io.format(Stream, "%s%s%s\n", [s(LinkageStr), s(ConstStr), s(CType)], !IO),
     output_rtti_data_decl_chunk_entries(Stream, IsArray, RttiIds,
         !DeclSet, !IO).
 
@@ -2017,18 +2009,11 @@ output_rtti_id_storage_type_name(Info, Stream, RttiId, BeingDefined,
     output_rtti_type_decl(Stream, RttiId, !DeclSet, !IO),
     rtti_id_linkage(RttiId, Linkage),
     LinkageStr = c_data_linkage_string(Linkage, BeingDefined),
-    io.write_string(Stream, LinkageStr, !IO),
-
     Globals = Info ^ lout_globals,
     InclCodeAddr = rtti_id_would_include_code_addr(RttiId),
-    io.write_string(Stream, c_data_const_string(Globals, InclCodeAddr), !IO),
-
+    ConstStr = c_data_const_string(Globals, InclCodeAddr),
     rtti_id_c_type(RttiId, CType, IsArray),
-    % XXX This is likely to be a bug. If CType contains characters that
-    % require escaping before being put into a string (which we don't do here),
-    % then it wouldn't be acceptable as a C name for a type.
-    output_to_be_quoted_string_c(Stream, CType, !IO),
-    io.write_string(Stream, " ", !IO),
+    io.format(Stream, "%s%s%s ", [s(LinkageStr), s(ConstStr), s(CType)], !IO),
     output_rtti_id(Stream, RttiId, !IO),
     (
         IsArray = is_array,

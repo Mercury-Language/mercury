@@ -109,20 +109,10 @@
 :- pred output_quoted_string_csharp(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
 
-    % Print out a string suitably escaped for use as a string literal in
-    % C/Java/C#C/Java/C#. This doesn't actually print out the enclosing
-    % double quotes; that is the caller's responsibility.
-    %
-:- pred output_to_be_quoted_string_c(io.text_output_stream::in, string::in,
-    io::di, io::uo) is det.
-:- pred output_to_be_quoted_string_java(io.text_output_stream::in, string::in,
-    io::di, io::uo) is det.
-:- pred output_to_be_quoted_string_csharp(io.text_output_stream::in, string::in,
-    io::di, io::uo) is det.
-
-    % output_to_be_quoted_multi_string_LANG does the same job as
-    % list.foldl(output_to_be_quoted_string_LANG), but it also writes
-    % a null character after each string in the list, and adds double quotes
+    % output_quoted_multi_string_LANG does the same job as
+    % output_quoted_string_LANG on the concatenation of the elements
+    % of the multistring, adding a null character after each string
+    % in the list. It will print a single set of double quotes
     % around the whole lot.
     %
 :- type multi_string == list(string).
@@ -369,23 +359,21 @@ maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line, !IO) :-
 
 %---------------------%
 
-always_set_line_num(Stream, File, Line, !IO) :-
+always_set_line_num(Stream, FileName, LineNumber, !IO) :-
     ( if
-        Line > 0,
-        File \= ""
+        LineNumber > 0,
+        FileName \= ""
     then
-        io.write_string(Stream, "#line ", !IO),
-        io.write_int(Stream, Line, !IO),
-        io.write_string(Stream, " """, !IO),
-        can_print_without_quoting(File, CanPrint, !IO),
+        can_print_without_quoting(FileName, CanPrint, !IO),
         (
             CanPrint = yes,
-            io.write_string(Stream, File, !IO)
+            io.format(Stream, "#line %d ""%s""\n",
+                [i(LineNumber), s(FileName)], !IO)
         ;
             CanPrint = no,
-            output_to_be_quoted_string_c(Stream, File, !IO)
-        ),
-        io.write_string(Stream, """\n", !IO)
+            io.format(Stream, "#line %d %s\n",
+                [i(LineNumber), s(quote_string_c(FileName))], !IO)
+        )
     else
         % XXX What is the point of this call?
         always_reset_line_num(Stream, no, !IO)
@@ -406,7 +394,7 @@ maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeFileName, !IO) :-
 always_reset_line_num(Stream, MaybeFileName, !IO) :-
     % We want to generate another #line directive to reset the C compiler's
     % idea of what it is processing back to the file we are generating.
-    io.get_output_line_number(Stream, Line, !IO),
+    io.get_output_line_number(Stream, LineNumber, !IO),
     (
         MaybeFileName = yes(FileName)
     ;
@@ -414,21 +402,19 @@ always_reset_line_num(Stream, MaybeFileName, !IO) :-
         io.output_stream_name(Stream, FileName, !IO)
     ),
     ( if
-        Line > 0,
+        LineNumber > 0,
         FileName \= ""
     then
-        io.write_string(Stream, "#line ", !IO),
-        io.write_int(Stream, Line + 1, !IO),
-        io.write_string(Stream, " """, !IO),
         can_print_without_quoting(FileName, CanPrint, !IO),
         (
             CanPrint = yes,
-            io.write_string(Stream, FileName, !IO)
+            io.format(Stream, "#line %d ""%s""\n",
+                [i(LineNumber + 1), s(FileName)], !IO)
         ;
             CanPrint = no,
-            output_to_be_quoted_string_c(Stream, FileName, !IO)
-        ),
-        io.write_string(Stream, """\n", !IO)
+            io.format(Stream, "#line %d %s\n",
+                [i(LineNumber + 1), s(quote_string_c(FileName))], !IO)
+        )
     else
         true
     ).
@@ -497,49 +483,31 @@ prepare_to_quote_string_c(String) = QuotedString :-
 %---------------------%
 
 output_quoted_string_c(Stream, Str, !IO) :-
-    io.write_char(Stream, '"', !IO),
-    output_to_be_quoted_string_c(Stream, Str, !IO),
-    io.write_char(Stream, '"', !IO).
-
-output_quoted_string_java(Stream, Str, !IO) :-
-    io.write_char(Stream, '"', !IO),
-    output_to_be_quoted_string_java(Stream, Str, !IO),
-    io.write_char(Stream, '"', !IO).
-
-output_quoted_string_csharp(Stream, Str, !IO) :-
-    io.write_char(Stream, '"', !IO),
-    output_to_be_quoted_string_csharp(Stream, Str, !IO),
-    io.write_char(Stream, '"', !IO).
-
-%---------------------%
-
-output_to_be_quoted_string_c(Stream, Str, !IO) :-
-    % output_to_be_quoted_string_c should just call quote_string_c,
-    % and write out what it returns. It should leave the processing required
-    % for MSVC to a separate predicate, since what we do now does not
-    % make sense on its own. (When breaking up <"abcd"> into <"ab", "cd">,
-    % we print the two inner quotes, but leave printing the two outer quotes
-    % to the caller.)
-    %
     % Avoid a limitation in the MSVC compiler, which requires
     % string literals to be no longer than 2048 chars. However,
     % it will accept a string longer than 2048 chars if we output
     % the string in chunks, as in e.g. "part a" "part b". Go figure!
     % XXX How does "limit is 2048" translate to "get me 160 codepoints"?
-    string.split_by_codepoint(Str, 160, Left, Right),
-    output_to_be_quoted_string_loop_c(Stream, Left, 0, !IO),
-    ( if Right = "" then
+    string.split_by_codepoint(Str, 160, LeftSubStr, RightSubStr),
+    io.write_char(Stream, '"', !IO),
+    output_to_be_quoted_string_loop_c(Stream, LeftSubStr, 0, !IO),
+    io.write_char(Stream, '"', !IO),
+    ( if RightSubStr = "" then
         true
     else
-        io.write_string(Stream, "\" \"", !IO),
-        output_to_be_quoted_string_c(Stream, Right, !IO)
+        io.write_string(Stream, " ", !IO),
+        output_quoted_string_c(Stream, RightSubStr, !IO)
     ).
 
-output_to_be_quoted_string_java(Stream, Str, !IO) :-
-    output_to_be_quoted_string_loop_java(Stream, Str, 0, !IO).
+output_quoted_string_java(Stream, Str, !IO) :-
+    io.write_char(Stream, '"', !IO),
+    output_to_be_quoted_string_loop_java(Stream, Str, 0, !IO),
+    io.write_char(Stream, '"', !IO).
 
-output_to_be_quoted_string_csharp(Stream, Str, !IO) :-
-    output_to_be_quoted_string_loop_csharp(Stream, Str, 0, !IO).
+output_quoted_string_csharp(Stream, Str, !IO) :-
+    io.write_char(Stream, '"', !IO),
+    output_to_be_quoted_string_loop_csharp(Stream, Str, 0, !IO),
+    io.write_char(Stream, '"', !IO).
 
 %---------------------%
 
@@ -600,7 +568,7 @@ output_quoted_multi_string_csharp(Stream, Strs, !IO) :-
 
 output_to_be_quoted_multi_string_c(_Stream, [], !IO).
 output_to_be_quoted_multi_string_c(Stream, [Str | Strs], !IO) :-
-    output_to_be_quoted_string_c(Stream, Str, !IO),
+    output_to_be_quoted_string_loop_c(Stream, Str, 0, !IO),
     output_to_be_quoted_char_c(Stream, char.det_from_int(0), !IO),
     output_to_be_quoted_multi_string_c(Stream, Strs, !IO).
 
@@ -609,7 +577,7 @@ output_to_be_quoted_multi_string_c(Stream, [Str | Strs], !IO) :-
 
 output_to_be_quoted_multi_string_java(_Stream, [], !IO).
 output_to_be_quoted_multi_string_java(Stream, [Str | Strs], !IO) :-
-    output_to_be_quoted_string_java(Stream, Str, !IO),
+    output_to_be_quoted_string_loop_java(Stream, Str, 0, !IO),
     output_to_be_quoted_char_java(Stream, char.det_from_int(0), !IO),
     output_to_be_quoted_multi_string_java(Stream, Strs, !IO).
 
@@ -618,7 +586,7 @@ output_to_be_quoted_multi_string_java(Stream, [Str | Strs], !IO) :-
 
 output_to_be_quoted_multi_string_csharp(_Stream, [], !IO).
 output_to_be_quoted_multi_string_csharp(Stream, [Str | Strs], !IO) :-
-    output_to_be_quoted_string_csharp(Stream, Str, !IO),
+    output_to_be_quoted_string_loop_csharp(Stream, Str, 0, !IO),
     output_to_be_quoted_char_csharp(Stream, char.det_from_int(0), !IO),
     output_to_be_quoted_multi_string_csharp(Stream, Strs, !IO).
 
