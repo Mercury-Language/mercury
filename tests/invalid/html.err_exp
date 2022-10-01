@@ -1,6 +1,6 @@
 html.m:053: In clause for `init_body_elem =
 html.m:053:   out(html.non_empty_list((html.top_body_elem)))':
-html.m:053:   mode error: argument 1 had the wrong instantiatedness.
+html.m:053:   mode error: the function result had the wrong instantiatedness.
 html.m:053:   Final instantiatedness of `HeadVar__1' was `unique',
 html.m:053:   expected final instantiatedness was
 html.m:053:     named inst non_empty_list(top_body_elem)

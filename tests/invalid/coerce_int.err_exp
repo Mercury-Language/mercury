@@ -1,6 +1,7 @@
 coerce_int.m:026: In clause for `bad(in(coerce_int.wrap(bound(1 ; 2)))) =
 coerce_int.m:026:   out(coerce_int.wrap(bound(1 ; 3)))':
-coerce_int.m:026:   mode error: argument 2 had the wrong instantiatedness.
+coerce_int.m:026:   mode error: the function result had the wrong
+coerce_int.m:026:   instantiatedness.
 coerce_int.m:026:   Final instantiatedness of `HeadVar__2' was
 coerce_int.m:026:   `bound(wrap(bound(1 ; 2)))',
 coerce_int.m:026:   expected final instantiatedness was

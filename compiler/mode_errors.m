@@ -1623,7 +1623,16 @@ mode_error_unexpected_final_inst_to_spec(ModeInfo, RawArgNum, Var,
     pred_info_get_polymorphism_added_args(PredInfo, NumPolyAddedArgs),
     ArgNum = RawArgNum - NumPolyAddedArgs,
     ( if ArgNum >= 1 then
-        ArgNumPieces = [words("argument"), int_fixed(ArgNum)]
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        pred_form_arity(PredFormArityInt) = pred_info_pred_form_arity(PredInfo),
+        ( if
+            PredOrFunc = pf_function,
+            ArgNum = PredFormArityInt
+        then
+            ArgNumPieces = [words("the function result")]
+        else
+            ArgNumPieces = [words("argument"), int_fixed(ArgNum)]
+        )
     else
         % This should not happen. All code that passes around
         % compiler-generated arguments is of course also compiler generated,

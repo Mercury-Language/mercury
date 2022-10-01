@@ -1,14 +1,28 @@
-mode_error_arg_number.m:034: In clause for
-mode_error_arg_number.m:034:   `split_into_fragments((pred(in((list.non_empty_list)),
-mode_error_arg_number.m:034:   out((list.non_empty_list)), out) is det),
-mode_error_arg_number.m:034:   in((list.non_empty_list)), in,
-mode_error_arg_number.m:034:   out((list.non_empty_list)))':
-mode_error_arg_number.m:034:   mode error: argument 4 did not get sufficiently
-mode_error_arg_number.m:034:   instantiated.
-mode_error_arg_number.m:034:   Final instantiatedness of `Frags' was `ground',
-mode_error_arg_number.m:034:   expected final instantiatedness was
-mode_error_arg_number.m:034:     named inst list.non_empty_list
-mode_error_arg_number.m:034:     which expands to
-mode_error_arg_number.m:034:       bound(
-mode_error_arg_number.m:034:         '[|]'(ground, ground)
-mode_error_arg_number.m:034:       ).
+mode_error_arg_number.m:040: In clause for
+mode_error_arg_number.m:040:   `split_into_fragments((pred(in((list.non_empty_list)),
+mode_error_arg_number.m:040:   out((list.non_empty_list)), out) is det),
+mode_error_arg_number.m:040:   in((list.non_empty_list)), in,
+mode_error_arg_number.m:040:   out((list.non_empty_list)))':
+mode_error_arg_number.m:040:   mode error: argument 4 did not get sufficiently
+mode_error_arg_number.m:040:   instantiated.
+mode_error_arg_number.m:040:   Final instantiatedness of `Frags' was `ground',
+mode_error_arg_number.m:040:   expected final instantiatedness was
+mode_error_arg_number.m:040:     named inst list.non_empty_list
+mode_error_arg_number.m:040:     which expands to
+mode_error_arg_number.m:040:       bound(
+mode_error_arg_number.m:040:         '[|]'(ground, ground)
+mode_error_arg_number.m:040:       ).
+mode_error_arg_number.m:053: In clause for
+mode_error_arg_number.m:053:   `split_into_fragments_func((pred(in((list.non_empty_list)),
+mode_error_arg_number.m:053:   out((list.non_empty_list)), out) is det),
+mode_error_arg_number.m:053:   in((list.non_empty_list)), in) =
+mode_error_arg_number.m:053:   out((list.non_empty_list))':
+mode_error_arg_number.m:053:   mode error: the function result did not get
+mode_error_arg_number.m:053:   sufficiently instantiated.
+mode_error_arg_number.m:053:   Final instantiatedness of `Frags' was `ground',
+mode_error_arg_number.m:053:   expected final instantiatedness was
+mode_error_arg_number.m:053:     named inst list.non_empty_list
+mode_error_arg_number.m:053:     which expands to
+mode_error_arg_number.m:053:       bound(
+mode_error_arg_number.m:053:         '[|]'(ground, ground)
+mode_error_arg_number.m:053:       ).

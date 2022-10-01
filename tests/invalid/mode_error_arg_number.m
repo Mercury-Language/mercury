@@ -15,6 +15,12 @@
     list(P)::in(non_empty_list),
     list(list(P))::in, list(list(P))::out(non_empty_list)) is det.
 
+:- func split_into_fragments_func(
+    pred(list(P), list(P), list(P))::
+         pred(in(non_empty_list), out(non_empty_list), out) is det,
+    list(P)::in(non_empty_list),
+    list(list(P))::in) = (list(list(P))::out(non_empty_list)) is det.
+
 :- implementation.
 
 split_into_fragments(Pred, Paras @ [_ | _], Akku, Frags) :-
@@ -32,6 +38,19 @@ split_into_fragments(Pred, Paras @ [_ | _], Akku, Frags) :-
         % include the type_info argument for P added by polymorphism, when
         % it should have been counting only the user-visible arguments.
         split_into_fragments(Pred, Rest, Akku1, Frags)
+    ).
+
+split_into_fragments_func(Pred, Paras @ [_ | _], Akku) = Frags :-
+    Pred(Paras, Frag, Rest),
+    append(Akku, [Frag], Akku1),
+    (
+        Rest = [],
+        Frags = Akku1
+    ;
+        Rest = [_ | _],
+        % Test whether, when we report the mode error, the compiler
+        % refers to "argument 4" or "function result".
+        Frags = split_into_fragments_func(Pred, Rest, Akku1)
     ).
 
 :- pred append1(list(T), list(T), list(T)).
