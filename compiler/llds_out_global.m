@@ -88,11 +88,9 @@ complexity_arg_info_array_name(ProcNum) =
 output_complexity_arg_info_arrays(_, [], !IO).
 output_complexity_arg_info_arrays(Stream, [Info | Infos], !IO) :-
     Info = complexity_proc_info(ProcNum, _, Args),
-    io.write_string(Stream, "\nMR_ComplexityArgInfo ", !IO),
-    io.write_string(Stream, complexity_arg_info_array_name(ProcNum), !IO),
-    io.write_string(Stream, "[", !IO),
-    io.write_int(Stream, list.length(Args), !IO),
-    io.write_string(Stream, "] = {\n", !IO),
+    ArrayName = complexity_arg_info_array_name(ProcNum),
+    io.format(Stream, "\nMR_ComplexityArgInfo %s[%d] = {\n",
+        [s(ArrayName), i(list.length(Args))], !IO),
     output_complexity_arg_info_array(Stream, Args, !IO),
     io.write_string(Stream, "};\n", !IO),
     output_complexity_arg_info_arrays(Stream, Infos, !IO).
@@ -125,18 +123,13 @@ output_complexity_arg_info_array(Stream, [Arg | Args], !IO) :-
 output_init_complexity_proc_list(_, [], !IO).
 output_init_complexity_proc_list(Stream, [Info | Infos], !IO) :-
     Info = complexity_proc_info(ProcNum, FullProcName, ArgInfos),
+    ArrayName = complexity_arg_info_array_name(ProcNum),
     list.filter(complexity_arg_is_profiled, ArgInfos, ProfiledArgInfos),
-    io.write_string(Stream, "\tMR_init_complexity_proc(", !IO),
-    io.write_int(Stream, ProcNum, !IO),
-    io.write_string(Stream, ", ", !IO),
+    io.format(Stream, "\tMR_init_complexity_proc(%d, ", [i(ProcNum)], !IO),
     output_quoted_string_c(Stream, FullProcName, !IO),
-    io.write_string(Stream, ", ", !IO),
-    io.write_int(Stream, list.length(ProfiledArgInfos), !IO),
-    io.write_string(Stream, ", ", !IO),
-    io.write_int(Stream, list.length(ArgInfos), !IO),
-    io.write_string(Stream, ", ", !IO),
-    io.write_string(Stream, complexity_arg_info_array_name(ProcNum), !IO),
-    io.write_string(Stream, ");\n", !IO),
+    io.format(Stream, ", %d, %d, %s);\n",
+        [i(list.length(ProfiledArgInfos)), i(list.length(ArgInfos)),
+        s(ArrayName)], !IO),
     output_init_complexity_proc_list(Stream, Infos, !IO).
 
 :- pred complexity_arg_is_profiled(complexity_arg_info::in) is semidet.
@@ -338,11 +331,7 @@ output_table_steps(Stream, [StepDesc | StepDescs], !IO) :-
     ),
     io.write_string(Stream, "{ ", !IO),
     output_quoted_string_c(Stream, VarName, !IO),
-    io.write_string(Stream, ", ", !IO),
-    io.write_string(Stream, StepType, !IO),
-    io.write_string(Stream, ", ", !IO),
-    io.write_int(Stream, EnumRange, !IO),
-    io.write_string(Stream, " },\n", !IO),
+    io.format(Stream, ", %s, %d },\n", [s(StepType), i(EnumRange)], !IO),
     output_table_steps(Stream, StepDescs, !IO).
 
 :- pred output_table_tips(llds_out_info::in, io.text_output_stream::in,
@@ -413,9 +402,7 @@ output_common_cell_type_name(Stream, type_num(TypeNum), !IO) :-
 
 output_common_type_defn(Stream, TypeNum, CellType, !DeclSet, !IO) :-
     TypeDeclId = decl_common_type(TypeNum),
-    ( if decl_set_is_member(TypeDeclId, !.DeclSet) then
-        true
-    else
+    ( if decl_set_insert_new(TypeDeclId, !DeclSet) then
         output_pragma_pack_push(Stream, !IO),
         io.write_string(Stream, "struct ", !IO),
         output_common_cell_type_name(Stream, TypeNum, !IO),
@@ -428,8 +415,9 @@ output_common_type_defn(Stream, TypeNum, CellType, !DeclSet, !IO) :-
             output_cons_arg_group_types(Stream, ArgGroups, "\t", 1, !IO)
         ),
         io.write_string(Stream, "};\n", !IO),
-        output_pragma_pack_pop(Stream, !IO),
-        decl_set_insert(TypeDeclId, !DeclSet)
+        output_pragma_pack_pop(Stream, !IO)
+    else
+        true
     ).
 
 output_scalar_common_data_decl(Stream, ScalarCommonDataArray, !DeclSet, !IO) :-
@@ -541,16 +529,10 @@ output_cons_arg_group_types(Stream, [Group | Groups], Indent, ArgNum, !IO) :-
     Group = Type - ArraySize,
     ( if ArraySize = 1 then
         output_llds_type(Stream, Type, !IO),
-        io.write_string(Stream, " f", !IO),
-        io.write_int(Stream, ArgNum, !IO),
-        io.write_string(Stream, ";\n", !IO)
+        io.format(Stream, " f%d;\n", [i(ArgNum)], !IO)
     else
         output_llds_type(Stream, Type, !IO),
-        io.write_string(Stream, " f", !IO),
-        io.write_int(Stream, ArgNum, !IO),
-        io.write_string(Stream, "[", !IO),
-        io.write_int(Stream, ArraySize, !IO),
-        io.write_string(Stream, "];\n", !IO)
+        io.format(Stream, " f%d[%d];\n", [i(ArgNum), i(ArraySize)], !IO)
     ),
     output_cons_arg_group_types(Stream, Groups, Indent, ArgNum + 1, !IO).
 

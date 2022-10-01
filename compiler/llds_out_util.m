@@ -103,13 +103,25 @@
 :- type decl_set.
 
     % Every time we emit a declaration for a symbol, we insert it into the
-    % set of symbols we've already declared. That way, we avoid generating
+    % set of symbols we have already declared. That way, we avoid generating
     % the same symbol twice, which would cause an error in the C code.
 
 :- pred decl_set_init(decl_set::out) is det.
 
 :- pred decl_set_insert(decl_id::in, decl_set::in, decl_set::out) is det.
 
+    % If the given decl_id is not in the initial decl_id, insert it,
+    % and succeed. If the given decl_id is already in the initial decl_set,
+    % fail.
+    %
+:- pred decl_set_insert_new(decl_id::in, decl_set::in, decl_set::out)
+    is semidet.
+
+    % Succeed iff the given decl_id is in the decl_set.
+    %
+    % If you intend to add decl_id to the decl_set if this test fails,
+    % then please consider using decl_set_insert_new instead.
+    %
 :- pred decl_set_is_member(decl_id::in, decl_set::in) is semidet.
 
 %----------------------------------------------------------------------------%
@@ -196,6 +208,9 @@ decl_set_init(DeclSet) :-
 
 decl_set_insert(DeclId, DeclSet0, DeclSet) :-
     set_tree234.insert(DeclId, DeclSet0, DeclSet).
+
+decl_set_insert_new(DeclId, DeclSet0, DeclSet) :-
+    set_tree234.insert_new(DeclId, DeclSet0, DeclSet).
 
 decl_set_is_member(DeclId, DeclSet) :-
     set_tree234.contains(DeclSet, DeclId).

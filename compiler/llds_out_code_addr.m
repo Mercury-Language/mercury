@@ -105,10 +105,7 @@ output_record_code_addr_decls(Info, Stream, CodeAddress, !DeclSet, !IO) :-
 
 output_record_code_addr_decls_format(Info, Stream, CodeAddress,
         FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
-    ( if decl_set_is_member(decl_code_addr(CodeAddress), !.DeclSet) then
-        true
-    else
-        decl_set_insert(decl_code_addr(CodeAddress), !DeclSet),
+    ( if decl_set_insert_new(decl_code_addr(CodeAddress), !DeclSet) then
         need_code_addr_decls(Info, CodeAddress, NeedDecl),
         (
             NeedDecl = yes,
@@ -118,6 +115,8 @@ output_record_code_addr_decls_format(Info, Stream, CodeAddress,
         ;
             NeedDecl = no
         )
+    else
+        true
     ).
 
 :- pred need_code_addr_decls(llds_out_info::in, code_addr::in, bool::out)
@@ -211,16 +210,14 @@ output_code_addr_decls(Info, Stream, CodeAddr, !IO) :-
             "MR_declare_entry(MR_do_trace_redo_fail_deep);\n", !IO)
     ;
         CodeAddr = do_call_closure(Variant),
-        io.write_string(Stream,
-            "MR_declare_entry(mercury__do_call_closure_", !IO),
-        io.write_string(Stream, ho_call_variant_to_string(Variant), !IO),
-        io.write_string(Stream, ");\n", !IO)
+        io.format(Stream,
+            "MR_declare_entry(mercury__do_call_closure_%s);\n",
+            [s(ho_call_variant_to_string(Variant))], !IO)
     ;
         CodeAddr = do_call_class_method(Variant),
-        io.write_string(Stream,
-            "MR_declare_entry(mercury__do_call_class_method_", !IO),
-        io.write_string(Stream, ho_call_variant_to_string(Variant), !IO),
-        io.write_string(Stream, ");\n", !IO)
+        io.format(Stream,
+            "MR_declare_entry(mercury__do_call_class_method_%s);\n",
+            [s(ho_call_variant_to_string(Variant))], !IO)
     ;
         CodeAddr = do_not_reached,
         io.write_string(Stream, "MR_declare_entry(MR_do_not_reached);\n", !IO)

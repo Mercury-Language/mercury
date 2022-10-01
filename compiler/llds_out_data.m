@@ -275,9 +275,7 @@ output_lval(Info, Stream, Lval, !IO) :-
         else
             true
         ),
-        io.write_string(Stream, "MR_sv(", !IO),
-        io.write_int(Stream, N, !IO),
-        io.write_string(Stream, ")", !IO)
+        io.format(Stream, "MR_sv(%d)", [i(N)], !IO)
     ;
         Lval = parent_stackvar(N),
         ( if N =< 0 then
@@ -285,9 +283,7 @@ output_lval(Info, Stream, Lval, !IO) :-
         else
             true
         ),
-        io.write_string(Stream, "MR_parent_sv(", !IO),
-        io.write_int(Stream, N, !IO),
-        io.write_string(Stream, ")", !IO)
+        io.format(Stream, "MR_parent_sv(%d)", [i(N)], !IO)
     ;
         Lval = framevar(N),
         ( if N =< 0 then
@@ -295,9 +291,7 @@ output_lval(Info, Stream, Lval, !IO) :-
         else
             true
         ),
-        io.write_string(Stream, "MR_fv(", !IO),
-        io.write_int(Stream, N, !IO),
-        io.write_string(Stream, ")", !IO)
+        io.format(Stream, "MR_fv(%d)", [i(N)], !IO)
     ;
         Lval = double_stackvar(StackType, SlotNum),
         io.write_string(Stream, "MR_float_from_dword_ptr(", !IO),
@@ -349,10 +343,8 @@ output_lval(Info, Stream, Lval, !IO) :-
     ;
         Lval = field(MaybePtag, Rval, FieldNumRval),
         (
-            MaybePtag = yes(Ptag),
-            io.write_string(Stream, "MR_tfield(", !IO),
-            write_ptag(Stream, Ptag, !IO),
-            io.write_string(Stream, ", ", !IO)
+            MaybePtag = yes(ptag(PtagUInt8)),
+            io.format(Stream, "MR_tfield(%u, ", [u8(PtagUInt8)], !IO)
         ;
             MaybePtag = no,
             io.write_string(Stream, "MR_mask_field(", !IO)
@@ -409,9 +401,7 @@ output_lval_for_assign(Info, Stream, Lval, Type, !IO) :-
         else
             true
         ),
-        io.write_string(Stream, "MR_sv(", !IO),
-        io.write_int(Stream, N, !IO),
-        io.write_string(Stream, ")", !IO)
+        io.format(Stream, "MR_sv(%d)", [i(N)], !IO)
     ;
         Lval = parent_stackvar(N),
         Type = lt_word,
@@ -420,9 +410,7 @@ output_lval_for_assign(Info, Stream, Lval, Type, !IO) :-
         else
             true
         ),
-        io.write_string(Stream, "MR_parent_sv(", !IO),
-        io.write_int(Stream, N, !IO),
-        io.write_string(Stream, ")", !IO)
+        io.format(Stream, "MR_parent_sv(%d)", [i(N)], !IO)
     ;
         Lval = framevar(N),
         Type = lt_word,
@@ -431,9 +419,7 @@ output_lval_for_assign(Info, Stream, Lval, Type, !IO) :-
         else
             true
         ),
-        io.write_string(Stream, "MR_fv(", !IO),
-        io.write_int(Stream, N, !IO),
-        io.write_string(Stream, ")", !IO)
+        io.format(Stream, "MR_fv(%d)", [i(N)], !IO)
     ;
         Lval = double_stackvar(StackType, SlotNum),
         Type = lt_float,
@@ -497,10 +483,8 @@ output_lval_for_assign(Info, Stream, Lval, Type, !IO) :-
         Lval = field(MaybePtag, Rval, FieldNumRval),
         Type = lt_word,
         (
-            MaybePtag = yes(Ptag),
-            io.write_string(Stream, "MR_tfield(", !IO),
-            write_ptag(Stream, Ptag, !IO),
-            io.write_string(Stream, ", ", !IO)
+            MaybePtag = yes(ptag(PtagUInt8)),
+            io.format(Stream, "MR_tfield(%u, ", [u8(PtagUInt8)], !IO)
         ;
             MaybePtag = no,
             io.write_string(Stream, "MR_mask_field(", !IO)
@@ -746,29 +730,23 @@ output_record_rval_decls_format(Info, Stream, Rval, FirstIndent, LaterIndent,
         ;
             Const = llconst_float(FloatVal),
             % If floats are boxed, but are allocated statically, then for each
-            % float constant which we might want to box we declare a static
+            % float constant which we might want to box, we declare a static
             % const variable holding that constant.
-
             UnboxedFloat = Info ^ lout_unboxed_float,
             StaticGroundFloats = Info ^ lout_static_ground_floats,
             ( if
                 UnboxedFloat = no,
-                StaticGroundFloats = use_static_ground_floats
-            then
+                StaticGroundFloats = use_static_ground_floats,
                 float_literal_name(FloatVal, FloatName),
                 FloatLabel = decl_float_label(FloatName),
-                ( if decl_set_is_member(FloatLabel, !.DeclSet) then
-                    true
-                else
-                    decl_set_insert(FloatLabel, !DeclSet),
-                    FloatString = c_util.make_float_literal(FloatVal),
-                    output_indent(Stream, FirstIndent, LaterIndent, !.N, !IO),
-                    !:N = !.N + 1,
-                    io.format(Stream,
-                        "static const MR_Float " ++
-                        "mercury_float_const_%s = %s;\n",
-                        [s(FloatName), s(FloatString)], !IO)
-                )
+                decl_set_insert_new(FloatLabel, !DeclSet)
+            then
+                FloatValStr = c_util.make_float_literal(FloatVal),
+                output_indent(Stream, FirstIndent, LaterIndent, !.N, !IO),
+                !:N = !.N + 1,
+                io.format(Stream,
+                    "static const MR_Float mercury_float_const_%s = %s;\n",
+                    [s(FloatName), s(FloatValStr)], !IO)
             else
                 true
             )
@@ -778,22 +756,17 @@ output_record_rval_decls_format(Info, Stream, Rval, FirstIndent, LaterIndent,
             StaticGroundInt64s = Info ^ lout_static_ground_int64s,
             ( if
                 UnboxedInt64s = no,
-                StaticGroundInt64s = use_static_ground_int64s
-            then
+                StaticGroundInt64s = use_static_ground_int64s,
                 Int64Label = decl_int64_label(Int64Val),
-                ( if decl_set_is_member(Int64Label, !.DeclSet) then
-                    true
-                else
-                    decl_set_insert(Int64Label, !DeclSet),
-                    int64_literal_name(Int64Val, Int64Name),
-                    Int64String = c_util.make_int64_literal(Int64Val),
-                    output_indent(Stream, FirstIndent, LaterIndent, !.N, !IO),
-                    !:N = !.N + 1,
-                    io.format(Stream,
-                        "static const int64_t " ++
-                        "mercury_int64_const_%s = %s;\n",
-                        [s(Int64Name), s(Int64String)], !IO)
-                )
+                decl_set_insert_new(Int64Label, !DeclSet)
+            then
+                int64_literal_name(Int64Val, Int64Name),
+                Int64ValStr = c_util.make_int64_literal(Int64Val),
+                output_indent(Stream, FirstIndent, LaterIndent, !.N, !IO),
+                !:N = !.N + 1,
+                io.format(Stream,
+                    "static const int64_t mercury_int64_const_%s = %s;\n",
+                    [s(Int64Name), s(Int64ValStr)], !IO)
             else
                 true
             )
@@ -803,22 +776,18 @@ output_record_rval_decls_format(Info, Stream, Rval, FirstIndent, LaterIndent,
             StaticGroundInt64s = Info ^ lout_static_ground_int64s,
             ( if
                 UnboxedInt64s = no,
-                StaticGroundInt64s = use_static_ground_int64s
-            then
+                StaticGroundInt64s = use_static_ground_int64s,
                 UInt64Label = decl_uint64_label(UInt64Val),
-                ( if decl_set_is_member(UInt64Label, !.DeclSet) then
-                    true
-                else
-                    decl_set_insert(UInt64Label, !DeclSet),
-                    uint64_literal_name(UInt64Val, UInt64Name),
-                    UInt64String = c_util.make_uint64_literal(UInt64Val),
-                    output_indent(Stream, FirstIndent, LaterIndent, !.N, !IO),
-                    !:N = !.N + 1,
-                    io.format(Stream,
-                        "static const uint64_t " ++
-                        "mercury_uint64_const_%s = %s;\n",
-                        [s(UInt64Name), s(UInt64String)], !IO)
-                )
+                decl_set_insert_new(UInt64Label, !DeclSet)
+            then
+                decl_set_insert(UInt64Label, !DeclSet),
+                uint64_literal_name(UInt64Val, UInt64Name),
+                UInt64ValStr = c_util.make_uint64_literal(UInt64Val),
+                output_indent(Stream, FirstIndent, LaterIndent, !.N, !IO),
+                !:N = !.N + 1,
+                io.format(Stream,
+                    "static const uint64_t mercury_uint64_const_%s = %s;\n",
+                    [s(UInt64Name), s(UInt64ValStr)], !IO)
             else
                 true
             )
@@ -866,32 +835,28 @@ output_record_rval_decls_format(Info, Stream, Rval, FirstIndent, LaterIndent,
             ( if
                 UnboxFloat = no,
                 StaticGroundFloats = use_static_ground_floats,
-                float_const_binop_expr_name(Op, SubRvalA, SubRvalB, FloatName)
-            then
+                float_const_binop_expr_name(Op, SubRvalA, SubRvalB, FloatName),
                 FloatLabel = decl_float_label(FloatName),
-                ( if decl_set_is_member(FloatLabel, !.DeclSet) then
-                    true
-                else
-                    decl_set_insert(FloatLabel, !DeclSet),
-                    output_indent(Stream, FirstIndent, LaterIndent, !.N, !IO),
-                    !:N = !.N + 1,
-                    io.write_string(Stream, "static const ", !IO),
-                    output_llds_type(Stream, lt_float, !IO),
-                    io.write_string(Stream, " mercury_float_const_", !IO),
-                    io.write_string(Stream, FloatName, !IO),
-                    io.write_string(Stream, " = ", !IO),
-                    % Note that we just output the expression here, and
-                    % let the C compiler evaluate it, rather than evaluating
-                    % it ourselves. This avoids having to deal with some nasty
-                    % issues regarding floating point accuracy when doing
-                    % cross-compilation.
-                    output_rval_as_type(Info, SubRvalA, lt_float, Stream, !IO),
-                    io.write_string(Stream, " ", !IO),
-                    io.write_string(Stream, OpStr, !IO),
-                    io.write_string(Stream, " ", !IO),
-                    output_rval_as_type(Info, SubRvalB, lt_float, Stream, !IO),
-                    io.write_string(Stream, ";\n", !IO)
-                )
+                decl_set_insert_new(FloatLabel, !DeclSet)
+            then
+                output_indent(Stream, FirstIndent, LaterIndent, !.N, !IO),
+                !:N = !.N + 1,
+                io.write_string(Stream, "static const ", !IO),
+                output_llds_type(Stream, lt_float, !IO),
+                io.write_string(Stream, " mercury_float_const_", !IO),
+                io.write_string(Stream, FloatName, !IO),
+                io.write_string(Stream, " = ", !IO),
+                % Note that we just output the expression here, and
+                % let the C compiler evaluate it, rather than evaluating
+                % it ourselves. This avoids having to deal with some nasty
+                % issues regarding floating point accuracy when doing
+                % cross-compilation.
+                output_rval_as_type(Info, SubRvalA, lt_float, Stream, !IO),
+                io.write_string(Stream, " ", !IO),
+                io.write_string(Stream, OpStr, !IO),
+                io.write_string(Stream, " ", !IO),
+                output_rval_as_type(Info, SubRvalB, lt_float, Stream, !IO),
+                io.write_string(Stream, ";\n", !IO)
             else
                 true
             )
@@ -1332,38 +1297,26 @@ output_rval(Info, Rval, Stream, !IO) :-
             )
         )
     ;
-        Rval = mkword(Ptag, SubRval),
+        Rval = mkword(ptag(PtagUInt8), SubRval),
         ( if
             SubRval = const(llconst_data_addr(DataId, no)),
             DataId = scalar_common_data_id(type_num(TypeNum), CellNum)
         then
-            io.write_string(Stream, "MR_TAG_COMMON(", !IO),
-            write_ptag(Stream, Ptag, !IO),
-            io.write_string(Stream, ",", !IO),
-            io.write_int(Stream, TypeNum, !IO),
-            io.write_string(Stream, ",", !IO),
-            io.write_int(Stream, CellNum, !IO),
-            io.write_string(Stream, ")", !IO)
+            io.format(Stream, "MR_TAG_COMMON(%u, %d, %d)",
+                [u8(PtagUInt8), i(TypeNum), i(CellNum)], !IO)
         else if
             SubRval = unop(mkbody, const(llconst_int(Body)))
         then
-            io.write_string(Stream, "MR_tbmkword(", !IO),
-            write_ptag(Stream, Ptag, !IO),
-            io.write_string(Stream, ", ", !IO),
-            io.write_int(Stream, Body, !IO),
-            io.write_string(Stream, ")", !IO)
+            io.format(Stream, "MR_tbmkword(%u, %d)",
+                [u8(PtagUInt8), i(Body)], !IO)
         else
-            io.write_string(Stream, "MR_tmkword(", !IO),
-            write_ptag(Stream, Ptag, !IO),
-            io.write_string(Stream, ", ", !IO),
+            io.format(Stream, "MR_tmkword(%u, ", [u8(PtagUInt8)], !IO),
             output_rval_as_type(Info, SubRval, lt_data_ptr, Stream, !IO),
             io.write_string(Stream, ")", !IO)
         )
     ;
-        Rval = mkword_hole(Ptag),
-        io.write_string(Stream, "MR_tmkword(", !IO),
-        write_ptag(Stream, Ptag, !IO),
-        io.write_string(Stream, ", 0)", !IO)
+        Rval = mkword_hole(ptag(PtagUInt8)),
+        io.format(Stream, "MR_tmkword(%u, 0)", [u8(PtagUInt8)], !IO)
     ;
         Rval = lval(Lval),
         % If a field is used as an rval, then we need to use the
@@ -1371,10 +1324,8 @@ output_rval(Info, Rval, Stream, !IO) :-
         % or its variants, to avoid warnings about discarding const.
         ( if Lval = field(MaybePtag, Rval, FieldNumRval) then
             (
-                MaybePtag = yes(Ptag),
-                io.write_string(Stream, "MR_ctfield(", !IO),
-                write_ptag(Stream, Ptag, !IO),
-                io.write_string(Stream, ", ", !IO)
+                MaybePtag = yes(ptag(PtagUInt8)),
+                io.format(Stream, "MR_ctfield(%u, ", [u8(PtagUInt8)], !IO)
             ;
                 MaybePtag = no,
                 io.write_string(Stream, "MR_const_mask_field(", !IO)
@@ -1421,10 +1372,8 @@ output_rval(Info, Rval, Stream, !IO) :-
         ;
             MemRef = heap_ref(BaseRval, MaybePtag, FieldNumRval),
             (
-                MaybePtag = yes(Ptag),
-                io.write_string(Stream, "&MR_tfield(", !IO),
-                write_ptag(Stream, Ptag, !IO),
-                io.write_string(Stream, ", ", !IO)
+                MaybePtag = yes(ptag(PtagUInt8)),
+                io.format(Stream, "&MR_tfield(%u, ", [u8(PtagUInt8)], !IO)
             ;
                 MaybePtag = no,
                 io.write_string(Stream, "&MR_mask_field(", !IO)
@@ -1529,11 +1478,8 @@ output_rval_const(Info, Const, Stream, !IO) :-
             ( if
                 DataId = scalar_common_data_id(type_num(TypeNum), CellNum)
             then
-                io.write_string(Stream, "MR_COMMON(", !IO),
-                io.write_int(Stream, TypeNum, !IO),
-                io.write_string(Stream, ",", !IO),
-                io.write_int(Stream, CellNum, !IO),
-                io.write_string(Stream, ")", !IO)
+                io.format(Stream, "MR_COMMON(%d, %d)",
+                    [i(TypeNum), i(CellNum)], !IO)
             else if
                 DataId = rtti_data_id(RttiId),
                 rtti_id_emits_type_ctor_info(RttiId, Ctor),
@@ -2082,14 +2028,11 @@ is_local_stag_test(Test, Rval, Ptag, Stag, Negated) :-
         Negated = yes
     ).
 
-output_ptag(Stream, Ptag, !IO) :-
-    io.write_string(Stream, "MR_mktag(", !IO),
-    write_ptag(Stream, Ptag, !IO),
-    io.write_string(Stream, ")", !IO).
+output_ptag(Stream, ptag(PtagUInt8), !IO) :-
+    io.format(Stream, "MR_mktag(%u)", [u8(PtagUInt8)], !IO).
 
-write_ptag(Stream, Ptag, !IO) :-
-    Ptag = ptag(PtagUint8),
-    io.write_uint8(Stream, PtagUint8, !IO).
+write_ptag(Stream, ptag(PtagUInt8), !IO) :-
+    io.write_uint8(Stream, PtagUInt8, !IO).
 
 direct_field_int_constant(LLDSType) = DirectFieldIntConstant :-
     (
@@ -2231,28 +2174,26 @@ output_record_data_id_decls_format(Info, Stream, DataId,
     ;
         DataId = rtti_data_id(RttiId),
         DeclId = decl_rtti_id(RttiId),
-        ( if decl_set_is_member(DeclId, !.DeclSet) then
-            true
-        else
-            decl_set_insert(DeclId, !DeclSet),
+        ( if decl_set_insert_new(DeclId, !DeclSet) then
             output_indent(Stream, FirstIndent, LaterIndent, !.N, !IO),
             !:N = !.N + 1,
             output_rtti_id_storage_type_name_no_decl(Info, Stream, RttiId,
                 no, !IO),
             io.write_string(Stream, ";\n", !IO)
+        else
+            true
         )
     ;
         DataId = layout_id(LayoutName),
         DeclId = decl_layout_id(LayoutName),
-        ( if decl_set_is_member(DeclId, !.DeclSet) then
-            true
-        else
-            decl_set_insert(DeclId, !DeclSet),
+        ( if decl_set_insert_new(DeclId, !DeclSet) then
             output_indent(Stream, FirstIndent, LaterIndent, !.N, !IO),
             !:N = !.N + 1,
             output_layout_name_storage_type_name(Stream, LayoutName,
                 not_being_defined, !IO),
             io.write_string(Stream, ";\n", !IO)
+        else
+            true
         )
     ).
 
@@ -2297,7 +2238,8 @@ output_common_scalar_cell_array_name(Stream, type_num(TypeNum), !IO) :-
     io.format(Stream, "%s%d",
         [s(mercury_scalar_common_array_prefix), i(TypeNum)], !IO).
 
-output_common_vector_cell_array_name(Stream, type_num(TypeNum), CellNum, !IO) :-
+output_common_vector_cell_array_name(Stream, type_num(TypeNum),
+        CellNum, !IO) :-
     io.format(Stream, "%s%d_%d",
         [s(mercury_vector_common_array_prefix), i(TypeNum), i(CellNum)], !IO).
 

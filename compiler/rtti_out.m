@@ -2036,17 +2036,16 @@ output_rtti_type_decl(Stream, RttiId, !DeclSet, !IO) :-
         Arity > max_always_declared_arity_type_ctor
     then
         DeclId = decl_type_info_like_struct(Arity),
-        ( if decl_set_is_member(DeclId, !.DeclSet) then
-            true
-        else
+        ( if decl_set_insert_new(DeclId, !DeclSet) then
             Template =
 "#ifndef MR_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY_%d_GUARD
 #define MR_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY_%d_GUARD
 MR_DECLARE_ALL_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY(%d);
 #endif
 ",
-            io.format(Stream, Template, [i(Arity), i(Arity), i(Arity)], !IO),
-            decl_set_insert(DeclId, !DeclSet)
+            io.format(Stream, Template, [i(Arity), i(Arity), i(Arity)], !IO)
+        else
+            true
         )
     else if
         RttiId = tc_rtti_id(_, TCRttiName),
@@ -2054,9 +2053,7 @@ MR_DECLARE_ALL_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY(%d);
         Arity > max_always_declared_arity_type_class_constraint
     then
         DeclId = decl_typeclass_constraint_struct(Arity),
-        ( if decl_set_is_member(DeclId, !.DeclSet) then
-            true
-        else
+        ( if decl_set_insert_new(DeclId, !DeclSet) then
             Template =
 "#ifndef MR_TYPECLASS_CONSTRAINT_STRUCT_%d_GUARD
 #define MR_TYPECLASS_CONSTRAINT_STRUCT_%d_GUARD
@@ -2064,8 +2061,9 @@ MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_%d, %d);
 #endif
 ",
             io.format(Stream, Template,
-                [i(Arity), i(Arity), i(Arity), i(Arity)], !IO),
-            decl_set_insert(DeclId, !DeclSet)
+                [i(Arity), i(Arity), i(Arity), i(Arity)], !IO)
+        else
+            true
         )
     else
         true

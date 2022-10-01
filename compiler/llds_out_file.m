@@ -844,8 +844,7 @@ output_annotated_c_module(Info, Stream, AnnotatedModule, !DeclSet, !IO) :-
     io.write_string(Stream, "MR_BEGIN_CODE\n", !IO),
     list.foldl(output_annotated_c_procedure(Info, Stream),
         AnnotatedProcedures, !IO),
-    io.write_string(Stream, "MR_END_MODULE\n", !IO),
-    true.
+    io.write_string(Stream, "MR_END_MODULE\n", !IO).
 
 %----------------------------------------------------------------------------%
 
@@ -857,7 +856,6 @@ output_static_linkage_define(Stream, !IO) :-
     % definitions, for which it cannot determine the size and hence aborts:
     %   static const struct s_name typename[];
     % However if we mark the linkage as extern, it treats it as a declaration.
-
     io.write_string(Stream, "#ifdef _MSC_VER\n", !IO),
     io.write_string(Stream, "#define MR_STATIC_LINKAGE extern\n", !IO),
     io.write_string(Stream, "#else\n", !IO),
@@ -1002,12 +1000,9 @@ output_record_internal_label_decls(Stream, ProcLabel - RevLabelNums,
 
 output_record_internal_label_decl_group(Stream, ProcLabel, LabelNums,
         !DeclSet, !IO) :-
-    io.write_string(Stream, "MR_decl_label", !IO),
-    io.write_int(Stream, list.length(LabelNums), !IO),
-    io.write_string(Stream, "(", !IO),
-    io.write_string(Stream, 
-        proc_label_to_c_string(do_not_add_label_prefix, ProcLabel), !IO),
-    io.write_string(Stream, ", ", !IO),
+    io.format(Stream, "MR_decl_label%d(%s, ",
+        [i(list.length(LabelNums)),
+        s(proc_label_to_c_string(do_not_add_label_prefix, ProcLabel))], !IO),
     write_out_list(add_int, ",", LabelNums, Stream, !IO),
     io.write_string(Stream, ")\n", !IO),
     list.foldl(insert_internal_label_code_addr_decl(ProcLabel), LabelNums,
@@ -1139,12 +1134,9 @@ output_c_internal_label_no_layout_init_group(Stream, ProcLabel - RevLabelNums,
 
 output_c_internal_label_no_layout_init_chunk(Stream, ProcLabel, LabelNums,
         !IO) :-
-    io.write_string(Stream, "\tMR_init_label", !IO),
-    io.write_int(Stream, list.length(LabelNums), !IO),
-    io.write_string(Stream, "(", !IO),
-    io.write_string(Stream, 
-        proc_label_to_c_string(do_not_add_label_prefix, ProcLabel), !IO),
-    io.write_string(Stream, ",", !IO),
+    io.format(Stream, "\tMR_init_label%d(%s, ",
+        [i(list.length(LabelNums)),
+        s(proc_label_to_c_string(do_not_add_label_prefix, ProcLabel))], !IO),
     write_out_list(add_int, ",", LabelNums, Stream, !IO),
     io.write_string(Stream, ")\n", !IO).
 
@@ -1170,16 +1162,11 @@ output_c_internal_label_layout_init_group(Info, Stream, Suffix,
 
 output_c_internal_label_layout_init_chunk(Info, Stream, Suffix, ProcLabel,
         LabelSlotNums, !IO) :-
-    io.write_string(Stream, "\tMR_init_label", !IO),
-    io.write_string(Stream, Suffix, !IO),
-    io.write_int(Stream, list.length(LabelSlotNums), !IO),
-    io.write_string(Stream, "(", !IO),
-    io.write_string(Stream, 
-        proc_label_to_c_string(do_not_add_label_prefix, ProcLabel), !IO),
-    io.write_string(Stream, ", ", !IO),
     ModuleName = Info ^ lout_mangled_module_name,
-    io.write_string(Stream, ModuleName, !IO),
-    io.write_string(Stream, ",\n\t\t", !IO),
+    io.format(Stream, "\tMR_init_label%s%d(%s, %s,\n\t\t",
+        [s(Suffix), i(list.length(LabelSlotNums)),
+        s(proc_label_to_c_string(do_not_add_label_prefix, ProcLabel)),
+        s(ModuleName)], !IO),
     write_out_list(write_int_pair, ", ", LabelSlotNums, Stream, !IO),
     io.write_string(Stream, ")\n", !IO).
 
@@ -1247,12 +1234,11 @@ output_record_c_procedure_decls(Info, Stream, AnnotatedProc, !DeclSet, !IO) :-
 
 output_c_global_var_decl(Stream, VarName, !DeclSet, !IO) :-
     GlobalVar = env_var_ref(VarName),
-    ( if decl_set_is_member(decl_c_global_var(GlobalVar), !.DeclSet) then
-        true
-    else
-        decl_set_insert(decl_c_global_var(GlobalVar), !DeclSet),
+    ( if decl_set_insert_new(decl_c_global_var(GlobalVar), !DeclSet) then
         io.format(Stream, "extern MR_Word %s;\n",
             [s(c_global_var_name(GlobalVar))], !IO)
+    else
+        true
     ).
 
 :- pred output_annotated_c_procedure(llds_out_info::in,

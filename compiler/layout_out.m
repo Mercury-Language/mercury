@@ -1770,24 +1770,22 @@ output_layout_name_decl(Stream, LayoutName, !IO) :-
     io.write_string(Stream, ";\n", !IO).
 
 output_maybe_layout_name_decl(Stream, LayoutName, !DeclSet, !IO) :-
-    ( if decl_set_is_member(decl_layout_id(LayoutName), !.DeclSet) then
-        true
+    ( if decl_set_insert_new(decl_layout_id(LayoutName), !DeclSet) then
+        output_layout_name_decl(Stream, LayoutName, !IO)
     else
-        output_layout_name_decl(Stream, LayoutName, !IO),
-        decl_set_insert(decl_layout_id(LayoutName), !DeclSet)
+        true
     ).
 
 :- pred output_layout_decl(io.text_output_stream::in, layout_name::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_layout_decl(Stream, LayoutName, !DeclSet, !IO) :-
-    ( if decl_set_is_member(decl_layout_id(LayoutName), !.DeclSet) then
-        true
-    else
+    ( if decl_set_insert_new(decl_layout_id(LayoutName), !DeclSet) then
         output_layout_name_storage_type_name(Stream, LayoutName,
             not_being_defined, !IO),
-        io.write_string(Stream, ";\n", !IO),
-        decl_set_insert(decl_layout_id(LayoutName), !DeclSet)
+        io.write_string(Stream, ";\n", !IO)
+    else
+        true
     ).
 
 output_layout_array_name(Stream, UseMacro, ModuleName, ArrayName, !IO) :-
