@@ -2,7 +2,7 @@
 " Language:     Mercury
 " Maintainer:   Sebastian Godelet <sebastian.godelet@outlook.com>
 " Extensions:   *.m *.moo
-" Last Change:  2021-04-15
+" Last Change:  2022-10-02
 
 " for documentation, please use :help mercury-syntax
 
@@ -88,6 +88,7 @@ syn keyword mercuryPragma       check_termination
 syn keyword mercuryPragma       consider_used
 syn keyword mercuryPragma       does_not_terminate
 syn keyword mercuryPragma       fact_table
+syn keyword mercuryPragma       format_call
 syn keyword mercuryPragma       inline
 syn keyword mercuryPragma       loop_check
 syn keyword mercuryPragma       memo
