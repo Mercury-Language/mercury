@@ -114,10 +114,8 @@ mlds_output_lval(Opts, Lval, Stream, !IO) :-
             then
                 io.write_string(Stream, "(", !IO),
                 (
-                    MaybePtag = yes(Ptag),
-                    io.write_string(Stream, "MR_hl_field(", !IO),
-                    mlds_output_ptag(Stream, Ptag, !IO),
-                    io.write_string(Stream, ", ", !IO)
+                    MaybePtag = yes(ptag(PtagUInt8)),
+                    io.format(Stream, "MR_hl_field(%u, ", [u8(PtagUInt8)], !IO)
                 ;
                     MaybePtag = no,
                     io.write_string(Stream, "MR_hl_mask_field(", !IO),
@@ -151,11 +149,10 @@ mlds_output_lval(Opts, Lval, Stream, !IO) :-
             else
                 mlds_output_cast(Opts, Stream, CtorType, !IO),
                 (
-                    MaybePtag = yes(Ptag),
+                    MaybePtag = yes(ptag(PtagUInt8)),
                     io.write_string(Stream, "MR_body(", !IO),
                     mlds_output_rval(Opts, PtrRval, Stream, !IO),
-                    io.write_string(Stream, ", ", !IO),
-                    mlds_output_ptag(Stream, Ptag, !IO)
+                    io.format(Stream, ", %u", [u8(PtagUInt8)], !IO)
                 ;
                     MaybePtag = no,
                     io.write_string(Stream, "MR_strip_tag(", !IO),
@@ -211,10 +208,8 @@ mlds_output_rval(Opts, Rval, Stream, !IO) :-
         %       mlds_output_lval(Lval, !IO)
         %   ).
     ;
-        Rval = ml_mkword(Ptag, BaseRval),
-        io.write_string(Stream, "MR_mkword(", !IO),
-        mlds_output_ptag(Stream, Ptag, !IO),
-        io.write_string(Stream, ", ", !IO),
+        Rval = ml_mkword(ptag(PtagUInt8), BaseRval),
+        io.format(Stream, "MR_mkword(%u, ", [u8(PtagUInt8)], !IO),
         mlds_output_rval(Opts, BaseRval, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
@@ -707,11 +702,7 @@ mlds_output_binop(Opts, Stream, Op, X, Y, !IO) :-
         mlds_output_rval(Opts, X, Stream, !IO),
         io.write_string(Stream, ", ", !IO),
         mlds_output_rval(Opts, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO),
-        io.write_string(Stream, " ", !IO),
-        io.write_string(Stream, OpStr, !IO),
-        io.write_string(Stream, " ", !IO),
-        io.write_string(Stream, "0)", !IO)
+        io.format(Stream, ") %s 0)", [s(OpStr)], !IO)
     ;
         ( Op = float_eq, OpStr = "=="
         ; Op = float_ne, OpStr = "!="
@@ -726,9 +717,7 @@ mlds_output_binop(Opts, Stream, Op, X, Y, !IO) :-
         ),
         io.write_string(Stream, "(", !IO),
         mlds_output_bracketed_rval(Opts, Stream, X, !IO),
-        io.write_string(Stream, " ", !IO),
-        io.write_string(Stream, OpStr, !IO),
-        io.write_string(Stream, " ", !IO),
+        io.format(Stream, " %s ", [s(OpStr)], !IO),
         mlds_output_bracketed_rval(Opts, Stream, Y, !IO),
         io.write_string(Stream, ")", !IO)
     ;
@@ -816,9 +805,7 @@ mlds_output_binop(Opts, Stream, Op, X, Y, !IO) :-
         % The reason is documented in the equivalent code in llds_out_data.m.
         io.write_string(Stream, "(", !IO),
         mlds_output_rval_as_op_arg(Opts, Stream, X, !IO),
-        io.write_string(Stream, " ", !IO),
-        io.write_string(Stream, OpStr, !IO),
-        io.write_string(Stream, " ", !IO),
+        io.format(Stream, " %s ", [s(OpStr)], !IO),
         mlds_output_rval_as_op_arg(Opts, Stream, Y, !IO),
         io.write_string(Stream, ")", !IO)
     ;
@@ -827,9 +814,7 @@ mlds_output_binop(Opts, Stream, Op, X, Y, !IO) :-
         ),
         io.write_string(Stream, "(", !IO),
         mlds_output_rval_as_op_arg(Opts, Stream, X, !IO),
-        io.write_string(Stream, " ", !IO),
-        io.write_string(Stream, OpStr, !IO),
-        io.write_string(Stream, " ", !IO),
+        io.format(Stream, " %s ", [s(OpStr)], !IO),
         % Avoid clutter in the usual case that the shift amount
         % is a small constant.
         ( if Y = ml_const(mlconst_int(YInt)) then
@@ -1014,15 +999,12 @@ mlds_output_rval_const(_Opts, Stream, Const, !IO) :-
         c_util.output_uint64_expr(Stream, N, !IO)
     ;
         Const = mlconst_char(C),
-        io.write_string(Stream, "(MR_Char) ", !IO),
-        io.write_int(Stream, C, !IO)
+        io.format(Stream, "(MR_Char) %d", [i(C)], !IO)
     ;
         Const = mlconst_foreign(Lang, Value, _Type),
         expect(unify(Lang, lang_c), $pred,
             "mlconst_foreign for language other than C"),
-        io.write_string(Stream, "((int) ", !IO),
-        io.write_string(Stream, Value, !IO),
-        io.write_string(Stream, ")", !IO)
+        io.format(Stream, "((int) %s)", [s(Value)], !IO)
     ;
         Const = mlconst_float(FloatVal),
         % The cast to (MR_Float) here lets the C compiler do arithmetic in
@@ -1049,8 +1031,7 @@ mlds_output_rval_const(_Opts, Stream, Const, !IO) :-
         Const = mlconst_data_addr_local_var(LocalVarName),
         MangledLocalVarName =
             name_mangle(ml_local_var_name_to_string(LocalVarName)),
-        io.write_string(Stream, "&", !IO),
-        io.write_string(Stream, MangledLocalVarName, !IO)
+        io.format(Stream, "&%s", [s(MangledLocalVarName)], !IO)
     ;
         (
             Const =

@@ -57,12 +57,12 @@
 
 make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
     RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule,
-        PredModule, PredName, PredArity, _ArgTypes, _PredId, ProcId,
+        PredModule, PredName, PredFormArity, _ArgTypes, _PredId, ProcId,
         _ProcHeadVarsWithNames, _ArgModes, _CodeModel,
         PredIsImported, _PredIsPseudoImported, Origin,
         _ProcIsExported, _ProcIsImported),
     ProcLabel = do_make_proc_label(PredOrFunc, ThisModule, PredModule,
-        PredName, PredArity, ProcId, PredIsImported, Origin).
+        PredName, PredFormArity, ProcId, PredIsImported, Origin).
 
 make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
     module_info_get_name(ModuleInfo, ThisModule),
@@ -71,17 +71,17 @@ make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    PredArity = pred_info_orig_arity(PredInfo),
+    PredFormArity = pred_info_pred_form_arity(PredInfo),
     PredIsImported = (if pred_info_is_imported(PredInfo) then yes else no),
     pred_info_get_origin(PredInfo, Origin),
 
     ProcLabel = do_make_proc_label(PredOrFunc, ThisModule, PredModule,
-        PredName, PredArity, ProcId, PredIsImported, Origin).
+        PredName, PredFormArity, ProcId, PredIsImported, Origin).
 
 :- func do_make_proc_label(pred_or_func, module_name, module_name,
-    string, arity, proc_id, bool, pred_origin) = proc_label.
+    string, pred_form_arity, proc_id, bool, pred_origin) = proc_label.
 
-do_make_proc_label(PredOrFunc, ThisModule, PredModule, PredName, PredArity,
+do_make_proc_label(PredOrFunc, ThisModule, PredModule, PredName, PredFormArity,
         ProcId, PredIsImported, Origin) = ProcLabel :-
     ( if Origin = origin_compiler(made_for_uci(SpecialPred, TypeCtor)) then
         ( if
@@ -114,7 +114,7 @@ do_make_proc_label(PredOrFunc, ThisModule, PredModule, PredName, PredArity,
         )
     else
         ProcLabel = make_user_proc_label(ThisModule, PredIsImported,
-            PredOrFunc, PredModule, PredName, PredArity, ProcId)
+            PredOrFunc, PredModule, PredName, PredFormArity, ProcId)
     ).
 
     % make_user_proc_label(ModuleName, PredIsImported,
@@ -126,10 +126,10 @@ do_make_proc_label(PredOrFunc, ThisModule, PredModule, PredName, PredArity,
     % calling pred_info_is_imported.
     %
 :- func make_user_proc_label(module_name, bool, pred_or_func,
-    module_name, string, arity, proc_id) = proc_label.
+    module_name, string, pred_form_arity, proc_id) = proc_label.
 
 make_user_proc_label(ThisModule, PredIsImported, PredOrFunc, PredModule,
-        PredName, PredArity, ProcId) = ProcLabel :-
+        PredName, PredFormArity, ProcId) = ProcLabel :-
     ( if
         % Work out which module supplies the code for the predicate.
         ThisModule \= PredModule,
@@ -140,9 +140,10 @@ make_user_proc_label(ThisModule, PredIsImported, PredOrFunc, PredModule,
     else
         DefiningModule = PredModule
     ),
+    PredFormArity = pred_form_arity(PredFormArityInt),
     proc_id_to_int(ProcId, ProcIdInt),
     ProcLabel = ordinary_proc_label(DefiningModule, PredOrFunc,
-        PredModule, PredName, PredArity, ProcIdInt).
+        PredModule, PredName, PredFormArityInt, ProcIdInt).
 
 make_uni_label(ModuleInfo, TypeCtor, UniModeNum) = ProcLabel :-
     module_info_get_name(ModuleInfo, ModuleName),

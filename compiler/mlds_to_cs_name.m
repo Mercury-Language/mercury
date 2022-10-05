@@ -188,28 +188,29 @@ function_name_to_string_for_csharp(FunctionName, String) :-
 pred_label_to_string_for_csharp(PredLabel, String) :-
     (
         PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
-            Name, PredArity, _, _),
+            Name, PredFormArity, _, _),
+        PredFormArity = pred_form_arity(PredFormArityInt),
         (
             PredOrFunc = pf_predicate,
             Suffix = "p",
-            OrigArity = PredArity
+            UserArityInt = PredFormArityInt
         ;
             PredOrFunc = pf_function,
             Suffix = "f",
-            OrigArity = PredArity - 1
+            UserArityInt = PredFormArityInt - 1
         ),
         MangledName = name_mangle_no_leading_digit(Name),
         (
             MaybeDefiningModule = yes(DefiningModule),
             DefiningModuleStr = sym_name_mangle(DefiningModule),
             string.format("%s_%d_%s_in__%s",
-                [s(MangledName), i(OrigArity), s(Suffix),
+                [s(MangledName), i(UserArityInt), s(Suffix),
                     s(DefiningModuleStr)],
                 String)
         ;
             MaybeDefiningModule = no,
             string.format("%s_%d_%s",
-                [s(MangledName), i(OrigArity), s(Suffix)], String)
+                [s(MangledName), i(UserArityInt), s(Suffix)], String)
         )
     ;
         PredLabel = mlds_special_pred_label(PredName, MaybeTypeModule,

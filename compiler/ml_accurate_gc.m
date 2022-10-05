@@ -369,8 +369,8 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStmt) :-
 
     % Generate the address of `private_builtin.gc_trace/1#0'.
     PredName = "gc_trace",
-    PredOrigArity = 1,
-    PredLabel = mlds_user_pred_label(pf_predicate, no, PredName, PredOrigArity,
+    PredFormArity = pred_form_arity(1),
+    PredLabel = mlds_user_pred_label(pf_predicate, no, PredName, PredFormArity,
         model_det, no),
     ProcId = hlds_pred.initial_proc_id,
     PredModule = mercury_private_builtin_module,

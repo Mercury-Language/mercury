@@ -318,8 +318,19 @@ mlds_output_function_decl_flags(Opts, Stream, Flags, MaybeBody, !IO) :-
     Comments = Opts ^ m2co_auto_comments,
     (
         Comments = yes,
-        mlds_output_access_comment(Stream, Access, !IO),
-        mlds_output_per_instance_comment(Stream, PerInstance, !IO)
+        (
+            Access = func_public,
+            io.write_string(Stream, "/* public: */ ", !IO)
+        ;
+            Access = func_private,
+            io.write_string(Stream, "/* private: */ ", !IO)
+        ),
+        (
+            PerInstance = per_instance
+        ;
+            PerInstance = one_copy,
+            io.write_string(Stream, "/* one_copy */ ", !IO)
+        )
     ;
         Comments = no
     ),
@@ -332,21 +343,6 @@ mlds_output_function_decl_flags(Opts, Stream, Flags, MaybeBody, !IO) :-
     else
         true
     ).
-
-:- pred mlds_output_access_comment(io.text_output_stream::in,
-    function_access::in, io::di, io::uo) is det.
-
-mlds_output_access_comment(Stream, func_public, !IO) :-
-    io.write_string(Stream, "/* public: */ ", !IO).
-mlds_output_access_comment(Stream, func_private, !IO) :-
-    io.write_string(Stream, "/* private: */ ", !IO).
-
-:- pred mlds_output_per_instance_comment(io.text_output_stream::in,
-    per_instance::in, io::di, io::uo) is det.
-
-mlds_output_per_instance_comment(_, per_instance, !IO).
-mlds_output_per_instance_comment(Stream, one_copy, !IO) :-
-    io.write_string(Stream, "/* one_copy */ ", !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_c_func.

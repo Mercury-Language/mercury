@@ -768,7 +768,7 @@ ml_gen_pred_label(ModuleInfo, PredProcId, MLDS_PredLabel, MLDS_Module) :-
 ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
         MLDS_Module) :-
     RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
-        PredName, PredArity, _ArgTypes, PredId, ProcId,
+        PredName, PredFormArity, _ArgTypes, PredId, ProcId,
         _HeadVarsWithNames, _TopFunctorModes, Detism,
         PredIsImported, _PredIsPseudoImported,
         Origin, _ProcIsExported, _ProcIsImported),
@@ -832,7 +832,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
         ),
         determinism_to_code_model(Detism, CodeModel),
         MLDS_PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDeclaringModule,
-            PredName, PredArity, CodeModel, NonOutputFunc)
+            PredName, PredFormArity, CodeModel, NonOutputFunc)
     ),
     MLDS_Module = mercury_module_name_to_mlds(DefiningModule).
 

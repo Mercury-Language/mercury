@@ -186,7 +186,8 @@ func_defns_contain_main([FuncDefn | FuncDefns]) :-
         PlainFuncName = mlds_plain_func_name(FuncLabel, _),
         FuncLabel = mlds_func_label(ProcLabel, _MaybeSeqNum),
         ProcLabel = mlds_proc_label(PredLabel, _ProcId),
-        PredLabel = mlds_user_pred_label(pf_predicate, _, "main", 2, _, _)
+        PredLabel = mlds_user_pred_label(pf_predicate, _, "main",
+            pred_form_arity(2), _, _)
     then
         true
     else

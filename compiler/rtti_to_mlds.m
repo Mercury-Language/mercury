@@ -1611,7 +1611,7 @@ gen_init_special_pred(ModuleInfo, Target, RttiProcIdUniv, Initializer,
     % hence we need to generate a wrapper function which unboxes the arguments
     % if necessary.
     det_univ_to_type(RttiProcIdUniv, RttiProcId),
-    ( if RttiProcId ^ rpl_proc_arity = 0 then
+    ( if RttiProcId ^ rpl_proc_arity = pred_form_arity(0) then
         % If there are no arguments, then there is no unboxing to do,
         % so we don't need a wrapper. (This case can occur with
         % --no-special-preds, where the procedure will be

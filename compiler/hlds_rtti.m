@@ -47,7 +47,7 @@
                 rpl_this_module             ::  module_name,
                 rpl_proc_module             ::  module_name,
                 rpl_proc_name               ::  string,
-                rpl_proc_arity              ::  arity,
+                rpl_proc_arity              ::  pred_form_arity,
                 rpl_proc_arg_types          ::  list(mer_type),
                 rpl_pred_id                 ::  pred_id,
                 rpl_proc_id                 ::  proc_id,
@@ -336,7 +336,7 @@ make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
+    PredFormArity = pred_info_pred_form_arity(PredInfo),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     proc_info_get_var_table(ProcInfo, ProcVarTable),
     proc_info_get_headvars(ProcInfo, ProcHeadVars),
@@ -368,7 +368,7 @@ make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
         ProcIsImported = no
     ),
     ProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
-        PredName, Arity, ArgTypes, PredId, ProcId,
+        PredName, PredFormArity, ArgTypes, PredId, ProcId,
         ProcHeadVarsWithNames, ProcTopModes, ProcDetism,
         PredIsImported, PredIsPseudoImp, Origin,
         ProcIsExported, ProcIsImported).

@@ -696,7 +696,6 @@ table_info_c_global_var_name(ModuleInfo, PFSymNameArity, ProcId) = VarName :-
     % to be ModuleName?
     module_info_get_name(ModuleInfo, ModuleName),
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
-    PredFormArity = pred_form_arity(PredFormArityInt),
     PredName = unqualify_name(PredSymName),
     (
         HighLevelCode = yes,
@@ -708,11 +707,12 @@ table_info_c_global_var_name(ModuleInfo, PFSymNameArity, ProcId) = VarName :-
         CodeModel = model_det,
         NoReturnValue = bool.no,
         MLDS_PredLabel = mlds_user_pred_label(PredOrFunc, MaybeModuleName,
-            PredName, PredFormArityInt, CodeModel, NoReturnValue),
+            PredName, PredFormArity, CodeModel, NoReturnValue),
         MLDS_ProcLabel = mlds_proc_label(MLDS_PredLabel, ProcId),
         VarName = mlds_tabling_data_name(MLDS_ProcLabel, tabling_info)
     ;
         HighLevelCode = no,
+        PredFormArity = pred_form_arity(PredFormArityInt),
         proc_id_to_int(ProcId, ProcIdInt),
         ProcLabel = ordinary_proc_label(ModuleName, PredOrFunc, ModuleName,
             PredName, PredFormArityInt, ProcIdInt),

@@ -521,7 +521,8 @@ ml_elim_nested_defns_in_funcs(Action, ModuleName, Globals, Target,
         PlainFuncName = mlds_plain_func_name(FuncLabel, _),
         FuncLabel = mlds_func_label(ProcLabel, _MaybeSeqNum),
         ProcLabel = mlds_proc_label(PredLabel, _ProcId),
-        PredLabel = mlds_user_pred_label(_, _, "gc_trace", 1, _, _),
+        PredLabel = mlds_user_pred_label(_, _, "gc_trace", pred_form_arity(1),
+            _, _),
         PrivateBuiltin = mercury_private_builtin_module,
         ModuleName = mercury_module_name_to_mlds(PrivateBuiltin)
     then
@@ -1291,33 +1292,39 @@ env_ptr_var(hoist_nested_funcs) = lvn_comp_var(lvnc_env_ptr).
 
 :- func ml_pred_label_name(mlds_pred_label) = string.
 
-ml_pred_label_name(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
-        Name, Arity, _CodeModel, _NonOutputFunc)) = LabelName :-
-    ( PredOrFunc = pf_predicate, Suffix = "p"
-    ; PredOrFunc = pf_function, Suffix = "f"
-    ),
+ml_pred_label_name(PredLabel) = LabelName :-
     (
-        MaybeDefiningModule = yes(DefiningModule),
-        ModuleNameString = ml_module_name_string(DefiningModule),
-        string.format("%s_%d_%s_in__%s",
-            [s(Name), i(Arity), s(Suffix), s(ModuleNameString)], LabelName)
+        PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
+            Name, PredFormArity, _CodeModel, _NonOutputFunc),
+        ( PredOrFunc = pf_predicate, Suffix = "p"
+        ; PredOrFunc = pf_function, Suffix = "f"
+        ),
+        PredFormArity = pred_form_arity(PredFormArityInt),
+        (
+            MaybeDefiningModule = yes(DefiningModule),
+            ModuleNameString = ml_module_name_string(DefiningModule),
+            string.format("%s_%d_%s_in__%s",
+                [s(Name), i(PredFormArityInt), s(Suffix), s(ModuleNameString)],
+                LabelName)
+        ;
+            MaybeDefiningModule = no,
+            string.format("%s_%d_%s",
+                [s(Name), i(PredFormArityInt), s(Suffix)], LabelName)
+        )
     ;
-        MaybeDefiningModule = no,
-        string.format("%s_%d_%s",
-            [s(Name), i(Arity), s(Suffix)], LabelName)
-    ).
-ml_pred_label_name(mlds_special_pred_label(PredName, MaybeTypeModule,
-        TypeName, TypeArity)) = LabelName :-
-    (
-        MaybeTypeModule = yes(TypeModule),
-        TypeModuleString = ml_module_name_string(TypeModule),
-        string.format("%s__%s__%s_%d",
-            [s(PredName), s(TypeModuleString), s(TypeName), i(TypeArity)],
-            LabelName)
-    ;
-        MaybeTypeModule = no,
-        string.format("%s__%s_%d",
-            [s(PredName), s(TypeName), i(TypeArity)], LabelName)
+        PredLabel = mlds_special_pred_label(PredName, MaybeTypeModule,
+            TypeName, TypeArity),
+        (
+            MaybeTypeModule = yes(TypeModule),
+            TypeModuleString = ml_module_name_string(TypeModule),
+            string.format("%s__%s__%s_%d",
+                [s(PredName), s(TypeModuleString), s(TypeName), i(TypeArity)],
+                LabelName)
+        ;
+            MaybeTypeModule = no,
+            string.format("%s__%s_%d",
+                [s(PredName), s(TypeName), i(TypeArity)], LabelName)
+        )
     ).
 
 :- func ml_module_name_string(mercury_module_name) = string.

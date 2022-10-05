@@ -804,7 +804,7 @@
                                     % The declaring module,
                                     % if different to the defining module
                 string,             % Name.
-                arity,              % Arity.
+                pred_form_arity,    % Arity.
                 code_model,         % Code model.
                 bool                % Function without return value
                                     % (i.e. non-default mode).

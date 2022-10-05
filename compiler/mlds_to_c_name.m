@@ -151,8 +151,8 @@ mlds_output_fully_qualified_function_name(Stream, QualFuncName, !IO) :-
             PlainFuncName = mlds_plain_func_name(FuncLabel, _),
             FuncLabel = mlds_func_label(ProcLabel, _MaybeSeqNum),
             ProcLabel = mlds_proc_label(PredLabel, _ProcId),
-            PredLabel = mlds_user_pred_label(pf_predicate, no, "main", 2,
-                model_det, no)
+            PredLabel = mlds_user_pred_label(pf_predicate, no, "main",
+                pred_form_arity(2), model_det, no)
         ;
             % We do not module qualify pragma foreign_export names.
             FuncName = mlds_function_export(_)
@@ -192,8 +192,8 @@ mlds_output_fully_qualified_proc_label(Stream, QualProcLabel, !IO) :-
     Name = mlds_proc_label(PredLabel, _ProcId),
     ( if
         % Do not module-qualify main/2.
-        PredLabel = mlds_user_pred_label(pf_predicate, no, "main", 2,
-            model_det, no)
+        PredLabel = mlds_user_pred_label(pf_predicate, no, "main",
+            pred_form_arity(2), model_det, no)
     then
         true
     else
@@ -225,26 +225,27 @@ mlds_proc_label_to_string(mlds_proc_label(PredLabel, ProcId)) =
 mlds_pred_label_to_string(PredLabel) = Str :-
     (
         PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
-            Name, PredArity, _CodeModel, _NonOutputFunc),
+            Name, PredFormArity, _CodeModel, _NonOutputFunc),
+        PredFormArity = pred_form_arity(PredFormArityInt),
         (
             PredOrFunc = pf_predicate,
             Suffix = "p",
-            UserArity = PredArity
+            UserArityInt = PredFormArityInt
         ;
             PredOrFunc = pf_function,
             Suffix = "f",
-            UserArity = PredArity - 1
+            UserArityInt = PredFormArityInt - 1
         ),
         MangledName = name_mangle(Name),
         (
             MaybeDefiningModule = yes(DefiningModule),
             Str = string.format("%s_%d_%s_in__%s",
-                [s(MangledName), i(UserArity), s(Suffix),
+                [s(MangledName), i(UserArityInt), s(Suffix),
                 s(sym_name_mangle(DefiningModule))])
         ;
             MaybeDefiningModule = no,
             Str = string.format("%s_%d_%s",
-                [s(MangledName), i(UserArity), s(Suffix)])
+                [s(MangledName), i(UserArityInt), s(Suffix)])
         )
     ;
         PredLabel = mlds_special_pred_label(PredName, MaybeTypeModule,

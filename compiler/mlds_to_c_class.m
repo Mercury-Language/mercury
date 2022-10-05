@@ -103,10 +103,6 @@ mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
 
     % Hoist out static members, since plain old C does not support
     % static members in structs (except for enumeration constants).
-    %
-    % XXX This should be conditional: only when compiling to C,
-    % not when compiling to C++.
-
     (
         Kind = mlds_enum,
         StaticCtors = [],
@@ -128,10 +124,6 @@ mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
 
     % Convert the base classes into member variables,
     % since plain old C does not support base classes.
-    %
-    % XXX this should be conditional: only when compiling to C,
-    % not when compiling to C++
-
     (
         Inherits = inherits_nothing,
         BaseFieldVarDefns = []
@@ -162,7 +154,6 @@ mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     % to not generate any. (E.g. ml_type_gen.m checks whether
     % `target_uses_empty_base_classes' before generating empty structs.)
     % Hence we do not need to check for empty structs here.
-
     io.write_string(Stream, " {\n", !IO),
     (
         Kind = mlds_enum,
@@ -261,13 +252,6 @@ mlds_output_class_decl_flags(Opts, Stream, Flags, _DeclOrDefn, !IO) :-
         Comments = no
     ),
     mlds_output_constness(Stream, Constness, !IO).
-
-:- pred mlds_output_per_instance_comment(io.text_output_stream::in,
-    per_instance::in, io::di, io::uo) is det.
-
-mlds_output_per_instance_comment(_, per_instance, !IO).
-mlds_output_per_instance_comment(Stream, one_copy, !IO) :-
-    io.write_string(Stream, "/* one_copy */ ", !IO).
 
 :- pred mlds_output_constness(io.text_output_stream::in, constness::in,
     io::di, io::uo) is det.
@@ -407,13 +391,13 @@ mlds_output_field_var_decl_flags(Opts, Stream, Flags, DeclOrDefn, !IO) :-
     Comments = Opts ^ m2co_auto_comments,
     (
         Comments = yes,
-        % XXX We used to call mlds_output_extern_or_static
-        % on mlds_data_decl_flags. This predicate pays attention to PerInstance
-        % *only* when the access flag is acc_local, while field vars'
-        % access flags were always acc_public (which is why we do not need
-        % to explicitly store that flag).
         PerInstance = Flags ^ mfvdf_per_instance,
-        mlds_output_per_instance_comment(Stream, PerInstance, !IO)
+        (
+            PerInstance = per_instance
+        ;
+            PerInstance = one_copy,
+            io.write_string(Stream, "/* one_copy */ ", !IO)
+        )
     ;
         Comments = no
     ),

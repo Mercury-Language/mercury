@@ -166,19 +166,20 @@ output_function_name_for_java(Stream, FunctionName, !IO) :-
 output_pred_label_for_java(Stream, PredLabel, !IO) :-
     (
         PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
-            PredArity, _, _),
+            PredFormArity, _, _),
+        PredFormArity = pred_form_arity(PredFormArityInt),
         (
             PredOrFunc = pf_predicate,
             Suffix = "p",
-            OrigArity = PredArity
+            UserArityInt = PredFormArityInt
         ;
             PredOrFunc = pf_function,
             Suffix = "f",
-            OrigArity = PredArity - 1
+            UserArityInt = PredFormArityInt - 1
         ),
         MangledName = name_mangle_no_leading_digit(Name),
         io.format(Stream, "%s_%d_%s",
-            [s(MangledName), i(OrigArity), s(Suffix)], !IO),
+            [s(MangledName), i(UserArityInt), s(Suffix)], !IO),
         (
             MaybeDefiningModule = yes(DefiningModule),
             io.write_string(Stream, "_in__", !IO),
