@@ -1212,12 +1212,10 @@ float_to_doc(X) = str(string.float_to_string(X)).
         char buf[64];
 
         u.f = (double) Flt;
-        #if defined(MR_MINGW64) || defined(MR_CYGWIN32)
-            sprintf(buf, ""%lld"", u.i);
-        #elif defined(MR_WIN32)
+        #if defined(MR_MSVC)
             // The I64 size prefix is specific to the Microsoft C library
-            // -- we use it here since MSVC and (some) versions of 32-bit
-            // MinGW GCC do not support the standard ll size prefix.
+            // -- we use it here since MSVC does not support the standard
+            // ll size prefix.
             sprintf(buf, ""%I64d"", u.i);
         #else
             sprintf(buf, ""%"" MR_INT_LEAST64_LENGTH_MODIFIER ""d"", u.i);
