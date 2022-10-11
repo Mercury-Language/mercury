@@ -165,7 +165,7 @@
     % lower than 0 -- then the call fails.
     %
     % Note that this predicate only returns an answer when NonCanon is
-    % do_not_allow or canonicalize.  If you need the include_details_cc
+    % do_not_allow or canonicalize. If you need the include_details_cc
     % behaviour use deconstruct.arg_cc/3.
     %
 :- some [ArgT] pred arg(T, noncanon_handling, int, ArgT).
@@ -178,7 +178,7 @@
     ;       no_arg.
 
     % arg_cc/3 is similar to arg/4, except that it handles arguments with
-    % non-canonical types.  The possible non-existence of an argument is
+    % non-canonical types. The possible non-existence of an argument is
     % encoded using a maybe type.
     %
 :- pred arg_cc(T::in, int::in, maybe_arg::out) is cc_multi.
@@ -266,7 +266,7 @@
     % avoiding bad performance in cases where Data may be a large array.
     %
     % Note that this predicate only returns an answer when NonCanon is
-    % do_not_allow or canonicalize.  If you need the include_details_cc
+    % do_not_allow or canonicalize. If you need the include_details_cc
     % behaviour use deconstruct.limited_deconstruct_cc/3.
     %
 :- pred limited_deconstruct(T, noncanon_handling, int, string, int,

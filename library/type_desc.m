@@ -652,8 +652,7 @@ type_ctor_arity(TypeCtor) = Arity :-
 
 :- pragma foreign_proc("C#",
     make_type_ctor_desc(TypeInfo::in, TypeCtorInfo::in, TypeCtorDesc::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     runtime.TypeCtorInfo_Struct tci = TypeCtorInfo;
 
@@ -673,8 +672,7 @@ type_ctor_arity(TypeCtor) = Arity :-
 
 :- pragma foreign_proc("Java",
     make_type_ctor_desc(TypeInfo::in, TypeCtorInfo::in, TypeCtorDesc::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     TypeCtorInfo_Struct tci = TypeCtorInfo;
 
@@ -702,8 +700,7 @@ make_type_ctor_desc(_, _, _) :-
 :- pragma foreign_proc("C#",
     make_type_ctor_desc_with_arity(Arity::in, TypeCtorInfo::in,
         TypeCtorDesc::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     runtime.TypeCtorInfo_Struct tci = TypeCtorInfo;
 
@@ -724,8 +721,7 @@ make_type_ctor_desc(_, _, _) :-
 :- pragma foreign_proc("Java",
     make_type_ctor_desc_with_arity(Arity::in, TypeCtorInfo::in,
         TypeCtorDesc::out),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     TypeCtorInfo_Struct tci = TypeCtorInfo;
 
@@ -751,8 +747,7 @@ make_type_ctor_desc_with_arity(_, _, _) :-
 :- pragma foreign_proc("C",
     type_ctor_name_and_arity(TypeCtorDesc::in, TypeCtorModuleName::out,
         TypeCtorName::out, TypeCtorArity::out),
-    [will_not_call_mercury, thread_safe, promise_pure,
-        will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "{
     MR_TypeCtorDesc type_ctor_desc;
 
