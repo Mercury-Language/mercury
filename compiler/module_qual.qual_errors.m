@@ -25,8 +25,7 @@
 :- type mq_constraint_error_context
     --->    mqcec_class_defn(prog_context,
                 % The name of the type class beging defined, and its arity.
-                class_name,
-                int
+                class_id
             )
     ;       mqcec_class_method(prog_context,
                 % The identity of the class method the constraint is on:
@@ -51,12 +50,8 @@
             )
     ;       mqcec_pred_decl(prog_context,
                 % The identity of the entity the constraint is on:
-                % whether it is predicate or function, and its name.
-                % Its arity would be nice, but it is tricky to calculate
-                % in the presence of with_type.
-                pred_or_func,
-                sym_name,
-                int
+                % whether it is predicate or function, its name, and its arity.
+                pf_sym_name_arity
             ).
 
 :- type mq_error_context
@@ -404,40 +399,32 @@ warn_redundant_import_context(ImportedModuleName, Context, Msg) :-
 mq_constraint_error_context_to_pieces(ConstraintErrorContext,
         Context, Start, Pieces) :-
     (
-        ConstraintErrorContext = mqcec_class_defn(Context, ClassName, Arity),
+        ConstraintErrorContext = mqcec_class_defn(Context, ClassId),
         Start = "in",
-        Pieces = [words("definition of type class"),
-            qual_sym_name_arity(sym_name_arity(ClassName, Arity))]
+        Pieces = [words("definition of type class"), qual_class_id(ClassId)]
     ;
         ConstraintErrorContext = mqcec_class_method(Context,
             PredOrFunc, MethodName),
         Start = "on",
-        Pieces = [words("class method"),
-            p_or_f(PredOrFunc), quote(MethodName)]
+        Pieces = [words("class method"), p_or_f(PredOrFunc), quote(MethodName)]
     ;
         ConstraintErrorContext = mqcec_instance_defn(Context,
             ClassName, ArgTypes),
         Start = "on",
         list.length(ArgTypes, NumArgTypes),
         Pieces = [words("instance definition for"),
-            qual_sym_name_arity(sym_name_arity(ClassName, NumArgTypes))]
+            qual_class_id(class_id(ClassName, NumArgTypes))]
     ;
         ConstraintErrorContext = mqcec_type_defn_constructor(Context,
             TypeCtor, FunctionSymbol),
         Start = "on",
-        TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
         Pieces = [words("function symbol"), quote(FunctionSymbol),
-            words("for type constructor"),
-            unqual_sym_name_arity(
-                sym_name_arity(TypeCtorSymName, TypeCtorArity))]
+            words("for type constructor"), unqual_type_ctor(TypeCtor)]
     ;
-        ConstraintErrorContext = mqcec_pred_decl(Context,
-            PredOrFunc, SymName, OrigArity),
+        ConstraintErrorContext = mqcec_pred_decl(Context, PFSymNameArity),
         Start = "on",
-        adjust_func_arity(PredOrFunc, OrigArity, Arity),
-        Pieces = [words("declaration of "),
-            fixed(pred_or_func_to_full_str(PredOrFunc)),
-            unqual_sym_name_arity(sym_name_arity(SymName, Arity))]
+        Pieces = [words("declaration of"),
+            unqual_pf_sym_name_pred_form_arity(PFSymNameArity)]
     ).
 
 :- pred mq_error_context_to_pieces(mq_error_context::in,
@@ -484,7 +471,7 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
         ShouldUnqualId = no,
         mq_constraint_error_context_to_pieces(ConstraintErrorContext,
             Context, Start, ConstraintErrorContextPieces),
-        Pieces = [words("type class constraint for "),
+        Pieces = [words("type class constraint for"),
             unqual_sym_name_arity(sym_name_arity(ClassName, Arity)),
             words(Start) | ConstraintErrorContextPieces]
     ;
@@ -492,7 +479,7 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
         ShouldUnqualId = no,
         Id = mq_id(SymName, OrigArity),
         adjust_func_arity(PredOrFunc, OrigArity, Arity),
-        Pieces = [words("declaration of "),
+        Pieces = [words("declaration of"),
             fixed(pred_or_func_to_full_str(PredOrFunc)),
             unqual_sym_name_arity(sym_name_arity(SymName, Arity))]
     ;
@@ -550,7 +537,7 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
     ;
         ErrorContext = mqec_mutable(Context, Name),
         ShouldUnqualId = no,
-        Pieces = [words("declaration for mutable "), quote(Name)]
+        Pieces = [words("declaration for mutable"), quote(Name)]
     ;
         ErrorContext = mqec_type_repn(Context, TypeCtor),
         ShouldUnqualId = no,

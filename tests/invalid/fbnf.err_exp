@@ -1,0 +1,21 @@
+fbnf.m:214: In clause for predicate `execute'/7:
+fbnf.m:214:   in argument 1 (i.e. the predicate term) of higher-order predicate
+fbnf.m:214:   call:
+fbnf.m:214:   type error: variable `Entry' has type
+fbnf.m:214:     pred(
+fbnf.m:214:       fbnf.fstate :: in,
+fbnf.m:214:       fbnf.fstate :: out,
+fbnf.m:214:       io.state :: di,
+fbnf.m:214:       io.state :: uo,
+fbnf.m:214:       list.list(
+fbnf.m:214:         string
+fbnf.m:214:       ) :: in,
+fbnf.m:214:       list.list(
+fbnf.m:214:         string
+fbnf.m:214:       ) :: out
+fbnf.m:214:     ) is det,
+fbnf.m:214:   expected type was
+fbnf.m:214:     pred(V_7, V_8, V_9, V_10).
+fbnf.m:214:   Arity mismatch for the predicate: expected four arguments, got
+fbnf.m:214:   six.
+For more information, recompile with `-E'.

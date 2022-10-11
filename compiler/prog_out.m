@@ -81,10 +81,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func pf_sym_name_orig_arity_to_string(pf_sym_name_arity) = string.
-:- func pf_sym_name_orig_arity_to_string(pred_or_func, sym_name_arity)
+:- func pf_sym_name_pred_form_arity_to_string(pf_sym_name_arity) = string.
+:- func pf_sym_name_pred_form_arity_to_string(pred_or_func, sym_name_arity)
     = string.
-:- func pf_sym_name_orig_arity_to_string(pred_or_func, sym_name,
+:- func pf_sym_name_pred_form_arity_to_string(pred_or_func, sym_name,
     pred_form_arity) = string.
 
 :- func pf_sym_name_user_arity_to_string(pred_pf_name_arity) = string.
@@ -203,7 +203,6 @@
 
 :- implementation.
 
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_util.
 
@@ -263,10 +262,9 @@ write_quoted_sym_name(Stream, SymName, !IO) :-
     write_sym_name(Stream, SymName, !IO),
     io.write_string(Stream, "'", !IO).
 
-sym_name_arity_to_string(sym_name_arity(SymName, Arity)) = String :-
-    SymNameString = sym_name_to_string(SymName),
-    string.int_to_string(Arity, ArityString),
-    string.append_list([SymNameString, "/", ArityString], String).
+sym_name_arity_to_string(sym_name_arity(SymName, Arity)) = Str :-
+    SymNameStr = sym_name_to_string(SymName),
+    string.format("%s/%d", [s(SymNameStr), i(Arity)], Str).
 
 write_sym_name_arity(SNA, !IO) :-
     io.output_stream(Stream, !IO),
@@ -284,16 +282,18 @@ module_name_to_escaped_string(ModuleName) =
 
 %-----------------------------------------------------------------------------%
 
-pf_sym_name_orig_arity_to_string(PFSymNameArity) = Str :-
+pf_sym_name_pred_form_arity_to_string(PFSymNameArity) = Str :-
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
-    Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName, Arity).
+    Str = pf_sym_name_pred_form_arity_to_string(PredOrFunc, SymName, Arity).
 
-pf_sym_name_orig_arity_to_string(PredOrFunc, SNA) = Str :-
+pf_sym_name_pred_form_arity_to_string(PredOrFunc, SNA) = Str :-
     SNA = sym_name_arity(SymName, Arity),
     PredFormArity = pred_form_arity(Arity),
-    Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName, PredFormArity).
+    Str = pf_sym_name_pred_form_arity_to_string(PredOrFunc, SymName,
+        PredFormArity).
 
-pf_sym_name_orig_arity_to_string(PredOrFunc, SymName, PredFormArity) = Str :-
+pf_sym_name_pred_form_arity_to_string(PredOrFunc, SymName, PredFormArity)
+        = Str :-
     user_arity_pred_form_arity(PredOrFunc,
         user_arity(UserArityInt), PredFormArity),
     PredOrFuncStr = pred_or_func_to_string(PredOrFunc),
@@ -313,9 +313,10 @@ pf_sym_name_user_arity_to_string(PredOrFunc, SNA) = Str :-
     Str = pf_sym_name_user_arity_to_string(PredOrFunc, SymName, Arity).
 
 pf_sym_name_user_arity_to_string(PredOrFunc, SymName, Arity) = Str :-
-    Str = pred_or_func_to_string(PredOrFunc) ++ " " ++
-        add_quotes(sym_name_to_string(SymName)) ++ "/" ++
-        string.int_to_string(Arity).
+    PredOrFuncStr = pred_or_func_to_string(PredOrFunc),
+    SymNameStr = sym_name_to_string(SymName),
+    string.format("%s `%s'/%d",
+        [s(PredOrFuncStr), s(SymNameStr), i(Arity)], Str).
 
 %-----------------------------------------------------------------------------%
 
@@ -329,8 +330,10 @@ pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SNA) = Str :-
     Str = pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SymName, Arity).
 
 pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SymName, Arity) = Str :-
-    Str = pred_or_func_to_string(PredOrFunc) ++ " " ++
-        sym_name_to_string(SymName) ++ "/" ++ string.int_to_string(Arity).
+    PredOrFuncStr = pred_or_func_to_string(PredOrFunc),
+    SymNameStr = sym_name_to_string(SymName),
+    string.format("%s %s/%d",
+        [s(PredOrFuncStr), s(SymNameStr), i(Arity)], Str).
 
 %-----------------------------------------------------------------------------%
 

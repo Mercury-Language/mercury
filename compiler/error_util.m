@@ -474,17 +474,25 @@
             % Surround the string with `' quotes, then treat as fixed.
 
     ;       int_fixed(int)
+    ;       int_name(int)
             % Convert the integer to a string, then treat as fixed.
+            % int_fixed always generates numerals, such as 1, 2, 3 etc,
+            % while int_name generates one, two, three etc up to ten,
+            % then switches back to numerals starting with 11.
 
     ;       nth_fixed(int)
             % Convert the integer to a string, such as "first", "second",
-            % "third", ... 49th, and then treat as fixed.
+            % "third", tenth, 11th and so on, and then treat as fixed.
 
     ;       lower_case_next_if_not_first
             % If this is the first component, ignore it. If this is not
             % the first component, lower case the initial letter of the
             % next component. There is no effect if the next component
             % does not exist or does not start with an upper case letter.
+
+    ;       treat_next_as_first
+            % For the purpose of the test done by lower_case_next_if_not_first,
+            % treat the next component as the first, even if it isn't.
 
     ;       prefix(string)
             % This string should appear in the output in one piece, as it is,
@@ -518,21 +526,21 @@
             % The output should contain the string form of the sym_name,
             % surrounded by `' quotes, followed by '/' and the arity.
 
-    ;       qual_pf_sym_name_orig_arity(pf_sym_name_arity)
-    ;       unqual_pf_sym_name_orig_arity(pf_sym_name_arity)
-            % The output should contain the string form of the sym_name,
-            % surrounded by `' quotes, followed by '/' and the arity, but
-            % - precede them with either "predicate" or "function", and
-            % - for functions, use their *original* arity, which does not
-            %   count the function result, unlike the arity in the arg,
-            %   which does count it.
-
+    ;       qual_pf_sym_name_pred_form_arity(pf_sym_name_arity)
+    ;       unqual_pf_sym_name_pred_form_arity(pf_sym_name_arity)
     ;       qual_pf_sym_name_user_arity(pred_pf_name_arity)
     ;       unqual_pf_sym_name_user_arity(pred_pf_name_arity)
             % The output should contain the string form of the sym_name,
             % surrounded by `' quotes, followed by '/' and the arity, but
             % - precede them with either "predicate" or "function", and
-            % - use the specified arity for both predicates and functions.
+            % - for functions, use their *user-visible* arity, which does not
+            %   count the function result.
+            %
+            % With the forms taking a pf_sym_name_arity argument, the
+            % pf_sym_name_arity contains a pred_form_arity that we convert
+            % to the user visible arity for printing. With the forms taking
+            % a pred_pf_name_arity argument, the pf_sym_name_arity contains
+            % a user_arity that we print unchanged.
 
     ;       qual_type_ctor(type_ctor)
     ;       unqual_type_ctor(type_ctor)
@@ -567,6 +575,13 @@
 
     ;       p_or_f(pred_or_func)
             % Output the string "predicate" or "function" as appropriate.
+
+    ;       purity_desc(purity)
+            % Output the string "pure", "semipure" or "impure" as appropriate.
+
+    ;       a_purity_desc(purity)
+            % Output the string "a pure", "a semipure" or "an impure"
+            % as appropriate.
 
     ;       decl(string)
             % Prefix the string with ":- ", surround it with single quotes,
@@ -2232,7 +2247,8 @@ error_pieces_to_string(Components) =
 
 error_pieces_to_string_2(_, []) = "".
 error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
-    TailStr = error_pieces_to_string_2(not_first_in_msg, Components),
+    first_in_msg_after_component(Component, FirstInMsg, TailFirstInMsg),
+    TailStr = error_pieces_to_string_2(TailFirstInMsg, Components),
     (
         Component = words(Words),
         Str = join_string_and_tail(Words, Components, TailStr)
@@ -2249,6 +2265,9 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Component = int_fixed(Int),
         Str = join_string_and_tail(int_to_string(Int), Components, TailStr)
     ;
+        Component = int_name(Int),
+        Str = join_string_and_tail(int_name_str(Int), Components, TailStr)
+    ;
         Component = nth_fixed(Int),
         Str = join_string_and_tail(nth_fixed_str(Int), Components, TailStr)
     ;
@@ -2260,6 +2279,9 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
             FirstInMsg = not_first_in_msg,
             Str = uncapitalize_first(TailStr)
         )
+    ;
+        Component = treat_next_as_first,
+        Str = TailStr
     ;
         Component = prefix(Prefix),
         Str = Prefix ++ TailStr
@@ -2292,14 +2314,14 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
         (
-            Component = qual_pf_sym_name_orig_arity(PFSymNameArity)
+            Component = qual_pf_sym_name_pred_form_arity(PFSymNameArity)
         ;
-            Component = unqual_pf_sym_name_orig_arity(PFSymNameArity0),
+            Component = unqual_pf_sym_name_pred_form_arity(PFSymNameArity0),
             PFSymNameArity0 = pf_sym_name_arity(PF, SymName0, PredFormArity),
             SymName = unqualified(unqualify_name(SymName0)),
             PFSymNameArity = pf_sym_name_arity(PF, SymName, PredFormArity)
         ),
-        Word = pf_sym_name_orig_arity_to_string(PFSymNameArity),
+        Word = pf_sym_name_pred_form_arity_to_string(PFSymNameArity),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
         (
@@ -2367,6 +2389,14 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Word = pred_or_func_to_string(PredOrFunc),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
+        Component = purity_desc(Purity),
+        Word = purity_to_string(Purity),
+        Str = join_string_and_tail(Word, Components, TailStr)
+    ;
+        Component = a_purity_desc(Purity),
+        Word = a_purity_to_string(Purity),
+        Str = join_string_and_tail(Word, Components, TailStr)
+    ;
         Component = decl(Decl),
         Word = add_quotes(":- " ++ Decl),
         Str = join_string_and_tail(Word, Components, TailStr)
@@ -2391,29 +2421,45 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Str = TailStr
     ).
 
+:- func int_name_str(int) = string.
+
+int_name_str(N) = Str :-
+    ( if
+        ( N = 0,  StrPrime = "zero"
+        ; N = 1,  StrPrime = "one"
+        ; N = 2,  StrPrime = "two"
+        ; N = 3,  StrPrime = "three"
+        ; N = 4,  StrPrime = "four"
+        ; N = 5,  StrPrime = "five"
+        ; N = 6,  StrPrime = "six"
+        ; N = 7,  StrPrime = "seven"
+        ; N = 8,  StrPrime = "eight"
+        ; N = 9,  StrPrime = "nine"
+        ; N = 10, StrPrime = "ten"
+        )
+    then
+        Str = StrPrime
+    else
+        Str = int_to_string(N)
+    ).
+
 :- func nth_fixed_str(int) = string.
 
 nth_fixed_str(N) = Str :-
-    ( if N = 1 then
-        Str = "first"
-    else if N = 2 then
-        Str = "second"
-    else if N = 3 then
-        Str = "third"
-    else if N = 4 then
-        Str = "fourth"
-    else if N = 5 then
-        Str = "fifth"
-    else if N = 6 then
-        Str = "sixth"
-    else if N = 7 then
-        Str = "seventh"
-    else if N = 8 then
-        Str = "eighth"
-    else if N = 9 then
-        Str = "ninth"
-    else if N = 10 then
-        Str = "tenth"
+    ( if
+        ( N = 1,  StrPrime = "first"
+        ; N = 2,  StrPrime = "second"
+        ; N = 3,  StrPrime = "third"
+        ; N = 4,  StrPrime = "fourth"
+        ; N = 5,  StrPrime = "fifth"
+        ; N = 6,  StrPrime = "sixth"
+        ; N = 7,  StrPrime = "seventh"
+        ; N = 8,  StrPrime = "eighth"
+        ; N = 9,  StrPrime = "ninth"
+        ; N = 10, StrPrime = "tenth"
+        )
+    then
+        Str = StrPrime
     else
         % We want to print 12th and 13th, not 12nd and 13rd,
         % but 42nd and 43rd instead of 42th and 43th.
@@ -2443,12 +2489,15 @@ join_string_and_tail(Word, Components, TailStr) = Str :-
 
 :- type paragraph
     --->    paragraph(
-                list(string),   % The list of words to print in the paragraph.
-                                % It should not be empty.
-                int,            % The number of blank lines to print after
-                                % the paragraph.
-                int             % The indent delta to apply for the next
-                                % paragraph.
+                % The list of words to print in the paragraph.
+                % It should not be empty.
+                list(string),
+
+                % The number of blank lines to print after the paragraph.
+                int,
+
+                % The indent delta to apply for the next paragraph.
+                int
             ).
 
 :- pred convert_components_to_paragraphs(list(format_component)::in,
@@ -2490,6 +2539,9 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         Component = int_fixed(Int),
         RevWords1 = [plain_word(int_to_string(Int)) | RevWords0]
     ;
+        Component = int_name(Int),
+        RevWords1 = [plain_word(int_name_str(Int)) | RevWords0]
+    ;
         Component = nth_fixed(Int),
         RevWords1 = [plain_word(nth_fixed_str(Int)) | RevWords0]
     ;
@@ -2501,6 +2553,9 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
             FirstInMsg = not_first_in_msg,
             RevWords1 = [lower_next_word | RevWords0]
         )
+    ;
+        Component = treat_next_as_first,
+        RevWords1 = RevWords0
     ;
         Component = prefix(Word),
         RevWords1 = [prefix_word(Word) | RevWords0]
@@ -2532,14 +2587,14 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
         (
-            Component = qual_pf_sym_name_orig_arity(PFSymNameArity)
+            Component = qual_pf_sym_name_pred_form_arity(PFSymNameArity)
         ;
-            Component = unqual_pf_sym_name_orig_arity(PFSymNameArity0),
+            Component = unqual_pf_sym_name_pred_form_arity(PFSymNameArity0),
             PFSymNameArity0 = pf_sym_name_arity(PF, SymName0, PredFormArity),
             SymName = unqualified(unqualify_name(SymName0)),
             PFSymNameArity = pf_sym_name_arity(PF, SymName, PredFormArity)
         ),
-        WordsStr = pf_sym_name_orig_arity_to_string(PFSymNameArity),
+        WordsStr = pf_sym_name_pred_form_arity_to_string(PFSymNameArity),
         break_into_words(WordsStr, RevWords0, RevWords1)
     ;
         (
@@ -2607,6 +2662,14 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         Word = pred_or_func_to_string(PredOrFunc),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
+        Component = purity_desc(Purity),
+        Word = purity_to_string(Purity),
+        RevWords1 = [plain_word(Word) | RevWords0]
+    ;
+        Component = a_purity_desc(Purity),
+        Word = a_purity_to_string(Purity),
+        RevWords1 = [plain_word(Word) | RevWords0]
+    ;
         Component = decl(DeclName),
         Word = add_quotes(":- " ++ DeclName),
         RevWords1 = [plain_word(Word) | RevWords0]
@@ -2635,7 +2698,8 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         ),
         RevWords1 = RevWords0
     ),
-    convert_components_to_paragraphs_acc(not_first_in_msg, Components,
+    first_in_msg_after_component(Component, FirstInMsg, TailFirstInMsg),
+    convert_components_to_paragraphs_acc(TailFirstInMsg, Components,
         RevWords1, !Paras).
 
 :- type plain_or_prefix
@@ -2776,6 +2840,64 @@ find_word_end(String, Cur, WordEnd) :-
         )
     else
         WordEnd = Cur
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred first_in_msg_after_component(format_component::in,
+    maybe_first_in_msg::in, maybe_first_in_msg::out) is det.
+
+first_in_msg_after_component(Component, FirstInMsg, TailFirstInMsg) :-
+    (
+        ( Component = treat_next_as_first
+        ; Component = blank_line
+        ),
+        TailFirstInMsg = first_in_msg
+    ;
+        ( Component = lower_case_next_if_not_first
+        ; Component = nl
+        ; Component = nl_indent_delta(_)
+        ; Component = invis_order_default_start(_)
+        ; Component = invis_order_default_end(_)
+        ),
+        TailFirstInMsg = FirstInMsg
+    ;
+        ( Component = words(_)
+        ; Component = words_quote(_)
+        ; Component = fixed(_)
+        ; Component = quote(_)
+        ; Component = int_fixed(_)
+        ; Component = int_name(_)
+        ; Component = nth_fixed(_)
+        ; Component = prefix(_)
+        ; Component = suffix(_)
+        ; Component = qual_sym_name(_)
+        ; Component = unqual_sym_name(_)
+        ; Component = name_arity(_)
+        ; Component = qual_sym_name_arity(_)
+        ; Component = unqual_sym_name_arity(_)
+        ; Component = qual_pf_sym_name_pred_form_arity(_)
+        ; Component = unqual_pf_sym_name_pred_form_arity(_)
+        ; Component = qual_pf_sym_name_user_arity(_)
+        ; Component = unqual_pf_sym_name_user_arity(_)
+        ; Component = qual_cons_id_and_maybe_arity(_)
+        ; Component = unqual_cons_id_and_maybe_arity(_)
+        ; Component = qual_type_ctor(_)
+        ; Component = unqual_type_ctor(_)
+        ; Component = qual_inst_ctor(_)
+        ; Component = unqual_inst_ctor(_)
+        ; Component = qual_mode_ctor(_)
+        ; Component = unqual_mode_ctor(_)
+        ; Component = qual_class_id(_)
+        ; Component = unqual_class_id(_)
+        ; Component = qual_top_ctor_of_type(_)
+        ; Component = p_or_f(_)
+        ; Component = purity_desc(_)
+        ; Component = a_purity_desc(_)
+        ; Component = decl(_)
+        ; Component = pragma_decl(_)
+        ),
+        TailFirstInMsg = not_first_in_msg
     ).
 
 %---------------------------------------------------------------------------%
@@ -2921,6 +3043,18 @@ describe_sym_name_arity(sym_name_arity(SymName, Arity)) =
         string.int_to_string(Arity), "'"]).
 
 add_quotes(Str) = "`" ++ Str ++ "'".
+
+:- func purity_to_string(purity) = string.
+
+purity_to_string(purity_pure) = "pure".
+purity_to_string(purity_semipure) = "semipure".
+purity_to_string(purity_impure) = "impure".
+
+:- func a_purity_to_string(purity) = string.
+
+a_purity_to_string(purity_pure) = "a pure".
+a_purity_to_string(purity_semipure) = "a semipure".
+a_purity_to_string(purity_impure) = "an impure".
 
 %---------------------------------------------------------------------------%
 

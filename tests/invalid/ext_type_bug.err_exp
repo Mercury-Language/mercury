@@ -1,10 +1,48 @@
-ext_type_bug.m:017: In clause for predicate `foo'/1:
-ext_type_bug.m:017:   in argument 1 of call to predicate
-ext_type_bug.m:017:   `ext_type_bug.make_bar'/1:
-ext_type_bug.m:017:   type error: variable `Bar' has type
-ext_type_bug.m:017:     ext_type_bug.bar(int),
-ext_type_bug.m:017:   expected type was
-ext_type_bug.m:017:     some [T] (ext_type_bug.bar(T)).
-ext_type_bug.m:017:   The partial type assignment was:
-ext_type_bug.m:017:     some [T_1]
-ext_type_bug.m:017:     Bar_2: ext_type_bug.bar(int)
+ext_type_bug.m:021: In clause for predicate `foo'/1:
+ext_type_bug.m:021:   in argument 1 of call to predicate
+ext_type_bug.m:021:   `ext_type_bug.make_bar'/1:
+ext_type_bug.m:021:   type error: variable `Bar' has type
+ext_type_bug.m:021:     ext_type_bug.bar(int),
+ext_type_bug.m:021:   expected type was
+ext_type_bug.m:021:     some [T] (ext_type_bug.bar(T)).
+ext_type_bug.m:021:   In the first argument of type constructor `bar':
+ext_type_bug.m:021:     the context requires a specific type, but this is not
+ext_type_bug.m:021:     allowed for existentially typed arguments.
+ext_type_bug.m:021:   The partial type assignment was:
+ext_type_bug.m:021:     some [T_1]
+ext_type_bug.m:021:     Bar_2: ext_type_bug.bar(int)
+ext_type_bug.m:030: In clause for predicate `foo_tuple'/1:
+ext_type_bug.m:030:   in argument 1 of call to predicate
+ext_type_bug.m:030:   `ext_type_bug.make_bar_tuple'/1:
+ext_type_bug.m:030:   type error: variable `BarTuple' has type
+ext_type_bug.m:030:     {
+ext_type_bug.m:030:       ext_type_bug.bar(
+ext_type_bug.m:030:         int
+ext_type_bug.m:030:       ),
+ext_type_bug.m:030:       ext_type_bug.bar(
+ext_type_bug.m:030:         float
+ext_type_bug.m:030:       )
+ext_type_bug.m:030:     },
+ext_type_bug.m:030:   expected type was
+ext_type_bug.m:030:     some [T, U] (
+ext_type_bug.m:030:       {
+ext_type_bug.m:030:         ext_type_bug.bar(
+ext_type_bug.m:030:           T
+ext_type_bug.m:030:         ),
+ext_type_bug.m:030:         ext_type_bug.bar(
+ext_type_bug.m:030:           U
+ext_type_bug.m:030:         )
+ext_type_bug.m:030:       }
+ext_type_bug.m:030:     ).
+ext_type_bug.m:030:   In the first argument of the tuple type constructor:
+ext_type_bug.m:030:   in the first argument of type constructor `bar':
+ext_type_bug.m:030:     the context requires a specific type, but this is not
+ext_type_bug.m:030:     allowed for existentially typed arguments.
+ext_type_bug.m:030:   In the second argument of the tuple type constructor:
+ext_type_bug.m:030:   in the first argument of type constructor `bar':
+ext_type_bug.m:030:     the context requires a specific type, but this is not
+ext_type_bug.m:030:     allowed for existentially typed arguments.
+ext_type_bug.m:030:   The partial type assignment was:
+ext_type_bug.m:030:     some [T_1, U_2]
+ext_type_bug.m:030:     BarTuple_2: {ext_type_bug.bar(int),
+ext_type_bug.m:030:     ext_type_bug.bar(float)}

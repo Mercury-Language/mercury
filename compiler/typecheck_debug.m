@@ -98,18 +98,18 @@ write_type_assign_set(Stream, [TypeAssign | TypeAssigns], VarSet, !IO) :-
     type_assign::in, prog_varset::in, io::di, io::uo) is det.
 
 write_type_assign(Stream, TypeAssign, VarSet, !IO) :-
-    type_assign_get_external_type_params(TypeAssign, ExternalTypeParams),
+    type_assign_get_existq_tvars(TypeAssign, ExistQTVars),
     type_assign_get_var_types(TypeAssign, VarTypes),
     type_assign_get_typeclass_constraints(TypeAssign, Constraints),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TypeVarSet),
     vartypes_vars(VarTypes, Vars),
     (
-        ExternalTypeParams = []
+        ExistQTVars = []
     ;
-        ExternalTypeParams = [_ | _],
+        ExistQTVars = [_ | _],
         io.write_string(Stream, "some [", !IO),
-        mercury_output_vars_vs(TypeVarSet, debug_varnums, ExternalTypeParams,
+        mercury_output_vars_vs(TypeVarSet, debug_varnums, ExistQTVars,
             Stream, !IO),
         io.write_string(Stream, "]\n\t", !IO)
     ),

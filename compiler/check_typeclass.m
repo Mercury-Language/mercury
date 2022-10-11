@@ -2324,14 +2324,14 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo) = Spec :-
     PredName = pred_info_name(PredInfo),
     Module = pred_info_module(PredInfo),
     SymName = qualified(Module, PredName),
-    Arity = arg_list_arity(ArgTypes),
+    PredFormArity = arg_list_arity(ArgTypes),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 
     VarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), Vars),
 
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
     Pieces0 = [words("In declaration for"),
-        unqual_pf_sym_name_orig_arity(PFSymNameArity), suffix(":"), nl,
+        unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl,
         words("error in type class constraints:"),
         words(choose_number(Vars, "type variable", "type variables"))]
         ++ list_to_quoted_pieces(VarsStrs) ++
@@ -2447,10 +2447,10 @@ report_bad_class_ids_in_pred_decl(ModuleInfo, PredInfo,
         PredSymName = qualified(PredModuleName, PredName)
     ),
     pred_info_get_arg_types(PredInfo, _TVarSet, _, ArgTypes),
-    PredArity = arg_list_arity(ArgTypes),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredArity),
+    PredFormArity = arg_list_arity(ArgTypes),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
     StartPieces = [words("In declaration for"),
-        unqual_pf_sym_name_orig_arity(PFSymNameArity), suffix(":"), nl],
+        unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl],
     Pieces = StartPieces ++
         report_bad_class_ids(HeadBadClassId, TailBadClassIds),
     Spec = simplest_spec($pred, severity_error, phase_type_check,

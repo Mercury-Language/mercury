@@ -96,7 +96,7 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            IdStr = pf_sym_name_orig_arity_to_string(PFSymNameArity),
+            IdStr = pf_sym_name_pred_form_arity_to_string(PFSymNameArity),
             get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             io.format(ProgressStream,
                 "%% Processing `:- pragma foreign_proc' for %s...\n",
@@ -131,7 +131,7 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
         % message generated. We continue so that we can try to find more
         % errors.
         AmbiPieces = [words("Error: ambiguous predicate name"),
-            qual_pf_sym_name_orig_arity(PFSymNameArity), words("in"),
+            qual_pf_sym_name_pred_form_arity(PFSymNameArity), words("in"),
             quote("pragma foreign_proc"), suffix("."), nl],
         AmbiSpec = simplest_spec($pred, severity_error,
             phase_parse_tree_to_hlds, Context, AmbiPieces),
@@ -198,7 +198,8 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
         then
             Pieces = [words("Error:"), pragma_decl("foreign_proc"),
                 words("declaration for imported"),
-                qual_pf_sym_name_orig_arity(PFSymNameArity), suffix("."), nl],
+                qual_pf_sym_name_pred_form_arity(PFSymNameArity),
+                suffix("."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -252,7 +253,7 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
                 Pieces = [words("Error:"),
                     pragma_decl("foreign_proc"), words("declaration"),
                     words("for undeclared mode of"),
-                    qual_pf_sym_name_orig_arity(PFSymNameArity),
+                    qual_pf_sym_name_pred_form_arity(PFSymNameArity),
                     suffix("."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, Pieces),
@@ -627,7 +628,7 @@ add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
                         PiecesA = [words("Error: duplicate"),
                             pragma_decl("foreign_proc"), words("declaration"),
                             words("for this mode of"),
-                            unqual_pf_sym_name_orig_arity(PFSymNameArity),
+                            unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
                             words("in"), words(OldLangStr), suffix("."), nl],
                         PiecesB = [words("The first one was here."), nl],
                         MsgA = simplest_msg(NewContext, PiecesA),

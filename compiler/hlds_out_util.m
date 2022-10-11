@@ -486,7 +486,7 @@ context_to_brief_string(Context) = Str :-
 %
 
 call_id_to_string(plain_call_id(PredCallId)) =
-    pf_sym_name_orig_arity_to_string(PredCallId).
+    pf_sym_name_pred_form_arity_to_string(PredCallId).
 call_id_to_string(generic_call_id(GenericCallId)) =
     generic_call_id_to_string(GenericCallId).
 
@@ -494,7 +494,7 @@ generic_call_id_to_string(gcid_higher_order(Purity, PredOrFunc, _)) =
     purity_prefix_to_string(Purity) ++ "higher-order "
     ++ prog_out.pred_or_func_to_full_str(PredOrFunc) ++ " call".
 generic_call_id_to_string(gcid_class_method(_ClassId, MethodId)) =
-    pf_sym_name_orig_arity_to_string(MethodId).
+    pf_sym_name_pred_form_arity_to_string(MethodId).
 generic_call_id_to_string(gcid_event_call(EventName)) =
     "event " ++ EventName.
 generic_call_id_to_string(gcid_cast(CastType)) =

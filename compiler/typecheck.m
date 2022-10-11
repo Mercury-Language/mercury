@@ -1867,10 +1867,9 @@ rename_apart([TypeAssign0 | TypeAssigns0], PredTypeVarSet, PredExistQVars,
     % Insert the existentially quantified type variables for the called
     % predicate into HeadTypeParams (which holds the set of type
     % variables which the caller is not allowed to bind).
-    type_assign_get_external_type_params(TypeAssign1, HeadTypeParams0),
-    list.append(ParentExistQVars, HeadTypeParams0, HeadTypeParams),
-    type_assign_set_external_type_params(HeadTypeParams,
-        TypeAssign1, TypeAssign),
+    type_assign_get_existq_tvars(TypeAssign1, ExistQTVars0),
+    ExistQTVars = ParentExistQVars ++ ExistQTVars0,
+    type_assign_set_existq_tvars(ExistQTVars, TypeAssign1, TypeAssign),
 
     % Save the results and recurse.
     NewArgTypeAssign =
@@ -2428,10 +2427,9 @@ get_cons_type_assign(ConsDefn, TypeAssign0, ConsTypeAssign) :-
             ConsExistQVars0, ConsExistQVars),
         apply_variable_renaming_to_constraints(Renaming,
             ClassConstraints0, ConstraintsToAdd),
-        type_assign_get_external_type_params(TypeAssign1, HeadTypeParams0),
-        HeadTypeParams = ConsExistQVars ++ HeadTypeParams0,
-        type_assign_set_external_type_params(HeadTypeParams,
-            TypeAssign1, TypeAssign2),
+        type_assign_get_existq_tvars(TypeAssign1, ExistQTVars0),
+        ExistQTVars = ConsExistQVars ++ ExistQTVars0,
+        type_assign_set_existq_tvars(ExistQTVars, TypeAssign1, TypeAssign2),
 
         ConsType = ConsType1,
         ArgTypes = ArgTypes1
@@ -2746,9 +2744,9 @@ type_assign_fresh_type_var(Var, Type, !TypeAssign) :-
     type_assign::in, type_assign::out) is semidet.
 
 type_assign_unify_type(X, Y, TypeAssign0, TypeAssign) :-
-    type_assign_get_external_type_params(TypeAssign0, HeadTypeParams),
+    type_assign_get_existq_tvars(TypeAssign0, ExistQTVars),
     type_assign_get_type_bindings(TypeAssign0, TypeBindings0),
-    type_unify(X, Y, HeadTypeParams, TypeBindings0, TypeBindings),
+    type_unify(X, Y, ExistQTVars, TypeBindings0, TypeBindings),
     type_assign_set_type_bindings(TypeBindings, TypeAssign0, TypeAssign).
 
 %---------------------------------------------------------------------------%
@@ -2783,7 +2781,7 @@ typecheck_coerce_2(Context, FromVar, ToVar, TypeAssign0,
         !TypeAssignSet, !Info) :-
     type_assign_get_var_types(TypeAssign0, VarTypes),
     type_assign_get_typevarset(TypeAssign0, TVarSet),
-    type_assign_get_external_type_params(TypeAssign0, ExternalTypeParams),
+    type_assign_get_existq_tvars(TypeAssign0, ExistQTVars),
     type_assign_get_type_bindings(TypeAssign0, TypeBindings),
 
     ( if search_var_type(VarTypes, FromVar, FromType0) then
@@ -2802,8 +2800,8 @@ typecheck_coerce_2(Context, FromVar, ToVar, TypeAssign0,
     ( if
         MaybeFromType = yes(FromType),
         MaybeToType = yes(ToType),
-        type_is_ground_except_vars(FromType, ExternalTypeParams),
-        type_is_ground_except_vars(ToType, ExternalTypeParams)
+        type_is_ground_except_vars(FromType, ExistQTVars),
+        type_is_ground_except_vars(ToType, ExistQTVars)
     then
         % We can compare the types on both sides immediately.
         typecheck_info_get_type_table(!.Info, TypeTable),

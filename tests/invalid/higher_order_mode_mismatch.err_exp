@@ -18,6 +18,8 @@ higher_order_mode_mismatch.m:031:   type error: variable `F' has type
 higher_order_mode_mismatch.m:031:     func(int, int) = int,
 higher_order_mode_mismatch.m:031:   expected type was
 higher_order_mode_mismatch.m:031:     pred(V_1, V_2, V_3).
+higher_order_mode_mismatch.m:031:   Predicate vs function mismatch: expected a
+higher_order_mode_mismatch.m:031:   predicate, got a function.
 higher_order_mode_mismatch.m:034: In clause for predicate `test_3'/3:
 higher_order_mode_mismatch.m:034:   in argument 1 (i.e. the predicate term) of
 higher_order_mode_mismatch.m:034:   higher-order predicate call:
@@ -25,6 +27,8 @@ higher_order_mode_mismatch.m:034:   type error: variable `F' has type
 higher_order_mode_mismatch.m:034:     func(int, int) = int,
 higher_order_mode_mismatch.m:034:   expected type was
 higher_order_mode_mismatch.m:034:     pred(V_1, V_2, V_3).
+higher_order_mode_mismatch.m:034:   Predicate vs function mismatch: expected a
+higher_order_mode_mismatch.m:034:   predicate, got a function.
 higher_order_mode_mismatch.m:037: In clause for predicate `test_4'/3:
 higher_order_mode_mismatch.m:037:   in unification of variable `Out'
 higher_order_mode_mismatch.m:037:   and term `In1(In2)':

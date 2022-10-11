@@ -836,7 +836,7 @@ module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod, ItemMercuryStatus,
                     PredFormArity),
                 SectionPieces = [words("Error: mode declaration in the"),
                     fixed(ModeSectionStr), words("section for"),
-                    unqual_pf_sym_name_orig_arity(PFSNA1), suffix(","),
+                    unqual_pf_sym_name_pred_form_arity(PFSNA1), suffix(","),
                     words("whose"), p_or_f(PredOrFunc), words("declaration"),
                     words("is in the"), fixed(PredSectionStr), suffix("."),
                     nl],
@@ -851,8 +851,8 @@ module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod, ItemMercuryStatus,
                 PFSNA2 = pf_sym_name_arity(PredOrFunc, unqualified(PredName),
                     PredFormArity),
                 PredModePieces = [words("Error:"),
-                    unqual_pf_sym_name_orig_arity(PFSNA2), words("has its"),
-                    p_or_f(PredOrFunc), words("declaration"),
+                    unqual_pf_sym_name_pred_form_arity(PFSNA2),
+                    words("has its"), p_or_f(PredOrFunc), words("declaration"),
                     words("combined with a mode declaration,"),
                     words("so it may not have a separate mode declaration."),
                     nl],
@@ -890,7 +890,7 @@ decl_section_to_string(decl_implementation) = "implementation".
 unspecified_det_for_method(PFSymNameArity, Context, !Specs) :-
     Pieces = [words("Error: no determinism declaration"),
         words("for type class method"),
-        qual_pf_sym_name_orig_arity(PFSymNameArity), suffix("."), nl],
+        qual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
@@ -900,7 +900,7 @@ unspecified_det_for_method(PFSymNameArity, Context, !Specs) :-
 
 unspecified_det_for_exported(PFSymNameArity, Context, !Specs) :-
     Pieces = [words("Error: no determinism declaration for exported"),
-        unqual_pf_sym_name_orig_arity(PFSymNameArity), suffix("."), nl],
+        unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
@@ -910,7 +910,7 @@ unspecified_det_for_exported(PFSymNameArity, Context, !Specs) :-
 
 unspecified_det_for_local(PFSymNameArity, Context, !Specs) :-
     MainPieces = [words("Error: no determinism declaration for local"),
-        unqual_pf_sym_name_orig_arity(PFSymNameArity), suffix("."), nl],
+        unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix("."), nl],
     VerbosePieces = [words("(This is an error because"),
         words("you specified the"), quote("--no-infer-det"), words("option."),
         words("Use the"), quote("--infer-det"),
@@ -1079,7 +1079,7 @@ check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncSymName,
 
 report_field_status_mismatch(Context, PFSymNameArity, !Specs) :-
     Pieces = [words("In declaration of"),
-        unqual_pf_sym_name_orig_arity(PFSymNameArity), suffix(":"), nl,
+        unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl,
         words("error: a field access function for an exported field"),
         words("must also be exported."), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,

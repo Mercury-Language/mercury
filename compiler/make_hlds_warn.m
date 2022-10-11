@@ -114,7 +114,7 @@ add_quant_warnings(PredCallId, VarSet, Warnings, !Specs) :-
 quant_warning_to_spec(PredCallId, VarSet, Warning) = Spec :-
     Warning = warn_overlap(Vars, Context),
     Pieces1 = [words("In clause for"),
-        unqual_pf_sym_name_orig_arity(PredCallId), suffix(":"), nl],
+        unqual_pf_sym_name_pred_form_arity(PredCallId), suffix(":"), nl],
     (
         Vars = [],
         unexpected($pred, "Vars = []")
@@ -491,7 +491,7 @@ generate_variable_warning(SingleMulti, Context, CallId, VarSet, Vars, Spec) :-
         Count = "more than once"
     ),
     Preamble = [words("In clause for"),
-        unqual_pf_sym_name_orig_arity(CallId), suffix(":"), nl],
+        unqual_pf_sym_name_pred_form_arity(CallId), suffix(":"), nl],
     VarStrs0 = list.map(mercury_var_to_name_only_vs(VarSet), Vars),
     list.sort_and_remove_dups(VarStrs0, VarStrs),
     VarsStr = "`" ++ string.join_list(", ", VarStrs) ++ "'",
@@ -534,7 +534,8 @@ warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
     ;
         UnmentionedVars = [_ | _],
         Pieces = [words("In the"), words(LangStr), words("code for"),
-            unqual_pf_sym_name_orig_arity(PFSymNameArity), suffix(":"), nl] ++
+            unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
+            suffix(":"), nl] ++
             variable_warning_start(UnmentionedVars) ++
             [words("not occur in the"), words(LangStr), words("code."), nl],
         Spec = conditional_spec($pred, warn_singleton_vars, yes,
@@ -678,7 +679,7 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
                 LangStr = foreign_language_string(Lang),
                 Pieces = [words("Warning: the"), fixed(LangStr),
                     words("code for"),
-                    unqual_pf_sym_name_orig_arity(PFSymNameArity),
+                    unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
                     words("may set"), quote(SuccIndStr), suffix(","),
                     words("but it cannot fail.")],
                 Spec = conditional_spec($pred,
@@ -699,7 +700,7 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
                 LangStr = foreign_language_string(Lang),
                 Pieces = [words("Warning: the"), fixed(LangStr),
                     words("code for"),
-                    unqual_pf_sym_name_orig_arity(PFSymNameArity),
+                    unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
                     words("does not appear to set"),
                     quote(SuccIndStr), suffix(","),
                     words("but it can fail.")],
@@ -731,7 +732,7 @@ check_fp_body_for_return(Lang, Context, PFSymNameArity, BodyPieces, !Specs) :-
         LangStr = foreign_language_string(Lang),
         Pieces = [words("Warning: the"), fixed(LangStr),
             words("code for"),
-            unqual_pf_sym_name_orig_arity(PFSymNameArity),
+            unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
             words("may contain a"), quote("return"),
             words("statement."), nl],
         Spec = conditional_spec($pred, warn_suspicious_foreign_procs, yes,

@@ -154,6 +154,7 @@ SINGLEMODULE_PROGS = \
 	ext_type_bug \
 	external2 \
 	extra_info_prompt \
+	fbnf \
 	field_syntax_error \
 	foreign_enum_invalid \
 	foreign_procs_exist_type \
@@ -283,6 +284,7 @@ SINGLEMODULE_PROGS = \
 	try_detism \
 	try_io_else \
 	type_arity \
+	type_diff \
 	type_error_ambiguous \
 	type_error_in_arg \
 	type_inf_loop \

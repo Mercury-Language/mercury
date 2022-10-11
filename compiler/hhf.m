@@ -467,7 +467,7 @@ same_type(A0, B0) :-
     B = strip_kind_annotation(B0),
     same_type_2(A, B).
 
-:- pred same_type_2(mer_type::in, mer_type::in) is semidet.
+:- pred same_type_2(non_kinded_type::in, non_kinded_type::in) is semidet.
 
 same_type_2(type_variable(_, _), type_variable(_, _)).
 same_type_2(defined_type(Name, ArgsA, _), defined_type(Name, ArgsB, _)) :-

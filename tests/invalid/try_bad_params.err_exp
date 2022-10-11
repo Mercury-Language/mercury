@@ -2,13 +2,15 @@ try_bad_params.m:019: Error: duplicate io try parameter.
 try_bad_params.m:028: Error: invalid try goal parameter `bloop'.
 try_bad_params.m:037: In clause for predicate `main_3'/2:
 try_bad_params.m:037:   in initial I/O state variable of try goal:
-try_bad_params.m:037:   type error: variable `STATE_VARIABLE_Int_0' has type
+try_bad_params.m:037:   type error:
+try_bad_params.m:037:   variable `STATE_VARIABLE_Int_0' has type
 try_bad_params.m:037:     int,
 try_bad_params.m:037:   expected type was
 try_bad_params.m:037:     io.state.
 try_bad_params.m:037: In clause for predicate `main_3'/2:
 try_bad_params.m:037:   in final I/O state variable of try goal:
-try_bad_params.m:037:   type error: variable `STATE_VARIABLE_Int' has type
+try_bad_params.m:037:   type error:
+try_bad_params.m:037:   variable `STATE_VARIABLE_Int' has type
 try_bad_params.m:037:     int,
 try_bad_params.m:037:   expected type was
 try_bad_params.m:037:     io.state.

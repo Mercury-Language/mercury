@@ -486,8 +486,8 @@ pragma_type_spec_to_pieces(PredInfo) = Pieces :-
     PFSymNameArity =
         pf_sym_name_arity(PredOrFunc, qualified(Module, Name), PredFormArity),
     Pieces = [words("In"), pragma_decl("type_spec"),
-        words("declaration for"), qual_pf_sym_name_orig_arity(PFSymNameArity),
-        suffix(":"), nl].
+        words("declaration for"),
+        qual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl].
 
 :- func report_variables(list(tvar), tvarset) = list(format_component).
 

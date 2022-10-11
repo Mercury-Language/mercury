@@ -49,4 +49,6 @@ purity_nonsense2.m:025:   type error: variable `P' has type
 purity_nonsense2.m:025:     pred,
 purity_nonsense2.m:025:   expected type was
 purity_nonsense2.m:025:     impure pred.
+purity_nonsense2.m:025:   Purity mismatch: expected an impure predicate, got
+purity_nonsense2.m:025:   a pure predicate.
 For more information, recompile with `-E'.

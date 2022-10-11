@@ -19,7 +19,6 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_class.
-:- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.vartypes.
@@ -36,8 +35,8 @@
                 ta_var_types            :: vartypes,
                 ta_type_varset          :: tvarset,
 
-                % Universally quantified type variables.
-                ta_external_type_params :: external_type_params,
+                % Existentially quantified type variables.
+                ta_existq_tvars         :: list(tvar),
 
                 % Type bindings.
                 ta_type_bindings        :: tsubst,
@@ -72,8 +71,8 @@
     vartypes::out) is det.
 :- pred type_assign_get_typevarset(type_assign::in,
     tvarset::out) is det.
-:- pred type_assign_get_external_type_params(type_assign::in,
-    external_type_params::out) is det.
+:- pred type_assign_get_existq_tvars(type_assign::in,
+    list(tvar)::out) is det.
 :- pred type_assign_get_type_bindings(type_assign::in,
     tsubst::out) is det.
 :- pred type_assign_get_coerce_constraints(type_assign::in,
@@ -89,7 +88,7 @@
     type_assign::in, type_assign::out) is det.
 :- pred type_assign_set_typevarset(tvarset::in,
     type_assign::in, type_assign::out) is det.
-:- pred type_assign_set_external_type_params(external_type_params::in,
+:- pred type_assign_set_existq_tvars(list(tvar)::in,
     type_assign::in, type_assign::out) is det.
 :- pred type_assign_set_type_bindings(tsubst::in,
     type_assign::in, type_assign::out) is det.
@@ -113,9 +112,8 @@
 
 :- type type_assign_set == list(type_assign).
 
-:- pred type_assign_set_init(tvarset::in, vartypes::in,
-    external_type_params::in, hlds_constraints::in, type_assign_set::out)
-    is det.
+:- pred type_assign_set_init(tvarset::in, vartypes::in, list(tvar)::in,
+    hlds_constraints::in, type_assign_set::out) is det.
 
     % type_assign_set_get_final_info(TypeAssignSet, OldExternalTypeParams,
     %   OldExistQVars, OldExplicitVarTypes, NewTypeVarSet, New* ...,
@@ -201,8 +199,8 @@ type_assign_get_var_types(TA, X) :-
     X = TA ^ ta_var_types.
 type_assign_get_typevarset(TA, X) :-
     X = TA ^ ta_type_varset.
-type_assign_get_external_type_params(TA, X) :-
-    X = TA ^ ta_external_type_params.
+type_assign_get_existq_tvars(TA, X) :-
+    X = TA ^ ta_existq_tvars.
 type_assign_get_type_bindings(TA, X) :-
     X = TA ^ ta_type_bindings.
 type_assign_get_coerce_constraints(TA, X) :-
@@ -218,8 +216,8 @@ type_assign_set_var_types(X, !TA) :-
     !TA ^ ta_var_types := X.
 type_assign_set_typevarset(X, !TA) :-
     !TA ^ ta_type_varset := X.
-type_assign_set_external_type_params(X, !TA) :-
-    !TA ^ ta_external_type_params := X.
+type_assign_set_existq_tvars(X, !TA) :-
+    !TA ^ ta_existq_tvars := X.
 type_assign_set_type_bindings(X, !TA) :-
     !TA ^ ta_type_bindings := X.
 type_assign_set_coerce_constraints(X, !TA) :-

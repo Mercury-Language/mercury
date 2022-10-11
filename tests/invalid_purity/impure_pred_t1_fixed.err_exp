@@ -5,6 +5,8 @@ impure_pred_t1_fixed.m:029:   type error: variable `X' has type
 impure_pred_t1_fixed.m:029:     impure pred(int, int),
 impure_pred_t1_fixed.m:029:   expected type was
 impure_pred_t1_fixed.m:029:     pred(V_1, V_2).
+impure_pred_t1_fixed.m:029:   Purity mismatch: expected a pure predicate, got
+impure_pred_t1_fixed.m:029:   an impure predicate.
 impure_pred_t1_fixed.m:029:   The partial type assignment was:
 impure_pred_t1_fixed.m:029:     Y_3: impure_pred_t1_fixed.foo
 impure_pred_t1_fixed.m:029:     X_4: (impure pred(int, int))

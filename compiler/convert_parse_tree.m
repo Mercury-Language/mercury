@@ -189,7 +189,6 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.
 
@@ -2167,18 +2166,14 @@ classify_src_items_int([Item | Items],
         Item = item_clause(ItemClauseInfo),
         ItemClauseInfo = item_clause_info(PredOrFunc, PredSymName, ArgTerms,
             _VarSet, _Body, Context, _SeqNum),
-        list.length(ArgTerms, Arity),
-        % There is no point printing out the qualified name,
-        % since the module name is implicit in the context.
-        UnqualPredSymName = unqualified(unqualify_name(PredSymName)),
-        PredName = pf_sym_name_orig_arity_to_string(PredOrFunc,
-            sym_name_arity(UnqualPredSymName, Arity)),
-        error_is_exported(Context, [words("clause for"), fixed(PredName)],
-            !Specs),
-        user_arity_pred_form_arity(PredOrFunc, UserArity,
-            pred_form_arity(Arity)),
+        PredFormArity = arg_list_arity(ArgTerms),
+        user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
         PredPfNameArity =
             pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
+        % There is no point printing out the qualified name,
+        % since the module name is implicit in the context.
+        error_is_exported(Context, [words("clause for"),
+            unqual_pf_sym_name_user_arity(PredPfNameArity)], !Specs),
         set.insert(PredPfNameArity, !BadClausePreds)
     ;
         Item = item_decl_pragma(ItemDeclPragma),

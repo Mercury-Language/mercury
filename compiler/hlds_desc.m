@@ -128,7 +128,7 @@ describe_goal(ModuleInfo, VarTable, Goal) = FullDesc :-
         ;
             GCall = class_method(Var, _, _, MethodSNA),
             string.format("%s[%s]%s",
-                [s(pf_sym_name_orig_arity_to_string(MethodSNA)),
+                [s(pf_sym_name_pred_form_arity_to_string(MethodSNA)),
                 s(describe_var(VarTable, Var)), s(ArgsStr)], Desc)
         ;
             GCall = event_call(EventName),

@@ -336,7 +336,7 @@ maybe_add_error_for_field_access_function(ModuleInfo, PredStatus,
         FieldAccessMainPieces =
             [words("Error: clause for"),
             words("automatically generated field access"),
-            unqual_pf_sym_name_orig_arity(FieldPFSymNameArity),
+            unqual_pf_sym_name_pred_form_arity(FieldPFSymNameArity),
             suffix("."), nl],
         FieldAccessVerbosePieces =
             [words("Clauses for field access functions"),

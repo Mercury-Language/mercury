@@ -1197,7 +1197,7 @@ find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
             GetPredDesc =
                 ( func(_ - PI) = Piece :-
                     pred_info_get_pf_sym_name_arity(PI, PFSNA),
-                    Piece = qual_pf_sym_name_orig_arity(PFSNA)
+                    Piece = qual_pf_sym_name_pred_form_arity(PFSNA)
                 ),
             PredDescPieces = list.map(GetPredDesc, MatchingPredIdsInfos),
             intersperse_list_last([suffix(","), nl],

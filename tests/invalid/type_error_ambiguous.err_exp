@@ -1,8 +1,9 @@
 type_error_ambiguous.m:039: In clause for predicate `main'/2:
 type_error_ambiguous.m:039:   in argument 1 of call to predicate
 type_error_ambiguous.m:039:   `io.write_int'/3:
-type_error_ambiguous.m:039:   type error: type of variable `X' does not match
-type_error_ambiguous.m:039:   its expected type;
+type_error_ambiguous.m:039:   type error:
+type_error_ambiguous.m:039:   type of variable `X' does not match its expected
+type_error_ambiguous.m:039:   type;
 type_error_ambiguous.m:039:   variable `X' has overloaded actual/expected types
 type_error_ambiguous.m:039:   {
 type_error_ambiguous.m:039:     (expected) int,

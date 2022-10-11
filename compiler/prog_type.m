@@ -74,10 +74,19 @@
     %
 :- pred type_is_tuple(mer_type::in, list(mer_type)::out) is semidet.
 
+:- type non_kinded_type =< mer_type
+    --->    type_variable(tvar, kind)
+    ;       defined_type(sym_name, list(mer_type), kind)
+    ;       builtin_type(builtin_type)
+    ;       tuple_type(list(mer_type), kind)
+    ;       higher_order_type(pred_or_func, list(mer_type), ho_inst_info,
+                purity, lambda_eval_method)
+    ;       apply_n_type(tvar, list(mer_type), kind).
+
     % Remove the kind annotation at the top-level if there is one,
     % otherwise return the type unchanged.
     %
-:- func strip_kind_annotation(mer_type) = mer_type.
+:- func strip_kind_annotation(mer_type) = non_kinded_type.
 
 %---------------------------------------------------------------------------%
 
@@ -202,11 +211,11 @@
     list(mer_type)::in, mer_type::in, list(mer_mode)::in, mer_mode::in,
     determinism::in, mer_type::out) is det.
 
-    % Make error messages more readable by removing "builtin."
-    % qualifiers.
+    % Make error messages more readable by removing all "builtin." qualifiers
+    % from all type and mode names contained in the given type or types,
+    % regardless of how deeply they are nested.
     %
 :- pred strip_builtin_qualifiers_from_type(mer_type::in, mer_type::out) is det.
-
 :- pred strip_builtin_qualifiers_from_type_list(list(mer_type)::in,
     list(mer_type)::out) is det.
 
@@ -439,6 +448,7 @@
 :- implementation.
 
 :- import_module mdbcomp.builtin_modules.
+:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
@@ -479,10 +489,18 @@ type_is_tuple(Type, ArgTypes) :-
     strip_kind_annotation(Type) = tuple_type(ArgTypes, _).
 
 strip_kind_annotation(Type0) = Type :-
-    ( if Type0 = kinded_type(Type1, _) then
+    (
+        Type0 = kinded_type(Type1, _),
         Type = strip_kind_annotation(Type1)
-    else
-        Type = Type0
+    ;
+        ( Type0 = type_variable(_, _)
+        ; Type0 = defined_type(_, _, _)
+        ; Type0 = builtin_type(_)
+        ; Type0 = tuple_type(_, _)
+        ; Type0 = higher_order_type(_, _, _, _, _)
+        ; Type0 = apply_n_type(_, _, _)
+        ),
+        Type = coerce(Type0)
     ).
 
 %---------------------------------------------------------------------------%
@@ -789,8 +807,9 @@ strip_builtin_qualifiers_from_type(Type0, Type) :-
         strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes),
         Type = defined_type(SymName, ArgTypes, Kind)
     ;
-        Type0 = higher_order_type(PorF, ArgTypes0, HOInstInfo, Purity, EM),
+        Type0 = higher_order_type(PorF, ArgTypes0, HOInstInfo0, Purity, EM),
         strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes),
+        strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo),
         Type = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity, EM)
     ;
         Type0 = tuple_type(ArgTypes0, Kind),
@@ -808,6 +827,21 @@ strip_builtin_qualifiers_from_type(Type0, Type) :-
 
 strip_builtin_qualifiers_from_type_list(Types0, Types) :-
     list.map(strip_builtin_qualifiers_from_type, Types0, Types).
+
+:- pred strip_builtin_qualifiers_from_ho_inst_info(ho_inst_info::in,
+    ho_inst_info::out) is det.
+
+strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo) :-
+    (
+        HOInstInfo0 = none_or_default_func,
+        HOInstInfo = none_or_default_func
+    ;
+        HOInstInfo0 = higher_order(PredInstInfo0),
+        PredInstInfo0 = pred_inst_info(PorF, Modes0, RegTypes, Detism),
+        strip_builtin_qualifiers_from_mode_list(Modes0, Modes),
+        PredInstInfo = pred_inst_info(PorF, Modes, RegTypes, Detism),
+        HOInstInfo = higher_order(PredInstInfo)
+    ).
 
 %---------------------------------------------------------------------------%
 

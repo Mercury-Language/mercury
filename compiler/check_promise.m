@@ -246,7 +246,8 @@ check_in_interface_promise_call(ModuleInfo, PredId, GoalInfo, !Specs) :-
             PredSymName = qualified(PredModuleName, PredName),
             Arity = pred_info_pred_form_arity(PredInfo),
             PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
-            PredNamePieces = [qual_pf_sym_name_orig_arity(PFSymNameArity)],
+            PredNamePieces =
+                [qual_pf_sym_name_pred_form_arity(PFSymNameArity)],
             report_assertion_interface_error(ModuleName, Context,
                 PredNamePieces, !Specs)
         ;
@@ -258,7 +259,7 @@ check_in_interface_promise_call(ModuleInfo, PredId, GoalInfo, !Specs) :-
         PredSymName = qualified(PredModuleName, PredName),
         Arity = pred_info_pred_form_arity(PredInfo),
         PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
-        PredNamePieces = [qual_pf_sym_name_orig_arity(PFSymNameArity)],
+        PredNamePieces = [qual_pf_sym_name_pred_form_arity(PFSymNameArity)],
         report_assertion_module_error(ModuleName, Context, PredModuleName,
             PredNamePieces, !Specs)
     ).

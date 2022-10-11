@@ -402,7 +402,7 @@ describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
         ;
             GoalExpr = generic_call(GenericCall, _, _, _, _),
             GenericCall = class_method(_, _, _, PFSymNameArity),
-            CallPieces = [qual_pf_sym_name_orig_arity(PFSymNameArity)]
+            CallPieces = [qual_pf_sym_name_pred_form_arity(PFSymNameArity)]
         ;
             GoalExpr = call_foreign_proc(_, PredId, _, _, _, _, _),
             CallPieces = describe_one_pred_name(ModuleInfo,

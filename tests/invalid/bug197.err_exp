@@ -8,6 +8,8 @@ bug197.m:026:   type error: argument has type
 bug197.m:026:     pred(string, T, V_6, V_6),
 bug197.m:026:   expected type was
 bug197.m:026:     pred(L, A, A).
+bug197.m:026:   Arity mismatch for the predicate: expected three arguments, got
+bug197.m:026:   four.
 bug197.m:032: Error: cannot use !:SS here due to the surrounding lambda
 bug197.m:032:   expression; you may only refer to !.SS.
 bug197.m:026:   Here is the surrounding context that makes state variable SS

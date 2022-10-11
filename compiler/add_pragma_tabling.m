@@ -235,7 +235,7 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM,
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            IdStr = pf_sym_name_orig_arity_to_string(PredOrFunc,
+            IdStr = pf_sym_name_pred_form_arity_to_string(PredOrFunc,
                 PredSymName, PredFormArity),
             get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             io.format(ProgressStream,
