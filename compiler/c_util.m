@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2020 The Mercury team.
+% Copyright (C) 2013-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -11,7 +11,7 @@
 % Main author: fjh.
 %
 % This module defines utility routines that are useful when generating and/or
-% emitting C code.  Some of these routines are also useful with other languages
+% emitting C code. Some of these routines are also useful with other languages
 % whose syntax is similar to C.
 %
 %---------------------------------------------------------------------------%
@@ -881,9 +881,7 @@ output_int_expr(Stream, N, !IO) :-
 output_uint_expr(Stream, N, !IO) :-
     % We need to cast to (MR_Unsigned) to ensure things like 1 << 32 work
     % when `MR_Unsigned' is 64 bits but `unsigned int' is 32 bits.
-    io.write_string(Stream, "(MR_Unsigned) ", !IO),
-    io.write_uint(Stream, N, !IO),
-    io.write_string(Stream, "U", !IO).
+    io.format(Stream, "(MR_Unsigned) %uU", [u(N)], !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -893,64 +891,46 @@ output_uint_expr(Stream, N, !IO) :-
 % The INTn_C and UINTn_C macros used here are defined in stdint.h.
 
 output_int8_expr(Stream, N, !IO) :-
-    io.write_string(Stream, "INT8_C(", !IO),
-    io.write_int8(Stream, N, !IO),
-    io.write_string(Stream, ")", !IO).
+    io.format(Stream, "INT8_C(%d)", [i8(N)], !IO).
 
 output_uint8_expr(Stream, N, !IO) :-
-    io.write_string(Stream, "UINT8_C(", !IO),
-    io.write_uint8(Stream, N, !IO),
-    io.write_string(Stream, ")", !IO).
+    io.format(Stream, "UINT8_C(%u)", [u8(N)], !IO).
 
 output_int16_expr(Stream, N, !IO) :-
-    io.write_string(Stream, "INT16_C(", !IO),
-    io.write_int16(Stream, N, !IO),
-    io.write_string(Stream, ")", !IO).
+    io.format(Stream, "INT16_C(%d)", [i16(N)], !IO).
 
 output_uint16_expr(Stream, N, !IO) :-
-    io.write_string(Stream, "UINT16_C(", !IO),
-    io.write_uint16(Stream, N, !IO),
-    io.write_string(Stream, ")", !IO).
+    io.format(Stream, "UINT16_C(%u)", [u16(N)], !IO).
 
 output_int32_expr(Stream, N, !IO) :-
     ( if N = min_int32 then
         io.write_string(Stream, "INT32_MIN", !IO)
     else
-        io.write_string(Stream, "INT32_C(", !IO),
-        io.write_int32(Stream, N, !IO),
-        io.write_string(Stream, ")", !IO)
+        io.format(Stream, "INT32_C(%d)", [i32(N)], !IO)
     ).
 
 output_uint32_expr(Stream, N, !IO) :-
-    io.write_string(Stream, "UINT32_C(", !IO),
-    io.write_uint32(Stream, N, !IO),
-    io.write_string(Stream, ")", !IO).
+    io.format(Stream, "UINT32_C(%u)", [u32(N)], !IO).
 
 make_int64_literal(N) = Literal :-
     ( if N = min_int64 then
         Literal = "INT64_MIN"
     else
-        NStr = int64_to_string(N),
-        string.format("INT64_C(%s)", [s(NStr)], Literal)
+        string.format("INT64_C(%d)", [i64(N)], Literal)
     ).
 
 output_int64_expr(Stream, N, !IO) :-
     ( if N = min_int64 then
         io.write_string(Stream, "INT64_MIN", !IO)
     else
-        io.write_string(Stream, "INT64_C(", !IO),
-        io.write_int64(Stream, N, !IO),
-        io.write_string(Stream, ")", !IO)
+        io.format(Stream, "INT64_C(%d)", [i64(N)], !IO)
     ).
 
 make_uint64_literal(N) = Literal :-
-    NStr = uint64_to_string(N),
-    string.format("UINT64_C(%s)", [s(NStr)], Literal).
+    string.format("UINT64_C(%u)", [u64(N)], Literal).
 
 output_uint64_expr(Stream, N, !IO) :-
-    io.write_string(Stream, "UINT64_C(", !IO),
-    io.write_uint64(Stream, N, !IO),
-    io.write_string(Stream, ")", !IO).
+    io.format(Stream, "UINT64_C(%u)", [u64(N)], !IO).
 
 %---------------------------------------------------------------------------%
 %
