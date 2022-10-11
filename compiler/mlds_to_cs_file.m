@@ -320,14 +320,12 @@ output_env_var_definition_for_csharp(Stream, Indent, EnvVarName, !IO) :-
     % We use int because the generated code compares against zero, and changing
     % that is more trouble than it is worth, as it affects the C backends.
     output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "private static int mercury_envvar_", !IO),
-    io.write_string(Stream, EnvVarName, !IO),
-    io.write_string(Stream, " =\n", !IO),
+    io.format(Stream, "private static int mercury_envvar_%s =\n",
+        [s(EnvVarName)], !IO),
     output_n_indents(Stream, Indent + 1, !IO),
-    io.write_string(Stream,
-        "System.Environment.GetEnvironmentVariable(\"", !IO),
-    io.write_string(Stream, EnvVarName, !IO),
-    io.write_string(Stream, "\") == null ? 0 : 1;\n", !IO).
+    io.format(Stream,
+        "System.Environment.GetEnvironmentVariable(\"%s\") == null ? 0 : 1;\n",
+        [s(EnvVarName)], !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -353,15 +351,12 @@ output_src_start_for_csharp(Info, Stream, Indent, MercuryModuleName, _Imports,
         ForeignDecls, ForeignDeclResults, !IO),
     list.filter_map(maybe_is_error, ForeignDeclResults, Errors),
 
-    io.write_string(Stream, "public static class ", !IO),
     mangle_sym_name_for_csharp(MercuryModuleName, module_qual, "__",
         ClassName),
-    io.write_string(Stream, ClassName, !IO),
-    io.write_string(Stream, " {\n", !IO),
+    io.format(Stream, "public static class %s {\n", [s(ClassName)], !IO),
 
-    % Check if this module contains a `main' predicate and if it does insert
-    % a `main' method in the resulting source file that calls the `main'
-    % predicate.
+    % Check whether this module contains a `main' predicate, and if it does,
+    % then generate a `main' method that calls the `main' predicate.
     ( if func_defns_contain_main(Defns) then
         write_main_driver_for_csharp(Stream, Indent + 1, ClassName, !IO)
     else
@@ -377,17 +372,14 @@ output_src_start_for_csharp(Info, Stream, Indent, MercuryModuleName, _Imports,
 
 output_static_constructor(Stream, MercuryModuleName, Indent,
         StaticConstructors, FinalPreds, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "static ", !IO),
     mangle_sym_name_for_csharp(MercuryModuleName, module_qual, "__",
         ClassName),
-    io.write_string(Stream, ClassName, !IO),
-    io.write_string(Stream, "() {\n", !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.format(Stream, "static %s() {\n", [s(ClassName)], !IO),
     WriteCall =
         ( pred(MethodName::in, !.IO::di, !:IO::uo) is det :-
             output_n_indents(Stream, Indent + 1, !IO),
-            io.write_string(Stream, MethodName, !IO),
-            io.write_string(Stream, "();\n", !IO)
+            io.format(Stream, "%s();\n", [s(MethodName)], !IO)
         ),
     list.foldl(WriteCall, StaticConstructors, !IO),
     WriteFinal =
@@ -407,8 +399,7 @@ output_static_constructor(Stream, MercuryModuleName, Indent,
 
 write_main_driver_for_csharp(Stream, Indent, ClassName, !IO) :-
     output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "public static void Main", !IO),
-    io.write_string(Stream, "(string[] args)\n", !IO),
+    io.write_string(Stream, "public static void Main(string[] args)\n", !IO),
     output_n_indents(Stream, Indent, !IO),
     io.write_string(Stream, "{\n", !IO),
     Body = [
