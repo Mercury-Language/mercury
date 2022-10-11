@@ -592,7 +592,7 @@
     %
 :- type external_type_params == list(tvar).
 
-:- func pred_info_module(pred_info) =  module_name.
+:- func pred_info_module(pred_info) = module_name.
 :- func pred_info_name(pred_info) = string.
 
     % Pred_info_orig_arity returns the arity of the predicate
