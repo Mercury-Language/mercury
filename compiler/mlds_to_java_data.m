@@ -224,8 +224,7 @@ output_call_rval_for_java(Info, Rval, Stream, !IO) :-
         Rval = ml_const(Const),
         Const = mlconst_code_addr(CodeAddr)
     then
-        IsCall = yes,
-        mlds_output_code_addr_for_java(Info, Stream, CodeAddr, IsCall, !IO)
+        mlds_output_call_code_addr_for_java(Stream, CodeAddr, !IO)
     else
         output_bracketed_rval_for_java(Info, Rval, Stream, !IO)
     ).
@@ -621,10 +620,10 @@ output_int_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
             output_basic_binop_for_java(Info, Stream,
                 OpStr, X, Y, !IO)
         ;
-            ( Type = int_type_uint8,    Cast = "(byte)",    Mask = "0xff"
-            ; Type = int_type_uint16,   Cast = "(short)",   Mask = "0xffff"
-            ; Type = int_type_uint32,   Cast = "(int)",     Mask = "0xffffffffL"
-            ; Type = int_type_uint,     Cast = "(int)",     Mask = "0xffffffffL"
+            ( Type = int_type_uint8,    Cast = "(byte)",   Mask = "0xff"
+            ; Type = int_type_uint16,   Cast = "(short)",  Mask = "0xffff"
+            ; Type = int_type_uint32,   Cast = "(int)",    Mask = "0xffffffffL"
+            ; Type = int_type_uint,     Cast = "(int)",    Mask = "0xffffffffL"
             ),
             io.format(Stream, "(%s ", [s(Cast)], !IO),
             output_basic_binop_with_mask_for_java(Info, Stream,
@@ -633,8 +632,8 @@ output_int_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
         ;
             Type = int_type_uint64,
             % We could compute FuncName along with OpStr above,
-            % but uint64 operands are rare enough that it is better
-            % not to burden the non-uint64 code path with recording FuncName.
+            % but int64 operands are rare enough that it is better
+            % not to burden the non-int64 code path with recording FuncName.
             ( Op = int_div(_), FuncName = "java.lang.Long.divideUnsigned"
             ; Op = int_mod(_), FuncName = "java.lang.Long.remainderUnsigned"
             ),
@@ -720,9 +719,9 @@ output_int_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
                 OpStr = ">>>"
             )
         ),
-        % We ignore the distinction between shift_by_int and
-        % shift_by_uint, because when targeting Java, we represent
-        % Mercury uints as Java ints anyway.
+        % We ignore the distinction between shift_by_int and shift_by_uint,
+        % because when targeting Java, we represent Mercury uints as
+        % Java ints anyway.
         (
             ( Type = int_type_int
             ; Type = int_type_int32
@@ -916,8 +915,7 @@ output_rval_const_for_java(Info, Stream, Const, !IO) :-
         io.write_string(Stream, NamedConst, !IO)
     ;
         Const = mlconst_code_addr(CodeAddr),
-        IsCall = no,
-        mlds_output_code_addr_for_java(Info, Stream, CodeAddr, IsCall, !IO)
+        mlds_output_wrapper_code_addr_for_java(Info, Stream, CodeAddr, !IO)
     ;
         Const = mlconst_data_addr_local_var(LocalVarName),
         output_local_var_name_for_java(Stream, LocalVarName, !IO)
@@ -976,38 +974,33 @@ output_int_const_for_java(Stream, N, !IO) :-
         io.write_int(Stream, N, !IO)
     ).
 
-:- pred mlds_output_code_addr_for_java(java_out_info::in,
-    io.text_output_stream::in, mlds_code_addr::in, bool::in,
-    io::di, io::uo) is det.
+    % Take the address of the wrapper for the given function (method).
+    %
+:- pred mlds_output_wrapper_code_addr_for_java(java_out_info::in,
+    io.text_output_stream::in, mlds_code_addr::in, io::di, io::uo) is det.
 
-mlds_output_code_addr_for_java(Info, Stream, CodeAddr, IsCall, !IO) :-
+mlds_output_wrapper_code_addr_for_java(Info, Stream, CodeAddr, !IO) :-
+    AddrOfMap = Info ^ joi_addrof_map,
+    map.lookup(AddrOfMap, CodeAddr, CodeAddrWrapper),
+    CodeAddrWrapper = code_addr_wrapper(ClassName, MaybePtrNum),
     (
-        IsCall = no,
-        % Not a function call, so we are taking the address of the
-        % wrapper for that function (method).
-        io.write_string(Stream, "new ", !IO),
-        AddrOfMap = Info ^ joi_addrof_map,
-        map.lookup(AddrOfMap, CodeAddr, CodeAddrWrapper),
-        CodeAddrWrapper = code_addr_wrapper(ClassName, MaybePtrNum),
-        io.write_string(Stream, ClassName, !IO),
-        io.write_string(Stream, "_0(", !IO),
-        (
-            MaybePtrNum = yes(PtrNum),
-            io.write_int(Stream, PtrNum, !IO)
-        ;
-            MaybePtrNum = no
-        ),
-        io.write_string(Stream, ")", !IO)
+        MaybePtrNum = yes(PtrNum),
+        io.format(Stream, "new %s_0(%d)", [s(ClassName), i(PtrNum)], !IO)
     ;
-        IsCall = yes,
-        CodeAddr = mlds_code_addr(QualFuncLabel, _Signature),
-        QualFuncLabel = qual_func_label(ModuleName, FuncLabel),
-        FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
-        output_qual_name_prefix_java(Stream, ModuleName, module_qual, !IO),
-        mlds_output_proc_label_for_java(Stream, ProcLabel, !IO),
-        io.write_string(Stream,
-            mlds_maybe_aux_func_id_to_suffix(MaybeAux), !IO)
+        MaybePtrNum = no,
+        io.format(Stream, "new %s_0()", [s(ClassName)], !IO)
     ).
+
+:- pred mlds_output_call_code_addr_for_java(io.text_output_stream::in,
+    mlds_code_addr::in, io::di, io::uo) is det.
+
+mlds_output_call_code_addr_for_java(Stream, CodeAddr, !IO) :-
+    CodeAddr = mlds_code_addr(QualFuncLabel, _Signature),
+    QualFuncLabel = qual_func_label(ModuleName, FuncLabel),
+    FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
+    output_qual_name_prefix_java(Stream, ModuleName, module_qual, !IO),
+    mlds_output_proc_label_for_java(Stream, ProcLabel, !IO),
+    io.write_string(Stream, mlds_maybe_aux_func_id_to_suffix(MaybeAux), !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1015,6 +1008,7 @@ mlds_output_code_addr_for_java(Info, Stream, CodeAddr, IsCall, !IO) :-
     % backend. We need to check both Rvals that are variables and Rvals
     % that are casts. We need to know this in order to append the field name
     % to the object so we can access the value of the enumeration object.
+    % XXX The code below does NOT check for casts.
     %
 :- pred rval_is_enum_object(mlds_rval::in) is semidet.
 
