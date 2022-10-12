@@ -241,16 +241,6 @@
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
-
-    % Write out the given indent level (two spaces per indent).
-    %
-:- pred write_indent(io.text_output_stream::in, int::in, io::di, io::uo) is det.
-
-    % Return the indent for the given level as a string.
-    %
-:- func indent_string(int) = string.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -1024,26 +1014,6 @@ write_intlist_lag(Stream, H, T, !IO) :-
         write_intlist_lag(Stream, TH, TT, !IO)
     ;
         T = []
-    ).
-
-%---------------------------------------------------------------------------%
-%
-% Write out indentation.
-%
-
-write_indent(Stream, Indent, !IO) :-
-    ( if Indent = 0 then
-        true
-    else
-        io.write_string(Stream, "  ", !IO),
-        write_indent(Stream, Indent - 1, !IO)
-    ).
-
-indent_string(Indent) = Str :-
-    ( if Indent = 0 then
-        Str = ""
-    else
-        Str = "  " ++ indent_string(Indent - 1)
     ).
 
 %---------------------------------------------------------------------------%

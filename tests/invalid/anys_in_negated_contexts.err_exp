@@ -12,7 +12,7 @@ anys_in_negated_contexts.m:083: In clause for `bad_lambda(in)':
 anys_in_negated_contexts.m:083:   mode error in conjunction. The next 2 error
 anys_in_negated_contexts.m:083:   messages indicate possible causes of this
 anys_in_negated_contexts.m:083:   error.
-anys_in_negated_contexts.m:083:   
+anys_in_negated_contexts.m:083: 
 anys_in_negated_contexts.m:082:   In clause for `bad_lambda(in)':
 anys_in_negated_contexts.m:082:   purity error: lambda is `ground' but contains
 anys_in_negated_contexts.m:082:   the following non-local variables whose insts
@@ -22,7 +22,7 @@ anys_in_negated_contexts.m:082:   written `any_pred(Args) is det :- ...'.
 anys_in_negated_contexts.m:082:   Function expressions with inst `any' can be
 anys_in_negated_contexts.m:082:   written
 anys_in_negated_contexts.m:082:   `any_func(Args) = Result is det :- ...'.
-anys_in_negated_contexts.m:083:   
+anys_in_negated_contexts.m:083: 
 anys_in_negated_contexts.m:083:   In clause for `bad_lambda(in)':
 anys_in_negated_contexts.m:083:   in argument 1 (i.e. the predicate term) of
 anys_in_negated_contexts.m:083:   higher-order predicate call:

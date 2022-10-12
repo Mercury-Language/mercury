@@ -2111,28 +2111,20 @@ do_write_error_pieces_params(Stream, TreatAsFirst, MaybeContext, FixedIndent,
         then
             io_set_some_errors_were_context_limited(
                 some_errors_were_context_limited, !IO),
-            MaybeContextLength = no
+            MaybeContextStr = no
         else
-            string.count_codepoints(FileName, FileNameLength),
-            string.int_to_string(LineNumber, LineNumberStr),
-            string.count_codepoints(LineNumberStr, LineNumberStrLength0),
-            ( if LineNumberStrLength0 < 3 then
-                LineNumberStrLength = 3
-            else
-                LineNumberStrLength = LineNumberStrLength0
-            ),
-            MaybeContextLength =
-                yes(FileNameLength + 1 + LineNumberStrLength + 2)
+            context_to_string(Context, ContextStr0),
+            MaybeContextStr = yes(ContextStr0)
         )
     ;
         MaybeContext = no,
-        MaybeContextLength = yes(0)
+        MaybeContextStr = yes("")
     ),
     (
-        MaybeContextLength = no
+        MaybeContextStr = no
         % Suppress the printing of the error pieces.
     ;
-        MaybeContextLength = yes(ContextLength),
+        MaybeContextStr = yes(ContextStr),
         (
             Components = []
             % There are no error pieces to print. Don't print the context
@@ -2144,18 +2136,21 @@ do_write_error_pieces_params(Stream, TreatAsFirst, MaybeContext, FixedIndent,
         ;
             Components = [_ | _],
             convert_components_to_paragraphs(Components, Paragraphs),
-            FirstIndent = (if TreatAsFirst = treat_as_first then 0 else 1),
+            string.pad_left("", ' ', FixedIndent, FixedIndentStr),
+            PrefixStr = ContextStr ++ FixedIndentStr,
+            PrefixLen = string.count_codepoints(PrefixStr),
             (
                 MaybeMaxWidth = yes(MaxWidth),
-                Remain = MaxWidth - (ContextLength + FixedIndent),
-                MaybeRemain = yes(Remain)
+                AvailLen = MaxWidth - PrefixLen,
+                MaybeAvailLen = yes(AvailLen)
             ;
                 MaybeMaxWidth = no,
-                MaybeRemain = no
+                MaybeAvailLen = no
             ),
-            divide_paragraphs_into_lines(TreatAsFirst, FirstIndent, Paragraphs,
-                MaybeRemain, Lines),
-            write_msg_lines(Stream, Lines, MaybeContext, FixedIndent, !IO)
+            FirstIndent = (if TreatAsFirst = treat_as_first then 0 else 1),
+            divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst,
+                FirstIndent, Paragraphs, Lines),
+            write_msg_lines(Stream, PrefixStr, Lines, !IO)
         )
     ).
 
@@ -2183,46 +2178,32 @@ line_number_is_in_a_range([Range | Ranges], LineNumber) = IsInARange :-
         IsInARange = line_number_is_in_a_range(Ranges, LineNumber)
     ).
 
-:- func indent_increment = int.
+:- pred write_msg_lines(io.text_output_stream::in, string::in,
+    list(error_line)::in, io::di, io::uo) is det.
 
-indent_increment = 2.
+write_msg_lines(_Stream, _, [], !IO).
+write_msg_lines(Stream, PrefixStr, [Line | Lines], !IO) :-
+    write_msg_line(Stream, PrefixStr, Line, !IO),
+    write_msg_lines(Stream, PrefixStr, Lines, !IO).
 
-:- pred write_msg_lines(io.text_output_stream::in, list(error_line)::in,
-    maybe(prog_context)::in, int::in, io::di, io::uo) is det.
+:- pred write_msg_line(io.text_output_stream::in, string::in, error_line::in,
+    io::di, io::uo) is det.
 
-write_msg_lines(_Stream, [], _, _, !IO).
-write_msg_lines(Stream, [Line | Lines], MaybeContext, FixedIndent, !IO) :-
+write_msg_line(Stream, PrefixStr, Line, !IO) :-
+    Line = error_line(_MaybeAvail, LineIndent, LineWords, _LineWordsLen),
     (
-        MaybeContext = yes(Context),
-        prog_out.write_context(Stream, Context, !IO)
+        LineWords = [],
+        % Don't bother to print out out indents that are followed by nothing.
+        io.format(Stream, "%s\n", [s(PrefixStr)], !IO)
     ;
-        MaybeContext = no
-    ),
-    Line = error_line(LineIndent, LineWords),
-    Indent = FixedIndent + LineIndent * indent_increment,
-    string.pad_left("", ' ', Indent, IndentStr),
-    io.write_string(Stream, IndentStr, !IO),
-    error_util.write_msg_line(Stream, LineWords, !IO),
-    write_msg_lines(Stream, Lines, MaybeContext, FixedIndent, !IO).
-
-:- pred write_msg_line(io.text_output_stream::in, list(string)::in,
-    io::di, io::uo) is det.
-
-write_msg_line(Stream, [], !IO) :-
-    io.write_char(Stream, '\n', !IO).
-write_msg_line(Stream, [Word | Words], !IO) :-
-    io.write_string(Stream, Word, !IO),
-    write_msg_line_rest(Stream, Words, !IO),
-    io.write_char(Stream, '\n', !IO).
-
-:- pred write_msg_line_rest(io.text_output_stream::in, list(string)::in,
-    io::di, io::uo) is det.
-
-write_msg_line_rest(_Stream, [], !IO).
-write_msg_line_rest(Stream, [Word | Words], !IO) :-
-    io.write_char(Stream, ' ', !IO),
-    io.write_string(Stream, Word, !IO),
-    write_msg_line_rest(Stream, Words, !IO).
+        LineWords = [_ | _],
+        IndentStr = indent_string(LineIndent),
+        LineWordsStr = string.join_list(" ", LineWords),
+        % If ContextStr is non-empty, it will end with a space,
+        % which guarantees that it will be separated from LineWords.
+        io.format(Stream, "%s%s%s\n",
+            [s(PrefixStr), s(IndentStr), s(LineWordsStr)], !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -2904,25 +2885,42 @@ first_in_msg_after_component(Component, FirstInMsg, TailFirstInMsg) :-
 
 :- type error_line
     --->    error_line(
-                int,            % Indent level; multiply by indent_increment
-                                % to get number of spaces of indentation.
-                list(string)    % The words on the line.
+                % In the usual case, this will be yes(AvailLen) where
+                % AvailLen is the Total space available on the line
+                % after the context and the fixed indent.
+                %
+                % The absence of an integer here means that there is
+                % no limit on the lengths of lines.
+                maybe_avail_len     :: maybe(int),
+
+                % Indent level of the line; multiply by indent_increment
+                % to get the number of spaces this turns into.
+                line_indent_level   :: int,
+
+                % The words on the line.
+                line_words          :: list(string),
+
+                % Total number of characters in the words, including
+                % the spaces between words.
+                %
+                % This field is meaningful only if maybe_avail_len is yes(...).
+                line_words_len      :: int
             ).
 
     % Groups the words in the given paragraphs into lines. The first line
     % can have up to Max characters on it; the later lines (if any) up
     % to Max-2 characters.
     %
-    % If MaybeMax is `no', handle it as if Max were infinity (i.e. put
-    % everything in each paragraph on one line).
+    % If MaybeAvailLen is `no', handle it as if AvailLen were infinity,
+    % which means putting everything in each paragraph on one line.
     %
     % The given list of paragraphs should be nonempty, since we always return
     % at least one line.
     %
-:- pred divide_paragraphs_into_lines(maybe_treat_as_first::in, int::in,
-    list(paragraph)::in, maybe(int)::in, list(error_line)::out) is det.
+:- pred divide_paragraphs_into_lines(maybe(int)::in, maybe_treat_as_first::in,
+    int::in, list(paragraph)::in, list(error_line)::out) is det.
 
-divide_paragraphs_into_lines(TreatAsFirst, CurIndent, Paras, MaybeMax,
+divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
         Lines) :-
     (
         Paras = [],
@@ -2939,7 +2937,7 @@ divide_paragraphs_into_lines(TreatAsFirst, CurIndent, Paras, MaybeMax,
         ),
         NextIndent = RestIndent + FirstIndentDelta,
 
-        BlankLine = error_line(CurIndent, []),
+        BlankLine = error_line(MaybeAvailLen, CurIndent, [], 0),
         list.duplicate(NumBlankLines, BlankLine, FirstParaBlankLines),
         (
             FirstParaWords = [],
@@ -2949,61 +2947,69 @@ divide_paragraphs_into_lines(TreatAsFirst, CurIndent, Paras, MaybeMax,
             FirstParaWords = [FirstWord | LaterWords],
             NextTreatAsFirst = do_not_treat_as_first,
             (
-                MaybeMax = yes(Max),
-                get_line_of_words(FirstWord, LaterWords, CurIndent, Max,
-                    LineWords, RestWords),
-                CurLine = error_line(CurIndent, LineWords),
+                MaybeAvailLen = yes(AvailLen),
+                get_line_of_words(AvailLen, FirstWord, LaterWords, CurIndent,
+                    LineWordsLen, LineWords, RestWords),
+                CurLine = error_line(MaybeAvailLen, CurIndent,
+                    LineWords, LineWordsLen),
 
-                group_nonfirst_line_words(RestWords, RestIndent, Max,
+                group_nonfirst_line_words(AvailLen, RestWords, RestIndent,
                     FirstParaRestLines),
                 FirstParaLines = [CurLine | FirstParaRestLines]
             ;
-                MaybeMax = no,
-                FirstParaLines = [error_line(CurIndent, FirstParaWords)]
+                MaybeAvailLen = no,
+                FirstParaLines = [error_line(MaybeAvailLen, CurIndent,
+                    FirstParaWords, -1)]
             )
         ),
-        divide_paragraphs_into_lines(NextTreatAsFirst, NextIndent, LaterParas,
-            MaybeMax, LaterParaLines),
+        divide_paragraphs_into_lines(MaybeAvailLen, NextTreatAsFirst,
+            NextIndent, LaterParas, LaterParaLines),
         Lines = FirstParaLines ++ FirstParaBlankLines ++ LaterParaLines
     ).
 
-:- pred group_nonfirst_line_words(list(string)::in, int::in, int::in,
+:- pred group_nonfirst_line_words(int::in, list(string)::in, int::in,
     list(error_line)::out) is det.
 
-group_nonfirst_line_words(Words, Indent, Max, Lines) :-
+group_nonfirst_line_words(AvailLen, Words, Indent, Lines) :-
     (
         Words = [],
         Lines = []
     ;
         Words = [FirstWord | LaterWords],
-        get_line_of_words(FirstWord, LaterWords, Indent, Max,
-            LineWords, RestWords),
-        Line = error_line(Indent, LineWords),
-        group_nonfirst_line_words(RestWords, Indent, Max, RestLines),
+        get_line_of_words(AvailLen, FirstWord, LaterWords, Indent,
+            LineWordsLen, LineWords, RestWords),
+        Line = error_line(yes(AvailLen), Indent, LineWords, LineWordsLen),
+        group_nonfirst_line_words(AvailLen, RestWords, Indent, RestLines),
         Lines = [Line | RestLines]
     ).
 
-:- pred get_line_of_words(string::in, list(string)::in, int::in, int::in,
-    list(string)::out, list(string)::out) is det.
+:- pred get_line_of_words(int::in, string::in, list(string)::in,
+    int::in, int::out, list(string)::out, list(string)::out) is det.
 
-get_line_of_words(FirstWord, LaterWords, Indent, Max, Line, RestWords) :-
+get_line_of_words(AvailLen, FirstWord, LaterWords, Indent, LineWordsLen,
+        LineWords, RestWords) :-
     string.count_codepoints(FirstWord, FirstWordLen),
-    Avail = Max - Indent * indent_increment,
-    get_later_words(LaterWords, FirstWordLen, Avail, [FirstWord],
-        Line, RestWords).
+    AvailLeft = AvailLen - Indent * indent_increment,
+    get_later_words(AvailLeft, LaterWords, FirstWordLen, LineWordsLen,
+        cord.singleton(FirstWord), LineWordsCord, RestWords),
+    LineWords = cord.list(LineWordsCord).
 
-:- pred get_later_words(list(string)::in, int::in, int::in,
-    list(string)::in, list(string)::out, list(string)::out) is det.
+:- pred get_later_words(int::in, list(string)::in, int::in, int::out,
+    cord(string)::in, cord(string)::out, list(string)::out) is det.
 
-get_later_words([], _, _, Line, Line, []).
-get_later_words([Word | Words], OldLen, Avail, Line0, Line, RestWords) :-
+get_later_words(_, [], CurLen, FinalLen, LineWords, LineWords, []) :-
+    FinalLen = CurLen.
+get_later_words(Avail, [Word | Words], CurLen, FinalLen,
+        LineWords0, LineWords, RestWords) :-
     string.count_codepoints(Word, WordLen),
-    NewLen = OldLen + 1 + WordLen,
-    ( if NewLen =< Avail then
-        list.append(Line0, [Word], Line1),
-        get_later_words(Words, NewLen, Avail, Line1, Line, RestWords)
+    NextLen = CurLen + 1 + WordLen,
+    ( if NextLen =< Avail then
+        cord.snoc(Word, LineWords0, LineWords1),
+        get_later_words(Avail, Words, NextLen, FinalLen,
+            LineWords1, LineWords, RestWords)
     else
-        Line = Line0,
+        FinalLen = CurLen,
+        LineWords = LineWords0,
         RestWords = [Word | Words]
     ).
 
