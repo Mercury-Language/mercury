@@ -14,7 +14,7 @@
 :- module parse_tree.parse_vars.
 :- interface.
 
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 
 :- import_module cord.
@@ -31,7 +31,7 @@
     % ContextPieces as a prefix.
     %
 :- pred parse_possibly_repeated_vars(term(T)::in, varset(T)::in,
-    cord(format_component)::in, maybe1(list(var(T)))::out) is det.
+    cord(format_piece)::in, maybe1(list(var(T)))::out) is det.
 
     % parse_vars(Term, VarSet, ContextPieces, MaybeVars):
     %
@@ -39,7 +39,7 @@
     % if a variable is in the list more than once.
     %
 :- pred parse_vars(term(T)::in, varset(T)::in,
-    cord(format_component)::in, maybe1(list(var(T)))::out) is det.
+    cord(format_piece)::in, maybe1(list(var(T)))::out) is det.
 
 :- type plain_state_vars(T)
     --->    plain_state_vars(
@@ -53,7 +53,7 @@
     % but also state variables !SV.
     %
 :- pred parse_vars_state_vars(term(T)::in, varset(T)::in,
-    cord(format_component)::in, maybe1(plain_state_vars(T))::out) is det.
+    cord(format_piece)::in, maybe1(plain_state_vars(T))::out) is det.
 
 :- type plain_state_dot_colon_vars(T)
     --->    plain_state_dot_colon_vars(
@@ -69,7 +69,7 @@
     % but also state variables !SV, !.SV and !:SV.
     %
 :- pred parse_vars_state_dot_colon_vars(term(T)::in, varset(T)::in,
-    cord(format_component)::in, maybe1(plain_state_dot_colon_vars(T))::out)
+    cord(format_piece)::in, maybe1(plain_state_dot_colon_vars(T))::out)
     is det.
 
 %---------------------------------------------------------------------------%
@@ -324,7 +324,7 @@ parse_vars_state_dot_colon_vars(Term, VarSet, ContextPieces, MaybeVars) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_repeated_var_msg(cord(format_component)::in,
+:- pred generate_repeated_var_msg(cord(format_piece)::in,
     varset(T)::in, term(T)::in, error_spec::out) is det.
 
 generate_repeated_var_msg(ContextPieces, VarSet, Term, Spec) :-
@@ -334,7 +334,7 @@ generate_repeated_var_msg(ContextPieces, VarSet, Term, Spec) :-
     Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
         get_term_context(Term), Pieces).
 
-:- pred generate_repeated_state_var_msg(cord(format_component)::in,
+:- pred generate_repeated_state_var_msg(cord(format_piece)::in,
     varset(T)::in, term(T)::in, error_spec::out) is det.
 
 generate_repeated_state_var_msg(ContextPieces, VarSet, Term, Spec) :-
@@ -344,7 +344,7 @@ generate_repeated_state_var_msg(ContextPieces, VarSet, Term, Spec) :-
     Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
         get_term_context(Term), Pieces).
 
-:- pred generate_unexpected_term_message(cord(format_component)::in,
+:- pred generate_unexpected_term_message(cord(format_piece)::in,
     varset(T)::in, string::in, term(T)::in, error_spec::out) is det.
 
 generate_unexpected_term_message(ContextPieces, VarSet, Expected, Term,

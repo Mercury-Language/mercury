@@ -73,7 +73,7 @@
                                     % type pred_id.
 :- import_module libs.options.
 :- import_module libs.timestamp.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.item_util.
@@ -83,6 +83,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.write_error_spec.
 :- import_module recompilation.used_file.
 
 :- import_module assoc_list.
@@ -1374,7 +1375,7 @@ check_functor_ambiguity(RecompAvail, SymName, Arity, ResolvedCtor,
 :- type recompile_reason
     --->    recompile_for_file_error(
                 file_name,
-                list(format_component)
+                list(format_piece)
             )
     ;       recompile_for_output_file_not_up_to_date(
                 file_name
@@ -1573,7 +1574,7 @@ write_recompile_reason(Globals, Stream, ThisModuleName, Reason, !IO) :-
     % or errors.
     write_error_spec(Stream, Globals, Spec, !IO).
 
-:- func describe_item(recomp_item_id) = list(format_component).
+:- func describe_item(recomp_item_id) = list(format_piece).
 
 describe_item(ItemId) = Pieces :-
     ItemId = recomp_item_id(ItemType0, ItemName),
@@ -1594,7 +1595,7 @@ describe_item(ItemId) = Pieces :-
 is_body_of_item(recomp_type_defn, recomp_type_name).
 
 :- func describe_resolved_functor(sym_name, arity, resolved_functor) =
-    list(format_component).
+    list(format_piece).
 
 describe_resolved_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
     (

@@ -95,6 +95,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.var_table.

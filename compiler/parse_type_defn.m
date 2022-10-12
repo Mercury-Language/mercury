@@ -19,7 +19,7 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_data.
@@ -65,7 +65,7 @@
     %
     % Exported to parse_pragma.m for use when parsing foreign type pragmas.
     %
-:- pred parse_type_defn_head(cord(format_component)::in,
+:- pred parse_type_defn_head(cord(format_piece)::in,
     module_name::in, varset::in, term::in,
     maybe2(sym_name, list(type_param))::out) is det.
 
@@ -1294,7 +1294,7 @@ parse_where_pred_is(ModuleName, VarSet, Term) = MaybeSymName :-
     parse_implicitly_qualified_symbol_name(ModuleName, VarSet, Term,
         MaybeSymName).
 
-:- func parse_where_inst_is(module_name, varset, cord(format_component), term)
+:- func parse_where_inst_is(module_name, varset, cord(format_piece), term)
     = maybe1(mer_inst).
 
 parse_where_inst_is(_ModuleName, VarSet, ContextPieces, Term) = MaybeInst :-
@@ -1761,7 +1761,7 @@ check_no_free_body_vars(TVarSet, ParamTVars, BodyType, BodyContext, Specs) :-
 
 %-----------------------------------------------------------------------------e
 
-:- pred parse_supertype(varset::in, cord(format_component)::in, term::in,
+:- pred parse_supertype(varset::in, cord(format_piece)::in, term::in,
     maybe1(maybe_subtype)::out) is det.
 
 parse_supertype(VarSet, ContextPieces, Term, Result) :-

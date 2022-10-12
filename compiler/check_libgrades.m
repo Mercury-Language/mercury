@@ -26,7 +26,7 @@
 :- import_module make.
 :- import_module make.options_file.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 
 :- import_module io.

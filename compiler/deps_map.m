@@ -22,7 +22,7 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_baggage.
 

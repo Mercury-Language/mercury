@@ -48,10 +48,11 @@
 :- import_module make.dependencies.
 :- import_module make.options_file.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.read_modules.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
 :- import_module getopt.

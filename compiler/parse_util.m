@@ -31,7 +31,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
@@ -61,7 +61,7 @@
     pred_or_func::out, sym_name::out, list(term(T))::out) is semidet.
 
 :- pred parse_pred_or_func_and_args_general(maybe(module_name)::in,
-    term(T)::in, varset(T)::in, cord(format_component)::in,
+    term(T)::in, varset(T)::in, cord(format_piece)::in,
     maybe_pred_or_func(term(T))::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -73,14 +73,14 @@
     varset::in, term::in, maybe1(pred_pfu_name_arity)::out) is det.
 
 :- pred parse_pred_pfu_name_arity_maybe_modes(module_name::in,
-    cord(format_component)::in, varset::in, term::in, 
+    cord(format_piece)::in, varset::in, term::in, 
     maybe1(pred_or_proc_pfumm_name)::out) is det.
 
 :- type maybe_pred_or_func_modes ==
     maybe3(sym_name, pred_or_func, list(mer_mode)).
 
 :- pred parse_pred_or_func_and_arg_modes(maybe(module_name)::in,
-    cord(format_component)::in, varset::in, term::in,
+    cord(format_piece)::in, varset::in, term::in,
     maybe_pred_or_func_modes::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -184,7 +184,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_decimal_int(cord(format_component)::in, varset::in, term::in,
+:- pred parse_decimal_int(cord(format_piece)::in, varset::in, term::in,
     maybe1(int)::out) is det.
 
 %---------------------------------------------------------------------------%

@@ -40,12 +40,13 @@
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
+:- import_module libs.
+:- import_module libs.file_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.

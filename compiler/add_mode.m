@@ -19,7 +19,7 @@
 :- import_module hlds.make_hlds.make_hlds_types.
 :- import_module hlds.status.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
@@ -493,7 +493,7 @@ sna_context_is_for_module(ModuleName, SNA - _Context) :-
 
 :- pred local_sna_and_context_to_piece_and_msg(module_info::in,
     inst_or_mode::in, pair(sym_name_arity, prog_context)::in,
-    format_component::out, error_msg::out) is det.
+    format_piece::out, error_msg::out) is det.
 
 local_sna_and_context_to_piece_and_msg(ModuleInfo, InstOrMode, SNA - Context,
         SNAPiece, Msg) :-
@@ -530,7 +530,7 @@ local_sna_and_context_to_piece_and_msg(ModuleInfo, InstOrMode, SNA - Context,
     Msg = simplest_msg(Context, MsgPieces).
 
 :- pred other_sna_and_context_to_piece(pair(sym_name_arity, prog_context)::in,
-    format_component::out) is det.
+    format_piece::out) is det.
 
 other_sna_and_context_to_piece(SNA - _Context, SNAPiece) :-
     SNAPiece = qual_sym_name_arity(SNA).

@@ -95,7 +95,7 @@
 :- import_module hlds.make_hlds.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -136,6 +136,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_type.
@@ -431,7 +432,7 @@ badly_formed_instance_type_msg(ClassId, InstanceDefn, TypeCtor, N,
         badly_formed).
 
 :- func non_tvar_arg_to_pieces(tvarset, pair(int, mer_type))
-    = list(format_component).
+    = list(format_piece).
 
 non_tvar_arg_to_pieces(TVarSet, ArgNum - ArgType) = Pieces :-
     TypeStr = mercury_type_to_string(TVarSet, print_name_only, ArgType),
@@ -455,7 +456,7 @@ abstract_eqv_instance_type_msg(ClassId, InstanceDefn, N, Type) = Spec :-
     ;       abstract_exported_eqv.
 
 :- func bad_instance_type_msg(class_id, hlds_instance_defn,
-    list(format_component), bad_instance_type_kind) = error_spec.
+    list(format_piece), bad_instance_type_kind) = error_spec.
 
 bad_instance_type_msg(ClassId, InstanceDefn, EndPieces, Kind) = Spec :-
     ClassId = class_id(ClassName, _),
@@ -1847,7 +1848,7 @@ report_cyclic_classes(ClassTable, ClassPath) = Spec :-
     ).
 
 :- pred add_path_element(class_id::in,
-    cord(format_component)::in, cord(format_component)::out) is det.
+    cord(format_piece)::in, cord(format_piece)::out) is det.
 
 add_path_element(ClassId, !LaterLines) :-
     Line = [words("<="), qual_class_id(ClassId), nl],
@@ -2373,7 +2374,7 @@ report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn) = Spec :-
         verbose_only(verbose_once, report_unbound_tvars_explanation)]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
-:- func report_unbound_tvars_explanation = list(format_component).
+:- func report_unbound_tvars_explanation = list(format_piece).
 
 report_unbound_tvars_explanation =
     [words("All types occurring in typeclass constraints"),
@@ -2470,7 +2471,7 @@ report_bad_class_ids_in_data_ctor(TypeCtor, TypeDefn,
         Context, Pieces).
 
 :- func report_bad_class_ids(class_id, list(class_id))
-    = list(format_component).
+    = list(format_piece).
 
 report_bad_class_ids(HeadClassId, TailClassIds) = Pieces :-
     WrapQualClassId = (func(ClassId) = qual_class_id(ClassId)),
@@ -2801,7 +2802,7 @@ report_unknown_instance_methods(ClassId, HeadMethod, TailMethods,
         SelectedContext, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- func format_method_name(instance_method) = list(format_component).
+:- func format_method_name(instance_method) = list(format_piece).
 
 format_method_name(Method) = Pieces :-
     Method = instance_method(PredOrFunc, SymName, UserArity, _, _),

@@ -26,7 +26,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -39,26 +39,26 @@
     % by the second and third arguments, and the current and previous
     % definitions are located at the two contexts given.
     %
-    % If the format_component list is not empty, it is added to the end
+    % If the format_piece list is not empty, it is added to the end
     % of the message we generate for the first context.
     % 
 :- pred report_multiply_defined(string::in, sym_name::in, user_arity::in,
-    prog_context::in, prog_context::in, list(format_component)::in,
+    prog_context::in, prog_context::in, list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred report_undefined_pred_or_func_error(maybe(pred_or_func)::in,
     sym_name::in, user_arity::in, list(user_arity)::in, prog_context::in,
-    list(format_component)::in,
+    list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred report_undeclared_mode_error(module_info::in,
     pred_id::in, pred_info::in, prog_varset::in, list(mer_mode)::in,
-    list(format_component)::in, prog_context::in,
+    list(format_piece)::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred maybe_report_undefined_pred_error(module_info::in,
     pred_or_func::in, sym_name::in, pred_form_arity::in, pred_status::in,
-    maybe_class_method::in, prog_context::in, list(format_component)::in,
+    maybe_class_method::in, prog_context::in, list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -211,7 +211,7 @@ report_undeclared_mode_error(ModuleInfo, PredId, PredInfo, VarSet, ArgModes,
     !:Specs = [Spec | !.Specs].
 
 :- func mode_decl_for_pred_info_to_pieces(pred_info, proc_id)
-    = list(format_component).
+    = list(format_piece).
 
 mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
     [words(":- mode"),
@@ -330,7 +330,7 @@ gather_porf_arities(ModuleInfo, [PredId | PredIds], WantedPorF,
     ).
 
 :- func pred_form_arity_to_int_fixed(pred_or_func, pred_form_arity)
-    = format_component.
+    = format_piece.
 
 pred_form_arity_to_int_fixed(PredOrFunc, PredFormArity) = Component :-
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),

@@ -20,7 +20,7 @@
 
 :- import_module libs.globals.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module io.
 :- import_module list.
@@ -80,6 +80,7 @@
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
 :- import_module cord.

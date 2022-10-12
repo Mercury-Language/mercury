@@ -352,11 +352,12 @@
 :- implementation.
 
 :- import_module libs.options.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.find_module.
 :- import_module parse_tree.parse_module.
 :- import_module parse_tree.source_file_map.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
 :- import_module cord.

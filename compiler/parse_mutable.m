@@ -51,7 +51,7 @@
 
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.parse_inst_mode_name.
 :- import_module parse_tree.parse_pragma_foreign.
 :- import_module parse_tree.parse_sym_name.

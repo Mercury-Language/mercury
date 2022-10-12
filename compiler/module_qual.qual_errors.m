@@ -394,7 +394,7 @@ warn_redundant_import_context(ImportedModuleName, Context, Msg) :-
 %---------------------------------------------------------------------------%
 
 :- pred mq_constraint_error_context_to_pieces(mq_constraint_error_context::in,
-    prog_context::out, string::out, list(format_component)::out) is det.
+    prog_context::out, string::out, list(format_piece)::out) is det.
 
 mq_constraint_error_context_to_pieces(ConstraintErrorContext,
         Context, Start, Pieces) :-
@@ -428,7 +428,7 @@ mq_constraint_error_context_to_pieces(ConstraintErrorContext,
     ).
 
 :- pred mq_error_context_to_pieces(mq_error_context::in,
-    prog_context::out, bool::out, list(format_component)::out) is det.
+    prog_context::out, bool::out, list(format_piece)::out) is det.
 
 mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
     (
@@ -566,11 +566,11 @@ id_types_to_string(class_id, "typeclasses").
 
 %---------------------------------------------------------------------------%
 
-:- func wrap_module_name(module_name) = format_component.
+:- func wrap_module_name(module_name) = format_piece.
 
 wrap_module_name(SymName) = qual_sym_name(SymName).
 
-:- func wrap_qual_id(mq_id) = format_component.
+:- func wrap_qual_id(mq_id) = format_piece.
 
 wrap_qual_id(mq_id(SymName, Arity)) =
     qual_sym_name_arity(sym_name_arity(SymName, Arity)).

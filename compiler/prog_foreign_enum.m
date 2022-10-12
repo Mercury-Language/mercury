@@ -17,7 +17,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -49,7 +49,7 @@
     % as the first half of each error message, and Context as their context.
     %
 :- pred build_ctor_name_to_foreign_name_map(for_fe_or_fee::in,
-    prog_context::in, list(format_component)::in, module_name::in,
+    prog_context::in, list(format_piece)::in, module_name::in,
     set_tree234(string)::in, assoc_list(sym_name, string)::in,
     bimap(string, string)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -243,7 +243,7 @@ build_ctor_name_to_foreign_name_map_loop(TypeModuleName, ValidCtorNames,
 
 %---------------------------------------------------------------------------%
 
-:- pred add_bad_qual_ctors_error(prog_context::in, list(format_component)::in,
+:- pred add_bad_qual_ctors_error(prog_context::in, list(format_piece)::in,
     list(sym_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
@@ -260,16 +260,16 @@ add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
 
 %---------------------%
 
-:- func qual_ctors_to_line_pieces(list(sym_name), list(format_component))
-    = list(format_component).
+:- func qual_ctors_to_line_pieces(list(sym_name), list(format_piece))
+    = list(format_piece).
 
 qual_ctors_to_line_pieces(Ctors, Final) = Pieces :-
-    Components = list.map(qual_ctor_to_format_component, Ctors),
+    Components = list.map(qual_ctor_to_format_piece, Ctors),
     Pieces = component_list_to_line_pieces(Components, Final).
 
-:- func qual_ctor_to_format_component(sym_name) = list(format_component).
+:- func qual_ctor_to_format_piece(sym_name) = list(format_piece).
 
-qual_ctor_to_format_component(SymName) = [qual_sym_name(SymName)].
+qual_ctor_to_format_piece(SymName) = [qual_sym_name(SymName)].
 
 %---------------------------------------------------------------------------%
 
@@ -279,7 +279,7 @@ qual_ctor_to_format_component(SymName) = [qual_sym_name(SymName)].
     % identifies a type, generate a complete error message about Ctors
     % not being constructor(s) of that type.
     %
-:- pred add_unknown_ctors_error(prog_context::in, list(format_component)::in,
+:- pred add_unknown_ctors_error(prog_context::in, list(format_piece)::in,
     list(sym_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
@@ -295,16 +295,16 @@ add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
 
 %---------------------%
 
-:- func unqual_ctors_to_line_pieces(list(sym_name), list(format_component))
-    = list(format_component).
+:- func unqual_ctors_to_line_pieces(list(sym_name), list(format_piece))
+    = list(format_piece).
 
 unqual_ctors_to_line_pieces(Ctors, Final) = Pieces :-
-    Components = list.map(unqual_ctor_to_format_component, Ctors),
+    Components = list.map(unqual_ctor_to_format_piece, Ctors),
     Pieces = component_list_to_line_pieces(Components, Final).
 
-:- func unqual_ctor_to_format_component(sym_name) = list(format_component).
+:- func unqual_ctor_to_format_piece(sym_name) = list(format_piece).
 
-unqual_ctor_to_format_component(SymName) = [unqual_sym_name(SymName)].
+unqual_ctor_to_format_piece(SymName) = [unqual_sym_name(SymName)].
 
 %---------------------------------------------------------------------------%
 
@@ -316,7 +316,7 @@ unqual_ctor_to_format_component(SymName) = [unqual_sym_name(SymName)].
     % not being mapped to a foreign language value.
     %
 :- pred add_foreign_enum_unmapped_ctors_error(prog_context::in,
-    list(format_component)::in,
+    list(format_piece)::in,
     list(string)::in(non_empty_list),
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -358,16 +358,16 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, CtorNames0,
 
 %---------------------%
 
-:- func ctor_names_to_line_pieces(list(string), list(format_component))
-    = list(format_component).
+:- func ctor_names_to_line_pieces(list(string), list(format_piece))
+    = list(format_piece).
 
 ctor_names_to_line_pieces(CtorNames, Final) = Pieces :-
-    Components = list.map(ctor_name_to_format_component, CtorNames),
+    Components = list.map(ctor_name_to_format_piece, CtorNames),
     Pieces = component_list_to_line_pieces(Components, Final).
 
-:- func ctor_name_to_format_component(string) = list(format_component).
+:- func ctor_name_to_format_piece(string) = list(format_piece).
 
-ctor_name_to_format_component(CtorName) = [quote(CtorName)].
+ctor_name_to_format_piece(CtorName) = [quote(CtorName)].
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_foreign_enum.

@@ -21,7 +21,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -305,7 +305,7 @@ describe_term_error(ModuleInfo, Single, TermErrorContext, ErrorNum,
     ).
 
 :- pred term_error_kind_description(module_info::in, maybe(pred_proc_id)::in,
-    term_error_kind::in, list(format_component)::out,
+    term_error_kind::in, list(format_piece)::out,
     maybe(pred_proc_id)::out) is det.
 
 term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-

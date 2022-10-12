@@ -61,7 +61,7 @@
 :- implementation.
 
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.parse_inst_mode_name.
 :- import_module parse_tree.parse_item.
 :- import_module parse_tree.parse_sym_name.
@@ -771,7 +771,7 @@ parse_class_constraints(ModuleName, VarSet, ConstraintsTerm, Result) :-
         Result).
 
 :- pred parse_simple_class_constraints(module_name::in, varset::in, term::in,
-    list(format_component)::in, maybe1(list(prog_constraint))::out) is det.
+    list(format_piece)::in, maybe1(list(prog_constraint))::out) is det.
 
 parse_simple_class_constraints(_ModuleName, VarSet, ConstraintsTerm, Pieces,
         Result) :-

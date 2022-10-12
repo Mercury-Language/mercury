@@ -113,9 +113,10 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module bimap.
 :- import_module bool.

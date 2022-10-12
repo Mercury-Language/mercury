@@ -10,7 +10,7 @@
 % Main author: zs.
 %
 % This module contains code that can be helpful in the generation or
-% formatting of error messages. It builds upon parse_tree.error_util,
+% formatting of error messages. It builds upon parse_tree.error_spec,
 % and extends it with predicates that access HLDS data structures.
 %
 %-----------------------------------------------------------------------------%
@@ -25,7 +25,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 
@@ -45,32 +45,32 @@
     ;       should_not_module_qualify.
 
 :- func describe_one_pred_name(module_info, should_module_qualify, pred_id)
-    = list(format_component).
+    = list(format_piece).
 
 :- func describe_one_pred_info_name(should_module_qualify, pred_info)
-    = list(format_component).
+    = list(format_piece).
 
 :- func describe_one_pred_name_mode(module_info, output_lang,
     should_module_qualify, pred_id, inst_varset, list(mer_mode))
-    = list(format_component).
+    = list(format_piece).
 
 :- func describe_several_pred_names(module_info, should_module_qualify,
-    list(pred_id)) = list(format_component).
+    list(pred_id)) = list(format_piece).
 
 :- func describe_one_proc_name(module_info, should_module_qualify,
-    pred_proc_id) = list(format_component).
+    pred_proc_id) = list(format_piece).
 
 :- func describe_one_proc_name_mode(module_info, output_lang,
-    should_module_qualify, pred_proc_id) = list(format_component).
+    should_module_qualify, pred_proc_id) = list(format_piece).
 
 :- func describe_several_proc_names(module_info, should_module_qualify,
-    list(pred_proc_id)) = list(format_component).
+    list(pred_proc_id)) = list(format_piece).
 
 :- func describe_one_call_site(module_info, should_module_qualify,
-    pair(pred_proc_id, prog_context)) = list(format_component).
+    pair(pred_proc_id, prog_context)) = list(format_piece).
 
 :- func describe_several_call_sites(module_info, should_module_qualify,
-    assoc_list(pred_proc_id, prog_context)) = list(format_component).
+    assoc_list(pred_proc_id, prog_context)) = list(format_piece).
 
 %-----------------------------------------------------------------------------%
 
@@ -127,11 +127,20 @@
 %   when there is nothing to print is so low (a few dozen instructions),
 %   we can easily afford to incur it unnecessarily once per compiler phase.
 
-:- pred definitely_write_out_errors(globals::in, list(error_spec)::in,
-    io::di, io::uo) is det.
+:- pred definitely_write_out_errors(globals::in,
+    list(error_spec)::in, io::di, io::uo) is det.
+:- pragma obsolete(pred(definitely_write_out_errors/4),
+    [definitely_write_out_errors/5]).
+:- pred definitely_write_out_errors(io.text_output_stream::in, globals::in,
+    list(error_spec)::in, io::di, io::uo) is det.
 
-:- pred maybe_write_out_errors(bool::in, globals::in,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+:- pred maybe_write_out_errors(bool::in,
+    globals::in, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
+:- pragma obsolete(pred(maybe_write_out_errors/6), [maybe_write_out_errors/7]).
+:- pred maybe_write_out_errors(io.text_output_stream::in, bool::in,
+    globals::in, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -147,6 +156,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module int.
 :- import_module map.
@@ -369,16 +379,24 @@ project_pred_form_arity_int(pred_form_arity(A)) = A.
 %-----------------------------------------------------------------------------%
 
 definitely_write_out_errors(Globals, Specs, !IO) :-
-    write_error_specs(Globals, Specs, !IO).
+    io.output_stream(Stream, !IO),
+    definitely_write_out_errors(Stream, Globals, Specs, !IO).
+
+definitely_write_out_errors(Stream, Globals, Specs, !IO) :-
+    write_error_specs(Stream, Globals, Specs, !IO).
 
 maybe_write_out_errors(Verbose, Globals, !Specs, !IO) :-
-    % pre_hlds_maybe_write_out_errors in error_util.m is a pre-HLDS version
+    io.output_stream(Stream, !IO),
+    maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO).
+
+maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO) :-
+    % pre_hlds_maybe_write_out_errors in error_spec.m is a pre-HLDS version
     % of this predicate.
     (
         Verbose = no
     ;
         Verbose = yes,
-        write_error_specs(Globals, !.Specs, !IO),
+        write_error_specs(Stream, Globals, !.Specs, !IO),
         !:Specs = []
     ).
 

@@ -28,7 +28,7 @@
 :- import_module libs.
 :- import_module libs.op_mode.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module bool.
 :- import_module io.
@@ -121,6 +121,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.find_module.
 :- import_module parse_tree.maybe_error.

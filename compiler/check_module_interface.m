@@ -17,7 +17,7 @@
 
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.

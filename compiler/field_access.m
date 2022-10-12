@@ -22,7 +22,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 
@@ -94,7 +94,7 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred parse_field_list(prog_term::in, prog_varset::in,
-    list(format_component)::in, maybe1(field_list)::out) is det.
+    list(format_piece)::in, maybe1(field_list)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -310,7 +310,7 @@ parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames) :-
     ).
 
 :- func make_field_list_error(prog_varset, term.context, prog_term,
-    list(format_component)) = error_spec.
+    list(format_piece)) = error_spec.
 
 make_field_list_error(VarSet, Context, Term, ContextPieces) = Spec :-
     TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),

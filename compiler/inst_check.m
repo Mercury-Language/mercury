@@ -57,7 +57,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module bool.
 :- import_module list.
@@ -479,8 +479,8 @@ type_defn_or_builtin_to_type_ctor(TypeDefnOrBuiltin, TypeCtor) :-
 
 :- type cons_mismatch
     --->    cons_mismatch(
-                bad_cons_id                     :: format_component,
-                possible_near_miss_cons_ids     :: list(format_component)
+                bad_cons_id                     :: format_piece,
+                possible_near_miss_cons_ids     :: list(format_piece)
             ).
 
 :- pred check_for_type_bound_insts(for_type_kind::in,
@@ -649,7 +649,7 @@ report_near_misses(TypeCtor, ConsId, SymName, CtorArities, !Mismatches) :-
     Mismatch = cons_mismatch(qual_cons_id_and_maybe_arity(ConsId), NearMisses),
     !:Mismatches = cord.snoc(!.Mismatches, Mismatch).
 
-:- func make_cons_id_component(type_ctor, sym_name, arity) = format_component.
+:- func make_cons_id_component(type_ctor, sym_name, arity) = format_piece.
 
 make_cons_id_component(TypeCtor, SymName, Arity) =
     qual_cons_id_and_maybe_arity(cons(SymName, Arity, TypeCtor)).
@@ -934,12 +934,12 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
 
 :- type near_miss_cons_mismatch
     --->    near_miss_cons_mismatch(
-                if_only_one_mismatch    :: list(format_component),
-                if_several_mismatches   :: list(format_component)
+                if_only_one_mismatch    :: list(format_piece),
+                if_several_mismatches   :: list(format_piece)
             ).
 
 :- pred cons_id_strs_and_near_misses(list(cons_mismatch)::in,
-    list(format_component)::out, list(near_miss_cons_mismatch)::out) is det.
+    list(format_piece)::out, list(near_miss_cons_mismatch)::out) is det.
 
 cons_id_strs_and_near_misses([], [], []).
 cons_id_strs_and_near_misses([Mismatch | Mismatches],
@@ -961,8 +961,8 @@ cons_id_strs_and_near_misses([Mismatch | Mismatches],
         NearMissMismatches = [NearMissMismatch | NearMissMismatchesTail]
     ).
 
-:- func project_if_alone(near_miss_cons_mismatch) = list(format_component).
-:- func project_if_several(near_miss_cons_mismatch) = list(format_component).
+:- func project_if_alone(near_miss_cons_mismatch) = list(format_piece).
+:- func project_if_several(near_miss_cons_mismatch) = list(format_piece).
 
 project_if_alone(near_miss_cons_mismatch(IfAlone, _)) = IfAlone.
 project_if_several(near_miss_cons_mismatch(_, IfSeveral)) = IfSeveral.
@@ -1068,7 +1068,7 @@ maybe_issue_no_matching_types_warning(WarnInstsWithoutMatchingType,
     --->    mismatch_from_type(
                 mft_num_mismatches      :: int,
                 mft_type                :: type_defn_or_builtin,
-                mft_pieces              :: list(format_component)
+                mft_pieces              :: list(format_piece)
             ).
 
 :- pred diagnose_mismatches_from_type(list(bound_inst)::in,
@@ -1110,7 +1110,7 @@ diagnose_mismatches_from_type(BoundInsts, TypeDefnOrBuiltin,
 
 :- pred find_mismatches_from_user(list(constructor)::in, int::in,
     list(bound_inst)::in, int::in, int::out,
-    cord(format_component)::in, cord(format_component)::out) is det.
+    cord(format_piece)::in, cord(format_piece)::out) is det.
 
 find_mismatches_from_user(_Ctors, _CurNum,
         [], !NumMismatches, !PiecesCord).
@@ -1182,7 +1182,7 @@ find_matching_name_wrong_arities([Ctor | Ctors], FunctorName, FunctorArity,
 
 :- pred find_mismatches_from_builtin(builtin_type::in, int::in,
     list(bound_inst)::in, int::in, int::out,
-    cord(format_component)::in, cord(format_component)::out) is det.
+    cord(format_piece)::in, cord(format_piece)::out) is det.
 
 find_mismatches_from_builtin(_ExpectedBuiltinType, _CurNum,
         [], !NumMismatches, !PiecesCord).
@@ -1234,7 +1234,7 @@ find_mismatches_from_builtin(ExpectedBuiltinType, CurNum,
 
 :- pred find_mismatches_from_tuple(int::in, int::in, list(bound_inst)::in,
     int::in, int::out,
-    cord(format_component)::in, cord(format_component)::out) is det.
+    cord(format_piece)::in, cord(format_piece)::out) is det.
 
 find_mismatches_from_tuple(_ExpectedArity, _CurNum,
         [], !NumMismatches, !PiecesCord).
@@ -1257,7 +1257,7 @@ find_mismatches_from_tuple(ExpectedArity, CurNum,
 
 :- pred record_arity_mismatch(int::in, string::in, int::in, set(int)::in,
     int::in, int::out,
-    cord(format_component)::in, cord(format_component)::out) is det.
+    cord(format_piece)::in, cord(format_piece)::out) is det.
 
 record_arity_mismatch(CurNum, FunctorName, ActualArity, ExpectedAritiesSet,
         !NumMismatches, !PiecesCord) :-
@@ -1275,7 +1275,7 @@ record_arity_mismatch(CurNum, FunctorName, ActualArity, ExpectedAritiesSet,
     !:PiecesCord = !.PiecesCord ++ cord.from_list(Pieces).
 
 :- pred record_mismatch(int::in, bound_inst::in, int::in, int::out,
-    cord(format_component)::in, cord(format_component)::out) is det.
+    cord(format_piece)::in, cord(format_piece)::out) is det.
 
 record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord) :-
     !:NumMismatches = !.NumMismatches + 1,
@@ -1291,7 +1291,7 @@ record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord) :-
 %---------------------------------------------------------------------------%
 
 :- pred create_mismatch_pieces(list(mismatch_from_type)::in,
-    list(format_component)::out) is det.
+    list(format_piece)::out) is det.
 
 create_mismatch_pieces([], []).
 create_mismatch_pieces([FirstMismatch | LaterMismatches], Pieces) :-
@@ -1325,7 +1325,7 @@ take_while_same_num_mismatches(Num, [Mismatch | Mismatches], Taken) :-
     ).
 
 :- pred create_pieces_for_one_mismatch(mismatch_from_type::in,
-    list(format_component)::out) is det.
+    list(format_piece)::out) is det.
 
 create_pieces_for_one_mismatch(Mismatch, Pieces) :-
     Mismatch = mismatch_from_type(_, TypeDefnOrBuiltin, BoundInstPieces),
@@ -1335,7 +1335,7 @@ create_pieces_for_one_mismatch(Mismatch, Pieces) :-
         ++ BoundInstPieces.
 
 :- pred create_pieces_for_all_mismatches(list(mismatch_from_type)::in, int::in,
-    list(format_component)::out) is det.
+    list(format_piece)::out) is det.
 
 create_pieces_for_all_mismatches([], _Cur, []).
 create_pieces_for_all_mismatches([Mismatch | Mismatches], Cur, Pieces) :-

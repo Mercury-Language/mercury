@@ -76,7 +76,7 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module list.
 
@@ -136,6 +136,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.         % undesirable dependency
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_event.
@@ -146,6 +147,7 @@
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module assoc_list.
 :- import_module bool.

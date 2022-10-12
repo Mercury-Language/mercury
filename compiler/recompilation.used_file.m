@@ -32,7 +32,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.prog_data.
 

@@ -69,7 +69,7 @@
 :- import_module libs.timestamp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.deps_map.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
@@ -79,6 +79,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.write_deps_file.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
 :- import_module digraph.

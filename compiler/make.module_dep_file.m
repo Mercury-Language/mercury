@@ -54,7 +54,6 @@
 :- import_module make.build.
 :- import_module make.module_target.
 :- import_module make.util.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.find_module.
@@ -67,6 +66,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.read_modules.
+:- import_module parse_tree.write_error_spec.
 :- import_module parse_tree.write_module_interface_files.
 
 :- import_module bool.
@@ -929,10 +929,12 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
     SubModuleNames = list.map(parse_tree_module_src_project_name,
          ParseTreeModuleSrcs),
 
-    io.set_output_stream(ErrorStream, _, !IO),
+    % io.set_output_stream(ErrorStream, _, !IO),
     % XXX Why are we ignoring all previously reported errors?
     io.set_exit_status(0, !IO),
-    write_error_specs(Globals, Specs, !IO),
+    write_error_specs(ErrorStream, Globals, Specs, !IO),
+    % XXX Now that we pass ErrorStream to write_error_specs instead of
+    % setting the output stream to ErrorStream, this may now be redundant.
     io.set_output_stream(OldOutputStream, _, !IO),
 
     list.foldl(make_info_add_module_and_imports_as_dep,

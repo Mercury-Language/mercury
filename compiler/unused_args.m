@@ -51,7 +51,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
@@ -1934,7 +1934,7 @@ report_unused_args(_ModuleInfo, PredInfo, UnusedArgs) = Spec :-
     Spec = simplest_spec($pred, severity_warning, phase_code_gen,
         Context, Pieces1 ++ Pieces2).
 
-:- func format_arg_list(list(int)) = list(format_component).
+:- func format_arg_list(list(int)) = list(format_piece).
 
 format_arg_list([]) = unexpected($pred, "empty list").
 format_arg_list([Arg | Rest]) = Pieces :-
@@ -1947,7 +1947,7 @@ format_arg_list([Arg | Rest]) = Pieces :-
         Pieces = [fixed(ArgStr) | format_arg_list_2(Head, Tail)]
     ).
 
-:- func format_arg_list_2(int, list(int)) = list(format_component).
+:- func format_arg_list_2(int, list(int)) = list(format_piece).
 
 format_arg_list_2(First, List) = Pieces :-
     FirstStr = int_to_string(First),

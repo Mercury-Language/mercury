@@ -14,7 +14,7 @@
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_hlds.state_var.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
@@ -521,7 +521,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
 :- func dcg_field_error_context_pieces(field_access_type) =
-    list(format_component).
+    list(format_piece).
 
 dcg_field_error_context_pieces(AccessType) = ContextPieces :-
     (

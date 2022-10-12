@@ -58,7 +58,6 @@
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.

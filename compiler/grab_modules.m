@@ -141,7 +141,7 @@
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
@@ -149,6 +149,7 @@
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
 :- import_module cord.
@@ -2031,7 +2032,7 @@ report_missing_ancestor(ModuleName, MissingWhere,
     Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds, Msgs),
     !:Specs = [Spec | !.Specs].
 
-:- func wrap_module_name(sym_name) = format_component.
+:- func wrap_module_name(sym_name) = format_piece.
 
 wrap_module_name(Module) = qual_sym_name(Module).
 

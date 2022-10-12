@@ -19,7 +19,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.passes_aux.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
 
 :- import_module bool.
@@ -67,10 +67,12 @@
 :- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.deep_profiling.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.write_error_spec.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
 :- import_module transform_hlds.

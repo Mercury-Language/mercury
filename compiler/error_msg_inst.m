@@ -21,7 +21,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -56,9 +56,9 @@
     % or nl_indent_delta as well.
     %
 :- func error_msg_inst(module_info, inst_varset, maybe_expand_named_insts,
-    short_inst, list(format_component),
-    list(format_component), list(format_component), mer_inst)
-    = list(format_component).
+    short_inst, list(format_piece),
+    list(format_piece), list(format_piece), mer_inst)
+    = list(format_piece).
 
 %---------------------------------------------------------------------------%
 
@@ -75,6 +75,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module counter.
 :- import_module int.
@@ -109,7 +110,7 @@
                 % a problem, we could make the key not the inst_name,
                 % but its address.
                 ei_seen_inst_names      :: map(inst_name,
-                                            list(format_component)),
+                                            list(format_piece)),
 
                 % Inst names generated internally by the compiler don't have
                 % intuitively understandable names we can print, so
@@ -177,7 +178,7 @@ error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts,
 
 :- pred inst_to_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out, mer_inst::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 inst_to_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
     (
@@ -249,7 +250,7 @@ inst_to_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
 
 :- pred inst_to_inline_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out, mer_inst::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 inst_to_inline_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
     (
@@ -324,7 +325,7 @@ inst_to_inline_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
 :- pred insts_to_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
     mer_inst::in, list(mer_inst)::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 insts_to_pieces(Info, !Expansions, HeadInst, TailInsts, Suffix, Pieces) :-
     (
@@ -343,7 +344,7 @@ insts_to_pieces(Info, !Expansions, HeadInst, TailInsts, Suffix, Pieces) :-
 :- pred insts_to_inline_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
     mer_inst::in, list(mer_inst)::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 insts_to_inline_pieces(Info, !Expansions, HeadInst, TailInsts,
         Suffix, Pieces) :-
@@ -367,7 +368,7 @@ insts_to_inline_pieces(Info, !Expansions, HeadInst, TailInsts,
 :- pred bound_insts_to_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
     bound_inst::in, list(bound_inst)::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 bound_insts_to_pieces(Info, !Expansions, HeadBoundInst, TailBoundInsts,
         Suffix, Pieces) :-
@@ -401,7 +402,7 @@ bound_insts_to_pieces(Info, !Expansions, HeadBoundInst, TailBoundInsts,
 :- pred bound_insts_to_inline_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
     bound_inst::in, list(bound_inst)::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 bound_insts_to_inline_pieces(Info, !Expansions, HeadBoundInst, TailBoundInsts,
         Suffix, Pieces) :-
@@ -435,7 +436,7 @@ bound_insts_to_inline_pieces(Info, !Expansions, HeadBoundInst, TailBoundInsts,
 
 :- pred inst_name_to_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out, inst_name::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
     ( if have_we_expanded_inst_name(!.Expansions, InstName, PastPieces) then
@@ -530,7 +531,7 @@ inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
 
 :- pred inst_name_to_inline_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out, inst_name::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 inst_name_to_inline_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
     ( if have_we_expanded_inst_name(!.Expansions, InstName, PastPieces) then
@@ -643,13 +644,13 @@ sym_name_to_min_qual_string(Info, SymName, SymNameStr) :-
 %---------------------------------------------------------------------------%
 
 :- pred have_we_expanded_inst_name(expansions_info::in, inst_name::in,
-    list(format_component)::out) is semidet.
+    list(format_piece)::out) is semidet.
 
 have_we_expanded_inst_name(Expansions, InstName, PastPieces) :-
     Expansions = expansions_info(ExpansionsMap, _),
     map.search(ExpansionsMap, InstName, PastPieces).
 
-:- pred record_user_inst_name(inst_name::in, list(format_component)::in,
+:- pred record_user_inst_name(inst_name::in, list(format_piece)::in,
     expansions_info::in, expansions_info::out) is det.
 
 record_user_inst_name(InstName, Pieces, !Expansions) :-
@@ -668,7 +669,7 @@ record_user_inst_name(InstName, Pieces, !Expansions) :-
     ).
 
 :- pred record_internal_inst_name(inst_name::in, string::in,
-    list(format_component)::out,
+    list(format_piece)::out,
     expansions_info::in, expansions_info::out) is det.
 
 record_internal_inst_name(InstName, InstNameStr, InstNumPieces, !Expansions) :-
@@ -685,7 +686,7 @@ record_internal_inst_name(InstName, InstNameStr, InstNumPieces, !Expansions) :-
 :- pred pred_inst_info_to_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
     string::in, uniqueness::in, pred_inst_info::in,
-    list(format_component)::out) is det.
+    list(format_piece)::out) is det.
 
 pred_inst_info_to_pieces(Info, !Expansions, AnyPrefix, Uniq,
         PredInstInfo, Pieces) :-
@@ -748,7 +749,7 @@ pred_inst_info_to_pieces(Info, !Expansions, AnyPrefix, Uniq,
 :- pred pred_inst_info_to_inline_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
     string::in, uniqueness::in, pred_inst_info::in,
-    list(format_component)::out) is det.
+    list(format_piece)::out) is det.
 
 pred_inst_info_to_inline_pieces(Info, !Expansions, AnyPrefix, Uniq,
         PredInstInfo, Pieces) :-
@@ -810,7 +811,7 @@ pred_inst_info_to_inline_pieces(Info, !Expansions, AnyPrefix, Uniq,
 
 :- pred modes_to_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
-    list(mer_mode)::in, list(list(format_component))::out) is det.
+    list(mer_mode)::in, list(list(format_piece))::out) is det.
 
 modes_to_pieces(_Info, !Expansions, [], []).
 modes_to_pieces(Info, !Expansions, [HeadMode | TailModes],
@@ -820,7 +821,7 @@ modes_to_pieces(Info, !Expansions, [HeadMode | TailModes],
 
 :- pred modes_to_inline_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
-    list(mer_mode)::in, list(list(format_component))::out) is det.
+    list(mer_mode)::in, list(list(format_piece))::out) is det.
 
 modes_to_inline_pieces(_Info, !Expansions, [], []).
 modes_to_inline_pieces(Info, !Expansions, [HeadMode | TailModes],
@@ -832,7 +833,7 @@ modes_to_inline_pieces(Info, !Expansions, [HeadMode | TailModes],
 
 :- pred mode_to_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
-    mer_mode::in, list(format_component)::out) is det.
+    mer_mode::in, list(format_piece)::out) is det.
 
 mode_to_pieces(Info, !Expansions, Mode0, Pieces) :-
     strip_typed_insts_from_mode(Mode0, Mode1),
@@ -859,7 +860,7 @@ mode_to_pieces(Info, !Expansions, Mode0, Pieces) :-
 
 :- pred mode_to_inline_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
-    mer_mode::in, list(format_component)::out) is det.
+    mer_mode::in, list(format_piece)::out) is det.
 
 mode_to_inline_pieces(Info, !Expansions, Mode0, Pieces) :-
     strip_typed_insts_from_mode(Mode0, Mode1),
@@ -886,7 +887,7 @@ mode_to_inline_pieces(Info, !Expansions, Mode0, Pieces) :-
 
 :- pred user_defined_mode_to_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
-    sym_name::in, list(mer_inst)::in, list(format_component)::out) is det.
+    sym_name::in, list(mer_inst)::in, list(format_piece)::out) is det.
 
 user_defined_mode_to_pieces(Info, !Expansions, ModeName, ArgInsts, Pieces) :-
     BaseModeName = unqualify_name(ModeName),
@@ -904,7 +905,7 @@ user_defined_mode_to_pieces(Info, !Expansions, ModeName, ArgInsts, Pieces) :-
 
 :- pred user_defined_mode_to_inline_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
-    sym_name::in, list(mer_inst)::in, list(format_component)::out) is det.
+    sym_name::in, list(mer_inst)::in, list(format_piece)::out) is det.
 
 user_defined_mode_to_inline_pieces(Info, !Expansions, ModeName, ArgInsts,
         Pieces) :-
@@ -926,7 +927,7 @@ user_defined_mode_to_inline_pieces(Info, !Expansions, ModeName, ArgInsts,
 
 :- pred arg_insts_to_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
-    list(mer_inst)::in, list(list(format_component))::out) is det.
+    list(mer_inst)::in, list(list(format_piece))::out) is det.
 
 arg_insts_to_pieces(_Info, !Expansions, [], []).
 arg_insts_to_pieces(Info, !Expansions, [HeadArgInst | TailArgInsts],
@@ -936,7 +937,7 @@ arg_insts_to_pieces(Info, !Expansions, [HeadArgInst | TailArgInsts],
 
 :- pred arg_insts_to_inline_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
-    list(mer_inst)::in, list(list(format_component))::out) is det.
+    list(mer_inst)::in, list(list(format_piece))::out) is det.
 
 arg_insts_to_inline_pieces(_Info, !Expansions, [], []).
 arg_insts_to_inline_pieces(Info, !Expansions, [HeadArgInst | TailArgInsts],
@@ -948,8 +949,8 @@ arg_insts_to_inline_pieces(Info, !Expansions, [HeadArgInst | TailArgInsts],
 
 :- pred name_and_arg_insts_to_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
-    string::in, list(mer_inst)::in, list(format_component)::in,
-    list(format_component)::out) is det.
+    string::in, list(mer_inst)::in, list(format_piece)::in,
+    list(format_piece)::out) is det.
 
 name_and_arg_insts_to_pieces(Info, !Expansions, Name, ArgInsts, Suffix,
         Pieces) :-
@@ -970,8 +971,8 @@ name_and_arg_insts_to_pieces(Info, !Expansions, Name, ArgInsts, Suffix,
 
 :- pred name_and_arg_insts_to_inline_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
-    string::in, list(mer_inst)::in, list(format_component)::in,
-    list(format_component)::out) is det.
+    string::in, list(mer_inst)::in, list(format_piece)::in,
+    list(format_piece)::out) is det.
 
 name_and_arg_insts_to_inline_pieces(Info, !Expansions, Name, ArgInsts, Suffix,
         Pieces) :-
@@ -992,7 +993,7 @@ name_and_arg_insts_to_inline_pieces(Info, !Expansions, Name, ArgInsts, Suffix,
 
 %---------------------------------------------------------------------------%
 
-:- pred summarize_a_few_arg_insts(list(format_component)::in,
+:- pred summarize_a_few_arg_insts(list(format_piece)::in,
     int::in, string::out) is semidet.
 
 summarize_a_few_arg_insts(Pieces, Left, Summary) :-

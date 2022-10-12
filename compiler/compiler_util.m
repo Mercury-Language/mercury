@@ -19,7 +19,7 @@
 
 :- import_module libs.globals.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module io.
 :- import_module list.
@@ -51,10 +51,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_error(error_phase::in, list(format_component)::in,
+:- pred add_error(error_phase::in, list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_warning(error_phase::in, list(format_component)::in,
+:- pred add_warning(error_phase::in, list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%

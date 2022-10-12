@@ -15,7 +15,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module list.
 :- import_module set_tree234.
@@ -157,7 +157,7 @@ construct_type_inference_message(ModuleInfo, PredId, PredInfo) = Spec :-
 
 :- pred construct_pred_decl_diff(module_info::in,
     list(mer_type)::in, maybe(mer_type)::in, pred_id::in,
-    list(format_component)::out) is det.
+    list(format_piece)::out) is det.
 
 construct_pred_decl_diff(ModuleInfo, ActualArgTypes, MaybeActualReturnType,
         OtherPredId, Pieces) :-
@@ -194,7 +194,7 @@ construct_pred_decl_diff(ModuleInfo, ActualArgTypes, MaybeActualReturnType,
     Pieces = [words("The argument list difference from the arity"),
         int_fixed(OtherArity), words("version is"), nl] ++ DiffPieces.
 
-:- func diff_to_pieces(diff(string)) = list(format_component).
+:- func diff_to_pieces(diff(string)) = list(format_piece).
 
 diff_to_pieces(Diff) = Pieces :-
     (
@@ -313,7 +313,7 @@ report_non_contiguous_clauses(ModuleInfo, PredId, PredInfo,
     Msgs = [FrontMsg | ContextMsgs],
     Spec = error_spec($pred, severity_warning, phase_type_check, Msgs).
 
-:- pred report_non_contiguous_clause_contexts(list(format_component)::in,
+:- pred report_non_contiguous_clause_contexts(list(format_piece)::in,
     int::in, clause_item_number_region::in, clause_item_number_region::in,
     list(clause_item_number_region)::in, list(error_msg)::out) is det.
 

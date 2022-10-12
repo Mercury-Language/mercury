@@ -132,7 +132,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
 
@@ -758,7 +758,7 @@ project_all_yes([], []).
 project_all_yes([yes(Value) | TailMaybes], [Value | Tail]) :-
     project_all_yes(TailMaybes, Tail).
 
-:- func string_format_error_to_words(string_format_error) = format_component.
+:- func string_format_error_to_words(string_format_error) = format_piece.
 
 string_format_error_to_words(Error) =
     words(string_format_error_to_msg(Error)).

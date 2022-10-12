@@ -238,11 +238,12 @@
 :- import_module libs.options.
 :- import_module libs.shell_util.
 :- import_module libs.trace_params.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.find_module.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module dir.
 :- import_module getopt.

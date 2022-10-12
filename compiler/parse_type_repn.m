@@ -37,7 +37,7 @@
 
 :- implementation.
 
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.parse_pragma_foreign.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_type_defn.
@@ -1743,7 +1743,7 @@ ok_if_arity_zero(AtomStr, TermContext, ArgTerms, FillKindSize,
 % in their position inside c_j_cs.
 %
 
-:- pred parse_c_j_cs_repn_or_enum(list(format_component)::in,
+:- pred parse_c_j_cs_repn_or_enum(list(format_piece)::in,
     varset::in, term::in, maybe1(c_j_cs_enum_repn)::out) is det.
 
 parse_c_j_cs_repn_or_enum(DescPieces, VarSet, Term, MaybeCJCsRepnOrEnum) :-
@@ -1818,7 +1818,7 @@ parse_c_j_cs_repn_or_enum(DescPieces, VarSet, Term, MaybeCJCsRepnOrEnum) :-
         MaybeCJCsRepnOrEnum = error1([Spec])
     ).
 
-:- pred parse_c_j_cs_repn(list(format_component)::in,
+:- pred parse_c_j_cs_repn(list(format_piece)::in,
     varset::in, term::in, maybe1(c_j_cs_repn)::out) is det.
 
 parse_c_j_cs_repn(DescPieces, VarSet, Term, MaybeCJCsRepn) :-
@@ -1895,7 +1895,7 @@ parse_c_j_cs_repn(DescPieces, VarSet, Term, MaybeCJCsRepn) :-
 
 %---------------------%
 
-:- pred parse_maybe_enum_foreign_repn(list(format_component)::in, int::in,
+:- pred parse_maybe_enum_foreign_repn(list(format_piece)::in, int::in,
     varset::in, term::in, maybe1(maybe(enum_foreign_repn))::out) is det.
 
 parse_maybe_enum_foreign_repn(DescPieces, Nth, VarSet, Term,
@@ -1982,7 +1982,7 @@ parse_maybe_enum_foreign_repn(DescPieces, Nth, VarSet, Term,
         MaybeMaybeRepnOrEnum = error1([Spec])
     ).
 
-:- pred parse_maybe_foreign_repn(list(format_component)::in, int::in,
+:- pred parse_maybe_foreign_repn(list(format_piece)::in, int::in,
     varset::in, term::in, maybe1(maybe(foreign_type_repn))::out) is det.
 
 parse_maybe_foreign_repn(DescPieces, Nth, VarSet, Term,
@@ -2068,7 +2068,7 @@ parse_type_repn_foreign_type(VarSet, RepnStr, RepnArgs, RepnContext,
 
 %---------------------%
 
-:- pred parse_foreign_type_repn(list(format_component)::in, int::in,
+:- pred parse_foreign_type_repn(list(format_piece)::in, int::in,
     varset::in, string::in, list(term)::in, term.context::in,
     maybe1(foreign_type_repn)::out) is det.
 
@@ -2127,7 +2127,7 @@ parse_foreign_type_repn(DescPieces, Nth, VarSet, AtomStr, ArgTerms,
 
 %---------------------%
 
-:- pred parse_one_or_more_strings(list(format_component)::in,
+:- pred parse_one_or_more_strings(list(format_piece)::in,
     varset::in, term::in, maybe1(one_or_more(string))::out) is det.
 
 parse_one_or_more_strings(DescPieces, VarSet, Term, MaybeOoMStrings) :-
@@ -2177,7 +2177,7 @@ parse_one_or_more_strings(DescPieces, VarSet, Term, MaybeOoMStrings) :-
 
 %-----------------------------------------------------------------------------e
 
-:- pred parse_c_repns(list(format_component)::in,
+:- pred parse_c_repns(list(format_piece)::in,
     pred(varset, term, maybe1(T))::in(pred(in, in, out) is det),
     varset::in, term::in, maybe1(c_repns(T))::out) is det.
 
@@ -2306,7 +2306,7 @@ parse_c_repns(DescPieces, ParseRepn, VarSet, Term, MaybeCRepns) :-
 
 %-----------------------------------------------------------------------------e
 
-:- pred parse_strings(list(format_component)::in, int::in, varset::in,
+:- pred parse_strings(list(format_piece)::in, int::in, varset::in,
     list(term)::in, list(string)::out, list(error_spec)::out) is det.
 
 parse_strings(_, _, _, [], [], []).
@@ -2325,7 +2325,7 @@ parse_strings(DescPieces, Nth, VarSet, [Term | Terms], !:Strs, !:Specs) :-
         !:Specs = [Spec | !.Specs]
     ).
 
-:- pred parse_string(varset::in, list(format_component)::in,
+:- pred parse_string(varset::in, list(format_piece)::in,
     string::in, term::in, maybe1(string)::out) is det.
 
 parse_string(VarSet, ContextPieces, Desc, Term, MaybeFunctorName) :-

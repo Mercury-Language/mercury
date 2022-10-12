@@ -24,7 +24,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module maybe.
 
@@ -531,7 +531,7 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
         true
     ).
 
-:- func wrap_sym_name_arity(sym_name_arity) = format_component.
+:- func wrap_sym_name_arity(sym_name_arity) = format_piece.
 
 wrap_sym_name_arity(SymNameAndArity) =
     qual_sym_name_arity(SymNameAndArity).
@@ -869,7 +869,7 @@ maybe_generate_warning_for_useless_comparison(PredInfo, InstMap, Args,
     ).
 
 :- pred is_useless_unsigned_comparison(string::in, string::in, mer_inst::in,
-    mer_inst::in, list(format_component)::out) is semidet.
+    mer_inst::in, list(format_piece)::out) is semidet.
 
 is_useless_unsigned_comparison(ModuleName, PredName, ArgA, ArgB, Pieces) :-
     (

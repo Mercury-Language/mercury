@@ -22,7 +22,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
@@ -554,7 +554,7 @@ var_is_unmentioned(NameList1, MaybeArg, Name) :-
     not string.prefix(Name, "_"),
     not list.member(Name, NameList1).
 
-:- func variable_warning_start(list(string)) = list(format_component).
+:- func variable_warning_start(list(string)) = list(format_piece).
 
 variable_warning_start(UnmentionedVars) = Pieces :-
     ( if UnmentionedVars = [Var] then

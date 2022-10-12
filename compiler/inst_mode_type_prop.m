@@ -24,7 +24,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -1202,7 +1202,7 @@ do_record_bad_use_of_user_inst(InstCtor, ForTypeCtor, TypeCtor,
     !:Errors = tprop_errors(Specs).
 
 :- pred tprop_context_to_pieces(tprop_context::in,
-    prog_context::out, list(format_component)::out) is det.
+    prog_context::out, list(format_piece)::out) is det.
 
 tprop_context_to_pieces(TPropContext, Context, Pieces) :-
     (
@@ -1255,7 +1255,7 @@ tprop_context_to_pieces(TPropContext, Context, Pieces) :-
     ).
 
 :- func pred_or_func_arg_desc(pred_or_func, int, int)
-    = list(format_component).
+    = list(format_piece).
 
 pred_or_func_arg_desc(PredOrFunc, NumArgs, ArgNum) = Pieces :-
     ( if

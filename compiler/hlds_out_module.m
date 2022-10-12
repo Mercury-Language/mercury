@@ -123,13 +123,13 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
 :- import_module digraph.

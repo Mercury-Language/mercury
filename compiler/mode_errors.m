@@ -26,7 +26,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
@@ -681,7 +681,7 @@ mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
         Context, Preamble ++ StartPieces ++ DetailPieces).
 
 :- func named_and_unnamed_vars_to_pieces(var_table, list(prog_var)) =
-    list(format_component).
+    list(format_piece).
 
 named_and_unnamed_vars_to_pieces(VarTable, Vars) = Pieces :-
     list.filter_map(
@@ -986,8 +986,8 @@ var_insts_are_all_ground(ModuleInfo, InstMap, [Var | Vars]) :-
     inst_is_ground(ModuleInfo, VarInst),
     var_insts_are_all_ground(ModuleInfo, InstMap, Vars).
 
-:- func arg_inst_mismatch_pieces(mode_info, list(format_component),
-    pred_or_func, instmap, list(prog_var)) = list(format_component).
+:- func arg_inst_mismatch_pieces(mode_info, list(format_piece),
+    pred_or_func, instmap, list(prog_var)) = list(format_piece).
 
 arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, InstMap, Vars)
         = Pieces :-
@@ -1105,7 +1105,7 @@ find_satisfied_initial_insts_in_proc(ModuleInfo,
 
 :- pred report_any_never_matching_args(mode_info::in,
     multi_map(int, int)::in, int::in, list(argnum_var_type_inst)::in,
-    list(format_component)::out) is det.
+    list(format_piece)::out) is det.
 
 report_any_never_matching_args(_ModeInfo, _ArgNumMatchedProcs, _NumExtra,
         [], []).
@@ -1362,7 +1362,7 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
 :- type write_indented_goal
     --->    write_indented_goal(module_info, var_table, hlds_goal).
 
-:- instance error_util.print_anything(write_indented_goal) where [
+:- instance error_spec.print_anything(write_indented_goal) where [
     ( print_anything(write_indented_goal(ModuleInfo, VarTable, Goal), !IO) :-
         io.output_stream(Stream, !IO),
         io.write_string(Stream, "\t\t", !IO),
@@ -1487,7 +1487,7 @@ mode_error_coerce_error_to_spec(ModeInfo, Error) = Spec :-
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 :- func make_term_path_piece(coerce_error_term_path_step) =
-    list(format_component).
+    list(format_piece).
 
 make_term_path_piece(Step) = Pieces :-
     Step = coerce_error_term_path_step(ConsId, ArgNum),
@@ -1937,7 +1937,7 @@ count_ground_insts(ModuleInfo, [ContextInst | ContextsInsts],
     ;       report_ground_vs_nonground_only
     ;       report_inst_and_ground_vs_nonground.
 
-:- func report_inst_in_context(mode_info, format_component,
+:- func report_inst_in_context(mode_info, format_piece,
     report_inst_how, pair(prog_context, mer_inst)) = error_msg.
 
 report_inst_in_context(ModeInfo, VarNamePiece, ReportIsGround, Context - Inst)
@@ -1975,8 +1975,8 @@ report_inst_in_context(ModeInfo, VarNamePiece, ReportIsGround, Context - Inst)
     --->    ground
     ;       nonground.
 
-:- func report_inst_in_branch(mode_info, format_component,
-    maybe(ground_or_nonground), mer_inst) = list(format_component).
+:- func report_inst_in_branch(mode_info, format_piece,
+    maybe(ground_or_nonground), mer_inst) = list(format_piece).
 
 report_inst_in_branch(ModeInfo, VarNamePiece, MaybeGroundOrNonGround, Inst)
         = Pieces :-
@@ -2014,16 +2014,16 @@ report_inst_in_branch(ModeInfo, VarNamePiece, MaybeGroundOrNonGround, Inst)
         )
     ).
 
-:- func report_inst_in_branch_simple(format_component, string)
-    = list(format_component).
+:- func report_inst_in_branch_simple(format_piece, string)
+    = list(format_piece).
 
 report_inst_in_branch_simple(VarNamePiece, FreeOrGround) = Pieces :-
     MainPieces = [words("In this branch,"), VarNamePiece,
         words("is"), words(FreeOrGround), suffix("."), nl],
     Pieces = [nl_indent_delta(1) | MainPieces] ++ [nl_indent_delta(-1)].
 
-:- func report_inst_in_branch_detail(mode_info, list(format_component),
-    mer_inst) = list(format_component).
+:- func report_inst_in_branch_detail(mode_info, list(format_piece),
+    mer_inst) = list(format_piece).
 
 report_inst_in_branch_detail(ModeInfo, IntroPieces, Inst) = Pieces :-
     Pieces = [nl_indent_delta(1) | IntroPieces] ++ [nl_indent_delta(1) |
@@ -2034,7 +2034,7 @@ report_inst_in_branch_detail(ModeInfo, IntroPieces, Inst) = Pieces :-
 %------------%
 
 :- func inst_list_to_sep_lines(mode_info, list(mer_inst))
-    = list(format_component).
+    = list(format_piece).
 
 inst_list_to_sep_lines(_ModeInfo, []) = [].
 inst_list_to_sep_lines(ModeInfo, [Inst | Insts]) = Pieces :-
@@ -2053,14 +2053,14 @@ inst_list_to_sep_lines(ModeInfo, [Inst | Insts]) = Pieces :-
 %------------%
 
 :- func has_inst_expected_inst_was(mode_info, mer_inst, mer_inst)
-    = list(format_component).
+    = list(format_piece).
 
 has_inst_expected_inst_was(ModeInfo, ActualInst, ExpectedInst) =
     has_instantiatedness(ModeInfo, ActualInst, ",") ++
     expected_inst_was(ModeInfo, ExpectedInst).
 
 :- func has_instantiatedness(mode_info, mer_inst, string)
-    = list(format_component).
+    = list(format_piece).
 
 has_instantiatedness(ModeInfo, Inst, Suffix) =
     [words("has instantiatedness") |
@@ -2068,7 +2068,7 @@ has_instantiatedness(ModeInfo, Inst, Suffix) =
             [nl_indent_delta(1)], [suffix(Suffix), nl_indent_delta(-1)],
             Inst)].
 
-:- func expected_inst_was(mode_info, mer_inst) = list(format_component).
+:- func expected_inst_was(mode_info, mer_inst) = list(format_piece).
 
 expected_inst_was(ModeInfo, Inst) =
     [words("expected instantiatedness was") |
@@ -2076,8 +2076,8 @@ expected_inst_was(ModeInfo, Inst) =
             [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)], Inst)].
 
 :- func report_inst(mode_info, short_inst,
-    list(format_component), list(format_component), list(format_component),
-    mer_inst) = list(format_component).
+    list(format_piece), list(format_piece), list(format_piece),
+    mer_inst) = list(format_piece).
 
 report_inst(ModeInfo, ShortInstQF, ShortInstSuffix,
         LongInstPrefix, LongInstSuffix, Inst0) = Pieces :-
@@ -2173,7 +2173,7 @@ mode_warning_cannot_succeed_ground_occur_check(ModeInfo, X, ConsId) = Spec :-
 % Utility predicates needed to print both errors and warnings.
 %
 
-:- func mode_info_context_preamble(mode_info) = list(format_component).
+:- func mode_info_context_preamble(mode_info) = list(format_piece).
 
 mode_info_context_preamble(ModeInfo) = Pieces :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
@@ -2212,7 +2212,7 @@ mode_info_context_preamble(ModeInfo) = Pieces :-
     % XXX Some parts of the mode context never get set up.
     %
 :- func mode_context_to_pieces(mode_info, mode_context, pred_markers)
-    = list(format_component).
+    = list(format_piece).
 
 mode_context_to_pieces(ModeInfo, ModeContext, Markers) = Pieces :-
     (

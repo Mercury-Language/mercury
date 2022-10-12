@@ -17,7 +17,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module list.
 
@@ -327,7 +327,7 @@ check_in_interface_promise_goals(ModuleInfo, PredInfo, [Goal0 | Goal0s],
 %---------------------%
 
 :- pred report_assertion_interface_error(module_name::in, prog_context::in,
-    list(format_component)::in, list(error_spec)::in, list(error_spec)::out)
+    list(format_piece)::in, list(error_spec)::in, list(error_spec)::out)
     is det.
 
 report_assertion_interface_error(ModuleName, Context, IdPieces, !Specs) :-
@@ -347,7 +347,7 @@ report_assertion_interface_error(ModuleName, Context, IdPieces, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 :- pred report_assertion_module_error(module_name::in, prog_context::in,
-    module_name::in, list(format_component)::in,
+    module_name::in, list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_assertion_module_error(ModuleName, Context, PredModuleName,

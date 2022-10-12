@@ -41,7 +41,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module list.
 :- import_module set.
@@ -336,7 +336,7 @@ format_call_error_wrong_mode(PredInfo, Context, NumFormatArgs, FormatArgNum,
 %---------------------%
 
 :- func format_call_error_prelude(pred_info, int, int)
-    = list(format_component).
+    = list(format_piece).
 
 format_call_error_prelude(PredInfo, NumFormatArgs, FormatArgNum) = Pieces :-
     Pieces0 = [words("Error: in the second argument of"),

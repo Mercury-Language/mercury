@@ -25,7 +25,7 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
@@ -47,7 +47,7 @@
     % Parses `GoalTerm' and expands it as a DCG goal.
     % `DCGVar0' is the initial DCG variable, and `DCGVar' is the final one.
     %
-:- pred parse_dcg_pred_goal(term::in, cord(format_component)::in,
+:- pred parse_dcg_pred_goal(term::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out, prog_var::out, prog_var::out,
     prog_varset::in, prog_varset::out) is det.
 
@@ -115,7 +115,7 @@ parse_dcg_pred_goal(GoalTerm, ContextPieces, MaybeGoal,
 
     % Expand a DCG goal.
     %
-:- pred parse_dcg_goal(term::in, cord(format_component)::in,
+:- pred parse_dcg_goal(term::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -245,7 +245,7 @@ string_dcg_goal_kind(Functor, GoalKind) :-
     % the current DCG variable.
     %
 :- pred parse_non_call_dcg_goal(dcg_goal_kind::in, list(term)::in,
-    prog_context::in, cord(format_component)::in,
+    prog_context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -341,7 +341,7 @@ parse_non_call_dcg_goal(GoalKind, Args, Context, ContextPieces, MaybeGoal,
 %---------------------%
 
 :- pred parse_dcg_goal_impure_semipure(dcg_goal_kind::in(dcg_goal_kind_purity),
-    list(term)::in, prog_context::in, cord(format_component)::in,
+    list(term)::in, prog_context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -367,7 +367,7 @@ parse_dcg_goal_impure_semipure(GoalKind, ArgTerms, Context, ContextPieces,
 
 :- pred parse_dcg_goal_promise_purity(
     dcg_goal_kind::in(dcg_goal_kind_promise_purity),
-    list(term)::in, prog_context::in, cord(format_component)::in,
+    list(term)::in, prog_context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -399,7 +399,7 @@ parse_dcg_goal_promise_purity(GoalKind, ArgTerms, Context, ContextPieces,
 %---------------------%
 
 :- pred parse_dcg_goal_not(dcg_goal_kind::in(dcg_goal_kind_not),
-    list(term)::in, prog_context::in, cord(format_component)::in,
+    list(term)::in, prog_context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -432,7 +432,7 @@ parse_dcg_goal_not(GoalKind, ArgTerms, Context, ContextPieces,
 
 :- pred parse_dcg_goal_some_all(dcg_goal_kind::in(dcg_goal_kind_some_all),
     list(term)::in,
-    prog_context::in, cord(format_component)::in,
+    prog_context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -502,7 +502,7 @@ parse_dcg_goal_some_all(GoalKind, ArgTerms, Context, ContextPieces,
     % to warrant a small amount of code target language code duplication.
     %
 :- pred parse_dcg_goal_conj(dcg_goal_kind, list(term),
-    prog_context, cord(format_component), maybe2(goal, list(warning_spec)),
+    prog_context, cord(format_piece), maybe2(goal, list(warning_spec)),
     prog_varset, prog_varset, counter, counter, prog_var, prog_var).
 :- mode parse_dcg_goal_conj(in(dcg_goal_kind_conj), in, in, in, out,
     in, out, in, out, in, out) is det.
@@ -544,7 +544,7 @@ parse_dcg_goal_conj(GoalKind, ArgTerms, Context, ContextPieces,
     ).
 
 :- pred parse_dcg_goal_conjunction(string::in, term::in, term::in,
-    prog_context::in, cord(format_component)::in,
+    prog_context::in, cord(format_piece)::in,
     cord(goal)::in, cord(goal)::out,
     list(warning_spec)::in, list(warning_spec)::out,
     list(error_spec)::in, list(error_spec)::out,
@@ -587,7 +587,7 @@ parse_dcg_goal_conjunction(Functor, TermA, TermB, Context,
 %---------------------%
 
 :- pred parse_dcg_goal_semicolon(list(term)::in,
-    prog_context::in, cord(format_component)::in,
+    prog_context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -653,7 +653,7 @@ parse_dcg_goal_semicolon(ArgTerms, Context, ContextPieces,
         MaybeGoal = error2([Spec])
     ).
 
-:- pred parse_dcg_goal_disjunction(prog_var::in, cord(format_component)::in,
+:- pred parse_dcg_goal_disjunction(prog_var::in, cord(format_piece)::in,
     term::in, term::in, maybe(prog_var)::in, maybe(prog_var)::out,
     cord(pair(goal, prog_var))::in, cord(pair(goal, prog_var))::out,
     list(warning_spec)::in, list(warning_spec)::out,
@@ -782,7 +782,7 @@ bring_disjunct_up_to(InitDCGVar, FinalDCGVar, Context,
 %---------------------%
 
 :- pred parse_dcg_goal_else(list(term)::in,
-    prog_context::in, cord(format_component)::in,
+    prog_context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -812,7 +812,7 @@ parse_dcg_goal_else(ArgTerms, Context, ContextPieces,
 %---------------------%
 
 :- pred parse_dcg_goal_if(list(term)::in,
-    prog_context::in, cord(format_component)::in,
+    prog_context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -862,7 +862,7 @@ parse_dcg_goal_if(ArgTerms, Context, ContextPieces,
 %---------------------%
 
 :- pred parse_dcg_goal_braces(list(term)::in,
-    prog_context::in, cord(format_component)::in,
+    prog_context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -890,7 +890,7 @@ parse_dcg_goal_braces(ArgTerms, Context, ContextPieces,
 %---------------------%
 
 :- pred parse_dcg_goal_nil(list(term)::in,
-    prog_context::in, cord(format_component)::in,
+    prog_context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -923,7 +923,7 @@ parse_dcg_goal_nil(ArgTerms, Context, _ContextPieces,
 %---------------------%
 
 :- pred parse_dcg_goal_cons(list(term)::in,
-    prog_context::in, cord(format_component)::in,
+    prog_context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -967,7 +967,7 @@ parse_dcg_goal_cons(ArgTerms, Context, _ContextPieces,
 %---------------------%
 
 :- pred parse_dcg_goal_equal(list(term)::in,
-    prog_context::in, cord(format_component)::in,
+    prog_context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -989,7 +989,7 @@ parse_dcg_goal_equal(ArgTerms, Context, ContextPieces,
 %---------------------%
 
 :- pred parse_dcg_goal_colon_equal(list(term)::in,
-    prog_context::in, cord(format_component)::in,
+    prog_context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -1024,7 +1024,7 @@ parse_dcg_goal_colon_equal(ArgTerms, Context, _ContextPieces,
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_some_vars_dcg_goal(term::in, cord(format_component)::in,
+:- pred parse_some_vars_dcg_goal(term::in, cord(format_piece)::in,
     maybe4(list(prog_var), list(prog_var), goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
@@ -1088,7 +1088,7 @@ parse_some_vars_dcg_goal(Term, ContextPieces, MaybeVarsGoal,
     % so that the implicit quantification of DCG_2 is correct.
     %
 :- pred parse_dcg_if_then(term::in, term::in, prog_context::in,
-    cord(format_component)::in,
+    cord(format_piece)::in,
     maybe4(list(prog_var), list(prog_var), goal, list(warning_spec))::out,
     maybe2(goal, list(warning_spec))::out, prog_varset::in, prog_varset::out,
     counter::in, counter::out, prog_var::in, prog_var::out) is det.
@@ -1122,7 +1122,7 @@ parse_dcg_if_then(CondGoalTerm, ThenGoalTerm, Context, ContextPieces,
     ).
 
 :- pred parse_dcg_if_then_else(term::in, term::in, term::in, prog_context::in,
-    cord(format_component)::in, maybe2(goal, list(warning_spec))::out,
+    cord(format_piece)::in, maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
 

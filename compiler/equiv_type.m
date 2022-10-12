@@ -62,7 +62,7 @@
 :- module parse_tree.equiv_type.
 :- interface.
 
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_event.
 :- import_module parse_tree.prog_data_used_modules.

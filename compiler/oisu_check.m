@@ -21,7 +21,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -385,7 +385,7 @@ find_unhandled_oisu_kind_fors([KindFor | KindFors], HandledOISUTypeCtors,
 
 :- pred describe_unhandled_kind_fors(
     oisu_pred_kind_for::in, list(oisu_pred_kind_for)::in,
-    list(format_component)::out) is det.
+    list(format_piece)::out) is det.
 
 describe_unhandled_kind_fors(HeadKindFor, TailKindFors, Pieces) :-
     ( HeadKindFor = oisu_creator_for(HeadTypeCtor), HeadKind = "creator"

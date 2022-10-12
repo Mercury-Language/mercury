@@ -74,12 +74,18 @@
 :- include_module var_table.
 :- include_module vartypes.
 
+% Error handling.
+:- include_module error_sort.
+:- include_module error_spec.
+:- include_module error_type_util.
+:- include_module error_util.
+:- include_module maybe_error.
+:- include_module write_error_spec.
+
 % Utility routines.
 :- include_module builtin_lib_types.
 :- include_module check_type_inst_mode_defns.
-:- include_module error_util.
 :- include_module item_util.
-:- include_module maybe_error.
 :- include_module prog_detism.
 :- include_module prog_event.
 :- include_module prog_foreign.

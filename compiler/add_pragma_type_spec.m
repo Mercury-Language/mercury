@@ -11,7 +11,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
@@ -476,7 +476,7 @@ report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars, Spec) :-
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, Pieces).
 
-:- func pragma_type_spec_to_pieces(pred_info) = list(format_component).
+:- func pragma_type_spec_to_pieces(pred_info) = list(format_piece).
 
 pragma_type_spec_to_pieces(PredInfo) = Pieces :-
     Module = pred_info_module(PredInfo),
@@ -489,7 +489,7 @@ pragma_type_spec_to_pieces(PredInfo) = Pieces :-
         words("declaration for"),
         qual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl].
 
-:- func report_variables(list(tvar), tvarset) = list(format_component).
+:- func report_variables(list(tvar), tvarset) = list(format_piece).
 
 report_variables(SubExistQVars, VarSet) =
     [words(choose_number(SubExistQVars, "variable", "variables")),

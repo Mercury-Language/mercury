@@ -86,7 +86,7 @@
 :- import_module libs.timestamp.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.find_module.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.

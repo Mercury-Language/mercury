@@ -16,7 +16,7 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_data.
@@ -515,7 +515,7 @@ parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
         MaybeIOM = error1([Spec])
     ).
 
-:- pred check_quant_vars(cord(format_component)::in, varset::in,
+:- pred check_quant_vars(cord(format_piece)::in, varset::in,
     quantifier_type::in, term::in, maybe1(list(var))::out) is det.
 
 check_quant_vars(InitContextPieces, VarSet, QuantType, VarsTerm, MaybeVars) :-
@@ -1434,7 +1434,7 @@ classify_type_and_mode_list(ArgNum, [Head | Tail],
     --->    dont_add_the_prefix
     ;       add_the_prefix.
 
-:- func wrap_nth(maybe_add_the_prefix, int) = format_component.
+:- func wrap_nth(maybe_add_the_prefix, int) = format_piece.
 
 wrap_nth(MaybeAddPredix, ArgNum) = Component :-
     ( if ArgNum < 0 then
@@ -1709,7 +1709,7 @@ get_purity_from_attrs(Context, [PurityAttr | PurityAttrs], MaybePurity) :-
     % XXX The "smallest" part of that is almost certainly bug.
     %
 :- pred get_class_context_and_inst_constraints_from_attrs(module_name::in,
-    varset::in, list(quant_constr_attr)::in, cord(format_component)::in,
+    varset::in, list(quant_constr_attr)::in, cord(format_piece)::in,
     maybe3(existq_tvars, prog_constraints, inst_var_sub)::out) is det.
 
 get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
@@ -1769,7 +1769,7 @@ get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
     ).
 
 :- pred get_class_context_and_inst_constraints_loop(module_name::in,
-    varset::in, list(quant_constr_attr)::in, cord(format_component)::in,
+    varset::in, list(quant_constr_attr)::in, cord(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out,
     cord(var)::in, cord(var)::out, cord(var)::in, cord(var)::out,
     cord(prog_constraint)::in, cord(prog_constraint)::out,
@@ -1974,7 +1974,7 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
     % and bind BeforeDetismTerm to the other part of Term. If we don't
     % find, one, then bind MaybeMaybeDetism to ok1(no).
     %
-:- pred parse_determinism_suffix(varset::in, cord(format_component)::in,
+:- pred parse_determinism_suffix(varset::in, cord(format_piece)::in,
     term::in, term::out, maybe1(maybe(determinism))::out) is det.
 
 parse_determinism_suffix(VarSet, ContextPieces, Term, BeforeDetismTerm,
@@ -2036,7 +2036,7 @@ parse_with_type_suffix(VarSet, Term, BeforeWithTypeTerm, MaybeWithType) :-
 
     % Process the `with_inst inst` suffix part of a declaration.
     %
-:- pred parse_with_inst_suffix(varset::in, cord(format_component)::in,
+:- pred parse_with_inst_suffix(varset::in, cord(format_piece)::in,
     term::in, term::out, maybe1(maybe(mer_inst))::out) is det.
 
 parse_with_inst_suffix(VarSet, ContextPieces, Term,
@@ -2200,7 +2200,7 @@ is_the_name_a_variable(VarSet, Kind, Term, Spec) :-
 in_pred_or_func_decl_desc(pf_function) = "in function declaration".
 in_pred_or_func_decl_desc(pf_predicate) = "in predicate declaration".
 
-:- func pred_or_func_decl_pieces(pred_or_func) = list(format_component).
+:- func pred_or_func_decl_pieces(pred_or_func) = list(format_piece).
 
 pred_or_func_decl_pieces(pf_function) =
     [decl("func"), words("declaration")].

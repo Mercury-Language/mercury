@@ -13,7 +13,7 @@
 :- import_module hlds.make_hlds.make_hlds_types.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
@@ -587,7 +587,7 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
     !:SeqNum = !.SeqNum + 1.
 
 :- pred lookup_pred_orig_arity(module_info::in, pred_id::in,
-    format_component::out) is det.
+    format_piece::out) is det.
 
 lookup_pred_orig_arity(ModuleInfo, PredId, Piece) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),

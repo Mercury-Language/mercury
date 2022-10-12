@@ -44,7 +44,7 @@
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -1155,13 +1155,13 @@ add_message_for_nontail_mutual_recursive_call(CallerId, CallerProcId,
     !:Specs = [Spec | !.Specs].
 
 :- pred woe_to_severity_and_string(warning_or_error::in,
-    error_severity::out, format_component::out) is det.
+    error_severity::out, format_piece::out) is det.
 
 woe_to_severity_and_string(we_warning, severity_warning, words("warning:")).
 woe_to_severity_and_string(we_error, severity_error, words("error:")).
 
 :- pred nontail_rec_call_reason_to_pieces(nontail_rec_call_reason::in,
-    prog_context::in, list(format_component)::out, list(error_msg)::out)
+    prog_context::in, list(format_piece)::out, list(error_msg)::out)
     is det.
 
 nontail_rec_call_reason_to_pieces(Reason, Context,

@@ -55,11 +55,12 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.read_modules.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
 :- import_module dir.

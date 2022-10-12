@@ -9,7 +9,7 @@
 :- module parse_tree.parse_error.
 :- interface.
 
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module io.
 :- import_module list.

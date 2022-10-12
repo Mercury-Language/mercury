@@ -19,7 +19,7 @@
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module list.
 

@@ -290,7 +290,8 @@
 
 :- implementation.
 
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module int.
 :- import_module string.

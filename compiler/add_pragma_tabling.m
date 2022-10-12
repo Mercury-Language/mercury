@@ -11,7 +11,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
@@ -726,7 +726,7 @@ proc_tabling_info_var_name(ProcLabel) =
 
 :- pred check_pred_args_against_tabling_methods(module_info::in, int::in,
     list(mer_mode)::in, list(maybe(arg_tabling_method))::in,
-    list(format_component)::out) is det.
+    list(format_piece)::out) is det.
 
 check_pred_args_against_tabling_methods(_, _, [], [], []).
 check_pred_args_against_tabling_methods(_, _, [], [_ | _], Pieces) :-
@@ -767,7 +767,7 @@ check_pred_args_against_tabling_methods(ModuleInfo, ArgNum,
     ).
 
 :- pred check_pred_args_against_tabling(module_info::in, int::in,
-    list(mer_mode)::in, list(format_component)::out) is det.
+    list(mer_mode)::in, list(format_piece)::out) is det.
 
 check_pred_args_against_tabling(_, _, [], []).
 check_pred_args_against_tabling(ModuleInfo, ArgNum, [Mode | Modes],

@@ -17,7 +17,7 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module recompilation.
@@ -80,7 +80,7 @@
             % pragmas that don't require any features, and for version_number
             % items recorded by old compiler versions in a now-obsolete format.
 
-:- func iom_desc_pieces(item_or_marker) = list(format_component).
+:- func iom_desc_pieces(item_or_marker) = list(format_piece).
 
 %---------------------------------------------------------------------------%
 

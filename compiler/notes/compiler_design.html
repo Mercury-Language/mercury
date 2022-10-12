@@ -419,11 +419,18 @@ for manipulating mutable variables.
 <li>
 prog_event.m contains utility predicates for working with events.
 <li>
-error_util.m contains predicates
-for printing nicely formatted error messages.
+error_spec.m defines the error_spec type,
+which is a structured representation of diagnostic messages.
 <li>
 maybe_error.m contains types that allow the representation
-of computations that can either succeed or generate such error messages.
+of the results of computations
+that either succeed, or generate some error_specs.
+<li>
+write_error_spec.m contains code for generating
+nicely formatted printouts of error_specs.
+<li>
+error_type_util.m, error_util.m, and error_sort.m contain
+utility predicates and functions operating on error_specs.
 </ul>
 
 <p>

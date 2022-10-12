@@ -24,7 +24,7 @@
 :- import_module hlds.make_hlds.make_hlds_types.
 :- import_module hlds.status.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
@@ -712,7 +712,7 @@ check_for_polymorphic_eqv_type_with_monomorphic_body(TypeStatus, TypeCtor,
         true
     ).
 
-:- func abstract_monotype_workaround = list(format_component).
+:- func abstract_monotype_workaround = list(format_piece).
 
 abstract_monotype_workaround = [
     words("A quick workaround is to just export the type as a concrete type"),
@@ -1505,7 +1505,7 @@ special_type_ctor_not_du(TypeCtor) :-
 %---------------------%
 
 :- func report_non_du_supertype(tvarset, type_ctor,
-    list(type_ctor), mer_type) = list(format_component).
+    list(type_ctor), mer_type) = list(format_piece).
 
 report_non_du_supertype(TVarSet, OrigTypeCtor, PrevSuperTypeCtors1,
         NextSuperType) = Pieces :-
@@ -1519,7 +1519,7 @@ report_non_du_supertype(TVarSet, OrigTypeCtor, PrevSuperTypeCtors1,
 %---------------------%
 
 :- func describe_supertype_chain(type_ctor, list(type_ctor), type_ctor)
-    = list(format_component).
+    = list(format_piece).
 
 describe_supertype_chain(OrigTypeCtor, PrevSuperTypeCtors, LastSuperTypeCtor)
         = Pieces :-
@@ -1532,7 +1532,7 @@ describe_supertype_chain(OrigTypeCtor, PrevSuperTypeCtors, LastSuperTypeCtor)
     ;       is_first.
 
 :- func describe_which_is_supertype_of_chain(maybe_first, type_ctor,
-    list(type_ctor)) = list(format_component).
+    list(type_ctor)) = list(format_piece).
 
 describe_which_is_supertype_of_chain(First, OrigTypeCtor, SuperTypeCtors)
         = Pieces :-
@@ -1980,7 +1980,7 @@ check_subtype_ctors_order(TypeCtor, Ctors, SuperTypeCtor, SuperCtors, Context,
     ).
 
 :- pred compute_subtype_ctors_diff(list(constructor)::in,
-    list(constructor)::in, list(format_component)::out) is det.
+    list(constructor)::in, list(format_piece)::out) is det.
 
 compute_subtype_ctors_diff(Ctors, SuperCtors, ChangeHunkPieces) :-
     (

@@ -58,7 +58,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 
@@ -3869,7 +3869,7 @@ add_file_open_error(MaybeContext, FileName, InOrOut, Error, !Specs, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred add_error_context_and_pieces(prog_context::in,
-    list(format_component)::in,
+    list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_error_context_and_pieces(Context, Pieces, !Specs) :-
@@ -3877,7 +3877,7 @@ add_error_context_and_pieces(Context, Pieces, !Specs) :-
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- pred add_error_pieces(list(format_component)::in,
+:- pred add_error_pieces(list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_error_pieces(Pieces, !Specs) :-

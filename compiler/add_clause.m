@@ -20,7 +20,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
@@ -566,7 +566,7 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
 
     % Extract the mode annotations (if any) from a list of arguments.
     %
-:- pred get_mode_annotations(prog_varset::in, cord(format_component)::in,
+:- pred get_mode_annotations(prog_varset::in, cord(format_piece)::in,
     int::in, list(prog_term)::in, list(prog_term)::out,
     mode_annotations::in, mode_annotations::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -588,7 +588,7 @@ get_mode_annotations(VarSet, ContextPieces, ArgNum, [MAArgTerm | MAArgTerms],
 
     % Extract the mode annotations (if any) from a single argument.
     %
-:- pred get_mode_annotation(prog_varset::in, cord(format_component)::in,
+:- pred get_mode_annotation(prog_varset::in, cord(format_piece)::in,
     int::in, prog_term::in, prog_term::out, maybe1(maybe(mer_mode))::out)
     is det.
 

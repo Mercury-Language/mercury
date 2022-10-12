@@ -113,6 +113,7 @@
 
 :- import_module libs.options.
 :- import_module parse_tree.comp_unit_interface.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
@@ -122,6 +123,7 @@
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_tree_out.
+:- import_module parse_tree.write_error_spec.
 :- import_module recompilation.
 :- import_module recompilation.version.
 
@@ -143,7 +145,7 @@ write_short_interface_file_int3(ProgressStream, ErrorStream, Globals,
     % in the current module and writes out the .int3 file.
     generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
         [], Specs0),
-    filter_interface_generation_specs(Globals, Specs0, Specs, !IO),
+    filter_interface_generation_specs(Globals, Specs0, Specs),
     EffectivelyErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, Specs),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
@@ -192,14 +194,14 @@ write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
         module_qualify_aug_make_int_unit(Globals,
             AugMakeIntUnit1, AugMakeIntUnit, [], QualSpecs),
         filter_interface_generation_specs(Globals,
-            GetSpecs ++ QualSpecs, EffectiveGetQualSpecs, !IO),
+            GetSpecs ++ QualSpecs, EffectiveGetQualSpecs),
         (
             EffectiveGetQualSpecs = [],
             % Construct the `.int0' file.
             generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0,
                 [], GenerateSpecs),
             filter_interface_generation_specs(Globals,
-                EffectiveGetQualSpecs ++ GenerateSpecs, Specs, !IO),
+                EffectiveGetQualSpecs ++ GenerateSpecs, Specs),
             write_error_specs(ErrorStream, Globals, Specs, !IO),
             % Write out the `.int0' file.
             actually_write_interface_file0(ProgressStream, ErrorStream,
@@ -268,14 +270,14 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
         module_qualify_aug_make_int_unit(Globals,
             AugMakeIntUnit1, AugMakeIntUnit, [], QualSpecs),
         filter_interface_generation_specs(Globals,
-            GetSpecs ++ QualSpecs, EffectiveGetQualSpecs, !IO),
+            GetSpecs ++ QualSpecs, EffectiveGetQualSpecs),
         (
             EffectiveGetQualSpecs = [],
             % Construct the `.int' and `.int2' files.
             generate_interfaces_int1_int2(Globals, AugMakeIntUnit,
                 ParseTreeInt1, ParseTreeInt2, [], GenerateSpecs),
             filter_interface_generation_specs(Globals,
-                EffectiveGetQualSpecs ++ GenerateSpecs, Specs, !IO),
+                EffectiveGetQualSpecs ++ GenerateSpecs, Specs),
             write_error_specs(ErrorStream, Globals, Specs, !IO),
             % Write out the `.int' and `.int2' files.
             actually_write_interface_file1(ProgressStream, ErrorStream,
@@ -569,7 +571,7 @@ insist_on_timestamp(MaybeTimestamp, Timestamp) :-
 %---------------------------------------------------------------------------%
 
 :- pred report_file_not_written(io.text_output_stream::in, globals::in, 
-    list(error_spec)::in, list(format_component)::in, module_name::in,
+    list(error_spec)::in, list(format_piece)::in, module_name::in,
     other_ext::in, maybe(other_ext)::in, other_ext::in, io::di, io::uo) is det.
 
 report_file_not_written(ErrorStream, Globals, Specs, PrefixPieces,

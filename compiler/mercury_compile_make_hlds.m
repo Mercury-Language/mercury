@@ -29,7 +29,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
@@ -65,6 +65,7 @@
 :- import_module make.
 :- import_module make.module_dep_file.
 :- import_module parse_tree.equiv_type.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.grab_modules.
 :- import_module parse_tree.module_qual.
@@ -74,6 +75,7 @@
 :- import_module parse_tree.prog_data_used_modules.
 :- import_module parse_tree.prog_event.
 :- import_module parse_tree.write_deps_file.
+:- import_module parse_tree.write_error_spec.
 :- import_module recompilation.
 
 :- import_module char.
@@ -305,7 +307,7 @@ maybe_warn_about_stdlib_shadowing(Globals, ParseTreeModuleSrc, !Specs) :-
     ).
 
 :- pred maybe_mention_undoc(doc_or_undoc::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 maybe_mention_undoc(DocUndoc, Pieces0, Pieces) :-
     (

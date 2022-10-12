@@ -20,7 +20,7 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_data.
@@ -39,7 +39,7 @@
     list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(maybe_canonical)::in, maybe1(item_or_marker)::out) is det.
 
-:- pred parse_foreign_type_assertions(cord(format_component)::in,
+:- pred parse_foreign_type_assertions(cord(format_piece)::in,
     varset::in, term::in,
     set(foreign_type_assertion)::in, set(foreign_type_assertion)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -221,7 +221,7 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_foreign_language_type(cord(format_component)::in, term::in,
+:- pred parse_foreign_language_type(cord(format_piece)::in, term::in,
     varset::in, maybe1(foreign_language)::in,
     maybe1(generic_language_foreign_type)::out) is det.
 
@@ -611,7 +611,7 @@ parse_pragma_ordinary_foreign_proc(ModuleName, VarSet, ForeignLanguage,
     % The final argument is 'no' for no error, or 'yes(ErrorMessage)'.
     %
 :- pred parse_pragma_foreign_proc_varlist(varset::in,
-    cord(format_component)::in,list(term)::in, int::in,
+    cord(format_piece)::in,list(term)::in, int::in,
     maybe1(list(pragma_var))::out) is det.
 
 parse_pragma_foreign_proc_varlist(_, _, [], _, ok1([])).
@@ -685,7 +685,7 @@ parse_pragma_foreign_proc_varlist(VarSet, ContextPieces,
     ;       coll_may_export_body(proc_may_export_body).
 
 :- pred parse_and_check_pragma_foreign_proc_attributes_term(
-    foreign_language::in, varset::in, term::in, cord(format_component)::in,
+    foreign_language::in, varset::in, term::in, cord(format_piece)::in,
     maybe1(pragma_foreign_proc_attributes)::out) is det.
 
 parse_and_check_pragma_foreign_proc_attributes_term(ForeignLanguage, VarSet,
@@ -775,7 +775,7 @@ parse_and_check_pragma_foreign_proc_attributes_term(ForeignLanguage, VarSet,
 
 %---------------------%
 
-:- pred parse_pragma_foreign_proc_attributes_term(cord(format_component)::in,
+:- pred parse_pragma_foreign_proc_attributes_term(cord(format_piece)::in,
     varset::in, term::in,
     maybe1(list(collected_pragma_foreign_proc_attribute))::out) is det.
 
@@ -788,7 +788,7 @@ parse_pragma_foreign_proc_attributes_term(ContextPieces, VarSet, Term,
             Term, 1, MaybeAttrs)
     ).
 
-:- pred parse_pragma_foreign_proc_attributes_list(cord(format_component)::in,
+:- pred parse_pragma_foreign_proc_attributes_list(cord(format_piece)::in,
     varset::in, term::in, int::in,
     maybe1(list(collected_pragma_foreign_proc_attribute))::out) is det.
 
@@ -1180,7 +1180,7 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_foreign_function_name(varset::in, cord(format_component)::in,
+:- pred parse_foreign_function_name(varset::in, cord(format_piece)::in,
     term::in, maybe1(string)::out) is det.
 
 parse_foreign_function_name(VarSet, ContextPieces, FunctionTerm,
@@ -1314,7 +1314,7 @@ parse_sym_name_string_pair(VarSet, PairTerm, MaybePair) :-
         MaybePair = error1([Spec])
     ).
 
-:- pred maybe_parse_export_enum_attributes(list(format_component)::in,
+:- pred maybe_parse_export_enum_attributes(list(format_piece)::in,
     varset::in, maybe(term)::in, maybe1(export_enum_attributes)::out) is det.
 
 maybe_parse_export_enum_attributes(_, _, no,
@@ -1328,7 +1328,7 @@ maybe_parse_export_enum_attributes(ContextPieces, VarSet, yes(AttributesTerm),
     --->    ee_attr_prefix(maybe(string))
     ;       ee_attr_upper(uppercase_export_enum).
 
-:- pred parse_export_enum_attributes(list(format_component)::in, varset::in,
+:- pred parse_export_enum_attributes(list(format_piece)::in, varset::in,
     term::in, maybe1(export_enum_attributes)::out) is det.
 
 parse_export_enum_attributes(ContextPieces, VarSet, AttributesTerm,
@@ -1391,7 +1391,7 @@ process_export_enum_attribute(ee_attr_upper(MakeUpperCase), !Attributes) :-
     !.Attributes = export_enum_attributes(MaybePrefix, _),
     !:Attributes = export_enum_attributes(MaybePrefix, MakeUpperCase).
 
-:- pred parse_export_enum_attr(list(format_component)::in,
+:- pred parse_export_enum_attr(list(format_piece)::in,
     varset::in, term::in, maybe1(collected_export_enum_attribute)::out) is det.
 
 parse_export_enum_attr(ContextPieces, VarSet, Term, MaybeAttribute) :-
@@ -1519,7 +1519,7 @@ parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_cur_module_sym_name_string_pair(cord(format_component)::in,
+:- pred parse_cur_module_sym_name_string_pair(cord(format_piece)::in,
     module_name::in, varset::in, term::in,
     maybe1(pair(sym_name, string))::out) is det.
 
@@ -1627,7 +1627,7 @@ parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
 % Common code for parsing foreign language interface pragmas.
 %
 
-:- pred parse_foreign_language(cord(format_component)::in, varset::in,
+:- pred parse_foreign_language(cord(format_piece)::in, varset::in,
     term::in, maybe1(foreign_language)::out) is det.
 
 parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
@@ -1652,7 +1652,7 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
 
 %---------------------%
 
-:- pred parse_type_ctor_name_arity(cord(format_component)::in, varset::in,
+:- pred parse_type_ctor_name_arity(cord(format_piece)::in, varset::in,
     term::in, maybe1(type_ctor)::out) is det.
 
 parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm, MaybeTypeCtor) :-

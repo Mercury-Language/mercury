@@ -64,7 +64,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.

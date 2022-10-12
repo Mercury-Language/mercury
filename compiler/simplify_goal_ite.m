@@ -52,7 +52,7 @@
 :- import_module libs.
 :- import_module libs.options.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.var_table.

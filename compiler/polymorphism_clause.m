@@ -49,7 +49,6 @@
 :- import_module hlds.quantification.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.

@@ -15,7 +15,7 @@
 :- module parse_tree.parse_inst_mode_name.
 :- interface.
 
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 
@@ -40,20 +40,20 @@
     ;       wnciv_mutable_inst.
 
 :- pred parse_modes(allow_constrained_inst_var::in, varset::in,
-    cord(format_component)::in, list(term)::in, maybe1(list(mer_mode))::out)
+    cord(format_piece)::in, list(term)::in, maybe1(list(mer_mode))::out)
     is det.
 :- pred parse_mode(allow_constrained_inst_var::in, varset::in,
-    cord(format_component)::in, term::in, maybe1(mer_mode)::out) is det.
+    cord(format_piece)::in, term::in, maybe1(mer_mode)::out) is det.
 
 :- pred is_known_mode_name(string::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
 :- pred parse_insts(allow_constrained_inst_var::in, varset::in,
-    cord(format_component)::in, list(term)::in, maybe1(list(mer_inst))::out)
+    cord(format_piece)::in, list(term)::in, maybe1(list(mer_inst))::out)
     is det.
 :- pred parse_inst(allow_constrained_inst_var::in, varset::in,
-    cord(format_component)::in, term::in, maybe1(mer_inst)::out) is det.
+    cord(format_piece)::in, term::in, maybe1(mer_inst)::out) is det.
 
 :- pred is_known_inst_name(string::in) is semidet.
 
@@ -192,7 +192,7 @@ is_known_mode_name(">>").
 is_known_mode_name("is").
 
 :- pred parse_higher_order_mode(allow_constrained_inst_var::in, varset::in,
-    cord(format_component)::in, term::in, term::in, maybe1(mer_mode)::out)
+    cord(format_piece)::in, term::in, term::in, maybe1(mer_mode)::out)
     is det.
 
 parse_higher_order_mode(AllowConstrainedInstVar, VarSet, ContextPieces,
@@ -366,7 +366,7 @@ parse_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeInst) :-
     ).
 
 :- pred parse_inst_atom_functor(allow_constrained_inst_var::in, varset::in,
-    cord(format_component)::in, string::in, list(term)::in, term.context::in,
+    cord(format_piece)::in, string::in, list(term)::in, term.context::in,
     maybe1(mer_inst)::out) is det.
 
 parse_inst_atom_functor(AllowConstrainedInstVar, VarSet, ContextPieces,
@@ -498,7 +498,7 @@ parse_inst_atom_functor(AllowConstrainedInstVar, VarSet, ContextPieces,
         )
     ).
 
-:- func no_allow_constrained_inst_var_result(cord(format_component),
+:- func no_allow_constrained_inst_var_result(cord(format_piece),
     why_no_constrained_inst_var, varset, term) = maybe1(mer_inst).
 
 no_allow_constrained_inst_var_result(ContextPieces, Why, VarSet, Term)
@@ -682,7 +682,7 @@ is_known_inst_name_args(Name, Args, KnownInst) :-
     ).
 
 :- pred parse_higher_order_inst(allow_constrained_inst_var::in,
-    varset::in, cord(format_component)::in, term::in, term::in,
+    varset::in, cord(format_piece)::in, term::in, term::in,
     maybe1(mer_inst)::out) is det.
 
 parse_higher_order_inst(AllowConstrainedInstVar, VarSet, ContextPieces,
@@ -802,7 +802,7 @@ parse_higher_order_inst(AllowConstrainedInstVar, VarSet, ContextPieces,
     ).
 
 :- pred parse_bound_inst_list(allow_constrained_inst_var::in, varset::in,
-    cord(format_component)::in, term::in, uniqueness::in,
+    cord(format_piece)::in, term::in, uniqueness::in,
     maybe1(mer_inst)::out) is det.
 
 parse_bound_inst_list(AllowConstrainedInstVar, VarSet, ContextPieces,
@@ -839,7 +839,7 @@ parse_bound_inst_list(AllowConstrainedInstVar, VarSet, ContextPieces,
     ).
 
 :- pred find_duplicate_cons_id_bound_insts(bound_inst::in,
-    list(bound_inst)::in, list(format_component)::out) is det.
+    list(bound_inst)::in, list(format_piece)::out) is det.
 
 find_duplicate_cons_id_bound_insts(_Prev, [], []).
 find_duplicate_cons_id_bound_insts(Prev, [Cur | Next], Duplicates) :-
@@ -854,7 +854,7 @@ find_duplicate_cons_id_bound_insts(Prev, [Cur | Next], Duplicates) :-
     ).
 
 :- pred parse_bound_insts(allow_constrained_inst_var::in, varset::in,
-    cord(format_component)::in, list(term)::in,
+    cord(format_piece)::in, list(term)::in,
     maybe1(list(bound_inst))::out) is det.
 
 parse_bound_insts(_, _, _, [], ok1([])).
@@ -877,7 +877,7 @@ parse_bound_insts(AllowConstrainedInstVar, VarSet, ContextPieces,
     ).
 
 :- pred parse_bound_inst(allow_constrained_inst_var::in, varset::in,
-    cord(format_component)::in, term::in, maybe1(bound_inst)::out) is det.
+    cord(format_piece)::in, term::in, maybe1(bound_inst)::out) is det.
 
 parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
         MaybeBoundInst) :-

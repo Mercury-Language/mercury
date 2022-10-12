@@ -43,7 +43,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module list.
 
@@ -537,7 +537,7 @@ general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId, TabledMethod,
     ;       gen_reason_parallel.
 
 :- func gen_cannot_table_reason_desc(general_cannot_table_reason)
-    = list(format_component).
+    = list(format_piece).
 
 gen_cannot_table_reason_desc(Reason) = Desc :-
     (
@@ -573,7 +573,7 @@ mm_cannot_table_reason_spec(Reason, Spec) :-
     ;       mm_reason_profiling.
 
 :- func mm_cannot_table_reason_desc(mm_cannot_table_reason)
-    = list(format_component).
+    = list(format_piece).
 
 mm_cannot_table_reason_desc(Reason) = Desc :-
     (

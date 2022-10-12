@@ -154,7 +154,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
 
@@ -2159,8 +2159,8 @@ generate_call_foreign_proc_error(ModuleInfo, PredProcId, DirectArgProc, Spec) :-
     Spec = simplest_spec($pred, severity_error, phase_direct_arg_in_out,
         Context, Pieces).
 
-:- func args_violate_prohibition_pieces(list(format_component),
-    int, list(int)) = list(format_component).
+:- func args_violate_prohibition_pieces(list(format_piece),
+    int, list(int)) = list(format_piece).
 
 args_violate_prohibition_pieces(OfProcDescPieces, HeadArg, TailArgs)
         = Pieces :-
@@ -2178,8 +2178,8 @@ args_violate_prohibition_pieces(OfProcDescPieces, HeadArg, TailArgs)
             [words("violate this prohibition")]
     ).
 
-:- func args_may_violate_prohibition_pieces(list(format_component),
-    int, list(int)) = list(format_component).
+:- func args_may_violate_prohibition_pieces(list(format_piece),
+    int, list(int)) = list(format_piece).
 
 args_may_violate_prohibition_pieces(OfProcDescPieces, HeadArg, TailArgs)
         = Pieces :-

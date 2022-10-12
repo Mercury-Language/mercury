@@ -28,7 +28,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
@@ -79,7 +79,7 @@
 :- pred add_implicit_pred_decl_report_error(pred_or_func::in,
     module_name::in, string::in, pred_form_arity::in, pred_status::in,
     maybe_class_method::in, prog_context::in, pred_origin::in,
-    list(format_component)::in, pred_id::out,
+    list(format_piece)::in, pred_id::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 

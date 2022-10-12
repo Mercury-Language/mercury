@@ -16,7 +16,7 @@
 :- module parse_tree.parse_goal.
 :- interface.
 
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
@@ -29,7 +29,7 @@
 
     % Convert a single term into a goal.
     %
-:- pred parse_goal(term::in, cord(format_component)::in,
+:- pred parse_goal(term::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 
@@ -40,7 +40,7 @@
     %
     % Exported to superhomogeneous.m for parsing if-then-else expressions.
     %
-:- pred parse_some_vars_goal(term::in, cord(format_component)::in,
+:- pred parse_some_vars_goal(term::in, cord(format_piece)::in,
     maybe4(list(prog_var), list(prog_var), goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 
@@ -48,13 +48,13 @@
     % to allow DCG and non-DCG clauses to generate identical error messages
     % in analogous situations.
     %
-:- func should_have_one_goal_prefix(cord(format_component),
+:- func should_have_one_goal_prefix(cord(format_piece),
     term.context, string) = error_spec.
-:- func should_have_two_terms_infix(cord(format_component),
+:- func should_have_two_terms_infix(cord(format_piece),
     term.context, string) = error_spec.
-:- func should_have_two_goals_infix(cord(format_component),
+:- func should_have_two_goals_infix(cord(format_piece),
     term.context, string) = error_spec.
-:- func should_have_one_x_one_goal_prefix(cord(format_component),
+:- func should_have_one_x_one_goal_prefix(cord(format_piece),
     term.context, string, string) = error_spec.
 
     % apply_purity_marker_to_maybe_goal(GoalTerm, Purity,
@@ -415,7 +415,7 @@ string_goal_kind(Functor, GoalKind) :-
     ).
 
 :- pred parse_non_call_goal(goal_kind::in, list(term)::in, term.context::in,
-    cord(format_component)::in, maybe2(goal, list(warning_spec))::out,
+    cord(format_piece)::in, maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 
 parse_non_call_goal(GoalKind, Args, Context, ContextPieces, MaybeGoal,
@@ -551,7 +551,7 @@ parse_non_call_goal(GoalKind, Args, Context, ContextPieces, MaybeGoal,
 %---------------------%
 
 :- pred parse_goal_impure_semipure(goal_kind::in(goal_kind_purity),
-    list(term)::in, term.context::in, cord(format_component)::in,
+    list(term)::in, term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_impure_semipure/7)).
@@ -574,7 +574,7 @@ parse_goal_impure_semipure(GoalKind, ArgTerms, Context, ContextPieces,
 %---------------------%
 
 :- pred parse_goal_promise_purity(goal_kind::in(goal_kind_promise_purity),
-    list(term)::in, term.context::in, cord(format_component)::in,
+    list(term)::in, term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_promise_purity/7)).
@@ -604,7 +604,7 @@ parse_goal_promise_purity(GoalKind, ArgTerms, Context, ContextPieces,
 %---------------------%
 
 :- pred parse_goal_disable_warnings(goal_kind::in(goal_kind_disable_warning),
-    list(term)::in, term.context::in, cord(format_component)::in,
+    list(term)::in, term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_disable_warnings/7)).
@@ -678,7 +678,7 @@ parse_goal_disable_warnings(GoalKind, ArgTerms, Context, ContextPieces,
 %---------------------%
 
 :- pred parse_goal_not(goal_kind::in(goal_kind_not), list(term)::in,
-    term.context::in, cord(format_component)::in,
+    term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_not/7)).
@@ -704,7 +704,7 @@ parse_goal_not(GoalKind, ArgTerms, Context, ContextPieces, MaybeGoal,
 %---------------------%
 
 :- pred parse_goal_some_all(goal_kind::in(goal_kind_some_all),
-    list(term)::in, term.context::in, cord(format_component)::in,
+    list(term)::in, term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_some_all/7)).
@@ -772,7 +772,7 @@ parse_goal_some_all(GoalKind, ArgTerms, Context, ContextPieces,
     % to warrant a small amount of code target language code duplication.
     %
 :- pred parse_goal_conj(goal_kind, list(term),
-    term.context, cord(format_component),
+    term.context, cord(format_piece),
     maybe2(goal, list(warning_spec)), prog_varset, prog_varset).
 :- mode parse_goal_conj(in(goal_kind_conj),
     in, in, in, out, in, out) is det.
@@ -814,7 +814,7 @@ parse_goal_conj(GoalKind, ArgTerms, Context, ContextPieces,
     ).
 
 :- pred parse_goal_conjunction(string::in, term::in, term::in,
-    cord(format_component)::in, cord(goal)::in, cord(goal)::out,
+    cord(format_piece)::in, cord(goal)::in, cord(goal)::out,
     list(warning_spec)::in, list(warning_spec)::out,
     list(error_spec)::in, list(error_spec)::out,
     prog_varset::in, prog_varset::out) is det.
@@ -852,7 +852,7 @@ parse_goal_conjunction(Functor, TermA, TermB, ContextPieces, !ConjunctsCord,
 %---------------------%
 
 :- pred parse_goal_semicolon(list(term)::in,
-    term.context::in, cord(format_component)::in,
+    term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_semicolon/6)).
@@ -919,7 +919,7 @@ parse_goal_semicolon(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
         MaybeGoal = error2([Spec])
     ).
 
-:- pred parse_goal_disjunction(term::in, term::in, cord(format_component)::in,
+:- pred parse_goal_disjunction(term::in, term::in, cord(format_piece)::in,
     cord(goal)::in, cord(goal)::out,
     list(warning_spec)::in, list(warning_spec)::out,
     list(error_spec)::in, list(error_spec)::out,
@@ -976,7 +976,7 @@ append_disjunct_to_cord(Goal, !DisjunctsCord) :-
 %---------------------%
 
 :- pred parse_goal_else(list(term)::in,
-    term.context::in, cord(format_component)::in,
+    term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_else/6)).
@@ -1056,7 +1056,7 @@ parse_goal_else(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 %---------------------%
 
 :- pred parse_goal_if(list(term)::in,
-    term.context::in, cord(format_component)::in,
+    term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_if/6)).
@@ -1094,7 +1094,7 @@ parse_goal_if(ArgTerms, Context, _ContextPieces, MaybeGoal, !VarSet) :-
 %---------------------%
 
 :- pred parse_goal_then(list(term)::in,
-    term.context::in, cord(format_component)::in,
+    term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_then/6)).
@@ -1142,7 +1142,7 @@ parse_goal_then(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 %---------------------%
 
 :- pred parse_goal_catch_any(list(term)::in,
-    term.context::in, cord(format_component)::in,
+    term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_catch_any/6)).
@@ -1186,7 +1186,7 @@ parse_goal_catch_any(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 %---------------------%
 
 :- pred parse_goal_implication(goal_kind::in(goal_kind_implication),
-    list(term)::in, term.context::in, cord(format_component)::in,
+    list(term)::in, term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_implication/7)).
@@ -1227,7 +1227,7 @@ parse_goal_implication(GoalKind, ArgTerms, Context, ContextPieces,
 %---------------------%
 
 :- pred parse_goal_trace(list(term)::in,
-    term.context::in, cord(format_component)::in,
+    term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_trace/6)).
@@ -1265,7 +1265,7 @@ parse_goal_trace(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 %---------------------%
 
 :- pred parse_goal_atomic(list(term)::in,
-    term.context::in, cord(format_component)::in,
+    term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_atomic/6)).
@@ -1304,7 +1304,7 @@ parse_goal_atomic(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 
 :- pred parse_goal_promise_eqv_solns(
     goal_kind::in(goal_kind_promise_eqv_soln),
-    list(term)::in, term.context::in, cord(format_component)::in,
+    list(term)::in, term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_promise_eqv_solns/7)).
@@ -1351,7 +1351,7 @@ parse_goal_promise_eqv_solns(GoalKind, ArgTerms, Context, ContextPieces,
 %---------------------%
 
 :- pred parse_goal_arbitrary(list(term)::in,
-    term.context::in, cord(format_component)::in,
+    term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_arbitrary/6)).
@@ -1388,7 +1388,7 @@ parse_goal_arbitrary(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 %---------------------%
 
 :- pred parse_goal_require_detism(goal_kind::in(goal_kind_require_detism),
-    list(term)::in, term.context::in, cord(format_component)::in,
+    list(term)::in, term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_require_detism/7)).
@@ -1424,7 +1424,7 @@ parse_goal_require_detism(GoalKind, ArgTerms, Context, ContextPieces,
 %---------------------%
 
 :- pred parse_goal_require_complete_switch(list(term)::in,
-    term.context::in, cord(format_component)::in,
+    term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_require_complete_switch/6)).
@@ -1465,7 +1465,7 @@ parse_goal_require_complete_switch(ArgTerms, Context, ContextPieces,
 
 :- pred parse_goal_require_switch_arm_detism(
     goal_kind::in(goal_kind_require_arm_detism),
-    list(term)::in, term.context::in, cord(format_component)::in,
+    list(term)::in, term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_require_switch_arm_detism/7)).
@@ -1539,7 +1539,7 @@ parse_goal_require_switch_arm_detism(GoalKind, ArgTerms,
 %---------------------%
 
 :- pred parse_goal_event(list(term)::in,
-    term.context::in, cord(format_component)::in,
+    term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_event/6)).
@@ -1609,7 +1609,7 @@ parse_goal_event(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 %---------------------%
 
 :- pred parse_goal_true_fail(goal_kind::in(goal_kind_true_fail),
-    list(term)::in, term.context::in, cord(format_component)::in,
+    list(term)::in, term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_true_fail/7)).
@@ -1636,7 +1636,7 @@ parse_goal_true_fail(GoalKind, ArgTerms, Context, ContextPieces,
 %---------------------%
 
 :- pred parse_goal_equal(list(term)::in, term.context::in,
-    cord(format_component)::in, maybe2(goal, list(warning_spec))::out,
+    cord(format_piece)::in, maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 :- pragma inline(pred(parse_goal_equal/6)).
 
@@ -1652,7 +1652,7 @@ parse_goal_equal(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 
 %---------------------------------------------------------------------------%
 
-:- func should_have_no_args(cord(format_component),
+:- func should_have_no_args(cord(format_piece),
     term.context, string) = error_spec.
 
 should_have_no_args(ContextPieces, Context, Functor) = Spec :-
@@ -1694,7 +1694,7 @@ should_have_one_x_one_goal_prefix(ContextPieces, Context, X, Functor) = Spec :-
     Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
         Context, Pieces).
 
-:- func should_have_one_call_prefix(cord(format_component),
+:- func should_have_one_call_prefix(cord(format_piece),
     term.context, string) = error_spec.
 
 should_have_one_call_prefix(ContextPieces, Context, Functor) = Spec :-
@@ -1784,7 +1784,7 @@ bad_purity_goal(GoalTerm0, Context, Purity) = Goal :-
 
 :- pred parse_one_plain_or_dot_var(
     plain_state_dot_colon_vars(prog_var_type)::in, goal::in,
-    cord(format_component)::in, string::in, maybe1(plain_or_dot_var)::out)
+    cord(format_piece)::in, string::in, maybe1(plain_or_dot_var)::out)
     is det.
 
 parse_one_plain_or_dot_var(PSDCVars, Goal, ContextPieces, ConstructName,
@@ -1896,7 +1896,7 @@ parse_one_plain_or_dot_var(PSDCVars, Goal, ContextPieces, ConstructName,
 %---------------------------------------------------------------------------%
 
 :- pred parse_warnings(varset::in, term::in, string::in,
-    cord(format_component)::in, int::in,
+    cord(format_piece)::in, int::in,
     maybe2(list(goal_warning), list(warning_spec))::out) is det.
 
 parse_warnings(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
@@ -1931,7 +1931,7 @@ parse_warnings(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
     ).
 
 :- pred parse_warning(varset::in, term::in, string::in,
-    cord(format_component)::in, int::in,
+    cord(format_piece)::in, int::in,
     list(goal_warning)::out, list(warning_spec)::out) is det.
 
 parse_warning(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
@@ -1976,7 +1976,7 @@ parse_warning(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
     ).
 
 :- pred generate_warnings_for_duplicate_warnings(prog_context::in,
-    cord(format_component)::in, assoc_list(goal_warning, int)::in,
+    cord(format_piece)::in, assoc_list(goal_warning, int)::in,
     list(goal_warning)::out, list(error_spec)::out) is det.
 
 generate_warnings_for_duplicate_warnings(_, _, [], [], []).
@@ -2504,7 +2504,7 @@ convert_trace_params_2([Component - Context | ComponentsContexts],
 %---------------------------------------------------------------------------%
 
 :- pred parse_catch_any_term(term::in, term.context::in,
-    cord(format_component)::in,
+    cord(format_piece)::in,
     maybe2(catch_any_expr, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 
@@ -2542,7 +2542,7 @@ parse_catch_any_term(ArrowTerm, _Context, ContextPieces, MaybeCatchAny,
     ).
 
 :- pred parse_catch_then_try_term_args(list(term)::in,
-    maybe(catch_any_expr)::in, term.context::in, cord(format_component)::in,
+    maybe(catch_any_expr)::in, term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 
@@ -2578,7 +2578,7 @@ parse_catch_then_try_term_args(CatchTermArgs, MaybeCatchAnyExpr,
     ).
 
 :- pred parse_sub_catch_terms(term::in, term.context::in,
-    cord(format_component)::in,
+    cord(format_piece)::in,
     maybe2(list(catch_expr), list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 
@@ -2613,7 +2613,7 @@ parse_sub_catch_terms(Term, Context, ContextPieces, MaybeCatches, !VarSet) :-
     ).
 
 :- pred parse_catch_arrow_term(term::in, term.context::in,
-    cord(format_component)::in, maybe2(catch_expr, list(warning_spec))::out,
+    cord(format_piece)::in, maybe2(catch_expr, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 
 parse_catch_arrow_term(ArrowTerm, _Context, ContextPieces, MaybeCatch,
@@ -2639,7 +2639,7 @@ parse_catch_arrow_term(ArrowTerm, _Context, ContextPieces, MaybeCatch,
     ).
 
 :- pred parse_else_then_try_term(term::in, list(catch_expr)::in,
-    maybe(catch_any_expr)::in, term.context::in, cord(format_component)::in,
+    maybe(catch_any_expr)::in, term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 
@@ -2676,7 +2676,7 @@ parse_else_then_try_term(Term, CatchExprs, MaybeCatchAnyExpr,
     ).
 
 :- pred parse_then_try_term(term::in, maybe(goal)::in, list(catch_expr)::in,
-    maybe(catch_any_expr)::in, term.context::in, cord(format_component)::in,
+    maybe(catch_any_expr)::in, term.context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 

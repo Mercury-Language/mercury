@@ -68,7 +68,7 @@
 :- import_module libs.
 :- import_module libs.rat.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_type_name.
@@ -296,7 +296,7 @@ parse_pragma_termination_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_bool(cord(format_component)::in, varset::in, term::in,
+:- pred parse_bool(cord(format_piece)::in, varset::in, term::in,
     maybe1(bool)::out) is det.
 
 parse_bool(ContextPieces, VarSet, Term, MaybeBool) :-
@@ -370,7 +370,7 @@ parse_pragma_termination2_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_termination_info(list(format_component)::in, varset::in,
+:- pred parse_termination_info(list(format_piece)::in, varset::in,
     term::in, maybe1(maybe(pragma_termination_info))::out) is det.
 
 parse_termination_info(ContextPieces, VarSet, Term,

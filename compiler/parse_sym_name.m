@@ -26,7 +26,7 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 
@@ -53,7 +53,7 @@
     % list of its argument terms, and if successful return them in Result.
     % However, in case it does not succeed, parse_sym_name_and_args
     % also takes as input Varset (from which the variables in Term are taken),
-    % and a format_component list describing the context from which it was
+    % and a format_piece list describing the context from which it was
     % called, e.g. "In clause head:".
     %
     % Note: parse_sym_name_and_args is intended for places where a symbol
@@ -61,7 +61,7 @@
     % For places where a symbol is _defined_, use the related predicate
     % parse_implicitly_qualified_sym_name_and_args.
     %
-:- pred parse_sym_name_and_args(varset::in, cord(format_component)::in,
+:- pred parse_sym_name_and_args(varset::in, cord(format_piece)::in,
     term(T)::in, maybe_functor(T)::out) is det.
 :- pred try_parse_sym_name_and_args(term(T)::in,
     sym_name::out, list(term(T))::out) is semidet.
@@ -78,7 +78,7 @@
     % Versions of parse_sym_name_and_args and try_parse_sym_name_and_args
     % that require the given term to have no arguments.
     %
-:- pred parse_sym_name_and_no_args(varset::in, cord(format_component)::in,
+:- pred parse_sym_name_and_no_args(varset::in, cord(format_piece)::in,
     term(T)::in, maybe1(sym_name)::out) is det.
 :- pred try_parse_sym_name_and_no_args(term(T)::in, sym_name::out) is semidet.
 
@@ -96,10 +96,10 @@
     % parse_implicitly_qualified_sym_name_and_args.
     %
 :- pred parse_implicitly_qualified_sym_name_and_args(module_name::in,
-    varset::in, cord(format_component)::in, term(T)::in,
+    varset::in, cord(format_piece)::in, term(T)::in,
     maybe_functor(T)::out) is det.
 :- pred parse_implicitly_qualified_sym_name_and_no_args(module_name::in,
-    varset::in, cord(format_component)::in, term(T)::in,
+    varset::in, cord(format_piece)::in, term(T)::in,
     maybe1(sym_name)::out) is det.
 
     % These predicates do just the "implicitly qualifying" part of the
@@ -274,7 +274,7 @@ parse_sym_name_and_no_args(VarSet, ContextPieces, Term, MaybeSymName) :-
         )
     ).
 
-:- pred insist_on_no_args(cord(format_component)::in, term(T)::in,
+:- pred insist_on_no_args(cord(format_piece)::in, term(T)::in,
     sym_name::in, list(term(T))::in, maybe1(sym_name)::out) is det.
 
 insist_on_no_args(ContextPieces, Term, SymName, Args, MaybeSymName) :-

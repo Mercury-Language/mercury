@@ -39,7 +39,7 @@
 
 :- implementation.
 
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_item.
@@ -146,7 +146,7 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_tabling_attribute(cord(format_component)::in,
+:- pred parse_tabling_attribute(cord(format_piece)::in,
     tabled_eval_method::in, varset::in, term::in,
     maybe1(pair(term.context, single_tabling_attribute))::out) is det.
 
@@ -205,7 +205,7 @@ parse_tabling_attribute(ContextPieces, TabledMethod, VarSet, Term,
 
 %---------------------%
 
-:- pred parse_tabling_attr_fast_loose(cord(format_component)::in,
+:- pred parse_tabling_attr_fast_loose(cord(format_piece)::in,
     tabled_eval_method::in, varset::in, term.context::in, list(term)::in,
     maybe1(pair(term.context, single_tabling_attribute))::out) is det.
 
@@ -235,7 +235,7 @@ parse_tabling_attr_fast_loose(ContextPieces, TabledMethod, _VarSet,
 
 %---------------------%
 
-:- pred parse_tabling_attr_specified(cord(format_component)::in,
+:- pred parse_tabling_attr_specified(cord(format_piece)::in,
     tabled_eval_method::in, varset::in, term.context::in, list(term)::in,
     maybe1(pair(term.context, single_tabling_attribute))::out) is det.
 
@@ -305,7 +305,7 @@ parse_tabling_attr_specified(ContextPieces, TabledMethod, VarSet,
         MaybeContextAttribute = error1([Spec])
     ).
 
-:- pred parse_arg_tabling_method(cord(format_component)::in,
+:- pred parse_arg_tabling_method(cord(format_piece)::in,
     varset::in, term::in, maybe1(maybe(arg_tabling_method))::out) is det.
 
 parse_arg_tabling_method(ContextPieces, VarSet, Term,
@@ -343,7 +343,7 @@ parse_arg_tabling_method(ContextPieces, VarSet, Term,
 
 %---------------------%
 
-:- pred parse_tabling_attr_size_limit(cord(format_component)::in,
+:- pred parse_tabling_attr_size_limit(cord(format_piece)::in,
     tabled_eval_method::in, varset::in, term.context::in, list(term)::in,
     maybe1(pair(term.context, single_tabling_attribute))::out) is det.
 
@@ -393,7 +393,7 @@ parse_tabling_attr_size_limit(ContextPieces, TabledMethod, VarSet,
 
 %---------------------%
 
-:- pred parse_tabling_attr_statistics(cord(format_component)::in,
+:- pred parse_tabling_attr_statistics(cord(format_piece)::in,
     tabled_eval_method::in, varset::in, term.context::in, list(term)::in,
     maybe1(pair(term.context, single_tabling_attribute))::out) is det.
 
@@ -414,7 +414,7 @@ parse_tabling_attr_statistics(ContextPieces, _TabledMethod, _VarSet,
 
 %---------------------%
 
-:- pred parse_tabling_attr_allow_reset(cord(format_component)::in,
+:- pred parse_tabling_attr_allow_reset(cord(format_piece)::in,
     tabled_eval_method::in, varset::in, term.context::in, list(term)::in,
     maybe1(pair(term.context, single_tabling_attribute))::out) is det.
 
@@ -435,7 +435,7 @@ parse_tabling_attr_allow_reset(ContextPieces, _TabledMethod, _VarSet,
 
 %---------------------%
 
-:- pred parse_tabling_attr_backend_warning(cord(format_component)::in,
+:- pred parse_tabling_attr_backend_warning(cord(format_piece)::in,
     tabled_eval_method::in, varset::in, term.context::in, list(term)::in,
     maybe1(pair(term.context, single_tabling_attribute))::out) is det.
 
@@ -470,7 +470,7 @@ parse_tabling_attr_backend_warning(ContextPieces, TabledMethod, _VarSet,
 
 %---------------------------------------------------------------------------%
 
-:- pred require_tabling_fast_loose(cord(format_component)::in,
+:- pred require_tabling_fast_loose(cord(format_piece)::in,
     tabled_eval_method::in, term.context::in, list(error_spec)::out) is det.
 
 require_tabling_fast_loose(ContextPieces, TabledMethod, Context, Specs) :-

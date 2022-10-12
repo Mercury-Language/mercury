@@ -88,10 +88,11 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.status.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.vartypes.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
 :- import_module require.

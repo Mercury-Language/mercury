@@ -28,7 +28,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
 
@@ -107,7 +107,7 @@
     % Describe a call we have seen.
     %
 :- func det_report_seen_call_id(module_info, seen_call_id)
-    = list(format_component).
+    = list(format_piece).
 
 %---------------------------------------------------------------------------%
 
@@ -142,6 +142,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_sort.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
@@ -310,7 +311,7 @@ cse_nopull_msgs(ProcInfo, Msgs) :-
         Msgs = [simplest_msg(FirstNoPullContext, cse_nopull_pieces)]
     ).
 
-:- func cse_nopull_pieces = list(format_component).
+:- func cse_nopull_pieces = list(format_piece).
 
 cse_nopull_pieces =
     [words("It is possible that"),
@@ -530,7 +531,7 @@ check_for_multisoln_func(PredProcId, PredInfo, ProcInfo, ModuleInfo, !Specs) :-
         true
     ).
 
-:- func func_primary_mode_det_msg = list(format_component).
+:- func func_primary_mode_det_msg = list(format_piece).
 
 func_primary_mode_det_msg = [words("In Mercury,"),
     words("a function is supposed to be a true mathematical function"),
@@ -576,7 +577,7 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
     ).
 
 :- pred report_determinism_problem(module_info::in, pred_proc_id::in, 
-    list(format_component)::in, list(format_component)::in,
+    list(format_piece)::in, list(format_piece)::in,
     determinism::in, determinism::in, error_msg::out) is det.
 
 report_determinism_problem(ModuleInfo, PredProcId, MessagePieces, ReasonPieces,
@@ -798,7 +799,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
 %---------------------------------------------------------------------------%
 
 :- pred det_diagnose_primitive_goal(determinism::in, determinism::in,
-    prog_context::in, list(format_component)::in, list(error_msg)::out) is det.
+    prog_context::in, list(format_piece)::in, list(error_msg)::out) is det.
 
 det_diagnose_primitive_goal(Desired, Actual, Context, StartingPieces, Msgs) :-
     determinism_components(Desired, DesiredCanFail, DesiredSolns),
@@ -1452,8 +1453,8 @@ generate_incomplete_switch_spec(Why, MaybeLimit, InstMap0, SwitchContexts,
         MaybeSeverityComponents = no
     ).
 
-:- pred append_prefix_and_maybe_verbose(list(format_component)::in,
-    list(format_component)::in, list(format_component)::in,
+:- pred append_prefix_and_maybe_verbose(list(format_piece)::in,
+    list(format_piece)::in, list(format_piece)::in,
     error_msg_component::out) is det.
 
 append_prefix_and_maybe_verbose(PrefixPieces, MainPieces, VerbosePieces,
@@ -1665,13 +1666,13 @@ lambda_update_instmap(ModuleInfo, [Var - Mode | VarsModes], !InstMap) :-
                 % If the number of missing cons_ids is below the limit,
                 % or if the caller did not specify the limit,
                 % the second list will be empty.
-                list(format_component),
-                list(format_component)
+                list(format_piece),
+                list(format_piece)
             ).
 
 :- pred find_missing_cons_ids(det_info::in, maybe(int)::in, instmap::in,
     list(switch_context)::in, prog_var::in, list(case)::in,
-    list(format_component)::out, string::out,
+    list(format_piece)::out, string::out,
     maybe(missing_cons_id_info)::out) is det.
 
 find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
@@ -1814,8 +1815,8 @@ compute_covered_cons_ids([Case | Cases], !CoveredConsIds) :-
     set_tree234.insert_list(OtherConsIds, !CoveredConsIds),
     compute_covered_cons_ids(Cases, !CoveredConsIds).
 
-:- func cons_id_list_to_pieces(cons_id, list(cons_id), list(format_component))
-    = list(format_component).
+:- func cons_id_list_to_pieces(cons_id, list(cons_id), list(format_piece))
+    = list(format_piece).
 
 cons_id_list_to_pieces(ConsId1, ConsIds2Plus, EndCommaPieces) = Pieces :-
     % If we invoked determinism analysis on this procedure, then it must be
@@ -1875,7 +1876,7 @@ cons_id_list_to_pieces(ConsId1, ConsIds2Plus, EndCommaPieces) = Pieces :-
     --->    switch_match(cons_id, maybe(list(prog_var))).
 
 :- pred det_diagnose_switch_context(det_info::in, list(switch_context)::in,
-    list(format_component)::out) is det.
+    list(format_piece)::out) is det.
 
 det_diagnose_switch_context(_, [], []).
 det_diagnose_switch_context(DetInfo, [SwitchContext | SwitchContexts],
@@ -1905,7 +1906,7 @@ switch_match_to_string(VarTable, switch_match(ConsId, MaybeArgVars)) =
 
 :- pred det_report_call_context(prog_context::in,
     maybe(call_unify_context)::in, det_info::in, pred_id::in, proc_id::in,
-    list(error_msg)::out, list(format_component)::out) is det.
+    list(error_msg)::out, list(format_piece)::out) is det.
 
 det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
         InitMsgs, StartingPieces) :-
@@ -1966,7 +1967,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
     %
 :- pred det_report_unify_context(is_first::in, is_last::in, prog_context::in,
     unify_context::in, det_info::in, prog_var::in, unify_rhs::in,
-    list(format_component)::out) is det.
+    list(format_piece)::out) is det.
 
 det_report_unify_context(!.First, Last, _Context, UnifyContext, DetInfo,
         LHSVar, RHS, AllPieces) :-

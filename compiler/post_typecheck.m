@@ -34,7 +34,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module list.
 
@@ -310,7 +310,7 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
     !:Specs = [Spec | !.Specs].
 
 :- func constraint_to_error_piece(tvarset, prog_constraint)
-    = list(format_component).
+    = list(format_piece).
 
 constraint_to_error_piece(TVarset, Constraint) =
     [quote(mercury_constraint_to_string(TVarset, print_name_only,
@@ -390,7 +390,7 @@ constrained_goals_to_error_msgs(ModuleInfo, [Goal | Goals]) = [Msg | Msgs] :-
     Msgs = constrained_goals_to_error_msgs(ModuleInfo, Goals).
 
 :- func describe_constrained_goal(module_info, hlds_goal)
-    = list(format_component).
+    = list(format_piece).
 
 describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
     Goal = hlds_goal(GoalExpr, _),
@@ -622,7 +622,7 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
     !:Specs = [Spec | !.Specs].
 
 :- func var_and_type_to_pieces(tvarset, pair(prog_var, var_table_entry))
-    = list(format_component).
+    = list(format_piece).
 
 var_and_type_to_pieces(TVarSet, Var - Entry) = Pieces :-
     Entry = vte(Name, Type, _IsDummy),

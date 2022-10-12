@@ -130,7 +130,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -1437,7 +1437,7 @@ wrap_inner_outer_goals(Outer, Goal0 - Inner, Goal, !Info) :-
 % This part of the module is for generating error messages.
 %
 
-:- func pred_context(module_info, pred_info, pred_id) = list(format_component).
+:- func pred_context(module_info, pred_info, pred_id) = list(format_piece).
 
 pred_context(ModuleInfo, _PredInfo, PredId) = Pieces :-
     PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,

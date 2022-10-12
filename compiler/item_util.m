@@ -19,7 +19,7 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
@@ -199,11 +199,11 @@
 % Describing items for error messages.
 %
 
-:- func item_desc_pieces(item) = list(format_component).
+:- func item_desc_pieces(item) = list(format_piece).
 
-:- func decl_pragma_desc_pieces(decl_pragma) = list(format_component).
-:- func impl_pragma_desc_pieces(impl_pragma) = list(format_component).
-:- func gen_pragma_desc_pieces(generated_pragma) = list(format_component).
+:- func decl_pragma_desc_pieces(decl_pragma) = list(format_piece).
+:- func impl_pragma_desc_pieces(impl_pragma) = list(format_piece).
+:- func gen_pragma_desc_pieces(generated_pragma) = list(format_piece).
 
 %---------------------------------------------------------------------------%
 %

@@ -74,6 +74,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.check_module_interface.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.generate_dep_d_files.
@@ -89,6 +90,7 @@
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.source_file_map.
 :- import_module parse_tree.split_parse_tree_src.
+:- import_module parse_tree.write_error_spec.
 :- import_module parse_tree.write_module_interface_files.
 :- import_module recompilation.
 :- import_module recompilation.check.
@@ -1180,8 +1182,7 @@ do_process_compiler_arg_make_interface(Globals0, InterfaceFile, FileOrModule,
             ModuleName = ParseTreeSrc ^ pts_module_name,
             split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
                 ParseTreeModuleSrcs, ReadSpecs, ReadSplitSpecs),
-            filter_interface_generation_specs(Globals,
-                ReadSplitSpecs, Specs, !IO),
+            filter_interface_generation_specs(Globals, ReadSplitSpecs, Specs),
             get_progress_output_stream(Globals, ModuleName,
                 ProgressStream, !IO),
             get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),

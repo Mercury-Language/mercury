@@ -96,7 +96,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module io.
 :- import_module list.
@@ -4272,7 +4272,7 @@ insert_subword_into_first_fit_bin(BinSize, SubWord, Bins0, Bins) :-
         )
     ).
 
-:- pred describe_sub_word_bin(sub_word_bin::in, list(format_component)::out)
+:- pred describe_sub_word_bin(sub_word_bin::in, list(format_piece)::out)
     is det.
 
 describe_sub_word_bin(SubWordBin, Pieces) :-
@@ -4287,7 +4287,7 @@ describe_sub_word_bin(SubWordBin, Pieces) :-
         [words("These total"), int_fixed(TotalNumBits),
         words((if TotalNumBits = 1 then "bit." else "bits.")), nl].
 
-:- pred describe_sub_word(sub_word::in, list(format_component)::out,
+:- pred describe_sub_word(sub_word::in, list(format_piece)::out,
     int::in, int::out) is det.
 
 describe_sub_word(SubWord, Pieces, !TotalNumBits) :-

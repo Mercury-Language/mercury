@@ -97,11 +97,11 @@
 :- import_module make.util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.write_error_spec.
 :- import_module top_level.                      % XXX unwanted dependency
 :- import_module top_level.mercury_compile_main. % XXX unwanted dependency
 :- import_module transform_hlds.

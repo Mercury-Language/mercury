@@ -18,7 +18,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -243,7 +243,7 @@ describe_term2_error(ModuleInfo, Single, MaybeErrorNum, Error,
     !:ReasonMsgsCord = cord.snoc(!.ReasonMsgsCord, ReasonMsg).
 
 :- pred term2_error_kind_description(module_info::in, maybe(pred_proc_id)::in,
-    term2_error_kind::in, list(format_component)::out) is det.
+    term2_error_kind::in, list(format_piece)::out) is det.
 
 term2_error_kind_description(ModuleInfo, Single, Error, Pieces) :-
     (

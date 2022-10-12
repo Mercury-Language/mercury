@@ -94,11 +94,12 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.var_table.
+:- import_module parse_tree.write_error_spec.
 :- import_module transform_hlds.intermod_analysis.
 :- import_module transform_hlds.mmc_analysis.
 

@@ -117,9 +117,10 @@
 
 :- implementation.
 
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.parse_module.        % for peek_at_file
+:- import_module parse_tree.write_error_spec.
 
 :- import_module dir.
 :- import_module io.file.

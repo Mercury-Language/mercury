@@ -25,7 +25,7 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
@@ -2511,7 +2511,7 @@ error_item_is_exported(Item, !Specs) :-
     % Emit an error reporting that something should not have occurred in
     % a module interface.
     %
-:- pred error_is_exported(prog_context::in, list(format_component)::in,
+:- pred error_is_exported(prog_context::in, list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 error_is_exported(Context, DescPieces, !Specs) :-

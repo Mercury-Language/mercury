@@ -90,11 +90,13 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.write_error_spec.
 :- import_module top_level.mercury_compile_front_end.
 
 :- import_module assoc_list.

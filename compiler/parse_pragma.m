@@ -43,7 +43,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.parse_pragma_analysis.
 :- import_module parse_tree.parse_pragma_foreign.
 :- import_module parse_tree.parse_pragma_tabling.
@@ -478,7 +478,7 @@ parse_pragma_external(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_symname_arity(varset::in, term::in, cord(format_component)::in,
+:- pred parse_symname_arity(varset::in, term::in, cord(format_piece)::in,
     maybe2(sym_name, arity)::out) is det.
 
 parse_symname_arity(VarSet, PredTerm, ContextPieces, MaybeSymNameArity) :-
@@ -513,7 +513,7 @@ parse_symname_arity(VarSet, PredTerm, ContextPieces, MaybeSymNameArity) :-
     ).
 
 :- pred parse_pragma_external_options(varset::in, maybe(term)::in,
-    cord(format_component)::in, maybe1(maybe(backend))::out) is det.
+    cord(format_piece)::in, maybe1(maybe(backend))::out) is det.
 
 parse_pragma_external_options(VarSet, MaybeOptionsTerm, ContextPieces,
         MaybeMaybeBackend) :-
@@ -897,7 +897,7 @@ parse_arg_num(MaybeListPos, FS_VL, Term, MaybeArgNum) :-
         MaybeArgNum = error1([Spec])
     ).
 
-:- func format_string_values_context(maybe(int)) = list(format_component).
+:- func format_string_values_context(maybe(int)) = list(format_piece).
 
 format_string_values_context(MaybeListPos) = Pieces :-
     Pieces0 = [words("Error: in the second argument of a"),
@@ -915,7 +915,7 @@ format_string_values_context(MaybeListPos) = Pieces :-
     --->    fs  % The format string argument of format_string_values.
     ;       vl. % The value list argument of format_string_values.
 
-:- func arg_num_context(maybe(int), fs_vl) = list(format_component).
+:- func arg_num_context(maybe(int), fs_vl) = list(format_piece).
 
 arg_num_context(MaybeListPos, FS_VL) = Pieces :-
     Pieces0 = format_string_values_context(MaybeListPos),

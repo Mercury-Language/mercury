@@ -389,7 +389,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module getopt.
 :- import_module int.

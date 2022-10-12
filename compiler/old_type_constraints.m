@@ -21,7 +21,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 
 :- import_module list.
 
@@ -2119,7 +2119,7 @@ diagnose_unsatisfiability_error(TCInfo, Context, ProgVarSet, TypeVar, Msg) :-
     Msg = simplest_msg(Context, Pieces).
 
 :- pred error_from_one_min_set(type_constraint_map::in,
-    set(type_constraint_id)::in, list(format_component)::out) is det.
+    set(type_constraint_id)::in, list(format_piece)::out) is det.
 
 error_from_one_min_set(ConstraintMap, MinUnsatSet, Components) :-
     set.to_sorted_list(MinUnsatSet, MinUnsatList),

@@ -82,7 +82,7 @@
 :- implementation.
 
 :- import_module parse_tree.convert_parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_sym_name.

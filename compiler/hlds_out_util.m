@@ -25,7 +25,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
@@ -131,7 +131,7 @@
     % based on the unify_context and prog_context.
     %
 :- pred unify_context_to_pieces(unify_context::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
     % unify_context_first_to_pieces is the same as above, except that
     % it also takes and returns a flag which specifies whether this is the
@@ -146,7 +146,7 @@
     %
 :- pred unify_context_first_to_pieces(is_first::in, is_first::out,
     unify_context::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -330,7 +330,7 @@ unify_context_first_to_pieces(!First, UnifyContext, !Pieces) :-
 
 :- pred unify_main_context_to_pieces(is_first::in, is_first::out,
     unify_main_context::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 unify_main_context_to_pieces(!First, MainContext, !Pieces) :-
     (
@@ -371,7 +371,7 @@ unify_main_context_to_pieces(!First, MainContext, !Pieces) :-
 
 :- pred unify_sub_contexts_to_pieces(is_first::in, is_first::out,
     unify_sub_contexts::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 unify_sub_contexts_to_pieces(!First, [], !Pieces).
 unify_sub_contexts_to_pieces(!First, [SubContext | SubContexts], !Pieces) :-
@@ -413,7 +413,7 @@ contexts_describe_list_element([SubContext | SubContexts],
     ).
 
 :- pred in_argument_to_pieces(is_first::in, unify_sub_context::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 in_argument_to_pieces(First, SubContext, !Pieces) :-
     start_in_message_to_pieces(First, !Pieces),
@@ -426,7 +426,7 @@ in_argument_to_pieces(First, SubContext, !Pieces) :-
         words("of functor"), quote(ConsIdStr), suffix(":"), nl].
 
 :- pred in_element_to_pieces(is_first::in, int::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 in_element_to_pieces(First, ElementNum, !Pieces) :-
     start_in_message_to_pieces(First, !Pieces),
@@ -435,7 +435,7 @@ in_element_to_pieces(First, ElementNum, !Pieces) :-
         prefix("#"), fixed(ElementNumStr), suffix(":"), nl].
 
 :- pred start_in_message_to_pieces(is_first::in,
-    list(format_component)::in, list(format_component)::out) is det.
+    list(format_piece)::in, list(format_piece)::out) is det.
 
 start_in_message_to_pieces(First, !Pieces) :-
     (
