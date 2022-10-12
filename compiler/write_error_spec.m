@@ -89,9 +89,9 @@
 :- pred write_error_pieces_plain(io.text_output_stream::in, globals::in,
     list(format_piece)::in, io::di, io::uo) is det.
 
-    % write_error_pieces(Globals, Context, Indent, Components):
+    % write_error_pieces(Globals, Context, Indent, Pieces):
     %
-    % Display `Components' as the error message, with `Context' as a context
+    % Display `Pieces' as the error message, with `Context' as a context
     % and indent by `Indent'.
     %
 :- pred write_error_pieces(globals::in, prog_context::in, int::in,
@@ -362,9 +362,9 @@ write_msg_components(_Stream, [], _, _, _, !First, !PrintedSome,
 write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
         Globals, !First, !PrintedSome, !AlreadyPrintedVerbose, !IO) :-
     (
-        Component = always(ComponentPieces),
-        do_write_error_pieces(Stream, !.First, MaybeContext, Indent, Globals,
-            ComponentPieces, !IO),
+        Component = always(Pieces),
+        do_write_error_pieces(Stream, Globals, MaybeContext, !.First, Indent,
+            Pieces, !IO),
         !:First = do_not_treat_as_first,
         !:PrintedSome = printed_something
     ;
@@ -378,28 +378,26 @@ write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
             true
         )
     ;
-        Component = verbose_only(AlwaysOrOnce, ComponentPieces),
+        Component = verbose_only(AlwaysOrOnce, Pieces),
         globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
         (
             VerboseErrors = yes,
             (
                 AlwaysOrOnce = verbose_always,
-                do_write_error_pieces(Stream, !.First, MaybeContext,
-                    Indent, Globals, ComponentPieces, !IO),
+                do_write_error_pieces(Stream, Globals, MaybeContext, !.First,
+                    Indent, Pieces, !IO),
                 !:First = do_not_treat_as_first,
                 !:PrintedSome = printed_something
             ;
                 AlwaysOrOnce = verbose_once,
-                ( if
-                    set.contains(!.AlreadyPrintedVerbose, ComponentPieces)
-                then
+                ( if set.contains(!.AlreadyPrintedVerbose, Pieces) then
                     true
                 else
-                    do_write_error_pieces(Stream, !.First, MaybeContext,
-                        Indent, Globals, ComponentPieces, !IO),
+                    do_write_error_pieces(Stream, Globals, MaybeContext,
+                        !.First, Indent, Pieces, !IO),
                     !:First = do_not_treat_as_first,
                     !:PrintedSome = printed_something,
-                    set.insert(ComponentPieces, !AlreadyPrintedVerbose)
+                    set.insert(Pieces, !AlreadyPrintedVerbose)
                 )
             )
         ;
@@ -411,12 +409,12 @@ write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
         globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
         (
             VerboseErrors = yes,
-            do_write_error_pieces(Stream, !.First, MaybeContext,
-                Indent, Globals, VerbosePieces, !IO)
+            do_write_error_pieces(Stream, Globals, MaybeContext, !.First,
+                Indent, VerbosePieces, !IO)
         ;
             VerboseErrors = no,
-            do_write_error_pieces(Stream, !.First, MaybeContext,
-                Indent, Globals, NonVerbosePieces, !IO),
+            do_write_error_pieces(Stream, Globals, MaybeContext, !.First,
+                Indent, NonVerbosePieces, !IO),
             globals.io_set_extra_error_info(some_extra_error_info, !IO)
         ),
         !:First = do_not_treat_as_first,
@@ -432,45 +430,44 @@ write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
 
 %---------------------------------------------------------------------------%
 
-write_error_pieces_plain(Globals, Components, !IO) :-
+write_error_pieces_plain(Globals, Pieces, !IO) :-
     io.output_stream(Stream, !IO),
-    write_error_pieces_plain(Stream, Globals, Components, !IO).
+    write_error_pieces_plain(Stream, Globals, Pieces, !IO).
 
-write_error_pieces_plain(Stream, Globals, Components, !IO) :-
-    do_write_error_pieces(Stream, treat_as_first, no, 0,
-        Globals, Components, !IO).
+write_error_pieces_plain(Stream, Globals, Pieces, !IO) :-
+    do_write_error_pieces(Stream, Globals, no, treat_as_first, 0, Pieces, !IO).
 
 %---------------------------------------------------------------------------%
 
-write_error_pieces(Globals, Context, Indent, Components, !IO) :-
+write_error_pieces(Globals, Context, Indent, Pieces, !IO) :-
     io.output_stream(Stream, !IO),
-    write_error_pieces(Stream, Globals, Context, Indent, Components, !IO).
+    write_error_pieces(Stream, Globals, Context, Indent, Pieces, !IO).
 
-write_error_pieces(Stream, Globals, Context, Indent, Components, !IO) :-
-    do_write_error_pieces(Stream, treat_as_first, yes(Context), Indent,
-        Globals, Components, !IO).
+write_error_pieces(Stream, Globals, Context, Indent, Pieces, !IO) :-
+    do_write_error_pieces(Stream, Globals, yes(Context), treat_as_first,
+        Indent, Pieces, !IO).
 
 %---------------------%
 
 write_error_pieces_maybe_with_context(Globals, MaybeContext,
-        Indent, Components, !IO) :-
+        Indent, Pieces, !IO) :-
     io.output_stream(Stream, !IO),
     write_error_pieces_maybe_with_context(Stream, Globals, MaybeContext,
-        Indent, Components, !IO).
+        Indent, Pieces, !IO).
 
 write_error_pieces_maybe_with_context(Stream, Globals, MaybeContext, Indent,
-        Components, !IO) :-
-    do_write_error_pieces(Stream, treat_as_first, MaybeContext, Indent,
-        Globals, Components, !IO).
+        Pieces, !IO) :-
+    do_write_error_pieces(Stream, Globals, MaybeContext, treat_as_first,
+        Indent, Pieces, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred do_write_error_pieces(io.text_output_stream::in,
-    maybe_treat_as_first::in, maybe(prog_context)::in, int::in, globals::in,
+:- pred do_write_error_pieces(io.text_output_stream::in, globals::in,
+    maybe(prog_context)::in, maybe_treat_as_first::in, int::in,
     list(format_piece)::in, io::di, io::uo) is det.
 
-do_write_error_pieces(Stream, TreatAsFirst, MaybeContext, FixedIndent,
-        Globals, Components, !IO) :-
+do_write_error_pieces(Stream, Globals, MaybeContext, TreatAsFirst, FixedIndent,
+        Pieces, !IO) :-
     globals.lookup_maybe_int_option(Globals, max_error_line_width,
         MaybeMaxWidth),
     globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
@@ -505,7 +502,7 @@ do_write_error_pieces(Stream, TreatAsFirst, MaybeContext, FixedIndent,
     ;
         MaybeContextStr = yes(ContextStr),
         (
-            Components = []
+            Pieces = []
             % There are no error pieces to print. Don't print the context
             % at the start of a line followed by nothing.
             %
@@ -513,8 +510,8 @@ do_write_error_pieces(Stream, TreatAsFirst, MaybeContext, FixedIndent,
             % verbose_and_nonverbose(SomePieces, []), and this compiler
             % invocation is not printing verbose errors.
         ;
-            Components = [_ | _],
-            convert_components_to_paragraphs(Components, Paragraphs),
+            Pieces = [_ | _],
+            convert_pieces_to_paragraphs(Pieces, Paragraphs),
             string.pad_left("", ' ', FixedIndent, FixedIndentStr),
             PrefixStr = ContextStr ++ FixedIndentStr,
             PrefixLen = string.count_codepoints(PrefixStr),
@@ -604,11 +601,11 @@ write_msg_line(Stream, PrefixStr, Line, !IO) :-
                 int
             ).
 
-:- pred convert_components_to_paragraphs(list(format_piece)::in,
+:- pred convert_pieces_to_paragraphs(list(format_piece)::in,
     list(paragraph)::out) is det.
 
-convert_components_to_paragraphs(Components, Paras) :-
-    convert_components_to_paragraphs_acc(first_in_msg, Components,
+convert_pieces_to_paragraphs(Pieces, Paras) :-
+    convert_pieces_to_paragraphs_acc(first_in_msg, Pieces,
         [], cord.empty, ParasCord),
     Paras = cord.list(ParasCord).
 
@@ -618,38 +615,38 @@ convert_components_to_paragraphs(Components, Paras) :-
     ;       suffix_word(string)
     ;       lower_next_word.
 
-:- pred convert_components_to_paragraphs_acc(maybe_first_in_msg::in,
+:- pred convert_pieces_to_paragraphs_acc(maybe_first_in_msg::in,
     list(format_piece)::in, list(word)::in,
     cord(paragraph)::in, cord(paragraph)::out) is det.
 
-convert_components_to_paragraphs_acc(_, [], RevWords0, !Paras) :-
+convert_pieces_to_paragraphs_acc(_, [], RevWords0, !Paras) :-
     Strings = rev_words_to_strings(RevWords0),
     !:Paras = snoc(!.Paras, paragraph(Strings, 0, 0)).
-convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
+convert_pieces_to_paragraphs_acc(FirstInMsg, [Piece | Pieces],
         RevWords0, !Paras) :-
     (
-        Component = words(WordsStr),
+        Piece = words(WordsStr),
         break_into_words(WordsStr, RevWords0, RevWords1)
     ;
-        Component = words_quote(WordsStr),
+        Piece = words_quote(WordsStr),
         break_into_words(add_quotes(WordsStr), RevWords0, RevWords1)
     ;
-        Component = fixed(Word),
+        Piece = fixed(Word),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
-        Component = quote(Word),
+        Piece = quote(Word),
         RevWords1 = [plain_word(add_quotes(Word)) | RevWords0]
     ;
-        Component = int_fixed(Int),
+        Piece = int_fixed(Int),
         RevWords1 = [plain_word(int_to_string(Int)) | RevWords0]
     ;
-        Component = int_name(Int),
+        Piece = int_name(Int),
         RevWords1 = [plain_word(int_name_str(Int)) | RevWords0]
     ;
-        Component = nth_fixed(Int),
+        Piece = nth_fixed(Int),
         RevWords1 = [plain_word(nth_fixed_str(Int)) | RevWords0]
     ;
-        Component = lower_case_next_if_not_first,
+        Piece = lower_case_next_if_not_first,
         (
             FirstInMsg = first_in_msg,
             RevWords1 = RevWords0
@@ -658,31 +655,29 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
             RevWords1 = [lower_next_word | RevWords0]
         )
     ;
-        Component = treat_next_as_first,
-        RevWords1 = RevWords0
-    ;
-        Component = prefix(Word),
+        Piece = prefix(Word),
         RevWords1 = [prefix_word(Word) | RevWords0]
     ;
-        Component = suffix(Word),
+        Piece = suffix(Word),
         RevWords1 = [suffix_word(Word) | RevWords0]
     ;
         (
-            Component = qual_sym_name(SymName)
+            Piece = qual_sym_name(SymName)
         ;
-            Component = unqual_sym_name(SymName0),
+            Piece = unqual_sym_name(SymName0),
             SymName = unqualified(unqualify_name(SymName0))
         ),
-        RevWords1 = [plain_word(sym_name_to_word(SymName)) | RevWords0]
+        Word = sym_name_to_word(SymName),
+        RevWords1 = [plain_word(Word) | RevWords0]
     ;
-        Component = name_arity(NameAndArity),
+        Piece = name_arity(NameAndArity),
         Word = name_arity_to_word(NameAndArity),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
         (
-            Component = qual_sym_name_arity(SymNameAndArity)
+            Piece = qual_sym_name_arity(SymNameAndArity)
         ;
-            Component = unqual_sym_name_arity(SymNameAndArity0),
+            Piece = unqual_sym_name_arity(SymNameAndArity0),
             SymNameAndArity0 = sym_name_arity(SymName0, Arity),
             SymName = unqualified(unqualify_name(SymName0)),
             SymNameAndArity = sym_name_arity(SymName, Arity)
@@ -691,9 +686,9 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
         (
-            Component = qual_pf_sym_name_pred_form_arity(PFSymNameArity)
+            Piece = qual_pf_sym_name_pred_form_arity(PFSymNameArity)
         ;
-            Component = unqual_pf_sym_name_pred_form_arity(PFSymNameArity0),
+            Piece = unqual_pf_sym_name_pred_form_arity(PFSymNameArity0),
             PFSymNameArity0 = pf_sym_name_arity(PF, SymName0, PredFormArity),
             SymName = unqualified(unqualify_name(SymName0)),
             PFSymNameArity = pf_sym_name_arity(PF, SymName, PredFormArity)
@@ -702,9 +697,9 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         break_into_words(WordsStr, RevWords0, RevWords1)
     ;
         (
-            Component = qual_pf_sym_name_user_arity(PFSymNameArity)
+            Piece = qual_pf_sym_name_user_arity(PFSymNameArity)
         ;
-            Component = unqual_pf_sym_name_user_arity(PFSymNameArity0),
+            Piece = unqual_pf_sym_name_user_arity(PFSymNameArity0),
             PFSymNameArity0 = pred_pf_name_arity(PF, SymName0, UserArity),
             SymName = unqualified(unqualify_name(SymName0)),
             PFSymNameArity = pred_pf_name_arity(PF, SymName, UserArity)
@@ -713,41 +708,41 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         break_into_words(WordsStr, RevWords0, RevWords1)
     ;
         (
-            Component = qual_cons_id_and_maybe_arity(ConsId0),
+            Piece = qual_cons_id_and_maybe_arity(ConsId0),
             strip_builtin_qualifier_from_cons_id(ConsId0, ConsId)
         ;
-            Component = unqual_cons_id_and_maybe_arity(ConsId0),
+            Piece = unqual_cons_id_and_maybe_arity(ConsId0),
             strip_module_qualifier_from_cons_id(ConsId0, ConsId)
         ),
         Word = maybe_quoted_cons_id_and_arity_to_string(ConsId),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
         (
-            Component = qual_type_ctor(TypeCtor),
+            Piece = qual_type_ctor(TypeCtor),
             TypeCtor = type_ctor(SymName, Arity)
         ;
-            Component = unqual_type_ctor(TypeCtor),
+            Piece = unqual_type_ctor(TypeCtor),
             TypeCtor = type_ctor(SymName0, Arity),
             SymName = unqualified(unqualify_name(SymName0))
         ;
-            Component = qual_inst_ctor(InstCtor),
+            Piece = qual_inst_ctor(InstCtor),
             InstCtor = inst_ctor(SymName, Arity)
         ;
-            Component = unqual_inst_ctor(InstCtor),
+            Piece = unqual_inst_ctor(InstCtor),
             InstCtor = inst_ctor(SymName0, Arity),
             SymName = unqualified(unqualify_name(SymName0))
         ;
-            Component = qual_mode_ctor(ModeCtor),
+            Piece = qual_mode_ctor(ModeCtor),
             ModeCtor = mode_ctor(SymName, Arity)
         ;
-            Component = unqual_mode_ctor(ModeCtor),
+            Piece = unqual_mode_ctor(ModeCtor),
             ModeCtor = mode_ctor(SymName0, Arity),
             SymName = unqualified(unqualify_name(SymName0))
         ;
-            Component = qual_class_id(ClassId),
+            Piece = qual_class_id(ClassId),
             ClassId = class_id(SymName, Arity)
         ;
-            Component = unqual_class_id(ClassId),
+            Piece = unqual_class_id(ClassId),
             ClassId = class_id(SymName0, Arity),
             SymName = unqualified(unqualify_name(SymName0))
         ),
@@ -755,55 +750,56 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         Word = sym_name_arity_to_word(SymNameAndArity),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
-        Component = qual_top_ctor_of_type(Type),
+        Piece = qual_top_ctor_of_type(Type),
         type_to_ctor_det(Type, TypeCtor),
         TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
         SymNameArity = sym_name_arity(TypeCtorName, TypeCtorArity),
-        NewWord = plain_word(sym_name_arity_to_word(SymNameArity)),
-        RevWords1 = [NewWord | RevWords0]
+        Word = sym_name_arity_to_word(SymNameArity),
+        RevWords1 = [plain_word(Word) | RevWords0]
     ;
-        Component = p_or_f(PredOrFunc),
+        Piece = p_or_f(PredOrFunc),
         Word = pred_or_func_to_string(PredOrFunc),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
-        Component = purity_desc(Purity),
+        Piece = purity_desc(Purity),
         Word = purity_to_string(Purity),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
-        Component = a_purity_desc(Purity),
+        Piece = a_purity_desc(Purity),
         Word = a_purity_to_string(Purity),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
-        Component = decl(DeclName),
+        Piece = decl(DeclName),
         Word = add_quotes(":- " ++ DeclName),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
-        Component = pragma_decl(PragmaName),
+        Piece = pragma_decl(PragmaName),
         Word = add_quotes(":- pragma " ++ PragmaName),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
-        Component = nl,
+        Piece = nl,
         Strings = rev_words_to_strings(RevWords0),
         !:Paras = snoc(!.Paras, paragraph(Strings, 0, 0)),
         RevWords1 = []
     ;
-        Component = nl_indent_delta(IndentDelta),
+        Piece = nl_indent_delta(IndentDelta),
         Strings = rev_words_to_strings(RevWords0),
         !:Paras = snoc(!.Paras, paragraph(Strings, 0, IndentDelta)),
         RevWords1 = []
     ;
-        Component = blank_line,
+        Piece = blank_line,
         Strings = rev_words_to_strings(RevWords0),
         !:Paras = snoc(!.Paras, paragraph(Strings, 1, 0)),
         RevWords1 = []
     ;
-        ( Component = invis_order_default_start(_)
-        ; Component = invis_order_default_end(_)
+        ( Piece = invis_order_default_start(_)
+        ; Piece = invis_order_default_end(_)
+        ; Piece = treat_next_as_first
         ),
         RevWords1 = RevWords0
     ),
-    first_in_msg_after_component(Component, FirstInMsg, TailFirstInMsg),
-    convert_components_to_paragraphs_acc(TailFirstInMsg, Components,
+    first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg),
+    convert_pieces_to_paragraphs_acc(TailFirstInMsg, Pieces,
         RevWords1, !Paras).
 
 :- type plain_or_prefix
@@ -1069,39 +1065,39 @@ get_later_words(Avail, [Word | Words], CurLen, FinalLen,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-error_pieces_to_string(Components) =
-    error_pieces_to_string_loop(first_in_msg, Components).
+error_pieces_to_string(Pieces) =
+    error_pieces_to_string_loop(first_in_msg, Pieces).
 
 :- func error_pieces_to_string_loop(maybe_first_in_msg, list(format_piece))
     = string.
 
 error_pieces_to_string_loop(_, []) = "".
-error_pieces_to_string_loop(FirstInMsg, [Component | Components]) = Str :-
-    first_in_msg_after_component(Component, FirstInMsg, TailFirstInMsg),
-    TailStr = error_pieces_to_string_loop(TailFirstInMsg, Components),
+error_pieces_to_string_loop(FirstInMsg, [Piece | Pieces]) = Str :-
+    first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg),
+    TailStr = error_pieces_to_string_loop(TailFirstInMsg, Pieces),
     (
-        Component = words(Words),
-        Str = join_string_and_tail(Words, Components, TailStr)
+        Piece = words(Words),
+        Str = join_string_and_tail(Words, Pieces, TailStr)
     ;
-        Component = words_quote(Words),
-        Str = join_string_and_tail(add_quotes(Words), Components, TailStr)
+        Piece = words_quote(Words),
+        Str = join_string_and_tail(add_quotes(Words), Pieces, TailStr)
     ;
-        Component = fixed(Word),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Piece = fixed(Word),
+        Str = join_string_and_tail(Word, Pieces, TailStr)
     ;
-        Component = quote(Word),
-        Str = join_string_and_tail(add_quotes(Word), Components, TailStr)
+        Piece = quote(Word),
+        Str = join_string_and_tail(add_quotes(Word), Pieces, TailStr)
     ;
-        Component = int_fixed(Int),
-        Str = join_string_and_tail(int_to_string(Int), Components, TailStr)
+        Piece = int_fixed(Int),
+        Str = join_string_and_tail(int_to_string(Int), Pieces, TailStr)
     ;
-        Component = int_name(Int),
-        Str = join_string_and_tail(int_name_str(Int), Components, TailStr)
+        Piece = int_name(Int),
+        Str = join_string_and_tail(int_name_str(Int), Pieces, TailStr)
     ;
-        Component = nth_fixed(Int),
-        Str = join_string_and_tail(nth_fixed_str(Int), Components, TailStr)
+        Piece = nth_fixed(Int),
+        Str = join_string_and_tail(nth_fixed_str(Int), Pieces, TailStr)
     ;
-        Component = lower_case_next_if_not_first,
+        Piece = lower_case_next_if_not_first,
         (
             FirstInMsg = first_in_msg,
             Str = TailStr
@@ -1110,153 +1106,153 @@ error_pieces_to_string_loop(FirstInMsg, [Component | Components]) = Str :-
             Str = uncapitalize_first(TailStr)
         )
     ;
-        Component = treat_next_as_first,
+        Piece = treat_next_as_first,
         Str = TailStr
     ;
-        Component = prefix(Prefix),
+        Piece = prefix(Prefix),
         Str = Prefix ++ TailStr
     ;
-        Component = suffix(Suffix),
-        Str = join_string_and_tail(Suffix, Components, TailStr)
+        Piece = suffix(Suffix),
+        Str = join_string_and_tail(Suffix, Pieces, TailStr)
     ;
         (
-            Component = qual_sym_name(SymName)
+            Piece = qual_sym_name(SymName)
         ;
-            Component = unqual_sym_name(SymName0),
+            Piece = unqual_sym_name(SymName0),
             SymName = unqualified(unqualify_name(SymName0))
         ),
         Word = sym_name_to_word(SymName),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Str = join_string_and_tail(Word, Pieces, TailStr)
     ;
-        Component = name_arity(NameAndArity),
+        Piece = name_arity(NameAndArity),
         Word = name_arity_to_word(NameAndArity),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Str = join_string_and_tail(Word, Pieces, TailStr)
     ;
         (
-            Component = qual_sym_name_arity(SymNameAndArity)
+            Piece = qual_sym_name_arity(SymNameAndArity)
         ;
-            Component = unqual_sym_name_arity(SymNameAndArity0),
+            Piece = unqual_sym_name_arity(SymNameAndArity0),
             SymNameAndArity0 = sym_name_arity(SymName0, Arity),
             SymName = unqualified(unqualify_name(SymName0)),
             SymNameAndArity = sym_name_arity(SymName, Arity)
         ),
         Word = sym_name_arity_to_word(SymNameAndArity),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Str = join_string_and_tail(Word, Pieces, TailStr)
     ;
         (
-            Component = qual_pf_sym_name_pred_form_arity(PFSymNameArity)
+            Piece = qual_pf_sym_name_pred_form_arity(PFSymNameArity)
         ;
-            Component = unqual_pf_sym_name_pred_form_arity(PFSymNameArity0),
+            Piece = unqual_pf_sym_name_pred_form_arity(PFSymNameArity0),
             PFSymNameArity0 = pf_sym_name_arity(PF, SymName0, PredFormArity),
             SymName = unqualified(unqualify_name(SymName0)),
             PFSymNameArity = pf_sym_name_arity(PF, SymName, PredFormArity)
         ),
         Word = pf_sym_name_pred_form_arity_to_string(PFSymNameArity),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Str = join_string_and_tail(Word, Pieces, TailStr)
     ;
         (
-            Component = qual_pf_sym_name_user_arity(PFSymNameArity)
+            Piece = qual_pf_sym_name_user_arity(PFSymNameArity)
         ;
-            Component = unqual_pf_sym_name_user_arity(PFSymNameArity0),
+            Piece = unqual_pf_sym_name_user_arity(PFSymNameArity0),
             PFSymNameArity0 = pred_pf_name_arity(PF, SymName0, UserArity),
             SymName = unqualified(unqualify_name(SymName0)),
             PFSymNameArity = pred_pf_name_arity(PF, SymName, UserArity)
         ),
         Word = pf_sym_name_user_arity_to_string(PFSymNameArity),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Str = join_string_and_tail(Word, Pieces, TailStr)
     ;
         (
-            Component = qual_cons_id_and_maybe_arity(ConsId0),
+            Piece = qual_cons_id_and_maybe_arity(ConsId0),
             strip_builtin_qualifier_from_cons_id(ConsId0, ConsId)
         ;
-            Component = unqual_cons_id_and_maybe_arity(ConsId0),
+            Piece = unqual_cons_id_and_maybe_arity(ConsId0),
             strip_module_qualifier_from_cons_id(ConsId0, ConsId)
         ),
         Word = maybe_quoted_cons_id_and_arity_to_string(ConsId),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Str = join_string_and_tail(Word, Pieces, TailStr)
     ;
         (
-            Component = qual_type_ctor(TypeCtor),
+            Piece = qual_type_ctor(TypeCtor),
             TypeCtor = type_ctor(SymName, Arity)
         ;
-            Component = unqual_type_ctor(TypeCtor),
+            Piece = unqual_type_ctor(TypeCtor),
             TypeCtor = type_ctor(SymName0, Arity),
             SymName = unqualified(unqualify_name(SymName0))
         ;
-            Component = qual_inst_ctor(InstCtor),
+            Piece = qual_inst_ctor(InstCtor),
             InstCtor = inst_ctor(SymName, Arity)
         ;
-            Component = unqual_inst_ctor(InstCtor),
+            Piece = unqual_inst_ctor(InstCtor),
             InstCtor = inst_ctor(SymName0, Arity),
             SymName = unqualified(unqualify_name(SymName0))
         ;
-            Component = qual_mode_ctor(ModeCtor),
+            Piece = qual_mode_ctor(ModeCtor),
             ModeCtor = mode_ctor(SymName, Arity)
         ;
-            Component = unqual_mode_ctor(ModeCtor),
+            Piece = unqual_mode_ctor(ModeCtor),
             ModeCtor = mode_ctor(SymName0, Arity),
             SymName = unqualified(unqualify_name(SymName0))
         ;
-            Component = qual_class_id(ClassId),
+            Piece = qual_class_id(ClassId),
             ClassId = class_id(SymName, Arity)
         ;
-            Component = unqual_class_id(ClassId),
+            Piece = unqual_class_id(ClassId),
             ClassId = class_id(SymName0, Arity),
             SymName = unqualified(unqualify_name(SymName0))
         ),
         SymNameAndArity = sym_name_arity(SymName, Arity),
         Word = sym_name_arity_to_word(SymNameAndArity),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Str = join_string_and_tail(Word, Pieces, TailStr)
     ;
-        Component = qual_top_ctor_of_type(Type),
+        Piece = qual_top_ctor_of_type(Type),
         type_to_ctor_det(Type, TypeCtor),
         TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
         SymNameArity = sym_name_arity(TypeCtorSymName, TypeCtorArity),
         Word = sym_name_arity_to_word(SymNameArity),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Str = join_string_and_tail(Word, Pieces, TailStr)
     ;
-        Component = p_or_f(PredOrFunc),
+        Piece = p_or_f(PredOrFunc),
         Word = pred_or_func_to_string(PredOrFunc),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Str = join_string_and_tail(Word, Pieces, TailStr)
     ;
-        Component = purity_desc(Purity),
+        Piece = purity_desc(Purity),
         Word = purity_to_string(Purity),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Str = join_string_and_tail(Word, Pieces, TailStr)
     ;
-        Component = a_purity_desc(Purity),
+        Piece = a_purity_desc(Purity),
         Word = a_purity_to_string(Purity),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Str = join_string_and_tail(Word, Pieces, TailStr)
     ;
-        Component = decl(Decl),
+        Piece = decl(Decl),
         Word = add_quotes(":- " ++ Decl),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Str = join_string_and_tail(Word, Pieces, TailStr)
     ;
-        Component = pragma_decl(PragmaName),
+        Piece = pragma_decl(PragmaName),
         Word = add_quotes(":- pragma " ++ PragmaName),
-        Str = join_string_and_tail(Word, Components, TailStr)
+        Str = join_string_and_tail(Word, Pieces, TailStr)
     ;
-        Component = nl,
+        Piece = nl,
         Str = "\n" ++ TailStr
     ;
-        Component = nl_indent_delta(_),
+        Piece = nl_indent_delta(_),
         % There is nothing we can do about the indent delta.
         Str = "\n" ++ TailStr
     ;
-        Component = blank_line,
+        Piece = blank_line,
         Str = "\n\n" ++ TailStr
     ;
-        ( Component = invis_order_default_start(_)
-        ; Component = invis_order_default_end(_)
+        ( Piece = invis_order_default_start(_)
+        ; Piece = invis_order_default_end(_)
         ),
         Str = TailStr
     ).
 
 :- func join_string_and_tail(string, list(format_piece), string) = string.
 
-join_string_and_tail(Word, Components, TailStr) = Str :-
+join_string_and_tail(Word, Pieces, TailStr) = Str :-
     ( if TailStr = "" then
         Str = Word
-    else if Components = [suffix(_) | _] then
+    else if Pieces = [suffix(_) | _] then
         Str = Word ++ TailStr
     else
         Str = Word ++ " " ++ TailStr
@@ -1273,58 +1269,58 @@ join_string_and_tail(Word, Components, TailStr) = Str :-
     --->    first_in_msg
     ;       not_first_in_msg.
 
-:- pred first_in_msg_after_component(format_piece::in,
+:- pred first_in_msg_after_piece(format_piece::in,
     maybe_first_in_msg::in, maybe_first_in_msg::out) is det.
 
-first_in_msg_after_component(Component, FirstInMsg, TailFirstInMsg) :-
+first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg) :-
     (
-        ( Component = treat_next_as_first
-        ; Component = blank_line
+        ( Piece = treat_next_as_first
+        ; Piece = blank_line
         ),
         TailFirstInMsg = first_in_msg
     ;
-        ( Component = lower_case_next_if_not_first
-        ; Component = nl
-        ; Component = nl_indent_delta(_)
-        ; Component = invis_order_default_start(_)
-        ; Component = invis_order_default_end(_)
+        ( Piece = lower_case_next_if_not_first
+        ; Piece = nl
+        ; Piece = nl_indent_delta(_)
+        ; Piece = invis_order_default_start(_)
+        ; Piece = invis_order_default_end(_)
         ),
         TailFirstInMsg = FirstInMsg
     ;
-        ( Component = words(_)
-        ; Component = words_quote(_)
-        ; Component = fixed(_)
-        ; Component = quote(_)
-        ; Component = int_fixed(_)
-        ; Component = int_name(_)
-        ; Component = nth_fixed(_)
-        ; Component = prefix(_)
-        ; Component = suffix(_)
-        ; Component = qual_sym_name(_)
-        ; Component = unqual_sym_name(_)
-        ; Component = name_arity(_)
-        ; Component = qual_sym_name_arity(_)
-        ; Component = unqual_sym_name_arity(_)
-        ; Component = qual_pf_sym_name_pred_form_arity(_)
-        ; Component = unqual_pf_sym_name_pred_form_arity(_)
-        ; Component = qual_pf_sym_name_user_arity(_)
-        ; Component = unqual_pf_sym_name_user_arity(_)
-        ; Component = qual_cons_id_and_maybe_arity(_)
-        ; Component = unqual_cons_id_and_maybe_arity(_)
-        ; Component = qual_type_ctor(_)
-        ; Component = unqual_type_ctor(_)
-        ; Component = qual_inst_ctor(_)
-        ; Component = unqual_inst_ctor(_)
-        ; Component = qual_mode_ctor(_)
-        ; Component = unqual_mode_ctor(_)
-        ; Component = qual_class_id(_)
-        ; Component = unqual_class_id(_)
-        ; Component = qual_top_ctor_of_type(_)
-        ; Component = p_or_f(_)
-        ; Component = purity_desc(_)
-        ; Component = a_purity_desc(_)
-        ; Component = decl(_)
-        ; Component = pragma_decl(_)
+        ( Piece = words(_)
+        ; Piece = words_quote(_)
+        ; Piece = fixed(_)
+        ; Piece = quote(_)
+        ; Piece = int_fixed(_)
+        ; Piece = int_name(_)
+        ; Piece = nth_fixed(_)
+        ; Piece = prefix(_)
+        ; Piece = suffix(_)
+        ; Piece = qual_sym_name(_)
+        ; Piece = unqual_sym_name(_)
+        ; Piece = name_arity(_)
+        ; Piece = qual_sym_name_arity(_)
+        ; Piece = unqual_sym_name_arity(_)
+        ; Piece = qual_pf_sym_name_pred_form_arity(_)
+        ; Piece = unqual_pf_sym_name_pred_form_arity(_)
+        ; Piece = qual_pf_sym_name_user_arity(_)
+        ; Piece = unqual_pf_sym_name_user_arity(_)
+        ; Piece = qual_cons_id_and_maybe_arity(_)
+        ; Piece = unqual_cons_id_and_maybe_arity(_)
+        ; Piece = qual_type_ctor(_)
+        ; Piece = unqual_type_ctor(_)
+        ; Piece = qual_inst_ctor(_)
+        ; Piece = unqual_inst_ctor(_)
+        ; Piece = qual_mode_ctor(_)
+        ; Piece = unqual_mode_ctor(_)
+        ; Piece = qual_class_id(_)
+        ; Piece = unqual_class_id(_)
+        ; Piece = qual_top_ctor_of_type(_)
+        ; Piece = p_or_f(_)
+        ; Piece = purity_desc(_)
+        ; Piece = a_purity_desc(_)
+        ; Piece = decl(_)
+        ; Piece = pragma_decl(_)
         ),
         TailFirstInMsg = not_first_in_msg
     ).
