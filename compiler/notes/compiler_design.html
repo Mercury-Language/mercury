@@ -268,14 +268,14 @@ This part produces the parse_tree.m data structure,
 which is intended to match up as closely as possible with the source code,
 so that it is suitable for tasks such as pretty-printing.
 <p>
-We transform the results of lexical analysis (done by library/lexer.m)
+We transform the results of lexical analysis (done by library/mercury_term_lexer.m)
 into the Mercury parse tree in two stages:
 
 <ul>
 <li>
 stage 1 parsing - converting token sequences to terms.
 <p>
-library/parser.m contains the code to do this,
+library/mercury_term_parser.m contains the code to do this,
 while library/term.m and library/varset.m
 define the term and varset data structures,
 and predicates for manipulating them.
