@@ -4897,12 +4897,16 @@ there exists at most one value of the outputs for which the predicate is true,
 or (in the case of functions)
 for which the function term is equal to the result term.
 These assertions are called the @dfn{mode-determinism assertions};
-they can play a role in the semantics,
-because in certain circumstances,
+aside from assisting in reasoning about the code,
 they may allow an implementation to perform
 optimizations that would not otherwise be allowed,
 such as optimizing away a goal with no outputs
-even though it might infinitely loop.
+even though it might throw an exception (@pxref{Exception handling}),
+contain a trace goal (@pxref{Trace goals}),
+or infinitely loop.
+In some cases these optimizations may not be desirable;
+the strict sequential semantics guarantees that they will not be performed
+(@pxref{Formal semantics}).
 
 If the mode of the predicate is given in the @code{:- pred} declaration
 rather than in a separate @code{:- mode} declaration,
@@ -8488,6 +8492,64 @@ p_carefully(!IO) :-
     ).
 @end example
 
+@noindent
+One common use for exceptions is to check the input
+and throw an exception if it is invalid.
+It might be tempting to implement this
+with a predicate such as the following:
+
+@example
+:- pred check_target(target::in) is det.
+
+check_target(Target) :-
+    ( if ... then
+        true
+    else
+        throw("invalid target")
+    ).
+@end example
+
+@noindent
+This code warrants caution, however.
+Consider the following usage:
+
+@example
+shoot(Target, !IO) :-
+    check_target(Target),
+    unsafe_shoot(Target, !IO).
+@end example
+
+@noindent
+Mercury may reorder conjunctions,
+which is (probably) not what the user intended in this case.
+Furthermore,
+Mercury may optimize away the call to @samp{check_target/1} entirely,
+since the mode-determinism assertion for
+a @samp{det} predicate with no outputs
+essentially states that it is equivalent to @samp{true}.
+
+The strict sequential semantics can be used
+to guarantee that these changes will not occur
+(@pxref{Formal semantics}).
+However,
+we recommend implementing checks like these in the following way,
+to avoid depending on the choice of operational semantics:
+
+@example
+shoot(Target0, !IO) :-
+    check_target(Target0, Target),
+    unsafe_shoot(Target, !IO).
+
+:- pred check_target(target::in, target::out) is det.
+
+check_target(Target0, Target) :-
+    ( if ... then
+        Target = Target0
+    else
+        throw("invalid target")
+    ).
+@end example
+
 @node Formal semantics
 @chapter Formal semantics
 
@@ -8519,12 +8581,16 @@ However, there are certain minimum requirements that they
 must satisfy with respect to completeness.
 
 There is an operational semantics of Mercury programs called the
-@dfn{strict sequential} operational semantics.  In this semantics,
-the program is executed top-down, starting from @samp{main/2}
+@dfn{strict sequential} semantics.
+In this semantics,
+the program is executed top-down using SLDNF resolution
+(or something equivalent),
+starting from @samp{main/2}
 preceded by any module initialisation goals
-(as per @ref{Module initialisation}), followed by any module finalisation
-goals (as per @ref{Module finalisation}),
-and function calls within a goal, conjunctions and disjunctions are all
+(as per @ref{Module initialisation}),
+and followed by any module finalisation goals
+(as per @ref{Module finalisation}).
+Function calls, conjunctions and disjunctions are all
 executed in depth-first left-to-right order.
 Conjunctions and function calls are
 ``minimally'' reordered as required by the modes:
@@ -8532,57 +8598,60 @@ the order is determined by selecting the first mode-correct sub-goal
 (conjunct or function call),
 executing that, then selecting the first of the remaining sub-goals
 which is now mode-correct, executing that, and so on.
-(There is no interleaving of different individual conjuncts or function calls,
-however; the sub-goals are reordered, not split and interleaved.)
+There is no interleaving of different individual conjuncts or function calls:
+the sub-goals are reordered, not split and interleaved.
 Function application is strict, not lazy.
+Predicate calls are strict in the sense that
+goals will be executed irrespective of any mode-determinism asserions,
+even if they loop,
+are @samp{erroneous},
+or are @samp{det} and contain no outputs.
 @c XXX should document the operational semantics of switches and if-then-elses
 
 Mercury implementations are required to provide a method of processing
 Mercury programs which is equivalent to the strict sequential
-operational semantics.
+semantics.
 
 There is another operational semantics of Mercury programs
-called the @dfn{strict commutative} operational semantics.
-This semantics is equivalent to the strict sequential operational semantics
+called the @dfn{strict commutative} semantics.
+This semantics is equivalent to the strict sequential semantics
 except that there is no requirement that
 function calls, conjunctions and disjunctions be executed left-to-right;
 they may be executed in any order, and may even be interleaved.
-Furthermore, the order may even be different
+Furthermore, the order may differ
 each time a particular goal is entered.
 
-As well as providing the strict sequential operational semantics,
-Mercury implementations may optionally provide
-additional implementation-defined operational semantics,
-provided that any such implementation-defined operational semantics
-are at least as complete as the strict commutative operational semantics.
-An implementation-defined semantics
+As well as providing the strict sequential semantics,
+Mercury implementations may provide
+one or more implementation-defined operational semantics,
+as long as any such implementation-defined operational semantics
+is at least as complete as the strict commutative semantics.
+An implementation-defined operational semantics
 is ``at least as complete'' as the strict commutative semantics
-if and only if the implementation-defined semantics
+if and only if the implementation-defined operational semantics
 guarantees to compute an answer in finite time
 for any program for which an answer would be computed in finite time
 for all possible executions under the strict commutative semantics
-(i.e.@: for all possible orderings of conjunctions and disjunctions).
+(i.e.@: for all possible orderings of
+function calls, conjunctions and disjunctions).
 
 Thus, to summarize,
 there are in fact a variety of different operational semantics for Mercury.
-In one of them, the strict sequential semantics,
-there is no nondeterminism --- the behaviour is always specified exactly.
-Programs are executed top-down using SLDNF (or something equivalent),
+One of them, the strict sequential semantics,
+is deterministic---the behaviour is always specified exactly.
+Programs are executed top-down,
 mode analysis does ``minimal'' reordering (in a precisely defined sense),
 function calls, conjunctions and disjunctions
 are executed depth-first left-to-right,
-and function evaluation is strict.
+and function and predicate evaluation is strict.
 All implementations are required to support the strict sequential semantics,
 so that a program which works on one implementation using this semantics
 will be guaranteed to work on any other implementation.
 However, implementations are also allowed to support
-other operational semantics,
-which may have non-determinism,
-so long as they are sound with respect to the declarative semantics,
-and so long as they meet a minimum level of completeness
-(they must be at least as complete as the strict commutative semantics,
-in the sense that every program which terminates for all possible orderings
-must also terminate in any implementation-defined operational semantics).
+other operational semantics
+(which may be non-deterministic)
+as long as they are sound with respect to the declarative semantics,
+and meet a minimum level of completeness.
 
 This compromise allows Mercury to be used in several different ways.
 Programmers who care more about ease of programming and portability
@@ -8599,34 +8668,47 @@ Programmers who care about efficiency more than portability
 can write code for these implementation-defined semantic models.
 Programmers who care about efficiency @emph{and} portability
 can achieve this by writing code for the strict commutative semantics.
-Of course, this is not quite as easy as using the strict sequential semantics,
+In some ways this is not as easy as using the strict sequential semantics,
 since it is in general not sufficient
 to test your programs on just one implementation
 if you are to be sure that it will be able to use
 the maximally efficient operational semantics on any implementation.
-However, if you do write code which works for all possible executions
-under the strict commutative semantics
-(i.e.@: for all possible orderings of conjunctions and disjunctions),
+On the other hand,
+if you do write code which works for all possible executions
+under the strict commutative semantics,
 then you can be guaranteed that it will work correctly
-on every implementation, under every possible implementation-defined semantics.
+on every implementation,
+under every possible implementation-defined operational semantics.
 
 The Melbourne Mercury implementation offers
-eight different semantics,
+eight different operational semantics,
 which can be selected with different combinations
-of the @samp{--no-reorder-conj}, @samp{--no-reorder-disj},
-and @samp{--no-fully-strict} options.
-(The @samp{--no-fully-strict} option allows the compiler to improve
-completeness by optimizing away infinite loops and goals with determinism
-@code{erroneous}.)
-The default semantics are the strict commutative semantics.
-Enabling @samp{--no-reorder-conj} and @samp{--no-reorder-disj}
-gives the strict sequential semantics.
+of the following options:
+
+@table @code
+@item --no-reorder-conj
+Only do minimal reordering of conjunctions.
+@item --no-reorder-disj
+Do not reorder disjunctions.
+@item --no-fully-strict
+Predicate calls are not strict
+(function application is always strict in the current implementation).
+This option allows the compiler to improve completeness
+by optimizing away infinite loops,
+goals with determinism @code{erroneous},
+and goals with determinism @code{det} and no outputs.
+@end table
+
+@noindent
+The default semantics is the strict commutative semantics.
+The strict sequential semantics can be selected with the
+@samp{--no-reorder-conj} and @samp{--no-reorder-disj} options.
 
 Future implementations of Mercury
-may wish to offer other operational semantics.
+may wish to offer other implementation-defined operational semantics.
 For example, they may wish to provide semantics
-in which function evaluation is lazy, rather than strict;
-semantics with a guaranteed fair search rule; and so forth.
+in which function evaluation is lazy rather than strict,
+semantics with a guaranteed fair search rule, and so forth.
 
 @node Foreign language interface
 @chapter Foreign language interface
@@ -11921,18 +12003,23 @@ Only the difficulty of implementing the required global program analysis
 prevents the language design from outlawing such programs in the first place.
 
 The compiler will not delete trace goals
-from the bodies of the procedures containing them.
-However, trace goals inside a procedure don't prevent
-calls to that procedure from being optimized away,
-if such optimization is otherwise possible.
-(There is no point in debugging or logging
-operations that don't actually occur.)
+from the bodies of the procedures containing them,
+even though they are @samp{det} and have no outputs.
 In their effect on program optimizations,
 trace goals function as a kind of impure code,
 but one with an implicit promise_pure around the clause in which they occur.
 @c zs: I think saying the following is more likely to confuse than enlighten:
 @c The trace goal scope itself acts
 @c as a promise_pure scope for any impure code inside it.
+Note that trace goals inside a procedure
+do not prevent calls to that procedure from being optimized away.
+For example,
+if a predicate definition contains a single trace goal
+in order to factor out the details of that goal,
+calls to it may be optimized away.
+This will render them ineffective;
+the strict sequential semantics can be used
+to inhibit such optimizations (@pxref{Formal semantics}).
 
 @node Pragmas
 @chapter Pragmas
