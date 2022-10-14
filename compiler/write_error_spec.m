@@ -525,7 +525,17 @@ do_write_error_pieces(Stream, Globals, MaybeContext, TreatAsFirst, FixedIndent,
             ),
             FirstIndent = (if TreatAsFirst = treat_as_first then 0 else 1),
             divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst,
-                FirstIndent, Paragraphs, Lines),
+                FirstIndent, Paragraphs, Lines0),
+            try_to_join_lp_to_rp_lines(Lines0, Lines),
+            trace [compile_time(flag("debug_try_join_lp_to_rp")), io(!TIO)] (
+                io.stderr_stream(StdErr, !TIO),
+                io.write_string(StdErr, "START\n", !TIO),
+                list.foldl(io.write_line(StdErr), Paragraphs, !TIO),
+                list.foldl(io.write_line(StdErr), Lines0, !TIO),
+                io.write_string(StdErr, "JOINED\n", !TIO),
+                list.foldl(io.write_line(StdErr), Lines, !TIO),
+                io.write_string(StdErr, "END\n", !TIO)
+            ),
             write_msg_lines(Stream, PrefixStr, Lines, !IO)
         )
     ).
@@ -568,15 +578,13 @@ write_msg_lines(Stream, PrefixStr, [Line | Lines], !IO) :-
     io::di, io::uo) is det.
 
 write_msg_line(Stream, PrefixStr, Line, !IO) :-
-    Line = error_line(_MaybeAvail, LineIndent, LineWords, _LineWordsLen),
-    (
-        LineWords = [],
-        % Don't bother to print out out indents that are followed by nothing.
+    Line = error_line(_MaybeAvail, LineIndent, LineWordsStr, _LineWordsLen,
+        _LineParen),
+    ( if LineWordsStr = "" then
+        % Don't bother to print out indents that are followed by nothing.
         io.format(Stream, "%s\n", [s(PrefixStr)], !IO)
-    ;
-        LineWords = [_ | _],
+    else
         IndentStr = indent_string(LineIndent),
-        LineWordsStr = string.join_list(" ", LineWords),
         % If ContextStr is non-empty, it will end with a space,
         % which guarantees that it will be separated from LineWords.
         io.format(Stream, "%s%s%s\n",
@@ -598,8 +606,18 @@ write_msg_line(Stream, PrefixStr, Line, !IO) :-
                 int,
 
                 % The indent delta to apply for the next paragraph.
-                int
+                int,
+
+                % See the documentation of the line_paren field
+                % in the error_line type. It has the same meaning here,
+                % except it applies only to the last line of the paragraph.
+                paren_status
             ).
+
+:- type paren_status
+    --->    paren_none
+    ;       paren_lp_end    % This paragraph/line ends with a left paren.
+    ;       paren_end_rp.   % Next paragraph/line starts with a right paren.
 
 :- pred convert_pieces_to_paragraphs(list(format_piece)::in,
     list(paragraph)::out) is det.
@@ -621,7 +639,7 @@ convert_pieces_to_paragraphs(Pieces, Paras) :-
 
 convert_pieces_to_paragraphs_acc(_, [], RevWords0, !Paras) :-
     Strings = rev_words_to_strings(RevWords0),
-    !:Paras = snoc(!.Paras, paragraph(Strings, 0, 0)).
+    add_paragraph(paragraph(Strings, 0, 0, paren_none), !Paras).
 convert_pieces_to_paragraphs_acc(FirstInMsg, [Piece | Pieces],
         RevWords0, !Paras) :-
     (
@@ -779,18 +797,42 @@ convert_pieces_to_paragraphs_acc(FirstInMsg, [Piece | Pieces],
     ;
         Piece = nl,
         Strings = rev_words_to_strings(RevWords0),
-        !:Paras = snoc(!.Paras, paragraph(Strings, 0, 0)),
+        add_paragraph(paragraph(Strings, 0, 0, paren_none), !Paras),
         RevWords1 = []
     ;
         Piece = nl_indent_delta(IndentDelta),
         Strings = rev_words_to_strings(RevWords0),
-        !:Paras = snoc(!.Paras, paragraph(Strings, 0, IndentDelta)),
+        add_paragraph(paragraph(Strings, 0, IndentDelta, paren_none), !Paras),
         RevWords1 = []
     ;
         Piece = blank_line,
         Strings = rev_words_to_strings(RevWords0),
-        !:Paras = snoc(!.Paras, paragraph(Strings, 1, 0)),
+        add_paragraph(paragraph(Strings, 1, 0, paren_none), !Paras),
         RevWords1 = []
+    ;
+        Piece = left_paren_maybe_nl_inc(LP, LPWordKind),
+        (
+            LPWordKind = lp_plain,
+            LPWord = plain_word(LP)
+        ;
+            LPWordKind = lp_suffix,
+            LPWord = suffix_word(LP)
+        ),
+        Strings = rev_words_to_strings([LPWord | RevWords0]),
+        add_paragraph(paragraph(Strings, 0, 1, paren_lp_end), !Paras),
+        RevWords1 = []
+    ;
+        Piece = maybe_nl_dec_right_paren(RP, RPWordKind),
+        Strings = rev_words_to_strings(RevWords0),
+        add_paragraph(paragraph(Strings, 0, -1, paren_end_rp), !Paras),
+        (
+            RPWordKind = rp_plain,
+            RPWord = plain_word(RP)
+        ;
+            RPWordKind = rp_prefix,
+            RPWord = prefix_word(RP)
+        ),
+        RevWords1 = [RPWord]
     ;
         ( Piece = invis_order_default_start(_)
         ; Piece = invis_order_default_end(_)
@@ -801,6 +843,23 @@ convert_pieces_to_paragraphs_acc(FirstInMsg, [Piece | Pieces],
     first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg),
     convert_pieces_to_paragraphs_acc(TailFirstInMsg, Pieces,
         RevWords1, !Paras).
+
+:- pred add_paragraph(paragraph::in, cord(paragraph)::in, cord(paragraph)::out)
+    is det.
+
+add_paragraph(Para, !Paras) :-
+    Para = paragraph(Strings, NumBlankLines, IndentDelta, ParaParen),
+    % Do not add no-op paragraphs to the cord.
+    ( if
+        Strings = [],
+        NumBlankLines = 0,
+        IndentDelta = 0,
+        ParaParen = paren_none
+    then
+        true
+    else
+        !:Paras = snoc(!.Paras, Para)
+    ).
 
 :- type plain_or_prefix
     --->    plain(string)
@@ -946,14 +1005,36 @@ find_word_end(String, Cur, WordEnd) :-
                 % to get the number of spaces this turns into.
                 line_indent_level   :: int,
 
-                % The words on the line.
-                line_words          :: list(string),
+                % The words on the line as a single string, with one space
+                % between each pair of words.
+                line_words_str      :: string,
 
-                % Total number of characters in the words, including
-                % the spaces between words.
+                % The length of the line_words_str field.
                 %
                 % This field is meaningful only if maybe_avail_len is yes(...).
-                line_words_len      :: int
+                line_words_len      :: int,
+
+                % If this field is paren_none, this a normal line.
+                % If this field is paren_lp_end, this line ends a left
+                % parenthesis.
+                % If this field is paren_end_rp, the *next* line *starts*
+                % with a right parenthesis.
+                %
+                % We use these fields to try to put everything
+                %
+                % - in a paren_lp_end line,
+                % - in zero or more paren_none lines,
+                % - in a paren_end_rp line, and
+                % - the very next line (which starts with the rp)
+                %
+                % into a single line, if there is room. (Note that the code
+                % that creates a paren_end_rp line will also ensure that
+                % there *will be* a next line.)
+                %
+                % It is ok for some of the lines to be squashed together
+                % to result from earlier squash operations, on inner
+                % parentheses.
+                line_paren          :: paren_status
             ).
 
     % Groups the words in the given paragraphs into lines. The first line
@@ -976,7 +1057,8 @@ divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
         Lines = []
     ;
         Paras = [FirstPara | LaterParas],
-        FirstPara = paragraph(FirstParaWords, NumBlankLines, FirstIndentDelta),
+        FirstPara = paragraph(FirstParaWords, NumBlankLines, FirstIndentDelta,
+            ParaParen),
         (
             TreatAsFirst = treat_as_first,
             RestIndent = CurIndent + 1
@@ -986,7 +1068,7 @@ divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
         ),
         NextIndent = RestIndent + FirstIndentDelta,
 
-        BlankLine = error_line(MaybeAvailLen, CurIndent, [], 0),
+        BlankLine = error_line(MaybeAvailLen, CurIndent, "", 0, paren_none),
         list.duplicate(NumBlankLines, BlankLine, FirstParaBlankLines),
         (
             FirstParaWords = [],
@@ -999,16 +1081,25 @@ divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
                 MaybeAvailLen = yes(AvailLen),
                 get_line_of_words(AvailLen, FirstWord, LaterWords, CurIndent,
                     LineWordsLen, LineWords, RestWords),
-                CurLine = error_line(MaybeAvailLen, CurIndent,
-                    LineWords, LineWordsLen),
-
-                group_nonfirst_line_words(AvailLen, RestWords, RestIndent,
-                    FirstParaRestLines),
-                FirstParaLines = [CurLine | FirstParaRestLines]
+                LineWordsStr = line_words_to_str(LineWords), 
+                (
+                    RestWords = [],
+                    CurLine = error_line(MaybeAvailLen, CurIndent,
+                        LineWordsStr, LineWordsLen, ParaParen),
+                    FirstParaLines = [CurLine]
+                ;
+                    RestWords = [FirstRestWord | LaterRestWords],
+                    CurLine = error_line(MaybeAvailLen, CurIndent,
+                        LineWordsStr, LineWordsLen, paren_none),
+                    group_nonfirst_line_words(AvailLen,
+                        FirstRestWord, LaterRestWords, RestIndent, ParaParen,
+                        FirstParaRestLines),
+                    FirstParaLines = [CurLine | FirstParaRestLines]
+                )
             ;
                 MaybeAvailLen = no,
                 FirstParaLines = [error_line(MaybeAvailLen, CurIndent,
-                    FirstParaWords, -1)]
+                    line_words_to_str(FirstParaWords), -1, ParaParen)]
             )
         ),
         divide_paragraphs_into_lines(MaybeAvailLen, NextTreatAsFirst,
@@ -1016,19 +1107,25 @@ divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
         Lines = FirstParaLines ++ FirstParaBlankLines ++ LaterParaLines
     ).
 
-:- pred group_nonfirst_line_words(int::in, list(string)::in, int::in,
-    list(error_line)::out) is det.
+:- pred group_nonfirst_line_words(int::in, string::in, list(string)::in,
+    int::in, paren_status::in, list(error_line)::out) is det.
 
-group_nonfirst_line_words(AvailLen, Words, Indent, Lines) :-
+group_nonfirst_line_words(AvailLen, FirstWord, LaterWords,
+        Indent, LastParen, Lines) :-
+    get_line_of_words(AvailLen, FirstWord, LaterWords, Indent,
+        LineWordsLen, LineWords, RestWords),
+    LineWordsStr = line_words_to_str(LineWords),
     (
-        Words = [],
-        Lines = []
+        RestWords = [],
+        Line = error_line(yes(AvailLen), Indent, LineWordsStr, LineWordsLen,
+            LastParen),
+        Lines = [Line]
     ;
-        Words = [FirstWord | LaterWords],
-        get_line_of_words(AvailLen, FirstWord, LaterWords, Indent,
-            LineWordsLen, LineWords, RestWords),
-        Line = error_line(yes(AvailLen), Indent, LineWords, LineWordsLen),
-        group_nonfirst_line_words(AvailLen, RestWords, Indent, RestLines),
+        RestWords = [FirstRestWord | LaterRestWords],
+        Line = error_line(yes(AvailLen), Indent, LineWordsStr, LineWordsLen,
+            paren_none),
+        group_nonfirst_line_words(AvailLen, FirstRestWord, LaterRestWords,
+            Indent, LastParen, RestLines),
         Lines = [Line | RestLines]
     ).
 
@@ -1060,6 +1157,198 @@ get_later_words(Avail, [Word | Words], CurLen, FinalLen,
         FinalLen = CurLen,
         LineWords = LineWords0,
         RestWords = [Word | Words]
+    ).
+
+:- func line_words_to_str(list(string)) = string.
+
+line_words_to_str(LineWords) = string.join_list(" ", LineWords).
+
+%---------------------------------------------------------------------------%
+
+    % Look for sequences of
+    %
+    % - a paren_lp_end line,
+    % - zero or more paren_none lines,
+    % - a paren_end_rp line, and
+    % - the very next line (which starts with the rp),
+    %
+    % and join them up into a single line, if there is room.
+    %
+    % This predicate is the top level loop. All calls to it, including
+    % recursive calls, are outside of all parentheses.
+    %
+:- pred try_to_join_lp_to_rp_lines(list(error_line)::in,
+    list(error_line)::out) is det.
+
+try_to_join_lp_to_rp_lines([], []).
+try_to_join_lp_to_rp_lines([HeadLine0 | TailLines0], Lines) :-
+    HeadLine0 = error_line(_MaybeAvailLen, _HeadIndent, _HeadLineWords,
+        _HeadLineWordsLen, HeadParen),
+    (
+        ( HeadParen = paren_none
+        ; HeadParen = paren_end_rp  % This is an unbalanced right paren.
+        ),
+        try_to_join_lp_to_rp_lines(TailLines0, TailLines),
+        Lines = [HeadLine0 | TailLines]
+    ;
+        HeadParen = paren_lp_end,
+        % We got the first line in the pattern we are looking for.
+        % look for the rest, and act on it, if possible.
+        find_matching_rp_and_maybe_join(HeadLine0, TailLines0,
+            ReplacementLines, LeftOverLines0),
+        ( if
+            ReplacementLines = [FirstReplacementLine | _],
+            FirstReplacementLine \= HeadLine0
+        then
+            % If we could optimize the pattern starting at HeadLine0,
+            % then there is a small chance that the replacement *also* ends
+            % with a paren_lp_end line. If it does, then we want to optimize
+            % the pattern starting at *that* line as well.
+            Lines1 = ReplacementLines ++ LeftOverLines0,
+            try_to_join_lp_to_rp_lines(Lines1, Lines)
+        else
+            % If we could not optimize the pattern starting at HeadLine0,
+            % don't process that line again, since that would lead to
+            % an infinite loop.
+            try_to_join_lp_to_rp_lines(LeftOverLines0, TailLines),
+            Lines = ReplacementLines ++ TailLines
+        )
+    ).
+
+    % Given a line with paren_lp_end, look for the rest of the pattern
+    % documented in the comment on try_to_join_lp_to_rp_lines, and
+    % join the lines involved, if this is possible.
+    %
+:- pred find_matching_rp_and_maybe_join(error_line::in,
+    list(error_line)::in, list(error_line)::out, list(error_line)::out) is det.
+
+find_matching_rp_and_maybe_join(LPLine, TailLines0, ReplacementLines,
+        LeftOverLines) :-
+    LPLine = error_line(MaybeAvailLen, LPIndent, LPLineWordsStr,
+        LPLineWordsLen, LPParen),
+    expect(unify(LPParen, paren_lp_end), $pred, "LPParen != paren_lp_end"),
+    ( if
+        find_matching_rp(TailLines0, cord.init, MidLinesCord, 0, MidLinesLen,
+            RPLine, LeftOverLinesPrime)
+    then
+        RPLine = error_line(_, _RPIndent, RPLineWordsStr, RPLineWordsLen,
+            RPParen),
+        MidLines = cord.list(MidLinesCord),
+        list.length(MidLines, NumMidLines),
+        MidLineSpaces = (if NumMidLines = 0 then 0 else NumMidLines - 1),
+        TotalLpRpLen =
+            LPLineWordsLen + MidLinesLen + MidLineSpaces + RPLineWordsLen,
+        ChunkLines = [LPLine | MidLines] ++ [RPLine],
+        ( if
+            (
+                MaybeAvailLen = no
+            ;
+                MaybeAvailLen = yes(AvailLen),
+                LPIndent * indent_increment + TotalLpRpLen =< AvailLen
+            )
+        then
+            % We insert spaces
+            % - between the middle lines, but
+            % - not after the ( in LPLine,
+            % - nor before the ) in RPLine.
+            MidLineStrs = list.map((func(L) = L ^ line_words_str), MidLines),
+            MidSpaceLinesStr = string.join_list(" ", MidLineStrs),
+            ReplacementLineStr =
+                LPLineWordsStr ++ MidSpaceLinesStr ++ RPLineWordsStr,
+            string.count_codepoints(ReplacementLineStr, ReplacementLineStrLen),
+            expect(unify(TotalLpRpLen, ReplacementLineStrLen), $pred,
+                "TotalLpRpLen != ReplacementLineStrLen"),
+            ReplacementLine = error_line(MaybeAvailLen, LPIndent,
+                ReplacementLineStr, TotalLpRpLen, RPParen),
+            ReplacementLines = [ReplacementLine]
+        else
+            ReplacementLines = ChunkLines
+        ),
+        LeftOverLines = LeftOverLinesPrime
+    else
+        % We can't find the rest of the pattern so we can't optimize anything.
+        % This code therefore replaces LPLine with itself.
+        ReplacementLines = [LPLine],
+        LeftOverLines = TailLines0
+    ).
+
+    % find_matching_rp(Lines0, !MidLinesCord, !MidLinesLen, RPLine,
+    %   LeftOverLines):
+    %
+    % Look for the part of the pattern after the initial paren_lp_end line,
+    % which consists of
+    %
+    % - zero or more paren_none lines,
+    % - a paren_end_rp line (return both of these in !:MidLinesCord), and
+    % - the very next line, which starts with the rp (return this in RPLine).
+    %
+    % LeftOverLines will be the lines following these.
+    %
+    % Also, return in !:MidLinesLen by the total length of the lines
+    % in !:MidLinesCord.
+    % 
+:- pred find_matching_rp(list(error_line)::in,
+    cord(error_line)::in, cord(error_line)::out,
+    int::in, int::out, error_line::out, list(error_line)::out) is semidet.
+
+find_matching_rp([], !MidLinesCord, !MidLinesLen, _, _) :-
+    fail.
+find_matching_rp([HeadLine0 | TailLines0], !MidLinesCord, !MidLinesLen,
+        RPLine, LeftOverLines) :-
+    HeadLine0 = error_line(_HeadMaybeAvailLen, _HeadIndent, _HeadLineWordsStr,
+        HeadLineWordsLen, HeadParen),
+    (
+        HeadParen = paren_none,
+        cord.snoc(HeadLine0, !MidLinesCord),
+        !:MidLinesLen = !.MidLinesLen + HeadLineWordsLen,
+        find_matching_rp(TailLines0, !MidLinesCord, !MidLinesLen, RPLine,
+            LeftOverLines)
+    ;
+        HeadParen = paren_end_rp,
+        % The right parenthesis is at the start of the *next* line.
+        (
+            TailLines0 = [],
+            % There is no right paren; the original left paren is unbalanced.
+            fail
+        ;
+            TailLines0 = [RPLine | TailTailLines0],
+            cord.snoc(HeadLine0, !MidLinesCord),
+            !:MidLinesLen = !.MidLinesLen + HeadLineWordsLen,
+            LeftOverLines = TailTailLines0
+        )
+    ;
+        HeadParen = paren_lp_end,
+        find_matching_rp_and_maybe_join(HeadLine0, TailLines0,
+            ReplacementLines, AfterRpLines),
+        (
+            ReplacementLines = [],
+            % Getting here means that the text has _HeadLineWordsStr
+            % has disappeared, which is a bug.
+            unexpected($pred, "ReplacementLines = []")
+        ;
+            ReplacementLines = [HeadReplacementLine | TailReplacementLines],
+            (
+                TailReplacementLines = [],
+                % We replaced the inner pattern with a single line.
+                % Try to fit this single line into the larger pattern.
+                find_matching_rp([HeadReplacementLine | AfterRpLines],
+                    !MidLinesCord, !MidLinesLen, RPLine, LeftOverLines)
+            ;
+                TailReplacementLines = [_ | _],
+                % We couldn't optimize the pattern starting at HeadLine0,
+                % which is nested inside the larger pattern our ancestor
+                % find_matching_rp_and_maybe_join call was trying to
+                % optimize. But if even just the lines in this inner pattern
+                % are too long to fit on our caller's available space,
+                % then the large pattern that includes those lines *and *more*
+                % will also be too large to fit into that same space.
+                %
+                % NOTE: This assumes that the inner pattern is at least as
+                % indented as our caller's paren_lp_end line. As far as I (zs)
+                % know, this is true for all our error messages.
+                fail
+            )
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -1241,6 +1530,22 @@ error_pieces_to_string_loop(FirstInMsg, [Piece | Pieces]) = Str :-
         Piece = blank_line,
         Str = "\n\n" ++ TailStr
     ;
+        Piece = left_paren_maybe_nl_inc(LP, _LPWordKind),
+        % There is nothing we can do about the indent delta.
+        % _LPWordKind is handled by the call to join_string_and_tail
+        % when we process the *previous* piece.
+        Str = join_string_and_tail(LP ++ "\n", Pieces, TailStr)
+    ;
+        Piece = maybe_nl_dec_right_paren(RP, RPWordKind),
+        % There is nothing we can do about the indent delta.
+        (
+            RPWordKind = rp_plain,
+            Str = join_string_and_tail("\n" ++ RP, Pieces, TailStr)
+        ;
+            RPWordKind = rp_prefix,
+            Str = "\n" ++ RP ++ TailStr
+        )
+    ;
         ( Piece = invis_order_default_start(_)
         ; Piece = invis_order_default_end(_)
         ),
@@ -1252,10 +1557,17 @@ error_pieces_to_string_loop(FirstInMsg, [Piece | Pieces]) = Str :-
 join_string_and_tail(Word, Pieces, TailStr) = Str :-
     ( if TailStr = "" then
         Str = Word
-    else if Pieces = [suffix(_) | _] then
-        Str = Word ++ TailStr
     else
-        Str = Word ++ " " ++ TailStr
+        ( if
+            Pieces = [NextPiece | _],
+            ( NextPiece = suffix(_)
+            ; NextPiece = left_paren_maybe_nl_inc(_, lp_suffix)
+            )
+        then
+            Str = Word ++ TailStr
+        else
+            Str = Word ++ " " ++ TailStr
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -1321,6 +1633,8 @@ first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg) :-
         ; Piece = a_purity_desc(_)
         ; Piece = decl(_)
         ; Piece = pragma_decl(_)
+        ; Piece = left_paren_maybe_nl_inc(_, _)
+        ; Piece = maybe_nl_dec_right_paren(_, _)
         ),
         TailFirstInMsg = not_first_in_msg
     ).

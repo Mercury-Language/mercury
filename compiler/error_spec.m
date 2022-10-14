@@ -424,6 +424,55 @@
     ;       pragma_decl(string)
             % As above, but prefix the string with ":- pragma ".
 
+    ;       left_paren_maybe_nl_inc(string, lp_piece_kind)
+    ;       maybe_nl_dec_right_paren(string, rp_piece_kind)
+            % These two pieces are intended to help implement messages
+            % that should be formatted to look like either
+            %
+            %   aaa(bbb, ccc)
+            %
+            % if there is space on the current line, or to look like
+            %
+            %   aaa(
+            %       bbb,
+            %       ccc
+            %   )
+            %
+            % if there isn't.
+            %
+            % The piece sequence that would yield the above would be
+            %
+            %   fixed("aaa")
+            %   left_paren_maybe_nl_inc("(", lp_suffix)
+            %   fixed("bbb"),
+            %   suffix(","),
+            %   nl,
+            %   fixed("ccc"),
+            %   maybe_nl_dec_right_paren(")", rp_plain)
+            %
+            % The left_paren_maybe_nl_inc adds the given string to the
+            % text, followed by an nl_indent(1). The maybe_nl_dec_right_paren
+            % adds an nl_indent(-1) to the text, followed by the given string.
+            % The left parenthesis may be added to the previous piece
+            % as a suffix, or not; the right parenthesis may be added
+            % to the next piece as a prefix, or not. The strings are usually
+            % "(" and ")", but they could also be "{" and "}", or "[" and "]",
+            % or anything else.
+            %
+            % The "maybe" is there in the names of these pieces because
+            % these pieces expressly tell the code of write_error_pieces.m
+            % to delete both these indent-incrementing/decrementing newlines,
+            % and all other newlines between the left_paren_maybe_nl_inc
+            % and its matching maybe_nl_dec_right_paren, provided the text
+            % between them fits in the space available on the line.
+            % Note that the size of the space depends on both the length
+            % of the context printed at the start of the line, and on the
+            % indent printed after the context, which may or may not be
+            % available to the code constructing these pieces.
+            %
+            % These pieces should always be used in left/right pairs,
+            % and should always be properly nested.
+
     ;       nl
             % Insert a line break if there has been text output since
             % the last line break.
@@ -437,6 +486,22 @@
 
     ;       invis_order_default_end(int).
             % See the documentation of invis_order_default_start above.
+
+:- type lp_piece_kind
+    --->    lp_plain
+            % The left parenthesis should be added to the previous pieces
+            % as if it were in a fixed(...) piece.
+    ;       lp_suffix.
+            % The left parenthesis should be added to the previous pieces
+            % as if it were in a suffix(...) piece.
+
+:- type rp_piece_kind
+    --->    rp_plain
+            % The right parenthesis should be added to the following pieces
+            % as if it were in a fixed(...) piece.
+    ;       rp_prefix.
+            % The right parenthesis should be added to the following pieces
+            % as if it were in a prefix(...) piece.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

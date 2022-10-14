@@ -15,24 +15,10 @@ ext_type_bug.m:030: In clause for predicate `foo_tuple'/1:
 ext_type_bug.m:030:   in argument 1 of call to predicate
 ext_type_bug.m:030:   `ext_type_bug.make_bar_tuple'/1:
 ext_type_bug.m:030:   type error: variable `BarTuple' has type
-ext_type_bug.m:030:     {
-ext_type_bug.m:030:       ext_type_bug.bar(
-ext_type_bug.m:030:         int
-ext_type_bug.m:030:       ),
-ext_type_bug.m:030:       ext_type_bug.bar(
-ext_type_bug.m:030:         float
-ext_type_bug.m:030:       )
-ext_type_bug.m:030:     },
+ext_type_bug.m:030:     {ext_type_bug.bar(int), ext_type_bug.bar(float)},
 ext_type_bug.m:030:   expected type was
 ext_type_bug.m:030:     some [T, U] (
-ext_type_bug.m:030:       {
-ext_type_bug.m:030:         ext_type_bug.bar(
-ext_type_bug.m:030:           T
-ext_type_bug.m:030:         ),
-ext_type_bug.m:030:         ext_type_bug.bar(
-ext_type_bug.m:030:           U
-ext_type_bug.m:030:         )
-ext_type_bug.m:030:       }
+ext_type_bug.m:030:       {ext_type_bug.bar(T), ext_type_bug.bar(U)}
 ext_type_bug.m:030:     ).
 ext_type_bug.m:030:   In the first argument of the tuple type constructor:
 ext_type_bug.m:030:   in the first argument of type constructor `bar':

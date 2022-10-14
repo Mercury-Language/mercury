@@ -54,10 +54,8 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.write_error_spec.
 
 :- import_module assoc_list.
-:- import_module int.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -85,7 +83,7 @@ type_to_pieces(TVarSet, InstVarSet, VarNamePrint, MaybeAddQuotes,
     % on ExternalTypeParams can generate ExistQVars = [].
     (
         ExistQVars = [],
-        FullPieces =
+        Pieces =
             StartQuotePieces ++
             type_pieces(TVarSet, InstVarSet, VarNamePrint,
                 EndQuotePieces, Type)
@@ -104,44 +102,17 @@ type_to_pieces(TVarSet, InstVarSet, VarNamePrint, MaybeAddQuotes,
         %
         % - they generate better looking output when our caller strips
         %   all the newlines out.
-        FullPieces = StartQuotePieces ++
-            [fixed("some")] ++ ExistListPieces ++ [prefix("(")] ++
-            [nl_indent_delta(1)] ++
+        Pieces = StartQuotePieces ++
+            [fixed("some")] ++ ExistListPieces ++
+            [left_paren_maybe_nl_inc("(", lp_plain)] ++
             type_pieces(TVarSet, InstVarSet, VarNamePrint, [], Type) ++
-            [nl_indent_delta(-1)] ++
-            [suffix(")")] ++ EndQuotePieces
-    ),
-
-    NoNlPieces = filter_out_newlines(FullPieces),
-    NoNlStr = error_pieces_to_string(NoNlPieces),
-    ( if string.count_codepoints(NoNlStr) < max_one_line_type_length then
-        Pieces = NoNlPieces
-    else
-        Pieces = FullPieces
+            [maybe_nl_dec_right_paren(")", rp_plain)] ++ EndQuotePieces
     ).
-
-:- func max_one_line_type_length = int.
-
-max_one_line_type_length = 40.
 
 :- func type_pieces(tvarset, inst_varset, var_name_print,
     list(format_piece), mer_type) = list(format_piece).
 
 type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces, Type) = Pieces :-
-    % XXX Should we test whether a version of Pieces that has its
-    % newlines stripped from it is shorter than max_one_line_type_length?
-    % XXX The ideal solution would be to return some representation
-    % that would allow the code that converts error_specs to strings
-    % to pick
-    %
-    % - the version without the newlines, if there is enough space
-    %   left on the current line for it (using certain knowledge, not
-    %   the guess represented by max_one_line_type_length), but
-    % - falling back to the version with the newlines, if there is
-    %   not enough space.
-    %
-    % However, the multi-phase approach we use for converting format_pieces
-    % to strings does not make implementing the above approach straightforward.
     (
         Type = kinded_type(SubType, _Kind),
         Pieces = type_pieces(TVarSet, InstVarSet, VarNamePrint,
@@ -163,21 +134,23 @@ type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces, Type) = Pieces :-
             TypeCtorNameList = list.map(maybe_quote_name, TypeCtorNameList0),
             TypeCtorStr = string.join_list(".", TypeCtorNameList),
             Const = TypeCtorStr,
-            NonConstStart = TypeCtorStr ++ "(",
-            NonConstEnd = ")"
+            NonConstL = [fixed(TypeCtorStr),
+                left_paren_maybe_nl_inc("(", lp_suffix)],
+            NonConstR = [maybe_nl_dec_right_paren(")", rp_plain)]
         ;
             Type = tuple_type(ArgTypes, _),
             Const = "{}",
-            NonConstStart = "{",
-            NonConstEnd = "}"
+            NonConstL = [left_paren_maybe_nl_inc("{", lp_plain)],
+            NonConstR = [maybe_nl_dec_right_paren("}", rp_plain)]
         ;
             Type = apply_n_type(TVar, ArgTypes, _),
             % XXX None of the test cases cover the output we generate
             % for apply_n_type, so I (zs) don't know whether this is ok.
             TVarStr = mercury_var_to_string_vs(TVarSet, VarNamePrint, TVar),
             Const = TVarStr,
-            NonConstStart = TVarStr ++ "(",
-            NonConstEnd = ")"
+            NonConstL = [fixed(TVarStr),
+                left_paren_maybe_nl_inc("(", lp_suffix)],
+            NonConstR = [maybe_nl_dec_right_paren(")", rp_plain)]
         ),
         (
             ArgTypes = [],
@@ -187,19 +160,9 @@ type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces, Type) = Pieces :-
             ArgTypePiecesList = list.map(
                 type_pieces(TVarSet, InstVarSet, VarNamePrint, []),
                 ArgTypes),
-            % We wrap NonConstStart and NonConstEnd in prefix() and suffix()
-            % respectively because
-            %
-            % - these work the same as wrapping them in fixed()
-            %   when the Pieces we generate are used as is, including the
-            %   newlines, and
-            %
-            % - they generate better looking output when our caller strips
-            %   all the newlines out of Pieces.
-            Pieces = [prefix(NonConstStart), nl_indent_delta(1)] ++
-                component_list_to_line_pieces(ArgTypePiecesList,
-                    [nl_indent_delta(-1)]) ++
-                [suffix(NonConstEnd) | SuffixPieces]
+            Pieces = NonConstL ++
+                component_list_to_line_pieces(ArgTypePiecesList, NonConstR) ++
+                SuffixPieces
         )
     ;
         Type = higher_order_type(_, _, _, _, _),
@@ -306,10 +269,9 @@ higher_order_type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces,
         ;
             ArgPiecesList = [_ | _],
             PorFArgBlockPieces =
-                [prefix("pred("), nl_indent_delta(1)] ++
+                [fixed("pred"), left_paren_maybe_nl_inc("(", lp_suffix)] ++
                 component_list_to_line_pieces(ArgPiecesList,
-                    [nl_indent_delta(-1)]) ++
-                [suffix(")")]
+                    [maybe_nl_dec_right_paren(")", rp_plain)])
         )
     ;
         PorF = pf_function,
@@ -325,10 +287,11 @@ higher_order_type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces,
             ArgPiecesList = [_, _ | _],
             list.det_split_last(ArgPiecesList,
                 FuncArgPiecesList, ReturnValuePieces),
-            PorFArgBlockPieces = [prefix("func("), nl_indent_delta(1)] ++
+            PorFArgBlockPieces =
+                [fixed("func"), left_paren_maybe_nl_inc("(", lp_suffix)] ++
                 component_list_to_line_pieces(FuncArgPiecesList,
-                    [nl_indent_delta(-1)]) ++
-                [suffix(")"), fixed("=")] ++ FuncResultPrefixPieces ++
+                    [maybe_nl_dec_right_paren(")", rp_plain)]) ++
+                [fixed("=")] ++ FuncResultPrefixPieces ++
                 ReturnValuePieces ++ FuncResultSuffixPieces
         )
     ),
@@ -360,21 +323,6 @@ quote_pieces(MaybeAddQuotes, StartQuotePieces, EndQuotePieces) :-
         MaybeAddQuotes = add_quotes,
         StartQuotePieces = [prefix("`")],
         EndQuotePieces = [suffix("'")]
-    ).
-
-:- func filter_out_newlines(list(format_piece)) = list(format_piece).
-
-filter_out_newlines([]) = [].
-filter_out_newlines([Piece | Pieces]) = FilteredPieces :-
-    FilteredPiecesTail = filter_out_newlines(Pieces),
-    ( if
-        ( Piece = nl
-        ; Piece = nl_indent_delta(_)
-        )
-    then
-        FilteredPieces = FilteredPiecesTail
-    else
-        FilteredPieces = [Piece | FilteredPiecesTail]
     ).
 
 %---------------------------------------------------------------------------%

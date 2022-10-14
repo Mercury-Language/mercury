@@ -19,22 +19,9 @@ type_diff.m:039: In clause for predicate `p1'/1:
 type_diff.m:039:   in argument 1 of call to predicate
 type_diff.m:039:   `type_diff.q1_list_list'/1:
 type_diff.m:039:   type error: argument has type
-type_diff.m:039:     list.list(
-type_diff.m:039:       list.list(
-type_diff.m:039:         type_diff.tx(
-type_diff.m:039:           string
-type_diff.m:039:         )
-type_diff.m:039:       )
-type_diff.m:039:     ),
+type_diff.m:039:     list.list(list.list(type_diff.tx(string))),
 type_diff.m:039:   expected type was
-type_diff.m:039:     list.list(
-type_diff.m:039:       list.list(
-type_diff.m:039:         type_diff.tx(
-type_diff.m:039:           T,
-type_diff.m:039:           U
-type_diff.m:039:         )
-type_diff.m:039:       )
-type_diff.m:039:     ).
+type_diff.m:039:     list.list(list.list(type_diff.tx(T, U))).
 type_diff.m:039:   In the first argument of type constructor `list':
 type_diff.m:039:   in the first argument of type constructor `list':
 type_diff.m:039:     arity mismatch for type constructor `tx': expected two
@@ -43,11 +30,7 @@ type_diff.m:071: In clause for predicate `p2'/4:
 type_diff.m:071:   in argument 1 (i.e. the predicate term) of higher-order
 type_diff.m:071:   predicate call:
 type_diff.m:071:   type error: variable `Pred' has type
-type_diff.m:071:     impure pred(
-type_diff.m:071:       int :: in,
-type_diff.m:071:       int :: in,
-type_diff.m:071:       int :: out
-type_diff.m:071:     ) is det,
+type_diff.m:071:     impure pred(int :: in, int :: in, int :: out) is det,
 type_diff.m:071:   expected type was
 type_diff.m:071:     pred(V_1, V_2, V_3).
 type_diff.m:071:   Purity mismatch: expected a pure predicate, got an impure
@@ -56,11 +39,7 @@ type_diff.m:073: In clause for predicate `p2'/4:
 type_diff.m:073:   in argument 1 (i.e. the predicate term) of impure
 type_diff.m:073:   higher-order predicate call:
 type_diff.m:073:   type error: variable `Pred' has type
-type_diff.m:073:     impure pred(
-type_diff.m:073:       int :: in,
-type_diff.m:073:       int :: in,
-type_diff.m:073:       int :: out
-type_diff.m:073:     ) is det,
+type_diff.m:073:     impure pred(int :: in, int :: in, int :: out) is det,
 type_diff.m:073:   expected type was
 type_diff.m:073:     impure pred(V_4, V_5).
 type_diff.m:073:   Arity mismatch for the predicate: expected two arguments,
@@ -69,11 +48,7 @@ type_diff.m:074: In clause for predicate `p2'/4:
 type_diff.m:074:   in argument 1 (i.e. the predicate term) of impure
 type_diff.m:074:   higher-order predicate call:
 type_diff.m:074:   type error: variable `Pred' has type
-type_diff.m:074:     impure pred(
-type_diff.m:074:       int :: in,
-type_diff.m:074:       int :: in,
-type_diff.m:074:       int :: out
-type_diff.m:074:     ) is det,
+type_diff.m:074:     impure pred(int :: in, int :: in, int :: out) is det,
 type_diff.m:074:   expected type was
 type_diff.m:074:     impure pred(V_6, V_7, V_8, V_9).
 type_diff.m:074:   Arity mismatch for the predicate: expected four arguments,
@@ -83,11 +58,7 @@ type_diff.m:075:   in unification of argument
 type_diff.m:075:   and term `Pred(C, D)':
 type_diff.m:075:   type error in argument of higher-order term (with arity 2).
 type_diff.m:075:   Functor (Pred) has type
-type_diff.m:075:     impure pred(
-type_diff.m:075:       int :: in,
-type_diff.m:075:       int :: in,
-type_diff.m:075:       int :: out
-type_diff.m:075:     ) is det,
+type_diff.m:075:     impure pred(int :: in, int :: in, int :: out) is det,
 type_diff.m:075:   expected type was
 type_diff.m:075:     func(V_10, V_11) = int.
 type_diff.m:077: In clause for predicate `p2'/4:
@@ -95,11 +66,7 @@ type_diff.m:077:   in argument 1 of call to predicate
 type_diff.m:077:   `type_diff.expect_pred_2_det'/3:
 type_diff.m:077:   type error:
 type_diff.m:077:   variable `Pred' has type
-type_diff.m:077:     impure pred(
-type_diff.m:077:       int :: in,
-type_diff.m:077:       int :: in,
-type_diff.m:077:       int :: out
-type_diff.m:077:     ) is det,
+type_diff.m:077:     impure pred(int :: in, int :: in, int :: out) is det,
 type_diff.m:077:   expected type was
 type_diff.m:077:     pred(int, int).
 type_diff.m:077:   Purity mismatch: expected a pure predicate, got an impure
@@ -111,11 +78,7 @@ type_diff.m:078:   in argument 1 of call to predicate
 type_diff.m:078:   `type_diff.expect_pred_3_semidet'/3:
 type_diff.m:078:   type error:
 type_diff.m:078:   variable `Pred' has type
-type_diff.m:078:     impure pred(
-type_diff.m:078:       int :: in,
-type_diff.m:078:       int :: in,
-type_diff.m:078:       int :: out
-type_diff.m:078:     ) is det,
+type_diff.m:078:     impure pred(int :: in, int :: in, int :: out) is det,
 type_diff.m:078:   expected type was
 type_diff.m:078:     pred(int, int, int).
 type_diff.m:078:   Purity mismatch: expected a pure predicate, got an impure
@@ -125,11 +88,7 @@ type_diff.m:079:   in argument 1 of call to predicate
 type_diff.m:079:   `type_diff.expect_func_2'/3:
 type_diff.m:079:   type error:
 type_diff.m:079:   variable `Pred' has type
-type_diff.m:079:     impure pred(
-type_diff.m:079:       int :: in,
-type_diff.m:079:       int :: in,
-type_diff.m:079:       int :: out
-type_diff.m:079:     ) is det,
+type_diff.m:079:     impure pred(int :: in, int :: in, int :: out) is det,
 type_diff.m:079:   expected type was
 type_diff.m:079:     func(int, int) = int.
 type_diff.m:079:   Predicate vs function mismatch: expected a function, got a
@@ -141,11 +100,7 @@ type_diff.m:080:   in argument 1 of call to predicate
 type_diff.m:080:   `type_diff.expect_func_3'/3:
 type_diff.m:080:   type error:
 type_diff.m:080:   variable `Pred' has type
-type_diff.m:080:     impure pred(
-type_diff.m:080:       int :: in,
-type_diff.m:080:       int :: in,
-type_diff.m:080:       int :: out
-type_diff.m:080:     ) is det,
+type_diff.m:080:     impure pred(int :: in, int :: in, int :: out) is det,
 type_diff.m:080:   expected type was
 type_diff.m:080:     func(int, int, int) = int.
 type_diff.m:080:   Predicate vs function mismatch: expected a function, got a
@@ -159,10 +114,7 @@ type_diff.m:086:   in unification of variable `B'
 type_diff.m:086:   and term `Func(A)':
 type_diff.m:086:   type error in arguments of higher-order term (with arity 1).
 type_diff.m:086:   Functor (Func) has type
-type_diff.m:086:     func(
-type_diff.m:086:       int :: in,
-type_diff.m:086:       int :: in
-type_diff.m:086:     ) = (int :: out) is det,
+type_diff.m:086:     func(int :: in, int :: in) = (int :: out) is det,
 type_diff.m:086:   expected type was
 type_diff.m:086:     func(V_13) = int.
 type_diff.m:086:   Argument 1 (A) has type
@@ -174,10 +126,7 @@ type_diff.m:087:   in unification of variable `D'
 type_diff.m:087:   and term `Func(A, B, C)':
 type_diff.m:087:   type error in arguments of higher-order term (with arity 3).
 type_diff.m:087:   Functor (Func) has type
-type_diff.m:087:     func(
-type_diff.m:087:       int :: in,
-type_diff.m:087:       int :: in
-type_diff.m:087:     ) = (int :: out) is det,
+type_diff.m:087:     func(int :: in, int :: in) = (int :: out) is det,
 type_diff.m:087:   expected type was
 type_diff.m:087:     func(V_13, V_14, V_15) = V_16.
 type_diff.m:087:   Argument 1 (A) has type
@@ -196,10 +145,7 @@ type_diff.m:088: In clause for predicate `p2'/4:
 type_diff.m:088:   in argument 1 (i.e. the predicate term) of impure
 type_diff.m:088:   higher-order predicate call:
 type_diff.m:088:   type error: variable `Func' has type
-type_diff.m:088:     func(
-type_diff.m:088:       int :: in,
-type_diff.m:088:       int :: in
-type_diff.m:088:     ) = (int :: out) is det,
+type_diff.m:088:     func(int :: in, int :: in) = (int :: out) is det,
 type_diff.m:088:   expected type was
 type_diff.m:088:     impure pred(V_13, V_14, V_15).
 type_diff.m:088:   Predicate vs function mismatch: expected a predicate, got a
@@ -211,10 +157,7 @@ type_diff.m:090:   in argument 1 of call to predicate
 type_diff.m:090:   `type_diff.expect_pred_2_det'/3:
 type_diff.m:090:   type error:
 type_diff.m:090:   variable `Func' has type
-type_diff.m:090:     func(
-type_diff.m:090:       int :: in,
-type_diff.m:090:       int :: in
-type_diff.m:090:     ) = (int :: out) is det,
+type_diff.m:090:     func(int :: in, int :: in) = (int :: out) is det,
 type_diff.m:090:   expected type was
 type_diff.m:090:     pred(int, int).
 type_diff.m:090:   Predicate vs function mismatch: expected a predicate, got a
@@ -226,10 +169,7 @@ type_diff.m:091:   in argument 1 of call to predicate
 type_diff.m:091:   `type_diff.expect_pred_3_semidet'/3:
 type_diff.m:091:   type error:
 type_diff.m:091:   variable `Func' has type
-type_diff.m:091:     func(
-type_diff.m:091:       int :: in,
-type_diff.m:091:       int :: in
-type_diff.m:091:     ) = (int :: out) is det,
+type_diff.m:091:     func(int :: in, int :: in) = (int :: out) is det,
 type_diff.m:091:   expected type was
 type_diff.m:091:     pred(int, int, int).
 type_diff.m:091:   Predicate vs function mismatch: expected a predicate, got a
@@ -239,10 +179,7 @@ type_diff.m:093:   in argument 1 of call to predicate
 type_diff.m:093:   `type_diff.expect_func_3'/3:
 type_diff.m:093:   type error:
 type_diff.m:093:   variable `Func' has type
-type_diff.m:093:     func(
-type_diff.m:093:       int :: in,
-type_diff.m:093:       int :: in
-type_diff.m:093:     ) = (int :: out) is det,
+type_diff.m:093:     func(int :: in, int :: in) = (int :: out) is det,
 type_diff.m:093:   expected type was
 type_diff.m:093:     func(int, int, int) = int.
 type_diff.m:093:   Arity mismatch for the function: expected four arguments,
