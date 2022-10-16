@@ -9,16 +9,16 @@
 % File: typecheck_info.m.
 % Main author: fjh.
 %
-% This module defines the typecheck_info and type_assign types, plus some
-% useful predicates that work with those types.
+% This module defines the typecheck_info type, and access predicates
+% on that type.
 %
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.typecheck_info.
 :- interface.
 
+:- import_module check_hlds.type_assign.
 :- import_module hlds.
-:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
@@ -52,42 +52,6 @@
 %
 % The purpose-specific types of the values held in the typecheck_info.
 %
-
-% XXX Values of type cons_type_info are not held in the typecheck_info,
-% though values of type cons_type_info_source are. Values of this type
-% are currently computed on demand, though they should be stored precomputed
-% for each data constructor for each type in the HLDS.
-:- type cons_type_info
-    --->    cons_type_info(
-                % Type variables.
-                cti_varset          :: tvarset,
-
-                % Existentially quantified type vars.
-                cti_exit_tvars      :: existq_tvars,
-
-                % Constructor type.
-                cti_result_type     :: mer_type,
-
-                % Types of the arguments.
-                cti_arg_types       :: list(mer_type),
-
-                % Constraints introduced by this constructor (e.g. if it is
-                % actually a function, or if it is an existentially quantified
-                % data constructor).
-                cti_constraints     :: hlds_constraints,
-
-                cti_source          :: cons_type_info_source
-            ).
-
-:- type cons_type_info_source
-    --->    source_type(type_ctor)
-    ;       source_builtin_type(string)
-    ;       source_get_field_access(type_ctor)
-    ;       source_set_field_access(type_ctor)
-    ;       source_apply(string)
-    ;       source_pred(pred_id).
-
-:- func project_cons_type_info_source(cons_type_info) = cons_type_info_source.
 
 :- type overloaded_symbol_map == map(overloaded_symbol, list(prog_context)).
 
@@ -349,10 +313,6 @@ typecheck_info_init(ModuleInfo, PredId, PredInfo, ClauseVarSet, Status,
         AmbiguityErrorLimit),
     Info = typecheck_info(SubInfo, ClauseContext, OverloadedSymbolMap,
         AmbiguityWarnLimit).
-
-%-----------------------------------------------------------------------------%
-
-project_cons_type_info_source(CTI) = CTI ^ cti_source.
 
 %-----------------------------------------------------------------------------%
 

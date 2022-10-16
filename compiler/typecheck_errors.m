@@ -139,7 +139,8 @@
                 actual_type             :: mer_type,
                 expected_type_piece     :: list(format_piece),
                 expected_type           :: mer_type,
-                existq_tvars            :: list(tvar)
+                existq_tvars            :: list(tvar),
+                expectation_source      :: maybe(args_type_assign_source)
             ).
 
 :- func report_error_var(typecheck_info, type_error_goal_context,
@@ -749,18 +750,19 @@ context_to_error_msg(Pieces, Context) = simplest_msg(Context, Pieces).
 
 describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
     (
-        Source = source_type(TypeCtor),
+        Source = source_type(TypeCtor, _ConsId),
         Pieces = [words("the type constructor"), qual_type_ctor(TypeCtor)]
     ;
         Source = source_builtin_type(TypeCtorName),
         Pieces = [words("the builtin type constructor"), quote(TypeCtorName)]
     ;
-        Source = source_get_field_access(TypeCtor),
-        Pieces = [words("a"), quote("get"), words("field access function"),
-            words("for the type constructor"), qual_type_ctor(TypeCtor)]
-    ;
-        Source = source_set_field_access(TypeCtor),
-        Pieces = [words("a"), quote("set"), quote("field access function"),
+        Source = source_field_access(GetOrSet, TypeCtor,
+            _ConsId, _FieldName),
+        ( GetOrSet = get, GetOrSetStr = "get"
+        ; GetOrSet = set, GetOrSetStr = "set"
+        ),
+        Pieces = [words("a"), quote(GetOrSetStr),
+            words("field access function"),
             words("for the type constructor"), qual_type_ctor(TypeCtor)]
     ;
         Source = source_pred(PredId),
@@ -769,6 +771,55 @@ describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
     ;
         Source = source_apply(ApplyOp),
         Pieces = [words("the builtin operator constructor"), quote(ApplyOp)]
+    ).
+
+:- func describe_args_type_assign_source(module_info, args_type_assign_source)
+    = list(format_piece).
+
+describe_args_type_assign_source(ModuleInfo, Source) = Pieces :-
+    (
+        Source = atas_pred(PredId),
+        Pieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
+            PredId)
+    ;
+        Source = atas_cons(ConsSource),
+        (
+            ConsSource = source_type(TypeCtor, ConsId),
+            Pieces = [words("the functor"),
+                unqual_cons_id_and_maybe_arity(ConsId),
+                words("of the type constructor"), qual_type_ctor(TypeCtor)]
+        ;
+            ConsSource = source_builtin_type(TypeCtorName),
+            Pieces = [words("the builtin type constructor"),
+                quote(TypeCtorName)]
+        ;
+            ConsSource = source_field_access(GetOrSet, TypeCtor, ConsId,
+                FieldName),
+            ( GetOrSet = get, GetOrSetStr = "get"
+            ; GetOrSet = set, GetOrSetStr = "set"
+            ),
+            Pieces = [words("the"), quote(GetOrSetStr),
+                words("access function for the"), fixed(FieldName),
+                words("field of the"), unqual_cons_id_and_maybe_arity(ConsId),
+                words("function symbol of the type constructor"),
+                qual_type_ctor(TypeCtor)]
+        ;
+            ConsSource = source_pred(PredId),
+            Pieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
+                PredId)
+        ;
+            ConsSource = source_apply(ApplyOp),
+            Pieces = [words("the builtin operator constructor"),
+                quote(ApplyOp)]
+        )
+    ;
+        Source = atas_higher_order_call(_PredVar),
+        % We can't print _PredVar without a varset.
+        Pieces = []
+    ;
+        Source = atas_ensure_have_a_type,
+        % These should not occur in errors at all.
+        Pieces = []
     ).
 
 %---------------------------------------------------------------------------%
@@ -920,7 +971,7 @@ report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
     % If we have consistent information about the argument types,
     % we prefer to print an error message that mentions only the arguments
     % that may be in error.
-    ConsArgTypesSet = list.map(get_callee_arg_types, ArgsTypeAssignSet),
+    ConsArgTypesSet = list.map(get_expected_arg_types, ArgsTypeAssignSet),
 
     ( if
         list.all_same(ConsArgTypesSet),
@@ -1378,7 +1429,7 @@ report_error_var(Info, GoalContext, Context, Var, Type, TypeAssignSet)
     ( if ActualExpectedList = [ActualExpected] then
         MaybeActualExpected = yes(ActualExpected),
         ActualExpected = actual_expected_types(ActualPieces, ActualType,
-            ExpectedPieces, ExpectedType, ExistQTVars),
+            ExpectedPieces, ExpectedType, ExistQTVars, _Source),
         ActualExpectedPieces = argument_name_to_pieces(VarSet, Var) ++
             [words("has type"), nl_indent_delta(1)] ++
             ActualPieces ++ [suffix(","), nl_indent_delta(-1),
@@ -1388,13 +1439,15 @@ report_error_var(Info, GoalContext, Context, Var, Type, TypeAssignSet)
             ActualType, ExpectedType)
     else
         MaybeActualExpected = no,
+        ModuleInfo = ClauseContext ^ tecc_module_info,
         ActualExpectedPieces = [words("type of")] ++
             argument_name_to_pieces(VarSet, Var) ++
             [words("does not match its expected type;"), nl] ++
             argument_name_to_pieces(VarSet, Var) ++
             [words("has overloaded actual/expected types {")] ++
             [nl_indent_delta(1)] ++
-            actual_expected_types_list_to_pieces(ActualExpectedList) ++
+            actual_expected_types_list_to_pieces(ModuleInfo,
+                ActualExpectedList) ++
             [nl_indent_delta(-1), fixed("}."), nl],
         DiffPieces = []
     ),
@@ -1464,7 +1517,7 @@ arg_vector_type_errors_to_pieces(VarSet, AllErrors, HeadError, TailErrors,
     ),
     HeadError = arg_vector_type_error(ArgNum, Var, ActualExpected),
     ActualExpected = actual_expected_types(ActualPieces, _ActualType,
-        ExpectedPieces, _ExpectedType, _ExistQTVars),
+        ExpectedPieces, _ExpectedType, _ExistQTVars, _Source),
     find_possible_switched_positions(VarSet, ActualPieces, AllErrors,
         MismatchPieces),
     (
@@ -1513,7 +1566,7 @@ find_expecteds_matching_actual(VarSet, SearchActualPieces,
         TailMismatchPieces),
     HeadError = arg_vector_type_error(ArgNum, Var, ActualExpected),
     ActualExpected = actual_expected_types(_ActualPieces, _ActualType,
-        ExpectedPieces, _ExpectedType, _ExistQTVars),
+        ExpectedPieces, _ExpectedType, _ExistQTVars, _Source),
     ( if SearchActualPieces = ExpectedPieces then
         ( if varset.search_name(VarSet, Var, _) then
             HeadMismatchPieces = [words("argument"), int_fixed(ArgNum),
@@ -1565,22 +1618,26 @@ report_error_var_either_type(Info, ClauseContext, GoalContext, Context,
         ActualExpectedListB = [ActualExpectedB]
     then
         ActualExpectedA = actual_expected_types(ActualPieces, _,
-            ExpectedPiecesA, _, _),
-        ActualExpectedB = actual_expected_types(_, _, ExpectedPiecesB, _, _),
+            ExpectedPiecesA, _, _, _),
+        ActualExpectedB = actual_expected_types(_, _,
+            ExpectedPiecesB, _, _, _),
         ActualExpectedPieces = argument_name_to_pieces(VarSet, Var) ++
             [words("has type")] ++ ActualPieces ++ [suffix(","), nl,
             words("expected type was either")] ++ ExpectedPiecesA ++
             [words("or")] ++ ExpectedPiecesB ++ [suffix("."), nl]
     else
+        ModuleInfo = ClauseContext ^ tecc_module_info,
         ActualExpectedPieces = [words("type of")] ++
             argument_name_to_pieces(VarSet, Var) ++
             [words("does not match its expected type;"), nl] ++
             argument_name_to_pieces(VarSet, Var) ++
             [words("has overloaded actual/expected types {")] ++
             [nl_indent_delta(1)] ++
-            actual_expected_types_list_to_pieces(ActualExpectedListA) ++
+            actual_expected_types_list_to_pieces(ModuleInfo,
+                ActualExpectedListA) ++
             [nl_indent_delta(-1), fixed("} or {"), nl_indent_delta(1)] ++
-            actual_expected_types_list_to_pieces(ActualExpectedListB) ++
+            actual_expected_types_list_to_pieces(ModuleInfo,
+                ActualExpectedListB) ++
             [nl_indent_delta(-1), fixed("}."), nl]
     ),
 
@@ -1599,7 +1656,7 @@ report_error_arg_var(Info, ClauseContext, GoalContext, Context, Var,
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
 
     get_inst_varset(ClauseContext, InstVarSet),
-    get_arg_type_stuff(ArgTypeAssignSet, Var, ArgTypeStuffList),
+    get_arg_type_stuffs(Var, ArgTypeAssignSet, ArgTypeStuffList),
     ActualExpectedList0 = list.map(
         arg_type_stuff_to_actual_expected(do_not_add_quotes, InstVarSet),
         ArgTypeStuffList),
@@ -1609,7 +1666,7 @@ report_error_arg_var(Info, ClauseContext, GoalContext, Context, Var,
     VarSet = ClauseContext ^ tecc_varset,
     ( if ActualExpectedList = [ActualExpected] then
         ActualExpected = actual_expected_types(ActualPieces, ActualType,
-            ExpectedPieces, ExpectedType, ExistQTVars),
+            ExpectedPieces, ExpectedType, ExistQTVars, _MaybeSource),
         ActualExpectedPieces = argument_name_to_pieces(VarSet, Var) ++
             [words("has type"), nl_indent_delta(1)] ++
             ActualPieces ++ [suffix(","), nl_indent_delta(-1),
@@ -1618,19 +1675,55 @@ report_error_arg_var(Info, ClauseContext, GoalContext, Context, Var,
         DiffPieces = type_diff_pieces([], ExistQTVars,
             ActualType, ExpectedType)
     else
-        ActualExpectedPieces = [words("type of")] ++
-            argument_name_to_pieces(VarSet, Var) ++
-            [words("does not match its expected type;"), nl] ++
-            argument_name_to_pieces(VarSet, Var) ++
-            [words("has overloaded actual/expected types {")] ++
-            [nl_indent_delta(1)] ++
-            actual_expected_types_list_to_pieces(ActualExpectedList) ++
-            [nl_indent_delta(-1), fixed("}."), nl],
+        ActualTypePieceLists = list.map((func(AE) = AE ^ actual_type_pieces),
+            ActualExpectedList),
+        ModuleInfo = ClauseContext ^ tecc_module_info,
+        ( if
+            all_same(ActualTypePieceLists),
+            ActualTypePieceLists = [ActualTypePieces | _]
+        then
+            % If some elements of ActualExpectedList have substantive sources
+            % and some don't, then don't print any of the sources, since
+            % doing so would be confusing.
+            ( if
+                HasSource =
+                    ( pred(AE::in) is semidet :-
+                        MaybeSource = AE ^ expectation_source,
+                        MaybeSource = yes(Source),
+                        Source \= atas_ensure_have_a_type
+                    ),
+                list.all_true(HasSource, ActualExpectedList)
+            then
+                MaybePrintSource = print_expectation_source
+            else
+                MaybePrintSource = print_expected
+            ),
+            acc_expected_type_source_pieces(ModuleInfo, MaybePrintSource,
+                ActualExpectedList, _, AllExpectedPieces),
+            ActualExpectedPieces = [words("type of")] ++
+                argument_name_to_pieces(VarSet, Var) ++
+                [words("does not match its expected type;"), nl,
+                words("its inferred type is"), nl_indent_delta(1)] ++
+                ActualTypePieces ++ [suffix(","), nl_indent_delta(-1)] ++
+                AllExpectedPieces
+                % ZZZ
+                % words("its expected types are {"), nl_indent_delta(1)] ++
+                % AllExpectedPieces ++ [nl_indent_delta(-1), fixed("}."), nl]
+        else
+            ActualExpectedPieces = [words("type of")] ++
+                argument_name_to_pieces(VarSet, Var) ++
+                [words("does not match its expected type;"), nl] ++
+                argument_name_to_pieces(VarSet, Var) ++
+                [words("has overloaded actual/expected types {")] ++
+                [nl_indent_delta(1)] ++
+                actual_expected_types_list_to_pieces(ModuleInfo,
+                    ActualExpectedList) ++
+                [nl_indent_delta(-1), fixed("}."), nl]
+        ),
         % Printing the diffs derives from *all* the elements of
         % ActualExpectedList would be more confusing than helpful.
         DiffPieces = []
     ),
-
     arg_type_assign_set_msg_to_verbose_component(Info, VarSet,
         ArgTypeAssignSet, VerboseComponent),
     Msg = simple_msg(Context,
@@ -2305,10 +2398,10 @@ cons_type_list_to_pieces(InstVarSet, [ConsDefn | ConsDefns], Functor, Arity)
     % pieces of information, it is intended to be used only with
     % --verbose-errors.
     %
-:- func type_assign_set_msg_to_pieces(prog_varset, type_assign_set)
-    = list(format_piece).
+:- func type_assign_set_msg_to_pieces(module_info, prog_varset,
+    type_assign_set) = list(format_piece).
 
-type_assign_set_msg_to_pieces(VarSet, TypeAssignSet) = Pieces :-
+type_assign_set_msg_to_pieces(ModuleInfo, VarSet, TypeAssignSet) = Pieces :-
     ( if TypeAssignSet = [_] then
         FirstWords = "The partial type assignment was:",
         MaybeSeq = no
@@ -2317,8 +2410,8 @@ type_assign_set_msg_to_pieces(VarSet, TypeAssignSet) = Pieces :-
         MaybeSeq = yes(1)
     ),
     list.sort(TypeAssignSet, SortedTypeAssignSet),
-    LaterPieces = type_assign_set_to_pieces(VarSet, SortedTypeAssignSet,
-        MaybeSeq),
+    LaterPieces = type_assign_set_to_pieces(ModuleInfo, VarSet,
+        SortedTypeAssignSet, MaybeSeq),
     Pieces = [words(FirstWords), nl_indent_delta(1) | LaterPieces] ++
         [nl_indent_delta(-1)].
 
@@ -2329,10 +2422,11 @@ type_assign_set_msg_to_pieces(VarSet, TypeAssignSet) = Pieces :-
     % pieces of information, it is intended to be used only with
     % --verbose-errors.
     %
-:- func args_type_assign_set_msg_to_pieces(prog_varset,
+:- func args_type_assign_set_msg_to_pieces(module_info, prog_varset,
     args_type_assign_set) = list(format_piece).
 
-args_type_assign_set_msg_to_pieces(VarSet, ArgTypeAssignSet) = Pieces :-
+args_type_assign_set_msg_to_pieces(ModuleInfo, VarSet, ArgTypeAssignSet)
+        = Pieces :-
     ( if ArgTypeAssignSet = [_] then
         FirstWords = "The partial type assignment was:",
         MaybeSeq = no
@@ -2341,7 +2435,7 @@ args_type_assign_set_msg_to_pieces(VarSet, ArgTypeAssignSet) = Pieces :-
         MaybeSeq = yes(1)
     ),
     list.sort(ArgTypeAssignSet, SortedArgTypeAssignSet),
-    LaterPieces = args_type_assign_set_to_pieces(VarSet,
+    LaterPieces = args_type_assign_set_to_pieces(ModuleInfo, VarSet,
         SortedArgTypeAssignSet, MaybeSeq),
     Pieces = [words(FirstWords), nl_indent_delta(1) | LaterPieces] ++
         [nl_indent_delta(-1)].
@@ -2364,10 +2458,10 @@ type_stuff_to_actual_expected(AddQuotes, InstVarSet, ExpectedType,
         ExpectedPieces = bound_type_to_pieces(print_name_and_num, AddQuotes,
             TVarSet, InstVarSet, TypeBinding, ExistQTVars, ExpectedType),
         ActualExpected = actual_expected_types(ActualPieces, VarType,
-            ExpectedPieces, ExpectedType, ExistQTVars)
+            ExpectedPieces, ExpectedType, ExistQTVars, no)
     else
         ActualExpected = actual_expected_types(ActualPieces0, VarType,
-            ExpectedPieces0, ExpectedType, ExistQTVars)
+            ExpectedPieces0, ExpectedType, ExistQTVars, no)
     ).
 
 :- func arg_type_stuff_to_actual_expected(maybe_add_quotes, inst_varset,
@@ -2375,7 +2469,8 @@ type_stuff_to_actual_expected(AddQuotes, InstVarSet, ExpectedType,
 
 arg_type_stuff_to_actual_expected(AddQuotes, InstVarSet, ArgTypeStuff)
         = ActualExpected :-
-    ArgTypeStuff = arg_type_stuff(ExpectedType, VarType, TVarSet, ExistQTVars),
+    ArgTypeStuff = arg_type_stuff(VarType, Source, ExpectedType,
+        TVarSet, ExistQTVars),
     strip_builtin_qualifiers_from_type(VarType, StrippedVarType),
     strip_builtin_qualifiers_from_type(ExpectedType, StrippedExpectedType),
     ActualPieces0 = type_to_pieces(TVarSet, InstVarSet, print_name_only,
@@ -2388,40 +2483,128 @@ arg_type_stuff_to_actual_expected(AddQuotes, InstVarSet, ArgTypeStuff)
         ExpectedPieces = type_to_pieces(TVarSet, InstVarSet,
             print_name_and_num, AddQuotes, ExistQTVars, ExpectedType),
         ActualExpected = actual_expected_types(ActualPieces, VarType,
-            ExpectedPieces, ExpectedType, ExistQTVars)
+            ExpectedPieces, ExpectedType, ExistQTVars, yes(Source))
     else
         ActualExpected = actual_expected_types(ActualPieces0, VarType,
-            ExpectedPieces0, ExpectedType, ExistQTVars)
+            ExpectedPieces0, ExpectedType, ExistQTVars, yes(Source))
     ).
 
-:- func actual_expected_types_list_to_pieces(list(actual_expected_types))
-    = list(format_piece).
+:- func actual_expected_types_list_to_pieces(module_info,
+    list(actual_expected_types)) = list(format_piece).
 
-actual_expected_types_list_to_pieces(ActualExpectedList) = Pieces :-
-    ExpectedPieces = list.foldl(expected_types_to_pieces, ActualExpectedList,
-        []),
+actual_expected_types_list_to_pieces(ModuleInfo, ActualExpectedList)
+        = Pieces :-
+    % XXX Printing all the actual types and then all the expected types
+    % seems to me (zs) to be a bad idea. If different elements of
+    % ActualExpectedList cause the printing of different actual types,
+    % then it would seem to make sense to put each of those actual types
+    % next to the expected type from the *same* element.
+    %
+    % Without this, printing the source of the expectation for each
+    % expected type would be meaningless.
+    %
+    % XXX The part of the message before the pieces we return here
+    % talk about inferred/expected types *in that order*, so printing
+    % the expected types before the inferred ones here seems strange.
+    list.foldl(acc_expected_type_pieces(ModuleInfo, print_expected),
+        ActualExpectedList, [], ExpectedPieces),
     ActualPieces = list.map(actual_types_to_pieces, ActualExpectedList),
     Pieces =
         component_list_to_line_pieces(ExpectedPieces ++ ActualPieces, [nl]).
 
-:- func expected_types_to_pieces(actual_expected_types,
-    list(list(format_piece))) = list(list(format_piece)).
+:- type maybe_print_expectation_source
+    --->    print_expected
+    ;       print_expectation_source.
 
-expected_types_to_pieces(ActualExpected, Pieces0) = Pieces :-
+:- pred acc_expected_type_pieces(module_info::in,
+    maybe_print_expectation_source::in, actual_expected_types::in,
+    list(list(format_piece))::in, list(list(format_piece))::out) is det.
+
+acc_expected_type_pieces(ModuleInfo, MaybePrintSource, ActualExpected,
+        !TaggedPieceLists) :-
     ActualExpected = actual_expected_types(_ActualPieces, _ActualType,
-        ExpectedPieces, _ExpectedType, _ExistQTVars),
-    TaggedPieces = [words("(expected)") | ExpectedPieces],
-    ( if list.member(TaggedPieces, Pieces0) then
-        Pieces = Pieces0
+        ExpectedPieces, _ExpectedType, _ExistQTVars, MaybeSource),
+    ( if
+        MaybePrintSource = print_expectation_source,
+        MaybeSource = yes(Source)
+    then
+        SourcePieces = describe_args_type_assign_source(ModuleInfo, Source),
+        % We add a newline after the "(expected by ...):" text for two reasons:
+        %
+        % - because SourcePieces is likely to take up a large chunk
+        %   of the line anyway, and
+        % - because this (or something very similar) is needed to ensure
+        %   that the different expected type pieces line up exactly with
+        %   (a) the inferred type pieces, and (b) each other.
+        TaggedPieces = [words("the type expected by") | SourcePieces] ++
+            [words("is:"), nl | ExpectedPieces]
     else
-        Pieces = Pieces0 ++ [TaggedPieces]
+        TaggedPieces = [words("(expected)") | ExpectedPieces]
+    ),
+    ( if list.member(TaggedPieces, !.TaggedPieceLists) then
+        true
+    else
+        !:TaggedPieceLists = !.TaggedPieceLists ++ [TaggedPieces]
+    ).
+
+:- pred acc_expected_type_source_pieces(module_info::in,
+    maybe_print_expectation_source::in, list(actual_expected_types)::in,
+    set(pair(list(format_piece)))::out, list(format_piece)::out) is det.
+
+acc_expected_type_source_pieces(_, _, [], set.init, []).
+acc_expected_type_source_pieces(ModuleInfo, MaybePrintSource,
+        [ActualExpected | ActualExpecteds],
+        SourceExpectedPairs, AllTaggedPieces) :-
+    acc_expected_type_source_pieces(ModuleInfo, MaybePrintSource,
+        ActualExpecteds, TailSourceExpectedPairs, TailTaggedPieces),
+    ActualExpected = actual_expected_types(_ActualPieces, _ActualType,
+        ExpectedPieces, _ExpectedType, _ExistQTVars, MaybeSource),
+    (
+        TailTaggedPieces = [],
+        CommaOrPeriod = "."
+    ;
+        TailTaggedPieces = [_ | _],
+        CommaOrPeriod = ","
+    ),
+    ( if
+        MaybePrintSource = print_expectation_source,
+        MaybeSource = yes(Source)
+    then
+        SourcePieces = describe_args_type_assign_source(ModuleInfo, Source),
+        % We add a newline after the "(expected by ...):" text for two reasons:
+        %
+        % - because SourcePieces is likely to take up a large chunk
+        %   of the line anyway, and
+        % - because this (or something very similar) is needed to ensure
+        %   that the different expected type pieces line up exactly with
+        %   (a) the inferred type pieces, and (b) each other.
+        TaggedPieces = [words("the type expected by") | SourcePieces] ++
+            [words("is:"), nl_indent_delta(1) | ExpectedPieces] ++
+            [suffix(CommaOrPeriod), nl_indent_delta(-1)]
+    else
+        SourcePieces = [],
+        TaggedPieces = [words("one expected type is:"),
+            nl_indent_delta(1) | ExpectedPieces] ++
+            [suffix(CommaOrPeriod), nl_indent_delta(-1)]
+    ),
+    % We can't test whether we have printed a SourcePieces/ExpectedPieces
+    % pair by testing TailTaggedPieceLists due to the possibility of false
+    % negatives due to a comma vs period mismatch, so we test it directly.
+    SourceExpectedPair = SourcePieces - ExpectedPieces,
+    ( if set.member(SourceExpectedPair, TailSourceExpectedPairs) then
+        SourceExpectedPairs = TailSourceExpectedPairs,
+        AllTaggedPieces = TailTaggedPieces
+    else
+        set.insert(SourceExpectedPair,
+            TailSourceExpectedPairs, SourceExpectedPairs),
+        AllTaggedPieces = TaggedPieces ++ TailTaggedPieces
     ).
 
 :- func actual_types_to_pieces(actual_expected_types) = list(format_piece).
 
 actual_types_to_pieces(ActualExpected) = Pieces :-
     ActualExpected = actual_expected_types(ActualPieces, _ActualType,
-        _ExpectedPieces, _ExpectedType, _ExistQTVars),
+        _ExpectedPieces, _ExpectedType, _ExistQTVars, _Source),
     Pieces = [words("(inferred)") | ActualPieces].
 
 :- func bound_type_to_pieces(var_name_print, maybe_add_quotes,
@@ -2436,37 +2619,53 @@ bound_type_to_pieces(VarNamePrint, AddQuotes, TVarSet, InstVarSet,
 
 %---------------------------------------------------------------------------%
 
-:- func type_assign_set_to_pieces(prog_varset, type_assign_set,
+:- func type_assign_set_to_pieces(module_info, prog_varset, type_assign_set,
     maybe(int)) = list(format_piece).
 
-type_assign_set_to_pieces(_, [], _) = [].
-type_assign_set_to_pieces(VarSet, [TypeAssign | TypeAssigns], MaybeSeq) =
-    type_assign_to_pieces(VarSet, TypeAssign, MaybeSeq) ++
-    type_assign_set_to_pieces(VarSet, TypeAssigns,
+type_assign_set_to_pieces(_, _, [], _) = [].
+type_assign_set_to_pieces(ModuleInfo, VarSet, [TypeAssign | TypeAssigns],
+        MaybeSeq) =
+    type_assign_to_pieces(ModuleInfo, VarSet, TypeAssign, no, MaybeSeq) ++
+    type_assign_set_to_pieces(ModuleInfo, VarSet, TypeAssigns,
         inc_maybe_seq(MaybeSeq)).
 
-:- func args_type_assign_set_to_pieces(prog_varset, args_type_assign_set,
-    maybe(int)) = list(format_piece).
+:- func args_type_assign_set_to_pieces(module_info, prog_varset,
+    args_type_assign_set, maybe(int)) = list(format_piece).
 
-args_type_assign_set_to_pieces(_, [], _) = [].
-args_type_assign_set_to_pieces(VarSet, [ArgTypeAssign | ArgTypeAssigns],
-        MaybeSeq) = Pieces :-
+args_type_assign_set_to_pieces(_, _, [], _) = [].
+args_type_assign_set_to_pieces(ModuleInfo, VarSet,
+        [ArgTypeAssign | ArgTypeAssigns], MaybeSeq) = Pieces :-
     % XXX Why does this simply pick the TypeAssign part of the ArgTypeAssign,
     % instead of invoking convert_args_type_assign?
-    ArgTypeAssign = args_type_assign(TypeAssign, _ArgTypes, _Cnstrs),
-    Pieces = type_assign_to_pieces(VarSet, TypeAssign, MaybeSeq) ++
-        args_type_assign_set_to_pieces(VarSet, ArgTypeAssigns,
+    ArgTypeAssign = args_type_assign(TypeAssign, _ArgTypes, _Constraints,
+        Source),
+    Pieces =
+        type_assign_to_pieces(ModuleInfo, VarSet, TypeAssign, yes(Source),
+            MaybeSeq) ++
+        args_type_assign_set_to_pieces(ModuleInfo, VarSet, ArgTypeAssigns,
             inc_maybe_seq(MaybeSeq)).
 
 %---------------------%
 
-:- func type_assign_to_pieces(prog_varset, type_assign, maybe(int))
-    = list(format_piece).
+:- func type_assign_to_pieces(module_info, prog_varset, type_assign,
+    maybe(args_type_assign_source), maybe(int)) = list(format_piece).
 
-type_assign_to_pieces(VarSet, TypeAssign, MaybeSeq) = Pieces :-
+type_assign_to_pieces(ModuleInfo, VarSet, TypeAssign, MaybeSource, MaybeSeq)
+        = Pieces :-
     (
         MaybeSeq = yes(N),
-        SeqPieces0 = [words("Type assignment"), int_fixed(N), suffix(":"), nl],
+        ( if
+            MaybeSource = yes(Source),
+            SourcePieces0 =
+                describe_args_type_assign_source(ModuleInfo, Source),
+            SourcePieces0 = [_ | _]
+        then
+            SourcePieces = [suffix(","), words("derived from") | SourcePieces0]
+        else
+            SourcePieces = []
+        ),
+        SeqPieces0 = [words("Type assignment"), int_fixed(N)] ++
+            SourcePieces ++ [suffix(":"), nl],
         ( if N > 1 then
             SeqPieces = [blank_line | SeqPieces0]
         else
@@ -3047,25 +3246,30 @@ typestuff_to_pieces(AddQuotes, InstVarSet, TypeStuff) = Pieces :-
 
 :- type arg_type_stuff
     --->    arg_type_stuff(
-                arg_type_stuff_arg_type             :: mer_type,
                 arg_type_stuff_var_type             :: mer_type,
+                arg_type_stuff_source               :: args_type_assign_source,
+                arg_type_stuff_arg_type             :: mer_type,
                 arg_type_stuff_tvarset              :: tvarset,
                 arg_type_stuff_existq_tvars         :: list(tvar)
             ).
 
-    % Given an arg type assignment set and a variable id, return the list of
-    % possible different types for the argument and the variable.
+    % Given a variable and an arg type assignment set, return the list of
+    % the possible different types for the variable and the argument.
     %
-:- pred get_arg_type_stuff(args_type_assign_set::in, prog_var::in,
+:- pred get_arg_type_stuffs(prog_var::in, args_type_assign_set::in,
     list(arg_type_stuff)::out) is det.
 
-get_arg_type_stuff([], _Var, []).
-get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
-    ArgTypeAssign = args_type_assign(TypeAssign, ArgTypes, _),
-    get_arg_type_stuff(ArgTypeAssigns, Var, TailArgTypeStuffs),
-    type_assign_get_existq_tvars(TypeAssign, ExistQTVars),
-    type_assign_get_type_bindings(TypeAssign, TypeBindings),
-    type_assign_get_typevarset(TypeAssign, TVarSet),
+get_arg_type_stuffs(_Var, [], []).
+get_arg_type_stuffs(Var, [ArgTypeAssign | ArgTypeAssigns], ArgTypeStuffs) :-
+    get_arg_type_stuffs(Var, ArgTypeAssigns, TailArgTypeStuffs),
+    get_arg_type_stuff(Var, ArgTypeAssign, TailArgTypeStuffs, ArgTypeStuffs).
+
+:- pred get_arg_type_stuff(prog_var::in, args_type_assign::in,
+    list(arg_type_stuff)::in, list(arg_type_stuff)::out) is det.
+:- pragma inline(pred(get_arg_type_stuff/4)).
+
+get_arg_type_stuff(Var, ArgTypeAssign, TailArgTypeStuffs, ArgTypeStuffs) :-
+    ArgTypeAssign = args_type_assign(TypeAssign, ArgTypes, _, Source),
     type_assign_get_var_types(TypeAssign, VarTypes),
     ( if search_var_type(VarTypes, Var, VarType0) then
         VarType = VarType0
@@ -3075,10 +3279,15 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
         % the correct type?
         VarType = defined_type(unqualified("<any>"), [], kind_star)
     ),
+    % XXX document me
     list.det_index0(ArgTypes, 0, ArgType),
-    apply_rec_subst_to_type(TypeBindings, ArgType, ArgType2),
-    apply_rec_subst_to_type(TypeBindings, VarType, VarType2),
-    ArgTypeStuff = arg_type_stuff(ArgType2, VarType2, TVarSet, ExistQTVars),
+    type_assign_get_type_bindings(TypeAssign, TypeBindings),
+    apply_rec_subst_to_type(TypeBindings, VarType, RecSubstVarType),
+    apply_rec_subst_to_type(TypeBindings, ArgType, RecSubstArgType),
+    type_assign_get_typevarset(TypeAssign, TVarSet),
+    type_assign_get_existq_tvars(TypeAssign, ExistQTVars),
+    ArgTypeStuff = arg_type_stuff(RecSubstVarType, Source, RecSubstArgType,
+        TVarSet, ExistQTVars),
     ( if list.member(ArgTypeStuff, TailArgTypeStuffs) then
         ArgTypeStuffs = TailArgTypeStuffs
     else
@@ -3136,7 +3345,9 @@ type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerbosePieces = []
     ;
         VerboseErrors = yes,
-        VerbosePieces = type_assign_set_msg_to_pieces(VarSet, TypeAssignSet)
+        typecheck_info_get_module_info(Info, ModuleInfo),
+        VerbosePieces = type_assign_set_msg_to_pieces(ModuleInfo, VarSet,
+            TypeAssignSet)
     ),
     VerboseComponent = verbose_only(verbose_always, VerbosePieces).
 
@@ -3152,8 +3363,9 @@ arg_type_assign_set_msg_to_verbose_component(Info, VarSet,
         VerbosePieces = []
     ;
         VerboseErrors = yes,
-        VerbosePieces =
-            args_type_assign_set_msg_to_pieces(VarSet,  ArgTypeAssignSet)
+        typecheck_info_get_module_info(Info, ModuleInfo),
+        VerbosePieces = args_type_assign_set_msg_to_pieces(ModuleInfo, VarSet,
+            ArgTypeAssignSet)
     ),
     VerboseComponent = verbose_only(verbose_always, VerbosePieces).
 

@@ -52,6 +52,7 @@ MULTIMODULE_PROGS = \
 SINGLEMODULE_PROGS = \
 	abstract_solver_type \
 	actual_expected \
+	actual_more_expected \
 	ambiguous_method \
 	ambiguous_method_2 \
 	ambiguous_overloading_error \

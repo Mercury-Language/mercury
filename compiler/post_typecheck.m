@@ -429,8 +429,8 @@ describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
 
 %---------------------------------------------------------------------------%
 
-    % Check that the all of the types which have been inferred for the
-    % variables in the predicate do not contain any unbound type variables
+    % Check that all of the types which have been inferred for the
+    % variables in the predicate are free of unbound type variables
     % other than those that occur in the types of head variables, and that
     % there are no unsatisfied type class constraints.
     %
