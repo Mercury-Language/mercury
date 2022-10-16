@@ -8602,7 +8602,7 @@ There is no interleaving of different individual conjuncts or function calls:
 the sub-goals are reordered, not split and interleaved.
 Function application is strict, not lazy.
 Predicate calls are strict in the sense that
-goals will be executed irrespective of any mode-determinism asserions,
+goals will be executed irrespective of any mode-determinism assertions,
 even if they loop,
 are @samp{erroneous},
 or are @samp{det} and contain no outputs.
