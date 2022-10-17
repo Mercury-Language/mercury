@@ -53,7 +53,7 @@
     %   global variables that contain the mutable,
     %
     % - recording any foreign_decl_codes that contain declarations of those
-    %   global variables, if needed by the target language,
+    %   global variables, if needed by the target language.
     %
     % Also, record the initialization predicates to the target language,
     % to let our ancestors arrange for them to be called before main/2.
