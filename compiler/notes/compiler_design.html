@@ -934,7 +934,9 @@ The type checker consists of several modules.
     type_assign.m and typecheck_info.m define
     the main data structures used by typechecking.
     <li>
-    typecheck_errors.m generates error messages for type errors.
+    typecheck_error_overload.m, typecheck_error_undef.m and typecheck_errors.m
+    generate error messages for type errors,
+    with support from typecheck_error_type_assign.m and typecheck_error_util.m.
     <li>
     typecheck_msgs.m generates other kinds of messages from the type checker,
     such as those containing inferred type declarations,

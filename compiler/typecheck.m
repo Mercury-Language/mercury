@@ -107,6 +107,9 @@
 :- import_module check_hlds.type_assign.
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.typecheck_debug.
+:- import_module check_hlds.typecheck_error_overload.
+:- import_module check_hlds.typecheck_error_undef.
+:- import_module check_hlds.typecheck_error_util.
 :- import_module check_hlds.typecheck_errors.
 :- import_module check_hlds.typecheck_info.
 :- import_module check_hlds.typecheck_msgs.
@@ -1679,12 +1682,12 @@ typecheck_event_call(Context, EventName, ArgVars, !TypeAssignSet, !Info) :-
             typecheck_vars_have_types(ArgVectorKind, Context,
                 ArgVars, EventArgTypes, !TypeAssignSet, !Info)
         else
-            Spec = report_event_args_mismatch(Context,
+            Spec = report_error_undef_event_arity(Context,
                 EventName, EventArgTypes, ArgVars),
             typecheck_info_add_error(Spec, !Info)
         )
     else
-        Spec = report_unknown_event_call_error(Context, EventName),
+        Spec = report_error_undef_event(Context, EventName),
         typecheck_info_add_error(Spec, !Info)
     ).
 
@@ -1709,7 +1712,7 @@ typecheck_call_pred_name(SymName, Context, GoalId, ArgVars, PredId,
         PredIds = [],
         PredId = invalid_pred_id,
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_pred_call_error(ClauseContext, Context,
+        Spec = report_error_undef_pred(ClauseContext, Context,
             SymNamePredFormArity),
         typecheck_info_add_error(Spec, !Info)
     ;
@@ -1939,8 +1942,8 @@ typecheck_var_has_arg_type(GoalContext, Context, Var,
         delete_first_arg_in_each_arg_type_assign(ArgsTypeAssignSet0,
             ArgsTypeAssignSet),
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_error_arg_var(!.Info, ClauseContext, GoalContext,
-            Context, Var, ArgsTypeAssignSet0),
+        Spec = report_error_var_has_wrong_type_arg(!.Info, ClauseContext,
+            GoalContext, Context, Var, ArgsTypeAssignSet0),
         typecheck_info_add_error(Spec, !Info)
     else
         ArgsTypeAssignSet = ArgsTypeAssignSet1
@@ -2027,8 +2030,9 @@ typecheck_vars_have_types(ArgVectorKind, Context, Vars, Types,
         ArgVectorTypeErrors = [_, _ | _]
     then
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        AllArgsSpec = report_arg_vector_type_errors(!.Info, ClauseContext,
-            Context, ArgVectorKind, !.TypeAssignSet, ArgVectorTypeErrors),
+        AllArgsSpec = report_error_wrong_types_in_arg_vector(!.Info,
+            ClauseContext, Context, ArgVectorKind, !.TypeAssignSet,
+            ArgVectorTypeErrors),
         typecheck_info_add_error(AllArgsSpec, !Info)
     else
         list.foldl(typecheck_info_add_error, Specs, !Info)
@@ -2077,7 +2081,7 @@ typecheck_var_has_type_in_arg_vector(Info, Context, ArgVectorKind, ArgNum,
         TypeAssignSet = TypeAssignSet0,
         GoalContext =
             type_error_in_var_vector(var_vector_args(ArgVectorKind), ArgNum),
-        SpecAndMaybeActualExpected = report_error_var(Info,
+        SpecAndMaybeActualExpected = report_error_var_has_wrong_type(Info,
             GoalContext, Context, Var, Type, TypeAssignSet0),
         SpecAndMaybeActualExpected =
             spec_and_maybe_actual_expected(Spec, MaybeActualExpected),
@@ -2123,7 +2127,7 @@ typecheck_var_has_type(GoalContext, Context, Var, Type,
         TypeAssignSet0 = [_ | _]
     then
         TypeAssignSet = TypeAssignSet0,
-        SpecAndMaybeActualExpected = report_error_var(!.Info,
+        SpecAndMaybeActualExpected = report_error_var_has_wrong_type(!.Info,
             GoalContext, Context, Var, Type, TypeAssignSet0),
         SpecAndMaybeActualExpected = spec_and_maybe_actual_expected(Spec, _),
         typecheck_info_add_error(Spec, !Info)
@@ -2272,7 +2276,7 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, ArgVars,
                 empty_hlds_constraints(EmptyConstraints),
                 ConsTypeInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
                     EmptyConstraints, source_builtin_type(BuiltinTypeName)),
-                ConsIdSpec = report_error_functor_type(!.Info,
+                ConsIdSpec = report_error_unify_var_functor_result(!.Info,
                     UnifyContext, Context, Var, [ConsTypeInfo],
                     ConsId, 0, TypeAssignSet0),
                 typecheck_info_add_error(ConsIdSpec, !Info)
@@ -2325,7 +2329,7 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, ArgVars,
                 ArgsTypeAssignSet = [],
                 ConsTypeAssignSet = [_ | _]
             then
-                ConsIdSpec = report_error_functor_type(!.Info,
+                ConsIdSpec = report_error_unify_var_functor_result(!.Info,
                     UnifyContext, Context, Var, ConsTypeInfos, ConsId, Arity,
                     TypeAssignSet0),
                 typecheck_info_add_error(ConsIdSpec, !Info)
@@ -2351,7 +2355,7 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, ArgVars,
                     % message here would be misleading.
                 ;
                     ArgsTypeAssignSet = [_ | _],
-                    ArgSpec = report_error_functor_arg_types(!.Info,
+                    ArgSpec = report_error_unify_var_functor_args(!.Info,
                         ClauseContext, UnifyContext, Context, Var,
                         ConsTypeInfos, ConsId, ArgVars, ArgsTypeAssignSet),
                     typecheck_info_add_error(ArgSpec, !Info)
@@ -2703,8 +2707,9 @@ typecheck_lambda_var_has_type(UnifyContext, Context, Purity, PredOrFunc,
     then
         TypeAssignSet = TypeAssignSet0,
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_error_lambda_var(!.Info, ClauseContext, UnifyContext,
-            Context, PredOrFunc, EvalMethod, Var, ArgVars, TypeAssignSet0),
+        Spec = report_error_unify_var_lambda(!.Info, ClauseContext,
+            UnifyContext, Context, PredOrFunc, EvalMethod, Var, ArgVars,
+            TypeAssignSet0),
         typecheck_info_add_error(Spec, !Info)
     else
         TypeAssignSet = TypeAssignSet1
@@ -2864,479 +2869,6 @@ typecheck_coerce_2(Context, FromVar, ToVar, TypeAssign0,
         type_assign_set_coerce_constraints(Coercions, TypeAssign2, TypeAssign),
         !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
     ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-    % builtin_atomic_type(Const, TypeName):
-    %
-    % If Const is *or can be* a constant of a builtin atomic type,
-    % set TypeName to the name of that type, otherwise fail.
-    %
-:- pred builtin_atomic_type(cons_id::in, string::out) is semidet.
-
-builtin_atomic_type(some_int_const(IntConst), TypeName) :-
-    TypeName = type_name_of_int_const(IntConst).
-builtin_atomic_type(float_const(_), "float").
-builtin_atomic_type(char_const(_), "character").
-builtin_atomic_type(string_const(_), "string").
-builtin_atomic_type(cons(unqualified(String), 0, _), "character") :-
-    % We are before post-typecheck, so character constants have not yet been
-    % converted to char_consts.
-    %
-    % XXX The parser should have a separate term.functor representation
-    % for character constants, which should be converted to char_consts
-    % during the term to item translation.
-    string.char_to_string(_, String).
-builtin_atomic_type(impl_defined_const(IDCKind), Type) :-
-    (
-        ( IDCKind = idc_file
-        ; IDCKind = idc_module
-        ; IDCKind = idc_pred
-        ; IDCKind = idc_grade
-        ),
-        Type = "string"
-    ;
-        IDCKind = idc_line,
-        Type = "int"
-    ).
-
-    % builtin_pred_type(Info, ConsId, Arity, GoalId, PredConsInfoList):
-    %
-    % If ConsId/Arity is a constant of a pred type, instantiates
-    % the output parameters, otherwise fails.
-    %
-    % Instantiates PredConsInfoList to the set of cons_type_info structures
-    % for each predicate with name `ConsId' and arity greater than or equal to
-    % Arity. GoalId is used to identify any constraints introduced.
-    %
-    % For example, functor `map.search/1' has type `pred(K, V)'
-    % (hence PredTypeParams = [K, V]) and argument types [map(K, V)].
-    %
-:- pred builtin_pred_type(typecheck_info::in, cons_id::in, int::in,
-    goal_id::in, list(cons_type_info)::out) is semidet.
-
-builtin_pred_type(Info, ConsId, Arity, GoalId, ConsTypeInfos) :-
-    ConsId = cons(SymName, _, _),
-    typecheck_info_get_predicate_table(Info, PredicateTable),
-    typecheck_info_get_calls_are_fully_qualified(Info, IsFullyQualified),
-    predicate_table_lookup_sym(PredicateTable, IsFullyQualified, SymName,
-        PredIds),
-    (
-        PredIds = [_ | _],
-        predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
-        accumulate_cons_type_infos_for_pred_ids(Info, PredIdTable, GoalId,
-            PredIds, Arity, [], ConsTypeInfos)
-    ;
-        PredIds = [],
-        ConsTypeInfos = []
-    ).
-
-:- pred accumulate_cons_type_infos_for_pred_ids(typecheck_info::in,
-    pred_id_table::in, goal_id::in, list(pred_id)::in, int::in,
-    list(cons_type_info)::in, list(cons_type_info)::out) is det.
-
-accumulate_cons_type_infos_for_pred_ids(_, _, _, [], _, !ConsTypeInfos).
-accumulate_cons_type_infos_for_pred_ids(Info, PredTable, GoalId,
-        [PredId | PredIds], Arity, !ConsTypeInfos) :-
-    accumulate_cons_type_infos_for_pred_id(Info, PredTable, GoalId,
-        PredId, Arity, !ConsTypeInfos),
-    accumulate_cons_type_infos_for_pred_ids(Info, PredTable, GoalId,
-        PredIds, Arity, !ConsTypeInfos).
-
-:- pred accumulate_cons_type_infos_for_pred_id(typecheck_info::in,
-    pred_id_table::in, goal_id::in, pred_id::in, int::in,
-    list(cons_type_info)::in, list(cons_type_info)::out) is det.
-
-accumulate_cons_type_infos_for_pred_id(Info, PredTable, GoalId,
-        PredId, FuncArity, !ConsTypeInfos) :-
-    typecheck_info_get_module_info(Info, ModuleInfo),
-    module_info_get_class_table(ModuleInfo, ClassTable),
-    map.lookup(PredTable, PredId, PredInfo),
-    PredArity = pred_info_orig_arity(PredInfo),
-    IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_get_class_context(PredInfo, PredClassContext),
-    pred_info_get_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
-        CompleteArgTypes),
-    pred_info_get_purity(PredInfo, Purity),
-    ( if
-        IsPredOrFunc = pf_predicate,
-        PredArity >= FuncArity,
-        % We don't support first-class polymorphism, so you can't take the
-        % address of an existentially quantified predicate.
-        PredExistQVars = []
-    then
-        list.det_split_list(FuncArity, CompleteArgTypes,
-            ArgTypes, PredTypeParams),
-        construct_higher_order_pred_type(Purity, lambda_normal,
-            PredTypeParams, PredType),
-        make_body_hlds_constraints(ClassTable, PredTypeVarSet,
-            GoalId, PredClassContext, PredConstraints),
-        ConsTypeInfo = cons_type_info(PredTypeVarSet, PredExistQVars,
-            PredType, ArgTypes, PredConstraints, source_pred(PredId)),
-        !:ConsTypeInfos = [ConsTypeInfo | !.ConsTypeInfos]
-    else if
-        IsPredOrFunc = pf_function,
-        PredAsFuncArity = PredArity - 1,
-        PredAsFuncArity >= FuncArity,
-        % We don't support first-class polymorphism, so you can't take
-        % the address of an existentially quantified function. You can however
-        % call such a function, so long as you pass *all* the parameters.
-        ( PredExistQVars = []
-        ; PredAsFuncArity = FuncArity
-        )
-    then
-        list.det_split_list(FuncArity, CompleteArgTypes,
-            FuncArgTypes, FuncTypeParams),
-        pred_args_to_func_args(FuncTypeParams,
-            FuncArgTypeParams, FuncReturnTypeParam),
-        (
-            FuncArgTypeParams = [],
-            FuncType = FuncReturnTypeParam
-        ;
-            FuncArgTypeParams = [_ | _],
-            construct_higher_order_func_type(Purity, lambda_normal,
-                FuncArgTypeParams, FuncReturnTypeParam, FuncType)
-        ),
-        make_body_hlds_constraints(ClassTable, PredTypeVarSet,
-            GoalId, PredClassContext, PredConstraints),
-        ConsTypeInfo = cons_type_info(PredTypeVarSet,
-            PredExistQVars, FuncType, FuncArgTypes, PredConstraints,
-            source_pred(PredId)),
-        !:ConsTypeInfos = [ConsTypeInfo | !.ConsTypeInfos]
-    else
-        true
-    ).
-
-    % builtin_apply_type(Info, ConsId, Arity, ConsTypeInfos):
-    %
-    % Succeed if ConsId is the builtin apply/N or ''/N (N>=2),
-    % which is used to invoke higher-order functions.
-    % If so, bind ConsTypeInfos to a singleton list containing
-    % the appropriate type for apply/N of the specified Arity.
-    %
-:- pred builtin_apply_type(typecheck_info::in, cons_id::in, int::in,
-    list(cons_type_info)::out) is semidet.
-
-builtin_apply_type(_Info, ConsId, Arity, ConsTypeInfos) :-
-    ConsId = cons(unqualified(ApplyName), _, _),
-    % XXX FIXME handle impure apply/N more elegantly (e.g. nicer syntax)
-    (
-        ApplyName = "apply",
-        ApplyNameToUse = ApplyName,
-        Purity = purity_pure
-    ;
-        ApplyName = "",
-        ApplyNameToUse = "apply",
-        Purity = purity_pure
-    ;
-        ApplyName = "impure_apply",
-        ApplyNameToUse = ApplyName,
-        Purity = purity_impure
-    ;
-        ApplyName = "semipure_apply",
-        ApplyNameToUse = ApplyName,
-        Purity = purity_semipure
-    ),
-    Arity >= 1,
-    Arity1 = Arity - 1,
-    higher_order_func_type(Purity, Arity1, lambda_normal, TypeVarSet, FuncType,
-        ArgTypes, RetType),
-    ExistQVars = [],
-    empty_hlds_constraints(EmptyConstraints),
-    ConsTypeInfos = [cons_type_info(TypeVarSet, ExistQVars, RetType,
-        [FuncType | ArgTypes], EmptyConstraints,
-        source_apply(ApplyNameToUse))].
-
-    % builtin_field_access_function_type(Info, GoalId, ConsId,
-    %   Arity, ConsTypeInfos):
-    %
-    % Succeed if ConsId is the name of one the automatically
-    % generated field access functions (fieldname, '<fieldname> :=').
-    %
-:- pred builtin_field_access_function_type(typecheck_info::in, goal_id::in,
-    cons_id::in, arity::in, list(maybe_cons_type_info)::out) is semidet.
-
-builtin_field_access_function_type(Info, GoalId, ConsId, Arity,
-        MaybeConsTypeInfos) :-
-    % Taking the address of automatically generated field access functions
-    % is not allowed, so currying does have to be considered here.
-    ConsId = cons(Name, Arity, _),
-    typecheck_info_get_module_info(Info, ModuleInfo),
-    is_field_access_function_name(ModuleInfo, Name, Arity, AccessType,
-        FieldName),
-
-    module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
-    map.search(CtorFieldTable, FieldName, FieldDefns),
-
-    UserArity = user_arity(Arity),
-    list.filter_map(
-        make_field_access_function_cons_type_info(Info, GoalId, Name,
-            UserArity, AccessType, FieldName),
-        FieldDefns, MaybeConsTypeInfos).
-
-:- pred make_field_access_function_cons_type_info(typecheck_info::in,
-    goal_id::in, sym_name::in, user_arity::in, field_access_type::in,
-    sym_name::in, hlds_ctor_field_defn::in,
-    maybe_cons_type_info::out) is semidet.
-
-make_field_access_function_cons_type_info(Info, GoalId, FuncName, UserArity,
-        AccessType, FieldName, FieldDefn, ConsTypeInfo) :-
-    get_field_access_constructor(Info, GoalId, FuncName, UserArity,
-        AccessType, FieldDefn, OrigExistTVars,
-        MaybeFunctorConsTypeInfo),
-    (
-        MaybeFunctorConsTypeInfo = ok(FunctorConsTypeInfo),
-        typecheck_info_get_module_info(Info, ModuleInfo),
-        module_info_get_class_table(ModuleInfo, ClassTable),
-        convert_field_access_cons_type_info(ClassTable, AccessType,
-            FieldName, FieldDefn, FunctorConsTypeInfo,
-            OrigExistTVars, ConsTypeInfo)
-    ;
-        MaybeFunctorConsTypeInfo = error(_),
-        ConsTypeInfo = MaybeFunctorConsTypeInfo
-    ).
-
-:- pred get_field_access_constructor(typecheck_info::in, goal_id::in,
-    sym_name::in, user_arity::in, field_access_type::in,
-    hlds_ctor_field_defn::in,
-    existq_tvars::out, maybe_cons_type_info::out) is semidet.
-
-get_field_access_constructor(Info, GoalId, FuncName, UserArity, AccessType,
-        FieldDefn, OrigExistTVars, FunctorConsTypeInfo) :-
-    FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, ConsId, _),
-    TypeCtor = type_ctor(qualified(TypeModule, _), _),
-
-    % If the user has supplied a declaration for a field access function
-    % of the same name and arity, operating on the same type constructor,
-    % we use that instead of the automatically generated version,
-    % unless we are typechecking the clause introduced for the
-    % user-supplied declaration itself.
-    % The user-declared version will be picked up by builtin_pred_type.
-    typecheck_info_get_module_info(Info, ModuleInfo),
-    module_info_get_predicate_table(ModuleInfo, PredTable),
-    UnqualFuncName = unqualify_name(FuncName),
-    typecheck_info_get_is_field_access_function(Info, IsFieldAccessFunc),
-    (
-        IsFieldAccessFunc = no,
-        predicate_table_lookup_func_m_n_a(PredTable, is_fully_qualified,
-            TypeModule, UnqualFuncName, UserArity, PredIds),
-        list.all_false(
-            is_field_access_function_for_type_ctor(ModuleInfo, AccessType,
-                TypeCtor),
-            PredIds)
-    ;
-        IsFieldAccessFunc = yes(_)
-    ),
-    module_info_get_cons_table(ModuleInfo, ConsTable),
-    lookup_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn),
-    MaybeExistConstraints = ConsDefn ^ cons_maybe_exist,
-    (
-        MaybeExistConstraints = no_exist_constraints,
-        OrigExistTVars = []
-    ;
-        MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistConstraints = cons_exist_constraints(OrigExistTVars, _, _, _)
-    ),
-    (
-        AccessType = get,
-        ConsAction = do_not_flip_constraints,
-        convert_cons_defn(Info, GoalId, ConsAction, ConsId, ConsDefn,
-            FunctorConsTypeInfo)
-    ;
-        AccessType = set,
-        ConsAction = flip_constraints_for_field_set,
-        convert_cons_defn(Info, GoalId, ConsAction, ConsId, ConsDefn,
-            FunctorConsTypeInfo)
-    ).
-
-:- pred is_field_access_function_for_type_ctor(module_info::in,
-    field_access_type::in, type_ctor::in, pred_id::in) is semidet.
-
-is_field_access_function_for_type_ctor(ModuleInfo, AccessType, TypeCtor,
-        PredId) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_arg_types(PredInfo, ArgTypes),
-    require_complete_switch [AccessType]
-    (
-        AccessType = get,
-        ArgTypes = [ArgType, _ResultType],
-        type_to_ctor(ArgType, TypeCtor)
-    ;
-        AccessType = set,
-        ArgTypes = [ArgType, _FieldType, ResultType],
-        type_to_ctor(ArgType, TypeCtor),
-        type_to_ctor(ResultType, TypeCtor)
-    ).
-
-:- type maybe_cons_type_info
-    --->    ok(cons_type_info)
-    ;       error(cons_error).
-
-:- pred convert_field_access_cons_type_info(class_table::in,
-    field_access_type::in, sym_name::in, hlds_ctor_field_defn::in,
-    cons_type_info::in, existq_tvars::in, maybe_cons_type_info::out) is det.
-
-convert_field_access_cons_type_info(ClassTable, AccessType, FieldSymName,
-        FieldDefn, FunctorConsTypeInfo, OrigExistTVars, ConsTypeInfo) :-
-    FunctorConsTypeInfo = cons_type_info(TVarSet0, ExistQVars,
-        FunctorType, ConsArgTypes, Constraints0, Source0),
-    (
-        Source0 = source_type(SourceType, ConsId)
-    ;
-        ( Source0 = source_builtin_type(_)
-        ; Source0 = source_field_access(_, _, _, _)
-        ; Source0 = source_apply(_)
-        ; Source0 = source_pred(_)
-        ),
-        unexpected($pred, "not type")
-    ),
-    FieldDefn = hlds_ctor_field_defn(_, _, _, _, FieldNumber),
-    list.det_index1(ConsArgTypes, FieldNumber, FieldType),
-    FieldName = unqualify_name(FieldSymName),
-    (
-        AccessType = get,
-        Source = source_field_access(get, SourceType, ConsId, FieldName),
-        RetType = FieldType,
-        ArgTypes = [FunctorType],
-        ConsTypeInfo = ok(cons_type_info(TVarSet0, ExistQVars,
-            RetType, ArgTypes, Constraints0, Source))
-    ;
-        AccessType = set,
-        Source = source_field_access(set, SourceType, ConsId, FieldName),
-
-        % When setting a polymorphic field, the type of the field in the result
-        % is not necessarily the same as in the input. If a type variable
-        % occurs only in the field being set, create a new type variable for it
-        % in the result type.
-        %
-        % This allows code such as
-        % :- type pair(T, U)
-        %   ---> '-'(fst::T, snd::U).
-        %
-        %   Pair0 = 1 - 'a',
-        %   Pair = Pair0 ^ snd := 2.
-
-        type_vars_in_type(FieldType, TVarsInField),
-        % Most of the time, TVarsInField is [], so provide a fast path
-        % for this case.
-        (
-            TVarsInField = [],
-            RetType = FunctorType,
-            ArgTypes = [FunctorType, FieldType],
-            % None of the constraints are affected by the updated field,
-            % so the constraints are unchanged.
-            ConsTypeInfo = ok(cons_type_info(TVarSet0, ExistQVars,
-                RetType, ArgTypes, Constraints0, Source))
-        ;
-            TVarsInField = [_ | _],
-
-            % XXX This demonstrates a problem - if a type variable occurs
-            % in the types of multiple fields, any predicates changing values
-            % of one of these fields cannot change their types. This is
-            % especially a problem for existentially typed fields, because
-            % setting the field always changes the type.
-            %
-            % Haskell gets around this problem by allowing multiple fields
-            % to be set by the same expression. Haskell doesn't handle all
-            % cases -- it is not possible to get multiple existentially typed
-            % fields using record syntax and pass them to a function whose type
-            % requires that the fields are of the same type. It probably won't
-            % come up too often.
-            %
-            list.det_replace_nth(ConsArgTypes, FieldNumber, int_type,
-                ArgTypesWithoutField),
-            type_vars_in_types(ArgTypesWithoutField, TVarsInOtherArgs),
-            set.intersect(
-                set.list_to_set(TVarsInField),
-                set.intersect(
-                    set.list_to_set(TVarsInOtherArgs),
-                    set.list_to_set(OrigExistTVars)
-                ),
-                ExistQVarsInFieldAndOthers),
-            ( if set.is_empty(ExistQVarsInFieldAndOthers) then
-                % Rename apart type variables occurring only in the field
-                % to be replaced - the values of those type variables will be
-                % supplied by the replacement field value.
-                list.delete_elems(TVarsInField,
-                    TVarsInOtherArgs, TVarsOnlyInField0),
-                list.sort_and_remove_dups(TVarsOnlyInField0, TVarsOnlyInField),
-                list.length(TVarsOnlyInField, NumNewTVars),
-                varset.new_vars(NumNewTVars, NewTVars, TVarSet0, TVarSet),
-                map.from_corresponding_lists(TVarsOnlyInField,
-                    NewTVars, TVarRenaming),
-                apply_variable_renaming_to_type(TVarRenaming, FieldType,
-                    RenamedFieldType),
-                apply_variable_renaming_to_type(TVarRenaming, FunctorType,
-                    OutputFunctorType),
-                % Rename the class constraints, projecting the constraints
-                % onto the set of type variables occurring in the types of the
-                % arguments of the call to `'field :='/2'. Note that we have
-                % already flipped the constraints.
-                type_vars_in_types([FunctorType, FieldType], CallTVars0),
-                set.list_to_set(CallTVars0, CallTVars),
-                project_and_rename_constraints(ClassTable, TVarSet, CallTVars,
-                    TVarRenaming, Constraints0, Constraints),
-                RetType = OutputFunctorType,
-                ArgTypes = [FunctorType, RenamedFieldType],
-                ConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
-                    RetType, ArgTypes, Constraints, Source))
-            else
-                % This field cannot be set. Pass out some information so that
-                % we can give a better error message. Errors involving changing
-                % the types of universally quantified type variables will be
-                % caught by typecheck_functor_arg_types.
-                set.to_sorted_list(ExistQVarsInFieldAndOthers,
-                    ExistQVarsInFieldAndOthers1),
-                ConsTypeInfo = error(invalid_field_update(FieldSymName,
-                    FieldDefn, TVarSet0, ExistQVarsInFieldAndOthers1))
-            )
-        )
-    ).
-
-    % Add new universal constraints for constraints containing variables that
-    % have been renamed. These new constraints are the ones that will need
-    % to be supplied by the caller. The other constraints will be supplied
-    % from non-updated fields.
-    %
-:- pred project_and_rename_constraints(class_table::in, tvarset::in,
-    set(tvar)::in, tvar_renaming::in,
-    hlds_constraints::in, hlds_constraints::out) is det.
-
-project_and_rename_constraints(ClassTable, TVarSet, CallTVars, TVarRenaming,
-        !Constraints) :-
-    !.Constraints = hlds_constraints(Unproven0, Assumed,
-        Redundant0, Ancestors),
-
-    % Project the constraints down onto the list of tvars in the call.
-    list.filter(project_constraint(CallTVars), Unproven0, NewUnproven0),
-    list.filter_map(rename_constraint(TVarRenaming), NewUnproven0,
-        NewUnproven),
-    update_redundant_constraints(ClassTable, TVarSet, NewUnproven,
-        Redundant0, Redundant),
-    list.append(NewUnproven, Unproven0, Unproven),
-    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
-
-:- pred project_constraint(set(tvar)::in, hlds_constraint::in) is semidet.
-
-project_constraint(CallTVars, Constraint) :-
-    Constraint = hlds_constraint(_Ids, _ClassName, TypesToCheck),
-    type_vars_in_types(TypesToCheck, TVarsToCheck0),
-    set.list_to_set(TVarsToCheck0, TVarsToCheck),
-    set.intersect(TVarsToCheck, CallTVars, RelevantTVars),
-    set.is_non_empty(RelevantTVars).
-
-:- pred rename_constraint(tvar_renaming::in, hlds_constraint::in,
-    hlds_constraint::out) is semidet.
-
-rename_constraint(TVarRenaming, Constraint0, Constraint) :-
-    Constraint0 = hlds_constraint(Ids, ClassName, ArgTypes0),
-    some [Var] (
-        type_list_contains_var(ArgTypes0, Var),
-        map.contains(TVarRenaming, Var)
-    ),
-    apply_variable_renaming_to_type_list(TVarRenaming, ArgTypes0, ArgTypes),
-    Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -4035,6 +3567,479 @@ check_coerce_constraint(TypeTable, Coercion, TypeAssign0, Satisfied) :-
 
 type_assign_has_no_coerce_constraints(TypeAssign) :-
     type_assign_get_coerce_constraints(TypeAssign, []).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+    % builtin_atomic_type(Const, TypeName):
+    %
+    % If Const is *or can be* a constant of a builtin atomic type,
+    % set TypeName to the name of that type, otherwise fail.
+    %
+:- pred builtin_atomic_type(cons_id::in, string::out) is semidet.
+
+builtin_atomic_type(some_int_const(IntConst), TypeName) :-
+    TypeName = type_name_of_int_const(IntConst).
+builtin_atomic_type(float_const(_), "float").
+builtin_atomic_type(char_const(_), "character").
+builtin_atomic_type(string_const(_), "string").
+builtin_atomic_type(cons(unqualified(String), 0, _), "character") :-
+    % We are before post-typecheck, so character constants have not yet been
+    % converted to char_consts.
+    %
+    % XXX The parser should have a separate term.functor representation
+    % for character constants, which should be converted to char_consts
+    % during the term to item translation.
+    string.char_to_string(_, String).
+builtin_atomic_type(impl_defined_const(IDCKind), Type) :-
+    (
+        ( IDCKind = idc_file
+        ; IDCKind = idc_module
+        ; IDCKind = idc_pred
+        ; IDCKind = idc_grade
+        ),
+        Type = "string"
+    ;
+        IDCKind = idc_line,
+        Type = "int"
+    ).
+
+    % builtin_pred_type(Info, ConsId, Arity, GoalId, PredConsInfoList):
+    %
+    % If ConsId/Arity is a constant of a pred type, instantiates
+    % the output parameters, otherwise fails.
+    %
+    % Instantiates PredConsInfoList to the set of cons_type_info structures
+    % for each predicate with name `ConsId' and arity greater than or equal to
+    % Arity. GoalId is used to identify any constraints introduced.
+    %
+    % For example, functor `map.search/1' has type `pred(K, V)'
+    % (hence PredTypeParams = [K, V]) and argument types [map(K, V)].
+    %
+:- pred builtin_pred_type(typecheck_info::in, cons_id::in, int::in,
+    goal_id::in, list(cons_type_info)::out) is semidet.
+
+builtin_pred_type(Info, ConsId, Arity, GoalId, ConsTypeInfos) :-
+    ConsId = cons(SymName, _, _),
+    typecheck_info_get_predicate_table(Info, PredicateTable),
+    typecheck_info_get_calls_are_fully_qualified(Info, IsFullyQualified),
+    predicate_table_lookup_sym(PredicateTable, IsFullyQualified, SymName,
+        PredIds),
+    (
+        PredIds = [_ | _],
+        predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
+        accumulate_cons_type_infos_for_pred_ids(Info, PredIdTable, GoalId,
+            PredIds, Arity, [], ConsTypeInfos)
+    ;
+        PredIds = [],
+        ConsTypeInfos = []
+    ).
+
+:- pred accumulate_cons_type_infos_for_pred_ids(typecheck_info::in,
+    pred_id_table::in, goal_id::in, list(pred_id)::in, int::in,
+    list(cons_type_info)::in, list(cons_type_info)::out) is det.
+
+accumulate_cons_type_infos_for_pred_ids(_, _, _, [], _, !ConsTypeInfos).
+accumulate_cons_type_infos_for_pred_ids(Info, PredTable, GoalId,
+        [PredId | PredIds], Arity, !ConsTypeInfos) :-
+    accumulate_cons_type_infos_for_pred_id(Info, PredTable, GoalId,
+        PredId, Arity, !ConsTypeInfos),
+    accumulate_cons_type_infos_for_pred_ids(Info, PredTable, GoalId,
+        PredIds, Arity, !ConsTypeInfos).
+
+:- pred accumulate_cons_type_infos_for_pred_id(typecheck_info::in,
+    pred_id_table::in, goal_id::in, pred_id::in, int::in,
+    list(cons_type_info)::in, list(cons_type_info)::out) is det.
+
+accumulate_cons_type_infos_for_pred_id(Info, PredTable, GoalId,
+        PredId, FuncArity, !ConsTypeInfos) :-
+    typecheck_info_get_module_info(Info, ModuleInfo),
+    module_info_get_class_table(ModuleInfo, ClassTable),
+    map.lookup(PredTable, PredId, PredInfo),
+    PredArity = pred_info_orig_arity(PredInfo),
+    IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    pred_info_get_class_context(PredInfo, PredClassContext),
+    pred_info_get_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
+        CompleteArgTypes),
+    pred_info_get_purity(PredInfo, Purity),
+    ( if
+        IsPredOrFunc = pf_predicate,
+        PredArity >= FuncArity,
+        % We don't support first-class polymorphism, so you can't take the
+        % address of an existentially quantified predicate.
+        PredExistQVars = []
+    then
+        list.det_split_list(FuncArity, CompleteArgTypes,
+            ArgTypes, PredTypeParams),
+        construct_higher_order_pred_type(Purity, lambda_normal,
+            PredTypeParams, PredType),
+        make_body_hlds_constraints(ClassTable, PredTypeVarSet,
+            GoalId, PredClassContext, PredConstraints),
+        ConsTypeInfo = cons_type_info(PredTypeVarSet, PredExistQVars,
+            PredType, ArgTypes, PredConstraints, source_pred(PredId)),
+        !:ConsTypeInfos = [ConsTypeInfo | !.ConsTypeInfos]
+    else if
+        IsPredOrFunc = pf_function,
+        PredAsFuncArity = PredArity - 1,
+        PredAsFuncArity >= FuncArity,
+        % We don't support first-class polymorphism, so you can't take
+        % the address of an existentially quantified function. You can however
+        % call such a function, so long as you pass *all* the parameters.
+        ( PredExistQVars = []
+        ; PredAsFuncArity = FuncArity
+        )
+    then
+        list.det_split_list(FuncArity, CompleteArgTypes,
+            FuncArgTypes, FuncTypeParams),
+        pred_args_to_func_args(FuncTypeParams,
+            FuncArgTypeParams, FuncReturnTypeParam),
+        (
+            FuncArgTypeParams = [],
+            FuncType = FuncReturnTypeParam
+        ;
+            FuncArgTypeParams = [_ | _],
+            construct_higher_order_func_type(Purity, lambda_normal,
+                FuncArgTypeParams, FuncReturnTypeParam, FuncType)
+        ),
+        make_body_hlds_constraints(ClassTable, PredTypeVarSet,
+            GoalId, PredClassContext, PredConstraints),
+        ConsTypeInfo = cons_type_info(PredTypeVarSet,
+            PredExistQVars, FuncType, FuncArgTypes, PredConstraints,
+            source_pred(PredId)),
+        !:ConsTypeInfos = [ConsTypeInfo | !.ConsTypeInfos]
+    else
+        true
+    ).
+
+    % builtin_apply_type(Info, ConsId, Arity, ConsTypeInfos):
+    %
+    % Succeed if ConsId is the builtin apply/N or ''/N (N>=2),
+    % which is used to invoke higher-order functions.
+    % If so, bind ConsTypeInfos to a singleton list containing
+    % the appropriate type for apply/N of the specified Arity.
+    %
+:- pred builtin_apply_type(typecheck_info::in, cons_id::in, int::in,
+    list(cons_type_info)::out) is semidet.
+
+builtin_apply_type(_Info, ConsId, Arity, ConsTypeInfos) :-
+    ConsId = cons(unqualified(ApplyName), _, _),
+    % XXX FIXME handle impure apply/N more elegantly (e.g. nicer syntax)
+    (
+        ApplyName = "apply",
+        ApplyNameToUse = ApplyName,
+        Purity = purity_pure
+    ;
+        ApplyName = "",
+        ApplyNameToUse = "apply",
+        Purity = purity_pure
+    ;
+        ApplyName = "impure_apply",
+        ApplyNameToUse = ApplyName,
+        Purity = purity_impure
+    ;
+        ApplyName = "semipure_apply",
+        ApplyNameToUse = ApplyName,
+        Purity = purity_semipure
+    ),
+    Arity >= 1,
+    Arity1 = Arity - 1,
+    higher_order_func_type(Purity, Arity1, lambda_normal, TypeVarSet, FuncType,
+        ArgTypes, RetType),
+    ExistQVars = [],
+    empty_hlds_constraints(EmptyConstraints),
+    ConsTypeInfos = [cons_type_info(TypeVarSet, ExistQVars, RetType,
+        [FuncType | ArgTypes], EmptyConstraints,
+        source_apply(ApplyNameToUse))].
+
+    % builtin_field_access_function_type(Info, GoalId, ConsId,
+    %   Arity, ConsTypeInfos):
+    %
+    % Succeed if ConsId is the name of one the automatically
+    % generated field access functions (fieldname, '<fieldname> :=').
+    %
+:- pred builtin_field_access_function_type(typecheck_info::in, goal_id::in,
+    cons_id::in, arity::in, list(maybe_cons_type_info)::out) is semidet.
+
+builtin_field_access_function_type(Info, GoalId, ConsId, Arity,
+        MaybeConsTypeInfos) :-
+    % Taking the address of automatically generated field access functions
+    % is not allowed, so currying does have to be considered here.
+    ConsId = cons(Name, Arity, _),
+    typecheck_info_get_module_info(Info, ModuleInfo),
+    is_field_access_function_name(ModuleInfo, Name, Arity, AccessType,
+        FieldName),
+
+    module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
+    map.search(CtorFieldTable, FieldName, FieldDefns),
+
+    UserArity = user_arity(Arity),
+    list.filter_map(
+        make_field_access_function_cons_type_info(Info, GoalId, Name,
+            UserArity, AccessType, FieldName),
+        FieldDefns, MaybeConsTypeInfos).
+
+:- pred make_field_access_function_cons_type_info(typecheck_info::in,
+    goal_id::in, sym_name::in, user_arity::in, field_access_type::in,
+    sym_name::in, hlds_ctor_field_defn::in,
+    maybe_cons_type_info::out) is semidet.
+
+make_field_access_function_cons_type_info(Info, GoalId, FuncName, UserArity,
+        AccessType, FieldName, FieldDefn, ConsTypeInfo) :-
+    get_field_access_constructor(Info, GoalId, FuncName, UserArity,
+        AccessType, FieldDefn, OrigExistTVars,
+        MaybeFunctorConsTypeInfo),
+    (
+        MaybeFunctorConsTypeInfo = ok(FunctorConsTypeInfo),
+        typecheck_info_get_module_info(Info, ModuleInfo),
+        module_info_get_class_table(ModuleInfo, ClassTable),
+        convert_field_access_cons_type_info(ClassTable, AccessType,
+            FieldName, FieldDefn, FunctorConsTypeInfo,
+            OrigExistTVars, ConsTypeInfo)
+    ;
+        MaybeFunctorConsTypeInfo = error(_),
+        ConsTypeInfo = MaybeFunctorConsTypeInfo
+    ).
+
+:- pred get_field_access_constructor(typecheck_info::in, goal_id::in,
+    sym_name::in, user_arity::in, field_access_type::in,
+    hlds_ctor_field_defn::in,
+    existq_tvars::out, maybe_cons_type_info::out) is semidet.
+
+get_field_access_constructor(Info, GoalId, FuncName, UserArity, AccessType,
+        FieldDefn, OrigExistTVars, FunctorConsTypeInfo) :-
+    FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, ConsId, _),
+    TypeCtor = type_ctor(qualified(TypeModule, _), _),
+
+    % If the user has supplied a declaration for a field access function
+    % of the same name and arity, operating on the same type constructor,
+    % we use that instead of the automatically generated version,
+    % unless we are typechecking the clause introduced for the
+    % user-supplied declaration itself.
+    % The user-declared version will be picked up by builtin_pred_type.
+    typecheck_info_get_module_info(Info, ModuleInfo),
+    module_info_get_predicate_table(ModuleInfo, PredTable),
+    UnqualFuncName = unqualify_name(FuncName),
+    typecheck_info_get_is_field_access_function(Info, IsFieldAccessFunc),
+    (
+        IsFieldAccessFunc = no,
+        predicate_table_lookup_func_m_n_a(PredTable, is_fully_qualified,
+            TypeModule, UnqualFuncName, UserArity, PredIds),
+        list.all_false(
+            is_field_access_function_for_type_ctor(ModuleInfo, AccessType,
+                TypeCtor),
+            PredIds)
+    ;
+        IsFieldAccessFunc = yes(_)
+    ),
+    module_info_get_cons_table(ModuleInfo, ConsTable),
+    lookup_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn),
+    MaybeExistConstraints = ConsDefn ^ cons_maybe_exist,
+    (
+        MaybeExistConstraints = no_exist_constraints,
+        OrigExistTVars = []
+    ;
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistConstraints = cons_exist_constraints(OrigExistTVars, _, _, _)
+    ),
+    (
+        AccessType = get,
+        ConsAction = do_not_flip_constraints,
+        convert_cons_defn(Info, GoalId, ConsAction, ConsId, ConsDefn,
+            FunctorConsTypeInfo)
+    ;
+        AccessType = set,
+        ConsAction = flip_constraints_for_field_set,
+        convert_cons_defn(Info, GoalId, ConsAction, ConsId, ConsDefn,
+            FunctorConsTypeInfo)
+    ).
+
+:- pred is_field_access_function_for_type_ctor(module_info::in,
+    field_access_type::in, type_ctor::in, pred_id::in) is semidet.
+
+is_field_access_function_for_type_ctor(ModuleInfo, AccessType, TypeCtor,
+        PredId) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    require_complete_switch [AccessType]
+    (
+        AccessType = get,
+        ArgTypes = [ArgType, _ResultType],
+        type_to_ctor(ArgType, TypeCtor)
+    ;
+        AccessType = set,
+        ArgTypes = [ArgType, _FieldType, ResultType],
+        type_to_ctor(ArgType, TypeCtor),
+        type_to_ctor(ResultType, TypeCtor)
+    ).
+
+:- type maybe_cons_type_info
+    --->    ok(cons_type_info)
+    ;       error(cons_error).
+
+:- pred convert_field_access_cons_type_info(class_table::in,
+    field_access_type::in, sym_name::in, hlds_ctor_field_defn::in,
+    cons_type_info::in, existq_tvars::in, maybe_cons_type_info::out) is det.
+
+convert_field_access_cons_type_info(ClassTable, AccessType, FieldSymName,
+        FieldDefn, FunctorConsTypeInfo, OrigExistTVars, ConsTypeInfo) :-
+    FunctorConsTypeInfo = cons_type_info(TVarSet0, ExistQVars,
+        FunctorType, ConsArgTypes, Constraints0, Source0),
+    (
+        Source0 = source_type(SourceType, ConsId)
+    ;
+        ( Source0 = source_builtin_type(_)
+        ; Source0 = source_field_access(_, _, _, _)
+        ; Source0 = source_apply(_)
+        ; Source0 = source_pred(_)
+        ),
+        unexpected($pred, "not type")
+    ),
+    FieldDefn = hlds_ctor_field_defn(_, _, _, _, FieldNumber),
+    list.det_index1(ConsArgTypes, FieldNumber, FieldType),
+    FieldName = unqualify_name(FieldSymName),
+    (
+        AccessType = get,
+        Source = source_field_access(get, SourceType, ConsId, FieldName),
+        RetType = FieldType,
+        ArgTypes = [FunctorType],
+        ConsTypeInfo = ok(cons_type_info(TVarSet0, ExistQVars,
+            RetType, ArgTypes, Constraints0, Source))
+    ;
+        AccessType = set,
+        Source = source_field_access(set, SourceType, ConsId, FieldName),
+
+        % When setting a polymorphic field, the type of the field in the result
+        % is not necessarily the same as in the input. If a type variable
+        % occurs only in the field being set, create a new type variable for it
+        % in the result type.
+        %
+        % This allows code such as
+        % :- type pair(T, U)
+        %   ---> '-'(fst::T, snd::U).
+        %
+        %   Pair0 = 1 - 'a',
+        %   Pair = Pair0 ^ snd := 2.
+
+        type_vars_in_type(FieldType, TVarsInField),
+        % Most of the time, TVarsInField is [], so provide a fast path
+        % for this case.
+        (
+            TVarsInField = [],
+            RetType = FunctorType,
+            ArgTypes = [FunctorType, FieldType],
+            % None of the constraints are affected by the updated field,
+            % so the constraints are unchanged.
+            ConsTypeInfo = ok(cons_type_info(TVarSet0, ExistQVars,
+                RetType, ArgTypes, Constraints0, Source))
+        ;
+            TVarsInField = [_ | _],
+
+            % XXX This demonstrates a problem - if a type variable occurs
+            % in the types of multiple fields, any predicates changing values
+            % of one of these fields cannot change their types. This is
+            % especially a problem for existentially typed fields, because
+            % setting the field always changes the type.
+            %
+            % Haskell gets around this problem by allowing multiple fields
+            % to be set by the same expression. Haskell doesn't handle all
+            % cases -- it is not possible to get multiple existentially typed
+            % fields using record syntax and pass them to a function whose type
+            % requires that the fields are of the same type. It probably won't
+            % come up too often.
+            %
+            list.det_replace_nth(ConsArgTypes, FieldNumber, int_type,
+                ArgTypesWithoutField),
+            type_vars_in_types(ArgTypesWithoutField, TVarsInOtherArgs),
+            set.intersect(
+                set.list_to_set(TVarsInField),
+                set.intersect(
+                    set.list_to_set(TVarsInOtherArgs),
+                    set.list_to_set(OrigExistTVars)
+                ),
+                ExistQVarsInFieldAndOthers),
+            ( if set.is_empty(ExistQVarsInFieldAndOthers) then
+                % Rename apart type variables occurring only in the field
+                % to be replaced - the values of those type variables will be
+                % supplied by the replacement field value.
+                list.delete_elems(TVarsInField,
+                    TVarsInOtherArgs, TVarsOnlyInField0),
+                list.sort_and_remove_dups(TVarsOnlyInField0, TVarsOnlyInField),
+                list.length(TVarsOnlyInField, NumNewTVars),
+                varset.new_vars(NumNewTVars, NewTVars, TVarSet0, TVarSet),
+                map.from_corresponding_lists(TVarsOnlyInField,
+                    NewTVars, TVarRenaming),
+                apply_variable_renaming_to_type(TVarRenaming, FieldType,
+                    RenamedFieldType),
+                apply_variable_renaming_to_type(TVarRenaming, FunctorType,
+                    OutputFunctorType),
+                % Rename the class constraints, projecting the constraints
+                % onto the set of type variables occurring in the types of the
+                % arguments of the call to `'field :='/2'. Note that we have
+                % already flipped the constraints.
+                type_vars_in_types([FunctorType, FieldType], CallTVars0),
+                set.list_to_set(CallTVars0, CallTVars),
+                project_and_rename_constraints(ClassTable, TVarSet, CallTVars,
+                    TVarRenaming, Constraints0, Constraints),
+                RetType = OutputFunctorType,
+                ArgTypes = [FunctorType, RenamedFieldType],
+                ConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
+                    RetType, ArgTypes, Constraints, Source))
+            else
+                % This field cannot be set. Pass out some information so that
+                % we can give a better error message. Errors involving changing
+                % the types of universally quantified type variables will be
+                % caught by typecheck_functor_arg_types.
+                set.to_sorted_list(ExistQVarsInFieldAndOthers,
+                    ExistQVarsInFieldAndOthers1),
+                ConsTypeInfo = error(invalid_field_update(FieldSymName,
+                    FieldDefn, TVarSet0, ExistQVarsInFieldAndOthers1))
+            )
+        )
+    ).
+
+    % Add new universal constraints for constraints containing variables that
+    % have been renamed. These new constraints are the ones that will need
+    % to be supplied by the caller. The other constraints will be supplied
+    % from non-updated fields.
+    %
+:- pred project_and_rename_constraints(class_table::in, tvarset::in,
+    set(tvar)::in, tvar_renaming::in,
+    hlds_constraints::in, hlds_constraints::out) is det.
+
+project_and_rename_constraints(ClassTable, TVarSet, CallTVars, TVarRenaming,
+        !Constraints) :-
+    !.Constraints = hlds_constraints(Unproven0, Assumed,
+        Redundant0, Ancestors),
+
+    % Project the constraints down onto the list of tvars in the call.
+    list.filter(project_constraint(CallTVars), Unproven0, NewUnproven0),
+    list.filter_map(rename_constraint(TVarRenaming), NewUnproven0,
+        NewUnproven),
+    update_redundant_constraints(ClassTable, TVarSet, NewUnproven,
+        Redundant0, Redundant),
+    list.append(NewUnproven, Unproven0, Unproven),
+    !:Constraints = hlds_constraints(Unproven, Assumed, Redundant, Ancestors).
+
+:- pred project_constraint(set(tvar)::in, hlds_constraint::in) is semidet.
+
+project_constraint(CallTVars, Constraint) :-
+    Constraint = hlds_constraint(_Ids, _ClassName, TypesToCheck),
+    type_vars_in_types(TypesToCheck, TVarsToCheck0),
+    set.list_to_set(TVarsToCheck0, TVarsToCheck),
+    set.intersect(TVarsToCheck, CallTVars, RelevantTVars),
+    set.is_non_empty(RelevantTVars).
+
+:- pred rename_constraint(tvar_renaming::in, hlds_constraint::in,
+    hlds_constraint::out) is semidet.
+
+rename_constraint(TVarRenaming, Constraint0, Constraint) :-
+    Constraint0 = hlds_constraint(Ids, ClassName, ArgTypes0),
+    some [Var] (
+        type_list_contains_var(ArgTypes0, Var),
+        map.contains(TVarRenaming, Var)
+    ),
+    apply_variable_renaming_to_type_list(TVarRenaming, ArgTypes0, ArgTypes),
+    Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck.
