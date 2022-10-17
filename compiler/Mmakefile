@@ -65,13 +65,14 @@ endif
 
 # The default C stack size of 1Mb on Windows is not enough to compile the
 # standard library in the hlc.gc grade using a Mercury compiler built in
-# the hlc.gc grade with MinGW64.
-# XXX We only want to pass --stack to the linker for MinGW64 GCC.
-# When we support the 64-bit version of the Microsoft toolchain, we will
+# the hlc.gc grade with the MinGW64 GCC.
+# XXX When we support the 64-bit version of the Microsoft toolchain, we will
 # need to do something different here.
-#
+# XXX what about clang?
+ifneq ("$(USING_MICROSOFT_CL_COMPILER)", "yes")
 ifneq ("$(findstring x86_64-w64-mingw32,$(FULLARCH))","")
 LDFLAGS += -Wl,--stack=8388608
+endif
 endif
 
 #-----------------------------------------------------------------------------#
