@@ -98,7 +98,7 @@
 
 :- func report_error_var_has_wrong_type_arg(typecheck_info,
     type_error_clause_context, type_error_goal_context, prog_context,
-    prog_var, args_type_assign_set) = error_spec.
+    int, prog_var, args_type_assign_set) = error_spec.
 
 %---------------------------------------------------------------------------%
 
@@ -934,12 +934,12 @@ report_error_var_has_wrong_type(Info, GoalContext, Context, Var, Type,
 %---------------------------------------------------------------------------%
 
 report_error_var_has_wrong_type_arg(Info, ClauseContext, GoalContext, Context,
-        Var, ArgTypeAssignSet) = Spec :-
+        ArgNum, Var, ArgTypeAssignSet) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
 
     get_inst_varset(ClauseContext, InstVarSet),
-    get_arg_type_stuffs(Var, ArgTypeAssignSet, ArgTypeStuffList),
+    get_arg_type_stuffs(ArgNum, Var, ArgTypeAssignSet, ArgTypeStuffList),
     ActualExpectedList0 = list.map(
         arg_type_stuff_to_actual_expected(do_not_add_quotes, InstVarSet),
         ArgTypeStuffList),

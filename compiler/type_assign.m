@@ -203,12 +203,6 @@
     %
 :- func convert_args_type_assign_set(args_type_assign_set) = type_assign_set.
 
-    % Same as convert_args_type_assign_set, but aborts when the args are
-    % non-empty.
-    %
-:- func convert_args_type_assign_set_check_empty_args(args_type_assign_set) =
-    type_assign_set.
-
 %---------------------------------------------------------------------------%
 %
 % The cons_type_info data structure.
@@ -487,22 +481,6 @@ convert_args_type_assign_set([]) = [].
 convert_args_type_assign_set([ArgsTypeAssign | ArgsTypeAssigns]) =
     [convert_args_type_assign(ArgsTypeAssign) |
     convert_args_type_assign_set(ArgsTypeAssigns)].
-
-convert_args_type_assign_set_check_empty_args([]) = [].
-convert_args_type_assign_set_check_empty_args([ArgTypeAssign | ArgTypeAssigns])
-        = Result :-
-    ArgTypeAssign = args_type_assign(_, ArgTypes, _, _),
-    (
-        ArgTypes = [],
-        Result =
-            [convert_args_type_assign(ArgTypeAssign) |
-            convert_args_type_assign_set_check_empty_args(ArgTypeAssigns)]
-    ;
-        ArgTypes = [_ | _],
-        % This should never happen, since the arguments should all have been
-        % processed at this point.
-        unexpected($pred, "ArgTypes != []")
-    ).
 
 :- func convert_args_type_assign(args_type_assign) = type_assign.
 

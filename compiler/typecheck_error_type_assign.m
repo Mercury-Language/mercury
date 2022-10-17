@@ -95,7 +95,7 @@
     % Given a variable and an arg type assignment set, return the list of
     % the possible different types for the variable and the argument.
     %
-:- pred get_arg_type_stuffs(prog_var::in, args_type_assign_set::in,
+:- pred get_arg_type_stuffs(int::in, prog_var::in, args_type_assign_set::in,
     list(arg_type_stuff)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -458,16 +458,19 @@ get_type_stuff(TypeAssign, Var, TypeStuff) :-
 
 %---------------------------------------------------------------------------%
 
-get_arg_type_stuffs(_Var, [], []).
-get_arg_type_stuffs(Var, [ArgTypeAssign | ArgTypeAssigns], ArgTypeStuffs) :-
-    get_arg_type_stuffs(Var, ArgTypeAssigns, TailArgTypeStuffs),
-    get_arg_type_stuff(Var, ArgTypeAssign, TailArgTypeStuffs, ArgTypeStuffs).
+get_arg_type_stuffs(_ArgNum, _Var, [], []).
+get_arg_type_stuffs(ArgNum, Var, [ArgTypeAssign | ArgTypeAssigns],
+        ArgTypeStuffs) :-
+    get_arg_type_stuffs(ArgNum, Var, ArgTypeAssigns, TailArgTypeStuffs),
+    get_arg_type_stuff(ArgNum, Var, ArgTypeAssign,
+        TailArgTypeStuffs, ArgTypeStuffs).
 
-:- pred get_arg_type_stuff(prog_var::in, args_type_assign::in,
+:- pred get_arg_type_stuff(int::in, prog_var::in, args_type_assign::in,
     list(arg_type_stuff)::in, list(arg_type_stuff)::out) is det.
-:- pragma inline(pred(get_arg_type_stuff/4)).
+:- pragma inline(pred(get_arg_type_stuff/5)).
 
-get_arg_type_stuff(Var, ArgTypeAssign, TailArgTypeStuffs, ArgTypeStuffs) :-
+get_arg_type_stuff(ArgNum, Var, ArgTypeAssign,
+        TailArgTypeStuffs, ArgTypeStuffs) :-
     ArgTypeAssign = args_type_assign(TypeAssign, ArgTypes, _, Source),
     type_assign_get_var_types(TypeAssign, VarTypes),
     ( if search_var_type(VarTypes, Var, VarType0) then
@@ -478,8 +481,7 @@ get_arg_type_stuff(Var, ArgTypeAssign, TailArgTypeStuffs, ArgTypeStuffs) :-
         % the correct type?
         VarType = defined_type(unqualified("<any>"), [], kind_star)
     ),
-    % XXX document me
-    list.det_index0(ArgTypes, 0, ArgType),
+    list.det_index1(ArgTypes, ArgNum, ArgType),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     apply_rec_subst_to_type(TypeBindings, VarType, RecSubstVarType),
     apply_rec_subst_to_type(TypeBindings, ArgType, RecSubstArgType),

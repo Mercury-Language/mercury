@@ -1806,14 +1806,15 @@ typecheck_call_overloaded_pred(SymName, Context, GoalId, PredIds,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
     get_overloaded_pred_arg_types(PredIdTable, ClassTable, GoalId, PredIds,
-        TypeAssignSet0, [], ArgsTypeAssignSet),
+        TypeAssignSet0, [], ArgsTypeAssignSet0),
 
     % Then unify the types of the call arguments with the
     % called predicates' arg types.
     VarVectorKind =
         var_vector_args(arg_vector_plain_pred_call(SymNamePredFormArity)),
-    typecheck_var_has_arg_type_list(VarVectorKind, 1, Context, ArgVars,
-        ArgsTypeAssignSet, TypeAssignSet, !Info).
+    typecheck_vars_have_arg_types(VarVectorKind, Context, 1, ArgVars,
+        ArgsTypeAssignSet0, ArgsTypeAssignSet, !Info),
+    TypeAssignSet = convert_args_type_assign_set(ArgsTypeAssignSet).
 
 :- pred get_overloaded_pred_arg_types(pred_id_table::in, class_table::in,
     goal_id::in, list(pred_id)::in, type_assign_set::in,
@@ -1856,9 +1857,10 @@ typecheck_var_has_polymorphic_type_list(Source, VarVectorKind, Context,
         ArgVars, PredTypeVarSet, PredExistQVars, PredArgTypes, PredConstraints,
         TypeAssignSet0, TypeAssignSet, !Info) :-
     add_renamed_apart_arg_type_assigns(Source, PredTypeVarSet, PredExistQVars,
-        PredArgTypes, PredConstraints, TypeAssignSet0, [], ArgsTypeAssignSet),
-    typecheck_var_has_arg_type_list(VarVectorKind, 1, Context, ArgVars,
-        ArgsTypeAssignSet, TypeAssignSet, !Info).
+        PredArgTypes, PredConstraints, TypeAssignSet0, [], ArgsTypeAssignSet0),
+    typecheck_vars_have_arg_types(VarVectorKind, Context, 1, ArgVars,
+        ArgsTypeAssignSet0, ArgsTypeAssignSet, !Info),
+    TypeAssignSet = convert_args_type_assign_set(ArgsTypeAssignSet).
 
 :- pred add_renamed_apart_arg_type_assigns(args_type_assign_source::in,
     tvarset::in, existq_tvars::in, list(mer_type)::in, hlds_constraints::in,
@@ -1906,108 +1908,83 @@ type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes,
 
 %---------------------------------------------------------------------------%
 
-:- pred typecheck_var_has_arg_type_list(var_vector_kind::in, int::in,
-    prog_context::in, list(prog_var)::in,
-    args_type_assign_set::in, type_assign_set::out,
-    typecheck_info::in, typecheck_info::out) is det.
-
-typecheck_var_has_arg_type_list(VarVectorKind, ArgNum, Context, Vars,
-        ArgsTypeAssignSet0, TypeAssignSet, !Info) :-
-    (
-        Vars = [],
-        TypeAssignSet =
-            convert_args_type_assign_set_check_empty_args(ArgsTypeAssignSet0)
-    ;
-        Vars = [HeadVar | TailVars],
-        GoalContext = type_error_in_var_vector(VarVectorKind, ArgNum),
-        typecheck_var_has_arg_type(GoalContext, Context, HeadVar,
-            ArgsTypeAssignSet0, ArgsTypeAssignSet1, !Info),
-        typecheck_var_has_arg_type_list(VarVectorKind, ArgNum + 1, Context,
-            TailVars, ArgsTypeAssignSet1, TypeAssignSet, !Info)
-    ).
-
-:- pred typecheck_var_has_arg_type(type_error_goal_context::in,
-    prog_context::in, prog_var::in,
+:- pred typecheck_vars_have_arg_types(var_vector_kind::in, prog_context::in,
+    int::in, list(prog_var)::in,
     args_type_assign_set::in, args_type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_var_has_arg_type(GoalContext, Context, Var,
+typecheck_vars_have_arg_types(_, _, _, [], !ArgsTypeAssignSet, !Info).
+typecheck_vars_have_arg_types(VarVectorKind, Context, CurArgNum, [Var | Vars],
+        !ArgsTypeAssignSet, !Info) :-
+    GoalContext = type_error_in_var_vector(VarVectorKind, CurArgNum),
+    typecheck_var_has_arg_type(GoalContext, Context, CurArgNum, Var,
+        !ArgsTypeAssignSet, !Info),
+    typecheck_vars_have_arg_types(VarVectorKind, Context, CurArgNum + 1, Vars,
+        !ArgsTypeAssignSet, !Info).
+
+:- pred typecheck_var_has_arg_type(type_error_goal_context::in,
+    prog_context::in, int::in, prog_var::in,
+    args_type_assign_set::in, args_type_assign_set::out,
+    typecheck_info::in, typecheck_info::out) is det.
+
+typecheck_var_has_arg_type(GoalContext, Context, ArgNum, Var,
         ArgsTypeAssignSet0, ArgsTypeAssignSet, !Info) :-
-    typecheck_var_has_arg_type_2(Var, ArgsTypeAssignSet0,
-        [], ArgsTypeAssignSet1),
+    typecheck_var_has_arg_type_in_args_type_assigns(ArgNum, Var,
+        ArgsTypeAssignSet0, [], ArgsTypeAssignSet1),
     ( if
         ArgsTypeAssignSet1 = [],
         ArgsTypeAssignSet0 = [_ | _]
     then
-        delete_first_arg_in_each_arg_type_assign(ArgsTypeAssignSet0,
-            ArgsTypeAssignSet),
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
         Spec = report_error_var_has_wrong_type_arg(!.Info, ClauseContext,
-            GoalContext, Context, Var, ArgsTypeAssignSet0),
+            GoalContext, Context, ArgNum, Var, ArgsTypeAssignSet0),
+        ArgsTypeAssignSet = ArgsTypeAssignSet0,
         typecheck_info_add_error(Spec, !Info)
     else
         ArgsTypeAssignSet = ArgsTypeAssignSet1
     ).
 
-:- pred delete_first_arg_in_each_arg_type_assign(args_type_assign_set::in,
-    args_type_assign_set::out) is det.
-
-delete_first_arg_in_each_arg_type_assign([], []).
-delete_first_arg_in_each_arg_type_assign([ArgsTypeAssign0 | ArgsTypeAssigns0],
-        [ArgsTypeAssign | ArgsTypeAssigns]) :-
-    ArgsTypeAssign0 = args_type_assign(TypeAssign, ArgTypes0, Constraints,
-        Source),
-    list.det_tail(ArgTypes0, ArgTypes),
-    ArgsTypeAssign = args_type_assign(TypeAssign, ArgTypes, Constraints,
-        Source),
-    delete_first_arg_in_each_arg_type_assign(ArgsTypeAssigns0,
-        ArgsTypeAssigns).
-
-    % XXX This predicate is a simple loop. Why is its name SO DIFFERENT
-    % from the name of the predicate it is looping over?
-    %
-:- pred typecheck_var_has_arg_type_2(prog_var::in, args_type_assign_set::in,
+:- pred typecheck_var_has_arg_type_in_args_type_assigns(int::in, prog_var::in,
+    args_type_assign_set::in,
     args_type_assign_set::in, args_type_assign_set::out) is det.
 
-typecheck_var_has_arg_type_2(_, [], !ArgsTypeAssignSet).
-typecheck_var_has_arg_type_2(Var, [ArgsTypeAssign | ArgsTypeAssignSets],
+typecheck_var_has_arg_type_in_args_type_assigns(_, _, [], !ArgsTypeAssignSet).
+typecheck_var_has_arg_type_in_args_type_assigns(ArgNum, Var,
+        [ArgsTypeAssign | ArgsTypeAssigns], !ArgsTypeAssignSet) :-
+    typecheck_var_has_arg_type_in_args_type_assign(ArgNum, Var,
+        ArgsTypeAssign, !ArgsTypeAssignSet),
+    typecheck_var_has_arg_type_in_args_type_assigns(ArgNum, Var,
+        ArgsTypeAssigns, !ArgsTypeAssignSet).
+
+:- pred typecheck_var_has_arg_type_in_args_type_assign(int::in, prog_var::in,
+    args_type_assign::in,
+    args_type_assign_set::in, args_type_assign_set::out) is det.
+
+typecheck_var_has_arg_type_in_args_type_assign(ArgNum, Var, ArgsTypeAssign0,
         !ArgsTypeAssignSet) :-
-    arg_type_assign_var_has_type(Var, ArgsTypeAssign, !ArgsTypeAssignSet),
-    typecheck_var_has_arg_type_2(Var, ArgsTypeAssignSets, !ArgsTypeAssignSet).
-
-:- pred arg_type_assign_var_has_type(prog_var::in, args_type_assign::in,
-    args_type_assign_set::in, args_type_assign_set::out) is det.
-
-arg_type_assign_var_has_type(Var, ArgsTypeAssign, !ArgsTypeAssignSet) :-
-    ArgsTypeAssign = args_type_assign(TypeAssign0, ArgTypes0, ClassContext,
-        Source),
+    ArgsTypeAssign0 = args_type_assign(TypeAssign0, ArgTypes,
+        ClassContext, Source),
     type_assign_get_var_types(TypeAssign0, VarTypes0),
+    list.det_index1(ArgTypes, ArgNum, ArgType),
+    search_insert_var_type(Var, ArgType, MaybeOldVarType, VarTypes0, VarTypes),
     (
-        ArgTypes0 = [Type | ArgTypes],
-        search_insert_var_type(Var, Type, MaybeOldVarType,
-            VarTypes0, VarTypes),
-        (
-            MaybeOldVarType = yes(OldVarType),
-            ( if
-                type_assign_unify_type(OldVarType, Type,
-                    TypeAssign0, TypeAssign1)
-            then
-                NewTypeAssign = args_type_assign(TypeAssign1, ArgTypes,
-                    ClassContext, Source),
-                !:ArgsTypeAssignSet = [NewTypeAssign | !.ArgsTypeAssignSet]
-            else
-                true
-            )
-        ;
-            MaybeOldVarType = no,
-            type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
-            NewTypeAssign = args_type_assign(TypeAssign, ArgTypes,
+        MaybeOldVarType = yes(OldVarType),
+        ( if
+            type_assign_unify_type(OldVarType, ArgType,
+                TypeAssign0, TypeAssign)
+        then
+            ArgsTypeAssign = args_type_assign(TypeAssign, ArgTypes,
                 ClassContext, Source),
-            !:ArgsTypeAssignSet = [NewTypeAssign | !.ArgsTypeAssignSet]
+            !:ArgsTypeAssignSet = [ArgsTypeAssign | !.ArgsTypeAssignSet]
+        else
+            true
         )
     ;
-        ArgTypes0 = [],
-        unexpected($pred, "ArgTypes0 = []")
+        MaybeOldVarType = no,
+        type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
+        ArgsTypeAssign = args_type_assign(TypeAssign, ArgTypes,
+            ClassContext, Source),
+        !:ArgsTypeAssignSet = [ArgsTypeAssign | !.ArgsTypeAssignSet]
     ).
 
 %---------------------------------------------------------------------------%
