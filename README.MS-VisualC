@@ -3,9 +3,8 @@
 BUILDING WITH MICROSOFT VISUAL C++
 
 Mercury has been ported to use the Microsoft Visual C++ compiler.
-It has been tested with versions 9.0 (2008) through 12.0 (2013).
-Version 8.0 (2005) should also work but we have not tested that with Mercury
-recently.
+It requires at least version 12.0 (2013); older versions lack sufficient C99
+support.
 
 -----------------------------------------------------------------------------
 

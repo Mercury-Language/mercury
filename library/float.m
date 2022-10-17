@@ -1212,14 +1212,7 @@ float_to_doc(X) = str(string.float_to_string(X)).
         char buf[64];
 
         u.f = (double) Flt;
-        #if defined(MR_MSVC)
-            // The I64 size prefix is specific to the Microsoft C library
-            // -- we use it here since MSVC does not support the standard
-            // ll size prefix.
-            sprintf(buf, ""%I64d"", u.i);
-        #else
-            sprintf(buf, ""%"" MR_INT_LEAST64_LENGTH_MODIFIER ""d"", u.i);
-        #endif
+        sprintf(buf, ""%"" MR_INT_LEAST64_LENGTH_MODIFIER ""d"", u.i);
         MR_make_aligned_string_copy(Str, buf);
     #else
         MR_fatal_error(
