@@ -631,8 +631,9 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
         % which occur only in the body.
         lookup_var_types(InferredVarTypes, HeadVars, ArgTypes),
         type_vars_in_types(ArgTypes, ArgTypeVars),
-        restrict_to_head_vars(InferredTypeConstraints0, ArgTypeVars,
-            InferredTypeConstraints, UnprovenBodyConstraints),
+        restrict_constraints_to_head_vars(ArgTypeVars,
+            InferredTypeConstraints0, InferredTypeConstraints,
+            UnprovenBodyConstraints),
 
         % If there are any as-yet-unproven constraints on type variables
         % in the body, then save these in the pred_info. If it turns out that
@@ -900,27 +901,30 @@ infer_existential_types(ArgTypeVars, ExistQVars,
     % uses it to check for unbound type variables.
     ExternalTypeParams = UnivQVars ++ ExternalTypeParams0.
 
-    % restrict_to_head_vars(Constraints0, HeadVarTypes, Constraints,
-    %       UnprovenConstraints):
+    % restrict_constraints_to_head_vars(HeadVarTypes, Constraints0,
+    %   Constraints, UnprovenConstraints):
     %
     % Constraints is the subset of Constraints0 which contain no type variables
     % other than those in HeadVarTypes. UnprovenConstraints is any unproven
     % (universally quantified) type constraints on variables not in
     % HeadVarTypes.
     %
-:- pred restrict_to_head_vars(prog_constraints::in, list(tvar)::in,
-    prog_constraints::out, list(prog_constraint)::out) is det.
+:- pred restrict_constraints_to_head_vars(list(tvar)::in,
+    prog_constraints::in, prog_constraints::out,
+    list(prog_constraint)::out) is det.
 
-restrict_to_head_vars(constraints(UnivCs0, ExistCs0), ArgVarTypes,
+restrict_constraints_to_head_vars(ArgVarTypes, constraints(UnivCs0, ExistCs0),
         constraints(UnivCs, ExistCs), UnprovenCs) :-
-    restrict_to_head_vars_2(UnivCs0, ArgVarTypes, UnivCs, UnprovenCs),
-    restrict_to_head_vars_2(ExistCs0, ArgVarTypes, ExistCs, _).
+    restrict_constraints_to_head_vars_2(ArgVarTypes, UnivCs0, UnivCs,
+        UnprovenCs),
+    restrict_constraints_to_head_vars_2(ArgVarTypes, ExistCs0, ExistCs, _).
 
-:- pred restrict_to_head_vars_2(list(prog_constraint)::in, list(tvar)::in,
+:- pred restrict_constraints_to_head_vars_2(list(tvar)::in,
+    list(prog_constraint)::in,
     list(prog_constraint)::out, list(prog_constraint)::out) is det.
 
-restrict_to_head_vars_2(ClassConstraints, HeadTypeVars, HeadClassConstraints,
-        OtherClassConstraints) :-
+restrict_constraints_to_head_vars_2(HeadTypeVars, ClassConstraints,
+        HeadClassConstraints, OtherClassConstraints) :-
     list.filter(is_head_class_constraint(HeadTypeVars),
         ClassConstraints, HeadClassConstraints, OtherClassConstraints).
 
@@ -997,7 +1001,7 @@ same_structure_2([ConstraintA | ConstraintsA], [ConstraintB | ConstraintsB],
     is semidet.
 
 identical_up_to_renaming(TypesList1, TypesList2) :-
-    % They are identical up to renaming if they each subsume each other.
+    % They are identical up to renaming if they subsume each other.
     type_list_subsumes(TypesList1, TypesList2, _),
     type_list_subsumes(TypesList2, TypesList1, _).
 
