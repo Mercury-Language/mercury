@@ -1194,10 +1194,8 @@ parse_dcg_if_then_else(CondGoalTerm, ThenGoalTerm, ElseGoalTerm,
 
 new_dcg_var(!VarSet, !Counter, DCGVar) :-
     counter.allocate(N, !Counter),
-    string.int_to_string(N, StringN),
-    string.append("DCG_", StringN, VarName),
-    varset.new_var(DCGVar, !VarSet),
-    varset.name_var(DCGVar, VarName, !VarSet).
+    string.format("DCG_%d", [i(N)], VarName),
+    varset.new_named_var(VarName, DCGVar, !VarSet).
 
     % term_list_append_term(ListTerm, Term, Result):
     %
