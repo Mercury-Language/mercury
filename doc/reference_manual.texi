@@ -479,14 +479,15 @@ in order to be used without arguments.
 An operator in single quotes is still an operator,
 so any requirement for parentheses will remain unchanged.
 
-Note that operators are a syntactic concept.
+Operators are a syntactic concept.
 The @samp{+} infix operator, for example, is only a symbol;
 it does not mean addition unless you write or import code
 that defines it as addition.
 Modules in the Mercury standard library,
 such as @code{int} and @code{float},
 provide such arithmetic definitions.
-To illustrate further,
+Other, non-arithmetic definitions can also be provided,
+for example,
 the @samp{-} infix operator is defined as subtraction by those modules
 but is defined as a pair constructor by the @code{pair} module.
 
@@ -497,6 +498,14 @@ than those with a high ``Priority''.
 For example, given that
 @code{+} has priority 500 and @code{*} has priority 400,
 the term @code{2 * X + Y} is equivalent to @code{(2 * X) + Y}.
+Note that the module qualification operator, @samp{.},
+binds more tightly than any other operator.
+Therefore, operator terms using builtin operators
+need to be parenthesized in order to be module qualified,
+for example,
+integer subtraction can be written as @samp{int.(A - B)}
+whereas pair construction can be written as @samp{pair.(A - B)}.
+(@xref{The module system}).
 
 The ``Specifier'' field indicates
 what structure terms constructed with an operator are allowed to take.
@@ -745,6 +754,9 @@ For example, the principal functor of @samp{foo(bar,baz)} is @samp{foo/2},
 while the principal functor of @samp{foo} is @samp{foo/0}.
 The principal functor of a special term is determined
 @emph{after} term normalization.
+For module qualified terms,
+the principal functor is defined slightly differently
+(@pxref{The module system}).
 
 Note that the word ``functor'' has a number of definitions,
 but in Mercury it just means
@@ -6350,6 +6362,34 @@ as that in the corresponding @samp{module} declaration.
 @c should we mention multipart interfaces and implementations?
 @c ===> no
 
+In order to constrain which entity a name refers to,
+functor terms representing
+predicates, functions, expressions, constructor fields,
+types, modes, insts, type classes, instances and sub-modules
+can be explicitly module qualified using the @samp{.} operator,
+e.g.@: @samp{module.name} or @samp{module.name(Args)}.
+Operator terms
+(that is, functor terms written using operator syntax)
+may also be module qualified,
+though this requires putting parentheses
+around the operator and its arguments,
+e.g.@: @samp{module.(A + B)}.
+The module name used in a module qualified term
+may itself be module qualified if it is a sub-module,
+e.g.@: @samp{module.submodule.name(Args)}.
+A functor is @dfn{fully qualified}
+if every name that is not a builtin or top-level module
+is module qualified.
+
+Currently we also support @samp{__} as an alternative module qualifier,
+so you can write @code{module__name} instead of @code{module.name}.
+
+The principal functor of a module qualified term
+combines the name and qualifiers with the arity.
+For example,
+the principal functor of @samp{foo.bar.baz(Xs)} is @samp{foo.bar.baz/1},
+and the principal functor of @samp{quux.(A + B)} is @samp{quux.'+'/2}.
+
 If a module wishes to make use of entities exported by other modules,
 then it must explicitly import those modules
 using one or more @samp{:- import_module @var{Modules}}
@@ -6366,16 +6406,12 @@ If the imported entities are only used in the implementation section,
 the @code{import_module} or @code{use_module} declaration
 should be in the implementation section.
 
-The names of predicates, functions, constructors, constructor fields,
-types, modes, insts, type classes, and (sub-)modules
-can be explicitly module qualified using the @samp{.} operator,
-e.g.@: @samp{module.name} or @samp{module.submodule.name}.
-This is useful both for readability and for resolving name conflicts.
+You may need to module qualify a name if that name has
+several applicable definitions,
+and the context of its occurrence does not resolve this ambiguity.
+Module qualifiers are also useful for readability.
 Uses of entities imported using @code{use_module} declarations
-@emph{must} be explicitly fully module qualified.
-
-Currently we also support @samp{__} as an alternative module qualifier,
-so you can write @code{module__name} instead of @code{module.name}.
+@emph{must} be fully qualified.
 
 Certain optimizations require information or source code
 for predicates defined in other modules to be as effective as possible.
