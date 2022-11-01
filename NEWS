@@ -640,6 +640,10 @@ Changes to the Mercury compiler
   with that name and arity, and the pragma does not specify which one
   it is for.
 
+* We have added a new option `--reverse-error-order` that tells the compiler
+  to output error messages for higher line numbers before error messages
+  for lower line numbers.
+
 * We have added a new option `--show-local-call-tree`
   that tells the compiler to output a representation of the call tree
   of the predicates and functions of the module as ordered by a depth-first

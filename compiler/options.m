@@ -377,6 +377,7 @@
     ;       auto_comments
     ;       frameopt_comments
     ;       max_error_line_width
+    ;       reverse_error_order
     ;       show_definitions
     ;       show_definition_line_counts
     ;       show_definition_extents
@@ -1425,6 +1426,7 @@ optdef(oc_aux_output, type_repns_for_humans,            bool(no)).
 optdef(oc_aux_output, auto_comments,                    bool(no)).
 optdef(oc_aux_output, frameopt_comments,                bool(no)).
 optdef(oc_aux_output, max_error_line_width,             maybe_int(yes(79))).
+optdef(oc_aux_output, reverse_error_order,              bool(no)).
 optdef(oc_aux_output, show_definitions,                 bool(no)).
 optdef(oc_aux_output, show_definition_line_counts,      bool(no)).
 optdef(oc_aux_output, show_definition_extents,          bool(no)).
@@ -2373,6 +2375,7 @@ long_option("type-repns-for-humans",    type_repns_for_humans).
 long_option("auto-comments",            auto_comments).
 long_option("frameopt-comments",        frameopt_comments).
 long_option("max-error-line-width",     max_error_line_width).
+long_option("reverse-error-order",      reverse_error_order).
 long_option("show-definitions",         show_definitions).
 long_option("show-definition-line-counts",  show_definition_line_counts).
 long_option("show-definition-extents",  show_definition_extents).
@@ -4823,6 +4826,10 @@ options_help_aux_output(Stream, !IO) :-
         "\tSet the maximum width of an error message line to <n> characters",
         "\t(unless a long single word forces the line over this limit).",
         "\tSpecifying --no-max-error-line-width removes the limit.",
+        "--reverse-error-order",
+        "\tPrint error messages in descending order of their line numbers,",
+        "\tinstead of the usual ascending order. This is useful if you want",
+        "\tto work on the last errors in a file first.",
         "--show-definitions",
         "\tWrite out a list of the types, insts, modes, predicates, functions",
         "\ttypeclasses and instances defined in the module to",

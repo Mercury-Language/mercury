@@ -7681,6 +7681,13 @@ Set the maximum width of an error message line to @var{N} characters
 Specifying @samp{--no-max-error-line-width} removes the limit.
 
 @sp 1
+@item --reverse-error-order
+@findex --reverse-error-order
+Print error messages in descending order of their line numbers,
+instead of the usual ascending order. This is useful if you want to work
+on the last errors in a file first.
+
+@sp 1
 @item --show-definitions
 @findex --show-definitions
 Write out a list of the types, insts, modes, predicates, functions,

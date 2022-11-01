@@ -70,7 +70,10 @@ sort_error_specs(Globals, !Specs) :-
     % since the cost of doing so is trivial.)
     %
     list.filter_map(remove_conditionals_in_spec(Globals), !Specs),
-    list.sort_and_remove_dups(compare_error_specs(Globals), !Specs).
+    globals.lookup_bool_option(Globals, reverse_error_order,
+        ReverseErrorOrder),
+    list.sort_and_remove_dups(compare_error_specs(Globals, ReverseErrorOrder),
+        !Specs).
 
 :- pred remove_conditionals_in_spec(globals::in,
     error_spec::in, error_spec::out) is semidet.
@@ -196,13 +199,13 @@ remove_conditionals_in_msg_component(Globals, Component, !ComponentCord) :-
 
 %---------------------%
 
-:- pred compare_error_specs(globals::in, error_spec::in, error_spec::in,
-    comparison_result::out) is det.
+:- pred compare_error_specs(globals::in, bool::in,
+    error_spec::in, error_spec::in, comparison_result::out) is det.
 
-compare_error_specs(Globals, SpecA, SpecB, Result) :-
+compare_error_specs(Globals, ReverseErrorOrder, SpecA, SpecB, Result) :-
     extract_spec_msgs(Globals, SpecA, MsgsA),
     extract_spec_msgs(Globals, SpecB, MsgsB),
-    compare_error_msg_lists(MsgsA, MsgsB, MsgsResult),
+    compare_error_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, MsgsResult),
     (
         MsgsResult = (=),
         compare(Result, SpecA, SpecB)
@@ -213,10 +216,10 @@ compare_error_specs(Globals, SpecA, SpecB, Result) :-
         Result = MsgsResult
     ).
 
-:- pred compare_error_msg_lists(list(error_msg)::in, list(error_msg)::in,
-    comparison_result::out) is det.
+:- pred compare_error_msg_lists(bool::in,
+    list(error_msg)::in, list(error_msg)::in, comparison_result::out) is det.
 
-compare_error_msg_lists(MsgsA, MsgsB, Result) :-
+compare_error_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, Result) :-
     (
         MsgsA = [],
         MsgsB = [],
@@ -232,10 +235,12 @@ compare_error_msg_lists(MsgsA, MsgsB, Result) :-
     ;
         MsgsA = [HeadMsgA | TailMsgsA],
         MsgsB = [HeadMsgB | TailMsgsB],
-        compare_error_msgs(HeadMsgA, HeadMsgB, HeadResult),
+        compare_error_msgs(ReverseErrorOrder, HeadMsgA, HeadMsgB,
+            HeadResult),
         (
             HeadResult = (=),
-            compare_error_msg_lists(TailMsgsA, TailMsgsB, Result)
+            compare_error_msg_lists(ReverseErrorOrder, TailMsgsA, TailMsgsB,
+                Result)
         ;
             ( HeadResult = (>)
             ; HeadResult = (<)
@@ -247,12 +252,12 @@ compare_error_msg_lists(MsgsA, MsgsB, Result) :-
 %---------------------------------------------------------------------------%
 
 sort_error_msgs(Msgs0, Msgs) :-
-    list.sort_and_remove_dups(compare_error_msgs, Msgs0, Msgs).
+    list.sort_and_remove_dups(compare_error_msgs(no), Msgs0, Msgs).
 
-:- pred compare_error_msgs(error_msg::in, error_msg::in,
+:- pred compare_error_msgs(bool::in, error_msg::in, error_msg::in,
     comparison_result::out) is det.
 
-compare_error_msgs(MsgA, MsgB, Result) :-
+compare_error_msgs(ReverseErrorOrder, MsgA, MsgB, Result) :-
     MaybeContextA = project_msg_context(MsgA),
     MaybeContextB = project_msg_context(MsgB),
     compare(ContextResult, MaybeContextA, MaybeContextB),
@@ -271,10 +276,23 @@ compare_error_msgs(MsgA, MsgB, Result) :-
             Result = ComponentsResult
         )
     ;
-        ( ContextResult = (>)
-        ; ContextResult = (<)
-        ),
-        Result = ContextResult
+        ContextResult = (>),
+        (
+            ReverseErrorOrder = no,
+            Result = ContextResult
+        ;
+            ReverseErrorOrder = yes,
+            Result = (<)
+        )
+    ;
+        ContextResult = (<),
+        (
+            ReverseErrorOrder = no,
+            Result = ContextResult
+        ;
+            ReverseErrorOrder = yes,
+            Result = (>)
+        )
     ).
 
 :- func project_msg_context(error_msg) = maybe(prog_context).
