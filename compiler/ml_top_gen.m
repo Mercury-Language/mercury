@@ -18,6 +18,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
+:- import_module io.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
@@ -25,8 +26,8 @@
 
     % Generate MLDS code for an entire module.
     %
-:- pred ml_code_gen(mlds_target_lang::in, mlds::out,
-    module_info::in, module_info::out, 
+:- pred ml_code_gen(io.text_output_stream::in, mlds_target_lang::in,
+    mlds::out, module_info::in, module_info::out, 
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -68,7 +69,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-ml_code_gen(Target, MLDS, !ModuleInfo, !Specs) :-
+ml_code_gen(ProgressStream, Target, MLDS, !ModuleInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ml_gen_foreign_code(!.ModuleInfo, ForeignCode),
     ml_gen_imports(!.ModuleInfo, Imports),
@@ -81,8 +82,8 @@ ml_code_gen(Target, MLDS, !ModuleInfo, !Specs) :-
     ml_gen_exported_enums(!.ModuleInfo, ExportedEnums),
     module_info_user_init_pred_target_names(!.ModuleInfo, InitPreds),
     module_info_user_final_pred_target_names(!.ModuleInfo, FinalPreds),
-    ml_gen_preds(Target, ConstStructMap, PredDefns, GlobalData1, GlobalData,
-        !ModuleInfo, !Specs),
+    ml_gen_preds(ProgressStream, Target, ConstStructMap, PredDefns,
+        GlobalData1, GlobalData, !ModuleInfo, !Specs),
     MLDS = mlds(ModuleName, Imports, GlobalData, TypeDefns,
         TableStructDefns, PredDefns, InitPreds, FinalPreds,
         ForeignCode, ExportedEnums).

@@ -29,7 +29,9 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
+:- import_module io.
 :- import_module list.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -38,9 +40,9 @@
     %
     % Used by mercury_compiler_front_end.m when doing compilation pass-by-pass.
     %
-:- pred simplify_pred_procs(simplify_tasks::in, pred_id::in,
-    list(proc_id)::in, module_info::in, module_info::out,
-    pred_info::in, pred_info::out,
+:- pred simplify_pred_procs(maybe(io.text_output_stream)::in,
+    simplify_tasks::in, pred_id::in, list(proc_id)::in,
+    module_info::in, module_info::out, pred_info::in, pred_info::out,
     error_spec_accumulator::in, error_spec_accumulator::out) is det.
 
     % Simplify the given procedure. Throw away any resulting error messages.
@@ -48,8 +50,9 @@
     % Used by compiler passes after the front end that need (or maybe just
     % want) to eliminate unnecessary parts of the procedure.
     %
-:- pred simplify_proc(simplify_tasks::in, pred_id::in, proc_id::in,
-    module_info::in, module_info::out, proc_info::in, proc_info::out) is det.
+:- pred simplify_proc(maybe(io.text_output_stream)::in, simplify_tasks::in,
+    pred_id::in, proc_id::in, module_info::in, module_info::out,
+    proc_info::in, proc_info::out) is det.
 
     % simplify_goal_update_vars_in_proc(SimplifyTasks, !ModuleInfo,
     %   PredId, ProcId, !ProcInfo, InstMap0, !Goal, CostDelta):
@@ -105,7 +108,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module maybe.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -113,20 +115,23 @@
 
 %-----------------------------------------------------------------------------%
 
-simplify_pred_procs(_, _, [], !ModuleInfo, !PredInfo, !Specs).
-simplify_pred_procs(SimplifyTasks, PredId, [ProcId | ProcIds], !ModuleInfo,
-        !PredInfo, !Specs) :-
-    simplify_pred_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo,
-        !PredInfo, !Specs),
-    simplify_pred_procs(SimplifyTasks, PredId, ProcIds, !ModuleInfo,
-        !PredInfo, !Specs).
+simplify_pred_procs(_, _, _, [], !ModuleInfo, !PredInfo, !Specs).
+simplify_pred_procs(MaybeProgressStream, SimplifyTasks, PredId,
+        [ProcId | ProcIds], !ModuleInfo, !PredInfo, !Specs) :-
+    simplify_pred_proc(MaybeProgressStream, SimplifyTasks, PredId, ProcId,
+        !ModuleInfo, !PredInfo, !Specs),
+    simplify_pred_procs(MaybeProgressStream, SimplifyTasks, PredId, ProcIds,
+        !ModuleInfo, !PredInfo, !Specs).
 
-:- pred simplify_pred_proc(simplify_tasks::in, pred_id::in, proc_id::in,
+:- pred simplify_pred_proc(maybe(io.text_output_stream)::in,
+    simplify_tasks::in, pred_id::in, proc_id::in,
     module_info::in, module_info::out, pred_info::in, pred_info::out,
     error_spec_accumulator::in, error_spec_accumulator::out) is det.
 
-simplify_pred_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo,
-        !PredInfo, !Specs) :-
+simplify_pred_proc(_MaybeProgressStream, SimplifyTasks, PredId, ProcId,
+        !ModuleInfo, !PredInfo, !Specs) :-
+    % XXX It is strange that simplify_proc prints progress messages,
+    % but simplify_pred_proc does not.
     pred_info_get_proc_table(!.PredInfo, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
     simplify_proc_return_msgs(SimplifyTasks, PredId, ProcId,
@@ -154,9 +159,16 @@ simplify_pred_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo,
     pred_info_set_proc_table(ProcTable, !PredInfo),
     accumulate_error_specs_for_proc(ProcSpecs, !Specs).
 
-simplify_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo, !ProcInfo)  :-
+simplify_proc(MaybeProgressStream, SimplifyTasks, PredId, ProcId,
+        !ModuleInfo, !ProcInfo)  :-
     trace [io(!IO)] (
-        write_pred_progress_message(!.ModuleInfo, "Simplifying", PredId, !IO)
+        (
+            MaybeProgressStream = no
+        ;
+            MaybeProgressStream = yes(ProgressStream),
+            maybe_write_pred_progress_message(ProgressStream, !.ModuleInfo,
+                "Simplifying", PredId, !IO)
+        )
     ),
     simplify_proc_return_msgs(SimplifyTasks, PredId, ProcId, !ModuleInfo,
         !ProcInfo, _).

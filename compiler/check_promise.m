@@ -19,9 +19,11 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
+:- import_module io.
 :- import_module list.
 
-:- pred check_promises_in_module(module_info::in, module_info::out,
+:- pred check_promises_in_module(io.text_output_stream::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -49,23 +51,23 @@
 
 %---------------------------------------------------------------------------%
 
-check_promises_in_module(!ModuleInfo, !Specs) :-
+check_promises_in_module(ProgressStream, !ModuleInfo, !Specs) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds0),
-    check_promises_in_preds(ValidPredIds0, [], ToInvalidatePredIds,
-        !ModuleInfo, !Specs),
+    check_promises_in_preds(ProgressStream, ValidPredIds0,
+        [], ToInvalidatePredIds, !ModuleInfo, !Specs),
     module_info_make_pred_ids_invalid(ToInvalidatePredIds, !ModuleInfo).
 
-:- pred check_promises_in_preds(list(pred_id)::in,
+:- pred check_promises_in_preds(io.text_output_stream::in, list(pred_id)::in,
     list(pred_id)::in, list(pred_id)::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_promises_in_preds([], !ToInvalidatePredIds, !ModuleInfo, !Specs).
-check_promises_in_preds([PredId | PredIds],
+check_promises_in_preds(_, [], !ToInvalidatePredIds, !ModuleInfo, !Specs).
+check_promises_in_preds(ProgressStream, [PredId | PredIds],
         !ToInvalidatePredIds, !ModuleInfo, !Specs) :-
-    check_promises_in_pred(PredId,
+    check_promises_in_pred(ProgressStream, PredId,
         !ToInvalidatePredIds, !ModuleInfo, !Specs),
-    check_promises_in_preds(PredIds,
+    check_promises_in_preds(ProgressStream, PredIds,
         !ToInvalidatePredIds, !ModuleInfo, !Specs).
 
     % If the given predicate is a promise, this predicate records that promise
@@ -76,12 +78,13 @@ check_promises_in_preds([PredId | PredIds],
     % If the assertion is in the interface, we check that it doesn't refer
     % to any symbols which are local to that module.
     %
-:- pred check_promises_in_pred(pred_id::in,
+:- pred check_promises_in_pred(io.text_output_stream::in, pred_id::in,
     list(pred_id)::in, list(pred_id)::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_promises_in_pred(PredId, !ToInvalidatePredIds, !ModuleInfo, !Specs) :-
+check_promises_in_pred(ProgressStream, PredId, !ToInvalidatePredIds,
+        !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_goal_type(PredInfo, GoalType),
     (
@@ -93,7 +96,7 @@ check_promises_in_pred(PredId, !ToInvalidatePredIds, !ModuleInfo, !Specs) :-
             true
         else
             trace [io(!IO)] (
-                write_pred_progress_message(!.ModuleInfo,
+                maybe_write_pred_progress_message(ProgressStream, !.ModuleInfo,
                     "Checking promises in", PredId, !IO)
             ),
 

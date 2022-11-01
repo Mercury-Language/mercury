@@ -133,6 +133,7 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
+:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -146,7 +147,8 @@
     % would cause problems for later passes (if so, we stop compilation after
     % this pass).
     %
-:- pred puritycheck_module(module_info::in, module_info::out,
+:- pred puritycheck_module(io.text_output_stream::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Rerun purity checking on a procedure after an optimization pass has
@@ -205,16 +207,17 @@
 
 %-----------------------------------------------------------------------------%
 
-puritycheck_module(!ModuleInfo, !Specs) :-
+puritycheck_module(ProgressStream, !ModuleInfo, !Specs) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    maybe_puritycheck_preds(PredIds, !ModuleInfo, !Specs).
+    maybe_puritycheck_preds(ProgressStream, PredIds, !ModuleInfo, !Specs).
 
-:- pred maybe_puritycheck_preds(list(pred_id)::in,
+:- pred maybe_puritycheck_preds(io.text_output_stream::in, list(pred_id)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_puritycheck_preds([], !ModuleInfo, !Specs).
-maybe_puritycheck_preds([PredId | PredIds], !ModuleInfo, !Specs) :-
+maybe_puritycheck_preds(_, [], !ModuleInfo, !Specs).
+maybe_puritycheck_preds(ProgressStream, [PredId | PredIds],
+        !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     ( if
         ( pred_info_is_imported(PredInfo0)
@@ -224,13 +227,13 @@ maybe_puritycheck_preds([PredId | PredIds], !ModuleInfo, !Specs) :-
         true
     else
         trace [io(!IO)] (
-            write_pred_progress_message(!.ModuleInfo,
+            maybe_write_pred_progress_message(ProgressStream, !.ModuleInfo,
                 "Purity-checking", PredId, !IO)
         ),
         puritycheck_pred(!.ModuleInfo, PredId, PredInfo0, PredInfo, !Specs),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ),
-    maybe_puritycheck_preds(PredIds, !ModuleInfo, !Specs).
+    maybe_puritycheck_preds(ProgressStream, PredIds, !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 %

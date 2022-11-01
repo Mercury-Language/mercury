@@ -91,12 +91,14 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
 
+:- import_module io.
 :- import_module list.
 :- import_module map.
 
 %---------------------------------------------------------------------------%
 
-:- pred inline_in_module(module_info::in, module_info::out) is det.
+:- pred inline_in_module(io.text_output_stream::in,
+    module_info::in, module_info::out) is det.
 
     % This heuristic is used for both local and intermodule inlining.
     % XXX No, it isn't; it is not used in this module.
@@ -289,7 +291,7 @@
 
 %---------------------------------------------------------------------------%
 
-inline_in_module(!ModuleInfo) :-
+inline_in_module(ProgressStream, !ModuleInfo) :-
     % Package up all the inlining options
     % - whether to inline simple conj's of builtins
     % - whether to inline predicates that are only called once
@@ -350,27 +352,31 @@ inline_in_module(!ModuleInfo) :-
     get_bottom_up_sccs_with_entry_points(!.ModuleInfo, DepInfo,
         BottomUpSCCsEntryPoints),
     set.init(ShouldInlineProcs0),
-    inline_in_sccs(Params, BottomUpSCCsEntryPoints, ShouldInlineProcs0,
-        !ModuleInfo),
+    inline_in_sccs(ProgressStream, Params, BottomUpSCCsEntryPoints,
+        ShouldInlineProcs0, !ModuleInfo),
 
     % The dependency graph is now out of date and needs to be rebuilt.
     module_info_clobber_dependency_info(!ModuleInfo).
 
-:- pred inline_in_sccs(inline_params::in, list(scc_with_entry_points)::in,
-    set(pred_proc_id)::in,
+:- pred inline_in_sccs(io.text_output_stream::in, inline_params::in,
+    list(scc_with_entry_points)::in, set(pred_proc_id)::in,
     module_info::in, module_info::out) is det.
 
-inline_in_sccs(_Params, [], _ShouldInlineProcs, !ModuleInfo).
-inline_in_sccs(Params, [SCCEntryPoints | SCCsEntryPoints],
+inline_in_sccs(_ProgressStream, _Params, [], _ShouldInlineProcs, !ModuleInfo).
+inline_in_sccs(ProgressStream, Params, [SCCEntryPoints | SCCsEntryPoints],
         !.ShouldInlineProcs, !ModuleInfo) :-
-    inline_in_scc(Params, SCCEntryPoints, !ShouldInlineProcs, !ModuleInfo),
-    inline_in_sccs(Params, SCCsEntryPoints, !.ShouldInlineProcs, !ModuleInfo).
+    inline_in_scc(ProgressStream, Params, SCCEntryPoints,
+        !ShouldInlineProcs, !ModuleInfo),
+    inline_in_sccs(ProgressStream, Params, SCCsEntryPoints,
+        !.ShouldInlineProcs, !ModuleInfo).
 
-:- pred inline_in_scc(inline_params::in, scc_with_entry_points::in,
+:- pred inline_in_scc(io.text_output_stream::in, inline_params::in,
+    scc_with_entry_points::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     module_info::in, module_info::out) is det.
 
-inline_in_scc(Params, SCCEntryPoints, !ShouldInlineProcs, !ModuleInfo) :-
+inline_in_scc(ProgressStream, Params, SCCEntryPoints,
+        !ShouldInlineProcs, !ModuleInfo) :-
     SCCEntryPoints =
         scc_with_entry_points(SCC, _CalledFromHigherSCCs, _Exported),
     SCCProcs = set.to_sorted_list(SCC),
@@ -381,29 +387,29 @@ inline_in_scc(Params, SCCEntryPoints, !ShouldInlineProcs, !ModuleInfo) :-
         SCCProcs = [SCCProc],
         inline_in_proc_if_allowed(Params, !.ShouldInlineProcs,
             set.init, SCCProc, !ModuleInfo),
-        maybe_mark_proc_to_be_inlined(Params, !.ModuleInfo, SCCProc,
-            !ShouldInlineProcs)
+        maybe_mark_proc_to_be_inlined(ProgressStream, Params, !.ModuleInfo,
+            SCCProc, !ShouldInlineProcs)
     ;
         SCCProcs = [_, _ | _],
         LinearTailRec = Params ^ ip_linear_tail_rec,
         (
             LinearTailRec = do_not_inline_linear_tail_rec_sccs,
-            inline_in_simple_non_singleton_scc(Params, SCCProcs,
-                !ShouldInlineProcs, !ModuleInfo)
+            inline_in_simple_non_singleton_scc(ProgressStream, Params,
+                SCCProcs, !ShouldInlineProcs, !ModuleInfo)
         ;
             LinearTailRec = inline_linear_tail_rec_sccs,
-            inline_in_maybe_linear_tail_rec_scc(Params,
+            inline_in_maybe_linear_tail_rec_scc(ProgressStream, Params,
                 SCCEntryPoints, SCCProcs, !ShouldInlineProcs, !ModuleInfo)
         )
     ).
 
-:- pred inline_in_maybe_linear_tail_rec_scc(inline_params::in,
-    scc_with_entry_points::in, list(pred_proc_id)::in,
+:- pred inline_in_maybe_linear_tail_rec_scc(io.text_output_stream::in,
+    inline_params::in, scc_with_entry_points::in, list(pred_proc_id)::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     module_info::in, module_info::out) is det.
 
-inline_in_maybe_linear_tail_rec_scc(Params, SCCEntryPoints, SCCProcs,
-        !ShouldInlineProcs, !ModuleInfo) :-
+inline_in_maybe_linear_tail_rec_scc(ProgressStream, Params,
+        SCCEntryPoints, SCCProcs, !ShouldInlineProcs, !ModuleInfo) :-
     SCCEntryPoints = scc_with_entry_points(SCC,
         CalledFromHigherSCCs, Exported),
     TSCCDepInfo =
@@ -486,7 +492,7 @@ inline_in_maybe_linear_tail_rec_scc(Params, SCCEntryPoints, SCCProcs,
                 SCC, EntryPoints),
             SCCProcs, !ModuleInfo)
     else
-        inline_in_simple_non_singleton_scc(Params, SCCProcs,
+        inline_in_simple_non_singleton_scc(ProgressStream, Params, SCCProcs,
             !ShouldInlineProcs, !ModuleInfo)
     ).
 
@@ -506,12 +512,13 @@ inline_in_linear_tail_rec_proc(Params, ShouldInlineProcs, SCC, EntryPoints,
     inline_in_proc_if_allowed(Params, ShouldInlineProcs, ShouldInlineTailProcs,
         PredProcId, !ModuleInfo).
 
-:- pred inline_in_simple_non_singleton_scc(inline_params::in,
-    list(pred_proc_id)::in, set(pred_proc_id)::in, set(pred_proc_id)::out,
+:- pred inline_in_simple_non_singleton_scc(io.text_output_stream::in,
+    inline_params::in, list(pred_proc_id)::in,
+    set(pred_proc_id)::in, set(pred_proc_id)::out,
     module_info::in, module_info::out) is det.
 
-inline_in_simple_non_singleton_scc(Params, SCCProcs, !ShouldInlineProcs,
-        !ModuleInfo) :-
+inline_in_simple_non_singleton_scc(ProgressStream, Params, SCCProcs,
+        !ShouldInlineProcs, !ModuleInfo) :-
     % We decide whether to inline *any* of the SCC's procedures *before*
     % we process any of them, so we can apply the results of the decision
     % to *all* of them.
@@ -529,7 +536,7 @@ inline_in_simple_non_singleton_scc(Params, SCCProcs, !ShouldInlineProcs,
         should_proc_be_inlined(Params, !.ModuleInfo),
         SCCProcs, ShouldInlineSCCProcs),
     list.foldl(
-        mark_proc_to_be_inlined(!.ModuleInfo),
+        mark_proc_to_be_inlined(ProgressStream, !.ModuleInfo),
         ShouldInlineSCCProcs, !ShouldInlineProcs),
     list.foldl(
         inline_in_proc_if_allowed(Params, !.ShouldInlineProcs, set.init),
@@ -538,24 +545,28 @@ inline_in_simple_non_singleton_scc(Params, SCCProcs, !ShouldInlineProcs,
     % This predicate effectively adds implicit `pragma inline' directives
     % for procedures that match its heuristic.
     %
-:- pred maybe_mark_proc_to_be_inlined(inline_params::in, module_info::in,
-    pred_proc_id::in, set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
+:- pred maybe_mark_proc_to_be_inlined(io.text_output_stream::in,
+    inline_params::in, module_info::in, pred_proc_id::in,
+    set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
-maybe_mark_proc_to_be_inlined(Params, ModuleInfo, PredProcId,
+maybe_mark_proc_to_be_inlined(ProgressStream, Params, ModuleInfo, PredProcId,
         !ShouldInlineProcs) :-
     ( if should_proc_be_inlined(Params, ModuleInfo, PredProcId) then
-        mark_proc_to_be_inlined(ModuleInfo, PredProcId, !ShouldInlineProcs)
+        mark_proc_to_be_inlined(ProgressStream, ModuleInfo, PredProcId,
+            !ShouldInlineProcs)
     else
         true
     ).
 
-:- pred mark_proc_to_be_inlined(module_info::in, pred_proc_id::in,
-    set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
+:- pred mark_proc_to_be_inlined(io.text_output_stream::in, module_info::in,
+    pred_proc_id::in, set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
-mark_proc_to_be_inlined(ModuleInfo, PredProcId, !ShouldInlineProcs) :-
+mark_proc_to_be_inlined(ProgressStream, ModuleInfo, PredProcId,
+        !ShouldInlineProcs) :-
     set.insert(PredProcId, !ShouldInlineProcs),
     trace [io(!IO)] (
-        write_proc_progress_message(ModuleInfo, "Inlining", PredProcId, !IO)
+        maybe_write_proc_progress_message(ProgressStream, ModuleInfo,
+            "Inlining", PredProcId, !IO)
     ).
 
 :- pred should_proc_be_inlined(inline_params::in, module_info::in,

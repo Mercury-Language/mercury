@@ -263,8 +263,9 @@ should_recompile_3(Globals, UsedFile, IsSubModule, FindTargetFiles,
     ;
         IsSubModule = is_not_inline_submodule,
         % If the module has changed, recompile.
+        MaybeProgressStream = maybe.no,
         ModuleName = !.Info ^ rci_module_name,
-        read_module_src(Globals, rrm_std(ModuleName),
+        read_module_src(MaybeProgressStream, Globals, rrm_std(ModuleName),
             do_not_ignore_errors, do_search, ModuleName, [],
             dont_read_module_if_match(RecordedTimestamp), HaveReadSrc, !IO),
         (
@@ -400,7 +401,7 @@ check_imported_modules(Globals, [HeadUsedModule | TailUsedModules],
     ( cim_search_mapN(HRMM, ModuleName, HaveReadModule) :-
         map.search(HRMM, ModuleName, HaveReadModule)
     ),
-    pred(cim_read_module_intN/9) is read_module_int0,
+    pred(cim_read_module_intN/9) is read_module_int0_no_stream,
     pred(cim_record_read_file_intN/7) is record_read_file_int0,
     ( cim_get_version_numbersN(PT, VN) :-
         PT ^ pti0_maybe_version_numbers = version_numbers(VN)
@@ -412,7 +413,7 @@ check_imported_modules(Globals, [HeadUsedModule | TailUsedModules],
     ( cim_search_mapN(HRMM, ModuleName, HaveReadModule) :-
         map.search(HRMM, ModuleName, HaveReadModule)
     ),
-    pred(cim_read_module_intN/9) is read_module_int1,
+    pred(cim_read_module_intN/9) is read_module_int1_no_stream,
     pred(cim_record_read_file_intN/7) is record_read_file_int1,
     ( cim_get_version_numbersN(PT, VN) :-
         PT ^ pti1_maybe_version_numbers = version_numbers(VN)
@@ -424,7 +425,7 @@ check_imported_modules(Globals, [HeadUsedModule | TailUsedModules],
     ( cim_search_mapN(HRMM, ModuleName, HaveReadModule) :-
         map.search(HRMM, ModuleName, HaveReadModule)
     ),
-    pred(cim_read_module_intN/9) is read_module_int2,
+    pred(cim_read_module_intN/9) is read_module_int2_no_stream,
     pred(cim_record_read_file_intN/7) is record_read_file_int2,
     ( cim_get_version_numbersN(PT, VN) :-
         PT ^ pti2_maybe_version_numbers = version_numbers(VN)
@@ -436,7 +437,7 @@ check_imported_modules(Globals, [HeadUsedModule | TailUsedModules],
     ( cim_search_mapN(HRMM, ModuleName, HaveReadModule) :-
         map.search(HRMM, ModuleName, HaveReadModule)
     ),
-    pred(cim_read_module_intN/9) is read_module_int3,
+    pred(cim_read_module_intN/9) is read_module_int3_no_stream,
     pred(cim_record_read_file_intN/7) is record_read_file_int3,
     ( cim_get_version_numbersN(_PT, _VN) :-
         fail

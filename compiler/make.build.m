@@ -202,7 +202,9 @@ setup_for_build_with_module_options(InvokedByMmcMake, ModuleName,
         ),
         AllOptionArgs = InvokedByMake ++ DetectedGradeFlags ++
             ModuleOptionArgs ++ OptionArgs ++ ExtraOptions ++ UseSubdirs,
-        handle_given_options(AllOptionArgs, _, _,
+        % XXX STREAM
+        io.output_stream(CurStream, !IO),
+        handle_given_options(CurStream, AllOptionArgs, _, _,
             OptionSpecs, BuildGlobals, !IO),
         (
             OptionSpecs = [_ | _],

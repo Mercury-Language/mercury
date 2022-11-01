@@ -74,11 +74,12 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
 
-    % modecheck_module(!.HLDS, {!:HLDS, SafeToContinue, Specs}):
+    % modecheck_module(ProgressStream, !HLDS, SafeToContinue, Specs):
     %
     % Perform mode inference and checking for a whole module.
     %
@@ -90,15 +91,16 @@
     % benchmark mode analysis, and the benchmark predicates require exactly
     % one output argument.
     %
-:- pred modecheck_module(module_info::in,
-    {module_info, maybe_safe_to_continue, list(error_spec)}::out) is det.
+:- pred modecheck_module(io.text_output_stream::in,
+    module_info::in, module_info::out,
+    maybe_safe_to_continue::out, list(error_spec)::out) is det.
 
     % Mode-check or unique-mode-check the code of all the predicates
     % in a module.
     %
-:- pred check_pred_modes(how_to_check_goal::in, may_change_called_proc::in,
-    module_info::in, module_info::out, maybe_safe_to_continue::out,
-    list(error_spec)::out) is det.
+:- pred check_pred_modes(io.text_output_stream::in, how_to_check_goal::in,
+    may_change_called_proc::in, module_info::in, module_info::out,
+    maybe_safe_to_continue::out, list(error_spec)::out) is det.
 
     % Mode-check the code for the given predicate in a given mode.
     % Returns the number of errs found and a bool `Changed'
@@ -180,7 +182,6 @@
 :- import_module assoc_list.
 :- import_module bag.
 :- import_module int.
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -193,19 +194,19 @@
 
 %-----------------------------------------------------------------------------%
 
-modecheck_module(ModuleInfo0, {ModuleInfo, SafeToContinue, Specs}) :-
-    check_pred_modes(check_modes, may_change_called_proc,
-        ModuleInfo0, ModuleInfo, SafeToContinue, Specs).
+modecheck_module(ProgressStream, !ModuleInfo, SafeToContinue, Specs) :-
+    check_pred_modes(ProgressStream, check_modes, may_change_called_proc,
+        !ModuleInfo, SafeToContinue, Specs).
 
 %-----------------------------------------------------------------------------%
 
-check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
+check_pred_modes(ProgressStream, WhatToCheck, MayChangeCalledProc, !ModuleInfo,
         SafeToContinue, !:Specs) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_int_option(Globals, mode_inference_iteration_limit,
         MaxIterations),
-    modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck,
+    modecheck_to_fixpoint(ProgressStream, PredIds, MaxIterations, WhatToCheck,
         MayChangeCalledProc, !ModuleInfo, SafeToContinue0, !:Specs),
     (
         WhatToCheck = check_unique_modes,
@@ -229,11 +230,13 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
                 BeforeDPISafeToContinue = SafeToContinue0,
                 BeforeDPISpecs = !.Specs,
                 BeforeDPIModuleInfo = !.ModuleInfo,
-                delay_partial_inst_preds(PredIds, ChangedPreds, !ModuleInfo),
+                delay_partial_inst_preds(ProgressStream, PredIds, ChangedPreds,
+                    !ModuleInfo),
                 % --delay-partial-instantiations requires mode checking to be
                 % run again.
-                modecheck_to_fixpoint(ChangedPreds, MaxIterations, WhatToCheck,
-                    MayChangeCalledProc, !.ModuleInfo, AfterDPIModuleInfo,
+                modecheck_to_fixpoint(ProgressStream, ChangedPreds,
+                    MaxIterations, WhatToCheck, MayChangeCalledProc,
+                    !.ModuleInfo, AfterDPIModuleInfo,
                     AfterDPISafeToContinue, AfterDPISpecs),
                 MaybeBeforeDPISeverity =
                     worst_severity_in_specs(Globals, BeforeDPISpecs),
@@ -391,19 +394,20 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
     % will end up not being called from anywhere at all during this compiler
     % invocation.
     %
-:- pred modecheck_to_fixpoint(list(pred_id)::in, int::in,
-    how_to_check_goal::in, may_change_called_proc::in,
+:- pred modecheck_to_fixpoint(io.text_output_stream::in, list(pred_id)::in,
+    int::in, how_to_check_goal::in, may_change_called_proc::in,
     module_info::in, module_info::out, maybe_safe_to_continue::out,
     list(error_spec)::out) is det.
 
-modecheck_to_fixpoint(PredIds, NumIterationsLeft, WhatToCheck,
+modecheck_to_fixpoint(ProgressStream, PredIds, NumIterationsLeft, WhatToCheck,
         MayChangeCalledProc, !ModuleInfo, SafeToContinue, !:Specs) :-
     % Save the old procedure bodies, so that we can restore any procedure body 
     % for the next pass if necessary.
     module_info_get_pred_id_table(!.ModuleInfo, OldPredIdTable0),
 
     % Analyze every procedure whose "CanProcess" flag is `can_process_now'.
-    list.foldl3(maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc),
+    list.foldl3(
+        maybe_modecheck_pred(ProgressStream, WhatToCheck, MayChangeCalledProc),
         PredIds, !ModuleInfo, no, Changed1, [], !:Specs),
 
     % Analyze the procedures whose "CanProcess" flag was cannot_process_yet;
@@ -477,8 +481,8 @@ modecheck_to_fixpoint(PredIds, NumIterationsLeft, WhatToCheck,
                     copy_pred_bodies(OldPredIdTable, PredIds, !ModuleInfo)
                 ),
 
-                modecheck_to_fixpoint(PredIds, NumIterationsLeft - 1,
-                    WhatToCheck, MayChangeCalledProc,
+                modecheck_to_fixpoint(ProgressStream, PredIds,
+                    NumIterationsLeft - 1, WhatToCheck, MayChangeCalledProc,
                     !ModuleInfo, SafeToContinue, !:Specs)
             )
         )
@@ -577,11 +581,11 @@ should_modecheck_pred(PredInfo) = ShouldModeCheck :-
         ShouldModeCheck = yes
     ).
 
-:- pred maybe_modecheck_pred(how_to_check_goal::in, may_change_called_proc::in,
-    pred_id::in, module_info::in, module_info::out, bool::in, bool::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred maybe_modecheck_pred(io.text_output_stream::in, how_to_check_goal::in,
+    may_change_called_proc::in, pred_id::in, module_info::in, module_info::out,
+    bool::in, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
+maybe_modecheck_pred(ProgressStream, WhatToCheck, MayChangeCalledProc, PredId,
         !ModuleInfo, !Changed, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     ShouldModeCheck = should_modecheck_pred(PredInfo0),
@@ -590,8 +594,8 @@ maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
     ;
         ShouldModeCheck = yes,
         trace [io(!IO)] (
-            write_modes_progress_message(!.ModuleInfo, WhatToCheck,
-                PredId, PredInfo0, !IO)
+            maybe_write_modes_progress_message(ProgressStream, !.ModuleInfo,
+                WhatToCheck, PredId, PredInfo0, !IO)
         ),
         do_modecheck_pred(PredId, PredInfo0, WhatToCheck,
             MayChangeCalledProc, !ModuleInfo, !Changed,
@@ -611,17 +615,16 @@ maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
 
         globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
         trace [io(!IO)] (
-            module_info_get_name(!.ModuleInfo, ModuleName),
-            get_progress_output_stream(Globals, ModuleName,
-                ProgressStream, !IO),
             maybe_report_stats(ProgressStream, Statistics, !IO)
         )
     ).
 
-:- pred write_modes_progress_message(module_info::in, how_to_check_goal::in,
-    pred_id::in, pred_info::in, io::di, io::uo) is det.
+:- pred maybe_write_modes_progress_message(io.text_output_stream::in,
+    module_info::in, how_to_check_goal::in, pred_id::in, pred_info::in,
+    io::di, io::uo) is det.
 
-write_modes_progress_message(ModuleInfo, WhatToCheck, PredId, PredInfo, !IO) :-
+maybe_write_modes_progress_message(ProgressStream, ModuleInfo, WhatToCheck,
+        PredId, PredInfo, !IO) :-
     pred_info_get_markers(PredInfo, Markers),
     ( if check_marker(Markers, marker_infer_modes) then
         (
@@ -640,7 +643,8 @@ write_modes_progress_message(ModuleInfo, WhatToCheck, PredId, PredInfo, !IO) :-
             Msg = "Unique-mode-checking"
         )
     ),
-    write_pred_progress_message(ModuleInfo, Msg, PredId, !IO).
+    maybe_write_pred_progress_message(ProgressStream, ModuleInfo, Msg,
+        PredId, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1253,7 +1257,7 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredIdTable, !ModuleInfo,
             pred_info_set_proc_info(ProcId, ProcInfo3, PredInfo2, PredInfo3),
             module_info_set_pred_info(PredId, PredInfo3, !ModuleInfo),
 
-            detect_cse_in_proc(PredId, ProcId, !ModuleInfo),
+            detect_cse_in_proc(maybe.no, PredId, ProcId, !ModuleInfo),
             determinism_check_proc(ProcId, PredId, !ModuleInfo, DetismSpecs),
             expect(unify(DetismSpecs, []), $pred, "found detism error"),
             save_proc_info(!.ModuleInfo, ProcId, PredId, !OldPredIdTable),

@@ -48,8 +48,6 @@
     %
 :- pred write_include_file_contents(io.text_output_stream::in, string::in,
     maybe_error::out, io::di, io::uo) is det.
-:- pred write_include_file_contents_cur_stream(string::in, maybe_error::out,
-    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -63,19 +61,16 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_report_stats(bool::in, io::di, io::uo) is det.
 :- pred maybe_report_stats(io.text_output_stream::in, bool::in,
     io::di, io::uo) is det.
 :- pred maybe_report_stats_to_stream(maybe(io.text_output_stream)::in,
     io::di, io::uo) is det.
 
-:- pred maybe_write_string(bool::in, string::in, io::di, io::uo) is det.
 :- pred maybe_write_string(io.text_output_stream::in, bool::in, string::in,
     io::di, io::uo) is det.
 :- pred maybe_write_string_to_stream(maybe(io.text_output_stream)::in,
     string::in, io::di, io::uo) is det.
 
-:- pred maybe_flush_output(bool::in, io::di, io::uo) is det.
 :- pred maybe_flush_output(io.text_output_stream::in, bool::in,
     io::di, io::uo) is det.
 :- pred maybe_flush_output_to_stream(maybe(io.text_output_stream)::in,
@@ -229,10 +224,6 @@ write_include_file_contents(OutputStream, FileName, Res, !IO) :-
         Res = error(cannot_open_file_for_input(FileName, Message))
     ).
 
-write_include_file_contents_cur_stream(FileName, Res, !IO) :-
-    io.output_stream(OutputStream, !IO),
-    write_include_file_contents(OutputStream, FileName, Res, !IO).
-
 :- pred copy_file_to_stream(string::in, io.output_stream::in, io.res::out,
     io::di, io::uo) is det.
 
@@ -305,10 +296,6 @@ get_install_name_option(Globals, OutputFileName, InstallNameOpt) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_report_stats(Statistics, !IO) :-
-    io.output_stream(Stream, !IO),
-    maybe_report_stats(Stream, Statistics, !IO).
-
 maybe_report_stats(Stream, yes, !IO) :-
     benchmarking.report_standard_stats(Stream, !IO).
 maybe_report_stats(_Stream, no, !IO).
@@ -319,10 +306,6 @@ maybe_report_stats_to_stream(no, !IO).
 
 %---------------------%
 
-maybe_write_string(Verbose, String, !IO) :-
-    io.output_stream(Stream, !IO),
-    maybe_write_string(Stream, Verbose, String, !IO).
-
 maybe_write_string(Stream, yes, String, !IO) :-
     io.write_string(Stream, String, !IO).
 maybe_write_string(_Stream, no, _, !IO).
@@ -332,10 +315,6 @@ maybe_write_string_to_stream(yes(Stream), String, !IO) :-
 maybe_write_string_to_stream(no, _, !IO).
 
 %---------------------%
-
-maybe_flush_output(Verbose, !IO) :-
-    io.output_stream(Stream, !IO),
-    maybe_flush_output(Stream, Verbose, !IO).
 
 maybe_flush_output(Stream, yes, !IO) :-
     io.flush_output(Stream, !IO).

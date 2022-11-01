@@ -98,10 +98,11 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
+:- import_module io.
 :- import_module list.
 
-:- pred check_typeclasses(module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
+:- pred check_typeclasses(io.text_output_stream::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % XXX Exported to add_class.m.
@@ -160,12 +161,11 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
+check_typeclasses(ProgressStream, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
 
     trace [io(!IO)] (
-        get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
         maybe_write_string(ProgressStream, Verbose,
             "% Checking instance declaration types...\n", !IO)
     ),
@@ -186,35 +186,30 @@ check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
     (
         !.Specs = [],
         trace [io(!IO)] (
-            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             maybe_write_string(ProgressStream, Verbose,
                 "% Checking typeclass instances...\n", !IO)
         ),
         check_instance_decls(!ModuleInfo, !QualInfo, !Specs),
 
         trace [io(!IO)] (
-            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             maybe_write_string(ProgressStream, Verbose,
                 "% Checking for cyclic classes...\n", !IO)
         ),
         check_for_cyclic_classes(!ModuleInfo, !Specs),
 
         trace [io(!IO)] (
-            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             maybe_write_string(ProgressStream, Verbose,
                 "% Checking for missing concrete instances...\n", !IO)
         ),
         check_for_missing_concrete_instances(!.ModuleInfo, !Specs),
 
         trace [io(!IO)] (
-            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             maybe_write_string(ProgressStream, Verbose,
                 "% Checking functional dependencies on instances...\n", !IO)
         ),
         check_functional_dependencies(!.ModuleInfo, !Specs),
 
         trace [io(!IO)] (
-            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             maybe_write_string(ProgressStream, Verbose,
                 "% Checking typeclass constraints on predicates...\n", !IO)
         ),
@@ -2121,7 +2116,8 @@ check_typeclass_constraints_on_pred(ModuleInfo, PredId, !Specs) :-
         % constraints does not matter.
         AllConstraints = UnivConstraints ++ ExistConstraints,
         trace [io(!IO)] (
-            write_pred_progress_message(ModuleInfo,
+            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+            maybe_write_pred_progress_message(ProgressStream, ModuleInfo,
                 "Checking typeclass constraints on", PredId, !IO)
         ),
 

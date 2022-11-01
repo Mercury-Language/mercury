@@ -82,10 +82,14 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- pred detect_cse_in_module(module_info::in, module_info::out) is det.
+:- import_module io.
+:- import_module maybe.
 
-:- pred detect_cse_in_proc(pred_id::in, proc_id::in,
+:- pred detect_cse_in_module(io.text_output_stream::in,
     module_info::in, module_info::out) is det.
+
+:- pred detect_cse_in_proc(maybe(io.text_output_stream)::in,
+    pred_id::in, proc_id::in, module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -119,7 +123,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
@@ -129,43 +132,30 @@
 
 %---------------------------------------------------------------------------%
 
-detect_cse_in_module(!ModuleInfo) :-
+detect_cse_in_module(ProgressStream, !ModuleInfo) :-
     % Traverse the module structure, calling `detect_cse_in_goal'
     % for each procedure body.
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    detect_cse_in_preds(PredIds, !ModuleInfo).
+    detect_cse_in_preds(ProgressStream, PredIds, !ModuleInfo).
 
-:- pred detect_cse_in_preds(list(pred_id)::in,
+:- pred detect_cse_in_preds(io.text_output_stream::in, list(pred_id)::in,
     module_info::in, module_info::out) is det.
 
-detect_cse_in_preds([], !ModuleInfo).
-detect_cse_in_preds([PredId | PredIds], !ModuleInfo) :-
+detect_cse_in_preds(_, [], !ModuleInfo).
+detect_cse_in_preds(ProgressStream, [PredId | PredIds], !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    detect_cse_in_pred(PredId, PredInfo, !ModuleInfo),
-    detect_cse_in_preds(PredIds, !ModuleInfo).
+    detect_cse_in_pred(ProgressStream, PredId, PredInfo, !ModuleInfo),
+    detect_cse_in_preds(ProgressStream, PredIds, !ModuleInfo).
 
-:- pred detect_cse_in_pred(pred_id::in, pred_info::in,
-    module_info::in, module_info::out) is det.
+:- pred detect_cse_in_pred(io.text_output_stream::in,
+    pred_id::in, pred_info::in, module_info::in, module_info::out) is det.
 
-detect_cse_in_pred(PredId, PredInfo, !ModuleInfo) :-
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
-    detect_cse_in_procs(PredId, ProcIds, !ModuleInfo).
-
-:- pred detect_cse_in_procs(pred_id::in, list(proc_id)::in,
-    module_info::in, module_info::out) is det.
-
-detect_cse_in_procs(_PredId, [], !ModuleInfo).
-detect_cse_in_procs(PredId, [ProcId | ProcIds], !ModuleInfo) :-
-    detect_cse_in_proc(PredId, ProcId, !ModuleInfo),
-    detect_cse_in_procs(PredId, ProcIds, !ModuleInfo).
-
-detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
+detect_cse_in_pred(ProgressStream, PredId, PredInfo, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             io.format(ProgressStream,
                 "%% Detecting common deconstructions for %s\n",
                 [s(pred_id_to_user_string(!.ModuleInfo, PredId))], !IO)
@@ -173,6 +163,20 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
     ;
         VeryVerbose = no
     ),
+    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
+    detect_cse_in_procs(ProgressStream, PredId, ProcIds, !ModuleInfo).
+
+:- pred detect_cse_in_procs(io.text_output_stream::in,
+    pred_id::in, list(proc_id)::in, module_info::in, module_info::out) is det.
+
+detect_cse_in_procs(_ProgressStream,_PredId, [], !ModuleInfo).
+detect_cse_in_procs(ProgressStream, PredId, [ProcId | ProcIds], !ModuleInfo) :-
+    detect_cse_in_proc(yes(ProgressStream), PredId, ProcId, !ModuleInfo),
+    detect_cse_in_procs(ProgressStream, PredId, ProcIds, !ModuleInfo).
+
+detect_cse_in_proc(MaybeProgressStream, PredId, ProcId, !ModuleInfo) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
 
     % XXX We wouldn't have to keep getting the proc_info out of and back into
     % the module_info if modecheck didn't take a whole module_info.
@@ -193,16 +197,17 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
         Redo = no
     ;
         Redo = yes,
-        (
-            VeryVerbose = yes,
-            trace [io(!IO)] (
-                get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+        trace [io(!IO)] (
+            ( if
+                VeryVerbose = yes,
+                MaybeProgressStream = yes(ProgressStream)
+            then
                 io.format(ProgressStream,
                     "%% Repeating mode check for %s\n",
                     [s(pred_id_to_user_string(!.ModuleInfo, PredId))], !IO)
+            else
+                true
             )
-        ;
-            VeryVerbose = no
         ),
         modecheck_proc(PredId, ProcId, !ModuleInfo, _Changed, ModeSpecs),
         trace [io(!IO)] (
@@ -213,10 +218,15 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
         (
             ContainsErrors = yes,
             trace [io(!IO)] (
-                maybe_dump_hlds(!.ModuleInfo, 46, "cse_repeat_modecheck",
-                    no_prev_dump, _DumpInfo, !IO),
-                get_error_output_stream(!.ModuleInfo, ErrorStream, !IO),
-                write_error_specs(ErrorStream, Globals, ModeSpecs, !IO)
+                (
+                    MaybeProgressStream = yes(ProgressStream),
+                    maybe_dump_hlds(ProgressStream, !.ModuleInfo, 46,
+                        "cse_repeat_modecheck", no_prev_dump, _DumpInfo, !IO)
+                ;
+                    MaybeProgressStream = no
+                ),
+                get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
+                write_error_specs(DebugStream, Globals, ModeSpecs, !IO)
             ),
             unexpected($pred, "mode check fails when repeated")
         ;
@@ -225,16 +235,17 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
             % messages to our caller, since any such messages should already
             % have been gathered during the initial mode analysis pass.
         ),
-        (
-            VeryVerbose = yes,
-            trace [io(!IO)] (
-                get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+        trace [io(!IO)] (
+            ( if
+                VeryVerbose = yes,
+                MaybeProgressStream = yes(ProgressStream)
+            then
                 io.format(ProgressStream,
                     "%% Repeating switch detection for %s\n",
                     [s(pred_id_to_user_string(!.ModuleInfo, PredId))], !IO)
+            else
+                true
             )
-        ;
-            VeryVerbose = no
         ),
 
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo2),
@@ -250,19 +261,21 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
             get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             maybe_report_stats(ProgressStream, Statistics, !IO)
         ),
-        (
-            VeryVerbose = yes,
-            trace [io(!IO)] (
-                get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+        trace [io(!IO)] (
+            ( if
+                VeryVerbose = yes,
+                MaybeProgressStream = yes(ProgressStream)
+            then
                 io.format(ProgressStream,
                     "%% Repeating common deconstruction detection for %s\n",
                     [s(pred_id_to_user_string(!.ModuleInfo, PredId))], !IO)
+            else
+                true
             )
-        ;
-            VeryVerbose = no
         ),
         disable_warning [suspicious_recursion] (
-            detect_cse_in_proc(PredId, ProcId, !ModuleInfo)
+            detect_cse_in_proc(MaybeProgressStream, PredId, ProcId,
+                !ModuleInfo)
         )
     ).
 

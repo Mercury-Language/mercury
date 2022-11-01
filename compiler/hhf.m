@@ -30,8 +30,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred convert_pred_to_hhf(bool::in, pred_id::in, module_info::in,
-    module_info::out, io::di, io::uo) is det.
+:- pred convert_pred_to_hhf(io.text_output_stream::in, bool::in, pred_id::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 :- pred convert_clauses_info_to_hhf(bool::in, module_info::in,
     clauses_info::in, clauses_info::out, inst_graph::out) is det.
@@ -62,7 +62,7 @@
 
 %-----------------------------------------------------------------------------%
 
-convert_pred_to_hhf(Simple, PredId, !ModuleInfo, !IO) :-
+convert_pred_to_hhf(ProgressStream, Simple, PredId, !ModuleInfo, !IO) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     ( if pred_info_is_imported(PredInfo0) then
         % AAA
@@ -80,7 +80,7 @@ convert_pred_to_hhf(Simple, PredId, !ModuleInfo, !IO) :-
             pred_info_set_inst_graph_info(!.IG, PredInfo0, PredInfo2)
         )
     else
-        write_pred_progress_message(!.ModuleInfo,
+        maybe_write_pred_progress_message(ProgressStream, !.ModuleInfo,
             "Calculating HHF and inst graph for", PredId, !IO),
 
         pred_info_get_clauses_info(PredInfo0, ClausesInfo0),

@@ -29,8 +29,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred mc_process_module(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred mc_process_module(io.text_output_stream::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
     % dump_abstract_constraints(ModuleInfo, VarSet, PredConstraintsMap, !IO)
     %
@@ -112,7 +112,7 @@
     func 'ho_modes :='(T, ho_modes) = T
 ].
 
-mc_process_module(!ModuleInfo, !IO) :-
+mc_process_module(ProgressStream, !ModuleInfo, !IO) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, simple_mode_constraints, Simple),
@@ -120,7 +120,8 @@ mc_process_module(!ModuleInfo, !IO) :-
 
     (
         New = no,
-        list.foldl2(convert_pred_to_hhf(Simple), PredIds, !ModuleInfo, !IO),
+        list.foldl2(convert_pred_to_hhf(ProgressStream, Simple),
+            PredIds, !ModuleInfo, !IO),
         get_predicate_sccs(!.ModuleInfo, SCCs),
 
         % Stage 1: Process SCCs bottom-up to determine variable producers.
@@ -621,9 +622,8 @@ mc_process_pred(PredId, SCC, !ModeConstraint, !MCI,
         !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     trace [io(!IO)] (
-        write_pred_progress_message(!.ModuleInfo,
-            "Calculating mode constraints for ", PredId, !IO),
-        io.flush_output(!IO)
+        maybe_write_pred_progress_message(!.ModuleInfo,
+            "Calculating mode constraints for ", PredId, !IO)
     ),
 
     pred_info_get_inst_graph_info(PredInfo0, InstGraphInfo),

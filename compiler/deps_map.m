@@ -326,8 +326,9 @@ read_dependencies(Globals, Search, ModuleName, ExpectationContexts,
     % XXX If HaveReadModuleSrc contains error messages, any parse tree
     % it may also contain may not be complete, and the rest of this predicate
     % may work on incorrect data.
-    read_module_src(Globals, rrm_get_deps(ModuleName), ignore_errors, Search,
-        ModuleName, ExpectationContexts,
+    MaybeProgressStream = maybe.no,
+    read_module_src(MaybeProgressStream, Globals, rrm_get_deps(ModuleName),
+        ignore_errors, Search, ModuleName, ExpectationContexts,
         always_read_module(dont_return_timestamp), HaveReadModuleSrc, !IO),
     (
         HaveReadModuleSrc = have_read_module(SourceFileName, _MaybeTimestamp,

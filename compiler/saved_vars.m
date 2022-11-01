@@ -31,9 +31,11 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
+:- import_module io.
+
 %-----------------------------------------------------------------------------%
 
-:- pred saved_vars_proc(pred_proc_id::in,
+:- pred saved_vars_proc(io.text_output_stream::in, pred_proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -59,7 +61,6 @@
 :- import_module parse_tree.var_table.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
@@ -70,12 +71,13 @@
 
 %-----------------------------------------------------------------------------%
 
-saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
+saved_vars_proc(ProgressStream, PredProcId, !ProcInfo, !ModuleInfo) :-
     trace [io(!IO)] (
-        write_proc_progress_message(!.ModuleInfo,
-            "Minimizing saved vars in", PredId, ProcId, !IO)
+        maybe_write_proc_progress_message(ProgressStream, !.ModuleInfo,
+            "Minimizing saved vars in", PredProcId, !IO)
     ),
-
+    
+    PredProcId = proc(PredId, _ProcId),
     module_info_get_globals(!.ModuleInfo, Globals),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),

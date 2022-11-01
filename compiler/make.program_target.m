@@ -1588,7 +1588,9 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
         MaybeMCFlags = ok1(MCFlags),
         DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
         AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
-        handle_given_options(AllFlags, _, _, OptionsSpecs, LibGlobals, !IO)
+        io.output_stream(CurStream, !IO),
+        handle_given_options(CurStream, AllFlags, _, _, OptionsSpecs,
+            LibGlobals, !IO)
     ;
         MaybeMCFlags = error1(LookupSpecs),
         write_error_specs(Globals, LookupSpecs, !IO),

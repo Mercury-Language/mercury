@@ -196,7 +196,8 @@ stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
     % (see tests/valid/stack_opt_simplify.m)
     module_info_get_globals(!.ModuleInfo, Globals),
     SimplifyTasks = list_to_simplify_tasks(Globals, []),
-    simplify_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo, !ProcInfo),
+    simplify_proc(maybe.no, SimplifyTasks, PredId, ProcId,
+        !ModuleInfo, !ProcInfo),
     detect_liveness_proc(!.ModuleInfo, PredProcId, !ProcInfo),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     initial_liveness(!.ModuleInfo, PredInfo, !.ProcInfo, Liveness0),

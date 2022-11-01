@@ -78,6 +78,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
+:- import_module io.
 :- import_module list.
 
 :- type number_of_iterations
@@ -95,9 +96,9 @@
     % We set NumberOfIterations to `exceeded_iteration_limit'
     % iff the type inference iteration limit was reached.
     %
-:- pred typecheck_module(module_info::in, module_info::out,
-    list(error_spec)::out, maybe_clause_syntax_errors::out,
-    number_of_iterations::out) is det.
+:- pred typecheck_module(io.text_output_stream::in,
+    module_info::in, module_info::out, list(error_spec)::out,
+    maybe_clause_syntax_errors::out, number_of_iterations::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -169,7 +170,7 @@
 
 %---------------------------------------------------------------------------%
 
-typecheck_module(!ModuleInfo, Specs, FoundSyntaxError,
+typecheck_module(ProgressStream, !ModuleInfo, Specs, FoundSyntaxError,
         NumberOfIterations) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_int_option(Globals, type_inference_iteration_limit,
@@ -178,7 +179,7 @@ typecheck_module(!ModuleInfo, Specs, FoundSyntaxError,
     module_info_get_valid_pred_id_set(!.ModuleInfo, OrigValidPredIdSet),
     OrigValidPredIds = set_tree234.to_sorted_list(OrigValidPredIdSet),
 
-    typecheck_to_fixpoint(1, MaxIterations, !ModuleInfo,
+    typecheck_to_fixpoint(ProgressStream, 1, MaxIterations, !ModuleInfo,
         OrigValidPredIds, OrigValidPredIdSet, FinalValidPredIdSet,
         CheckSpecs, FoundSyntaxError, NumberOfIterations),
 
@@ -189,20 +190,21 @@ typecheck_module(!ModuleInfo, Specs, FoundSyntaxError,
     % Repeatedly typecheck the code for a group of predicates
     % until a fixpoint is reached, or until some errors are detected.
     %
-:- pred typecheck_to_fixpoint(int::in, int::in,
+:- pred typecheck_to_fixpoint(io.text_output_stream::in, int::in, int::in,
     module_info::in, module_info::out,
     list(pred_id)::in, set_tree234(pred_id)::in, set_tree234(pred_id)::out,
     list(error_spec)::out, maybe_clause_syntax_errors::out,
     number_of_iterations::out) is det.
 
-typecheck_to_fixpoint(Iteration, MaxIterations, !ModuleInfo,
+typecheck_to_fixpoint(ProgressStream, Iteration, MaxIterations, !ModuleInfo,
         OrigValidPredIds, OrigValidPredIdSet, FinalValidPredIdSet,
         Specs, FoundSyntaxError, NumberOfIterations) :-
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     map.to_assoc_list(PredIdTable0, PredIdsInfos0),
-    typecheck_module_one_iteration(!.ModuleInfo, OrigValidPredIdSet,
-        PredIdsInfos0, PredIdsInfos, [], NewlyInvalidPredIds,
-        [], CurSpecs, no_clause_syntax_errors, CurFoundSyntaxError,
+    typecheck_module_one_iteration(ProgressStream, !.ModuleInfo,
+        OrigValidPredIdSet, PredIdsInfos0, PredIdsInfos,
+        [], NewlyInvalidPredIds, [], CurSpecs,
+        no_clause_syntax_errors, CurFoundSyntaxError,
         next_iteration_is_not_needed, NextIteration),
     map.from_sorted_assoc_list(PredIdsInfos, PredIdTable),
     module_info_set_pred_id_table(PredIdTable, !ModuleInfo),
@@ -237,9 +239,10 @@ typecheck_to_fixpoint(Iteration, MaxIterations, !ModuleInfo,
             DebugTypes = no
         ),
         ( if Iteration < MaxIterations then
-            typecheck_to_fixpoint(Iteration + 1, MaxIterations, !ModuleInfo,
-                OrigValidPredIds, OrigValidPredIdSet, FinalValidPredIdSet,
-                Specs, FoundSyntaxError, NumberOfIterations)
+            typecheck_to_fixpoint(ProgressStream, Iteration + 1, MaxIterations,
+                !ModuleInfo, OrigValidPredIds,
+                OrigValidPredIdSet, FinalValidPredIdSet, Specs,
+                FoundSyntaxError, NumberOfIterations)
         else
             FinalValidPredIdSet = NewValidPredIdSet,
             Specs = [typecheck_report_max_iterations_exceeded(MaxIterations)],
@@ -259,17 +262,17 @@ typecheck_to_fixpoint(Iteration, MaxIterations, !ModuleInfo,
     % NOTE: Please update Mercury.options if this predicate is moved to another
     % module. It must be compiled with --optimize-constructor-last-call.
     %
-:- pred typecheck_module_one_iteration(module_info::in,
-    set_tree234(pred_id)::in,
+:- pred typecheck_module_one_iteration(io.text_output_stream::in,
+    module_info::in, set_tree234(pred_id)::in,
     assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out,
     list(pred_id)::in, list(pred_id)::out,
     list(error_spec)::in, list(error_spec)::out,
     maybe_clause_syntax_errors::in, maybe_clause_syntax_errors::out,
     next_iteration::in, next_iteration::out) is det.
 
-typecheck_module_one_iteration(_, _, [], [],
+typecheck_module_one_iteration(_, _, _, [], [],
         !NewlyInvalidPredIds, !Specs, !FoundSyntaxError, !NextIteration).
-typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
+typecheck_module_one_iteration(ProgressStream, ModuleInfo, ValidPredIdSet,
         [HeadPredIdInfo0 | TailPredIdsInfos0], PredIdInfos,
         !NewlyInvalidPredIds, !Specs, !FoundSyntaxError, !NextIteration) :-
     HeadPredIdInfo0 = PredId - PredInfo0,
@@ -281,14 +284,15 @@ typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
         )
     then
         HeadPredIdInfo = HeadPredIdInfo0,
-        typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
-            TailPredIdsInfos0, TailPredIdsInfos, !NewlyInvalidPredIds,
-            !Specs, !FoundSyntaxError, !NextIteration),
+        typecheck_module_one_iteration(ProgressStream, ModuleInfo,
+            ValidPredIdSet, TailPredIdsInfos0, TailPredIdsInfos,
+            !NewlyInvalidPredIds, !Specs, !FoundSyntaxError, !NextIteration),
         PredIdInfos = [HeadPredIdInfo | TailPredIdsInfos] % lcmc
     else
         % Potential parallelization site.
-        typecheck_pred_if_needed(ModuleInfo, PredId, PredInfo0, PredInfo,
-            PredSpecs, PredSyntaxError, ContainsErrors, PredNextIteration),
+        typecheck_pred_if_needed(ProgressStream, ModuleInfo, PredId,
+            PredInfo0, PredInfo, PredSpecs, PredSyntaxError, ContainsErrors,
+            PredNextIteration),
         (
             ContainsErrors = no
         ;
@@ -323,18 +327,18 @@ typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
             PredNextIteration = next_iteration_is_needed,
             !:NextIteration = next_iteration_is_needed
         ),
-        typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
-            TailPredIdsInfos0, TailPredIdsInfos, !NewlyInvalidPredIds,
-            !Specs, !FoundSyntaxError, !NextIteration),
+        typecheck_module_one_iteration(ProgressStream, ModuleInfo,
+            ValidPredIdSet, TailPredIdsInfos0, TailPredIdsInfos,
+            !NewlyInvalidPredIds, !Specs, !FoundSyntaxError, !NextIteration),
         PredIdInfos = [HeadPredIdInfo | TailPredIdsInfos] % lcmc
     ).
 
-:- pred typecheck_pred_if_needed(module_info::in, pred_id::in,
-    pred_info::in, pred_info::out, list(error_spec)::out,
+:- pred typecheck_pred_if_needed(io.text_output_stream::in, module_info::in,
+    pred_id::in, pred_info::in, pred_info::out, list(error_spec)::out,
     maybe_clause_syntax_errors::out, bool::out, next_iteration::out) is det.
 
-typecheck_pred_if_needed(ModuleInfo, PredId, !PredInfo, !:Specs,
-        FoundSyntaxError, ContainsErrors, NextIteration) :-
+typecheck_pred_if_needed(ProgressStream, ModuleInfo, PredId, !PredInfo,
+        !:Specs, FoundSyntaxError, ContainsErrors, NextIteration) :-
     ( if is_pred_created_type_correct(ModuleInfo, !PredInfo) then
         !:Specs = [],
         FoundSyntaxError = no_clause_syntax_errors,
@@ -350,8 +354,8 @@ typecheck_pred_if_needed(ModuleInfo, PredId, !PredInfo, !:Specs,
                 NextIteration)
         ;
             MaybeNeedTypecheck = do_need_typecheck,
-            do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs,
-                NextIteration),
+            do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
+                !Specs, NextIteration),
             module_info_get_globals(ModuleInfo, Globals),
             ContainsErrors = contains_errors(Globals, !.Specs)
         )
@@ -525,11 +529,12 @@ handle_stubs_and_non_contiguous_clauses(ModuleInfo, PredId, !PredInfo,
 
 %---------------------------------------------------------------------------%
 
-:- pred do_typecheck_pred(module_info::in, pred_id::in,
-    pred_info::in, pred_info::out,
+:- pred do_typecheck_pred(io.text_output_stream::in, module_info::in,
+    pred_id::in, pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out, next_iteration::out) is det.
 
-do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
+do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
+        !Specs, NextIteration) :-
     some [!Info, !TypeAssignSet, !ClausesInfo, !ExternalTypeParams] (
         pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
         clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep0, ItemNumbers),
@@ -548,7 +553,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
             % declaration of `pred foo(T1, T2, ..., TN)' by make_hlds.m.
             Inferring = yes,
             trace [io(!IO)] (
-                write_pred_progress_message(ModuleInfo,
+                maybe_write_pred_progress_message(ProgressStream, ModuleInfo,
                     "Inferring type of", PredId, !IO)
             ),
             !:ExternalTypeParams = [],
@@ -556,7 +561,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
         else
             Inferring = no,
             trace [io(!IO)] (
-                write_pred_progress_message(ModuleInfo,
+                maybe_write_pred_progress_message(ProgressStream, ModuleInfo,
                     "Type-checking", PredId, !IO)
             ),
             type_vars_in_types(ArgTypes0, !:ExternalTypeParams),

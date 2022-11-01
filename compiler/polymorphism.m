@@ -123,15 +123,16 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 
+:- import_module io.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
 
     % Run the polymorphism pass over the whole HLDS.
     %
-:- pred polymorphism_process_module(module_info::in, module_info::out,
-    list(pred_id)::out, maybe_safe_to_continue::out, list(error_spec)::out)
-    is det.
+:- pred polymorphism_process_module(io.text_output_stream::in,
+    module_info::in, module_info::out, list(pred_id)::out,
+    maybe_safe_to_continue::out, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -175,7 +176,6 @@
 :- import_module parse_tree.var_table.
 
 :- import_module int.
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
@@ -193,23 +193,23 @@
 % sure we don't muck them up before we have finished the first pass.
 %
 
-polymorphism_process_module(!ModuleInfo, ExistsCastPredIds,
+polymorphism_process_module(ProgressStream, !ModuleInfo, ExistsCastPredIds,
         SafeToContinue, Specs) :-
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     map.keys(PredIdTable0, PredIds0),
-    list.foldl3(maybe_polymorphism_process_pred, PredIds0,
+    list.foldl3(maybe_polymorphism_process_pred(ProgressStream), PredIds0,
         safe_to_continue, SafeToContinue, [], Specs, !ModuleInfo),
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable1),
     map.keys(PredIdTable1, PredIds1),
-    list.foldl2(polymorphism_update_arg_types, PredIds1, [], ExistsCastPredIds,
-        !ModuleInfo).
+    list.foldl2(polymorphism_update_arg_types(yes(ProgressStream)), PredIds1,
+        [], ExistsCastPredIds, !ModuleInfo).
 
-:- pred maybe_polymorphism_process_pred(pred_id::in,
+:- pred maybe_polymorphism_process_pred(io.text_output_stream::in, pred_id::in,
     maybe_safe_to_continue::in, maybe_safe_to_continue::out,
     list(error_spec)::in, list(error_spec)::out,
     module_info::in, module_info::out) is det.
 
-maybe_polymorphism_process_pred(PredId, !SafeToContinue,
+maybe_polymorphism_process_pred(ProgressStream, PredId, !SafeToContinue,
         !Specs, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ( if
@@ -220,25 +220,26 @@ maybe_polymorphism_process_pred(PredId, !SafeToContinue,
     then
         true
     else
-        polymorphism_process_pred_msg(PredId, !SafeToContinue,
+        polymorphism_process_pred_msg(ProgressStream, PredId, !SafeToContinue,
             !Specs, !ModuleInfo)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred polymorphism_process_pred_msg(pred_id::in,
+:- pred polymorphism_process_pred_msg(io.text_output_stream::in, pred_id::in,
     maybe_safe_to_continue::in, maybe_safe_to_continue::out,
     list(error_spec)::in, list(error_spec)::out,
     module_info::in, module_info::out) is det.
 
-polymorphism_process_pred_msg(PredId, !SafeToContinue, !Specs, !ModuleInfo) :-
+polymorphism_process_pred_msg(ProgressStream, PredId,
+        !SafeToContinue, !Specs, !ModuleInfo) :-
     % Since polymorphism transforms not just the procedures defined
     % in the module being compiled, but also all the procedures in
     % all the imported modules, this message can be printed A LOT,
     % even though it is almost never of interest.
     % That is why we enable it only when requested.
     trace [compiletime(flag("poly_msgs")), io(!IO)] (
-        write_pred_progress_message(!.ModuleInfo,
+        maybe_write_pred_progress_message(ProgressStream, !.ModuleInfo,
             "Transforming polymorphism for", PredId, !IO)
     ),
     polymorphism_process_pred(PredId, PredSafeToContinue, !Specs, !ModuleInfo),
@@ -255,7 +256,8 @@ polymorphism_process_generated_pred(PredId, !ModuleInfo) :-
         "generated pred has errors"),
     expect(unify(SafeToContinue, safe_to_continue), $pred,
         "generated pred has errors"),
-    polymorphism_update_arg_types(PredId, [], ExistsPredIds, !ModuleInfo),
+    polymorphism_update_arg_types(maybe.no, PredId, [], ExistsPredIds,
+        !ModuleInfo),
     copy_clauses_to_procs_for_pred_in_module_info(PredId, !ModuleInfo),
     list.foldl(introduce_exists_casts_poly, ExistsPredIds, !ModuleInfo).
 
@@ -329,11 +331,12 @@ add_extra_arg_modes_to_proc(ExtraArgModes, !ProcInfo) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred polymorphism_update_arg_types(pred_id::in,
-    list(pred_id)::in, list(pred_id)::out,
+:- pred polymorphism_update_arg_types(maybe(io.text_output_stream)::in,
+    pred_id::in, list(pred_id)::in, list(pred_id)::out,
     module_info::in, module_info::out) is det.
 
-polymorphism_update_arg_types(PredId, !ExistsCastPredIds, !ModuleInfo) :-
+polymorphism_update_arg_types(MaybeProgressStream, PredId,
+        !ExistsCastPredIds, !ModuleInfo) :-
     % Recompute the arg types by finding the headvars and the var->type mapping
     % (from the clauses_info) and applying the type mapping to the extra
     % headvars to get the new arg types. Note that we are careful to only apply
@@ -347,8 +350,13 @@ polymorphism_update_arg_types(PredId, !ExistsCastPredIds, !ModuleInfo) :-
     % even though it is almost never of interest.
     % That is why we enable it only when requested.
     trace [compiletime(flag("poly_msgs")), io(!IO)] (
-        write_pred_progress_message(!.ModuleInfo,
-            "Update polymorphism arg types for", PredId, !IO)
+        (
+            MaybeProgressStream = no
+        ;
+            MaybeProgressStream = yes(ProgressStream),
+            maybe_write_pred_progress_message(ProgressStream, !.ModuleInfo,
+                "Update polymorphism arg types for", PredId, !IO)
+        )
     ),
 
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),

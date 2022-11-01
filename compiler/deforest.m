@@ -37,9 +37,12 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 
+:- import_module io.
+
 %-----------------------------------------------------------------------------%
 
-:- pred deforestation(module_info::in, module_info::out) is det.
+:- pred deforest_module(io.text_output_stream::in,
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -88,7 +91,6 @@
 :- import_module bool.
 :- import_module getopt.
 :- import_module int.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -102,7 +104,7 @@
 
 %-----------------------------------------------------------------------------%
 
-deforestation(!ModuleInfo) :-
+deforest_module(ProgressStream, !ModuleInfo) :-
     proc_arg_info_init(ProcArgInfo0),
     type_to_univ(ProcArgInfo0, UnivProcArgInfo0),
 
@@ -125,7 +127,7 @@ deforestation(!ModuleInfo) :-
     module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
     DepList = dependency_info_get_condensed_bottom_up_sccs(DepInfo),
 
-    pd_info_init(!.ModuleInfo, ProcArgInfo, PDInfo0),
+    pd_info_init(ProgressStream, !.ModuleInfo, ProcArgInfo, PDInfo0),
     list.foldl(deforest_proc, DepList, PDInfo0, PDInfo),
     pd_info_get_module_info(PDInfo, !:ModuleInfo),
     module_info_clobber_dependency_info(!ModuleInfo),
@@ -203,17 +205,17 @@ deforest_proc(PredProcId, !PDInfo) :-
 :- pred deforest_proc_deltas(pred_proc_id::in, int::out, int::out,
     pd_info::in, pd_info::out) is det.
 
-deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
+deforest_proc_deltas(PredProcId, CostDelta, SizeDelta, !PDInfo) :-
     some [!ModuleInfo, !PredInfo, !ProcInfo, !Goal] (
+        pd_info_get_progress_stream(!.PDInfo, ProgressStream),
         pd_info_get_module_info(!.PDInfo, !:ModuleInfo),
         trace [io(!IO)] (
-            write_proc_progress_message(!.ModuleInfo,
-                "Deforesting", PredId, ProcId, !IO)
+            maybe_write_proc_progress_message(ProgressStream, !.ModuleInfo,
+                "Deforesting", PredProcId, !IO)
         ),
-        module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+        module_info_pred_proc_info(!.ModuleInfo, PredProcId,
             !:PredInfo, !:ProcInfo),
-        pd_info_init_unfold_info(proc(PredId, ProcId), !.PredInfo, !.ProcInfo,
-            !PDInfo),
+        pd_info_init_unfold_info(PredProcId, !.PredInfo, !.ProcInfo, !PDInfo),
         proc_info_get_goal(!.ProcInfo, !:Goal),
 
         % Inlining may have created some opportunities for simplification.
@@ -242,12 +244,13 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
             pd_info_set_module_info(!.ModuleInfo, !PDInfo),
             pd_info_get_pred_info(!.PDInfo, !:PredInfo),
             proc_info_set_goal(!.Goal, !ProcInfo),
-            module_info_set_pred_proc_info(PredId, ProcId,
+            module_info_set_pred_proc_info(PredProcId,
                 !.PredInfo, !.ProcInfo, !ModuleInfo),
             pd_info_get_rerun_det(!.PDInfo, RerunDet),
 
             (
                 RerunDet = yes,
+                PredProcId = proc(PredId, ProcId),
                 % If the determinism of some sub-goals has changed,
                 % then we re-run determinism analysis. As with inlining.m,
                 % this avoids problems with inlining erroneous procedures.
@@ -258,7 +261,7 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
 
             % Recompute the branch_info for the procedure.
             pd_info_get_proc_arg_info(!.PDInfo, ProcArgInfo0),
-            pd_util.get_branch_vars_proc(proc(PredId, ProcId), !.ProcInfo,
+            pd_util.get_branch_vars_proc(PredProcId, !.ProcInfo,
                 !ModuleInfo, ProcArgInfo0, ProcArgInfo),
             pd_info_set_proc_arg_info(ProcArgInfo, !PDInfo),
             pd_info_set_module_info(!.ModuleInfo, !PDInfo)
@@ -266,15 +269,15 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
             Changed = no,
             pd_info_get_module_info(!.PDInfo, !:ModuleInfo),
             pd_info_get_pred_info(!.PDInfo, !:PredInfo),
-            module_info_set_pred_proc_info(PredId, ProcId,
-                !.PredInfo, !.ProcInfo, !ModuleInfo),
+            module_info_set_pred_proc_info(PredProcId, !.PredInfo, !.ProcInfo,
+                !ModuleInfo),
             pd_info_set_module_info(!.ModuleInfo, !PDInfo)
         ),
 
         pd_info_get_module_info(!.PDInfo, !:ModuleInfo),
         trace [io(!IO)] (
-            write_proc_progress_message(!.ModuleInfo,
-                "Finished deforesting", PredId, ProcId, !IO)
+            maybe_write_proc_progress_message(ProgressStream, !.ModuleInfo,
+                "Finished deforesting", PredProcId, !IO)
         ),
         pd_info_get_cost_delta(!.PDInfo, CostDelta),
         pd_info_get_size_delta(!.PDInfo, SizeDelta),
@@ -1300,10 +1303,12 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             pd_info_incr_cost_delta(CostDelta, !PDInfo),
             pd_info_incr_size_delta(SizeDelta, !PDInfo),
             pd_info_set_parent_versions(Parents0, !PDInfo),
-            pd_info_get_pred_proc_id(!.PDInfo, proc(CurrPredId, CurrProcId)),
+
+            pd_info_get_progress_stream(!.PDInfo, ProgressStream),
+            pd_info_get_pred_proc_id(!.PDInfo, CurPredProcId),
             trace [io(!IO)] (
-                write_proc_progress_message(ModuleInfo,
-                    "Back in", CurrPredId, CurrProcId, !IO)
+                maybe_write_proc_progress_message(ProgressStream, ModuleInfo,
+                    "Back in", CurPredProcId, !IO)
             ),
             MaybeCallGoal = yes(CallGoal)
         else

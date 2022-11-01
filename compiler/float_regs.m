@@ -1175,8 +1175,10 @@ insert_reg_wrappers_plain_call(PredId, ProcId, Vars0, Vars, WrapGoals,
         % XXX After the dep_par_conj pass, some dead procedures are removed
         % but calls to them (from also dead procedures?) remain.
         trace [compile_time(flag("debug_float_regs")), io(!IO)] (
-            write_proc_progress_message(ModuleInfo,
-                "Ignoring call to missing procedure", PredId, ProcId, !IO)
+            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+            PredProcId = proc(PredId, ProcId),
+            maybe_write_proc_progress_message(DebugStream, ModuleInfo,
+                "Ignoring call to missing procedure", PredProcId, !IO)
         ),
         Vars = Vars0,
         WrapGoals = [],

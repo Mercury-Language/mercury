@@ -158,6 +158,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
 
+:- import_module io.
 :- import_module list.
 
 %---------------------%
@@ -185,8 +186,9 @@
     % Implement the transformation described at the top-of-module module
     % comment above.
     %
-:- pred do_direct_arg_in_out_transform_in_module(direct_arg_proc_map::in,
-    module_info::in, module_info::out, list(error_spec)::out) is det.
+:- pred do_direct_arg_in_out_transform_in_module(io.text_output_stream::in,
+    direct_arg_proc_map::in, module_info::in, module_info::out,
+    list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -230,7 +232,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
@@ -600,7 +601,7 @@ some_bound_inst_has_direct_arg_out(ModuleInfo, FreeArgDirectArgFunctors,
 
 %---------------------------------------------------------------------------%
 
-do_direct_arg_in_out_transform_in_module(DirectArgProcMap,
+do_direct_arg_in_out_transform_in_module(ProgressStream, DirectArgProcMap,
         !ModuleInfo, !:Specs) :-
     !:Specs = [],
     % Phase zero: generate an error message for every foreign_export pragma
@@ -621,7 +622,7 @@ do_direct_arg_in_out_transform_in_module(DirectArgProcMap,
     % that includes a clone for every daio argument variable.
     % Then delete the original procedure, to ensure that later passes
     % detect any references to them that were accidentally left by phase two.
-    map.foldl4(make_direct_arg_clone_or_spec, DirectArgProcMap,
+    map.foldl4(make_direct_arg_clone_or_spec(ProgressStream), DirectArgProcMap,
         map.init, DirectArgProcInOutMap, map.init, CloneInOutMap,
         !ModuleInfo, !Specs),
 
@@ -630,8 +631,8 @@ do_direct_arg_in_out_transform_in_module(DirectArgProcMap,
     % a daio variable is updated to refer to its most recent clone.
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl2(
-        transform_direct_arg_in_out_calls_in_pred(DirectArgProcMap,
-            DirectArgProcInOutMap, CloneInOutMap),
+        transform_direct_arg_in_out_calls_in_pred(ProgressStream,
+            DirectArgProcMap, DirectArgProcInOutMap, CloneInOutMap),
         PredIds, !ModuleInfo, !Specs),
 
     % Phase three: replace all references to the now-deleted procedures
@@ -646,18 +647,19 @@ do_direct_arg_in_out_transform_in_module(DirectArgProcMap,
         InstanceTable0, InstanceTable),
     module_info_set_instance_table(InstanceTable, !ModuleInfo).
 
-:- pred make_direct_arg_clone_or_spec(pred_proc_id::in, direct_arg_proc::in,
+:- pred make_direct_arg_clone_or_spec(io.text_output_stream::in,
+    pred_proc_id::in, direct_arg_proc::in,
     direct_arg_proc_in_out_map::in, direct_arg_proc_in_out_map::out,
     clone_in_out_map::in, clone_in_out_map::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-make_direct_arg_clone_or_spec(PredProcId, DirectArgProc,
+make_direct_arg_clone_or_spec(ProgressStream, PredProcId, DirectArgProc,
         !DirectArgInOutMap, !CloneInOutMap, !ModuleInfo, !Specs) :-
     (
         DirectArgProc = direct_arg_clone_proc(OoMInOutArgs),
-        make_direct_arg_in_out_clone(PredProcId, OoMInOutArgs, ProcInOut,
-            !CloneInOutMap, !ModuleInfo),
+        make_direct_arg_in_out_clone(ProgressStream, PredProcId, OoMInOutArgs,
+            ProcInOut, !CloneInOutMap, !ModuleInfo),
         map.det_insert(PredProcId, ProcInOut, !DirectArgInOutMap)
     ;
         DirectArgProc = direct_arg_problem_proc(OoMProblemArgs, _InOutArgs),
@@ -666,12 +668,13 @@ make_direct_arg_clone_or_spec(PredProcId, DirectArgProc,
         !:Specs = [Spec | !.Specs]
     ).
 
-:- pred make_direct_arg_in_out_clone(pred_proc_id::in, one_or_more(int)::in,
-    direct_arg_proc_in_out::out, clone_in_out_map::in, clone_in_out_map::out,
+:- pred make_direct_arg_in_out_clone(io.text_output_stream::in,
+    pred_proc_id::in, one_or_more(int)::in, direct_arg_proc_in_out::out,
+    clone_in_out_map::in, clone_in_out_map::out,
     module_info::in, module_info::out) is det.
 
-make_direct_arg_in_out_clone(PredProcId, OoMInOutArgs, ProcInOut,
-        !CloneInOutMap, !ModuleInfo) :-
+make_direct_arg_in_out_clone(ProgressStream, PredProcId, OoMInOutArgs,
+        ProcInOut, !CloneInOutMap, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
@@ -679,7 +682,7 @@ make_direct_arg_in_out_clone(PredProcId, OoMInOutArgs, ProcInOut,
     ;
         VeryVerbose = yes,
         trace [io(!IO)] (
-            write_proc_progress_message(!.ModuleInfo,
+            maybe_write_proc_progress_message(ProgressStream, !.ModuleInfo,
                 "Cloning", PredProcId, !IO)
         )
     ),
@@ -780,15 +783,15 @@ make_direct_arg_in_out_clone(PredProcId, OoMInOutArgs, ProcInOut,
     map.det_insert(ClonePredProcId, OoMInOutArgs, !CloneInOutMap),
 
     trace [compile_time(flag("daio-debug")), io(!IO)] (
-        get_debug_output_stream(Globals, ModuleName, Stream, !IO),
-        io.format(Stream, "duplicated proc(%d, %d) %s -> %s:\n\t",
+        get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+        io.format(DebugStream, "duplicated proc(%d, %d) %s -> %s:\n\t",
             [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId)),
             s(PredName), s(ClonePredName)], !IO),
-        io.write_line(Stream, ProcInOut, !IO),
-        io.write_string(Stream, "old args: ", !IO),
-        io.write_line(Stream, HeadVars, !IO),
-        io.write_string(Stream, "new args: ", !IO),
-        io.write_line(Stream, CloneHeadVars, !IO)
+        io.write_line(DebugStream, ProcInOut, !IO),
+        io.write_string(DebugStream, "old args: ", !IO),
+        io.write_line(DebugStream, HeadVars, !IO),
+        io.write_string(DebugStream, "new args: ", !IO),
+        io.write_line(DebugStream, CloneHeadVars, !IO)
     ).
 
 :- pred clone_daio_pred_proc_args(module_info::in, int::in,
@@ -942,46 +945,47 @@ clobber_daio_arg_inst(ModuleInfo, Inst0) = ClobberedInst :-
 
 %---------------------------------------------------------------------------%
 
-:- pred transform_direct_arg_in_out_calls_in_pred(direct_arg_proc_map::in,
-    direct_arg_proc_in_out_map::in, clone_in_out_map::in,
-    pred_id::in, module_info::in, module_info::out,
+:- pred transform_direct_arg_in_out_calls_in_pred(io.text_output_stream::in,
+    direct_arg_proc_map::in, direct_arg_proc_in_out_map::in,
+    clone_in_out_map::in, pred_id::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-transform_direct_arg_in_out_calls_in_pred(DirectArgProcMap,
+transform_direct_arg_in_out_calls_in_pred(ProgressStream, DirectArgProcMap,
         DirectArgProcInOutMap, CloneInOutMap, PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.map_foldl2(
-        maybe_transform_direct_arg_in_out_calls_in_proc(DirectArgProcMap,
-            DirectArgProcInOutMap, CloneInOutMap, PredId),
+        maybe_transform_direct_arg_in_out_calls_in_proc(ProgressStream,
+            DirectArgProcMap, DirectArgProcInOutMap, CloneInOutMap, PredId),
         ProcTable0, ProcTable, !ModuleInfo, !Specs),
     pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 :- pred maybe_transform_direct_arg_in_out_calls_in_proc(
-    direct_arg_proc_map::in, direct_arg_proc_in_out_map::in,
-    clone_in_out_map::in, pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-maybe_transform_direct_arg_in_out_calls_in_proc(DirectArgProcMap,
-        DirectArgProcInOutMap, CloneInOutMap, PredId, ProcId,
-        !ProcInfo, !ModuleInfo, !Specs) :-
-    ( if proc_info_is_valid_mode(!.ProcInfo) then
-        transform_direct_arg_in_out_calls_in_proc(DirectArgProcMap,
-            DirectArgProcInOutMap, CloneInOutMap, PredId, ProcId,
-            !ProcInfo, !ModuleInfo, !Specs)
-    else
-        true
-    ).
-
-:- pred transform_direct_arg_in_out_calls_in_proc(direct_arg_proc_map::in,
+    io.text_output_stream::in, direct_arg_proc_map::in,
     direct_arg_proc_in_out_map::in, clone_in_out_map::in,
     pred_id::in, proc_id::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-transform_direct_arg_in_out_calls_in_proc(DirectArgProcMap,
+maybe_transform_direct_arg_in_out_calls_in_proc(ProgressStream,
+        DirectArgProcMap, DirectArgProcInOutMap, CloneInOutMap, PredId, ProcId,
+        !ProcInfo, !ModuleInfo, !Specs) :-
+    ( if proc_info_is_valid_mode(!.ProcInfo) then
+        transform_direct_arg_in_out_calls_in_proc(ProgressStream,
+            DirectArgProcMap, DirectArgProcInOutMap, CloneInOutMap,
+            PredId, ProcId, !ProcInfo, !ModuleInfo, !Specs)
+    else
+        true
+    ).
+
+:- pred transform_direct_arg_in_out_calls_in_proc(io.text_output_stream::in,
+    direct_arg_proc_map::in, direct_arg_proc_in_out_map::in,
+    clone_in_out_map::in, pred_id::in, proc_id::in,
+    proc_info::in, proc_info::out, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+transform_direct_arg_in_out_calls_in_proc(ProgressStream, DirectArgProcMap,
         DirectArgProcInOutMap, CloneInOutMap, PredId, ProcId,
         !ProcInfo, !ModuleInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -991,8 +995,8 @@ transform_direct_arg_in_out_calls_in_proc(DirectArgProcMap,
     ;
         VeryVerbose = yes,
         trace [io(!IO)] (
-            write_proc_progress_message(!.ModuleInfo,
-                "Direct arg in out transforming", PredId, ProcId, !IO)
+            maybe_write_proc_progress_message(ProgressStream, !.ModuleInfo,
+                "Direct arg in out transforming", proc(PredId, ProcId), !IO)
         )
     ),
     proc_info_get_var_table(!.ProcInfo, VarTable0),
@@ -1917,7 +1921,8 @@ transform_class_instance(DirectArgProcInOutMap, Instance0, Instance) :-
 :- pred transform_class_instance_proc(direct_arg_proc_in_out_map::in,
     pred_proc_id::in, pred_proc_id::out) is det.
 
-transform_class_instance_proc(DirectArgProcInOutMap, PredProcId0, PredProcId) :-
+transform_class_instance_proc(DirectArgProcInOutMap,
+        PredProcId0, PredProcId) :-
     ( if map.search(DirectArgProcInOutMap, PredProcId0, ProcInOut) then
         ProcInOut = direct_arg_proc_in_out(PredProcId, _ArgPosns)
     else
@@ -2106,8 +2111,8 @@ maybe_add_foreign_proc_error(ModuleInfo, DirectArgProcMap,
         % in its clone.
         map.lookup(DirectArgProcInOutMap, PredProcId, ProcInOut),
         ProcInOut = direct_arg_proc_in_out(ClonePredProcId, _),
-        generate_call_foreign_proc_error(ModuleInfo, ClonePredProcId, DirectArgProc,
-            Spec),
+        generate_call_foreign_proc_error(ModuleInfo, ClonePredProcId,
+            DirectArgProc, Spec),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -2116,7 +2121,8 @@ maybe_add_foreign_proc_error(ModuleInfo, DirectArgProcMap,
 :- pred generate_call_foreign_proc_error(module_info::in, pred_proc_id::in,
     direct_arg_proc::in, error_spec::out) is det.
 
-generate_call_foreign_proc_error(ModuleInfo, PredProcId, DirectArgProc, Spec) :-
+generate_call_foreign_proc_error(ModuleInfo, PredProcId, DirectArgProc,
+        Spec) :-
     StartPieces = [words("Error: a procedure implemented using a"),
         pragma_decl("foreign_proc"), words("declaration"),
         words("may not have any arguments"),

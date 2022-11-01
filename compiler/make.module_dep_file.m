@@ -838,7 +838,8 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         % if we recorded HaveReadSrc in a have_read_module_map, because
         % it would make the timestamp available for a later lookup,
         % However, we do not record HaveReadSrc in a have_read_module_map.
-        read_module_src(Globals, rrm_get_deps(ModuleName),
+        MaybeProgressStream = maybe.no,
+        read_module_src(MaybeProgressStream, Globals, rrm_get_deps(ModuleName),
             do_not_ignore_errors, do_not_search, ModuleName, [],
             always_read_module(do_return_timestamp), HaveReadSrc, !IO),
         (

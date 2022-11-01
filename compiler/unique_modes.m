@@ -45,14 +45,15 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
 
     % Check every predicate in a module.
     %
-:- pred unique_modes_check_module(module_info::in, module_info::out,
-    list(error_spec)::out) is det.
+:- pred unique_modes_check_module(io.text_output_stream::in,
+    module_info::in, module_info::out, list(error_spec)::out) is det.
 
     % Just check a single procedure.
     %
@@ -109,9 +110,9 @@
 
 %---------------------------------------------------------------------------%
 
-unique_modes_check_module(!ModuleInfo, Specs) :-
-    check_pred_modes(check_unique_modes, may_change_called_proc,
-        !ModuleInfo, _SafeToContinue, Specs).
+unique_modes_check_module(ProgressStream, !ModuleInfo, Specs) :-
+    check_pred_modes(ProgressStream, check_unique_modes,
+        may_change_called_proc, !ModuleInfo, _SafeToContinue, Specs).
 
 unique_modes_check_proc(PredId, ProcId, !ModuleInfo, Changed, Specs) :-
     modecheck_proc_general(check_unique_modes, may_change_called_proc,

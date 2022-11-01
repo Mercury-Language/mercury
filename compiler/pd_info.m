@@ -27,6 +27,7 @@
 
 :- import_module bool.
 :- import_module counter.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -47,7 +48,8 @@
                 pdi_parent_versions     :: set(pred_proc_id),
                 pdi_depth               :: int,
                 pdi_created_versions    :: set(pred_proc_id),
-                pdi_useless_versions    :: useless_versions
+                pdi_useless_versions    :: useless_versions,
+                pdi_progress_stream     :: io.text_output_stream
             ).
 
     % Map from list of called preds in the conjunctions
@@ -61,7 +63,8 @@
     %
 :- type version_index == map(pred_proc_id, version_info).
 
-:- pred pd_info_init(module_info::in, pd_arg_info::in, pd_info::out) is det.
+:- pred pd_info_init(io.text_output_stream::in, module_info::in,
+    pd_arg_info::in, pd_info::out) is det.
 
 :- pred pd_info_init_unfold_info(pred_proc_id::in, pred_info::in,
     proc_info::in, pd_info::in, pd_info::out) is det.
@@ -81,6 +84,8 @@
 :- pred pd_info_get_created_versions(pd_info::in, set(pred_proc_id)::out)
     is det.
 :- pred pd_info_get_useless_versions(pd_info::in, useless_versions::out)
+    is det.
+:- pred pd_info_get_progress_stream(pd_info::in, io.text_output_stream::out)
     is det.
 
 :- pred pd_info_set_module_info(module_info::in,
@@ -135,16 +140,16 @@
 
 %---------------------------------------------------------------------------%
 
-pd_info_init(ModuleInfo, ProcArgInfos, PDInfo) :-
+pd_info_init(ProgressStream, ModuleInfo, ProcArgInfos, PDInfo) :-
     map.init(GoalVersionIndex),
     map.init(Versions),
     set.init(ParentVersions),
     pd_term.global_term_info_init(GlobalInfo),
     set.init(CreatedVersions),
     set.init(UselessVersions),
-    PDInfo = pd_info(ModuleInfo, no, GoalVersionIndex, Versions,
-        ProcArgInfos, counter.init(0), GlobalInfo, ParentVersions,
-        0, CreatedVersions, UselessVersions).
+    PDInfo = pd_info(ModuleInfo, no, GoalVersionIndex,
+        Versions, ProcArgInfos, counter.init(0), GlobalInfo, ParentVersions,
+        0, CreatedVersions, UselessVersions, ProgressStream).
 
 pd_info_init_unfold_info(PredProcId, PredInfo, ProcInfo, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
@@ -176,6 +181,7 @@ pd_info_get_parent_versions(PDInfo, PDInfo ^ pdi_parent_versions).
 pd_info_get_depth(PDInfo, PDInfo ^ pdi_depth).
 pd_info_get_created_versions(PDInfo, PDInfo ^ pdi_created_versions).
 pd_info_get_useless_versions(PDInfo, PDInfo ^ pdi_useless_versions).
+pd_info_get_progress_stream(PDInfo, PDInfo ^ pdi_progress_stream).
 
 pd_info_set_module_info(ModuleInfo, !PDInfo) :-
     !PDInfo ^ pdi_module_info := ModuleInfo.

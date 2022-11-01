@@ -50,8 +50,8 @@
 
     % Transform the given procedure if it is in the complexity map.
     %
-:- pred complexity_process_proc_msg(int::in, complexity_proc_map::in,
-    pred_proc_id::in, proc_info::in, proc_info::out,
+:- pred complexity_process_proc_msg(io.text_output_stream::in, int::in,
+    complexity_proc_map::in, pred_proc_id::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -166,7 +166,7 @@ complexity_proc_name(ModuleInfo, PredId, ProcId) = FullName :-
 
 %-----------------------------------------------------------------------------%
 
-complexity_process_proc_msg(NumProcs, ProcMap, PredProcId,
+complexity_process_proc_msg(ProgressStream, NumProcs, ProcMap, PredProcId,
         !ProcInfo, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
     IsInMap = is_in_complexity_proc_map(ProcMap, !.ModuleInfo,
@@ -179,9 +179,9 @@ complexity_process_proc_msg(NumProcs, ProcMap, PredProcId,
         (
             Verbose = yes,
             trace [io(!IO)] (
-                write_proc_progress_message(!.ModuleInfo,
+                maybe_write_proc_progress_message(ProgressStream, !.ModuleInfo,
                     "Applying complexity experiment transformation to",
-                    PredId, ProcId, !IO)
+                    PredProcId, !IO)
             )
         ;
             Verbose = no

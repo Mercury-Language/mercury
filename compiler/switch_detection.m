@@ -26,6 +26,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
+:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -34,7 +35,8 @@
 
 :- func init_switch_detect_info(module_info) = switch_detect_info.
 
-:- pred detect_switches_in_module(module_info::in, module_info::out) is det.
+:- pred detect_switches_in_module(io.text_output_stream::in,
+    module_info::in, module_info::out) is det.
 
 :- pred detect_switches_in_proc(switch_detect_info::in,
     proc_info::in, proc_info::out) is det.
@@ -131,7 +133,7 @@ init_switch_detect_info(ModuleInfo) = Info :-
 
 %-----------------------------------------------------------------------------%
 
-detect_switches_in_module(!ModuleInfo) :-
+detect_switches_in_module(ProgressStream, !ModuleInfo) :-
     % Traverse the module structure, calling detect_switches_in_goal
     % for each procedure body.
     Info = init_switch_detect_info(!.ModuleInfo),
@@ -141,39 +143,40 @@ detect_switches_in_module(!ModuleInfo) :-
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     map.to_assoc_list(PredIdTable0, PredIdsInfos0),
 
-    detect_switches_in_preds(Info, ValidPredIdSet,
+    detect_switches_in_preds(ProgressStream, Info, ValidPredIdSet,
         PredIdsInfos0, PredIdsInfos),
     map.from_sorted_assoc_list(PredIdsInfos, PredIdTable),
     module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
-:- pred detect_switches_in_preds(switch_detect_info::in,
-    set_tree234(pred_id)::in,
+:- pred detect_switches_in_preds(io.text_output_stream::in,
+    switch_detect_info::in, set_tree234(pred_id)::in,
     assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out)
     is det.
 
-detect_switches_in_preds(_, _, [], []).
-detect_switches_in_preds(Info, ValidPredIdSet,
+detect_switches_in_preds(_, _, _, [], []).
+detect_switches_in_preds(ProgressStream, Info, ValidPredIdSet,
         [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos]) :-
     PredIdInfo0 = PredId - PredInfo0,
     ( if set_tree234.contains(ValidPredIdSet, PredId) then
-        detect_switches_in_pred(Info, PredId, PredInfo0, PredInfo),
+        detect_switches_in_pred(ProgressStream, Info, PredId,
+            PredInfo0, PredInfo),
         PredIdInfo = PredId - PredInfo
     else
         PredIdInfo = PredIdInfo0
     ),
-    detect_switches_in_preds(Info, ValidPredIdSet,
+    detect_switches_in_preds(ProgressStream, Info, ValidPredIdSet,
         PredIdsInfos0, PredIdsInfos).
 
-:- pred detect_switches_in_pred(switch_detect_info::in, pred_id::in,
-    pred_info::in, pred_info::out) is det.
+:- pred detect_switches_in_pred(io.text_output_stream::in,
+    switch_detect_info::in, pred_id::in, pred_info::in, pred_info::out) is det.
 
-detect_switches_in_pred(Info, PredId, !PredInfo) :-
+detect_switches_in_pred(ProgressStream, Info, PredId, !PredInfo) :-
     NonImportedProcIds = pred_info_valid_non_imported_procids(!.PredInfo),
     (
         NonImportedProcIds = [_ | _],
         trace [io(!IO)] (
             ModuleInfo = Info ^ sdi_module_info,
-            write_pred_progress_message(ModuleInfo,
+            maybe_write_pred_progress_message(ProgressStream, ModuleInfo,
                 "Detecting switches in", PredId, !IO)
         ),
         pred_info_get_proc_table(!.PredInfo, ProcTable0),

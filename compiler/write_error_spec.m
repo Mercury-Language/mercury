@@ -119,10 +119,6 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred pre_hlds_maybe_write_out_errors(bool::in, globals::in,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
-:- pragma obsolete(pred(pre_hlds_maybe_write_out_errors/6),
-    [pre_hlds_maybe_write_out_errors/7]).
 :- pred pre_hlds_maybe_write_out_errors(io.text_output_stream::in,
     bool::in, globals::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
@@ -1721,10 +1717,6 @@ a_purity_to_string(purity_impure) = "an impure".
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-
-pre_hlds_maybe_write_out_errors(Verbose, Globals, !Specs, !IO) :-
-    io.output_stream(Stream, !IO),
-    pre_hlds_maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO).
 
 pre_hlds_maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO) :-
     % maybe_write_out_errors in hlds_error_util.m is a HLDS version

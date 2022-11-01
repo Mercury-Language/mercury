@@ -166,8 +166,8 @@ direct_reuse_process_proc_2(SharingTable, PredId, ProcId,
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
 
     trace [io(!IO)] (
-        write_proc_progress_message(ModuleInfo,
-            "Direct reuse analysis of", PredId, ProcId, !IO)
+        maybe_write_proc_progress_message(ModuleInfo,
+            "Direct reuse analysis of", proc(PredId, ProcId), !IO)
     ),
 
     proc_info_get_goal(!.ProcInfo, Goal0),

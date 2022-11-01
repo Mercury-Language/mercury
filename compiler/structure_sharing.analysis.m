@@ -344,7 +344,9 @@ simplify_and_detect_liveness_proc(PredProcId, !ProcInfo, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     SimplifyTasks = list_to_simplify_tasks(Globals, []),
     PredProcId = proc(PredId, ProcId),
-    simplify_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo, !ProcInfo),
+    MaybeProgressStream = maybe.no,
+    simplify_proc(MaybeProgressStream, SimplifyTasks, PredId, ProcId,
+        !ModuleInfo, !ProcInfo),
     detect_liveness_proc(!.ModuleInfo, PredProcId, !ProcInfo).
 
 %---------------------------------------------------------------------------%
@@ -474,7 +476,7 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs) :-
     TabledAsDescr = ss_fixpoint_table_get_short_description(PPId,
         !.FixpointTable),
     trace [io(!IO)] (
-        write_proc_progress_message(ModuleInfo,
+        maybe_write_proc_progress_message(ModuleInfo,
             "Sharing analysis (run " ++ string.int_to_string(Run) ++ ")",
             PPId, !IO)
     ),

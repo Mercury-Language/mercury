@@ -33,16 +33,18 @@
 :- import_module io.
 :- import_module list.
 
-:- pred llds_backend_pass(module_info::in, module_info::out,
-    global_data::out, list(c_procedure)::out, dump_info::in, dump_info::out,
+:- pred llds_backend_pass(io.text_output_stream::in, io.text_output_stream::in,
+    module_info::in, module_info::out, global_data::out,
+    list(c_procedure)::out, dump_info::in, dump_info::out,
     io::di, io::uo) is det.
 
-:- pred map_args_to_regs(bool::in, bool::in,
+:- pred map_args_to_regs(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-:- pred llds_output_pass(op_mode_codegen::in, module_info::in, global_data::in,
-    list(c_procedure)::in, module_name::in, maybe_succeeded::out,
-    list(string)::out, io::di, io::uo) is det.
+:- pred llds_output_pass(io.text_output_stream::in, io.text_output_stream::in,
+    op_mode_codegen::in, module_info::in, global_data::in,
+    list(c_procedure)::in, module_name::in,
+    maybe_succeeded::out, list(string)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -112,7 +114,8 @@
 
 %---------------------------------------------------------------------------%
 
-llds_backend_pass(!HLDS, !:GlobalData, LLDS, !DumpInfo, !IO) :-
+llds_backend_pass(ProgressStream, ErrorStream, !HLDS, !:GlobalData, LLDS,
+        !DumpInfo, !IO) :-
     module_info_get_name(!.HLDS, ModuleName),
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, unboxed_float, OptUnboxFloat),
@@ -145,75 +148,85 @@ llds_backend_pass(!HLDS, !:GlobalData, LLDS, !DumpInfo, !IO) :-
 
     % map_args_to_regs affects the interface to a predicate,
     % so it must be done in one phase immediately before code generation.
-    map_args_to_regs(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 305, "args_to_regs", !DumpInfo, !IO),
+    map_args_to_regs(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 305, "args_to_regs",
+        !DumpInfo, !IO),
 
     globals.lookup_bool_option(Globals, trad_passes, TradPasses),
     add_all_tabling_info_structs(!.HLDS, !GlobalData),
     (
         TradPasses = no,
-        llds_backend_pass_by_phases(!HLDS, LLDS, !GlobalData, [], Specs,
-            !DumpInfo, !IO)
+        llds_backend_pass_by_phases(ProgressStream, !HLDS, LLDS, !GlobalData,
+            [], Specs, !DumpInfo, !IO)
     ;
         TradPasses = yes,
-        llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, [], Specs)
+        llds_backend_pass_by_preds(ProgressStream, !HLDS, LLDS, !GlobalData,
+            [], Specs)
     ),
-    write_error_specs(Globals, Specs, !IO).
+    write_error_specs(ErrorStream, Globals, Specs, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred llds_backend_pass_by_phases(module_info::in, module_info::out,
-    list(c_procedure)::out, global_data::in, global_data::out,
+:- pred llds_backend_pass_by_phases(io.text_output_stream::in,
+    module_info::in, module_info::out, list(c_procedure)::out,
+    global_data::in, global_data::out,
     list(error_spec)::in, list(error_spec)::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
-llds_backend_pass_by_phases(!HLDS, !:LLDS, !GlobalData, !Specs,
+llds_backend_pass_by_phases(ProgressStream, !HLDS, !:LLDS, !GlobalData, !Specs,
         !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
-    maybe_saved_vars(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 310, "saved_vars_const", !DumpInfo, !IO),
+    maybe_saved_vars(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 310, "saved_vars_const",
+        !DumpInfo, !IO),
 
-    maybe_stack_opt(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 315, "saved_vars_cell", !DumpInfo, !IO),
+    maybe_stack_opt(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 315, "saved_vars_cell",
+        !DumpInfo, !IO),
 
-    maybe_followcode(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 320, "followcode", !DumpInfo, !IO),
+    maybe_followcode(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 320, "followcode", !DumpInfo, !IO),
 
-    maybe_simplify(no, simplify_pass_ll_backend, Verbose, Stats, !HLDS,
-        [], SimplifySpecs, !IO),
+    maybe_simplify(ProgressStream, maybe.no, bool.no, simplify_pass_ll_backend,
+        Verbose, Stats, !HLDS, [], SimplifySpecs, !IO),
     expect(unify(contains_errors(Globals, SimplifySpecs), no), $pred,
         "simplify has errors"),
-    maybe_dump_hlds(!.HLDS, 325, "ll_backend_simplify", !DumpInfo, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 325, "ll_backend_simplify",
+        !DumpInfo, !IO),
 
-    compute_liveness(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 330, "liveness", !DumpInfo, !IO),
+    compute_liveness(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 330, "liveness", !DumpInfo, !IO),
 
-    maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !Specs, !IO),
-    maybe_dump_hlds(!.HLDS, 332, "mark_debug_tailrec_calls", !DumpInfo, !IO),
+    maybe_mark_tail_rec_calls(ProgressStream, Verbose, Stats,
+        !HLDS, !Specs, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 332, "mark_debug_tailrec_calls",
+        !DumpInfo, !IO),
 
-    compute_stack_vars(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 335, "stackvars", !DumpInfo, !IO),
+    compute_stack_vars(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 335, "stackvars", !DumpInfo, !IO),
 
-    allocate_store_map(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 340, "store_map", !DumpInfo, !IO),
+    allocate_store_map(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 340, "store_map", !DumpInfo, !IO),
 
-    generate_llds_code_for_module(!.HLDS, Verbose, Stats, !GlobalData, !:LLDS,
-        !IO),
+    generate_llds_code_for_module(ProgressStream, !.HLDS, Verbose, Stats,
+        !GlobalData, !:LLDS, !IO),
 
-    maybe_optimize_llds(!.HLDS, !.GlobalData, Verbose, Stats, !LLDS, !IO),
+    maybe_optimize_llds(ProgressStream, !.HLDS, !.GlobalData, Verbose, Stats,
+        !LLDS, !IO),
 
-    maybe_generate_stack_layouts(!.HLDS, !.LLDS, Verbose, Stats, !GlobalData,
-        !IO).
+    maybe_generate_stack_layouts(ProgressStream, !.HLDS, !.LLDS, Verbose,
+        Stats, !GlobalData, !IO).
     % maybe_dump_global_data(!.GlobalData, !IO).
 
-:- pred llds_backend_pass_by_preds(module_info::in, module_info::out,
-    list(c_procedure)::out, global_data::in, global_data::out,
+:- pred llds_backend_pass_by_preds(io.text_output_stream::in,
+    module_info::in, module_info::out, list(c_procedure)::out,
+    global_data::in, global_data::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, !Specs) :-
+llds_backend_pass_by_preds(ProgressStream, !HLDS, LLDS, !GlobalData, !Specs) :-
     module_info_get_valid_pred_ids(!.HLDS, PredIds),
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
@@ -237,15 +250,15 @@ llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, !Specs) :-
     module_info_rebuild_dependency_info(!HLDS, ProcDepInfo),
     SCCMap = dependency_info_make_scc_map(ProcDepInfo),
     generate_const_structs(!.HLDS, ConstStructMap, !GlobalData),
-    llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap,
-        SCCMap, OrderedPredIds, MaybeDupProcMap, cord.init, CProcsCord,
-        !GlobalData, !Specs),
+    llds_backend_pass_by_preds_loop_over_preds(ProgressStream, !HLDS,
+        ConstStructMap, SCCMap, OrderedPredIds, MaybeDupProcMap,
+        cord.init, CProcsCord, !GlobalData, !Specs),
     LLDS = cord.list(CProcsCord).
 
 :- type dup_proc_label_map ==
     map(mdbcomp.prim_data.proc_label, mdbcomp.prim_data.proc_label).
 
-:- pred llds_backend_pass_by_preds_loop_over_preds(
+:- pred llds_backend_pass_by_preds_loop_over_preds(io.text_output_stream::in,
     module_info::in, module_info::out, const_struct_map::in,
     scc_map(pred_proc_id)::in, list(pred_id)::in,
     maybe(dup_proc_label_map)::in,
@@ -253,17 +266,19 @@ llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, !Specs) :-
     global_data::in, global_data::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-llds_backend_pass_by_preds_loop_over_preds(!HLDS, _, _,
+llds_backend_pass_by_preds_loop_over_preds(_, !HLDS, _, _,
         [], _, !CProcsCord, !GlobalData, !Specs).
-llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap, SCCMap,
-        [PredId | PredIds], !.MaybeDupProcMap,
+llds_backend_pass_by_preds_loop_over_preds(ProgressStream, !HLDS,
+        ConstStructMap, SCCMap, [PredId | PredIds], !.MaybeDupProcMap,
         !CProcsCord, !GlobalData, !Specs) :-
-    llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, SCCMap,
-        PredId, !MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs),
-    llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap,
-        SCCMap, PredIds, !.MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs).
+    llds_backend_pass_by_preds_do_one_pred(ProgressStream, !HLDS,
+        ConstStructMap, SCCMap, PredId, !MaybeDupProcMap,
+        !CProcsCord, !GlobalData, !Specs),
+    llds_backend_pass_by_preds_loop_over_preds(ProgressStream, !HLDS,
+        ConstStructMap, SCCMap, PredIds, !.MaybeDupProcMap,
+        !CProcsCord, !GlobalData, !Specs).
 
-:- pred llds_backend_pass_by_preds_do_one_pred(
+:- pred llds_backend_pass_by_preds_do_one_pred(io.text_output_stream::in,
     module_info::in, module_info::out, const_struct_map::in,
     scc_map(pred_proc_id)::in, pred_id::in,
     maybe(dup_proc_label_map)::in, maybe(dup_proc_label_map)::out,
@@ -271,8 +286,8 @@ llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap, SCCMap,
     global_data::in, global_data::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, SCCMap, PredId,
-        !MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs) :-
+llds_backend_pass_by_preds_do_one_pred(ProgressStream, !HLDS, ConstStructMap,
+        SCCMap, PredId, !MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs) :-
     module_info_pred_info(!.HLDS, PredId, PredInfo),
     ProcIds = pred_info_valid_non_imported_procids(PredInfo),
     (
@@ -285,8 +300,9 @@ llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, SCCMap, PredId,
             Verbose = yes,
             trace [io(!IO)] (
                 PredStr = pred_id_to_user_string(!.HLDS, PredId),
-                io.format("%% Generating code for %s\n", [s(PredStr)], !IO),
-                maybe_flush_output(Verbose, !IO)
+                io.format(ProgressStream, "%% Generating code for %s\n",
+                    [s(PredStr)], !IO),
+                maybe_flush_output(ProgressStream, Verbose, !IO)
             )
         ;
             Verbose = no
@@ -304,14 +320,16 @@ llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, SCCMap, PredId,
             globals.get_trace_level(Globals0, TraceLevel),
             globals.set_trace_level_none(Globals0, Globals1),
             module_info_set_globals(Globals1, !HLDS),
-            llds_backend_pass_for_pred(!HLDS, ConstStructMap, SCCMap,
-                PredId, PredInfo, ProcIds, IdCProcs, !GlobalData, !Specs),
+            llds_backend_pass_for_pred(ProgressStream, ConstStructMap, SCCMap,
+                PredId, PredInfo, ProcIds, IdCProcs,
+                !GlobalData, !HLDS, !Specs),
             module_info_get_globals(!.HLDS, Globals2),
             globals.set_trace_level(TraceLevel, Globals2, Globals),
             module_info_set_globals(Globals, !HLDS)
         else
-            llds_backend_pass_for_pred(!HLDS, ConstStructMap, SCCMap,
-                PredId, PredInfo, ProcIds, IdCProcs, !GlobalData, !Specs)
+            llds_backend_pass_for_pred(ProgressStream, ConstStructMap, SCCMap,
+                PredId, PredInfo, ProcIds, IdCProcs,
+                !GlobalData, !HLDS, !Specs)
         ),
         (
             !.MaybeDupProcMap = no,
@@ -325,45 +343,46 @@ llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, SCCMap, PredId,
         !:CProcsCord = !.CProcsCord ++ cord.from_list(CProcs),
         globals.lookup_bool_option(Globals0, statistics, Stats),
         trace [io(!IO)] (
-            maybe_write_string(Verbose, "% done.\n", !IO),
-            maybe_report_stats(Stats, !IO)
+            maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
+            maybe_report_stats(ProgressStream, Stats, !IO)
         )
     ).
 
-:- pred llds_backend_pass_for_pred(module_info::in, module_info::out,
+:- pred llds_backend_pass_for_pred(io.text_output_stream::in,
     const_struct_map::in, scc_map(pred_proc_id)::in, pred_id::in,
     pred_info::in, list(proc_id)::in,
     assoc_list(mdbcomp.prim_data.proc_label, c_procedure)::out,
-    global_data::in, global_data::out,
+    global_data::in, global_data::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-llds_backend_pass_for_pred(!HLDS, _, _, _, _, [], [], !GlobalData, !Specs).
-llds_backend_pass_for_pred(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
-        [ProcId | ProcIds], [ProcLabel - CProc | ProcLabelsCProcs],
-        !GlobalData, !Specs) :-
+llds_backend_pass_for_pred(_, _, _, _, _, [], [], !GlobalData, !HLDS, !Specs).
+llds_backend_pass_for_pred(ProgressStream, ConstStructMap, SCCMap,
+        PredId, PredInfo, [ProcId | ProcIds],
+        [ProcLabel - CProc | ProcLabelsCProcs], !GlobalData, !HLDS, !Specs) :-
     ProcLabel = make_proc_label(!.HLDS, PredId, ProcId),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
-    llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId,
-        PredInfo, ProcId, ProcInfo, CProc, !GlobalData, !Specs),
-    llds_backend_pass_for_pred(!HLDS, ConstStructMap, SCCMap, PredId,
-        PredInfo, ProcIds, ProcLabelsCProcs, !GlobalData, !Specs).
+    llds_backend_pass_for_proc(ProgressStream, ConstStructMap, SCCMap,
+        PredId, ProcId, PredInfo, ProcInfo, CProc, !GlobalData, !HLDS, !Specs),
+    llds_backend_pass_for_pred(ProgressStream, ConstStructMap, SCCMap, PredId,
+        PredInfo, ProcIds, ProcLabelsCProcs, !GlobalData, !HLDS, !Specs).
 
-:- pred llds_backend_pass_for_proc(module_info::in, module_info::out,
-    const_struct_map::in, scc_map(pred_proc_id)::in, pred_id::in,
-    pred_info::in, proc_id::in, proc_info::in, c_procedure::out,
-    global_data::in, global_data::out,
+:- pred llds_backend_pass_for_proc(io.text_output_stream::in,
+    const_struct_map::in, scc_map(pred_proc_id)::in,
+    pred_id::in, proc_id::in, pred_info::in, proc_info::in, c_procedure::out,
+    global_data::in, global_data::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
-        ProcId, !.ProcInfo, CProc, !GlobalData, !Specs) :-
-    PredProcId = proc(PredId, ProcId),
+llds_backend_pass_for_proc(ProgressStream, ConstStructMap, SCCMap,
+        PredId, ProcId, PredInfo, !.ProcInfo, CProc,
+        !GlobalData, !HLDS, !Specs) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     SavedVarsConst = OptTuple ^ ot_opt_saved_vars_const,
+    PredProcId = proc(PredId, ProcId),
     (
         SavedVarsConst = opt_saved_vars_const,
-        saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !HLDS)
+        saved_vars_proc(ProgressStream, PredProcId, !ProcInfo, !HLDS)
     ;
         SavedVarsConst = do_not_opt_saved_vars_const
     ),
@@ -409,35 +428,36 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
         simptask_elim_removable_scopes | SimpList1],
     SimplifyTasks = list_to_simplify_tasks(Globals, SimpList),
     trace [io(!IO)] (
-        write_proc_progress_message(!.HLDS, "Simplifying", PredId, ProcId, !IO)
+        maybe_write_proc_progress_message(ProgressStream, !.HLDS,
+            "Simplifying", PredProcId, !IO)
     ),
-    simplify_proc(SimplifyTasks, PredId, ProcId, !HLDS, !ProcInfo),
+    simplify_proc(yes(ProgressStream), SimplifyTasks, PredId, ProcId,
+        !HLDS, !ProcInfo),
     trace [io(!IO)] (
-        write_proc_progress_message(!.HLDS,
-            "Computing liveness in", PredId, ProcId, !IO)
+        maybe_write_proc_progress_message(ProgressStream, !.HLDS,
+            "Computing liveness in", PredProcId, !IO)
     ),
     detect_liveness_proc(!.HLDS, PredProcId, !ProcInfo),
     trace [io(!IO)] (
-        write_proc_progress_message(!.HLDS,
-            "Marking directly tail recursive calls in", PredId, ProcId, !IO)
+        maybe_write_proc_progress_message(ProgressStream, !.HLDS,
+            "Marking directly tail recursive calls in", PredProcId, !IO)
     ),
     mark_tail_rec_calls_in_proc_for_llds_code_gen(!.HLDS, PredId, ProcId,
         PredInfo, SCCMap, !ProcInfo, !Specs),
 
     trace [io(!IO)] (
-        write_proc_progress_message(!.HLDS,
-            "Allocating stack slots in", PredId, ProcId, !IO)
+        maybe_write_proc_progress_message(ProgressStream, !.HLDS,
+            "Allocating stack slots in", PredProcId, !IO)
     ),
     allocate_stack_slots_in_proc(!.HLDS, PredProcId, !ProcInfo),
     trace [io(!IO)] (
-        write_proc_progress_message(!.HLDS,
-            "Allocating storage locations for live vars in",
-            PredId, ProcId, !IO)
+        maybe_write_proc_progress_message(ProgressStream, !.HLDS,
+            "Allocating storage locations for live vars in", PredProcId, !IO)
     ),
     allocate_store_maps(final_allocation, !.HLDS, PredProcId, !ProcInfo),
     trace [io(!IO)] (
-        write_proc_progress_message(!.HLDS,
-            "Generating low-level (LLDS) code for", PredId, ProcId, !IO)
+        maybe_write_proc_progress_message(ProgressStream, !.HLDS,
+            "Generating low-level (LLDS) code for", PredProcId, !IO)
     ),
     generate_proc_code(!.HLDS, ConstStructMap, PredId, PredInfo,
          ProcId, !.ProcInfo, CProc0, !GlobalData),
@@ -451,9 +471,8 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
         CProc = CProc0
     ),
     trace [io(!IO)] (
-        write_proc_progress_message(!.HLDS,
-            "Generating call continuation information for",
-            PredId, ProcId, !IO)
+        maybe_write_proc_progress_message(ProgressStream, !.HLDS,
+            "Generating call continuation information for", PredProcId, !IO)
     ),
     maybe_collect_call_continuations_in_cproc(!.HLDS, CProc, !GlobalData).
 
@@ -463,79 +482,83 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
 % The various passes of the LLDS backend.
 %
 
-map_args_to_regs(Verbose, Stats, !HLDS, !IO) :-
-    maybe_write_string(Verbose, "% Mapping args to regs...", !IO),
-    maybe_flush_output(Verbose, !IO),
+map_args_to_regs(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+    maybe_write_string(ProgressStream, Verbose,
+        "% Mapping args to regs...", !IO),
+    maybe_flush_output(ProgressStream, Verbose, !IO),
     generate_arg_info(!HLDS),
-    maybe_write_string(Verbose, " done.\n", !IO),
-    maybe_report_stats(Stats, !IO).
+    maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO).
 
-:- pred maybe_saved_vars(bool::in, bool::in,
+:- pred maybe_saved_vars(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_saved_vars(Verbose, Stats, !HLDS, !IO) :-
+maybe_saved_vars(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     SavedVars = OptTuple ^ ot_opt_saved_vars_const,
     (
         SavedVars = opt_saved_vars_const,
-        maybe_write_string(Verbose,
+        maybe_write_string(ProgressStream, Verbose,
             "% Minimizing variable saves using constants...\n", !IO),
-        maybe_flush_output(Verbose, !IO),
-        process_valid_nonimported_procs(update_module(saved_vars_proc), !HLDS),
-        maybe_write_string(Verbose, "% done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
+        maybe_flush_output(ProgressStream, Verbose, !IO),
+        process_valid_nonimported_procs(
+            update_module(saved_vars_proc(ProgressStream)), !HLDS),
+        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
+        maybe_report_stats(ProgressStream, Stats, !IO)
     ;
         SavedVars = do_not_opt_saved_vars_const
     ).
 
-:- pred maybe_stack_opt(bool::in, bool::in,
+:- pred maybe_stack_opt(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_stack_opt(Verbose, Stats, !HLDS, !IO) :-
+maybe_stack_opt(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     SavedVars = OptTuple ^ ot_opt_svcell,
     (
         SavedVars = opt_svcell,
-        maybe_write_string(Verbose,
+        maybe_write_string(ProgressStream, Verbose,
             "% Minimizing variable saves using cells...\n", !IO),
-        maybe_flush_output(Verbose, !IO),
+        maybe_flush_output(ProgressStream, Verbose, !IO),
         process_valid_nonimported_procs(update_module(stack_opt_cell), !HLDS),
-        maybe_write_string(Verbose, "% done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
+        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
+        maybe_report_stats(ProgressStream, Stats, !IO)
     ;
         SavedVars = do_not_opt_svcell
     ).
 
-:- pred maybe_followcode(bool::in, bool::in,
+:- pred maybe_followcode(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_followcode(Verbose, Stats, !HLDS, !IO) :-
+maybe_followcode(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     FollowCode = OptTuple ^ ot_opt_follow_code,
     (
         FollowCode = opt_follow_code,
-        maybe_write_string(Verbose, "% Migrating branch code...", !IO),
-        maybe_flush_output(Verbose, !IO),
+        maybe_write_string(ProgressStream, Verbose,
+            "% Migrating branch code...", !IO),
+        maybe_flush_output(ProgressStream, Verbose, !IO),
         process_valid_nonimported_procs(
             update_module(move_follow_code_in_proc), !HLDS),
-        maybe_write_string(Verbose, " done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
+        maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
+        maybe_report_stats(ProgressStream, Stats, !IO)
     ;
         FollowCode = do_not_opt_follow_code
     ).
 
-:- pred compute_liveness(bool::in, bool::in,
+:- pred compute_liveness(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-compute_liveness(Verbose, Stats, !HLDS, !IO) :-
+compute_liveness(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, parallel_liveness, ParallelLiveness),
     globals.lookup_int_option(Globals, debug_liveness, DebugLiveness),
-    maybe_write_string(Verbose, "% Computing liveness...\n", !IO),
-    maybe_flush_output(Verbose, !IO),
+    maybe_write_string(ProgressStream, Verbose,
+        "% Computing liveness...\n", !IO),
+    maybe_flush_output(ProgressStream, Verbose, !IO),
     ( if
         ParallelLiveness = yes,
         DebugLiveness = -1
@@ -545,103 +568,109 @@ compute_liveness(Verbose, Stats, !HLDS, !IO) :-
         process_valid_nonimported_procs(update_proc_ids(detect_liveness_proc),
             !HLDS)
     ),
-    maybe_write_string(Verbose, "% done.\n", !IO),
-    maybe_report_stats(Stats, !IO).
+    maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO).
 
-:- pred maybe_mark_tail_rec_calls(bool::in, bool::in,
-    module_info::in, module_info::out,
+:- pred maybe_mark_tail_rec_calls(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !Specs, !IO) :-
-    maybe_write_string(Verbose,
+maybe_mark_tail_rec_calls(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
+    maybe_write_string(ProgressStream, Verbose,
         "% Marking directly tail recursive calls...", !IO),
-    maybe_flush_output(Verbose, !IO),
+    maybe_flush_output(ProgressStream, Verbose, !IO),
     module_info_rebuild_dependency_info(!HLDS, DepInfo),
     SCCMap = dependency_info_make_scc_map(DepInfo),
     process_valid_nonimported_preds_errors(
         update_pred_error(
             mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap)),
         !HLDS, !Specs, !IO),
-    maybe_write_string(Verbose, " done.\n", !IO),
-    maybe_report_stats(Stats, !IO).
+    maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO).
 
-:- pred compute_stack_vars(bool::in, bool::in,
+:- pred compute_stack_vars(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-compute_stack_vars(Verbose, Stats, !HLDS, !IO) :-
-    maybe_write_string(Verbose, "% Computing stack vars...", !IO),
-    maybe_flush_output(Verbose, !IO),
+compute_stack_vars(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+    maybe_write_string(ProgressStream, Verbose,
+        "% Computing stack vars...", !IO),
+    maybe_flush_output(ProgressStream, Verbose, !IO),
     process_valid_nonimported_procs(
         update_proc_ids(allocate_stack_slots_in_proc), !HLDS),
-    maybe_write_string(Verbose, " done.\n", !IO),
-    maybe_report_stats(Stats, !IO).
+    maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO).
 
-:- pred allocate_store_map(bool::in, bool::in,
+:- pred allocate_store_map(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-allocate_store_map(Verbose, Stats, !HLDS, !IO) :-
-    maybe_write_string(Verbose, "% Allocating store map...", !IO),
-    maybe_flush_output(Verbose, !IO),
+allocate_store_map(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+    maybe_write_string(ProgressStream, Verbose,
+        "% Allocating store map...", !IO),
+    maybe_flush_output(ProgressStream, Verbose, !IO),
     process_valid_nonimported_procs(
         update_proc_ids(allocate_store_maps(final_allocation)), !HLDS),
-    maybe_write_string(Verbose, " done.\n", !IO),
-    maybe_report_stats(Stats, !IO).
+    maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO).
 
-:- pred generate_llds_code_for_module(module_info::in, bool::in, bool::in,
-    global_data::in, global_data::out, list(c_procedure)::out,
-    io::di, io::uo) is det.
+:- pred generate_llds_code_for_module(io.text_output_stream::in,
+    module_info::in, bool::in, bool::in, global_data::in, global_data::out,
+    list(c_procedure)::out, io::di, io::uo) is det.
 
-generate_llds_code_for_module(HLDS, Verbose, Stats, !GlobalData, LLDS, !IO) :-
-    maybe_write_string(Verbose, "% Generating code...\n", !IO),
-    maybe_flush_output(Verbose, !IO),
+generate_llds_code_for_module(ProgressStream, HLDS, Verbose, Stats,
+        !GlobalData, LLDS, !IO) :-
+    maybe_write_string(ProgressStream, Verbose, "% Generating code...\n", !IO),
+    maybe_flush_output(ProgressStream, Verbose, !IO),
     generate_module_code(HLDS, LLDS, !GlobalData),
-    maybe_write_string(Verbose, "% done.\n", !IO),
-    maybe_report_stats(Stats, !IO).
+    maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO).
 
-:- pred maybe_optimize_llds(module_info::in, global_data::in,
-    bool::in, bool::in, list(c_procedure)::in, list(c_procedure)::out,
-    io::di, io::uo) is det.
+:- pred maybe_optimize_llds(io.text_output_stream::in, module_info::in,
+    global_data::in, bool::in, bool::in,
+    list(c_procedure)::in, list(c_procedure)::out, io::di, io::uo) is det.
 
-maybe_optimize_llds(HLDS, GlobalData, Verbose, Stats, !LLDS, !IO) :-
+maybe_optimize_llds(ProgressStream, HLDS, GlobalData, Verbose, Stats,
+        !LLDS, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     Optimize = OptTuple ^ ot_optimize,
     (
         Optimize = optimize,
-        maybe_write_string(Verbose, "% Doing optimizations...\n", !IO),
-        maybe_flush_output(Verbose, !IO),
+        maybe_write_string(ProgressStream, Verbose,
+            "% Doing optimizations...\n", !IO),
+        maybe_flush_output(ProgressStream, Verbose, !IO),
         module_info_get_name(HLDS, ModuleName),
         optimize_procs(Globals, ModuleName, GlobalData, !LLDS),
-        maybe_write_string(Verbose, "% done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
+        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
+        maybe_report_stats(ProgressStream, Stats, !IO)
     ;
         Optimize = do_not_optimize
     ).
 
-:- pred maybe_generate_stack_layouts(module_info::in, list(c_procedure)::in,
-    bool::in, bool::in, global_data::in, global_data::out, io::di, io::uo)
-    is det.
+:- pred maybe_generate_stack_layouts(io.text_output_stream::in,
+    module_info::in, list(c_procedure)::in, bool::in, bool::in,
+    global_data::in, global_data::out, io::di, io::uo) is det.
 
-maybe_generate_stack_layouts(HLDS, LLDS, Verbose, Stats, !GlobalData, !IO) :-
-    maybe_write_string(Verbose,
+maybe_generate_stack_layouts(ProgressStream, HLDS, LLDS, Verbose, Stats,
+        !GlobalData, !IO) :-
+    maybe_write_string(ProgressStream, Verbose,
         "% Generating call continuation information...", !IO),
-    maybe_flush_output(Verbose, !IO),
+    maybe_flush_output(ProgressStream, Verbose, !IO),
     maybe_collect_call_continuations_in_cprocs(HLDS, LLDS, !GlobalData),
-    maybe_write_string(Verbose, " done.\n", !IO),
-    maybe_report_stats(Stats, !IO).
+    maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
-        Succeeded, FactTableObjFiles, !IO) :-
+llds_output_pass(ProgressStream, ErrorStream, OpModeCodeGen, HLDS,
+        GlobalData0, Procs, ModuleName, Succeeded, FactTableObjFiles, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
-    maybe_write_string(Verbose,
+    maybe_write_string(ProgressStream, Verbose,
         "% Generating layout data...", !IO),
-    maybe_flush_output(Verbose, !IO),
+    maybe_flush_output(ProgressStream, Verbose, !IO),
     % Here we generate the LLDS representations for various data structures
     % used for RTTI, type classes, and stack layouts.
     % XXX This should perhaps be part of backend_pass rather than output_pass.
@@ -661,8 +690,8 @@ llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
         ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes,
         TableIoEntries, TableIoEntryMap, ProcEventLayouts,
         ExecTraces, ProcLayoutDatas, ModuleLayoutDatas),
-    maybe_write_string(Verbose, " done.\n", !IO),
-    maybe_report_stats(Stats, !IO),
+    maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO),
 
     % Here we perform some optimizations on the LLDS data.
     % XXX This should perhaps be part of backend_pass rather than output_pass.
@@ -747,9 +776,6 @@ llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
             ( OpModeCodeGen = opmcg_target_and_object_code_only
             ; OpModeCodeGen = opmcg_target_object_and_executable
             ),
-            get_progress_output_stream(Globals, ModuleSymName,
-                ProgressStream, !IO),
-            get_error_output_stream(Globals, ModuleSymName, ErrorStream, !IO),
             llds_c_to_obj(Globals, ProgressStream, ErrorStream, ModuleName,
                 CompileSucceeded, !IO),
             module_info_get_fact_table_file_names(HLDS, FactTableBaseFiles),

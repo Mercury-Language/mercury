@@ -127,17 +127,9 @@
 %   when there is nothing to print is so low (a few dozen instructions),
 %   we can easily afford to incur it unnecessarily once per compiler phase.
 
-:- pred definitely_write_out_errors(globals::in,
-    list(error_spec)::in, io::di, io::uo) is det.
-:- pragma obsolete(pred(definitely_write_out_errors/4),
-    [definitely_write_out_errors/5]).
 :- pred definitely_write_out_errors(io.text_output_stream::in, globals::in,
     list(error_spec)::in, io::di, io::uo) is det.
 
-:- pred maybe_write_out_errors(bool::in,
-    globals::in, list(error_spec)::in, list(error_spec)::out,
-    io::di, io::uo) is det.
-:- pragma obsolete(pred(maybe_write_out_errors/6), [maybe_write_out_errors/7]).
 :- pred maybe_write_out_errors(io.text_output_stream::in, bool::in,
     globals::in, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
@@ -378,20 +370,12 @@ project_pred_form_arity_int(pred_form_arity(A)) = A.
 
 %-----------------------------------------------------------------------------%
 
-definitely_write_out_errors(Globals, Specs, !IO) :-
-    io.output_stream(Stream, !IO),
-    definitely_write_out_errors(Stream, Globals, Specs, !IO).
-
 definitely_write_out_errors(Stream, Globals, Specs, !IO) :-
     write_error_specs(Stream, Globals, Specs, !IO).
 
-maybe_write_out_errors(Verbose, Globals, !Specs, !IO) :-
-    io.output_stream(Stream, !IO),
-    maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO).
-
 maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO) :-
-    % pre_hlds_maybe_write_out_errors in error_spec.m is a pre-HLDS version
-    % of this predicate.
+    % pre_hlds_maybe_write_out_errors in write_error_spec.m is a
+    % pre-HLDS version of this predicate.
     (
         Verbose = no
     ;

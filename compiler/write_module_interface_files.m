@@ -172,9 +172,9 @@ write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
         SourceFileName, SourceFileModuleName, MaybeTimestamp,
         ParseTreeModuleSrc0, Succeeded, !HaveReadModuleMaps, !IO) :-
     ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
-    grab_unqual_imported_modules_make_int(Globals, SourceFileName,
-        SourceFileModuleName, ParseTreeModuleSrc0, Baggage, AugMakeIntUnit1,
-        !HaveReadModuleMaps, !IO),
+    grab_unqual_imported_modules_make_int(ProgressStream, Globals,
+        SourceFileName, SourceFileModuleName, ParseTreeModuleSrc0,
+        Baggage, AugMakeIntUnit1, !HaveReadModuleMaps, !IO),
 
     % Check whether we succeeded.
     GetErrors = Baggage ^ mb_errors,
@@ -241,9 +241,9 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
         IntParseTreeModuleSrc),
 
     % Get the .int3 files for imported modules.
-    grab_unqual_imported_modules_make_int(Globals, SourceFileName,
-        SourceFileModuleName, IntParseTreeModuleSrc, Baggage, AugMakeIntUnit1,
-        !HaveReadModuleMaps, !IO),
+    grab_unqual_imported_modules_make_int(ProgressStream, Globals,
+        SourceFileName, SourceFileModuleName, IntParseTreeModuleSrc,
+        Baggage, AugMakeIntUnit1, !HaveReadModuleMaps, !IO),
 
     % Check whether we succeeded.
     GetErrors = Baggage ^ mb_errors,
@@ -432,8 +432,9 @@ maybe_read_old_int0_and_compare_for_smart_recomp(NoLineNumGlobals,
         % Find the timestamp of the current module.
         insist_on_timestamp(MaybeTimestamp, Timestamp),
         % Read in the previous version of the file.
-        read_module_int0(NoLineNumGlobals, rrm_old(ModuleName),
-            ignore_errors, do_search, ModuleName,
+        MaybeProgressStream = maybe.no,
+        read_module_int0(MaybeProgressStream, NoLineNumGlobals,
+            rrm_old(ModuleName), ignore_errors, do_search, ModuleName,
             always_read_module(dont_return_timestamp), HaveReadInt0, !IO),
         (
             HaveReadInt0 = have_read_module(_FN, _MTS,
@@ -471,8 +472,9 @@ maybe_read_old_int1_and_compare_for_smart_recomp(NoLineNumGlobals,
         % Find the timestamp of the current module.
         insist_on_timestamp(MaybeTimestamp, Timestamp),
         % Read in the previous version of the file.
-        read_module_int1(NoLineNumGlobals, rrm_old(ModuleName),
-            ignore_errors, do_search, ModuleName,
+        MaybeProgressStream = maybe.no,
+        read_module_int1(MaybeProgressStream, NoLineNumGlobals,
+            rrm_old(ModuleName), ignore_errors, do_search, ModuleName,
             always_read_module(dont_return_timestamp), HaveReadInt1, !IO),
         (
             HaveReadInt1 = have_read_module(_FN, _MTS,
@@ -510,8 +512,9 @@ maybe_read_old_int2_and_compare_for_smart_recomp(NoLineNumGlobals,
         % Find the timestamp of the current module.
         insist_on_timestamp(MaybeTimestamp, Timestamp),
         % Read in the previous version of the file.
-        read_module_int2(NoLineNumGlobals, rrm_old(ModuleName),
-            ignore_errors, do_search, ModuleName,
+        MaybeProgressStream = maybe.no,
+        read_module_int2(MaybeProgressStream, NoLineNumGlobals,
+            rrm_old(ModuleName), ignore_errors, do_search, ModuleName,
             always_read_module(dont_return_timestamp), HaveReadInt2, !IO),
         (
             HaveReadInt2 = have_read_module(_FN, _MTS,

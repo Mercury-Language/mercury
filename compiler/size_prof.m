@@ -88,6 +88,8 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
+:- import_module io.
+
 %-----------------------------------------------------------------------------%
 
     % Specifies how term sizes are to be measured.
@@ -98,8 +100,9 @@
 
     % Perform the transformation on the specified predicate.
     %
-:- pred size_prof_process_proc_msg(construct_transform::in, pred_proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
+:- pred size_prof_process_proc_msg(io.text_output_stream::in,
+    construct_transform::in, pred_proc_id::in, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -218,9 +221,10 @@
                 spi_rtti_varmaps            :: rtti_varmaps
             ).
 
-size_prof_process_proc_msg(Transform, PredProcId, !ProcInfo, !ModuleInfo) :-
+size_prof_process_proc_msg(ProgressStream, Transform, PredProcId,
+        !ProcInfo, !ModuleInfo) :-
     trace [io(!IO)] (
-        write_proc_progress_message(!.ModuleInfo,
+        maybe_write_proc_progress_message(ProgressStream, !.ModuleInfo,
             "Size profiling", PredProcId, !IO)
     ),
     size_prof_process_proc(Transform, PredProcId, !ProcInfo, !ModuleInfo).
@@ -233,7 +237,8 @@ size_prof_process_proc(Transform, proc(PredId, ProcId), !ProcInfo,
         !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     SimplifyTasks = list_to_simplify_tasks(Globals, []),
-    simplify_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo, !ProcInfo),
+    simplify_proc(maybe.no, SimplifyTasks, PredId, ProcId,
+        !ModuleInfo, !ProcInfo),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_var_table(!.ProcInfo, VarTable0),

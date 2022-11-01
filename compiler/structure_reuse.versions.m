@@ -293,7 +293,8 @@ check_cond_apply_reuse_in_proc(ConvertPotentialReuse, ReuseTable, ReusePPId,
 
 apply_reuse_in_proc(ConvertPotentialReuse, ReuseTable, PPId, !ModuleInfo) :-
     trace [io(!IO)] (
-        write_proc_progress_message(!.ModuleInfo, "Apply reuse ", PPId, !IO)
+        maybe_write_proc_progress_message(!.ModuleInfo, "Apply reuse ",
+            PPId, !IO)
     ),
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, !:ProcInfo),

@@ -188,7 +188,8 @@ option_table_hash(AllOptionArgs, Hash, !IO) :-
     % all three of these kinds of changes grounds for updating a timestamp
     % of when the option database last changed.
     %
-    handle_given_options(AllOptionArgs, _, _, OptionsErrors,
+    io.output_stream(CurStream, !IO),
+    handle_given_options(CurStream, AllOptionArgs, _, _, OptionsErrors,
         AllOptionArgsGlobals, !IO),
     (
         OptionsErrors = []

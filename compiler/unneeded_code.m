@@ -64,9 +64,11 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
+:- import_module io.
+
 %-----------------------------------------------------------------------------%
 
-:- pred unneeded_process_proc_msg(pred_proc_id::in,
+:- pred unneeded_process_proc_msg(io.text_output_stream::in, pred_proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -103,7 +105,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
@@ -226,9 +227,10 @@
 
 %-----------------------------------------------------------------------------%
 
-unneeded_process_proc_msg(PredProcId, !ProcInfo, !ModuleInfo) :-
+unneeded_process_proc_msg(ProgressStream, PredProcId,
+        !ProcInfo, !ModuleInfo) :-
     trace [io(!IO)] (
-        write_proc_progress_message(!.ModuleInfo,
+        maybe_write_proc_progress_message(ProgressStream, !.ModuleInfo,
             "Removing dead code in", PredProcId, !IO)
     ),
     % The transformation considers every nonlocal variable of a goal

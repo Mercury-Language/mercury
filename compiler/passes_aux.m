@@ -145,13 +145,15 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred write_pred_progress_message(module_info::in, string::in,
-    pred_id::in, io::di, io::uo) is det.
+:- pred maybe_write_pred_progress_message(
+    module_info::in, string::in, pred_id::in, io::di, io::uo) is det.
+:- pred maybe_write_pred_progress_message(io.text_output_stream::in,
+    module_info::in, string::in, pred_id::in, io::di, io::uo) is det.
 
-:- pred write_proc_progress_message(module_info::in, string::in,
-    pred_proc_id::in, io::di, io::uo) is det.
-:- pred write_proc_progress_message(module_info::in, string::in,
-    pred_id::in, proc_id::in, io::di, io::uo) is det.
+:- pred maybe_write_proc_progress_message(
+    module_info::in, string::in, pred_proc_id::in, io::di, io::uo) is det.
+:- pred maybe_write_proc_progress_message(io.text_output_stream::in,
+    module_info::in, string::in, pred_proc_id::in, io::di, io::uo) is det.
 
 :- pred maybe_report_sizes(module_info::in, io::di, io::uo) is det.
 
@@ -178,13 +180,14 @@
     --->    no_prev_dump
     ;       prev_dumped_hlds(string, module_info).
 
-    % maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO):
+    % maybe_dump_hlds(ProgressStream, HLDS, StageNum, StageName,
+    %   !DumpInfo, !IO):
     %
     % If the options in HLDS call for it, dump the (selected parts of)
     % the HLDS, unless they would be the same as the previous dump.
     %
-:- pred maybe_dump_hlds(module_info::in, int::in, string::in,
-    dump_info::in, dump_info::out, io::di, io::uo) is det.
+:- pred maybe_dump_hlds(io.text_output_stream::in, module_info::in,
+    int::in, string::in, dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -386,33 +389,58 @@ seq_process_valid_nonimported_procs(PredId, [ProcId | ProcIds], !Task,
 
 %---------------------------------------------------------------------------%
 
-write_pred_progress_message(ModuleInfo, Message, PredId, !IO) :-
+maybe_write_pred_progress_message(ModuleInfo, Message, PredId, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
         module_info_get_name(ModuleInfo, ModuleName),
-        globals.get_progress_output_stream(Globals, ModuleName, Stream, !IO),
+        globals.get_progress_output_stream(Globals, ModuleName,
+            ProgressStream, !IO),
         PredStr = pred_id_to_user_string(ModuleInfo, PredId),
-        io.format(Stream, "%% %s %s\n", [s(Message), s(PredStr)], !IO),
-        io.flush_output(Stream, !IO)
+        io.format(ProgressStream, "%% %s %s\n", [s(Message), s(PredStr)], !IO),
+        io.flush_output(ProgressStream, !IO)
     ;
         VeryVerbose = no
     ).
 
-write_proc_progress_message(ModuleInfo, Message, proc(PredId, ProcId), !IO) :-
-    write_proc_progress_message(ModuleInfo, Message, PredId, ProcId, !IO).
+maybe_write_pred_progress_message(ProgressStream, ModuleInfo, Message, PredId,
+        !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    (
+        VeryVerbose = yes,
+        PredStr = pred_id_to_user_string(ModuleInfo, PredId),
+        io.format(ProgressStream, "%% %s %s\n", [s(Message), s(PredStr)], !IO),
+        io.flush_output(ProgressStream, !IO)
+    ;
+        VeryVerbose = no
+    ).
 
-write_proc_progress_message(ModuleInfo, Message, PredId, ProcId, !IO) :-
+maybe_write_proc_progress_message(ModuleInfo, Message, PredProcId, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
         module_info_get_name(ModuleInfo, ModuleName),
-        globals.get_progress_output_stream(Globals, ModuleName, Stream, !IO),
-        ProcStr = pred_proc_id_pair_to_user_string(ModuleInfo, PredId, ProcId),
-        io.format(Stream, "%% %s %s\n", [s(Message), s(ProcStr)], !IO),
-        io.flush_output(Stream, !IO)
+        globals.get_progress_output_stream(Globals, ModuleName,
+            ProgressStream, !IO),
+        ProcStr = pred_proc_id_to_user_string(ModuleInfo, PredProcId),
+        io.format(ProgressStream, "%% %s %s\n", [s(Message), s(ProcStr)], !IO),
+        io.flush_output(ProgressStream, !IO)
+    ;
+        VeryVerbose = no
+    ).
+
+maybe_write_proc_progress_message(ProgressStream, ModuleInfo, Message,
+        PredProcId, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    (
+        VeryVerbose = yes,
+        ProcStr = pred_proc_id_to_user_string(ModuleInfo, PredProcId),
+        io.format(ProgressStream, "%% %s %s\n", [s(Message), s(ProcStr)], !IO),
+        io.flush_output(ProgressStream, !IO)
     ;
         VeryVerbose = no
     ).
@@ -491,7 +519,7 @@ should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) :-
 
 stage_num_str(StageNum) = string.format("%03d", [i(StageNum)]).
 
-maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
+maybe_dump_hlds(ProgressStream, HLDS, StageNum, StageName, !DumpInfo, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_accumulating_option(Globals, dump_hlds, DumpHLDSStages),
@@ -511,7 +539,6 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
             HLDS = PrevHLDS
         then
             globals.lookup_bool_option(Globals, dump_same_hlds, DumpSameHLDS),
-            get_progress_output_stream(HLDS, ProgressStream, !IO),
             (
                 DumpSameHLDS = no,
                 % Don't create a dump file for this stage, and keep the records
@@ -564,7 +591,6 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
             ".trace_counts." ++ StageNumStr ++ "-" ++ StageName ++
             UserFileSuffix,
         write_out_trace_counts(DumpFileName, MaybeTraceCountsError, !IO),
-        get_progress_output_stream(HLDS, ProgressStream, !IO),
         (
             MaybeTraceCountsError = no,
             (
