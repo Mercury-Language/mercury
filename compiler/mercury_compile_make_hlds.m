@@ -348,8 +348,14 @@ maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
         globals.lookup_bool_option(Globals, verbose, Verbose),
         module_name_to_file_name(Globals, $pred, do_not_create_dirs,
             ext_other(other_ext(".d")), ModuleName, DependencyFileName, !IO),
-        io.format(ProgressStream, "%% Reading auto-dependency file `%s'...", 
-            [s(DependencyFileName)], !IO),
+        (
+            Verbose = yes,
+            io.format(ProgressStream,
+                "%% Reading auto-dependency file `%s'...",
+                [s(DependencyFileName)], !IO)
+        ;
+            Verbose = no
+        ),
         maybe_flush_output(ProgressStream, Verbose, !IO),
         io.open_input(DependencyFileName, DepFileOpenResult, !IO),
         (
