@@ -1176,7 +1176,7 @@ record_negated_option(OptionTable, Flag, OptName, MaybeError, !OptionValues) :-
                 OV = ov_maybe_int(Flag, OptName, maybe.no)
             ;
                 OptionData = maybe_string(_),
-                OV = ov_maybe_int(Flag, OptName, maybe.no)
+                OV = ov_maybe_string(Flag, OptName, maybe.no)
             ;
                 OptionData = accumulating(_),
                 OV = ov_accumulating_reset(Flag, OptName)
