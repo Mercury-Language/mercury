@@ -1,0 +1,4 @@
+option i1: no
+option i2: yes(123)
+option s1: no
+option s2: yes("STR")

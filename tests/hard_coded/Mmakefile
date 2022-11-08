@@ -178,6 +178,7 @@ ORDINARY_PROGS = \
 	functor_ho_inst_excp \
 	functor_ho_inst_excp_2 \
 	functor_ho_inst_float_reg \
+	getopt_maybe_option \
 	getopt_test \
 	gh72 \
 	gh72a \
