@@ -64,6 +64,7 @@ free_free_mode
 func_and_pred
 func_ctor_ambig
 func_test
+getopt_maybe_option
 getopt_test
 ground_dd
 higher_order_func_test
