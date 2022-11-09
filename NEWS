@@ -694,6 +694,13 @@ This is a bug-fix release.
    - pred `prev_index_repl/5`
    - pred `unsafe_prev_index_repl/5`
 
+* We have fixed a bug in the `getopt` and `getopt_io` modules where
+  negating a `maybe_string` option would set its option table entry
+  to an incorrect value.
+
+* We have fixed an issue where flags specific to GCC were being
+  passed to MSVC when building Mercury using MSVC.
+
 NEWS for Mercury 22.01.3
 ========================
 
