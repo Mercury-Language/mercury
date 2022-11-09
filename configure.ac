@@ -5158,7 +5158,11 @@ AC_SUBST(HWLOC_STATIC_LIBS)
 # would have to flex and bison available in order to install the binary
 # distribution.
 #
-if test "$reconfiguring" = "no"
+# XXX the AC_PROG_LEX macro does not work with MSVC, so we omit the check
+# for flex if using that (as of autoconf 2.71). For MSVC, any problem with
+# the flex program will be caught when attempting to build the trace directory.
+#
+if test "$reconfiguring" = "no" -a "$USING_MICROSOFT_CL_COMPILER" = "no"
 then
     # XXX when we drop support for autoconf < 2.70 we should use the following:
     # AC_PROG_LEX([noyywrap])
@@ -5167,7 +5171,10 @@ then
     then
         AC_MSG_ERROR([You need flex to build Mercury])
     fi
+fi
 
+if test "$reconfiguring" = "no"
+then
     AC_PROG_YACC
     # AC_PROG_YACC may bind YACC to e.g. "bison -y"; we care only about
     # the program name.
