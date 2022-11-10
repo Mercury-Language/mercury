@@ -57,11 +57,11 @@ string_impl(Univ) = String :-
     string_ops_noncanon_impl(canonicalize, ops.init_mercury_op_table,
         Univ, String).
 
-string_ops_impl(OpsTable, Univ) = String :-
-    string_ops_noncanon_impl(canonicalize, OpsTable, Univ, String).
+string_ops_impl(OpTable, Univ) = String :-
+    string_ops_noncanon_impl(canonicalize, OpTable, Univ, String).
 
-string_ops_noncanon_impl(NonCanon, OpsTable, X, String) :-
-    value_to_revstrings(NonCanon, OpsTable, X, [], RevStrings),
+string_ops_noncanon_impl(NonCanon, OpTable, X, String) :-
+    value_to_revstrings(NonCanon, OpTable, X, [], RevStrings),
     String = string.append_list(list.reverse(RevStrings)).
 
 %---------------------------------------------------------------------------%
@@ -87,9 +87,9 @@ add_revstring(String, RevStrings, [String | RevStrings]).
     is cc_multi.
 :- mode value_to_revstrings(in, in, in, in, out) is cc_multi.
 
-value_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
-    Priority = ops.universal_priority(OpsTable),
-    value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs).
+value_to_revstrings(NonCanon, OpTable, X, !Rs) :-
+    Priority = ops.universal_priority(OpTable),
+    value_to_revstrings_prio(NonCanon, OpTable, Priority, X, !Rs).
 
 :- pred value_to_revstrings_prio(noncanon_handling, ops.table, ops.priority, T,
     revstrings, revstrings).
@@ -99,7 +99,7 @@ value_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
     is cc_multi.
 :- mode value_to_revstrings_prio(in, in, in, in, in, out) is cc_multi.
 
-value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
+value_to_revstrings_prio(NonCanon, OpTable, Priority, X, !Rs) :-
     % We need to special-case the builtin types:
     %   int, uint, int8, uint8, int16, uint16, int32, uint32
     %   char, float, string
@@ -161,7 +161,7 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
         has_type(Elem, ElemType),
         same_array_elem_type(Array, Elem),
         det_dynamic_cast(X, Array),
-        array_to_revstrings(NonCanon, OpsTable, Array, !Rs)
+        array_to_revstrings(NonCanon, OpTable, Array, !Rs)
     else if
         type_ctor_and_args(type_of(X), TypeCtor, ArgTypes),
         ArgTypes = [ElemType],
@@ -171,7 +171,7 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
         has_type(Elem, ElemType),
         same_version_array_elem_type(VersionArray, Elem),
         det_dynamic_cast(X, VersionArray),
-        version_array_to_revstrings(NonCanon, OpsTable, VersionArray, !Rs)
+        version_array_to_revstrings(NonCanon, OpTable, VersionArray, !Rs)
     else if
         % Check if the type is private_builtin.type_info/1.
         % See the comments above for array.array/1.
@@ -186,7 +186,7 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
         det_dynamic_cast(X, PrivateBuiltinTypeInfo),
         private_builtin_type_info_to_revstrings(PrivateBuiltinTypeInfo, !Rs)
     else
-        ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs)
+        ordinary_term_to_revstrings(NonCanon, OpTable, Priority, X, !Rs)
     ).
 
 :- pred same_array_elem_type(array(T)::unused, T::unused) is det.
@@ -214,112 +214,127 @@ same_private_builtin_type(_, _).
 :- mode ordinary_term_to_revstrings(in,
     in, in, in, in, out) is cc_multi.
 
-ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
+ordinary_term_to_revstrings(NonCanon, OpTable, MinTermPrio, X, !Rs) :-
     deconstruct(X, NonCanon, Functor, _Arity, Args),
     ( if
-        Functor = "[|]",
-        Args = [ListHead, ListTail]
-    then
-        add_revstring("[", !Rs),
-        arg_to_revstrings(NonCanon, OpsTable, ListHead, !Rs),
-        univ_list_tail_to_revstrings(NonCanon, OpsTable, ListTail, !Rs),
-        add_revstring("]", !Rs)
-    else if
-        Functor = "[]",
-        Args = []
-    then
-        add_revstring("[]", !Rs)
-    else if
-        Functor = "{}"
-    then
         (
+            Functor = "[|]",
+            Args = [ListHead, ListTail],
+            add_revstring("[", !Rs),
+            arg_to_revstrings(NonCanon, OpTable, ListHead, !Rs),
+            univ_list_tail_to_revstrings(NonCanon, OpTable, ListTail, !Rs),
+            add_revstring("]", !Rs)
+        ;
+            Functor = "[]",
             Args = [],
-            add_revstring("{}", !Rs)
+            add_revstring("[]", !Rs)
         ;
-            Args = [BracedTerm],
-            add_revstring("{ ", !Rs),
-            value_to_revstrings(NonCanon, OpsTable, univ_value(BracedTerm),
-                !Rs),
-            add_revstring(" }", !Rs)
-        ;
-            Args = [BracedHead | BracedTail],
-            BracedTail = [_ | _],
-            add_revstring("{", !Rs),
-            arg_to_revstrings(NonCanon, OpsTable, BracedHead, !Rs),
-            term_args_to_revstrings(NonCanon, OpsTable, BracedTail, !Rs),
-            add_revstring("}", !Rs)
+            Functor = "{}",
+            (
+                Args = [],
+                add_revstring("{}", !Rs)
+            ;
+                Args = [BracedTerm],
+                add_revstring("{ ", !Rs),
+                value_to_revstrings(NonCanon, OpTable, univ_value(BracedTerm),
+                    !Rs),
+                add_revstring(" }", !Rs)
+            ;
+                Args = [BracedHead | BracedTail],
+                BracedTail = [_ | _],
+                add_revstring("{", !Rs),
+                arg_to_revstrings(NonCanon, OpTable, BracedHead, !Rs),
+                term_args_to_revstrings(NonCanon, OpTable, BracedTail, !Rs),
+                add_revstring("}", !Rs)
+            )
         )
-    else if
-        Args = [Arg]
     then
-        ( if
-            ops.lookup_prefix_op(OpsTable, Functor, OpPriority, OpGtOrGe)
-        then
-            maybe_add_revstring("(", Priority, OpPriority, !Rs),
-            add_revstring(term_io.quoted_atom(Functor), !Rs),
-            add_revstring(" ", !Rs),
-            NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
-            value_to_revstrings_prio(NonCanon, OpsTable, NewPriority,
-                univ_value(Arg), !Rs),
-            maybe_add_revstring(")", Priority, OpPriority, !Rs)
-        else if
-            ops.lookup_postfix_op(OpsTable, Functor, OpPriority, OpGtOrGe)
-        then
-            maybe_add_revstring("(", Priority, OpPriority, !Rs),
-            NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
-            value_to_revstrings_prio(NonCanon, OpsTable, NewPriority,
-                univ_value(Arg), !Rs),
-            add_revstring(" ", !Rs),
-            add_revstring(term_io.quoted_atom(Functor), !Rs),
-            maybe_add_revstring(")", Priority, OpPriority, !Rs)
-        else
-            plain_term_to_revstrings(NonCanon, OpsTable, Priority,
-                Functor, Args, !Rs)
-        )
-    else if
-        Args = [Arg1, Arg2]
-    then
-        ( if
-            ops.lookup_infix_op(OpsTable, Functor, OpPriority,
-                LeftGtOrGe, RightGtOrGe)
-        then
-            maybe_add_revstring("(", Priority, OpPriority, !Rs),
-            LeftPriority = min_priority_for_arg(OpPriority, LeftGtOrGe),
-            value_to_revstrings_prio(NonCanon, OpsTable, LeftPriority,
-                univ_value(Arg1), !Rs),
-            ( if Functor = "," then
-                add_revstring(", ", !Rs)
-            else
-                add_revstring(" ", !Rs),
-                add_revstring(term_io.quoted_atom(Functor), !Rs),
-                add_revstring(" ", !Rs)
-            ),
-            RightPriority = min_priority_for_arg(OpPriority, RightGtOrGe),
-            value_to_revstrings_prio(NonCanon, OpsTable, RightPriority,
-                univ_value(Arg2), !Rs),
-            maybe_add_revstring(")", Priority, OpPriority, !Rs)
-        else if
-            ops.lookup_binary_prefix_op(OpsTable, Functor,
-                OpPriority, FirstGtOrGe, SecondGtOrGe)
-        then
-            maybe_add_revstring("(", Priority, OpPriority, !Rs),
-            add_revstring(term_io.quoted_atom(Functor), !Rs),
-            add_revstring(" ", !Rs),
-            FirstPriority = min_priority_for_arg(OpPriority, FirstGtOrGe),
-            value_to_revstrings_prio(NonCanon, OpsTable, FirstPriority,
-                univ_value(Arg1), !Rs),
-            add_revstring(" ", !Rs),
-            SecondPriority = min_priority_for_arg(OpPriority, SecondGtOrGe),
-            value_to_revstrings_prio(NonCanon, OpsTable, SecondPriority,
-                univ_value(Arg2), !Rs),
-            maybe_add_revstring(")", Priority, OpPriority, !Rs)
-        else
-            plain_term_to_revstrings(NonCanon, OpsTable, Priority,
-                Functor, Args, !Rs)
-        )
+        % Return the value of !:R computed above.
+        true
     else
-        plain_term_to_revstrings(NonCanon, OpsTable, Priority, Functor, Args,
-            !Rs)
+        (
+            Args = [ArgA],
+            ( if ops.lookup_op_infos(OpTable, Functor, OpInfo, OpInfos) then
+                ( if
+                    ops.op_infos_prefix_op(OpInfo, OpInfos, OpPrio, GtOrGeA)
+                then
+                    maybe_add_revstring("(", MinTermPrio, OpPrio, !Rs),
+                    add_revstring(term_io.quoted_atom(Functor), !Rs),
+                    add_revstring(" ", !Rs),
+                    MinPrioA = min_priority_for_arg(OpPrio, GtOrGeA),
+                    value_to_revstrings_prio(NonCanon, OpTable, MinPrioA,
+                        univ_value(ArgA), !Rs),
+                    maybe_add_revstring(")", MinTermPrio, OpPrio, !Rs)
+                else if
+                    ops.op_infos_postfix_op(OpInfo, OpInfos, OpPrio, GtOrGeA)
+                then
+                    maybe_add_revstring("(", MinTermPrio, OpPrio, !Rs),
+                    MinPrioA = min_priority_for_arg(OpPrio, GtOrGeA),
+                    value_to_revstrings_prio(NonCanon, OpTable, MinPrioA,
+                        univ_value(ArgA), !Rs),
+                    add_revstring(" ", !Rs),
+                    add_revstring(term_io.quoted_atom(Functor), !Rs),
+                    maybe_add_revstring(")", MinTermPrio, OpPrio, !Rs)
+                else
+                    plain_term_to_revstrings(NonCanon, OpTable, MinTermPrio,
+                        Functor, Args, !Rs)
+                )
+            else
+                plain_term_to_revstrings(NonCanon, OpTable, MinTermPrio,
+                    Functor, Args, !Rs)
+            )
+        ;
+            Args = [ArgA, ArgB],
+            ( if ops.lookup_op_infos(OpTable, Functor, OpInfo, OpInfos) then
+                ( if
+                    ops.op_infos_infix_op(OpInfo, OpInfos, OpPrio,
+                        GtOrGeA, GtOrGeB)
+                then
+                    maybe_add_revstring("(", MinTermPrio, OpPrio, !Rs),
+                    MinPrioA = min_priority_for_arg(OpPrio, GtOrGeA),
+                    value_to_revstrings_prio(NonCanon, OpTable, MinPrioA,
+                        univ_value(ArgA), !Rs),
+                    ( if Functor = "," then
+                        add_revstring(", ", !Rs)
+                    else
+                        add_revstring(" ", !Rs),
+                        add_revstring(term_io.quoted_atom(Functor), !Rs),
+                        add_revstring(" ", !Rs)
+                    ),
+                    MinPrioB = min_priority_for_arg(OpPrio, GtOrGeB),
+                    value_to_revstrings_prio(NonCanon, OpTable, MinPrioB,
+                        univ_value(ArgB), !Rs),
+                    maybe_add_revstring(")", MinTermPrio, OpPrio, !Rs)
+                else if
+                    ops.op_infos_binary_prefix_op(OpInfo, OpInfos,
+                        OpPrio, GtOrGeA, GtOrGeB)
+                then
+                    maybe_add_revstring("(", MinTermPrio, OpPrio, !Rs),
+                    add_revstring(term_io.quoted_atom(Functor), !Rs),
+                    add_revstring(" ", !Rs),
+                    MinPrioA = min_priority_for_arg(OpPrio, GtOrGeA),
+                    value_to_revstrings_prio(NonCanon, OpTable, MinPrioA,
+                        univ_value(ArgA), !Rs),
+                    add_revstring(" ", !Rs),
+                    MinPrioB = min_priority_for_arg(OpPrio, GtOrGeB),
+                    value_to_revstrings_prio(NonCanon, OpTable, MinPrioB,
+                        univ_value(ArgB), !Rs),
+                    maybe_add_revstring(")", MinTermPrio, OpPrio, !Rs)
+                else
+                    plain_term_to_revstrings(NonCanon, OpTable, MinTermPrio,
+                        Functor, Args, !Rs)
+                )
+            else
+                plain_term_to_revstrings(NonCanon, OpTable, MinTermPrio,
+                    Functor, Args, !Rs)
+            )
+        ;
+            ( Args = []
+            ; Args = [_, _, _ | _]
+            ),
+            plain_term_to_revstrings(NonCanon, OpTable, MinTermPrio,
+                Functor, Args, !Rs)
+        )
     ).
 
 :- pred plain_term_to_revstrings(noncanon_handling, ops.table,
@@ -333,11 +348,11 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
 :- mode plain_term_to_revstrings(in, in, in, in, in, in, out)
     is cc_multi.
 
-plain_term_to_revstrings(NonCanon, OpsTable, Priority, Functor, Args, !Rs) :-
+plain_term_to_revstrings(NonCanon, OpTable, Priority, Functor, Args, !Rs) :-
     ( if
         Args = [],
-        ops.lookup_op(OpsTable, Functor),
-        priority_ge(Priority, ops.loosest_op_priority(OpsTable))
+        ops.lookup_op(OpTable, Functor),
+        priority_ge(Priority, ops.loosest_op_priority(OpTable))
     then
         add_revstring("(", !Rs),
         add_revstring(term_io.quoted_atom(Functor), !Rs),
@@ -352,8 +367,8 @@ plain_term_to_revstrings(NonCanon, OpsTable, Priority, Functor, Args, !Rs) :-
     (
         Args = [Y | Ys],
         add_revstring("(", !Rs),
-        arg_to_revstrings(NonCanon, OpsTable, Y, !Rs),
-        term_args_to_revstrings(NonCanon, OpsTable, Ys, !Rs),
+        arg_to_revstrings(NonCanon, OpTable, Y, !Rs),
+        term_args_to_revstrings(NonCanon, OpTable, Ys, !Rs),
         add_revstring(")", !Rs)
     ;
         Args = []
@@ -362,8 +377,8 @@ plain_term_to_revstrings(NonCanon, OpsTable, Priority, Functor, Args, !Rs) :-
 :- pred maybe_add_revstring(string::in, ops.priority::in, ops.priority::in,
     revstrings::in, revstrings::out) is det.
 
-maybe_add_revstring(String, Priority, OpPriority, !Rs) :-
-    ( if priority_lt(OpPriority, Priority) then
+maybe_add_revstring(String, Priority, OpPrio, !Rs) :-
+    ( if priority_lt(OpPrio, Priority) then
         add_revstring(String, !Rs)
     else
         true
@@ -377,15 +392,15 @@ maybe_add_revstring(String, Priority, OpPriority, !Rs) :-
     is cc_multi.
 :- mode univ_list_tail_to_revstrings(in, in, in, in, out) is cc_multi.
 
-univ_list_tail_to_revstrings(NonCanon, OpsTable, Univ, !Rs) :-
+univ_list_tail_to_revstrings(NonCanon, OpTable, Univ, !Rs) :-
     deconstruct(univ_value(Univ), NonCanon, Functor, _Arity, Args),
     ( if
         Functor = "[|]",
         Args = [ListHead, ListTail]
     then
         add_revstring(", ", !Rs),
-        arg_to_revstrings(NonCanon, OpsTable, ListHead, !Rs),
-        univ_list_tail_to_revstrings(NonCanon, OpsTable, ListTail, !Rs)
+        arg_to_revstrings(NonCanon, OpTable, ListHead, !Rs),
+        univ_list_tail_to_revstrings(NonCanon, OpTable, ListTail, !Rs)
     else if
         Functor = "[]",
         Args = []
@@ -393,7 +408,7 @@ univ_list_tail_to_revstrings(NonCanon, OpsTable, Univ, !Rs) :-
         true
     else
         add_revstring(" | ", !Rs),
-        value_to_revstrings(NonCanon, OpsTable, univ_value(Univ), !Rs)
+        value_to_revstrings(NonCanon, OpTable, univ_value(Univ), !Rs)
     ).
 
     % Write the remaining arguments.
@@ -407,10 +422,10 @@ univ_list_tail_to_revstrings(NonCanon, OpsTable, Univ, !Rs) :-
 :- mode term_args_to_revstrings(in, in, in, in, out) is cc_multi.
 
 term_args_to_revstrings(_, _, [], !Rs).
-term_args_to_revstrings(NonCanon, OpsTable, [X | Xs], !Rs) :-
+term_args_to_revstrings(NonCanon, OpTable, [X | Xs], !Rs) :-
     add_revstring(", ", !Rs),
-    arg_to_revstrings(NonCanon, OpsTable, X, !Rs),
-    term_args_to_revstrings(NonCanon, OpsTable, Xs, !Rs).
+    arg_to_revstrings(NonCanon, OpTable, X, !Rs),
+    term_args_to_revstrings(NonCanon, OpTable, Xs, !Rs).
 
 :- pred arg_to_revstrings(noncanon_handling,
     ops.table, univ, revstrings, revstrings).
@@ -419,9 +434,9 @@ term_args_to_revstrings(NonCanon, OpsTable, [X | Xs], !Rs) :-
 :- mode arg_to_revstrings(in(include_details_cc), in, in, in, out) is cc_multi.
 :- mode arg_to_revstrings(in, in, in, in, out) is cc_multi.
 
-arg_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
-    Priority = comma_priority(OpsTable),
-    value_to_revstrings_prio(NonCanon, OpsTable, Priority, univ_value(X), !Rs).
+arg_to_revstrings(NonCanon, OpTable, X, !Rs) :-
+    Priority = comma_priority(OpTable),
+    value_to_revstrings_prio(NonCanon, OpTable, Priority, univ_value(X), !Rs).
 
 :- pred array_to_revstrings(noncanon_handling, ops.table, array(T),
     revstrings, revstrings).
@@ -431,9 +446,9 @@ arg_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
     is cc_multi.
 :- mode array_to_revstrings(in, in, in, in, out) is cc_multi.
 
-array_to_revstrings(NonCanon, OpsTable, Array, !Rs) :-
+array_to_revstrings(NonCanon, OpTable, Array, !Rs) :-
     add_revstring("array(", !Rs),
-    value_to_revstrings(NonCanon, OpsTable,
+    value_to_revstrings(NonCanon, OpTable,
         array.to_list(Array) `with_type` list(T), !Rs),
     add_revstring(")", !Rs).
 
@@ -445,9 +460,9 @@ array_to_revstrings(NonCanon, OpsTable, Array, !Rs) :-
     is cc_multi.
 :- mode version_array_to_revstrings(in, in, in, in, out) is cc_multi.
 
-version_array_to_revstrings(NonCanon, OpsTable, Array, !Rs) :-
+version_array_to_revstrings(NonCanon, OpTable, Array, !Rs) :-
     add_revstring("version_array(", !Rs),
-    value_to_revstrings(NonCanon, OpsTable,
+    value_to_revstrings(NonCanon, OpTable,
         version_array.to_list(Array) `with_type` list(T), !Rs),
     add_revstring(")", !Rs).
 
