@@ -30,4 +30,3 @@ main(!IO) :-
         io.format(StdErr, "%d: %s\n", [i(Line), s(Msg)], !IO),
         main(!IO)
     ).
-

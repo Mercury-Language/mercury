@@ -727,7 +727,7 @@ write_univ(Stream, NonCanon, Univ, !State) :-
 
 do_write_univ(Stream, NonCanon, Univ, !State) :-
     do_write_univ_prio(Stream, NonCanon, Univ,
-        ops.mercury_op_table_max_priority + 1, !State).
+        ops.mercury_op_table_universal_priority, !State).
 
 :- pred do_write_univ_prio(Stream, deconstruct.noncanon_handling, univ,
     ops.priority, State, State)
@@ -1077,14 +1077,14 @@ select_op_info_and_print(Stream, NonCanon, OpInfo, OtherOpInfos, Priority,
         Functor, Args, !State) :-
     OpInfo = op_info(OpClass, _),
     (
-        OpClass = prefix(_OpAssoc),
+        OpClass = prefix(_OpGtOrGe),
         ( if Args = [Arg] then
             OpInfo = op_info(_, OpPriority),
             maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
             term_io.quote_atom(Stream, Functor, !State),
             put(Stream, " ", !State),
-            OpClass = prefix(OpAssoc),
-            adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
+            OpClass = prefix(OpGtOrGe),
+            NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
             do_write_univ_prio(Stream, NonCanon, Arg, NewPriority, !State),
             maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
         else
@@ -1092,12 +1092,12 @@ select_op_info_and_print(Stream, NonCanon, OpInfo, OtherOpInfos, Priority,
                 Priority, Functor, Args, !State)
         )
     ;
-        OpClass = postfix(_OpAssoc),
+        OpClass = postfix(_OpGtOrGe),
         ( if Args = [PostfixArg] then
             OpInfo = op_info(_, OpPriority),
             maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
-            OpClass = postfix(OpAssoc),
-            adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
+            OpClass = postfix(OpGtOrGe),
+            NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
             do_write_univ_prio(Stream, NonCanon, PostfixArg,
                 NewPriority, !State),
             put(Stream, " ", !State),
@@ -1108,12 +1108,12 @@ select_op_info_and_print(Stream, NonCanon, OpInfo, OtherOpInfos, Priority,
                 Priority, Functor, Args, !State)
         )
     ;
-        OpClass = infix(_LeftAssoc, _RightAssoc),
+        OpClass = infix(_LeftGtOrGe, _RightGtOrGe),
         ( if Args = [Arg1, Arg2] then
             OpInfo = op_info(_, OpPriority),
             maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
-            OpClass = infix(LeftAssoc, _),
-            adjust_priority_for_assoc(OpPriority, LeftAssoc, LeftPriority),
+            OpClass = infix(LeftGtOrGe, _),
+            LeftPriority = min_priority_for_arg(OpPriority, LeftGtOrGe),
             do_write_univ_prio(Stream, NonCanon, Arg1, LeftPriority, !State),
             ( if Functor = "," then
                 put(Stream, ", ", !State)
@@ -1122,8 +1122,8 @@ select_op_info_and_print(Stream, NonCanon, OpInfo, OtherOpInfos, Priority,
                 term_io.quote_atom(Stream, Functor, !State),
                 put(Stream, " ", !State)
             ),
-            OpClass = infix(_, RightAssoc),
-            adjust_priority_for_assoc(OpPriority, RightAssoc, RightPriority),
+            OpClass = infix(_, RightGtOrGe),
+            RightPriority = min_priority_for_arg(OpPriority, RightGtOrGe),
             do_write_univ_prio(Stream, NonCanon, Arg2, RightPriority, !State),
             maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
         else
@@ -1131,19 +1131,18 @@ select_op_info_and_print(Stream, NonCanon, OpInfo, OtherOpInfos, Priority,
                 Priority, Functor, Args, !State)
         )
     ;
-        OpClass = binary_prefix(_FirstAssoc, _SecondAssoc),
+        OpClass = binary_prefix(_FirstGtOrGe, _SecondGtOrGe),
         ( if Args = [Arg1, Arg2] then
             OpInfo = op_info(_, OpPriority),
             maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
             term_io.quote_atom(Stream, Functor, !State),
             put(Stream, " ", !State),
-            OpClass = binary_prefix(FirstAssoc, _),
-            adjust_priority_for_assoc(OpPriority, FirstAssoc, FirstPriority),
+            OpClass = binary_prefix(FirstGtOrGe, _),
+            FirstPriority = min_priority_for_arg(OpPriority, FirstGtOrGe),
             do_write_univ_prio(Stream, NonCanon, Arg1, FirstPriority, !State),
             put(Stream, " ", !State),
-            OpClass = binary_prefix(_, SecondAssoc),
-            adjust_priority_for_assoc(OpPriority, SecondAssoc,
-                SecondPriority),
+            OpClass = binary_prefix(_, SecondGtOrGe),
+            SecondPriority = min_priority_for_arg(OpPriority, SecondGtOrGe),
             do_write_univ_prio(Stream, NonCanon, Arg2, SecondPriority, !State),
             maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
         else
@@ -1176,7 +1175,7 @@ select_remaining_op_info_and_print(Stream, NonCanon, [],
         Priority, Functor, Args, !State) :-
     ( if
         Args = [],
-        Priority =< ops.mercury_op_table_max_priority
+        priority_ge(Priority, ops.mercury_op_table_loosest_op_priority)
     then
         put(Stream, '(', !State),
         term_io.quote_atom(Stream, Functor, !State),
@@ -1215,7 +1214,7 @@ write_functor_and_args(Stream, NonCanon, Functor, Args, !State) :-
 :- pragma inline(pred(maybe_write_paren/6)).
 
 maybe_write_paren(Stream, String, Priority, OpPriority, !State) :-
-    ( if OpPriority > Priority then
+    ( if priority_lt(OpPriority, Priority) then
         put(Stream, String, !State)
     else
         true
@@ -1282,21 +1281,8 @@ write_term_args(Stream, NonCanon, [X | Xs], !State) :-
     (Stream = io.output_stream, State = io.state)).
 
 write_arg(Stream, NonCanon, X, !State) :-
-    arg_priority(ArgPriority, !State),
-    do_write_univ_prio(Stream, NonCanon, X, ArgPriority, !State).
-
-:- pred arg_priority(int::out, State::di, State::uo) is det.
-
-% arg_priority(ArgPriority, !State) :-
-%   ( ops.lookup_infix_op(ops.init_mercury_op_table, ",", Priority, _, _) ->
-%       ArgPriority = Priority
-%   ;
-%       error("arg_priority: can't find the priority of `,'")
-%   ).
-%
-% We could implement this as above, but it's more efficient to just
-% hard-code it.
-arg_priority(1000, !State).
+    CommaPrio = mercury_op_table_comma_priority,
+    do_write_univ_prio(Stream, NonCanon, X, CommaPrio, !State).
 
 %---------------------------------------------------------------------------%
 
@@ -1316,7 +1302,7 @@ write_type_ctor_desc(Stream, TypeCtorDesc, !State) :-
         Name = "func"
     then
         % The type ctor that we call `builtin:func/N' takes N + 1
-        % type parameters: N arguments plus one return value.
+        % type parameters: N arguments, and one return value.
         % So we need to subtract one from the arity here.
         Arity = Arity0 - 1
     else

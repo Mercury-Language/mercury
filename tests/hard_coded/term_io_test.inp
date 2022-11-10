@@ -1,34 +1,33 @@
 foo((pred(A::in, B::out) is det :- p(A, C), q(C, B)), D, E).
 {
-	(
-		a(1),
-		X = 1,
-		(
-			b,
-			Y = 1,
-			( c, Z = 1; Z = 2 )
-		;
-			 Y = 2, Z = 2
-		)
-	;
-		X = 2,
-		Y = 2,
-		Z = 2
-	),
-	A = 1
+    (
+        a(1),
+        X = 1,
+        (
+            b,
+            Y = 1,
+            ( c, Z = 1; Z = 2 )
+        ;
+             Y = 2, Z = 2
+        )
+    ;
+        X = 2,
+        Y = 2,
+        Z = 2
+    ),
+    A = 1
 }.
 [
-	(
-		a(1),
-		X = 1
-	&
-		X = 2,
-		Y = 2
-	)
+    (
+        a(1),
+        X = 1
+    &
+        X = 2,
+        Y = 2
+    )
 ,
-	A = 1
+    A = 1
 ].
 [a::m, b::n].
 [foo, promise_pure, bar].
 bound(ground ; ground - unique).
-

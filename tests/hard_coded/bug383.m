@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 
 :- module bug383.
@@ -21,6 +21,7 @@
 :- import_module ops.
 :- import_module pair.
 :- import_module solutions.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -43,7 +44,10 @@ main(!IO) :-
     pred(lookup_op/2) is lookup_cadmium_op,
     pred(lookup_op_infos/4) is lookup_cadmium_op_infos,
     pred(lookup_operator_term/4) is lookup_cadmium_operator_term,
-    func(max_priority/1) is cadmium_max_priority,
+    func(universal_priority/1) is cadmium_universal_priority,
+    func(loosest_op_priority/1) is cadmium_loosest_op_priority,
+    func(tightest_op_priority/1) is cadmium_tightest_op_priority,
+    func(comma_priority/1) is cadmium_comma_priority,
     func(arg_priority/1) is cadmium_arg_priority
 ].
 
@@ -73,7 +77,7 @@ cadmium_op_info(Name, OpInfo) :-
 %---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_infix_op(cadmium_op_table::in, string::in,
-    priority::out, assoc::out, assoc::out) is semidet.
+    priority::out, arg_prio_gt_or_ge::out, arg_prio_gt_or_ge::out) is semidet.
 
 lookup_cadmium_infix_op(_, Name, Priority, LeftAssoc, RightAssoc) :-
     lookup_cadmium_op_infos(cadmium_op_table, Name, OpInfos),
@@ -89,15 +93,15 @@ is_infix_op(op_info(infix(_, _), _)).
 %---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_operator_term(cadmium_op_table::in, priority::out,
-    assoc::out, assoc::out) is semidet.
+    arg_prio_gt_or_ge::out, arg_prio_gt_or_ge::out) is semidet.
 
-lookup_cadmium_operator_term(_, 100, y, x) :-
+lookup_cadmium_operator_term(_, prio(1400u), arg_ge, arg_gt) :-
     semidet_true.
 
 %---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_prefix_op(cadmium_op_table::in, string::in,
-    priority::out, assoc::out) is semidet.
+    priority::out, arg_prio_gt_or_ge::out) is semidet.
 
 lookup_cadmium_prefix_op(_, Name, Priority, LeftAssoc) :-
     lookup_cadmium_op_infos(cadmium_op_table, Name, OpInfos),
@@ -113,7 +117,7 @@ is_prefix_op(op_info(prefix(_), _)).
 %---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_binary_prefix_op(cadmium_op_table, string, priority,
-    assoc, assoc).
+    arg_prio_gt_or_ge, arg_prio_gt_or_ge).
 :- mode lookup_cadmium_binary_prefix_op(in, in, out, out, out) is semidet.
 
 lookup_cadmium_binary_prefix_op(_, Name, Priority, LeftAssoc, RightAssoc) :-
@@ -130,7 +134,7 @@ is_binary_prefix_op(op_info(binary_prefix(_,_),_)).
 %---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_postfix_op(cadmium_op_table::in, string::in,
-    priority::out, assoc::out) is semidet.
+    priority::out, arg_prio_gt_or_ge::out) is semidet.
 
 lookup_cadmium_postfix_op(_, Name, Priority, LeftAssoc) :-
     lookup_cadmium_op_infos(cadmium_op_table, Name, OpInfos),
@@ -152,16 +156,25 @@ lookup_cadmium_op(_, Name) :-
 
 %---------------------------------------------------------------------------%
 
-:- func cadmium_max_priority(cadmium_op_table) = priority.
+:- func cadmium_universal_priority(cadmium_op_table) = priority.
 
-cadmium_max_priority(_) = 1400.
+cadmium_universal_priority(_) = prio(0u).
 
-%---------------------------------------------------------------------------%
+:- func cadmium_loosest_op_priority(cadmium_op_table) = priority.
+
+cadmium_loosest_op_priority(_) = prio(1u).
+
+:- func cadmium_tightest_op_priority(cadmium_op_table) = priority.
+
+cadmium_tightest_op_priority(_) = prio(1500u).
+
+:- func cadmium_comma_priority(cadmium_op_table) = priority.
+
+cadmium_comma_priority(_) = prio(195u).
 
 :- func cadmium_arg_priority(cadmium_op_table) = priority.
 
-cadmium_arg_priority(_) = comma_priority - 1.
-    % See ops.m docs for an explanation of this.
+cadmium_arg_priority(_) = prio(196u).
 
 %---------------------------------------------------------------------------%
 
@@ -177,46 +190,42 @@ find_first(Pred, [X | Xs], Y) :-
 
 %---------------------------------------------------------------------------%
 
-:- func comma_priority = int.
-
-comma_priority = 1305.
-
 :- pred cadmium_op_table(string::in, op_info::out) is nondet.
 
-cadmium_op_table("import",      op_info(prefix(y),  1400)).
-cadmium_op_table("ruleset",     op_info(prefix(y),  1400)).
-cadmium_op_table("transform",   op_info(prefix(y),  1400)).
-cadmium_op_table("<=>",         op_info(infix(x, y), 1350)).
-cadmium_op_table("|",           op_info(infix(x, y), 1310)).
-cadmium_op_table("\\",          op_info(infix(y, x), 1310)).
-cadmium_op_table(",",           op_info(infix(x, y), comma_priority)).
+cadmium_op_table("import",      op_info(prefix(arg_ge),        prio(100u))).
+cadmium_op_table("ruleset",     op_info(prefix(arg_ge),        prio(100u))).
+cadmium_op_table("transform",   op_info(prefix(arg_ge),        prio(100u))).
+cadmium_op_table("<=>",         op_info(infix(arg_gt, arg_ge), prio(150u))).
+cadmium_op_table("|",           op_info(infix(arg_gt, arg_ge), prio(190u))).
+cadmium_op_table("\\",          op_info(infix(arg_ge, arg_gt), prio(190u))).
+cadmium_op_table(",",           op_info(infix(arg_gt, arg_ge), prio(195u))).
 
-cadmium_op_table("<->",         op_info(infix(x, x), 1200)).
+cadmium_op_table("<->",         op_info(infix(arg_gt, arg_gt), prio(300u))).
 
-cadmium_op_table("->",          op_info(infix(x, y), 1100)).
-cadmium_op_table("<-",          op_info(infix(x, y), 1100)).
+cadmium_op_table("->",          op_info(infix(arg_gt, arg_ge), prio(400u))).
+cadmium_op_table("<-",          op_info(infix(arg_gt, arg_ge), prio(400u))).
 
-cadmium_op_table("\\/",         op_info(infix(y, x), 1000)).
-cadmium_op_table("xor",         op_info(infix(y, x), 1000)).
+cadmium_op_table("\\/",         op_info(infix(arg_ge, arg_gt), prio(500u))).
+cadmium_op_table("xor",         op_info(infix(arg_ge, arg_gt), prio(500u))).
 
-cadmium_op_table("/\\",         op_info(infix(y, x), 900)).
+cadmium_op_table("/\\",         op_info(infix(arg_ge, arg_gt), prio(600u))).
 
-cadmium_op_table("<",           op_info(infix(x, x), 800)).
-cadmium_op_table(">",           op_info(infix(x, x), 800)).
-cadmium_op_table("<=",          op_info(infix(x, y), 800)).
-cadmium_op_table(">=",          op_info(infix(x, x), 800)).
-cadmium_op_table("=",           op_info(infix(x, x), 800)).
-cadmium_op_table("!=",          op_info(infix(x, x), 800)).
+cadmium_op_table("<",           op_info(infix(arg_gt, arg_gt), prio(700u))).
+cadmium_op_table(">",           op_info(infix(arg_gt, arg_gt), prio(700u))).
+cadmium_op_table("<=",          op_info(infix(arg_gt, arg_ge), prio(700u))).
+cadmium_op_table(">=",          op_info(infix(arg_gt, arg_gt), prio(700u))).
+cadmium_op_table("=",           op_info(infix(arg_gt, arg_gt), prio(700u))).
+cadmium_op_table("!=",          op_info(infix(arg_gt, arg_gt), prio(700u))).
 
-cadmium_op_table("+",           op_info(infix(y, x), 400)).
-cadmium_op_table("-",           op_info(infix(y, x), 400)).
+cadmium_op_table("+",           op_info(infix(arg_ge, arg_gt), prio(1100u))).
+cadmium_op_table("-",           op_info(infix(arg_ge, arg_gt), prio(1100u))).
 
-cadmium_op_table("+",           op_info(prefix(x), 90)).
-cadmium_op_table("-",           op_info(prefix(x), 90)).
+cadmium_op_table("+",           op_info(prefix(arg_gt),        prio(1410u))).
+cadmium_op_table("-",           op_info(prefix(arg_gt),        prio(1410u))).
 
-cadmium_op_table(":=",          op_info(infix(x, x), 70)).
-cadmium_op_table("@",           op_info(infix(x, x), 70)).
-cadmium_op_table(".",           op_info(infix(y, x), 10)).
+cadmium_op_table(":=",          op_info(infix(arg_gt, arg_gt), prio(1430u))).
+cadmium_op_table("@",           op_info(infix(arg_gt, arg_gt), prio(1430u))).
+cadmium_op_table(".",           op_info(infix(arg_ge, arg_gt), prio(1490u))).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

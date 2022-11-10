@@ -1568,10 +1568,11 @@
 :- func string(T) = string.
 
     % As above, but using the supplied table of operators.
+    % NOTE_TO_IMPLEMENTORS: XXX The only table we accept is the Mercury table.
     %
 :- func string_ops(ops.table, T) = string.
 
-    % string_ops_noncanon(NonCanon, OpsTable, X, String)
+    % string_ops_noncanon(NonCanon, OpTable, X, String)
     %
     % As above, but the caller specifies what behaviour should occur for
     % non-canonical terms (i.e. terms where multiple representations
@@ -6257,11 +6258,11 @@ from_c_pointer(P) = S :-
 string(X) =
     to_string.string_impl(X).
 
-string_ops(OpsTable, X) =
-    to_string.string_ops_impl(OpsTable, X).
+string_ops(OpTable, X) =
+    to_string.string_ops_impl(OpTable, X).
 
-string_ops_noncanon(NonCanon, OpsTable, X, String) :-
-    to_string.string_ops_noncanon_impl(NonCanon, OpsTable, X, String).
+string_ops_noncanon(NonCanon, OpTable, X, String) :-
+    to_string.string_ops_noncanon_impl(NonCanon, OpTable, X, String).
 
 %---------------------------------------------------------------------------%
 %

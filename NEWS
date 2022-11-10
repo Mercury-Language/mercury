@@ -14,6 +14,24 @@ Changes that may break compatibility
 
 * The old random number generator in the `random` module has been removed.
 
+* The system of operator priorities in the `ops` module has been inverted.
+  In the old ops.m, given two operators of different priorities, the one
+  that bound more tightly was the one with the lower numerical priority.
+  In the new ops.m, operators with higher numerical priorities bind
+  more tightly. There are other changes as well, such as priorities
+  no longer being interchangeable with other integers, some types and function
+  symbols being renamed, and an updated op_table type class with a
+  somewhat different list of methods.
+
+  The old contents of the `ops` module is still available as
+  `extras/old_library_modules/old_ops`.
+
+* The `mercury_term_parser` module now expects the operator table
+  to be specified using the updated op_table typeclass in the new `ops` module.
+
+  The old contents of the `mercury_term_parser` module is still available as
+  `extras/old_library_modules/old_mercury_term_parser`.
+
 Changes to the Mercury standard library
 ---------------------------------------
 
@@ -298,10 +316,43 @@ Changes to the Mercury standard library
 
 ### Changes to the `ops` module
 
+* The representation of operator priories has been changed. Priorities
+  used to be represented as plain signed integers between 0 and 1200,
+  with higher numbers representing operators that bind less tightly.
+  Priorities are now represented using unsigned integers between 0u and 1500u,
+  with higher numbers representing operators that bind more tightly,
+  and to guard against priorities being unintentionally confused with
+  other kinds of numbers, they are now wrapped in the `prio` function symbol.
+
+* The `assoc` type has been renamed to `arg_prio_gt_or_ge`, which
+  reflects its semantics. Its function symbols `x` and `y` have been
+  renamed to `arg_gt` and `arg_ge` respectively.
+
+* The list of methods in the op_table type class has been changed.
+
+ - The method max_priority has been been replaced by the method
+   loosest_op_priority.
+
+ - The new method universal_priority has been added. It is intended to
+   replace uses of `max_priority + 1` to denote a context that accept terms
+   using any operator, regardless of its priority.
+
+ - The new method tightest_op_priority has been added. It is intended to
+   replace uses of the integer constant `0` as a priority.
+
+ - The new method comma_priority has been added. It is intended to denote
+   the priority of the comma character, which separates term arguments,
+   when used as an operator.
+
 * The following predicates and functions have been added:
 
+    - func `decrement_priority/1`
+    - func `increment_priority/1`
     - func `mercury_op_table_arg_priority/0`
-    - func `mercury_op_table_max_priority/0`
+    - func `mercury_op_table_comma_priority/0`
+    - func `mercury_op_table_loosest_op_priority/0`
+    - func `mercury_op_table_tightest_op_priority/0`
+    - func `mercury_op_table_universal_priority/0`
     - pred `mercury_op_table_binary_prefix_op/5`
     - pred `mercury_op_table_infix_op/5`
     - pred `mercury_op_table_lookup_operator_term/3`
@@ -313,6 +364,19 @@ Changes to the Mercury standard library
     - pred `mercury_op_table_search_op_infos/3`
     - pred `mercury_op_table_search_postfix_op/3`
     - pred `mercury_op_table_search_prefix_op/3`
+    - func `min_priority_for_arg/2`
+    - pred `priority_ge/2`
+    - pred `priority_gt/2`
+    - pred `priority_le/2`
+    - pred `priority_lt/2`
+
+* The following predicates have been renamed:
+
+    - pred `mercury_op_table_prefix_op/5' to    `op_infos_prefix_op/5`
+    - pred `mercury_op_table_binary_prefix_op/5' to
+                                                `op_infos_binary_prefix_op/5`
+    - pred `mercury_op_table_infix_op/5' to     `op_infos_infix_op/5`
+    - pred `mercury_op_table_postfix_op/5' to   `op_infos_postfix_op/5`
 
 ### Changes to the `pretty_printer` module
 

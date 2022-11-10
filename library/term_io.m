@@ -300,8 +300,8 @@ write_term_nl_with_op_table(OutStream, Ops, VarSet, Term, !IO) :-
     io::di, io::uo) is det <= op_table(Ops).
 
 write_term_anon_vars(OutStream, Ops, Term, !VarSet, !N, !IO) :-
-    write_term_prio_anon_vars(OutStream, Ops, Term, ops.max_priority(Ops) + 1,
-        !VarSet, !N, !IO).
+    write_term_prio_anon_vars(OutStream, Ops, Term,
+        ops.universal_priority(Ops), !VarSet, !N, !IO).
 
 :- pred write_term_prio_anon_vars(io.text_output_stream::in, Ops::in,
     term(T)::in, ops.priority::in, varset(T)::in, varset(T)::out,
@@ -359,22 +359,22 @@ write_term_prio_anon_vars(OutStream, Ops, Term, Priority, !VarSet, !N, !IO) :-
         else if
             Args = [PrefixArg],
             Functor = term.atom(OpName),
-            ops.lookup_prefix_op(Ops, OpName, OpPriority, OpAssoc)
+            ops.lookup_prefix_op(Ops, OpName, OpPriority, OpGtOrGe)
         then
             maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
             write_constant(OutStream, Functor, !IO),
             io.write_char(OutStream, ' ', !IO),
-            adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
+            NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
             write_term_prio_anon_vars(OutStream, Ops, PrefixArg, NewPriority,
                 !VarSet, !N, !IO),
             maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
         else if
             Args = [PostfixArg],
             Functor = term.atom(OpName),
-            ops.lookup_postfix_op(Ops, OpName, OpPriority, OpAssoc)
+            ops.lookup_postfix_op(Ops, OpName, OpPriority, OpGtOrGe)
         then
             maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
-            adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
+            NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
             write_term_prio_anon_vars(OutStream, Ops, PostfixArg, NewPriority,
                 !VarSet, !N, !IO),
             io.write_char(OutStream, ' ', !IO),
@@ -383,10 +383,11 @@ write_term_prio_anon_vars(OutStream, Ops, Term, Priority, !VarSet, !N, !IO) :-
         else if
             Args = [Arg1, Arg2],
             Functor = term.atom(OpName),
-            ops.lookup_infix_op(Ops, OpName, OpPriority, LeftAssoc, RightAssoc)
+            ops.lookup_infix_op(Ops, OpName, OpPriority,
+                LeftGtOrGe, RightGtOrGe)
         then
             maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
-            adjust_priority_for_assoc(OpPriority, LeftAssoc, LeftPriority),
+            LeftPriority = min_priority_for_arg(OpPriority, LeftGtOrGe),
             write_term_prio_anon_vars(OutStream, Ops, Arg1, LeftPriority,
                 !VarSet, !N, !IO),
             ( if OpName = "," then
@@ -408,7 +409,7 @@ write_term_prio_anon_vars(OutStream, Ops, Term, Priority, !VarSet, !N, !IO) :-
                 write_constant(OutStream, Functor, !IO),
                 io.write_char(OutStream, ' ', !IO)
             ),
-            adjust_priority_for_assoc(OpPriority, RightAssoc, RightPriority),
+            RightPriority = min_priority_for_arg(OpPriority, RightGtOrGe),
             write_term_prio_anon_vars(OutStream, Ops, Arg2, RightPriority,
                 !VarSet, !N, !IO),
             maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
@@ -416,16 +417,16 @@ write_term_prio_anon_vars(OutStream, Ops, Term, Priority, !VarSet, !N, !IO) :-
             Args = [Arg1, Arg2],
             Functor = term.atom(OpName),
             ops.lookup_binary_prefix_op(Ops, OpName, OpPriority,
-                FirstAssoc, SecondAssoc)
+                FirstGtOrGe, SecondGtOrGe)
         then
             maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
             write_constant(OutStream, Functor, !IO),
             io.write_char(OutStream, ' ', !IO),
-            adjust_priority_for_assoc(OpPriority, FirstAssoc, FirstPriority),
+            FirstPriority = min_priority_for_arg(OpPriority, FirstGtOrGe),
             write_term_prio_anon_vars(OutStream, Ops, Arg1, FirstPriority,
                 !VarSet, !N, !IO),
             io.write_char(OutStream, ' ', !IO),
-            adjust_priority_for_assoc(OpPriority, SecondAssoc, SecondPriority),
+            SecondPriority = min_priority_for_arg(OpPriority, SecondGtOrGe),
             write_term_prio_anon_vars(OutStream, Ops, Arg2, SecondPriority,
                 !VarSet, !N, !IO),
             maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
@@ -434,7 +435,7 @@ write_term_prio_anon_vars(OutStream, Ops, Term, Priority, !VarSet, !N, !IO) :-
                 Args = [],
                 Functor = term.atom(Op),
                 ops.lookup_op(Ops, Op),
-                Priority =< ops.max_priority(Ops)
+                priority_ge(Priority, ops.loosest_op_priority(Ops))
             then
                 io.write_char(OutStream, '(', !IO),
                 write_constant(OutStream, Functor, !IO),

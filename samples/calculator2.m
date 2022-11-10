@@ -32,8 +32,9 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module mercury_term_parser.
-:- import_module ops.
+% The next two modules are available in extras/old_library_modules.
+:- import_module old_mercury_term_parser.
+:- import_module old_ops.
 :- import_module pair.
 :- import_module require.
 :- import_module string.

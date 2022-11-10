@@ -425,7 +425,7 @@ write_doc(Stream, Doc, !IO) :-
 %---------------------------------------------------------------------------%
 
 put_doc(Stream, Canonicalize, FMap, Params, Doc, !IO) :-
-    Pri = ops.mercury_op_table_max_priority,
+    Pri = ops.mercury_op_table_loosest_op_priority,
     Params = pp_params(LineWidth, MaxLines, Limit),
     RemainingWidth = LineWidth,
     Indents = indent_empty,
@@ -984,11 +984,9 @@ expand_format_op(Op, Args, EnclosingPriority, Docs) :-
     (
         Args = [ArgA],
         ops.mercury_op_table_search_op_infos(Op, OpInfo, OtherOpInfos),
-        ( if
-            ops.mercury_op_table_prefix_op(OpInfo, OtherOpInfos, Pri, AssocA)
-        then
+        ( if op_infos_prefix_op(OpInfo, OtherOpInfos, Pri, GtOrGeA) then
             OpPriority = Pri,
-            adjust_priority_for_assoc(OpPriority, AssocA, PriorityArgA),
+            PriorityArgA = min_priority_for_arg(OpPriority, GtOrGeA),
             Docs0 = [
                 pp_internal(open_group),
                 str(Op),
@@ -996,11 +994,9 @@ expand_format_op(Op, Args, EnclosingPriority, Docs) :-
                 format_univ(ArgA),
                 pp_internal(close_group)
             ]
-        else if
-            ops.mercury_op_table_postfix_op(OpInfo, OtherOpInfos, Pri, AssocA)
-        then
+        else if op_infos_postfix_op(OpInfo, OtherOpInfos, Pri, GtOrGeA) then
             OpPriority = Pri,
-            adjust_priority_for_assoc(OpPriority, AssocA, PriorityArgA),
+            PriorityArgA = min_priority_for_arg(OpPriority, GtOrGeA),
             Docs0 = [
                 pp_internal(open_group),
                 pp_internal(set_op_priority(PriorityArgA)),
@@ -1015,12 +1011,12 @@ expand_format_op(Op, Args, EnclosingPriority, Docs) :-
         Args = [ArgA, ArgB],
         ops.mercury_op_table_search_op_infos(Op, OpInfo, OtherOpInfos),
         ( if
-            ops.mercury_op_table_infix_op(OpInfo, OtherOpInfos, Pri,
-                AssocA, AssocB)
+            op_infos_infix_op(OpInfo, OtherOpInfos, Pri,
+                GtOrGeA, GtOrGeB)
         then
             OpPriority = Pri,
-            adjust_priority_for_assoc(OpPriority, AssocA, PriorityArgA),
-            adjust_priority_for_assoc(OpPriority, AssocB, PriorityArgB),
+            PriorityArgA = min_priority_for_arg(OpPriority, GtOrGeA),
+            PriorityArgB = min_priority_for_arg(OpPriority, GtOrGeB),
             Docs0 = [
                 pp_internal(open_group),
                 pp_internal(set_op_priority(PriorityArgA)),
@@ -1038,12 +1034,12 @@ expand_format_op(Op, Args, EnclosingPriority, Docs) :-
                 pp_internal(close_group)
             ]
         else if
-            ops.mercury_op_table_binary_prefix_op(OpInfo, OtherOpInfos, Pri,
-                AssocA, AssocB)
+            op_infos_binary_prefix_op(OpInfo, OtherOpInfos, Pri,
+                GtOrGeA, GtOrGeB)
         then
             OpPriority = Pri,
-            adjust_priority_for_assoc(OpPriority, AssocA, PriorityArgA),
-            adjust_priority_for_assoc(OpPriority, AssocB, PriorityArgB),
+            PriorityArgA = min_priority_for_arg(OpPriority, GtOrGeA),
+            PriorityArgB = min_priority_for_arg(OpPriority, GtOrGeB),
             Docs0 = [
                 pp_internal(open_group),
                 str(Op),
@@ -1062,7 +1058,7 @@ expand_format_op(Op, Args, EnclosingPriority, Docs) :-
         )
     ),
     % Add parentheses around a doc if required by operator priority.
-    ( if OpPriority > EnclosingPriority then
+    ( if priority_lt(OpPriority, EnclosingPriority) then
         Docs = [str("(") | Docs0] ++ [str(")")]
     else
         Docs = Docs0

@@ -88,7 +88,7 @@ add_revstring(String, RevStrings, [String | RevStrings]).
 :- mode value_to_revstrings(in, in, in, in, out) is cc_multi.
 
 value_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
-    Priority = ops.max_priority(OpsTable) + 1,
+    Priority = ops.universal_priority(OpsTable),
     value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs).
 
 :- pred value_to_revstrings_prio(noncanon_handling, ops.table, ops.priority, T,
@@ -253,20 +253,20 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
         Args = [Arg]
     then
         ( if
-            ops.lookup_prefix_op(OpsTable, Functor, OpPriority, OpAssoc)
+            ops.lookup_prefix_op(OpsTable, Functor, OpPriority, OpGtOrGe)
         then
             maybe_add_revstring("(", Priority, OpPriority, !Rs),
             add_revstring(term_io.quoted_atom(Functor), !Rs),
             add_revstring(" ", !Rs),
-            adjust_priority(OpPriority, OpAssoc, NewPriority),
+            NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
             value_to_revstrings_prio(NonCanon, OpsTable, NewPriority,
                 univ_value(Arg), !Rs),
             maybe_add_revstring(")", Priority, OpPriority, !Rs)
         else if
-            ops.lookup_postfix_op(OpsTable, Functor, OpPriority, OpAssoc)
+            ops.lookup_postfix_op(OpsTable, Functor, OpPriority, OpGtOrGe)
         then
             maybe_add_revstring("(", Priority, OpPriority, !Rs),
-            adjust_priority(OpPriority, OpAssoc, NewPriority),
+            NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
             value_to_revstrings_prio(NonCanon, OpsTable, NewPriority,
                 univ_value(Arg), !Rs),
             add_revstring(" ", !Rs),
@@ -281,10 +281,10 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
     then
         ( if
             ops.lookup_infix_op(OpsTable, Functor, OpPriority,
-                LeftAssoc, RightAssoc)
+                LeftGtOrGe, RightGtOrGe)
         then
             maybe_add_revstring("(", Priority, OpPriority, !Rs),
-            adjust_priority(OpPriority, LeftAssoc, LeftPriority),
+            LeftPriority = min_priority_for_arg(OpPriority, LeftGtOrGe),
             value_to_revstrings_prio(NonCanon, OpsTable, LeftPriority,
                 univ_value(Arg1), !Rs),
             ( if Functor = "," then
@@ -294,22 +294,22 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
                 add_revstring(term_io.quoted_atom(Functor), !Rs),
                 add_revstring(" ", !Rs)
             ),
-            adjust_priority(OpPriority, RightAssoc, RightPriority),
+            RightPriority = min_priority_for_arg(OpPriority, RightGtOrGe),
             value_to_revstrings_prio(NonCanon, OpsTable, RightPriority,
                 univ_value(Arg2), !Rs),
             maybe_add_revstring(")", Priority, OpPriority, !Rs)
         else if
             ops.lookup_binary_prefix_op(OpsTable, Functor,
-                OpPriority, FirstAssoc, SecondAssoc)
+                OpPriority, FirstGtOrGe, SecondGtOrGe)
         then
             maybe_add_revstring("(", Priority, OpPriority, !Rs),
             add_revstring(term_io.quoted_atom(Functor), !Rs),
             add_revstring(" ", !Rs),
-            adjust_priority(OpPriority, FirstAssoc, FirstPriority),
+            FirstPriority = min_priority_for_arg(OpPriority, FirstGtOrGe),
             value_to_revstrings_prio(NonCanon, OpsTable, FirstPriority,
                 univ_value(Arg1), !Rs),
             add_revstring(" ", !Rs),
-            adjust_priority(OpPriority, SecondAssoc, SecondPriority),
+            SecondPriority = min_priority_for_arg(OpPriority, SecondGtOrGe),
             value_to_revstrings_prio(NonCanon, OpsTable, SecondPriority,
                 univ_value(Arg2), !Rs),
             maybe_add_revstring(")", Priority, OpPriority, !Rs)
@@ -337,7 +337,7 @@ plain_term_to_revstrings(NonCanon, OpsTable, Priority, Functor, Args, !Rs) :-
     ( if
         Args = [],
         ops.lookup_op(OpsTable, Functor),
-        Priority =< ops.max_priority(OpsTable)
+        priority_ge(Priority, ops.loosest_op_priority(OpsTable))
     then
         add_revstring("(", !Rs),
         add_revstring(term_io.quoted_atom(Functor), !Rs),
@@ -363,17 +363,11 @@ plain_term_to_revstrings(NonCanon, OpsTable, Priority, Functor, Args, !Rs) :-
     revstrings::in, revstrings::out) is det.
 
 maybe_add_revstring(String, Priority, OpPriority, !Rs) :-
-    ( if OpPriority > Priority then
+    ( if priority_lt(OpPriority, Priority) then
         add_revstring(String, !Rs)
     else
         true
     ).
-
-:- pred adjust_priority(ops.priority::in, ops.assoc::in, ops.priority::out)
-    is det.
-
-adjust_priority(Priority, ops.y, Priority).
-adjust_priority(Priority, ops.x, Priority - 1).
 
 :- pred univ_list_tail_to_revstrings(noncanon_handling, ops.table, univ,
     revstrings, revstrings).
@@ -428,19 +422,6 @@ term_args_to_revstrings(NonCanon, OpsTable, [X | Xs], !Rs) :-
 arg_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
     Priority = comma_priority(OpsTable),
     value_to_revstrings_prio(NonCanon, OpsTable, Priority, univ_value(X), !Rs).
-
-:- func comma_priority(ops.table) = ops.priority.
-
-% comma_priority(OpsTable) =
-%   ( if ops.lookup_infix_op(OpTable, ",", Priority, _, _) then
-%       Priority
-%   else
-%       func_error("arg_priority: cannot find the priority of `,'")
-%   ).
-% We could implement this as above, but it is more efficient to just
-% hard-code it.
-
-comma_priority(_OpTable) = 1000.
 
 :- pred array_to_revstrings(noncanon_handling, ops.table, array(T),
     revstrings, revstrings).

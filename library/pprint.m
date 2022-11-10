@@ -514,9 +514,7 @@ doc(X) = doc(int.max_int, X).
 
 to_doc(X) = to_doc(int.max_int, X).
 
-    % Infix "," has precedence 1000 in standard Mercury.
-    %
-to_doc(Depth, X) = to_doc(Depth, 1000, X).
+to_doc(Depth, X) = to_doc_prio(Depth, mercury_op_table_comma_priority, X).
 
 %---------------------------------------------------------------------------%
 
@@ -595,9 +593,9 @@ word_wrapped(String) =
     % This may throw an exception or cause a runtime abort if the term
     % in question has user-defined equality.
     %
-:- func to_doc(int, priority, T) = doc.
+:- func to_doc_prio(int, priority, T) = doc.
 
-to_doc(Depth, Priority, X) =
+to_doc_prio(Depth, Priority, X) =
     ( if dynamic_cast_to_var(X, Var) then
         var_to_doc(Depth, Var)
     else if dynamic_cast_to_sparse_bitset_of_int(X, SparseBitsetInt) then
@@ -637,51 +635,52 @@ generic_term_to_doc(Depth, Priority, X) = Doc :-
         Table = init_mercury_op_table,
         ( if
             UnivArgs = [UnivArg],
-            lookup_prefix_op(Table, Name, OpPri, Assoc)
+            lookup_prefix_op(Table, Name, OpPri, GtOrGe)
         then
             Doc = maybe_parens(Priority, OpPri,
                 Name ++
                 space ++
-                univ_to_doc(Depth - 1, OpPri `adjusted_by` Assoc, UnivArg)
+                univ_to_doc(Depth - 1, OpPri `adjusted_by` GtOrGe, UnivArg)
             )
         else if
             UnivArgs = [UnivArg],
-            lookup_postfix_op(Table, Name, OpPri, Assoc)
+            lookup_postfix_op(Table, Name, OpPri, GtOrGe)
         then
             Doc = maybe_parens(Priority, OpPri,
-                univ_to_doc(Depth - 1, OpPri `adjusted_by` Assoc, UnivArg) ++
+                univ_to_doc(Depth - 1, OpPri `adjusted_by` GtOrGe, UnivArg) ++
                 space ++
                 Name
             )
         else if
             UnivArgs = [UnivArgL, UnivArgR],
-            lookup_infix_op(Table, Name, OpPri, AssocL, AssocR)
+            lookup_infix_op(Table, Name, OpPri, GtOrGeL, GtOrGeR)
         then
             Doc = maybe_parens(Priority, OpPri,
-                univ_to_doc(Depth - 1, OpPri `adjusted_by` AssocL, UnivArgL) ++
+                univ_to_doc(Depth - 1, OpPri `adjusted_by` GtOrGeL,
+                    UnivArgL) ++
                 space ++
                 Name ++
                 space ++
                 group(line ++
                     nest(2,
-                        univ_to_doc(Depth - 2, OpPri `adjusted_by` AssocR,
+                        univ_to_doc(Depth - 2, OpPri `adjusted_by` GtOrGeR,
                             UnivArgR)
                     )
                 )
             )
         else if
             UnivArgs = [UnivArgR1, UnivArgR2],
-            lookup_binary_prefix_op(Table, Name, OpPri, AssocR1, AssocR2)
+            lookup_binary_prefix_op(Table, Name, OpPri, GtOrGeR1, GtOrGeR2)
         then
             Doc = maybe_parens(Priority, OpPri,
                 Name ++
                 space ++
-                univ_to_doc(Depth - 2, OpPri `adjusted_by` AssocR1,
+                univ_to_doc(Depth - 2, OpPri `adjusted_by` GtOrGeR1,
                     UnivArgR1) ++
                 space ++
                 group(line ++
                     nest(2,
-                        univ_to_doc(Depth - 2, OpPri `adjusted_by` AssocR2,
+                        univ_to_doc(Depth - 2, OpPri `adjusted_by` GtOrGeR2,
                             UnivArgR2)
                     )
                 )
@@ -707,17 +706,18 @@ generic_term_to_doc(Depth, Priority, X) = Doc :-
 :- func maybe_parens(priority, priority, doc) = doc.
 
 maybe_parens(ParentPriority, OpPriority, Doc) =
-    ( if ParentPriority < OpPriority then parentheses(Doc) else Doc ).
+    ( if priority_gt(ParentPriority, OpPriority) then
+        parentheses(Doc)
+    else
+        Doc
+    ).
 
 %---------------------------------------------------------------------------%
 
-    % An x priority adjustment lowers the effective priority by one.
-    % A y priority adjustment does not affect the effective priority.
-    %
-:- func priority `adjusted_by` assoc = priority.
+:- func priority `adjusted_by` arg_prio_gt_or_ge = priority.
 
-Priority `adjusted_by` x = Priority - 1.
-Priority `adjusted_by` y = Priority.
+adjusted_by(OpPriority, GtOrGe) = MinArgPriority :-
+    MinArgPriority = min_priority_for_arg(OpPriority, GtOrGe).
 
 %---------------------------------------------------------------------------%
 
@@ -725,7 +725,8 @@ Priority `adjusted_by` y = Priority.
     %
 :- func univ_to_doc(int, priority, univ) = doc.
 
-univ_to_doc(Depth, Priority, Univ) = to_doc(Depth, Priority, univ_value(Univ)).
+univ_to_doc(Depth, Priority, Univ) =
+    to_doc_prio(Depth, Priority, univ_value(Univ)).
 
 %---------------------------------------------------------------------------%
 
