@@ -666,11 +666,7 @@ parse_backquoted_operator(MaybeQualifier, OpName, VariableTerms,
 parse_backquoted_operator_qualifier(MaybeQualifier0, MaybeQualifier, OpCtxt0,
         OpName0, OpName, !TokensLeft, !PS) :-
     ( if
-        !.TokensLeft =
-            token_cons(name(ModuleSeparator), SepContext, !:TokensLeft),
-        ( ModuleSeparator = "."
-        ; ModuleSeparator = ":"
-        ),
+        !.TokensLeft = token_cons(name("."), SepContext, !:TokensLeft),
         !.TokensLeft = token_cons(name(OpName1), NameContext, !:TokensLeft),
         OpName1 \= "`"
     then
@@ -823,7 +819,6 @@ parse_simple_term(Token, Context, Prec, TermParse, !TokensLeft, !PS) :-
         ( if
             !.TokensLeft = token_cons(close_curly, _Context, !:TokensLeft)
         then
-            % XXX OPS The callee repeats the test above.
             parse_special_atom("{}", TermContext, BaseTermParse,
                 !TokensLeft, !PS)
         else
