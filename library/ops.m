@@ -79,7 +79,7 @@
     %
     % Given the priority of an operator (OpPriority) and the required
     % relationship between this priority and the priority of a term
-    % in given argument position (GtOrGe), return the minim priority
+    % in given argument position (GtOrGe), return the minimum priority
     % of the term in that argument position (as MinArgPriority).
     %
 :- func min_priority_for_arg(priority, arg_prio_gt_or_ge) = priority.
@@ -137,7 +137,7 @@
 
         % Check whether a string is the name of an operator.
         %
-        % XXX operating system
+        % XXX OPS
     pred lookup_op(Table::in, string::in) is semidet,
 
         % Check whether a string is the name of an operator, and if it is,
@@ -266,7 +266,7 @@
     % *Mercury* table of operators. XXX There is also the minor issue
     % (compared to the issue above) that the references to ops.table in io.m
     % and string.m are dangling references from users' points of view,
-    % since we deliberaly prevent the definition of this type from appearing
+    % since we deliberately prevent the definition of this type from appearing
     % the library manual.
     %
     % We could fix both issues by making the currrent users of this type
@@ -290,7 +290,7 @@
 min_priority_for_arg(OpPriority, arg_ge) = OpPriority.
 min_priority_for_arg(OpPriority, arg_gt) = increment_priority(OpPriority).
 
-% XXX OPS This predicate is not used by the Mercury compiler.
+% NOTE This predicate is not used by the Mercury compiler.
 decrement_priority(prio(P)) = prio(DecP) :-
     trace [compile_time(flag("enforce_ops_priority_bounds"))] (
         ( if prio(P) = mercury_op_table_loosest_op_priority then
@@ -555,24 +555,16 @@ mercury_op_table(Op, Info, OtherInfos) :-
     % only for compatibility.
     %
     %   =:=
-    %   ==
     %   =\\=
     %   ?-
     %   \\==
     %   ~
     %   ~=
     %   when
-    %
-    % The operator
-    %
-    %   where
-    %
-    % was previously also marked as not being useful in Mercury,
-    % but it is part of typeclass syntax.
 
     % The priorities here are derived from the priorities in prolog_ops.m,
     % using the equation NP = 1500 - OP, where OP is the old priority in
-    % prolog_ops.m, and NP is the new priority here.
+    % extras/old_library_modules/old_ops.m, and NP is the new priority here.
 
     (
     % The following symbols represent more than one operator.

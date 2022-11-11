@@ -70,6 +70,10 @@ and many can be installed by running `mmake install`.
 * [odbc](odbc) -- A Mercury interface to ODBC (Open Database Connectivity),
   for interfacing to standard relational database packages.
 
+* [old_library_modules](old_library_modules) -- Some old modules of the
+  Mercury standard library that had breaking changes applied to them, preserved
+  for users who prefer not to update their code to accommodate those changes.
+
 * [posix](posix) -- A Mercury interface to some of the POSIX
   (Portable Operating System Interface) APIs.
 
