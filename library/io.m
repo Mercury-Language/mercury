@@ -2285,16 +2285,6 @@
 
 %---------------------%
 %
-% For use by term_io.m.
-%
-
-:- import_module ops.
-
-:- pred get_op_table(ops.table::out, io::di, io::uo) is det.
-:- pred set_op_table(ops.table::di, io::di, io::uo) is det.
-
-%---------------------%
-%
 % Error handling.
 %
 
@@ -5108,7 +5098,6 @@ init_state(!IO) :-
     map.init(StreamDb),
     type_to_univ("<globals>", Globals),
     io.stream_db.set_stream_db(StreamDb, !IO),
-    io.set_op_table(ops.init_mercury_op_table, !IO),
     io.set_globals(Globals, !IO),
     io.insert_std_stream_names(!IO).
 
@@ -5364,17 +5353,6 @@ input_stream_get_stream(input_stream(Stream)) = Stream.
 output_stream_get_stream(output_stream(Stream)) = Stream.
 binary_input_stream_get_stream(binary_input_stream(Stream)) = Stream.
 binary_output_stream_get_stream(binary_output_stream(Stream)) = Stream.
-
-%---------------------------------------------------------------------------%
-%
-% For use by term_io.m.
-%
-
-    % XXX Design flaw with regard to unique modes and io.get_op_table.
-
-get_op_table(ops.init_mercury_op_table, !IO).
-
-set_op_table(_OpTable, !IO).
 
 %---------------------------------------------------------------------------%
 %

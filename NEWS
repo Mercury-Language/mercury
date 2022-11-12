@@ -337,6 +337,8 @@ Changes to the Mercury standard library
  - The method max_priority has been been replaced by the method
    loosest_op_priority.
 
+ - The method lookup_op has been been renamed to is_op.
+
  - The new method universal_priority has been added. It is intended to
    replace uses of `max_priority + 1` to denote a context that accept terms
    using any operator, regardless of its priority.

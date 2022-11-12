@@ -41,7 +41,7 @@ main(!IO) :-
     pred(lookup_prefix_op/4) is lookup_cadmium_prefix_op,
     pred(lookup_binary_prefix_op/5) is lookup_cadmium_binary_prefix_op,
     pred(lookup_postfix_op/4) is lookup_cadmium_postfix_op,
-    pred(lookup_op/2) is lookup_cadmium_op,
+    pred(is_op/2) is is_cadmium_op,
     pred(lookup_op_infos/4) is lookup_cadmium_op_infos,
     pred(lookup_operator_term/4) is lookup_cadmium_operator_term,
     func(universal_priority/1) is cadmium_universal_priority,
@@ -149,9 +149,9 @@ is_postfix_op(op_info(postfix(_),_)).
 
 %---------------------------------------------------------------------------%
 
-:- pred lookup_cadmium_op(cadmium_op_table::in, string::in) is semidet.
+:- pred is_cadmium_op(cadmium_op_table::in, string::in) is semidet.
 
-lookup_cadmium_op(_, Name) :-
+is_cadmium_op(_, Name) :-
     cadmium_op_table(Name, _).
 
 %---------------------------------------------------------------------------%

@@ -135,10 +135,9 @@
     pred lookup_postfix_op(Table::in, string::in, priority::out,
         arg_prio_gt_or_ge::out) is semidet,
 
-        % Check whether a string is the name of an operator.
+        % Is the given string the name of an operator?
         %
-        % XXX OPS
-    pred lookup_op(Table::in, string::in) is semidet,
+    pred is_op(Table::in, string::in) is semidet,
 
         % Check whether a string is the name of an operator, and if it is,
         % return the op_info describing that operator in the third argument.
@@ -250,22 +249,21 @@
 
 :- interface.
 
-    % We export this type synonym to io.m (for get_op_table/set_op_table)
-    % and to string.m (for string_ops and string_ops_noncanon). These all
-    % treat the argument whose type is ops.table as being *any* op_table,
-    % i.e. as not necessarily being the *Mercury* op table. Indeed, the notion
-    % of being able to set the op table in io.set_op_table, and of being able
-    % to pass an arbitrary op table to string_ops and its noncanon version
-    % *depend* on being able to pass op tables that differ from the standard
-    % Mercury op table. XXX Yet we do not actually support this. Regardless
-    % of what op table the user wants to pass to set_op_table or to string_ops,
-    % the fact "table" is a synonym for "mercury_op_table" means that all
-    % operations on the op table get mercury_op_table's instance of the
-    % op_table typeclass, and the instance methods of this typeclass
-    % for mercury_op_table, quite reasonably, all look up operators in the
+    % We export this type synonym to to string.m, for string_ops and
+    % string_ops_noncanon). These both treat the argument whose type is
+    % ops.table as being *any* op_table, i.e. as not necessarily being
+    % the *Mercury* op table. Indeed, the notion of being able to pass
+    % an arbitrary op table to string_ops and its noncanon version *depend*
+    % on being able to pass op tables that differ from the standard Mercury
+    % op table. XXX Yet we do not actually support this. Regardless
+    % of what op table the user wants to pass to string_ops, the fact that
+    % "table" is a synonym for "mercury_op_table" means that all operations
+    % on the op table get mercury_op_table's instance of the op_table
+    % typeclass, and the instance methods of this typeclass for
+    % mercury_op_table, quite reasonably, all look up operators in the
     % *Mercury* table of operators. XXX There is also the minor issue
-    % (compared to the issue above) that the references to ops.table in io.m
-    % and string.m are dangling references from users' points of view,
+    % (compared to the issue above) that the references to ops.table in
+    % string.m are dangling references from users' points of view,
     % since we deliberately prevent the definition of this type from appearing
     % the library manual.
     %
@@ -339,7 +337,7 @@ init_mercury_op_table = ops.mercury_op_table.
     pred(lookup_prefix_op/4) is         lookup_mercury_prefix_op,
     pred(lookup_binary_prefix_op/5) is  lookup_mercury_binary_prefix_op,
     pred(lookup_postfix_op/4) is        lookup_mercury_postfix_op,
-    pred(lookup_op/2) is                lookup_mercury_op,
+    pred(is_op/2) is                    is_mercury_op,
     pred(lookup_op_infos/4) is          lookup_mercury_op_infos,
     pred(lookup_operator_term/4) is     lookup_mercury_operator_term,
     func(universal_priority/1) is       mercury_universal_priority,
@@ -376,9 +374,9 @@ lookup_mercury_binary_prefix_op(_OpTable, Name, OpPriority,
 lookup_mercury_postfix_op(_OpTable, Name, OpPriority, LeftGtOrGe) :-
     mercury_op_table_search_postfix_op(Name, OpPriority, LeftGtOrGe).
 
-:- pred lookup_mercury_op(mercury_op_table::in, string::in) is semidet.
+:- pred is_mercury_op(mercury_op_table::in, string::in) is semidet.
 
-lookup_mercury_op(_OpTable, Name) :-
+is_mercury_op(_OpTable, Name) :-
     mercury_op_table_search_op(Name).
 
 :- pred lookup_mercury_op_infos(mercury_op_table::in, string::in,

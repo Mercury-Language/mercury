@@ -17,8 +17,6 @@
 main(!IO) :-
     io.get_globals(Globals, !IO),
     io.print_line(Globals, !IO),
-    io.get_op_table(OpsTable, !IO),
-    io.print_line(OpsTable, !IO),
     io.stdin_stream(Stdin, !IO),
     io.print_line(Stdin, !IO),
     io.stdout_stream(Stdout, !IO),

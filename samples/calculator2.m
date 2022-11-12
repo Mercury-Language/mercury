@@ -229,13 +229,13 @@ calculator2.ops_table("=", op_info(infix(arg_ge, arg_ge), prio(800u)), []).
     ops.lookup_postfix_op(_, _, _, _) :- fail,
     ops.lookup_binary_prefix_op(_, _, _, _, _) :- fail,
 
-    ops.lookup_op(Table, Op) :-
+    ops.is_op(Table, Op) :-
         ops.lookup_infix_op(Table, Op, _, _, _),
-    ops.lookup_op(Table, Op) :-
+    ops.is_op(Table, Op) :-
         ops.lookup_prefix_op(Table, Op, _, _),
-    ops.lookup_op(Table, Op) :-
+    ops.is_op(Table, Op) :-
         ops.lookup_binary_prefix_op(Table, Op, _, _, _),
-    ops.lookup_op(Table, Op) :-
+    ops.is_op(Table, Op) :-
         ops.lookup_postfix_op(Table, Op, _, _),
 
     ops.lookup_op_infos(_, Op, OpInfo, OtherInfos) :-

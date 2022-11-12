@@ -690,13 +690,13 @@ parse_backquoted_operator_qualifier(MaybeQualifier0, MaybeQualifier, OpCtxt0,
 
 %---------------------------------------------------------------------------%
 
-    % term --> integer              % priority 0
-    % term --> float                % priority 0
-    % term --> implementation_defined % priority 0
-    % term --> name("-") integer    % priority 0
-    % term --> name("-") float      % priority 0
-    % term --> atom(NonOp)          % priority 0
-    % term --> atom(Op)             % priority max_priority + 1
+    % term --> integer                  % tightest_op_priority
+    % term --> float                    % tightest_op_priority
+    % term --> implementation_defined   % tightest_op_priority
+    % term --> name("-") integer        % tightest_op_priority
+    % term --> name("-") float          % tightest_op_priority
+    % term --> atom(NonOp)              % tightest_op_priority
+    % term --> atom(Op)                 % universal_priority
     %   atom --> name
     %   atom --> open_list, close_list
     %   atom --> open_curly, close_curly
@@ -733,7 +733,7 @@ parse_simple_term(Token, Context, Prec, TermParse, !TokensLeft, !PS) :-
         else
             OpTable = parser_state_get_ops_table(!.PS),
             ( if
-                ops.lookup_op(OpTable, Atom),
+                ops.is_op(OpTable, Atom),
                 priority_ge(Prec, ops.loosest_op_priority(OpTable))
             then
                 parser_unexpected_tok(Token, Context,

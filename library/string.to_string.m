@@ -351,7 +351,7 @@ ordinary_term_to_revstrings(NonCanon, OpTable, MinTermPrio, X, !Rs) :-
 plain_term_to_revstrings(NonCanon, OpTable, Priority, Functor, Args, !Rs) :-
     ( if
         Args = [],
-        ops.lookup_op(OpTable, Functor),
+        ops.is_op(OpTable, Functor),
         priority_ge(Priority, ops.loosest_op_priority(OpTable))
     then
         add_revstring("(", !Rs),

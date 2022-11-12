@@ -955,27 +955,27 @@ string_graphic_chars_acc(Char, !Graphic, !NonGraphic) :-
 %
 
 mercury_op(Op) :-
-    ops.lookup_op(ops.init_mercury_op_table, Op).
+    ops.mercury_op_table_search_op(Op).
 
 :- pred mercury_binary_prefix_op(string::in) is semidet.
 
 mercury_binary_prefix_op(Op) :-
-    ops.lookup_binary_prefix_op(ops.init_mercury_op_table, Op, _, _, _).
+    ops.mercury_op_table_search_binary_prefix_op(Op, _, _, _).
 
 :- pred mercury_infix_op(string::in) is semidet.
 
 mercury_infix_op(Op) :-
-    ops.lookup_infix_op(ops.init_mercury_op_table, Op, _, _, _).
+    ops.mercury_op_table_search_infix_op(Op, _, _, _).
 
 :- pred mercury_unary_prefix_op(string::in) is semidet.
 
 mercury_unary_prefix_op(Op) :-
-    ops.lookup_prefix_op(ops.init_mercury_op_table, Op, _, _).
+    ops.mercury_op_table_search_prefix_op(Op, _, _).
 
 :- pred mercury_unary_postfix_op(string::in) is semidet.
 
 mercury_unary_postfix_op(Op) :-
-    ops.lookup_postfix_op(ops.init_mercury_op_table, Op, _, _).
+    ops.mercury_op_table_search_postfix_op(Op, _, _).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_tree_out_term.
