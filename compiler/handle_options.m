@@ -1810,6 +1810,16 @@ handle_debugging_options(Target, TraceLevel, TraceEnabled, SSTraceLevel,
                 nl],
             add_error(phase_options, TraceHLSpec, !Specs)
         ),
+        globals.lookup_bool_option(!.Globals, parallel, Parallel),
+        (
+            Parallel = no
+        ;
+            Parallel = yes,
+            ParSpec =
+                [words("Debugging is not available in parallel grades."), nl],
+            add_error(phase_options, ParSpec, !Specs)
+        ),
+
         globals.lookup_bool_option(!.Globals, trace_optimized, TraceOptimized),
         (
             TraceOptimized = bool.no,
