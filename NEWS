@@ -20,14 +20,14 @@ Changes that may break compatibility
   Now, operators with higher numerical priorities bind more tightly.
   There are other changes as well, such as priorities no longer being
   interchangeable with other integers, some types and function symbols
-  being renamed, and an updated op_table type class with a somewhat different
-  list of methods.
+  being renamed, and an updated `op_table` type class with a somewhat
+  different list of methods.
 
   The old contents of the `ops` module is still available as
   `extras/old_library_modules/old_ops`.
 
 * The `mercury_term_parser` module now expects the operator table to be
-  specified using the updated op_table type class in the new `ops` module.
+  specified using the updated `op_table` type class in the new `ops` module.
 
   The old contents of the `mercury_term_parser` module is still available as
   `extras/old_library_modules/old_mercury_term_parser`.
@@ -332,21 +332,21 @@ Changes to the Mercury standard library
   reflects its semantics. Its function symbols `x` and `y` have been
   renamed to `arg_gt` and `arg_ge` respectively.
 
-* The list of methods in the op_table type class has been changed.
+* The list of methods in the `op_table` type class has been changed.
 
- - The method max_priority has been been replaced by the method
-   loosest_op_priority.
+ - The method `max_priority/1` has been replaced by the method
+   `loosest_op_priority/1`.
 
- - The method lookup_op has been been renamed to is_op.
+ - The method `lookup_op/2` has been renamed to `is_op/2`.
 
- - The new method universal_priority has been added. It is intended to
+ - The new method `universal_priority/1` has been added. It is intended to
    replace uses of `max_priority + 1` to denote a context that accept terms
    using any operator, regardless of its priority.
 
- - The new method tightest_op_priority has been added. It is intended to
+ - The new method `tightest_op_priority/1` has been added. It is intended to
    replace uses of the integer constant `0` as a priority.
 
- - The new method comma_priority has been added. It is intended to denote
+ - The new method `comma_priority/1` has been added. It is intended to denote
    the priority of the comma character, which separates term arguments,
    when used as an operator.
 
