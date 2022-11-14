@@ -46,8 +46,8 @@
 
     % Find the procedure with argmodes which match the ones we want.
     %
-:- pred get_procedure_matching_argmodes(assoc_list(proc_id, proc_info)::in,
-    list(mer_mode)::in, module_info::in, proc_id::out) is semidet.
+:- pred get_procedure_matching_argmodes(module_info::in, proc_table::in,
+    list(mer_mode)::in, proc_id::out, proc_info::out) is semidet.
 
     % Find the procedure with declared argmodes which match the ones we want.
     % If there was no mode declaration, then use the inferred argmodes.
@@ -213,33 +213,40 @@ base_typeclass_info_cons_id(InstanceTable, Constraint, InstanceId,
 
 %----------------------------------------------------------------------------%
 
-get_procedure_matching_argmodes(Procs, Modes0, ModuleInfo, ProcId) :-
+get_procedure_matching_argmodes(ModuleInfo, ProcTable, Modes0,
+        MatchingProcId, MatchingProcInfo) :-
     list.map(constrain_inst_vars_in_mode, Modes0, Modes),
-    get_procedure_matching_argmodes_2(Procs, Modes, ModuleInfo, ProcId).
+    map.to_assoc_list(ProcTable, ProcPairs),
+    get_procedure_matching_argmodes_loop(ModuleInfo, Modes, ProcPairs,
+        MatchingProcId, MatchingProcInfo).
 
-:- pred get_procedure_matching_argmodes_2(assoc_list(proc_id, proc_info)::in,
-    list(mer_mode)::in, module_info::in, proc_id::out) is semidet.
+:- pred get_procedure_matching_argmodes_loop(module_info::in,
+    list(mer_mode)::in, assoc_list(proc_id, proc_info)::in,
+    proc_id::out, proc_info::out) is semidet.
 
-get_procedure_matching_argmodes_2([P | Procs], Modes, ModuleInfo, OurProcId) :-
-    P = ProcId - ProcInfo,
+get_procedure_matching_argmodes_loop(ModuleInfo, Modes, [ProcPair | ProcPairs],
+        MatchingProcId, MatchingProcInfo) :-
+    ProcPair = ProcId - ProcInfo,
     proc_info_get_argmodes(ProcInfo, ArgModes),
-    ( if mode_list_matches(Modes, ArgModes, ModuleInfo) then
-        OurProcId = ProcId
+    ( if mode_list_matches(ModuleInfo, Modes, ArgModes) then
+        MatchingProcId = ProcId,
+        MatchingProcInfo = ProcInfo
     else
-        get_procedure_matching_argmodes_2(Procs, Modes, ModuleInfo, OurProcId)
+        get_procedure_matching_argmodes_loop(ModuleInfo, Modes, ProcPairs,
+            MatchingProcId, MatchingProcInfo)
     ).
 
-:- pred mode_list_matches(list(mer_mode)::in, list(mer_mode)::in,
-    module_info::in) is semidet.
+:- pred mode_list_matches(module_info::in,
+    list(mer_mode)::in, list(mer_mode)::in) is semidet.
 
-mode_list_matches([], [], _).
-mode_list_matches([Mode1 | Modes1], [Mode2 | Modes2], ModuleInfo) :-
+mode_list_matches(_, [], []).
+mode_list_matches(ModuleInfo, [Mode1 | Modes1], [Mode2 | Modes2]) :-
     % Use mode_get_insts_semidet instead of mode_get_insts to avoid
     % aborting if there are undefined modes.
     % XXX
     mode_get_insts_semidet(ModuleInfo, Mode1, Inst1, Inst2),
     mode_get_insts_semidet(ModuleInfo, Mode2, Inst1, Inst2),
-    mode_list_matches(Modes1, Modes2, ModuleInfo).
+    mode_list_matches(ModuleInfo, Modes1, Modes2).
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%

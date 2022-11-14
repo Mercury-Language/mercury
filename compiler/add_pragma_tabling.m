@@ -291,14 +291,12 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM,
 
         % Add the eval model to the proc_info for this procedure.
         pred_info_get_proc_table(PredInfo0, ProcTable0),
-        map.to_assoc_list(ProcTable0, ExistingProcs),
         (
             MaybeModes = yes(Modes),
             ( if
-                get_procedure_matching_argmodes(ExistingProcs, Modes,
-                    !.ModuleInfo, ProcId)
+                get_procedure_matching_argmodes(!.ModuleInfo, ProcTable0,
+                    Modes, ProcId, ProcInfo0)
             then
-                map.lookup(ProcTable0, ProcId, ProcInfo0),
                 set_eval_method_create_aux_preds(PredOrFunc,
                     PredModuleName, PredName, UserArity, ProcId, ProcInfo0,
                     is_single_proc, Context, TabledMethod, MaybeAttributes,
@@ -318,6 +316,7 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM,
             )
         ;
             MaybeModes = no,
+            map.to_assoc_list(ProcTable0, ExistingProcs),
             (
                 ExistingProcs = [],
                 Pieces = [words("Error: "),

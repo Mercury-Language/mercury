@@ -519,12 +519,10 @@ handle_pragma_type_spec_modes(ModuleInfo, PredId, PredInfo, ProcTable, TVarSet,
         (
             ModesOrArity = moa_modes(ArgModes),
             PredFormArity = arg_list_arity(ArgModes),
-            map.to_assoc_list(ProcTable, ExistingProcs),
             ( if
-                get_procedure_matching_argmodes(ExistingProcs, ArgModes,
-                    ModuleInfo, ProcId)
+                get_procedure_matching_argmodes(ModuleInfo, ProcTable,
+                    ArgModes, ProcId, ProcInfo)
             then
-                map.lookup(ProcTable, ProcId, ProcInfo),
                 % Only this procedure in the original predicate
                 % is to be type specialized.
                 SpecProcTable = map.singleton(ProcId, ProcInfo),
