@@ -383,7 +383,7 @@
     % current output stream.
     %
     % The int argument specifies the preferred maximum length of each line.
-    % (This preferred maximum can be exceeeded, e.g. if a single text string
+    % (This preferred maximum can be exceeded, e.g. if a single text string
     % to be printed is longer than this width.)
     %
 :- pred write(int::in, T::in, io::di, io::uo) is det <= doc(T).
@@ -392,7 +392,7 @@
     % in its pretty printed format.
     %
     % The int argument specifies the preferred maximum length of each line.
-    % (This preferred maximum can be exceeeded, e.g. if a single text string
+    % (This preferred maximum can be exceeded, e.g. if a single text string
     % to be printed is longer than this width.)
     %
 :- pred write(Stream::in, int::in, T::in, State::di, State::uo) is det
@@ -867,7 +867,7 @@ list_to_doc(Depth, Xs) =
 
 %---------------------------------------------------------------------------%
 
-    % XXX Ideally we wouldd just walk the array. But that is an optimization
+    % XXX Ideally we would just walk the array. But that is an optimization
     % for another day.
     %
 :- func array_to_doc(int, array(T)) = doc.
@@ -877,7 +877,7 @@ array_to_doc(Depth, A) =
 
 %---------------------------------------------------------------------------%
 
-    % XXX Ideally we wouldd just walk the version array. But that is
+    % XXX Ideally we would just walk the version array. But that is
     % an optimization for another day.
     %
 :- func version_array_to_doc(int, version_array(T)) = doc.

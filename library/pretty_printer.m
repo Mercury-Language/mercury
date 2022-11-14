@@ -973,7 +973,7 @@ expand_format_op(Op, Args, EnclosingPriority, Docs) :-
     % XXX With one exception, all the set_op_priority pp_internals are
     % created here. They are intended set the priority of one argument,
     % which in this case is equivalent to setting the priority from
-    % the occurence of the set_op_priority until either the next
+    % the occurrence of the set_op_priority until either the next
     % set_op_priority, or until the next close_group. The fact that
     % the predicates above do NOT reset the priority when they get to
     % a close_group seems to me to be a bug -zs.

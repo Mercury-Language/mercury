@@ -940,7 +940,7 @@ is_mercury_punctuation_char(']').
 is_mercury_punctuation_char('^').
 is_mercury_punctuation_char('_').
 is_mercury_punctuation_char('`').
-% Codpoints in 0x7b..0x7e.
+% Codepoints in 0x7b..0x7e.
 is_mercury_punctuation_char('{').
 is_mercury_punctuation_char('|').
 is_mercury_punctuation_char('~').

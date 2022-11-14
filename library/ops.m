@@ -197,7 +197,7 @@
         % The minimum priority of an operator appearing as the top-level
         % functor of an argument of a compound term.
         %
-        % This will generally be one step tigther than comma_priority.
+        % This will generally be one step tighter than comma_priority.
         % If comma is not in the op table, then ops.universal_priority
         % may be a reasonable value.
         %
@@ -244,7 +244,7 @@
 
     % These predicates do the same job as the corresponding
     % mercury_op_table_search_* predicates, but instead of looking up
-    % the operarator name in the Mercury op_table, they get it from
+    % the operator name in the Mercury op_table, they get it from
     % their callers, who presumably got them by calling
     % mercury_op_table_search_op_infos.
     %
@@ -269,7 +269,7 @@
 
 :- interface.
 
-    % We export this type synonym to to string.m, for string_ops and
+    % We export this type synonym to string.m, for string_ops and
     % string_ops_noncanon). These both treat the argument whose type is
     % ops.table as being *any* op_table, i.e. as not necessarily being
     % the *Mercury* op table. Indeed, the notion of being able to pass
@@ -287,7 +287,7 @@
     % since we deliberately prevent the definition of this type from appearing
     % the library manual.
     %
-    % We could fix both issues by making the currrent users of this type
+    % We could fix both issues by making the current users of this type
     % synonym all take arguments of any type that is an instance of the
     % op_table type class. That would be a breaking change, but the breakage
     % would be comparatively minor.
@@ -485,7 +485,7 @@ mercury_op_table_comma_priority = prio(500u).
     % The priority of the ','/2 operator.
 
 mercury_op_table_arg_priority = prio(501u).
-    % This needs to bind tighther than mercury_op_table_comma_priority.
+    % This needs to bind tighter than mercury_op_table_comma_priority.
 
 %---------------------------------------------------------------------------%
 
