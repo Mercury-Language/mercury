@@ -201,45 +201,43 @@ eval_binop("//", Num1, Num2) = Num1 // Num2.
 :- type calculator_op_table
     --->    calculator_op_table.
 
-:- pred calculator2.ops_table(string::in, op_info::out, list(op_info)::out)
-    is semidet.
+:- pred ops_table(string::in, op_infos::out) is semidet.
 
-calculator2.ops_table("//", op_info(infix(arg_gt, arg_ge), prio(1100u)), []).
-calculator2.ops_table("*",  op_info(infix(arg_gt, arg_ge), prio(1100u)), []).
-calculator2.ops_table("+",  op_info(infix(arg_gt, arg_ge), prio(1000u)),
-    [op_info(prefix(arg_ge), prio(1000u))]).
-calculator2.ops_table("-",  op_info(infix(arg_gt, arg_ge), prio(1000u)),
-    [op_info(prefix(arg_ge), prio(1300u))]).
-calculator2.ops_table("=", op_info(infix(arg_ge, arg_ge), prio(800u)), []).
+ops_table(Op, OpInfos) :-
+    (
+        (Op = "//" ; Op = "*"),
+        Infix = in(prio(1100u), arg_gt, arg_ge),
+        OpInfos = op_infos(Infix, no_bin_pre, no_pre, no_post)
+    ;
+        (Op = "+" ; Op = "-"),
+        Infix = in(prio(1000u), arg_gt, arg_ge),
+        Prefix = pre(prio(1000u), arg_ge),
+        OpInfos = op_infos(Infix, no_bin_pre, Prefix, no_post)
+    ;
+        Op = "=",
+        Infix = in(prio(800u), arg_ge, arg_ge),
+        OpInfos = op_infos(Infix, no_bin_pre, no_pre, no_post)
+    ).
 
 :- instance ops.op_table(calculator_op_table) where [
-    ( ops.lookup_infix_op(_, Op, Priority, LeftGtOrGe, RightGtOrGe) :-
-        % Infix operators are all the main op_info of the relevant operator.
-        calculator2.ops_table(Op, Info, _),
-        Info = op_info(infix(LeftGtOrGe, RightGtOrGe), Priority)
+    ( ops.lookup_infix_op(_, Op, Priority, GtOrGeA, GtOrGeB) :-
+        calculator2.ops_table(Op, OpInfos),
+        OpInfos ^ oi_infix = in(Priority, GtOrGeA, GtOrGeB)
     ),
 
-    ( ops.lookup_prefix_op(_, Op, Priority, LeftGtOrGe) :-
-        % Prefix operators are all the second op_info of the relevant operator,
-        % with no third op_info.
-        calculator2.ops_table(Op, _, OtherInfo),
-        OtherInfo = [op_info(prefix(LeftGtOrGe), Priority)]
+    ( ops.lookup_prefix_op(_, Op, Priority, GtOrGeA) :-
+        calculator2.ops_table(Op, OpInfos),
+        OpInfos ^ oi_prefix = pre(Priority, GtOrGeA)
     ),
 
     ops.lookup_postfix_op(_, _, _, _) :- fail,
     ops.lookup_binary_prefix_op(_, _, _, _, _) :- fail,
 
-    ops.is_op(Table, Op) :-
-        ops.lookup_infix_op(Table, Op, _, _, _),
-    ops.is_op(Table, Op) :-
-        ops.lookup_prefix_op(Table, Op, _, _),
-    ops.is_op(Table, Op) :-
-        ops.lookup_binary_prefix_op(Table, Op, _, _, _),
-    ops.is_op(Table, Op) :-
-        ops.lookup_postfix_op(Table, Op, _, _),
+    ops.is_op(_Table, Op) :-
+        ops_table(Op, _OpInfos),
 
-    ops.lookup_op_infos(_, Op, OpInfo, OtherInfos) :-
-        calculator2.ops_table(Op, OpInfo, OtherInfos),
+    ops.lookup_op_infos(_, Op, OpInfos) :-
+        ops_table(Op, OpInfos),
 
     ops.lookup_operator_term(_, _, _, _) :- fail,
 

@@ -42,7 +42,7 @@ main(!IO) :-
     pred(lookup_binary_prefix_op/5) is lookup_cadmium_binary_prefix_op,
     pred(lookup_postfix_op/4) is lookup_cadmium_postfix_op,
     pred(is_op/2) is is_cadmium_op,
-    pred(lookup_op_infos/4) is lookup_cadmium_op_infos,
+    pred(lookup_op_infos/3) is lookup_cadmium_op_infos,
     pred(lookup_operator_term/4) is lookup_cadmium_operator_term,
     func(universal_priority/1) is cadmium_universal_priority,
     func(loosest_op_priority/1) is cadmium_loosest_op_priority,
@@ -54,41 +54,47 @@ main(!IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_op_infos(cadmium_op_table::in, string::in,
-    op_info::out, list(op_info)::out) is semidet.
-
-lookup_cadmium_op_infos(_, Name, OpInfo, OpInfos) :-
-    solutions(cadmium_op_info(Name), [OpInfo | OpInfos]).
-
-%---------------------------------------------------------------------------%
-
-:- pred lookup_cadmium_op_infos(cadmium_op_table::in, string::in,
-    list(op_info)::out) is det.
+    op_infos::out) is semidet.
 
 lookup_cadmium_op_infos(_, Name, OpInfos) :-
-    solutions(cadmium_op_info(Name), OpInfos).
-
-%---------------------------------------------------------------------------%
-
-:- pred cadmium_op_info(string::in, op_info::out) is nondet.
-
-cadmium_op_info(Name, OpInfo) :-
-    cadmium_op_table(Name, OpInfo).
+    cadmium_op_table(Name, OpInfos).
 
 %---------------------------------------------------------------------------%
 
 :- pred lookup_cadmium_infix_op(cadmium_op_table::in, string::in,
     priority::out, arg_prio_gt_or_ge::out, arg_prio_gt_or_ge::out) is semidet.
 
-lookup_cadmium_infix_op(_, Name, Priority, LeftAssoc, RightAssoc) :-
-    lookup_cadmium_op_infos(cadmium_op_table, Name, OpInfos),
-    find_first(is_infix_op, OpInfos, OpInfo),
-    OpInfo = op_info(infix(LeftAssoc, RightAssoc), Priority).
+lookup_cadmium_infix_op(_, Name, Priority, GtOrGeA, GtOrGeB) :-
+    cadmium_op_table(Name, OpInfos),
+    OpInfos ^ oi_infix = in(Priority, GtOrGeA, GtOrGeB).
 
 %---------------------------------------------------------------------------%
 
-:- pred is_infix_op(op_info::in) is semidet.
+:- pred lookup_cadmium_prefix_op(cadmium_op_table::in, string::in,
+    priority::out, arg_prio_gt_or_ge::out) is semidet.
 
-is_infix_op(op_info(infix(_, _), _)).
+lookup_cadmium_prefix_op(_, Name, Priority, GtOrGeA) :-
+    cadmium_op_table(Name, OpInfos),
+    OpInfos ^ oi_prefix = pre(Priority, GtOrGeA).
+
+%---------------------------------------------------------------------------%
+
+:- pred lookup_cadmium_binary_prefix_op(cadmium_op_table, string, priority,
+    arg_prio_gt_or_ge, arg_prio_gt_or_ge).
+:- mode lookup_cadmium_binary_prefix_op(in, in, out, out, out) is semidet.
+
+lookup_cadmium_binary_prefix_op(_, Name, Priority, GtOrGeA, GtOrGeB) :-
+    cadmium_op_table(Name, OpInfos),
+    OpInfos ^ oi_binary_prefix = bin_pre(Priority, GtOrGeA, GtOrGeB).
+
+%---------------------------------------------------------------------------%
+
+:- pred lookup_cadmium_postfix_op(cadmium_op_table::in, string::in,
+    priority::out, arg_prio_gt_or_ge::out) is semidet.
+
+lookup_cadmium_postfix_op(_, Name, Priority, GtOrGeA) :-
+    cadmium_op_table(Name, OpInfos),
+    OpInfos ^ oi_postfix = post(Priority, GtOrGeA).
 
 %---------------------------------------------------------------------------%
 
@@ -97,55 +103,6 @@ is_infix_op(op_info(infix(_, _), _)).
 
 lookup_cadmium_operator_term(_, prio(1400u), arg_ge, arg_gt) :-
     semidet_true.
-
-%---------------------------------------------------------------------------%
-
-:- pred lookup_cadmium_prefix_op(cadmium_op_table::in, string::in,
-    priority::out, arg_prio_gt_or_ge::out) is semidet.
-
-lookup_cadmium_prefix_op(_, Name, Priority, LeftAssoc) :-
-    lookup_cadmium_op_infos(cadmium_op_table, Name, OpInfos),
-    find_first(is_prefix_op, OpInfos, OpInfo),
-    OpInfo = op_info(prefix(LeftAssoc), Priority).
-
-%---------------------------------------------------------------------------%
-
-:- pred is_prefix_op(op_info::in) is semidet.
-
-is_prefix_op(op_info(prefix(_), _)).
-
-%---------------------------------------------------------------------------%
-
-:- pred lookup_cadmium_binary_prefix_op(cadmium_op_table, string, priority,
-    arg_prio_gt_or_ge, arg_prio_gt_or_ge).
-:- mode lookup_cadmium_binary_prefix_op(in, in, out, out, out) is semidet.
-
-lookup_cadmium_binary_prefix_op(_, Name, Priority, LeftAssoc, RightAssoc) :-
-    lookup_cadmium_op_infos(cadmium_op_table, Name, OpInfos),
-    find_first(is_binary_prefix_op, OpInfos, OpInfo),
-    OpInfo = op_info(binary_prefix(LeftAssoc, RightAssoc), Priority).
-
-%---------------------------------------------------------------------------%
-
-:- pred is_binary_prefix_op(op_info::in) is semidet.
-
-is_binary_prefix_op(op_info(binary_prefix(_,_),_)).
-
-%---------------------------------------------------------------------------%
-
-:- pred lookup_cadmium_postfix_op(cadmium_op_table::in, string::in,
-    priority::out, arg_prio_gt_or_ge::out) is semidet.
-
-lookup_cadmium_postfix_op(_, Name, Priority, LeftAssoc) :-
-    lookup_cadmium_op_infos(cadmium_op_table, Name, OpInfos),
-    find_first(is_postfix_op, OpInfos, OpInfo),
-    OpInfo = op_info(postfix(LeftAssoc), Priority).
-
-%---------------------------------------------------------------------------%
-
-:- pred is_postfix_op(op_info::in) is semidet.
-
-is_postfix_op(op_info(postfix(_),_)).
 
 %---------------------------------------------------------------------------%
 
@@ -190,42 +147,45 @@ find_first(Pred, [X | Xs], Y) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred cadmium_op_table(string::in, op_info::out) is nondet.
+:- pred cadmium_op_table(string::in, op_infos::out) is semidet.
 
-cadmium_op_table("import",      op_info(prefix(arg_ge),        prio(100u))).
-cadmium_op_table("ruleset",     op_info(prefix(arg_ge),        prio(100u))).
-cadmium_op_table("transform",   op_info(prefix(arg_ge),        prio(100u))).
-cadmium_op_table("<=>",         op_info(infix(arg_gt, arg_ge), prio(150u))).
-cadmium_op_table("|",           op_info(infix(arg_gt, arg_ge), prio(190u))).
-cadmium_op_table("\\",          op_info(infix(arg_ge, arg_gt), prio(190u))).
-cadmium_op_table(",",           op_info(infix(arg_gt, arg_ge), prio(195u))).
-
-cadmium_op_table("<->",         op_info(infix(arg_gt, arg_gt), prio(300u))).
-
-cadmium_op_table("->",          op_info(infix(arg_gt, arg_ge), prio(400u))).
-cadmium_op_table("<-",          op_info(infix(arg_gt, arg_ge), prio(400u))).
-
-cadmium_op_table("\\/",         op_info(infix(arg_ge, arg_gt), prio(500u))).
-cadmium_op_table("xor",         op_info(infix(arg_ge, arg_gt), prio(500u))).
-
-cadmium_op_table("/\\",         op_info(infix(arg_ge, arg_gt), prio(600u))).
-
-cadmium_op_table("<",           op_info(infix(arg_gt, arg_gt), prio(700u))).
-cadmium_op_table(">",           op_info(infix(arg_gt, arg_gt), prio(700u))).
-cadmium_op_table("<=",          op_info(infix(arg_gt, arg_ge), prio(700u))).
-cadmium_op_table(">=",          op_info(infix(arg_gt, arg_gt), prio(700u))).
-cadmium_op_table("=",           op_info(infix(arg_gt, arg_gt), prio(700u))).
-cadmium_op_table("!=",          op_info(infix(arg_gt, arg_gt), prio(700u))).
-
-cadmium_op_table("+",           op_info(infix(arg_ge, arg_gt), prio(1100u))).
-cadmium_op_table("-",           op_info(infix(arg_ge, arg_gt), prio(1100u))).
-
-cadmium_op_table("+",           op_info(prefix(arg_gt),        prio(1410u))).
-cadmium_op_table("-",           op_info(prefix(arg_gt),        prio(1410u))).
-
-cadmium_op_table(":=",          op_info(infix(arg_gt, arg_gt), prio(1430u))).
-cadmium_op_table("@",           op_info(infix(arg_gt, arg_gt), prio(1430u))).
-cadmium_op_table(".",           op_info(infix(arg_ge, arg_gt), prio(1490u))).
+cadmium_op_table(Op, OpInfos) :-
+    (
+        ( Op = "+"
+        ; Op = "-"
+        ),
+        Infix = in(prio(1100u), arg_ge, arg_gt),
+        Prefix = pre(prio(1410u), arg_gt),
+        OpInfos = op_infos(Infix, no_bin_pre, Prefix, no_post)
+    ;
+        ( Op = "import",    Prefix = pre(prio(100u), arg_ge)
+        ; Op = "ruleset",   Prefix = pre(prio(100u), arg_ge)
+        ; Op = "transform", Prefix = pre(prio(100u), arg_ge)
+        ),
+        OpInfos = op_infos(no_in, no_bin_pre, Prefix, no_post)
+    ;
+        ( Op = "<=>",       Infix = in(prio(150u),  arg_gt, arg_ge)
+        ; Op = "|",         Infix = in(prio(190u),  arg_gt, arg_ge)
+        ; Op = "\\",        Infix = in(prio(190u),  arg_ge, arg_gt)
+        ; Op = ",",         Infix = in(prio(195u),  arg_gt, arg_ge)
+        ; Op = "<->",       Infix = in(prio(300u),  arg_gt, arg_gt)
+        ; Op = "->",        Infix = in(prio(400u),  arg_gt, arg_ge)
+        ; Op = "<-",        Infix = in(prio(400u),  arg_gt, arg_ge)
+        ; Op = "\\/",       Infix = in(prio(500u),  arg_ge, arg_gt)
+        ; Op = "xor",       Infix = in(prio(500u),  arg_ge, arg_gt)
+        ; Op = "/\\",       Infix = in(prio(600u),  arg_ge, arg_gt)
+        ; Op = "<",         Infix = in(prio(700u),  arg_gt, arg_gt)
+        ; Op = ">",         Infix = in(prio(700u),  arg_gt, arg_gt)
+        ; Op = "<=",        Infix = in(prio(700u),  arg_gt, arg_ge)
+        ; Op = ">=",        Infix = in(prio(700u),  arg_gt, arg_gt)
+        ; Op = "=",         Infix = in(prio(700u),  arg_gt, arg_gt)
+        ; Op = "!=",        Infix = in(prio(700u),  arg_gt, arg_gt)
+        ; Op = ":=",        Infix = in(prio(1430u), arg_gt, arg_gt)
+        ; Op = "@",         Infix = in(prio(1430u), arg_gt, arg_gt)
+        ; Op = ".",         Infix = in(prio(1490u), arg_ge, arg_gt)
+        ),
+        OpInfos = op_infos(Infix, no_bin_pre, no_pre, no_post)
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

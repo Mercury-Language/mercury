@@ -215,6 +215,9 @@ same_private_builtin_type(_, _).
     in, in, in, in, out) is cc_multi.
 
 ordinary_term_to_revstrings(NonCanon, OpTable, MinTermPrio, X, !Rs) :-
+    % NOTE: The code of this predicate should be kept in sync with
+    % the code of write_ordinary_term in stream.string_writer.m.
+    % XXX The code for handling tuples is currently NOT in sync.
     deconstruct(X, NonCanon, Functor, _Arity, Args),
     ( if
         (
@@ -242,6 +245,15 @@ ordinary_term_to_revstrings(NonCanon, OpTable, MinTermPrio, X, !Rs) :-
             ;
                 Args = [BracedHead | BracedTail],
                 BracedTail = [_ | _],
+                % If we add padding after { and before } for tuples
+                % containing one term, why do we not also do so for tuples
+                % containing more than one term?
+                %
+                % (compiler/parse_tree_out_term.m says it is because non-DCG
+                % goals in DCG clauses look like one-argument tuples, and
+                % by tradition, they have spaces between the goal and
+                % the { and }.) However, that is not an argument for
+                % doing this for *all* uses of {}.
                 add_revstring("{", !Rs),
                 arg_to_revstrings(NonCanon, OpTable, BracedHead, !Rs),
                 term_args_to_revstrings(NonCanon, OpTable, BracedTail, !Rs),
@@ -254,9 +266,9 @@ ordinary_term_to_revstrings(NonCanon, OpTable, MinTermPrio, X, !Rs) :-
     else
         (
             Args = [ArgA],
-            ( if ops.lookup_op_infos(OpTable, Functor, OpInfo, OpInfos) then
+            ( if ops.lookup_op_infos(OpTable, Functor, OpInfos) then
                 ( if
-                    ops.op_infos_prefix_op(OpInfo, OpInfos, OpPrio, GtOrGeA)
+                    OpInfos ^ oi_prefix = pre(OpPrio, GtOrGeA)
                 then
                     maybe_add_revstring("(", MinTermPrio, OpPrio, !Rs),
                     add_revstring(term_io.quoted_atom(Functor), !Rs),
@@ -266,7 +278,7 @@ ordinary_term_to_revstrings(NonCanon, OpTable, MinTermPrio, X, !Rs) :-
                         univ_value(ArgA), !Rs),
                     maybe_add_revstring(")", MinTermPrio, OpPrio, !Rs)
                 else if
-                    ops.op_infos_postfix_op(OpInfo, OpInfos, OpPrio, GtOrGeA)
+                    OpInfos ^ oi_postfix = post(OpPrio, GtOrGeA)
                 then
                     maybe_add_revstring("(", MinTermPrio, OpPrio, !Rs),
                     MinPrioA = min_priority_for_arg(OpPrio, GtOrGeA),
@@ -285,13 +297,13 @@ ordinary_term_to_revstrings(NonCanon, OpTable, MinTermPrio, X, !Rs) :-
             )
         ;
             Args = [ArgA, ArgB],
-            ( if ops.lookup_op_infos(OpTable, Functor, OpInfo, OpInfos) then
+            ( if ops.lookup_op_infos(OpTable, Functor, OpInfos) then
                 ( if
-                    ops.op_infos_infix_op(OpInfo, OpInfos, OpPrio,
-                        GtOrGeA, GtOrGeB)
+                    OpInfos ^ oi_infix = in(OpPrio, GtOrGeA, GtOrGeB)
                 then
-                    maybe_add_revstring("(", MinTermPrio, OpPrio, !Rs),
                     MinPrioA = min_priority_for_arg(OpPrio, GtOrGeA),
+                    MinPrioB = min_priority_for_arg(OpPrio, GtOrGeB),
+                    maybe_add_revstring("(", MinTermPrio, OpPrio, !Rs),
                     value_to_revstrings_prio(NonCanon, OpTable, MinPrioA,
                         univ_value(ArgA), !Rs),
                     ( if Functor = "," then
@@ -301,22 +313,21 @@ ordinary_term_to_revstrings(NonCanon, OpTable, MinTermPrio, X, !Rs) :-
                         add_revstring(term_io.quoted_atom(Functor), !Rs),
                         add_revstring(" ", !Rs)
                     ),
-                    MinPrioB = min_priority_for_arg(OpPrio, GtOrGeB),
                     value_to_revstrings_prio(NonCanon, OpTable, MinPrioB,
                         univ_value(ArgB), !Rs),
                     maybe_add_revstring(")", MinTermPrio, OpPrio, !Rs)
                 else if
-                    ops.op_infos_binary_prefix_op(OpInfo, OpInfos,
-                        OpPrio, GtOrGeA, GtOrGeB)
+                    OpInfos ^ oi_binary_prefix =
+                        bin_pre(OpPrio, GtOrGeA, GtOrGeB)
                 then
+                    MinPrioA = min_priority_for_arg(OpPrio, GtOrGeA),
+                    MinPrioB = min_priority_for_arg(OpPrio, GtOrGeB),
                     maybe_add_revstring("(", MinTermPrio, OpPrio, !Rs),
                     add_revstring(term_io.quoted_atom(Functor), !Rs),
                     add_revstring(" ", !Rs),
-                    MinPrioA = min_priority_for_arg(OpPrio, GtOrGeA),
                     value_to_revstrings_prio(NonCanon, OpTable, MinPrioA,
                         univ_value(ArgA), !Rs),
                     add_revstring(" ", !Rs),
-                    MinPrioB = min_priority_for_arg(OpPrio, GtOrGeB),
                     value_to_revstrings_prio(NonCanon, OpTable, MinPrioB,
                         univ_value(ArgB), !Rs),
                     maybe_add_revstring(")", MinTermPrio, OpPrio, !Rs)

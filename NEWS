@@ -328,6 +328,24 @@ Changes to the Mercury standard library
   To guard against priorities being unintentionally confused with
   other kinds of numbers, they are now wrapped in the `prio` function symbol.
 
+* The representation of the set of operators that a string may represent
+  has been changed. Operator tables used to map each operator string
+  (such as "-") to a list of operator descriptions, each of which could be
+  infix, binary prefix, prefix or postfix. This allowed a table entry
+  to declare an operator string to be e.g. an infix operator using
+  two separate entries, with different priorities. Operator tables now map
+  each operator string to a structure which has
+  
+  - one slot for a description of an infix operator,
+  - one slot for a description of a binary prefix operator,
+  - one slot for a description of a unary prefix operator, and
+  - one slot for a description of a unary postfix operator.
+
+  Besides making some nonsensical entries that could exist in old op tables
+  unrepresentable, the new op table also allows users of operator information
+  to test more simply and quickly whether an operator string represents
+  e.g. a prefix operator.
+
 * The `assoc` type has been renamed to `arg_prio_gt_or_ge`, which
   reflects its semantics. Its function symbols `x` and `y` have been
   renamed to `arg_gt` and `arg_ge` respectively.
@@ -349,6 +367,8 @@ Changes to the Mercury standard library
  - The new method `comma_priority/1` has been added. It is intended to denote
    the priority of the comma character, which separates term arguments,
    when used as an operator.
+
+ - The argument types of the `lookup_op_infos/2` method have been changed.
 
 * The following predicates and functions have been added:
 

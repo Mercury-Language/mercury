@@ -1017,6 +1017,9 @@ same_private_builtin_type(_, _).
     (Stream = io.output_stream, State = io.state)).
 
 write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
+    % NOTE: The code of this predicate should be kept in sync with
+    % the code of ordinary_term_to_revstrings in string.to_string.m.
+    % XXX The code for handling tuples is currently NOT in sync.
     univ_value(Univ) = Term,
     deconstruct.deconstruct(Term, NonCanon, Functor, _Arity, Args),
     ( if
@@ -1043,136 +1046,115 @@ write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
             put(Stream, " }", !State)
         ;
             BracedTail = [_ | _],
+            % If we add padding after { and before } for tuples
+            % containing one term, why do we not also do so for tuples
+            % containing more than one term?
+            %
+            % (compiler/parse_tree_out_term.m says it is because non-DCG
+            % goals in DCG clauses look like one-argument tuples, and
+            % by tradition, they have spaces between the goal and
+            % the { and }.) However, that is not an argument for
+            % doing this for *all* uses of {}.
             put(Stream, '{', !State),
             write_arg(Stream, NonCanon, BracedHead, !State),
             write_term_args(Stream, NonCanon, BracedTail, !State),
             put(Stream, '}', !State)
         )
     else if
-        ops.lookup_op_infos(ops.init_mercury_op_table, Functor,
-            FirstOpInfo, OtherOpInfos)
+        ops.lookup_op_infos(ops.init_mercury_op_table, Functor, OpInfos)
     then
-        select_op_info_and_print(Stream, NonCanon, FirstOpInfo, OtherOpInfos,
-            Priority, Functor, Args, !State)
+        (
+            ( Args = []
+            ; Args = [_, _, _ | _]
+            ),
+            write_functor_and_args_prio(Stream, NonCanon, Priority,
+                Functor, Args, !State)
+        ;
+            Args = [ArgA],
+            ( if OpInfos ^ oi_prefix = pre(OpPriority, GtOrGeA) then
+                maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
+                term_io.quote_atom(Stream, Functor, !State),
+                put(Stream, " ", !State),
+                MinPrioA = min_priority_for_arg(OpPriority, GtOrGeA),
+                do_write_univ_prio(Stream, NonCanon, ArgA, MinPrioA, !State),
+                maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
+            else if OpInfos ^ oi_postfix = post(OpPriority, GtOrGeA) then
+                maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
+                MinPrioA = min_priority_for_arg(OpPriority, GtOrGeA),
+                do_write_univ_prio(Stream, NonCanon, ArgA, MinPrioA, !State),
+                put(Stream, " ", !State),
+                term_io.quote_atom(Stream, Functor, !State),
+                maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
+            else
+                write_functor_and_args_prio(Stream, NonCanon, Priority,
+                    Functor, Args, !State)
+            )
+        ;
+            Args = [ArgA, ArgB],
+            ( if
+                OpInfos ^ oi_infix = in(OpPriority, GtOrGeA, GtOrGeB)
+            then
+                MinPrioA = min_priority_for_arg(OpPriority, GtOrGeA),
+                MinPrioB = min_priority_for_arg(OpPriority, GtOrGeB),
+                maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
+                do_write_univ_prio(Stream, NonCanon, ArgA, MinPrioA, !State),
+                ( if Functor = "," then
+                    put(Stream, ", ", !State)
+                else
+                    put(Stream, " ", !State),
+                    term_io.quote_atom(Stream, Functor, !State),
+                    put(Stream, " ", !State)
+                ),
+                do_write_univ_prio(Stream, NonCanon, ArgB, MinPrioB, !State),
+                maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
+            else if
+                OpInfos ^ oi_binary_prefix =
+                    bin_pre(OpPriority, GtOrGeA, GtOrGeB)
+            then
+                MinPrioA = min_priority_for_arg(OpPriority, GtOrGeA),
+                MinPrioB = min_priority_for_arg(OpPriority, GtOrGeB),
+                maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
+                term_io.quote_atom(Stream, Functor, !State),
+                put(Stream, " ", !State),
+                do_write_univ_prio(Stream, NonCanon, ArgA, MinPrioA, !State),
+                put(Stream, " ", !State),
+                do_write_univ_prio(Stream, NonCanon, ArgB, MinPrioB, !State),
+                maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
+            else
+                write_functor_and_args_prio(Stream, NonCanon, Priority,
+                    Functor, Args, !State)
+            )
+        )
     else
         write_functor_and_args(Stream, NonCanon, Functor, Args, !State)
     ).
 
-:- pred select_op_info_and_print(Stream, deconstruct.noncanon_handling,
-    op_info, list(op_info), ops.priority, string, list(univ), State, State)
+    % write_functor_and_args_prio(Stream, NonCanon, Priority, Functor, Args,
+    %   !State):
+    %
+    % Write out the term represented by Functor(Args) when
+    %
+    % - Functor is an operator, but
+    % - it is not applied to the number of arguments it expects.
+    %
+:- pred write_functor_and_args_prio(Stream, deconstruct.noncanon_handling,
+    priority, string, list(univ), State, State)
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
-:- mode select_op_info_and_print(in, in(do_not_allow), in, in, in, in, in,
+:- mode write_functor_and_args_prio(in, in(do_not_allow), in, in, in,
     di, uo) is det.
-:- mode select_op_info_and_print(in, in(canonicalize), in, in, in, in, in,
+:- mode write_functor_and_args_prio(in, in(canonicalize), in, in, in,
     di, uo) is det.
-:- mode select_op_info_and_print(in, in(include_details_cc), in, in, in, in,
-    in, di, uo) is cc_multi.
-:- mode select_op_info_and_print(in, in, in, in, in, in, in,
+:- mode write_functor_and_args_prio(in, in(include_details_cc), in, in, in,
     di, uo) is cc_multi.
-:- pragma type_spec(pred(select_op_info_and_print/9),
+:- mode write_functor_and_args_prio(in, in, in, in, in, di, uo) is cc_multi.
+:- pragma type_spec(pred(write_functor_and_args_prio/7),
     (Stream = io.output_stream, State = io.state)).
 
-select_op_info_and_print(Stream, NonCanon, OpInfo, OtherOpInfos, Priority,
-        Functor, Args, !State) :-
-    OpInfo = op_info(OpClass, _),
-    (
-        OpClass = prefix(_OpGtOrGe),
-        ( if Args = [Arg] then
-            OpInfo = op_info(_, OpPriority),
-            maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
-            term_io.quote_atom(Stream, Functor, !State),
-            put(Stream, " ", !State),
-            OpClass = prefix(OpGtOrGe),
-            NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
-            do_write_univ_prio(Stream, NonCanon, Arg, NewPriority, !State),
-            maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
-        else
-            select_remaining_op_info_and_print(Stream, NonCanon, OtherOpInfos,
-                Priority, Functor, Args, !State)
-        )
-    ;
-        OpClass = postfix(_OpGtOrGe),
-        ( if Args = [PostfixArg] then
-            OpInfo = op_info(_, OpPriority),
-            maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
-            OpClass = postfix(OpGtOrGe),
-            NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
-            do_write_univ_prio(Stream, NonCanon, PostfixArg,
-                NewPriority, !State),
-            put(Stream, " ", !State),
-            term_io.quote_atom(Stream, Functor, !State),
-            maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
-        else
-            select_remaining_op_info_and_print(Stream, NonCanon, OtherOpInfos,
-                Priority, Functor, Args, !State)
-        )
-    ;
-        OpClass = infix(_LeftGtOrGe, _RightGtOrGe),
-        ( if Args = [Arg1, Arg2] then
-            OpInfo = op_info(_, OpPriority),
-            maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
-            OpClass = infix(LeftGtOrGe, _),
-            LeftPriority = min_priority_for_arg(OpPriority, LeftGtOrGe),
-            do_write_univ_prio(Stream, NonCanon, Arg1, LeftPriority, !State),
-            ( if Functor = "," then
-                put(Stream, ", ", !State)
-            else
-                put(Stream, " ", !State),
-                term_io.quote_atom(Stream, Functor, !State),
-                put(Stream, " ", !State)
-            ),
-            OpClass = infix(_, RightGtOrGe),
-            RightPriority = min_priority_for_arg(OpPriority, RightGtOrGe),
-            do_write_univ_prio(Stream, NonCanon, Arg2, RightPriority, !State),
-            maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
-        else
-            select_remaining_op_info_and_print(Stream, NonCanon, OtherOpInfos,
-                Priority, Functor, Args, !State)
-        )
-    ;
-        OpClass = binary_prefix(_FirstGtOrGe, _SecondGtOrGe),
-        ( if Args = [Arg1, Arg2] then
-            OpInfo = op_info(_, OpPriority),
-            maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
-            term_io.quote_atom(Stream, Functor, !State),
-            put(Stream, " ", !State),
-            OpClass = binary_prefix(FirstGtOrGe, _),
-            FirstPriority = min_priority_for_arg(OpPriority, FirstGtOrGe),
-            do_write_univ_prio(Stream, NonCanon, Arg1, FirstPriority, !State),
-            put(Stream, " ", !State),
-            OpClass = binary_prefix(_, SecondGtOrGe),
-            SecondPriority = min_priority_for_arg(OpPriority, SecondGtOrGe),
-            do_write_univ_prio(Stream, NonCanon, Arg2, SecondPriority, !State),
-            maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
-        else
-            select_remaining_op_info_and_print(Stream, NonCanon, OtherOpInfos,
-                Priority, Functor, Args, !State)
-        )
-    ).
+:- pragma inline(pred(write_functor_and_args_prio/7)).
 
-:- pred select_remaining_op_info_and_print(Stream,
-    deconstruct.noncanon_handling, list(op_info), ops.priority, string,
-    list(univ), State, State)
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
-:- mode select_remaining_op_info_and_print(in, in(do_not_allow), in, in,
-    in, in, di, uo) is det.
-:- mode select_remaining_op_info_and_print(in, in(canonicalize), in, in,
-    in, in, di, uo) is det.
-:- mode select_remaining_op_info_and_print(in, in(include_details_cc), in, in,
-    in, in, di, uo) is cc_multi.
-:- mode select_remaining_op_info_and_print(in, in, in, in,
-    in, in, di, uo) is cc_multi.
-:- pragma type_spec(pred(select_remaining_op_info_and_print/8),
-    (Stream = io.output_stream, State = io.state)).
-
-select_remaining_op_info_and_print(Stream, NonCanon,
-        [FirstOpInfo | MoreOpInfos], Priority, Functor, Args, !State) :-
-    select_op_info_and_print(Stream, NonCanon, FirstOpInfo, MoreOpInfos,
-        Priority, Functor, Args, !State).
-select_remaining_op_info_and_print(Stream, NonCanon, [],
-        Priority, Functor, Args, !State) :-
+write_functor_and_args_prio(Stream, NonCanon, Priority, Functor, Args,
+        !State) :-
     ( if
         Args = [],
         priority_ge(Priority, ops.mercury_op_table_loosest_op_priority)
@@ -1184,6 +1166,10 @@ select_remaining_op_info_and_print(Stream, NonCanon, [],
         write_functor_and_args(Stream, NonCanon, Functor, Args, !State)
     ).
 
+    % write_functor_and_args(Stream, NonCanon, Functor, Args, !State):
+    %
+    % Write out the term represented by Functor(Args).
+    %
 :- pred write_functor_and_args(Stream, deconstruct.noncanon_handling, string,
     list(univ), State, State)
     <= (stream.writer(Stream, string, State),

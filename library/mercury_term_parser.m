@@ -465,71 +465,65 @@ parse_left_term(MinPriority, TermKind, OpPriority, Term, !TokensLeft, !PS) :-
             OpPriority = tightest_op_priority(OpTable)
         else if
             Token = name(TokenName),
-            ops.lookup_op_infos(OpTable, TokenName, OpInfo, OtherOpInfos)
+            ops.lookup_op_infos(OpTable, TokenName, OpInfos)
         then
             ( if
                 % Check for binary prefix op.
                 %
-                % Since most tokens aren't binary prefix ops, the first test
-                % here will almost always fail.
-                find_first_binary_prefix_op(OpInfo, OtherOpInfos,
-                    BinOpPriority, RightGeOrGt, RightRightGeOrGt),
+                % Since most tokens aren't binary prefix ops, the test
+                % will almost always fail.
+                OpInfos ^ oi_binary_prefix = 
+                    bin_pre(BinOpPriority, GeOrGtA, GeOrGtB),
                 priority_ge(BinOpPriority, MinPriority),
                 !.TokensLeft = token_cons(NextToken, _, _),
                 could_start_term(NextToken, yes),
                 NextToken \= open_ct
             then
                 OpPriority = BinOpPriority,
-                RightPriority = min_priority_for_arg(OpPriority,
-                    RightGeOrGt),
-                RightRightPriority = min_priority_for_arg(OpPriority,
-                    RightRightGeOrGt),
-                do_parse_term(RightPriority, TermKind, RightResult,
-                    !TokensLeft, !PS),
+                PrioA = min_priority_for_arg(OpPriority, GeOrGtA),
+                PrioB = min_priority_for_arg(OpPriority, GeOrGtB),
+                do_parse_term(PrioA, TermKind, ResultA, !TokensLeft, !PS),
                 (
-                    RightResult = pr_ok(RightTerm),
-                    do_parse_term(RightRightPriority, TermKind,
-                        RightRightResult, !TokensLeft, !PS),
+                    ResultA = pr_ok(TermA),
+                    do_parse_term(PrioB, TermKind, ResultB, !TokensLeft, !PS),
                     (
-                        RightRightResult = pr_ok(RightRightTerm),
+                        ResultB = pr_ok(TermB),
                         parser_get_term_context(!.PS, Context, TermContext),
                         Term = pr_ok(term.functor(term.atom(TokenName),
-                            [RightTerm, RightRightTerm], TermContext))
+                            [TermA, TermB], TermContext))
                     ;
-                        RightRightResult = pr_error(_, _),
+                        ResultB = pr_error(_, _),
                         % Propagate error upwards.
-                        Term = RightRightResult
+                        Term = ResultB
                     )
                 ;
-                    RightResult = pr_error(_, _),
+                    ResultA = pr_error(_, _),
                     % Propagate error upwards.
-                    Term = RightResult
+                    Term = ResultA
                 )
             else if
                 % Check for prefix op.
                 %
                 % Since most tokens aren't prefix ops, the first test here
                 % will almost always fail.
-                find_first_prefix_op(OpInfo, OtherOpInfos,
-                    UnOpPriority, RightGeOrGt),
+                OpInfos ^ oi_prefix = pre(UnOpPriority, GeOrGtA),
                 priority_ge(UnOpPriority, MinPriority),
                 !.TokensLeft = token_cons(NextToken, _, _),
                 could_start_term(NextToken, yes),
                 NextToken \= open_ct
             then
                 OpPriority = UnOpPriority,
-                RightPriority = min_priority_for_arg(OpPriority, RightGeOrGt),
-                do_parse_term(RightPriority, TermKind, RightResult,
-                    !TokensLeft, !PS),
+                PrioA = min_priority_for_arg(OpPriority, GeOrGtA),
+                do_parse_term(PrioA, TermKind, ResultA, !TokensLeft, !PS),
                 (
-                    RightResult = pr_ok(RightTerm),
+                    ResultA = pr_ok(TermA),
                     parser_get_term_context(!.PS, Context, TermContext),
                     Term = pr_ok(term.functor(term.atom(TokenName),
-                        [RightTerm], TermContext))
+                        [TermA], TermContext))
                 ;
-                    RightResult = pr_error(_, _),
+                    ResultA = pr_error(_, _),
                     % Propagate error upwards.
-                    Term = RightResult
+                    Term = ResultA
                 )
             else
                 % TokenName is an operator, but not of a kind that
@@ -1090,37 +1084,6 @@ parser_unexpected_tok(Token, Context, UsualMessage, Error, !TokensLeft, PS) :-
     ).
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- pred find_first_prefix_op(op_info::in, list(op_info)::in,
-    priority::out, arg_prio_gt_or_ge::out) is semidet.
-
-find_first_prefix_op(OpInfo, OtherOpInfos, OpPriority, RightGtOrGe) :-
-    OpInfo = op_info(Class, Priority),
-    ( if Class = prefix(RightGtOrGePrime) then
-        OpPriority = Priority,
-        RightGtOrGe = RightGtOrGePrime
-    else
-        OtherOpInfos = [HeadOpInfo | TailOpInfos],
-        find_first_prefix_op(HeadOpInfo, TailOpInfos, OpPriority, RightGtOrGe)
-    ).
-
-:- pred find_first_binary_prefix_op(op_info::in, list(op_info)::in,
-    priority::out, arg_prio_gt_or_ge::out, arg_prio_gt_or_ge::out) is semidet.
-
-find_first_binary_prefix_op(OpInfo, OtherOpInfos,
-        OpPriority, RightGtOrGe, RightRightGtOrGe) :-
-    OpInfo = op_info(Class, Priority),
-    ( if Class = binary_prefix(RightGtOrGePrime, RightRightGtOrGePrime) then
-        OpPriority = Priority,
-        RightGtOrGe = RightGtOrGePrime,
-        RightRightGtOrGe = RightRightGtOrGePrime
-    else
-        OtherOpInfos = [HeadOpInfo | TailOpInfos],
-        find_first_binary_prefix_op(HeadOpInfo, TailOpInfos,
-            OpPriority, RightGtOrGe, RightRightGtOrGe)
-    ).
-
 %---------------------------------------------------------------------------%
 
     % XXX OPS Rename.

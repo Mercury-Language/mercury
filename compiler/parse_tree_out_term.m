@@ -484,91 +484,106 @@ mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
             add_string("]", S, !U)
         else if
             Functor = term.atom("{}"),
-            Args = [X]
-        then
-            % A unary tuple is usually a DCG escape,
-            % so add some extra space.
-            add_string("{ ", S, !U),
-            mercury_format_term_vs(VarSet, VarNamePrint, X, S, !U),
-            add_string(" }", S, !U)
-        else if
-            Functor = term.atom("{}"),
             Args = [X | Xs]
         then
-            add_string("{", S, !U),
-            mercury_format_comma_separated_terms_vs(VarSet, VarNamePrint,
-                X, Xs, S, !U),
-            add_string("}", S, !U)
-        else if
-            Args = [BinaryPrefixArg1, BinaryPrefixArg2],
+            (
+                Xs = [],
+                % A unary tuple is usually a DCG escape,
+                % so add some extra space.
+                add_string("{ ", S, !U),
+                mercury_format_term_vs(VarSet, VarNamePrint, X, S, !U),
+                add_string(" }", S, !U)
+            ;   
+                Xs = [_ | _],
+                add_string("{", S, !U),
+                mercury_format_comma_separated_terms_vs(VarSet, VarNamePrint,
+                    X, Xs, S, !U),
+                add_string("}", S, !U)
+            )
+        else if 
             Functor = term.atom(FunctorName),
-            mercury_binary_prefix_op(FunctorName)
+            mercury_op_table_search_op_infos(FunctorName, OpInfos)
         then
-            add_string("(", S, !U),
-            add_string(FunctorName, S, !U),
-            add_string(" ", S, !U),
-            mercury_format_term_vs(VarSet, VarNamePrint, BinaryPrefixArg1,
-                S, !U),
-            add_string(" ", S, !U),
-            mercury_format_term_vs(VarSet, VarNamePrint, BinaryPrefixArg2,
-                S, !U),
-            add_string(")", S, !U)
-        else if
-            Args = [PrefixArg],
-            Functor = term.atom(FunctorName),
-            mercury_unary_prefix_op(FunctorName)
-        then
-            add_string("(", S, !U),
-            add_string(FunctorName, S, !U),
-            add_string(" ", S, !U),
-            mercury_format_term_vs(VarSet, VarNamePrint, PrefixArg, S, !U),
-            add_string(")", S, !U)
-        else if
-            Args = [PostfixArg],
-            Functor = term.atom(FunctorName),
-            mercury_unary_postfix_op(FunctorName)
-        then
-            add_string("(", S, !U),
-            mercury_format_term_vs(VarSet, VarNamePrint, PostfixArg, S, !U),
-            add_string(" ", S, !U),
-            add_string(FunctorName, S, !U),
-            add_string(")", S, !U)
-        else if
-            Args = [Arg1, Arg2],
-            Functor = term.atom(FunctorName),
-            mercury_infix_op(FunctorName)
-        then
-            ( if FunctorName = "." then
-                mercury_format_term_nq_vs(VarSet, VarNamePrint,
-                    next_to_graphic_token, Arg1, S, !U),
-                add_string(".", S, !U),
-                mercury_format_term_nq_vs(VarSet, VarNamePrint,
-                    next_to_graphic_token, Arg2, S, !U)
-            else
-                add_string("(", S, !U),
-                mercury_format_term_nq_vs(VarSet, VarNamePrint,
-                    not_next_to_graphic_token, Arg1, S, !U),
-                add_string(" ", S, !U),
-                add_string(FunctorName, S, !U),
-                add_string(" ", S, !U),
-                mercury_format_term_nq_vs(VarSet, VarNamePrint,
-                    not_next_to_graphic_token, Arg2, S, !U),
-                add_string(")", S, !U)
+          (
+                ( Args = []
+                ; Args = [_, _, _ | _]
+                ),
+                mercury_format_plain_functor_args_nq_vs(VarSet,
+                    VarNamePrint, NextToGraphicToken, Functor, Args, S, !U)
+            ;
+                Args = [ArgA],
+                ( if OpInfos ^ oi_prefix = pre(_, _) then
+                    add_string("(", S, !U),
+                    add_string(FunctorName, S, !U),
+                    add_string(" ", S, !U),
+                    mercury_format_term_vs(VarSet, VarNamePrint, ArgA, S, !U),
+                    add_string(")", S, !U)
+                else if OpInfos ^ oi_postfix = post(_, _) then
+                    add_string("(", S, !U),
+                    mercury_format_term_vs(VarSet, VarNamePrint, ArgA, S, !U),
+                    add_string(" ", S, !U),
+                    add_string(FunctorName, S, !U),
+                    add_string(")", S, !U)
+                else
+                    mercury_format_plain_functor_args_nq_vs(VarSet,
+                        VarNamePrint, NextToGraphicToken, Functor, Args, S, !U)
+                )
+            ;
+                Args = [ArgA, ArgB],
+                ( if OpInfos ^ oi_binary_prefix = bin_pre(_, _, _) then
+                    add_string("(", S, !U),
+                    add_string(FunctorName, S, !U),
+                    add_string(" ", S, !U),
+                    mercury_format_term_vs(VarSet, VarNamePrint, ArgA, S, !U),
+                    add_string(" ", S, !U),
+                    mercury_format_term_vs(VarSet, VarNamePrint, ArgB, S, !U),
+                    add_string(")", S, !U)
+                else if OpInfos ^ oi_infix = in(_, _, _) then
+                    ( if FunctorName = "." then
+                        mercury_format_term_nq_vs(VarSet, VarNamePrint,
+                            next_to_graphic_token, ArgA, S, !U),
+                        add_string(".", S, !U),
+                        mercury_format_term_nq_vs(VarSet, VarNamePrint,
+                            next_to_graphic_token, ArgB, S, !U)
+                    else
+                        add_string("(", S, !U),
+                        mercury_format_term_nq_vs(VarSet, VarNamePrint,
+                            not_next_to_graphic_token, ArgA, S, !U),
+                        add_string(" ", S, !U),
+                        add_string(FunctorName, S, !U),
+                        add_string(" ", S, !U),
+                        mercury_format_term_nq_vs(VarSet, VarNamePrint,
+                            not_next_to_graphic_token, ArgB, S, !U),
+                        add_string(")", S, !U)
+                    )
+                else
+                    mercury_format_plain_functor_args_nq_vs(VarSet,
+                        VarNamePrint, NextToGraphicToken, Functor, Args, S, !U)
+                )
             )
         else
-            (
-                Args = [Y | Ys],
-                mercury_format_constant(NextToGraphicToken, Functor, S, !U),
-                add_string("(", S, !U),
-                mercury_format_comma_separated_terms_vs(VarSet, VarNamePrint,
-                    Y, Ys, S, !U),
-                add_string(")", S, !U)
-            ;
-                Args = [],
-                mercury_format_bracketed_constant_ngt(NextToGraphicToken,
-                    Functor, S, !U)
-            )
+            mercury_format_plain_functor_args_nq_vs(VarSet, VarNamePrint,
+                NextToGraphicToken, Functor, Args, S, !U)
         )
+    ).
+
+:- pred mercury_format_plain_functor_args_nq_vs(varset(T)::in,
+    var_name_print::in, needs_quotes::in, const::in, list(term(T))::in,
+    S::in, U::di, U::uo) is det <= output(S, U).
+
+mercury_format_plain_functor_args_nq_vs(VarSet, VarNamePrint,
+        NextToGraphicToken, Functor, Args, S, !U) :-
+    (
+        Args = [],
+        mercury_format_bracketed_constant_ngt(NextToGraphicToken,
+            Functor, S, !U)
+    ;
+        Args = [HeadArg | TailArgs],
+        mercury_format_constant(NextToGraphicToken, Functor, S, !U),
+        add_string("(", S, !U),
+        mercury_format_comma_separated_terms_vs(VarSet, VarNamePrint,
+            HeadArg, TailArgs, S, !U),
+        add_string(")", S, !U)
     ).
 
 %---------------------%
@@ -611,92 +626,109 @@ mercury_format_term_nq(VarTable, VarNamePrint, NextToGraphicToken, Term,
             add_string("]", S, !U)
         else if
             Functor = term.atom("{}"),
-            Args = [X]
-        then
-            % A unary tuple is usually a DCG escape,
-            % so add some extra space.
-            add_string("{ ", S, !U),
-            mercury_format_term(VarTable, VarNamePrint, X, S, !U),
-            add_string(" }", S, !U)
-        else if
-            Functor = term.atom("{}"),
             Args = [X | Xs]
         then
-            add_string("{", S, !U),
-            mercury_format_comma_separated_terms(VarTable, VarNamePrint,
-                X, Xs, S, !U),
-            add_string("}", S, !U)
+            (
+                Xs = [],
+                % A unary tuple is usually a DCG escape,
+                % so add some extra space.
+                add_string("{ ", S, !U),
+                mercury_format_term(VarTable, VarNamePrint, X, S, !U),
+                add_string(" }", S, !U)
+            ;
+                Xs = [_ | _],
+                add_string("{", S, !U),
+                mercury_format_comma_separated_terms(VarTable, VarNamePrint,
+                    X, Xs, S, !U),
+                add_string("}", S, !U)
+            )
         else if
-            Args = [BinaryPrefixArg1, BinaryPrefixArg2],
             Functor = term.atom(FunctorName),
-            mercury_binary_prefix_op(FunctorName)
-        then
-            add_string("(", S, !U),
-            add_string(FunctorName, S, !U),
-            add_string(" ", S, !U),
-            mercury_format_term(VarTable, VarNamePrint, BinaryPrefixArg1,
-                S, !U),
-            add_string(" ", S, !U),
-            mercury_format_term(VarTable, VarNamePrint, BinaryPrefixArg2,
-                S, !U),
-            add_string(")", S, !U)
-        else if
-            Args = [PrefixArg],
-            Functor = term.atom(FunctorName),
-            mercury_unary_prefix_op(FunctorName)
-        then
-            add_string("(", S, !U),
-            add_string(FunctorName, S, !U),
-            add_string(" ", S, !U),
-            mercury_format_term(VarTable, VarNamePrint, PrefixArg, S, !U),
-            add_string(")", S, !U)
-        else if
-            Args = [PostfixArg],
-            Functor = term.atom(FunctorName),
-            mercury_unary_postfix_op(FunctorName)
-        then
-            add_string("(", S, !U),
-            mercury_format_term(VarTable, VarNamePrint, PostfixArg, S, !U),
-            add_string(" ", S, !U),
-            add_string(FunctorName, S, !U),
-            add_string(")", S, !U)
-        else if
-            Args = [Arg1, Arg2],
-            Functor = term.atom(FunctorName),
-            mercury_infix_op(FunctorName)
-        then
-            ( if FunctorName = "." then
-                mercury_format_term_nq(VarTable, VarNamePrint,
-                    next_to_graphic_token, Arg1, S, !U),
-                add_string(".", S, !U),
-                mercury_format_term_nq(VarTable, VarNamePrint,
-                    next_to_graphic_token, Arg2, S, !U)
-            else
-                add_string("(", S, !U),
-                mercury_format_term_nq(VarTable, VarNamePrint,
-                    not_next_to_graphic_token, Arg1, S, !U),
-                add_string(" ", S, !U),
-                add_string(FunctorName, S, !U),
-                add_string(" ", S, !U),
-                mercury_format_term_nq(VarTable, VarNamePrint,
-                    not_next_to_graphic_token, Arg2, S, !U),
-                add_string(")", S, !U)
+            mercury_op_table_search_op_infos(FunctorName, OpInfos)
+	    then
+            (
+                ( Args = []
+                ; Args = [_, _, _ | _]
+                ),
+                mercury_format_plain_functor_args_nq(VarTable,
+                    VarNamePrint, NextToGraphicToken, Functor, Args, S, !U)
+            ;
+                Args = [ArgA],
+                ( if OpInfos ^ oi_prefix = pre(_, _) then
+                    add_string("(", S, !U),
+                    add_string(FunctorName, S, !U),
+                    add_string(" ", S, !U),
+                    mercury_format_term(VarTable, VarNamePrint, ArgA, S, !U),
+                    add_string(")", S, !U)
+                else if OpInfos ^ oi_postfix = post(_, _) then
+                    add_string("(", S, !U),
+                    mercury_format_term(VarTable, VarNamePrint, ArgA, S, !U),
+                    add_string(" ", S, !U),
+                    add_string(FunctorName, S, !U),
+                    add_string(")", S, !U)
+                else
+                    mercury_format_plain_functor_args_nq(VarTable,
+                        VarNamePrint, NextToGraphicToken, Functor, Args, S, !U)
+                )
+            ;
+                Args = [ArgA, ArgB],
+                ( if OpInfos ^ oi_binary_prefix = bin_pre(_, _, _) then
+                    add_string("(", S, !U),
+                    add_string(FunctorName, S, !U),
+                    add_string(" ", S, !U),
+                    mercury_format_term(VarTable, VarNamePrint, ArgA, S, !U),
+                    add_string(" ", S, !U),
+                    mercury_format_term(VarTable, VarNamePrint, ArgB, S, !U),
+                    add_string(")", S, !U)
+                else if OpInfos ^ oi_infix = in(_, _, _) then
+                    ( if FunctorName = "." then
+                        mercury_format_term_nq(VarTable, VarNamePrint,
+                            next_to_graphic_token, ArgA, S, !U),
+                        add_string(".", S, !U),
+                        mercury_format_term_nq(VarTable, VarNamePrint,
+                            next_to_graphic_token, ArgB, S, !U)
+                    else
+                        add_string("(", S, !U),
+                        mercury_format_term_nq(VarTable, VarNamePrint,
+                            not_next_to_graphic_token, ArgA, S, !U),
+                        add_string(" ", S, !U),
+                        add_string(FunctorName, S, !U),
+                        add_string(" ", S, !U),
+                        mercury_format_term_nq(VarTable, VarNamePrint,
+                            not_next_to_graphic_token, ArgB, S, !U),
+                        add_string(")", S, !U)
+                    )
+                else
+                    mercury_format_plain_functor_args_nq(VarTable,
+                        VarNamePrint, NextToGraphicToken, Functor, Args, S, !U)
+                )
             )
         else
-            (
-                Args = [Y | Ys],
-                mercury_format_constant(NextToGraphicToken, Functor, S, !U),
-                add_string("(", S, !U),
-                mercury_format_comma_separated_terms(VarTable, VarNamePrint,
-                    Y, Ys, S, !U),
-                add_string(")", S, !U)
-            ;
-                Args = [],
-                mercury_format_bracketed_constant_ngt(NextToGraphicToken,
-                    Functor, S, !U)
-            )
+            mercury_format_plain_functor_args_nq(VarTable, VarNamePrint,
+                NextToGraphicToken, Functor, Args, S, !U)
         )
     ).
+
+:- pred mercury_format_plain_functor_args_nq(var_table::in,
+    var_name_print::in, needs_quotes::in, const::in, list(prog_term)::in,
+    S::in, U::di, U::uo) is det <= output(S, U).
+
+mercury_format_plain_functor_args_nq(VarTable, VarNamePrint,
+        NextToGraphicToken, Functor, Args, S, !U) :-
+    (
+        Args = [],
+        mercury_format_bracketed_constant_ngt(NextToGraphicToken,
+            Functor, S, !U)
+    ;
+        Args = [HeadArg | TailArgs],
+        mercury_format_constant(NextToGraphicToken, Functor, S, !U),
+        add_string("(", S, !U),
+        mercury_format_comma_separated_terms(VarTable, VarNamePrint,
+            HeadArg, TailArgs, S, !U),
+        add_string(")", S, !U)
+    ).
+
+%---------------------%
 
 :- pred mercury_format_list_args_vs(varset(T)::in, var_name_print::in,
     term(T)::in, S::in, U::di, U::uo) is det <= output(S, U).
@@ -955,27 +987,7 @@ string_graphic_chars_acc(Char, !Graphic, !NonGraphic) :-
 %
 
 mercury_op(Op) :-
-    ops.mercury_op_table_search_op(Op).
-
-:- pred mercury_binary_prefix_op(string::in) is semidet.
-
-mercury_binary_prefix_op(Op) :-
-    ops.mercury_op_table_search_binary_prefix_op(Op, _, _, _).
-
-:- pred mercury_infix_op(string::in) is semidet.
-
-mercury_infix_op(Op) :-
-    ops.mercury_op_table_search_infix_op(Op, _, _, _).
-
-:- pred mercury_unary_prefix_op(string::in) is semidet.
-
-mercury_unary_prefix_op(Op) :-
-    ops.mercury_op_table_search_prefix_op(Op, _, _).
-
-:- pred mercury_unary_postfix_op(string::in) is semidet.
-
-mercury_unary_postfix_op(Op) :-
-    ops.mercury_op_table_search_postfix_op(Op, _, _).
+    ops.mercury_op_table_is_op(Op).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_tree_out_term.

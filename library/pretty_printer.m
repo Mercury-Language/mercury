@@ -983,8 +983,8 @@ expand_format_op(Op, Args, EnclosingPriority, Docs) :-
     % wrap an open_group/close_group pair around the argument.
     (
         Args = [ArgA],
-        ops.mercury_op_table_search_op_infos(Op, OpInfo, OtherOpInfos),
-        ( if op_infos_prefix_op(OpInfo, OtherOpInfos, Pri, GtOrGeA) then
+        ops.mercury_op_table_search_op_infos(Op, OpInfos),
+        ( if OpInfos ^ oi_prefix = pre(Pri, GtOrGeA) then
             OpPriority = Pri,
             PriorityArgA = min_priority_for_arg(OpPriority, GtOrGeA),
             Docs0 = [
@@ -994,7 +994,7 @@ expand_format_op(Op, Args, EnclosingPriority, Docs) :-
                 format_univ(ArgA),
                 pp_internal(close_group)
             ]
-        else if op_infos_postfix_op(OpInfo, OtherOpInfos, Pri, GtOrGeA) then
+        else if OpInfos ^ oi_postfix = post(Pri, GtOrGeA) then
             OpPriority = Pri,
             PriorityArgA = min_priority_for_arg(OpPriority, GtOrGeA),
             Docs0 = [
@@ -1009,10 +1009,9 @@ expand_format_op(Op, Args, EnclosingPriority, Docs) :-
         )
     ;
         Args = [ArgA, ArgB],
-        ops.mercury_op_table_search_op_infos(Op, OpInfo, OtherOpInfos),
+        ops.mercury_op_table_search_op_infos(Op, OpInfos),
         ( if
-            op_infos_infix_op(OpInfo, OtherOpInfos, Pri,
-                GtOrGeA, GtOrGeB)
+            OpInfos ^ oi_infix = in(Pri, GtOrGeA, GtOrGeB)
         then
             OpPriority = Pri,
             PriorityArgA = min_priority_for_arg(OpPriority, GtOrGeA),
@@ -1034,8 +1033,7 @@ expand_format_op(Op, Args, EnclosingPriority, Docs) :-
                 pp_internal(close_group)
             ]
         else if
-            op_infos_binary_prefix_op(OpInfo, OtherOpInfos, Pri,
-                GtOrGeA, GtOrGeB)
+            OpInfos ^ oi_binary_prefix = bin_pre(Pri, GtOrGeA, GtOrGeB)
         then
             OpPriority = Pri,
             PriorityArgA = min_priority_for_arg(OpPriority, GtOrGeA),

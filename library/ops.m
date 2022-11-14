@@ -26,18 +26,47 @@
 :- module ops.
 :- interface.
 
-:- import_module list.
-
 %---------------------------------------------------------------------------%
 
-    % A class describes what structure terms constructed with an operator
-    % of that class are allowed to take.
+    % An operator table maps strings (the operators themselves) to a value
+    % of this type.
     %
-:- type class
-    --->    infix(arg_prio_gt_or_ge, arg_prio_gt_or_ge)          % term Op term
-    ;       prefix(arg_prio_gt_or_ge)                            % Op term
-    ;       binary_prefix(arg_prio_gt_or_ge, arg_prio_gt_or_ge)  % Op term term
-    ;       postfix(arg_prio_gt_or_ge).                          % term Op
+    % If the string is an infix operator (term Op term), the info
+    % about it is stored in the first field.
+    %
+    % If the string is a binary prefix operator (Op term term), the info
+    % about it is stored in the second field.
+    %
+    % If the string is a prefix operator (Op term), the info
+    % about it is stored in the third field.
+    %
+    % If the string is a postfix operator (term Op), the info
+    % about it is stored in the fourth field.
+    %
+    % At least one of the fields should contain operator information.
+:- type op_infos
+    --->    op_infos(
+                oi_infix            :: maybe_op_info_infix,
+                oi_binary_prefix    :: maybe_op_info_binary_prefix,
+                oi_prefix           :: maybe_op_info_prefix,
+                oi_postfix          :: maybe_op_info_postfix
+            ).
+
+:- type maybe_op_info_infix
+    --->    no_in
+    ;       in(priority, arg_prio_gt_or_ge, arg_prio_gt_or_ge).
+
+:- type maybe_op_info_binary_prefix
+    --->    no_bin_pre
+    ;       bin_pre(priority, arg_prio_gt_or_ge, arg_prio_gt_or_ge).
+
+:- type maybe_op_info_prefix
+    --->    no_pre
+    ;       pre(priority, arg_prio_gt_or_ge).
+
+:- type maybe_op_info_postfix
+    --->    no_post
+    ;       post(priority, arg_prio_gt_or_ge).
 
     % When a term appears as an argument of an operator, values of this type
     % specify the relationship that must hold between the priority of the
@@ -68,12 +97,6 @@
     %
 :- type priority
     --->    prio(uint).
-
-:- type op_info
-    --->    op_info(
-                class,
-                priority
-            ).
 
     % min_priority_for_arg(OpPriority, GtOrGe) = MinArgPriority:
     %
@@ -140,12 +163,10 @@
     pred is_op(Table::in, string::in) is semidet,
 
         % Check whether a string is the name of an operator, and if it is,
-        % return the op_info describing that operator in the third argument.
-        % If the string is the name of more than one operator, return
-        % information about its other guises in the last argument.
+        % return the op_infos describing that operator, in all its guises,
+        % in the third argument.
         %
-    pred lookup_op_infos(Table::in, string::in,
-        op_info::out, list(op_info)::out) is semidet,
+    pred lookup_op_infos(Table::in, string::in, op_infos::out) is semidet,
 
         % Operator terms are terms of the form `X `Op` Y', where `Op' is
         % a variable or a name and X and Y are terms. If operator terms
@@ -211,9 +232,8 @@
     priority::out, arg_prio_gt_or_ge::out, arg_prio_gt_or_ge::out) is semidet.
 :- pred mercury_op_table_search_postfix_op(string::in,
     priority::out, arg_prio_gt_or_ge::out) is semidet.
-:- pred mercury_op_table_search_op(string::in) is semidet.
-:- pred mercury_op_table_search_op_infos(string::in,
-    op_info::out, list(op_info)::out) is semidet.
+:- pred mercury_op_table_is_op(string::in) is semidet.
+:- pred mercury_op_table_search_op_infos(string::in, op_infos::out) is semidet.
 :- pred mercury_op_table_lookup_operator_term(priority::out,
     arg_prio_gt_or_ge::out, arg_prio_gt_or_ge::out) is det.
 :- func mercury_op_table_universal_priority = priority.
@@ -231,13 +251,13 @@
     % This allows the cost of the table lookup to be paid just once
     % even if you are looking for more than one kind of op.
     %
-:- pred op_infos_infix_op(op_info::in, list(op_info)::in,
+:- pred op_infos_infix_op(op_infos::in,
     priority::out, arg_prio_gt_or_ge::out, arg_prio_gt_or_ge::out) is semidet.
-:- pred op_infos_prefix_op(op_info::in, list(op_info)::in,
+:- pred op_infos_prefix_op(op_infos::in,
     priority::out, arg_prio_gt_or_ge::out) is semidet.
-:- pred op_infos_binary_prefix_op(op_info::in, list(op_info)::in,
+:- pred op_infos_binary_prefix_op(op_infos::in,
     priority::out, arg_prio_gt_or_ge::out, arg_prio_gt_or_ge::out) is semidet.
-:- pred op_infos_postfix_op(op_info::in, list(op_info)::in,
+:- pred op_infos_postfix_op(op_infos::in,
     priority::out, arg_prio_gt_or_ge::out) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -338,7 +358,7 @@ init_mercury_op_table = ops.mercury_op_table.
     pred(lookup_binary_prefix_op/5) is  lookup_mercury_binary_prefix_op,
     pred(lookup_postfix_op/4) is        lookup_mercury_postfix_op,
     pred(is_op/2) is                    is_mercury_op,
-    pred(lookup_op_infos/4) is          lookup_mercury_op_infos,
+    pred(lookup_op_infos/3) is          lookup_mercury_op_infos,
     pred(lookup_operator_term/4) is     lookup_mercury_operator_term,
     func(universal_priority/1) is       mercury_universal_priority,
     func(loosest_op_priority/1) is      mercury_loosest_op_priority,
@@ -377,13 +397,13 @@ lookup_mercury_postfix_op(_OpTable, Name, OpPriority, LeftGtOrGe) :-
 :- pred is_mercury_op(mercury_op_table::in, string::in) is semidet.
 
 is_mercury_op(_OpTable, Name) :-
-    mercury_op_table_search_op(Name).
+    mercury_op_table_is_op(Name).
 
 :- pred lookup_mercury_op_infos(mercury_op_table::in, string::in,
-    op_info::out, list(op_info)::out) is semidet.
+    op_infos::out) is semidet.
 
-lookup_mercury_op_infos(_OpTable, Name, Info, OtherInfos) :-
-    mercury_op_table_search_op_infos(Name, Info, OtherInfos).
+lookup_mercury_op_infos(_OpTable, Name, OpInfos) :-
+    mercury_op_table_search_op_infos(Name, OpInfos).
 
 :- pred lookup_mercury_operator_term(mercury_op_table::in,
     priority::out, arg_prio_gt_or_ge::out, arg_prio_gt_or_ge::out) is det.
@@ -422,8 +442,8 @@ mercury_arg_priority(_Table) =
 :- pragma inline(pred(mercury_op_table_search_prefix_op/3)).
 :- pragma inline(pred(mercury_op_table_search_binary_prefix_op/4)).
 :- pragma inline(pred(mercury_op_table_search_postfix_op/3)).
-:- pragma inline(pred(mercury_op_table_search_op/1)).
-:- pragma inline(pred(mercury_op_table_search_op_infos/3)).
+:- pragma inline(pred(mercury_op_table_is_op/1)).
+:- pragma inline(pred(mercury_op_table_search_op_infos/2)).
 :- pragma inline(pred(mercury_op_table_lookup_operator_term/3)).
 :- pragma inline(func(mercury_op_table_universal_priority/0)).
 :- pragma inline(func(mercury_op_table_loosest_op_priority/0)).
@@ -432,29 +452,27 @@ mercury_arg_priority(_Table) =
 :- pragma inline(func(mercury_op_table_arg_priority/0)).
 
 mercury_op_table_search_infix_op(Name, OpPriority, LeftGtOrGe, RightGtOrGe) :-
-    ops.mercury_op_table(Name, Info, MaybeOtherInfo),
-    op_infos_infix_op(Info, MaybeOtherInfo, OpPriority,
-        LeftGtOrGe, RightGtOrGe).
+    ops.mercury_op_table(Name, OpInfos),
+    op_infos_infix_op(OpInfos, OpPriority, LeftGtOrGe, RightGtOrGe).
 
 mercury_op_table_search_prefix_op(Name, OpPriority, LeftGtOrGe) :-
-    ops.mercury_op_table(Name, Info, MaybeOtherInfo),
-    op_infos_prefix_op(Info, MaybeOtherInfo, OpPriority, LeftGtOrGe).
+    ops.mercury_op_table(Name, OpInfos),
+    op_infos_prefix_op(OpInfos, OpPriority, LeftGtOrGe).
 
 mercury_op_table_search_binary_prefix_op(Name, OpPriority,
         LeftGtOrGe, RightGtOrGe) :-
-    ops.mercury_op_table(Name, Info, MaybeOtherInfo),
-    op_infos_binary_prefix_op(Info, MaybeOtherInfo, OpPriority,
-        LeftGtOrGe, RightGtOrGe).
+    ops.mercury_op_table(Name, OpInfos),
+    op_infos_binary_prefix_op(OpInfos, OpPriority, LeftGtOrGe, RightGtOrGe).
 
 mercury_op_table_search_postfix_op(Name, OpPriority, LeftGtOrGe) :-
-    ops.mercury_op_table(Name, Info, MaybeOtherInfo),
-    op_infos_postfix_op(Info, MaybeOtherInfo, OpPriority, LeftGtOrGe).
+    ops.mercury_op_table(Name, OpInfos),
+    op_infos_postfix_op(OpInfos, OpPriority, LeftGtOrGe).
 
-mercury_op_table_search_op(Name) :-
-    ops.mercury_op_table(Name, _, _).
+mercury_op_table_is_op(Name) :-
+    ops.mercury_op_table(Name, _).
 
-mercury_op_table_search_op_infos(Name, Info, OtherInfos) :-
-    ops.mercury_op_table(Name, Info, OtherInfos).
+mercury_op_table_search_op_infos(Name, OpInfos) :-
+    ops.mercury_op_table(Name, OpInfos).
 
 mercury_op_table_lookup_operator_term(prio(1380u), arg_ge, arg_gt).
     % Left associative, lower priority than everything except record syntax.
@@ -471,82 +489,27 @@ mercury_op_table_arg_priority = prio(501u).
 
 %---------------------------------------------------------------------------%
 
-op_infos_infix_op(Info, MaybeOtherInfo, OpPriority,
-        LeftGtOrGe, RightGtOrGe) :-
-    ( if
-        Info = op_info(Class, OpPriorityPrime),
-        Class = infix(LeftGtOrGePrime, RightGtOrGePrime)
-    then
-        LeftGtOrGe = LeftGtOrGePrime,
-        RightGtOrGe = RightGtOrGePrime,
-        OpPriority = OpPriorityPrime
-    else if
-        MaybeOtherInfo = [op_info(Class, OpPriorityPrime)],
-        Class = infix(LeftGtOrGePrime, RightGtOrGePrime)
-    then
-        LeftGtOrGe = LeftGtOrGePrime,
-        RightGtOrGe = RightGtOrGePrime,
-        OpPriority = OpPriorityPrime
-    else
-        fail
-    ).
+op_infos_infix_op(OpInfos, OpPriority, LeftGtOrGe, RightGtOrGe) :-
+    OpInfos = op_infos(MaybeInfix, _, _, _),
+    MaybeInfix = in(OpPriority, LeftGtOrGe, RightGtOrGe).
 
-op_infos_prefix_op(Info, MaybeOtherInfo, OpPriority, LeftGtOrGe) :-
-    ( if
-        Info = op_info(prefix(LeftGtOrGePrime), OpPriorityPrime)
-    then
-        LeftGtOrGe = LeftGtOrGePrime,
-        OpPriority = OpPriorityPrime
-    else if
-        MaybeOtherInfo = [op_info(prefix(LeftGtOrGePrime), OpPriorityPrime)]
-    then
-        LeftGtOrGe = LeftGtOrGePrime,
-        OpPriority = OpPriorityPrime
-    else
-        fail
-    ).
+op_infos_prefix_op(OpInfos, OpPriority, LeftGtOrGe) :-
+    OpInfos = op_infos(_, _, MaybePrefix, _),
+    MaybePrefix = pre(OpPriority, LeftGtOrGe).
 
-op_infos_binary_prefix_op(Info, MaybeOtherInfo, OpPriority,
-        LeftGtOrGe, RightGtOrGe) :-
-    ( if
-        Info = op_info(Class, OpPriorityPrime),
-        Class = binary_prefix(LeftGtOrGePrime, RightGtOrGePrime)
-    then
-        LeftGtOrGe = LeftGtOrGePrime,
-        RightGtOrGe = RightGtOrGePrime,
-        OpPriority = OpPriorityPrime
-    else if
-        MaybeOtherInfo = [op_info(Class, OpPriorityPrime)],
-        Class = binary_prefix(LeftGtOrGePrime, RightGtOrGePrime)
-    then
-        LeftGtOrGe = LeftGtOrGePrime,
-        RightGtOrGe = RightGtOrGePrime,
-        OpPriority = OpPriorityPrime
-    else
-        fail
-    ).
+op_infos_binary_prefix_op(OpInfos, OpPriority, LeftGtOrGe, RightGtOrGe) :-
+    OpInfos = op_infos(_, MaybeBinPrefix, _, _),
+    MaybeBinPrefix = bin_pre(OpPriority, LeftGtOrGe, RightGtOrGe).
 
-op_infos_postfix_op(Info, MaybeOtherInfo, OpPriority, LeftGtOrGe) :-
-    ( if
-        Info = op_info(postfix(LeftGtOrGePrime), OpPriorityPrime)
-    then
-        LeftGtOrGe = LeftGtOrGePrime,
-        OpPriority = OpPriorityPrime
-    else if
-        MaybeOtherInfo = [op_info(postfix(LeftGtOrGePrime), OpPriorityPrime)]
-    then
-        LeftGtOrGe = LeftGtOrGePrime,
-        OpPriority = OpPriorityPrime
-    else
-        fail
-    ).
+op_infos_postfix_op(OpInfos, OpPriority, LeftGtOrGe) :-
+    OpInfos = op_infos(_, _, _, MaybePostfix),
+    MaybePostfix = post(OpPriority, LeftGtOrGe).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_op_table(string::in, op_info::out, list(op_info)::out)
-    is semidet.
+:- pred mercury_op_table(string::in, op_infos::out) is semidet.
 
-mercury_op_table(Op, Info, OtherInfos) :-
+mercury_op_table(Op, OpInfos) :-
     % NOTE: Changes here may require changes to doc/reference_manual.texi.
 
     % The following operators are not useful in Mercury, and are provided
@@ -566,151 +529,116 @@ mercury_op_table(Op, Info, OtherInfos) :-
 
     (
     % The following symbols represent more than one operator.
-    % NOTE: The code of several other predicates above depends on the fact
-    % that no symbol represents more than *two* operators, by assuming that
-    % the length of OtherInfos cannot exceed one.
 
         Op = "+",
-        Info = op_info(infix(arg_ge, arg_gt), prio(1000u)),
-        % standard ISO Prolog
-        OtherInfos = [op_info(prefix(arg_gt), prio(1000u))]
-        % traditional Prolog (not ISO)
+        OpInfos = op_infos(
+            % standard ISO Prolog
+            in(prio(1000u), arg_ge, arg_gt), no_bin_pre,
+            % traditional Prolog (not ISO)
+            pre(prio(1000u), arg_gt), no_post
+        )
     ;
         Op = "-",
-        Info = op_info(infix(arg_ge, arg_gt), prio(1000u)),
-        % standard ISO Prolog
-        OtherInfos = [op_info(prefix(arg_gt), prio(1300u))]
-        % standard ISO Prolog
+        OpInfos = op_infos(
+            % standard ISO Prolog
+            in(prio(1000u), arg_ge, arg_gt), no_bin_pre,
+            % standard ISO Prolog
+            pre(prio(1300u), arg_gt), no_post
+        )
     ;
         Op = ":-",
-        Info = op_info(infix(arg_gt, arg_gt), prio(300u)),
-        % standard ISO Prolog
-        OtherInfos = [op_info(prefix(arg_gt), prio(300u))]
-        % standard ISO Prolog
+        OpInfos = op_infos(
+            % standard ISO Prolog
+            in(prio(300u), arg_gt, arg_gt), no_bin_pre,
+            % standard ISO Prolog
+            pre(prio(300u), arg_gt), no_post
+        )
     ;
         Op = "^",
-        Info = op_info(infix(arg_gt, arg_ge), prio(1401u)),
-        % ISO Prolog (prec. prio(1300u), bitwise xor), Mercury (record syntax)
-        OtherInfos = [op_info(prefix(arg_gt), prio(1400u))]
-        % Mercury extension (record syntax)
+        OpInfos = op_infos(
+            % ISO Prolog (prec. prio(1300u), bitwise xor),
+            % Mercury (record syntax)
+            in(prio(1401u), arg_gt, arg_ge), no_bin_pre,
+            % Mercury extension (record syntax)
+            pre(prio(1400u), arg_gt), no_post
+        )
     ;
     % The remaining symbols all represent just one operator.
 
+        % First, the infix operators.
+
         % The following operators are standard ISO Prolog.
-        ( Op = "*",     Info = op_info(infix(arg_ge, arg_gt),     prio(1100u))
-        ; Op = "**",    Info = op_info(infix(arg_gt, arg_ge),     prio(1300u))
-        ; Op = ",",     Info = op_info(infix(arg_gt, arg_ge),
-                                            mercury_op_table_comma_priority)
-        ; Op = "-->",   Info = op_info(infix(arg_gt, arg_gt),     prio(300u))
-        ; Op = "->",    Info = op_info(infix(arg_gt, arg_ge),     prio(450u))
-        ; Op = "/",     Info = op_info(infix(arg_ge, arg_gt),     prio(1100u))
-        ; Op = "//",    Info = op_info(infix(arg_ge, arg_gt),     prio(1100u))
-        ; Op = "/\\",   Info = op_info(infix(arg_ge, arg_gt),     prio(1000u))
-        ; Op = ";",     Info = op_info(infix(arg_gt, arg_ge),     prio(400u))
-        ; Op = "<",     Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = "<<",    Info = op_info(infix(arg_ge, arg_gt),     prio(1100u))
-        ; Op = "=",     Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = "=..",   Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = "=:=",   Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = "=<",    Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = "==",    Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = "=\\=",  Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = ">",     Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = ">=",    Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = ">>",    Info = op_info(infix(arg_ge, arg_gt),     prio(1100u))
-        ; Op = "?-",    Info = op_info(prefix(arg_gt),            prio(300u))
-        ; Op = "@<",    Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = "@=<",   Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = "@>",    Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = "@>=",   Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = "\\",    Info = op_info(prefix(arg_gt),            prio(1300u))
-        ; Op = "\\+",   Info = op_info(prefix(arg_ge),            prio(600u))
-        ; Op = "\\/",   Info = op_info(infix(arg_ge, arg_gt),     prio(1000u))
-        ; Op = "\\=",   Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = "\\==",  Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = "div",   Info = op_info(infix(arg_ge, arg_gt),     prio(1100u))
-        ; Op = "is",    Info = op_info(infix(arg_gt, arg_gt),     prio(799u))
-                                                                    % ISO 800u
-        ; Op = "mod",   Info = op_info(infix(arg_gt, arg_gt),     prio(1100u))
-        ; Op = "rem",   Info = op_info(infix(arg_gt, arg_gt),     prio(1100u))
-        ),
-        OtherInfos = []
-    ;
-        % The following operator is a Goedel extension.
-        Op = "~",       Info = op_info(prefix(arg_ge),            prio(600u)),
-        OtherInfos = []
-    ;
+        ( Op = "*",         Infix = in(prio(1100u), arg_ge, arg_gt)
+        ; Op = "**",        Infix = in(prio(1300u), arg_gt, arg_ge)
+        ; Op = ",",         Infix = in(mercury_op_table_comma_priority,
+                                        arg_gt, arg_ge)
+        ; Op = "-->",       Infix = in(prio(300u),  arg_gt, arg_gt)
+        ; Op = "->",        Infix = in(prio(450u),  arg_gt, arg_ge)
+        ; Op = "/",         Infix = in(prio(1100u), arg_ge, arg_gt)
+        ; Op = "//",        Infix = in(prio(1100u), arg_ge, arg_gt)
+        ; Op = "/\\",       Infix = in(prio(1000u), arg_ge, arg_gt)
+        ; Op = ";",         Infix = in(prio(400u),  arg_gt, arg_ge)
+        ; Op = "<",         Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = "<<",        Infix = in(prio(1100u), arg_ge, arg_gt)
+        ; Op = "=",         Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = "=..",       Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = "=:=",       Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = "=<",        Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = "==",        Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = "=\\=",      Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = ">",         Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = ">=",        Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = ">>",        Infix = in(prio(1100u), arg_ge, arg_gt)
+        ; Op = "@<",        Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = "@=<",       Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = "@>",        Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = "@>=",       Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = "\\/",       Infix = in(prio(1000u), arg_ge, arg_gt)
+        ; Op = "\\=",       Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = "\\==",      Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = "div",       Infix = in(prio(1100u), arg_ge, arg_gt)
+        ; Op = "is",        Infix = in(prio(799u),  arg_gt, arg_gt) % ISO 800u
+        ; Op = "mod",       Infix = in(prio(1100u), arg_gt, arg_gt)
+        ; Op = "rem",       Infix = in(prio(1100u), arg_gt, arg_gt)
         % The following operators are NU-Prolog extensions.
-        ( Op = "~=",    Info = op_info(infix(arg_gt, arg_gt),     prio(800u))
-        ; Op = "and",   Info = op_info(infix(arg_gt, arg_ge),     prio(780u))
-        ; Op = "or",    Info = op_info(infix(arg_gt, arg_ge),     prio(760u))
-        ; Op = "rule",  Info = op_info(prefix(arg_gt),            prio(301u))
-        ; Op = "when",  Info = op_info(infix(arg_gt, arg_gt),     prio(600u))
-        ; Op = "where", Info = op_info(infix(arg_gt, arg_gt),     prio(325u))
-        ),
-        OtherInfos = []
-    ;
+        ; Op = "~=",        Infix = in(prio(800u),  arg_gt, arg_gt)
+        ; Op = "and",       Infix = in(prio(780u),  arg_gt, arg_ge)
+        ; Op = "or",        Infix = in(prio(760u),  arg_gt, arg_ge)
+        ; Op = "when",      Infix = in(prio(600u),  arg_gt, arg_gt)
+        ; Op = "where",     Infix = in(prio(325u),  arg_gt, arg_gt)
         % The following operators are Mercury/NU-Prolog extensions.
-        ( Op = "<=",    Info = op_info(infix(arg_gt, arg_ge),     prio(580u))
-        ; Op = "<=>",   Info = op_info(infix(arg_gt, arg_ge),     prio(580u))
-        ; Op = "=>",    Info = op_info(infix(arg_gt, arg_ge),     prio(580u))
-        ; Op = "all",   Info = op_info(binary_prefix(arg_gt, arg_ge),
-                                                                  prio(550u))
-        ; Op = "some",  Info = op_info(binary_prefix(arg_gt, arg_ge),
-                                                                  prio(550u))
-        ; Op = "if",    Info = op_info(prefix(arg_gt), prio(340u))
-        ; Op = "then",  Info = op_info(infix(arg_gt, arg_gt),     prio(350u))
-        ; Op = "else",  Info = op_info(infix(arg_gt, arg_ge),     prio(330u))
-        ; Op = "catch", Info = op_info(infix(arg_gt, arg_ge),     prio(320u))
-        ; Op = "catch_any", Info = op_info(infix(arg_gt, arg_ge), prio(310u))
-        ; Op = "not",   Info = op_info(prefix(arg_ge),            prio(600u))
-        ; Op = "pred",  Info = op_info(prefix(arg_gt),            prio(700u))
-        ),
-        OtherInfos = []
-    ;
+        ; Op = "<=",        Infix = in(prio(580u),  arg_gt, arg_ge)
+        ; Op = "<=>",       Infix = in(prio(580u),  arg_gt, arg_ge)
+        ; Op = "=>",        Infix = in(prio(580u),  arg_gt, arg_ge)
+        ; Op = "then",      Infix = in(prio(350u),  arg_gt, arg_gt)
+        ; Op = "else",      Infix = in(prio(330u),  arg_gt, arg_ge)
+        ; Op = "catch",     Infix = in(prio(320u),  arg_gt, arg_ge)
+        ; Op = "catch_any", Infix = in(prio(310u),  arg_gt, arg_ge)
         % The following operators are Mercury extensions.
-        ( Op = "!",         Info = op_info(prefix(arg_gt),        prio(1460u))
-        ; Op = "!.",        Info = op_info(prefix(arg_gt),        prio(1460u))
-        ; Op = "!:",        Info = op_info(prefix(arg_gt),        prio(1460u))
-        ; Op = "&",         Info = op_info(infix(arg_gt, arg_ge), prio(475u))
-        ; Op = "++",        Info = op_info(infix(arg_gt, arg_ge), prio(1000u))
-        ; Op = "--",        Info = op_info(infix(arg_ge, arg_gt), prio(1000u))
-        ; Op = "--->",      Info = op_info(infix(arg_gt, arg_ge), prio(321u))
-        ; Op = ".",         Info = op_info(infix(arg_ge, arg_gt), prio(1490u))
-        ; Op = "..",        Info = op_info(infix(arg_gt, arg_gt), prio(950u))
-        ; Op = ":",         Info = op_info(infix(arg_ge, arg_gt), prio(1380u))
-        ; Op = "::",        Info = op_info(infix(arg_gt, arg_gt), prio(325u))
-        ; Op = ":=",        Info = op_info(infix(arg_gt, arg_gt), prio(850u))
-        ; Op = "==>",       Info = op_info(infix(arg_gt, arg_gt), prio(325u))
-        ; Op = "=^",        Info = op_info(infix(arg_gt, arg_gt), prio(850u))
-        ; Op = "@",         Info = op_info(infix(arg_gt, arg_gt), prio(1410u))
-        ; Op = "end_module", Info = op_info(prefix(arg_gt),       prio(301u))
-        ; Op = "event",     Info = op_info(prefix(arg_gt),        prio(1400u))
-        ; Op = "finalise",  Info = op_info(prefix(arg_gt),        prio(301u))
-        ; Op = "finalize",  Info = op_info(prefix(arg_gt),        prio(301u))
-        ; Op = "for",       Info = op_info(infix(arg_gt, arg_gt), prio(1000u))
-        ; Op = "func",      Info = op_info(prefix(arg_gt),        prio(700u))
-        ; Op = "import_module", Info = op_info(prefix(arg_gt),    prio(301u))
-        ; Op = "impure",    Info = op_info(prefix(arg_ge),        prio(700u))
-        ; Op = "include_module", Info = op_info(prefix(arg_gt),   prio(301u))
-        ; Op = "initialise", Info = op_info(prefix(arg_gt),       prio(301u))
-        ; Op = "initialize", Info = op_info(prefix(arg_gt),       prio(301u))
-        ; Op = "inst",      Info = op_info(prefix(arg_gt),        prio(301u))
-        ; Op = "instance",  Info = op_info(prefix(arg_gt),        prio(301u))
-        ; Op = "mode",      Info = op_info(prefix(arg_gt),        prio(301u))
-        ; Op = "module",    Info = op_info(prefix(arg_gt),        prio(301u))
-        ; Op = "or_else",   Info = op_info(infix(arg_gt, arg_ge), prio(400u))
-        ; Op = "pragma",    Info = op_info(prefix(arg_gt),        prio(301u))
-        ; Op = "promise",   Info = op_info(prefix(arg_gt),        prio(301u))
-        ; Op = "semipure",  Info = op_info(prefix(arg_ge),        prio(700u))
-        ; Op = "solver",    Info = op_info(prefix(arg_ge),        prio(319u))
-        ; Op = "type",      Info = op_info(prefix(arg_gt),        prio(320u))
-        ; Op = "typeclass", Info = op_info(prefix(arg_gt),        prio(301u))
-        ; Op = "use_module", Info = op_info(prefix(arg_gt),       prio(301u))
+        ; Op = "&",         Infix = in(prio(475u),  arg_gt, arg_ge)
+        ; Op = "++",        Infix = in(prio(1000u), arg_gt, arg_ge)
+        ; Op = "--",        Infix = in(prio(1000u), arg_ge, arg_gt)
+        ; Op = "--->",      Infix = in(prio(321u),  arg_gt, arg_ge)
+        ; Op = ".",         Infix = in(prio(1490u), arg_ge, arg_gt)
+        ; Op = "..",        Infix = in(prio(950u),  arg_gt, arg_gt)
+        ; Op = ":",         Infix = in(prio(1380u), arg_ge, arg_gt)
+        ; Op = "::",        Infix = in(prio(325u),  arg_gt, arg_gt)
+        ; Op = ":=",        Infix = in(prio(850u),  arg_gt, arg_gt)
+        ; Op = "==>",       Infix = in(prio(325u),  arg_gt, arg_gt)
+        ; Op = "=^",        Infix = in(prio(850u),  arg_gt, arg_gt)
+        ; Op = "@",         Infix = in(prio(1410u), arg_gt, arg_gt)
+        ; Op = "for",       Infix = in(prio(1000u), arg_gt, arg_gt)
+        ; Op = "or_else",   Infix = in(prio(400u),  arg_gt, arg_ge)
         ),
-        OtherInfos = []
+        OpInfos = op_infos(Infix, no_bin_pre, no_pre, no_post)
     ;
-        ( Op = "arbitrary"
+        % Next, the binary prefix operators.
+
+        % The following operators are Mercury/NU-Prolog extensions.
+        ( Op = "all"
+        ; Op = "some"
+        % The following operators are Mercury extensions.
+        ; Op = "arbitrary"
         ; Op = "disable_warning"
         ; Op = "disable_warnings"
         ; Op = "promise_equivalent_solutions"
@@ -728,16 +656,60 @@ mercury_op_table(Op, Info, OtherInfos) :-
         ; Op = "atomic"
         ; Op = "try"
         ),
-        Info = op_info(binary_prefix(arg_gt, arg_ge), prio(550u)),
-        OtherInfos = []
+        BinPrefix = bin_pre(prio(550u), arg_gt, arg_ge),
+        OpInfos = op_infos(no_in, BinPrefix, no_pre, no_post)
     ;
+        % Next, the prefix operators.
+
+        % The following operators are standard ISO Prolog.
+        ( Op = "?-",                Prefix = pre(prio(300u),  arg_gt)
+        ; Op = "\\",                Prefix = pre(prio(1300u), arg_gt)
+        ; Op = "\\+",               Prefix = pre(prio(600u),  arg_ge)
+        % The following operator is a Goedel extension.
+        ; Op = "~",                 Prefix = pre(prio(600u),  arg_ge)
+        % The following operator is a NU-Prolog extension.
+        ; Op = "rule",              Prefix = pre(prio(301u),  arg_gt)
+        % The following operators are Mercury/NU-Prolog extensions.
+        ; Op = "if",                Prefix = pre(prio(340u),  arg_gt)
+        ; Op = "not",               Prefix = pre(prio(600u),  arg_ge)
+        ; Op = "pred",              Prefix = pre(prio(700u),  arg_gt)
+        % The following operators are Mercury extensions.
+        ; Op = "!",                 Prefix = pre(prio(1460u), arg_gt)
+        ; Op = "!.",                Prefix = pre(prio(1460u), arg_gt)
+        ; Op = "!:",                Prefix = pre(prio(1460u), arg_gt)
+        ; Op = "end_module",        Prefix = pre(prio(301u),  arg_gt)
+        ; Op = "event",             Prefix = pre(prio(1400u), arg_gt)
+        ; Op = "finalise",          Prefix = pre(prio(301u),  arg_gt)
+        ; Op = "finalize",          Prefix = pre(prio(301u),  arg_gt)
+        ; Op = "func",              Prefix = pre(prio(700u),  arg_gt)
+        ; Op = "import_module",     Prefix = pre(prio(301u),  arg_gt)
+        ; Op = "impure",            Prefix = pre(prio(700u),  arg_ge)
+        ; Op = "include_module",    Prefix = pre(prio(301u),  arg_gt)
+        ; Op = "initialise",        Prefix = pre(prio(301u),  arg_gt)
+        ; Op = "initialize",        Prefix = pre(prio(301u),  arg_gt)
+        ; Op = "inst",              Prefix = pre(prio(301u),  arg_gt)
+        ; Op = "instance",          Prefix = pre(prio(301u),  arg_gt)
+        ; Op = "mode",              Prefix = pre(prio(301u),  arg_gt)
+        ; Op = "module",            Prefix = pre(prio(301u),  arg_gt)
+        ; Op = "pragma",            Prefix = pre(prio(301u),  arg_gt)
+        ; Op = "promise",           Prefix = pre(prio(301u),  arg_gt)
+        ; Op = "semipure",          Prefix = pre(prio(700u),  arg_ge)
+        ; Op = "solver",            Prefix = pre(prio(319u),  arg_ge)
+        ; Op = "type",              Prefix = pre(prio(320u),  arg_gt)
+        ; Op = "typeclass",         Prefix = pre(prio(301u),  arg_gt)
+        ; Op = "use_module",        Prefix = pre(prio(301u),  arg_gt)
+        ),
+        OpInfos = op_infos(no_in, no_bin_pre, Prefix, no_post)
+    ;
+        % The following operators are Mercury extensions.
         ( Op = "promise_exclusive"
         ; Op = "promise_exhaustive"
         ; Op = "promise_exclusive_exhaustive"
         ),
-        Info = op_info(prefix(arg_ge), prio(550u)),
-        OtherInfos = []
+        Prefix = pre(prio(550u), arg_ge),
+        OpInfos = op_infos(no_in, no_bin_pre, Prefix, no_post)
     ;
+        % The following operators are Mercury extensions.
         ( Op = "promise_pure"
         ; Op = "promise_semipure"
         ; Op = "promise_impure"
@@ -750,8 +722,11 @@ mercury_op_table(Op, Info, OtherInfos) :-
         ; Op = "require_erroneous"
         ; Op = "require_failure"
         ),
-        Info = op_info(prefix(arg_gt), prio(550u)),
-        OtherInfos = []
+        Prefix = pre(prio(550u), arg_gt),
+        OpInfos = op_infos(no_in, no_bin_pre, Prefix, no_post)
+
+        % Last, the postfix operators.
+        % There are none.
     ).
 
 %---------------------------------------------------------------------------%
