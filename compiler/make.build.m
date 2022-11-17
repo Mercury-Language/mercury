@@ -286,8 +286,11 @@ make_write_error_streams(InputLines, LinesToWrite,
     ;
         InputLinesNotToWrite = [_ | _],
         io.output_stream_name(FullOutputStream, FullOutputFileName, !IO),
+        % We used to refer to the "error log" being truncated, but
+        % the compiler's output can also contain things that are *not*
+        % error messages, with progress messages being one example.
         io.format(PartialOutputStream,
-            "... error log truncated, see `%s' for the complete log.\n",
+            "... output log truncated, see `%s' for the complete log.\n",
             [s(FullOutputFileName)], !IO)
     ).
 
