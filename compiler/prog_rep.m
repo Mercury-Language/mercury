@@ -10,11 +10,11 @@
 % File: prog_rep.m.
 % Authors: zs, maclarty.
 %
-% This module generates a representation of HLDS goals for the declarative
-% debugger. Since this representation is to be included in debuggable
-% executables, it should be as compact as possible, and therefore contains
-% only the information required by the declarative debugger. The structure
-% of this representation is defined by mdbcomp/program_representation.m.
+% debugger and the deep profiler. Since this representation is to be included
+% in debuggable and deep-profilable executables, it should be as compact
+% as possible, and therefore contains only the information required by
+% its two clients. The structure of this representation is defined
+% by mdbcomp/program_representation.m.
 %
 %-----------------------------------------------------------------------------%
 
