@@ -107,6 +107,7 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -360,7 +361,8 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
                 quote("func(<arg_types>) = <ret_type>")],
             AllowPieces =
                 [quote("pred(<arg_types_modes>) is <detism>"), nl,
-                quote("func(<arg_types_modes>) = <ret_type_mode> is <detism>")],
+                quote("func(<arg_types_modes>) = " ++
+                    "<ret_type_mode> is <detism>")],
             (
                 AllowHOInstInfo = allow_ho_inst_info,
                 FormPieces = AlwaysPieces ++ [nl | AllowPieces]

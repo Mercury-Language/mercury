@@ -1624,7 +1624,8 @@ mode_error_unexpected_final_inst_to_spec(ModeInfo, RawArgNum, Var,
     ArgNum = RawArgNum - NumPolyAddedArgs,
     ( if ArgNum >= 1 then
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-        pred_form_arity(PredFormArityInt) = pred_info_pred_form_arity(PredInfo),
+        pred_form_arity(PredFormArityInt) =
+            pred_info_pred_form_arity(PredInfo),
         ( if
             PredOrFunc = pf_function,
             ArgNum = PredFormArityInt

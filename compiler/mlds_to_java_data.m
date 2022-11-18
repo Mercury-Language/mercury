@@ -1063,8 +1063,9 @@ output_initializer_for_java(Info, Stream, OutputAux, Indent, Type,
         (
             OutputAux = oa_force_init,
             % Local variables need to be initialised to avoid warnings.
+            InitForType = get_default_initializer_for_java(Type),
             io.write_string(Stream, " = ", !IO),
-            io.write_string(Stream, get_default_initializer_for_java(Type), !IO)
+            io.write_string(Stream, InitForType, !IO)
         ;
             ( OutputAux = oa_none
             ; OutputAux = oa_cname(_, _)

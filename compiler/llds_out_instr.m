@@ -725,7 +725,8 @@ output_instruction(Info, Stream, Instr, LabelOutputInfo, !IO) :-
                     output_lval_as_word(Info, Stream, FlagLval, !IO)
                 ;
                     MaybeFlagLval = no,
-                    io.write_string(Stream, "MR_tag_reuse_or_alloc_heap(", !IO),
+                    io.write_string(Stream,
+                        "MR_tag_reuse_or_alloc_heap(", !IO),
                     output_lval_as_word(Info, Stream, Lval, !IO),
                     io.write_string(Stream, ", ", !IO),
                     output_ptag(Stream, Ptag, !IO)

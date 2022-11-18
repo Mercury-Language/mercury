@@ -37,7 +37,8 @@
     % Write out the given indent level (indent_increment spaces per indent).
     % error_util.m
     %
-:- pred write_indent(io.text_output_stream::in, int::in, io::di, io::uo) is det.
+:- pred write_indent(io.text_output_stream::in, int::in,
+    io::di, io::uo) is det.
 
     % Return the indent for the given level as a string.
     %
@@ -376,11 +377,13 @@ pf_sym_name_user_arity_to_string(PredOrFunc, SymName, Arity) = Str :-
 pf_sym_name_user_arity_to_unquoted_string(PFSymNameArity) = Str :-
     PFSymNameArity =
         pred_pf_name_arity(PredOrFunc, SymName, user_arity(Arity)),
-    Str = pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SymName, Arity).
+    Str =
+        pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SymName, Arity).
 
 pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SNA) = Str :-
     SNA = sym_name_arity(SymName, Arity),
-    Str = pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SymName, Arity).
+    Str =
+        pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SymName, Arity).
 
 pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SymName, Arity) = Str :-
     PredOrFuncStr = pred_or_func_to_string(PredOrFunc),

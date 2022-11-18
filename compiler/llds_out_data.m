@@ -109,7 +109,8 @@
 
     % Write out the given ptag, wrapped up in MR_mktag(_).
     %
-:- pred output_ptag(io.text_output_stream::in, ptag::in, io::di, io::uo) is det.
+:- pred output_ptag(io.text_output_stream::in, ptag::in,
+    io::di, io::uo) is det.
 
     % Write out the given ptag.
     %

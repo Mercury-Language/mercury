@@ -178,7 +178,8 @@ marker_string(marker_comment) = "".
 
 %---------------------------------------------------------------------------%
 
-indent_line_after_context(Stream, OutputLineNumbers, Marker, Context, N, !IO) :-
+indent_line_after_context(Stream, OutputLineNumbers, Marker, Context,
+        N, !IO) :-
     output_context_for_java(Stream, OutputLineNumbers, Marker, Context, !IO),
     output_n_indents(Stream, N, !IO).
 

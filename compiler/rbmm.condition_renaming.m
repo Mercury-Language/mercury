@@ -206,7 +206,9 @@ collect_non_local_and_in_cond_regions_proc(ModuleInfo, PredId,
         else
             ResurRenamingProc = map.init
         ),
-        ( if map.search(ResurRenamingAnnoTable, PPId, ResurRenamingAnnoProc0) then
+        ( if
+            map.search(ResurRenamingAnnoTable, PPId, ResurRenamingAnnoProc0)
+        then
             ResurRenamingAnnoProc = ResurRenamingAnnoProc0
         else
             ResurRenamingAnnoProc = map.init

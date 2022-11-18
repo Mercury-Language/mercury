@@ -104,8 +104,9 @@
     % not just its path name, but also an open stream reading from it.
     % Closing that stream is the caller's responsibility.
     %
-:- pred search_for_module_source_and_stream(list(dir_name)::in, module_name::in,
-    maybe_error(path_name_and_stream)::out, io::di, io::uo) is det.
+:- pred search_for_module_source_and_stream(list(dir_name)::in,
+    module_name::in, maybe_error(path_name_and_stream)::out,
+    io::di, io::uo) is det.
 
     % Read the first item from the given file to find the module name.
     %

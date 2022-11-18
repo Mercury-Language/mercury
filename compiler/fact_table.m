@@ -3338,8 +3338,8 @@ generate_hash_float_code(FactTableSize, PredName, VarName, LabelName, LabelNum,
     list(fact_arg_type)::in, list(fact_table_var)::in, int::in,
     string::out) is det.
 
-generate_hash_string_code(FactTableSize, PredName, VarName, LabelName, LabelNum,
-        Types, FactTableVars, ArgNum, Code) :-
+generate_hash_string_code(FactTableSize, PredName, VarName,
+        LabelName, LabelNum, Types, FactTableVars, ArgNum, Code) :-
     TestKeys =
         test_keys(FactTableSize, PredName, Types, FactTableVars, ArgNum),
     generate_hash_lookup_code(VarName, LabelName, LabelNum,

@@ -188,7 +188,8 @@ frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo0,
             [], TypeClassSpecs),
         TypeClassErrors = contains_errors(Globals, TypeClassSpecs),
         !:Specs = TypeClassSpecs ++ !.Specs,
-        maybe_dump_hlds(ProgressStream, !.HLDS, 5, "typeclass", !DumpInfo, !IO),
+        maybe_dump_hlds(ProgressStream, !.HLDS, 5, "typeclass",
+            !DumpInfo, !IO),
         set_module_recompilation_info(QualInfo, !HLDS),
         (
             TypeClassErrors = yes,
@@ -679,7 +680,8 @@ frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS, FoundError,
 
     main_polymorphism_pass(ProgressStream, ErrorStream, Verbose, Stats,
         ExistsCastPredIds, PolySafeToContinue, !HLDS, !Specs, !IO),
-    maybe_dump_hlds(ProgressStream, !.HLDS, 30, "polymorphism", !DumpInfo, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 30, "polymorphism",
+        !DumpInfo, !IO),
 
     (
         PolySafeToContinue = unsafe_to_continue,

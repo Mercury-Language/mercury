@@ -1348,8 +1348,8 @@ output_du_arg_names(Info, Stream, RttiTypeCtor, Ordinal, MaybeNames,
     rtti_type_ctor::in, uint32::in, list(du_arg_info)::in, bool::out,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_du_arg_locns(Info, Stream, RttiTypeCtor, Ordinal, ArgInfos, HaveArgLocns,
-        !DeclSet, !IO) :-
+output_du_arg_locns(Info, Stream, RttiTypeCtor, Ordinal, ArgInfos,
+        HaveArgLocns, !DeclSet, !IO) :-
     ( if
         some [ArgInfo] (
             list.member(ArgInfo, ArgInfos),
@@ -1484,7 +1484,8 @@ output_enum_name_ordered_table(Info, Stream, RttiTypeCtor, FunctorMap,
         ctor_rtti_id(RttiTypeCtor, type_ctor_enum_name_ordered_table),
         !DeclSet, !IO),
     io.write_string(Stream, " = {\n", !IO),
-    output_addr_of_ctor_rtti_names(RttiTypeCtor, FunctorRttiNames, Stream, !IO),
+    output_addr_of_ctor_rtti_names(RttiTypeCtor, FunctorRttiNames,
+        Stream, !IO),
     io.write_string(Stream, "};\n", !IO).
 
 :- pred output_foreign_enum_ordinal_ordered_table(llds_out_info::in,

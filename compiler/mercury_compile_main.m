@@ -1009,8 +1009,8 @@ do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
     have_read_module_maps::in, have_read_module_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals, OpModeArgs,
-        DetectedGradeFlags, OptionVariables, OptionArgs, Arg,
+setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
+        OpModeArgs, DetectedGradeFlags, OptionVariables, OptionArgs, Arg,
         ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO) :-
     FileOrModule = string_to_file_or_module(Arg),
     ModuleName = file_or_module_to_module_name(FileOrModule),

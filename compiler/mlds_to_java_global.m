@@ -87,7 +87,8 @@ output_global_var_decls_for_java(Info, Stream, Indent,
     output_global_var_decl_flags_for_java(Stream, Flags, !IO),
     output_global_var_decl_for_java(Info, Stream, Name, Type, !IO),
     io.write_string(Stream, ";\n", !IO),
-    output_global_var_decls_for_java(Info, Stream, Indent, GlobalVarDefns, !IO).
+    output_global_var_decls_for_java(Info, Stream, Indent,
+        GlobalVarDefns, !IO).
 
 :- pred output_global_var_decl_for_java(java_out_info::in,
     io.text_output_stream::in, mlds_global_var_name::in, mlds_type::in,

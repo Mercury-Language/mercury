@@ -554,7 +554,8 @@ deconstruct_var_table(var_table(Counter, Map), Counter, Map).
 %     % If necessary, names will have suffixes added on the end;
 %     % the string argument gives the suffix to use.
 %     %
-% :- pred ensure_unique_names(string::in, var_table::in, var_table::out) is det.
+% :- pred ensure_unique_names(string::in, var_table::in, var_table::out)
+%     is det.
 % 
 % ensure_unique_names(Suffix, !VarTable) :-
 %     !.VarTable = var_table(Counter, VarTableMap0),

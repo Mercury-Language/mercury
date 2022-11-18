@@ -303,8 +303,8 @@ propagate_conj(Constraints, Goals0, Goals, !Info) :-
             InstMap0 = !.Info ^ constr_instmap,
             ModuleInfo = !.Info ^ constr_module_info,
             VarTable = !.Info ^ constr_var_table,
-            annotate_conj_output_vars(Goals0, ModuleInfo,
-                VarTable, InstMap0, [], RevAnnotatedGoals1),
+            annotate_conj_output_vars(ModuleInfo, VarTable, InstMap0, Goals0,
+                [], RevAnnotatedGoals1),
             annotate_conj_constraints(ModuleInfo, RevAnnotatedGoals1,
                 Constraints, [], AnnotatedGoals2, !Info),
             propagate_conj_constraints(AnnotatedGoals2, cord.init, GoalsCord,
@@ -315,11 +315,11 @@ propagate_conj(Constraints, Goals0, Goals, !Info) :-
 
     % Annotate each conjunct with the variables it produces.
     %
-:- pred annotate_conj_output_vars(list(hlds_goal)::in, module_info::in,
-    var_table::in, instmap::in, annotated_conj::in, annotated_conj::out) is det.
+:- pred annotate_conj_output_vars(module_info::in, var_table::in, instmap::in,
+    list(hlds_goal)::in, annotated_conj::in, annotated_conj::out) is det.
 
-annotate_conj_output_vars([], _, _, _, !RevAnnotatedGoals).
-annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTable, InstMap0,
+annotate_conj_output_vars(_, _, _, [], !RevAnnotatedGoals).
+annotate_conj_output_vars(ModuleInfo, VarTable, InstMap0, [Goal | Goals],
         !RevAnnotatedGoals) :-
     Goal = hlds_goal(_, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
@@ -367,7 +367,7 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTable, InstMap0,
     AnnotatedConjunct = annotated_conjunct(Goal, ChangedVars, BoundVars,
         IncompatibleInstVars),
     !:RevAnnotatedGoals = [AnnotatedConjunct | !.RevAnnotatedGoals],
-    annotate_conj_output_vars(Goals, ModuleInfo, VarTable, InstMap,
+    annotate_conj_output_vars(ModuleInfo, VarTable, InstMap, Goals,
         !RevAnnotatedGoals).
 
 %-----------------------------------------------------------------------------%

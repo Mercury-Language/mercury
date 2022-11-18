@@ -1022,7 +1022,8 @@ prog_var_at_paths(ProgVarSet, PredID, ProgVar, GoalIds, MCVars, !VarInfo) :-
 
 prog_vars_at_path(ProgVarSet, PredId, ProgVars, GoalId, MCVars, !VarInfo) :-
     list.map_foldl(
-        ( pred(ProgVar::in, MCVar::out, !.VarInfo::in, !:VarInfo::out) is det :-
+        ( pred(ProgVar::in, MCVar::out, !.VarInfo::in, !:VarInfo::out)
+                is det :-
             prog_var_at_path(ProgVarSet, PredId, ProgVar, GoalId, MCVar,
                 !VarInfo)
         ), ProgVars, MCVars, !VarInfo).

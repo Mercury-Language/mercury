@@ -1984,9 +1984,9 @@ report_ambiguous_pred_or_func(Severity, PragmaName, Context,
     string::in, pred_or_func::in, sym_name::in, user_arity::in, int::in,
     maybe4(pred_id, proc_id, pred_info, proc_info)::out) is det.
 
-look_up_pragma_pf_sym_arity_mode_num(ModuleInfo, IsFullyQualified, FailHandling,
-        Context, PragmaName, PredOrFunc, SymName, UserArity, ModeNum,
-        MaybePredProcId) :-
+look_up_pragma_pf_sym_arity_mode_num(ModuleInfo, IsFullyQualified,
+        FailHandling, Context, PragmaName, PredOrFunc, SymName, UserArity,
+        ModeNum, MaybePredProcId) :-
     look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
         Context, PragmaName, PredOrFunc, SymName, UserArity, MaybePredId),
     (

@@ -2136,7 +2136,8 @@ rename_var_in_wrapper_pred(Name, ResultVar0, ResultType, ResultVar,
 
     ResultIsDummy = is_type_a_dummy(ModuleInfo, ResultType),
     ResultVarEntry = vte(Name, ResultType, ResultIsDummy),
-    add_var_entry(ResultVarEntry, ResultVar, NewPredVarTable1, NewPredVarTable),
+    add_var_entry(ResultVarEntry, ResultVar,
+        NewPredVarTable1, NewPredVarTable),
     VarMapping = map.singleton(ResultVar0, ResultVar),
 
     MapLambda =

@@ -1522,8 +1522,10 @@ binop_debug(int_mod(int_type_uint64), "mod(uint64").
 binop_debug(bitwise_and(int_type_uint64), "&(uint64)").
 binop_debug(bitwise_or(int_type_uint64),  "|(uint64)").
 binop_debug(bitwise_xor(int_type_uint64), "^(uint64)").
-binop_debug(unchecked_left_shift(int_type_uint64, shift_by_int), "<<(uint64)").
-binop_debug(unchecked_right_shift(int_type_uint64, shift_by_int), ">>(uint64)").
+binop_debug(unchecked_left_shift(int_type_uint64, shift_by_int),
+    "<<(uint64)").
+binop_debug(unchecked_right_shift(int_type_uint64, shift_by_int),
+    ">>(uint64)").
 binop_debug(unchecked_left_shift(int_type_int, shift_by_uint), "<<u").
 binop_debug(unchecked_right_shift(int_type_int, shift_by_uint), ">>u").
 binop_debug(unchecked_left_shift(int_type_uint, shift_by_uint), "<<u(uint)").

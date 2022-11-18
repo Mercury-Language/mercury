@@ -652,8 +652,8 @@ modecheck_coerce_from_bound_make_bound_functor_arg_insts(ModuleInfo, TVarSet,
             HeadArgInstX, MaybeHeadArgInstY),
         (
             MaybeHeadArgInstY = ok(HeadArgInstY),
-            modecheck_coerce_from_bound_make_bound_functor_arg_insts(ModuleInfo,
-                TVarSet, LiveX, RevTermPath0, ExpandedInsts0,
+            modecheck_coerce_from_bound_make_bound_functor_arg_insts(
+                ModuleInfo, TVarSet, LiveX, RevTermPath0, ExpandedInsts0,
                 ConsIdX, CurArgNum + 1,
                 TailArgTypesX, TailArgTypesY,
                 TailArgInstsX, MaybeTailArgInstsY),

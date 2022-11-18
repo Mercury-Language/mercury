@@ -993,9 +993,9 @@ make_foreign_proc_decl(CI, Code, !TIIn, !TIOut, Arg, Decls,
                     % For outputs, the value is given by Code. Before the
                     % transition to the new scheme, variable names following
                     % the new naming scheme should not appear in Code.
-                    % (Theoretically, they could, but none appear in *our* code,
-                    % and if they appear in anyone else's, they qualify as
-                    % implementors, which means they are on their own.)
+                    % (Theoretically, they could, but none appear in *our*
+                    % code, and if they appear in anyone else's, they qualify
+                    % as implementors, which means they are on their own.)
                     % So in this case, we assign the ArgName computed by Code
                     % to SeqArgName, so that a later version of the compiler
                     % could take the value of the corresponding HLDS variable
@@ -1004,9 +1004,10 @@ make_foreign_proc_decl(CI, Code, !TIIn, !TIOut, Arg, Decls,
                     % After Code has been updated to assign to SeqArgName,
                     % we assign it to ArgName, because the later version of
                     % the compiler mentioned above may not have arrived yet.
-                    % (For now, updated code will still have to mention ArgName,
-                    % probably in a comment, to avoid a singleton variable
-                    % warning from report_missing_tvar_in_foreign_code.)
+                    % (For now, updated code will still have to mention
+                    % ArgName, probably in a comment, to avoid a singleton
+                    % variable warning from
+                    % report_missing_tvar_in_foreign_code.)
                     ( if string.sub_string_search(Code, SeqArgName, _) then
                         % SeqArgName occurs in Code, so assign it to ArgName.
                         string.format("\t%s = %s;\n",

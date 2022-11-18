@@ -2587,8 +2587,8 @@ output_module_layout_data_defn(Info, Stream, Data, !DeclSet, !IO) :-
         output_file_layout_data_defns(Info, Stream, ModuleName,
             0, FileLayouts, FileLayoutNames, !DeclSet, !IO),
         list.length(FileLayouts, FileLayoutVectorLengthA),
-        output_file_layout_vector_data_defn(Stream, ModuleName, FileLayoutNames,
-            FileLayoutVectorNameA, !DeclSet, !IO),
+        output_file_layout_vector_data_defn(Stream, ModuleName,
+            FileLayoutNames, FileLayoutVectorNameA, !DeclSet, !IO),
 
         io.write_string(Stream, "\n", !IO),
         LabelExecCountNameA = module_layout_label_exec_count(ModuleName,
@@ -2968,7 +2968,8 @@ output_module_string_table(Stream, ModuleName, _StringTableSize,
         string_with_0s(StringTable0), !DeclSet, !IO) :-
     TableName = module_layout_string_table(ModuleName),
     io.write_string(Stream, "\n", !IO),
-    output_layout_name_storage_type_name(Stream, TableName, being_defined, !IO),
+    output_layout_name_storage_type_name(Stream, TableName,
+        being_defined, !IO),
     io.write_string(Stream, " = {", !IO),
 
     % The string table cannot be zero size; it must contain at least an

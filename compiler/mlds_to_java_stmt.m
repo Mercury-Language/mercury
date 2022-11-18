@@ -320,16 +320,16 @@ output_stmt_if_then_else_for_java(Info, Stream, Indent, FuncInfo, Stmt,
     output_rval_for_java(Info, Cond, Stream, !IO),
     io.write_string(Stream, ")\n", !IO),
     scope_indent(Then, Indent, ThenScopeIndent),
-    output_statement_for_java(Info, Stream, ThenScopeIndent, FuncInfo, Then,
-        ThenExitMethods, !IO),
+    output_statement_for_java(Info, Stream, ThenScopeIndent, FuncInfo,
+        Then, ThenExitMethods, !IO),
     (
         MaybeElse = yes(Else),
         indent_line_after_context(Stream, Info ^ joi_line_numbers,
             marker_comment, Context, Indent, !IO),
         io.write_string(Stream, "else\n", !IO),
         scope_indent(Else, Indent, ElseScopeIndent),
-        output_statement_for_java(Info, Stream, ElseScopeIndent, FuncInfo, Else,
-            ElseExitMethods, !IO),
+        output_statement_for_java(Info, Stream, ElseScopeIndent, FuncInfo,
+            Else, ElseExitMethods, !IO),
         % An if-then-else statement can complete normally iff the
         % then-statement can complete normally or the else-statement
         % can complete normally.
@@ -650,16 +650,16 @@ output_assign_results(_, _, [], [_ | _], _, _, _, _, _) :-
     unexpected($pred, "list length mismatch").
 output_assign_results(_, _, [_ | _], [], _, _, _, _, _) :-
     unexpected($pred, "list length mismatch").
-output_assign_results(Info, Stream, [Lval | Lvals], [Type | Types], ResultIndex,
-        Indent, Context, !IO) :-
+output_assign_results(Info, Stream, [Lval | Lvals], [Type | Types],
+        ResultIndex, Indent, Context, !IO) :-
     indent_line_after_context(Stream, Info ^ joi_line_numbers,
         marker_comment, Context, Indent, !IO),
     output_lval_for_java(Info, Lval, Stream, !IO),
     io.write_string(Stream, " = ", !IO),
     output_unboxed_result(Info, Stream, Type, ResultIndex, !IO),
     io.write_string(Stream, ";\n", !IO),
-    output_assign_results(Info, Stream, Lvals, Types, ResultIndex + 1,
-        Indent, Context, !IO).
+    output_assign_results(Info, Stream, Lvals, Types,
+        ResultIndex + 1, Indent, Context, !IO).
 
 :- pred output_unboxed_result(java_out_info::in, io.text_output_stream::in,
     mlds_type::in, int::in, io::di, io::uo) is det.

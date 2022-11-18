@@ -783,8 +783,8 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
     pred_info::in, pred_info::out, proc_id::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod, ItemMercuryStatus,
-        ItemModeDecl, !PredInfo, ProcId, !Specs) :-
+module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod,
+        ItemMercuryStatus, ItemModeDecl, !PredInfo, ProcId, !Specs) :-
     PredName = pred_info_name(!.PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
     ItemModeDecl = item_mode_decl_info(_PredSymName, _MaybePredOrFunc,

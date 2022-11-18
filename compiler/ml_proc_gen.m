@@ -789,7 +789,8 @@ ml_gen_tscc(ProgressStream, ModuleInfo, Target, ConstStructMap,
         % For a TSCC containing just one procedure, we neither need nor want
         % the extra overhead required for managing *mutual* tail recursion.
         ml_gen_proc_lookup(ProgressStream, ModuleInfo, Target, ConstStructMap,
-            self_tail_rec, SinglePredProcId, !FuncDefns, !GlobalData, !InSccMap)
+            self_tail_rec, SinglePredProcId, !FuncDefns, !GlobalData,
+            !InSccMap)
     ;
         PredProcIdList = [_, _ | _],
         % Try to compile each procedure in the TSCC into the MLDS code

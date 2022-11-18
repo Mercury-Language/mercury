@@ -42,8 +42,9 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_pragma_decl_pred_pf_name_arity(io.text_output_stream::in,
-    string::in, pred_pf_name_arity::in, string::in, io::di, io::uo) is det.
+:- pred mercury_output_pragma_decl_pred_pf_name_arity(
+    io.text_output_stream::in, string::in, pred_pf_name_arity::in, string::in,
+    io::di, io::uo) is det.
 :- func mercury_pragma_decl_pred_pf_name_arity_to_string(string,
     pred_pf_name_arity, string) = string.
 

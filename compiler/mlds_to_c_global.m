@@ -124,8 +124,8 @@ mlds_output_scalar_cell_group_decl(Opts, Stream, Indent, MangledModuleName,
     output_n_indents(Stream, Indent, !IO),
     io.write_string(Stream, "\nstatic /* final */ const ", !IO),
     NumRows = cord.length(Rows),
-    mlds_output_scalar_cell_group_type_and_name(Opts, Stream, MangledModuleName,
-        TypeRawNum, Type, InitArraySize, NumRows, !IO),
+    mlds_output_scalar_cell_group_type_and_name(Opts, Stream,
+        MangledModuleName, TypeRawNum, Type, InitArraySize, NumRows, !IO),
     io.write_string(Stream, ";\n", !IO).
 
 :- pred mlds_output_scalar_cell_group_type_and_name(mlds_to_c_opts::in,

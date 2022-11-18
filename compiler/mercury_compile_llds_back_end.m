@@ -575,7 +575,8 @@ compute_liveness(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     bool::in, bool::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_mark_tail_rec_calls(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
+maybe_mark_tail_rec_calls(ProgressStream, Verbose, Stats,
+        !HLDS, !Specs, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Marking directly tail recursive calls...", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),

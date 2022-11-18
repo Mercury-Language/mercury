@@ -844,7 +844,8 @@ mlds_output_stmt_try_commit(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     output_n_indents(Stream, Indent, !IO),
     io.write_string(Stream, "else\n", !IO),
 
-    mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, HandlerStmt, !IO).
+    mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, HandlerStmt,
+        !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -1095,7 +1096,8 @@ mlds_output_target_code_component(Opts, Stream, Context, TargetCode, !IO) :-
         TargetCode = user_target_code(CodeString, MaybeUserContext),
         (
             MaybeUserContext = yes(UserContext),
-            c_output_context(Stream, Opts ^ m2co_line_numbers, UserContext, !IO)
+            c_output_context(Stream, Opts ^ m2co_line_numbers, UserContext,
+                !IO)
         ;
             MaybeUserContext = no,
             c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO)

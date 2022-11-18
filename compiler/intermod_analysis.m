@@ -606,7 +606,8 @@ lp_term_to_arg_size_term(VarToVarIdMap, LPTerm, ArgSizeTerm) :-
     % Gather any exception pragmas for this predicate.
     %
 :- pred gather_pragma_exceptions_for_pred(module_info::in, order_pred_info::in,
-    cord(pragma_info_exceptions)::in, cord(pragma_info_exceptions)::out) is det.
+    cord(pragma_info_exceptions)::in, cord(pragma_info_exceptions)::out)
+    is det.
 
 gather_pragma_exceptions_for_pred(ModuleInfo, OrderPredInfo,
         !ExceptionsCord) :-
@@ -618,7 +619,8 @@ gather_pragma_exceptions_for_pred(ModuleInfo, OrderPredInfo,
 
 :- pred gather_pragma_exceptions_for_proc(module_info::in,
     order_pred_info::in, proc_id::in, proc_info::in,
-    cord(pragma_info_exceptions)::in, cord(pragma_info_exceptions)::out) is det.
+    cord(pragma_info_exceptions)::in, cord(pragma_info_exceptions)::out)
+    is det.
 
 gather_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !ExceptionsCord) :-

@@ -71,7 +71,8 @@
 %---------------------------------------------------------------------------%
 
 ml_generate_test_var_has_cons_id(Var, ConsId, TestRval, !Info) :-
-    % NOTE: Keep in sync with ml_generate_test_var_has_one_tagged_cons_id below.
+    % NOTE: Keep in sync with ml_generate_test_var_has_one_tagged_cons_id
+    % below.
     ml_gen_info_get_var_table(!.Info, VarTable),
     lookup_var_entry(VarTable, Var, VarEntry),
     VarType = VarEntry ^ vte_type,

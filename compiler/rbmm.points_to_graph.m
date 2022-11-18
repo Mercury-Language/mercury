@@ -579,7 +579,9 @@ rptg_get_node_by_node(Graph, Node, MergedNode) :-
     else
         % Not directly in the NodeMap, checked if it has been merged.
         AllNodes = rptg_get_nodes_as_list(Graph),
-        ( if get_node_by_node_from_list(Graph, AllNodes, Node, MergedNode0) then
+        ( if
+            get_node_by_node_from_list(Graph, AllNodes, Node, MergedNode0)
+        then
             MergedNode = MergedNode0
         else
             unexpected($pred, "node not found")

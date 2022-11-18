@@ -181,7 +181,8 @@
                 foreign_enum_language      :: foreign_language,
                 foreign_enum_axioms        :: equality_axioms,
                 foreign_enum_functors      :: list(foreign_enum_functor),
-                foreign_enum_ordinal_table :: map(uint32, foreign_enum_functor),
+                foreign_enum_ordinal_table :: map(uint32,
+                                                foreign_enum_functor),
                 foreign_enum_name_table    :: map(string,
                                                 foreign_enum_functor),
                 foreign_enum_functor_number_mapping
