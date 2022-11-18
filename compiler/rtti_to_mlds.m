@@ -1725,11 +1725,12 @@ real_rtti_data(RttiData) :-
 % This handles sectag_locn, functor_subtype_info and type_ctor_rep. The rvals
 % generated are just named constants in the private_builtin module, which the
 % Mercury runtime is expected to define.
+%
 
 :- func gen_init_pred_or_func(pred_or_func) = mlds_initializer.
 
 gen_init_pred_or_func(PredOrFunc) = Initializer :-
-    rtti.pred_or_func_to_string(PredOrFunc, TargetPrefixes, Name),
+    rtti.pred_or_func_to_target_string(PredOrFunc, TargetPrefixes, Name),
     Initializer = gen_init_builtin_const(TargetPrefixes, Name).
 
 :- func gen_init_sectag_locn(sectag_locn) = mlds_initializer.

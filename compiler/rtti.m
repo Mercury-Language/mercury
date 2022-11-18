@@ -773,9 +773,9 @@
                 csharp_prefix   :: string
             ).
 
-    % Return the C representation of a pred_or_func indication.
+    % Return the C/Java/C# representation of a pred_or_func indication.
     %
-:- pred pred_or_func_to_string(pred_or_func::in,
+:- pred pred_or_func_to_target_string(pred_or_func::in,
     target_prefixes::out, string::out) is det.
 
     % Return the C representation of a secondary tag location.
@@ -786,8 +786,7 @@
     % Return the C representation of a secondary tag location.
     %
 :- pred sectag_and_locn_to_locn_string(sectag_and_locn::in,
-    target_prefixes::out, string::out)
-    is det.
+    target_prefixes::out, string::out) is det.
 
     % Return the C representation of a functor's subtype constraints info.
     %
@@ -1703,7 +1702,7 @@ type_info_list_to_string(TypeInfoList) =
 
 %-----------------------------------------------------------------------------%
 
-pred_or_func_to_string(PredOrFunc, TargetPrefixes, String) :-
+pred_or_func_to_target_string(PredOrFunc, TargetPrefixes, String) :-
     TargetPrefixes = target_prefixes("private_builtin.", "runtime.Constants."),
     (
         PredOrFunc = pf_predicate,
