@@ -171,12 +171,6 @@
     %
 :- func pred_or_func_to_str(pred_or_func) = string.
 
-    % Print "predicate" or "function" depending on the given value.
-    %
-:- pred write_pred_or_func(pred_or_func::in, io::di, io::uo) is det.
-:- pred write_pred_or_func(io.text_output_stream::in, pred_or_func::in,
-    io::di, io::uo) is det.
-
     % Get a purity name as a string.
     %
 :- pred purity_name(purity, string).
@@ -573,7 +567,7 @@ int_const_to_string_and_suffix(IntConst, Str, Suffix) :-
 
 promise_to_string(promise_type_true) = "promise".
 promise_to_string(promise_type_exclusive) = "promise_exclusive".
-promise_to_string(promise_type_exhaustive) =  "promise_exhaustive".
+promise_to_string(promise_type_exhaustive) = "promise_exhaustive".
 promise_to_string(promise_type_exclusive_exhaustive) =
     "promise_exclusive_exhaustive".
 
@@ -582,13 +576,6 @@ pred_or_func_to_full_str(pf_function) = "function".
 
 pred_or_func_to_str(pf_predicate) = "pred".
 pred_or_func_to_str(pf_function) = "func".
-
-write_pred_or_func(PorF, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_pred_or_func(Stream, PorF, !IO).
-
-write_pred_or_func(Stream, PorF, !IO) :-
-    io.write_string(Stream, pred_or_func_to_full_str(PorF), !IO).
 
 purity_name(purity_pure, "pure").
 purity_name(purity_semipure, "semipure").
