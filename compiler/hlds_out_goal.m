@@ -1279,7 +1279,7 @@ write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
             io.write_string(Stream, "cannot_fail, ", !IO)
         ),
         io.write_string(Stream, "mode: ", !IO),
-        mercury_output_unify_mode(Stream, Mode, InstVarSet, !IO),
+        mercury_output_unify_mode(Stream, InstVarSet, Mode, !IO),
         io.write_string(Stream, "\n", !IO),
         write_indent(Stream, Indent, !IO),
         io.write_string(Stream, "% type-info vars: ", !IO),
@@ -1312,8 +1312,8 @@ write_functor_and_submodes(Info, Stream, _ModuleInfo, VarNameSrc, InstVarSet,
                 write_indent(Stream, Indent, !IO),
                 io.write_string(Stream, "% arg-modes\n", !IO),
                 mercury_output_structured_unify_mode_list(Stream,
-                    ArgModes, Indent, output_debug, do_incl_addr, InstVarSet,
-                    !IO)
+                    output_debug, InstVarSet, do_incl_addr, Indent,
+                    ArgModes, !IO)
             else
                 write_arg_modes(Stream, InstVarSet, Indent, 1, ArgModes, !IO)
             )
@@ -1323,15 +1323,14 @@ write_functor_and_submodes(Info, Stream, _ModuleInfo, VarNameSrc, InstVarSet,
     ).
 
 :- pred write_arg_modes(io.text_output_stream::in, inst_varset::in,
-    int::in, int::in,
-    list(unify_mode)::in, io::di, io::uo) is det.
+    int::in, int::in, list(unify_mode)::in, io::di, io::uo) is det.
 
 write_arg_modes(_Stream, _InstVarSet, _Indent, _ArgNum, [], !IO).
 write_arg_modes(Stream, InstVarSet, Indent, ArgNum,
         [UnifyMode | UnifyModes], !IO) :-
     write_indent(Stream, Indent, !IO),
     io.format(Stream, "%% arg-mode %d ", [i(ArgNum)], !IO),
-    mercury_output_unify_mode(Stream, UnifyMode, InstVarSet, !IO),
+    mercury_output_unify_mode(Stream, InstVarSet, UnifyMode, !IO),
     io.nl(Stream, !IO),
     write_arg_modes(Stream, InstVarSet, Indent, ArgNum + 1, UnifyModes, !IO).
 

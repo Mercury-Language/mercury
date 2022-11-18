@@ -162,8 +162,8 @@ write_var_insts(Stream, VarTable, InstVarSet, OldInstMap, Verbose, Minimal,
         ;
             Minimal = no,
             io.write_string(Stream, " ::\n", !IO),
-            mercury_output_structured_inst(Stream, Inst, 2,
-                output_debug, do_not_incl_addr, InstVarSet, !IO)
+            mercury_output_structured_inst(Stream, output_debug, InstVarSet,
+                do_not_incl_addr, 2, Inst, !IO)
         )
     ),
     write_var_insts(Stream, VarTable, InstVarSet, OldInstMap, Verbose, Minimal,

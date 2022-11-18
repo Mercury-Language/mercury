@@ -332,8 +332,8 @@ write_const_struct(Stream, N - ConstStruct, !IO) :-
     mercury_output_type(varset.init, print_name_only, Type, Stream, !IO),
     io.nl(Stream, !IO),
     io.write_string(Stream, "inst: ", !IO),
-    mercury_output_structured_inst(Stream, Inst, 0, output_debug,
-        do_not_incl_addr, varset.init, !IO),
+    mercury_output_structured_inst(Stream, output_debug, varset.init,
+        do_not_incl_addr, 0, Inst, !IO),
     (
         DefinedWhere = defined_in_this_module,
         io.write_string(Stream, "defined_in_this_module\n", !IO)
