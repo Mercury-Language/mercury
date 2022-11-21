@@ -1206,21 +1206,21 @@ insert_reg_wrappers_higher_order_call(CallVar, Vars0, Vars, ArgModes, ArgRegs,
     match_args_for_call(InstMap0, Context, ArgTypes, ArgModes, Vars0, Vars,
         WrapGoals, !Info, !Specs).
 
-:- pred insert_reg_wrappers_method_call(class_id::in, int::in,
+:- pred insert_reg_wrappers_method_call(class_id::in, method_proc_num::in,
     list(prog_var)::in, list(prog_var)::out,
     list(mer_mode)::in, list(mer_mode)::out, list(hlds_goal)::out,
     instmap::in, prog_context::in, lambda_info::in, lambda_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-insert_reg_wrappers_method_call(ClassId, MethodNum, Vars0, Vars,
+insert_reg_wrappers_method_call(ClassId, MethodProcNum, Vars0, Vars,
         Modes0, Modes, WrapGoals, InstMap0, Context, !Info, !Specs) :-
     lambda_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_class_table(ModuleInfo, Classes),
     map.lookup(Classes, ClassId, ClassDefn),
-    MethodPredprocIds = ClassDefn ^ classdefn_method_ppids,
-    list.det_index1(MethodPredprocIds, MethodNum, ClassProc),
-    ClassProc = proc(PredId, ProcId),
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+    MethodInfos = ClassDefn ^ classdefn_method_infos,
+    MethodInfo = lookup_method_proc(MethodInfos, MethodProcNum),
+    MethodInfo ^ method_cur_proc = PredProcId,
+    module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     proc_info_get_argmodes(ProcInfo, ProcArgModes),
 

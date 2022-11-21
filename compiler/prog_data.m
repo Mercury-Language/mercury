@@ -28,6 +28,7 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module char.
+:- import_module cord.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -803,6 +804,8 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
                 std_representation_type :: mer_type,
                 std_ground_inst         :: mer_inst,
                 std_any_inst            :: mer_inst,
+                % XXX The item_mutable_info type is defined in prog_item.m.
+                % The reference to that module here is undesirable.
                 std_mutable_items       :: list(item_mutable_info)
             ).
 
@@ -1155,16 +1158,16 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 :- type class_interface
     --->    class_interface_abstract
     ;       class_interface_concrete(list(class_decl)).
+            % XXX The class_decl type is defined in prog_item.m.
+            % The reference to that module here is undesirable.
 
 :- type instance_method
     --->    instance_method(
-                instance_method_p_or_f          :: pred_or_func,
-                instance_method_name            :: sym_name,
-                instance_method_arity           :: user_arity,
+                instance_method_pf_name_arity   :: pred_pf_name_arity,
                 instance_method_proc_def        :: instance_proc_def,
 
-                instance_method_decl_context    :: prog_context
                 % The context of the instance declaration.
+                instance_method_decl_context    :: prog_context
             ).
 
 :- type instance_proc_def
@@ -1174,7 +1177,9 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
             )
     ;       instance_proc_def_clauses(
                 % defined using clauses
-                list(item_clause_info)
+                % XXX The item_clause_info type is defined in prog_item.m.
+                % The reference to that module here is undesirable.
+                cord(item_clause_info)
             ).
 
 :- type instance_body

@@ -34,20 +34,20 @@
 
 :- import_module list.
 :- import_module maybe.
+:- import_module pair.
 
 %---------------------------------------------------------------------------%
 
     % Add a pred or predmode declaration for a predicate.
     %
-    % We return MaybePredProcId = yes(...) if and only if the declaration
-    % is a predmode declaration, and we could add both parts (the pred part
-    % and the mode part) to the HLDS.
-    %
-    % If there is no mode part, we could return the pred_id, but we would
-    % not be able to return a proc_id.
+    % We return MaybePredMaybeProcId = yes(PredId - MaybeProcId) if we
+    % successfully added the predicate to the HLDS. The MaybeProcId part
+    % will be yes(ProcId) if the declaration is a predmode declaration,
+    % and we successfully added its implied mode declaration to the HLDS.
     %
 :- pred module_add_pred_decl(item_mercury_status::in, pred_status::in,
-    need_qualifier::in, item_pred_decl_info::in, maybe(pred_proc_id)::out,
+    need_qualifier::in, item_pred_decl_info::in,
+    maybe(pair(pred_id, maybe(proc_id)))::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -70,6 +70,20 @@
     item_mercury_status::in, pred_status::in, item_mode_decl_info::in,
     pred_proc_id::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
+
+    % report_mode_decl_after_predmode(PFNameArity, Context):
+    %
+    % Return a diagnostic reporting that PredPFNameArity has a
+    % mode declaration at Context which is disallowed by the fact that
+    % its predicate or function declaration was a predmode declaration.
+    %
+    % We export this to add_class.m. Class definitions consist of pred, func
+    % and mode declarations, and we want diagnostics for mode declarations
+    % that follow pred or func declarations with embedded mode information
+    % to be the same inside class definitions as they are outside.
+    %
+:- func report_mode_decl_after_predmode(pred_pf_name_arity, prog_context)
+    = error_spec.
 
     % Whenever there is a clause or mode declaration for an undeclared
     % predicate, we add an implicit declaration
@@ -126,7 +140,7 @@
 %---------------------------------------------------------------------------%
 
 module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
-        MaybePredProcId, !ModuleInfo, !Specs) :-
+        MaybePredMaybeProcId, !ModuleInfo, !Specs) :-
     ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc,
         ArgTypesAndModes, WithType, WithInst, MaybeDetism,
         Origin, TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints,
@@ -143,13 +157,18 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
     expect(unify(WithInst, no), $pred, "WithInst != no"),
 
     ( if PredName = "" then
+        % The term parser, when given input strings such as "A(B, C)",
+        % in which a variable acts as a function symbol, returns a term
+        % such as functor("", [variable(A), variable(B), variable(C)]).
+        % The only way PredName could be "" is if this happened in the
+        % predicate or function declaration.
         PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
         Pieces = [words("Error: you cannot declare a"), words(PredOrFuncStr),
             words("whose name is a variable."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),
         !:Specs = [Spec | !.Specs],
-        MaybePredProcId = no
+        MaybePredMaybeProcId = no
     else
         split_types_and_modes(ArgTypesAndModes, ArgTypes, MaybeArgModes0),
         list.length(ArgTypes, PredFormArityInt),
@@ -186,18 +205,18 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
             Context, PredOrigin, Markers),
         add_new_pred(PredOrigin, Context, SeqNum, PredStatus, NeedQual,
             PredOrFunc, PredModuleName, PredName, TypeVarSet, ExistQVars,
-            ArgTypes, Constraints, PredmodeDecl, Purity, Markers, Succeeded,
-            !ModuleInfo, !Specs),
+            ArgTypes, Constraints, PredmodeDecl, Purity, Markers,
+            MaybeNewPredId, !ModuleInfo, !Specs),
         (
             MaybeArgModes = yes(ArgModes),
             (
-                Succeeded = no,
+                MaybeNewPredId = no,
                 % Do not try to add the mode declaration part of the predmode
                 % declaration to the HLDS if adding the pred declaration part
                 % has failed.
-                MaybePredProcId = no
+                MaybePredMaybeProcId = no
             ;
-                Succeeded = yes,
+                MaybeNewPredId = yes(NewPredId),
                 ( if check_marker(Markers, marker_class_method) then
                     IsClassMethod = is_a_class_method
                 else
@@ -207,13 +226,22 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
                     yes(PredOrFunc), ArgModes, WithInst, MaybeDetism,
                     InstVarSet, Context, SeqNum),
                 module_add_mode_decl(part_of_predmode, IsClassMethod,
-                    ItemMercuryStatus, PredStatus, ItemModeDecl, PredProcId,
-                    !ModuleInfo, !Specs),
-                MaybePredProcId = yes(PredProcId)
+                    ItemMercuryStatus, PredStatus, ItemModeDecl,
+                    ModePredProcId, !ModuleInfo, !Specs),
+                ModePredProcId = proc(ModePredId, ModeProcId),
+                expect(unify(NewPredId, ModePredId), $pred,
+                    "NewPredId != ModePredId"),
+                MaybePredMaybeProcId = yes(NewPredId - yes(ModeProcId))
             )
         ;
             MaybeArgModes = no,
-            MaybePredProcId = no,
+            (
+                MaybeNewPredId = no,
+                MaybePredMaybeProcId = no
+            ;
+                MaybeNewPredId = yes(NewPredId),
+                MaybePredMaybeProcId = yes(NewPredId - no)
+            ),
             % There is no valid mode declaration part we can add to the HLDS.
             % Check for an invalid mode declaration part anyway.
             check_for_modeless_predmode_decl(PredStatus, PredOrFunc,
@@ -325,13 +353,13 @@ check_for_modeless_predmode_decl(PredStatus, PredOrFunc,
     pred_status::in, need_qualifier::in, pred_or_func::in,
     module_name::in, string::in, tvarset::in, existq_tvars::in,
     list(mer_type)::in, prog_constraints::in, maybe_predmode_decl::in,
-    purity::in, pred_markers::in, bool::out,
+    purity::in, pred_markers::in, maybe(pred_id)::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual, PredOrFunc,
         PredModuleName, PredName, TVarSet, ExistQVars, Types, Constraints,
-        PredmodeDecl, Purity, Markers0, Succeeded, !ModuleInfo, !Specs) :-
+        PredmodeDecl, Purity, Markers0, MaybeNewPredId, !ModuleInfo, !Specs) :-
     % NB. Predicates are also added in lambda.m, which converts
     % lambda expressions into separate predicates, so any changes may need
     % to be reflected there too.
@@ -391,7 +419,7 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual, PredOrFunc,
         PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds),
     (
         PredIds = [OrigPred | _],
-        Succeeded = no,
+        MaybeNewPredId = no,
         module_info_pred_info(!.ModuleInfo, OrigPred, OrigPredInfo),
         pred_info_get_context(OrigPredInfo, OrigContext),
         ( if PredStatus0 = pred_status(status_opt_imported) then
@@ -404,10 +432,10 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual, PredOrFunc,
         )
     ;
         PredIds = [],
-        Succeeded = yes,
         module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
         predicate_table_insert_qual(PredInfo0, NeedQual, PQInfo, PredId,
             PredTable0, PredTable1),
+        MaybeNewPredId = yes(PredId),
         ( if pred_info_is_builtin(PredInfo0) then
             module_info_get_globals(!.ModuleInfo, Globals),
             globals.get_target(Globals, CompilationTarget),
@@ -848,16 +876,12 @@ module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod,
                 PredIsPredMode = no_predmode_decl
             ;
                 PredIsPredMode = predmode_decl,
-                PFSNA2 = pf_sym_name_arity(PredOrFunc, unqualified(PredName),
-                    PredFormArity),
-                PredModePieces = [words("Error:"),
-                    unqual_pf_sym_name_pred_form_arity(PFSNA2),
-                    words("has its"), p_or_f(PredOrFunc), words("declaration"),
-                    words("combined with a mode declaration,"),
-                    words("so it may not have a separate mode declaration."),
-                    nl],
-                PredModeSpec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, PredModePieces),
+                user_arity_pred_form_arity(PredOrFunc,
+                    UserArity, PredFormArity),
+                PFNameArity = pred_pf_name_arity(PredOrFunc,
+                    unqualified(PredName), UserArity),
+                PredModeSpec =
+                    report_mode_decl_after_predmode(PFNameArity, Context),
                 !:Specs = [PredModeSpec | !.Specs]
             )
         else
@@ -881,6 +905,15 @@ module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod,
 
 decl_section_to_string(decl_interface) = "interface".
 decl_section_to_string(decl_implementation) = "implementation".
+
+report_mode_decl_after_predmode(PFNameArity, Context) = Spec :-
+    PFNameArity = pred_pf_name_arity(PredOrFunc, _SymName, _UserArity),
+    Pieces = [words("Error:"), unqual_pf_sym_name_user_arity(PFNameArity),
+        words("has its"), p_or_f(PredOrFunc), words("declaration"),
+        words("combined with a mode declaration,"),
+        words("so it may not have a separate mode declaration."), nl],
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces).
 
 %---------------------------------------------------------------------------%
 

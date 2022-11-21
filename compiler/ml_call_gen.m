@@ -83,6 +83,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_module.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -189,8 +190,8 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         FuncType = mlds_func_type(Params),
         FuncRval = ml_unbox(FuncType, ml_lval(FuncLval))
     ;
-        GenericCall = class_method(TypeClassInfoVar, MethodNum,
-            _ClassId, _PredName),
+        GenericCall = class_method(TypeClassInfoVar,
+            method_proc_num(MethodNum), _ClassId, _PredName),
 
         % Create the lval for the typeclass_info, which is also the closure
         % in this case.

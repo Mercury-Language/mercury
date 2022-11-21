@@ -891,33 +891,42 @@ gather_opt_export_instances_in_class(ModuleInfo, ClassId, InstanceDefns,
 
 gather_opt_export_instance_in_instance_defn(ModuleInfo, ClassId, InstanceDefn,
         !IntermodInfo) :-
-    InstanceDefn = hlds_instance_defn(ModuleName, Types, OriginalTypes,
-        InstanceStatus, Context, MaybeSubsumedContext, InstanceConstraints,
-        InstanceBody0, MaybePredProcIds, TVarSet, Proofs),
+    InstanceDefn = hlds_instance_defn(ModuleName, InstanceStatus,
+        TVarSet, OriginalTypes, Types,
+        InstanceConstraints, MaybeSubsumedContext, Proofs,
+        InstanceBody0, MaybeMethodInfos, Context),
     DefinedThisModule = instance_status_defined_in_this_module(InstanceStatus),
     (
         DefinedThisModule = yes,
         % The bodies are always stripped from instance declarations
-        % before writing them to `int' files, so the full instance
-        % declaration should be written even for exported instances.
+        % before writing them to *.int* files, so the full instance
+        % declaration should be written to the .opt file even for
+        % exported instances, if this is possible.
         SavedIntermodInfo = !.IntermodInfo,
         (
             InstanceBody0 = instance_body_concrete(Methods0),
             (
-                MaybePredProcIds = yes(ClassProcs),
-                ClassPreds0 =
-                    list.map(pred_proc_id_project_pred_id, ClassProcs),
-
-                % The interface is sorted on pred_id.
-                list.remove_adjacent_dups(ClassPreds0, ClassPreds),
-                assoc_list.from_corresponding_lists(ClassPreds, Methods0,
-                    MethodAL)
+                MaybeMethodInfos = yes(MethodInfos)
             ;
-                MaybePredProcIds = no,
-                unexpected($pred, "method pred_proc_ids not filled in")
+                MaybeMethodInfos = no,
+                unexpected($pred, "method infos not filled in")
             ),
-            list.map_foldl(qualify_instance_method(ModuleInfo),
-                MethodAL, Methods, [], PredIds),
+            AddMethodInfoToMap =
+                ( pred(MI::in, Map0::in, Map::out) is det :-
+                    MethodName = MI ^ method_pred_name,
+                    proc(PredId, _) = MI ^ method_orig_proc,
+                    ( if map.insert(MethodName, PredId,  Map0, Map1) then
+                        Map = Map1
+                    else
+                        Map = Map0
+                    )
+                ),
+            list.foldl(AddMethodInfoToMap, MethodInfos, map.init,
+                MethodNameToPredIdMap),
+            list.map_foldl(
+                intermod_qualify_instance_method(ModuleInfo,
+                    MethodNameToPredIdMap),
+                Methods0, Methods, [], PredIds),
             list.map_foldl(intermod_add_pred, PredIds, MethodMayOptExportPreds,
                 !IntermodInfo),
             ( if
@@ -948,9 +957,9 @@ gather_opt_export_instance_in_instance_defn(ModuleInfo, ClassId, InstanceDefn,
             )
         then
             InstanceDefnToWrite = hlds_instance_defn(ModuleName,
-                Types, OriginalTypes, InstanceStatus,
-                Context, MaybeSubsumedContext, InstanceConstraints,
-                InstanceBody, MaybePredProcIds, TVarSet, Proofs),
+                InstanceStatus, TVarSet, OriginalTypes, Types,
+                InstanceConstraints, MaybeSubsumedContext, Proofs,
+                InstanceBody, MaybeMethodInfos, Context),
             intermod_info_get_instances(!.IntermodInfo, Instances0),
             Instances = [ClassId - InstanceDefnToWrite | Instances0],
             intermod_info_set_instances(Instances, !IntermodInfo)
@@ -964,26 +973,30 @@ gather_opt_export_instance_in_instance_defn(ModuleInfo, ClassId, InstanceDefn,
     % Resolve overloading of instance methods before writing them
     % to the `.opt' file.
     %
-:- pred qualify_instance_method(module_info::in,
-    pair(pred_id, instance_method)::in, instance_method::out,
+:- pred intermod_qualify_instance_method(module_info::in,
+    map(pred_pf_name_arity, pred_id)::in,
+    instance_method::in, instance_method::out,
     list(pred_id)::in, list(pred_id)::out) is det.
 
-qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
-        InstanceMethod, PredIds0, PredIds) :-
-    module_info_pred_info(ModuleInfo, MethodCallPredId, MethodCallPredInfo),
-    pred_info_get_arg_types(MethodCallPredInfo, MethodCallTVarSet,
-        MethodCallExistQTVars, MethodCallArgTypes),
-    pred_info_get_external_type_params(MethodCallPredInfo,
-        MethodCallExternalTypeParams),
-    InstanceMethod0 = instance_method(PredOrFunc, MethodSymName,
-        MethodUserArity, InstanceMethodDefn0, MethodContext),
+intermod_qualify_instance_method(ModuleInfo, MethodNameToPredIdMap,
+        InstanceMethod0, InstanceMethod, PredIds0, PredIds) :-
+    InstanceMethod0 = instance_method(MethodName, InstanceMethodDefn0,
+        MethodContext),
+    MethodName =
+        pred_pf_name_arity(PredOrFunc, _MethodSymName, MethodUserArity),
+    map.lookup(MethodNameToPredIdMap, MethodName, MethodPredId),
+    module_info_pred_info(ModuleInfo, MethodPredId, MethodPredInfo),
+    pred_info_get_arg_types(MethodPredInfo, MethodTVarSet,
+        MethodExistQTVars, MethodArgTypes),
+    pred_info_get_external_type_params(MethodPredInfo,
+        MethodExternalTypeParams),
     (
         InstanceMethodDefn0 = instance_proc_def_name(InstanceMethodName0),
         PredOrFunc = pf_function,
         ( if
             find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
-                MethodUserArity, MethodCallTVarSet, MethodCallExistQTVars,
-                MethodCallArgTypes, MethodCallExternalTypeParams,
+                MethodUserArity, MethodTVarSet, MethodExistQTVars,
+                MethodArgTypes, MethodExternalTypeParams,
                 MethodContext, MaybePredId, InstanceMethodName)
         then
             (
@@ -1007,9 +1020,9 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
         InstanceMethodDefn0 = instance_proc_def_name(InstanceMethodName0),
         PredOrFunc = pf_predicate,
         init_markers(Markers),
-        resolve_pred_overloading(ModuleInfo, Markers, MethodCallTVarSet,
-            MethodCallExistQTVars, MethodCallArgTypes,
-            MethodCallExternalTypeParams, MethodContext,
+        resolve_pred_overloading(ModuleInfo, Markers, MethodTVarSet,
+            MethodExistQTVars, MethodArgTypes,
+            MethodExternalTypeParams, MethodContext,
             InstanceMethodName0, InstanceMethodName, PredId, _ResolveSpecs),
         % Any errors in _ResolveSpecs will be reported when a later compiler
         % invocation attempts to generate target language code for this module.
@@ -1029,8 +1042,8 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
         % We can just leave the method definition unchanged.
         InstanceMethodDefn = InstanceMethodDefn0
     ),
-    InstanceMethod = instance_method(PredOrFunc, MethodSymName,
-        MethodUserArity, InstanceMethodDefn, MethodContext).
+    InstanceMethod = instance_method(MethodName, InstanceMethodDefn,
+        MethodContext).
 
     % A `func(x/n) is y' method implementation can match an ordinary function,
     % a field access function or a constructor. For now, if there are multiple
@@ -1741,9 +1754,9 @@ intermod_gather_classes(ModuleInfo, TypeClasses) :-
     cord(item_typeclass_info)::in, cord(item_typeclass_info)::out) is det.
 
 intermod_gather_class(ModuleName, ClassId, ClassDefn, !TypeClassesCord) :-
-    ClassDefn = hlds_class_defn(TypeClassStatus, Constraints, HLDSFunDeps,
-        _Ancestors, TVars, _Kinds, InstanceBody, _MaybeMethodPPIds, TVarSet,
-        Context, _HasBadDefn),
+    ClassDefn = hlds_class_defn(TypeClassStatus, TVarSet, _Kinds, TVars,
+        Constraints, HLDSFunDeps, _Ancestors,
+        InstanceBody, _MaybeMethodInfos, Context, _HasBadDefn),
     ClassId = class_id(QualifiedClassName, _),
     ( if
         QualifiedClassName = qualified(ModuleName, _),
@@ -1788,8 +1801,9 @@ intermod_gather_instances(InstanceDefns, Instances) :-
     cord(item_instance_info)::in, cord(item_instance_info)::out) is det.
 
 intermod_gather_instance(ClassId - InstanceDefn, !InstancesCord) :-
-    InstanceDefn = hlds_instance_defn(ModuleName, Types, OriginalTypes, _,
-        Context, _, Constraints, Body, _, TVarSet, _),
+    InstanceDefn = hlds_instance_defn(ModuleName, _,
+        TVarSet, OriginalTypes, Types, Constraints, _, _,
+        Body, _, Context),
     ClassId = class_id(ClassName, _),
     ItemInstance = item_instance_info(ClassName, Types, OriginalTypes,
         Constraints, Body, TVarSet, ModuleName, Context, item_no_seq_num),
@@ -2637,19 +2651,23 @@ maybe_opt_export_class_defn(ClassId - ClassDefn0, ClassId - ClassDefn,
         ToWrite = yes,
         ClassDefn = ClassDefn0 ^ classdefn_status :=
             typeclass_status(status_exported),
-        class_procs_to_pred_ids(ClassDefn ^ classdefn_method_ppids, PredIds),
+        method_infos_to_pred_ids(ClassDefn ^ classdefn_method_infos, PredIds),
         opt_export_preds(PredIds, !ModuleInfo)
     ;
         ToWrite = no,
         ClassDefn = ClassDefn0
     ).
 
-:- pred class_procs_to_pred_ids(list(pred_proc_id)::in, list(pred_id)::out)
+:- pred method_infos_to_pred_ids(list(method_info)::in, list(pred_id)::out)
     is det.
 
-class_procs_to_pred_ids(ClassProcs, PredIds) :-
-    PredIds0 = list.map(pred_proc_id_project_pred_id, ClassProcs),
-    list.sort_and_remove_dups(PredIds0, PredIds).
+method_infos_to_pred_ids(MethodInfos, PredIds) :-
+    GetMethodPredId =
+        ( pred(MI::in, PredId::out) is det :-
+            MI ^ method_cur_proc = proc(PredId, _ProcId)
+        ),
+    list.map(GetMethodPredId, MethodInfos, PredIds0),
+    list.remove_adjacent_dups(PredIds0, PredIds).
 
 %---------------------%
 
@@ -2677,24 +2695,26 @@ maybe_opt_export_class_instances(ClassId - InstanceList0,
     hlds_instance_defn::out, module_info::in, module_info::out) is det.
 
 maybe_opt_export_instance_defn(Instance0, Instance, !ModuleInfo) :-
-    Instance0 = hlds_instance_defn(InstanceModule, Types, OriginalTypes,
-        InstanceStatus0, Context, MaybeSubsumedContext, Constraints,
-        Body, MaybeMethodPPIds, TVarSet, ConstraintProofs),
+    Instance0 = hlds_instance_defn(InstanceModule, InstanceStatus0,
+        TVarSet, OriginalTypes, Types,
+        Constraints, MaybeSubsumedContext, ConstraintProofs,
+        Body, MaybeMethodInfos, Context),
     ToWrite = instance_status_to_write(InstanceStatus0),
     (
         ToWrite = yes,
         InstanceStatus = instance_status(status_exported),
-        Instance = hlds_instance_defn(InstanceModule, Types, OriginalTypes,
-            InstanceStatus, Context, MaybeSubsumedContext, Constraints,
-            Body, MaybeMethodPPIds, TVarSet, ConstraintProofs),
+        Instance = hlds_instance_defn(InstanceModule, InstanceStatus, 
+            TVarSet, OriginalTypes, Types,
+            Constraints, MaybeSubsumedContext, ConstraintProofs,
+            Body, MaybeMethodInfos, Context),
         (
-            MaybeMethodPPIds = yes(MethodPPIds),
-            class_procs_to_pred_ids(MethodPPIds, PredIds),
+            MaybeMethodInfos = yes(MethodInfos),
+            method_infos_to_pred_ids(MethodInfos, PredIds),
             opt_export_preds(PredIds, !ModuleInfo)
         ;
-            % This can happen if an instance has multiple
-            % declarations, one of which is abstract.
-            MaybeMethodPPIds = no
+            % This can happen if an instance has multiple declarations,
+            % one of which is abstract.
+            MaybeMethodInfos = no
         )
     ;
         ToWrite = no,

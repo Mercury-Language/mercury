@@ -142,6 +142,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_util.
 :- import_module parse_tree.vartypes.
 
 :- import_module bool.
@@ -354,7 +355,7 @@ type_assign_types_to_pieces(VarSet, VarTypes, TypeVarSet, TypeBindings,
 
 type_with_bindings_to_string(Type0, TypeVarSet, TypeBindings) = Str :-
     apply_rec_subst_to_type(TypeBindings, Type0, Type1),
-    strip_builtin_qualifiers_from_type(Type1, Type),
+    strip_module_names_from_type(strip_builtin_module_name, Type1, Type),
     Str = mercury_type_to_string(TypeVarSet, print_name_only, Type).
 
 :- func type_assign_hlds_constraints_to_pieces(hlds_constraints,
@@ -501,7 +502,7 @@ get_arg_type_stuff(ArgNum, Var, ArgTypeAssign,
 typestuff_to_type(TypeStuff) = Type :-
     TypeStuff = type_stuff(Type0, _TypeVarSet, TypeBindings, _ExistQTVars),
     apply_rec_subst_to_type(TypeBindings, Type0, Type1),
-    strip_builtin_qualifiers_from_type(Type1, Type).
+    strip_module_names_from_type(strip_builtin_module_name, Type1, Type).
 
 typestuff_to_pieces(AddQuotes, InstVarSet, TypeStuff) = Pieces :-
     Type = typestuff_to_type(TypeStuff),
@@ -515,8 +516,10 @@ typestuff_to_pieces(AddQuotes, InstVarSet, TypeStuff) = Pieces :-
 type_stuff_to_actual_expected(AddQuotes, InstVarSet, ExpectedType,
         VarTypeStuff) = ActualExpected :-
     VarTypeStuff = type_stuff(VarType, TVarSet, TypeBinding, ExistQTVars),
-    strip_builtin_qualifiers_from_type(VarType, StrippedVarType),
-    strip_builtin_qualifiers_from_type(ExpectedType, StrippedExpectedType),
+    strip_module_names_from_type(strip_builtin_module_name,
+        VarType, StrippedVarType),
+    strip_module_names_from_type(strip_builtin_module_name,
+        ExpectedType, StrippedExpectedType),
     ActualPieces0 = bound_type_to_pieces(TVarSet, InstVarSet,
         print_name_only, AddQuotes, TypeBinding, ExistQTVars,
         StrippedVarType),
@@ -541,8 +544,10 @@ arg_type_stuff_to_actual_expected(AddQuotes, InstVarSet, ArgTypeStuff)
         = ActualExpected :-
     ArgTypeStuff = arg_type_stuff(VarType, Source, ExpectedType,
         TVarSet, ExistQTVars),
-    strip_builtin_qualifiers_from_type(VarType, StrippedVarType),
-    strip_builtin_qualifiers_from_type(ExpectedType, StrippedExpectedType),
+    strip_module_names_from_type(strip_builtin_module_name,
+        VarType, StrippedVarType),
+    strip_module_names_from_type(strip_builtin_module_name,
+        ExpectedType, StrippedExpectedType),
     ActualPieces0 = type_to_pieces(TVarSet, InstVarSet, print_name_only,
         AddQuotes, ExistQTVars, StrippedVarType),
     ExpectedPieces0 = type_to_pieces(TVarSet, InstVarSet, print_name_only,

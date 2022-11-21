@@ -73,6 +73,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.arg_info.
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
@@ -486,11 +487,13 @@ generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
         InVarsF = [_ | _],
         sorry($pred, "float input reg")
     ),
+    Method = method_proc_num(MethodNum),
+    MethodNumConst = const(llconst_int(MethodNum)),
     (
         HoCallVariant = ho_call_known_num,
         clobber_reg(reg(reg_r, 2), !CLD),
         Code = singleton(
-            llds_instr(assign(reg(reg_r, 2), const(llconst_int(Method))),
+            llds_instr(assign(reg(reg_r, 2), MethodNumConst),
                 "Index of class method in typeclass info")
         )
     ;
@@ -501,7 +504,7 @@ generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
         NumInVarsF = 0,
         NumInVars = encode_num_generic_call_vars(NumInVarsR, NumInVarsF),
         Code = from_list([
-            llds_instr(assign(reg(reg_r, 2), const(llconst_int(Method))),
+            llds_instr(assign(reg(reg_r, 2), MethodNumConst),
                 "Index of class method in typeclass info"),
             llds_instr(assign(reg(reg_r, 3), const(llconst_int(NumInVars))),
                 "Assign number of immediate regular input arguments")

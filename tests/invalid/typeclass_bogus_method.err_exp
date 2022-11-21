@@ -1,15 +1,14 @@
-typeclass_bogus_method.m:027: In instance declaration for `tc1'/1:
+typeclass_bogus_method.m:027: In instance declaration for `tc1(int)':
 typeclass_bogus_method.m:027:   the type class has no function method named
 typeclass_bogus_method.m:027:   `bar'/2.
-typeclass_bogus_method.m:031: In instance declaration for `tc2'/1:
+typeclass_bogus_method.m:031: In instance declaration for `tc2(int)':
 typeclass_bogus_method.m:031:   the type class has no function method named
 typeclass_bogus_method.m:031:   `baz'/1.
 typeclass_bogus_method.m:033: In instance declaration for `tc3(int)':
-typeclass_bogus_method.m:033:   no implementation for type class function
-typeclass_bogus_method.m:033:   method `foo3'/1.
-typeclass_bogus_method.m:034: In instance declaration for `tc3'/1:
+typeclass_bogus_method.m:033:   no implementation for function method `foo3'/1.
+typeclass_bogus_method.m:034: In instance declaration for `tc3(int)':
 typeclass_bogus_method.m:034:   the type class has no function method named
 typeclass_bogus_method.m:034:   `foo5'/1.
-typeclass_bogus_method.m:038: In instance declaration for `tc4'/1:
+typeclass_bogus_method.m:038: In instance declaration for `tc4(int)':
 typeclass_bogus_method.m:038:   the type class has no function method named
 typeclass_bogus_method.m:038:   `foo5'/1.

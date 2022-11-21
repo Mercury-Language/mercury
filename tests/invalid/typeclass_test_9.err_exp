@@ -12,8 +12,8 @@ typeclass_test_9.m:011: Previous instance declaration was here.
 typeclass_test_9.m:022: Error: duplicate concrete instance declaration for
 typeclass_test_9.m:022:   class `typeclass_test_9.foo'/1.
 typeclass_test_9.m:019: Previous instance declaration was here.
-typeclass_test_9.m:026: In instance declaration for `bar'/1:
+typeclass_test_9.m:026: In instance declaration for `bar(int)':
 typeclass_test_9.m:026:   the type class has no predicate method named `p'/0.
-typeclass_test_9.m:029: In instance declaration for `baz'/1:
+typeclass_test_9.m:029: In instance declaration for `baz(int)':
 typeclass_test_9.m:029:   the type class has no predicate method named `r'/0.
 For more information, recompile with `-E'.

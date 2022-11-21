@@ -455,15 +455,17 @@ dead_proc_initialize_class_methods(Classes, Instances, !Queue, !Needed) :-
     is det.
 
 get_instance_pred_procs(Instance, !Queue, !Needed) :-
-    MaybePredProcIds = Instance ^ instdefn_maybe_method_ppids,
+    MaybeMethodInfos = Instance ^ instdefn_maybe_method_infos,
     % We need to keep the instance methods for all instances
     % for optimization of method lookups.
     (
         % This should never happen.
-        MaybePredProcIds = no
+        MaybeMethodInfos = no
     ;
-        MaybePredProcIds = yes(Ids),
-        list.foldl2(get_class_interface_pred_proc, Ids, !Queue, !Needed)
+        MaybeMethodInfos = yes(MethodInfos),
+        MethodPredProcIds = method_infos_to_pred_proc_ids(MethodInfos),
+        list.foldl2(get_class_interface_pred_proc, MethodPredProcIds,
+            !Queue, !Needed)
     ).
 
 :- pred get_class_pred_procs(hlds_class_defn::in,
@@ -471,8 +473,10 @@ get_instance_pred_procs(Instance, !Queue, !Needed) :-
     is det.
 
 get_class_pred_procs(Class, !Queue, !Needed) :-
-    Methods = Class ^ classdefn_method_ppids,
-    list.foldl2(get_class_interface_pred_proc, Methods, !Queue, !Needed).
+    MethodInfos = Class ^ classdefn_method_infos,
+    MethodPredProcIds = method_infos_to_pred_proc_ids(MethodInfos),
+    list.foldl2(get_class_interface_pred_proc, MethodPredProcIds,
+        !Queue, !Needed).
 
 :- pred get_class_interface_pred_proc(pred_proc_id::in,
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)

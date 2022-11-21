@@ -92,14 +92,16 @@ class_id_is_from_given_module(ModuleName, ClassId) :-
     module_info::in, module_info::out) is det.
 
 expand_class_method_bodies_in_defn(ClassDefn, !ModuleInfo) :-
-    MethodPredProcIds = ClassDefn ^ classdefn_method_ppids,
-    list.foldl2(expand_class_method_body, MethodPredProcIds,
+    MethodInfos = ClassDefn ^ classdefn_method_infos,
+    list.foldl2(expand_class_method_body, MethodInfos,
         1, _, !ModuleInfo).
 
-:- pred expand_class_method_body(pred_proc_id::in, int::in, int::out,
+:- pred expand_class_method_body(method_info::in, int::in, int::out,
     module_info::in, module_info::out) is det.
 
-expand_class_method_body(ClassProc, !ProcNum, !ModuleInfo) :-
+expand_class_method_body(ClassMethodInfo, !ProcNum, !ModuleInfo) :-
+    ClassMethodInfo = method_info(_MethodNum, _MethodName,
+        _ClassOrigProc, ClassProc),
     ClassProc = proc(PredId, ProcId),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
@@ -158,7 +160,7 @@ expand_class_method_body(ClassProc, !ProcNum, !ModuleInfo) :-
         list.length(InstanceArgs, InstanceArity),
         pred_info_get_pf_sym_name_arity(PredInfo0, PFSymNameArity),
         BodyGoalExpr = generic_call(
-            class_method(TypeClassInfoVar, !.ProcNum,
+            class_method(TypeClassInfoVar, method_proc_num(!.ProcNum),
                 class_id(ClassName, InstanceArity), PFSymNameArity),
             HeadVars, Modes, arg_reg_types_unset, Detism),
 

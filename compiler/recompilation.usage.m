@@ -581,8 +581,8 @@ find_items_used_by_instances(ClassId, InstanceDefns, !Info) :-
 
 find_items_used_by_instance(ClassId, Defn, !Info) :-
     % XXX Should we process OriginalArgTypes as we do ArgTypes?
-    Defn = hlds_instance_defn(InstanceModuleName, ArgTypes, _OriginalArgTypes,
-        _, _, _, Constraints, _, _, _, _),
+    Defn = hlds_instance_defn(InstanceModuleName, _, _,
+        _OriginalArgTypes, ArgTypes, Constraints, _, _, _, _, _),
     % XXX Handle interface (currently not needed because the interfaces
     % for imported instances are only needed with --intermodule-optimization,
     % which isn't handled here yet).

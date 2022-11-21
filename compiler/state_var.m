@@ -313,6 +313,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module counter.
 :- import_module io.
 :- import_module maybe.
@@ -429,13 +430,13 @@ expand_bang_state_pairs_in_terms([HeadArg0 | TailArgs0], Args) :-
         HeadArg0 = variable(_, _),
         Args = [HeadArg0 | TailArgs]
     ;
-        HeadArg0 = functor(Const, FunctorArgs, Ctxt),
+        HeadArg0 = functor(Const, FunctorArgs, Context),
         ( if
             Const = atom("!"),
             FunctorArgs = [variable(_StateVar, _)]
         then
-            HeadArg1 = functor(atom("!."), FunctorArgs, Ctxt),
-            HeadArg2 = functor(atom("!:"), FunctorArgs, Ctxt),
+            HeadArg1 = functor(atom("!."), FunctorArgs, Context),
+            HeadArg2 = functor(atom("!:"), FunctorArgs, Context),
             Args = [HeadArg1, HeadArg2 | TailArgs]
         else
             Args = [HeadArg0 | TailArgs]
@@ -443,27 +444,26 @@ expand_bang_state_pairs_in_terms([HeadArg0 | TailArgs0], Args) :-
     ).
 
 expand_bang_state_pairs_in_instance_method(IM0, IM) :-
-    IM0 = instance_method(PredOrFunc, MethodSymName, UserArity0,
-        ProcDef0, Ctxt),
+    IM0 = instance_method(MethodId0, ProcDef0, Context),
+    MethodId0 = pred_pf_name_arity(PredOrFunc, MethodSymName, _UserArity0),
     (
         ProcDef0 = instance_proc_def_name(_),
         IM = IM0
     ;
-        ProcDef0 = instance_proc_def_clauses(ItemClauses0),
-        list.map(expand_bang_state_pairs_in_clause, ItemClauses0, ItemClauses),
-        % Note that ItemClauses should never be empty...
-        (
-            ItemClauses = [ItemClause | _],
+        ProcDef0 = instance_proc_def_clauses(ItemClausesCord0),
+        cord.map_pred(expand_bang_state_pairs_in_clause,
+            ItemClausesCord0, ItemClausesCord),
+        % Note that ItemClausesCord0 should never be empty...
+        ( if cord.head(ItemClausesCord, ItemClause) then
             Args = ItemClause ^ cl_head_args,
             PredFormArity = arg_list_arity(Args),
-            user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity)
-        ;
-            ItemClauses = [],
-            UserArity = UserArity0
+            user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+            MethodId = pred_pf_name_arity(PredOrFunc, MethodSymName, UserArity)
+        else
+            MethodId = MethodId0
         ),
-        ProcDef = instance_proc_def_clauses(ItemClauses),
-        IM = instance_method(PredOrFunc, MethodSymName, UserArity,
-            ProcDef, Ctxt)
+        ProcDef = instance_proc_def_clauses(ItemClausesCord),
+        IM = instance_method(MethodId, ProcDef, Context)
     ).
 
 :- pred expand_bang_state_pairs_in_clause(item_clause_info::in,

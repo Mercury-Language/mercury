@@ -132,6 +132,28 @@
 :- pred strip_builtin_qualifier_from_sym_name(sym_name::in, sym_name::out)
     is det.
 
+    % Specify whether strip_module_names_from_{cons_id,sym_name} below
+    % should delete the module qualifier from a sym_name only when that
+    % qualifier is the public builtin module, or whether it should remove
+    % all module qualifiers.
+    %
+    % The latter can introduce ambiguity by replacing both "module_a.foo"
+    % and "module_b.foo" with just "foo". It is therefore suitable only for
+    % use cases in which we print out the stripped output of these predicates
+    % only for orientation, and not because the entity whose name we are
+    % removing module qualifiers from is the focus of e.g. an error message.
+:- type strip_what_module_names
+    --->    strip_builtin_module_name
+    ;       strip_all_module_names.
+
+    % Strip the specified set of module names from the given cons_id
+    % or sym_name.
+    %
+:- pred strip_module_names_from_cons_id(strip_what_module_names::in,
+    cons_id::in, cons_id::out) is det.
+:- pred strip_module_names_from_sym_name(strip_what_module_names::in,
+    sym_name::in, sym_name::out) is det.
+
 %---------------------------------------------------------------------------%
 
     % make_n_fresh_vars(Name, N, Vars, !VarSet):
@@ -678,6 +700,24 @@ strip_builtin_qualifier_from_sym_name(SymName0, SymName) :-
         SymName = unqualified(Name)
     else
         SymName = SymName0
+    ).
+
+strip_module_names_from_cons_id(StripWhat, ConsId0, ConsId) :-
+    (
+        StripWhat = strip_builtin_module_name,
+        strip_builtin_qualifier_from_cons_id(ConsId0, ConsId)
+    ;
+        StripWhat = strip_all_module_names,
+        strip_module_qualifier_from_cons_id(ConsId0, ConsId)
+    ).
+
+strip_module_names_from_sym_name(StripWhat, SymName0, SymName) :-
+    (
+        StripWhat = strip_builtin_module_name,
+        strip_builtin_qualifier_from_sym_name(SymName0, SymName)
+    ;
+        StripWhat = strip_all_module_names,
+        strip_module_qualifier_from_sym_name(SymName0, SymName)
     ).
 
 %---------------------------------------------------------------------------%

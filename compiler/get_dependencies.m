@@ -188,6 +188,7 @@
 :- import_module parse_tree.prog_foreign.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
@@ -604,13 +605,12 @@ acc_implicit_avail_needs_in_instance(ItemInstance, !ImplicitAvailNeeds) :-
 
 acc_implicit_avail_needs_in_instance_method(InstanceMethod,
         !ImplicitAvailNeeds) :-
-    InstanceMethod = instance_method(_PredOrFunc, _MethodSymName, _UserArity,
-        ProcDef, _Context),
+    InstanceMethod = instance_method(_MethodName, ProcDef, _Context),
     (
         ProcDef = instance_proc_def_name(_Name)
     ;
-        ProcDef = instance_proc_def_clauses(ItemClauses),
-        list.foldl(acc_implicit_avail_needs_in_clause, ItemClauses,
+        ProcDef = instance_proc_def_clauses(ItemClausesCord),
+        cord.foldl_pred(acc_implicit_avail_needs_in_clause, ItemClausesCord,
             !ImplicitAvailNeeds)
     ).
 

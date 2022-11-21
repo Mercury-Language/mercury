@@ -1843,7 +1843,8 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
             % Likewise delete the determinism.
             !:MaybeDet = no
         ),
-        strip_builtin_qualifiers_from_mode_list(!ArgModes),
+        strip_module_names_from_mode_list(strip_builtin_module_name,
+            !ArgModes),
         (
             PredOrFunc = pf_predicate,
             MaybeWithInst = maybe.no,

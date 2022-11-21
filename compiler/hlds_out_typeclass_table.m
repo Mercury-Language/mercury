@@ -66,8 +66,8 @@ write_class_defn(Info, Stream, ClassId - ClassDefn, !IO) :-
     write_class_id(Stream, ClassId, !IO),
     io.write_string(Stream, ":\n", !IO),
 
-    ClassDefn = hlds_class_defn(_, Constraints, FunDeps, _, Vars, _, _,
-        MethodPredProcIds, VarSet, Context, _),
+    ClassDefn = hlds_class_defn(_, TVarSet, _, Vars, Constraints, FunDeps,
+        _, _, MethodInfos, Context, _),
 
     maybe_output_context_comment(Stream, 0, "", Context, !IO),
     DumpOptions = Info ^ hoi_dump_hlds_options,
@@ -78,7 +78,7 @@ write_class_defn(Info, Stream, ClassId - ClassDefn, !IO) :-
     ),
 
     io.write_string(Stream, "% Vars: ", !IO),
-    mercury_output_vars_vs(VarSet, VarNamePrint, Vars, Stream, !IO),
+    mercury_output_vars_vs(TVarSet, VarNamePrint, Vars, Stream, !IO),
     io.nl(Stream, !IO),
 
     io.write_string(Stream, "% Functional dependencies: ", !IO),
@@ -86,12 +86,12 @@ write_class_defn(Info, Stream, ClassId - ClassDefn, !IO) :-
     io.nl(Stream, !IO),
 
     io.write_string(Stream, "% Constraints: ", !IO),
-    write_out_list(mercury_output_constraint(VarSet, VarNamePrint),
+    write_out_list(mercury_output_constraint(TVarSet, VarNamePrint),
         ", ", Constraints, Stream, !IO),
     io.nl(Stream, !IO),
 
     io.write_string(Stream, "% Class Methods: ", !IO),
-    write_out_list(write_class_proc, ", ", MethodPredProcIds, Stream, !IO),
+    write_out_list(write_method_info_ppid, ", ", MethodInfos, Stream, !IO),
     io.nl(Stream, !IO),
     io.nl(Stream, !IO).
 
@@ -111,10 +111,11 @@ hlds_output_fundep(fundep(Domain, Range), Stream, !IO) :-
     % probably not that useful to have the names. If that information is
     % needed, it shouldn't be a very difficult fix.
     %
-:- pred write_class_proc(pred_proc_id::in,
+:- pred write_method_info_ppid(method_info::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 
-write_class_proc(proc(PredId, ProcId), Stream, !IO) :-
+write_method_info_ppid(MethodInfo, Stream, !IO) :-
+    MethodInfo ^ method_orig_proc = proc(PredId, ProcId),
     pred_id_to_int(PredId, PredInt),
     proc_id_to_int(ProcId, ProcInt),
     io.format(Stream, "proc(pred_id:%d, proc_id:%d)",
@@ -145,9 +146,10 @@ write_instance_defns(Info, Stream, ClassId - InstanceDefns, !IO) :-
     hlds_instance_defn::in, io::di, io::uo) is det.
 
 write_instance_defn(Info, Stream, InstanceDefn, !IO) :-
-    InstanceDefn = hlds_instance_defn(_InstanceModule, Types, OriginalTypes,
-        InstanceStatus, Context, MaybeSubsumedContext, Constraints,
-        Body, MaybePredProcIds, VarSet, ProofMap),
+    InstanceDefn = hlds_instance_defn(_InstanceModule, InstanceStatus,
+        TVarSet, OriginalTypes, Types,
+        Constraints, MaybeSubsumedContext, ProofMap,
+        Body, MaybeMethodInfos, Context),
 
     % Separate this instance from any previous ones, or the class id.
     io.nl(Stream, !IO),
@@ -161,10 +163,10 @@ write_instance_defn(Info, Stream, InstanceDefn, !IO) :-
     ),
 
     % Curry the varset for term_io.write_variable/4.
-    PrintTerm = mercury_output_type(VarSet, VarNamePrint),
+    PrintTerm = mercury_output_type(TVarSet, VarNamePrint),
     write_indent(Stream, 1, !IO),
     io.write_string(Stream, "% Types: ", !IO),
-    write_out_list(mercury_output_type(VarSet, VarNamePrint), ", ", Types,
+    write_out_list(mercury_output_type(TVarSet, VarNamePrint), ", ", Types,
         Stream, !IO),
     io.nl(Stream, !IO),
     write_indent(Stream, 1, !IO),
@@ -187,7 +189,7 @@ write_instance_defn(Info, Stream, InstanceDefn, !IO) :-
 
     write_indent(Stream, 1, !IO),
     io.write_string(Stream, "% Constraints: ", !IO),
-    write_out_list(mercury_output_constraint(VarSet, VarNamePrint),
+    write_out_list(mercury_output_constraint(TVarSet, VarNamePrint),
         ", ", Constraints, Stream, !IO),
     io.nl(Stream, !IO),
 
@@ -203,15 +205,17 @@ write_instance_defn(Info, Stream, InstanceDefn, !IO) :-
     io.nl(Stream, !IO),
 
     (
-        MaybePredProcIds = yes(PredProcIds),
+        MaybeMethodInfos = yes(MethodInfos),
         write_indent(Stream, 1, !IO),
         io.write_string(Stream, "% Procedures: ", !IO),
-        io.write(Stream, PredProcIds, !IO),
-        io.nl(Stream, !IO)
+        % XXX The next time someone wants to debug this field,
+        % they should replace this call with code that prints out
+        % each method_info in a controlled manner.
+        io.write_line(Stream, MethodInfos, !IO)
     ;
-        MaybePredProcIds = no
+        MaybeMethodInfos = no
     ),
-    write_constraint_proof_map(Stream, 1, VarNamePrint, VarSet,
+    write_constraint_proof_map(Stream, 1, VarNamePrint, TVarSet,
         ProofMap, !IO),
     io.nl(Stream, !IO).
 
@@ -220,8 +224,8 @@ write_instance_defn(Info, Stream, InstanceDefn, !IO) :-
 
 write_instance_methods(_, [], _, !IO).
 write_instance_methods(Stream, [Method | Methods], !.CurMethodNum, !IO) :-
-    Method = instance_method(PredOrFunc, MethodSymName, UserArity,
-        _Defn, _Context),
+    Method = instance_method(MethodName, _Defn, _Context),
+    MethodName = pred_pf_name_arity(PredOrFunc, MethodSymName, UserArity),
     UserArity = user_arity(UserArityInt),
     write_indent(Stream, 1, !IO),
     io.format(Stream, "%% method %d, %s %s/%d\n",

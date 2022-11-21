@@ -57,6 +57,7 @@
 :- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
 
+:- import_module cord.
 :- import_module map.
 :- import_module require.
 :- import_module set.
@@ -108,7 +109,8 @@ produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, ArgTypes,
             no_foreign_lang_clauses, no_clause_syntax_errors)
     ;
         % Handle the arbitrary clauses syntax.
-        InstanceProcDefn = instance_proc_def_clauses(InstanceClauses),
+        InstanceProcDefn = instance_proc_def_clauses(InstanceClausesCord),
+        InstanceClauses = cord.list(InstanceClausesCord),
         % XXX CIT_TYPES: should be cit_types(ArgTypes)
         clauses_info_init(PredOrFunc, cit_no_types(PredFormArity),
             init_clause_item_numbers_comp_gen, ClausesInfo0),

@@ -1514,8 +1514,9 @@ qualify_instance_body(ClassName, InstanceBody0, InstanceBody) :-
 qualify_instance_method(DefaultModuleName, InstanceMethod0, InstanceMethod) :-
     % XXX InstanceProcDef may contain a list of clauses.
     % Why aren't those clauses module qualified?
-    InstanceMethod0 = instance_method(PredOrFunc, MethodSymName0,
-        InstanceProcDef, Arity, DeclContext),
+    InstanceMethod0 = instance_method(MethodName0,
+        InstanceProcDef, DeclContext),
+    MethodName0 = pred_pf_name_arity(PredOrFunc, MethodSymName0, UserArity),
     (
         MethodSymName0 = unqualified(Name),
         MethodSymName = qualified(DefaultModuleName, Name)
@@ -1535,12 +1536,13 @@ qualify_instance_method(DefaultModuleName, InstanceMethod0, InstanceMethod) :-
             %
             % We don't report the error here, we just leave the original
             % module qualifier intact so that the error can be reported
-            % later on. XXX Where is the code that does this reporting?
+            % later on. XXX METHOD Where is the code that does this reporting?
             MethodSymName = MethodSymName0
         )
     ),
-    InstanceMethod = instance_method(PredOrFunc, MethodSymName,
-        InstanceProcDef, Arity, DeclContext).
+    MethodName = pred_pf_name_arity(PredOrFunc, MethodSymName, UserArity),
+    InstanceMethod = instance_method(MethodName,
+        InstanceProcDef, DeclContext).
 
 %---------------------------------------------------------------------------%
 %

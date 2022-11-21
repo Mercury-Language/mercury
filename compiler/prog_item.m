@@ -1470,7 +1470,7 @@
     --->    item_instance_info(
                 % The original types field preserves the types in the instance
                 % declaration as written by the programmer. The types field
-                % is subject to the expansion of equivalent types.
+                % is subject to the expansion of equivalence types.
                 ci_class_name                   :: class_name,
                 ci_types                        :: list(mer_type),
                 ci_original_types               :: list(mer_type),

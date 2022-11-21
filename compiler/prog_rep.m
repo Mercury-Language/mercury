@@ -97,6 +97,7 @@
 :- import_module check_hlds.mode_test.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_name.
 :- import_module mdbcomp.goal_path.
@@ -570,7 +571,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                 PredVarRep = var_to_var_rep(Info, PredVar),
                 AtomicGoalRep = higher_order_call_rep(PredVarRep, ArgsRep)
             ;
-                GenericCall = class_method(Var, Num, _, _),
+                GenericCall = class_method(Var, method_proc_num(Num), _, _),
                 VarRep = var_to_var_rep(Info, Var),
                 AtomicGoalRep = method_call_rep(VarRep, Num, ArgsRep)
             ;

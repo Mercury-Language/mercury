@@ -18,6 +18,7 @@
 :- interface.
 
 :- import_module hlds.goal_mode.
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
@@ -678,7 +679,7 @@
                 method_tci      :: prog_var,
 
                 % The number of the called method.
-                method_num      :: int,
+                method_num      :: method_proc_num,
 
                 % The name and arity of the class.
                 method_class_id :: class_id,

@@ -1,4 +1,4 @@
-typeclass_test_10.m:017: In instance declaration for `bar'/1:
+typeclass_test_10.m:017: In instance declaration for `bar(int)':
 typeclass_test_10.m:017:   the type class has no predicate method named `p'/0.
-typeclass_test_10.m:020: In instance declaration for `baz'/1:
+typeclass_test_10.m:020: In instance declaration for `baz(int)':
 typeclass_test_10.m:020:   the type class has no predicate method named `r'/0.

@@ -1096,12 +1096,13 @@ maybe_specialize_higher_order_call(PredVar, Args, Goal0, Goal, !Info) :-
 
     % Process a class_method_call to see if it could possibly be specialized.
     %
-:- pred maybe_specialize_method_call(prog_var::in, int::in,
+:- pred maybe_specialize_method_call(prog_var::in, method_proc_num::in,
     list(prog_var)::in, hlds_goal::in, hlds_goal::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-maybe_specialize_method_call(TypeClassInfoVar, Method, Args, Goal0, Goal,
-        !Info) :-
+maybe_specialize_method_call(TypeClassInfoVar, MethodProcNum, Args,
+        Goal0, Goal, !Info) :-
+    MethodProcNum = method_proc_num(MethodNum),
     Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
     ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
     % We can specialize calls to class_method_call/N if the typeclass_info
@@ -1124,8 +1125,8 @@ maybe_specialize_method_call(TypeClassInfoVar, Method, Args, Goal0, Goal,
         module_info_get_instance_table(ModuleInfo, InstanceTable),
         map.lookup(InstanceTable, ClassId, InstanceList),
         list.det_index1(InstanceList, Instance, InstanceDefn),
-        InstanceDefn = hlds_instance_defn(_, InstanceTypes0, _, _, _, _,
-            InstanceConstraints, _, yes(ClassInterface), _, _),
+        InstanceDefn = hlds_instance_defn(_, _, _, _, InstanceTypes0,
+            InstanceConstraints,  _,_, _, yes(MethodInfos), _),
         type_vars_in_types(InstanceTypes0, InstanceTvars),
         get_unconstrained_tvars(InstanceTvars,
             InstanceConstraints, UnconstrainedTVars),
@@ -1134,7 +1135,8 @@ maybe_specialize_method_call(TypeClassInfoVar, Method, Args, Goal0, Goal,
         list.take(NumArgsToExtract, OtherTypeClassInfoArgs,
             InstanceConstraintArgs)
     then
-        list.det_index1(ClassInterface, Method, proc(PredId, ProcId)),
+        list.det_index1(MethodInfos, MethodNum, MethodInfo),
+        MethodInfo ^ method_cur_proc = proc(PredId, ProcId),
         AllArgs = InstanceConstraintArgs ++ Args,
         construct_specialized_higher_order_call(PredId, ProcId, AllArgs,
             GoalInfo0, Goal, !Info)
@@ -1161,7 +1163,7 @@ maybe_specialize_method_call(TypeClassInfoVar, Method, Args, Goal0, Goal,
         module_info_get_instance_table(ModuleInfo, InstanceTable),
         map.lookup(InstanceTable, class_id(ClassName, ClassArity), Instances),
         pred_info_get_typevarset(CallerPredInfo0, TVarSet0),
-        find_matching_instance_method(Instances, Method, ClassArgTypes,
+        find_matching_instance_method(Instances, MethodNum, ClassArgTypes,
             PredId, ProcId, InstanceConstraints, UnconstrainedTVarTypes,
             TVarSet0, TVarSet)
     then
@@ -1211,8 +1213,9 @@ find_matching_instance_method([Instance | Instances], MethodNum, ClassTypes,
     then
         Constraints = Constraints0,
         UnconstrainedTVarTypes = UnconstrainedTVarTypes0,
-        yes(MethodPredProcIds) = Instance ^ instdefn_maybe_method_ppids,
-        list.det_index1(MethodPredProcIds, MethodNum, proc(PredId, ProcId))
+        Instance ^ instdefn_maybe_method_infos = yes(MethodInfos),
+        list.det_index1(MethodInfos, MethodNum, MethodInfo),
+        MethodInfo ^ method_cur_proc = proc(PredId, ProcId)
     else
         find_matching_instance_method(Instances, MethodNum, ClassTypes,
             PredId, ProcId, Constraints, UnconstrainedTVarTypes, !TVarSet)
@@ -1224,8 +1227,8 @@ find_matching_instance_method([Instance | Instances], MethodNum, ClassTypes,
 
 instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
         TVarSet0, TVarSet) :-
-    Instance = hlds_instance_defn(_, InstanceTypes0, _, _, _, _, Constraints0,
-        _, _, InstanceTVarSet, _),
+    Instance = hlds_instance_defn(_, _, InstanceTVarSet, _, InstanceTypes0,
+        Constraints0, _, _, _, _, _),
     tvarset_merge_renaming(TVarSet0, InstanceTVarSet, TVarSet, Renaming),
     apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
         InstanceTypes),

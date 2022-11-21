@@ -133,6 +133,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
@@ -1502,8 +1503,8 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarNameSrc, _TypeQual,
         ),
         io.write_string(Stream, Follow, !IO)
     ;
-        GenericCall = class_method(TCInfoVar, MethodNum, _ClassId,
-            _MethodId),
+        GenericCall = class_method(TCInfoVar, method_proc_num(MethodNum),
+            _ClassId, _MethodId),
         ( if string.contains_char(DumpOptions, 'l') then
             write_indent(Stream, Indent, !IO),
             io.write_string(Stream, "% class method call\n", !IO),

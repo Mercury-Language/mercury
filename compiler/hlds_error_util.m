@@ -226,7 +226,8 @@ describe_one_pred_name_mode(ModuleInfo, Lang, ShouldModuleQualify, PredId,
     % We need to strip off the extra type_info arguments inserted at the
     % front by polymorphism.m - we only want the last `Arity' of them.
     ( if list.drop(NumArgModes - Arity, ArgModes0, ArgModes) then
-        strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes)
+        strip_module_names_from_mode_list(strip_builtin_module_name,
+            ArgModes, StrippedArgModes)
     else
         unexpected($pred, "bad argument list")
     ),

@@ -64,6 +64,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_class.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -1323,7 +1324,8 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
                 [SiteNumVar, ClosureVar], [], PrepareGoal),
             CallSite = higher_order_call(FileName, LineNumber, GoalPath)
         ;
-            Generic = class_method(TypeClassInfoVar, MethodNum, _, _),
+            Generic = class_method(TypeClassInfoVar,
+                method_proc_num(MethodNum), _, _),
             VarTable2 = !.DeepInfo ^ deep_var_table,
             generate_var_int("MethodNum", MethodNumVar, VarTable2, VarTable3),
             !DeepInfo ^ deep_var_table := VarTable3,

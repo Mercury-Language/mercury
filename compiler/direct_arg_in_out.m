@@ -1889,10 +1889,10 @@ make_new_clone_var(OldVar, NewVar, !Info) :-
     hlds_class_defn::in, hlds_class_defn::out) is det.
 
 transform_class(DirectArgProcInOutMap, Class0, Class) :-
-    PredProcIds0 = Class0 ^ classdefn_method_ppids,
-    list.map(transform_class_instance_proc(DirectArgProcInOutMap),
-        PredProcIds0, PredProcIds),
-    Class = Class0 ^ classdefn_method_ppids := PredProcIds.
+    MethodInfos0 = Class0 ^ classdefn_method_infos,
+    list.map(transform_class_method_info(DirectArgProcInOutMap),
+        MethodInfos0, MethodInfos),
+    Class = Class0 ^ classdefn_method_infos := MethodInfos.
 
 :- pred transform_class_instances(direct_arg_proc_in_out_map::in,
     list(hlds_instance_defn)::in, list(hlds_instance_defn)::out) is det.
@@ -1905,29 +1905,31 @@ transform_class_instances(DirectArgProcInOutMap, Instances0, Instances) :-
     hlds_instance_defn::in, hlds_instance_defn::out) is det.
 
 transform_class_instance(DirectArgProcInOutMap, Instance0, Instance) :-
-    MaybeMethodPredProcIds0 = Instance0 ^ instdefn_maybe_method_ppids,
+    MaybeMethodInfos0 = Instance0 ^ instdefn_maybe_method_infos,
     (
-        MaybeMethodPredProcIds0 = no,
+        MaybeMethodInfos0 = no,
         Instance = Instance0
     ;
-        MaybeMethodPredProcIds0 = yes(MethodPredProcIds0),
-        list.map(transform_class_instance_proc(DirectArgProcInOutMap),
-            MethodPredProcIds0, MethodPredProcIds),
-        MaybeMethodPredProcIds = yes(MethodPredProcIds),
-        Instance = Instance0 ^ instdefn_maybe_method_ppids
-            := MaybeMethodPredProcIds
+        MaybeMethodInfos0 = yes(MethodInfos0),
+        list.map(transform_class_method_info(DirectArgProcInOutMap),
+            MethodInfos0, MethodInfos),
+        MaybeMethodInfos = yes(MethodInfos),
+        Instance = Instance0 ^ instdefn_maybe_method_infos := MaybeMethodInfos
     ).
 
-:- pred transform_class_instance_proc(direct_arg_proc_in_out_map::in,
-    pred_proc_id::in, pred_proc_id::out) is det.
+:- pred transform_class_method_info(direct_arg_proc_in_out_map::in,
+    method_info::in, method_info::out) is det.
 
-transform_class_instance_proc(DirectArgProcInOutMap,
-        PredProcId0, PredProcId) :-
-    ( if map.search(DirectArgProcInOutMap, PredProcId0, ProcInOut) then
-        ProcInOut = direct_arg_proc_in_out(PredProcId, _ArgPosns)
+transform_class_method_info(DirectArgProcInOutMap, MethodInfo0, MethodInfo) :-
+    MethodInfo0 = method_info(MethodNum, MethodName,
+        OrigPredProcId, CurPredProcId0),
+    ( if map.search(DirectArgProcInOutMap, CurPredProcId0, CurProcInOut) then
+        CurProcInOut = direct_arg_proc_in_out(CurPredProcId, _ArgPosns)
     else
-        PredProcId = PredProcId0
-    ).
+        CurPredProcId = CurPredProcId0
+    ),
+    MethodInfo = method_info(MethodNum, MethodName,
+        OrigPredProcId, CurPredProcId).
 
 %---------------------------------------------------------------------------%
 

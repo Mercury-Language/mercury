@@ -20,6 +20,7 @@
 
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_util.
 
 :- import_module list.
 :- import_module maybe.
@@ -171,17 +172,19 @@
 
 %---------------------------------------------------------------------------%
 %
-% Predicates to make error messages more readable by stripping "builtin."
-% module qualifiers from modes.
+% Predicates to make error messages more readable by stripping either
+% "builtin." module qualifiers, or all module qualifiers, from modes.
 %
 
-:- pred strip_builtin_qualifiers_from_mode_list(list(mer_mode)::in,
-    list(mer_mode)::out) is det.
-:- pred strip_builtin_qualifiers_from_mode(mer_mode::in, mer_mode::out) is det.
+:- pred strip_module_names_from_mode_list(strip_what_module_names::in,
+    list(mer_mode)::in, list(mer_mode)::out) is det.
+:- pred strip_module_names_from_mode(strip_what_module_names::in,
+    mer_mode::in, mer_mode::out) is det.
 
-:- pred strip_builtin_qualifiers_from_inst_list(list(mer_inst)::in,
-    list(mer_inst)::out) is det.
-:- pred strip_builtin_qualifiers_from_inst(mer_inst::in, mer_inst::out) is det.
+:- pred strip_module_names_from_inst_list(strip_what_module_names::in,
+    list(mer_inst)::in, list(mer_inst)::out) is det.
+:- pred strip_module_names_from_inst(strip_what_module_names::in,
+    mer_inst::in, mer_inst::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -234,7 +237,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.prog_util.
 
 :- import_module map.
 :- import_module require.
@@ -918,30 +920,30 @@ bound_insts_to_cons_ids(TypeCtor, [BoundInst | BoundInsts],
 
 %---------------------------------------------------------------------------%
 %
-% The active part of this code is strip_builtin_qualifier_from_sym_name;
+% The active parts of this code are strip_module_name_from_{sym_name,cons_id};
 % the rest is basically just recursive traversals to get there.
 %
 
-strip_builtin_qualifiers_from_mode_list(Modes0, Modes) :-
-    list.map(strip_builtin_qualifiers_from_mode, Modes0, Modes).
+strip_module_names_from_mode_list(StripWhat, Modes0, Modes) :-
+    list.map(strip_module_names_from_mode(StripWhat), Modes0, Modes).
 
-strip_builtin_qualifiers_from_mode(Mode0, Mode) :-
+strip_module_names_from_mode(StripWhat, Mode0, Mode) :-
     (
         Mode0 = from_to_mode(Initial0, Final0),
-        strip_builtin_qualifiers_from_inst(Initial0, Initial),
-        strip_builtin_qualifiers_from_inst(Final0, Final),
+        strip_module_names_from_inst(StripWhat, Initial0, Initial),
+        strip_module_names_from_inst(StripWhat, Final0, Final),
         Mode = from_to_mode(Initial, Final)
     ;
         Mode0 = user_defined_mode(SymName0, Insts0),
-        strip_builtin_qualifiers_from_inst_list(Insts0, Insts),
-        strip_builtin_qualifier_from_sym_name(SymName0, SymName),
+        strip_module_names_from_inst_list(StripWhat, Insts0, Insts),
+        strip_module_names_from_sym_name(StripWhat, SymName0, SymName),
         Mode = user_defined_mode(SymName, Insts)
     ).
 
-strip_builtin_qualifiers_from_inst_list(Insts0, Insts) :-
-    list.map(strip_builtin_qualifiers_from_inst, Insts0, Insts).
+strip_module_names_from_inst_list(StripWhat, Insts0, Insts) :-
+    list.map(strip_module_names_from_inst(StripWhat), Insts0, Insts).
 
-strip_builtin_qualifiers_from_inst(Inst0, Inst) :-
+strip_module_names_from_inst(StripWhat, Inst0, Inst) :-
     (
         ( Inst0 = inst_var(_)
         ; Inst0 = not_reached
@@ -951,101 +953,109 @@ strip_builtin_qualifiers_from_inst(Inst0, Inst) :-
         Inst = Inst0
     ;
         Inst0 = constrained_inst_vars(Vars, SubInst0),
-        strip_builtin_qualifiers_from_inst(SubInst0, SubInst),
+        strip_module_names_from_inst(StripWhat, SubInst0, SubInst),
         Inst = constrained_inst_vars(Vars, SubInst)
     ;
         Inst0 = any(Uniq, HOInstInfo0),
-        strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo),
+        strip_module_names_from_ho_inst_info(StripWhat,
+            HOInstInfo0, HOInstInfo),
         Inst = any(Uniq, HOInstInfo)
     ;
         Inst0 = ground(Uniq, HOInstInfo0),
-        strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo),
+        strip_module_names_from_ho_inst_info(StripWhat,
+            HOInstInfo0, HOInstInfo),
         Inst = ground(Uniq, HOInstInfo)
     ;
         Inst0 = bound(Uniq, InstResults, BoundInsts0),
-        strip_builtin_qualifiers_from_bound_inst_list(BoundInsts0, BoundInsts),
+        strip_module_names_from_bound_inst_list(StripWhat,
+            BoundInsts0, BoundInsts),
         Inst = bound(Uniq, InstResults, BoundInsts)
     ;
         Inst0 = defined_inst(InstName0),
-        strip_builtin_qualifiers_from_inst_name(InstName0, InstName),
+        strip_module_names_from_inst_name(StripWhat, InstName0, InstName),
         Inst = defined_inst(InstName)
     ;
         Inst0 = abstract_inst(Name0, Args0),
-        strip_builtin_qualifier_from_sym_name(Name0, Name),
-        strip_builtin_qualifiers_from_inst_list(Args0, Args),
+        strip_module_names_from_sym_name(StripWhat, Name0, Name),
+        strip_module_names_from_inst_list(StripWhat, Args0, Args),
         Inst = abstract_inst(Name, Args)
     ).
 
-:- pred strip_builtin_qualifiers_from_bound_inst_list(list(bound_inst)::in,
-    list(bound_inst)::out) is det.
+:- pred strip_module_names_from_bound_inst_list(strip_what_module_names::in,
+    list(bound_inst)::in, list(bound_inst)::out) is det.
 
-strip_builtin_qualifiers_from_bound_inst_list(Insts0, Insts) :-
-    list.map(strip_builtin_qualifiers_from_bound_inst, Insts0, Insts).
+strip_module_names_from_bound_inst_list(StripWhat, Insts0, Insts) :-
+    list.map(strip_module_names_from_bound_inst(StripWhat), Insts0, Insts).
 
-:- pred strip_builtin_qualifiers_from_bound_inst(bound_inst::in,
-    bound_inst::out) is det.
+:- pred strip_module_names_from_bound_inst(strip_what_module_names::in,
+    bound_inst::in, bound_inst::out) is det.
 
-strip_builtin_qualifiers_from_bound_inst(BoundInst0, BoundInst) :-
+strip_module_names_from_bound_inst(StripWhat, BoundInst0, BoundInst) :-
     BoundInst0 = bound_functor(ConsId0, Insts0),
-    strip_builtin_qualifier_from_cons_id(ConsId0, ConsId),
-    list.map(strip_builtin_qualifiers_from_inst, Insts0, Insts),
+    strip_module_names_from_cons_id(StripWhat, ConsId0, ConsId),
+    list.map(strip_module_names_from_inst(StripWhat), Insts0, Insts),
     BoundInst = bound_functor(ConsId, Insts).
 
-:- pred strip_builtin_qualifiers_from_inst_name(inst_name::in, inst_name::out)
-    is det.
+:- pred strip_module_names_from_inst_name(strip_what_module_names::in,
+    inst_name::in, inst_name::out) is det.
 
-strip_builtin_qualifiers_from_inst_name(InstName0, InstName) :-
+strip_module_names_from_inst_name(StripWhat, InstName0, InstName) :-
     (
         InstName0 = user_inst(SymName0, Insts0),
-        strip_builtin_qualifier_from_sym_name(SymName0, SymName),
-        strip_builtin_qualifiers_from_inst_list(Insts0, Insts),
+        strip_module_names_from_sym_name(StripWhat, SymName0, SymName),
+        strip_module_names_from_inst_list(StripWhat, Insts0, Insts),
         InstName = user_inst(SymName, Insts)
     ;
         InstName0 = unify_inst(Live, Real, InstA0, InstB0),
-        strip_builtin_qualifiers_from_inst(InstA0, InstA),
-        strip_builtin_qualifiers_from_inst(InstB0, InstB),
+        strip_module_names_from_inst(StripWhat, InstA0, InstA),
+        strip_module_names_from_inst(StripWhat, InstB0, InstB),
         InstName = unify_inst(Live, Real, InstA, InstB)
     ;
         InstName0 = merge_inst(InstA0, InstB0),
-        strip_builtin_qualifiers_from_inst(InstA0, InstA),
-        strip_builtin_qualifiers_from_inst(InstB0, InstB),
+        strip_module_names_from_inst(StripWhat, InstA0, InstA),
+        strip_module_names_from_inst(StripWhat, InstB0, InstB),
         InstName = merge_inst(InstA, InstB)
     ;
         InstName0 = ground_inst(SubInstName0, Uniq, Live, Real),
-        strip_builtin_qualifiers_from_inst_name(SubInstName0, SubInstName),
+        strip_module_names_from_inst_name(StripWhat,
+            SubInstName0, SubInstName),
         InstName = ground_inst(SubInstName, Uniq, Live, Real)
     ;
         InstName0 = any_inst(SubInstName0, Uniq, Live, Real),
-        strip_builtin_qualifiers_from_inst_name(SubInstName0, SubInstName),
+        strip_module_names_from_inst_name(StripWhat,
+            SubInstName0, SubInstName),
         InstName = any_inst(SubInstName, Uniq, Live, Real)
     ;
         InstName0 = shared_inst(SubInstName0),
-        strip_builtin_qualifiers_from_inst_name(SubInstName0, SubInstName),
+        strip_module_names_from_inst_name(StripWhat,
+            SubInstName0, SubInstName),
         InstName = shared_inst(SubInstName)
     ;
         InstName0 = mostly_uniq_inst(SubInstName0),
-        strip_builtin_qualifiers_from_inst_name(SubInstName0, SubInstName),
+        strip_module_names_from_inst_name(StripWhat,
+            SubInstName0, SubInstName),
         InstName = mostly_uniq_inst(SubInstName)
     ;
         InstName0 = typed_ground(_Uniq, _Type),
         InstName = InstName0
     ;
         InstName0 = typed_inst(Type, SubInstName0),
-        strip_builtin_qualifiers_from_inst_name(SubInstName0, SubInstName),
+        strip_module_names_from_inst_name(StripWhat,
+            SubInstName0, SubInstName),
         InstName = typed_inst(Type, SubInstName)
     ).
 
-:- pred strip_builtin_qualifiers_from_ho_inst_info(ho_inst_info::in,
-    ho_inst_info::out) is det.
+:- pred strip_module_names_from_ho_inst_info(strip_what_module_names::in,
+    ho_inst_info::in, ho_inst_info::out) is det.
 
-strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo) :-
+strip_module_names_from_ho_inst_info(StripWhat, HOInstInfo0, HOInstInfo) :-
     (
         HOInstInfo0 = none_or_default_func,
         HOInstInfo = none_or_default_func
     ;
         HOInstInfo0 = higher_order(Pred0),
         Pred0 = pred_inst_info(PorF, Modes0, ArgRegs, Det),
-        strip_builtin_qualifiers_from_mode_list(Modes0, Modes),
+        strip_module_names_from_mode_list(StripWhat, Modes0, Modes),
         Pred = pred_inst_info(PorF, Modes, ArgRegs, Det),
         HOInstInfo = higher_order(Pred)
     ).

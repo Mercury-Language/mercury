@@ -1,2 +1,2 @@
-typeclass_missing_mode.m:011: Error: no mode declaration for type class method
-typeclass_missing_mode.m:011:   predicate `typeclass_missing_mode.p'/1.
+typeclass_missing_mode.m:011: Error: no mode declaration for method predicate
+typeclass_missing_mode.m:011:   `p'/1.

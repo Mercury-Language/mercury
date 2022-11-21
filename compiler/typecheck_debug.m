@@ -39,6 +39,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_util.
 :- import_module parse_tree.vartypes.
 
 :- import_module bool.
@@ -157,7 +158,7 @@ write_type_assign_types(Stream, VarSet, TypeVarSet, VarTypes, TypeBindings,
 
 write_type_with_bindings(Stream, TypeVarSet, TypeBindings, Type0, !IO) :-
     apply_rec_subst_to_type(TypeBindings, Type0, Type1),
-    strip_builtin_qualifiers_from_type(Type1, Type),
+    strip_module_names_from_type(strip_builtin_module_name, Type1, Type),
     mercury_output_type(TypeVarSet, print_name_and_num, Type, Stream, !IO).
 
 :- pred write_type_assign_hlds_constraints(io.text_output_stream::in,

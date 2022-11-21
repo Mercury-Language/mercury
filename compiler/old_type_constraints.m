@@ -807,14 +807,14 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
     ;
         % Class methods are handled by looking up the method number in the
         % class' method list.
-        Details = class_method(_, MethodNum, ClassId, _),
+        Details = class_method(_, method_proc_num(MethodNum), ClassId, _),
         ClassId = class_id(Name, Arity),
         ( if map.search(Environment ^ tce_class_env, ClassId, ClassDefn) then
             ( if
-                list.index0(ClassDefn ^ classdefn_method_ppids, MethodNum,
+                list.index0(ClassDefn ^ classdefn_method_infos, MethodNum,
                     Method)
             then
-                Method = proc(PredId, _),
+                Method = method_info(_, _, proc(PredId, _), _),
                 predicate_table_get_pred_id_table(Environment ^ tce_pred_env,
                     Preds),
                 ( if pred_has_arity(Preds, list.length(Vars), PredId) then

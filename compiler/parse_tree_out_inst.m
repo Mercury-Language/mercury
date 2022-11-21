@@ -604,8 +604,10 @@ mercury_format_mode(Lang, InstVarSet, Mode0, S, !U) :-
                 insts_to_mode(FromInst0, ToInst0, Mode1),
                 (
                     Mode1 = from_to_mode(FromInst1, ToInst1),
-                    strip_builtin_qualifiers_from_inst(FromInst1, FromInst),
-                    strip_builtin_qualifiers_from_inst(ToInst1, ToInst),
+                    strip_module_names_from_inst(strip_builtin_module_name,
+                        FromInst1, FromInst),
+                    strip_module_names_from_inst(strip_builtin_module_name,
+                        ToInst1, ToInst),
                     mercury_format_from_to_mode(Lang, InstVarSet,
                         FromInst, ToInst, S, !U)
                 ;

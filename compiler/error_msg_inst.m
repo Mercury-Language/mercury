@@ -123,7 +123,7 @@ error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts,
         ShortInstQF, ShortInstSuffix, LongInstPrefix, LongInstSuffix, Inst0)
         = Pieces :-
     Info = inst_msg_info(ModuleInfo, InstVarSet, ExpandNamedInsts),
-    strip_builtin_qualifiers_from_inst(Inst0, Inst),
+    strip_module_names_from_inst(strip_builtin_module_name, Inst0, Inst),
     Expansions0 = expansions_info(map.init, counter.init(1)),
     SuffixPieces = [],
     inst_to_inline_pieces(Info, Expansions0, _InlineExpansions, Inst,

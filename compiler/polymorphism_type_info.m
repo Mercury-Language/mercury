@@ -102,7 +102,7 @@
     % Given a type, create a variable to hold the type_info for that type,
     % and create a list of goals to initialize that type_info variable
     % to the appropriate type_info structure for the type.
-    % Update the varset and vartypes accordingly.
+    % Update the var_table accordingly.
     %
 :- pred polymorphism_make_type_info_var(mer_type::in, term.context::in,
     prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
@@ -110,7 +110,7 @@
     % Given a list of types, create a list of variables to hold the type_infos
     % for those types, and create a list of goals to initialize those type_info
     % variables to the appropriate type_info structures for the types.
-    % Update the varset and vartypes accordingly.
+    % Update the var_table accordingly.
     %
 :- pred polymorphism_make_type_info_vars(list(mer_type)::in, term.context::in,
     list(prog_var)::out, list(hlds_goal)::out, poly_info::in, poly_info::out)
@@ -144,7 +144,7 @@
 %---------------------------------------------------------------------------%
 
     % init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal,
-    %   !VarSet, !VarTypes) :-
+    %   !RttiVarMaps):
     %
     % Create the unification that constructs the second cell of a type_info
     % for Type. ArgVars should contain the arguments of this unification.
@@ -407,7 +407,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
     % not *type_ctor_info*, even though the latter is the actual truth,
     % because
     %
-    % - type_ctor_info consts *can* be used a type_infos, as in
+    % - type_ctor_info consts *can* be used as type_infos, as in
     %   the then arm of the if-then-else just below;
     %
     % - the type of any type_ctor_info const *must* be recorded as

@@ -794,7 +794,7 @@ class_documentation(C, PredTable, class_id(Name, Arity), ClassDefn, !Xml) :-
         XmlFundeps = xml_list("fundeps",
             fundep_to_xml(TVarset, Vars), ClassDefn ^ classdefn_fundeps),
         XmlMethods = class_methods_to_xml(C, PredTable,
-            ClassDefn ^ classdefn_method_ppids),
+            ClassDefn ^ classdefn_method_infos),
         XmlVisibility = typeclass_visibility_to_xml(TypeClassStatus),
         XmlContext = prog_context_to_xml(Context),
 
@@ -823,13 +823,17 @@ fundep_to_xml_2(Tag, TVarset, Vars, Set) =
     xml_list(Tag, type_param_to_xml(TVarset),
         restrict_list_elements(Set, Vars)).
 
-:- func class_methods_to_xml(comments, pred_id_table, method_pred_proc_ids)
-    = xml.
+:- func class_methods_to_xml(comments, pred_id_table, list(method_info)) = xml.
 
-class_methods_to_xml(C, PredTable, Methods) = Xml :-
-    AllPredIds = list.map(pred_proc_id_project_pred_id, Methods),
+class_methods_to_xml(C, PredTable, MethodInfos) = Xml :-
+    MethodInfoPredId = 
+        ( func(method_info(_, _, PredProcId, _)) = PredId :-
+            PredProcId = proc(PredId, _)
+        ),
+    AllPredIds = list.map(MethodInfoPredId, MethodInfos),
     PredIds = list.sort_and_remove_dups(AllPredIds),
-    PredInfos = list.map(func(Id) = map.lookup(PredTable, Id), PredIds),
+    PredInfos =
+        list.map(func(PredId) = map.lookup(PredTable, PredId), PredIds),
     Xml = xml_list("methods", predicate_documentation(C), PredInfos).
 
 %-----------------------------------------------------------------------------%

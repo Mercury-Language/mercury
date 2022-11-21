@@ -1,6 +1,5 @@
-tc_err2.m:047: In instance declaration for `actions(tc_err2.pstate)':
-tc_err2.m:047:   no implementation for type class predicate method
-tc_err2.m:047:   `handle_typedefs'/3.
-tc_err2.m:048: In instance declaration for `actions'/1:
+tc_err2.m:047: In instance declaration for `actions(pstate)':
+tc_err2.m:047:   no implementation for predicate method `handle_typedefs'/3.
+tc_err2.m:048: In instance declaration for `actions(pstate)':
 tc_err2.m:048:   the type class has no predicate method named
 tc_err2.m:048:   `handle_typedefs'/2.

@@ -2092,8 +2092,8 @@ mercury_output_instance_methods(Stream, Methods, !IO) :-
         ",\n", Methods, Stream, !IO).
 
 mercury_output_instance_method(Method, Stream, !IO) :-
-    Method = instance_method(PredOrFunc, MethodSymName, UserArity,
-        Defn, _Context),
+    Method = instance_method(MethodId, Defn, _Context),
+    MethodId = pred_pf_name_arity(PredOrFunc, MethodSymName, UserArity),
     UserArity = user_arity(UserArityInt),
     (
         Defn = instance_proc_def_name(PredName),
@@ -2113,7 +2113,8 @@ mercury_output_instance_method(Method, Stream, !IO) :-
         io.write_string(Stream, ") is ", !IO),
         mercury_output_bracketed_sym_name(PredName, Stream, !IO)
     ;
-        Defn = instance_proc_def_clauses(Items),
+        Defn = instance_proc_def_clauses(ItemsCord),
+        Items = cord.list(ItemsCord),
         % XXX should we output the term contexts?
         io.write_string(Stream, "\t(", !IO),
         write_out_list(output_instance_method_clause(MethodSymName),

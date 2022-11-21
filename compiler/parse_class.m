@@ -658,8 +658,10 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                     InstanceMethodName)
             then
                 ProcDef = instance_proc_def_name(InstanceMethodName),
-                InstanceMethod = instance_method(pf_predicate, PredSymName,
-                    user_arity(ArityInt), ProcDef, TermContext),
+                MethodName = pred_pf_name_arity(pf_predicate, PredSymName,
+                    user_arity(ArityInt)),
+                InstanceMethod = instance_method(MethodName, ProcDef,
+                    TermContext),
                 MaybeInstanceMethod = ok1(InstanceMethod)
             else
                 MethodTermStr = describe_error_term(VarSet, MethodTerm),
@@ -684,8 +686,10 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                     InstanceMethodName)
             then
                 ProcDef = instance_proc_def_name(InstanceMethodName),
-                InstanceMethod = instance_method(pf_function, FuncSymName,
-                    user_arity(ArityInt), ProcDef, TermContext),
+                MethodName = pred_pf_name_arity(pf_function, FuncSymName,
+                    user_arity(ArityInt)),
+                InstanceMethod = instance_method(MethodName, ProcDef,
+                    TermContext),
                 MaybeInstanceMethod = ok1(InstanceMethod)
             else
                 MethodTermStr = describe_error_term(VarSet, MethodTerm),
@@ -730,14 +734,16 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 MaybeClause),
             (
                 MaybeClause = ok1(ItemClause),
-                ItemClause = item_clause_info(PredOrFunc, ClassMethodName,
+                ItemClause = item_clause_info(PredOrFunc, MethodSymName,
                     ArgTerms, _VarSet, _ClauseBody, Context, _SeqNum),
                 PredFormArity = arg_list_arity(ArgTerms),
                 user_arity_pred_form_arity(PredOrFunc,
                     UserArity, PredFormArity),
-                ProcDef = instance_proc_def_clauses([ItemClause]),
-                InstanceMethod = instance_method(PredOrFunc, ClassMethodName,
-                    UserArity, ProcDef, Context),
+                ClauseCord = cord.singleton(ItemClause),
+                ProcDef = instance_proc_def_clauses(ClauseCord),
+                MethodName = pred_pf_name_arity(PredOrFunc, MethodSymName,
+                    UserArity),
+                InstanceMethod = instance_method(MethodName, ProcDef, Context),
                 MaybeInstanceMethod = ok1(InstanceMethod)
             ;
                 MaybeClause = error1(Specs),
