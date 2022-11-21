@@ -201,8 +201,9 @@ ALL_NONRETRY_PROGS = \
 	$(TERM_SIZE_PROGS) \
 	$(MMOS_PROGS)
 
-# Debugging doesn't yet don't work in MLDS grades (hl*, csharp, java),
-# and the retry command doesn't and will not work in deep profiling
+# Debugging doesn't yet work in MLDS grades (hl*, csharp, java) or
+# parallel grades.
+# The retry command doesn't and will not work in deep profiling
 # grades (profdeep).
 # Also base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
@@ -225,7 +226,7 @@ else
     DEBUGGER_PROGS = $(DEBUGGER_PROGS0)
 endif
 
-ifneq "$(filter hl% java% csharp%,$(GRADE))" ""
+ifneq "$(filter hl% java% csharp%,$(GRADE))$(findstring par,$(GRADE))" ""
     PROGS =
 else
     ifneq "$(findstring asm_,$(GRADE))" ""

@@ -143,13 +143,13 @@ else
     endif
 endif
 
-# Debugging does not work in MLDS (hl*, csharp*, java*) grades
-# or deep profiling (profdeep) grades.
+# Debugging does not work in MLDS (hl*, csharp*, java*) grades,
+# parallel grades, or deep profiling (profdeep) grades.
 # Base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
 # Also, declarative debugging only works in `.gc' grades.
 
-ifeq "$(filter hl% csharp% java%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
+ifeq "$(filter hl% csharp% java%,$(GRADE))$(findstring par,$(GRADE))$(findstring profdeep,$(GRADE))" ""
     ifneq "$(findstring .gc,$(GRADE))" ""
        ifneq "$(findstring asm_,$(GRADE))" ""
            PROGS = $(PROGS_2)
