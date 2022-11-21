@@ -10,7 +10,7 @@
 % Author: dgj, mark.
 %
 % This module checks conformance of instance declarations to the typeclass
-% declaration. It takes various steps to do this.
+% declaration. It does this in several passes.
 %
 % (1) In check_instance_declaration_types/4, we check that each type
 % in the instance declaration is either a type with no arguments,
@@ -24,14 +24,14 @@
 % no way to check at compile time that it is not an abstract exported
 % equivalence type defined in some *other* module.
 %
-% (2) In generate_instance_method_procs/6,
-% we generate and add to the HLDS a new procedure for every method
-% of every instance of every class. The types, modes and determinisms
-% of these procedures are taken from the method's signature in the class
-% declaration, and the procedure body is generated from the implementation
-% provided by the instance declaration. When later semantic analysis passes
-% of the compiler check these new procedures, they will be checking
-% the type, mode and determinism correctness of the instance.
+% (2) In generate_instance_method_procs/6, we generate and add to the HLDS
+% a new procedure for every method of every instance of every class.
+% The types, modes and determinisms of these procedures are taken from
+% the method's signature in the class declaration, and the procedure body
+% is generated from the implementation provided by the instance declaration.
+% When later semantic analysis passes of the compiler check these new
+% procedures, they will be checking the type, mode and determinism correctness
+% of the instance.
 %
 % For example, given the declarations:
 %
@@ -169,6 +169,7 @@ check_typeclasses(ProgressStream, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
 
+    % Pass 1.
     trace [io(!IO)] (
         maybe_write_string(ProgressStream, Verbose,
             "% Checking instance declaration types...\n", !IO)
@@ -189,30 +190,35 @@ check_typeclasses(ProgressStream, !ModuleInfo, !QualInfo, !Specs) :-
 
     (
         !.Specs = [],
+        % Pass 2.
         trace [io(!IO)] (
             maybe_write_string(ProgressStream, Verbose,
                 "% Checking typeclass instances...\n", !IO)
         ),
         generate_instance_method_procs(!ModuleInfo, !QualInfo, !Specs),
 
+        % Pass 3.
         trace [io(!IO)] (
             maybe_write_string(ProgressStream, Verbose,
                 "% Checking for cyclic classes...\n", !IO)
         ),
         check_for_cyclic_classes(!ModuleInfo, !Specs),
 
+        % Pass 4.
         trace [io(!IO)] (
             maybe_write_string(ProgressStream, Verbose,
                 "% Checking for missing concrete instances...\n", !IO)
         ),
         check_for_missing_concrete_instances(!.ModuleInfo, !Specs),
 
+        % Pass 5.
         trace [io(!IO)] (
             maybe_write_string(ProgressStream, Verbose,
                 "% Checking functional dependencies on instances...\n", !IO)
         ),
         check_functional_dependencies(!.ModuleInfo, !Specs),
 
+        % Pass 6.
         trace [io(!IO)] (
             maybe_write_string(ProgressStream, Verbose,
                 "% Checking typeclass constraints on predicates...\n", !IO)
@@ -271,9 +277,9 @@ is_instance_type_vector_valid(ModuleInfo, ClassId, InstanceDefn, !:Specs) :-
     int::in, int::out, list(error_spec)::in, list(error_spec)::out) is det.
 
 is_orig_type_non_eqv_type(ModuleInfo, ClassId, InstanceDefn, Type,
-        N, N+1, !Specs) :-
+        ArgNum, ArgNum+1, !Specs) :-
     (
-        Type = defined_type(_TypeName, _, _),
+        Type = defined_type(_TypeCtorName, _, _),
         ( if type_to_type_defn(ModuleInfo, Type, TypeDefn) then
             get_type_defn_body(TypeDefn, TypeBody),
             (
@@ -288,7 +294,7 @@ is_orig_type_non_eqv_type(ModuleInfo, ClassId, InstanceDefn, Type,
                     InstanceDefn ^ instdefn_body = instance_body_concrete(_)
                 then
                     Spec = abstract_eqv_instance_type_msg(ClassId,
-                        InstanceDefn, N, Type),
+                        InstanceDefn, ArgNum, Type),
                     !:Specs = [Spec | !.Specs]
                 else
                     true
@@ -326,7 +332,7 @@ is_orig_type_non_eqv_type(ModuleInfo, ClassId, InstanceDefn, Type,
     int::in, int::out, list(error_spec)::in, list(error_spec)::out) is det.
 
 is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
-        N, N+1, !Specs) :-
+        ArgNum, ArgNum+1, !Specs) :-
     (
         Type = builtin_type(_)
     ;
@@ -342,7 +348,7 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
         ),
         TVarSet = InstanceDefn ^ instdefn_tvarset,
         TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
-        EndPieces = [words("the"), nth_fixed(N), words("instance type"),
+        EndPieces = [words("the"), nth_fixed(ArgNum), words("instance type"),
             quote(TypeStr), KindPiece, words("it should be"),
             words("a type constructor applied to zero or more"),
             words("type variables."), nl],
@@ -350,46 +356,27 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
             badly_formed),
         !:Specs = [Spec | !.Specs]
     ;
-        Type = tuple_type(ArgTypes, _),
+        ( Type = defined_type(TypeCtorSymName, ArgTypes, _)
+        ; Type = tuple_type(ArgTypes, _), TypeCtorSymName = unqualified("{}")
+        ),
         find_non_type_variables(ArgTypes, 1, NonTVarArgs),
         (
             NonTVarArgs = []
         ;
             NonTVarArgs = [_ | _],
-            TypeCtor = type_ctor(unqualified("{}"), list.length(ArgTypes)),
+            TypeCtor = type_ctor(TypeCtorSymName, list.length(ArgTypes)),
             Spec = badly_formed_instance_type_msg(ClassId, InstanceDefn,
-                TypeCtor, N, NonTVarArgs),
+                TypeCtor, ArgNum, NonTVarArgs),
             !:Specs = [Spec | !.Specs]
-        )
-    ;
-        Type = defined_type(TypeName, ArgTypes, _),
-        find_non_type_variables(ArgTypes, 1, NonTVarArgs),
-        (
-            NonTVarArgs = [],
-            ( if type_to_type_defn(ModuleInfo, Type, TypeDefn) then
-                get_type_defn_body(TypeDefn, TypeBody),
-                (
-                    TypeBody = hlds_eqv_type(EqvType),
-                    is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn,
-                        EqvType, N, _, !Specs)
-                ;
-                    ( TypeBody = hlds_du_type(_)
-                    ; TypeBody = hlds_foreign_type(_)
-                    ; TypeBody = hlds_solver_type(_)
-                    ; TypeBody = hlds_abstract_type(_)
-                    )
-                )
-            else
-                % The type is either a builtin type or a type variable.
-                true
-            )
-        ;
-            NonTVarArgs = [_ | _],
-            TypeCtor = type_ctor(TypeName, list.length(ArgTypes)),
-            Spec = badly_formed_instance_type_msg(ClassId, InstanceDefn,
-                TypeCtor, N, NonTVarArgs),
-            !:Specs = [Spec | !.Specs]
-        )
+        ),
+        % For defined types, report an error if the type_ctor is defined
+        % to be equivalence type that for some reason was not expanded out
+        % by the equiv_type pass.
+        % For tuple types, there is no check to be made, but there is no
+        % point in trying avoid this call for tuple types, since the switch
+        % inside is_orig_type_non_eqv_type will do that just as fast.
+        is_orig_type_non_eqv_type(ModuleInfo, ClassId, InstanceDefn, Type,
+            ArgNum, _, !Specs)
     ;
         Type = kinded_type(_, _),
         unexpected($pred, "kinded_type")
@@ -414,95 +401,6 @@ find_non_type_variables([ArgType | ArgTypes], ArgNum, NonTVarArgs) :-
         ),
         NonTVarArgs = [ArgNum - ArgType | TailNonTVarArgs]
     ).
-
-:- func badly_formed_instance_type_msg(class_id, hlds_instance_defn,
-    type_ctor, int, assoc_list(int, mer_type)) = error_spec.
-
-badly_formed_instance_type_msg(ClassId, InstanceDefn, TypeCtor, N,
-        NonTVarArgs) = Spec :-
-    TVarSet = InstanceDefn ^ instdefn_tvarset,
-    NonTVarArgPieceLists =
-        list.map(non_tvar_arg_to_pieces(TVarSet), NonTVarArgs),
-    NonTVarArgPieces = component_lists_to_pieces("and", NonTVarArgPieceLists),
-    EndPieces = [words("in the"), nth_fixed(N), words("instance type,"),
-        words(choose_number(NonTVarArgs, "one", "some")),
-        words("of the arguments of the type constructor"),
-        unqual_type_ctor(TypeCtor),
-        words(choose_number(NonTVarArgs,
-            "is not a type variable, but should be. This is",
-            "are not type variables, but should be. These are"))
-        | NonTVarArgPieces] ++ [suffix("."), nl],
-    Spec = bad_instance_type_msg(ClassId, InstanceDefn, EndPieces,
-        badly_formed).
-
-:- func non_tvar_arg_to_pieces(tvarset, pair(int, mer_type))
-    = list(format_piece).
-
-non_tvar_arg_to_pieces(TVarSet, ArgNum - ArgType) = Pieces :-
-    TypeStr = mercury_type_to_string(TVarSet, print_name_only, ArgType),
-    Pieces = [words("the"), nth_fixed(ArgNum), words("argument,"),
-        quote(TypeStr)].
-
-:- func abstract_eqv_instance_type_msg(class_id, hlds_instance_defn, int,
-    mer_type) = error_spec.
-
-abstract_eqv_instance_type_msg(ClassId, InstanceDefn, N, Type) = Spec :-
-    TVarSet = InstanceDefn ^ instdefn_tvarset,
-    TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
-    EndPieces = [words("the"), nth_fixed(N), words("instance type"),
-        quote(TypeStr), words("is an abstract exported equivalence type."),
-        nl],
-    Spec = bad_instance_type_msg(ClassId, InstanceDefn, EndPieces,
-        abstract_exported_eqv).
-
-:- type bad_instance_type_kind
-    --->    badly_formed
-    ;       abstract_exported_eqv.
-
-:- func bad_instance_type_msg(class_id, hlds_instance_defn,
-    list(format_piece), bad_instance_type_kind) = error_spec.
-
-bad_instance_type_msg(ClassId, InstanceDefn, EndPieces, Kind) = Spec :-
-    ClassId = class_id(ClassName, _),
-    ClassNameStr = unqualify_name(ClassName),
-
-    InstanceVarSet = InstanceDefn ^ instdefn_tvarset,
-    InstanceContext = InstanceDefn ^ instdefn_context,
-    (
-        Kind = badly_formed,
-        % We are generating the error message because the type is badly formed
-        % as expanded. The unexpanded version may be correctly formed.
-        InstanceTypes = InstanceDefn ^ instdefn_types
-    ;
-        Kind = abstract_exported_eqv,
-        % Messages about the expanded type being an equivalence type
-        % would not make sense.
-        InstanceTypes = InstanceDefn ^ instdefn_orig_types
-    ),
-    % XXX Removing the module qualification from the type constructors
-    % in InstanceTypes before converting them to strings would make
-    % the error message less cluttered.
-    InstanceTypesStr = mercury_type_list_to_string(InstanceVarSet,
-        InstanceTypes),
-
-    HeaderPieces = [words("In instance declaration for"),
-        words_quote(ClassNameStr ++ "(" ++ InstanceTypesStr ++ ")"),
-        suffix(":"), nl],
-    (
-        Kind = abstract_exported_eqv,
-        HeadingMsg = simple_msg(InstanceContext,
-            [always(HeaderPieces), always(EndPieces)])
-    ;
-        Kind = badly_formed,
-        VerbosePieces =
-            [words("(Every type in an instance declaration must consist of"),
-            words("a type constructor applied to zero or more type variables"),
-            words("as arguments.)"), nl],
-        HeadingMsg = simple_msg(InstanceContext,
-            [always(HeaderPieces), always(EndPieces),
-            verbose_only(verbose_once, VerbosePieces)])
-    ),
-    Spec = error_spec($pred, severity_error, phase_type_check, [HeadingMsg]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -2576,6 +2474,105 @@ collect_determined_vars(FunDep @ fundep(Domain, Range), !FunDeps, !Vars) :-
 %---------------------------------------------------------------------------%
 %
 % Error reporting.
+%
+
+%---------------------------------------------------------------------------%
+%
+% Error reports from pass 1.
+%
+
+:- func badly_formed_instance_type_msg(class_id, hlds_instance_defn,
+    type_ctor, int, assoc_list(int, mer_type)) = error_spec.
+
+badly_formed_instance_type_msg(ClassId, InstanceDefn, TypeCtor, ArgNum,
+        NonTVarArgs) = Spec :-
+    TVarSet = InstanceDefn ^ instdefn_tvarset,
+    NonTVarArgPieceLists =
+        list.map(non_tvar_arg_to_pieces(TVarSet), NonTVarArgs),
+    NonTVarArgPieces = component_lists_to_pieces("and", NonTVarArgPieceLists),
+    EndPieces = [words("in the"), nth_fixed(ArgNum), words("instance type,"),
+        words(choose_number(NonTVarArgs, "one", "some")),
+        words("of the arguments of the type constructor"),
+        unqual_type_ctor(TypeCtor),
+        words(choose_number(NonTVarArgs,
+            "is not a type variable, but should be. This is",
+            "are not type variables, but should be. These are"))
+        | NonTVarArgPieces] ++ [suffix("."), nl],
+    Spec = bad_instance_type_msg(ClassId, InstanceDefn, EndPieces,
+        badly_formed).
+
+:- func non_tvar_arg_to_pieces(tvarset, pair(int, mer_type))
+    = list(format_piece).
+
+non_tvar_arg_to_pieces(TVarSet, ArgNum - ArgType) = Pieces :-
+    TypeStr = mercury_type_to_string(TVarSet, print_name_only, ArgType),
+    Pieces = [words("the"), nth_fixed(ArgNum), words("argument,"),
+        quote(TypeStr)].
+
+:- func abstract_eqv_instance_type_msg(class_id, hlds_instance_defn, int,
+    mer_type) = error_spec.
+
+abstract_eqv_instance_type_msg(ClassId, InstanceDefn, ArgNum, Type) = Spec :-
+    TVarSet = InstanceDefn ^ instdefn_tvarset,
+    TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
+    EndPieces = [words("the"), nth_fixed(ArgNum), words("instance type"),
+        quote(TypeStr), words("is an abstract exported equivalence type."),
+        nl],
+    Spec = bad_instance_type_msg(ClassId, InstanceDefn, EndPieces,
+        abstract_exported_eqv).
+
+:- type bad_instance_type_kind
+    --->    badly_formed
+    ;       abstract_exported_eqv.
+
+:- func bad_instance_type_msg(class_id, hlds_instance_defn,
+    list(format_piece), bad_instance_type_kind) = error_spec.
+
+bad_instance_type_msg(ClassId, InstanceDefn, EndPieces, Kind) = Spec :-
+    ClassId = class_id(ClassName, _),
+    ClassNameStr = unqualify_name(ClassName),
+
+    InstanceVarSet = InstanceDefn ^ instdefn_tvarset,
+    InstanceContext = InstanceDefn ^ instdefn_context,
+    (
+        Kind = badly_formed,
+        % We are generating the error message because the type is badly formed
+        % as expanded. The unexpanded version may be correctly formed.
+        InstanceTypes = InstanceDefn ^ instdefn_types
+    ;
+        Kind = abstract_exported_eqv,
+        % Messages about the expanded type being an equivalence type
+        % would not make sense.
+        InstanceTypes = InstanceDefn ^ instdefn_orig_types
+    ),
+    % XXX Removing the module qualification from the type constructors
+    % in InstanceTypes before converting them to strings would make
+    % the error message less cluttered.
+    InstanceTypesStr = mercury_type_list_to_string(InstanceVarSet,
+        InstanceTypes),
+
+    HeaderPieces = [words("In instance declaration for"),
+        words_quote(ClassNameStr ++ "(" ++ InstanceTypesStr ++ ")"),
+        suffix(":"), nl],
+    (
+        Kind = abstract_exported_eqv,
+        HeadingMsg = simple_msg(InstanceContext,
+            [always(HeaderPieces), always(EndPieces)])
+    ;
+        Kind = badly_formed,
+        VerbosePieces =
+            [words("(Every type in an instance declaration must consist of"),
+            words("a type constructor applied to zero or more type variables"),
+            words("as arguments.)"), nl],
+        HeadingMsg = simple_msg(InstanceContext,
+            [always(HeaderPieces), always(EndPieces),
+            verbose_only(verbose_once, VerbosePieces)])
+    ),
+    Spec = error_spec($pred, severity_error, phase_type_check, [HeadingMsg]).
+
+%---------------------------------------------------------------------------%
+%
+% Error reports from pass 2.
 %
 
     % Duplicate method definition error.
