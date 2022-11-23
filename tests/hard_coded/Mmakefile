@@ -902,7 +902,7 @@ ifneq "$(findstring apple-darwin,$(FULLARCH))" "apple-darwin"
   ifneq "$(findstring solaris,$(FULLARCH))" "solaris"
 	# The `parse' test also links with the debug libraries,
 	# so it only works in LLDS grades.
-	ifeq "$(filter hl% csharp% java%,$(GRADE))" ""
+	ifeq "$(filter hl% csharp% java%,$(GRADE))$(findstring par,$(GRADE))" ""
 		STATIC_LINK_PROGS = parse
 	endif
   endif

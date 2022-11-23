@@ -38,10 +38,10 @@
 # CTGC_PROGS:
 #   The test cases that only work in grades that support compile-time
 #   garbage collection. Debugging is incompatible with ctgc.
-# CONSTRAINT_TYPECHECK_PROGS::
+# CONSTRAINT_TYPECHECK_PROGS:
 #   Tests that use constraint based type checking.
 #   XXX These are never enabled.
-# NON_DECLDEBUG_PROGS::
+# NON_DECLDEBUG_PROGS:
 #   Test that do not work in .decldebug grades
 # OTHER_PROGS:
 #   All the other test cases.
@@ -80,30 +80,36 @@ endif
 
 ifeq "$(filter hl% java% csharp%,$(GRADE))" ""
 	PROGS4 = $(PROGS3) $(C_INTERFACE_PROGS) $(SOLVER_PROGS) \
-		$(DEEP_PROF_CAPABLE_PROGS) $(LLDS_PROGS)
+		$(DEEP_PROF_CAPABLE_PROGS)
 else
 	PROGS4 = $(PROGS3)
 endif
 
-ifneq "$(findstring decldebug,$(GRADE))" ""
-	PROGS5 = $(PROGS4)
+ifeq "$(filter hl% java% csharp%,$(GRADE))$(findstring par,$(GRADE))" ""
+	PROGS5 = $(PROGS4) $(LLDS_PROGS)
 else
-	PROGS5 = $(PROGS4) $(PAR_CONJ_PROGS)
+	PROGS5 = $(PROGS4)
+endif
+
+ifneq "$(findstring decldebug,$(GRADE))" ""
+	PROGS6 = $(PROGS5)
+else
+	PROGS6 = $(PROGS5) $(PAR_CONJ_PROGS)
 endif
 
 ifeq "$(findstring debug,$(GRADE))"  ""
-	PROGS6 = $(PROGS5) $(CTGC_PROGS)
-else
-	PROGS6 = $(PROGS5)
-endif
-
-ifeq "$(filter hl% java% csharp%,$(GRADE))$(findstring decldebug,$(GRADE))" ""
-	PROGS7 = $(PROGS6) $(NON_DECLDEBUG_PROGS)
+	PROGS7 = $(PROGS6) $(CTGC_PROGS)
 else
 	PROGS7 = $(PROGS6)
 endif
 
-OBJ_PROGS = $(PROGS7)
+ifeq "$(filter hl% java% csharp%,$(GRADE))$(findstring par,$(GRADE))$(findstring decldebug,$(GRADE))" ""
+	PROGS8 = $(PROGS7) $(NON_DECLDEBUG_PROGS)
+else
+	PROGS8 = $(PROGS7)
+endif
+
+OBJ_PROGS = $(PROGS8)
 
 ifneq "$(findstring tsw,$(GRADE))$(findstring tsc,$(GRADE))" ""
 	PROGS = $(OBJ_PROGS) $(C_PROGS)

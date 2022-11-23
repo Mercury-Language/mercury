@@ -131,7 +131,6 @@ MCFLAGS-typeclass_det_warning	= --halt-at-warn
 MCFLAGS-type_inf_ambig_test	= --infer-all
 MCFLAGS-unify_typeinfo_bug	= -O3
 MCFLAGS-uniq_mode_inf_bug	= --infer-all
-MCFLAGS-untuple_bug		= -O0 --untuple --trace rep --trace-optimized
 MCFLAGS-vn_float		= -O5
 MCFLAGS-zero_arity		= --infer-modes
 MGNUCFLAGS-reg_bug		= --no-ansi

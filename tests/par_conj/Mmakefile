@@ -66,19 +66,6 @@ INDEP_PAR_CONJ_PROGS = \
 	par_fib \
 	threads_hang
 
-# These tests require debugging, which hasn't been implemented for
-# the MLDS backend.
-#
-LLDS_PROGS = \
-	par_ddeath \
-	par_ddeath_2
-
-ifeq "$(filter hl% java% csharp%,$(GRADE))" ""
-	PROGS0 = $(LLDS_PROGS)
-else
-	PROGS0 =
-endif
-
 ifneq "$(findstring par,$(GRADE))" ""
 	# These tests are to do with explicit threads rather than parallel
 	# conjunction, but the tests require multiple engines to be enabled,
@@ -96,7 +83,7 @@ ifneq "$(findstring decldebug,$(GRADE))" ""
 	PROGS =
 else
 	OBJ_PROGS =
-	PROGS = $(PROGS0) $(DEP_PAR_CONJ_PROGS) $(INDEP_PAR_CONJ_PROGS) \
+	PROGS = $(DEP_PAR_CONJ_PROGS) $(INDEP_PAR_CONJ_PROGS) \
 		$(THREAD_PROGS)
 endif
 
