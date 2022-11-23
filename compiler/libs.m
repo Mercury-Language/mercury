@@ -42,6 +42,7 @@
 :- include_module md5.
 :- include_module pickle.
 :- include_module uint_emu.
+:- include_module va_map.
 
 % OS interfaces not provided by the standard library.
 :- include_module process_util.

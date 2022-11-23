@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
+% Copyright (C) 2020-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,6 +23,8 @@
 :- module make.deps_set.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.va_map.
 :- import_module make.dependencies.
 :- import_module make.make_info.
 :- import_module mdbcomp.
@@ -41,6 +44,7 @@
 
 :- type module_index.
 :- instance enum(module_index).
+:- instance va_map_key(module_index).
 
 :- type dependency_file_index.
 :- instance enum(dependency_file_index).
@@ -91,13 +95,13 @@
 
 :- implementation.
 
-:- import_module libs.
 :- import_module parse_tree.
 
 :- import_module int.
 :- import_module maybe.
 :- import_module version_array.
 :- import_module version_hash_table.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 %
@@ -107,13 +111,18 @@
 :- type module_index
     --->    module_index(int).
 
-:- type dependency_file_index
-    --->    dependency_file_index(int).
-
 :- instance enum(module_index) where [
     to_int(module_index(I)) = I,
     from_int(I) = module_index(I)
 ].
+
+:- instance va_map_key(module_index) where [
+    ( from_key(module_index(I)) = uint.cast_from_int(I) ),
+    ( to_key(U) = module_index(uint.cast_to_int(U)) )
+].
+
+:- type dependency_file_index
+    --->    dependency_file_index(int).
 
 :- instance enum(dependency_file_index) where [
     to_int(dependency_file_index(I)) = I,

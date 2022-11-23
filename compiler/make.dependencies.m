@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
+% Copyright (C) 2013-2017, 2019-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -164,6 +165,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
 :- import_module libs.options.
+:- import_module libs.va_map.
 :- import_module make.module_dep_file.
 :- import_module make.util.
 :- import_module parse_tree.
@@ -730,14 +732,17 @@ find_module_foreign_imports_2(Languages, Globals, ModuleIndex, Succeeded,
         ForeignModules, !Info, !IO) :-
     % Languages should be constant for the duration of the process.
     CachedForeignImports0 = !.Info ^ mki_cached_foreign_imports,
-    ( if map.search(CachedForeignImports0, ModuleIndex, Result0) then
+    va_map.lookup(CachedForeignImports0, ModuleIndex, MaybeResult0),
+    (
+        MaybeResult0 = yes(Result0),
         Result0 = deps_result(Succeeded, ForeignModules)
-    else
+    ;
+        MaybeResult0 = no,
         find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
             Succeeded, ForeignModules, !Info, !IO),
         Result = deps_result(Succeeded, ForeignModules),
         CachedForeignImports1 = !.Info ^ mki_cached_foreign_imports,
-        map.det_insert(ModuleIndex, Result,
+        va_map.set(ModuleIndex, yes(Result),
             CachedForeignImports1, CachedForeignImports),
         !Info ^ mki_cached_foreign_imports := CachedForeignImports
     ).
@@ -1375,9 +1380,14 @@ make_write_dependency_file_and_timestamp_list([Head | Tail], !IO) :-
 
 init_cached_direct_imports = map.init.
 
-:- type cached_foreign_imports == map(module_index, module_deps_result).
+:- type cached_foreign_imports ==
+    va_map(module_index, maybe(module_deps_result)).
 
-init_cached_foreign_imports = map.init.
+:- instance va_map_value(maybe(T)) where [
+    default_value = no
+].
+
+init_cached_foreign_imports = va_map.init.
 
 :- type transitive_dependencies_root
     --->    transitive_dependencies_root(
