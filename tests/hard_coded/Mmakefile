@@ -890,22 +890,12 @@ else
 	C_AND_GC_ONLY_PROGS =
 endif
 
-# Static linking doesn't work on Solaris in debug grades
-# ('-ldl' doesn't work with static linking).
-#
-# Static linking (against the system libraries) doesn't
-# work on MacOS X because the static versions of the
-# libraries are not installed by default.
-#
-STATIC_LINK_PROGS =
-ifneq "$(findstring apple-darwin,$(FULLARCH))" "apple-darwin"
-  ifneq "$(findstring solaris,$(FULLARCH))" "solaris"
-	# The `parse' test also links with the debug libraries,
-	# so it only works in LLDS grades.
-	ifeq "$(filter hl% csharp% java%,$(GRADE))$(findstring par,$(GRADE))" ""
-		STATIC_LINK_PROGS = parse
-	endif
-  endif
+# The `parse' test links with the debug libraries,
+# so it only works in LLDS grades.
+ifeq "$(filter hl% csharp% java%,$(GRADE))$(findstring par,$(GRADE))" ""
+	DEBUG_PROGS = parse
+else
+	DEBUG_PROGS =
 endif
 
 # Concurrency tests are only supported in C grades with a "par" grade
@@ -942,7 +932,7 @@ PROGS = \
 	$(NON_PROFDEEP_PROGS) \
 	$(BACKEND_PROGS) \
 	$(C_AND_GC_ONLY_PROGS) \
-	$(STATIC_LINK_PROGS) \
+	$(DEBUG_PROGS) \
 	$(C_ONLY_PROGS) \
 	$(JAVA_PROGS) \
 	$(CSHARP_PROGS) \
