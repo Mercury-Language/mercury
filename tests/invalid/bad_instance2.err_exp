@@ -1,10 +1,8 @@
-bad_instance2.m:012: In instance declaration for `foo(bad_instance2.bar(T),
-bad_instance2.m:012:   U)':
+bad_instance2.m:012: In instance declaration for `foo(bar(T), U)':
 bad_instance2.m:012:   the second instance type `U' is a type variable; it
 bad_instance2.m:012:   should be a type constructor applied to zero or more
 bad_instance2.m:012:   type variables.
-bad_instance2.m:016: In instance declaration for `foo(bad_instance2.bar(T),
-bad_instance2.m:016:   T)':
+bad_instance2.m:016: In instance declaration for `foo(bar(T), T)':
 bad_instance2.m:016:   the second instance type `T' is a type variable; it
 bad_instance2.m:016:   should be a type constructor applied to zero or more
 bad_instance2.m:016:   type variables.

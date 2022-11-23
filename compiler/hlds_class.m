@@ -48,10 +48,6 @@
 
 :- type class_table == map(class_id, hlds_class_defn).
 
-:- type maybe_bad_class_defn
-    --->    has_no_bad_class_defn
-    ;       has_bad_class_defn.
-
     % Information about a single `typeclass' declaration.
     %
 :- type hlds_class_defn
@@ -116,7 +112,13 @@
 
 :- type hlds_class_argpos == int.
 
+:- type maybe_bad_class_defn
+    --->    has_no_bad_class_defn
+    ;       has_bad_class_defn.
+
 :- func restrict_list_elements(set(hlds_class_argpos), list(T)) = list(T).
+
+%---------------------------------------------------------------------------%
 
     % For each class, we keep track of a list of its instances, since there
     % can be more than one instance of each class. Each visible instance
