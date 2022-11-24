@@ -151,8 +151,9 @@
 :- type cached_direct_imports.
 :- func init_cached_direct_imports = cached_direct_imports.
 
-:- type cached_foreign_imports.
-:- func init_cached_foreign_imports = cached_foreign_imports.
+:- type cached_transitive_foreign_imports.
+:- func init_cached_transitive_foreign_imports =
+    cached_transitive_foreign_imports.
 
 :- type cached_transitive_dependencies.
 :- func init_cached_transitive_dependencies = cached_transitive_dependencies.
@@ -165,7 +166,6 @@
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
 :- import_module libs.options.
-:- import_module libs.va_map.
 :- import_module make.module_dep_file.
 :- import_module make.util.
 :- import_module parse_tree.
@@ -709,18 +709,32 @@ foreign_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
 
 find_module_foreign_imports(Languages, Globals, ModuleIndex, Succeeded,
         ForeignModules, !Info, !IO) :-
-    find_transitive_implementation_imports(Globals, ModuleIndex, Succeeded0,
-        ImportedModules, !Info, !IO),
-    (
-        Succeeded0 = succeeded,
-        deps_set_foldl3_maybe_stop_at_error(!.Info ^ mki_keep_going,
-            union_deps(find_module_foreign_imports_2(Languages)),
-            Globals, insert(ImportedModules, ModuleIndex),
-            Succeeded, init, ForeignModules, !Info, !IO)
-    ;
-        Succeeded0 = did_not_succeed,
-        Succeeded = did_not_succeed,
-        ForeignModules = init
+    % Languages should be constant for the duration of the process,
+    % so is unnecessary to include in the cache key.
+    CachedForeignImports0 = !.Info ^ mki_cached_transitive_foreign_imports,
+    ( if map.search(CachedForeignImports0, ModuleIndex, CachedResult) then
+        CachedResult = deps_result(Succeeded, ForeignModules)
+    else
+        find_transitive_implementation_imports(Globals, ModuleIndex,
+            Succeeded0, ImportedModules, !Info, !IO),
+        (
+            Succeeded0 = succeeded,
+            deps_set_foldl3_maybe_stop_at_error(!.Info ^ mki_keep_going,
+                union_deps(find_module_foreign_imports_2(Languages)),
+                Globals, insert(ImportedModules, ModuleIndex),
+                Succeeded, init, ForeignModules, !Info, !IO),
+            Result = deps_result(Succeeded, ForeignModules),
+            CachedForeignImports1 =
+                !.Info ^ mki_cached_transitive_foreign_imports,
+            map.det_insert(ModuleIndex, Result,
+                CachedForeignImports1, CachedForeignImports),
+            !Info ^ mki_cached_transitive_foreign_imports :=
+                CachedForeignImports
+        ;
+            Succeeded0 = did_not_succeed,
+            Succeeded = did_not_succeed,
+            ForeignModules = init
+        )
     ).
 
 :- pred find_module_foreign_imports_2(set(foreign_language)::in,
@@ -730,30 +744,6 @@ find_module_foreign_imports(Languages, Globals, ModuleIndex, Succeeded,
 
 find_module_foreign_imports_2(Languages, Globals, ModuleIndex, Succeeded,
         ForeignModules, !Info, !IO) :-
-    % Languages should be constant for the duration of the process.
-    CachedForeignImports0 = !.Info ^ mki_cached_foreign_imports,
-    va_map.lookup(CachedForeignImports0, ModuleIndex, MaybeResult0),
-    (
-        MaybeResult0 = yes(Result0),
-        Result0 = deps_result(Succeeded, ForeignModules)
-    ;
-        MaybeResult0 = no,
-        find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
-            Succeeded, ForeignModules, !Info, !IO),
-        Result = deps_result(Succeeded, ForeignModules),
-        CachedForeignImports1 = !.Info ^ mki_cached_foreign_imports,
-        va_map.set(ModuleIndex, yes(Result),
-            CachedForeignImports1, CachedForeignImports),
-        !Info ^ mki_cached_foreign_imports := CachedForeignImports
-    ).
-
-:- pred find_module_foreign_imports_3(set(foreign_language)::in,
-    globals::in, module_index::in,
-    maybe_succeeded::out, deps_set(module_index)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
-        Succeeded, ForeignModules, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
         !Info, !IO),
@@ -1380,14 +1370,10 @@ make_write_dependency_file_and_timestamp_list([Head | Tail], !IO) :-
 
 init_cached_direct_imports = map.init.
 
-:- type cached_foreign_imports ==
-    va_map(module_index, maybe(module_deps_result)).
+:- type cached_transitive_foreign_imports
+    == map(module_index, module_deps_result).
 
-:- instance va_map_value(maybe(T)) where [
-    default_value = no
-].
-
-init_cached_foreign_imports = va_map.init.
+init_cached_transitive_foreign_imports = map.init.
 
 :- type transitive_dependencies_root
     --->    transitive_dependencies_root(

@@ -23,8 +23,6 @@
 :- module make.deps_set.
 :- interface.
 
-:- import_module libs.
-:- import_module libs.va_map.
 :- import_module make.dependencies.
 :- import_module make.make_info.
 :- import_module mdbcomp.
@@ -44,7 +42,6 @@
 
 :- type module_index.
 :- instance enum(module_index).
-:- instance va_map_key(module_index).
 
 :- type dependency_file_index.
 :- instance enum(dependency_file_index).
@@ -95,13 +92,13 @@
 
 :- implementation.
 
+:- import_module libs.
 :- import_module parse_tree.
 
 :- import_module int.
 :- import_module maybe.
 :- import_module version_array.
 :- import_module version_hash_table.
-:- import_module uint.
 
 %---------------------------------------------------------------------------%
 %
@@ -114,11 +111,6 @@
 :- instance enum(module_index) where [
     to_int(module_index(I)) = I,
     from_int(I) = module_index(I)
-].
-
-:- instance va_map_key(module_index) where [
-    ( from_key(module_index(I)) = uint.cast_from_int(I) ),
-    ( to_key(U) = module_index(uint.cast_to_int(U)) )
 ].
 
 :- type dependency_file_index

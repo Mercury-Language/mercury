@@ -96,7 +96,8 @@
                 mki_cached_transitive_dependencies
                                         :: cached_transitive_dependencies,
 
-                mki_cached_foreign_imports :: cached_foreign_imports,
+                mki_cached_transitive_foreign_imports
+                                        :: cached_transitive_foreign_imports,
 
                 % Should the `.module_dep' files be rebuilt?
                 % Set to `do_not_rebuild_module_deps' for `mmc --make clean'.
