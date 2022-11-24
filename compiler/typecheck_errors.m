@@ -345,9 +345,20 @@ report_error_unify_var_functor_result(Info, UnifyContext, Context,
         NoSuffixIntegerPieces = []
     ),
 
+    ( if is_int_func_op(Functor) then
+        acc_builtin_types_of_var(TypeAssignSet, Var, set.init, BuiltinTypes0),
+        acc_builtin_types_in_cons_type_infos(ConsDefnList,
+            BuiltinTypes0, BuiltinTypes),
+        InvisIntPieces =
+            report_any_invisible_int_types(ClauseContext, BuiltinTypes)
+    else
+        InvisIntPieces = []
+    ),
+
     type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerboseComponent),
-    AlwaysPieces = ContextPieces ++ MainPieces ++ NoSuffixIntegerPieces,
+    AlwaysPieces = ContextPieces ++ MainPieces ++
+        NoSuffixIntegerPieces ++ InvisIntPieces,
     Msg = simple_msg(Context, [always(AlwaysPieces), VerboseComponent]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
@@ -365,6 +376,8 @@ report_error_unify_var_functor_args(Info, ClauseContext, UnifyContext, Context,
     StrippedFunctorStr = functor_cons_id_to_string(ModuleInfo,
         vns_varset(VarSet), print_name_only, StrippedFunctor, ArgVars),
     list.length(ArgVars, Arity),
+
+    TypeAssignSet = convert_args_type_assign_set(ArgsTypeAssignSet),
 
     % If we have consistent information about the argument types,
     % we prefer to print an error message that mentions only the arguments
@@ -406,7 +419,6 @@ report_error_unify_var_functor_args(Info, ClauseContext, UnifyContext, Context,
         % XXX It should be possible to compute which arguments are
         % definitely OK, and which are suspect.
         MaybeNumMismatches = no,
-        TypeAssignSet = convert_args_type_assign_set(ArgsTypeAssignSet),
 
         % For polymorphic data structures, the type of `Var' (the functor's
         % result type) can affect the valid types for the arguments.
@@ -462,9 +474,22 @@ report_error_unify_var_functor_args(Info, ClauseContext, UnifyContext, Context,
         words_quote(StrippedFunctorStr), suffix(":"), nl,
         words("type error in"), words(Arguments), words("of")] ++
         functor_name_to_pieces(StrippedFunctor, Arity) ++ [suffix("."), nl],
+
+    ( if is_int_func_op(Functor) then
+        list.foldl(acc_builtin_types_of_var(TypeAssignSet), [Var | ArgVars],
+            set.init, BuiltinTypes0),
+        acc_builtin_types_in_cons_type_infos(ConsDefnList,
+            BuiltinTypes0, BuiltinTypes),
+        InvisIntPieces =
+            report_any_invisible_int_types(ClauseContext, BuiltinTypes)
+    else
+        InvisIntPieces = []
+    ),
+
+    ErrorInvisIntPieces = ErrorPieces ++ InvisIntPieces,
     Msg = simple_msg(Context,
         [always(ContextPieces), always(VarAndTermPieces),
-        always(ErrorPieces) | VerboseComponents]),
+        always(ErrorInvisIntPieces) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 :- type mismatch_info
@@ -1033,11 +1058,32 @@ report_error_wrong_types_in_arg_vector(Info, ClauseContext, Context,
     arg_vector_type_errors_to_pieces(VarSet, ArgVectorTypeErrors,
         HeadArgVectorTypeErrors, TailArgVectorTypeErrors,
         ArgErrorPieces),
+    ( if
+        (
+            ArgVectorKind = arg_vector_plain_pred_call(SymNamePredFormArity),
+            SymNamePredFormArity =
+                sym_name_pred_form_arity(SymName, PredFormArity)
+        ;
+            ArgVectorKind = arg_vector_plain_call_pred_id(PredId),
+            ModuleInfo = ClauseContext ^ tecc_module_info,
+            module_info_pred_info(ModuleInfo, PredId, PredInfo),
+            pred_info_get_sym_name(PredInfo, SymName),
+            PredFormArity = pred_info_pred_form_arity(PredInfo)
+        ),
+        is_int_pred_op(SymName, PredFormArity)
+    then
+        list.foldl(acc_builtin_types_of_arg_vector_type_error,
+            ArgVectorTypeErrors, set.init, BuiltinTypes),
+        InvisIntPieces =
+            report_any_invisible_int_types(ClauseContext, BuiltinTypes)
+    else
+        InvisIntPieces = []
+    ),
     type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerboseComponent),
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(ArgVectorKindPieces),
-        always(ArgErrorPieces), VerboseComponent]),
+        always(ArgErrorPieces ++ InvisIntPieces), VerboseComponent]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 :- pred arg_vector_type_errors_to_pieces(prog_varset::in,
@@ -1161,6 +1207,172 @@ nosuffix_integer_pieces = Pieces :-
 
 %---------------------------------------------------------------------------%
 
+    % Is the given function symbol the name of a function that is defined
+    % (or could/should be defined) in each of int.m, uint.m,
+    % and intN.m/uintN.m for N = {8,16,32,64}?
+    %
+:- pred is_int_func_op(cons_id::in) is semidet.
+
+is_int_func_op(ConsId) :-
+    ConsId = cons(SymName, Arity, _TypeCtor),
+    % We ignore the module name part of SymName, since it is very likely
+    % that the error is precisely the fact that the module name is wrong.
+    Name = unqualify_name(SymName),
+    % This table lists the user arities of the named functions.
+    ( Name = "abs",                     Arity = 1
+    ; Name = "unchecked_abs",           Arity = 1
+    ; Name = "nabs",                    Arity = 1
+
+    ; Name = "max",                     Arity = 2
+    ; Name = "min",                     Arity = 2
+
+    ; Name = "+",                       (Arity = 1; Arity = 2)
+    ; Name = "plus",                    Arity = 2
+    ; Name = "-",                       (Arity = 1; Arity = 2)
+    ; Name = "minus",                   Arity = 2
+    ; Name = "*",                       Arity = 2
+    ; Name = "times",                   Arity = 2
+    ; Name = "/",                       Arity = 2
+    ; Name = "//",                      Arity = 2
+    ; Name = "div",                     Arity = 2
+    ; Name = "unchecked_quotient",      Arity = 2
+    ; Name = "mod",                     Arity = 2
+    ; Name = "rem",                     Arity = 2
+    ; Name = "unchecked_rem",           Arity = 2
+
+    ; Name = "pow",                     Arity = 2
+    ; Name = "log2",                    Arity = 1
+
+    ; Name = "<<",                      Arity = 2
+    ; Name = "unchecked_left_shift",    Arity = 2
+    ; Name = ">>",                      Arity = 2
+    ; Name = "unchecked_right_shift",   Arity = 2
+
+    ; Name = "\\",                      Arity = 1
+    ; Name = "/\\",                     Arity = 2
+    ; Name = "\\/",                     Arity = 2
+    ; Name = "xor",                     Arity = 2
+    ).
+
+    % Is the given string the name of a predicate that is defined
+    % in each of int.m, uint.m, intN.m and uintN.m for N = {8,16,32,64}?
+    %
+:- pred is_int_pred_op(sym_name::in, pred_form_arity::in) is semidet.
+
+is_int_pred_op(SymName, PredFormArity) :-
+    % We ignore the module name part of SymName, since it is very likely
+    % that the error is precisely the fact that the module name is wrong.
+    Name = unqualify_name(SymName),
+    PredFormArity = pred_form_arity(Arity),
+    ( Name = "<",                       Arity = 2
+    ; Name = ">",                       Arity = 2
+    ; Name = "=<",                      Arity = 2
+    ; Name = ">=",                      Arity = 2
+
+    ; Name = "abs",                     Arity = 2
+
+    ; Name = "max",                     Arity = 3
+    ; Name = "min",                     Arity = 3
+
+    ; Name = "pow",                     Arity = 3
+    ; Name = "log2",                    Arity = 2
+    ).
+
+:- pred acc_builtin_types_of_var(list(type_assign)::in, prog_var::in,
+    set(builtin_type)::in, set(builtin_type)::out) is det.
+
+acc_builtin_types_of_var(TypeAssignSet, Var, !BuiltinTypes) :-
+    get_all_type_stuffs_remove_dups(TypeAssignSet, Var, VarTypeStuffs),
+    TypesOfVar = list.map(typestuff_to_type, VarTypeStuffs),
+    list.foldl(acc_builtin_type, TypesOfVar, !BuiltinTypes).
+
+:- pred acc_builtin_types_in_cons_type_infos(list(cons_type_info)::in,
+    set(builtin_type)::in, set(builtin_type)::out) is det.
+
+acc_builtin_types_in_cons_type_infos([], !BuiltinTypes).
+acc_builtin_types_in_cons_type_infos([ConsTypeInfo | ConsTypeInfos],
+        !BuiltinTypes) :-
+    ConsTypeInfo = cons_type_info(_VarSet, _ExistQTVars, ResultType, ArgTypes,
+        _Constraints, _Source),
+    acc_builtin_type(ResultType, !BuiltinTypes),
+    list.foldl(acc_builtin_type, ArgTypes, !BuiltinTypes),
+    acc_builtin_types_in_cons_type_infos(ConsTypeInfos, !BuiltinTypes).
+
+:- pred acc_builtin_types_of_arg_vector_type_error(arg_vector_type_error::in,
+    set(builtin_type)::in, set(builtin_type)::out) is det.
+
+acc_builtin_types_of_arg_vector_type_error(Error, !BuiltinTypes) :-
+    Error = arg_vector_type_error(_ArgNum, _Var, ActualExpected),
+    ActualExpected = actual_expected_types(_ActualPieces, ActualType,
+        _ExpectedPieces, ExpectedType, _ExistQTVars, _Source),
+    acc_builtin_type(ActualType, !BuiltinTypes),
+    acc_builtin_type(ExpectedType, !BuiltinTypes).
+
+:- pred acc_builtin_type(mer_type::in,
+    set(builtin_type)::in, set(builtin_type)::out) is det.
+
+acc_builtin_type(Type, !BuiltinTypes) :-
+    (
+        Type = builtin_type(BuiltinType),
+        set.insert(BuiltinType, !BuiltinTypes)
+    ;
+        ( Type = type_variable(_, _)
+        ; Type = defined_type(_, _, _)
+        ; Type = tuple_type(_, _)
+        ; Type = higher_order_type(_, _, _, _, _)
+        ; Type = apply_n_type(_, _, _)
+        ; Type = kinded_type(_, _)
+        )
+    ).
+
+:- func report_any_invisible_int_types(type_error_clause_context,
+    set(builtin_type)) = list(format_piece).
+
+report_any_invisible_int_types(ClauseContext, BuiltinTypes) = Pieces :-
+    set.filter_map(
+        (pred(builtin_type_int(IntType)::in, IntType::out) is semidet),
+        BuiltinTypes, IntTypes),
+    ( if
+        set.is_non_empty(IntTypes),
+        ModuleInfo = ClauseContext ^ tecc_module_info,
+        module_info_get_visible_modules(ModuleInfo, VisModules),
+        set.filter_map(is_int_n_module, VisModules, VisIntTypes),
+        set.difference(IntTypes, VisIntTypes, InvisIntTypes),
+        set.to_sorted_list(InvisIntTypes, InvisIntTypesList),
+        % Is there at least one integer type whose module we did not import?
+        InvisIntTypesList = [HeadInvisIntType | TailInvisIntTypes]
+    then
+        int_type_to_string(HeadInvisIntType, HeadInvisIntTypeStr),
+        list.map(
+            (pred(IT::in, Str::out) is det :- int_type_to_string(IT, Str)),
+            TailInvisIntTypes, TailInvisIntTypeStrs),
+        (
+            TailInvisIntTypeStrs = [],
+            Pieces = [words("Note that operations on values of type"),
+                quote(HeadInvisIntTypeStr), words("are available"),
+                words("only if the"), quote(HeadInvisIntTypeStr),
+                words("module is imported."), nl]
+        ;
+            TailInvisIntTypeStrs = [_ | _],
+            InvisIntTypeStrs = [HeadInvisIntTypeStr | TailInvisIntTypeStrs],
+            InvisIntTypePieces = list_to_quoted_pieces(InvisIntTypeStrs),
+            Pieces = [words("Note that operations on values of types") |
+                InvisIntTypePieces] ++ [words("are available"),
+                words("only if the") | InvisIntTypePieces] ++
+                [words("modules respectively are imported."), nl]
+        )
+    else
+        Pieces = []
+    ).
+
+:- pred is_int_n_module(module_name::in, int_type::out) is semidet.
+
+is_int_n_module(ModuleSymName, IntType) :-
+    ModuleSymName = unqualified(ModuleName),
+    int_type_to_string(IntType, ModuleName).
+
+%---------------------------------------------------------------------------%
+
 :- func types_of_vars_to_pieces(prog_varset, inst_varset, type_assign_set,
     list(format_piece), prog_var, list(prog_var)) = list(format_piece).
 
@@ -1238,14 +1450,8 @@ type_of_functor_to_pieces(InstVarSet, Functor, Arity, ConsDefnList,
         SuffixPieces) = Pieces :-
     ( if ConsDefnList = [SingleDefn] then
         ConsTypePieces = cons_type_to_pieces(InstVarSet, SingleDefn, Functor),
-        % ZZZ
-        ( if Arity = 0 then
-            Pieces = [words("has type"), nl_indent_delta(1)] ++
-                ConsTypePieces ++ SuffixPieces ++ [nl_indent_delta(-1)]
-        else
-            Pieces = [words("has type"), nl_indent_delta(1)] ++
-                ConsTypePieces ++ SuffixPieces ++ [nl_indent_delta(-1)]
-        )
+        Pieces = [words("has type"), nl_indent_delta(1)] ++
+            ConsTypePieces ++ SuffixPieces ++ [nl_indent_delta(-1)]
     else
         ConsTypeListPieces =
             cons_type_list_to_pieces(InstVarSet, ConsDefnList, Functor, Arity),

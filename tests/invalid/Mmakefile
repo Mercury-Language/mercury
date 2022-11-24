@@ -63,6 +63,7 @@ SINGLEMODULE_PROGS = \
 	any_to_ground_in_ite_cond_nomax \
 	anys_in_negated_contexts \
 	arg_permutation \
+	arith_wrong_module \
 	assert_in_interface \
 	bad_consider_used \
 	bad_detism \

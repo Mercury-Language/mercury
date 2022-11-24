@@ -218,7 +218,7 @@
                 cti_varset          :: tvarset,
 
                 % Existentially quantified type vars.
-                cti_exit_tvars      :: existq_tvars,
+                cti_existq_tvars    :: existq_tvars,
 
                 % Constructor type.
                 cti_result_type     :: mer_type,

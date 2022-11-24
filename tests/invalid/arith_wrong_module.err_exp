@@ -1,0 +1,44 @@
+arith_wrong_module.m:022: In clause for predicate `test_func'/3:
+arith_wrong_module.m:022:   type error in unification of variable `C'
+arith_wrong_module.m:022:   and functor `+'/2.
+arith_wrong_module.m:022:   variable `C' has type
+arith_wrong_module.m:022:     uint32,
+arith_wrong_module.m:022:   functor `+'/2 has type
+arith_wrong_module.m:022:     `+'(int, int): int.
+arith_wrong_module.m:022:   Note that operations on values of type `uint32' are
+arith_wrong_module.m:022:   available only if the `uint32' module is imported.
+arith_wrong_module.m:025: In clause for predicate `test_pred'/3:
+arith_wrong_module.m:025:   in call to predicate `int.pow'/3:
+arith_wrong_module.m:025:   in argument 1:
+arith_wrong_module.m:025:     variable `A' has type
+arith_wrong_module.m:025:       int16,
+arith_wrong_module.m:025:     expected type was
+arith_wrong_module.m:025:       int;
+arith_wrong_module.m:025:   in argument 2:
+arith_wrong_module.m:025:     variable `B' has type
+arith_wrong_module.m:025:       uint16,
+arith_wrong_module.m:025:     expected type was
+arith_wrong_module.m:025:       int;
+arith_wrong_module.m:025:   in argument 3:
+arith_wrong_module.m:025:     variable `C' has type
+arith_wrong_module.m:025:       int16,
+arith_wrong_module.m:025:     expected type was
+arith_wrong_module.m:025:       int.
+arith_wrong_module.m:025:   Note that operations on values of types `int16' and
+arith_wrong_module.m:025:   `uint16' are available only if the `int16' and
+arith_wrong_module.m:025:   `uint16' modules respectively are imported.
+arith_wrong_module.m:028: In clause for predicate `game_loop'/4:
+arith_wrong_module.m:028:   in unification of variable `Diff'
+arith_wrong_module.m:028:   and term `(End - Start)':
+arith_wrong_module.m:028:   type error in arguments of functor `-'/2.
+arith_wrong_module.m:028:   Argument 1 (End) has type
+arith_wrong_module.m:028:     int64,
+arith_wrong_module.m:028:   expected type was
+arith_wrong_module.m:028:     int.
+arith_wrong_module.m:028:   Argument 2 (Start) has type
+arith_wrong_module.m:028:     int64,
+arith_wrong_module.m:028:   expected type was
+arith_wrong_module.m:028:     int.
+arith_wrong_module.m:028:   Note that operations on values of type `int64' are
+arith_wrong_module.m:028:   available only if the `int64' module is imported.
+For more information, recompile with `-E'.
