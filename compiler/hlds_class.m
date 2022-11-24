@@ -81,7 +81,7 @@
                 % declaration. The order is given
                 % - first by by the order of the predicate or function
                 %   declarations in the typeclass declaration,
-                % - and then, with the sequence of method_infos for any
+                % - and then, within the sequence of method_infos for any
                 %   given method (which will always be contiguous),
                 %   by the order of the mode declarations for the given
                 %   method.
