@@ -2040,15 +2040,14 @@ report_bad_type_in_instance(ClassId, InstanceDefn, EndPieces, Kind, !Specs) :-
         Kind = badly_formed,
         % We are generating the error message because the type is badly formed
         % as expanded. The unexpanded version may be correctly formed.
-        UseTypes = InstanceDefn ^ instdefn_types
+        WhichTypes = cur_types
     ;
         Kind = abstract_exported_eqv,
         % Messages about the expanded type being an equivalence type
         % would not make sense.
-        UseTypes = InstanceDefn ^ instdefn_orig_types
+        WhichTypes = orig_types
     ),
-    PrefixPieces = in_instance_decl_pieces(ClassId, InstanceDefn,
-        yes(UseTypes)),
+    PrefixPieces = in_instance_decl_pieces(WhichTypes, ClassId, InstanceDefn),
     InstanceContext = InstanceDefn ^ instdefn_context,
     (
         Kind = abstract_exported_eqv,
@@ -2080,7 +2079,7 @@ report_bad_type_in_instance(ClassId, InstanceDefn, EndPieces, Kind, !Specs) :-
 
 report_duplicate_method_defn(ClassId, InstanceDefn, MethodName,
         FirstContext, LaterContext, !Specs) :-
-    PrefixPieces = in_instance_decl_pieces(ClassId, InstanceDefn, no),
+    PrefixPieces = in_instance_decl_pieces(cur_types, ClassId, InstanceDefn),
     PFMethodNamePieces = pf_method_name_pieces(MethodName),
     HeaderPieces = PrefixPieces ++
         [words("multiple implementations of") | PFMethodNamePieces] ++
@@ -2101,7 +2100,7 @@ report_duplicate_method_defn(ClassId, InstanceDefn, MethodName,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_undefined_method(ClassId, InstanceDefn, MethodName, !Specs) :-
-    PrefixPieces = in_instance_decl_pieces(ClassId, InstanceDefn, no),
+    PrefixPieces = in_instance_decl_pieces(cur_types, ClassId, InstanceDefn),
     PFMethodNamePieces = pf_method_name_pieces(MethodName),
     Pieces = PrefixPieces ++
         [words("no implementation for") | PFMethodNamePieces] ++
@@ -2118,7 +2117,7 @@ report_undefined_method(ClassId, InstanceDefn, MethodName, !Specs) :-
 
 report_unknown_instance_methods(ClassId, InstanceDefn,
         HeadMethod, TailMethods, !Specs) :-
-    PrefixPieces = in_instance_decl_pieces(ClassId, InstanceDefn, no),
+    PrefixPieces = in_instance_decl_pieces(cur_types, ClassId, InstanceDefn),
     (
         TailMethods = [],
         HeadMethod = instance_method(MethodName, _Defn, HeadMethodContext),
@@ -2155,7 +2154,7 @@ report_unknown_instance_methods(ClassId, InstanceDefn,
 
 report_unsatistfied_superclass_constraint(ClassId, InstanceDefn, ClassTVarSet,
         UnprovenConstraints, !Specs) :-
-    PrefixPieces = in_instance_decl_pieces(ClassId, InstanceDefn, no),
+    PrefixPieces = in_instance_decl_pieces(cur_types, ClassId, InstanceDefn),
     constraint_list_to_string(ClassTVarSet, UnprovenConstraints,
         ConstraintsStr),
     Pieces = PrefixPieces ++
@@ -2334,12 +2333,8 @@ report_abstract_instance_without_concrete(ClassId, InstanceDefn, !Specs) :-
 
 report_local_vs_nonlocal_clash(ClassId, LocalInstance, NonLocalInstance,
         !Specs) :-
-    ClassId = class_id(ClassName, _),
-    ClassNameStr = sym_name_to_string(ClassName),
-    Types = LocalInstance ^ instdefn_types,
-    TVarSet = LocalInstance ^ instdefn_tvarset,
-    TypesStr = mercury_type_list_to_string(TVarSet, Types),
-    string.format("%s(%s)", [s(ClassNameStr), s(TypesStr)], InstanceName),
+    InstanceName = instance_name(orig_types, print_all_types, keep_all,
+        ClassId, LocalInstance),
     % XXX Should we mention any constraints on the instance declaration?
     LocalPieces = [words("Error: this instance declaration"),
         words("for"), quote(InstanceName), words("clashes with"),
@@ -2629,30 +2624,73 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
 % Utility predicates for error reporting.
 %
 
-:- func in_instance_decl_pieces(class_id, hlds_instance_defn,
-    maybe(list(mer_type))) = list(format_piece).
+:- func in_instance_decl_pieces(which_types, class_id, hlds_instance_defn)
+    = list(format_piece).
 
-in_instance_decl_pieces(ClassId, InstanceDefn, MaybeUseTypes) = Pieces :-
-    ClassId = class_id(ClassName, _),
-    ClassNameStr = unqualify_name(ClassName),
-    TVarSet = InstanceDefn ^ instdefn_tvarset,
-    (
-        MaybeUseTypes = no,
-        Types0 = InstanceDefn ^ instdefn_types
-    ;
-        MaybeUseTypes = yes(Types0)
-    ),
-    % We are printing Types only to make the context more easily recognizable.
+in_instance_decl_pieces(WhichTypes, ClassId, InstanceDefn) = Pieces :-
+    % We are printing types only to make the context more easily recognizable.
     % The disambiguating power of module qualifiers is not needed in that role,
     % and their only contribution to the error message would be clutter.
     %
     % Likewise, we could mention the constraints (if any) on the
     % instance declaration, but it would also be very likely to be clutter.
-    strip_module_names_from_type_list(strip_all_module_names, Types0, Types),
-    TypesStr = mercury_type_list_to_string(TVarSet, Types),
-    string.format("%s(%s)", [s(ClassNameStr), s(TypesStr)], InstanceStr),
+    InstanceName = instance_name(WhichTypes, print_few_types, delete_all,
+        ClassId, InstanceDefn),
     Pieces = [words("In instance declaration for"),
-        words_quote(InstanceStr), suffix(":"), nl].
+        words_quote(InstanceName), suffix(":"), nl].
+
+:- type which_types
+    --->    orig_types
+    ;       cur_types.
+
+:- type type_limit
+    --->    print_all_types
+    ;       print_few_types.
+
+:- type module_quals
+    --->    keep_all
+    ;       delete_builtin
+    ;       delete_all.
+
+:- func instance_name(which_types, type_limit, module_quals,
+    class_id, hlds_instance_defn) = string.
+
+instance_name(WhichTypes, Limit, Quals, ClassId, InstanceDefn)
+        = InstanceName :-
+    ClassId = class_id(ClassName, _),
+    ClassNameStr = unqualify_name(ClassName),
+    (
+        WhichTypes = orig_types,
+        Types0 = InstanceDefn ^ instdefn_orig_types
+    ;
+        WhichTypes = cur_types,
+        Types0 = InstanceDefn ^ instdefn_types
+    ),
+    list.length(Types0, NumTypes0),
+    ( if
+        Limit = print_few_types,
+        NumTypes0 > 5
+    then
+        string.format("%s/%d", [s(ClassNameStr), i(NumTypes0)], InstanceName)
+    else
+        (
+            Quals = keep_all,
+            Types = Types0
+        ;
+            Quals = delete_builtin,
+            strip_module_names_from_type_list(strip_builtin_module_name,
+                Types0, Types)
+        ;
+            Quals = delete_all,
+            strip_module_names_from_type_list(strip_all_module_names,
+                Types0, Types)
+        ),
+        TVarSet = InstanceDefn ^ instdefn_tvarset,
+        TypesStr = mercury_type_list_to_string(TVarSet, Types),
+        string.format("%s(%s)", [s(ClassNameStr), s(TypesStr)], InstanceName)
+    ).
+
+%---------------------%
 
 :- func pf_method_name_pieces(pred_pf_name_arity) = list(format_piece).
 
