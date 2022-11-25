@@ -392,18 +392,20 @@ of(FileType, FindDeps) =
 
 of_2(FileType, FindDeps, Globals, ModuleIndex, Succeeded, TargetFiles,
         !Info, !IO) :-
-    FindDeps(Globals, ModuleIndex, Succeeded, ModuleIndexs, !Info, !IO),
-    foldl2(of_3(FileType), ModuleIndexs, init, TargetFiles, !Info).
+    FindDeps(Globals, ModuleIndex, Succeeded, ModuleIndexes, !Info, !IO),
+    foldl2(of_3(FileType), ModuleIndexes, [], TargetFileIndexes, !Info),
+    list_to_set(TargetFileIndexes, TargetFiles).
 
 :- pred of_3(module_target_type::in, module_index::in,
-    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+    list(dependency_file_index)::in, list(dependency_file_index)::out,
     make_info::in, make_info::out) is det.
 
-of_3(FileType, ModuleIndex, !Set, !Info) :-
+of_3(FileType, ModuleIndex, !List, !Info) :-
+    % Could we avoid looking up ModuleName?
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     TargetFile = dep_target(target_file(ModuleName, FileType)),
     dependency_file_to_index(TargetFile, TargetFileIndex, !Info),
-    insert(TargetFileIndex, !Set).
+    !:List = [TargetFileIndex | !.List].
 
 :- func files_of(find_module_deps_plain_set(dependency_file),
     find_module_deps(module_index)) = find_module_deps(dependency_file_index).
