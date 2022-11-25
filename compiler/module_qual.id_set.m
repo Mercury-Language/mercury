@@ -22,11 +22,11 @@
 %---------------------------------------------------------------------------%
 
     % We keep track of these kinds of entities.
-:- type id_type
-    --->    type_id
-    ;       inst_id
-    ;       mode_id
-    ;       class_id.
+:- type qual_id_kind
+    --->    qual_id_type
+    ;       qual_id_inst
+    ;       qual_id_mode
+    ;       qual_id_class.
 
     % This identifies an entity among other entities of the same kind.
 :- type mq_id
@@ -110,7 +110,7 @@
     % class_ids have the same representation.
     %
 :- pred find_unique_match(mq_in_interface::in, mq_error_context::in,
-    id_set::in, id_type::in, mq_id::in, sym_name::out,
+    id_set::in, qual_id_kind::in, mq_id::in, sym_name::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -300,12 +300,12 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
             !Info)
     ).
 
-:- func convert_used_item_type(id_type) = used_item_type.
+:- func convert_used_item_type(qual_id_kind) = used_item_type.
 
-convert_used_item_type(type_id) = used_type_name.
-convert_used_item_type(inst_id) = used_inst.
-convert_used_item_type(mode_id) = used_mode.
-convert_used_item_type(class_id) = used_typeclass.
+convert_used_item_type(qual_id_type) = used_type_name.
+convert_used_item_type(qual_id_inst) = used_inst.
+convert_used_item_type(qual_id_mode) = used_mode.
+convert_used_item_type(qual_id_class) = used_typeclass.
 
 %---------------------------------------------------------------------------%
 

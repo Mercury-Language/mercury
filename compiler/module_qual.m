@@ -762,7 +762,7 @@ get_mq_debug_output_stream(Info, DebugStream, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mq_info_record_undef_mq_id(id_type::in,
+:- pred mq_info_record_undef_mq_id(qual_id_kind::in,
     mq_info::in, mq_info::out) is det.
 
 mq_info_record_undef_mq_id(IdType, !Info) :-
@@ -772,16 +772,16 @@ mq_info_record_undef_mq_id(IdType, !Info) :-
     ;
         SuppressFoundUndef = do_not_suppress_found_undef,
         (
-            IdType = type_id,
+            IdType = qual_id_type,
             mq_info_set_found_undef_type(!Info)
         ;
-            IdType = inst_id,
+            IdType = qual_id_inst,
             mq_info_set_found_undef_inst(!Info)
         ;
-            IdType = mode_id,
+            IdType = qual_id_mode,
             mq_info_set_found_undef_mode(!Info)
         ;
-            IdType = class_id,
+            IdType = qual_id_class,
             mq_info_set_found_undef_typeclass(!Info)
         )
     ).

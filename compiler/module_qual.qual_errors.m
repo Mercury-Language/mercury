@@ -139,14 +139,14 @@
     % Report an undefined type, inst or mode.
     %
 :- pred report_undefined_mq_id(mq_info::in, mq_error_context::in,
-    mq_id::in, id_type::in, module_name::in,
+    mq_id::in, qual_id_kind::in, module_name::in,
     list(module_name)::in, list(module_name)::in, set(int)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Report an error where a type, inst, mode or typeclass had
     % multiple possible matches.
     %
-:- pred report_ambiguous_match(mq_error_context::in, mq_id::in, id_type::in,
+:- pred report_ambiguous_match(mq_error_context::in, mq_id::in, qual_id_kind::in,
     list(module_name)::in, list(module_name)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -183,7 +183,7 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         ErrorContextPieces),
     InPieces = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
         words("error:")],
-    id_type_to_string(IdType, IdTypeStr),
+    qual_id_kind_to_string(IdType, IdTypeStr),
     Id = mq_id(IdSymName, IdArity),
     IdBaseName = unqualify_name(IdSymName),
     list.sort_and_remove_dups(IntMismatches0, IntMismatches),
@@ -280,7 +280,7 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         QualPieces = [],
         NonImportedPieces = []
     then
-        id_types_to_string(IdType, IdTypesStr),
+        qual_id_kinds_to_string(IdType, IdTypesStr),
         IsAre = choose_number(PossibleArities, "is a", "are"),
         KindKinds = choose_number(PossibleArities, IdTypeStr, IdTypesStr),
         ArityArities = choose_number(PossibleArities, "arity", "arities"),
@@ -314,7 +314,7 @@ report_ambiguous_match(ErrorContext, Id, IdType,
         UsableModuleNames, UnusableModuleNames, !Specs) :-
     mq_error_context_to_pieces(ErrorContext, Context, _ShouldUnqualId,
         ErrorContextPieces),
-    id_type_to_string(IdType, IdTypeStr),
+    qual_id_kind_to_string(IdType, IdTypeStr),
     UsableModuleSymNames = list.map(wrap_module_name, UsableModuleNames),
     MainPieces = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
         words("ambiguity error: multiple possible matches for"),
@@ -550,19 +550,19 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
             words("for"), quote(EventName)]
     ).
 
-:- pred id_type_to_string(id_type::in, string::out) is det.
+:- pred qual_id_kind_to_string(qual_id_kind::in, string::out) is det.
 
-id_type_to_string(type_id, "type").
-id_type_to_string(mode_id, "mode").
-id_type_to_string(inst_id, "inst").
-id_type_to_string(class_id, "typeclass").
+qual_id_kind_to_string(qual_id_type, "type").
+qual_id_kind_to_string(qual_id_mode, "mode").
+qual_id_kind_to_string(qual_id_inst, "inst").
+qual_id_kind_to_string(qual_id_class, "typeclass").
 
-:- pred id_types_to_string(id_type::in, string::out) is det.
+:- pred qual_id_kinds_to_string(qual_id_kind::in, string::out) is det.
 
-id_types_to_string(type_id, "types").
-id_types_to_string(mode_id, "modes").
-id_types_to_string(inst_id, "insts").
-id_types_to_string(class_id, "typeclasses").
+qual_id_kinds_to_string(qual_id_type, "types").
+qual_id_kinds_to_string(qual_id_mode, "modes").
+qual_id_kinds_to_string(qual_id_inst, "insts").
+qual_id_kinds_to_string(qual_id_class, "typeclasses").
 
 %---------------------------------------------------------------------------%
 

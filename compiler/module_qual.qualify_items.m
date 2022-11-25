@@ -938,7 +938,7 @@ qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs) :-
         Arity = list.length(Args0),
         TypeCtorId0 = mq_id(SymName0, Arity),
         mq_info_get_types(!.Info, Types),
-        find_unique_match(InInt, ErrorContext, Types, type_id,
+        find_unique_match(InInt, ErrorContext, Types, qual_id_type,
             TypeCtorId0, SymName, !Info, !Specs),
         % XXX We could pass a more specific error context.
         qualify_type_list(InInt, ErrorContext, Args0, Args, !Info, !Specs),
@@ -1031,7 +1031,7 @@ qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
         TypeCtorId0 = mq_id(SymName0, Arity),
         mq_info_get_types(!.Info, Types),
         % XXX We could pass a more specific error context.
-        find_unique_match(InInt, ErrorContext, Types, type_id,
+        find_unique_match(InInt, ErrorContext, Types, qual_id_type,
             TypeCtorId0, SymName, !Info, !Specs),
         TypeCtor = type_ctor(SymName, Arity)
     ).
@@ -1159,7 +1159,7 @@ qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo,
         HOInstInfo = none_or_default_func
     ).
 
-    % Find the unique inst_id that matches this inst, and qualify
+    % Find the unique qual_id_inst that matches this inst, and qualify
     % the argument insts.
     %
 :- pred qualify_inst_name(mq_in_interface::in, mq_error_context::in,
@@ -1182,7 +1182,7 @@ qualify_inst_name(InInt, ErrorContext, InstName0, InstName,
         else
             list.length(Insts0, Arity),
             mq_info_get_insts(!.Info, InstIdSet),
-            find_unique_match(InInt, ErrorContext, InstIdSet, inst_id,
+            find_unique_match(InInt, ErrorContext, InstIdSet, qual_id_inst,
                 mq_id(SymName0, Arity), SymName, !Info, !Specs)
         ),
         InstName = user_inst(SymName, Insts)
@@ -1293,7 +1293,7 @@ qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs) :-
         qualify_inst_list(InInt, ErrorContext, Insts0, Insts, !Info, !Specs),
         list.length(Insts, Arity),
         mq_info_get_modes(!.Info, Modes),
-        find_unique_match(InInt, ErrorContext, Modes, mode_id,
+        find_unique_match(InInt, ErrorContext, Modes, qual_id_mode,
             mq_id(SymName0, Arity), SymName, !Info, !Specs),
         Mode = user_defined_mode(SymName, Insts)
     ).
@@ -1397,8 +1397,8 @@ qualify_prog_constraint(InInt, ContainingErrorContext,
 
 qualify_class_name(InInt, ErrorContext, Class0, Name, !Info, !Specs) :-
     mq_info_get_classes(!.Info, ClassIdSet),
-    find_unique_match(InInt, ErrorContext, ClassIdSet, class_id, Class0, Name,
-        !Info, !Specs).
+    find_unique_match(InInt, ErrorContext, ClassIdSet, qual_id_class,
+        Class0, Name, !Info, !Specs).
 
 %---------------------%
 
