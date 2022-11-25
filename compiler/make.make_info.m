@@ -91,6 +91,9 @@
                 mki_cached_non_intermod_direct_imports
                                         :: cached_direct_imports,
 
+                mki_cached_indirect_imports
+                                        :: cached_indirect_imports,
+
                 % The boolean is `yes' if the result is complete.
                 % XXX Use a better representation for the sets.
                 mki_cached_transitive_dependencies

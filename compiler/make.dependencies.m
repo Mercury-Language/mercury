@@ -151,6 +151,9 @@
 :- type cached_direct_imports.
 :- func init_cached_direct_imports = cached_direct_imports.
 
+:- type cached_indirect_imports.
+:- func init_cached_indirect_imports = cached_indirect_imports.
+
 :- type cached_transitive_foreign_imports.
 :- func init_cached_transitive_foreign_imports =
     cached_transitive_foreign_imports.
@@ -607,8 +610,18 @@ non_intermod_direct_imports_2(Globals, ModuleIndex, Succeeded, Modules,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 indirect_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
-    indirect_imports_2(Globals, direct_imports, ModuleIndex,
-        Succeeded, Modules, !Info, !IO).
+    CachedIndirectImports0 = !.Info ^ mki_cached_indirect_imports,
+    ( if map.search(CachedIndirectImports0, ModuleIndex, CachedResult) then
+        CachedResult = deps_result(Succeeded, Modules)
+    else
+        indirect_imports_2(Globals, direct_imports, ModuleIndex,
+            Succeeded, Modules, !Info, !IO),
+        Result = deps_result(Succeeded, Modules),
+        CachedIndirectImports1 = !.Info ^ mki_cached_indirect_imports,
+        map.det_insert(ModuleIndex, Result,
+            CachedIndirectImports1, CachedIndirectImports),
+        !Info ^ mki_cached_indirect_imports := CachedIndirectImports
+    ).
 
     % Return the list of modules for which we should read `.int2' files,
     % ignoring those which need to be read as a result of importing modules
@@ -1369,6 +1382,10 @@ make_write_dependency_file_and_timestamp_list([Head | Tail], !IO) :-
 :- type cached_direct_imports == map(module_index, module_deps_result).
 
 init_cached_direct_imports = map.init.
+
+:- type cached_indirect_imports == map(module_index, module_deps_result).
+
+init_cached_indirect_imports = map.init.
 
 :- type cached_transitive_foreign_imports
     == map(module_index, module_deps_result).
