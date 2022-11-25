@@ -10,9 +10,23 @@
 % Author: dgj, mark.
 %
 % This module checks conformance of instance declarations to the typeclass
-% declaration. It does this in several passes.
+% declaration. It does this in three phases, consisting of seven passes.
 %
-% (1) In check_instance_declaration_types/4, we check that each type
+% Phase 1 checks typeclass declarations. This phase consists of pass 1.
+% Phase 2 checks instance declarations. This phase consists of passes 2 to 5.
+% Phase 3 checks the constructs that depend on typeclass and instance
+% constraints, which are predicate, function and type declarations.
+% This phase consists of passes 6 and 7.
+%
+% (1) In check_for_cyclic_classes/4, we check for cycles in the typeclass
+% hierarchy. A cycle occurs if we can start from any given typeclass
+% declaration and follow the superclass constraints on classes to reach the
+% same class that we started from. Only the class_id needs to be repeated;
+% it doesn't need to have the parameters. Note that we follow the constraints
+% on class declarations only, not those on instance declarations. While doing
+% this, we fill in the fundeps_ancestors field in the class table.
+%
+% (2) In check_instance_declaration_types/4, we check that each type
 % in the instance declaration is either a type with no arguments,
 % or a polymorphic type whose arguments are all type variables.
 % We also check that all of the types in exported instance declarations are
@@ -24,7 +38,7 @@
 % no way to check at compile time that it is not an abstract exported
 % equivalence type defined in some *other* module.
 %
-% (2) In generate_instance_method_procs/6, we generate and add to the HLDS
+% (3) In generate_instance_method_procs/6, we generate and add to the HLDS
 % a new procedure for every method of every instance of every class.
 % The types, modes and determinisms of these procedures are taken from
 % the method's signature in the class declaration, and the procedure body
@@ -63,14 +77,6 @@
 % context reduction on the typeclass constraints, using the instance
 % constraints as assumptions. At this point, we fill in the super class proofs.
 %
-% (3) In check_for_cyclic_classes/4, we check for cycles in the typeclass
-% hierarchy. A cycle occurs if we can start from any given typeclass
-% declaration and follow the superclass constraints on classes to reach the
-% same class that we started from. Only the class_id needs to be repeated;
-% it doesn't need to have the parameters. Note that we follow the constraints
-% on class declarations only, not those on instance declarations. While doing
-% this, we fill in the fundeps_ancestors field in the class table.
-%
 % (4) In check_for_missing_concrete_instances/4, we check that each
 % abstract instance has a corresponding concrete instance.
 %
@@ -82,12 +88,17 @@
 % better error messages.
 %
 % (6) In check_typeclass_constraints_on_preds/4, we check typeclass constraints
-% on predicate and function declarations and on existentially typed data
-% constructors for ambiguity, taking into consideration the information
-% provided by functional dependencies. We also call check_constraint_quant/5
-% to check that all type variables in constraints are universally quantified,
-% or that they are all existentially quantified. We don't support constraints
-% where some of the type variables are universal and some are existential.
+% on predicate and function declarations for ambiguity, taking into
+% consideration the information provided by functional dependencies.
+% We also call check_constraint_quant/5 to check that all type variables
+% in constraints are universally quantified, or that they are all
+% existentially quantified. We don't support constraints where
+% some of the type variables are universal and some are existential.
+%
+% (7) In check_typeclass_constraints_on_data_ctors/4, we check typeclass
+% constraints on existentially typed data constructors for ambiguity,
+% taking into consideration the information provided by functional
+% dependencies.
 %
 %---------------------------------------------------------------------------%
 
@@ -172,37 +183,39 @@ check_typeclasses(ProgressStream, !ModuleInfo, !QualInfo, !:Specs) :-
     % Pass 1.
     trace [io(!IO)] (
         maybe_write_string(ProgressStream, Verbose,
+            "% Checking for cyclic classes...\n", !IO)
+    ),
+    check_for_cyclic_classes(!ModuleInfo, CycleSpecs),
+
+    % Pass 2.
+    trace [io(!IO)] (
+        maybe_write_string(ProgressStream, Verbose,
             "% Checking instance declaration types...\n", !IO)
     ),
-    check_instance_declaration_types(!ModuleInfo, [], !:Specs),
+    check_instance_declaration_types(!ModuleInfo, [], InstanceDeclSpecs),
+
+    !:Specs = CycleSpecs ++ InstanceDeclSpecs,
 
     % If we encounter any errors while checking that the types in an
     % instance declaration are valid, then don't attempt the remaining passes.
-    % Pass 2 cannot be run since the name mangling scheme we use
+    % Pass 3 cannot be run since the name mangling scheme we use
     % to generate the names of the method wrapper predicates may abort
     % if the types in an instance are not valid, e.g. if an instance head
     % contains a type variable that is not wrapped inside a functor.
     % Most of the other passes also depend upon information that is
-    % calculated during pass 2.
+    % calculated during pass 3.
     %
     % XXX It would be better to just remove the invalid instances at this
     % point and then continue on with the valid instances.
 
     (
-        !.Specs = [],
-        % Pass 2.
+        InstanceDeclSpecs = [],
+        % Pass 3.
         trace [io(!IO)] (
             maybe_write_string(ProgressStream, Verbose,
                 "% Checking typeclass instances...\n", !IO)
         ),
         generate_instance_method_procs(!ModuleInfo, !QualInfo, !Specs),
-
-        % Pass 3.
-        trace [io(!IO)] (
-            maybe_write_string(ProgressStream, Verbose,
-                "% Checking for cyclic classes...\n", !IO)
-        ),
-        check_for_cyclic_classes(!ModuleInfo, !Specs),
 
         % Pass 4.
         trace [io(!IO)] (
@@ -223,13 +236,149 @@ check_typeclasses(ProgressStream, !ModuleInfo, !QualInfo, !:Specs) :-
             maybe_write_string(ProgressStream, Verbose,
                 "% Checking typeclass constraints on predicates...\n", !IO)
         ),
-        check_typeclass_constraints_on_preds(!.ModuleInfo, !Specs)
+        check_typeclass_constraints_on_preds(!.ModuleInfo, !Specs),
+
+        % Pass 7.
+        trace [io(!IO)] (
+            maybe_write_string(ProgressStream, Verbose,
+                "% Checking typeclass constraints on data constructors...\n",
+                !IO)
+        ),
+        check_typeclass_constraints_on_data_ctors(!.ModuleInfo, !Specs)
     ;
-        !.Specs = [_ | _]
+        InstanceDeclSpecs = [_ | _]
     ).
 
 %---------------------------------------------------------------------------%
 % Pass 1.
+%---------------------------------------------------------------------------%
+
+    % Check for cyclic classes in the class table by traversing the class
+    % hierarchy for each class. While we are doing this, calculate the set
+    % of ancestors with functional dependencies for each class, and enter
+    % this information in the class table.
+    %
+:- pred check_for_cyclic_classes(module_info::in, module_info::out,
+    list(error_spec)::out) is det.
+
+check_for_cyclic_classes(!ModuleInfo, Specs) :-
+    module_info_get_class_table(!.ModuleInfo, ClassTable0),
+    ClassIds = map.keys(ClassTable0),
+    list.foldl3(find_class_cycles(class_path([])), ClassIds,
+        ClassTable0, ClassTable, set.init, _, [], Cycles),
+    list.foldl(report_cyclic_classes(ClassTable), Cycles, [], Specs),
+    module_info_set_class_table(ClassTable, !ModuleInfo).
+
+:- type class_path
+    --->    class_path(list(class_id)).
+
+    % find_class_cycles(Path, ClassId, !ClassTable, !Visited, !Cycles)
+    %
+    % Perform a depth first traversal of the class hierarchy, starting
+    % from ClassId. Path contains a list of nodes joining the current node
+    % to the root. When we reach a node that has already been visited,
+    % check whether there is a cycle in the Path.
+    %
+:- pred find_class_cycles(class_path::in, class_id::in,
+    class_table::in, class_table::out, set(class_id)::in, set(class_id)::out,
+    list(class_path)::in, list(class_path)::out) is det.
+
+find_class_cycles(Path, ClassId, !ClassTable, !Visited, !Cycles) :-
+    find_class_cycles_2(Path, ClassId, _, _, !ClassTable, !Visited, !Cycles).
+
+    % As above, but also return this class's parameters and the list
+    % of its ancestors with fundeps. This functionality is needed by
+    % find_class_cycles_3, with which this predicate is mutually recursive.
+    %
+:- pred find_class_cycles_2(class_path::in, class_id::in,
+    list(tvar)::out, list(prog_constraint)::out,
+    class_table::in, class_table::out, set(class_id)::in, set(class_id)::out,
+    list(class_path)::in, list(class_path)::out) is det.
+
+find_class_cycles_2(Path0, ClassId, ClassParamTVars, FunDepAncestors,
+        !ClassTable, !Visited, !Cycles) :-
+    ClassDefn0 = map.lookup(!.ClassTable, ClassId),
+    ClassParamTVars = ClassDefn0 ^ classdefn_vars,
+    Kinds = ClassDefn0 ^ classdefn_kinds,
+    ( if set.member(ClassId, !.Visited) then
+        ( if
+            find_class_cycle(ClassId, Path0, class_path([ClassId]), Cycle)
+        then
+            !:Cycles = [Cycle | !.Cycles]
+        else
+            true
+        ),
+        FunDepAncestors = ClassDefn0 ^ classdefn_fundep_ancestors
+    else
+        set.insert(ClassId, !Visited),
+
+        % If this class has fundeps, then include it in its own list of
+        % "ancestors with fundeps".
+        FunDeps = ClassDefn0 ^ classdefn_fundeps,
+        (
+            FunDeps = [],
+            FunDepAncestors0 = []
+        ;
+            FunDeps = [_ | _],
+            ClassId = class_id(ClassName, _),
+            prog_type.var_list_to_type_list(Kinds, ClassParamTVars, ArgTypes),
+            FunDepAncestors0 = [constraint(ClassName, ArgTypes)]
+        ),
+        Superclasses = ClassDefn0 ^ classdefn_supers,
+        Path0 = class_path(PathClassIds),
+        Path1 = class_path([ClassId | PathClassIds]),
+        list.foldl4(find_class_cycles_3(Path1), Superclasses,
+            !ClassTable, !Visited, !Cycles, FunDepAncestors0, FunDepAncestors),
+        ClassDefn = ClassDefn0 ^ classdefn_fundep_ancestors := FunDepAncestors,
+        map.det_update(ClassId, ClassDefn, !ClassTable)
+    ).
+
+    % As we go, accumulate the ancestors from all the superclasses,
+    % with the class parameters bound to the corresponding arguments.
+    % Note that we don't need to merge varsets because typeclass
+    % parameters are guaranteed to be distinct variables.
+    %
+:- pred find_class_cycles_3(class_path::in, prog_constraint::in,
+    class_table::in, class_table::out,
+    set(class_id)::in, set(class_id)::out,
+    list(class_path)::in, list(class_path)::out,
+    list(prog_constraint)::in, list(prog_constraint)::out) is det.
+
+find_class_cycles_3(Path, Constraint, !ClassTable, !Visited, !Cycles,
+        !FunDepAncestors) :-
+    Constraint = constraint(ClassName, ArgTypes),
+    list.length(ArgTypes, Arity),
+    ClassId = class_id(ClassName, Arity),
+    find_class_cycles_2(Path, ClassId, ClassParamTVars, NewFunDepAncestors0,
+        !ClassTable, !Visited, !Cycles),
+    map.from_corresponding_lists(ClassParamTVars, ArgTypes, Binding),
+    apply_subst_to_prog_constraint_list(Binding,
+        NewFunDepAncestors0, NewFunDepAncestors),
+    !:FunDepAncestors = NewFunDepAncestors ++ !.FunDepAncestors.
+
+    % find_class_cycle(ClassId, PathRemaining0, PathSoFar, Cycle):
+    %
+    % Check if ClassId is present in PathRemaining0, and if so, then make
+    % a cycle out of the front part of the path up to the point where
+    % the ClassId is found. The part of the path checked so far is
+    % accumulated in PathSoFar.
+    %
+:- pred find_class_cycle(class_id::in, class_path::in, class_path::in,
+    class_path::out) is semidet.
+
+find_class_cycle(ClassId, PathRemaining0, PathSoFar0, Cycle) :-
+    PathRemaining0 = class_path([Head | Tail]),
+    PathSoFar0 = class_path(PathSoFarClassIds0),
+    PathSoFar1 = class_path([Head | PathSoFarClassIds0]),
+    ( if ClassId = Head then
+        Cycle = PathSoFar1
+    else
+        PathRemaining1 = class_path(Tail),
+        find_class_cycle(ClassId, PathRemaining1, PathSoFar1, Cycle)
+    ).
+
+%---------------------------------------------------------------------------%
+% Pass 2.
 %---------------------------------------------------------------------------%
 
     % In check_instance_declaration_types/4, we check that each type
@@ -401,7 +550,7 @@ find_non_type_variables([ArgType | ArgTypes], ArgNum, NonTVarArgs) :-
     ).
 
 %---------------------------------------------------------------------------%
-% Pass 2.
+% Pass 3.
 %---------------------------------------------------------------------------%
 
 :- pred generate_instance_method_procs(module_info::in, module_info::out,
@@ -904,127 +1053,6 @@ check_instance_for_superclass_conformance(ModuleInfo, ClassId, ClassTVarSet,
         report_unsatistfied_superclass_constraint(ClassId,
             InstanceDefn0, ClassTVarSet, UnprovenConstraints, !Specs),
         InstanceDefn = InstanceDefn0
-    ).
-
-%---------------------------------------------------------------------------%
-% Pass 3.
-%---------------------------------------------------------------------------%
-
-    % Check for cyclic classes in the class table by traversing the class
-    % hierarchy for each class. While we are doing this, calculate the set
-    % of ancestors with functional dependencies for each class, and enter
-    % this information in the class table.
-    %
-:- pred check_for_cyclic_classes(module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_for_cyclic_classes(!ModuleInfo, !Specs) :-
-    module_info_get_class_table(!.ModuleInfo, ClassTable0),
-    ClassIds = map.keys(ClassTable0),
-    list.foldl3(find_cycles(class_path([])), ClassIds,
-        ClassTable0, ClassTable, set.init, _, [], Cycles),
-    list.foldl(report_cyclic_classes(ClassTable), Cycles, !Specs),
-    module_info_set_class_table(ClassTable, !ModuleInfo).
-
-:- type class_path
-    --->    class_path(list(class_id)).
-
-    % find_cycles(Path, ClassId, !ClassTable, !Visited, !Cycles)
-    %
-    % Perform a depth first traversal of the class hierarchy, starting
-    % from ClassId. Path contains a list of nodes joining the current node
-    % to the root. When we reach a node that has already been visited,
-    % check whether there is a cycle in the Path.
-    %
-:- pred find_cycles(class_path::in, class_id::in,
-    class_table::in, class_table::out, set(class_id)::in, set(class_id)::out,
-    list(class_path)::in, list(class_path)::out) is det.
-
-find_cycles(Path, ClassId, !ClassTable, !Visited, !Cycles) :-
-    find_cycles_2(Path, ClassId, _, _, !ClassTable, !Visited, !Cycles).
-
-    % As above, but also return this class's parameters and ancestor list.
-    %
-:- pred find_cycles_2(class_path::in, class_id::in,
-    list(tvar)::out, list(prog_constraint)::out,
-    class_table::in, class_table::out, set(class_id)::in, set(class_id)::out,
-    list(class_path)::in, list(class_path)::out) is det.
-
-find_cycles_2(Path0, ClassId, ClassParamTVars, Ancestors,
-        !ClassTable, !Visited, !Cycles) :-
-    ClassDefn0 = map.lookup(!.ClassTable, ClassId),
-    ClassParamTVars = ClassDefn0 ^ classdefn_vars,
-    Kinds = ClassDefn0 ^ classdefn_kinds,
-    ( if set.member(ClassId, !.Visited) then
-        ( if find_cycle(ClassId, Path0, class_path([ClassId]), Cycle) then
-            !:Cycles = [Cycle | !.Cycles]
-        else
-            true
-        ),
-        Ancestors = ClassDefn0 ^ classdefn_fundep_ancestors
-    else
-        set.insert(ClassId, !Visited),
-
-        % Make this class its own ancestor, but only if it has fundeps on it.
-        FunDeps = ClassDefn0 ^ classdefn_fundeps,
-        (
-            FunDeps = [],
-            Ancestors0 = []
-        ;
-            FunDeps = [_ | _],
-            ClassId = class_id(ClassName, _),
-            prog_type.var_list_to_type_list(Kinds, ClassParamTVars, ArgTypes),
-            Ancestors0 = [constraint(ClassName, ArgTypes)]
-        ),
-        Superclasses = ClassDefn0 ^ classdefn_supers,
-        Path0 = class_path(PathClassIds),
-        Path1 = class_path([ClassId | PathClassIds]),
-        list.foldl4(find_cycles_3(Path1), Superclasses,
-            !ClassTable, !Visited, !Cycles, Ancestors0, Ancestors),
-        ClassDefn = ClassDefn0 ^ classdefn_fundep_ancestors := Ancestors,
-        map.det_update(ClassId, ClassDefn, !ClassTable)
-    ).
-
-    % As we go, accumulate the ancestors from all the superclasses,
-    % with the class parameters bound to the corresponding arguments.
-    % Note that we don't need to merge varsets because typeclass
-    % parameters are guaranteed to be distinct variables.
-    %
-:- pred find_cycles_3(class_path::in, prog_constraint::in,
-    class_table::in, class_table::out,
-    set(class_id)::in, set(class_id)::out,
-    list(class_path)::in, list(class_path)::out,
-    list(prog_constraint)::in, list(prog_constraint)::out) is det.
-
-find_cycles_3(Path, Constraint, !ClassTable, !Visited, !Cycles, !Ancestors) :-
-    Constraint = constraint(ClassName, ArgTypes),
-    list.length(ArgTypes, Arity),
-    ClassId = class_id(ClassName, Arity),
-    find_cycles_2(Path, ClassId, ClassParamTVars, NewAncestors0, !ClassTable,
-        !Visited, !Cycles),
-    map.from_corresponding_lists(ClassParamTVars, ArgTypes, Binding),
-    apply_subst_to_prog_constraint_list(Binding, NewAncestors0, NewAncestors),
-    !:Ancestors = NewAncestors ++ !.Ancestors.
-
-    % find_cycle(ClassId, PathRemaining0, PathSoFar, Cycle):
-    %
-    % Check if ClassId is present in PathRemaining0, and if so, then make
-    % a cycle out of the front part of the path up to the point where
-    % the ClassId is found. The part of the path checked so far is
-    % accumulated in PathSoFar.
-    %
-:- pred find_cycle(class_id::in, class_path::in, class_path::in,
-    class_path::out) is semidet.
-
-find_cycle(ClassId, PathRemaining0, PathSoFar0, Cycle) :-
-    PathRemaining0 = class_path([Head | Tail]),
-    PathSoFar0 = class_path(PathSoFarClassIds0),
-    PathSoFar1 = class_path([Head | PathSoFarClassIds0]),
-    ( if ClassId = Head then
-        Cycle = PathSoFar1
-    else
-        PathRemaining1 = class_path(Tail),
-        find_cycle(ClassId, PathRemaining1, PathSoFar1, Cycle)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1572,10 +1600,7 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
 
     % Look for pred or func declarations for which the type variables in
     % the constraints are not all determined by the type variables in the type
-    % and the functional dependencies. Likewise look for constructors for which
-    % the existential type variables in the constraints are not all determined
-    % by the type variables in the constructor arguments and the functional
-    % dependencies.
+    % and the functional dependencies.
     %
 :- pred check_typeclass_constraints_on_preds(module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -1583,11 +1608,7 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
 check_typeclass_constraints_on_preds(ModuleInfo, !Specs) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     list.foldl(check_typeclass_constraints_on_pred(ModuleInfo),
-        PredIds, !Specs),
-    module_info_get_type_table(ModuleInfo, TypeTable),
-    get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
-    list.foldl(check_typeclass_constraints_on_type_ctor(ModuleInfo),
-        TypeCtorsDefns, !Specs).
+        PredIds, !Specs).
 
 :- pred check_typeclass_constraints_on_pred(module_info::in, pred_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -1644,16 +1665,16 @@ check_typeclass_constraints_on_pred(ModuleInfo, PredId, !Specs) :-
         set.to_sorted_list(BadClassSNAsSet, BadClassSNAs),
         (
             BadClassSNAs = [HeadBadClassSNA | TailBadClassSNAs],
-            report_bad_class_ids_in_pred_decl(ModuleInfo,
-                PredInfo, HeadBadClassSNA, TailBadClassSNAs, !Specs)
-        ;
-            BadClassSNAs = [],
             % In the presence of any BadClassSNAs, the map.lookups done
             % in the class table by code indirectly invoked by
             % get_unbound_tvars could cause a compiler abort.
             %
             % Any ambiguity errors can be reported *after* the programmer
             % fixes the references to nonexistent typeclasses.
+            report_bad_class_ids_in_pred_decl(ModuleInfo, PredInfo,
+                HeadBadClassSNA, TailBadClassSNAs, !Specs)
+        ;
+            BadClassSNAs = [],
             pred_info_get_status(PredInfo, Status),
             NeedsAmbiguityCheck = pred_needs_ambiguity_check(Status),
             (
@@ -1703,13 +1724,62 @@ check_pred_type_ambiguities(ModuleInfo, PredInfo, !Specs) :-
         report_unbound_tvars_in_pred_context(PredInfo, UnboundTVars, !Specs)
     ).
 
+%---------------------%
+
+    % Check that all types appearing in universal (existential) constraints are
+    % universally (existentially) quantified.
+    %
+:- pred check_constraint_quant(pred_info::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_constraint_quant(PredInfo, !Specs) :-
+    pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
+    pred_info_get_class_context(PredInfo, Constraints),
+    Constraints = constraints(UnivCs, ExistCs),
+    prog_type.constraint_list_get_tvars(UnivCs, UnivTVars),
+    set.list_to_set(ExistQVars, ExistQVarsSet),
+    set.list_to_set(UnivTVars, UnivTVarsSet),
+    set.intersect(ExistQVarsSet, UnivTVarsSet, BadUnivTVarsSet),
+    maybe_report_badly_quantified_vars(PredInfo, universal_constraint,
+        set.to_sorted_list(BadUnivTVarsSet), !Specs),
+    prog_type.constraint_list_get_tvars(ExistCs, ExistTVars),
+    list.delete_elems(ExistTVars, ExistQVars, BadExistTVars),
+    maybe_report_badly_quantified_vars(PredInfo, existential_constraint,
+        BadExistTVars, !Specs).
+
+:- pred maybe_report_badly_quantified_vars(pred_info::in, quant_error_type::in,
+    list(tvar)::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
+    (
+        TVars = []
+    ;
+        TVars = [_ | _],
+        report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs)
+    ).
+
+%---------------------------------------------------------------------------%
+% Pass 7.
 %---------------------------------------------------------------------------%
 
-:- pred check_typeclass_constraints_on_type_ctor(module_info::in,
+    % Look for data constructors for which the existential type variables
+    % in the constraints are not all determined by the type variables
+    % in the constructor arguments and the functional dependencies.
+    %
+:- pred check_typeclass_constraints_on_data_ctors(module_info::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_typeclass_constraints_on_data_ctors(ModuleInfo, !Specs) :-
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
+    list.foldl(check_typeclass_constraints_on_type_data_ctors(ModuleInfo),
+        TypeCtorsDefns, !Specs).
+
+:- pred check_typeclass_constraints_on_type_data_ctors(module_info::in,
     pair(type_ctor, hlds_type_defn)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_typeclass_constraints_on_type_ctor(ModuleInfo, TypeCtor - TypeDefn,
+check_typeclass_constraints_on_type_data_ctors(ModuleInfo, TypeCtor - TypeDefn,
         !Specs) :-
     get_type_defn_body(TypeDefn, Body),
     (
@@ -1778,7 +1848,7 @@ check_typeclass_constraints_on_data_ctor(ModuleInfo, TypeCtor, TypeDefn,
         )
     ).
 
-%---------------------%
+%---------------------------------------------------------------------------%
 
 :- pred find_bad_class_ids_in_constraints(class_table::in,
     list(prog_constraint)::in,
@@ -1801,40 +1871,6 @@ find_bad_class_ids_in_constraint(ClassTable, C, !BadClassIds) :-
         true
     else
         set.insert(ClassId, !BadClassIds)
-    ).
-
-%---------------------------------------------------------------------------%
-
-    % Check that all types appearing in universal (existential) constraints are
-    % universally (existentially) quantified.
-    %
-:- pred check_constraint_quant(pred_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_constraint_quant(PredInfo, !Specs) :-
-    pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
-    pred_info_get_class_context(PredInfo, Constraints),
-    Constraints = constraints(UnivCs, ExistCs),
-    prog_type.constraint_list_get_tvars(UnivCs, UnivTVars),
-    set.list_to_set(ExistQVars, ExistQVarsSet),
-    set.list_to_set(UnivTVars, UnivTVarsSet),
-    set.intersect(ExistQVarsSet, UnivTVarsSet, BadUnivTVarsSet),
-    maybe_report_badly_quantified_vars(PredInfo, universal_constraint,
-        set.to_sorted_list(BadUnivTVarsSet), !Specs),
-    prog_type.constraint_list_get_tvars(ExistCs, ExistTVars),
-    list.delete_elems(ExistTVars, ExistQVars, BadExistTVars),
-    maybe_report_badly_quantified_vars(PredInfo, existential_constraint,
-        BadExistTVars, !Specs).
-
-:- pred maybe_report_badly_quantified_vars(pred_info::in, quant_error_type::in,
-    list(tvar)::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-maybe_report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
-    (
-        TVars = []
-    ;
-        TVars = [_ | _],
-        report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1983,6 +2019,47 @@ collect_determined_vars(FunDep, !FunDeps, !Vars) :-
 % Error reports from pass 1.
 %
 
+    % The error message for cyclic classes is intended to look like this:
+    %
+    %   module.m:NNN: Error: cyclic superclass relation detected:
+    %   module.m:NNN:   `foo/N'
+    %   module.m:NNN:    <= `bar/N'
+    %   module.m:NNN:    <= `baz/N'
+    %   module.m:NNN:    <= `foo/N'
+    %
+:- pred report_cyclic_classes(class_table::in, class_path::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_cyclic_classes(ClassTable, ClassPath, !Specs) :-
+    ClassPath = class_path(ClassPathClassIds),
+    (
+        ClassPathClassIds = [],
+        unexpected($pred, "empty cycle found.")
+    ;
+        ClassPathClassIds = [HeadClassId | TailClassIds],
+        Context = map.lookup(ClassTable, HeadClassId) ^ classdefn_context,
+        StartPieces =
+            [words("Error: cyclic superclass relation detected:"), nl,
+            qual_class_id(HeadClassId), nl],
+        list.foldl(add_path_element, TailClassIds, cord.init, LaterLinesCord),
+        Pieces = StartPieces ++ cord.list(LaterLinesCord),
+        Spec = simplest_spec($pred, severity_error, phase_type_check,
+            Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+:- pred add_path_element(class_id::in,
+    cord(format_piece)::in, cord(format_piece)::out) is det.
+
+add_path_element(ClassId, !LaterLines) :-
+    Line = [words("<="), qual_class_id(ClassId), nl],
+    !:LaterLines = !.LaterLines ++ cord.from_list(Line).
+
+%---------------------------------------------------------------------------%
+%
+% Error reports from pass 2.
+%
+
 :- pred report_badly_formed_type_in_instance(class_id::in,
     hlds_instance_defn::in, type_ctor::in, int::in,
     assoc_list(int, mer_type)::in,
@@ -2068,7 +2145,7 @@ report_bad_type_in_instance(ClassId, InstanceDefn, EndPieces, Kind, !Specs) :-
 
 %---------------------------------------------------------------------------%
 %
-% Error reports from pass 2.
+% Error reports from pass 3.
 %
 
     % Duplicate method definition error.
@@ -2188,47 +2265,6 @@ constraint_list_to_comma_strings(TVarSet, [C | Cs], Strings) :-
     PString = mercury_constraint_to_string(TVarSet, print_name_only, P),
     constraint_list_to_comma_strings(TVarSet, Cs, TailStrings),
     Strings = [", `", PString, "'" | TailStrings].
-
-%---------------------------------------------------------------------------%
-%
-% Error reports from pass 3.
-%
-
-    % The error message for cyclic classes is intended to look like this:
-    %
-    %   module.m:NNN: Error: cyclic superclass relation detected:
-    %   module.m:NNN:   `foo/N'
-    %   module.m:NNN:    <= `bar/N'
-    %   module.m:NNN:    <= `baz/N'
-    %   module.m:NNN:    <= `foo/N'
-    %
-:- pred report_cyclic_classes(class_table::in, class_path::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-report_cyclic_classes(ClassTable, ClassPath, !Specs) :-
-    ClassPath = class_path(ClassPathClassIds),
-    (
-        ClassPathClassIds = [],
-        unexpected($pred, "empty cycle found.")
-    ;
-        ClassPathClassIds = [HeadClassId | TailClassIds],
-        Context = map.lookup(ClassTable, HeadClassId) ^ classdefn_context,
-        StartPieces =
-            [words("Error: cyclic superclass relation detected:"), nl,
-            qual_class_id(HeadClassId), nl],
-        list.foldl(add_path_element, TailClassIds, cord.init, LaterLinesCord),
-        Pieces = StartPieces ++ cord.list(LaterLinesCord),
-        Spec = simplest_spec($pred, severity_error, phase_type_check,
-            Context, Pieces),
-        !:Specs = [Spec | !.Specs]
-    ).
-
-:- pred add_path_element(class_id::in,
-    cord(format_piece)::in, cord(format_piece)::out) is det.
-
-add_path_element(ClassId, !LaterLines) :-
-    Line = [words("<="), qual_class_id(ClassId), nl],
-    !:LaterLines = !.LaterLines ++ cord.from_list(Line).
 
 %---------------------------------------------------------------------------%
 %
@@ -2469,59 +2505,6 @@ report_unbound_tvars_in_pred_context(PredInfo, Vars, !Specs) :-
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-:- pred report_unbound_tvars_in_ctor_context(list(tvar)::in, type_ctor::in,
-    hlds_type_defn::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn, !Specs) :-
-    get_type_defn_context(TypeDefn, Context),
-    get_type_defn_tvarset(TypeDefn, TVarSet),
-    VarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), Vars),
-
-    Pieces = [words("In declaration for type"), qual_type_ctor(TypeCtor),
-        suffix(":"), nl,
-        words("error in type class constraints:"),
-        words(choose_number(Vars, "type variable", "type variables"))]
-        ++ list_to_quoted_pieces(VarsStrs) ++
-        [words(choose_number(Vars, "occurs", "occur")),
-        words("in the constraints, but"),
-        words(choose_number(Vars, "is", "are")),
-        words("not determined by the constructor's argument types."), nl],
-    Msg = simple_msg(Context,
-        [always(Pieces),
-        verbose_only(verbose_once, unbound_tvars_explanation_pieces)]),
-    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]),
-    !:Specs = [Spec | !.Specs].
-
-:- func unbound_tvars_explanation_pieces = list(format_piece).
-
-unbound_tvars_explanation_pieces =
-    [words("All types occurring in typeclass constraints"),
-    words("must be fully determined."),
-    words("A type is fully determined if one of the"),
-    words("following holds:"),
-    nl,
-    words("1) All type variables occurring in the type"),
-    words("are determined."),
-    nl,
-    words("2) The type occurs in a constraint argument,"),
-    words("that argument is in the range of some"),
-    words("functional dependency for that class, and"),
-    words("the types in all of the domain arguments for"),
-    words("that functional dependency are fully determined."),
-    nl,
-    words("A type variable is determined if one of the"),
-    words("following holds:"),
-    nl,
-    words("1) The type variable occurs in the argument"),
-    words("types of the predicate, function, or"),
-    words("constructor which is constrained."),
-    nl,
-    words("2) The type variable occurs in a type which"),
-    words("is fully determined."),
-    nl,
-    words("See the ""Functional dependencies"" section"),
-    words("of the reference manual for details."), nl].
-
 :- pred report_bad_class_ids_in_pred_decl(module_info::in, pred_info::in,
     class_id::in, list(class_id)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -2550,40 +2533,6 @@ report_bad_class_ids_in_pred_decl(ModuleInfo, PredInfo,
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
-
-:- pred report_bad_class_ids_in_data_ctor(type_ctor::in,
-    hlds_type_defn::in, class_id::in, list(class_id)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-report_bad_class_ids_in_data_ctor(TypeCtor, TypeDefn,
-        HeadBadClassId, TailBadClassIds, !Specs) :-
-    get_type_defn_context(TypeDefn, Context),
-    StartPieces = [words("In declaration for type"), qual_type_ctor(TypeCtor),
-        suffix(":"), nl],
-    Pieces = StartPieces ++
-        error_classes_do_not_exist_pieces(HeadBadClassId, TailBadClassIds),
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
-        Context, Pieces),
-    !:Specs = [Spec | !.Specs].
-
-:- func error_classes_do_not_exist_pieces(class_id, list(class_id)) =
-    list(format_piece).
-
-error_classes_do_not_exist_pieces(HeadClassId, TailClassIds) = Pieces :-
-    WrapQualClassId = (func(ClassId) = qual_class_id(ClassId)),
-    QualHeadClassId = WrapQualClassId(HeadClassId),
-    (
-        TailClassIds = [],
-        Pieces = [words("error: the type class"), QualHeadClassId,
-            words("does not exist."), nl]
-    ;
-        TailClassIds = [_ | _],
-        QualTailClassIds = list.map(WrapQualClassId, TailClassIds),
-        QualClassIds = [QualHeadClassId | QualTailClassIds],
-        Pieces = [words("error: the type classes")] ++
-            component_list_to_pieces("and", QualClassIds) ++
-            [words("do not exist."), nl]
-    ).
 
 :- type quant_error_type
     --->    universal_constraint
@@ -2621,8 +2570,102 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
 
 %---------------------------------------------------------------------------%
 %
+% Error reports from pass 7.
+%
+
+:- pred report_unbound_tvars_in_ctor_context(list(tvar)::in, type_ctor::in,
+    hlds_type_defn::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn, !Specs) :-
+    get_type_defn_context(TypeDefn, Context),
+    get_type_defn_tvarset(TypeDefn, TVarSet),
+    VarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), Vars),
+
+    Pieces = [words("In declaration for type"), qual_type_ctor(TypeCtor),
+        suffix(":"), nl,
+        words("error in type class constraints:"),
+        words(choose_number(Vars, "type variable", "type variables"))]
+        ++ list_to_quoted_pieces(VarsStrs) ++
+        [words(choose_number(Vars, "occurs", "occur")),
+        words("in the constraints, but"),
+        words(choose_number(Vars, "is", "are")),
+        words("not determined by the constructor's argument types."), nl],
+    Msg = simple_msg(Context,
+        [always(Pieces),
+        verbose_only(verbose_once, unbound_tvars_explanation_pieces)]),
+    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+:- pred report_bad_class_ids_in_data_ctor(type_ctor::in,
+    hlds_type_defn::in, class_id::in, list(class_id)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_bad_class_ids_in_data_ctor(TypeCtor, TypeDefn,
+        HeadBadClassId, TailBadClassIds, !Specs) :-
+    get_type_defn_context(TypeDefn, Context),
+    StartPieces = [words("In declaration for type"), qual_type_ctor(TypeCtor),
+        suffix(":"), nl],
+    Pieces = StartPieces ++
+        error_classes_do_not_exist_pieces(HeadBadClassId, TailBadClassIds),
+    Spec = simplest_spec($pred, severity_error, phase_type_check,
+        Context, Pieces),
+    !:Specs = [Spec | !.Specs].
+
+%---------------------------------------------------------------------------%
+%
 % Utility predicates for error reporting.
 %
+
+:- func unbound_tvars_explanation_pieces = list(format_piece).
+
+unbound_tvars_explanation_pieces =
+    [words("All types occurring in typeclass constraints"),
+    words("must be fully determined."),
+    words("A type is fully determined if one of the"),
+    words("following holds:"),
+    nl,
+    words("1) All type variables occurring in the type"),
+    words("are determined."),
+    nl,
+    words("2) The type occurs in a constraint argument,"),
+    words("that argument is in the range of some"),
+    words("functional dependency for that class, and"),
+    words("the types in all of the domain arguments for"),
+    words("that functional dependency are fully determined."),
+    nl,
+    words("A type variable is determined if one of the"),
+    words("following holds:"),
+    nl,
+    words("1) The type variable occurs in the argument"),
+    words("types of the predicate, function, or"),
+    words("constructor which is constrained."),
+    nl,
+    words("2) The type variable occurs in a type which"),
+    words("is fully determined."),
+    nl,
+    words("See the ""Functional dependencies"" section"),
+    words("of the reference manual for details."), nl].
+
+:- func error_classes_do_not_exist_pieces(class_id, list(class_id)) =
+    list(format_piece).
+
+error_classes_do_not_exist_pieces(HeadClassId, TailClassIds) = Pieces :-
+    WrapQualClassId = (func(ClassId) = qual_class_id(ClassId)),
+    QualHeadClassId = WrapQualClassId(HeadClassId),
+    (
+        TailClassIds = [],
+        Pieces = [words("error: the type class"), QualHeadClassId,
+            words("does not exist."), nl]
+    ;
+        TailClassIds = [_ | _],
+        QualTailClassIds = list.map(WrapQualClassId, TailClassIds),
+        QualClassIds = [QualHeadClassId | QualTailClassIds],
+        Pieces = [words("error: the type classes")] ++
+            component_list_to_pieces("and", QualClassIds) ++
+            [words("do not exist."), nl]
+    ).
+
+%---------------------%
 
 :- func in_instance_decl_pieces(which_types, class_id, hlds_instance_defn)
     = list(format_piece).
