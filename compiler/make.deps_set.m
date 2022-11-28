@@ -73,7 +73,7 @@
 
     % Convert a dependency file to a dependency_file_index.
     %
-:- pred dependency_file_to_index(dependency_file::in,
+:- pred dependency_file_to_index(dependency_file_with_module_index::in,
     dependency_file_index::out, make_info::in, make_info::out) is det.
 
     % Convert a list of dependency files to a dependency_file_index set.
@@ -217,8 +217,16 @@ dependency_files_to_index_set(DepFiles, DepIndexSet, !Info) :-
     deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
     make_info::in, make_info::out) is det.
 
-dependency_files_to_index_set_2(DepFiles, !Set, !Info) :-
-    dependency_file_to_index(DepFiles, DepIndex, !Info),
+dependency_files_to_index_set_2(DepFile0, !Set, !Info) :-
+    (
+        DepFile0 = dep_target(target_file(ModuleName, TargetType)),
+        module_name_to_index(ModuleName, ModuleIndex, !Info),
+        DepFile = dfmi_target(ModuleIndex, TargetType)
+    ;
+        DepFile0 = dep_file(FileName),
+        DepFile = dfmi_file(FileName)
+    ),
+    dependency_file_to_index(DepFile, DepIndex, !Info),
     insert(DepIndex, !Set).
 
 %---------------------------------------------------------------------------%
@@ -230,7 +238,15 @@ index_to_dependency_file(Info, Index, DepFile) :-
     Info ^ mki_dep_file_index_map =
         dependency_file_index_map(_Forward, Reverse, _Size),
     Index = dependency_file_index(I),
-    DepFile = version_array.lookup(Reverse, I).
+    DepFile0 = version_array.lookup(Reverse, I),
+    (
+        DepFile0 = dfmi_target(ModuleIndex, FileType),
+        module_index_to_name(Info, ModuleIndex, ModuleName),
+        DepFile = dep_target(target_file(ModuleName, FileType))
+    ;
+        DepFile0 = dfmi_file(FileName),
+        DepFile = dep_file(FileName)
+    ).
 
 %---------------------%
 

@@ -161,9 +161,11 @@
 
 :- type dependency_file_index_map
     --->    dependency_file_index_map(
-                dfim_forward_map        :: version_hash_table(dependency_file,
+                dfim_forward_map        :: version_hash_table(
+                                            dependency_file_with_module_index,
                                             dependency_file_index),
-                dfim_reverse_map        :: version_array(dependency_file),
+                dfim_reverse_map        :: version_array(
+                                            dependency_file_with_module_index),
                 dfim_counter            :: int
             ).
 

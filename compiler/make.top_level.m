@@ -95,7 +95,8 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
             version_hash_table.init_default(module_name_hash),
             version_array.empty, 0),
         DepIndexMap = dependency_file_index_map(
-            version_hash_table.init_default(dependency_file_hash),
+            version_hash_table.init_default(
+                dependency_file_with_module_index_hash),
             version_array.empty, 0),
         DepStatusMap = version_hash_table.init_default(dependency_file_hash),
 

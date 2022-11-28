@@ -256,6 +256,9 @@
 
 :- pred dependency_file_hash(dependency_file::in, int::out) is det.
 
+:- pred dependency_file_with_module_index_hash(
+    dependency_file_with_module_index::in, int::out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -272,6 +275,7 @@
 
 :- import_module bool.
 :- import_module dir.
+:- import_module enum.
 :- import_module int.
 :- import_module io.file.
 :- import_module map.
@@ -1130,6 +1134,17 @@ dependency_file_hash(DepFile, Hash) :-
         Hash = target_file_hash(TargetFile)
     ;
         DepFile = dep_file(FileName),
+        Hash = string.hash(FileName)
+    ).
+
+dependency_file_with_module_index_hash(DepFile, Hash) :-
+    (
+        DepFile = dfmi_target(ModuleIndex, Type),
+        Hash0 = to_int(ModuleIndex),
+        Hash1 = module_target_type_to_nonce(Type),
+        Hash = mix(Hash0, Hash1)
+    ;
+        DepFile = dfmi_file(FileName),
         Hash = string.hash(FileName)
     ).
 
