@@ -171,9 +171,9 @@ get_main_target_if_needed(ProgName, Variables, Targets0, MaybeTargets) :-
                 MaybeTargets = ok1(MainTargets)
             ;
                 MainTargets = [],
-                Pieces = [quote(ProgName), suffix(":"),
-                    words("*** Error: no targets specified and"),
-                    quote("MAIN_TARGET"), words("not defined."), nl],
+                Pieces = [fixed(ProgName), suffix(":"),
+                    words("*** Error: no target or MAIN_TARGET specified."),
+                    nl],
                 Spec = simplest_no_context_spec($pred, severity_error,
                     phase_options, Pieces),
                 MaybeTargets = error1([Spec])
