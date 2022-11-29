@@ -1190,9 +1190,9 @@ try_to_join_lp_to_rp_lines([HeadLine0 | TailLines0], Lines) :-
         HeadParen = paren_lp_end,
         % We got the first line in the pattern we are looking for.
         % look for the rest, and act on it, if possible.
-        find_matching_rp_and_maybe_join(HeadLine0, TailLines0,
-            ReplacementLines, LeftOverLines0),
         ( if
+            find_matching_rp_and_maybe_join(HeadLine0, TailLines0,
+                ReplacementLines, LeftOverLines0),
             ReplacementLines = [FirstReplacementLine | _],
             FirstReplacementLine \= HeadLine0
         then
@@ -1206,8 +1206,8 @@ try_to_join_lp_to_rp_lines([HeadLine0 | TailLines0], Lines) :-
             % If we could not optimize the pattern starting at HeadLine0,
             % don't process that line again, since that would lead to
             % an infinite loop.
-            try_to_join_lp_to_rp_lines(LeftOverLines0, TailLines),
-            Lines = ReplacementLines ++ TailLines
+            try_to_join_lp_to_rp_lines(TailLines0, TailLines),
+            Lines = [HeadLine0 | TailLines]
         )
     ).
 
@@ -1216,7 +1216,8 @@ try_to_join_lp_to_rp_lines([HeadLine0 | TailLines0], Lines) :-
     % join the lines involved, if this is possible.
     %
 :- pred find_matching_rp_and_maybe_join(error_line::in,
-    list(error_line)::in, list(error_line)::out, list(error_line)::out) is det.
+    list(error_line)::in, list(error_line)::out, list(error_line)::out)
+    is semidet.
 
 find_matching_rp_and_maybe_join(LPLine, TailLines0, ReplacementLines,
         LeftOverLines) :-
@@ -1263,9 +1264,7 @@ find_matching_rp_and_maybe_join(LPLine, TailLines0, ReplacementLines,
         LeftOverLines = LeftOverLinesPrime
     else
         % We can't find the rest of the pattern so we can't optimize anything.
-        % This code therefore replaces LPLine with itself.
-        ReplacementLines = [LPLine],
-        LeftOverLines = TailLines0
+        fail
     ).
 
     % find_matching_rp(Lines0, !MidLinesCord, !MidLinesLen, RPLine,
@@ -1318,7 +1317,7 @@ find_matching_rp([HeadLine0 | TailLines0], !MidLinesCord, !MidLinesLen,
             ReplacementLines, AfterRpLines),
         (
             ReplacementLines = [],
-            % Getting here means that the text has _HeadLineWordsStr
+            % Getting here means that the text of _HeadLineWordsStr
             % has disappeared, which is a bug.
             unexpected($pred, "ReplacementLines = []")
         ;
@@ -1326,9 +1325,15 @@ find_matching_rp([HeadLine0 | TailLines0], !MidLinesCord, !MidLinesLen,
             (
                 TailReplacementLines = [],
                 % We replaced the inner pattern with a single line.
-                % Try to fit this single line into the larger pattern.
-                find_matching_rp([HeadReplacementLine | AfterRpLines],
-                    !MidLinesCord, !MidLinesLen, RPLine, LeftOverLines)
+                % If we replaced a line with itself, making the recursive call
+                % in the else arm would lead to an infinite loop.
+                ( if HeadReplacementLine = HeadLine0 then
+                    fail
+                else
+                    % Try to fit this single line into the larger pattern.
+                    find_matching_rp([HeadReplacementLine | AfterRpLines],
+                        !MidLinesCord, !MidLinesLen, RPLine, LeftOverLines)
+                )
             ;
                 TailReplacementLines = [_ | _],
                 % We couldn't optimize the pattern starting at HeadLine0,
