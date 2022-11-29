@@ -4087,13 +4087,17 @@ DEPLOYMENT_TARGET="no"
 case "$host" in
     *apple*darwin*)
         case "$mercury_cv_macosx_deployment_target" in
-            # NOTE: the sw_vers utility tells us which version of Mac OS X
-            # we are using as opposed to which version of Darwin we are using.
-            # uname only reports the latter.
             auto)
-                DEPLOYMENT_TARGET=`sw_vers -productVersion | cut -d \. -f 1 -f 2`
+                if test -n "${MACOSX_DEPLOYMENT_TARGET:-}"
+                then
+                    DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET"
+                else
+                    # NOTE: the sw_vers utility tells us which version of
+                    # Mac OS X we are using as opposed to which version of
+                    # Darwin we are using. uname only reports the latter.
+                    DEPLOYMENT_TARGET=`sw_vers -productVersion | cut -d \. -f 1 -f 2`
+                fi
                 ;;
-
             *)
                 DEPLOYMENT_TARGET="$mercury_cv_macosx_deployment_target"
                 ;;
