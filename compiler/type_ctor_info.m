@@ -914,10 +914,10 @@ generate_du_arg_info(NumUnivTVars, ExistTVars, ConsArgRepn, ArgInfo,
         NumUnivTVars, ExistTVars, MaybePseudoTypeInfo),
     (
         MaybePseudoTypeInfo = plain(TypeInfo),
-        MaybePseudoTypeInfoOrSelf = plain(TypeInfo)
-        ;
+        MaybePseudoTypeInfoOrSelf = arg_plain(TypeInfo)
+    ;
         MaybePseudoTypeInfo = pseudo(PseudoTypeInfo),
-        MaybePseudoTypeInfoOrSelf = pseudo(PseudoTypeInfo)
+        MaybePseudoTypeInfoOrSelf = arg_pseudo(PseudoTypeInfo)
     ),
     ArgInfo = du_arg_info(MaybeArgName, MaybePseudoTypeInfoOrSelf, ArgWidth),
     ( if ArgType = higher_order_type(_, _, higher_order(_), _, _) then
@@ -1162,12 +1162,12 @@ compute_contains_var_bit_vector(ArgTypes) = Vector :-
 compute_contains_var_bit_vector_2([], _, !Vector).
 compute_contains_var_bit_vector_2([ArgType | ArgTypes], ArgNum, !Vector) :-
     (
-        ArgType = plain(_)
+        ArgType = arg_plain(_)
     ;
-        ArgType = pseudo(_),
+        ArgType = arg_pseudo(_),
         update_contains_var_bit_vector(ArgNum, !Vector)
     ;
-        ArgType = self,
+        ArgType = arg_self,
         % The backend currently doesn't perform the optimization that
         % lets it avoid memory allocation on self types.
         update_contains_var_bit_vector(ArgNum, !Vector)

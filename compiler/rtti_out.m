@@ -584,14 +584,14 @@ output_type_class_constraint(Info, Stream, MakeRttiId, Constraint,
 output_maybe_pseudo_type_info_or_self_defn(Info, Stream, MaybePseudoTypeInfo,
         !DeclSet, !IO) :-
     (
-        MaybePseudoTypeInfo = plain(TypeInfo),
+        MaybePseudoTypeInfo = arg_plain(TypeInfo),
         output_type_info_defn(Info, Stream, TypeInfo, !DeclSet, !IO)
     ;
-        MaybePseudoTypeInfo = pseudo(PseudoTypeInfo),
+        MaybePseudoTypeInfo = arg_pseudo(PseudoTypeInfo),
         output_pseudo_type_info_defn(Info, Stream, PseudoTypeInfo,
             !DeclSet, !IO)
     ;
-        MaybePseudoTypeInfo = self
+        MaybePseudoTypeInfo = arg_self
     ).
 
 :- pred output_maybe_pseudo_type_info_defn(llds_out_info::in,

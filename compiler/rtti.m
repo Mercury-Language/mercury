@@ -408,9 +408,9 @@
     % is non-ground, it should be bound to pseudo.
     %
 :- type rtti_maybe_pseudo_type_info_or_self
-    --->    pseudo(rtti_pseudo_type_info)
-    ;       plain(rtti_type_info)
-    ;       self.
+    --->    arg_pseudo(rtti_pseudo_type_info)
+    ;       arg_plain(rtti_type_info)
+    ;       arg_self.
 
     % The list of type constructors for types that are built into the
     % Mercury language or the Mercury standard library.
@@ -1780,11 +1780,11 @@ maybe_pseudo_type_info_to_rtti_data(pseudo(PseudoTypeInfo)) =
 maybe_pseudo_type_info_to_rtti_data(plain(TypeInfo)) =
     rtti_data_type_info(TypeInfo).
 
-maybe_pseudo_type_info_or_self_to_rtti_data(pseudo(PseudoTypeInfo)) =
+maybe_pseudo_type_info_or_self_to_rtti_data(arg_pseudo(PseudoTypeInfo)) =
     rtti_data_pseudo_type_info(PseudoTypeInfo).
-maybe_pseudo_type_info_or_self_to_rtti_data(plain(TypeInfo)) =
+maybe_pseudo_type_info_or_self_to_rtti_data(arg_plain(TypeInfo)) =
     rtti_data_type_info(TypeInfo).
-maybe_pseudo_type_info_or_self_to_rtti_data(self) =
+maybe_pseudo_type_info_or_self_to_rtti_data(arg_self) =
     rtti_data_pseudo_type_info(type_var(0)).
 
 type_ctor_details_num_ptags(TypeCtorDetails) = MaybeNumPtags :-
