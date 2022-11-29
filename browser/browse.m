@@ -1407,7 +1407,13 @@ save_term_to_file_doc(OutputStream, FileName, BrowserTerm, !IO) :-
                 Doc = pretty_printer.format(FunctionTerm)
             )
         ),
-        pretty_printer.write_doc(FileStream, Doc, !IO),
+        Canonicalize = include_details_cc,
+        get_default_formatter_map(FMap, !IO),
+        Params = pp_params(78, int.max_int, triangular(int.max_int)),
+        promise_equivalent_solutions [!:IO] (
+            pretty_printer.put_doc(FileStream, Canonicalize, FMap, Params,
+                Doc, !IO)
+        ),
         io.close_output(FileStream, !IO)
     ;
         FileStreamResult = error(Error),
