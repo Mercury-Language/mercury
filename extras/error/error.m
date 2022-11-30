@@ -68,6 +68,8 @@
 :- import_module char.
 :- import_module getopt.
 :- import_module int.
+:- import_module io.environment.
+:- import_module io.file.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -269,7 +271,7 @@ process_error_map(Style, ErrorMap, !IO) :-
 process_errors_for_file(Style, FileName - FileErrorMap, !IO) :-
     map.to_assoc_list(FileErrorMap, FileErrors),
     string.append(FileName, ".orig", DotOrigFileName),
-    io.rename_file(FileName, DotOrigFileName, RenameResult, !IO),
+    io.file.rename_file(FileName, DotOrigFileName, RenameResult, !IO),
     (
         RenameResult = ok,
         io.open_input(DotOrigFileName, InputResult, !IO),
@@ -282,7 +284,7 @@ process_errors_for_file(Style, FileName - FileErrorMap, !IO) :-
                     FileErrors, 1, !IO),
                 io.close_output(OutputStream, !IO),
                 % There is nothing we can do if the remove fails.
-                io.remove_file(DotOrigFileName, _RemoveResult, !IO),
+                io.file.remove_file(DotOrigFileName, _RemoveResult, !IO),
 
                 % Print progress message.
                 io.format("updated %s\n", [s(FileName)], !IO)
@@ -292,7 +294,7 @@ process_errors_for_file(Style, FileName - FileErrorMap, !IO) :-
                 io.stderr_stream(StdErr, !IO),
                 io.format(StdErr, "error: %s\n", [s(Msg)], !IO),
                 % Move the original file back to its original name.
-                io.rename_file(DotOrigFileName, FileName, _, !IO)
+                io.file.rename_file(DotOrigFileName, FileName, _, !IO)
             ),
             io.close_input(InputStream, !IO)
         ;
@@ -301,7 +303,7 @@ process_errors_for_file(Style, FileName - FileErrorMap, !IO) :-
             io.stderr_stream(StdErr, !IO),
             io.format(StdErr, "error: %s\n", [s(ErrorMsg)], !IO),
             % There is nothing we can do if the rename fails.
-            io.rename_file(DotOrigFileName, FileName, _RenameResult, !IO)
+            io.file.rename_file(DotOrigFileName, FileName, _RenameResult, !IO)
         )
     ;
         RenameResult = error(Error),
@@ -389,7 +391,7 @@ make_comment(Style, Msg) = CommentMsg :-
 :- pred invoke_editor(error_map::in, io::di, io::uo) is det.
 
 invoke_editor(ErrorMap, !IO) :-
-    io.get_environment_var("EDITOR", MaybeEditor, !IO),
+    io.environment.get_environment_var("EDITOR", MaybeEditor, !IO),
     Editor = (if MaybeEditor = yes(Editor0) then Editor0 else "vim" ),
 
     map.sorted_keys(ErrorMap, FileNames),
