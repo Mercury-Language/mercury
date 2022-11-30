@@ -810,11 +810,12 @@ record_made_target_given_maybe_touched_files(Globals, Succeeded, TargetFile,
     list.map_foldl2(get_file_name(Globals, do_not_search), TouchedTargetFiles,
         TouchedTargetFileNames, !Info, !IO),
 
-    some [!Timestamps] (
-        !:Timestamps = !.Info ^ mki_file_timestamps,
+    some [!FileTimestamps] (
+        !:FileTimestamps = !.Info ^ mki_file_timestamps,
         list.foldl(delete_timestamp(Globals), TouchedTargetFileNames,
-            !Timestamps),
-        list.foldl(delete_timestamp(Globals), OtherTouchedFiles, !Timestamps),
+            !FileTimestamps),
+        list.foldl(delete_timestamp(Globals), OtherTouchedFiles,
+            !FileTimestamps),
 
         % When an .analysis file is made, that potentially invalidates other
         % .analysis files so we have to delete their timestamps. The exact list
@@ -823,13 +824,17 @@ record_made_target_given_maybe_touched_files(Globals, Succeeded, TargetFile,
         % timestamps of all the .analysis files that we know about.
         ( if TargetFile = target_file(_, module_target_analysis_registry) then
             map.foldl(delete_analysis_registry_timestamps(Globals),
-                !.Timestamps, !Timestamps)
+                !.FileTimestamps, !FileTimestamps)
         else
             true
         ),
 
-        !Info ^ mki_file_timestamps := !.Timestamps
-    ).
+        !Info ^ mki_file_timestamps := !.FileTimestamps
+    ),
+
+    TargetFileTimestamps0 = !.Info ^ mki_target_file_timestamps,
+    map.delete(TargetFile, TargetFileTimestamps0, TargetFileTimestamps),
+    !Info ^ mki_target_file_timestamps := TargetFileTimestamps.
 
 :- pred update_target_status(dependency_status::in, target_file::in,
     make_info::in, make_info::out) is det.

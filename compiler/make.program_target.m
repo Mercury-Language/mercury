@@ -527,8 +527,12 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         (
             InitObjectResult1 = yes(InitObject),
             % We may need to update the timestamp of the `_init.o' file.
-            !Info ^ mki_file_timestamps :=
-                map.delete(!.Info ^ mki_file_timestamps, InitObject),
+            FileTimestamps0 = !.Info ^ mki_file_timestamps,
+            map.delete(InitObject, FileTimestamps0, FileTimestamps1),
+            !Info ^ mki_file_timestamps := FileTimestamps1,
+            % There is no module_target_type for the `_init.o' file,
+            % so mki_target_file_timestamps should not contain anything
+            % that needs to be invalidated.
             InitObjects = [InitObject],
             DepsResult2 = BuildDepsResult
         ;
@@ -654,9 +658,12 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         !Info ^ mki_command_line_targets := CmdLineTargets,
         (
             Succeeded = succeeded,
-            FileTimestamps0 = !.Info ^ mki_file_timestamps,
-            map.delete(OutputFileName, FileTimestamps0, FileTimestamps),
+            FileTimestamps2 = !.Info ^ mki_file_timestamps,
+            map.delete(OutputFileName, FileTimestamps2, FileTimestamps),
             !Info ^ mki_file_timestamps := FileTimestamps
+            % There is no module_target_type for the linked target,
+            % so mki_target_file_timestamps should not contain anything
+            % that needs to be invalidated.
         ;
             Succeeded = did_not_succeed,
             file_error(!.Info, OutputFileName, !IO)
@@ -730,7 +737,9 @@ make_java_files(Globals, MainModuleName, ObjModules, Succeeded, !Info, !IO) :-
         Timestamps0 = !.Info ^ mki_file_timestamps,
         map.foldl(delete_java_class_timestamps, Timestamps0,
             map.init, Timestamps),
-        !Info ^ mki_file_timestamps := Timestamps
+        !Info ^ mki_file_timestamps := Timestamps,
+        % For simplicity, clear out all target file timestamps.
+        !Info ^ mki_target_file_timestamps := map.init
     ).
 
 :- pred out_of_date_java_modules(globals::in, list(module_name)::in,

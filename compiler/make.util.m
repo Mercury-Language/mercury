@@ -330,13 +330,34 @@ get_dependency_timestamp(Globals, DependencyFile, MaybeTimestamp, !Info,
 get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
         !IO) :-
     TargetFile = target_file(_ModuleName, TargetType),
-    get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO),
     ( if TargetType = module_target_analysis_registry then
+        get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO),
         get_target_timestamp_analysis_registry(Globals, Search, TargetFile,
             FileName, MaybeTimestamp, !Info, !IO)
     else
-        get_target_timestamp_2(Globals, Search, TargetFile,
-            FileName, MaybeTimestamp, !Info, !IO)
+        % This path is hit very frequently so it is worth caching timestamps by
+        % target_file. It avoids having to compute a file name for a
+        % target_file first, before looking up the timestamp for that file.
+        TargetFileTimestamps0 = !.Info ^ mki_target_file_timestamps,
+        ( if map.search(TargetFileTimestamps0, TargetFile, Timestamp) then
+            MaybeTimestamp = ok(Timestamp)
+        else
+            get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO),
+            get_target_timestamp_2(Globals, Search, TargetFile,
+                FileName, MaybeTimestamp, !Info, !IO),
+            (
+                MaybeTimestamp = ok(Timestamp),
+                TargetFileTimestamps1 = !.Info ^ mki_target_file_timestamps,
+                map.det_insert(TargetFile, Timestamp,
+                    TargetFileTimestamps1, TargetFileTimestamps),
+                !Info ^ mki_target_file_timestamps := TargetFileTimestamps
+            ;
+                MaybeTimestamp = error(_)
+                % Do not record errors. These would usually be due to files not
+                % yet made, and the result would have to be updated once the
+                % file is made.
+            )
+        )
     ).
 
     % Special treatment for `.analysis' files. If the corresponding
@@ -437,11 +458,10 @@ get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
         ( if target_type_to_extension(Globals, TargetType, Ext) then
             (
                 Search = do_search,
-                module_name_to_search_file_name_cache(Globals, Ext,
-                    ModuleName, FileName, !Info, !IO)
+                module_name_to_search_file_name(Globals, $pred, Ext,
+                    ModuleName, FileName, !IO)
             ;
                 Search = do_not_search,
-                % Not common enough to cache.
                 module_name_to_file_name(Globals, $pred, do_not_create_dirs,
                     Ext, ModuleName, FileName, !IO)
             )
@@ -449,23 +469,6 @@ get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
             module_target_to_file_name_maybe_search(Globals, Search,
                 do_not_create_dirs, TargetType, ModuleName, FileName, !IO)
         )
-    ).
-
-:- pred module_name_to_search_file_name_cache(globals::in, ext::in,
-    module_name::in, string::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
-
-module_name_to_search_file_name_cache(Globals, Ext, ModuleName, FileName,
-        !Info, !IO) :-
-    Key = module_name_ext(ModuleName, Ext),
-    Cache0 = !.Info ^ mki_search_file_name_cache,
-    ( if map.search(Cache0, Key, FileName0) then
-        FileName = FileName0
-    else
-        module_name_to_search_file_name(Globals, $pred, Ext,
-            ModuleName, FileName, !IO),
-        map.det_insert(Key, FileName, Cache0, Cache),
-        !Info ^ mki_search_file_name_cache := Cache
     ).
 
 get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
@@ -562,7 +565,10 @@ make_remove_file(Globals, VerboseOption, FileName, !Info, !IO) :-
     io.file.remove_file_recursively(FileName, _, !IO),
     FileTimestamps0 = !.Info ^ mki_file_timestamps,
     map.delete(FileName, FileTimestamps0, FileTimestamps),
-    !Info ^ mki_file_timestamps := FileTimestamps.
+    !Info ^ mki_file_timestamps := FileTimestamps,
+
+    % For simplicity, clear out all target file timestamps.
+    !Info ^ mki_target_file_timestamps := map.init.
 
 :- pred report_remove_file(string::in, io::di, io::uo) is det.
 

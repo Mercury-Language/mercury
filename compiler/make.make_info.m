@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2021 The Mercury team.
+% Copyright (C) 2013-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -28,7 +28,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.file_names.
 :- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.read_modules.
 
@@ -57,10 +56,21 @@
                 mki_module_dependencies :: map(module_name,
                                             maybe_module_dep_info),
 
+                % A map of last known timestamps by file name. This assumes
+                % that no external process is updating the same files without
+                % our knowledge.
+                %
+                % If a file is updated or removed, then you need to remove an
+                % entry from this map. Also, there may be an entry in the
+                % following map for a target_file that needs to be invalidated.
+                % If that is difficult, it is simplest to reset the
+                % mki_target_file_timestamps map.
                 mki_file_timestamps     :: file_timestamps,
 
-                % Cache chosen file names for a module name and extension.
-                mki_search_file_name_cache :: map(module_name_ext, file_name),
+                % A map of last known timestamps for the file that corresponds
+                % to a target_file.
+                mki_target_file_timestamps
+                                        :: target_file_timestamps,
 
                 % Any flags required to set detected library grades.
                 mki_detected_grade_flags :: list(string),
@@ -148,8 +158,7 @@
 
 :- type file_timestamps == map(string, maybe_error(timestamp)).
 
-:- type module_name_ext
-    --->    module_name_ext(module_name, ext).
+:- type target_file_timestamps == map(target_file, timestamp).
 
 :- type module_index_map
     --->    module_index_map(
