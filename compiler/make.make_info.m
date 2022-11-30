@@ -34,7 +34,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module set.
 :- import_module version_array.
 :- import_module version_hash_table.
@@ -127,8 +126,7 @@
                 mki_importing_module    :: maybe(import_or_include),
 
                 % Targets specified on the command line.
-                mki_command_line_targets
-                                        :: set(pair(module_name, target_type)),
+                mki_command_line_targets :: set(top_target_file),
 
                 % The remaining number of analysis passes that we will allow
                 % on `suboptimal' modules. It starts at the value of
@@ -263,6 +261,12 @@
     --->    linked_target_file(
                 linked_tf_name      :: module_name,
                 linked_tf_type      :: linked_target_type
+            ).
+
+:- type top_target_file
+    --->    top_target_file(
+                ttf_name            :: module_name,
+                ttf_type            :: target_type
             ).
 
 %---------------------------------------------------------------------------%

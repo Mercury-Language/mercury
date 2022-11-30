@@ -81,7 +81,7 @@ make_track_flags_files(Globals, ModuleName, Succeeded, !Info, !IO) :-
         Succeeded0 = succeeded,
         KeepGoing = do_not_keep_going,
         DummyLastHash = last_hash([], ""),
-        foldl3_maybe_stop_at_error(KeepGoing, make_track_flags_files_2,
+        foldl3_maybe_stop_at_error_sn(KeepGoing, make_track_flags_files_2,
             Globals, set.to_sorted_list(Modules), Succeeded,
             DummyLastHash, _LastHash, !Info, !IO)
     ;

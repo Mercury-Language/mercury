@@ -147,9 +147,8 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
 
         % Build the targets, stopping on any errors if `--keep-going'
         % was not set.
-        foldl2_maybe_stop_at_error(KeepGoing, make_target, Globals,
-            ClassifiedTargets, Succeeded,
-            MakeInfo0, _MakeInfo, !IO),
+        foldl2_maybe_stop_at_error_tt(KeepGoing, make_target, Globals,
+            ClassifiedTargets, Succeeded, MakeInfo0, _MakeInfo, !IO),
         maybe_set_exit_status(Succeeded, !IO)
     ).
 
@@ -227,12 +226,11 @@ report_target_with_dir_component(ProgName, Target) = Spec :-
 
 %---------------------%
 
-:- pred make_target(globals::in, pair(module_name, target_type)::in,
-    maybe_succeeded::out,
+:- pred make_target(globals::in, top_target_file::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_target(Globals, Target, Succeeded, !Info, !IO) :-
-    Target = ModuleName - TargetType,
+    Target = top_target_file(ModuleName, TargetType),
     globals.lookup_bool_option(Globals, track_flags, TrackFlags),
     (
         TrackFlags = no,
@@ -271,34 +269,35 @@ make_target(Globals, Target, Succeeded, !Info, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred classify_target(globals::in, string::in,
-    pair(module_name, target_type)::out) is det.
+:- pred classify_target(globals::in, string::in, top_target_file::out) is det.
 
-classify_target(Globals, FileName, ModuleName - TargetType) :-
+classify_target(Globals, FileName, TopTargetFile) :-
     ( if
         string.length(FileName, NameLength),
         search_backwards_for_dot(FileName, NameLength, DotLocn),
         string.split(FileName, DotLocn, ModuleNameStr0, Suffix),
         solutions(classify_target_2(Globals, ModuleNameStr0, Suffix),
-            TargetFiles),
-        TargetFiles = [TargetFile]
+            TopTargetFiles),
+        TopTargetFiles = [OnlyTopTargetFile]
     then
-        TargetFile = ModuleName - TargetType
+        TopTargetFile = OnlyTopTargetFile
     else if
         string.append("lib", ModuleNameStr, FileName)
     then
+        file_name_to_module_name(ModuleNameStr, ModuleName),
         TargetType = misc_target(misc_target_build_library),
-        file_name_to_module_name(ModuleNameStr, ModuleName)
+        TopTargetFile = top_target_file(ModuleName, TargetType)
     else
+        file_name_to_module_name(FileName, ModuleName),
         ExecutableType = get_executable_type(Globals),
         TargetType = linked_target(ExecutableType),
-        file_name_to_module_name(FileName, ModuleName)
+        TopTargetFile = top_target_file(ModuleName, TargetType)
     ).
 
 :- pred classify_target_2(globals::in, string::in, string::in,
-    pair(module_name, target_type)::out) is nondet.
+    top_target_file::out) is nondet.
 
-classify_target_2(Globals, ModuleNameStr0, ExtStr, ModuleName - TargetType) :-
+classify_target_2(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
     ( if
         extension_to_target_type(Globals, ExtStr, ModuleTargetType),
         % The .cs extension was used to build all C target files, but .cs is
@@ -389,7 +388,8 @@ classify_target_2(Globals, ModuleNameStr0, ExtStr, ModuleName - TargetType) :-
     else
         fail
     ),
-    file_name_to_module_name(ModuleNameStr, ModuleName).
+    file_name_to_module_name(ModuleNameStr, ModuleName),
+    TopTargetFile = top_target_file(ModuleName, TargetType).
 
 :- pred search_backwards_for_dot(string::in, int::in, int::out) is semidet.
 

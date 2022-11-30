@@ -245,7 +245,7 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
         then
             BuildDepsSucceeded = did_not_succeed
         else
-            foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
+            foldl2_maybe_stop_at_error_maybe_parallel_df(KeepGoing,
                 make_module_target, Globals, IntermediateTargetsNonnested,
                 BuildDepsSucceeded0, !Info, !IO),
             (
@@ -259,7 +259,7 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
                         % otherwise all the Java classes will be built again.
                         globals.set_option(rebuild, bool(no),
                             Globals, NoRebuildGlobals),
-                        foldl2_maybe_stop_at_error_maybe_parallel(
+                        foldl2_maybe_stop_at_error_maybe_parallel_df(
                             KeepGoing, make_module_target, NoRebuildGlobals,
                             ObjTargets, BuildDepsSucceeded1, !Info, !IO)
                     ;
@@ -267,7 +267,7 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
                         BuildDepsSucceeded1 = did_not_succeed
                     )
                 else
-                    foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
+                    foldl2_maybe_stop_at_error_maybe_parallel_df(KeepGoing,
                         make_module_target, Globals, ObjTargets,
                         BuildDepsSucceeded1, !Info, !IO)
                 )
@@ -277,7 +277,7 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
             ),
             (
                 BuildDepsSucceeded1 = succeeded,
-                foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
+                foldl2_maybe_stop_at_error_df(KeepGoing, make_module_target,
                     Globals, ForeignObjTargets, BuildDepsSucceeded,
                     !Info, !IO)
             ;
@@ -582,7 +582,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         Succeeded = did_not_succeed
     ;
         DepsResult = deps_up_to_date,
-        MsgTarget = MainModuleName - linked_target(FileType),
+        MsgTarget = top_target_file(MainModuleName, linked_target(FileType)),
         globals.lookup_bool_option(NoLinkObjsGlobals, use_grade_subdirs,
             UseGradeSubdirs),
         (
@@ -653,7 +653,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
                 Succeeded, !IO)
         ),
         CmdLineTargets0 = !.Info ^ mki_command_line_targets,
-        set.delete(MainModuleName - linked_target(FileType),
+        set.delete(top_target_file(MainModuleName, linked_target(FileType)),
             CmdLineTargets0, CmdLineTargets),
         !Info ^ mki_command_line_targets := CmdLineTargets,
         (
@@ -893,7 +893,7 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
                 Succeeded = did_not_succeed
             else
                 maybe_with_analysis_cache_dir_2(Globals,
-                    foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
+                    foldl2_maybe_stop_at_error_maybe_parallel_df(KeepGoing,
                         make_module_target, Globals,
                         make_dependency_list(TargetModules, ModuleTargetType)),
                     Succeeded2, !Info, !IO),
@@ -938,7 +938,7 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
         ( if Succeeded0 = did_not_succeed, KeepGoing = do_not_keep_going then
             Succeeded = did_not_succeed
         else
-            foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
+            foldl2_maybe_stop_at_error_df(KeepGoing, make_module_target,
                 Globals,
                 make_dependency_list(TargetModules, module_target_xml_doc),
                 Succeeded1, !Info, !IO),
@@ -971,15 +971,28 @@ make_all_interface_files(Globals, AllModules0, Succeeded, !Info, !IO) :-
     % Private interfaces (.int0) need to be made before building long interface
     % files in parallel, otherwise two processes may try to build the same
     % private interface file.
-    foldl2_maybe_stop_at_error(KeepGoing,
-        foldl2_maybe_stop_at_error(KeepGoing, make_module_target),
-        Globals, [Int3s, Int0s], Succeeded0, !Info, !IO),
+    foldl2_maybe_stop_at_error_df(KeepGoing, make_module_target,
+        Globals, Int3s, Succeeded0, !Info, !IO),
     (
         Succeeded0 = succeeded,
-        foldl2_maybe_stop_at_error(KeepGoing,
-            foldl2_maybe_stop_at_error_maybe_parallel(KeepGoing,
-                make_module_target),
-            Globals, [Int1s, Opts], Succeeded, !Info, !IO)
+        foldl2_maybe_stop_at_error_df(KeepGoing, make_module_target,
+            Globals, Int0s, Succeeded1, !Info, !IO),
+        (
+            Succeeded1 = succeeded,
+            foldl2_maybe_stop_at_error_df(KeepGoing, make_module_target,
+                Globals, Int1s, Succeeded2, !Info, !IO),
+            (
+                Succeeded2 = succeeded,
+                foldl2_maybe_stop_at_error_df(KeepGoing, make_module_target,
+                    Globals, Opts, Succeeded, !Info, !IO)
+            ;
+                Succeeded2 = did_not_succeed,
+                Succeeded = did_not_succeed
+            )
+        ;
+            Succeeded1 = did_not_succeed,
+            Succeeded = did_not_succeed
+        )
     ;
         Succeeded0 = did_not_succeed,
         Succeeded = did_not_succeed
@@ -1234,7 +1247,7 @@ build_analysis_files_1(Globals, MainModuleName, AllModules, Succeeded,
 build_analysis_files_2(Globals, MainModuleName, TargetModules,
         LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO) :-
     KeepGoing = !.Info ^ mki_keep_going,
-    foldl2_maybe_stop_at_error(KeepGoing,
+    foldl2_maybe_stop_at_error_df(KeepGoing,
         make_module_target_extra_options(LocalModulesOpts), Globals,
         make_dependency_list(TargetModules, module_target_analysis_registry),
         Succeeded1, !Info, !IO),
@@ -1469,7 +1482,7 @@ install_library(Globals, MainModuleName, Succeeded, !Info, !IO) :-
             % XXX With Mmake, LIBGRADES is target-specific.
             globals.lookup_accumulating_option(Globals, libgrades, LibGrades0),
             LibGrades = list.delete_all(LibGrades0, Grade),
-            foldl2_maybe_stop_at_error(KeepGoing,
+            foldl2_maybe_stop_at_error_str(KeepGoing,
                 install_library_grade(LinkSucceeded,
                     MainModuleName, AllModules),
                 Globals, LibGrades, Succeeded, !Info, !IO)

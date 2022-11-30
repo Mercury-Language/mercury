@@ -33,7 +33,6 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
 
 %---------------------------------------------------------------------------%
 %
@@ -230,15 +229,14 @@
     % If the given target was specified on the command line, warn that it
     % was already up to date.
     %
-:- pred maybe_warn_up_to_date_target(globals::in,
-    pair(module_name, target_type)::in,
+:- pred maybe_warn_up_to_date_target(globals::in, top_target_file::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Write a message "Made symlink/copy of <filename>"
     % if `--verbose-make' is set.
     %
 :- pred maybe_symlink_or_copy_linked_target_message(globals::in,
-    pair(module_name, target_type)::in, io::di, io::uo) is det.
+    top_target_file::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -1071,11 +1069,11 @@ maybe_symlink_or_copy_linked_target_message(Globals, Target, !IO) :-
             io.format("Made symlink/copy of %s\n", [s(FileName)], !IO)
         ), !IO).
 
-:- pred module_or_linked_target_file_name(globals::in,
-    pair(module_name, target_type)::in, string::out, io::di, io::uo) is det.
+:- pred module_or_linked_target_file_name(globals::in, top_target_file::in,
+    string::out, io::di, io::uo) is det.
 
-module_or_linked_target_file_name(Globals, ModuleName - TargetType,
-        FileName, !IO) :-
+module_or_linked_target_file_name(Globals, TopTargetFile, FileName, !IO) :-
+    TopTargetFile = top_target_file(ModuleName, TargetType),
     (
         TargetType = module_target(ModuleTargetType),
         TargetFile = target_file(ModuleName, ModuleTargetType),

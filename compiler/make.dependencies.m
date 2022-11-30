@@ -29,7 +29,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 
-:- import_module enum.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
@@ -91,10 +90,16 @@
     set(T)::in, set(T)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-:- pred deps_set_foldl3_maybe_stop_at_error(maybe_keep_going::in,
-    foldl3_pred_with_status(T, Acc, Info, IO)::in(foldl3_pred_with_status),
-    globals::in, deps_set(T)::in, maybe_succeeded::out, Acc::in, Acc::out,
-    Info::in, Info::out, IO::di, IO::uo) is det <= enum(T).
+:- pred deps_set_foldl3_maybe_stop_at_error_mi(maybe_keep_going::in,
+    foldl3_pred_with_status(module_index, Acc, Info, IO)::
+        in(foldl3_pred_with_status),
+    globals::in, deps_set(module_index)::in, maybe_succeeded::out,
+    Acc::in, Acc::out, Info::in, Info::out, IO::di, IO::uo) is det.
+:- pred deps_set_foldl3_maybe_stop_at_error_fi(maybe_keep_going::in,
+    foldl3_pred_with_status(dependency_file_index, Acc, Info, IO)::
+        in(foldl3_pred_with_status),
+    globals::in, deps_set(dependency_file_index)::in, maybe_succeeded::out,
+    Acc::in, Acc::out, Info::in, Info::out, IO::di, IO::uo) is det.
 
     % Find all modules in the current directory which are reachable
     % (by import or include) from the given module.
@@ -336,7 +341,7 @@ compiled_code_dependencies(Globals) = Deps :-
         foreign_include_files `files_of` self,
         module_target_int1 `of` self,
         module_target_int1 `of` ancestors,
-        map_find_module_deps(imports, self),
+        map_find_module_deps_fi(self, imports),
         Deps0
     ]),
 
@@ -351,8 +356,9 @@ compiled_code_dependencies(Globals) = Deps :-
         Deps2 = combine_deps_list([
             module_target_opt `of` self,
             module_target_opt `of` intermod_imports,
-            map_find_module_deps(imports,
-                map_find_module_deps(ancestors, intermod_imports)),
+            map_find_module_deps_fi(
+                map_find_module_deps_mi(intermod_imports, ancestors),
+                imports),
             Deps1
         ])
     ;
@@ -445,7 +451,7 @@ files_of_2(FindFiles, FindDeps, Globals, ModuleIndex, Succeeded, DepIndices,
         Succeeded = did_not_succeed,
         DepIndices = init
     else
-        deps_set_foldl3_maybe_stop_at_error(KeepGoing,
+        deps_set_foldl3_maybe_stop_at_error_mi(KeepGoing,
             union_deps_plain_set(FindFiles),
             Globals, ModuleIndices, Succeeded2, init, FileNames, !Info, !IO),
         Succeeded = Succeeded1 `and` Succeeded2,
@@ -453,13 +459,14 @@ files_of_2(FindFiles, FindDeps, Globals, ModuleIndex, Succeeded, DepIndices,
             DepIndices, !Info)
     ).
 
-:- pred map_find_module_deps(
-    find_module_deps(T)::in(find_module_deps),
+:- pred map_find_module_deps_mi(
     find_module_deps(module_index)::in(find_module_deps),
-    globals::in, module_index::in, maybe_succeeded::out, deps_set(T)::out,
+    find_module_deps(module_index)::in(find_module_deps),
+    globals::in, module_index::in, maybe_succeeded::out,
+    deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-map_find_module_deps(FindDeps2, FindDeps1, Globals, ModuleIndex, Succeeded,
+map_find_module_deps_mi(FindDeps1, FindDeps2, Globals, ModuleIndex, Succeeded,
         Result, !Info, !IO) :-
     KeepGoing = !.Info ^ mki_keep_going,
     FindDeps1(Globals, ModuleIndex, Succeeded1, Modules1, !Info, !IO),
@@ -470,8 +477,32 @@ map_find_module_deps(FindDeps2, FindDeps1, Globals, ModuleIndex, Succeeded,
         Succeeded = did_not_succeed,
         Result = init
     else
-        deps_set_foldl3_maybe_stop_at_error(KeepGoing, union_deps(FindDeps2),
+        deps_set_foldl3_maybe_stop_at_error_mi(KeepGoing, union_deps(FindDeps2),
             Globals, Modules1, Succeeded2, init, Result, !Info, !IO),
+        Succeeded = Succeeded1 `and` Succeeded2
+    ).
+
+:- pred map_find_module_deps_fi(
+    find_module_deps(module_index)::in(find_module_deps),
+    find_module_deps(dependency_file_index)::in(find_module_deps),
+    globals::in, module_index::in, maybe_succeeded::out,
+    deps_set(dependency_file_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+map_find_module_deps_fi(FindDeps1, FindDeps2, Globals, ModuleIndex, Succeeded,
+        Result, !Info, !IO) :-
+    KeepGoing = !.Info ^ mki_keep_going,
+    FindDeps1(Globals, ModuleIndex, Succeeded1, Modules1, !Info, !IO),
+    ( if
+        Succeeded1 = did_not_succeed,
+        KeepGoing = do_not_keep_going
+    then
+        Succeeded = did_not_succeed,
+        Result = init
+    else
+        deps_set_foldl3_maybe_stop_at_error_mi(KeepGoing,
+            union_deps(FindDeps2), Globals, Modules1, Succeeded2,
+            init, Result, !Info, !IO),
         Succeeded = Succeeded1 `and` Succeeded2
     ).
 
@@ -531,7 +562,7 @@ direct_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
                 Succeeded = did_not_succeed,
                 Modules = init
             else
-                deps_set_foldl3_maybe_stop_at_error(KeepGoing,
+                deps_set_foldl3_maybe_stop_at_error_mi(KeepGoing,
                     union_deps(non_intermod_direct_imports), Globals,
                     IntermodModules, Succeeded2,
                     union(Modules0, IntermodModules), Modules1,
@@ -669,7 +700,7 @@ indirect_imports_2(Globals, FindDirectImports, ModuleIndex, Succeeded,
         Succeeded = did_not_succeed,
         IndirectImports = init
     else
-        deps_set_foldl3_maybe_stop_at_error(KeepGoing,
+        deps_set_foldl3_maybe_stop_at_error_mi(KeepGoing,
             union_deps(find_transitive_implementation_imports), Globals,
             DirectImports, IndirectSucceeded,
             init, IndirectImports0, !Info, !IO),
@@ -722,7 +753,7 @@ foreign_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     globals.get_backend_foreign_languages(Globals, Languages),
     intermod_imports(Globals, ModuleIndex, IntermodSucceeded, IntermodModules,
         !Info, !IO),
-    deps_set_foldl3_maybe_stop_at_error(!.Info ^ mki_keep_going,
+    deps_set_foldl3_maybe_stop_at_error_mi(!.Info ^ mki_keep_going,
         union_deps(find_module_foreign_imports(set.list_to_set(Languages))),
         Globals, insert(IntermodModules, ModuleIndex),
         ForeignSucceeded, init, Modules, !Info, !IO),
@@ -745,7 +776,7 @@ find_module_foreign_imports(Languages, Globals, ModuleIndex, Succeeded,
             Succeeded0, ImportedModules, !Info, !IO),
         (
             Succeeded0 = succeeded,
-            deps_set_foldl3_maybe_stop_at_error(!.Info ^ mki_keep_going,
+            deps_set_foldl3_maybe_stop_at_error_mi(!.Info ^ mki_keep_going,
                 union_deps(find_module_foreign_imports_2(Languages)),
                 Globals, insert(ImportedModules, ModuleIndex),
                 Succeeded, init, ForeignModules, !Info, !IO),
@@ -918,9 +949,14 @@ combine_deps_list([FindDeps]) = FindDeps.
 combine_deps_list([FindDeps1, FindDeps2 | FindDepsTail]) =
     combine_deps(FindDeps1, combine_deps_list([FindDeps2 | FindDepsTail])).
 
-deps_set_foldl3_maybe_stop_at_error(KeepGoing, P, Globals, Ts,
+deps_set_foldl3_maybe_stop_at_error_mi(KeepGoing, P, Globals, Ts,
         Succeeded, !Acc, !Info, !IO) :-
-    foldl3_maybe_stop_at_error(KeepGoing, P, Globals, to_sorted_list(Ts),
+    foldl3_maybe_stop_at_error_mi(KeepGoing, P, Globals, to_sorted_list(Ts),
+        Succeeded, !Acc, !Info, !IO).
+
+deps_set_foldl3_maybe_stop_at_error_fi(KeepGoing, P, Globals, Ts,
+        Succeeded, !Acc, !Info, !IO) :-
+    foldl3_maybe_stop_at_error_fi(KeepGoing, P, Globals, to_sorted_list(Ts),
         Succeeded, !Acc, !Info, !IO).
 
 %---------------------------------------------------------------------------%
@@ -1043,13 +1079,13 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                 % at all, but rather a separate parameter of this predicate.
                 OldImportingModule = !.Info ^ mki_importing_module,
                 !Info ^ mki_importing_module := yes(ioi_import(ModuleName)),
-                deps_set_foldl3_maybe_stop_at_error(KeepGoing,
+                deps_set_foldl3_maybe_stop_at_error_mi(KeepGoing,
                     find_transitive_module_dependencies_2(KeepGoing,
                         DependenciesType, ModuleLocn),
                     Globals, ImportsToCheckSet, SucceededA, Modules1, Modules2,
                     !Info, !IO),
                 !Info ^ mki_importing_module := yes(ioi_include(ModuleName)),
-                deps_set_foldl3_maybe_stop_at_error(KeepGoing,
+                deps_set_foldl3_maybe_stop_at_error_mi(KeepGoing,
                     find_transitive_module_dependencies_2(KeepGoing,
                         DependenciesType, ModuleLocn),
                     Globals, IncludesToCheckSet, SucceededB, Modules2, Modules,
@@ -1160,8 +1196,8 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
             % .track_flags should already have been made, if required,
             % so are also up-to-date.
             ModuleTarget = module_target(module_target_source),
-            maybe_warn_up_to_date_target(Globals, ModuleName - ModuleTarget,
-                !Info, !IO),
+            maybe_warn_up_to_date_target(Globals,
+                top_target_file(ModuleName, ModuleTarget), !Info, !IO),
             Status = deps_status_up_to_date
         else if
             DepStatusMap0 = !.Info ^ mki_dependency_status,

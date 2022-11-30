@@ -115,7 +115,6 @@
 :- import_module io.file.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module sparse_bitset.
@@ -226,7 +225,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
         ),
         module_names_to_index_set(ModulesToCheck, ModulesToCheckSet, !Info),
 
-        deps_set_foldl3_maybe_stop_at_error(!.Info ^ mki_keep_going,
+        deps_set_foldl3_maybe_stop_at_error_mi(!.Info ^ mki_keep_going,
             union_deps(target_dependencies(Globals, TargetType)),
             Globals, ModulesToCheckSet, DepsSucceeded,
             sparse_bitset.init, DepFiles0, !Info, !IO),
@@ -278,7 +277,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
         ;
             DepsResult = deps_out_of_date,
             Targets0 = !.Info ^ mki_command_line_targets,
-            set.delete(ModuleName - module_target(TargetType),
+            set.delete(top_target_file(ModuleName, module_target(TargetType)),
                 Targets0, Targets),
             !Info ^ mki_command_line_targets := Targets,
             build_target(Globals, CompilationTask, TargetFile,
@@ -287,7 +286,8 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
         ;
             DepsResult = deps_up_to_date,
             maybe_warn_up_to_date_target(Globals,
-                ModuleName - module_target(TargetType), !Info, !IO),
+                top_target_file(ModuleName, module_target(TargetType)),
+                !Info, !IO),
             debug_file_msg(Globals, TargetFile, "up to date", !IO),
             Succeeded = succeeded,
             list.foldl(update_target_status(deps_status_up_to_date),
@@ -304,7 +304,7 @@ make_dependency_files(Globals, TargetFile, DepFilesToMake, TouchedTargetFiles,
         TouchedFiles, DepsResult, !Info, !IO) :-
     % Build the dependencies.
     KeepGoing = !.Info ^ mki_keep_going,
-    foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
+    foldl2_maybe_stop_at_error_df(KeepGoing, make_module_target,
         Globals, DepFilesToMake, MakeDepsSucceeded, !Info, !IO),
 
     % Check that the target files exist.
