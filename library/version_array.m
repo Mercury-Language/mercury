@@ -461,6 +461,7 @@ from_reverse_list_loop(I, [X | Xs], !VA) :-
 lookup(VA, I) = X :-
     lookup(VA, I, X).
 
+:- pragma inline(pred(version_array.lookup/3)).
 lookup(VA, I, X) :-
     ( if get_if_in_range(VA, I, X0) then
         X = X0
@@ -474,6 +475,7 @@ VA ^ elem(I) = X :-
 
 %---------------------------------------------------------------------------%
 
+:- pragma inline(pred(version_array.set/4)).
 set(I, X, !VA) :-
     ( if set_if_in_range(I, X, !VA) then
         true

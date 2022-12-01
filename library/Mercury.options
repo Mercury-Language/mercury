@@ -21,6 +21,8 @@ MCFLAGS-lexer                   += --optimize-constructor-last-call
 MCFLAGS-sparse_bitset   += --use-atomic-cells --optimize-constant-propagation
 MCFLAGS-tree_bitset     += --use-atomic-cells --optimize-constant-propagation
 
+MCFLAGS-version_hash_table      += --optimize-unused-args
+
 # Speed up structure sharing analysis.
 MCFLAGS-set_ctree234            += --structure-sharing-widening 1
 MCFLAGS-set_tree234             += --structure-sharing-widening 1
