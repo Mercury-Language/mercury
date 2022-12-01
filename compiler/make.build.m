@@ -107,36 +107,37 @@
     pred(globals, T, maybe_succeeded, Info, Info, IO, IO).
 :- inst foldl2_pred_with_status == (pred(in, in, out, in, out, di, uo) is det).
 
-    % foldl2_maybe_stop_at_error_X(KeepGoing, P, Globals, List, Succeeded,
+    % foldl2_make_module_targets(KeepGoing, ExtraOptions, Globals,
+    %   Targets, Succeeded, !Info, !IO).
+    %
+    % Invoke make_module_target, with any ExtraOptions, on each element of
+    % Targets, stopping at errors unless KeepGoing = do_keep_going.
+    %
+:- pred foldl2_make_module_targets(maybe_keep_going::in, list(string)::in,
+    globals::in, list(dependency_file)::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+    % foldl2_install_library_grades(KeepGoing, LinkSucceeded, MainModuleName,
+    %   AllModules, Globals, LibGrades, Succeeded, !Info, !IO):
+    %
+    % Invoke install_library_grade(LinkSucceeded, MainModuleName, AllModules,
+    % ...) on each grade in LibGrades, stopping at errors unless KeepGoing =
+    % do_keep_going.
+    %
+:- pred foldl2_install_library_grades(maybe_keep_going::in,
+    maybe_succeeded::in, module_name::in, list(module_name)::in,
+    globals::in, list(string)::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+    % foldl2_make_top_targets(KeepGoing, Globals, TopTargets, Succeeded,
     %   !Info, !IO).
     %
-    % The X suffix indicates the type of the elements in the List argument.
+    % Invoke make_top_target on each element of TopTargets, stopping at errors
+    % unless KeepGoing = do_keep_going.
     %
-:- pred foldl2_maybe_stop_at_error_mi(maybe_keep_going::in,
-    foldl2_pred_with_status(module_index, Info, IO)::
-        in(foldl2_pred_with_status),
-    globals::in, list(module_index)::in, maybe_succeeded::out,
-    Info::in, Info::out, IO::di, IO::uo) is det.
-:- pred foldl2_maybe_stop_at_error_fi(maybe_keep_going::in,
-    foldl2_pred_with_status(dependency_file_index, Info, IO)::
-        in(foldl2_pred_with_status),
-    globals::in, list(dependency_file_index)::in, maybe_succeeded::out,
-    Info::in, Info::out, IO::di, IO::uo) is det.
-:- pred foldl2_maybe_stop_at_error_df(maybe_keep_going::in,
-    foldl2_pred_with_status(dependency_file, Info, IO)::
-        in(foldl2_pred_with_status),
-    globals::in, list(dependency_file)::in, maybe_succeeded::out,
-    Info::in, Info::out, IO::di, IO::uo) is det.
-:- pred foldl2_maybe_stop_at_error_str(maybe_keep_going::in,
-    foldl2_pred_with_status(string, Info, IO)::
-        in(foldl2_pred_with_status),
-    globals::in, list(string)::in, maybe_succeeded::out,
-    Info::in, Info::out, IO::di, IO::uo) is det.
-:- pred foldl2_maybe_stop_at_error_tt(maybe_keep_going::in,
-    foldl2_pred_with_status(top_target_file, Info, IO)::
-        in(foldl2_pred_with_status),
+:- pred foldl2_make_top_targets(maybe_keep_going::in,
     globals::in, list(top_target_file)::in, maybe_succeeded::out,
-    Info::in, Info::out, IO::di, IO::uo) is det.
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
     % foldl3_pred_with_status(Globals, T, Succeeded, !Acc, !Info).
     %
@@ -168,26 +169,19 @@
 
 %---------------------------------------------------------------------------%
 
-    % foldl2_maybe_stop_at_error_maybe_parallel_X(KeepGoing, P, Globals,
-    %   List, Succeeded, !Info, !IO).
+    % foldl_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts,
+    %   Globals, Targets, Succeeded, !Info, !IO):
     %
-    % Like foldl2_maybe_stop_at_error, but if parallel make is enabled,
-    % it tries to perform a first pass that overlaps execution of P(elem)
-    % in separate threads or processes. Updates to !Info in the first pass are
-    % ignored. If the first pass succeeds, a second sequential pass is made in
-    % which updates !Info are kept. Hence it must be safe to execute P(elem)
+    % Like foldl2_make_module_targets, but if parallel make is enabled,
+    % it tries to perform a first pass that overlaps execution of several
+    % invocations of make_module_targets in separate threads or processes.
+    % Updates to !Info in the first pass are ignored. If the first pass
+    % succeeds, a second sequential pass is made in which updates !Info
+    % are kept. Hence it must be safe to execute make_module_target
     % concurrently, in any order, and multiple times.
     %
-    % The X suffix indicates the type of the elements in the List argument.
-    %
-:- pred foldl2_maybe_stop_at_error_maybe_parallel_mi(maybe_keep_going::in,
-    foldl2_pred_with_status(module_index, make_info, io)::
-        in(foldl2_pred_with_status),
-    globals::in, list(module_index)::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-:- pred foldl2_maybe_stop_at_error_maybe_parallel_df(maybe_keep_going::in,
-    foldl2_pred_with_status(dependency_file, make_info, io)::
-        in(foldl2_pred_with_status),
+:- pred foldl_make_module_targets_maybe_parallel(maybe_keep_going::in,
+    list(string)::in,
     globals::in, list(dependency_file)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -206,10 +200,16 @@
 
 :- implementation.
 
+% XXX The modules with the undesirable dependencies are imported because
+% they define actions that we fold over. The dependencies could be eliminated
+% by moving each fold predicate to its main (usually only) user module.
 :- import_module libs.file_util.
 :- import_module libs.handle_options.
 :- import_module libs.options.
 :- import_module libs.process_util.
+:- import_module make.module_target.    % XXX undesirable dependency.
+:- import_module make.program_target.   % XXX undesirable dependency.
+:- import_module make.top_level.        % XXX undesirable dependency.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
 
@@ -364,29 +364,21 @@ write_error_creating_temp_file(ErrorMessage, !IO) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-foldl2_maybe_stop_at_error_mi(KeepGoing, MakeTarget, Globals, Targets,
+foldl2_make_module_targets(KeepGoing, ExtraOptions, Globals, Targets,
         Succeeded, !Info, !IO) :-
-    foldl2_maybe_stop_at_error_loop(KeepGoing, MakeTarget,
+    foldl2_maybe_stop_at_error_loop(KeepGoing,
+        make_module_target(ExtraOptions),
         Globals, Targets, succeeded, Succeeded, !Info, !IO).
 
-foldl2_maybe_stop_at_error_fi(KeepGoing, MakeTarget, Globals, Targets,
-        Succeeded, !Info, !IO) :-
-    foldl2_maybe_stop_at_error_loop(KeepGoing, MakeTarget,
-        Globals, Targets, succeeded, Succeeded, !Info, !IO).
+foldl2_install_library_grades(KeepGoing, LinkSucceeded, MainModuleName,
+        AllModules, Globals, LibGrades, Succeeded, !Info, !IO) :-
+    foldl2_maybe_stop_at_error_loop(KeepGoing,
+        install_library_grade(LinkSucceeded, MainModuleName, AllModules),
+        Globals, LibGrades, succeeded, Succeeded, !Info, !IO).
 
-foldl2_maybe_stop_at_error_df(KeepGoing, MakeTarget, Globals, Targets,
+foldl2_make_top_targets(KeepGoing, Globals, Targets,
         Succeeded, !Info, !IO) :-
-    foldl2_maybe_stop_at_error_loop(KeepGoing, MakeTarget,
-        Globals, Targets, succeeded, Succeeded, !Info, !IO).
-
-foldl2_maybe_stop_at_error_str(KeepGoing, MakeTarget, Globals, Targets,
-        Succeeded, !Info, !IO) :-
-    foldl2_maybe_stop_at_error_loop(KeepGoing, MakeTarget,
-        Globals, Targets, succeeded, Succeeded, !Info, !IO).
-
-foldl2_maybe_stop_at_error_tt(KeepGoing, MakeTarget, Globals, Targets,
-        Succeeded, !Info, !IO) :-
-    foldl2_maybe_stop_at_error_loop(KeepGoing, MakeTarget,
+    foldl2_maybe_stop_at_error_loop(KeepGoing, make_top_target,
         Globals, Targets, succeeded, Succeeded, !Info, !IO).
 
 %---------------------%
@@ -459,7 +451,7 @@ foldl3_maybe_stop_at_error_loop(KeepGoing, P, Globals, [T | Ts],
 % Parallel (concurrent) fold.
 %
 
-foldl2_maybe_stop_at_error_maybe_parallel_mi(KeepGoing, MakeTarget, Globals,
+foldl_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts, Globals,
         Targets, Succeeded, !Info, !IO) :-
     globals.lookup_int_option(Globals, jobs, Jobs),
     ( if
@@ -468,6 +460,7 @@ foldl2_maybe_stop_at_error_maybe_parallel_mi(KeepGoing, MakeTarget, Globals,
         have_job_ctl_ipc
     then
         % First pass.
+        MakeTarget = make_module_target(ExtraOpts),
         foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs,
             MakeTarget, Globals, Targets, Succeeded0, !Info, !IO),
         % Second pass (sequential).
@@ -476,42 +469,14 @@ foldl2_maybe_stop_at_error_maybe_parallel_mi(KeepGoing, MakeTarget, Globals,
             % Disable the `--rebuild' option during the sequential pass
             % otherwise all the targets will be built a second time.
             globals.set_option(rebuild, bool(no), Globals, NoRebuildGlobals),
-            foldl2_maybe_stop_at_error_mi(KeepGoing, MakeTarget,
+            foldl2_make_module_targets(KeepGoing, ExtraOpts,
                 NoRebuildGlobals, Targets, Succeeded, !Info, !IO)
         ;
             Succeeded0 = did_not_succeed,
             Succeeded = did_not_succeed
         )
     else
-        foldl2_maybe_stop_at_error_mi(KeepGoing, MakeTarget,
-            Globals, Targets, Succeeded, !Info, !IO)
-    ).
-
-foldl2_maybe_stop_at_error_maybe_parallel_df(KeepGoing, MakeTarget, Globals,
-        Targets, Succeeded, !Info, !IO) :-
-    globals.lookup_int_option(Globals, jobs, Jobs),
-    ( if
-        Jobs > 1,
-        process_util.can_fork,
-        have_job_ctl_ipc
-    then
-        % First pass.
-        foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs,
-            MakeTarget, Globals, Targets, Succeeded0, !Info, !IO),
-        % Second pass (sequential).
-        (
-            Succeeded0 = succeeded,
-            % Disable the `--rebuild' option during the sequential pass
-            % otherwise all the targets will be built a second time.
-            globals.set_option(rebuild, bool(no), Globals, NoRebuildGlobals),
-            foldl2_maybe_stop_at_error_df(KeepGoing, MakeTarget,
-                NoRebuildGlobals, Targets, Succeeded, !Info, !IO)
-        ;
-            Succeeded0 = did_not_succeed,
-            Succeeded = did_not_succeed
-        )
-    else
-        foldl2_maybe_stop_at_error_df(KeepGoing, MakeTarget,
+        foldl2_make_module_targets(KeepGoing, ExtraOpts,
             Globals, Targets, Succeeded, !Info, !IO)
     ).
 

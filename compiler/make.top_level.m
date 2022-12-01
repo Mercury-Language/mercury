@@ -23,6 +23,8 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.maybe_succeeded.
+:- import_module make.make_info.
 :- import_module make.options_file.
 
 :- import_module io.
@@ -34,6 +36,9 @@
     options_variables::in, list(string)::in, list(file_name)::in,
     io::di, io::uo) is det.
 
+:- pred make_top_target(globals::in, top_target_file::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -41,13 +46,11 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
-:- import_module libs.maybe_succeeded.
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module make.build.
 :- import_module make.dependencies.
 :- import_module make.deps_set.
-:- import_module make.make_info.
 :- import_module make.module_target.
 :- import_module make.program_target.
 :- import_module make.track_flags.
@@ -147,7 +150,7 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
 
         % Build the targets, stopping on any errors if `--keep-going'
         % was not set.
-        foldl2_maybe_stop_at_error_tt(KeepGoing, make_target, Globals,
+        foldl2_make_top_targets(KeepGoing, Globals,
             ClassifiedTargets, Succeeded, MakeInfo0, _MakeInfo, !IO),
         maybe_set_exit_status(Succeeded, !IO)
     ).
@@ -226,10 +229,7 @@ report_target_with_dir_component(ProgName, Target) = Spec :-
 
 %---------------------%
 
-:- pred make_target(globals::in, top_target_file::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-make_target(Globals, Target, Succeeded, !Info, !IO) :-
+make_top_target(Globals, Target, Succeeded, !Info, !IO) :-
     Target = top_target_file(ModuleName, TargetType),
     globals.lookup_bool_option(Globals, track_flags, TrackFlags),
     (
@@ -245,7 +245,7 @@ make_target(Globals, Target, Succeeded, !Info, !IO) :-
         (
             TargetType = module_target(ModuleTargetType),
             TargetFile = target_file(ModuleName, ModuleTargetType),
-            make_module_target(Globals, dep_target(TargetFile), Succeeded,
+            make_module_target([], Globals, dep_target(TargetFile), Succeeded,
                 !Info, !IO)
         ;
             TargetType = linked_target(ProgramTargetType),

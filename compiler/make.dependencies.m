@@ -477,8 +477,9 @@ map_find_module_deps_mi(FindDeps1, FindDeps2, Globals, ModuleIndex, Succeeded,
         Succeeded = did_not_succeed,
         Result = init
     else
-        deps_set_foldl3_maybe_stop_at_error_mi(KeepGoing, union_deps(FindDeps2),
-            Globals, Modules1, Succeeded2, init, Result, !Info, !IO),
+        deps_set_foldl3_maybe_stop_at_error_mi(KeepGoing,
+            union_deps(FindDeps2), Globals, Modules1, Succeeded2,
+            init, Result, !Info, !IO),
         Succeeded = Succeeded1 `and` Succeeded2
     ).
 
@@ -777,7 +778,7 @@ find_module_foreign_imports(Languages, Globals, ModuleIndex, Succeeded,
         (
             Succeeded0 = succeeded,
             deps_set_foldl3_maybe_stop_at_error_mi(!.Info ^ mki_keep_going,
-                union_deps(find_module_foreign_imports_2(Languages)),
+                union_deps(find_module_foreign_imports_uncached(Languages)),
                 Globals, insert(ImportedModules, ModuleIndex),
                 Succeeded, init, ForeignModules, !Info, !IO),
             Result = deps_result(Succeeded, ForeignModules),
@@ -794,13 +795,13 @@ find_module_foreign_imports(Languages, Globals, ModuleIndex, Succeeded,
         )
     ).
 
-:- pred find_module_foreign_imports_2(set(foreign_language)::in,
+:- pred find_module_foreign_imports_uncached(set(foreign_language)::in,
     globals::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-find_module_foreign_imports_2(Languages, Globals, ModuleIndex, Succeeded,
-        ForeignModules, !Info, !IO) :-
+find_module_foreign_imports_uncached(Languages, Globals, ModuleIndex,
+        Succeeded, ForeignModules, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
         !Info, !IO),

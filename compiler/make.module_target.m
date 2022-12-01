@@ -34,24 +34,18 @@
 
 %---------------------------------------------------------------------------%
 
-    % make_module_target(Target, Succeeded, !Info).
+    % make_module_target(ExtraOpts, Globals, Target, Succeeded, !Info, !IO):
     %
-    % Make a target corresponding to a single module.
+    % Make a target corresponding to a single module, possibly with
+    % extra command line options.
     %
-:- pred make_module_target(globals::in, dependency_file::in,
-    maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-    % make_module_target_extra_options(ExtraOpts, Target, Succeeded, !Info)
+    % ExtraOpts must be the first argument, because we curry it.
     %
-    % Make a target corresponding to a single module, with extra command line
-    % options.
-    %
-:- pred make_module_target_extra_options(list(string)::in, globals::in,
+:- pred make_module_target(list(string)::in, globals::in,
     dependency_file::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % record_made_target(Globals, Target, Task, MakeSucceeded, !Info, !IO)
+    % record_made_target(Globals, Target, Task, MakeSucceeded, !Info, !IO):
     %
     % Record whether building a target succeeded or not.
     % Makes sure any timestamps for files which may have changed
@@ -123,12 +117,7 @@
 
 %---------------------------------------------------------------------------%
 
-make_module_target(Globals, DepFile, Succeeded, !Info, !IO) :-
-    make_module_target_extra_options([], Globals, DepFile, Succeeded,
-        !Info, !IO).
-
-make_module_target_extra_options(ExtraOptions, Globals, Dep, Succeeded,
-        !Info, !IO) :-
+make_module_target(ExtraOptions, Globals, Dep, Succeeded, !Info, !IO) :-
     (
         Dep = dep_file(_),
         dependency_status(Globals, Dep, Status, !Info, !IO),
@@ -204,8 +193,8 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
     then
         NestedTargetFile =
             target_file(SourceFileModuleName, TargetType),
-        make_module_target_extra_options(ExtraOptions, Globals,
-            dep_target(NestedTargetFile), Succeeded, !Info, !IO)
+        make_module_target(ExtraOptions, Globals, dep_target(NestedTargetFile),
+            Succeeded, !Info, !IO)
     else
         find_files_maybe_touched_by_task(Globals, TargetFile,
             CompilationTaskType, TouchedTargetFiles, TouchedFiles, !Info, !IO),
@@ -304,8 +293,8 @@ make_dependency_files(Globals, TargetFile, DepFilesToMake, TouchedTargetFiles,
         TouchedFiles, DepsResult, !Info, !IO) :-
     % Build the dependencies.
     KeepGoing = !.Info ^ mki_keep_going,
-    foldl2_maybe_stop_at_error_df(KeepGoing, make_module_target,
-        Globals, DepFilesToMake, MakeDepsSucceeded, !Info, !IO),
+    foldl2_make_module_targets(KeepGoing, [], Globals, DepFilesToMake,
+        MakeDepsSucceeded, !Info, !IO),
 
     % Check that the target files exist.
     list.map_foldl2(get_target_timestamp(Globals, do_not_search),
