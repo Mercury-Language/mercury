@@ -960,40 +960,12 @@ combine_deps_list([FindDeps1, FindDeps2 | FindDepsTail]) =
 
 deps_set_foldl3_maybe_stop_at_error_mi(KeepGoing, P, Globals, Ts,
         Succeeded, !Acc, !Info, !IO) :-
-    foldl3_maybe_stop_at_error_mi(KeepGoing, P, Globals, to_sorted_list(Ts),
-        Succeeded, !Acc, !Info, !IO).
+    foldl3_maybe_stop_at_error_loop(KeepGoing, P, Globals, to_sorted_list(Ts),
+        succeeded, Succeeded, !Acc, !Info, !IO).
 
 deps_set_foldl3_maybe_stop_at_error_fi(KeepGoing, P, Globals, Ts,
         Succeeded, !Acc, !Info, !IO) :-
-    foldl3_maybe_stop_at_error_fi(KeepGoing, P, Globals, to_sorted_list(Ts),
-        Succeeded, !Acc, !Info, !IO).
-
-%---------------------------------------------------------------------------%
-
-    % foldl3_maybe_stop_at_error_X(KeepGoing, P, Globals, List, Succeeded,
-    %   !Acc, !Info).
-    %
-    % The X suffix indicates the type of the elements in the List argument.
-    %
-:- pred foldl3_maybe_stop_at_error_mi(maybe_keep_going::in,
-    foldl3_pred_with_status(module_index, Acc, Info, IO)::
-        in(foldl3_pred_with_status),
-    globals::in, list(module_index)::in, maybe_succeeded::out,
-    Acc::in, Acc::out, Info::in, Info::out, IO::di, IO::uo) is det.
-:- pred foldl3_maybe_stop_at_error_fi(maybe_keep_going::in,
-    foldl3_pred_with_status(dependency_file_index, Acc, Info, IO)::
-        in(foldl3_pred_with_status),
-    globals::in, list(dependency_file_index)::in, maybe_succeeded::out,
-    Acc::in, Acc::out, Info::in, Info::out, IO::di, IO::uo) is det.
-
-foldl3_maybe_stop_at_error_mi(KeepGoing, P, Globals, Ts, Succeeded,
-        !Acc, !Info, !IO) :-
-    foldl3_maybe_stop_at_error_loop(KeepGoing, P, Globals, Ts,
-        succeeded, Succeeded, !Acc, !Info, !IO).
-
-foldl3_maybe_stop_at_error_fi(KeepGoing, P, Globals, Ts, Succeeded,
-        !Acc, !Info, !IO) :-
-    foldl3_maybe_stop_at_error_loop(KeepGoing, P, Globals, Ts,
+    foldl3_maybe_stop_at_error_loop(KeepGoing, P, Globals, to_sorted_list(Ts),
         succeeded, Succeeded, !Acc, !Info, !IO).
 
 %---------------------%
