@@ -110,6 +110,10 @@ Changes to the Mercury standard library
 
 ### Changes to the `hash_table` module
 
+* The following predicate has been added:
+
+    - pred `lookup/3`
+
 * The following obsolete predicates have been removed:
 
     - pred `char_hash/2`
@@ -692,6 +696,10 @@ Changes to the Mercury standard library
     - pred `lookup/3`
 
 ### Changes to the `version_hash_table` module
+
+* The following predicate has been added:
+
+    - pred `lookup/3`
 
 * The following obsolete predicates have been removed:
 

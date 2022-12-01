@@ -168,6 +168,9 @@
 :- mode lookup(hash_table_ui, in) = out is det.
 % :- mode lookup(in, in) = out is det.
 
+:- pred lookup(hash_table(K, V), K, V).
+:- mode lookup(hash_table_ui, in, out) is det.
+
     % Field access for hash tables.
     % HT ^ elem(K) is equivalent to lookup(HT, K).
     %
@@ -590,11 +593,14 @@ hash_bucket_search(HB, Key, Value) :-
 
 %---------------------------------------------------------------------------%
 
-lookup(HT, K) =
-    ( if V = search(HT, K) then
-        V
+lookup(HT, K) = V :-
+    lookup(HT, K, V).
+
+lookup(HT, K, V) :-
+    ( if search(HT, K, V0) then
+        V = V0
     else
-        func_error($pred, "key not found")
+        error($pred, "key not found")
     ).
 
 % XXX The convention in other library modules is that
