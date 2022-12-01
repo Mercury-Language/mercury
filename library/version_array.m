@@ -116,6 +116,7 @@
     % (The first item has index 0).
     %
 :- func lookup(version_array(T), int) = T.
+:- pred lookup(version_array(T)::in, int::in, T::out) is det.
 
     % A ^ elem(I) = lookup(A, I)
     %
@@ -458,6 +459,9 @@ from_reverse_list_loop(I, [X | Xs], !VA) :-
 %---------------------------------------------------------------------------%
 
 lookup(VA, I) = X :-
+    lookup(VA, I, X).
+
+lookup(VA, I, X) :-
     ( if get_if_in_range(VA, I, X0) then
         X = X0
     else
@@ -465,8 +469,8 @@ lookup(VA, I) = X :-
     ).
 
 :- pragma inline(func(version_array.elem/2)).
-VA ^ elem(I) =
-    lookup(VA, I).
+VA ^ elem(I) = X :-
+    lookup(VA, I, X).
 
 %---------------------------------------------------------------------------%
 
@@ -695,7 +699,7 @@ all_true(Pred, VA) :-
 
 do_all_true(Pred, I, N, VA) :-
     ( if I < N then
-        Elem = lookup(VA, I),
+        lookup(VA, I, Elem),
         Pred(Elem),
         do_all_true(Pred, I + 1, N, VA)
     else
@@ -710,7 +714,7 @@ all_false(Pred, VA) :-
 
 do_all_false(Pred, I, N, VA) :-
     ( if I < N then
-        Elem = lookup(VA, I),
+        lookup(VA, I, Elem),
         not Pred(Elem),
         do_all_false(Pred, I + 1, N, VA)
     else
@@ -764,7 +768,8 @@ eq_version_array(VAa, VAb) :-
 
 eq_version_array_2(I, VAa, VAb) :-
     ( if I >= 0 then
-        lookup(VAa, I) = lookup(VAb, I),
+        lookup(VAa, I, Elem),
+        lookup(VAb, I, Elem),
         eq_version_array_2(I - 1, VAa, VAb)
     else
         true
@@ -795,7 +800,9 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     ( if I >= Size then
         R = (=)
       else
-        compare(R0, lookup(VAa, I), lookup(VAb, I)),
+        lookup(VAa, I, ElemA),
+        lookup(VAb, I, ElemB),
+        compare(R0, ElemA, ElemB),
         (
             R0 = (=),
             cmp_version_array_2(I + 1, Size, VAa, VAb, R)
@@ -1990,12 +1997,13 @@ version_array_to_doc(A) =
 
 :- func version_array_to_doc_2(int, version_array(T)) = doc.
 
-version_array_to_doc_2(I, VA) =
+version_array_to_doc_2(I, VA) = Doc :-
     ( if I > version_array.max(VA) then
-        str("")
+        Doc = str("")
     else
-        docs([
-            format_arg(format(lookup(VA, I))),
+        lookup(VA, I, Elem),
+        Doc = docs([
+            format_arg(format(Elem)),
             ( if I = version_array.max(VA) then
                 str("")
             else

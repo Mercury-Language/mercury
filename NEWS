@@ -685,6 +685,12 @@ Changes to the Mercury standard library
 
    - pred `empty/1`
 
+### Changes to the `version_array` module
+
+* The following predicate has been added:
+
+    - pred `lookup/3`
+
 ### Changes to the `version_hash_table` module
 
 * The following obsolete predicates have been removed:
