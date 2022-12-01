@@ -74,28 +74,12 @@
 
 %---------------------------------------------------------------------------%
 
-    % foldl3_pred_with_status(Globals, T, Succeeded, !Acc, !Info).
-    %
-:- type foldl3_pred_with_status(T, Acc, Info, IO) ==
-    pred(globals, T, maybe_succeeded, Acc, Acc, Info, Info, IO, IO).
-:- inst foldl3_pred_with_status ==
-    (pred(in, in, out, in, out, in, out, di, uo) is det).
-
     % XXX Document me.
     %
-:- pred deps_set_foldl3_maybe_stop_at_error_mi(maybe_keep_going::in,
-    foldl3_pred_with_status(module_index, Acc, Info, IO)::
-        in(foldl3_pred_with_status),
-    globals::in, deps_set(module_index)::in, maybe_succeeded::out,
-    Acc::in, Acc::out, Info::in, Info::out, IO::di, IO::uo) is det.
-
-%---------------------------------------------------------------------------%
-
-    % XXX Document me.
-    %
-    % The difference between these predicates and the previous one
-    % is that the second argument has a more specific job. That job
-    % used to be done by a predicate, union_deps, whose documentation
+    % The difference between this predicate (and its local siblings) and
+    % the old deps_set_foldl3_maybe_stop_at_error (now replaced by these
+    % predicates) is that the second argument has a more specific job.
+    % That job used to be done by a predicate, union_deps, whose documentation
     % used to say this:
     %
     % "Union the output set of dependencies for a given module
@@ -103,23 +87,10 @@
     % deps_set_foldl3_maybe_stop_at_error to iterate over a list of
     % module_names to find all target files for those modules."
     %
-:- pred deps_set_foldl3_maybe_stop_at_error_find_union_mi(
-    maybe_keep_going::in,
-    find_module_deps(module_index)::in(find_module_deps),
-    globals::in, deps_set(module_index)::in, maybe_succeeded::out,
-    deps_set(module_index)::in, deps_set(module_index)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-:- pred deps_set_foldl3_maybe_stop_at_error_find_plain_union_mi(
-    maybe_keep_going::in,
-    find_module_deps_plain_set(dependency_file)::
-        in(find_module_deps_plain_set),
-    globals::in, deps_set(module_index)::in, maybe_succeeded::out,
-    set(dependency_file)::in, set(dependency_file)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-:- pred deps_set_foldl3_maybe_stop_at_error_find_union_fi(
-    maybe_keep_going::in,
+:- pred deps_set_foldl3_maybe_stop_at_error_find_union_fi(maybe_keep_going::in,
     find_module_deps(dependency_file_index)::in(find_module_deps),
-    globals::in, deps_set(module_index)::in, maybe_succeeded::out,
+    globals::in, list(module_index)::in,
+    maybe_succeeded::in, maybe_succeeded::out,
     deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -486,8 +457,8 @@ files_of_2(FindFiles, FindDeps, Globals, ModuleIndex, Succeeded, DepIndices,
         DepIndices = init
     else
         deps_set_foldl3_maybe_stop_at_error_find_plain_union_mi(KeepGoing,
-            FindFiles, Globals, ModuleIndices, Succeeded2,
-            init, FileNames, !Info, !IO),
+            FindFiles, Globals, to_sorted_list(ModuleIndices),
+            succeeded, Succeeded2, init, FileNames, !Info, !IO),
         Succeeded = Succeeded1 `and` Succeeded2,
         dependency_files_to_index_set(set.to_sorted_list(FileNames),
             DepIndices, !Info)
@@ -512,8 +483,8 @@ map_find_module_deps_mi(FindDeps1, FindDeps2, Globals, ModuleIndex, Succeeded,
         Result = init
     else
         deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
-            FindDeps2, Globals, Modules1, Succeeded2,
-            init, Result, !Info, !IO),
+            FindDeps2, Globals, to_sorted_list(Modules1),
+            succeeded, Succeeded2, init, Result, !Info, !IO),
         Succeeded = Succeeded1 `and` Succeeded2
     ).
 
@@ -536,8 +507,8 @@ map_find_module_deps_fi(FindDeps1, FindDeps2, Globals, ModuleIndex, Succeeded,
         Result = init
     else
         deps_set_foldl3_maybe_stop_at_error_find_union_fi(KeepGoing,
-            FindDeps2, Globals, Modules1, Succeeded2,
-            init, Result, !Info, !IO),
+            FindDeps2, Globals, to_sorted_list(Modules1),
+            succeeded, Succeeded2, init, Result, !Info, !IO),
         Succeeded = Succeeded1 `and` Succeeded2
     ).
 
@@ -600,7 +571,7 @@ direct_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
                 union(Modules0, IntermodModules, Modules1),
                 deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
                     non_intermod_direct_imports, Globals,
-                    IntermodModules, Succeeded2,
+                    to_sorted_list(IntermodModules), succeeded, Succeeded2,
                     Modules1, Modules2, !Info, !IO),
                 Succeeded = Succeeded0 `and` Succeeded1 `and` Succeeded2,
                 Modules = delete(Modules2, ModuleIndex)
@@ -737,7 +708,7 @@ indirect_imports_2(Globals, FindDirectImports, ModuleIndex, Succeeded,
     else
         deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
             find_transitive_implementation_imports, Globals,
-            DirectImports, IndirectSucceeded,
+            to_sorted_list(DirectImports), succeeded, IndirectSucceeded,
             init, IndirectImports0, !Info, !IO),
         IndirectImports = difference(
             delete(IndirectImports0, ModuleIndex),
@@ -788,10 +759,11 @@ foreign_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     globals.get_backend_foreign_languages(Globals, Languages),
     intermod_imports(Globals, ModuleIndex, IntermodSucceeded, IntermodModules,
         !Info, !IO),
-    deps_set_foldl3_maybe_stop_at_error_find_union_mi(!.Info ^ mki_keep_going,
+    KeepGoing = !.Info ^ mki_keep_going,
+    deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
         find_module_foreign_imports(set.list_to_set(Languages)),
-        Globals, insert(IntermodModules, ModuleIndex),
-        ForeignSucceeded, init, Modules, !Info, !IO),
+        Globals, to_sorted_list(insert(IntermodModules, ModuleIndex)),
+        succeeded, ForeignSucceeded, init, Modules, !Info, !IO),
     Succeeded = IntermodSucceeded `and` ForeignSucceeded.
 
 :- pred find_module_foreign_imports(set(foreign_language)::in,
@@ -811,11 +783,11 @@ find_module_foreign_imports(Languages, Globals, ModuleIndex, Succeeded,
             Succeeded0, ImportedModules, !Info, !IO),
         (
             Succeeded0 = succeeded,
-            deps_set_foldl3_maybe_stop_at_error_find_union_mi(
-                !.Info ^ mki_keep_going,
+            KeepGoing = !.Info ^ mki_keep_going,
+            deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
                 find_module_foreign_imports_uncached(Languages),
-                Globals, insert(ImportedModules, ModuleIndex),
-                Succeeded, init, ForeignModules, !Info, !IO),
+                Globals, to_sorted_list(insert(ImportedModules, ModuleIndex)),
+                succeeded, Succeeded, init, ForeignModules, !Info, !IO),
             Result = deps_result(Succeeded, ForeignModules),
             CachedForeignImports1 =
                 !.Info ^ mki_cached_transitive_foreign_imports,
@@ -969,44 +941,36 @@ combine_deps_list([FindDeps1, FindDeps2 | FindDepsTail]) =
 
 %---------------------------------------------------------------------------%
 
-deps_set_foldl3_maybe_stop_at_error_mi(KeepGoing, P, Globals, Ts,
-        Succeeded, !Acc, !Info, !IO) :-
-    foldl3_maybe_stop_at_error_loop(KeepGoing, P, Globals, to_sorted_list(Ts),
-        succeeded, Succeeded, !Acc, !Info, !IO).
+    % XXX Document me.
+    %
+:- pred deps_set_foldl3_find_trans_deps(maybe_keep_going::in,
+    transitive_dependencies_type::in, module_locn::in,
+    globals::in, list(module_index)::in,
+    maybe_succeeded::in, maybe_succeeded::out,
+    deps_set(module_index)::in, deps_set(module_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-%---------------------%
-
-:- pred foldl3_maybe_stop_at_error_loop(maybe_keep_going::in,
-    foldl3_pred_with_status(T, Acc, Info, IO)::in(foldl3_pred_with_status),
-    globals::in, list(T)::in, maybe_succeeded::in, maybe_succeeded::out,
-    Acc::in, Acc::out, Info::in, Info::out, IO::di, IO::uo) is det.
-
-foldl3_maybe_stop_at_error_loop(_KeepGoing, _P, _Globals, [],
-        !Succeeded, !Acc, !Info, !IO).
-foldl3_maybe_stop_at_error_loop(KeepGoing, P, Globals, [T | Ts],
-        !Succeeded, !Acc, !Info, !IO) :-
-    P(Globals, T, NewSucceeded, !Acc, !Info, !IO),
+deps_set_foldl3_find_trans_deps(_KeepGoing, _DependenciesType,
+        _ModuleLocn, _Globals, [], !Succeeded, !Acc, !Info, !IO).
+deps_set_foldl3_find_trans_deps(KeepGoing, DependenciesType,
+        ModuleLocn, Globals, [T | Ts], !Succeeded, !Acc, !Info, !IO) :-
+    find_transitive_module_dependencies_uncached(KeepGoing, DependenciesType,
+        ModuleLocn, Globals, T, NewSucceeded, !Acc, !Info, !IO),
     ( if
         ( NewSucceeded = succeeded
         ; KeepGoing = do_keep_going
         )
     then
         !:Succeeded = !.Succeeded `and` NewSucceeded,
-        foldl3_maybe_stop_at_error_loop(KeepGoing, P, Globals, Ts,
-            !Succeeded, !Acc, !Info, !IO)
+        deps_set_foldl3_find_trans_deps(KeepGoing, DependenciesType,
+            ModuleLocn, Globals, Ts, !Succeeded, !Acc, !Info, !IO)
     else
         !:Succeeded = did_not_succeed
     ).
 
 %---------------------------------------------------------------------------%
 
-deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
-        FindDeps, Globals, ModuleIndexes, Succeeded, !Deps, !Info, !IO) :-
-    deps_set_foldl3_maybe_stop_at_error_find_union_loop_mi(KeepGoing,
-        FindDeps, Globals, to_sorted_list(ModuleIndexes),
-        succeeded, Succeeded, !Deps, !Info, !IO).
-
-:- pred deps_set_foldl3_maybe_stop_at_error_find_union_loop_mi(
+:- pred deps_set_foldl3_maybe_stop_at_error_find_union_mi(
     maybe_keep_going::in,
     find_module_deps(module_index)::in(find_module_deps),
     globals::in, list(module_index)::in,
@@ -1014,9 +978,9 @@ deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
     deps_set(module_index)::in, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-deps_set_foldl3_maybe_stop_at_error_find_union_loop_mi(_KeepGoing,
+deps_set_foldl3_maybe_stop_at_error_find_union_mi(_KeepGoing,
         _FindDeps, _Globals, [], !Succeeded, !Deps, !Info, !IO).
-deps_set_foldl3_maybe_stop_at_error_find_union_loop_mi(KeepGoing,
+deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
         FindDeps, Globals, [MI | MIs], !Succeeded, !Deps, !Info, !IO) :-
     FindDeps(Globals, MI, NewSucceeded, NewDeps, !Info, !IO),
     union(NewDeps, !Deps),
@@ -1026,7 +990,7 @@ deps_set_foldl3_maybe_stop_at_error_find_union_loop_mi(KeepGoing,
         )
     then
         !:Succeeded = !.Succeeded `and` NewSucceeded,
-        deps_set_foldl3_maybe_stop_at_error_find_union_loop_mi(KeepGoing,
+        deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
             FindDeps, Globals, MIs, !Succeeded, !Deps, !Info, !IO)
     else
         !:Succeeded = did_not_succeed
@@ -1034,13 +998,7 @@ deps_set_foldl3_maybe_stop_at_error_find_union_loop_mi(KeepGoing,
 
 %---------------------%
 
-deps_set_foldl3_maybe_stop_at_error_find_plain_union_mi(KeepGoing,
-        FindDeps, Globals, ModuleIndexes, Succeeded, !Deps, !Info, !IO) :-
-    deps_set_foldl3_maybe_stop_at_error_find_plain_union_loop_mi(KeepGoing,
-        FindDeps, Globals, to_sorted_list(ModuleIndexes),
-        succeeded, Succeeded, !Deps, !Info, !IO).
-
-:- pred deps_set_foldl3_maybe_stop_at_error_find_plain_union_loop_mi(
+:- pred deps_set_foldl3_maybe_stop_at_error_find_plain_union_mi(
     maybe_keep_going::in,
     find_module_deps_plain_set(dependency_file)::
         in(find_module_deps_plain_set),
@@ -1049,9 +1007,9 @@ deps_set_foldl3_maybe_stop_at_error_find_plain_union_mi(KeepGoing,
     set(dependency_file)::in, set(dependency_file)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-deps_set_foldl3_maybe_stop_at_error_find_plain_union_loop_mi(_KeepGoing,
+deps_set_foldl3_maybe_stop_at_error_find_plain_union_mi(_KeepGoing,
         _FindDeps, _Globals, [], !Succeeded, !Deps, !Info, !IO).
-deps_set_foldl3_maybe_stop_at_error_find_plain_union_loop_mi(KeepGoing,
+deps_set_foldl3_maybe_stop_at_error_find_plain_union_mi(KeepGoing,
         FindDeps, Globals, [MI | MIs], !Succeeded, !Deps, !Info, !IO) :-
     FindDeps(Globals, MI, NewSucceeded, NewDeps, !Info, !IO),
     set.union(NewDeps, !Deps),
@@ -1061,7 +1019,7 @@ deps_set_foldl3_maybe_stop_at_error_find_plain_union_loop_mi(KeepGoing,
         )
     then
         !:Succeeded = !.Succeeded `and` NewSucceeded,
-        deps_set_foldl3_maybe_stop_at_error_find_plain_union_loop_mi(KeepGoing,
+        deps_set_foldl3_maybe_stop_at_error_find_plain_union_mi(KeepGoing,
             FindDeps, Globals, MIs, !Succeeded, !Deps, !Info, !IO)
     else
         !:Succeeded = did_not_succeed
@@ -1069,23 +1027,9 @@ deps_set_foldl3_maybe_stop_at_error_find_plain_union_loop_mi(KeepGoing,
 
 %---------------------%
 
-deps_set_foldl3_maybe_stop_at_error_find_union_fi(KeepGoing,
-        FindDeps, Globals, ModuleIndexes, Succeeded, !Deps, !Info, !IO) :-
-    deps_set_foldl3_maybe_stop_at_error_find_union_loop_fi(KeepGoing,
-        FindDeps, Globals, to_sorted_list(ModuleIndexes),
-        succeeded, Succeeded, !Deps, !Info, !IO).
-
-:- pred deps_set_foldl3_maybe_stop_at_error_find_union_loop_fi(
-    maybe_keep_going::in,
-    find_module_deps(dependency_file_index)::in(find_module_deps),
-    globals::in, list(module_index)::in,
-    maybe_succeeded::in, maybe_succeeded::out,
-    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-deps_set_foldl3_maybe_stop_at_error_find_union_loop_fi(_KeepGoing,
+deps_set_foldl3_maybe_stop_at_error_find_union_fi(_KeepGoing,
         _FindDeps, _Globals, [], !Succeeded, !Deps, !Info, !IO).
-deps_set_foldl3_maybe_stop_at_error_find_union_loop_fi(KeepGoing,
+deps_set_foldl3_maybe_stop_at_error_find_union_fi(KeepGoing,
         FindDeps, Globals, [MI | MIs], !Succeeded, !Deps, !Info, !IO) :-
     FindDeps(Globals, MI, NewSucceeded, NewDeps, !Info, !IO),
     union(NewDeps, !Deps),
@@ -1095,7 +1039,7 @@ deps_set_foldl3_maybe_stop_at_error_find_union_loop_fi(KeepGoing,
         )
     then
         !:Succeeded = !.Succeeded `and` NewSucceeded,
-        deps_set_foldl3_maybe_stop_at_error_find_union_loop_fi(KeepGoing,
+        deps_set_foldl3_maybe_stop_at_error_find_union_fi(KeepGoing,
             FindDeps, Globals, MIs, !Succeeded, !Deps, !Info, !IO)
     else
         !:Succeeded = did_not_succeed
@@ -1134,23 +1078,24 @@ find_transitive_module_dependencies(Globals, DependenciesType, ModuleLocn,
         Result0 = deps_result(Succeeded, Modules)
     else
         KeepGoing = !.Info ^ mki_keep_going,
-        find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
-            ModuleLocn, Globals, ModuleIndex, Succeeded, init, Modules,
-            !Info, !IO),
+        find_transitive_module_dependencies_uncached(KeepGoing,
+            DependenciesType, ModuleLocn, Globals, ModuleIndex, Succeeded,
+            init, Modules, !Info, !IO),
         Result = deps_result(Succeeded, Modules),
         CachedTransDeps1 = !.Info ^ mki_cached_transitive_dependencies,
         map.det_insert(DepsRoot, Result, CachedTransDeps1, CachedTransDeps),
         !Info ^ mki_cached_transitive_dependencies := CachedTransDeps
     ).
 
-:- pred find_transitive_module_dependencies_2(maybe_keep_going::in,
+:- pred find_transitive_module_dependencies_uncached(maybe_keep_going::in,
     transitive_dependencies_type::in, module_locn::in, globals::in,
     module_index::in, maybe_succeeded::out,
     deps_set(module_index)::in, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
-        Globals, ModuleIndex, Succeeded, Modules0, Modules, !Info, !IO) :-
+find_transitive_module_dependencies_uncached(KeepGoing, DependenciesType,
+        ModuleLocn, Globals, ModuleIndex, Succeeded, Modules0, Modules,
+        !Info, !IO) :-
     ( if
         member(ModuleIndex, Modules0)
     then
@@ -1221,17 +1166,13 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                 % at all, but rather a separate parameter of this predicate.
                 OldImportingModule = !.Info ^ mki_importing_module,
                 !Info ^ mki_importing_module := yes(ioi_import(ModuleName)),
-                deps_set_foldl3_maybe_stop_at_error_mi(KeepGoing,
-                    find_transitive_module_dependencies_2(KeepGoing,
-                        DependenciesType, ModuleLocn),
-                    Globals, ImportsToCheckSet, SucceededA, Modules1, Modules2,
-                    !Info, !IO),
+                deps_set_foldl3_find_trans_deps(KeepGoing, DependenciesType,
+                    ModuleLocn, Globals, to_sorted_list(ImportsToCheckSet),
+                    succeeded, SucceededA, Modules1, Modules2, !Info, !IO),
                 !Info ^ mki_importing_module := yes(ioi_include(ModuleName)),
-                deps_set_foldl3_maybe_stop_at_error_mi(KeepGoing,
-                    find_transitive_module_dependencies_2(KeepGoing,
-                        DependenciesType, ModuleLocn),
-                    Globals, IncludesToCheckSet, SucceededB, Modules2, Modules,
-                    !Info, !IO),
+                deps_set_foldl3_find_trans_deps(KeepGoing, DependenciesType,
+                    ModuleLocn, Globals, to_sorted_list(IncludesToCheckSet),
+                    succeeded, SucceededB, Modules2, Modules, !Info, !IO),
                 !Info ^ mki_importing_module := OldImportingModule,
                 Succeeded = SucceededA `and` SucceededB
             else

@@ -216,8 +216,9 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
 
         deps_set_foldl3_maybe_stop_at_error_find_union_fi(
             !.Info ^ mki_keep_going, target_dependencies(Globals, TargetType),
-            Globals, ModulesToCheckSet, DepsSucceeded,
-            sparse_bitset.init, DepFiles0, !Info, !IO),
+            Globals, to_sorted_list(ModulesToCheckSet),
+            succeeded, DepsSucceeded, sparse_bitset.init, DepFiles0,
+            !Info, !IO),
         dependency_file_index_set_to_plain_set(!.Info, DepFiles0,
             DepFilesSet0),
         ( if TargetType = module_target_int0 then
