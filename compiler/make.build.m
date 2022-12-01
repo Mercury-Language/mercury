@@ -21,7 +21,6 @@
 :- import_module libs.globals.
 :- import_module libs.maybe_succeeded.
 :- import_module make.dependencies.
-:- import_module make.deps_set.
 :- import_module make.make_info.
 :- import_module make.options_file.
 :- import_module mdbcomp.
@@ -138,34 +137,6 @@
 :- pred foldl2_make_top_targets(maybe_keep_going::in,
     globals::in, list(top_target_file)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
-
-    % foldl3_pred_with_status(Globals, T, Succeeded, !Acc, !Info).
-    %
-:- type foldl3_pred_with_status(T, Acc, Info, IO) ==
-    pred(globals, T, maybe_succeeded, Acc, Acc, Info, Info, IO, IO).
-:- inst foldl3_pred_with_status ==
-    (pred(in, in, out, in, out, in, out, di, uo) is det).
-
-    % foldl3_maybe_stop_at_error_X(KeepGoing, P, Globals, List, Succeeded,
-    %   !Acc, !Info).
-    %
-    % The X suffix indicates the type of the elements in the List argument.
-    %
-:- pred foldl3_maybe_stop_at_error_mi(maybe_keep_going::in,
-    foldl3_pred_with_status(module_index, Acc, Info, IO)::
-        in(foldl3_pred_with_status),
-    globals::in, list(module_index)::in, maybe_succeeded::out,
-    Acc::in, Acc::out, Info::in, Info::out, IO::di, IO::uo) is det.
-:- pred foldl3_maybe_stop_at_error_fi(maybe_keep_going::in,
-    foldl3_pred_with_status(dependency_file_index, Acc, Info, IO)::
-        in(foldl3_pred_with_status),
-    globals::in, list(dependency_file_index)::in, maybe_succeeded::out,
-    Acc::in, Acc::out, Info::in, Info::out, IO::di, IO::uo) is det.
-:- pred foldl3_maybe_stop_at_error_sn(maybe_keep_going::in,
-    foldl3_pred_with_status(sym_name, Acc, Info, IO)::
-        in(foldl3_pred_with_status),
-    globals::in, list(sym_name)::in, maybe_succeeded::out,
-    Acc::in, Acc::out, Info::in, Info::out, IO::di, IO::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -401,47 +372,6 @@ foldl2_maybe_stop_at_error_loop(KeepGoing, P, Globals,
         !:Succeeded = !.Succeeded `and` NewSucceeded,
         foldl2_maybe_stop_at_error_loop(KeepGoing, P, Globals, Ts,
             !Succeeded, !Info, !IO)
-    else
-        !:Succeeded = did_not_succeed
-    ).
-
-%---------------------------------------------------------------------------%
-
-foldl3_maybe_stop_at_error_mi(KeepGoing, P, Globals, Ts, Succeeded,
-        !Acc, !Info, !IO) :-
-    foldl3_maybe_stop_at_error_loop(KeepGoing, P, Globals, Ts,
-        succeeded, Succeeded, !Acc, !Info, !IO).
-
-foldl3_maybe_stop_at_error_fi(KeepGoing, P, Globals, Ts, Succeeded,
-        !Acc, !Info, !IO) :-
-    foldl3_maybe_stop_at_error_loop(KeepGoing, P, Globals, Ts,
-        succeeded, Succeeded, !Acc, !Info, !IO).
-
-foldl3_maybe_stop_at_error_sn(KeepGoing, P, Globals, Ts, Succeeded,
-        !Acc, !Info, !IO) :-
-    foldl3_maybe_stop_at_error_loop(KeepGoing, P, Globals, Ts,
-        succeeded, Succeeded, !Acc, !Info, !IO).
-
-%---------------------%
-
-:- pred foldl3_maybe_stop_at_error_loop(maybe_keep_going::in,
-    foldl3_pred_with_status(T, Acc, Info, IO)::in(foldl3_pred_with_status),
-    globals::in, list(T)::in, maybe_succeeded::in, maybe_succeeded::out,
-    Acc::in, Acc::out, Info::in, Info::out, IO::di, IO::uo) is det.
-
-foldl3_maybe_stop_at_error_loop(_KeepGoing, _P, _Globals, [],
-        !Succeeded, !Acc, !Info, !IO).
-foldl3_maybe_stop_at_error_loop(KeepGoing, P, Globals, [T | Ts],
-        !Succeeded, !Acc, !Info, !IO) :-
-    P(Globals, T, NewSucceeded, !Acc, !Info, !IO),
-    ( if
-        ( NewSucceeded = succeeded
-        ; KeepGoing = do_keep_going
-        )
-    then
-        !:Succeeded = !.Succeeded `and` NewSucceeded,
-        foldl3_maybe_stop_at_error_loop(KeepGoing, P, Globals, Ts,
-            !Succeeded, !Acc, !Info, !IO)
     else
         !:Succeeded = did_not_succeed
     ).
