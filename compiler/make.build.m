@@ -140,7 +140,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % foldl_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts,
+    % foldl2_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts,
     %   Globals, Targets, Succeeded, !Info, !IO):
     %
     % Like foldl2_make_module_targets, but if parallel make is enabled,
@@ -151,7 +151,7 @@
     % are kept. Hence it must be safe to execute make_module_target
     % concurrently, in any order, and multiple times.
     %
-:- pred foldl_make_module_targets_maybe_parallel(maybe_keep_going::in,
+:- pred foldl2_make_module_targets_maybe_parallel(maybe_keep_going::in,
     list(string)::in,
     globals::in, list(dependency_file)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -381,7 +381,7 @@ foldl2_maybe_stop_at_error_loop(KeepGoing, P, Globals,
 % Parallel (concurrent) fold.
 %
 
-foldl_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts, Globals,
+foldl2_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts, Globals,
         Targets, Succeeded, !Info, !IO) :-
     globals.lookup_int_option(Globals, jobs, Jobs),
     ( if

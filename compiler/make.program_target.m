@@ -253,7 +253,7 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
         then
             BuildDepsSucceeded = did_not_succeed
         else
-            foldl_make_module_targets_maybe_parallel(KeepGoing,
+            foldl2_make_module_targets_maybe_parallel(KeepGoing,
                 [], Globals, IntermediateTargetsNonnested,
                 BuildDepsSucceeded0, !Info, !IO),
             (
@@ -267,7 +267,7 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
                         % otherwise all the Java classes will be built again.
                         globals.set_option(rebuild, bool(no),
                             Globals, NoRebuildGlobals),
-                        foldl_make_module_targets_maybe_parallel(KeepGoing,
+                        foldl2_make_module_targets_maybe_parallel(KeepGoing,
                             [], NoRebuildGlobals, ObjTargets,
                             BuildDepsSucceeded1, !Info, !IO)
                     ;
@@ -275,7 +275,7 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
                         BuildDepsSucceeded1 = did_not_succeed
                     )
                 else
-                    foldl_make_module_targets_maybe_parallel(KeepGoing,
+                    foldl2_make_module_targets_maybe_parallel(KeepGoing,
                         [], Globals, ObjTargets,
                         BuildDepsSucceeded1, !Info, !IO)
                 )
@@ -901,7 +901,7 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
                 Succeeded = did_not_succeed
             else
                 maybe_with_analysis_cache_dir_2(Globals,
-                    foldl_make_module_targets_maybe_parallel(KeepGoing,
+                    foldl2_make_module_targets_maybe_parallel(KeepGoing,
                         [], Globals,
                         make_dependency_list(TargetModules, ModuleTargetType)),
                     Succeeded2, !Info, !IO),
@@ -987,11 +987,11 @@ make_all_interface_files(Globals, AllModules0, Succeeded, !Info, !IO) :-
             Globals, Int0s, Succeeded1, !Info, !IO),
         (
             Succeeded1 = succeeded,
-            foldl2_make_module_targets(KeepGoing, [],
+            foldl2_make_module_targets_maybe_parallel(KeepGoing, [],
                 Globals, Int1s, Succeeded2, !Info, !IO),
             (
                 Succeeded2 = succeeded,
-                foldl2_make_module_targets(KeepGoing, [],
+                foldl2_make_module_targets_maybe_parallel(KeepGoing, [],
                     Globals, Opts, Succeeded, !Info, !IO)
             ;
                 Succeeded2 = did_not_succeed,
