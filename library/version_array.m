@@ -146,10 +146,16 @@
     %
 :- pred is_empty(version_array(T)::in) is semidet.
 
-    % resize(A, N, X) returns a new array whose items from
-    % 0..min(size(A), N - 1) are taken from A and whose items
-    % from min(size(A), N - 1)..(N - 1) (if any) are initialised to X.
-    % A predicate version is also provided.
+    % resize(Array0, NewSize, NewValue) = Array:
+    % resize(NewSize, NewValue, Array0, Array):
+    %
+    % Return in Array a new array of size NewSize
+    %
+    % - whose items at indices from 0 to min(size(Array0), NewSize) - 1
+    %   are taken from Array0, and
+    %
+    % - whose items at indices from min(size(Array0), NewSize) to (NewSize - 1)
+    %   (if any such items exist) are initialised to NewValue.
     %
 :- func resize(version_array(T), int, T) = version_array(T).
 :- pred resize(int::in, T::in, version_array(T)::in, version_array(T)::out)
