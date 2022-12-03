@@ -156,41 +156,57 @@
 report_unsatisfiable_constraints(ClauseContext, Context, TypeAssignSet)
         = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    list.map_foldl(constraints_to_pieces, TypeAssignSet, ConstraintPieceLists,
-        0, NumUnsatisfied),
-    ( if NumUnsatisfied = 1 then
-        Pieces1 = [words("unsatisfiable typeclass constraint:"), nl]
+    list.filter_map(unproven_constraints_to_pieces, TypeAssignSet,
+        UnprovenNumConstraintPieceLists0),
+    % It is possible for the same unproven constraint, or the same set
+    % of unproven constraints, to occur in more than one type_assign.
+    list.sort_and_remove_dups(UnprovenNumConstraintPieceLists0,
+        UnprovenNumConstraintPieceLists),
+    ( if UnprovenNumConstraintPieceLists = [1 - UnprovenConstraintPieces] then
+        ErrorPieces = [words("unsatisfiable typeclass constraint:"), nl |
+            UnprovenConstraintPieces] ++ [suffix("."), nl]
     else
-        Pieces1 = [words("unsatisfiable typeclass constraints:"), nl]
+        assoc_list.values(UnprovenNumConstraintPieceLists,
+            UnprovenConstraintPieceLists),
+        % XXX This won't be very pretty when there are multiple type_assigns.
+        ErrorPieces = [words("unsatisfiable typeclass constraints:"), nl |
+            component_list_to_line_pieces(UnprovenConstraintPieceLists,
+                [suffix("."), nl])]
     ),
-    % XXX This won't be very pretty when there are multiple type_assigns.
-    Pieces2 = component_list_to_line_pieces(ConstraintPieceLists,
-        [suffix("."), nl]),
     Spec = simplest_spec($pred, severity_error, phase_type_check, Context,
-        InClauseForPieces ++ Pieces1 ++ Pieces2).
+        InClauseForPieces ++ ErrorPieces).
 
-:- pred constraints_to_pieces(type_assign::in, list(format_piece)::out,
-    int::in, int::out) is det.
+:- pred unproven_constraints_to_pieces(type_assign::in,
+    pair(int, list(format_piece))::out) is semidet.
 
-constraints_to_pieces(TypeAssign, Pieces, !NumUnsatisfied) :-
+unproven_constraints_to_pieces(TypeAssign, NumUnproven - Pieces) :-
     type_assign_get_typeclass_constraints(TypeAssign, Constraints),
     UnprovenConstraints = Constraints ^ hcs_unproven,
-    retrieve_prog_constraint_list(UnprovenConstraints,
-        UnprovenProgConstraints0),
+    (
+        UnprovenConstraints = [],
+        fail
+    ;
+        UnprovenConstraints = [_ | _],
+        require_det (
+            retrieve_prog_constraint_list(UnprovenConstraints,
+                UnprovenProgConstraints0),
 
-    type_assign_get_typevarset(TypeAssign, TVarSet),
-    type_assign_get_type_bindings(TypeAssign, Bindings),
-    apply_rec_subst_to_prog_constraint_list(Bindings,
-        UnprovenProgConstraints0, UnprovenProgConstraints1),
-    list.sort_and_remove_dups(UnprovenProgConstraints1,
-        UnprovenProgConstraints),
-    !:NumUnsatisfied = !.NumUnsatisfied + list.length(UnprovenProgConstraints),
-    UnprovenProgConstraintStrings =
-        list.map(mercury_constraint_to_string(TVarSet, print_name_only),
-            UnprovenProgConstraints),
-    UnprovenProgConstraintsPieces =
-        list.map(wrap_quote, UnprovenProgConstraintStrings),
-    Pieces = component_list_to_pieces("and", UnprovenProgConstraintsPieces).
+            type_assign_get_typevarset(TypeAssign, TVarSet),
+            type_assign_get_type_bindings(TypeAssign, Bindings),
+            apply_rec_subst_to_prog_constraint_list(Bindings,
+                UnprovenProgConstraints0, UnprovenProgConstraints1),
+            list.sort_and_remove_dups(UnprovenProgConstraints1,
+                UnprovenProgConstraints),
+            list.length(UnprovenProgConstraints, NumUnproven),
+            UnprovenProgConstraintStrings = list.map(
+                mercury_constraint_to_string(TVarSet, print_name_only),
+                UnprovenProgConstraints),
+            UnprovenProgConstraintsPieces =
+                list.map(wrap_quote, UnprovenProgConstraintStrings),
+            Pieces = component_list_to_pieces("and",
+                UnprovenProgConstraintsPieces)
+        )
+    ).
 
 :- func wrap_quote(string) = format_piece.
 
