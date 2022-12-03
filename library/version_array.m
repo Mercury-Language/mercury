@@ -149,13 +149,13 @@
     % resize(Array0, NewSize, NewValue) = Array:
     % resize(NewSize, NewValue, Array0, Array):
     %
-    % Return in Array a new array of size NewSize
+    % Return in Array a new array whose size is NewSize.
     %
-    % - whose items at indices from 0 to min(size(Array0), NewSize) - 1
-    %   are taken from Array0, and
+    % Each slot in Array will be filled with the value from the corresponding
+    % slot in Array0, if there is one.
     %
-    % - whose items at indices from min(size(Array0), NewSize) to (NewSize - 1)
-    %   (if any such items exist) are initialised to NewValue.
+    % When NewSize is greater than size(Array0), Array will have more slots
+    % than Array0. All those extra slots will be initialised to NewValue.
     %
 :- func resize(version_array(T), int, T) = version_array(T).
 :- pred resize(int::in, T::in, version_array(T)::in, version_array(T)::out)
