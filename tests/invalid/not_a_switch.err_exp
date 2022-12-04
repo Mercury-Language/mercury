@@ -2,7 +2,8 @@ not_a_switch.m:014: In `not_a_switch'(in, out):
 not_a_switch.m:014:   error: determinism declaration not satisfied.
 not_a_switch.m:014:   Declared `det', inferred `nondet'.
 not_a_switch.m:014:   The reasons for the difference are the following.
-not_a_switch.m:019:   Disjunction has multiple clauses with solutions.
+not_a_switch.m:019:   Disjunction has more than one disjunct with solutions.
 not_a_switch.m:021:   Unification of `A' and `maybe.yes(Int2)' can fail.
 not_a_switch.m:022:   In argument 1 of clause head:
 not_a_switch.m:022:   unification of `HeadVar__1' and `maybe.no' can fail.
+not_a_switch.m:022:   This later disjunct may have a solution.

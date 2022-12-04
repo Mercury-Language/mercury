@@ -155,6 +155,7 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
+:- import_module bag.
 :- import_module bool.
 :- import_module getopt.
 :- import_module int.
@@ -576,7 +577,7 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
         % that will often be the case, and should not be warned about.
     ).
 
-:- pred report_determinism_problem(module_info::in, pred_proc_id::in, 
+:- pred report_determinism_problem(module_info::in, pred_proc_id::in,
     list(format_piece)::in, list(format_piece)::in,
     determinism::in, determinism::in, error_msg::out) is det.
 
@@ -665,21 +666,37 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
             Msgs)
     ;
         GoalExpr = disj(Goals),
+        % We use bags instead of sets because it is possible (though it is
+        % *incredibly* rare) for more than one disjunct to have the same
+        % context, and we don't want to mistake two possibly-successful
+        % disjuncts that have the same context, which call for a message here,
+        % with just one possibly-successful disjunct, which does not.
         det_diagnose_disj(Goals, InstMap0, Desired, Actual, SwitchContexts,
-            !DetInfo, 0, DisjunctsWithSoln, Msgs1),
+            !DetInfo, bag.init, DisjunctsWithSolnSet, Msgs1),
         determinism_components(Desired, _, DesSolns),
+        bag.to_list(DisjunctsWithSolnSet, DisjunctsWithSoln),
         ( if
             DesSolns \= at_most_many,
             DesSolns \= at_most_many_cc,
-            DisjunctsWithSoln > 1
+            DisjunctsWithSoln = [FirstContext | LaterContexts],
+            LaterContexts = [_ | _]
         then
-            Context = goal_info_get_context(GoalInfo),
             det_diagnose_switch_context(!.DetInfo, SwitchContexts,
                 NestingPieces),
-            DisjPieces = [lower_case_next_if_not_first,
-                words("Disjunction has multiple clauses with solutions."), nl],
-            Msg = simplest_msg(Context, NestingPieces ++ DisjPieces),
-            Msgs = [Msg] ++ Msgs1
+            FirstDisjPieces = [lower_case_next_if_not_first,
+                words("Disjunction has more than one disjunct"),
+                words("with solutions."), nl],
+            FirstMsg =
+                simplest_msg(FirstContext, NestingPieces ++ FirstDisjPieces),
+            MakeLaterMsgs =
+                ( func(LaterContext) = LaterMsg :-
+                    LaterDisjPieces = [
+                        words("This later disjunct may have a solution."), nl],
+                    LaterMsg =
+                        simplest_msg(LaterContext, LaterDisjPieces)
+                ),
+            LaterMsgs = list.map(MakeLaterMsgs, LaterContexts),
+            Msgs = [FirstMsg | LaterMsgs] ++ Msgs1
         else
             Msgs = Msgs1
         )
@@ -867,7 +884,8 @@ det_diagnose_conj([Goal | Goals], InstMap0, Desired, SwitchContexts, !DetInfo,
 
 :- pred det_diagnose_disj(list(hlds_goal)::in, instmap::in,
     determinism::in, determinism::in, list(switch_context)::in,
-    det_info::in, det_info::out, int::in, int::out, list(error_msg)::out)
+    det_info::in, det_info::out,
+    bag(prog_context)::in, bag(prog_context)::out, list(error_msg)::out)
     is det.
 
 det_diagnose_disj([], _InstMap0, _Desired, _Actual, _SwitchContexts,
@@ -893,14 +911,15 @@ det_diagnose_disj([Goal | Goals], InstMap0, Desired, Actual, SwitchContexts,
     determinism_components(ClauseDesired, ClauseCanFail, DesiredSolns),
     det_diagnose_goal(Goal, InstMap0, ClauseDesired, SwitchContexts, !DetInfo,
         Msgs1),
+    Goal = hlds_goal(_, GoalInfo),
     ( if
-        Goal = hlds_goal(_, GoalInfo),
         GoalDetism = goal_info_get_determinism(GoalInfo),
         determinism_components(GoalDetism, _, at_most_zero)
     then
         true
     else
-        !:DisjunctsWithSoln = !.DisjunctsWithSoln + 1
+        GoalContext = goal_info_get_context(GoalInfo),
+        bag.insert(GoalContext, !DisjunctsWithSoln)
     ),
     det_diagnose_disj(Goals, InstMap0, Desired, Actual, SwitchContexts,
         !DetInfo, !DisjunctsWithSoln, Msgs2),

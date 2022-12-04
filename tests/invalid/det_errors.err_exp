@@ -51,7 +51,8 @@ det_errors.m:066:     `h'/1 or
 det_errors.m:066:     `i'/1.
 det_errors.m:075:   Inside the case u4(V_17) of the switch on U:
 det_errors.m:075:   inside the case d/0 of the switch on V_17:
-det_errors.m:075:   disjunction has multiple clauses with solutions.
+det_errors.m:075:   disjunction has more than one disjunct with solutions.
+det_errors.m:078:   This later disjunct may have a solution.
 det_errors.m:035: In `s'(in, out):
 det_errors.m:035:   error: determinism declaration not satisfied.
 det_errors.m:035:   Declared `det', inferred `nondet'.
@@ -68,10 +69,13 @@ det_errors.m:096:     `h'/1 or
 det_errors.m:096:     `i'/1.
 det_errors.m:116:   Inside the case u4(V) of the switch on U:
 det_errors.m:116:   inside the case d/0 of the switch on V:
-det_errors.m:116:   disjunction has multiple clauses with solutions.
-det_errors.m:124:   Inside the case u4(V) of the switch on U:
-det_errors.m:124:   inside the case e/0, f/0 of the switch on V:
-det_errors.m:124:   disjunction has multiple clauses with solutions.
-det_errors.m:134:   Inside the case u4(V) of the switch on U:
-det_errors.m:134:   inside the case h/1, i/1 of the switch on V:
-det_errors.m:134:   disjunction has multiple clauses with solutions.
+det_errors.m:116:   disjunction has more than one disjunct with solutions.
+det_errors.m:119:   This later disjunct may have a solution.
+det_errors.m:125:   Inside the case u4(V) of the switch on U:
+det_errors.m:125:   inside the case e/0, f/0 of the switch on V:
+det_errors.m:125:   disjunction has more than one disjunct with solutions.
+det_errors.m:126:   This later disjunct may have a solution.
+det_errors.m:135:   Inside the case u4(V) of the switch on U:
+det_errors.m:135:   inside the case h/1, i/1 of the switch on V:
+det_errors.m:135:   disjunction has more than one disjunct with solutions.
+det_errors.m:136:   This later disjunct may have a solution.

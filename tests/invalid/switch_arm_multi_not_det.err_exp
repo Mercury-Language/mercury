@@ -2,11 +2,13 @@ switch_arm_multi_not_det.m:034: Error: the arms of the switch on Name are
 switch_arm_multi_not_det.m:034:   required have a determinism that is
 switch_arm_multi_not_det.m:034:   acceptable in a `det' context, but the actual
 switch_arm_multi_not_det.m:034:   determinism of the arm for "c" is `cc_multi'.
-switch_arm_multi_not_det.m:034:   Disjunction has multiple clauses with
+switch_arm_multi_not_det.m:034:   Disjunction has more than one disjunct with
 switch_arm_multi_not_det.m:034:   solutions.
+switch_arm_multi_not_det.m:035:   This later disjunct may have a solution.
 switch_arm_multi_not_det.m:036: Error: the arms of the switch on Name are
 switch_arm_multi_not_det.m:036:   required have a determinism that is
 switch_arm_multi_not_det.m:036:   acceptable in a `det' context, but the actual
 switch_arm_multi_not_det.m:036:   determinism of the arm for "d" is `cc_multi'.
-switch_arm_multi_not_det.m:036:   Disjunction has multiple clauses with
+switch_arm_multi_not_det.m:036:   Disjunction has more than one disjunct with
 switch_arm_multi_not_det.m:036:   solutions.
+switch_arm_multi_not_det.m:037:   This later disjunct may have a solution.

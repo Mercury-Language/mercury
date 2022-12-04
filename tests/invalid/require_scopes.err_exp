@@ -15,4 +15,5 @@ require_scopes.m:109: Error: the arms of the switch on B are required have a
 require_scopes.m:109:   determinism that is acceptable in a `semidet' context,
 require_scopes.m:109:   but the actual determinism of the arm for 10 is
 require_scopes.m:109:   `multi'.
-require_scopes.m:111:   Disjunction has multiple clauses with solutions.
+require_scopes.m:110:   Disjunction has more than one disjunct with solutions.
+require_scopes.m:111:   This later disjunct may have a solution.
