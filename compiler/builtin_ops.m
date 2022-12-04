@@ -171,24 +171,42 @@
     ;       scalar_elem_int       % mlds_native_int_type
     ;       scalar_elem_generic.  % mlds_generic_type
 
-    % test_if_builtin(ModuleName, PredName, ProcId, Args):
+    % test_if_builtin(ModuleName, PredName, PredFormArity):
     %
-    % Given a module name, a predicate name, a proc_id and a list of the
-    % arguments, find out if that procedure of that predicate is an inline
-    % builtin.
+    % Given the identity of a predicate, or a function, in the form of
     %
-:- pred test_if_builtin(module_name::in, string::in, proc_id::in,
-    list(T)::in) is semidet.
+    % - the module in which it is defined,
+    % - its name, and
+    % - its pred form arity, i.e. the number of its argument including
+    %   any function result argument,
+    %
+    % succeed iff that predicate or function is an inline builtin.
+    % 
+    % Note that we don't have to know whether the entity being asked about
+    % is a predicate or a function. This is because of all of our inline
+    % builtin operations are defined in a few modules of the standard library,
+    % and we main an invariant in these modules. This states that
+    %
+    % - given a builtin predicate Module.Name/Arity, either
+    %   there is no corresponding function Module.Name/Arity-1,
+    %   or there is, but its semantics is exactly the same as the predicate's,
+    %   and
+    %
+    % - given a builtin function Module.Name/Arity, either
+    %   there is no corresponding predicate Module.Name/Arity+1,
+    %   or there is, but its semantics is exactly the same as the function's.
+    %
+:- pred test_if_builtin(module_name::in, string::in, int::in) is semidet.
 
     % translate_builtin(ModuleName, PredName, ProcId, Args, Code):
     %
-    % This predicate should be invoked only in cases where
-    % test_if_builtin(ModuleName, PredName, ProcId, Args) has succeeded.
+    % This predicate should be invoked only on predicates and functions
+    % for which test_if_builtin has succeeded.
     %
     % In such cases, it returns an abstract representation of the code
-    % that can be used to evaluate that call, which will be either
-    % an assignment (if the builtin is det) or a test (if the builtin
-    % is semidet).
+    % that can be used to evaluate a call to the predicate or function
+    % with the given arguments, which will be either an assignment or a noop
+    % (if the builtin is det) or a test (if the builtin is semidet).
     %
     % There are some further guarantees on the form of the expressions
     % in the code returned, expressed in the form of the insts below.
@@ -267,9 +285,15 @@
 
 %-----------------------------------------------------------------------------%
 
-test_if_builtin(FullyQualifiedModule, PredName, ProcId, Args) :-
+test_if_builtin(FullyQualifiedModule, PredName, Arity) :-
     is_std_lib_module_name(FullyQualifiedModule, ModuleName),
-    proc_id_to_int(ProcId, ProcNum),
+    % The value of the ProcNum argument does not influence the test
+    % of whether this predicate or function is a builtin; it influences
+    % on the generated code, which we are ignore.
+    % Likewise for the values of the elements in Args (as opposed to
+    % the *number* of arguments, which *does* influence success/failure).
+    ProcNum = 0,
+    list.duplicate(Arity, 0, Args),
     builtin_translation(ModuleName, PredName, ProcNum, Args, _Code).
 
 translate_builtin(FullyQualifiedModule, PredName, ProcId, Args, Code) :-

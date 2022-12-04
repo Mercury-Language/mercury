@@ -4453,18 +4453,17 @@ is_unify_index_or_compare_pred(PredInfo) :-
 pred_info_is_builtin(PredInfo) :-
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
-    ProcId = initial_proc_id,
-    is_inline_builtin(ModuleName, PredName, ProcId, Arity).
+    PredFormArity = pred_info_pred_form_arity(PredInfo),
+    is_inline_builtin(ModuleName, PredName, PredFormArity).
 
-builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
+builtin_state(ModuleInfo, CallerPredId, PredId, _ProcId) = BuiltinState :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
+    PredFormArity = pred_info_pred_form_arity(PredInfo),
     ( if
         % XXX This should ask: is this an inline builtin FOR THIS BACKEND?
-        is_inline_builtin(ModuleName, PredName, ProcId, Arity),
+        is_inline_builtin(ModuleName, PredName, PredFormArity),
         (
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_opt_tuple(Globals, OptTuple),
@@ -4472,10 +4471,7 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
             (
                 OptTuple ^ ot_inline_builtins = inline_builtins
             ;
-                module_info_pred_info(ModuleInfo, PredId, PredInfo),
-                pred_info_get_name(PredInfo, PredName),
                 PredName = "store_at_ref_impure",
-                pred_info_get_module_name(PredInfo, ModuleName),
                 ModuleName = mercury_private_builtin_module
             )
         ;
@@ -4491,13 +4487,16 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
         BuiltinState = not_builtin
     ).
 
-:- pred is_inline_builtin(module_name::in, string::in, proc_id::in, arity::in)
+:- pred is_inline_builtin(module_name::in, string::in, pred_form_arity::in)
     is semidet.
 
-is_inline_builtin(ModuleName, PredName, ProcId, Arity) :-
+is_inline_builtin(ModuleName, PredName, PredFormArity) :-
+    PredFormArity = pred_form_arity(Arity),
+    % None of our inline builtins has an arity greater than three.
+    % Fail for predicates with arities of four or more *without*
+    % doing a switch on ModuleName or PredName.
     Arity =< 3,
-    list.duplicate(Arity, 0, Args),
-    builtin_ops.test_if_builtin(ModuleName, PredName, ProcId, Args).
+    builtin_ops.test_if_builtin(ModuleName, PredName, Arity).
 
 pred_info_is_promise(PredInfo, PromiseType) :-
     pred_info_get_goal_type(PredInfo, goal_for_promise(PromiseType)).
