@@ -481,10 +481,10 @@ so any requirement for parentheses will remain unchanged.
 
 Operators are a syntactic concept.
 The @samp{+} infix operator, for example, is only a symbol;
-it does not mean addition unless you write or import code
+it does not mean addition, unless you write or import code
 that defines it as addition.
 Modules in the Mercury standard library,
-such as @code{int} and @code{float},
+such as @code{int}, @code{uint} and @code{float},
 provide such arithmetic definitions.
 Other, non-arithmetic definitions can also be provided,
 for example,
@@ -493,11 +493,14 @@ but is defined as a pair constructor by the @code{pair} module.
 
 The following table lists all of Mercury's builtin operators,
 as well as user-defined operators of the form @code{`@var{op}`}.
-Operators with a low ``Priority'' bind more tightly
-than those with a high ``Priority''.
+Operators with a higher priority bind more tightly
+than those with a lower priority.
+(This is a recent change;
+previously, Mercury followed the Prolog tradition
+in using higher priorities to denote operators that bind @emph{less} tightly.)
 For example, given that
-@code{+} has priority 500 and @code{*} has priority 400,
-the term @code{2 * X + Y} is equivalent to @code{(2 * X) + Y}.
+@code{+} has priority 1000 and @code{*} has priority 1100,
+the term @code{2 * X + Y} parenthesises as @code{(2 * X) + Y}.
 Note that the module qualification operator, @samp{.},
 binds more tightly than any other operator.
 Therefore, operator terms using builtin operators
@@ -511,9 +514,9 @@ The ``Specifier'' field indicates
 what structure terms constructed with an operator are allowed to take.
 ``f'' represents the operator and ``x'' and ``y'' represent arguments.
 ``x'' represents an argument
-whose priority must be strictly lower than that of the operator.
+whose priority must be strictly higher than that of the operator.
 ``y'' represents an argument
-whose priority is lower or equal to that of the operator.
+whose priority is higher than or equal to that of the operator.
 For example, ``yfx'' indicates a left-associative infix operator,
 while ``xfy'' indicates a right-associative infix operator.
 
@@ -521,137 +524,137 @@ while ``xfy'' indicates a right-associative infix operator.
 
 Operator                        Specifier         Priority
 
-.                               yfx               10
-!                               fx                40
-!.                              fx                40
-!:                              fx                40
-@@                               xfx               90
-^                               xfy               99
-^                               fx                100
-event                           fx                100
-:                               yfx               120
-`@var{op}`                            yfx               120
-**                              xfy               200
--                               fx                200
-\                               fx                200
-*                               yfx               400
-/                               yfx               400
-//                              yfx               400
-<<                              yfx               400
->>                              yfx               400
-div                             yfx               400
-mod                             xfx               400
-rem                             xfx               400
-for                             xfx               500
-+                               fx                500
-+                               yfx               500
-++                              xfy               500
--                               yfx               500
---                              yfx               500
-/\                              yfx               500
-\/                              yfx               500
-..                              xfx               550
-:=                              xfx               650
-=^                              xfx               650
-<                               xfx               700
-=                               xfx               700
-=..                             xfx               700
-=:=                             xfx               700
-=<                              xfx               700
-==                              xfx               700
-=\=                             xfx               700
->                               xfx               700
->=                              xfx               700
-@@<                              xfx               700
-@@=<                             xfx               700
-@@>                              xfx               700
-@@>=                             xfx               700
-\=                              xfx               700
-\==                             xfx               700
-~=                              xfx               700
-is                              xfx               701
-and                             xfy               720
-or                              xfy               740
-func                            fx                800
-impure                          fy                800
-pred                            fx                800
-semipure                        fy                800
-\+                              fy                900
-not                             fy                900
-when                            xfx               900
-~                               fy                900
-<=                              xfy               920
-<=>                             xfy               920
-=>                              xfy               920
-all                             fxy               950
-arbitrary                       fxy               950
-atomic                          fxy               950
-disable_warning                 fxy               950
-disable_warnings                fxy               950
-promise_equivalent_solutions    fxy               950
-promise_equivalent_solution_sets fxy              950
-promise_exclusive               fy                950
-promise_exclusive_exhaustive    fy                950
-promise_exhaustive              fy                950
-promise_impure                  fx                950
-promise_pure                    fx                950
-promise_semipure                fx                950
-require_complete_switch         fxy               950
-require_switch_arms_det         fxy               950
-require_switch_arms_semidet     fxy               950
-require_switch_arms_multi       fxy               950
-require_switch_arms_nondet      fxy               950
-require_switch_arms_cc_multi    fxy               950
-require_switch_arms_cc_nondet   fxy               950
-require_switch_arms_erroneous   fxy               950
-require_switch_arms_failure     fxy               950
-require_det                     fx                950
-require_semidet                 fx                950
-require_multi                   fx                950
-require_nondet                  fx                950
-require_cc_multi                fx                950
-require_cc_nondet               fx                950
-require_erroneous               fx                950
-require_failure                 fx                950
-trace                           fxy               950
-try                             fxy               950
-some                            fxy               950
-,                               xfy               1000
-&                               xfy               1025
-->                              xfy               1050
-;                               xfy               1100
-or_else                         xfy               1100
-then                            xfx               1150
-if                              fx                1160
-else                            xfy               1170
-::                              xfx               1175
-==>                             xfx               1175
-where                           xfx               1175
---->                            xfy               1179
-catch                           xfy               1180
-type                            fx                1180
-solver                          fy                1181
-catch_any                       xfy               1190
-end_module                      fx                1199
-import_module                   fx                1199
-include_module                  fx                1199
-initialise                      fx                1199
-initialize                      fx                1199
-finalise                        fx                1199
-finalize                        fx                1199
-inst                            fx                1199
-instance                        fx                1199
-mode                            fx                1199
-module                          fx                1199
-pragma                          fx                1199
-promise                         fx                1199
-rule                            fx                1199
-typeclass                       fx                1199
-use_module                      fx                1199
--->                             xfx               1200
-:-                              fx                1200
-:-                              xfx               1200
-?-                              fx                1200
+.                               yfx               1490
+!                               fx                1460
+!.                              fx                1460
+!:                              fx                1460
+@@                               xfx               1410
+^                               xfy               1401
+^                               fx                1400
+event                           fx                1400
+:                               yfx               1380
+`@var{op}`                            yfx               1380
+**                              xfy               1300
+-                               fx                1300
+\                               fx                1300
+*                               yfx               1100
+/                               yfx               1100
+//                              yfx               1100
+<<                              yfx               1100
+>>                              yfx               1100
+div                             yfx               1100
+mod                             xfx               1100
+rem                             xfx               1100
+for                             xfx               1000
++                               fx                1000
++                               yfx               1000
+++                              xfy               1000
+-                               yfx               1000
+--                              yfx               1000
+/\                              yfx               1000
+\/                              yfx               1000
+..                              xfx               950
+:=                              xfx               850
+=^                              xfx               850
+<                               xfx               800
+=                               xfx               800
+=..                             xfx               800
+=:=                             xfx               800
+=<                              xfx               800
+==                              xfx               800
+=\=                             xfx               800
+>                               xfx               800
+>=                              xfx               800
+@@<                              xfx               800
+@@=<                             xfx               800
+@@>                              xfx               800
+@@>=                             xfx               800
+\=                              xfx               800
+\==                             xfx               800
+~=                              xfx               800
+is                              xfx               799
+and                             xfy               780
+or                              xfy               760
+func                            fx                700
+impure                          fy                700
+pred                            fx                700
+semipure                        fy                700
+\+                              fy                600
+not                             fy                600
+when                            xfx               600
+~                               fy                600
+<=                              xfy               580
+<=>                             xfy               580
+=>                              xfy               580
+all                             fxy               550
+arbitrary                       fxy               550
+atomic                          fxy               550
+disable_warning                 fxy               550
+disable_warnings                fxy               550
+promise_equivalent_solutions    fxy               550
+promise_equivalent_solution_sets fxy              550
+promise_exclusive               fy                550
+promise_exclusive_exhaustive    fy                550
+promise_exhaustive              fy                550
+promise_impure                  fx                550
+promise_pure                    fx                550
+promise_semipure                fx                550
+require_complete_switch         fxy               550
+require_switch_arms_det         fxy               550
+require_switch_arms_semidet     fxy               550
+require_switch_arms_multi       fxy               550
+require_switch_arms_nondet      fxy               550
+require_switch_arms_cc_multi    fxy               550
+require_switch_arms_cc_nondet   fxy               550
+require_switch_arms_erroneous   fxy               550
+require_switch_arms_failure     fxy               550
+require_det                     fx                550
+require_semidet                 fx                550
+require_multi                   fx                550
+require_nondet                  fx                550
+require_cc_multi                fx                550
+require_cc_nondet               fx                550
+require_erroneous               fx                550
+require_failure                 fx                550
+trace                           fxy               550
+try                             fxy               550
+some                            fxy               550
+,                               xfy               500
+&                               xfy               475
+->                              xfy               450
+;                               xfy               400
+or_else                         xfy               400
+then                            xfx               350
+if                              fx                340
+else                            xfy               330
+::                              xfx               325
+==>                             xfx               325
+where                           xfx               325
+--->                            xfy               321
+catch                           xfy               320
+type                            fx                320
+solver                          fy                319
+catch_any                       xfy               310
+end_module                      fx                301
+import_module                   fx                301
+include_module                  fx                301
+initialise                      fx                301
+initialize                      fx                301
+finalise                        fx                301
+finalize                        fx                301
+inst                            fx                301
+instance                        fx                301
+mode                            fx                301
+module                          fx                301
+pragma                          fx                301
+promise                         fx                301
+rule                            fx                301
+typeclass                       fx                301
+use_module                      fx                301
+-->                             xfx               300
+:-                              fx                300
+:-                              xfx               300
+?-                              fx                300
 
 @end example
 
@@ -887,7 +890,7 @@ For example, the following terms are all syntactically equivalent
 (i.e.@: they are equal after term normalization).
 The last is constructed from core terms;
 the others all normalize to this term.
-From the last one it can be seen that
+The last one shows that
 the principal functor of all of them is @t{'[|]'/2}.
 @example
 [1, 2, 3]
