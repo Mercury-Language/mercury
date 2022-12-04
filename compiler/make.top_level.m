@@ -96,11 +96,11 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
 
         ModuleIndexMap = module_index_map(
             version_hash_table.init_default(module_name_hash),
-            version_array.empty, 0),
+            version_array.empty, 0u),
         DepIndexMap = dependency_file_index_map(
             version_hash_table.init_default(
                 dependency_file_with_module_index_hash),
-            version_array.empty, 0),
+            version_array.empty, 0u),
         DepStatusMap = version_hash_table.init_default(dependency_file_hash),
 
         % Accept and ignore `.depend' targets. `mmc --make' does not need

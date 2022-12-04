@@ -31,6 +31,7 @@
 %---------------------------------------------------------------------------%
 
 :- instance enum(int).
+:- instance uenum(int).
 
 %---------------------------------------------------------------------------%
 
@@ -526,6 +527,29 @@
 :- instance enum(int) where [
     to_int(X) = X,
     from_int(X) = X
+].
+
+:- instance uenum(int) where [
+    % This maps non-negative numbers like this:
+    %
+    %   0->0u, 1->2u, 2->4u, ... (2^31)-1 -> (2^32)-2u
+    %
+    % It maps negative numbers like this:
+    %
+    %   -1->1u, -2->3u, -3->5u, ... (2^31) -> (2^32)-1u
+    %
+    to_uint(I) = U :-
+        ( if I >= 0 then
+            U = cast_from_int(I `unchecked_left_shift` 1)
+        else
+            U = cast_from_int((-I) `unchecked_left_shift` 1) - 1u
+        ),
+    from_uint(U, I) :-
+        ( if even(U) then
+            I = cast_to_int(U `unchecked_right_shift` 1)
+        else
+            I = -cast_to_int(U `unchecked_right_shift` 1) - 1
+        )
 ].
 
 %---------------------------------------------------------------------------%

@@ -220,6 +220,7 @@ ORDINARY_PROGS = \
 	int_fold_up_down \
 	int_impl_imports \
 	int_range_ops \
+	int_uenum \
 	integer_int16_conv \
 	integer_int32_conv \
 	integer_int64_conv \

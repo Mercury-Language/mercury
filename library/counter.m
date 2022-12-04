@@ -25,20 +25,41 @@
 
 :- type counter.
 
-    % init(N, Counter) returns a counter whose first allocation will be the
-    % integer N.
+    % init(N) = Counter:
+    % init(N, Counter):
     %
-:- pred init(int::in, counter::out) is det.
-
-    % A function version of init/2.
+    % Return in Counter a counter whose first allocation will be
+    % the integer N.
     %
 :- func init(int) = counter.
+:- pred init(int::in, counter::out) is det.
 
-    % allocate(N, Counter0, Counter) takes a counter, and returns (a) the next
-    % integer to be allocated from that counter, and (b) the updated state of
-    % the counter.
+    % allocate(N, Counter0, Counter) takes a counter, and returns
+    %
+    % - the next integer to be allocated from that counter, and
+    % - the updated state of the counter.
     %
 :- pred allocate(int::out, counter::in, counter::out) is det.
+
+%---------------------------------------------------------------------------%
+
+:- type ucounter.
+
+    % uinit(N) = Counter:
+    % uinit(N, Counter):
+    %
+    % Return in Counter a counter whose first allocation will be
+    % the unsigned integer N.
+    %
+:- func uinit(uint) = ucounter.
+:- pred uinit(uint::in, ucounter::out) is det.
+
+    % uallocate(N, Counter0, Counter) takes a counter, and returns
+    %
+    % - the next unsigned integer to be allocated from that counter, and
+    % - the updated state of the counter.
+    %
+:- pred uallocate(uint::out, ucounter::in, ucounter::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -46,15 +67,29 @@
 :- implementation.
 
 :- import_module int.
+:- import_module uint.
+
+%---------------------------------------------------------------------------%
 
 :- type counter
     --->    counter(int).
 
-init(N, counter.init(N)).
-
 init(N) = counter(N).
 
+init(N, counter(N)).
+
 allocate(N, counter(N), counter(N + 1)).
+
+%---------------------------------------------------------------------------%
+
+:- type ucounter
+    --->    ucounter(uint).
+
+uinit(N) = ucounter(N).
+
+uinit(N, ucounter(N)).
+
+uallocate(N, ucounter(N), ucounter(N + 1u)).
 
 %---------------------------------------------------------------------------%
 :- end_module counter.

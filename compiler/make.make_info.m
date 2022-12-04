@@ -158,12 +158,16 @@
 
 :- type target_file_timestamps == map(target_file, timestamp).
 
+% NOTE Having version_arrays be indexed by uints, not ints
+% that just happen to never be negative, would avoid some casts
+% from uint to int when accessing the reverse maps in the next two types.
+
 :- type module_index_map
     --->    module_index_map(
                 mim_forward_map         :: version_hash_table(module_name,
                                             module_index),
                 mim_reverse_map         :: version_array(module_name),
-                mim_counter             :: int
+                mim_counter             :: uint
             ).
 
 :- type dependency_file_index_map
@@ -173,7 +177,7 @@
                                             dependency_file_index),
                 dfim_reverse_map        :: version_array(
                                             dependency_file_with_module_index),
-                dfim_counter            :: int
+                dfim_counter            :: uint
             ).
 
 :- type dependency_status

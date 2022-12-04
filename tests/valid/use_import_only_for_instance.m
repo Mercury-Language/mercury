@@ -10,6 +10,10 @@
 %   unsatisfiable typeclass constraints: `enum.enum(int)', `enum.enum(int)'.
 %
 % This constraint is imposed by the use of sparse_bitset(int).
+%
+% NOTE The above was written when sparse_bitset.m required the elements to be
+% instances of the enum typeclass, not the uenum typeclass, and pvars and
+% zones were defined below to be equivalent to ints, not uints.
 
 :- module use_import_only_for_instance.
 :- interface.
@@ -18,8 +22,8 @@
 :- import_module map.
 :- import_module sparse_bitset.
 
-:- type pvar == int.
-:- type zone == int.
+:- type pvar == uint.
+:- type zone == uint.
 :- type vars_to_zones == map(pvar, sparse_bitset(zone)).
 :- type zones_to_dup_vars == map(zone, list(pvar)).
 
@@ -31,13 +35,13 @@
 
 :- implementation.
 
-:- import_module int.
+:- import_module uint.
 
 build_zones_to_dup_vars(Var, Zones, !ZonesToDupVars) :-
     ZoneList = sparse_bitset.to_sorted_list(Zones),
     ( if
         ZoneList = [FirstZone, _SecondZone | _],
-        FirstZone \= 0
+        FirstZone \= 0u
     then
         list.foldl(add_var_to_zone(Var), ZoneList, !ZonesToDupVars)
     else

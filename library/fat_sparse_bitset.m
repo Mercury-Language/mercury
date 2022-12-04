@@ -23,13 +23,13 @@
 %
 % A sparse bitset is represented as a sorted list. Each element of this list
 % contains two integers: Offset and Bits. Offset will always be a multiple of
-% int.bits_per_int, and the bits of Bits describe which of the elements
-% of the range Offset .. (Offset + bits_per_int - 1) are in the set.
+% int.ubits_per_uint, and the bits of Bits describe which of the elements
+% of the range Offset .. (Offset + ubits_per_uint - 1) are in the set.
 % List elements with the same value of Offset are merged.
 % List elements in which Bits is zero are removed.
 %
 % The values of Offset in the list need not be *contiguous* multiples
-% of bits_per_int, hence the name *sparse* bitset.
+% of ubits_per_uint, hence the name *sparse* bitset.
 %
 % A sparse_bitset is suitable for storing sets of integers which
 % can be represented using only a few Offset/Bits pairs.
@@ -54,7 +54,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- type fat_sparse_bitset(T). % <= enum(T).
+:- type fat_sparse_bitset(T). % <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -70,11 +70,11 @@
     % difficult to implement both modes using the representation in this
     % module.
     %
-:- pred singleton_set(fat_sparse_bitset(T)::out, T::in) is det <= enum(T).
+:- pred singleton_set(fat_sparse_bitset(T)::out, T::in) is det <= uenum(T).
 
     % make_singleton_set(Item) returns a set containing just the single Item.
     %
-:- func make_singleton_set(T) = fat_sparse_bitset(T) <= enum(T).
+:- func make_singleton_set(T) = fat_sparse_bitset(T) <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -87,7 +87,7 @@
 
     % Is the given set a singleton, and if yes, what is the element?
     %
-:- pred is_singleton(fat_sparse_bitset(T)::in, T::out) is semidet <= enum(T).
+:- pred is_singleton(fat_sparse_bitset(T)::in, T::out) is semidet <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -97,14 +97,14 @@
     % member(Item, Set) is true iff Item is a member of Set.
     % Takes O(rep_size(Set)) time.
     %
-:- pred member(T, fat_sparse_bitset(T)) <= enum(T).
+:- pred member(T, fat_sparse_bitset(T)) <= uenum(T).
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
     % contains(Set, Item) is true iff Item is a member of Set.
     % Takes O(rep_size(Set)) time.
     %
-:- pred contains(fat_sparse_bitset(T)::in, T::in) is semidet <= enum(T).
+:- pred contains(fat_sparse_bitset(T)::in, T::in) is semidet <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -114,50 +114,51 @@
     % insert(Set, Item) returns the union of Set and the set containing
     % only Item. Takes O(rep_size(Set)) time and space.
     %
-:- func insert(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= enum(T).
+:- func insert(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= uenum(T).
 :- pred insert(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
-    is det <= enum(T).
+    is det <= uenum(T).
 
     % insert_new(Item, Set0, Set) returns the union of Set0 and the set
     % containing only Item if Set0 does not already contain Item; if it does,
     % it fails. Takes O(rep_size(Set)) time and space.
     %
 :- pred insert_new(T::in,
-    fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet <= enum(T).
+    fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet
+    <= uenum(T).
 
     % insert_list(Set, Item) returns the union of Set and the set containing
     % only the members of Item. Same as `union(Set, list_to_set(Item))',
     % but may be more efficient.
     %
 :- func insert_list(fat_sparse_bitset(T), list(T)) = fat_sparse_bitset(T)
-    <= enum(T).
+    <= uenum(T).
 :- pred insert_list(list(T)::in,
-    fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is det <= enum(T).
+    fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is det <= uenum(T).
 
 %---------------------%
 
     % delete(Set, Item) returns the difference of Set and the set containing
     % only Item. Takes O(rep_size(Set)) time and space.
     %
-:- func delete(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= enum(T).
+:- func delete(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= uenum(T).
 :- pred delete(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
-    is det <= enum(T).
+    is det <= uenum(T).
 
     % delete_list(Set, Item) returns the difference of Set and the set
     % containing only the members of Item. Same as
     % `difference(Set, list_to_set(Item))', but may be more efficient.
     %
 :- func delete_list(fat_sparse_bitset(T), list(T)) = fat_sparse_bitset(T)
-    <= enum(T).
+    <= uenum(T).
 :- pred delete_list(list(T)::in,
-    fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is det <= enum(T).
+    fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is det <= uenum(T).
 
     % remove(Item, Set0, Set) returns in Set the difference of Set0
     % and the set containing only Item, failing if Set0 does not contain Item.
     % Takes O(rep_size(Set)) time and space.
     %
 :- pred remove(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
-    is semidet <= enum(T).
+    is semidet <= uenum(T).
 
     % remove_list(Item, Set0, Set) returns in Set the difference of Set0
     % and the set containing all the elements of Item, failing if any element
@@ -165,23 +166,24 @@
     % difference(Set0, list_to_set(Item), Set)', but may be more efficient.
     %
 :- pred remove_list(list(T)::in,
-    fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet <= enum(T).
+    fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet
+    <= uenum(T).
 
     % remove_leq(Set, Item) returns Set with all elements less than or equal
     % to Item removed. In other words, it returns the set containing all the
     % elements of Set whose enum forms are greater than the enum form of Item.
     %
-:- func remove_leq(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= enum(T).
+:- func remove_leq(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= uenum(T).
 :- pred remove_leq(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
-    is det <= enum(T).
+    is det <= uenum(T).
 
     % remove_gt(Set, Item) returns Set with all elements greater than Item
     % removed. In other words, it returns the set containing all the elements
     % of Set whose enum forms are less than or equal to the enum form of Item.
     %
-:- func remove_gt(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= enum(T).
+:- func remove_gt(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= uenum(T).
 :- pred remove_gt(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
-    is det <= enum(T).
+    is det <= uenum(T).
 
     % remove_least(Set0, Item, Set) is true iff Item is the element
     % whose enum form is the smallest in Set0, and Set is the set
@@ -189,7 +191,8 @@
     % and space.
     %
 :- pred remove_least(T::out,
-    fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet <= enum(T).
+    fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet
+    <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -268,14 +271,14 @@
     % OutPart consists of those elements of Set for which Pred fails.
     %
 :- pred divide(pred(T)::in(pred(in) is semidet), fat_sparse_bitset(T)::in,
-    fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= enum(T).
+    fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= uenum(T).
 
     % divide_by_set(DivideBySet, Set, InPart, OutPart):
     % InPart consists of those elements of Set which are also in DivideBySet;
     % OutPart consists of those elements of Set which are not in DivideBySet.
     %
 :- pred divide_by_set(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
-    fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= enum(T).
+    fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -287,15 +290,15 @@
     % If the elements of the list are closely grouped, it will be closer
     % to O(length(List)).
     %
-:- func list_to_set(list(T)) = fat_sparse_bitset(T) <= enum(T).
-:- pred list_to_set(list(T)::in, fat_sparse_bitset(T)::out) is det <= enum(T).
+:- func list_to_set(list(T)) = fat_sparse_bitset(T) <= uenum(T).
+:- pred list_to_set(list(T)::in, fat_sparse_bitset(T)::out) is det <= uenum(T).
 
     % sorted_list_to_set(List) returns a set containing only the members
     % of List. List must be sorted. Takes O(length(List)) time and space.
     %
-:- func sorted_list_to_set(list(T)) = fat_sparse_bitset(T) <= enum(T).
+:- func sorted_list_to_set(list(T)) = fat_sparse_bitset(T) <= uenum(T).
 :- pred sorted_list_to_set(list(T)::in, fat_sparse_bitset(T)::out)
-    is det <= enum(T).
+    is det <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -305,9 +308,9 @@
     % to_sorted_list(Set) returns a list containing all the members of Set,
     % in sorted order. Takes O(card(Set)) time and space.
     %
-:- func to_sorted_list(fat_sparse_bitset(T)) = list(T) <= enum(T).
+:- func to_sorted_list(fat_sparse_bitset(T)) = list(T) <= uenum(T).
 :- pred to_sorted_list(fat_sparse_bitset(T)::in, list(T)::out) is det
-    <= enum(T).
+    <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -317,12 +320,12 @@
     % from_set(Set) returns a bitset containing only the members of Set.
     % Takes O(card(Set)) time and space.
     %
-:- func from_set(set.set(T)) = fat_sparse_bitset(T) <= enum(T).
+:- func from_set(set.set(T)) = fat_sparse_bitset(T) <= uenum(T).
 
     % to_set(Set) returns a set.set containing all the members of Set,
     % Takes O(card(Set)) time and space.
     %
-:- func to_set(fat_sparse_bitset(T)) = set.set(T) <= enum(T).
+:- func to_set(fat_sparse_bitset(T)) = set.set(T) <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -332,7 +335,7 @@
     % count(Set) returns the number of elements in Set.
     % Takes O(card(Set)) time.
     %
-:- func count(fat_sparse_bitset(T)) = int <= enum(T).
+:- func count(fat_sparse_bitset(T)) = int <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -343,27 +346,27 @@
     % for all the elements of Set.
     %
 :- pred all_true(pred(T)::in(pred(in) is semidet), fat_sparse_bitset(T)::in)
-    is semidet <= enum(T).
+    is semidet <= uenum(T).
 
     % filter(Pred, Set) returns the elements of Set for which Pred succeeds.
     %
 :- func filter(pred(T)::in(pred(in) is semidet), fat_sparse_bitset(T)::in)
-    = (fat_sparse_bitset(T)::out) is det <= enum(T).
+    = (fat_sparse_bitset(T)::out) is det <= uenum(T).
 
     % filter(Pred, Set, TrueSet, FalseSet) returns the elements of Set
     % for which Pred succeeds, and those for which it fails.
     %
 :- pred filter(pred(T)::in(pred(in) is semidet),
     fat_sparse_bitset(T)::in,
-    fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= enum(T).
+    fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= uenum(T).
 
     % foldl(Func, Set, Start) calls Func with each element of Set
     % (in sorted order) and an accumulator (with the initial value of Start),
     % and returns the final value. Takes O(card(Set)) time.
     %
-:- func foldl(func(T, U) = U, fat_sparse_bitset(T), U) = U <= enum(T).
+:- func foldl(func(T, U) = U, fat_sparse_bitset(T), U) = U <= uenum(T).
 
-:- pred foldl(pred(T, U, U), fat_sparse_bitset(T), U, U) <= enum(T).
+:- pred foldl(pred(T, U, U), fat_sparse_bitset(T), U, U) <= uenum(T).
 :- mode foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
@@ -375,7 +378,7 @@
 :- mode foldl(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 
 :- pred foldl2(pred(T, U, U, V, V), fat_sparse_bitset(T), U, U, V, V)
-    <= enum(T).
+    <= uenum(T).
 :- mode foldl2(pred(in, in, out, in, out) is det, in, in, out, in, out) is det.
 :- mode foldl2(pred(in, in, out, mdi, muo) is det, in, in, out, mdi, muo)
     is det.
@@ -400,9 +403,9 @@
     % (in reverse sorted order) and an accumulator (with the initial value
     % of Start), and returns the final value. Takes O(card(Set)) time.
     %
-:- func foldr(func(T, U) = U, fat_sparse_bitset(T), U) = U <= enum(T).
+:- func foldr(func(T, U) = U, fat_sparse_bitset(T), U) = U <= uenum(T).
 
-:- pred foldr(pred(T, U, U), fat_sparse_bitset(T), U, U) <= enum(T).
+:- pred foldr(pred(T, U, U), fat_sparse_bitset(T), U, U) <= uenum(T).
 :- mode foldr(pred(in, in, out) is det, in, in, out) is det.
 :- mode foldr(pred(in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode foldr(pred(in, di, uo) is det, in, di, uo) is det.
@@ -414,7 +417,7 @@
 :- mode foldr(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 
 :- pred foldr2(pred(T, U, U, V, V), fat_sparse_bitset(T), U, U, V, V)
-    <= enum(T).
+    <= uenum(T).
 :- mode foldr2(pred(in, in, out, in, out) is det, in, in, out, in, out) is det.
 :- mode foldr2(pred(in, in, out, mdi, muo) is det, in, in, out, mdi, muo)
     is det.
@@ -446,65 +449,65 @@
 :- interface.
 
 :- pragma type_spec(pred(singleton_set/2), T = var(_)).
-:- pragma type_spec(pred(singleton_set/2), T = int).
+:- pragma type_spec(pred(singleton_set/2), T = uint).
 
 :- pragma type_spec(func(make_singleton_set/1), T = var(_)).
-:- pragma type_spec(func(make_singleton_set/1), T = int).
+:- pragma type_spec(func(make_singleton_set/1), T = uint).
 
 :- pragma type_spec(pred(contains/2), T = var(_)).
-:- pragma type_spec(pred(contains/2), T = int).
+:- pragma type_spec(pred(contains/2), T = uint).
 
 :- pragma type_spec(func(insert/2), T = var(_)).
-:- pragma type_spec(func(insert/2), T = int).
+:- pragma type_spec(func(insert/2), T = uint).
 :- pragma type_spec(pred(insert/3), T = var(_)).
-:- pragma type_spec(pred(insert/3), T = int).
+:- pragma type_spec(pred(insert/3), T = uint).
 
 :- pragma type_spec(func(insert_list/2), T = var(_)).
-:- pragma type_spec(func(insert_list/2), T = int).
+:- pragma type_spec(func(insert_list/2), T = uint).
 :- pragma type_spec(pred(insert_list/3), T = var(_)).
-:- pragma type_spec(pred(insert_list/3), T = int).
+:- pragma type_spec(pred(insert_list/3), T = uint).
 
 :- pragma type_spec(func(delete/2), T = var(_)).
-:- pragma type_spec(func(delete/2), T = int).
+:- pragma type_spec(func(delete/2), T = uint).
 :- pragma type_spec(pred(delete/3), T = var(_)).
-:- pragma type_spec(pred(delete/3), T = int).
+:- pragma type_spec(pred(delete/3), T = uint).
 
 :- pragma type_spec(func(delete_list/2), T = var(_)).
-:- pragma type_spec(func(delete_list/2), T = int).
+:- pragma type_spec(func(delete_list/2), T = uint).
 :- pragma type_spec(pred(delete_list/3), T = var(_)).
-:- pragma type_spec(pred(delete_list/3), T = int).
+:- pragma type_spec(pred(delete_list/3), T = uint).
 
 :- pragma type_spec(func(list_to_set/1), T = var(_)).
-:- pragma type_spec(func(list_to_set/1), T = int).
+:- pragma type_spec(func(list_to_set/1), T = uint).
 :- pragma type_spec(pred(list_to_set/2), T = var(_)).
-:- pragma type_spec(pred(list_to_set/2), T = int).
+:- pragma type_spec(pred(list_to_set/2), T = uint).
 
 :- pragma type_spec(func(sorted_list_to_set/1), T = var(_)).
-:- pragma type_spec(func(sorted_list_to_set/1), T = int).
+:- pragma type_spec(func(sorted_list_to_set/1), T = uint).
 :- pragma type_spec(pred(sorted_list_to_set/2), T = var(_)).
-:- pragma type_spec(pred(sorted_list_to_set/2), T = int).
+:- pragma type_spec(pred(sorted_list_to_set/2), T = uint).
 
 :- pragma type_spec(func(to_sorted_list/1), T = var(_)).
-:- pragma type_spec(func(to_sorted_list/1), T = int).
+:- pragma type_spec(func(to_sorted_list/1), T = uint).
 :- pragma type_spec(pred(to_sorted_list/2), T = var(_)).
-:- pragma type_spec(pred(to_sorted_list/2), T = int).
+:- pragma type_spec(pred(to_sorted_list/2), T = uint).
 
 :- pragma type_spec(func(to_set/1), T = var(_)).
-:- pragma type_spec(func(to_set/1), T = int).
+:- pragma type_spec(func(to_set/1), T = uint).
 
 :- pragma type_spec(func(from_set/1), T = var(_)).
-:- pragma type_spec(func(from_set/1), T = int).
+:- pragma type_spec(func(from_set/1), T = uint).
 
-:- pragma type_spec(func(foldl/3), T = int).
+:- pragma type_spec(func(foldl/3), T = uint).
 :- pragma type_spec(func(foldl/3), T = var(_)).
 
-:- pragma type_spec(pred(foldl/4), T = int).
+:- pragma type_spec(pred(foldl/4), T = uint).
 :- pragma type_spec(pred(foldl/4), T = var(_)).
 
-:- pragma type_spec(func(foldr/3), T = int).
+:- pragma type_spec(func(foldr/3), T = uint).
 :- pragma type_spec(func(foldr/3), T = var(_)).
 
-:- pragma type_spec(pred(foldr/4), T = int).
+:- pragma type_spec(pred(foldr/4), T = uint).
 :- pragma type_spec(pred(foldr/4), T = var(_)).
 
 %---------------------------------------------------------------------------%
@@ -518,7 +521,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- type fat_sparse_bitset(T)    % <= enum(T)
+:- type fat_sparse_bitset(T)    % <= uenum(T)
     --->    fat_sparse_bitset(bitset_elems).
 
     % The list of bitset_elems, sorted on offset in strictly ascending order.
@@ -526,10 +529,10 @@
 :- type bitset_elems
     --->    bitset_nil
     ;       bitset_cons(
-                % This must be a multiple of bits_per_int.
-                offset  :: int,
+                % This must be a multiple of ubits_per_uint.
+                offset  :: uint,
 
-                % Bit i of this field, for i in [0, bits_per_int), specifies
+                % Bit i of this field, for i in [0, ubits_per_uint), specifies
                 % whether the element at index offset+i is in the set or not,
                 %
                 % All fat_sparse_bitset operations should remove all elements
@@ -558,14 +561,14 @@ is_empty(fat_sparse_bitset(bitset_nil)).
 is_non_empty(fat_sparse_bitset(bitset_cons(_, _, _))).
 
 is_singleton(fat_sparse_bitset(bitset_cons(Offset, Bits, bitset_nil)), Item) :-
-    find_offsets_of_set_bits(Offset, bits_per_int, Bits, [], SetOffsets),
+    find_offsets_of_set_bits(Offset, ubits_per_uint, Bits, [], SetOffsets),
     SetOffsets = [SetOffset],
-    ( if ItemPrime = from_int(SetOffset) then
+    ( if from_uint(SetOffset, ItemPrime) then
         Item = ItemPrime
     else
-        % We only apply from_int/1 to integers returned
-        % by to_int/1, so it should never fail.
-        unexpected($pred, "`enum.from_int/1' failed")
+        % We only apply from_uint/2 to integers returned
+        % by to_uint/1, so it should never fail.
+        unexpected($pred, "`enum.from_uint/2' failed")
     ).
 
     % find_offsets_of_set_bits(BitOffset, Size, Bits, !SetOffsets):
@@ -575,13 +578,13 @@ is_singleton(fat_sparse_bitset(bitset_cons(Offset, Bits, bitset_nil)), Item) :-
     % We do this via successive binary partitions, since this can skip
     % e.g. a byte's worth of clear bits without examining them one by one.
     %
-:- pred find_offsets_of_set_bits(int::in, int::in, uint::in,
-    list(int)::in, list(int)::out) is det.
+:- pred find_offsets_of_set_bits(uint::in, uint::in, uint::in,
+    list(uint)::in, list(uint)::out) is det.
 
 find_offsets_of_set_bits(BitOffset, Size, Bits, !SetOffsets) :-
     ( if Bits = 0u then
         true
-    else if Size = 1 then
+    else if Size = 1u then
         % If Bits were 0, we wouldn't have got here.
         !:SetOffsets = [BitOffset | !.SetOffsets]
     else
@@ -592,7 +595,7 @@ find_offsets_of_set_bits(BitOffset, Size, Bits, !SetOffsets) :-
         LowBits = Mask /\ Bits,
 
         % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
 
         find_offsets_of_set_bits(BitOffset, HalfSize, LowBits, !SetOffsets),
         find_offsets_of_set_bits(BitOffset + HalfSize, HalfSize, HighBits,
@@ -605,29 +608,30 @@ find_offsets_of_set_bits(BitOffset, Size, Bits, !SetOffsets) :-
 
 member(Item::in, Set::in) :-
     contains(Set, Item).
-member(Item::out, fat_sparse_bitset(Set)::in) :-
-    member_search_nodes(Index, Set),
-    ( if ItemPrime = from_int(Index) then
+member(Item::out, fat_sparse_bitset(Elems)::in) :-
+    member_search_nodes(Index, Elems),
+    ( if from_uint(Index, ItemPrime) then
         Item = ItemPrime
     else
-        % We only apply from_int/1 to integers returned
-        % by to_int/1, so it should never fail.
-        unexpected($pred, "`enum.from_int/1' failed")
+        % We only apply from_uint/1 to integers returned
+        % by to_uint/1, so it should never fail.
+        unexpected($pred, "`enum.from_uint/2' failed")
     ).
 
-:- pred member_search_nodes(int::out, bitset_elems::in) is nondet.
+:- pred member_search_nodes(uint::out, bitset_elems::in) is nondet.
 
 member_search_nodes(Index, bitset_cons(Offset, Bits, Tail)) :-
-    ( member_search_one_node(Index, Offset, bits_per_int, Bits)
+    ( member_search_one_node(Index, Offset, ubits_per_uint, Bits)
     ; member_search_nodes(Index, Tail)
     ).
 
-:- pred member_search_one_node(int::out, int::in, int::in, uint::in) is nondet.
+:- pred member_search_one_node(uint::out, uint::in, uint::in, uint::in)
+    is nondet.
 
 member_search_one_node(Index, Offset, Size, Bits) :-
     ( if Bits = 0u then
         fail
-    else if Size = 1 then
+    else if Size = 1u then
         Index = Offset
     else
         HalfSize = unchecked_right_shift(Size, 1),
@@ -637,7 +641,7 @@ member_search_one_node(Index, Offset, Size, Bits) :-
         LowBits = Mask /\ Bits,
 
         % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
 
         ( member_search_one_node(Index, Offset, HalfSize, LowBits)
         ; member_search_one_node(Index, Offset + HalfSize, HalfSize, HighBits)
@@ -646,17 +650,20 @@ member_search_one_node(Index, Offset, Size, Bits) :-
 
 %---------------------%
 
-contains(fat_sparse_bitset(Set), Item) :-
-    contains_search_nodes(Set, enum.to_int(Item)).
+contains(fat_sparse_bitset(Elems), Item) :-
+    ItemIndex = enum.to_uint(Item),
+    offset_and_bit_to_set_for_index(ItemIndex, ItemOffset, ItemBitToSet),
+    contains_search_nodes(Elems, ItemOffset, ItemBitToSet).
 
-:- pred contains_search_nodes(bitset_elems::in, int::in) is semidet.
+:- pred contains_search_nodes(bitset_elems::in, uint::in, uint::in) is semidet.
 
-contains_search_nodes(bitset_cons(Offset, Bits, Tail), Index) :-
-    Index >= Offset,
-    ( if Index < Offset + bits_per_int then
-        get_bit(Bits, Index - Offset) \= 0u
+contains_search_nodes(Elems, ItemOffset, ItemBitToSet) :-
+    Elems = bitset_cons(Offset, Bits, Tail),
+    ItemOffset >= Offset,
+    ( if ItemOffset = Offset then
+        get_bit(Bits, ItemBitToSet) \= 0u
     else
-        contains_search_nodes(Tail, Index)
+        contains_search_nodes(Tail, ItemOffset, ItemBitToSet)
     ).
 
 %---------------------------------------------------------------------------%
@@ -665,32 +672,35 @@ insert(Set0, Item) = Set :-
     insert(Item, Set0, Set).
 
 insert(Item, fat_sparse_bitset(Elems0), fat_sparse_bitset(Elems)) :-
-    insert_loop(enum.to_int(Item), Elems0, Elems).
+    ItemIndex = enum.to_uint(Item),
+    offset_and_bit_to_set_for_index(ItemIndex, ItemOffset, ItemBitToSet),
+    insert_loop(ItemOffset, ItemBitToSet, Elems0, Elems).
 
-:- pred insert_loop(int::in, bitset_elems::in, bitset_elems::out) is det.
+:- pred insert_loop(uint::in, uint::in,
+    bitset_elems::in, bitset_elems::out) is det.
 
-insert_loop(Index, Elems0, Elems) :-
+insert_loop(ItemOffset, ItemBitToSet, Elems0, Elems) :-
     (
         Elems0 = bitset_nil,
-        bits_for_index(Index, Offset, Bits),
-        Elems = make_bitset_cons(Offset, Bits, bitset_nil)
+        set_bit(ItemBitToSet, 0u, ItemBits),
+        Elems = make_bitset_cons(ItemOffset, ItemBits, bitset_nil)
     ;
         Elems0 = bitset_cons(Offset0, Bits0, Tail0),
-        ( if Index < Offset0 then
+        ( if ItemOffset < Offset0 then
             % The insertion is before the front node of Elems0.
-            bits_for_index(Index, Offset, Bits),
-            Elems = make_bitset_cons(Offset, Bits, Elems0)
-        else if BitToSet = Index - Offset0, BitToSet < bits_per_int then
+            set_bit(ItemBitToSet, 0u, ItemBits),
+            Elems = make_bitset_cons(ItemOffset, ItemBits, Elems0)
+        else if ItemOffset = Offset0 then
             % The insertion is to the front node of Elems0.
-            ( if get_bit(Bits0, BitToSet) = 0u then
-                Bits = set_bit(Bits0, BitToSet),
+            ( if get_bit(Bits0, ItemBitToSet) = 0u then
+                set_bit(ItemBitToSet, Bits0, Bits),
                 Elems = make_bitset_cons(Offset0, Bits, Tail0)
             else
                 Elems = Elems0
             )
         else
             % The insertion is after the front node of Elems0.
-            insert_loop(Index, Tail0, Tail),
+            insert_loop(ItemOffset, ItemBitToSet, Tail0, Tail),
             Elems = make_bitset_cons(Offset0, Bits0, Tail)
         )
     ).
@@ -698,33 +708,35 @@ insert_loop(Index, Elems0, Elems) :-
 %---------------------%
 
 insert_new(Item, fat_sparse_bitset(Elems0), fat_sparse_bitset(Elems)) :-
-    insert_new_loop(enum.to_int(Item), Elems0, Elems).
+    ItemIndex = enum.to_uint(Item),
+    offset_and_bit_to_set_for_index(ItemIndex, ItemOffset, ItemBitToSet),
+    insert_new_loop(ItemOffset, ItemBitToSet, Elems0, Elems).
 
-:- pred insert_new_loop(int::in, bitset_elems::in, bitset_elems::out)
-    is semidet.
+:- pred insert_new_loop(uint::in, uint::in,
+    bitset_elems::in, bitset_elems::out) is semidet.
 
-insert_new_loop(Index, Elems0, Elems) :-
+insert_new_loop(ItemOffset, ItemBitToSet, Elems0, Elems) :-
     (
         Elems0 = bitset_nil,
-        bits_for_index(Index, Offset, Bits),
-        Elems = make_bitset_cons(Offset, Bits, bitset_nil)
+        set_bit(ItemBitToSet, 0u, ItemBits),
+        Elems = make_bitset_cons(ItemOffset, ItemBits, bitset_nil)
     ;
         Elems0 = bitset_cons(Offset0, Bits0, Tail0),
-        ( if Index < Offset0 then
+        ( if ItemOffset < Offset0 then
             % The insertion is before the front node of Elems0.
-            bits_for_index(Index, Offset, Bits),
-            Elems = make_bitset_cons(Offset, Bits, Elems0)
-        else if BitToSet = Index - Offset0, BitToSet < bits_per_int then
+            set_bit(ItemBitToSet, 0u, ItemBits),
+            Elems = make_bitset_cons(ItemOffset, ItemBits, Elems0)
+        else if ItemOffset = Offset0 then
             % The insertion is to the front node of Elems0.
-            ( if get_bit(Bits0, BitToSet) = 0u then
-                Bits = set_bit(Bits0, BitToSet),
+            ( if get_bit(Bits0, ItemBitToSet) = 0u then
+                set_bit(ItemBitToSet, Bits0, Bits),
                 Elems = make_bitset_cons(Offset0, Bits, Tail0)
             else
                 fail
             )
         else
             % The insertion is after the front node of Elems0.
-            insert_new_loop(Index, Tail0, Tail),
+            insert_new_loop(ItemOffset, ItemBitToSet, Tail0, Tail),
             Elems = make_bitset_cons(Offset0, Bits0, Tail)
         )
     ).
@@ -768,16 +780,17 @@ remove_leq(Set0, Item) = Set :-
     remove_leq(Item, Set0, Set).
 
 remove_leq(Item, fat_sparse_bitset(Elems0), fat_sparse_bitset(Elems)) :-
-    remove_leq_loop(enum.to_int(Item), Elems0, Elems).
+    remove_leq_loop(enum.to_uint(Item), Elems0, Elems).
 
-:- pred remove_leq_loop(int::in, bitset_elems::in, bitset_elems::out) is det.
+:- pred remove_leq_loop(uint::in, bitset_elems::in, bitset_elems::out) is det.
 
 remove_leq_loop(_, bitset_nil, bitset_nil).
 remove_leq_loop(Index, bitset_cons(Offset, Bits0, Tail0), Elems) :-
-    ( if Offset + bits_per_int =< Index then
+    ( if Offset + ubits_per_uint =< Index then
         remove_leq_loop(Index, Tail0, Elems)
     else if Offset =< Index then
-        Bits = Bits0 /\ unchecked_left_shift(\ 0u, Index - Offset + 1),
+        Bits = Bits0 /\
+            unchecked_left_shift(\ 0u, cast_to_int(Index - Offset + 1u)),
         ( if Bits = 0u then
             Elems = Tail0
         else
@@ -793,17 +806,18 @@ remove_gt(Set0, Item) = Set :-
     remove_gt(Item, Set0, Set).
 
 remove_gt(Item, fat_sparse_bitset(Elems0), fat_sparse_bitset(Elems)) :-
-    remove_gt_loop(enum.to_int(Item), Elems0, Elems).
+    remove_gt_loop(enum.to_uint(Item), Elems0, Elems).
 
-:- pred remove_gt_loop(int::in, bitset_elems::in, bitset_elems::out) is det.
+:- pred remove_gt_loop(uint::in, bitset_elems::in, bitset_elems::out) is det.
 
 remove_gt_loop(_, bitset_nil, bitset_nil).
 remove_gt_loop(Index, bitset_cons(Offset, Bits0, Tail0), Elems) :-
-    ( if Offset + bits_per_int - 1 =< Index then
+    ( if Offset + ubits_per_uint - 1u =< Index then
         remove_gt_loop(Index, Tail0, Tail),
         Elems = make_bitset_cons(Offset, Bits0, Tail)
     else if Offset =< Index then
-        Bits = Bits0 /\ \ unchecked_left_shift(\ 0u, Index - Offset + 1),
+        Bits = Bits0 /\
+            \ unchecked_left_shift(\ 0u, cast_to_int(Index - Offset + 1u)),
         ( if Bits = 0u then
             Elems = bitset_nil
         else
@@ -818,7 +832,7 @@ remove_gt_loop(Index, bitset_cons(Offset, Bits0, Tail0), Elems) :-
 remove_least(Item, fat_sparse_bitset(Elems0), fat_sparse_bitset(Elems)) :-
     Elems0 = bitset_cons(Offset, Bits0, Tail0),
     Bit = find_least_bit(Bits0),
-    Item = det_from_int(Offset + Bit),
+    Item = det_from_uint(Offset + Bit),
 
     Bits = clear_bit(Bits0, Bit),
     ( if Bits = 0u then
@@ -827,17 +841,17 @@ remove_least(Item, fat_sparse_bitset(Elems0), fat_sparse_bitset(Elems)) :-
         Elems = make_bitset_cons(Offset, Bits, Tail0)
     ).
 
-:- func find_least_bit(uint) = int.
+:- func find_least_bit(uint) = uint.
 
 find_least_bit(Bits0) = BitNum :-
-    Size = bits_per_int,
-    BitNum0 = 0,
-    BitNum = find_least_bit_loop(Bits0, Size, BitNum0).
+    Size = ubits_per_uint,
+    BitNum0 = 0u,
+    find_least_bit_loop(Bits0, Size, BitNum0, BitNum).
 
-:- func find_least_bit_loop(uint, int, int) = int.
+:- pred find_least_bit_loop(uint::in, uint::in, uint::in, uint::out) is det.
 
-find_least_bit_loop(Bits0, Size, BitNum0) = BitNum :-
-    ( if Size = 1 then
+find_least_bit_loop(Bits0, Size, BitNum0, BitNum) :-
+    ( if Size = 1u then
         % We can't get here unless the bit is a 1 bit.
         BitNum = BitNum0
     else
@@ -846,11 +860,11 @@ find_least_bit_loop(Bits0, Size, BitNum0) = BitNum :-
 
         LowBits = Bits0 /\ Mask,
         ( if LowBits = 0u then
-            HighBits = Mask /\ unchecked_right_shift(Bits0, HalfSize),
-            BitNum = find_least_bit_loop(HighBits, HalfSize,
-                BitNum0 + HalfSize)
+            HighBits = Mask /\
+                unchecked_right_shift(Bits0, cast_to_int(HalfSize)),
+            find_least_bit_loop(HighBits, HalfSize, BitNum0 + HalfSize, BitNum)
         else
-            BitNum = find_least_bit_loop(LowBits, HalfSize, BitNum0)
+            find_least_bit_loop(LowBits, HalfSize, BitNum0, BitNum)
         )
     ).
 
@@ -1101,12 +1115,12 @@ divide(Pred, Set, InSet, OutSet) :-
     OutSet = fat_sparse_bitset(OutNodes).
 
 :- pred divide_nodes(pred(T)::in(pred(in) is semidet),
-    bitset_elems::in, bitset_elems::out, bitset_elems::out) is det <= enum(T).
+    bitset_elems::in, bitset_elems::out, bitset_elems::out) is det <= uenum(T).
 
 divide_nodes(_Pred, bitset_nil, bitset_nil, bitset_nil).
 divide_nodes(Pred, bitset_cons(Offset, Bits, Tail), InNodes, OutNodes) :-
     divide_nodes(Pred, Tail, InNodesTail, OutNodesTail),
-    divide_bits(Pred, Offset, 0, Bits, bits_per_int, 0u, In, 0u, Out),
+    divide_bits(Pred, Offset, 0u, Bits, ubits_per_uint, 0u, In, 0u, Out),
     ( if In = 0u then
         InNodes = InNodesTail
     else
@@ -1121,15 +1135,15 @@ divide_nodes(Pred, bitset_cons(Offset, Bits, Tail), InNodes, OutNodes) :-
     % Do a binary search for the 1 bits in an int.
     %
 :- pred divide_bits(pred(T)::in(pred(in) is semidet),
-    int::in, int::in, uint::in, int::in,
-    uint::in, uint::out, uint::in, uint::out) is det <= enum(T).
+    uint::in, uint::in, uint::in, uint::in,
+    uint::in, uint::out, uint::in, uint::out) is det <= uenum(T).
 
 divide_bits(Pred, BaseOffset, OffsetInWord, Bits, Size, !In, !Out) :-
     ( if Bits = 0u then
         true
-    else if Size = 1 then
-        Elem = det_from_int(BaseOffset + OffsetInWord),
-        OffsetBit = unchecked_left_shift(1u, OffsetInWord),
+    else if Size = 1u then
+        Elem = det_from_uint(BaseOffset + OffsetInWord),
+        OffsetBit = unchecked_left_shift(1u, cast_to_int(OffsetInWord)),
         ( if Pred(Elem) then
             !:In = !.In \/ OffsetBit
         else
@@ -1143,7 +1157,7 @@ divide_bits(Pred, BaseOffset, OffsetInWord, Bits, Size, !In, !Out) :-
         LowBits = Mask /\ Bits,
 
         % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
 
         divide_bits(Pred, BaseOffset, OffsetInWord,
             LowBits, HalfSize, !In, !Out),
@@ -1178,7 +1192,7 @@ divide_nodes_by_set(DivideByNodes, Nodes, InNodes, OutNodes) :-
     else
         divide_nodes_by_set(DivideByNodesTail, NodesTail,
             InNodesTail, OutNodesTail),
-        divide_bits_by_set(DivideByBits, bits_per_int, 0, Bits,
+        divide_bits_by_set(DivideByBits, ubits_per_uint, 0u, Bits,
             0u, In, 0u, Out),
         ( if In = 0u then
             InNodes = InNodesTail
@@ -1209,14 +1223,14 @@ divide_nodes_by_set(DivideByNodes, Nodes, InNodes, OutNodes) :-
     % approach may well be slower than a simple iteration through all the bits
     % in that word would be.
     %
-:- pred divide_bits_by_set(uint::in, int::in, int::in, uint::in,
+:- pred divide_bits_by_set(uint::in, uint::in, uint::in, uint::in,
     uint::in, uint::out, uint::in, uint::out) is det.
 
 divide_bits_by_set(DivideByBits, Size, Offset, Bits, !In, !Out) :-
     ( if Bits = 0u then
         true
-    else if Size = 1 then
-        OffsetBit = unchecked_left_shift(1u, Offset),
+    else if Size = 1u then
+        OffsetBit = unchecked_left_shift(1u, cast_to_int(Offset)),
         ( if DivideByBits /\ OffsetBit = 0u then
             !:Out = !.Out \/ OffsetBit
         else
@@ -1232,7 +1246,7 @@ divide_bits_by_set(DivideByBits, Size, Offset, Bits, !In, !Out) :-
         LowBits = Mask /\ Bits,
 
         % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
 
         divide_bits_by_set(DivideByBits, HalfSize, Offset, LowBits,
             !In, !Out),
@@ -1269,13 +1283,13 @@ list_to_set(ItemList, fat_sparse_bitset(Elems)) :-
     % bits_for_index.)
     %
 :- pred list_to_set_passes(list(T)::in, bitset_elems::in, bitset_elems::out)
-    is det <= enum(T).
+    is det <= uenum(T).
 :- pragma type_spec(pred(list_to_set_passes/3), T = var(_)).
-:- pragma type_spec(pred(list_to_set_passes/3), T = int).
+:- pragma type_spec(pred(list_to_set_passes/3), T = uint).
 
 list_to_set_passes([], !Elems).
 list_to_set_passes([HeadItem | TailItems], !Elems) :-
-    bits_for_index(enum.to_int(HeadItem), Offset, Bits0),
+    bits_for_index(enum.to_uint(HeadItem), Offset, Bits0),
     list_to_set_same_elem_pass(TailItems, Offset, Bits0, Bits,
         [], LeftOverItems),
     insert_bitset_elem(Offset, Bits, !Elems),
@@ -1284,17 +1298,19 @@ list_to_set_passes([HeadItem | TailItems], !Elems) :-
     % Go through the list picking out the elements which belong in the same
     % bitset_elem as the first element, returning the not-yet-handled elements.
     %
-:- pred list_to_set_same_elem_pass(list(T)::in, int::in,
-    uint::in, uint::out,  list(T)::in, list(T)::out) is det <= enum(T).
+:- pred list_to_set_same_elem_pass(list(T)::in, uint::in,
+    uint::in, uint::out,  list(T)::in, list(T)::out) is det <= uenum(T).
 :- pragma type_spec(pred(list_to_set_same_elem_pass/6), T = var(_)).
-:- pragma type_spec(pred(list_to_set_same_elem_pass/6), T = int).
+:- pragma type_spec(pred(list_to_set_same_elem_pass/6), T = uint).
 
 list_to_set_same_elem_pass([], _, !Bits, !LeftOvers).
 list_to_set_same_elem_pass([HeadItem | TailItems], Offset, !Bits,
         !LeftOverItems) :-
-    BitToSet = enum.to_int(HeadItem) - Offset,
-    ( if 0 =< BitToSet, BitToSet < bits_per_int then
-        !:Bits = set_bit(!.Bits, BitToSet)
+    HeadItemIndex = enum.to_uint(HeadItem),
+    offset_and_bit_to_set_for_index(HeadItemIndex,
+        HeadItemOffset, HeadItemBitToSet),
+    ( if Offset = HeadItemOffset then
+        set_bit(HeadItemBitToSet, !Bits)
     else
         !:LeftOverItems = [HeadItem | !.LeftOverItems]
     ),
@@ -1305,7 +1321,7 @@ list_to_set_same_elem_pass([HeadItem | TailItems], Offset, !Bits,
     %
     % XXX Actually, for some stress-test inputs, the list can be *quite* large.
     %
-:- pred insert_bitset_elem(int::in, uint::in,
+:- pred insert_bitset_elem(uint::in, uint::in,
     bitset_elems::in, bitset_elems::out) is det.
 
 insert_bitset_elem(Offset, Bits, Elems0, Elems) :-
@@ -1353,15 +1369,15 @@ sorted_list_to_set(SortedList, fat_sparse_bitset(Elems)) :-
     % and unreverse it at the end.
     %
 :- pred sorted_list_to_set_loop(T::in, list(T)::in,
-    int::out, uint::out, bitset_elems::out) is det <= enum(T).
+    uint::out, uint::out, bitset_elems::out) is det <= uenum(T).
 :- pragma type_spec(pred(sorted_list_to_set_loop/5), T = var(_)).
-:- pragma type_spec(pred(sorted_list_to_set_loop/5), T = int).
+:- pragma type_spec(pred(sorted_list_to_set_loop/5), T = uint).
 
 sorted_list_to_set_loop(Item1, [], Offset, Bits, bitset_nil) :-
-    bits_for_index(enum.to_int(Item1), Offset, Bits).
+    bits_for_index(enum.to_uint(Item1), Offset, Bits).
 sorted_list_to_set_loop(Item1, [Item2 | Items], Offset, Bits, Tail) :-
     sorted_list_to_set_loop(Item2, Items, Offset0, Bits0, Tail0),
-    bits_for_index(enum.to_int(Item1), Offset1, Bits1),
+    bits_for_index(enum.to_uint(Item1), Offset1, Bits1),
     ( if Offset1 = Offset0 then
         Bits = Bits1 \/ Bits0,
         Offset = Offset1,
@@ -1392,29 +1408,29 @@ count(Set) = fat_sparse_bitset.foldl((func(_, Acc) = Acc + 1), Set, 0).
 
 %---------------------------------------------------------------------------%
 
-all_true(Pred, fat_sparse_bitset(Set)) :-
-    all_true_node(Pred, Set).
+all_true(Pred, fat_sparse_bitset(Elems)) :-
+    all_true_node(Pred, Elems).
 
 :- pred all_true_node(pred(T)::in(pred(in) is semidet), bitset_elems::in)
-    is semidet <= enum(T).
-:- pragma type_spec(pred(all_true_node/2), T = int).
+    is semidet <= uenum(T).
+:- pragma type_spec(pred(all_true_node/2), T = uint).
 :- pragma type_spec(pred(all_true_node/2), T = var(_)).
 
 all_true_node(_, bitset_nil).
 all_true_node(Pred, bitset_cons(Offset, Bits, Tail)) :-
-    all_true_bits(Pred, Offset, Bits, bits_per_int),
+    all_true_bits(Pred, Offset, Bits, ubits_per_uint),
     all_true_node(Pred, Tail).
 
 :- pred all_true_bits(pred(T)::in(pred(in) is semidet),
-    int::in, uint::in, int::in) is semidet <= enum(T).
-:- pragma type_spec(pred(all_true_bits/4), T = int).
+    uint::in, uint::in, uint::in) is semidet <= uenum(T).
+:- pragma type_spec(pred(all_true_bits/4), T = uint).
 :- pragma type_spec(pred(all_true_bits/4), T = var(_)).
 
 all_true_bits(Pred, Offset, Bits, Size) :-
     ( if Bits = 0u then
         true
-    else if Size = 1 then
-        Item = det_from_int(Offset),
+    else if Size = 1u then
+        Item = det_from_uint(Offset),
         Pred(Item)
     else
         HalfSize = unchecked_right_shift(Size, 1),
@@ -1424,7 +1440,7 @@ all_true_bits(Pred, Offset, Bits, Size) :-
         LowBits = Mask /\ Bits,
 
         % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
 
         all_true_bits(Pred, Offset, LowBits, HalfSize),
         all_true_bits(Pred, Offset + HalfSize, HighBits, HalfSize)
@@ -1447,16 +1463,16 @@ filter(Pred, Set, TrueSet, FalseSet) :-
 
 %---------------------%
 
-foldl(Func, fat_sparse_bitset(Set), Acc0) = Acc :-
+foldl(Func, fat_sparse_bitset(Elems), Acc0) = Acc :-
     do_foldl_pred(
         ( pred(E::in, Acc1::in, Acc2::out) is det :-
             Acc2 = Func(E, Acc1)
-        ), Set, Acc0, Acc).
+        ), Elems, Acc0, Acc).
 
-foldl(Pred, fat_sparse_bitset(Set), !Acc) :-
-    do_foldl_pred(Pred, Set, !Acc).
+foldl(Pred, fat_sparse_bitset(Elems), !Acc) :-
+    do_foldl_pred(Pred, Elems, !Acc).
 
-:- pred do_foldl_pred(pred(T, U, U), bitset_elems, U, U) <= enum(T).
+:- pred do_foldl_pred(pred(T, U, U), bitset_elems, U, U) <= uenum(T).
 :- mode do_foldl_pred(pred(in, in, out) is det, in, in, out) is det.
 :- mode do_foldl_pred(pred(in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode do_foldl_pred(pred(in, di, uo) is det, in, di, uo) is det.
@@ -1467,21 +1483,21 @@ foldl(Pred, fat_sparse_bitset(Set), !Acc) :-
 :- mode do_foldl_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 :- mode do_foldl_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 
-:- pragma type_spec(pred(do_foldl_pred/4), T = int).
+:- pragma type_spec(pred(do_foldl_pred/4), T = uint).
 :- pragma type_spec(pred(do_foldl_pred/4), T = var(_)).
 
 do_foldl_pred(_, bitset_nil, !Acc).
 do_foldl_pred(Pred, bitset_cons(Offset, Bits, Tail), !Acc) :-
-    fold_bits_low_to_high(Pred, Offset, Bits, bits_per_int, !Acc),
+    fold_bits_low_to_high(Pred, Offset, Bits, ubits_per_uint, !Acc),
     do_foldl_pred(Pred, Tail, !Acc).
 
 %---------------------%
 
-foldl2(Pred, fat_sparse_bitset(Set), !Acc1, !Acc2) :-
-    do_foldl2_pred(Pred, Set, !Acc1, !Acc2).
+foldl2(Pred, fat_sparse_bitset(Elems), !Acc1, !Acc2) :-
+    do_foldl2_pred(Pred, Elems, !Acc1, !Acc2).
 
 :- pred do_foldl2_pred(pred(T, U, U, V, V), bitset_elems, U, U, V, V)
-    <= enum(T).
+    <= uenum(T).
 :- mode do_foldl2_pred(pred(in, in, out, in, out) is det,
     in, in, out, in, out) is det.
 :- mode do_foldl2_pred(pred(in, in, out, mdi, muo) is det,
@@ -1505,26 +1521,26 @@ foldl2(Pred, fat_sparse_bitset(Set), !Acc1, !Acc2) :-
 :- mode do_foldl2_pred(pred(in, in, out, in, out) is cc_multi,
     in, in, out, in, out) is cc_multi.
 
-:- pragma type_spec(pred(do_foldl2_pred/6), T = int).
+:- pragma type_spec(pred(do_foldl2_pred/6), T = uint).
 :- pragma type_spec(pred(do_foldl2_pred/6), T = var(_)).
 
 do_foldl2_pred(_, bitset_nil, !Acc1, !Acc2).
 do_foldl2_pred(Pred, bitset_cons(Offset, Bits, Tail), !Acc1, !Acc2) :-
-    fold2_bits_low_to_high(Pred, Offset, Bits, bits_per_int, !Acc1, !Acc2),
+    fold2_bits_low_to_high(Pred, Offset, Bits, ubits_per_uint, !Acc1, !Acc2),
     do_foldl2_pred(Pred, Tail, !Acc1, !Acc2).
 
 %---------------------%
 
-foldr(Func, fat_sparse_bitset(Set), Acc0) = Acc :-
+foldr(Func, fat_sparse_bitset(Elems), Acc0) = Acc :-
     do_foldr_pred(
         ( pred(E::in, Acc1::in, Acc2::out) is det :-
             Acc2 = Func(E, Acc1)
-        ), Set, Acc0, Acc).
+        ), Elems, Acc0, Acc).
 
-foldr(Pred, fat_sparse_bitset(Set), !Acc) :-
-    do_foldr_pred(Pred, Set, !Acc).
+foldr(Pred, fat_sparse_bitset(Elems), !Acc) :-
+    do_foldr_pred(Pred, Elems, !Acc).
 
-:- pred do_foldr_pred(pred(T, U, U), bitset_elems, U, U) <= enum(T).
+:- pred do_foldr_pred(pred(T, U, U), bitset_elems, U, U) <= uenum(T).
 :- mode do_foldr_pred(pred(in, in, out) is det, in, in, out) is det.
 :- mode do_foldr_pred(pred(in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode do_foldr_pred(pred(in, di, uo) is det, in, di, uo) is det.
@@ -1535,7 +1551,7 @@ foldr(Pred, fat_sparse_bitset(Set), !Acc) :-
 :- mode do_foldr_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 :- mode do_foldr_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
-:- pragma type_spec(pred(do_foldr_pred/4), T = int).
+:- pragma type_spec(pred(do_foldr_pred/4), T = uint).
 :- pragma type_spec(pred(do_foldr_pred/4), T = var(_)).
 
     % We don't just use list.foldr here because the overhead of allocating
@@ -1544,15 +1560,15 @@ foldr(Pred, fat_sparse_bitset(Set), !Acc) :-
 do_foldr_pred(_, bitset_nil, !Acc).
 do_foldr_pred(Pred, bitset_cons(Offset, Bits, Tail), !Acc) :-
     do_foldr_pred(Pred, Tail, !Acc),
-    fold_bits_high_to_low(Pred, Offset, Bits, bits_per_int, !Acc).
+    fold_bits_high_to_low(Pred, Offset, Bits, ubits_per_uint, !Acc).
 
 %---------------------%
 
-foldr2(Pred, fat_sparse_bitset(Set), !Acc1, !Acc2) :-
-    do_foldr2_pred(Pred, Set, !Acc1, !Acc2).
+foldr2(Pred, fat_sparse_bitset(Elems), !Acc1, !Acc2) :-
+    do_foldr2_pred(Pred, Elems, !Acc1, !Acc2).
 
 :- pred do_foldr2_pred(pred(T, U, U, V, V), bitset_elems, U, U, V, V)
-    <= enum(T).
+    <= uenum(T).
 :- mode do_foldr2_pred(pred(in, in, out, in, out) is det,
     in, in, out, in, out) is det.
 :- mode do_foldr2_pred(pred(in, in, out, mdi, muo) is det,
@@ -1576,7 +1592,7 @@ foldr2(Pred, fat_sparse_bitset(Set), !Acc1, !Acc2) :-
 :- mode do_foldr2_pred(pred(in, in, out, in, out) is cc_multi,
     in, in, out, in, out) is cc_multi.
 
-:- pragma type_spec(pred(do_foldr2_pred/6), T = int).
+:- pragma type_spec(pred(do_foldr2_pred/6), T = uint).
 :- pragma type_spec(pred(do_foldr2_pred/6), T = var(_)).
 
     % We don't just use list.foldr here because the overhead of allocating
@@ -1585,12 +1601,12 @@ foldr2(Pred, fat_sparse_bitset(Set), !Acc1, !Acc2) :-
 do_foldr2_pred(_, bitset_nil, !Acc1, !Acc2).
 do_foldr2_pred(Pred, bitset_cons(Offset, Bits, Tail), !Acc1, !Acc2) :-
     do_foldr2_pred(Pred, Tail, !Acc1, !Acc2),
-    fold2_bits_high_to_low(Pred, Offset, Bits, bits_per_int, !Acc1, !Acc2).
+    fold2_bits_high_to_low(Pred, Offset, Bits, ubits_per_uint, !Acc1, !Acc2).
 
 %---------------------%
 
 :- pred fold_bits_low_to_high(pred(T, U, U),
-    int, uint, int, U, U) <= enum(T).
+    uint, uint, uint, U, U) <= uenum(T).
 :- mode fold_bits_low_to_high(pred(in, in, out) is det,
     in, in, in, in, out) is det.
 :- mode fold_bits_low_to_high(pred(in, mdi, muo) is det,
@@ -1609,14 +1625,14 @@ do_foldr2_pred(Pred, bitset_cons(Offset, Bits, Tail), !Acc1, !Acc2) :-
     in, in, in, di, uo) is cc_multi.
 :- mode fold_bits_low_to_high(pred(in, in, out) is cc_multi,
     in, in, in, in, out) is cc_multi.
-:- pragma type_spec(pred(fold_bits_low_to_high/6), T = int).
+:- pragma type_spec(pred(fold_bits_low_to_high/6), T = uint).
 :- pragma type_spec(pred(fold_bits_low_to_high/6), T = var(_)).
 
 fold_bits_low_to_high(Pred, Offset, Bits, Size, !Acc) :-
     ( if Bits = 0u then
         true
-    else if Size = 1 then
-        Item = det_from_int(Offset),
+    else if Size = 1u then
+        Item = det_from_uint(Offset),
         Pred(Item, !Acc)
     else
         HalfSize = unchecked_right_shift(Size, 1),
@@ -1624,7 +1640,7 @@ fold_bits_low_to_high(Pred, Offset, Bits, Size, !Acc) :-
 
         % Extract the low-order and high-order halves of the bits.
         LowBits = Mask /\ Bits,
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
 
         fold_bits_low_to_high(Pred, Offset,
             LowBits, HalfSize, !Acc),
@@ -1633,7 +1649,7 @@ fold_bits_low_to_high(Pred, Offset, Bits, Size, !Acc) :-
     ).
 
 :- pred fold_bits_high_to_low(pred(T, U, U),
-    int, uint, int, U, U) <= enum(T).
+    uint, uint, uint, U, U) <= uenum(T).
 :- mode fold_bits_high_to_low(pred(in, in, out) is det,
     in, in, in, in, out) is det.
 :- mode fold_bits_high_to_low(pred(in, mdi, muo) is det,
@@ -1652,14 +1668,14 @@ fold_bits_low_to_high(Pred, Offset, Bits, Size, !Acc) :-
     in, in, in, di, uo) is cc_multi.
 :- mode fold_bits_high_to_low(pred(in, in, out) is cc_multi,
     in, in, in, in, out) is cc_multi.
-:- pragma type_spec(pred(fold_bits_high_to_low/6), T = int).
+:- pragma type_spec(pred(fold_bits_high_to_low/6), T = uint).
 :- pragma type_spec(pred(fold_bits_high_to_low/6), T = var(_)).
 
 fold_bits_high_to_low(Pred, Offset, Bits, Size, !Acc) :-
     ( if Bits = 0u then
         true
-    else if Size = 1 then
-        Item = det_from_int(Offset),
+    else if Size = 1u then
+        Item = det_from_uint(Offset),
         Pred(Item, !Acc)
     else
         HalfSize = unchecked_right_shift(Size, 1),
@@ -1667,7 +1683,7 @@ fold_bits_high_to_low(Pred, Offset, Bits, Size, !Acc) :-
 
         % Extract the low-order and high-order halves of the bits.
         LowBits = Mask /\ Bits,
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
 
         fold_bits_high_to_low(Pred, Offset + HalfSize,
             HighBits, HalfSize, !Acc),
@@ -1676,7 +1692,7 @@ fold_bits_high_to_low(Pred, Offset, Bits, Size, !Acc) :-
     ).
 
 :- pred fold2_bits_low_to_high(pred(T, U, U, V, V),
-    int, uint, int, U, U, V, V) <= enum(T).
+    uint, uint, uint, U, U, V, V) <= uenum(T).
 :- mode fold2_bits_low_to_high(pred(in, in, out, in, out) is det,
     in, in, in, in, out, in, out) is det.
 :- mode fold2_bits_low_to_high(pred(in, in, out, mdi, muo) is det,
@@ -1699,14 +1715,14 @@ fold_bits_high_to_low(Pred, Offset, Bits, Size, !Acc) :-
     in, in, in, in, out, di, uo) is cc_multi.
 :- mode fold2_bits_low_to_high(pred(in, in, out, in, out) is cc_multi,
     in, in, in, in, out, in, out) is cc_multi.
-:- pragma type_spec(pred(fold2_bits_low_to_high/8), T = int).
+:- pragma type_spec(pred(fold2_bits_low_to_high/8), T = uint).
 :- pragma type_spec(pred(fold2_bits_low_to_high/8), T = var(_)).
 
 fold2_bits_low_to_high(Pred, Offset, Bits, Size, !Acc1, !Acc2) :-
     ( if Bits = 0u then
         true
-    else if Size = 1 then
-        Item = det_from_int(Offset),
+    else if Size = 1u then
+        Item = det_from_uint(Offset),
         Pred(Item, !Acc1, !Acc2)
     else
         HalfSize = unchecked_right_shift(Size, 1),
@@ -1714,7 +1730,7 @@ fold2_bits_low_to_high(Pred, Offset, Bits, Size, !Acc1, !Acc2) :-
 
         % Extract the low-order and high-order halves of the bits.
         LowBits = Mask /\ Bits,
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
 
         fold2_bits_low_to_high(Pred, Offset, LowBits, HalfSize, !Acc1, !Acc2),
         fold2_bits_low_to_high(Pred, Offset + HalfSize, HighBits, HalfSize,
@@ -1722,7 +1738,7 @@ fold2_bits_low_to_high(Pred, Offset, Bits, Size, !Acc1, !Acc2) :-
     ).
 
 :- pred fold2_bits_high_to_low(pred(T, U, U, V, V),
-    int, uint, int, U, U, V, V) <= enum(T).
+    uint, uint, uint, U, U, V, V) <= uenum(T).
 :- mode fold2_bits_high_to_low(pred(in, in, out, in, out) is det,
     in, in, in, in, out, in, out) is det.
 :- mode fold2_bits_high_to_low(pred(in, in, out, mdi, muo) is det,
@@ -1745,14 +1761,14 @@ fold2_bits_low_to_high(Pred, Offset, Bits, Size, !Acc1, !Acc2) :-
     in, in, in, in, out, di, uo) is cc_multi.
 :- mode fold2_bits_high_to_low(pred(in, in, out, in, out) is cc_multi,
     in, in, in, in, out, in, out) is cc_multi.
-:- pragma type_spec(pred(fold2_bits_high_to_low/8), T = int).
+:- pragma type_spec(pred(fold2_bits_high_to_low/8), T = uint).
 :- pragma type_spec(pred(fold2_bits_high_to_low/8), T = var(_)).
 
 fold2_bits_high_to_low(Pred, Offset, Bits, Size, !Acc1, !Acc2) :-
     ( if Bits = 0u then
         true
-    else if Size = 1 then
-        Item = det_from_int(Offset),
+    else if Size = 1u then
+        Item = det_from_uint(Offset),
         Pred(Item, !Acc1, !Acc2)
     else
         HalfSize = unchecked_right_shift(Size, 1),
@@ -1760,7 +1776,7 @@ fold2_bits_high_to_low(Pred, Offset, Bits, Size, !Acc1, !Acc2) :-
 
         % Extract the low-order and high-order halves of the bits.
         LowBits = Mask /\ Bits,
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
+        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
 
         fold2_bits_high_to_low(Pred, Offset + HalfSize, HighBits, HalfSize,
             !Acc1, !Acc2),
@@ -1775,38 +1791,48 @@ fold2_bits_high_to_low(Pred, Offset, Bits, Size, !Acc1, !Acc2) :-
     % Return the offset of the element of a set which should contain the given
     % element, and an int with the bit corresponding to that element set.
     %
-:- pred bits_for_index(int::in, int::out, uint::out) is det.
+:- pred bits_for_index(uint::in, uint::out, uint::out) is det.
 :- pragma inline(pred(bits_for_index/3)).
 
 bits_for_index(Index, Offset, Bits) :-
-    Offset = int.floor_to_multiple_of_bits_per_int(Index),
-    BitToSet = Index - Offset,
-    Bits = set_bit(0u, BitToSet).
+    Mask = uint.ubits_per_uint - 1u,
+    Offset = Index /\ \ Mask,
+    BitToSet = Index /\ Mask,
+    set_bit(BitToSet, 0u, Bits).
 
-:- func get_bit(uint, int) = uint.
+:- pred offset_and_bit_to_set_for_index(uint::in, uint::out, uint::out) is det.
+:- pragma inline(pred(offset_and_bit_to_set_for_index/3)).
+
+offset_and_bit_to_set_for_index(Index, Offset, BitToSet) :-
+    Mask = uint.ubits_per_uint - 1u,
+    Offset = Index /\ \ Mask,
+    BitToSet = Index /\ Mask.
+
+:- func get_bit(uint, uint) = uint.
 :- pragma inline(func(get_bit/2)).
 
-get_bit(Int, Bit) = Int /\ unchecked_left_shift(1u, Bit).
+get_bit(UInt, Bit) = UInt /\ unchecked_left_shift(1u, cast_to_int(Bit)).
 
-:- func set_bit(uint, int) = uint.
-:- pragma inline(func(set_bit/2)).
+:- pred set_bit(uint::in, uint::in, uint::out) is det.
+:- pragma inline(pred(set_bit/3)).
 
-set_bit(Int0, Bit) = Int0 \/ unchecked_left_shift(1u, Bit).
+set_bit(Bit, UInt0, UInt) :-
+    UInt = UInt0 \/ unchecked_left_shift(1u, cast_to_int(Bit)).
 
-:- func clear_bit(uint, int) = uint.
+:- func clear_bit(uint, uint) = uint.
 :- pragma inline(func(clear_bit/2)).
 
-clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1u, Bit).
+clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1u, cast_to_int(Bit)).
 
     % mask(N) returns a mask which can be `and'ed with an integer to return
-    % the lower N bits of the integer. N must be less than bits_per_int.
+    % the lower N bits of the integer. N must be less than ubits_per_uint.
     %
-:- func mask(int) = uint.
+:- func mask(uint) = uint.
 :- pragma inline(func(mask/1)).
 
-mask(N) = \ unchecked_left_shift(\ 0u, N).
+mask(N) = \ unchecked_left_shift(\ 0u, cast_to_int(N)).
 
-:- func make_bitset_cons(int, uint, bitset_elems) = bitset_elems.
+:- func make_bitset_cons(uint, uint, bitset_elems) = bitset_elems.
 :- pragma inline(func(make_bitset_cons/3)).
 
 make_bitset_cons(Offset, Bits, Tail) = bitset_cons(Offset, Bits, Tail).

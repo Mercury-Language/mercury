@@ -280,6 +280,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1144,7 +1145,7 @@ dependency_file_hash(DepFile, Hash) :-
 dependency_file_with_module_index_hash(DepFile, Hash) :-
     (
         DepFile = dfmi_target(ModuleIndex, Type),
-        Hash0 = to_int(ModuleIndex),
+        Hash0 = cast_to_int(to_uint(ModuleIndex)),
         Hash1 = module_target_type_to_nonce(Type),
         Hash = mix(Hash0, Hash1)
     ;

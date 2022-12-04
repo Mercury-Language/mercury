@@ -42,7 +42,7 @@
     %
 :- type digraph_key(T).
 
-:- instance enum(digraph_key(T)).
+:- instance uenum(digraph_key(T)).
 
 :- type digraph_key_set(T) == sparse_bitset(digraph_key(T)).
 
@@ -363,23 +363,23 @@
 :- implementation.
 
 :- import_module bimap.
-:- import_module int.
+:- import_module uint.
 :- import_module require.
 
 %---------------------------------------------------------------------------%
 
 :- type digraph_key(T)
-    --->    digraph_key(int).
+    --->    digraph_key(uint).
 
-:- instance enum(digraph_key(T)) where [
-    to_int(digraph_key(Int)) = Int,
-    from_int(Int) = digraph_key(Int)
+:- instance uenum(digraph_key(T)) where [
+    to_uint(digraph_key(UInt)) = UInt,
+    from_uint(UInt, digraph_key(UInt))
 ].
 
 :- type digraph(T)
     --->    digraph(
                 % Next unallocated key number.
-                next_key            :: int,
+                next_key            :: uint,
 
                 % Maps vertices to their keys.
                 vertex_map          :: bimap(T, digraph_key(T)),
@@ -396,10 +396,10 @@
     % Note that the integer keys in these maps are actually digraph keys.
     % We use the raw integers as keys to allow type specialization.
     %
-:- type key_map(T)     == map(int, digraph_key(T)).
-:- type key_set_map(T) == map(int, digraph_key_set(T)).
+:- type key_map(T)     == map(uint, digraph_key(T)).
+:- type key_set_map(T) == map(uint, digraph_key_set(T)).
 
-:- pred key_set_map_add(int::in, digraph_key(T)::in,
+:- pred key_set_map_add(uint::in, digraph_key(T)::in,
     key_set_map(T)::in, key_set_map(T)::out) is det.
 
 key_set_map_add(XI, Y, Map0, Map) :-
@@ -415,7 +415,7 @@ key_set_map_add(XI, Y, Map0, Map) :-
         map.det_insert(XI, SuccXs, Map0, Map)
     ).
 
-:- pred key_set_map_delete(int::in, digraph_key(T)::in,
+:- pred key_set_map_delete(uint::in, digraph_key(T)::in,
     key_set_map(T)::in, key_set_map(T)::out) is det.
 
 key_set_map_delete(XI, Y, Map0, Map) :-
@@ -431,7 +431,7 @@ key_set_map_delete(XI, Y, Map0, Map) :-
 init = G :-
     digraph.init(G).
 
-init(digraph(0, VMap, FwdMap, BwdMap)) :-
+init(digraph(0u, VMap, FwdMap, BwdMap)) :-
     bimap.init(VMap),
     map.init(FwdMap),
     map.init(BwdMap).
@@ -453,7 +453,7 @@ add_vertex(Vertex, Key, !G) :-
 
 allocate_key(digraph_key(I), !G) :-
     I = !.G ^ next_key,
-    !G ^ next_key := I + 1.
+    !G ^ next_key := I + 1u.
 
 %---------------------------------------------------------------------------%
 
@@ -595,7 +595,7 @@ to_assoc_list(G, List) :-
     map.keys(Fwd, FwdKeys),
     digraph.to_assoc_list_2(Fwd, FwdKeys, G ^ vertex_map, [], List).
 
-:- pred digraph.to_assoc_list_2(key_set_map(T)::in, list(int)::in,
+:- pred digraph.to_assoc_list_2(key_set_map(T)::in, list(uint)::in,
     bimap(T, digraph_key(T))::in, assoc_list(T, T)::in, assoc_list(T, T)::out)
     is det.
 
@@ -621,7 +621,7 @@ to_key_assoc_list(G, List) :-
     map.keys(Fwd, FwdKeys),
     digraph.to_key_assoc_list_2(Fwd, FwdKeys, [], List).
 
-:- pred digraph.to_key_assoc_list_2(key_set_map(T)::in, list(int)::in,
+:- pred digraph.to_key_assoc_list_2(key_set_map(T)::in, list(uint)::in,
     assoc_list(digraph_key(T), digraph_key(T))::in,
     assoc_list(digraph_key(T), digraph_key(T))::out) is det.
 

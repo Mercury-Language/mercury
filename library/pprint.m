@@ -625,9 +625,7 @@ to_doc_prio(Depth, Priority, X) =
 :- func generic_term_to_doc(depth, priority, T) = doc.
 
 generic_term_to_doc(Depth, Priority, X) = Doc :-
-    ( if
-        Depth =< 0
-    then
+    ( if Depth =< 0 then
         functor(X, canonicalize, Name, Arity),
         Doc = ( if Arity = 0 then text(Name) else Name ++ "/" ++ Arity )
     else
@@ -849,10 +847,10 @@ var_to_doc(Depth, V) =
 
 %---------------------------------------------------------------------------%
 
-    % XXX Ideally we'd just walk the sparse bitset. But that is an optimization
-    % for another day.
+    % XXX Ideally we would just walk the sparse bitset.
+    % But that is an optimization for another day.
     %
-:- func sparse_bitset_to_doc(int, sparse_bitset(T)) = doc <= enum(T).
+:- func sparse_bitset_to_doc(int, sparse_bitset(T)) = doc <= uenum(T).
 
 sparse_bitset_to_doc(Depth, A) =
     group("sparse_bitset" ++

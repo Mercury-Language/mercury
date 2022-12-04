@@ -32,6 +32,13 @@ Changes that may break compatibility
   The old contents of the `mercury_term_parser` module is still available as
   `extras/old_library_modules/old_mercury_term_parser`.
 
+* The sparse_bitset.m and fat_sparse_bitset.m modules now require
+  the items in those sets to be instances of the uenum typeclass,
+  not the enum typeclass.
+
+* The digraph_key type in the digraph.m module is now an instance of
+  the uenum typeclass, not the enum typeclass.
+
 * The compiler no longer accepts : as the module name separator in backquoted
   operators. (Mercury switched to using . as the module name separator
   around 2003.)
@@ -96,13 +103,48 @@ Changes to the Mercury standard library
     - pred `head/2`
     - pred `is_singleton/2`
 
+### Changes to the `counter` module
+
+* The following type has been added:
+
+   - type `ucounter/0`
+
+* The following predicate and function have been added:
+
+   - func `uinit/1`
+   - pred `uinit/2`
+   - pred `uallocate/1`
+
 ### Changes to the `diet` module
 
 * The following obsolete predicate has been removed:
 
    - pred `empty/1`
 
+### Changes to the `digraph` module
+
+* The following type has had its typeclass memberships changed:
+
+   - The digraph_key(T) type is now an instance of the uenum typeclass,
+     and is no longer an instance of the enum typeclass.
+
+### Changes to the `enum` module
+
+* The following typeclass has been added:
+
+   - typeclass `uenum/1`
+
+* The following function has been added:
+
+   - func `det_from_uint/1`
+
 ### Changes to the `fat_sparse_bitset` module
+
+* The following type has had its typeclass memberships changed:
+
+   - The fat_sparse_bitset(T) type now requires T to be an instance of the
+     uenum typeclass, replacing the earlier requirement that it be
+     a member of the enum typeclass.
 
 * The following obsolete predicate has been removed:
 
@@ -122,6 +164,12 @@ Changes to the Mercury standard library
     - pred `int_hash/2`
     - pred `string_hash/2`
     - pred `uint_hash/2`
+
+### Changes to the `int` module
+
+* The following type has had its typeclass memberships changed:
+
+    - The type `int` is now an instance of the new uenum typeclass.
 
 ### Changes to the `io` module
 
@@ -478,6 +526,12 @@ Changes to the Mercury standard library
 
 ### Changes to the `sparse_bitset` module
 
+* The following type has had its typeclass memberships changed:
+
+   - The sparse_bitset(T) type now requires T to be an instance of the
+     uenum typeclass, replacing the earlier requirement that it be
+     a member of the enum typeclass.
+
 * The following obsolete predicates has been removed:
 
    - pred `empty/1`
@@ -497,6 +551,10 @@ Changes to the Mercury standard library
    - pred `suffix(in, out)`
 
 ### Changes to the `term` module
+
+* The following type has had its typeclass memberships changed:
+
+    - The type `var/1` is now an instance of the new uenum typeclass.
 
 * The following predicates have been marked obsolete:
 
@@ -688,6 +746,16 @@ Changes to the Mercury standard library
 * The following obsolete predicates has been removed:
 
    - pred `empty/1`
+
+### Changes to the `uint` module
+
+* The following type has had its typeclass memberships changed:
+
+    - The type `uint` is now an instance of the new uenum typeclass.
+
+* The following function has been added:
+
+    - func `ubits_per_int/0`
 
 ### Changes to the `version_array` module
 

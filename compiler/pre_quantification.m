@@ -81,11 +81,11 @@
 
 :- import_module assoc_list.
 :- import_module counter.
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module sparse_bitset.
+:- import_module uint.
 
 %-----------------------------------------------------------------------------%
 %
@@ -116,15 +116,12 @@
 % clause (since the compiler will eventually turn it into that). So the
 % top level of a rhs_lambda_goal is also considered to be in zone 0.
 
-:- type zone == int.
-% We could make a zone a uint, but there are issues around the uint type's
-% membership of the enum typeclass, which is needed for the use of
-% sparse_bitset, as discussed on m-rev on 2017 july 3.
+:- type zone == uint.
 
 :- func top_zone = zone.
 :- pragma inline(func(top_zone/0)).
 
-top_zone = 0.
+top_zone = 0u.
 
 %-----------------------------------------------------------------------------%
 %
@@ -161,7 +158,7 @@ top_zone = 0.
 
 separate_trace_goal_only_locals(Goal0, Goal) :-
     map.init(VarsToZones0),
-    counter.init(1, TraceCounter0),
+    counter.uinit(1u, TraceCounter0),
     build_vars_to_zones_in_goal(top_zone, Goal0, TraceCounter0, _,
         VarsToZones0, VarsToZones),
     map.init(ZonesToDupVars0),
@@ -180,7 +177,7 @@ separate_trace_goal_only_locals(Goal0, Goal) :-
     % separate_trace_goal_only_locals.
     %
 :- pred build_vars_to_zones_in_goal(zone::in, hlds_goal::in,
-    counter::in, counter::out, vars_to_zones::in, vars_to_zones::out) is det.
+    ucounter::in, ucounter::out, vars_to_zones::in, vars_to_zones::out) is det.
 
 build_vars_to_zones_in_goal(CurZone, Goal, !TraceCounter, !VarsToZones) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
@@ -254,7 +251,7 @@ build_vars_to_zones_in_goal(CurZone, Goal, !TraceCounter, !VarsToZones) :-
             Reason = trace_goal(_, _, _, _, _),
             CurZone = top_zone
         then
-            counter.allocate(NewZone, !TraceCounter),
+            counter.uallocate(NewZone, !TraceCounter),
             build_vars_to_zones_in_goal(NewZone, SubGoal,
                 !TraceCounter, !VarsToZones)
         else
@@ -310,7 +307,7 @@ build_vars_to_zones_in_goal(CurZone, Goal, !TraceCounter, !VarsToZones) :-
     ).
 
 :- pred build_vars_to_zones_in_case(zone::in, case::in,
-    counter::in, counter::out, vars_to_zones::in, vars_to_zones::out) is det.
+    ucounter::in, ucounter::out, vars_to_zones::in, vars_to_zones::out) is det.
 
 build_vars_to_zones_in_case(CurZone, Case, !TraceCounter, !VarsToZones) :-
     Case = case(_MainConsId, _OtherConsIds, Goal),
@@ -379,7 +376,7 @@ add_var_to_zone(Var, Zone, !ZonesToDupVars) :-
     % separate_trace_goal_only_locals.
     %
 :- pred add_exist_scopes_for_dup_vars_in_goal(zone::in, zones_to_dup_vars::in,
-    hlds_goal::in, hlds_goal::out, counter::in, counter::out) is det.
+    hlds_goal::in, hlds_goal::out, ucounter::in, ucounter::out) is det.
 
 add_exist_scopes_for_dup_vars_in_goal(CurZone, ZonesToDupVars,
         !Goal, !TraceCounter) :-
@@ -438,7 +435,7 @@ add_exist_scopes_for_dup_vars_in_goal(CurZone, ZonesToDupVars,
             Reason = trace_goal(_, _, _, _, _),
             CurZone = top_zone
         then
-            counter.allocate(NewZone, !TraceCounter),
+            counter.uallocate(NewZone, !TraceCounter),
             ( if map.search(ZonesToDupVars, NewZone, DupVars) then
                 list.sort(DupVars, SortedDupVars),
                 QuantReason = exist_quant(SortedDupVars),
@@ -491,7 +488,7 @@ add_exist_scopes_for_dup_vars_in_goal(CurZone, ZonesToDupVars,
     !:Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred add_exist_scopes_for_dup_vars_in_case(zone::in, zones_to_dup_vars::in,
-    case::in, case::out, counter::in, counter::out) is det.
+    case::in, case::out, ucounter::in, ucounter::out) is det.
 
 add_exist_scopes_for_dup_vars_in_case(CurZone, ZonesToDupVars,
         !Case, !TraceCounter) :-

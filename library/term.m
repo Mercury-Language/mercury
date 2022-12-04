@@ -122,14 +122,18 @@
     % NOTE_TO_IMPLEMENTORS sets of variables to be represented using
     % NOTE_TO_IMPLEMENTORS sparse_bitset.m and the other bitset modules.
 :- instance enum(var(_)).
+:- instance uenum(var(_)).
 
-    % var_id(Variable):
+    % var_to_int(Variable):
+    % var_to_uint(Variable):
     %
-    % Returns a unique number associated with this variable w.r.t.
+    % Return a unique number associated with this variable w.r.t.
     % its originating var_supply.
     %
 :- func var_to_int(var(T)) = int.
 :- pred var_to_int(var(T)::in, int::out) is det.
+:- func var_to_uint(var(T)) = uint.
+:- pred var_to_uint(var(T)::in, uint::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -635,6 +639,7 @@
 :- import_module term_subst.
 :- import_module term_unify.
 :- import_module term_vars.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -660,6 +665,12 @@ create_var(var(V), var_supply(V0), var_supply(V)) :-
     from_int(X) = term.unsafe_int_to_var(X)
 ].
 
+:- instance uenum(var(_)) where [
+    to_uint(X) = term.var_to_uint(X),
+    from_uint(X, V) :-
+        V = term.unsafe_uint_to_var(X)
+].
+
     % Cast an integer to a var(T), subverting the type-checking.
     %
 :- func unsafe_int_to_var(int) = var(T).
@@ -668,6 +679,15 @@ unsafe_int_to_var(VarNum) = var(VarNum).
 
 var_to_int(var(VarNum)) = VarNum.
 var_to_int(var(VarNum), VarNum).
+
+    % Cast an integer to a var(T), subverting the type-checking.
+    %
+:- func unsafe_uint_to_var(uint) = var(T).
+
+unsafe_uint_to_var(UVarNum) = var(cast_to_int(UVarNum)).
+
+var_to_uint(var(VarNum)) = cast_from_int(VarNum).
+var_to_uint(var(VarNum), cast_from_int(VarNum)).
 
 %---------------------------------------------------------------------------%
 
