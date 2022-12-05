@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 
 % Test bitwise operations for signed 8-bit integers.
@@ -26,15 +26,10 @@
 
 main(!IO) :-
     run_unop_test(int8.(\), "\\", !IO),
-    io.nl(!IO),
     run_binop_test(int8.(/\), "/\\", !IO),
-    io.nl(!IO),
     run_binop_test(int8.(\/), "\\/", !IO),
-    io.nl(!IO),
     run_binop_test((func(X, Y) = int8.xor(X, Y)), "xor", !IO),
-    io.nl(!IO),
     run_shift_test(int8.(>>), ">>", !IO),
-    io.nl(!IO),
     run_shift_test(int8.(<<), "<<", !IO).
 
 %---------------------------------------------------------------------------%
@@ -58,9 +53,8 @@ run_unop_test_2(UnOpFunc, Desc, A, !IO) :-
     catch_any _ ->
         ResultStr = "<<exception>>"
     ),
-    io.format("%s %s =\n %s\n",
-        [s(Desc), s(to_binary_string_lz(A)), s(ResultStr)], !IO),
-    io.nl(!IO).
+    io.format("%s %s =\n  %s\n\n",
+        [s(Desc), s(to_binary_string_lz(A)), s(ResultStr)], !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -90,10 +84,9 @@ run_binop_test_3(BinOpFunc, Desc, A, B, !IO) :-
     catch_any _ ->
         ResultStr = "<<exception>>"
     ),
-    io.format("%s %s\n%s =\n%s\n",
+    io.format("%s %s\n%s =\n%s\n\n",
         [s(to_binary_string_lz(A)), s(Desc),
-        s(to_binary_string_lz(B)), s(ResultStr)], !IO),
-    io.nl(!IO).
+        s(to_binary_string_lz(B)), s(ResultStr)], !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -123,9 +116,8 @@ run_shift_test_3(ShiftOpFunc, Desc, A, B, !IO) :-
     catch_any _ ->
         ResultStr = "<<exception>>"
     ),
-    io.format("%s %s %d =\n%s\n",
-        [s(to_binary_string_lz(A)), s(Desc), i(B), s(ResultStr)], !IO),
-    io.nl(!IO).
+    io.format("%s %s %d =\n%s\n\n",
+        [s(to_binary_string_lz(A)), s(Desc), i(B), s(ResultStr)], !IO).
 
 %---------------------------------------------------------------------------%
 
