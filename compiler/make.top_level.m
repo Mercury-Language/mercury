@@ -119,7 +119,7 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
 
         map.init(ModuleDependencies),
         map.init(FileTimestamps),
-        map.init(TargetTimestamps),
+        TargetTimestamps = init_target_file_timestamps,
         set.init(ErrorFileModules),
         MaybeImportingModule = maybe.no,
         MaybeStdoutLock = maybe.no,

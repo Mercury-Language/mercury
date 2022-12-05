@@ -39,6 +39,8 @@
 % Timestamp handling.
 %
 
+:- func init_target_file_timestamps = target_file_timestamps.
+
     % Find the timestamp updated when a target is produced.
     %
 :- pred get_timestamp_file_timestamp(globals::in, target_file::in,
@@ -281,9 +283,13 @@
 :- import_module set.
 :- import_module string.
 :- import_module uint.
+:- import_module version_hash_table.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+
+init_target_file_timestamps =
+    version_hash_table.unsafe_init_default(target_file_hash).
 
 get_timestamp_file_timestamp(Globals, target_file(ModuleName, TargetType),
         MaybeTimestamp, !Info, !IO) :-
@@ -338,7 +344,10 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
         % target_file. It avoids having to compute a file name for a
         % target_file first, before looking up the timestamp for that file.
         TargetFileTimestamps0 = !.Info ^ mki_target_file_timestamps,
-        ( if map.search(TargetFileTimestamps0, TargetFile, Timestamp) then
+        ( if
+            version_hash_table.search(TargetFileTimestamps0, TargetFile,
+                Timestamp)
+        then
             MaybeTimestamp = ok(Timestamp)
         else
             get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO),
@@ -347,7 +356,7 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
             (
                 MaybeTimestamp = ok(Timestamp),
                 TargetFileTimestamps1 = !.Info ^ mki_target_file_timestamps,
-                map.det_insert(TargetFile, Timestamp,
+                version_hash_table.det_insert(TargetFile, Timestamp,
                     TargetFileTimestamps1, TargetFileTimestamps),
                 !Info ^ mki_target_file_timestamps := TargetFileTimestamps
             ;
@@ -567,7 +576,7 @@ make_remove_file(Globals, VerboseOption, FileName, !Info, !IO) :-
     !Info ^ mki_file_timestamps := FileTimestamps,
 
     % For simplicity, clear out all target file timestamps.
-    !Info ^ mki_target_file_timestamps := map.init.
+    !Info ^ mki_target_file_timestamps := init_target_file_timestamps.
 
 :- pred report_remove_file(string::in, io::di, io::uo) is det.
 
@@ -1136,7 +1145,7 @@ module_name_hash(SymName, Hash) :-
 dependency_file_hash(DepFile, Hash) :-
     (
         DepFile = dep_target(TargetFile),
-        Hash = target_file_hash(TargetFile)
+        target_file_hash(TargetFile, Hash)
     ;
         DepFile = dep_file(FileName),
         Hash = string.hash(FileName)
@@ -1153,9 +1162,9 @@ dependency_file_with_module_index_hash(DepFile, Hash) :-
         Hash = string.hash(FileName)
     ).
 
-:- func target_file_hash(target_file) = int.
+:- pred target_file_hash(target_file::in, int::out) is det.
 
-target_file_hash(TargetFile) = Hash :-
+target_file_hash(TargetFile, Hash) :-
     TargetFile = target_file(ModuleName, Type),
     module_name_hash(ModuleName, Hash0),
     Hash1 = module_target_type_to_nonce(Type),

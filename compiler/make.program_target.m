@@ -747,7 +747,7 @@ make_java_files(Globals, MainModuleName, ObjModules, Succeeded, !Info, !IO) :-
             map.init, Timestamps),
         !Info ^ mki_file_timestamps := Timestamps,
         % For simplicity, clear out all target file timestamps.
-        !Info ^ mki_target_file_timestamps := map.init
+        !Info ^ mki_target_file_timestamps := init_target_file_timestamps
     ).
 
 :- pred out_of_date_java_modules(globals::in, list(module_name)::in,

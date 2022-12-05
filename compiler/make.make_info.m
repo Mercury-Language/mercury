@@ -156,7 +156,7 @@
 
 :- type file_timestamps == map(string, maybe_error(timestamp)).
 
-:- type target_file_timestamps == map(target_file, timestamp).
+:- type target_file_timestamps == version_hash_table(target_file, timestamp).
 
 % NOTE Having version_arrays be indexed by uints, not ints
 % that just happen to never be negative, would avoid some casts

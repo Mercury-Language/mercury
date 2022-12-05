@@ -219,6 +219,11 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
             Globals, to_sorted_list(ModulesToCheckSet),
             succeeded, DepsSucceeded, sparse_bitset.init, DepFiles0,
             !Info, !IO),
+        % NOTE: converting the dep_set to a plain set is relatively expensive,
+        % so it would be better to avoid it. Also, there should be a definite
+        % improvement if we could represent the dependency_status map with an
+        % array indexed by dependency_file_indexes, instead of a hash table
+        % indexed by dependency_file terms.
         dependency_file_index_set_to_plain_set(!.Info, DepFiles0,
             DepFilesSet0),
         ( if TargetType = module_target_int0 then
@@ -245,7 +250,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
         KeepGoing = !.Info ^ mki_keep_going,
         ( if
             DepsSucceeded = did_not_succeed,
-            KeepGoing= do_not_keep_going
+            KeepGoing = do_not_keep_going
         then
             DepsResult = deps_error
         else
@@ -824,7 +829,8 @@ record_made_target_given_maybe_touched_files(Globals, Succeeded, TargetFile,
     ),
 
     TargetFileTimestamps0 = !.Info ^ mki_target_file_timestamps,
-    map.delete(TargetFile, TargetFileTimestamps0, TargetFileTimestamps),
+    version_hash_table.delete(TargetFile,
+        TargetFileTimestamps0, TargetFileTimestamps),
     !Info ^ mki_target_file_timestamps := TargetFileTimestamps.
 
 :- pred update_target_status(dependency_status::in, target_file::in,
