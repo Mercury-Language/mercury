@@ -385,12 +385,16 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
     ExtraAndTaskOptions = ExtraOptions ++ TaskOptions,
     ( if
         Task = process_module(ModuleTask),
-        forkable_module_compilation_task_type(ModuleTask) = yes,
+        do_task_in_separate_process(ModuleTask) = yes,
         not can_fork
     then
-        % We need a temporary file to pass the arguments to the mmc process
-        % which will do the compilation. It is created here (not in invoke_mmc)
-        % so it can be cleaned up by teardown_checking_for_interrupt.
+        % If we will perform a compilation task in a separate process,
+        % but fork() is unavailable, then we will invoke the Mercury compiler
+        % with a bunch of command line arguments. On Windows, the command line
+        % is likely to exceed that maximum command line length, so we need to
+        % pass the command line arguments via a temporary file, created here
+        % (not in invoke_mmc) so it can be cleaned up by
+        % teardown_checking_for_interrupt.
         io.file.make_temp_file(ArgFileNameResult, !IO),
         (
             ArgFileNameResult = ok(ArgFileName),
@@ -510,25 +514,23 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
             Verbose = no
         ),
 
-        % Run compilations to target code in a separate process. This avoids
-        % problems with the Boehm GC retaining memory by scanning too much of
-        % the Mercury stacks. If the compilation is run in a separate process,
-        % it is also easier to kill if an interrupt arrives. We do the same for
-        % intermodule-optimization interfaces because if type checking gets
-        % overloaded by ambiguities, it can be difficult to kill the compiler
-        % otherwise.
+        % Run some tasks in a separate process instead of within the mmc --make
+        % process. This avoids problems with the Boehm GC retaining memory by
+        % scanning too much of the Mercury stacks. If the compilation is run
+        % in a separate process, it is also easier to kill if an interrupt
+        % arrives.
         % XXX The above comment is likely to be quite out-of-date.
         io.set_output_stream(ErrorStream, OldOutputStream, !IO),
-        IsForkable = forkable_module_compilation_task_type(ModuleTask),
+        CallInSeparateProcess = do_task_in_separate_process(ModuleTask),
         (
-            IsForkable = yes,
+            CallInSeparateProcess = yes,
             call_in_forked_process_with_backup(
                 call_mercury_compile_main(Globals, [ModuleArg]),
                 invoke_mmc(Globals, ProgressStream, ErrorStream,
                     ArgFileName, AllOptionArgs ++ [ModuleArg]),
                 CompileSucceeded, !IO)
         ;
-            IsForkable = no,
+            CallInSeparateProcess = no,
             call_mercury_compile_main(Globals, [ModuleArg],
                 CompileSucceeded, !IO)
         ),
@@ -627,17 +629,16 @@ compile_foreign_code_file(Globals, ProgressStream, ErrorStream, PIC,
             ModuleDepInfo, CSharpFile, DLLFile, Succeeded, !IO)
     ).
 
-:- func forkable_module_compilation_task_type(module_compilation_task_type)
-    = bool.
+:- func do_task_in_separate_process(module_compilation_task_type) = bool.
 
-forkable_module_compilation_task_type(task_errorcheck) = no.
-forkable_module_compilation_task_type(task_make_int0) = no.
-forkable_module_compilation_task_type(task_make_int12) = no.
-forkable_module_compilation_task_type(task_make_int3) = no.
-forkable_module_compilation_task_type(task_make_opt) = yes.
-forkable_module_compilation_task_type(task_make_analysis_registry) = yes.
-forkable_module_compilation_task_type(task_compile_to_target_code) = yes.
-forkable_module_compilation_task_type(task_make_xml_doc) = yes.
+do_task_in_separate_process(task_errorcheck) = no.
+do_task_in_separate_process(task_make_int0) = no.
+do_task_in_separate_process(task_make_int12) = no.
+do_task_in_separate_process(task_make_int3) = no.
+do_task_in_separate_process(task_make_opt) = yes.
+do_task_in_separate_process(task_make_analysis_registry) = yes.
+do_task_in_separate_process(task_compile_to_target_code) = yes.
+do_task_in_separate_process(task_make_xml_doc) = yes.
 
 %---------------------------------------------------------------------------%
 
