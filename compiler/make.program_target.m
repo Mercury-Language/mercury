@@ -979,7 +979,7 @@ make_all_interface_files(Globals, AllModules0, Succeeded, !Info, !IO) :-
     % Private interfaces (.int0) need to be made before building long interface
     % files in parallel, otherwise two processes may try to build the same
     % private interface file.
-    foldl2_make_module_targets(KeepGoing, [], Globals, Int3s,
+    foldl2_make_module_targets_maybe_parallel(KeepGoing, [], Globals, Int3s,
         Succeeded0, !Info, !IO),
     (
         Succeeded0 = succeeded,
