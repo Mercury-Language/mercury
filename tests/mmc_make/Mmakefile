@@ -10,7 +10,7 @@ MAYBE_J1 =
 
 MMAKE_USE_MMC_MAKE=yes
 
-PROGS =	\
+PROGS0 =	\
 	bug489 \
 	complex_test \
 	hello \
@@ -18,6 +18,15 @@ PROGS =	\
 	include_file2 \
 	linkage_test \
 	rebuild
+
+ifeq "$(filter csharp% java%,$(GRADE))" ""
+	C_ONLY_PROGS = \
+		factt
+else
+	C_ONLY_PROGS =
+endif
+
+PROGS = $(PROGS0) $(C_ONLY_PROGS)
 
 # These tests only work if the workspace was compiled with `--use-subdirs'.
 ifneq ($(origin WORKSPACE),undefined)
@@ -58,6 +67,13 @@ rebuild.runtest:
 # The compiler used to fail when invoked as `mmc --make build_object.o'.
 build_object.runtest: build_object.o
 
+# Check that no errors occur while reading back the .module_dep file on the
+# second run.
+factt.runtest:
+	$(MCM) --make factt
+	$(MCM) --make factt >factt.err2 2>&1
+	! grep -i 'Error' factt.err2
+
 .PHONY: install_libs
 install_libs: start_runtests_local
 	$(MMAKE) TESTS_FLAGS
@@ -82,7 +98,7 @@ TESTS_FLAGS: ../TESTS_FLAGS
 realclean_local: realclean_mmc_make
 
 realclean_mmc_make: TESTS_FLAGS
-	rm -rf install include_file2.err rebuild.err2
+	rm -rf install include_file2.err rebuild.err2 factt.err2
 	# ./TESTS_FLAGS is expected by the following line.
 	cd lib; $(MCM) complex_numbers.realclean linkage_test2.realclean
 	rm -f TESTS_FLAGS
