@@ -303,6 +303,11 @@ A graphic name is a sequence of one or more of the following characters
 @noindent
 where the first character is not @samp{#}.
 
+As a special case, the character sequences @samp{<<u} and @samp{>>u},
+are also graphic names.
+(They are intended to denote left and right shifts
+by unsigned amounts respectively.)
+
 An unquoted name, graphic name, or semicolon
 is treated as equivalent to a quoted name containing
 the same sequence of characters.
@@ -541,7 +546,9 @@ event                           fx                1400
 /                               yfx               1100
 //                              yfx               1100
 <<                              yfx               1100
+<<u                             yfx               1100
 >>                              yfx               1100
+>>u                             yfx               1100
 div                             yfx               1100
 mod                             xfx               1100
 rem                             xfx               1100

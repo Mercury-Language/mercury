@@ -615,6 +615,8 @@ mercury_op_table(Op, OpInfos) :-
         ; Op = "catch",     Infix = in(prio(320u),  arg_gt, arg_ge)
         ; Op = "catch_any", Infix = in(prio(310u),  arg_gt, arg_ge)
         % The following operators are Mercury extensions.
+        ; Op = "<<u",       Infix = in(prio(1100u), arg_ge, arg_gt)
+        ; Op = ">>u",       Infix = in(prio(1100u), arg_ge, arg_gt)
         ; Op = "&",         Infix = in(prio(475u),  arg_gt, arg_ge)
         ; Op = "++",        Infix = in(prio(1000u), arg_gt, arg_ge)
         ; Op = "--",        Infix = in(prio(1000u), arg_ge, arg_gt)

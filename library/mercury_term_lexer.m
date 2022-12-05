@@ -2890,9 +2890,18 @@ get_graphic(Stream, !.RevChars, Token, !IO) :-
         )
     ;
         Result = ok,
-        ( if graphic_token_char(Char) then
+        ( if
+            graphic_token_char(Char)
+        then
             !:RevChars = [Char | !.RevChars],
             get_graphic(Stream, !.RevChars, Token, !IO)
+        else if
+            Char = 'u',
+            ( !.RevChars = ['<', '<'], Name = "<<u"
+            ; !.RevChars = ['>', '>'], Name = ">>u"
+            )
+        then
+            Token = name(Name)
         else
             io.putback_char(Stream, Char, !IO),
             ( if rev_char_list_to_string(!.RevChars, Name) then
@@ -2909,10 +2918,19 @@ get_graphic(Stream, !.RevChars, Token, !IO) :-
 string_get_graphic(String, Len, Posn0, Token, Context, !Posn) :-
     LastCharPosn = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
-        ( if graphic_token_char(Char) then
+        ( if
+            graphic_token_char(Char)
+        then
             disable_warning [suspicious_recursion] (
                 string_get_graphic(String, Len, Posn0, Token, Context, !Posn)
             )
+        else if
+            Char = 'u',
+            grab_string(String, Posn0, !.Posn, ShiftOp),
+            ( ShiftOp = "<<u" ; ShiftOp = ">>u" )
+        then
+            Token = name(ShiftOp),
+            string_get_context(Posn0, Context)
         else
             !:Posn = LastCharPosn,
             grab_string(String, Posn0, !.Posn, Name),
@@ -2935,11 +2953,20 @@ linestr_get_graphic(String, Len, LineContext0, LinePosn0, Token, Context,
     LastCharLineContext = !.LineContext,
     LastCharLinePosn = !.LinePosn,
     ( if linestr_read_char(String, Len, Char, !LineContext, !LinePosn) then
-        ( if graphic_token_char(Char) then
+        ( if
+            graphic_token_char(Char)
+        then
             disable_warning [suspicious_recursion] (
                 linestr_get_graphic(String, Len, LineContext0, LinePosn0,
                     Token, Context, !LineContext, !LinePosn)
             )
+        else if
+            Char = 'u',
+            linestr_grab_string(String, LinePosn0, !.LinePosn, ShiftOp),
+            ( ShiftOp = "<<u" ; ShiftOp = ">>u" )
+        then
+            Token = name(ShiftOp),
+            linestr_get_context(LineContext0, Context)
         else
             !:LineContext = LastCharLineContext,
             !:LinePosn = LastCharLinePosn,
