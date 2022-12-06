@@ -1417,7 +1417,6 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
     ;
         ( PredName = "<<", Op = "unchecked_left_shift"
         ; PredName = ">>", Op = "unchecked_right_shift"
-        % XXX These two predicates do not exist yet.
         ; PredName = "<<u", Op = "unchecked_left_ushift"
         ; PredName = ">>u", Op = "unchecked_right_ushift"
         ),
@@ -1473,37 +1472,29 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
             )
         else
             % XXX We could replace the checked shift with the code of the check
-            % and the unchecked shift, but doing that would require getting
-            % access to three things:
+            % and the unchecked shift, but doing that requires access
+            % to three things:
             %
-            % 1. the predicate declaration for unsigned_lt, which currently
-            %    is a private predicate in int.m, and
+            % 1. the predicate declaration for unsigned_lt, which originally
+            %    was a private predicate in int.m, but is now exported from
+            %    private_builtin.m;
             %
-            % 2. the definition of the wrapper we put around the text of
-            %    the exception message, which currently is math.domain error.
+            % 2. the definition of the domain_error wrapper we put around
+            %    the text of the exception message, which originally was
+            %    in math.m, but which now is in exception.m; and
             %
             % 3. the definition of "throw" in exception.m
             %
-            % Even if ModuleName is "int", we can't currently access the
-            % first. Since math.m is never imported implicitly, we cannot
-            % count on math.domain_error being available either. And while
-            % exception.m *is* currently imported implicitly if the module
-            % being compiled contains a try_expr or an atomic_expr, a module
-            % that does not contain either may nevertheless contain a checked
-            % shift operation.
-            %
-            % We should consider making unsigned_lt an exported predicate
-            % in private_builtin.m, and math_domain_error a type in the
-            % same module. The latter would be a user-visible breaking change,
-            % but the required fix for any code that looks for that wrapper
-            % in try/catch construct would be replacing math.domain_error(...)
-            % with math_domain_error(...), which is as minimal a change as
-            % it is possible to be.
-            %
-            % As for the third point, we could make get_dependencies.m
-            % import exception.m implicitly if the module being compiled
-            % contains a call to a shift operation. We already do something
-            % very similar for calls to functions/predicates named "format".
+            % Since all compilations implicitly import private_builtin.m,
+            % access to the first is no longer a problem. The other two are,
+            % because if the module we are compiling does not explicitly import
+            % exception.m, then we can't rely on it being implicitly imported
+            % either, because the presence of calls to <</<<u/>>/>>u is not
+            % currently a reason to implicitly import exception.m. We do
+            % implicitly import exception.m if the module being compiled
+            % contains a try_expr or an atomic_expr; so we could change this.
+            % We already do something very similar for calls to
+            % functions/predicates named "format".
             %
             % The semidet_fail must stay until everything above has been done.
             semidet_fail,
