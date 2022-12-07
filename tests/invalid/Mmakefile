@@ -460,13 +460,17 @@ include Mercury.options
 
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 
+NONSPECIAL_PROGS = \
+	$(NONSPECIAL_SINGLEMODULE_PROGS) \
+	$(NONSPECIAL_MULTIMODULE_PROGS)
+
 # XXX: with `mmake --use-mmc-make' the ".DEFAULT:" rule seems to take
 # precedence over "%.err: %.m" rules.
 # XXX: the reason we run the $(MCM) command twice is to avoid doubled up
 # error messages, once while making interface files, then the module proper.
 # The second time the command is run, only one set of error messages
 # should appear.
-$(PROGS:%=%.err):
+$(NONSPECIAL_PROGS:%=%.err):
 	-$(MCM) $@
 	if $(MCM) -r $@ > /dev/null 2>&1 ; \
 	then false; \
@@ -570,7 +574,7 @@ require_tailrec_1.err require_tailrec_2.err require_tailrec_3.err foreign_includ
 	else true; \
 	fi
 
-# For the following modules, error messages may be be produced while making a
+# For the following modules, error messages may be produced while making a
 # `.opt' file. Add specific rules to capture those errors into a `.err' file,
 # and ignore the exit status.
 ifeq "$(filter --intermod%,$(EXTRA_MCFLAGS))" ""
