@@ -168,6 +168,9 @@
 :- type cached_transitive_dependencies.
 :- func init_cached_transitive_dependencies = cached_transitive_dependencies.
 
+:- type cached_computed_module_deps.
+:- func init_cached_computed_module_deps = cached_computed_module_deps.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -385,11 +388,14 @@ compiled_code_dependencies(Globals) = Deps :-
 :- func imports_012 =
     (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
 
-imports_012 = combine_deps_list([
-        module_target_int0 `of` ancestors,
-        module_target_int1 `of` direct_imports,
-        module_target_int2 `of` indirect_imports
-    ]).
+imports_012 =
+    cache_computed_module_deps(computed_module_deps_import_012,
+        combine_deps_list([
+            module_target_int0 `of` ancestors,
+            module_target_int1 `of` direct_imports,
+            module_target_int2 `of` indirect_imports
+        ])
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -943,6 +949,32 @@ combine_deps_list([]) = no_deps.
 combine_deps_list([FindDeps]) = FindDeps.
 combine_deps_list([FindDeps1, FindDeps2 | FindDepsTail]) =
     combine_deps(FindDeps1, combine_deps_list([FindDeps2 | FindDepsTail])).
+
+%---------------------------------------------------------------------------%
+
+    % cache_computed_module_deps(Label, FindDeps) adds caching to FindDeps.
+    % Label is used to discriminate cache entries for the same module;
+    % it must uniquely identify the set that is computed by FindDeps.
+    %
+:- pred cache_computed_module_deps(computed_module_deps_label::in,
+    find_module_deps(dependency_file_index)::in(find_module_deps),
+    globals::in, module_index::in, maybe_succeeded::out,
+    deps_set(dependency_file_index)::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
+
+cache_computed_module_deps(Label, FindDeps, Globals, ModuleIndex, Succeeded,
+        Deps, !Info, !IO) :-
+    Cache0 = !.Info ^ mki_cached_computed_module_deps,
+    Key = computed_module_deps_key(ModuleIndex, Label),
+    ( if map.search(Cache0, Key, CachedResult) then
+        CachedResult = deps_result(Succeeded, Deps)
+    else
+        FindDeps(Globals, ModuleIndex, Succeeded, Deps, !Info, !IO),
+        Cache1 = !.Info ^ mki_cached_computed_module_deps,
+        Result = deps_result(Succeeded, Deps),
+        map.det_insert(Key, Result, Cache1, Cache),
+        !Info ^ mki_cached_computed_module_deps := Cache
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -1556,6 +1588,20 @@ init_cached_transitive_foreign_imports = map.init.
     map(transitive_dependencies_root, deps_result(module_index)).
 
 init_cached_transitive_dependencies = map.init.
+
+:- type cached_computed_module_deps ==
+    map(computed_module_deps_key, deps_result(dependency_file_index)).
+
+:- type computed_module_deps_key
+    --->    computed_module_deps_key(
+                module_index,
+                computed_module_deps_label
+            ).
+
+:- type computed_module_deps_label
+    --->    computed_module_deps_import_012.
+
+init_cached_computed_module_deps = map.init.
 
 %---------------------------------------------------------------------------%
 :- end_module make.dependencies.

@@ -111,6 +111,11 @@
                 mki_cached_transitive_foreign_imports
                                         :: cached_transitive_foreign_imports,
 
+                % This cache holds dependency sets that are a simple
+                % computation (union) on other dependency sets.
+                mki_cached_computed_module_deps
+                                        :: cached_computed_module_deps,
+
                 % Should the `.module_dep' files be rebuilt?
                 % Set to `do_not_rebuild_module_deps' for `mmc --make clean'.
                 mki_rebuild_module_deps :: rebuild_module_deps,
