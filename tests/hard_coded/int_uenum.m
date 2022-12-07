@@ -5,6 +5,9 @@
 % Test whether the encoding of ints as uints in the uenum(int) instance
 % of the uenum typeclass works.
 %
+% The .exp file is for 64 bit targets.
+% The .exp2 file is for 32 bit targets.
+%
 
 :- module int_uenum.
 
