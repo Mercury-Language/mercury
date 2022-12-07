@@ -798,7 +798,7 @@
 1111111111111111 =
 0000000000000000
 
-*** Test binary operation '>>' ***
+*** Test shift operations '>>' and '>>u' ***
 
 0000000000000000 >> -1 =
 <<exception>>
@@ -1064,7 +1064,7 @@
 1111111111111111 >> 36 =
 <<exception>>
 
-*** Test binary operation '<<' ***
+*** Test shift operations '<<' and '<<u' ***
 
 0000000000000000 << -1 =
 <<exception>>

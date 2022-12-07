@@ -39,6 +39,14 @@ Changes that may break compatibility
 * The digraph_key type in the digraph.m module is now an instance of
   the uenum typeclass, not the enum typeclass.
 
+* The character sequences `<<u` and `>>u` are now recognized as single tokens.
+  (They are the names of new versions of the left and right shift operators
+  that expect the shift amount to be specified by an unsigned integer;
+  previously, shift amounts were always specified by signed integers.)
+  This means that existing code in which a `<<` or `>>` operator was followed
+  immediately, without an intervening space, by a `u` character, will now
+  be parsed differently.
+
 * The compiler no longer accepts : as the module name separator in backquoted
   operators. (Mercury switched to using . as the module name separator
   around 2003.)
@@ -170,6 +178,51 @@ Changes to the Mercury standard library
 * The following type has had its typeclass memberships changed:
 
     - The type `int` is now an instance of the new uenum typeclass.
+
+* The following predicates and functions have been added:
+
+    - func `<<u/2`
+    - func `>>u/2`
+    - func `unchecked_left_ushift/2`
+    - func `unchecked_right_ushift/2`
+    - func `ubits_per_int/0`
+    - pred `ubits_per_int/1`
+
+### Changes to the `int8` module
+
+* The following functions have been added:
+
+    - func `<<u/2`
+    - func `>>u/2`
+    - func `unchecked_left_ushift/2`
+    - func `unchecked_right_ushift/2`
+
+### Changes to the `int16` module
+
+* The following functions have been added:
+
+    - func `<<u/2`
+    - func `>>u/2`
+    - func `unchecked_left_ushift/2`
+    - func `unchecked_right_ushift/2`
+
+### Changes to the `int32` module
+
+* The following functions have been added:
+
+    - func `<<u/2`
+    - func `>>u/2`
+    - func `unchecked_left_ushift/2`
+    - func `unchecked_right_ushift/2`
+
+### Changes to the `int64` module
+
+* The following functions have been added:
+
+    - func `<<u/2`
+    - func `>>u/2`
+    - func `unchecked_left_ushift/2`
+    - func `unchecked_right_ushift/2`
 
 ### Changes to the `io` module
 
@@ -753,9 +806,49 @@ Changes to the Mercury standard library
 
     - The type `uint` is now an instance of the new uenum typeclass.
 
-* The following function has been added:
+* The following functions have been added:
 
-    - func `ubits_per_int/0`
+    - func `<<u/2`
+    - func `>>u/2`
+    - func `unchecked_left_ushift/2`
+    - func `unchecked_right_ushift/2`
+    - func `ubits_per_uint/0`
+
+### Changes to the `uint8` module
+
+* The following functions have been added:
+
+    - func `<<u/2`
+    - func `>>u/2`
+    - func `unchecked_left_ushift/2`
+    - func `unchecked_right_ushift/2`
+
+### Changes to the `uint16` module
+
+* The following functions have been added:
+
+    - func `<<u/2`
+    - func `>>u/2`
+    - func `unchecked_left_ushift/2`
+    - func `unchecked_right_ushift/2`
+
+### Changes to the `uint32` module
+
+* The following functions have been added:
+
+    - func `<<u/2`
+    - func `>>u/2`
+    - func `unchecked_left_ushift/2`
+    - func `unchecked_right_ushift/2`
+
+### Changes to the `uint64` module
+
+* The following functions have been added:
+
+    - func `<<u/2`
+    - func `>>u/2`
+    - func `unchecked_left_ushift/2`
+    - func `unchecked_right_ushift/2`
 
 ### Changes to the `version_array` module
 

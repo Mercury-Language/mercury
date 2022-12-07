@@ -245,12 +245,14 @@
     % Throws an exception if Y is not in [0, 16).
     %
 :- func (int16::in) << (int::in) = (int16::uo) is det.
+:- func (int16::in) <<u (uint::in) = (int16::uo) is det.
 
     % unchecked_left_shift(X, Y) is the same as X << Y except that the
     % behaviour is undefined if Y is not in [0, 16).
     % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(int16::in, int::in) = (int16::uo) is det.
+:- func unchecked_left_ushift(int16::in, uint::in) = (int16::uo) is det.
 
     % Right shift.
     % X >> Y returns X "right shifted" by Y bits.
@@ -258,12 +260,14 @@
     % Throws an exception if Y is not in [0, 16).
     %
 :- func (int16::in) >> (int::in) = (int16::uo) is det.
+:- func (int16::in) >>u (uint::in) = (int16::uo) is det.
 
     % unchecked_right_shift(X, Y) is the same as X >> Y except that the
     % behaviour is undefined if Y is not in [0, 16).
     % It will typically be implemented more efficiently than X >> Y.
     %
 :- func unchecked_right_shift(int16::in, int::in) = (int16::uo) is det.
+:- func unchecked_right_ushift(int16::in, uint::in) = (int16::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -585,7 +589,7 @@ odd(X) :-
 
 %---------------------------------------------------------------------------%
 
-% The operations unchecked_left_shift and unchecked_right_shift are builtins.
+% The unchecked shift operations are builtins.
 
 X << Y = Result :-
     ( if cast_from_int(Y) < 16u then
@@ -595,11 +599,27 @@ X << Y = Result :-
         throw(domain_error(Msg))
     ).
 
+X <<u Y = Result :-
+    ( if Y < 16u then
+        Result = unchecked_left_ushift(X, Y)
+    else
+        Msg = "int16.(<<u): second operand is out of range",
+        throw(domain_error(Msg))
+    ).
+
 X >> Y = Result :-
     ( if cast_from_int(Y) < 16u then
         Result = unchecked_right_shift(X, Y)
     else
         Msg = "int16.(>>): second operand is out of range",
+        throw(domain_error(Msg))
+    ).
+
+X >>u Y = Result :-
+    ( if Y < 16u then
+        Result = unchecked_right_ushift(X, Y)
+    else
+        Msg = "int16.(>>u): second operand is out of range",
         throw(domain_error(Msg))
     ).
 

@@ -196,6 +196,7 @@
     % Throws an exception if Y is not in [0, bits_per_int).
     %
 :- func (int::in) << (int::in) = (int::uo) is det.
+:- func (int::in) <<u (uint::in) = (int::uo) is det.
 
     % unchecked_left_shift(X, Y) is the same as X << Y
     % except that the behaviour is undefined if Y is negative,
@@ -203,6 +204,7 @@
     % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(int::in, int::in) = (int::uo) is det.
+:- func unchecked_left_ushift(int::in, uint::in) = (int::uo) is det.
 
     % Right shift.
     % X >> Y returns X "right shifted" by Y bits.
@@ -210,6 +212,7 @@
     % Throws an exception if Y is not in [0, bits_per_int).
     %
 :- func (int::in) >> (int::in) = (int::uo) is det.
+:- func (int::in) >>u (uint::in) = (int::uo) is det.
 
     % unchecked_right_shift(X, Y) is the same as X >> Y
     % except that the behaviour is undefined if Y is negative,
@@ -217,6 +220,7 @@
     % It will typically be implemented more efficiently than X >> Y.
     %
 :- func unchecked_right_shift(int::in, int::in) = (int::uo) is det.
+:- func unchecked_right_ushift(int::in, uint::in) = (int::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -251,10 +255,13 @@
 :- func min_int = int.
 :- pred min_int(int::out) is det.
 
-    % bits_per_int is the number of bits in an int on this machine.
+    % bits_per_int and ubits_per_int both return the number of bits
+    % in an int on this machine, as an int and as a uint respectively.
     %
 :- func bits_per_int = int.
 :- pred bits_per_int(int::out) is det.
+:- func ubits_per_int = uint.
+:- pred ubits_per_int(uint::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -750,6 +757,8 @@ log2_loop(CurX, CurLogXSoFar, CeilLogX) :-
 
 %---------------------------------------------------------------------------%
 
+% The unchecked shift operations are builtins.
+
 X << Y = Z :-
     ( if Y `private_builtin.unsigned_lt` bits_per_int then
         Z = unchecked_left_shift(X, Y)
@@ -758,11 +767,27 @@ X << Y = Z :-
         throw(domain_error(Msg))
     ).
 
+X <<u Y = Z :-
+    ( if Y < ubits_per_int then
+        Z = unchecked_left_ushift(X, Y)
+    else
+        Msg = "int.(<<u): second operand is out of range",
+        throw(domain_error(Msg))
+    ).
+
 X >> Y = Z :-
     ( if Y `private_builtin.unsigned_lt` bits_per_int then
         Z = unchecked_right_shift(X, Y)
     else
         Msg = "int.(>>): second operand is out of range",
+        throw(domain_error(Msg))
+    ).
+
+X >>u Y = Z :-
+    ( if Y < ubits_per_int then
+        Z = unchecked_right_ushift(X, Y)
+    else
+        Msg = "int.(>>u): second operand is out of range",
         throw(domain_error(Msg))
     ).
 
@@ -842,6 +867,9 @@ min_int = X :-
 
 %---------------------%
 
+bits_per_int = X :-
+    bits_per_int(X).
+
 :- pragma foreign_proc("C",
     bits_per_int(Bits::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -849,7 +877,6 @@ min_int = X :-
 "
     Bits = ML_BITS_PER_INT;
 ").
-
 :- pragma foreign_proc("C#",
     bits_per_int(Bits::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -858,7 +885,6 @@ min_int = X :-
     // XXX would be better to avoid hard-coding this here.
     Bits = 32;
 ").
-
 :- pragma foreign_proc("Java",
     bits_per_int(Bits::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -867,8 +893,31 @@ min_int = X :-
     Bits = 32;
 ").
 
-bits_per_int = X :-
-    bits_per_int(X).
+ubits_per_int = X :-
+    ubits_per_int(X).
+
+:- pragma foreign_proc("C",
+    ubits_per_int(Bits::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    Bits = (MR_Unsigned) ML_BITS_PER_INT;
+").
+:- pragma foreign_proc("C#",
+    ubits_per_int(Bits::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // we are using int32 in the compiler.
+    // XXX would be better to avoid hard-coding this here.
+    Bits = 32;
+").
+:- pragma foreign_proc("Java",
+    ubits_per_int(Bits::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // Java ints are 32 bits.
+    Bits = 32;
+").
 
 %---------------------------------------------------------------------------%
 

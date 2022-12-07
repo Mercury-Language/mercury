@@ -234,12 +234,14 @@
     % Throws an exception if Y is not in [0, 8).
     %
 :- func (uint8::in) << (int::in) = (uint8::uo) is det.
+:- func (uint8::in) <<u (uint::in) = (uint8::uo) is det.
 
     % unchecked_left_shift(X, Y) is the same as X << Y except that the
     % behaviour is undefined if Y is not in [0, 8).
     % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(uint8::in, int::in) = (uint8::uo) is det.
+:- func unchecked_left_ushift(uint8::in, uint::in) = (uint8::uo) is det.
 
     % Right shift.
     % X >> Y returns X "right shifted" by Y bits.
@@ -247,12 +249,14 @@
     % Throws an exception if Y is not in [0, 8).
     %
 :- func (uint8::in) >> (int::in) = (uint8::uo) is det.
+:- func (uint8::in) >>u (uint::in) = (uint8::uo) is det.
 
     % unchecked_right_shift(X, Y) is the same as X >> Y except that the
     % behaviour is undefined if Y is not in [0, 8).
     % It will typically be implemented more efficiently than X >> Y.
     %
 :- func unchecked_right_shift(uint8::in, int::in) = (uint8::uo) is det.
+:- func unchecked_right_ushift(uint8::in, uint::in) = (uint8::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -645,7 +649,7 @@ odd(X) :-
 
 %---------------------------------------------------------------------------%
 
-% The operations unchecked_left_shift and unchecked_right_shift are builtins.
+% The unchecked shift operations are builtins.
 
 X << Y = Result :-
     ( if cast_from_int(Y) < 8u then
@@ -655,11 +659,27 @@ X << Y = Result :-
         throw(domain_error(Msg))
     ).
 
+X <<u Y = Result :-
+    ( if Y < 8u then
+        Result = unchecked_left_ushift(X, Y)
+    else
+        Msg = "uint8.(<<u): second operand is out of range",
+        throw(domain_error(Msg))
+    ).
+
 X >> Y = Result :-
     ( if cast_from_int(Y) < 8u then
         Result = unchecked_right_shift(X, Y)
     else
         Msg = "uint8.(>>): second operand is out of range",
+        throw(domain_error(Msg))
+    ).
+
+X >>u Y = Result :-
+    ( if Y < 8u then
+        Result = unchecked_right_ushift(X, Y)
+    else
+        Msg = "uint8.(>>u): second operand is out of range",
         throw(domain_error(Msg))
     ).
 
