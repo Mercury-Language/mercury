@@ -39,25 +39,18 @@
 
 :- pred quotient(bits_per_uint::in, uint::in, uint::in, uint::out) is semidet.
 
-:- pred unchecked_quotient(bits_per_uint::in, uint::in, uint::in, uint::out)
-    is semidet.
-
 :- pred mod(bits_per_uint::in, uint::in, uint::in, uint::out) is semidet.
 
 :- pred rem(bits_per_uint::in, uint::in, uint::in, uint::out) is semidet.
 
-:- pred unchecked_rem(bits_per_uint::in, uint::in, uint::in, uint::out)
+:- pred left_shift(bits_per_uint::in, uint::in, int::in, uint::out)
     is semidet.
-
-:- pred left_shift(bits_per_uint::in, uint::in, int::in, uint::out) is semidet.
-
-:- pred unchecked_left_shift(bits_per_uint::in, uint::in, int::in, uint::out)
+:- pred left_ushift(bits_per_uint::in, uint::in, uint::in, uint::out)
     is semidet.
 
 :- pred right_shift(bits_per_uint::in, uint::in, int::in, uint::out)
     is semidet.
-
-:- pred unchecked_right_shift(bits_per_uint::in, uint::in, int::in, uint::out)
+:- pred right_ushift(bits_per_uint::in, uint::in, uint::in, uint::out)
     is semidet.
 
 %----------------------------------------------------------------------------%
@@ -65,10 +58,11 @@
 
 :- implementation.
 
+:- import_module libs.options.
+
 :- import_module int.
 :- import_module integer.
-
-:- import_module libs.options.
+:- import_module uint.
 
 %----------------------------------------------------------------------------%
 
@@ -99,24 +93,21 @@ times(BitsPerUInt, X, Y, Z) :-
         integer.from_uint(X) * integer.from_uint(Y), Z).
 
 quotient(BitsPerUInt, X, Y, Z) :-
+    Y \= 0u,
     to_uint_in_range(BitsPerUInt,
         integer.from_uint(X) // integer.from_uint(Y), Z).
 
-unchecked_quotient(BitsPerUInt, X, Y, Z) :-
-    Y \= 0u,
-    quotient(BitsPerUInt, X, Y, Z).
-
 mod(BitsPerUInt, X, Y, Z) :-
+    Y \= 0u,
     to_uint_in_range(BitsPerUInt,
         integer.from_uint(X) mod integer.from_uint(Y), Z).
 
 rem(BitsPerUInt, X, Y, Z) :-
+    Y \= 0u,
     to_uint_in_range(BitsPerUInt,
         integer.from_uint(X) rem integer.from_uint(Y), Z).
 
-unchecked_rem(BitsPerUInt, X, Y, Z) :-
-    Y \= 0u,
-    rem(BitsPerUInt, X, Y, Z).
+%----------------------------------------------------------------------------%
 
 left_shift(BitsPerUInt, X, Y, Z) :-
     BitsPerUInt = bits_per_uint(N),
@@ -124,8 +115,13 @@ left_shift(BitsPerUInt, X, Y, Z) :-
     Y < N,
     to_uint_in_range(BitsPerUInt, integer.from_uint(X) << Y, Z).
 
-unchecked_left_shift(BitsPerUInt, X, Y, Z) :-
-    left_shift(BitsPerUInt, X, Y, Z).
+left_ushift(BitsPerUInt, X, UY, Z) :-
+    BitsPerUInt = bits_per_uint(N),
+    Y = uint.cast_to_int(UY),
+    % While UY cannot be negative, Y can be.
+    Y >= 0,
+    Y < N,
+    to_uint_in_range(BitsPerUInt, integer.from_uint(X) << Y, Z).
 
 right_shift(BitsPerUInt, X, Y, Z) :-
     BitsPerUInt = bits_per_uint(N),
@@ -133,8 +129,15 @@ right_shift(BitsPerUInt, X, Y, Z) :-
     Y < N,
     to_uint_in_range(BitsPerUInt, integer.from_uint(X) >> Y, Z).
 
-unchecked_right_shift(BitsPerUInt, X, Y, Z) :-
-    right_shift(BitsPerUInt, X, Y, Z).
+right_ushift(BitsPerUInt, X, UY, Z) :-
+    BitsPerUInt = bits_per_uint(N),
+    Y = uint.cast_to_int(UY),
+    % While UY cannot be negative, Y can be.
+    Y >= 0,
+    Y < N,
+    to_uint_in_range(BitsPerUInt, integer.from_uint(X) >> Y, Z).
+
+%----------------------------------------------------------------------------%
 
 :- pred to_uint_in_range(bits_per_uint::in, integer::in, uint::out) is semidet.
 
