@@ -132,31 +132,38 @@ ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
     map.to_assoc_list(CodeMap, CodeCases),
     generate_trie_arms(CodeCases, [], RevCaseNumSwitchArms),
     list.reverse(RevCaseNumSwitchArms, CaseNumSwitchArms),
-    ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, FailStmts, !Info),
     (
-        FailStmts = [],
+        CanFail = cannot_fail,
+        CaseNumDefault = default_is_unreachable
+    ;
+        CanFail = can_fail,
+        ml_gen_maybe_switch_failure(CodeModel, CanFail, Context, FailStmts,
+            !Info),
         (
-            CodeModel = model_det,
-            % For model_det switches, the default must be unreachable.
-            CaseNumDefault = default_is_unreachable
+            FailStmts = [],
+            (
+                CodeModel = model_det,
+                % For model_det switches, the default must be unreachable.
+                CaseNumDefault = default_is_unreachable
+            ;
+                CodeModel = model_semi,
+                % For model_semi switches, the default should contain at least
+                % an assignment of FALSE to the "succeeded" flag.
+                unexpected($pred, "failure does not assign to succeeded")
+            ;
+                CodeModel = model_non,
+                FailStmt = ml_stmt_block([], [], [], Context),
+                CaseNumDefault = default_case(FailStmt)
+            )
         ;
-            CodeModel = model_semi,
-            % For model_semi switches, the default should contain at least
-            % an assignment of FALSE to the "succeeded" flag.
-            unexpected($pred, "failure does not assign to succeeded")
-        ;
-            CodeModel = model_non,
-            FailStmt = ml_stmt_block([], [], [], Context),
+            (
+                FailStmts = [FailStmt]
+            ;
+                FailStmts = [_, _ | _],
+                FailStmt = ml_stmt_block([], [], FailStmts, Context)
+            ),
             CaseNumDefault = default_case(FailStmt)
         )
-    ;
-        (
-            FailStmts = [FailStmt]
-        ;
-            FailStmts = [_, _ | _],
-            FailStmt = ml_stmt_block([], [], FailStmts, Context)
-        ),
-        CaseNumDefault = default_case(FailStmt)
     ),
     CaseNumSwitchRange = mlds_switch_range(0, MaxCaseNum),
     CaseSwitchStmt = ml_stmt_switch(mlds_builtin_type_int(int_type_int),

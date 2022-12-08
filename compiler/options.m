@@ -3208,6 +3208,8 @@ long_option("ushift-2022-12-06",
                                     compiler_sufficiently_recent).
 long_option("ushift-2022-12-07",
                                     compiler_sufficiently_recent).
+long_option("strtrie-2022-12-08",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("experiment1",          experiment1).
 long_option("experiment2",          experiment2).
