@@ -32,12 +32,12 @@ Changes that may break compatibility
   The old contents of the `mercury_term_parser` module is still available as
   `extras/old_library_modules/old_mercury_term_parser`.
 
-* The sparse_bitset.m and fat_sparse_bitset.m modules now require
-  the items in those sets to be instances of the uenum typeclass,
-  not the enum typeclass.
+* The `sparse_bitset` and `fat_sparse_bitset` modules now require
+  the items in those sets to be instances of the `uenum` typeclass,
+  not the `enum` typeclass.
 
-* The digraph_key type in the digraph.m module is now an instance of
-  the uenum typeclass, not the enum typeclass.
+* The `digraph_key` type in the `digraph` module is now an instance of
+  the `uenum` typeclass, not the `enum` typeclass.
 
 * The character sequences `<<u` and `>>u` are now recognized as single tokens.
   (They are the names of new versions of the left and right shift operators
@@ -47,8 +47,8 @@ Changes that may break compatibility
   immediately, without an intervening space, by a `u` character, will now
   be parsed differently.
 
-* The compiler no longer accepts : as the module name separator in backquoted
-  operators. (Mercury switched to using . as the module name separator
+* The compiler no longer accepts `:` as the module name separator in backquoted
+  operators. (Mercury switched to using `.` as the module name separator
   around 2003.)
 
 Changes to the Mercury standard library
@@ -133,8 +133,8 @@ Changes to the Mercury standard library
 
 * The following type has had its typeclass memberships changed:
 
-   - The digraph_key(T) type is now an instance of the uenum typeclass,
-     and is no longer an instance of the enum typeclass.
+   - The `digraph_key(T)` type is now an instance of the `uenum` typeclass,
+     and is no longer an instance of the `enum` typeclass.
 
 ### Changes to the `enum` module
 
@@ -150,9 +150,9 @@ Changes to the Mercury standard library
 
 * The following type has had its typeclass memberships changed:
 
-   - The fat_sparse_bitset(T) type now requires T to be an instance of the
-     uenum typeclass, replacing the earlier requirement that it be
-     a member of the enum typeclass.
+   - The `fat_sparse_bitset(T)` type now requires `T` to be an instance of the
+     `uenum` typeclass, replacing the earlier requirement that it be
+     a member of the `enum` typeclass.
 
 * The following obsolete predicate has been removed:
 
@@ -177,7 +177,7 @@ Changes to the Mercury standard library
 
 * The following type has had its typeclass memberships changed:
 
-    - The type `int` is now an instance of the new uenum typeclass.
+    - The type `int` is now an instance of the new `uenum` typeclass.
 
 * The following predicates and functions have been added:
 
@@ -581,9 +581,9 @@ Changes to the Mercury standard library
 
 * The following type has had its typeclass memberships changed:
 
-   - The sparse_bitset(T) type now requires T to be an instance of the
-     uenum typeclass, replacing the earlier requirement that it be
-     a member of the enum typeclass.
+   - The `sparse_bitset(T)` type now requires `T` to be an instance of the
+     `uenum` typeclass, replacing the earlier requirement that it be
+     a member of the `enum` typeclass.
 
 * The following obsolete predicates has been removed:
 
@@ -607,7 +607,7 @@ Changes to the Mercury standard library
 
 * The following type has had its typeclass memberships changed:
 
-    - The type `var/1` is now an instance of the new uenum typeclass.
+    - The type `var/1` is now an instance of the new `uenum` typeclass.
 
 * The following predicates have been marked obsolete:
 
@@ -804,7 +804,7 @@ Changes to the Mercury standard library
 
 * The following type has had its typeclass memberships changed:
 
-    - The type `uint` is now an instance of the new uenum typeclass.
+    - The type `uint` is now an instance of the new `uenum` typeclass.
 
 * The following functions have been added:
 
