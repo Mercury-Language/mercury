@@ -3178,6 +3178,8 @@ long_option("partial-inst-copy-2021-01-04",
                                     compiler_sufficiently_recent).
 long_option("mantis-bug-529-2021-02-25",
                                     compiler_sufficiently_recent).
+long_option("strtrie-2022-12-08",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("experiment1",          experiment1).
 long_option("experiment2",          experiment2).
