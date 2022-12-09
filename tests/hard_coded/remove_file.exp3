@@ -1,2 +1,2 @@
 Test passed
-Second remove failed, as expected: remove failed: remove_file failed
+Second remove failed, as expected: remove failed: Error deleting file
