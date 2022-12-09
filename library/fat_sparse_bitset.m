@@ -588,14 +588,14 @@ find_offsets_of_set_bits(BitOffset, Size, Bits, !SetOffsets) :-
         % If Bits were 0, we wouldn't have got here.
         !:SetOffsets = [BitOffset | !.SetOffsets]
     else
-        HalfSize = unchecked_right_shift(Size, 1),
+        HalfSize = unchecked_right_ushift(Size, 1u),
         Mask = mask(HalfSize),
 
         % Extract the low-order half of the bits.
         LowBits = Mask /\ Bits,
 
         % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
+        HighBits = Mask /\ unchecked_right_ushift(Bits, HalfSize),
 
         find_offsets_of_set_bits(BitOffset, HalfSize, LowBits, !SetOffsets),
         find_offsets_of_set_bits(BitOffset + HalfSize, HalfSize, HighBits,
@@ -634,14 +634,14 @@ member_search_one_node(Index, Offset, Size, Bits) :-
     else if Size = 1u then
         Index = Offset
     else
-        HalfSize = unchecked_right_shift(Size, 1),
+        HalfSize = unchecked_right_ushift(Size, 1u),
         Mask = mask(HalfSize),
 
         % Extract the low-order half of the bits.
         LowBits = Mask /\ Bits,
 
         % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
+        HighBits = Mask /\ unchecked_right_ushift(Bits, HalfSize),
 
         ( member_search_one_node(Index, Offset, HalfSize, LowBits)
         ; member_search_one_node(Index, Offset + HalfSize, HalfSize, HighBits)
@@ -789,8 +789,7 @@ remove_leq_loop(Index, bitset_cons(Offset, Bits0, Tail0), Elems) :-
     ( if Offset + ubits_per_uint =< Index then
         remove_leq_loop(Index, Tail0, Elems)
     else if Offset =< Index then
-        Bits = Bits0 /\
-            unchecked_left_shift(\ 0u, cast_to_int(Index - Offset + 1u)),
+        Bits = Bits0 /\ unchecked_left_ushift(\ 0u, Index - Offset + 1u),
         ( if Bits = 0u then
             Elems = Tail0
         else
@@ -817,7 +816,7 @@ remove_gt_loop(Index, bitset_cons(Offset, Bits0, Tail0), Elems) :-
         Elems = make_bitset_cons(Offset, Bits0, Tail)
     else if Offset =< Index then
         Bits = Bits0 /\
-            \ unchecked_left_shift(\ 0u, cast_to_int(Index - Offset + 1u)),
+            \ unchecked_left_ushift(\ 0u, Index - Offset + 1u),
         ( if Bits = 0u then
             Elems = bitset_nil
         else
@@ -855,13 +854,12 @@ find_least_bit_loop(Bits0, Size, BitNum0, BitNum) :-
         % We can't get here unless the bit is a 1 bit.
         BitNum = BitNum0
     else
-        HalfSize = unchecked_right_shift(Size, 1),
+        HalfSize = unchecked_right_ushift(Size, 1u),
         Mask = mask(HalfSize),
 
         LowBits = Bits0 /\ Mask,
         ( if LowBits = 0u then
-            HighBits = Mask /\
-                unchecked_right_shift(Bits0, cast_to_int(HalfSize)),
+            HighBits = Mask /\ unchecked_right_ushift(Bits0, HalfSize),
             find_least_bit_loop(HighBits, HalfSize, BitNum0 + HalfSize, BitNum)
         else
             find_least_bit_loop(LowBits, HalfSize, BitNum0, BitNum)
@@ -1143,21 +1141,21 @@ divide_bits(Pred, BaseOffset, OffsetInWord, Bits, Size, !In, !Out) :-
         true
     else if Size = 1u then
         Elem = det_from_uint(BaseOffset + OffsetInWord),
-        OffsetBit = unchecked_left_shift(1u, cast_to_int(OffsetInWord)),
+        OffsetBit = unchecked_left_ushift(1u, OffsetInWord),
         ( if Pred(Elem) then
             !:In = !.In \/ OffsetBit
         else
             !:Out = !.Out \/ OffsetBit
         )
     else
-        HalfSize = unchecked_right_shift(Size, 1),
+        HalfSize = unchecked_right_ushift(Size, 1u),
         Mask = mask(HalfSize),
 
         % Extract the low-order half of the bits.
         LowBits = Mask /\ Bits,
 
         % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
+        HighBits = Mask /\ unchecked_right_ushift(Bits, HalfSize),
 
         divide_bits(Pred, BaseOffset, OffsetInWord,
             LowBits, HalfSize, !In, !Out),
@@ -1230,14 +1228,14 @@ divide_bits_by_set(DivideByBits, Size, Offset, Bits, !In, !Out) :-
     ( if Bits = 0u then
         true
     else if Size = 1u then
-        OffsetBit = unchecked_left_shift(1u, cast_to_int(Offset)),
+        OffsetBit = unchecked_left_ushift(1u, Offset),
         ( if DivideByBits /\ OffsetBit = 0u then
             !:Out = !.Out \/ OffsetBit
         else
             !:In = !.In \/ OffsetBit
         )
     else
-        HalfSize = unchecked_right_shift(Size, 1),
+        HalfSize = unchecked_right_ushift(Size, 1u),
         % XXX We could pass around Mask as a parameter, updating it
         % on each recursive call. That may be cheaper than what we do now.
         Mask = mask(HalfSize),
@@ -1246,7 +1244,7 @@ divide_bits_by_set(DivideByBits, Size, Offset, Bits, !In, !Out) :-
         LowBits = Mask /\ Bits,
 
         % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
+        HighBits = Mask /\ unchecked_right_ushift(Bits, HalfSize),
 
         divide_bits_by_set(DivideByBits, HalfSize, Offset, LowBits,
             !In, !Out),
@@ -1433,14 +1431,14 @@ all_true_bits(Pred, Offset, Bits, Size) :-
         Item = det_from_uint(Offset),
         Pred(Item)
     else
-        HalfSize = unchecked_right_shift(Size, 1),
+        HalfSize = unchecked_right_ushift(Size, 1u),
         Mask = mask(HalfSize),
 
         % Extract the low-order half of the bits.
         LowBits = Mask /\ Bits,
 
         % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
+        HighBits = Mask /\ unchecked_right_ushift(Bits, HalfSize),
 
         all_true_bits(Pred, Offset, LowBits, HalfSize),
         all_true_bits(Pred, Offset + HalfSize, HighBits, HalfSize)
@@ -1635,12 +1633,12 @@ fold_bits_low_to_high(Pred, Offset, Bits, Size, !Acc) :-
         Item = det_from_uint(Offset),
         Pred(Item, !Acc)
     else
-        HalfSize = unchecked_right_shift(Size, 1),
+        HalfSize = unchecked_right_ushift(Size, 1u),
         Mask = mask(HalfSize),
 
         % Extract the low-order and high-order halves of the bits.
         LowBits = Mask /\ Bits,
-        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
+        HighBits = Mask /\ unchecked_right_ushift(Bits, HalfSize),
 
         fold_bits_low_to_high(Pred, Offset,
             LowBits, HalfSize, !Acc),
@@ -1678,12 +1676,12 @@ fold_bits_high_to_low(Pred, Offset, Bits, Size, !Acc) :-
         Item = det_from_uint(Offset),
         Pred(Item, !Acc)
     else
-        HalfSize = unchecked_right_shift(Size, 1),
+        HalfSize = unchecked_right_ushift(Size, 1u),
         Mask = mask(HalfSize),
 
         % Extract the low-order and high-order halves of the bits.
         LowBits = Mask /\ Bits,
-        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
+        HighBits = Mask /\ unchecked_right_ushift(Bits, HalfSize),
 
         fold_bits_high_to_low(Pred, Offset + HalfSize,
             HighBits, HalfSize, !Acc),
@@ -1725,12 +1723,12 @@ fold2_bits_low_to_high(Pred, Offset, Bits, Size, !Acc1, !Acc2) :-
         Item = det_from_uint(Offset),
         Pred(Item, !Acc1, !Acc2)
     else
-        HalfSize = unchecked_right_shift(Size, 1),
+        HalfSize = unchecked_right_ushift(Size, 1u),
         Mask = mask(HalfSize),
 
         % Extract the low-order and high-order halves of the bits.
         LowBits = Mask /\ Bits,
-        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
+        HighBits = Mask /\ unchecked_right_ushift(Bits, HalfSize),
 
         fold2_bits_low_to_high(Pred, Offset, LowBits, HalfSize, !Acc1, !Acc2),
         fold2_bits_low_to_high(Pred, Offset + HalfSize, HighBits, HalfSize,
@@ -1771,12 +1769,12 @@ fold2_bits_high_to_low(Pred, Offset, Bits, Size, !Acc1, !Acc2) :-
         Item = det_from_uint(Offset),
         Pred(Item, !Acc1, !Acc2)
     else
-        HalfSize = unchecked_right_shift(Size, 1),
+        HalfSize = unchecked_right_ushift(Size, 1u),
         Mask = mask(HalfSize),
 
         % Extract the low-order and high-order halves of the bits.
         LowBits = Mask /\ Bits,
-        HighBits = Mask /\ unchecked_right_shift(Bits, cast_to_int(HalfSize)),
+        HighBits = Mask /\ unchecked_right_ushift(Bits, HalfSize),
 
         fold2_bits_high_to_low(Pred, Offset + HalfSize, HighBits, HalfSize,
             !Acc1, !Acc2),
@@ -1811,18 +1809,18 @@ offset_and_bit_to_set_for_index(Index, Offset, BitToSet) :-
 :- func get_bit(uint, uint) = uint.
 :- pragma inline(func(get_bit/2)).
 
-get_bit(UInt, Bit) = UInt /\ unchecked_left_shift(1u, cast_to_int(Bit)).
+get_bit(UInt, Bit) = UInt /\ unchecked_left_ushift(1u, Bit).
 
 :- pred set_bit(uint::in, uint::in, uint::out) is det.
 :- pragma inline(pred(set_bit/3)).
 
 set_bit(Bit, UInt0, UInt) :-
-    UInt = UInt0 \/ unchecked_left_shift(1u, cast_to_int(Bit)).
+    UInt = UInt0 \/ unchecked_left_ushift(1u, Bit).
 
 :- func clear_bit(uint, uint) = uint.
 :- pragma inline(func(clear_bit/2)).
 
-clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1u, cast_to_int(Bit)).
+clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_ushift(1u, Bit).
 
     % mask(N) returns a mask which can be `and'ed with an integer to return
     % the lower N bits of the integer. N must be less than ubits_per_uint.
@@ -1830,7 +1828,7 @@ clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1u, cast_to_int(Bit)).
 :- func mask(uint) = uint.
 :- pragma inline(func(mask/1)).
 
-mask(N) = \ unchecked_left_shift(\ 0u, cast_to_int(N)).
+mask(N) = \ unchecked_left_ushift(\ 0u, N).
 
 :- func make_bitset_cons(uint, uint, bitset_elems) = bitset_elems.
 :- pragma inline(func(make_bitset_cons/3)).
