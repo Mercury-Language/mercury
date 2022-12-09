@@ -35,23 +35,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % find_module_deps(Globals, ModuleIndex, Succeeded, Deps, !Info, !IO).
-    %
-    % The reason we don't return maybe(Deps) is that with `--keep-going'
-    % we want to do as much work as possible.
-    %
-:- type find_module_deps(T) ==
-    pred(globals, module_index, maybe_succeeded, deps_set(T),
-        make_info, make_info, io, io).
-:- inst find_module_deps ==
-    (pred(in, in, out, out, in, out, di, uo) is det).
-
-:- type find_module_deps_plain_set(T) ==
-    pred(globals, module_index, maybe_succeeded, set(T),
-        make_info, make_info, io, io).
-:- inst find_module_deps_plain_set ==
-    (pred(in, in, out, out, in, out, di, uo) is det).
-
 :- type dependency_file
     --->    dep_target(target_file)
             % A target which could be made.
@@ -66,30 +49,18 @@
     --->    dfmi_target(module_index, module_target_type)
     ;       dfmi_file(file_name).
 
-    % Return a closure which will find the dependencies for a target type
-    % given a module name.
-    %
-:- func target_dependencies(globals::in, module_target_type::in) =
-    (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
-
 %---------------------------------------------------------------------------%
 
-    % XXX Document me.
+    % find_target_dependencies_of_modules(KeepGoing, Globals, TargetType,
+    %     ModuleIndexes, !Succeeded, !Deps, !Info, !IO):
     %
-    % The difference between this predicate (and its local siblings) and
-    % the old deps_set_foldl3_maybe_stop_at_error (now replaced by these
-    % predicates) is that the second argument has a more specific job.
-    % That job used to be done by a predicate, union_deps, whose documentation
-    % used to say this:
+    % The TargetType and ModuleIndexes arguments define a set of make targets.
+    % Add to !Deps the dependency_file_indexes of all the files that 
+    % these make targets depend on, and which therefore have to be built
+    % before we can build those make targets.
     %
-    % "Union the output set of dependencies for a given module
-    % with the accumulated set. This is used with
-    % deps_set_foldl3_maybe_stop_at_error to iterate over a list of
-    % module_names to find all target files for those modules."
-    %
-:- pred deps_set_foldl3_maybe_stop_at_error_find_union_fi(maybe_keep_going::in,
-    find_module_deps(dependency_file_index)::in(find_module_deps),
-    globals::in, list(module_index)::in,
+:- pred find_target_dependencies_of_modules(maybe_keep_going::in, globals::in,
+    module_target_type::in, list(module_index)::in,
     maybe_succeeded::in, maybe_succeeded::out,
     deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -199,6 +170,23 @@
 
 %---------------------------------------------------------------------------%
 
+    % find_module_deps(Globals, ModuleIndex, Succeeded, Deps, !Info, !IO).
+    %
+    % The reason we don't return maybe(Deps) is that with `--keep-going'
+    % we want to do as much work as possible.
+    %
+:- type find_module_deps(T) ==
+    pred(globals, module_index, maybe_succeeded, deps_set(T),
+        make_info, make_info, io, io).
+:- inst find_module_deps ==
+    (pred(in, in, out, out, in, out, di, uo) is det).
+
+:- type find_module_deps_plain_set(T) ==
+    pred(globals, module_index, maybe_succeeded, set(T),
+        make_info, make_info, io, io).
+:- inst find_module_deps_plain_set ==
+    (pred(in, in, out, out, in, out, di, uo) is det).
+
 :- type deps_result(T)
     --->    deps_result(
                 dr_success  :: maybe_succeeded,
@@ -209,45 +197,67 @@
 
 %---------------------------------------------------------------------------%
 
-target_dependencies(Globals, Target) = FindDeps :-
+find_target_dependencies_of_modules(_KeepGoing, _Globals, _TargetType,
+        [], !Succeeded, !Deps, !Info, !IO).
+find_target_dependencies_of_modules(KeepGoing, Globals, TargetType,
+        [ModuleIndex | ModuleIndexes], !Succeeded, !Deps, !Info, !IO) :-
+    FindDeps = target_dependencies(Globals, TargetType),
+    FindDeps(Globals, ModuleIndex, NewSucceeded, NewDeps, !Info, !IO),
+    union(NewDeps, !Deps),
+    ( if
+        ( NewSucceeded = succeeded
+        ; KeepGoing = do_keep_going
+        )
+    then
+        !:Succeeded = !.Succeeded `and` NewSucceeded,
+        find_target_dependencies_of_modules(KeepGoing, Globals, TargetType,
+            ModuleIndexes, !Succeeded, !Deps, !Info, !IO)
+    else
+        !:Succeeded = did_not_succeed
+    ).
+
+    % Return a closure which will find the dependencies for a target type
+    % given a module name.
+    %
+:- func target_dependencies(globals::in, module_target_type::in) =
+    (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
+
+target_dependencies(Globals, TargetType) = FindDeps :-
     (
-        ( Target = module_target_source
-        ; Target = module_target_track_flags
+        ( TargetType = module_target_source
+        ; TargetType = module_target_track_flags
         ),
         FindDeps = no_deps
     ;
-        ( Target = module_target_int0
-        ; Target = module_target_int1
-        ; Target = module_target_int2
+        TargetType = module_target_int3,
+        FindDeps = module_target_source `of` self
+    ;
+        ( TargetType = module_target_int0
+        ; TargetType = module_target_int1
+        ; TargetType = module_target_int2
         ),
         FindDeps = interface_file_dependencies
     ;
-        Target = module_target_int3,
-        FindDeps = module_target_source `of` self
-    ;
-        ( Target = module_target_c_code
-        ; Target = module_target_csharp_code
-        ; Target = module_target_java_code
-        ; Target = module_target_errors
+        ( TargetType = module_target_c_code
+        ; TargetType = module_target_c_header(_)
+        ; TargetType = module_target_csharp_code
+        ; TargetType = module_target_java_code
+        ; TargetType = module_target_errors
         ),
         FindDeps = compiled_code_dependencies(Globals)
     ;
-        Target = module_target_c_header(_),
-        FindDeps = target_dependencies(Globals, module_target_c_code)
-    ;
-        Target = module_target_java_class_code,
+        TargetType = module_target_java_class_code,
         FindDeps = module_target_java_code `of` self
     ;
-        ( Target = module_target_foreign_object(PIC, _)
-        ; Target = module_target_fact_table_object(PIC, _)
+        ( TargetType = module_target_foreign_object(PIC, _)
+        ; TargetType = module_target_fact_table_object(PIC, _)
         ),
         FindDeps = get_foreign_deps(Globals, PIC)
     ;
-        Target = module_target_object_code(PIC),
+        TargetType = module_target_object_code(PIC),
         globals.get_target(Globals, CompilationTarget),
         TargetCode = target_to_module_target_code(CompilationTarget, PIC),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-
         % For --highlevel-code, the `.c' file will #include the header file
         % for all imported modules.
         ( if
@@ -269,8 +279,8 @@ target_dependencies(Globals, Target) = FindDeps :-
             HeaderDeps
         ])
     ;
-        ( Target = module_target_opt
-        ; Target = module_target_xml_doc
+        ( TargetType = module_target_opt
+        ; TargetType = module_target_xml_doc
         ),
         FindDeps = combine_deps_list([
             module_target_source `of` self,
@@ -279,7 +289,7 @@ target_dependencies(Globals, Target) = FindDeps :-
             module_target_int2 `of` non_intermod_indirect_imports
         ])
     ;
-        Target = module_target_analysis_registry,
+        TargetType = module_target_analysis_registry,
         FindDeps = combine_deps_list([
             module_target_source `of` self,
             module_target_int0 `of` ancestors,
@@ -1063,6 +1073,26 @@ deps_set_foldl3_maybe_stop_at_error_find_plain_union_mi(KeepGoing,
     ).
 
 %---------------------%
+
+    % XXX Document me.
+    %
+    % The difference between this predicate (and its local siblings) and
+    % the old deps_set_foldl3_maybe_stop_at_error (now replaced by these
+    % predicates) is that the second argument has a more specific job.
+    % That job used to be done by a predicate, union_deps, whose documentation
+    % used to say this:
+    %
+    % "Union the output set of dependencies for a given module
+    % with the accumulated set. This is used with
+    % deps_set_foldl3_maybe_stop_at_error to iterate over a list of
+    % module_names to find all target files for those modules."
+    %
+:- pred deps_set_foldl3_maybe_stop_at_error_find_union_fi(maybe_keep_going::in,
+    find_module_deps(dependency_file_index)::in(find_module_deps),
+    globals::in, list(module_index)::in,
+    maybe_succeeded::in, maybe_succeeded::out,
+    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 deps_set_foldl3_maybe_stop_at_error_find_union_fi(_KeepGoing,
         _FindDeps, _Globals, [], !Succeeded, !Deps, !Info, !IO).

@@ -212,13 +212,14 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
         else
             ModulesToCheck = [ModuleName]
         ),
-        module_names_to_index_set(ModulesToCheck, ModulesToCheckSet, !Info),
+        module_names_to_index_set(ModulesToCheck, ModuleIndexesToCheckSet,
+            !Info),
+        ModuleIndexesToCheck = to_sorted_list(ModuleIndexesToCheckSet),
 
-        deps_set_foldl3_maybe_stop_at_error_find_union_fi(
-            !.Info ^ mki_keep_going, target_dependencies(Globals, TargetType),
-            Globals, to_sorted_list(ModulesToCheckSet),
-            succeeded, DepsSucceeded, sparse_bitset.init, DepFiles0,
-            !Info, !IO),
+        KeepGoing0 = !.Info ^ mki_keep_going,
+        find_target_dependencies_of_modules(KeepGoing0, Globals, TargetType,
+            ModuleIndexesToCheck, succeeded, DepsSucceeded,
+            sparse_bitset.init, DepFiles0, !Info, !IO),
         % NOTE: converting the dep_set to a plain set is relatively expensive,
         % so it would be better to avoid it. Also, there should be a definite
         % improvement if we could represent the dependency_status map with an
@@ -239,8 +240,9 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
 
         debug_make_msg(Globals,
            ( pred(!.IO::di, !:IO::uo) is det :-
-                make_write_target_file(Globals, TargetFile, !IO),
-                io.write_string(": dependencies:\n", !IO),
+                get_make_target_file_name(Globals, TargetFile,
+                    TargetFileName, !IO),
+                io.format("%s: dependencies:\n", [s(TargetFileName)], !IO),
                 dependency_file_index_set_to_plain_set(!.Info,
                     DepFiles0, PlainSet),
                 make_write_dependency_file_list(Globals,
@@ -248,6 +250,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
             ), !IO),
 
         KeepGoing = !.Info ^ mki_keep_going,
+        expect(unify(KeepGoing, KeepGoing0), $pred, "KeepGoing != KeepGoing0"),
         ( if
             DepsSucceeded = did_not_succeed,
             KeepGoing = do_not_keep_going
