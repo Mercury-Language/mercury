@@ -352,33 +352,27 @@ interface_file_dependencies =
 
 compiled_code_dependencies(Globals) = Deps :-
     % We build up Deps in stages.
-    % XXX The *order* of the dependencies this computes looks wrong to me (zs).
-    % For example, why does Deps call for imported modules' .opt files
-    % to be built before their .int files? The dependencies of the .opt files
-    % won't let them be built before the files *they* depend on are ready,
-    % but still ...
 
     % Stage 0: dependencies on flags.
     globals.lookup_bool_option(Globals, track_flags, TrackFlags),
     (
         TrackFlags = yes,
-        Deps0 = module_target_track_flags `of` self
+        DepsTracks = [module_target_track_flags `of` self]
     ;
         TrackFlags = no,
-        Deps0 = no_deps
+        DepsTracks = []
     ),
 
     % Stage 1: dependencies on the source file, and on the fact table files,
     % foreign language files and Mercury interface files it imports.
-    Deps1 = combine_deps_list([
+    DepsSrcInts = [
         module_target_source `of` self,
         fact_table_files `files_of` self,
         foreign_include_files `files_of` self,
         module_target_int1 `of` self,
         module_target_int1 `of` ancestors,
-        find_own_imports_012,
-        Deps0
-    ]),
+        find_own_imports_012
+    ],
 
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     globals.lookup_bool_option(Globals, intermodule_analysis,
@@ -388,29 +382,44 @@ compiled_code_dependencies(Globals) = Deps :-
     % Stage 2: dependencies on optimization files.
     (
         AnyIntermod = yes,
-        Deps2 = combine_deps_list([
+        DepsOpts = [
             module_target_opt `of` self,
             module_target_opt `of` intermod_imports,
-            get_intermod_imports_their_ancestors_and_012,
-            Deps1
-        ])
+            get_intermod_imports_their_ancestors_and_012
+        ]
     ;
         AnyIntermod = no,
-        Deps2 = Deps1
+        DepsOpts = []
     ),
 
     % Stage 3: dependencies on analysis result files.
     (
         IntermodAnalysis = yes,
-        Deps = combine_deps_list([
+        DepsRegistries = [
             module_target_analysis_registry `of` self,
-            module_target_analysis_registry `of` direct_imports,
-            Deps2
-        ])
+            module_target_analysis_registry `of` direct_imports
+        ]
     ;
         IntermodAnalysis = no,
-        Deps = Deps2
-    ).
+        DepsRegistries = []
+    ),
+
+    % XXX We used to build stage 0 deps, then stage 1 deps etc,
+    % but since we put the previous stages' dependencies *after*
+    % the dependencies of the previous stages, we ended up with a list
+    % that is equivalent to this commented-out assignment to DepsAll:
+    %
+    % DepsAll = inst_preserving_condense(
+    %     [DepsRegistries, DepsOpts, DepsSrcInts, DepsTracks]),
+    %
+    % This looked very wrong. For example, it called for imported modules'
+    % .opt files to be built before their .int files, which the dependencies
+    % of the .opt files on their corresponding .int files would not allow
+    % anyway. And, as it turned out, returning dependencies in the obvious
+    % order works as well.
+    DepsAll = inst_preserving_condense(
+        [DepsTracks, DepsSrcInts, DepsOpts, DepsRegistries]),
+    Deps = combine_deps_list(DepsAll).
 
 :- func imports_012 =
     (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
