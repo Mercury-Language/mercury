@@ -2297,6 +2297,10 @@
     list(T)::in(list_skel(I =< ground))) =
     (list(T)::out(list_skel(I =< ground))) is det.
 
+:- func inst_preserving_condense(
+    list(list(T))::in(list_skel(list_skel(I =< ground)))) =
+    (list(T)::out(list_skel(I =< ground))) is det.
+
     % This is the same as the usual forward mode of reverse, but preserves
     % any extra information available in the input argument.
     %
@@ -4131,6 +4135,20 @@ filter_map_foldl(P, [X | Xs], True, !A) :-
 inst_preserving_append([], L) = L.
 inst_preserving_append([H | T], L) = [H | NT] :-
     inst_preserving_append(T, L) = NT.
+
+inst_preserving_condense(Xss) = Ys :-
+    RevXss = inst_preserving_reverse(Xss),
+    inst_preserving_condense_acc(RevXss, [], Ys).
+
+:- pred inst_preserving_condense_acc(
+    list(list(T))::in(list_skel(list_skel(I =< ground))),
+    list(T)::in(list_skel(I =< ground)), list(T)::out(list_skel(I =< ground)))
+    is det.
+
+inst_preserving_condense_acc([], Ys, Ys).
+inst_preserving_condense_acc([L | Ls], Ys0, Ys) :-
+    Ys1 = inst_preserving_append(L, Ys0),
+    inst_preserving_condense_acc(Ls, Ys1, Ys).
 
 inst_preserving_reverse(Xs) = Ys :-
     inst_preserving_reverse_prepend(Xs, [], Ys).

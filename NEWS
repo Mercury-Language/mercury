@@ -408,6 +408,7 @@ Changes to the Mercury standard library
     - pred `tail/2`
     - pred `det_head/2`
     - pred `det_tail/2`
+    - func `inst_preserving_condense/1`
     - pred `intersperse/3`
     - pred `intersperse_list/3`
     - pred `intersperse_list_last/4`
@@ -417,9 +418,9 @@ Changes to the Mercury standard library
     - pred `take_while_not/3`
     - pred `take_while_not/4`
 
-### Changes to the `list` module
+### Changes to the `map` module
 
-* The following predicates have been added:
+* The following predicate has been added:
 
     - pred `sorted_keys_match/2`
 
@@ -790,7 +791,7 @@ Changes to the Mercury standard library
 
 ### Changes to the `tree234` module
 
-* The following predicates have been added:
+* The following predicate has been added:
 
     - pred `sorted_keys_match/2`
 
