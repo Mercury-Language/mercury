@@ -404,19 +404,6 @@ compiled_code_dependencies(Globals) = Deps :-
         DepsRegistries = []
     ),
 
-    % XXX We used to build stage 0 deps, then stage 1 deps etc,
-    % but since we put the previous stages' dependencies *after*
-    % the dependencies of the previous stages, we ended up with a list
-    % that is equivalent to this commented-out assignment to DepsAll:
-    %
-    % DepsAll = inst_preserving_condense(
-    %     [DepsRegistries, DepsOpts, DepsSrcInts, DepsTracks]),
-    %
-    % This looked very wrong. For example, it called for imported modules'
-    % .opt files to be built before their .int files, which the dependencies
-    % of the .opt files on their corresponding .int files would not allow
-    % anyway. And, as it turned out, returning dependencies in the obvious
-    % order works as well.
     DepsAll = inst_preserving_condense(
         [DepsTracks, DepsSrcInts, DepsOpts, DepsRegistries]),
     Deps = combine_deps_list(DepsAll).
