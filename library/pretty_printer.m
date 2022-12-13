@@ -337,7 +337,7 @@
             % Extend the current indent stack with the given string.
     ;       remove_indent
             % Restore indentation to before the last add_indent/1.
-            
+
             % Calling the two operations above {inc,dec}_user_indent
             % would be more consistent with the two operations below,
             % but the hard_coded/test_pretty_printer test case references
