@@ -216,7 +216,6 @@
 
 :- import_module pair.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -320,7 +319,7 @@ create_nonneg_constraints(SizeVarMap, Zeros) = Constraints :-
 
 create_nonneg_constraints_2(SizeVarMap, Zeros, NonNegs) :-
     SizeVars = map.values(SizeVarMap),
-    list.filter(isnt(is_zero_size_var(Zeros)), SizeVars, NonZeroSizeVars),
+    list.negated_filter(is_zero_size_var(Zeros), SizeVars, NonZeroSizeVars),
     NonNegs = list.map(make_nonneg_constr, NonZeroSizeVars).
 
 create_var_substitution(Args, HeadVars) = SubstMap :-

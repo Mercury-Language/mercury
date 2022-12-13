@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017 The Mercury team.
+% Copyright (C) 2017-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -27,7 +27,7 @@
     % Generate MLDS code for an entire module.
     %
 :- pred ml_code_gen(io.text_output_stream::in, mlds_target_lang::in,
-    mlds::out, module_info::in, module_info::out, 
+    mlds::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -64,7 +64,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module std_util.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -260,7 +259,7 @@ ml_gen_table_structs(ModuleInfo, DataDefns) :-
         % GC support (stack frame registration, and calls to MR_GC_check()) to
         % MR_make_long_lived() and MR_deep_copy() so that we do garbage
         % collection of the "global heap" which is used to store the tables.
-        expect(isnt(unify(gc_accurate), GC_Method), $pred,
+        expect_not(unify(gc_accurate, GC_Method), $pred,
             "tabling and `--gc accurate'"),
 
         list.foldl(ml_gen_add_table_var(ModuleInfo), TableStructs,

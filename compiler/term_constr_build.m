@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2012 The University of Melbourne.
-% Copyright (C) 2017 The Mercury Team.
+% Copyright (C) 2017-2018, 2020-2022 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -92,7 +92,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -946,7 +945,7 @@ build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
         else
             SizeVars0 = prog_vars_to_size_vars(SizeVarMap, ArgVars),
             SizeVars1 = [SizeVar | SizeVars0],
-            SizeVars  = list.filter(isnt(is_zero_size_var(Zeros)), SizeVars1)
+            SizeVars  = list.negated_filter(is_zero_size_var(Zeros), SizeVars1)
         ),
         NonNegConstraints = list.map(make_nonneg_constr, SizeVars),
         Constraints = [Constraint | NonNegConstraints]
@@ -1152,7 +1151,7 @@ find_failure_constraint_for_goal_2(Info, Goal, AbstractGoal) :-
         SizeVarMap = Info ^ tti_size_var_map,
         CallSizeArgs0 = prog_vars_to_size_vars(SizeVarMap, CallArgs),
         Zeros = Info ^ tti_zeros,
-        CallSizeArgs = list.filter(isnt(is_zero_size_var(Zeros)),
+        CallSizeArgs = list.negated_filter(is_zero_size_var(Zeros),
             CallSizeArgs0),
         ModuleInfo = Info ^ tti_module_info,
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),

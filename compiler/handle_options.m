@@ -94,7 +94,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -2593,7 +2592,7 @@ handle_directory_options(OpMode, !Globals) :-
         SearchLibFilesGradeSubdirs = list.map(ToGradeSubdir,
             SearchLibFilesDirs),
         IntermodDirs3 = [GradeSubdir] ++ SearchLibFilesGradeSubdirs ++
-            list.filter(isnt(unify(dir.this_directory)), IntermodDirs2)
+            list.negated_filter(unify(dir.this_directory), IntermodDirs2)
     ;
         UseGradeSubdirs = bool.no,
         IntermodDirs3 = SearchLibFilesDirs ++ IntermodDirs2

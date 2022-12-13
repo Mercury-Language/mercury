@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2020-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -183,7 +183,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -496,7 +495,7 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
         !CI, !.CLD) :-
     % If there are no output variables, then how can the individual solutions
     % differ from each other?
-    expect(negate(unify(OutVars, [])), $pred, "no OutVars"),
+    expect_not(unify(OutVars, []), $pred, "no OutVars"),
 
     % Now generate the static cells into which we do the lookups of the values
     % of the output variables, if there are any.

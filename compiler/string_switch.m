@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 2015, 2017-2018, 2020, 2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -96,7 +97,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module std_util.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -419,7 +419,7 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
 
     % If there are no output variables, then how can the individual solutions
     % differ from each other?
-    expect(negate(unify(OutVars, [])), $pred, "no OutVars"),
+    expect_not(unify(OutVars, []), $pred, "no OutVars"),
     (
         GoalsMayModifyTrail = yes,
         get_emit_trail_ops(!.CI, EmitTrailOps),
@@ -914,7 +914,7 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
 
     % If there are no output variables, then how can the individual solutions
     % differ from each other?
-    expect(negate(unify(OutVars, [])), $pred, "no OutVars"),
+    expect_not(unify(OutVars, []), $pred, "no OutVars"),
     (
         GoalsMayModifyTrail = yes,
         get_emit_trail_ops(!.CI, EmitTrailOps),

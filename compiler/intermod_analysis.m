@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021 The Mercury team.
+% Copyright (C) 2021-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -170,7 +170,6 @@
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
-:- import_module std_util.
 :- import_module string.
 :- import_module term_context.
 :- import_module unit.
@@ -570,7 +569,7 @@ maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
     ;
         MaybeArgSizeConstrs = yes(Polyhedron),
         Constraints0 = polyhedron.non_false_constraints(Polyhedron),
-        Constraints1 = list.filter(isnt(nonneg_constr), Constraints0),
+        Constraints1 = list.negated_filter(nonneg_constr, Constraints0),
         Constraints  = list.sort(Constraints1),
         list.map(lp_rational_constraint_to_arg_size_constr(VarToVarIdMap),
             Constraints, ArgSizeInfoConstrs),

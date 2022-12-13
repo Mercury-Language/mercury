@@ -386,7 +386,6 @@
 
 :- import_module int.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -512,9 +511,9 @@ simplify_abstract_rep(Goal0, Goal) :-
         some [!Conjuncts] (
             !:Conjuncts = Conjuncts0,
             list.map(simplify_abstract_rep, !Conjuncts),
-            list.filter(isnt(is_empty_primitive), !Conjuncts),
+            list.negated_filter(is_empty_primitive, !Conjuncts),
             flatten_conjuncts(!Conjuncts),
-            list.filter(isnt(is_empty_conj), !Conjuncts),
+            list.negated_filter(is_empty_conj, !Conjuncts),
             Conjuncts = !.Conjuncts
         ),
         ( if Conjuncts = [Conjunct] then

@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2011 The University of Melbourne.
+% Copyright (C) 2014-2015, 2016, 2018, 2020-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -82,7 +83,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module std_util.
 :- import_module term.
 
 %----------------------------------------------------------------------------%
@@ -434,7 +434,7 @@ special_pred_id_to_termination(SpecialPredId, HeadProgVars, ModuleInfo,
         make_size_var_map(HeadProgVars, _SizeVarset, SizeVarMap),
         HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadProgVars),
         Zeros = find_zero_size_vars(ModuleInfo, VarTable, SizeVarMap),
-        NonZeroHeadSizeVars = list.filter(isnt(is_zero_size_var(Zeros)),
+        NonZeroHeadSizeVars = list.negated_filter(is_zero_size_var(Zeros),
             HeadSizeVars),
         % Unify may have more than two input arguments if one of them is a
         % type-info related arg, or some such thing. Since all these have

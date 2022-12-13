@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
+% Copyright (C) 2013-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -144,7 +145,6 @@
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module term_context.
 
@@ -863,7 +863,7 @@ parse_variable_name(FileName, LineNumber, Chars0, Chars, MaybeVarName) :-
     do_parse_variable_name(Chars0, Chars, is_first, [], RevVarNameChars),
     string.from_rev_char_list(RevVarNameChars, VarName),
     ( if VarName = "" then
-        list.take_while(isnt(char.is_whitespace), Chars, FirstWordChars),
+        list.take_while_not(char.is_whitespace, Chars, FirstWordChars),
         Pieces = [words("expected variable name before"),
             quote(string.from_char_list(FirstWordChars)), suffix("."), nl],
         Context = term_context.context(FileName, LineNumber),

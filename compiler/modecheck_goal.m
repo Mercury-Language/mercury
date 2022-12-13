@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -147,7 +147,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 :- import_module term_context.
 :- import_module uint.
@@ -1028,7 +1027,7 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
             mode_checkpoint(exit, "from_ground_term scope", !ModeInfo),
             (
                 MaybeKind1AndSubGoal1 = yes(Kind1 - SubGoal1),
-                expect(negate(unify(Kind1, from_ground_term_initial)), $pred,
+                expect_not(unify(Kind1, from_ground_term_initial), $pred,
                     "from_ground_term_initial"),
                 mode_info_set_had_from_ground_term(had_from_ground_term_scope,
                     !ModeInfo),

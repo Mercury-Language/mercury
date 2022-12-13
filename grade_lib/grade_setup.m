@@ -143,7 +143,6 @@
 :- import_module map.
 :- import_module require.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -253,7 +252,7 @@ init_solver_vars([Spec | Specs], !SolverVarMap, !SolverVarPriorityCord) :-
     !:SolverVarPriorityCord = cord.snoc(!.SolverVarPriorityCord, SolverVarId),
     init_solver_var_values(0, NumValues, SolverValueIds, Values),
     SolverVar = solver_var(NumValues, NumValues, Values),
-    expect(isnt(unify(0), NumValues), $pred, "no values for solver var"),
+    expect_not(unify(0, NumValues), $pred, "no values for solver var"),
     map.det_insert(SolverVarId, SolverVar, !SolverVarMap),
     init_solver_vars(Specs, !SolverVarMap, !SolverVarPriorityCord).
 
