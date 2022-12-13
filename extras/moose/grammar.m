@@ -23,6 +23,7 @@
 :- import_module map.
 :- import_module set.
 :- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -49,7 +50,7 @@
                 term,   % Head
                 prod,   % body
                 varset,
-                context % Context of the `--->'
+                term_context % Context of the `--->'
             ).
 
 :- type prod

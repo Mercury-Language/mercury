@@ -13,6 +13,7 @@
 :- import_module io.
 :- import_module list.
 :- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -61,7 +62,7 @@
     ;       disj(list(goal))
     ;       ite(goal, goal, goal)
     ;       call(term)
-    ;       (=(term, term, context))
+    ;       (=(term, term, term_context))
     ;       not(goal)
     ;       exists(vars, goal)
     ;       forall(vars, goal)

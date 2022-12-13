@@ -31,12 +31,12 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module term.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
 :- type error
-    --->    error(list(string), context).
+    --->    error(list(string), term_context).
 
 :- pred check_rule_decls(list(rule_decl)::in,
     rule_decls::out, list(check.error)::out) is det.
@@ -328,7 +328,7 @@ id(start, _, _) :-
 %---------------------------------------------------------------------------%
 
 write_error(error(MsgLines, Context), !IO) :-
-    Context = term.context(File, Line),
+    Context = context(File, Line),
     string.format("%s:%d: ", [s(File), i(Line)], ContextMsg),
     io.stderr_stream(StdErr, !IO),
     WriteContextAndMsg =
