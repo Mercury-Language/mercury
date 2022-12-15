@@ -445,7 +445,15 @@ write_mmake_entry(OutStream, _WriteComments, MmakeEntry, !IO) :-
         ;
             SourceFiles = [HeadSourceFile | TailSourceFiles],
             io.write_string(OutStream, " : ", !IO),
-            ( if 1 + list.length(TailSourceFiles) > max_horizontal then
+            ( if
+                (
+                    % Always write trans_opt_deps vertically as the list needs
+                    % to be parseable by maybe_read_d_file_for_trans_opt_deps.
+                    RuleName = "trans_opt_deps"
+                ;
+                    1 + list.length(TailSourceFiles) > max_horizontal
+                )
+            then
                 io.write_string(OutStream, "\\\n", !IO),
                 write_mmake_file_names_vertical(OutStream,
                     HeadSourceFile, TailSourceFiles, !IO)
