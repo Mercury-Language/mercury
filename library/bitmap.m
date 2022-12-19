@@ -2069,7 +2069,7 @@ do_read_bitmap_range(Stream, Start, NumBytes, !Bitmap, !BytesRead,
         read_byte_val(input_stream(Stream), ResultCode, Byte, Error0, !IO),
         (
             ResultCode = result_code_ok,
-            !Bitmap ^ unsafe_byte(Start) := Byte,
+            unsafe_set_byte(Start, Byte, !Bitmap),
             !:BytesRead = !.BytesRead + 1,
             do_read_bitmap_range(Stream, Start + 1, NumBytes - 1,
                 !Bitmap, !BytesRead, Error, !IO)
