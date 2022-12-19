@@ -3458,10 +3458,10 @@ AC_ARG_ENABLE(hlc-prof-grades,
                   [install profiling versions of the high level C grade]),
     [enable_hlc_prof_grades="$enableval"],[enable_hlc_prof_grades=no])
 
-AC_ARG_ENABLE(hlc-low-level-debug-grades,
-    AS_HELP_STRING([--enable-hlc-low-level-debug-grades],
-                  [install a low-level debugging version of the high level C grade]),
-    [enable_hlc_ll_debug_grades="$enableval"],[enable_hlc_ll_debug_grades=no])
+AC_ARG_ENABLE(hlc-gdb-grades,
+    AS_HELP_STRING([--enable-hlc-gdb-grades],
+                  [install a version of the high level C grade that supports debuggers for C]),
+    [enable_hlc_gdb_grades="$enableval"],[enable_hlc_gdb_grades=no])
 
 AC_ARG_ENABLE(rbmm-grades,
     AS_HELP_STRING([--enable-rbmm-grades],
@@ -3513,7 +3513,7 @@ if test "$enable_most_grades" = no; then
     enable_mmos_grades=no
     enable_dmm_grades=no
     enable_hlc_prof_grades=no
-    enable_hlc_ll_debug_grades=no
+    enable_hlc_gdb_grades=no
     enable_rbmm_grades=no
     enable_par_grades=no
     enable_stseg_grades=no
@@ -3689,8 +3689,12 @@ if test "$enable_debug_grades" = yes; then
     fi
 fi
 
-# Add low-level debug grades.
-if test "$enable_hlc_ll_debug_grades" = yes; then
+# Add grades that support debugging using gdb.
+if test "$enable_hlc_gdb_grades" = yes; then
+    # XXX We should rename the ".ll_debug" grade component,
+    # possibly to ".gdb_debug". We could add this is a synonym at first,
+    # and then stop accepting ".ll_debug", but we could just straight up
+    # do a non-bootstrapped replacement.
     LIBGRADES="$LIBGRADES hlc.gcd.ll_debug"
 fi
 
