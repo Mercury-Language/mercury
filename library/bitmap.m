@@ -189,13 +189,12 @@
 
 %---------------------------------------------------------------------------%
 %
-% BM ^ byte(ByteNumber)
-% Get or set the given numbered byte (multiply ByteNumber by
-% bits_per_byte to get the bit index of the start of the byte).
+% Get or set the given numbered byte (multiply ByteNumber by bits_per_byte
+% to get the bit index of the start of the byte).
 %
 % The bits are stored in or taken from the least significant bits of an int.
 % The safe versions will throw an exception if the given ByteNumber is out of
-% bounds.  Final partial bytes are out of bounds.  The unsafe versions do not
+% bounds. Final partial bytes are out of bounds. The unsafe versions do not
 % check whether the byte is in range.
 %
 
@@ -215,13 +214,13 @@
 
 :- pred set_byte(byte_index, byte, bitmap, bitmap).
 :- mode set_byte(in, in, bitmap_di, bitmap_uo) is det.
-:- func (bitmap     ^ byte(byte_index)  := byte) = bitmap.
-:- mode (bitmap_di  ^ byte(in)          := in)   = bitmap_uo is det.
+:- func (bitmap    ^ byte(byte_index) := byte) = bitmap.
+:- mode (bitmap_di ^ byte(in)         := in)   = bitmap_uo is det.
 
 :- pred unsafe_set_byte(byte_index, byte, bitmap, bitmap).
 :- mode unsafe_set_byte(in, in, bitmap_di, bitmap_uo) is det.
-:- func (bitmap     ^ unsafe_byte(byte_index)   := byte) = bitmap.
-:- mode (bitmap_di  ^ unsafe_byte(in)           := in)   = bitmap_uo is det.
+:- func (bitmap    ^ unsafe_byte(byte_index) := byte) = bitmap.
+:- mode (bitmap_di ^ unsafe_byte(in)         := in)   = bitmap_uo is det.
 
 %
 % Versions of the above that set or take uint8 values instead of a byte stored
@@ -716,9 +715,9 @@ set_bit(I, B, !BM) :-
     ).
 
 unsafe_set_bit(I, yes, !BM) :-
-    !:BM = unsafe_set(!.BM, I).
+    unsafe_set(I, !BM).
 unsafe_set_bit(I, no, !BM) :-
-    !:BM = unsafe_clear(!.BM, I).
+    unsafe_clear(I, !BM).
 
 (!.BM ^ unsafe_bit(I) := B) = !:BM :-
     unsafe_set_bit(I, B, !BM).
@@ -1050,7 +1049,7 @@ flip(!.BM, I) = !:BM :-
 
 flip(I, !BM) :-
     ( if in_range(!.BM, I) then
-        !:BM = unsafe_flip(!.BM, I)
+        unsafe_flip(I, !BM)
     else
         throw_bit_bounds_error(!.BM, "bitmap.flip", I)
     ).
@@ -1060,7 +1059,7 @@ set(!.BM, I) = !:BM :-
 
 set(I, !BM) :-
     ( if in_range(!.BM, I) then
-        !:BM = unsafe_set(!.BM, I)
+        unsafe_set(I, !BM)
     else
         throw_bit_bounds_error(!.BM, "bitmap.set", I)
     ).
@@ -1070,7 +1069,7 @@ clear(!.BM, I) = !:BM :-
 
 clear(I, !BM) :-
     ( if in_range(!.BM, I) then
-        !:BM = unsafe_clear(!.BM, I)
+        unsafe_clear(I, !BM)
     else
         throw_bit_bounds_error(!.BM, "bitmap.clear", I)
     ).
@@ -1947,12 +1946,9 @@ read_bitmap(!Bitmap, BytesRead, Result, !IO) :-
     bitmap.read_bitmap(Stream, !Bitmap, BytesRead, Result, !IO).
 
 read_bitmap(Stream, !Bitmap, BytesRead, Result, !IO) :-
-    ( if NumBytes = !.Bitmap ^ num_bytes then
-        bitmap.read_bitmap_range(Stream, 0, NumBytes, !Bitmap,
-            BytesRead, Result, !IO)
-    else
-        error($pred, "bitmap contains partial final byte")
-    ).
+    NumBytes = det_num_bytes(!.Bitmap),
+    bitmap.read_bitmap_range(Stream, 0, NumBytes, !Bitmap,
+        BytesRead, Result, !IO).
 
 read_bitmap_range(StartByte, NumBytes, !Bitmap, BytesRead, Result, !IO) :-
     binary_input_stream(Stream, !IO),
@@ -1986,7 +1982,7 @@ read_bitmap_range(InputStream, Start, NumBytes, !Bitmap,
         Result = ok,
         BytesRead = 0
     else
-        bitmap.throw_bounds_error(!.Bitmap, "io.read_bitmap",
+        bitmap.throw_bounds_error(!.Bitmap, "bitmap.read_bitmap",
             Start * bits_per_byte, NumBytes * bits_per_byte)
     ).
 
@@ -2073,7 +2069,7 @@ do_read_bitmap_range(Stream, Start, NumBytes, !Bitmap, !BytesRead,
         read_byte_val(input_stream(Stream), ResultCode, Byte, Error0, !IO),
         (
             ResultCode = result_code_ok,
-            !:Bitmap = !.Bitmap ^ unsafe_byte(Start) := Byte,
+            !Bitmap ^ unsafe_byte(Start) := Byte,
             !:BytesRead = !.BytesRead + 1,
             do_read_bitmap_range(Stream, Start + 1, NumBytes - 1,
                 !Bitmap, !BytesRead, Error, !IO)
@@ -2095,13 +2091,10 @@ write_bitmap(Bitmap, !IO) :-
     bitmap.write_bitmap(Stream, Bitmap, !IO).
 
 write_bitmap(OutputStream, Bitmap, !IO) :-
-    ( if NumBytes = Bitmap ^ num_bytes then
-        Stream = binary_output_stream_get_stream(OutputStream),
-        do_write_bitmap_range(Stream, Bitmap, 0, NumBytes, Error, !IO),
-        throw_on_output_error(Error, !IO)
-    else
-        error($pred, "bitmap contains partial final byte")
-    ).
+    NumBytes = det_num_bytes(Bitmap),
+    Stream = binary_output_stream_get_stream(OutputStream),
+    do_write_bitmap_range(Stream, Bitmap, 0, NumBytes, Error, !IO),
+    throw_on_output_error(Error, !IO).
 
 write_bitmap_range(Bitmap, Start, NumBytes, !IO) :-
     binary_output_stream(Stream, !IO),
@@ -2119,7 +2112,7 @@ write_bitmap_range(OutputStream, Bitmap, Start, NumBytes, !IO) :-
         do_write_bitmap_range(Stream, Bitmap, Start, NumBytes, Error, !IO),
         throw_on_output_error(Error, !IO)
     else
-        bitmap.throw_bounds_error(Bitmap, "io.write_bitmap",
+        bitmap.throw_bounds_error(Bitmap, "bitmap.write_bitmap",
             Start * bits_per_byte, NumBytes * bits_per_byte)
     ).
 
@@ -2134,7 +2127,7 @@ write_bitmap_range(OutputStream, Bitmap, Start, NumBytes, !IO) :-
         no_sharing],
 "
     MR_Integer bytes_written =
-        (MR_Integer)MR_WRITE(*Stream, Bitmap->elements + Start, Length);
+        (MR_Integer) MR_WRITE(*Stream, Bitmap->elements + Start, Length);
     if (bytes_written != Length) {
         Error = errno;
     } else {
@@ -2403,8 +2396,8 @@ det_byte_index_for_bit(I) = ByteIndex :-
 
 :- type bit_index_in_byte == int.
 
-    % Convert a bit index for a bitmap into a bit index into a
-    % byte in the bitmap.
+    % Convert a bit index for a bitmap into a bit index into a byte
+    % in the bitmap.
     %
 :- func bit_index_in_byte(bit_index) = bit_index_in_byte.
 
