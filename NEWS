@@ -102,6 +102,18 @@ Changes to the Mercury standard library
     - func `promise_only_solution/1`
     - pred `promise_only_solution_io/4`
 
+### Changes to the `char` module
+
+* The following type has had its typeclass memberships changed:
+
+    - The type `character` is now an instance of the new `uenum` typeclass.
+
+* The following predicate and functions have been added:
+
+   - func `to_uint/1`
+   - pred `from_uint/2`
+   - func `det_from_uint/1`
+
 ### Changes to the `cord` module
 
 * The following predicates have been added:

@@ -59,6 +59,7 @@ ORDINARY_PROGS = \
 	change_hunk_test \
 	char_not_surrogate \
 	char_signed \
+	char_uint_conv \
 	char_unicode \
 	checked_nondet_tailcall \
 	checked_nondet_tailcall_noinline \

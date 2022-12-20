@@ -98,7 +98,7 @@
 :- instance regexp(regexp).
 :- instance regexp(char).
 :- instance regexp(string).
-:- instance regexp(sparse_bitset(T)) <= (regexp(T),enum(T)).
+:- instance regexp(sparse_bitset(T)) <= (regexp(T),uenum(T)).
 
     % Some basic non-primitive regexps.
     %
@@ -720,10 +720,10 @@ read_from_string(Offset, Result, String, unsafe_promise_unique(String)) :-
         )
 ].
 
-:- instance regexp(sparse_bitset(T)) <= (regexp(T),enum(T)) where [
+:- instance regexp(sparse_bitset(T)) <= (regexp(T),uenum(T)) where [
     re(SparseBitset) = charset(Charset) :-
         Charset = sparse_bitset.foldl(
-            func(Enum, Set0) = insert(Set0, char.det_from_int(to_int(Enum))),
+            func(Enum, Set0) = insert(Set0, char.det_from_uint(to_uint(Enum))),
             SparseBitset,
             sparse_bitset.init)
 ].

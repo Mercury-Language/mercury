@@ -36,6 +36,7 @@
 :- type char == character.
 
 :- instance enum(character).
+:- instance uenum(character).
 
     % `to_int'/1 and `to_int(in, out)' convert a character to its
     % corresponding numerical code (integer value).
@@ -70,6 +71,19 @@
     %
 :- func det_from_int(int) = char.
 :- pred det_from_int(int::in, char::out) is det.
+
+    % Converts a character to its numerical character code (unsigned integer).
+    %
+:- func to_uint(char) = uint.
+
+    % Converts an unsigned integer to its corresponding character, if any.
+    %
+:- pred from_uint(uint::in, char::out) is semidet.
+
+    % Converts an unsigned integer to its corresponding character.
+    % Throws an exception if there isn't one.
+    %
+:- func det_from_uint(uint) = char.
 
     % Returns the minimum numerical character code.
     %
@@ -402,6 +416,11 @@
         to_int(Y, X))
 ].
 
+:- instance uenum(character) where [
+    func(to_uint/1) is char.to_uint,
+    pred(from_uint/2) is char.from_uint
+].
+
 :- pragma foreign_decl("C", "#include <limits.h>").
 
 %---------------------------------------------------------------------------%
@@ -486,6 +505,43 @@ det_from_int(Int) = Char :-
 
 det_from_int(Int, Char) :-
     ( if from_int(Int, CharPrime) then
+        Char = CharPrime
+    else
+        unexpected($pred, "conversion failed")
+    ).
+
+%---------------------------------------------------------------------------%
+
+to_uint(Char) = UInt :-
+    UInt = uint.cast_from_int(char.to_int(Char)).
+
+:- pragma foreign_proc("C",
+    from_uint(UInt::in, Character::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    Character = (MR_UnsignedChar) UInt;
+    SUCCESS_INDICATOR = (UInt <= 0x10ffff);
+").
+
+:- pragma foreign_proc("C#",
+    from_uint(UInt::in, Character::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Character = (int) UInt;
+    SUCCESS_INDICATOR = (UInt <= 0x10ffff);
+").
+
+:- pragma foreign_proc("Java",
+    from_uint(UInt::in, Character::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Character = UInt;
+    SUCCESS_INDICATOR = ((UInt & 0xffffffffL) <= (0x10ffff & 0xffffffffL));
+").
+
+det_from_uint(UInt) = Char :-
+    ( if char.from_uint(UInt, CharPrime) then
         Char = CharPrime
     else
         unexpected($pred, "conversion failed")

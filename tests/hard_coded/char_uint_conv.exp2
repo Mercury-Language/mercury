@@ -1,0 +1,41 @@
+Testing uint -> char conversion:
+from_uint(0x0) ==> '\000\'
+from_uint(0x1) ==> '\001\'
+from_uint(0x7f) ==> '\177\'
+from_uint(0x80) ==> '\200\'
+from_uint(0x7ff) ==> '߿'
+from_uint(0x800) ==> 'ࠀ'
+from_uint(0xffff) ==> '￿'
+from_uint(0x10000) ==> '𐀀'
+from_uint(0x10ffff) ==> '􏿿'
+from_uint(0x110000) ==> FAILED
+from_uint(0xfffffffe) ==> FAILED
+from_uint(0xffffffff) ==> FAILED
+
+Testing char -> uint conversion:
+to_uint('\000\') ==> 0x0
+to_uint('\001\') ==> 0x1
+to_uint('\037\') ==> 0x1f
+to_uint(' ') ==> 0x20
+to_uint('0') ==> 0x30
+to_uint('A') ==> 0x41
+to_uint('Z') ==> 0x5a
+to_uint('a') ==> 0x61
+to_uint('z') ==> 0x7a
+to_uint('~') ==> 0x7e
+to_uint('\177\') ==> 0x7f
+to_uint('\200\') ==> 0x80
+to_uint('\237\') ==> 0x9f
+to_uint(' ') ==> 0xa0
+to_uint('¿') ==> 0xbf
+to_uint('À') ==> 0xc0
+to_uint('ÿ') ==> 0xff
+to_uint('𐀀') ==> 0x10000
+to_uint('𐁝') ==> 0x1005d
+to_uint('🬀') ==> 0x1fb00
+to_uint('🯹') ==> 0x1fbf9
+to_uint('𠀀') ==> 0x20000
+to_uint('𪛟') ==> 0x2a6df
+to_uint('丽') ==> 0x2f800
+to_uint('𯨟') ==> 0x2fa1f
+to_uint('􏿿') ==> 0x10ffff
