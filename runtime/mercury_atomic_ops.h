@@ -13,6 +13,9 @@
 #ifndef MERCURY_ATOMIC_OPS_H
 #define MERCURY_ATOMIC_OPS_H
 
+#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__aarch64__)
+#include <stdatomic.h>
+#endif
 #include "mercury_std.h"
 
 ////////////////////////////////////////////////////////////////////////////
@@ -104,7 +107,7 @@ MR_EXTERN_INLINE void       MR_atomic_add_uint(volatile MR_Unsigned *addr,
 // Atomically subtract the second argument from the memory pointed to by the
 // first argument.
 
-MR_EXTERN_INLINE void       MR_atomic_sub_int(volatile MR_Integer *addr,
+MR_EXTERN_INLINE void       MR_atomic_sub_int(volatile atomic_long *addr,
                                 MR_Integer x);
 
 // Increment the word pointed at by the address.
@@ -341,11 +344,18 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
             __sync_sub_and_fetch(addr, x);                                  \
         } while (0)
 
+#elif (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__aarch64__)
+
+    #define MR_ATOMIC_SUB_INT_BODY                                          \
+        do {                                                                \
+	    atomic_fetch_sub(addr, x);					    \
+        } while (0)
+
 #endif
 
 #ifdef MR_ATOMIC_SUB_INT_BODY
     MR_EXTERN_INLINE void
-    MR_atomic_sub_int(volatile MR_Integer *addr, MR_Integer x)
+    MR_atomic_sub_int(volatile atomic_long *addr, MR_Integer x)
     {
         MR_ATOMIC_SUB_INT_BODY;
     }
