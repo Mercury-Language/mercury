@@ -602,11 +602,24 @@ zero_or_positive_weight_cycles_from_neighbour(CallWeights,
     else
         % No cycle; try all possible edges from this node.
         RevVisitedCalls1 = [CurPPId - Context | RevVisitedCalls0],
-        map.lookup(CallWeights, CurPPId, NeighboursMap),
-        map.to_assoc_list(NeighboursMap, NeighboursList),
-        zero_or_positive_weight_cycles_from_neighbours(CallWeights,
-            LookforPPId, ProcContext, WeightSoFar1,
-            NeighboursList, RevVisitedCalls1, Cycles)
+        ( if map.search(CallWeights, CurPPId, NeighboursMap) then
+            map.to_assoc_list(NeighboursMap, NeighboursList),
+            zero_or_positive_weight_cycles_from_neighbours(CallWeights,
+                LookforPPId, ProcContext, WeightSoFar1,
+                NeighboursList, RevVisitedCalls1, Cycles)
+        else
+            % In some cases, it is possible for a pred_proc_id to have no
+            % entry in CallWeights. This happens e.g. in pretty_printer.m.
+            % The array_to_doc_loop function is in an SCC together with
+            % the function created from the lambda expression in the
+            % argument of format_susp. The lambda function calls
+            % array_to_doc_loop, but, while array_to_doc_loop *refers*
+            % to the lambda function (which is why they are in the same SCC),
+            % it does not *call* the lambda function. And since it cannot call
+            % any other procedure in the SCC (there being no others),
+            % it will not have an entry in CallWeights.
+            Cycles = []
+        )
     ).
 
 %-----------------------------------------------------------------------------%
