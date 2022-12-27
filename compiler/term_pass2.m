@@ -61,19 +61,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type fixpoint_dir
-    --->    up
-    ;       down.
-
-:- type call_weight_info
-    --->    call_weight_info(list(term_error), call_weight_graph).
-
-    % The maximum non-infinite weight from proc to proc and which context
-    % it occurs at.
-    %
-:- type call_weight_graph == map(pred_proc_id, call_weight_dst_map).
-:- type call_weight_dst_map == map(pred_proc_id, pair(prog_context, int)).
-
 :- type term_pass2_result
     --->    term_pass2_ok(
                 call_weight_info,
@@ -82,6 +69,18 @@
     ;       term_pass2_error(
                 list(term_error)
             ).
+
+:- type call_weight_info
+    --->    call_weight_info(list(term_error), call_weight_graph).
+
+:- type call_weight_graph == map(pred_proc_id, call_weight_dst_map).
+:- type call_weight_dst_map == map(pred_proc_id, call_weight_edge).
+
+    % The maximum non-infinite weight from proc to proc,
+    % and what context it occurs at.
+    %
+:- type call_weight_edge
+    --->    call_weight_edge(int, prog_context).
 
 %-----------------------------------------------------------------------------%
 
@@ -137,13 +136,14 @@ init_rec_input_suppliers([PPId | PPIds], ModuleInfo, RecSupplierMap) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_argmodes(ProcInfo, ArgModes),
     partition_call_args(ModuleInfo, ArgModes, HeadVars, InArgs, _OutVars),
-    MapIsInput = (pred(HeadVar::in, Bool::out) is det :-
-        ( if bag.contains(InArgs, HeadVar) then
-            Bool = yes
-        else
-            Bool = no
-        )
-    ),
+    MapIsInput =
+        ( pred(HeadVar::in, Bool::out) is det :-
+            ( if bag.contains(InArgs, HeadVar) then
+                Bool = yes
+            else
+                Bool = no
+            )
+        ),
     list.map(MapIsInput, HeadVars, BoolList),
     map.det_insert(PPId, BoolList, RecSupplierMap0, RecSupplierMap).
 
@@ -219,9 +219,8 @@ prove_termination_in_scc_single_arg_2(ModuleInfo, PassInfo,
             Terminates = yes
         ;
             Termination = can_loop(_),
-            ArgNum1 = ArgNum0 + 1,
             prove_termination_in_scc_single_arg_2(ModuleInfo, PassInfo,
-                TrialPPId, RestSCC, ArgNum1, Terminates)
+                TrialPPId, RestSCC, ArgNum0 + 1, Terminates)
         )
     else
         Terminates = no
@@ -294,6 +293,10 @@ lookup_proc_arity(ModuleInfo, PPId) = Arity :-
 
 %-----------------------------------------------------------------------------%
 
+:- type fixpoint_dir
+    --->    up
+    ;       down.
+
 :- pred prove_termination_in_scc_trial(module_info::in, pass_info::in,
     fixpoint_dir::in, list(pred_proc_id)::in, used_args::in,
     termination_info::out) is det.
@@ -312,16 +315,15 @@ prove_termination_in_scc_trial(ModuleInfo, PassInfo, FixDir,
             Termination = can_loop(ReportedInfCalls)
         ;
             InfCalls = [],
-            ( if
-                zero_or_positive_weight_cycles(ModuleInfo, CallWeights,
-                    Cycles),
-                Cycles = [_ | _]
-            then
+            zero_or_positive_weight_cycles(ModuleInfo, CallWeights, Cycles),
+            (
+                Cycles = [],
+                Termination = cannot_loop(unit)
+            ;
+                Cycles = [_ | _],
                 PassInfo = pass_info(_, MaxErrors, _),
                 list.take_upto(MaxErrors, Cycles, ReportedCycles),
                 Termination = can_loop(ReportedCycles)
-            else
-                Termination = cannot_loop(unit)
             )
         )
     ;
@@ -396,8 +398,7 @@ prove_termination_in_scc_pass(ModuleInfo, PassInfo, FixDir, [PPId | PPIds],
         proc_info_get_headvars(ProcInfo, Args),
         bag.init(EmptyBag),
         update_rec_input_suppliers(Args, ActiveVars, FixDir,
-            RecSuppliers0, RecSuppliers,
-            EmptyBag, RecSuppliers0Bag),
+            RecSuppliers0, RecSuppliers, EmptyBag, RecSuppliers0Bag),
         map.det_insert(PPId, RecSuppliers,
             NewRecSupplierMap0, NewRecSupplierMap1),
         add_call_arcs(PathList, RecSuppliers0Bag, CallInfo0, CallInfo1),
@@ -487,20 +488,21 @@ add_call_arcs([Path | Paths], RecInputSuppliers, !CallInfo) :-
     ( if bag.is_subbag(ActiveVars, RecInputSuppliers) then
         ( if map.search(CallWeights0, PPId, NeighbourMap0) then
             ( if map.search(NeighbourMap0, CallPPId, OldEdgeInfo) then
-                OldEdgeInfo = _OldContext - OldWeight,
+                OldEdgeInfo = call_weight_edge(OldWeight, _OldContext),
                 ( if OldWeight >= GammaConst then
                     EdgeInfo = OldEdgeInfo
                 else
-                    EdgeInfo = Context - GammaConst
+                    EdgeInfo = call_weight_edge(GammaConst, Context)
                 ),
                 map.det_update(CallPPId, EdgeInfo, NeighbourMap0, NeighbourMap)
             else
-                map.det_insert(CallPPId, Context - GammaConst,
-                    NeighbourMap0, NeighbourMap)
+                EdgeInfo = call_weight_edge(GammaConst, Context),
+                map.det_insert(CallPPId, EdgeInfo, NeighbourMap0, NeighbourMap)
             ),
             map.det_update(PPId, NeighbourMap, CallWeights0, CallWeights1)
         else
-            NeighbourMap = map.singleton(CallPPId, Context - GammaConst),
+            EdgeInfo = call_weight_edge(GammaConst, Context),
+            NeighbourMap = map.singleton(CallPPId, EdgeInfo),
             map.det_insert(PPId, NeighbourMap, CallWeights0, CallWeights1)
         ),
         !:CallInfo = call_weight_info(InfCalls0, CallWeights1)
@@ -519,94 +521,92 @@ add_call_arcs([Path | Paths], RecInputSuppliers, !CallInfo) :-
     % start and end point of the circularity are not guaranteed to decrease.
     %
     % Finding one such cycle is enough for us to conclude that we cannot prove
-    % termination of the procedures in the SCC; we collect all cycles because
-    % it may be useful to print them out (if not all, then maybe a limited
-    % set).
+    % termination of the procedures in the SCC. We nevertheless collect
+    % all cycles, because it may be useful to print them out (if not all,
+    % then maybe a limited set).
     %
 :- pred zero_or_positive_weight_cycles(module_info::in, call_weight_graph::in,
     list(term_error)::out) is det.
 
 zero_or_positive_weight_cycles(ModuleInfo, CallWeights, Cycles) :-
-    map.keys(CallWeights, PPIds),
-    zero_or_positive_weight_cycles_2(ModuleInfo, CallWeights, PPIds, Cycles).
+    map.to_assoc_list(CallWeights, PPIdsNeighboursMaps),
+    zero_or_positive_weight_cycles_from_ppids(ModuleInfo, CallWeights,
+        PPIdsNeighboursMaps, Cycles).
 
-:- pred zero_or_positive_weight_cycles_2(module_info::in,
-    call_weight_graph::in, list(pred_proc_id)::in, list(term_error)::out)
-    is det.
+:- pred zero_or_positive_weight_cycles_from_ppids(module_info::in,
+    call_weight_graph::in, assoc_list(pred_proc_id, call_weight_dst_map)::in,
+    list(term_error)::out) is det.
 
-zero_or_positive_weight_cycles_2(_, _, [], []).
-zero_or_positive_weight_cycles_2(ModuleInfo, CallWeights, [PPId | PPIds],
-        Cycles) :-
-    zero_or_positive_weight_cycles_from(ModuleInfo, CallWeights, PPId,
-        Cycles1),
-    zero_or_positive_weight_cycles_2(ModuleInfo, CallWeights, PPIds,
-        Cycles2),
-    Cycles = Cycles1 ++ Cycles2.
+zero_or_positive_weight_cycles_from_ppids(_, _, [], []).
+zero_or_positive_weight_cycles_from_ppids(ModuleInfo, CallWeights,
+        [PPIdNeighboursMap | PPIdsNeighboursMaps], Cycles) :-
+    zero_or_positive_weight_cycles_from_ppid(ModuleInfo, CallWeights,
+        PPIdNeighboursMap, CyclesHead),
+    zero_or_positive_weight_cycles_from_ppids(ModuleInfo, CallWeights,
+        PPIdsNeighboursMaps, CyclesTail),
+    Cycles = CyclesHead ++ CyclesTail.
 
-:- pred zero_or_positive_weight_cycles_from(module_info::in,
-    call_weight_graph::in, pred_proc_id::in,list(term_error)::out) is det.
+:- pred zero_or_positive_weight_cycles_from_ppid(module_info::in,
+    call_weight_graph::in, pair(pred_proc_id, call_weight_dst_map)::in,
+    list(term_error)::out) is det.
 
-zero_or_positive_weight_cycles_from(ModuleInfo, CallWeights, PPId, Cycles) :-
-    map.lookup(CallWeights, PPId, NeighboursMap),
+zero_or_positive_weight_cycles_from_ppid(ModuleInfo, CallWeights,
+        PPId - NeighboursMap, Cycles) :-
     map.to_assoc_list(NeighboursMap, NeighboursList),
     PPId = proc(PredId, _ProcId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_context(PredInfo, Context),
-    zero_or_positive_weight_cycles_from_neighbours(NeighboursList,
-        PPId, Context, 0, [], CallWeights, Cycles).
+    zero_or_positive_weight_cycles_from_neighbours(CallWeights, PPId,
+        Context, 0, NeighboursList, [], Cycles).
 
-:- pred zero_or_positive_weight_cycles_from_neighbours(assoc_list(pred_proc_id,
-    pair(prog_context, int))::in, pred_proc_id::in, prog_context::in,
-    int::in, assoc_list(pred_proc_id, prog_context)::in,
-    call_weight_graph::in, list(term_error)::out) is det.
+:- pred zero_or_positive_weight_cycles_from_neighbours(call_weight_graph::in,
+    pred_proc_id::in, prog_context::in, int::in,
+    assoc_list(pred_proc_id, call_weight_edge)::in,
+    assoc_list(pred_proc_id, prog_context)::in, list(term_error)::out) is det.
 
-zero_or_positive_weight_cycles_from_neighbours([], _, _, _, _, _, []).
-zero_or_positive_weight_cycles_from_neighbours([Neighbour | Neighbours],
-        LookforPPId, Context, WeightSoFar, VisitedCalls, CallWeights,
-        Cycles) :-
-    zero_or_positive_weight_cycles_from_neighbour(Neighbour, LookforPPId,
-        Context, WeightSoFar, VisitedCalls, CallWeights, Cycles1),
-    zero_or_positive_weight_cycles_from_neighbours(Neighbours, LookforPPId,
-        Context, WeightSoFar, VisitedCalls, CallWeights, Cycles2),
-    list.append(Cycles1, Cycles2, Cycles).
+zero_or_positive_weight_cycles_from_neighbours(_, _, _, _, [], _, []).
+zero_or_positive_weight_cycles_from_neighbours(CallWeights,
+        LookforPPId, Context, WeightSoFar,
+        [Neighbour | Neighbours], RevVisitedCalls, Cycles) :-
+    zero_or_positive_weight_cycles_from_neighbour(CallWeights, LookforPPId,
+        Context, WeightSoFar, Neighbour, RevVisitedCalls, CyclesHead),
+    zero_or_positive_weight_cycles_from_neighbours(CallWeights, LookforPPId,
+        Context, WeightSoFar, Neighbours, RevVisitedCalls, CyclesTail),
+    Cycles = CyclesHead ++ CyclesTail.
 
-:- pred zero_or_positive_weight_cycles_from_neighbour(pair(pred_proc_id,
-    pair(prog_context, int))::in, pred_proc_id::in, prog_context::in,
-    int::in, assoc_list(pred_proc_id, prog_context)::in,
-    call_weight_graph::in, list(term_error)::out) is det.
+:- pred zero_or_positive_weight_cycles_from_neighbour(call_weight_graph::in,
+    pred_proc_id::in, prog_context::in, int::in,
+    pair(pred_proc_id, call_weight_edge)::in,
+    assoc_list(pred_proc_id, prog_context)::in, list(term_error)::out) is det.
 
-zero_or_positive_weight_cycles_from_neighbour(CurPPId - (Context - EdgeWeight),
-        LookforPPId, ProcContext, WeightSoFar0, VisitedCalls,
-        CallWeights, Cycles) :-
+zero_or_positive_weight_cycles_from_neighbour(CallWeights,
+        LookforPPId, ProcContext, WeightSoFar0,
+        CurPPId - call_weight_edge(EdgeWeight, Context),
+        RevVisitedCalls0, Cycles) :-
     WeightSoFar1 = WeightSoFar0 + EdgeWeight,
-    ( if
-        CurPPId = LookforPPId
-    then
+    ( if CurPPId = LookforPPId then
         % We have a cycle on the looked for ppid.
         ( if WeightSoFar1 >= 0 then
-            FinalVisitedCalls = [CurPPId - Context | VisitedCalls],
-            list.reverse(FinalVisitedCalls, RevFinalVisitedCalls),
-            CycleError = cycle(LookforPPId, RevFinalVisitedCalls),
+            RevVisitedCalls = [CurPPId - Context | RevVisitedCalls0],
+            list.reverse(RevVisitedCalls, VisitedCalls),
+            CycleError = cycle(LookforPPId, VisitedCalls),
             CycleErrorContext = term_error(ProcContext, CycleError),
             Cycles = [CycleErrorContext]
         else
             Cycles = []
         )
-    else if
-        assoc_list.keys(VisitedCalls, VisitedPPIds),
-        list.member(CurPPId, VisitedPPIds)
-    then
-        % We have a cycle, but not on the looked for pred_proc_id. We ignore
+    else if assoc_list.search(RevVisitedCalls0, CurPPId, _) then
+        % We have a cycle, but not on the looked-for pred_proc_id. We ignore
         % it here; it will be picked up when we process that pred_proc_id.
         Cycles = []
     else
         % No cycle; try all possible edges from this node.
-        NewVisitedCalls = [CurPPId - Context | VisitedCalls],
+        RevVisitedCalls1 = [CurPPId - Context | RevVisitedCalls0],
         map.lookup(CallWeights, CurPPId, NeighboursMap),
         map.to_assoc_list(NeighboursMap, NeighboursList),
-        zero_or_positive_weight_cycles_from_neighbours(NeighboursList,
+        zero_or_positive_weight_cycles_from_neighbours(CallWeights,
             LookforPPId, ProcContext, WeightSoFar1,
-            NewVisitedCalls, CallWeights, Cycles)
+            NeighboursList, RevVisitedCalls1, Cycles)
     ).
 
 %-----------------------------------------------------------------------------%
