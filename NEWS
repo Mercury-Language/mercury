@@ -9,6 +9,9 @@ This is a bug-fix release.
 * We have fixed a bug with the MLDS backend that was causing
   crashes with certain switches on strings.
 
+* We have fixed a bug that was causing some transitive intermodule
+  optimization interfaces to be silently ignored.
+
 NEWS for Mercury 22.01.4
 ========================
 
