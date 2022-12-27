@@ -510,6 +510,7 @@
     % Convert a uint32 to a pretty_printer.doc for formatting.
     %
 :- func uint32_to_doc(uint32) = pretty_printer.doc.
+:- pragma obsolete(func(uint32_to_doc/1), [pretty_printer.int32_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -519,7 +520,6 @@
 :- import_module exception.
 :- import_module int.
 :- import_module require.
-:- import_module string.
 :- import_module uint.
 
 %---------------------------------------------------------------------------%
@@ -1299,7 +1299,7 @@ max_uint32 = 4_294_967_295_u32.
 
 %---------------------------------------------------------------------------%
 
-uint32_to_doc(X) = str(string.uint32_to_string(X)).
+uint32_to_doc(U) = pretty_printer.uint32_to_doc(U).
 
 %---------------------------------------------------------------------------%
 :- end_module uint32.

@@ -357,6 +357,7 @@
     % Convert an int16 to a pretty_printer.doc for formatting.
     %
 :- func int16_to_doc(int16) = pretty_printer.doc.
+:- pragma obsolete(func(int16_to_doc/1), [pretty_printer.int16_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -366,7 +367,6 @@
 :- import_module exception.
 :- import_module int.
 :- import_module require.
-:- import_module string.
 :- import_module uint.
 :- import_module uint16.
 
@@ -685,7 +685,7 @@ max_int16 = 32_767_i16.
 
 %---------------------------------------------------------------------------%
 
-int16_to_doc(X) = str(string.int16_to_string(X)).
+int16_to_doc(I) = pretty_printer.int16_to_doc(I).
 
 %---------------------------------------------------------------------------%
 :- end_module int16.

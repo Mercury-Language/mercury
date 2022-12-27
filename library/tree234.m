@@ -724,6 +724,7 @@
     % because tree234 values are almost exclusively maps.
     %
 :- func tree234_to_doc(tree234(K, V)) = pretty_printer.doc.
+:- pragma obsolete(func(tree234_to_doc/1), [pretty_printer.tree234_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -781,6 +782,20 @@
 :- mode di_tree234       == uniq_tree234(ground, ground) >> dead.
 :- mode uo_tree234(K, V) == free >> uniq_tree234(K, V).
 :- mode uo_tree234       == free >> uniq_tree234(ground, ground).
+
+%---------------------------------------------------------------------------%
+%
+% Exported to pretty_printer.m.
+%
+
+:- type tree234_lazy_list(K, V)
+    --->    tll_nil
+    ;       tll_lazy_cons(K, V, (func) = tree234_lazy_list(K, V)).
+
+:- func tree234_to_lazy_list(tree234(K, V), tree234_lazy_list(K, V))
+    = tree234_lazy_list(K, V).
+
+%---------------------------------------------------------------------------%
 
     % Return the minimum number of key/value pairs in the tree, given its
     % depth. This is obviously not as accurate as tree234.count, but it
@@ -4712,55 +4727,20 @@ map_values_foldl3(Pred, Tree0, Tree, !A, !B, !C) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % The default pretty_printer formatting for key_value_pair will do what
-    % we want.
-    %
-:- type key_value_pair(K, V)
-    --->    (K -> V).
-
-tree234_to_doc(T) =
-    indent([
-        str("map(["),
-        tree234_to_doc_2(tree234_to_lazy_list(T, empty)),
-        str("])")
-    ]).
-
-:- func tree234_to_doc_2(lazy_list(K, V)) = doc.
-
-tree234_to_doc_2(empty) = str("").
-tree234_to_doc_2(lazy_cons(K, V, Susp)) = Doc :-
-    LL = apply(Susp),
-    (
-        LL = empty,
-        Doc = group([nl, format_arg(format((K -> V)))])
-    ;
-        LL = lazy_cons(_, _, _),
-        Doc = docs([
-            group([nl, format_arg(format((K -> V))), str(", ")]),
-            format_susp((func) = tree234_to_doc_2(LL))
-        ])
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- type lazy_list(K, V)
-    --->    empty
-    ;       lazy_cons(K, V, (func) = lazy_list(K, V)).
-
-:- func tree234_to_lazy_list(tree234(K, V), lazy_list(K, V)) = lazy_list(K, V).
+tree234_to_doc(T) = pretty_printer.tree234_to_doc(T).
 
 tree234_to_lazy_list(empty, LL) = LL.
 tree234_to_lazy_list(two(K1, V1, T1, T2), LL) =
     tree234_to_lazy_list(T1,
-        lazy_cons(K1, V1,
+        tll_lazy_cons(K1, V1,
             (func) = tree234_to_lazy_list(T2, LL))).
 tree234_to_lazy_list(three(K1, V1, K2, V2, T1, T2, T3), LL) =
     tree234_to_lazy_list(T1,
-        lazy_cons(K1, V1,
+        tll_lazy_cons(K1, V1,
             (func) = tree234_to_lazy_list(two(K2, V2, T2, T3), LL))).
 tree234_to_lazy_list(four(K1, V1, K2, V2, K3, V3, T1, T2, T3, T4), LL) =
     tree234_to_lazy_list(T1,
-        lazy_cons(K1, V1,
+        tll_lazy_cons(K1, V1,
             (func) = tree234_to_lazy_list(
                 three(K2, V2, K3, V3, T2, T3, T4), LL))).
 

@@ -255,6 +255,8 @@
     % Convert a version_array to a pretty_printer.doc for formatting.
     %
 :- func version_array_to_doc(version_array(T)) = pretty_printer.doc.
+:- pragma obsolete(func(version_array_to_doc/1),
+    [pretty_printer.version_array_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -2000,26 +2002,7 @@ out_of_bounds_error(Index, Max, PredName) :-
 
 %---------------------------------------------------------------------------%
 
-version_array_to_doc(A) =
-    indent([str("version_array(["), version_array_to_doc_2(0, A), str("])")]).
-
-:- func version_array_to_doc_2(int, version_array(T)) = doc.
-
-version_array_to_doc_2(I, VA) = Doc :-
-    ( if I > version_array.max(VA) then
-        Doc = str("")
-    else
-        lookup(VA, I, Elem),
-        Doc = docs([
-            format_arg(format(Elem)),
-            ( if I = version_array.max(VA) then
-                str("")
-            else
-                group([str(", "), nl])
-            ),
-            format_susp((func) = version_array_to_doc_2(I + 1, VA))
-        ])
-    ).
+version_array_to_doc(A) = pretty_printer.version_array_to_doc(A).
 
 %---------------------------------------------------------------------------%
 :- end_module version_array.

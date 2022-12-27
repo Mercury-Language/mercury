@@ -905,6 +905,7 @@
     % Convert an array to a pretty_printer.doc for formatting.
     %
 :- func array_to_doc(array(T)::array_ui) = (pretty_printer.doc::out) is det.
+:- pragma obsolete(func(array_to_doc/1), [pretty_printer.array_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %
@@ -3357,21 +3358,7 @@ map_corresponding_foldl_2(Pred, CurIndex, Size, ArrayA, ArrayB,
 
 %---------------------------------------------------------------------------%
 
-array_to_doc(A) =
-    indent([str("array(["), array_to_doc_2(0, A), str("])")]).
-
-:- func array_to_doc_2(int, array(T)) = doc.
-
-array_to_doc_2(I, A) =
-    ( if I > array.max(A) then
-        str("")
-    else
-        docs([
-            format_arg(format(A ^ elem(I))),
-            ( if I = array.max(A) then str("") else group([str(", "), nl]) ),
-            format_susp((func) = array_to_doc_2(I + 1, A))
-        ])
-    ).
+array_to_doc(A) = pretty_printer.array_to_doc(A).
 
 %---------------------------------------------------------------------------%
 

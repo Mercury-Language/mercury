@@ -318,6 +318,7 @@
     % Convert a float to a pretty_printer.doc for formatting.
     %
 :- func float_to_doc(float) = doc.
+:- pragma obsolete(func(float_to_doc/1), [pretty_printer.float_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -346,7 +347,6 @@
 
 :- import_module exception.
 :- import_module int.
-:- import_module string.
 
 %
 % Header files of mathematical significance.
@@ -1160,9 +1160,7 @@ min_exponent = -1021.
 %
 max_exponent = 1024.
 
-    % Convert a float to a pretty_printer.doc.
-    %
-float_to_doc(X) = str(string.float_to_string(X)).
+float_to_doc(F) = pretty_printer.float_to_doc(F).
 
 %---------------------------------------------------------------------------%
 

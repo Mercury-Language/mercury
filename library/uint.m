@@ -195,6 +195,7 @@
     % Convert a uint to a pretty_printer.doc for formatting.
     %
 :- func uint_to_doc(uint) = pretty_printer.doc.
+:- pragma obsolete(func(uint_to_doc/1), [pretty_printer.uint_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %
@@ -213,7 +214,6 @@
 
 :- import_module exception.
 :- import_module require.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -465,7 +465,7 @@ odd(X) :-
 
 %---------------------------------------------------------------------------%
 
-uint_to_doc(X) = str(string.uint_to_string(X)).
+uint_to_doc(U) = pretty_printer.uint_to_doc(U).
 
 %---------------------------------------------------------------------------%
 

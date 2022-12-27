@@ -1,24 +1,65 @@
-two("builtin", two("float", two(0, '<<function>>', empty, empty), two("character", two(0, '<<function>>', empty, empty), empty, empty), four("int", two(0, '<<function>>', empty, empty), "string", two(0, '<<function>>', empty, empty), "uint", two(0, '<<function>>', empty, empty), empty, empty, empty, empty)), two("array", two("array", two(1, '<<function>>', empty, empty), empty, empty), empty, empty), four("list", two("list", two(1, '<<function>>', empty, empty), empty, empty), "tree234", two("tree234", two(2, '<<function>>', empty, empty), empty, empty), "version_array", two("version_array", two(1, '<<function>>', empty, empty), empty, empty), empty, empty, empty, empty))
-list:    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
- 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 
- 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, ...]
-array:   array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 
-  18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 
-  37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, ..., ...])
-map:     map([(1 -> 1), (2 -> 2), (3 -> 3), (4 -> 4), (5 -> 5), (6 -> 6), 
-  (7 -> 7), (8 -> 8), (9 -> 9), (10 -> 10), (11 -> 11), (12 -> 12), 
-  (13 -> 13), (14 -> 14), (15 -> 15), (16 -> 16), (17 -> 17), (18 -> 18), 
-  (19 -> 19), (20 -> 20), (21 -> 21), (22 -> 22), (23 -> 23), (24 -> 24), 
-  (25 -> 25), (26 -> 26), (27 -> 27), (28 -> 28), (29 -> 29), (30 -> 30), 
-  (31 -> 31), (32 -> 32), (33 -> 33), (34 -> 34), (35 -> 35), (36 -> 36), 
-  (37 -> 37), (38 -> 38), (39 -> 39), (40 -> 40), (41 -> 41), (42 -> 42), 
-  (43 -> 43), (44 -> 44), (45 -> 45), (46 -> 46), (47 -> 47), (48 -> 48), 
-  (... -> ...), ...])
-tuple:   {1, '2', 3.0, "four"}
-strings: "this is a string"
-ints:    42 -123
-floats:  3.141 -10.0
-chars:   ['a', '*', '\n']
-version_array:version_array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 
-  15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 
-  34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, ...])
+The types in the default formatter map:
+formatter_map_entry("array", "array", 1)
+formatter_map_entry("builtin", "character", 0)
+formatter_map_entry("builtin", "float", 0)
+formatter_map_entry("builtin", "int", 0)
+formatter_map_entry("builtin", "int16", 0)
+formatter_map_entry("builtin", "int32", 0)
+formatter_map_entry("builtin", "int64", 0)
+formatter_map_entry("builtin", "int8", 0)
+formatter_map_entry("builtin", "string", 0)
+formatter_map_entry("builtin", "uint", 0)
+formatter_map_entry("builtin", "uint16", 0)
+formatter_map_entry("builtin", "uint64", 0)
+formatter_map_entry("builtin", "uint8", 0)
+formatter_map_entry("list", "list", 1)
+formatter_map_entry("one_or_more", "one_or_more", 1)
+formatter_map_entry("tree234", "tree234", 2)
+formatter_map_entry("version_array", "version_array", 1)
+
+ints:
+42 -123
+
+floats:
+3.141 -10.0
+
+chars:
+['a', '*', '\n']
+
+string:
+"this is a string"
+
+tuple:
+{1, '2', 3.0, "four"}
+
+array:
+array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 
+21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 
+40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, ...])
+
+version_array:
+version_array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 
+19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 
+38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, ...])
+
+list:
+[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 
+22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 
+41, 42, 43, 44, 45, 46, 47, 48, 49, 50, ...]
+
+one_or_more:
+one_or_more(1, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 
+19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 
+38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, ...])
+
+map:
+map([(1 -> 1), (2 -> 2), (3 -> 3), (4 -> 4), (5 -> 5), (6 -> 6), (7 -> 7), 
+(8 -> 8), (9 -> 9), (10 -> 10), (11 -> 11), (12 -> 12), (13 -> 13), 
+(14 -> 14), (15 -> 15), (16 -> 16), (17 -> 17), (18 -> 18), (19 -> 19), 
+(20 -> 20), (21 -> 21), (22 -> 22), (23 -> 23), (24 -> 24), (25 -> 25), 
+(26 -> 26), (27 -> 27), (28 -> 28), (29 -> 29), (30 -> 30), (31 -> 31), 
+(32 -> 32), (33 -> 33), (34 -> 34), (35 -> 35), (36 -> 36), (37 -> 37), 
+(38 -> 38), (39 -> 39), (40 -> 40), (41 -> 41), (42 -> 42), (43 -> 43), 
+(44 -> 44), (45 -> 45), (46 -> 46), (47 -> 47), (48 -> 48), (49 -> 49), 
+(... -> ...), ...])
+

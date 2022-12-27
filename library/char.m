@@ -369,6 +369,7 @@
     % Convert a char to a pretty_printer.doc for formatting.
     %
 :- func char_to_doc(char) = pretty_printer.doc.
+:- pragma obsolete(func(char_to_doc/1), [pretty_printer.char_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 
@@ -404,7 +405,6 @@
 
 :- import_module int.
 :- import_module require.
-:- import_module term_io.
 :- import_module uint.
 :- import_module uint16.
 :- import_module uint8.
@@ -692,67 +692,19 @@ is_alnum_or_underscore(Char) :-
     %       is_alpha_or_underscore(Char)
     %   ).
 
-    ( Char = '0'
-    ; Char = '1'
-    ; Char = '2'
-    ; Char = '3'
-    ; Char = '4'
-    ; Char = '5'
-    ; Char = '6'
-    ; Char = '7'
-    ; Char = '8'
-    ; Char = '9'
-    ; Char = 'a'
-    ; Char = 'b'
-    ; Char = 'c'
-    ; Char = 'd'
-    ; Char = 'e'
-    ; Char = 'f'
-    ; Char = 'g'
-    ; Char = 'h'
-    ; Char = 'i'
-    ; Char = 'j'
-    ; Char = 'k'
-    ; Char = 'l'
-    ; Char = 'm'
-    ; Char = 'n'
-    ; Char = 'o'
-    ; Char = 'p'
-    ; Char = 'q'
-    ; Char = 'r'
-    ; Char = 's'
-    ; Char = 't'
-    ; Char = 'u'
-    ; Char = 'v'
-    ; Char = 'w'
-    ; Char = 'x'
-    ; Char = 'y'
+    ( Char = '0' ; Char = '1' ; Char = '2' ; Char = '3' ; Char = '4'
+    ; Char = '5' ; Char = '6' ; Char = '7' ; Char = '8' ; Char = '9'
+    ; Char = 'a' ; Char = 'b' ; Char = 'c' ; Char = 'd' ; Char = 'e'
+    ; Char = 'f' ; Char = 'g' ; Char = 'h' ; Char = 'i' ; Char = 'j'
+    ; Char = 'k' ; Char = 'l' ; Char = 'm' ; Char = 'n' ; Char = 'o'
+    ; Char = 'p' ; Char = 'q' ; Char = 'r' ; Char = 's' ; Char = 't'
+    ; Char = 'u' ; Char = 'v' ; Char = 'w' ; Char = 'x' ; Char = 'y'
     ; Char = 'z'
-    ; Char = 'A'
-    ; Char = 'B'
-    ; Char = 'C'
-    ; Char = 'D'
-    ; Char = 'E'
-    ; Char = 'F'
-    ; Char = 'G'
-    ; Char = 'H'
-    ; Char = 'I'
-    ; Char = 'J'
-    ; Char = 'K'
-    ; Char = 'L'
-    ; Char = 'M'
-    ; Char = 'N'
-    ; Char = 'O'
-    ; Char = 'P'
-    ; Char = 'Q'
-    ; Char = 'R'
-    ; Char = 'S'
-    ; Char = 'T'
-    ; Char = 'U'
-    ; Char = 'V'
-    ; Char = 'W'
-    ; Char = 'X'
-    ; Char = 'Y'
+    ; Char = 'A' ; Char = 'B' ; Char = 'C' ; Char = 'D' ; Char = 'E'
+    ; Char = 'F' ; Char = 'G' ; Char = 'H' ; Char = 'I' ; Char = 'J'
+    ; Char = 'K' ; Char = 'L' ; Char = 'M' ; Char = 'N' ; Char = 'O'
+    ; Char = 'P' ; Char = 'Q' ; Char = 'R' ; Char = 'S' ; Char = 'T'
+    ; Char = 'U' ; Char = 'V' ; Char = 'W' ; Char = 'X' ; Char = 'Y'
     ; Char = 'Z'
     ; Char = '_'
     ).
@@ -1191,7 +1143,7 @@ is_private_use(Char) :-
     ; 0x100000 =< Int, Int =< 0x10fffd % Supplemental Private Use Area-B.
     ).
 
-char_to_doc(C) = str(term_io.quoted_char(C)).
+char_to_doc(C) = pretty_printer.char_to_doc(C).
 
 %---------------------------------------------------------------------------%
 

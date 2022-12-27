@@ -1341,6 +1341,7 @@
     % Convert a string to a pretty_printer.doc for formatting.
     %
 :- func string_to_doc(string) = pretty_printer.doc.
+:- pragma obsolete(func(string_to_doc/1), [pretty_printer.string_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %
@@ -1703,7 +1704,6 @@
 :- import_module require.
 :- import_module string.format.
 :- import_module string.to_string.
-:- import_module term_io.
 :- import_module uint.
 :- import_module uint8.
 
@@ -5262,7 +5262,7 @@ max_str_length(Str, PrevMaxLen, MaxLen) :-
 % Converting strings to docs.
 %
 
-string_to_doc(S) = docs([str(term_io.quoted_string(S))]).
+string_to_doc(S) = pretty_printer.string_to_doc(S).
 
 %---------------------------------------------------------------------------%
 %

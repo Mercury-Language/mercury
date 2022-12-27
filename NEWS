@@ -64,6 +64,10 @@ Changes to the Mercury standard library
     - pred `sort_fix_2014/0`
       (no replacement needed)
 
+* The following function has been marked obsolete:
+
+   - func `array_to_doc/1`
+
 ### Changes to the `benchmarking` module
 
 * The following predicates have been added:
@@ -113,6 +117,10 @@ Changes to the Mercury standard library
    - func `to_uint/1`
    - pred `from_uint/2`
    - func `det_from_uint/1`
+
+* The following function has been marked obsolete:
+
+   - func `char_to_doc/1`
 
 ### Changes to the `cord` module
 
@@ -170,6 +178,12 @@ Changes to the Mercury standard library
 
    - pred `empty/1`
 
+### Changes to the `float` module
+
+* The following function has been marked obsolete:
+
+   - func `float_to_doc/1`
+
 ### Changes to the `hash_table` module
 
 * The following predicate has been added:
@@ -200,6 +214,10 @@ Changes to the Mercury standard library
     - func `ubits_per_int/0`
     - pred `ubits_per_int/1`
 
+* The following function has been marked obsolete:
+
+   - func `int_to_doc/1`
+
 ### Changes to the `int8` module
 
 * The following functions have been added:
@@ -208,6 +226,10 @@ Changes to the Mercury standard library
     - func `>>u/2`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
+
+* The following function has been marked obsolete:
+
+   - func `int8_to_doc/1`
 
 ### Changes to the `int16` module
 
@@ -218,6 +240,10 @@ Changes to the Mercury standard library
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
 
+* The following function has been marked obsolete:
+
+   - func `int16_to_doc/1`
+
 ### Changes to the `int32` module
 
 * The following functions have been added:
@@ -227,6 +253,10 @@ Changes to the Mercury standard library
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
 
+* The following function has been marked obsolete:
+
+   - func `int32_to_doc/1`
+
 ### Changes to the `int64` module
 
 * The following functions have been added:
@@ -235,6 +265,10 @@ Changes to the Mercury standard library
     - func `>>u/2`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
+
+* The following function has been marked obsolete:
+
+   - func `int64_to_doc/1`
 
 ### Changes to the `io` module
 
@@ -430,6 +464,16 @@ Changes to the Mercury standard library
     - pred `take_while_not/3`
     - pred `take_while_not/4`
 
+* The following function has been marked obsolete:
+
+   - func `list_to_doc/1`
+
+### Changes to the `one_or_more` module
+
+* The following function has been marked obsolete:
+
+   - func `one_or_more_to_doc/1`
+
 ### Changes to the `map` module
 
 * The following predicate has been added:
@@ -524,8 +568,27 @@ Changes to the Mercury standard library
 
 ### Changes to the `pretty_printer` module
 
-* The following predicates have been added:
+* The following predicates and functions have been added:
 
+    - func `array_to_doc/1`
+    - func `char_to_doc/1`
+    - func `float_to_doc/1`
+    - func `get_formatter_map_entry_types/1`
+    - func `int_to_doc/1`
+    - func `int8_to_doc/1`
+    - func `int16_to_doc/1`
+    - func `int32_to_doc/1`
+    - func `int64_to_doc/1`
+    - func `list_to_doc/1`
+    - func `one_or_more_to_doc/1`
+    - func `string_to_doc/1`
+    - func `tree234_to_doc/1`
+    - func `uint_to_doc/1`
+    - func `uint8_to_doc/1`
+    - func `uint16_to_doc/1`
+    - func `uint32_to_doc/1`
+    - func `uint64_to_doc/1`
+    - func `version_array_to_doc/1`
     - pred `write_doc_formatted/3`
     - pred `write_doc_formatted/4`
 
@@ -615,6 +678,10 @@ Changes to the Mercury standard library
    - pred `append(out, out, in)`
    - pred `prefix(in, out)`
    - pred `suffix(in, out)`
+
+* The following function has been marked obsolete:
+
+   - func `string_to_doc/1`
 
 ### Changes to the `term` module
 
@@ -807,6 +874,10 @@ Changes to the Mercury standard library
 
     - pred `sorted_keys_match/2`
 
+* The following function has been marked obsolete:
+
+   - func `tree234_to_doc/1`
+
 ### Changes to the `tree_bitset` module
 
 * The following obsolete predicates has been removed:
@@ -827,6 +898,10 @@ Changes to the Mercury standard library
     - func `unchecked_right_ushift/2`
     - func `ubits_per_uint/0`
 
+* The following function has been marked obsolete:
+
+   - func `uint_to_doc/1`
+
 ### Changes to the `uint8` module
 
 * The following functions have been added:
@@ -835,6 +910,10 @@ Changes to the Mercury standard library
     - func `>>u/2`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
+
+* The following function has been marked obsolete:
+
+   - func `uint8_to_doc/1`
 
 ### Changes to the `uint16` module
 
@@ -845,6 +924,10 @@ Changes to the Mercury standard library
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
 
+* The following function has been marked obsolete:
+
+   - func `uint16_to_doc/1`
+
 ### Changes to the `uint32` module
 
 * The following functions have been added:
@@ -853,6 +936,10 @@ Changes to the Mercury standard library
     - func `>>u/2`
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
+
+* The following function has been marked obsolete:
+
+   - func `uint32_to_doc/1`
 
 ### Changes to the `uint64` module
 
@@ -863,11 +950,19 @@ Changes to the Mercury standard library
     - func `unchecked_left_ushift/2`
     - func `unchecked_right_ushift/2`
 
+* The following function has been marked obsolete:
+
+   - func `uint64_to_doc/1`
+
 ### Changes to the `version_array` module
 
 * The following predicate has been added:
 
     - pred `lookup/3`
+
+* The following function has been marked obsolete:
+
+   - func `version_array_to_doc/1`
 
 ### Changes to the `version_hash_table` module
 

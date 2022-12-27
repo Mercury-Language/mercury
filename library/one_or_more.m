@@ -492,6 +492,8 @@
     % Convert a list to a pretty_printer.doc for formatting.
     %
 :- func one_or_more_to_doc(one_or_more(T)) = pretty_printer.doc.
+:- pragma obsolete(func(one_or_more_to_doc/1),
+    [pretty_printer.one_or_more_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %
@@ -2247,12 +2249,7 @@ perm(OoM, PermutedOoM) :-
 
 %---------------------------------------------------------------------------%
 
-one_or_more_to_doc(one_or_more(H, T)) =
-    indent(" ",
-        [str("one_or_more("),
-        format_arg(format(H)),
-        list_to_doc(T),
-        str(")")]).
+one_or_more_to_doc(OoM) = pretty_printer.one_or_more_to_doc(OoM).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

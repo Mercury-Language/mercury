@@ -420,6 +420,7 @@
     % Convert an int32 to a pretty_printer.doc for formatting.
     %
 :- func int32_to_doc(int32) = pretty_printer.doc.
+:- pragma obsolete(func(int32_to_doc/1), [pretty_printer.int32_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -429,7 +430,6 @@
 :- import_module exception.
 :- import_module int.
 :- import_module require.
-:- import_module string.
 :- import_module uint.
 :- import_module uint32.
 
@@ -954,7 +954,7 @@ max_int32 = 2_147_483_647_i32.
 
 %---------------------------------------------------------------------------%
 
-int32_to_doc(X) = str(string.int32_to_string(X)).
+int32_to_doc(I) = pretty_printer.int32_to_doc(I).
 
 %---------------------------------------------------------------------------%
 :- end_module int32.

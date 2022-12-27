@@ -454,6 +454,7 @@
     % Convert an int to a pretty_printer.doc for formatting.
     %
 :- func int_to_doc(int) = pretty_printer.doc.
+:- pragma obsolete(func(int_to_doc/1), [pretty_printer.int_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %
@@ -526,7 +527,6 @@
 :- implementation.
 
 :- import_module exception.
-:- import_module string.
 :- import_module uint.
 
 %---------------------------------------------------------------------------%
@@ -1013,7 +1013,7 @@ all_true_in_range(P, Lo, Hi) :-
 
 %---------------------------------------------------------------------------%
 
-int_to_doc(X) = str(string.int_to_string(X)).
+int_to_doc(I) = pretty_printer.int_to_doc(I).
 
 %---------------------------------------------------------------------------%
 

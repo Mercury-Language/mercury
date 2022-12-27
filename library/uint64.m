@@ -451,6 +451,7 @@
     % Convert a uint64 to a pretty_printer.doc for formatting.
     %
 :- func uint64_to_doc(uint64) = pretty_printer.doc.
+:- pragma obsolete(func(uint64_to_doc/1), [pretty_printer.uint64_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -460,7 +461,6 @@
 :- import_module exception.
 :- import_module int.
 :- import_module require.
-:- import_module string.
 :- import_module uint.
 
 %---------------------------------------------------------------------------%
@@ -1132,7 +1132,7 @@ max_uint64 = 18_446_744_073_709_551_615_u64.
 
 %---------------------------------------------------------------------------%
 
-uint64_to_doc(X) = str(string.uint64_to_string(X)).
+uint64_to_doc(U) = pretty_printer.uint64_to_doc(U).
 
 %---------------------------------------------------------------------------%
 :- end_module uint64.

@@ -329,6 +329,7 @@
     % Convert an int8 to a pretty_printer.doc for formatting.
     %
 :- func int8_to_doc(int8) = pretty_printer.doc.
+:- pragma obsolete(func(int8_to_doc/1), [pretty_printer.int8_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -338,7 +339,6 @@
 :- import_module exception.
 :- import_module int.
 :- import_module require.
-:- import_module string.
 :- import_module uint.
 :- import_module uint8.
 
@@ -591,7 +591,7 @@ max_int8 = 127_i8.
 
 %---------------------------------------------------------------------------%
 
-int8_to_doc(X) = str(string.int8_to_string(X)).
+int8_to_doc(I) = pretty_printer.int8_to_doc(I).
 
 %---------------------------------------------------------------------------%
 :- end_module int8.

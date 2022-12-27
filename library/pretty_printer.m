@@ -45,12 +45,17 @@
 :- module pretty_printer.
 :- interface.
 
+:- import_module array.
+:- import_module char.
 :- import_module deconstruct.
-:- import_module list.
 :- import_module io.
+:- import_module list.
+:- import_module one_or_more.
 :- import_module stream.
+:- import_module tree234.
 :- import_module type_desc.
 :- import_module univ.
+:- import_module version_array.
 
 %---------------------------------------------------------------------------%
 
@@ -211,6 +216,14 @@
 :- pred set_formatter(string::in, string::in, int::in, formatter::in,
     formatter_map::in, formatter_map::out) is det.
 
+    % Values of this type identify a type that has a entry in a formatter_map.
+:- type formatter_map_entry
+    --->    formatter_map_entry(string, string, int).
+            % ModuleName.TypeName/TypeArity.
+
+:- func get_formatter_map_entry_types(formatter_map) =
+    list(formatter_map_entry).
+
 %---------------------%
 
     % The func_symbol_limit type controls *how many* of the function symbols
@@ -298,23 +311,67 @@
 :- pred set_default_params(pp_params::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
+
+    % Convert a char to a doc.
+    %
+:- func char_to_doc(char) = doc.
+
+    % Convert a string to a doc.
+    %
+:- func string_to_doc(string) = doc.
+
+    % Convert a float to a doc.
+    %
+:- func float_to_doc(float) = doc.
+
+    % Convert an int to a doc.
+    %
+:- func int_to_doc(int) = doc.
+:- func int8_to_doc(int8) = doc.
+:- func int16_to_doc(int16) = doc.
+:- func int32_to_doc(int32) = doc.
+:- func int64_to_doc(int64) = doc.
+
+    % Convert a uint to a doc.
+    %
+:- func uint_to_doc(uint) = doc.
+:- func uint8_to_doc(uint8) = doc.
+:- func uint16_to_doc(uint16) = doc.
+:- func uint32_to_doc(uint32) = doc.
+:- func uint64_to_doc(uint64) = doc.
+
+    % Convert an array to a doc.
+    %
+:- func array_to_doc(array(T)) = doc.
+
+    % Convert a list to a doc.
+    %
+:- func list_to_doc(list(T)) = doc.
+
+    % Convert a nonempty list to a doc.
+    %
+:- func one_or_more_to_doc(one_or_more(T)) = doc.
+
+    % Convert a 2-3-4 tree to a doc.
+    %
+:- func tree234_to_doc(tree234(K, V)) = doc.
+
+    % Convert a version array to a doc.
+    %
+:- func version_array_to_doc(version_array(T)) = doc.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module array.                 % For array_to_doc.
 :- import_module bool.
-:- import_module char.                  % For char_to_doc.
-:- import_module float.                 % For float_to_doc.
 :- import_module int.
 :- import_module map.
 :- import_module ops.
 :- import_module require.
 :- import_module string.
 :- import_module term_io.
-:- import_module tree234.               % For tree234_to_doc.
-:- import_module uint.                  % For uint_to_doc.
-:- import_module version_array.         % For version_array_to_doc.
 
 %---------------------------------------------------------------------------%
 
@@ -1226,12 +1283,10 @@ set_formatter(ModuleName, TypeName, Arity, Formatter, !FMap) :-
     ( if map.search(!.FMap, ModuleName, FMapTypeArity0) then
         ( if map.search(FMapTypeArity0, TypeName, FMapArity0) then
             map.det_update(Arity, Formatter, FMapArity0, FMapArity),
-            map.det_update(TypeName, FMapArity,
-                FMapTypeArity0, FMapTypeArity)
+            map.det_update(TypeName, FMapArity, FMapTypeArity0, FMapTypeArity)
         else
             FMapArity = map.singleton(Arity, Formatter),
-            map.det_insert(TypeName, FMapArity,
-                FMapTypeArity0, FMapTypeArity)
+            map.det_insert(TypeName, FMapArity, FMapTypeArity0, FMapTypeArity)
         ),
         map.det_update(ModuleName, FMapTypeArity, !FMap)
     else
@@ -1239,6 +1294,35 @@ set_formatter(ModuleName, TypeName, Arity, Formatter, !FMap) :-
         FMapTypeArity = map.singleton(TypeName, FMapArity),
         map.det_insert(ModuleName, FMapTypeArity, !FMap)
     ).
+
+%---------------------%
+
+get_formatter_map_entry_types(FMap) = Entries :-
+    % To allocate as few cons cells as possible, build Entries from the back.
+    map.foldr(get_fmap_entries_module, FMap, [], Entries).
+
+:- pred get_fmap_entries_module(string::in,
+    map(string, map(int, formatter))::in,
+    list(formatter_map_entry)::in, list(formatter_map_entry)::out) is det.
+
+get_fmap_entries_module(ModuleName, TypeNameArityMap, !Entries) :-
+    map.foldr(get_fmap_entries_type(ModuleName), TypeNameArityMap, !Entries).
+
+:- pred get_fmap_entries_type(string::in, string::in, map(int, formatter)::in,
+    list(formatter_map_entry)::in, list(formatter_map_entry)::out) is det.
+
+get_fmap_entries_type(ModuleName, TypeName, ArityMap, !Entries) :-
+    map.foldr(get_fmap_entries_arity(ModuleName, TypeName),
+        ArityMap, !Entries).
+
+:- pred get_fmap_entries_arity(string::in, string::in, int::in, formatter::in,
+    list(formatter_map_entry)::in, list(formatter_map_entry)::out) is det.
+
+get_fmap_entries_arity(ModuleName, TypeName, Arity, _Formatter, !Entries) :-
+    Entry = formatter_map_entry(ModuleName, TypeName, Arity),
+    !:Entries = [Entry | !.Entries].
+
+%---------------------%
 
 get_default_formatter_map(FMap, !IO) :-
     pretty_printer_is_initialised(Okay, !IO),
@@ -1388,40 +1472,142 @@ initial_formatter_map = !:Formatters :-
     set_formatter("builtin", "character", 0, fmt_char,    !Formatters),
     set_formatter("builtin", "float",     0, fmt_float,   !Formatters),
     set_formatter("builtin", "int",       0, fmt_int,     !Formatters),
+    set_formatter("builtin", "int8",      0, fmt_int8,    !Formatters),
+    set_formatter("builtin", "int16",     0, fmt_int16,   !Formatters),
+    set_formatter("builtin", "int32",     0, fmt_int32,   !Formatters),
+    set_formatter("builtin", "int64",     0, fmt_int64,   !Formatters),
     set_formatter("builtin", "uint",      0, fmt_uint,    !Formatters),
+    set_formatter("builtin", "uint8",     0, fmt_uint8,   !Formatters),
+    set_formatter("builtin", "uint16",    0, fmt_uint16,  !Formatters),
+    set_formatter("builtin", "int32",     0, fmt_uint32,  !Formatters),
+    set_formatter("builtin", "uint64",    0, fmt_uint64,  !Formatters),
     set_formatter("builtin", "string",    0, fmt_string,  !Formatters),
     set_formatter("array",   "array",     1, fmt_array,   !Formatters),
     set_formatter("list",    "list",      1, fmt_list,    !Formatters),
+    set_formatter("one_or_more", "one_or_more",
+                                          1, fmt_one_or_more, !Formatters),
     set_formatter("tree234", "tree234",   2, fmt_tree234, !Formatters),
-    set_formatter("version_array", "version_array", 1, fmt_version_array,
-        !Formatters).
+    set_formatter("version_array", "version_array",
+                                          1, fmt_version_array, !Formatters).
 
 %---------------------%
 
 :- func fmt_char(univ, list(type_desc)) = doc.
 
 fmt_char(Univ, _ArgDescs) =
-    ( if Univ = univ(X) then char_to_doc(X) else str("?char?") ).
+    ( if Univ = univ(X) then
+        pretty_printer.char_to_doc(X)
+    else
+        str("?char?")
+    ).
 
 :- func fmt_float(univ, list(type_desc)) = doc.
 
 fmt_float(Univ, _ArgDescs) =
-    ( if Univ = univ(X) then float_to_doc(X) else str("?float?") ).
+    ( if Univ = univ(X) then
+        pretty_printer.float_to_doc(X)
+    else
+        str("?float?")
+    ).
 
 :- func fmt_int(univ, list(type_desc)) = doc.
 
 fmt_int(Univ, _ArgDescs) =
-    ( if Univ = univ(X) then int_to_doc(X) else str("?int?") ).
+    ( if Univ = univ(X) then
+        pretty_printer.int_to_doc(X)
+    else
+        str("?int?")
+    ).
+
+:- func fmt_int8(univ, list(type_desc)) = doc.
+
+fmt_int8(Univ, _ArgDescs) =
+    ( if Univ = univ(X) then
+        pretty_printer.int8_to_doc(X)
+    else
+        str("?int8?")
+    ).
+
+:- func fmt_int16(univ, list(type_desc)) = doc.
+
+fmt_int16(Univ, _ArgDescs) =
+    ( if Univ = univ(X) then
+        pretty_printer.int16_to_doc(X)
+    else
+        str("?int16?")
+    ).
+
+:- func fmt_int32(univ, list(type_desc)) = doc.
+
+fmt_int32(Univ, _ArgDescs) =
+    ( if Univ = univ(X) then
+        pretty_printer.int32_to_doc(X)
+    else
+        str("?int32?")
+    ).
+
+:- func fmt_int64(univ, list(type_desc)) = doc.
+
+fmt_int64(Univ, _ArgDescs) =
+    ( if Univ = univ(X) then
+        pretty_printer.int64_to_doc(X)
+    else
+        str("?int64?")
+    ).
 
 :- func fmt_uint(univ, list(type_desc)) = doc.
 
 fmt_uint(Univ, _ArgDescs) =
-    ( if Univ = univ(X) then uint_to_doc(X) else str("?uint?") ).
+    ( if Univ = univ(X) then
+        pretty_printer.uint_to_doc(X)
+    else
+        str("?uint?")
+    ).
+
+:- func fmt_uint8(univ, list(type_desc)) = doc.
+
+fmt_uint8(Univ, _ArgDescs) =
+    ( if Univ = univ(X) then
+        pretty_printer.uint8_to_doc(X)
+    else
+        str("?uint8?")
+    ).
+
+:- func fmt_uint16(univ, list(type_desc)) = doc.
+
+fmt_uint16(Univ, _ArgDescs) =
+    ( if Univ = univ(X) then
+        pretty_printer.uint16_to_doc(X)
+    else
+        str("?uint16?")
+    ).
+
+:- func fmt_uint32(univ, list(type_desc)) = doc.
+
+fmt_uint32(Univ, _ArgDescs) =
+    ( if Univ = univ(X) then
+        pretty_printer.uint32_to_doc(X)
+    else
+        str("?uint32?")
+    ).
+
+:- func fmt_uint64(univ, list(type_desc)) = doc.
+
+fmt_uint64(Univ, _ArgDescs) =
+    ( if Univ = univ(X) then
+        pretty_printer.uint64_to_doc(X)
+    else
+        str("?uint64?")
+    ).
 
 :- func fmt_string(univ, list(type_desc)) = doc.
 
 fmt_string(Univ, _ArgDescs) =
-    ( if Univ = univ(X) then string_to_doc(X) else str("?string?") ).
+    ( if Univ = univ(X) then
+        pretty_printer.string_to_doc(X)
+    else
+        str("?string?")
+    ).
 
 :- func fmt_array(univ, list(type_desc)) = doc.
 
@@ -1432,23 +1618,9 @@ fmt_array(Univ, ArgDescs) =
         Value = univ_value(Univ),
         dynamic_cast(Value, X : array(T))
     then
-        array_to_doc(X)
+        pretty_printer.array_to_doc(X)
     else
         str("?array?")
-    ).
-
-:- func fmt_version_array(univ, list(type_desc)) = doc.
-
-fmt_version_array(Univ, ArgDescs) =
-    ( if
-        ArgDescs = [ArgDesc],
-        has_type(_Arg : T, ArgDesc),
-        Value = univ_value(Univ),
-        dynamic_cast(Value, X : version_array(T))
-    then
-        version_array_to_doc(X)
-    else
-        str("?version_array?")
     ).
 
 :- func fmt_list(univ, list(type_desc)) = doc.
@@ -1460,9 +1632,23 @@ fmt_list(Univ, ArgDescs) =
         Value = univ_value(Univ),
         dynamic_cast(Value, X : list(T))
     then
-        list_to_doc(X)
+        pretty_printer.list_to_doc(X)
     else
         str("?list?")
+    ).
+
+:- func fmt_one_or_more(univ, list(type_desc)) = doc.
+
+fmt_one_or_more(Univ, ArgDescs) =
+    ( if
+        ArgDescs = [ArgDesc],
+        has_type(_Arg : T, ArgDesc),
+        Value = univ_value(Univ),
+        dynamic_cast(Value, X : one_or_more(T))
+    then
+        pretty_printer.one_or_more_to_doc(X)
+    else
+        str("?one_or_more?")
     ).
 
 :- func fmt_tree234(univ, list(type_desc)) = doc.
@@ -1475,9 +1661,23 @@ fmt_tree234(Univ, ArgDescs) =
         Value = univ_value(Univ),
         dynamic_cast(Value, X : tree234(K, V))
     then
-        tree234_to_doc(X)
+        pretty_printer.tree234_to_doc(X)
     else
         str("?tree234?")
+    ).
+
+:- func fmt_version_array(univ, list(type_desc)) = doc.
+
+fmt_version_array(Univ, ArgDescs) =
+    ( if
+        ArgDescs = [ArgDesc],
+        has_type(_Arg : T, ArgDesc),
+        Value = univ_value(Univ),
+        dynamic_cast(Value, X : version_array(T))
+    then
+        pretty_printer.version_array_to_doc(X)
+    else
+        str("?version_array?")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1496,6 +1696,149 @@ get_default_params(Params, !IO) :-
 
 set_default_params(Params, !IO) :-
     set_io_pp_params(Params, !IO).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+char_to_doc(C) = str(term_io.quoted_char(C)).
+
+string_to_doc(S) = str(term_io.quoted_string(S)).
+
+float_to_doc(F) = str(string.float_to_string(F)).
+
+int_to_doc(I) = str(string.int_to_string(I)).
+int8_to_doc(I) = str(string.int8_to_string(I)).
+int16_to_doc(I) = str(string.int16_to_string(I)).
+int32_to_doc(I) = str(string.int32_to_string(I)).
+int64_to_doc(I) = str(string.int64_to_string(I)).
+
+uint_to_doc(U) = str(string.uint_to_string(U)).
+uint8_to_doc(U) = str(string.uint8_to_string(U)).
+uint16_to_doc(U) = str(string.uint16_to_string(U)).
+uint32_to_doc(U) = str(string.uint32_to_string(U)).
+uint64_to_doc(U) = str(string.uint64_to_string(U)).
+
+%---------------------------------------------------------------------------%
+% XXX The to_doc functions of the compound library types used to put
+% different amounts of indentation at the outermost level.
+%
+% - array_to_doc added one standard indent (two spaces)
+% - list_to_doc added one space as indent
+% - one_or_more_to_doc added one space as indent
+% - tree234_to_doc added one standard indent (two spaces)
+% - version_array_to_doc added one standard indent (two spaces)
+%
+% We now leave any indentation around the doc returned by all these X_to_doc
+% functions to their caller.
+%---------------------------------------------------------------------------%
+
+array_to_doc(A) =
+    docs([str("array(["), array_to_doc_loop(A, 0), str("])")]).
+
+:- func array_to_doc_loop(array(T), int) = doc.
+
+array_to_doc_loop(A, I) = Doc :-
+    ( if I > array.max(A) then
+        Doc = str("")
+    else
+        array.lookup(A, I, Elem),
+        Doc = docs([
+            format_arg(format(Elem)),
+            ( if I = array.max(A) then
+                str("")
+            else
+                group([str(", "), nl])
+            ),
+            format_susp((func) = array_to_doc_loop(A, I + 1))
+        ])
+    ).
+
+%---------------------------------------------------------------------------%
+
+list_to_doc(Xs) = docs([str("["), list_to_doc_loop(Xs), str("]")]).
+
+:- func list_to_doc_loop(list(T)) = doc.
+
+list_to_doc_loop([]) = str("").
+list_to_doc_loop([X | Xs]) = Doc :-
+    (
+        Xs = [],
+        Doc = format_arg(format(X))
+    ;
+        Xs = [_ | _],
+        Doc = docs([
+            format_arg(format(X)),
+            group([str(", "), nl]),
+            format_susp((func) = list_to_doc_loop(Xs))
+        ])
+    ).
+
+%---------------------------------------------------------------------------%
+
+one_or_more_to_doc(one_or_more(H, T)) =
+    docs([
+        str("one_or_more("),
+        format_arg(format(H)),
+        group([str(", "), nl]),
+        str("["),
+        format_susp((func) = list_to_doc_loop(T)),
+        str("])")
+    ]).
+
+%---------------------------------------------------------------------------%
+
+    % With this type definition, including the use of the -> operator
+    % as the function symbol, the default pretty_printer formatting
+    % for key_value_pair will generate the output we want.
+    %
+:- type key_value_pair(K, V)
+    --->    (K -> V).
+
+tree234_to_doc(T) =
+    docs([
+        str("map(["),
+        tree234_elements_to_doc(tree234_to_lazy_list(T, tll_nil)),
+        str("])")
+    ]).
+
+:- func tree234_elements_to_doc(tree234_lazy_list(K, V)) = doc.
+
+tree234_elements_to_doc(tll_nil) = str("").
+tree234_elements_to_doc(tll_lazy_cons(K, V, Susp)) = Doc :-
+    LL = apply(Susp),
+    (
+        LL = tll_nil,
+        Doc = group([nl, format_arg(format((K -> V)))])
+    ;
+        LL = tll_lazy_cons(_, _, _),
+        Doc = docs([
+            group([nl, format_arg(format((K -> V))), str(", ")]),
+            format_susp((func) = tree234_elements_to_doc(LL))
+        ])
+    ).
+
+%---------------------------------------------------------------------------%
+
+version_array_to_doc(A) =
+    docs([str("version_array(["), version_array_to_doc_loop(A, 0), str("])")]).
+
+:- func version_array_to_doc_loop(version_array(T), int) = doc.
+
+version_array_to_doc_loop(VA, I) = Doc :-
+    ( if I > version_array.max(VA) then
+        Doc = str("")
+    else
+        version_array.lookup(VA, I, Elem),
+        Doc = docs([
+            format_arg(format(Elem)),
+            ( if I = version_array.max(VA) then
+                str("")
+            else
+                group([str(", "), nl])
+            ),
+            format_susp((func) = version_array_to_doc_loop(VA, I + 1))
+        ])
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module pretty_printer.

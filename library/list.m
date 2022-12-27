@@ -776,6 +776,7 @@
     % Convert a list to a pretty_printer.doc for formatting.
     %
 :- func list_to_doc(list(T)) = pretty_printer.doc.
+:- pragma obsolete(func(list_to_doc/1), [pretty_printer.list_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %
@@ -3331,23 +3332,7 @@ perm([X | Xs], Ys) :-
 
 %---------------------------------------------------------------------------%
 
-list_to_doc(Xs) = indent(" ", [str("["), list_to_doc_2(Xs), str("]")]).
-
-:- func list_to_doc_2(list(T)) = doc.
-
-list_to_doc_2([]) = str("").
-list_to_doc_2([X | Xs]) = Doc :-
-    (
-        Xs = [],
-        Doc = format_arg(format(X))
-    ;
-        Xs = [_ | _],
-        Doc = docs([
-            format_arg(format(X)),
-            group([str(", "), nl]),
-            format_susp((func) = list_to_doc_2(Xs))
-        ])
-    ).
+list_to_doc(L) = pretty_printer.list_to_doc(L).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
