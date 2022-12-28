@@ -12,6 +12,9 @@ This is a bug-fix release.
 * We have fixed a bug that was causing some transitive intermodule
   optimization interfaces to be silently ignored.
 
+* We have fixed a bug where termination analysis could cause a compiler abort
+  when invoked on some rarely-occurring predicate structures.
+
 NEWS for Mercury 22.01.4
 ========================
 
