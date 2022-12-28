@@ -1007,9 +1007,6 @@ Changes to the Mercury compiler
 * We have fixed a bug where `--warn-unused-imports` did not warn about
   unused modules that are also imported by an ancestor of the current module.
 
-* We have fixed a bug where termination analysis could cause a compiler abort
-  when invoked on some rarely-occurring predicate structures.
-
 * We have added a new option `--warn-ambiguous-pragmas`
   that tells the compiler to generate warnings for pragmas that specify
   a name/arity pair, when there is both a predicate and a function
@@ -1072,6 +1069,9 @@ This is a bug-fix release.
 
 * We have fixed a bug that was causing some transitive intermodule
   optimization interfaces to be silently ignored.
+
+* We have fixed a bug where termination analysis could cause a compiler abort
+  when invoked on some rarely-occurring predicate structures.
 
 NEWS for Mercury 22.01.4
 ========================
