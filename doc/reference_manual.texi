@@ -12601,7 +12601,7 @@ A @samp{source_file} pragma is a declaration of the form
 where @var{Name} is a string that specifies the name of the source file.
 
 For example, if a preprocessor generated a file @file{foo.m}
-based on a input file @file{foo.m.in},
+based on an input file @file{foo.m.in},
 and it copied lines 20, 30, and 31 from @file{foo.m.in},
 the following directives would ensure that
 any error or warnings for those lines copied from @file{foo.m}
@@ -12862,7 +12862,7 @@ at the cost of additional space to record answers in the table.
 
 The implementation can also check at runtime for the situation
 where a procedure calls itself recursively with the same arguments,
-which would normally result in a infinite loop;
+which would normally result in an infinite loop;
 if this situation is encountered, it can (at the programmer's option)
 either throw an exception,
 or avoid the infinite loop
