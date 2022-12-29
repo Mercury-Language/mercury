@@ -436,9 +436,9 @@
     #endif
 #endif
 
-#if defined(MR_LL_DEBUG)
-  #define MR_GRADE_PART_15      MR_PASTE2(MR_GRADE_PART_14, _ll_debug)
-  #define MR_GRADE_OPT_PART_15  MR_GRADE_OPT_PART_14 ".ll_debug"
+#if defined(MR_C_DEBUG_GRADE)
+  #define MR_GRADE_PART_15      MR_PASTE2(MR_GRADE_PART_14, _c_debug)
+  #define MR_GRADE_OPT_PART_15  MR_GRADE_OPT_PART_14 ".c_debug"
 #else
   #define MR_GRADE_PART_15      MR_GRADE_PART_14
   #define MR_GRADE_OPT_PART_15  MR_GRADE_OPT_PART_14

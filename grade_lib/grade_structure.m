@@ -60,8 +60,7 @@
                 llds_thread_safe_minmodel,
                 grade_var_merc_file,
                 grade_var_low_tag_bits_use,
-                grade_var_merc_float,
-                grade_var_target_debug
+                grade_var_merc_float
             )
     ;       grade_mlds(
                 mlds_target,
@@ -116,7 +115,7 @@
     ;       lmk_own_stack_debug.
 
     % We could record whether we use gcc registers and gcc gotos independently.
-    % (We use gcc labels only if we use gcc gots, so our choices on those
+    % (We use gcc labels only if we use gcc gotos, so our choices on those
     % two grade variables are not independent.) However, we choose to use
     % this flat representation, because we may not wish to support all
     % of the possible combinations. Some gcc bugs may show up only in
@@ -220,9 +219,10 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
     % that it has the expected value, or (c) to record its value in the
     % structured grade.
     %
-    % We pick up the values of the arguments other than Backend in separate
-    % deconstructions in each arm of the switch on Backend, to give us
-    % a singleton variable warning if don't handle a grade var in an arm.
+    % We pick up the values of the arguments other than Pregen and Backend
+    % in separate deconstructions in each arm of the switch on Backend,
+    % to give us a singleton variable warning if don't handle a grade var
+    % in an arm.
     %
     % Unfortunately, I (zs) don't see how to repeat the trick for the switch
     % on Target in the mlds case: having two deconstructs that each pick up
@@ -329,6 +329,8 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
 
             expect(unify(Target, grade_var_target_c), $pred,
                 "Target != grade_var_target_c"),
+            expect(unify(TargetDebug, grade_var_target_debug_no), $pred,
+                "TargetDebug != grade_var_target_debug_no"),
             expect(unify(SSDebug, grade_var_ssdebug_no), $pred,
                 "SSDebug != grade_var_ssdebug_no"),
             (
@@ -472,7 +474,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                         CTrail, TScopeProf)
             ),
             GradeStructure = grade_llds(GccConf, StackLen, LLDSTSMinModel,
-                MercFile, LowTagBitsUse, MercFloat, TargetDebug)
+                MercFile, LowTagBitsUse, MercFloat)
         ;
             Backend = grade_var_backend_mlds,
 

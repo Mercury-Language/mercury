@@ -407,7 +407,7 @@ call_engine_inner(MR_Code *entry_point)
     unsigned char locals[LOCALS_SIZE];
 {
 
-#ifdef MR_LOWLEVEL_DEBUG
+#ifdef MR_DEBUG_THE_RUNTIME
 {
     // Ensure that we only make the label once.
     static  MR_bool initialized = MR_FALSE;
@@ -430,7 +430,7 @@ call_engine_inner(MR_Code *entry_point)
 
     MR_global_pointer = locals;
 
-#ifdef MR_LOWLEVEL_DEBUG
+#ifdef MR_DEBUG_THE_RUNTIME
     MR_memset((void *) locals, MAGIC_MARKER, LOCALS_SIZE);
 #endif
     MR_debugmsg1("in `call_engine_inner', locals at %p\n", (void *) locals);
@@ -529,7 +529,7 @@ MR_define_label(engine_done_2);
 
     MR_debugmsg1("in label `engine_done', locals at %p\n", locals);
 
-#ifdef MR_LOWLEVEL_DEBUG
+#ifdef MR_DEBUG_THE_RUNTIME
     // Check how much of the space we reserved for local variables
     // was actually used.
 
@@ -549,7 +549,7 @@ MR_define_label(engine_done_2);
             MR_min(high, LOCALS_SIZE - low));
         printf("(low mark = %d, high mark = %d)\n", low, high);
     }
-#endif // MR_LOWLEVEL_DEBUG
+#endif // MR_DEBUG_THE_RUNTIME
 
     // Despite the above precautions with allocating a large chunk of unused
     // stack space, the return address may still have been stored on the

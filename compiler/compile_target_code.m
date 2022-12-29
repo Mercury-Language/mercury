@@ -682,21 +682,25 @@ gather_c_grade_defines(Globals, GradeDefines) :-
     ;
         Extend = yes,
         StackSegments = yes,
+        % This should have been caught in handle_options,
+        % but there is no code there to do so.
+        % XXX Should we delete --extend-stacks-when-needed?
+        % options.m has been listing it as "experimental" since 2007.
         ExtendOpt = unexpected($pred,
             "--extend-stacks-when-needed and --stack-segments")
     ),
-    globals.lookup_bool_option(Globals, low_level_debug, LL_Debug),
+    globals.lookup_bool_option(Globals, c_debug_grade, CDebugGrade),
     (
-        LL_Debug = yes,
-        % This is grade option tells the C compiler to turn on the generation
+        CDebugGrade = yes,
+        % This grade option tells the C compiler to turn on the generation
         % of debugging symbols and to disable the optimizations that
         % would make the executable harder to debug in a C debugger
         % such as gdb. However, here we gather only *macro* definitions,
         % not general compiler flags.
-        LL_DebugOpt = "-DMR_LL_DEBUG "
+        CDebugGradeOpt = "-DMR_C_DEBUG_GRADE "
     ;
-        LL_Debug = no,
-        LL_DebugOpt = ""
+        CDebugGrade = no,
+        CDebugGradeOpt = ""
     ),
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     (
@@ -713,7 +717,7 @@ gather_c_grade_defines(Globals, GradeDefines) :-
     (
         MinimalModelStackCopy = yes,
         MinimalModelOwnStacks = yes,
-        % this should have been caught in handle_options
+        % This should have been caught in handle_options.
         unexpected($pred, "inconsistent minimal model options")
     ;
         MinimalModelStackCopy = yes,
@@ -797,7 +801,7 @@ gather_c_grade_defines(Globals, GradeDefines) :-
         RecordTermSizesOpt,
         NumPtagBitsOpt,
         ExtendOpt,
-        LL_DebugOpt, DeclDebugOpt,
+        CDebugGradeOpt, DeclDebugOpt,
         SourceDebugOpt,
         ExecTraceOpt,
         UseTrailOpt,
@@ -914,13 +918,12 @@ compile_java_files(Globals, ProgressStream, ErrorStream,
             "-classpath ", quote_shell_cmd_arg(ClassPath), " "])
     ),
 
-    globals.lookup_bool_option(Globals, target_debug, Target_Debug),
-    (
-        Target_Debug = yes,
-        Target_DebugOpt = "-g "
-    ;
-        Target_Debug = no,
-        Target_DebugOpt = ""
+    globals.lookup_bool_option(Globals, target_debug, TargetDebug),
+    globals.lookup_bool_option(Globals, c_debug_grade, CDebugGrade),
+    ( if ( TargetDebug = yes ; CDebugGrade = yes ) then
+        TargetDebugOpt = "-g "
+    else
+        TargetDebugOpt = ""
     ),
 
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
@@ -963,7 +966,7 @@ compile_java_files(Globals, ProgressStream, ErrorStream,
     % Also be careful that each option is separated by spaces.
     JoinedJavaFiles = string.join_list(" ", [HeadJavaFile | TailJavaFiles]),
     string.append_list([InclOpt, DirOpts,
-        Target_DebugOpt, JAVAFLAGS, " ", JoinedJavaFiles], CommandArgs),
+        TargetDebugOpt, JAVAFLAGS, " ", JoinedJavaFiles], CommandArgs),
     invoke_long_system_command_maybe_filter_output(Globals,
         ProgressStream, ErrorStream, ErrorStream, cmd_verbose_commands,
         JavaCompiler, NonAtFileCommandArgs, CommandArgs, MaybeMFilterJavac,
@@ -2042,12 +2045,12 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
                 GCMethod = gc_boehm_debug,
                 GCGrade0 = "gc_debug"
             ),
-            globals.lookup_bool_option(Globals, low_level_debug, LLDebug),
+            globals.lookup_bool_option(Globals, c_debug_grade, CDebugGrade),
             (
-                LLDebug = yes,
-                GCGrade1 = GCGrade0 ++ "_ll_debug"
+                CDebugGrade = yes,
+                GCGrade1 = GCGrade0 ++ "_c_debug"
             ;
-                LLDebug = no,
+                CDebugGrade = no,
                 GCGrade1 = GCGrade0
             ),
             globals.lookup_bool_option(Globals, profile_time, ProfTime),

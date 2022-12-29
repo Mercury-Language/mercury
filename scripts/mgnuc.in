@@ -134,9 +134,6 @@ Options:
         Use the full contents of system headers, rather than the ANSI subset.
     --no-check
         Don't enable any of gcc's warnings.
-    --low-level-debug
-        Enable low-level debugging of the C code. Useful only for Mercury
-        system developers.
     -g, --c-debug
         Generate object files that can debugged with C debuggers such as gdb.
     --no-c-optimize
@@ -254,8 +251,19 @@ ALL_LOCAL_C_INCL_DIRS=${MERCURY_ALL_LOCAL_C_INCL_DIRS=@ALL_LOCAL_C_INCL_DIRS@}
 # compiler/compile_target_code.m.
 
 case ${c_debug} in
-    true)       C_DEBUG_OPTS="${DEBUG_OPTS}" ;;
-    false)      C_DEBUG_OPTS="" ;;
+    # We set a variable named C_DEBUG_OPTS here, in the code that handles
+    # a -g or -cdebug-info option being given to mgnuc. Because below we handle
+    # the related but nevertheless separate c_debug grade component, and
+    # *that* code sets a variable named C_DEBUG_GRADE_OPTS.
+    true)
+        C_DEBUG_OPTS="${DEBUG_OPTS}"
+        # Prevent that code below from including the *original* ${DEBUG_OPTS}
+        # in the final list of C compiler options *again*.
+        DEBUG_OPTS=""
+        ;;
+    false)
+        C_DEBUG_OPTS=""
+        ;;
 esac
 
 case ${c_optimize} in
@@ -263,17 +271,10 @@ case ${c_optimize} in
     false)      OPT_OPTS="" ;;
 esac
 
-case ${low_level_debug} in
-    true)       LLDEBUG_OPTS="-DMR_LOWLEVEL_DEBUG" ;;
-    false)      LLDEBUG_OPTS="" ;;
-esac
-
-#
-# convert grade mgnuc options into gcc options
+# Convert grade mgnuc options into gcc options.
 #
 # IMPORTANT: any changes here may require similar changes to all the files
 # mentioned in runtime/mercury_grade.h.
-#
 
 HALT_AT_WARN_OPT=""
 case ${highlevel_code} in
@@ -467,9 +468,9 @@ case ${ss_debug} in
     false)          SS_DEBUG_OPTS="" ;;
 esac
 
-case ${ll_debug} in
-    true)           LL_DEBUG_OPTS="-DMR_LL_DEBUG ${DEBUG_OPTS} ${DISABLE_OPTS_OPT}" ;;
-    false)          LL_DEBUG_OPTS="" ;;
+case ${c_debug_grade} in
+    true)           C_DEBUG_GRADE_OPTS="-DMR_C_DEBUG_GRADE ${DEBUG_OPTS} ${DISABLE_OPTS_OPT}" ;;
+    false)          C_DEBUG_GRADE_OPTS="" ;;
 esac
 
 case ${extend_stacks} in
@@ -705,10 +706,9 @@ ALL_CC_OPTS="${MERC_ALL_C_INCL_DIRS}\
     ${TRACE_OPTS}\
     ${DECL_DEBUG_OPTS}\
     ${SS_DEBUG_OPTS}\
-    ${LL_DEBUG_OPTS}\
+    ${C_DEBUG_GRADE_OPTS}\
     ${EXTEND_STACKS_OPTS}\
     ${STACK_SEGMENTS_OPTS}\
-    ${LLDEBUG_OPTS}\
     ${C_DEBUG_OPTS}\
     ${PROF_TIME_OPTS}\
     ${PROF_CALLS_OPTS}\

@@ -221,7 +221,7 @@
 // Runtime checking options:
 //
 // MR_CHECK_FOR_OVERFLOW
-// (Implied by MR_LOWLEVEL_DEBUG.)
+// (Implied by MR_DEBUG_THE_RUNTIME.)
 // Check for overflow of the various memory
 // areas, e.g. heap, det stack, nondet stack,
 // before every access that might result in overflow.
@@ -274,9 +274,9 @@
 // Allows the debugger to distinguish between different contexts.
 // Currently used only by own stack minimal model tabling.
 //
-// MR_LOWLEVEL_DEBUG
+// MR_DEBUG_THE_RUNTIME
 // Enables various low-level debugging stuff that was in the distant past
-// used to debug the low-level code generation.
+// used to debug the runtime and its use by compiler-generated LLDS code.
 // Causes the generated code to become VERY big and VERY inefficient.
 // Slows down compilation a LOT.
 //
@@ -300,13 +300,13 @@
 // declarative debugging back end.
 //
 // MR_DEBUG_GOTOS
-// (Implied by MR_LOWLEVEL_DEBUG.)
+// (Implied by MR_DEBUG_THE_RUNTIME.)
 // Enables low-level debugging of gotos.
 // Causes the generated code to become bigger and less efficient.
 // Slows down compilation.
 //
 // MR_DEBUG_HEAP_ALLOC
-// (Implied by MR_LOWLEVEL_DEBUG.)
+// (Implied by MR_DEBUG_THE_RUNTIME.)
 // Uses functions to do memory allocation. These functions can generate
 // diagnostic output, enforce invariants, and one can put breakpoints
 // on them.
@@ -460,8 +460,8 @@
 #endif
 
 #ifdef MR_HIGHLEVEL_CODE
-  #ifdef MR_LOWLEVEL_DEBUG
-    #error "MR_HIGHLEVEL_CODE and MR_LOWLEVEL_DEBUG are not supported together"
+  #ifdef MR_DEBUG_THE_RUNTIME
+    #error "MR_HIGHLEVEL_CODE and MR_DEBUG_THE_RUNTIME are not supported together"
   #endif
   #ifdef MR_DEBUG_DD_BACK_END
     #error "MR_HIGHLEVEL_CODE and MR_DEBUG_DD_BACK_END are not supported together"
@@ -661,8 +661,8 @@
 //   #undef MR_PIC_REG
 // #endif
 
-// MR_LOWLEVEL_DEBUG implies MR_DEBUG_GOTOS and MR_CHECK_FOR_OVERFLOW
-#ifdef MR_LOWLEVEL_DEBUG
+// MR_DEBUG_THE_RUNTIME implies MR_DEBUG_GOTOS and MR_CHECK_FOR_OVERFLOW
+#ifdef MR_DEBUG_THE_RUNTIME
   #define MR_DEBUG_GOTOS
   #define MR_CHECK_FOR_OVERFLOW
 #endif

@@ -70,7 +70,7 @@ typedef MR_bool     MR_ZoneHandler(MR_Word *addr, MR_MemoryZone *zone,
 //          memory zones doesn't beat the cache.
 //
 // max      The highest address in this memory area that has been used so far.
-//          This is only computed if MR_LOWLEVEL_DEBUG is enabled.
+//          This is only computed if MR_DEBUG_THE_RUNTIME is enabled.
 //
 // hardmax  The address of the bottom of the last page of the allocated area.
 //          This is one higher than the highest address that can be used

@@ -8,7 +8,7 @@
 % This is a program for testing the grade library. It is intended to be used
 % with command lines like this:
 %
-% $ ./choose_grade target=csharp stack_len!=stseg 
+% $ ./choose_grade target=csharp stack_len!=stseg
 %
 % Each argument is either an equation (with the form var=value) or
 % a disequation (with the form var!=value). The variable and value names

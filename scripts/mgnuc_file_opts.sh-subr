@@ -58,13 +58,6 @@
             c_optimize=false
             ;;
 
-        --low-level-debug)
-            low_level_debug=true
-            ;;
-        --no-low-level-debug)
-            low_level_debug=false
-            ;;
-
         --use-activation-counts)
             use_activation_counts=true
             ;;

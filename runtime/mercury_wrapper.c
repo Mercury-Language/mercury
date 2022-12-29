@@ -528,7 +528,7 @@ mercury_runtime_init(int argc, char **argv)
     MR_global_pointer = (void *) atexit;
 #endif
 
-#if defined(MR_LOWLEVEL_DEBUG) || defined(MR_TABLE_DEBUG)
+#if defined(MR_DEBUG_THE_RUNTIME) || defined(MR_TABLE_DEBUG)
     if (MR_unbufdebug) {
         // Ensure stdio & stderr are unbuffered even if redirected.
         // Using setvbuf() is more complicated than using setlinebuf(),
@@ -2425,7 +2425,7 @@ mercury_runtime_main(void)
     MR_Word c_regs[MR_NUM_REAL_REGS];
 #endif
 
-#if defined(MR_LOWLEVEL_DEBUG) && defined(MR_USE_GCC_NONLOCAL_GOTOS)
+#if defined(MR_DEBUG_THE_RUNTIME) && defined(MR_USE_GCC_NONLOCAL_GOTOS)
     unsigned char   safety_buffer[SAFETY_BUFFER_SIZE];
 #endif
 
@@ -2465,7 +2465,7 @@ mercury_runtime_main(void)
     MR_save_regs_to_mem(c_regs);
     MR_restore_registers();
 
-#if defined(MR_LOWLEVEL_DEBUG) && defined(MR_USE_GCC_NONLOCAL_GOTOS)
+#if defined(MR_DEBUG_THE_RUNTIME) && defined(MR_USE_GCC_NONLOCAL_GOTOS)
     // Double-check to make sure that we are not corrupting the C stack
     // with these non-local gotos, by filling a buffer with a known value
     // and then later checking that it still contains only this value.
@@ -2474,7 +2474,7 @@ mercury_runtime_main(void)
     MR_memset(safety_buffer, MAGIC_MARKER_2, SAFETY_BUFFER_SIZE);
 #endif
 
-#ifdef MR_LOWLEVEL_DEBUG
+#ifdef MR_DEBUG_THE_RUNTIME
   #ifndef MR_CONSERVATIVE_GC
     MR_ENGINE(MR_eng_heap_zone)->max =
         MR_ENGINE(MR_eng_heap_zone)->min;
@@ -2528,7 +2528,7 @@ mercury_runtime_main(void)
         MR_user_time_at_finish = MR_get_user_cpu_milliseconds();
     }
 
-#if defined(MR_USE_GCC_NONLOCAL_GOTOS) && defined(MR_LOWLEVEL_DEBUG)
+#if defined(MR_USE_GCC_NONLOCAL_GOTOS) && defined(MR_DEBUG_THE_RUNTIME)
     {
         int i;
 
@@ -2542,7 +2542,7 @@ mercury_runtime_main(void)
         MR_debugregs("after final call");
     }
 
-#ifdef MR_LOWLEVEL_DEBUG
+#ifdef MR_DEBUG_THE_RUNTIME
     if (MR_memdebug) {
         printf("\n");
   #ifndef MR_CONSERVATIVE_GC
@@ -2833,7 +2833,7 @@ MR_define_entry(MR_do_interpreter);
     }
 #endif
 
-#ifdef  MR_LOWLEVEL_DEBUG
+#ifdef  MR_DEBUG_THE_RUNTIME
     if (MR_finaldebug) {
         MR_save_transient_registers();
         MR_printregs(stdout, "do_interpreter started");
@@ -2878,7 +2878,7 @@ MR_define_label(global_success);
     }
 
 MR_define_label(global_success_2);
-#ifdef  MR_LOWLEVEL_DEBUG
+#ifdef  MR_DEBUG_THE_RUNTIME
     if (MR_finaldebug) {
         MR_save_transient_registers();
         MR_printregs(stdout, "global succeeded");
@@ -2895,7 +2895,7 @@ MR_define_label(global_success_2);
     }
 
 MR_define_label(global_fail);
-#ifdef  MR_LOWLEVEL_DEBUG
+#ifdef  MR_DEBUG_THE_RUNTIME
     if (MR_finaldebug) {
         MR_save_transient_registers();
         MR_printregs(stdout, "global failed");
@@ -2921,7 +2921,7 @@ MR_define_label(all_done);
     MR_curfr_word  = MR_stackvar(4);
     MR_decr_sp(4);
 
-#ifdef MR_LOWLEVEL_DEBUG
+#ifdef MR_DEBUG_THE_RUNTIME
     if (MR_finaldebug && MR_detaildebug) {
         MR_save_transient_registers();
         MR_printregs(stdout, "after popping...");

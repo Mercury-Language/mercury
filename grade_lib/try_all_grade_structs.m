@@ -170,9 +170,8 @@ generate_llds_tests(GradeStructure) :-
     MercFile = grade_var_merc_file_no,
     generate_grade_var_low_tag_bits_use(LowTagBitsUse),
     generate_grade_var_merc_float(MercFloat),
-    generate_grade_var_target_debug(TargetDebug),
     GradeStructure = grade_llds(GccConf, StackLen, LLDSTSMinModel,
-        MercFile, LowTagBitsUse, MercFloat, TargetDebug).
+        MercFile, LowTagBitsUse, MercFloat).
 
 %---------------------%
 
@@ -287,7 +286,7 @@ check_grade_struct(SolverInfo0, GradeStructure, !N, !IO) :-
     ;
         MaybeSpecSuccMap = ok(SpecSuccMap),
         SolverVarMap0 = SolverInfo0 ^ si_solver_var_map,
-        map.foldl(assign_var_in_map(npw_config), SpecSuccMap, 
+        map.foldl(assign_var_in_map(npw_config), SpecSuccMap,
             SolverVarMap0, SolverVarMap),
         SolverInfo = SolverInfo0 ^ si_solver_var_map := SolverVarMap,
         solve_absolute(SolverInfo, _SolveCounts, Soln),

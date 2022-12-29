@@ -60,7 +60,7 @@
 
 #endif
 
-#ifndef MR_LOWLEVEL_DEBUG
+#ifndef MR_DEBUG_THE_RUNTIME
 
 #define MR_debugcr1(hp)                         ((void) 0)
 #define MR_debugcr2(hp)                         ((void) 0)
@@ -189,7 +189,7 @@
 #define MR_debugmsg3(msg, arg1, arg2, arg3)                             \
     MR_IF (MR_progdebug, (fprintf(stdout, msg, arg1, arg2, arg3)))
 
-#endif // MR_LOWLEVEL_DEBUG
+#endif // MR_DEBUG_THE_RUNTIME
 
 #define MR_print_deep_prof_vars(fp, msg)                                     \
     do {                                                                     \
@@ -209,7 +209,7 @@ extern  void    MR_debug_tag_offset_incr_hp_base_msg(FILE *fp, MR_Word ptr,
                     int tag, int offset, int count, int is_atomic);
 #endif
 
-#ifdef MR_LOWLEVEL_DEBUG
+#ifdef MR_DEBUG_THE_RUNTIME
 extern  void    MR_mkframe_msg(FILE *fp, const char *);
 extern  void    MR_mktempframe_msg(FILE *fp);
 extern  void    MR_mkdettempframe_msg(FILE *fp);
@@ -235,7 +235,7 @@ extern  void    MR_goto_msg(FILE *fp, const MR_Code *addr);
 extern  void    MR_reg_msg(FILE *fp);
 #endif
 
-#ifdef MR_LOWLEVEL_DEBUG
+#ifdef MR_DEBUG_THE_RUNTIME
 extern  void    MR_printint(FILE *fp, MR_Word n);
 extern  void    MR_printstring(FILE *fp, const char *s);
 extern  void    MR_printheap(FILE *fp, const MR_Word *h);

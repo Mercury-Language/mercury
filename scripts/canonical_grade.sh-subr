@@ -225,9 +225,9 @@ case ${debug},${decl_debug},${ss_debug} in
         ;;
 esac
 
-case ${ll_debug} in
+case ${c_debug} in
     true)
-        GRADE="${GRADE}.ll_debug"
+        GRADE="${GRADE}.c_debug"
         ;;
     *)
         ;;

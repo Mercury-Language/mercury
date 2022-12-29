@@ -497,7 +497,7 @@ case $HOST in
         INSTALL_GRADE="hlc.gc"
         INSTALL_LIBGRADES="hlc.gc       \
             hlc.gc.trseg                \
-            hlc.gc.trseg.ll_debug       \
+            hlc.gc.trseg.c_debug        \
             hlc.gc.trseg.prof           \
             hlc.gc.trseg.memprof        \
             none.gc                     \
@@ -534,7 +534,7 @@ case $HOST in
             hlc.gc.trseg                \
             hlc.gc.trseg.prof           \
             hlc.gc.trseg.memprof        \
-            hlc.gc.trseg.ll_debug       \
+            hlc.gc.trseg.c_debug        \
             asm_fast.gc.tr              \
             asm_fast.par.gc             \
             asm_fast.gc.trseg           \

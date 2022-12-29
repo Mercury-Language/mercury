@@ -51,7 +51,7 @@ Grade options:
 	--debug
 	--decl-debug
 	--ss-debug
-	--low-level-debug
+	--c-debug-grade
 	--extend-stacks-when-needed
 	--stack-segments
 	--use-regions
@@ -84,7 +84,7 @@ single_prec_float=false
 debug=false
 decl_debug=false
 ss_debug=false
-ll_debug=false
+c_debug_grade=false
 extend_stacks=false
 stack_segments=false
 use_regions=false

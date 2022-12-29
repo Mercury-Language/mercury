@@ -616,9 +616,9 @@ MR_create_new_zone(size_t desired_size, size_t redzone_size, size_t offset)
 
     zone->MR_zone_top = (MR_Word *) ((char *) base + total_size);
     zone->MR_zone_min = (MR_Word *) ((char *) base + offset);
-#ifdef  MR_LOWLEVEL_DEBUG
+#ifdef  MR_DEBUG_THE_RUNTIME
     zone->MR_zone_max = zone->MR_zone_min;
-#endif  // MR_LOWLEVEL_DEBUG
+#endif  // MR_DEBUG_THE_RUNTIME
 
     MR_setup_redzones(zone);
 
@@ -698,9 +698,9 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
     zone->MR_zone_bottom = new_base;
     zone->MR_zone_top = (MR_Word *) ((char *) new_base + new_total_size);
     zone->MR_zone_min = (MR_Word *) ((char *) new_base + offset);
-#ifdef  MR_LOWLEVEL_DEBUG
+#ifdef  MR_DEBUG_THE_RUNTIME
     zone->MR_zone_max = zone->MR_zone_min;
-#endif  // MR_LOWLEVEL_DEBUG
+#endif  // MR_DEBUG_THE_RUNTIME
 
     MR_setup_redzones(zone);
 

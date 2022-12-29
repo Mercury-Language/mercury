@@ -3689,13 +3689,9 @@ if test "$enable_debug_grades" = yes; then
     fi
 fi
 
-# Add grades that support debugging using gdb.
+# Add grades that support debugging using gdb and other debuggers for C.
 if test "$enable_hlc_gdb_grades" = yes; then
-    # XXX We should rename the ".ll_debug" grade component,
-    # possibly to ".gdb_debug". We could add this is a synonym at first,
-    # and then stop accepting ".ll_debug", but we could just straight up
-    # do a non-bootstrapped replacement.
-    LIBGRADES="$LIBGRADES hlc.gcd.ll_debug"
+    LIBGRADES="$LIBGRADES hlc.gcd.c_debug"
 fi
 
 # Add rbmm grades.

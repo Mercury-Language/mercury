@@ -40,7 +40,7 @@ static void     MR_assign_csd(MR_CallSiteDynamic *csd1,
                     const MR_CallSiteDynamic *csd2);
 #endif
 
-#ifdef MR_LOWLEVEL_DEBUG
+#ifdef MR_DEBUG_THE_RUNTIME
 static void     MR_count_call(FILE *fp, const MR_Code *proc);
 static void     MR_print_ordinary_regs(FILE *fp);
 static void     MR_do_watches(FILE *fp);
@@ -95,7 +95,7 @@ MR_debug_tag_offset_incr_hp_base_msg(FILE *fp, MR_Word ptr,
 
 #endif // MR_DEBUG_HEAP_ALLOC
 
-#ifdef MR_LOWLEVEL_DEBUG
+#ifdef MR_DEBUG_THE_RUNTIME
 
 void
 MR_mkframe_msg(FILE *fp, const char *predname)
@@ -450,7 +450,7 @@ MR_decr_sp_msg(FILE *fp, MR_Word val, const MR_Word *addr)
     MR_printdetstack(fp, addr);
 }
 
-#endif // defined(MR_LOWLEVEL_DEBUG)
+#endif // defined(MR_DEBUG_THE_RUNTIME)
 
 #ifdef MR_DEBUG_GOTOS
 
@@ -498,7 +498,7 @@ MR_reg_msg(FILE *fp)
 
 ////////////////////////////////////////////////////////////////////////////
 
-#ifdef MR_LOWLEVEL_DEBUG
+#ifdef MR_DEBUG_THE_RUNTIME
 
 // Debugging printing tools.
 

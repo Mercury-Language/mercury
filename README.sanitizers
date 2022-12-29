@@ -7,7 +7,7 @@ and above. We have tested with gcc 5.3.0.
 
 Only high-level C grades work with the sanitizers enabled.
 
-For best results, use a `.ll_debug' grade or otherwise enable C debugging.
+For best results, use a `.c_debug' grade or otherwise enable C debugging.
 
 clang does not work yet (tested version 3.8.0). It seemingly does not
 terminate when compiling certain files with UndefinedBehaviorSanitizer,

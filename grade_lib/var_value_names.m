@@ -113,7 +113,7 @@ solver_var_value_name("no_trail",               svalue_trail_no).
 solver_var_value_name("trail",                  svalue_trail_yes).
 
 solver_var_value_name("no_mm",                  svalue_minmodel_no).
-solver_var_value_name("mm_stack_copy",      
+solver_var_value_name("mm_stack_copy",
                                     svalue_minmodel_stack_copy).
 solver_var_value_name("mm_stack_copy_debug",
                                     svalue_minmodel_stack_copy_debug).

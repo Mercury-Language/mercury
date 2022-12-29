@@ -102,11 +102,11 @@ MR_do_insert_entry_label(const char *name, MR_Code *addr,
     }
 #endif  // MR_MPROF_PROFILE_CALLS
 
-#ifdef  MR_LOWLEVEL_DEBUG
+#ifdef  MR_DEBUG_THE_RUNTIME
     if (MR_progdebug) {
-        // We can't assume that MR_LOWLEVEL_DEBUG was turned on in the code
+        // We can't assume that MR_DEBUG_THE_RUNTIME was turned on in the code
         // that generated the call to this function just because
-        // MR_LOWLEVEL_DEBUG is turned on here.
+        // MR_DEBUG_THE_RUNTIME is turned on here.
 
         if (name != NULL) {
             printf("recording entry label %s at %p\n", name, addr);
@@ -114,7 +114,7 @@ MR_do_insert_entry_label(const char *name, MR_Code *addr,
             printf("recording entry label at %p\n", addr);
         }
     }
-#endif  // MR_LOWLEVEL_DEBUG
+#endif  // MR_DEBUG_THE_RUNTIME
 
 #ifdef  MR_NEED_ENTRY_LABEL_ARRAY
     if (entry_array_next >= entry_array_size) {
@@ -235,11 +235,11 @@ MR_insert_internal_label(const char *name, MR_Code *addr,
     internal->MR_internal_layout = label_layout;
     internal->MR_internal_name = name;
 
-#ifdef  MR_LOWLEVEL_DEBUG
+#ifdef  MR_DEBUG_THE_RUNTIME
     if (MR_progdebug) {
-        // We can't assume that MR_LOWLEVEL_DEBUG was turned on in the code
+        // We can't assume that MR_DEBUG_THE_RUNTIME was turned on in the code
         // that generated the call to this function just because
-        // MR_LOWLEVEL_DEBUG is turned on here.
+        // MR_DEBUG_THE_RUNTIME is turned on here.
 
         if (name != NULL) {
             printf("inserting internal label %s at %p\n", name, addr);
@@ -277,7 +277,7 @@ MR_lookup_internal_by_addr(const MR_Code *addr)
     MR_do_init_label_tables();
     MR_do_init_modules();
 
-#ifdef  MR_LOWLEVEL_DEBUG
+#ifdef  MR_DEBUG_THE_RUNTIME
     if (MR_progdebug) {
         printf("looking for internal label at %p\n", addr);
     }

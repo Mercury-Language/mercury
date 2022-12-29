@@ -113,7 +113,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         )
     ;
         GradeStructure = grade_llds(GccConf, StackLen, LLDSTSMinModel,
-            MercFile, LowTagBits, MercFloat, TargetDebug),
+            MercFile, LowTagBits, MercFloat),
 
         BinaryCompatStrs = binary_compat_version_to_strs(WhichGradeString),
         ( GccConf = grade_var_gcc_conf_none,        BaseStr = "none"
@@ -231,7 +231,6 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         ; StackLen = grade_var_stack_len_segments,   StackLenStrs = ["stseg"]
         ; StackLen = grade_var_stack_len_extend,     StackLenStrs = ["exts"]
         ),
-        TargetDebugStrs = target_debug_to_strs(TargetDebug),
         LowTagBitStrs = low_tag_bits_use_to_strs(WhichGradeString, LowTagBits),
         MercFloatStrs = merc_float_to_strs(WhichGradeString, MercFloat),
         MercFileStrs = merc_file_to_strs(WhichGradeString, MercFile),
@@ -241,8 +240,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             ++ LowTagBitStrs ++ MercFloatStrs ++ ThreadSafeStrs ++ GcStrs
             ++ LLDSPerfProfStrs ++ TermSizeProfStrs
             ++ TrailStrs ++ MinimalModelStrs ++ MercFileStrs
-            ++ DebugStrs ++ TargetDebugStrs
-            ++ StackLenStrs ++ RBMMStrs ++ TScopeProfStrs
+            ++ DebugStrs ++ StackLenStrs ++ RBMMStrs ++ TScopeProfStrs
     ;
         GradeStructure = grade_mlds(MLDSTarget, TargetDebug),
         TargetDebugStrs = target_debug_to_strs(TargetDebug),
@@ -384,7 +382,7 @@ ssdebug_to_strs(grade_string_link_check, grade_var_ssdebug_yes) =
 :- func target_debug_to_strs(grade_var_target_debug) = list(string).
 
 target_debug_to_strs(grade_var_target_debug_no) = [].
-target_debug_to_strs(grade_var_target_debug_yes) = ["ll_debug"].
+target_debug_to_strs(grade_var_target_debug_yes) = ["c_debug"].
 
 :- func mprof_to_str(grade_var_mprof_time, grade_var_mprof_memory) = string.
 
@@ -506,9 +504,9 @@ accumulate_grade_component_map_loop([ComponentStr | ComponentStrs],
     ( if
         translate_grade_component(ComponentStr, HeadSetting, TailSettings)
     then
-        apply_setting(ComponentStr, HeadSetting, 
+        apply_setting(ComponentStr, HeadSetting,
             !ComponentMap, !RevErrorMsgs),
-        list.foldl2(apply_setting(ComponentStr), TailSettings, 
+        list.foldl2(apply_setting(ComponentStr), TailSettings,
             !ComponentMap, !RevErrorMsgs)
     else
         string.format("unknown grade component %s",
@@ -721,17 +719,23 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
             [svar_target - svalue_target_c,
             svar_backend - svalue_backend_llds]
     ;
-        ComponentStr = "ll_debug",
+        ComponentStr = "c_debug",
         Setting = svar_target_debug - svalue_target_debug_yes,
-        Settings = []
+        Settings =
+            [svar_target - svalue_target_c,
+            svar_backend - svalue_backend_mlds]
     ;
         ComponentStr = "stseg",
         Setting = svar_stack_len - svalue_stack_len_segments,
-        Settings = []
+        Settings =
+            [svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "exts",
         Setting = svar_stack_len - svalue_stack_len_extend,
-        Settings = []
+        Settings =
+            [svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "rbmm",
         Setting = svar_rbmm - svalue_rbmm_yes,

@@ -303,9 +303,9 @@ string_to_grade_component(FilterDesc, Comp, !Comps, !Specs) :-
     % Emits an error if `GradeString' cannot be converted into a list
     % of grade component strings.
     %
-:- pred filter_grade(pred(list(string), list(string))
-    ::in(pred(in, in) is semidet), list(string)::in,
-    string::in, list(string)::in, list(string)::out,
+:- pred filter_grade(
+    pred(list(string), list(string))::in(pred(in, in) is semidet),
+    list(string)::in, string::in, list(string)::in, list(string)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 filter_grade(FilterPred, CondComponents, GradeString, !Grades, !Specs) :-
@@ -348,9 +348,10 @@ must_not_contain(OmitComponents, GradeComponents) :-
 grade_string_to_comp_strings(GradeString, MaybeGrade, !Specs) :-
     ( if
         split_grade_string(GradeString, ComponentStrs),
-        StrToComp = ( pred(Str::in, Str::out) is semidet :-
-            grade_component_table(Str, _, _, _, _)
-        ),
+        StrToComp =
+            ( pred(Str::in, Str::out) is semidet :-
+                grade_component_table(Str, _, _, _, _)
+            ),
         list.map(StrToComp, ComponentStrs, Components0)
     then
         list.sort_and_remove_dups(Components0, Components),
@@ -673,9 +674,9 @@ grade_component_table("debug", comp_trace,
 grade_component_table("ssdebug", comp_trace,
     [source_to_source_debug - bool(yes)], no, yes).
 
-    % Low (target) level debugging components.
-grade_component_table("ll_debug", comp_lowlevel,
-    [low_level_debug - bool(yes), target_debug - bool(yes)], no, yes).
+    % Target level debugging components.
+grade_component_table("c_debug", comp_lowlevel,
+    [c_debug_grade - bool(yes)], no, yes).
 
     % Stack extension components.
 grade_component_table("exts", comp_stack_extend,
@@ -739,7 +740,7 @@ grade_start_values(stack_segments - bool(no)).
 grade_start_values(use_regions - bool(no)).
 grade_start_values(use_regions_debug - bool(no)).
 grade_start_values(use_regions_profiling - bool(no)).
-grade_start_values(low_level_debug - bool(no)).
+grade_start_values(c_debug_grade - bool(no)).
 
 :- pred split_grade_string(string::in, list(string)::out) is semidet.
 

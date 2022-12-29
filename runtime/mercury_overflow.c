@@ -49,7 +49,7 @@ MR_fatal_zone_error(MR_OverflowZone ptr_kind,
     const MR_MemoryZone *zone, const MR_MemoryZones *zones,
     const char *error, const char *where)
 {
-#ifdef MR_LOWLEVEL_DEBUG
+#ifdef MR_DEBUG_THE_RUNTIME
     fprintf(stderr, "fatal zone error\n%s: ", ptr_name);
     switch (ptr_kind) {
 

@@ -11,8 +11,8 @@
 #   An `sh' subroutine for parsing grade-related options.
 #   Used by the `ml', `mgnuc' and `c2init' scripts.
 #
-#   The code here should be inserted in the case statement in a script's
-#   option-parsing loop.
+#   The code here is intended to be inserted into the case statement
+#   in a script's option-parsing loop.
 #
 # IMPORTANT: any changes to the handling of grades here may also require
 # changes to all the files indicated by runtime/mercury_grade.h.
@@ -219,11 +219,11 @@
         ss_debug=false
         ;;
 
-    --low-level-debug)
-        ll_debug=true
+    --c-debug-grade)
+        c_debug_grade=true
         ;;
-    --no-low-level-debug)
-        ll_debug=false
+    --no-c-debug-grade)
+        c_debug_grade=false
         ;;
 
     --extend-stacks-when-needed)
@@ -290,7 +290,7 @@
         debug=false
         decl_debug=false
         ss_debug=false
-        ll_debug=false
+        c_debug_grade=false
         extend_stacks=false
         stack_segments=false
         use_regions=false
@@ -489,8 +489,8 @@
                     ss_debug=true
                     ;;
 
-                ll_debug)
-                    ll_debug=true
+                c_debug)
+                    c_debug_grade=true
                     ;;
 
                 exts)

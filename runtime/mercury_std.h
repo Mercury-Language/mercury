@@ -83,7 +83,7 @@ typedef char        MR_small_bool;
 
 // For speed, turn assertions off, unless low-level debugging is enabled.
 
-#ifdef MR_LOWLEVEL_DEBUG
+#ifdef MR_DEBUG_THE_RUNTIME
   #define MR_assert(ASSERTION)  assert(ASSERTION)
 #elif defined(MR_MSVC)
   // This marks an MR_assert(0) as an unreachable branch. This also silences

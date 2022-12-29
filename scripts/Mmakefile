@@ -134,6 +134,7 @@ all: $(CONF_FILES) $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS) test_mdbrc
 parse_ml_options.sh-subr mgnuc canonical_grade: init_grade_options.sh-subr
 parse_ml_options.sh-subr mgnuc canonical_grade: parse_grade_options.sh-subr
 parse_ml_options.sh-subr mgnuc canonical_grade: final_grade_options.sh-subr
+mgnuc: mgnuc_file_opts.sh-subr
 ml c2init: parse_ml_options.sh-subr
 ml c2init canonical_grade: canonical_grade.sh-subr
 mercury_config: ../configure.help

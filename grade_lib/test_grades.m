@@ -155,7 +155,7 @@ parse_installed_grade(SolverInfo0, GradeStr, InstalledGrade) :-
         unexpected($pred, CombinedErrorMsg)
     ),
     SolverVarMap0 = SolverInfo0 ^ si_solver_var_map,
-    map.foldl(assign_var_in_map(npw_config), SpecSuccMap, 
+    map.foldl(assign_var_in_map(npw_config), SpecSuccMap,
         SolverVarMap0, SolverVarMap),
     SolverInfo = SolverInfo0 ^ si_solver_var_map := SolverVarMap,
     solve_absolute(SolverInfo, _SolveCounts, Soln),
@@ -349,14 +349,14 @@ run_test(SolverInfo0, InstalledSets, TestSpec,
         io.format("    ABS GRADE USER %s\n", [s(UserGradeStr)], !IO),
         io.format("    ABS GRADE LINK CHECK %s\n", [s(LinkGradeStr)], !IO),
 
-        list.foldl2(run_installed_grade_set_test(SolverInfo0), InstalledSets, 
+        list.foldl2(run_installed_grade_set_test(SolverInfo0), InstalledSets,
             !RelSolveCountStats, !IO)
     ).
 
 :- pred run_installed_grade_set_test(solver_info::in, installed_grade_set::in,
     solve_count_stats::in, solve_count_stats::out, io::di, io::uo) is det.
 
-run_installed_grade_set_test(SolverInfo, InstalledSet, 
+run_installed_grade_set_test(SolverInfo, InstalledSet,
         !RelSolveCountStats, !IO) :-
     InstalledSet = installed_grade_set(SetName, InstalledGrades),
     solve_best_installed_grade(SolverInfo, should_commit, InstalledGrades,

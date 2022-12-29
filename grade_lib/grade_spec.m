@@ -236,7 +236,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% A requirement is a named implication of the form
+% A requirement is an implication of the form
 %
 %   (IfVar `being` IfValue)
 %       `implies_that`
@@ -261,6 +261,9 @@
 
 :- type implication_spec
     --->    implies_that(if_spec, then_spec).
+
+% Besides the implication, each requirement also has an explanation,
+% which is a short sentence describing the rationale for the implication.
 
 :- type requirement_spec
     --->    requirement_spec(
@@ -431,6 +434,16 @@ init_requirement_specs = [
         "Using the LLDS backend requires targeting C.",
         (svar_backend `being` svalue_backend_llds) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
+    ),
+    requirement_spec(
+        "The .c_debug grade component is not supported by the LLDS backend.",
+        % We could possibly support it for grades that do not use any gcc
+        % extensions to C, but invoking gdb on object code that uses
+        % e.g. gcc extensions to execute gotos between modules without going
+        % through function prologues/epilogues is not going to be
+        % remotely useful.
+        (svar_backend `being` svalue_backend_llds) `implies_that`
+        (svar_target_debug `is_one_of` [svalue_target_debug_no])
     ),
 
     requirement_spec(
