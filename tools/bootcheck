@@ -637,13 +637,17 @@ fi
 
 #-----------------------------------------------------------------------------#
 
+SED=${SED:-sed}
+
+#-----------------------------------------------------------------------------#
+
 # Turn off the debugger, since accidentally leaving it on will result
 # in user interaction every time we invoke any version of the compiler
 # that was compiled with tracing. This has happened to me accidentally
 # one too many times - zs.
 if echo "${MERCURY_OPTIONS}" | grep '\-Di' > /dev/null
 then
-    MERCURY_OPTIONS=$(echo "${MERCURY_OPTIONS}" | sed -e 's/-Di//')
+    MERCURY_OPTIONS=$(echo "${MERCURY_OPTIONS}" | $SED -e 's/-Di//')
     export MERCURY_OPTIONS
 fi
 
@@ -2056,11 +2060,11 @@ then
 
         cp "${root}"/doc/mdb_command_test.inp tests/debugger
 
-        sed -e "s:@WORKSPACE@:${WORKSPACE}:" \
+        ${SED} -e "s:@WORKSPACE@:${WORKSPACE}:" \
             < tests/WS_FLAGS.ws \
             > tests/WS_FLAGS
 
-        sed -e "s:@WORKSPACE@:${WORKSPACE}:" \
+        ${SED} -e "s:@WORKSPACE@:${WORKSPACE}:" \
             < tests/.mgnuc_copts.ws \
             > tests/.mgnuc_copts
 
@@ -2320,7 +2324,7 @@ cat /dev/null > "${tests_dir}"/EXPECT_FAIL_TESTS
 
 if test -s "${tests_dir}"/FAILED_TESTS_SUMMARY
 then
-    sed -e 's/ .*//' < "${tests_dir}"/FAILED_TESTS_SUMMARY \
+    ${SED} -e 's/ .*//' < "${tests_dir}"/FAILED_TESTS_SUMMARY \
         > "${tests_dir}"/FAIL_TESTS
 
     if test -f "${tests_dir}"/EXPECT_FAIL_TESTS.all_grades
@@ -2414,13 +2418,13 @@ then
         1)
             echo "one expected test case failure:"
             echo
-            sed -e 's/^/    /' < "${tests_dir}"/EXPECTED_FAILED_TESTS
+            ${SED} -e 's/^/    /' < "${tests_dir}"/EXPECTED_FAILED_TESTS
             echo
             ;;
         *)
             echo "${num_expected_failures} expected test case failures:"
             echo
-            sed -e 's/^/    /' < "${tests_dir}"/EXPECTED_FAILED_TESTS
+            ${SED} -e 's/^/    /' < "${tests_dir}"/EXPECTED_FAILED_TESTS
             echo
             ;;
     esac
@@ -2432,13 +2436,13 @@ then
         1)
             echo "one unexpected test case failure:"
             echo
-            sed -e 's/^/    /' < "${tests_dir}"/UNEXPECTED_FAILED_TESTS
+            ${SED} -e 's/^/    /' < "${tests_dir}"/UNEXPECTED_FAILED_TESTS
             echo
             ;;
         *)
             echo "${num_unexpected_failures} unexpected test case failures:"
             echo
-            sed -e 's/^/    /' < "${tests_dir}"/UNEXPECTED_FAILED_TESTS
+            ${SED} -e 's/^/    /' < "${tests_dir}"/UNEXPECTED_FAILED_TESTS
             echo
             ;;
     esac
