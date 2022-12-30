@@ -647,7 +647,7 @@ SED=${SED:-sed}
 # one too many times - zs.
 if echo "${MERCURY_OPTIONS}" | grep '\-Di' > /dev/null
 then
-    MERCURY_OPTIONS=$(echo "${MERCURY_OPTIONS}" | $SED -e 's/-Di//')
+    MERCURY_OPTIONS=$(echo "${MERCURY_OPTIONS}" | ${SED} -e 's/-Di//')
     export MERCURY_OPTIONS
 fi
 
@@ -1104,6 +1104,8 @@ then
                 ;;
         esac
 
+        # If you update this list, you will probably also need to update
+        # the list of *_FLAGS files just above.
         if (cd ${stage2dir} && \
             ${MMAKE} ${mmake_opts} \
                 dep_library \
