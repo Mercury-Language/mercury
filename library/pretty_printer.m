@@ -1741,7 +1741,7 @@ array_to_doc_loop(A, I) = Doc :-
     ( if I > array.max(A) then
         Doc = str("")
     else
-        array.lookup(A, I, Elem),
+        array.unsafe_lookup(A, I, Elem),
         Doc = docs([
             format_arg(format(Elem)),
             ( if I = array.max(A) then
