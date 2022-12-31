@@ -1379,7 +1379,7 @@ then
         for rmdir in ${objdirs}
         do
             cd "${root}/${stage2dir}/${rmdir}"
-            /bin/rm -f *.o *.pic_o
+            /bin/rm -f -- *.o *.pic_o
         done
 
         if ${check_namespace}
