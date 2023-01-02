@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2012 The University of Melbourne.
-// Copyright (C) 2013-2022 The Mercury team.
+// Copyright (C) 2013-2023 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This file contains the top level of the code of the internal, in-process
@@ -257,7 +257,7 @@ MR_trace_event_internal(MR_TraceCmdInfo *cmd, MR_bool interactive,
 static const char MR_trace_banner[] =
 "Melbourne Mercury Debugger, mdb version %s.\n\
 Copyright 1998-2012 The University of Melbourne.\n\
-Copyright 2013-2022 The Mercury team.\n\
+Copyright 2013-2023 The Mercury team.\n\
 mdb is free software; there is absolutely no warranty for mdb.\n";
 
 static FILE *
