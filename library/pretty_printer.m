@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 expandtab ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2009-2011 The University of Melbourne
-% Copyright (C) 2014-2016, 2018, 2020, 2022 The Mercury team.
+% Copyright (C) 2014-2016, 2018, 2020, 2022-2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -216,7 +216,8 @@
 :- pred set_formatter(string::in, string::in, int::in, formatter::in,
     formatter_map::in, formatter_map::out) is det.
 
-    % Values of this type identify a type that has a entry in a formatter_map.
+    % Values of this type identify a type that has an entry in a formatter_map.
+    %
 :- type formatter_map_entry
     --->    formatter_map_entry(string, string, int).
             % ModuleName.TypeName/TypeArity.
