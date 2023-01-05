@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017-2022 The Mercury team.
+% Copyright (C) 2017-2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -81,7 +81,7 @@
 
     % cast_from_int8(I8) = I32:
     %
-    % Convert an int8 to a int32.
+    % Convert an int8 to an int32.
     % Always succeeds, and yields a result that is mathematically equal to I8.
     %
 :- func cast_from_int8(int8) = int32.
@@ -101,7 +101,7 @@
 
     % cast_from_int16(I16) = I32:
     %
-    % Convert an int16 to a int32.
+    % Convert an int16 to an int32.
     % Always succeeds, and yields a result that is mathematically equal to I16.
     %
 :- func cast_from_int16(int16) = int32.
@@ -121,7 +121,7 @@
 
     % cast_from_int64(I64) = I32:
     %
-    % Convert an int64 to a int32.
+    % Convert an int64 to an int32.
     % Always succeeds, but will yield a result that is mathematically equal
     % to I64 only if I64 is in [-(2^31), 2^31 - 1].
     %

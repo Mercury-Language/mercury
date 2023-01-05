@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2017-2021 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -880,7 +880,7 @@ native_format_float(_, _) = _ :-
     % by default.
     error("string.native_format_float/2 not defined").
 
-    % Create a string from a int using the format string.
+    % Create a string from an int using the format string.
     % Note it is the responsibility of the caller to ensure that the
     % format string is valid.
     %

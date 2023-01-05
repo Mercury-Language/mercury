@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1995,1997,1999-2000,2002-2012 The University of Melbourne.
-% Copyright (C) 2016-2018 The Mercury team.
+% Copyright (C) 2016-2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -136,7 +136,7 @@
     % Is the path name syntactically an absolute path
     % (this does not check whether the path exists).
     %
-    % An path is absolute iff it begins with a root directory
+    % A path is absolute iff it begins with a root directory
     % (see path_name_is_root_directory).
     %
 :- pred path_name_is_absolute(string::in) is semidet.

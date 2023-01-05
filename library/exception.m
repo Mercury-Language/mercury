@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2008, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -198,7 +198,7 @@
     % no matter whether P succeeds or throws an exception.
     % PRes is bound to the output of P.
     % CleanupRes is bound to the output of Cleanup.
-    % A exception thrown by P will be rethrown after Cleanup
+    % An exception thrown by P will be rethrown after Cleanup
     % is called, unless Cleanup throws an exception.
     % This predicate performs the same function as the `finally'
     % clause (`try {...} finally {...}') in languages such as Java.
