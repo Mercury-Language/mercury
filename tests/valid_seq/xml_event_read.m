@@ -12,7 +12,7 @@
 % xml_read.opt:018:   in function result term of clause head:
 % xml_read.opt:018:   error: undefined symbol `xml_read.event'/1.
 %
-% This was caused by the direct_arg caluse for the type xml_read_or_eof
+% This was caused by the direct_arg clause for the type xml_read_or_eof
 % not escaping the operator "event".
 
 :- module xml_event_read.
