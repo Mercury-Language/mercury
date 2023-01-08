@@ -1147,42 +1147,33 @@ add_cartesian_product(KeySet1, KeySet2, !Rtc) :-
 %---------------------------------------------------------------------------%
 
 traverse(Graph, ProcessVertex, ProcessEdge, !Acc) :-
-    digraph.keys(Graph, VertexKeys),
-    digraph.traverse_vertex_list(Graph, ProcessVertex, ProcessEdge,
-        VertexKeys, !Acc).
+    VertexMap = Graph ^ vertex_map,
+    bimap.foldl(traverse_vertex(Graph, ProcessVertex, ProcessEdge),
+        VertexMap, !Acc).
 
-:- pred digraph.traverse_vertex_list(digraph(T),
-    pred(T, A, A), pred(T, T, A, A), list(digraph_key(T)), A, A).
-:- mode digraph.traverse_vertex_list(in, pred(in, di, uo) is det,
-    pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode digraph.traverse_vertex_list(in, pred(in, in, out) is det,
-    pred(in, in, in, out) is det, in, in, out) is det.
+:- pred traverse_vertex(digraph(T),
+    pred(T, A, A), pred(T, T, A, A), T, digraph_key(T), A, A).
+:- mode traverse_vertex(in, pred(in, di, uo) is det,
+    pred(in, in, di, uo) is det, in, in, di, uo) is det.
+:- mode traverse_vertex(in, pred(in, in, out) is det,
+    pred(in, in, in, out) is det, in, in, in, out) is det.
 
-traverse_vertex_list(_, _, _, [], !Acc).
-traverse_vertex_list(Graph, ProcessVertex, ProcessEdge,
-        [VertexKey | VertexKeys], !Acc) :-
-    % XXX avoid the sparse_bitset.to_sorted_list here
-    % (difficult to do using sparse_bitset.foldl because
-    % traverse_children has multiple modes).
-    Vertex = digraph.lookup_vertex(Graph, VertexKey),
+traverse_vertex(Graph, ProcessVertex, ProcessEdge, Vertex, VertexKey, !Acc) :-
     ProcessVertex(Vertex, !Acc),
-    ChildrenKeys = set.to_sorted_list(digraph.lookup_from(Graph, VertexKey)),
-    digraph.traverse_children(Graph, ProcessEdge, Vertex, ChildrenKeys, !Acc),
-    digraph.traverse_vertex_list(Graph, ProcessVertex, ProcessEdge,
-        VertexKeys, !Acc).
+    digraph.lookup_key_set_from(Graph, VertexKey, ChildrenKeys),
+    sparse_bitset.foldl(traverse_child(Graph, ProcessEdge, Vertex),
+        ChildrenKeys, !Acc).
 
-:- pred digraph.traverse_children(digraph(T), pred(T, T, A, A),
-    T, list(digraph_key(T)), A, A).
-:- mode digraph.traverse_children(in, pred(in, in, di, uo) is det,
+:- pred traverse_child(digraph(T), pred(T, T, A, A),
+    T, digraph_key(T), A, A).
+:- mode traverse_child(in, pred(in, in, di, uo) is det,
     in, in, di, uo) is det.
-:- mode digraph.traverse_children(in, pred(in, in, in, out) is det,
+:- mode traverse_child(in, pred(in, in, in, out) is det,
     in, in, in, out) is det.
 
-traverse_children(_, _, _, [], !Acc).
-traverse_children(Graph, ProcessEdge, Parent, [ChildKey | ChildKeys], !Acc) :-
+traverse_child(Graph, ProcessEdge, Parent, ChildKey, !Acc) :-
     Child = digraph.lookup_vertex(Graph, ChildKey),
-    ProcessEdge(Parent, Child, !Acc),
-    digraph.traverse_children(Graph, ProcessEdge, Parent, ChildKeys, !Acc).
+    ProcessEdge(Parent, Child, !Acc).
 
 %---------------------------------------------------------------------------%
 :- end_module digraph.
