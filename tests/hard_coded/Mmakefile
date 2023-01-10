@@ -100,6 +100,7 @@ ORDINARY_PROGS = \
 	dense_lookup_switch_non \
 	dense_lookup_switch_non2 \
 	det_in_semidet_cntxt \
+	digraph_tc \
 	dir_fold \
 	direct_arg_partial_inst \
 	direct_arg_partial_inst2 \
