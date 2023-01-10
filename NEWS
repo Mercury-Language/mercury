@@ -156,6 +156,8 @@ Changes to the Mercury standard library
    - The `digraph_key(T)` type is now an instance of the `uenum` typeclass,
      and is no longer an instance of the `enum` typeclass.
 
+* We have fixed the implementations of `digraph.tc` and `digraph.rtc`.
+
 ### Changes to the `enum` module
 
 * The following typeclass has been added:
