@@ -667,6 +667,12 @@ Changes to the Mercury standard library
 
    - pred `empty/1`
 
+### Changes to the `std_util` module
+
+* We have changed the behaviour of `pow/3` so that it throws an
+  exception if it is called with a negative integer as its second
+  argument.
+
 ### Changes to the `string` module
 
 * The following predicate has been added:

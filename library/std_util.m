@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2006, 2008 The University of Melbourne.
-% Copyright (C) 2016, 2018 The Mercury Team.
+% Copyright (C) 2016, 2018, 2020, 2022-2023 The Mercury Team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -37,6 +37,7 @@
     % pow(F, N, X) = F^N(X)
     %
     % Function exponentiation.
+    % Throws an exception if N is negative.
     %
 :- func pow(func(T) = T, int, T) = T.
 
@@ -67,6 +68,7 @@
 :- implementation.
 
 :- import_module int.
+:- import_module require.
 
 %---------------------------------------------------------------------------%
 
@@ -77,7 +79,16 @@ converse(F, X, Y) =
     F(Y, X).
 
 pow(F, N, X) =
-    ( if N = 0 then X else pow(F, N - 1, F(X)) ).
+    ( if N < 0 then
+        func_error($pred, "N is negative")
+    else
+        do_pow(F, N, X)
+    ).
+
+:- func do_pow(func(T) = T, int, T) = T.
+
+do_pow(F, N, X) =
+    ( if N = 0 then X else do_pow(F, N - 1, F(X)) ).
 
 id(X) = X.
 

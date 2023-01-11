@@ -815,6 +815,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		cmp_uint8 \
 		dir_test \
 		final_excp \
+		func_exp \
 		ho_array_ops \
 		init_excp \
 		int8_static_data \

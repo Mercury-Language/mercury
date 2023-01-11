@@ -1,0 +1,4 @@
+pow(double, -1, 1) = software_error("function `std_util.pow\'/3: N is negative")
+pow(double, 0, 1) = 1
+pow(double, 1, 1) = 2
+pow(double, 10, 1) = 1024
