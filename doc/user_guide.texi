@@ -201,14 +201,14 @@ generates both @file{.int} and @file{.int2} files.)
 @findex --make-private-interface
 @findex --make-optimization-interface
 @findex --make-transitive-optimization-interface
-@findex --make-trans-opt-int
+@findex --make-trans-opt
 Files whose names end in @file{.opt} are used for inter-module optimization,
 and are created using the @samp{--make-optimization-interface}
 (or @samp{--make-opt-int}) option.
 Similarly, files whose name ends in @file{.trans_opt}
 are used for transitive inter-module optimization,
 and are created using the @samp{--make-transitive-optimization-interface}
-(or @samp{--make-trans-opt-int}) option.
+(or @samp{--make-trans-opt}) option.
 
 Since the interface of a module changes less often than its implementation,
 the @file{.int}, @file{.int0}, @file{.int2}, @file{.int3}, @file{.opt},
