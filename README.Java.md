@@ -12,7 +12,7 @@ The Java backend requires Java SE 8 or higher -- older versions of Java are
 Contents
 --------
 
-* Prerequisites.
+* Prerequisites
 * Installing the `java` grade
 * Compiling programs with the `java` grade
 * Running programs with the `java` grade
