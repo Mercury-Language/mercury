@@ -1070,7 +1070,7 @@ tc(G, Tc) :-
     % We use this procedure:
     %
     % - Compute the reflexive transitive closure (denoted G*), which is
-    %   the reflexive closure of the transitive closure of G (denoted G+).
+    %   the reflexive closure of G+, the transitive closure of G.
     %
     % - Find the "fake reflexives", that is, the set of vertices x for which
     %   (x,x) is not an edge in G+. This is done by noting that G+ = G . G*
