@@ -113,21 +113,21 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals, OpModeAugment,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     (
         WriteDFile = do_not_write_d_file,
-        MaybeTransOptDeps = no
+        MaybeDFileTransOptDeps = no
     ;
         WriteDFile = write_d_file,
-        % We need the MaybeTransOptDeps when creating the .trans_opt file.
-        % However, we *also* need the MaybeTransOptDeps when writing out
-        % .d files. In the absence of MaybeTransOptDeps, we will write out
+        % We need the MaybeDFileTransOptDeps when creating the .trans_opt file.
+        % However, we *also* need the MaybeDFileTransOptDeps when writing out
+        % .d files. In the absence of MaybeDFileTransOptDeps, we will write out
         % a .d file that does not include the trans_opt_deps mmake rule,
         % which will require an "mmake depend" before the next rebuild.
         maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream,
-            Globals, ModuleName, MaybeTransOptDeps, !IO)
+            Globals, ModuleName, MaybeDFileTransOptDeps, !IO)
     ),
 
     % Errors in .opt and .trans_opt files result in software errors.
     maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
-        OpModeAugment, Verbose, MaybeTransOptDeps, IntermodError,
+        OpModeAugment, Verbose, MaybeDFileTransOptDeps, IntermodError,
         Baggage0, Baggage1, AugCompUnit0, AugCompUnit1,
         !HaveReadModuleMaps, !IO),
     MaybeTimestampMap = Baggage1 ^ mb_maybe_timestamp_map,
@@ -226,12 +226,21 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals, OpModeAugment,
         WriteDFile = do_not_write_d_file
     ;
         WriteDFile = write_d_file,
-        module_info_get_all_deps(HLDS0, AllDeps),
         % XXX When creating the .d and .module_dep files, why are we using
         % BurdenedAugCompUnit0 instead of BurdenedAugCompUnit1?
         BurdenedAugCompUnit0 = burdened_aug_comp_unit(Baggage0, AugCompUnit0),
+        module_info_get_all_deps(HLDS0, AllDeps),
+        (
+            MaybeDFileTransOptDeps = yes(DFileTransOptDepsList),
+            set.list_to_set(DFileTransOptDepsList, DFileTransOptDeps),
+            TransOptRuleInfo = trans_opt_deps_from_d_file(DFileTransOptDeps),
+            MaybeInclTransOptRule = include_trans_opt_rule(TransOptRuleInfo)
+        ;
+            MaybeDFileTransOptDeps = no,
+            MaybeInclTransOptRule = do_not_include_trans_opt_rule
+        ),
         write_dependency_file(Globals, BurdenedAugCompUnit0,
-            no_intermod_deps, AllDeps, MaybeTransOptDeps, !IO),
+            no_intermod_deps, AllDeps, MaybeInclTransOptRule, !IO),
         globals.lookup_bool_option(Globals,
             generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
         (
@@ -333,7 +342,7 @@ maybe_mention_undoc(DocUndoc, Pieces0, Pieces) :-
 %---------------------%
 
     % maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream,
-    %   Globals, ModuleName, MaybeTransOptDeps, !IO):
+    %   Globals, ModuleName, MaybeDFileTransOptDeps, !IO):
     %
     % If transitive intermodule optimization has been enabled, then read
     % <ModuleName>.d to find the modules which <ModuleName>.trans_opt may
@@ -344,7 +353,7 @@ maybe_mention_undoc(DocUndoc, Pieces0, Pieces) :-
     maybe(list(module_name))::out, io::di, io::uo) is det.
 
 maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
-        ModuleName, MaybeTransOptDeps, !IO) :-
+        ModuleName, MaybeDFileTransOptDeps, !IO) :-
     globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
     (
         TransOpt = yes,
@@ -373,11 +382,11 @@ maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
                 FindResult = yes,
                 read_dependency_file_get_modules(DepFileInStream,
                     TransOptDeps, !IO),
-                MaybeTransOptDeps = yes(TransOptDeps)
+                MaybeDFileTransOptDeps = yes(TransOptDeps)
             ;
                 FindResult = no,
                 % error reading .d file
-                MaybeTransOptDeps = no
+                MaybeDFileTransOptDeps = no
             ),
             io.close_input(DepFileInStream, !IO),
             maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
@@ -389,11 +398,11 @@ maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
             string.format("error opening file `%s for input: %s",
                 [s(DependencyFileName), s(IOErrorMessage)], Message),
             report_error(ErrorStream, Message, !IO),
-            MaybeTransOptDeps = no
+            MaybeDFileTransOptDeps = no
         )
     ;
         TransOpt = no,
-        MaybeTransOptDeps = no
+        MaybeDFileTransOptDeps = no
     ).
 
     % Read lines from the dependency file (module.d) until one is found
@@ -462,7 +471,7 @@ read_dependency_file_get_modules(InStream, TransOptDeps, !IO) :-
     io::di, io::uo) is det.
 
 maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
-        OpModeAugment, Verbose, MaybeTransOptDeps, Error,
+        OpModeAugment, Verbose, MaybeDFileTransOptDeps, Error,
         !Baggage, !AugCompUnit, !HaveReadModuleMaps, !IO) :-
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     globals.lookup_bool_option(Globals, use_opt_files, UseOptInt),
@@ -489,14 +498,15 @@ maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
     (
         OpModeAugment = opmau_make_trans_opt,
         (
-            MaybeTransOptDeps = yes(TransOptDeps),
+            MaybeDFileTransOptDeps = yes(DFileTransOptDeps),
             % When creating the trans_opt file, only import the
-            % trans_opt files which are lower in the ordering.
+            % trans_opt files which are listed as dependencies of the
+            % trans_opt_deps rule in the `.d' file.
             grab_trans_opt_files(ProgressStream, Globals,
-                TransOptDeps, TransOptError, !Baggage, !AugCompUnit,
+                DFileTransOptDeps, TransOptError, !Baggage, !AugCompUnit,
                 !HaveReadModuleMaps, !IO)
         ;
-            MaybeTransOptDeps = no,
+            MaybeDFileTransOptDeps = no,
             TransOptError = no_opt_file_error,
             ParseTreeModuleSrc = !.AugCompUnit ^ acu_module_src,
             ModuleName = ParseTreeModuleSrc ^ ptms_module_name,

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2022 The Mercury team.
+% Copyright (C) 2013-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -387,6 +387,7 @@
     ;       show_developer_type_repns
     ;       show_dependency_graph
     ;       imports_graph
+    ;       trans_opt_deps_spec
     ;       dump_trace_counts
     ;       dump_hlds
     ;       dump_hlds_pred_id
@@ -1436,6 +1437,7 @@ optdef(oc_aux_output, show_all_type_repns,              bool(no)).
 optdef(oc_aux_output, show_developer_type_repns,        bool(no)).
 optdef(oc_aux_output, show_dependency_graph,            bool(no)).
 optdef(oc_aux_output, imports_graph,                    bool(no)).
+optdef(oc_aux_output, trans_opt_deps_spec,              maybe_string(no)).
 optdef(oc_aux_output, dump_trace_counts,                accumulating([])).
 optdef(oc_aux_output, dump_hlds,                        accumulating([])).
 optdef(oc_aux_output, dump_hlds_pred_id,                accumulating([])).
@@ -2388,6 +2390,7 @@ long_option("show-developer-type-repns",            show_developer_type_repns).
 long_option("show-developer-type-representations",  show_developer_type_repns).
 long_option("show-dependency-graph",    show_dependency_graph).
 long_option("imports-graph",            imports_graph).
+long_option("trans-opt-deps-spec",      trans_opt_deps_spec).
 long_option("dump-trace-counts",        dump_trace_counts).
 long_option("dump-hlds",                dump_hlds).
 long_option("hlds-dump",                dump_hlds).
@@ -4887,6 +4890,10 @@ options_help_aux_output(Stream, !IO) :-
         "\timports module B.",
         "\tThe resulting file can be processed by the graphviz tools.",
         "\tEffective only if --generate-dependencies is also specified.",
+% This option is for developers only for now.
+%       "--trans-opt-deps-spec <filename>",
+%       "\tSpecify a file to remove edges from the trans-opt dependency",
+%       "\tgraph.",
 % This option is for developers only.
 %       "--dump-trace-counts <stage number or name>",
 %       "\tIf the compiler was compiled with debugging enabled and is being",

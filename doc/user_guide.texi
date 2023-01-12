@@ -7763,6 +7763,12 @@ The resulting file can be processed by the graphviz tools.
 Effective only if @samp{--generate-dependencies} is also specified.
 
 @c @sp 1
+@c @item --trans-opt-deps-spec @var{filename}
+@c @findex --trans-opt-deps-spec
+@c Specify a file to remove edges from the trans-opt dependency
+@c graph.
+
+@c @sp 1
 @c @item -d @var{stage}
 @c @itemx --dump-trace-counts @var{stage}
 @c @findex --dump-trace-counts

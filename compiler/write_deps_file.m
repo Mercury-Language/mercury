@@ -26,7 +26,6 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module maybe.
 :- import_module set.
 
 :- type maybe_intermod_deps
@@ -35,20 +34,38 @@
                 id_int_deps         :: set(module_name),
                 id_imp_deps         :: set(module_name),
                 id_indirect_deps    :: set(module_name),
-                id_fim_deps         :: set(module_name)
+                id_fim_deps         :: set(module_name),
+                % id_trans_opt_deps is the set of modules whose .trans_opt
+                % files that we may want to read when *making* this module's
+                % .trans_opt file. However, it still may need to be reduced
+                % further to prevent circularities in trans_opt_deps mmake
+                % rules.
+                id_trans_opt_deps   :: set(module_name)
             ).
 
+:- type maybe_include_trans_opt_rule
+    --->    do_not_include_trans_opt_rule
+    ;       include_trans_opt_rule(trans_opt_rule_info).
+
+    % The set of trans-opt dependencies can come from two sources:
+    % - from a topological sort of the trans-opt dependency graph
+    %   if we built the graph; or
+    % - from a trans_opt_deps rule in a .d file.
+    %
+:- type trans_opt_rule_info
+    --->    trans_opt_deps_from_order(set(module_name))
+    ;       trans_opt_deps_from_d_file(set(module_name)).
+
     % write_dependency_file(Globals, BurdenedAugCompUnit, MaybeIntermodDeps,
-    %   AllDeps, MaybeTransOptDeps, !IO):
+    %   AllDeps, MaybeInclTransOptRule, !IO):
     %
     % Write out the per-module makefile dependencies (`.d') file for the
     % specified module. AllDeps is the set of all module names which the
     % generated code for this module might depend on, i.e. all that have been
     % used or imported, directly or indirectly, into this module, including
     % via .opt or .trans_opt files, and including parent modules of nested
-    % modules. MaybeTransOptDeps is a list of module names which the
-    % `.trans_opt' file may depend on. This is set to `no' if the
-    % dependency list is not available.
+    % modules. MaybeInclTransOptRule controls whether to include a
+    % trans_opt_deps rule in the file, and if so, what the rule should say.
     %
     % XXX The MaybeIntermodDeps allows generate_dependencies_write_d_file
     % to supply some information derived from the overall dependency graph
@@ -63,11 +80,11 @@
     %
 :- pred write_dependency_file(globals::in, burdened_aug_comp_unit::in,
     maybe_intermod_deps::in, set(module_name)::in,
-    maybe(list(module_name))::in, io::di, io::uo) is det.
+    maybe_include_trans_opt_rule::in, io::di, io::uo) is det.
 
     % generate_dependencies_write_d_files(Globals, Modules,
-    %   IntDepsRel, ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel,
-    %   TransOptOrder, DepsMap, !IO):
+    %   IntDepsGraph, ImplDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
+    %   TransOptDepsGraph, TransOptOrder, DepsMap, !IO):
     %
     % This predicate writes out the .d files for all the modules in the
     % Modules list.
@@ -78,12 +95,16 @@
     % IndirectOptDepsGraph gives the indirect optimization dependencies
     % (this includes dependencies via `.opt' and `.trans_opt' files).
     % These are all computed from the DepsMap.
+    %
+    % TransOptDepsGraph gives the trans-opt dependency graph for the
+    % purpose of making `.trans_opt' files.
     % TransOptOrder gives the ordering that is used to determine
     % which other modules the .trans_opt files may depend on.
     %
 :- pred generate_dependencies_write_d_files(globals::in, list(deps)::in,
     deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
-    list(module_name)::in, deps_map::in, io::di, io::uo) is det.
+    deps_graph::in, list(module_name)::in, deps_map::in, io::di, io::uo)
+    is det.
 
     % Write out the `.dv' file, using the information collected in the
     % deps_map data structure.
@@ -97,7 +118,7 @@
 :- pred generate_dependencies_write_dep_file(globals::in, file_name::in,
     module_name::in, deps_map::in, io::di, io::uo) is det.
 
-:- pred maybe_output_module_order(globals::in, module_name::in,
+:- pred output_module_order(globals::in, module_name::in, other_ext::in,
     list(set(module_name))::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -142,6 +163,7 @@
 :- import_module io.file.
 :- import_module library.
 :- import_module map.
+:- import_module maybe.
 :- import_module one_or_more.
 :- import_module one_or_more_map.
 :- import_module pair.
@@ -152,7 +174,7 @@
 %---------------------------------------------------------------------------%
 
 write_dependency_file(Globals, BurdenedAugCompUnit, IntermodDeps, AllDeps,
-        MaybeTransOptDeps, !IO) :-
+        MaybeInclTransOptRule, !IO) :-
     % To avoid problems with concurrent updates of `.d' files during
     % parallel makes, we first create the file with a temporary name,
     % and then rename it to the desired name when we have finished.
@@ -193,7 +215,7 @@ write_dependency_file(Globals, BurdenedAugCompUnit, IntermodDeps, AllDeps,
         ;
             Result = ok(DepStream),
             generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
-                AllDeps, MaybeTransOptDeps, MmakeFile, !IO),
+                AllDeps, MaybeInclTransOptRule, MmakeFile, !IO),
             write_mmakefile(DepStream, MmakeFile, !IO),
             io.close_output(DepStream, !IO),
 
@@ -264,11 +286,11 @@ write_dependency_file(Globals, BurdenedAugCompUnit, IntermodDeps, AllDeps,
     %
 :- pred generate_d_file(globals::in, burdened_aug_comp_unit::in,
     maybe_intermod_deps::in,
-    set(module_name)::in, maybe(list(module_name))::in,
+    set(module_name)::in, maybe_include_trans_opt_rule::in,
     mmakefile::out, io::di, io::uo) is det.
 
 generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
-        AllDeps, MaybeTransOptDeps, !:MmakeFile, !IO) :-
+        AllDeps, MaybeInclTransOptRule, !:MmakeFile, !IO) :-
     BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
     SourceFileName = Baggage ^ mb_source_file_name,
     SourceFileModuleName = Baggage ^ mb_source_file_module_name,
@@ -283,7 +305,8 @@ generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
         IndirectIntSpecs = AugCompUnit ^ acu_indirect_int2_specs,
         map.keys_as_set(IndirectIntSpecs, IndirectDeps)
     ;
-        IntermodDeps = intermod_deps(IntDeps, ImpDeps, IndirectDeps, _FIMDeps),
+        IntermodDeps = intermod_deps(IntDeps, ImpDeps, IndirectDeps, _FIMDeps,
+            _TransOptDeps),
         set.union(IntDeps, ImpDeps, LongDeps0)
     ),
     PublicChildrenMap = ParseTreeModuleSrc ^ ptms_int_includes,
@@ -306,7 +329,7 @@ generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
         ext_other(other_ext(".trans_opt_date")),
         ModuleName, TransOptDateFileName, !IO),
-    construct_trans_opt_deps_rule(Globals, MaybeTransOptDeps, LongDeps,
+    construct_trans_opt_deps_rule(Globals, MaybeInclTransOptRule, IntermodDeps,
         TransOptDateFileName, MmakeRulesTransOpt, !IO),
 
     construct_fact_tables_entries(ModuleMakeVarName,
@@ -403,29 +426,68 @@ generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
 %---------------------%
 
 :- pred construct_trans_opt_deps_rule(globals::in,
-    maybe(list(module_name))::in, set(module_name)::in, string::in,
-    list(mmake_entry)::out, io::di, io::uo) is det.
+    maybe_include_trans_opt_rule::in, maybe_intermod_deps::in,
+    string::in, list(mmake_entry)::out, io::di, io::uo) is det.
 
-construct_trans_opt_deps_rule(Globals, MaybeTransOptDeps, LongDeps,
+construct_trans_opt_deps_rule(Globals, MaybeInclTransOptRule, IntermodDeps,
         TransOptDateFileName, MmakeRulesTransOpt, !IO) :-
     (
-        MaybeTransOptDeps = yes(TransOptDeps0),
-        set.intersect(set.list_to_set(TransOptDeps0), LongDeps,
-            TransOptDateDeps),
+        MaybeInclTransOptRule = include_trans_opt_rule(TransOptRuleInfo),
+        % There are two cases when we will write a trans_opt_deps rule.
+        (
+            TransOptRuleInfo = trans_opt_deps_from_order(TransOptOrder),
+            % We reach this case when explicitly generating dependencies.
+            %
+            % TransOptDeps0 are the dependencies taken from the trans-opt
+            % dependency graph (which may have edges deleted by the user).
+            %
+            % TransOptOrder contains the list of modules that occur later
+            % than the current module in a topological ordering of the
+            % trans-opt dependency graph.
+            %
+            % We take the intersection of TransOptOrder and TransOptDeps0
+            % to eliminate any circularities that might arise in the
+            % trans_opt_deps rules if we were to use TransOptDeps0 as-is.
+            (
+                IntermodDeps = intermod_deps(_, _, _, _, TransOptDeps0),
+                set.intersect(TransOptOrder, TransOptDeps0, TransOptDeps)
+            ;
+                IntermodDeps = no_intermod_deps,
+                unexpected($pred, "no_intermod_deps")
+            )
+        ;
+            TransOptRuleInfo = trans_opt_deps_from_d_file(DFileTransOptDeps),
+            % We reach this case when the `.d' file is being automatically
+            % rewritten after producing target code, etc. We will not have
+            % computed the trans-opt dependency graph, and we will not have
+            % read the trans-opt-deps-spec file.
+            %
+            % What we can do is write the new `.d' file with the same trans-opt
+            % dependencies as the old `.d' file. As source files are modified,
+            % the trans-opt dependencies listed in the `.d' file may become out
+            % of date, so the user will need to explicitly regenerate
+            % dependencies.
+            %
+            % Note: we used to take the intersection with LongDeps (in the
+            % caller), but this case was not separated from the previous case
+            % and it greatly reduces the set of dependencies, so I'm not sure
+            % if it was intentional. --pw
+            TransOptDeps = DFileTransOptDeps
+        ),
         % Note that maybe_read_dependency_file searches for
         % this exact pattern.
         make_module_file_names_with_suffix(Globals,
             ext_other(other_ext(".trans_opt")),
-            set.to_sorted_list(TransOptDateDeps), TransOptDateDepsFileNames,
+            set.to_sorted_list(TransOptDeps), TransOptDepsFileNames,
             !IO),
         MmakeRuleTransOpt = mmake_simple_rule("trans_opt_deps",
             mmake_rule_is_not_phony,
             TransOptDateFileName,
-            TransOptDateDepsFileNames,
+            TransOptDepsFileNames,
             []),
         MmakeRulesTransOpt = [MmakeRuleTransOpt]
     ;
-        MaybeTransOptDeps = no,
+        MaybeInclTransOptRule = do_not_include_trans_opt_rule,
         MmakeRulesTransOpt = []
     ).
 
@@ -850,7 +912,7 @@ construct_foreign_import_rules(Globals, AugCompUnit, IntermodDeps,
         _ModuleVersionNumber),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     (
-        IntermodDeps = intermod_deps(_, _, _, ForeignImportedModuleNamesSet)
+        IntermodDeps = intermod_deps(_, _, _, ForeignImportedModuleNamesSet, _)
     ;
         IntermodDeps = no_intermod_deps,
         some [!FIMSpecs] (
@@ -1236,24 +1298,25 @@ construct_subdirs_shorthand_rule(Globals, ModuleName, OtherExt,
 
 %---------------------------------------------------------------------------%
 
-generate_dependencies_write_d_files(_, [], _, _, _, _, _, _, !IO).
+generate_dependencies_write_d_files(_, [], _, _, _, _, _, _, _, !IO).
 generate_dependencies_write_d_files(Globals, [Dep | Deps],
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptOrder, DepsMap, !IO) :-
+        TransOptDepsGraph, TransOptOrder, DepsMap, !IO) :-
     generate_dependencies_write_d_file(Globals, Dep,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptOrder, DepsMap, !IO),
+        TransOptDepsGraph, TransOptOrder, DepsMap, !IO),
     generate_dependencies_write_d_files(Globals, Deps,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptOrder, DepsMap, !IO).
+        TransOptDepsGraph, TransOptOrder, DepsMap, !IO).
 
 :- pred generate_dependencies_write_d_file(globals::in, deps::in,
     deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
-    list(module_name)::in, deps_map::in, io::di, io::uo) is det.
+    deps_graph::in, list(module_name)::in, deps_map::in, io::di, io::uo)
+    is det.
 
 generate_dependencies_write_d_file(Globals, Dep,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptOrder, _DepsMap, !IO) :-
+        TransOptDepsGraph, FullTransOptOrder, _DepsMap, !IO) :-
     % XXX The fact that _DepsMap is unused here may be a bug.
     Dep = deps(_, BurdenedModule),
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
@@ -1284,24 +1347,29 @@ generate_dependencies_write_d_file(Globals, Dep,
             IndirectDeps)
     ),
 
+    get_dependencies_from_graph(TransOptDepsGraph, ModuleName, TransOptDeps0),
+    set.delete(ModuleName, TransOptDeps0, TransOptDeps),
+
     IntermodDeps = intermod_deps(IntDeps, ImpDeps, IndirectDeps,
-        IndirectOptDeps),
+        IndirectOptDeps, TransOptDeps),
 
-    % Compute the trans-opt dependencies for this module. To avoid
-    % the possibility of cycles, each module is only allowed to depend
-    % on modules that occur later than it in the TransOptOrder.
+    % Compute the maximum allowable trans-opt dependencies for this module.
+    % To avoid the possibility of cycles, each module is only allowed to depend
+    % on modules that occur after it in the FullTransOptOrder.
 
-    FindModule =
+    NotThisModule =
         ( pred(OtherModule::in) is semidet :-
             ModuleName \= OtherModule
         ),
-    list.drop_while(FindModule, TransOptOrder, TransOptDeps0),
-    ( if TransOptDeps0 = [_ | TransOptDeps1] then
+    list.drop_while(NotThisModule, FullTransOptOrder, TailTransOptOrder),
+    ( if TailTransOptOrder = [_ | TransOptOrderList] then
         % The module was found in the list.
-        TransOptDeps = TransOptDeps1
+        set.list_to_set(TransOptOrderList, TransOptOrder)
     else
-        TransOptDeps = []
+        set.init(TransOptOrder)
     ),
+    TransOptRuleInfo = trans_opt_deps_from_order(TransOptOrder),
+    MaybeInclTransOptRule = include_trans_opt_rule(TransOptRuleInfo),
 
     % Note that even if a fatal error occured for one of the files
     % that the current Module depends on, a .d file is still produced,
@@ -1312,7 +1380,7 @@ generate_dependencies_write_d_file(Globals, Dep,
         init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit),
         BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
         write_dependency_file(Globals, BurdenedAugCompUnit, IntermodDeps,
-            IndirectOptDeps, yes(TransOptDeps), !IO)
+            IndirectOptDeps, MaybeInclTransOptRule, !IO)
     else
         true
     ).
@@ -2407,36 +2475,30 @@ get_source_file(DepsMap, ModuleName, FileName) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_output_module_order(Globals, ModuleName, DepsOrdering, !IO) :-
-    globals.lookup_bool_option(Globals, generate_module_order, Order),
+output_module_order(Globals, ModuleName, Ext, DepsOrdering, !IO) :-
+    module_name_to_file_name(Globals, $pred, do_create_dirs,
+        ext_other(Ext), ModuleName, OrdFileName, !IO),
+    get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    string.format("%% Creating module order file `%s'...",
+        [s(OrdFileName)], CreatingMsg),
+    maybe_write_string(ProgressStream, Verbose, CreatingMsg, !IO),
+    io.open_output(OrdFileName, OrdResult, !IO),
     (
-        Order = yes,
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(other_ext(".order")), ModuleName, OrdFileName, !IO),
-        get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
-        globals.lookup_bool_option(Globals, verbose, Verbose),
-        string.format("%% Creating module order file `%s'...",
-            [s(OrdFileName)], CreatingMsg),
-        maybe_write_string(ProgressStream, Verbose, CreatingMsg, !IO),
-        io.open_output(OrdFileName, OrdResult, !IO),
-        (
-            OrdResult = ok(OrdStream),
-            io.write_list(OrdStream, DepsOrdering, "\n\n",
-                write_module_scc(OrdStream), !IO),
-            io.close_output(OrdStream, !IO),
-            maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
-        ;
-            OrdResult = error(IOError),
-            maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
-            maybe_flush_output(ProgressStream, Verbose, !IO),
-            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-            io.error_message(IOError, IOErrorMessage),
-            string.format("error opening file `%s' for output: %s",
-                [s(OrdFileName), s(IOErrorMessage)], OrdMessage),
-            report_error(ErrorStream, OrdMessage, !IO)
-        )
+        OrdResult = ok(OrdStream),
+        io.write_list(OrdStream, DepsOrdering, "\n\n",
+            write_module_scc(OrdStream), !IO),
+        io.close_output(OrdStream, !IO),
+        maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
     ;
-        Order = no
+        OrdResult = error(IOError),
+        maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
+        maybe_flush_output(ProgressStream, Verbose, !IO),
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+        io.error_message(IOError, IOErrorMessage),
+        string.format("error opening file `%s' for output: %s",
+            [s(OrdFileName), s(IOErrorMessage)], OrdMessage),
+        report_error(ErrorStream, OrdMessage, !IO)
     ).
 
 :- pred write_module_scc(io.output_stream::in, set(module_name)::in,
