@@ -7,7 +7,7 @@
 %---------------------------------------------------------------------------%
 %
 % File: generate_dep_d_files.m.
-% Main author: fjh (when this code was in modules.m)
+% Original author: fjh (when this code was in modules.m)
 %
 % This module figures out the information from which write_deps_file.m
 % creates dependency files (.dep and .d files) for mmake.
@@ -22,43 +22,46 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_spec.
 
 :- import_module io.
+:- import_module list.
 
-    % generate_dep_file_for_module(Globals, ModuleName, !IO):
+    % generate_dep_file_for_module(Globals, ModuleName, Specs, !IO):
     %
     % Generate the per-program makefile dependencies file (`.dep' file)
     % for a program whose top-level module is `ModuleName'. This involves
     % first transitively reading in all imported or ancestor modules.
     % While we are at it, we also save the per-module makefile dependency files
-    % (`.d' files) for all those modules.
+    % (`.d' files) for all those modules. Return any errors and/or warnings
+    % to be printed in Specs.
     %
 :- pred generate_dep_file_for_module(globals::in, module_name::in,
-    io::di, io::uo) is det.
+    list(error_spec)::out, io::di, io::uo) is det.
 
-    % generate_dep_file_for_file(Globals, FileName, !IO):
+    % generate_dep_file_for_file(Globals, FileName, Specs, !IO):
     %
     % Same as generate_dep_file_for_module, but takes a file name
     % instead of a module name.
     %
 :- pred generate_dep_file_for_file(globals::in, file_name::in,
-    io::di, io::uo) is det.
+    list(error_spec)::out, io::di, io::uo) is det.
 
-    % generate_d_file_for_module(Globals, ModuleName, !IO):
+    % generate_d_file_for_module(Globals, ModuleName, Specs, !IO):
     %
     % Generate the per-module makefile dependency file ('.d' file)
     % for the given module.
     %
 :- pred generate_d_file_for_module(globals::in, module_name::in,
-    io::di, io::uo) is det.
+    list(error_spec)::out, io::di, io::uo) is det.
 
-    % generate_d_file_for_file(Globals, FileName, !IO):
+    % generate_d_file_for_file(Globals, FileName, Specs, !IO):
     %
     % Same as generate_d_file_for_module, but takes a file name
     % instead of a module name.
     %
 :- pred generate_d_file_for_file(globals::in, file_name::in,
-    io::di, io::uo) is det.
+    list(error_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -69,57 +72,61 @@
 :- import_module libs.timestamp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.deps_map.
-:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.module_deps_graph.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.write_deps_file.
 :- import_module parse_tree.write_error_spec.
 
+:- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module digraph.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module mercury_term_parser.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module term_context.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_dep_file_for_module(Globals, ModuleName, !IO) :-
+generate_dep_file_for_module(Globals, ModuleName, Specs, !IO) :-
     map.init(DepsMap),
     generate_dependencies(Globals, output_all_dependencies, do_not_search,
-        ModuleName, DepsMap, !IO).
+        ModuleName, DepsMap, Specs, !IO).
 
-generate_dep_file_for_file(Globals, FileName, !IO) :-
+generate_dep_file_for_file(Globals, FileName, Specs, !IO) :-
     build_initial_deps_map_for_file(Globals, FileName,
         ModuleName, DepsMap0, !IO),
     generate_dependencies(Globals, output_all_dependencies, do_not_search,
-        ModuleName, DepsMap0, !IO).
+        ModuleName, DepsMap0, Specs, !IO).
 
-generate_d_file_for_module(Globals, ModuleName, !IO) :-
+generate_d_file_for_module(Globals, ModuleName, Specs, !IO) :-
     map.init(DepsMap),
     generate_dependencies(Globals, output_d_file_only, do_search,
-        ModuleName, DepsMap, !IO).
+        ModuleName, DepsMap, Specs, !IO).
 
-generate_d_file_for_file(Globals, FileName, !IO) :-
+generate_d_file_for_file(Globals, FileName, Specs, !IO) :-
     build_initial_deps_map_for_file(Globals, FileName,
         ModuleName, DepsMap0, !IO),
     generate_dependencies(Globals, output_d_file_only, do_search,
-        ModuleName, DepsMap0, !IO).
+        ModuleName, DepsMap0, Specs, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -158,14 +165,14 @@ build_initial_deps_map_for_file(Globals, FileName, ModuleName, DepsMap, !IO) :-
     ;       output_all_dependencies.
 
 :- pred generate_dependencies(globals::in, generate_dependencies_mode::in,
-    maybe_search::in, module_name::in, deps_map::in, io::di, io::uo) is det.
+    maybe_search::in, module_name::in, deps_map::in,
+    list(error_spec)::out, io::di, io::uo) is det.
 
-generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
+generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
+        !:Specs, !IO) :-
     % First, build up a map of the dependencies.
     generate_deps_map(Globals, Search, ModuleName, DepsMap0, DepsMap,
-        [], DepsMapSpecs, !IO),
-    get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-    write_error_specs(ErrorStream, Globals, DepsMapSpecs, !IO),
+        [], !:Specs, !IO),
 
     % Check whether we could read the main `.m' file.
     map.lookup(DepsMap, ModuleName, ModuleDep),
@@ -174,15 +181,16 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
     Errors = Baggage ^ mb_errors,
     FatalErrors = Errors ^ rm_fatal_errors,
     ( if set.is_non_empty(FatalErrors) then
-        ModuleNameStr = sym_name_to_string(ModuleName),
-        ( if set.contains(FatalErrors, frme_could_not_open_file) then
-            string.format("cannot read source file for module `%s'.",
-                [s(ModuleNameStr)], Message)
-        else
-            string.format("cannot parse source file for module `%s'.\n",
-                [s(ModuleNameStr)], Message)
-        ),
-        report_error(ErrorStream, Message, !IO)
+        FatalErrorSpecs = Errors ^ rm_fatal_error_specs,
+        (
+            FatalErrorSpecs = [],
+            unexpected($pred, "FatalErrorSpecs = []")
+        ;
+            FatalErrorSpecs = [_ | _],
+            % The error_specs in FatalErrorSpecs may already be in !.Specs,
+            % but even if they are, they will be printed just once.
+            !:Specs = FatalErrorSpecs ++ !.Specs
+        )
     else
         (
             Mode = output_d_file_only
@@ -253,30 +261,42 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
         % "earlier" in the cycle, the compiler may read the trans-opt files
         % of modules "later" in the cycle, but not vice versa.
         %
-        % The problem with that is twofold:
+        % This has two problems.
+        %
         % - Lack of parallelism. The trans-opt files for modules within a
         %   single SCC have to be made one after another.
+        %
         % - The arbitrary ordering is likely to produce sub-optimal
         %   information transfer between trans-opt files.
         %
-        % To improve the situation, we allow the user to specify a list of
-        % edges for the code below to remove from the dependency graph
-        % (see read_trans_opt_deps_spec), with the intention of breaking up
-        % SCCs and, hence, converting the graph into a dag.
-        globals.lookup_maybe_string_option(Globals,
-            trans_opt_deps_spec, MaybeSpecFileName),
+        % To help the user fix both problems at least partially,
+        % we allow them to specify a list of edges (in a file read in by
+        % read_trans_opt_deps_spec) that the code of apply_trans_opt_deps_spec
+        % will then remove from the dependency graph. The intention is that
+        % this should allow users to break up SCCs in a manner of their
+        % choosing.
+        %
+        % Note that if the removal of the edges specified by the user
+        % does not convert the graph into a dag (directed acyclic graph),
+        % the compiler will use the default algorithm described above
+        % to finish the job.
+        globals.lookup_maybe_string_option(Globals, trans_opt_deps_spec,
+            MaybeSpecFileName),
         (
             MaybeSpecFileName = yes(SpecFileName),
             read_trans_opt_deps_spec_file(SpecFileName, MaybeEdgesToRemove,
                 !IO),
             (
-                MaybeEdgesToRemove = ok(EdgesToRemove),
+                MaybeEdgesToRemove = ok1(EdgesToRemove),
+                report_unknown_module_names_in_deps_spec(ImpDepsGraph,
+                    EdgesToRemove, UnknownModuleSpecs),
+                !:Specs = UnknownModuleSpecs ++ !.Specs,
                 apply_trans_opt_deps_spec(EdgesToRemove, ImpDepsGraph,
                     TransOptDepsGraph0),
                 digraph.tc(TransOptDepsGraph0, TransOptDepsGraph)
             ;
-                MaybeEdgesToRemove = error(Error),
-                report_error(ErrorStream, Error, !IO),
+                MaybeEdgesToRemove = error1(EdgeSpecs),
+                !:Specs = EdgeSpecs ++ !.Specs,
                 TransOptDepsGraph = IndirectOptDepsGraph
             )
         ;
@@ -354,8 +374,7 @@ deps_list_to_deps_graph([Deps | DepsList], DepsMap,
 :- func lookup_module_and_imports_in_deps_map(deps_map, module_name)
     = module_dep_info.
 
-lookup_module_and_imports_in_deps_map(DepsMap, ModuleName)
-        = ModuleDepInfo :-
+lookup_module_and_imports_in_deps_map(DepsMap, ModuleName) = ModuleDepInfo :-
     map.lookup(DepsMap, ModuleName, deps(_, BurdenedModule)),
     ModuleDepInfo = module_dep_info_full(BurdenedModule).
 
@@ -423,10 +442,10 @@ maybe_output_imports_graph(Globals, ModuleName, IntDepsGraph, ImpDepsGraph,
 
 filter_imports_graph(A - B, DepsGraph) =
     ( if
-        % Don't keep the edge if it points to a builtin-module or if the
-        % relationship is between two standard library modules.
-        % XXX It would be better to change this to be only keep those
-        % edges for which the left-hand side is in the current directory.
+        % Don't keep the edge if it points to a builtin module,
+        % or if the relationship is between two standard library modules.
+        % XXX It would be better to change this to only keep those edges
+        % for which the left-hand side is in the current directory.
         (
             any_mercury_builtin_module(B)
         ;
@@ -439,6 +458,10 @@ filter_imports_graph(A - B, DepsGraph) =
         digraph.add_vertices_and_edge(A, B, DepsGraph)
     ).
 
+    % XXX What is the point of the arguments of this type
+    % in the predicates below? They could, and I (zs) think they should,
+    % be deleted, with all references replaced by the only value of this type
+    % that we ever use, sym_name_to_node_id.
 :- type gen_node_name(T) == (func(T) = string).
 
 :- pred write_graph(io.output_stream::in, string::in,
@@ -456,38 +479,51 @@ write_graph(Stream, Name, GenNodeName, Graph, !IO) :-
     gen_node_name(T)::in, T::in, io::di, io::uo) is det.
 
 write_node(Stream, GenNodeName, Node, !IO) :-
-    % Names can't contain "." so use "__"
-    io.write_string(Stream, GenNodeName(Node), !IO),
-    io.write_string(Stream, ";\n", !IO).
+    io.format(Stream, "%s;\n", [s(GenNodeName(Node))], !IO).
 
 :- pred write_edge(io.output_stream::in, gen_node_name(T)::in, T::in, T::in,
     io::di, io::uo) is det.
 
 write_edge(Stream, GenNodeName, A, B, !IO) :-
-    io.write_string(Stream, GenNodeName(A), !IO),
-    io.write_string(Stream, " -> ", !IO),
-    io.write_string(Stream, GenNodeName(B), !IO),
-    io.write_string(Stream, ";\n", !IO).
+    io.format(Stream, "%s -> %s;\n",
+        [s(GenNodeName(A)), s(GenNodeName(B))], !IO).
 
 :- func sym_name_to_node_id(sym_name) = string.
 
-sym_name_to_node_id(Name) =
-    "\"" ++ sym_name_to_string(Name) ++ "\"".
+sym_name_to_node_id(SymName) =
+    % Names can't contain "." so use "__"
+    % XXX But sym_name_to_string DOES use "." to separate SymName's components.
+    "\"" ++ sym_name_to_string(SymName) ++ "\"".
 
 %---------------------------------------------------------------------------%
 
 :- type trans_opt_deps_spec
     ==  map(module_name, allow_or_disallow_trans_opt_deps).
 
+    % The contexts, and the order of the module names in the second arguments
+    % of the module_{allow,disallow}_deps, are needed only for generating
+    % meaningful error messages.
 :- type allow_or_disallow_trans_opt_deps
-    --->    module_allow_deps(set(module_name))
-    ;       module_disallow_deps(set(module_name)).
+    --->    module_allow_deps(
+                % The context of the first argument.
+                term_context,
+                % The module names listed in the second argument, and their
+                % contexts.
+                assoc_list(term_context, module_name)
+            )
+    ;       module_disallow_deps(
+                % The context of the first argument.
+                term_context,
+                % The module names listed in the second argument, and their
+                % contexts.
+                assoc_list(term_context, module_name)
+            ).
 
     % The --trans-opt-deps-spec file shall contain a series of terms
     % of either form:
     %
-    %   module_allow_deps(M, [ ALLOW ]).
-    %   module_disallow_deps(M, [ DISALLOW ]).
+    %   module_allow_deps(M, [ALLOW]).
+    %   module_disallow_deps(M, [DISALLOW]).
     %
     % where M is a Mercury module name,
     % and ALLOW and DISALLOW are comma-separated lists of module names.
@@ -511,11 +547,8 @@ sym_name_to_node_id(Name) =
     % then in the process of making M.trans_opt,
     % the compiler may read T.trans_opt unless T is in the DISALLOW list.
     %
-    % TODO: report errors using error specs
-    % TODO: report multiple errors
-    %
 :- pred read_trans_opt_deps_spec_file(string::in,
-    maybe_error(trans_opt_deps_spec)::out, io::di, io::uo) is det.
+    maybe1(trans_opt_deps_spec)::out, io::di, io::uo) is det.
 
 read_trans_opt_deps_spec_file(FileName, Result, !IO) :-
     io.read_named_file_as_string(FileName, ReadResult, !IO),
@@ -524,50 +557,69 @@ read_trans_opt_deps_spec_file(FileName, Result, !IO) :-
         string.length(Contents, ContentsLen),
         StartPos = posn(1, 0, 0),
         parse_trans_opt_deps_spec_file(FileName, Contents, ContentsLen,
-            ParseResult, StartPos, _EndPos, map.init, EdgesToRemove),
+            StartPos, _EndPos, map.init, EdgesToRemove, [], FileSpecs0),
         (
-            ParseResult = ok,
-            Result = ok(EdgesToRemove)
+            FileSpecs0 = [],
+            Result = ok1(EdgesToRemove)
         ;
-            ParseResult = error(Error),
-            Result = error(Error)
+            FileSpecs0 = [_ | _],
+            list.foldl(accumulate_contexts, FileSpecs0,
+                set.init, FileSpecContextsSet),
+            set.to_sorted_list(FileSpecContextsSet, FileSpecContexts),
+            list.reverse(FileSpecContexts, RevFileSpecContexts),
+            (
+                RevFileSpecContexts = [],
+                % Every error_spec parse_trans_opt_deps_spec_file constructs
+                % should have a context.
+                unexpected($pred, "RevFileSpecContexts = []")
+            ;
+                RevFileSpecContexts = [LastContext | _]
+            ),
+            IgnorePieces = [invis_order_default_end(0),
+                words("Ignoring"), quote(FileName),
+                words("due to the presence of errors."), nl],
+            IgnoreSpec = simplest_spec($pred, severity_error, phase_read_files,
+                LastContext, IgnorePieces),
+            FileSpecs = [IgnoreSpec | FileSpecs0],
+            Result = error1(FileSpecs)
         )
     ;
         ReadResult = error(Error),
-        Result = error(io.error_message(Error))
+        Pieces = [words("Error: cannot open"), quote(FileName), suffix(":"),
+            words(io.error_message(Error)), suffix("."), nl],
+        Spec = simplest_no_context_spec($pred, severity_error,
+            phase_read_files, Pieces),
+        Result = error1([Spec])
     ).
 
 :- pred parse_trans_opt_deps_spec_file(string::in, string::in, int::in,
-    maybe_error::out, posn::in, posn::out,
-    trans_opt_deps_spec::in, trans_opt_deps_spec::out) is det.
+    posn::in, posn::out, trans_opt_deps_spec::in, trans_opt_deps_spec::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-parse_trans_opt_deps_spec_file(FileName, Contents, ContentsLen, Result,
-        !Pos, !EdgesToRemove) :-
+parse_trans_opt_deps_spec_file(FileName, Contents, ContentsLen,
+        !Pos, !EdgesToRemove, !Specs) :-
     read_term_from_substring(FileName, Contents, ContentsLen, !Pos, ReadTerm),
     (
-        ReadTerm = eof,
-        Result = ok
+        ReadTerm = eof
     ;
         ReadTerm = error(Error, LineNum),
-        string.format("%s:%d: %s", [s(FileName), i(LineNum), s(Error)], Msg),
-        Result = error(Msg)
+        Pieces = [words("Read error:"), words(Error), suffix("."), nl],
+        Context = context(FileName, LineNum),
+        Spec = simplest_spec($pred, severity_error, phase_read_files,
+            Context, Pieces),
+        !:Specs = [Spec | !.Specs]
     ;
-        ReadTerm = term(_VarSet, Term),
-        parse_trans_opt_deps_spec_term(Term, Result0, !EdgesToRemove),
-        (
-            Result0 = ok,
-            parse_trans_opt_deps_spec_file(FileName, Contents, ContentsLen,
-                Result, !Pos, !EdgesToRemove)
-        ;
-            Result0 = error(Error),
-            Result = error(Error)
-        )
+        ReadTerm = term(VarSet, Term),
+        parse_trans_opt_deps_spec_term(VarSet, Term, !EdgesToRemove, !Specs),
+        parse_trans_opt_deps_spec_file(FileName, Contents, ContentsLen,
+            !Pos, !EdgesToRemove, !Specs)
     ).
 
-:- pred parse_trans_opt_deps_spec_term(term::in, maybe_error::out,
-    trans_opt_deps_spec::in, trans_opt_deps_spec::out) is det.
+:- pred parse_trans_opt_deps_spec_term(varset::in, term::in,
+    trans_opt_deps_spec::in, trans_opt_deps_spec::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-parse_trans_opt_deps_spec_term(Term, Result, !EdgesToRemove) :-
+parse_trans_opt_deps_spec_term(VarSet, Term, !EdgesToRemove, !Specs) :-
     ( if
         Term = functor(atom(AtomName), [LeftTerm, RightTerm], _Context),
         (
@@ -577,10 +629,12 @@ parse_trans_opt_deps_spec_term(Term, Result, !EdgesToRemove) :-
         ),
         try_parse_symbol_name(LeftTerm, SourceName)
     then
-        parse_trans_opt_deps_spec_module_list(RightTerm, Result0,
-            [], TargetList0),
+        parse_trans_opt_deps_spec_module_list(VarSet, RightTerm,
+            cord.init, TargetCord0, [], EntrySpecs),
         (
-            Result0 = ok,
+            EntrySpecs = [],
+            TargetList0 = cord.list(TargetCord0),
+            LeftTermContext = get_term_context(LeftTerm),
             (
                 AtomName = "module_allow_deps",
                 ( if
@@ -588,74 +642,166 @@ parse_trans_opt_deps_spec_term(Term, Result, !EdgesToRemove) :-
                     SourceName \= unqualified("private_builtin")
                 then
                     TargetList = [
-                        unqualified("builtin"),
-                        unqualified("private_builtin") |
+                        dummy_context - unqualified("builtin"),
+                        dummy_context - unqualified("private_builtin") |
                         TargetList0
                     ]
                 else
                     TargetList = TargetList0
                 ),
-                set.list_to_set(TargetList, TargetSet),
-                AllowOrDisallow = module_allow_deps(TargetSet)
+                AllowOrDisallow = module_allow_deps(LeftTermContext,
+                    TargetList)
             ;
                 AtomName = "module_disallow_deps",
-                set.list_to_set(TargetList0, TargetSet),
-                AllowOrDisallow = module_disallow_deps(TargetSet)
+                AllowOrDisallow = module_disallow_deps(LeftTermContext,
+                    TargetList0)
             ),
-            ( if map.insert(SourceName, AllowOrDisallow, !EdgesToRemove) then
-                Result = ok
-            else
-                get_term_context(Term) = context(FileName, LineNum),
-                string.format("%s:%d: duplicate source module %s",
-                    [s(FileName), i(LineNum),
-                    s(sym_name_to_string(SourceName))], Msg),
-                Result = error(Msg)
+            map.search_insert(SourceName, AllowOrDisallow,
+                MaybeOldAllowOrDisallow, !EdgesToRemove),
+            (
+                MaybeOldAllowOrDisallow = no
+            ;
+                MaybeOldAllowOrDisallow = yes(OldAllowOrDisallow),
+                ( OldAllowOrDisallow = module_allow_deps(OldContext, _)
+                ; OldAllowOrDisallow = module_disallow_deps(OldContext, _)
+                ),
+                Pieces1 = [words("Error: duplicate entry for source module"),
+                    qual_sym_name(SourceName), suffix("."), nl],
+                Pieces2 = [words("The original entry is here."), nl],
+                Msg1 = simplest_msg(LeftTermContext, Pieces1),
+                Msg2 = simplest_msg(OldContext, Pieces2),
+                Spec = error_spec($pred, severity_error, phase_read_files,
+                    [Msg1, Msg2]),
+                !:Specs = [Spec | !.Specs]
             )
         ;
-            Result0 = error(Error),
-            Result = error(Error)
+            EntrySpecs = [_ | _],
+            !:Specs = EntrySpecs ++ !.Specs
         )
     else
-        get_term_context(Term) = context(FileName, LineNum),
-        string.format("%s:%d: expected module_allow_deps/2 or " ++
-            "module_disallow_deps/2", [s(FileName), i(LineNum)], Msg),
-        Result = error(Msg)
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected either"),
+            nl_indent_delta(1),
+            quote("module_allow_deps(module_name, module_name_list)"),
+            nl_indent_delta(-1),
+            words("or"),
+            nl_indent_delta(1),
+            quote("module_disallow_deps(module_name, module_name_list)"),
+            suffix(","), nl_indent_delta(-1),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_read_files,
+            get_term_context(Term), Pieces),
+        !:Specs = [Spec | !.Specs]
     ).
 
-:- pred parse_trans_opt_deps_spec_module_list(term::in, maybe_error::out,
-    list(module_name)::in, list(module_name)::out) is det.
+:- pred parse_trans_opt_deps_spec_module_list(varset::in, term::in,
+    cord(pair(term_context, module_name))::in,
+    cord(pair(term_context, module_name))::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-parse_trans_opt_deps_spec_module_list(Term, Result, !RevModuleNames) :-
+parse_trans_opt_deps_spec_module_list(VarSet, Term, !RevModuleNames, !Specs) :-
     ( if list_term_to_term_list(Term, TermList) then
-        parse_trans_opt_deps_spec_module_names(TermList, Result,
-            !RevModuleNames)
+        parse_trans_opt_deps_spec_module_names(VarSet, TermList,
+            !RevModuleNames, !Specs)
     else
-        get_term_context(Term) = context(FileName, LineNum),
-        string.format("%s:%d: expected list", [s(FileName), i(LineNum)],
-            Msg),
-        Result = error(Msg)
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected a list, got"),
+            quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_read_files,
+            get_term_context(Term), Pieces),
+        !:Specs = [Spec | !.Specs]
     ).
 
-:- pred parse_trans_opt_deps_spec_module_names(list(term)::in,
-    maybe_error::out, list(module_name)::in, list(module_name)::out) is det.
+:- pred parse_trans_opt_deps_spec_module_names(varset::in, list(term)::in,
+    cord(pair(term_context, module_name))::in,
+    cord(pair(term_context, module_name))::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-parse_trans_opt_deps_spec_module_names(Terms, Result, !RevModuleNames) :-
+parse_trans_opt_deps_spec_module_names(_VarSet, [], !ModuleNameCord, !Specs).
+parse_trans_opt_deps_spec_module_names(VarSet, [Term | Terms],
+        !ModuleNameCord, !Specs) :-
+    ( if try_parse_symbol_name(Term, ModuleName) then
+        cord.snoc(get_term_context(Term) - ModuleName, !ModuleNameCord),
+        parse_trans_opt_deps_spec_module_names(VarSet, Terms,
+            !ModuleNameCord, !Specs)
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected a module name, got"),
+            quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_read_files,
+            get_term_context(Term), Pieces),
+        !:Specs = [Spec | !.Specs]
+    ),
+    parse_trans_opt_deps_spec_module_names(VarSet, Terms,
+        !ModuleNameCord, !Specs).
+
+%---------------------------------------------------------------------------%
+
+:- pred report_unknown_module_names_in_deps_spec(digraph(module_name)::in,
+    trans_opt_deps_spec::in, list(error_spec)::out) is det.
+
+report_unknown_module_names_in_deps_spec(Graph, DepsSpec, Specs) :-
+    digraph.vertices(Graph, KnownModules),
+    map.foldl(report_unknown_module_names_in_allow_disallow(KnownModules),
+        DepsSpec, [], Specs).
+
+:- pred report_unknown_module_names_in_allow_disallow(set(module_name)::in,
+    module_name::in, allow_or_disallow_trans_opt_deps::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_unknown_module_names_in_allow_disallow(KnownModules,
+        Module, AllowOrDisallow, !Specs) :-
     (
-        Terms = [],
-        Result = ok
+        AllowOrDisallow = module_allow_deps(Context, TargetModules),
+        AoD = "allowed"
     ;
-        Terms = [HeadTerm | TailTerm],
-        ( if try_parse_symbol_name(HeadTerm, ModuleName) then
-            !:RevModuleNames = [ModuleName | !.RevModuleNames],
-            parse_trans_opt_deps_spec_module_names(TailTerm, Result,
-                !RevModuleNames)
-        else
-            get_term_context(HeadTerm) = context(FileName, LineNum),
-            string.format("%s:%d: expected module name",
-                [s(FileName), i(LineNum)], Msg),
-            Result = error(Msg)
+        AllowOrDisallow = module_disallow_deps(Context, TargetModules),
+        AoD = "disallowed"
+    ),
+    ( if set.contains(KnownModules, Module) then
+        true
+    else
+        Pieces = [words("Warning: the module name"), qual_sym_name(Module),
+            words("does not occur in the dependency graph."), nl],
+        Spec = simplest_spec($pred, severity_warning, phase_read_files,
+            Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ),
+    report_unknown_module_names_in_module_names(KnownModules, AoD, 1,
+        TargetModules, map.init, !Specs).
+
+:- pred report_unknown_module_names_in_module_names(set(module_name)::in,
+    string::in, int::in, assoc_list(term_context, module_name)::in,
+    map(module_name, int)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_unknown_module_names_in_module_names(_, _, _, [], _OrdMap, !Specs).
+report_unknown_module_names_in_module_names(KnownModules, AoD, N,
+        [Context - Module | ContextModules], !.OrdMap, !Specs) :-
+    ( if set.contains(KnownModules, Module) then
+        map.search_insert(Module, N, MaybeOldN, !OrdMap),
+        (
+            MaybeOldN = no
+        ;
+            MaybeOldN = yes(OldN),
+            Pieces = [words("Warning: the"), nth_fixed(N), words(AoD),
+                words("module name"), qual_sym_name(Module),
+                words("is the same as the"), nth_fixed(OldN), words(AoD),
+                words("module name."), nl],
+            Spec = simplest_spec($pred, severity_warning, phase_read_files,
+                Context, Pieces),
+            !:Specs = [Spec | !.Specs]
         )
-    ).
+    else
+        Pieces = [words("Warning: the"), nth_fixed(N), words(AoD),
+            words("module name"), qual_sym_name(Module),
+            words("does not occur in the dependency graph."), nl],
+        Spec = simplest_spec($pred, severity_warning, phase_read_files,
+            Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ),
+    report_unknown_module_names_in_module_names(KnownModules,
+        AoD, N + 1, ContextModules, !.OrdMap, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -664,7 +810,6 @@ parse_trans_opt_deps_spec_module_names(Terms, Result, !RevModuleNames) :-
 
 apply_trans_opt_deps_spec(EdgesToRemove, !Graph) :-
     SCCs = set.to_sorted_list(digraph.cliques(!.Graph)),
-    % TODO: report unseen source/target modules listed in the spec file
     list.foldl2(apply_trans_opt_deps_spec_in_scc, SCCs,
         EdgesToRemove, _EdgesToRemove, !Graph).
 
@@ -689,11 +834,15 @@ apply_trans_opt_deps_spec_for_module(SourceKey, !EdgesToRemove, !Graph) :-
     ( if map.search(!.EdgesToRemove, SourceName, AllowOrDisallow) then
         digraph.lookup_from(!.Graph, SourceKey, TargetSet),
         (
-            AllowOrDisallow = module_allow_deps(AllowSet),
+            AllowOrDisallow = module_allow_deps(_Context, AllowList),
+            assoc_list.values(AllowList, AllowModuleList),
+            set.list_to_set(AllowModuleList, AllowSet),
             set.foldl(apply_module_allow_deps(AllowSet, SourceKey),
                 TargetSet, !Graph)
         ;
-            AllowOrDisallow = module_disallow_deps(DisallowSet),
+            AllowOrDisallow = module_disallow_deps(_Context, DisallowList),
+            assoc_list.values(DisallowList, DisallowModuleList),
+            set.list_to_set(DisallowModuleList, DisallowSet),
             set.foldl(apply_module_disallow_deps(DisallowSet, SourceKey),
                 TargetSet, !Graph)
         )

@@ -31,6 +31,7 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
+:- import_module set.
 
 %---------------------------------------------------------------------------%
 
@@ -605,6 +606,9 @@
 :- pred extract_spec_msgs(globals::in, error_spec::in,
     list(error_msg)::out) is det.
 
+:- pred accumulate_contexts(error_spec::in,
+    set(prog_context)::in, set(prog_context)::out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -754,6 +758,40 @@ extract_spec_msgs(Globals, Spec, Msgs) :-
             Msgs = Msgs0
         else
             Msgs = []
+        )
+    ).
+
+accumulate_contexts(Spec, !Contexts) :-
+    (
+        ( Spec = error_spec(_, _, _, Msgs)
+        ; Spec = conditional_spec(_, _, _, _, _, Msgs)
+        ),
+        list.foldl(accumulate_contexts_in_msg, Msgs, !Contexts)
+    ;
+        Spec = simplest_spec(_, _, _, Context, _),
+        set.insert(Context, !Contexts)
+    ;
+        Spec = simplest_no_context_spec(_, _, _, _)
+    ).
+
+:- pred accumulate_contexts_in_msg(error_msg::in,
+    set(prog_context)::in, set(prog_context)::out) is det.
+
+accumulate_contexts_in_msg(Msg, !Contexts) :-
+    (
+        Msg = simplest_no_context_msg(_)
+    ;
+        ( Msg = simplest_msg(Context, _)
+        ; Msg = simple_msg(Context, _)
+        ),
+        set.insert(Context, !Contexts)
+    ;
+        Msg = error_msg(MaybeContext, _, _, _),
+        (
+            MaybeContext = no
+        ;
+            MaybeContext = yes(Context),
+            set.insert(Context, !Contexts)
         )
     ).
 

@@ -1097,22 +1097,24 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         OpModeArgs = opma_generate_dependencies,
         (
             FileOrModule = fm_file(FileName),
-            generate_dep_file_for_file(Globals0, FileName, !IO)
+            generate_dep_file_for_file(Globals0, FileName, DepSpecs, !IO)
         ;
             FileOrModule = fm_module(ModuleName),
-            generate_dep_file_for_module(Globals0, ModuleName, !IO)
+            generate_dep_file_for_module(Globals0, ModuleName, DepSpecs, !IO)
         ),
+        write_error_specs(ErrorStream, Globals0, DepSpecs, !IO),
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
         OpModeArgs = opma_generate_dependency_file,
         (
             FileOrModule = fm_file(FileName),
-            generate_d_file_for_file(Globals0, FileName, !IO)
+            generate_d_file_for_file(Globals0, FileName, DepSpecs, !IO)
         ;
             FileOrModule = fm_module(ModuleName),
-            generate_d_file_for_module(Globals0, ModuleName, !IO)
+            generate_d_file_for_module(Globals0, ModuleName, DepSpecs, !IO)
         ),
+        write_error_specs(ErrorStream, Globals0, DepSpecs, !IO),
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
