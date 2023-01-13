@@ -552,6 +552,7 @@
 :- import_module char.
 :- import_module exception.
 :- import_module int.
+:- import_module io.error_util.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.

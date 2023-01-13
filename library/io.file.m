@@ -221,6 +221,7 @@
 :- implementation.
 
 :- import_module io.environment.
+:- import_module io.error_util.
 
 %---------------------------------------------------------------------------%
 %

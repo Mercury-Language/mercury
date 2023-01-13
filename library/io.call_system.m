@@ -48,6 +48,7 @@
 
 :- implementation.
 
+:- import_module io.error_util.
 :- import_module string.
 
 %---------------------------------------------------------------------------%

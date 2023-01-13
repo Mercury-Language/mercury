@@ -1,4 +1,5 @@
 backjump.m
+io.error_util.m
 io.primitives_read.m
 io.primitives_write.m
 io.stream_db.m

@@ -229,6 +229,7 @@
 :- implementation.
 
 :- import_module int.
+:- import_module io.error_util.
 :- import_module list.
 :- import_module mutvar.
 :- import_module require.

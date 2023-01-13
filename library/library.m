@@ -122,6 +122,7 @@
 :- import_module io.
 :- import_module io.call_system.
 :- import_module io.environment.
+:- import_module io.error_util.
 :- import_module io.file.
 :- import_module io.primitives_read.
 :- import_module io.primitives_write.
@@ -309,6 +310,7 @@ stdlib_module_doc_undoc("integer",                      doc).
 stdlib_module_doc_undoc("io",                           doc).
 stdlib_module_doc_undoc("io.call_system",               doc).
 stdlib_module_doc_undoc("io.environment",               doc).
+stdlib_module_doc_undoc("io.error_util",                undoc).
 stdlib_module_doc_undoc("io.file",                      doc).
 stdlib_module_doc_undoc("io.primitives_read",           undoc).
 stdlib_module_doc_undoc("io.primitives_write",          undoc).
