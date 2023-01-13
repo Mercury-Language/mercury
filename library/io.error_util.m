@@ -86,13 +86,13 @@
     native_system_error_style = (SysErrStyle::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    SysErrStyle = io.ML_SYSERR_EXCEPTION_OBJECT;
+    SysErrStyle = io__error_util.ML_SYSERR_EXCEPTION_OBJECT;
 ").
 :- pragma foreign_proc("Java",
     native_system_error_style = (SysErrStyle::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    SysErrStyle = jmercury.io.ML_SYSERR_EXCEPTION_OBJECT;
+    SysErrStyle = jmercury.io__error_util.ML_SYSERR_EXCEPTION_OBJECT;
 ").
 
 %---------------------------------------------------------------------------%
