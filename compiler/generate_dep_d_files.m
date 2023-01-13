@@ -699,10 +699,10 @@ parse_trans_opt_deps_spec_term(VarSet, Term, !EdgesToRemove, !Specs) :-
     cord(pair(term_context, module_name))::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-parse_trans_opt_deps_spec_module_list(VarSet, Term, !RevModuleNames, !Specs) :-
+parse_trans_opt_deps_spec_module_list(VarSet, Term, !ModuleNameCord, !Specs) :-
     ( if list_term_to_term_list(Term, TermList) then
         parse_trans_opt_deps_spec_module_names(VarSet, TermList,
-            !RevModuleNames, !Specs)
+            !ModuleNameCord, !Specs)
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected a list, got"),
@@ -721,9 +721,7 @@ parse_trans_opt_deps_spec_module_names(_VarSet, [], !ModuleNameCord, !Specs).
 parse_trans_opt_deps_spec_module_names(VarSet, [Term | Terms],
         !ModuleNameCord, !Specs) :-
     ( if try_parse_symbol_name(Term, ModuleName) then
-        cord.snoc(get_term_context(Term) - ModuleName, !ModuleNameCord),
-        parse_trans_opt_deps_spec_module_names(VarSet, Terms,
-            !ModuleNameCord, !Specs)
+        cord.snoc(get_term_context(Term) - ModuleName, !ModuleNameCord)
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected a module name, got"),
