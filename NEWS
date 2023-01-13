@@ -274,7 +274,7 @@ Changes to the Mercury standard library
 
 ### Changes to the `io` module
 
-* The following predicates have been added:
+* The following predicates and functions have been added:
 
     - pred `make_io_error_from_system_error/5`
     - pred `make_io_error_from_windows_error/5`
@@ -283,6 +283,7 @@ Changes to the Mercury standard library
     - pred `get_windows_error/2`
     - pred `get_exception_object_error/2`
     - pred `get_system_error_name/2`
+    - func `init_posn/0`
     - pred `write_binary_string_utf8/3`
     - pred `write_binary_string_utf8/4`
 

@@ -555,7 +555,7 @@ read_trans_opt_deps_spec_file(FileName, Result, !IO) :-
     (
         ReadResult = ok(Contents),
         string.length(Contents, ContentsLen),
-        StartPos = posn(1, 0, 0),
+        StartPos = init_posn,
         parse_trans_opt_deps_spec_file(FileName, Contents, ContentsLen,
             StartPos, _EndPos, map.init, EdgesToRemove, [], FileSpecs0),
         (

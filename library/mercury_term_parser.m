@@ -216,7 +216,7 @@ read_term_from_string(FileName, String, EndPos, Result) :-
 
 read_term_from_string_with_op_table(Ops, FileName, String, EndPos, Result) :-
     string.length(String, Len),
-    StartPos = posn(1, 0, 0),
+    StartPos = init_posn,
     read_term_from_substring_with_op_table(Ops, FileName, String, Len,
         StartPos, EndPos, Result).
 

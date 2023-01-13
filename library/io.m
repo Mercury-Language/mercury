@@ -1021,10 +1021,13 @@
                 %
                 % Line numbers start at 1; offsets start at zero.
                 % So the usual posn at the start of a file is posn(1, 0, 0).
+                % You can write it yourself, or get it by calling init_posn.
                 posn_current_line_number        :: int,
                 posn_offset_of_start_of_line    :: int,
                 posn_current_offset             :: int
             ).
+
+:- func init_posn = posn.
 
     % read_from_string(FileName, String, MaxPos, Result, Posn0, Posn):
     %
@@ -3572,6 +3575,8 @@ read(Stream, Result, !IO) :-
     mercury_term_parser.read_term(Stream, ReadResult, !IO),
     get_line_number(Stream, LineNumber, !IO),
     process_read_term($pred, ReadResult, LineNumber, Result).
+
+init_posn = posn(1, 0, 0).
 
 read_from_string(FileName, String, Len, Result, !Posn) :-
     mercury_term_parser.read_term_from_substring(FileName, String, Len,
