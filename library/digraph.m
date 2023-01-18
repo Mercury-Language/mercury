@@ -339,10 +339,6 @@
 :- func tc(digraph(T)) = digraph(T).
 :- pred tc(digraph(T)::in, digraph(T)::out) is det.
 
-    % This will be deleted soon.
-    %
-:- pred old_tc(digraph(T)::in, digraph(T)::out) is det.
-
     % rtc(G, RTC) is true if RTC is the reflexive transitive closure of G.
     %
     % RTC is the reflexive closure of the transitive closure of G,
@@ -350,10 +346,6 @@
     %
 :- func rtc(digraph(T)) = digraph(T).
 :- pred rtc(digraph(T)::in, digraph(T)::out) is det.
-
-    % This will be deleted soon.
-    %
-:- pred old_rtc(digraph(T)::in, digraph(T)::out) is det.
 
     % traverse(G, ProcessVertex, ProcessEdge, !Acc) will traverse the digraph G
     % - calling ProcessVertex for each vertex in the digraph, and
@@ -381,11 +373,6 @@
     % Straightforward implementation of tc for debugging.
     %
 :- pred slow_tc(digraph(T)::in, digraph(T)::out) is det.
-
-    % Straightforward implementation of rtc for debugging.
-    % This will be deleted soon.
-    %
-:- pred slow_rtc(digraph(T)::in, digraph(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -834,6 +821,15 @@ accumulate_digraph_key_set(KMap, X, !Set) :-
     X = digraph_key(XI),
     map.lookup(KMap, XI, Y),
     sparse_bitset.insert(Y, !Set).
+
+:- pred add_cartesian_product(digraph_key_set(T)::in,
+    digraph_key_set(T)::in, digraph(T)::in, digraph(T)::out) is det.
+
+add_cartesian_product(KeySet1, KeySet2, !G) :-
+    sparse_bitset.foldl(
+        ( pred(Key1::in, G0::in, G::out) is det :-
+            sparse_bitset.foldl(digraph.add_edge(Key1), KeySet2, G0, G)
+        ), KeySet1, !G).
 
 %---------------------------------------------------------------------------%
 
@@ -1318,54 +1314,6 @@ add_predecessor(Y, X, !Map) :-
 
 %---------------------------------------------------------------------------%
 
-old_tc(G, Tc) :-
-    % digraph.tc returns the transitive closure of a digraph.
-    % We use this procedure:
-    %
-    % - Compute the reflexive transitive closure (denoted G*), which is
-    %   the reflexive closure of G+, the transitive closure of G.
-    %
-    % - Find the "fake reflexives", that is, the set of vertices x for which
-    %   (x,x) is not an edge in G+. This is done by noting that G+ = G . G*
-    %   (where '.' denotes composition). Therefore x is a fake reflexive
-    %   iff there is no y such that (x,y) is an edge in G and (y,x) is an edge
-    %   in G*.
-    %
-    % - Remove those edges from the reflexive transitive closure
-    %   computed above.
-    %
-    % XXX Despite being "easier to debug", digraph.rtc was buggy for a long
-    % time, so implementing digraph.tc in terms of digraph.rtc was of no
-    % benefit. We should implement TC using a known efficient algorithm,
-    % then RTC can be implemented trivially on top of TC.
-    %
-    digraph.old_rtc(G, Rtc),
-
-    % Find the fake reflexives.
-    digraph.keys(G, Keys),
-    digraph.detect_fake_reflexives(G, Rtc, Keys, [], Fakes),
-
-    % Remove them from the RTC, giving us the TC.
-    digraph.delete_assoc_list(Fakes, Rtc, Tc).
-
-:- pred digraph.detect_fake_reflexives(digraph(T)::in, digraph(T)::in,
-    list(digraph_key(T))::in, assoc_list(digraph_key(T), digraph_key(T))::in,
-    assoc_list(digraph_key(T), digraph_key(T))::out) is det.
-
-detect_fake_reflexives(_, _, [], !Fakes).
-detect_fake_reflexives(G, Rtc, [X | Xs], !Fakes) :-
-    digraph.lookup_key_set_from(G, X, SuccXs),
-    digraph.lookup_key_set_to(Rtc, X, PreXs),
-    sparse_bitset.intersect(SuccXs, PreXs, Ys),
-    ( if sparse_bitset.is_empty(Ys) then
-        !:Fakes = [X - X | !.Fakes]
-    else
-        true
-    ),
-    digraph.detect_fake_reflexives(G, Rtc, Xs, !Fakes).
-
-%---------------------------------------------------------------------------%
-
 rtc(G) = Rtc :-
     digraph.rtc(G, Rtc).
 
@@ -1386,85 +1334,6 @@ rc(G, RC) :-
 
 add_reflexive(X, !G) :-
     add_edge(X, X, !G).
-
-%---------------------------------------------------------------------------%
-
-old_rtc(G, !:Rtc) :-
-    % digraph.rtc returns the reflexive transitive closure of a digraph.
-    %
-    % Note: This is not the most efficient algorithm (in the sense of minimal
-    % number of arc insertions) possible. However it "reasonably" efficient
-    % and, more importantly, is much easier to debug than some others.
-    %
-    % The algorithm is very simple, and is based on the observation that the
-    % RTC of any element in a clique is the same as the RTC of any other
-    % element in that clique. So we visit each clique in reverse topological
-    % sorted order, compute the RTC for each element in the clique and then
-    % add the appropriate edges.
-
-    % Start with G.
-    !:Rtc = G,
-
-    % Visit each clique in turn.
-    digraph.dfsrev(G, DfsRev),
-    digraph.inverse(G, GInv),
-    sparse_bitset.init(Vis),
-    digraph.rtc_2(DfsRev, G, GInv, Vis, !Rtc).
-
-:- pred digraph.rtc_2(list(digraph_key(T))::in, digraph(T)::in, digraph(T)::in,
-    digraph_key_set(T)::in, digraph(T)::in, digraph(T)::out) is det.
-
-rtc_2([], _, _, _, !Rtc).
-rtc_2([X | Xs], G, GInv, !.Vis, !Rtc) :-
-    ( if sparse_bitset.contains(!.Vis, X) then
-        true
-    else
-        % Do a DFS on GInv, starting from X, but not including visited
-        % vertices. This gives the clique which includes X.
-        digraph.dfs_2(GInv, X, !Vis, [], CliqList),
-        sparse_bitset.list_to_set(CliqList, Cliq),
-
-        % Every vertex in the clique is reachable from every other vertex in
-        % the clique.
-        Descendants0 = Cliq,
-
-        % For all vertices in the clique, the set of reachable vertices is the
-        % same.
-        (
-            CliqList = [],
-            Descendants = Descendants0
-        ;
-            CliqList = [Root | _],
-            find_descendants(G, Root, sparse_bitset.init, _Visited,
-                Descendants0, Descendants)
-        ),
-
-        digraph.add_cartesian_product(Cliq, Descendants, !Rtc)
-    ),
-    digraph.rtc_2(Xs, G, GInv, !.Vis, !Rtc).
-
-:- pred find_descendants(digraph(T)::in, digraph_key(T)::in,
-    digraph_key_set(T)::in, digraph_key_set(T)::out,
-    digraph_key_set(T)::in, digraph_key_set(T)::out) is det.
-
-find_descendants(G, X, !Visited, !Reachable) :-
-    ( if sparse_bitset.contains(!.Visited, X) then
-        true
-    else
-        digraph.lookup_key_set_from(G, X, SuccXs),
-        sparse_bitset.insert(X, !Visited),
-        sparse_bitset.union(SuccXs, !Reachable),
-        sparse_bitset.foldl2(find_descendants(G), SuccXs, !Visited, !Reachable)
-    ).
-
-:- pred add_cartesian_product(digraph_key_set(T)::in,
-    digraph_key_set(T)::in, digraph(T)::in, digraph(T)::out) is det.
-
-add_cartesian_product(KeySet1, KeySet2, !Rtc) :-
-    sparse_bitset.foldl(
-        ( pred(Key1::in, !.Rtc::in, !:Rtc::out) is det :-
-            sparse_bitset.foldl(digraph.add_edge(Key1), KeySet2, !Rtc)
-        ), KeySet1, !Rtc).
 
 %---------------------------------------------------------------------------%
 
@@ -1517,11 +1386,19 @@ add_edges_to_reachable(G, XI, !TC) :-
         sparse_bitset.init, Reachable),
     sparse_bitset.foldl(add_edge(X), Reachable, !TC).
 
-%---------------------------------------------------------------------------%
+:- pred find_descendants(digraph(T)::in, digraph_key(T)::in,
+    digraph_key_set(T)::in, digraph_key_set(T)::out,
+    digraph_key_set(T)::in, digraph_key_set(T)::out) is det.
 
-slow_rtc(G, RTC) :-
-    slow_tc(G, TC),
-    rc(TC, RTC).
+find_descendants(G, X, !Visited, !Reachable) :-
+    ( if sparse_bitset.contains(!.Visited, X) then
+        true
+    else
+        digraph.lookup_key_set_from(G, X, SuccXs),
+        sparse_bitset.insert(X, !Visited),
+        sparse_bitset.union(SuccXs, !Reachable),
+        sparse_bitset.foldl2(find_descendants(G), SuccXs, !Visited, !Reachable)
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module digraph.

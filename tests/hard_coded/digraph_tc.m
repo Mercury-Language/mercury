@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 %
-% Test digraph.tc and digraph.rtc.
+% Test digraph.tc.
 %
 %---------------------------------------------------------------------------%
 
@@ -209,8 +209,6 @@ generate_edge(KeysArray, !G, !R) :-
 test_graph(G, Verbose, !IO) :-
     tc(G, TC),
     slow_tc(G, SlowTC),
-    rtc(G, RTC),
-    slow_rtc(G, SlowRTC),
 
     io.print_line("---- G ----", !IO),
     write_graph(G, !IO),
@@ -219,11 +217,7 @@ test_graph(G, Verbose, !IO) :-
         io.print_line("---- tc(G) ----", !IO),
         write_graph(TC, !IO),
         io.print_line("---- slow_tc(G) ----", !IO),
-        write_graph(SlowTC, !IO),
-        io.print_line("---- rtc(G) ----", !IO),
-        write_graph(RTC, !IO),
-        io.print_line("---- slow_rtc(G) ----", !IO),
-        write_graph(SlowRTC, !IO)
+        write_graph(SlowTC, !IO)
     ;
         Verbose = no
     ),
@@ -232,12 +226,6 @@ test_graph(G, Verbose, !IO) :-
         true
     else
         io.write_string("** TC mismatch\n\n", !IO),
-        io.set_exit_status(1, !IO)
-    ),
-    ( if same_graph(RTC, SlowRTC) then
-        true
-    else
-        io.write_string("** RTC mismatch\n\n", !IO),
         io.set_exit_status(1, !IO)
     ).
 
@@ -278,13 +266,6 @@ run_benchmark(Size, G, Repeat, !IO) :-
 
     benchmark_det(tc, G, _TC, Repeat, TimeTC),
     AvgTimeTC = float(TimeTC) / float(Repeat),
-    io.format("tc avg:     %f ms\n", [f(AvgTimeTC)], !IO),
-
-    benchmark_det(old_tc, G, _OldTC, Repeat, OldTimeTC),
-    AvgOldTimeTC = float(OldTimeTC) / float(Repeat),
-    io.format("old_tc avg: %f ms\n", [f(AvgOldTimeTC)], !IO),
-
-    F = float(OldTimeTC) / float(TimeTC),
-    io.format("%f times as fast\n\n", [f(F)], !IO).
+    io.format("tc avg:     %f ms\n", [f(AvgTimeTC)], !IO).
 
 %---------------------------------------------------------------------------%
