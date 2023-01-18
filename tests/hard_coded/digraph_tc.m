@@ -11,7 +11,7 @@
 
 :- import_module io.
 
-:- pred main(io::di, io::uo) is det.
+:- pred main(io::di, io::uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -19,8 +19,10 @@
 :- implementation.
 
 :- import_module array.
+:- import_module benchmarking.
 :- import_module bool.
 :- import_module digraph.
+:- import_module float.
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
@@ -34,6 +36,31 @@
 
 main(!IO) :-
     io.command_line_arguments(Args, !IO),
+    ( if
+        Args = ["benchmark", SizeStr, RepeatStr],
+        string.to_int(SizeStr, Size),
+        Size > 1,
+        string.to_int(RepeatStr, Repeat),
+        Repeat > 0
+    then
+        init_random(MaybeRNG, !IO),
+        (
+            MaybeRNG = ok(R0),
+            generate_graph(Size, G, R0, _R),
+            run_benchmark(Size, G, Repeat, !IO)
+        ;
+            MaybeRNG = error(Error),
+            io.write_string(Error, !IO),
+            io.nl(!IO),
+            io.set_exit_status(1, !IO)
+        )
+    else
+        main_2(Args, !IO)
+    ).
+
+:- pred main_2(list(string)::in, io::di, io::uo) is det.
+
+main_2(Args, !IO) :-
     ( if Args = [] then
         load_graph("digraph_tc.inp", LoadRes, !IO),
         Verbose = yes
@@ -223,6 +250,8 @@ same_graph(A, B) :-
     sort(PairsB, SortedPairsB),
     SortedPairsA = SortedPairsB.
 
+%---------------------------------------------------------------------------%
+
 :- pred write_graph(digraph(string)::in, io::di, io::uo) is det.
 
 write_graph(G, !IO) :-
@@ -236,5 +265,26 @@ write_graph(G, !IO) :-
 
 write_edge(A - B, !IO) :-
     io.format("  %s -> %s;\n", [s(A), s(B)], !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred run_benchmark(int::in, digraph(string)::in, int::in, io::di, io::uo)
+    is cc_multi.
+
+run_benchmark(Size, G, Repeat, !IO) :-
+    NumEdges = length(to_assoc_list(G)),
+    io.format("vertices:   %d\n", [i(Size)], !IO),
+    io.format("edges:      %d\n", [i(NumEdges)], !IO),
+
+    benchmark_det(tc, G, _TC, Repeat, TimeTC),
+    AvgTimeTC = float(TimeTC) / float(Repeat),
+    io.format("tc avg:     %f ms\n", [f(AvgTimeTC)], !IO),
+
+    benchmark_det(old_tc, G, _OldTC, Repeat, OldTimeTC),
+    AvgOldTimeTC = float(OldTimeTC) / float(Repeat),
+    io.format("old_tc avg: %f ms\n", [f(AvgOldTimeTC)], !IO),
+
+    F = float(OldTimeTC) / float(TimeTC),
+    io.format("%f times as fast\n\n", [f(F)], !IO).
 
 %---------------------------------------------------------------------------%
