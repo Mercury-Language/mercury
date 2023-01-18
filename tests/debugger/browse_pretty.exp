@@ -38,24 +38,24 @@ big(
       [1], 
       small), 
     [1, 
-     2], 
+    2], 
     small), 
   [1, 2, 
-   3], 
+  3], 
   big(
     big(
       small, 
       [1, 
-       2, 
-       3, 
-       4], 
+      2, 
+      3, 
+      4], 
       big(
         small, 
         [1, 
-         2, 
-         3, 
-         4, 
-         5], 
+        2, 
+        3, 
+        4, 
+        5], 
         ...
 browser> width 79
 browser> depth 3

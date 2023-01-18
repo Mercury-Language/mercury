@@ -228,7 +228,7 @@ browser_test.save.3:
 browser_test.save.4:
 seq(1, 
   [big(big(small, 1, small), 2, small), small, 
-   big(small, 4, big(small, 5, small))], 5)
+  big(small, 4, big(small, 5, small))], 5)
       E6:     C4 CALL func browser_test.a_func/1-0 (det) browser_test.m:116 (browser_test.m:35)
 mdb> finish
       E7:     C4 EXIT func browser_test.a_func/1-0 (det) browser_test.m:116 (browser_test.m:35)
