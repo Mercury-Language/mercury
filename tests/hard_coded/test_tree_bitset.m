@@ -1,6 +1,16 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+%
+% Note that despite its name, this module tests whichever set module
+% library/test_bitset.m is set up to test, and this may or may not be
+% tree_bitset.m.
+%
+% Note also that this arrangements allows us to test only one bitset module
+% at a time; switching to testing another bitset module requires manually
+% modifying library/test_bitset.m.
+%
+%---------------------------------------------------------------------------%
 
 :- module test_tree_bitset.
 :- interface.
@@ -11,8 +21,6 @@
 
 :- implementation.
 
-:- import_module test_bitset.
-
 :- import_module bool.
 :- import_module enum.
 :- import_module int.
@@ -22,6 +30,7 @@
 :- import_module random.sfc64.
 :- import_module require.
 :- import_module string.
+:- import_module test_bitset.
 
 %---------------------------------------------------------------------------%
 
@@ -40,6 +49,8 @@
     ;       test_intersection
     ;       test_difference
     ;       test_remove_least
+    ;       test_remove_leq
+    ;       test_remove_gt
     ;       test_delete
     ;       test_delete_list
     ;       test_divide_by_set
@@ -81,6 +92,9 @@ main(!IO) :-
         [101, 102] -        [1, 2, 3, 35699, 35700, 35701],
         [36696, 35702, 35703, 35705] -
                             [1, 2, 3, 33416, 334283],
+        [0, 63, 64, 65, 127] - [],
+        [0, 63, 64, 65, 127, 128] - [],
+        [0, 63, 64, 65, 127, 128, 130] - [],
 
         % These test the handling of empty sets, which several operations
         % handle with special case code.
@@ -289,6 +303,48 @@ do_run_test(Write, WhichTest, List1 - List2, !IO) :-
     ),
 
     ( if
+        ( WhichTest = test_remove_leq
+        ; WhichTest = test_all
+        ),
+        get_middle(List1, Mid1Leq)
+    then
+        % We want to include the parameter we test the remove_leq operation
+        % with in the output when we are debugging either the operation
+        % or its test. However, we don't want to include it when generating
+        % output to be compared with a .exp file, because our caller calls us
+        % with random lists, which .exp files should know nothing about.
+        (
+            Write = do_write,
+            io.format("testing remove_leq %d\n", [i(Mid1Leq)], !IO)
+        ;
+            Write = do_not_write
+        ),
+        test_bitset.remove_leq(Set1, Mid1Leq, SetGtMid1),
+        maybe_write_bitset(Write, SetGtMid1, !IO)
+    else
+        true
+    ),
+
+    ( if
+        ( WhichTest = test_remove_gt
+        ; WhichTest = test_all
+        ),
+        get_middle(List1, Mid1Gt)
+    then
+        % See the comment for test_remove_leq just above.
+        (
+            Write = do_write,
+            io.format("testing remove_gt %d\n", [i(Mid1Gt)], !IO)
+        ;
+            Write = do_not_write
+        ),
+        test_bitset.remove_gt(Set1, Mid1Gt, SetLeqMid1),
+        maybe_write_bitset(Write, SetLeqMid1, !IO)
+    else
+        true
+    ),
+
+    ( if
         ( WhichTest = test_delete
         ; WhichTest = test_all
         )
@@ -330,6 +386,13 @@ do_run_test(Write, WhichTest, List1 - List2, !IO) :-
     else
         true
     ).
+
+:- pred get_middle(list(int)::in, int::out) is semidet.
+
+get_middle(List, Mid) :-
+    Head = list.head(List),
+    list.last(List, Last),
+    Mid = (Head + Last) / 2.
 
 %---------------------------------------------------------------------------%
 

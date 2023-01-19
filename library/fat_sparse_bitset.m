@@ -10,7 +10,6 @@
 % Author: zs.
 % Stability: medium.
 %
-%
 % This module provides an abstract data type for storing sets of integers.
 % If the integers stored are closely grouped, a fat_sparse_bitset is much more
 % compact than either the list-of-elements representations provided by set.m,
@@ -780,16 +779,20 @@ remove_leq(Set0, Item) = Set :-
     remove_leq(Item, Set0, Set).
 
 remove_leq(Item, fat_sparse_bitset(Elems0), fat_sparse_bitset(Elems)) :-
-    remove_leq_loop(enum.to_uint(Item), Elems0, Elems).
+    Index = enum.to_uint(Item),
+    offset_and_bit_to_set_for_index(Index, IndexOffset, IndexBit),
+    remove_leq_loop(IndexOffset, IndexBit, Elems0, Elems).
 
-:- pred remove_leq_loop(uint::in, bitset_elems::in, bitset_elems::out) is det.
+:- pred remove_leq_loop(uint::in, uint::in,
+    bitset_elems::in, bitset_elems::out) is det.
 
-remove_leq_loop(_, bitset_nil, bitset_nil).
-remove_leq_loop(Index, bitset_cons(Offset, Bits0, Tail0), Elems) :-
-    ( if Offset + ubits_per_uint =< Index then
-        remove_leq_loop(Index, Tail0, Elems)
-    else if Offset =< Index then
-        Bits = Bits0 /\ unchecked_left_ushift(\ 0u, Index - Offset + 1u),
+remove_leq_loop(_, _, bitset_nil, bitset_nil).
+remove_leq_loop(IndexOffset, IndexBit, Elems0, Elems) :-
+    Elems0 = bitset_cons(Offset, Bits0, Tail0),
+    ( if Offset < IndexOffset then
+        remove_leq_loop(IndexOffset, IndexBit, Tail0, Elems)
+    else if Offset = IndexOffset then
+        Bits = Bits0 /\ unchecked_left_ushift(\ 0u, IndexBit + 1u),
         ( if Bits = 0u then
             Elems = Tail0
         else
@@ -805,18 +808,21 @@ remove_gt(Set0, Item) = Set :-
     remove_gt(Item, Set0, Set).
 
 remove_gt(Item, fat_sparse_bitset(Elems0), fat_sparse_bitset(Elems)) :-
-    remove_gt_loop(enum.to_uint(Item), Elems0, Elems).
+    Index = enum.to_uint(Item),
+    offset_and_bit_to_set_for_index(Index, IndexOffset, IndexBit),
+    remove_gt_loop(IndexOffset, IndexBit, Elems0, Elems).
 
-:- pred remove_gt_loop(uint::in, bitset_elems::in, bitset_elems::out) is det.
+:- pred remove_gt_loop(uint::in, uint::in,
+    bitset_elems::in, bitset_elems::out) is det.
 
-remove_gt_loop(_, bitset_nil, bitset_nil).
-remove_gt_loop(Index, bitset_cons(Offset, Bits0, Tail0), Elems) :-
-    ( if Offset + ubits_per_uint - 1u =< Index then
-        remove_gt_loop(Index, Tail0, Tail),
+remove_gt_loop(_, _, bitset_nil, bitset_nil).
+remove_gt_loop(IndexOffset, IndexBit,
+        bitset_cons(Offset, Bits0, Tail0), Elems) :-
+    ( if Offset < IndexOffset then
+        remove_gt_loop(IndexOffset, IndexBit, Tail0, Tail),
         Elems = make_bitset_cons(Offset, Bits0, Tail)
-    else if Offset =< Index then
-        Bits = Bits0 /\
-            \ unchecked_left_ushift(\ 0u, Index - Offset + 1u),
+    else if Offset = IndexOffset then
+        Bits = Bits0 /\ \ unchecked_left_ushift(\ 0u, IndexBit + 1u),
         ( if Bits = 0u then
             Elems = bitset_nil
         else
@@ -833,7 +839,7 @@ remove_least(Item, fat_sparse_bitset(Elems0), fat_sparse_bitset(Elems)) :-
     Bit = find_least_bit(Bits0),
     Item = det_from_uint(Offset + Bit),
 
-    Bits = clear_bit(Bits0, Bit),
+    clear_bit(Bit, Bits0, Bits),
     ( if Bits = 0u then
         Elems = Tail0
     else
@@ -1130,7 +1136,7 @@ divide_nodes(Pred, bitset_cons(Offset, Bits, Tail), InNodes, OutNodes) :-
         OutNodes = make_bitset_cons(Offset, Out, OutNodesTail)
     ).
 
-    % Do a binary search for the 1 bits in an int.
+    % Do a binary search for the 1 bits in a uint.
     %
 :- pred divide_bits(pred(T)::in(pred(in) is semidet),
     uint::in, uint::in, uint::in, uint::in,
@@ -1787,13 +1793,13 @@ fold2_bits_high_to_low(Pred, Offset, Bits, Size, !Acc1, !Acc2) :-
 %
 
     % Return the offset of the element of a set which should contain the given
-    % element, and an int with the bit corresponding to that element set.
+    % element, and a uint with the bit corresponding to that element set.
     %
 :- pred bits_for_index(uint::in, uint::out, uint::out) is det.
 :- pragma inline(pred(bits_for_index/3)).
 
 bits_for_index(Index, Offset, Bits) :-
-    Mask = uint.ubits_per_uint - 1u,
+    Mask = ubits_per_uint - 1u,
     Offset = Index /\ \ Mask,
     BitToSet = Index /\ Mask,
     set_bit(BitToSet, 0u, Bits).
@@ -1802,7 +1808,7 @@ bits_for_index(Index, Offset, Bits) :-
 :- pragma inline(pred(offset_and_bit_to_set_for_index/3)).
 
 offset_and_bit_to_set_for_index(Index, Offset, BitToSet) :-
-    Mask = uint.ubits_per_uint - 1u,
+    Mask = ubits_per_uint - 1u,
     Offset = Index /\ \ Mask,
     BitToSet = Index /\ Mask.
 
@@ -1817,13 +1823,14 @@ get_bit(UInt, Bit) = UInt /\ unchecked_left_ushift(1u, Bit).
 set_bit(Bit, UInt0, UInt) :-
     UInt = UInt0 \/ unchecked_left_ushift(1u, Bit).
 
-:- func clear_bit(uint, uint) = uint.
-:- pragma inline(func(clear_bit/2)).
+:- pred clear_bit(uint::in, uint::in, uint::out) is det.
+:- pragma inline(pred(clear_bit/3)).
 
-clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_ushift(1u, Bit).
+clear_bit(Bit, Bits0, Bits) :-
+    Bits = Bits0 /\ \ unchecked_left_ushift(1u, Bit).
 
-    % mask(N) returns a mask which can be `and'ed with an integer to return
-    % the lower N bits of the integer. N must be less than ubits_per_uint.
+    % mask(N) returns a mask which can be `and'ed with a uint to return
+    % the lower N bits of the uint. N must be less than ubits_per_uint.
     %
 :- func mask(uint) = uint.
 :- pragma inline(func(mask/1)).

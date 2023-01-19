@@ -39,11 +39,11 @@
 :- func init = test_bitset(T).
 :- pred init(test_bitset(T)::out) is det.
 
-:- func singleton_set(T) = test_bitset(T) <= enum(T).
-:- pred singleton_set(test_bitset(T)::out, T::in) is det <= enum(T).
+:- func singleton_set(T) = test_bitset(T) <= uenum(T).
+:- pred singleton_set(test_bitset(T)::out, T::in) is det <= uenum(T).
 
-:- func make_singleton_set(T) = test_bitset(T) <= enum(T).
-:- pred make_singleton_set(test_bitset(T)::out, T::in) is det <= enum(T).
+:- func make_singleton_set(T) = test_bitset(T) <= uenum(T).
+:- pred make_singleton_set(test_bitset(T)::out, T::in) is det <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -54,18 +54,18 @@
 
 :- pred is_non_empty(test_bitset(T)::in) is semidet.
 
-:- pred is_singleton(test_bitset(T)::in, T::out) is semidet <= enum(T).
+:- pred is_singleton(test_bitset(T)::in, T::out) is semidet <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
 % Membership tests.
 %
 
-:- pred member(T, test_bitset(T)) <= enum(T).
+:- pred member(T, test_bitset(T)) <= uenum(T).
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
-:- pred contains(test_bitset(T)::in, T::in) is semidet <= enum(T).
+:- pred contains(test_bitset(T)::in, T::in) is semidet <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -73,30 +73,35 @@
 %
 
 :- pred insert(T::in, test_bitset(T)::in, test_bitset(T)::out)
-    is det <= enum(T).
+    is det <= uenum(T).
 :- pred insert_new(T::in, test_bitset(T)::in, test_bitset(T)::out)
-    is semidet <= enum(T).
+    is semidet <= uenum(T).
 :- pred insert_list(list(T)::in, test_bitset(T)::in, test_bitset(T)::out)
-    is det <= enum(T).
+    is det <= uenum(T).
 
 :- pred delete(T::in, test_bitset(T)::in, test_bitset(T)::out)
-    is det <= enum(T).
+    is det <= uenum(T).
 :- pred delete_list(list(T)::in, test_bitset(T)::in, test_bitset(T)::out)
-    is det <= enum(T).
+    is det <= uenum(T).
 
 :- pred remove(T::in, test_bitset(T)::in, test_bitset(T)::out)
-    is semidet <= enum(T).
+    is semidet <= uenum(T).
 :- pred remove_list(list(T)::in, test_bitset(T)::in, test_bitset(T)::out)
-    is semidet <= enum(T).
+    is semidet <= uenum(T).
 :- pred remove_least(T::out, test_bitset(T)::in, test_bitset(T)::out)
-    is semidet <= enum(T).
+    is semidet <= uenum(T).
+
+:- pred remove_leq(test_bitset(T)::in, T::in, test_bitset(T)::out)
+    is det <= uenum(T).
+:- pred remove_gt(test_bitset(T)::in, T::in, test_bitset(T)::out)
+    is det <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
 % Comparisons between sets.
 %
 
-:- pred equal(test_bitset(T)::in, test_bitset(T)::in) is semidet <= enum(T).
+:- pred equal(test_bitset(T)::in, test_bitset(T)::in) is semidet <= uenum(T).
 
 :- pred subset(test_bitset(T)::in, test_bitset(T)::in) is semidet.
 
@@ -107,25 +112,26 @@
 % Operations on two or more sets.
 %
 
-:- func union(test_bitset(T), test_bitset(T)) = test_bitset(T) <= enum(T).
+:- func union(test_bitset(T), test_bitset(T)) = test_bitset(T) <= uenum(T).
 :- pred union(test_bitset(T)::in,
-    test_bitset(T)::in, test_bitset(T)::out) is det <= enum(T).
+    test_bitset(T)::in, test_bitset(T)::out) is det <= uenum(T).
 
-:- func union_list(list(test_bitset(T))) = test_bitset(T) <= enum(T).
+:- func union_list(list(test_bitset(T))) = test_bitset(T) <= uenum(T).
 :- pred union_list(list(test_bitset(T))::in, test_bitset(T)::out) is det
-    <= enum(T).
+    <= uenum(T).
 
-:- func intersect(test_bitset(T), test_bitset(T)) = test_bitset(T) <= enum(T).
+:- func intersect(test_bitset(T), test_bitset(T)) = test_bitset(T) <= uenum(T).
 :- pred intersect(test_bitset(T)::in,
-    test_bitset(T)::in, test_bitset(T)::out) is det <= enum(T).
+    test_bitset(T)::in, test_bitset(T)::out) is det <= uenum(T).
 
-:- func intersect_list(list(test_bitset(T))) = test_bitset(T) <= enum(T).
+:- func intersect_list(list(test_bitset(T))) = test_bitset(T) <= uenum(T).
 :- pred intersect_list(list(test_bitset(T))::in, test_bitset(T)::out) is det
-    <= enum(T).
+    <= uenum(T).
 
-:- func difference(test_bitset(T), test_bitset(T)) = test_bitset(T) <= enum(T).
+:- func difference(test_bitset(T), test_bitset(T)) = test_bitset(T)
+    <= uenum(T).
 :- pred difference(test_bitset(T)::in,
-    test_bitset(T)::in, test_bitset(T)::out) is det <= enum(T).
+    test_bitset(T)::in, test_bitset(T)::out) is det <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -133,47 +139,48 @@
 %
 
 :- pred divide(pred(T)::in(pred(in) is semidet), test_bitset(T)::in,
-    test_bitset(T)::out, test_bitset(T)::out) is det <= enum(T).
+    test_bitset(T)::out, test_bitset(T)::out) is det <= uenum(T).
 
 :- pred divide_by_set(test_bitset(T)::in, test_bitset(T)::in,
-    test_bitset(T)::out, test_bitset(T)::out) is det <= enum(T).
+    test_bitset(T)::out, test_bitset(T)::out) is det <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
 % Converting lists to sets.
 %
 
-:- func list_to_set(list(T)) = test_bitset(T) <= enum(T).
-:- pred list_to_set(list(T)::in, test_bitset(T)::out) is det <= enum(T).
+:- func list_to_set(list(T)) = test_bitset(T) <= uenum(T).
+:- pred list_to_set(list(T)::in, test_bitset(T)::out) is det <= uenum(T).
 
-:- func sorted_list_to_set(list(T)) = test_bitset(T) <= enum(T).
-:- pred sorted_list_to_set(list(T)::in, test_bitset(T)::out) is det <= enum(T).
+:- func sorted_list_to_set(list(T)) = test_bitset(T) <= uenum(T).
+:- pred sorted_list_to_set(list(T)::in, test_bitset(T)::out) is det
+    <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
 % Converting sets to lists.
 %
 
-:- func to_sorted_list(test_bitset(T)) = list(T) <= enum(T).
-:- pred to_sorted_list(test_bitset(T)::in, list(T)::out) is det <= enum(T).
+:- func to_sorted_list(test_bitset(T)) = list(T) <= uenum(T).
+:- pred to_sorted_list(test_bitset(T)::in, list(T)::out) is det <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
 % Converting between different kinds of sets.
 %
 
-:- func set_to_bitset(set(T)) = test_bitset(T) <= enum(T).
-:- func from_set(set(T)) = test_bitset(T) <= enum(T).
+:- func set_to_bitset(set(T)) = test_bitset(T) <= uenum(T).
+:- func from_set(set(T)) = test_bitset(T) <= uenum(T).
 
-:- func bitset_to_set(test_bitset(T)) = set(T) <= enum(T).
-:- func to_set(test_bitset(T)) = set(T) <= enum(T).
+:- func bitset_to_set(test_bitset(T)) = set(T) <= uenum(T).
+:- func to_set(test_bitset(T)) = set(T) <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
 % Counting.
 %
 
-:- func count(test_bitset(T)) = int <= enum(T).
+:- func count(test_bitset(T)) = int <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -184,18 +191,18 @@
     % for all the elements of Set.
     %
 :- pred all_true(pred(T)::in(pred(in) is semidet), test_bitset(T)::in)
-    is semidet <= enum(T).
+    is semidet <= uenum(T).
 
 :- func filter(pred(T)::in(pred(in) is semidet), test_bitset(T)::in)
-    = (test_bitset(T)::out) is det <= enum(T).
+    = (test_bitset(T)::out) is det <= uenum(T).
 :- pred filter(pred(T)::in(pred(in) is semidet),
     test_bitset(T)::in, test_bitset(T)::out, test_bitset(T)::out)
-    is det <= enum(T).
+    is det <= uenum(T).
 
-:- func foldl(func(T, Acc) = Acc, test_bitset(T), Acc) = Acc <= enum(T).
+:- func foldl(func(T, Acc) = Acc, test_bitset(T), Acc) = Acc <= uenum(T).
 :- mode foldl(func(in, in) = out is det, in, in) = out is det.
 
-:- pred foldl(pred(T, Acc, Acc), test_bitset(T), Acc, Acc) <= enum(T).
+:- pred foldl(pred(T, Acc, Acc), test_bitset(T), Acc, Acc) <= uenum(T).
 :- mode foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
 
@@ -206,34 +213,35 @@
 :- import_module bool.
 :- import_module exception.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module set_ordlist.
 :- import_module solutions.
 :- import_module string.
 :- import_module tree_bitset.
+:- import_module uint.
 
-:- type test_bitset(T) == pair(tree_bitset(T), set_ordlist(T)).
+:- type test_bitset(T)
+    --->    tb(tree_bitset(T), set_ordlist(T)).
 
 %---------------------------------------------------------------------------%
 
-init = tree_bitset.init - set_ordlist.init.
+init = tb(tree_bitset.init, set_ordlist.init).
 
 init(init).
 
 singleton_set(A) =
-    tree_bitset.make_singleton_set(A) - set_ordlist.make_singleton_set(A).
+    tb(tree_bitset.make_singleton_set(A), set_ordlist.make_singleton_set(A)).
 
 singleton_set(test_bitset.singleton_set(A), A).
 
 make_singleton_set(A) =
-    tree_bitset.make_singleton_set(A) - set_ordlist.make_singleton_set(A).
+    tb(tree_bitset.make_singleton_set(A), set_ordlist.make_singleton_set(A)).
 
 make_singleton_set(test_bitset.make_singleton_set(A), A).
 
 %---------------------------------------------------------------------------%
 
-is_empty(A - B) :-
+is_empty(tb(A, B)) :-
     ( if tree_bitset.is_empty(A) then EmptyA = yes else EmptyA = no),
     ( if set_ordlist.is_empty(B) then EmptyB = yes else EmptyB = no),
     ( if EmptyA = EmptyB then
@@ -242,7 +250,7 @@ is_empty(A - B) :-
         unexpected($pred, "failed")
     ).
 
-is_non_empty(A - B) :-
+is_non_empty(tb(A, B)) :-
     ( if tree_bitset.is_non_empty(A) then NonEmptyA = yes else NonEmptyA = no),
     ( if set_ordlist.is_non_empty(B) then NonEmptyB = yes else NonEmptyB = no),
     ( if NonEmptyA = NonEmptyB then
@@ -251,7 +259,7 @@ is_non_empty(A - B) :-
         unexpected($pred, "failed")
     ).
 
-is_singleton(A - B, E) :-
+is_singleton(tb(A, B), E) :-
     ( if tree_bitset.is_singleton(A, AE) then
         NonEmptyA = yes(AE)
     else
@@ -272,7 +280,7 @@ is_singleton(A - B, E) :-
 
 :- pragma promise_equivalent_clauses(pred(member/2)).
 
-member(E::in, (SetA - SetB)::in) :-
+member(E::in, tb(SetA, SetB)::in) :-
     ( if tree_bitset.member(E, SetA) then InSetA = yes else InSetA = no),
     ( if set_ordlist.member(E, SetB) then InSetB = yes else InSetB = no),
     ( if InSetA = InSetB then
@@ -281,7 +289,7 @@ member(E::in, (SetA - SetB)::in) :-
         unexpected($pred, "failed (in, in)")
     ).
 
-member(E::out, (SetA - SetB)::in) :-
+member(E::out, tb(SetA, SetB)::in) :-
     PredA = (pred(EA::out) is nondet :- tree_bitset.member(EA, SetA)),
     PredB = (pred(EB::out) is nondet :- set_ordlist.member(EB, SetB)),
     solutions(PredA, SolnsA),
@@ -292,7 +300,7 @@ member(E::out, (SetA - SetB)::in) :-
         unexpected($pred, "failed (out, in)")
     ).
 
-contains(SetA - SetB, E) :-
+contains(tb(SetA, SetB), E) :-
     ( if tree_bitset.contains(SetA, E) then InSetA = yes else InSetA = no),
     ( if set_ordlist.contains(SetB, E) then InSetB = yes else InSetB = no),
     ( if InSetA = InSetB then
@@ -303,15 +311,15 @@ contains(SetA - SetB, E) :-
 
 %---------------------------------------------------------------------------%
 
-insert(E, SetA0 - SetB0, Result) :-
+insert(E, tb(SetA0, SetB0), Result) :-
     tree_bitset.insert(E, SetA0, SetA),
     set_ordlist.insert(E, SetB0, SetB),
-    check1("insert", SetA0 - SetB0, SetA - SetB, Result).
+    check1("insert", tb(SetA0, SetB0), tb(SetA, SetB), Result).
 
-insert_new(E, SetA0 - SetB0, Result) :-
+insert_new(E, tb(SetA0, SetB0), Result) :-
     ( if tree_bitset.insert_new(E, SetA0, SetA) then
         ( if set_ordlist.insert_new(E, SetB0, SetB) then
-            check1("insert", SetA0 - SetB0, SetA - SetB, Result)
+            check1("insert", tb(SetA0, SetB0), tb(SetA, SetB), Result)
         else
             unexpected($pred, "success/fail in tree_bitset/set_ordlist")
         )
@@ -324,27 +332,27 @@ insert_new(E, SetA0 - SetB0, Result) :-
         )
     ).
 
-insert_list(Es, SetA0 - SetB0, Result) :-
+insert_list(Es, tb(SetA0, SetB0), Result) :-
     tree_bitset.insert_list(Es, SetA0, SetA),
     set_ordlist.insert_list(Es, SetB0, SetB),
-    check1("insert_list", SetA0 - SetB0, SetA - SetB, Result).
+    check1("insert_list", tb(SetA0, SetB0), tb(SetA, SetB), Result).
 
-delete(E, SetA0 - SetB0, Result) :-
+delete(E, tb(SetA0, SetB0), Result) :-
     tree_bitset.delete(E, SetA0, SetA),
     set_ordlist.delete(E, SetB0, SetB),
-    check1("delete", SetA0 - SetB0, SetA - SetB, Result).
+    check1("delete", tb(SetA0, SetB0), tb(SetA, SetB), Result).
 
-delete_list(Es, SetA0 - SetB0, Result) :-
+delete_list(Es, tb(SetA0, SetB0), Result) :-
     tree_bitset.delete_list(Es, SetA0, SetA),
     set_ordlist.delete_list(Es, SetB0, SetB),
-    check1("delete_list", SetA0 - SetB0, SetA - SetB, Result).
+    check1("delete_list", tb(SetA0, SetB0), tb(SetA, SetB), Result).
 
-remove(E, SetA0 - SetB0, Result) :-
+remove(E, tb(SetA0, SetB0), Result) :-
     ( if tree_bitset.remove(E, SetA0, SetA1) then
         ( if set_ordlist.remove(E, SetB0, SetB1) then
             SetA = SetA1,
             SetB = SetB1,
-            check1("remove", SetA0 - SetB0, SetA - SetB, Result)
+            check1("remove", tb(SetA0, SetB0), tb(SetA, SetB), Result)
         else
             unexpected($pred, "unexpected success")
         )
@@ -354,12 +362,12 @@ remove(E, SetA0 - SetB0, Result) :-
         fail
     ).
 
-remove_list(Es, SetA0 - SetB0, Result) :-
+remove_list(Es, tb(SetA0, SetB0), Result) :-
     ( if tree_bitset.remove_list(Es, SetA0, SetA1) then
         ( if set_ordlist.remove_list(Es, SetB0, SetB1) then
             SetA = SetA1,
             SetB = SetB1,
-            check1("remove_list", SetA0 - SetB0, SetA - SetB, Result)
+            check1("remove_list", tb(SetA0, SetB0), tb(SetA, SetB), Result)
         else
             unexpected($pred, "unexpected success")
         )
@@ -369,12 +377,13 @@ remove_list(Es, SetA0 - SetB0, Result) :-
         fail
     ).
 
-remove_least(Least, SetA0 - SetB0, Result) :-
+remove_least(Least, tb(SetA0, SetB0), Result) :-
     ( if tree_bitset.remove_least(LeastA, SetA0, SetA1) then
         ( if set_ordlist.remove_least(LeastB, SetB0, SetB1) then
             ( if LeastA = LeastB then
                 Least = LeastA,
-                check1("remove_least", SetA0 - SetB0, SetA1 - SetB1, Result)
+                check1("remove_least", tb(SetA0, SetB0), tb(SetA1, SetB1),
+                    Result)
             else
                 unexpected($pred, "wrong least element")
             )
@@ -387,9 +396,31 @@ remove_least(Least, SetA0 - SetB0, Result) :-
         fail
     ).
 
+remove_leq(tb(SetA0, SetB0), Hurdle, Result) :-
+    remove_leq(Hurdle, SetA0, SetA),
+    RemoveLeq =
+        ( pred(Item::in) is semidet :-
+            Index = to_uint(Item),
+            HurdleIndex = to_uint(Hurdle),
+            not (Index =< HurdleIndex)
+        ),
+    set.filter(RemoveLeq, SetB0, SetB),
+    check1("remove_leq", tb(SetA0, SetB0), tb(SetA, SetB), Result).
+
+remove_gt(tb(SetA0, SetB0), Hurdle, Result) :-
+    remove_gt(Hurdle, SetA0, SetA),
+    RemoveGt =
+        ( pred(Item::in) is semidet :-
+            Index = to_uint(Item),
+            HurdleIndex = to_uint(Hurdle),
+            not (Index > HurdleIndex)
+        ),
+    set.filter(RemoveGt, SetB0, SetB),
+    check1("remove_gt", tb(SetA0, SetB0), tb(SetA, SetB), Result).
+
 %---------------------------------------------------------------------------%
 
-equal(SetA1 - SetB1, SetA2 - SetB2) :-
+equal(tb(SetA1, SetB1), tb(SetA2, SetB2)) :-
     ( if tree_bitset.equal(SetA1, SetA2) then EqualA = yes else EqualA = no),
     ( if set_ordlist.equal(SetB1, SetB2) then EqualB = yes else EqualB = no),
     ( if EqualA = EqualB then
@@ -398,7 +429,7 @@ equal(SetA1 - SetB1, SetA2 - SetB2) :-
         unexpected($pred, "failed")
     ).
 
-subset(SetA1 - SetB1, SetA2 - SetB2) :-
+subset(tb(SetA1, SetB1), tb(SetA2, SetB2)) :-
     ( if tree_bitset.subset(SetA1, SetA2) then
         ( if set_ordlist.subset(SetB1, SetB2) then
             true
@@ -411,7 +442,7 @@ subset(SetA1 - SetB1, SetA2 - SetB2) :-
         fail
     ).
 
-superset(SetA1 - SetB1, SetA2 - SetB2) :-
+superset(tb(SetA1, SetB1), tb(SetA2, SetB2)) :-
     ( if tree_bitset.superset(SetA1, SetA2) then
         ( if set_ordlist.superset(SetB1, SetB2) then
             true
@@ -426,10 +457,11 @@ superset(SetA1 - SetB1, SetA2 - SetB2) :-
 
 %---------------------------------------------------------------------------%
 
-union(SetA1 - SetB1, SetA2 - SetB2) = Result :-
+union(tb(SetA1, SetB1), tb(SetA2, SetB2)) = Result :-
     tree_bitset.union(SetA1, SetA2, SetA),
     set_ordlist.union(SetB1, SetB2, SetB),
-    check2("union", SetA1 - SetB1, SetA2 - SetB2, SetA - SetB, Result).
+    check2("union", tb(SetA1, SetB1), tb(SetA2, SetB2), tb(SetA, SetB),
+        Result).
 
 union(A, B, test_bitset.union(A, B)).
 
@@ -437,14 +469,15 @@ union_list(SetsAB) = Result :-
     get_sets("union_list", SetsAB, SetsA, SetsB),
     SetA = tree_bitset.union_list(SetsA),
     SetB = set_ordlist.union_list(SetsB),
-    check0("union_list", SetA - SetB, Result).
+    check0("union_list", tb(SetA, SetB), Result).
 
 union_list(Sets, test_bitset.union_list(Sets)).
 
-intersect(SetA1 - SetB1, SetA2 - SetB2) = Result :-
+intersect(tb(SetA1, SetB1), tb(SetA2, SetB2)) = Result :-
     tree_bitset.intersect(SetA1, SetA2, SetA),
     set_ordlist.intersect(SetB1, SetB2, SetB),
-    check2("intersect", SetA1 - SetB1, SetA2 - SetB2, SetA - SetB, Result).
+    check2("intersect", tb(SetA1, SetB1), tb(SetA2, SetB2), tb(SetA, SetB),
+        Result).
 
 intersect(A, B, test_bitset.intersect(A, B)).
 
@@ -452,24 +485,25 @@ intersect_list(SetsAB) = Result :-
     get_sets("intersect_list", SetsAB, SetsA, SetsB),
     SetA = tree_bitset.intersect_list(SetsA),
     SetB = set_ordlist.intersect_list(SetsB),
-    check0("intersect_list", SetA - SetB, Result).
+    check0("intersect_list", tb(SetA, SetB), Result).
 
 intersect_list(Sets, test_bitset.intersect_list(Sets)).
 
-difference(SetA1 - SetB1, SetA2 - SetB2) = Result :-
+difference(tb(SetA1, SetB1), tb(SetA2, SetB2)) = Result :-
     tree_bitset.difference(SetA1, SetA2, SetA),
     set_ordlist.difference(SetB1, SetB2, SetB),
-    check2("difference", SetA1 - SetB1, SetA2 - SetB2, SetA - SetB, Result).
+    check2("difference", tb(SetA1, SetB1), tb(SetA2, SetB2), tb(SetA, SetB),
+        Result).
 
 difference(A, B, test_bitset.difference(A, B)).
 
 %---------------------%
 
-:- pred get_sets(string::in, list(pair(tree_bitset(T), set_ordlist(T)))::in,
-    list(tree_bitset(T))::out, list(set_ordlist(T))::out) is det <= enum(T).
+:- pred get_sets(string::in, list(test_bitset(T))::in,
+    list(tree_bitset(T))::out, list(set_ordlist(T))::out) is det <= uenum(T).
 
 get_sets(_, [], [], []).
-get_sets(Op, [SetA - SetB | SetsAB], [SetA | SetsA], [SetB | SetsB]) :-
+get_sets(Op, [tb(SetA, SetB) | SetsAB], [SetA | SetsA], [SetB | SetsB]) :-
     tree_bitset.to_sorted_list(SetA, SetListA),
     set_ordlist.to_sorted_list(SetB, SetListB),
     ( if SetListA = SetListB then
@@ -480,7 +514,7 @@ get_sets(Op, [SetA - SetB | SetsAB], [SetA | SetsA], [SetB | SetsB]) :-
 
 %---------------------------------------------------------------------------%
 
-divide(Pred, SetA - SetB, ResultIn, ResultOut) :-
+divide(Pred, tb(SetA, SetB), ResultIn, ResultOut) :-
     tree_bitset.divide(Pred, SetA, InSetA, OutSetA),
     set_ordlist.divide(Pred, SetB, InSetB, OutSetB),
 
@@ -495,13 +529,14 @@ divide(Pred, SetA - SetB, ResultIn, ResultOut) :-
         InSetListA = InSetListB,
         OutSetListA = OutSetListB
     then
-        ResultIn = InSetA - InSetB,
-        ResultOut = OutSetA - OutSetB
+        ResultIn = tb(InSetA, InSetB),
+        ResultOut = tb(OutSetA, OutSetB)
     else
         unexpected($pred, "failed")
     ).
 
-divide_by_set(DivideBySetA - DivideBySetB, SetA - SetB, ResultIn, ResultOut) :-
+divide_by_set(tb(DivideBySetA, DivideBySetB), tb(SetA, SetB),
+        ResultIn, ResultOut) :-
     tree_bitset.divide_by_set(DivideBySetA, SetA, InSetA, OutSetA),
     set_ordlist.divide_by_set(DivideBySetB, SetB, InSetB, OutSetB),
 
@@ -519,8 +554,8 @@ divide_by_set(DivideBySetA - DivideBySetB, SetA - SetB, ResultIn, ResultOut) :-
         InSetListA = InSetListB,
         OutSetListA = OutSetListB
     then
-        ResultIn = InSetA - InSetB,
-        ResultOut = OutSetA - OutSetB
+        ResultIn = tb(InSetA, InSetB),
+        ResultOut = tb(OutSetA, OutSetB)
     else
         unexpected($pred, "failed")
     ).
@@ -529,22 +564,22 @@ divide_by_set(DivideBySetA - DivideBySetB, SetA - SetB, ResultIn, ResultOut) :-
 
 list_to_set(List) = Result :-
     check0("list_to_set",
-        tree_bitset.list_to_set(List) - set_ordlist.list_to_set(List),
+        tb(tree_bitset.list_to_set(List), set_ordlist.list_to_set(List)),
         Result).
 
 list_to_set(A, test_bitset.list_to_set(A)).
 
 sorted_list_to_set(List) = Result :-
     check0("sorted_list_to_set",
-        tree_bitset.sorted_list_to_set(List) -
-            set_ordlist.sorted_list_to_set(List),
+        tb(tree_bitset.sorted_list_to_set(List),
+            set_ordlist.sorted_list_to_set(List)),
         Result).
 
 sorted_list_to_set(A, test_bitset.sorted_list_to_set(A)).
 
 %---------------------------------------------------------------------------%
 
-to_sorted_list(A - B) = List :-
+to_sorted_list(tb(A, B)) = List :-
     ListA = tree_bitset.to_sorted_list(A),
     ListB = set_ordlist.to_sorted_list(B),
     ( if ListA = ListB then
@@ -557,21 +592,21 @@ to_sorted_list(A, test_bitset.to_sorted_list(A)).
 
 %---------------------------------------------------------------------------%
 
-set_to_bitset(Set) = A - B :-
+set_to_bitset(Set) = tb(A, B) :-
     set.to_sorted_list(Set, SortedList),
-    A - B = test_bitset.sorted_list_to_set(SortedList).
+    tb(A, B) = test_bitset.sorted_list_to_set(SortedList).
 
 from_set(Set) = set_to_bitset(Set).
 
-bitset_to_set(A - B) = Set :-
-    SortedList = test_bitset.to_sorted_list(A - B),
+bitset_to_set(tb(A, B)) = Set :-
+    SortedList = test_bitset.to_sorted_list(tb(A, B)),
     set.sorted_list_to_set(SortedList, Set).
 
 to_set(Set) = bitset_to_set(Set).
 
 %---------------------------------------------------------------------------%
 
-count(SetA - SetB) = Count :-
+count(tb(SetA, SetB)) = Count :-
     CountA = tree_bitset.count(SetA),
     CountB = set_ordlist.count(SetB),
     ( if CountA = CountB then
@@ -582,7 +617,7 @@ count(SetA - SetB) = Count :-
 
 %---------------------------------------------------------------------------%
 
-all_true(Pred, SetA - SetB) :-
+all_true(Pred, tb(SetA, SetB)) :-
     ( if tree_bitset.all_true(Pred, SetA) then
         ( if set_ordlist.all_true(Pred, SetB) then
             true
@@ -597,7 +632,7 @@ all_true(Pred, SetA - SetB) :-
         )
     ).
 
-filter(Pred, SetA - SetB) = Result :-
+filter(Pred, tb(SetA, SetB)) = Result :-
     tree_bitset.to_sorted_list(SetA, SetListA),
     set_ordlist.to_sorted_list(SetB, SetListB),
     InSetA = tree_bitset.filter(Pred, SetA),
@@ -605,12 +640,12 @@ filter(Pred, SetA - SetB) = Result :-
     tree_bitset.to_sorted_list(InSetA, InSetListA),
     set_ordlist.to_sorted_list(InSetB, InSetListB),
     ( if SetListA = SetListB, InSetListA = InSetListB then
-        Result = InSetA - InSetB
+        Result = tb(InSetA, InSetB)
     else
         unexpected($pred, "failed")
     ).
 
-filter(Pred, SetA - SetB, ResultIn, ResultOut) :-
+filter(Pred, tb(SetA, SetB), ResultIn, ResultOut) :-
     tree_bitset.to_sorted_list(SetA, SetListA),
     set_ordlist.to_sorted_list(SetB, SetListB),
     tree_bitset.filter(Pred, SetA, InSetA, OutSetA),
@@ -624,13 +659,13 @@ filter(Pred, SetA - SetB, ResultIn, ResultOut) :-
         InSetListA = InSetListB,
         OutSetListA = OutSetListB
     then
-        ResultIn = InSetA - InSetB,
-        ResultOut = OutSetA - OutSetB
+        ResultIn = tb(InSetA, InSetB),
+        ResultOut = tb(OutSetA, OutSetB)
     else
         unexpected($pred, "failed")
     ).
 
-foldl(Pred, SetA - SetB, Acc0) = Acc :-
+foldl(Pred, tb(SetA, SetB), Acc0) = Acc :-
     tree_bitset.to_sorted_list(SetA, SetListA),
     set_ordlist.to_sorted_list(SetB, SetListB),
     tree_bitset.foldl(Pred, SetA, Acc0) = AccA,
@@ -641,7 +676,7 @@ foldl(Pred, SetA - SetB, Acc0) = Acc :-
         unexpected($pred, "failed")
     ).
 
-foldl(Pred, SetA - SetB, Acc0, Acc) :-
+foldl(Pred, tb(SetA, SetB), Acc0, Acc) :-
     tree_bitset.to_sorted_list(SetA, SetListA),
     set_ordlist.to_sorted_list(SetB, SetListB),
     tree_bitset.foldl(Pred, SetA, Acc0, AccA),
@@ -658,10 +693,10 @@ foldl(Pred, SetA - SetB, Acc0, Acc) :-
 %
 
 :- pred check0(string::in, test_bitset(T)::in, test_bitset(T)::out) is det
-    <= enum(T).
+    <= uenum(T).
 
 check0(Op, Tester, Result) :-
-    Tester = BitSet - Set,
+    Tester = tb(BitSet, Set),
     tree_bitset.to_sorted_list(BitSet, BitSetList),
     set_ordlist.to_sorted_list(Set, SetList),
     ( if BitSetList = SetList then
@@ -671,13 +706,13 @@ check0(Op, Tester, Result) :-
     ).
 
 :- pred check1(string::in, test_bitset(T)::in, test_bitset(T)::in,
-    test_bitset(T)::out) is det <= enum(T).
+    test_bitset(T)::out) is det <= uenum(T).
 
 check1(Op, TesterA, Tester, Result) :-
-    TesterA = BitSetA - SetA,
+    TesterA = tb(BitSetA, SetA),
     tree_bitset.to_sorted_list(BitSetA, BitSetListA),
     set_ordlist.to_sorted_list(SetA, SetListA),
-    Tester = BitSet - Set,
+    Tester = tb(BitSet, Set),
     tree_bitset.to_sorted_list(BitSet, BitSetList),
     set_ordlist.to_sorted_list(Set, SetList),
     ( if
@@ -690,16 +725,16 @@ check1(Op, TesterA, Tester, Result) :-
     ).
 
 :- pred check2(string::in, test_bitset(T)::in, test_bitset(T)::in,
-    test_bitset(T)::in, test_bitset(T)::out) is det <= enum(T).
+    test_bitset(T)::in, test_bitset(T)::out) is det <= uenum(T).
 
 check2(Op, TesterA, TesterB, Tester, Result) :-
-    TesterA = BitSetA - SetA,
+    TesterA = tb(BitSetA, SetA),
     tree_bitset.to_sorted_list(BitSetA, BitSetListA),
     set_ordlist.to_sorted_list(SetA, SetListA),
-    TesterB = BitSetB - SetB,
+    TesterB = tb(BitSetB, SetB),
     tree_bitset.to_sorted_list(BitSetB, BitSetListB),
     set_ordlist.to_sorted_list(SetB, SetListB),
-    Tester = BitSet - Set,
+    Tester = tb(BitSet, Set),
     tree_bitset.to_sorted_list(BitSet, BitSetList),
     set_ordlist.to_sorted_list(Set, SetList),
 

@@ -32,8 +32,8 @@ Changes that may break compatibility
   The old contents of the `mercury_term_parser` module is still available as
   `extras/old_library_modules/old_mercury_term_parser`.
 
-* The `sparse_bitset` and `fat_sparse_bitset` modules now require
-  the items in those sets to be instances of the `uenum` typeclass,
+* The `sparse_bitset`, `fat_sparse_bitset` and `tree_bitset` modules
+  now require the items in those sets to be instances of the `uenum` typeclass,
   not the `enum` typeclass.
 
 * The `digraph_key` type in the `digraph` module is now an instance of
@@ -883,6 +883,13 @@ Changes to the Mercury standard library
 
 * This new module contains predicates and functions that find
   variables in terms.
+
+### Changes to the `tree_bitset` module
+
+* The following predicates have been added:
+
+    - pred `remove_leq/3`
+    - pred `remove_gt/3`
 
 ### Changes to the `tree234` module
 

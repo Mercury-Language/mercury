@@ -768,18 +768,20 @@ remove_leq(Set0, Item) = Set :-
     remove_leq(Item, Set0, Set).
 
 remove_leq(Item, sparse_bitset(Elems0), sparse_bitset(Elems)) :-
-    remove_leq_loop(enum.to_uint(Item), Elems0, Elems).
+    Index = enum.to_uint(Item),
+    offset_and_bit_to_set_for_index(Index, IndexOffset, IndexBit),
+    remove_leq_loop(IndexOffset, IndexBit, Elems0, Elems).
 
-:- pred remove_leq_loop(uint::in, bitset_elems::in, bitset_elems::out) is det.
+:- pred remove_leq_loop(uint::in, uint::in,
+    bitset_elems::in, bitset_elems::out) is det.
 
-remove_leq_loop(_, [], []).
-remove_leq_loop(Index, Elems0 @ [Head0 | Tail0], Elems) :-
+remove_leq_loop(_, _, [], []).
+remove_leq_loop(IndexOffset, IndexBit, Elems0 @ [Head0 | Tail0], Elems) :-
     Offset = Head0 ^ offset,
-    ( if Offset + ubits_per_uint =< Index then
-        remove_leq_loop(Index, Tail0, Elems)
-    else if Offset =< Index then
-        Bits = Head0 ^ bits /\
-            unchecked_left_ushift(\ 0u, Index - Offset + 1u),
+    ( if Offset < IndexOffset then
+        remove_leq_loop(IndexOffset, IndexBit, Tail0, Elems)
+    else if Offset = IndexOffset then
+        Bits = Head0 ^ bits /\ unchecked_left_ushift(\ 0u, IndexBit + 1u),
         ( if Bits = 0u then
             Elems = Tail0
         else
@@ -795,19 +797,21 @@ remove_gt(Set0, Item) = Set :-
     remove_gt(Item, Set0, Set).
 
 remove_gt(Item, sparse_bitset(Elems0), sparse_bitset(Elems)) :-
-    remove_gt_loop(enum.to_uint(Item), Elems0, Elems).
+    Index = enum.to_uint(Item),
+    offset_and_bit_to_set_for_index(Index, IndexOffset, IndexBit),
+    remove_gt_loop(IndexOffset, IndexBit, Elems0, Elems).
 
-:- pred remove_gt_loop(uint::in, bitset_elems::in, bitset_elems::out) is det.
+:- pred remove_gt_loop(uint::in, uint::in,
+    bitset_elems::in, bitset_elems::out) is det.
 
-remove_gt_loop(_, [], []).
-remove_gt_loop(Index, [Head0 | Tail0], Elems) :-
+remove_gt_loop(_, _, [], []).
+remove_gt_loop(IndexOffset, IndexBit, [Head0 | Tail0], Elems) :-
     Offset = Head0 ^ offset,
-    ( if Offset + ubits_per_uint - 1u =< Index then
-        remove_gt_loop(Index, Tail0, Tail),
+    ( if Offset < IndexOffset then
+        remove_gt_loop(IndexOffset, IndexBit, Tail0, Tail),
         Elems = [Head0 | Tail]
-    else if Offset =< Index then
-        Bits = Head0 ^ bits /\
-            \ unchecked_left_ushift(\ 0u, Index - Offset + 1u),
+    else if Offset = IndexOffset then
+        Bits = Head0 ^ bits /\ \ unchecked_left_ushift(\ 0u, IndexBit + 1u),
         ( if Bits = 0u then
             Elems = []
         else

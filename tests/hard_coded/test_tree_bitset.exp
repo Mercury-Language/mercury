@@ -16,6 +16,10 @@ testing difference
 testing remove_least
 2
 [7, 15, 19, 22, 25, 28, 29, 31, 32, 34, 36, 38, 39, 40, 42, 44, 47, 58, 59]
+testing remove_leq 33
+[34, 36, 38, 39, 40, 42, 44, 47, 58, 59]
+testing remove_gt 33
+[2, 7, 15, 19, 22, 25, 28, 29, 31, 32]
 testing delete
 [7, 15, 19, 22, 25, 28, 29, 32, 34, 36, 47, 59]
 testing delete_list
@@ -41,6 +45,10 @@ testing difference
 testing remove_least
 532
 [32431]
+testing remove_leq 16481
+[32431]
+testing remove_gt 16481
+[532]
 testing delete
 [532, 32431]
 testing delete_list
@@ -66,6 +74,10 @@ testing difference
 testing remove_least
 1064
 [64862]
+testing remove_leq 32963
+[64862]
+testing remove_gt 32963
+[1064]
 testing delete
 [1064, 64862]
 testing delete_list
@@ -91,6 +103,10 @@ testing difference
 testing remove_least
 1
 [29424]
+testing remove_leq 14712
+[29424]
+testing remove_gt 14712
+[1]
 testing delete
 [29424]
 testing delete_list
@@ -116,6 +132,10 @@ testing difference
 testing remove_least
 2
 [58848]
+testing remove_leq 29425
+[58848]
+testing remove_gt 29425
+[2]
 testing delete
 [58848]
 testing delete_list
@@ -141,6 +161,10 @@ testing difference
 testing remove_least
 1
 []
+testing remove_leq 1
+[]
+testing remove_gt 1
+[1]
 testing delete
 [1]
 testing delete_list
@@ -166,6 +190,10 @@ testing difference
 testing remove_least
 2
 []
+testing remove_leq 2
+[]
+testing remove_gt 2
+[2]
 testing delete
 [2]
 testing delete_list
@@ -191,6 +219,10 @@ testing difference
 testing remove_least
 101
 [102]
+testing remove_leq 101
+[102]
+testing remove_gt 101
+[101]
 testing delete
 [101, 102]
 testing delete_list
@@ -216,6 +248,10 @@ testing difference
 testing remove_least
 202
 [204]
+testing remove_leq 203
+[204]
+testing remove_gt 203
+[202]
 testing delete
 [202, 204]
 testing delete_list
@@ -241,6 +277,10 @@ testing difference
 testing remove_least
 35702
 [35703, 35705, 36696]
+testing remove_leq 36200
+[36696]
+testing remove_gt 36200
+[35702, 35703, 35705]
 testing delete
 [35702, 35703, 35705, 36696]
 testing delete_list
@@ -266,6 +306,10 @@ testing difference
 testing remove_least
 71404
 [71406, 71410, 73392]
+testing remove_leq 72401
+[73392]
+testing remove_gt 72401
+[71404, 71406, 71410]
 testing delete
 [71404, 71406, 71410, 73392]
 testing delete_list
@@ -273,6 +317,180 @@ testing delete_list
 testing divide_by_set
 []
 [2, 4, 6, 66832, 668566]
+
+List1: 0, 63, 64, 65, 127
+List2: 
+
+testing count
+count: 5 0
+testing foldl
+Sum of List1 = 319
+Sum of List2 = 0
+testing union
+[0, 63, 64, 65, 127]
+testing intersection
+[]
+testing difference
+[0, 63, 64, 65, 127]
+testing remove_least
+0
+[63, 64, 65, 127]
+testing remove_leq 63
+[64, 65, 127]
+testing remove_gt 63
+[0, 63]
+testing delete
+[0, 63, 64, 65, 127]
+testing delete_list
+[0, 63, 64, 65, 127]
+testing divide_by_set
+[]
+[]
+
+List1: 0, 126, 128, 130, 254
+List2: 
+
+testing count
+count: 5 0
+testing foldl
+Sum of List1 = 638
+Sum of List2 = 0
+testing union
+[0, 126, 128, 130, 254]
+testing intersection
+[]
+testing difference
+[0, 126, 128, 130, 254]
+testing remove_least
+0
+[126, 128, 130, 254]
+testing remove_leq 127
+[128, 130, 254]
+testing remove_gt 127
+[0, 126]
+testing delete
+[0, 126, 128, 130, 254]
+testing delete_list
+[0, 126, 128, 130, 254]
+testing divide_by_set
+[]
+[]
+
+List1: 0, 63, 64, 65, 127, 128
+List2: 
+
+testing count
+count: 6 0
+testing foldl
+Sum of List1 = 447
+Sum of List2 = 0
+testing union
+[0, 63, 64, 65, 127, 128]
+testing intersection
+[]
+testing difference
+[0, 63, 64, 65, 127, 128]
+testing remove_least
+0
+[63, 64, 65, 127, 128]
+testing remove_leq 64
+[65, 127, 128]
+testing remove_gt 64
+[0, 63, 64]
+testing delete
+[0, 63, 64, 65, 127, 128]
+testing delete_list
+[0, 63, 64, 65, 127, 128]
+testing divide_by_set
+[]
+[]
+
+List1: 0, 126, 128, 130, 254, 256
+List2: 
+
+testing count
+count: 6 0
+testing foldl
+Sum of List1 = 894
+Sum of List2 = 0
+testing union
+[0, 126, 128, 130, 254, 256]
+testing intersection
+[]
+testing difference
+[0, 126, 128, 130, 254, 256]
+testing remove_least
+0
+[126, 128, 130, 254, 256]
+testing remove_leq 128
+[130, 254, 256]
+testing remove_gt 128
+[0, 126, 128]
+testing delete
+[0, 126, 128, 130, 254, 256]
+testing delete_list
+[0, 126, 128, 130, 254, 256]
+testing divide_by_set
+[]
+[]
+
+List1: 0, 63, 64, 65, 127, 128, 130
+List2: 
+
+testing count
+count: 7 0
+testing foldl
+Sum of List1 = 577
+Sum of List2 = 0
+testing union
+[0, 63, 64, 65, 127, 128, 130]
+testing intersection
+[]
+testing difference
+[0, 63, 64, 65, 127, 128, 130]
+testing remove_least
+0
+[63, 64, 65, 127, 128, 130]
+testing remove_leq 65
+[127, 128, 130]
+testing remove_gt 65
+[0, 63, 64, 65]
+testing delete
+[0, 63, 64, 65, 127, 128, 130]
+testing delete_list
+[0, 63, 64, 65, 127, 128, 130]
+testing divide_by_set
+[]
+[]
+
+List1: 0, 126, 128, 130, 254, 256, 260
+List2: 
+
+testing count
+count: 7 0
+testing foldl
+Sum of List1 = 1154
+Sum of List2 = 0
+testing union
+[0, 126, 128, 130, 254, 256, 260]
+testing intersection
+[]
+testing difference
+[0, 126, 128, 130, 254, 256, 260]
+testing remove_least
+0
+[126, 128, 130, 254, 256, 260]
+testing remove_leq 130
+[254, 256, 260]
+testing remove_gt 130
+[0, 126, 128, 130]
+testing delete
+[0, 126, 128, 130, 254, 256, 260]
+testing delete_list
+[0, 126, 128, 130, 254, 256, 260]
+testing divide_by_set
+[]
+[]
 
 List1: 
 List2: 2
@@ -387,6 +605,10 @@ testing difference
 testing remove_least
 2
 []
+testing remove_leq 2
+[]
+testing remove_gt 2
+[2]
 testing delete
 [2]
 testing delete_list
@@ -412,6 +634,10 @@ testing difference
 testing remove_least
 4
 []
+testing remove_leq 4
+[]
+testing remove_gt 4
+[4]
 testing delete
 [4]
 testing delete_list
@@ -437,6 +663,10 @@ testing difference
 testing remove_least
 2
 [35701]
+testing remove_leq 17851
+[35701]
+testing remove_gt 17851
+[2]
 testing delete
 [2, 35701]
 testing delete_list
@@ -462,6 +692,10 @@ testing difference
 testing remove_least
 4
 [71402]
+testing remove_leq 35703
+[71402]
+testing remove_gt 35703
+[4]
 testing delete
 [4, 71402]
 testing delete_list
