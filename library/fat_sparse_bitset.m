@@ -971,10 +971,36 @@ union_list_pass(Set1, Sets2plus, HeadUnion, TailUnions) :-
         HeadUnion = union(union(Set1, Set2), union(Set3, Set4)),
         TailUnions = []
     ;
-        Sets2plus = [Set2, Set3, Set4 | Sets5plus],
-        Sets5plus = [Set5 | Sets6plus],
-        HeadUnion = union(union(Set1, Set2), union(Set3, Set4)),
-        union_list_pass(Set5, Sets6plus, HeadTailUnion, TailTailUnions),
+        Sets2plus = [Set2, Set3, Set4, Set5],
+        HeadUnion = union(
+            union(Set1, Set2),
+            union(Set3, union(Set4, Set5))),
+        TailUnions = []
+    ;
+        Sets2plus = [Set2, Set3, Set4, Set5, Set6],
+        HeadUnion = union(
+            union(Set1, union(Set2, Set3)),
+            union(Set4, union(Set5, Set6))),
+        TailUnions = []
+    ;
+        Sets2plus = [Set2, Set3, Set4, Set5, Set6, Set7],
+        HeadUnion = union(
+            union(Set1, union(Set2, Set3)),
+            union(union(Set4, Set5), union(Set6, Set7))),
+        TailUnions = []
+    ;
+        Sets2plus = [Set2, Set3, Set4, Set5, Set6, Set7, Set8],
+        HeadUnion = union(
+            union(union(Set1, Set2), union(Set3, Set4)),
+            union(union(Set5, Set6), union(Set7, Set8))),
+        TailUnions = []
+    ;
+        Sets2plus = [Set2, Set3, Set4, Set5, Set6, Set7, Set8, Set9 |
+            Sets10plus],
+        HeadUnion = union(
+            union(union(Set1, Set2), union(Set3, Set4)),
+            union(union(Set5, Set6), union(Set7, Set8))),
+        union_list_pass(Set9, Sets10plus, HeadTailUnion, TailTailUnions),
         TailUnions = [HeadTailUnion | TailTailUnions]
     ).
 
@@ -1051,29 +1077,56 @@ intersect_list_passes(Set1, Sets2plus, Section) :-
     list(fat_sparse_bitset(T))::in,
     fat_sparse_bitset(T)::out, list(fat_sparse_bitset(T))::out) is det.
 
-intersect_list_pass(Set1, Sets2plus, HeadSection, TailSection) :-
+intersect_list_pass(Set1, Sets2plus, HeadSection, TailSections) :-
     (
         Sets2plus = [],
         HeadSection = Set1,
-        TailSection = []
+        TailSections = []
     ;
         Sets2plus = [Set2],
         HeadSection = intersect(Set1, Set2),
-        TailSection = []
+        TailSections = []
     ;
         Sets2plus = [Set2, Set3],
         HeadSection = intersect(Set1, intersect(Set2, Set3)),
-        TailSection = []
+        TailSections = []
     ;
         Sets2plus = [Set2, Set3, Set4],
         HeadSection = intersect(intersect(Set1, Set2), intersect(Set3, Set4)),
-        TailSection = []
+        TailSections = []
     ;
-        Sets2plus = [Set2, Set3, Set4 | Sets5plus],
-        Sets5plus = [Set5 | Sets6plus],
-        HeadSection = intersect(intersect(Set1, Set2), intersect(Set3, Set4)),
-        intersect_list_pass(Set5, Sets6plus, HeadTailSection, TailTailSection),
-        TailSection = [HeadTailSection | TailTailSection]
+        Sets2plus = [Set2, Set3, Set4, Set5],
+        HeadSection = intersect(
+            intersect(Set1, Set2),
+            intersect(Set3, intersect(Set4, Set5))),
+        TailSections = []
+    ;
+        Sets2plus = [Set2, Set3, Set4, Set5, Set6],
+        HeadSection = intersect(
+            intersect(Set1, intersect(Set2, Set3)),
+            intersect(Set4, intersect(Set5, Set6))),
+        TailSections = []
+    ;
+        Sets2plus = [Set2, Set3, Set4, Set5, Set6, Set7],
+        HeadSection = intersect(
+            intersect(Set1, intersect(Set2, Set3)),
+            intersect(intersect(Set4, Set5), intersect(Set6, Set7))),
+        TailSections = []
+    ;
+        Sets2plus = [Set2, Set3, Set4, Set5, Set6, Set7, Set8],
+        HeadSection = intersect(
+            intersect(intersect(Set1, Set2), intersect(Set3, Set4)),
+            intersect(intersect(Set5, Set6), intersect(Set7, Set8))),
+        TailSections = []
+    ;
+        Sets2plus = [Set2, Set3, Set4, Set5, Set6, Set7, Set8, Set9 |
+            Sets10plus],
+        HeadSection = intersect(
+            intersect(intersect(Set1, Set2), intersect(Set3, Set4)),
+            intersect(intersect(Set5, Set6), intersect(Set7, Set8))),
+        intersect_list_pass(Set9, Sets10plus,
+            HeadTailSection, TailTailSections),
+        TailSections = [HeadTailSection | TailTailSections]
     ).
 
 %---------------------%
