@@ -334,10 +334,18 @@
 :- func sc(digraph(T)) = digraph(T).
 :- pred sc(digraph(T)::in, digraph(T)::out) is det.
 
+    % A synonym for sc/1.
+    %
+:- func symmetric_closure(digraph(T)) = digraph(T).
+
     % tc(G, TC) is true if TC is the transitive closure of G.
     %
 :- func tc(digraph(T)) = digraph(T).
 :- pred tc(digraph(T)::in, digraph(T)::out) is det.
+
+    % A synonym for tc/1.
+    %
+:- func transitive_closure(digraph(T)) = digraph(T).
 
     % rtc(G, RTC) is true if RTC is the reflexive transitive closure of G.
     %
@@ -346,6 +354,10 @@
     %
 :- func rtc(digraph(T)) = digraph(T).
 :- pred rtc(digraph(T)::in, digraph(T)::out) is det.
+
+    % A synonym for rtc/1.
+    %
+:- func reflexive_transitive_closure(digraph(T)) = digraph(T).
 
     % traverse(G, ProcessVertex, ProcessEdge, !Acc) will traverse the digraph G
     % - calling ProcessVertex for each vertex in the digraph, and
@@ -1071,20 +1083,24 @@ atsort_loop([X | Xs], GInv, !.Vis, !ATsort) :-
 
 %---------------------------------------------------------------------------%
 
-sc(G) = Sc :-
-    digraph.sc(G, Sc).
+sc(G) = symmetric_closure(G).
 
 sc(G, Sc) :-
+    Sc = symmetric_closure(G).
+
+symmetric_closure(G) = Sc :-
     digraph.inverse(G, GInv),
     digraph.to_key_assoc_list(GInv, GInvList),
     digraph.add_assoc_list(GInvList, G, Sc).
 
 %---------------------------------------------------------------------------%
 
-tc(G) = Tc :-
-    digraph.tc(G, Tc).
+tc(G) = transitive_closure(G).
 
 tc(G, Tc) :-
+    Tc = transitive_closure(G).
+
+transitive_closure(G) = Tc :-
     simple_tc_main(G, Tc).
 
 %---------------------------------------------------------------------------%
@@ -1314,20 +1330,19 @@ add_predecessor(Y, X, !Map) :-
 
 %---------------------------------------------------------------------------%
 
-rtc(G) = Rtc :-
-    digraph.rtc(G, Rtc).
+rtc(G) = reflexive_transitive_closure(G).
 
 rtc(G, Rtc) :-
-    tc(G, Tc),
-    rc(Tc, Rtc).
+    Rtc = reflexive_transitive_closure(G).
 
-    % Reflexive closure.
-    %
-:- pred rc(digraph(T)::in, digraph(T)::out) is det.
+reflexive_transitive_closure(G) =
+    reflexive_closure(transitive_closure(G)).
 
-rc(G, RC) :-
+:- func reflexive_closure(digraph(T)) = digraph(T).
+
+reflexive_closure(G) = Rc :-
     digraph.keys(G, Keys),
-    list.foldl(add_reflexive, Keys, G, RC).
+    list.foldl(add_reflexive, Keys, G, Rc).
 
 :- pred add_reflexive(digraph_key(T)::in,
     digraph(T)::in, digraph(T)::out) is det.
