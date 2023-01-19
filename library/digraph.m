@@ -1164,6 +1164,7 @@ simple_tc(OrigEdges, V, !Visit, !State) :-
         !:Stack = !.State ^ stack,
 
         map.det_insert(V, V, !RootMap),
+        % Invariant: V is not in comp.
         !:Stack = [V | !.Stack],
 
         !State ^ root_map := !.RootMap,
@@ -1237,9 +1238,12 @@ simple_tc_for_v_w(OrigEdges, V, W, !Visit, !State) :-
         RootMap0 = !.State ^ root_map,
         map.lookup(RootMap0, V, RootV),
         map.lookup(RootMap0, W, RootW),
-        MinRoot = min_by_visit_order(!.Visit, RootV, RootW),
-        map.det_update(V, MinRoot, RootMap0, RootMap),
-        !State ^ root_map := RootMap
+        ( if visited_earlier(!.Visit, RootV, RootW) then
+            map.det_update(V, RootW, RootMap0, RootMap),
+            !State ^ root_map := RootMap
+        else
+            true
+        )
     ),
 
     SuccMap0 = !.State ^ succ_map,
@@ -1250,18 +1254,14 @@ simple_tc_for_v_w(OrigEdges, V, W, !Visit, !State) :-
     map.set(VI, Union, SuccMap0, SuccMap),
     !State ^ succ_map := SuccMap.
 
-:- func min_by_visit_order(simple_tc_visit(T), digraph_key(T), digraph_key(T))
-    = digraph_key(T).
+:- pred visited_earlier(simple_tc_visit(T)::in,
+    digraph_key(T)::in, digraph_key(T)::in) is semidet.
 
-min_by_visit_order(Visit, X, Y) = Min :-
+visited_earlier(Visit, X, Y) :-
     VisitMap = Visit ^ visit_map,
     map.lookup(VisitMap, X, OrderX),
     map.lookup(VisitMap, Y, OrderY),
-    ( if OrderX =< OrderY then
-        Min = X
-    else
-        Min = Y
-    ).
+    OrderY < OrderX.
 
 :- pred pop_component(digraph_key(T)::in, list(digraph_key(T))::out,
     list(digraph_key(T))::in, list(digraph_key(T))::out) is det.
