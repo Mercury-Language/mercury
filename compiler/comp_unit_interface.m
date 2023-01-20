@@ -499,7 +499,7 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
     IntInclMap = int_incl_context_map(IntInclMap0),
     ImpInclMap = imp_incl_context_map(ImpInclMap0),
     import_and_or_use_map_to_explicit_int_imp_import_use_maps(ImportUseMap,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap),
+        SectionImportUseMap, IntImportMap, IntUseMap, ImpImportMap, ImpUseMap),
     map.keys_as_set(IntFIMSpecMap, IntFIMSpecs0),
     map.keys_as_set(ImpFIMSpecMap, ImpFIMSpecs0),
     % Add implicit self FIMs for the {Int,Imp}SelfFIMLangs
@@ -521,7 +521,7 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
 
     ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
+        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, SectionImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
@@ -820,7 +820,7 @@ generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         IntInclMap, ImpInclMap, InclMap,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap0,
+        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, _ImpSelfFIMLangs,
 
         TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
@@ -881,7 +881,7 @@ generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
     one_or_more_map.merge(ImpImportMap, ImpUseMap, ImpImportUseMap0),
     map.filter_map_values(
         make_imports_into_uses_maybe_implicit(ImpNeededModules),
-        ImportUseMap0, ImportUseMap),
+        ImportUseMap, SectionImportUseMap),
     ( if set.is_empty(ImpNeededModules) then
         % This gets the same result as the else case, only more quickly.
         map.init(ImpImportUseMap)
@@ -893,7 +893,7 @@ generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
             ImpImportUseMap1, ImpImportUseMap)
         % This sanity check is commented out, because it causes the failure
         % of tests/valid/int_imp_test.m. While the parse_tree_module_src field
-        % that holds ImportUseMap0 is guaranteed to be free of a module
+        % that holds ImportUseMap is guaranteed to be free of a module
         % imported or used more than once (except the permitted combo of
         % used in interface, imported in implementation), the four previous
         % fields, which this code draws its information from, have no such
@@ -964,7 +964,7 @@ generate_interface_int1(Globals, AugMakeIntUnit, IntImportUseMap,
     % XXX TODO
     ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
         DummyMaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
-        IntImportUseMap, ImpImportUseMap, ImportUseMap,
+        IntImportUseMap, ImpImportUseMap, SectionImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
         IntTypeCtorCheckedMap, IntInstCtorCheckedMap, IntModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
@@ -981,36 +981,19 @@ add_self_fim(ModuleName, Lang, !FIMSpecs) :-
 
 :- pred make_imports_into_uses_maybe_implicit(set(module_name)::in,
     module_name::in, maybe_implicit_import_and_or_use::in,
-    maybe_implicit_import_and_or_use::out) is semidet.
+    section_import_and_or_use::out) is semidet.
 
 make_imports_into_uses_maybe_implicit(ImpNeededModules, ModuleName,
-        ImportUse0, ImportUse) :-
+        ImportUse, SectionImportUse) :-
     (
-        ImportUse0 = explicit_avail(Explicit0),
+        ImportUse = explicit_avail(Explicit),
         make_imports_into_uses(ImpNeededModules, ModuleName,
-            Explicit0, Explicit),
-        ImportUse = explicit_avail(Explicit)
+            Explicit, SectionImportUse)
     ;
-        ImportUse0 = implicit_avail(Implicit0, MaybeExplicit0),
-        (
-            ( Implicit0 = implicit_int_import
-            ; Implicit0 = implicit_int_use
-            ),
-            Implicit = implicit_int_use
-        ;
-            Implicit0 = implicit_imp_use,
-            Implicit = implicit_imp_use
-        ),
-        (
-            MaybeExplicit0 = no,
-            MaybeExplicit = no
-        ;
-            MaybeExplicit0 = yes(Explicit0),
-            make_imports_into_uses(ImpNeededModules, ModuleName,
-                Explicit0, Explicit),
-            MaybeExplicit = yes(Explicit)
-        ),
-        ImportUse = implicit_avail(Implicit, MaybeExplicit)
+        ImportUse = implicit_avail(_Implicit, MaybeExplicit),
+        MaybeExplicit = yes(Explicit),
+        make_imports_into_uses(ImpNeededModules, ModuleName,
+            Explicit, SectionImportUse)
     ).
 
 :- pred make_imports_into_uses(set(module_name)::in, module_name::in,
@@ -2293,8 +2276,7 @@ generate_interface_int2(AugMakeIntUnit, IntImportUseMap,
     ),
     ImportUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
     map.foldl(
-        make_imports_into_uses_int_only_maybe_implicit(UnqualSymNames,
-            UsedModuleNames),
+        make_imports_into_uses_int_only(UnqualSymNames, UsedModuleNames),
         ImportUseMap, map.init, ShortImportUseMap),
 
     % If there is nothing involving a foreign language in the interface,
@@ -2349,12 +2331,13 @@ add_only_int_include(ModuleName, InclInfo, !IntInclMap) :-
         Section = ms_implementation
     ).
 
-:- pred make_imports_into_uses_int_only_maybe_implicit(
+:- pred make_imports_into_uses_int_only(
     maybe_unqual_symnames::in, set(module_name)::in,
     module_name::in, maybe_implicit_import_and_or_use::in,
-    import_and_or_use_map::in, import_and_or_use_map::out) is det.
+    section_import_and_or_use_map::in, section_import_and_or_use_map::out)
+    is det.
 
-make_imports_into_uses_int_only_maybe_implicit(UnqualSymNames, UsedModuleNames,
+make_imports_into_uses_int_only(UnqualSymNames, UsedModuleNames,
         ModuleName, ImportUse0, !ShortImportUseMap) :-
     ( if
         UnqualSymNames = no_unqual_symnames,
@@ -2370,37 +2353,19 @@ make_imports_into_uses_int_only_maybe_implicit(UnqualSymNames, UsedModuleNames,
         (
             ImportUse0 = explicit_avail(Explicit0),
             ( if make_imports_into_uses_int_only(Explicit0, Explicit) then
-                ImportUse = explicit_avail(Explicit),
-                map.det_insert(ModuleName, ImportUse, !ShortImportUseMap)
+                map.det_insert(ModuleName, Explicit, !ShortImportUseMap)
             else
                 true
             )
         ;
-            ImportUse0 = implicit_avail(Implicit0, MaybeExplicit0),
+            ImportUse0 = implicit_avail(_Implicit0, MaybeExplicit0),
             ( if
                 MaybeExplicit0 = yes(Explicit0),
-                make_imports_into_uses_int_only(Explicit0, Explicit1)
+                make_imports_into_uses_int_only(Explicit0, Explicit)
             then
-                MaybeExplicit = yes(Explicit1)
+                map.det_insert(ModuleName, Explicit, !ShortImportUseMap)
             else
-                MaybeExplicit = no
-            ),
-            (
-                ( Implicit0 = implicit_int_import
-                ; Implicit0 = implicit_int_use
-                ),
-                Implicit = implicit_int_use,
-                ImportUse = implicit_avail(Implicit, MaybeExplicit),
-                map.det_insert(ModuleName, ImportUse, !ShortImportUseMap)
-            ;
-                Implicit0 = implicit_imp_use,
-                (
-                    MaybeExplicit = yes(Explicit),
-                    ImportUse = explicit_avail(Explicit),
-                    map.det_insert(ModuleName, ImportUse, !ShortImportUseMap)
-                ;
-                    MaybeExplicit = no
-                )
+                true
             )
         )
     ).

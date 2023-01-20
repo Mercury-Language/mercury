@@ -133,12 +133,15 @@
     --->    do_include_implicit
     ;       do_not_include_implicit.
 
+:- pred section_import_and_or_use_map_to_item_avails(
+    section_import_and_or_use_map::in,
+    list(item_avail)::out, list(item_avail)::out) is det.
 :- pred import_and_or_use_map_to_item_avails(maybe_include_implicit::in,
     import_and_or_use_map::in,
     list(item_avail)::out, list(item_avail)::out) is det.
 
 :- pred import_and_or_use_map_to_explicit_int_imp_import_use_maps(
-    import_and_or_use_map::in,
+    import_and_or_use_map::in, section_import_and_or_use_map::out,
     int_import_context_map::out, int_use_context_map::out,
     imp_import_context_map::out, imp_use_context_map::out) is det.
 
@@ -787,6 +790,26 @@ wrap_section_import_and_or_use(SectionImportUse, MaybeImplicitUse) :-
 
 %---------------------%
 
+section_import_and_or_use_map_to_item_avails(ImportUseMap,
+        IntAvails, ImpAvails) :-
+    map.foldl2(section_import_and_or_use_map_to_item_avails_acc,
+        ImportUseMap, [], RevIntAvails, [], RevImpAvails),
+    list.reverse(RevIntAvails, IntAvails),
+    list.reverse(RevImpAvails, ImpAvails).
+
+:- pred section_import_and_or_use_map_to_item_avails_acc(
+    module_name::in, section_import_and_or_use::in,
+    list(item_avail)::in, list(item_avail)::out,
+    list(item_avail)::in, list(item_avail)::out) is det.
+
+section_import_and_or_use_map_to_item_avails_acc(ModuleName, ImportAndOrUse,
+        !RevIntAvails, !RevImpAvails) :-
+    get_explicit_avails(ModuleName, ImportAndOrUse, IntAvails, ImpAvails),
+    !:RevIntAvails = IntAvails ++ !.RevIntAvails,
+    !:RevImpAvails = ImpAvails ++ !.RevImpAvails.
+
+%---------------------%
+
 import_and_or_use_map_to_item_avails(IncludeImplicit, ImportUseMap,
         IntAvails, ImpAvails) :-
     map.foldl2(import_and_or_use_map_to_item_avails_acc(IncludeImplicit),
@@ -808,10 +831,8 @@ import_and_or_use_map_to_item_avails_acc(IncludeImplicit,
     % since they append a list that should be empty.
     (
         ImportAndOrUse = explicit_avail(Explicit),
-        get_explicit_avails(ModuleName, Explicit,
-            ExplicitIntAvails, ExplicitImpAvails),
-        !:RevIntAvails = ExplicitIntAvails ++ !.RevIntAvails,
-        !:RevImpAvails = ExplicitImpAvails ++ !.RevImpAvails
+        section_import_and_or_use_map_to_item_avails_acc(ModuleName, Explicit,
+            !RevIntAvails, !RevImpAvails)
     ;
         ImportAndOrUse = implicit_avail(Implicit, MaybeExplicit),
         get_implicit_avails(ModuleName, Implicit,
@@ -822,10 +843,8 @@ import_and_or_use_map_to_item_avails_acc(IncludeImplicit,
                 MaybeExplicit = no
             ;
                 MaybeExplicit = yes(Explicit),
-                get_explicit_avails(ModuleName, Explicit,
-                    ExplicitIntAvails, ExplicitImpAvails),
-                !:RevIntAvails = ExplicitIntAvails ++ !.RevIntAvails,
-                !:RevImpAvails = ExplicitImpAvails ++ !.RevImpAvails
+                section_import_and_or_use_map_to_item_avails_acc(ModuleName,
+                    Explicit, !RevIntAvails, !RevImpAvails)
             )
         ;
             IncludeImplicit = do_include_implicit,
@@ -982,9 +1001,12 @@ get_explicit_avails(ModuleName, Explicit, IntAvails, ImpAvails) :-
 %---------------------%
 
 import_and_or_use_map_to_explicit_int_imp_import_use_maps(ImportUseMap,
+        SectionImportUseMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap) :-
-    map.foldl4(import_and_or_use_map_to_explicit_int_imp_import_use_maps_acc,
+    map.foldl5(
+        import_and_or_use_map_to_explicit_int_imp_import_use_maps_acc,
         ImportUseMap,
+        map.init, SectionImportUseMap,
         map.init, IntImportMap0,
         map.init, IntUseMap0,
         map.init, ImpImportMap0,
@@ -997,13 +1019,14 @@ import_and_or_use_map_to_explicit_int_imp_import_use_maps(ImportUseMap,
 :- pred import_and_or_use_map_to_explicit_int_imp_import_use_maps_acc(
     module_name::in,
     maybe_implicit_import_and_or_use::in,
+    section_import_and_or_use_map::in, section_import_and_or_use_map::out,
     module_name_context::in, module_name_context::out,
     module_name_context::in, module_name_context::out,
     module_name_context::in, module_name_context::out,
     module_name_context::in, module_name_context::out) is det.
 
 import_and_or_use_map_to_explicit_int_imp_import_use_maps_acc(ModuleName,
-        ImportAndOrUse,
+        ImportAndOrUse, !SectionImportAndOrUseMap,
         !IntImportMap, !IntUseMap, !ImpImportMap, !ImpUseMap) :-
     ( if
         (
@@ -1013,6 +1036,7 @@ import_and_or_use_map_to_explicit_int_imp_import_use_maps_acc(ModuleName,
             MaybeExplicit = yes(Explicit)
         )
     then
+        map.det_insert(ModuleName, Explicit, !SectionImportAndOrUseMap),
         (
             Explicit = int_import(Context),
             map.det_insert(ModuleName, Context, !IntImportMap)

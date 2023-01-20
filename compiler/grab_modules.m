@@ -1669,8 +1669,8 @@ record_includes_imports_uses_in_parse_tree_int0(Ancestors,
     ( if set.contains(Ancestors, ModuleName) then
         % XXX CLEANUP This work could be done on ImportUseMap,
         % *without* constructing AllAvails.
-        import_and_or_use_map_to_item_avails(do_not_include_implicit,
-            ImportUseMap, IntAvails, ImpAvails),
+        section_import_and_or_use_map_to_item_avails(ImportUseMap,
+            IntAvails, ImpAvails),
         AllAvails = IntAvails ++ ImpAvails,
         recomp_avails_acc(AllAvails, !AncestorImportUseMap)
     else

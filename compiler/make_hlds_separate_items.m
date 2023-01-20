@@ -562,8 +562,8 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
         AccPromises0, AccInitialises0, AccFinalises0,
         AccMutables0, AccTypeRepns0),
 
-    import_and_or_use_map_to_item_avails(do_not_include_implicit,
-        ImportUseMap, IntAvails, ImpAvails),
+    section_import_and_or_use_map_to_item_avails(ImportUseMap,
+        IntAvails, ImpAvails),
     acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails0, AccAvails1),
     acc_ims_avails(ImpItemMercuryStatus, ImpAvails, AccAvails1, AccAvails),
     IntFIMs = list.map(fim_spec_to_item, set.to_sorted_list(IntFIMSpecs)),
@@ -712,8 +712,8 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
         AccPromises0, AccInitialises0, AccFinalises0,
         AccMutables0, AccTypeRepns0),
 
-    import_and_or_use_map_to_item_avails(do_not_include_implicit,
-        ImportUseMap, IntAvails, ImpAvails),
+    section_import_and_or_use_map_to_item_avails(ImportUseMap,
+        IntAvails, ImpAvails),
     acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails0, AccAvails1),
     acc_ims_avails(ImpItemMercuryStatus, ImpAvails, AccAvails1, AccAvails),
     IntFIMs = list.map(fim_spec_to_item, set.to_sorted_list(IntFIMSpecs)),
@@ -828,8 +828,8 @@ acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
         AccPromises0, AccInitialises0, AccFinalises0,
         AccMutables0, AccTypeRepns0),
 
-    import_and_or_use_map_to_item_avails(do_not_include_implicit,
-        ImportUseMap, IntAvails, ImpAvails),
+    section_import_and_or_use_map_to_item_avails(ImportUseMap,
+        IntAvails, ImpAvails),
     expect(unify(ImpAvails, []), $pred, "ImpAvails != []"),
     acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails0, AccAvails),
     IntFIMs = list.map(fim_spec_to_item, set.to_sorted_list(IntFIMSpecs)),

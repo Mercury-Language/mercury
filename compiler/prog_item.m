@@ -447,7 +447,7 @@
                 pti0_int_uses               :: int_use_context_map,
                 pti0_imp_imports            :: imp_import_context_map,
                 pti0_imp_uses               :: imp_use_context_map,
-                pti0_import_use_map         :: import_and_or_use_map,
+                pti0_import_use_map         :: section_import_and_or_use_map,
 
                 % `:- pragma foreign_import_module' declarations
                 % in the interface and in the implementation.
@@ -504,7 +504,7 @@
                 % and their locations.
                 pti1_int_uses               :: module_names_contexts,
                 pti1_imp_uses               :: module_names_contexts,
-                pti1_import_use_map         :: import_and_or_use_map,
+                pti1_import_use_map         :: section_import_and_or_use_map,
 
                 % `:- pragma foreign_import_module' declarations
                 % in the interface and in the implementation.
@@ -559,7 +559,7 @@
                 % The set of modules mentioned in `:- use_module'
                 % declarations in the interface, and their locations.
                 pti2_int_uses               :: module_names_contexts,
-                pti2_import_use_map         :: import_and_or_use_map,
+                pti2_import_use_map         :: section_import_and_or_use_map,
 
                 % `:- pragma foreign_import_module' declarations
                 % in the interface and in the implementation.
