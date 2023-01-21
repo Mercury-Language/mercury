@@ -540,7 +540,7 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
 
     ParseTreeInt0 = parse_tree_int0(_ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
-        _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, ImportUseMap,
+        ImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
@@ -692,7 +692,7 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
 
     ParseTreeInt1 = parse_tree_int1(ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
-        _IntUseMap, _ImpUseMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
+        UseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCheckedMap, InstCheckedMap, ModeCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, IntTypeRepnMap,
@@ -712,8 +712,7 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
         AccPromises0, AccInitialises0, AccFinalises0,
         AccMutables0, AccTypeRepns0),
 
-    section_import_and_or_use_map_to_item_avails(ImportUseMap,
-        IntAvails, ImpAvails),
+    section_use_map_to_item_avails(UseMap, IntAvails, ImpAvails),
     acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails0, AccAvails1),
     acc_ims_avails(ImpItemMercuryStatus, ImpAvails, AccAvails1, AccAvails),
     IntFIMs = list.map(fim_spec_to_item, set.to_sorted_list(IntFIMSpecs)),
@@ -810,7 +809,8 @@ acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
 
     ParseTreeInt2 = parse_tree_int2(ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntInclMap, _InclMap,
-        _IntUseMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
+        % _IntUseMap,
+        UseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCheckedMap, InstCheckedMap, ModeCheckedMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap),
 
@@ -828,8 +828,7 @@ acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
         AccPromises0, AccInitialises0, AccFinalises0,
         AccMutables0, AccTypeRepns0),
 
-    section_import_and_or_use_map_to_item_avails(ImportUseMap,
-        IntAvails, ImpAvails),
+    section_use_map_to_item_avails(UseMap, IntAvails, ImpAvails),
     expect(unify(ImpAvails, []), $pred, "ImpAvails != []"),
     acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails0, AccAvails),
     IntFIMs = list.map(fim_spec_to_item, set.to_sorted_list(IntFIMSpecs)),

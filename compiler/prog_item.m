@@ -159,6 +159,10 @@
     ;       imp_use(prog_context)
     ;       int_use_imp_import(prog_context, prog_context).
 
+:- type section_use =< section_import_and_or_use
+    --->    int_use(prog_context)
+    ;       imp_use(prog_context).
+
 :- type implicit_import_or_use
     --->    implicit_int_import
     ;       implicit_int_use
@@ -185,6 +189,8 @@
     % in the implementation section.
 :- type section_import_and_or_use_map ==
     map(module_name, section_import_and_or_use).
+:- type section_use_map ==
+    map(module_name, section_use).
 :- type import_and_or_use_map ==
     map(module_name, maybe_implicit_import_and_or_use).
 
@@ -443,10 +449,6 @@
                 % The set of modules mentioned in `:- import_module'
                 % declarations in the interface and implementation,
                 % and their locations.
-                pti0_int_imports            :: int_import_context_map,
-                pti0_int_uses               :: int_use_context_map,
-                pti0_imp_imports            :: imp_import_context_map,
-                pti0_imp_uses               :: imp_use_context_map,
                 pti0_import_use_map         :: section_import_and_or_use_map,
 
                 % `:- pragma foreign_import_module' declarations
@@ -502,9 +504,7 @@
                 % The set of modules mentioned in `:- use_module'
                 % declarations in the interface and implementation,
                 % and their locations.
-                pti1_int_uses               :: module_names_contexts,
-                pti1_imp_uses               :: module_names_contexts,
-                pti1_import_use_map         :: section_import_and_or_use_map,
+                pti1_use_map                :: section_use_map,
 
                 % `:- pragma foreign_import_module' declarations
                 % in the interface and in the implementation.
@@ -558,8 +558,7 @@
 
                 % The set of modules mentioned in `:- use_module'
                 % declarations in the interface, and their locations.
-                pti2_int_uses               :: module_names_contexts,
-                pti2_import_use_map         :: section_import_and_or_use_map,
+                pti2_use_map                :: section_use_map,
 
                 % `:- pragma foreign_import_module' declarations
                 % in the interface and in the implementation.

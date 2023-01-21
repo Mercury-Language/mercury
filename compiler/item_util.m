@@ -81,6 +81,16 @@
 
 %---------------------------------------------------------------------------%
 
+:- pred get_imports_uses(module_name::in, section_import_and_or_use::in,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+:- pred get_uses(module_name::in, section_use::in,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
     % get_imports_uses_maps(Avails, ImportMap, UseMap):
     %
     % Given the avails of a raw compilation unit, return the set of modules
@@ -126,6 +136,32 @@
     section_import_and_or_use_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+    % classify_int_imp_use_modules(ModuleName,
+    %   IntUseContextsMap, ImpUseContextsMap, !:UseMap, !Specs) :-
+    %
+    % Do the same job as classify_int_imp_import_use_modules above,
+    % but for .int and .int2 files, not source files or .int0 files.
+    % This different use case leads to the following differences:
+    %
+    % - We process only use_module declarations, since these files
+    %   do not allow import_module declarations. We therefore return
+    %   a section_use_map instead of a section_import_and_or_use_map.
+    %   The former is a subtype of the latter that is restricted to
+    %   record information only about uses.
+    %
+    % - We do not return {int,imp}_{import,use}_maps, since the
+    %   parse_trees of .int and .int2 files do not need them.
+    %
+    % - Since these files are automatically generated, any issues with them
+    %   are the fault of either the compiler invocation that generated them,
+    %   or of the user for tampering with the output of the compiler.
+    %   In both of those cases, generating an error seems preferable to
+    %   generating a warning.
+    % 
+:- pred classify_int_imp_use_modules(module_name::in,
+    module_names_contexts::in, module_names_contexts::in,
+    section_use_map::out, list(error_spec)::in, list(error_spec)::out) is det.
+
 :- pred import_and_or_use_map_section_to_maybe_implicit(
     section_import_and_or_use_map::in, import_and_or_use_map::out) is det.
 
@@ -133,6 +169,8 @@
     --->    do_include_implicit
     ;       do_not_include_implicit.
 
+:- pred section_use_map_to_item_avails(section_use_map::in,
+    list(item_avail)::out, list(item_avail)::out) is det.
 :- pred section_import_and_or_use_map_to_item_avails(
     section_import_and_or_use_map::in,
     list(item_avail)::out, list(item_avail)::out) is det.
@@ -486,6 +524,37 @@ module_name_context_to_item_includes_acc(ModuleName, Context,
 
 %---------------------------------------------------------------------------%
 
+get_imports_uses(ModuleName, ImportAndOrUse,
+        !IntImports, !ImpImports, !IntUses, !ImpUses) :-
+    (
+        ImportAndOrUse = int_import(_Context),
+        set.insert(ModuleName, !IntImports)
+    ;
+        ImportAndOrUse = int_use(_Context),
+        set.insert(ModuleName, !IntUses)
+    ;
+        ImportAndOrUse = imp_import(_Context),
+        set.insert(ModuleName, !ImpImports)
+    ;
+        ImportAndOrUse = imp_use(_Context),
+        set.insert(ModuleName, !ImpUses)
+    ;
+        ImportAndOrUse = int_use_imp_import(_IntContext, _ImpContext),
+        set.insert(ModuleName, !IntUses),
+        set.insert(ModuleName, !ImpImports)
+    ).
+
+get_uses(ModuleName, Use, !IntUses, !ImpUses) :-
+    (
+        Use = int_use(_Context),
+        set.insert(ModuleName, !IntUses)
+    ;
+        Use = imp_use(_Context),
+        set.insert(ModuleName, !ImpUses)
+    ).
+
+%---------------------%
+
 get_imports_uses_maps(Avails, ImportMap, UseMap) :-
     accumulate_imports_uses_maps(Avails,
         one_or_more_map.init, ImportMap, one_or_more_map.init, UseMap).
@@ -500,6 +569,8 @@ accumulate_imports_uses_maps([Avail | Avails], !ImportMap, !UseMap) :-
         one_or_more_map.add(ModuleName, Context, !UseMap)
     ),
     accumulate_imports_uses_maps(Avails, !ImportMap, !UseMap).
+
+%---------------------%
 
 classify_int_imp_import_use_modules(ModuleName,
         IntImportContextsMap, IntUseContextsMap,
@@ -533,6 +604,25 @@ classify_int_imp_import_use_modules(ModuleName,
     warn_if_import_for_self(ModuleName, !ImportUseMap, !Specs),
     list.foldl2(warn_if_import_for_ancestor(ModuleName),
         get_ancestors(ModuleName), !ImportUseMap, !Specs).
+
+classify_int_imp_use_modules(ModuleName, IntUseContextsMap, ImpUseContextsMap,
+        !:UseMap, !Specs) :-
+    map.map_foldl(
+        report_any_duplicate_avail_contexts("interface", "use_module"),
+        IntUseContextsMap, IntUseMap, !Specs),
+    map.map_foldl(
+        report_any_duplicate_avail_contexts("implementation", "use_module"),
+        ImpUseContextsMap, ImpUseMap, !Specs),
+
+    map.init(!:UseMap),
+    map.foldl2(record_int_use_only, IntUseMap, !UseMap, !Specs),
+    map.foldl2(record_imp_use_only, ImpUseMap, !UseMap, !Specs),
+
+    error_if_use_for_self(ModuleName, !UseMap, !Specs),
+    list.foldl2(error_if_use_for_ancestor(ModuleName),
+        get_ancestors(ModuleName), !UseMap, !Specs).
+
+%---------------------%
 
 :- pred report_any_duplicate_avail_contexts(string::in, string::in,
     module_name::in, one_or_more(prog_context)::in, prog_context::out,
@@ -710,7 +800,56 @@ record_imp_use(ModuleName, Context, !ImportUseMap, !Specs) :-
 
 %---------------------%
 
-    % Warn if a module imports itself.
+:- pred record_int_use_only(module_name::in, prog_context::in,
+    section_use_map::in, section_use_map::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+record_int_use_only(ModuleName, Context, !UseMap, !Specs) :-
+    ( if map.search(!.UseMap, ModuleName, OldEntry) then
+        ( OldEntry = int_use(_)
+        ; OldEntry = imp_use(_)
+        ),
+        % We haven't yet got around to adding entries of these kinds
+        % to !UseMap, except for int_use, which should appear
+        % in !.UseMap only for strictly different module names.
+        unexpected($pred, "unexpected OldEntry")
+    else
+        map.det_insert(ModuleName, int_use(Context), !UseMap)
+    ).
+
+:- pred record_imp_use_only(module_name::in, prog_context::in,
+    section_use_map::in, section_use_map::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+record_imp_use_only(ModuleName, Context, !UseMap, !Specs) :-
+    ( if map.search(!.UseMap, ModuleName, OldEntry) then
+        (
+            OldEntry = int_use(PrevContext),
+            DupPieces = [words("Warning: this"), decl("use_module"),
+                words("declaration for module"), qual_sym_name(ModuleName),
+                words("in the implementation section is redundant, given the"),
+                decl("use_module"), words("declaration"),
+                words("for the same module in the interface section."), nl],
+            PrevPieces = [words("The previous declaration is here."), nl],
+            DupMsg = simplest_msg(Context, DupPieces),
+            PrevMsg = simplest_msg(PrevContext, PrevPieces),
+            Spec = error_spec($pred, severity_warning,
+                phase_parse_tree_to_hlds, [DupMsg, PrevMsg]),
+            !:Specs = [Spec | !.Specs]
+        ;
+            OldEntry = imp_use(_),
+            % We haven't yet got around to adding entries of these kinds
+            % to !UseMap, except for int_use, which should appear
+            % in !.UseMap only for strictly different module names.
+            unexpected($pred, "unexpected OldEntry")
+        )
+    else
+        map.det_insert(ModuleName, imp_use(Context), !UseMap)
+    ).
+
+%---------------------%
+
+    % Generate a warning if a module imports itself.
     %
 :- pred warn_if_import_for_self(module_name::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out,
@@ -729,7 +868,7 @@ warn_if_import_for_self(ModuleName, !SectionImportOrUseMap, !Specs) :-
         true
     ).
 
-    % Warn if a module imports an ancestor.
+    % Generate a warning if a module imports an ancestor.
     %
 :- pred warn_if_import_for_ancestor(module_name::in, module_name::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out,
@@ -739,7 +878,7 @@ warn_if_import_for_ancestor(ModuleName, AncestorName,
         !SectionImportOrUseMap, !Specs) :-
     ( if map.remove(ModuleName, ImportOrUse, !SectionImportOrUseMap) then
         Context = section_import_or_use_first_context(ImportOrUse),
-        MainPieces = [words("Module"), qual_sym_name(ModuleName),
+        MainPieces = [words("Warning: module"), qual_sym_name(ModuleName),
             words("imports its own ancestor, module"),
             qual_sym_name(AncestorName), suffix("."), nl],
         VerbosePieces = [words("Every submodule"),
@@ -777,6 +916,52 @@ section_import_or_use_first_context(ImportOrUse) = Context :-
 
 %---------------------%
 
+    % Generate an error if a module imports itself.
+    %
+:- pred error_if_use_for_self(module_name::in,
+    section_use_map::in, section_use_map::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+error_if_use_for_self(ModuleName, !UseMap, !Specs) :-
+    ( if map.remove(ModuleName, Use, !UseMap) then
+        Pieces = [words("Error: module"), qual_sym_name(ModuleName),
+            words("imports itself."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            section_use_first_context(Use), Pieces),
+        !:Specs = [Spec | !.Specs]
+    else
+        true
+    ).
+
+    % Generate an error if a module imports an ancestor.
+    %
+:- pred error_if_use_for_ancestor(module_name::in, module_name::in,
+    section_use_map::in, section_use_map::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+error_if_use_for_ancestor(ModuleName, AncestorName, !UseMap, !Specs) :-
+    ( if map.remove(ModuleName, Use, !UseMap) then
+        Pieces = [words("Error: module"), qual_sym_name(ModuleName),
+            words("imports its own ancestor, module"),
+            qual_sym_name(AncestorName), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            section_use_first_context(Use), Pieces),
+        !:Specs = [Spec | !.Specs]
+    else
+        true
+    ).
+
+:- func section_use_first_context(section_use) = prog_context.
+
+section_use_first_context(Use) = Context :-
+    (
+        Use = int_use(Context)
+    ;
+        Use = imp_use(Context)
+    ).
+
+%---------------------%
+
 import_and_or_use_map_section_to_maybe_implicit(SectionImportUseMap,
         ImportUseMap) :-
     map.map_values_only(wrap_section_import_and_or_use,
@@ -787,6 +972,24 @@ import_and_or_use_map_section_to_maybe_implicit(SectionImportUseMap,
 
 wrap_section_import_and_or_use(SectionImportUse, MaybeImplicitUse) :-
     MaybeImplicitUse = explicit_avail(SectionImportUse).
+
+%---------------------%
+
+section_use_map_to_item_avails(UseMap, IntAvails, ImpAvails) :-
+    map.foldl2(section_use_map_to_item_avails_acc,
+        UseMap, [], RevIntAvails, [], RevImpAvails),
+    list.reverse(RevIntAvails, IntAvails),
+    list.reverse(RevImpAvails, ImpAvails).
+
+:- pred section_use_map_to_item_avails_acc(module_name::in, section_use::in,
+    list(item_avail)::in, list(item_avail)::out,
+    list(item_avail)::in, list(item_avail)::out) is det.
+
+section_use_map_to_item_avails_acc(ModuleName, Use,
+        !RevIntAvails, !RevImpAvails) :-
+    get_explicit_use_avails(ModuleName, Use, IntAvails, ImpAvails),
+    !:RevIntAvails = IntAvails ++ !.RevIntAvails,
+    !:RevImpAvails = ImpAvails ++ !.RevImpAvails.
 
 %---------------------%
 
@@ -960,6 +1163,23 @@ get_implicit_avails(ModuleName, Implicit, IntAvails, ImpAvails) :-
         ImpAvails = []
     ;
         Implicit = implicit_imp_use,
+        Avail = avail_use(avail_use_info(ModuleName, Context, SN)),
+        IntAvails = [],
+        ImpAvails = [Avail]
+    ).
+
+:- pred get_explicit_use_avails(module_name::in, section_use::in,
+    list(item_avail)::out, list(item_avail)::out) is det.
+
+get_explicit_use_avails(ModuleName, Explicit, IntAvails, ImpAvails) :-
+    SN = item_no_seq_num,
+    (
+        Explicit = int_use(Context),
+        Avail = avail_use(avail_use_info(ModuleName, Context, SN)),
+        IntAvails = [Avail],
+        ImpAvails = []
+    ;
+        Explicit = imp_use(Context),
         Avail = avail_use(avail_use_info(ModuleName, Context, SN)),
         IntAvails = [],
         ImpAvails = [Avail]

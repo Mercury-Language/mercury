@@ -224,7 +224,7 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
         one_or_more_map.init, ImpImportsMap, one_or_more_map.init, ImpUsesMap),
     classify_int_imp_import_use_modules(ModuleName,
         IntImportsMap, IntUsesMap, ImpImportsMap, ImpUsesMap,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap,
+        _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap,
         SectionImportUseMap, !Specs),
 
     set.list_to_set(list.map(fim_item_to_spec, IntFIMs), IntFIMSpecs),
@@ -274,8 +274,7 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
 
     ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, SectionImportUseMap,
-        IntFIMSpecs, ImpFIMSpecs,
+        SectionImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises,
@@ -381,9 +380,8 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
     else
         true
     ),
-    classify_int_imp_import_use_modules(ModuleName,
-        map.init, IntUseMap, map.init, ImpUseMap,
-        _, _, _, _, SectionImportUseMap, !Specs),
+    classify_int_imp_use_modules(ModuleName, IntUseMap, ImpUseMap,
+        SectionUseMap, !Specs),
 
     set.list_to_set(list.map(fim_item_to_spec, IntFIMs), IntFIMSpecs),
     set.list_to_set(list.map(fim_item_to_spec, ImpFIMs), ImpFIMSpecs),
@@ -426,7 +424,7 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
 
     ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntInclsMap, ImpInclsMap, InclMap,
-        IntUseMap, ImpUseMap, SectionImportUseMap, IntFIMSpecs, ImpFIMSpecs,
+        SectionUseMap, IntFIMSpecs, ImpFIMSpecs,
         IntTypeCheckedMap, IntInstCheckedMap, IntModeCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, IntTypeRepnMap,
@@ -616,9 +614,8 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
             get_avail_context(FirstImpAvail), ImpAvailPieces),
         !:Specs = [ImpAvailSpec | !.Specs]
     ),
-    classify_int_imp_import_use_modules(ModuleName,
-        map.init, IntUseMap, map.init, map.init,
-        _, _, _, _, SectionImportUseMap, !Specs),
+    classify_int_imp_use_modules(ModuleName, IntUseMap, map.init,
+        SectionImportUseMap, !Specs),
 
     set.list_to_set(list.map(fim_item_to_spec, IntFIMs), IntFIMSpecs),
     set.list_to_set(list.map(fim_item_to_spec, ImpFIMs), ImpFIMSpecs),
@@ -649,8 +646,7 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
 
     ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
         MaybeVersionNumbers, IntInclsMap, InclMap,
-        IntUseMap, SectionImportUseMap,
-        IntFIMSpecs, ImpFIMSpecs,
+        SectionImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         IntTypeCheckedMap, IntInstCheckedMap, IntModeCheckedMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap).
 
