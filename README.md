@@ -47,7 +47,7 @@ Specific information is contained in individual README files:
       * [OpenBSD](README.OpenBSD.md)
       * [AIX](README.AIX.md)
       * [HP-UX](README.HPUX.md)
-      * [Solaris](README.Solaris)
+      * [Solaris](README.Solaris.md)
       * [Windows](README.MS-Windows.md)
         ([Visual C](README.MS-VisualC),
         [MinGW](README.MinGW),
