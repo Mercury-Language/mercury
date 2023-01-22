@@ -293,7 +293,12 @@
 :- pred list_to_set(list(T)::in, fat_sparse_bitset(T)::out) is det <= uenum(T).
 
     % sorted_list_to_set(List) returns a set containing only the members
-    % of List. List must be sorted. Takes O(length(List)) time and space.
+    % of List. List must be sorted *on the enum values of the items*.
+    % If the to_uint method of uenum(T) preserves order, then this is
+    % equivalent to requiring that List be sorted according to type T's
+    % comparison operation.
+    %
+    % This operation takes O(length(List)) time and space.
     %
 :- func sorted_list_to_set(list(T)) = fat_sparse_bitset(T) <= uenum(T).
 :- pred sorted_list_to_set(list(T)::in, fat_sparse_bitset(T)::out)
