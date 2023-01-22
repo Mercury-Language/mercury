@@ -45,7 +45,7 @@ Specific information is contained in individual README files:
       * [macOS](README.macOS.md)
       * [FreeBSD](README.FreeBSD)
       * [OpenBSD](README.OpenBSD)
-      * [AIX](README.AIX)
+      * [AIX](README.AIX.md)
       * [HP-UX](README.HPUX)
       * [Solaris](README.Solaris)
       * [Windows](README.MS-Windows.md)
