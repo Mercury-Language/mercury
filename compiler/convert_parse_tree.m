@@ -35,8 +35,9 @@
 %---------------------------------------------------------------------------%
 
     % The generic representation of all the different kinds of interface files.
-    % The parser reads in .intN files in this format, and then immediately
-    % converts them to their int-file-kind representations.
+    % The parser reads in each .intN file in this format, and then immediately
+    % converts it to its int-file-kind representation. The rest of the compiler
+    % uses the parse_tree_intN representation.
     %
 :- type parse_tree_int
     --->    parse_tree_int(
@@ -2111,6 +2112,8 @@ classify_src_items_int([Item | Items],
             )
         ;
             TypeDefn = parse_tree_solver_type(DetailsSolver),
+            % XXX IMPLICIT None of the implicit avail needs this call looks for
+            % has any business occurring in a solver type.
             acc_implicit_avail_needs_solver_type(DetailsSolver,
                 !ImplicitAvailNeeds)
         ;
@@ -2255,6 +2258,8 @@ classify_src_items_int([Item | Items],
         !:Specs = [Spec | !.Specs]
     ;
         Item = item_promise(ItemPromiseInfo),
+        % XXX IMPLICIT None of the implicit avail needs this call looks for
+        % has any business occurring in a promise.
         acc_implicit_avail_needs_in_promise(ItemPromiseInfo,
             !ImplicitAvailNeeds),
         !:RevPromises = [ItemPromiseInfo | !.RevPromises]
@@ -2340,6 +2345,8 @@ classify_src_items_imp([Item | Items],
             )
         ;
             TypeDefn = parse_tree_solver_type(DetailsSolver),
+            % XXX IMPLICIT None of the implicit avail needs this call looks for
+            % has any business occurring in a solver type.
             acc_implicit_avail_needs_solver_type(DetailsSolver,
                 !ImplicitAvailNeeds)
         ;
@@ -2445,6 +2452,8 @@ classify_src_items_imp([Item | Items],
         !:Specs = [Spec | !.Specs]
     ;
         Item = item_promise(ItemPromiseInfo),
+        % XXX IMPLICIT None of the implicit avail needs this call looks for
+        % has any business occurring in a promise.
         acc_implicit_avail_needs_in_promise(ItemPromiseInfo,
             !ImplicitAvailNeeds),
         !:RevPromises = [ItemPromiseInfo | !.RevPromises]

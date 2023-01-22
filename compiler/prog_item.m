@@ -433,8 +433,7 @@
 % may be defined only once". Maps from primary keys such as type_ctors,
 % or symnames/arity pairs in general, would work for this.
 
-    % A version of parse_tree_int specialized to hold the contents of
-    % .int0 files.
+    % A representation of the contents of .int0 files.
 :- type parse_tree_int0
     --->    parse_tree_int0(
                 pti0_module_name            :: module_name,
@@ -486,8 +485,7 @@
                 pti0_imp_promises           :: list(item_promise_info)
             ).
 
-    % A version of parse_tree_int specialized to hold the contents of
-    % .int files.
+    % A representation of the contents of .int files.
 :- type parse_tree_int1
     --->    parse_tree_int1(
                 pti1_module_name            :: module_name,
@@ -537,8 +535,7 @@
                 pti1_imp_typeclasses        :: list(item_typeclass_info)
             ).
 
-    % A version of parse_tree_int specialized to hold the contents of
-    % .int2 files.
+    % A representation of the contents of .int2 files.
 :- type parse_tree_int2
     --->    parse_tree_int2(
                 pti2_module_name            :: module_name,
@@ -583,8 +580,7 @@
                 pti2_type_repns             :: type_ctor_repn_map
             ).
 
-    % A version of parse_tree_int specialized to hold the contents of
-    % .int3 files.
+    % A representation of the contents of .int3 files.
 :- type parse_tree_int3
     --->    parse_tree_int3(
                 pti3_module_name            :: module_name,

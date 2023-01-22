@@ -450,8 +450,12 @@ acc_implicit_avail_needs_in_parse_tree_int0(ParseTreeInt0,
 
     map.foldl_values(acc_implicit_avail_needs_in_type_ctor_checked_defn,
         TypeCtorCheckedMap, !ImplicitAvailNeeds),
+    % XXX IMPLICIT Instance items in the interface must be abstract,
+    % so they cannot have any implicit avail needs.
     list.foldl(acc_implicit_avail_needs_in_instance,
         IntInstances, !ImplicitAvailNeeds),
+    % XXX IMPLICIT None of the implicit avail needs this call looks for
+    % has any business occurring in a promise.
     list.foldl(acc_implicit_avail_needs_in_promise,
         IntPromises, !ImplicitAvailNeeds),
 
@@ -493,6 +497,8 @@ acc_implicit_avail_needs_in_parse_tree_int2(ParseTreeInt2,
 
     map.foldl_values(acc_implicit_avail_needs_in_type_ctor_checked_defn,
         TypeDefnCheckedMap, !ImplicitAvailNeeds),
+    % XXX IMPLICIT Instance items in the interface must be abstract,
+    % so they cannot have any implicit avail needs.
     list.foldl(acc_implicit_avail_needs_in_instance,
         IntInstances, !ImplicitAvailNeeds).
 
@@ -541,6 +547,8 @@ acc_implicit_avail_needs_in_type_ctor_checked_defn(CheckedDefn,
             SolverDefn = solver_type_abstract(_, _)
         ;
             SolverDefn = solver_type_full(_MaybeAbsDefn, ItemTypeDefnSolver),
+            % XXX IMPLICIT None of the implicit avail needs this call looks for
+            % has any business occurring in a solver type.
             acc_implicit_avail_needs_in_type_defn_solver(ItemTypeDefnSolver,
                 !ImplicitAvailNeeds)
         )
@@ -563,6 +571,8 @@ acc_implicit_avail_needs_in_type_defn(ItemTypeDefn, !ImplicitAvailNeeds) :-
         )
     ;
         TypeDefn = parse_tree_solver_type(DetailsSolver),
+        % XXX IMPLICIT None of the implicit avail needs this call looks for
+        % has any business occurring in a solver type.
         acc_implicit_avail_needs_in_solver_details(DetailsSolver,
             !ImplicitAvailNeeds)
     ).
@@ -661,6 +671,8 @@ acc_implicit_avail_needs_in_mutable(ItemMutableInfo,
     ItemMutableInfo = item_mutable_info(_Name,
         _OrigType, _Type, _OrigInst, _Inst, InitValue,
         _Attrs, _VarSet, _Context, _SeqNum),
+    % XXX IMPLICIT None of the implicit avail needs  this call looks for
+    % has any business occurring in a mutable.
     acc_implicit_avail_needs_in_term(InitValue, !ImplicitAvailNeeds).
 
 acc_implicit_avail_needs_in_clause(ItemClause, !ImplicitAvailNeeds) :-
