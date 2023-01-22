@@ -43,8 +43,8 @@ Specific information is contained in individual README files:
         ([PPC](README.Linux-PPC),
         [m68k](README.Linux-m68k))
       * [macOS](README.macOS.md)
-      * [FreeBSD](README.FreeBSD)
-      * [OpenBSD](README.OpenBSD)
+      * [FreeBSD](README.FreeBSD.md)
+      * [OpenBSD](README.OpenBSD.md)
       * [AIX](README.AIX.md)
       * [HP-UX](README.HPUX.md)
       * [Solaris](README.Solaris)
