@@ -46,7 +46,7 @@ Specific information is contained in individual README files:
       * [FreeBSD](README.FreeBSD)
       * [OpenBSD](README.OpenBSD)
       * [AIX](README.AIX.md)
-      * [HP-UX](README.HPUX)
+      * [HP-UX](README.HPUX.md)
       * [Solaris](README.Solaris)
       * [Windows](README.MS-Windows.md)
         ([Visual C](README.MS-VisualC),
