@@ -533,13 +533,14 @@ mercury_output_type_repn_spec(Info, Stream, TypeRepnSpec, !IO) :-
 
 mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
     ParseTreeInt0 = parse_tree_int0(ModuleName, _ModuleContext,
-        MaybeVersionNumbers, IntInclMap, ImpInclMap, _InclMap,
+        MaybeVersionNumbers, InclMap,
         ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
         ImpDeclPragmas, ImpPromises),
+    include_map_to_int_imp_modules(InclMap, IntIncls, ImpIncls),
     map.foldl4(get_imports_uses, ImportUseMap,
         set.init, IntImports, set.init, ImpImports,
         set.init, IntUses, set.init, ImpUses),
@@ -555,9 +556,8 @@ mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
         MaybeVersionNumbers, !IO),
 
     mercury_output_section_marker(Stream, ms_interface, !IO),
-    IntInclMap = int_incl_context_map(IntInclMap0),
-    list.foldl(mercury_output_module_decl(Stream, "include_module"),
-        map.sorted_keys(IntInclMap0), !IO),
+    set.foldl(mercury_output_module_decl(Stream, "include_module"),
+        IntIncls, !IO),
     set.foldl(mercury_output_module_decl(Stream, "import_module"),
         IntImports, !IO),
     set.foldl(mercury_output_module_decl(Stream, "use_module"),
@@ -581,9 +581,8 @@ mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
     list.foldl(mercury_output_item_promise(Info, Stream),
         list.sort(IntPromises), !IO),
 
-    ImpInclMap = imp_incl_context_map(ImpInclMap0),
     ( if
-        map.is_empty(ImpInclMap0),
+        set.is_empty(ImpIncls),
         set.is_empty(ImpImports),
         set.is_empty(ImpUses),
         set.is_empty(ImpFIMSpecs),
@@ -601,8 +600,8 @@ mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
         true
     else
         mercury_output_section_marker(Stream, ms_implementation, !IO),
-        list.foldl(mercury_output_module_decl(Stream, "include_module"),
-            map.sorted_keys(ImpInclMap0), !IO),
+        set.foldl(mercury_output_module_decl(Stream, "include_module"),
+            ImpIncls, !IO),
         set.foldl(mercury_output_module_decl(Stream, "import_module"),
             ImpImports, !IO),
         set.foldl(mercury_output_module_decl(Stream, "use_module"),
@@ -632,12 +631,12 @@ mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
 
 mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO) :-
     ParseTreeInt1 = parse_tree_int1(ModuleName, _ModuleContext,
-        MaybeVersionNumbers, IntInclMap, ImpInclMap, _InclMap,
-        UseMap, IntFIMSpecs, ImpFIMSpecs,
+        MaybeVersionNumbers, InclMap, UseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, IntTypeRepnMap,
         ImpTypeClasses),
+    include_map_to_int_imp_modules(InclMap, IntIncls, ImpIncls),
     map.foldl2(get_uses, UseMap, set.init, IntUses, set.init, ImpUses),
     type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
         IntTypeDefns, ImpTypeDefns, ImpForeignEnums),
@@ -650,8 +649,8 @@ mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO) :-
     mercury_output_maybe_module_version_numbers(Stream, ModuleName,
         MaybeVersionNumbers, !IO),
     mercury_output_section_marker(Stream, ms_interface, !IO),
-    list.foldl(mercury_output_module_decl(Stream, "include_module"),
-        map.sorted_keys(IntInclMap), !IO),
+    set.foldl(mercury_output_module_decl(Stream, "include_module"),
+        IntIncls, !IO),
     set.foldl(mercury_output_module_decl(Stream, "use_module"),
         IntUses, !IO),
     set.foldl(mercury_output_fim_spec(Stream), IntFIMSpecs, !IO),
@@ -676,7 +675,7 @@ mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO) :-
         IntTypeRepnMap, !IO),
 
     ( if
-        map.is_empty(ImpInclMap),
+        set.is_empty(ImpIncls),
         set.is_empty(ImpUses),
         set.is_empty(ImpFIMSpecs),
         ImpTypeDefns = [],
@@ -686,8 +685,8 @@ mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO) :-
         true
     else
         mercury_output_section_marker(Stream, ms_implementation, !IO),
-        list.foldl(mercury_output_module_decl(Stream, "include_module"),
-            map.sorted_keys(ImpInclMap), !IO),
+        set.foldl(mercury_output_module_decl(Stream, "include_module"),
+            ImpIncls, !IO),
         set.foldl(mercury_output_module_decl(Stream, "use_module"),
             ImpUses, !IO),
         set.foldl(mercury_output_fim_spec(Stream), ImpFIMSpecs, !IO),
@@ -701,10 +700,11 @@ mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO) :-
 
 mercury_output_parse_tree_int2(Info, Stream, ParseTreeInt2, !IO) :-
     ParseTreeInt2 = parse_tree_int2(ModuleName, _ModuleContext,
-        MaybeVersionNumbers, IntInclMap, _InclMap, UseMap,
-        IntFIMSpecs, ImpFIMSpecs,
+        MaybeVersionNumbers, IntInclMap, UseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap),
+    InclMap = coerce(IntInclMap),
+    include_map_to_int_imp_modules(InclMap, IntIncls, _ImpIncls),
     map.foldl2(get_uses, UseMap, set.init, IntUses, set.init, ImpUses),
     type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
         IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
@@ -717,8 +717,8 @@ mercury_output_parse_tree_int2(Info, Stream, ParseTreeInt2, !IO) :-
     mercury_output_maybe_module_version_numbers(Stream, ModuleName,
         MaybeVersionNumbers, !IO),
     mercury_output_section_marker(Stream, ms_interface, !IO),
-    list.foldl(mercury_output_module_decl(Stream, "include_module"),
-        map.sorted_keys(IntInclMap), !IO),
+    set.foldl(mercury_output_module_decl(Stream, "include_module"),
+        IntIncls, !IO),
     set.foldl(mercury_output_module_decl(Stream, "use_module"),
         IntUses, !IO),
     set.foldl(mercury_output_fim_spec(Stream), IntFIMSpecs, !IO),

@@ -68,6 +68,9 @@
     include_module_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+:- pred include_map_to_int_imp_modules(include_module_map::in,
+    set(module_name)::out, set(module_name)::out) is det.
+
 :- pred include_map_to_item_includes(include_module_map::in,
     list(item_include)::out, list(item_include)::out) is det.
 
@@ -466,6 +469,30 @@ report_duplicate_include(ModuleName, PrevContext, Context, !Specs) :-
         [MainMsg, PrevMsg]),
     !:Specs = [Spec | !.Specs].
 
+%---------------------%
+
+include_map_to_int_imp_modules(IncludeMap, IntModules, ImpModules) :-
+    map.foldl2(include_map_to_int_imp_modules_acc, IncludeMap,
+        set.init, IntModules, set.init, ImpModules).
+
+:- pred include_map_to_int_imp_modules_acc(
+    module_name::in, include_module_info::in,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+include_map_to_int_imp_modules_acc(ModuleName, InclInfo,
+        !IntModules, !ImpModules) :-
+    InclInfo = include_module_info(Section, _Context),
+    (
+        Section = ms_interface,
+        set.insert(ModuleName, !IntModules)
+    ;
+        Section = ms_implementation,
+        set.insert(ModuleName, !ImpModules)
+    ).
+
+%---------------------%
+
 include_map_to_item_includes(IncludeMap, IntIncludes, ImpIncludes) :-
     map.foldl2(include_map_to_item_includes_acc, IncludeMap,
         [], RevIntIncludes, [], RevImpIncludes),
@@ -488,6 +515,8 @@ include_map_to_item_includes_acc(ModuleName, InclInfo,
         Section = ms_implementation,
         !:RevImpIncludes = [Include | !.RevImpIncludes]
     ).
+
+%---------------------%
 
 acc_include_for_module_and_context(ModuleName, Context, !RevIncludes) :-
     Incl = item_include(ModuleName, Context, item_no_seq_num),

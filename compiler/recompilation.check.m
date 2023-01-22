@@ -1686,8 +1686,7 @@ record_recompilation_reason(Reason, MaybeStoppingReason, !Info) :-
 
 get_ambiguity_checkables_int0(ParseTreeInt0, Checkables) :-
     ParseTreeInt0 = parse_tree_int0(_ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, _IntIncls, _ImpIncls, _InclMap,
-        _ImportUseMap, _IntFIMs, _ImpFIMs,
+        _MaybeVersionNumbers, _InclMap, _ImportUseMap, _IntFIMs, _ImpFIMs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, _IntInstances,
         IntPredDecls, _IntModeDecls, _IntDeclPragmas, _IntPromises,
@@ -1713,8 +1712,7 @@ get_ambiguity_checkables_int0(ParseTreeInt0, Checkables) :-
 
 get_ambiguity_checkables_int1(ParseTreeInt1, Checkables) :-
     ParseTreeInt1 = parse_tree_int1(_ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, _IntIncls, _ImpIncls, _InclMap,
-        _ImportUseMap, _IntFIMs, _ImpFIMs,
+        _MaybeVersionNumbers, _InclMap, _ImportUseMap, _IntFIMs, _ImpFIMs,
         TypeDefnCheckedMap, InstDefnCheckedMap, ModeDefnCheckedMap,
         IntTypeClasses, _IntItemInstances, IntPredDecls, _IntModeDecls,
         _IntDeclPragmas, _IntPromises, _IntTypeRepnMap, ImpTypeClasses),
@@ -1739,8 +1737,7 @@ get_ambiguity_checkables_int1(ParseTreeInt1, Checkables) :-
 
 get_ambiguity_checkables_int2(ParseTreeInt2, Checkables) :-
     ParseTreeInt2 = parse_tree_int2(_ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, _IntIncls, _InclMap,
-        _ImportUseMap, _IntFIMs, _ImpFIMs,
+        _MaybeVersionNumbers, _InclMap, _ImportUseMap, _IntFIMs, _ImpFIMs,
         TypeDefnCheckedMap, InstDefnCheckedMap, ModeDefnCheckedMap,
         IntItemTypeClasses, _IntItemInstances, _IntTypeRepnMap),
     type_ctor_checked_map_get_src_defns(TypeDefnCheckedMap,

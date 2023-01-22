@@ -1639,8 +1639,7 @@ record_includes_imports_uses_in_int_for_opt_spec(Ancestors,
 record_includes_imports_uses_in_parse_tree_int0(Ancestors,
         ParseTreeInt0, !ReadModules, !MaybeAbstractInclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
-    ParseTreeInt0 = parse_tree_int0(ModuleName, _, _,
-        _IntInclMap, _ImpInclMap, InclMap, ImportUseMap,
+    ParseTreeInt0 = parse_tree_int0(ModuleName, _, _, InclMap, ImportUseMap,
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
     include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
@@ -1670,12 +1669,10 @@ record_includes_imports_uses_in_parse_tree_int0(Ancestors,
 record_includes_imports_uses_in_parse_tree_int1(Ancestors,
         ParseTreeInt1, ReadWhyInt1, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
-    ParseTreeInt1 = parse_tree_int1(ModuleName, _, _,
-        IntInclMap, ImpInclMap, _InclMap, _,
+    ParseTreeInt1 = parse_tree_int1(ModuleName, _, _, InclMap, _,
         _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
-    IntIncls = module_names_contexts_to_item_includes(IntInclMap),
-    ImpIncls = module_names_contexts_to_item_includes(ImpInclMap),
+    include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
     (
         ( ReadWhyInt1 = rwi1_int_import
         ; ReadWhyInt1 = rwi1_imp_import
@@ -1710,9 +1707,10 @@ record_includes_imports_uses_in_parse_tree_int2(Ancestors,
         ParseTreeInt2, ReadWhyInt2, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
     ParseTreeInt2 = parse_tree_int2(ModuleName, _, _,
-        IntInclMap, _ParseTreeInclMap, _, _, _, _, _, _, _, _, _),
+        IntInclMap, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
-    IntIncls = module_names_contexts_to_item_includes(IntInclMap),
+    InclMap = coerce(IntInclMap),
+    include_map_to_item_includes(InclMap, IntIncls, _ImpIncls),
     (
         ( ReadWhyInt2 = rwi2_int_use
         ; ReadWhyInt2 = rwi2_imp_use

@@ -210,7 +210,7 @@ collect_mq_info_in_parse_tree_int0(ReadWhy0, ParseTreeInt0, !Info) :-
     ),
 
     ParseTreeInt0 = parse_tree_int0(_ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, InclMap,
+        _MaybeVersionNumbers, InclMap,
         ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
@@ -307,7 +307,7 @@ collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info) :-
     % We therefore do not need any ImpPermissions.
 
     ParseTreeInt1 = parse_tree_int1(_ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, InclMap,
+        _MaybeVersionNumbers, InclMap,
         _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
         TypeCheckedMap, InstCheckedMap, ModeCheckedMap,
         IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,

@@ -84,10 +84,17 @@
 %---------------------------------------------------------------------------%
 
 :- type include_module_map == map(module_name, include_module_info).
+:- type int_include_module_map == map(module_name, int_include_module_info).
 :- type include_module_info
     --->    include_module_info(module_section, prog_context).
             % The "include_module" declaration occurs in the given section
             % of the relevant file, and at the given context.
+
+:- type int_include_module_info =< include_module_info
+    --->    include_module_info(int_module_section, prog_context).
+
+:- type int_module_section =< module_section
+    --->    ms_interface.
 
 :- type module_name_context == map(module_name, prog_context).
 :- type module_names_contexts == one_or_more_map(module_name, prog_context).
@@ -440,8 +447,6 @@
                 % The set of modules mentioned in `:- include_module'
                 % declarations in the interface and implementation,
                 % and their locations.
-                pti0_int_includes           :: int_incl_context_map,
-                pti0_imp_includes           :: imp_incl_context_map,
                 pti0_include_map            :: include_module_map,
 
                 % The set of modules mentioned in `:- import_module'
@@ -495,8 +500,6 @@
                 % The set of modules mentioned in `:- include_module'
                 % declarations in the interface and implementation,
                 % and their contexts.
-                pti1_int_includes           :: module_names_contexts,
-                pti1_imp_includes           :: module_names_contexts,
                 pti1_include_map            :: include_module_map,
 
                 % The set of modules mentioned in `:- use_module'
@@ -551,8 +554,7 @@
 
                 % The set of modules mentioned in `:- include_module'
                 % declarations in the interface, and their locations.
-                pti2_int_includes           :: module_names_contexts,
-                pti2_include_map            :: include_module_map,
+                pti3_int_includes           :: int_include_module_map,
 
                 % The set of modules mentioned in `:- use_module'
                 % declarations in the interface, and their locations.

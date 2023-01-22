@@ -478,7 +478,7 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
     ),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
-        IntInclsMap, ImpInclsMap, InclMap,
+        _IntInclsMap, _ImpInclsMap, InclMap,
         _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
@@ -493,11 +493,6 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
         ImpDeclPragmas, _ImpImplPragmas, ImpPromises,
         _ImpInitialises, _ImpFinalises, ImpMutables),
 
-    GetFirstContext = (pred(one_or_more(Context, _)::in, Context::out) is det),
-    map.map_values_only(GetFirstContext, IntInclsMap, IntInclMap0),
-    map.map_values_only(GetFirstContext, ImpInclsMap, ImpInclMap0),
-    IntInclMap = int_incl_context_map(IntInclMap0),
-    ImpInclMap = imp_incl_context_map(ImpInclMap0),
     import_and_or_use_map_to_explicit_int_imp_import_use_maps(ImportUseMap,
         SectionImportUseMap, _, _, _, _),
     map.keys_as_set(IntFIMSpecMap, IntFIMSpecs0),
@@ -520,8 +515,8 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
         list.map(declare_mutable_aux_preds_for_int0(ModuleName), ImpMutables)),
 
     ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
-        MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
-        SectionImportUseMap, IntFIMSpecs, ImpFIMSpecs,
+        MaybeVersionNumbers, InclMap, SectionImportUseMap,
+        IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises,
@@ -818,7 +813,7 @@ generate_interface_int1(Globals, AugMakeIntUnit,
         _, DirectIntSpecs, IndirectIntSpecs, _),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
-        IntInclMap, ImpInclMap, InclMap,
+        _IntInclMap, _ImpInclMap, InclMap,
         _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, _ImpSelfFIMLangs,
 
@@ -935,8 +930,8 @@ generate_interface_int1(Globals, AugMakeIntUnit,
     DummyMaybeVersionNumbers = no_version_numbers,
     % XXX TODO
     ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
-        DummyMaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
-        SectionUseOnlyMap, IntFIMSpecs, ImpFIMSpecs,
+        DummyMaybeVersionNumbers, InclMap, SectionUseOnlyMap,
+        IntFIMSpecs, ImpFIMSpecs,
         IntTypeCtorCheckedMap, IntInstCtorCheckedMap, IntModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, TypeCtorRepnMap, ImpTypeClasses).
@@ -2187,9 +2182,8 @@ generate_interface_int2(AugMakeIntUnit,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
 
-    IntInclMap = ParseTreeModuleSrc ^ ptms_int_includes,
     InclMap = ParseTreeModuleSrc ^ ptms_include_map,
-    map.foldl(add_only_int_include, InclMap, map.init, ShortInclMap),
+    map.foldl(add_only_int_include, InclMap, map.init, ShortIntInclMap),
     IntTypeClasses = ParseTreeModuleSrc ^ ptms_int_typeclasses,
     IntInstances = ParseTreeModuleSrc ^ ptms_int_instances,
 
@@ -2253,7 +2247,7 @@ generate_interface_int2(AugMakeIntUnit,
     DummyMaybeVersionNumbers = no_version_numbers,
 
     ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
-        DummyMaybeVersionNumbers, IntInclMap, ShortInclMap,
+        DummyMaybeVersionNumbers, ShortIntInclMap,
         ShortUseOnlyMap, ShortIntFIMSpecs, ShortImpFIMSpecs,
         ShortTypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         ShortIntTypeClasses, ShortIntInstances, TypeCtorRepnMap).
@@ -2268,13 +2262,14 @@ fim_spec_is_for_needed_language(NeededLangs, FIMSpec) :-
     set.contains(NeededLangs, Lang).
 
 :- pred add_only_int_include(module_name::in, include_module_info::in,
-    include_module_map::in, include_module_map::out) is det.
+    int_include_module_map::in, int_include_module_map::out) is det.
 
 add_only_int_include(ModuleName, InclInfo, !IntInclMap) :-
-    InclInfo = include_module_info(Section, _Context),
+    InclInfo = include_module_info(Section, Context),
     (
         Section = ms_interface,
-        map.det_insert(ModuleName, InclInfo, !IntInclMap)
+        IntInclInfo = include_module_info(ms_interface, Context),
+        map.det_insert(ModuleName, IntInclInfo, !IntInclMap)
     ;
         Section = ms_implementation
     ).

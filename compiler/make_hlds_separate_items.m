@@ -539,9 +539,7 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
     ImpSectionInfo = sec_info(ImpItemMercuryStatus, ImpNeedQual),
 
     ParseTreeInt0 = parse_tree_int0(_ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
-        ImportUseMap,
-        IntFIMSpecs, ImpFIMSpecs,
+        _MaybeVersionNumbers, _InclMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises,
@@ -691,8 +689,7 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
     ImpSectionInfo = sec_info(ImpItemMercuryStatus, ImpNeedQual),
 
     ParseTreeInt1 = parse_tree_int1(ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
-        UseMap, IntFIMSpecs, ImpFIMSpecs,
+        _MaybeVersionNumbers, _InclMap, UseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCheckedMap, InstCheckedMap, ModeCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, IntTypeRepnMap,
@@ -808,9 +805,7 @@ acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
     ImpSectionInfo = sec_info(ImpItemMercuryStatus, ImpNeedQual),
 
     ParseTreeInt2 = parse_tree_int2(ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, _IntInclMap, _InclMap,
-        % _IntUseMap,
-        UseMap, IntFIMSpecs, ImpFIMSpecs,
+        _MaybeVersionNumbers, _InclMap, UseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCheckedMap, InstCheckedMap, ModeCheckedMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap),
 

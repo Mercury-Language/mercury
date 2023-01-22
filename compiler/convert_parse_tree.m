@@ -216,7 +216,7 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
         "trying to convert non-ifk_int0 parse_tree_int to parse_tree_int0"),
 
     classify_include_modules(IntIncls, ImpIncls,
-        _IntInclsMap, _ImpInclsMap, IntInclMap, ImpInclMap, InclMap, !Specs),
+        _IntInclsMap, _ImpInclsMap, _IntInclMap, _ImpInclMap, InclMap, !Specs),
 
     accumulate_imports_uses_maps(IntAvails,
         one_or_more_map.init, IntImportsMap, one_or_more_map.init, IntUsesMap),
@@ -273,7 +273,7 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
         IntModeDefnMap, ImpModeDefnMap, ModeCtorCheckedMap, !Specs),
 
     ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
-        MaybeVersionNumbers, IntInclMap, ImpInclMap, InclMap,
+        MaybeVersionNumbers, InclMap,
         SectionImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
@@ -362,7 +362,7 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
         "trying to convert non-ifk_int1 parse_tree_int to parse_tree_int1"),
 
     classify_include_modules(IntIncls, ImpIncls,
-        IntInclsMap, ImpInclsMap, _IntInclMap, _ImpInclMap, InclMap, !Specs),
+        _IntInclsMap, _ImpInclsMap, _IntInclMap, _ImpInclMap, InclMap, !Specs),
 
     accumulate_imports_uses_maps(IntAvails,
         one_or_more_map.init, IntImportMap, one_or_more_map.init, IntUseMap),
@@ -423,8 +423,7 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
         IntModeDefnMap, ImpModeDefnMap, IntModeCheckedMap, !Specs),
 
     ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
-        MaybeVersionNumbers, IntInclsMap, ImpInclsMap, InclMap,
-        SectionUseMap, IntFIMSpecs, ImpFIMSpecs,
+        MaybeVersionNumbers, InclMap, SectionUseMap, IntFIMSpecs, ImpFIMSpecs,
         IntTypeCheckedMap, IntInstCheckedMap, IntModeCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, IntTypeRepnMap,
@@ -586,7 +585,13 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
         !:Specs = [ImpInclSpec | !.Specs]
     ),
     classify_include_modules(IntIncls, [],
-        IntInclsMap, _ImpInclsMap, _IntInclMap, _ImpInclMap, InclMap, !Specs),
+        _IntInclsMap, _ImpInclsMap, IntInclMap, _ImpInclMap, _InclMap, !Specs),
+    ContextToInfo =
+        ( pred(Context::in, Info::out) is det :-
+            Info = include_module_info(ms_interface, Context)
+        ),
+    IntInclMap = int_incl_context_map(IntInclMap0),
+    map.map_values_only(ContextToInfo, IntInclMap0, IntInclInfoMap),
 
     accumulate_imports_uses_maps(IntAvails,
         one_or_more_map.init, IntImportMap, one_or_more_map.init, IntUseMap),
@@ -645,7 +650,7 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
         IntModeDefnMap, ImpModeDefnMap, IntModeCheckedMap, !Specs),
 
     ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
-        MaybeVersionNumbers, IntInclsMap, InclMap,
+        MaybeVersionNumbers, IntInclInfoMap,
         SectionImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         IntTypeCheckedMap, IntInstCheckedMap, IntModeCheckedMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap).

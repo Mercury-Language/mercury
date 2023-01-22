@@ -311,7 +311,7 @@ compute_item_name_version_map_entry(SourceFileTime,
 
 gather_items_in_parse_tree_int0(ParseTreeInt0, GatheredItems) :-
      ParseTreeInt0 = parse_tree_int0(_ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
+        _MaybeVersionNumbers, _InclMap,
         _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
@@ -386,7 +386,7 @@ gather_items_in_parse_tree_int0(ParseTreeInt0, GatheredItems) :-
 
 gather_items_in_parse_tree_int1(ParseTreeInt1, GatheredItems) :-
     ParseTreeInt1 = parse_tree_int1(_ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
+        _MaybeVersionNumbers, _InclMap,
         _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
@@ -452,7 +452,7 @@ gather_items_in_parse_tree_int1(ParseTreeInt1, GatheredItems) :-
 
 gather_items_in_parse_tree_int2(ParseTreeInt2, GatheredItems) :-
     ParseTreeInt2 = parse_tree_int2(_ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, _IntInclMap, _InclMap, _ImportUseMap,
+        _MaybeVersionNumbers, _InclMap, _ImportUseMap,
         _IntFIMSpecs, _ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap),
