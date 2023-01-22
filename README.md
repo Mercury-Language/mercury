@@ -62,7 +62,7 @@ Specific information is contained in individual README files:
 ## Other information
 
 See the current [release notes](RELEASE_NOTES) for the latest stable release.
-The [news](NEWS) file lists any recent changes.
+The [news](NEWS.md) file lists any recent changes.
 The [history](HISTORY) file is relevant
 if you want to find out more about the past development of Mercury.
 The [limitations](LIMITATIONS.md) file lists some ways

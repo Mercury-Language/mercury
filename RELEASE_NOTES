@@ -13,7 +13,7 @@ traditional logic programming syntax, but also allows the
 syntactic convenience of user-defined functions, smoothly integrating
 logic and functional programming into a single paradigm.
 
-For a list of what's new in this release, see the NEWS file.
+For a list of what's new in this release, see the NEWS.md file.
 
 The main features of Mercury are:
 
