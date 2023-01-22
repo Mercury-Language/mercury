@@ -40,7 +40,8 @@ Specific information is contained in individual README files:
   * Supported operating systems
 
       * [Linux](README.Linux)
-        ([PPC](README.Linux-PPC),
+        ([AArch64](README.Linux-aarch64.md),
+        [PPC](README.Linux-PPC),
         [m68k](README.Linux-m68k))
       * [macOS](README.macOS.md)
       * [FreeBSD](README.FreeBSD.md)
