@@ -50,7 +50,7 @@ Specific information is contained in individual README files:
       * [HP-UX](README.HPUX.md)
       * [Solaris](README.Solaris.md)
       * [Windows](README.MS-Windows.md)
-        ([Visual C](README.MS-VisualC),
+        ([Visual C](README.MS-VisualC.md),
         [MinGW](README.MinGW),
         [Cygwin](README.Cygwin))
 
