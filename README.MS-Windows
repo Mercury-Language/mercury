@@ -21,11 +21,11 @@ Mercury on Windows.
 
 Three such environments are supported:
 
-1. Cygwin (www.cygwin.com).  See README.Cygwin.
+1. Cygwin (https://www.cygwin.com).  See README.Cygwin.
 
-2. MSYS (www.mingw.org).  See README.MinGW.
+2. MSYS (https://osdn.net/projects/mingw/).  See README.MinGW.
 
-3. MSYS2 (msys2.github.io).  See README.MinGW.
+3. MSYS2 (https://www.msys2.org).  See README.MinGW.
 
 Mercury can also be built using the MS Visual C compiler, although one of
 the above environments is still required for the build process.  See 

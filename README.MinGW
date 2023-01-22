@@ -6,17 +6,18 @@ x86_64-w64-mingw32, x86_64-pc-mingw32 and x86_64-pc-mingw64 configurations.
 
 BUILDING WITH MINGW OR MINGW-W64
 
-MinGW is a port of 32-bit GCC to Windows available from <http://www.mingw.org>.
+MinGW is a port of 32-bit GCC to Windows available from
+<https://osdn.net/projects/mingw/>.
 
 MinGW-w64 is a (different) port of both 64-bit and 32-bit GCC to Windows
-available from <http://mingw-w64.org>.
+available from <https://www.mingw-w64.org>.
 
-MSYS is a POSIX-like environment available from <http://www.mingw.org>.
+MSYS is a POSIX-like environment available from <https://osdn.net/projects/mingw/>.
 
 MSYS2 is a (different) POSIX-like environment.  It provides a package manager,
 and among the packages it provides are the MinGW-w64 ports of GCC.
 Note that MSYS2 is separate from the original MSYS.
-It is available at <https://msys2.github.io>.
+It is available at <https://www.msys2.org>.
 
 Using the MinGW or MinGW-w64 ports of GCC you can build a Mercury compiler that
 can generate executables that will run natively on Windows without the need for
@@ -48,7 +49,7 @@ To build the source distribution under MSYS follow these steps:
     Details of alternative MinGW and MSYS installation methods may be found
     on the MinGW website.
 
-    To build a verison of the Mercury compiler that generates 64-bit
+    To build a version of the Mercury compiler that generates 64-bit
     executables using the MSYS shell, you will need to install the
     MinGW-w64 version of GCC (available from <http://mingw-w64.org>) and
     ensure that it occurs in your PATH before the MinGW GCC.
@@ -75,7 +76,7 @@ To build the source distribution under MSYS follow these steps:
 
         export PATH=/c/Program\ Files/Java/jdk1.6.0_23/bin/:$PATH 
 
-    See README.Java for further details.
+    See README.Java.md for further details.
 
     Optional: To build the C# grade with MinGW, MSYS / MSYS2 and .NET, you will
     need Visual C# compiler installed on your system.
@@ -84,7 +85,7 @@ To build the source distribution under MSYS follow these steps:
 
         export PATH=/c/WINDOWS/Microsoft.NET/Framework/v4.0.30319/:$PATH
     
-    See README.CSharp for further details.
+    See README.CSharp.md for further details.
 
 3.  Unpack the source distribution with a command like:
     

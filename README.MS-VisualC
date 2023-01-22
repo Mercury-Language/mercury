@@ -11,7 +11,7 @@ support.
 SETTING UP THE BUILD ENVIRONMENT
 
 A Unix-like environment is required for building and installing Mercury.
-Any one of Cygwin <http://www.cygwin.com/>, MSYS <http://www.mingw.org/>
+Any one of Cygwin <https://www.cygwin.com/>, MSYS <https://osdn.net/projects/mingw/>
 or MSYS2 <https://www.msys2.org> will suffice.
 
 A Unix-like environment is *not* required in order to use Mercury once it
@@ -49,7 +49,7 @@ type autoconf detects.
 
 In order to install the C# or Java grades you will require a C# or Java
 compiler to be included in the Windows PATH.
-(See the relevant README files for further details, e.g. README.Java etc)
+(See the relevant README files for further details, e.g. README.Java.md etc)
 
 Note that boehm_gc/NT_MAKEFILE supports both i386 and x64 architectures,
 but the compiler can only target i386 for now. The architecture is controlled
