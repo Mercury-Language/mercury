@@ -22,7 +22,7 @@ Currently there are three stages:
     it comes with gcc, make, pkg-config and libc headers.
 
   - bootstrap: Installs the packaged ROTD compiler from the
-    [download page](http://dl.mercurylang.org/deb/) and autotools.
+    [download page](https://dl.mercurylang.org/deb/) and autotools.
 
   - compiler: Uses the bootstrapped compiler to (auto-)configure Mercury and
     install it into a single-layered container.
@@ -57,7 +57,7 @@ Additionally building the ROTD tarball is supported via:
 ```bash
   docker build --build-arg MERCURY_BOOTSTRAP=n \
     --build-arg MERCURY_DEV_SOURCE=mercury-srcdist-rotd-2018-12-24 \
-    http://dl.mercurylang.org/rotd/mercury-srcdist-rotd-2018-12-24.tar.gz
+    https://dl.mercurylang.org/rotd/mercury-srcdist-rotd-2018-12-24.tar.gz
 ```
 
 Using containerised mmc on the host platform
