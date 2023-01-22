@@ -200,7 +200,7 @@ Mercury-level debugging
 -----------------------
 
 The only Mercury-level debugger available for the C# backend is the
-_experimental_ source-to-source debugger; see [README.ssdebug](README.ssdebug)
+_experimental_ source-to-source debugger; see [README.ssdebug.md](README.ssdebug.md)
 for details.
 
 Building the Mercury compiler in the `csharp` grade
