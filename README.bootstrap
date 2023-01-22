@@ -17,7 +17,7 @@ recommended to start with the most recent ROTD release since older versions of
 the Mercury compiler are frequently not able to build the bleeding edge in Git.
 
 The releases can be downloaded from the Mercury website's downloads page:
-http://dl.mercurylang.org/index.html.
+https://dl.mercurylang.org/index.html.
 
 Other prerequisites can be found in relevant README.* files in the
 distribution's root directory.
@@ -63,7 +63,7 @@ option, where <grade list> is a comma separated list of grades.  For information
 about which grades may be relevant, see the documentation on grades and grade
 components:
 
-   http://www.mercurylang.org/information/doc-latest/mercury_user_guide/Grades-and-grade-components.html
+   https://www.mercurylang.org/information/doc-latest/mercury_user_guide/Grades-and-grade-components.html
 
 People wanting to simply experiment with Mercury would be best-served with
 using only the `asm_fast.gc` grade or `hlc.gc` on OS X.

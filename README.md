@@ -1,14 +1,14 @@
 Mercury
 =======
 
-[Mercury](http://www.mercurylang.org/) is a logic/functional programming
+[Mercury](https://www.mercurylang.org/) is a logic/functional programming
 language which combines the clarity and the expressiveness of declarative
 programming with advanced static analysis and error detection features.
 
 More information is available on the
-[website's about pages](http://www.mercurylang.org/about.html),
+[website's about pages](https://www.mercurylang.org/about.html),
 in other README files in the source code repository, and in the
-[documentation](http://www.mercurylang.org/documentation/documentation.html).
+[documentation](https://www.mercurylang.org/documentation/documentation.html).
 
 Small sample programs written in Mercury can be found
 in the [samples](samples) and [extras](extras) directories
@@ -17,7 +17,7 @@ of the source code repository.
 ## README files
 
 The Mercury compiler has two different
-[backends](http://www.mercurylang.org/about/backends.html)
+[backends](https://www.mercurylang.org/about/backends.html)
 and works on different operating systems.
 Specific information is contained in individual README files:
 
@@ -72,10 +72,10 @@ in which the Mercury implementation does not yet meet its goals.
 If you are considering contributing to the Mercury project,
 the website contains some documents that may be helpful.
 These include a document about
-[contributions in general](http://www.mercurylang.org/development/contributions.html) and
-[specific information](http://www.mercurylang.org/development/developer.html)
+[contributions in general](https://www.mercurylang.org/development/contributions.html) and
+[specific information](https://www.mercurylang.org/development/developer.html)
 about contributing such as coding styles.
 
 ## Contact
 
-See [our contact page](http://www.mercurylang.org/contact.html).
+See [our contact page](https://www.mercurylang.org/contact.html).

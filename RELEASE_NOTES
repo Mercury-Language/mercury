@@ -155,7 +155,7 @@ Mac OS X (PowerPC) and Windows 95, 98, ME, NT, 2000 and XP.
 
 It should run without too many changes on other Unix variants as well.
 If you do encounter any problems, please report them to us via the
-Mercury bug tracking system at <http://bugs.mercurylang.org>
+Mercury bug tracking system at <https://bugs.mercurylang.org>
 (see the BUGS file).
 
 We recommend that you use gcc as the C compiler, preferably gcc version 3.4 or
@@ -204,11 +204,11 @@ The Mercury distribution contains:
 The Mercury distribution is available via WWW from the following locations:
 
         Australia:
-                <http://dl.mercurylang.org/index.html>
+                <https://dl.mercurylang.org/index.html>
 
 The home page of the project on the Web is:
 
-    <http://www.mercurylang.org>.
+    <https://www.mercurylang.org>.
 
 --
-The Mercury Team <http://www.mercurylang.org/development/people.html>
+The Mercury Team <https://www.mercurylang.org/development/people.html>

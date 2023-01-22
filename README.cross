@@ -33,7 +33,7 @@ INSTRUCTIONS
       - gcc-mingw-w64-i686
       - gcc-aarch64-linux-gnu
 
-    Alternatively, you can use <http://mxe.cc/> to install a MinGW-w64
+    Alternatively, you can use <https://mxe.cc/> to install a MinGW-w64
     toolchain on Unix-like hosts.
 
     Whatever the means, you should have the C cross-compiler in your PATH,
