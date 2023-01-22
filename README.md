@@ -42,7 +42,7 @@ Specific information is contained in individual README files:
       * [Linux](README.Linux)
         ([PPC](README.Linux-PPC),
         [m68k](README.Linux-m68k))
-      * [MacOS X](README.MacOS)
+      * [macOS](README.macOS.md)
       * [FreeBSD](README.FreeBSD)
       * [OpenBSD](README.OpenBSD)
       * [AIX](README.AIX)
