@@ -96,5 +96,5 @@ built once from the tarballs.  This is because the tarballs must be compatible
 with both 32- and 64-bit systems while a bootstrapped system can take advantage
 of 64-bit specific enhancements.
 
-We strongly recommend the use of the `hlc.gc` grade on OS X (See README.MacOS).
+We strongly recommend the use of the `hlc.gc` grade on OS X (See README.macOS.md).
 
