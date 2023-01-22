@@ -28,7 +28,7 @@
 **	System V Application Binary Interface
 ** 	AMD64 Processor Architecture Supplement
 **
-** which is available at: <http://www.x86-64.org/documentation/>
+** which is available at: <https://gitlab.com/x86-psABIs/x86-64-ABI>
 */
 #define MR_NUM_REAL_REGS 4
 
