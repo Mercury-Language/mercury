@@ -576,11 +576,11 @@ Changes to the Mercury standard library
 
 * The following predicates have been renamed:
 
-    - pred `mercury_op_table_prefix_op/5' to    `op_infos_prefix_op/5`
-    - pred `mercury_op_table_binary_prefix_op/5' to
+    - pred `mercury_op_table_prefix_op/5` to    `op_infos_prefix_op/5`
+    - pred `mercury_op_table_binary_prefix_op/5` to
                                                 `op_infos_binary_prefix_op/5`
-    - pred `mercury_op_table_infix_op/5' to     `op_infos_infix_op/5`
-    - pred `mercury_op_table_postfix_op/5' to   `op_infos_postfix_op/5`
+    - pred `mercury_op_table_infix_op/5` to     `op_infos_infix_op/5`
+    - pred `mercury_op_table_postfix_op/5` to   `op_infos_postfix_op/5`
 
 ### Changes to the `pretty_printer` module
 
