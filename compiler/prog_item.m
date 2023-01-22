@@ -8,16 +8,16 @@
 %---------------------------------------------------------------------------%
 %
 % File: prog_item.m.
-% Main author: fjh.
+% Original author: fjh.
 %
-% This module, together with prog_data, defines a data structure for
+% This module, together with prog_data*.m, defines a data structure for
 % representing Mercury programs.
 %
 % This data structure specifies basically the same information as is
 % contained in the source code, but in a parse tree rather than a flat file.
 % This module defines the parts of the parse tree that are *not* needed
 % by the various compiler backends; parts of the parse tree that
-% are needed by the backends are contained in prog_data.m.
+% are needed by the backends are contained in prog_data*.m.
 %
 %---------------------------------------------------------------------------%
 %
@@ -65,7 +65,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_spec.
-:- import_module parse_tree.file_kind.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -339,18 +338,17 @@
 
                 % Items of various kinds in the interface.
                 % All these items are to be treated as being in the
-                % sms_interface section, with one exception.
-                % If this module has some submodules, i.e. if at least one
-                % of the ptms_{int,imp}_included_modules fields above are
-                % nonempty, then we handle any nonabstract instance items
-                % in the interface by
+                % interface section, with one exception.
+                % If this module has some submodules, i.e. if the
+                % ptms_include_map field above is nonempty, then we handle
+                % any nonabstract instance items in the interface by
                 % - treating only an abstract version of the item as being
-                %   in sms_interface, and
+                %   in the interface, and
                 % - treating the original version as being in the
-                %   sms_impl_but_exported_to_submodules section.
+                %   implementation section, but exported to submodules.
                 % (For abstract instances, there is no point in adding them
                 % twice, once in each section, so we treat them as only
-                % being in sms_interface.)
+                % being in the interface.)
                 ptms_int_typeclasses        :: list(item_typeclass_info),
                 ptms_int_instances          :: list(item_instance_info),
                 ptms_int_pred_decls         :: list(item_pred_decl_info),
@@ -380,13 +378,13 @@
                 % misplaced items into separate fields of their own,
                 % but so far there has been no need for that.
                 %
-                % If this module has no submodules, i.e. if the fields
-                % ptms_{int,imp}_included_modules above are both empty,
-                % then all the items in these fields are to be treated
-                % as in being in a sms_implementation section. However,
-                % if this module HAS at least one submodule (in either
-                % section), then only the following kinds of items are
-                % to be treated as being in a sms_implementation section:
+                % If this module has no submodules, i.e. if the
+                % ptms_include_map field above is empty, then all the items
+                % in these fields are to be treated as in being in the
+                % implementation section. However, if this module HAS
+                % at least one submodule (in either section), then only
+                % the following kinds of items are to be treated as being
+                % private to this module:
                 %
                 %   clauses
                 %   foreign_export_enums
@@ -395,7 +393,7 @@
                 %   finalises
                 %
                 % All the other kinds of items are to be treated as being
-                % in the sms_impl_but_exported_to_submodules section.
+                % exported to submodules.
                 ptms_imp_typeclasses        :: list(item_typeclass_info),
                 ptms_imp_instances          :: list(item_instance_info),
                 ptms_imp_pred_decls         :: list(item_pred_decl_info),
@@ -1128,40 +1126,6 @@
 :- type module_section
     --->    ms_interface
     ;       ms_implementation.
-
-:- type src_module_section
-    --->    sms_interface
-    ;       sms_implementation
-    ;       sms_impl_but_exported_to_submodules.
-            % This is used internally by the compiler, to identify items
-            % which originally came from an implementation section of a module
-            % that contains submodules; such items need to be exported
-            % to the submodules. This is done in grab_modules.m
-            % by grab_qual_imported_modules_augment.
-
-:- type imported_or_used
-    --->    iou_imported
-    ;       iou_used
-    ;       iou_used_and_imported.
-
-:- type int_module_section
-    --->    ims_imported_or_used(module_name, int_file_kind, import_locn,
-                imported_or_used)
-            % These are used internally by the compiler, to identify
-            % declarations which originally came from some other module
-            % imported with a `:- import_module' or `:- use_module'
-            % declaration. They record the name of the imported module,
-            % and in which section the module was imported or used.
-            % An iou_used_and_imported means that the module was the subject
-            % of a `:- use_module' declaration in the interface and of an
-            % `:- import_module' declaration in the implementation; its
-            % import_locn will be the one in the implementation.
-
-    ;       ims_abstract_imported(module_name, int_file_kind).
-            % This is used internally by the compiler, to identify items which
-            % originally came from the implementation section of an interface
-            % file; usually type declarations (especially equivalence types)
-            % which should be used in code generation but not in type checking.
 
 %---------------------------------------------------------------------------%
 
