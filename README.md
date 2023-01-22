@@ -48,7 +48,7 @@ Specific information is contained in individual README files:
       * [AIX](README.AIX)
       * [HP-UX](README.HPUX)
       * [Solaris](README.Solaris)
-      * [Windows](README.MS-Windows)
+      * [Windows](README.MS-Windows.md)
         ([Visual C](README.MS-VisualC),
         [MinGW](README.MinGW),
         [Cygwin](README.Cygwin))
