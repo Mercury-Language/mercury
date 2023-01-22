@@ -29,7 +29,7 @@ Specific information is contained in individual README files:
 
     This backend works well with GCC but also works with:
 
-      * [Clang](README.clang)
+      * [Clang](README.clang.md)
 
   * High-level backend targets
 
