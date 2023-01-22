@@ -39,8 +39,8 @@ Three such environments are supported:
 
 Mercury can also be built using the MS Visual C compiler (MSVC), although one
 of the above environments is still required for the build process.
-See [README.MS-VisualC](README.MS-VisualC) for instructions on how to build
-Mercury with the MS Visual C compiler.
+See [README.MS-VisualC.md](README.MS-VisualC.md) for instructions on how to
+build Mercury with MSVC.
 
 NOTE: while a Unix emulation environment is required to build Mercury on
 Windows, one is NOT required to use Mercury on Windows.

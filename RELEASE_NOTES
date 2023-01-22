@@ -162,7 +162,7 @@ later.  Do not use gcc versions 2.96, 3.0 or 4.0; those versions have bugs that
 cause trouble for Mercury.  If you are using gcc, you will need at least
 version 2.95 or higher, except on Mac OS X where you will need version 3.3 or
 higher.  Visual C++ or clang may also be used as a C compiler.
-(See README.MS-VisualC and README.clang for further details.)  
+(See README.MS-VisualC.md and README.clang for further details.)
 You will also need GNU make version 3.69 or higher.
 
 The Mercury distribution contains:

@@ -20,7 +20,7 @@ This file documents how to install the binary distribution of
 Mercury on Windows and how to build the source distribution
 of Mercury on Windows using Cygwin.  This installation will use the GNU
 C compiler by default.  If you want to use the Microsoft Visual C
-compiler, please see the file README.MS-VisualC.
+compiler, please see the file README.MS-VisualC.md.
 
 -----------------------------------------------------------------------------
 
