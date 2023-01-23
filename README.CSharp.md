@@ -48,7 +48,7 @@ Compiling programs with the `csharp` grade
 ------------------------------------------
 
 Once you have a Mercury installation that includes the `csharp` grade, you
-can build programs such as `hello.m` of `calculator.m` in the [samples](samples)
+can build programs such as `hello.m` or `calculator.m` in the [samples](samples)
 directory.
 
 ```
