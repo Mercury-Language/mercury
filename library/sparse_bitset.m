@@ -1319,6 +1319,150 @@ divide_bits_by_set(DivideByBits, Size, Offset, Bits, !In, !Out) :-
 list_to_set(ItemList) = Set :-
     list_to_set(ItemList, Set).
 
+list_to_set(ItemList, Set) :-
+    % The algorithm we use is a modified version of natural merge sort.
+    %
+    % Unlike with the usual version of natural merge sort, the enum values
+    % of the items in a run don't have to be strictly ascending, because
+    % the order in which the bits of a given bitset_elem are set does not
+    % matter. For the purposes of finding ascending runs, the defining
+    % characteristic of a run is that the *offsets* of the bitset_elems
+    % to which the enum values of the items belong should not decrease.
+    % Likewise, the criterion for descending runs is that the offsets
+    % should not increase.
+    %
+    % This means that the typical runs discovered by list_to_set_get_runs
+    % can be expected to be longer than the runs of a conventional
+    % natural merge sort, unless the number of bits set in each bitset_elem
+    % in each run is at, or just above, one.
+    list_to_set_get_runs(ItemList, [], Runs),
+    % Once we have a list of runs, union them all together using the
+    % usual implementation of union_list, which is effectively a merge sort.
+    % It can be significantly faster than usual merge sort, because a single
+    % logical OR operation can merge up to ubits_per_uint items, though again,
+    % this advantage goes away if the number of bits set in each bitset_elem
+    % in the final result is at, or just above, one.
+    union_list(Runs, Set).
+
+:- pred list_to_set_get_runs(list(T)::in,
+    list(sparse_bitset(T))::in, list(sparse_bitset(T))::out)
+    is det <= uenum(T).
+:- pragma type_spec(pred(list_to_set_get_runs/3), T = var(_)).
+:- pragma type_spec(pred(list_to_set_get_runs/3), T = uint).
+
+list_to_set_get_runs([], !Runs).
+list_to_set_get_runs([HeadItem | TailItems], !Runs) :-
+    bits_for_index(enum.to_uint(HeadItem), Offset, Bits0),
+    list_to_set_get_run(Offset, Bits0, TailItems, LeftOverItems, RunElems),
+    Run = sparse_bitset(RunElems),
+    !:Runs = [Run | !.Runs],
+    list_to_set_get_runs(LeftOverItems, !Runs).
+
+    % list_to_set_get_run(Offset0, Bits0, Items, LeftOverItems, RunElems):
+    %
+    % Find in Items an initial subsequence of either ascending or descending
+    % bitset_elems, and return them, in ascending form, in RunElems.
+    % Each bitset_elem consists of items whose enum form maps to
+    % the same offset.
+    %
+    % Return up the bitset_elems in the run in RunElems.
+    % Return the items beyond the run in LeftOverItems.
+    %
+    % This predicate is agnostic about the direction of the run,
+    % because it directly handles only the first bitset_elem.
+    % Once it runs out of items that map to this bitset_elem,
+    % the algorithm is forced use the enum value of the next item
+    % to choose a direction. According, we delegate getting the rest
+    % of the run to one of list_to_set_get_{ascending,descending}_run.
+    %
+:- pred list_to_set_get_run(uint::in, uint::in, list(T)::in, list(T)::out,
+    list(bitset_elem)::out) is det <= uenum(T).
+:- pragma type_spec(pred(list_to_set_get_run/5), T = var(_)).
+:- pragma type_spec(pred(list_to_set_get_run/5), T = uint).
+
+list_to_set_get_run(Offset0, Bits0, [], [], RunElems) :-
+    RunElems = [make_bitset_elem(Offset0, Bits0)].
+list_to_set_get_run(Offset0, Bits0, [HeadItem | TailItems],
+        LeftOverItems, RunElems) :-
+    HeadItemIndex = enum.to_uint(HeadItem),
+    offset_and_bit_to_set_for_index(HeadItemIndex,
+        HeadItemOffset, HeadItemBitToSet),
+    ( if Offset0 = HeadItemOffset then
+        set_bit(HeadItemBitToSet, Bits0, Bits1),
+        list_to_set_get_run(Offset0, Bits1, TailItems, LeftOverItems,
+            RunElems)
+    else if Offset0 < HeadItemOffset then
+        RevRunElems0 = [make_bitset_elem(Offset0, Bits0)],
+        set_bit(HeadItemBitToSet, 0u, Bits1),
+        list_to_set_get_ascending_run(HeadItemOffset, Bits1, TailItems,
+            LeftOverItems, RevRunElems0, RevRunElems),
+        list.reverse(RevRunElems, RunElems)
+    else
+        RunElems0 = [make_bitset_elem(Offset0, Bits0)],
+        set_bit(HeadItemBitToSet, 0u, Bits1),
+        list_to_set_get_descending_run(HeadItemOffset, Bits1, TailItems,
+            LeftOverItems, RunElems0, RunElems)
+    ).
+
+:- pred list_to_set_get_ascending_run(uint::in, uint::in,
+    list(T)::in, list(T)::out,
+    list(bitset_elem)::in, list(bitset_elem)::out) is det <= uenum(T).
+:- pragma type_spec(pred(list_to_set_get_ascending_run/6), T = var(_)).
+:- pragma type_spec(pred(list_to_set_get_ascending_run/6), T = uint).
+
+list_to_set_get_ascending_run(Offset0, Bits0, [], [], !RevRunElems) :-
+    !:RevRunElems = [make_bitset_elem(Offset0, Bits0) | !.RevRunElems].
+list_to_set_get_ascending_run(Offset0, Bits0, Items @ [HeadItem | TailItems],
+        LeftOverItems, !RevRunElems) :-
+    HeadItemIndex = enum.to_uint(HeadItem),
+    offset_and_bit_to_set_for_index(HeadItemIndex,
+        HeadItemOffset, HeadItemBitToSet),
+    ( if Offset0 = HeadItemOffset then
+        set_bit(HeadItemBitToSet, Bits0, Bits1),
+        list_to_set_get_ascending_run(Offset0, Bits1, TailItems,
+            LeftOverItems, !RevRunElems)
+    else if Offset0 < HeadItemOffset then
+        !:RevRunElems = [make_bitset_elem(Offset0, Bits0) | !.RevRunElems],
+        set_bit(HeadItemBitToSet, 0u, Bits1),
+        list_to_set_get_ascending_run(HeadItemOffset, Bits1, TailItems,
+            LeftOverItems, !RevRunElems)
+    else
+        !:RevRunElems = [make_bitset_elem(Offset0, Bits0) | !.RevRunElems],
+        LeftOverItems = Items
+    ).
+
+:- pred list_to_set_get_descending_run(uint::in, uint::in,
+    list(T)::in, list(T)::out,
+    list(bitset_elem)::in, list(bitset_elem)::out) is det <= uenum(T).
+:- pragma type_spec(pred(list_to_set_get_descending_run/6), T = var(_)).
+:- pragma type_spec(pred(list_to_set_get_descending_run/6), T = uint).
+
+list_to_set_get_descending_run(Offset0, Bits0, [], [], !RunElems) :-
+    !:RunElems = [make_bitset_elem(Offset0, Bits0) | !.RunElems].
+list_to_set_get_descending_run(Offset0, Bits0, Items @ [HeadItem | TailItems],
+        LeftOverItems, !RunElems) :-
+    HeadItemIndex = enum.to_uint(HeadItem),
+    offset_and_bit_to_set_for_index(HeadItemIndex,
+        HeadItemOffset, HeadItemBitToSet),
+    ( if Offset0 = HeadItemOffset then
+        set_bit(HeadItemBitToSet, Bits0, Bits1),
+        list_to_set_get_descending_run(Offset0, Bits1, TailItems,
+            LeftOverItems, !RunElems)
+    else if Offset0 > HeadItemOffset then
+        !:RunElems = [make_bitset_elem(Offset0, Bits0) | !.RunElems],
+        set_bit(HeadItemBitToSet, 0u, Bits1),
+        list_to_set_get_descending_run(HeadItemOffset, Bits1, TailItems,
+            LeftOverItems, !RunElems)
+    else
+        !:RunElems = [make_bitset_elem(Offset0, Bits0) | !.RunElems],
+        LeftOverItems = Items
+    ).
+
+%---------------------%
+
+/*
+This is the old implementation of list_to_set:
+
 list_to_set(ItemList, sparse_bitset(Elems)) :-
     list_to_set_passes(ItemList, [], Elems).
 
@@ -1392,6 +1536,7 @@ insert_bitset_elem(Elem, Elems0 @ [Head0 | Tail0], Elems) :-
         insert_bitset_elem(Elem, Tail0, Tail),
         Elems = [Head0 | Tail]
     ).
+*/
 
 %---------------------%
 
