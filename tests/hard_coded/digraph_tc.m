@@ -207,7 +207,9 @@ generate_edge(KeysArray, !G, !R) :-
 :- pred test_graph(digraph(string)::in, bool::in, io::di, io::uo) is det.
 
 test_graph(G, Verbose, !IO) :-
-    tc(G, TC),
+    tc(G, TC), % basic_tc
+    simple_tc(G, SimpleTC),
+    stack_tc(G, StackTC),
     slow_tc(G, SlowTC),
 
     io.print_line("---- G ----", !IO),
@@ -225,13 +227,34 @@ test_graph(G, Verbose, !IO) :-
     ( if same_graph(TC, SlowTC) then
         true
     else
-        io.write_string("** TC mismatch\n\n", !IO),
+        io.write_string("** TC != SlowTC\n\n", !IO),
+        io.set_exit_status(1, !IO)
+    ),
+    ( if same_graph(SimpleTC, SlowTC) then
+        true
+    else
+        io.write_string("** SimpleTC != SlowTC\n\n", !IO),
+        io.set_exit_status(1, !IO)
+    ),
+    ( if same_graph(StackTC, SlowTC) then
+        true
+    else
+        io.write_string("** StackTC != SlowTC\n\n", !IO),
         io.set_exit_status(1, !IO)
     ).
 
 :- pred same_graph(digraph(T)::in, digraph(T)::in) is semidet.
 
 same_graph(A, B) :-
+    same_graph_2(A, B),
+
+    digraph.inverse(A, InvA),
+    digraph.inverse(B, InvB),
+    same_graph_2(InvA, InvB).
+
+:- pred same_graph_2(digraph(T)::in, digraph(T)::in) is semidet.
+
+same_graph_2(A, B) :-
     digraph.to_assoc_list(A, PairsA),
     digraph.to_assoc_list(B, PairsB),
     sort(PairsA, SortedPairsA),
@@ -264,8 +287,23 @@ run_benchmark(Size, G, Repeat, !IO) :-
     io.format("vertices:   %d\n", [i(Size)], !IO),
     io.format("edges:      %d\n", [i(NumEdges)], !IO),
 
-    benchmark_det(tc, G, _TC, Repeat, TimeTC),
-    AvgTimeTC = float(TimeTC) / float(Repeat),
-    io.format("tc avg:     %f ms\n", [f(AvgTimeTC)], !IO).
+    benchmark_det(tc, G, _BasicTC, Repeat, TimeBasicTC),
+    AvgTimeBasicTC = float(TimeBasicTC) / float(Repeat),
+    io.format("basic_tc avg:  %f ms\n", [f(AvgTimeBasicTC)], !IO),
+
+    benchmark_det(simple_tc, G, _SimpleTC, Repeat, TimeSimpleTC),
+    AvgTimeSimpleTC = float(TimeSimpleTC) / float(Repeat),
+    io.format("simple_tc avg: %f ms\n", [f(AvgTimeSimpleTC)], !IO),
+
+    benchmark_det(stack_tc, G, _StackTC, Repeat, TimeStackTC),
+    AvgTimeStackTC = float(TimeStackTC) / float(Repeat),
+    io.format("stack_tc avg:  %f ms\n", [f(AvgTimeStackTC)], !IO),
+
+    io.nl(!IO),
+    F1 = float(TimeSimpleTC) / float(TimeBasicTC),
+    io.format("basic_tc %f times as fast as simple_tc\n", [f(F1)], !IO),
+    F2 = float(TimeStackTC) / float(TimeBasicTC),
+    io.format("basic_tc %f times as fast as stack_tc\n", [f(F2)], !IO),
+    io.nl(!IO).
 
 %---------------------------------------------------------------------------%

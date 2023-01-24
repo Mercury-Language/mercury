@@ -347,6 +347,12 @@
     %
 :- func transitive_closure(digraph(T)) = digraph(T).
 
+    % Other transitive closure implementations for comparison.
+    % These will be deleted soon.
+    %
+:- pred simple_tc(digraph(T)::in, digraph(T)::out) is det.
+:- pred stack_tc(digraph(T)::in, digraph(T)::out) is det.
+
     % rtc(G, RTC) is true if RTC is the reflexive transitive closure of G.
     %
     % RTC is the reflexive closure of the transitive closure of G,
@@ -392,6 +398,7 @@
 :- implementation.
 
 :- import_module bimap.
+:- import_module int.
 :- import_module require.
 :- import_module uint.
 
@@ -447,9 +454,8 @@ key_set_map_add(XI, Y, Map0, Map) :-
     key_set_map(T)::in, key_set_map(T)::out) is det.
 
 key_set_map_union(XI, Ys, Map0, Map) :-
-    ( if map.search(Map0, XI, SuccXs0) then
-        sparse_bitset.union(Ys, SuccXs0, SuccXs),
-        map.det_update(XI, SuccXs, Map0, Map)
+    ( if map.transform_value(sparse_bitset.union(Ys), XI, Map0, Map1) then
+        Map = Map1
     else
         map.det_insert(XI, Ys, Map0, Map)
     ).
@@ -464,6 +470,14 @@ key_set_map_delete(XI, Y, Map0, Map) :-
     else
         Map = Map0
     ).
+
+:- pred key_set_map_contains(key_set_map(T)::in,
+    digraph_key(T)::in, digraph_key(T)::in) is semidet.
+
+key_set_map_contains(Map, X, Y) :-
+    X = digraph_key(XI),
+    map.search(Map, XI, SuccXs),
+    sparse_bitset.contains(SuccXs, Y).
 
 %---------------------------------------------------------------------------%
 
@@ -1101,7 +1115,225 @@ tc(G, Tc) :-
     Tc = transitive_closure(G).
 
 transitive_closure(G) = Tc :-
-    simple_tc_main(G, Tc).
+    basic_tc(G, Tc).
+
+%---------------------------------------------------------------------------%
+
+% This implements the Basic_TC (BTC) algorithm described by Yannis Ioannidis
+% et al. in "Transitive Closure Algorithms Based on Graph Traversal"
+% ACM Transactions on Database Systems, Vol. 18, No. 3, Sept. 1993, pp. 512-576
+% <https://www.madgik.di.uoa.gr/publications/transitive-closure-algorithms-based-graph-traversal>
+%
+% It is also helpful to read Esko Nuutila's doctoral thesis
+% "Efficient Transitive Closure Computation in Large Digraphs"
+% <http://www.cs.hut.fi/~enu/thesis.html>
+%
+% Note: Nuutila's STACK_TC algorithm should be faster than Basic_TC in general,
+% as it computes edges between components rather than vertices. The algorithm
+% outputs Comp and Succ, such that to find the successors of a vertex v,
+% you would look up Succ(Comp(v)). That representation saves a lot of time and
+% memory since the successors of every vertex in a component are always the
+% same.
+%
+% However, the advantage is eroded given that our digraph representation stores
+% the successors and predecessors of each vertex individually. Then Basic_TC
+% tends to be faster, likely due to its relative simplicity.
+
+:- type modified_tarjan_visit(T) == simple_tc_visit(T). % temporary
+
+:- type modified_tarjan_state(T)
+    --->    modified_tarjan_state(
+                % A map from a vertex to the candidate root of the component
+                % that will include the vertex.
+                root_map    :: map(digraph_key(T), digraph_key(T)),
+
+                % Stack of vertices being visited.
+                stack       :: list(digraph_key(T)),
+
+                % A vertex is included in popped once the component containing
+                % the vertex has been determined, i.e. it has been popped off
+                % the stack.
+                popped      :: digraph_key_set(T),
+
+                % The detected components in topological order
+                % (parent before descendants).
+                comps       :: list(component(T))
+            ).
+
+:- type component(T)
+    --->    component(
+                component_root      :: digraph_key(T),
+                component_nonroots  :: list(digraph_key(T))
+            ).
+
+:- pred basic_tc(digraph(T)::in, digraph(T)::out) is det.
+
+basic_tc(G, Tc) :-
+    % First identify strong components.
+    modified_tarjan(G, Comps),
+    list.reverse(Comps, RevComps),
+
+    % Loop over components in reverse topological order
+    % (descendants before parent).
+    G = digraph(NextKey, VMap, FwdMap0, _BwdMap0),
+    list.foldl2(btc_process_component(FwdMap0), RevComps,
+        map.init, SuccMap, map.init, PredMap),
+    Tc = digraph(NextKey, VMap, SuccMap, PredMap).
+
+%---------------------%
+
+    % NOTE: modified_tarjan could be used elsewhere in this module.
+    %
+:- pred modified_tarjan(digraph(T)::in, list(component(T))::out) is det.
+
+modified_tarjan(G, Comps) :-
+    G = digraph(_NextKey, VMap, FwdMap, _BwdMap),
+    Visit0 = simple_tc_visit(0u, map.init),
+    State0 = modified_tarjan_state(map.init, [], sparse_bitset.init, []),
+    bimap.foldl2(modified_tarjan_main_loop(FwdMap), VMap,
+        Visit0, _Visit, State0, State),
+    State = modified_tarjan_state(_RootMap, _Stack, _Popped, Comps).
+
+:- pred modified_tarjan_main_loop(key_set_map(T)::in,
+    T::in, digraph_key(T)::in,
+    modified_tarjan_visit(T)::in, modified_tarjan_visit(T)::out,
+    modified_tarjan_state(T)::in, modified_tarjan_state(T)::out) is det.
+
+modified_tarjan_main_loop(OrigEdges, _V, KeyV, !Visit, !State) :-
+    ( if modified_tarjan_new_visit(KeyV, !Visit) then
+        modified_tarjan_visit(OrigEdges, KeyV, !Visit, !State)
+    else
+        true
+    ).
+
+:- pred modified_tarjan_new_visit(digraph_key(T)::in,
+    modified_tarjan_visit(T)::in, modified_tarjan_visit(T)::out) is semidet.
+
+modified_tarjan_new_visit(V, !Visit) :-
+    simple_tc_new_visit(V, !Visit). % temporary
+
+:- pred modified_tarjan_visit(key_set_map(T)::in, digraph_key(T)::in,
+    modified_tarjan_visit(T)::in, modified_tarjan_visit(T)::out,
+    modified_tarjan_state(T)::in, modified_tarjan_state(T)::out) is det.
+
+modified_tarjan_visit(OrigEdges, V, !Visit, !State) :-
+    some [!RootMap, !Stack] (
+        !:RootMap = !.State ^ root_map,
+        !:Stack = !.State ^ stack,
+
+        map.det_insert(V, V, !RootMap),
+        !:Stack = [V | !.Stack],
+
+        !State ^ root_map := !.RootMap,
+        !State ^ stack := !.Stack
+    ),
+
+    get_successors(OrigEdges, V, SuccVs),
+    sparse_bitset.foldl2(modified_tarjan_visit_v_w(OrigEdges, V),
+        SuccVs, !Visit, !State),
+
+    RootMap = !.State ^ root_map,
+    ( if map.search(RootMap, V, V) then
+        % V is the root of a component that also contains Ws.
+        some [!Stack, !Popped, !Comps] (
+            !:Stack = !.State ^ stack,
+            !:Popped = !.State ^ popped,
+            !:Comps = !.State ^ comps,
+
+            pop_component(V, Ws, !Stack),
+            sparse_bitset.insert(V, !Popped),
+            sparse_bitset.insert_list(Ws, !Popped),
+            !:Comps = [component(V, Ws) | !.Comps],
+
+            !State ^ stack := !.Stack,
+            !State ^ popped := !.Popped,
+            !State ^ comps := !.Comps
+        )
+    else
+        true
+    ).
+
+:- pred modified_tarjan_visit_v_w(key_set_map(T)::in,
+    digraph_key(T)::in, digraph_key(T)::in,
+    modified_tarjan_visit(T)::in, modified_tarjan_visit(T)::out,
+    modified_tarjan_state(T)::in, modified_tarjan_state(T)::out) is det.
+
+modified_tarjan_visit_v_w(OrigEdges, V, W, !Visit, !State) :-
+    ( if modified_tarjan_new_visit(W, !Visit) then
+        modified_tarjan_visit(OrigEdges, W, !Visit, !State)
+    else
+        true
+    ),
+
+    Popped = !.State ^ popped,
+    ( if sparse_bitset.contains(Popped, W) then
+        % We already determined the component that contains W.
+        true
+    else
+        % Otherwise, update the candidate that will become the root of the
+        % component that contains W.
+        RootMap0 = !.State ^ root_map,
+        map.lookup(RootMap0, V, RootV),
+        map.lookup(RootMap0, W, RootW),
+        ( if visited_earlier(!.Visit, RootV, RootW) then
+            map.det_update(V, RootW, RootMap0, RootMap),
+            !State ^ root_map := RootMap
+        else
+            true
+        )
+    ).
+
+%---------------------%
+
+:- pred btc_process_component(key_set_map(T)::in, component(T)::in,
+    key_set_map(T)::in, key_set_map(T)::out,
+    key_set_map(T)::in, key_set_map(T)::out) is det.
+
+btc_process_component(OrigEdges, Comp, !SuccMap, !PredMap) :-
+    % V is the root of a component that also contains Ws.
+    Comp = component(V, Ws),
+
+    % Build the set of successors for the root vertex V.
+    get_successors(!.SuccMap, V, SuccV0),
+    list.foldl(build_successor_set(OrigEdges, !.SuccMap), [V | Ws],
+        SuccV0, SuccV),
+
+    V = digraph_key(VI),
+    map.det_insert(VI, SuccV, !SuccMap),
+
+    % Distribute successors to other vertices in the component.
+    list.foldl(add_successors(SuccV), Ws, !SuccMap),
+
+    % Maintain the predecessor map from the (new) successors back to each
+    % vertex in the component. This ends up dominating the time spent computing
+    % the transitive closure, even though the user may not make use of the
+    % predecessor map at all.
+    (
+        Ws = [],
+        sparse_bitset.foldl(add_predecessor(V), SuccV, !PredMap)
+    ;
+        Ws = [_ | _],
+        sparse_bitset.list_to_set([V | Ws], VWs),
+        sparse_bitset.foldl(add_predecessors(VWs), SuccV, !PredMap)
+    ).
+
+:- pred build_successor_set(key_set_map(T)::in, key_set_map(T)::in,
+    digraph_key(T)::in, digraph_key_set(T)::in, digraph_key_set(T)::out)
+    is det.
+
+build_successor_set(OrigEdges, SuccMap0, W, !SuccV) :-
+    get_successors(OrigEdges, W, SuccW),
+    sparse_bitset.difference(SuccW, !.SuccV, NewSuccessors),
+    sparse_bitset.foldl(build_successor_set_2(SuccMap0), NewSuccessors,
+        !SuccV).
+
+:- pred build_successor_set_2(key_set_map(T)::in, digraph_key(T)::in,
+    digraph_key_set(T)::in, digraph_key_set(T)::out) is det.
+
+build_successor_set_2(SuccMap0, W, !SuccV) :-
+    get_successors(SuccMap0, W, SuccW),
+    sparse_bitset.insert(W, !SuccV),
+    sparse_bitset.union(SuccW, !SuccV).
 
 %---------------------------------------------------------------------------%
 
@@ -1134,9 +1366,7 @@ transitive_closure(G) = Tc :-
                 pred_map        :: key_set_map(T)
             ).
 
-:- pred simple_tc_main(digraph(T)::in, digraph(T)::out) is det.
-
-simple_tc_main(G, Tc) :-
+simple_tc(G, Tc) :-
     G = digraph(NextKey, VMap, FwdMap0, BwdMap0),
     Visit0 = simple_tc_visit(0u, map.init),
     State0 = simple_tc_state(map.init, sparse_bitset.init, [],
@@ -1327,6 +1557,340 @@ add_predecessors(Ys, X, !Map) :-
 add_predecessor(Y, X, !Map) :-
     X = digraph_key(XI),
     key_set_map_add(XI, Y, !Map).
+
+%---------------------------------------------------------------------------%
+
+% The stack_tc algorithm from Esko Nuutila's thesis.
+
+:- type stack_tc_visit(T)
+    --->    stack_tc_visit(
+                visit_counter   :: uint,
+                visit_map       :: map(digraph_key(T), uint),
+                tree_edges      :: key_set_map(T)
+            ).
+
+:- type stack_tc_state(T)
+    --->    stack_tc_state(
+                % A map from a vertex to the candidate root of the component
+                % that will include the vertex.
+                root_map        :: map(digraph_key(T), digraph_key(T)),
+
+                % Vertices with self-loops.
+                self_loop       :: digraph_key_set(T),
+
+                % Information about components.
+                comp_counter    :: uint,
+                vert_comp       :: map(digraph_key(T), component_id),
+                comp_verts      :: map(component_id, digraph_key_set(T)),
+                comp_succ       :: map(component_id, sparse_bitset(component_id)),
+
+                % Stack of vertices being visited.
+                vstack          :: list(digraph_key(T)),
+
+                % Stack of components and the height of the stack.
+                cstack          :: list(component_id),
+                cstack_height   :: int,
+
+                % The successors and predecessors of each vertex in the graph
+                % we are building.
+                succ_map        :: key_set_map(T),
+                pred_map        :: key_set_map(T)
+            ).
+
+:- type component_id
+    --->    component_id(uint).
+
+:- instance uenum(component_id) where [
+    to_uint(component_id(UInt)) = UInt,
+    from_uint(UInt, component_id(UInt))
+].
+
+stack_tc(G, Tc) :-
+    G = digraph(NextKey, VMap, FwdMap0, _BwdMap0),
+    Visit0 = stack_tc_visit(0u, map.init, map.init),
+    State0 = stack_tc_state(map.init, sparse_bitset.init,
+        0u, map.init, map.init, map.init, [], [], 0, map.init, map.init),
+
+    bimap.foldl2(stack_tc_main_loop(FwdMap0), VMap,
+        Visit0, _Visit, State0, State),
+
+    State = stack_tc_state(_, _, _, _, _, _, _, _, _, FwdMap, BwdMap),
+    Tc = digraph(NextKey, VMap, FwdMap, BwdMap).
+
+:- pred stack_tc_main_loop(key_set_map(T)::in, T::in, digraph_key(T)::in,
+    stack_tc_visit(T)::in, stack_tc_visit(T)::out,
+    stack_tc_state(T)::in, stack_tc_state(T)::out) is det.
+
+stack_tc_main_loop(OrigEdges, _V, KeyV, !Visit, !State) :-
+    ( if stack_tc_new_visit_no_parent(KeyV, !Visit) then
+        stack_tc(OrigEdges, KeyV, !Visit, !State)
+    else
+        true
+    ).
+
+:- pred stack_tc_new_visit_no_parent(digraph_key(T)::in,
+    stack_tc_visit(T)::in, stack_tc_visit(T)::out) is semidet.
+
+stack_tc_new_visit_no_parent(V, !Visit) :-
+    Counter0 = !.Visit ^ visit_counter,
+    Map0 = !.Visit ^ visit_map,
+
+    map.insert(V, Counter0, Map0, Map),
+    Counter = Counter0 + 1u,
+
+    !Visit ^ visit_counter := Counter,
+    !Visit ^ visit_map := Map.
+
+:- pred stack_tc_new_visit_via(digraph_key(T)::in, digraph_key(T)::in,
+    stack_tc_visit(T)::in, stack_tc_visit(T)::out) is semidet.
+
+stack_tc_new_visit_via(Parent, V, !Visit) :-
+    Counter0 = !.Visit ^ visit_counter,
+    Map0 = !.Visit ^ visit_map,
+    TreeEdges0 = !.Visit ^ tree_edges,
+
+    map.insert(V, Counter0, Map0, Map),
+    Counter = Counter0 + 1u,
+
+    Parent = digraph_key(ParentI),
+    key_set_map_add(ParentI, V, TreeEdges0, TreeEdges),
+
+    !Visit ^ visit_counter := Counter,
+    !Visit ^ visit_map := Map,
+    !Visit ^ tree_edges := TreeEdges.
+
+:- pred stack_tc(key_set_map(T)::in, digraph_key(T)::in,
+    stack_tc_visit(T)::in, stack_tc_visit(T)::out,
+    stack_tc_state(T)::in, stack_tc_state(T)::out) is det.
+
+stack_tc(OrigEdges, V, !Visit, !State) :-
+    some [!RootMap, !VStack] (
+        !:RootMap = !.State ^ root_map,
+        !:VStack = !.State ^ vstack,
+
+        map.det_insert(V, V, !RootMap),
+        !:VStack = [V | !.VStack],
+
+        !State ^ root_map := !.RootMap,
+        !State ^ vstack := !.VStack
+    ),
+
+    SavedHeight = !.State ^ cstack_height,
+
+    get_successors(OrigEdges, V, OrigSuccV),
+    sparse_bitset.foldl2(stack_tc_for_v_w(OrigEdges, V), OrigSuccV,
+        !Visit, !State),
+
+    RootMap = !.State ^ root_map,
+    ( if map.search(RootMap, V, V) then
+        % V is the root vertex of a new component C.
+        new_component(C, !State),
+
+        some [!VStack, !CStack, !CStackHeight] (
+            !:VStack = !.State ^ vstack,
+            !:CStack = !.State ^ cstack,
+            !:CStackHeight = !.State ^ cstack_height,
+
+            % Ws are the other vertices in the component.
+            pop_component(V, Ws, !VStack),
+
+            pop_cstack_to_height(SavedHeight, PoppedComps0,
+                !CStack, !CStackHeight),
+
+            % The original algorithm would sort the components in cstack
+            % between SavedHeight and the top of cstack into a topological
+            % order and eliminate duplicates.
+            %
+            % We don't do the topological sorting as it's not obvious how.
+            % We do optimistically remove consecutive duplicates. It probably
+            % doesn't make a big difference as our run time is dominated by
+            % maintaining the successor and predecessor maps, so some extra
+            % bitset union operations should have relatively little impact.
+            list.remove_dups(PoppedComps0, PoppedComps),
+
+            !State ^ vstack := !.VStack,
+            !State ^ cstack := !.CStack,
+            !State ^ cstack_height := !.CStackHeight
+        ),
+
+        some [!VertComp, !CompVerts, !CompSucc, !SuccMap, !PredMap] (
+            !:VertComp = !.State ^ vert_comp,
+            !:CompVerts = !.State ^ comp_verts,
+
+            % Record C as the component of each of the vertices.
+            list.foldl(assign_component_to_vertex(C), [V | Ws], !VertComp),
+
+            % Record the vertices that make up the component C.
+            sparse_bitset.list_to_set([V | Ws], VWs),
+            map.det_insert(C, VWs, !CompVerts),
+
+            ( if
+                (
+                    Ws = [_ | _]    % i.e. C is non-trivial.
+                ;
+                    has_self_loop(!.State, V)
+                )
+            then
+                SuccC0 = sparse_bitset.make_singleton_set(C)
+            else
+                SuccC0 = sparse_bitset.init
+            ),
+
+            % Compute the successor set of the component C.
+            !:CompSucc = !.State ^ comp_succ,
+            list.foldl(build_component_successor_set(!.CompSucc),
+                PoppedComps, SuccC0, SuccC),
+            map.det_insert(C, SuccC, !CompSucc),
+
+            % Maintain the successor and predessor maps for each vertex.
+            % This is not part of the original algorithm. It ends up taking
+            % the majority of the run time for this implmentation.
+            !:SuccMap = !.State ^ succ_map,
+            !:PredMap = !.State ^ pred_map,
+            union_components_vertices(!.CompVerts, SuccC, SuccVerts),
+            list.foldl(add_successors(SuccVerts), [V | Ws], !SuccMap),
+            sparse_bitset.foldl(add_predecessors(VWs), SuccVerts, !PredMap),
+
+            !State ^ vert_comp := !.VertComp,
+            !State ^ comp_verts := !.CompVerts,
+            !State ^ comp_succ := !.CompSucc,
+            !State ^ succ_map := !.SuccMap,
+            !State ^ pred_map := !.PredMap
+        )
+    else
+        % V is not the root of a component.
+        true
+    ).
+
+:- pred stack_tc_for_v_w(key_set_map(T)::in,
+    digraph_key(T)::in, digraph_key(T)::in,
+    stack_tc_visit(T)::in, stack_tc_visit(T)::out,
+    stack_tc_state(T)::in, stack_tc_state(T)::out) is det.
+
+stack_tc_for_v_w(OrigEdges, V, W, !Visit, !State) :-
+    ( if W = V then
+        set_self_loop(V, !State)
+    else
+        ( if stack_tc_new_visit_via(V, W, !Visit) then
+            stack_tc(OrigEdges, W, !Visit, !State)
+        else
+            true
+        ),
+
+        VertComp = !.State ^ vert_comp,
+        ( if not map.contains(VertComp, W) then
+            RootMap0 = !.State ^ root_map,
+            map.lookup(RootMap0, V, RootV),
+            map.lookup(RootMap0, W, RootW),
+            ( if stack_tc_visited_earlier(!.Visit, RootV, RootW) then
+                map.det_update(V, RootW, RootMap0, RootMap),
+                !State ^ root_map := RootMap
+            else
+                true
+            )
+        else if not is_forward_edge(!.Visit, V, W) then
+            map.lookup(VertComp, W, CompW),
+            push_cstack(CompW, !State)
+        else
+            true
+        )
+    ).
+
+:- pred stack_tc_visited_earlier(stack_tc_visit(T)::in,
+    digraph_key(T)::in, digraph_key(T)::in) is semidet.
+
+stack_tc_visited_earlier(Visit, X, Y) :-
+    VisitMap = Visit ^ visit_map,
+    map.lookup(VisitMap, X, OrderX),
+    map.lookup(VisitMap, Y, OrderY),
+    OrderY < OrderX.
+
+:- pred is_forward_edge(stack_tc_visit(T)::in,
+    digraph_key(T)::in, digraph_key(T)::in) is semidet.
+
+is_forward_edge(Visit, V, W) :-
+    stack_tc_visited_earlier(Visit, W, V),
+
+    TreeEdges = Visit ^ tree_edges,
+    not key_set_map_contains(TreeEdges, V, W).
+
+:- pred has_self_loop(stack_tc_state(T)::in, digraph_key(T)::in) is semidet.
+
+has_self_loop(State, V) :-
+    SelfLoops = State ^ self_loop,
+    sparse_bitset.contains(SelfLoops, V).
+
+:- pred set_self_loop(digraph_key(T)::in,
+    stack_tc_state(T)::in, stack_tc_state(T)::out) is det.
+
+set_self_loop(V, !State) :-
+    SelfLoop0 = !.State ^ self_loop,
+    sparse_bitset.insert(V, SelfLoop0, SelfLoop),
+    !State ^ self_loop := SelfLoop.
+
+:- pred new_component(component_id::out,
+    stack_tc_state(T)::in, stack_tc_state(T)::out) is det.
+
+new_component(Comp, !State) :-
+    Counter0 = !.State ^ comp_counter,
+    Comp = component_id(Counter0),
+    Counter = Counter0 + 1u,
+    !State ^ comp_counter := Counter.
+
+:- pred push_cstack(component_id::in,
+    stack_tc_state(T)::in, stack_tc_state(T)::out) is det.
+
+push_cstack(Comp, !State) :-
+    CStack0 = !.State ^ cstack,
+    Height0 = !.State ^ cstack_height,
+    CStack = [Comp | CStack0],
+    Height = Height0 + 1,
+    !State ^ cstack := CStack,
+    !State ^ cstack_height := Height.
+
+:- pred pop_cstack_to_height(int::in, list(component_id)::out,
+    list(component_id)::in, list(component_id)::out,
+    int::in, int::out) is det.
+
+pop_cstack_to_height(SavedHeight, Popped, CStack0, CStack, Height0, Height) :-
+    NumToPop = Height0 - SavedHeight,
+    list.det_split_list(NumToPop, CStack0, Popped, CStack),
+    Height = SavedHeight.
+
+:- pred assign_component_to_vertex(component_id::in, digraph_key(T)::in,
+    map(digraph_key(T), component_id)::in,
+    map(digraph_key(T), component_id)::out) is det.
+
+assign_component_to_vertex(C, V, !Map) :-
+    map.det_insert(V, C, !Map).
+
+:- pred build_component_successor_set(
+    map(component_id, sparse_bitset(component_id))::in, component_id::in,
+    sparse_bitset(component_id)::in, sparse_bitset(component_id)::out) is det.
+
+build_component_successor_set(CompSucc, X, !SuccC) :-
+    ( if sparse_bitset.contains(!.SuccC, X) then
+        true
+    else
+        map.lookup(CompSucc, X, SuccX),
+        sparse_bitset.insert(X, !SuccC),
+        sparse_bitset.union(SuccX, !SuccC)
+    ).
+
+:- pred union_components_vertices(map(component_id, digraph_key_set(T))::in,
+    sparse_bitset(component_id)::in, digraph_key_set(T)::out) is det.
+
+union_components_vertices(CompVerts, Cs, Vs) :-
+    sparse_bitset.foldl(get_component_vertices(CompVerts), Cs, [], VsList),
+    sparse_bitset.union_list(VsList, Vs).
+
+:- pred get_component_vertices(map(component_id, digraph_key_set(T))::in,
+    component_id::in,
+    list(digraph_key_set(T))::in, list(digraph_key_set(T))::out) is det.
+
+get_component_vertices(CompVerts, C, !VsList) :-
+    map.lookup(CompVerts, C, Vs),
+    !:VsList = [Vs | !.VsList].
 
 %---------------------------------------------------------------------------%
 
