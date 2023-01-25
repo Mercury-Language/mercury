@@ -286,6 +286,7 @@ cp $root/library/Mmake* .
 cp $root/library/Mercury* .
 cp $root/library/*FLAGS* .
 cp $root/library/MODULES* .
+cp $root/library/mer_std.trans_opt_deps_spec .
 cp $root/library/.mgnuc* .
 cd $root/stage2
 mkdir mdbcomp
@@ -430,6 +431,7 @@ then
     cp $root/library/Mercury* .
     cp $root/library/*FLAGS* .
     cp $root/library/MODULES* .
+    cp $root/library/mer_std.trans_opt_deps_spec .
     cp $root/library/.mgnuc* .
 
     cd $root/stage3

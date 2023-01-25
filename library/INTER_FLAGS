@@ -1,4 +1,5 @@
 --transitive-intermodule-optimization
+--trans-opt-deps-spec mer_std.trans_opt_deps_spec
 --no-warn-smart-recompilation
 --enable-termination
 --analyse-exceptions

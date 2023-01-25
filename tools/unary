@@ -253,6 +253,7 @@ cp $root/library/print_extra_inits .
 cp $root/library/Mmake* .
 cp $root/library/Mercury* .
 cp $root/library/*FLAGS* .
+cp $root/library/mer_std.trans_opt_deps_spec .
 cp $root/library/.mgnuc* .
 cd $root/stage2
 mkdir mdbcomp
@@ -371,6 +372,7 @@ then
     ln -s $root/library/*.init .
     cp $root/library/Mercury* .
     cp $root/library/*FLAGS* .
+    cp $root/library/mer_std.trans_opt_deps_spec .
     cp $root/library/.mgnuc* .
     cp $root/library/Mmake* .
     cd $root/stage3

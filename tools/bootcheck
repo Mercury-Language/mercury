@@ -809,6 +809,7 @@ then
         cp "${root}"/library/Mmake* "${root}"/library/Mercury.options .
         cp "${root}"/library/*_FLAGS.in .
         cp "${root}"/library/INTER_FLAGS* .
+        cp "${root}"/library/mer_std.trans_opt_deps_spec .
         cp "${root}"/library/.mgnu* .
         ${LN_S} "${root}"/library/${STD_LIB_NAME}.init .
         ${LN_S} "${root}"/library/RESERVED_MACRO_NAMES .
@@ -1480,6 +1481,7 @@ EOF
     cp "${root}"/library/Mmake* "${root}"/library/Mercury.options .
     cp "${root}"/library/*_FLAGS.in .
     cp "${root}"/library/INTER_FLAGS* .
+    cp "${root}"/library/mer_std.trans_opt_deps_spec .
     cp "${root}"/library/.mgnu* .
     ${LN_S} "${root}"/library/${STD_LIB_NAME}.init .
 

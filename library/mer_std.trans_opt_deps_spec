@@ -1,0 +1,269 @@
+module_allow_deps(private_builtin, []).
+module_allow_deps(builtin, [private_builtin]).
+
+%--------------------------------------%
+
+module_disallow_deps(univ, [
+    list,
+    require,
+    string,
+    type_desc
+    ]).
+
+module_disallow_deps(exception, [
+    io,
+    list,
+    solutions,
+    stm_builtin,
+    store,
+    string
+    ]).
+
+module_disallow_deps(require, [
+    enum,
+    list,
+    string,
+    string.format,
+    string.parse_util,
+    type_desc
+    ]).
+
+module_disallow_deps(maybe, [
+    list                % only for type
+    ]).
+
+module_disallow_deps(list, [
+    pretty_printer,
+    set_tree234,
+    string,
+    term
+    ]).
+
+%--------------------------------------%
+
+module_disallow_deps(int, [
+    array,              % only for modes
+    pretty_printer
+    ]).
+module_disallow_deps(int8, [pretty_printer]).
+module_disallow_deps(int16, [pretty_printer]).
+module_disallow_deps(int32, [pretty_printer]).
+module_disallow_deps(int64, [pretty_printer]).
+
+module_disallow_deps(uint, [pretty_printer]).
+module_disallow_deps(uint8, [pretty_printer]).
+module_disallow_deps(uint16, [pretty_printer]).
+module_disallow_deps(uint32, [pretty_printer]).
+module_disallow_deps(uint64, [pretty_printer]).
+
+module_disallow_deps(char, [pretty_printer]).
+module_disallow_deps(float, [pretty_printer]).
+module_disallow_deps(one_or_more, [pretty_printer]).
+module_disallow_deps(version_array, [pretty_printer]).
+
+module_disallow_deps(array, [
+    pretty_printer,
+    string.format,
+    string.parse_util,
+    type_desc           % only for dynamic_cast_to_array
+    ]).
+
+%--------------------------------------%
+
+module_disallow_deps(rtti_implementation, [
+    bitmap,
+    deconstruct,
+    string.format,
+    string.parse_util,
+    term_io,            % only for term_io.quoted_string
+    type_desc
+    ]).
+
+module_disallow_deps(type_desc, []).
+
+%--------------------------------------%
+
+module_disallow_deps(string, [
+    assoc_list,         % only for the type
+    deconstruct,
+    pretty_printer,
+    string.format,
+    string.parse_util,
+    string.to_string
+    ]).
+module_disallow_deps(string.parse_util, [
+    deconstruct,
+    pretty_printer,
+    string.format,
+    string.to_string
+    ]).
+module_disallow_deps(string.parse_runtime, [
+    deconstruct,
+    pretty_printer,
+    string.format,
+    string.to_string
+    ]).
+module_disallow_deps(string.format, [
+    deconstruct,
+    pretty_printer,
+    string.to_string
+    ]).
+module_disallow_deps(string.to_string, []).
+
+%--------------------------------------%
+
+module_disallow_deps(tree234, [
+    io,                 % only for trace goals
+    pretty_printer,
+    term                % only for var type
+    ]).
+
+module_disallow_deps(map, [term]).
+module_disallow_deps(set, [term]).
+module_disallow_deps(set_ordlist, [term]).
+module_disallow_deps(set_tree234, [term]).
+
+module_disallow_deps(term, [
+    term_int,
+    term_subst,
+    term_unify,
+    term_vars
+    ]).
+
+module_disallow_deps(term_conversion, [bitmap]).
+
+%--------------------------------------%
+
+% These only import io for the io.state.
+module_disallow_deps(table_builtin, [io]).
+module_disallow_deps(time, [io]).
+
+module_disallow_deps(io.error_util, [
+    benchmarking,
+    bitmap,
+    dir,
+    mercury_term_parser,
+    stream.string_writer,
+    io,
+    io.call_system,
+    io.environment,
+    io.file,
+    io.primitives_read,
+    io.primitives_write,
+    io.stream_db,
+    io.stream_ops,
+    io.text_read
+    ]).
+module_disallow_deps(io.file, [
+    benchmarking,
+    bitmap,
+    dir,
+    mercury_term_parser,
+    stream.string_writer,
+    io,
+    io.call_system,
+    io.environment,
+    io.primitives_read,
+    io.primitives_write,
+    io.stream_db,
+    io.stream_ops,
+    io.text_read
+    ]).
+module_disallow_deps(io.environment, [
+    benchmarking,
+    bitmap,
+    dir,
+    mercury_term_parser,
+    stream.string_writer,
+    io,
+    io.call_system,
+    io.file,
+    io.primitives_read,
+    io.primitives_write,
+    io.stream_db,
+    io.stream_ops,
+    io.text_read
+    ]).
+module_disallow_deps(io.call_system, [
+    benchmarking,
+    bitmap,
+    dir,
+    mercury_term_parser,
+    stream.string_writer,
+    io,
+    io.environment,
+    io.file,
+    io.primitives_read,
+    io.primitives_write,
+    io.stream_db,
+    io.stream_ops,
+    io.text_read
+    ]).
+
+module_disallow_deps(io.stream_db, [
+    benchmarking,
+    bitmap,
+    dir,
+    mercury_term_parser,
+    stream.string_writer,
+    io,
+    io.primitives_read,
+    io.primitives_write,
+    io.stream_ops,
+    io.text_read
+    ]).
+module_disallow_deps(io.stream_ops, [
+    benchmarking,
+    bitmap,
+    dir,
+    mercury_term_parser,
+    stream.string_writer,
+    io,
+    io.primitives_read,
+    io.primitives_write,
+    io.stream_db,
+    io.text_read
+    ]).
+module_disallow_deps(io.primitives_read, [
+    benchmarking,
+    bitmap,
+    dir,
+    mercury_term_parser,
+    stream.string_writer,
+    io,
+    io.primitives_write,
+    io.text_read
+    ]).
+module_disallow_deps(io.primitives_write, [
+    benchmarking,
+    bitmap,
+    dir,
+    mercury_term_parser,
+    stream.string_writer,
+    io,
+    io.primitives_read,
+    io.text_read
+    ]).
+module_disallow_deps(io.text_read, [
+    benchmarking,
+    bitmap,
+    dir,
+    mercury_term_parser,
+    stream.string_writer,
+    io
+    ]).
+module_disallow_deps(io, [
+    benchmarking,           % just forwarding predicates
+    bitmap,                 % mostly forwarding predicates
+    dir,                    % only for dir.det_basename
+    mercury_term_parser,
+    stream.string_writer,
+    type_desc               % only for gc_init
+    ]).
+
+% term_io calls stream.string_writer.maybe_write_paren.
+% stream.string_writer calls term_io.quote_X.
+module_disallow_deps(term_io, [stream.string_writer]).
+module_disallow_deps(stream.string_writer, []).
+
+%--------------------------------------%
