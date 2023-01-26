@@ -109,11 +109,7 @@
 ** SCCS: @(#) tkAppInit.c 1.20 96/02/15 18:55:27
 **/
 
-#if defined(__APPLE__) && defined(__MACH__)
-    #include <Tk/tk.h>
-#else
-    #include ""tk.h""
-#endif
+#include ""tk.h""
 ").
 
 :- pragma foreign_enum("C", tcl_status/0, [

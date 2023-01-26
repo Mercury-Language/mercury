@@ -1,1 +1,1 @@
-MCFLAGS-mercury_tcltk=--no-warn-nothing-exported
+MCFLAGS-mercury_tcltk=--no-warn-nothing-exported -I/opt/homebrew/opt/tcl-tk/include

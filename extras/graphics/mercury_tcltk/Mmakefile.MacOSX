@@ -16,9 +16,9 @@
 
 include Mercury.options
 
-MLLIBS = -framework Tcl -framework Tk
+MLLIBS = -L/opt/homebrew/opt/tcl-tk/lib -ltk8.6 -ltcl8.6
 
-EXTRA_CFLAGS = -Wno-uninitialized
+EXTRA_CFLAGS = -Wno-uninitialized -I/opt/homebrew/opt/tcl-tk/include
 
 MAIN_TARGET = libmercury_tcltk
 
