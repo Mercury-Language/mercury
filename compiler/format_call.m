@@ -1830,16 +1830,16 @@ create_replacement_goal(ModuleInfo, GoalId, CallKind, Specs,
     % For optimizing e.g. string.format("%3d_%.5x", [i(X), i(Y)], Result),
     % generate code that looks like this:
     %
+    %   format_cast_int_to_uint(Y, YUInt),
     %   ... set up Flags1 ...
     %   Prec2 = 5,
-    %   format_signed_int_component_nowidth_prec(Flags1, Prec2, Y, Str3),
-    %   Str4 = "_",
-    %   Str5 = Str5 ++ Str4,
-    %   ... set up Flags6 ...
-    %   Width7 = 3,
     %   Base8 = base_hex_lc,
-    %   format_unsigned_int_component_width_noprec(Flags5, Width7, Base8, X,
-    %       Str9),
+    %   format_uint_component_nowidth_prec(Flags1, Prec2, Base8, YUint, Str3),
+    %   Str4 = "_",
+    %   Str5 = Str4 ++ Str3,
+    %   ... set up Flags5 ...
+    %   Width7 = 3,
+    %   format_signed_int_component_width_noprec(Flags5, Width7, X, Str9),
     %   Result = Str9 ++ Str5
     %
     % We build the string back to front to minimize the amount of
@@ -1928,15 +1928,15 @@ replace_string_format_nonempty(ModuleInfo, HeadSpec, TailSpecs,
     %
     %   ... set up Flags1 ...
     %   Width2 = 3,
-    %   Base3 = base_hex_lc,
-    %   format_unsigned_int_component_width_noprec(Flags1, Width2, Base3, X,
-    %       Str4),
+    %   format_signed_int_component_width_noprec(Flags1, Width2, X, Str4),
     %   io.write_string(Stream, Str4, IO0, IO5),
     %   Str5 = "_",
     %   io.write_string(Stream, Str5, IO5, IO6),
+    %   format_cast_int_to_uint(Y, YUint),
     %   ... set up Flags7 ...
     %   Prec8 = 5,
-    %   format_signed_int_component_nowidth_prec(Flags1, Prec2, Y, Str9),
+    %   Base3 = base_hex_lc,
+    %   format_uint_component_nowidth_prec(Flags7, Prec2, Base3, YUInt, Str9),
     %   io.write_string(Stream, Str9, IO5, IO),
     %
     % We convert the components in the original order, and print each string
