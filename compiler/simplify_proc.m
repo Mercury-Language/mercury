@@ -972,6 +972,10 @@ simplify_may_introduce_calls(ModuleName, PredName, _Arity) :-
         ; PredName = "format_cast_uint8_to_uint"
         ; PredName = "format_cast_uint16_to_uint"
         ; PredName = "format_cast_uint32_to_uint"
+        ; PredName = "format_cast_int_to_uint"
+        ; PredName = "format_cast_int16_to_uint"
+        ; PredName = "format_cast_int32_to_uint"
+        ; PredName = "format_cast_int8_to_uint"
         )
     ;
         ModuleName = "stream",

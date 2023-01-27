@@ -291,6 +291,7 @@ ORDINARY_PROGS = \
 	only_failing_goal_is_tail_rec \
 	opt_dup_bug \
 	opt_format \
+	opt_format_sign_extend \
 	pack_args \
 	pack_args_copy \
 	pack_args_float \

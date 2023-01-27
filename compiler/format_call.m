@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
-% Copyright (C) 2015-2021 The Mercury team.
+% Copyright (C) 2015-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1882,7 +1882,7 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
         Spec = compiler_spec_unsigned_int(Context, Flags,
             MaybeWidth, MaybePrec, Base, IntSize, OrigValueVar),
         set_of_var.insert(OrigValueVar, !ValueVars),
-        cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
+        cast_int_value_var_to_uint_if_needed(ModuleInfo, Context, IntSize,
             OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes),
         make_result_var_if_needed(MaybeResultVar, ResultVar,
             !VarSet, !VarTypes),
@@ -1896,7 +1896,7 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
         ( if IntSize = int_size_64 then
             FormatPredBase = "format_unsigned_int64_component"
         else
-            FormatPredBase = "format_unsigned_int_component"
+            FormatPredBase = "format_uint_component"
         ),
         generate_simple_call(ModuleInfo, mercury_string_format_module,
             FormatPredBase ++ WidthSuffix ++ PrecSuffix,
@@ -1977,6 +1977,32 @@ cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
         add_var_type(ValueVar, int_type, !VarTypes),
         generate_simple_call(ModuleInfo, mercury_string_format_module,
             "format_cast_int" ++ Size ++ "_to_int",
+            pf_predicate, only_mode, detism_det, purity_pure,
+            [OrigValueVar, ValueVar], [],
+            instmap_delta_bind_var(ValueVar), Context, ValueCastGoal),
+        ValueCastGoals = [ValueCastGoal]
+    ).
+
+:- pred cast_int_value_var_to_uint_if_needed(module_info::in, prog_context::in,
+    int_size::in, prog_var::in, prog_var::out, list(hlds_goal)::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+cast_int_value_var_to_uint_if_needed(ModuleInfo, Context, IntSize,
+        OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes) :-
+    (
+        IntSize = int_size_64,
+        ValueVar = OrigValueVar,
+        ValueCastGoals = []
+    ;
+        ( IntSize = int_size_word, Size = ""
+        ; IntSize = int_size_8, Size = "8"
+        ; IntSize = int_size_16, Size = "16"
+        ; IntSize = int_size_32, Size = "32"
+        ),
+        varset.new_var(ValueVar, !VarSet),
+        add_var_type(ValueVar, uint_type, !VarTypes),
+        generate_simple_call(ModuleInfo, mercury_string_format_module,
+            "format_cast_int" ++ Size ++ "_to_uint",
             pf_predicate, only_mode, detism_det, purity_pure,
             [OrigValueVar, ValueVar], [],
             instmap_delta_bind_var(ValueVar), Context, ValueCastGoal),
