@@ -120,6 +120,10 @@
 :- pred format_cast_int8_to_int(int8::in, int::out) is det.
 :- pred format_cast_int16_to_int(int16::in, int::out) is det.
 :- pred format_cast_int32_to_int(int32::in, int::out) is det.
+:- pred format_cast_int_to_uint(int::in, uint::out) is det.
+:- pred format_cast_int8_to_uint(int8::in, uint::out) is det.
+:- pred format_cast_int16_to_uint(int16::in, uint::out) is det.
+:- pred format_cast_int32_to_uint(int32::in, uint::out) is det.
 :- pred format_cast_uint8_to_uint(uint8::in, uint::out) is det.
 :- pred format_cast_uint16_to_uint(uint16::in, uint::out) is det.
 :- pred format_cast_uint32_to_uint(uint32::in, uint::out) is det.
@@ -227,9 +231,9 @@ spec_to_string(Spec, String) :-
             format_unsigned_int64_component(Flags, MaybeWidth, MaybePrec, Base,
                 Int64, String)
         else
-            Int = sized_int_to_int(SizedInt),
-            format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base,
-                Int, String)
+            UInt = sized_int_to_uint(SizedInt),
+            format_uint_component(Flags, MaybeWidth, MaybePrec, Base, UInt,
+                String)
         )
     ;
         % Unsigned int conversion specifiers (for unsigned values).
@@ -2126,6 +2130,26 @@ sized_int_to_int(SizedInt) = Int :-
         throw(software_error("formatting int64 via a cast"))
     ).
 
+:- func sized_int_to_uint(sized_int) = uint.
+
+sized_int_to_uint(SizedInt) = UInt :-
+    (
+        SizedInt = sized_int(Int),
+        format_cast_int_to_uint(Int, UInt)
+    ;
+        SizedInt = sized_int8(Int8),
+        format_cast_int8_to_uint(Int8, UInt)
+    ;
+        SizedInt = sized_int16(Int16),
+        format_cast_int16_to_uint(Int16, UInt)
+    ;
+        SizedInt = sized_int32(Int32),
+        format_cast_int32_to_uint(Int32, UInt)
+    ;
+        SizedInt = sized_int64(_),
+        throw(software_error("formatting int64 via a cast"))
+    ).
+
 :- func sized_uint_to_uint(sized_uint) = uint.
 
 sized_uint_to_uint(SizedUInt) = UInt :-
@@ -2151,6 +2175,15 @@ format_cast_int16_to_int(Int16, Int) :-
     Int = int16.cast_to_int(Int16).
 format_cast_int32_to_int(Int32, Int) :-
     Int = int32.cast_to_int(Int32).
+
+format_cast_int_to_uint(Int, UInt) :-
+    UInt = uint.cast_from_int(Int).
+format_cast_int8_to_uint(Int8, UInt) :-
+    UInt = uint8.cast_to_uint(uint8.cast_from_int8(Int8)).
+format_cast_int16_to_uint(Int16, UInt) :-
+    UInt = uint16.cast_to_uint(uint16.cast_from_int16(Int16)).
+format_cast_int32_to_uint(Int32, UInt) :-
+    UInt = uint32.cast_to_uint(uint32.cast_from_int32(Int32)).
 
 format_cast_uint8_to_uint(UInt8, UInt) :-
     UInt = uint8.cast_to_uint(UInt8).

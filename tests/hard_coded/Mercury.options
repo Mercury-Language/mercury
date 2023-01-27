@@ -72,6 +72,7 @@ MCFLAGS-mode_choice	    =	--no-warn-det-decls-too-lax
 MCFLAGS-no_fully_strict	    =	--no-warn-det-decls-too-lax
 MCFLAGS-nullary_ho_func     =	--no-warn-unresolved-polymorphism
 MCFLAGS-opt_format          =	--optimize-format-calls
+MCFLAGS-opt_format_sign_extend = --optimize-format-calls
 MCFLAGS-pack_args_reuse     =	--structure-reuse
 MCFLAGS-reuse_double        =	--ctgc
 MCFLAGS-reuse_ho            =	--ctgc --no-optimise-higher-order

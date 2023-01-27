@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
-% Copyright (C) 2015-2021 The Mercury team.
+% Copyright (C) 2015-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2179,9 +2179,9 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             ( if IntSize = int_size_64 then
                 FormatPredBase = "format_unsigned_int64_component"
             else
-                FormatPredBase = "format_unsigned_int_component"
+                FormatPredBase = "format_uint_component"
             ),
-            cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
+            cast_int_value_var_to_uint_if_needed(ModuleInfo, Context, IntSize,
                 OrigValueVar, ValueVar, ValueCastGoals, !VarTable)
         ;
             Spec = compiler_spec_uint(Context, Flags,
@@ -2255,6 +2255,33 @@ cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
         generate_plain_call(ModuleInfo, pf_predicate,
             mercury_string_format_module,
             "format_cast_int" ++ Size ++ "_to_int",
+            [], [OrigValueVar, ValueVar],
+            instmap_delta_bind_var(ValueVar), only_mode,
+            detism_det, purity_pure, [], Context, ValueCastGoal),
+        ValueCastGoals = [ValueCastGoal]
+    ).
+
+:- pred cast_int_value_var_to_uint_if_needed(module_info::in, prog_context::in,
+    int_size::in, prog_var::in, prog_var::out, list(hlds_goal)::out,
+    var_table::in, var_table::out) is det.
+
+cast_int_value_var_to_uint_if_needed(ModuleInfo, Context, IntSize,
+        OrigValueVar, ValueVar, ValueCastGoals, !VarTable) :-
+    (
+        IntSize = int_size_64,
+        ValueVar = OrigValueVar,
+        ValueCastGoals = []
+    ;
+        ( IntSize = int_size_word, Size = ""
+        ; IntSize = int_size_8, Size = "8"
+        ; IntSize = int_size_16, Size = "16"
+        ; IntSize = int_size_32, Size = "32"
+        ),
+        ValueVarEntry = vte("", uint_type, is_not_dummy_type),
+        add_var_entry(ValueVarEntry, ValueVar, !VarTable),
+        generate_plain_call(ModuleInfo, pf_predicate,
+            mercury_string_format_module,
+            "format_cast_int" ++ Size ++ "_to_uint",
             [], [OrigValueVar, ValueVar],
             instmap_delta_bind_var(ValueVar), only_mode,
             detism_det, purity_pure, [], Context, ValueCastGoal),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2022 The Mercury team.
+% Copyright (C) 2022-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -389,6 +389,10 @@ mict_string("++",               3, pf_function).
 mict_string_format("format_cast_int16_to_int", 2).
 mict_string_format("format_cast_int32_to_int", 2).
 mict_string_format("format_cast_int8_to_int", 2).
+mict_string_format("format_cast_int_to_uint", 2).
+mict_string_format("format_cast_int16_to_uint", 2).
+mict_string_format("format_cast_int32_to_uint", 2).
+mict_string_format("format_cast_int8_to_uint", 2).
 mict_string_format("format_cast_uint16_to_uint", 2).
 mict_string_format("format_cast_uint32_to_uint", 2).
 mict_string_format("format_cast_uint8_to_uint", 2).
