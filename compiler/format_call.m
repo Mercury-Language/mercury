@@ -2164,37 +2164,25 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             % Format a signed int as signed int.
             BaseVars = [],
             BaseGoals = [],
-            ( if IntSize = int_size_64 then
-                FormatPredBase = "format_signed_int64_component"
-            else
-                FormatPredBase = "format_signed_int_component"
-            ),
             cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
-                OrigValueVar, ValueVar, ValueCastGoals, !VarTable)
+                OrigValueVar, FormatPredBase, ValueVar, ValueCastGoals,
+                !VarTable)
         ;
             Spec = compiler_spec_unsigned_int(Context, Flags,
                 MaybeWidth, MaybePrec, Base, IntSize, OrigValueVar),
             % Format a signed int as unsigned int.
             build_int_base_arg(Base, BaseVars, BaseGoals, !VarTable),
-            ( if IntSize = int_size_64 then
-                FormatPredBase = "format_unsigned_int64_component"
-            else
-                FormatPredBase = "format_uint_component"
-            ),
             cast_int_value_var_to_uint_if_needed(ModuleInfo, Context, IntSize,
-                OrigValueVar, ValueVar, ValueCastGoals, !VarTable)
+                OrigValueVar, FormatPredBase, ValueVar, ValueCastGoals,
+                !VarTable)
         ;
             Spec = compiler_spec_uint(Context, Flags,
                 MaybeWidth, MaybePrec, Base, UIntSize, OrigValueVar),
             % Format an unsigned int as unsigned int.
             build_int_base_arg(Base, BaseVars, BaseGoals, !VarTable),
-            ( if UIntSize = uint_size_64 then
-                FormatPredBase = "format_uint64_component"
-            else
-                FormatPredBase = "format_uint_component"
-            ),
             cast_uint_value_var_if_needed(ModuleInfo, Context, UIntSize,
-                OrigValueVar, ValueVar, ValueCastGoals, !VarTable)
+                OrigValueVar, FormatPredBase, ValueVar, ValueCastGoals,
+                !VarTable)
         ),
         set_of_var.insert(OrigValueVar, !ValueVars),
         make_result_var_if_needed(MaybeResultVar, ResultVar, !VarTable),
@@ -2234,27 +2222,31 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
     ).
 
 :- pred cast_int_value_var_if_needed(module_info::in, prog_context::in,
-    int_size::in, prog_var::in, prog_var::out, list(hlds_goal)::out,
-    var_table::in, var_table::out) is det.
+    int_size::in, prog_var::in, string::out, prog_var::out,
+    list(hlds_goal)::out, var_table::in, var_table::out) is det.
 
 cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
-        OrigValueVar, ValueVar, ValueCastGoals, !VarTable) :-
+        OrigValueVar, FormatPredBase, ValueVar, ValueCastGoals, !VarTable) :-
     (
-        ( IntSize = int_size_word
-        ; IntSize = int_size_64
-        ),
+        IntSize = int_size_word,
+        FormatPredBase = "format_signed_int_component",
         ValueVar = OrigValueVar,
         ValueCastGoals = []
     ;
-        ( IntSize = int_size_8, Size = "8"
-        ; IntSize = int_size_16, Size = "16"
-        ; IntSize = int_size_32, Size = "32"
+        IntSize = int_size_64,
+        FormatPredBase = "format_signed_int64_component",
+        ValueVar = OrigValueVar,
+        ValueCastGoals = []
+    ;
+        ( IntSize = int_size_8,  CastPred = "format_cast_int8_to_int"
+        ; IntSize = int_size_16, CastPred = "format_cast_int16_to_int"
+        ; IntSize = int_size_32, CastPred = "format_cast_int32_to_int"
         ),
+        FormatPredBase = "format_signed_int_component",
         ValueVarEntry = vte("", int_type, is_not_dummy_type),
         add_var_entry(ValueVarEntry, ValueVar, !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
-            mercury_string_format_module,
-            "format_cast_int" ++ Size ++ "_to_int",
+            mercury_string_format_module, CastPred,
             [], [OrigValueVar, ValueVar],
             instmap_delta_bind_var(ValueVar), only_mode,
             detism_det, purity_pure, [], Context, ValueCastGoal),
@@ -2262,26 +2254,27 @@ cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
     ).
 
 :- pred cast_int_value_var_to_uint_if_needed(module_info::in, prog_context::in,
-    int_size::in, prog_var::in, prog_var::out, list(hlds_goal)::out,
-    var_table::in, var_table::out) is det.
+    int_size::in, prog_var::in, string::out, prog_var::out,
+    list(hlds_goal)::out, var_table::in, var_table::out) is det.
 
 cast_int_value_var_to_uint_if_needed(ModuleInfo, Context, IntSize,
-        OrigValueVar, ValueVar, ValueCastGoals, !VarTable) :-
+        OrigValueVar, FormatPredBase, ValueVar, ValueCastGoals, !VarTable) :-
     (
         IntSize = int_size_64,
+        FormatPredBase = "format_unsigned_int64_component",
         ValueVar = OrigValueVar,
         ValueCastGoals = []
     ;
-        ( IntSize = int_size_word, Size = ""
-        ; IntSize = int_size_8, Size = "8"
-        ; IntSize = int_size_16, Size = "16"
-        ; IntSize = int_size_32, Size = "32"
+        ( IntSize = int_size_word, CastPred = "format_cast_int_to_uint"
+        ; IntSize = int_size_8,    CastPred = "format_cast_int8_to_uint"
+        ; IntSize = int_size_16,   CastPred = "format_cast_int16_to_uint"
+        ; IntSize = int_size_32,   CastPred = "format_cast_int32_to_uint"
         ),
+        FormatPredBase = "format_uint_component",
         ValueVarEntry = vte("", uint_type, is_not_dummy_type),
         add_var_entry(ValueVarEntry, ValueVar, !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
-            mercury_string_format_module,
-            "format_cast_int" ++ Size ++ "_to_uint",
+            mercury_string_format_module, CastPred,
             [], [OrigValueVar, ValueVar],
             instmap_delta_bind_var(ValueVar), only_mode,
             detism_det, purity_pure, [], Context, ValueCastGoal),
@@ -2289,27 +2282,31 @@ cast_int_value_var_to_uint_if_needed(ModuleInfo, Context, IntSize,
     ).
 
 :- pred cast_uint_value_var_if_needed(module_info::in, prog_context::in,
-    uint_size::in, prog_var::in, prog_var::out, list(hlds_goal)::out,
-    var_table::in, var_table::out) is det.
+    uint_size::in, prog_var::in, string::out, prog_var::out,
+    list(hlds_goal)::out, var_table::in, var_table::out) is det.
 
 cast_uint_value_var_if_needed(ModuleInfo, Context, UIntSize,
-        OrigValueVar, ValueVar, ValueCastGoals, !VarTable) :-
+        OrigValueVar, FormatPredBase, ValueVar, ValueCastGoals, !VarTable) :-
     (
-        ( UIntSize = uint_size_word
-        ; UIntSize = uint_size_64
-        ),
+        UIntSize = uint_size_word,
+        FormatPredBase = "format_uint_component",
         ValueVar = OrigValueVar,
         ValueCastGoals = []
     ;
-        ( UIntSize = uint_size_8, Size = "8"
-        ; UIntSize = uint_size_16, Size = "16"
-        ; UIntSize = uint_size_32, Size = "32"
+        UIntSize = uint_size_64,
+        FormatPredBase = "format_uint64_component",
+        ValueVar = OrigValueVar,
+        ValueCastGoals = []
+    ;
+        ( UIntSize = uint_size_8,  CastPred = "format_cast_uint8_to_uint"
+        ; UIntSize = uint_size_16, CastPred = "format_cast_uint16_to_uint"
+        ; UIntSize = uint_size_32, CastPred = "format_cast_uint32_to_uint"
         ),
+        FormatPredBase = "format_uint_component",
         ValueVarEntry = vte("", uint_type, is_not_dummy_type),
         add_var_entry(ValueVarEntry, ValueVar, !VarTable),
         generate_plain_call(ModuleInfo, pf_predicate,
-            mercury_string_format_module,
-            "format_cast_uint" ++ Size ++ "_to_uint",
+            mercury_string_format_module, CastPred,
             [], [OrigValueVar, ValueVar],
             instmap_delta_bind_var(ValueVar), only_mode,
             detism_det, purity_pure, [], Context, ValueCastGoal),
