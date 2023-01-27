@@ -34,14 +34,15 @@
     % added later on.
     %
 :- pred may_introduce_calls_to(pred_or_func::in, string::in,
-    string::in, arity::in) is semidet.
+    string::in, pred_form_arity::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-may_introduce_calls_to(PredOrFunc, ModuleName, PredName, OrigArity) :-
+may_introduce_calls_to(PredOrFunc, ModuleName, PredName,
+        pred_form_arity(OrigArity)) :-
     % XXX Many operations in the standard library are available
     % both as a function and as a predicate. If the compiler consistently
     % introduces calls to one form but not the other, then the other

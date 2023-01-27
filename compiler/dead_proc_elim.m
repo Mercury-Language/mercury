@@ -1610,9 +1610,9 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 % Don't eliminate preds from standard library modules
                 % if later passes of the compiler may introduce calls to them.
                 PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-                PredOrigArity = pred_info_orig_arity(PredInfo),
+                PredFormArity = pred_info_pred_form_arity(PredInfo),
                 may_introduce_calls_to(PredOrFunc,
-                    PredModuleNameStr, PredName, PredOrigArity)
+                    PredModuleNameStr, PredName, PredFormArity)
             ;
                 % Don't attempt to eliminate local preds here, since we want
                 % to do semantic checking on those, even if they are not used.
