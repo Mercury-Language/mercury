@@ -436,6 +436,7 @@ ORDINARY_PROGS = \
 	term_to_univ_test \
 	test234_sorted_insert \
 	test_bag \
+	test_bitsets \
 	test_char_digits \
 	test_cord \
 	test_cord2 \
@@ -450,7 +451,6 @@ ORDINARY_PROGS = \
 	test_pretty_printer \
 	test_pretty_printer_defaults \
 	test_semaphore \
-	test_tree_bitset \
 	test_yield \
 	thread_commit \
 	thread_sbrk \

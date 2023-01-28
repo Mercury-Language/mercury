@@ -1,18 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
-% Note that despite its name, this module tests whichever set module
-% library/test_bitset.m is set up to test, and this may or may not be
-% tree_bitset.m.
-%
-% Note also that this arrangements allows us to test only one bitset module
-% at a time; switching to testing another bitset module requires manually
-% modifying library/test_bitset.m.
-%
-%---------------------------------------------------------------------------%
 
-:- module test_tree_bitset.
+:- module test_bitsets.
 :- interface.
 
 :- import_module io.

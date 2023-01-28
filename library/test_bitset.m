@@ -212,66 +212,101 @@
 
 :- import_module bool.
 :- import_module exception.
+:- import_module fat_sparse_bitset.
 :- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module set_ordlist.
 :- import_module solutions.
+:- import_module sparse_bitset.
 :- import_module string.
 :- import_module tree_bitset.
 :- import_module uint.
 
 :- type test_bitset(T)
-    --->    tb(tree_bitset(T), set_ordlist(T)).
+    --->    tb(
+                tree_bitset(T),
+                sparse_bitset(T),
+                fat_sparse_bitset(T),
+                set_ordlist(T)
+            ).
 
 %---------------------------------------------------------------------------%
 
-init = tb(tree_bitset.init, set_ordlist.init).
+init =
+    tb(
+        tree_bitset.init,
+        sparse_bitset.init,
+        fat_sparse_bitset.init,
+        set_ordlist.init).
 
 init(init).
 
 singleton_set(A) =
-    tb(tree_bitset.make_singleton_set(A), set_ordlist.make_singleton_set(A)).
+    tb(
+        tree_bitset.make_singleton_set(A),
+        sparse_bitset.make_singleton_set(A),
+        fat_sparse_bitset.make_singleton_set(A),
+        set_ordlist.make_singleton_set(A)).
 
 singleton_set(test_bitset.singleton_set(A), A).
 
 make_singleton_set(A) =
-    tb(tree_bitset.make_singleton_set(A), set_ordlist.make_singleton_set(A)).
+    tb(
+        tree_bitset.make_singleton_set(A),
+        sparse_bitset.make_singleton_set(A),
+        fat_sparse_bitset.make_singleton_set(A),
+        set_ordlist.make_singleton_set(A)).
 
 make_singleton_set(test_bitset.make_singleton_set(A), A).
 
 %---------------------------------------------------------------------------%
 
-is_empty(tb(A, B)) :-
+is_empty(tb(A, B, C, S)) :-
     ( if tree_bitset.is_empty(A) then EmptyA = yes else EmptyA = no),
-    ( if set_ordlist.is_empty(B) then EmptyB = yes else EmptyB = no),
-    ( if EmptyA = EmptyB then
-        EmptyA = yes
+    ( if sparse_bitset.is_empty(B) then EmptyB = yes else EmptyB = no),
+    ( if fat_sparse_bitset.is_empty(C) then EmptyC = yes else EmptyC = no),
+    ( if set_ordlist.is_empty(S) then EmptyS = yes else EmptyS = no),
+    ( if EmptyA = EmptyS, EmptyB = EmptyS, EmptyC = EmptyS then
+        EmptyS = yes
     else
         unexpected($pred, "failed")
     ).
 
-is_non_empty(tb(A, B)) :-
-    ( if tree_bitset.is_non_empty(A) then NonEmptyA = yes else NonEmptyA = no),
-    ( if set_ordlist.is_non_empty(B) then NonEmptyB = yes else NonEmptyB = no),
-    ( if NonEmptyA = NonEmptyB then
-        NonEmptyA = yes
+is_non_empty(tb(A, B, C, S)) :-
+    ( if tree_bitset.is_non_empty(A) then NonEmA = yes else NonEmA = no),
+    ( if sparse_bitset.is_non_empty(B) then NonEmB = yes else NonEmB = no),
+    ( if fat_sparse_bitset.is_non_empty(C) then NonEmC = yes else NonEmC = no),
+    ( if set_ordlist.is_non_empty(S) then NonEmS = yes else NonEmS = no),
+    ( if NonEmA = NonEmS, NonEmB = NonEmS, NonEmC = NonEmS then
+        NonEmS = yes
     else
         unexpected($pred, "failed")
     ).
 
-is_singleton(tb(A, B), E) :-
-    ( if tree_bitset.is_singleton(A, AE) then
-        NonEmptyA = yes(AE)
+is_singleton(tb(A, B, C, S), R) :-
+    ( if tree_bitset.is_singleton(A, AR) then
+        ResultA = yes(AR)
     else
-        NonEmptyA = no
+        ResultA = no
     ),
-    ( if set_ordlist.is_singleton(B, BE) then
-        NonEmptyB = yes(BE)
+    ( if sparse_bitset.is_singleton(B, BR) then
+        ResultB = yes(BR)
     else
-        NonEmptyB = no
+        ResultB = no
     ),
-    ( if NonEmptyA = NonEmptyB then
-        NonEmptyA = yes(E)
+    ( if fat_sparse_bitset.is_singleton(C, CR) then
+        ResultC = yes(CR)
+    else
+        ResultC = no
+    ),
+    ( if set_ordlist.is_singleton(S, SR) then
+        ResultS = yes(SR)
+    else
+        ResultS = no
+    ),
+    ( if ResultA = ResultS, ResultB = ResultS, ResultC = ResultS then
+        ResultS = yes(R)
     else
         unexpected($pred, "failed")
     ).
@@ -280,282 +315,450 @@ is_singleton(tb(A, B), E) :-
 
 :- pragma promise_equivalent_clauses(pred(member/2)).
 
-member(E::in, tb(SetA, SetB)::in) :-
-    ( if tree_bitset.member(E, SetA) then InSetA = yes else InSetA = no),
-    ( if set_ordlist.member(E, SetB) then InSetB = yes else InSetB = no),
-    ( if InSetA = InSetB then
-        InSetA = yes
+member(E::in, tb(SetA, SetB, SetC, SetS)::in) :-
+    ( if tree_bitset.member(E, SetA) then InA = yes else InA = no),
+    ( if sparse_bitset.member(E, SetB) then InB = yes else InB = no),
+    ( if fat_sparse_bitset.member(E, SetC) then InC = yes else InC = no),
+    ( if set_ordlist.member(E, SetS) then InS = yes else InS = no),
+    ( if InA = InS, InB = InS, InC = InS then
+        InS = yes
     else
         unexpected($pred, "failed (in, in)")
     ).
 
-member(E::out, tb(SetA, SetB)::in) :-
+member(E::out, tb(SetA, SetB, SetC, SetS)::in) :-
     PredA = (pred(EA::out) is nondet :- tree_bitset.member(EA, SetA)),
-    PredB = (pred(EB::out) is nondet :- set_ordlist.member(EB, SetB)),
+    PredB = (pred(EB::out) is nondet :- sparse_bitset.member(EB, SetB)),
+    PredC = (pred(EC::out) is nondet :- fat_sparse_bitset.member(EC, SetC)),
+    PredS = (pred(ES::out) is nondet :- set_ordlist.member(ES, SetS)),
     solutions(PredA, SolnsA),
     solutions(PredB, SolnsB),
-    ( if SolnsA = SolnsB then
-        tree_bitset.member(E, SetA)
+    solutions(PredC, SolnsC),
+    solutions(PredS, SolnsS),
+    ( if SolnsA = SolnsS, SolnsB = SolnsS, SolnsC = SolnsS then
+        set_ordlist.member(E, SetS)
     else
         unexpected($pred, "failed (out, in)")
     ).
 
-contains(tb(SetA, SetB), E) :-
-    ( if tree_bitset.contains(SetA, E) then InSetA = yes else InSetA = no),
-    ( if set_ordlist.contains(SetB, E) then InSetB = yes else InSetB = no),
-    ( if InSetA = InSetB then
-        InSetA = yes
+contains(tb(SetA, SetB, SetC, SetS), E) :-
+    ( if tree_bitset.contains(SetA, E) then InA = yes else InA = no),
+    ( if sparse_bitset.contains(SetB, E) then InB = yes else InB = no),
+    ( if fat_sparse_bitset.contains(SetC, E) then InC = yes else InC = no),
+    ( if set_ordlist.contains(SetS, E) then InS = yes else InS = no),
+    ( if InA = InS, InB = InS, InC = InS then
+        InS = yes
     else
         unexpected($pred, "failed")
     ).
 
 %---------------------------------------------------------------------------%
 
-insert(E, tb(SetA0, SetB0), Result) :-
+insert(E, In @ tb(SetA0, SetB0, SetC0, SetS0), Result) :-
     tree_bitset.insert(E, SetA0, SetA),
-    set_ordlist.insert(E, SetB0, SetB),
-    check1("insert", tb(SetA0, SetB0), tb(SetA, SetB), Result).
+    sparse_bitset.insert(E, SetB0, SetB),
+    fat_sparse_bitset.insert(E, SetC0, SetC),
+    set_ordlist.insert(E, SetS0, SetS),
+    check1("insert", In, tb(SetA, SetB, SetC, SetS), Result).
 
-insert_new(E, tb(SetA0, SetB0), Result) :-
+insert_new(E, In @ tb(SetA0, SetB0, SetC0, SetS0), Result) :-
     ( if tree_bitset.insert_new(E, SetA0, SetA) then
-        ( if set_ordlist.insert_new(E, SetB0, SetB) then
-            check1("insert", tb(SetA0, SetB0), tb(SetA, SetB), Result)
-        else
-            unexpected($pred, "success/fail in tree_bitset/set_ordlist")
-        )
+        MaybeA = yes(SetA)
     else
-        ( if set_ordlist.insert_new(E, SetB0, _SetB) then
-            unexpected($pred, "fail/success in tree_bitset/set_ordlist")
-        else
-            % insert_new failed in both tree_bitset and set_ordlist.
-            fail
-        )
-    ).
-
-insert_list(Es, tb(SetA0, SetB0), Result) :-
-    tree_bitset.insert_list(Es, SetA0, SetA),
-    set_ordlist.insert_list(Es, SetB0, SetB),
-    check1("insert_list", tb(SetA0, SetB0), tb(SetA, SetB), Result).
-
-delete(E, tb(SetA0, SetB0), Result) :-
-    tree_bitset.delete(E, SetA0, SetA),
-    set_ordlist.delete(E, SetB0, SetB),
-    check1("delete", tb(SetA0, SetB0), tb(SetA, SetB), Result).
-
-delete_list(Es, tb(SetA0, SetB0), Result) :-
-    tree_bitset.delete_list(Es, SetA0, SetA),
-    set_ordlist.delete_list(Es, SetB0, SetB),
-    check1("delete_list", tb(SetA0, SetB0), tb(SetA, SetB), Result).
-
-remove(E, tb(SetA0, SetB0), Result) :-
-    ( if tree_bitset.remove(E, SetA0, SetA1) then
-        ( if set_ordlist.remove(E, SetB0, SetB1) then
-            SetA = SetA1,
-            SetB = SetB1,
-            check1("remove", tb(SetA0, SetB0), tb(SetA, SetB), Result)
-        else
-            unexpected($pred, "unexpected success")
-        )
-    else if set_ordlist.remove(E, SetB0, _) then
-        unexpected($pred, "unexpected failure")
+        MaybeA = no
+    ),
+    ( if sparse_bitset.insert_new(E, SetB0, SetB) then
+        MaybeB = yes(SetB)
     else
+        MaybeB = no
+    ),
+    ( if fat_sparse_bitset.insert_new(E, SetC0, SetC) then
+        MaybeC = yes(SetC)
+    else
+        MaybeC = no
+    ),
+    ( if set_ordlist.insert_new(E, SetS0, SetS) then
+        MaybeS = yes(SetS)
+    else
+        MaybeS = no
+    ),
+    ( if
+        MaybeA = yes(A),
+        MaybeB = yes(B),
+        MaybeC = yes(C),
+        MaybeS = yes(S)
+    then
+        check1("insert_new", In, tb(A, B, C, S), Result)
+    else if
+        MaybeA = no,
+        MaybeB = no,
+        MaybeC = no,
+        MaybeS = no
+    then
         fail
-    ).
-
-remove_list(Es, tb(SetA0, SetB0), Result) :-
-    ( if tree_bitset.remove_list(Es, SetA0, SetA1) then
-        ( if set_ordlist.remove_list(Es, SetB0, SetB1) then
-            SetA = SetA1,
-            SetB = SetB1,
-            check1("remove_list", tb(SetA0, SetB0), tb(SetA, SetB), Result)
-        else
-            unexpected($pred, "unexpected success")
-        )
-    else if set_ordlist.remove_list(Es, SetB0, _) then
-        unexpected($pred, "unexpected failure")
     else
-        fail
-    ).
-
-remove_least(Least, tb(SetA0, SetB0), Result) :-
-    ( if tree_bitset.remove_least(LeastA, SetA0, SetA1) then
-        ( if set_ordlist.remove_least(LeastB, SetB0, SetB1) then
-            ( if LeastA = LeastB then
-                Least = LeastA,
-                check1("remove_least", tb(SetA0, SetB0), tb(SetA1, SetB1),
-                    Result)
-            else
-                unexpected($pred, "wrong least element")
-            )
-        else
-            unexpected($pred, "should be no least value")
-        )
-    else if set_ordlist.remove_least(_, SetB0, _) then
         unexpected($pred, "failed")
-    else
-        fail
     ).
 
-remove_leq(tb(SetA0, SetB0), Hurdle, Result) :-
-    remove_leq(Hurdle, SetA0, SetA),
+insert_list(Es, In @ tb(SetA0, SetB0, SetC0, SetS0), Result) :-
+    tree_bitset.insert_list(Es, SetA0, SetA),
+    sparse_bitset.insert_list(Es, SetB0, SetB),
+    fat_sparse_bitset.insert_list(Es, SetC0, SetC),
+    set_ordlist.insert_list(Es, SetS0, SetS),
+    check1("insert_list", In, tb(SetA, SetB, SetC, SetS), Result).
+
+delete(E, In @ tb(SetA0, SetB0, SetC0, SetS0), Result) :-
+    tree_bitset.delete(E, SetA0, SetA),
+    sparse_bitset.delete(E, SetB0, SetB),
+    fat_sparse_bitset.delete(E, SetC0, SetC),
+    set_ordlist.delete(E, SetS0, SetS),
+    check1("delete", In, tb(SetA, SetB, SetC, SetS), Result).
+
+delete_list(Es, In @ tb(SetA0, SetB0, SetC0, SetS0), Result) :-
+    tree_bitset.delete_list(Es, SetA0, SetA),
+    sparse_bitset.delete_list(Es, SetB0, SetB),
+    fat_sparse_bitset.delete_list(Es, SetC0, SetC),
+    set_ordlist.delete_list(Es, SetS0, SetS),
+    check1("delete_list", In, tb(SetA, SetB, SetC, SetS), Result).
+
+remove(E, In @ tb(SetA0, SetB0, SetC0, SetS0), Result) :-
+    ( if tree_bitset.remove(E, SetA0, SetA) then
+        MaybeA = yes(SetA)
+    else
+        MaybeA = no
+    ),
+    ( if sparse_bitset.remove(E, SetB0, SetB) then
+        MaybeB = yes(SetB)
+    else
+        MaybeB = no
+    ),
+    ( if fat_sparse_bitset.remove(E, SetC0, SetC) then
+        MaybeC = yes(SetC)
+    else
+        MaybeC = no
+    ),
+    ( if set_ordlist.remove(E, SetS0, SetS) then
+        MaybeS = yes(SetS)
+    else
+        MaybeS = no
+    ),
+    ( if
+        MaybeA = yes(A),
+        MaybeB = yes(B),
+        MaybeC = yes(C),
+        MaybeS = yes(S)
+    then
+        check1("remove", In, tb(A, B, C, S), Result)
+    else if
+        MaybeA = no,
+        MaybeB = no,
+        MaybeC = no,
+        MaybeS = no
+    then
+        fail
+    else
+        unexpected($pred, "failed")
+    ).
+
+remove_list(Es, In @ tb(SetA0, SetB0, SetC0, SetS0), Result) :-
+    ( if tree_bitset.remove_list(Es, SetA0, SetA) then
+        MaybeA = yes(SetA)
+    else
+        MaybeA = no
+    ),
+    ( if sparse_bitset.remove_list(Es, SetB0, SetB) then
+        MaybeB = yes(SetB)
+    else
+        MaybeB = no
+    ),
+    ( if fat_sparse_bitset.remove_list(Es, SetC0, SetC) then
+        MaybeC = yes(SetC)
+    else
+        MaybeC = no
+    ),
+    ( if set_ordlist.remove_list(Es, SetS0, SetS) then
+        MaybeS = yes(SetS)
+    else
+        MaybeS = no
+    ),
+    ( if
+        MaybeA = yes(A),
+        MaybeB = yes(B),
+        MaybeC = yes(C),
+        MaybeS = yes(S)
+    then
+        check1("remove", In, tb(A, B, C, S), Result)
+    else if
+        MaybeA = no,
+        MaybeB = no,
+        MaybeC = no,
+        MaybeS = no
+    then
+        fail
+    else
+        unexpected($pred, "failed")
+    ).
+
+remove_least(Least, In @ tb(SetA0, SetB0, SetC0, SetS0), Result) :-
+    ( if tree_bitset.remove_least(LeastA, SetA0, SetA) then
+        MaybeA = yes(LeastA - SetA)
+    else
+        MaybeA = no
+    ),
+    ( if sparse_bitset.remove_least(LeastB, SetB0, SetB) then
+        MaybeB = yes(LeastB - SetB)
+    else
+        MaybeB = no
+    ),
+    ( if fat_sparse_bitset.remove_least(LeastC, SetC0, SetC) then
+        MaybeC = yes(LeastC - SetC)
+    else
+        MaybeC = no
+    ),
+    ( if set_ordlist.remove_least(LeastS, SetS0, SetS) then
+        MaybeS = yes(LeastS - SetS)
+    else
+        MaybeS = no
+    ),
+    ( if
+        MaybeA = yes(LA - SA),
+        MaybeB = yes(LB - SB),
+        MaybeC = yes(LC - SC),
+        MaybeS = yes(LS - SS),
+        LA = LS, LB = LS, LC = LS
+    then
+        Least = LS,
+        check1("remove_least", In, tb(SA, SB, SC, SS), Result)
+    else if
+        MaybeA = no,
+        MaybeB = no,
+        MaybeC = no,
+        MaybeS = no
+    then
+        fail
+    else
+        unexpected($pred, "failed")
+    ).
+
+remove_leq(In @ tb(SetA0, SetB0, SetC0, SetS0), Hurdle, Result) :-
+    tree_bitset.remove_leq(Hurdle, SetA0, SetA),
+    sparse_bitset.remove_leq(Hurdle, SetB0, SetB),
+    fat_sparse_bitset.remove_leq(Hurdle, SetC0, SetC),
     RemoveLeq =
         ( pred(Item::in) is semidet :-
             Index = to_uint(Item),
             HurdleIndex = to_uint(Hurdle),
             not (Index =< HurdleIndex)
         ),
-    set.filter(RemoveLeq, SetB0, SetB),
-    check1("remove_leq", tb(SetA0, SetB0), tb(SetA, SetB), Result).
+    set.filter(RemoveLeq, SetS0, SetS),
+    check1("remove_leq", In, tb(SetA, SetB, SetC, SetS), Result).
 
-remove_gt(tb(SetA0, SetB0), Hurdle, Result) :-
-    remove_gt(Hurdle, SetA0, SetA),
+remove_gt(In @ tb(SetA0, SetB0, SetC0, SetS0), Hurdle, Result) :-
+    tree_bitset.remove_gt(Hurdle, SetA0, SetA),
+    sparse_bitset.remove_gt(Hurdle, SetB0, SetB),
+    fat_sparse_bitset.remove_gt(Hurdle, SetC0, SetC),
     RemoveGt =
         ( pred(Item::in) is semidet :-
             Index = to_uint(Item),
             HurdleIndex = to_uint(Hurdle),
             not (Index > HurdleIndex)
         ),
-    set.filter(RemoveGt, SetB0, SetB),
-    check1("remove_gt", tb(SetA0, SetB0), tb(SetA, SetB), Result).
+    set.filter(RemoveGt, SetS0, SetS),
+    check1("remove_gt", In, tb(SetA, SetB, SetC, SetS), Result).
 
 %---------------------------------------------------------------------------%
 
-equal(tb(SetA1, SetB1), tb(SetA2, SetB2)) :-
-    ( if tree_bitset.equal(SetA1, SetA2) then EqualA = yes else EqualA = no),
-    ( if set_ordlist.equal(SetB1, SetB2) then EqualB = yes else EqualB = no),
-    ( if EqualA = EqualB then
-        EqualA = yes
+equal(InL, InR) :-
+    InL = tb(SetAL, SetBL, SetCL, SetSL),
+    InR = tb(SetAR, SetBR, SetCR, SetSR),
+    ( if tree_bitset.equal(SetAL, SetAR) then A = yes else A = no),
+    ( if sparse_bitset.equal(SetBL, SetBR) then B = yes else B = no),
+    ( if fat_sparse_bitset.equal(SetCL, SetCR) then C = yes else C = no),
+    ( if set_ordlist.equal(SetSL, SetSR) then S = yes else S = no),
+    ( if A = S, B = S, C = S then
+        S = yes
     else
         unexpected($pred, "failed")
     ).
 
-subset(tb(SetA1, SetB1), tb(SetA2, SetB2)) :-
-    ( if tree_bitset.subset(SetA1, SetA2) then
-        ( if set_ordlist.subset(SetB1, SetB2) then
-            true
-        else
-            unexpected($pred, "unexpected success")
-        )
-    else if set_ordlist.subset(SetB1, SetB2) then
-        unexpected($pred, "unexpected failure")
+subset(InL, InR) :-
+    InL = tb(SetAL, SetBL, SetCL, SetSL),
+    InR = tb(SetAR, SetBR, SetCR, SetSR),
+    ( if tree_bitset.subset(SetAL, SetAR) then A = yes else A = no),
+    ( if sparse_bitset.subset(SetBL, SetBR) then B = yes else B = no),
+    ( if fat_sparse_bitset.subset(SetCL, SetCR) then C = yes else C = no),
+    ( if set_ordlist.subset(SetSL, SetSR) then S = yes else S = no),
+    ( if A = S, B = S, C = S then
+        S = yes
     else
-        fail
+        unexpected($pred, "failed")
     ).
 
-superset(tb(SetA1, SetB1), tb(SetA2, SetB2)) :-
-    ( if tree_bitset.superset(SetA1, SetA2) then
-        ( if set_ordlist.superset(SetB1, SetB2) then
-            true
-        else
-            unexpected($pred, "unexpected success")
-        )
-    else if set_ordlist.superset(SetB1, SetB2) then
-        unexpected($pred, "unexpected failure")
+superset(InL, InR) :-
+    InL = tb(SetAL, SetBL, SetCL, SetSL),
+    InR = tb(SetAR, SetBR, SetCR, SetSR),
+    ( if tree_bitset.superset(SetAL, SetAR) then A = yes else A = no),
+    ( if sparse_bitset.superset(SetBL, SetBR) then B = yes else B = no),
+    ( if fat_sparse_bitset.superset(SetCL, SetCR) then C = yes else C = no),
+    ( if set_ordlist.superset(SetSL, SetSR) then S = yes else S = no),
+    ( if A = S, B = S, C = S then
+        S = yes
     else
-        fail
+        unexpected($pred, "failed")
     ).
 
 %---------------------------------------------------------------------------%
 
-union(tb(SetA1, SetB1), tb(SetA2, SetB2)) = Result :-
-    tree_bitset.union(SetA1, SetA2, SetA),
-    set_ordlist.union(SetB1, SetB2, SetB),
-    check2("union", tb(SetA1, SetB1), tb(SetA2, SetB2), tb(SetA, SetB),
-        Result).
+union(InL, InR) = Result :-
+    InL = tb(SetAL, SetBL, SetCL, SetSL),
+    InR = tb(SetAR, SetBR, SetCR, SetSR),
+    tree_bitset.union(SetAL, SetAR, SetA),
+    sparse_bitset.union(SetBL, SetBR, SetB),
+    fat_sparse_bitset.union(SetCL, SetCR, SetC),
+    set_ordlist.union(SetSL, SetSR, SetS),
+    check2("union", InL, InR, tb(SetA, SetB, SetC, SetS), Result).
 
 union(A, B, test_bitset.union(A, B)).
 
-union_list(SetsAB) = Result :-
-    get_sets("union_list", SetsAB, SetsA, SetsB),
+union_list(SetsABCS) = Result :-
+    get_sets("union_list", SetsABCS, SetsA, SetsB, SetsC, SetsS),
     SetA = tree_bitset.union_list(SetsA),
-    SetB = set_ordlist.union_list(SetsB),
-    check0("union_list", tb(SetA, SetB), Result).
+    SetB = sparse_bitset.union_list(SetsB),
+    SetC = fat_sparse_bitset.union_list(SetsC),
+    SetS = set_ordlist.union_list(SetsS),
+    check0("union_list", tb(SetA, SetB, SetC, SetS), Result).
 
 union_list(Sets, test_bitset.union_list(Sets)).
 
-intersect(tb(SetA1, SetB1), tb(SetA2, SetB2)) = Result :-
-    tree_bitset.intersect(SetA1, SetA2, SetA),
-    set_ordlist.intersect(SetB1, SetB2, SetB),
-    check2("intersect", tb(SetA1, SetB1), tb(SetA2, SetB2), tb(SetA, SetB),
-        Result).
+intersect(InL, InR) = Result :-
+    InL = tb(SetAL, SetBL, SetCL, SetSL),
+    InR = tb(SetAR, SetBR, SetCR, SetSR),
+    tree_bitset.intersect(SetAL, SetAR, SetA),
+    sparse_bitset.intersect(SetBL, SetBR, SetB),
+    fat_sparse_bitset.intersect(SetCL, SetCR, SetC),
+    set_ordlist.intersect(SetSL, SetSR, SetS),
+    check2("intersect", InL, InR, tb(SetA, SetB, SetC, SetS), Result).
 
 intersect(A, B, test_bitset.intersect(A, B)).
 
-intersect_list(SetsAB) = Result :-
-    get_sets("intersect_list", SetsAB, SetsA, SetsB),
+intersect_list(SetsABCS) = Result :-
+    get_sets("intersect_list", SetsABCS, SetsA, SetsB, SetsC, SetsS),
     SetA = tree_bitset.intersect_list(SetsA),
-    SetB = set_ordlist.intersect_list(SetsB),
-    check0("intersect_list", tb(SetA, SetB), Result).
+    SetB = sparse_bitset.intersect_list(SetsB),
+    SetC = fat_sparse_bitset.intersect_list(SetsC),
+    SetS = set_ordlist.intersect_list(SetsS),
+    check0("intersect_list", tb(SetA, SetB, SetC, SetS), Result).
 
 intersect_list(Sets, test_bitset.intersect_list(Sets)).
 
-difference(tb(SetA1, SetB1), tb(SetA2, SetB2)) = Result :-
-    tree_bitset.difference(SetA1, SetA2, SetA),
-    set_ordlist.difference(SetB1, SetB2, SetB),
-    check2("difference", tb(SetA1, SetB1), tb(SetA2, SetB2), tb(SetA, SetB),
-        Result).
+difference(InL, InR) = Result :-
+    InL = tb(SetAL, SetBL, SetCL, SetSL),
+    InR = tb(SetAR, SetBR, SetCR, SetSR),
+    tree_bitset.difference(SetAL, SetAR, SetA),
+    sparse_bitset.difference(SetBL, SetBR, SetB),
+    fat_sparse_bitset.difference(SetCL, SetCR, SetC),
+    set_ordlist.difference(SetSL, SetSR, SetS),
+    check2("difference", InL, InR, tb(SetA, SetB, SetC, SetS), Result).
 
 difference(A, B, test_bitset.difference(A, B)).
 
 %---------------------%
 
 :- pred get_sets(string::in, list(test_bitset(T))::in,
-    list(tree_bitset(T))::out, list(set_ordlist(T))::out) is det <= uenum(T).
+    list(tree_bitset(T))::out, list(sparse_bitset(T))::out,
+    list(fat_sparse_bitset(T))::out, list(set_ordlist(T))::out)
+    is det <= uenum(T).
 
-get_sets(_, [], [], []).
-get_sets(Op, [tb(SetA, SetB) | SetsAB], [SetA | SetsA], [SetB | SetsB]) :-
-    tree_bitset.to_sorted_list(SetA, SetListA),
-    set_ordlist.to_sorted_list(SetB, SetListB),
-    ( if SetListA = SetListB then
-        get_sets(Op, SetsAB, SetsA, SetsB)
+get_sets(_, [], [], [], [], []).
+get_sets(Op, [tb(SetA, SetB, SetC, SetS) | SetsABCS],
+        [SetA | SetsA], [SetB | SetsB], [SetC | SetsC], [SetS | SetsS]) :-
+    tree_bitset.to_sorted_list(SetA, ListA),
+    sparse_bitset.to_sorted_list(SetB, ListB),
+    fat_sparse_bitset.to_sorted_list(SetC, ListC),
+    set_ordlist.to_sorted_list(SetS, ListS),
+    ( if ListA = ListS, ListB = ListS, ListC = ListS then
+        get_sets(Op, SetsABCS, SetsA, SetsB, SetsC, SetsS)
     else
         unexpected($pred, "unequal sets in " ++ Op ++ " arg list")
     ).
 
 %---------------------------------------------------------------------------%
 
-divide(Pred, tb(SetA, SetB), ResultIn, ResultOut) :-
+divide(Pred, tb(SetA, SetB, SetC, SetS), ResultIn, ResultOut) :-
     tree_bitset.divide(Pred, SetA, InSetA, OutSetA),
-    set_ordlist.divide(Pred, SetB, InSetB, OutSetB),
+    sparse_bitset.divide(Pred, SetB, InSetB, OutSetB),
+    fat_sparse_bitset.divide(Pred, SetC, InSetC, OutSetC),
+    set_ordlist.divide(Pred, SetS, InSetS, OutSetS),
 
-    tree_bitset.to_sorted_list(SetA, SetListA),
-    set_ordlist.to_sorted_list(SetB, SetListB),
-    tree_bitset.to_sorted_list(InSetA, InSetListA),
-    set_ordlist.to_sorted_list(InSetB, InSetListB),
-    tree_bitset.to_sorted_list(OutSetA, OutSetListA),
-    set_ordlist.to_sorted_list(OutSetB, OutSetListB),
+    tree_bitset.to_sorted_list(SetA, ListA),
+    tree_bitset.to_sorted_list(InSetA, InListA),
+    tree_bitset.to_sorted_list(OutSetA, OutListA),
+    sparse_bitset.to_sorted_list(SetB, ListB),
+    sparse_bitset.to_sorted_list(InSetB, InListB),
+    sparse_bitset.to_sorted_list(OutSetB, OutListB),
+    fat_sparse_bitset.to_sorted_list(SetC, ListC),
+    fat_sparse_bitset.to_sorted_list(InSetC, InListC),
+    fat_sparse_bitset.to_sorted_list(OutSetC, OutListC),
+    set_ordlist.to_sorted_list(SetS, ListS),
+    set_ordlist.to_sorted_list(InSetS, InListS),
+    set_ordlist.to_sorted_list(OutSetS, OutListS),
     ( if
-        SetListA = SetListB,
-        InSetListA = InSetListB,
-        OutSetListA = OutSetListB
+        ListA = ListS,
+        ListB = ListS,
+        ListC = ListS,
+        InListA = InListS,
+        InListB = InListS,
+        InListC = InListS,
+        OutListA = OutListS,
+        OutListB = OutListS,
+        OutListC = OutListS
     then
-        ResultIn = tb(InSetA, InSetB),
-        ResultOut = tb(OutSetA, OutSetB)
+        ResultIn = tb(InSetA, InSetB, InSetC, InSetS),
+        ResultOut = tb(OutSetA, OutSetB, OutSetC, OutSetS)
     else
         unexpected($pred, "failed")
     ).
 
-divide_by_set(tb(DivideBySetA, DivideBySetB), tb(SetA, SetB),
-        ResultIn, ResultOut) :-
-    tree_bitset.divide_by_set(DivideBySetA, SetA, InSetA, OutSetA),
-    set_ordlist.divide_by_set(DivideBySetB, SetB, InSetB, OutSetB),
+divide_by_set(DivBy, Set, ResultIn, ResultOut) :-
+    DivBy = tb(DivByA, DivByB, DivByC, DivByS),
+    Set = tb(SetA, SetB, SetC, SetS),
+    tree_bitset.divide_by_set(DivByA, SetA, InSetA, OutSetA),
+    sparse_bitset.divide_by_set(DivByB, SetB, InSetB, OutSetB),
+    fat_sparse_bitset.divide_by_set(DivByC, SetC, InSetC, OutSetC),
+    set_ordlist.divide_by_set(DivByS, SetS, InSetS, OutSetS),
 
-    tree_bitset.to_sorted_list(DivideBySetA, DivideBySetListA),
-    set_ordlist.to_sorted_list(DivideBySetB, DivideBySetListB),
-    tree_bitset.to_sorted_list(SetA, SetListA),
-    set_ordlist.to_sorted_list(SetB, SetListB),
-    tree_bitset.to_sorted_list(InSetA, InSetListA),
-    set_ordlist.to_sorted_list(InSetB, InSetListB),
-    tree_bitset.to_sorted_list(OutSetA, OutSetListA),
-    set_ordlist.to_sorted_list(OutSetB, OutSetListB),
+    tree_bitset.to_sorted_list(DivByA, DivListA),
+    tree_bitset.to_sorted_list(SetA, ListA),
+    tree_bitset.to_sorted_list(InSetA, InListA),
+    tree_bitset.to_sorted_list(OutSetA, OutListA),
+    sparse_bitset.to_sorted_list(DivByB, DivListB),
+    sparse_bitset.to_sorted_list(SetB, ListB),
+    sparse_bitset.to_sorted_list(InSetB, InListB),
+    sparse_bitset.to_sorted_list(OutSetB, OutListB),
+    fat_sparse_bitset.to_sorted_list(DivByC, DivListC),
+    fat_sparse_bitset.to_sorted_list(SetC, ListC),
+    fat_sparse_bitset.to_sorted_list(InSetC, InListC),
+    fat_sparse_bitset.to_sorted_list(OutSetC, OutListC),
+    set_ordlist.to_sorted_list(DivByS, DivListS),
+    set_ordlist.to_sorted_list(SetS, ListS),
+    set_ordlist.to_sorted_list(InSetS, InListS),
+    set_ordlist.to_sorted_list(OutSetS, OutListS),
     ( if
-        DivideBySetListA = DivideBySetListB,
-        SetListA = SetListB,
-        InSetListA = InSetListB,
-        OutSetListA = OutSetListB
+        DivListA = DivListS,
+        DivListB = DivListS,
+        DivListC = DivListS,
+        ListA = ListS,
+        ListB = ListS,
+        ListC = ListS,
+        InListA = InListS,
+        InListB = InListS,
+        InListC = InListS,
+        OutListA = OutListS,
+        OutListB = OutListS,
+        OutListC = OutListS
     then
-        ResultIn = tb(InSetA, InSetB),
-        ResultOut = tb(OutSetA, OutSetB)
+        ResultIn = tb(InSetA, InSetB, InSetC, InSetS),
+        ResultOut = tb(OutSetA, OutSetB, OutSetC, OutSetS)
     else
         unexpected($pred, "failed")
     ).
@@ -563,27 +766,32 @@ divide_by_set(tb(DivideBySetA, DivideBySetB), tb(SetA, SetB),
 %---------------------------------------------------------------------------%
 
 list_to_set(List) = Result :-
-    check0("list_to_set",
-        tb(tree_bitset.list_to_set(List), set_ordlist.list_to_set(List)),
-        Result).
+    SetA = tree_bitset.list_to_set(List),
+    SetB = sparse_bitset.list_to_set(List),
+    SetC = fat_sparse_bitset.list_to_set(List),
+    SetS = set_ordlist.list_to_set(List),
+    check0("list_to_set", tb(SetA, SetB, SetC, SetS), Result).
 
 list_to_set(A, test_bitset.list_to_set(A)).
 
 sorted_list_to_set(List) = Result :-
-    check0("sorted_list_to_set",
-        tb(tree_bitset.sorted_list_to_set(List),
-            set_ordlist.sorted_list_to_set(List)),
-        Result).
+    SetA = tree_bitset.sorted_list_to_set(List),
+    SetB = sparse_bitset.sorted_list_to_set(List),
+    SetC = fat_sparse_bitset.sorted_list_to_set(List),
+    SetS = set_ordlist.sorted_list_to_set(List),
+    check0("sorted_list_to_set", tb(SetA, SetB, SetC, SetS), Result).
 
 sorted_list_to_set(A, test_bitset.sorted_list_to_set(A)).
 
 %---------------------------------------------------------------------------%
 
-to_sorted_list(tb(A, B)) = List :-
+to_sorted_list(tb(A, B, C, S)) = List :-
     ListA = tree_bitset.to_sorted_list(A),
-    ListB = set_ordlist.to_sorted_list(B),
-    ( if ListA = ListB then
-        List = ListB
+    ListB = sparse_bitset.to_sorted_list(B),
+    ListC = fat_sparse_bitset.to_sorted_list(C),
+    ListS = set_ordlist.to_sorted_list(S),
+    ( if ListA = ListS, ListB = ListS, ListC = ListS then
+        List = ListS
     else
         unexpected($pred, "failed")
     ).
@@ -592,97 +800,164 @@ to_sorted_list(A, test_bitset.to_sorted_list(A)).
 
 %---------------------------------------------------------------------------%
 
-set_to_bitset(Set) = tb(A, B) :-
+set_to_bitset(Set) = Result :-
     set.to_sorted_list(Set, SortedList),
-    tb(A, B) = test_bitset.sorted_list_to_set(SortedList).
+    Result = test_bitset.sorted_list_to_set(SortedList).
 
 from_set(Set) = set_to_bitset(Set).
 
-bitset_to_set(tb(A, B)) = Set :-
-    SortedList = test_bitset.to_sorted_list(tb(A, B)),
+bitset_to_set(TestBitset) = Set :-
+    SortedList = test_bitset.to_sorted_list(TestBitset),
     set.sorted_list_to_set(SortedList, Set).
 
 to_set(Set) = bitset_to_set(Set).
 
 %---------------------------------------------------------------------------%
 
-count(tb(SetA, SetB)) = Count :-
+count(tb(SetA, SetB, SetC, SetS)) = Count :-
     CountA = tree_bitset.count(SetA),
-    CountB = set_ordlist.count(SetB),
-    ( if CountA = CountB then
-        Count = CountA
+    CountB = sparse_bitset.count(SetB),
+    CountC = fat_sparse_bitset.count(SetC),
+    CountS = set_ordlist.count(SetS),
+    ( if CountA = CountS, CountB = CountS, CountC = CountS then
+        Count = CountS
     else
         unexpected($pred, "failed")
     ).
 
 %---------------------------------------------------------------------------%
 
-all_true(Pred, tb(SetA, SetB)) :-
+all_true(Pred, tb(SetA, SetB, SetC, SetS)) :-
     ( if tree_bitset.all_true(Pred, SetA) then
-        ( if set_ordlist.all_true(Pred, SetB) then
-            true
-        else
-            unexpected($pred, "tree_bitset but not set_ordlist")
-        )
+        MaybeA = yes
     else
-        ( if set_ordlist.all_true(Pred, SetB) then
-            unexpected($pred, "set_ordlist but not tree_bitset")
-        else
-            fail
-        )
-    ).
-
-filter(Pred, tb(SetA, SetB)) = Result :-
-    tree_bitset.to_sorted_list(SetA, SetListA),
-    set_ordlist.to_sorted_list(SetB, SetListB),
-    InSetA = tree_bitset.filter(Pred, SetA),
-    InSetB = set_ordlist.filter(Pred, SetB),
-    tree_bitset.to_sorted_list(InSetA, InSetListA),
-    set_ordlist.to_sorted_list(InSetB, InSetListB),
-    ( if SetListA = SetListB, InSetListA = InSetListB then
-        Result = tb(InSetA, InSetB)
+        MaybeA = no
+    ),
+    ( if sparse_bitset.all_true(Pred, SetB) then
+        MaybeB = yes
     else
-        unexpected($pred, "failed")
-    ).
-
-filter(Pred, tb(SetA, SetB), ResultIn, ResultOut) :-
-    tree_bitset.to_sorted_list(SetA, SetListA),
-    set_ordlist.to_sorted_list(SetB, SetListB),
-    tree_bitset.filter(Pred, SetA, InSetA, OutSetA),
-    set_ordlist.filter(Pred, SetB, InSetB, OutSetB),
-    tree_bitset.to_sorted_list(InSetA, InSetListA),
-    set_ordlist.to_sorted_list(InSetB, InSetListB),
-    tree_bitset.to_sorted_list(OutSetA, OutSetListA),
-    set_ordlist.to_sorted_list(OutSetB, OutSetListB),
+        MaybeB = no
+    ),
+    ( if fat_sparse_bitset.all_true(Pred, SetC) then
+        MaybeC = yes
+    else
+        MaybeC = no
+    ),
+    ( if set_ordlist.all_true(Pred, SetS) then
+        MaybeS = yes
+    else
+        MaybeS = no
+    ),
     ( if
-        SetListA = SetListB,
-        InSetListA = InSetListB,
-        OutSetListA = OutSetListB
+        MaybeA = MaybeS, MaybeB = MaybeS, MaybeC = MaybeS
     then
-        ResultIn = tb(InSetA, InSetB),
-        ResultOut = tb(OutSetA, OutSetB)
+        MaybeS = yes
     else
         unexpected($pred, "failed")
     ).
 
-foldl(Pred, tb(SetA, SetB), Acc0) = Acc :-
-    tree_bitset.to_sorted_list(SetA, SetListA),
-    set_ordlist.to_sorted_list(SetB, SetListB),
-    tree_bitset.foldl(Pred, SetA, Acc0) = AccA,
-    set_ordlist.fold(Pred, SetB, Acc0) = AccB,
-    ( if SetListA = SetListB, AccA = AccB then
-        Acc = AccA
+filter(Pred, tb(SetA, SetB, SetC, SetS)) = Result :-
+    tree_bitset.to_sorted_list(SetA, ListA),
+    sparse_bitset.to_sorted_list(SetB, ListB),
+    fat_sparse_bitset.to_sorted_list(SetC, ListC),
+    set_ordlist.to_sorted_list(SetS, ListS),
+
+    InSetA = tree_bitset.filter(Pred, SetA),
+    InSetB = sparse_bitset.filter(Pred, SetB),
+    InSetC = fat_sparse_bitset.filter(Pred, SetC),
+    InSetS = set_ordlist.filter(Pred, SetS),
+
+    tree_bitset.to_sorted_list(InSetA, InListA),
+    sparse_bitset.to_sorted_list(InSetB, InListB),
+    fat_sparse_bitset.to_sorted_list(InSetC, InListC),
+    set_ordlist.to_sorted_list(InSetS, InListS),
+
+    ( if
+        ListA = ListS,
+        ListB = ListS,
+        ListC = ListS,
+        InListA = InListS,
+        InListB = InListS,
+        InListC = InListS
+    then
+        Result = tb(InSetA, InSetB, InSetC, InSetS)
     else
         unexpected($pred, "failed")
     ).
 
-foldl(Pred, tb(SetA, SetB), Acc0, Acc) :-
-    tree_bitset.to_sorted_list(SetA, SetListA),
-    set_ordlist.to_sorted_list(SetB, SetListB),
+filter(Pred, tb(SetA, SetB, SetC, SetS), ResultIn, ResultOut) :-
+    tree_bitset.to_sorted_list(SetA, ListA),
+    sparse_bitset.to_sorted_list(SetB, ListB),
+    fat_sparse_bitset.to_sorted_list(SetC, ListC),
+    set_ordlist.to_sorted_list(SetS, ListS),
+
+    tree_bitset.filter(Pred, SetA, InSetA, OutSetA),
+    sparse_bitset.filter(Pred, SetB, InSetB, OutSetB),
+    fat_sparse_bitset.filter(Pred, SetC, InSetC, OutSetC),
+    set_ordlist.filter(Pred, SetS, InSetS, OutSetS),
+
+    tree_bitset.to_sorted_list(InSetA, InListA),
+    tree_bitset.to_sorted_list(OutSetA, OutListA),
+    sparse_bitset.to_sorted_list(InSetB, InListB),
+    sparse_bitset.to_sorted_list(OutSetB, OutListB),
+    fat_sparse_bitset.to_sorted_list(InSetC, InListC),
+    fat_sparse_bitset.to_sorted_list(OutSetC, OutListC),
+    set_ordlist.to_sorted_list(InSetS, InListS),
+    set_ordlist.to_sorted_list(OutSetS, OutListS),
+
+    ( if
+        ListA = ListS,
+        ListB = ListS,
+        ListC = ListS,
+        InListA = InListS,
+        InListB = InListS,
+        InListC = InListS,
+        OutListA = OutListS,
+        OutListB = OutListS,
+        OutListC = OutListS
+    then
+        ResultIn = tb(InSetA, InSetB, InSetC, InSetS),
+        ResultOut = tb(OutSetA, OutSetB, OutSetC, OutSetS)
+    else
+        unexpected($pred, "failed")
+    ).
+
+foldl(Func, tb(SetA, SetB, SetC, SetS), Acc0) = Acc :-
+    tree_bitset.to_sorted_list(SetA, ListA),
+    sparse_bitset.to_sorted_list(SetB, ListB),
+    fat_sparse_bitset.to_sorted_list(SetC, ListC),
+    set_ordlist.to_sorted_list(SetS, ListS),
+
+    tree_bitset.foldl(Func, SetA, Acc0) = AccA,
+    sparse_bitset.foldl(Func, SetB, Acc0) = AccB,
+    fat_sparse_bitset.foldl(Func, SetC, Acc0) = AccC,
+    set_ordlist.fold(Func, SetS, Acc0) = AccS,
+
+    ( if
+        ListA = ListS, ListB = ListS, ListC = ListS,
+        AccA = AccS, AccB = AccS, AccC = AccS
+    then
+        Acc = AccS
+    else
+        unexpected($pred, "failed")
+    ).
+
+foldl(Pred, tb(SetA, SetB, SetC, SetS), Acc0, Acc) :-
+    tree_bitset.to_sorted_list(SetA, ListA),
+    sparse_bitset.to_sorted_list(SetB, ListB),
+    fat_sparse_bitset.to_sorted_list(SetC, ListC),
+    set_ordlist.to_sorted_list(SetS, ListS),
+
     tree_bitset.foldl(Pred, SetA, Acc0, AccA),
-    set_ordlist.fold(Pred, SetB, Acc0, AccB),
-    ( if SetListA = SetListB, AccA = AccB then
-        Acc = AccA
+    sparse_bitset.foldl(Pred, SetB, Acc0, AccB),
+    fat_sparse_bitset.foldl(Pred, SetC, Acc0, AccC),
+    set_ordlist.fold(Pred, SetS, Acc0, AccS),
+
+    ( if
+        ListA = ListS, ListB = ListS, ListC = ListS,
+        AccA = AccS, AccB = AccS, AccC = AccS
+    then
+        Acc = AccS
     else
         unexpected($pred, "failed")
     ).
@@ -695,57 +970,68 @@ foldl(Pred, tb(SetA, SetB), Acc0, Acc) :-
 :- pred check0(string::in, test_bitset(T)::in, test_bitset(T)::out) is det
     <= uenum(T).
 
-check0(Op, Tester, Result) :-
-    Tester = tb(BitSet, Set),
-    tree_bitset.to_sorted_list(BitSet, BitSetList),
-    set_ordlist.to_sorted_list(Set, SetList),
-    ( if BitSetList = SetList then
-        Result = Tester
+check0(Op, TestIn, Result) :-
+    TestIn = tb(InSetA, InSetB, InSetC, InSetS),
+    tree_bitset.to_sorted_list(InSetA, ListA),
+    sparse_bitset.to_sorted_list(InSetB, ListB),
+    fat_sparse_bitset.to_sorted_list(InSetC, ListC),
+    set_ordlist.to_sorted_list(InSetS, ListS),
+    ( if ListA = ListS, ListB = ListS, ListC = ListS then
+        Result = TestIn
     else
-        throw(zero_argument(Op, Tester))
+        throw(zero_argument(Op, TestIn))
     ).
 
 :- pred check1(string::in, test_bitset(T)::in, test_bitset(T)::in,
     test_bitset(T)::out) is det <= uenum(T).
 
-check1(Op, TesterA, Tester, Result) :-
-    TesterA = tb(BitSetA, SetA),
-    tree_bitset.to_sorted_list(BitSetA, BitSetListA),
-    set_ordlist.to_sorted_list(SetA, SetListA),
-    Tester = tb(BitSet, Set),
-    tree_bitset.to_sorted_list(BitSet, BitSetList),
-    set_ordlist.to_sorted_list(Set, SetList),
+check1(Op, TestIn, TestOut, Result) :-
+    TestIn = tb(InSetA, InSetB, InSetC, InSetS),
+    TestOut = tb(OutSetA, OutSetB, OutSetC, OutSetS),
+    tree_bitset.to_sorted_list(InSetA, InsA),
+    tree_bitset.to_sorted_list(OutSetA, OutsA),
+    sparse_bitset.to_sorted_list(InSetB, InsB),
+    sparse_bitset.to_sorted_list(OutSetB, OutsB),
+    fat_sparse_bitset.to_sorted_list(InSetC, InsC),
+    fat_sparse_bitset.to_sorted_list(OutSetC, OutsC),
+    set_ordlist.to_sorted_list(InSetS, InsS),
+    set_ordlist.to_sorted_list(OutSetS, OutsS),
     ( if
-        BitSetListA = SetListA,
-        BitSetList = SetList
+        InsA = InsS, InsB = InsS, InsC = InsS,
+        OutsA = OutsS, OutsB = OutsS, OutsC = OutsS
     then
-        Result = Tester
+        Result = TestOut
     else
-        throw(one_argument(Op, TesterA, Tester))
+        throw(one_argument(Op, TestIn, TestOut))
     ).
 
 :- pred check2(string::in, test_bitset(T)::in, test_bitset(T)::in,
     test_bitset(T)::in, test_bitset(T)::out) is det <= uenum(T).
 
-check2(Op, TesterA, TesterB, Tester, Result) :-
-    TesterA = tb(BitSetA, SetA),
-    tree_bitset.to_sorted_list(BitSetA, BitSetListA),
-    set_ordlist.to_sorted_list(SetA, SetListA),
-    TesterB = tb(BitSetB, SetB),
-    tree_bitset.to_sorted_list(BitSetB, BitSetListB),
-    set_ordlist.to_sorted_list(SetB, SetListB),
-    Tester = tb(BitSet, Set),
-    tree_bitset.to_sorted_list(BitSet, BitSetList),
-    set_ordlist.to_sorted_list(Set, SetList),
-
+check2(Op, TestInL, TestInR, TestOut, Result) :-
+    TestInL = tb(InSetLA, InSetLB, InSetLC, InSetLS),
+    TestInR = tb(InSetRA, InSetRB, InSetRC, InSetRS),
+    TestOut = tb(OutSetA, OutSetB, OutSetC, OutSetS),
+    tree_bitset.to_sorted_list(InSetLA, InsLA),
+    tree_bitset.to_sorted_list(InSetRA, InsRA),
+    tree_bitset.to_sorted_list(OutSetA, OutsA),
+    sparse_bitset.to_sorted_list(InSetLB, InsLB),
+    sparse_bitset.to_sorted_list(InSetRB, InsRB),
+    sparse_bitset.to_sorted_list(OutSetB, OutsB),
+    fat_sparse_bitset.to_sorted_list(InSetLC, InsLC),
+    fat_sparse_bitset.to_sorted_list(InSetRC, InsRC),
+    fat_sparse_bitset.to_sorted_list(OutSetC, OutsC),
+    set_ordlist.to_sorted_list(InSetLS, InsLS),
+    set_ordlist.to_sorted_list(InSetRS, InsRS),
+    set_ordlist.to_sorted_list(OutSetS, OutsS),
     ( if
-        BitSetListA = SetListA,
-        BitSetListB = SetListB,
-        BitSetList = SetList
+        InsLA = InsLS, InsLB = InsLS, InsLC = InsLS,
+        InsRA = InsRS, InsRB = InsRS, InsRC = InsRS,
+        OutsA = OutsS, OutsB = OutsS, OutsC = OutsS
     then
-        Result = Tester
+        Result = TestOut
     else
-        throw(two_arguments(Op, TesterA, TesterB, Tester))
+        throw(two_arguments(Op, TestInL, TestInR, TestOut))
     ).
 
 %---------------------------------------------------------------------------%
