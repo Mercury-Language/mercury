@@ -124,7 +124,7 @@ init_random(Res, !IO) :-
 generate_graph(Size, !:G, !R) :-
     !:G = digraph.init,
     generate_vertices(0, Size, [], RevKeys, !G),
-    array.from_reverse_list(RevKeys, KeysArray),
+    KeysArray = array.from_reverse_list(RevKeys),
 
     random.uniform_int_in_range(10, 30, Factor, !R),
     NumEdges = Size * Factor / 10,

@@ -1234,7 +1234,7 @@ slow_tc(G, TC) :-
     map.keys(FwdMap, FwdKeys),
     list.foldl(add_edges_to_reachable(G), FwdKeys, TC0, TC).
 
-:- pred add_edges_to_reachable(digraph(T)::in, uint::in,
+:- pred add_edges_to_reachable(digraph(T)::in, int::in,
     digraph(T)::in, digraph(T)::out) is det.
 
 add_edges_to_reachable(G, XI, !TC) :-
