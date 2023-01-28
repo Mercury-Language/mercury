@@ -282,6 +282,8 @@
 :- func list_to_set(list(T)) = sparse_bitset(T) <= uenum(T).
 :- pred list_to_set(list(T)::in, sparse_bitset(T)::out) is det <= uenum(T).
 
+:- pred old_list_to_set(list(T)::in, sparse_bitset(T)::out) is det <= uenum(T).
+
     % sorted_list_to_set(List) returns a set containing only the members
     % of List. List must be sorted *on the enum values of the items*.
     % If the to_uint method of uenum(T) preserves order, then this is
@@ -472,6 +474,8 @@
 :- pragma type_spec(func(list_to_set/1), T = uint).
 :- pragma type_spec(pred(list_to_set/2), T = var(_)).
 :- pragma type_spec(pred(list_to_set/2), T = uint).
+:- pragma type_spec(pred(old_list_to_set/2), T = var(_)).
+:- pragma type_spec(pred(old_list_to_set/2), T = uint).
 
 :- pragma type_spec(func(sorted_list_to_set/1), T = var(_)).
 :- pragma type_spec(func(sorted_list_to_set/1), T = uint).
@@ -1460,10 +1464,7 @@ list_to_set_get_descending_run(Offset0, Bits0, Items @ [HeadItem | TailItems],
 
 %---------------------%
 
-/*
-This is the old implementation of list_to_set:
-
-list_to_set(ItemList, sparse_bitset(Elems)) :-
+old_list_to_set(ItemList, sparse_bitset(Elems)) :-
     list_to_set_passes(ItemList, [], Elems).
 
     % Each pass over the input list selects out the elements which belong
@@ -1536,7 +1537,6 @@ insert_bitset_elem(Elem, Elems0 @ [Head0 | Tail0], Elems) :-
         insert_bitset_elem(Elem, Tail0, Tail),
         Elems = [Head0 | Tail]
     ).
-*/
 
 %---------------------%
 
