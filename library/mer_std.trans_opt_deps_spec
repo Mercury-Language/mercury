@@ -1,14 +1,60 @@
+% The critical path when making .trans_opt files is currently something like:
+%
+%   private_builtin
+%   require
+%   list
+%   cord
+%   set_ordlist
+%   set / tree234
+%   map
+%   io.stream_db / io.*
+%   io
+%   mercury_term_lexer
+%   term_io
+%   stream.string_writer
+%
+% A comment "improves parallelism" means that the intention behind removing the
+% edge is to allow more parallel work when making .trans_opt files,
+% but the edge (likely) does not need to be removed to turn the trans-opt
+% dependency graph into a dag.
+
 module_allow_deps(private_builtin, []).
 module_allow_deps(builtin, [private_builtin]).
 
+module_disallow_deps(require, [
+    builtin,            % improves parallelism
+    enum,
+    exception,
+    list,
+    string,
+    string.format,
+    string.parse_util,
+    type_desc
+    ]).
+
 %--------------------------------------%
+
+module_disallow_deps(maybe, [
+    list                % improves parallelism
+    ]).
+
+% list is big and blocks many modules, so it is useful to start making its
+% .trans_opt file early.
+module_disallow_deps(list, [
+    int,                % improves parallelism
+    pretty_printer,
+    set_tree234,
+    string,
+    term
+    ]).
 
 module_disallow_deps(univ, [
     list,
-    require,
     string,
     type_desc
     ]).
+
+%--------------------------------------%
 
 module_disallow_deps(exception, [
     io,
@@ -19,64 +65,81 @@ module_disallow_deps(exception, [
     string
     ]).
 
-module_disallow_deps(require, [
-    enum,
-    list,
-    string,
-    string.format,
-    string.parse_util,
-    type_desc
-    ]).
-
-module_disallow_deps(maybe, [
-    list                % only for type
-    ]).
-
-module_disallow_deps(list, [
-    pretty_printer,
-    set_tree234,
-    string,
-    term
-    ]).
-
-%--------------------------------------%
-
 module_disallow_deps(int, [
     array,              % only for modes
-    pretty_printer
+    pretty_printer,
+    exception,          % improves parallelism
+    uint                % improves parallelism
     ]).
 module_disallow_deps(int8, [pretty_printer]).
 module_disallow_deps(int16, [pretty_printer]).
 module_disallow_deps(int32, [pretty_printer]).
 module_disallow_deps(int64, [pretty_printer]).
 
-module_disallow_deps(uint, [pretty_printer]).
+module_disallow_deps(uint, [
+    pretty_printer,
+    exception           % improves parallelism
+    ]).
 module_disallow_deps(uint8, [pretty_printer]).
 module_disallow_deps(uint16, [pretty_printer]).
 module_disallow_deps(uint32, [pretty_printer]).
 module_disallow_deps(uint64, [pretty_printer]).
 
-module_disallow_deps(char, [pretty_printer]).
+%--------------------------------------%
+
+% tree234 is big and blocks many modules, so it is useful to start making its
+% .trans_opt file early.
+module_disallow_deps(tree234, [
+    io,                 % only for trace goals
+    pretty_printer,
+    term,               % only for var type
+    assoc_list,         % improves parallelism
+    bool,               % improves parallelism
+    string,             % improves parallelism
+    string.format,      % improves parallelism
+    string.parse_util,  % improves parallelism
+    set,                % improves parallelism
+    list                % improves parallelism
+    ]).
+
+module_disallow_deps(char, [
+    pretty_printer,
+    list,               % improves parallelism
+    uint8,              % improves parallelism
+    uint16              % improves parallelism
+    ]).
+
 module_disallow_deps(float, [pretty_printer]).
+
+%--------------------------------------%
+
+% io.text_read blocks io, which blocks many other modules. io.text_read depends
+% on array, so it is worthwhile making array.trans_opt earlier.
+module_disallow_deps(array, [
+    pretty_printer,
+    type_desc,          % only for dynamic_cast_to_array
+    string,             % improves parallelism
+    string.format,      % improves parallelism
+    string.parse_util   % improves parallelism
+    ]).
+
 module_disallow_deps(one_or_more, [pretty_printer]).
 module_disallow_deps(version_array, [pretty_printer]).
 
-module_disallow_deps(array, [
-    pretty_printer,
-    string.format,
-    string.parse_util,
-    type_desc           % only for dynamic_cast_to_array
-    ]).
+module_disallow_deps(assoc_list, [type_desc]).
+module_disallow_deps(kv_list, [type_desc]).
 
 %--------------------------------------%
 
 module_disallow_deps(rtti_implementation, [
     bitmap,
     deconstruct,
-    string.format,
-    string.parse_util,
     term_io,            % only for term_io.quoted_string
-    type_desc
+    type_desc,
+    array,              % improves parallelism
+    stream,             % improves parallelism
+    string.format,      % improves parallelism
+    string.parse_util   % improves parallelism
     ]).
 
 module_disallow_deps(type_desc, []).
@@ -84,39 +147,48 @@ module_disallow_deps(type_desc, []).
 %--------------------------------------%
 
 module_disallow_deps(string, [
-    assoc_list,         % only for the type
     deconstruct,
     pretty_printer,
     string.format,
     string.parse_util,
-    string.to_string
+    string.to_string,
+    assoc_list,         % improves parallelism
+    bool,               % improves parallelism
+    list,               % improves parallelism
+    stream              % improves parallelism
     ]).
 module_disallow_deps(string.parse_util, [
     deconstruct,
     pretty_printer,
     string.format,
-    string.to_string
+    string.to_string,
+    assoc_list,         % improves parallelism
+    stream              % improves parallelism
     ]).
 module_disallow_deps(string.parse_runtime, [
     deconstruct,
     pretty_printer,
     string.format,
-    string.to_string
+    string.to_string,
+    assoc_list,         % improves parallelism
+    stream              % improves parallelism
     ]).
 module_disallow_deps(string.format, [
     deconstruct,
     pretty_printer,
+    string.to_string,
+    assoc_list          % improves parallelism
+    ]).
+module_disallow_deps(string.builder, [
+    deconstruct,
+    pretty_printer,
     string.to_string
     ]).
-module_disallow_deps(string.to_string, []).
+module_disallow_deps(string.to_string, [
+    pretty_printer      % improves parallelism
+    ]).
 
 %--------------------------------------%
-
-module_disallow_deps(tree234, [
-    io,                 % only for trace goals
-    pretty_printer,
-    term                % only for var type
-    ]).
 
 module_disallow_deps(map, [term]).
 module_disallow_deps(set, [term]).
@@ -124,6 +196,7 @@ module_disallow_deps(set_ordlist, [term]).
 module_disallow_deps(set_tree234, [term]).
 
 module_disallow_deps(term, [
+    map,                % only for type
     term_int,
     term_subst,
     term_unify,
@@ -138,12 +211,25 @@ module_disallow_deps(term_conversion, [bitmap]).
 module_disallow_deps(table_builtin, [io]).
 module_disallow_deps(time, [io]).
 
+% There is a lot of duplication in these lists because submodules inherit the
+% imports of the parent module.
 module_disallow_deps(io.error_util, [
+    array,
     benchmarking,
     bitmap,
+    deconstruct,
     dir,
+    map,
     mercury_term_parser,
+    rtti_implementation,
     stream.string_writer,
+    string.format,
+    term,
+    term_context,
+    term_conversion,
+    term_subst,
+    time,
+
     io,
     io.call_system,
     io.environment,
@@ -155,11 +241,20 @@ module_disallow_deps(io.error_util, [
     io.text_read
     ]).
 module_disallow_deps(io.file, [
+    array,
     benchmarking,
     bitmap,
+    deconstruct,
     dir,
+    map,
     mercury_term_parser,
     stream.string_writer,
+    term,
+    term_context,
+    term_conversion,
+    term_subst,
+    time,
+
     io,
     io.call_system,
     io.environment,
@@ -170,11 +265,20 @@ module_disallow_deps(io.file, [
     io.text_read
     ]).
 module_disallow_deps(io.environment, [
+    array,
     benchmarking,
     bitmap,
+    deconstruct,
     dir,
+    map,
     mercury_term_parser,
     stream.string_writer,
+    term,
+    term_context,
+    term_conversion,
+    term_subst,
+    time,
+
     io,
     io.call_system,
     io.file,
@@ -185,11 +289,20 @@ module_disallow_deps(io.environment, [
     io.text_read
     ]).
 module_disallow_deps(io.call_system, [
+    array,
     benchmarking,
     bitmap,
+    deconstruct,
     dir,
+    map,
     mercury_term_parser,
     stream.string_writer,
+    term,
+    term_context,
+    term_conversion,
+    term_subst,
+    time,
+
     io,
     io.environment,
     io.file,
@@ -201,56 +314,123 @@ module_disallow_deps(io.call_system, [
     ]).
 
 module_disallow_deps(io.stream_db, [
+    array,
     benchmarking,
     bitmap,
+    deconstruct,
     dir,
+    % map used
     mercury_term_parser,
     stream.string_writer,
+    term,
+    term_context,
+    term_conversion,
+    term_subst,
+    time,
+
     io,
+    io.call_system,
+    io.environment,
+    io.file,
     io.primitives_read,
     io.primitives_write,
     io.stream_ops,
     io.text_read
     ]).
 module_disallow_deps(io.stream_ops, [
+    array,
     benchmarking,
     bitmap,
+    deconstruct,
     dir,
+    map,
     mercury_term_parser,
     stream.string_writer,
+    term,
+    term_context,
+    term_conversion,
+    term_subst,
+    time,
+
     io,
+    io.call_system,
+    io.environment,
+    io.file,
     io.primitives_read,
     io.primitives_write,
     io.stream_db,
     io.text_read
     ]).
 module_disallow_deps(io.primitives_read, [
+    array,
     benchmarking,
     bitmap,
+    deconstruct,
     dir,
+    map,
     mercury_term_parser,
     stream.string_writer,
+    term,
+    term_context,
+    term_conversion,
+    term_subst,
+    time,
+
     io,
+    io.call_system,
+    io.environment,
+    io.file,
     io.primitives_write,
+    io.stream_db,
+    io.stream_ops,
     io.text_read
     ]).
 module_disallow_deps(io.primitives_write, [
+    array,
     benchmarking,
     bitmap,
+    deconstruct,
     dir,
+    map,
     mercury_term_parser,
     stream.string_writer,
+    term,
+    term_context,
+    term_conversion,
+    term_subst,
+    time,
+
     io,
+    io.call_system,
+    io.environment,
+    io.file,
     io.primitives_read,
+    io.stream_db,
+    io.stream_ops,
     io.text_read
     ]).
 module_disallow_deps(io.text_read, [
     benchmarking,
     bitmap,
+    deconstruct,
     dir,
+    map,
     mercury_term_parser,
     stream.string_writer,
-    io
+    term,
+    term_context,
+    term_conversion,
+    term_subst,
+    time,
+
+    io,
+    io.call_system,
+    io.environment,
+    io.file,
+    io.primitives_read,
+    io.primitives_write,
+    io.stream_db,
+    io.stream_ops
     ]).
 module_disallow_deps(io, [
     benchmarking,           % just forwarding predicates
@@ -258,12 +438,28 @@ module_disallow_deps(io, [
     dir,                    % only for dir.det_basename
     mercury_term_parser,
     stream.string_writer,
-    type_desc               % only for gc_init
+    deconstruct,            % improves parallelism
+    map,                    % improves parallelism
+    term,                   % improves parallelism
+    term_context,           % improves parallelism
+    term_conversion,        % improves parallelism
+    term_subst,             % improves parallelism
+    time                    % improves parallelism
     ]).
+
+%--------------------------------------%
 
 % term_io calls stream.string_writer.maybe_write_paren.
 % stream.string_writer calls term_io.quote_X.
 module_disallow_deps(term_io, [stream.string_writer]).
 module_disallow_deps(stream.string_writer, []).
+
+% Many thread modules depend on thread.semaphore so it is useful to make
+% thread.semaphore.trans_opt a bit earlier.
+module_disallow_deps(thread.semaphore, [thread]).
+
+% These contain nothing useful.
+module_allow_deps(library, []).
+module_allow_deps(mer_std, []).
 
 %--------------------------------------%
