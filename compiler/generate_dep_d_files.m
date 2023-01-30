@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2017, 2019, 2020-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -535,17 +535,13 @@ sym_name_to_node_id(SymName) =
     % It is an error to provide both a module_allow_deps term and a
     % module_disallow_deps term for the same module M.
     %
-    % A module_allow_deps term with a first argument M specifies that,
-    % if the module M and another module T depend on each other,
-    % directly or indirectly,
-    % then in the process of making M.trans_opt,
-    % the compiler may read T.trans_opt only if T is in the ALLOW list.
+    % A module_allow_deps term with a first argument M specifies that
+    % in the process of making M.trans_opt, the compiler may read
+    % T.trans_opt only if T is in the ALLOW list.
     %
-    % A module_disallow_deps term with a first argument M specifies that,
-    % if the module M and another module T depend on each other,
-    % directly or indirectly,
-    % then in the process of making M.trans_opt,
-    % the compiler may read T.trans_opt unless T is in the DISALLOW list.
+    % A module_disallow_deps term with a first argument M specifies that
+    % in the process of making M.trans_opt, the compiler may NOT read
+    % T.trans_opt if T is in the DISALLOW list.
     %
 :- pred read_trans_opt_deps_spec_file(string::in,
     maybe1(trans_opt_deps_spec)::out, io::di, io::uo) is det.
@@ -816,12 +812,8 @@ apply_trans_opt_deps_spec(EdgesToRemove, !Graph) :-
     digraph(module_name)::in, digraph(module_name)::out) is det.
 
 apply_trans_opt_deps_spec_in_scc(SCC, !EdgesToRemove, !Graph) :-
-    ( if set.count(SCC) > 1 then
-        set.foldl2(apply_trans_opt_deps_spec_for_module, SCC,
-            !EdgesToRemove, !Graph)
-    else
-        true
-    ).
+    set.foldl2(apply_trans_opt_deps_spec_for_module, SCC,
+        !EdgesToRemove, !Graph).
 
 :- pred apply_trans_opt_deps_spec_for_module(digraph_key(module_name)::in,
     trans_opt_deps_spec::in, trans_opt_deps_spec::out,
