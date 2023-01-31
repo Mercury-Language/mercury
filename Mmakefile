@@ -786,64 +786,6 @@ install_grades: install_main
 	done;
 
 #-----------------------------------------------------------------------------#
-#
-# Various horrible hacks for gnu-win32 on Windows.
-#
-
-# `make touch_files' is a work-around for the broken gnu-win32 `tar'
-# that loses all the file dates.
-.PHONY: touch_files
-touch_files:
-	-find . | xargs touch
-	sleep 1
-	touch library/*.date*
-	touch library/*.optdate
-	chmod +w library/*.dep
-	touch library/*.dep
-	touch mdbcomp/*.date*
-	touch mdbcomp/*.optdate
-	chmod +w mdbcomp/*.dep
-	touch mdbcomp/*.dep
-	touch browser/*.date*
-	touch browser/*.optdate
-	chmod +w browser/*.dep
-	touch browser/*.dep
-	touch ssdb/*.date*
-	touch ssdb/*.optdate
-	chmod +w ssdb/*.dep
-	touch ssdb/*.dep
-	touch grade_lib/*.date*
-	chmod +w grade_lib/*.dep
-	touch grade_lib/*.dep
-	touch compiler/*.date*
-	chmod +w compiler/*.dep
-	touch compiler/*.dep
-	touch slice/*.date*
-	chmod +w slice/*.dep
-	touch slice/*.date*
-	touch profiler/*.date*
-	chmod +w profiler/*.dep
-	touch profiler/*.dep
-	touch deep_profiler/*.date*
-	chmod +w deep_profiler/*.dep
-	touch deep_profiler/*.dep
-	touch doc/*.texi configure
-	sleep 1
-	touch boehm_gc/*.c
-	touch runtime/*.c
-	touch library/*.c
-	touch mdbcomp/*.c
-	touch browser/*.c
-	touch ssdb/*.c
-	touch trace/*.c
-	touch compiler/*.c
-	touch slice/*.c
-	touch profiler/*.c
-	touch deep_profiler/*.c
-	touch mfilterjavac/*.c
-	touch doc/*.info doc/*.dvi doc/*.html config.status
-
-#-----------------------------------------------------------------------------#
 
 .PHONY: uninstall
 uninstall:
