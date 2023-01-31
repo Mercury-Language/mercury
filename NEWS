@@ -1,3 +1,15 @@
+NEWS for Mercury 22.01.6
+========================
+
+This is a bug-fix release.
+
+* We have fixed the implementations of transitive closure and reflexive
+  transitive closure in the `digraph` module.
+
+* We have a fixed a bug in `string.format` and related predicates where `int8`,
+  `int16` and `int32` values were being incorrectly promoted to `int` and sign
+  extended when one of the unsigned conversion specifiers was applied.
+
 NEWS for Mercury 22.01.5
 ========================
 
