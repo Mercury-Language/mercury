@@ -25,6 +25,7 @@ enum.m
 eqvclass.m
 exception.m
 fat_sparse_bitset.m
+fatter_sparse_bitset.m
 float.m
 gc.m
 getopt.m

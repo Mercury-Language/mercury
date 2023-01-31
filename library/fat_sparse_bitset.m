@@ -10,22 +10,23 @@
 % Author: zs.
 % Stability: medium.
 %
-% This module provides an abstract data type for storing sets of integers.
-% If the integers stored are closely grouped, a fat_sparse_bitset is much more
-% compact than either the list-of-elements representations provided by set.m,
-% set_ordlist.m, and set_unordlist.m, or the tree-of-elements representations
-% provided by set_bbbtree.m, set_tree234.m or set_ctree234.m. The module
-% sparse_bitset.m contains a version of this module that uses ordinary lists
-% instead of the fat lists used by this module.
+% This module provides an abstract data type for storing sets of items
+% that can each be represented by non-negative integers.
+% If the integers being stored are closely grouped, a sparse_bitset
+% will be much more compact than either the list-of-elements representations
+% provided by set.m, set_ordlist.m, and set_unordlist.m, or the
+% tree-of-elements representations provided by set_bbbtree.m, set_tree234.
+% or set_ctree234.m.
 %
-% Efficiency notes:
-%
-% A sparse bitset is represented as a sorted list. Each element of this list
-% contains two integers: Offset and Bits. Offset will always be a multiple of
-% int.ubits_per_uint, and the bits of Bits describe which of the elements
-% of the range Offset .. (Offset + ubits_per_uint - 1) are in the set.
-% List elements with the same value of Offset are merged.
-% List elements in which Bits is zero are removed.
+% A sparse bitset is represented as a sorted list, with each element
+% of this list containing two unsigned integers: Offset and Bits.
+% Offset will always be a multiple of uint.ubits_per_uint, and
+% the bits of Bits describe which of the elements of the range
+% Offset .. (Offset + ubits_per_uint - 1) are in the set.
+% The value of Bits must not be zero; any operation that would clear
+% all the bits in Bits must also delete the whole list element.
+% As one goes from the head towards the tail of the list, the offsets of
+% the list elements must strictly increase.
 %
 % The values of Offset in the list need not be *contiguous* multiples
 % of ubits_per_uint, hence the name *sparse* bitset.
@@ -39,6 +40,12 @@
 % In the asymptotic complexities of the operations below,
 % `rep_size(Set)' is the number of Offset/Bits pairs needed to represent Set,
 % and `card(Set)' is the cardinality of Set (i.e. its number of elements).
+%
+%---------------------------------------------------------------------------%
+%
+% The sparse_bitset, fat_sparse_bitset and fatter_sparse_bitset modules
+% all use minor variations of the same data structure. These differences,
+% and the reasons for them, are documented in fatter_sparse_bitset.m.
 %
 %---------------------------------------------------------------------------%
 
@@ -1572,7 +1579,7 @@ sorted_list_to_set(SortedList, fat_sparse_bitset(Elems)) :-
         Elems = make_bitset_cons(Offset, Bits, Elems0)
     ).
 
-    % The two input arguments represent a nonempty list of items, which
+    % The first two input arguments represent a nonempty list of items, which
     % must be sorted on their index values. We convert this list to a set.
     % But since we process the tail of the list before its head, we are
     % constantly adding items to the front of the list. We therefore return
@@ -1598,13 +1605,13 @@ sorted_list_to_set_loop(Item1, [Item2 | Items], Offset, Bits, Tail) :-
     sorted_list_to_set_loop(Item2, Items, Offset0, Bits0, Tail0),
     bits_for_index(enum.to_uint(Item1), Offset1, Bits1),
     ( if Offset1 = Offset0 then
-        Bits = Bits1 \/ Bits0,
         Offset = Offset1,
+        Bits = Bits1 \/ Bits0,
         Tail = Tail0
     else
-        Tail = make_bitset_cons(Offset0, Bits0, Tail0),
         Offset = Offset1,
-        Bits = Bits1
+        Bits = Bits1,
+        Tail = make_bitset_cons(Offset0, Bits0, Tail0)
     ).
 
 %---------------------%

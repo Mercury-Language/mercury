@@ -107,6 +107,7 @@
 :- import_module eqvclass.
 :- import_module exception.
 :- import_module fat_sparse_bitset.
+:- import_module fatter_sparse_bitset.
 :- import_module float.
 :- import_module gc.
 :- import_module getopt.
@@ -295,6 +296,7 @@ stdlib_module_doc_undoc("enum",                         doc).
 stdlib_module_doc_undoc("eqvclass",                     doc).
 stdlib_module_doc_undoc("exception",                    doc).
 stdlib_module_doc_undoc("fat_sparse_bitset",            doc).
+stdlib_module_doc_undoc("fatter_sparse_bitset",         doc).
 stdlib_module_doc_undoc("float",                        doc).
 stdlib_module_doc_undoc("gc",                           doc).
 stdlib_module_doc_undoc("getopt",                       doc).

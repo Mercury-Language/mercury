@@ -10,26 +10,44 @@
 % Author: zs, based on sparse_bitset.m by stayl.
 % Stability: medium.
 %
-% This module provides an ADT for storing sets of non-negative integers.
-% If the integers stored are closely grouped, a tree_bitset is more compact
-% than the representation provided by set.m, and the operations will be much
-% faster. Compared to sparse_bitset.m, the operations provided by this module
-% for contains, union, intersection and difference can be expected to have
-% lower asymptotic complexity (often logarithmic in the number of elements in
-% the sets, rather than linear). The price for this is a representation that
-% requires more memory, higher constant factors, and an additional factor
-% representing the tree in the complexity of the operations that construct
-% tree_bitsets. However, since the depth of the tree has a small upper bound
-% for all sets of a practical size, we will fold this into the "higher
-% constant factors" in the descriptions of the complexity of the individual
-% operations below.
+% This module provides an abstract data type for storing sets of items
+% that can each be represented by non-negative integers.
+%
+% The tree_bitset representation is a variant of the representation used by
+% sparse_bitset.m, which is a list of Offset/Bits pairs, with the Bits
+% indicating which of the ubits_per_uint integers starting at Offset
+% are in the set.
+%
+% The problem that the tree_bitset module is intended to solve is that
+% some operations, such as union and intersection, which are implemented
+% as a joint traversal of the lists representing the two input operands,
+% have bad worst-case complexities. For example, an operation to compute
+% the intersection of the set 0-1,000,000 and the set 2,000,000-3,000,000
+% has to traverse 1,000,000/wordsize pairs in the first operand before
+% finding that the intersection is empty.
+%
+% This module addresses this problem by replacing the single global list
+% of offset/bits pairs with a tree structure. The leaves of this tree
+% are also offset/bits pairs. Each interior node in the first layer above
+% the leaves has reachable from it up to 32 such pairs; each node in the
+% layer above that can reach up to 32*32 pairs, and so on. This means that
+% operations such as difference can, by skipping one interior node, skip
+% a large number of offset/bits pairs.
+%
+% This is why the operations provided by this module for contains, union,
+% intersection and difference can be expected to have lower asymptotic
+% complexities (often logarithmic in the number of elements in the sets,
+% rather than linear) than the sparse_bitset module. The price for this
+% is a representation that requires more memory, has higher constant factors,
+% and an additional factor representing the tree in the complexity of the
+% operations that construct tree_bitsets. However, since the depth of the tree
+% has a small upper bound for all sets of a practical size, we will fold this
+% into the "higher constant factors" in the descriptions of the complexity
+% of the individual operations below.
 %
 % All this means that using a tree_bitset in preference to a sparse_bitset
 % is likely to be a good idea only when the sizes of the sets to be manipulated
 % are quite big, or when worst-case performance is important.
-%
-% For the time being, this module can only handle items that map to nonnegative
-% integers. This may change once unsigned integer operations are available.
 %
 %---------------------------------------------------------------------------%
 

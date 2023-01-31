@@ -178,7 +178,7 @@ classify_rtti_datas_to_decl([RttiData | RttiDatas], !GroupMap) :-
         rtti_id_c_type(RttiId, CType, IsArray),
         rtti_id_linkage(RttiId, Linkage),
         Group = data_group(CType, IsArray, Linkage),
-        multi_map.set(Group, RttiId, !GroupMap)
+        multi_map.add(Group, RttiId, !GroupMap)
     ),
     classify_rtti_datas_to_decl(RttiDatas, !GroupMap).
 
