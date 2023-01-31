@@ -162,8 +162,8 @@ Changes to the Mercury standard library
     - func `transitive_closure/1`           (synonym for `tc/1`)
     - func `reflexive_transitive_closure/1` (synonym for `rtc/1`)
 
-* We have fixed and improved the implementations of transitive closure and
-  reflexive transitive closure.
+* We have improved the implementations of transitive closure and reflexive
+  transitive closure.
 
 ### Changes to the `enum` module
 
@@ -1096,6 +1096,18 @@ Changes to the extras distribution
 ----------------------------------
 
 * We have deleted the `old_term_parser` library.
+
+NEWS for Mercury 22.01.6
+========================
+
+This is a bug-fix release.
+
+* We have fixed the implementations of transitive closure and reflexive
+  transitive closure in the `digraph` module.
+
+* We have a fixed a bug in `string.format` and related predicates where `int8`,
+  `int16` and `int32` values were being incorrectly promoted to `int` and sign
+  extended when one of the unsigned conversion specifiers was applied.
 
 NEWS for Mercury 22.01.5
 ========================
