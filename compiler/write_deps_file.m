@@ -1567,12 +1567,20 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     % `module\$*.class', hence the "\\$$*.class" below.
     % If no such files exist, Make will use the pattern verbatim,
     % so we enclose the pattern in a `wildcard' function to prevent this.
-    MmakeVarClasses = mmake_var_defn_list(ModuleMakeVarName ++ ".classes",
+    % Evaluating the .classes variable can be slow so we make it conditional
+    % on the grade.
+    MmakeVarClassesJava = mmake_var_defn_list(ModuleMakeVarName ++ ".classes",
         [string.format("$(%s.mods:%%=$(classes_subdir)%%.class)",
             [s(ModuleMakeVarName)]),
         string.format(
             "$(wildcard $(%s.mods:%%=$(classes_subdir)%%\\$$*.class))",
             [s(ModuleMakeVarName)])]),
+    MmakeVarClassesNonJava = mmake_var_defn(ModuleMakeVarName ++ ".classes",
+        ""),
+    MmakeFragmentVarClasses = mmf_conditional_entry(
+        mmake_cond_grade_has_component("java"),
+        MmakeVarClassesJava, MmakeVarClassesNonJava),
+
     MmakeVarCss = mmake_var_defn(ModuleMakeVarName ++ ".css",
         string.format("$(%s.mods:%%=$(css_subdir)%%.cs)",
             [s(ModuleMakeVarName)])),
@@ -1710,7 +1718,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         string.format("$(%s.mods:%%=%%.prof)",
             [s(ModuleMakeVarName)])),
 
-    MmakeEntries =
+    MmakeFragmentsA = list.map(mmake_entry_to_fragment,
         [MmakeStartComment, MmakeVarModuleMs,
         MmakeVarModuleDepErrs, MmakeVarModuleErrs,
         MmakeVarModuleMods, MmakeVarModuleParentMods,
@@ -1718,8 +1726,9 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         MmakeVarInitCs, MmakeVarAllCs, MmakeVarCs, MmakeVarDlls,
         MmakeVarAllOs, MmakeVarAllPicOs, MmakeVarOs, MmakeVarPicOs,
         MmakeVarUseds,
-        MmakeVarJavas, MmakeVarAllJavas, MmakeVarClasses,
-        MmakeVarCss, MmakeVarAllCss,
+        MmakeVarJavas, MmakeVarAllJavas]),
+    MmakeFragmentsB = list.map(mmake_entry_to_fragment,
+        [MmakeVarCss, MmakeVarAllCss,
         MmakeVarDirs, MmakeVarDirOs,
         MmakeVarDates, MmakeVarDate0s, MmakeVarDate3s,
         MmakeVarOptDates, MmakeVarTransOptDates,
@@ -1728,9 +1737,11 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         MmakeVarMhs, MmakeVarAllMihs, MmakeVarAllMhs,
         MmakeVarInts, MmakeVarInt0s, MmakeVarAllInt0s, MmakeVarInt3s,
         MmakeVarOpts, MmakeVarTransOpts,
-        MmakeVarAnalysiss, MmakeVarRequests, MmakeVarImdgs, MmakeVarProfs],
-    MmakeFile = cord.from_list(
-        list.map(mmake_entry_to_fragment, MmakeEntries)).
+        MmakeVarAnalysiss, MmakeVarRequests, MmakeVarImdgs, MmakeVarProfs]),
+    MmakeFile =
+        cord.from_list(MmakeFragmentsA) ++
+        cord.singleton(MmakeFragmentVarClasses) ++
+        cord.from_list(MmakeFragmentsB).
 
 %---------------------%
 
