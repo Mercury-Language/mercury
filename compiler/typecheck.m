@@ -85,7 +85,7 @@
     --->    within_iteration_limit
     ;       exceeded_iteration_limit.
 
-    % typecheck_module(!ModuleInfo, Specs, FoundSyntaxError,
+    % typecheck_module(ProgressStream, !ModuleInfo, Specs, FoundSyntaxError,
     %   NumberOfIterations):
     %
     % Type checks ModuleInfo and annotates it with variable type information.
@@ -202,11 +202,11 @@ typecheck_to_fixpoint(ProgressStream, Iteration, MaxIterations, !ModuleInfo,
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     map.to_assoc_list(PredIdTable0, PredIdsInfos0),
     typecheck_module_one_iteration(ProgressStream, !.ModuleInfo,
-        OrigValidPredIdSet, PredIdsInfos0, PredIdsInfos,
+        OrigValidPredIdSet, PredIdsInfos0, [], RevPredIdsInfos,
         [], NewlyInvalidPredIds, [], CurSpecs,
         no_clause_syntax_errors, CurFoundSyntaxError,
         next_iteration_is_not_needed, NextIteration),
-    map.from_sorted_assoc_list(PredIdsInfos, PredIdTable),
+    map.from_rev_sorted_assoc_list(RevPredIdsInfos, PredIdTable),
     module_info_set_pred_id_table(PredIdTable, !ModuleInfo),
 
     module_info_make_pred_ids_invalid(NewlyInvalidPredIds, !ModuleInfo),
@@ -232,8 +232,7 @@ typecheck_to_fixpoint(ProgressStream, Iteration, MaxIterations, !ModuleInfo,
                 module_info_get_name(!.ModuleInfo, ModuleName),
                 get_debug_output_stream(Globals, ModuleName, OutputStream,
                     !IO),
-                write_error_specs(OutputStream, Globals,
-                    ProgressSpecs, !IO)
+                write_error_specs(OutputStream, Globals, ProgressSpecs, !IO)
             )
         ;
             DebugTypes = no
@@ -259,21 +258,19 @@ typecheck_to_fixpoint(ProgressStream, Iteration, MaxIterations, !ModuleInfo,
 
     % Iterate over the list of pred_ids in a module.
     %
-    % NOTE: Please update Mercury.options if this predicate is moved to another
-    % module. It must be compiled with --optimize-constructor-last-call.
-    %
 :- pred typecheck_module_one_iteration(io.text_output_stream::in,
     module_info::in, set_tree234(pred_id)::in,
+    assoc_list(pred_id, pred_info)::in,
     assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out,
     list(pred_id)::in, list(pred_id)::out,
     list(error_spec)::in, list(error_spec)::out,
     maybe_clause_syntax_errors::in, maybe_clause_syntax_errors::out,
     next_iteration::in, next_iteration::out) is det.
 
-typecheck_module_one_iteration(_, _, _, [], [],
+typecheck_module_one_iteration(_, _, _, [], !RevPredIdsInfos,
         !NewlyInvalidPredIds, !Specs, !FoundSyntaxError, !NextIteration).
 typecheck_module_one_iteration(ProgressStream, ModuleInfo, ValidPredIdSet,
-        [HeadPredIdInfo0 | TailPredIdsInfos0], PredIdInfos,
+        [HeadPredIdInfo0 | TailPredIdsInfos0], !RevPredIdsInfos,
         !NewlyInvalidPredIds, !Specs, !FoundSyntaxError, !NextIteration) :-
     HeadPredIdInfo0 = PredId - PredInfo0,
     ( if
@@ -283,11 +280,10 @@ typecheck_module_one_iteration(ProgressStream, ModuleInfo, ValidPredIdSet,
             not set_tree234.contains(ValidPredIdSet, PredId)
         )
     then
-        HeadPredIdInfo = HeadPredIdInfo0,
+        !:RevPredIdsInfos = [HeadPredIdInfo0 | !.RevPredIdsInfos],
         typecheck_module_one_iteration(ProgressStream, ModuleInfo,
-            ValidPredIdSet, TailPredIdsInfos0, TailPredIdsInfos,
-            !NewlyInvalidPredIds, !Specs, !FoundSyntaxError, !NextIteration),
-        PredIdInfos = [HeadPredIdInfo | TailPredIdsInfos] % lcmc
+            ValidPredIdSet, TailPredIdsInfos0, !RevPredIdsInfos,
+            !NewlyInvalidPredIds, !Specs, !FoundSyntaxError, !NextIteration)
     else
         % Potential parallelization site.
         typecheck_pred_if_needed(ProgressStream, ModuleInfo, PredId,
@@ -327,10 +323,10 @@ typecheck_module_one_iteration(ProgressStream, ModuleInfo, ValidPredIdSet,
             PredNextIteration = next_iteration_is_needed,
             !:NextIteration = next_iteration_is_needed
         ),
+        !:RevPredIdsInfos = [HeadPredIdInfo | !.RevPredIdsInfos],
         typecheck_module_one_iteration(ProgressStream, ModuleInfo,
-            ValidPredIdSet, TailPredIdsInfos0, TailPredIdsInfos,
-            !NewlyInvalidPredIds, !Specs, !FoundSyntaxError, !NextIteration),
-        PredIdInfos = [HeadPredIdInfo | TailPredIdsInfos] % lcmc
+            ValidPredIdSet, TailPredIdsInfos0, !RevPredIdsInfos,
+            !NewlyInvalidPredIds, !Specs, !FoundSyntaxError, !NextIteration)
     ).
 
 :- pred typecheck_pred_if_needed(io.text_output_stream::in, module_info::in,
@@ -583,8 +579,9 @@ do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
         typecheck_info_init(ModuleInfo, PredId, !.PredInfo,
             ClauseVarSet, PredStatus, PredMarkers0, !.Specs, !:Info),
         get_clause_list_for_replacement(ClausesRep0, Clauses0),
-        typecheck_clause_list(HeadVars, ArgTypes0, Clauses0, Clauses,
+        typecheck_clause_list(HeadVars, ArgTypes0, Clauses0, [], RevClauses,
             !TypeAssignSet, !Info),
+        list.reverse(RevClauses, Clauses),
         typecheck_info_get_rhs_lambda(!.Info, MaybeRHSLambda),
         (
             MaybeRHSLambda = has_no_rhs_lambda
@@ -959,7 +956,7 @@ is_head_class_constraint(HeadTypeVars, Constraint) :-
 
 argtypes_identical_up_to_renaming(KindMap, ExistQVarsA, ArgTypesA,
         TypeConstraintsA, ExistQVarsB, ArgTypesB, TypeConstraintsB) :-
-    same_structure(TypeConstraintsA, TypeConstraintsB,
+    constraints_have_same_structure(TypeConstraintsA, TypeConstraintsB,
         ConstrainedTypesA, ConstrainedTypesB),
     prog_type.var_list_to_type_list(KindMap, ExistQVarsA, ExistQVarTypesA),
     prog_type.var_list_to_type_list(KindMap, ExistQVarsB, ExistQVarTypesB),
@@ -972,31 +969,37 @@ argtypes_identical_up_to_renaming(KindMap, ExistQVarsA, ArgTypesA,
     % and if so, concatenate the argument types for all the type classes
     % in each set of type class constraints and return them.
     %
-:- pred same_structure(prog_constraints::in, prog_constraints::in,
+:- pred constraints_have_same_structure(
+    prog_constraints::in, prog_constraints::in,
     list(mer_type)::out, list(mer_type)::out) is semidet.
 
-same_structure(ConstraintsA, ConstraintsB, TypesA, TypesB) :-
+constraints_have_same_structure(ConstraintsA, ConstraintsB, TypesA, TypesB) :-
     ConstraintsA = constraints(UnivCsA, ExistCsA),
     ConstraintsB = constraints(UnivCsB, ExistCsB),
     % these calls to same_length are just an optimization,
     % to catch the simple cases quicker
     list.same_length(UnivCsA, UnivCsB),
     list.same_length(ExistCsA, ExistCsB),
-    same_structure_2(UnivCsA, UnivCsB, UnivTypesA, UnivTypesB),
-    same_structure_2(ExistCsA, ExistCsB, ExistTypesA, ExistTypesB),
+    constraints_have_same_structure_loop(UnivCsA, UnivCsB,
+        UnivTypesA, UnivTypesB),
+    constraints_have_same_structure_loop(ExistCsA, ExistCsB,
+        ExistTypesA, ExistTypesB),
     TypesA = ExistTypesA ++ UnivTypesA,
     TypesB = ExistTypesB ++ UnivTypesB.
 
-:- pred same_structure_2(list(prog_constraint)::in, list(prog_constraint)::in,
+:- pred constraints_have_same_structure_loop(
+    list(prog_constraint)::in, list(prog_constraint)::in,
     list(mer_type)::out, list(mer_type)::out) is semidet.
 
-same_structure_2([], [], [], []).
-same_structure_2([ConstraintA | ConstraintsA], [ConstraintB | ConstraintsB],
+constraints_have_same_structure_loop([], [], [], []).
+constraints_have_same_structure_loop(
+        [ConstraintA | ConstraintsA], [ConstraintB | ConstraintsB],
         TypesA, TypesB) :-
     ConstraintA = constraint(ClassName, ArgTypesA),
     ConstraintB = constraint(ClassName, ArgTypesB),
     list.same_length(ArgTypesA, ArgTypesB),
-    same_structure_2(ConstraintsA, ConstraintsB, TypesA0, TypesB0),
+    constraints_have_same_structure_loop(ConstraintsA, ConstraintsB,
+        TypesA0, TypesB0),
     TypesA = ArgTypesA ++ TypesA0,
     TypesB = ArgTypesB ++ TypesB0.
 
@@ -1043,16 +1046,17 @@ special_pred_needs_typecheck(ModuleInfo, PredInfo) :-
     % Iterate over the list of clauses for a predicate.
     %
 :- pred typecheck_clause_list(list(prog_var)::in, list(mer_type)::in,
-    list(clause)::in, list(clause)::out,
+    list(clause)::in, list(clause)::in, list(clause)::out,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_clause_list(_, _, [], [], !TypeAssignSet, !Info).
-typecheck_clause_list(HeadVars, ArgTypes, [Clause0 | Clauses0],
-        [Clause | Clauses], !TypeAssignSet, !Info) :-
+typecheck_clause_list(_, _, [], !RevClauses, !TypeAssignSet, !Info).
+typecheck_clause_list(HeadVars, ArgTypes, [Clause0 | Clauses0], !RevClauses,
+        !TypeAssignSet, !Info) :-
     typecheck_clause(HeadVars, ArgTypes, Clause0, Clause,
         !TypeAssignSet, !Info),
-    typecheck_clause_list(HeadVars, ArgTypes, Clauses0, Clauses,
+    !:RevClauses = [Clause | !.RevClauses],
+    typecheck_clause_list(HeadVars, ArgTypes, Clauses0, !RevClauses,
         !TypeAssignSet, !Info).
 
 %---------------------------------------------------------------------------%
