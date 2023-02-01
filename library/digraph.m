@@ -633,7 +633,7 @@ to_assoc_list(G, List) :-
     map.keys(Fwd, FwdKeys),
     digraph.to_assoc_list_2(Fwd, FwdKeys, G ^ vertex_map, [], List).
 
-:- pred digraph.to_assoc_list_2(key_set_map(T)::in, list(uint)::in,
+:- pred to_assoc_list_2(key_set_map(T)::in, list(uint)::in,
     bimap(T, digraph_key(T))::in, assoc_list(T, T)::in, assoc_list(T, T)::out)
     is det.
 
@@ -659,7 +659,7 @@ to_key_assoc_list(G, List) :-
     map.keys(Fwd, FwdKeys),
     digraph.to_key_assoc_list_2(Fwd, FwdKeys, [], List).
 
-:- pred digraph.to_key_assoc_list_2(key_set_map(T)::in, list(uint)::in,
+:- pred to_key_assoc_list_2(key_set_map(T)::in, list(uint)::in,
     assoc_list(digraph_key(T), digraph_key(T))::in,
     assoc_list(digraph_key(T), digraph_key(T))::out) is det.
 
@@ -720,20 +720,20 @@ dfs(G, X, !Visited, Dfs) :-
 dfsrev(G, X, !Visited, DfsRev) :-
     digraph.dfs_2(G, X, !Visited, [], DfsRev).
 
-:- pred digraph.dfs_2(digraph(T)::in, digraph_key(T)::in,
+:- pred dfs_2(digraph(T)::in, digraph_key(T)::in,
     digraph_key_set(T)::in, digraph_key_set(T)::out,
     list(digraph_key(T))::in, list(digraph_key(T))::out) is det.
 
 dfs_2(G, X, !Visited, !DfsRev) :-
-    ( if sparse_bitset.contains(!.Visited, X) then
-        true
-    else
+    ( if sparse_bitset.insert_new(X, !Visited) then
         digraph.lookup_key_set_from(G, X, SuccXs),
-        sparse_bitset.insert(X, !Visited),
 
-        % Go and visit all of the node's children first.
+        % Go and visit all of the node's children.
         sparse_bitset.foldl2(digraph.dfs_2(G), SuccXs, !Visited, !DfsRev),
         !:DfsRev = [X | !.DfsRev]
+    else
+        % We have already visited X.
+        true
     ).
 
 %---------------------------------------------------------------------------%
@@ -745,7 +745,7 @@ vertices(G, Vs) :-
     bimap.ordinates(G ^ vertex_map, VsList),
     set.sorted_list_to_set(VsList, Vs).
 
-:- pred digraph.keys(digraph(T)::in, list(digraph_key(T))::out) is det.
+:- pred keys(digraph(T)::in, list(digraph_key(T))::out) is det.
 
 keys(G, Keys) :-
     bimap.coordinates(G ^ vertex_map, Keys).
@@ -864,19 +864,18 @@ is_dag(G) :-
     digraph.keys(G, Keys),
     list.foldl(digraph.is_dag_2(G, []), Keys, sparse_bitset.init, _).
 
-:- pred digraph.is_dag_2(digraph(T)::in, list(digraph_key(T))::in,
-    digraph_key(T)::in, digraph_key_set(T)::in, digraph_key_set(T)::out)
-    is semidet.
+:- pred is_dag_2(digraph(T)::in, list(digraph_key(T))::in, digraph_key(T)::in,
+    digraph_key_set(T)::in, digraph_key_set(T)::out) is semidet.
 
 is_dag_2(G, Ancestors, X, !Visited) :-
     ( if list.member(X, Ancestors) then
         fail
-    else if sparse_bitset.contains(!.Visited, X) then
-        true
-    else
+    else if sparse_bitset.insert_new(X, !Visited) then
         digraph.lookup_key_set_from(G, X, SuccXs),
-        sparse_bitset.insert(X, !Visited),
         foldl(digraph.is_dag_2(G, [X | Ancestors]), SuccXs, !Visited)
+    else
+        % We have already visited X.
+        true
     ).
 
 %---------------------------------------------------------------------------%
@@ -889,7 +888,7 @@ components(G, Components) :-
     sparse_bitset.list_to_set(Keys, KeySet : digraph_key_set(T)),
     digraph.components_loop(G, KeySet, set.init, Components).
 
-:- pred digraph.components_loop(digraph(T)::in, digraph_key_set(T)::in,
+:- pred components_loop(digraph(T)::in, digraph_key_set(T)::in,
     set(set(digraph_key(T)))::in, set(set(digraph_key(T)))::out) is det.
 
 components_loop(G, Xs0, !Components) :-
@@ -904,7 +903,7 @@ components_loop(G, Xs0, !Components) :-
         true
     ).
 
-:- pred digraph.reachable_from(digraph(T)::in, digraph_key_set(T)::in,
+:- pred reachable_from(digraph(T)::in, digraph_key_set(T)::in,
     digraph_key_set(T)::in, digraph_key_set(T)::out) is det.
 
 reachable_from(G, Keys0, !Comp) :-
@@ -944,7 +943,7 @@ cliques(G, Cliques) :-
     sparse_bitset.init(Visit),
     digraph.cliques_2(DfsRev, GInv, Visit, Cliques0, Cliques).
 
-:- pred digraph.cliques_2(list(digraph_key(T))::in, digraph(T)::in,
+:- pred cliques_2(list(digraph_key(T))::in, digraph(T)::in,
     digraph_key_set(T)::in, set(set(digraph_key(T)))::in,
     set(set(digraph_key(T)))::out) is det.
 
@@ -984,8 +983,8 @@ reduced(G, !:R, !:CliqMap) :-
     % Add a vertex to the reduced graph for each clique, and build a map
     % from each key in the clique to this new key.
     %
-:- pred digraph.make_clique_map(digraph(T)::in,
-    list(set(digraph_key(T)))::in, clique_map(T)::in, clique_map(T)::out,
+:- pred make_clique_map(digraph(T)::in, list(set(digraph_key(T)))::in,
+    clique_map(T)::in, clique_map(T)::out,
     digraph(set(T))::in, digraph(set(T))::out) is det.
 
 make_clique_map(_, [], !CliqMap, !R).
@@ -995,13 +994,13 @@ make_clique_map(G, [Clique | Cliques], !CliqMap, !R) :-
     set.fold(digraph.make_clique_map_2(CliqKey), Clique, !CliqMap),
     digraph.make_clique_map(G, Cliques, !CliqMap, !R).
 
-:- pred digraph.make_clique_map_2(digraph_key(set(T))::in, digraph_key(T)::in,
+:- pred make_clique_map_2(digraph_key(set(T))::in, digraph_key(T)::in,
     clique_map(T)::in, clique_map(T)::out) is det.
 
 make_clique_map_2(CliqKey, X, !CliqMap) :-
     map.set(X, CliqKey, !CliqMap).
 
-:- pred digraph.make_reduced_graph(clique_map(T)::in,
+:- pred make_reduced_graph(clique_map(T)::in,
     assoc_list(digraph_key(T), digraph_key(T))::in,
     digraph(set(T))::in, digraph(set(T))::out) is det.
 
@@ -1030,7 +1029,7 @@ return_vertices_in_to_from_order(G, ToFromTsort) :-
     return_vertices_in_from_to_order(G, FromToTsort),
     list.reverse(FromToTsort, ToFromTsort).
 
-:- pred digraph.check_tsort(digraph(T)::in, digraph_key_set(T)::in,
+:- pred check_tsort(digraph(T)::in, digraph_key_set(T)::in,
     list(digraph_key(T))::in) is semidet.
 
 check_tsort(_, _, []).
@@ -1049,11 +1048,11 @@ atsort(G) = ATsort :-
 atsort(G, ATsort) :-
     ATsort = digraph.return_sccs_in_from_to_order(G).
 
-digraph.return_sccs_in_from_to_order(G) = ATsort :-
+return_sccs_in_from_to_order(G) = ATsort :-
     ATsort0 = digraph.return_sccs_in_to_from_order(G),
     list.reverse(ATsort0, ATsort).
 
-digraph.return_sccs_in_to_from_order(G) = ATsort :-
+return_sccs_in_to_from_order(G) = ATsort :-
     % The algorithm used is described in R.E. Tarjan, "Depth-first search
     % and linear graph algorithms", SIAM Journal on Computing, 1, 2 (1972).
     %
@@ -1065,7 +1064,7 @@ digraph.return_sccs_in_to_from_order(G) = ATsort :-
     sparse_bitset.init(Vis),
     digraph.atsort_loop(DfsRev, GInv, Vis, [], ATsort).
 
-:- pred digraph.atsort_loop(list(digraph_key(T))::in, digraph(T)::in,
+:- pred atsort_loop(list(digraph_key(T))::in, digraph(T)::in,
     digraph_key_set(T)::in, list(set(T))::in, list(set(T))::out) is det.
 
 atsort_loop([], _, _, !ATsort).
