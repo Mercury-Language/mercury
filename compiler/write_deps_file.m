@@ -1388,15 +1388,19 @@ generate_dependencies_write_d_file(Globals, Dep,
 :- pred get_dependencies_from_graph(deps_graph::in, module_name::in,
     set(module_name)::out) is det.
 
-get_dependencies_from_graph(DepsGraph0, ModuleName, Dependencies) :-
-    digraph.add_vertex(ModuleName, ModuleKey, DepsGraph0, DepsGraph),
-    digraph.lookup_key_set_from(DepsGraph, ModuleKey, DepsKeysSet),
-    AddKeyDep =
-        ( pred(Key::in, Deps0::in, Deps::out) is det :-
-            digraph.lookup_vertex(DepsGraph, Key, Dep),
-            set.insert(Dep, Deps0, Deps)
-        ),
-    sparse_bitset.foldl(AddKeyDep, DepsKeysSet, set.init, Dependencies).
+get_dependencies_from_graph(DepsGraph, ModuleName, Dependencies) :-
+    ( if digraph.search_key(DepsGraph, ModuleName, ModuleKey) then
+        digraph.lookup_key_set_from(DepsGraph, ModuleKey, DepsKeysSet),
+        AddKeyDep =
+            ( pred(Key::in, Deps0::in, Deps::out) is det :-
+                digraph.lookup_vertex(DepsGraph, Key, Dep),
+                Deps = [Dep | Deps0]
+            ),
+        sparse_bitset.foldr(AddKeyDep, DepsKeysSet, [], DependenciesList),
+        set.list_to_set(DependenciesList, Dependencies)
+    else
+        set.init(Dependencies)
+    ).
 
 %---------------------------------------------------------------------------%
 
