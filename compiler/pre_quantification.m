@@ -329,11 +329,11 @@ record_var_in_zone(Zone, Var, !VarsToZones) :-
         % Most variables will occur only in one zone, typically zone 0.
         % However, they will typically occur there more than once.
         % We don't want to set the bit of the zone more than once.
-        ( if sparse_bitset.contains(Zones0, Zone) then
-            true
+        ( if sparse_bitset.insert_new(Zone, Zones0, Zones1) then
+            map.det_update(Var, Zones1, !VarsToZones)
         else
-            sparse_bitset.insert(Zone, Zones0, Zones),
-            map.det_update(Var, Zones, !VarsToZones)
+            % Zone is already in Zones0.
+            true
         )
     else
         Zones = sparse_bitset.make_singleton_set(Zone),
