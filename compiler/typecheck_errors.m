@@ -1509,7 +1509,7 @@ cons_type_to_pieces(InstVarSet, ConsInfo, Functor) = Pieces :-
         type_to_pieces(TVarSet, InstVarSet, print_name_only, do_not_add_quotes,
             ExistQVars, ConsType).
 
-    % Return a description of the  argument types of the given list of
+    % Return a description of the argument types of the given list of
     % data constructors.
     %
     % The caller should ensure that these pieces are indented one or two levels
