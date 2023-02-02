@@ -116,7 +116,7 @@ implemented using pure Mercury code.
 For more information about the foreign language interface, see the Mercury
 Language Reference Manual, which you can find at:
 
-     <http://www.mercurylang.org/information/documentation.html>
+     <https://www.mercurylang.org/documentation/documentation.html>
 
 -----------------------------------------------------------------------------
 

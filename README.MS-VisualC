@@ -169,7 +169,7 @@ directory
   an alternative (see the next section for details of how to do this).
 
   We recommend installing the UnxUtils port of "cp" and using that with
-  Mercury.  See: <http://sourceforge.net/projects/unxutils/>.
+  Mercury.  See: <https://sourceforge.net/projects/unxutils/>.
 
 * In the file lib/mercury/conf/Mercury.config:
    

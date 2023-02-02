@@ -31,7 +31,7 @@ install it.  Cygwin version 1.3.1 is buggy and should not be used, but
 Cygwin 1.1.* or Cygwin 1.3.2 or later should be OK.  Recent versions of
 Cygwin can be installed directly from:
 
-	<http://cygwin.com/setup-x86.exe>
+	<https://cygwin.com/setup-x86.exe>
 
 This program will download and install the required components.
 
@@ -162,7 +162,7 @@ sense for your system.
 
 regtool -i set /HKLM/Software/Cygnus\ Solutions/Cygwin/heap_chunk_in_mb 1024
 
-See <http://cygwin.com/cygwin-ug-net/setup-maxmem.html> for more
+See <https://cygwin.com/cygwin-ug-net/setup-maxmem.html> for more
 details.
 
 -----------------------------------------------------------------------------

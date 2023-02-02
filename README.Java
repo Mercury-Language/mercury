@@ -15,7 +15,7 @@ PREREQUISITES
 In order to try this system you will need 
 
     * The J2SE SDK, which can be downloaded for free from
-      <http://www.oracle.com/technetwork/indexes/downloads/index.html>
+      <https://www.oracle.com/java/technologies/downloads/>
 
     * OR any other compatible Java implementation, such as OpenJDK.
 
@@ -84,7 +84,7 @@ implemented using pure mercury code.
 For more information about the foreign language interface, see the Mercury
 Language Reference Manual, which you can find at:
 	
-     <http://www.mercurylang.org/information/documentation.html>
+     <https://www.mercurylang.org/documentation/documentation.html>
 
 Some short programs may run much more slowly in the Java grade than the C
 grades.  The runtime is probably dominated by Java class loading and running
@@ -150,11 +150,11 @@ RESOURCES
 
 You might find the following pages useful:
     
-    <http://www.mercurylang.org/backends.html>
+    <https://www.mercurylang.org/backends.html>
 
-    <http://java.sun.com/reference/api/index.html>
+    <https://docs.oracle.com/en/java/javase/>
 
-    <http://www.mercurylang.org/information/documentation.html>>
+    <https://www.mercurylang.org/documentation/documentation.html>>
 
 -----------------------------------------------------------------------------
 
