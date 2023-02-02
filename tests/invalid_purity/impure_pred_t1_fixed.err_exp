@@ -2,7 +2,7 @@ impure_pred_t1_fixed.m:029: In clause for predicate `main'/2:
 impure_pred_t1_fixed.m:029:   in argument 1 (i.e. the predicate term) of
 impure_pred_t1_fixed.m:029:   higher-order predicate call:
 impure_pred_t1_fixed.m:029:   type error: variable `X' has type
-impure_pred_t1_fixed.m:029:     impure pred(int, int),
+impure_pred_t1_fixed.m:029:     impure pred(int, int);
 impure_pred_t1_fixed.m:029:   expected type was
 impure_pred_t1_fixed.m:029:     pred(V_1, V_2).
 impure_pred_t1_fixed.m:029:   Purity mismatch: expected a pure predicate, got

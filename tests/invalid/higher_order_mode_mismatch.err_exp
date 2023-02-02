@@ -15,7 +15,7 @@ higher_order_mode_mismatch.m:031: In clause for predicate `test_2'/3:
 higher_order_mode_mismatch.m:031:   in argument 1 (i.e. the predicate term) of
 higher_order_mode_mismatch.m:031:   higher-order predicate call:
 higher_order_mode_mismatch.m:031:   type error: variable `F' has type
-higher_order_mode_mismatch.m:031:     func(int, int) = int,
+higher_order_mode_mismatch.m:031:     func(int, int) = int;
 higher_order_mode_mismatch.m:031:   expected type was
 higher_order_mode_mismatch.m:031:     pred(V_1, V_2, V_3).
 higher_order_mode_mismatch.m:031:   Predicate vs function mismatch: expected a
@@ -24,7 +24,7 @@ higher_order_mode_mismatch.m:034: In clause for predicate `test_3'/3:
 higher_order_mode_mismatch.m:034:   in argument 1 (i.e. the predicate term) of
 higher_order_mode_mismatch.m:034:   higher-order predicate call:
 higher_order_mode_mismatch.m:034:   type error: variable `F' has type
-higher_order_mode_mismatch.m:034:     func(int, int) = int,
+higher_order_mode_mismatch.m:034:     func(int, int) = int;
 higher_order_mode_mismatch.m:034:   expected type was
 higher_order_mode_mismatch.m:034:     pred(V_1, V_2, V_3).
 higher_order_mode_mismatch.m:034:   Predicate vs function mismatch: expected a
@@ -46,7 +46,7 @@ higher_order_mode_mismatch.m:040: In clause for predicate `test_5'/3:
 higher_order_mode_mismatch.m:040:   in argument 1 (i.e. the predicate term) of
 higher_order_mode_mismatch.m:040:   higher-order predicate call:
 higher_order_mode_mismatch.m:040:   type error: variable `In1' has type
-higher_order_mode_mismatch.m:040:     int,
+higher_order_mode_mismatch.m:040:     int;
 higher_order_mode_mismatch.m:040:   expected type was
 higher_order_mode_mismatch.m:040:     pred(V_1, V_2).
 For more information, recompile with `-E'.

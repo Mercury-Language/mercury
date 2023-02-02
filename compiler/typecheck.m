@@ -1948,8 +1948,7 @@ typecheck_var_has_arg_type(GoalContext, Context, ArgNum, Var,
         ArgsTypeAssignSet1 = [],
         ArgsTypeAssignSet0 = [_ | _]
     then
-        typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_error_var_has_wrong_type_arg(!.Info, ClauseContext,
+        Spec = report_error_var_has_wrong_type_arg(!.Info,
             GoalContext, Context, ArgNum, Var, ArgsTypeAssignSet0),
         ArgsTypeAssignSet = ArgsTypeAssignSet0,
         typecheck_info_add_error(Spec, !Info)
@@ -2019,10 +2018,8 @@ typecheck_vars_have_types(ArgVectorKind, Context, Vars, Types,
         MaybeArgVectorTypeErrors = yes(ArgVectorTypeErrors),
         ArgVectorTypeErrors = [_, _ | _]
     then
-        typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        AllArgsSpec = report_error_wrong_types_in_arg_vector(!.Info,
-            ClauseContext, Context, ArgVectorKind, !.TypeAssignSet,
-            ArgVectorTypeErrors),
+        AllArgsSpec = report_error_wrong_types_in_arg_vector(!.Info, Context,
+            ArgVectorKind, !.TypeAssignSet, ArgVectorTypeErrors),
         typecheck_info_add_error(AllArgsSpec, !Info)
     else
         list.foldl(typecheck_info_add_error, Specs, !Info)
@@ -2204,9 +2201,8 @@ typecheck_unify_var_var(UnifyContext, Context, X, Y,
         TypeAssignSet0 = [_ | _]
     then
         TypeAssignSet = TypeAssignSet0,
-        typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_error_unify_var_var(!.Info, ClauseContext, UnifyContext,
-            Context, X, Y, TypeAssignSet0),
+        Spec = report_error_unify_var_var(!.Info, UnifyContext, Context,
+            X, Y, TypeAssignSet0),
         typecheck_info_add_error(Spec, !Info)
     else
         TypeAssignSet = TypeAssignSet1
@@ -2238,7 +2234,6 @@ cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) :-
 
 typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, ArgVars,
         GoalId, TypeAssignSet0, TypeAssignSet, !Info) :-
-    typecheck_info_get_error_clause_context(!.Info, ClauseContext),
     ( if cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) then
         ( if ConsType = builtin_type(builtin_type_int(int_type_int)) then
             typecheck_info_add_nosuffix_integer_var(Var, !Info)
@@ -2280,6 +2275,7 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, ArgVars,
             ConsTypeInfos, ConsErrors),
         (
             ConsTypeInfos = [],
+            typecheck_info_get_error_clause_context(!.Info, ClauseContext),
             TypeAssignSet = TypeAssignSet0,
             GoalContext = type_error_in_unify(UnifyContext),
             Spec = report_error_undef_cons(ClauseContext, GoalContext,
@@ -2346,8 +2342,8 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, ArgVars,
                 ;
                     ArgsTypeAssignSet = [_ | _],
                     ArgSpec = report_error_unify_var_functor_args(!.Info,
-                        ClauseContext, UnifyContext, Context, Var,
-                        ConsTypeInfos, ConsId, ArgVars, ArgsTypeAssignSet),
+                        UnifyContext, Context, Var, ConsTypeInfos,
+                        ConsId, ArgVars, ArgsTypeAssignSet),
                     typecheck_info_add_error(ArgSpec, !Info)
                 )
             )
@@ -2696,10 +2692,8 @@ typecheck_lambda_var_has_type(UnifyContext, Context, Purity, PredOrFunc,
         TypeAssignSet0 = [_ | _]
     then
         TypeAssignSet = TypeAssignSet0,
-        typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_error_unify_var_lambda(!.Info, ClauseContext,
-            UnifyContext, Context, PredOrFunc, EvalMethod, Var, ArgVars,
-            TypeAssignSet0),
+        Spec = report_error_unify_var_lambda(!.Info, UnifyContext, Context,
+            PredOrFunc, EvalMethod, Var, ArgVars, TypeAssignSet0),
         typecheck_info_add_error(Spec, !Info)
     else
         TypeAssignSet = TypeAssignSet1

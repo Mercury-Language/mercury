@@ -45,31 +45,22 @@
 
 %---------------------------------------------------------------------------%
 
-:- func report_error_unify_var_var(typecheck_info, type_error_clause_context,
-    unify_context, prog_context, prog_var, prog_var, type_assign_set)
-    = error_spec.
+:- func report_error_unify_var_var(typecheck_info, unify_context, prog_context,
+    prog_var, prog_var, type_assign_set) = error_spec.
 
-:- func report_error_unify_var_lambda(typecheck_info,
-    type_error_clause_context, unify_context, prog_context, pred_or_func,
-    lambda_eval_method, prog_var, list(prog_var), type_assign_set)
-    = error_spec.
+:- func report_error_unify_var_lambda(typecheck_info, unify_context,
+    prog_context, pred_or_func, lambda_eval_method, prog_var, list(prog_var),
+    type_assign_set) = error_spec.
 
 :- func report_error_unify_var_functor_result(typecheck_info,
-    unify_context, prog_context, prog_var,
-    list(cons_type_info), cons_id, int, type_assign_set) = error_spec.
+    unify_context, prog_context, prog_var, list(cons_type_info), cons_id,
+    int, type_assign_set) = error_spec.
 
 :- func report_error_unify_var_functor_args(typecheck_info,
-    type_error_clause_context, unify_context, prog_context, prog_var,
-    list(cons_type_info), cons_id, list(prog_var), args_type_assign_set)
-    = error_spec.
+    unify_context, prog_context, prog_var, list(cons_type_info), cons_id,
+    list(prog_var), args_type_assign_set) = error_spec.
 
 %---------------------------------------------------------------------------%
-
-    % XXX This variant of report_error_var_has_wrong_type is not used.
-    %
-:- func report_error_var_has_wrong_type_two_expected(typecheck_info,
-    type_error_clause_context, type_error_goal_context, prog_context,
-    prog_var, mer_type, mer_type, type_assign_set) = error_spec.
 
     % report_error_var_has_wrong_type uses this type to return
     % not just an error_spec, but possibly also an actual_expected_types
@@ -97,8 +88,8 @@
     = spec_and_maybe_actual_expected.
 
 :- func report_error_var_has_wrong_type_arg(typecheck_info,
-    type_error_clause_context, type_error_goal_context, prog_context,
-    int, prog_var, args_type_assign_set) = error_spec.
+    type_error_goal_context, prog_context, int, prog_var, args_type_assign_set)
+    = error_spec.
 
 %---------------------------------------------------------------------------%
 
@@ -114,9 +105,9 @@
                 actual_expected_types
             ).
 
-:- func report_error_wrong_types_in_arg_vector(typecheck_info,
-    type_error_clause_context, prog_context, arg_vector_kind, type_assign_set,
-    list(arg_vector_type_error)) = error_spec.
+:- func report_error_wrong_types_in_arg_vector(typecheck_info, prog_context,
+    arg_vector_kind, type_assign_set, list(arg_vector_type_error))
+    = error_spec.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -238,8 +229,9 @@ report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-report_error_unify_var_var(Info, ClauseContext, UnifyContext, Context,
-        X, Y, TypeAssignSet) = Spec :-
+report_error_unify_var_var(Info, UnifyContext, Context, X, Y, TypeAssignSet)
+        = Spec :-
+    typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     unify_context_to_pieces(UnifyContext, InClauseForPieces, ContextPieces),
 
@@ -263,8 +255,9 @@ report_error_unify_var_var(Info, ClauseContext, UnifyContext, Context,
 
 %---------------------------------------------------------------------------%
 
-report_error_unify_var_lambda(Info, ClauseContext, UnifyContext, Context,
+report_error_unify_var_lambda(Info, UnifyContext, Context,
         PredOrFunc, _EvalMethod, Var, ArgVars, TypeAssignSet) = Spec :-
+    typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     unify_context_to_pieces(UnifyContext, InClauseForPieces, ContextPieces),
 
@@ -380,8 +373,9 @@ report_error_unify_var_functor_result(Info, UnifyContext, Context,
 
 %---------------------------------------------------------------------------%
 
-report_error_unify_var_functor_args(Info, ClauseContext, UnifyContext, Context,
+report_error_unify_var_functor_args(Info, UnifyContext, Context,
         Var, ConsDefnList, Functor, ArgVars, ArgsTypeAssignSet) = Spec :-
+    typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     unify_context_to_pieces(UnifyContext, InClauseForPieces, ContextPieces),
 
@@ -853,67 +847,6 @@ report_special_type_mismatch(IsFirst, MismatchSpecial) = Pieces :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-report_error_var_has_wrong_type_two_expected(Info, ClauseContext, GoalContext,
-        Context, Var, TypeA, TypeB, TypeAssignSet) = Spec :-
-    InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
-
-    % XXX When we get a test case in which the quadratic behavior of
-    % get_all_type_stuffs_remove_dups is a performance issue, we should
-    % try switching to get_all_type_stuffs without the remove_dups,
-    % since the two calls to list.sort_and_remove_dups below make it
-    % semantically unnecessary.
-    % XXX That won't happen while this predicate is unused :-)
-    get_inst_varset(ClauseContext, InstVarSet),
-    get_all_type_stuffs_remove_dups(TypeAssignSet, Var, TypeStuffList),
-    ActualExpectedListA0 = list.map(
-        type_stuff_to_actual_expected(do_not_add_quotes, InstVarSet, TypeA),
-        TypeStuffList),
-    ActualExpectedListB0 = list.map(
-        type_stuff_to_actual_expected(do_not_add_quotes, InstVarSet, TypeB),
-        TypeStuffList),
-    list.sort_and_remove_dups(ActualExpectedListA0, ActualExpectedListA),
-    list.sort_and_remove_dups(ActualExpectedListB0, ActualExpectedListB),
-
-    ErrorPieces = [words("type error:")],
-    VarSet = ClauseContext ^ tecc_varset,
-    ( if
-        ActualExpectedListA = [ActualExpectedA],
-        ActualExpectedListB = [ActualExpectedB]
-    then
-        ActualExpectedA = actual_expected_types(ActualPieces, _,
-            ExpectedPiecesA, _, _, _),
-        ActualExpectedB = actual_expected_types(_, _,
-            ExpectedPiecesB, _, _, _),
-        ActualExpectedPieces = argument_name_to_pieces(VarSet, Var) ++
-            [words("has type")] ++ ActualPieces ++ [suffix(","), nl,
-            words("expected type was either")] ++ ExpectedPiecesA ++
-            [words("or")] ++ ExpectedPiecesB ++ [suffix("."), nl]
-    else
-        ModuleInfo = ClauseContext ^ tecc_module_info,
-        ActualExpectedPieces = [words("type of")] ++
-            argument_name_to_pieces(VarSet, Var) ++
-            [words("does not match its expected type;"), nl] ++
-            argument_name_to_pieces(VarSet, Var) ++
-            [words("has overloaded actual/expected types {")] ++
-            [nl_indent_delta(1)] ++
-            actual_expected_types_list_to_pieces(ModuleInfo,
-                ActualExpectedListA) ++
-            [nl_indent_delta(-1), fixed("} or {"), nl_indent_delta(1)] ++
-            actual_expected_types_list_to_pieces(ModuleInfo,
-                ActualExpectedListB) ++
-            [nl_indent_delta(-1), fixed("}."), nl]
-    ),
-
-    type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
-        VerboseComponent),
-    Msg = simple_msg(Context,
-        [always(InClauseForPieces ++ GoalContextPieces),
-        always(ErrorPieces ++ ActualExpectedPieces), VerboseComponent]),
-    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
-
-%---------------------------------------------------------------------------%
-
 report_error_var_has_wrong_type(Info, GoalContext, Context, Var, Type,
         TypeAssignSet) = SpecAndMaybeActualExpected :-
     typecheck_info_get_error_clause_context(Info, ClauseContext),
@@ -925,37 +858,12 @@ report_error_var_has_wrong_type(Info, GoalContext, Context, Var, Type,
         type_stuff_to_actual_expected(do_not_add_quotes, InstVarSet, Type),
         TypeAssignSet, Var, ActualExpectedList0),
     list.sort_and_remove_dups(ActualExpectedList0, ActualExpectedList),
+    report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
+        MaybeActualExpected, ActualExpectedPieces, DiffPieces),
 
-    TypeErrorPieces = [words("type error:")],
-    VarSet = ClauseContext ^ tecc_varset,
-    ( if ActualExpectedList = [ActualExpected] then
-        MaybeActualExpected = yes(ActualExpected),
-        ActualExpected = actual_expected_types(ActualPieces, ActualType,
-            ExpectedPieces, ExpectedType, ExistQTVars, _Source),
-        ActualExpectedPieces = argument_name_to_pieces(VarSet, Var) ++
-            [words("has type"), nl_indent_delta(1)] ++
-            ActualPieces ++ [suffix(","), nl_indent_delta(-1),
-            words("expected type was"), nl_indent_delta(1)] ++
-            ExpectedPieces ++ [suffix("."), nl_indent_delta(-1)],
-        DiffPieces = type_diff_pieces([], ExistQTVars,
-            ActualType, ExpectedType)
-    else
-        MaybeActualExpected = no,
-        ModuleInfo = ClauseContext ^ tecc_module_info,
-        ActualExpectedPieces = [words("type of")] ++
-            argument_name_to_pieces(VarSet, Var) ++
-            [words("does not match its expected type;"), nl] ++
-            argument_name_to_pieces(VarSet, Var) ++
-            [words("has overloaded actual/expected types {")] ++
-            [nl_indent_delta(1)] ++
-            actual_expected_types_list_to_pieces(ModuleInfo,
-                ActualExpectedList) ++
-            [nl_indent_delta(-1), fixed("}."), nl],
-        DiffPieces = []
-    ),
-    typecheck_info_get_nosuffix_integer_vars(Info, NoSuffixIntegerVarSet),
+    typecheck_info_get_nosuffix_integer_vars(Info, SetOfNoSuffixIntegerVars),
     ( if
-        set_tree234.contains(NoSuffixIntegerVarSet, Var),
+        set_tree234.contains(SetOfNoSuffixIntegerVars, Var),
         expected_type_needs_int_constant_suffix(Type)
     then
         NoSuffixIntegerPieces = nosuffix_integer_pieces
@@ -963,21 +871,22 @@ report_error_var_has_wrong_type(Info, GoalContext, Context, Var, Type,
         NoSuffixIntegerPieces = []
     ),
 
+    VarSet = ClauseContext ^ tecc_varset,
     type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerboseComponent),
     Msg = simple_msg(Context,
         [always(InClauseForPieces), always(GoalContextPieces),
-        always(TypeErrorPieces), always(ActualExpectedPieces),
-        always(DiffPieces), always(NoSuffixIntegerPieces),
-        VerboseComponent]),
+        always(ActualExpectedPieces), always(DiffPieces),
+        always(NoSuffixIntegerPieces), VerboseComponent]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]),
     SpecAndMaybeActualExpected =
         spec_and_maybe_actual_expected(Spec, MaybeActualExpected).
 
 %---------------------------------------------------------------------------%
 
-report_error_var_has_wrong_type_arg(Info, ClauseContext, GoalContext, Context,
+report_error_var_has_wrong_type_arg(Info, GoalContext, Context,
         ArgNum, Var, ArgTypeAssignSet) = Spec :-
+    typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
 
@@ -987,80 +896,25 @@ report_error_var_has_wrong_type_arg(Info, ClauseContext, GoalContext, Context,
         arg_type_stuff_to_actual_expected(do_not_add_quotes, InstVarSet),
         ArgTypeStuffList),
     list.sort_and_remove_dups(ActualExpectedList0, ActualExpectedList),
+    report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
+        _MaybeActualExpected, ActualExpectedPieces, DiffPieces),
 
-    ErrorPieces = [words("type error:")],
     VarSet = ClauseContext ^ tecc_varset,
-    ( if ActualExpectedList = [ActualExpected] then
-        ActualExpected = actual_expected_types(ActualPieces, ActualType,
-            ExpectedPieces, ExpectedType, ExistQTVars, _MaybeSource),
-        ActualExpectedPieces = argument_name_to_pieces(VarSet, Var) ++
-            [words("has type"), nl_indent_delta(1)] ++
-            ActualPieces ++ [suffix(","), nl_indent_delta(-1),
-            words("expected type was"), nl_indent_delta(1)] ++
-            ExpectedPieces ++ [suffix("."), nl_indent_delta(-1)],
-        DiffPieces = type_diff_pieces([], ExistQTVars,
-            ActualType, ExpectedType)
-    else
-        ActualTypePieceLists = list.map((func(AE) = AE ^ actual_type_pieces),
-            ActualExpectedList),
-        ModuleInfo = ClauseContext ^ tecc_module_info,
-        ( if
-            all_same(ActualTypePieceLists),
-            ActualTypePieceLists = [ActualTypePieces | _]
-        then
-            % If some elements of ActualExpectedList have substantive sources
-            % and some don't, then don't print any of the sources, since
-            % doing so would be confusing.
-            ( if
-                HasSource =
-                    ( pred(AE::in) is semidet :-
-                        MaybeSource = AE ^ expectation_source,
-                        MaybeSource = yes(Source),
-                        Source \= atas_ensure_have_a_type
-                    ),
-                list.all_true(HasSource, ActualExpectedList)
-            then
-                MaybePrintSource = print_expectation_source
-            else
-                MaybePrintSource = print_expected
-            ),
-            acc_expected_type_source_pieces(ModuleInfo, MaybePrintSource,
-                ActualExpectedList, _, AllExpectedPieces),
-            ActualExpectedPieces = [words("type of")] ++
-                argument_name_to_pieces(VarSet, Var) ++
-                [words("does not match its expected type;"), nl,
-                words("its inferred type is"), nl_indent_delta(1)] ++
-                ActualTypePieces ++ [suffix(","), nl_indent_delta(-1)] ++
-                AllExpectedPieces
-        else
-            ActualExpectedPieces = [words("type of")] ++
-                argument_name_to_pieces(VarSet, Var) ++
-                [words("does not match its expected type;"), nl] ++
-                argument_name_to_pieces(VarSet, Var) ++
-                [words("has overloaded actual/expected types {")] ++
-                [nl_indent_delta(1)] ++
-                actual_expected_types_list_to_pieces(ModuleInfo,
-                    ActualExpectedList) ++
-                [nl_indent_delta(-1), fixed("}."), nl]
-        ),
-        % Printing the diffs derives from *all* the elements of
-        % ActualExpectedList would be more confusing than helpful.
-        DiffPieces = []
-    ),
     arg_type_assign_set_msg_to_verbose_component(Info, VarSet,
         ArgTypeAssignSet, VerboseComponent),
     Msg = simple_msg(Context,
-        [always(InClauseForPieces ++ GoalContextPieces),
-        always(ErrorPieces ++ ActualExpectedPieces ++ DiffPieces),
+        [always(InClauseForPieces), always(GoalContextPieces),
+        always(ActualExpectedPieces), always(DiffPieces),
         VerboseComponent]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
 
-report_error_wrong_types_in_arg_vector(Info, ClauseContext, Context,
+report_error_wrong_types_in_arg_vector(Info, Context,
         ArgVectorKind, TypeAssignSet, ArgVectorTypeErrors0) = Spec :-
-    list.sort(ArgVectorTypeErrors0, ArgVectorTypeErrors),
+    typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
+    list.sort(ArgVectorTypeErrors0, ArgVectorTypeErrors),
     ArgVectorKindPieces =
         arg_vector_kind_to_pieces(ClauseContext, ArgVectorKind),
     VarSet = ClauseContext ^ tecc_varset,
@@ -1539,74 +1393,139 @@ cons_type_list_to_pieces(InstVarSet, [ConsDefn | ConsDefns], Functor, Arity)
 
 %---------------------------------------------------------------------------%
 
-:- func actual_expected_types_list_to_pieces(module_info,
-    list(actual_expected_types)) = list(format_piece).
+:- pred report_actual_expected_types(type_error_clause_context::in,
+    prog_var::in, list(actual_expected_types)::in,
+    maybe(actual_expected_types)::out,
+    list(format_piece)::out, list(format_piece)::out) is det.
 
-actual_expected_types_list_to_pieces(ModuleInfo, ActualExpectedList)
-        = Pieces :-
-    % XXX Printing all the actual types and then all the expected types
-    % seems to me (zs) to be a bad idea. If different elements of
-    % ActualExpectedList cause the printing of different actual types,
-    % then it would seem to make sense to put each of those actual types
-    % next to the expected type from the *same* element.
-    %
-    % Without this, printing the source of the expectation for each
-    % expected type would be meaningless.
-    %
-    % XXX The part of the message before the pieces we return here
-    % talk about inferred/expected types *in that order*, so printing
-    % the expected types before the inferred ones here seems strange.
-    list.foldl(acc_expected_type_pieces(ModuleInfo, print_expected),
-        ActualExpectedList, [], ExpectedPieces),
-    ActualPieces = list.map(actual_types_to_pieces, ActualExpectedList),
-    Pieces =
-        component_list_to_line_pieces(ExpectedPieces ++ ActualPieces, [nl]).
-
-:- type maybe_print_expectation_source
-    --->    print_expected
-    ;       print_expectation_source.
-
-:- pred acc_expected_type_pieces(module_info::in,
-    maybe_print_expectation_source::in, actual_expected_types::in,
-    list(list(format_piece))::in, list(list(format_piece))::out) is det.
-
-acc_expected_type_pieces(ModuleInfo, MaybePrintSource, ActualExpected,
-        !TaggedPieceLists) :-
-    ActualExpected = actual_expected_types(_ActualPieces, _ActualType,
-        ExpectedPieces, _ExpectedType, _ExistQTVars, MaybeSource),
-    ( if
-        MaybePrintSource = print_expectation_source,
-        MaybeSource = yes(Source)
-    then
-        SourcePieces = describe_args_type_assign_source(ModuleInfo, Source),
-        % We add a newline after the "(expected by ...):" text for two reasons:
-        %
-        % - because SourcePieces is likely to take up a large chunk
-        %   of the line anyway, and
-        % - because this (or something very similar) is needed to ensure
-        %   that the different expected type pieces line up exactly with
-        %   (a) the inferred type pieces, and (b) each other.
-        TaggedPieces = [words("the type expected by") | SourcePieces] ++
-            [words("is:"), nl | ExpectedPieces]
-    else
-        TaggedPieces = [words("(expected)") | ExpectedPieces]
+report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
+        MaybeActualExpected, ActualExpectedPieces, DiffPieces) :-
+    VarSet = ClauseContext ^ tecc_varset,
+    TypeErrorPieces = [words("type error:")] ++
+        argument_name_to_pieces(VarSet, Var),
+    is_actual_or_expected_single_type(ActualExpectedList,
+        MaybeSingleActual, MaybeSingleExpected),
+    (
+        MaybeSingleActual = yes(SingleActualPieces),
+        ActualPartPieces = [words("has type"), nl_indent_delta(1)] ++
+            SingleActualPieces ++ [suffix(";"), nl_indent_delta(-1)]
+    ;
+        MaybeSingleActual = no,
+        ActualPieceLists = list.map((func(AE) = AE ^ actual_type_pieces),
+            ActualExpectedList),
+        ActualPieces = component_list_to_line_pieces(ActualPieceLists,
+            [suffix(";"), nl_indent_delta(-1)]),
+        ActualPartPieces = [words("has one of the following inferred types:"),
+            nl_indent_delta(1)] ++ ActualPieces
     ),
-    ( if list.member(TaggedPieces, !.TaggedPieceLists) then
+    (
+        MaybeSingleExpected = yes(SingleExpectedPieces),
+        ExpectedPartPieces = [words("expected type was"),
+            nl_indent_delta(1)] ++ SingleExpectedPieces ++
+            [suffix("."), nl_indent_delta(-1)]
+    ;
+        MaybeSingleExpected = no,
+        should_we_print_expectation_sources(ActualExpectedList,
+            MaybePrintSource),
+        (
+            MaybePrintSource = do_not_print_expectation_source,
+            ExpectedPieceLists = list.map(
+                (func(AE) = AE ^ expected_type_pieces),
+                ActualExpectedList),
+            ExpectedPieces = component_list_to_line_pieces(ExpectedPieceLists,
+                [suffix("."), nl_indent_delta(-1)]),
+            ExpectedPartPieces = [words("expected type was one of"),
+                nl_indent_delta(1)] ++ ExpectedPieces
+        ;
+            MaybePrintSource = print_expectation_source,
+            ModuleInfo = ClauseContext ^ tecc_module_info,
+            acc_expected_type_source_pieces(ModuleInfo, ActualExpectedList,
+                _, ExpectedPartPieces)
+        )
+    ),
+    ActualExpectedPieces =
+        TypeErrorPieces ++ ActualPartPieces ++ ExpectedPartPieces,
+    ( if ActualExpectedList = [ActualExpected] then
+        MaybeActualExpected = yes(ActualExpected),
+        ActualExpected = actual_expected_types(_ActualPieces, ActualType,
+            _ExpectedPieces, ExpectedType, ExistQTVars, _Source),
+        DiffPieces = type_diff_pieces([], ExistQTVars,
+            ActualType, ExpectedType)
+    else
+        MaybeActualExpected = no,
+        % Printing the diffs derived from two or more elements of
+        % ActualExpectedList would be more confusing than helpful.
+        DiffPieces = []
+    ).
+
+:- pred is_actual_or_expected_single_type(list(actual_expected_types)::in,
+    maybe(list(format_piece))::out, maybe(list(format_piece))::out) is det.
+
+is_actual_or_expected_single_type([], no, no).
+is_actual_or_expected_single_type([AE | AEs],
+        MaybeSingleActual, MaybeSingleExpected) :-
+    AE = actual_expected_types(ActualPieces, _, ExpectedPieces, _, _, _),
+    is_actual_or_expected_single_type_loop(AEs,
+        yes(ActualPieces), MaybeSingleActual,
+        yes(ExpectedPieces), MaybeSingleExpected).
+
+:- pred is_actual_or_expected_single_type_loop(list(actual_expected_types)::in,
+    maybe(list(format_piece))::in, maybe(list(format_piece))::out,
+    maybe(list(format_piece))::in, maybe(list(format_piece))::out) is det.
+
+is_actual_or_expected_single_type_loop([],
+        !MaybeSingleActual, !MaybeSingleExpected).
+is_actual_or_expected_single_type_loop([AE | AEs],
+        !MaybeSingleActual, !MaybeSingleExpected) :-
+    AE = actual_expected_types(ActualPieces, _, ExpectedPieces, _, _, _),
+    ( if !.MaybeSingleActual = yes(ActualPieces) then
         true
     else
-        !:TaggedPieceLists = !.TaggedPieceLists ++ [TaggedPieces]
+        !:MaybeSingleActual = no
+    ),
+    ( if !.MaybeSingleExpected = yes(ExpectedPieces) then
+        true
+    else
+        !:MaybeSingleExpected = no
+    ),
+    is_actual_or_expected_single_type_loop(AEs,
+        !MaybeSingleActual, !MaybeSingleExpected).
+
+%---------------------------------------------------------------------------%
+
+:- type maybe_print_expectation_source
+    --->    do_not_print_expectation_source
+    ;       print_expectation_source.
+
+:- pred should_we_print_expectation_sources(list(actual_expected_types)::in,
+    maybe_print_expectation_source::out) is det.
+
+should_we_print_expectation_sources(ActualExpectedList, MaybePrintSource) :-
+    % If some elements of ActualExpectedList have substantive sources and
+    % some don't, then don't print any of the sources, since doing so
+    % would be confusing.
+    HasSource =
+        ( pred(AE::in) is semidet :-
+            MaybeSource = AE ^ expectation_source,
+            MaybeSource = yes(Source),
+            Source \= atas_ensure_have_a_type
+        ),
+    ( if list.all_true(HasSource, ActualExpectedList) then
+        MaybePrintSource = print_expectation_source
+    else
+        MaybePrintSource = do_not_print_expectation_source
     ).
 
 :- pred acc_expected_type_source_pieces(module_info::in,
-    maybe_print_expectation_source::in, list(actual_expected_types)::in,
+    list(actual_expected_types)::in,
     set(pair(list(format_piece)))::out, list(format_piece)::out) is det.
 
-acc_expected_type_source_pieces(_, _, [], set.init, []).
-acc_expected_type_source_pieces(ModuleInfo, MaybePrintSource,
+acc_expected_type_source_pieces(_, [], set.init, []).
+acc_expected_type_source_pieces(ModuleInfo,
         [ActualExpected | ActualExpecteds],
-        SourceExpectedPairs, AllTaggedPieces) :-
-    acc_expected_type_source_pieces(ModuleInfo, MaybePrintSource,
-        ActualExpecteds, TailSourceExpectedPairs, TailTaggedPieces),
+        SourceExpectedPairs, TaggedPieces) :-
+    acc_expected_type_source_pieces(ModuleInfo, ActualExpecteds,
+        TailSourceExpectedPairs, TailTaggedPieces),
     ActualExpected = actual_expected_types(_ActualPieces, _ActualType,
         ExpectedPieces, _ExpectedType, _ExistQTVars, MaybeSource),
     (
@@ -1616,10 +1535,8 @@ acc_expected_type_source_pieces(ModuleInfo, MaybePrintSource,
         TailTaggedPieces = [_ | _],
         CommaOrPeriod = ","
     ),
-    ( if
-        MaybePrintSource = print_expectation_source,
-        MaybeSource = yes(Source)
-    then
+    (
+        MaybeSource = yes(Source),
         SourcePieces = describe_args_type_assign_source(ModuleInfo, Source),
         % We add a newline after the "(expected by ...):" text for two reasons:
         %
@@ -1628,14 +1545,14 @@ acc_expected_type_source_pieces(ModuleInfo, MaybePrintSource,
         % - because this (or something very similar) is needed to ensure
         %   that the different expected type pieces line up exactly with
         %   (a) the inferred type pieces, and (b) each other.
-        TaggedPieces = [words("the type expected by") | SourcePieces] ++
+        HeadTaggedPieces = [words("the type expected by") | SourcePieces] ++
             [words("is:"), nl_indent_delta(1) | ExpectedPieces] ++
             [suffix(CommaOrPeriod), nl_indent_delta(-1)]
-    else
-        SourcePieces = [],
-        TaggedPieces = [words("one expected type is:"),
-            nl_indent_delta(1) | ExpectedPieces] ++
-            [suffix(CommaOrPeriod), nl_indent_delta(-1)]
+    ;
+        MaybeSource = no,
+        % Our caller should invoke this predicate only if all
+        % actual_expected_types have a meaningful source.
+        unexpected($pred, "MaybeSource = no")
     ),
     % We can't test whether we have printed a SourcePieces/ExpectedPieces
     % pair by testing TailTaggedPieceLists due to the possibility of false
@@ -1643,19 +1560,12 @@ acc_expected_type_source_pieces(ModuleInfo, MaybePrintSource,
     SourceExpectedPair = SourcePieces - ExpectedPieces,
     ( if set.member(SourceExpectedPair, TailSourceExpectedPairs) then
         SourceExpectedPairs = TailSourceExpectedPairs,
-        AllTaggedPieces = TailTaggedPieces
+        TaggedPieces = TailTaggedPieces
     else
         set.insert(SourceExpectedPair,
             TailSourceExpectedPairs, SourceExpectedPairs),
-        AllTaggedPieces = TaggedPieces ++ TailTaggedPieces
+        TaggedPieces = HeadTaggedPieces ++ TailTaggedPieces
     ).
-
-:- func actual_types_to_pieces(actual_expected_types) = list(format_piece).
-
-actual_types_to_pieces(ActualExpected) = Pieces :-
-    ActualExpected = actual_expected_types(ActualPieces, _ActualType,
-        _ExpectedPieces, _ExpectedType, _ExistQTVars, _Source),
-    Pieces = [words("(inferred)") | ActualPieces].
 
 %---------------------------------------------------------------------------%
 

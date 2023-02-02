@@ -5,7 +5,7 @@ actual_expected.m:110:   type error: variable `LiveMap' has type
 actual_expected.m:110:     tree234.tree234(
 actual_expected.m:110:       actual_expected.label,
 actual_expected.m:110:       set_ordlist.set_ordlist(actual_expected.lval)
-actual_expected.m:110:     ),
+actual_expected.m:110:     );
 actual_expected.m:110:   expected type was
 actual_expected.m:110:     maybe.maybe(
 actual_expected.m:110:       tree234.tree234(

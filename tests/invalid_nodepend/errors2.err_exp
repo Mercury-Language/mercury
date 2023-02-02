@@ -24,9 +24,8 @@ errors2.m:025: Error: no clauses for predicate `produce_string'/1.
 errors2.m:027: Error: no clauses for predicate `expect_int'/1.
 errors2.m:033: In clause for predicate `type_error'/0:
 errors2.m:033:   in argument 1 of call to predicate `errors2.expect_int'/1:
-errors2.m:033:   type error:
-errors2.m:033:   variable `X' has type
-errors2.m:033:     string,
+errors2.m:033:   type error: variable `X' has type
+errors2.m:033:     string;
 errors2.m:033:   expected type was
 errors2.m:033:     int.
 errors2.m:033:   The partial type assignment was:
@@ -43,9 +42,8 @@ errors2.m:040:     X_1: string
 errors2.m:040:     Y_2: int
 errors2.m:047: In clause for predicate `type_error_3'/0:
 errors2.m:047:   in argument 1 of call to predicate `errors2.expect_int'/1:
-errors2.m:047:   type error:
-errors2.m:047:   variable `Y' has type
-errors2.m:047:     string,
+errors2.m:047:   type error: variable `Y' has type
+errors2.m:047:     string;
 errors2.m:047:   expected type was
 errors2.m:047:     int.
 errors2.m:047:   The partial type assignment was:
@@ -102,9 +100,8 @@ errors2.m:084: In clause for predicate `type_error_7'/0:
 errors2.m:084:   warning: variables `A, B, Z' occur only once in this scope.
 errors2.m:085: In clause for predicate `type_error_7'/0:
 errors2.m:085:   in argument 1 of call to predicate `errors2.expect_int'/1:
-errors2.m:085:   type error:
-errors2.m:085:   variable `C' has type
-errors2.m:085:     string,
+errors2.m:085:   type error: variable `C' has type
+errors2.m:085:     string;
 errors2.m:085:   expected type was
 errors2.m:085:     int.
 errors2.m:085:   The possible partial type assignments were:

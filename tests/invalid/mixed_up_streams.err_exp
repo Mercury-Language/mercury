@@ -1,8 +1,7 @@
 mixed_up_streams.m:019: In clause for predicate `main'/2:
 mixed_up_streams.m:019:   in argument 1 of call to predicate `io.write_byte'/4:
-mixed_up_streams.m:019:   type error:
-mixed_up_streams.m:019:   variable `BinaryInput' has type
-mixed_up_streams.m:019:     io.binary_input_stream,
+mixed_up_streams.m:019:   type error: variable `BinaryInput' has type
+mixed_up_streams.m:019:     io.binary_input_stream;
 mixed_up_streams.m:019:   expected type was
 mixed_up_streams.m:019:     io.binary_output_stream.
 For more information, recompile with `-E'.

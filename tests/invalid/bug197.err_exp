@@ -5,7 +5,7 @@ bug197.m:025:   However, a predicate of that name does exist with arity 4.
 bug197.m:026: In clause for predicate `foo'/3:
 bug197.m:026:   in argument 1 of call to predicate `list.foldl'/4:
 bug197.m:026:   type error: argument has type
-bug197.m:026:     pred(string, T, V_6, V_6),
+bug197.m:026:     pred(string, T, V_6, V_6);
 bug197.m:026:   expected type was
 bug197.m:026:     pred(L, A, A).
 bug197.m:026:   Arity mismatch for the predicate: expected three arguments, got

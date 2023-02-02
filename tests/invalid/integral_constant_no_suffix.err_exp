@@ -1,9 +1,8 @@
 integral_constant_no_suffix.m:016: In clause for predicate `main'/2:
 integral_constant_no_suffix.m:016:   in argument 1 of call to predicate
 integral_constant_no_suffix.m:016:   `integral_constant_no_suffix.life_universe_everything'/1:
-integral_constant_no_suffix.m:016:   type error:
-integral_constant_no_suffix.m:016:   variable `N' has type
-integral_constant_no_suffix.m:016:     int,
+integral_constant_no_suffix.m:016:   type error: variable `N' has type
+integral_constant_no_suffix.m:016:     int;
 integral_constant_no_suffix.m:016:   expected type was
 integral_constant_no_suffix.m:016:     uint8.
 integral_constant_no_suffix.m:016:   A integer constant that consists only of

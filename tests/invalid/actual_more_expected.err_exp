@@ -1,9 +1,7 @@
 actual_more_expected.m:029: In clause for predicate `p1'/3:
 actual_more_expected.m:029:   in argument 1 of call to predicate `foldl'/4:
-actual_more_expected.m:029:   type error: type of argument does not match its
-actual_more_expected.m:029:   expected type;
-actual_more_expected.m:029:   its inferred type is
-actual_more_expected.m:029:     pred(int, actual_more_expected.dir, int),
+actual_more_expected.m:029:   type error: argument has type
+actual_more_expected.m:029:     pred(int, actual_more_expected.dir, int);
 actual_more_expected.m:029:   the type expected by predicate `list.foldl'/4 is:
 actual_more_expected.m:029:     pred(L, A, A),
 actual_more_expected.m:029:   the type expected by predicate `string.foldl'/4
