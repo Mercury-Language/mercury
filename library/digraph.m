@@ -764,83 +764,59 @@ inverse(G, InvG) :-
 compose(G1, G2) = Comp :-
     digraph.compose(G1, G2, Comp).
 
-compose(G1, G2, !:Comp) :-
-    !:Comp = digraph.init,
+compose(G1, G2, Comp) :-
+    FwdMap2 = G2 ^ fwd_map,
+    map.foldl(compose_loop(G1, G2), FwdMap2, digraph.init, Comp).
 
-    % Find the set of vertices which occur in both G1 and G2.
-    digraph.vertices(G1, G1Vs),
-    digraph.vertices(G2, G2Vs),
-    Matches = set.intersect(G1Vs, G2Vs),
+:- pred compose_loop(digraph(T)::in, digraph(T)::in,
+    uint::in, digraph_key_set(T)::in, digraph(T)::in, digraph(T)::out) is det.
 
-    % Find the sets of keys to be matched in each digraph.
-    AL = list.map(
-        ( func(Match) = Xs - Ys :-
-            digraph.lookup_key(G1, Match, M1),
-            digraph.lookup_key_set_to(G1, M1, Xs),
-            digraph.lookup_key(G2, Match, M2),
-            digraph.lookup_key_set_from(G2, M2, Ys)
-        ),
-        set.to_sorted_list(Matches)),
+compose_loop(G1, G2, MI2, Ys2, !Comp) :-
+    % M is a vertex in G2.
+    % Ys is the set of ys such that (M,y) is in G2.
+    M2 = digraph_key(MI2),
+    digraph.lookup_vertex(G2, M2, VM),
+    ( if
+        % Find the set of xs such that (x,M) is in G1.
+        digraph.search_key(G1, VM, M1),
+        M1 = digraph_key(MI1),
+        map.search(G1 ^ bwd_map, MI1, Xs1)
+    then
+        % Add all vertices in Xs and Ys to the new digraph.
+        copy_vertices(G1, Xs1, Xs, !Comp),
+        copy_vertices(G2, Ys2, Ys, !Comp),
 
-    % Find the sets of keys in each digraph which will occur in
-    % the new digraph.
-    list.foldl2(find_necessary_keys, AL, sparse_bitset.init, Needed1,
-        sparse_bitset.init, Needed2),
+        % Add edges (x,y) for all x in Xs and y in Ys.
+        !.Comp = digraph(NextKey, VMap, FwdMap0, BwdMap0),
+        sparse_bitset.foldl(add_to_key_set_map(Ys), Xs, FwdMap0, FwdMap),
+        sparse_bitset.foldl(add_to_key_set_map(Xs), Ys, BwdMap0, BwdMap),
+        !:Comp = digraph(NextKey, VMap, FwdMap, BwdMap)
+    else
+        true
+    ).
 
-    % Add the elements to the composition.
-    sparse_bitset.foldl2(copy_vertex(G1), Needed1, !Comp, map.init, KMap1),
-    sparse_bitset.foldl2(copy_vertex(G2), Needed2, !Comp, map.init, KMap2),
+:- pred copy_vertices(digraph(T)::in, digraph_key_set(T)::in,
+    digraph_key_set(T)::out, digraph(T)::in, digraph(T)::out) is det.
 
-    % Add the edges to the composition.
-    list.foldl(add_composition_edges(KMap1, KMap2), AL, !Comp).
-
-:- pred find_necessary_keys(pair(digraph_key_set(T))::in,
-    digraph_key_set(T)::in, digraph_key_set(T)::out,
-    digraph_key_set(T)::in, digraph_key_set(T)::out) is det.
-
-find_necessary_keys(Xs - Ys, !Needed1, !Needed2) :-
-    sparse_bitset.union(Xs, !Needed1),
-    sparse_bitset.union(Ys, !Needed2).
+copy_vertices(G, Xs, CompXs, !Comp) :-
+    sparse_bitset.foldl2(copy_vertex(G), Xs,
+        sparse_bitset.init, CompXs, !Comp).
 
 :- pred copy_vertex(digraph(T)::in, digraph_key(T)::in,
-    digraph(T)::in, digraph(T)::out, key_map(T)::in, key_map(T)::out) is det.
+    digraph_key_set(T)::in, digraph_key_set(T)::out,
+    digraph(T)::in, digraph(T)::out) is det.
 
-copy_vertex(G, X, !Comp, !KMap) :-
+copy_vertex(G, X, !CompXs, !Comp) :-
     digraph.lookup_vertex(G, X, VX),
     digraph.add_vertex(VX, CompX, !Comp),
+    sparse_bitset.insert(CompX, !CompXs).
+
+:- pred add_to_key_set_map(digraph_key_set(T)::in, digraph_key(T)::in,
+    key_set_map(T)::in, key_set_map(T)::out) is det.
+
+add_to_key_set_map(Ys, X, !Map) :-
     X = digraph_key(XI),
-    map.det_insert(XI, CompX, !KMap).
-
-:- pred add_composition_edges(key_map(T)::in, key_map(T)::in,
-    pair(digraph_key_set(T))::in, digraph(T)::in, digraph(T)::out) is det.
-
-add_composition_edges(KMap1, KMap2, Xs - Ys, !Comp) :-
-    digraph.add_cartesian_product(map_digraph_key_set(KMap1, Xs),
-        map_digraph_key_set(KMap2, Ys), !Comp).
-
-:- func map_digraph_key_set(key_map(T), digraph_key_set(T)) =
-    digraph_key_set(T).
-
-map_digraph_key_set(KMap, Set0) = Set :-
-    sparse_bitset.foldl(accumulate_digraph_key_set(KMap), Set0,
-        sparse_bitset.init, Set).
-
-:- pred accumulate_digraph_key_set(key_map(T)::in, digraph_key(T)::in,
-    digraph_key_set(T)::in, digraph_key_set(T)::out) is det.
-
-accumulate_digraph_key_set(KMap, X, !Set) :-
-    X = digraph_key(XI),
-    map.lookup(KMap, XI, Y),
-    sparse_bitset.insert(Y, !Set).
-
-:- pred add_cartesian_product(digraph_key_set(T)::in,
-    digraph_key_set(T)::in, digraph(T)::in, digraph(T)::out) is det.
-
-add_cartesian_product(KeySet1, KeySet2, !G) :-
-    sparse_bitset.foldl(
-        ( pred(Key1::in, G0::in, G::out) is det :-
-            sparse_bitset.foldl(digraph.add_edge(Key1), KeySet2, G0, G)
-        ), KeySet1, !G).
+    key_set_map_union(XI, Ys, !Map).
 
 %---------------------------------------------------------------------------%
 
