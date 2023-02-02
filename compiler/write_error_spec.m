@@ -510,7 +510,7 @@ do_write_error_pieces(Stream, Globals, MaybeContext, TreatAsFirst, FixedIndent,
             convert_pieces_to_paragraphs(Pieces, Paragraphs),
             string.pad_left("", ' ', FixedIndent, FixedIndentStr),
             PrefixStr = ContextStr ++ FixedIndentStr,
-            PrefixLen = string.count_codepoints(PrefixStr),
+            PrefixLen = string.count_code_points(PrefixStr),
             (
                 MaybeMaxWidth = yes(MaxWidth),
                 AvailLen = MaxWidth - PrefixLen,
@@ -1130,7 +1130,7 @@ group_nonfirst_line_words(AvailLen, FirstWord, LaterWords,
 
 get_line_of_words(AvailLen, FirstWord, LaterWords, Indent, LineWordsLen,
         LineWords, RestWords) :-
-    string.count_codepoints(FirstWord, FirstWordLen),
+    string.count_code_points(FirstWord, FirstWordLen),
     AvailLeft = AvailLen - Indent * indent_increment,
     get_later_words(AvailLeft, LaterWords, FirstWordLen, LineWordsLen,
         cord.singleton(FirstWord), LineWordsCord, RestWords),
@@ -1143,7 +1143,7 @@ get_later_words(_, [], CurLen, FinalLen, LineWords, LineWords, []) :-
     FinalLen = CurLen.
 get_later_words(Avail, [Word | Words], CurLen, FinalLen,
         LineWords0, LineWords, RestWords) :-
-    string.count_codepoints(Word, WordLen),
+    string.count_code_points(Word, WordLen),
     NextLen = CurLen + 1 + WordLen,
     ( if NextLen =< Avail then
         cord.snoc(Word, LineWords0, LineWords1),
@@ -1252,9 +1252,9 @@ find_matching_rp_and_maybe_join(LPLine, TailLines0, ReplacementLines,
             MidSpaceLinesStr = string.join_list(" ", MidLineStrs),
             ReplacementLineStr =
                 LPLineWordsStr ++ MidSpaceLinesStr ++ RPLineWordsStr,
-            string.count_codepoints(ReplacementLineStr, ReplacementLineStrLen),
-            expect(unify(TotalLpRpLen, ReplacementLineStrLen), $pred,
-                "TotalLpRpLen != ReplacementLineStrLen"),
+            string.count_code_points(ReplacementLineStr, ReplacementLineLen),
+            expect(unify(TotalLpRpLen, ReplacementLineLen), $pred,
+                "TotalLpRpLen != ReplacementLineLen"),
             ReplacementLine = error_line(MaybeAvailLen, LPIndent,
                 ReplacementLineStr, TotalLpRpLen, RPParen),
             ReplacementLines = [ReplacementLine]

@@ -695,9 +695,21 @@ Changes to the Mercury standard library
 
 ### Changes to the `string` module
 
-* The following predicate has been added:
+* The following predicates and functions have been added:
 
+   - func `between_code_points/3`
+   - pred `between_code_points/4`
    - pred `contains_match/2`
+   - pred `code_point_offset/3`
+   - pred `code_point_offset/4`
+   - func `count_code_points/1`
+   - pred `count_code_points/2`
+   - func `left_by_code_point/2`
+   - pred `left_by_code_point/3`
+   - func `right_by_code_point/2`
+   - pred `right_by_code_point/3`
+   - pred `split_by_code_point/3`
+   - pred `split_by_code_point/4`
 
 * The following obsolete modes have been removed from the following predicates:
 

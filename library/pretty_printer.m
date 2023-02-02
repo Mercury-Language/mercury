@@ -526,12 +526,12 @@ do_put_docs(Stream, Canonicalize, FMap, LineWidth, [HeadDoc0 | TailDocs0],
             % Output strings directly.
             HeadDoc0 = str(String),
             stream.put(Stream, String, !IO),
-            StrWidth = string.count_codepoints(String),
+            StrWidth = string.count_code_points(String),
             !:RemainingWidth = !.RemainingWidth - StrWidth,
             Docs = TailDocs0
         ;
             HeadDoc0 = nl,
-            IndentWidth = count_indent_codepoints(!.Indents),
+            IndentWidth = count_indent_code_points(!.Indents),
             ( if !.RemainingWidth < LineWidth - IndentWidth then
                 format_nl(Stream, LineWidth, !.Indents, !:RemainingWidth,
                     !RemainingLines, !IO)
@@ -629,7 +629,7 @@ output_current_group(Stream, LineWidth, Indents, [HeadDoc0 | TailDocs0], Docs,
     (
         HeadDoc0 = str(String),
         stream.put(Stream, String, !IO),
-        StrWidth = string.count_codepoints(String),
+        StrWidth = string.count_code_points(String),
         !:RemainingWidth = !.RemainingWidth - StrWidth,
         output_current_group(Stream, LineWidth, Indents, TailDocs0, Docs,
             !.OpenGroups, !RemainingWidth, !RemainingLines, !IO)
@@ -729,7 +729,7 @@ expand_docs_to_line_end(Canonicalize, FMap,
     else
         (
             HeadDoc0 = str(String),
-            StrWidth = string.count_codepoints(String),
+            StrWidth = string.count_code_points(String),
             !:RemainingWidth = !.RemainingWidth - StrWidth,
             expand_docs_to_line_end(Canonicalize, FMap, TailDocs0, TailDocs,
                 !.OpenGroups, !Limit, !Pri, !RemainingWidth),
@@ -822,7 +822,7 @@ expand_docs_to_line_end(Canonicalize, FMap,
 
 format_nl(Stream, LineWidth, Indents, RemainingWidth, !RemainingLines, !IO) :-
     stream.put(Stream, "\n", !IO),
-    RemainingWidth = LineWidth - count_indent_codepoints(Indents),
+    RemainingWidth = LineWidth - count_indent_code_points(Indents),
     output_indent_stack(Stream, Indents, !IO),
     !:RemainingLines = !.RemainingLines - 1.
 
@@ -1192,8 +1192,8 @@ decrement_func_limit(triangular(N), triangular(N - 1)).
 
                 % The total number of code points in user_prevstack and
                 % user_indent_string. Must be the sum of
-                % count_indent_codepoints(user_prevstack) and
-                % string.count_codepoints(user_indent_string).
+                % count_indent_code_points(user_prevstack) and
+                % string.count_code_points(user_indent_string).
                 user_total_code_points  :: int
             )
     ;       indent_std(
@@ -1207,23 +1207,23 @@ decrement_func_limit(triangular(N), triangular(N - 1)).
 
                 % The total number of code points in user_prevstack and
                 % user_extra_indent. Must be the sum of
-                % count_indent_codepoints(std_prevstack) and
+                % count_indent_code_points(std_prevstack) and
                 % 2 * std_extra_indent_levels.
                 std_total_code_points   :: int
             ).
 
-:- func count_indent_codepoints(indent_stack) = int.
+:- func count_indent_code_points(indent_stack) = int.
 
-count_indent_codepoints(indent_empty) = 0.
-count_indent_codepoints(indent_user(_PrevStack, _Str, NumCPs)) = NumCPs.
-count_indent_codepoints(indent_std(_PrevStack, _NL, NumCPs)) = NumCPs.
+count_indent_code_points(indent_empty) = 0.
+count_indent_code_points(indent_user(_PrevStack, _Str, NumCPs)) = NumCPs.
+count_indent_code_points(indent_std(_PrevStack, _NL, NumCPs)) = NumCPs.
 
 :- pred increment_user_indent(string::in, indent_stack::in, indent_stack::out)
     is det.
 
 increment_user_indent(IndentStr, IndentStack0, IndentStack) :-
-    NumCPs0 = count_indent_codepoints(IndentStack0),
-    NumCPs = NumCPs0 + string.count_codepoints(IndentStr),
+    NumCPs0 = count_indent_code_points(IndentStack0),
+    NumCPs = NumCPs0 + string.count_code_points(IndentStr),
     IndentStack = indent_user(IndentStack0, IndentStr, NumCPs).
 
 :- pred decrement_user_indent(indent_stack::in, indent_stack::out) is det.

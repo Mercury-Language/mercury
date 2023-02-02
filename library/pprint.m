@@ -997,7 +997,7 @@ layout_best_acc(AccPred, Width, AfterNlStr, Doc, !UsedWidth, !LayoutStream) :-
             !UsedWidth, !LayoutStream)
     ;
         Doc = pp_line,
-        !:UsedWidth = string.count_codepoints(AfterNlStr),
+        !:UsedWidth = string.count_code_points(AfterNlStr),
         AccPred("\n", !LayoutStream),
         AccPred(AfterNlStr, !LayoutStream)
     ;
@@ -1015,7 +1015,7 @@ layout_best_acc(AccPred, Width, AfterNlStr, Doc, !UsedWidth, !LayoutStream) :-
             !UsedWidth, !LayoutStream)
     ;
         Doc = pp_text(Text),
-        !:UsedWidth = !.UsedWidth + string.count_codepoints(Text),
+        !:UsedWidth = !.UsedWidth + string.count_code_points(Text),
         AccPred(Text, !LayoutStream)
     ).
 
@@ -1043,7 +1043,7 @@ fits_flat_width_left(Doc, WidthAvail, WidthLeft) :-
         WidthLeft = WidthAvail
     ;
         Doc = pp_text(Str),
-        StrLen = string.count_codepoints(Str),
+        StrLen = string.count_code_points(Str),
         WidthLeft = WidthAvail - StrLen,
         WidthLeft > 0               % XXX This *could* be WidthLeft >= 0.
     ;
@@ -1077,7 +1077,7 @@ layout_flat(AccPred, Doc, !UsedWidth, !LayoutStream) :-
         )
     ;
         Doc = pp_text(Text),
-        !:UsedWidth = !.UsedWidth + string.count_codepoints(Text),
+        !:UsedWidth = !.UsedWidth + string.count_code_points(Text),
         AccPred(Text, !LayoutStream)
     ;
         Doc = pp_seq(DocA, DocB),

@@ -1029,7 +1029,7 @@ format_char(Flags, MaybeWidth, Char) = String :-
 format_string(Flags, MaybeWidth, MaybePrec, OldStr) = NewStr :-
     (
         MaybePrec = specified_prec(NumChars),
-        PrecStr = string.left_by_codepoint(OldStr, NumChars)
+        PrecStr = string.left_by_code_point(OldStr, NumChars)
     ;
         MaybePrec = no_specified_prec,
         PrecStr = OldStr
@@ -1072,7 +1072,7 @@ format_signed_int(Flags, MaybeWidth, MaybePrec, Int) = String :-
             AbsIntStr = abs_integer_to_decimal(AbsInteger)
         )
     ),
-    AbsIntStrLength = string.count_codepoints(AbsIntStr),
+    AbsIntStrLength = string.count_code_points(AbsIntStr),
 
     % Do we need to increase precision?
     ( if
@@ -1087,7 +1087,7 @@ format_signed_int(Flags, MaybeWidth, MaybePrec, Int) = String :-
     % Do we need to pad to the field width?
     ( if
         MaybeWidth = specified_width(Width),
-        Width > string.count_codepoints(PrecStr),
+        Width > string.count_code_points(PrecStr),
         Flags ^ flag_zero = flag_zero_set,
         Flags ^ flag_minus = flag_minus_clear,
         MaybePrec = no_specified_prec
@@ -1140,7 +1140,7 @@ format_uint(Flags, MaybeWidth, MaybePrec, Base, UInt) = String :-
             UIntStr = uint_to_uc_hex_string(UInt)
         )
     ),
-    UIntStrLength = string.count_codepoints(UIntStr),
+    UIntStrLength = string.count_code_points(UIntStr),
 
     % Do we need to increase precision?
     ( if
@@ -1166,7 +1166,7 @@ format_uint(Flags, MaybeWidth, MaybePrec, Base, UInt) = String :-
     % Do we need to pad to the field width?
     ( if
         MaybeWidth = specified_width(Width),
-        Width > string.count_codepoints(PrecModStr),
+        Width > string.count_code_points(PrecModStr),
         Flags ^ flag_zero = flag_zero_set,
         Flags ^ flag_minus = flag_minus_clear,
         MaybePrec = no_specified_prec
@@ -1256,7 +1256,7 @@ format_signed_int64(Flags, MaybeWidth, MaybePrec, Int) = String :-
         AbsInt = int64.unchecked_abs(Int),
         AbsIntStr = int64_to_string(AbsInt)
     ),
-    AbsIntStrLength = string.count_codepoints(AbsIntStr),
+    AbsIntStrLength = string.count_code_points(AbsIntStr),
 
     % Do we need to increase precision?
     ( if
@@ -1271,7 +1271,7 @@ format_signed_int64(Flags, MaybeWidth, MaybePrec, Int) = String :-
     % Do we need to pad to the field width?
     ( if
         MaybeWidth = specified_width(Width),
-        Width > string.count_codepoints(PrecStr),
+        Width > string.count_code_points(PrecStr),
         Flags ^ flag_zero = flag_zero_set,
         Flags ^ flag_minus = flag_minus_clear,
         MaybePrec = no_specified_prec
@@ -1324,7 +1324,7 @@ format_uint64(Flags, MaybeWidth, MaybePrec, Base, UInt64) = String :-
             UInt64Str = uint64_to_uc_hex_string(UInt64)
         )
     ),
-    UInt64StrLength = string.count_codepoints(UInt64Str),
+    UInt64StrLength = string.count_code_points(UInt64Str),
 
     % Do we need to increase precision?
     ( if
@@ -1350,7 +1350,7 @@ format_uint64(Flags, MaybeWidth, MaybePrec, Base, UInt64) = String :-
     % Do we need to pad to the field width?
     ( if
         MaybeWidth = specified_width(Width),
-        Width > string.count_codepoints(PrecModStr),
+        Width > string.count_code_points(PrecModStr),
         Flags ^ flag_zero = flag_zero_set,
         Flags ^ flag_minus = flag_minus_clear,
         MaybePrec = no_specified_prec
@@ -1492,7 +1492,7 @@ format_float(Flags, MaybeWidth, MaybePrec, Kind, Float) = String :-
                 Flags ^ flag_hash = flag_hash_clear,
                 MaybePrec = specified_prec(0)
             then
-                PrecStrLen = string.count_codepoints(PrecStr),
+                PrecStrLen = string.count_code_points(PrecStr),
                 PrecModStr = string.between(PrecStr, 0, PrecStrLen - 1)
             else
                 PrecModStr = PrecStr
@@ -1511,7 +1511,7 @@ format_float(Flags, MaybeWidth, MaybePrec, Kind, Float) = String :-
         % Do we need to change field width?
         ( if
             MaybeWidth = specified_width(Width),
-            Width > string.count_codepoints(PrecModStr),
+            Width > string.count_code_points(PrecModStr),
             Flags ^ flag_zero = flag_zero_set,
             Flags ^ flag_minus = flag_minus_clear
         then
@@ -1637,7 +1637,7 @@ add_sign_like_prefix_to_float_if_needed(Flags, ZeroPadded, Float, FieldStr)
 justify_string(Flags, MaybeWidth, Str) = JustifiedStr :-
     ( if
         MaybeWidth = specified_width(Width),
-        Width > string.count_codepoints(Str)
+        Width > string.count_code_points(Str)
     then
         ( if Flags ^ flag_minus = flag_minus_set then
             string.pad_right(Str, ' ', Width, JustifiedStr)
@@ -1890,7 +1890,7 @@ change_to_e_notation(Float, Prec, E) = ScientificFloat :-
 
     % Is mantissa greater than one digit long?
     split_at_decimal_point(UnsafeBase, MantissaStr, _FractionStr),
-    ( if string.count_codepoints(MantissaStr) > 1 then
+    ( if string.count_code_points(MantissaStr) > 1 then
         % Need to append 0, to fix the problem of having no numbers
         % after the decimal point.
         SafeBase = calculate_base_unsafe(string.append(UnsafeBase, "0"),
@@ -1930,7 +1930,7 @@ size_of_required_exponent(Float, Prec) = Exponent :-
 
     % Is mantissa one digit long?
     split_at_decimal_point(UnsafeBase, MantissaStr, _FractionStr),
-    ( if string.count_codepoints(MantissaStr) > 1 then
+    ( if string.count_code_points(MantissaStr) > 1 then
         % We will need to move decimal pt one place to the left:
         % therefore, increment exponent.
         Exponent = UnsafeExponent + 1
@@ -1971,7 +1971,7 @@ remove_zeros(CharNum) = TrimmedNum :-
 
 decimal_pos(Float) = Pos :-
     split_at_decimal_point(Float, MantissaStr, _FractionStr),
-    NumZeros = string.count_codepoints(MantissaStr) - 1,
+    NumZeros = string.count_code_points(MantissaStr) - 1,
     Pos = find_non_zero_pos(string.to_char_list(Float), NumZeros).
 
     % Given a list of chars representing a floating point number, this
@@ -2039,7 +2039,7 @@ calculate_base_unsafe(Float, Prec) = Exp :-
 
 change_precision(OldFloat, Prec) = NewFloat :-
     split_at_decimal_point(OldFloat, MantissaStr, FractionStr),
-    FracStrLen = string.count_codepoints(FractionStr),
+    FracStrLen = string.count_code_points(FractionStr),
     ( if Prec > FracStrLen then
         PrecFracStr = string.pad_right(FractionStr, '0', Prec),
         PrecMantissaStr = MantissaStr
@@ -2054,8 +2054,8 @@ change_precision(OldFloat, Prec) = NewFloat :-
             NewPrecFracStrNotOK = string.int_to_string( NewPrecFrac),
             NewPrecFracStr = string.pad_left(NewPrecFracStrNotOK, '0', Prec),
             ( if
-                string.count_codepoints(NewPrecFracStr) >
-                    string.count_codepoints(UnroundedFrac)
+                string.count_code_points(NewPrecFracStr) >
+                    string.count_code_points(UnroundedFrac)
             then
                 PrecFracStr = between(NewPrecFracStr, 1, 1 + Prec),
                 PrecMantissaInt = det_to_int(MantissaStr) + 1,

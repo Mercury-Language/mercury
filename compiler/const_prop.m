@@ -353,11 +353,13 @@ evaluate_det_call_float_2(_Globals, ProcName, ModeNum, X, Y,
 
 evaluate_det_call_string_2(_Globals, ProcName, ModeNum, X, Y,
         OutputArg, OutputArgVal) :-
-    ProcName = "count_codepoints",
+    ( ProcName = "count_codepoints"
+    ; ProcName = "count_code_points"
+    ),
     ModeNum = 0,
     X ^ arg_inst = bound(_, _, [bound_functor(string_const(XVal), [])]),
     OutputArg = Y,
-    CodePointCountX = string.count_codepoints(XVal),
+    CodePointCountX = string.count_code_points(XVal),
     OutputArgVal = some_int_const(int_const(CodePointCountX)).
 
 %---------------------%

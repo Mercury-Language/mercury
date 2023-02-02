@@ -880,7 +880,7 @@ mercury_limited_term_nq_to_string_vs(VarSet, VarNamePrint, NextToGraphicToken,
         Limit, Term) = String :-
     mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
         unit, "", FullString),
-    FullLen = string.count_codepoints(FullString),
+    FullLen = string.count_code_points(FullString),
     ( if FullLen =< Limit then
         String = FullString
     else

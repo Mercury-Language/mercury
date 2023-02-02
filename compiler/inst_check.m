@@ -547,7 +547,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
                 BuiltinType = builtin_type_char,
                 ( if
                     ConsSymName = unqualified(ConsName),
-                    string.count_codepoints(ConsName) = 1
+                    string.count_code_points(ConsName) = 1
                 then
                     true
                 else
@@ -710,7 +710,7 @@ get_possible_types_for_bound_inst(FunctorsToTypesMap, BoundInst, MaybeTypes) :-
         ),
         % Zero arity functors with length 1 could match the builtin
         % character type.
-        ( if string.count_codepoints(Name) = 1 then
+        ( if string.count_code_points(Name) = 1 then
             UserCharTypes = [type_builtin(builtin_type_char) | UserTypes]
         else
             UserCharTypes = UserTypes
@@ -1213,7 +1213,7 @@ find_mismatches_from_builtin(ExpectedBuiltinType, CurNum,
             true
         else if
             ConsId = cons(SymName, ConsArity, _),
-            string.count_codepoints(unqualify_name(SymName)) = 1,
+            string.count_code_points(unqualify_name(SymName)) = 1,
             ConsArity = 0
         then
             true

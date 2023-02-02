@@ -488,7 +488,7 @@ output_quoted_string_c(Stream, Str, !IO) :-
     % it will accept a string longer than 2048 chars if we output
     % the string in chunks, as in e.g. "part a" "part b". Go figure!
     % XXX How does "limit is 2048" translate to "get me 160 codepoints"?
-    string.split_by_codepoint(Str, 160, LeftSubStr, RightSubStr),
+    string.split_by_code_point(Str, 160, LeftSubStr, RightSubStr),
     io.write_char(Stream, '"', !IO),
     output_to_be_quoted_string_loop_c(Stream, LeftSubStr, 0, !IO),
     io.write_char(Stream, '"', !IO),

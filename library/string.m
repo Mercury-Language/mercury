@@ -481,12 +481,17 @@
     % (This matches the number of steps it would take to iterate over the
     % string using string.index_next or string.prev_index.)
     %
-    % NOTE The names of this predicate and several other predicates
-    % may be changed in the future to refer to code_points, not codepoints,
-    % for consistency with predicate names that talk about code_units.
+:- func count_code_points(string) = int.
+:- pred count_code_points(string::in, int::out) is det.
+
+    % NOTE We are changing all occurrences of "codepoint" in the
+    % names of predicates and functions to "code_point", for consistency
+    % with predicate and function names that talk about code_units.
     %
 :- func count_codepoints(string) = int.
 :- pred count_codepoints(string::in, int::out) is det.
+% :- pragma obsolete(func(count_codepoints/1), [count_code_points/1]).
+% :- pragma obsolete(pred(count_codepoints/2), [count_code_points/2]).
 
     % count_utf8_code_units(String) = Length:
     %
@@ -500,7 +505,7 @@
     %
 :- func count_utf8_code_units(string) = int.
 
-    % codepoint_offset(String, StartOffset, Count, Offset):
+    % code_point_offset(String, StartOffset, Count, Offset):
     %
     % Let S be the substring of String from code unit StartOffset to the
     % end of the string. Offset is code unit offset after advancing Count
@@ -512,13 +517,27 @@
     % length of String), or if there are fewer than Count steps possible
     % in S.
     %
-:- pred codepoint_offset(string::in, int::in, int::in, int::out) is semidet.
+:- pred code_point_offset(string::in, int::in, int::in, int::out) is semidet.
 
-    % codepoint_offset(String, Count, Offset):
+    % NOTE We are changing all occurrences of "codepoint" in the
+    % names of predicates and functions to "code_point", for consistency
+    % with predicate and function names that talk about code_units.
     %
-    % Same as `codepoint_offset(String, 0, Count, Offset)'.
+:- pred codepoint_offset(string::in, int::in, int::in, int::out) is semidet.
+% :- pragma obsolete(pred(codepoint_offset/4), [code_point_offset/4]).
+
+    % code_point_offset(String, Count, Offset):
+    %
+    % Same as `code_point_offset(String, 0, Count, Offset)'.
+    %
+:- pred code_point_offset(string::in, int::in, int::out) is semidet.
+
+    % NOTE We are changing all occurrences of "codepoint" in the
+    % names of predicates and functions to "code_point", for consistency
+    % with predicate and function names that talk about code_units.
     %
 :- pred codepoint_offset(string::in, int::in, int::out) is semidet.
+% :- pragma obsolete(pred(codepoint_offset/3), [code_point_offset/3]).
 
 %---------------------------------------------------------------------------%
 %
@@ -797,15 +816,23 @@
     %
 :- pred split(string::in, int::in, string::out, string::out) is det.
 
-    % split_by_codepoint(String, Count, LeftSubstring, RightSubstring):
+    % split_by_code_point(String, Count, LeftSubstring, RightSubstring):
     %
     % LeftSubstring is the left-most Count code points of String,
     % and RightSubstring is the remainder of String.
     % (If Count is out of the range [0, length of String], it is treated
     % as if it were the nearest end-point of that range.)
     %
+:- pred split_by_code_point(string::in, int::in, string::out, string::out)
+    is det.
+
+    % NOTE We are changing all occurrences of "codepoint" in the
+    % names of predicates and functions to "code_point", for consistency
+    % with predicate and function names that talk about code_units.
+    %
 :- pred split_by_codepoint(string::in, int::in, string::out, string::out)
     is det.
+% :- pragma obsolete(pred(split_by_codepoint/4), [split_by_code_point/4]).
 
     % left(String, Count, LeftSubstring):
     %
@@ -816,14 +843,23 @@
 :- func left(string::in, int::in) = (string::out) is det.
 :- pred left(string::in, int::in, string::out) is det.
 
-    % left_by_codepoint(String, Count, LeftSubstring):
+    % left_by_code_point(String, Count, LeftSubstring):
     %
     % LeftSubstring is the left-most Count code points of String.
     % (If Count is out of the range [0, length of String], it is treated
     % as if it were the nearest end-point of that range.)
     %
+:- func left_by_code_point(string::in, int::in) = (string::out) is det.
+:- pred left_by_code_point(string::in, int::in, string::out) is det.
+
+    % NOTE We are changing all occurrences of "codepoint" in the
+    % names of predicates and functions to "code_point", for consistency
+    % with predicate and function names that talk about code_units.
+    %
 :- func left_by_codepoint(string::in, int::in) = (string::out) is det.
 :- pred left_by_codepoint(string::in, int::in, string::out) is det.
+% :- pragma obsolete(func(left_by_codepoint/2), [left_by_codepoint/2]).
+% :- pragma obsolete(pred(left_by_codepoint/3), [left_by_codepoint/3]).
 
     % right(String, Count, RightSubstring):
     %
@@ -834,14 +870,23 @@
 :- func right(string::in, int::in) = (string::out) is det.
 :- pred right(string::in, int::in, string::out) is det.
 
-    % right_by_codepoint(String, Count, RightSubstring):
+    % right_by_code_point(String, Count, RightSubstring):
     %
     % RightSubstring is the right-most Count code points of String.
     % (If Count is out of the range [0, length of String], it is treated
     % as if it were the nearest end-point of that range.)
     %
+:- func right_by_code_point(string::in, int::in) = (string::out) is det.
+:- pred right_by_code_point(string::in, int::in, string::out) is det.
+
+    % NOTE We are changing all occurrences of "codepoint" in the
+    % names of predicates and functions to "code_point", for consistency
+    % with predicate and function names that talk about code_units.
+    %
 :- func right_by_codepoint(string::in, int::in) = (string::out) is det.
 :- pred right_by_codepoint(string::in, int::in, string::out) is det.
+% :- pragma obsolete(func(right_by_codepoint/2), [right_by_codepoint/2]).
+% :- pragma obsolete(pred(right_by_codepoint/3), [right_by_codepoint/3]).
 
     % between(String, Start, End, Substring):
     %
@@ -855,7 +900,7 @@
 :- func between(string::in, int::in, int::in) = (string::uo) is det.
 :- pred between(string::in, int::in, int::in, string::uo) is det.
 
-    % between_codepoints(String, Start, End, Substring):
+    % between_code_points(String, Start, End, Substring):
     %
     % Substring is the part of String between the code point positions
     % Start and End. The result is equivalent to:
@@ -864,21 +909,31 @@
     %
     % where:
     %
-    %   StartOffset is from codepoint_offset(String, Start, StartOffset)
-    %     if Start is in [0, count_codepoints(String)],
+    %   StartOffset is from code_point_offset(String, Start, StartOffset)
+    %     if Start is in [0, count_code_points(String)],
     %   StartOffset = 0 if Start < 0,
     %   StartOffset = length(String) otherwise;
     %
-    %   EndOffset is from codepoint_offset(String, End, EndOffset)
-    %     if End is in [0, count_codepoints(String)],
+    %   EndOffset is from code_point_offset(String, End, EndOffset)
+    %     if End is in [0, count_code_points(String)],
     %   EndOffset = 0 if End < 0,
     %   EndOffset = length(String) otherwise.
     %
     % between/4 will enforce StartOffset =< EndOffset.
     %
+:- func between_code_points(string::in, int::in, int::in)
+    = (string::uo) is det.
+:- pred between_code_points(string::in, int::in, int::in, string::uo) is det.
+
+    % NOTE We are changing all occurrences of "codepoint" in the
+    % names of predicates and functions to "code_point", for consistency
+    % with predicate and function names that talk about code_units.
+    %
 :- func between_codepoints(string::in, int::in, int::in)
     = (string::uo) is det.
 :- pred between_codepoints(string::in, int::in, int::in, string::uo) is det.
+% :- pragma obsolete(func(between_codepoints/3), [between_code_points/3]).
+% :- pragma obsolete(pred(between_codepoints/4), [between_code_points/4]).
 
     % unsafe_between(String, Start, End, Substring):
     %
@@ -1341,7 +1396,7 @@
     % Convert a string to a pretty_printer.doc for formatting.
     %
 :- func string_to_doc(string) = pretty_printer.doc.
-:- pragma obsolete(func(string_to_doc/1), [pretty_printer.string_to_doc/1]).
+% :- pragma obsolete(func(string_to_doc/1), [pretty_printer.string_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %
@@ -2888,27 +2943,33 @@ count_code_units(Str, Length) :-
 
 %---------------------%
 
-count_codepoints(String) = Count :-
-    count_codepoints(String, Count).
+count_code_points(String) = Count :-
+    count_code_points(String, Count).
 
 :- pragma foreign_proc("Java",
-    count_codepoints(String::in, Count::out),
+    count_code_points(String::in, Count::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     Count = String.codePointCount(0, String.length());
 ").
 
-count_codepoints(String, Count) :-
-    count_codepoints_loop(String, 0, 0, Count).
+count_code_points(String, Count) :-
+    count_code_points_loop(String, 0, 0, Count).
 
-:- pred count_codepoints_loop(string::in, int::in, int::in, int::out) is det.
+:- pred count_code_points_loop(string::in, int::in, int::in, int::out) is det.
 
-count_codepoints_loop(String, I, Count0, Count) :-
+count_code_points_loop(String, I, Count0, Count) :-
     ( if unsafe_index_next(String, I, J, _) then
-        count_codepoints_loop(String, J, Count0 + 1, Count)
+        count_code_points_loop(String, J, Count0 + 1, Count)
     else
         Count = Count0
     ).
+
+count_codepoints(String) = Count :-
+    count_code_points(String, Count).
+
+count_codepoints(String, Count) :-
+    count_code_points(String, Count).
 
 %---------------------%
 
@@ -2934,7 +2995,7 @@ count_utf16_to_utf8_code_units(Char, !Length) :-
 %---------------------%
 
 :- pragma foreign_proc("Java",
-    codepoint_offset(String::in, StartOffset::in, N::in, Index::out),
+    code_point_offset(String::in, StartOffset::in, N::in, Index::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     try {
@@ -2946,27 +3007,33 @@ count_utf16_to_utf8_code_units(Char, !Length) :-
     }
 ").
 
-codepoint_offset(String, StartOffset, N, Index) :-
+code_point_offset(String, StartOffset, N, Index) :-
     StartOffset >= 0,
     Length = length(String),
-    codepoint_offset_loop(String, StartOffset, Length, N, Index).
+    code_point_offset_loop(String, StartOffset, Length, N, Index).
 
-:- pred codepoint_offset_loop(string::in, int::in, int::in, int::in, int::out)
+:- pred code_point_offset_loop(string::in, int::in, int::in, int::in, int::out)
     is semidet.
 
-codepoint_offset_loop(String, Offset, Length, N, Index) :-
+code_point_offset_loop(String, Offset, Length, N, Index) :-
     Offset < Length,
     ( if N = 0 then
         Index = Offset
     else
         unsafe_index_next(String, Offset, NextOffset, _),
-        codepoint_offset_loop(String, NextOffset, Length, N - 1, Index)
+        code_point_offset_loop(String, NextOffset, Length, N - 1, Index)
     ).
+
+codepoint_offset(String, StartOffset, N, Index) :-
+    code_point_offset(String, StartOffset, N, Index).
 
 %---------------------------------------------------------------------------%
 
+code_point_offset(String, N, Index) :-
+    code_point_offset(String, 0, N, Index).
+
 codepoint_offset(String, N, Index) :-
-    codepoint_offset(String, 0, N, Index).
+    code_point_offset(String, 0, N, Index).
 
 %---------------------------------------------------------------------------%
 %
@@ -4133,8 +4200,8 @@ split(Str, Index, Left, Right) :-
         )
     ).
 
-split_by_codepoint(Str, Count, Left, Right) :-
-    ( if codepoint_offset(Str, Count, Offset) then
+split_by_code_point(Str, Count, Left, Right) :-
+    ( if code_point_offset(Str, Count, Offset) then
         split(Str, Offset, Left, Right)
     else if Count =< 0 then
         Left = "",
@@ -4144,6 +4211,9 @@ split_by_codepoint(Str, Count, Left, Right) :-
         Right = ""
     ).
 
+split_by_codepoint(Str, Count, Left, Right) :-
+    split_by_code_point(Str, Count, Left, Right).
+
 %---------------------%
 
 left(S1, N) = S2 :-
@@ -4152,11 +4222,17 @@ left(S1, N) = S2 :-
 left(String, Count, LeftString) :-
     between(String, 0, Count, LeftString).
 
+left_by_code_point(String, Count) = LeftString :-
+    left_by_code_point(String, Count, LeftString).
+
+left_by_code_point(String, Count, LeftString) :-
+    split_by_code_point(String, Count, LeftString, _RightString).
+
 left_by_codepoint(String, Count) = LeftString :-
-    left_by_codepoint(String, Count, LeftString).
+    left_by_code_point(String, Count, LeftString).
 
 left_by_codepoint(String, Count, LeftString) :-
-    split_by_codepoint(String, Count, LeftString, _RightString).
+    split_by_code_point(String, Count, LeftString, _RightString).
 
 right(S1, N) = S2 :-
     right(S1, N, S2).
@@ -4166,13 +4242,19 @@ right(String, RightCount, RightString) :-
     Start = Length - RightCount,
     between(String, Start, Length, RightString).
 
+right_by_code_point(String, RightCount) = RightString :-
+    right_by_code_point(String, RightCount, RightString).
+
+right_by_code_point(String, RightCount, RightString) :-
+    count_code_points(String, TotalCount),
+    LeftCount = TotalCount - RightCount,
+    split_by_code_point(String, LeftCount, _LeftString, RightString).
+
 right_by_codepoint(String, RightCount) = RightString :-
-    right_by_codepoint(String, RightCount, RightString).
+    right_by_code_point(String, RightCount, RightString).
 
 right_by_codepoint(String, RightCount, RightString) :-
-    count_codepoints(String, TotalCount),
-    LeftCount = TotalCount - RightCount,
-    split_by_codepoint(String, LeftCount, _LeftString, RightString).
+    right_by_code_point(String, RightCount, RightString).
 
 %---------------------%
 
@@ -4199,26 +4281,32 @@ between(Str, Start, End, SubStr) :-
 
 %---------------------%
 
-between_codepoints(Str, Start, End) = SubString :-
-    between_codepoints(Str, Start, End, SubString).
+between_code_points(Str, Start, End) = SubString :-
+    between_code_points(Str, Start, End, SubString).
 
-between_codepoints(Str, Start, End, SubString) :-
+between_code_points(Str, Start, End, SubString) :-
     ( if Start < 0 then
         StartOffset = 0
-    else if codepoint_offset(Str, Start, StartOffset0) then
+    else if code_point_offset(Str, Start, StartOffset0) then
         StartOffset = StartOffset0
     else
         StartOffset = length(Str)
     ),
     ( if End < 0 then
         EndOffset = 0
-    else if codepoint_offset(Str, End, EndOffset0) then
+    else if code_point_offset(Str, End, EndOffset0) then
         EndOffset = EndOffset0
     else
         EndOffset = length(Str)
     ),
     % between/4 will enforce StartOffset =< EndOffset.
     between(Str, StartOffset, EndOffset, SubString).
+
+between_codepoints(Str, Start, End) = SubString :-
+    between_code_points(Str, Start, End, SubString).
+
+between_codepoints(Str, Start, End, SubString) :-
+    between_code_points(Str, Start, End, SubString).
 
 %---------------------%
 
@@ -4689,7 +4777,7 @@ pad_left(S1, C, N) = S2 :-
     pad_left(S1, C, N, S2).
 
 pad_left(String0, PadChar, Width, String) :-
-    count_codepoints(String0, Length),
+    count_code_points(String0, Length),
     ( if Length < Width then
         Count = Width - Length,
         duplicate_char(PadChar, Count, PadString),
@@ -4702,7 +4790,7 @@ pad_right(S1, C, N) = S2 :-
     pad_right(S1, C, N, S2).
 
 pad_right(String0, PadChar, Width, String) :-
-    count_codepoints(String0, Length),
+    count_code_points(String0, Length),
     ( if Length < Width then
         Count = Width - Length,
         duplicate_char(PadChar, Count, PadString),
@@ -4828,7 +4916,7 @@ word_wrap(Str, N) = word_wrap_separator(Str, N, "").
 
 word_wrap_separator(Str, N, WordSep0) = Wrapped :-
     Words = words_separator(char.is_whitespace, Str),
-    SepLen0 = count_codepoints(WordSep0),
+    SepLen0 = count_code_points(WordSep0),
     ( if SepLen0 < N then
         WordSep = WordSep0,
         SepLen = SepLen0
@@ -4867,7 +4955,7 @@ word_wrap_separator(Str, N, WordSep0) = Wrapped :-
 word_wrap_loop([], _, _, _, _, !RevWordsSpacesNls).
 word_wrap_loop([Word | Words], WordSep, SepLen, CurCol, MaxCol,
         !RevWordsSpacesNls) :-
-    WordLen = count_codepoints(Word),
+    WordLen = count_code_points(Word),
     ( if
         % We are on the first column and the length of the word
         % is less than the line length.
@@ -4941,10 +5029,10 @@ word_wrap_loop([Word | Words], WordSep, SepLen, CurCol, MaxCol,
 :- func break_up_string_reverse(string, int, list(string)) = list(string).
 
 break_up_string_reverse(Str, N, Prev) = Strs :-
-    ( if count_codepoints(Str) =< N then
+    ( if count_code_points(Str) =< N then
         Strs = [Str | Prev]
     else
-        split_by_codepoint(Str, N, Left, Right),
+        split_by_code_point(Str, N, Left, Right),
         Strs = break_up_string_reverse(Right, N, [Left | Prev])
     ).
 
@@ -5108,7 +5196,7 @@ format_table(Columns, Separator) = Table :-
 format_table_max(ColumnsLimits, Separator) = Table :-
     MaxWidthsSenses = list.map(find_max_length_with_limit, ColumnsLimits),
     Columns = list.map(project_column_strings, ColumnsLimits),
-    SepLen = count_codepoints(Separator),
+    SepLen = count_code_points(Separator),
     generate_rows(MaxWidthsSenses, Separator, SepLen, Columns, [], RevRows),
     list.reverse(RevRows, Rows),
     Table = join_list("\n", Rows).
@@ -5162,7 +5250,7 @@ pad_row([Justify - MaxWidth | JustifyWidths], [ColumnStr0 | ColumnStrs0],
     NextColumn = CurColumn + MaxWidth + SepLen,
     pad_row(JustifyWidths, ColumnStrs0, Separator, SepLen, NextColumn,
         LineRest),
-    ( if count_codepoints(ColumnStr0) =< MaxWidth then
+    ( if count_code_points(ColumnStr0) =< MaxWidth then
         (
             Justify = just_left,
             ColumnStr = pad_right(ColumnStr0, ' ', MaxWidth)
@@ -5250,7 +5338,7 @@ lpad(Chr, N, Str) = pad_left(Str, Chr, N).
 :- pred max_str_length(string::in, int::in, int::out) is det.
 
 max_str_length(Str, PrevMaxLen, MaxLen) :-
-    Length = count_codepoints(Str),
+    Length = count_code_points(Str),
     ( if Length > PrevMaxLen then
         MaxLen = Length
     else
