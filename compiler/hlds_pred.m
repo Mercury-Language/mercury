@@ -1424,7 +1424,7 @@ define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
         PredModuleName = ModuleName
     ),
 
-    % Remove unneeded variables from the vartypes and varset.
+    % Remove unneeded variables from the var_table.
     goal_util.goal_vars(Goal0, GoalVars0),
     set_of_var.insert_list(ArgVars, GoalVars0, GoalVars),
     GoalVarsSet = set_of_var.bitset_to_set(GoalVars),
@@ -2753,14 +2753,6 @@ marker_list_to_markers(Markers, MarkerSet) :-
     % because the debugger ignores unnamed variables.
     %
 :- pred ensure_all_headvars_are_named(proc_info::in, proc_info::out) is det.
-
-    % Test whether the variable is of a dummy type, based on the vartypes.
-    %
-:- pred var_is_of_dummy_type(module_info::in, vartypes::in, prog_var::in)
-    is semidet.
-
-:- pred var_is_of_non_dummy_type(module_info::in, vartypes::in, prog_var::in)
-    is semidet.
 
 :- implementation.
 
@@ -4317,14 +4309,6 @@ ensure_all_headvars_are_named_loop([Var | Vars], SeqNum, !VarTable) :-
         true
     ),
     ensure_all_headvars_are_named_loop(Vars, SeqNum + 1, !VarTable).
-
-var_is_of_dummy_type(ModuleInfo, VarTypes, Var) :-
-    lookup_var_type(VarTypes, Var, Type),
-    is_type_a_dummy(ModuleInfo, Type) = is_dummy_type.
-
-var_is_of_non_dummy_type(ModuleInfo, VarTypes, Var) :-
-    lookup_var_type(VarTypes, Var, Type),
-    is_type_a_dummy(ModuleInfo, Type) = is_not_dummy_type.
 
 %---------------------------------------------------------------------------%
 
