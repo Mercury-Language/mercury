@@ -193,6 +193,12 @@ Changes to the Mercury standard library
 
    - pred `empty/1`
 
+### New `fatter_sparse_bitset` module
+
+* This new module defines a more compact version of the data structure
+  defined by the `fat_sparse_bitset`module, and implements the set of
+  operations on this data structure.
+
 ### Changes to the `float` module
 
 * The following function has been marked obsolete:
