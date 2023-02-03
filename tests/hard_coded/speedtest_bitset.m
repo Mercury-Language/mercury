@@ -105,14 +105,6 @@ run_benchmarks(Repeat, [Bench | Benches], !IO) :-
     io.format("#elems:  %u\n", [u(NumElems)], !IO),
     io.format("#repeat: %d\n", [i(Repeat)], !IO),
 
-    % The bench_sparse_old and bench_fat_sparse_old tests are MUCH slower
-    % than the others. If you want to enable them, you will need to use
-    % a less-than-default value as Repeat.
-
-%   benchmark_det(bench_sparse_old, RandomList, _SparseOldSet, Repeat,
-%       TimeSparseOld),
-%   benchmark_det(bench_fat_sparse_old, RandomList, _FatSparseOldSet, Repeat,
-%       TimeFatSparseOld),
     benchmark_det(bench_sparse, RandomList, SparseSet, Repeat,
         TimeSparse),
     benchmark_det(bench_fat_sparse, RandomList, FatSparseSet, Repeat,
@@ -130,14 +122,10 @@ run_benchmarks(Repeat, [Bench | Benches], !IO) :-
         FatSparseSortedList = SortedList,
         FatterSparseSortedList = SortedList
     then
-%       AvgSparseOld = float(TimeSparseOld) / float(Repeat),
-%       AvgFatSparseOld = float(TimeFatSparseOld) / float(Repeat),
         AvgSparse = float(TimeSparse) / float(Repeat),
         AvgFatSparse = float(TimeFatSparse) / float(Repeat),
         AvgFatterSparse = float(TimeFatterSparse) / float(Repeat),
 
-%       io.format("sparse old:     %12.5f ms\n", [f(AvgSparseOld)], !IO),
-%       io.format("fat sparse old: %12.5f ms\n", [f(AvgFatSparseOld)], !IO),
         io.format("sparse:         %12.5f ms\n", [f(AvgSparse)], !IO),
         io.format("fat sparse:     %12.5f ms\n", [f(AvgFatSparse)], !IO),
         io.format("fatter sparse:  %12.5f ms\n", [f(AvgFatterSparse)], !IO)
@@ -148,18 +136,6 @@ run_benchmarks(Repeat, [Bench | Benches], !IO) :-
     io.flush_output(!IO),
 
     run_benchmarks(Repeat, Benches, !IO).
-
-% :- pred bench_sparse_old(list(uint)::in,
-%     sparse_bitset(uint)::out) is det.
-% 
-% bench_sparse_old(RandomList, Set) :-
-%     sparse_bitset.old_list_to_set(RandomList, Set).
-% 
-% :- pred bench_fat_sparse_old(list(uint)::in,
-%     fat_sparse_bitset(uint)::out) is det.
-% 
-% bench_fat_sparse_old(RandomList, Set) :-
-%     fat_sparse_bitset.old_list_to_set(RandomList, Set).
 
 :- pred bench_sparse(list(uint)::in,
     sparse_bitset(uint)::out) is det.

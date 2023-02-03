@@ -299,9 +299,6 @@
 :- func list_to_set(list(T)) = fat_sparse_bitset(T) <= uenum(T).
 :- pred list_to_set(list(T)::in, fat_sparse_bitset(T)::out) is det <= uenum(T).
 
-:- pred old_list_to_set(list(T)::in, fat_sparse_bitset(T)::out)
-    is det <= uenum(T).
-
     % sorted_list_to_set(List) returns a set containing only the members
     % of List. List must be sorted *on the enum values of the items*.
     % If the to_uint method of uenum(T) preserves order, then this is
@@ -495,8 +492,6 @@
 :- pragma type_spec(func(list_to_set/1), T = uint).
 :- pragma type_spec(pred(list_to_set/2), T = var(_)).
 :- pragma type_spec(pred(list_to_set/2), T = uint).
-:- pragma type_spec(pred(old_list_to_set/2), T = var(_)).
-:- pragma type_spec(pred(old_list_to_set/2), T = uint).
 
 :- pragma type_spec(func(sorted_list_to_set/1), T = var(_)).
 :- pragma type_spec(func(sorted_list_to_set/1), T = uint).
@@ -1482,87 +1477,6 @@ list_to_set_get_descending_run(Offset0, Bits0, Items @ [HeadItem | TailItems],
 reverse_bitset_elems_acc(bitset_nil, Ys, Ys).
 reverse_bitset_elems_acc(bitset_cons(XOffset, XBits, Xs), Ys, Zs) :-
     reverse_bitset_elems_acc(Xs, bitset_cons(XOffset, XBits, Ys), Zs).
-
-%---------------------%
-
-old_list_to_set(ItemList, fat_sparse_bitset(Elems)) :-
-    list_to_set_passes(ItemList, bitset_nil, Elems).
-
-    % Each pass over the input list selects out the elements which belong
-    % in the same bitset_elem as the first element, and adds them to the set.
-    % The number of passes is therefore equal to the number of bitset_elems
-    % in the final set.
-    %
-    % This works reasonably well if that number is small. If it not, then
-    % sorting the list (or rather its index values) and then invoking
-    % sorted_list_to_set could be *significantly* faster.
-    %
-    % NOTE We don't need to *fully* sort the index list. It is enough to
-    % sort it just enough to ensure that all items that map to the same
-    % bitset_elem are next to each other. This can be done by sorting
-    % the indexes using a comparison predicate that compares not the indexes
-    % themselves, but the offset computed for Index.
-    %
-    % The reduction in the number of comparisons required may be enough
-    % to offset the cost of computing the offsets, which *should* just be
-    % a simple mask operation per item. (But see the comment on
-    % bits_for_index.)
-    %
-:- pred list_to_set_passes(list(T)::in, bitset_elems::in, bitset_elems::out)
-    is det <= uenum(T).
-:- pragma type_spec(pred(list_to_set_passes/3), T = var(_)).
-:- pragma type_spec(pred(list_to_set_passes/3), T = uint).
-
-list_to_set_passes([], !Elems).
-list_to_set_passes([HeadItem | TailItems], !Elems) :-
-    bits_for_index(enum.to_uint(HeadItem), Offset, Bits0),
-    list_to_set_same_elem_pass(TailItems, Offset, Bits0, Bits,
-        [], LeftOverItems),
-    insert_bitset_elem(Offset, Bits, !Elems),
-    list_to_set_passes(LeftOverItems, !Elems).
-
-    % Go through the list picking out the elements which belong in the same
-    % bitset_elem as the first element, returning the not-yet-handled elements.
-    %
-:- pred list_to_set_same_elem_pass(list(T)::in, uint::in,
-    uint::in, uint::out,  list(T)::in, list(T)::out) is det <= uenum(T).
-:- pragma type_spec(pred(list_to_set_same_elem_pass/6), T = var(_)).
-:- pragma type_spec(pred(list_to_set_same_elem_pass/6), T = uint).
-
-list_to_set_same_elem_pass([], _, !Bits, !LeftOvers).
-list_to_set_same_elem_pass([HeadItem | TailItems], Offset, !Bits,
-        !LeftOverItems) :-
-    HeadItemIndex = enum.to_uint(HeadItem),
-    offset_and_bit_to_set_for_index(HeadItemIndex,
-        HeadItemOffset, HeadItemBitToSet),
-    ( if Offset = HeadItemOffset then
-        set_bit(HeadItemBitToSet, !Bits)
-    else
-        !:LeftOverItems = [HeadItem | !.LeftOverItems]
-    ),
-    list_to_set_same_elem_pass(TailItems, Offset, !Bits, !LeftOverItems).
-
-    % The list of elements here is pretty much guaranteed to be small,
-    % so use an insertion sort.
-    %
-    % XXX Actually, for some stress-test inputs, the list can be *quite* large.
-    %
-:- pred insert_bitset_elem(uint::in, uint::in,
-    bitset_elems::in, bitset_elems::out) is det.
-
-insert_bitset_elem(Offset, Bits, Elems0, Elems) :-
-    (
-        Elems0 = bitset_nil,
-        Elems  = bitset_cons(Offset, Bits, bitset_nil)
-    ;
-        Elems0 = bitset_cons(HeadOffset, HeadBits, Tail0),
-        ( if Offset < HeadOffset then
-            Elems = bitset_cons(Offset, Bits, Elems0)
-        else
-            insert_bitset_elem(Offset, Bits, Tail0, Tail),
-            Elems = bitset_cons(HeadOffset, HeadBits, Tail)
-        )
-    ).
 
 %---------------------%
 
