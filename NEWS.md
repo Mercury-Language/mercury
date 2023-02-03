@@ -196,7 +196,7 @@ Changes to the Mercury standard library
 ### New `fatter_sparse_bitset` module
 
 * This new module defines a more compact version of the data structure
-  defined by the `fat_sparse_bitset`module, and implements the set of
+  defined by the `fat_sparse_bitset` module, and implements the same set of
   operations on this data structure.
 
 ### Changes to the `float` module
