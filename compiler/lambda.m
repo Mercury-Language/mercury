@@ -721,9 +721,10 @@ restrict_var_maps(HeadVars, Goal, !VarTable, !RttiVarMaps) :-
     mark_vars_as_used(HeadVars, VarUses0, VarUses1),
     find_used_vars_in_goal(Goal, VarUses1, VarUses),
 
-    var_table_to_sorted_assoc_list(!.VarTable, VarTypesList0),
-    filter_vartypes(VarTypesList0, VarUses, [], RevVarTypesList),
-    var_table_from_rev_sorted_assoc_list(RevVarTypesList, !:VarTable),
+    var_table_to_sorted_assoc_list(!.VarTable, VarTableEntries0),
+    filter_var_table_entries(VarTableEntries0, VarUses,
+        [], RevVarTableEntries),
+    var_table_from_rev_sorted_assoc_list(RevVarTableEntries, !:VarTable),
 
     restrict_rtti_varmaps(VarUses, !RttiVarMaps).
 
@@ -912,13 +913,13 @@ mark_vars_as_used([Var | Vars], !VarUses) :-
     mark_var_as_used(Var, !VarUses),
     mark_vars_as_used(Vars, !VarUses).
 
-:- pred filter_vartypes(assoc_list(prog_var, var_table_entry)::in,
+:- pred filter_var_table_entries(assoc_list(prog_var, var_table_entry)::in,
     array(bool)::in,
     assoc_list(prog_var, var_table_entry)::in,
     assoc_list(prog_var, var_table_entry)::out) is det.
 
-filter_vartypes([], _VarUses, !RevVarsEntries).
-filter_vartypes([VarEntry | VarsEntries], VarUses, !RevVarsEntries) :-
+filter_var_table_entries([], _VarUses, !RevVarsEntries).
+filter_var_table_entries([VarEntry | VarsEntries], VarUses, !RevVarsEntries) :-
     VarEntry = Var - _Entry,
     VarNum = var_to_int(Var),
     array.unsafe_lookup(VarUses, VarNum, Used),
@@ -928,7 +929,7 @@ filter_vartypes([VarEntry | VarsEntries], VarUses, !RevVarsEntries) :-
     ;
         Used = no
     ),
-    filter_vartypes(VarsEntries, VarUses, !RevVarsEntries).
+    filter_var_table_entries(VarsEntries, VarUses, !RevVarsEntries).
 
 %---------------------------------------------------------------------------%
 
