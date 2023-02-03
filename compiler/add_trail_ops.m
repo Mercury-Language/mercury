@@ -100,8 +100,8 @@
 
     % As we traverse the goal, we add new variables to hold the trail tickets
     % (i.e. saved values of the trail pointer) and the saved values of the
-    % trail ticket counter. So we need to thread a varset and a vartypes
-    % mapping through, to record the names and types of the new variables.
+    % trail ticket counter. So we need to thread a var_table through,
+    % to record the names and types of the new variables.
     %
     % We also keep the module_info around, so that we can use the predicate
     % table that it contains to lookup the pred_ids for the builtin procedures

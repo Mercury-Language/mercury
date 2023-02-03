@@ -67,8 +67,8 @@
 %-----------------------------------------------------------------------------%
 
     % As we traverse the goal, we add new variables to hold the saved values
-    % of the heap pointer. So we need the varset and the vartypes map to record
-    % the names and types of the new variables.
+    % of the heap pointer. So we need the var_table to record the names
+    % and types of the new variables.
     %
     % We also keep the module_info around, so that we can use the predicate
     % table that it contains to lookup the pred_ids for the builtin procedures
