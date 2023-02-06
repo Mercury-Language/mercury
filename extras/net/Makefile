@@ -26,6 +26,10 @@ test_lookups: Mercury.modules
 Mercury.modules: $(MERCURY_FILES)
 	$(MMC) -f $(MERCURY_FILES)
 
+.PHONY: install
+install:
+	$(MMC) $(MMCFLAGS) --make libnet.install
+
 tags: $(MERCURY_FILES)
 	$(MTAGS) $(MERCURY_FILES)
 
