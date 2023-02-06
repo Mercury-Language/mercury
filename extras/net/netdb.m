@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2018 The Mercury Team
+% Copyright (C) 2014-2015, 2018, 2021, 2023 The Mercury Team
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -112,12 +112,12 @@
 "
 #ifdef MR_WIN32
   #define  error()      WSAGetLastError()
-
-#ifdef MR_THREAD_SAFE
-  static MercuryLock    lookup_lock = MR_MUTEX_ATTR;
-#endif
 #else
   #define  error()      errno
+#endif
+
+#if defined(MR_THREAD_SAFE) && !defined(__GNU_LIBRARY__)
+  static MercuryLock    lookup_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 ").
 
@@ -169,7 +169,7 @@ getprotobyname(Name, MaybeProtocol, !IO) :-
     int             i;
 
     #ifdef MR_THREAD_SAFE
-      MR_LOCK(lookup_lock, ""getprotobyname_r"");
+      MR_LOCK(&lookup_lock, ""getprotobyname_r"");
     #endif
 
     temp = getprotobyname(Name);
@@ -190,7 +190,7 @@ getprotobyname(Name, MaybeProtocol, !IO) :-
     Success = MR_YES;
 
     #ifdef MR_THREAD_SAFE
-      MR_UNLOCK(lookup_lock, ""getprotobyname_r"");
+      MR_UNLOCK(&lookup_lock, ""getprotobyname_r"");
     #endif
 
 #endif /* ! __GNU_LIBRARY__ */
