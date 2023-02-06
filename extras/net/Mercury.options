@@ -5,6 +5,6 @@
 EXTRA_CFLAGS=-D_BSD_SOURCE=1 -D_DEFAULT_SOURCE=1
 
 # Workaround a bug in Mercury's pack bits optimisation.
-MCFLAGS=--arg-pack-bits 0
-
-
+MCFLAGS=--arg-pack-bits 0 \
+	--libgrades-exclude java \
+	--libgrades-exclude csharp
