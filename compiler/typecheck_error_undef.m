@@ -811,6 +811,7 @@ should_report_no_clauses(ModuleInfo, PredInfo) = ShouldReport :-
     ( if
         ( set.contains(IntBadClauses, Id)
         ; check_marker(PredMarkers, marker_fact_table_semantic_errors)
+        ; check_marker(PredMarkers, marker_no_pred_decl)
         ; ModuleName \= PredModuleName
         )
     then
