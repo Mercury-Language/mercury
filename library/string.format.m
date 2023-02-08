@@ -59,15 +59,6 @@
 :- pred format_signed_int_component_width_prec(string_format_flags::in,
     int::in, int::in, int::in, string::out) is det.
 
-:- pred format_unsigned_int_component_nowidth_noprec(string_format_flags::in,
-    string_format_int_base::in, int::in, string::out) is det.
-:- pred format_unsigned_int_component_nowidth_prec(string_format_flags::in,
-    int::in, string_format_int_base::in, int::in, string::out) is det.
-:- pred format_unsigned_int_component_width_noprec(string_format_flags::in,
-    int::in, string_format_int_base::in, int::in, string::out) is det.
-:- pred format_unsigned_int_component_width_prec(string_format_flags::in,
-    int::in, int::in, string_format_int_base::in, int::in, string::out) is det.
-
 :- pred format_uint_component_nowidth_noprec(string_format_flags::in,
     string_format_int_base::in, uint::in, string::out) is det.
 :- pred format_uint_component_nowidth_prec(string_format_flags::in,
@@ -317,33 +308,6 @@ format_signed_int_component_width_prec(Flags, Width, Prec, Int, String) :-
 
 %---------------------------------------------------------------------------%
 
-format_unsigned_int_component_nowidth_noprec(Flags, Base, Int, String) :-
-    MaybeWidth = no_specified_width,
-    MaybePrec = no_specified_prec,
-    format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
-        String).
-
-format_unsigned_int_component_nowidth_prec(Flags, Prec, Base, Int, String) :-
-    MaybeWidth = no_specified_width,
-    MaybePrec = specified_prec(Prec),
-    format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
-        String).
-
-format_unsigned_int_component_width_noprec(Flags, Width, Base, Int, String) :-
-    MaybeWidth = specified_width(Width),
-    MaybePrec = no_specified_prec,
-    format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
-        String).
-
-format_unsigned_int_component_width_prec(Flags, Width, Prec, Base, Int,
-        String) :-
-    MaybeWidth = specified_width(Width),
-    MaybePrec = specified_prec(Prec),
-    format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
-        String).
-
-%---------------------------------------------------------------------------%
-
 format_uint_component_nowidth_noprec(Flags, Base, UInt, String) :-
     MaybeWidth = no_specified_width,
     MaybePrec = no_specified_prec,
@@ -522,27 +486,6 @@ format_signed_int_component(Flags, MaybeWidth, MaybePrec, Int, String) :-
         String = native_format_int(FormatStr, Int)
     else
         String = format_signed_int(Flags, MaybeWidth, MaybePrec, Int)
-    ).
-
-:- pred format_unsigned_int_component(string_format_flags::in,
-    string_format_maybe_width::in, string_format_maybe_prec::in,
-    string_format_int_base::in, int::in, string::out) is det.
-
-format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
-        String) :-
-    ( if using_sprintf then
-        ( Base = base_octal,   SpecChar = "o"
-        ; Base = base_decimal, SpecChar = "u"
-        ; Base = base_hex_lc,  SpecChar = "x"
-        ; Base = base_hex_uc,  SpecChar = "X"
-        ; Base = base_hex_p,   SpecChar = "p"
-        ),
-        FormatStr = make_format_sprintf(Flags, MaybeWidth, MaybePrec,
-            int_length_modifier, SpecChar),
-        String = native_format_int(FormatStr, Int)
-    else
-        UInt = cast_from_int(Int),
-        String = format_uint(Flags, MaybeWidth, MaybePrec, Base, UInt)
     ).
 
 :- pred format_uint_component(string_format_flags::in,

@@ -427,10 +427,6 @@ mict_string_format("format_unsigned_int64_component_nowidth_noprec", 4).
 mict_string_format("format_unsigned_int64_component_nowidth_prec", 5).
 mict_string_format("format_unsigned_int64_component_width_noprec", 5).
 mict_string_format("format_unsigned_int64_component_width_prec", 6).
-mict_string_format("format_unsigned_int_component_nowidth_noprec", 4).
-mict_string_format("format_unsigned_int_component_nowidth_prec", 5).
-mict_string_format("format_unsigned_int_component_width_noprec", 5).
-mict_string_format("format_unsigned_int_component_width_prec", 6).
 
 :- pred mict_table_builtin(string::in, int::in) is semidet.
 :- pragma inline(pred(mict_table_builtin/2)).
