@@ -5,7 +5,7 @@
 % regex.m
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Copyright (C) 2002, 2006, 2010 The University of Melbourne
-% Copyright (C) 2014, 2018 The Mercury team.
+% Copyright (C) 2014, 2018-2019, 2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % This module provides basic string matching and search and replace
@@ -473,7 +473,7 @@ right_match(Regex, String, Substring, Start, length(Substring)) :-
 
 right_match_2(Regex, String, Length, !Start, Substring) :-
     !.Start =< Length,
-    Substring0 = right_by_codepoint(String, Length - !.Start),
+    Substring0 = right_by_code_point(String, Length - !.Start),
     ( if exact_match(Regex, Substring0) then
         Substring = Substring0
       else
@@ -579,7 +579,7 @@ replace_all(Regex, Replacement, String) =
 change_first(Regex, ChangeFn, String) =
     ( if first_match(Regex, String, Substring, Start, Count) then
         append_list([
-            left_by_codepoint(String, Start),
+            left_by_code_point(String, Start),
             ChangeFn(Substring),
             between(String, Start + Count, max_int)
         ])
