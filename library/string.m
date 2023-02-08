@@ -490,8 +490,8 @@
     %
 :- func count_codepoints(string) = int.
 :- pred count_codepoints(string::in, int::out) is det.
-% :- pragma obsolete(func(count_codepoints/1), [count_code_points/1]).
-% :- pragma obsolete(pred(count_codepoints/2), [count_code_points/2]).
+:- pragma obsolete(func(count_codepoints/1), [count_code_points/1]).
+:- pragma obsolete(pred(count_codepoints/2), [count_code_points/2]).
 
     % count_utf8_code_units(String) = Length:
     %
@@ -524,7 +524,7 @@
     % with predicate and function names that talk about code_units.
     %
 :- pred codepoint_offset(string::in, int::in, int::in, int::out) is semidet.
-% :- pragma obsolete(pred(codepoint_offset/4), [code_point_offset/4]).
+:- pragma obsolete(pred(codepoint_offset/4), [code_point_offset/4]).
 
     % code_point_offset(String, Count, Offset):
     %
@@ -537,7 +537,7 @@
     % with predicate and function names that talk about code_units.
     %
 :- pred codepoint_offset(string::in, int::in, int::out) is semidet.
-% :- pragma obsolete(pred(codepoint_offset/3), [code_point_offset/3]).
+:- pragma obsolete(pred(codepoint_offset/3), [code_point_offset/3]).
 
 %---------------------------------------------------------------------------%
 %
@@ -832,7 +832,7 @@
     %
 :- pred split_by_codepoint(string::in, int::in, string::out, string::out)
     is det.
-% :- pragma obsolete(pred(split_by_codepoint/4), [split_by_code_point/4]).
+:- pragma obsolete(pred(split_by_codepoint/4), [split_by_code_point/4]).
 
     % left(String, Count, LeftSubstring):
     %
@@ -858,8 +858,8 @@
     %
 :- func left_by_codepoint(string::in, int::in) = (string::out) is det.
 :- pred left_by_codepoint(string::in, int::in, string::out) is det.
-% :- pragma obsolete(func(left_by_codepoint/2), [left_by_codepoint/2]).
-% :- pragma obsolete(pred(left_by_codepoint/3), [left_by_codepoint/3]).
+:- pragma obsolete(func(left_by_codepoint/2), [left_by_codepoint/2]).
+:- pragma obsolete(pred(left_by_codepoint/3), [left_by_codepoint/3]).
 
     % right(String, Count, RightSubstring):
     %
@@ -885,8 +885,8 @@
     %
 :- func right_by_codepoint(string::in, int::in) = (string::out) is det.
 :- pred right_by_codepoint(string::in, int::in, string::out) is det.
-% :- pragma obsolete(func(right_by_codepoint/2), [right_by_codepoint/2]).
-% :- pragma obsolete(pred(right_by_codepoint/3), [right_by_codepoint/3]).
+:- pragma obsolete(func(right_by_codepoint/2), [right_by_codepoint/2]).
+:- pragma obsolete(pred(right_by_codepoint/3), [right_by_codepoint/3]).
 
     % between(String, Start, End, Substring):
     %
@@ -932,8 +932,8 @@
 :- func between_codepoints(string::in, int::in, int::in)
     = (string::uo) is det.
 :- pred between_codepoints(string::in, int::in, int::in, string::uo) is det.
-% :- pragma obsolete(func(between_codepoints/3), [between_code_points/3]).
-% :- pragma obsolete(pred(between_codepoints/4), [between_code_points/4]).
+:- pragma obsolete(func(between_codepoints/3), [between_code_points/3]).
+:- pragma obsolete(pred(between_codepoints/4), [between_code_points/4]).
 
     % unsafe_between(String, Start, End, Substring):
     %
@@ -1396,7 +1396,7 @@
     % Convert a string to a pretty_printer.doc for formatting.
     %
 :- func string_to_doc(string) = pretty_printer.doc.
-% :- pragma obsolete(func(string_to_doc/1), [pretty_printer.string_to_doc/1]).
+:- pragma obsolete(func(string_to_doc/1), [pretty_printer.string_to_doc/1]).
 
 %---------------------------------------------------------------------------%
 %

@@ -66,7 +66,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `array_to_doc/1`
+    - func `array_to_doc/1` (replacement: `pretty_printer.array_to_doc`/1)
 
 ### Changes to the `benchmarking` module
 
@@ -114,13 +114,13 @@ Changes to the Mercury standard library
 
 * The following predicate and functions have been added:
 
-   - func `to_uint/1`
-   - pred `from_uint/2`
-   - func `det_from_uint/1`
+    - func `to_uint/1`
+    - pred `from_uint/2`
+    - func `det_from_uint/1`
 
 * The following function has been marked obsolete:
 
-   - func `char_to_doc/1`
+    - func `char_to_doc/1`   (replacement: `pretty_printer.char_to_doc`/1)
 
 ### Changes to the `cord` module
 
@@ -135,25 +135,25 @@ Changes to the Mercury standard library
 
 * The following type has been added:
 
-   - type `ucounter/0`
+    - type `ucounter/0`
 
 * The following predicate and function have been added:
 
-   - func `uinit/1`
-   - pred `uinit/2`
-   - pred `uallocate/1`
+    - func `uinit/1`
+    - pred `uinit/2`
+    - pred `uallocate/1`
 
 ### Changes to the `diet` module
 
 * The following obsolete predicate has been removed:
 
-   - pred `empty/1`
+    - pred `empty/1`
 
 ### Changes to the `digraph` module
 
 * The following type has had its typeclass memberships changed:
 
-   - The `digraph_key(T)` type is now an instance of the `uenum` typeclass,
+    - The `digraph_key(T)` type is now an instance of the `uenum` typeclass,
      and is no longer an instance of the `enum` typeclass.
 
 * The following functions have been added:
@@ -169,29 +169,29 @@ Changes to the Mercury standard library
 
 * The following typeclass has been added:
 
-   - typeclass `uenum/1`
+    - typeclass `uenum/1`
 
 * The following function has been added:
 
-   - func `det_from_uint/1`
+    - func `det_from_uint/1`
 
 ### Changes to the `fat_sparse_bitset` module
 
 * The following type has had its typeclass memberships changed:
 
-   - The `fat_sparse_bitset(T)` type now requires `T` to be an instance of the
+    - The `fat_sparse_bitset(T)` type now requires `T` to be an instance of the
      `uenum` typeclass, replacing the earlier requirement that it be
      a member of the `enum` typeclass.
 
 * The documentation of the following predicates and functions have been
   clarified:
 
-   - func `sorted_list_to_set/1`
-   - pred `sorted_list_to_set/2`
+    - func `sorted_list_to_set/1`
+    - pred `sorted_list_to_set/2`
 
 * The following obsolete predicate has been removed:
 
-   - pred `empty/1`
+    - pred `empty/1`
 
 ### New `fatter_sparse_bitset` module
 
@@ -203,7 +203,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `float_to_doc/1`
+    - func `float_to_doc/1`   (replacement: `pretty_printer.float_to_doc`/1)
 
 ### Changes to the `hash_table` module
 
@@ -237,7 +237,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `int_to_doc/1`
+    - func `int_to_doc/1`    (replacement: `pretty_printer.int_to_doc`/1)
 
 ### Changes to the `int8` module
 
@@ -250,7 +250,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `int8_to_doc/1`
+    - func `int8_to_doc/1`   (replacement: `pretty_printer.int8_to_doc`/1)
 
 ### Changes to the `int16` module
 
@@ -263,7 +263,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `int16_to_doc/1`
+    - func `int16_to_doc/1`  (replacement: `pretty_printer.int16_to_doc`/1)
 
 ### Changes to the `int32` module
 
@@ -276,7 +276,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `int32_to_doc/1`
+    - func `int32_to_doc/1`  (replacement: `pretty_printer.int32_to_doc`/1)
 
 ### Changes to the `int64` module
 
@@ -289,7 +289,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `int64_to_doc/1`
+    - func `int64_to_doc/1`  (replacement: `pretty_printer.int64_to_doc`/1)
 
 ### Changes to the `io` module
 
@@ -488,13 +488,14 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `list_to_doc/1`
+    - func `list_to_doc/1`  (replacement: `pretty_printer.list_to_doc`/1)
 
 ### Changes to the `one_or_more` module
 
 * The following function has been marked obsolete:
 
-   - func `one_or_more_to_doc/1`
+    - func `one_or_more_to_doc/1`
+                        (replacement: `pretty_printer.one_or_more_to_doc`/1)
 
 ### Changes to the `map` module
 
@@ -624,74 +625,74 @@ Changes to the Mercury standard library
   new type class random number generation framework defined in this module.
   As a result, the following predicates have been removed:
 
-   - pred `init/2`
-   - pred `random/3`
-   - pred `random/5`
-   - pred `randmax/3`
-   - pred `randcount/3`
-   - pred `permutation/4`
+    - pred `init/2`
+    - pred `random/3`
+    - pred `random/5`
+    - pred `randmax/3`
+    - pred `randcount/3`
+    - pred `permutation/4`
             (replacement: `random.shuffle_list/4` or `random.shuffle_list/5`)
 
 ### Changes to the `set` module
 
 * The following obsolete predicates and function have been removed:
 
-   - pred `empty/1`
-   - pred `non_empty/1` 
-   - func `set/1`
+    - pred `empty/1`
+    - pred `non_empty/1` 
+    - func `set/1`
 
 ### Changes to the `set_bbbtree` module
 
 * The following obsolete predicates have been removed:
 
-   - pred `empty/1`
-   - pred `non_empty/1`
+    - pred `empty/1`
+    - pred `non_empty/1`
 
 ### Changes to the `set_ctree234` module
 
 * The following obsolete predicates have been removed:
 
-   - pred `empty/1`
-   - pred `non_empty/1`
+    - pred `empty/1`
+    - pred `non_empty/1`
 
 ### Changes to the `set_ordlist` module
 
 * The following obsolete predicates have been removed:
 
-   - pred `empty/1`
-   - pred `non_empty/1`
+    - pred `empty/1`
+    - pred `non_empty/1`
 
 ### Changes to the `set_tree234` module
 
 * The following obsolete predicates have been removed:
 
-   - pred `empty/1`
-   - pred `non_empty/1`
+    - pred `empty/1`
+    - pred `non_empty/1`
 
 ### Changes to the `set_unordlist` module
 
 * The following obsolete predicates have been removed:
 
-   - pred `empty/1`
-   - pred `non_empty/1`
+    - pred `empty/1`
+    - pred `non_empty/1`
 
 ### Changes to the `sparse_bitset` module
 
 * The following type has had its typeclass memberships changed:
 
-   - The `sparse_bitset(T)` type now requires `T` to be an instance of the
+    - The `sparse_bitset(T)` type now requires `T` to be an instance of the
      `uenum` typeclass, replacing the earlier requirement that it be
      a member of the `enum` typeclass.
 
 * The following obsolete predicates has been removed:
 
-   - pred `empty/1`
+    - pred `empty/1`
 
 * The documentation of the following predicates and functions have been
   clarified:
 
-   - func `sorted_list_to_set/1`
-   - pred `sorted_list_to_set/2`
+    - func `sorted_list_to_set/1`
+    - pred `sorted_list_to_set/2`
 
 ### Changes to the `std_util` module
 
@@ -703,31 +704,44 @@ Changes to the Mercury standard library
 
 * The following predicates and functions have been added:
 
-   - func `between_code_points/3`
-   - pred `between_code_points/4`
-   - pred `contains_match/2`
-   - pred `code_point_offset/3`
-   - pred `code_point_offset/4`
-   - func `count_code_points/1`
-   - pred `count_code_points/2`
-   - func `left_by_code_point/2`
-   - pred `left_by_code_point/3`
-   - func `right_by_code_point/2`
-   - pred `right_by_code_point/3`
-   - pred `split_by_code_point/3`
-   - pred `split_by_code_point/4`
+    - func `between_code_points/3`
+    - pred `between_code_points/4`
+    - pred `contains_match/2`
+    - pred `code_point_offset/3`
+    - pred `code_point_offset/4`
+    - func `count_code_points/1`
+    - pred `count_code_points/2`
+    - func `left_by_code_point/2`
+    - pred `left_by_code_point/3`
+    - func `right_by_code_point/2`
+    - pred `right_by_code_point/3`
+    - pred `split_by_code_point/3`
+    - pred `split_by_code_point/4`
 
 * The following obsolete modes have been removed from the following predicates:
 
-   - pred `to_char_list(uo, in)`
-   - pred `to_rev_char_list(in, out)`
-   - pred `append(out, out, in)`
-   - pred `prefix(in, out)`
-   - pred `suffix(in, out)`
+    - pred `to_char_list(uo, in)`
+    - pred `to_rev_char_list(in, out)`
+    - pred `append(out, out, in)`
+    - pred `prefix(in, out)`
+    - pred `suffix(in, out)`
 
-* The following function has been marked obsolete:
+* The following predicates and functions have been marked obsolete:
 
-   - func `string_to_doc/1`
+    - func `string_to_doc/1`
+                            (replacement: `pretty_printer.string_to_doc`/1)
+    - func `between_codepoints/3`    (replacement: `between_code_points`/3)
+    - pred `between_codepoints/4`    (replacement: `between_code_points`/4)
+    - pred `codepoint_offset/3`      (replacement: `code_point_offset`/3)
+    - pred `codepoint_offset/4`      (replacement: `code_point_offset`/4)
+    - func `count_codepoints/1`      (replacement: `count_code_points`/1)
+    - pred `count_codepoints/2`      (replacement: `count_code_points`/2)
+    - func `left_by_codepoint/2`     (replacement: `left_by_code_point`/2)
+    - pred `left_by_codepoint/3`     (replacement: `left_by_code_point`/3)
+    - func `right_by_codepoint/2`    (replacement: `right_by_code_point`/2)
+    - pred `right_by_codepoint/3`    (replacement: `right_by_code_point`/3)
+    - pred `split_by_codepoint/3`    (replacement: `split_by_code_point`/3)
+    - pred `split_by_codepoint/4`    (replacement: `split_by_code_point'/4`)
 
 ### Changes to the `term` module
 
@@ -924,8 +938,8 @@ Changes to the Mercury standard library
 * The documentation of the following predicates and functions have been
   clarified:
 
-   - func `sorted_list_to_set/1`
-   - pred `sorted_list_to_set/2`
+    - func `sorted_list_to_set/1`
+    - pred `sorted_list_to_set/2`
 
 ### Changes to the `tree234` module
 
@@ -935,13 +949,14 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `tree234_to_doc/1`
+    - func `tree234_to_doc/1`
+                            (replacement: `pretty_printer.tree234_to_doc`/1)
 
 ### Changes to the `tree_bitset` module
 
 * The following obsolete predicates has been removed:
 
-   - pred `empty/1`
+    - pred `empty/1`
 
 ### Changes to the `uint` module
 
@@ -959,7 +974,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `uint_to_doc/1`
+    - func `uint_to_doc/1`   (replacement: `pretty_printer.uint_to_doc`/1)
 
 ### Changes to the `uint8` module
 
@@ -972,7 +987,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `uint8_to_doc/1`
+    - func `uint8_to_doc/1`  (replacement: `pretty_printer.uint8_to_doc`/1)
 
 ### Changes to the `uint16` module
 
@@ -985,7 +1000,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `uint16_to_doc/1`
+    - func `uint16_to_doc/1` (replacement: `pretty_printer.uint16_to_doc`/1)
 
 ### Changes to the `uint32` module
 
@@ -998,7 +1013,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `uint32_to_doc/1`
+    - func `uint32_to_doc/1` (replacement: `pretty_printer.uint32_to_doc`/1)
 
 ### Changes to the `uint64` module
 
@@ -1011,7 +1026,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `uint64_to_doc/1`
+    - func `uint64_to_doc/1` (replacement: `pretty_printer.uint64_to_doc`/1)
 
 ### Changes to the `version_array` module
 
@@ -1021,7 +1036,8 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-   - func `version_array_to_doc/1`
+    - func `version_array_to_doc/1`
+                       (replacement: `pretty_printer.version_array_to_doc`/1)
 
 ### Changes to the `version_hash_table` module
 
@@ -1153,11 +1169,11 @@ This is a bug-fix release.
   module predicates when called on a string containing ill-formed code
   unit sequences:
 
-   - pred `all_match/2`
-   - pred `index_next_repl/5`
-   - pred `unsafe_index_next_repl/5`
-   - pred `prev_index_repl/5`
-   - pred `unsafe_prev_index_repl/5`
+    - pred `all_match/2`
+    - pred `index_next_repl/5`
+    - pred `unsafe_index_next_repl/5`
+    - pred `prev_index_repl/5`
+    - pred `unsafe_prev_index_repl/5`
 
 * We have fixed a bug in the `getopt` and `getopt_io` modules where
   negating a `maybe_string` option would set its option table entry
