@@ -103,9 +103,9 @@ insts_merge(Type, HeadInst, TailInsts, MaybeMergedInst, !ModuleInfo) :-
     %   bound(f; g; h)
     %   bound(f; g; h; i)
     %
-    % Our current algorithm uses a number of passes, each of which divides the
-    % number of insts by four by merging groups of four adjacent insts.
-    % The overall complexity is thus closer to N log N than N^2.
+    % Our current algorithm uses a number of passes, each of which merges
+    % groups of up to eight adjacent insts, thus dividing the number of insts
+    % by eight. The overall complexity is thus closer to N log N than N^2.
     insts_merge_pass(Type, HeadInst, TailInsts,
         [], MergedInsts, merge_has_not_failed, Fail, !ModuleInfo),
     (
@@ -139,43 +139,97 @@ insts_merge(Type, HeadInst, TailInsts, MaybeMergedInst, !ModuleInfo) :-
     list(mer_inst)::in, list(mer_inst)::out,
     merge_fail::in, merge_fail::out, module_info::in, module_info::out) is det.
 
-insts_merge_pass(Type, Inst1, Insts2Plus, !MergedInsts, !Fail, !ModuleInfo) :-
+insts_merge_pass(Type, I1, Is2Plus, !MergedIs, !Fail, !ModuleInfo) :-
     (
-        Insts2Plus = [],
-        !:MergedInsts = [Inst1 | !.MergedInsts]
+        Is2Plus = [],
+        !:MergedIs = [I1 | !.MergedIs]
     ;
-        Insts2Plus = [Inst2],
+        Is2Plus = [I2],
         ( if
-            inst_merge(Type, Inst1, Inst2, Inst12, !ModuleInfo)
+            inst_merge(Type, I1, I2, I12, !ModuleInfo)
         then
-            !:MergedInsts = [Inst12 | !.MergedInsts]
+            !:MergedIs = [I12 | !.MergedIs]
         else
             !:Fail = merge_has_failed
         )
     ;
-        Insts2Plus = [Inst2, Inst3],
+        Is2Plus = [I2, I3],
         ( if
-            inst_merge(Type, Inst1, Inst2, Inst12, !ModuleInfo),
-            inst_merge(Type, Inst12, Inst3, Inst123, !ModuleInfo)
+            inst_merge(Type, I1, I2, I12, !ModuleInfo),
+            inst_merge(Type, I12, I3, I123, !ModuleInfo)
         then
-            !:MergedInsts = [Inst123 | !.MergedInsts]
+            !:MergedIs = [I123 | !.MergedIs]
         else
             !:Fail = merge_has_failed
         )
     ;
-        Insts2Plus = [Inst2, Inst3, Inst4 | Insts5Plus],
+        Is2Plus = [I2, I3, I4],
         ( if
-            inst_merge(Type, Inst1, Inst2, Inst12, !ModuleInfo),
-            inst_merge(Type, Inst3, Inst4, Inst34, !ModuleInfo),
-            inst_merge(Type, Inst12, Inst34, Inst1234, !ModuleInfo)
+            inst_merge(Type, I1, I2, I12, !ModuleInfo),
+            inst_merge(Type, I3, I4, I34, !ModuleInfo),
+            inst_merge(Type, I12, I34, I1234, !ModuleInfo)
         then
-            !:MergedInsts = [Inst1234 | !.MergedInsts],
+            !:MergedIs = [I1234 | !.MergedIs]
+        else
+            !:Fail = merge_has_failed
+        )
+    ;
+        Is2Plus = [I2, I3, I4, I5],
+        ( if
+            inst_merge(Type, I1, I2, I12, !ModuleInfo),
+            inst_merge(Type, I12, I3, I123, !ModuleInfo),
+            inst_merge(Type, I4, I5, I45, !ModuleInfo),
+            inst_merge(Type, I123, I45, I12345, !ModuleInfo)
+        then
+            !:MergedIs = [I12345 | !.MergedIs]
+        else
+            !:Fail = merge_has_failed
+        )
+    ;
+        Is2Plus = [I2, I3, I4, I5, I6],
+        ( if
+            inst_merge(Type, I1, I2, I12, !ModuleInfo),
+            inst_merge(Type, I12, I3, I123, !ModuleInfo),
+            inst_merge(Type, I4, I5, I45, !ModuleInfo),
+            inst_merge(Type, I45, I6, I456, !ModuleInfo),
+            inst_merge(Type, I123, I456, I123456, !ModuleInfo)
+        then
+            !:MergedIs = [I123456 | !.MergedIs]
+        else
+            !:Fail = merge_has_failed
+        )
+    ;
+        Is2Plus = [I2, I3, I4, I5, I6, I7],
+        ( if
+            inst_merge(Type, I1, I2, I12, !ModuleInfo),
+            inst_merge(Type, I3, I4, I34, !ModuleInfo),
+            inst_merge(Type, I12, I34, I1234, !ModuleInfo),
+            inst_merge(Type, I5, I6, I56, !ModuleInfo),
+            inst_merge(Type, I56, I7, I567, !ModuleInfo),
+            inst_merge(Type, I1234, I567, I1234567, !ModuleInfo)
+        then
+            !:MergedIs = [I1234567 | !.MergedIs]
+        else
+            !:Fail = merge_has_failed
+        )
+    ;
+        Is2Plus = [I2, I3, I4, I5, I6, I7, I8 | Is9Plus],
+        ( if
+            inst_merge(Type, I1, I2, I12, !ModuleInfo),
+            inst_merge(Type, I3, I4, I34, !ModuleInfo),
+            inst_merge(Type, I12, I34, I1234, !ModuleInfo),
+            inst_merge(Type, I5, I6, I56, !ModuleInfo),
+            inst_merge(Type, I7, I8, I78, !ModuleInfo),
+            inst_merge(Type, I56, I78, I5678, !ModuleInfo),
+            inst_merge(Type, I1234, I5678, I12345678, !ModuleInfo)
+        then
+            !:MergedIs = [I12345678 | !.MergedIs],
             (
-                Insts5Plus = []
+                Is9Plus = []
             ;
-                Insts5Plus = [Inst5 | Insts6Plus],
-                insts_merge_pass(Type, Inst5, Insts6Plus,
-                    !MergedInsts, !Fail, !ModuleInfo)
+                Is9Plus = [I9 | Is10Plus],
+                insts_merge_pass(Type, I9, Is10Plus,
+                    !MergedIs, !Fail, !ModuleInfo)
             )
         else
             !:Fail = merge_has_failed
