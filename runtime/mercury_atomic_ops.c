@@ -73,7 +73,7 @@ MR_OUTLINE_DEFN(
 
 MR_OUTLINE_DEFN(
     void
-    MR_atomic_sub_int(volatile atomic_long *addr, MR_Integer x)
+    MR_atomic_sub_int(volatile _Atomic MR_Integer *addr, MR_Integer x)
 ,
     {
         MR_ATOMIC_SUB_INT_BODY;

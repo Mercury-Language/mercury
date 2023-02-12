@@ -13,8 +13,10 @@
 #ifndef MERCURY_ATOMIC_OPS_H
 #define MERCURY_ATOMIC_OPS_H
 
-#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__aarch64__)
+#if __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_ATOMICS__)
 #include <stdatomic.h>
+#else
+#define _Atomic
 #endif
 #include "mercury_std.h"
 
@@ -107,7 +109,7 @@ MR_EXTERN_INLINE void       MR_atomic_add_uint(volatile MR_Unsigned *addr,
 // Atomically subtract the second argument from the memory pointed to by the
 // first argument.
 
-MR_EXTERN_INLINE void       MR_atomic_sub_int(volatile atomic_long *addr,
+MR_EXTERN_INLINE void       MR_atomic_sub_int(volatile _Atomic MR_Integer *addr,
                                 MR_Integer x);
 
 // Increment the word pointed at by the address.
@@ -133,7 +135,14 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
 ////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////
 
-#if (defined(MR_CLANG) || (MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1))) && \
+#if __STD_VERSION__ >= 201112L && !defined(__STD_NO_ATOMICS__)
+
+    #define MR_COMPARE_AND_SWAP_WORD_BODY                                   \
+        do {                                                                \
+            return atomic_compare_exchange_strong(addr, old, new_val);      \
+        } while (0)
+
+#elif (defined(MR_CLANG) || (MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1))) && \
     !defined(MR_AVOID_COMPILER_INTRINSICS)
 
     // gcc 4.1 and above have builtin atomic operations.
@@ -192,7 +201,17 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
 
 ////////////////////////////////////////////////////////////////////////////
 
-#if (MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)) &&           \
+#if __STD_VERSION__ >= 201112L && !defined(__STD_NO_ATOMICS__)
+
+    #define MR_ATOMIC_ADD_AND_FETCH_WORD_BODY                               \
+        do {                                                                \
+            return atomic_fetch_add(addr, addend);                          \
+        } while (0)
+
+    #define MR_ATOMIC_ADD_AND_FETCH_INT_BODY MR_ATOMIC_ADD_AND_FETCH_WORD_BODY
+    #define MR_ATOMIC_ADD_AND_FETCH_UINT_BODY MR_ATOMIC_ADD_AND_FETCH_WORD_BODY
+
+#elif (MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)) &&           \
     !defined(MR_AVOID_COMPILER_INTRINSICS)
 
     #define MR_ATOMIC_ADD_AND_FETCH_WORD_BODY                               \
@@ -314,7 +333,14 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
 
 ////////////////////////////////////////////////////////////////////////////
 
-#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) &&   \
+#if __STDC_VERSION__ >= 201112l && !defined(__STDC_NO_ATOMICS__)
+
+    #define MR_ATOMIC_SUB_INT_BODY                                          \
+        do {                                                                \
+            atomic_fetch_sub(addr, x);                                      \
+        } while (0)
+
+#elif (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) &&   \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     #define MR_ATOMIC_SUB_INT_BODY                                          \
@@ -344,18 +370,11 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
             __sync_sub_and_fetch(addr, x);                                  \
         } while (0)
 
-#elif (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__aarch64__)
-
-    #define MR_ATOMIC_SUB_INT_BODY                                          \
-        do {                                                                \
-	    atomic_fetch_sub(addr, x);					    \
-        } while (0)
-
 #endif
 
 #ifdef MR_ATOMIC_SUB_INT_BODY
     MR_EXTERN_INLINE void
-    MR_atomic_sub_int(volatile atomic_long *addr, MR_Integer x)
+    MR_atomic_sub_int(volatile _Atomic MR_Integer *addr, MR_Integer x)
     {
         MR_ATOMIC_SUB_INT_BODY;
     }
