@@ -1,18 +1,25 @@
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2005 The University of Melbourne.
-# Copyright (C) 2018 The Mercury team.
+# Copyright (C) 2018, 2023 The Mercury team.
 # This file is distributed under the terms specified in COPYING.LIB.
 #-----------------------------------------------------------------------------#
-# To compile the Mercury Tcl/Tk binding on Mac OS 10.3 you must first install
-# the Tcl/Tk Aqua framework, available from http://tcltkaqua.sourceforge.net/.
-# On Mac OS 10.4 the Tcl/Tk framework comes preinstalled.
+# This file is setup to use the Apple Tcl/Tk framework.
+# If you want to use the version of Tcl/Tk in Homebrew instead you will
+# need to apply the patch in this directory. From the top-level of the 
+# Mercury source tree do:
 #
-# Once you have the Tcl/Tk framework installed do:
-# $ mmake -f Mmakefile.MacOSX depend
-# $ mmake -f Mmakefile.MacOSX
-# and to install do:
-# $ mmake -f Mmakefile.MacOSX install
+#    $ patch -p1 < extras/graphics/mercury_tcltk/patch-homebrew.diff
 #
+# To build the Mercury Tcl/Tk binding, do:
+#
+#    $ mmake -f Mmakefile.MacOSX
+#    $ mmake -f Mmakefile.MacOSX
+#
+# To install it do:
+#
+#    $ mmake -f Mmakefile.MacOSX 
+#
+#-----------------------------------------------------------------------------#
 
 include Mercury.options
 
