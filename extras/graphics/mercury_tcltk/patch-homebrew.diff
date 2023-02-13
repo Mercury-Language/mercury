@@ -1,0 +1,46 @@
+commit 7399fb4a5b6a3ff56a64cd01a334e64b597d33af
+Author: Darren Bane <darren.bane@gmail.com>
+Date:   Thu Jan 26 20:56:50 2023 +0000
+
+    Fixes for TCL/Tk on macOS
+
+diff --git a/extras/graphics/mercury_tcltk/Mercury.options b/extras/graphics/mercury_tcltk/Mercury.options
+index 1b5ac6ed6..d1248c1c3 100644
+--- a/extras/graphics/mercury_tcltk/Mercury.options
++++ b/extras/graphics/mercury_tcltk/Mercury.options
+@@ -1 +1 @@
+-MCFLAGS-mercury_tcltk=--no-warn-nothing-exported
++MCFLAGS-mercury_tcltk=--no-warn-nothing-exported -I/opt/homebrew/opt/tcl-tk/include
+diff --git a/extras/graphics/mercury_tcltk/Mmakefile.MacOSX b/extras/graphics/mercury_tcltk/Mmakefile.MacOSX
+index 27bd0ae03..913dada02 100644
+--- a/extras/graphics/mercury_tcltk/Mmakefile.MacOSX
++++ b/extras/graphics/mercury_tcltk/Mmakefile.MacOSX
+@@ -16,9 +16,9 @@
+ 
+ include Mercury.options
+ 
+-MLLIBS = -framework Tcl -framework Tk
++MLLIBS = -L/opt/homebrew/opt/tcl-tk/lib -ltk8.6 -ltcl8.6
+ 
+-EXTRA_CFLAGS = -Wno-uninitialized
++EXTRA_CFLAGS = -Wno-uninitialized -I/opt/homebrew/opt/tcl-tk/include
+ 
+ MAIN_TARGET = libmercury_tcltk
+ 
+diff --git a/extras/graphics/mercury_tcltk/mtcltk.m b/extras/graphics/mercury_tcltk/mtcltk.m
+index 73e536e56..b386c6d92 100644
+--- a/extras/graphics/mercury_tcltk/mtcltk.m
++++ b/extras/graphics/mercury_tcltk/mtcltk.m
+@@ -109,11 +109,7 @@
+ ** SCCS: @(#) tkAppInit.c 1.20 96/02/15 18:55:27
+ **/
+ 
+-#if defined(__APPLE__) && defined(__MACH__)
+-    #include <Tk/tk.h>
+-#else
+-    #include ""tk.h""
+-#endif
++#include ""tk.h""
+ ").
+ 
+ :- pragma foreign_enum("C", tcl_status/0, [

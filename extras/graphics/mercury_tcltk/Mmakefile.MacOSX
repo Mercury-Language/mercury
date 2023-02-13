@@ -6,6 +6,11 @@
 # To compile the Mercury Tcl/Tk binding on Mac OS 10.3 you must first install
 # the Tcl/Tk Aqua framework, available from http://tcltkaqua.sourceforge.net/.
 # On Mac OS 10.4 the Tcl/Tk framework comes preinstalled.
+# If you want to use the later version of Tcl/Tk in Homebrew instead
+# you'll need to run the following commands:
+# $ brew install tcl-tk
+# $ # In the "mercury" directory:
+# $ patch -p1 < extras/graphics/mercury_tcltk/patch-homebrew.diff
 #
 # Once you have the Tcl/Tk framework installed do:
 # $ mmake -f Mmakefile.MacOSX depend
