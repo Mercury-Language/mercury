@@ -1,6 +1,6 @@
 This directory contains the package `mercury_tcltk', which is a Mercury
 binding for Tcl/Tk. You will need the Mercury compiler to build
-it (see <http://www.cs.mu.oz.au/mercury> to find out more about Mercury).
+it (see <https://mercurylang.org> to find out more about Mercury).
 You will also need Tcl/Tk 4.0 or later installed on your system.
 
 It contains the following modules:
@@ -15,7 +15,7 @@ Mercury programs.
 To build the Tcl/Tk binding on MacOSX see Mmakefile.MacOSX.
 If you want to use the Homebrew version of Tcl/Tk
 then you also need to apply the patch *patch-homebrew.diff* using the following command
-(in the "mercury" directory):
+(in the top-level of the Mercury source tree):
 
 ```sh
 patch -p1 < extras/graphics/mercury_tcltk/patch-homebrew.diff
