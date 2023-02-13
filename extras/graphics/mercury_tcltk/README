@@ -13,3 +13,10 @@ See HOWTO for details on how to link the package in with your own
 Mercury programs.
 
 To build the Tcl/Tk binding on MacOSX see Mmakefile.MacOSX.
+If you want to use the Homebrew version of Tcl/Tk
+then you also need to apply the patch *patch-homebrew.diff* using the following command
+(in the "mercury" directory):
+
+```sh
+patch -p1 < extras/graphics/mercury_tcltk/patch-homebrew.diff
+```
