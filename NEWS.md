@@ -302,6 +302,7 @@ Changes to the Mercury standard library
     - pred `get_windows_error/2`
     - pred `get_exception_object_error/2`
     - pred `get_system_error_name/2`
+    - pred `system_error_is_success/1`
     - func `init_posn/0`
     - pred `write_binary_string_utf8/3`
     - pred `write_binary_string_utf8/4`

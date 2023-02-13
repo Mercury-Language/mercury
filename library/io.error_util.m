@@ -118,35 +118,10 @@
     Error = null;
 ").
 
-:- pred is_success(system_error::in) is semidet.
-:- pragma inline(pred(is_success/1)).
-
-:- pragma foreign_proc("C",
-    is_success(Error::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    // This works for errno and Win32 error values (ERROR_SUCCESS == 0).
-    SUCCESS_INDICATOR = (Error == 0) ? MR_TRUE : MR_FALSE;
-").
-
-:- pragma foreign_proc("C#",
-    is_success(Error::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = (Error == null);
-").
-
-:- pragma foreign_proc("Java",
-    is_success(Error::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = (Error == null);
-").
-
 :- pragma inline(pred(is_error/5)).
 
 is_error(Error, Prefix, MaybeError, !IO) :-
-    ( if is_success(Error) then
+    ( if system_error_is_success(Error) then
         MaybeError = no
     else
         make_io_error_from_system_error_impl(Error, Prefix, IOError, !IO),
@@ -154,7 +129,7 @@ is_error(Error, Prefix, MaybeError, !IO) :-
     ).
 
 is_error_maybe_win32(Error, IsWin32Error, Prefix, MaybeError, !IO) :-
-    ( if is_success(Error) then
+    ( if system_error_is_success(Error) then
         MaybeError = no
     else
         make_io_error_from_maybe_win32_error(Error, IsWin32Error, Prefix,
@@ -222,7 +197,7 @@ throw_on_close_error(Error, !IO) :-
 throw_on_error(Error, Prefix, !IO) :-
     % This follows the logic of is_error, but does not construct
     % a MaybeError as an intermediate data structure.
-    ( if is_success(Error) then
+    ( if system_error_is_success(Error) then
         true
     else
         make_io_error_from_system_error_impl(Error, Prefix, IOError, !IO),

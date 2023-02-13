@@ -2147,6 +2147,11 @@
     %
 :- pred get_system_error_name(io.error::in, string::out) is semidet.
 
+    % Succeeds if the given system error value corresponds to the lack of an
+    % error.
+    %
+:- pred system_error_is_success(io.system_error::in) is semidet.
+
 %---------------------------------------------------------------------------%
 %
 % Instances of the stream typeclasses.
@@ -5035,6 +5040,31 @@ system_error_win32_error_name(_, _) :-
 
 system_error_exception_name(_, _) :-
     error("io.system_error_exception_name: inapplicable back-end").
+
+%---------------------------------------------------------------------------%
+
+:- pragma inline(pred(system_error_is_success/1)).
+:- pragma foreign_proc("C",
+    system_error_is_success(Error::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // This works for errno and Win32 error values (ERROR_SUCCESS == 0).
+    SUCCESS_INDICATOR = (Error == 0) ? MR_TRUE : MR_FALSE;
+").
+
+:- pragma foreign_proc("C#",
+    system_error_is_success(Error::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = (Error == null);
+").
+
+:- pragma foreign_proc("Java",
+    system_error_is_success(Error::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = (Error == null);
+").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
