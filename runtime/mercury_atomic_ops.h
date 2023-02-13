@@ -125,9 +125,9 @@ MR_EXTERN_INLINE void       MR_atomic_dec_int(volatile MR_Integer *addr);
 // zero after the decrement.
 
 MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_int(
-                                volatile MR_Integer *addr);
+                                volatile _Atomic MR_Integer *addr);
 MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
-                                volatile MR_Unsigned *addr);
+                                volatile _Atomic MR_Unsigned *addr);
 
 // For information about GCC's builtins for atomic operations see:
 // http://gcc.gnu.org/onlinedocs/gcc-4.2.4/gcc/Atomic-Builtins.html
@@ -490,7 +490,19 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
 // Note that on x86(_64) we have to use the sub instruction rather than the
 // dec instruction because we need it to set the CPU flags.
 
-#if (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) &&   \
+#if __STDC_VERSION__ >= 201112l && !defined(__STDC_NO_ATOMICS__)
+
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY                             \
+        do {                                                                \
+            return (atomic_fetch_sub(addr, 1) == 1);                    \
+        } while (0)
+
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY                          \
+        MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY                         \
+        MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
+
+#elif (defined(MR_CLANG) || defined(MR_GNUC)) && defined(__x86_64__) &&   \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
 // This could be trivially implemented using the __sync_sub_and_fetch compiler
@@ -548,7 +560,7 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
 
 #ifdef MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY
     MR_EXTERN_INLINE MR_bool
-    MR_atomic_dec_and_is_zero_int(volatile MR_Integer *addr)
+    MR_atomic_dec_and_is_zero_int(volatile _Atomic MR_Integer *addr)
     {
         MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY;
     }
@@ -556,7 +568,7 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
 
 #ifdef MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY
     MR_EXTERN_INLINE MR_bool
-    MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr)
+    MR_atomic_dec_and_is_zero_uint(volatile _Atomic MR_Unsigned *addr)
     {
         MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY;
     }
@@ -571,7 +583,18 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
 
 // Memory fence operations.
 
-#if ( defined(MR_CLANG) || defined(MR_GNUC) ) &&                        \
+#if __STDC_VERSION__ >= 201112l && !defined(__STDC_NO_ATOMICS__)
+
+    // Similar to the gcc __sync_* code below, this could be optimized
+
+    #define MR_CPU_MFENCE                                                   \
+        do {                                                                \
+            atomic_thread_fence(memory_order_seq_cst);                      \
+        } while (0)
+    #define MR_CPU_SFENCE MR_CPU_MFENCE
+    #define MR_CPU_LFENCE MR_CPU_MFENCE
+
+#elif ( defined(MR_CLANG) || defined(MR_GNUC) ) &&                        \
     ( defined(__i386__) || defined(__x86_64__) ) &&                     \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
