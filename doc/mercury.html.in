@@ -1,22 +1,23 @@
-<HTML>
-<HEAD>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
 <!-- -->
-
-<TITLE>Mercury documentation</TITLE>
-</HEAD>
-<BODY>
-<H1>Mercury documentation, version <VERSION></H1>
-<P>
-<UL>
-<LI><A HREF="mercury_ref.html">Mercury Language Reference Manual</A>
-<LI><A HREF="mercury_user_guide.html">Mercury User's Guide</A>
-<LI><A HREF="mercury_library.html">Mercury Library Reference Manual</A>
-<LI><A HREF="mercury_trans_guide.html">Prolog to Mercury Transition Guide</A>
-<LI><A HREF="mercury_faq.html">Frequently Asked Questions</A>
-</UL>
-<P>
-<UL>
-<LI><A HREF="http://www.mercury.csse.unimelb.edu.au">Mercury Home Page</A>
-</UL>
-</BODY>
-</HTML>
+<title>Mercury documentation</title>
+</head>
+<body>
+<h1>Mercury documentation, version <VERSION></h1>
+<p>
+<ul>
+<li><a href="mercury_ref.html">Mercury Language Reference Manual</a>
+<li><a href="mercury_user_guide.html">Mercury User's Guide</a>
+<li><a href="mercury_library.html">Mercury Library Reference Manual</a>
+<li><a href="mercury_trans_guide.html">Prolog to Mercury Transition Guide</a>
+<li><a href="mercury_faq.html">Frequently Asked Questions</a>
+</ul>
+<p>
+<ul>
+<li><a href="https://mercurylang.org">Mercury Home Page</a>
+</ul>
+</body>
+</html>
