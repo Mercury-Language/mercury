@@ -5,7 +5,7 @@
 % lex.automata.m
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 % Copyright (C) 2002, 2010 The University of Melbourne
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2019, 2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % Fri Aug 18 15:48:09 BST 2000
@@ -37,8 +37,8 @@
                 smc_state_transitions   :: list(transition)
             ).
 
-:- inst null_transition_free_state_mc
-    ==  bound(state_mc(ground, ground, atom_transitions)).
+:- inst null_transition_free_state_mc for state_mc/0
+    --->    state_mc(ground, ground, atom_transitions).
 
 :- type transitions == list(transition).
 
@@ -49,8 +49,11 @@
     --->    null(state_no, state_no)
     ;       trans(state_no, charset, state_no).
 
-:- inst atom_transition == bound(trans(ground, ground, ground)).
-:- inst null_transition == bound(null(ground, ground)).
+:- inst atom_transition for transition/0
+    --->    trans(ground, ground, ground).
+
+:- inst null_transition for transition/0
+    --->    null(ground, ground).
 
 %-----------------------------------------------------------------------------%
 :- end_module lex.automata.

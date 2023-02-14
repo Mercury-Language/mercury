@@ -10,7 +10,7 @@
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
 % Copyright (C) 2002, 2010-2011 The University of Melbourne.
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2019, 2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % A lexeme combines a token with a regexp. The lexer compiles lexemes
@@ -36,7 +36,7 @@
                 transition_map     :: transition_map
             ).
 
-:- inst compiled_lexeme
+:- inst compiled_lexeme for compiled_lexeme/1
     --->    compiled_lexeme(token_creator, ground, ground).
 
 :- type transition_map
