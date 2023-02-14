@@ -183,7 +183,7 @@ doc_shortcuts(_, FileName) = Shortcuts :-
 
     % Ralph would object...
     %
-:- inst english
+:- inst english for language/0
     --->    english_united_states
     ;       english_united_kingdom
     ;       english_australia
