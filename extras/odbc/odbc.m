@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997 Mission Critical.
 % Copyright (C) 1997-2000, 2002, 2004-2006, 2010 The University of Melbourne.
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2018, 2020, 2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -22,8 +22,7 @@
 %   An earlier(?) version of this paper is available as
 %   Technical Report 96/45, Department of Computer Science,
 %   University of Melbourne, December 1996,
-%   <http://www.cs.mu.OZ.AU/publications/tr_db/mu_96_45_cover.ps.gz>
-%   and <http://www.cs.mu.OZ.AU/publications/tr_db/mu_96_45.ps.gz>.
+%   <https://mercurylang.org/documentation/papers/tr_96_45_cover.ps.gz>
 %
 % This has been tested using the following platforms:
 % - MySQL 3.20.19 and iODBC 2.12 under Solaris 2.5
