@@ -245,7 +245,7 @@ option_defaults(help, bool(no)).
                 int
             ).
 
-:- inst pat_line
+:- inst pat_line for pat_line/0
     --->    pattern_line(ground, ground).
 
 :- pred break_into_lines(params::in, list(char)::in,
