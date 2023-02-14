@@ -5875,7 +5875,7 @@ This enables programmers to see the effect of parallelization decisions such as
 task granularity.
 The @samp{threadscope} tool is not included with the Melbourne Mercury
 Compiler,
-See @url{http://research.microsoft.com/en-us/projects/threadscope/,
+See @url{https://research.microsoft.com/en-us/projects/threadscope/,
 Threadscope: Performance Tuning Parallel Haskell Programs}.
 
 @node Building profiled applications

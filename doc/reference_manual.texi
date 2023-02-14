@@ -13913,7 +13913,7 @@ Analysis for Mercury}.  In P. Van Hentenryck, editor, @cite{Static
 Analysis: Proceedings of the 4th International Symposium}, Lecture
 Notes in Computer Science. Springer, 1997.  A longer version is
 available for download from
-@uref{http://www.mercurylang.org/documentation/papers/mu_97_09.ps.gz}.
+@uref{https://www.mercurylang.org/documentation/papers/mu_97_09.ps.gz}.
 
 @node [2]
 @unnumberedsec [2]
@@ -13927,14 +13927,14 @@ Logic Programming}, pages 336--350.  MIT Press, 1992.
 Chris Speirs, @cite{Termination Analysis for Logic Programs},
 Technical Report 97/23, Department of Computer Science, The University
 of Melbourne, Melbourne, Australia, 1997.  Available from
-@uref{http://www.mercurylang.org/documentation/papers/mu_97_23.ps.gz}.
+@uref{https://www.mercurylang.org/documentation/papers/mu_97_23.ps.gz}.
 
 @node [4]
 @unnumberedsec [4]
 K. Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
 for Well-Founded Evaluation of Normal Logic Programs},
 PhD thesis, SUNY at Stony Brook, 1996.  Available from
-@uref{http://user.it.uu.se/~kostis/Thesis/thesis.ps.gz}.
+@uref{https://user.it.uu.se/~kostis/Thesis/thesis.ps.gz}.
 
 @node [5]
 @unnumberedsec [5]
@@ -13942,5 +13942,5 @@ B. Demoen and K. Sagonas, @cite{CAT: the Copying Approach to Tabling},
 In C. Palamidessi, H. Glaser and K. Meinke, editors, @cite{Principles of
 Declarative Programming, 10th International Symposium, PLILP'98},
 Lecture Notes in Computer Science, Springer, 1998.
-Available form @uref{http://user.it.uu.se/~kostis/Papers/cat.ps.gz}.
+Available form @uref{https://user.it.uu.se/~kostis/Papers/cat.ps.gz}.
 @bye
