@@ -110,7 +110,7 @@
 :- mode any_list.insert(oa, oa, ia) is nondet.
 :- mode any_list.insert(ia, ia, oa) is multi.
 
-    % list__delete(List, Elem, Remainder):
+    % any_list.delete(List, Elem, Remainder):
     %   True iff `Elem' occurs in `List', and
     %   `Remainder' is the result of deleting one occurrence of
     %   `Elem' from `List'.
