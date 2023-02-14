@@ -5,7 +5,7 @@
 % lex.buf.m
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 % Copyright (C) 2002, 2010 The University of Melbourne.
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2019, 2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % Sat Aug 19 16:56:30 BST 2000
@@ -116,7 +116,8 @@
                 buf_eof_seen                :: bool,
                 buf_read_pred               :: read_pred(T)
             ).
-:- inst buf_state
+
+:- inst buf_state for buf_state/1
     --->    buf_state(
                 ground,
                 ground,

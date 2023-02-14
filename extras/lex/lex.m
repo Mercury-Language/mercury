@@ -10,7 +10,7 @@
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
 % Copyright (C) 2002, 2006, 2010-2011 The University of Melbourne
-% Copyright (C) 2014, 2017-2018 The Mercury team.
+% Copyright (C) 2014, 2017-2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % This module puts everything together, compiling a list of lexemes into state
@@ -39,8 +39,8 @@
 
 :- type lexeme(Token) == pair(regexp, token_creator(Token)).
 
-:- inst lexeme(Inst)
-    ---> (ground - Inst).
+:- inst lexeme(Inst) for pair/2
+    --->    (ground - Inst).
 
 :- type lexer(Token, Source).
 
@@ -290,7 +290,7 @@
                 lex_buf_read_pred       :: read_pred(Source)
             ).
 
-:- inst lexer
+:- inst lexer for lexer/2
     --->    lexer(ground, ignore_pred, read_pred).
 
 :- type lexer_instance(Token, Source)
@@ -303,7 +303,7 @@
                 ignore_pred             :: ignore_pred(Token)
             ).
 
-:- inst lexer_instance
+:- inst lexer_instance for lexer_instance/2
     --->    lexer_instance(
                 live_lexeme_list,
                 init_winner_func,
@@ -323,7 +323,7 @@
     ==      ( func(in)     = out is det    ).
 
 :- type winner(Token) == maybe(pair(token_creator(Token), offset)).
-:- inst winner
+:- inst winner for maybe/1
     --->    yes(pair(token_creator, ground))
     ;       no.
 
