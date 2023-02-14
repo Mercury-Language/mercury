@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999-2000,2002-2007, 2009-2012 The University of Melbourne.
+% Copyright (C) 1999-2000, 2002-2007, 2009-2012, 2014-2023 The University of Melbourne.
 % Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -47,7 +47,7 @@
 % The algorithm implemented is a combination of the algorithms from
 % "Making Mercury Programs Tail Recursive" and
 % "State Update Transformation", which can be found at
-% <http://www.cs.mu.oz.au/research/mercury/information/papers.html>.
+% <https://mercurylang.org/documentation/papers.html>.
 %
 % Note that currently "State Update Transformation" paper only resides
 % in CVS papers archive in the directory update, but has been submitted
