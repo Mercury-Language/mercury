@@ -7,13 +7,12 @@
 % Main author: Ian MacLarty (maclarty@cs.mu.oz.au).
 %
 %---------------------------------------------------------------------------%
-% 
+%
 % gen_merc_wxs generates a windows installer for Mercury.  See the file
 % README in this directory for more information.
 %
 
 :- module gen_merc_wxs.
-
 :- interface.
 
 :- import_module io.
@@ -42,38 +41,38 @@ main(!IO) :-
 			merc_comp(Version)),
 
 		Installer ^ wix_product_info            = Product,
-		Installer ^ wix_language                = english_south_africa, 
-		Installer ^ wix_set_env_vars            = 
+		Installer ^ wix_language                = english_south_africa,
+		Installer ^ wix_set_env_vars            =
 			[set_env_var("PATH", path, prepend, system),
-			 set_env_var("MERCURY_CONFIG_DIR", merc_conf_dir, 
+			 set_env_var("MERCURY_CONFIG_DIR", merc_conf_dir,
 			 	replace, system)
 			],
 		Installer ^ wix_shortcut_func           = doc_shortcuts,
 		Installer ^ wix_all_users		= yes,
-		Installer ^ wix_title                   = title, 
-		Installer ^ wix_install_heading         = install_heading, 
-		Installer ^ wix_install_descr           = install_descr, 
+		Installer ^ wix_title                   = title,
+		Installer ^ wix_install_heading         = install_heading,
+		Installer ^ wix_install_descr           = install_descr,
 		Installer ^ wix_next_button             = next,
-		Installer ^ wix_back_button             = back, 
-		Installer ^ wix_cancel_button           = cancel, 
-		Installer ^ wix_install_button          = install, 
-		Installer ^ wix_cancel_message          = cancel_message, 
-		Installer ^ wix_remove_heading          = remove_heading, 
-		Installer ^ wix_remove_confirm          = remove_confirm, 
+		Installer ^ wix_back_button             = back,
+		Installer ^ wix_cancel_button           = cancel,
+		Installer ^ wix_install_button          = install,
+		Installer ^ wix_cancel_message          = cancel_message,
+		Installer ^ wix_remove_heading          = remove_heading,
+		Installer ^ wix_remove_confirm          = remove_confirm,
 		Installer ^ wix_remove_button           = remove,
-		Installer ^ wix_remove_progress_heading = remove_prog_heading, 
+		Installer ^ wix_remove_progress_heading = remove_prog_heading,
 		Installer ^ wix_remove_progress_descr   = remove_prog_descr,
-		Installer ^ wix_finish_heading          = finish_heading, 
-		Installer ^ wix_finish_message          = finish_message, 
+		Installer ^ wix_finish_heading          = finish_heading,
+		Installer ^ wix_finish_message          = finish_message,
 		Installer ^ wix_finish_button           = finish,
-		Installer ^ wix_files_in_use_heading    = files_in_use_heading, 
+		Installer ^ wix_files_in_use_heading    = files_in_use_heading,
 		Installer ^ wix_files_in_use_message    = files_in_use_message,
-		Installer ^ wix_ignore_button           = ignore, 
+		Installer ^ wix_ignore_button           = ignore,
 		Installer ^ wix_retry_button            = retry,
-		Installer ^ wix_yes_button              = yes, 
-		Installer ^ wix_no_button               = no, 
+		Installer ^ wix_yes_button              = yes,
+		Installer ^ wix_no_button               = no,
 		Installer ^ wix_must_be_admin_msg       = admin_message,
-		Installer ^ wix_banner_source           = "images\\banner.bmp", 
+		Installer ^ wix_banner_source           = "images\\banner.bmp",
 		Installer ^ wix_background_source       = "images\\bg.bmp",
 		Installer ^ wix_wizard_steps            = [
 			welcome_wizard_step(welcome, welcome_message(Version)),
@@ -86,7 +85,7 @@ main(!IO) :-
 			Result = ok
 		;
 			Result = wix_error(Error),
-			io.format("Error generating wix source: %s\n", 
+			io.format("Error generating wix source: %s\n",
 				[s(string.string(Error))], !IO)
 		)
 	else
@@ -227,7 +226,7 @@ token_to_english(product_comments, "").
 token_to_english(path, "\"[INSTALLDIR]bin\"").
 token_to_english(merc_conf_dir, "\"[INSTALLDIR]lib\\mercury\"").
 token_to_english(welcome, "Welcome.").
-token_to_english(welcome_message(Version), 
+token_to_english(welcome_message(Version),
 	"You are about to install the Melbourne Mercury distribution " ++
 	"(version " ++ Version ++ ") onto your computer.\r\n\r\n" ++
 	"The compiler (mmc) and debugger (mdb) will be added to your PATH " ++
@@ -246,35 +245,35 @@ token_to_english(cancel_message, "Are you sure you want to cancel?").
 token_to_english(yes, "yes").
 token_to_english(no, "no").
 token_to_english(install_heading, "Installing Mercury").
-token_to_english(install_descr, 
+token_to_english(install_descr,
 	"Installation may take a few minutes, please be patient.").
 token_to_english(remove_heading, "Uninstall").
 token_to_english(remove_confirm, "Are you sure you wish to uninstall Mercury?").
 token_to_english(remove, "Remove").
-token_to_english(files_in_use_heading, 
+token_to_english(files_in_use_heading,
 	"Some files that need to be updated are currently in use.").
-token_to_english(files_in_use_message, 
+token_to_english(files_in_use_message,
 	"The following applications are using files that need to be " ++
 	"updated by this setup. Close these applications and then click " ++
 	"Retry to continue the installation or Cancel to exit it.").
 token_to_english(retry, "Retry").
 token_to_english(ignore, "Ignore").
 token_to_english(remove_prog_heading, "Uninstalling").
-token_to_english(remove_prog_descr, 
+token_to_english(remove_prog_descr,
 	"Uninstallation may take a few minutes, please be patient.").
-token_to_english(admin_message, 
+token_to_english(admin_message,
 	"You need to be an administrator to install Mercury, " ++
 	"because the installer needs to set the PATH "++
 	"environment variable at the system level.").
 token_to_english(finish_heading, "Thank you for installing Mercury.").
-token_to_english(finish_message, 
+token_to_english(finish_message,
 	"Shortcuts to the online documentation have been placed " ++
 	"under the Start/Programs menu. " ++
 	"You can get additional help from the Mercury user's mailing list. " ++
 	"For details on how to subscribe to this mailing list go to " ++
-	"http://www.cs.mu.oz.au/mercury and click on the \"Mailing Lists\" " ++
+	"https://mercurylang.org and click on the \"Contact\" " ++
 	"link.  " ++
-	"Please email any bug reports to mercury-bugs@cs.mu.oz.au. \r\n\r\n" ++
+	"Please email any bug reports to bugs@mercurylang.org. \r\n\r\n" ++
 	"NOTE: The installer has set the environment variable " ++
 	"MERCURY_CONFIG_DIR.  " ++
 	"If you are already running Mercury under Cygwin or MSYS " ++
@@ -295,6 +294,6 @@ token_to_english(pdf_tutorial, "Introductory Tutorial (PDF)").
 
 :- func merc_installer_usage_message = string.
 
-merc_installer_usage_message = 
-	"Usage: gen_merc_wxs <version> <path to merc files> " ++ 
+merc_installer_usage_message =
+	"Usage: gen_merc_wxs <version> <path to merc files> " ++
 	"<guid command> <out file>".
