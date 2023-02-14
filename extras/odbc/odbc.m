@@ -23,6 +23,7 @@
 %   Technical Report 96/45, Department of Computer Science,
 %   University of Melbourne, December 1996,
 %   <https://mercurylang.org/documentation/papers/tr_96_45_cover.ps.gz>
+%   and <https://mercurylang.org/documentation/papers/tr_96_45.ps.gz>.
 %
 % This has been tested using the following platforms:
 % - MySQL 3.20.19 and iODBC 2.12 under Solaris 2.5
