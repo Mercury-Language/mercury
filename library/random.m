@@ -14,12 +14,12 @@
 %
 % The interfaces can be used in three styles:
 %
-%   - In the "ground" style, an instance of the random/1 typeclass is
-%   passed through the code using 'in' and 'out' modes. This can be used
-%   to generate random numbers, and since the value is ground it can also
-%   easily be stored in larger data structures. The major drawback is that
-%   generators in this style tend to be either fast or of good quality,
-%   but not both.
+%   - In the "ground" or "shared" style, an instance of the random/1
+%   typeclass is passed through the code using 'in' and 'out' modes. This
+%   value is used to generate random numbers, and since the value is
+%   ground it can also easily be stored in larger data structures. The
+%   major drawback of this style is that the generators tend to be either
+%   fast or of good quality, but not both.
 %
 %   - In the "unique" style, the urandom/2 typeclass is used instead. Each
 %   instance consists of a "params" type which is passed into the code
@@ -29,7 +29,8 @@
 %
 %   - A generator can be attached to the I/O state. In this case, the
 %   interface is the same as the unique style, with 'io' being used as
-%   the unique state.
+%   the unique state. This is particularly convenient for use in code
+%   where the I/O state is already being passed around.
 %
 % Each generator defined in the submodules is natively one of the first
 % two styles. Adaptors are defined below for converting between these,
@@ -84,6 +85,48 @@
 %   roll(M, !IO) :-
 %       uniform_int_in_range(M, 1, 6, N, !IO),
 %       io.format("You rolled a %d\n", [i(N)], !IO).
+%
+%
+% Notes for RNG implementors:
+%
+% To implement a random number generator library using the interface
+% defined in this module, an instance must be created for either the
+% random/1 typeclass or the urandom/2 typeclass. The choice depends on
+% whether or not the implementation destructively updates its state.
+% For implementations that do destructively update their state, the
+% urandom/2 typeclass should be used as it provides the necessary
+% unique modes.
+%
+% For most RNGs, destructive update is desirable since the state can be
+% quite large and it would be expensive to make a copy of the state for
+% each number generated. Destructive update is often achieved with the
+% use of arrays, hence array-based implementations typically require
+% the use of urandom/2. The compiler doesn't properly enforce this,
+% however - see the warning at the start of array.m - so some care is
+% required. The sfc32 and sfc64 submodules demonstrate the use of arrays
+% for the generator state.
+%
+% In some cases it may be acceptable to implement only the shared
+% interface, for example if the state is small. The sfc16 submodule
+% provides an example of this.
+%
+% Generally, it is sufficient to provide an implementation for only
+% one of the above two typeclasses. As mentioned earlier, users can
+% create instances of other typeclasses using the following predicates
+% in this module:
+%
+%   make_urandom/3
+%   make_io_random/4
+%   make_io_urandom/5
+%
+% If an implementation of urandom_dup/1 is also provided, then the
+% function make_shared_random/2 can be used to make a shared version
+% which will copy the state after each call. Care should be taken with
+% this, however, as users may unintentionally consume large amounts of
+% memory with its use.
+%
+% Further implementation examples can be found in the extras/random
+% directory.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
