@@ -387,7 +387,7 @@ from_corresponding_lists(Ks, Vs, KVs) :-
         unexpected($pred, ErrorString)
     ).
 
-:- pred kv_list.from_corresponding_loop(list(K)::in, list(V)::in,
+:- pred from_corresponding_loop(list(K)::in, list(V)::in,
     kv_list(K,V)::out) is semidet.
 
 from_corresponding_loop([], [], kv_nil).

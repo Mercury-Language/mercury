@@ -19,7 +19,7 @@
 
     % version(VersionString, FullarchString)
     %
-:- pred library.version(string::out, string::out) is det.
+:- pred version(string::out, string::out) is det.
 
 :- implementation.
 
@@ -222,7 +222,7 @@
 :- import_module term_size_prof_builtin.
 :- import_module test_bitset.
 
-% library.version must be implemented using pragma foreign_proc,
+% version must be implemented using pragma foreign_proc,
 % so we can get at the MR_VERSION and MR_FULLARCH configuration parameters.
 % We can't just generate library.m from library.m.in at configuration time,
 % because that would cause bootstrapping problems: we might not have
@@ -231,7 +231,7 @@
 :- pragma no_inline(pred(library.version/2)).
 
 :- pragma foreign_proc("C",
-    library.version(Version::out, Fullarch::out),
+    version(Version::out, Fullarch::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     MR_ConstString version_string = MR_VERSION;
@@ -244,7 +244,7 @@
 ").
 
 :- pragma foreign_proc("C#",
-    library.version(Version::out, Fullarch::out),
+    version(Version::out, Fullarch::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Version = runtime.Constants.MR_VERSION;
@@ -252,7 +252,7 @@
 ").
 
 :- pragma foreign_proc("Java",
-    library.version(Version::out, Fullarch::out),
+    version(Version::out, Fullarch::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Version = jmercury.runtime.Constants.MR_VERSION;

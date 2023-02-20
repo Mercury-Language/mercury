@@ -128,7 +128,7 @@ from_integers(Num, Den) = rational_norm(Num, Den).
 
 %% XXX: There are ways to do this in some cases even if the
 %% float conversions would overflow.
-% rational.float(r(Num, Den)) =
+% float(r(Num, Den)) =
 %   float:'/'(integer.float(Num), integer.float(Den)).
 
 '+'(Rat) = Rat.

@@ -337,7 +337,7 @@ new_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
         )
     ).
 
-:- pred eqvclass.add_equivalence(partition_id::in, partition_id::in,
+:- pred add_equivalence(partition_id::in, partition_id::in,
     eqvclass(T)::in, eqvclass(T)::out) is det.
 
 add_equivalence(IdA, IdB, EqvClass0, EqvClass) :-
@@ -360,7 +360,7 @@ add_equivalence(IdA, IdB, EqvClass0, EqvClass) :-
     ),
     EqvClass = eqvclass(NextId0, PartitionMap, ElementMap).
 
-:- pred eqvclass.change_partition(list(T)::in, partition_id::in,
+:- pred change_partition(list(T)::in, partition_id::in,
     map(T, partition_id)::in, map(T, partition_id)::out) is det.
 
 change_partition([], _Id, !ElementMap).
@@ -380,7 +380,7 @@ same_eqvclass_list(EqvClass, [Element | Elements]) :-
     map.search(ElementMap, Element, Id),
     eqvclass.same_eqvclass_list_2(ElementMap, Elements, Id).
 
-:- pred eqvclass.same_eqvclass_list_2(map(T, partition_id)::in,
+:- pred same_eqvclass_list_2(map(T, partition_id)::in,
     list(T)::in, partition_id::in) is semidet.
 
 same_eqvclass_list_2(_, [], _).
@@ -405,7 +405,7 @@ partition_list(EqvClass, PartitionList) :-
 
     % Convert a list of partition ids to a list of partitions.
 
-:- pred eqvclass.partitions(eqvclass(T)::in, list(partition_id)::in,
+:- pred partitions(eqvclass(T)::in, list(partition_id)::in,
     list(set(T))::out) is det.
 
 partitions(_EqvClass0, [], []).
@@ -415,8 +415,7 @@ partitions(EqvClass0, [Id | Ids], [Partition | Partitions]) :-
 
     % Get the ids of all the partitions.
 
-:- pred eqvclass.partition_ids(eqvclass(T)::in, list(partition_id)::out)
-    is det.
+:- pred partition_ids(eqvclass(T)::in, list(partition_id)::out) is det.
 
 partition_ids(EqvClass0, Ids) :-
     PartitionMap0 = EqvClass0 ^ partitions,
@@ -424,8 +423,7 @@ partition_ids(EqvClass0, Ids) :-
 
     % Given a partition id, get the elements of the partition.
 
-:- pred eqvclass.id_to_partition(eqvclass(T)::in, partition_id::in,
-    set(T)::out) is det.
+:- pred id_to_partition(eqvclass(T)::in, partition_id::in, set(T)::out) is det.
 
 id_to_partition(EqvClass0, Id, Partition) :-
     PartitionMap0 = EqvClass0 ^ partitions,
@@ -464,7 +462,7 @@ partition_list_to_eqvclass([Partition | Ps], EqvClass) :-
     ),
     EqvClass = eqvclass(Counter, PartitionMap, ElementMap).
 
-:- pred eqvclass.make_partition(list(T)::in, partition_id::in,
+:- pred make_partition(list(T)::in, partition_id::in,
     map(T, partition_id)::in, map(T, partition_id)::out) is det.
 
 make_partition([], _Id, !ElementMap).

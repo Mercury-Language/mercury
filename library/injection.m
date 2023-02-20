@@ -10,10 +10,10 @@
 % Author: mark.
 % Stability: low.
 %
-% This module provides the `injection' ADT.  An injection is like a map
+% This module provides the `injection' ADT. An injection is like a map
 % (see map.m) but it allows efficient reverse lookups, similarly to bimap.
 % This time efficiency comes at the expense of using twice as much space
-% or more.  The difference between an injection and a bimap is that there
+% or more. The difference between an injection and a bimap is that there
 % can be values in the range of the injection that are not returned for any
 % key, but for which a reverse lookup will still return a valid key.
 %
@@ -104,7 +104,7 @@
     %
 :- pred contains_value(injection(K, V)::in, V::in) is semidet.
 
-    % Insert a new key-value pair into the injection.  Fails if either
+    % Insert a new key-value pair into the injection. Fails if either
     % the key or value already exists.
     %
 :- func insert(injection(K, V), K, V) = injection(K, V) is semidet.
@@ -118,7 +118,7 @@
 :- pred det_insert(injection(K, V)::in, K::in, V::in,
     injection(K, V)::out) is det.
 
-    % Update the value associated with a given key.  Fails if the key
+    % Update the value associated with a given key. Fails if the key
     % does not already exist, or if the value is already associated
     % with a key.
     %
@@ -134,7 +134,7 @@
     injection(K, V)::out) is det.
 
     % Sets the value associated with a given key, regardless of whether
-    % the key exists already or not.  Fails if the value is already
+    % the key exists already or not. Fails if the value is already
     % associated with a key that is different from the given key.
     %
 :- func set(injection(K, V), K, V) = injection(K, V) is semidet.
@@ -181,7 +181,7 @@
     injection(K, V)::in, injection(K, V)::out) is det.
 
     % Insert key-value pairs from corresponding lists into the given
-    % injection.  Fails if any of the individual inserts would fail.
+    % injection. Fails if any of the individual inserts would fail.
     % Throws an exception if the lists are not of equal length.
     %
 :- func insert_from_corresponding_lists(list(K), list(V),
@@ -198,7 +198,7 @@
     injection(K, V)::in, injection(K, V)::out) is det.
 
     % Set key-value pairs from corresponding lists into the given
-    % injection.  Fails of any of the individual sets would fail.
+    % injection. Fails of any of the individual sets would fail.
     % Throws an exception if the lists are not of equal length.
     %
 :- func set_from_corresponding_lists(list(K), list(V),
@@ -214,15 +214,15 @@
 :- pred det_set_from_corresponding_lists(list(K)::in, list(V)::in,
     injection(K, V)::in, injection(K, V)::out) is det.
 
-    % Delete a key from an injection.  Also deletes any values that
-    % correspond to that key.  If the key is not present, leave the
+    % Delete a key from an injection. Also deletes any values that
+    % correspond to that key. If the key is not present, leave the
     % injection unchanged.
     %
 :- func delete_key(injection(K, V), K) = injection(K, V).
 :- pred delete_key(K::in, injection(K, V)::in, injection(K, V)::out) is det.
 
-    % Delete a value from an injection.  Throws an exception if there is
-    % a key that maps to this value.  If the value is not present, leave
+    % Delete a value from an injection. Throws an exception if there is
+    % a key that maps to this value. If the value is not present, leave
     % the injection unchanged.
     %
 :- func delete_value(injection(K, V), V) = injection(K, V).
@@ -240,14 +240,14 @@
 :- pred delete_values(list(V)::in,
     injection(K, V)::in, injection(K, V)::out) is det.
 
-    % Merge the contents of the two injections.  Both sets of keys must
+    % Merge the contents of the two injections. Both sets of keys must
     % be disjoint, and both sets of values must be disjoint.
     %
 :- func merge(injection(K, V), injection(K, V)) = injection(K, V).
 :- pred merge(injection(K, V)::in, injection(K, V)::in, injection(K, V)::out)
     is det.
 
-    % Merge the contents of the two injections.  For keys that occur in
+    % Merge the contents of the two injections. For keys that occur in
     % both injections, map them to the value in the second argument.
     % Both sets of values must be disjoint.
     %
@@ -269,7 +269,7 @@
 :- pred apply_reverse_map_to_list(injection(K, V)::in, list(V)::in,
     list(K)::out) is det.
 
-    % Apply a transformation to all the keys in the injection.  If two
+    % Apply a transformation to all the keys in the injection. If two
     % distinct keys become equal under this transformation then the
     % value associated with the greater of these two keys is used in the
     % result.
@@ -284,10 +284,10 @@
 :- pred filter_map_keys(pred(V, K, L)::in(pred(in, in, out) is semidet),
     injection(K, V)::in, injection(L, V)::out) is det.
 
-    % Apply a transformation to all the values in the injection.  If two
+    % Apply a transformation to all the values in the injection. If two
     % distinct values become equal under this transformation then the
     % reverse search of these two values in the original map must lead
-    % to the same key.  If it doesn't, then throw an exception.
+    % to the same key. If it doesn't, then throw an exception.
     %
 :- func map_values(func(K, V) = W, injection(K, V)) = injection(K, W).
 :- pred map_values(pred(K, V, W)::in(pred(in, in, out) is det),
@@ -397,7 +397,7 @@ set(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
 
 set(I, K, V, injection.set(I, K, V)).
 
-:- pred injection.set_2(K::in, V::in, map(K, V)::in, map(K, V)::out,
+:- pred set_2(K::in, V::in, map(K, V)::in, map(K, V)::out,
     map(V, K)::in, map(V, K)::out) is semidet.
 
 set_2(K, V, !F, !R) :-
@@ -414,7 +414,7 @@ det_set(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
 
 det_set(I, K, V, injection.det_set(I, K, V)).
 
-:- pred injection.det_set_2(K::in, V::in, map(K, V)::in, map(K, V)::out,
+:- pred det_set_2(K::in, V::in, map(K, V)::in, map(K, V)::out,
     map(V, K)::in, map(V, K)::out) is det.
 
 det_set_2(K, V, !F, !R) :-
@@ -517,8 +517,8 @@ delete_key(injection(!.F, !.R), K) = injection(!:F, !:R) :-
 
 delete_key(K, I, injection.delete_key(I, K)).
 
-:- pred filter_values_with_key(K::in, V::in, K::in, map(V, K)::in,
-    map(V, K)::out) is det.
+:- pred filter_values_with_key(K::in, V::in, K::in,
+    map(V, K)::in, map(V, K)::out) is det.
 
 filter_values_with_key(FilterKey, V, K, !Map) :-
     ( if K = FilterKey then
@@ -529,7 +529,7 @@ filter_values_with_key(FilterKey, V, K, !Map) :-
 
 delete_value(injection(!.F, !.R), V) = injection(!:F, !:R) :-
     ( if map.remove(V, K, !R) then
-        % Only K could possibly be associated with V.  If it is,
+        % Only K could possibly be associated with V. If it is,
         % then we throw an exception.
         ( if map.lookup(!.F, K, V) then
             error($pred, "value is associated with a key")

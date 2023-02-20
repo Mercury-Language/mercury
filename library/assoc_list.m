@@ -396,7 +396,7 @@ from_corresponding_lists(Ks, Vs, KVs) :-
 maybe_from_corresponding_lists(Ks, Vs, KVs) :-
     assoc_list.from_corresponding_loop(Ks, Vs, KVs).
 
-:- pred assoc_list.from_corresponding_loop(list(K)::in, list(V)::in,
+:- pred from_corresponding_loop(list(K)::in, list(V)::in,
     assoc_list(K,V)::out) is semidet.
 
 from_corresponding_loop([], [], []).

@@ -347,14 +347,14 @@
 directory_separator = (if have_win32 then ('\\') else ('/')).
 
 :- pragma foreign_proc("C#",
-    dir.directory_separator = (Sep::out),
+    directory_separator = (Sep::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     Sep = System.IO.Path.DirectorySeparatorChar;
 ").
 
 :- pragma foreign_proc("Java",
-    dir.directory_separator = (Sep::out),
+    directory_separator = (Sep::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     Sep = java.io.File.separatorChar;
@@ -362,12 +362,12 @@ directory_separator = (if have_win32 then ('\\') else ('/')).
 
 directory_separator(dir.directory_separator).
 
-:- func dir.alt_directory_separator = char.
+:- func alt_directory_separator = char.
 
 alt_directory_separator = (if io.have_cygwin then ('\\') else ('/')).
 
 :- pragma foreign_proc("C#",
-    dir.alt_directory_separator = (Sep::out),
+    alt_directory_separator = (Sep::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     Sep = System.IO.Path.AltDirectorySeparatorChar;
@@ -499,7 +499,7 @@ split_name_dotnet(_, "", "") :-
 % The .NET CLI provides functions to split directory names in a
 % system-dependent manner.
 :- pragma foreign_proc("C#",
-    dir.split_name_dotnet(FileName::in, DirName::out, BaseName::out),
+    split_name_dotnet(FileName::in, DirName::out, BaseName::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     try {
@@ -839,7 +839,7 @@ dotnet_path_name_is_absolute(FileName) :-
 :- pragma no_determinism_warning(pred(dotnet_path_name_is_absolute_2/1)).
 
 :- pragma foreign_proc("C#",
-    dir.dotnet_path_name_is_absolute_2(FileName::in),
+    dotnet_path_name_is_absolute_2(FileName::in),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     try {

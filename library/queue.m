@@ -185,7 +185,7 @@ put_list(Xs, queue(On0, Off0), queue(On, Off)) :-
         queue.put_list_2(Xs, On0, On)
     ).
 
-:- pred queue.put_list_2(list(T)::in, list(T)::in, list(T)::out) is det.
+:- pred put_list_2(list(T)::in, list(T)::in, list(T)::out) is det.
 
 put_list_2([], On, On).
 put_list_2([X | Xs], On0, On) :-

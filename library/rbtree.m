@@ -262,6 +262,10 @@
 
 %---------------------------------------------------------------------------%
 
+% Special conditions that must be satisfied by Red-Black trees:
+%   * The root node must be black.
+%   * There can never be 2 red nodes in a row.
+
 :- type rbtree(K, V)
     --->    empty
     ;       red(K, V, rbtree(K, V), rbtree(K, V))
@@ -281,10 +285,6 @@ singleton(K, V) = black(K, V, empty, empty).
 
 %---------------------------------------------------------------------------%
 
-% Special conditions that must be satisfied by Red-Black trees.
-%   * The root node must be black.
-%   * There can never be 2 red nodes in a row.
-
 insert(K, V, empty, black(K, V, empty, empty)).
 insert(_K, _V, red(_, _, _, _), _Tree) :-
     error($pred, "root node cannot be red!").
@@ -302,13 +302,13 @@ insert(K, V, black(K0, V0, L0, R0), Tree) :-
         error($pred, "new tree is empty")
     ).
 
-    % rbtree.insert_2:
+    % insert_2:
     %
     % We traverse down the tree until we find the correct spot to insert.
     % Then as we fall back out of the recursions we look for possible
     % rotation cases.
-
-:- pred rbtree.insert_2(rbtree(K, V)::in, K::in, V::in, rbtree(K, V)::out)
+    %
+:- pred insert_2(rbtree(K, V)::in, K::in, V::in, rbtree(K, V)::out)
     is semidet.
 
 % Red node always inserted at the bottom as it will be rotated into the
@@ -468,10 +468,6 @@ transform_value(P, K, black(K0, V0, L, R), Tree) :-
 
 %---------------------------------------------------------------------------%
 
-% Special conditions that must be satisfied by Red-Black trees.
-%   * The root node must be black.
-%   * There can never be 2 red nodes in a row.
-
 set(!.RBT, K, V) = !:RBT :-
     rbtree.set(K, V, !RBT).
 
@@ -492,12 +488,12 @@ set(K, V, black(K0, V0, L0, R0), Tree) :-
         error($pred, "new tree is empty")
     ).
 
-    % rbtree.set_2:
+    % set_2:
     %
     % We traverse down the tree until we find the correct spot to insert, or
     % update. Then as we fall back out of the recursions we look for possible
     % rotation cases.
-
+    %
 :- pred set_2(rbtree(K, V), K, V, rbtree(K, V)).
 :- mode set_2(di, di, di, uo) is det.
 :- mode set_2(in, in, in, out) is det.
@@ -593,10 +589,6 @@ set_2(black(K0, V0, L0, R0), K, V, Tree) :-
 
 %---------------------------------------------------------------------------%
 
-% Special conditions that must be satisfied by Red-Black trees.
-%   * The root node must be black.
-%   * There can never be 2 red nodes in a row.
-
 insert_duplicate(!.RBT, K, V) = !:RBT :-
     rbtree.insert_duplicate(K, V, !RBT).
 
@@ -612,12 +604,12 @@ insert_duplicate(K, V, black(K0, V0, L0, R0), Tree) :-
         Tree = Tree0
     ).
 
-    % rbtree.insert_duplicate_2:
+    % insert_duplicate_2:
     %
     % We traverse down the tree until we find the correct spot to insert.
     % Then as we fall back out of the recursions we look for possible
     % rotation cases.
-
+    %
 :- pred insert_duplicate_2(rbtree(K, V), K, V, rbtree(K, V)).
 :- mode insert_duplicate_2(in, in, in, out) is det.
 
@@ -854,7 +846,7 @@ delete(!.RBT, K) = !:RBT :-
 delete(K, !Tree) :-
     rbtree.delete_2(!.Tree, K, no, _, !:Tree).
 
-    % rbtree.delete_2(Tree0, Key, MustRemove, MaybeValue, Tree):
+    % delete_2(Tree0, Key, MustRemove, MaybeValue, Tree):
     %
     % Search the tree Tree0, looking for a node with key Key to delete.
     % If MustRemove is `yes' and we don't find the key, fail.
@@ -875,7 +867,7 @@ delete(K, !Tree) :-
     %       Move maximum key of Left subtree to current node. O(log N)
     %
     % Algorithm O(log N).
-
+    %
 :- pred delete_2(rbtree(K, V), K, bool, maybe(V), rbtree(K, V)).
 :- mode delete_2(in, in, in, out, out) is semidet.
 :- mode delete_2(in, in, in(bound(no)), out, out) is det.

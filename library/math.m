@@ -746,13 +746,13 @@ unchecked_log(B, X) = math.unchecked_ln(X) / math.unchecked_ln(B).
     Tan = ML_TAN(X);
 ").
 :- pragma foreign_proc("C#",
-    math.tan(X::in) = (Tan::out),
+    tan(X::in) = (Tan::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Tan = System.Math.Tan(X);
 ").
 :- pragma foreign_proc("Java",
-    math.tan(X::in) = (Tan::out),
+    tan(X::in) = (Tan::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Tan = java.lang.Math.tan(X);
@@ -823,7 +823,7 @@ acos(X) = ACos :-
 ").
 
 :- pragma foreign_proc("C",
-    math.atan(X::in) = (ATan::out),
+    atan(X::in) = (ATan::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "

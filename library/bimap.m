@@ -574,8 +574,8 @@ overlay(BMA, BMB, BM) :-
     bimap.to_assoc_list(BMB, KVBs),
     bimap.overlay_2(KVBs, BMA, BM).
 
-:- pred bimap.overlay_2(assoc_list(K, V)::in, bimap(K, V)::in,
-    bimap(K, V)::out) is det.
+:- pred overlay_2(assoc_list(K, V)::in, bimap(K, V)::in, bimap(K, V)::out)
+    is det.
 
 overlay_2([], !BM).
 overlay_2([Key - Value | KeysValues], !BM) :-
@@ -650,9 +650,8 @@ map_values(ValueMap, BM0, BM) :-
     bimap.map_values_2(ValueMap, L0, [], L),
     bimap.det_from_assoc_list(L, BM).
 
-:- pred bimap.map_keys_2(pred(V, K, L)::in(pred(in, in, out) is det),
-    assoc_list(K, V)::in, assoc_list(L, V)::in, assoc_list(L, V)::out)
-    is det.
+:- pred map_keys_2(pred(V, K, L)::in(pred(in, in, out) is det),
+    assoc_list(K, V)::in, assoc_list(L, V)::in, assoc_list(L, V)::out) is det.
 
 map_keys_2(_KeyMap, [], !List).
 map_keys_2(KeyMap, [Key0 - Value | Tail0], !List) :-
@@ -660,9 +659,8 @@ map_keys_2(KeyMap, [Key0 - Value | Tail0], !List) :-
     !:List = [Key - Value | !.List],
     bimap.map_keys_2(KeyMap, Tail0, !List).
 
-:- pred bimap.map_keys_func_2(func(V, K) = L::in(func(in, in) = out is det),
-    assoc_list(K, V)::in, assoc_list(L, V)::in, assoc_list(L, V)::out)
-    is det.
+:- pred map_keys_func_2(func(V, K) = L::in(func(in, in) = out is det),
+    assoc_list(K, V)::in, assoc_list(L, V)::in, assoc_list(L, V)::out) is det.
 
 map_keys_func_2(_KeyMap, [], !List).
 map_keys_func_2(KeyMap, [Key0 - Value | Tail0], !List) :-
@@ -670,7 +668,7 @@ map_keys_func_2(KeyMap, [Key0 - Value | Tail0], !List) :-
     !:List = [Key - Value | !.List],
     bimap.map_keys_func_2(KeyMap, Tail0, !List).
 
-:- pred bimap.map_values_2(pred(K, V, W)::in(pred(in, in, out) is det),
+:- pred map_values_2(pred(K, V, W)::in(pred(in, in, out) is det),
     assoc_list(K, V)::in, assoc_list(K, W)::in, assoc_list(K, W)::out) is det.
 
 map_values_2(_ValueMap, [], !List).
@@ -679,7 +677,7 @@ map_values_2(ValueMap, [Key - Value0 | Tail0], !List) :-
     !:List = [Key - Value | !.List],
     bimap.map_values_2(ValueMap, Tail0, !List).
 
-:- pred bimap.map_values_func_2(func(K, V) = W::in(func(in, in) = out is det),
+:- pred map_values_func_2(func(K, V) = W::in(func(in, in) = out is det),
     assoc_list(K, V)::in, assoc_list(K, W)::in, assoc_list(K, W)::out) is det.
 
 map_values_func_2(_ValueMap, [], !List).

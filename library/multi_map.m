@@ -489,7 +489,7 @@ merge(M0, M1, M) :-
     multi_map.assoc_list_merge(ML0, ML1, ML),
     multi_map.from_sorted_assoc_list(ML, M).
 
-:- pred multi_map.assoc_list_merge(assoc_list(K, list(V))::in,
+:- pred assoc_list_merge(assoc_list(K, list(V))::in,
     assoc_list(K, list(V))::in, assoc_list(K, list(V))::out) is det.
 
 assoc_list_merge(ListA, ListB, List) :-
@@ -558,7 +558,7 @@ from_flat_assoc_list(AssocList) = MultiMap :-
 from_flat_assoc_list(AssocList, MultiMap) :-
     list.foldl(multi_map.add_from_pair, AssocList, map.init, MultiMap).
 
-:- pred multi_map.add_from_pair(pair(K, V)::in,
+:- pred add_from_pair(pair(K, V)::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
 add_from_pair(K - V, !MultiMap) :-
@@ -593,7 +593,7 @@ from_corresponding_lists(Keys, Values, MultiMap) :-
     multi_map.init(MultiMap0),
     multi_map.from_corresponding_lists_2(Keys, Values, MultiMap0, MultiMap).
 
-:- pred multi_map.from_corresponding_lists_2(list(K)::in, list(V)::in,
+:- pred from_corresponding_lists_2(list(K)::in, list(V)::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
 from_corresponding_lists_2([], [], !MultiMap).

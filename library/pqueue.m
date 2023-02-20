@@ -181,7 +181,7 @@ insert(K, V, pqueue(D0, K0, V0, L0, R0), PQ) :-
     ),
     PQ = pqueue(D, K1, V1, L, R).
 
-:- pred pqueue.insert_2(K::in, V::in, pqueue(K, V)::in, pqueue(K, V)::in,
+:- pred insert_2(K::in, V::in, pqueue(K, V)::in, pqueue(K, V)::in,
     pqueue(K, V)::out, pqueue(K, V)::out) is det.
 
 insert_2(K, V, empty, empty, pqueue(0, K, V, empty, empty), empty).
@@ -204,8 +204,7 @@ insert_2(K, V, pqueue(D0, K0, V0, L0, R0),
 remove(K, V, pqueue(_, K, V, L0, R0), PQ) :-
     pqueue.remove_2(L0, R0, PQ).
 
-:- pred pqueue.remove_2(pqueue(K, V)::in, pqueue(K, V)::in, pqueue(K, V)::out)
-    is det.
+:- pred remove_2(pqueue(K, V)::in, pqueue(K, V)::in, pqueue(K, V)::out) is det.
 
 remove_2(empty, empty, empty).
 remove_2(empty, pqueue(D, K, V, L, R), pqueue(D, K, V, L, R)).
