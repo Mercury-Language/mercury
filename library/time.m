@@ -851,7 +851,7 @@ mktime(TM, Time, !IO) :-
     %
 :- pred target_mktime(int::in, int::in, int::in, int::in, int::in, int::in,
     int::in, int::in, int::in, bool::out, time_t_rep::out, string::out,
-     io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     target_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
@@ -888,7 +888,7 @@ mktime(TM, Time, !IO) :-
 :- pragma foreign_proc("C#",
     target_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
         _YD::in, _WD::in, _N::in, IsOk::out, Time::out, ErrorMsg::out,
-         _IO0::di, _IO::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     // We don't use YD, WD and N.
