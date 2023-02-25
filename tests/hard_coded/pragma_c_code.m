@@ -25,7 +25,7 @@ main(!IO) :-
     c_write_integer(Y2, !IO),
     c_get_meaning_of_life(Z), % test floats
     c_write_float(Z, !IO),
-    c_write_cosine(Z, !IO).   % test c_header_code
+    c_write_cosine(Z, !IO).   % test foreign_decl for C
 
 :- pragma foreign_decl("C", "#include <stdio.h>").
 

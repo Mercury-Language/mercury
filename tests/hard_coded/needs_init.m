@@ -25,14 +25,14 @@ main(!IO) :-
 hello(!IO) :-
     io.write_string("hello, ", !IO).
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 #include <stdio.h>
 void run_at_init_time_init_type_tables(void);
 void run_at_init_time_write_out_proc_statics(FILE *);
 void run_at_init_time_init_debugger(void);
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 
 /*
 INIT run_at_init_time
