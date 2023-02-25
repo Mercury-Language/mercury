@@ -13,7 +13,7 @@
     % executable.
 :- import_module mercury_lib.
 
-% import the module which defines the Mercury interface to the
+% Import the module which defines the Mercury interface to the
 % C function c_main().
 :- import_module c_main_int.
 

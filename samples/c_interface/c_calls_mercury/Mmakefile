@@ -10,11 +10,11 @@ all: mercury_main
 
 #-----------------------------------------------------------------------------#
 
-# pass `-g' to the C compiler and linker, so we can use a debugger (e.g. gdb)
+# Pass `-g' to the C compiler and linker, so we can use a debugger (e.g. gdb)
 MGNUCFLAGS=-g
 MLFLAGS=-g
 
-# tell the Mercury linker to link in c_main.o and mercury_lib.o
+# Tell the Mercury linker to link in c_main.o and mercury_lib.o
 MLOBJS=c_main.o
 
 #-----------------------------------------------------------------------------#

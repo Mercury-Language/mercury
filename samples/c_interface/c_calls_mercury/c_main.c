@@ -15,7 +15,7 @@ void c_main(void) {
 	printf("In c_main().\n");
 
 	/*
-	** call the C function foo_test(), which is the interface
+	** Call the C function foo_test(), which is the interface
 	** to the Mercury predicate foo/1 in mode
 	** 	:- mode foo(in) is semidet.
 	*/
@@ -23,7 +23,7 @@ void c_main(void) {
 	printf("foo_test(43) returns %s\n", foo_test(43) ? "TRUE" : "FALSE");
 
 	/*
-	** call the C function one_foo(), which is the interface
+	** Call the C function one_foo(), which is the interface
 	** to the Mercury predicate foo/1 in mode
 	** 	:- mode foo(out) is cc_multi.
 	*/
@@ -31,7 +31,7 @@ void c_main(void) {
 	printf("one_foo(&value) gives value = %ld\n", (long) value);
 
 	/*
-	** call the C function foo_list(), which is the interface
+	** Call the C function foo_list(), which is the interface
 	** to the Mercury predicate foo/1 in mode
 	** 	:- mode foo(out) is multi.
 	*/
@@ -41,7 +41,7 @@ void c_main(void) {
 	printf("\n");
 
 	/*
-	** call the C functions bar(), bar_test(), and bar_inverse(),
+	** Call the C functions bar(), bar_test(), and bar_inverse(),
 	** which are the C interfaces to the Mercury function bar/1
 	** in the modes
 	**	:- mode bar(in) = out is det.
