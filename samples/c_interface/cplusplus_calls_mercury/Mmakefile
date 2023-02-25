@@ -27,22 +27,22 @@ HACK=		-DMR_MACHDEPS_ALPHA_REGS_H \
 		-DMR_MACHDEPS_PA_REGS_H \
 		-DMR_MACHDEPS_RS6000_REGS_H
 
-# pass `-g' to the C compiler and linker, so we can use a debugger (e.g. gdb)
+# Pass `-g' to the C compiler and linker, so we can use a debugger (e.g. gdb).
 CXXFLAGS=-g
 MGNUCFLAGS=-g
 MLFLAGS=-g
 
-# tell the Mercury linker to link in cpp_main.o
+# Tell the Mercury linker to link in cpp_main.o
 MLOBJS=cpp_main.o
 MLLIBS=-lstdc++
 
 #-----------------------------------------------------------------------------#
 
-# we also need to add header file dependencies
+# We also need to add header file dependencies.
 cpp_main.o: cpp_main.h mercury_lib.mh
 cpp_main_int.o: cpp_main.h
 
-# make sure that `mmake clean' removes cpp_main.o
+# Ensure sure that `mmake clean' removes cpp_main.o
 clean_local:
 	rm -f cpp_main.o
 

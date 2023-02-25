@@ -16,14 +16,14 @@ int main(int argc, char **argv) {
 	printf("In main().\n");
 
 	/*
-	** call mercury_init() to initialize the Mercury engine.
+	** Call mercury_init() to initialize the Mercury engine.
 	** This must be done before we can call any Mercury predicates
 	** or functions.
 	*/
 	mercury_init(argc, argv, &dummy);
 
 	/*
-	** call the C function foo_test(), which is the interface
+	** Call the C function foo_test(), which is the interface
 	** to the Mercury predicate foo/1 in mode
 	** 	:- mode foo(in) is semidet.
 	*/
@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
 	printf("foo_test(43) returns %s\n", foo_test(43) ? "TRUE" : "FALSE");
 
 	/*
-	** call the C function one_foo(), which is the interface
+	** Call the C function one_foo(), which is the interface
 	** to the Mercury predicate foo/1 in mode
 	** 	:- mode foo(out) is cc_multi.
 	*/
@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
 	printf("one_foo(&value) gives value = %ld\n", (long) value);
 
 	/*
-	** call the C function foo_list(), which is the interface
+	** Call the C function foo_list(), which is the interface
 	** to the Mercury predicate foo/1 in mode
 	** 	:- mode foo(out) is multi.
 	*/
@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
 	printf("\n");
 
 	/*
-	** call the C functions bar(), bar_test(), and bar_inverse(),
+	** Call the C functions bar(), bar_test(), and bar_inverse(),
 	** which are the C interfaces to the Mercury function bar/1
 	** in the modes
 	**	:- mode bar(in) = out is det.
@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
 	}
 
 	/*
-	** call mercury_terminate() to shutdown the Mercury engine.
+	** Call mercury_terminate() to shutdown the Mercury engine.
 	** This should be done after we have finished calling Mercury
 	** predicates or functions.
 	*/

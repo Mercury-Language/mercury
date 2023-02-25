@@ -14,6 +14,6 @@
 
 % main just invokes cpp_main
 main(!IO) :-
-	io.write_string("In Mercury main, about to call cpp_main...\n", !IO),
-	cpp_main(!IO),
-	io.write_string("Back in Mercury main.\n", !IO).
+    io.write_string("In Mercury main, about to call cpp_main...\n", !IO),
+    cpp_main(!IO),
+    io.write_string("Back in Mercury main.\n", !IO).

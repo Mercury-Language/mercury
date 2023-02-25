@@ -5,27 +5,27 @@
 :- interface.
 :- import_module io.
 
-	% To avoid link errors, there still has to be a main/2 defined
-	% somewhere in the program; it won't be used, unless the C program
-	% calls mercury_call_main(), which will call main/2.
-	%
+    % To avoid link errors, there still has to be a main/2 defined
+    % somewhere in the program; it won't be used, unless the C program
+    % calls mercury_call_main(), which will call main/2.
+    %
 :- pred main(io::di, io::uo) is det.
 
-	% A Mercury predicate with multiple modes.
-	%
+    % A Mercury predicate with multiple modes.
+    %
 :- pred foo(int).
 :- mode foo(in) is semidet.
 :- mode foo(out) is multi.
 
-	% A Mercury function with multiple modes.
-	%
+    % A Mercury function with multiple modes.
+    %
 :- func bar(int) = int.
 :- mode bar(in) = out is det.
 :- mode bar(out) = in is det.
 :- mode bar(in) = in is semidet.
 
-	% A semidet (i.e. partial) Mercury function.
-	%
+    % A semidet (i.e. partial) Mercury function.
+    %
 :- func baz(int) = int.
 :- mode baz(in) = out is semidet.
 
@@ -65,17 +65,17 @@ baz(3) = 27.
 
 :- pragma foreign_export("C", baz(in) = out, "baz").
 
-	% The nondet mode of `foo' cannot be exported directly with
-	% the current Mercury/C interface.  To get all solutions,
-	% must define a predicate which returns all the solutions of foo,
-	% and export it to C.  We give it the name foo_list() in C.
+    % The nondet mode of `foo' cannot be exported directly with the Mercury/C
+    % interface. To get all solutions, you must define a predicate which
+    % returns all the solutions of foo, and export it to C. We give it the name
+    % foo_list() in C.
 :- pred all_foos(list(int)::out) is det.
 :- pragma foreign_export("C", all_foos(out), "foo_list").
 all_foos(L) :- solutions((pred(X::out) is multi :- foo(X)), L).
 
-	% If we just want one solution, and don't care which one, then
-	% we can export a `cc_multi' (committed-choice nondeterminism)
-	% version of `foo'. We give it the name one_foo().
+    % If we just want one solution, and don't care which one, then
+    % we can export a `cc_multi' (committed-choice nondeterminism)
+    % version of `foo'. We give it the name one_foo().
 :- pred cc_foo(int::out) is cc_multi.
 :- pragma foreign_export("C", cc_foo(out), "one_foo").
 cc_foo(X) :- foo(X).

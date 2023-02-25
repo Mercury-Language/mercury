@@ -3,38 +3,38 @@
 #-----------------------------------------------------------------------------#
 #
 # This directory contains an example of how to create and use a stand-alone
-# interface.  Stand-alone interfaces allow exported Mercury procedures to be
+# interface. Stand-alone interfaces allow exported Mercury procedures to be
 # called from "foreign" applications, that is applications whose entry point
-# is something other than a Mercury main/2 predicate.  (By "exported" Mercury
+# is something other than a Mercury main/2 predicate. (By "exported" Mercury
 # procedure we mean one that is the subject of a pragma foreign_export
 # declaration.)
 #
-# A stand-alone interface consists of an object / header file pair.  These
+# A stand-alone interface consists of an object / header file pair. These
 # define a pair of functions whose respective tasks are to initialise and
 # shutdown the Mercury runtime plus a given set of Mercury libraries that the
-# foreign application may wish to use.  It is important to initialise the
-# Mercury runtime before calling any Mercury procedures.  The header file
+# foreign application may wish to use. It is important to initialise the
+# Mercury runtime before calling any Mercury procedures. The header file
 # created as part of the stand-alone interface is compatible with either C or
 # C++.
 #
 # Stand-alone interfaces are created by invoking the compiler with the
-# `--generate-standalone-interface' option.  The Mercury libraries that the
+# `--generate-standalone-interface' option. The Mercury libraries that the
 # foreign application may wish to use are specified via the usual mechanisms,
-# e.g. the `--ml' and `--mld' options.  The Mercury standard library is always
+# e.g. the `--ml' and `--mld' options. The Mercury standard library is always
 # included amongst the set of libraries.
 #
 # In this example there is a small foreign application written in C contained
-# in the file c_main.c.  This application calls some Mercury procedures
+# in the file c_main.c. This application calls some Mercury procedures
 # defined in the Mercury library `mercury_lib' (which is contained in the file
-# mercury_lib.m).  The program also manipulates the value of a mutable defined
+# mercury_lib.m). The program also manipulates the value of a mutable defined
 # in this library.
 #
-# To build the application we first compile `mercury_lib'.  For this example
+# To build the application we first compile `mercury_lib'. For this example
 # we don't bother installing it since that would just lead to the command
-# lines being unwieldy.  We then build the stand-alone interface, which in
-# this example is called mercury_lib_int.  Finally, we compile c_main.c and
-# link them all together.  Specific details concerning each step in the build
-# process are discussed below.  See c_main.c for details of how to invoke the
+# lines being unwieldy. We then build the stand-alone interface, which in
+# this example is called mercury_lib_int. Finally, we compile c_main.c and
+# link them all together. Specific details concerning each step in the build
+# process are discussed below. See c_main.c for details of how to invoke the
 # stand-alone interface from C or C++ code.
 
 MMC = mmc
@@ -54,12 +54,12 @@ GRADEOPT=
 # out the next two lines and uncomment the two following them.
 #
 # Note that we specify the example mercury_lib library to the linker separately
-# here.  This is because we have not installed it.
+# here. This is because we have not installed it.
 #
 MERCURY_LINKAGE = --mercury-linkage static
 MERCURY_LIB_LDFLAGS = libmercury_lib.a
 
-# For using shared libraries.  (Remember to comment out the versions
+# For using shared libraries. (Remember to comment out the versions
 # above if you use these.)
 #
 #MERCURY_LINKAGE = --mercury-linkage shared
@@ -72,7 +72,7 @@ CC = $(shell $(MMC) --output-cc)
 # We need to tell the C compiler to define the macros used to specify the
 # compilation grade in which any Mercury libraries we are using were compiled.
 # We also need to tell the C compiler where to find the C header files
-# associated with those libraries.  The simplest way to find out both of these
+# associated with those libraries. The simplest way to find out both of these
 # is to ask the Mercury compiler what flags it passes to the C compiler.
 # This can be done as follows:
 #
@@ -84,7 +84,7 @@ CC = $(shell $(MMC) --output-cc)
 #
 # We use a finer grained approach here that only queries the Mercury compiler
 # about which macros to define for the current grade and what directories to
-# search for header files in.  This finer grained approach is useful if a
+# search for header files in. This finer grained approach is useful if a
 # foreign application is written in, for example, C++ instead of C.  In that
 # case not all of the flags output by --output-cflags may be valid for the
 # C++ compiler.
@@ -115,19 +115,19 @@ LD = $(shell $(MMC) --output-link-command)
 LIB_LDFLAGS = $(shell $(MMC) $(GRADEOPT) $(MERCURY_LINKAGE) --output-library-link-flags)
 
 # Build the example Mercury library, mercury_lib.
-# The dependency on the .init file is merely a convenience.  It's a good
-# one to choose since it will always be regenerated if one of the .m files
-# in a library is changed.
+# The dependency on the .init file is merely a convenience. It is a good
+# choice since it will always be regenerated if one of the .m files in a
+# library is changed.
 #
 # In order to keep the command lines in this makefile sane we don't
-# bother installing it.  Usually we would be working with an installed
+# bother installing it. Usually we would be working with an installed
 # library.
 #
 mercury_lib.init: mercury_lib.m
 	$(MMC) $(GRADEOPT) --make libmercury_lib
 
 # The following rule creates the stand-alone interface to the mercury_lib
-# library, Mercury standard library and Mercury runtime.  Since we haven't
+# library, Mercury standard library and Mercury runtime. Since we have not
 # installed mercury_lib all the relevant files will have been built in
 # this directory; with an installed library we would need to use the
 # `--mld' option to specify its location.

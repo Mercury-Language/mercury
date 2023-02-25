@@ -8,7 +8,7 @@
 class Foo { };
 
 void cpp_main(void) {
-	Foo *p = new Foo;
-	std::cout << "In cpp_main()." << std::endl;
-	delete p;
+    Foo *p = new Foo;
+    std::cout << "In cpp_main()." << std::endl;
+    delete p;
 }
