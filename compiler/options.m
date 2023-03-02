@@ -4259,7 +4259,7 @@ options_help_warning(Stream, !IO) :-
         "\tand functions of the module, or for the nonexported predicates",
         "\tand functions of the module. Applies for definitions by either",
         "\tMercury clauses or foreign_proc pragmas.",
-        "--no-warn-non-contiguous-decl",
+        "--no-warn-non-contiguous-decls",
         "\tDo not generate a warning if the mode declarations of a",
         "\tpredicate or function don't all immediately follow its",
         "\tpredicate or function declaration.",
