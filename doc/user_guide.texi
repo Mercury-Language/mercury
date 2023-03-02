@@ -6706,8 +6706,8 @@ and functions of the module. Applies for definitions by either
 Mercury clauses or foreign_proc pragmas.
 
 @sp 1
-@item --no-warn-non-contiguous-decl
-@findex --no-warn-non-contiguous-decl
+@item --no-warn-non-contiguous-decls
+@findex --no-warn-non-contiguous-decls
 Do not generate a warning if the mode declarations of a
 predicate or function don't all immediately follow its
 predicate or function declaration.
