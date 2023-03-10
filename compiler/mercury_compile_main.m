@@ -728,30 +728,58 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
         OptionArgs, Args, !HaveReadModuleMaps, !Specs, !IO) :-
     globals.lookup_bool_option(Globals, invoked_by_mmc_make, InvokedByMake),
     (
-        FileNamesFromStdin = yes,
-        % Mmc --make does not set --filenames-from-stdin.
-        expect(unify(InvokedByMake, no), $pred, "InvokedByMake != no"),
-        io.stdin_stream(StdIn, !IO),
-        setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream,
-            StdIn, Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
-            OptionArgs,
-            cord.empty, ModulesToLinkCord, cord.empty, ExtraObjFilesCord,
-            !HaveReadModuleMaps, !Specs, !IO)
+        InvokedByMake = no,
+        % We used to do this check once per compiler arg, which was
+        % quite wasteful. However, there was an almost-justifiable
+        % reason for that. The check used to be done in the now-deleted
+        % predicate process_compiler_arg_build, the part of what is now
+        % setup_and_process_compiler_arg that happens after the setup.
+        % This meant that maybe_check_libraries_are_installed was called
+        % not with the original globals (which is Globals here), but with
+        % the globals created by setup_for_build_with_module_options.
+        % However, the only options in the globals structure that
+        % maybe_check_libraries_are_installed pays attention to are
+        %
+        % - global settings, such as libgrade_install_check and
+        %   mercury_libraries, and
+        %
+        % - grade options.
+        %
+        % No sensible Mercury.options file will contain options that
+        % touch the value of any option in either of those categories.
+        % It shouldn't be able to touch the values of the relevant options
+        % in the first category, because they don't have any names which
+        % would allow them to be specified. They *could* touch the values
+        % of grade options, but the result will be a program whose modules
+        % can't be linked together due to incompatible grades.
+        % (XXX It would be nice if we detected such errors in Mercury.options
+        % files *without* letting the issue through to the linker.)
+        %
+        % We do this check only when InvokedByMake = no, because during
+        % compiler invocations that *set* --invoked-by-mmc-make,
+        % make_linked_target in make.program_target.m should have
+        % done it already.
+        maybe_check_libraries_are_installed(Globals, LibgradeCheckSpecs, !IO)
     ;
-        FileNamesFromStdin = no,
+        InvokedByMake = yes,
+        LibgradeCheckSpecs = []
+    ),
+    (
+        LibgradeCheckSpecs = [],
         (
-            InvokedByMake = no,
-            % We used to do this check once per compiler arg, which was
-            % quite wasteful.
-            %
-            % We also used to do this check, as we are we doing now,
-            % only when InvokedByMake = no. I, zs, don't know why, though
-            % I *guess* that it may be that the compiler invocation that *set*
-            % --invoked-by-mmc-make may have done it already.
-            maybe_check_libraries_are_installed(Globals,
-                LibgradeCheckSpecs, !IO),
+            FileNamesFromStdin = yes,
+            % Mmc --make does not set --filenames-from-stdin.
+            expect(unify(InvokedByMake, no), $pred, "InvokedByMake != no"),
+            io.stdin_stream(StdIn, !IO),
+            setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream,
+                StdIn, Globals, OpModeArgs, DetectedGradeFlags,
+                OptionVariables, OptionArgs,
+                cord.empty, ModulesToLinkCord, cord.empty, ExtraObjFilesCord,
+                !HaveReadModuleMaps, !Specs, !IO)
+        ;
+            FileNamesFromStdin = no,
             (
-                LibgradeCheckSpecs = [],
+                InvokedByMake = no,
                 setup_and_process_compiler_cmd_line_args(ProgressStream,
                     ErrorStream, Globals, OpModeArgs, DetectedGradeFlags,
                     OptionVariables, OptionArgs, Args,
@@ -759,22 +787,22 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
                     cord.empty, ExtraObjFilesCord,
                     !HaveReadModuleMaps, !Specs, !IO)
             ;
-                LibgradeCheckSpecs = [_ | _],
-                !:Specs = LibgradeCheckSpecs ++ !.Specs,
-                ModulesToLinkCord = cord.empty,
-                ExtraObjFilesCord = cord.empty
+                InvokedByMake = yes,
+                % `mmc --make' has already set up the options.
+                do_process_compiler_cmd_line_args(ProgressStream, ErrorStream,
+                    Globals, OpModeArgs, OptionArgs, Args,
+                    cord.empty, ModulesToLinkCord,
+                    cord.empty, ExtraObjFilesCord, !HaveReadModuleMaps, !IO)
             )
-        ;
-            InvokedByMake = yes,
-            % `mmc --make' has already set up the options.
-            do_process_compiler_cmd_line_args(ProgressStream, ErrorStream,
-                Globals, OpModeArgs, OptionArgs, Args,
-                cord.empty, ModulesToLinkCord, cord.empty, ExtraObjFilesCord,
-                !HaveReadModuleMaps, !IO)
-        )
+        ),
+        ModulesToLink = cord.list(ModulesToLinkCord),
+        ExtraObjFiles = cord.list(ExtraObjFilesCord)
+    ;
+        LibgradeCheckSpecs = [_ | _],
+        !:Specs = LibgradeCheckSpecs ++ !.Specs,
+        ModulesToLink = [],
+        ExtraObjFiles = []
     ),
-    ModulesToLink = cord.list(ModulesToLinkCord),
-    ExtraObjFiles = cord.list(ExtraObjFilesCord),
 
     io.get_exit_status(ExitStatus, !IO),
     ( if ExitStatus = 0 then
@@ -1028,19 +1056,9 @@ setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
         ExtraObjFiles = []
     ;
         MayBuild = may_build(_AllOptionArgs, BuildGlobals),
-        maybe_check_libraries_are_installed(Globals,
-            LibgradeCheckSpecs, !IO),
-        (
-            LibgradeCheckSpecs = [],
-            do_process_compiler_arg(ProgressStream, ErrorStream, BuildGlobals,
-                OpModeArgs, OptionArgs, FileOrModule, ModulesToLink,
-                ExtraObjFiles, !HaveReadModuleMaps, !IO)
-        ;
-            LibgradeCheckSpecs = [_ | _],
-            !:Specs = LibgradeCheckSpecs ++ !.Specs,
-            ModulesToLink = [],
-            ExtraObjFiles = []
-        )
+        do_process_compiler_arg(ProgressStream, ErrorStream, BuildGlobals,
+            OpModeArgs, OptionArgs, FileOrModule, ModulesToLink,
+            ExtraObjFiles, !HaveReadModuleMaps, !IO)
     ).
 
 %---------------------%
