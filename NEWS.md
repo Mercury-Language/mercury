@@ -685,7 +685,7 @@ Changes to the Mercury standard library
      `uenum` typeclass, replacing the earlier requirement that it be
      a member of the `enum` typeclass.
 
-* The following obsolete predicates has been removed:
+* The following obsolete predicate has been removed:
 
     - pred `empty/1`
 
@@ -955,7 +955,7 @@ Changes to the Mercury standard library
 
 ### Changes to the `tree_bitset` module
 
-* The following obsolete predicates has been removed:
+* The following obsolete predicate has been removed:
 
     - pred `empty/1`
 
