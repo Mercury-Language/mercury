@@ -760,6 +760,7 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
                     !HaveReadModuleMaps, !Specs, !IO)
             ;
                 LibgradeCheckSpecs = [_ | _],
+                !:Specs = LibgradeCheckSpecs ++ !.Specs,
                 ModulesToLinkCord = cord.empty,
                 ExtraObjFilesCord = cord.empty
             )
