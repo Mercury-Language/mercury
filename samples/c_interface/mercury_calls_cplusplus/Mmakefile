@@ -13,7 +13,7 @@ all: mercury_main
 
 .SUFFIXES: .cc
 .cc.o:
-	$(CXX) $(HACK) $(CXXFLAGS) -c $<
+	$(CXX) $(CXXFLAGS) -c $<
 
 CXX=$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS)
 CXXFLAGS=
@@ -27,20 +27,6 @@ MLLIBS = -lstdc++
 #ML =		MERCURY_C_COMPILER=g++ \
 #		MERCURY_LINK_SHARED_OBJ="g++ -shared" \
 #		ml
-
-# Due to a bug in g++ 2.7, global register variables don't work in C++.
-# Hence we need to ensure that we don't include the global register
-# variable declarations.  The following hack seems to do the trick.
-# This is commented out now because it should not be needed with
-# g++ 2.95 or later.
-#
-HACK=
-#HACK=		-DMR_MACHDEPS_ALPHA_REGS_H \
-#		-DMR_MACHDEPS_MIPS_REGS_H \
-#		-DMR_MACHDEPS_SPARC_REGS_H \
-#		-DMR_MACHDEPS_I386_REGS_H \
-#		-DMR_MACHDEPS_PA_REGS_H \
-#		-DMR_MACHDEPS_RS6000_REGS_H
 
 #-----------------------------------------------------------------------------#
 
