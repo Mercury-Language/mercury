@@ -130,8 +130,9 @@ handle_given_options(ProgressStream, Args0, OptionArgs, Args, Specs,
         globals.lookup_bool_option(!.Globals, smart_recompilation, Smart),
         ( if
             Smart = yes,
-            OpMode = opm_top_args(opma_augment(
-                opmau_generate_code(opmcg_target_object_and_executable)))
+            OpMode = opm_top_args(OpModeArgs, _),
+            OpModeArgs = opma_augment(opmau_generate_code(
+                opmcg_target_object_and_executable))
         then
             % XXX Currently smart recompilation doesn't check that all the
             % files needed to link are present and up-to-date, so disable it.
@@ -790,7 +791,7 @@ convert_options_to_globals(ProgressStream, OptionTable0, !.OptTuple, OpMode,
     % intermodule_optimization only when the opmode calls for
     % generating target language code.
     handle_opmode_implications(OpMode, !Globals),
-    handle_option_to_option_implications(!Globals),
+    handle_option_to_option_implications(OpMode, !Globals),
     maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO),
 
     handle_directory_options(OpMode, !Globals),
@@ -847,7 +848,7 @@ convert_options_to_globals(ProgressStream, OptionTable0, !.OptTuple, OpMode,
                 %   since they were written before the const_struct_db
                 %   was implemented, and they have (yet) not been taught
                 %   about it.
-                OpMode = opm_top_args(opma_augment(Augment)),
+                OpMode = opm_top_args(opma_augment(Augment), _),
                 ( Augment = opmau_make_plain_opt
                 ; Augment = opmau_make_trans_opt
                 )
@@ -1052,7 +1053,7 @@ convert_options_to_globals(ProgressStream, OptionTable0, !.OptTuple, OpMode,
         % Don't do the unused_args optimization when making the
         % optimization interface.
         ( AllowSrcChangesDebug = do_not_allow_src_changes
-        ; OpMode = opm_top_args(opma_augment(opmau_make_plain_opt))
+        ; OpMode = opm_top_args(opma_augment(opmau_make_plain_opt), _)
         )
     then
         OT_OptUnusedArgs = do_not_opt_unused_args
@@ -1171,13 +1172,14 @@ check_for_incompatibilities(!.Globals, OpMode, !Specs) :-
     % `--transitive-intermodule-optimization' and `--make' are
     % not compatible with each other.
     globals.lookup_bool_option(!.Globals, transitive_optimization, TransOpt),
-    globals.lookup_bool_option(!.Globals, invoked_by_mmc_make,
-        InvokedByMMCMake),
     (
         TransOpt = bool.yes,
         ( if
-            ( InvokedByMMCMake = yes
-            ; OpMode = opm_top_make
+            (
+                OpMode = opm_top_args(_, InvokedByMMCMake),
+                InvokedByMMCMake = op_mode_invoked_by_mmc_make
+            ;
+                OpMode = opm_top_make
             )
         then
             TransOptMakeSpec =
@@ -2135,7 +2137,7 @@ handle_opmode_implications(OpMode, !Globals) :-
     % Disable `--smart-recompilation' unless we are generating target code.
     globals.lookup_bool_option(!.Globals, smart_recompilation, Smart0),
     (
-        OpMode = opm_top_args(OpModeArgs),
+        OpMode = opm_top_args(OpModeArgs, _),
         % Disable --line-numbers when building the `.int', `.opt', etc. files,
         % since including line numbers in those would cause unnecessary
         % recompilation.
@@ -2235,14 +2237,21 @@ handle_opmode_implications(OpMode, !Globals) :-
     %   warn_missing_trans_opt_files
     %   warn_unused_interface_imports
     %
-:- pred handle_option_to_option_implications(globals::in, globals::out)
-    is det.
+:- pred handle_option_to_option_implications(op_mode::in,
+    globals::in, globals::out) is det.
 
-handle_option_to_option_implications(!Globals) :-
+handle_option_to_option_implications(OpMode, !Globals) :-
     % --make handles creation of the module dependencies itself,
     % and they don't need to be recreated when compiling to C.
-    option_implies(invoked_by_mmc_make,
-        generate_mmc_make_module_dependencies, bool(no), !Globals),
+    ( if
+        OpMode = opm_top_args(_, InvokedByMMCMake),
+        InvokedByMMCMake = op_mode_invoked_by_mmc_make
+    then
+        globals.set_option(generate_mmc_make_module_dependencies, bool(no),
+            !Globals)
+    else
+        true
+    ),
 
     option_implies(find_all_recompilation_reasons, verbose_recompilation,
         bool(yes), !Globals),
@@ -2359,8 +2368,9 @@ maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO) :-
         % itself, so this isn't a problem.
         % XXX I (zs) don't believe that mmake sets --target-code-only anymore.
         ( if
-            OpMode = opm_top_args(opma_augment(
-                opmau_generate_code(opmcg_target_code_only)))
+            OpMode = opm_top_args(OpModeArgs, _),
+            OpModeArgs = opma_augment(
+                opmau_generate_code(opmcg_target_code_only))
         then
             true
         else
@@ -2385,8 +2395,6 @@ maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO) :-
     is det.
 
 handle_directory_options(OpMode, !Globals) :-
-    globals.lookup_bool_option(!.Globals, invoked_by_mmc_make,
-        InvokedByMMCMake),
     globals.lookup_bool_option(!.Globals, use_grade_subdirs,
         UseGradeSubdirs),
 
@@ -2394,9 +2402,13 @@ handle_directory_options(OpMode, !Globals) :-
     % are built using `--use-grade-subdirs', and assume that
     % the interface files were built using `--use-subdirs').
     ( if
-        ( OpMode = opm_top_make
-        ; InvokedByMMCMake = bool.yes
-        ; UseGradeSubdirs = bool.yes
+        (
+            OpMode = opm_top_make
+        ;
+            OpMode = opm_top_args(_, InvokedByMMCMake),
+            InvokedByMMCMake = op_mode_invoked_by_mmc_make
+        ;
+            UseGradeSubdirs = bool.yes
         )
     then
         globals.set_option(use_subdirs, bool(yes), !Globals)
@@ -2412,7 +2424,7 @@ handle_directory_options(OpMode, !Globals) :-
         (
             OpMode = opm_top_make
         ;
-            OpMode = opm_top_args(OpModeArgs),
+            OpMode = opm_top_args(OpModeArgs, _),
             OpModeArgs = opma_augment(opmau_generate_code(
                 opmcg_target_object_and_executable))
         )
@@ -2901,7 +2913,9 @@ handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls, OpMode,
                 "--warn-non-tail-recursion requires --optimize-tailcalls",
             add_error(phase_options, [words(OptimizeWords)], !Specs)
         ),
-        ( if OpMode = opm_top_args(opma_augment(opmau_errorcheck_only)) then
+        ( if
+            OpMode = opm_top_args(opma_augment(opmau_errorcheck_only), _)
+        then
             ECOWords = "--warn-non-tail-recursion is incompatible"
                 ++ " with --errorcheck-only",
             add_error(phase_options, [words(ECOWords)], !Specs)

@@ -127,7 +127,7 @@ analyse_mm_tabling_in_module(!ModuleInfo) :-
         UseMinimalModel = yes,
         globals.get_op_mode(Globals, OpMode),
         ( if
-            OpMode = opm_top_args(opma_augment(OpModeAugment)),
+            OpMode = opm_top_args(opma_augment(OpModeAugment), _),
             ( OpModeAugment = opmau_make_plain_opt
             ; OpModeAugment = opmau_make_trans_opt
             ; OpModeAugment = opmau_make_analysis_registry
@@ -152,7 +152,8 @@ analyse_mm_tabling_in_module(!ModuleInfo) :-
         % that have a `:- pragma external_{pred/func}', which don't analyse
         % because we don't have clauses for them.
         ( if
-            OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry))
+            OpMode = opm_top_args(OpModeArgs, _),
+            OpModeArgs = opma_augment(opmau_make_analysis_registry)
         then
             module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
             module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),

@@ -2024,7 +2024,7 @@ warn_about_pfu_unknown(ModuleInfo, PragmaName, PragmaAllowsModes,
     globals.get_op_mode(Globals, OpMode),
     ( if
         Warn = yes,
-        OpMode = opm_top_args(opma_augment(opmau_generate_code(_))),
+        OpMode = opm_top_args(opma_augment(opmau_generate_code(_)), _),
         SymName = qualified(ModuleName, _)
     then
         UserArity = user_arity(UserArityInt),

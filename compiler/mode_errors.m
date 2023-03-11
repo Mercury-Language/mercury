@@ -1760,7 +1760,7 @@ mode_error_cannot_create_implied_mode_to_spec(ModeInfo, Reason, Var, VarInst,
     globals.get_op_mode(Globals, OpMode),
     mode_info_get_context(ModeInfo, Context),
     Phase = phase_mode_check(report_in_any_mode),
-    ( if OpMode = opm_top_args(opma_augment(opmau_generate_code(_))) then
+    ( if OpMode = opm_top_args(opma_augment(opmau_generate_code(_)), _) then
         Preamble = mode_info_context_preamble(ModeInfo),
         mode_info_get_var_table(ModeInfo, VarTable),
         (

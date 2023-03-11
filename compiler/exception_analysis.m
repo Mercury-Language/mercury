@@ -168,7 +168,9 @@ analyse_exceptions_in_module(!ModuleInfo) :-
 
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_op_mode(Globals, OpMode),
-    ( if OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry)) then
+    ( if
+        OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry), _)
+    then
         % Record results if making the analysis registry. We do this in a
         % separate pass so that we record results for exported
         % `:- pragma external_{pred/func}' procedures, which don't get

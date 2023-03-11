@@ -10361,8 +10361,8 @@ Microsoft Windows.
 @findex -m
 @findex --make
 Treat the non-option arguments to @samp{mmc} as files to
-make, rather than source files.  Create the specified files,
-if they are not already up-to-date.
+make, rather than source files. Build or rebuild the specified files
+if they do not exist or are not up-to-date.
 (Note that this option also enables @samp{--use-subdirs}.)
 
 @sp 1
@@ -10386,8 +10386,7 @@ possible even if an error is detected.
 @item --jobs @var{n}
 @findex -j
 @findex --jobs
-With @samp{--make}, attempt to perform up to @var{n} jobs
-concurrently for some tasks.
+With @samp{--make}, attempt to perform up to @var{n} jobs concurrently.
 
 @sp 1
 @item --track-flags

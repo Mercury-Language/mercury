@@ -428,7 +428,7 @@ attributes_imply_termination(Attributes) :-
 should_we_believe_check_termination_markers(ModuleInfo, Believe) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_op_mode(Globals, OpMode),
-    ( if OpMode = opm_top_args(opma_augment(opmau_make_plain_opt)) then
+    ( if OpMode = opm_top_args(opma_augment(opmau_make_plain_opt), _) then
         Believe = do_not_believe_check_termination
     else
         Believe = do_believe_check_termination

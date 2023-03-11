@@ -45,8 +45,8 @@
     ;       write_d_file.
 
 :- pred make_hlds_pass(io.text_output_stream::in, io.text_output_stream::in,
-    globals::in, op_mode_augment::in, maybe_write_d_file::in,
-    module_baggage::in, aug_compilation_unit::in,
+    globals::in, op_mode_augment::in, op_mode_invoked_by_mmc_make::in,
+    maybe_write_d_file::in, module_baggage::in, aug_compilation_unit::in,
     module_info::out, qual_info::out, maybe(module_timestamp_map)::out,
     bool::out, bool::out, bool::out,
     dump_info::in, dump_info::out, list(error_spec)::in, list(error_spec)::out,
@@ -88,18 +88,17 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-make_hlds_pass(ProgressStream, ErrorStream, Globals, OpModeAugment,
-        WriteDFile0, Baggage0, AugCompUnit0, HLDS0, QualInfo,
-        MaybeTimestampMap, UndefTypes, UndefModes, PreHLDSErrors,
-        !DumpInfo, !Specs, !HaveReadModuleMaps, !IO) :-
+make_hlds_pass(ProgressStream, ErrorStream, Globals,
+        OpModeAugment, InvokedByMMCMake, WriteDFile0, Baggage0, AugCompUnit0,
+        HLDS0, QualInfo, MaybeTimestampMap, UndefTypes, UndefModes,
+        PreHLDSErrors, !DumpInfo, !Specs, !HaveReadModuleMaps, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, verbose, Verbose),
 
-    globals.lookup_bool_option(Globals, invoked_by_mmc_make, InvokedByMMCMake),
     ( if
         % Don't write the `.d' file when making the `.opt' file because
         % we can't work out the full transitive implementation dependencies.
-        ( InvokedByMMCMake = yes
+        ( InvokedByMMCMake = op_mode_invoked_by_mmc_make
         ; OpModeAugment = opmau_make_plain_opt
         )
     then

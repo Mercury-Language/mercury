@@ -1147,7 +1147,9 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
     set.init(ProcAnalysisKinds),
 
     globals.get_op_mode(Globals, OpMode),
-    ( if OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry)) then
+    ( if
+        OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry), _)
+    then
         MakeAnalysisReg = yes
     else
         MakeAnalysisReg = no

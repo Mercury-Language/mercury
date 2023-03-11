@@ -368,7 +368,9 @@ sharing_analysis(!ModuleInfo, !.SharingTable) :-
     % dependencies, assumed answers and requests in the analysis framework.
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_op_mode(Globals, OpMode),
-    ( if OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry)) then
+    ( if
+        OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry), _)
+    then
         some [!AnalysisInfo] (
             module_info_get_analysis_info(!.ModuleInfo, !:AnalysisInfo),
             module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),

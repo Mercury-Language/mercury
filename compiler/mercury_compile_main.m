@@ -577,7 +577,7 @@ do_op_mode(ProgressStream, ErrorStream, Globals, OpMode, DetectedGradeFlags,
         do_op_mode_query(ErrorStream, Globals, OpModeQuery,
             OptionVariables, !IO)
     ;
-        OpMode = opm_top_args(OpModeArgs),
+        OpMode = opm_top_args(OpModeArgs, InvokedByMmcMake),
         globals.lookup_bool_option(Globals, filenames_from_stdin,
             FileNamesFromStdin),
         ( if
@@ -587,9 +587,10 @@ do_op_mode(ProgressStream, ErrorStream, Globals, OpMode, DetectedGradeFlags,
             io.stderr_stream(StdErr, !IO),
             usage(StdErr, !IO)
         else
-            do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
-                FileNamesFromStdin, DetectedGradeFlags, OptionVariables,
-                OptionArgs, Args, !HaveReadModuleMaps, !Specs, !IO)
+            do_op_mode_args(ProgressStream, ErrorStream, Globals,
+                OpModeArgs, InvokedByMmcMake, FileNamesFromStdin,
+                DetectedGradeFlags, OptionVariables, OptionArgs, Args,
+                !HaveReadModuleMaps, !Specs, !IO)
         )
     ).
 
@@ -718,17 +719,17 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery,
 %
 
 :- pred do_op_mode_args(io.text_output_stream::in, io.text_output_stream::in,
-    globals::in, op_mode_args::in, bool::in, list(string)::in,
-    options_variables::in, list(string)::in, list(string)::in,
+    globals::in, op_mode_args::in, op_mode_invoked_by_mmc_make::in,
+    bool::in, list(string)::in, options_variables::in,
+    list(string)::in, list(string)::in,
     have_read_module_maps::in, have_read_module_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
-        FileNamesFromStdin, DetectedGradeFlags, OptionVariables,
-        OptionArgs, Args, !HaveReadModuleMaps, !Specs, !IO) :-
-    globals.lookup_bool_option(Globals, invoked_by_mmc_make, InvokedByMake),
+do_op_mode_args(ProgressStream, ErrorStream, Globals,
+        OpModeArgs, InvokedByMmcMake, FileNamesFromStdin, DetectedGradeFlags,
+        OptionVariables, OptionArgs, Args, !HaveReadModuleMaps, !Specs, !IO) :-
     (
-        InvokedByMake = no,
+        InvokedByMmcMake = op_mode_not_invoked_by_mmc_make,
         % We used to do this check once per compiler arg, which was
         % quite wasteful. However, there was an almost-justifiable
         % reason for that. The check used to be done in the now-deleted
@@ -755,13 +756,13 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
         % (XXX It would be nice if we detected such errors in Mercury.options
         % files *without* letting the issue through to the linker.)
         %
-        % We do this check only when InvokedByMake = no, because during
+        % We do this check only when not invoked by mmc --make, because during
         % compiler invocations that *set* --invoked-by-mmc-make,
         % make_linked_target in make.program_target.m should have
         % done it already.
         maybe_check_libraries_are_installed(Globals, LibgradeCheckSpecs, !IO)
     ;
-        InvokedByMake = yes,
+        InvokedByMmcMake = op_mode_invoked_by_mmc_make,
         LibgradeCheckSpecs = []
     ),
     (
@@ -769,28 +770,29 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
         (
             FileNamesFromStdin = yes,
             % Mmc --make does not set --filenames-from-stdin.
-            expect(unify(InvokedByMake, no), $pred, "InvokedByMake != no"),
+            expect(unify(InvokedByMmcMake, op_mode_not_invoked_by_mmc_make),
+                $pred, "InvokedByMmcMake != op_mode_not_invoked_by_mmc_make"),
             io.stdin_stream(StdIn, !IO),
             setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream,
-                StdIn, Globals, OpModeArgs, DetectedGradeFlags,
-                OptionVariables, OptionArgs,
+                StdIn, Globals, OpModeArgs, InvokedByMmcMake,
+                DetectedGradeFlags, OptionVariables, OptionArgs,
                 cord.empty, ModulesToLinkCord, cord.empty, ExtraObjFilesCord,
                 !HaveReadModuleMaps, !Specs, !IO)
         ;
             FileNamesFromStdin = no,
             (
-                InvokedByMake = no,
+                InvokedByMmcMake = op_mode_not_invoked_by_mmc_make,
                 setup_and_process_compiler_cmd_line_args(ProgressStream,
-                    ErrorStream, Globals, OpModeArgs, DetectedGradeFlags,
-                    OptionVariables, OptionArgs, Args,
+                    ErrorStream, Globals, OpModeArgs, InvokedByMmcMake,
+                    DetectedGradeFlags, OptionVariables, OptionArgs, Args,
                     cord.empty, ModulesToLinkCord,
                     cord.empty, ExtraObjFilesCord,
                     !HaveReadModuleMaps, !Specs, !IO)
             ;
-                InvokedByMake = yes,
+                InvokedByMmcMake = op_mode_invoked_by_mmc_make,
                 % `mmc --make' has already set up the options.
                 do_process_compiler_cmd_line_args(ProgressStream, ErrorStream,
-                    Globals, OpModeArgs, OptionArgs, Args,
+                    Globals, OpModeArgs, InvokedByMmcMake, OptionArgs, Args,
                     cord.empty, ModulesToLinkCord,
                     cord.empty, ExtraObjFilesCord, !HaveReadModuleMaps, !IO)
             )
@@ -828,12 +830,12 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
                 % Should we go from non-main-module-specific
                 % progress and error streams to main-module-specific streams?
                 (
-                    InvokedByMake = yes,
+                    InvokedByMmcMake = op_mode_invoked_by_mmc_make,
                     % `mmc --make' has already set up the options.
                     link_module_list(ProgressStream, ErrorStream,
                         ModulesToLink, ExtraObjFiles, Globals, Succeeded, !IO)
                 ;
-                    InvokedByMake = no,
+                    InvokedByMmcMake = op_mode_not_invoked_by_mmc_make,
                     setup_for_build_with_module_options(
                         not_invoked_by_mmc_make, MainModuleName,
                         DetectedGradeFlags, OptionVariables, OptionArgs, [],
@@ -916,7 +918,7 @@ maybe_print_delayed_error_messages(ErrorStream, Globals, !IO) :-
 
 :- pred setup_and_process_compiler_stdin_args(io.text_output_stream::in,
     io.text_output_stream::in, io.text_input_stream::in, globals::in,
-    op_mode_args::in, list(string)::in,
+    op_mode_args::in, op_mode_invoked_by_mmc_make::in, list(string)::in,
     options_variables::in, list(string)::in,
     cord(string)::in, cord(string)::out,
     cord(string)::in, cord(string)::out,
@@ -924,8 +926,9 @@ maybe_print_delayed_error_messages(ErrorStream, Globals, !IO) :-
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
-        Globals, OpModeArgs, DetectedGradeFlags, OptionVariables, OptionArgs,
-        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO) :-
+        Globals, OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
+        OptionVariables, OptionArgs, !Modules, !ExtraObjFiles,
+        !HaveReadModuleMaps, !Specs, !IO) :-
     ( if cord.is_empty(!.Modules) then
         true
     else
@@ -935,15 +938,15 @@ setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
     (
         LineResult = ok(Line),
         Arg = string.rstrip(Line),
-        setup_and_process_compiler_arg(ProgressStream, ErrorStream,
-            Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
+        setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
+            OpModeArgs, InvokedByMmcMake, DetectedGradeFlags, OptionVariables,
             OptionArgs, Arg, ArgModules, ArgExtraObjFiles,
             !HaveReadModuleMaps, !Specs, !IO),
         !:Modules = !.Modules ++ cord.from_list(ArgModules),
         !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
         setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream,
-            StdIn, Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
-            OptionArgs, !Modules, !ExtraObjFiles,
+            StdIn, Globals, OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
+            OptionVariables, OptionArgs, !Modules, !ExtraObjFiles,
             !HaveReadModuleMaps, !Specs, !IO)
     ;
         LineResult = eof
@@ -960,22 +963,24 @@ setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
 %---------------------%
 
 :- pred setup_and_process_compiler_cmd_line_args(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, op_mode_args::in,
+    io.text_output_stream::in, globals::in,
+    op_mode_args::in, op_mode_invoked_by_mmc_make::in,
     list(string)::in, options_variables::in,
     list(string)::in, list(string)::in,
     cord(string)::in, cord(string)::out, cord(string)::in, cord(string)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-setup_and_process_compiler_cmd_line_args(_, _, _, _, _, _, _, [],
+setup_and_process_compiler_cmd_line_args(_, _, _, _, _, _, _, _, [],
         !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO).
 setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
-        OpModeArgs, DetectedGradeFlags, OptionVariables, OptionArgs,
-        [Arg | Args], !Modules, !ExtraObjFiles,
+        OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
+        OptionVariables, OptionArgs, [Arg | Args], !Modules, !ExtraObjFiles,
         !HaveReadModuleMaps, !Specs, !IO) :-
     setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
-        OpModeArgs, DetectedGradeFlags, OptionVariables, OptionArgs,
-        Arg, ArgModules, ArgExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO),
+        OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
+        OptionVariables, OptionArgs, Arg, ArgModules, ArgExtraObjFiles,
+        !HaveReadModuleMaps, !Specs, !IO),
     (
         Args = []
     ;
@@ -985,26 +990,28 @@ setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
     !:Modules = !.Modules ++ cord.from_list(ArgModules),
     !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
     setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream,
-        Globals, OpModeArgs, DetectedGradeFlags, OptionVariables, OptionArgs,
-        Args, !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO).
+        Globals, OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
+        OptionVariables, OptionArgs, Args, !Modules, !ExtraObjFiles,
+        !HaveReadModuleMaps, !Specs, !IO).
 
 :- pred do_process_compiler_cmd_line_args(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, op_mode_args::in,
+    io.text_output_stream::in, globals::in,
+    op_mode_args::in, op_mode_invoked_by_mmc_make::in,
     list(string)::in, list(string)::in,
     cord(string)::in, cord(string)::out, cord(string)::in, cord(string)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-do_process_compiler_cmd_line_args(_, _, _, _, _, [],
+do_process_compiler_cmd_line_args(_, _, _, _, _, _, [],
         !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO).
 do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
-        OpModeArgs, OptionArgs, [Arg | Args], !Modules, !ExtraObjFiles,
-        !HaveReadModuleMaps, !IO) :-
+        OpModeArgs, InvokedByMmcMake, OptionArgs, [Arg | Args],
+        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO) :-
     % `mmc --make' has already set up the options.
     FileOrModule = string_to_file_or_module(Arg),
     do_process_compiler_arg(ProgressStream, ErrorStream, Globals,
-        OpModeArgs, OptionArgs, FileOrModule, ArgModules, ArgExtraObjFiles,
-        !HaveReadModuleMaps, !IO),
+        OpModeArgs, InvokedByMmcMake, OptionArgs, FileOrModule,
+        ArgModules, ArgExtraObjFiles, !HaveReadModuleMaps, !IO),
     (
         Args = []
     ;
@@ -1014,8 +1021,8 @@ do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
     !:Modules = !.Modules ++ cord.from_list(ArgModules),
     !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
     do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
-        OpModeArgs, OptionArgs, Args, !Modules, !ExtraObjFiles,
-        !HaveReadModuleMaps, !IO).
+        OpModeArgs, InvokedByMmcMake, OptionArgs, Args,
+        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO).
 
 %---------------------%
 
@@ -1032,15 +1039,17 @@ do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
     % This seems strange to me. -zs
     %
 :- pred setup_and_process_compiler_arg(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, op_mode_args::in,
+    io.text_output_stream::in, globals::in,
+    op_mode_args::in, op_mode_invoked_by_mmc_make::in,
     list(string)::in, options_variables::in, list(string)::in, string::in,
     list(string)::out, list(string)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
-        OpModeArgs, DetectedGradeFlags, OptionVariables, OptionArgs, Arg,
-        ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO) :-
+        OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
+        OptionVariables, OptionArgs, Arg, ModulesToLink, ExtraObjFiles,
+        !HaveReadModuleMaps, !Specs, !IO) :-
     FileOrModule = string_to_file_or_module(Arg),
     ModuleName = file_or_module_to_module_name(FileOrModule),
     ExtraOptions = [],
@@ -1057,21 +1066,22 @@ setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
     ;
         MayBuild = may_build(_AllOptionArgs, BuildGlobals),
         do_process_compiler_arg(ProgressStream, ErrorStream, BuildGlobals,
-            OpModeArgs, OptionArgs, FileOrModule, ModulesToLink,
-            ExtraObjFiles, !HaveReadModuleMaps, !IO)
+            OpModeArgs, InvokedByMmcMake, OptionArgs, FileOrModule,
+            ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO)
     ).
 
 %---------------------%
 
 :- pred do_process_compiler_arg(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, op_mode_args::in,
+    io.text_output_stream::in, globals::in,
+    op_mode_args::in, op_mode_invoked_by_mmc_make::in,
     list(string)::in, file_or_module::in, list(string)::out, list(string)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
 do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
-        OpModeArgs, OptionArgs, FileOrModule, ModulesToLink, ExtraObjFiles,
-        !HaveReadModuleMaps, !IO) :-
+        OpModeArgs, InvokedByMmcMake, OptionArgs, FileOrModule,
+        ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO) :-
     % XXX ITEM_LIST There is an inconsistency between the various OpModeArgs
     % that construct a module_and_imports structure in how they do it.
     %
@@ -1180,8 +1190,8 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
             ExtraObjFiles = []
         else
             read_augment_and_process_module(ProgressStream, ErrorStream,
-                Globals, OpModeAugment, OptionArgs, FileOrModule,
-                ModulesToRecompile, ModulesToLink, ExtraObjFiles,
+                Globals, OpModeAugment, InvokedByMmcMake, OptionArgs,
+                FileOrModule, ModulesToRecompile, ModulesToLink, ExtraObjFiles,
                 !HaveReadModuleMaps, !IO)
         )
     ).
@@ -1361,14 +1371,15 @@ find_timestamp_files_2(Globals, TimestampOtherExt,
 
 :- pred read_augment_and_process_module(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
-    list(string)::in, file_or_module::in, modules_to_recompile::in,
-    list(string)::out, list(string)::out,
+    op_mode_invoked_by_mmc_make::in, list(string)::in, file_or_module::in,
+    modules_to_recompile::in, list(string)::out, list(string)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
 read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
-        OpModeAugment, OptionArgs, FileOrModule, MaybeModulesToRecompile,
-        ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO) :-
+        OpModeAugment, InvokedByMmcMake, OptionArgs, FileOrModule,
+        MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles,
+        !HaveReadModuleMaps, !IO) :-
     (
         ( OpModeAugment = opmau_make_plain_opt
         ; OpModeAugment = opmau_make_trans_opt
@@ -1407,24 +1418,24 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
             % We should test whether to go from non-module-specific
             % progress and error streams to module-specific streams.
             read_augment_and_process_module_ok(ProgressStream, ErrorStream,
-                Globals, OpModeAugment, FileName, MaybeTimestamp,
-                ParseTreeSrc, Errors, MaybeModulesToRecompile, ModulesToLink,
-                ExtraObjFiles, !HaveReadModuleMaps, !IO)
+                Globals, OpModeAugment, InvokedByMmcMake, FileName,
+                MaybeTimestamp, ParseTreeSrc, Errors, MaybeModulesToRecompile,
+                ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO)
         )
     ).
 
 :- pred read_augment_and_process_module_ok(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
-    file_name::in, maybe(timestamp)::in,
+    op_mode_invoked_by_mmc_make::in, file_name::in, maybe(timestamp)::in,
     parse_tree_src::in, read_module_errors::in, modules_to_recompile::in,
     list(string)::out, list(string)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
 read_augment_and_process_module_ok(ProgressStream, ErrorStream, Globals,
-        OpModeAugment, FileName, MaybeTimestamp, ParseTreeSrc, Errors,
-        MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles,
-        !HaveReadModuleMaps, !IO) :-
+        OpModeAugment, InvokedByMmcMake, FileName, MaybeTimestamp,
+        ParseTreeSrc, Errors, MaybeModulesToRecompile,
+        ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO) :-
     Specs0 = get_read_module_specs(Errors),
     ModuleName = ParseTreeSrc ^ pts_module_name,
     split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
@@ -1466,9 +1477,10 @@ read_augment_and_process_module_ok(ProgressStream, ErrorStream, Globals,
         GlobalsToUse = Globals
     ),
     augment_and_process_all_submodules(ProgressStream, ErrorStream,
-        GlobalsToUse, OpModeAugment, FileName, MaybeTimestamp, ModuleName,
-        NestedModuleNames, FindTimestampFiles, ParseTreeModuleSrcsToRecompile,
-        Specs1, ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO).
+        GlobalsToUse, OpModeAugment, InvokedByMmcMake, FileName,
+        MaybeTimestamp, ModuleName, NestedModuleNames, FindTimestampFiles,
+        ParseTreeModuleSrcsToRecompile, Specs1, ModulesToLink, ExtraObjFiles,
+        !HaveReadModuleMaps, !IO).
 
 :- pred maybe_report_cmd_line(io.text_output_stream::in, bool::in,
     list(string)::in, list(string)::in, io::di, io::uo) is det.
@@ -1622,7 +1634,8 @@ read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
     %   output_pass(LLDS_FragmentList)
     %
 :- pred augment_and_process_all_submodules(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, op_mode_augment::in, string::in,
+    io.text_output_stream::in, globals::in,
+    op_mode_augment::in, op_mode_invoked_by_mmc_make::in, string::in,
     maybe(timestamp)::in, module_name::in, set(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     list(parse_tree_module_src)::in, list(error_spec)::in,
@@ -1631,13 +1644,14 @@ read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
     io::di, io::uo) is det.
 
 augment_and_process_all_submodules(ProgressStream, ErrorStream, Globals,
-        OpModeAugment, FileName, MaybeTimestamp, SourceFileModuleName,
-        NestedSubModules, FindTimestampFiles, ParseTreeModuleSrcs, !.Specs,
-        ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO) :-
+        OpModeAugment, InvokedByMmcMake, FileName, MaybeTimestamp,
+        SourceFileModuleName, NestedSubModules, FindTimestampFiles,
+        ParseTreeModuleSrcs, !.Specs, ModulesToLink, ExtraObjFiles,
+        !HaveReadModuleMaps, !IO) :-
     list.map_foldl3(
         augment_and_process_module(ProgressStream, ErrorStream, Globals,
-            OpModeAugment, FileName, MaybeTimestamp, SourceFileModuleName,
-            NestedSubModules, FindTimestampFiles),
+            OpModeAugment, InvokedByMmcMake, FileName, MaybeTimestamp,
+            SourceFileModuleName, NestedSubModules, FindTimestampFiles),
         ParseTreeModuleSrcs, ExtraObjFileLists,
         !Specs, !HaveReadModuleMaps, !IO),
     write_error_specs(ErrorStream, Globals, !.Specs, !IO),
@@ -1668,7 +1682,7 @@ module_to_link(ParseTreeModuleSrc, ModuleToLink) :-
     %
 :- pred augment_and_process_module(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
-    file_name::in, maybe(timestamp)::in,
+    op_mode_invoked_by_mmc_make::in, file_name::in, maybe(timestamp)::in,
     module_name::in, set(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     parse_tree_module_src::in, list(string)::out,
@@ -1676,10 +1690,10 @@ module_to_link(ParseTreeModuleSrc, ModuleToLink) :-
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-augment_and_process_module(ProgressStream, ErrorStream, Globals, OpModeAugment,
-        SourceFileName, MaybeTimestamp, SourceFileModuleName, NestedSubModules,
-        FindTimestampFiles, ParseTreeModuleSrc, ExtraObjFiles,
-        !Specs, !HaveReadModuleMaps, !IO) :-
+augment_and_process_module(ProgressStream, ErrorStream, Globals,
+        OpModeAugment, InvokedByMmcMake, SourceFileName, MaybeTimestamp,
+        SourceFileModuleName, NestedSubModules, FindTimestampFiles,
+        ParseTreeModuleSrc, ExtraObjFiles, !Specs, !HaveReadModuleMaps, !IO) :-
     check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ( if ModuleName = SourceFileModuleName then
@@ -1696,14 +1710,16 @@ augment_and_process_module(ProgressStream, ErrorStream, Globals, OpModeAugment,
     !:Specs = get_read_module_specs(Errors) ++ !.Specs,
     ( if set.is_empty(Errors ^ rm_fatal_errors) then
         process_augmented_module(ProgressStream, ErrorStream, Globals,
-            OpModeAugment, Baggage, AugCompUnit, FindTimestampFiles,
-            ExtraObjFiles, no_prev_dump, _, !Specs, !HaveReadModuleMaps, !IO)
+            OpModeAugment, InvokedByMmcMake, Baggage, AugCompUnit,
+            FindTimestampFiles, ExtraObjFiles, no_prev_dump, _,
+            !Specs, !HaveReadModuleMaps, !IO)
     else
         ExtraObjFiles = []
     ).
 
 :- pred process_augmented_module(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, op_mode_augment::in,
+    io.text_output_stream::in, globals::in,
+    op_mode_augment::in, op_mode_invoked_by_mmc_make::in,
     module_baggage::in, aug_compilation_unit::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     list(string)::out, dump_info::in, dump_info::out,
@@ -1711,9 +1727,10 @@ augment_and_process_module(ProgressStream, ErrorStream, Globals, OpModeAugment,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-process_augmented_module(ProgressStream, ErrorStream, Globals0, OpModeAugment,
-        Baggage, AugCompUnit, FindTimestampFiles, ExtraObjFiles,
-        !DumpInfo, !Specs, !HaveReadModuleMaps, !IO) :-
+process_augmented_module(ProgressStream, ErrorStream, Globals0,
+        OpModeAugment, InvokedByMmcMake, Baggage, AugCompUnit,
+        FindTimestampFiles, ExtraObjFiles, !DumpInfo, !Specs,
+        !HaveReadModuleMaps, !IO) :-
     (
         ( OpModeAugment = opmau_typecheck_only
         ; OpModeAugment = opmau_errorcheck_only
@@ -1744,10 +1761,10 @@ process_augmented_module(ProgressStream, ErrorStream, Globals0, OpModeAugment,
         % XXX I (zs) think we should assign do_not_write_d_file for these.
         WriteDFile = write_d_file
     ),
-    make_hlds_pass(ProgressStream, ErrorStream, Globals, OpModeAugment,
-        WriteDFile, Baggage, AugCompUnit, HLDS1, QualInfo, MaybeTimestampMap,
-        UndefTypes, UndefModes, PreHLDSErrors,
-        !DumpInfo, !Specs, !HaveReadModuleMaps, !IO),
+    make_hlds_pass(ProgressStream, ErrorStream, Globals,
+        OpModeAugment, InvokedByMmcMake, WriteDFile, Baggage, AugCompUnit,
+        HLDS1, QualInfo, MaybeTimestampMap, UndefTypes, UndefModes,
+        PreHLDSErrors, !DumpInfo, !Specs, !HaveReadModuleMaps, !IO),
     frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo,
         UndefTypes, UndefModes, PreHLDSErrors, FrontEndErrors,
         HLDS1, HLDS20, !DumpInfo, !Specs, !IO),

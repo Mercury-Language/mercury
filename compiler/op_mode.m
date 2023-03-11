@@ -34,7 +34,11 @@
     ;       opm_top_generate_source_file_mapping
     ;       opm_top_generate_standalone_interface(string)
     ;       opm_top_query(op_mode_query)
-    ;       opm_top_args(op_mode_args).
+    ;       opm_top_args(op_mode_args, op_mode_invoked_by_mmc_make).
+
+:- type op_mode_invoked_by_mmc_make
+    --->    op_mode_not_invoked_by_mmc_make
+    ;       op_mode_invoked_by_mmc_make.
 
 %---------------------%
 
@@ -138,9 +142,18 @@
 
 decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
     some [!OpModeSet] (
+        getopt.lookup_bool_option(OptionTable, only_opmode_invoked_by_mmc_make,
+            InvokedByMMCMakeOpt),
+        (
+            InvokedByMMCMakeOpt = yes,
+            InvokedByMMCMake = op_mode_invoked_by_mmc_make
+        ;
+            InvokedByMMCMakeOpt = no,
+            InvokedByMMCMake = op_mode_not_invoked_by_mmc_make
+        ),
         set.init(!:OpModeSet),
-        list.foldl(gather_bool_op_mode(OptionTable), bool_op_modes,
-            !OpModeSet),
+        list.foldl(gather_bool_op_mode(OptionTable),
+            bool_op_modes(InvokedByMMCMake), !OpModeSet),
 
         map.lookup(OptionTable, generate_standalone_interface,
             GenStandaloneOption),
@@ -158,20 +171,18 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
         ),
 
         % The option `--invoked-by-mmc-make' implicitly disables `--make'.
-        %
-        getopt.lookup_bool_option(OptionTable, invoked_by_mmc_make,
-            InvokedByMMCMake),
         (
-            InvokedByMMCMake = yes,
+            InvokedByMMCMake = op_mode_invoked_by_mmc_make,
             set.delete(opm_top_make, !OpModeSet)
         ;
-            InvokedByMMCMake = no
+            InvokedByMMCMake = op_mode_not_invoked_by_mmc_make
         ),
         set.to_sorted_list(!.OpModeSet, OpModes0),
         (
             OpModes0 = [],
-            OpMode = opm_top_args(opma_augment(opmau_generate_code(
-                opmcg_target_object_and_executable))),
+            OpModeArgs = opma_augment(opmau_generate_code(
+                opmcg_target_object_and_executable)),
+            OpMode = opm_top_args(OpModeArgs, InvokedByMMCMake),
             OtherOpModes = []
         ;
             OpModes0 = [OpMode],
@@ -197,10 +208,12 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
                 % these options to us even when we wouldn't have progressed
                 % to code generation.
                 set.delete(
-                    opm_top_args(opma_augment(opmau_typecheck_only)),
+                    opm_top_args(opma_augment(opmau_typecheck_only),
+                        InvokedByMMCMake),
                     !OpModeSet),
                 set.delete(
-                    opm_top_args(opma_augment(opmau_errorcheck_only)),
+                    opm_top_args(opma_augment(opmau_errorcheck_only),
+                        InvokedByMMCMake),
                     !OpModeSet),
                 some [TogetherOpMode] (
                     set.member(TogetherOpMode, !.OpModeSet),
@@ -232,7 +245,7 @@ may_be_together_with_check_only(OpMode) = MayBeTogether :-
         ),
         MayBeTogether = yes
     ;
-        OpMode = opm_top_args(OpModeArgs),
+        OpMode = opm_top_args(OpModeArgs, _),
         (
             ( OpModeArgs = opma_generate_dependencies
             ; OpModeArgs = opma_generate_dependency_file
@@ -275,9 +288,10 @@ gather_bool_op_mode(OptionTable, Option - OpMode, !OpModeSet) :-
         unexpected($pred, "not a boolean")
     ).
 
-:- func bool_op_modes = assoc_list(option, op_mode).
+:- func bool_op_modes(op_mode_invoked_by_mmc_make)
+    = assoc_list(option, op_mode).
 
-bool_op_modes = [
+bool_op_modes(InvokedByMMCMake) = [
     only_opmode_make -
         opm_top_make,
     % Although --rebuild on the command line implies --make, once the effect
@@ -331,36 +345,39 @@ bool_op_modes = [
         opm_top_query(opmq_output_target_arch),
 
     only_opmode_generate_dependencies -
-        opm_top_args(opma_generate_dependencies),
+        opm_top_args(opma_generate_dependencies, InvokedByMMCMake),
     only_opmode_generate_dependency_file -
-        opm_top_args(opma_generate_dependency_file),
+        opm_top_args(opma_generate_dependency_file, InvokedByMMCMake),
     only_opmode_make_private_interface -
-        opm_top_args(opma_make_interface(omif_int0)),
+        opm_top_args(opma_make_interface(omif_int0), InvokedByMMCMake),
     only_opmode_make_short_interface -
-        opm_top_args(opma_make_interface(omif_int3)),
+        opm_top_args(opma_make_interface(omif_int3), InvokedByMMCMake),
     only_opmode_make_interface -
-        opm_top_args(opma_make_interface(omif_int1_int2)),
+        opm_top_args(opma_make_interface(omif_int1_int2), InvokedByMMCMake),
     only_opmode_convert_to_mercury -
-        opm_top_args(opma_convert_to_mercury),
+        opm_top_args(opma_convert_to_mercury, InvokedByMMCMake),
 
     only_opmode_make_optimization_interface -
-        opm_top_args(opma_augment(opmau_make_plain_opt)),
+        opm_top_args(opma_augment(opmau_make_plain_opt), InvokedByMMCMake),
     only_opmode_make_transitive_opt_interface -
-        opm_top_args(opma_augment(opmau_make_trans_opt)),
+        opm_top_args(opma_augment(opmau_make_trans_opt), InvokedByMMCMake),
     only_opmode_make_analysis_registry -
-        opm_top_args(opma_augment(opmau_make_analysis_registry)),
+        opm_top_args(opma_augment(opmau_make_analysis_registry),
+            InvokedByMMCMake),
     only_opmode_make_xml_documentation -
-        opm_top_args(opma_augment(opmau_make_xml_documentation)),
+        opm_top_args(opma_augment(opmau_make_xml_documentation),
+            InvokedByMMCMake),
     only_opmode_typecheck_only -
-        opm_top_args(opma_augment(opmau_typecheck_only)),
+        opm_top_args(opma_augment(opmau_typecheck_only), InvokedByMMCMake),
     only_opmode_errorcheck_only -
-        opm_top_args(opma_augment(opmau_errorcheck_only)),
+        opm_top_args(opma_augment(opmau_errorcheck_only), InvokedByMMCMake),
     only_opmode_target_code_only -
-        opm_top_args(opma_augment(opmau_generate_code(
-            opmcg_target_code_only))),
+        opm_top_args(opma_augment(opmau_generate_code(opmcg_target_code_only)),
+            InvokedByMMCMake),
     only_opmode_compile_only -
         opm_top_args(opma_augment(opmau_generate_code(
-            opmcg_target_and_object_code_only)))
+            opmcg_target_and_object_code_only)),
+        InvokedByMMCMake)
 ].
 
 %---------------------------------------------------------------------------%
@@ -438,7 +455,7 @@ op_mode_to_option_string(OptionTable, MOP) = Str :-
             Str = "--output-target-arch"
         )
     ;
-        MOP = opm_top_args(MOPA),
+        MOP = opm_top_args(MOPA, _),
         (
             MOPA = opma_generate_dependencies,
             Str = "--generate-dependencies"

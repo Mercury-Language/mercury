@@ -279,7 +279,9 @@ perform_structure_reuse_analysis(!ModuleInfo):-
     % If making a `.analysis' file, record structure reuse results, analysis
     % dependencies, assumed answers and requests in the analysis framework.
     globals.get_op_mode(Globals, OpMode),
-    ( if OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry)) then
+    ( if
+        OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry), _)
+    then
         some [!AnalysisInfo] (
             module_info_get_analysis_info(!.ModuleInfo, !:AnalysisInfo),
             map.foldl(

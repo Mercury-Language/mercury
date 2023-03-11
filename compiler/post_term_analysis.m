@@ -104,7 +104,7 @@ warn_non_term_user_special_preds(ModuleInfo, !:Specs) :-
         % more accurate results when we build the .trans_opt files.
         % Any warnings this time around may be spurious.
         not (
-            OpMode = opm_top_args(opma_augment(opmau_make_plain_opt)),
+            OpMode = opm_top_args(opma_augment(opmau_make_plain_opt), _),
             TransIntermodOpt = yes
         )
     then

@@ -52,7 +52,7 @@
 
 maybe_improve_headvar_names(Globals, !PredInfo) :-
     globals.get_op_mode(Globals, OpMode),
-    ( if OpMode = opm_top_args(opma_augment(opmau_make_plain_opt)) then
+    ( if OpMode = opm_top_args(opma_augment(opmau_make_plain_opt), _) then
         % Don't change headvar names when making a `.opt' file, because
         % intermod.m needs to perform a similar transformation which THIS
         % transformation would interfere with. (intermod.m places the

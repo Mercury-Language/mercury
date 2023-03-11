@@ -263,7 +263,7 @@ check_cond_apply_reuse_in_proc(ConvertPotentialReuse, ReuseTable, ReusePPId,
     globals.get_op_mode(Globals, OpMode),
     ( if
         IntermodAnalysis = yes,
-        OpMode \= opm_top_args(opma_augment(opmau_make_analysis_registry))
+        OpMode \= opm_top_args(opma_augment(opmau_make_analysis_registry), _)
     then
         structure_reuse_answer_harsher_than_in_analysis_registry(!.ModuleInfo,
             ReuseTable, ReusePPId, IsHarsher)

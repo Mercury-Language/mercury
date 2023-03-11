@@ -1068,11 +1068,11 @@
 
     % Build system options
     ;       only_opmode_make
+    ;       only_opmode_invoked_by_mmc_make
     ;       rebuild
     ;       keep_going
     ;       jobs
     ;       track_flags
-    ;       invoked_by_mmc_make
     ;       extra_init_command
     ;       pre_link_command
     ;       install_prefix
@@ -2016,14 +2016,14 @@ optdef(oc_link, strip_executable_shared_flags,          string("")).
 optdef(oc_link, strip_executable_static_flags,          string("")).
 optdef(oc_link, java_archive_command,                   string("jar")).
 
-    % Build system options
+    % Build system options.
 
 optdef(oc_buildsys, only_opmode_make,                   bool(no)).
+optdef(oc_buildsys, only_opmode_invoked_by_mmc_make,    bool(no)).
 optdef(oc_buildsys, rebuild,                            bool(no)).
 optdef(oc_buildsys, keep_going,                         bool(no)).
 optdef(oc_buildsys, jobs,                               int(1)).
 optdef(oc_buildsys, track_flags,                        bool(no)).
-optdef(oc_buildsys, invoked_by_mmc_make,                bool(no)).
 optdef(oc_buildsys, pre_link_command,                   maybe_string(no)).
 optdef(oc_buildsys, extra_init_command,                 maybe_string(no)).
 optdef(oc_buildsys, install_prefix,                     string("/usr/local/")).
@@ -2132,7 +2132,7 @@ long_option("inhibit-warnings",         inhibit_warnings).
 long_option("inhibit-style-warnings",   inhibit_style_warnings).
 long_option("warn-accumulator-swaps",   warn_accumulator_swaps).
 long_option("halt-at-warn",             halt_at_warn).
-long_option("halt-at-warn-make-int",  halt_at_warn_make_int).
+long_option("halt-at-warn-make-int",    halt_at_warn_make_int).
 long_option("halt-at-warn-make-interface",  halt_at_warn_make_int).
 long_option("halt-at-warn-make-opt",    halt_at_warn_make_opt).
 long_option("halt-at-syntax-errors",    halt_at_syntax_errors).
@@ -3079,12 +3079,12 @@ long_option("java-archive-command", java_archive_command).
 
 % build system options
 long_option("make",                 only_opmode_make).
+long_option("invoked-by-mmc-make",  only_opmode_invoked_by_mmc_make).
 long_option("keep-going",           keep_going).
 long_option("rebuild",              rebuild).
 long_option("jobs",                 jobs).
 long_option("track-flags",          track_flags).
 long_option("track-options",        track_flags).
-long_option("invoked-by-mmc-make",  invoked_by_mmc_make).
 long_option("pre-link-command",     pre_link_command).
 long_option("extra-init-command",   extra_init_command).
 long_option("mercury-configuration-directory",
@@ -6587,14 +6587,13 @@ options_help_link(Stream, !IO) :-
 options_help_build_system(Stream, !IO) :-
     io.write_string(Stream, "\nBuild System Options:\n", !IO),
     write_tabbed_lines(Stream, [
-        % `--invoked-by-mmc-make' is for internal use by the
-        % compiler. `mmc --make' passes it as the first argument
-        % when compiling a module.
         "-m, --make",
         "\tTreat the non-option arguments to `mmc' as files to make,",
-        "\trather than source files. Create the specified files,",
-        "\tif they are not already up-to-date.",
+        "\trather than source files. Build or rebuild the specified files",
+        "\tif they do not exist or are not up-to-date.",
         "\tNote that this option also enables `--use-subdirs'.",
+        % `--invoked-by-mmc-make' is for internal use by the compiler.
+        % `mmc --make' passes it as the first argument when compiling a module.
         "-r, --rebuild",
         "\tSame as `--make', but always rebuild the target files",
         "\teven if they are up-to-date.",
@@ -6602,8 +6601,7 @@ options_help_build_system(Stream, !IO) :-
         "\tWith `--make', keep going as far as possible",
         "\teven if an error is detected.",
         "-j <n>, --jobs <n>",
-        "\tWith `--make', attempt to perform up to <n> jobs",
-        "\tconcurrently for some tasks.",
+        "\tWith `--make', attempt to perform up to <n> jobs concurrently.",
 
         "--track-flags",
         "\tWith `--make', keep track of the options used when compiling",
