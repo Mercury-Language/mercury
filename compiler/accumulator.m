@@ -221,7 +221,8 @@
 
     % An accu_goal_id represents a goal. The first field says which conjunction
     % the goal came from (the base case or the recursive case), and the second
-    % gives the location of the goal in that conjunction.
+    % gives the position of the goal in that conjunction. Positions start
+    % counting at one.
     %
 :- type accu_goal_id
     --->    accu_goal_id(accu_case, int).
@@ -631,7 +632,7 @@ identify_out_and_out_prime(ModuleInfo, VarTable, InitialInstMap, GoalId,
     GoalId = accu_goal_id(_Case, K),
     ( if
         list.take(K, Rec, InitialGoals),
-        list.drop(K-1, Rec, FinalGoals),
+        list.drop(K - 1, Rec, FinalGoals),
         FinalGoals = [hlds_goal(plain_call(_, _, Args, _, _, _), _) | Rest]
     then
         goal_list_instmap_delta(InitialGoals, InitInstMapDelta),
@@ -657,7 +658,7 @@ identify_out_and_out_prime(ModuleInfo, VarTable, InitialInstMap, GoalId,
 
         map.from_assoc_list(HeadArg, HeadToCallSubst),
 
-        list.map((pred(X-Y::in, Y-X::out) is det), HeadArg, ArgHead),
+        list.map((pred(X - Y::in, Y - X::out) is det), HeadArg, ArgHead),
         map.from_assoc_list(ArgHead, CallToHeadSubst)
     else
         unexpected($pred, "test failed")
@@ -697,7 +698,7 @@ accu_stage1(ModuleInfo, VarTable, FullyStrict, DoLCMC, GoalId, M, GoalStore,
         GoalStore, Sets0, Sets1),
     Sets1 = accu_sets(Before, Assoc,
         ConstructAssoc, Construct, Update, Reject),
-    Sets = accu_sets(Before `set.union` set_upto(Case, K - 1), Assoc,
+    Sets = accu_sets(Before `set.union` accu_goals_upto(Case, K - 1), Assoc,
         ConstructAssoc, Construct, Update, Reject),
 
     % Continue the transformation only if the set reject is empty and
@@ -788,16 +789,16 @@ accu_sets_init(Sets) :-
     Reject = EmptySet,
     Sets = accu_sets(Before, Assoc, ConstructAssoc, Construct, Update, Reject).
 
-    % set_upto(Case, K) returns the set
+    % accu_goals_upto(Case, K) returns the set
     % {accu_goal_id(Case, 1) .. accu_goal_id(Case, K)}.
     %
-:- func set_upto(accu_case, int) = set(accu_goal_id).
+:- func accu_goals_upto(accu_case, int) = set(accu_goal_id).
 
-set_upto(Case, K) = Set :-
+accu_goals_upto(Case, K) = Set :-
     ( if K =< 0 then
         set.init(Set)
     else
-        Set0 = set_upto(Case, K - 1),
+        Set0 = accu_goals_upto(Case, K - 1),
         set.insert(accu_goal_id(Case, K), Set0, Set)
     ).
 
@@ -822,7 +823,7 @@ accu_before(ModuleInfo, VarTable, FullyStrict, GoalId, K, GoalStore, Sets) :-
     )
     =>
     (
-        set.member(LessThanGoalId, set_upto(Case, K - 1) `union` Before)
+        set.member(LessThanGoalId, accu_goals_upto(Case, K - 1) `union` Before)
     ).
 
     % A goal is a member of the assoc set iff the goal only depends on goals
@@ -840,8 +841,9 @@ accu_assoc(ModuleInfo, VarTable, FullyStrict, GoalId, K, GoalStore, Sets) :-
     LaterGoal = hlds_goal(plain_call(PredId, _, Args, _, _, _), _),
     accu_is_associative(ModuleInfo, PredId, Args, _),
     (
-        % XXX LessThanGoalId was _N - J, not N - J: it ignored the case.
-        % See the diff with the previous version.
+        % XXX Before commit 75bc938818d208dd3330c686042bba7ffa59f9bb,
+        % we did not insist that LessThanGoalId should have the same
+        % case component as GoalId.
         member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId,
             stored_goal(EarlierGoal, EarlierInstMap)),
         not can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
@@ -849,7 +851,7 @@ accu_assoc(ModuleInfo, VarTable, FullyStrict, GoalId, K, GoalStore, Sets) :-
     )
     =>
     (
-        set.member(LessThanGoalId, set_upto(Case, K) `union` Before)
+        set.member(LessThanGoalId, accu_goals_upto(Case, K) `union` Before)
     ).
 
     % A goal is a member of the construct set iff the goal only depends
@@ -869,8 +871,9 @@ accu_construct(ModuleInfo, VarTable, FullyStrict, GoalId, K, GoalStore,
     LaterGoal = hlds_goal(unify(_, _, _, Unify, _), _GoalInfo),
     Unify = construct(_, _, _, _, _, _, _),
     (
-        % XXX LessThanGoalId was _N - J, not N - J: it ignored the case.
-        % See the diff with the previous version.
+        % XXX Before commit 75bc938818d208dd3330c686042bba7ffa59f9bb,
+        % we did not insist that LessThanGoalId should have the same
+        % case component as GoalId.
         member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId,
             stored_goal(EarlierGoal, EarlierInstMap)),
         not can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
@@ -879,7 +882,7 @@ accu_construct(ModuleInfo, VarTable, FullyStrict, GoalId, K, GoalStore,
     =>
     (
         set.member(LessThanGoalId,
-            set_upto(Case, K) `union` Before `union` Construct)
+            accu_goals_upto(Case, K) `union` Before `union` Construct)
     ).
 
     % A goal is a member of the construct_assoc set iff the goal depends only
@@ -914,8 +917,9 @@ accu_construct_assoc(ModuleInfo, VarTable, FullyStrict,
 
     is_associative_construction(ModuleInfo, PredId, ConsId),
     (
-        % XXX LessThanGoalId was _N - J, not N - J: it ignored the case.
-        % See the diff with the previous version.
+        % XXX Before commit 75bc938818d208dd3330c686042bba7ffa59f9bb,
+        % we did not insist that LessThanGoalId should have the same
+        % case component as GoalId.
         member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId,
             stored_goal(EarlierGoal, EarlierInstMap)),
         not can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
@@ -924,7 +928,7 @@ accu_construct_assoc(ModuleInfo, VarTable, FullyStrict,
     =>
     (
         set.member(LessThanGoalId,
-            set_upto(Case, K) `union` Before `union` Assoc
+            accu_goals_upto(Case, K) `union` Before `union` Assoc
             `union` ConstructAssoc)
     ).
 
@@ -943,8 +947,9 @@ accu_update(ModuleInfo, VarTable, FullyStrict, GoalId, K, GoalStore, Sets) :-
     LaterGoal = hlds_goal(plain_call(PredId, _, Args, _, _, _), _),
     accu_is_update(ModuleInfo, PredId, Args, _),
     (
-        % XXX LessThanGoalId was _N - J, not N - J: it ignored the case.
-        % See the diff with the previous version.
+        % XXX Before commit 75bc938818d208dd3330c686042bba7ffa59f9bb,
+        % we did not insist that LessThanGoalId should have the same
+        % case component as GoalId.
         member_lessthan_goalid(GoalStore, GoalId, LessThanGoalId,
             stored_goal(EarlierGoal, EarlierInstMap)),
         not can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
@@ -952,7 +957,7 @@ accu_update(ModuleInfo, VarTable, FullyStrict, GoalId, K, GoalStore, Sets) :-
     )
     =>
     (
-        set.member(LessThanGoalId, set_upto(Case, K) `union` Before)
+        set.member(LessThanGoalId, accu_goals_upto(Case, K) `union` Before)
     ).
 
     % member_lessthan_goalid(GS, IdA, IdB, GB) is true iff the goal_id, IdB,
@@ -1130,7 +1135,7 @@ accu_stage2(ModuleInfo, ProcInfo0, GoalId, GoalStore, Sets, OutPrime, Out,
         !:VarTable, Accs, BaseCase, BasePairs, !:Substs, CS, Warnings) :-
     Sets = accu_sets(Before0, Assoc, ConstructAssoc, Construct, Update, _),
     GoalId = accu_goal_id(Case, K),
-    Before = Before0 `union` set_upto(Case, K-1),
+    Before = Before0 `union` accu_goals_upto(Case, K - 1),
 
     % Note Update set is not placed in the after set, as the after set is used
     % to determine the variables that need to be accumulated for the
@@ -1288,8 +1293,10 @@ accu_process_assoc_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
 
 accu_has_heuristic(unqualified("list"), "append", 3).
 
-    % heuristic returns the set of which head variables are important
-    % in the running time of the predicate.
+    % accu_heuristic should return the set of the head variables that are
+    % important in determining the running time of the predicate.
+    % At the moment, the heuristic is somewhat restricted in its
+    % applicability :-(
     %
 :- pred accu_heuristic(module_name::in, string::in, arity::in,
     list(prog_var)::in, set_of_progvar::out) is semidet.
@@ -1344,6 +1351,7 @@ accu_process_update_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
     accu_process_update_set(ModuleInfo, GS, Ids, OutPrime, !Substs,
         !VarTable, StateOutputVars0, Accs0, BasePairs0),
 
+    % XXX This comment seems to have been scrambled :-(
     % Rather then concatenating to start of the list we concatenate to the end
     % of the list. This allows the accumulator introduction to be applied
     % as the heuristic will succeed (remember after transforming the two
@@ -1685,8 +1693,10 @@ create_acc_goal(Call, Substs, HeadToCallSubst, BaseIds, BasePairs, Sets,
 
     list.map(acc_unification, BasePairs, UpdateBase),
 
-    calculate_goal_info(conj(plain_conj, Cbefore ++ Rassoc ++ Rupdate
-        ++ [RecCall] ++ Rconstruct), AccRecGoal),
+    calculate_goal_info(
+        conj(plain_conj, Cbefore ++ Rassoc ++ Rupdate ++ [RecCall] ++
+            Rconstruct),
+        AccRecGoal),
     calculate_goal_info(conj(plain_conj, UpdateBase ++ BaseCase), AccBaseGoal).
 
     % Create the U set of goals (those that will be used in the original
@@ -1730,9 +1740,9 @@ create_new_base_goals(Ids, C, AccVarSubst, HeadToCallSubst)
         = accu_rename(set.to_sorted_list(Ids), AccVarSubst, C, Bbase) :-
     Bbase = accu_rename(base_case_ids(C), HeadToCallSubst, C, goal_store_init).
 
-    % acc_unification(O-A, G):
+    % acc_unification(Out - Acc, Goal):
     %
-    % is true if G represents the assignment unification Out = Acc.
+    % is true if Goal represents the assignment unification Out = Acc.
     %
 :- pred acc_unification(pair(prog_var)::in, hlds_goal::out) is det.
 
