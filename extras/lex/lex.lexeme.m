@@ -156,7 +156,7 @@ compile_transitions_for_state(I, IBTs, [T | Ts]) =
 %-----------------------------------------------------------------------------%
 
 next_state(CLXM, CurrentState, Char, NextState, IsAccepting) :-
-    Rows            = CLXM ^ transition_map ^ rows,
+    Rows = CLXM ^ transition_map ^ rows,
     AcceptingStates = CLXM ^ transition_map ^ accepting_states,
     find_next_state(Char, Rows ^ elem(CurrentState), NextState),
     IsAccepting = AcceptingStates ^ bit(NextState).
@@ -177,9 +177,10 @@ find_next_state(Char, PackedTransitions, State) :-
 find_next_state_0(Lo, Hi, Char, PackedTransitions, State) :-
     Lo =< Hi,
     PackedTransition = PackedTransitions ^ elem(Lo),
-    ( if PackedTransition ^ char = Char
-      then State = PackedTransition ^ btr_state
-      else find_next_state_0(Lo + 1, Hi, Char, PackedTransitions, State)
+    ( if PackedTransition ^ char = Char then
+        State = PackedTransition ^ btr_state
+    else
+        find_next_state_0(Lo + 1, Hi, Char, PackedTransitions, State)
     ).
 
 %-----------------------------------------------------------------------------%

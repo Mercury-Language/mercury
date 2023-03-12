@@ -250,7 +250,7 @@ adjust_buf(GarbageLength, ExtraLength, Buf0, Buf) :-
         % We need to grow the buffer.
         array.init(Size0 + low_water_mark, ('@'), Buf1),
         ExtraLength = low_water_mark
-      else
+    else
         Buf1 = Buf0,
         ExtraLength = 0
     ),
@@ -265,7 +265,7 @@ shift_buf(I, Hi, Disp, Src, Tgt) =
     ( if I < Hi then
         shift_buf(I + 1, Hi, Disp, Src,
             array.set(Tgt, I, array.lookup(Src, I + Disp)))
-      else
+    else
         Tgt
     ).
 

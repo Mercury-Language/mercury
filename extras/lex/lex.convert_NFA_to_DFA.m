@@ -5,7 +5,7 @@
 % lex.convert_NFA_to_DFA.m
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 % Copyright (C) 2002, 2010 The University of Melbourne
-% Copyright (C) 2014, 2018 The Mercury team.
+% Copyright (C) 2014, 2018-2019, 2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % Fri Aug 18 12:30:25 BST 2000
@@ -218,12 +218,10 @@ stop_state_set(StopStates, StateSet) = StateSet :-
 :- func number_state_sets(state_sets) = state_set_no_map.
 
 number_state_sets(Ss) = StateNos :-
-    list.foldl2(
+    set.foldl2(
         ( pred(S::in, N::in, (N + 1)::out, Map0::in, Map::out) is det :-
             map.set(S, N, Map0, Map)
-        ),
-        set.to_sorted_list(Ss),
-        0, _, map.init, StateNos).
+        ), Ss, 0, _, map.init, StateNos).
 
 %-----------------------------------------------------------------------------%
 
