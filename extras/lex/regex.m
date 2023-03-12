@@ -12,7 +12,7 @@
 % functionality using regular expressions defined as strings of the
 % form recognised by tools such as sed and grep.
 %
-% The regular expression langauge matched is a subset of POSIX 1003.2
+% The regular expression language matched is a subset of POSIX 1003.2
 % with a few minor differences:
 % - bounds {[n][,[m]]} are not recognised;
 % - collating elements [.ab.] in character sets are not recognised;
@@ -583,7 +583,7 @@ change_first(Regex, ChangeFn, String) =
             ChangeFn(Substring),
             between(String, Start + Count, max_int)
         ])
-      else
+    else
         String
     ).
 
