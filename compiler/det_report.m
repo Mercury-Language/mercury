@@ -66,12 +66,12 @@
 
 %---------------------------------------------------------------------------%
 
-    % Check the determinism declarations of the specified predicates,
-    % which should be all the valid predicates in this module.
+    % Check the determinism declarations of the specified procedures,
+    % which should be all the valid procedures in this module.
     %
     % This is the main predicate exported by this module.
     %
-:- pred check_determinism_of_preds(list(pred_proc_id)::in,
+:- pred check_determinism_of_procs(list(pred_proc_id)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -172,16 +172,16 @@
 
 %---------------------------------------------------------------------------%
 
-check_determinism_of_preds([], !ModuleInfo, !Specs).
-check_determinism_of_preds([PredProcId | PredProcIds], !ModuleInfo, !Specs) :-
-    check_determinism_of_pred(PredProcId, !ModuleInfo, !Specs),
-    check_determinism_of_preds(PredProcIds, !ModuleInfo, !Specs).
+check_determinism_of_procs([], !ModuleInfo, !Specs).
+check_determinism_of_procs([PredProcId | PredProcIds], !ModuleInfo, !Specs) :-
+    check_determinism_of_proc(PredProcId, !ModuleInfo, !Specs),
+    check_determinism_of_procs(PredProcIds, !ModuleInfo, !Specs).
 
-:- pred check_determinism_of_pred(pred_proc_id::in,
+:- pred check_determinism_of_proc(pred_proc_id::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_determinism_of_pred(PredProcId, !ModuleInfo, !Specs) :-
+check_determinism_of_proc(PredProcId, !ModuleInfo, !Specs) :-
     module_info_pred_proc_info(!.ModuleInfo, PredProcId, PredInfo, ProcInfo),
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     proc_info_get_inferred_determinism(ProcInfo, InferredDetism),
@@ -296,8 +296,8 @@ check_determinism_of_pred(PredProcId, !ModuleInfo, !Specs) :-
         PredInfo, ProcInfo, !Specs),
     check_determinism_for_eval_method(ProcInfo, InferredDetism, !Specs),
     check_determinism_if_pred_is_main(PredInfo, ProcInfo, !Specs),
-    check_for_multisoln_func(PredProcId, PredInfo, ProcInfo,
-        !.ModuleInfo, !Specs).
+    check_for_multisoln_func(!.ModuleInfo, PredProcId, PredInfo, ProcInfo,
+        !Specs).
 
 :- pred cse_nopull_msgs(proc_info::in, list(error_msg)::out) is det.
 
@@ -484,11 +484,11 @@ check_determinism_if_pred_is_main(PredInfo, ProcInfo, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred check_for_multisoln_func(pred_proc_id::in, pred_info::in,
-    proc_info::in, module_info::in,
+:- pred check_for_multisoln_func(module_info::in, pred_proc_id::in,
+    pred_info::in, proc_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_multisoln_func(PredProcId, PredInfo, ProcInfo, ModuleInfo, !Specs) :-
+check_for_multisoln_func(ModuleInfo, PredProcId, PredInfo, ProcInfo, !Specs) :-
     proc_info_get_inferred_determinism(ProcInfo, InferredDetism),
 
     % Functions can only have more than one solution if it is a non-standard
@@ -505,11 +505,7 @@ check_for_multisoln_func(PredProcId, PredInfo, ProcInfo, ModuleInfo, !Specs) :-
         % ... but for which all the arguments are input ...
         proc_info_get_argmodes(ProcInfo, PredArgModes),
         pred_args_to_func_args(PredArgModes, FuncArgModes, _FuncResultMode),
-        (
-            list.member(FuncArgMode, FuncArgModes)
-        =>
-            mode_is_fully_input(ModuleInfo, FuncArgMode)
-        )
+        list.all_true(mode_is_fully_input(ModuleInfo), FuncArgModes)
     then
         % ... then it is an error.
         proc_info_get_context(ProcInfo, FuncContext),

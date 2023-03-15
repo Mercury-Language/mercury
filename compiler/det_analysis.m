@@ -310,7 +310,7 @@ determinism_final_pass(!ModuleInfo, UndeclaredProcs, DeclaredProcs, Debug,
     determinism_inference_one_pass(DeclaredProcs, Debug, !ModuleInfo,
         [], !:Specs, unchanged, _),
     % This is the second, checking pass.
-    check_determinism_of_preds(UndeclaredProcs ++ DeclaredProcs,
+    check_determinism_of_procs(UndeclaredProcs ++ DeclaredProcs,
         !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
