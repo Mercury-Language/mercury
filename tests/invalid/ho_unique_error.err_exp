@@ -1,6 +1,8 @@
 ho_unique_error.m:011: In `call_ho'(di, uo):
-ho_unique_error.m:011:   error: invalid determinism for a predicate with I/O
-ho_unique_error.m:011:   state arguments.
+ho_unique_error.m:011:   error: invalid determinism for a predicate that has
+ho_unique_error.m:011:   I/O state arguments. The valid determinisms are `det',
+ho_unique_error.m:011:   `cc_multi' and `erroneous', since the I/O state can be
+ho_unique_error.m:011:   neither duplicated nor destroyed.
 ho_unique_error.m:016: In clause for `call_ho(di, uo)':
 ho_unique_error.m:016:   in argument 3 (i.e. argument 2 of the called
 ho_unique_error.m:016:   predicate) of higher-order predicate call:
@@ -11,4 +13,3 @@ ho_unique_error.m:016:   This kind of uniqueness mismatch is usually caused by
 ho_unique_error.m:016:   doing input/output or some other kind of destructive
 ho_unique_error.m:016:   update in a context where it can be backtracked over,
 ho_unique_error.m:016:   such as the condition of an if-then-else.
-For more information, recompile with `-E'.

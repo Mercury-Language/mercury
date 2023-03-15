@@ -1,6 +1,8 @@
 mostly_uniq2.m:009: In `foo'(di, uo):
-mostly_uniq2.m:009:   error: invalid determinism for a predicate with I/O state
-mostly_uniq2.m:009:   arguments.
+mostly_uniq2.m:009:   error: invalid determinism for a predicate that has I/O
+mostly_uniq2.m:009:   state arguments. The valid determinisms are `det',
+mostly_uniq2.m:009:   `cc_multi' and `erroneous', since the I/O state can be
+mostly_uniq2.m:009:   neither duplicated nor destroyed.
 mostly_uniq2.m:017: In clause for `foo(di, uo)':
 mostly_uniq2.m:017:   in argument 2 of call to predicate `io.write_int'/3:
 mostly_uniq2.m:017:   mode error: variable `STATE_VARIABLE_IO_0' has
@@ -10,4 +12,3 @@ mostly_uniq2.m:017:   This kind of uniqueness mismatch is usually caused by
 mostly_uniq2.m:017:   doing input/output or some other kind of destructive
 mostly_uniq2.m:017:   update in a context where it can be backtracked over,
 mostly_uniq2.m:017:   such as the condition of an if-then-else.
-For more information, recompile with `-E'.

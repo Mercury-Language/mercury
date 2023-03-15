@@ -17,9 +17,9 @@ one_member.m:054:   representation for each abstract value of this type. The
 one_member.m:054:   results of this unification might depend on the choice of
 one_member.m:054:   concrete representation. Finding all possible solutions to
 one_member.m:054:   this unification would require backtracking over all
-one_member.m:054:   possible representations, but I'm not going to do that
-one_member.m:054:   implicitly. (If that's really what you want, you must do it
-one_member.m:054:   explicitly.)
+one_member.m:054:   possible representations, but I am not going to do that
+one_member.m:054:   implicitly. (If that is really what you want, you must do
+one_member.m:054:   it explicitly.)
 one_member.m:055:   Call to do_one_member can fail.
 one_member.m:063: Error: `promise_equivalent_solution_sets' scope is nested
 one_member.m:063:   inside another.

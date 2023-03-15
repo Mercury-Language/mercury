@@ -355,10 +355,10 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
 
     trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
         get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
-        io.write_string(ProgressStream, "inferring procedure ", !IO),
-        io.write(ProgressStream, PredId, !IO),
-        io.write_string(ProgressStream, "/", !IO),
-        io.write_line(ProgressStream, ProcId, !IO)
+        PredIdInt = pred_id_to_int(PredId),
+        ProcIdInt = proc_id_to_int(ProcId),
+        io.format(ProgressStream, "inferring predicate %d proc %d\n",
+            [i(PredIdInt), i(ProcIdInt)], !IO)
     ),
 
     % Infer the determinism of the goal.
@@ -371,52 +371,83 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
         InferDetism, _,  DetInfo0, DetInfo),
     det_info_get_module_info(DetInfo, !:ModuleInfo),
     det_info_get_error_specs(DetInfo, !:Specs),
-    det_info_get_has_format_call(DetInfo, HasFormatCalls),
-    det_info_get_has_req_scope(DetInfo, HasRequireScope),
-    det_info_get_has_incomplete_switch(DetInfo, HasIncompleteSwitch),
 
     % Take the worst of the old and inferred detisms. This is needed to prevent
     % loops on p :- not(p), at least if the initial assumed detism is det.
     % This may also be needed to ensure that we don't change the interface
     % determinism of procedures, if we are re-running determinism analysis.
-
     determinism_components(OldDetism, OldCanFail, OldMaxSoln),
     determinism_components(InferDetism, InferCanFail, InferMaxSoln),
     det_switch_canfail(OldCanFail, InferCanFail, CanFail),
     det_switch_maxsoln(OldMaxSoln, InferMaxSoln, MaxSoln),
     determinism_components(TentativeDetism, CanFail, MaxSoln),
 
-    % Now see if the evaluation model can change the detism.
+    % Apply the effect of the evaluation model (if any).
     proc_info_get_eval_method(ProcInfo0, EvalMethod),
     NewDetism = eval_method_change_determinism(EvalMethod, TentativeDetism),
+
+    % Some determinisms are invalid for some kinds of predicates.
+    % Check for and report any violations of these rules.
+    (
+        MaybeDeclaredDetism = yes(IOCheckDetism)
+    ;
+        MaybeDeclaredDetism = no,
+        IOCheckDetism = NewDetism
+    ),
+    check_io_state_proc_detism(!.ModuleInfo, PredId, ProcId, ProcInfo0,
+        IOCheckDetism, should_not_module_qualify, !Specs),
+    check_exported_proc_detism(PredId, ProcId, NewDetism, !ModuleInfo, !Specs),
+
+    % Save the newly inferred information in the proc_info and pred_info,
+    % and put those updated structures back into the module_info.
+    proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
+    proc_info_set_inferred_determinism(NewDetism, ProcInfo1, ProcInfo),
+    pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo1),
+    record_det_info_markers(DetInfo, PredInfo1, PredInfo),
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
+
+%---------------------%
+
+:- pred check_io_state_proc_detism(module_info::in, pred_id::in, proc_id::in,
+    proc_info::in, determinism::in, should_module_qualify::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_io_state_proc_detism(ModuleInfo, PredId, ProcId, ProcInfo, Detism,
+        ShouldModuleQual, !Specs) :-
     ( if
-        proc_info_has_io_state_pair(!.ModuleInfo, ProcInfo0, _InArg, _OutArg),
-        (
-            MaybeDeclaredDetism = yes(ToBeCheckedDetism)
-        ;
-            MaybeDeclaredDetism = no,
-            ToBeCheckedDetism = NewDetism
-        ),
-        determinism_to_code_model(ToBeCheckedDetism, ToBeCheckedCodeModel),
-        ToBeCheckedCodeModel \= model_det
+        proc_info_has_io_state_pair(ModuleInfo, ProcInfo, _InArg, _OutArg),
+        determinism_to_code_model(Detism, CodeModel),
+        CodeModel \= model_det
     then
-        proc_info_get_context(ProcInfo0, ProcContext),
-        IOStateProcPieces = describe_one_proc_name_mode(!.ModuleInfo,
-            output_mercury, should_not_module_qualify, proc(PredId, ProcId)),
-        IOStatePieces = [words("In")] ++ IOStateProcPieces ++ [suffix(":"), nl,
+        proc_info_get_context(ProcInfo, ProcContext),
+        ProcPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
+            ShouldModuleQual, proc(PredId, ProcId)),
+        % We used to print the second sentence (actually, only its first half)
+        % if verbose error messages were enabled, but anyone who makes this
+        % error will probably need that extra help, so don't make them
+        % ask for it with -E.
+        Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
             words("error: invalid determinism for a predicate"),
-            words("with I/O state arguments."), nl],
-        IOStateVerbosePieces = [words("Valid determinisms are "),
-            words("det, cc_multi and erroneous."), nl],
-        IOStateSpec = error_spec($pred, severity_error, phase_detism_check,
-            [simple_msg(ProcContext,
-                [always(IOStatePieces),
-                verbose_only(verbose_always, IOStateVerbosePieces)])]),
-        !:Specs = [IOStateSpec | !.Specs]
+            words("that has I/O state arguments."),
+            words("The valid determinisms are"),
+            quote("det"), suffix(","), quote("cc_multi"),
+            words("and"), quote("erroneous"), suffix(","),
+            words("since the I/O state can be neither duplicated"),
+            words("nor destroyed."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_detism_check,
+            ProcContext, Pieces),
+        !:Specs = [Spec | !.Specs]
     else
         true
-    ),
+    ).
 
+%---------------------%
+
+:- pred check_exported_proc_detism(pred_id::in, proc_id::in, determinism::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_exported_proc_detism(PredId, ProcId, Detism, !ModuleInfo, !Specs) :-
     % Check to make sure that if this procedure is exported via a pragma
     % foreign_export declaration, then the determinism is not multi or nondet.
     % Pragma exported procs that have been declared to have these determinisms
@@ -429,39 +460,43 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     % except take off the cord wrapper.
     module_info_set_pragma_exported_procs(ExportedProcsCord, !ModuleInfo),
     ( if
-        list.member(pragma_exported_proc(_, PredId, ProcId, _, _),
-            ExportedProcs),
-        ( NewDetism = detism_multi
-        ; NewDetism = detism_non
+        is_proc_pragma_exported(ExportedProcs, PredId, ProcId, ExportContext),
+        ( Detism = detism_multi
+        ; Detism = detism_non
         )
     then
-        ( if
-            get_exported_proc_context(ExportedProcs, PredId, ProcId,
-                PragmaContext)
-        then
-            ExportPieces = [words("Error:"),
-                pragma_decl("foreign_export"), words("declaration"),
-                words("for a procedure that has a determinism of"),
-                fixed(determinism_to_string(NewDetism)), suffix("."), nl],
-            ExportSpec = simplest_spec($pred, severity_error,
-                phase_detism_check, PragmaContext, ExportPieces),
-            !:Specs = [ExportSpec | !.Specs]
-        else
-            unexpected($pred,
-                "Cannot find proc in table of pragma foreign_exported procs")
-        )
+        Pieces = [words("Error:"),
+            pragma_decl("foreign_export"), words("declaration"),
+            words("for a procedure whose determinism is"),
+            quote(determinism_to_string(Detism)), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_detism_check,
+            ExportContext, Pieces),
+        !:Specs = [Spec | !.Specs]
     else
         true
-    ),
+    ).
 
-    % Save the newly inferred information.
-    proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
-    proc_info_set_inferred_determinism(NewDetism, ProcInfo1, ProcInfo),
+:- pred is_proc_pragma_exported(list(pragma_exported_proc)::in,
+    pred_id::in, proc_id::in, prog_context::out) is semidet.
 
-    % Put back the new proc_info structure.
-    pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo1),
+is_proc_pragma_exported([ExportProc | ExportProcs], PredId, ProcId, Context) :-
+    ( if ExportProc = pragma_exported_proc(_, PredId, ProcId, _, Context0) then
+        Context = Context0
+    else
+        is_proc_pragma_exported(ExportProcs, PredId, ProcId, Context)
+    ).
+
+%---------------------%
+
+:- pred record_det_info_markers(det_info::in,
+    pred_info::in, pred_info::out) is det.
+
+record_det_info_markers(DetInfo, !PredInfo) :-
+    det_info_get_has_format_call(DetInfo, HasFormatCalls),
+    det_info_get_has_req_scope(DetInfo, HasRequireScope),
+    det_info_get_has_incomplete_switch(DetInfo, HasIncompleteSwitch),
     some [!Markers] (
-        pred_info_get_markers(PredInfo1, !:Markers),
+        pred_info_get_markers(!.PredInfo, !:Markers),
         (
             HasFormatCalls = does_not_contain_format_call
         ;
@@ -480,18 +515,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
             HasIncompleteSwitch = contains_incomplete_switch,
             add_marker(marker_has_incomplete_switch, !Markers)
         ),
-        pred_info_set_markers(!.Markers, PredInfo1, PredInfo)
-    ),
-    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
-
-:- pred get_exported_proc_context(list(pragma_exported_proc)::in,
-    pred_id::in, proc_id::in, prog_context::out) is semidet.
-
-get_exported_proc_context([Proc | Procs], PredId, ProcId, Context) :-
-    ( if Proc = pragma_exported_proc(_, PredId, ProcId, _, Context0) then
-        Context = Context0
-    else
-        get_exported_proc_context(Procs, PredId, ProcId, Context)
+        pred_info_set_markers(!.Markers, !PredInfo)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1250,9 +1274,8 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
                 quote("will_not_throw_exception"), words("attribute."),
                 words("This attribute cannot be applied"),
                 words("to erroneous procedures."), nl],
-            WillNotThrowSpec = error_spec($pred, severity_error,
-                phase_detism_check,
-                [simplest_msg(ProcContext, WillNotThrowPieces)]),
+            WillNotThrowSpec = simplest_spec($pred, severity_error,
+                phase_detism_check, ProcContext, WillNotThrowPieces),
             det_info_add_error_spec(WillNotThrowSpec, !DetInfo)
         else
             true
@@ -1986,18 +2009,12 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                 words("unification for non-canonical type"),
                 qual_top_ctor_of_type(Type),
                 words("is not guaranteed to succeed."), nl],
-            VerbosePieces = [words("Since the type has a user-defined"),
-                words("equality predicate, I must presume that"),
-                words("there is more than one possible concrete"),
-                words("representation for each abstract value"),
-                words("of this type. The success of this unification"),
-                words("might depend on the choice of concrete"),
-                words("representation. Figuring out whether there is"),
-                words("a solution to this unification would require"),
-                words("backtracking over all possible"),
-                words("representations, but I'm not going to do that"),
-                words("implicitly. (If that's really what you want,"),
-                words("you must do it explicitly.)"), nl],
+            VerbosePieces = noncanon_unify_verbose_preamble ++
+                [words("The success of this unification might depend on"),
+                words("the choice of concrete representation."),
+                words("Figuring out whether there is a solution"),
+                words("to this unification")] ++
+                noncanon_unify_verbose_would_require,
             Spec = error_spec($pred, severity_error, phase_detism_check,
                 [simple_msg(Context,
                     [always(Pieces0 ++ Pieces1),
@@ -2028,21 +2045,14 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                 ),
                 Pieces1 = [words(ErrorMsg),
                     words("unification for non-canonical type"),
-                    qual_top_ctor_of_type(Type),
-                    words("occurs in a context which requires all solutions."),
-                    nl],
-                VerbosePieces = [words("Since the type has a user-defined"),
-                    words("equality predicate, I must presume that"),
-                    words("there is more than one possible concrete"),
-                    words("representation for each abstract value"),
-                    words("of this type. The results of this unification"),
-                    words("might depend on the choice of concrete"),
-                    words("representation. Finding all possible"),
-                    words("solutions to this unification would require"),
-                    words("backtracking over all possible"),
-                    words("representations, but I'm not going to do that"),
-                    words("implicitly. (If that's really what you want,"),
-                    words("you must do it explicitly.)"), nl],
+                    qual_top_ctor_of_type(Type), words("occurs in a context"),
+                    words("which requires all solutions."), nl],
+                VerbosePieces = noncanon_unify_verbose_preamble ++
+                    [words("The results of this unification might depend on"),
+                    words("the choice of concrete representation."),
+                    words("Finding all possible solutions"),
+                    words("to this unification")] ++
+                    noncanon_unify_verbose_would_require,
                 det_info_get_module_info(!.DetInfo, ModuleInfo),
                 ContextMsgs = failing_contexts_description(ModuleInfo,
                     VarTable, FailingContextsA ++ FailingContextsB),
@@ -2066,6 +2076,21 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
     else
         NumSolns = at_most_one
     ).
+
+:- func noncanon_unify_verbose_preamble = list(format_piece).
+
+noncanon_unify_verbose_preamble =
+    [words("Since the type has a user-defined equality predicate,"),
+    words("I must presume that there is more than one possible concrete"),
+    words("representation for each abstract value of this type.")].
+    
+:- func noncanon_unify_verbose_would_require = list(format_piece).
+
+noncanon_unify_verbose_would_require =
+    [words("would require backtracking over all possible representations,"),
+    words("but I am not going to do that implicitly."),
+    words("(If that is really what you want, you must do it explicitly.)"),
+    nl].
 
     % Return true iff the principal type constructor of the given type
     % has user-defined equality.
