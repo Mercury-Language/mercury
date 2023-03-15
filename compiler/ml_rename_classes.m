@@ -7,6 +7,13 @@
 %---------------------------------------------------------------------------%
 %
 % File: ml_rename_classes.m.
+%
+% The MLDS->Java code generator (specifically, mlds_to_java_file.m)
+% uses the predicates in this module to shorten any "excessively-long"
+% class names. The length matters because class names become part of
+% file names, and file systems have limits on their length.
+%
+%---------------------------------------------------------------------------%
 
 :- module ml_backend.ml_rename_classes.
 :- interface.
