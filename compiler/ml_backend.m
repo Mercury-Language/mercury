@@ -9,11 +9,16 @@
 % The MLDS back-end.
 %
 % This package includes
-% - the MLDS data structure, which is an abstract
-%   representation of a generic imperative language;
+% - the MLDS data structure, which is an abstract representation
+%   of a generic imperative language;
+%
 % - the MLDS code generator, which converts HLDS to MLDS;
-% - the high-level C back-end, the Java back-end and the C# back-end,
-%   each of which convert MLDS to their respective target language.
+%
+% - the code generators that convert MLDS to one of our three target languages:
+%
+%   - the high-level C back-end,
+%   - the Java back-end, and
+%   - the C# back-end.
 %
 %---------------------------------------------------------------------------%
 
@@ -106,7 +111,7 @@
 :- include_module mlds_to_cs_type.
 :- include_module mlds_to_cs_util.
 
-% MLDS debugging back-end.
+% For debugging the modules in this package.
 :- include_module mlds_dump.
 
 % Utility predicates that are useful for more than one MLDS->? back-end.
