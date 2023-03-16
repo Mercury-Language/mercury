@@ -86,7 +86,7 @@
     % Check the determinism of a single procedure. Works only if the
     % determinisms of the procedures it calls have already been inferred.
     %
-:- pred determinism_check_proc(proc_id::in, pred_id::in,
+:- pred determinism_check_proc(pred_id::in, proc_id::in,
     module_info::in, module_info::out, list(error_spec)::out) is det.
 
     % Infer the determinism of a procedure.
@@ -225,12 +225,15 @@ determinism_pass(!ModuleInfo, Specs) :-
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
     ).
 
-determinism_check_proc(ProcId, PredId, !ModuleInfo, Specs) :-
+determinism_check_proc(PredId, ProcId, !ModuleInfo, !:Specs) :-
+    % Does for one procedure what determinism_final_pass does
+    % for all determinism-checked procedures.
+    PredProcId = proc(PredId, ProcId),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_det, Debug),
-    % ZZZ
-    determinism_final_pass(!ModuleInfo, [proc(PredId, ProcId)], [], [],
-        Debug, Specs).
+    det_infer_proc(proc(PredId, ProcId), Debug,
+        !ModuleInfo, [], !:Specs, unchanged, _),
+    check_determinism_of_proc(PredProcId, !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -274,29 +277,10 @@ determinism_inference_to_fixpoint(!ModuleInfo, PredProcIds, Debug, Specs) :-
     maybe_changed::in, maybe_changed::out) is det.
 
 determinism_inference_one_pass([], _, !ModuleInfo, !Specs, !Changed).
-determinism_inference_one_pass([proc(PredId, ProcId) | PredProcs], Debug,
+determinism_inference_one_pass([PredProcId | PredProcIds], Debug,
         !ModuleInfo, !Specs, !Changed) :-
-    det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs),
-    ( if NewDetism = OldDetism then
-        ChangeStr = "old"
-    else
-        ChangeStr = "new",
-        !:Changed = changed
-    ),
-    (
-        Debug = yes,
-        trace [io(!IO)] (
-            get_debug_output_stream(!.ModuleInfo,  DebugStream, !IO),
-            NewDetismStr = mercury_det_to_string(NewDetism),
-            ProcStr = pred_proc_id_pair_to_user_string(!.ModuleInfo,
-                PredId, ProcId),
-            io.format(DebugStream, "%% Inferred %s detism %s for %s\n",
-                [s(ChangeStr), s(NewDetismStr), s(ProcStr)], !IO)
-        )
-    ;
-        Debug = no
-    ),
-    determinism_inference_one_pass(PredProcs, Debug, !ModuleInfo, !Specs,
+    det_infer_proc(PredProcId, Debug, !ModuleInfo, !Specs, !Changed),
+    determinism_inference_one_pass(PredProcIds, Debug, !ModuleInfo, !Specs,
         !Changed).
 
 :- pred determinism_final_pass(module_info::in, module_info::out,
@@ -317,15 +301,17 @@ determinism_final_pass(!ModuleInfo, DeclaredProcs, UndeclaredProcs,
 %---------------------------------------------------------------------------%
 
 det_infer_proc_ignore_msgs(PredId, ProcId, !ModuleInfo) :-
-    det_infer_proc(PredId, ProcId, !ModuleInfo, _OldDetism, _NewDetism,
-        [], _Specs).
+    det_infer_proc(proc(PredId, ProcId), no,
+        !ModuleInfo, [], _Specs, unchanged, _).
 
-:- pred det_infer_proc(pred_id::in, proc_id::in,
-    module_info::in, module_info::out, determinism::out, determinism::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred det_infer_proc(pred_proc_id::in, bool::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out,
+    maybe_changed::in, maybe_changed::out) is det.
 
-det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
+det_infer_proc(PredProcId, Debug, !ModuleInfo, !Specs, !Changed) :-
     % Get the proc_info structure for this procedure.
+    PredProcId = proc(PredId, ProcId),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
 
@@ -366,8 +352,8 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     proc_info_get_goal(ProcInfo0, Goal0),
     proc_info_get_initial_instmap(!.ModuleInfo, ProcInfo0, InstMap0),
     proc_info_get_var_table(ProcInfo0, VarTable),
-    det_info_init(!.ModuleInfo, proc(PredId, ProcId), VarTable,
-        pess_extra_vars_report, !.Specs, DetInfo0),
+    det_info_init(!.ModuleInfo, PredProcId, VarTable, pess_extra_vars_report,
+        !.Specs, DetInfo0),
     det_infer_goal(Goal0, Goal, InstMap0, SolnContext, [], no,
         InferDetism, _,  DetInfo0, DetInfo),
     det_info_get_module_info(DetInfo, !:ModuleInfo),
@@ -393,7 +379,10 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     proc_info_set_inferred_determinism(NewDetism, ProcInfo1, ProcInfo),
     pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo1),
     record_det_info_markers(DetInfo, PredInfo1, PredInfo),
-    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
+
+    maybe_record_change_print_inferred(!.ModuleInfo, Debug, PredProcId,
+        OldDetism, NewDetism, !Changed).
 
 %---------------------%
 
@@ -425,6 +414,33 @@ record_det_info_markers(DetInfo, !PredInfo) :-
             add_marker(marker_has_incomplete_switch, !Markers)
         ),
         pred_info_set_markers(!.Markers, !PredInfo)
+    ).
+
+%---------------------%
+
+:- pred maybe_record_change_print_inferred(module_info::in, bool::in,
+    pred_proc_id::in, determinism::in, determinism::in,
+    maybe_changed::in, maybe_changed::out) is det.
+
+maybe_record_change_print_inferred(ModuleInfo, Debug, PredProcId,
+        OldDetism, NewDetism, !Changed) :-
+    ( if NewDetism = OldDetism then
+        ChangeStr = "old"
+    else
+        ChangeStr = "new",
+        !:Changed = changed
+    ),
+    (
+        Debug = yes,
+        trace [io(!IO)] (
+            get_debug_output_stream(ModuleInfo,  DebugStream, !IO),
+            NewDetismStr = mercury_det_to_string(NewDetism),
+            ProcStr = pred_proc_id_to_user_string(ModuleInfo, PredProcId),
+            io.format(DebugStream, "%% Inferred %s detism %s for %s\n",
+                [s(ChangeStr), s(NewDetismStr), s(ProcStr)], !IO)
+        )
+    ;
+        Debug = no
     ).
 
 %---------------------------------------------------------------------------%

@@ -75,6 +75,15 @@
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+    % As above, but for just a single procedure. Used when a change in
+    % the body of a procedure (by e.g. cse_detection.m) requires redoing
+    % the procedure's mode- and determinism-analysis, in order to update
+    % the relevant fields of hlds_goal_infos.
+    %
+:- pred check_determinism_of_proc(pred_proc_id::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
     % Check the determinism declarations of the specified procedures
     % whose bodies det_analysis.m did not analyze because they are
     % imported from another module (and whose bodies are therefore
@@ -196,10 +205,6 @@ check_determinism_of_procs([], !ModuleInfo, !Specs).
 check_determinism_of_procs([PredProcId | PredProcIds], !ModuleInfo, !Specs) :-
     check_determinism_of_proc(PredProcId, !ModuleInfo, !Specs),
     check_determinism_of_procs(PredProcIds, !ModuleInfo, !Specs).
-
-:- pred check_determinism_of_proc(pred_proc_id::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
 
 check_determinism_of_proc(PredProcId, !ModuleInfo, !Specs) :-
     module_info_pred_proc_info(!.ModuleInfo, PredProcId, PredInfo, ProcInfo),

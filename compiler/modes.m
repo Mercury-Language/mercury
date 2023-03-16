@@ -1258,7 +1258,7 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredIdTable, !ModuleInfo,
             module_info_set_pred_info(PredId, PredInfo3, !ModuleInfo),
 
             detect_cse_in_proc(maybe.no, PredId, ProcId, !ModuleInfo),
-            determinism_check_proc(ProcId, PredId, !ModuleInfo, DetismSpecs),
+            determinism_check_proc(PredId, ProcId, !ModuleInfo, DetismSpecs),
             expect(unify(DetismSpecs, []), $pred, "found detism error"),
             save_proc_info(!.ModuleInfo, ProcId, PredId, !OldPredIdTable),
             unique_modes_check_proc(PredId, ProcId, !ModuleInfo,

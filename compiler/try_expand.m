@@ -327,7 +327,7 @@ update_changed_proc(Goal, PredId, ProcId, PredInfo, !.ProcInfo, !ModuleInfo,
         % XXX It would be nice to replace any pre-expansion determinism error
         % messages (which mention the hidden predicate magic_exception_result)
         % with these error messages.
-        determinism_check_proc(ProcId, PredId, !ModuleInfo, _DetismSpecs)
+        determinism_check_proc(PredId, ProcId, !ModuleInfo, _DetismSpecs)
     ).
 
 %-----------------------------------------------------------------------------%
