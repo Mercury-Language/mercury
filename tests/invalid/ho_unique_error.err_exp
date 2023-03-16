@@ -1,8 +1,9 @@
 ho_unique_error.m:011: In `call_ho'(di, uo):
-ho_unique_error.m:011:   error: invalid determinism for a predicate that has
-ho_unique_error.m:011:   I/O state arguments. The valid determinisms are `det',
-ho_unique_error.m:011:   `cc_multi' and `erroneous', since the I/O state can be
-ho_unique_error.m:011:   neither duplicated nor destroyed.
+ho_unique_error.m:011:   error: `multi' is not a valid determinism for a
+ho_unique_error.m:011:   predicate that has I/O state arguments. The valid
+ho_unique_error.m:011:   determinisms for such predicates are `det', `cc_multi'
+ho_unique_error.m:011:   and `erroneous', since the I/O state can be neither
+ho_unique_error.m:011:   duplicated nor destroyed.
 ho_unique_error.m:016: In clause for `call_ho(di, uo)':
 ho_unique_error.m:016:   in argument 3 (i.e. argument 2 of the called
 ho_unique_error.m:016:   predicate) of higher-order predicate call:

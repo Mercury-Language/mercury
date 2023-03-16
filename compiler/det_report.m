@@ -75,6 +75,23 @@
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+    % Check the determinism declarations of the specified procedures
+    % whose bodies det_analysis.m did not analyze because they are
+    % imported from another module (and whose bodies are therefore
+    % not available, at least not without intermodule optimization).
+    % However, we can still perform some checks on the mode declarations
+    % themselves.
+    %
+    % Note that any errors with those declarations should also be caught
+    % when the module that we are importing the declaration from is compiled.
+    % We do the checks we do here to prevent later passes of *this* compiler
+    % invocation being given data that violates our rules of static semantics.
+    % (See tests/invalid/gh118.m for an example.)
+    %
+:- pred check_determinism_of_imported_procs(module_info::in,
+    list(pred_proc_id)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
     % Check a lambda goal with the specified declared and inferred
     % determinisms.
     %
@@ -136,6 +153,7 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.
 :- import_module libs.options.
@@ -153,10 +171,12 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module assoc_list.
 :- import_module bag.
 :- import_module bool.
+:- import_module cord.
 :- import_module getopt.
 :- import_module int.
 :- import_module map.
@@ -183,13 +203,67 @@ check_determinism_of_procs([PredProcId | PredProcIds], !ModuleInfo, !Specs) :-
 
 check_determinism_of_proc(PredProcId, !ModuleInfo, !Specs) :-
     module_info_pred_proc_info(!.ModuleInfo, PredProcId, PredInfo, ProcInfo),
+
+    trace [compiletime(flag("debug-check-detism-progress")), io(!IO)] (
+        get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
+        proc_info_get_argmodes(ProcInfo, PredArgModes),
+        proc_info_get_inst_varset(ProcInfo, InstVarSet),
+        PredProcId = proc(PredId, _ProcId),
+        PredModePieces = describe_one_pred_name_mode(!.ModuleInfo,
+            output_mercury, should_not_module_qualify, PredId,
+            InstVarSet, PredArgModes),
+        PredStr = error_pieces_to_string(PredModePieces),
+        io.format(ProgressStream, "check_determinism_of_proc %s\n",
+            [s(PredStr)], !IO)
+    ),
+
+    % Report any mismatches between the declared and the actual determinisms
+    % of the procedure.
     check_for_too_tight_or_loose_declared_determinism(PredProcId,
         PredInfo, ProcInfo, !ModuleInfo, !Specs),
+
+    % Some determinisms are invalid for some kinds of predicates.
+    % Check for and report any violations of these rules.
     make_reqscope_checks_if_needed(!.ModuleInfo, PredProcId,
         PredInfo, ProcInfo, !Specs),
     check_determinism_for_eval_method(ProcInfo, !Specs),
     check_determinism_if_pred_is_main(PredInfo, ProcInfo, !Specs),
     check_for_multisoln_func(!.ModuleInfo, PredProcId, PredInfo, ProcInfo,
+        !Specs),
+    check_io_state_proc_detism(!.ModuleInfo, PredProcId, PredInfo, ProcInfo,
+        !Specs),
+    check_exported_proc_detism(PredProcId, ProcInfo, !ModuleInfo, !Specs).
+
+%---------------------------------------------------------------------------%
+
+check_determinism_of_imported_procs(_, [], !Specs).
+check_determinism_of_imported_procs(ModuleInfo, [PredProcId | PredProcIds],
+        !Specs) :-
+    check_determinism_of_imported_proc(ModuleInfo, PredProcId, !Specs),
+    check_determinism_of_imported_procs(ModuleInfo, PredProcIds, !Specs).
+
+:- pred check_determinism_of_imported_proc(module_info::in, pred_proc_id::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_determinism_of_imported_proc(ModuleInfo, PredProcId, !Specs) :-
+    module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
+
+    trace [compiletime(flag("debug-check-detism-progress")), io(!IO)] (
+        get_progress_output_stream(ModuleInfo,  ProgressStream, !IO),
+        proc_info_get_argmodes(ProcInfo, PredArgModes),
+        proc_info_get_inst_varset(ProcInfo, InstVarSet),
+        PredProcId = proc(PredId, _ProcId),
+        PredModePieces = describe_one_pred_name_mode(ModuleInfo,
+            output_mercury, should_not_module_qualify, PredId,
+            InstVarSet, PredArgModes),
+        PredStr = error_pieces_to_string(PredModePieces),
+        io.format(ProgressStream, "check_determinism_of_imported_proc %s\n",
+            [s(PredStr)], !IO)
+    ),
+
+    check_for_multisoln_func(ModuleInfo, PredProcId, PredInfo, ProcInfo,
+        !Specs),
+    check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         !Specs).
 
 %---------------------------------------------------------------------------%
@@ -551,6 +625,109 @@ func_primary_mode_det_msg = [words("In Mercury,"),
     words("Most likely, this procedure should be a predicate,"),
     words("not a function."), nl].
 
+%---------------------------------------------------------------------------%
+
+:- pred check_io_state_proc_detism(module_info::in, pred_proc_id::in,
+    pred_info::in, proc_info::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
+        !Specs) :-
+    ( if
+        proc_info_has_io_state_pair(ModuleInfo, ProcInfo, _InArg, _OutArg),
+        proc_info_get_inferred_determinism(ProcInfo, Detism),
+        not
+            ( Detism = detism_det
+            ; Detism = detism_cc_multi
+            ; Detism = detism_erroneous
+            )
+    then
+        pred_info_get_module_name(PredInfo, PredModuleName),
+        module_info_get_name(ModuleInfo, ModuleName),
+        % Almost all error messages this predicate will generate
+        % will refer to a procedure that is local to the module being compiled,
+        % and for these, pring the module name would only be clutter.
+        % However, in rare cases such as the tests/invalid/gh118 test case,
+        % we may need to generate a message about an imported predicate,
+        % and for this case, the name of the module containing the predicate
+        % that we complain about is crucial information.
+        ( if ModuleName = PredModuleName then
+            ShouldModuleQual = should_not_module_qualify
+        else
+            ShouldModuleQual = should_module_qualify
+        ),
+        ProcPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
+            ShouldModuleQual, PredProcId),
+        % We used to print the second sentence (actually, only its first half)
+        % if verbose error messages were enabled, but anyone who makes this
+        % error will probably need that extra help, so don't make them
+        % ask for it with -E.
+        Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
+            words("error:"), quote(determinism_to_string(Detism)),
+            words("is not a valid determinism"),
+            words("for a predicate that has I/O state arguments."),
+            words("The valid determinisms for such predicates are"),
+            quote("det"), suffix(","), quote("cc_multi"),
+            words("and"), quote("erroneous"), suffix(","),
+            words("since the I/O state can be neither duplicated"),
+            words("nor destroyed."), nl],
+        proc_info_get_context(ProcInfo, ProcContext),
+        Spec = simplest_spec($pred, severity_error, phase_detism_check,
+            ProcContext, Pieces),
+        !:Specs = [Spec | !.Specs]
+    else
+        true
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % Check to make sure that if this procedure is exported via a pragma
+    % foreign_export declaration, then the determinism is not multi or nondet.
+    % Pragma exported procs that have been declared to have these determinisms
+    % should have been picked up in make_hlds, so this is just to catch those
+    % whose determinisms need to be inferred.
+    %
+:- pred check_exported_proc_detism(pred_proc_id::in, proc_info::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_exported_proc_detism(PredProcId, ProcInfo, !ModuleInfo, !Specs) :-
+    module_info_get_pragma_exported_procs(!.ModuleInfo, ExportedProcsCord0),
+    ExportedProcs = cord.list(ExportedProcsCord0),
+    ExportedProcsCord = cord.from_list(ExportedProcs),
+    % So that any later conversion from cord to list will do nothing
+    % except take off the cord wrapper.
+    module_info_set_pragma_exported_procs(ExportedProcsCord, !ModuleInfo),
+    proc_info_get_inferred_determinism(ProcInfo, Detism),
+    PredProcId = proc(PredId, ProcId),
+    ( if
+        is_proc_pragma_exported(ExportedProcs, PredId, ProcId, ExportContext),
+        ( Detism = detism_multi
+        ; Detism = detism_non
+        )
+    then
+        Pieces = [words("Error:"),
+            pragma_decl("foreign_export"), words("declaration"),
+            words("for a procedure whose determinism is"),
+            quote(determinism_to_string(Detism)), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_detism_check,
+            ExportContext, Pieces),
+        !:Specs = [Spec | !.Specs]
+    else
+        true
+    ).
+
+:- pred is_proc_pragma_exported(list(pragma_exported_proc)::in,
+    pred_id::in, proc_id::in, prog_context::out) is semidet.
+
+is_proc_pragma_exported([ExportProc | ExportProcs], PredId, ProcId, Context) :-
+    ( if ExportProc = pragma_exported_proc(_, PredId, ProcId, _, Context0) then
+        Context = Context0
+    else
+        is_proc_pragma_exported(ExportProcs, PredId, ProcId, Context)
+    ).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,

@@ -1,4 +1,10 @@
 try_detism.m:010: In `p'(out, di, uo):
+try_detism.m:010:   error: `cc_nondet' is not a valid determinism for a
+try_detism.m:010:   predicate that has I/O state arguments. The valid
+try_detism.m:010:   determinisms for such predicates are `det', `cc_multi' and
+try_detism.m:010:   `erroneous', since the I/O state can be neither duplicated
+try_detism.m:010:   nor destroyed.
+try_detism.m:010: In `p'(out, di, uo):
 try_detism.m:010:   error: determinism declaration not satisfied.
 try_detism.m:010:   Declared `cc_multi', inferred `cc_nondet'.
 try_detism.m:010:   The reason for the difference is the following.

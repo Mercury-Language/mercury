@@ -154,7 +154,6 @@
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.format_call.
 :- import_module check_hlds.type_util.
-:- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
@@ -177,7 +176,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module cord.
 :- import_module io.
 :- import_module map.
 :- import_module pair.
@@ -191,8 +189,9 @@ determinism_pass(!ModuleInfo, Specs) :-
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds0),
     determinism_declarations(PredIdTable0, ValidPredIds0,
-        DeclaredProcs, UndeclaredProcs, NoInferProcs),
+        DeclaredProcs, UndeclaredProcs, NoInferProcs, ImportedProcs),
     list.foldl(set_non_inferred_proc_determinism, NoInferProcs, !ModuleInfo),
+    list.foldl(set_non_inferred_proc_determinism, ImportedProcs, !ModuleInfo),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, debug_det, Debug),
@@ -218,8 +217,8 @@ determinism_pass(!ModuleInfo, Specs) :-
         maybe_write_string(ProgressStream, Verbose,
             "% Doing determinism checking...\n", !IO)
     ),
-    determinism_final_pass(!ModuleInfo, UndeclaredProcs, DeclaredProcs, Debug,
-        FinalSpecs),
+    determinism_final_pass(!ModuleInfo, DeclaredProcs, UndeclaredProcs,
+        ImportedProcs, Debug, FinalSpecs),
     Specs = InferenceSpecs ++ FinalSpecs,
     trace [io(!IO)] (
         get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
@@ -229,7 +228,8 @@ determinism_pass(!ModuleInfo, Specs) :-
 determinism_check_proc(ProcId, PredId, !ModuleInfo, Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_det, Debug),
-    determinism_final_pass(!ModuleInfo, [], [proc(PredId, ProcId)],
+    % ZZZ
+    determinism_final_pass(!ModuleInfo, [proc(PredId, ProcId)], [], [],
         Debug, Specs).
 
 %---------------------------------------------------------------------------%
@@ -300,18 +300,19 @@ determinism_inference_one_pass([proc(PredId, ProcId) | PredProcs], Debug,
         !Changed).
 
 :- pred determinism_final_pass(module_info::in, module_info::out,
-    list(pred_proc_id)::in, list(pred_proc_id)::in, bool::in,
-    list(error_spec)::out) is det.
+    list(pred_proc_id)::in, list(pred_proc_id)::in, list(pred_proc_id)::in,
+    bool::in, list(error_spec)::out) is det.
 
-determinism_final_pass(!ModuleInfo, UndeclaredProcs, DeclaredProcs, Debug,
-        !:Specs) :-
+determinism_final_pass(!ModuleInfo, DeclaredProcs, UndeclaredProcs,
+        ImportedProcs, Debug, !:Specs) :-
     % We have already iterated determinism_inference_one_pass to a fixpoint
     % on the undeclared procs.
     determinism_inference_one_pass(DeclaredProcs, Debug, !ModuleInfo,
         [], !:Specs, unchanged, _),
     % This is the second, checking pass.
-    check_determinism_of_procs(UndeclaredProcs ++ DeclaredProcs,
-        !ModuleInfo, !Specs).
+    check_determinism_of_procs(DeclaredProcs, !ModuleInfo, !Specs),
+    check_determinism_of_procs(UndeclaredProcs, !ModuleInfo, !Specs),
+    check_determinism_of_imported_procs(!.ModuleInfo, ImportedProcs, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -386,18 +387,6 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     proc_info_get_eval_method(ProcInfo0, EvalMethod),
     NewDetism = eval_method_change_determinism(EvalMethod, TentativeDetism),
 
-    % Some determinisms are invalid for some kinds of predicates.
-    % Check for and report any violations of these rules.
-    (
-        MaybeDeclaredDetism = yes(IOCheckDetism)
-    ;
-        MaybeDeclaredDetism = no,
-        IOCheckDetism = NewDetism
-    ),
-    check_io_state_proc_detism(!.ModuleInfo, PredId, ProcId, ProcInfo0,
-        IOCheckDetism, should_not_module_qualify, !Specs),
-    check_exported_proc_detism(PredId, ProcId, NewDetism, !ModuleInfo, !Specs),
-
     % Save the newly inferred information in the proc_info and pred_info,
     % and put those updated structures back into the module_info.
     proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
@@ -405,86 +394,6 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo1),
     record_det_info_markers(DetInfo, PredInfo1, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
-
-%---------------------%
-
-:- pred check_io_state_proc_detism(module_info::in, pred_id::in, proc_id::in,
-    proc_info::in, determinism::in, should_module_qualify::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_io_state_proc_detism(ModuleInfo, PredId, ProcId, ProcInfo, Detism,
-        ShouldModuleQual, !Specs) :-
-    ( if
-        proc_info_has_io_state_pair(ModuleInfo, ProcInfo, _InArg, _OutArg),
-        determinism_to_code_model(Detism, CodeModel),
-        CodeModel \= model_det
-    then
-        proc_info_get_context(ProcInfo, ProcContext),
-        ProcPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
-            ShouldModuleQual, proc(PredId, ProcId)),
-        % We used to print the second sentence (actually, only its first half)
-        % if verbose error messages were enabled, but anyone who makes this
-        % error will probably need that extra help, so don't make them
-        % ask for it with -E.
-        Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
-            words("error: invalid determinism for a predicate"),
-            words("that has I/O state arguments."),
-            words("The valid determinisms are"),
-            quote("det"), suffix(","), quote("cc_multi"),
-            words("and"), quote("erroneous"), suffix(","),
-            words("since the I/O state can be neither duplicated"),
-            words("nor destroyed."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_detism_check,
-            ProcContext, Pieces),
-        !:Specs = [Spec | !.Specs]
-    else
-        true
-    ).
-
-%---------------------%
-
-:- pred check_exported_proc_detism(pred_id::in, proc_id::in, determinism::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_exported_proc_detism(PredId, ProcId, Detism, !ModuleInfo, !Specs) :-
-    % Check to make sure that if this procedure is exported via a pragma
-    % foreign_export declaration, then the determinism is not multi or nondet.
-    % Pragma exported procs that have been declared to have these determinisms
-    % should have been picked up in make_hlds, so this is just to catch those
-    % whose determinisms need to be inferred.
-    module_info_get_pragma_exported_procs(!.ModuleInfo, ExportedProcsCord0),
-    ExportedProcs = cord.list(ExportedProcsCord0),
-    ExportedProcsCord = cord.from_list(ExportedProcs),
-    % So that any later conversion from cord to list will do nothing
-    % except take off the cord wrapper.
-    module_info_set_pragma_exported_procs(ExportedProcsCord, !ModuleInfo),
-    ( if
-        is_proc_pragma_exported(ExportedProcs, PredId, ProcId, ExportContext),
-        ( Detism = detism_multi
-        ; Detism = detism_non
-        )
-    then
-        Pieces = [words("Error:"),
-            pragma_decl("foreign_export"), words("declaration"),
-            words("for a procedure whose determinism is"),
-            quote(determinism_to_string(Detism)), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_detism_check,
-            ExportContext, Pieces),
-        !:Specs = [Spec | !.Specs]
-    else
-        true
-    ).
-
-:- pred is_proc_pragma_exported(list(pragma_exported_proc)::in,
-    pred_id::in, proc_id::in, prog_context::out) is semidet.
-
-is_proc_pragma_exported([ExportProc | ExportProcs], PredId, ProcId, Context) :-
-    ( if ExportProc = pragma_exported_proc(_, PredId, ProcId, _, Context0) then
-        Context = Context0
-    else
-        is_proc_pragma_exported(ExportProcs, PredId, ProcId, Context)
-    ).
 
 %---------------------%
 
@@ -2158,49 +2067,54 @@ det_get_soln_context(DeclaredDetism, SolnContext) :-
     %   and which should not be processed further.
     %
 :- pred determinism_declarations(pred_id_table::in, list(pred_id)::in,
-    list(pred_proc_id)::out, list(pred_proc_id)::out, list(pred_proc_id)::out)
-    is det.
+    list(pred_proc_id)::out, list(pred_proc_id)::out,
+    list(pred_proc_id)::out, list(pred_proc_id)::out) is det.
 
 determinism_declarations(PredIdTable, PredIds,
-        DeclaredProcs, UndeclaredProcs, NoInferProcs) :-
+        DeclaredProcs, UndeclaredProcs, NoInferProcs, ImportedProcs) :-
     determinism_declarations_preds(PredIdTable, PredIds,
-        [], DeclaredProcs, [], UndeclaredProcs, [], NoInferProcs).
+        [], DeclaredProcs, [], UndeclaredProcs,
+        [], NoInferProcs, [], ImportedProcs).
 
 :- pred determinism_declarations_preds(pred_id_table::in, list(pred_id)::in,
+    list(pred_proc_id)::in, list(pred_proc_id)::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
 determinism_declarations_preds(_PredIdTable, [],
-        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs).
+        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs, !ImportedProcs).
 determinism_declarations_preds(PredIdTable, [PredId | PredIds],
-        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs) :-
+        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs, !ImportedProcs) :-
     map.lookup(PredIdTable, PredId, PredInfo),
     ProcIds = pred_info_valid_procids(PredInfo),
     determinism_declarations_procs(PredId, PredInfo, ProcIds,
-        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs),
+        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs, !ImportedProcs),
     determinism_declarations_preds(PredIdTable, PredIds,
-        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs).
+        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs, !ImportedProcs).
 
 :- pred determinism_declarations_procs(pred_id::in, pred_info::in,
     list(proc_id)::in,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
+    list(pred_proc_id)::in, list(pred_proc_id)::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
 determinism_declarations_procs(_PredId, _PredInfo, [],
-        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs).
+        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs, !ImportedProcs).
 determinism_declarations_procs(PredId, PredInfo, [ProcId | ProcIds],
-        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs) :-
+        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs, !ImportedProcs) :-
     PredProcId = proc(PredId, ProcId),
     ( if
         % Imported predicates need to be checked, but that will happen
         % when their defining module is compiled.
+        pred_info_is_imported(PredInfo)
+    then
+        !:ImportedProcs = [PredProcId | !.ImportedProcs]
+    else if
         % Since we generate the code of <in,in> unifications and class methods
         % ourselves, they do not need to be checked.
         (
-            pred_info_is_imported(PredInfo)
-        ;
             pred_info_is_pseudo_imported(PredInfo),
             hlds_pred.in_in_unification_proc_id(ProcId)
         ;
@@ -2221,8 +2135,8 @@ determinism_declarations_procs(PredId, PredInfo, [ProcId | ProcIds],
             !:DeclaredProcs = [PredProcId | !.DeclaredProcs]
         )
     ),
-    determinism_declarations_procs(PredId, PredInfo,
-        ProcIds, !DeclaredProcs, !UndeclaredProcs, !NoInferProcs).
+    determinism_declarations_procs(PredId, PredInfo, ProcIds,
+        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs, !ImportedProcs).
 
     % We can't infer a tighter determinism for imported procedures or for
     % class methods, so set the inferred determinism to be the same as the

@@ -1,4 +1,9 @@
 magicbox.m:038: In `arguments_handler'(di, uo, out):
+magicbox.m:038:   error: `cc_nondet' is not a valid determinism for a predicate
+magicbox.m:038:   that has I/O state arguments. The valid determinisms for such
+magicbox.m:038:   predicates are `det', `cc_multi' and `erroneous', since the
+magicbox.m:038:   I/O state can be neither duplicated nor destroyed.
+magicbox.m:038: In `arguments_handler'(di, uo, out):
 magicbox.m:038:   error: determinism declaration not satisfied.
 magicbox.m:038:   Declared `cc_multi', inferred `cc_nondet'.
 magicbox.m:038:   The reasons for the difference are the following.

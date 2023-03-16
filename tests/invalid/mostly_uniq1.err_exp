@@ -1,8 +1,9 @@
 mostly_uniq1.m:009: In `my_main'(di, uo):
-mostly_uniq1.m:009:   error: invalid determinism for a predicate that has I/O
-mostly_uniq1.m:009:   state arguments. The valid determinisms are `det',
-mostly_uniq1.m:009:   `cc_multi' and `erroneous', since the I/O state can be
-mostly_uniq1.m:009:   neither duplicated nor destroyed.
+mostly_uniq1.m:009:   error: `multi' is not a valid determinism for a predicate
+mostly_uniq1.m:009:   that has I/O state arguments. The valid determinisms for
+mostly_uniq1.m:009:   such predicates are `det', `cc_multi' and `erroneous',
+mostly_uniq1.m:009:   since the I/O state can be neither duplicated nor
+mostly_uniq1.m:009:   destroyed.
 mostly_uniq1.m:023: In clause for `my_main(di, uo)':
 mostly_uniq1.m:023:   in argument 2 of call to predicate `io.write_int'/3:
 mostly_uniq1.m:023:   mode error: variable `STATE_VARIABLE_IO_0' has

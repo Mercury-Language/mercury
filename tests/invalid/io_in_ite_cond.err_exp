@@ -1,3 +1,9 @@
+io_in_ite_cond.m:013: In `foo'((unique >> clobbered), (free >> unique)):
+io_in_ite_cond.m:013:   error: `semidet' is not a valid determinism for a
+io_in_ite_cond.m:013:   predicate that has I/O state arguments. The valid
+io_in_ite_cond.m:013:   determinisms for such predicates are `det', `cc_multi'
+io_in_ite_cond.m:013:   and `erroneous', since the I/O state can be neither
+io_in_ite_cond.m:013:   duplicated nor destroyed.
 io_in_ite_cond.m:020: In clause for `main(di, uo)':
 io_in_ite_cond.m:020:   in argument 1 of call to predicate
 io_in_ite_cond.m:020:   `io_in_ite_cond.foo'/2:
