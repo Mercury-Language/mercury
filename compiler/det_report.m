@@ -183,6 +183,24 @@ check_determinism_of_procs([PredProcId | PredProcIds], !ModuleInfo, !Specs) :-
 
 check_determinism_of_proc(PredProcId, !ModuleInfo, !Specs) :-
     module_info_pred_proc_info(!.ModuleInfo, PredProcId, PredInfo, ProcInfo),
+    check_for_too_tight_or_loose_declared_determinism(PredProcId,
+        PredInfo, ProcInfo, !ModuleInfo, !Specs),
+    make_reqscope_checks_if_needed(!.ModuleInfo, PredProcId,
+        PredInfo, ProcInfo, !Specs),
+    check_determinism_for_eval_method(ProcInfo, !Specs),
+    check_determinism_if_pred_is_main(PredInfo, ProcInfo, !Specs),
+    check_for_multisoln_func(!.ModuleInfo, PredProcId, PredInfo, ProcInfo,
+        !Specs).
+
+%---------------------------------------------------------------------------%
+
+:- pred check_for_too_tight_or_loose_declared_determinism(
+    pred_proc_id::in, pred_info::in, proc_info::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_for_too_tight_or_loose_declared_determinism(PredProcId,
+        PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     proc_info_get_inferred_determinism(ProcInfo, InferredDetism),
     (
@@ -290,14 +308,7 @@ check_determinism_of_proc(PredProcId, !ModuleInfo, !Specs) :-
                 [ReportMsg | DetailMsgs]),
             !:Specs = [ReportSpec | !.Specs]
         )
-    ),
-
-    make_reqscope_checks_if_needed(!.ModuleInfo, PredProcId,
-        PredInfo, ProcInfo, !Specs),
-    check_determinism_for_eval_method(ProcInfo, InferredDetism, !Specs),
-    check_determinism_if_pred_is_main(PredInfo, ProcInfo, !Specs),
-    check_for_multisoln_func(!.ModuleInfo, PredProcId, PredInfo, ProcInfo,
-        !Specs).
+    ).
 
 :- pred cse_nopull_msgs(proc_info::in, list(error_msg)::out) is det.
 
@@ -415,10 +426,11 @@ determinism(detism_failure).
 
 %---------------------------------------------------------------------------%
 
-:- pred check_determinism_for_eval_method(proc_info::in, determinism::in,
+:- pred check_determinism_for_eval_method(proc_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_determinism_for_eval_method(ProcInfo, InferredDetism, !Specs) :-
+check_determinism_for_eval_method(ProcInfo, !Specs) :-
+    proc_info_get_inferred_determinism(ProcInfo, InferredDetism),
     proc_info_get_eval_method(ProcInfo, EvalMethod),
     ( if
         EvalMethod = eval_tabled(TabledMethod),
