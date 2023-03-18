@@ -1,28 +1,25 @@
-/*
-** vim: sw=4 ts=4 expandtab
-*/
-/*
-** Copyright (C) 2006 The University of Melbourne.
-** This file may only be copied under the terms of the GNU General
-** Public License - see the file COPYING in the Mercury distribution.
-*/
-
-/*
-** File: move_backslash.c
-** Author: zs
-**
-** Given an input stream in which some lines end with backslashes, pad those
-** lines with spaces so that the backslashes are in column 77.
-**
-*/
-
-/*---------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------//
+// vim: sw=4 ts=4 expandtab
+//---------------------------------------------------------------------------//
+//
+// Copyright (C) 2006 The University of Melbourne.
+// This file may only be copied under the terms of the GNU General
+// Public License - see the file COPYING in the Mercury distribution.
+//
+// File: move_backslash.c
+// Author: zs
+//
+// Given an input stream in which some lines end with backslashes, pad those
+// lines with spaces so that the backslashes are in column 77.
+//
+//---------------------------------------------------------------------------//
 
 #include    <stdio.h>
 #include    <stdlib.h>
 #include    <unistd.h>
 
-/* options and arguments, set by parse_options() */
+// options and arguments, set by parse_options().
+
 static  int     target_column = 77;
 
 static  void    usage(void);
@@ -115,4 +112,3 @@ process(FILE *fp)
             cur_column++;
         }
     }
-}

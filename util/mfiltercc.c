@@ -1,25 +1,21 @@
-/*
-** vim: ft=c ts=4 sw=4 et
-*/
-/*---------------------------------------------------------------------------*/
-
-/*
-** Copyright (C) 2010, 2012 The University of Melbourne.
-** This file may only be copied under the terms of the GNU General
-** Public License - see the file COPYING in the Mercury distribution.
-*/
-
-/*
-** File: mfiltercc.c
-** Author: wangp.
-**
-** This is a last ditch effort to filter out warning messages from the
-** C compiler that we cannot (yet) figure out how to silence in a better way.
-**
-** This program must *not* #include any of the header files in the runtime
-** directory.
-**
-*/
+//---------------------------------------------------------------------------//
+// vim: ft=c ts=4 sw=4 et
+//---------------------------------------------------------------------------//
+//
+// Copyright (C) 2010, 2012 The University of Melbourne.
+// This file may only be copied under the terms of the GNU General
+// Public License - see the file COPYING in the Mercury distribution.
+//
+// File: mfiltercc.c
+// Author: wangp.
+//
+// This is a last ditch effort to filter out warning messages from the
+// C compiler that we cannot (yet) figure out how to silence in a better way.
+//
+// This program must *not* #include any of the header files in the runtime
+// directory.
+//
+//---------------------------------------------------------------------------//
 
 #include <string.h>
 #include <stdio.h>
@@ -60,12 +56,10 @@ main(void)
 static int
 drop_line(const char *line)
 {
-    /*
-    ** gcc 4.x produces the message (in English locales, with varying quotes):
-    ** foo.c:42: warning: 'mercury__foo__...' used but never defined
-    **
-    ** gcc 4.6 onwards also add " [enabled by default]"
-    */
+    // gcc 4.x produces the message (in English locales, with varying quotes):
+    // foo.c:42: warning: 'mercury__foo__...' used but never defined
+    //
+    // gcc 4.6 onwards also add " [enabled by default]"
     const char *p;
 
     p = strstr(line, "mercury__");
@@ -75,4 +69,4 @@ drop_line(const char *line)
     return strstr(p, " used but never defined") != NULL;
 }
 
-/*---------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------//

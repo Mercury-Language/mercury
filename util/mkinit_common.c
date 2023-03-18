@@ -1,21 +1,19 @@
-/*
-** vim:sw=4 ts=4 expandtab
-*/
-/*
-** Copyright (C) 1995-2007 The University of Melbourne.
-** This file may only be copied under the terms of the GNU General
-** Public License - see the file COPYING in the Mercury distribution.
-*/
+//---------------------------------------------------------------------------//
+// vim:sw=4 ts=4 expandtab
+//---------------------------------------------------------------------------//
+//
+// Copyright (C) 1995-2007 The University of Melbourne.
+// This file may only be copied under the terms of the GNU General
+// Public License - see the file COPYING in the Mercury distribution.
+//
+// File: mkinit_common.c
+// Main authors: zs, fjh
+//
+// Common code previously shared by mkinit.c and mkinit_erl.c.
+//
+//---------------------------------------------------------------------------//
 
-/*
-** File: mkinit_common.c
-** Main authors: zs, fjh
-**
-** Common code previously shared by mkinit.c and mkinit_erl.c.
-**
-*/
-
-/* mercury_std.h includes mercury_regs.h, and must precede system headers */
+// mercury_std.h includes mercury_regs.h, and must precede system headers.
 #include    "mercury_conf.h"
 #include    "mercury_std.h"
 #include    "mercury_array_macros.h"
@@ -35,7 +33,7 @@
   #include  <unistd.h>
 #endif
 
-/* --- global variables --- */
+// --- global variables ---
 
 const char          *MR_progname = NULL;
 int                 num_errors = 0;
@@ -44,23 +42,23 @@ char                **files = NULL;
 
 static int          size_of_files;
 
-    /* List of directories to search for init files */
+    // List of directories to search for init files.
 static String_List  *init_file_dirs = NULL;
 
-    /* Pointer to tail of the init_file_dirs list */
+    // Pointer to tail of the init_file_dirs list.
 static String_List  **init_file_dirs_tail = &init_file_dirs;
 
-/* --- adjustable limits --- */
-#define MAXFILENAME 4096    /* maximum file name length           */
-#define NUMFILES    128     /* initial size of files array        */
-#define FACTOR      2       /* factor to increase files array by  */
+// --- adjustable limits ---
+#define MAXFILENAME 4096    // maximum file name length
+#define NUMFILES    128     // initial size of files array
+#define FACTOR      2       // factor to increase files array by
 
-/* --- function prototypes --- */
+// --- function prototypes ---
 
 static  char        *find_init_file(const char *base_name);
 static  MR_bool     file_exists(const char *filename);
 
-/*---------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------//
 
 void
 process_file_list_file(char *filename)
@@ -75,7 +73,7 @@ process_file_list_file(char *filename)
         num_errors++;
         return;
     }
-    /* initialize the files structure, if required */
+    // Initialize the files structure, if required.
     if (files == NULL) {
         num_files = 0;
         size_of_files = NUMFILES;
@@ -83,7 +81,7 @@ process_file_list_file(char *filename)
     }
 
     while ((line = read_line(filename, fp, MAXFILENAME)) != NULL) {
-        /* Ignore blank lines */
+        // Ignore blank lines.
         if (line[0] != '\0') {
             if (num_files >= size_of_files) {
                 size_of_files *= FACTOR;
@@ -102,13 +100,12 @@ process_file_list_file(char *filename)
     }
 }
 
-/*---------------------------------------------------------------------------*/
-
-/*
-** If the `-o' option was used to specify the output file,
-** and the file name specified is not `-' (which we take to mean stdout),
-** then reassign stdout to the specified file.
-*/
+//---------------------------------------------------------------------------//
+//
+// If the `-o' option was used to specify the output file,
+// and the file name specified is not `-' (which we take to mean stdout),
+// then reassign stdout to the specified file.
+//
 
 void
 set_output_file(const char *output_file_name)
@@ -124,11 +121,9 @@ set_output_file(const char *output_file_name)
     }
 }
 
-/*---------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------//
 
-/*
-** Add the directory name to the end of the search path for `.init' files.
-*/
+// Add the directory name to the end of the search path for `.init' files.
 
 void
 add_init_file_dir(const char *dir_name)
@@ -143,11 +138,9 @@ add_init_file_dir(const char *dir_name)
     init_file_dirs_tail = &tmp_slist->next;
 }
 
-/*
-** Scan the list of files for ones not found in the current directory,
-** and replace them with their full path equivalent if they are found
-** in the list of search directories.
-*/
+// Scan the list of files for ones not found in the current directory,
+// and replace them with their full path equivalent if they are found
+// in the list of search directories.
 
 void
 do_path_search(char **lfiles, int lnum_files)
@@ -163,15 +156,13 @@ do_path_search(char **lfiles, int lnum_files)
     }
 }
 
-/*
-** Search the init file directory list to locate the file.
-** If the file is in the current directory or is not in any of the
-** search directories, then return NULL.  Otherwise return the full
-** path name to the file.
-**
-** It is the caller's responsibility to free the returned buffer
-** holding the full path name when it is no longer needed.
-*/
+// Search the init file directory list to locate the file.
+// If the file is in the current directory or is not in any of the
+// search directories, then return NULL.  Otherwise return the full
+// path name to the file.
+//
+// It is the caller's responsibility to free the returned buffer
+// holding the full path name when it is no longer needed.
 
 static char *
 find_init_file(const char *base_name)
@@ -184,7 +175,7 @@ find_init_file(const char *base_name)
     size_t      len;
 
     if (file_exists(base_name)) {
-        /* File is in current directory, so no search required */
+        // File is in current directory, so no search required.
         return NULL;
     }
 
@@ -207,13 +198,11 @@ find_init_file(const char *base_name)
         free(filename);
     }
 
-    /* Did not find file */
+    // Did not find file.
     return NULL;
 }
 
-/*
-** Check whether a file exists.
-*/
+// Check whether a file exists.
 
 static MR_bool
 file_exists(const char *filename)
@@ -235,14 +224,12 @@ file_exists(const char *filename)
 #endif
 }
 
-/*---------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------//
 
-/*
-** Read a line from a file, and return a pointer to a malloc'd buffer
-** holding the line (without the final newline). If EOF occurs on a
-** nonempty line, treat the EOF as a newline; if EOF occurs on an empty
-** line, return NULL.
-*/
+// Read a line from a file, and return a pointer to a malloc'd buffer
+// holding the line (without the final newline). If EOF occurs on a
+// nonempty line, treat the EOF as a newline; if EOF occurs on an empty
+// line, return NULL.
 
 char *
 read_line(const char *filename, FILE *fp, size_t max)
@@ -310,7 +297,7 @@ get_line(FILE *file, char *line, int line_max)
     return num_chars;
 }
 
-/*---------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------//
 
 void *
 checked_malloc(size_t size)
@@ -359,16 +346,14 @@ checked_strdupcat(const char *str, const char *suffix)
     return mem;
 }
 
-/*---------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------//
 
 #ifndef MR_HAVE_STRERROR
 
-/*
-** Apparently SunOS 4.1.3 doesn't have strerror()
-** (!%^&!^% non-ANSI systems, grumble...)
-**
-** This code is duplicated in runtime/mercury_prof.c.
-*/
+// Apparently SunOS 4.1.3 doesn't have strerror()
+// (!%^&!^% non-ANSI systems, grumble...)
+//
+// This code is duplicated in runtime/mercury_prof.c.
 
 extern int sys_nerr;
 extern char *sys_errlist[];
@@ -388,4 +373,4 @@ strerror(int errnum)
 
 #endif
 
-/*---------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------//
