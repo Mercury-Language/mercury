@@ -8,9 +8,6 @@ MAYBE_J1 =
 
 # Note: multi-module tests are listed separately from single-module tests
 # because we need to make dependencies only for multi-module tests.
-# However, multi-module tests where the error is detected when
-# building the dependencies (e.g. bad_module_name.m) should
-# not be included in this list; we handle those specially (see below).
 #
 # Tests in which a single source file contains more than one nested module
 # should be put into the invalid_submodules directory, not this one.
@@ -28,10 +25,10 @@ MAYBE_J1 =
 # Tests for which we want to test for errors during the making of .int/.int2
 # files should be put into the invalid_make_int directory.
 
-SPECIAL_RULE_MULTIMODULE_PROGS = \
+ALWAYS_SPECIAL_RULE_MULTIMODULE_PROGS = \
 	duplicate_instance_2
 
-SPECIAL_RULE_SINGLEMODULE_PROGS = \
+ALWAYS_SPECIAL_RULE_SINGLEMODULE_PROGS = \
 	foreign_include_file_missing \
 	illtyped_compare \
 	make_opt_error \
@@ -39,17 +36,23 @@ SPECIAL_RULE_SINGLEMODULE_PROGS = \
 	require_tailrec_2 \
 	require_tailrec_3
 
-MULTIMODULE_PROGS = \
+INTERMOD_SPECIAL_MULTIMODULE_PROGS = \
 	abstract_eqv \
+	type_error_use_module
+
+INTERMOD_SPECIAL_SINGLEMODULE_PROGS = \
+	bug214 \
+	test_feature_set \
+
+BORING_MULTIMODULE_PROGS = \
 	exported_unify \
 	ho_default_func_2.sub \
 	ii_parent.ii_child \
 	imported_mode \
 	partial_implied_mode \
-	transitive_import_class \
-	type_error_use_module
+	transitive_import_class
 
-SINGLEMODULE_PROGS = \
+BORING_SINGLEMODULE_PROGS = \
 	abstract_solver_type \
 	actual_expected \
 	actual_more_expected \
@@ -88,7 +91,6 @@ SINGLEMODULE_PROGS = \
 	bug184 \
 	bug191 \
 	bug197 \
-	bug214 \
 	bug238 \
 	bug257 \
 	bug278 \
@@ -278,7 +280,6 @@ SINGLEMODULE_PROGS = \
 	switch_arm_multi_not_det \
 	tc_err1 \
 	tc_err2 \
-	test_feature_set \
 	test_may_duplicate \
 	test_may_export_body \
 	tricky_assert1 \
@@ -340,14 +341,34 @@ SINGLEMODULE_PROGS = \
 	wrong_arity_function \
 	wrong_type_arity
 
+#-----------------------------------------------------------------------------#
+
 # The following require that num_tag_bits >= 1.
 # NOTE We don't support reserving tags anymore.
 # RESERVE_TAG_MODULES = \
 # 	reserve_tag
+#
+# The java and csharp grades compile with num_tag_bits = 0.
+# NOTE We don't support reserving tags anymore.
+# ifneq "$(filter java% csharp%,$(GRADE))" ""
+# 	RESERVE_TAG_PROGS =
+# else
+# 	RESERVE_TAG_PROGS = $(RESERVE_TAG_MODULES)
+# endif
+
+#-----------------------------------------------------------------------------#
 
 # The following require a trailing grade.
 TRAILED_MODULES = \
 	trailed_mutable
+
+ifeq "$(filter tr%,$(GRADE))" ""
+	TRAILED_PROGS =
+else
+	TRAILED_PROGS = $(TRAILED_MODULES)
+endif
+
+#-----------------------------------------------------------------------------#
 
 # The following require that the back-end support the C interface.
 C_INTERFACE_MODULES = \
@@ -359,18 +380,41 @@ C_INTERFACE_MODULES = \
 SPECIAL_RULE_C_INTERFACE_MODULES = \
 	foreign_decl_line_number
 
+# These tests test things which only work for back-ends which support
+# the C interface.
+ifneq "$(filter java% csharp%,$(GRADE))" ""
+	C_INTERFACE_PROGS=
+	SPECIAL_RULE_C_INTERFACE_PROGS=
+else
+	C_INTERFACE_PROGS=$(C_INTERFACE_MODULES)
+	SPECIAL_RULE_C_INTERFACE_PROGS=$(SPECIAL_RULE_C_INTERFACE_MODULES)
+endif
+
+#-----------------------------------------------------------------------------#
+
+# The following don't work when bootstrapping in .profdeep grades, because
+# the code in the compiler that implements these checks catches exceptions.
+# XXX I (zs) don't think this is true anymore.
+NON_PROFDEEP_MODULES = \
+	string_format_bad \
+	string_format_unknown
+
+ifeq "$(findstring profdeep,$(GRADE))" ""
+	NON_PROFDEEP_PROGS = $(NON_PROFDEEP_MODULES)
+else
+	NON_PROFDEEP_PROGS =
+endif
+
+#-----------------------------------------------------------------------------#
+
 # The following require that the compiler not ignore `pragma type_spec'
 # declarations.
 TYPE_SPEC_MODULES = \
 	type_spec
 
-# The following don't work when bootstrapping the compiler in .profdeep
-# grades since the code in the compiler that implements these checks
-# catches exceptions.
-#
-NON_PROFDEEP_MODULES = \
-	string_format_bad \
-	string_format_unknown
+TYPE_SPEC_PROGS = $(TYPE_SPEC_MODULES)
+
+#-----------------------------------------------------------------------------#
 
 # XXX we do not yet pass the following tests:
 #	foreign_type_line_number (due to some errors being reported in .c
@@ -387,37 +431,44 @@ NON_PROFDEEP_MODULES = \
 
 #-----------------------------------------------------------------------------#
 
-# These tests test things which only work for back-ends which support
-# the C interface.
-ifneq "$(filter java% csharp%,$(GRADE))" ""
-	C_INTERFACE_PROGS=
-	SPECIAL_RULE_C_INTERFACE_PROGS=
+# For the following modules, error messages may be produced while making a
+# `.opt' file. Add specific rules to capture those errors into a `.err' file,
+# and ignore the exit status.
+ifeq "$(filter --intermod%,$(EXTRA_MCFLAGS))" ""
+
+REDIRECT_OPT_ERROR_MODULES =
+
+SPECIAL_RULE_MULTIMODULE_PROGS = \
+	$(ALWAYS_SPECIAL_RULE_MULTIMODULE_PROGS)
+SPECIAL_RULE_SINGLEMODULE_PROGS = \
+	$(ALWAYS_SPECIAL_RULE_SINGLEMODULE_PROGS)
+MULTIMODULE_PROGS = \
+	$(BORING_MULTIMODULE_PROGS) \
+	$(INTERMOD_SPECIAL_MULTIMODULE_PROGS)
+SINGLEMODULE_PROGS = \
+	$(BORING_SINGLEMODULE_PROGS) \
+	$(INTERMOD_SPECIAL_SINGLEMODULE_PROGS)
+
 else
-	C_INTERFACE_PROGS=$(C_INTERFACE_MODULES)
-	SPECIAL_RULE_C_INTERFACE_PROGS=$(SPECIAL_RULE_C_INTERFACE_MODULES)
+
+REDIRECT_OPT_ERROR_MODULES = \
+	abstract_eqv \
+	bug214 \
+	test_feature_set \
+	type_error_use_module
+
+SPECIAL_RULE_MULTIMODULE_PROGS = \
+	$(ALWAYS_SPECIAL_RULE_MULTIMODULE_PROGS) \
+	$(INTERMOD_SPECIAL_MULTIMODULE_PROGS)
+SPECIAL_RULE_SINGLEMODULE_PROGS = \
+	$(ALWAYS_SPECIAL_RULE_SINGLEMODULE_PROGS) \
+	$(INTERMOD_SPECIAL_SINGLEMODULE_PROGS)
+MULTIMODULE_PROGS = \
+	$(BORING_MULTIMODULE_PROGS)
+SINGLEMODULE_PROGS = \
+	$(BORING_SINGLEMODULE_PROGS)
+
 endif
-
-# The java and csharp grades compile with num_tag_bits = 0.
-# NOTE We don't support reserving tags anymore.
-# ifneq "$(filter java% csharp%,$(GRADE))" ""
-# 	RESERVE_TAG_PROGS =
-# else
-# 	RESERVE_TAG_PROGS = $(RESERVE_TAG_MODULES)
-# endif
-
-ifeq "$(filter tr%,$(GRADE))" ""
-	TRAILED_PROGS =
-else
-	TRAILED_PROGS = $(TRAILED_MODULES)
-endif
-
-ifeq "$(findstring profdeep,$(GRADE))" ""
-	NON_PROFDEEP_PROGS = $(NON_PROFDEEP_MODULES)
-else
-	NON_PROFDEEP_PROGS =
-endif
-
-TYPE_SPEC_PROGS = $(TYPE_SPEC_MODULES)
 
 #-----------------------------------------------------------------------------#
 
@@ -573,24 +624,6 @@ require_tailrec_1.err require_tailrec_2.err require_tailrec_3.err foreign_includ
 	then false; \
 	else true; \
 	fi
-
-# For the following modules, error messages may be produced while making a
-# `.opt' file. Add specific rules to capture those errors into a `.err' file,
-# and ignore the exit status.
-ifeq "$(filter --intermod%,$(EXTRA_MCFLAGS))" ""
-REDIRECT_OPT_ERROR_MODULES =
-else
-REDIRECT_OPT_ERROR_MODULES = \
-	abstract_eqv \
-	bad_type_class_constraint_intermodule \
-	bad_type_class_constraint_intermodule_2 \
-	bug214 \
-	bug521 \
-	bug521_sub \
-	int_impl_imports \
-	test_feature_set \
-	type_error_use_module
-endif
 
 define OVERRIDE_OPT_RULE
 $$(optdates_subdir)$(1).optdate $(1).err : $(1).m
