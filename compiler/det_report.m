@@ -95,7 +95,7 @@
     % when the module that we are importing the declaration from is compiled.
     % We do the checks we do here to prevent later passes of *this* compiler
     % invocation being given data that violates our rules of static semantics.
-    % (See tests/invalid/gh118.m for an example.)
+    % (See tests/invalid_manual/gh118.m for an example.)
     %
 :- pred check_determinism_of_imported_procs(module_info::in,
     list(pred_proc_id)::in,
@@ -649,13 +649,13 @@ check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
     then
         pred_info_get_module_name(PredInfo, PredModuleName),
         module_info_get_name(ModuleInfo, ModuleName),
-        % Almost all error messages this predicate will generate
-        % will refer to a procedure that is local to the module being compiled,
-        % and for these, pring the module name would only be clutter.
-        % However, in rare cases such as the tests/invalid/gh118 test case,
-        % we may need to generate a message about an imported predicate,
-        % and for this case, the name of the module containing the predicate
-        % that we complain about is crucial information.
+        % Almost all error messages this predicate will generate will refer
+        % to a procedure that is local to the module being compiled,
+        % and for these, printing the module name would only be clutter.
+        % However, in rare cases such as the tests/invalid_manual/gh118
+        % test case, we may need to generate a message about an imported
+        % predicate, and for this case, the name of the module containing
+        % the predicate that we complain about is crucial information.
         ( if ModuleName = PredModuleName then
             ShouldModuleQual = should_not_module_qualify
         else

@@ -1,0 +1,51 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab ft=make
+#-----------------------------------------------------------------------------#
+
+TESTS_DIR = ..
+THIS_DIR = invalid_manual
+MAYBE_J1 =
+
+TESTS = \
+	gh118
+
+#-----------------------------------------------------------------------------#
+
+include ../Mmake.common
+
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.err_res ;
+
+#-----------------------------------------------------------------------------#
+
+TEST_MCFLAGS = $(ALL_GRADEFLAGS) --no-intermod-opt
+
+#-----------------------------------------------------------------------------#
+
+# This is set up to be run manually. It could be set up for automatic
+# operation by adding code to clean up files before and after the test.
+# However, the right fix for github issue #118, which is about the compiler's
+# response to invalid data in a .int file is to prevent such invalid
+# data being put into .int files
+gh118.err: gh118.m gh118.gh118_helper.m
+	$(MC) --make-short-interface $(ALL_GRADEFLAGS) $(TEST_MCFLAGS) \
+		gh118.m gh118.gh118_helper.m
+	$(MC) --make-private-interface $(ALL_GRADEFLAGS) $(TEST_MCFLAGS) \
+		gh118.m 2>&1
+	$(MC) --make-interface $(ALL_GRADEFLAGS) $(TEST_MCFLAGS) \
+		gh118.m gh118.gh118_helper.m
+	if $(MC) -E $(ALL_GRADEFLAGS) $(TEST_MCFLAGS) \
+		gh118.m > gh118.err 2>&1; \
+	then false; \
+	else true; \
+	fi
+
+clean_local: clean_invalid_manual
+
+clean_invalid_manual:
+	rm -f *.dep_err *.int_err *.err *.err_res *.err_res[2345]
+
+#-----------------------------------------------------------------------------#
