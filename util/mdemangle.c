@@ -934,7 +934,7 @@ strip_module_name(char **start_ptr, char *end,
             ** into the right place.
             */
 
-            *module_end = ':';
+            *module_end = '.';
             module_end++;
             memmove(module_end, start, len);
         }
