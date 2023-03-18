@@ -314,8 +314,7 @@ arg_modes_to_string(Lang, InstVarSet, ArgModes) = Str :-
         Str = ""
     ;
         ArgModes = [_ | _],
-        ArgsStr = mercury_mode_list_to_string(Lang, InstVarSet,
-            ArgModes),
+        ArgsStr = mercury_mode_list_to_string(Lang, InstVarSet, ArgModes),
         Str = "(" ++ ArgsStr ++ ")"
     ).
 
