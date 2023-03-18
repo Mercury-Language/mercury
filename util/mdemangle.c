@@ -868,7 +868,7 @@ strip_module_name(char **start_ptr, char *end,
             // Append a module qualifier, and shift the module name
             // into the right place.
 
-            *module_end = ':';
+            *module_end = '.';
             module_end++;
             memmove(module_end, start, len);
         }
