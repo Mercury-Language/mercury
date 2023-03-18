@@ -21,23 +21,21 @@ include Mercury.options
 
 #-----------------------------------------------------------------------------#
 
-TEST_MCFLAGS = $(ALL_GRADEFLAGS) --no-intermod-opt
-
-#-----------------------------------------------------------------------------#
+GH118_MCFLAGS = --grade asm_fast.gc.decldebug.stseg --no-intermod-opt
 
 # This is set up to be run manually. It could be set up for automatic
 # operation by adding code to clean up files before and after the test.
 # However, the right fix for github issue #118, which is about the compiler's
-# response to invalid data in a .int file is to prevent such invalid
-# data being put into .int files
+# response to invalid data in a .int file, is to prevent such invalid data
+# from being put into .int files.
 gh118.err: gh118.m gh118.gh118_helper.m
-	$(MC) --make-short-interface $(ALL_GRADEFLAGS) $(TEST_MCFLAGS) \
+	$(MC) --make-short-interface $(GH118_MCFLAGS) \
 		gh118.m gh118.gh118_helper.m
-	$(MC) --make-private-interface $(ALL_GRADEFLAGS) $(TEST_MCFLAGS) \
-		gh118.m 2>&1
-	$(MC) --make-interface $(ALL_GRADEFLAGS) $(TEST_MCFLAGS) \
+	$(MC) --make-private-interface $(GH118_MCFLAGS) \
+		gh118.m
+	$(MC) --make-interface $(GH118_MCFLAGS) \
 		gh118.m gh118.gh118_helper.m
-	if $(MC) -E $(ALL_GRADEFLAGS) $(TEST_MCFLAGS) \
+	if $(MC) -E $(GH118_MCFLAGS) \
 		gh118.m > gh118.err 2>&1; \
 	then false; \
 	else true; \

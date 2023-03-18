@@ -308,12 +308,13 @@ module_qualification(ModuleName, ShouldModuleQualify) = ModuleQualification :-
 
 :- func arg_modes_to_string(output_lang, inst_varset, list(mer_mode)) = string.
 
-arg_modes_to_string(Lang, InstVarSet, ArgModes) = Str :-
+arg_modes_to_string(Lang, InstVarSet, ArgModes0) = Str :-
     (
-        ArgModes = [],
+        ArgModes0 = [],
         Str = ""
     ;
-        ArgModes = [_ | _],
+        ArgModes0 = [_ | _],
+        ArgModes = list.map(simplify_std_from_to_mode, ArgModes0),
         ArgsStr = mercury_mode_list_to_string(Lang, InstVarSet, ArgModes),
         Str = "(" ++ ArgsStr ++ ")"
     ).

@@ -1,5 +1,4 @@
-gh118.gh118_helper.int:005: In `gh118.gh118_helper.bar'((unique >> clobbered),
-gh118.gh118_helper.int:005:   (free >> unique)):
+gh118.gh118_helper.int:005: In `gh118.gh118_helper.bar'(di, uo):
 gh118.gh118_helper.int:005:   error: `multi' is not a valid determinism for a
 gh118.gh118_helper.int:005:   predicate that has I/O state arguments. The valid
 gh118.gh118_helper.int:005:   determinisms for such predicates are `det',

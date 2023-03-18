@@ -91,6 +91,8 @@
 :- pred from_to_insts_is_standard_mode(mer_inst::in, mer_inst::in, string::out)
     is semidet.
 
+:- func simplify_std_from_to_mode(mer_mode) = mer_mode.
+
 %---------------------------------------------------------------------------%
 
     % mode_substitute_arg_list(Mode0, Params, Args, Mode) is true iff Mode is
@@ -354,6 +356,19 @@ from_to_insts_is_standard_mode(FromInst, ToInst, StdMode) :-
             FromInst = free,
             StdMode = "muo"
         )
+    ).
+
+simplify_std_from_to_mode(Mode0) = Mode :-
+    (
+        Mode0 = from_to_mode(FromInst, ToInst),
+        ( if from_to_insts_is_standard_mode(FromInst, ToInst, StdModeName) then
+            Mode = user_defined_mode(unqualified(StdModeName), [])
+        else
+            Mode = Mode0
+        )
+    ;
+        Mode0 = user_defined_mode(_, _),
+        Mode = Mode0
     ).
 
 %---------------------------------------------------------------------------%
