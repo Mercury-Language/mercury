@@ -6,7 +6,7 @@
 // This file may only be copied under the terms of the GNU General
 // Public License - see the file COPYING in the Mercury distribution.
 //
-// File: move_backslash.c
+// File: pad_backslash.c
 // Author: zs
 //
 // Given an input stream in which some lines end with backslashes, pad those
@@ -112,3 +112,4 @@ process(FILE *fp)
             cur_column++;
         }
     }
+}
