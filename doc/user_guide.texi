@@ -5919,7 +5919,7 @@ provided execution terminates normally and not via an abort.
 
 Executables compiled with @samp{--profiling}
 save profiling data in the files
-@file{Prof.Counts}, @file{Prof.Decls}, and @file{Prof.CallPair}.
+@file{Prof.Counts}, @file{Prof.Decl}, and @file{Prof.CallPair}.
 (@file{Prof.Decl} contains the names
 of the procedures and their associated addresses,
 @file{Prof.CallPair} records the number of times
@@ -5927,8 +5927,8 @@ each procedure was called by each different caller,
 and @file{Prof.Counts} records the number of times
 that execution was in each procedure when a profiling interrupt occurred.)
 Executables compiled with @samp{--memory-profiling}
-will use two of those files (@file{Prof.Decls} and @file{Prof.CallPair})
-and a two others: @file{Prof.MemoryWords} and @file{Prof.MemoryCells}.
+will use two of those files (@file{Prof.Decl} and @file{Prof.CallPair})
+and two others: @file{Prof.MemoryWords} and @file{Prof.MemoryCells}.
 Executables compiled with @samp{--deep-profiling}
 save profiling data in a single file, @file{Deep.data}.
 Executables compiled with the @samp{--threadscope} option write profiling data
