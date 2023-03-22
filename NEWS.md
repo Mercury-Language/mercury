@@ -1144,6 +1144,11 @@ This is a bug-fix release.
   `int16` and `int32` values were being incorrectly promoted to `int` and sign
   extended when one of the unsigned conversion specifiers was applied.
 
+* [Github issue #116]. We have fixed a problem building programs with
+  `--intermodule-optimization` where the compiler was searching for library
+  files that were not installed unless the library was also built with
+  `--intermodule-optimization` enabled.
+
 * [Github issue #117]. We have fixed a bug where the compiler would silently
   fail when compiling a program that consists of a single source file and
   some of the required libraries are not available in the selected grade.
