@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
+% Copyright (C) 2013-2017, 2019-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1477,27 +1478,31 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
         !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+        % We always install the `.int0' files for a library even though they
+        % are only required by the `.opt' files. This is because when building
+        % a program with --intermodule-optimization enabled, the compiler will
+        % look for `.int0' files of any libraries the program uses. It will do
+        % this even for libraries that were not installed with
+        % --intermodule-optimization enabled, returning an error if it cannot
+        % find the `.int0' file.
+        module_dep_info_get_children(ModuleDepInfo, Children),
+        ( if set.is_empty(Children) then
+            Exts0 = []
+        else
+            Exts0 = [{other_ext(".int0"), "int0s"}]
+        ),
         globals.get_any_intermod(Globals, AnyIntermod),
         (
             AnyIntermod = yes,
-            % `.int0' files are imported by `.opt' files.
-            module_dep_info_get_children(ModuleDepInfo, Children),
-            ( if set.is_empty(Children) then
-                Exts0 = [{other_ext(".opt"), "opts"}]
-            else
-                Exts0 = [{other_ext(".int0"), "int0s"},
-                    {other_ext(".opt"), "opts"}]
-            )
+            Exts1 = [{other_ext(".opt"), "opts"} | Exts0]
         ;
             AnyIntermod = no,
-            Exts0 = []
+            Exts1 = Exts0
         ),
-
         Exts = [{other_ext(".int"), "ints"},
             {other_ext(".int2"), "int2s"},
             {other_ext(".int3"), "int3s"},
-            {other_ext(".module_dep"), "module_deps"}
-            | Exts0],
+            {other_ext(".module_dep"), "module_deps"} | Exts1],
         globals.lookup_string_option(Globals, install_prefix, Prefix),
         LibDir = Prefix/"lib"/"mercury",
         list.map_foldl(

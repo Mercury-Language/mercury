@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2011 The University of Melbourne.
+% Copyright (C) 2013-2017, 2019-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1304,7 +1305,7 @@ generate_dependencies_write_d_file(Globals, Dep,
         TransOptDeps = []
     ),
 
-    % Note that even if a fatal error occured for one of the files
+    % Note that even if a fatal error occurred for one of the files
     % that the current Module depends on, a .d file is still produced,
     % even though it probably contains incorrect information.
     Errors = Baggage ^ mb_errors,
@@ -1615,7 +1616,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     % that it contains .int0 files for all modules, regardless of whether
     % they should have been created or not. It is used by the rule for
     % `mmake realclean' to ensure that we clean up all the .int0 files,
-    % including the ones that were accidently created by the bug described
+    % including the ones that were accidentally created by the bug described
     % above.
     MmakeVarAllInt0s = mmake_var_defn(ModuleMakeVarName ++ ".all_int0s",
         string.format("$(%s.mods:%%=$(int0s_subdir)%%.int0)",
@@ -2083,7 +2084,6 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
         MaybeSpaceOptStr = ""
     ),
     ( if
-        Intermod = yes,
         some [ModuleAndImports] (
             map.member(DepsMap, _, deps(_, BurdenedAugCompUnit)),
             AugCompUnit = BurdenedAugCompUnit ^ bacu_acu,
@@ -2092,8 +2092,8 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
             not map.is_empty(IncludeMap)
         )
     then
-        % The `.int0' files only need to be installed with
-        % `--intermodule-optimization'.
+        % We always install `.int0' files; see the comment in the body of
+        % make.program_target.install_ints_and_headers/8 for the reason why.
         SpaceInt0Str = " int0",
         ModuleVarNameInt0s = "$(" ++ ModuleMakeVarName ++ ".int0s)",
         MaybeModuleVarNameInt0sSpace = ModuleVarNameInt0s ++ " ",
