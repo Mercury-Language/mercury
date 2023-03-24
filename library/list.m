@@ -108,9 +108,9 @@
 :- mode append(in, out, in) is semidet.
 :- mode append(out, out, in) is multi.
 % The following mode is semidet in the sense that it does not
-% succeed more than once - but it does create a choice-point, which means
-% both that it is inefficient, and that the compiler can't deduce that
-% it is semidet. Use remove_suffix instead.
+% succeed more than once - but operationally, it does create a choice-point,
+% which means both that it is inefficient, and that the compiler can't deduce
+% that it is semidet. Use remove_suffix instead.
 % :- mode append(out, in, in) is semidet.
 
 :- func append(list(T), list(T)) = list(T).
