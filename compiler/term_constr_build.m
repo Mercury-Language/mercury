@@ -156,7 +156,7 @@ term_constr_build_abstract_scc(Options, SCCWithEntryPoints, Errors,
             % Record the proper size_varset. Each procedure has a copy.
             % XXX It would be nicer to store one copy per SCC.
             %
-            % NOTE: although each procedure in the a SCC shares the same
+            % NOTE: although each procedure in a SCC shares the same
             % size_varset, they should all have separate size_var_maps.
 
             AR = AR0 ^ ap_size_varset := SizeVarset,
