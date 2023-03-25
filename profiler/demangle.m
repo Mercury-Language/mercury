@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2008, 2011 The University of Melbourne.
+% Copyright (C) 2015, 2019, 2022-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -70,13 +71,13 @@ demangle(MangledName, Name) :-
 :- pred demangle_from_asm(string::in, string::out) is semidet.
 
 demangle_from_asm(!Name) :-
-    % skip any leading underscore inserted by the C compiler,
+    % Skip any leading underscore inserted by the C compiler,
     % and skip the `_entry_' prefix, if any.
     ( if string.remove_prefix("_entry_", !Name) then
         true
     else
-        maybe_remove_prefix("_", !Name),
-        maybe_remove_prefix("_entry_", !Name)
+        !:Name = string.remove_prefix_if_present("_", !.Name),
+        !:Name = string.remove_prefix_if_present("_entry_", !.Name)
     ),
     demangle_from_c(!Name).
 
@@ -137,7 +138,7 @@ demangle_proc_ll(!Str) :-
     % skip past the prefix.
     handle_compiler_generated_pred(ModeNum0, Category0, !Str),
 
-    % Fix any ascii codes mangled in the predicate name,
+    % Fix any ascii codes mangled in the predicate name.
     fix_mangled_ascii(!Str),
 
     % Process the mangling introduced by unused_args.m and higher_order.m.
@@ -184,7 +185,7 @@ demangle_proc_ll(!Str) :-
 demangle_proc_hl(!Str) :-
     % Symbols in the Mercury standard library get an additional
     % "mercury__" prefix in their mangled name.
-    maybe_remove_prefix("mercury__", !Str),
+    !:Str = string.remove_prefix_if_present("mercury__", !.Str),
 
     % Get integer from end of string (it might be the mode number,
     % it might be the internal label number).
@@ -534,7 +535,6 @@ format_proc(Category, MaybeModule, PredOrFunc, PredName, Arity, ModeNum,
     DemangledName = "<" ++ MainStr ++ HOStr ++ UAStr ++ LabelStr ++ ">".
 
 %---------------------------------------------------------------------------%
-
 %
 % Code to deal with mercury_data items.
 %
@@ -548,7 +548,7 @@ demangle_data(!Str) :-
     else
         % MLDS mangled data
         HighLevel = yes,
-        maybe_remove_prefix("mercury__", !Str)
+        !:Str = string.remove_prefix_if_present("mercury__", !.Str)
     ),
     remove_maybe_module_prefix(MaybeModule0,
         ["type_ctor_info_", "type_ctor_layout_",
@@ -643,7 +643,7 @@ format_data(Category, MaybeModule, Name, Arity, Result) :-
 :- pred demangle_typeclass_info(string::in, string::out) is semidet.
 
 demangle_typeclass_info(!Str) :-
-    maybe_remove_prefix("mercury_data___", !Str),
+    !:Str = string.remove_prefix_if_present("mercury_data___", !.Str),
     remove_prefix("base_typeclass_info_", !Str),
     remove_maybe_module_prefix(yes(ClassName), ["arity"], !Str),
     ClassName \= "",
@@ -766,20 +766,7 @@ remove_int_2(Int0, Int, !Str) :-
 
 remove_digit(Digit, String0, String) :-
     string.first_char(String0, Char, String),
-    digit(Char, Digit).
-
-:- pred digit(character::in, int::out) is semidet.
-
-digit('0', 0).
-digit('1', 1).
-digit('2', 2).
-digit('3', 3).
-digit('4', 4).
-digit('5', 5).
-digit('6', 6).
-digit('7', 7).
-digit('8', 8).
-digit('9', 9).
+    decimal_digit_to_int(Char, Digit).
 
 %---------------------------------------------------------------------------%
 
@@ -863,15 +850,6 @@ find_matching_close_bracket(NumBrackets0, Length, String, Index0, Index) :-
             Index0 + 1, Index)
     ).
 
-:- pred maybe_remove_prefix(string::in, string::in, string::out) is det.
-
-maybe_remove_prefix(Prefix, !Str) :-
-    ( if remove_prefix(Prefix, !Str) then
-        true
-    else
-        true
-    ).
-
 :- pred m_remove_suffix(string::in, string::in, string::out) is semidet.
 
 m_remove_suffix(Suffix, Name0, Name) :-
@@ -896,8 +874,8 @@ format_maybe_module(yes(Module), Name, QualifiedName) :-
 
 :- pred remove_trailing_int(int::out, string::in, string::out) is semidet.
 
-remove_trailing_int(Int, String0, String) :-
-    remove_trailing_digit(Digit, String0, String1),
+remove_trailing_int(Int, !String) :-
+    remove_trailing_digit(Digit, !String),
     ( if remove_trailing_int(Rest, String1, String2) then
         Int = Rest * 10 + Digit,
         String = String2
@@ -910,7 +888,7 @@ remove_trailing_int(Int, String0, String) :-
 
 remove_trailing_digit(Digit, String0, String) :-
     string_last_char(String0, Char, String),
-    digit(Char, Digit).
+    decimal_digit_to_int(Char, Digit).
 
 :- pred string_last_char(string::in, character::out, string::out) is semidet.
 
