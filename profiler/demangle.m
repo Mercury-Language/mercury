@@ -876,12 +876,10 @@ format_maybe_module(yes(Module), Name, QualifiedName) :-
 
 remove_trailing_int(Int, !String) :-
     remove_trailing_digit(Digit, !String),
-    ( if remove_trailing_int(Rest, String1, String2) then
-        Int = Rest * 10 + Digit,
-        String = String2
+    ( if remove_trailing_int(Rest, !String) then
+        Int = Rest * 10 + Digit
     else
-        Int = Digit,
-        String = String1
+        Int = Digit
     ).
 
 :- pred remove_trailing_digit(int::out, string::in, string::out) is semidet.
