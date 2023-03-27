@@ -18,8 +18,7 @@
     --->    utf8
     ;       utf16.
 
-:- pred target_char_range(compilation_target, int, int).
-:- mode target_char_range(in, out, out) is det.
+:- pred target_char_range(compilation_target::in, int::out, int::out) is det.
 
 :- func target_string_encoding(compilation_target) = string_encoding.
 
