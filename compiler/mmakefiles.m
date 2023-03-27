@@ -199,18 +199,27 @@
     %   (the initial tab is added automatically by the code that writes
     %   the action out).
     %
-    % XXX We *could* have a representation for actions such as this
-    % to represent potentially multi-line actions more directly:
+    % XXX I (zs) have tried out a representation for multi-line actions
+    % which added the " \" to the ends of non-final lines and the extra tab
+    % to the start of non-initial lines automatically. It did not work.
+    % It did slightly simplify the code for actions that were split across
+    % several lines just because the action's command was too long to fit
+    % on one line, but it could not handle actions that were effectively
+    % embedded shell scripts, such as the action for MmakeRuleLibInstallInts
+    % in generate_dep_file_install_targets. That is because the above scheme
+    % generates a block of text with uniform indentation after the first line,
+    % but such scripts want indentation that reflects their nesting structure,
+    % which *won't* be uniform. In addition, such scripts may need "; \" at
+    % the ends of command lines even if the command fits on one line, simply
+    % to get make to execute them in the same shell instance, thus letting
+    % variable bindings flow from earlier commands to later ones.
     %
-    % :- type mmake_action
-    %   --->    mmake_action(string, list(string)).
-    %
-    % With that representation, the final " \"s and the initial tabs
-    % would be added automatically by the code writing out actions.
-    % This would probably be a better representation once we have
-    % switched over to the mmakefile representation *exclusively*,
-    % but adding the suffixes and prefixes "by hand" is more compatible
-    % with the existing "legacy" code.
+    % One could devise a structured representation to handle all these use
+    % cases, but its complexity would not be worth the cost, either in extra
+    % code to both construct and to interpret that structured representation,
+    % or in breaking the current direct connection between what is visible
+    % in the code that constructs mmake actions, and the code that gets put
+    % into Mmakefile fragments.
     %
 :- type mmake_action == string.
 
@@ -748,16 +757,8 @@ write_mmake_file_name(OutStream, FileName, !IO) :-
 
 write_mmake_actions(_OutStream, [], !IO).
 write_mmake_actions(OutStream, [Action | Actions], !IO) :-
-    write_mmake_action(OutStream, Action, !IO),
+    io.format(OutStream, "\t%s\n", [s(Action)], !IO),
     write_mmake_actions(OutStream, Actions, !IO).
-
-:- pred write_mmake_action(io.text_output_stream::in,
-    mmake_action::in, io::di, io::uo) is det.
-
-write_mmake_action(OutStream, Action, !IO) :-
-    io.write_string(OutStream, "\t", !IO),
-    io.write_string(OutStream, Action, !IO),
-    io.nl(OutStream, !IO).
 
 %---------------------------------------------------------------------------%
 
