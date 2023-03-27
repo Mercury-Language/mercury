@@ -33,20 +33,20 @@
     io::di, io::uo) is det.
 
     % For each predicate (or function) in the module, print its file name
-    % and the number of lines in its definition. Order the output by
-    % predicate or function name and arity.
+    % and the number of lines in its definition. Sort the output by
+    % the name and arity of the predicate or function.
     %
-    % (Since information such as the presence of a lone close parenthesis
-    % on the last line of a clause is not preserved in the HLDS, this
-    % line count will be approximate, but it is still useful for e.g.
-    % finding excessively-long predicates that should be split up.)
+    % Because information such as the presence of a lone right-parenthesis
+    % character on the last line of a clause is not preserved in the HLDS,
+    % this line count will be approximate, but it is still useful for e.g.
+    % finding excessively-long predicates that should be split up.
     %
 :- pred write_hlds_defn_line_counts(io.text_output_stream::in, module_info::in,
     io::di, io::uo) is det.
 
     % For each predicate (or function) in the module, print its approximate
     % first and last line numbers. (See the comment above about why
-    % the "approximate" part is unavoidable.) Order the output by first
+    % the "approximate" part is unavoidable.) Sort the output on first
     % line number.
     %
 :- pred write_hlds_defn_extents(io.text_output_stream::in, module_info::in,
@@ -332,6 +332,16 @@ output_prefixed_strings(Stream, Prefix, [Str | Strs], !IO) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+%
+% The definitions of the next two predicates are identical, with two
+% exceptions:
+%
+% - they pass different comparison predicates to list.sort; and
+% - they call different predicates to write out each pred_line_count.
+%
+% However, factoring out the common parts to *enforce* this commonality
+% would yield code that is both longer and harder to read than we have here.
+%
 
 write_hlds_defn_line_counts(Stream, ModuleInfo, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
