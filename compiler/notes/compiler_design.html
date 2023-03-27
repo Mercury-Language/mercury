@@ -50,6 +50,9 @@ The basic design is that compilation is broken into the following stages:
 </ul>
 
 <p>
+Note that HLDS stands for ``high-level data structure'',
+which is the compiler's main internal representation of Mercury code.
+<p>
 Note that in reality the separation is not quite as simple as that.
 Although parsing is listed as step 1 and semantic analysis is listed as step 2,
 the last stage of parsing actually includes some semantic checks.
@@ -57,18 +60,18 @@ And although optimization is listed as steps 3 and 5,
 it also occurs in steps 2, 4, and 6.
 For example, elimination of assignments to dead variables
 is done in mode analysis;
-middle-recursion optimization and the use of static constants for ground terms
-is done during code generation;
+middle-recursion optimization is done during code generation;
 and a few low-level optimizations are done
-in llds_out.m as we are spitting out the C code.
+in llds_out_instr.m as we are spitting out the C code.
 <p>
 In addition, the compiler is actually a multi-targeted compiler
 with several different back-ends.
 <p>
 mercury_compile_main.m is mostly concerned with option and argument processing,
 which is complicated by the fact that
-options can come from files named by other options.
-mercury_compile_main.m itself does oversee
+options can come from Mercury.options files,
+as well as from files named by other options.
+mercury_compile_main.m itself oversees
 the reading in and parsing of source files,
 but it then subcontracts the supervision of the later steps to other modules.
 <li>
@@ -89,11 +92,32 @@ are all managed by
 </ul>
 </ul>
 <p>
+The LLDS backend is so named because
+its main data structure is the ``low-level data structure'',
+which is the compiler's representation of imperative code
+at a level that is only slightly above assembly code (pseudo)instructions,
+containing references to
+virtual machine registers (that may correspond to real machine registers),
+stack slots, labels, and jumps.
+The LLDS backend was the first backend,
+and it generates low-level C, preferably with GNU C extensions.
+<p>
+The MLDS backend is so named because
+its main data structure is the ``medium-level data structure'',
+which is the compiler's representation of imperative code
+at a level that corresponds to handwritten C or Java code,
+containing e.g. assignment, if-then-else, switch and while statements
+inside functions and/or class methods.
+The MLDS backend was the second backend,
+and can generate (standard) C, Java or C#.
+<p>
 The modules in the compiler are structured by being grouped into "packages".
 A "package" is just a meta-module,
 i.e. a module that contains other modules as submodules.
-(The submodules are almost always stored in separate files,
-most of which are named only for their final module name.)
+Every submodule is stored in a separate file.
+(In most cases, the name of this file is just
+the final component in their full module name,
+though in a few cases, it includes some of the earlier components as well.)
 We have a package for the top-level, a package for each main pass, and
 finally there are also some packages for library modules that are used
 by more than one pass.
@@ -104,14 +128,18 @@ Taking all this into account, the package structure looks like this:
 <li>
 At the top of the dependency graph is the top_level.m package,
 which currently contains only the mercury_compile*.m modules,
-which invoke all the different passes in the compiler.
+which invoke all the different ``ends'' in the compiler.
+(The name ``middle-end'' sounds funny,
+but it fits in with ``front-end'' and ``back-end'',
+both of which are traditional names in compiler design.)
 <li>
-The next level down is all of the different passes of the compiler.
+The next level down are all of these ``ends'',
+each of which consists of several passes.
 In general, we try to stick by the principle that later passes can
 depend on data structures defined in earlier passes, but not vice versa.
 <ul type="disc">
 <li>
-    front-end
+    the front-end
     <ul type="disc">
     <li>
         1. parsing (source files -&gt; HLDS)
@@ -123,7 +151,7 @@ depend on data structures defined in earlier passes, but not vice versa.
         Package: check_hlds.m
     </ul>
 <li>
-    middle-end
+    the middle-end
     <ul type="disc">
     <li>
         3. high-level transformations (annotated HLDS -&gt; annotated HLDS)
@@ -131,7 +159,7 @@ depend on data structures defined in earlier passes, but not vice versa.
         Packages: transform_hlds.m and analysis.m
     </ul>
 <li>
-    back-ends
+    the back-ends
     <ul type="disc">
     <li>
         a. LLDS back-end
@@ -143,7 +171,7 @@ depend on data structures defined in earlier passes, but not vice versa.
         <li>
             4a. code generation (annotated HLDS -&gt; LLDS)
         <li>
-            5a. low-level optimizations (LLDS -&gt; LLDS)
+            5a. LLDS level optimizations (LLDS -&gt; LLDS)
         <li>
             6a. output code (LLDS -&gt; C)
         </ul>
@@ -153,9 +181,11 @@ depend on data structures defined in earlier passes, but not vice versa.
         Package: ml_backend.m
         <ul type="disc">
         <li>
+            3a. MLDS-back-end-specific HLDS-&gt;HLDS transformations
+        <li>
             4b. code generation (annotated HLDS -&gt; MLDS)
         <li>
-            5b. MLDS transformations (MLDS -&gt; MLDS)
+            5b. MLDS level optimizations (MLDS -&gt; MLDS)
         <li>
             6b. output code
             (MLDS -&gt; C or MLDS -&gt; C# or MLDS -&gt; Java, etc.)
@@ -184,18 +214,22 @@ to go in the Mercury standard library.
 <p>
 In addition to the packages mentioned above,
 there are also packages for the build system:
-make.m contains the support for the `--make' option,
-and recompilation.m contains the support
-for the `--smart-recompilation' option.
+<ul type="disc">
+<li>
+make.m contains the support for the `--make' option, and
+<li>
+recompilation.m contains the support for the `--smart-recompilation' option.
+</ul>
 
 <h2>Option handling</h2>
 
 Option handling is part of the libs.m package.
 <p>
 The command-line options are defined in the module options.m.
-mercury_compile.m calls library/getopt_io.m, passing the predicates
-defined in options.m as arguments, to parse them. It then invokes
-handle_options.m (and indirectly, op_mode.m and compute_grade.m)
+mercury_compile.m calls library/getopt.m,
+passing the predicates defined in options.m as arguments, to parse them.
+It then invokes handle_options.m
+(and indirectly, op_mode.m and compute_grade.m)
 to postprocess the option set.
 The results are represented using the type globals, defined in globals.m.
 The globals structure is available in the HLDS representation,
@@ -444,17 +478,17 @@ This is done by the following modules.
 grab_modules.m figures out what interface files to read,
 and also does a bunch of other semi-related things.
 <li>
-read_module.m has code to read in modules in the form of .m,
-.int, .opt etc files.
+read_module.m has code to read in source, interface and optimization files.
 <li>
-split_parse_tree_src.m splits up the parse tree of a source file
-into a sequence of raw compilation units, one unit per module
-contained in the source file.
+split_parse_tree_src.m splits up
+the parse tree of a source file (parse_tree_src)
+into a sequence of parse_tree_module_srcs,
+one per module contained in the source file.
 <li>
 write_module_interface_files.m has the code to write out
 `.int0', `.int', `.int2', and `.int3' files.
 <li>
-comp_unit_interface.m figures out which parts of a raw compilation unit
+comp_unit_interface.m figures out which parts of a raw parse_tree_module_src
 belong in its .int3, .int0, .int and .int2 files.
 <li>
 check_type_inst_mode_defns.m checks whether the items in a module
@@ -516,7 +550,7 @@ on programs when they are represented as parse trees.
 This means that we add module qualifiers to all types, insts and modes,
 check that every referred-to type, inst and mode actually exists,
 and that there is only possible match.
-This is done here because it must be done
+This is done in the parse_tree package because it must be done
 before the `.int' and `.int2' interface files are written.
 This code also checks whether imports are really needed in the interface.
 <p>
@@ -537,7 +571,7 @@ to do their job and communicate with each other.
 module_qual.qual_errors.m handles the errors that arise
 when an item refers to an entity (type, or inst, or ...)
 that is either not defined anywhere,
-or is defined in more than once module,
+or is defined in more than one module,
 and the reference does not indicate which one is intended.
 </ul>
 
@@ -717,7 +751,7 @@ status.m defines the type that record the import/export status
 of entities such as types, insts, modes, and predicates.
 <li>
 vartypes.m defines the data structure that maps each variable to its types.
-New code should use var_table.m, if possible.
+New code should use var_table.m in all passes after typechecking.
 <li>
 var_table.m defines the data structure that maps each variable
 to its name, type, and an indication of whether that type is a dummy type.
@@ -821,7 +855,7 @@ for printing insts and modes in nicely formatted error messages.
 code_model.m defines a type for classifying determinisms
 in ways useful to the various backends, and utility predicates on that type.
 <li>
-arg_info.m contains Utility routines
+arg_info.m contains utility routines
 that the various backends use to analyze procedures' argument lists
 and decide on parameter passing conventions.
 <li>
@@ -847,7 +881,7 @@ Any pass which can report errors or warnings must be part of this stage,
 so that the compiler does the right thing
 for options such as `--halt-at-warn' (which turns warnings into errors)
 and `--error-check-only'
-(which makes the compiler only compile up to this stage).
+(which makes the compiler exit at the end of semantic analysis).
 
 <ul>
 <li>
@@ -876,7 +910,7 @@ The transformed code is checked for
 type, mode, uniqueness, purity and determinism correctness by the later passes,
 which has the effect of checking the correctness
 of the instance methods themselves
-(ie. that the instance methods
+(i.e. that the instance methods
 match those expected by the typeclass declaration).
 During the transformation,
 pred_ids and proc_ids are assigned to the methods for each instance.
@@ -897,9 +931,8 @@ inst_check.m checks that all user defined bound insts are consistent
 with at least one type in scope
 (i.e. that the set of function symbols in the bound list for the inst
 are a subset of the allowed function symbols for at least one type in scope).
-<p>
-The compiler generates a warning if it finds any user defined bound insts
-that are not consistent with any types in scope.
+The compiler generates a warning if it finds any user defined bound inst
+that is not consistent with any of the types in scope.
 <li>
 inst_user.m performs on user defined bound insts
 the tests whose results the compiler needs,
@@ -907,7 +940,8 @@ and records the results in the insts themselves.
 This is faster than having the compiler perform those tests repeatedly
 each time it needs the results of those tests.
 <li>
-headvar_names.m tries to replace names of the form HeadVar__n
+headvar_names.m tries to replace
+compiler-generated names of the form HeadVar__n
 with actual names given by the programmer.
 <p>
 For efficiency, this phase not a standalone pass,
@@ -1082,10 +1116,11 @@ and a whole bunch of service modules.
     <li>
     modecheck_util.m contains utility predicates useful during mode analysis.
     <li>
-    instmap.m (XXX in the hlds.m package) defines
-    the instmap and instmap_delta ADTs,
+    instmap.m defines the instmap and instmap_delta ADTs,
     which store information on what instantiations
     a set of variables may be bound to.
+    (This is in the hlds.m package, because most modules
+    in the middle- and back-ends need the info in those ADTs.)
     <li>
     inst_match.m contains the code for examining insts
     and checking whether they match.
@@ -1221,6 +1256,9 @@ The indexing and determinism analysis system also consists of several modules.
     and hoists any such unifications out of the disjunction.
     If cse_detection.m modifies the code,
     it will re-run mode analysis and switch detection.
+    This rerun of switch detection can then find switches
+    that were buried too deeply for it to see
+    in the original code cse_detection.m was invoked with.
     <li>
     det_analysis.m annotates each goal with its determinism;
     it inserts cuts in the form of "some" goals
@@ -1292,7 +1330,12 @@ simplify.m is a package of submodules.
     It also warns about if-then-elses that should be replaced by switches.
     <li>
     simplify_goal_switch.m handles switches.
-    It eliminates switch arms that cannot fail, and switches with no arms left.
+    It eliminates switch arms that do nothing but fail,
+    as well switch arms that cannot be reached
+    (due to the arm being for function symbols that,
+    according to its initial instantiation state,
+    the variable being switched on cannot be bound to),
+    It also eliminates switches that have no arms left.
     <li>
     simplify_goal_scope.m handles scope goals.
     It eliminates unnecessary nested scopes,
@@ -1408,8 +1451,12 @@ which are not meant to be visible to the user of imported modules.
 This is necessary for the Java and C# back-ends
 and in some cases for `:- pragma foreign_export'
 involving foreign types on the C back-end.
-It is also needed by the MLDS-&gt;C back-end, for --high-level-data,
-and for cases involving abstract equivalence types which are defined as "float".
+It is also needed by the MLDS-&gt;C back-end,
+<!--
+We don't support high level data when targeting C anymore.
+for - -high-level-data, and
+-->
+for cases involving abstract equivalence types which are defined as "float".
 <li>
 exception_analysis.m annotates each module with information
 about whether the procedures in the module may throw an exception or not.
@@ -1520,13 +1567,14 @@ independent associative computations
 or independent chains of commutative computations
 by transforming them into a tail recursive form
 through the introduction of accumulators.
-If lco is turned on,
+If lco (last call optimization, also called
+last-call-modulo-constructor optimization) is turned on,
 it can also transform some procedures
 so that only construction unifications are after the recursive call.
 This pass must come before lco,
-unused_args (eliminating arguments makes it hard to relate the code
-back to the assertion)
-and inlining (can make the associative call disappear).
+unused_args (because eliminating arguments makes it hard
+to relate the code back to the assertion)
+and inlining (because it can make the associative call disappear).
 <p>
 This pass makes use of the goal_store.m module,
 which is a dictionary-like data structure for storing HLDS goals.
@@ -1548,7 +1596,8 @@ by calling the second predicate with extra arguments for the invariant values.
 This pass should come after inlining,
 since inlining can expose important opportunities for loop invariant hoisting.
 Such opportunities might not be visible before inlining
-because only *part* of the body of a called procedure is loop-invariant.
+because it is possible that only a *part* of the body of a called procedure
+is loop-invariant.
 <li>
 The deforestation and partial evaluation pass looks for code
 that does multiple traversals of data structures within a conjunction,
@@ -1582,7 +1631,7 @@ Typeinfos are often unused.
 <li>
 delay_construct.m pushes construction unifications
 to the right in semidet conjunctions,
-in an effort to reduce the probability that it will need to be executed.
+in an effort to reduce the probability that they will need to be executed.
 <li>
 unneeded_code.m looks for goals whose results are either not needed at all,
 or needed in some branches of computation but not others.
@@ -1794,11 +1843,11 @@ to generate code for construction and deconstruction unifications.
 All these modules also rely on
 the utility predicates in unify_gen_test.m and unify_gen_util.m.
 <li>
-closure_gen.m generate code for creating closures.
+closure_gen.m generates code that creates closures.
 <li>
-switch_gen.m is the main module for generates code for switches,
-but most special kinds of switches their own submodules for handling them.
-These include
+switch_gen.m is the main module for generating code for switches,
+but for special kinds of switches, it subcontracts the task
+to the following modules.
     <ul>
     <li>
     lookup_switch.m implements switches on integral atomic types
@@ -1879,9 +1928,9 @@ but for the LLDS back-end this is currently done
 as part of the output phase (see below).
 <p>
 The result of code generation is the Low Level Data Structure (llds.m),
-which may also contains some data structures whose types are defined in rtti.m.
+which may also contain some data structures whose types are defined in rtti.m.
 The code for each procedure is generated
-as a tree of code fragments which is then flattened.
+as a cord of code fragments which is then flattened.
 
 <h3>5a. LLDS transformations</h3>
 
@@ -2024,7 +2073,7 @@ suitable for generating not just C, but also Java and C#
 (and once upon a time, the intermediate language or IL of the .NET platform).
 This back-end uses the Medium Level Data Structure (mlds.m)
 as its intermediate representation.
-While the LLDS is operates on the level of assembly languages
+While the LLDS operates on the level of assembly languages
 (a second generation language, with the first generation being machine code),
 the MLDS operates on the level of
 a standard third generation imperative programming language.
@@ -2144,14 +2193,15 @@ that happen to have a lot in common:
 (2) adding code to handle accurate garbage collection.
 <li>
 ml_rename_class.m does what its name suggests: renames classes in the MLDS.
-It is used by mlds_to_java.m to replace long class names with shorter ones.
+It is used by mlds_to_java_file.m
+to replace long class names with shorter ones.
 </ul>
 
 <h3>6b. MLDS output</h3>
 
 <p>
 There are currently three target languages in which we can output MLDS code:
-C, Java, and C#.
+C, Java, and C#. (They were added in that order.)
 Generated C code is intended to be given to a C compiler
 to turn the .c file into a .o or .pic_o file.
 Generated Java code is intended to be given to a Java compiler (normally javac)

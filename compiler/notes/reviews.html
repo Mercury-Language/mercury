@@ -27,14 +27,14 @@ need to be reviewed.
 
 <ol>
 <li>
-Make sure you are working with an up-to-date workspace.
+Before you start work on a change to be reviewed later,
+make sure you are working with an up-to-date workspace.
 <li>
-If the change is a code change, test the change.
-See "Testing" section of coding standards.
-Testing may take time - don't forget that
-steps 3, 4 and 5 can be done in parallel.
+If the change is a code change, test the change,
+as outlined in the "Testing" section of the coding standards.
+This testing may take some time.
 <li>
-Write a log message for this change - use a template (see below).
+Write a log message for this change using the template below.
 How you include this will depend on the next step.
 <li>
 Create a diff:
@@ -52,9 +52,8 @@ or by creating series of commits and using <code>git format-patch</code>
 You will need to edit the files that format-patch generates
 to modify the subject line (see below),
 and to duplicate this line within the e-mail's body.
-If you create a diff, then new files should be appended verbatim
-to the end of the diff, with descriptions indicating the name of the file.
-XXX why not git add -N?
+Use <code>git add -N<code> on any new files
+to include them in the diff.
 <li>
 Review the diff and log message yourself. (see below)
 <li>
@@ -64,7 +63,7 @@ Mercury Reviews &lt;reviews@lists.mercurylang.org&gt;</a>
 The subject should be
 "for review: &lt;short description of change&gt;",
 the short description is typically the first line of your git log message.
-Optionally nominate a reviewer at top of diff (see below).
+Optionally nominate a reviewer in your email.
 Optionally describe which branches your change should be applied to.
 (If this change has been reviewed once before,
 it might fall into the "commit before review" category --
@@ -84,7 +83,7 @@ Push the change(s) (see below) if you have repository permissions.
 If you do not, the developer who reviewed your change will help you with this.
 </ol>
 
-<h2>Log Messages</h2>
+<h2>Log message template</h2>
 
 Use this template for each change's log message.
 
@@ -115,9 +114,11 @@ and any present limitations of the feature
 (note that all this should also be documented within the change, as well).
 If fixing a bug, describe both the bug and the fix.
 If the bug is in a bug tracker, also include the bug's number for reference.
+However, the bug number should <em>not</em> be
+in the one line description at the top.
 <p>
 
-<h2>Self-Review</h2>
+<h2>Self-review</h2>
 
 <p>
 You should also review your own code first, and fix any obvious mistakes.
@@ -140,7 +141,8 @@ The reasons for posting to reviews are:
 <li>
 To increase everyone's awareness of what changes are taking place.
 <li>
-Give everyone interested a chance to review your code, not just the reviewer.
+Give everyone interested a chance to review your code,
+not just a nominated reviewer.
 Remember, your changes may impact upon the uncommitted work of others,
 so they may want to give input.
 <li>
@@ -189,7 +191,7 @@ when committing and pushing changes,
 updated as necessary to reflect the changes you made as a result of the review.
 <p>
 
-<h2>Exceptions: Push before review</h2>
+<h2>Exceptions: push before review</h2>
 
 <p>
 The only time changes should be pushed before being reviewed
@@ -250,9 +252,9 @@ or there were a large number of comments at the review,
 you should not commit before a second review.
 <p>
 If you are going to commit before the review, use the subject line:<br>
-"diff: &lt;short description of change&gt;".
+"for post-commit review: &lt;short description of change&gt;".
 
-<h2>Exceptions: No review</h2>
+<h2>Exceptions: no review</h2>
 
 <p>
 The only time changes should be committed without review by a second person
@@ -262,9 +264,8 @@ is when they satisfy all of the following conditions:
 <li>
 It is a very small diff that is obviously correct, such as
     <ul>
-    <li>fix typographic errors
+    <li>fix spelling or grammar errors
     <li>fix syntax errors you accidentally introduced
-    <li>fix spelling of people's names
     </ul>
 
 <p>
@@ -288,7 +289,7 @@ This stuff reflects on the whole group, so it shouldn't be ignored.
 If your change falls into this category,
 you should still send the diff and log message to the reviews mailing list,
 but use the subject line:
-"trivial diff: &lt;short description of change&gt;".
+"diff: &lt;short description of change&gt;".
 
 </body>
 </html>

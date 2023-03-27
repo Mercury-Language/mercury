@@ -14,10 +14,21 @@ vim: ts=4 sw=4 expandtab ft=html
 <h2>Documentation</h2>
 
 <p>
-Each module should contain header comments
+Each module should start with the vim modeline and the copyright notice:
+<pre>
+%---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% Copyright (C) 20XX-20YY The Mercury team.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%---------------------------------------------------------------------------%
+</pre>
+<p>
+This should be followed by header comments
 which state the module's name, main author(s), and purpose,
-and give an overview of what the module does,
-what are the major algorithms and data structures it uses, etc.
+and give an overview of what the module does, and
+what are the major algorithms and data structures it uses.
 <p>
 Everything that is exported from a module
 should have sufficient documentation
@@ -31,12 +42,13 @@ without reference to the module's implementation section.
 <p>
 Each predicate other than trivial access predicates
 should have a short comment describing what the predicate is supposed to do,
-and what the meaning of the arguments is.
+and what is the meaning of each argument.
 Ideally this description should also note any conditions
 under which the predicate can fail or throw an exception.
 <p>
 There should be a comment for each field of a structure
-saying what the field represents.
+saying what the field represents,
+though it is ok to use one comment to explain several related fields together.
 <p>
 Any user-visible changes such as new compiler options or new features
 should be documented in the appropriate section(s) of the Mercury documentation
@@ -103,12 +115,13 @@ should always indicate an internal software error,
 not merely incorrect inputs from the user,
 or failure of some library routine or system call.
 In the compiler, do not call error/1 directly;
-call it indirectly using unexpected/2 or sorry/2 from compiler_util.m.
-Likewise, use expect/3 from compiler_util.m rather than require/2.
+call it indirectly using unexpected/2 or sorry/2.
+Likewise, use expect/3 rather than require/2.
 <p>
-Error messages should be constructed using the facilities in error_util.m.
+Error messages should be constructed using the facilities in error_spec.m.
 Compiler error messages should be complete sentences;
 they should start with a capital letter and end in a full stop.
+The last sentence should be explicitly followed by a newline.
 If including a full explanation
 of the meaning of an error and/or of its likely causes
 would be too tedious for everyday use
@@ -148,16 +161,19 @@ there should be no tabs.
 The only exception should be Makefiles,
 which should use one tab per level of indentation.
 <p>
-All files other than Makefiles
-should have something like this at the top,
-even before the copyright line:
+All files should have vim modelines at the top to help enforce this,
+even before the copyright line.
+For all files other than Makefiles,
+this should be something like this:
 <pre>
-	% vim: ts=4 sw=4 expandtab ft=mercury
+    % vim: ts=4 sw=4 expandtab ft=mercury
 </pre>
+C and shell files should replace the <code>ft=mercury</code>
+with <code>ft=c</code> and <code>ft=sh</code> respectively.
 
-Makefiles should have something like this instead:
+Makefiles and Mmakefiles should have something like this instead:
 <pre>
-	% vim: ts=8 sw=8 noexpandtab
+    % vim: ts=8 sw=8 noexpandtab ft=make
 </pre>
 
 <p>
@@ -167,26 +183,26 @@ these lines wrap around in diffs,
 since diff adds an extra character at the start of each line.
 <p>
 Since "empty" lines that have spaces or tabs on them
-prevent the proper functioning of paragraph-oriented commands in vi,
-lines shouldn't have trailing white space.
+prevent the proper functioning of paragraph-oriented commands in vim,
+lines shouldn't have any trailing white space.
 They can be removed with a vi macro such as the following.
 (Each pair of square brackets contains a space and a tab.)
 
 <pre>
-	map ;x :g/[     ][      ]*$/s///^M
+    map ;x :g/[     ][      ]*$/s///^M
 </pre>
 
 <p>
 String literals that don't fit on a single line should be split
-by writing them as two or more strings concatenated using the "++" operator;
-the compiler will evaluate this at compile time,
+by writing them as two or more strings concatenated using the "++" operator.
+The compiler will evaluate this at compile time,
 if --optimize-constant-propagation is enabled (i.e. at -O3 or higher).
 <p>
 Predicates that have only one mode should use predmode declarations
 rather than having a separate mode declaration.
 <p>
 If-then-elses should always be parenthesized,
-except when an if-then-else that occurs as the else part
+except that an if-then-else that occurs as the else part
 of another if-then-else doesn't need to be parenthesized.
 We prefer the
 <code>( if <i>C</i> then <i>T</i> else <i>E</i> )</code> syntax
@@ -236,35 +252,35 @@ on the same line as the opening parenthesis and the
 `<code>-&gt;</code>',
 
 <pre>
-	( test1 ->
-		goal1
-	; test2 ->
-		goal2
-	;
-		goal
-	)
+    ( test1 ->
+        goal1
+    ; test2 ->
+        goal2
+    ;
+        goal
+    )
 </pre>
 
 or, if the test is complicated, it can be on a line of its own:
 
 <pre>
-	(
-		very_long_test_that_does_not_fit_on_one_line(VeryLongArgument1,
-			VeryLongArgument2)
-	->
-		goal1
-	;
-		test2a,
-		test2b
-	->
-		goal2
-	;
-		test3	% would fit one one line, but separate for consistency
-	->
-		goal3
-	;
-		goal
-	).
+    (
+        very_long_test_that_does_not_fit_on_one_line(VeryLongArgument1,
+            VeryLongArgument2)
+    ->
+        goal1
+    ;
+        test2a,
+        test2b
+    ->
+        goal2
+    ;
+        test3   % would fit one one line, but separate for consistency
+    ->
+        goal3
+    ;
+        goal
+    ).
 </pre>
 -->
 
@@ -293,24 +309,24 @@ it shouldn't share lines with the double quote marks surrounding it.
 Type definitions should be formatted in one of the following styles:
 
 <pre>
-	:- type my_type
-		--->	my_type(
+    :- type my_type
+        --->    my_type(
                     % comment explaining field
                     some_other_type
                 ).
 
-	:- type some_other_type == int.
+    :- type some_other_type == int.
 
-	:- type foo
-		--->	bar(
-                    int,		% short comment explaining field
-                    float		% short comment explaining field
+    :- type foo
+        --->    bar(
+                    int,        % short comment explaining field
+                    float       % short comment explaining field
                 )
-        ;	    baz
-        ;	    quux.
+        ;       baz
+        ;       quux.
 
-	:- type complicated
-		--->	complicated_f(
+    :- type complicated
+        --->    complicated_f(
                     % long comment explaining first field
                     f1_arg_name     :: int,
 
@@ -328,27 +344,27 @@ blank lines should be used to show the separation into sections.
 Comments should precede the code to which they apply, rather than following it.
 
 <pre>
-	% This is a block comment; it applies to the code in the next
-	% section (up to the next blank line, or the next block comment).
+    % This is a block comment; it applies to the code in the next
+    % section (up to the next blank line, or the next block comment).
 
-	blah,
-	blah,
-	blahblah,
-	blah,
+    blah,
+    blah,
+    blahblah,
+    blah,
 </pre>
 
 If a particular line or two needs explanation, a "line" comment
 
 <pre>
-	% This is a "line" comment; it applies to the next line or two
-	% of code
-	blahblah
+    % This is a "line" comment; it applies to the next line or two
+    % of code
+    blahblah
 </pre>
 
 or an "inline" comment
 
 <pre>
-	blahblah	% This is an "inline" comment
+    blahblah    % This is an "inline" comment
 </pre>
 
 should be used.
@@ -411,15 +427,29 @@ Double dashed lines, i.e.
 %---------------------------------------------------------------------------%
 </pre>
 
-can also be used to indicate divisions into major sections.
+can also be used to indicate divisions into groups of sections,
+
+while short dashed lines, i.e.
+
+<pre>
+%---------------------%
+</pre>
+
+can be used to indicate divisions within sections.
+
 Note that these dividing lines should not exceed the 79 character limit
 (see above).
 
 The tools/stdlines script will standardize the lengths of these dashed lines.
+It will do this by turning
+every line of dashes below a certain length
+into the standard short dashed line,
+and every line of dashes at or above that length
+into the standard long dashed line.
 
 <h2>Module imports</h2>
 
-Each group of :- import_module items should list only one module per line,
+Each :- import_module item should list only one module.
 since this makes it much easier to read diffs
 that change the set of imported modules.
 In the compiler, when e.g. an interface section imports modules
@@ -445,12 +475,12 @@ must be positioned above the predicate or function declaration.
 It should be formatted as in the following example:
 
 <pre>
-		% foo(Arg1, Arg2, Result, !Acc),
+        % foo(Arg1, Arg2, Result, !Acc),
         %
         % Returns the foo of Arg1 and Arg2, while updating !Acc by ...
-		%
-	:- pred foo(...
-	:- mode foo(...
+        %
+    :- pred foo(...
+    :- mode foo(...
 </pre>
 
 The arguments of the predicate or function should be given descriptive names,
@@ -468,11 +498,11 @@ then it should be listed before the others.
 For example:
 
 <pre>
-		% Insert a new key and corresponding value into a map.
-		% Fail if the key already exists.
-		%
-	:- func insert(map(K, V), K, V) = map(K, V).
-	:- pred insert(map(K, V)::in, K::in, V::in, map(K, V)::out) is det.
+        % Insert a new key and corresponding value into a map.
+        % Fail if the key already exists.
+        %
+    :- func insert(map(K, V), K, V) = map(K, V).
+    :- pred insert(map(K, V)::in, K::in, V::in, map(K, V)::out) is det.
 </pre>
 
 The reason for using this particular style is that

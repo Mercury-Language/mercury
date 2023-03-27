@@ -4,12 +4,12 @@ vim: ts=4 sw=4 expandtab ft=html
 
 <html>
 <head>
-<title>Glossary of terms used in Mercury</title>
+<title>Glossary of terms used in the Mercury compiler</title>
 </head>
 
 <body>
 
-<h1>Glossary of terms used in Mercury</h1>
+<h1>Glossary of terms used in the Mercury compiler</h1>
 
 <dl>
 
@@ -119,11 +119,14 @@ Not Yet Implemented.
 
 <dt> pred_info
 <dd>
-The structure in the HLDS which contains information about a predicate.
+The structure in the HLDS which contains information
+about a predicate or a function.
+(The compiler views arity-N functions as arity-(N+1) predicates,
+with last argument being the function result.)
 
 <dt> proc (procedure)
 <dd>
-A particular mode of a predicate.
+A particular mode of a predicate or a function.
 
 <dt> proc_info 
 <dd>
