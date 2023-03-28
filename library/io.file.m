@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2022 The Mercury team.
+% Copyright (C) 2013-2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -128,10 +128,6 @@
     %
     % The file is placed in the directory returned by get_temp_directory/3.
     %
-    % On the Java backend, this does not attempt to create the file
-    % with restrictive permissions (600 on Unix-like systems) and therefore
-    % should not be used when security is required.
-    %
 :- pred make_temp_file(io.res(string)::out, io::di, io::uo) is det.
 
     % make_temp_file(Dir, Prefix, Suffix, Result, !IO) creates an empty file
@@ -154,17 +150,11 @@
     %   - Prefix is ignored.
     %   - Suffix is ignored.
     %
-    % On the Java backend, this does not attempt to create the file
-    % with restrictive permissions (600 on Unix-like systems) and therefore
-    % should not be used when security is required.
-    %
 :- pred make_temp_file(string::in, string::in, string::in, io.res(string)::out,
     io::di, io::uo) is det.
 
     % make_temp_directory(Result, !IO) creates an empty directory whose name
     % is different from the name of any existing directory.
-    %
-    % On the Java backend this is insecure as the file permissions are not set.
     %
 :- pred make_temp_directory(io.res(string)::out, io::di, io::uo) is det.
 
@@ -183,7 +173,8 @@
     %   - Prefix is ignored.
     %   - Suffix is ignored.
     %
-    % On the Java backend this is insecure as the file permissions are not set.
+    % The Java backend has the following limitation:
+    %  - Suffix is ignored.
     %
 :- pred make_temp_directory(string::in, string::in, string::in,
     io.res(string)::out, io::di, io::uo) is det.
@@ -1268,9 +1259,6 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
-    // Java 7 java.nio.file.Files.createTempFile() would allow us
-    // to set the file mode.
-
     if (Prefix.length() > 5) {
         // The documentation for io.make_temp says that we should only use
         // the first five characters of Prefix.
@@ -1278,16 +1266,11 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
     }
 
     try {
-        File new_file = new File(DirName, makeTempName(Prefix, Suffix));
-        if (new_file.createNewFile()) {
-            FileName = new_file.getAbsolutePath();
-            Error = null;
-        } else {
-            FileName = """";
-            // Any other errors should be be reported by createNewFile() by
-            // throwing an exception.
-            Error = new java.io.IOException(""File already exists"");
-        }
+        java.nio.file.Path dir_path = java.nio.file.Paths.get(DirName);
+        java.nio.file.Path new_file =
+            java.nio.file.Files.createTempFile(dir_path, Prefix, Suffix);
+        FileName = new_file.toAbsolutePath().toString();
+        Error = null;
     } catch (java.lang.Exception e) {
         FileName = """";
         Error = e;
@@ -1398,26 +1381,24 @@ make_temp_directory(ParentDirName, Prefix, Suffix, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    do_make_temp_directory(ParentDirName::in, Prefix::in, Suffix::in, _Sep::in,
-        DirName::out, Error::out, _IO0::di, _IO::uo),
+    do_make_temp_directory(ParentDirName::in, Prefix::in, _Suffix::in,
+        _Sep::in, DirName::out, Error::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         may_not_duplicate],
 "
     if (Prefix.length() > 5) {
-        // The documentation for io.make_temp says that we should only use
-        // the first five characters of Prefix.
+        // The documentation for io.make_temp_directory says that we should
+        // only use the first five characters of Prefix.
         Prefix = Prefix.substring(0, 5);
     }
 
     try {
-        File new_dir = new File(ParentDirName, makeTempName(Prefix, Suffix));
-        if (new_dir.mkdir()) {
-            DirName = new_dir.getAbsolutePath();
-            Error = null;
-        } else {
-            DirName = """";
-            Error = new java.io.IOException(""Error creating directory"");
-        }
+        java.nio.file.Path parent_dir_path =
+            java.nio.file.Paths.get(ParentDirName);
+        java.nio.file.Path new_dir =
+            java.nio.file.Files.createTempDirectory(parent_dir_path, Prefix);
+        DirName = new_dir.toAbsolutePath().toString();
+        Error = null;
     } catch (java.lang.Exception e) {
         DirName = """";
         Error = e;
@@ -1485,40 +1466,6 @@ using System.Security.Principal;      // For IdentifyReference etc.
         CallingConvention=CallingConvention.Cdecl)]
     static extern int ML_sys_mkdir (string path, uint mode);
 #endif
-").
-
-:- pragma foreign_decl("Java", local, "
-import java.io.File;
-import java.io.IOException;
-import java.util.Random;
-").
-
-:- pragma foreign_code("Java", "
-    public static Random ML_rand = new Random();
-
-    public static String makeTempName(String prefix, String suffix)
-    {
-        StringBuilder sb = new StringBuilder();
-
-        sb.append(prefix);
-        // Make an 8-digit mixed case alpha-numeric code.
-        for (int i = 0; i < 8; i++) {
-            char c;
-            int c_num = ML_rand.nextInt(10+26+26);
-            if (c_num < 10) {
-                c_num = c_num + '0';
-            } else if (c_num < 10+26) {
-                c_num = c_num + 'A' - 10;
-            } else{
-                c_num = c_num + 'a' - 10 - 26;
-            }
-            c = (char)c_num;
-            sb.append(c);
-        }
-        sb.append(suffix);
-
-        return sb.toString();
-    }
 ").
 
 %---------------------%
