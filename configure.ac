@@ -5432,19 +5432,19 @@ mfilterjavac/MFILTERJAVAC_FLAGS
 '
 
 # The order in which we output files matters, because in some cases, one of the
-# files we output (e.g. scripts/parse_ml_options.sh-subr) will be bodily
-# included in other files we output (e.g. scripts/ml, scripts/c2init etc).
-# If we attempted to create the latter files first, the bodily inclusion would
-# include the empty file instead.
+# non-executable files we output (e.g. scripts/parse_ml_options.sh-subr)
+# will be bodily included in other files we output (e.g. scripts/ml,
+# scripts/c2init etc). If we attempted to create the latter files first,
+# the bodily inclusion would include the empty file instead.
 output_files="$nonexecutable_output_files $executable_output_files"
 
 # IMPORTANT NOTE
 # --------------
-# Any new entries here may need to be handled by scripts/mercury_config.in.
-# Failing to do this correctly may break the binary distributions
-# This is especially true of files in the runtime or java directories;
-# if you add new .in files to either of those you *must* update
-# scripts/mercury_config.in.
+# Any new entries in the lists above may need to be handled by
+# scripts/mercury_config.in. Failing to do this correctly may break
+# the binary distributions. This is especially true of files in the runtime
+# or java directories; if you add new .in files to either of those
+# you *must* update scripts/mercury_config.in.
 
 AC_CONFIG_FILES($output_files)
 AC_CONFIG_COMMANDS([default],
@@ -5458,17 +5458,17 @@ case $reconfiguring in no)
                 cmp runtime/mercury_conf.h "$conf_h_copy" > /dev/null && \
                 test -f runtime/mercury_conf.h.date
             then
-                # The date file need not be updated, so do not update it,
-                # since that would lead to the recompilation of a bunch
-                # of files.
+                # The date file does need not be updated, so do not update it,
+                # since doing so would lead to the unnecessary rebuilding
+                # of all the files that depend on it.
                 true
             else
                 touch runtime/mercury_conf.h.date
             fi
         fi
     done
-    # conftest.junk is used to avoid a warning if there
-    # are no files in the list passed to chmod
+    # We use conftest.junk to avoid a warning if there are no files
+    # in the list passed to chmod.
     touch conftest.junk
     chmod +x `echo $CONFIG_FILES | \
         sed -e 's/[[^ ]]*Mmake.common//' ` conftest.junk
