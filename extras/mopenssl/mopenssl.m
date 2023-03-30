@@ -1,8 +1,9 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007 The University of Melbourne.
 % Copyright (C) 2015, 2018 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
-%------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 %
 % mopenssl.m
@@ -10,7 +11,6 @@
 %
 % Binding to the openssl library.
 %
-%------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
 :- module mopenssl.
@@ -45,16 +45,19 @@
 
 :- pred ssl_ctx_new(ssl_method::in, ssl_ctx::out, io::di, io::uo) is det.
 
-:- pred ssl_ctx_use_certificate_chain_file(ssl_ctx::in, string::in, io::di, io::uo) is det.
+:- pred ssl_ctx_use_certificate_chain_file(ssl_ctx::in, string::in,
+    io::di, io::uo) is det.
 
-:- pred ssl_ctx_set_default_passwd_cb(ssl_ctx::in, T::in, io::di, io::uo) is det <= password_cb(T).
+:- pred ssl_ctx_set_default_passwd_cb(ssl_ctx::in, T::in,
+    io::di, io::uo) is det <= password_cb(T).
 
     % XXX need to add the flags.
-:- pred ssl_ctx_use_private_key_file(ssl_ctx::in, string::in, io::di, io::uo) is det.
+:- pred ssl_ctx_use_private_key_file(ssl_ctx::in, string::in,
+    io::di, io::uo) is det.
 
-:- pred ssl_ctx_load_verify_locations(ssl_ctx::in, string::in, string::in, io::di, io::uo) is det.
+:- pred ssl_ctx_load_verify_locations(ssl_ctx::in, string::in, string::in,
+    io::di, io::uo) is det.
 
-    %
     % Create a ssl connection on top of a tcp connections.
     %
 :- pred ssl(ssl_ctx::in, tcp::in, ssl::out, io::di, io::uo) is det.
@@ -62,8 +65,7 @@
 :- pred ssl_connect(ssl::in, io::di, io::uo) is det.
 :- pred ssl_accept(ssl::in, io::di, io::uo) is det.
 
-    %
-    % If the SSL connection is buffered flush the stream.
+    % If the SSL connection is buffered, flush the stream.
     %
 :- pred ssl_flush(ssl::in, io::di, io::uo) is det.
 
@@ -97,8 +99,9 @@
 :- pred ssl_library_init(io::di, io::uo) is det.
 
 :- pragma foreign_proc(c,
-        ssl_library_init(IO0::di, IO::uo),
-        [thread_safe, promise_pure, tabled_for_io], "
+    ssl_library_init(IO0::di, IO::uo),
+    [thread_safe, promise_pure, tabled_for_io],
+"
     int i;
 
     SSL_library_init();
@@ -143,24 +146,28 @@ unsigned long pthreads_thread_id(void)
 
 %------------------------------------------------------------------------------%
 
-:- pragma foreign_proc(c, sslv23_method = (Method::out),
-        [thread_safe, promise_pure], "
+:- pragma foreign_proc(c,
+    sslv23_method = (Method::out),
+    [thread_safe, promise_pure],
+"
     Method = SSLv23_method();
 ").
 
 %------------------------------------------------------------------------------%
 
 :- pragma foreign_proc(c,
-        ssl_ctx_new(Method::in, Context::out, IO0::di, IO::uo),
-        [thread_safe, promise_pure, tabled_for_io], "
+    ssl_ctx_new(Method::in, Context::out, IO0::di, IO::uo),
+    [thread_safe, promise_pure, tabled_for_io],
+"
     Context = SSL_CTX_new(Method);
     IO = IO0;
 ").
 
 :- pragma foreign_proc(c,
-        ssl_ctx_use_certificate_chain_file(Context::in, File::in, IO0::di, IO::uo),
-        [thread_safe, promise_pure, tabled_for_io], "
-    if(!SSL_CTX_use_certificate_chain_file(Context, File)) {
+    ssl_ctx_use_certificate_chain_file(Context::in, File::in, IO0::di, IO::uo),
+    [thread_safe, promise_pure, tabled_for_io],
+"
+    if (!SSL_CTX_use_certificate_chain_file(Context, File)) {
         MOPENSSL_throw_error();
     };
     IO = IO0;
@@ -169,17 +176,19 @@ unsigned long pthreads_thread_id(void)
 %------------------------------------------------------------------------------%
 
 :- type password_cb
-    ---> some [T] password_cb(T) => password_cb(T).
+    --->    some [T] password_cb(T) => password_cb(T).
 
 ssl_ctx_set_default_passwd_cb(Context, PasswordCB, !IO) :-
     Data = 'new password_cb'(PasswordCB),
     ssl_ctx_set_default_passwd_cb_2(Context, Data, !IO).
 
-:- pred ssl_ctx_set_default_passwd_cb_2(ssl_ctx::in, password_cb::in, io::di, io::uo) is det.
+:- pred ssl_ctx_set_default_passwd_cb_2(ssl_ctx::in, password_cb::in,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc(c,
-        ssl_ctx_set_default_passwd_cb_2(Context::in, Data::in, IO0::di, IO::uo),
-        [thread_safe, promise_pure, tabled_for_io], "
+    ssl_ctx_set_default_passwd_cb_2(Context::in, Data::in, IO0::di, IO::uo),
+    [thread_safe, promise_pure, tabled_for_io],
+"
     MR_Word *user_data;
 
 #ifdef MR_CONSERVATIVE_GC
@@ -197,11 +206,13 @@ ssl_ctx_set_default_passwd_cb(Context, PasswordCB, !IO) :-
 ").
 
 :- pragma foreign_decl(c, local, "
-static int MOPENSSL_password_cb(char *buf, int size, int rwflag, void *user_data);
+static int MOPENSSL_password_cb(char *buf, int size, int rwflag,
+    void *user_data);
 ").
 
 :- pragma foreign_code(c, "
-static int MOPENSSL_password_cb(char *buf, int size, int rwflag, void *userData)
+static int
+MOPENSSL_password_cb(char *buf, int size, int rwflag, void *userData)
 {
     MR_String password;
     MR_Word *user_data = (MR_Word *) userData;
@@ -210,7 +221,7 @@ static int MOPENSSL_password_cb(char *buf, int size, int rwflag, void *userData)
 
     strncpy(buf, (char *)(password), size);
     buf[size - 1] = '\\0';
-    
+
     return strlen(buf);
 }
 ").
@@ -248,7 +259,6 @@ void MOPENSSL_throw_error()
     }
 
     MOPENSSL_throw_exception(list);
-
     return;
 }
 ").
@@ -270,23 +280,25 @@ throw_ssl_exception(L) :-
 %------------------------------------------------------------------------------%
 
 :- pragma foreign_proc(c,
-        ssl_ctx_use_private_key_file(Context::in, File::in, IO0::di, IO::uo),
-        [thread_safe, promise_pure, tabled_for_io], "
-    if(!SSL_CTX_use_PrivateKey_file(Context, File, SSL_FILETYPE_PEM)) {
+    ssl_ctx_use_private_key_file(Context::in, File::in, IO0::di, IO::uo),
+    [thread_safe, promise_pure, tabled_for_io],
+"
+    if (!SSL_CTX_use_PrivateKey_file(Context, File, SSL_FILETYPE_PEM)) {
         MOPENSSL_throw_error();
     };
     IO = IO0;
 ").
 
 :- pragma foreign_proc(c,
-        ssl_ctx_load_verify_locations(Context::in, File::in, Path::in, IO0::di, IO::uo),
-        [thread_safe, promise_pure, tabled_for_io], "
-    if(!SSL_CTX_load_verify_locations(Context, File, Path)) {
+    ssl_ctx_load_verify_locations(Context::in, File::in, Path::in,
+        IO0::di, IO::uo),
+    [thread_safe, promise_pure, tabled_for_io],
+"
+    if (!SSL_CTX_load_verify_locations(Context, File, Path)) {
         MOPENSSL_throw_error();
     };
     IO = IO0;
 ").
-
 
 %------------------------------------------------------------------------------%
 
@@ -301,7 +313,7 @@ ssl(Context, Tcp, SSL, !IO) :-
     Size = default_buffer_size,
     ssl_handle(Context, FD, Size, Handle, !IO),
     SSL = ssl("SSL", Handle).
-    
+
     % The default block size for sending SSL is 16Kb.
     % Thus we will buffer a little bit less than this
     % to make sure that we are always sending full blocks.
@@ -310,18 +322,22 @@ ssl(Context, Tcp, SSL, !IO) :-
 
 default_buffer_size = 16000.
 
-:- pred ssl_handle(ssl_ctx::in, int::in, int::in, ssl_handle::out, io::di, io::uo) is det.
+:- pred ssl_handle(ssl_ctx::in, int::in, int::in, ssl_handle::out,
+    io::di, io::uo) is det.
 
-:- pragma foreign_proc(c, ssl_handle(Context::in, FD::in, Size::in, Handle::out, IO0::di, IO::uo),
-        [thread_safe, promise_pure, tabled_for_io], "
+:- pragma foreign_proc(c, ssl_handle(Context::in, FD::in, Size::in,
+    Handle::out, IO0::di, IO::uo),
+    [thread_safe, promise_pure, tabled_for_io],
+"
     SSL *ssl;
-    BIO *bio, *buffer_bio;
+    BIO *bio;
+    BIO *buffer_bio;
 
     ssl = SSL_new(Context);
 
     bio = BIO_new_socket(FD, BIO_CLOSE);
-    
-        /* Create a buffer and link it with the socket */
+
+    // Create a buffer and link it with the socket.
     buffer_bio = BIO_new(BIO_f_buffer());
     BIO_set_buffer_size(buffer_bio, Size);
     bio = BIO_push(buffer_bio, bio);
@@ -342,8 +358,10 @@ ssl_flush(SSL, !IO) :-
 
 :- pred ssl_flush_c(ssl_handle::in, io::di, io::uo) is det.
 
-:- pragma foreign_proc(c, ssl_flush_c(Ssl::in, IO0::di, IO::uo),
-        [thread_safe, promise_pure, tabled_for_io], "
+:- pragma foreign_proc(c,
+    ssl_flush_c(Ssl::in, IO0::di, IO::uo),
+    [thread_safe, promise_pure, tabled_for_io],
+"
     BIO_flush(SSL_get_wbio(Ssl->ssl));
     IO = IO0;
 ").
@@ -355,9 +373,11 @@ ssl_connect(SSL, !IO) :-
     ssl_connect_c(Handle, !IO).
 
 :- pred ssl_connect_c(ssl_handle::in, io::di, io::uo) is det.
-:- pragma foreign_proc(c, ssl_connect_c(Ssl::in, IO0::di, IO::uo),
-        [thread_safe, promise_pure, tabled_for_io], "
-    if(SSL_connect(Ssl->ssl) <= 0) {
+:- pragma foreign_proc(c,
+    ssl_connect_c(Ssl::in, IO0::di, IO::uo),
+    [thread_safe, promise_pure, tabled_for_io],
+"
+    if (SSL_connect(Ssl->ssl) <= 0) {
         MOPENSSL_throw_error();
     };
     IO = IO0;
@@ -368,14 +388,15 @@ ssl_accept(SSL, !IO) :-
     ssl_accept_c(Handle, !IO).
 
 :- pred ssl_accept_c(ssl_handle::in, io::di, io::uo) is det.
-:- pragma foreign_proc(c, ssl_accept_c(Ssl::in, IO0::di, IO::uo),
-        [thread_safe, promise_pure, tabled_for_io], "
-    if(SSL_accept(Ssl->ssl) <= 0) {
+:- pragma foreign_proc(c,
+    ssl_accept_c(Ssl::in, IO0::di, IO::uo),
+    [thread_safe, promise_pure, tabled_for_io],
+"
+    if (SSL_accept(Ssl->ssl) <= 0) {
         MOPENSSL_throw_error();
     };
     IO = IO0;
 ").
-    
 
 %------------------------------------------------------------------------------%
 
@@ -388,7 +409,6 @@ ssl_accept(SSL, !IO) :-
     (error_message(error(S)) = S)
 ].
 
-
 :- instance input(ssl, io).
 :- instance reader(ssl, character, io, ssl_error).
 
@@ -400,13 +420,17 @@ ssl_accept(SSL, !IO) :-
 :- instance reader(ssl, character, io, ssl_error) where [
     (get(S, Result, !IO) :-
         mopenssl.read_char(S ^ handle, C, IsCharRead, !IO),
-        ( IsCharRead = yes,
+        (
+            IsCharRead = yes,
             Result = ok(C)
-        ; IsCharRead = no,
+        ;
+            IsCharRead = no,
             mopenssl.get_error(S ^ handle, Err, IsError, !IO),
-            ( IsError = yes,
+            (
+                IsError = yes,
                 Result = error(error(Err))
-            ; IsError = no,
+            ;
+                IsError = no,
                 Result = eof
             )
         )
@@ -419,9 +443,11 @@ ssl_accept(SSL, !IO) :-
 :- instance writer(ssl, character, io) where [
     (put(Ssl, C, !IO) :-
         mopenssl.write_char(Ssl ^ handle, C, IsCharWritten, !IO),
-        ( IsCharWritten = yes,
+        (
+            IsCharWritten = yes,
             true
-        ; IsCharWritten = no,
+        ;
+            IsCharWritten = no,
             mopenssl.get_error(Ssl ^ handle, Err, _IsError, !IO),
             throw_ssl_exception(["put(char): " ++ Err])
         )
@@ -430,9 +456,10 @@ ssl_accept(SSL, !IO) :-
 :- instance writer(ssl, string, io) where [
     (put(Ssl, S, !IO) :-
         mopenssl.write_string(Ssl ^ handle, S, IsStrWritten, !IO),
-        ( IsStrWritten = yes,
-            true
-        ; IsStrWritten = no,
+        (
+            IsStrWritten = yes
+        ;
+            IsStrWritten = no,
             mopenssl.get_error(Ssl ^ handle, Err, _IsError, !IO),
             throw_ssl_exception(["put(char): " ++ Err])
         )
@@ -450,7 +477,8 @@ typedef struct {
 } MOPENSSL_ssl;
 ").
 
-:- type ssl_error ---> error(string).
+:- type ssl_error
+    --->    error(string).
 
 :- pred get_error(ssl_handle::in, string::out, bool::out, io::di, io::uo)
     is det.
@@ -467,11 +495,9 @@ typedef struct {
 
         Msg = MR_make_string(MR_ALLOC_ID, (char *) ""%s"", string);
 		Success = MR_TRUE;
-        
+
     } else {
-        /* 
-        ** We set Msg in case the debugger wants to print its value.
-        */
+        // We set Msg in case the debugger wants to print its value.
         Msg = MR_make_string_const("""");
 		Success = MR_FALSE;
     }
@@ -479,7 +505,7 @@ typedef struct {
 
 :- pred read_char(ssl_handle::in, character::out, bool::out, io::di, io::uo)
     is det.
-:- pragma foreign_proc(c, 
+:- pragma foreign_proc(c,
     read_char(Ssl::in, Chr::out, Success::out, _IO0::di, _IO::uo),
     [thread_safe, promise_pure, tabled_for_io],
 "
@@ -522,29 +548,27 @@ typedef struct {
     int length;
     length = strlen(Str);
 
-    /* fprintf(stderr, ""\\nAttempt to write %d: '%s'\\n"", length, Str); */
+    // fprintf(stderr, ""\\nAttempt to write %d: '%s'\\n"", length, Str);
     if (length > 0) {
         nchars = SSL_write(Ssl->ssl, Str, length);
 
-        /*
-        switch (SSL_get_error(Ssl->ssl, nchars))
-        {
-            case SSL_ERROR_NONE:
-                fprintf(stderr, ""SSL_ERROR_NONE\\n"");
-                break;
-            case SSL_ERROR_WANT_WRITE:
-                fprintf(stderr, ""SSL_ERROR_WANT_WRITE\\n"");
-                break;
-            case SSL_ERROR_WANT_READ:
-                fprintf(stderr, ""SSL_ERROR_WANT_READ\\n"");
-                break;
-            default:
-                fprintf(stderr, ""default!!!\\n"");
-                break;
-        }
-
-        fprintf(stderr, ""\\nWrote %d of %d: '%s'\\n"", nchars, length, Str);
-        */
+//      switch (SSL_get_error(Ssl->ssl, nchars))
+//      {
+//          case SSL_ERROR_NONE:
+//              fprintf(stderr, ""SSL_ERROR_NONE\\n"");
+//              break;
+//          case SSL_ERROR_WANT_WRITE:
+//              fprintf(stderr, ""SSL_ERROR_WANT_WRITE\\n"");
+//              break;
+//          case SSL_ERROR_WANT_READ:
+//              fprintf(stderr, ""SSL_ERROR_WANT_READ\\n"");
+//              break;
+//          default:
+//              fprintf(stderr, ""default!!!\\n"");
+//              break;
+//      }
+//
+//      fprintf(stderr, ""\\nWrote %d of %d: '%s'\\n"", nchars, length, Str);
 
         if (nchars > 0) {
             Success = MR_TRUE;
@@ -558,7 +582,6 @@ typedef struct {
 
 %------------------------------------------------------------------------------%
 
-    %
     % Place the foreign_type declarations in the interface,
     % but don't make them visual to casual inspection.
     %
@@ -568,5 +591,3 @@ typedef struct {
 :- pragma foreign_type(c, ssl_ctx, "SSL_CTX *").
 
 %------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et tw=0 wm=0

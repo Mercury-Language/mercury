@@ -1,0 +1,41 @@
+@BOOTSTRAP_MC_ARGS@
+--no-infer-all
+--warn-known-bad-format-calls
+--warn-unknown-format-calls
+--warn-non-contiguous-clauses
+--warn-non-contiguous-foreign-procs
+--warn-inconsistent-pred-order-clauses
+--warn-unused-imports
+--warn-insts-with-functors-without-type
+--warn-suspicious-foreign-code
+--warn-dead-preds
+--warn-implicit-stream-calls
+--warn-potentially-ambiguous-pragma
+--halt-at-warn
+--no-halt-at-warn-make-int
+--no-halt-at-warn-make-opt
+--no-mercury-stdlib-dir
+--no-detect-libgrades
+-I../../library
+-I../../browser
+-I../../ssdb
+-I../../mdbcomp
+--c-include-directory ../../boehm_gc
+--c-include-directory ../../boehm_gc/include
+--c-include-directory ../../runtime
+--c-include-directory ../../library
+--c-include-directory ../../library/Mercury/mihs
+--c-include-directory ../../mdbcomp
+--c-include-directory ../../mdbcomp/Mercury/mihs
+--c-include-directory ../../browser
+--c-include-directory ../../browser/Mercury/mihs
+--c-include-directory ../../ssdb
+--c-include-directory ../../ssdb/Mercury/mihs
+--c-include-directory ../../trace
+--csharp-flag -keyfile:../../mercury.snk
+--no-java-classpath
+--java-classpath ../../library/mer_rt.jar
+--java-classpath ../../library/mer_std.jar
+--java-classpath ../../browser/mer_browser.jar
+--java-classpath ../../mdbcomp/mer_mdbcomp.jar
+--config-file ../../scripts/Mercury.config.bootstrap

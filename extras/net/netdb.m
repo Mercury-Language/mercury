@@ -1,9 +1,9 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2014-2015, 2018, 2021, 2023 The Mercury Team
 % This file is distributed under the terms specified in COPYING.LIB.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Module: netdb
 % Main Author:  Paul Bone <paul@bone.id.au>
@@ -14,8 +14,8 @@
 % This interface uses the more modern getaddrinfo(2) interface rather than
 % the old and not-thread-safe gethostbyname(2) interface.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module net.netdb.
 :- interface.
@@ -28,7 +28,7 @@
 
 :- import_module net.types.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type protocol
     --->    protocol(
@@ -42,13 +42,13 @@
 :- pred getprotobyname(string::in, maybe(protocol)::out,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type service
     --->    numeric_service(int)
     ;       string_service(string).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type lookup_result
     --->    lookup_result(
@@ -59,8 +59,7 @@
             ).
 
 :- pred lookup_host_and_service(string::in, service::in, maybe(family)::in,
-    maybe(socktype)::in, maybe_error(list(lookup_result))::out)
-    is det.
+    maybe(socktype)::in, maybe_error(list(lookup_result))::out) is det.
 
 :- pred lookup_local_socket(service::in, maybe(family)::in,
     maybe(socktype)::in, maybe_error(list(lookup_result))::out) is det.
@@ -86,8 +85,8 @@
 :- pred service_address(string::in, string::in,
     maybe_error(c_pointer)::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -121,7 +120,7 @@
 #endif
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 getprotobyname(Name, MaybeProtocol, !IO) :-
     getprotobyname_c(buffer_size, Name, CProtocol, Success, Found, !IO),
@@ -150,11 +149,8 @@ getprotobyname(Name, MaybeProtocol, !IO) :-
         Found::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-/*
-** getprotobyname_r is a GNU extension.
-*/
+// getprotobyname_r is a GNU extension.
 #if defined(__GNU_LIBRARY__)
-
     int result;
     struct protoent *temp = MR_GC_NEW(struct protoent);
     char *buffer = MR_GC_malloc_atomic(BufferSize);
@@ -162,7 +158,6 @@ getprotobyname(Name, MaybeProtocol, !IO) :-
     result = getprotobyname_r(Name, temp, buffer, BufferSize, &Protocol);
     Success = result == 0 ? MR_YES : MR_NO;
     Found = Protocol != NULL ? MR_YES : MR_NO;
-
 #else
     struct protoent *temp;
     int             num_aliases;
@@ -193,13 +188,13 @@ getprotobyname(Name, MaybeProtocol, !IO) :-
       MR_UNLOCK(&lookup_lock, ""getprotobyname_r"");
     #endif
 
-#endif /* ! __GNU_LIBRARY__ */
+#endif // ! __GNU_LIBRARY__
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type protocol_c.
-:- pragma foreign_type("C", protocol_c, "struct protoent*",
+:- pragma foreign_type("C", protocol_c, "struct protoent *",
     [can_pass_as_mercury_type]).
 
 :- pred c_protocol_to_protocol(protocol_c::in, protocol::uo) is det.
@@ -215,7 +210,9 @@ c_protocol_to_protocol(CProto, Proto) :-
 :- pragma foreign_proc("C",
     c_protocol_get_name(Proto::in, Name::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
-    "MR_make_aligned_string_copy_saved_hp(Name, Proto->p_name, NULL);").
+"
+    MR_make_aligned_string_copy_saved_hp(Name, Proto->p_name, NULL);
+").
 
 :- pred c_protocol_get_aliases(protocol_c::in, list(string)::uo) is det.
 
@@ -240,9 +237,11 @@ c_protocol_to_protocol(CProto, Proto) :-
 :- pragma foreign_proc("C",
     c_protocol_get_number(Proto::in, Number::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
-    "Number = Proto->p_proto;").
+"
+    Number = Proto->p_proto;
+").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 lookup_host_and_service(Host, Service, MaybeFamily, MaybeSocktype,
         MaybeResults) :-
@@ -280,7 +279,7 @@ make_host_and_service_result(AI, lookup_result(Family, SockType,
     ProtocolNum = AI ^ ai_protocol,
     Sockaddr = AI ^ ai_sockaddr.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred map_maybe_error(pred(T, U), maybe_error(T, E), maybe_error(U, E)).
 :- mode map_maybe_error(pred(in, out) is det, in, out) is det.
@@ -289,7 +288,7 @@ map_maybe_error(P, ok(X), ok(Y)) :-
     P(X, Y).
 map_maybe_error(_, error(E), error(E)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 %gethostbyname(Name, Result, !IO) :-
 %    gethostbyname_c(Name, Hostent, Success, Error, !IO),
@@ -331,7 +330,7 @@ map_maybe_error(_, error(E), error(E)).
 %    }
 %").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 port_address(Host, Port, MaybeSA, !IO) :-
     port_address(Host, Port, SA, Success, Errno, !IO),
@@ -346,7 +345,7 @@ port_address(Host, Port, MaybeSA, !IO) :-
 :- pred port_address(string::in, int::in, c_pointer::out,  bool::out,
     int::out, io::di, io::uo) is det.
 
-    % XXX Not thread safe as this uses gethostbyname
+    % XXX Not thread safe as this uses gethostbyname.
     %
 :- pragma foreign_proc("C",
     port_address(Host::in, Port::in, SA::out, Success::out, Errno::out,
@@ -372,7 +371,7 @@ port_address(Host, Port, MaybeSA, !IO) :-
     }
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 service_address(Service, Host, MaybeSA, !IO) :-
     service_address(Service, Host, SA, Success, Errno, !IO),
@@ -419,7 +418,7 @@ service_address(Service, Host, MaybeSA, !IO) :-
     }
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The initial length of buffers for strings (suggested by
     % getprotobyname_r(3).
@@ -428,5 +427,4 @@ service_address(Service, Host, MaybeSA, !IO) :-
 
 buffer_size = 1024.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

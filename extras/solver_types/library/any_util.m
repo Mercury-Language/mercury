@@ -1,17 +1,17 @@
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006 The University of Melbourne.
 % Copyright (C) 2018 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
 % any_util.m
 % Ralph Becket <rafe@cs.mu.OZ.AU>
-% Wed Sep  7 14:54:39 EST 2005
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %
 % Utility predicates for use with inst any values.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module any_util.
 
@@ -23,7 +23,7 @@
     % values with inst any to inst ground (the compiler recognises that inst
     % any is equivalent to ground for non-polymorphic non-solver types).
     %
-    % DON'T call this on solver type values unless you're absolutely sure they
+    % DON'T call this on solver type values unless you are absolutely sure they
     % are semantically ground.
     %
 :- pred unsafe_cast_to_ground(T::(any >> ground)) is det.
@@ -47,23 +47,15 @@
 :- mode impure_unsorted_aggregate(pred(oa) is nondet,
     pred(ia, ia, oa) is det, ia, oa) is cc_multi.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
+:- use_module    any_list.
 :- import_module solutions.
 
-:- use_module    any_list.
-
-%-----------------------------------------------------------------------------%
-
-:- pragma foreign_proc("C",
-    unsafe_cast_to_ground(_X::(any >> ground)),
-    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
-"").
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 impure_unsorted_solutions(P0::in(pred(oa) is nondet), Xs::oa) :-
     P = ( pred(X::out) is nondet :-
@@ -71,7 +63,6 @@ impure_unsorted_solutions(P0::in(pred(oa) is nondet), Xs::oa) :-
             unsafe_cast_to_ground(X)
         ),
     unsorted_solutions(P, Xs).
-
 impure_unsorted_solutions(P0::in(pred(oa) is multi), Xs::oa) :-
     P = ( pred(X::out) is multi :-
             promise_pure impure P0(X),
@@ -88,7 +79,6 @@ impure_unsorted_aggregate(P0::in(pred(out) is nondet),
             promise_pure impure A0(T, U0, U)
         ),
     unsorted_aggregate(P, A, In, Out).
-
 impure_unsorted_aggregate(P0::in(pred(oa) is nondet),
         A0::in(pred(ia, ia, oa) is det), In::ia, Out::oa) :-
     P = ( pred(T::out) is nondet :-
@@ -102,5 +92,14 @@ impure_unsorted_aggregate(P0::in(pred(oa) is nondet),
     unsafe_cast_to_ground(In),
     unsorted_aggregate(P, A, In, Out).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    unsafe_cast_to_ground(_X::(any >> ground)),
+    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
+"
+// No code needed.
+").
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

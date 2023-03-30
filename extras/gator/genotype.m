@@ -1,15 +1,15 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: genotype.m.
 % Main author: samrith.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module genotype.
 :- interface.
@@ -71,8 +71,8 @@
     %
 :- func genotype_to_string(genotype) = string is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -83,13 +83,13 @@
 :- import_module std_util.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type genotype == set(flag).
 
 :- type flag == string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Reading in a list of genotypes.
 %
@@ -110,10 +110,10 @@ read_genotypes(Path, Genotypes, !IO) :-
         io.read_file(Stream, ReadResult, !IO),
         (
             ReadResult = ok(File),
-            ( many(genotype, Genotypes0, File, []) ->
+            ( if many(genotype, Genotypes0, File, []) then
                 Genotypes = Genotypes0,
                 io.close_input(Stream, !IO)
-            ;
+            else
                 require.error("parse error while reading genotypes")
             )
         ;
@@ -131,10 +131,10 @@ read_genotypes(Path, Genotypes, !IO) :-
     list(T)::out, list(char)::in, list(char)::out) is semidet.
 
 many(P, Ps) -->
-    ( P(X) ->
+    ( if P(X) then 
         many(P, Xs),
         { Ps = [X | Xs] }
-    ;
+    else
         { Ps = [] }
     ).
 
@@ -167,7 +167,7 @@ other(Other) -->
     \+ ['\n'],
     [Other].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Genetic operators that operate on the genotype.
 %
@@ -185,13 +185,13 @@ crossover(Mother, Father, Son, Daughter, !RNG) :-
         RNG::out) is det <= random(RNG, Seed).
 
 cut(Parent, PartOfSon, PartOfDaughter, !RNG) :-
-    (
+    ( if
         set.count(Parent, NumFlags),
         NumFlags \= 0
-    ->
+    then
         next(NextRandomInt, !RNG),
         CrossoverPoint = NextRandomInt mod NumFlags
-    ;
+    else
         CrossoverPoint = 0
     ),
     set.to_sorted_list(Parent, List),
@@ -206,13 +206,13 @@ mutation(Flags, !Genotype, !RNG) :-
     Index = Next mod NumFlags,
     list.det_index0(Flags, Index, Flag),
 
-    ( set.member(Flag, !.Genotype) ->
+    ( if set.member(Flag, !.Genotype) then
         set.delete(Flag, !Genotype)
-    ;
+    else
         set.insert(Flag, !Genotype)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Printing out a list of genotypes.
 %
@@ -239,4 +239,4 @@ genotype_to_string(Genotype) = String :-
     set.to_sorted_list(Genotype, List),
     String = string.join_list(" ", List).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

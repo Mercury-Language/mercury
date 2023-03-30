@@ -1,35 +1,32 @@
-This directory contains two impure reference type modules, and a
-module that allows scoped non-backtrackable update, plus two
-example modules using these types.  These serve as an example of
-impure coding.  Generally this sort of coding is not necessary, and it
-can be quite tedious and error-prone, but occasionally it may permit
-greater efficiency than using pure Mercury code, or may permit you to
-write in Mercury what you would otherwise have to write in C.  See
-the "Impurity declarations" chapter of the Mercury Language Reference
-Manual for more information on impurity.
+This directory contains two impure reference type modules, and a module
+that allows scoped non-backtrackable update, plus two example modules
+using these types. These serve as an example of impure coding.
+Generally this sort of coding is not necessary, and it can be quite tedious
+and error-prone, but occasionally it may permit greater efficiency
+than using pure Mercury code, or may permit you to write in Mercury
+what you would otherwise have to write in C. See the "Impurity declarations"
+chapter of the Mercury Language Reference Manual for more information
+on impurity.
 
 This directory contains
 
-	reference.m		a backtrackable reference types
-	nb_reference.m		a non-backtrackable reference types
+    reference.m     a backtrackable reference types
+    nb_reference.m  a non-backtrackable reference types
 
-	scoped_update.m		scoping for non-backtrackable updates
+    scoped_update.m scoping for non-backtrackable updates
 
-	global.m		a wrapper module used for building a
-				library containing the above modules
+    global.m        a wrapper module used for building a
+                    library containing the above modules
 
-	c_reference.h		C types used to implement the reference
-				types
+    c_reference.h   C types used to implement the reference types
 
 The samples directory contains
 
-	max_of.m		an example of non-backtrackable references
-	test_max.m		test case for max_of.m
+    max_of.m        an example of non-backtrackable references
+    test_max.m      test case for max_of.m
 
 The tests directory contains
 
-	ref_test.m		tests of reference.m, nb_reference.m
-				and scoped_update.m
-	glob_test.m		tests use of c_reference.h to implement
-				global variables
+    ref_test.m      tests of reference.m, nb_reference.m and scoped_update.m
+    glob_test.m     tests use of c_reference.h to implement global variables
 

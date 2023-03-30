@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: evolve.m.
 % Main author: samrith.
@@ -13,22 +13,22 @@
 % optimal set of optimisation flags to be passed to the Mercury compiler
 % for a given program.
 %
-% It expects to be given two pieces of data as input.  The first is a
+% It expects to be given two pieces of data as input. The first is a
 % list of genotypes, where each genotype is a set of strings representing
-% optimisation flags.  The second is a list of phenotypes, where each
-% phenotype is a list of benchmarks.  These are read from the files
+% optimisation flags. The second is a list of phenotypes, where each
+% phenotype is a list of benchmarks. These are read from the files
 % generations/$n/genotypes and generations/$n/phenotypes, respectively.
 %
 % The program will then determine the next set of genotypes, which it
-% will write in the file generations/$n+1/genotypes.  It will also create
+% will write in the file generations/$n+1/genotypes. It will also create
 % the file generations/$n/ladder, which contains a table with all of the
 % genotypes and their fitness values.
 %
 % Note that this program does not perform the actual benchmarking tests,
-% nor does it control the evolution over multiple generations.  These
+% nor does it control the evolution over multiple generations. These
 % tasks are handled by the evaluate and gator scripts, respectively.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module evolve.
 :- interface.
@@ -37,8 +37,8 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -56,7 +56,7 @@
 :- import_module std_util.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     % Process any command line arguments.
@@ -119,7 +119,7 @@ main(!IO) :-
     genotype.print_genotypes(PathToNextGenotypes, NextGenotypes, !IO),
     print_ladder(PathToLadder, Fitness, Genotypes, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Command line argument parsing.
 %
@@ -170,7 +170,7 @@ option_default(first_seed, int(0)).
 option_default(second_seed, int(0)).
 option_default(third_seed, int(0)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for reading configuration files.
 %
@@ -233,7 +233,7 @@ print_ladder(Path, Fitness, Genotypes, !IO) :-
         require.error(ErrorMessage)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Miscellaneous.
 %
@@ -255,4 +255,4 @@ map_2in_2out_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], !A) :-
     P(H0, H1, H2, H3, !A),
     map_2in_2out_foldl(P, T0, T1, T2, T3, !A).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

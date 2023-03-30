@@ -5,6 +5,7 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+%
 % file: rnd.m
 % main author: conway.
 %
@@ -73,6 +74,8 @@
 :- import_module math.
 :- import_module require.
 
+%-----------------------------------------------------------------------------%
+
 irange(Min, Max, Val, !R) :-
     frange(rfloat(Min), rfloat(Max+1), FVal, !R),
     Val = rint(FVal).
@@ -94,11 +97,11 @@ shuffle(Ins, Outs, !R) :-
     rnd::in, rnd::out) is det.
 
 shuffle2(N, Ins, !Acc, !R) :-
-    ( N > 0 ->
+    ( if N > 0 then
         irange(0, N - 1, J, !R),
         delnth(Ins, J, Rest, T),
         shuffle2(N - 1, Rest, [T | !.Acc], !:Acc, !R)
-    ;
+    else
         true
     ).
 
@@ -107,10 +110,10 @@ shuffle2(N, Ins, !Acc, !R) :-
 delnth([], _, _, _) :-
     error("delnth: no enough elems!").
 delnth([X | Xs], N, Zs, Z) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         Z = X,
         Zs = Xs
-    ;
+    else
         Zs = [X|Ys],
         delnth(Xs, N-1, Ys, Z)
     ).
@@ -136,9 +139,9 @@ cumu([X - _T | Rest0], Sum, Sum1) :-
 pick([], _, _) :-
     error("pick: no things to pick from!").
 pick([N - T | Rest], P, Thing) :-
-    ( N >= P ->
+    ( if N >= P then
         Thing = T
-    ;
+    else
         pick(Rest, P - N, Thing)
     ).
 
@@ -146,9 +149,9 @@ gaussian(X, Y, !Rnd) :-
     frange(-1.0, 1.0, V1, !Rnd),
     frange(-1.0, 1.0, V2, !Rnd),
     R = V1*V1 + V2*V2,
-    ( R >= 1.0, R \= 0.0  ->
+    ( if R >= 1.0, R \= 0.0 then
         gaussian(X, Y, !Rnd)
-    ;
+    else
         Fac = sqrt(-2.0 * ln(R) / R),
         X = V1 * Fac,
         Y = V2 * Fac
@@ -179,18 +182,18 @@ rnd.init(Seed, rnd(M1, M2, Seed)) :-
 :- mode seed1(in, in, in, in, in, out, out) is det.
 
 seed1(N, SNum0, Num0, M1a, M2a, M1, M2) :-
-    (N > 0 ->
+    ( if N > 0 then
         Num1 = 30903 * SNum0 + (Num0 `unchecked_right_shift` 15),
         SNum1 = Num1 /\ ((1 `unchecked_left_shift` 15) - 1),
-        ( N >= 9 ->
+        ( if N >= 9 then
             M2b = M2a,
             set(M1a, 17 - N, SNum1, M1b)
-        ;
+        else
             M1b = M1a,
             set(M2a, 8 - N, SNum1, M2b)
         ),
         seed1(N-1, SNum1, Num1, M1b, M2b, M1, M2)
-    ;
+    else
         M1 = M1a,
         M2 = M2a
     ).
@@ -246,7 +249,7 @@ shift(Vec0, Vec1) :-
 
 ( Vec ** Ind ) = Res :-
     Vec = vec(A, B, C, D, E, F, G, H, I, J),
-    (
+    ( if
         ( Ind = 0, Res0 = A
         ; Ind = 1, Res0 = B
         ; Ind = 2, Res0 = C
@@ -258,9 +261,9 @@ shift(Vec0, Vec1) :-
         ; Ind = 8, Res0 = I
         ; Ind = 9, Res0 = J
         )
-    ->
+    then
         Res = Res0
-    ;
+    else
         error("**: out of range")
     ).
 
@@ -280,7 +283,7 @@ shift(Vec0, Vec1) :-
 
 set(Vec0, Ind, V, Vec) :-
     Vec0 = vec(A, B, C, D, E, F, G, H, I, J),
-    (
+    ( if
         ( Ind = 0, Vec1 = vec(V, B, C, D, E, F, G, H, I, J)
         ; Ind = 1, Vec1 = vec(A, V, C, D, E, F, G, H, I, J)
         ; Ind = 2, Vec1 = vec(A, B, V, D, E, F, G, H, I, J)
@@ -292,9 +295,9 @@ set(Vec0, Ind, V, Vec) :-
         ; Ind = 8, Vec1 = vec(A, B, C, D, E, F, G, H, V, J)
         ; Ind = 9, Vec1 = vec(A, B, C, D, E, F, G, H, I, V)
         )
-    ->
+    then
         Vec = Vec1
-    ;
+    else
         error("set: out of range")
     ).
 

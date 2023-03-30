@@ -5,11 +5,12 @@
 % Copyright (C) 2015, 2017-2018, 2020-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
+%---------------------------------------------------------------------------%
 %
 % Original author: Tom Conway <conway@cs.mu.oz.au>
 % Extensions: Ralph Becket <rafe@cs.mu.oz.au>
 %
-% There's scope for recoding much of this to use the more recent
+% There is scope for recoding much of this to use the more recent
 % additions to the language, if anyone feels like something to do.
 %
 %---------------------------------------------------------------------------%

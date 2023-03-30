@@ -38,75 +38,75 @@
 
 main(!IO) :-
     print("test_delaying_1: ", !IO),
-    ( test_delaying_1 ->
+    ( if test_delaying_1 then
         print("yes\n", !IO)
-    ;
+    else
         print("no\n", !IO)
     ),
 
     print("test_delaying_2: ", !IO),
-    ( test_delaying_2 ->
+    ( if test_delaying_2 then
         print("yes\n", !IO)
-    ;
+    else
         print("no\n", !IO)
     ),
 
-    ( create_solvable_delayed_goal(X, Y) ->
+    ( if create_solvable_delayed_goal(X, Y) then
         print("X = ", !IO), output_var(X, !IO), nl(!IO),
         print("Y = ", !IO), output_var(Y, !IO), nl(!IO)
-    ;
+    else
         print("Oops.\n", !IO)
     ),
 
     print("test_delaying_1: ", !IO),
-    ( test_delaying_1 ->
+    ( if test_delaying_1 then
         print("yes\n", !IO)
-    ;
+    else
         print("no\n", !IO)
     ),
 
     print("test_delaying_2: ", !IO),
-    ( test_delaying_2 ->
+    ( if test_delaying_2 then
         print("yes\n", !IO)
-    ;
+    else
         print("no\n", !IO)
     ),
 
     print("test_delaying_3: ", !IO),
-    ( create_solvable_delayed_goal(X3, Y3) ->
+    ( if create_solvable_delayed_goal(X3, Y3) then
         print("yes: X = ", !IO), output_var(X3, !IO),
         print(", Y = ", !IO), output_var(Y3, !IO), nl(!IO)
-    ;
+    else
         print("no\n", !IO)
     ),
 
     print("test_delaying_4: ", !IO),
-    ( create_unsolvable_delayed_goal(X4) ->
+    ( if create_unsolvable_delayed_goal(X4) then
         print("yes: X = ", !IO), output_var(X4, !IO), nl(!IO)
-    ;
+    else
         print("no\n", !IO)
     ),
 
     print("test_ground:\n", !IO),
     Z = var(42),
     print("Z = ", !IO), output_var(Z, !IO), nl(!IO),
-    ( var.init(Z2), var.init(Z3), Z2 = Z3, Z3 = Z ->
+    ( if var.init(Z2), var.init(Z3), Z2 = Z3, Z3 = Z then
         print("Z2 = ", !IO), output_var(Z2, !IO), nl(!IO)
-    ;
+    else
         print("oops\n", !IO)
     ),
     print("test_alias_twice:\n", !IO),
-    ( A == B, A = B ->
+    ( if A == B, A = B then
         print("A = ", !IO), output_var(A, !IO), nl(!IO),
         print("B = ", !IO), output_var(B, !IO), nl(!IO)
-    ;
+    else
         print("oops\n", !IO)
     ),
     print("test_dup_call_bug:\n", !IO), 
-    ( var.init(A1), var.init(A2), A1 = var(42) ->
+    ( if var.init(A1), var.init(A2), A1 = var(42) then
         print("A1 = ", !IO), output_var(A1, !IO), nl(!IO),
         print("A2 = ", !IO), output_var(A2, !IO), nl(!IO)
-    ;
+    else
         print("oops\n", !IO)
     ),
     print("Done.\n", !IO).

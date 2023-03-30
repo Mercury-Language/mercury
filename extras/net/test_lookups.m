@@ -74,4 +74,3 @@ write_lookup_result(lookup_result(Family, Socktype, ProtoNum, SockAddr),
     else
         SockStr = "unknown"
     ).
-

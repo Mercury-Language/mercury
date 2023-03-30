@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2000, 2005-2006, 2011 The University of Melbourne.
 % Copyright (C) 2014, 2021-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File:          mcurses.user.m
 % Main author:   conway
@@ -22,7 +22,7 @@
 %     * Scrolling.
 %     * Colour on a character by character basis.
 %
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mcurses.user.
 :- interface.
@@ -32,7 +32,7 @@
 :- import_module list.
 :- import_module pair.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The ADT used to represent a curses window.
     %
@@ -152,8 +152,8 @@
     %
 :- pred scroll(win::in, int::in, io::di, io::uo) is det.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -162,7 +162,7 @@
     #include <term.h>
 ").
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- import_module mcurses.basics.
 :- import_module mcurses.misc.
@@ -174,7 +174,7 @@
 :- import_module store.
 :- import_module string.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type curse_store_type
     --->    curse_store_type.
@@ -204,7 +204,7 @@
 :- type cursor
     --->    cursor(int, int). % X, Y
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 init(Win, !IO) :-
     init(!IO),
@@ -218,16 +218,17 @@ init(Win, !IO) :-
     set_root(Win, !IO),
     refresh(!IO).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 create(Parent, Opts, X, Y, W, H, Child, !IO) :-
     get_win(Parent, PWindow0, !IO),
     PWindow0 = win(P0, W0, H0, Opts0, PData, Visi0, Hidden),
-    require(((pred) is semidet :-
-        X >= 0, Y >= 0,
-        X+W =< W0,
-        Y+H =< H0
-    ), "create: window out of range!"),
+    require(
+        ((pred) is semidet :-
+            X >= 0, Y >= 0,
+            X+W =< W0,
+            Y+H =< H0
+        ), "create: window out of range!"),
     array.init(W * H, ' ' - [], Data),
     CWindow = win(P0, W, H, Opts, Data, [], []),
     new_win(CWindow, Child, !IO),
@@ -235,7 +236,7 @@ create(Parent, Opts, X, Y, W, H, Child, !IO) :-
     PWindow = win(Parent, W0, H0, Opts0, PData, Visi, Hidden),
     set_win(Parent, PWindow, !IO).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 destroy(Win, !IO) :-
     get_win(Win, Window, !IO),
@@ -243,16 +244,17 @@ destroy(Win, !IO) :-
     ( if Parent \= Win then % Cannot kill the root window.
         get_win(Parent, PWindow0, !IO),
         PWindow0 = win(PP, PC, PR, PO, PD, Visi0, Hidden),
-        filter((pred(Child::in) is semidet :-
-            \+ Child = child(_, _, Win)
-        ), Visi0, Visi),
+        filter(
+            ( pred(Child::in) is semidet :-
+                not Child = child(_, _, Win)
+            ), Visi0, Visi),
         PWindow = win(PP, PC, PR, PO, PD, Visi, Hidden),
         set_win(Parent, PWindow, !IO)
     else
         true
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 redraw(!IO) :-
     get_root(Root, !IO),
@@ -260,7 +262,7 @@ redraw(!IO) :-
     refresh(Root, !IO),
     doupdate(!IO).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 refresh(!IO) :-
     get_root(Root, !IO),
@@ -275,29 +277,32 @@ refresh(Win, !IO) :-
     get_win(Win, Window, !IO),
     Window = win(_Parent, Cols, Rows, Opts, Data, Visi, _Hidden),
     get_cursor(cursor(X0, Y0), !IO),
-    solutions((pred(Ti::out) is nondet :-
-        list.member(ZZ, Opts),
-        ZZ = title(Ti)
-    ), Titles),
+    solutions(
+        ( pred(Ti::out) is nondet :-
+            list.member(ZZ, Opts),
+            ZZ = title(Ti)
+        ), Titles),
     ( if list.member(border, Opts) then
-        for(Y0+1, Y0+Rows, (pred(By::in, !.IO::di, !:IO::uo) is det :-
-            cursor(X0, By, !IO),
-            putchar('|', !IO),
-            cursor(X0 + Cols + 1, By, !IO),
-            putchar('|', !IO)
-        ), !IO),
-        for(X0 + 1, X0 + Cols, (pred(Bx::in, !.IO::di, !:IO::uo) is det :-
-            cursor(Bx, Y0, !IO),
-            (
-                Titles = [],
+        for(Y0+1, Y0+Rows,
+            ( pred(By::in, !.IO::di, !:IO::uo) is det :-
+                cursor(X0, By, !IO),
+                putchar('|', !IO),
+                cursor(X0 + Cols + 1, By, !IO),
+                putchar('|', !IO)
+            ), !IO),
+        for(X0 + 1, X0 + Cols,
+            ( pred(Bx::in, !.IO::di, !:IO::uo) is det :-
+                cursor(Bx, Y0, !IO),
+                (
+                    Titles = [],
+                    putchar('-', !IO)
+                ;
+                    Titles = [_ | _],
+                    putchar('=', !IO)
+                ),
+                cursor(Bx, Y0 + Rows + 1, !IO),
                 putchar('-', !IO)
-            ;
-                Titles = [_ | _],
-                putchar('=', !IO)
-            ),
-            cursor(Bx, Y0 + Rows + 1, !IO),
-            putchar('-', !IO)
-        ), !IO),
+            ), !IO),
         cursor(X0, Y0, !IO), putchar('+', !IO),
         cursor(X0 + Cols + 1, Y0, !IO), putchar('+', !IO),
         cursor(X0, Y0 + Rows + 1, !IO), putchar('+', !IO),
@@ -323,14 +328,16 @@ refresh(Win, !IO) :-
     ),
     Xb = X0 + A,
     Yb = Y0 + A,
-    for(0, Rows - 1, (pred(Y::in, !.IO::di, !:IO::uo) is det :-
-        Offset = Y*Cols,
-        for(0, Cols - 1, (pred(X::in, !.IO::di, !:IO::uo) is det :-
-            cursor(Xb + X, Yb + Y, !IO),
-            lookup(Data, X + Offset, Char - Attribs),
-            putch(Char, Attribs, !IO)
-        ), !IO)
-    ), !IO),
+    for(0, Rows - 1,
+        ( pred(Y::in, !.IO::di, !:IO::uo) is det :-
+            Offset = Y*Cols,
+            for(0, Cols - 1,
+                ( pred(X::in, !.IO::di, !:IO::uo) is det :-
+                    cursor(Xb + X, Yb + Y, !IO),
+                    lookup(Data, X + Offset, Char - Attribs),
+                    putch(Char, Attribs, !IO)
+                ), !IO)
+        ), !IO),
     foldl(refresh_child, Visi, !IO).
 
 :- pred refresh_child(child::in, io::di, io::uo) is det.
@@ -341,7 +348,7 @@ refresh_child(child(X, Y, Win), !IO):-
     refresh(Win, !IO),
     set_cursor(cursor(X0, Y0), !IO).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred putch(char::in, list(cattr)::in, io::di, io::uo) is det.
 
@@ -415,7 +422,7 @@ putch2(Chtype0, [Attrib | Attribs], !IO) :-
     addch((chtype) C);
 ").
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred get_colour(colour::in, int::out) is det.
 
@@ -444,7 +451,7 @@ get_colour(yellow, yellow).
     Ch = (chtype) Ch0 | Attr;
 ").
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 hide(Win, !IO) :-
     get_win(Win, Window, !IO),
@@ -458,7 +465,7 @@ hide(Win, !IO) :-
     PWindow = win(PP, PC, PR, PO, PD, Visi, Hidden),
     set_win(Parent, PWindow, !IO).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 show(Win, !IO) :-
     get_win(Win, Window, !IO),
@@ -472,7 +479,7 @@ show(Win, !IO) :-
     PWindow = win(PP, PC, PR, PO, PD, Visi, Hidden),
     set_win(Parent, PWindow, !IO).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 raise(Win, !IO) :-
     get_win(Win, Window, !IO),
@@ -486,7 +493,7 @@ raise(Win, !IO) :-
     PWindow = win(PP, PC, PR, PO, PD, Visi, Hidden),
     set_win(Parent, PWindow, !IO).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 lower(Win, !IO) :-
     get_win(Win, Window, !IO),
@@ -500,18 +507,20 @@ lower(Win, !IO) :-
     PWindow = win(PP, PC, PR, PO, PD, Visi, Hidden),
     set_win(Parent, PWindow, !IO).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 clear(Win, !IO) :-
     get_win(Win, win(Parent, Cols, Rows, Opts, Data0, Visi, Hidden), !IO),
-    for(0, Rows - 1, (pred(Y::in, array_di, array_uo) is det -->
-        for(0, Cols - 1, (pred(X::in, D0::array_di, D::array_uo) is det :-
-            set(X + Y * Cols, ' ' - [], D0, D)
-        ))
-    ), u(Data0), Data),
+    for(0, Rows - 1,
+        ( pred(Y::in, array_di, array_uo) is det -->
+            for(0, Cols - 1,
+                ( pred(X::in, D0::array_di, D::array_uo) is det :-
+                    set(X + Y * Cols, ' ' - [], D0, D)
+                ))
+        ), u(Data0), Data),
     set_win(Win, win(Parent, Cols, Rows, Opts, Data, Visi, Hidden), !IO).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 scroll(Win, N, !IO) :-
     get_win(Win, win(Parent, Cols, Rows, Opts, Data0, Visi, Hidden), !IO),
@@ -519,27 +528,32 @@ scroll(Win, N, !IO) :-
         N > 0,
         N < Cols
     ), "scroll: out of range"),
-    for(0, Rows - N - 1, (pred(Y::in, array_di, array_uo) is det -->
-        for(0, Cols - 1, (pred(X::in, D0::array_di, D::array_uo) is det :-
-            lookup(D0, X + (Y + N) * Cols, C),
-            set(X + Y * Cols, C, D0, D)
-        ))
-    ), u(Data0), Data1),
-    for(Rows - N, Rows - 1, (pred(Y::in, array_di, array_uo) is det -->
-        for(0, Cols - 1, (pred(X::in, D1::array_di, Q::array_uo) is det :-
-            set(X + Y * Cols, ' ' - [], D1, Q)
-        ))
-    ), Data1, Data),
+    for(0, Rows - N - 1,
+        ( pred(Y::in, array_di, array_uo) is det -->
+            for(0, Cols - 1,
+                ( pred(X::in, D0::array_di, D::array_uo) is det :-
+                    lookup(D0, X + (Y + N) * Cols, C),
+                    set(X + Y * Cols, C, D0, D)
+                ))
+        ), u(Data0), Data1),
+    for(Rows - N, Rows - 1,
+        ( pred(Y::in, array_di, array_uo) is det -->
+            for(0, Cols - 1,
+                ( pred(X::in, D1::array_di, Q::array_uo) is det :-
+                    set(X + Y * Cols, ' ' - [], D1, Q)
+                ))
+        ), Data1, Data),
     set_win(Win, win(Parent, Cols, Rows, Opts, Data, Visi, Hidden), !IO).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 place_char(Win, X, Y, C - As, !IO) :-
     get_win(Win, win(Parent, Cols, Rows, Opts, Data0, Visi, Hidden), !IO),
-    require(((pred) is semidet :-
-        X >= 0, Y >= 0,
-        X < Cols, Y < Cols
-    ), "place_char: out of range"),
+    require(
+        ((pred) is semidet :-
+            X >= 0, Y >= 0,
+            X < Cols, Y < Cols
+        ), "place_char: out of range"),
     set(X + Y * Cols, C - As, u(Data0), Data),
     set_win(Win, win(Parent, Cols, Rows, Opts, Data, Visi, Hidden), !IO).
 
@@ -552,14 +566,15 @@ place_char(Win, X, Y, C - As, !IO) :-
     B = A;
 ").
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 place_string(Win, X, Y, Str, !IO) :-
     get_win(Win, win(Parent, Cols, Rows, Opts, Data0, Visi, Hidden), !IO),
-    require(((pred) is semidet :-
-        X >= 0, Y >= 0,
-        X < Cols, Y < Cols
-    ), "place_string: out of range"),
+    require(
+        ((pred) is semidet :-
+            X >= 0, Y >= 0,
+            X < Cols, Y < Cols
+        ), "place_string: out of range"),
     string.to_char_list(Str, Chars),
     update_data(Chars, Y * Cols, X, X + Cols, u(Data0), Data),
     set_win(Win, win(Parent, Cols, Rows, Opts, Data, Visi, Hidden), !IO).
@@ -577,7 +592,7 @@ update_data([C | Cs], Y, X, Xmax, !Data) :-
         true
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
     extern MR_Word  curse_root;
@@ -605,7 +620,7 @@ update_data([C | Cs], Y, X, Xmax, !Data) :-
     curse_root = W;
 ").
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred new_win(window::in, win::out, io::di, io::uo) is det.
 
@@ -628,7 +643,7 @@ set_win(Win, Window, !IO) :-
     store.set_mutvar(Win, Window, Curse0, Curse),
     set_curse_store(Curse, !IO).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
     extern MR_Word  curse_cursor;
@@ -656,7 +671,7 @@ set_win(Win, Window, !IO) :-
     curse_cursor = C;
 ").
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % XXX get_curse_store is not unique-mode-correct.
 % You need to be careful to ensure that get_curse_store
@@ -699,6 +714,6 @@ set_win(Win, Window, !IO) :-
     curse_store = C;
 ").
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module mcurses.user.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

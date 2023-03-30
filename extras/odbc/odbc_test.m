@@ -106,9 +106,9 @@ test_trans(Results, !DB) :-
 
 test_trans_2(Results, !DB) :-
     odbc.solutions("select * from test", Results, !DB),
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         throw("exception in test_trans_2")
-    ;
+    else
         true
     ).
 

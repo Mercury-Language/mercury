@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997-2000,2002-2003, 2005-2006, 2010-2011 The University of Melbourne.
 % Copyright (C) 2014, 2018 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: tr_store.m. 
 % Main author: fjh.
@@ -19,14 +19,14 @@
 % See store.m for documentation, and for the definition of the types
 % `store', `generic_mutvar', and `generic_ref'.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module tr_store.
 :- interface.
 :- import_module store.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % mutvars
 %
@@ -34,7 +34,7 @@
     % create a new mutable variable,
     % initialized with the specified value
     %
-:- pred tr_store.new_mutvar(T::in, generic_mutvar(T, S)::out,
+:- pred new_mutvar(T::in, generic_mutvar(T, S)::out,
     store(S)::mdi, store(S)::muo) is det.
 
     % copy_mutvar(Mutvar, Copy, S0, S)
@@ -42,20 +42,20 @@
     %   get_mutvar(Mutvar, Value, S0, S1),
     %   new_mutvar(Value, Copy,   S1, S )
     %
-:- pred tr_store.copy_mutvar(generic_mutvar(T, S)::in,
+:- pred copy_mutvar(generic_mutvar(T, S)::in,
     generic_mutvar(T, S)::out, store(S)::mdi, store(S)::muo) is det.
 
     % lookup the value stored in a given mutable variable
     %
-:- pred tr_store.get_mutvar(generic_mutvar(T, S)::in, T::out,
+:- pred get_mutvar(generic_mutvar(T, S)::in, T::out,
     store(S)::mdi, store(S)::muo) is det.
 
     % replace the value stored in a given mutable variable
     %
-:- pred tr_store.set_mutvar(generic_mutvar(T, S)::in, T::in,
+:- pred set_mutvar(generic_mutvar(T, S)::in, T::in,
     store(S)::mdi, store(S)::muo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % references
 %
@@ -69,14 +69,14 @@
     % It does however allocate one cell to hold the reference;
     % you can use new_arg_ref to avoid that.)
     %
-:- pred tr_store.new_ref(T::mdi, generic_ref(T, S)::out,
+:- pred new_ref(T::mdi, generic_ref(T, S)::out,
     store(S)::mdi, store(S)::muo) is det.
 
-    % tr_store.ref_functor(Ref, Functor, Arity):
+    % ref_functor(Ref, Functor, Arity):
     % Given a reference to a term, return the functor and arity
     % of that term.
     %
-:- pred tr_store.ref_functor(generic_ref(T, S)::in, string::out, int::out,
+:- pred ref_functor(generic_ref(T, S)::in, string::out, int::out,
     store(S)::mdi, store(S)::muo) is det.
 
     % arg_ref(Ref, ArgNum, ArgRef):      
@@ -87,7 +87,7 @@
     % It is an error if the argument number is out of range,
     % or if the argument reference has the wrong type.
     %
-:- pred tr_store.arg_ref(generic_ref(T, S)::in, int::in,
+:- pred arg_ref(generic_ref(T, S)::in, int::in,
     generic_ref(ArgT, S)::out, store(S)::mdi, store(S)::muo) is det.
 
     % new_arg_ref(Val, ArgNum, ArgRef):
@@ -97,7 +97,7 @@
     % It is an error if the argument number is out of range,
     % or if the argument reference has the wrong type.
     %
-:- pred tr_store.new_arg_ref(T::mdi, int::in, generic_ref(ArgT, S)::out,
+:- pred new_arg_ref(T::mdi, int::in, generic_ref(ArgT, S)::out,
     store(S)::mdi, store(S)::muo) is det.
 
     % set_ref(Ref, ValueRef):
@@ -107,7 +107,7 @@
     % update the store so that the term referred to by Ref
     % is replaced with the term referenced by ValueRef.
     %
-:- pred tr_store.set_ref(generic_ref(T, S)::in, generic_ref(T, S)::in,
+:- pred set_ref(generic_ref(T, S)::in, generic_ref(T, S)::in,
     store(S)::mdi, store(S)::muo) is det.
 
     % set_ref_value(Ref, Value):
@@ -116,7 +116,7 @@
     % update the store so that the term referred to by Ref
     % is replaced with Value.
     %
-:- pred tr_store.set_ref_value(generic_ref(T, S)::in, T::mdi,
+:- pred set_ref_value(generic_ref(T, S)::in, T::mdi,
     store(S)::mdi, store(S)::muo) is det.
 
     % Given a reference to a term, return that term.
@@ -124,16 +124,15 @@
     % be inefficient if used to return large terms; it
     % is most efficient with atomic terms.
     %
-:- pred tr_store.copy_ref_value(generic_ref(T, S)::in, T::uo,
+:- pred copy_ref_value(generic_ref(T, S)::in, T::uo,
     store(S)::mdi, store(S)::muo) is det.
 
     % Same as above, but without making a copy.
     % Destroys the store.
     %
-:- pred tr_store.extract_ref_value(store(S)::mdi, generic_ref(T, S)::in,
-    T::out) is det.
+:- pred extract_ref_value(store(S)::mdi, generic_ref(T, S)::in, T::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Nasty performance hacks
 %
@@ -155,14 +154,14 @@
     % or if the argument is a `no_tag' type,
     % then the behaviour is undefined, and probably harmful.
     %
-:- pred tr_store.unsafe_arg_ref(generic_ref(T, S)::in, int::in,
+:- pred unsafe_arg_ref(generic_ref(T, S)::in, int::in,
     generic_ref(ArgT, S)::out, store(S)::mdi, store(S)::muo) is det.
 
-:- pred tr_store.unsafe_new_arg_ref(T::mdi, int::in,
+:- pred unsafe_new_arg_ref(T::mdi, int::in,
     generic_ref(ArgT, S)::out, store(S)::mdi, store(S)::muo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -170,14 +169,14 @@
 
 :- pragma require_feature_set([trailing]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
     new_mutvar(Val::in, Mutvar::out, S0::mdi, S::muo),
     [promise_pure, will_not_call_mercury],
 "
     MR_incr_hp(Mutvar, 1);
-    *(MR_Word *)Mutvar = Val;
+    * (MR_Word *) Mutvar = Val;
     S = S0;
 ").
 
@@ -189,7 +188,7 @@ copy_mutvar(Mutvar, Copy, !S) :-
     get_mutvar(Mutvar::in, Val::out, S0::mdi, S::muo),
     [promise_pure, will_not_call_mercury],
 "
-    Val = *(MR_Word *)Mutvar;
+    Val = * (MR_Word *) Mutvar;
     S = S0;
 ").
 
@@ -198,18 +197,18 @@ copy_mutvar(Mutvar, Copy, !S) :-
     [promise_pure,  will_not_call_mercury],
 "
     MR_trail_current_value((MR_Word *) Mutvar);
-    *(MR_Word *)Mutvar = Val;
+    * (MR_Word *) Mutvar = Val;
     S = S0;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
     new_ref(Val::mdi, Ref::out, S0::mdi, S::muo),
     [promise_pure, will_not_call_mercury],
 "
     MR_incr_hp(Ref, 1);
-    *(MR_Word *)Ref = Val;
+    * (MR_Word *) Ref = Val;
     S = S0;
 ").
 
@@ -221,13 +220,13 @@ copy_ref_value(Ref, Val) -->
     % to, without making a copy; it is unsafe because the store
     % could later be modified, changing the returned value.
     %
-:- pred tr_store.unsafe_ref_value(generic_ref(T, S)::in, T::uo,
+:- pred unsafe_ref_value(generic_ref(T, S)::in, T::uo,
     store(S)::mdi, store(S)::muo) is det.
 :- pragma foreign_proc("C",
     unsafe_ref_value(Ref::in, Val::uo, S0::mdi, S::muo),
     [promise_pure, will_not_call_mercury],
 "
-    Val = *(MR_Word *)Ref;
+    Val = * (MR_Word *) Ref;
     S = S0;
 ").
 
@@ -261,7 +260,8 @@ ref_functor(Ref, Functor, Arity, !S) :-
     }
 
     if (arg_locn != NULL && arg_locn->MR_arg_bits != 0) {
-        MR_fatal_error(""tr_store.arg_ref: argument has packed representation"");
+        MR_fatal_error(
+            ""tr_store.arg_ref: argument has packed representation"");
     }
 
     MR_restore_transient_registers();
@@ -284,14 +284,14 @@ ref_functor(Ref, Functor, Arity, !S) :-
         &arg_type_info, &arg_ref, &arg_locn, MR_NONCANON_ALLOW))
     {
         MR_fatal_error(
-        ""tr_store.new_arg_ref: argument number out of range"");
+            ""tr_store.new_arg_ref: argument number out of range"");
     }
 
     if (MR_compare_type_info(arg_type_info,
         (MR_TypeInfo) TypeInfo_for_ArgT) != MR_COMPARE_EQUAL)
     {
         MR_fatal_error(
-        ""tr_store.new_arg_ref: argument has wrong type"");
+            ""tr_store.new_arg_ref: argument has wrong type"");
     }
 
     MR_restore_transient_registers();
@@ -300,14 +300,12 @@ ref_functor(Ref, Functor, Arity, !S) :-
         MR_incr_hp(ArgRef, 1);
         * (MR_Word *) ArgRef = MR_arg_value(arg_ref, arg_locn);
     } else if (arg_ref == &Val) {
-        /*
-        ** For no_tag types, the argument may have the same address as the
-        ** term.  Since the term (Val) is currently on the C stack, we can't
-        ** return a pointer to it; so if that is the case, then we need
-        ** to copy it to the heap before returning.
-        */
+        // For no_tag types, the argument may have the same address as the
+        // term. Since the term (Val) is currently on the C stack, we can't
+        // return a pointer to it; so if that is the case, then we need
+        // to copy it to the heap before returning.
         MR_incr_hp(ArgRef, 1);
-        *(MR_Word *)ArgRef = Val;
+        * (MR_Word *) ArgRef = Val;
     } else {
         ArgRef = (MR_Word) arg_ref;
     }
@@ -319,7 +317,7 @@ ref_functor(Ref, Functor, Arity, !S) :-
     [promise_pure, will_not_call_mercury],
 "
     MR_trail_current_value((MR_Word *) Ref);
-    *(MR_Word *)Ref = *(MR_Word *)ValRef;
+    * (MR_Word *) Ref = * (MR_Word *) ValRef;
     S = S0;
 ").
 
@@ -328,7 +326,7 @@ ref_functor(Ref, Functor, Arity, !S) :-
     [promise_pure,  will_not_call_mercury],
 "
     MR_trail_current_value((MR_Word *) Ref);
-    *(MR_Word *)Ref = Val;
+    * (MR_Word *) Ref = Val;
     S = S0;
 ").
 
@@ -336,16 +334,16 @@ ref_functor(Ref, Functor, Arity, !S) :-
     extract_ref_value(_S::mdi, Ref::in, Val::out),
     [promise_pure, will_not_call_mercury],
 "
-    Val = *(MR_Word *)Ref;
+    Val = * (MR_Word *) Ref;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
     unsafe_arg_ref(Ref::in, Arg::in, ArgRef::out, S0::mdi, S::muo),
     [promise_pure, will_not_call_mercury],
 "
-    /* unsafe - does not check type & arity, won't handle no_tag types */
+    // unsafe - does not check type & arity, won't handle no_tag types.
     MR_Word *Ptr = (MR_Word *) MR_strip_tag(Ref);
     ArgRef = (MR_Word) &Ptr[Arg];
     S = S0;
@@ -355,12 +353,12 @@ ref_functor(Ref, Functor, Arity, !S) :-
     unsafe_new_arg_ref(Val::mdi, Arg::in, ArgRef::out, S0::mdi, S::muo),
     [promise_pure, will_not_call_mercury],
 "
-    /* unsafe - does not check type & arity, won't handle no_tag types */
+    // unsafe - does not check type & arity, won't handle no_tag types.
     MR_Word *Ptr = (MR_Word *) MR_strip_tag(Val);
     ArgRef = (MR_Word) &Ptr[Arg];
     S = S0;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module tr_store.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

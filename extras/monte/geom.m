@@ -55,9 +55,13 @@
 :- pred rotateZ(shape::in(shape), float::in,
     float::in, float::in, float::in) is semidet.
 
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module math.
+
+%-----------------------------------------------------------------------------%
 
 sphere(X, Y, Z) :-
     sqr(X) + sqr(Y) + sqr(Z) =< 1.0.

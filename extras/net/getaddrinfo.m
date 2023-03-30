@@ -1,9 +1,9 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2014-2016, 2018 The Mercury Team
 % This file is distributed under the terms specified in COPYING.LIB.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Module: getaddrinfo
 % Main Author:  Paul Bone <paul@bone.id.au>
@@ -11,8 +11,8 @@
 %
 % Provide an interface to the getaddrinfo C function.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module net.getaddrinfo.
 :- interface.
@@ -24,7 +24,7 @@
 :- import_module net.netdb.
 :- import_module net.types.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type node_and_or_service
     --->    node_only(
@@ -47,7 +47,7 @@
                 ai_maybe_name   :: maybe(string)
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The address info flags bitfield.
     %
@@ -65,14 +65,14 @@
     %
 :- func gai_flag_passive = int.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred getaddrinfo(node_and_or_service::in,
     gai_flags::in, maybe(family)::in, maybe(socktype)::in,
     maybe(protocol)::in, maybe_error(list(addrinfo))::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -103,8 +103,8 @@
 #endif
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
     gai_flag_addrconfig = (Flag::out),
@@ -137,7 +137,7 @@
     #endif
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 getaddrinfo(NodeAndOrService, Flags0, MaybeFamily0, MaybeSocktype0,
         MaybeProtocol0, Result) :-
@@ -150,11 +150,13 @@ getaddrinfo(NodeAndOrService, Flags0, MaybeFamily0, MaybeSocktype0,
     else
         Flags = Flags0
     ),
-    map_maybe((pred(A::in, B::out) is det :-
+    map_maybe(
+        ( pred(A::in, B::out) is det :-
             family_int(A, B)
         ), MaybeFamily0, MaybeFamily),
     maybe_default(0, MaybeFamily, Family),
-    map_maybe((pred(A::in, B::out) is det :-
+    map_maybe(
+        ( pred(A::in, B::out) is det :-
             socktype_int(A, B)
         ), MaybeSocktype0, MaybeSocktype),
     maybe_default(0, MaybeSocktype, Socktype),
@@ -181,7 +183,7 @@ getaddrinfo(NodeAndOrService, Flags0, MaybeFamily0, MaybeSocktype0,
     getaddrinfo_c(Node::in, Service::in, Flags::in, Family::in, Socktype::in,
         Protocol::in, AddrInfoList::out, Result::out),
     [will_not_call_mercury, promise_pure, thread_safe,
-     will_not_throw_exception],
+        will_not_throw_exception],
 "
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
@@ -193,7 +195,7 @@ getaddrinfo(NodeAndOrService, Flags0, MaybeFamily0, MaybeSocktype0,
     Result = getaddrinfo(Node, Service, &hints, &AddrInfoList);
 ").
 
-%-----------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred make_node_and_service_c_strings(node_and_or_service::in,
     nullable_string::out, nullable_string::out) is det.
@@ -227,13 +229,11 @@ nas_service_is_numeric(NAS) :-
 
 service_is_numeric(numeric_service(_)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type addrinfo_c.
 
-:- pragma foreign_type("C",
-    addrinfo_c,
-    "struct addrinfo*",
+:- pragma foreign_type("C", addrinfo_c, "struct addrinfo *",
     [can_pass_as_mercury_type]).
 
 :- pred addrinfo_c_to_addrinfos(addrinfo_c::in, list(addrinfo)::out) is det.
@@ -245,17 +245,13 @@ addrinfo_c_to_addrinfos(AddrInfoC, AddrInfoList) :-
     else
         MaybeName = no
     ),
-    ( if
-        family_int(FamilyPrime, FamilyInt)
-    then
+    ( if family_int(FamilyPrime, FamilyInt) then
         Family = FamilyPrime
     else
         unexpected($file, $pred,
             "getaddrinfo returned '0' for family")
     ),
-    ( if
-        socktype_int(SocktypePrime, SocktypeInt)
-    then
+    ( if socktype_int(SocktypePrime, SocktypeInt) then
         MaybeSocktype = yes(SocktypePrime)
     else
         MaybeSocktype = no
@@ -295,7 +291,7 @@ addrinfo_c_to_addrinfos(AddrInfoC, AddrInfoList) :-
 :- pragma foreign_proc("C",
     read_addrinfo_name(AddrInfo::in, Name::out),
     [will_not_call_mercury, promise_pure, thread_safe,
-     will_not_throw_exception],
+        will_not_throw_exception],
 "
     SUCCESS_INDICATOR = AddrInfo->ai_canonname != NULL;
     if (SUCCESS_INDICATOR) {
@@ -323,7 +319,7 @@ addrinfo_c_to_addrinfos(AddrInfoC, AddrInfoList) :-
     freeaddrinfo(AddrInfo);
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func gai_ok = int.
 gai_ok = 0.
@@ -332,39 +328,37 @@ gai_ok = 0.
 :- pragma foreign_proc("C",
     gai_not_found = (Num::out),
     [will_not_call_mercury, thread_safe, promise_pure],
-    "
-        Num = EAI_NONAME;
-    ").
+"
+    Num = EAI_NONAME;
+").
 
 :- func gai_strerror(int) = string.
 
 :- pragma foreign_proc("C",
     gai_strerror(Num::in) = (String::out),
     [will_not_call_mercury, thread_safe, promise_pure],
-    "
-        MR_make_aligned_string_copy(String, gai_strerror(Num));
-    ").
+"
+    MR_make_aligned_string_copy(String, gai_strerror(Num));
+").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_default(T::in, maybe(T)::in, T::out) is det.
 
 maybe_default(Default, no, Default).
 maybe_default(_, yes(X), X).
 
-%-----------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type nullable_string.
-:- pragma foreign_type("C",
-    nullable_string,
-    "char*").
+:- pragma foreign_type("C", nullable_string, "char *").
 
 :- func null_string = nullable_string.
 
 :- pragma foreign_proc("C",
     null_string = (X::out),
     [will_not_call_mercury, promise_pure, thread_safe,
-    will_not_throw_exception],
+        will_not_throw_exception],
 "
     X = NULL;
 ").
@@ -374,10 +368,9 @@ maybe_default(_, yes(X), X).
 :- pragma foreign_proc("C",
     make_nullable_string(Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe,
-    will_not_throw_exception],
+        will_not_throw_exception],
 "
     Str = Str0;
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -170,12 +170,11 @@ reason_name(untrail_gc,         "gc").
     {
         MR_Word     saved_regs[MR_MAX_FAKE_REG];
 
-        /*
-        ** The current implementation of trailing does not preserve live
-        ** (real or fake) registers across calls to MR_reset_ticket.  Since
-        ** the called Mercury code is likely to modify these, we better make
-        ** a copy here and restore them afterwards.
-        */
+        // The current implementation of trailing does not preserve live
+        // (real or fake) registers across calls to MR_reset_ticket.
+        // Since the called Mercury code is likely to modify these,
+        // we better make a copy here and restore them afterwards.
+
         MR_save_registers();
         MR_copy_fake_regs(MR_fake_reg, saved_regs);
         ML_call_trail_closure((MR_Word) pred, reason);
@@ -189,12 +188,10 @@ reason_name(untrail_gc,         "gc").
         MR_Word     saved_regs[MR_MAX_FAKE_REG];
 
         switch(reason) {
-            case MR_undo:       /* Fall through. */
-            case MR_exception:  /* Fall through. */
+            case MR_undo:       // Fall through.
+            case MR_exception:  // Fall through.
             case MR_retry:
-                /*
-                ** See comment in ML_call_trail_closure_save_regs, above.
-                */
+                // See comment in ML_call_trail_closure_save_regs, above.
                 MR_save_registers();
                 MR_copy_fake_regs(MR_fake_reg, saved_regs);
                 ML_call_pred((MR_Word) pred);
@@ -202,7 +199,7 @@ reason_name(untrail_gc,         "gc").
                 MR_restore_registers();
                 break;
 
-            case MR_solve:  /* Fall through */
+            case MR_solve:  // Fall through.
             case MR_commit:
                 break;
 

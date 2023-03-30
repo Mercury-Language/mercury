@@ -10,7 +10,8 @@
 
 :- interface.
 
-:- import_module float, int.
+:- import_module float.
+:- import_module int.
 
 :- type box
     --->    box(
@@ -31,9 +32,13 @@
 
 :- pred monte(box::in, shape::in(shape), precision::in, volume::out) is det.
 
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module rnd.
+
+%-----------------------------------------------------------------------------%
 
 monte(Box, Shape, Precision, Volume) :-
     rnd.init(17, Rnd0),
@@ -49,10 +54,10 @@ monte(Box, Shape, Precision, Volume) :-
     int::in, int::out) is det.
 
 monte_outer_loop(Box, Shape, N, !.Rnd, !Hits) :-
-    ( N > 10000 ->
+    ( if N > 10000 then
         monte_inner_loop(Box, Shape, 10000, !Rnd, !Hits),
         monte_outer_loop(Box, Shape, N - 10000, !.Rnd, !Hits)
-    ;
+    else
         monte_inner_loop(Box, Shape, N, !.Rnd, _, !Hits)
     ).
 
@@ -60,16 +65,16 @@ monte_outer_loop(Box, Shape, N, !.Rnd, !Hits) :-
     rnd::in, rnd::out, int::in, int::out) is det.
 
 monte_inner_loop(Box, Shape, N, !Rnd, !Hits) :-
-    ( N > 0 ->
+    ( if N > 0 then
         frange(Box ^ xmin, Box ^ xmax, X, !Rnd),
         frange(Box ^ ymin, Box ^ ymax, Y, !Rnd),
         frange(Box ^ zmin, Box ^ zmax, Z, !Rnd),
-        ( call(Shape, X, Y, Z) ->
+        ( if call(Shape, X, Y, Z) then
             !:Hits = !.Hits + 1
-        ;
+        else
             true
         ),
         monte_inner_loop(Box, Shape, N - 1, !Rnd, !Hits)
-    ;
+    else
         true
     ).

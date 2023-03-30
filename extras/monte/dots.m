@@ -44,16 +44,16 @@ dots(Box, Shape, Precision, !IO) :-
     io::di, io::uo) is det.
 
 dots2(Box, Shape, N, !.Rnd, !IO) :-
-    ( N > 0 ->
+    ( if N > 0 then
         frange(Box ^ xmin, Box ^ xmax, X, !Rnd),
         frange(Box ^ ymin, Box ^ ymax, Y, !Rnd),
         frange(Box ^ zmin, Box ^ zmax, Z, !Rnd),
-        ( call(Shape, X, Y, Z) ->
+        ( if call(Shape, X, Y, Z) then
             io.format("%2.2f %2.2f ", [f(X), f(Z)], !IO)
-        ;
+        else
             true
         ),
         dots2(Box, Shape, N - 1, !.Rnd, !IO)
-    ;
+    else
         true
     ).

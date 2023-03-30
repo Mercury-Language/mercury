@@ -17,11 +17,11 @@
 % Occasionally one wants to use impose some scoping on non-backtrackable
 % changes to some memory. That is, one wants to implicitly give a specified
 % memory location two possibly different values:  the value it has inside a
-% certain scope, and the value it has outside.  Thus after a certain goal
+% certain scope, and the value it has outside. Thus after a certain goal
 % completes, one wants to reset a memory location to have the value it had on
 % entry. However, if a subsequent goal should fail forcing re-entry of the
-% scope, the value should be reset to what it was on leaving the scope.  When
-% the scope is eventually left, whether by success or failure, the memory
+% scope, the value should be reset to what it was on leaving the scope.
+% When the scope is eventually left, whether by success or failure, the memory
 % should again have its "outside the scope" value.
 %
 % This code implements this functionality. Ideally, this would be implemented
@@ -74,15 +74,13 @@
 
 #include ""mercury_trail.h""
 
-/*
-**  To handle the scoping, we use a ME_ScopeHandle data structure, which
-**  holds both the value inside and outside the scope.  Then we have
-**  four functions to handle entering and leaving the scope both
-**  forwards (on success) and backwards (on failure).  The user only
-**  needs to think about the forwards versions; the backwards
-**  functions are installed as function trail entries, and so are
-**  automatically called at the right time.
-*/
+// To handle the scoping, we use a ME_ScopeHandle data structure, which
+// holds both the value inside and outside the scope. Then we have
+// four functions to handle entering and leaving the scope both
+// forwards (on success) and backwards (on failure). The user only
+// needs to think about the forwards versions; the backwards
+// functions are installed as function trail entries, and so are
+// automatically called at the right time.
 
 #ifndef ME_SCOPEHANDLE_DEFINED
 #define ME_SCOPEHANDLE_DEFINED
@@ -112,7 +110,6 @@ void ME_exit_scope_failing(ME_ScopeHandle handle, MR_untrail_reason reason);
 
 
 :- pragma foreign_code("C", "
-
 void
 ME_enter_scope_failing(ME_ScopeHandle handle, MR_untrail_reason reason)
 {

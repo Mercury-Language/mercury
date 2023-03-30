@@ -3,6 +3,7 @@
 % Copyright (C) 2014-2015, 2018 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
+
 :- module net.
 
 :- interface.

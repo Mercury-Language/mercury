@@ -261,7 +261,7 @@ start_rule(Id, Rule) :-
     varset.init(VarSet0),
     varset.new_vars(Arity, Vars, VarSet0, VarSet1),
     list.foldl(
-        (pred(V::in, VS0::in, VS::out) is det :-
+        ( pred(V::in, VS0::in, VS::out) is det :-
             term.var_to_int(V, I),
             string.format("V%d", [i(I)], N),
             varset.name_var(V, N, VS0, VS)

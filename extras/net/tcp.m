@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2000, 2007, 2011 The University of Melbourne
 % Copyright (C) 2014-2018 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Module:   tcp
 % Main Author:  peter.ross@miscrit.be (based on code written by pma@miscrit.be)
@@ -12,8 +12,7 @@
 %
 % An implementation of TCP streams.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module net.tcp.
 :- interface.
@@ -22,12 +21,12 @@
 :- import_module stream.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type tcp.
 :- type bound_tcp.
 
-:- type tcp.result(T)
+:- type result(T)
     --->    ok(T)
     ;       error(string).
 
@@ -36,43 +35,42 @@
 :- type protocol == string. % A protocol    ie "tcp"
 :- type port     == int.    % A portnumber  ie 80 - the webserver
 
-:- pred tcp.connect(host::in, port::in, tcp.result(tcp)::out, io::di, io::uo)
+:- pred connect(host::in, port::in, tcp.result(tcp)::out, io::di, io::uo)
     is det.
 
-:- pred tcp.bind(host::in, port::in, tcp.result(bound_tcp)::out,
+:- pred bind(host::in, port::in, tcp.result(bound_tcp)::out,
     io::di, io::uo) is det.
 
-:- pred tcp.accept(bound_tcp::in, tcp.result(tcp)::out, io::di, io::uo) is det.
+:- pred accept(bound_tcp::in, tcp.result(tcp)::out, io::di, io::uo) is det.
 
-:- pred tcp.shutdown(tcp::in, io::di, io::uo) is det.
+:- pred shutdown(tcp::in, io::di, io::uo) is det.
 
     % Accesses the stream to see if there is data available, waits for a given
-    % period before timing out.  (Use this rather than a failure driven test
+    % period before timing out. (Use this rather than a failure driven test
     % and loop on connects.)
     %
-:- pred tcp.data_available(bound_tcp::in, int::in, int::out, io::di, io::uo)
+:- pred data_available(bound_tcp::in, int::in, int::out, io::di, io::uo)
     is det.
 
 :- func socket_fd(tcp) = int.
 
     % Sending data to a broken pipe will cause the SIGPIPE signal to be
-    % sent to the process.  If SIGPIPE is ignored or blocked then send()
-    % fails with EPIPE.  This predicate causes SIGPIPE signals to be
-    % ignored.
+    % sent to the process. If SIGPIPE is ignored or blocked then send()
+    % fails with EPIPE. This predicate causes SIGPIPE signals to be ignored.
     %
-:- pred tcp.ignore_sigpipe(io::di, io::uo) is det.
+:- pred ignore_sigpipe(io::di, io::uo) is det.
 
     % Restores the SIGPIPE signal handler before the last
-    % tcp.ignore_sigpipe() call.
+    % ignore_sigpipe() call.
     %
-:- pred tcp.unignore_sigpipe(io::di, io::uo) is det.
+:- pred unignore_sigpipe(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stream type class instances
 %
 
-:- type tcp.error.
+:- type error.
 
 :- instance stream(tcp, io.state).
 :- instance error(tcp.error).
@@ -85,8 +83,8 @@
 :- instance writer(tcp, character, io.state).
 :- instance writer(tcp, string, io.state).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -95,7 +93,7 @@
 :- import_module list.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type tcp
     --->    tcp(
@@ -109,39 +107,39 @@
                 c_pointer   % struct sockaddr
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-tcp.connect(Host, Port, Result, !IO) :-
+connect(Host, Port, Result, !IO) :-
     handle_connect(Host, Port, Handle, Errno, !IO),
-    ( Errno = 0 ->
+    ( if Errno = 0 then
         Result = ok(tcp(Host, Handle))
-    ;
+    else
         Result = tcp.error(tcp.error_message(Errno))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-tcp.bind(Host, Port, Result, !IO) :-
+bind(Host, Port, Result, !IO) :-
     handle_bind(Host, Port, Socket, Addr, Errno, !IO),
-    ( Errno = 0 ->
+    ( if Errno = 0 then
         Result = ok(bound_tcp(Socket, Addr))
-    ;
+    else
         Result = tcp.error(tcp.error_message(Errno))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-tcp.accept(bound_tcp(Socket, Addr), Result, !IO) :-
+accept(bound_tcp(Socket, Addr), Result, !IO) :-
     handle_accept(Socket, Addr, Handle, Errno, !IO),
-    ( Errno = 0 ->
+    ( if Errno = 0 then
         Result = ok(tcp("XXX unknown host", Handle))
-    ;
+    else
         Result = tcp.error(tcp.error_message(Errno))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-tcp.shutdown(tcp(_, Handle), !IO) :-
+shutdown(tcp(_, Handle), !IO) :-
     handle_shutdown(Handle, !IO).
 
 :- pred handle_shutdown(tcp_handle::in, io::di, io::uo) is det.
@@ -155,8 +153,8 @@ tcp.shutdown(tcp(_, Handle), !IO) :-
 
     sock = (ML_tcp *) TCP;
 
-/*  setsockopt(sock->socket, SOL_SOCKET, SO_LINGER,
-            &sockets_linger, sizeof(sockets_linger));*/
+//  setsockopt(sock->socket, SOL_SOCKET, SO_LINGER,
+//          &sockets_linger, sizeof(sockets_linger));
 
     errno=0;
     if (close(((int)sock->socket)) == SOCKET_ERROR) {
@@ -164,7 +162,7 @@ tcp.shutdown(tcp(_, Handle), !IO) :-
     }
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type tcp_handle
     --->    socket(c_pointer).
@@ -178,7 +176,7 @@ tcp.shutdown(tcp(_, Handle), !IO) :-
 
     #define  ML_error()       WSAGetLastError()
 
-#else /* !MR_WIN32 */
+#else // !MR_WIN32
 
     #include <errno.h>
     #include <unistd.h>
@@ -193,7 +191,7 @@ tcp.shutdown(tcp(_, Handle), !IO) :-
 
     #define  INVALID_SOCKET   -1
     #define  SOCKET_ERROR     -1
-#endif /* !MR_WIN32 */
+#endif // !MR_WIN32
 
 #define ADDRLEN 16
 #define BACKLOG 16
@@ -213,10 +211,9 @@ void ML_tcp_init(void);
 ").
 
 :- pragma foreign_code("C", "
-/*
-** We must ensure that the socket DLL is initialiased before use under
-** Win32.
-*/
+// We must ensure that the socket DLL is initialiased before
+// use under Win32.
+
 void ML_tcp_init(void)
 {
   #ifdef MR_WIN32
@@ -230,18 +227,19 @@ void ML_tcp_init(void)
         wVersionRequested = MAKEWORD( 2, 2 );
         err = WSAStartup(wVersionRequested, &wsaData);
 
-        if ( err != 0 ) {
+        if (err != 0) {
             MR_fatal_error(""Unable to find a usable winsock.dll\\n"");
         }
 
-        if ( LOBYTE( wsaData.wVersion ) != 2 ||
-                HIBYTE( wsaData.wVersion ) != 2 ) {
+        if (LOBYTE( wsaData.wVersion ) != 2 ||
+            HIBYTE( wsaData.wVersion ) != 2)
+        {
             WSACleanup();
             MR_fatal_error(""Unable to find a usable winsock.dll\\n"");
         }
         initialiased = MR_TRUE;
     }
-  #endif /* MR_WIN32 */
+  #endif // MR_WIN32
 }
 ").
 
@@ -278,15 +276,14 @@ void ML_tcp_init(void)
             MR_memcpy(&(addr->sin_addr), host->h_addr_list[0], host->h_length);
             addr->sin_family = host->h_addrtype;
             addr->sin_port = htons(Port);
-            /*
-            ** MR_memset(&addr, 0, sizeof(addr));
-            ** MR_memcpy((char *)&addr.sin_addr, host->h_addr, host->h_length);
-            ** addr.sin_family = host->h_addrtype;
-            ** addr.sin_port = htons(Port);
-            */
 
-            if (connect(sock->socket, (struct sockaddr *)addr, ADDRLEN) ==
-                    SOCKET_ERROR)
+            // MR_memset(&addr, 0, sizeof(addr));
+            // MR_memcpy((char *) &addr.sin_addr, host->h_addr, host->h_length);
+            // addr.sin_family = host->h_addrtype;
+            // addr.sin_port = htons(Port);
+
+            if (connect(sock->socket, (struct sockaddr *) addr, ADDRLEN) ==
+                SOCKET_ERROR)
             {
                 sock->error = ML_error();
             }
@@ -308,7 +305,7 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
     FD = sock->socket;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred handle_bind(string::in, port::in, int::out, c_pointer::out, int::out,
     io::di, io::uo) is det.
@@ -340,7 +337,8 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
             addr->sin_port = htons(Port);
 
             if (bind(Socket, (struct sockaddr *) addr, ADDRLEN)
-                    == SOCKET_ERROR) {
+                == SOCKET_ERROR)
+            {
                 Errno = ML_error();
             } else {
                 if (listen(Socket, BACKLOG) == SOCKET_ERROR) {
@@ -364,10 +362,9 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
     ML_tcp              *sock;
     struct sockaddr     *addr;
 
-    /*
-    ** For Winsock the third argument of accept is pointer to a signed
-    ** int.  On POSIX, systems, it has type socklen_t which is unsigned.
-    */
+    // For Winsock the third argument of accept is pointer to a signed int.
+    // On POSIX, systems, it has type socklen_t which is unsigned.
+
     #if defined(MR_WIN32)
         int size = sizeof(struct sockaddr_in);
     #else
@@ -390,7 +387,7 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
     Errno = sock->error;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type tcp.error
     --->    errno(int).
@@ -410,12 +407,12 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 :- instance reader(tcp, character, io.state, tcp.error) where [
     (get(T, Result, !IO) :-
         tcp.read_char(T ^ handle, Char, !IO),
-        ( Char = -1 ->
+        ( if Char = -1 then
             Result = eof
-        ; Char = -2 ->
+        else if Char = -2 then
             get_errno(T ^ handle, Errno, !IO),
             Result = error(Errno)
-        ;
+        else
             Result = ok(char.det_from_int(Char))
         )
     )
@@ -424,28 +421,30 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 :- instance reader(tcp, line, io.state, tcp.error) where [
     (get(T, Result, !IO) :-
         tcp.read_line_as_string_2(T ^ handle, ErrCode, String, !IO),
-        ( ErrCode = -1 ->
+        ( if ErrCode = -1 then
             Result = eof
-        ; ErrCode = -2 ->
+        else if ErrCode = -2 then
             get_errno(T ^ handle, Errno, !IO),
             Result = error(Errno)
-        ;
+        else
             Result = ok(line(String))
         )
     )
 ].
 
 :- instance output(tcp, io) where [
-        % XXX can one flush a socket?
+    % XXX can one flush a socket?
     flush(_, !IO)
 ].
 
 :- instance writer(tcp, character, io.state) where [
     (put(T, C, !IO) :-
         tcp.write_char(T ^ handle, C, B, !IO),
-        ( B = yes,
+        (
+            B = yes,
             true
-        ; B = no,
+        ;
+            B = no,
             get_errno(T ^ handle, Errno, !IO),
             get_error(Errno, String),
             error("put(char): " ++ String)
@@ -456,9 +455,10 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 :- instance writer(tcp, string, io.state) where [
     (put(T, S, !IO) :-
         tcp.write_string(T ^ handle, S, B, !IO),
-        ( B = yes,
-            true
-        ; B = no,
+        (
+            B = yes
+        ;
+            B = no,
             get_errno(T ^ handle, Errno, !IO),
             get_error(Errno, String),
             error("put(string): " ++ String)
@@ -466,45 +466,44 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
     )
 ].
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
-    /*
-    ** Note: some Mercury code uses the -1 and -2 constants directly.
-    */
-    #define TCP_EOF     -1
-    #define TCP_ERROR   -2
+// Note: some Mercury code uses the -1 and -2 constants directly.
+#define TCP_EOF     -1
+#define TCP_ERROR   -2
 
-    int TCP_get_char(ML_tcp *sock);
+int TCP_get_char(ML_tcp *sock);
 ").
 
 :- pragma foreign_code("C", "
-    int TCP_get_char(ML_tcp *sock)
-    {
-        if (sock->buf_pos >= sock->buf_len) {
-            /* Refill buffer. */
-            int nchars = recv(sock->socket,
-                sock->buf, sizeof(sock->buf), 0);
-            if (nchars == SOCKET_ERROR) {
-                sock->error = ML_error();
-                return TCP_ERROR;
-            } else if (nchars == 0) {
-                return TCP_EOF;
-            } else {
-                sock->buf_pos = 1;
-                sock->buf_len = nchars;
-                return sock->buf[0];
-            }
+int TCP_get_char(ML_tcp *sock)
+{
+    if (sock->buf_pos >= sock->buf_len) {
+        // Refill buffer.
+        int nchars = recv(sock->socket,
+            sock->buf, sizeof(sock->buf), 0);
+        if (nchars == SOCKET_ERROR) {
+            sock->error = ML_error();
+            return TCP_ERROR;
+        } else if (nchars == 0) {
+            return TCP_EOF;
         } else {
-            return sock->buf[sock->buf_pos++];
+            sock->buf_pos = 1;
+            sock->buf_len = nchars;
+            return sock->buf[0];
         }
+    } else {
+        return sock->buf[sock->buf_pos++];
     }
+}
 ").
 
-:- pred tcp.read_char(tcp_handle::in, int::out, io::di, io::uo) is det.
+:- pred read_char(tcp_handle::in, int::out, io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
-    tcp.read_char(Socket::in, Chr::out, _IO0::di, _IO::uo),
+    read_char(Socket::in, Chr::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
 "
     ML_tcp *sock = (ML_tcp *) Socket;
@@ -513,10 +512,11 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 
     % This implementation is based on io.read_line_as_string_2.
     %
-:- pred tcp.read_line_as_string_2(tcp_handle::in, int::out, string::out,
+:- pred read_line_as_string_2(tcp_handle::in, int::out, string::out,
     io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
-    tcp.read_line_as_string_2(TCP::in, Res::out, RetString::out,
+    read_line_as_string_2(TCP::in, Res::out, RetString::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
@@ -568,10 +568,8 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
         MR_memcpy(RetString, read_buffer, i * sizeof(MR_Char));
         RetString[i] = '\\0';
     } else {
-        /*
-        ** We can't just return NULL here, because  otherwise mdb will break
-        ** when it tries to print the string.
-        */
+        // We can't just return NULL here, because otherwise mdb will break
+        // when it tries to print the string.
         RetString = MR_make_string_const("""");
     }
     if (read_buffer != initial_read_buffer) {
@@ -579,10 +577,11 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
     }
 ").
 
-:- pred tcp.write_char(tcp_handle::in, char::in, bool::out,
+:- pred write_char(tcp_handle::in, char::in, bool::out,
     io::di, io::uo) is det.
+
 :- pragma foreign_proc(c,
-    tcp.write_char(Socket::in, Chr::in, Success::out, _IO0::di, _IO::uo),
+    write_char(Socket::in, Chr::in, Success::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
 "
     ML_tcp *sock = (ML_tcp *) Socket;
@@ -595,10 +594,11 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
     }
 ").
 
-:- pred tcp.write_string(tcp_handle::in, string::in, bool::out,
+:- pred write_string(tcp_handle::in, string::in, bool::out,
     io::di, io::uo) is det.
+
 :- pragma foreign_proc(c,
-    tcp.write_string(Socket::in, Str::in, Success::out, _IO0::di, _IO::uo),
+    write_string(Socket::in, Str::in, Success::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
 "
     ML_tcp *sock = (ML_tcp *) Socket;
@@ -612,6 +612,7 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 ").
 
 :- pred get_errno(tcp_handle::in, tcp.error::out, io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
     get_errno(Socket::in, Errno::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
@@ -620,9 +621,10 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
     Errno = sock->error;
 ").
 
-:- pred tcp.get_error(tcp.error::in, string::out) is det.
+:- pred get_error(tcp.error::in, string::out) is det.
+
 :- pragma foreign_proc("C",
-    tcp.get_error(Errno::in, Msg::out),
+    get_error(Errno::in, Msg::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     char errbuf[MR_STRERROR_BUF_SIZE];
@@ -633,11 +635,11 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
     MR_restore_transient_hp();
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    tcp.data_available(Socket::in, Wait::in, Int::out, _IO0::di, _IO::uo),
+    data_available(Socket::in, Wait::in, Int::out, _IO0::di, _IO::uo),
     [promise_pure, tabled_for_io],
 "
     ML_tcp *sock = (ML_tcp *) Socket;
@@ -659,7 +661,7 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
         FD_ZERO(&exceptfds);
         FD_SET(sock->socket,&readfds);
         if ( sockets__timeout != NULL ) {
-            /* Do a select to see if something is available......... */
+            // Do a select to see if something is available ...
             selres = select(0, &readfds, &writefds, &exceptfds,
                 sockets__timeout);
             if ( selres == 0 ) {
@@ -676,8 +678,8 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
         }
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func error_message(int) = string.
 
@@ -698,26 +700,25 @@ socket_fd(Tcp) = socket_fd_c(Tcp ^ handle).
 throw_tcp_exception(S) :-
     error(S).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
+#include <signal.h>
 
-    #include <signal.h>
-
-    #if defined(SIGPIPE)
-        extern void *TCP__prev_sigpipe_handler;
-     #endif
+#if defined(SIGPIPE)
+    extern void *TCP__prev_sigpipe_handler;
+#endif
 ").
 
 :- pragma foreign_code("C", "
-    #if defined(SIGPIPE)
-        void *TCP__prev_sigpipe_handler = SIG_DFL;
-    #endif
+#if defined(SIGPIPE)
+    void *TCP__prev_sigpipe_handler = SIG_DFL;
+#endif
 ").
 
 :- pragma foreign_proc("C",
-    tcp.ignore_sigpipe(_IO0::di, _IO::uo),
+    ignore_sigpipe(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 #if defined(SIGPIPE)
@@ -728,7 +729,7 @@ throw_tcp_exception(S) :-
 ").
 
 :- pragma foreign_proc("C",
-    tcp.unignore_sigpipe(_IO0::di, _IO::uo),
+    unignore_sigpipe(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 #if defined(SIGPIPE)
@@ -738,6 +739,6 @@ throw_tcp_exception(S) :-
 #endif
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module tcp.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

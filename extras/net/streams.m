@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2014-2016, 2018 The Mercury Team.
 % This file is distributed under the terms specified in COPYING.LIB.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Module:               net.streams.
 % Main Author:          Paul Bone
 % Stability:            low
 %
 % Provide a streams interface for sockets.
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%
+%---------------------------------------------------------------------------%
 
 :- module net.streams.
 :- interface.
@@ -23,7 +23,7 @@
 
 :- import_module net.sockets.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type socket_stream.
 
@@ -40,7 +40,7 @@
 
 :- instance stream(socket_stream, io).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- instance input(socket_stream, io).
 
@@ -50,7 +50,7 @@
 
 :- instance reader(socket_stream, line, io, streams.error).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- instance output(socket_stream, io).
 
@@ -60,8 +60,8 @@
 
 :- instance writer(socket_stream, string, io).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- implementation.
 
 :- import_module char.
@@ -81,14 +81,14 @@ stream(Socket) = socket_stream(Socket).
 
 socket(socket_stream(Socket)) = Socket.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- instance error(streams.error) where [
-        error_message(error(Str)) = Str
-    ].
+    error_message(error(Str)) = Str
+].
 
 :- instance stream(socket_stream, io) where [
-        pred(name/4) is stream_name
+    pred(name/4) is stream_name
 ].
 
 :- pred stream_name(socket_stream::in, name::out, io::di, io::uo) is det.
@@ -96,13 +96,13 @@ socket(socket_stream(Socket)) = Socket.
 stream_name(socket_stream(_Socket), Name, !IO) :-
     Name = "a socket".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- instance input(socket_stream, io) where [].
 
 :- instance reader(socket_stream, streams.byte, io, streams.error) where [
-        pred(get/4) is get_byte
-    ].
+    pred(get/4) is get_byte
+].
 
 :- pred get_byte(socket_stream::in, result(streams.byte, streams.error)::out,
     io::di, io::uo) is det.
@@ -149,7 +149,7 @@ get_line(Stream, Result, !IO) :-
     ).
 
 :- pred get_chars_until_nl(Stream::in, list(char)::in,
-        result(list(char), Error)::out, State::di, State::uo) is det
+    result(list(char), Error)::out, State::di, State::uo) is det
     <= reader(Stream, streams.byte, State, Error).
 
 get_chars_until_nl(Stream, Chars0, Result, !IO) :-
@@ -179,11 +179,11 @@ get_chars_until_nl(Stream, Chars0, Result, !IO) :-
     ).
 
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- instance output(socket_stream, io) where [
-        pred(flush/3) is flush_noop
-    ].
+    pred(flush/3) is flush_noop
+].
 
 :- pred flush_noop(socket_stream::in, io::di, io::uo) is det.
 
@@ -192,8 +192,8 @@ flush_noop(_, !IO).
     % XXX: This does not buffer writes, it is slow.
     %
 :- instance writer(socket_stream, streams.byte, io) where [
-        pred(put/4) is put_byte
-    ].
+    pred(put/4) is put_byte
+].
 
 :- pred put_byte(socket_stream::in, streams.byte::in, io::di, io::uo)
     is det.
@@ -209,8 +209,8 @@ put_byte(socket_stream(Socket), byte(Byte), !IO) :-
     ).
 
 :- instance writer(socket_stream, string, io) where [
-        pred(put/4) is put_string
-    ].
+    pred(put/4) is put_string
+].
 
 :- pred put_string(Stream::in, string::in, State::di, State::uo) is det
     <= writer(Stream, streams.byte, State).
@@ -224,5 +224,5 @@ put_string(Stream, String, !State) :-
 put_char(Stream, Char, !State) :-
     put(Stream, byte(to_int(Char)), !State).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
