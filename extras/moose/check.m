@@ -13,8 +13,8 @@
 % input to moose. It checks for the following things:
 %   - duplicate rule declarations.
 %   - declared rules with no productions.
-%   - productions with no rule declaraion.
-%   - nonterminals with no rule declaraion.
+%   - productions with no rule declaration.
+%   - nonterminals with no rule declaration.
 %   - productions that are not connected to the start rule.
 %   - productions that have no finite derivations.
 %
