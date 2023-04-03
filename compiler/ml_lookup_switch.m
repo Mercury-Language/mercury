@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
+% Copyright (C) 2014-2018, 2020-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -157,7 +158,7 @@ ml_is_lookup_switch(SwitchVar, TaggedCases, GoalInfo, CodeModel,
         ml_generate_constants_for_lookup_switch(CodeModel, OutVars,
             OtherNonLocals, TaggedCases, map.init, CaseSolnMap, !Info)
     then
-        % While the LLDS backend has to worry about about implementing trailing
+        % While the LLDS backend has to worry about implementing trailing
         % for model_non lookup switches, we do not. The MLDS backend implements
         % trailing by a HLDS-to-HLDS transform (which is in add_trail_ops.m),
         % so we can get here only if trailing is not enabled, since otherwise

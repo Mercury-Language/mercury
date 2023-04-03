@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1156,7 +1156,7 @@ construct_string_hash_cases(StrsDatas, Upgrade, TableSize,
     % of strings up to the nearest power of two, and then double it.
     % If this yields a hash table without collisions, fine.
     % Otherwise, if our caller allows us, we see whether we can avoid
-    % coliisions if we double the table size again.
+    % collisions if we double the table size again.
 
     list.length(StrsDatas, NumStrs),
     int.log2(NumStrs, LogNumStrs),
