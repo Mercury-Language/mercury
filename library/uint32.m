@@ -116,7 +116,7 @@
     % cast_from_uint8(U8) = U32:
     %
     % Convert a uint8 to a uint32.
-    % Always succeeds, and yields a result that is mathemtically equal
+    % Always succeeds, and yields a result that is mathematically equal
     % to U8.
     %
 :- func cast_from_uint8(uint8) = uint32.
@@ -137,7 +137,7 @@
     % cast_from_uint16(U16) = U32:
     %
     % Convert a uint16 to a uint32.
-    % Always succeeds, and yields a result that is mathemtically equal
+    % Always succeeds, and yields a result that is mathematically equal
     % to U16.
     %
 :- func cast_from_uint16(uint16) = uint32.
