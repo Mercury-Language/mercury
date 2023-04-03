@@ -103,7 +103,8 @@
 
     ;       int_64_switch
             % A switch on a int64 or uint64.
-            % These require special treatment on the Java backend.
+            % These require special treatment on the Java backend, because
+            % java does not support
 
     ;       string_switch
             % A switch on a string.
