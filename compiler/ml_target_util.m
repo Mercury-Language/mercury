@@ -30,8 +30,9 @@
     %
     % Note that for int switches one of our target languages (Java) does not
     % support switching on 64-bit values, so we treat that case separately.
+    % The rest of the compiler does assume that all MLDS target languages
+    % do support switches on all integer types that are smaller than that,
     %
-:- func globals_target_supports_int_switch(globals) = bool.
 :- func globals_target_supports_int64_switch(globals) = bool.
 :- func globals_target_supports_int_type_switch(globals, int_type) = bool.
 :- func globals_target_supports_string_switch(globals) = bool.
@@ -39,7 +40,6 @@
 :- func globals_target_supports_computed_goto(globals) = bool.
 :- func globals_target_supports_break_and_continue(globals) = bool.
 
-:- func target_supports_int_switch(compilation_target) = bool.
 :- func target_supports_int64_switch(compilation_target) = bool.
 :- func target_supports_string_switch(compilation_target) = bool.
 :- func target_supports_goto(compilation_target) = bool.
@@ -54,10 +54,6 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-
-globals_target_supports_int_switch(Globals) = SupportsIntSwitch :-
-    globals.get_target(Globals, Target),
-    SupportsIntSwitch = target_supports_int_switch(Target).
 
 globals_target_supports_int64_switch(Globals) = SupportsInt64Switch :-
     globals.get_target(Globals, Target),
@@ -75,7 +71,7 @@ globals_target_supports_int_type_switch(Globals, IntType)
         ; IntType = int_type_int32
         ; IntType = int_type_uint32
         ),
-        SupportsIntTypeSwitch = globals_target_supports_int_switch(Globals)
+        SupportsIntTypeSwitch = yes
     ;
         ( IntType = int_type_int64
         ; IntType = int_type_uint64
@@ -100,10 +96,6 @@ globals_target_supports_break_and_continue(Globals) = SupportsBreakContinue :-
     SupportsBreakContinue = target_supports_break_and_continue(Target).
 
 %---------------------------------------------------------------------------%
-
-target_supports_int_switch(target_c) = yes.
-target_supports_int_switch(target_csharp) = yes.
-target_supports_int_switch(target_java) = yes.
 
 target_supports_int64_switch(target_c) = yes.
 target_supports_int64_switch(target_csharp) = yes.
