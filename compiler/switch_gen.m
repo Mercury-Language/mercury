@@ -146,60 +146,55 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
 
     produce_variable(SwitchVar, SwitchVarCode, SwitchVarRval, !CLD),
 
-    find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
-        MayUseSmartIndexing),
+    find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory),
     (
-        MayUseSmartIndexing = may_not_use_smart_indexing,
+        ( SwitchCategory = ite_chain_switch
+        ; SwitchCategory = float_switch
+        ),
         order_and_generate_cases(TaggedCases, SwitchVarRval, SwitchVarType,
             SwitchVarName, CodeModel, CanFail, GoalInfo, EndLabel, MaybeEnd,
             SwitchCode, !CI, !.CLD)
     ;
-        MayUseSmartIndexing = may_use_smart_indexing,
+        ( SwitchCategory = int_max_32_switch
+        ; SwitchCategory = int_64_switch
+        ),
         module_info_get_globals(ModuleInfo, Globals),
-        (
-            ( SwitchCategory = atomic_switch
-            ; SwitchCategory = int64_switch
-            ),
-            generate_atomic_or_int64_switch(ModuleInfo, Globals,
-                CodeModel, CanFail, MaybeIntSwitchInfo, SwitchVarName,
-                SwitchVarType, SwitchVarRval, TaggedCases, GoalInfo,
-                EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
-        ;
-            SwitchCategory = string_switch,
-            generate_string_switch(Globals, CodeModel, CanFail,
-                SwitchVarName, SwitchVarType, SwitchVarRval, TaggedCases,
-                GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
-        ;
-            SwitchCategory = tag_switch,
-            num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
-            globals.get_opt_tuple(Globals, OptTuple),
-            TagSize = OptTuple ^ ot_tag_switch_size,
-            ( if NumConsIds >= TagSize, NumArms > 1 then
-                generate_tag_switch(TaggedCases, SwitchVarRval, SwitchVarType,
-                    SwitchVarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                    no, MaybeEnd, SwitchCode, !CI, !.CLD)
-            else
-                order_and_generate_cases(TaggedCases, SwitchVarRval,
-                    SwitchVarType, SwitchVarName, CodeModel, CanFail,
-                    GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
-            )
-        ;
-            SwitchCategory = float_switch,
-            order_and_generate_cases(TaggedCases, SwitchVarRval, SwitchVarType,
+        generate_int_switch(ModuleInfo, Globals,
+            CodeModel, CanFail, MaybeIntSwitchInfo, SwitchVarName,
+            SwitchVarType, SwitchVarRval, TaggedCases, GoalInfo,
+            EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+    ;
+        SwitchCategory = string_switch,
+        module_info_get_globals(ModuleInfo, Globals),
+        generate_string_switch(Globals, CodeModel, CanFail,
+            SwitchVarName, SwitchVarType, SwitchVarRval, TaggedCases,
+            GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+    ;
+        SwitchCategory = tag_switch,
+        num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.get_opt_tuple(Globals, OptTuple),
+        TagSize = OptTuple ^ ot_tag_switch_size,
+        ( if NumConsIds >= TagSize, NumArms > 1 then
+            generate_tag_switch(TaggedCases, SwitchVarRval, SwitchVarType,
                 SwitchVarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                MaybeEnd, SwitchCode, !CI, !.CLD)
+                no, MaybeEnd, SwitchCode, !CI, !.CLD)
+        else
+            order_and_generate_cases(TaggedCases, SwitchVarRval,
+                SwitchVarType, SwitchVarName, CodeModel, CanFail,
+                GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
         )
     ),
     Code = SwitchVarCode ++ SwitchCode,
     after_all_branches(StoreMap, MaybeEnd, !.CI, !:CLD).
 
-:- pred generate_atomic_or_int64_switch(module_info::in, globals::in,
+:- pred generate_int_switch(module_info::in, globals::in,
     code_model::in, can_fail::in, maybe_int_switch_info::in,
     string::in, mer_type::in, rval::in, list(tagged_case)::in,
     hlds_goal_info::in, label::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-generate_atomic_or_int64_switch(ModuleInfo, Globals, CodeModel, CanFail,
+generate_int_switch(ModuleInfo, Globals, CodeModel, CanFail,
         MaybeIntSwitchInfo, SwitchVarName, SwitchVarType, SwitchVarRval,
         TaggedCases, GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD) :-
     num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),

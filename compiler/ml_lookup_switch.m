@@ -74,7 +74,7 @@
 
     % Generate MLDS code for the lookup switch.
     %
-:- pred ml_gen_atomic_lookup_switch(prog_var::in,
+:- pred ml_gen_int_max_32_lookup_switch(prog_var::in,
     list(tagged_case)::in, ml_lookup_switch_info::in,
     code_model::in, prog_context::in, int::in, int::in,
     need_bit_vec_check::in, need_range_check::in, mlds_stmt::out,
@@ -256,7 +256,7 @@ ml_record_lookup_for_tagged_cons_id(GetTag, SolnConsts, TaggedConsId,
 
 %---------------------------------------------------------------------------%
 
-ml_gen_atomic_lookup_switch(SwitchVar, TaggedCases, LookupSwitchInfo,
+ml_gen_int_max_32_lookup_switch(SwitchVar, TaggedCases, LookupSwitchInfo,
         CodeModel, Context, StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck,
         Stmt, !Info) :-
     LookupSwitchInfo =

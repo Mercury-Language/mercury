@@ -179,78 +179,82 @@ ml_gen_switch(SwitchVar, CanFail, CodeModel, GoalInfo, Context, Cases,
     % switch arms from trying to use map entries added by earlier switch arms.
     ml_gen_info_get_packed_word_map(!.Info, EntryPackedWordMap),
 
-    find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
-        MayUseSmartIndexing),
+    find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory),
     (
-        MayUseSmartIndexing = may_not_use_smart_indexing,
+        ( SwitchCategory = ite_chain_switch
+        ; SwitchCategory = float_switch
+        ),
         ml_switch_generate_if_then_else_chain(TaggedCases, SwitchVar,
             CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info),
         Decls = []
     ;
-        MayUseSmartIndexing = may_use_smart_indexing,
+        SwitchCategory = int_max_32_switch,
+        ml_gen_smart_int_max_32_switch(SwitchVar, SwitchVarType, CanFail,
+            TaggedCases, MaybeIntSwitchInfo, CodeModel, GoalInfo,
+            EntryPackedWordMap, Context, Stmts, !Info),
+        Decls = []
+    ;
+        SwitchCategory = int_64_switch,
+        module_info_get_globals(ModuleInfo, Globals),
+        Int64SwitchSupported = globals_target_supports_int64_switch(Globals),
         (
-            SwitchCategory = atomic_switch,
-            ml_gen_smart_atomic_switch(SwitchVar, SwitchVarType, CanFail,
-                TaggedCases, MaybeIntSwitchInfo, CodeModel, GoalInfo,
-                EntryPackedWordMap, Context, Stmts, !Info),
-            Decls = []
+            Int64SwitchSupported = yes,
+            ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
+                CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info)
         ;
-            SwitchCategory = int64_switch,
-            ml_gen_smart_int64_switch(SwitchVar, CanFail, TaggedCases,
-                CodeModel, EntryPackedWordMap, Context, Stmts, !Info),
-            Decls = []
-        ;
-            SwitchCategory = string_switch,
-            ml_gen_smart_string_switch(SwitchVar, SwitchVarEntry,
-                CanFail, CodeModel, GoalInfo, Context, TaggedCases,
-                EntryPackedWordMap, Decls, Stmts, !Info)
-        ;
-            SwitchCategory = tag_switch,
-            num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
-            module_info_get_globals(ModuleInfo, Globals),
-            globals.get_opt_tuple(Globals, OptTuple),
-            TagSize = OptTuple ^ ot_tag_switch_size,
-            ( if
-                NumConsIds >= TagSize,
-                NumArms > 1,
-                globals_target_supports_int_switch(Globals) = yes,
-                ml_generate_tag_switch_if_possible(SwitchVar, SwitchVarEntry,
-                    CodeModel, CanFail, Context, EntryPackedWordMap,
-                    TaggedCases, StmtsPrime, !Info)
-            then
-                Stmts = StmtsPrime
-            else
-                ml_switch_generate_if_then_else_chain(TaggedCases,
-                    SwitchVar, CodeModel, CanFail, EntryPackedWordMap, Context,
-                    Stmts, !Info)
-            ),
-            Decls = []
-        ;
-            SwitchCategory = float_switch,
+            Int64SwitchSupported = no,
+            ml_switch_generate_if_then_else_chain(TaggedCases, SwitchVar,
+                CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info)
+        ),
+        Decls = []
+    ;
+        SwitchCategory = string_switch,
+        ml_gen_smart_string_switch(SwitchVar, SwitchVarEntry,
+            CanFail, CodeModel, GoalInfo, Context, TaggedCases,
+            EntryPackedWordMap, Decls, Stmts, !Info)
+    ;
+        SwitchCategory = tag_switch,
+        num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.get_opt_tuple(Globals, OptTuple),
+        TagSize = OptTuple ^ ot_tag_switch_size,
+        ( if
+            NumConsIds >= TagSize,
+            NumArms > 1,
+            globals_target_supports_int_switch(Globals) = yes,
+            ml_generate_tag_switch_if_possible(SwitchVar, SwitchVarEntry,
+                CodeModel, CanFail, Context, EntryPackedWordMap,
+                TaggedCases, StmtsPrime, !Info)
+        then
+            Stmts = StmtsPrime
+        else
             ml_switch_generate_if_then_else_chain(TaggedCases,
                 SwitchVar, CodeModel, CanFail, EntryPackedWordMap, Context,
-                Stmts, !Info),
-            Decls = []
-        )
+                Stmts, !Info)
+        ),
+        Decls = []
     ),
     % Start the code *after* the whole switch with EntryPackedWordMap as well,
     % to prevent that code from trying to use map entries added by a switch arm
     % that may not have been taken.
     ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info).
 
-:- pred ml_gen_smart_atomic_switch(prog_var::in, mer_type::in,
+:- pred ml_gen_smart_int_max_32_switch(prog_var::in, mer_type::in,
     can_fail::in, list(tagged_case)::in, maybe_int_switch_info::in,
     code_model::in, hlds_goal_info::in, packed_word_map::in, prog_context::in,
     list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_smart_atomic_switch(SwitchVar, SwitchVarType, CanFail, TaggedCases,
+ml_gen_smart_int_max_32_switch(SwitchVar, SwitchVarType, CanFail, TaggedCases,
         MaybeIntSwitchInfo, CodeModel, GoalInfo, EntryPackedWordMap, Context,
         Stmts, !Info) :-
     num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
+    ml_gen_info_get_high_level_data(!.Info, HighLevelData),
     ( if
-        ml_gen_info_get_high_level_data(!.Info, no),
+        HighLevelData = no,
+        % XXX It should be possible to implement lookup switches
+        % for Java and C# (HighLevelData = yes) as well.
         MaybeIntSwitchInfo = int_switch(IntSwitchInfo),
         IntSwitchInfo = int_switch_info(LowerLimit, UpperLimit, NumValues),
         globals.get_opt_tuple(Globals, OptTuple),
@@ -260,46 +264,28 @@ ml_gen_smart_atomic_switch(SwitchVar, SwitchVarType, CanFail, TaggedCases,
         NumArms > 1,
         ReqDensity = OptTuple ^ ot_lookup_switch_req_density,
         filter_out_failing_cases_if_needed(CodeModel,
-            TaggedCases, FilteredTaggedCases,
-            CanFail, FilteredCanFail),
+            TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
         find_int_lookup_switch_params(ModuleInfo, SwitchVarType,
             FilteredCanFail, LowerLimit, UpperLimit, NumValues,
-            ReqDensity, NeedBitVecCheck, NeedRangeCheck,
-            FirstVal, LastVal),
+            ReqDensity, NeedBitVecCheck, NeedRangeCheck, FirstVal, LastVal),
         ml_is_lookup_switch(SwitchVar, FilteredTaggedCases, GoalInfo,
             CodeModel, MaybeLookupSwitchInfo, !Info),
         MaybeLookupSwitchInfo = yes(LookupSwitchInfo)
     then
-        ml_gen_atomic_lookup_switch(SwitchVar, TaggedCases, LookupSwitchInfo,
-            CodeModel, Context, FirstVal, LastVal,
+        ml_gen_int_max_32_lookup_switch(SwitchVar, TaggedCases,
+            LookupSwitchInfo, CodeModel, Context, FirstVal, LastVal,
             NeedBitVecCheck, NeedRangeCheck, LookupStmt, !Info),
         Stmts = [LookupStmt]
     else if
+        % XXX We should delete this test (and the function it calls),
+        % because all of our current AND foreseeable targets support
+        % switches on ints up to 32 bits in size. The only target we had
+        % without this support was the .NET IL.
         globals_target_supports_int_switch(Globals) = yes
     then
         ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
             CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info)
     else
-        ml_switch_generate_if_then_else_chain(TaggedCases, SwitchVar,
-            CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info)
-    ).
-
-:- pred ml_gen_smart_int64_switch(prog_var::in,
-    can_fail::in, list(tagged_case)::in, code_model::in,
-    packed_word_map::in, prog_context::in,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
-
-ml_gen_smart_int64_switch(SwitchVar, CanFail, TaggedCases, CodeModel,
-        EntryPackedWordMap, Context, Stmts, !Info) :-
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    Int64SwitchSupported = globals_target_supports_int64_switch(Globals),
-    (
-        Int64SwitchSupported = yes,
-        ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
-            CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info)
-    ;
-        Int64SwitchSupported = no,
         ml_switch_generate_if_then_else_chain(TaggedCases, SwitchVar,
             CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info)
     ).
@@ -339,6 +325,14 @@ ml_gen_smart_string_switch(SwitchVar, SwitchVarEntry, CanFail, CodeModel,
             % If we cannot use a trie, a hash switch or binary switch,
             % a native string switch in the target language will probably
             % be faster than a not-very-short if-then-else chain.
+            %
+            % XXX This is not necessarily true: a hash switch or a binary
+            % switch could well be faster than an if-then-else chain.
+            % It is true that a trie will probably be slow, because
+            % both MLDS backends that use high level data (Java and C#)
+            % use UTF-16. This means that each trie node has to implement
+            % a 64k-way switch, which requires within-node searching
+            % if we don't want to consume unreasonable amounts of memory.
             ml_gen_info_get_high_level_data(!.Info, yes)
         )
     then
@@ -351,11 +345,19 @@ ml_gen_smart_string_switch(SwitchVar, SwitchVarEntry, CanFail, CodeModel,
         % a hash switch, or a binary switch, and since the tests above
         % have ruled out a native target language switch as well,
         % the if-then-else chain is our only remaining option.
+        % XXX But see the XXX above.
         (
             ml_gen_info_get_high_level_data(!.Info, yes)
         ;
             globals_target_supports_computed_goto(Globals) = no,
+            % XXX This test cannot succeed if reached, because
+            % - when targeting Java or C#, high_level_data will be yes,
+            %   so the success of the first disjunct just above
+            %   will prevent backtracking to this call, and
+            % - the C backend supports computed gotos.
             globals_target_supports_int_switch(Globals) = no
+            % XXX This test cannot succeed, because ALL our current targets
+            % support int switches.
         )
     then
         ml_switch_generate_if_then_else_chain(FilteredTaggedCases, SwitchVar,
@@ -378,6 +380,11 @@ ml_gen_smart_string_switch(SwitchVar, SwitchVarEntry, CanFail, CodeModel,
             StringTrieSwitchSize = OptTuple ^ ot_string_trie_switch_size,
             NumConsIds >= StringTrieSwitchSize,
             globals.get_target(Globals, target_c)
+            % We currently do not need the above test, because
+            % - with high_level_data = yes, execution will take the then-part
+            %   just above, and
+            % - in the MLDS backend, high_level_data is currently no
+            %   ONLY for the C backend.
         then
             (
                 MaybeLookupSwitchInfo = yes(LookupSwitchInfo),

@@ -87,23 +87,6 @@
 % Stuff for categorizing switches.
 %
 
-:- type switch_category
-    --->    atomic_switch
-            % A switch on int, uint, char, enum or a 8-, 16 or 32-bit signed or
-            % unsigned integer.
-
-    ;       int64_switch
-            % A switch on a 64-bit integer.
-            % These require special treatment on the Java backend.
-
-    ;       string_switch
-    ;       tag_switch
-    ;       float_switch.
-
-    % Convert a type constructor category to a switch category.
-    %
-:- func type_ctor_cat_to_switch_cat(type_ctor_category) = switch_category.
-
     % Return an estimate of the runtime cost of a constructor test for the
     % given tag. We try to put the cheap tests first.
     %
@@ -111,15 +94,35 @@
     %
 :- func estimate_switch_tag_test_cost(cons_tag) = int.
 
-:- type may_use_smart_indexing
-    --->    may_not_use_smart_indexing
-    ;       may_use_smart_indexing.
+:- type switch_category
+    --->    ite_chain_switch
+            % A chain of if-then-elses; a dumb switch.
 
-    % Succeeds if smart indexing for the given switch category has been
-    % disabled by the user on the command line.
+    ;       int_max_32_switch
+            % A switch on int, uint, char, enum, or intN/uintN where N < 64.
+
+    ;       int_64_switch
+            % A switch on a int64 or uint64.
+            % These require special treatment on the Java backend.
+
+    ;       string_switch
+            % A switch on a string.
+
+    ;       float_switch
+            % A switch on a float.
+
+    ;       tag_switch.
+            % A switch on a value of a non-enum, non-notag
+            % discriminated union type, with a primary tag and possible
+            % local and/or remote secondary tags.
+
+    % If smart switches on values of the given type are allowed by the
+    % option values in the module_info, then return switch category wrapped up
+    % inside may_use_smart_indexing. Otherwise, return
+    % may_not_use_smart_indexing.
     %
 :- pred find_switch_category(module_info::in, mer_type::in,
-    switch_category::out, may_use_smart_indexing::out) is det.
+    switch_category::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -729,57 +732,6 @@ num_cons_ids_in_tagged_cases_loop([TaggedCase | TaggedCases],
 % Stuff for categorizing switches.
 %
 
-type_ctor_cat_to_switch_cat(CtorCat) = SwitchCat :-
-    (
-        CtorCat = ctor_cat_builtin(cat_builtin_int(IntType)),
-        (
-            ( IntType = int_type_int
-            ; IntType = int_type_uint
-            ; IntType = int_type_int8
-            ; IntType = int_type_uint8
-            ; IntType = int_type_int16
-            ; IntType = int_type_uint16
-            ; IntType = int_type_int32
-            ; IntType = int_type_uint32
-            ),
-            SwitchCat = atomic_switch
-        ;
-            ( IntType = int_type_int64
-            ; IntType = int_type_uint64
-            ),
-            SwitchCat = int64_switch
-        )
-    ;
-        ( CtorCat = ctor_cat_enum(_)
-        ; CtorCat = ctor_cat_builtin(cat_builtin_char)
-        ),
-        SwitchCat = atomic_switch
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_string),
-        SwitchCat = string_switch
-    ;
-        CtorCat = ctor_cat_builtin(cat_builtin_float),
-        SwitchCat = float_switch
-    ;
-        CtorCat = ctor_cat_user(cat_user_general),
-        SwitchCat = tag_switch
-    ;
-        ( CtorCat = ctor_cat_builtin_dummy
-        ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
-        ; CtorCat = ctor_cat_user(cat_user_notag)
-        ; CtorCat = ctor_cat_user(cat_user_abstract_dummy)
-        ; CtorCat = ctor_cat_user(cat_user_abstract_notag)
-        ; CtorCat = ctor_cat_tuple
-        ; CtorCat = ctor_cat_system(_)
-        ; CtorCat = ctor_cat_variable
-        ; CtorCat = ctor_cat_void
-        ; CtorCat = ctor_cat_higher_order
-        ),
-        % You can't have a switch without at least two arms, or without values
-        % that can be deconstructed.
-        unexpected($pred, "bad type ctor cat")
-    ).
-
 estimate_switch_tag_test_cost(ConsTag) = Cost :-
     (
         ( ConsTag = int_tag(_)
@@ -859,10 +811,11 @@ estimate_switch_tag_test_cost(ConsTag) = Cost :-
         unexpected($pred, "non-switch tag")
     ).
 
-find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
-        MayUseSmartIndexing) :-
+%-----------------------------------------------------------------------------%
+
+find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory) :-
     SwitchTypeCtorCat = classify_type(ModuleInfo, SwitchVarType),
-    SwitchCategory = type_ctor_cat_to_switch_cat(SwitchTypeCtorCat),
+    SwitchCategory0 = type_ctor_cat_to_switch_cat(SwitchTypeCtorCat),
 
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
@@ -875,13 +828,13 @@ find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
             % We cannot use smart indexing if smart indexing is turned off
             % for this category of switches.
             SmartIndexingForCategory = is_smart_indexing_allowed_for_category(
-                Globals, SwitchCategory),
+                Globals, SwitchCategory0),
             SmartIndexingForCategory = no
         )
     then
-        MayUseSmartIndexing = may_not_use_smart_indexing
+        SwitchCategory = ite_chain_switch
     else
-        MayUseSmartIndexing = may_use_smart_indexing
+        SwitchCategory = SwitchCategory0
     ).
 
 :- func is_smart_indexing_allowed_for_category(globals, switch_category)
@@ -890,7 +843,10 @@ find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
 is_smart_indexing_allowed_for_category(Globals, SwitchCategory) = Allowed :-
     globals.get_opt_tuple(Globals, OptTuple),
     (
-        SwitchCategory = atomic_switch,
+        SwitchCategory = ite_chain_switch,
+        Allowed = yes
+    ;
+        SwitchCategory = int_max_32_switch,
         Atomic = OptTuple ^ ot_use_smart_indexing_atomic,
         ( Atomic = use_smart_indexing_atomic, Allowed = yes
         ; Atomic = do_not_use_smart_indexing_atomic, Allowed = no
@@ -914,13 +870,68 @@ is_smart_indexing_allowed_for_category(Globals, SwitchCategory) = Allowed :-
         ; Float = do_not_use_smart_indexing_float, Allowed = no
         )
     ;
-        SwitchCategory = int64_switch,
+        SwitchCategory = int_64_switch,
         % We do not have a separate option for controlling smart indexing
         % of 64-bit integers.
         Gen = OptTuple ^ ot_use_smart_indexing,
         ( Gen = use_smart_indexing, Allowed = yes
         ; Gen = do_not_use_smart_indexing, Allowed = no
         )
+    ).
+
+    % Convert a type constructor category to a switch category.
+    %
+:- func type_ctor_cat_to_switch_cat(type_ctor_category) = switch_category.
+
+type_ctor_cat_to_switch_cat(CtorCat) = SwitchCat :-
+    (
+        CtorCat = ctor_cat_builtin(cat_builtin_int(IntType)),
+        (
+            ( IntType = int_type_int
+            ; IntType = int_type_uint
+            ; IntType = int_type_int8
+            ; IntType = int_type_uint8
+            ; IntType = int_type_int16
+            ; IntType = int_type_uint16
+            ; IntType = int_type_int32
+            ; IntType = int_type_uint32
+            ),
+            SwitchCat = int_max_32_switch
+        ;
+            ( IntType = int_type_int64
+            ; IntType = int_type_uint64
+            ),
+            SwitchCat = int_64_switch
+        )
+    ;
+        ( CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_builtin(cat_builtin_char)
+        ),
+        SwitchCat = int_max_32_switch
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_string),
+        SwitchCat = string_switch
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_float),
+        SwitchCat = float_switch
+    ;
+        CtorCat = ctor_cat_user(cat_user_general),
+        SwitchCat = tag_switch
+    ;
+        ( CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
+        ; CtorCat = ctor_cat_user(cat_user_notag)
+        ; CtorCat = ctor_cat_user(cat_user_abstract_dummy)
+        ; CtorCat = ctor_cat_user(cat_user_abstract_notag)
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_higher_order
+        ),
+        % You can't have a switch without at least two arms, or without values
+        % that can be deconstructed.
+        unexpected($pred, "bad type ctor cat")
     ).
 
 %-----------------------------------------------------------------------------%
