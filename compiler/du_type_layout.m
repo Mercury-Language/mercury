@@ -4045,6 +4045,7 @@ module_visibilities_allow_direct_arg(TypeStatus, ArgCond) = AllowDirectArg :-
     compilation_target::in, foreign_type_assertions::out) is semidet.
 
 is_foreign_type_body_for_target(ForeignType, Target, Assertions) :-
+    require_complete_switch [Target]
     (
         Target = target_c,
         ForeignType ^ c = yes(type_details_foreign(_, _, Assertions))
