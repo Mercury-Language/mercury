@@ -776,11 +776,19 @@ how_to_construct_is_acceptable(Info, How) :-
 
 %---------------------------------------------------------------------------%
 
+    % XXX This is the fifth occurrence of this type in the compiler.
+    % All these occurrence should be replaced by one single copy
+    % in central place. This should be the current maybe_succeeded.m,
+    % probably renamed to something like maybe_types.m.
+:- type maybe_changed
+    --->    unchanged
+    ;       changed.
+
     % The purpose of this predicate is to short-circuit variable-to-variable
     % equivalences in structure arguments.
     %
-    % The kind of situation where this matters is a sequence of
-    % updates to various fields of a structure. Consider the code
+    % The kind of situation where this matters is a sequence of updates
+    % to various fields of a structure. Consider the code
     %
     %   !S ^ f1 = F1,
     %   !S ^ f2 = F2
@@ -824,7 +832,7 @@ how_to_construct_is_acceptable(Info, How) :-
     % just the cell variable on the stack, and later loading it from the stack
     % and then reading the fields from the heap, (b) is almost certainly
     % faster, since it does 1 store and 3 loads vs 3 stores and 3 loads.
-    % When reusing just one or two fields, the difference almost certainly
+    % When reusing just one or two fields, the difference is almost certainly
     % going to be minor, and its direction (which approach is better) will
     % probably depend on information we don't have right now. I (zs) think
     % that not requiring extra variables to be stored in stack slots is
@@ -840,29 +848,31 @@ how_to_construct_is_acceptable(Info, How) :-
 common_standardize_and_record_construct(Var, TypeCtor, ConsId, ArgVars, VarEqv,
         GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !CommonStruct, !Info) :-
     SinceCallVars = !.CommonStruct ^ since_call_vars,
-    list.map(find_representative(SinceCallVars, VarEqv),
-        ArgVars, ArgRepnVars),
-    ( if
-        ArgRepnVars = ArgVars
-    then
+    find_representatives(SinceCallVars, VarEqv, ArgVars, ArgRepnVars,
+        unchanged, Changed),
+    (
+        Changed = unchanged,
         GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
-    else if
-        GoalExpr0 = unify(Var, RHS0, UnifyMode, Unification0, Ctxt),
-        RHS0 = rhs_functor(ConsId, IsExistConstr, ArgVars),
-        Unification0 = construct(Var, ConsId, ArgVars, ArgModes, How,
-            Uniq, SubInfo)
-    then
-        Unification = construct(Var, ConsId, ArgRepnVars, ArgModes, How,
-            Uniq, SubInfo),
-        RHS = rhs_functor(ConsId, IsExistConstr, ArgRepnVars),
-        GoalExpr = unify(Var, RHS, UnifyMode, Unification, Ctxt),
-        set_of_var.list_to_set([Var | ArgRepnVars], NonLocals),
-        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-        !CommonStruct ^ var_eqv := VarEqv,
-        simplify_info_set_rerun_quant_instmap_delta(!Info)
-    else
-        unexpected($pred, "GoalExpr0 has unexpected shape")
+    ;
+        Changed = changed,
+        ( if
+            GoalExpr0 = unify(Var, RHS0, UnifyMode, Unification0, Ctxt),
+            RHS0 = rhs_functor(ConsId, IsExistConstr, ArgVars),
+            Unification0 = construct(Var, ConsId, ArgVars, ArgModes, How,
+                Uniq, SubInfo)
+        then
+            Unification = construct(Var, ConsId, ArgRepnVars, ArgModes, How,
+                Uniq, SubInfo),
+            RHS = rhs_functor(ConsId, IsExistConstr, ArgRepnVars),
+            GoalExpr = unify(Var, RHS, UnifyMode, Unification, Ctxt),
+            set_of_var.list_to_set([Var | ArgRepnVars], NonLocals),
+            goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
+            !CommonStruct ^ var_eqv := VarEqv,
+            simplify_info_set_rerun_quant_instmap_delta(!Info)
+        else
+            unexpected($pred, "GoalExpr0 has unexpected shape")
+        )
     ),
     Struct = structure(Var, ArgRepnVars),
     record_cell_in_maps(TypeCtor, ConsId, Struct, VarEqv, !CommonStruct).
@@ -874,17 +884,22 @@ common_standardize_and_record_construct(Var, TypeCtor, ConsId, ArgVars, VarEqv,
     % See the comment on common_standardize_and_record_construct
     % for the reason why we do this.
     % 
-:- pred find_representative(set_of_progvar::in,
-    eqvclass(prog_var)::in, prog_var::in, prog_var::out) is det.
+:- pred find_representatives(set_of_progvar::in,
+    eqvclass(prog_var)::in, list(prog_var)::in, list(prog_var)::out,
+    maybe_changed::in, maybe_changed::out) is det.
 
-find_representative(SinceCallVars, VarEqv, Var, RepnVar) :-
+find_representatives(_SinceCallVars, _VarEqv, [], [], !Changed).
+find_representatives(SinceCallVars, VarEqv, [Var | Vars], [RepnVar | RepnVars],
+        !Changed) :-
     EqvVarsSet = get_equivalent_elements(VarEqv, Var),
     set.to_sorted_list(EqvVarsSet, EqvVars),
     ( if find_representative_loop(SinceCallVars, EqvVars, RepnVarPrime) then
-        RepnVar = RepnVarPrime
+        RepnVar = RepnVarPrime,
+        !:Changed = changed
     else
         RepnVar = Var
-    ).
+    ),
+    find_representatives(SinceCallVars, VarEqv, Vars, RepnVars, !Changed).
 
 :- pred find_representative_loop(set_of_progvar::in, list(prog_var)::in,
     prog_var::out) is semidet.
