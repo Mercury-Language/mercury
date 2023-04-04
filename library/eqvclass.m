@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997, 1999, 2003-2006, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2018, 2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -170,7 +170,7 @@
                 % partition. The set should never be empty.
                 partition_map   :: map(partition_id, set(T)),
 
-                % Maps each item in the eqvclass to the id of the parition
+                % Maps each item in the eqvclass to the id of the partition
                 % to which it belongs.
                 element_map     :: map(T, partition_id)
             ).
