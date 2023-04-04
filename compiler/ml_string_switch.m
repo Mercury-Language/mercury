@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2011 The University of Melbourne.
+% Copyright (C) 2015, 2017-2018, 2021-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -28,7 +29,7 @@
 % and for switches in which each arm looks up the data to return in tables
 % (we call these the "lookup" versions). The lookup versions themselves
 % come in two distinct flavours: those in which each arm has at most
-% one solution, and those in which some arms have more than one soluion.
+% one solution, and those in which some arms have more than one solution.
 %
 % WARNING: the code here is quite similar to the code in string_switch.m.
 % Any changes here may require similar changes there, and vice versa.
