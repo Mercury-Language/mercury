@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018-2019, 2022 The Mercury team.
+% Copyright (C) 2018-2019, 2022-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -79,7 +79,7 @@
                 % Methods. There is one method_info for every mode
                 % of every predicate or function method in the typeclass
                 % declaration. The order is given
-                % - first by by the order of the predicate or function
+                % - first by the order of the predicate or function
                 %   declarations in the typeclass declaration,
                 % - and then, within the sequence of method_infos for any
                 %   given method (which will always be contiguous),
