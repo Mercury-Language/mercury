@@ -269,8 +269,10 @@ read_module_overall_status_2(FileName, ModuleStatus, !IO) :-
 
 %---------------------%
 
-:- type write_entry(T) == pred(analysis_name, func_id, T, io, io).
-:- inst write_entry == (pred(in, in, in, di, uo) is det).
+:- type write_entry(T) ==
+    pred(io.text_output_stream, analysis_name, func_id, T, io, io).
+:- inst write_entry ==
+    (pred(in, in, in, in, di, uo) is det).
 
 write_module_overall_status(Info, Globals, ModuleName, Status, !IO) :-
     module_name_to_write_file_name(Info ^ compiler, Globals,
@@ -314,7 +316,7 @@ read_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
         globals.lookup_string_option(Globals, analysis_file_cache_dir,
             CacheDir),
         ( if CacheDir = "" then
-            read_module_analysis_results_2(Compiler, AnalysisFileName,
+            do_read_module_analysis_results(Compiler, AnalysisFileName,
                 ModuleResults, !IO)
         else
             CacheFileName = make_cache_filename(CacheDir, AnalysisFileName),
@@ -339,13 +341,13 @@ read_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
                     io.error_message(Error, ErrorMsg),
                     io.format(ErrorStream, "Error reading %s: %s\n",
                         [s(CacheFileName), s(ErrorMsg)], !IO),
-                    read_module_analysis_results_2(Compiler, AnalysisFileName,
+                    do_read_module_analysis_results(Compiler, AnalysisFileName,
                         ModuleResults, !IO),
                     write_analysis_cache_file(CacheFileName, ModuleResults,
                         !IO)
                 )
             else
-                read_module_analysis_results_2(Compiler, AnalysisFileName,
+                do_read_module_analysis_results(Compiler, AnalysisFileName,
                     ModuleResults, !IO),
                 write_analysis_cache_file(CacheFileName, ModuleResults, !IO)
             )
@@ -355,27 +357,32 @@ read_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
         ModuleResults = map.init
     ).
 
-:- pred read_module_analysis_results_2(Compiler::in, string::in,
+:- pred do_read_module_analysis_results(Compiler::in, string::in,
     module_analysis_map(some_analysis_result)::out, io::di, io::uo) is det
     <= compiler(Compiler).
 
-read_module_analysis_results_2(Compiler, AnalysisFileName, ModuleResults,
+do_read_module_analysis_results(Compiler, AnalysisFileName, ModuleResults,
         !IO) :-
     ModuleResults0 = map.init,
     io.open_input(AnalysisFileName, OpenResult, !IO),
     (
         OpenResult = ok(Stream),
-        debug_msg(
-            ( pred(!.IO::di, !:IO::uo) is det :-
-                io.format("%% Reading analysis registry file %s\n",
-                    [s(AnalysisFileName)], !IO)
-            ), !IO),
+        get_debug_analysis_stream(MaybeDebugStream, !IO),
+        (
+            MaybeDebugStream = no
+        ;
+            MaybeDebugStream = yes(DebugStream),
+            io.format(DebugStream, "%% Reading analysis registry file %s\n",
+                [s(AnalysisFileName)], !IO)
+        ),
 
         check_analysis_file_version_number(Stream, !IO),
+        % XXX This should be rewritten to return an error indication directly,
+        % *without* using exceptions.
         promise_equivalent_solutions [Results, !:IO] (
             try_io(
-                read_analysis_file_2(Stream, parse_result_entry(Compiler),
-                    ModuleResults0),
+                parse_analysis_file_entries(Stream,
+                    parse_result_entry(Compiler), ModuleResults0),
                 Results, !IO)
         ),
         io.close_input(Stream, !IO),
@@ -387,11 +394,15 @@ read_module_analysis_results_2(Compiler, AnalysisFileName, ModuleResults,
         )
     ;
         OpenResult = error(_),
-        debug_msg(
-            ( pred(!.IO::di, !:IO::uo) is det :-
-                io.format("%% Error reading analysis registry file: %s\n",
-                    [s(AnalysisFileName)], !IO)
-            ), !IO),
+        get_debug_analysis_stream(MaybeDebugStream, !IO),
+        (
+            MaybeDebugStream = no
+        ;
+            MaybeDebugStream = yes(DebugStream),
+            io.format(DebugStream,
+                "%% Error reading analysis registry file: %s\n",
+                [s(AnalysisFileName)], !IO)
+        ),
         ModuleResults = ModuleResults0
     ).
 
@@ -444,11 +455,14 @@ parse_result_entry(Compiler, Term, !Results) :-
 %---------------------%
 
 write_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
-    debug_msg(
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            io.format("%%s Writing module analysis results for %s\n",
-                [s(sym_name_to_string(ModuleName))], !IO)
-        ), !IO),
+    get_debug_analysis_stream(MaybeDebugStream, !IO),
+    (
+        MaybeDebugStream = no
+    ;
+        MaybeDebugStream = yes(DebugStream),
+        io.format(DebugStream, "%%s Writing module analysis results for %s\n",
+            [s(sym_name_to_string(ModuleName))], !IO)
+    ),
     find_and_write_analysis_file(Info ^ compiler, Globals,
         add_dot_temp, write_result_entry,
         analysis_registry_ext, ModuleName, ModuleResults, FileName, !IO),
@@ -468,21 +482,22 @@ write_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
         true
     ).
 
-:- pred write_result_entry(analysis_name::in, func_id::in,
-    some_analysis_result::in, io::di, io::uo) is det.
+:- pred write_result_entry(io.text_output_stream::in,
+    analysis_name::in, func_id::in, some_analysis_result::in,
+    io::di, io::uo) is det.
 
-write_result_entry(AnalysisName, FuncId, Result, !IO) :-
+write_result_entry(OutStream, AnalysisName, FuncId, Result, !IO) :-
     Result = some_analysis_result(Call, Answer, Status),
     VersionNumber = analysis_version_number(Call, Answer),
     analysis_status_to_string(Status, StatusString),
 
     FuncIdStr = func_id_to_string(FuncId),
-    io.format("%s(%d, %s, ",
+    io.format(OutStream, "%s(%d, %s, ",
         [s(AnalysisName), i(VersionNumber), s(FuncIdStr)], !IO),
-    term_io.write_term(varset.init, to_term(Call), !IO),
-    io.write_string(", ", !IO),
-    term_io.write_term(varset.init, to_term(Answer), !IO),
-    io.format(", %s).\n",
+    term_io.write_term(OutStream, varset.init, to_term(Call), !IO),
+    io.write_string(OutStream, ", ", !IO),
+    term_io.write_term(OutStream, varset.init, to_term(Answer), !IO),
+    io.format(OutStream, ", %s).\n",
         [s(StatusString)], !IO).
 
 %---------------------------------------------------------------------------%
@@ -546,12 +561,14 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
     Compiler = Info ^ compiler,
     module_name_to_write_file_name(Compiler, Globals,
         request_ext, ModuleName, AnalysisFileName, !IO),
-    debug_msg(
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("% Writing module analysis requests to ", !IO),
-            io.write_string(AnalysisFileName, !IO),
-            io.nl(!IO)
-        ), !IO),
+    get_debug_analysis_stream(MaybeDebugStream, !IO),
+    (
+        MaybeDebugStream = no
+    ;
+        MaybeDebugStream = yes(DebugStream),
+        io.format(DebugStream, "%% Writing module analysis requests to %s\n",
+            [s(AnalysisFileName)], !IO)
+    ),
     io.open_input(AnalysisFileName, InputResult, !IO),
     (
         InputResult = ok(InputStream),
@@ -568,10 +585,8 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
             io.open_append(AnalysisFileName, AppendResult, !IO),
             (
                 AppendResult = ok(AppendStream),
-                io.set_output_stream(AppendStream, OldOutputStream, !IO),
-                write_analysis_file_2(write_request_entry(Compiler),
-                    ModuleRequests, !IO),
-                io.set_output_stream(OldOutputStream, _, !IO),
+                write_analysis_file_2(AppendStream,
+                    write_request_entry(Compiler), ModuleRequests, !IO),
                 io.close_output(AppendStream, !IO),
                 Appended = yes
             ;
@@ -593,10 +608,11 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
         Appended = yes
     ).
 
-:- pred write_request_entry(Compiler::in, analysis_name::in, func_id::in,
-    analysis_request::in, io::di, io::uo) is det <= compiler(Compiler).
+:- pred write_request_entry(Compiler::in, io.text_output_stream::in,
+    analysis_name::in, func_id::in, analysis_request::in, io::di, io::uo)
+    is det <= compiler(Compiler).
 
-write_request_entry(Compiler, AnalysisName, FuncId, Request, !IO) :-
+write_request_entry(Compiler, OutStream, AnalysisName, FuncId, Request, !IO) :-
     Request = analysis_request(Call, CallerModule),
     ( if
         analyses(Compiler, AnalysisName, Analysis),
@@ -608,11 +624,11 @@ write_request_entry(Compiler, AnalysisName, FuncId, Request, !IO) :-
     ),
 
     FuncIdStr = func_id_to_string(FuncId),
-    write_quoted_sym_name(CallerModule, !IO),
-    io.format(" -> %s(%i, %s, ",
+    write_quoted_sym_name(OutStream, CallerModule, !IO),
+    io.format(OutStream, " -> %s(%i, %s, ",
         [s(AnalysisName), i(VersionNumber), s(FuncIdStr)], !IO),
-    term_io.write_term(varset.init, to_term(Call), !IO),
-    io.write_string(").\n", !IO).
+    term_io.write_term(OutStream, varset.init, to_term(Call), !IO),
+    io.write_string(OutStream, ").\n", !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -675,10 +691,11 @@ write_module_imdg(Info, Globals, ModuleName, ModuleEntries, !IO) :-
         do_not_add_dot_temp, write_imdg_arc(Info ^ compiler),
         imdg_ext, ModuleName, ModuleEntries, _FileName, !IO).
 
-:- pred write_imdg_arc(Compiler::in, analysis_name::in, func_id::in,
-    imdg_arc::in, io::di, io::uo) is det <= compiler(Compiler).
+:- pred write_imdg_arc(Compiler::in, io.text_output_stream::in,
+    analysis_name::in, func_id::in, imdg_arc::in, io::di, io::uo) is det
+    <= compiler(Compiler).
 
-write_imdg_arc(Compiler, AnalysisName, FuncId, Arc, !IO) :-
+write_imdg_arc(Compiler, OutStream, AnalysisName, FuncId, Arc, !IO) :-
     Arc = imdg_arc(Call, DependentModule),
     ( if
         analyses(Compiler, AnalysisName, Analysis),
@@ -690,11 +707,11 @@ write_imdg_arc(Compiler, AnalysisName, FuncId, Arc, !IO) :-
     ),
 
     FuncIdStr = func_id_to_string(FuncId),
-    write_quoted_sym_name(DependentModule, !IO),
-    io.format(" -> %s(%d, %s, ",
+    write_quoted_sym_name(OutStream, DependentModule, !IO),
+    io.format(OutStream, " -> %s(%d, %s, ",
         [s(AnalysisName), i(VersionNumber), s(FuncIdStr)], !IO),
-    term_io.write_term(varset.init, to_term(Call), !IO),
-    io.write_string(").\n", !IO).
+    term_io.write_term(OutStream, varset.init, to_term(Call), !IO),
+    io.write_string(OutStream, ").\n", !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -741,13 +758,16 @@ find_and_read_analysis_file(Compiler, Globals, ParseEntry,
             ModuleResults0, ModuleResults, !IO)
     ;
         MaybeAnalysisFileName = error(Message),
-        debug_msg(
-            ( pred(!.IO::di, !:IO::uo) is det :-
-                OtherExtStr = other_extension_to_string(OtherExt),
-                io.format("Couldn't open %s for module %s: %s\n",
-                    [s(OtherExtStr), s(sym_name_to_string(ModuleName)),
-                    s(Message)], !IO)
-            ), !IO),
+        get_debug_analysis_stream(MaybeDebugStream, !IO),
+        (
+            MaybeDebugStream = no
+        ;
+            MaybeDebugStream = yes(DebugStream),
+            OtherExtStr = other_extension_to_string(OtherExt),
+            io.format(DebugStream, "Couldn't open %s for module %s: %s\n",
+                [s(OtherExtStr), s(sym_name_to_string(ModuleName)),
+                s(Message)], !IO)
+        ),
         ModuleResults = ModuleResults0
     ).
 
@@ -758,22 +778,27 @@ read_analysis_file(AnalysisFileName, ParseEntry,
         ModuleResults0, ModuleResults, !IO) :-
     io.open_input(AnalysisFileName, OpenResult, !IO),
     (
-        OpenResult = ok(Stream),
-        debug_msg(
-            ( pred(!.IO::di, !:IO::uo) is det :-
-                io.format("%% Reading analysis file %s\n",
-                    [s(AnalysisFileName)], !IO)
-            ), !IO),
+        OpenResult = ok(FileStream),
+        get_debug_analysis_stream(MaybeDebugStream, !IO),
+        (
+            MaybeDebugStream = no
+        ;
+            MaybeDebugStream = yes(DebugStream),
+            io.format(DebugStream, "%% Reading analysis file %s\n",
+                [s(AnalysisFileName)], !IO)
+        ),
 
+        % XXX This should be rewritten to return an error indication directly,
+        % *without* using exceptions.
         promise_equivalent_solutions [Result, !:IO] (
             try_io(
                 ( pred(Results1::out, !.IO::di, !:IO::uo) is det :-
-                    check_analysis_file_version_number(Stream, !IO),
-                    read_analysis_file_2(Stream, ParseEntry,
+                    check_analysis_file_version_number(FileStream, !IO),
+                    parse_analysis_file_entries(FileStream, ParseEntry,
                         ModuleResults0, Results1, !IO)
                 ), Result, !IO)
         ),
-        io.close_input(Stream, !IO),
+        io.close_input(FileStream, !IO),
         (
             Result = succeeded(ModuleResults)
         ;
@@ -782,11 +807,16 @@ read_analysis_file(AnalysisFileName, ParseEntry,
         )
     ;
         OpenResult = error(_),
-        debug_msg(
-            ( pred(!.IO::di, !:IO::uo) is det :-
-                io.format("Error reading analysis file: %s\n",
-                    [s(AnalysisFileName)], !IO)
-            ), !IO),
+        get_debug_analysis_stream(MaybeDebugStream, !IO),
+        (
+            MaybeDebugStream = no
+        ;
+            MaybeDebugStream = yes(DebugStream),
+            io.format(DebugStream, "Error reading analysis file: %s\n",
+                [s(AnalysisFileName)], !IO)
+        ),
+        % XXX Why is a failed call to io.open_input *less* fatal than
+        % not being able to parse the contents of the file?
         ModuleResults = ModuleResults0
     ).
 
@@ -796,8 +826,9 @@ read_analysis_file(AnalysisFileName, ParseEntry,
 check_analysis_file_version_number(Stream, !IO) :-
     mercury_term_parser.read_term(Stream, TermResult : read_term, !IO),
     ( if
-        TermResult  = term(_, NumberTerm),
-        term_int.decimal_term_to_int(NumberTerm, version_number)
+        TermResult = term(_, NumberTerm),
+        term_int.decimal_term_to_int(NumberTerm, Number),
+        Number = version_number
     then
         true
     else
@@ -805,15 +836,15 @@ check_analysis_file_version_number(Stream, !IO) :-
         throw(invalid_analysis_file(Msg))
     ).
 
-:- pred read_analysis_file_2(io.text_input_stream::in,
+:- pred parse_analysis_file_entries(io.text_input_stream::in,
     parse_entry(T)::in(parse_entry), T::in, T::out, io::di, io::uo) is det.
 
-read_analysis_file_2(Stream, ParseEntry, Results0, Results, !IO) :-
+parse_analysis_file_entries(Stream, ParseEntry, Results0, Results, !IO) :-
     mercury_term_parser.read_term(Stream, TermResult : read_term, !IO),
     (
         TermResult = term(_, Term),
         ParseEntry(Term, Results0, Results1),
-        read_analysis_file_2(Stream, ParseEntry, Results1, Results, !IO)
+        parse_analysis_file_entries(Stream, ParseEntry, Results1, Results, !IO)
     ;
         TermResult = eof,
         Results = Results0
@@ -873,41 +904,43 @@ find_and_write_analysis_file(Compiler, Globals, ToTmp, WriteEntry,
 write_analysis_file(FileName, WriteEntry, ModuleResults, !IO) :-
     io.open_output(FileName, OpenResult, !IO),
     (
-        OpenResult = ok(Stream),
-        io.set_output_stream(Stream, OldOutput, !IO),
-        io.write_int(version_number, !IO),
-        io.write_string(".\n", !IO),
-        write_analysis_file_2(WriteEntry, ModuleResults, !IO),
-        io.set_output_stream(OldOutput, _, !IO),
-        io.close_output(Stream, !IO)
+        OpenResult = ok(FileStream),
+        io.format(FileStream, "%d.\n", [i(version_number)], !IO),
+        write_analysis_file_2(FileStream, WriteEntry, ModuleResults, !IO),
+        io.close_output(FileStream, !IO)
     ;
         OpenResult = error(IOError),
-        unexpected($pred,
-            "error opening `" ++ FileName ++ "' for output: " ++
-            io.error_message(IOError))
+        string.format("error opening `%s' for output: %s\n",
+            [s(FileName), s(io.error_message(IOError))], IOErrorMsg),
+        unexpected($pred, IOErrorMsg)
     ).
 
-:- pred write_analysis_file_2(write_entry(T)::in(write_entry),
-    module_analysis_map(T)::in, io::di, io::uo) is det.
+:- pred write_analysis_file_2(io.text_output_stream::in,
+    write_entry(T)::in(write_entry), module_analysis_map(T)::in,
+    io::di, io::uo) is det.
 
-write_analysis_file_2(WriteEntry, ModuleResults, !IO) :-
-    map.foldl(write_analysis_file_3(WriteEntry), ModuleResults, !IO).
+write_analysis_file_2(OutStream, WriteEntry, ModuleResults, !IO) :-
+    map.foldl(write_analysis_file_3(OutStream, WriteEntry),
+        ModuleResults, !IO).
 
-:- pred write_analysis_file_3(write_entry(T)::in(write_entry), string::in,
-    func_analysis_map(T)::in, io::di, io::uo) is det.
+:- pred write_analysis_file_3(io.text_output_stream::in,
+    write_entry(T)::in(write_entry), string::in, func_analysis_map(T)::in,
+    io::di, io::uo) is det.
 
-write_analysis_file_3(WriteEntry, AnalysisName, FuncResults, !IO) :-
-    map.foldl(write_analysis_file_4(WriteEntry, AnalysisName),
+write_analysis_file_3(OutStream, WriteEntry, AnalysisName, FuncResults, !IO) :-
+    map.foldl(write_analysis_file_4(OutStream, WriteEntry, AnalysisName),
         FuncResults, !IO).
 
-:- pred write_analysis_file_4(write_entry(T)::in(write_entry), string::in,
-    func_id::in, list(T)::in, io::di, io::uo) is det.
+:- pred write_analysis_file_4(io.text_output_stream::in,
+    write_entry(T)::in(write_entry), string::in, func_id::in, list(T)::in,
+    io::di, io::uo) is det.
 
-write_analysis_file_4(WriteEntry, AnalysisName, FuncId, FuncResultList, !IO) :-
+write_analysis_file_4(OutStream, WriteEntry, AnalysisName, FuncId,
+        FuncResultList, !IO) :-
     list.sort(FuncResultList, FuncResultListSorted),
     list.foldl(
         ( pred(FuncResult::in, !.IO::di, !:IO::uo) is det :-
-            WriteEntry(AnalysisName, FuncId, FuncResult, !IO)
+            WriteEntry(OutStream, AnalysisName, FuncId, FuncResult, !IO)
         ), FuncResultListSorted, !IO).
 
 %---------------------------------------------------------------------------%
@@ -916,12 +949,14 @@ write_analysis_file_4(WriteEntry, AnalysisName, FuncId, FuncResultList, !IO) :-
 empty_request_file(Info, Globals, ModuleName, !IO) :-
     module_name_to_write_file_name(Info ^ compiler, Globals,
         request_ext, ModuleName, RequestFileName, !IO),
-    debug_msg(
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("% Removing request file ", !IO),
-            io.write_string(RequestFileName, !IO),
-            io.nl(!IO)
-        ), !IO),
+    get_debug_analysis_stream(MaybeDebugStream, !IO),
+    (
+        MaybeDebugStream = no
+    ;
+        MaybeDebugStream = yes(DebugStream),
+        io.format(DebugStream, "%% Removing request file %s\n",
+            [s(RequestFileName)], !IO)
+    ),
     io.file.remove_file(RequestFileName, _, !IO).
 
 %---------------------------------------------------------------------------%
@@ -965,7 +1000,10 @@ write_analysis_cache_file(CacheFileName, ModuleResults, !IO) :-
             RenameRes = ok
         ;
             RenameRes = error(Error),
-            io.format("Error renaming %s: %s\n",
+            % XXX Our caller should tell us what stream we should print
+            % any error messages to.
+            io.stderr_stream(StdErrStream, !IO),
+            io.format(StdErrStream, "Error renaming %s: %s\n",
                 [s(CacheFileName), s(io.error_message(Error))], !IO),
             io.file.remove_file(TmpFileName, _, !IO)
         )

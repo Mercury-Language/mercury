@@ -2799,7 +2799,18 @@ handle_compiler_developer_options(!Globals, !IO) :-
 
     globals.lookup_bool_option(!.Globals, debug_intermodule_analysis,
         DebugIntermoduleAnalysis),
-    analysis.enable_debug_messages(DebugIntermoduleAnalysis, !IO),
+    (
+        DebugIntermoduleAnalysis = no,
+        analysis.set_analysis_debug(maybe.no, !IO)
+    ;
+        DebugIntermoduleAnalysis = yes,
+        % The next person to work actively on the analysis framework
+        % can decide whether writing the framework's debug progress messages
+        % to stderr is the right call, and if not, where those messages
+        % should go.
+        io.stderr_stream(AnalysisDebugStream, !IO),
+        analysis.set_analysis_debug(yes(AnalysisDebugStream), !IO)
+    ),
 
     globals.lookup_accumulating_option(!.Globals, dump_hlds_pred_id,
         DumpHLDSPredIds),

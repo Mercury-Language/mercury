@@ -316,7 +316,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred enable_debug_messages(bool::in, io::di, io::uo) is det.
+:- pred set_analysis_debug(maybe(io.text_output_stream)::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -331,6 +332,7 @@
 
 :- import_module map.
 :- import_module require.
+:- import_module string.
 :- import_module term_context.
 :- import_module type_desc.
 :- import_module univ.
@@ -391,8 +393,8 @@
                 %
                 % XXX: Check if we really need two maps.
 
-                old_imdg                :: analysis_map(imdg_arc),
-                new_imdg                :: analysis_map(imdg_arc)
+                old_imdg_map            :: analysis_map(imdg_arc),
+                new_imdg_map            :: analysis_map(imdg_arc)
             )
             => compiler(Compiler).
 
@@ -514,7 +516,8 @@ record_dependency(CalleeModuleName, FuncId, FuncInfo, Call, DummyAnswer,
 
 record_dependency_2(CallerModuleName, AnalysisName, CalleeModuleName, FuncId,
         Call, !Info) :-
-    ( if map.search(!.Info ^ new_imdg, CalleeModuleName, Analyses0) then
+    NewIMDGMap0 = !.Info ^ new_imdg_map,
+    ( if map.search(NewIMDGMap0, CalleeModuleName, Analyses0) then
         Analyses1 = Analyses0
     else
         Analyses1 = map.init
@@ -530,15 +533,15 @@ record_dependency_2(CallerModuleName, AnalysisName, CalleeModuleName, FuncId,
         FuncArcs1 = []
     ),
     Dep = 'new imdg_arc'(Call, CallerModuleName),
-    % XXX this should really be a set to begin with
+    % XXX This should really be a set to begin with.
     ( if list.member(Dep, FuncArcs1) then
         true
     else
         FuncArcs = [Dep | FuncArcs1],
-        !Info ^ new_imdg :=
-            map.set(!.Info ^ new_imdg, CalleeModuleName,
-                map.set(Analyses1, AnalysisName,
-                    map.set(Funcs1, FuncId, FuncArcs)))
+        map.set(FuncId, FuncArcs, Funcs1, Funcs),
+        map.set(AnalysisName, Funcs, Analyses1, Analyses),
+        map.set(CalleeModuleName, Analyses, NewIMDGMap0, NewIMDGMap),
+        !Info ^ new_imdg_map := NewIMDGMap
     ).
 
 :- pred lookup_exactly_matching_result_even_from_invalid_modules(
@@ -674,14 +677,17 @@ lookup_results(Info, ModuleName, FuncId, ResultList) :-
 
 lookup_results_1(Info, ModuleName, FuncId, AllowInvalidModules, ResultList) :-
     trace [io(!IO)] (
-        debug_msg(
-            ( pred(!.IO::di, !:IO::uo) is det :-
-                io.write_string("% Looking up analysis results for ", !IO),
-                io.write(ModuleName, !IO),
-                io.write_string(".", !IO),
-                io.write(FuncId, !IO),
-                io.nl(!IO)
-            ), !IO)
+        get_debug_analysis_stream(MaybeDebugStream, !IO),
+        (
+            MaybeDebugStream = no
+        ;
+            MaybeDebugStream = yes(DebugStream),
+            ModuleNameStr = sym_name_to_string(ModuleName),
+            FuncIdStr = string.string(FuncId),
+            io.format(DebugStream,
+                "%% Looking up analysis results for %s.%s\n",
+                [s(ModuleNameStr), s(FuncIdStr)], !IO)
+        )
     ),
     ( if
         AllowInvalidModules = no,
@@ -692,12 +698,14 @@ lookup_results_1(Info, ModuleName, FuncId, AllowInvalidModules, ResultList) :-
         lookup_results_2(Info ^ old_analysis_results, ModuleName, FuncId,
             ResultList),
         trace [io(!IO)] (
-            debug_msg(
-                ( pred(!.IO::di, !:IO::uo) is det :-
-                    io.write_string("% Found these results: ", !IO),
-                    io.print(ResultList, !IO),
-                    io.nl(!IO)
-                ), !IO)
+            get_debug_analysis_stream(MaybeDebugStream, !IO),
+            (
+                MaybeDebugStream = no
+            ;
+                MaybeDebugStream = yes(DebugStream),
+                io.write_string(DebugStream, "% Found these results: ", !IO),
+                io.print_line(DebugStream, ResultList, !IO)
+            )
         )
     ).
 
@@ -742,14 +750,17 @@ lookup_matching_results(Info, ModuleName, FuncId, FuncInfo, Call,
 lookup_best_result(Info, ModuleName, FuncId, FuncInfo, Call,
         MaybeBestResult) :-
     trace [io(!IO)] (
-        debug_msg(
-            ( pred(!.IO::di, !:IO::uo) is det :-
-                io.write_string("% Looking up best analysis result for ", !IO),
-                io.write(ModuleName, !IO),
-                io.write_string(".", !IO),
-                io.write(FuncId, !IO),
-                io.nl(!IO)
-            ), !IO)
+        get_debug_analysis_stream(MaybeDebugStream, !IO),
+        (
+            MaybeDebugStream = no
+        ;
+            MaybeDebugStream = yes(DebugStream),
+            ModuleNameStr = sym_name_to_string(ModuleName),
+            FuncIdStr = string.string(FuncId),
+            io.format(DebugStream,
+                "%% Looking up best analysis result for %s.%s\n",
+                [s(ModuleNameStr), s(FuncIdStr)], !IO)
+        )
     ),
     lookup_matching_results(Info, ModuleName, FuncId, FuncInfo, Call,
         MatchingResults),
@@ -858,7 +869,13 @@ lookup_requests(Info, AnalysisName, ModuleName, FuncId, CallPatterns) :-
     analysis_info::in, analysis_info::out, io::di, io::uo) is det.
 
 update_analysis_registry(ModuleInfo, !Info, !IO) :-
-    debug_msg(io.write_string("% Updating analysis registry.\n"), !IO),
+    get_debug_analysis_stream(MaybeDebugStream, !IO),
+    (
+        MaybeDebugStream = no
+    ;
+        MaybeDebugStream = yes(DebugStream),
+        io.write_string(DebugStream, "% Updating analysis registry.\n", !IO)
+    ),
     NewResults = !.Info ^ new_analysis_results,
     update_analysis_registry_2(ModuleInfo, !.Info ^ this_module, NewResults,
         !Info, !IO),
@@ -912,8 +929,14 @@ update_analysis_registry_5(ModuleInfo, ModuleName, AnalysisName, FuncId,
 
         OldResult = analysis_result(_OldCall, OldAnswer, OldStatus),
         ( if equivalent(FuncInfo, NewAnswer, OldAnswer) then
-            debug_msg(write_no_change_in_result(ModuleName, FuncId, Call,
-                NewAnswer), !IO),
+            get_debug_analysis_stream(MaybeDebugStream, !IO),
+            (
+                MaybeDebugStream = no
+            ;
+                MaybeDebugStream = yes(DebugStream),
+                write_no_change_in_result(DebugStream, ModuleName, FuncId,
+                    Call, NewAnswer, !IO)
+            ),
             ( if NewStatus = OldStatus then
                 true
             else
@@ -938,11 +961,17 @@ update_analysis_registry_5(ModuleInfo, ModuleName, AnalysisName, FuncId,
             else
                 Status = invalid
             ),
-            map.lookup(!.Info ^ old_imdg, ModuleName, OldArcs),
+            map.lookup(!.Info ^ old_imdg_map, ModuleName, OldArcs),
             DepModules = imdg_dependent_modules(OldArcs, AnalysisName,
                 FuncId, FuncInfo, Call),
-            debug_msg(write_changed_answer(OldAnswer, NewAnswer, Status,
-                DepModules), !IO),
+            get_debug_analysis_stream(MaybeDebugStream, !IO),
+            (
+                MaybeDebugStream = no
+            ;
+                MaybeDebugStream = yes(DebugStream),
+                write_changed_answer(DebugStream, OldAnswer, NewAnswer,
+                    Status, DepModules, !IO)
+            ),
             set.fold2(taint_module_overall_status(Globals, Status), DepModules,
                 !Info, !IO)
         )
@@ -1071,7 +1100,13 @@ taint_module_overall_status(Globals, Status, ModuleName, !Info, !IO) :-
 
         ModuleStatus0 = !.Info ^ module_statuses ^ det_elem(ModuleName),
         ModuleStatus = lub(ModuleStatus0, Status),
-        debug_msg(write_tainting_module(ModuleName, ModuleStatus), !IO),
+        get_debug_analysis_stream(MaybeDebugStream, !IO),
+        (
+            MaybeDebugStream = no
+        ;
+            MaybeDebugStream = yes(DebugStream),
+            write_tainting_module(DebugStream, ModuleName, ModuleStatus, !IO)
+        ),
         !Info ^ module_statuses ^ elem(ModuleName) := ModuleStatus
     ).
 
@@ -1087,45 +1122,44 @@ ensure_module_status_loaded(Globals, ModuleName, !Info, !IO) :-
         !Info ^ module_statuses ^ elem(ModuleName) := ModuleStatus
     ).
 
-:- pred write_no_change_in_result(module_name::in, func_id::in, Call::in,
-    Answer::in, io::di, io::uo) is det.
+:- pred write_no_change_in_result(io.text_output_stream::in,
+    module_name::in, func_id::in, Call::in, Answer::in, io::di, io::uo) is det.
 
-write_no_change_in_result(ModuleName, FuncId, Call, NewAnswer, !IO) :-
-    io.write_string("% No change in the result ", !IO),
-    io.write(ModuleName, !IO),
-    io.write_string(".", !IO),
-    io.write(FuncId, !IO),
-    io.write_string(":", !IO),
-    io.write(Call, !IO),
-    io.write_string(" --> ", !IO),
-    io.write(NewAnswer, !IO),
-    io.nl(!IO).
+write_no_change_in_result(OutStream, ModuleName, FuncId,
+        Call, NewAnswer, !IO) :-
+    ModuleNameStr = sym_name_to_string(ModuleName),
+    FuncIdStr = string.string(FuncId),
+    CallStr = string.string(Call),
+    NewAnswerStr = string.string(NewAnswer),
+    io.format(OutStream, "%% No change in the result %s.%s: %s --> %s\n",
+        [s(ModuleNameStr), s(FuncIdStr), s(CallStr), s(NewAnswerStr)], !IO).
 
-:- pred write_changed_answer(Answer::in, Answer::in, analysis_status::in,
-    set(module_name)::in, io::di, io::uo) is det.
+:- pred write_changed_answer(io.text_output_stream::in, Answer::in, Answer::in,
+    analysis_status::in, set(module_name)::in, io::di, io::uo) is det.
 
-write_changed_answer(OldAnswer, NewAnswer, Status, DepModules, !IO) :-
-    io.write_string("% ", !IO),
-    io.write(OldAnswer, !IO),
-    io.write_string(" changed to ", !IO),
-    io.write(NewAnswer, !IO),
-    io.nl(!IO),
-    io.write_string("Mark dependent modules as ", !IO),
-    io.write(Status, !IO),
-    io.nl(!IO),
-    io.write_string("The modules to mark are: ", !IO),
-    io.write(DepModules, !IO),
-    io.nl(!IO).
+write_changed_answer(OutStream, OldAnswer, NewAnswer, Status,
+        DepModules, !IO) :-
+    OldAnswerStr = string.string(OldAnswer),
+    NewAnswerStr = string.string(NewAnswer),
+    StatusStr = string.string(Status),
+    DepModulesStr = string.string(DepModules),
+    io.format(OutStream, "%% %s changed to %s\n",
+        [s(OldAnswerStr), s(NewAnswerStr)], !IO),
+    io.format(OutStream, "Mark dependent modules as %s\n",
+        [s(StatusStr)], !IO),
+    % XXX This will be hard to read.
+    io.format(OutStream, "The modules to mark are: %s\n",
+        [s(DepModulesStr)], !IO).
 
-:- pred write_tainting_module(module_name::in, analysis_status::in,
-    io::di, io::uo) is det.
+:- pred write_tainting_module(io.text_output_stream::in,
+    module_name::in, analysis_status::in, io::di, io::uo) is det.
 
-write_tainting_module(ModuleName, ModuleStatus, !IO) :-
-    io.print("% Tainting the overall module status of ", !IO),
-    io.print(ModuleName, !IO),
-    io.print(" with ", !IO),
-    io.print(ModuleStatus, !IO),
-    io.nl(!IO).
+write_tainting_module(OutStream, ModuleName, ModuleStatus, !IO) :-
+    ModuleNameStr = sym_name_to_string(ModuleName),
+    ModuleStatusStr = string.string(ModuleStatus),
+    io.format(OutStream,
+        "%% Tainting the overall module status of %s with %s\n",
+        [s(ModuleNameStr), s(ModuleStatusStr)], !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1146,30 +1180,39 @@ update_intermodule_dependencies(ModuleName, LocalImportedModules, !Info) :-
     analysis_info::in, analysis_info::out) is det.
 
 update_intermodule_dependencies_2(ModuleName, ImportedModuleName, !Info) :-
-    map.lookup(!.Info ^ old_imdg, ImportedModuleName, IMDG0),
+    map.lookup(!.Info ^ old_imdg_map, ImportedModuleName, IMDG0),
     trace [io(!IO)] (
-        debug_msg(write_clearing_entries(ModuleName, ImportedModuleName),
-            !IO)
+        get_debug_analysis_stream(MaybeDebugStream, !IO),
+        (
+            MaybeDebugStream = no
+        ;
+            MaybeDebugStream = yes(DebugStream),
+            write_clearing_entries(DebugStream,
+                ModuleName, ImportedModuleName, !IO)
+        )
     ),
     clear_imdg_entries_pointing_at(ModuleName, IMDG0, IMDG1),
 
-    ( if NewArcs = !.Info ^ new_imdg ^ elem(ImportedModuleName) then
+    ( if map.search(!.Info ^ new_imdg_map, ImportedModuleName, NewArcs) then
         map.union(combine_func_imdg, IMDG1, NewArcs, IMDG)
     else
         IMDG = IMDG1
     ),
-    !Info ^ old_imdg ^ elem(ImportedModuleName) := IMDG,
-    !Info ^ new_imdg := map.delete(!.Info ^ new_imdg, ImportedModuleName).
+    OldIMDGMap0 = !.Info ^ old_imdg_map,
+    NewIMDGMap0 = !.Info ^ new_imdg_map,
+    map.set(ImportedModuleName, IMDG, OldIMDGMap0, OldIMDGMap),
+    map.delete(ImportedModuleName, NewIMDGMap0, NewIMDGMap),
+    !Info ^ old_imdg_map := OldIMDGMap,
+    !Info ^ new_imdg_map := NewIMDGMap.
 
-:- pred write_clearing_entries(module_name::in, module_name::in,
-    io::di, io::uo) is det.
+:- pred write_clearing_entries(io.text_output_stream::in,
+    module_name::in, module_name::in, io::di, io::uo) is det.
 
-write_clearing_entries(ModuleName, ImportedModuleName, !IO) :-
-    io.write_string("% Clearing entries involving ", !IO),
-    io.write(ModuleName, !IO),
-    io.write_string(" from ", !IO),
-    io.write(ImportedModuleName, !IO),
-    io.write_string("'s IMDG.\n", !IO).
+write_clearing_entries(OutStream, ModuleName, ImportedModuleName, !IO) :-
+    ModuleNameStr = sym_name_to_string(ModuleName),
+    ImportedModuleNameStr = sym_name_to_string(ImportedModuleName),
+    io.format(OutStream, "%% Clearing entries involving %s from %s's IMDG.",
+        [s(ModuleNameStr), s(ImportedModuleNameStr)], !IO).
 
 :- pred clear_imdg_entries_pointing_at(module_name::in,
     module_analysis_map(imdg_arc)::in,
@@ -1317,9 +1360,9 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModule0, !Info, !IO) :-
 
 load_module_imdg(Globals, ModuleName, !Info, !IO) :-
     read_module_imdg(!.Info, Globals, ModuleName, IMDG, !IO),
-    Map0 = !.Info ^ old_imdg,
-    map.det_insert(ModuleName, IMDG, Map0, Map),
-    !Info ^ old_imdg := Map.
+    OldIMDGMap0 = !.Info ^ old_imdg_map,
+    map.det_insert(ModuleName, IMDG, OldIMDGMap0, OldIMDGMap),
+    !Info ^ old_imdg_map := OldIMDGMap.
 
 :- pred maybe_write_module_overall_status(analysis_info::in, globals::in,
     module_name::in, io::di, io::uo) is det.
@@ -1348,7 +1391,7 @@ maybe_write_module_requests(Info, Globals, ModuleName, !IO) :-
     module_name::in, io::di, io::uo) is det.
 
 maybe_write_module_imdg(Info, Globals, ModuleName, !IO) :-
-    ( if map.search(Info ^ old_imdg, ModuleName, ModuleEntries) then
+    ( if map.search(Info ^ old_imdg_map, ModuleName, ModuleEntries) then
         write_module_imdg(Info, Globals, ModuleName, ModuleEntries, !IO)
     else
         true
@@ -1403,22 +1446,11 @@ lub_result_statuses_4(Result, Acc) = lub(Result ^ some_ar_status, Acc).
 
 %---------------------------------------------------------------------------%
 
-:- mutable(debug_analysis, bool, no, ground, [untrailed, attach_to_io_state]).
+:- mutable(debug_analysis_stream, maybe(io.text_output_stream), no, ground,
+    [untrailed, attach_to_io_state]).
 
-enable_debug_messages(Debug, !IO) :-
-    set_debug_analysis(Debug, !IO).
-
-:- pred debug_msg(pred(io, io)::in(pred(di, uo) is det), io::di, io::uo)
-    is det.
-
-debug_msg(P, !IO) :-
-    get_debug_analysis(Debug, !IO),
-    (
-        Debug = yes,
-        P(!IO)
-    ;
-        Debug = no
-    ).
+set_analysis_debug(MaybeDebugStream, !IO) :-
+    set_debug_analysis_stream(MaybeDebugStream, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module analysis.

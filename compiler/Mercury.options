@@ -95,8 +95,6 @@ MCFLAGS-make.module_target                += --no-ansi-c
 MCFLAGS-make.program_target               += --no-ansi-c
 MCFLAGS-make.util                         += --no-ansi-c --no-halt-at-warn
 
-MCFLAGS-analysis                             += --no-warn-implicit-stream-calls
-MCFLAGS-analysis.file                        += --no-warn-implicit-stream-calls
 MCFLAGS-backend_libs.bytecode_data           += --no-warn-implicit-stream-calls
 MCFLAGS-bytecode_backend.bytecode            += --no-warn-implicit-stream-calls
 MCFLAGS-bytecode_backend.bytecode_gen        += --no-warn-implicit-stream-calls
