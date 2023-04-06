@@ -91,8 +91,8 @@
 
 %---------------------%
 
-    % Given a character C, write C in single-quotes,
-    % escaped if necessary, to stdout.
+    % Given a character C, write C in single-quotes, escaped if necessary,
+    % to the current output stream, or to the specified output stream.
     %
 :- pred quote_char(char::in, io::di, io::uo) is det.
 :- pred quote_char(Stream::in, char::in, State::di, State::uo) is det
@@ -103,8 +103,9 @@
     %
 :- func quoted_char(char) = string.
 
-    % Given a character C, write C, escaped if necessary, to stdout.
-    % The character is not enclosed in quotes.
+    % Given a character C, write C, escaped if necessary,
+    % to the current output stream, or to the specified output stream.
+    % Don't enclose the character in quotes.
     %
 :- pred write_escaped_char(char::in, io::di, io::uo) is det.
 :- pred write_escaped_char(Stream::in, char::in, State::di, State::uo) is det
@@ -136,13 +137,13 @@
     %
 :- func quoted_string(string) = string.
 
-    % Given a string S, write S, with characters escaped if necessary,
-    % to stdout. The string is not enclosed in quotes.
+    % Given a string S, write S, with characters escaped if necessary.
+    % Don't enclose the string in quotes. Write to the current output stream,
+    % or to the specified output stream.
     %
 :- pred write_escaped_string(string::in, io::di, io::uo) is det.
-:- pred write_escaped_string(Stream::in, string::in,
-    State::di, State::uo) is det
-    <= (stream.writer(Stream, string, State),
+:- pred write_escaped_string(Stream::in, string::in, State::di, State::uo)
+    is det <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 
     % Like write_escaped_string, but return the result in a string.
@@ -152,7 +153,8 @@
 %---------------------%
 
     % Given an atom-name A, write A, enclosed in single-quotes if necessary,
-    % with characters escaped if necessary, to stdout.
+    % with characters escaped if necessary. Write to the current output stream,
+    % or to the specified output stream.
     %
 :- pred quote_atom(string::in, io::di, io::uo) is det.
 :- pred quote_atom(Stream::in, string::in, State::di, State::uo) is det
@@ -266,7 +268,7 @@ write_term(VarSet, Term, !IO) :-
 
 write_term(OutStream, VarSet, Term, !IO) :-
     OpTable = init_mercury_op_table,
-    term_io.write_term_with_op_table(OutStream, OpTable, VarSet, Term, !IO).
+    write_term_with_op_table(OutStream, OpTable, VarSet, Term, !IO).
 
 write_term_with_op_table(OpTable, VarSet, Term, !IO) :-
     io.output_stream(OutStream, !IO),
@@ -283,14 +285,14 @@ write_term_nl(VarSet, Term, !IO) :-
 
 write_term_nl(OutStream, VarSet, Term, !IO) :-
     OpTable = init_mercury_op_table,
-    term_io.write_term_nl_with_op_table(OutStream, OpTable, VarSet, Term, !IO).
+    write_term_nl_with_op_table(OutStream, OpTable, VarSet, Term, !IO).
 
 write_term_nl_with_op_table(OpTable, VarSet, Term, !IO) :-
     io.output_stream(OutStream, !IO),
     write_term_nl_with_op_table(OutStream, OpTable, VarSet, Term, !IO).
 
 write_term_nl_with_op_table(OutStream, OpTable, VarSet, Term, !IO) :-
-    term_io.write_term_with_op_table(OutStream, OpTable, VarSet, Term, !IO),
+    write_term_with_op_table(OutStream, OpTable, VarSet, Term, !IO),
     io.write_string(OutStream, ".\n", !IO).
 
 %---------------------------------------------------------------------------%
@@ -466,8 +468,7 @@ write_term_prio_anon_vars(OutStream, OpTable, Term, Priority,
 
 write_term_arg(OutStream, OpTable, Term, !VarSet, !N, !IO) :-
     write_term_prio_anon_vars(OutStream, OpTable, Term,
-    ops.arg_priority(OpTable),
-        !VarSet, !N, !IO).
+    ops.arg_priority(OpTable), !VarSet, !N, !IO).
 
     % Write the remaining arguments.
     %
@@ -532,8 +533,7 @@ write_constant(Const, !IO) :-
     write_constant(OutStream, Const, !IO).
 
 write_constant(OutStream, Const, !IO) :-
-    write_constant(OutStream, Const,
-        not_adjacent_to_graphic_token, !IO).
+    write_constant(OutStream, Const, not_adjacent_to_graphic_token, !IO).
 
 :- pred write_constant(io.text_output_stream::in, const::in,
     adjacent_to_graphic_token::in, io::di, io::uo) is det.
@@ -777,30 +777,31 @@ write_escaped_string(Stream, String, !State) :-
     % XXX ILSEQ Decide what to do with ill-formed sequences.
     string.foldl(term_io.write_escaped_char(Stream), String, !State).
 
-escaped_string(String) =
+escaped_string(String0) = String :-
     % XXX ILSEQ Decide what to do with ill-formed sequences.
-    string.append_list(
-        list.reverse(string.foldl(add_escaped_char, String, []))).
+    string.foldl(add_escaped_char, String0, [], RevStrings),
+    list.reverse(RevStrings, Strings),
+    string.append_list(Strings, String).
 
-:- func add_escaped_char(char, list(string)) = list(string).
+:- pred add_escaped_char(char::in, list(string)::in, list(string)::out) is det.
 
-add_escaped_char(Char, Strings0) = Strings :-
+add_escaped_char(Char, RevStrings0, RevStrings) :-
     % Note: the code of add_escaped_char and write_escaped_char
     % should be kept in sync. The code of both is similar to code in
     % compiler/parse_tree_out_pragma.m; any changes here may require
     % similar changes there.
     ( if mercury_escape_special_char(Char, QuoteChar) then
-        Strings = [from_char_list(['\\', QuoteChar]) | Strings0]
+        RevStrings = [from_char_list(['\\', QuoteChar]) | RevStrings0]
     else if is_mercury_source_char(Char) then
-        Strings = [string.char_to_string(Char) | Strings0]
+        RevStrings = [string.char_to_string(Char) | RevStrings0]
     else
-        Strings = [mercury_escape_char(Char) | Strings0]
+        RevStrings = [mercury_escape_char(Char) | RevStrings0]
     ).
 
 %---------------------------------------------------------------------------%
 
-quote_atom(S, !IO) :-
-    term_io.quote_atom_agt(S, not_adjacent_to_graphic_token, !IO).
+quote_atom(Str, !IO) :-
+    term_io.quote_atom_agt(Str, not_adjacent_to_graphic_token, !IO).
 
 quote_atom(Stream, S, !State) :-
     term_io.quote_atom_agt(Stream, S, not_adjacent_to_graphic_token, !State).
@@ -808,9 +809,9 @@ quote_atom(Stream, S, !State) :-
 quoted_atom(S) =
     term_io.quoted_atom_agt(S, not_adjacent_to_graphic_token).
 
-quote_atom_agt(S, AdjacentToGraphicToken, !IO) :-
+quote_atom_agt(Str, AdjacentToGraphicToken, !IO) :-
     io.output_stream(Stream, !IO),
-    term_io.quote_atom_agt(Stream, S, AdjacentToGraphicToken, !IO).
+    term_io.quote_atom_agt(Stream, Str, AdjacentToGraphicToken, !IO).
 
 quote_atom_agt(Stream, S, AdjacentToGraphicToken, !State) :-
     ShouldQuote = should_atom_be_quoted(S, AdjacentToGraphicToken),
