@@ -359,10 +359,10 @@
                 % of procedures. Requests are added to this map as analyses
                 % proceed and written out to disk at the end of the
                 % compilation of this module.
-                analysis_requests       :: analysis_map(analysis_request),
+                analysis_requests_map   :: analysis_map(analysis_request),
 
                 % The overall status of each module.
-                module_statuses         :: map(module_name, analysis_status),
+                module_status_map       :: map(module_name, analysis_status),
 
                 % The "old" map stores analysis results read in from disk.
                 % New results generated while analysing the current module
@@ -641,8 +641,8 @@ record_request(AnalysisName, ModuleName, FuncId, CallPattern, !Info) :-
 
 record_request_2(CallerModule, AnalysisName, ModuleName, FuncId, CallPattern,
         !Info) :-
-    RequestMap = !.Info ^ analysis_requests,
-    ( if map.search(RequestMap, ModuleName, ModuleResults0) then
+    RequestsMap0 = !.Info ^ analysis_requests_map,
+    ( if map.search(RequestsMap0, ModuleName, ModuleResults0) then
         ModuleResults1 = ModuleResults0
     else
         ModuleResults1 = map.init
@@ -659,10 +659,10 @@ record_request_2(CallerModule, AnalysisName, ModuleName, FuncId, CallPattern,
     ),
     Request = 'new analysis_request'(CallPattern, CallerModule),
     FuncResults = [Request | FuncResults1],
-    !Info ^ analysis_requests :=
-        map.set(!.Info ^ analysis_requests, ModuleName,
-            map.set(ModuleResults1, AnalysisName,
-                map.set(AnalysisResults1, FuncId, FuncResults))).
+    map.set(FuncId, FuncResults, AnalysisResults1, AnalysisResults),
+    map.set(AnalysisName, AnalysisResults, ModuleResults1, ModuleResults),
+    map.set(ModuleName, ModuleResults, RequestsMap0, RequestsMap),
+    !Info ^ analysis_requests_map := RequestsMap.
 
 %---------------------------------------------------------------------------%
 
@@ -691,7 +691,7 @@ lookup_results_1(Info, ModuleName, FuncId, AllowInvalidModules, ResultList) :-
     ),
     ( if
         AllowInvalidModules = no,
-        map.search(Info ^ module_statuses, ModuleName, invalid)
+        map.search(Info ^ module_status_map, ModuleName, invalid)
     then
         ResultList = []
     else
@@ -819,7 +819,7 @@ lookup_requests(Info, AnalysisName, ModuleName, FuncId, CallPatterns) :-
         unexpected($pred, "not this_module")
     ),
     ( if
-        map.search(Info ^ analysis_requests, ModuleName, ModuleRequests),
+        map.search(Info ^ analysis_requests_map, ModuleName, ModuleRequests),
         map.search(ModuleRequests, AnalysisName, AnalysisRequests),
         map.search(AnalysisRequests, FuncId, CallPatterns0)
     then
@@ -979,7 +979,6 @@ update_analysis_registry_5(ModuleInfo, ModuleName, AnalysisName, FuncId,
         MaybeResult = no,
         % There was no previous answer for this call pattern.
         % Just add this result to the registry.
-
         OldAnalysisResults0 = !.Info ^ old_analysis_results,
         map.lookup(OldAnalysisResults0, ModuleName, OldMap0),
         record_result_in_analysis_map(FuncId, Call, NewAnswer, NewStatus,
@@ -989,18 +988,19 @@ update_analysis_registry_5(ModuleInfo, ModuleName, AnalysisName, FuncId,
         !Info ^ old_analysis_results := OldAnalysisResults
     ),
 
-    % If this new result satisfies a request then mark the requesting modules
+    % If this new result satisfies a request, then mark the requesting modules
     % as suboptimal so they can be reanalysed.
     %
-    % Ideally we could compare the new answer with either a default answer that
-    % the calling module probably used, or each request could optionally record
-    % what answer the caller assumed. Then we could avoid reanalysing the
-    % calling module unnecessarily. (This only reason we don't implement
+    % Ideally, we could compare the new answer with either a default answer
+    % that the calling module probably used, or each request could optionally
+    % record what answer the caller assumed. Then we could avoid reanalysing
+    % the calling module unnecessarily. (This only reason we don't implement
     % the former is that the structure reuse analysis doesn't implement
     % the `top' typeclass method.)
     ( if
-        map.search(!.Info ^ analysis_requests, ModuleName, ModuleRequests),
-        Requests = ModuleRequests ^ elem(AnalysisName) ^ elem(FuncId),
+        map.search(!.Info ^ analysis_requests_map, ModuleName, ModuleRequests),
+        map.search(ModuleRequests, AnalysisName, ModuleAnalysisMap),
+        map.search(ModuleAnalysisMap, FuncId, Requests),
         Requests = [_ | _]
     then
         Callers0 = list.filter_map(
@@ -1098,7 +1098,8 @@ taint_module_overall_status(Globals, Status, ModuleName, !Info, !IO) :-
         % may not be part of that set.
         ensure_module_status_loaded(Globals, ModuleName, !Info, !IO),
 
-        ModuleStatus0 = !.Info ^ module_statuses ^ det_elem(ModuleName),
+        ModuleStatusMap0 = !.Info ^ module_status_map,
+        map.lookup(ModuleStatusMap0, ModuleName, ModuleStatus0),
         ModuleStatus = lub(ModuleStatus0, Status),
         get_debug_analysis_stream(MaybeDebugStream, !IO),
         (
@@ -1107,19 +1108,23 @@ taint_module_overall_status(Globals, Status, ModuleName, !Info, !IO) :-
             MaybeDebugStream = yes(DebugStream),
             write_tainting_module(DebugStream, ModuleName, ModuleStatus, !IO)
         ),
-        !Info ^ module_statuses ^ elem(ModuleName) := ModuleStatus
+        map.set(ModuleName, ModuleStatus, ModuleStatusMap0, ModuleStatusMap),
+        !Info ^ module_status_map := ModuleStatusMap
     ).
 
 :- pred ensure_module_status_loaded(globals::in, module_name::in,
     analysis_info::in, analysis_info::out, io::di, io::uo) is det.
 
 ensure_module_status_loaded(Globals, ModuleName, !Info, !IO) :-
-    ( if map.contains(!.Info ^ module_statuses, ModuleName) then
+    ModuleStatusMap0 = !.Info ^ module_status_map,
+    ( if map.contains(ModuleStatusMap0, ModuleName) then
         true
     else
         do_read_module_overall_status(!.Info ^ compiler, Globals, ModuleName,
             ModuleStatus, !IO),
-        !Info ^ module_statuses ^ elem(ModuleName) := ModuleStatus
+        map.det_insert(ModuleName, ModuleStatus,
+            ModuleStatusMap0, ModuleStatusMap),
+        !Info ^ module_status_map := ModuleStatusMap
     ).
 
 :- pred write_no_change_in_result(io.text_output_stream::in,
@@ -1265,15 +1270,19 @@ prepare_intermodule_analysis(Globals, ImportedModuleNames0, LocalModuleNames,
     load_module_analysis_results(Globals, ThisModule, !Info, !IO),
     read_module_analysis_requests(!.Info, Globals, ThisModule,
         ThisModuleRequests, !IO),
-    !Info ^ analysis_requests ^ elem(ThisModule) := ThisModuleRequests.
+    RequestsMap0 = !.Info ^ analysis_requests_map,
+    map.set(ThisModule, ThisModuleRequests, RequestsMap0, RequestsMap),
+    !Info ^ analysis_requests_map := RequestsMap.
 
 :- pred load_module_analysis_results(globals::in, module_name::in,
     analysis_info::in, analysis_info::out, io::di, io::uo) is det.
 
 load_module_analysis_results(Globals, ModuleName, !Info, !IO) :-
+    OldResultsMap0 = !.Info ^ old_analysis_results,
+    ModuleStatusMap0 = !.Info ^ module_status_map,
     ( if
-        ( map.contains(!.Info ^ old_analysis_results, ModuleName)
-        ; map.contains(!.Info ^ module_statuses, ModuleName)
+        ( map.contains(OldResultsMap0, ModuleName)
+        ; map.contains(ModuleStatusMap0, ModuleName)
         )
     then
         unexpected($pred, "ensure_old_module_analysis_results_loaded")
@@ -1282,8 +1291,12 @@ load_module_analysis_results(Globals, ModuleName, !Info, !IO) :-
             ModuleStatus, !IO),
         read_module_analysis_results(!.Info, Globals, ModuleName,
             ModuleResults, !IO),
-        !Info ^ module_statuses ^ elem(ModuleName) := ModuleStatus,
-        !Info ^ old_analysis_results ^ elem(ModuleName) := ModuleResults
+        map.det_insert(ModuleName, ModuleStatus,
+            ModuleStatusMap0, ModuleStatusMap),
+        map.det_insert(ModuleName, ModuleResults,
+            OldResultsMap0, OldResultsMap),
+        !Info ^ module_status_map := ModuleStatusMap,
+        !Info ^ old_analysis_results := OldResultsMap
     ).
 
 module_is_local(Info, ModuleName, IsLocal) :-
@@ -1304,7 +1317,7 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModule0, !Info, !IO) :-
     ImportedModules = set.delete(ImportedModule0, ThisModule),
 
     LocalModules = !.Info ^ local_module_names,
-    LocalImportedModules = set.intersect(LocalModules, ImportedModules),
+    set.intersect(LocalModules, ImportedModules, LocalImportedModules),
 
     % Load IMDG files for local modules.
     module_info_get_globals(ModuleInfo, Globals),
@@ -1315,7 +1328,9 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModule0, !Info, !IO) :-
     % The current module was just compiled so we set its status to the
     % lub of all the new analysis results generated.
     ModuleStatus = lub_result_statuses(!.Info ^ new_analysis_results),
-    !Info ^ module_statuses ^ elem(ThisModule) := ModuleStatus,
+    ModuleStatusMap0 = !.Info ^ module_status_map,
+    map.set(ThisModule, ModuleStatus, ModuleStatusMap0, ModuleStatusMap),
+    !Info ^ module_status_map := ModuleStatusMap,
 
     update_intermodule_dependencies(ThisModule, LocalImportedModules, !Info),
     ( if map.is_empty(!.Info ^ new_analysis_results) then
@@ -1330,7 +1345,7 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModule0, !Info, !IO) :-
         LocalModules, !IO),
 
     % Write the analysis results for the current module.
-    ModuleResults = !.Info ^ old_analysis_results ^ det_elem(ThisModule),
+    map.lookup(!.Info ^ old_analysis_results, ThisModule, ModuleResults),
     write_module_analysis_results(!.Info, Globals, ThisModule,
         ModuleResults, !IO),
 
@@ -1368,7 +1383,7 @@ load_module_imdg(Globals, ModuleName, !Info, !IO) :-
     module_name::in, io::di, io::uo) is det.
 
 maybe_write_module_overall_status(Info, Globals, ModuleName, !IO) :-
-    ( if map.search(Info ^ module_statuses, ModuleName, Status) then
+    ( if map.search(Info ^ module_status_map, ModuleName, Status) then
         write_module_overall_status(Info, Globals, ModuleName, Status, !IO)
     else
         % We didn't have any reason to read in the status of this module
@@ -1380,7 +1395,7 @@ maybe_write_module_overall_status(Info, Globals, ModuleName, !IO) :-
     module_name::in, io::di, io::uo) is det.
 
 maybe_write_module_requests(Info, Globals, ModuleName, !IO) :-
-    ( if map.search(Info ^ analysis_requests, ModuleName, Requests) then
+    ( if map.search(Info ^ analysis_requests_map, ModuleName, Requests) then
         write_module_analysis_requests(Info, Globals, ModuleName,
             Requests, !IO)
     else
