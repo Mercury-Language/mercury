@@ -804,6 +804,7 @@ quantify_goal_shorthand(NonLocalsToRecompute, GoalExpr0, GoalExpr, GoalInfo0,
         % interface variables to be renamed in any or_else goals, but
         % doing it first explicitly allows the new names of these variables
         % to be stored.
+        % XXX What call to quantify_disj?
         (
             OrElseInners0 = [],
             rename_or_else_inner_vars(NonLocalsToRecompute, Inner,
@@ -883,8 +884,8 @@ rename_or_else_inner_vars(NonLocalsToRecompute, Inner,
     RenameVars = list_to_set([InnerDI, InnerUO]),
     rename_vars_apart(NonLocalsToRecompute, RenameVars, RenameMap, OrElseGoal0,
         OrElseGoal, !Info),
-    OrElseInnerDI = map.lookup(RenameMap, InnerDI),
-    OrElseInnerUO = map.lookup(RenameMap, InnerUO),
+    map.lookup(RenameMap, InnerDI, OrElseInnerDI),
+    map.lookup(RenameMap, InnerUO, OrElseInnerUO),
     OrElseInner = atomic_interface_vars(OrElseInnerDI, OrElseInnerUO),
     rename_or_else_inner_vars(NonLocalsToRecompute, Inner, OrElseGoals0,
         OrElseGoalsTail, OrElseInnersTail, !Info),
@@ -955,7 +956,6 @@ quantify_goal_bi_implication(LHS0, RHS0, GoalExpr, OldGoalInfo, !Info) :-
     %   (LHS => RHS), (RHS => LHS)
     % ===>
     %   (not (LHS, not RHS)), (not (RHS, not LHS))
-
     Context = goal_info_get_context(OldGoalInfo),
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo1),
@@ -970,7 +970,6 @@ quantify_goal_bi_implication(LHS0, RHS0, GoalExpr, OldGoalInfo, !Info) :-
     ForwardsImplicationExpr =
         negation(hlds_goal(conj(plain_conj, [LHS, NotRHS]), GI)),
     ForwardsImplication = hlds_goal(ForwardsImplicationExpr, GI),
-
     ReverseImplicationExpr0 =
         negation(hlds_goal(conj(plain_conj, [RHS, NotLHS]), GI)),
     ReverseImplication0 = hlds_goal(ReverseImplicationExpr0, GI),
