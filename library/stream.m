@@ -78,8 +78,8 @@
 %
 
     % A stream consists of a handle type and a state type.
-    % The state type is threaded through, and destructively updated by,
-    % the stream operations.
+    % The state type is threaded through the state operations,
+    % which update it destructively.
     %
 :- typeclass stream(Stream, State) <= (Stream -> State) where
 [
@@ -98,8 +98,8 @@
     %
 :- typeclass input(Stream, State) <= stream(Stream, State) where [].
 
-    % A reader stream is a subclass of a specific input stream that can be
-    % used to read data of a specific type from that input stream.
+    % A reader stream is a subclass of a specific input stream that
+    % can be used to read data of a specific type from that input stream.
     % A single input stream can support multiple reader subclasses.
     %
 :- typeclass reader(Stream, Unit, State, Error)
@@ -124,8 +124,9 @@
         State::di, State::uo) is det
 ].
 
-    % An unboxed_reader stream is like a reader stream except that it provides
-    % an interface that avoids a memory allocation when there is no error.
+    % An unboxed_reader stream is like a reader stream, except that
+    % it provides an interface that avoids a memory allocation
+    % when there is no error.
     %
 :- typeclass unboxed_reader(Stream, Unit, State, Error)
     <= (input(Stream, State), error(Error), (Stream, Unit -> Error)) where
@@ -157,10 +158,10 @@
     % A single input stream can support multiple bulk_reader subclasses.
     %
 :- typeclass bulk_reader(Stream, Index, Store, State, Error)
-    <= (input(Stream, State), error(Error),
-        (Stream, Index, Store -> Error)) where
+    <= (input(Stream, State), error(Error), (Stream, Index, Store -> Error))
+    where
 [
-    % bulk_get(Stream, Index, NumItems, !Store, NumItemsRead, Result, !State).
+    % bulk_get(Stream, Index, NumItems, !Store, NumItemsRead, Result, !State):
     %
     % Read at most NumItems items into the given Store starting at the
     % given index, returning the number of items read.
@@ -190,8 +191,8 @@
     % although not necessarily the same one.
     %
     pred bulk_get(Stream::in, Index::in, int::in,
-        Store::bulk_get_di, Store::bulk_get_uo,
-        int::out, res(Error)::out, State::di, State::uo) is det
+        Store::bulk_get_di, Store::bulk_get_uo, int::out, res(Error)::out,
+        State::di, State::uo) is det
 ].
 
     % XXX These should be di and uo, but with the current state of the mode
@@ -218,8 +219,8 @@
     pred flush(Stream::in, State::di, State::uo) is det
 ].
 
-    % A writer stream is a subclass of specific output stream that can be
-    % used to write data of a specific type to that output stream.
+    % A writer stream is a subclass of specific output stream that
+    % can be used to write data of a specific type to that output stream.
     % A single output stream can support multiple writer subclasses.
     %
 :- typeclass writer(Stream, Unit, State)
@@ -251,7 +252,7 @@
 %
 
     % A putback stream is an input stream that allows data to be pushed back
-    % onto the stream. As with reader subclasses it is possible to define
+    % onto the stream. As with reader subclasses, it is possible to define
     % multiple putback subclasses for a single input stream.
     %
 :- typeclass putback(Stream, Unit, State, Error)
@@ -323,8 +324,8 @@
 % Generic folds over input streams.
 %
 
-    % Applies the given closure to each Unit read from the input stream in
-    % turn, until eof or error.
+    % Applies the given closure to each Unit read from the input stream
+    % in turn, until eof or error.
     %
 :- pred input_stream_fold(Stream, pred(Unit, T, T), T,
     maybe_partial_res(T, Error), State, State)
@@ -334,8 +335,8 @@
 :- mode input_stream_fold(in, in(pred(in, in, out) is cc_multi),
     in, out, di, uo) is cc_multi.
 
-    % Applies the given closure to each Unit read from the input stream in
-    % turn, until eof or error.
+    % Applies the given closure to each Unit read from the input stream
+    % in turn, until eof or error.
     %
 :- pred input_stream_fold_state(Stream, pred(Unit, State, State),
     res(Error), State, State)
@@ -374,7 +375,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Misc. operations on input streams.
+% Miscellaneus operations on input streams.
 %
 
     % Discard all the whitespace characters satisfying `char.is_whitespace'
@@ -386,7 +387,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Misc. operations on output streams.
+% Miscellaneus operations on output streams.
 %
 
     % put_list(Stream, Write, Sep, List, !State).
