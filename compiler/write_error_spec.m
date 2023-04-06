@@ -146,6 +146,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_sort.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.

@@ -138,8 +138,8 @@
 :- import_module hlds.hlds_module.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.

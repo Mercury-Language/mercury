@@ -113,8 +113,8 @@
 :- import_module check_hlds.unused_imports.
 :- import_module hlds.du_type_layout.
 :- import_module hlds.goal_mode.
-:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_call_tree.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_statistics.

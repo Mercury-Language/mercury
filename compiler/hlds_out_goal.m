@@ -12,10 +12,10 @@
 % There is quite a bit of overlap between the following modules:
 %
 %   the submodules of hlds_out.m, especially this one
-%   mercury_to_mercury.m
+%   parse_tree_out_*.m
 %   term_io.m
 %
-% mercury_to_mercury.m prints the parse tree data structure defined
+% parse_tree_out_*.m prints the parse tree data structure defined
 % in prog_data.m. hlds_out.m does a similar task, but for the data structure
 % defined in hlds.m. term_io.m prints terms.
 %
@@ -143,11 +143,12 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_clause.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_inst.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.

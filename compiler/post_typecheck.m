@@ -110,9 +110,9 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.var_table.

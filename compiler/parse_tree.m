@@ -56,13 +56,16 @@
 :- include_module prog_ctgc.
 
 % Pretty-printers.
-:- include_module mercury_to_mercury.
 :- include_module parse_tree_out.
 :- include_module parse_tree_out_clause.
+:- include_module parse_tree_out_cons_id.
 :- include_module parse_tree_out_inst.
+:- include_module parse_tree_out_misc.
 :- include_module parse_tree_out_pragma.
 :- include_module parse_tree_out_pred_decl.
+:- include_module parse_tree_out_sym_name.
 :- include_module parse_tree_out_term.
+:- include_module parse_tree_out_type.
 :- include_module parse_tree_out_type_repn.
 :- include_module parse_tree_out_info.
 :- include_module prog_out.

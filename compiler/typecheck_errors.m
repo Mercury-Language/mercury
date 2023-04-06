@@ -17,9 +17,9 @@
 :- interface.
 
 :- import_module check_hlds.type_assign.
-:- import_module check_hlds.typecheck_info.
 :- import_module check_hlds.typecheck_error_type_assign.
 :- import_module check_hlds.typecheck_error_util.
+:- import_module check_hlds.typecheck_info.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module mdbcomp.
@@ -123,8 +123,8 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_type_util.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.

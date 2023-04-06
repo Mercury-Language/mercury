@@ -65,8 +65,8 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.

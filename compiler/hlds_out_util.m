@@ -249,8 +249,10 @@
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_inst.
+:- import_module parse_tree.parse_tree_out_misc.
+:- import_module parse_tree.parse_tree_out_sym_name.
+:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_item.  % undesirable dependency
 :- import_module parse_tree.prog_out.
 

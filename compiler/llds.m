@@ -28,9 +28,9 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module ll_backend.layout.
 :- import_module libs.
 :- import_module libs.trace_params.
+:- import_module ll_backend.layout.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.

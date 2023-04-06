@@ -84,7 +84,7 @@
 :- import_module backend_libs.c_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign_enum.
 

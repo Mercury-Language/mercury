@@ -76,10 +76,11 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_pragma.
 :- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.parse_tree_to_term.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data_pragma.

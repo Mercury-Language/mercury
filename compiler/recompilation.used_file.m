@@ -211,8 +211,8 @@
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_out.

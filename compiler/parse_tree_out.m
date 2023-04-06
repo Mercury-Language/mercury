@@ -190,13 +190,15 @@
 :- import_module parse_tree.canonicalize_interface.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.maybe_error.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_inst_mode_name.
 :- import_module parse_tree.parse_tree_out_clause.
 :- import_module parse_tree.parse_tree_out_inst.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_pragma.
 :- import_module parse_tree.parse_tree_out_pred_decl.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.parse_tree_out_type_repn.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.

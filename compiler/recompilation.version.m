@@ -84,9 +84,9 @@
 :- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.item_util.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_to_term.
 :- import_module parse_tree.parse_util.
@@ -1384,7 +1384,7 @@ is_item_changed(Item1, Item2, Changed) :-
     % they are identical.
     %
     % We can't just assume that the varsets will be identical for
-    % identical declarations because mercury_to_mercury.m splits
+    % identical declarations because parse_tree_out_misc.m splits
     % combined type and mode declarations into separate declarations.
     % When they are read back in, the variable numbers will be different,
     % because the parser stores the type and inst variables for a combined
