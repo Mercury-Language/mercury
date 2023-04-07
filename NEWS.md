@@ -915,17 +915,6 @@ Changes to the Mercury standard library
     - pred `read_term_with_op_table/5`
             (replacement: `mercury_term_parser.read_term_with_op_table/5`)
 
-* The documentation of the predicates has been fixed:
-
-    - pred `quote_char/3`
-    - pred `quote_atom/3`
-    - pred `write_escaped_char/3`
-    - pred `write_escaped_string/3`
-
-  Their documentation said that they write to `stdout`, when in fact
-  they write to the current text output stream. By default, this is `stdout`,
-  but calls to `io.set_output_stream` may change this.
-
 ### New `term_subst` module
 
 * This new module contains predicates that perform substitutions
@@ -1163,6 +1152,18 @@ This is a bug-fix release.
 * [Github issue #117]. We have fixed a bug where the compiler would silently
   fail when compiling a program that consists of a single source file and
   some of the required libraries are not available in the selected grade.
+
+* The documentation of the following predicates in the `term_io` module has
+  been fixed:
+
+    - pred `quote_char/3`
+    - pred `quote_atom/3`
+    - pred `write_escaped_char/3`
+    - pred `write_escaped_string/3`
+
+  Their documentation said that they write to `stdout`, when in fact
+  they write to the current text output stream. By default, this is `stdout`,
+  but calls to `io.set_output_stream` may change this.
 
 NEWS for Mercury 22.01.5
 ========================
