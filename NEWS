@@ -19,6 +19,18 @@ This is a bug-fix release.
   fail when compiling a program that consists of a single source file and
   some of the required libraries are not available in the selected grade.
 
+* The documentation of the following predicates in the `term_io` module has
+  been fixed:
+
+    - pred `quote_char/3`
+    - pred `quote_atom/3`
+    - pred `write_escaped_char/3`
+    - pred `write_escaped_string/3`
+
+  Their documentation said that they write to `stdout`, when in fact
+  they write to the current text output stream. By default, this is `stdout`,
+  but calls to `io.set_output_stream` may change this.
+
 NEWS for Mercury 22.01.5
 ========================
 
@@ -45,11 +57,11 @@ This is a bug-fix release.
   module predicates when called on a string containing ill-formed code
   unit sequences:
 
-   - pred `all_match/2`
-   - pred `index_next_repl/5`
-   - pred `unsafe_index_next_repl/5`
-   - pred `prev_index_repl/5`
-   - pred `unsafe_prev_index_repl/5`
+    - pred `all_match/2`
+    - pred `index_next_repl/5`
+    - pred `unsafe_index_next_repl/5`
+    - pred `prev_index_repl/5`
+    - pred `unsafe_prev_index_repl/5`
 
 * We have fixed a bug in the `getopt` and `getopt_io` modules where
   negating a `maybe_string` option would set its option table entry
