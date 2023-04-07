@@ -123,8 +123,8 @@
 
 %---------------------%
 
-    % Given a character C, write C in single-quotes,
-    % escaped if necessary, to stdout.
+    % Given a character C, write C in single-quotes, escaped if necessary,
+    % to the current output stream, or to the specified output stream.
     %
 :- pred quote_char(char::in, io::di, io::uo) is det.
 :- pred quote_char(Stream::in, char::in, State::di, State::uo) is det
@@ -135,8 +135,9 @@
     %
 :- func quoted_char(char) = string.
 
-    % Given a character C, write C, escaped if necessary, to stdout.
-    % The character is not enclosed in quotes.
+    % Given a character C, write C, escaped if necessary,
+    % to the current output stream, or to the specified output stream.
+    % Do not enclose the character in quotes.
     %
 :- pred write_escaped_char(char::in, io::di, io::uo) is det.
 :- pred write_escaped_char(Stream::in, char::in, State::di, State::uo) is det
@@ -168,8 +169,9 @@
     %
 :- func quoted_string(string) = string.
 
-    % Given a string S, write S, with characters escaped if necessary,
-    % to stdout. The string is not enclosed in quotes.
+    % Given a string S, write S, with characters escaped if necessary.
+    % Do not enclose the string in quotes. Write to the current output stream,
+    % or to the specified output stream.
     %
 :- pred write_escaped_string(string::in, io::di, io::uo) is det.
 :- pred write_escaped_string(Stream::in, string::in,
@@ -184,7 +186,8 @@
 %---------------------%
 
     % Given an atom-name A, write A, enclosed in single-quotes if necessary,
-    % with characters escaped if necessary, to stdout.
+    % with characters escaped if necessary. Write to the current output stream,
+    % or to the specified output stream.
     %
 :- pred quote_atom(string::in, io::di, io::uo) is det.
 :- pred quote_atom(Stream::in, string::in, State::di, State::uo) is det
