@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007, 2010 The University of Melbourne.
-% Copyright (C) 2014-2022 The Mercury team.
+% Copyright (C) 2014-2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -375,7 +375,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Miscellaneus operations on input streams.
+% Miscellaneous operations on input streams.
 %
 
     % Discard all the whitespace characters satisfying char.is_whitespace
@@ -387,7 +387,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Miscellaneus operations on output streams.
+% Miscellaneous operations on output streams.
 %
 
     % put_list(Stream, Write, Sep, List, !State).
