@@ -105,7 +105,7 @@
 
     % Given a character C, write C, escaped if necessary,
     % to the current output stream, or to the specified output stream.
-    % Don't enclose the character in quotes.
+    % Do not enclose the character in quotes.
     %
 :- pred write_escaped_char(char::in, io::di, io::uo) is det.
 :- pred write_escaped_char(Stream::in, char::in, State::di, State::uo) is det
@@ -138,7 +138,7 @@
 :- func quoted_string(string) = string.
 
     % Given a string S, write S, with characters escaped if necessary.
-    % Don't enclose the string in quotes. Write to the current output stream,
+    % Do not enclose the string in quotes. Write to the current output stream,
     % or to the specified output stream.
     %
 :- pred write_escaped_string(string::in, io::di, io::uo) is det.
