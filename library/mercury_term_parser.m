@@ -127,7 +127,7 @@
     %
 :- pred parse_tokens(string::in, token_list::in, read_term(T)::out) is det.
 
-    % parse_tokens(FileName, TokenList, Result):
+    % parse_tokens(Ops, FileName, TokenList, Result):
     %
 :- pred parse_tokens_with_op_table(Ops::in, string::in, token_list::in,
     read_term(T)::out) is det <= op_table(Ops).
