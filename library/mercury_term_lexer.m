@@ -122,6 +122,8 @@
 
     % string_get_token_list_max(String, MaxOffset, Tokens,
     %   InitialPos, FinalPos):
+    % linestr_get_token_list_max(String, MaxOffset, Tokens,
+    %   InitialLineContext, FinalLineContext, InitialPos, FinalPos):
     %
     % Scan a list of tokens from a string, starting at the current offset
     % specified by InitialPos. Keep scanning until either we encounter either
@@ -135,7 +137,6 @@
     %
 :- pred string_get_token_list_max(string::in, offset::in, token_list::out,
     posn::in, posn::out) is det.
-
 :- pred linestr_get_token_list_max(string::in, offset::in, token_list::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
