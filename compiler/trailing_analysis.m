@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2017 The Mercury Team.
+% Copyright (C) 2014-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -480,7 +480,7 @@ check_goal_for_trail_mods(SCC, VarTable, Goal, Result, MaybeAnalysisStatus,
             Result = trail_will_not_modify
         else
             % If the condition modifies the trail, is model_non or both,
-            % then we need to emit trailing ops around the conditoin. If the
+            % then we need to emit trailing ops around the condition. If the
             % if-then-else has status `trail_conditional', then we also need
             % to emit the trail ops because we cannot be sure that calls to
             % builtin.{unify,compare} won't call user-defined equality or
