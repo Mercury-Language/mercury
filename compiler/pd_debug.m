@@ -67,8 +67,8 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 
@@ -103,7 +103,7 @@ pd_debug_message_context(PDInfo, Context, Fmt, Args, !IO) :-
         DebugPD = yes,
         module_info_get_name(ModuleInfo, ModuleName),
         get_debug_output_stream(Globals, ModuleName, Stream, !IO),
-        prog_out.write_context(Stream, Context, !IO),
+        parse_tree_out_misc.write_context(Stream, Context, !IO),
         disable_warning [unknown_format_calls] (
             io.format(Stream, Fmt, Args, !IO)
         ),

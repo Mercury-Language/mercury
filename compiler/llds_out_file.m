@@ -95,10 +95,10 @@
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_out.
 
 :- import_module cord.
 :- import_module int.
@@ -926,7 +926,7 @@ output_foreign_decl_or_code(Info, Stream, PragmaType, Lang, LiteralOrInclude,
         ForeignLineNumbers = yes
     then
         io.write_string(Stream, "/* ", !IO),
-        prog_out.write_context(Stream, Context, !IO),
+        parse_tree_out_misc.write_context(Stream, Context, !IO),
         io.write_string(Stream, " pragma ", !IO),
         io.write_string(Stream, PragmaType, !IO),
         io.write_string(Stream, "(", !IO),

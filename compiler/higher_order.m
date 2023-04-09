@@ -81,9 +81,10 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.parse_tree_out_misc.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
@@ -2993,7 +2994,7 @@ write_request(OutputStream, ModuleInfo, Msg,
     PredArity = pred_form_arity(PredArityInt),
     ActualArity = pred_form_arity(ActualArityInt),
     io.write_string(OutputStream, "% ", !IO),
-    prog_out.write_context(OutputStream, Context, !IO),
+    parse_tree_out_misc.write_context(OutputStream, Context, !IO),
     io.format(OutputStream, "%s `%s'/%d",
         [s(Msg), s(OldName), i(PredArityInt)], !IO),
     (

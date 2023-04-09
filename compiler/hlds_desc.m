@@ -77,8 +77,10 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.parse_tree_out_cons_id.
+:- import_module parse_tree.parse_tree_out_misc.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.prog_out.
 
 :- import_module string.
 :- import_module term_context.

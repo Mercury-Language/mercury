@@ -111,10 +111,10 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.

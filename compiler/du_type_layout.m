@@ -122,10 +122,11 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.      % undesirable dependency
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.

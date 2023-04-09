@@ -168,7 +168,7 @@
 :- implementation.
 
 :- import_module libs.options.
-:- import_module parse_tree.prog_out.
+:- import_module parse_tree.parse_tree_out_misc.
 
 :- import_module bool.
 :- import_module string.
@@ -224,7 +224,7 @@ maybe_output_line_number(Info, Context, Stream, !IO) :-
     (
         LineNumbers = do_output_line_numbers,
         io.write_string(Stream, "\t% ", !IO),
-        prog_out.write_context(Stream, Context, !IO),
+        parse_tree_out_misc.write_context(Stream, Context, !IO),
         io.write_string(Stream, "\n", !IO)
     ;
         LineNumbers = dont_output_line_numbers

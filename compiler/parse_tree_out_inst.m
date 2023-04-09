@@ -378,14 +378,14 @@ mercury_format_ground_pred_inst_info(Lang, InstVarSet, Uniq, PredInstInfo,
         (
             Modes = [],
             add_string("((pred) is ", S, !U),
-            mercury_format_det(Det, S, !U),
+            add_string(mercury_det_to_string(Det), S, !U),
             add_string(")", S, !U)
         ;
             Modes = [_ | _],
             add_string("(pred(", S, !U),
             mercury_format_mode_list(Lang, InstVarSet, Modes, S, !U),
             add_string(") is ", S, !U),
-            mercury_format_det(Det, S, !U),
+            add_string(mercury_det_to_string(Det), S, !U),
             add_string(")", S, !U)
         )
     ;
@@ -402,7 +402,7 @@ mercury_format_ground_pred_inst_info(Lang, InstVarSet, Uniq, PredInstInfo,
         ),
         mercury_format_mode(Lang, InstVarSet, RetMode, S, !U),
         add_string(" is ", S, !U),
-        mercury_format_det(Det, S, !U),
+        add_string(mercury_det_to_string(Det), S, !U),
         add_string(")", S, !U)
     ),
     (
@@ -434,14 +434,14 @@ mercury_format_any_pred_inst_info(Lang, InstVarSet, Uniq, PredInstInfo,
         (
             Modes = [],
             add_string("(any_pred is ", S, !U),
-            mercury_format_det(Det, S, !U),
+            add_string(mercury_det_to_string(Det), S, !U),
             add_string(")", S, !U)
         ;
             Modes = [_ | _],
             add_string("(any_pred(", S, !U),
             mercury_format_mode_list(Lang, InstVarSet, Modes, S, !U),
             add_string(") is ", S, !U),
-            mercury_format_det(Det, S, !U),
+            add_string(mercury_det_to_string(Det), S, !U),
             add_string(")", S, !U)
         )
     ;
@@ -458,7 +458,7 @@ mercury_format_any_pred_inst_info(Lang, InstVarSet, Uniq, PredInstInfo,
         ),
         mercury_format_mode(Lang, InstVarSet, RetMode, S, !U),
         add_string(" is ", S, !U),
-        mercury_format_det(Det, S, !U),
+        add_string(mercury_det_to_string(Det), S, !U),
         add_string(")", S, !U)
     ),
     (

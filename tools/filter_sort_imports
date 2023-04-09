@@ -2,7 +2,8 @@
 # vim: ft=awk ts=4 sw=4 et
 #
 # Replace every contiguous sequence of lines starting with ":- import_module"
-# with a sorted version of that sequence.
+# with a sorted version of that sequence. Delete the second and later
+# occurrence of any import.
 #
 
 BEGIN {
@@ -17,7 +18,10 @@ BEGIN {
         if (line_num > 1) {
             n = asort(imports);
             for (i = 1; i <= n; i++) {
-                printf "%s\n", imports[i];
+                if (!seen[imports[i]]) {
+                    printf "%s\n", imports[i];
+                    seen[imports[i]] = 1;
+                }
                 delete imports[i];
             }
             line_num = 1;
@@ -28,7 +32,10 @@ END {
         if (line_num > 1) {
             n = asort(imports);
             for (i = 1; i <= n; i++) {
-                printf "%s\n", imports[i];
+                if (!seen[imports[i]]) {
+                    printf "%s\n", imports[i];
+                    seen[imports[i]] = 1;
+                }
             }
         }
     }

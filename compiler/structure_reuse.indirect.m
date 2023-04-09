@@ -86,10 +86,10 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 :- import_module transform_hlds.ctgc.datastruct.

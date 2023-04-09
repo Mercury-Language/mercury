@@ -49,8 +49,9 @@
 :- import_module ml_backend.mlds_to_c_name.     % XXX undesirable dependency
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.parse_tree_out_misc.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.

@@ -53,10 +53,10 @@
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.java_names.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -342,7 +342,7 @@ output_src_start_for_csharp(Info, Stream, Indent, MercuryModuleName, _Imports,
     output_auto_gen_comment(Stream, Info ^ csoi_source_filename, !IO),
     output_n_indents(Stream, Indent, !IO),
     io.write_string(Stream, "/* :- module ", !IO),
-    prog_out.write_sym_name(Stream, MercuryModuleName, !IO),
+    write_sym_name(Stream, MercuryModuleName, !IO),
     io.write_string(Stream, ". */\n", !IO),
     output_n_indents(Stream, Indent, !IO),
     io.write_string(Stream, "namespace mercury {\n\n", !IO),
@@ -431,7 +431,7 @@ output_src_end_for_csharp(Stream, Indent, ModuleName, !IO) :-
     io.write_string(Stream, "}\n", !IO),
     output_n_indents(Stream, Indent, !IO),
     io.write_string(Stream, "// :- end_module ", !IO),
-    prog_out.write_sym_name(Stream, ModuleName, !IO),
+    write_sym_name(Stream, ModuleName, !IO),
     io.write_string(Stream, ".\n", !IO).
 
 %---------------------------------------------------------------------------%

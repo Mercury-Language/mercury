@@ -219,7 +219,7 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module ml_backend.ml_type_gen.
-:- import_module parse_tree.prog_out.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.

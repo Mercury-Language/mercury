@@ -10,9 +10,15 @@
 % File: parse_tree_out_cons_id.m.
 % Main author: fjh.
 %
-% This module converts cons_ids that can occur in Mercury source code
-% back into Mercury source text. (For cons_ids that can be constructed
-% only by the compiler, the result won't be valid Mercury code.)
+% NOTE All the predicates and functions below whose names have
+% the "mercury_" prefix were originally in a module, mercury_to_mercury.m,
+% whose documentation said that it "converts cons_ids back into
+% Mercury source text", though this claim was true only for cons_ids
+% that *can* appear in Mercury source text. (For cons_ids that can be
+% constructed only by the compiler, the result won't be valid Mercury code.)
+%
+% The other predicates and functions originally came from prog_out.m,
+% which made no such claim.
 %
 %---------------------------------------------------------------------------%
 
@@ -40,6 +46,31 @@
     = string.
 :- pred mercury_format_cons_id(output_lang::in, needs_brackets::in,
     cons_id::in, S::in, U::di, U::uo) is det <= output(S, U).
+
+%---------------------------------------------------------------------------%
+
+    % Convert a cons_id to a string.
+    %
+    % The maybe_quoted_cons_id_and_arity_to_string version is for use
+    % in error messages, while the cons_id_and_arity_to_string version
+    % is for use when generating target language code. The differences are
+    % that
+    %
+    % - the former puts quotation marks around user-defined cons_ids
+    %   (i.e. those that are represented by cons/3), as opposed to
+    %   builtin cons_ids such as integers, while the latter does not, and
+    %
+    % - the latter mangles user-defined cons_ids to ensure that they
+    %   are acceptable in our target languages e.g. in comments,
+    %   while the former does no mangling.
+    %
+    % The difference in the names refers to the first distinction above.
+    %
+:- func maybe_quoted_cons_id_and_arity_to_string(cons_id) = string.
+:- func cons_id_and_arity_to_string(cons_id) = string.
+
+:- pred int_const_to_string_and_suffix(some_int_const::in,
+    string::out, string::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -187,6 +218,168 @@ mercury_format_cons_id(Lang, NeedsBrackets, ConsId, S, !U) :-
     ;
         ConsId = deep_profiling_proc_layout(_),
         add_string("<deep_profiling_proc_layout>", S, !U)
+    ).
+
+%---------------------------------------------------------------------------%
+
+maybe_quoted_cons_id_and_arity_to_string(ConsId) =
+    cons_id_and_arity_to_string_maybe_quoted(dont_mangle_cons, quote_cons,
+        ConsId).
+
+cons_id_and_arity_to_string(ConsId) =
+    cons_id_and_arity_to_string_maybe_quoted(mangle_cons, dont_quote_cons,
+        ConsId).
+
+:- type maybe_quote_cons
+    --->    dont_quote_cons
+    ;       quote_cons.
+
+:- type maybe_mangle_cons
+    --->    dont_mangle_cons
+    ;       mangle_cons.
+
+:- func cons_id_and_arity_to_string_maybe_quoted(maybe_mangle_cons,
+    maybe_quote_cons, cons_id) = string.
+
+cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, ConsId)
+        = String :-
+    (
+        ConsId = cons(SymName, Arity, _TypeCtor),
+        SymNameString0 = sym_name_to_string(SymName),
+        (
+            MangleCons = dont_mangle_cons,
+            SymNameString = SymNameString0
+        ;
+            MangleCons = mangle_cons,
+            ( if string.contains_char(SymNameString0, '*') then
+                % We need to protect against the * appearing next to a /.
+                Stuff =
+                    ( pred(Char::in, Str0::in, Str::out) is det :-
+                        ( if Char = ('*') then
+                            string.append(Str0, "star", Str)
+                        else
+                            string.char_to_string(Char, CharStr),
+                            string.append(Str0, CharStr, Str)
+                        )
+                    ),
+                string.foldl(Stuff, SymNameString0, "", SymNameString1)
+            else
+                SymNameString1 = SymNameString0
+            ),
+            SymNameString = term_io.escaped_string(SymNameString1)
+        ),
+        string.int_to_string(Arity, ArityString),
+        (
+            QuoteCons = dont_quote_cons,
+            String = SymNameString ++ "/" ++ ArityString
+        ;
+            QuoteCons = quote_cons,
+            String = "`" ++ SymNameString ++ "'/" ++ ArityString
+        )
+    ;
+        ConsId = tuple_cons(Arity),
+        String = "{}/" ++ string.int_to_string(Arity)
+    ;
+        ConsId = some_int_const(IntConst),
+        int_const_to_string_and_suffix(IntConst, String, _Suffix)
+    ;
+        ConsId = float_const(Float),
+        String = float_to_string(Float)
+    ;
+        ConsId = char_const(CharConst),
+        String = term_io.quoted_char(CharConst)
+    ;
+        ConsId = string_const(StringConst),
+        String = term_io.quoted_string(StringConst)
+    ;
+        ConsId = impl_defined_const(IDCKind),
+        (
+            QuoteCons = dont_quote_cons,
+            String = impl_defined_const_kind_to_str(IDCKind)
+        ;
+            QuoteCons = quote_cons,
+            String = "`" ++ impl_defined_const_kind_to_str(IDCKind) ++ "'"
+        )
+    ;
+        ConsId = closure_cons(PredProcId, _),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "closure_cons<pred " ++ int_to_string(PredId) ++
+            " proc " ++ int_to_string(ProcId) ++ ">"
+    ;
+        ConsId = type_ctor_info_const(Module, Ctor, Arity),
+        String =
+            "<type_ctor_info " ++ sym_name_to_string(Module) ++ "." ++
+            Ctor ++ "/" ++ int_to_string(Arity) ++ ">"
+    ;
+        ConsId = base_typeclass_info_const(_, _, _, _),
+        String = "<base_typeclass_info>"
+    ;
+        ConsId = type_info_cell_constructor(_),
+        String = "<type_info_cell_constructor>"
+    ;
+        ConsId = typeclass_info_cell_constructor,
+        String = "<typeclass_info_cell_constructor>"
+    ;
+        ConsId = type_info_const(_),
+        String = "<type_info_const>"
+    ;
+        ConsId = typeclass_info_const(_),
+        String = "<typeclass_info_const>"
+    ;
+        ConsId = ground_term_const(_, _),
+        String = "<ground_term_const>"
+    ;
+        ConsId = tabling_info_const(PredProcId),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<tabling_info " ++ int_to_string(PredId) ++
+            ", " ++ int_to_string(ProcId) ++ ">"
+    ;
+        ConsId = table_io_entry_desc(PredProcId),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<table_io_entry_desc " ++ int_to_string(PredId) ++ ", " ++
+            int_to_string(ProcId) ++ ">"
+    ;
+        ConsId = deep_profiling_proc_layout(PredProcId),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<deep_profiling_proc_layout " ++ int_to_string(PredId) ++ ", " ++
+            int_to_string(ProcId) ++ ">"
+    ).
+
+int_const_to_string_and_suffix(IntConst, Str, Suffix) :-
+    (
+        IntConst = int_const(Int),
+        Str = string.int_to_string(Int),        Suffix = ""
+    ;
+        IntConst = uint_const(UInt),
+        Str = string.uint_to_string(UInt),      Suffix = "u"
+    ;
+        IntConst = int8_const(Int8),
+        Str = string.int8_to_string(Int8),      Suffix = "i8"
+    ;
+        IntConst = uint8_const(UInt8),
+        Str = string.uint8_to_string(UInt8),    Suffix = "u8"
+    ;
+        IntConst = int16_const(Int16),
+        Str = string.int16_to_string(Int16),    Suffix = "i16"
+    ;
+        IntConst = uint16_const(UInt16),
+        Str = string.uint16_to_string(UInt16),  Suffix = "u16"
+    ;
+        IntConst = int32_const(Int32),
+        Str = string.int32_to_string(Int32),    Suffix = "i32"
+    ;
+        IntConst = uint32_const(UInt32),
+        Str = string.uint32_to_string(UInt32),  Suffix = "u32"
+    ;
+        IntConst = int64_const(Int64),
+        Str = string.int64_to_string(Int64),    Suffix = "i64"
+    ;
+        IntConst = uint64_const(UInt64),
+        Str = string.uint64_to_string(UInt64),  Suffix = "u64"
     ).
 
 %---------------------------------------------------------------------------%

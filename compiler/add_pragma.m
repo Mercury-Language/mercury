@@ -108,11 +108,11 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module transform_hlds.
 :- import_module transform_hlds.term_constr_main_types.

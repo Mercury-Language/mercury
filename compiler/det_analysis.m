@@ -170,7 +170,6 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_detism.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 

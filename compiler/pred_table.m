@@ -374,7 +374,7 @@
 
 :- implementation.
 
-:- import_module parse_tree.prog_out.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
@@ -1323,7 +1323,7 @@ get_pred_id_and_proc_id_by_types(IsFullyQualified, SymName, PredOrFunc,
         % Undefined/invalid pred or func. The type-checker should ensure
         % that this never happens.
         list.length(ArgTypes, Arity),
-        PredOrFuncStr = prog_out.pred_or_func_to_str(PredOrFunc),
+        PredOrFuncStr = parse_tree_out_misc.pred_or_func_to_str(PredOrFunc),
         NameStr = sym_name_to_string(SymName),
         string.int_to_string(Arity, ArityString),
         string.append_list(["undefined/invalid ", PredOrFuncStr,
@@ -1343,7 +1343,7 @@ get_single_proc_id(ModuleInfo, PredId, ProcId) :-
         Name = pred_info_name(PredInfo),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         Arity = pred_info_orig_arity(PredInfo),
-        PredOrFuncStr = prog_out.pred_or_func_to_str(PredOrFunc),
+        PredOrFuncStr = parse_tree_out_misc.pred_or_func_to_str(PredOrFunc),
         string.int_to_string(Arity, ArityString),
         (
             ProcIds = [],

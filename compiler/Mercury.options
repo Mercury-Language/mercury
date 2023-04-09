@@ -121,7 +121,6 @@ MCFLAGS-parse_tree.error_util                += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.find_module               += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.grab_modules              += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.prog_ctgc                 += --no-warn-implicit-stream-calls
-MCFLAGS-parse_tree.prog_out                  += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.read_modules              += --no-warn-implicit-stream-calls
 MCFLAGS-top_level.mercury_compile_main       += --no-warn-implicit-stream-calls
 MCFLAGS-transform_hlds.direct_arg_in_out     += --no-warn-implicit-stream-calls

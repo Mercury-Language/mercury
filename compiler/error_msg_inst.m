@@ -83,7 +83,6 @@
 :- import_module map.
 :- import_module set.
 :- import_module string.
-:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
@@ -705,7 +704,7 @@ pred_inst_info_to_pieces(Info, !Expansions, AnyPrefix, Uniq,
         UniqPieces = [fixed("/*"), fixed(BoundName), fixed("*/")]
     ),
     modes_to_pieces(Info, !Expansions, ArgModes, ArgModesPieces),
-    mercury_format_det(Det, unit, "is ", IsDetStr),
+    IsDetStr = "is " ++ mercury_det_to_string(Det),
     % XXX Should we print each argument mode on a separate line?
     (
         PredOrFunc = pf_predicate,
@@ -768,7 +767,7 @@ pred_inst_info_to_inline_pieces(Info, !Expansions, AnyPrefix, Uniq,
         UniqPieces = [fixed("/*"), fixed(BoundName), fixed("*/")]
     ),
     modes_to_inline_pieces(Info, !Expansions, ArgModes, ArgModesPieces),
-    mercury_format_det(Det, unit, "is ", IsDetStr),
+    IsDetStr = "is " ++ mercury_det_to_string(Det),
     (
         PredOrFunc = pf_predicate,
         (

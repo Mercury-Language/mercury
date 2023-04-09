@@ -79,7 +79,8 @@
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.parse_inst_mode_name.
 :- import_module parse_tree.parse_tree_out_clause.
-:- import_module parse_tree.prog_out.
+:- import_module parse_tree.parse_tree_out_misc.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.var_db.

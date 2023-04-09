@@ -89,8 +89,8 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.status.
 :- import_module libs.options.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
@@ -863,7 +863,7 @@ check_promise_ex_disj_arm(PromiseType, Goals, CallUsed, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 promise_ex_error(PromiseType, Context, Message, !Specs) :-
-    Pieces = [words("In"), quote(prog_out.promise_to_string(PromiseType)),
+    Pieces = [words("In"), quote(parse_tree_out_misc.promise_to_string(PromiseType)),
         words("declaration:"), nl,
         words("error:"), words(Message), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,

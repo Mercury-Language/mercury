@@ -249,12 +249,12 @@
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_item.  % undesirable dependency
-:- import_module parse_tree.prog_out.
 
 :- import_module int.
 :- import_module map.
@@ -484,7 +484,7 @@ call_id_to_string(generic_call_id(GenericCallId)) =
 
 generic_call_id_to_string(gcid_higher_order(Purity, PredOrFunc, _)) =
     purity_prefix_to_string(Purity) ++ "higher-order "
-    ++ prog_out.pred_or_func_to_full_str(PredOrFunc) ++ " call".
+    ++ parse_tree_out_misc.pred_or_func_to_full_str(PredOrFunc) ++ " call".
 generic_call_id_to_string(gcid_class_method(_ClassId, MethodId)) =
     pf_sym_name_pred_form_arity_to_string(MethodId).
 generic_call_id_to_string(gcid_event_call(EventName)) =
@@ -565,7 +565,7 @@ arg_number_to_string(CallId, ArgNum) = Str :-
                 % Make error messages for higher-order calls
                 % such as `P(A, B)' clearer.
                 Main = "argument " ++ int_to_string(ArgNum),
-                PredOrFuncStr = prog_out.pred_or_func_to_full_str(PredOrFunc),
+                PredOrFuncStr = parse_tree_out_misc.pred_or_func_to_full_str(PredOrFunc),
                 ( if ArgNum = 1 then
                     Expl = "the " ++ PredOrFuncStr ++ " term"
                 else
@@ -677,16 +677,16 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
             PredConsId, ArgVars)
     ;
         ConsId = type_ctor_info_const(Module, Name, Arity),
-        Str = "type_ctor_info("""
-            ++ prog_out.sym_name_to_escaped_string(Module)
-            ++ """, """ ++ Name ++ """, " ++ string.int_to_string(Arity) ++ ")"
+        Str = string.format("type_ctor_info(%s, %s, %d)",
+            [s(sym_name_to_escaped_string(Module)), s(Name), i(Arity)])
     ;
         ConsId = base_typeclass_info_const(Module, ClassId, _, Instance),
         ClassId = class_id(Name, Arity),
-        Str = "base_typeclass_info("""
-            ++ prog_out.sym_name_to_escaped_string(Module) ++ """, "
-            ++ "class_id(" ++ prog_out.sym_name_to_escaped_string(Name)
-            ++ ", " ++ string.int_to_string(Arity) ++ "), " ++ Instance ++ ")"
+        ClassIdStr = string.format("class_id(%s, %d)",
+            [s(sym_name_to_escaped_string(Name)), i(Arity)]),
+        Str = string.format("base_typeclass_info(%s, %s, %s)",
+            [s(sym_name_to_escaped_string(Module)),
+            s(ClassIdStr), s(Instance)])
     ;
         ConsId = type_info_cell_constructor(_),
         Str = functor_to_string_maybe_needs_quotes(VarNameSrc, VarNamePrint,
@@ -699,37 +699,34 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
             term.atom("typeclass_info_cell_constructor"), ArgVars)
     ;
         ConsId = type_info_const(TIConstNum),
-        Str = "type_info_const(" ++ int_to_string(TIConstNum) ++ ")"
+        Str = string.format("type_info_const(%d)", [i(TIConstNum)])
     ;
         ConsId = typeclass_info_const(TCIConstNum),
-        Str = "typeclass_info_const(" ++ int_to_string(TCIConstNum) ++ ")"
+        Str = string.format("typeclass_info_const(%d)", [i(TCIConstNum)])
     ;
         ConsId = ground_term_const(ConstNum, SubConsId),
         SubStr = functor_cons_id_to_string(ModuleInfo, VarNameSrc,
             VarNamePrint, SubConsId, []),
-        Str = "ground_term_const(" ++ int_to_string(ConstNum) ++ ", " ++
-            SubStr ++ ")"
+        Str = string.format("ground_term_const(%d, %s)",
+            [i(ConstNum), s(SubStr)])
     ;
         ConsId = tabling_info_const(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         proc_id_to_int(ProcId, ProcIdInt),
-        Str = "tabling_info_const("
-            ++ pred_id_to_dev_string(ModuleInfo, PredId)
-            ++ ", " ++ int_to_string(ProcIdInt) ++ ")"
+        Str = string.format("tabling_info_const(%s, mode %d)",
+            [s(pred_id_to_dev_string(ModuleInfo, PredId)), i(ProcIdInt)])
     ;
         ConsId = table_io_entry_desc(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         proc_id_to_int(ProcId, ProcIdInt),
-        Str = "table_io_entry_desc("
-            ++ pred_id_to_dev_string(ModuleInfo, PredId)
-            ++ " (mode " ++ int_to_string(ProcIdInt) ++ "))"
+        Str = string.format("table_io_entry_desc(%s, mode %d)",
+            [s(pred_id_to_dev_string(ModuleInfo, PredId)), i(ProcIdInt)])
     ;
         ConsId = deep_profiling_proc_layout(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         proc_id_to_int(ProcId, ProcIdInt),
-        Str = "deep_profiling_proc_layout("
-            ++ pred_id_to_dev_string(ModuleInfo, PredId)
-            ++ " (mode " ++ int_to_string(ProcIdInt) ++ "))"
+        Str = string.format("deep_profiling_proc_layout(%s mode %d)",
+            [s(pred_id_to_dev_string(ModuleInfo, PredId)), i(ProcIdInt)])
     ).
 
 cons_id_and_vars_or_arity_to_string(VarTable, Qual, ConsId, MaybeArgVars)

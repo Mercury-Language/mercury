@@ -47,8 +47,8 @@
 
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.write_error_spec.
 
 :- import_module edit_seq.

@@ -85,8 +85,8 @@
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.module_deps_graph.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.write_error_spec.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.

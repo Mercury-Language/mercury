@@ -189,7 +189,7 @@
 
 :- implementation.
 
-:- import_module parse_tree.prog_out.
+:- import_module parse_tree.parse_tree_out_cons_id.
 
 :- import_module require.
 :- import_module set.

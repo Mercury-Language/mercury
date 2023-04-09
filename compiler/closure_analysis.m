@@ -47,9 +47,9 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
@@ -516,7 +516,7 @@ dump_ho_values(DebugStream, VarTable, GoalInfo, !IO) :-
         true
     else
         Context = goal_info_get_context(GoalInfo),
-        prog_out.write_context(DebugStream, Context, !IO),
+        parse_tree_out_misc.write_context(DebugStream, Context, !IO),
         io.nl(DebugStream, !IO),
         map.foldl(dump_ho_value_map_entry(DebugStream, VarTable),
             HoValueMap, !IO)

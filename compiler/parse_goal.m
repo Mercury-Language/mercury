@@ -77,9 +77,9 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_vars.
-:- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
 :- import_module bag.

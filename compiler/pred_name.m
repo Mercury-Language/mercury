@@ -603,8 +603,9 @@
 :- implementation.
 
 :- import_module hlds.special_pred.
+:- import_module parse_tree.parse_tree_out_misc.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_type.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
 :- import_module int.
@@ -837,7 +838,7 @@ instance_type_ctor_to_string(Type, Str) :-
 
 promise_pred_name(PromiseType, FileName, LineNumber) = Name :-
     % This naming scheme avoids naming conflicts only by luck.
-    PromiseTypeStr = prog_out.promise_to_string(PromiseType),
+    PromiseTypeStr = parse_tree_out_misc.promise_to_string(PromiseType),
     string.format("%s__%d__%s",
         [s(PromiseTypeStr), i(LineNumber), s(FileName)], Name).
 
@@ -966,7 +967,7 @@ origin_user_to_user_dev_string(UserOrDev, OriginUser) = Str :-
         )
     ;
         OriginUser = user_made_assertion(PromiseType, FileName, LineNumber),
-        PromiseTypeStr = prog_out.promise_to_string(PromiseType),
+        PromiseTypeStr = parse_tree_out_misc.promise_to_string(PromiseType),
         string.format("%s declaration at %s:%d",
             [s(PromiseTypeStr), s(FileName), i(LineNumber)], Str)
     ).
@@ -1245,7 +1246,7 @@ dump_origin(TVarSet, VarNamePrint, Prefix, Origin) = Str :-
         ;
             OriginUser = user_made_assertion(PromiseType,
                 FileName, LineNumber),
-            PromiseTypeStr = prog_out.promise_to_string(PromiseType),
+            PromiseTypeStr = parse_tree_out_misc.promise_to_string(PromiseType),
             string.format("%s %s declaration at %s:%d",
                 [s(Prefix), s(PromiseTypeStr), s(FileName), i(LineNumber)],
                 Str)

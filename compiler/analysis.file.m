@@ -126,8 +126,8 @@
 :- import_module libs.pickle.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.prog_out.
 
 :- import_module bool.
 :- import_module char.

@@ -125,11 +125,11 @@
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.write_error_spec.
 
 :- import_module bool.

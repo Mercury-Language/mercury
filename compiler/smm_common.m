@@ -78,7 +78,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
-:- import_module parse_tree.prog_out.
+:- import_module parse_tree.parse_tree_out_misc.
 
 :- import_module bool.
 :- import_module map.
@@ -159,7 +159,7 @@ program_point_init(GoalInfo) = ProgPoint :-
 %---------------------------------------------------------------------------%
 
 dump_program_point(Stream, pp(Context, RevGoalPath), !IO):-
-    prog_out.write_context(Stream, Context, !IO),
+    parse_tree_out_misc.write_context(Stream, Context, !IO),
     io.format(Stream, "--%s", [s(rev_goal_path_to_string(RevGoalPath))], !IO).
 
 %---------------------------------------------------------------------------%

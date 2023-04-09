@@ -115,9 +115,9 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_db.
