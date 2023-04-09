@@ -35,15 +35,16 @@
 
 %---------------------------------------------------------------------------%
 
-% Every distinct problem should generate a single error specification.
-% This specification should state
+% Every distinct problem should generate a single error specification,
+% whose general form is error_spec(Id, Severity, Phase, Msgs).
+% The second, third and fourth fields of this term state respectively
 %
 % - the severity of the problem (so that we can update the exit status
-%   of the compiler accordingly),
+%   of the compiler accordingly);
 % - which phase of the compiler found the problem (since later phases
 %   may wish to suppress some problem reports if some specific earlier phases
 %   found problems, e.g. when a missing clause could be caused
-%   by a syntax error), and
+%   by a syntax error); and
 % - a specification of what to print.
 %
 % In most cases, the "what to print" will be a single message for a single
@@ -56,12 +57,16 @@
 % (and equivalent in every respect to) error_spec(Id, Severity, Phase,
 % [simple_msg(Context, always(Pieces)])]).
 %
+% simplest_no_context_spec(Id, Severity, Phase, Pieces) is shorthand for
+% (and equivalent in every respect to) error_spec(Id, Severity, Phase,
+% error_msg(maybe.no, treat_based_on_posn, 0, [always(Pieces)])).
+%
 % conditional_spec(Id, Option, MatchValue, Severity, Phase, Msgs) is intended
 % to represent the error specification given by its last three fields
 % *iff* Option has the value MatchValue. If Option is *not* MatchValue,
 % it asks for nothing to be printed, and for the exit status to be left alone.
 %
-% The id field, which is present in all three alternatives, is totally
+% The Id field, which is present in all these alternatives, is totally
 % ignored when printing error_specs. Its job is something completely different:
 % helping developers track down where in the source code each error_spec
 % was constructed. Without the id fields, if developers wants to know this,
@@ -77,8 +82,8 @@
 % the identity of the predicate or function that generated each error_spec
 % will be output just after the messages in that error_spec. Even if the
 % predicate or function that this identifies has several pieces of code
-% that construct specs, the scope in which you have to search for it
-% will be easily manageable.
+% that construct error_specs, the scope in which you have to search for
+% the one you are looking for will be easily manageable.
 
 :- type error_spec
     --->    error_spec(

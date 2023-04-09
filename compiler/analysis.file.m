@@ -19,6 +19,15 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
+:- import_module parse_tree.error_spec.
+
+:- import_module io.
+:- import_module list.
+
+%---------------------------------------------------------------------------%
 
     % read_module_overall_status(Compiler, Globals, ModuleName,
     %   MaybeModuleStatus, !IO)
@@ -49,7 +58,7 @@
     %
 :- pred read_module_analysis_results(analysis_info::in, globals::in,
     module_name::in, module_analysis_map(some_analysis_result)::out,
-    io::di, io::uo) is det.
+    list(error_spec)::out, io::di, io::uo) is det.
 
     % write_module_analysis_results(AnalysisInfo, Globals, ModuleName,
     %   AnalysisResults, !IO)
@@ -70,7 +79,7 @@
     %
 :- pred read_module_analysis_requests(analysis_info::in, globals::in,
     module_name::in, module_analysis_map(analysis_request)::out,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
     % write_module_analysis_requests(AnalysisInfo, Globals, ModuleName,
     %   ModuleRequests, !IO)
@@ -88,7 +97,8 @@
     % Read the intermodule dependencies graph entries for a module from disk.
     %
 :- pred read_module_imdg(analysis_info::in, globals::in, module_name::in,
-    module_analysis_map(imdg_arc)::out, io::di, io::uo) is det.
+    module_analysis_map(imdg_arc)::out, list(error_spec)::out,
+    io::di, io::uo) is det.
 
     % write_module_imdg(AnalysisInfo, Globals, ModuleName, ModuleEntries, !IO)
     %
@@ -114,16 +124,16 @@
 
 :- import_module libs.options.
 :- import_module libs.pickle.
-:- import_module parse_tree.
-:- import_module parse_tree.module_cmds.        % XXX unwanted dependency
+:- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_out.
 
 :- import_module bool.
 :- import_module char.
 :- import_module dir.
-:- import_module exception.
 :- import_module io.file.
+:- import_module mercury_term_lexer.
 :- import_module mercury_term_parser.
 :- import_module require.
 :- import_module string.
@@ -163,9 +173,6 @@
 % version_number.
 % calling_module -> analysis_name(analysis_version, func_id, call_pattern).
 
-:- type invalid_analysis_file
-    --->    invalid_analysis_file(string).
-
 :- func version_number = int.
 
 version_number = 6.
@@ -201,8 +208,10 @@ analysis_status_to_string(optimal, "optimal").
 % Reading and writing overall status.
 %
 
-:- type parse_entry(T) == pred(term, T, T).
-:- inst parse_entry == (pred(in, in, out) is det).
+:- type parse_entry(T) ==
+    pred(varset, term, T, T, list(error_spec), list(error_spec)).
+:- inst parse_entry ==
+    (pred(in, in, in, out, in, out) is det).
 
 read_module_overall_status(Compiler, Globals, ModuleName, ModuleStatus, !IO) :-
     module_name_to_read_file_name(Compiler, Globals,
@@ -301,7 +310,8 @@ write_module_overall_status(Info, Globals, ModuleName, Status, !IO) :-
 % Reading and writing analysis results.
 %
 
-read_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
+read_module_analysis_results(Info, Globals, ModuleName, ModuleResults,
+        Specs, !IO) :-
     % If the module's overall status is `invalid', then at least one of its
     % results is invalid. However, we can't just discard the results,
     % as we want to know which results change after we reanalyse the module.
@@ -317,7 +327,7 @@ read_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
             CacheDir),
         ( if CacheDir = "" then
             do_read_module_analysis_results(Compiler, AnalysisFileName,
-                ModuleResults, !IO)
+                ModuleResults, Specs, !IO)
         else
             CacheFileName = make_cache_filename(CacheDir, AnalysisFileName),
             io.file.file_modification_time(AnalysisFileName,
@@ -333,7 +343,8 @@ read_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
                 unpickle_from_file(Unpicklers, CacheFileName, UnpickleResult,
                     !IO),
                 (
-                    UnpickleResult = ok(ModuleResults)
+                    UnpickleResult = ok(ModuleResults),
+                    Specs = []
                 ;
                     UnpickleResult = error(Error),
                     get_error_output_stream(Globals, ModuleName,
@@ -342,31 +353,36 @@ read_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
                     io.format(ErrorStream, "Error reading %s: %s\n",
                         [s(CacheFileName), s(ErrorMsg)], !IO),
                     do_read_module_analysis_results(Compiler, AnalysisFileName,
-                        ModuleResults, !IO),
-                    write_analysis_cache_file(CacheFileName, ModuleResults,
-                        !IO)
+                        ModuleResults, Specs, !IO),
+                    maybe_write_analysis_cache_file(CacheFileName,
+                        ModuleResults, Specs, !IO)
                 )
             else
                 do_read_module_analysis_results(Compiler, AnalysisFileName,
-                    ModuleResults, !IO),
-                write_analysis_cache_file(CacheFileName, ModuleResults, !IO)
+                    ModuleResults, Specs, !IO),
+                maybe_write_analysis_cache_file(CacheFileName,
+                    ModuleResults, Specs, !IO)
             )
         )
     ;
         MaybeAnalysisFileName = error(_),
-        ModuleResults = map.init
+        ModuleResults = map.init,
+        % XXX Why is a failed open of an input file *less* fatal than
+        % not being able to parse the contents of the file?
+        Specs = []
     ).
 
 :- pred do_read_module_analysis_results(Compiler::in, string::in,
-    module_analysis_map(some_analysis_result)::out, io::di, io::uo) is det
-    <= compiler(Compiler).
+    module_analysis_map(some_analysis_result)::out, list(error_spec)::out,
+    io::di, io::uo) is det <= compiler(Compiler).
 
-do_read_module_analysis_results(Compiler, AnalysisFileName, ModuleResults,
-        !IO) :-
-    ModuleResults0 = map.init,
-    io.open_input(AnalysisFileName, OpenResult, !IO),
+do_read_module_analysis_results(Compiler, AnalysisFileName, !:ModuleResults,
+        !:Specs, !IO) :-
+    !:ModuleResults = map.init,
+    !:Specs = [],
+    io.read_named_file_as_string(AnalysisFileName, FileResult, !IO),
     (
-        OpenResult = ok(Stream),
+        FileResult = ok(FileStr),
         get_debug_analysis_stream(MaybeDebugStream, !IO),
         (
             MaybeDebugStream = no
@@ -376,24 +392,17 @@ do_read_module_analysis_results(Compiler, AnalysisFileName, ModuleResults,
                 [s(AnalysisFileName)], !IO)
         ),
 
-        check_analysis_file_version_number(Stream, !IO),
-        % XXX This should be rewritten to return an error indication directly,
-        % *without* using exceptions.
-        promise_equivalent_solutions [Results, !:IO] (
-            try_io(
-                parse_analysis_file_entries(Stream,
-                    parse_result_entry(Compiler), ModuleResults0),
-                Results, !IO)
-        ),
-        io.close_input(Stream, !IO),
-        (
-            Results = succeeded(ModuleResults)
-        ;
-            Results = exception(_),
-            rethrow(Results)
-        )
+        string.length(FileStr, MaxOffset),
+        LineContext0 = line_context(1, 0),
+        LinePosn0 = line_posn(0),
+        check_analysis_file_version_number(AnalysisFileName,
+            FileStr, MaxOffset, LineContext0, LineContext1,
+            LinePosn0, LinePosn1, !Specs),
+        parse_analysis_file_entries(AnalysisFileName, FileStr, MaxOffset,
+            parse_result_entry(Compiler), LineContext1, LinePosn1,
+            !ModuleResults, !Specs)
     ;
-        OpenResult = error(_),
+        FileResult = error(_),
         get_debug_analysis_stream(MaybeDebugStream, !IO),
         (
             MaybeDebugStream = no
@@ -402,16 +411,17 @@ do_read_module_analysis_results(Compiler, AnalysisFileName, ModuleResults,
             io.format(DebugStream,
                 "%% Error reading analysis registry file: %s\n",
                 [s(AnalysisFileName)], !IO)
-        ),
-        ModuleResults = ModuleResults0
+        )
+        % XXX Why is a failed open of an input file *less* fatal than
+        % not being able to parse the contents of the file?
     ).
 
-:- pred parse_result_entry(Compiler::in, term::in,
+:- pred parse_result_entry(Compiler::in, varset::in, term::in,
     module_analysis_map(some_analysis_result)::in,
-    module_analysis_map(some_analysis_result)::out) is det
-    <= compiler(Compiler).
+    module_analysis_map(some_analysis_result)::out,
+    list(error_spec)::in, list(error_spec)::out) is det <= compiler(Compiler).
 
-parse_result_entry(Compiler, Term, !Results) :-
+parse_result_entry(Compiler, VarSet, Term, !Results, !Specs) :-
     ( if
         Term = term.functor(term.atom(AnalysisName),
             [VersionNumberTerm, FuncIdTerm,
@@ -448,8 +458,12 @@ parse_result_entry(Compiler, Term, !Results) :-
             true
         )
     else
-        Msg = "failed to parse result entry: " ++ string(Term),
-        throw(invalid_analysis_file(Msg))
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected a result entry, got"),
+            quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_read_files,
+            get_term_context(Term), Pieces),
+        !:Specs = [Spec | !.Specs]
     ).
 
 %---------------------%
@@ -506,17 +520,17 @@ write_result_entry(OutStream, AnalysisName, FuncId, Result, !IO) :-
 %
 
 read_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
-        !IO) :-
+        !Specs, !IO) :-
     find_and_read_analysis_file(Info ^ compiler, Globals,
         parse_request_entry(Info ^ compiler), request_ext, ModuleName,
-        map.init, ModuleRequests, !IO).
+        map.init, ModuleRequests, !Specs, !IO).
 
-:- pred parse_request_entry(Compiler::in, term::in,
+:- pred parse_request_entry(Compiler::in, varset::in, term::in,
     module_analysis_map(analysis_request)::in,
-    module_analysis_map(analysis_request)::out) is det
-    <= compiler(Compiler).
+    module_analysis_map(analysis_request)::out,
+    list(error_spec)::in, list(error_spec)::out) is det <= compiler(Compiler).
 
-parse_request_entry(Compiler, Term, !Requests) :-
+parse_request_entry(Compiler, VarSet, Term, !Requests, !Specs) :-
     ( if
         Term = term.functor(atom("->"), [CallerModuleTerm, RHS], _),
         RHS = term.functor(atom(AnalysisName),
@@ -550,8 +564,12 @@ parse_request_entry(Compiler, Term, !Requests) :-
             true
         )
     else
-        Msg = "failed to parse request entry: " ++ string(Term),
-        throw(invalid_analysis_file(Msg))
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected a request entry, got"),
+            quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_read_files,
+            get_term_context(Term), Pieces),
+        !:Specs = [Spec | !.Specs]
     ).
 
 %---------------------%
@@ -569,15 +587,19 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
         io.format(DebugStream, "%% Writing module analysis requests to %s\n",
             [s(AnalysisFileName)], !IO)
     ),
-    io.open_input(AnalysisFileName, InputResult, !IO),
+    io.read_named_file_as_string(AnalysisFileName, FileResult, !IO),
     (
-        InputResult = ok(InputStream),
+        FileResult = ok(FileStr),
         % Request file already exists. Check it has the right version number,
         % then append the new requests to the end.
+        % XXX Check whether FileStr is well_formed.
 
-        mercury_term_parser.read_term(InputStream, VersionResult : read_term,
-            !IO),
-        io.close_input(InputStream, !IO),
+        string.length(FileStr, MaxOffset),
+        LineContext0 = line_context(1, 0),
+        LinePosn0 = line_posn(0),
+        mercury_term_parser.read_term_from_linestr(AnalysisFileName,
+            FileStr, MaxOffset, LineContext0, _LineContext1,
+            LinePosn0, _LinePosn1, VersionResult : read_term),
         ( if
             VersionResult = term(_, NumberTerm),
             term_int.decimal_term_to_int(NumberTerm, version_number)
@@ -585,7 +607,7 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
             io.open_append(AnalysisFileName, AppendResult, !IO),
             (
                 AppendResult = ok(AppendStream),
-                write_analysis_file_2(AppendStream,
+                write_module_analysis_map(AppendStream,
                     write_request_entry(Compiler), ModuleRequests, !IO),
                 io.close_output(AppendStream, !IO),
                 Appended = yes
@@ -597,7 +619,7 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
             Appended = no
         )
     ;
-        InputResult = error(_),
+        FileResult = error(_),
         Appended = no
     ),
     (
@@ -635,16 +657,16 @@ write_request_entry(Compiler, OutStream, AnalysisName, FuncId, Request, !IO) :-
 % Reading and writing imdgs.
 %
 
-read_module_imdg(Info, Globals, ModuleName, ModuleEntries, !IO) :-
+read_module_imdg(Info, Globals, ModuleName, ModuleEntries, Specs, !IO) :-
     find_and_read_analysis_file(Info ^ compiler, Globals,
         parse_imdg_arc(Info ^ compiler), imdg_ext, ModuleName,
-        map.init, ModuleEntries, !IO).
+        map.init, ModuleEntries, [], Specs, !IO).
 
-:- pred parse_imdg_arc(Compiler::in, term::in,
-    module_analysis_map(imdg_arc)::in, module_analysis_map(imdg_arc)::out)
-    is det <= compiler(Compiler).
+:- pred parse_imdg_arc(Compiler::in, varset::in, term::in,
+    module_analysis_map(imdg_arc)::in, module_analysis_map(imdg_arc)::out,
+    list(error_spec)::in, list(error_spec)::out) is det <= compiler(Compiler).
 
-parse_imdg_arc(Compiler, Term, !Arcs) :-
+parse_imdg_arc(Compiler, VarSet, Term, !Arcs, !Specs) :-
     ( if
         Term = term.functor(atom("->"), [DependentModuleTerm, ResultTerm], _),
         ResultTerm = functor(atom(AnalysisName),
@@ -680,8 +702,12 @@ parse_imdg_arc(Compiler, Term, !Arcs) :-
             true
         )
     else
-        Msg = "failed to parse IMDG arc: " ++ string(Term),
-        throw(invalid_analysis_file(Msg))
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected an imdb arc, got"),
+            quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_read_files,
+            get_term_context(Term), Pieces),
+        !:Specs = [Spec | !.Specs]
     ).
 
 %---------------------%
@@ -746,16 +772,17 @@ try_parse_module_name(Term, ModuleName) :-
 
 :- pred find_and_read_analysis_file(Compiler::in, globals::in,
     parse_entry(T)::in(parse_entry), other_ext::in, module_name::in,
-    T::in, T::out, io::di, io::uo) is det <= compiler(Compiler).
+    T::in, T::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det <= compiler(Compiler).
 
 find_and_read_analysis_file(Compiler, Globals, ParseEntry,
-        OtherExt, ModuleName, ModuleResults0, ModuleResults, !IO) :-
+        OtherExt, ModuleName, !ModuleResults, !Specs, !IO) :-
     module_name_to_read_file_name(Compiler, Globals,
         OtherExt, ModuleName, MaybeAnalysisFileName, !IO),
     (
         MaybeAnalysisFileName = ok(AnalysisFileName),
         read_analysis_file(AnalysisFileName, ParseEntry,
-            ModuleResults0, ModuleResults, !IO)
+            !ModuleResults, !Specs, !IO)
     ;
         MaybeAnalysisFileName = error(Message),
         get_debug_analysis_stream(MaybeDebugStream, !IO),
@@ -764,21 +791,23 @@ find_and_read_analysis_file(Compiler, Globals, ParseEntry,
         ;
             MaybeDebugStream = yes(DebugStream),
             OtherExtStr = other_extension_to_string(OtherExt),
-            io.format(DebugStream, "Couldn't open %s for module %s: %s\n",
+            io.format(DebugStream, "Couldn't find %s file for module %s: %s\n",
                 [s(OtherExtStr), s(sym_name_to_string(ModuleName)),
                 s(Message)], !IO)
-        ),
-        ModuleResults = ModuleResults0
+        )
+        % XXX Why is not being able to find a file *less* fatal than
+        % not being able to parse the contents of the file?
     ).
 
 :- pred read_analysis_file(string::in, parse_entry(T)::in(parse_entry),
-    T::in, T::out, io::di, io::uo) is det.
+    T::in, T::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
 read_analysis_file(AnalysisFileName, ParseEntry,
-        ModuleResults0, ModuleResults, !IO) :-
-    io.open_input(AnalysisFileName, OpenResult, !IO),
+        !ModuleResults, !Specs, !IO) :-
+    io.read_named_file_as_string(AnalysisFileName, FileResult, !IO),
     (
-        OpenResult = ok(FileStream),
+        FileResult = ok(FileStr),
         get_debug_analysis_stream(MaybeDebugStream, !IO),
         (
             MaybeDebugStream = no
@@ -788,25 +817,16 @@ read_analysis_file(AnalysisFileName, ParseEntry,
                 [s(AnalysisFileName)], !IO)
         ),
 
-        % XXX This should be rewritten to return an error indication directly,
-        % *without* using exceptions.
-        promise_equivalent_solutions [Result, !:IO] (
-            try_io(
-                ( pred(Results1::out, !.IO::di, !:IO::uo) is det :-
-                    check_analysis_file_version_number(FileStream, !IO),
-                    parse_analysis_file_entries(FileStream, ParseEntry,
-                        ModuleResults0, Results1, !IO)
-                ), Result, !IO)
-        ),
-        io.close_input(FileStream, !IO),
-        (
-            Result = succeeded(ModuleResults)
-        ;
-            Result = exception(_),
-            rethrow(Result)
-        )
+        string.length(FileStr, MaxOffset),
+        LineContext0 = line_context(1, 0),
+        LinePosn0 = line_posn(0),
+        check_analysis_file_version_number(AnalysisFileName,
+            FileStr, MaxOffset, LineContext0, LineContext1,
+            LinePosn0, LinePosn1, !Specs),
+        parse_analysis_file_entries(AnalysisFileName, FileStr, MaxOffset,
+            ParseEntry, LineContext1, LinePosn1, !ModuleResults, !Specs)
     ;
-        OpenResult = error(_),
+        FileResult = error(_),
         get_debug_analysis_stream(MaybeDebugStream, !IO),
         (
             MaybeDebugStream = no
@@ -814,43 +834,73 @@ read_analysis_file(AnalysisFileName, ParseEntry,
             MaybeDebugStream = yes(DebugStream),
             io.format(DebugStream, "Error reading analysis file: %s\n",
                 [s(AnalysisFileName)], !IO)
-        ),
-        % XXX Why is a failed call to io.open_input *less* fatal than
+        )
+        % XXX Why is a failed open of an input file *less* fatal than
         % not being able to parse the contents of the file?
-        ModuleResults = ModuleResults0
     ).
 
-:- pred check_analysis_file_version_number(io.text_input_stream::in,
-    io::di, io::uo) is det.
+:- pred check_analysis_file_version_number(string::in, string::in, int::in,
+    line_context::in, line_context::out, line_posn::in, line_posn::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-check_analysis_file_version_number(Stream, !IO) :-
-    mercury_term_parser.read_term(Stream, TermResult : read_term, !IO),
+check_analysis_file_version_number(FileName, FileStr, MaxOffset,
+        !LineContext, !LinePosn, !Specs) :-
+    LineContext0 = !.LineContext,
+    read_term_from_linestr(FileName, FileStr, MaxOffset,
+        !LineContext, !LinePosn, TermResult : read_term),
     ( if
-        TermResult = term(_, NumberTerm),
-        term_int.decimal_term_to_int(NumberTerm, Number),
-        Number = version_number
+        TermResult = term(_VarSet, NumberTerm),
+        term_int.decimal_term_to_int(NumberTerm, Number)
     then
-        true
+        ( if Number = version_number then
+            true
+        else
+            Pieces = [words("Error: version number mismatch."),
+                words("Expected"), int_fixed(version_number), suffix(","),
+                words("got"), int_fixed(Number), suffix("."), nl],
+            LineContext0 = line_context(LineNumber, _),
+            Context = context(FileName, LineNumber),
+            Spec = simplest_spec($pred, severity_error, phase_read_files,
+                Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        )
     else
-        Msg = "bad analysis file version: " ++ string(TermResult),
-        throw(invalid_analysis_file(Msg))
+        Pieces = [words("Error: this file"),
+            words("should start with a version number"),
+            words("(specifically,"), int_fixed(version_number), suffix("),"),
+            words("but it does not."), nl],
+        LineContext0 = line_context(LineNumber, _),
+        Context = context(FileName, LineNumber),
+        Spec = simplest_spec($pred, severity_error, phase_read_files,
+            Context, Pieces),
+        !:Specs = [Spec | !.Specs]
     ).
 
-:- pred parse_analysis_file_entries(io.text_input_stream::in,
-    parse_entry(T)::in(parse_entry), T::in, T::out, io::di, io::uo) is det.
+:- pred parse_analysis_file_entries(string::in, string::in, int::in,
+    parse_entry(T)::in(parse_entry),
+    line_context::in, line_posn::in,
+    T::in, T::out, list(error_spec)::in, list(error_spec)::out) is det.
 
-parse_analysis_file_entries(Stream, ParseEntry, Results0, Results, !IO) :-
-    mercury_term_parser.read_term(Stream, TermResult : read_term, !IO),
+parse_analysis_file_entries(FileName, FileStr, MaxOffset, ParseEntry,
+        !.LineContext, !.LinePosn, !Results, !Specs) :-
+    LineContext0 = !.LineContext,
+    read_term_from_linestr(FileName, FileStr, MaxOffset,
+        !LineContext, !LinePosn, TermResult : read_term),
     (
-        TermResult = term(_, Term),
-        ParseEntry(Term, Results0, Results1),
-        parse_analysis_file_entries(Stream, ParseEntry, Results1, Results, !IO)
+        TermResult = term(VarSet, Term),
+        ParseEntry(VarSet, Term, !Results, !Specs),
+        parse_analysis_file_entries(FileName, FileStr, MaxOffset, ParseEntry,
+            !.LineContext, !.LinePosn, !Results, !Specs)
     ;
-        TermResult = eof,
-        Results = Results0
+        TermResult = eof
     ;
         TermResult = error(Msg, _),
-        throw(invalid_analysis_file(Msg))
+        Pieces = [words(Msg), nl],
+        LineContext0 = line_context(LineNumber, _),
+        Context = context(FileName, LineNumber),
+        Spec = simplest_spec($pred, severity_error, phase_read_files,
+            Context, Pieces),
+        !:Specs = [Spec | !.Specs]
     ).
 
 %---------------------------------------------------------------------------%
@@ -906,7 +956,7 @@ write_analysis_file(FileName, WriteEntry, ModuleResults, !IO) :-
     (
         OpenResult = ok(FileStream),
         io.format(FileStream, "%d.\n", [i(version_number)], !IO),
-        write_analysis_file_2(FileStream, WriteEntry, ModuleResults, !IO),
+        write_module_analysis_map(FileStream, WriteEntry, ModuleResults, !IO),
         io.close_output(FileStream, !IO)
     ;
         OpenResult = error(IOError),
@@ -915,27 +965,28 @@ write_analysis_file(FileName, WriteEntry, ModuleResults, !IO) :-
         unexpected($pred, IOErrorMsg)
     ).
 
-:- pred write_analysis_file_2(io.text_output_stream::in,
+:- pred write_module_analysis_map(io.text_output_stream::in,
     write_entry(T)::in(write_entry), module_analysis_map(T)::in,
     io::di, io::uo) is det.
 
-write_analysis_file_2(OutStream, WriteEntry, ModuleResults, !IO) :-
-    map.foldl(write_analysis_file_3(OutStream, WriteEntry),
+write_module_analysis_map(OutStream, WriteEntry, ModuleResults, !IO) :-
+    map.foldl(write_module_analysis_map_entry(OutStream, WriteEntry),
         ModuleResults, !IO).
 
-:- pred write_analysis_file_3(io.text_output_stream::in,
+:- pred write_module_analysis_map_entry(io.text_output_stream::in,
     write_entry(T)::in(write_entry), string::in, func_analysis_map(T)::in,
     io::di, io::uo) is det.
 
-write_analysis_file_3(OutStream, WriteEntry, AnalysisName, FuncResults, !IO) :-
-    map.foldl(write_analysis_file_4(OutStream, WriteEntry, AnalysisName),
+write_module_analysis_map_entry(OutStream, WriteEntry, AnalysisName,
+        FuncResults, !IO) :-
+    map.foldl(write_module_analysis_func(OutStream, WriteEntry, AnalysisName),
         FuncResults, !IO).
 
-:- pred write_analysis_file_4(io.text_output_stream::in,
+:- pred write_module_analysis_func(io.text_output_stream::in,
     write_entry(T)::in(write_entry), string::in, func_id::in, list(T)::in,
     io::di, io::uo) is det.
 
-write_analysis_file_4(OutStream, WriteEntry, AnalysisName, FuncId,
+write_module_analysis_func(OutStream, WriteEntry, AnalysisName, FuncId,
         FuncResultList, !IO) :-
     list.sort(FuncResultList, FuncResultListSorted),
     list.foldl(
@@ -983,6 +1034,18 @@ make_cache_filename(Dir, FileName) = CacheFileName :-
 dir_sep(Char) :-
     dir.is_directory_separator(Char).
 
+:- pred maybe_write_analysis_cache_file(string::in,
+    module_analysis_map(some_analysis_result)::in, list(error_spec)::in,
+    io::di, io::uo) is det.
+
+maybe_write_analysis_cache_file(CacheFileName, ModuleResults, Specs, !IO) :-
+    (
+        Specs = [],
+        write_analysis_cache_file(CacheFileName, ModuleResults, !IO)
+    ;
+        Specs = [_ | _]
+    ).
+
 :- pred write_analysis_cache_file(string::in,
     module_analysis_map(some_analysis_result)::in, io::di, io::uo) is det.
 
@@ -995,11 +1058,11 @@ write_analysis_cache_file(CacheFileName, ModuleResults, !IO) :-
         TmpFileResult = ok(TmpFileStream),
         pickle(TmpFileStream, init_analysis_picklers, ModuleResults, !IO),
         io.close_binary_output(TmpFileStream, !IO),
-        io.file.rename_file(TmpFileName, CacheFileName, RenameRes, !IO),
+        io.file.rename_file(TmpFileName, CacheFileName, RenameResult, !IO),
         (
-            RenameRes = ok
+            RenameResult = ok
         ;
-            RenameRes = error(Error),
+            RenameResult = error(Error),
             % XXX Our caller should tell us what stream we should print
             % any error messages to.
             io.stderr_stream(StdErrStream, !IO),

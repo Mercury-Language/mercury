@@ -567,7 +567,8 @@ output_analysis_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
     module_info_get_analysis_info(!.HLDS, AnalysisInfo),
     module_info_get_all_deps(!.HLDS, ImportedModules),
     analysis.write_analysis_files(mmc, !.HLDS, ImportedModules,
-        AnalysisInfo, _AnalysisInfo, !IO).
+        AnalysisInfo, AnalysisSpecs, !IO),
+    !:Specs = AnalysisSpecs ++ !.Specs.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

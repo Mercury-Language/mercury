@@ -1814,9 +1814,15 @@ process_augmented_module(ProgressStream, ErrorStream, Globals0,
         ;
             OpModeAugment = opmau_make_analysis_registry,
             prepare_for_intermodule_analysis(ProgressStream, Globals,
-                Verbose, Stats, HLDS21, HLDS22, !IO),
-            output_analysis_file(ProgressStream, HLDS22, !Specs,
-                !DumpInfo, !IO),
+                Verbose, Stats, AnalysisSpecs, HLDS21, HLDS22, !IO),
+            (
+                AnalysisSpecs = [],
+                output_analysis_file(ProgressStream, HLDS22, !Specs,
+                    !DumpInfo, !IO)
+            ;
+                AnalysisSpecs = [_ | _],
+                !:Specs = AnalysisSpecs ++ !.Specs
+            ),
             ExtraObjFiles = []
         ;
             OpModeAugment = opmau_make_xml_documentation,
@@ -1825,12 +1831,19 @@ process_augmented_module(ProgressStream, ErrorStream, Globals0,
         ;
             OpModeAugment = opmau_generate_code(OpModeCodeGen),
             maybe_prepare_for_intermodule_analysis(ProgressStream, Globals,
-                Verbose, Stats, HLDS21, HLDS22, !IO),
-            MaybeTopModule = Baggage ^ mb_maybe_top_module,
-            after_front_end_passes(ProgressStream, ErrorStream, Globals,
-                OpModeCodeGen, MaybeTopModule,
-                FindTimestampFiles, MaybeTimestampMap, HLDS22, ExtraObjFiles,
-                !Specs, !DumpInfo, !IO)
+                Verbose, Stats, AnalysisSpecs, HLDS21, HLDS22, !IO),
+            (
+                AnalysisSpecs = [],
+                MaybeTopModule = Baggage ^ mb_maybe_top_module,
+                after_front_end_passes(ProgressStream, ErrorStream, Globals,
+                    OpModeCodeGen, MaybeTopModule,
+                    FindTimestampFiles, MaybeTimestampMap, HLDS22,
+                    ExtraObjFiles, !Specs, !DumpInfo, !IO)
+            ;
+                AnalysisSpecs = [_ | _],
+                !:Specs = AnalysisSpecs ++ !.Specs,
+                ExtraObjFiles = []
+            )
         )
     else
         % If the number of errors is > 0, make sure that the compiler
@@ -1891,27 +1904,28 @@ maybe_write_dependency_graph(ProgressStream, ErrorStream, Verbose, Stats,
 %---------------------------------------------------------------------------%
 
 :- pred maybe_prepare_for_intermodule_analysis(io.text_output_stream::in,
-    globals::in, bool::in, bool::in, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    globals::in, bool::in, bool::in, list(error_spec)::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_prepare_for_intermodule_analysis(ProgressStream, Globals,
-        Verbose, Stats, !HLDS, !IO) :-
+        Verbose, Stats, Specs, !HLDS, !IO) :-
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
     (
         IntermodAnalysis = yes,
         prepare_for_intermodule_analysis(ProgressStream, Globals,
-            Verbose, Stats, !HLDS, !IO)
+            Verbose, Stats, Specs, !HLDS, !IO)
     ;
-        IntermodAnalysis = no
+        IntermodAnalysis = no,
+        Specs = []
     ).
 
 :- pred prepare_for_intermodule_analysis(io.text_output_stream::in,
-    globals::in, bool::in, bool::in, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    globals::in, bool::in, bool::in, list(error_spec)::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
-prepare_for_intermodule_analysis(ProgressStream, Globals, Verbose, Stats,
-        !HLDS, !IO) :-
+prepare_for_intermodule_analysis(ProgressStream, Globals,
+        Verbose, Stats, Specs, !HLDS, !IO) :-
     maybe_write_string(ProgressStream, Verbose,
         "% Preparing for intermodule analysis...\n", !IO),
 
@@ -1924,7 +1938,7 @@ prepare_for_intermodule_analysis(ProgressStream, Globals, Verbose, Stats,
 
     module_info_get_analysis_info(!.HLDS, AnalysisInfo0),
     prepare_intermodule_analysis(Globals, ModuleNames, LocalModuleNames,
-        AnalysisInfo0, AnalysisInfo, !IO),
+        Specs, AnalysisInfo0, AnalysisInfo, !IO),
     module_info_set_analysis_info(AnalysisInfo, !HLDS),
 
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),

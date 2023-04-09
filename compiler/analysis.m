@@ -31,6 +31,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 
@@ -279,8 +280,8 @@
     % modules.
     %
 :- pred prepare_intermodule_analysis(globals::in, set(module_name)::in,
-    set(module_name)::in, analysis_info::in, analysis_info::out,
-    io::di, io::uo) is det.
+    set(module_name)::in, list(error_spec)::out,
+    analysis_info::in, analysis_info::out, io::di, io::uo) is det.
 
      % module_is_local(Info, ModuleName, IsLocal).
      %
@@ -295,9 +296,8 @@
     % analysis files.
     %
 :- pred write_analysis_files(Compiler::in, module_info::in,
-    set(module_name)::in, analysis_info::in, analysis_info::out,
-    io::di, io::uo) is det
-    <= compiler(Compiler).
+    set(module_name)::in, analysis_info::in, list(error_spec)::out,
+    io::di, io::uo) is det <= compiler(Compiler).
 
     % do_read_module_overall_status(Compiler, Globals, ModuleName,
     %   MaybeModuleStatus, !IO)
@@ -385,11 +385,11 @@
                 % tracking would allow only F1 to be recompiled, instead of
                 % all of M1, but we don't do that.
                 %
-                % IMDGs are loaded from disk into the old map. During analysis
+                % IMDGs are loaded from disk into the old map. During analysis,
                 % any dependences of the current module on other modules
-                % is added into the new map. At the end of analysis all the
+                % are added into the new map. At the end of analysis, all the
                 % arcs which terminate at the current module are cleared
-                % from the old map and replaced by those in the new map.
+                % from the old map, and replaced by those in the new map.
                 %
                 % XXX: Check if we really need two maps.
 
@@ -1256,28 +1256,51 @@ combine_imdg_lists(ArcsA, ArcsB, ArcsA ++ ArcsB).
 %---------------------------------------------------------------------------%
 
 prepare_intermodule_analysis(Globals, ImportedModuleNames0, LocalModuleNames,
-        !Info, !IO) :-
+        Specs, !Info, !IO) :-
+    % NOTE The original code of the analysis package threw exceptions
+    % when it found version number mismatches or syntax errors in the files
+    % it tried to read. There was no recovery from these exceptions,
+    % so a single compiler invocation could "report" only one such problem.
+    % (If you can call a message immediately preceding a compiler abort
+    % a "report".)
+    %
+    % The current code of this package, when it finds those same problems,
+    % just creates an error_spec, adds it to the list, and continues.
+    % This can report an unbounded number of errors per compiler invocation,
+    % and unlike the old system, it also prints the context of each problem.
+    % However, the current system assumes that the problems whose error_specs
+    % we gather will not cause later computations to abort (e.g. by causing
+    % map.lookups to fail) by breaking what were assumed to be invariants.
+    % This is mostly because I (zs) *cannot find* any mention of any such
+    % invariants.
     ThisModule = !.Info ^ this_module,
     ImportedModuleNames = set.delete(ImportedModuleNames0, ThisModule),
 
     !Info ^ local_module_names := LocalModuleNames,
 
     % Read in results for imported modules.
-    set.fold2(load_module_analysis_results(Globals), ImportedModuleNames,
-        !Info, !IO),
+    set.fold3(load_module_analysis_results(Globals), ImportedModuleNames,
+        !Info, [], Specs0, !IO),
 
     % Read in results and requests for the module being analysed.
-    load_module_analysis_results(Globals, ThisModule, !Info, !IO),
+    load_module_analysis_results(Globals, ThisModule, !Info,
+        Specs0, Specs1, !IO),
     read_module_analysis_requests(!.Info, Globals, ThisModule,
-        ThisModuleRequests, !IO),
-    RequestsMap0 = !.Info ^ analysis_requests_map,
-    map.set(ThisModule, ThisModuleRequests, RequestsMap0, RequestsMap),
-    !Info ^ analysis_requests_map := RequestsMap.
+        ThisModuleRequests, Specs1, Specs, !IO),
+    (
+        Specs = [],
+        RequestsMap0 = !.Info ^ analysis_requests_map,
+        map.set(ThisModule, ThisModuleRequests, RequestsMap0, RequestsMap),
+        !Info ^ analysis_requests_map := RequestsMap
+    ;
+        Specs = [_ | _]
+    ).
 
 :- pred load_module_analysis_results(globals::in, module_name::in,
-    analysis_info::in, analysis_info::out, io::di, io::uo) is det.
+    analysis_info::in, analysis_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-load_module_analysis_results(Globals, ModuleName, !Info, !IO) :-
+load_module_analysis_results(Globals, ModuleName, !Info, !Specs, !IO) :-
     OldResultsMap0 = !.Info ^ old_analysis_results,
     ModuleStatusMap0 = !.Info ^ module_status_map,
     ( if
@@ -1290,13 +1313,19 @@ load_module_analysis_results(Globals, ModuleName, !Info, !IO) :-
         do_read_module_overall_status(!.Info ^ compiler, Globals, ModuleName,
             ModuleStatus, !IO),
         read_module_analysis_results(!.Info, Globals, ModuleName,
-            ModuleResults, !IO),
-        map.det_insert(ModuleName, ModuleStatus,
-            ModuleStatusMap0, ModuleStatusMap),
-        map.det_insert(ModuleName, ModuleResults,
-            OldResultsMap0, OldResultsMap),
-        !Info ^ module_status_map := ModuleStatusMap,
-        !Info ^ old_analysis_results := OldResultsMap
+            ModuleResults, ModuleSpecs, !IO),
+        (
+            ModuleSpecs = [],
+            map.det_insert(ModuleName, ModuleStatus,
+                ModuleStatusMap0, ModuleStatusMap),
+            map.det_insert(ModuleName, ModuleResults,
+                OldResultsMap0, OldResultsMap),
+            !Info ^ module_status_map := ModuleStatusMap,
+            !Info ^ old_analysis_results := OldResultsMap
+        ;
+            ModuleSpecs = [_ | _],
+            !:Specs = ModuleSpecs ++ !.Specs
+        )
     ).
 
 module_is_local(Info, ModuleName, IsLocal) :-
@@ -1308,76 +1337,93 @@ module_is_local(Info, ModuleName, IsLocal) :-
 
 %---------------------------------------------------------------------------%
 
+write_analysis_files(Compiler, ModuleInfo, ImportedModules0,
+        !.Info, Specs, !IO) :-
     % In this procedure we have just finished compiling module ModuleName
     % and will write out data currently cached in the analysis_info structure
     % out to disk.
-    %
-write_analysis_files(Compiler, ModuleInfo, ImportedModule0, !Info, !IO) :-
+    % XXX Where exactly "on disk"?
+
     ThisModule = !.Info ^ this_module,
-    ImportedModules = set.delete(ImportedModule0, ThisModule),
+    ImportedModules = set.delete(ImportedModules0, ThisModule),
 
     LocalModules = !.Info ^ local_module_names,
     set.intersect(LocalModules, ImportedModules, LocalImportedModules),
 
     % Load IMDG files for local modules.
     module_info_get_globals(ModuleInfo, Globals),
-    set.fold2(load_module_imdg(Globals), LocalModules, !Info, !IO),
+    set.fold3(load_module_imdg(Globals), LocalModules, !Info, [], Specs, !IO),
 
-    update_analysis_registry(ModuleInfo, !Info, !IO),
+    (
+        Specs = [_ | _]
+        % Do not go any further if we had any errors while reading IMDG
+        % information. Return Specs to be printed by one of our ancestors.
+    ;
+        Specs = [],
+        update_analysis_registry(ModuleInfo, !Info, !IO),
 
-    % The current module was just compiled so we set its status to the
-    % lub of all the new analysis results generated.
-    ModuleStatus = lub_result_statuses(!.Info ^ new_analysis_results),
-    ModuleStatusMap0 = !.Info ^ module_status_map,
-    map.set(ThisModule, ModuleStatus, ModuleStatusMap0, ModuleStatusMap),
-    !Info ^ module_status_map := ModuleStatusMap,
+        % The current module was just compiled so we set its status to the
+        % lub of all the new analysis results generated.
+        ModuleStatus = lub_result_statuses(!.Info ^ new_analysis_results),
+        ModuleStatusMap0 = !.Info ^ module_status_map,
+        map.set(ThisModule, ModuleStatus, ModuleStatusMap0, ModuleStatusMap),
+        !Info ^ module_status_map := ModuleStatusMap,
 
-    update_intermodule_dependencies(ThisModule, LocalImportedModules, !Info),
-    ( if map.is_empty(!.Info ^ new_analysis_results) then
-        true
-    else
-        unexpected($pred, "new_analysis_results is not empty")
-    ),
+        update_intermodule_dependencies(ThisModule, LocalImportedModules,
+            !Info),
+        ( if map.is_empty(!.Info ^ new_analysis_results) then
+            true
+        else
+            unexpected($pred, "new_analysis_results is not empty")
+        ),
 
-    % Write the module statuses for all local modules (not necessarily
-    % imported).
-    set.fold(maybe_write_module_overall_status(!.Info, Globals),
-        LocalModules, !IO),
+        % Write the module statuses for all local modules (not necessarily
+        % imported).
+        set.fold(maybe_write_module_overall_status(!.Info, Globals),
+            LocalModules, !IO),
 
-    % Write the analysis results for the current module.
-    map.lookup(!.Info ^ old_analysis_results, ThisModule, ModuleResults),
-    write_module_analysis_results(!.Info, Globals, ThisModule,
-        ModuleResults, !IO),
+        % Write the analysis results for the current module.
+        map.lookup(!.Info ^ old_analysis_results, ThisModule, ModuleResults),
+        write_module_analysis_results(!.Info, Globals, ThisModule,
+            ModuleResults, !IO),
 
-    % Write the requests for imported local modules.
-    set.fold(maybe_write_module_requests(!.Info, Globals),
-        LocalImportedModules, !IO),
+        % Write the requests for imported local modules.
+        set.fold(maybe_write_module_requests(!.Info, Globals),
+            LocalImportedModules, !IO),
 
-    % Remove the requests for the current module since we (should have)
-    % fulfilled them in this pass.
-    empty_request_file(!.Info, Globals, ThisModule, !IO),
+        % Remove the requests for the current module since we (should have)
+        % fulfilled them in this pass.
+        empty_request_file(!.Info, Globals, ThisModule, !IO),
 
-    % Write the intermodule dependency graphs.
-    set.fold(maybe_write_module_imdg(!.Info, Globals),
-        LocalImportedModules, !IO),
+        % Write the intermodule dependency graphs.
+        set.fold(maybe_write_module_imdg(!.Info, Globals),
+            LocalImportedModules, !IO),
 
-    % Touch a timestamp file to indicate the last time that this module was
-    % analysed.
-    module_name_to_write_file_name(Compiler, Globals,
-        other_ext(".analysis_date"), ThisModule, TimestampFileName, !IO),
-    get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
-    get_error_output_stream(ModuleInfo, ErrorStream, !IO),
-    touch_datestamp(Globals, ProgressStream, ErrorStream,
-        TimestampFileName, _Succeeded, !IO).
+        % Touch a timestamp file to indicate the last time that this module was
+        % analysed.
+        module_name_to_write_file_name(Compiler, Globals,
+            other_ext(".analysis_date"), ThisModule, TimestampFileName, !IO),
+        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+        get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+        touch_datestamp(Globals, ProgressStream, ErrorStream,
+            TimestampFileName, _Succeeded, !IO)
+    ).
 
 :- pred load_module_imdg(globals::in, module_name::in,
-    analysis_info::in, analysis_info::out, io::di, io::uo) is det.
+    analysis_info::in, analysis_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-load_module_imdg(Globals, ModuleName, !Info, !IO) :-
-    read_module_imdg(!.Info, Globals, ModuleName, IMDG, !IO),
-    OldIMDGMap0 = !.Info ^ old_imdg_map,
-    map.det_insert(ModuleName, IMDG, OldIMDGMap0, OldIMDGMap),
-    !Info ^ old_imdg_map := OldIMDGMap.
+load_module_imdg(Globals, ModuleName, !Info, !Specs, !IO) :-
+    read_module_imdg(!.Info, Globals, ModuleName, IMDG, ModuleSpecs, !IO),
+    (
+        ModuleSpecs = [],
+        OldIMDGMap0 = !.Info ^ old_imdg_map,
+        map.det_insert(ModuleName, IMDG, OldIMDGMap0, OldIMDGMap),
+        !Info ^ old_imdg_map := OldIMDGMap
+    ;
+        ModuleSpecs = [_ | _],
+        !:Specs = ModuleSpecs ++ !.Specs
+    ).
 
 :- pred maybe_write_module_overall_status(analysis_info::in, globals::in,
     module_name::in, io::di, io::uo) is det.
