@@ -415,9 +415,8 @@ MR_String MR_make_string(MR_AllocSiteInfoPtr alloc_id, const char *fmt, ...);
 // the copy. On success, returns MR_TRUE and sets `ptr' to point to the copy
 // of the string. Returns MR_FALSE if `string' is not a valid UTF-8 encoded
 // string.
-//
-extern MR_bool MR_escape_string_quote(MR_String *ptr,
-    const char * string);
+
+extern MR_bool MR_escape_string_quote(MR_String *ptr, const char * string);
 
 // True if c is an ASCII code point, i.e. U+0000..U+007f.
 
@@ -446,16 +445,16 @@ extern MR_bool MR_escape_string_quote(MR_String *ptr,
 // Advance `*pos' to the beginning of the next code point in `s'.
 // If `*pos' is already at the end of the string, return MR_FALSE
 // without modifying `*pos'.
-// This function simply searches for a single or lead byte without decoding
-// so may skip over bytes in ill-formed sequences.
+// This function simply searches for a single or lead byte without decoding,
+// and so may skip over bytes in ill-formed sequences.
 
 extern MR_bool          MR_utf8_next(const MR_String s_, MR_Integer *pos);
 
 // Rewind `*pos' to the beginning of the previous code point in `s'.
 // If `*pos' is already at the beginning of the string, return MR_FALSE
 // without modifying `*pos'.
-// This function simply searches for a single or lead byte without decoding
-// so may skip over bytes in ill-formed sequences.
+// This function simply searches for a single or lead byte without decoding,
+// and so may skip over bytes in ill-formed sequences.
 
 extern MR_bool          MR_utf8_prev(const MR_String s_, MR_Integer *pos);
 

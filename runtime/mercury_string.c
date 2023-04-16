@@ -294,7 +294,7 @@ MR_hash_string6(MR_ConstString s)
 MR_bool
 MR_utf8_next(const MR_String s_, MR_Integer *pos)
 {
-    const unsigned char *s = (const unsigned char *)s_;
+    const unsigned char *s = (const unsigned char *) s_;
     int c;
 
     if (s[*pos] == '\0') {
@@ -305,6 +305,8 @@ MR_utf8_next(const MR_String s_, MR_Integer *pos)
     for (;;) {
         ++(*pos);
         c = s[*pos];
+        // This won't run off the end of the string, because
+        // MR_utf8_is_single_byte('\0') succeeds.
         if (MR_utf8_is_single_byte(c) || MR_utf8_is_lead_byte(c)) {
             break;
         }
@@ -316,7 +318,7 @@ MR_utf8_next(const MR_String s_, MR_Integer *pos)
 MR_bool
 MR_utf8_prev(const MR_String s_, MR_Integer *pos)
 {
-    const unsigned char *s = (const unsigned char *)s_;
+    const unsigned char *s = (const unsigned char *) s_;
     int c;
 
     while (*pos > 0) {
@@ -333,7 +335,7 @@ MR_utf8_prev(const MR_String s_, MR_Integer *pos)
 MR_int_least32_t
 MR_utf8_get(const MR_String s_, MR_Integer pos)
 {
-    const unsigned char *s = (const unsigned char *)s_;
+    const unsigned char *s = (const unsigned char *) s_;
     int c;
     int width;
 
@@ -348,7 +350,7 @@ MR_utf8_get(const MR_String s_, MR_Integer pos)
 MR_int_least32_t
 MR_utf8_get_mb(const MR_String s_, MR_Integer pos, int *width)
 {
-    const unsigned char *s = (const unsigned char *)s_;
+    const unsigned char *s = (const unsigned char *) s_;
     int c;
     int d;
     int minc;
@@ -450,7 +452,8 @@ MR_utf8_get_next_mb(const MR_String s, MR_Integer *pos)
         return c;
     }
 
-    // Some invalid byte sequence.
+    // Some invalid byte sequence. Skip to the start of the next character,
+    // but return the ill-formed character.
     MR_utf8_next(s, pos);
     return c;
 }
@@ -500,7 +503,7 @@ MR_utf8_width(MR_Char c)
 size_t
 MR_utf8_encode(char s_[], MR_Char c)
 {
-    unsigned char *s = (unsigned char *)s_;
+    unsigned char *s = (unsigned char *) s_;
     MR_UnsignedChar uc = c;
 
     if (uc <= 0x7f) {
