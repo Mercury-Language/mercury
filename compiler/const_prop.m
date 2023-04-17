@@ -32,7 +32,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % evaluate_call(Globals, VarTypes, Instmap,
+    % evaluate_call(Globals, VarTable, Instmap,
     %   ModuleName, ProcName, ModeNum, Args, GoalExpr, !GoalInfo):
     %
     % Try to statically evaluate a call to ModuleName.ProcName(Args)
@@ -62,8 +62,6 @@
 :- import_module int32.
 :- import_module int64.
 :- import_module int8.
-:- import_module maybe.
-:- import_module pair.
 :- import_module string.
 :- import_module term_context.
 :- import_module uint.
@@ -73,6 +71,35 @@
 :- import_module uint8.
 
 %---------------------------------------------------------------------------%
+
+evaluate_call(Globals, VarTable, InstMap,
+        ModuleName, ProcName, ModeNum, ArgVars, GoalExpr, !GoalInfo) :-
+    lookup_arg_vars(VarTable, InstMap, ArgVars, ArgInfos),
+    ( if
+        evaluate_det_call(Globals, ModuleName, ProcName, ModeNum,
+            ArgInfos, OutputArg, Cons)
+    then
+        make_construction_goal(OutputArg, Cons, GoalExpr, !GoalInfo)
+    else if
+        evaluate_test(ModuleName, ProcName, ModeNum, ArgInfos, Succeeded)
+    then
+        make_true_or_fail(Succeeded, GoalExpr)
+    else if
+        evaluate_semidet_call(ModuleName, ProcName, ModeNum, ArgInfos, Result)
+    then
+        (
+            Result = semi_call_failure,
+            GoalExpr = fail_goal_expr
+        ;
+%           Result = semi_call_binds_to_const(OutputArg, Cons),
+%           make_construction_goal(OutputArg, Cons, GoalExpr, !GoalInfo)
+%       ;
+            Result = semi_call_binds_to_var(OutputArg, InputArg),
+            make_assignment_goal(OutputArg, InputArg, GoalExpr, !GoalInfo)
+        )
+    else
+        fail
+    ).
 
     % This type groups together all the information we need from the HLDS
     % about a procedure call argument.
@@ -84,48 +111,15 @@
                 arg_inst    :: mer_inst
             ).
 
-evaluate_call(Globals, VarTable, InstMap,
-        ModuleName, ProcName, ModeNum, Args, GoalExpr, !GoalInfo) :-
-    LookupArgs =
-        ( func(Var) = arg_hlds_info(Var, Type, Inst) :-
-            lookup_var_type(VarTable, Var, Type),
-            instmap_lookup_var(InstMap, Var, Inst)
-        ),
-    ArgHldsInfos = list.map(LookupArgs, Args),
-    evaluate_call_2(Globals, ModuleName, ProcName, ModeNum, ArgHldsInfos,
-       GoalExpr, !GoalInfo).
+:- pred lookup_arg_vars(var_table::in, instmap::in,
+    list(prog_var)::in, list(arg_hlds_info)::out) is det.
 
-:- pred evaluate_call_2(globals::in, string::in, string::in, int::in,
-    list(arg_hlds_info)::in, hlds_goal_expr::out,
-    hlds_goal_info::in, hlds_goal_info::out) is semidet.
-
-evaluate_call_2(Globals, ModuleName, Pred, ModeNum, Args, GoalExpr,
-        !GoalInfo) :-
-    ( if
-        evaluate_det_call(Globals, ModuleName, Pred, ModeNum,
-            Args, OutputArg, Cons)
-    then
-        make_construction_goal(OutputArg, Cons, GoalExpr, !GoalInfo)
-    else if
-        evaluate_test(ModuleName, Pred, ModeNum, Args, Succeeded)
-    then
-        make_true_or_fail(Succeeded, GoalExpr)
-    else if
-        evaluate_semidet_call(ModuleName, Pred, ModeNum, Args, Result)
-    then
-        (
-            Result = yes(OutputArg - const(Cons)),
-            make_construction_goal(OutputArg, Cons, GoalExpr, !GoalInfo)
-        ;
-            Result = yes(OutputArg - var(InputArg)),
-            make_assignment_goal(OutputArg, InputArg, GoalExpr, !GoalInfo)
-        ;
-            Result = no,
-            GoalExpr = fail_goal_expr
-        )
-    else
-        fail
-    ).
+lookup_arg_vars(_VarTable, _InstMap, [], []).
+lookup_arg_vars(VarTable, InstMap, [Var | Vars], [Info | Infos]) :-
+    lookup_var_type(VarTable, Var, Type),
+    instmap_lookup_var(InstMap, Var, Inst),
+    Info = arg_hlds_info(Var, Type, Inst),
+    lookup_arg_vars(VarTable, InstMap, Vars, Infos).
 
 %---------------------------------------------------------------------------%
 
@@ -236,14 +230,22 @@ evaluate_det_call(Globals, ModuleName, ProcName, ModeNum, Args,
 :- pred evaluate_det_call_int_1(globals::in, string::in, int::in,
     arg_hlds_info::in, arg_hlds_info::out, cons_id::out) is semidet.
 
-evaluate_det_call_int_1(Globals, ProcName, ModeNum, X,
-        OutputArg, some_int_const(int_const(OutputArgVal))) :-
+evaluate_det_call_int_1(Globals, ProcName, ModeNum, X, OutputArg, ConsId) :-
     (
-        ProcName = "bits_per_int",
+        ( ProcName = "bits_per_int"
+        ; ProcName = "ubits_per_int"
+        ),
         ModeNum = 0,
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_bits_per_int(Globals, bits_per_int(OutputArgVal))
+        target_bits_per_int(Globals, bits_per_int(BitsPerInt)),
+        (
+            ProcName = "bits_per_int",
+            ConsId = some_int_const(int_const(BitsPerInt))
+        ;
+            ProcName = "ubits_per_int",
+            ConsId = some_int_const(uint_const(uint.det_from_int(BitsPerInt)))
+        )
     ).
 
 :- pred evaluate_det_call_uint_1(globals::in, string::in, int::in,
@@ -251,13 +253,20 @@ evaluate_det_call_int_1(Globals, ProcName, ModeNum, X,
 
 evaluate_det_call_uint_1(Globals, ProcName, ModeNum, X, OutputArg, ConsId) :-
     (
-        ProcName = "bits_per_uint",
+        ( ProcName = "bits_per_uint"
+        ; ProcName = "ubits_per_uint"
+        ),
         ModeNum = 0,
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_bits_per_uint(Globals, bits_per_uint(OutputArgVal)),
-        % NOTE: this returns an int not a uint.
-        ConsId = some_int_const(int_const(OutputArgVal))
+        target_bits_per_uint(Globals, bits_per_uint(BitsPerUInt)),
+        (
+            ProcName = "bits_per_uint",
+            ConsId = some_int_const(int_const(BitsPerUInt))
+        ;
+            ProcName = "ubits_per_uint",
+            ConsId = some_int_const(uint_const(uint.det_from_int(BitsPerUInt)))
+        )
     ).
 
 %---------------------%
@@ -528,11 +537,11 @@ evaluate_det_call_int_3_mode_2(Globals, ProcName, X, Y, Z,
         OutputArgVal = xor(YVal, ZVal)
     ).
 
+%---------------------%
+
 :- pred evaluate_det_call_uint_3_mode_0(globals::in, string::in,
     arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
     arg_hlds_info::out, cons_id::out) is semidet.
-
-%---------------------%
 
 evaluate_det_call_uint_3_mode_0(Globals, ProcName, X, Y, Z,
         OutputArg, some_int_const(uint_const(OutputArgVal))) :-
@@ -1163,6 +1172,22 @@ evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
 
 %---------------------------------------------------------------------------%
 
+    % If we can statically determine the result of a semidet call
+    % to a standard library predicate or function, we return a value
+    % of this type to specify that result. The result can be either ...
+:- type semi_call_result
+    --->    semi_call_failure
+            % ... that the call will fail;
+    ;       semi_call_binds_to_var(arg_hlds_info, arg_hlds_info).
+            % ... that the call will succeed, assigning the value
+            % of the variable described by the second arg_hlds_info
+            % to the variable described by the first; or
+    % ;     semi_call_binds_to_const(arg_hlds_info, cons_id).
+            % ... that the call will succeed, assigning the value
+            % of the constant  described by the cons_id to the variable
+            % described by the first arg_hlds_info. This last alternative
+            % is commented out, because it is not currently used.
+
     % evaluate_semidet_call(ModuleName, ProcName, ModeNum, Args, Result):
     %
     % This attempts to evaluate a call to
@@ -1170,39 +1195,33 @@ evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
     % in mode ModeNum.
     %
     % If the call is a semidet call with one output that can be statically
-    % evaluated, evaluate_semidet_call succeeds with Result being "no"
-    % if the call will fail, or yes(OutputArg - OutputArgValue) if it will
-    % succeed, with OutputArg being whichever of the arguments is output,
-    % and with OutputArgVal being the computed value of OutputArg.
+    % evaluated, evaluate_semidet_call will succeed, returning in Result
+    % the description of the result.
     %
-    % Otherwise (i.e. if the call is not semidet, or has no outputs
-    % or more than one output, or cannot be statically evaluated),
-    % evaluate_semidet_call fails.
-
-:- type arg_val
-    --->    const(cons_id)
-    ;       var(arg_hlds_info).
-
 :- pred evaluate_semidet_call(string::in, string::in, int::in,
-    list(arg_hlds_info)::in, maybe(pair(arg_hlds_info, arg_val))::out)
-    is semidet.
+    list(arg_hlds_info)::in, semi_call_result::out) is semidet.
 
-evaluate_semidet_call("builtin", "dynamic_cast", 0, Args, Result) :-
-    evaluate_semidet_call("private_builtin", "typed_unify", 1, Args, Result).
-
-evaluate_semidet_call("private_builtin", "typed_unify", Mode, Args, Result) :-
-    % mode 0 is the (in, in) mode
-    % mode 1 is the (in, out) mode
-    % both modes are semidet
-    Mode = 1,
+evaluate_semidet_call(ModuleName, ProcName, ModeNum, Args, Result) :-
+    (
+        ModuleName = "builtin",
+        ProcName = "dynamic_cast",
+        ModeNum = 0
+    ;
+        ModuleName = "private_builtin",
+        ProcName = "typed_unify",
+        % mode 0 is the (in, in) mode
+        % mode 1 is the (in, out) mode
+        % both modes are semidet
+        ModeNum = 1
+    ),
     Args = [TypeOfX, TypeOfY, X, Y],
     eval_unify(TypeOfX, TypeOfY, Result0),
     (
         Result0 = no,
-        Result = no
+        Result = semi_call_failure
     ;
         Result0 = yes,
-        Result = yes(Y - var(X))
+        Result = semi_call_binds_to_var(Y, X)
     ).
 
     % evaluate_unify(FirstArg, SecondArg, Result):

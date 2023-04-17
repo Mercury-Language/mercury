@@ -216,9 +216,8 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         (
             MaybeAssignsGoalExpr = yes(GoalExpr),
             GoalInfo = GoalInfo0
-            % simplify_look_for_duplicate_call (or rather its
-            % subconstractors in common.m) will set the requantify flag
-            % if needed.
+            % simplify_look_for_duplicate_call (or rather its subcontractors
+            % in common.m) will set the requantify flag if needed.
         ;
             MaybeAssignsGoalExpr = no,
             GoalExpr = GoalExpr0,
@@ -838,28 +837,26 @@ skip_trailing_digits(Str, Index0, Index) :-
 
 maybe_generate_warning_for_useless_comparison(PredInfo, InstMap, Args,
         GoalInfo, !Info) :-
-    pred_info_is_pred_or_func(PredInfo) = PredOrFunc,
     ModuleSymName = pred_info_module(PredInfo),
     ( if
         is_std_lib_module_name(ModuleSymName, ModuleName),
-        PredOrFunc = pf_predicate,
         Args = [ArgA, ArgB],
+        pred_info_is_pred_or_func(PredInfo) = pf_predicate,
         simplify_do_warn_simple_code(!.Info)
     then
         pred_info_get_name(PredInfo, PredName),
         instmap_lookup_var(InstMap, ArgA, InstA),
         instmap_lookup_var(InstMap, ArgB, InstB),
         ( if
-            is_useless_unsigned_comparison(ModuleName, PredName, InstA,
-                InstB, WarnPieces)
+            is_useless_unsigned_comparison(ModuleName, PredName,
+                InstA, InstB, WarnPieces)
         then
             GoalContext = goal_info_get_context(GoalInfo),
             PredPieces = describe_one_pred_info_name(should_module_qualify,
                 PredInfo),
             Pieces = [words("Warning: call to")] ++ PredPieces ++ WarnPieces,
-            Spec = conditional_spec($pred, warn_simple_code, yes,
-                severity_warning, phase_simplify(report_in_any_mode),
-                [simplest_msg(GoalContext, Pieces)]),
+            Spec = simplest_spec($pred, severity_warning,
+                phase_simplify(report_in_any_mode), GoalContext, Pieces),
             simplify_info_add_message(Spec, !Info)
         else
             true
@@ -868,34 +865,34 @@ maybe_generate_warning_for_useless_comparison(PredInfo, InstMap, Args,
         true
     ).
 
-:- pred is_useless_unsigned_comparison(string::in, string::in, mer_inst::in,
-    mer_inst::in, list(format_piece)::out) is semidet.
+:- pred is_useless_unsigned_comparison(string::in, string::in,
+    mer_inst::in, mer_inst::in, list(format_piece)::out) is semidet.
 
-is_useless_unsigned_comparison(ModuleName, PredName, ArgA, ArgB, Pieces) :-
+is_useless_unsigned_comparison(ModuleName, PredName, InstA, InstB, Pieces) :-
     (
         PredName = ">=",
-        arg_is_unsigned_zero(ModuleName, ArgB, ZeroStr),
+        arg_is_unsigned_zero(ModuleName, InstB, ZeroStr),
         Pieces = [words("cannot fail."), nl,
             words("All"), words(ModuleName), words("values are"),
-            words(">="), words(ZeroStr), suffix(".")]
+            words(">="), words(ZeroStr), suffix("."), nl]
     ;
         PredName = "=<",
-        arg_is_unsigned_zero(ModuleName, ArgA, ZeroStr),
+        arg_is_unsigned_zero(ModuleName, InstA, ZeroStr),
         Pieces = [words("cannot fail."), nl,
-            words(ZeroStr), words("=<"), words("all"),
-            words(ModuleName), words("values.")]
+            words(ZeroStr), words("is"), words("=<"), words("all"),
+            words(ModuleName), words("values."), nl]
     ;
         PredName = "<",
-        arg_is_unsigned_zero(ModuleName, ArgB, ZeroStr),
+        arg_is_unsigned_zero(ModuleName, InstB, ZeroStr),
         Pieces = [words("cannot succeed."), nl,
             words("There are no"), words(ModuleName),
-            words("values <"), words(ZeroStr), suffix(".")]
+            words("values <"), words(ZeroStr), suffix("."), nl]
     ;
         PredName = ">",
-        arg_is_unsigned_zero(ModuleName, ArgA, ZeroStr),
+        arg_is_unsigned_zero(ModuleName, InstA, ZeroStr),
         Pieces = [words("cannot succeed."), nl,
-            words(ZeroStr), words("> no"), words(ModuleName),
-            words("values.")]
+            words(ZeroStr), words("is not"), words(">"), words("any"),
+            words(ModuleName), words("value."), nl]
     ).
 
 :- pred arg_is_unsigned_zero(string::in, mer_inst::in, string::out) is semidet.

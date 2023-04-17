@@ -1,17 +1,17 @@
 unsigned_zero_cmp.m:028: Warning: call to predicate `uint.<'/2 cannot succeed.
 unsigned_zero_cmp.m:028:   There are no uint values < 0u.
 unsigned_zero_cmp.m:029: Warning: call to predicate `uint.>'/2 cannot succeed.
-unsigned_zero_cmp.m:029:   0u > no uint values.
+unsigned_zero_cmp.m:029:   0u is not > any uint value.
 unsigned_zero_cmp.m:030: Warning: call to predicate `uint.=<'/2 cannot fail.
-unsigned_zero_cmp.m:030:   0u =< all uint values.
+unsigned_zero_cmp.m:030:   0u is =< all uint values.
 unsigned_zero_cmp.m:031: Warning: call to predicate `uint.>='/2 cannot fail.
 unsigned_zero_cmp.m:031:   All uint values are >= 0u.
 unsigned_zero_cmp.m:034: Warning: call to predicate `uint8.<'/2 cannot succeed.
 unsigned_zero_cmp.m:034:   There are no uint8 values < 0u8.
 unsigned_zero_cmp.m:035: Warning: call to predicate `uint8.>'/2 cannot succeed.
-unsigned_zero_cmp.m:035:   0u8 > no uint8 values.
+unsigned_zero_cmp.m:035:   0u8 is not > any uint8 value.
 unsigned_zero_cmp.m:036: Warning: call to predicate `uint8.=<'/2 cannot fail.
-unsigned_zero_cmp.m:036:   0u8 =< all uint8 values.
+unsigned_zero_cmp.m:036:   0u8 is =< all uint8 values.
 unsigned_zero_cmp.m:037: Warning: call to predicate `uint8.>='/2 cannot fail.
 unsigned_zero_cmp.m:037:   All uint8 values are >= 0u8.
 unsigned_zero_cmp.m:040: Warning: call to predicate `uint16.<'/2 cannot
@@ -19,9 +19,9 @@ unsigned_zero_cmp.m:040:   succeed.
 unsigned_zero_cmp.m:040:   There are no uint16 values < 0u16.
 unsigned_zero_cmp.m:041: Warning: call to predicate `uint16.>'/2 cannot
 unsigned_zero_cmp.m:041:   succeed.
-unsigned_zero_cmp.m:041:   0u16 > no uint16 values.
+unsigned_zero_cmp.m:041:   0u16 is not > any uint16 value.
 unsigned_zero_cmp.m:042: Warning: call to predicate `uint16.=<'/2 cannot fail.
-unsigned_zero_cmp.m:042:   0u16 =< all uint16 values.
+unsigned_zero_cmp.m:042:   0u16 is =< all uint16 values.
 unsigned_zero_cmp.m:043: Warning: call to predicate `uint16.>='/2 cannot fail.
 unsigned_zero_cmp.m:043:   All uint16 values are >= 0u16.
 unsigned_zero_cmp.m:046: Warning: call to predicate `uint32.<'/2 cannot
@@ -29,9 +29,9 @@ unsigned_zero_cmp.m:046:   succeed.
 unsigned_zero_cmp.m:046:   There are no uint32 values < 0u32.
 unsigned_zero_cmp.m:047: Warning: call to predicate `uint32.>'/2 cannot
 unsigned_zero_cmp.m:047:   succeed.
-unsigned_zero_cmp.m:047:   0u32 > no uint32 values.
+unsigned_zero_cmp.m:047:   0u32 is not > any uint32 value.
 unsigned_zero_cmp.m:048: Warning: call to predicate `uint32.=<'/2 cannot fail.
-unsigned_zero_cmp.m:048:   0u32 =< all uint32 values.
+unsigned_zero_cmp.m:048:   0u32 is =< all uint32 values.
 unsigned_zero_cmp.m:049: Warning: call to predicate `uint32.>='/2 cannot fail.
 unsigned_zero_cmp.m:049:   All uint32 values are >= 0u32.
 unsigned_zero_cmp.m:052: Warning: call to predicate `uint64.<'/2 cannot
@@ -39,8 +39,8 @@ unsigned_zero_cmp.m:052:   succeed.
 unsigned_zero_cmp.m:052:   There are no uint64 values < 0u64.
 unsigned_zero_cmp.m:053: Warning: call to predicate `uint64.>'/2 cannot
 unsigned_zero_cmp.m:053:   succeed.
-unsigned_zero_cmp.m:053:   0u64 > no uint64 values.
+unsigned_zero_cmp.m:053:   0u64 is not > any uint64 value.
 unsigned_zero_cmp.m:054: Warning: call to predicate `uint64.=<'/2 cannot fail.
-unsigned_zero_cmp.m:054:   0u64 =< all uint64 values.
+unsigned_zero_cmp.m:054:   0u64 is =< all uint64 values.
 unsigned_zero_cmp.m:055: Warning: call to predicate `uint64.>='/2 cannot fail.
 unsigned_zero_cmp.m:055:   All uint64 values are >= 0u64.

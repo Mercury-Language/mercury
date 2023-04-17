@@ -25,7 +25,7 @@
 :- type bits_per_uint
     --->    bits_per_uint(int).
 
-    % Return the number of bits per int for the selected compilation target.
+    % Return the number of bits per uint for the selected compilation target.
     %
 :- pred target_bits_per_uint(globals::in, bits_per_uint::out) is det.
 
