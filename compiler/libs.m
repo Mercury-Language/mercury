@@ -38,10 +38,8 @@
 :- include_module dependency_graph.
 :- include_module file_util.
 :- include_module graph_colour.
-:- include_module int_emu.
 :- include_module md5.
 :- include_module pickle.
-:- include_module uint_emu.
 :- include_module va_map.
 
 % OS interfaces not provided by the standard library.

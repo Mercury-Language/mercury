@@ -81,7 +81,6 @@
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.int_emu.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.
@@ -89,6 +88,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.int_emu.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -1373,16 +1373,16 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
         % it isn't.
         IntType = int_type_int,
         Args = [X, Y],
-        target_bits_per_int(Globals, bits_per_int(TargetBitsPerInt)),
-        simplify_make_int_ico_op(ModuleName, Op, X, TargetBitsPerInt, Y,
+        target_word_bits(Globals, word_bits(WordBits)),
+        simplify_make_int_ico_op(ModuleName, Op, X, WordBits, Y,
             ImprovedGoalExpr, !.GoalInfo, !Info)
     ;
         PredName = "times_bits_per_int",
         IntType = int_type_int,
         Args = [X, Y],
         Op = "*",
-        target_bits_per_int(Globals, bits_per_int(TargetBitsPerInt)),
-        simplify_make_int_ico_op(ModuleName, Op, X, TargetBitsPerInt, Y,
+        target_word_bits(Globals, word_bits(WordBits)),
+        simplify_make_int_ico_op(ModuleName, Op, X, WordBits, Y,
             ImprovedGoalExpr, !.GoalInfo, !Info)
     ;
         ( PredName = "/",   Op = "unchecked_quotient"
@@ -1682,8 +1682,8 @@ int_type_target_bits(Globals, IntType) = IntTypeBits :-
         ( IntType = int_type_int
         ; IntType = int_type_uint
         ),
-        target_bits_per_int(Globals, bits_per_int(TargetBitsPerInt)),
-        IntTypeBits = TargetBitsPerInt
+        target_word_bits(Globals, word_bits(WordBits)),
+        IntTypeBits = WordBits
     ;
         ( IntType = int_type_int8
         ; IntType = int_type_uint8

@@ -87,6 +87,7 @@
 % Utility routines.
 :- include_module builtin_lib_types.
 :- include_module check_type_inst_mode_defns.
+:- include_module int_emu.
 :- include_module item_util.
 :- include_module prog_detism.
 :- include_module prog_event.

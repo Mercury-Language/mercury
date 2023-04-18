@@ -51,9 +51,8 @@
 :- implementation.
 
 :- import_module hlds.make_goal.
-:- import_module libs.int_emu.
 :- import_module libs.options.
-:- import_module libs.uint_emu.
+:- import_module parse_tree.int_emu.
 
 :- import_module bool.
 :- import_module float.
@@ -238,13 +237,13 @@ evaluate_det_call_int_1(Globals, ProcName, ModeNum, X, OutputArg, ConsId) :-
         ModeNum = 0,
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_bits_per_int(Globals, bits_per_int(BitsPerInt)),
+        target_word_bits(Globals, word_bits(BitsPerWord)),
         (
             ProcName = "bits_per_int",
-            ConsId = some_int_const(int_const(BitsPerInt))
+            ConsId = some_int_const(int_const(BitsPerWord))
         ;
             ProcName = "ubits_per_int",
-            ConsId = some_int_const(uint_const(uint.det_from_int(BitsPerInt)))
+            ConsId = some_int_const(uint_const(uint.det_from_int(BitsPerWord)))
         )
     ).
 
@@ -259,13 +258,13 @@ evaluate_det_call_uint_1(Globals, ProcName, ModeNum, X, OutputArg, ConsId) :-
         ModeNum = 0,
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_bits_per_uint(Globals, bits_per_uint(BitsPerUInt)),
+        target_word_bits(Globals, word_bits(WordBits)),
         (
             ProcName = "bits_per_uint",
-            ConsId = some_int_const(int_const(BitsPerUInt))
+            ConsId = some_int_const(int_const(WordBits))
         ;
             ProcName = "ubits_per_uint",
-            ConsId = some_int_const(uint_const(uint.det_from_int(BitsPerUInt)))
+            ConsId = some_int_const(uint_const(uint.det_from_int(WordBits)))
         )
     ).
 
@@ -287,35 +286,35 @@ evaluate_det_call_int_2(Globals, ProcName, ModeNum, X, Y,
     ;
         ProcName = "-",
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        int_emu.target_bits_per_int(Globals, BitsPerInt),
-        int_emu.minus(BitsPerInt, 0, XVal, OutputArgVal)
+        target_word_bits(Globals, BitsPerWord),
+        int_minus(BitsPerWord, 0, XVal, OutputArgVal)
     ;
         ProcName = "\\",
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_bits_per_int(Globals, TargetBitsPerInt),
-        TargetBitsPerInt = bits_per_int(int.bits_per_int),
+        target_word_bits(Globals, TargetBitsPerWord),
+        TargetBitsPerWord = word_bits(int.bits_per_int),
         OutputArgVal = \ XVal
     ;
         ProcName = "floor_to_multiple_of_bits_per_int",
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        int_emu.target_bits_per_int(Globals, BitsPerInt),
-        int_emu.floor_to_multiple_of_bits_per_int(XVal, BitsPerInt,
+        target_word_bits(Globals, BitsPerWord),
+        int_floor_to_multiple_of_bits_per_int(XVal, BitsPerWord,
             OutputArgVal)
     ;
         ProcName = "quot_bits_per_int",
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        int_emu.target_bits_per_int(Globals, BitsPerInt),
-        int_emu.quot_bits_per_int(XVal, BitsPerInt, OutputArgVal)
+        target_word_bits(Globals, BitsPerWord),
+        int_quot_bits_per_int(XVal, BitsPerWord, OutputArgVal)
     ;
         ProcName = "times_bits_per_int",
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        int_emu.target_bits_per_int(Globals, BitsPerInt),
-        int_emu.times_bits_per_int(XVal, BitsPerInt, OutputArgVal)
+        target_word_bits(Globals, BitsPerWord),
+        int_times_bits_per_int(XVal, BitsPerWord, OutputArgVal)
     ;
         ProcName = "rem_bits_per_int",
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        int_emu.target_bits_per_int(Globals, BitsPerInt),
-        int_emu.rem_bits_per_int(XVal, BitsPerInt, OutputArgVal)
+        target_word_bits(Globals, BitsPerWord),
+        int_rem_bits_per_int(XVal, BitsPerWord, OutputArgVal)
     ).
 
 :- pred evaluate_det_call_uint_2(globals::in, string::in, int::in,
@@ -330,8 +329,9 @@ evaluate_det_call_uint_2(Globals, ProcName, ModeNum, X, Y,
         X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
         FunctorX = some_int_const(uint_const(XVal)),
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_bits_per_uint(Globals, TargetBitsPerUInt),
-        TargetBitsPerUInt = bits_per_uint(uint.bits_per_uint),
+        target_word_bits(Globals, TargetWordBits),
+        % ZZZ
+        TargetWordBits = word_bits(uint.bits_per_uint),
         OutputArg = Y,
         OutputArgVal = \ XVal
     ).
@@ -409,35 +409,35 @@ evaluate_det_call_int_3_mode_0(Globals, ProcName, X, Y, Z,
             ; ProcName = ">>"   ; ProcName = "unchecked_right_shift"
             ),
             globals.lookup_bool_option(Globals, pregenerated_dist, no),
-            int_emu.target_bits_per_int(Globals, BitsPerInt),
+            target_word_bits(Globals, BitsPerWord),
             require_complete_switch [ProcName]
             (
                 ( ProcName = "+" ; ProcName = "plus" ),
-                int_emu.plus(BitsPerInt, XVal, YVal, OutputArgVal)
+                int_plus(BitsPerWord, XVal, YVal, OutputArgVal)
             ;
                 ( ProcName = "-" ; ProcName = "minus" ),
-                int_emu.minus(BitsPerInt, XVal, YVal, OutputArgVal)
+                int_minus(BitsPerWord, XVal, YVal, OutputArgVal)
             ;
                 ( ProcName = "*" ; ProcName = "times" ),
-                int_emu.times(BitsPerInt, XVal, YVal, OutputArgVal)
+                int_times(BitsPerWord, XVal, YVal, OutputArgVal)
             ;
                 ( ProcName = "//"
                 ; ProcName = "/"
                 ; ProcName = "unchecked_quotient"
                 ),
-                int_emu.quotient(BitsPerInt, XVal, YVal, OutputArgVal)
+                int_quotient(BitsPerWord, XVal, YVal, OutputArgVal)
             ;
                 ProcName = "mod",
-                int_emu.mod(BitsPerInt, XVal, YVal, OutputArgVal)
+                int_mod(BitsPerWord, XVal, YVal, OutputArgVal)
             ;
                 ( ProcName = "rem" ; ProcName = "unchecked_rem" ),
-                int_emu.rem(BitsPerInt, XVal, YVal, OutputArgVal)
+                int_rem(BitsPerWord, XVal, YVal, OutputArgVal)
             ;
                 ( ProcName = "<<" ; ProcName = "unchecked_left_shift" ),
-                int_emu.left_shift(BitsPerInt, XVal, YVal, OutputArgVal)
+                int_left_shift(BitsPerWord, XVal, YVal, OutputArgVal)
             ;
                 ( ProcName = ">>" ; ProcName = "unchecked_right_shift" ),
-                int_emu.right_shift(BitsPerInt, XVal, YVal, OutputArgVal)
+                int_right_shift(BitsPerWord, XVal, YVal, OutputArgVal)
             )
         ;
             ProcName = "/\\",
@@ -452,13 +452,13 @@ evaluate_det_call_int_3_mode_0(Globals, ProcName, X, Y, Z,
     ;
         FunctorY = some_int_const(uint_const(YVal)),
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        int_emu.target_bits_per_int(Globals, BitsPerInt),
+        target_word_bits(Globals, BitsPerWord),
         (
             ( ProcName = "<<u" ; ProcName = "unchecked_left_ushift" ),
-            int_emu.left_ushift(BitsPerInt, XVal, YVal, OutputArgVal)
+            int_left_ushift(BitsPerWord, XVal, YVal, OutputArgVal)
         ;
             ( ProcName = ">>u" ; ProcName = "unchecked_right_ushift" ),
-            int_emu.right_ushift(BitsPerInt, XVal, YVal, OutputArgVal)
+            int_right_ushift(BitsPerWord, XVal, YVal, OutputArgVal)
         )
     ),
     OutputArg = Z.
@@ -477,8 +477,8 @@ evaluate_det_call_int_3_mode_1(Globals, ProcName, X, Y, Z,
         FunctorZ = some_int_const(int_const(ZVal)),
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        int_emu.target_bits_per_int(Globals, BitsPerInt),
-        int_emu.minus(BitsPerInt, ZVal, YVal, OutputArgVal)
+        target_word_bits(Globals, BitsPerWord),
+        int_minus(BitsPerWord, ZVal, YVal, OutputArgVal)
     ;
         ProcName = "-",
         Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
@@ -487,8 +487,8 @@ evaluate_det_call_int_3_mode_1(Globals, ProcName, X, Y, Z,
         FunctorZ = some_int_const(int_const(ZVal)),
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        int_emu.target_bits_per_int(Globals, BitsPerInt),
-        int_emu.plus(BitsPerInt, YVal, ZVal, OutputArgVal)
+        target_word_bits(Globals, BitsPerWord),
+        int_plus(BitsPerWord, YVal, ZVal, OutputArgVal)
     ;
         ProcName = "xor",
         X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
@@ -514,8 +514,8 @@ evaluate_det_call_int_3_mode_2(Globals, ProcName, X, Y, Z,
         OutputArg = Y,
         OutputArg = Y,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        int_emu.target_bits_per_int(Globals, BitsPerInt),
-        int_emu.minus(BitsPerInt, ZVal, XVal, OutputArgVal)
+        target_word_bits(Globals, BitsPerWord),
+        int_minus(BitsPerWord, ZVal, XVal, OutputArgVal)
     ;
         ProcName = "-",
         X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
@@ -525,8 +525,8 @@ evaluate_det_call_int_3_mode_2(Globals, ProcName, X, Y, Z,
         OutputArg = Y,
         OutputArg = Y,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        int_emu.target_bits_per_int(Globals, BitsPerInt),
-        int_emu.minus(BitsPerInt, XVal, ZVal, OutputArgVal)
+        target_word_bits(Globals, BitsPerWord),
+        int_minus(BitsPerWord, XVal, ZVal, OutputArgVal)
     ;
         ProcName = "xor",
         Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
@@ -568,35 +568,35 @@ evaluate_det_call_uint_3_mode_0(Globals, ProcName, X, Y, Z,
             ; ProcName = ">>u"  ; ProcName = "unchecked_right_ushift"
             ),
             globals.lookup_bool_option(Globals, pregenerated_dist, no),
-            uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+            target_word_bits(Globals, WordBits),
             require_complete_switch [ProcName]
             (
                 ( ProcName = "+" ; ProcName = "plus" ),
-                uint_emu.plus(BitsPerUInt, XVal, YVal, OutputArgVal)
+                uint_plus(WordBits, XVal, YVal, OutputArgVal)
             ;
                 ( ProcName = "-" ; ProcName = "minus" ),
-                uint_emu.minus(BitsPerUInt, XVal, YVal, OutputArgVal)
+                uint_minus(WordBits, XVal, YVal, OutputArgVal)
             ;
                 ( ProcName = "*" ; ProcName = "times" ),
-                uint_emu.times(BitsPerUInt, XVal, YVal, OutputArgVal)
+                uint_times(WordBits, XVal, YVal, OutputArgVal)
             ;
                 ( ProcName = "//"
                 ; ProcName = "/"
                 ; ProcName = "unchecked_quotient"
                 ),
-                uint_emu.quotient(BitsPerUInt, XVal, YVal, OutputArgVal)
+                uint_quotient(WordBits, XVal, YVal, OutputArgVal)
             ;
                 ProcName = "mod",
-                uint_emu.mod(BitsPerUInt, XVal, YVal, OutputArgVal)
+                uint_mod(WordBits, XVal, YVal, OutputArgVal)
             ;
                 ( ProcName = "rem" ; ProcName = "unchecked_rem" ),
-                uint_emu.rem(BitsPerUInt, XVal, YVal, OutputArgVal)
+                uint_rem(WordBits, XVal, YVal, OutputArgVal)
             ;
                 ( ProcName = "<<u" ; ProcName = "unchecked_left_ushift" ),
-                uint_emu.left_ushift(BitsPerUInt, XVal, YVal, OutputArgVal)
+                uint_left_ushift(WordBits, XVal, YVal, OutputArgVal)
             ;
                 ( ProcName = ">>u" ; ProcName = "unchecked_right_ushift" ),
-                uint_emu.right_ushift(BitsPerUInt, XVal, YVal, OutputArgVal)
+                uint_right_ushift(WordBits, XVal, YVal, OutputArgVal)
             )
         ;
             ProcName = "/\\",
@@ -611,13 +611,13 @@ evaluate_det_call_uint_3_mode_0(Globals, ProcName, X, Y, Z,
     ;
         ConstY = int_const(YVal),
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
+        target_word_bits(Globals, WordBits),
         (
             ( ProcName = "<<" ; ProcName = "unchecked_left_shift" ),
-            uint_emu.left_shift(BitsPerUInt, XVal, YVal, OutputArgVal)
+            uint_left_shift(WordBits, XVal, YVal, OutputArgVal)
         ;
             ( ProcName = ">>" ; ProcName = "unchecked_right_shift" ),
-            uint_emu.right_shift(BitsPerUInt, XVal, YVal, OutputArgVal)
+            uint_right_shift(WordBits, XVal, YVal, OutputArgVal)
         )
     ),
     OutputArg = Z.
@@ -636,8 +636,8 @@ evaluate_det_call_uint_3_mode_1(Globals, ProcName, X, Y, Z,
         FunctorZ = some_int_const(uint_const(ZVal)),
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
-        uint_emu.minus(BitsPerUInt, ZVal, YVal, OutputArgVal)
+        target_word_bits(Globals, WordBits),
+        uint_minus(WordBits, ZVal, YVal, OutputArgVal)
     ;
         ProcName = "-",
         Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
@@ -646,8 +646,8 @@ evaluate_det_call_uint_3_mode_1(Globals, ProcName, X, Y, Z,
         FunctorZ = some_int_const(uint_const(ZVal)),
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
-        uint_emu.plus(BitsPerUInt, YVal, ZVal, OutputArgVal)
+        target_word_bits(Globals, WordBits),
+        uint_plus(WordBits, YVal, ZVal, OutputArgVal)
     ;
         ProcName = "xor",
         X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
@@ -672,8 +672,8 @@ evaluate_det_call_uint_3_mode_2(Globals, ProcName, X, Y, Z,
         FunctorZ = some_int_const(uint_const(ZVal)),
         OutputArg = Y,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
-        uint_emu.minus(BitsPerUInt, ZVal, XVal, OutputArgVal)
+        target_word_bits(Globals, WordBits),
+        uint_minus(WordBits, ZVal, XVal, OutputArgVal)
     ;
         ProcName = "-",
         X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
@@ -682,8 +682,8 @@ evaluate_det_call_uint_3_mode_2(Globals, ProcName, X, Y, Z,
         FunctorZ = some_int_const(uint_const(ZVal)),
         OutputArg = Y,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
-        uint_emu.minus(BitsPerUInt, XVal, ZVal, OutputArgVal)
+        target_word_bits(Globals, WordBits),
+        uint_minus(WordBits, XVal, ZVal, OutputArgVal)
     ;
         ProcName = "xor",
         Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
