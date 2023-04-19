@@ -169,8 +169,8 @@ rem_bits_per_int(X, BitsPerInt, Z) :-
 :- pred to_int_in_range(bits_per_int::in, integer::in, int::out) is semidet.
 
 to_int_in_range(bits_per_int(BitsPerInt), Integer, Int) :-
-    Integer >= -pow(integer(2), integer(BitsPerInt - 1)),
-    Integer =< pow(integer(2), integer(BitsPerInt - 1)) - one,
+    Integer >= -pow(integer.two, integer(BitsPerInt - 1)),
+    Integer =< pow(integer.two, integer(BitsPerInt - 1)) - one,
     integer.to_int(Integer, Int).
 
 %----------------------------------------------------------------------------%

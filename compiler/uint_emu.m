@@ -140,7 +140,7 @@ unchecked_right_shift(BitsPerUInt, X, Y, Z) :-
 
 to_uint_in_range(bits_per_uint(BitsPerUInt), Integer, UInt) :-
     Integer >= integer.zero,
-    Integer =< pow(integer(2), integer(BitsPerUInt)),
+    Integer < pow(integer.two, integer(BitsPerUInt)),
     integer.to_uint(Integer, UInt).
 
 %----------------------------------------------------------------------------%
