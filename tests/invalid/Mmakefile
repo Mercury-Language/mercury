@@ -256,6 +256,7 @@ BORING_SINGLEMODULE_PROGS = \
 	ref_to_implicit_pred \
 	repeated_field_name \
 	repeated_instance_vars_unsat \
+	require_complete_nested_switch \
 	require_det_in_lambda \
 	require_scopes \
 	require_switch_arms_detism \

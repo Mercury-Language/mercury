@@ -1,0 +1,6 @@
+require_complete_nested_switch.m:094: Warning: this disjunct will never have
+require_complete_nested_switch.m:094:   any solutions.
+require_complete_nested_switch.m:096: Inside the case "k" of the switch on Str:
+require_complete_nested_switch.m:096:   error: the goal inside the
+require_complete_nested_switch.m:096:   require_complete_switch [Str] scope is
+require_complete_nested_switch.m:096:   not a switch on `Str'.

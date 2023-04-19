@@ -1450,8 +1450,9 @@ reqscope_check_scope(SwitchContexts, Reason, SubGoal, ScopeGoalInfo, InstMap0,
                 MaybeReportedSwitch = yes(ReportedSwitch)
             )
         else
-            generate_error_not_switch_on_required_var(RequiredVar,
-                "require_complete_switch", ScopeGoalInfo, !DetInfo),
+            generate_error_not_switch_on_required_var(SwitchContexts,
+                RequiredVar, "require_complete_switch", ScopeGoalInfo,
+                !DetInfo),
             MaybeReportedSwitch = no
         )
     ;
@@ -1490,8 +1491,8 @@ reqscope_check_scope(SwitchContexts, Reason, SubGoal, ScopeGoalInfo, InstMap0,
                 RequiredDetism = detism_failure,
                 ScopeWord = "require_switch_arms_failure"
             ),
-            generate_error_not_switch_on_required_var(RequiredVar,
-                ScopeWord, ScopeGoalInfo, !DetInfo)
+            generate_error_not_switch_on_required_var(SwitchContexts,
+                RequiredVar, ScopeWord, ScopeGoalInfo, !DetInfo)
         ),
         MaybeReportedSwitch = no
     ;
@@ -1775,15 +1776,18 @@ reqscope_check_goal_detism_for_cases(RequiredDetism, Var, VarType,
     reqscope_check_goal_detism_for_cases(RequiredDetism, Var, VarType,
         Cases, InstMap0, !DetInfo).
 
-:- pred generate_error_not_switch_on_required_var(prog_var::in, string::in,
-    hlds_goal_info::in, det_info::in, det_info::out) is det.
+:- pred generate_error_not_switch_on_required_var(list(switch_context)::in,
+    prog_var::in, string::in, hlds_goal_info::in,
+    det_info::in, det_info::out) is det.
 
-generate_error_not_switch_on_required_var(RequiredVar, ScopeWord,
-        ScopeGoalInfo, !DetInfo) :-
+generate_error_not_switch_on_required_var(SwitchContexts, RequiredVar,
+        ScopeWord, ScopeGoalInfo, !DetInfo) :-
+    det_diagnose_switch_context(!.DetInfo, SwitchContexts, NestingPieces),
     det_info_get_var_table(!.DetInfo, VarTable),
     RequiredVarStr =
         mercury_var_to_string(VarTable, print_name_only, RequiredVar),
-    Pieces = [words("Error: the goal inside the"),
+    Pieces = NestingPieces ++ [lower_case_next_if_not_first,
+        words("Error: the goal inside the"),
         words(ScopeWord), fixed("[" ++ RequiredVarStr ++ "]"), words("scope"),
         words("is not a switch on"), quote(RequiredVarStr), suffix("."), nl],
     Context = goal_info_get_context(ScopeGoalInfo),
