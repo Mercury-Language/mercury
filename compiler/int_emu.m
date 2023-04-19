@@ -473,8 +473,8 @@ to_some_int_const_if_in_in_range(OpType, Integer, Const) :-
     (
         OpType = op_int(OpNumBits),
         NumBits = get_op_num_bits(OpNumBits),
-        Integer >= -pow(integer(2), integer(NumBits - 1)),
-        Integer < pow(integer(2), integer(NumBits - 1)),
+        Integer >= -pow(integer.two, integer(NumBits - 1)),
+        Integer < pow(integer.two, integer(NumBits - 1)),
         (
             OpNumBits = word_bits(_),
             % Fails if Integer is representable on the target machine,
@@ -502,7 +502,7 @@ to_some_int_const_if_in_in_range(OpType, Integer, Const) :-
         OpType = op_uint(OpNumBits),
         NumBits = get_op_num_bits(OpNumBits),
         Integer >= integer.zero,
-        Integer < pow(integer(2), integer(NumBits)),
+        Integer < pow(integer.two, integer(NumBits)),
         (
             OpNumBits = word_bits(_),
             % Fails if Integer is representable on the target machine,
