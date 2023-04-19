@@ -56,19 +56,10 @@
 
 :- import_module bool.
 :- import_module float.
-:- import_module int.
-:- import_module int16.
-:- import_module int32.
-:- import_module int64.
-:- import_module int8.
 :- import_module integer.
 :- import_module string.
 :- import_module term_context.
 :- import_module uint.
-:- import_module uint16.
-:- import_module uint32.
-:- import_module uint64.
-:- import_module uint8.
 
 %---------------------------------------------------------------------------%
 
@@ -81,7 +72,8 @@ evaluate_call(Globals, VarTable, InstMap,
     then
         make_construction_goal(OutputArg, Cons, GoalExpr, !GoalInfo)
     else if
-        evaluate_test(ModuleName, ProcName, ModeNum, ArgInfos, Succeeded)
+        evaluate_test(Globals, ModuleName, ProcName, ModeNum, ArgInfos,
+            Succeeded)
     then
         make_true_or_fail(Succeeded, GoalExpr)
     else if
@@ -587,7 +579,7 @@ evaluate_det_call_string_3(_Globals, ProcName, ModeNum, X, Y, Z,
 
 %---------------------------------------------------------------------------%
 
-    % evaluate_test(ModuleName, ProcName, ModeNum, Args, Result):
+    % evaluate_test(Globals, ModuleName, ProcName, ModeNum, Args, Result):
     %
     % This attempts to evaluate a call to
     %   ModuleName.ProcName(Args)
@@ -599,380 +591,92 @@ evaluate_det_call_string_3(_Globals, ProcName, ModeNum, X, Y, Z,
     % is not semidet, has any outputs, or cannot be statically evaluated),
     % evaluate_test fails.
     %
-:- pred evaluate_test(string::in, string::in, int::in, list(arg_hlds_info)::in,
-    bool::out) is semidet.
+:- pred evaluate_test(globals::in, string::in, string::in, int::in,
+    list(arg_hlds_info)::in, bool::out) is semidet.
 
-evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
+evaluate_test(Globals, ModuleName, PredName, ModeNum, Args, Result) :-
     (
-        ModuleName = "int",
+        ( ModuleName = "int",    OpType = op_int(target_op_type(Globals))
+        ; ModuleName = "int8",   OpType = op_int(bits_8)
+        ; ModuleName = "int16",  OpType = op_int(bits_16)
+        ; ModuleName = "int32",  OpType = op_int(bits_32)
+        ; ModuleName = "int64",  OpType = op_int(bits_64)
+        ),
         % Signed integer comparisons.
         Args = [X, Y],
         X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
         Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-        FunctorX = some_int_const(int_const(XVal)),
-        FunctorY = some_int_const(int_const(YVal)),
+        is_integer_for_op_type(OpType, FunctorX, IntegerX),
+        is_integer_for_op_type(OpType, FunctorY, IntegerY),
         (
             PredName = "<", ModeNum = 0,
-            ( if XVal < YVal then Result = yes else Result = no )
+            ( if IntegerX < IntegerY then Result = yes else Result = no )
         ;
             PredName = "=<", ModeNum = 0,
-            ( if XVal =< YVal then Result = yes else Result = no )
+            ( if IntegerX =< IntegerY then Result = yes else Result = no )
         ;
             PredName = ">", ModeNum = 0,
-            ( if XVal > YVal then Result = yes else Result = no )
+            ( if IntegerX > IntegerY then Result = yes else Result = no )
         ;
             PredName = ">=", ModeNum = 0,
-            ( if XVal >= YVal then Result = yes else Result = no )
+            ( if IntegerX >= IntegerY then Result = yes else Result = no )
         )
     ;
-        ModuleName = "int8",
-        % 8-bit signed integer comparisons.
-        Args = [X, Y],
-        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-        FunctorX = some_int_const(int8_const(XVal)),
-        FunctorY = some_int_const(int8_const(YVal)),
-        (
-            PredName = "<", ModeNum = 0,
-            ( if XVal < YVal then Result = yes else Result = no )
-        ;
-            PredName = "=<", ModeNum = 0,
-            ( if XVal =< YVal then Result = yes else Result = no )
-        ;
-            PredName = ">", ModeNum = 0,
-            ( if XVal > YVal then Result = yes else Result = no )
-        ;
-            PredName = ">=", ModeNum = 0,
-            ( if XVal >= YVal then Result = yes else Result = no )
-        )
-    ;
-        ModuleName = "int16",
-        % 16-bit signed integer comparisons.
-        Args = [X, Y],
-        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-        FunctorX = some_int_const(int16_const(XVal)),
-        FunctorY = some_int_const(int16_const(YVal)),
-        (
-            PredName = "<", ModeNum = 0,
-            ( if XVal < YVal then Result = yes else Result = no )
-        ;
-            PredName = "=<", ModeNum = 0,
-            ( if XVal =< YVal then Result = yes else Result = no )
-        ;
-            PredName = ">", ModeNum = 0,
-            ( if XVal > YVal then Result = yes else Result = no )
-        ;
-            PredName = ">=", ModeNum = 0,
-            ( if XVal >= YVal then Result = yes else Result = no )
-        )
-    ;
-        ModuleName = "int32",
-        % 32-bit signed integer comparisons.
-        Args = [X, Y],
-        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-        FunctorX = some_int_const(int32_const(XVal)),
-        FunctorY = some_int_const(int32_const(YVal)),
-        (
-            PredName = "<", ModeNum = 0,
-            ( if XVal < YVal then Result = yes else Result = no )
-        ;
-            PredName = "=<", ModeNum = 0,
-            ( if XVal =< YVal then Result = yes else Result = no )
-        ;
-            PredName = ">", ModeNum = 0,
-            ( if XVal > YVal then Result = yes else Result = no )
-        ;
-            PredName = ">=", ModeNum = 0,
-            ( if XVal >= YVal then Result = yes else Result = no )
-        )
-    ;
-        ModuleName = "int64",
-        % 64-bit signed integer comparisons.
-        Args = [X, Y],
-        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-        FunctorX = some_int_const(int64_const(XVal)),
-        FunctorY = some_int_const(int64_const(YVal)),
-        (
-            PredName = "<", ModeNum = 0,
-            ( if XVal < YVal then Result = yes else Result = no )
-        ;
-            PredName = "=<", ModeNum = 0,
-            ( if XVal =< YVal then Result = yes else Result = no )
-        ;
-            PredName = ">", ModeNum = 0,
-            ( if XVal > YVal then Result = yes else Result = no )
-        ;
-            PredName = ">=", ModeNum = 0,
-            ( if XVal >= YVal then Result = yes else Result = no )
-        )
-    ;
-        ModuleName = "uint",
+        ( ModuleName = "uint",   OpType = op_uint(target_op_type(Globals))
+        ; ModuleName = "uint8",  OpType = op_uint(bits_8)
+        ; ModuleName = "uint16", OpType = op_uint(bits_16)
+        ; ModuleName = "uint32", OpType = op_uint(bits_32)
+        ; ModuleName = "uint64", OpType = op_uint(bits_64)
+        ),
         % Unsigned integer comparisons.
         Args = [X, Y],
         (
             PredName = "<", ModeNum = 0,
             Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-            FunctorY = some_int_const(uint_const(YVal)),
-            ( if YVal = 0u then
-                % Special case: no uints are < 0u.
+            is_integer_for_op_type(OpType, FunctorY, IntegerY),
+            ( if is_zero(IntegerY) then
+                % Special case: no unsigned int is less than zero.
                 Result = no
             else
                 X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-                FunctorX = some_int_const(uint_const(XVal)),
-                ( if XVal < YVal then Result = yes else Result = no )
+                is_integer_for_op_type(OpType, FunctorX, IntegerX),
+                ( if IntegerX < IntegerY then Result = yes else Result = no )
             )
         ;
             PredName = "=<", ModeNum = 0,
             X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-            FunctorX = some_int_const(uint_const(XVal)),
-            ( if XVal = 0u then
-                % Special case: 0u =< all uints.
+            is_integer_for_op_type(OpType, FunctorX, IntegerX),
+            ( if is_zero(IntegerX) then
+                % Special case: zero is less than or equal to all uints.
                 Result = yes
             else
                 Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-                FunctorY = some_int_const(uint_const(YVal)),
-                ( if XVal =< YVal then Result = yes else Result = no )
+                is_integer_for_op_type(OpType, FunctorY, IntegerY),
+                ( if IntegerX =< IntegerY then Result = yes else Result = no )
             )
         ;
             PredName = ">", ModeNum = 0,
             X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-            FunctorX = some_int_const(uint_const(XVal)),
-            ( if XVal = 0u then
-                % Special case: 0u > than no uints.
+            is_integer_for_op_type(OpType, FunctorX, IntegerX),
+            ( if is_zero(IntegerX) then
+                % Special case: zero is not greater than any unsigned int.
                 Result = no
             else
                 Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-                FunctorY = some_int_const(uint_const(YVal)),
-                ( if XVal > YVal then Result = yes else Result = no )
+                is_integer_for_op_type(OpType, FunctorY, IntegerY),
+                ( if IntegerX > IntegerY then Result = yes else Result = no )
             )
         ;
             PredName = ">=", ModeNum = 0,
             Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-            FunctorY = some_int_const(uint_const(YVal)),
-            ( if YVal = 0u then
-                % Special case: all uints are >= 0u.
+            is_integer_for_op_type(OpType, FunctorY, IntegerY),
+            ( if is_zero(IntegerY) then
+                % Special case: all uints are greater than or equal to zero.
                 Result = yes
             else
                 X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-                FunctorX = some_int_const(uint_const(XVal)),
-                ( if XVal >= YVal then Result = yes else Result = no )
-            )
-        )
-    ;
-        ModuleName = "uint8",
-        % 8-bit unsigned integer comparisons.
-        Args = [X, Y],
-        (
-            PredName = "<", ModeNum = 0,
-            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-            FunctorY = some_int_const(uint8_const(YVal)),
-            ( if YVal = 0u8 then
-                % Special case: no uints are < 0u.
-                Result = no
-            else
-                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-                FunctorX = some_int_const(uint8_const(XVal)),
-                ( if XVal < YVal then Result = yes else Result = no )
-            )
-        ;
-            PredName = "=<", ModeNum = 0,
-            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-            FunctorX = some_int_const(uint8_const(XVal)),
-            ( if XVal = 0u8 then
-                % Special case: 0u =< all uints.
-                Result = yes
-            else
-                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-                FunctorY = some_int_const(uint8_const(YVal)),
-                ( if XVal =< YVal then Result = yes else Result = no )
-            )
-        ;
-            PredName = ">", ModeNum = 0,
-            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-            FunctorX = some_int_const(uint8_const(XVal)),
-            ( if XVal = 0u8 then
-                % Special case: 0u > than no uints.
-                Result = no
-            else
-                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-                FunctorY = some_int_const(uint8_const(YVal)),
-                ( if XVal > YVal then Result = yes else Result = no )
-            )
-        ;
-            PredName = ">=", ModeNum = 0,
-            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-            FunctorY = some_int_const(uint8_const(YVal)),
-            ( if YVal = 0u8 then
-                % Special case: all uints are >= 0u.
-                Result = yes
-            else
-                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-                FunctorX = some_int_const(uint8_const(XVal)),
-                ( if XVal >= YVal then Result = yes else Result = no )
-            )
-        )
-    ;
-        ModuleName = "uint16",
-        % 16-bit unsigned integer comparisons.
-        Args = [X, Y],
-        (
-            PredName = "<", ModeNum = 0,
-            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-            FunctorY = some_int_const(uint16_const(YVal)),
-            ( if YVal = 0u16 then
-                % Special case: no uints are < 0u16.
-                Result = no
-            else
-                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-                FunctorX = some_int_const(uint16_const(XVal)),
-                ( if XVal < YVal then Result = yes else Result = no )
-            )
-        ;
-            PredName = "=<", ModeNum = 0,
-            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-            FunctorX = some_int_const(uint16_const(XVal)),
-            ( if XVal = 0u16 then
-                % Special case: 0u =< all uints.
-                Result = yes
-            else
-                Y ^ arg_inst =
-                    bound(_, _, [bound_functor(FunctorY, [])]),
-                FunctorY = some_int_const(uint16_const(YVal)),
-                ( if XVal =< YVal then Result = yes else Result = no )
-            )
-        ;
-            PredName = ">", ModeNum = 0,
-            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-            FunctorX = some_int_const(uint16_const(XVal)),
-            ( if XVal = 0u16 then
-                % Special case: 0u > than no uints.
-                Result = no
-            else
-                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-                FunctorY = some_int_const(uint16_const(YVal)),
-                ( if XVal > YVal then Result = yes else Result = no )
-            )
-        ;
-            PredName = ">=", ModeNum = 0,
-            Y ^ arg_inst =
-                bound(_, _, [bound_functor(FunctorY, [])]),
-            FunctorY = some_int_const(uint16_const(YVal)),
-            ( if YVal = 0u16 then
-                % Special case: all uints are >= 0u.
-                Result = yes
-            else
-                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-                FunctorX = some_int_const(uint16_const(XVal)),
-                ( if XVal >= YVal then Result = yes else Result = no )
-            )
-        )
-    ;
-        ModuleName = "uint32",
-        % 32-bit unsigned integer comparisons.
-        Args = [X, Y],
-        (
-            PredName = "<", ModeNum = 0,
-            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-            FunctorY = some_int_const(uint32_const(YVal)),
-            ( if YVal = 0u32 then
-                % Special case: no uints are < 0u.
-                Result = no
-            else
-                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-                FunctorX = some_int_const(uint32_const(XVal)),
-                ( if XVal < YVal then Result = yes else Result = no )
-            )
-        ;
-            PredName = "=<", ModeNum = 0,
-            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-            FunctorX = some_int_const(uint32_const(XVal)),
-            ( if XVal = 0u32 then
-                % Special case: 0u =< all uints.
-                Result = yes
-            else
-                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-                FunctorY = some_int_const(uint32_const(YVal)),
-                ( if XVal =< YVal then Result = yes else Result = no )
-            )
-        ;
-            PredName = ">", ModeNum = 0,
-            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-            FunctorX = some_int_const(uint32_const(XVal)),
-            ( if XVal = 0u32 then
-                % Special case: 0u > than no uints.
-                Result = no
-            else
-                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-                FunctorY = some_int_const(uint32_const(YVal)),
-                ( if XVal > YVal then Result = yes else Result = no )
-            )
-        ;
-            PredName = ">=", ModeNum = 0,
-            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-            FunctorY = some_int_const(uint32_const(YVal)),
-            ( if YVal = 0u32 then
-                % Special case: all uints are >= 0u.
-                Result = yes
-            else
-                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-                FunctorX = some_int_const(uint32_const(XVal)),
-                ( if XVal >= YVal then Result = yes else Result = no )
-            )
-        )
-    ;
-        ModuleName = "uint64",
-        % 64-bit unsigned integer comparisons.
-        Args = [X, Y],
-        (
-            PredName = "<", ModeNum = 0,
-            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-            FunctorY = some_int_const(uint64_const(YVal)),
-            ( if YVal = 0u64 then
-                % Special case: no uints are < 0u.
-                Result = no
-            else
-                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-                FunctorX = some_int_const(uint64_const(XVal)),
-                ( if XVal < YVal then Result = yes else Result = no )
-            )
-        ;
-            PredName = "=<", ModeNum = 0,
-            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-            FunctorX = some_int_const(uint64_const(XVal)),
-            ( if XVal = 0u64 then
-                % Special case: 0u =< all uints.
-                Result = yes
-            else
-                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-                FunctorY = some_int_const(uint64_const(YVal)),
-                ( if XVal =< YVal then Result = yes else Result = no )
-            )
-        ;
-            PredName = ">", ModeNum = 0,
-            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-            FunctorX = some_int_const(uint64_const(XVal)),
-            ( if XVal = 0u64 then
-                % Special case: 0u > than no uints.
-                Result = no
-            else
-                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-                FunctorY = some_int_const(uint64_const(YVal)),
-                ( if XVal > YVal then Result = yes else Result = no )
-            )
-        ;
-            PredName = ">=", ModeNum = 0,
-            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-            FunctorY = some_int_const(uint64_const(YVal)),
-            ( if YVal = 0u64 then
-                % Special case: all uints are >= 0u.
-                Result = yes
-            else
-                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-                FunctorX = some_int_const(uint64_const(XVal)),
-                ( if XVal >= YVal then Result = yes else Result = no )
+                is_integer_for_op_type(OpType, FunctorX, IntegerX),
+                ( if IntegerX >= IntegerY then Result = yes else Result = no )
             )
         )
     ;
