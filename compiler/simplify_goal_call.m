@@ -1373,7 +1373,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
         % it isn't.
         IntType = int_type_int,
         Args = [X, Y],
-        target_word_bits(Globals, word_bits(WordBits)),
+        WordBits = target_word_bits(Globals),
         simplify_make_int_ico_op(ModuleName, Op, X, WordBits, Y,
             ImprovedGoalExpr, !.GoalInfo, !Info)
     ;
@@ -1381,7 +1381,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
         IntType = int_type_int,
         Args = [X, Y],
         Op = "*",
-        target_word_bits(Globals, word_bits(WordBits)),
+        WordBits = target_word_bits(Globals),
         simplify_make_int_ico_op(ModuleName, Op, X, WordBits, Y,
             ImprovedGoalExpr, !.GoalInfo, !Info)
     ;
@@ -1682,7 +1682,7 @@ int_type_target_bits(Globals, IntType) = IntTypeBits :-
         ( IntType = int_type_int
         ; IntType = int_type_uint
         ),
-        target_word_bits(Globals, word_bits(WordBits)),
+        WordBits = target_word_bits(Globals),
         IntTypeBits = WordBits
     ;
         ( IntType = int_type_int8

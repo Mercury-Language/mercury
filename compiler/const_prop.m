@@ -61,6 +61,7 @@
 :- import_module int32.
 :- import_module int64.
 :- import_module int8.
+:- import_module integer.
 :- import_module string.
 :- import_module term_context.
 :- import_module uint.
@@ -164,13 +165,19 @@ evaluate_det_call(Globals, ModuleName, ProcName, ModeNum, Args,
         Args = [X, Y],
         % Unary functions.
         (
-            ModuleName = "int",
-            evaluate_det_call_int_2(Globals, ProcName, ModeNum, X, Y,
-                OutputArg, OutputArgVal)
-        ;
-            ModuleName = "uint",
-            evaluate_det_call_uint_2(Globals, ProcName, ModeNum, X, Y,
-                OutputArg, OutputArgVal)
+            ( ModuleName = "int",    OpType = op_int(target_op_type(Globals))
+            ; ModuleName = "int8",   OpType = op_int(bits_8)
+            ; ModuleName = "int16",  OpType = op_int(bits_16)
+            ; ModuleName = "int32",  OpType = op_int(bits_32)
+            ; ModuleName = "int64",  OpType = op_int(bits_64)
+            ; ModuleName = "uint",   OpType = op_uint(target_op_type(Globals))
+            ; ModuleName = "uint8",  OpType = op_uint(bits_8)
+            ; ModuleName = "uint16", OpType = op_uint(bits_16)
+            ; ModuleName = "uint32", OpType = op_uint(bits_32)
+            ; ModuleName = "uint64", OpType = op_uint(bits_64)
+            ),
+            evaluate_det_call_int_uint_2(Globals, OpType,
+                ProcName, ModeNum, X, Y, OutputArg, OutputArgVal)
         ;
             ModuleName = "float",
             evaluate_det_call_float_2(Globals, ProcName, ModeNum, X, Y,
@@ -184,34 +191,29 @@ evaluate_det_call(Globals, ModuleName, ProcName, ModeNum, Args,
         Args = [X, Y, Z],
         % Binary functions.
         (
-            ModuleName = "int",
+            ( ModuleName = "int",    OpType = op_int(target_op_type(Globals))
+            ; ModuleName = "int8",   OpType = op_int(bits_8)
+            ; ModuleName = "int16",  OpType = op_int(bits_16)
+            ; ModuleName = "int32",  OpType = op_int(bits_32)
+            ; ModuleName = "int64",  OpType = op_int(bits_64)
+            ; ModuleName = "uint",   OpType = op_uint(target_op_type(Globals))
+            ; ModuleName = "uint8",  OpType = op_uint(bits_8)
+            ; ModuleName = "uint16", OpType = op_uint(bits_16)
+            ; ModuleName = "uint32", OpType = op_uint(bits_32)
+            ; ModuleName = "uint64", OpType = op_uint(bits_64)
+            ),
             (
                 ModeNum = 0,
-                evaluate_det_call_int_3_mode_0(Globals, ProcName, X, Y, Z,
-                    OutputArg, OutputArgVal)
+                evaluate_det_call_int_uint_3_mode_0(Globals, OpType,
+                    ProcName, X, Y, Z, OutputArg, OutputArgVal)
             ;
                 ModeNum = 1,
-                evaluate_det_call_int_3_mode_1(Globals, ProcName, X, Y, Z,
-                    OutputArg, OutputArgVal)
+                evaluate_det_call_int_uint_3_mode_1(Globals, OpType,
+                    ProcName, X, Y, Z, OutputArg, OutputArgVal)
             ;
                 ModeNum = 2,
-                evaluate_det_call_int_3_mode_2(Globals, ProcName, X, Y, Z,
-                    OutputArg, OutputArgVal)
-            )
-        ;
-            ModuleName = "uint",
-            (
-                ModeNum = 0,
-                evaluate_det_call_uint_3_mode_0(Globals, ProcName, X, Y ,Z,
-                    OutputArg, OutputArgVal)
-            ;
-                ModeNum = 1,
-                evaluate_det_call_uint_3_mode_1(Globals, ProcName, X, Y ,Z,
-                    OutputArg, OutputArgVal)
-            ;
-                ModeNum = 2,
-                evaluate_det_call_uint_3_mode_2(Globals, ProcName, X, Y ,Z,
-                    OutputArg, OutputArgVal)
+                evaluate_det_call_int_uint_3_mode_2(Globals, OpType,
+                    ProcName, X, Y, Z, OutputArg, OutputArgVal)
             )
         ;
             ModuleName = "float",
@@ -237,13 +239,13 @@ evaluate_det_call_int_1(Globals, ProcName, ModeNum, X, OutputArg, ConsId) :-
         ModeNum = 0,
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, word_bits(BitsPerWord)),
+        target_word_bits(Globals) = WordBits,
         (
             ProcName = "bits_per_int",
-            ConsId = some_int_const(int_const(BitsPerWord))
+            ConsId = some_int_const(int_const(WordBits))
         ;
             ProcName = "ubits_per_int",
-            ConsId = some_int_const(uint_const(uint.det_from_int(BitsPerWord)))
+            ConsId = some_int_const(uint_const(uint.det_from_int(WordBits)))
         )
     ).
 
@@ -258,7 +260,7 @@ evaluate_det_call_uint_1(Globals, ProcName, ModeNum, X, OutputArg, ConsId) :-
         ModeNum = 0,
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, word_bits(WordBits)),
+        target_word_bits(Globals) = WordBits,
         (
             ProcName = "bits_per_uint",
             ConsId = some_int_const(int_const(WordBits))
@@ -270,70 +272,50 @@ evaluate_det_call_uint_1(Globals, ProcName, ModeNum, X, OutputArg, ConsId) :-
 
 %---------------------%
 
-:- pred evaluate_det_call_int_2(globals::in, string::in, int::in,
-    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::out, cons_id::out)
-    is semidet.
+:- pred evaluate_det_call_int_uint_2(globals::in, op_type::in,
+    string::in, int::in, arg_hlds_info::in,
+    arg_hlds_info::in, arg_hlds_info::out, cons_id::out) is semidet.
 
-evaluate_det_call_int_2(Globals, ProcName, ModeNum, X, Y,
-        OutputArg, some_int_const(int_const(OutputArgVal))) :-
+evaluate_det_call_int_uint_2(Globals, OpType, ProcName, ModeNum, X, Y,
+        OutputArg, some_int_const(OutputArgVal)) :-
     ModeNum = 0,
     X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-    FunctorX = some_int_const(int_const(XVal)),
+    FunctorX = some_int_const(ConstX),
     OutputArg = Y,
+    % All of the int{,8,16,32,64} modules define unary plus, unary minus,
+    % and all of the {int,uint}{,8,16,32,64} modules define bitwise negation.
+    % The other procedures below are defined only in int.m; this is checked
+    % by the predicates that emulate them.
     (
         ProcName = "+",
-        OutputArgVal = XVal
+        OpType = op_int(_),
+        OutputArgVal = ConstX
     ;
         ProcName = "-",
+        OpType = op_int(_),
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, BitsPerWord),
-        int_minus(BitsPerWord, 0, XVal, OutputArgVal)
+        is_integer_for_op_type(OpType, FunctorX, IntegerX),
+        emu_minus(OpType, zero, IntegerX, OutputArgVal)
     ;
         ProcName = "\\",
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, TargetBitsPerWord),
-        TargetBitsPerWord = word_bits(int.bits_per_int),
-        OutputArgVal = \ XVal
+        emu_not(OpType, FunctorX, OutputArgVal)
     ;
         ProcName = "floor_to_multiple_of_bits_per_int",
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, BitsPerWord),
-        int_floor_to_multiple_of_bits_per_int(XVal, BitsPerWord,
-            OutputArgVal)
+        emu_int_floor_to_multiple_of_bits_per_int(OpType, ConstX, OutputArgVal)
     ;
         ProcName = "quot_bits_per_int",
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, BitsPerWord),
-        int_quot_bits_per_int(XVal, BitsPerWord, OutputArgVal)
+        emu_int_quot_bits_per_int(OpType, ConstX, OutputArgVal)
     ;
         ProcName = "times_bits_per_int",
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, BitsPerWord),
-        int_times_bits_per_int(XVal, BitsPerWord, OutputArgVal)
+        emu_int_times_bits_per_int(OpType, ConstX, OutputArgVal)
     ;
         ProcName = "rem_bits_per_int",
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, BitsPerWord),
-        int_rem_bits_per_int(XVal, BitsPerWord, OutputArgVal)
-    ).
-
-:- pred evaluate_det_call_uint_2(globals::in, string::in, int::in,
-    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::out, cons_id::out)
-    is semidet.
-
-evaluate_det_call_uint_2(Globals, ProcName, ModeNum, X, Y,
-        OutputArg, some_int_const(uint_const(OutputArgVal))) :-
-    (
-        ProcName = "\\",
-        ModeNum = 0,
-        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-        FunctorX = some_int_const(uint_const(XVal)),
-        globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, TargetWordBits),
-        % ZZZ
-        TargetWordBits = word_bits(uint.bits_per_uint),
-        OutputArg = Y,
-        OutputArgVal = \ XVal
+        emu_int_rem_bits_per_int(OpType, ConstX, OutputArgVal)
     ).
 
 :- pred evaluate_det_call_float_2(globals::in, string::in, int::in,
@@ -373,15 +355,14 @@ evaluate_det_call_string_2(_Globals, ProcName, ModeNum, X, Y,
 
 %---------------------%
 
-:- pred evaluate_det_call_int_3_mode_0(globals::in, string::in,
-    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
+:- pred evaluate_det_call_int_uint_3_mode_0(globals::in, op_type::in,
+    string::in, arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
     arg_hlds_info::out, cons_id::out) is semidet.
 
-evaluate_det_call_int_3_mode_0(Globals, ProcName, X, Y, Z,
-        OutputArg, some_int_const(int_const(OutputArgVal))) :-
+evaluate_det_call_int_uint_3_mode_0(Globals, OpType, ProcName, X, Y, Z,
+        OutputArg, some_int_const(OutputArgVal)) :-
     X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-    FunctorX = some_int_const(int_const(XVal)),
     % Note that we optimize calls to the checked and unchecked versions
     % of operations such as // and << under the same conditions: when
     % the checked version's checks would succeed.
@@ -396,302 +377,163 @@ evaluate_det_call_int_3_mode_0(Globals, ProcName, X, Y, Z,
     % program's execution (unless if user is unlucky, and he/she just
     % silently gets nonsense output).
     (
-        FunctorY = some_int_const(int_const(YVal)),
+        ( ProcName = "+"    ; ProcName = "plus"
+        ; ProcName = "-"    ; ProcName = "minus"
+        ; ProcName = "*"    ; ProcName = "times"
+        ; ProcName = "//"   ; ProcName = "/"
+        ; ProcName = "unchecked_quotient"
+        ; ProcName = "mod"
+        ; ProcName = "rem"  ; ProcName = "unchecked_rem"
+        ),
+        is_integer_for_op_type(OpType, FunctorX, IntegerX),
+        is_integer_for_op_type(OpType, FunctorY, IntegerY),
+        globals.lookup_bool_option(Globals, pregenerated_dist, no),
+        require_complete_switch [ProcName]
         (
-            ( ProcName = "+"    ; ProcName = "plus"
-            ; ProcName = "-"    ; ProcName = "minus"
-            ; ProcName = "*"    ; ProcName = "times"
-            ; ProcName = "//"   ; ProcName = "/"
+            ( ProcName = "+" ; ProcName = "plus" ),
+            emu_plus(OpType, IntegerX, IntegerY, OutputArgVal)
+        ;
+            ( ProcName = "-" ; ProcName = "minus" ),
+            emu_minus(OpType, IntegerX, IntegerY, OutputArgVal)
+        ;
+            ( ProcName = "*" ; ProcName = "times" ),
+            emu_times(OpType, IntegerX, IntegerY, OutputArgVal)
+        ;
+            ( ProcName = "//"
+            ; ProcName = "/"
             ; ProcName = "unchecked_quotient"
-            ; ProcName = "mod"
-            ; ProcName = "rem"  ; ProcName = "unchecked_rem"
-            ; ProcName = "<<"   ; ProcName = "unchecked_left_shift"
-            ; ProcName = ">>"   ; ProcName = "unchecked_right_shift"
             ),
-            globals.lookup_bool_option(Globals, pregenerated_dist, no),
-            target_word_bits(Globals, BitsPerWord),
-            require_complete_switch [ProcName]
-            (
-                ( ProcName = "+" ; ProcName = "plus" ),
-                int_plus(BitsPerWord, XVal, YVal, OutputArgVal)
-            ;
-                ( ProcName = "-" ; ProcName = "minus" ),
-                int_minus(BitsPerWord, XVal, YVal, OutputArgVal)
-            ;
-                ( ProcName = "*" ; ProcName = "times" ),
-                int_times(BitsPerWord, XVal, YVal, OutputArgVal)
-            ;
-                ( ProcName = "//"
-                ; ProcName = "/"
-                ; ProcName = "unchecked_quotient"
-                ),
-                int_quotient(BitsPerWord, XVal, YVal, OutputArgVal)
-            ;
-                ProcName = "mod",
-                int_mod(BitsPerWord, XVal, YVal, OutputArgVal)
-            ;
-                ( ProcName = "rem" ; ProcName = "unchecked_rem" ),
-                int_rem(BitsPerWord, XVal, YVal, OutputArgVal)
-            ;
-                ( ProcName = "<<" ; ProcName = "unchecked_left_shift" ),
-                int_left_shift(BitsPerWord, XVal, YVal, OutputArgVal)
-            ;
-                ( ProcName = ">>" ; ProcName = "unchecked_right_shift" ),
-                int_right_shift(BitsPerWord, XVal, YVal, OutputArgVal)
-            )
+            emu_quotient(OpType, IntegerX, IntegerY, OutputArgVal)
         ;
-            ProcName = "/\\",
-            OutputArgVal = XVal /\ YVal
+            ProcName = "mod",
+            emu_mod(OpType, IntegerX, IntegerY, OutputArgVal)
         ;
-            ProcName = "\\/",
-            OutputArgVal = XVal \/ YVal
-        ;
-            ProcName = "xor",
-            OutputArgVal = xor(XVal, YVal)
+            ( ProcName = "rem" ; ProcName = "unchecked_rem" ),
+            emu_rem(OpType, IntegerX, IntegerY, OutputArgVal)
         )
     ;
-        FunctorY = some_int_const(uint_const(YVal)),
+        ( ProcName = "<<"
+        ; ProcName = "<<u"
+        ; ProcName = ">>"
+        ; ProcName = ">>u"
+        ; ProcName = "unchecked_left_shift"
+        ; ProcName = "unchecked_left_ushift"
+        ; ProcName = "unchecked_right_shift"
+        ; ProcName = "unchecked_right_ushift"
+        ),
+        is_integer_for_op_type(OpType, FunctorX, IntegerX),
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, BitsPerWord),
+        % Regardless of size of the X operand (the value to be shifted),
+        % the Y operand (the shift amount) is always word sized, though
+        % there are operation versions where it is an int, and versions
+        % where it is a uint.
+        require_complete_switch [ProcName]
         (
-            ( ProcName = "<<u" ; ProcName = "unchecked_left_ushift" ),
-            int_left_ushift(BitsPerWord, XVal, YVal, OutputArgVal)
+            ( ProcName = "<<"
+            ; ProcName = ">>"
+            ; ProcName = "unchecked_left_shift"
+            ; ProcName = "unchecked_right_shift"
+            ),
+            FunctorY = some_int_const(int_const(IntY))
         ;
-            ( ProcName = ">>u" ; ProcName = "unchecked_right_ushift" ),
-            int_right_ushift(BitsPerWord, XVal, YVal, OutputArgVal)
+            ( ProcName = "<<u"
+            ; ProcName = ">>u"
+            ; ProcName = "unchecked_left_ushift"
+            ; ProcName = "unchecked_right_ushift"
+            ),
+            FunctorY = some_int_const(uint_const(UIntY)),
+            IntY = uint.cast_to_int(UIntY)
+        ),
+        require_complete_switch [ProcName]
+        (
+            ( ProcName = "<<"
+            ; ProcName = "<<u"
+            ; ProcName = "unchecked_left_shift"
+            ; ProcName = "unchecked_left_ushift"
+            ),
+            emu_left_shift(OpType, IntegerX, IntY, OutputArgVal)
+        ;
+            ( ProcName = ">>"
+            ; ProcName = ">>u"
+            ; ProcName = "unchecked_right_shift"
+            ; ProcName = "unchecked_right_ushift"
+            ),
+            emu_right_shift(OpType, IntegerX, IntY, OutputArgVal)
         )
+    ;
+        ProcName = "/\\",
+        emu_and(OpType, FunctorX, FunctorY, OutputArgVal)
+    ;
+        ProcName = "\\/",
+        emu_or(OpType, FunctorX, FunctorY, OutputArgVal)
+    ;
+        ProcName = "xor",
+        emu_xor(OpType, FunctorX, FunctorY, OutputArgVal)
     ),
     OutputArg = Z.
 
-:- pred evaluate_det_call_int_3_mode_1(globals::in, string::in,
-    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
+:- pred evaluate_det_call_int_uint_3_mode_1(globals::in, op_type::in,
+    string::in, arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
     arg_hlds_info::out, cons_id::out) is semidet.
 
-evaluate_det_call_int_3_mode_1(Globals, ProcName, X, Y, Z,
-        OutputArg, some_int_const(int_const(OutputArgVal))) :-
+evaluate_det_call_int_uint_3_mode_1(Globals, OpType, ProcName, X, Y, Z,
+        OutputArg, some_int_const(OutputArgVal)) :-
     (
         ProcName = "+",
         Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
         Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
-        FunctorY = some_int_const(int_const(YVal)),
-        FunctorZ = some_int_const(int_const(ZVal)),
-        OutputArg = X,
+        is_integer_for_op_type(OpType, FunctorY, IntegerY),
+        is_integer_for_op_type(OpType, FunctorZ, IntegerZ),
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, BitsPerWord),
-        int_minus(BitsPerWord, ZVal, YVal, OutputArgVal)
+        OutputArg = X,
+        emu_minus(OpType, IntegerZ, IntegerY, OutputArgVal)
     ;
         ProcName = "-",
         Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
         Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
-        FunctorY = some_int_const(int_const(YVal)),
-        FunctorZ = some_int_const(int_const(ZVal)),
-        OutputArg = X,
+        is_integer_for_op_type(OpType, FunctorY, IntegerY),
+        is_integer_for_op_type(OpType, FunctorZ, IntegerZ),
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, BitsPerWord),
-        int_plus(BitsPerWord, YVal, ZVal, OutputArgVal)
+        OutputArg = X,
+        emu_plus(OpType, IntegerY, IntegerZ, OutputArgVal)
     ;
         ProcName = "xor",
         X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
         Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
-        FunctorX = some_int_const(int_const(XVal)),
-        FunctorZ = some_int_const(int_const(ZVal)),
         OutputArg = Y,
-        OutputArgVal = xor(XVal, ZVal)
+        emu_xor(OpType, FunctorX, FunctorZ, OutputArgVal)
     ).
 
-:- pred evaluate_det_call_int_3_mode_2(globals::in, string::in,
-    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
+:- pred evaluate_det_call_int_uint_3_mode_2(globals::in, op_type::in,
+    string::in, arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
     arg_hlds_info::out, cons_id::out) is semidet.
 
-evaluate_det_call_int_3_mode_2(Globals, ProcName, X, Y, Z,
-        OutputArg, some_int_const(int_const(OutputArgVal))) :-
+evaluate_det_call_int_uint_3_mode_2(Globals, OpType, ProcName, X, Y, Z,
+        OutputArg, some_int_const(OutputArgVal)) :-
     (
         ProcName = "+",
         X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
         Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
-        FunctorX = some_int_const(int_const(XVal)),
-        FunctorZ = some_int_const(int_const(ZVal)),
-        OutputArg = Y,
-        OutputArg = Y,
+        is_integer_for_op_type(OpType, FunctorX, IntegerX),
+        is_integer_for_op_type(OpType, FunctorZ, IntegerZ),
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, BitsPerWord),
-        int_minus(BitsPerWord, ZVal, XVal, OutputArgVal)
+        OutputArg = Y,
+        emu_minus(OpType, IntegerZ, IntegerX, OutputArgVal)
     ;
         ProcName = "-",
         X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
         Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
-        FunctorX = some_int_const(int_const(XVal)),
-        FunctorZ = some_int_const(int_const(ZVal)),
-        OutputArg = Y,
-        OutputArg = Y,
+        is_integer_for_op_type(OpType, FunctorX, IntegerX),
+        is_integer_for_op_type(OpType, FunctorZ, IntegerZ),
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, BitsPerWord),
-        int_minus(BitsPerWord, XVal, ZVal, OutputArgVal)
+        OutputArg = Y,
+        emu_minus(OpType, IntegerX, IntegerZ, OutputArgVal)
     ;
         ProcName = "xor",
         Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
         Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
-        FunctorY = some_int_const(int_const(YVal)),
-        FunctorZ = some_int_const(int_const(ZVal)),
         OutputArg = X,
-        OutputArgVal = xor(YVal, ZVal)
-    ).
-
-%---------------------%
-
-:- pred evaluate_det_call_uint_3_mode_0(globals::in, string::in,
-    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
-    arg_hlds_info::out, cons_id::out) is semidet.
-
-evaluate_det_call_uint_3_mode_0(Globals, ProcName, X, Y, Z,
-        OutputArg, some_int_const(uint_const(OutputArgVal))) :-
-    X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-    Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-    FunctorX = some_int_const(uint_const(XVal)),
-    FunctorY = some_int_const(ConstY),
-    % Note that we optimize calls to the checked and unchecked versions
-    % of operations such as // and << under the same conditions: when
-    % the checked version's checks would succeed.
-    %
-    % See the comment in evaluate_det_call_int_3_mode_0 for the reason.
-    (
-        ConstY = uint_const(YVal),
-        (
-            ( ProcName = "+"    ; ProcName = "plus"
-            ; ProcName = "-"    ; ProcName = "minus"
-            ; ProcName = "*"    ; ProcName = "times"
-            ; ProcName = "//"   ; ProcName = "/"
-            ; ProcName = "unchecked_quotient"
-            ; ProcName = "mod"
-            ; ProcName = "rem"  ; ProcName = "unchecked_rem"
-            ; ProcName = "<<u"  ; ProcName = "unchecked_left_ushift"
-            ; ProcName = ">>u"  ; ProcName = "unchecked_right_ushift"
-            ),
-            globals.lookup_bool_option(Globals, pregenerated_dist, no),
-            target_word_bits(Globals, WordBits),
-            require_complete_switch [ProcName]
-            (
-                ( ProcName = "+" ; ProcName = "plus" ),
-                uint_plus(WordBits, XVal, YVal, OutputArgVal)
-            ;
-                ( ProcName = "-" ; ProcName = "minus" ),
-                uint_minus(WordBits, XVal, YVal, OutputArgVal)
-            ;
-                ( ProcName = "*" ; ProcName = "times" ),
-                uint_times(WordBits, XVal, YVal, OutputArgVal)
-            ;
-                ( ProcName = "//"
-                ; ProcName = "/"
-                ; ProcName = "unchecked_quotient"
-                ),
-                uint_quotient(WordBits, XVal, YVal, OutputArgVal)
-            ;
-                ProcName = "mod",
-                uint_mod(WordBits, XVal, YVal, OutputArgVal)
-            ;
-                ( ProcName = "rem" ; ProcName = "unchecked_rem" ),
-                uint_rem(WordBits, XVal, YVal, OutputArgVal)
-            ;
-                ( ProcName = "<<u" ; ProcName = "unchecked_left_ushift" ),
-                uint_left_ushift(WordBits, XVal, YVal, OutputArgVal)
-            ;
-                ( ProcName = ">>u" ; ProcName = "unchecked_right_ushift" ),
-                uint_right_ushift(WordBits, XVal, YVal, OutputArgVal)
-            )
-        ;
-            ProcName = "/\\",
-            OutputArgVal = XVal /\ YVal
-        ;
-            ProcName = "\\/",
-            OutputArgVal = XVal \/ YVal
-        ;
-            ProcName = "xor",
-            OutputArgVal = xor(XVal, YVal)
-        )
-    ;
-        ConstY = int_const(YVal),
-        globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, WordBits),
-        (
-            ( ProcName = "<<" ; ProcName = "unchecked_left_shift" ),
-            uint_left_shift(WordBits, XVal, YVal, OutputArgVal)
-        ;
-            ( ProcName = ">>" ; ProcName = "unchecked_right_shift" ),
-            uint_right_shift(WordBits, XVal, YVal, OutputArgVal)
-        )
-    ),
-    OutputArg = Z.
-
-:- pred evaluate_det_call_uint_3_mode_1(globals::in, string::in,
-    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
-    arg_hlds_info::out, cons_id::out) is semidet.
-
-evaluate_det_call_uint_3_mode_1(Globals, ProcName, X, Y, Z,
-        OutputArg, some_int_const(uint_const(OutputArgVal))) :-
-    (
-        ProcName = "+",
-        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
-        FunctorY = some_int_const(uint_const(YVal)),
-        FunctorZ = some_int_const(uint_const(ZVal)),
-        OutputArg = X,
-        globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, WordBits),
-        uint_minus(WordBits, ZVal, YVal, OutputArgVal)
-    ;
-        ProcName = "-",
-        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
-        FunctorY = some_int_const(uint_const(YVal)),
-        FunctorZ = some_int_const(uint_const(ZVal)),
-        OutputArg = X,
-        globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, WordBits),
-        uint_plus(WordBits, YVal, ZVal, OutputArgVal)
-    ;
-        ProcName = "xor",
-        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
-        FunctorX = some_int_const(uint_const(XVal)),
-        FunctorZ = some_int_const(uint_const(ZVal)),
-        OutputArg = Y,
-        OutputArgVal = xor(XVal, ZVal)
-    ).
-
-:- pred evaluate_det_call_uint_3_mode_2(globals::in, string::in,
-    arg_hlds_info::in, arg_hlds_info::in, arg_hlds_info::in,
-    arg_hlds_info::out, cons_id::out) is semidet.
-
-evaluate_det_call_uint_3_mode_2(Globals, ProcName, X, Y, Z,
-        OutputArg, some_int_const(uint_const(OutputArgVal))) :-
-    (
-        ProcName = "+",
-        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
-        FunctorX = some_int_const(uint_const(XVal)),
-        FunctorZ = some_int_const(uint_const(ZVal)),
-        OutputArg = Y,
-        globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, WordBits),
-        uint_minus(WordBits, ZVal, XVal, OutputArgVal)
-    ;
-        ProcName = "-",
-        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
-        FunctorX = some_int_const(uint_const(XVal)),
-        FunctorZ = some_int_const(uint_const(ZVal)),
-        OutputArg = Y,
-        globals.lookup_bool_option(Globals, pregenerated_dist, no),
-        target_word_bits(Globals, WordBits),
-        uint_minus(WordBits, XVal, ZVal, OutputArgVal)
-    ;
-        ProcName = "xor",
-        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
-        FunctorY = some_int_const(uint_const(YVal)),
-        FunctorZ = some_int_const(uint_const(ZVal)),
-        OutputArg = X,
-        OutputArgVal = xor(YVal, ZVal)
+        emu_xor(OpType, FunctorY, FunctorZ, OutputArgVal)
     ).
 
 %---------------------%
@@ -1057,8 +899,7 @@ evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
             )
         ;
             PredName = ">", ModeNum = 0,
-            X ^ arg_inst =
-                bound(_, _, [bound_functor(FunctorX, [])]),
+            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
             FunctorX = some_int_const(uint32_const(XVal)),
             ( if XVal = 0u32 then
                 % Special case: 0u > than no uints.
@@ -1167,6 +1008,61 @@ evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
         ;
             Result0 = yes,
             eval_unify(X, Y, Result)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred is_integer_for_op_type(op_type::in, cons_id::in, integer::out)
+    is semidet.
+
+is_integer_for_op_type(OpType, Functor, Integer) :-
+    Functor = some_int_const(Const),
+    (
+        OpType = op_int(OpNumBits),
+        (
+            OpNumBits = word_bits(_),
+            Const = int_const(I),
+            Integer = integer(I)
+        ;
+            OpNumBits = bits_8,
+            Const = int8_const(I8),
+            Integer = from_int8(I8)
+        ;
+            OpNumBits = bits_16,
+            Const = int16_const(I16),
+            Integer = from_int16(I16)
+        ;
+            OpNumBits = bits_32,
+            Const = int32_const(I32),
+            Integer = from_int32(I32)
+        ;
+            OpNumBits = bits_64,
+            Const = int64_const(I64),
+            Integer = from_int64(I64)
+        )
+    ;
+        OpType = op_uint(OpNumBits),
+        (
+            OpNumBits = word_bits(_),
+            Const = uint_const(U),
+            Integer = from_uint(U)
+        ;
+            OpNumBits = bits_8,
+            Const = uint8_const(U8),
+            Integer = from_uint8(U8)
+        ;
+            OpNumBits = bits_16,
+            Const = uint16_const(U16),
+            Integer = from_uint16(U16)
+        ;
+            OpNumBits = bits_32,
+            Const = uint32_const(U32),
+            Integer = from_uint32(U32)
+        ;
+            OpNumBits = bits_64,
+            Const = uint64_const(U64),
+            Integer = from_uint64(U64)
         )
     ).
 
