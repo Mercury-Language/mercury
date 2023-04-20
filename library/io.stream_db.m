@@ -75,8 +75,7 @@
 
 %---------------------%
 
-:- pred insert_stream_info(stream::in, stream_info::in,
-    io::di, io::uo) is det.
+:- pred insert_stream_info(stream::in, stream_info::in, io::di, io::uo) is det.
 
 :- pred maybe_delete_stream_info(io.stream::in, io::di, io::uo) is det.
 

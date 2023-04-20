@@ -837,8 +837,7 @@ int     mercury_get_byte(MercuryFilePtr mf);
                 result_code = ML_MIRC_INCOMPLETE;                            \
                 for (i = nread - 1; i >= 0; i--) {                           \
                     result_incomplete =                                      \
-                        MR_list_cons(buffer[i],                              \
-                        result_incomplete);                                  \
+                        MR_list_cons(buffer[i], result_incomplete);          \
                 }                                                            \
                 result_error = 0;                                            \
             } else {                                                         \
