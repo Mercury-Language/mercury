@@ -10,9 +10,9 @@
 #ifndef MERCURY_STD_H
 #define MERCURY_STD_H
 
-// We include mercury_regs.h to ensure we define any global register variables
-// before any functions, even if the system libraries we include below it
-// define any functions.
+// We include mercury_regs.h FIRST in order to ensure that
+// we define any global register variables BEFORE any functions,
+// even if the system libraries we include below it define any functions.
 
 #include "mercury_regs.h"
 
@@ -81,7 +81,7 @@ typedef char        MR_small_bool;
 
 #define MR_ungetchar(c)         ungetc(c, stdin)
 
-// For speed, turn assertions off, unless low-level debugging is enabled.
+// For speed, turn assertions off, unless debugging of the runtime is enabled.
 
 #ifdef MR_DEBUG_THE_RUNTIME
   #define MR_assert(ASSERTION)  assert(ASSERTION)
@@ -91,9 +91,9 @@ typedef char        MR_small_bool;
   #define MR_assert(ASSERTION)  __assume(ASSERTION)
 #else
   // Using sizeof ensures that the argument to MR_assert is valid, but does
-  // not actually execute any code. This helps prevent bitrot when code is not
-  // tested with assertions enabled.
-  #define MR_assert(ASSERTION)  ((void)sizeof(ASSERTION))
+  // not actually execute any code. This helps prevent bitrot when code is
+  // not tested with assertions enabled.
+  #define MR_assert(ASSERTION)  ((void) sizeof(ASSERTION))
 #endif
 
 ////////////////////////////////////////////////////////////////////////////
@@ -165,7 +165,7 @@ typedef char        MR_small_bool;
     #define MR_EXTERN_INLINE            inline
     #define MR_OUTLINE_DEFN(DECL,BODY)  extern DECL;
   #else
-   // C89: note that by default we use clang in C99 mode so this alternative
+   // C89: note that by default we use clang in C99 mode, so this alternative
    // will only be used if user explicitly sets -std to use something prior
    // to C99.
 
@@ -295,7 +295,7 @@ typedef char        MR_small_bool;
 // type-correct.
 
 #define MR_CHECK_EXPR_TYPE(expr, type)                                  \
-    ((void) sizeof(*(type *)NULL = (expr)))
+    ((void) sizeof(* (type *) NULL = (expr)))
 
 // MR_STATIC_ASSERT(module, expr):
 // Assert at compile time that the given expression is true.
@@ -314,7 +314,7 @@ typedef char        MR_small_bool;
 // MR_IF is for writing if-then-elses that must expand to expressions, not
 // statements.
 
-#define MR_IF(cond, val) ((cond) ? ((val), (void)0) : (void)0)
+#define MR_IF(cond, val) ((cond) ? ((val), (void) 0) : (void) 0)
 
 ////////////////////////////////////////////////////////////////////////////
 
