@@ -30,7 +30,7 @@
 
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.maybe_succeeded.
+:- import_module libs.maybe_util.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_c_util.
 

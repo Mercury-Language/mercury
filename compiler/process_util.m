@@ -17,7 +17,7 @@
 :- module libs.process_util.
 :- interface.
 
-:- import_module libs.maybe_succeeded.
+:- import_module libs.maybe_util.
 
 :- import_module bool.
 :- import_module io.

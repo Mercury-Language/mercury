@@ -59,7 +59,7 @@
 :- import_module libs.compute_grade.
 :- import_module libs.file_util.
 :- import_module libs.handle_options.
-:- import_module libs.maybe_succeeded.
+:- import_module libs.maybe_util.
 :- import_module libs.op_mode.
 :- import_module libs.optimization_options.
 :- import_module libs.options.

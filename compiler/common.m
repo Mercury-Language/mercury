@@ -172,6 +172,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.status.
 :- import_module libs.
+:- import_module libs.maybe_util.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module parse_tree.error_spec.
@@ -775,14 +776,6 @@ how_to_construct_is_acceptable(Info, How) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-    % XXX This is the fifth occurrence of this type in the compiler.
-    % All these occurrence should be replaced by one single copy
-    % in central place. This should be the current maybe_succeeded.m,
-    % probably renamed to something like maybe_types.m.
-:- type maybe_changed
-    --->    unchanged
-    ;       changed.
 
     % The purpose of this predicate is to short-circuit variable-to-variable
     % equivalences in structure arguments.

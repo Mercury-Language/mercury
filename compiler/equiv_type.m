@@ -62,6 +62,8 @@
 :- module parse_tree.equiv_type.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.maybe_util.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_event.
@@ -73,10 +75,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
-
-:- type maybe_changed
-    --->    no_change
-    ;       changed.
 
 %---------------------------------------------------------------------------%
 
@@ -1870,7 +1868,7 @@ replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap,
     (
         Type0 = type_variable(Var, Kind),
         Type = type_variable(Var, Kind),
-        Changed = no_change,
+        Changed = unchanged,
         Circ = set.init
     ;
         Type0 = defined_type(SymName, TArgs0, Kind),
@@ -1885,7 +1883,7 @@ replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap,
     ;
         Type0 = builtin_type(_),
         Type = Type0,
-        Changed = no_change,
+        Changed = unchanged,
         Circ = set.init
     ;
         Type0 = higher_order_type(PorF, Args0, HOInstInfo, Purity, EvalMethod),
@@ -1897,7 +1895,7 @@ replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap,
             Type = higher_order_type(PorF, Args, HOInstInfo, Purity,
                 EvalMethod)
         ;
-            Changed = no_change,
+            Changed = unchanged,
             Type = Type0
         )
     ;
@@ -1909,7 +1907,7 @@ replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap,
             Changed = changed,
             Type = tuple_type(Args, Kind)
         ;
-            Changed = no_change,
+            Changed = unchanged,
             Type = Type0
         )
     ;
@@ -1921,7 +1919,7 @@ replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap,
             Changed = changed,
             Type = apply_n_type(Var, Args, Kind)
         ;
-            Changed = no_change,
+            Changed = unchanged,
             Type = Type0
         )
     ;
@@ -1933,7 +1931,7 @@ replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap,
             Changed = changed,
             Type = kinded_type(RawType, Kind)
         ;
-            Changed = no_change,
+            Changed = unchanged,
             Type = Type0
         )
     ).
@@ -1992,7 +1990,7 @@ replace_type_ctor(MaybeRecord, TypeEqvMap, TypeCtorsAlreadyExpanded, Type0,
             TypeCtor = type_ctor(SymName, _Arity),
             Type = defined_type(SymName, TArgs, Kind)
         ;
-            !.Changed = no_change,
+            !.Changed = unchanged,
             Type = Type0
         ),
         set.union(NewCirc, !Circ)
@@ -2035,7 +2033,7 @@ replace_in_type_list_location_circ(MaybeRecord, TypeEqvMap, !Types,
     used_modules::in, used_modules::out) is det.
 
 replace_in_type_list_location_circ_2(_MaybeRecord, _TypeEqvMap, _Seen,
-        [], [], no_change, !ContainsCirc, !TVarSet,
+        [], [], unchanged, !ContainsCirc, !TVarSet,
         !EquivTypeInfo, !UsedModules).
 replace_in_type_list_location_circ_2(MaybeRecord, TypeEqvMap, Seen,
         List0 @ [Type0 | Types0], List, Changed, !Circ, !TVarSet,
@@ -2055,7 +2053,7 @@ replace_in_type_list_location_circ_2(MaybeRecord, TypeEqvMap, Seen,
         Changed = changed,
         List = [Type | Types]
     else
-        Changed = no_change,
+        Changed = unchanged,
         List = List0
     ).
 

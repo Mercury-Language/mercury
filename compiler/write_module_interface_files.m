@@ -53,7 +53,7 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
-:- import_module libs.maybe_succeeded.
+:- import_module libs.maybe_util.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.

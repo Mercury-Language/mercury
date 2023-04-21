@@ -24,7 +24,7 @@
 
 % Error handling.
 :- include_module compiler_util.
-:- include_module maybe_succeeded.
+:- include_module maybe_util.
 
 % Representation of mmakefile fragments.
 :- include_module mmakefiles.

@@ -81,6 +81,7 @@
 
 :- implementation.
 
+:- import_module libs.maybe_util.
 :- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.item_util.
@@ -1004,10 +1005,6 @@ gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId) :-
 % when they shouldn't, so they should never cause a necessary recompilation
 % to be missed.
 %
-
-:- type maybe_changed
-    --->    unchanged
-    ;       changed.
 
     % XXX This predicate is unused, which is likely to be a bug.
     %

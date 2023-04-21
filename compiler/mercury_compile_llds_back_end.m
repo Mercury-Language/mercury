@@ -21,7 +21,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.passes_aux.
 :- import_module libs.
-:- import_module libs.maybe_succeeded.
+:- import_module libs.maybe_util.
 :- import_module libs.op_mode.
 :- import_module ll_backend.
 :- import_module ll_backend.global_data.

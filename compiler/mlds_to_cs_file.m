@@ -20,7 +20,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module libs.
-:- import_module libs.maybe_succeeded.
+:- import_module libs.maybe_util.
 :- import_module ml_backend.mlds.
 
 :- import_module io.

@@ -23,7 +23,7 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
-:- import_module libs.maybe_succeeded.
+:- import_module libs.maybe_util.
 :- import_module make.dependencies.
 :- import_module make.make_info.
 :- import_module parse_tree.

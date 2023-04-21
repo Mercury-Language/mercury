@@ -18,7 +18,7 @@
 :- interface.
 
 :- import_module libs.globals.
-:- import_module libs.maybe_succeeded.
+:- import_module libs.maybe_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 

@@ -163,6 +163,7 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.maybe_util.
 :- import_module libs.options.
 :- import_module parse_tree.error_sort.
 :- import_module parse_tree.parse_tree_out_info.

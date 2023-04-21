@@ -161,6 +161,7 @@
 
 :- implementation.
 
+:- import_module libs.maybe_util.
 :- import_module libs.options.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.parse_tree_out_type_repn.
@@ -2300,11 +2301,11 @@ expand_eqv_sub_of_notag_types_in_constructor(EqvMap, SubtypeMap, SimpleDuMap,
         TVarSet, Ctor0, Ctor, !Specs) :-
     Args0 = Ctor0 ^ cons_args,
     expand_eqv_sub_of_notag_types_in_constructor_args(EqvMap, SubtypeMap,
-        SimpleDuMap, TVarSet, Args0, Args, no_change, Changed, !Specs),
+        SimpleDuMap, TVarSet, Args0, Args, unchanged, Changed, !Specs),
     % Don't allocate memory if we don't have to. Many constructors
     % have no constructors containing no equivalence types.
     (
-        Changed = no_change,
+        Changed = unchanged,
         Ctor = Ctor0
     ;
         Changed = changed,
@@ -2328,7 +2329,7 @@ expand_eqv_sub_of_notag_types_in_constructor_args(TypeEqvMap, SubtypeMap,
     % Don't allocate memory if we don't have to. Most argument types
     % need no expansion.
     (
-        ArgTypeChanged = no_change,
+        ArgTypeChanged = unchanged,
         Arg = Arg0
     ;
         ArgTypeChanged = changed,
@@ -2360,7 +2361,7 @@ expand_eqv_sub_of_notag_type_fixpoint(TypeEqvMap, SubtypeMap, SimpleDuMap,
     ( if
         IterationsLeft < 0
     then
-        Changed = no_change,
+        Changed = unchanged,
         Type = Type0
     else if
         % Is the Mercury definition of Type0 a notag type?
@@ -2419,7 +2420,7 @@ expand_eqv_sub_of_notag_type_fixpoint(TypeEqvMap, SubtypeMap, SimpleDuMap,
                 SimpleDuMap, TVarSet0, Context, IterationsLeft - 1,
                 Type1, Type, _Changed, !Specs)
         ;
-            Changed = no_change,
+            Changed = unchanged,
             Type = Type0
         )
     ).

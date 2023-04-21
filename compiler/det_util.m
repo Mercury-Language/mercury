@@ -33,10 +33,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type maybe_changed
-    --->    changed
-    ;       unchanged.
-
     % Should we emit an error message about extra variables in the head
     % of a promise_equivalent_solutions scope?  Extra variables are
     % those non-locals that are not further bound or (potentially) constrained

@@ -85,6 +85,8 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.rtti.
+:- import_module libs.
+:- import_module libs.maybe_util.
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
@@ -420,10 +422,6 @@ mlds_output_array_type_suffix(Stream, array_size(Size0), !IO) :-
 
 semicanonicalize_types_in_initializer_for_c(Init0) = Init :-
     semicanonicalize_types_in_initializer_for_c(Init0, Init, _).
-
-:- type maybe_changed
-    --->    unchanged
-    ;       changed.
 
 :- pred semicanonicalize_types_in_initializer_for_c(
     mlds_initializer::in, mlds_initializer::out, maybe_changed::out) is det.

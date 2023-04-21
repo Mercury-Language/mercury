@@ -21,7 +21,7 @@
 
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.maybe_succeeded.
+:- import_module libs.maybe_util.
 :- import_module ll_backend.llds.
 
 :- import_module bool.

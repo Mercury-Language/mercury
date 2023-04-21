@@ -47,7 +47,7 @@
 :- implementation.
 
 :- import_module libs.file_util.
-:- import_module libs.maybe_succeeded.
+:- import_module libs.maybe_util.
 :- import_module libs.options.
 :- import_module libs.process_util.
 :- import_module libs.timestamp.

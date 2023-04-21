@@ -2370,9 +2370,10 @@ string_encoding.m: defines utility predicates related to string encodings.
 file_util.m contains utility predicates dealing with files,
 such as searching for a file in a list of directories.
 <li>
-maybe_succeeded.m defines a type
-that records the success or failure of operations,
-and some operations on that type.
+maybe_util.m defines utility types such as
+maybe_succeeded (which records the success or failure of an operation) and
+maybe_changed (which records whether an operation has changed something or not)
+as well as some operations on those types.
 <li>
 process_util.m contains predicates
 that deal with process creation and signal handling.
