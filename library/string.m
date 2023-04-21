@@ -3274,7 +3274,7 @@ check_well_formedness(String, Result) :-
     FirstIllFormedPos = -1;
     for (int i = 0; i < S.Length; i++) {
         if (System.Char.IsLowSurrogate(S[i])) {
-            SUCCESS_INDICATOR = false;
+            FirstIllFormedPos = i;
             break;
         }
         if (System.Char.IsHighSurrogate(S[i])) {
