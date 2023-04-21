@@ -284,33 +284,68 @@
 
     % index_next(String, Index, NextIndex, Char):
     %
+    % Succeeds if and only if Index is between 0 and Len-1 (both inclusive)
+    % where Len is the number of code units in String.
+    %
     % If Index is the initial code unit offset of a well-formed code unit
-    % sequence in String then Char is the code point encoded by that
-    % sequence, and NextIndex is the offset immediately following that
-    % sequence.
+    % sequence in String, then Char will be set to the code point encoded
+    % by that sequence, and NextIndex will be set to the offset of the code
+    % unit immediately following that sequence.
     %
-    % Otherwise, if Index is in range, Char is either a U+FFFD REPLACEMENT
-    % CHARACTER (when strings are UTF-8 encoded) or the unpaired surrogate
-    % code point at Index (when strings are UTF-16 encoded), and NextIndex
-    % is Index + 1.
+    % If Index is *not* the initial code unit offset of a well-formed
+    % code unit sequence, NextIndex will be set to Index + 1, but the value
+    % of Char will depend on string encoding used by the target platform.
     %
-    % Fails if Index is out of range (negative, or greater than or equal to
-    % the length of String).
+    % - On platforms that encode strings using UTF-8 (i.e. when targeting C)
+    %   Char will be set to U+FFFD (the Unicode replacement character).
+    %
+    % - On platforms that encode strings using UTF-16 (i.e. when targeting
+    %   C# or Java), Char will be set to the unpaired surrogate code point
+    %   at Index. (For more details, see the comment just below.)
     %
 :- pred index_next(string::in, int::in, int::out, char::uo) is semidet.
 
     % index_next_repl(String, Index, NextIndex, Char, MaybeReplaced):
     %
-    % Like index_next/4 but also returns MaybeReplaced on success.
-    % When Char is not U+FFFD, then MaybeReplaced is always `not_replaced'.
-    % When Char is U+FFFD (the Unicode replacement character), then there are
-    % two cases:
+    % Does the same job as index_next/4 but on success, it also returns
+    % MaybeReplaced, which will specify whether Char is the result
+    % of the replacement of a non-well-formed UTF-8 character with U+FFFD.
     %
-    % - If there is a U+FFFD code point encoded in String at
-    %   [Index, NextIndex) then MaybeReplaced is `not_replaced'.
+    % On platforms that encode strings using UTF-8 (i.e. when targeting C),
+    % there are three cases.
     %
-    % - Otherwise, MaybeReplaced is `replaced_code_unit(CodeUnit)' where
-    %   CodeUnit is the code unit in String at Index.
+    % - If Char is not U+FFFD, then MaybeReplaced will be `not_replaced'.
+    %
+    % - If Char is U+FFFD because there is a well-formed code point encoded
+    %   in String starting at Index, and that code point is U+FFFD, then
+    %   MaybeReplaced will also be `not_replaced'.
+    %
+    % - If Char is U+FFFD but there is *no* well formed code point encoded
+    %   in String starting at Index, then MaybeReplaced will be
+    %   `replaced_code_unit(CodeUnit)', where CodeUnit is the code unit
+    %   at offset Index in String.
+    %
+    % On platforms that encode strings using UTF-16 (i.e. when targeting C#
+    % or Java), MaybeReplaced will always be bound to `not_replaced'.
+    % The only ways that a UTF-16 string may be non-well-formed are
+    %
+    % - by having a high surrogate code unit (between 0xD800 and 0xDBFF)
+    %   that is not immediately followed by a low surrogate code unit
+    %   (between 0xDC00 and 0xDFFF), or
+    %
+    % - by having a low surrogate code unit that is not immediately preceded
+    %   by a high surrogate code unit.
+    %
+    % In both cases, index_next_repl will return the unpaired surrogate
+    % unchanged as Char. There is no replacement required, because
+    %
+    % - surrogate code units are all the range 0xD800 to 0xDFFF, and
+    % - the Unicode standard deliberately does not assign any characters
+    %   to the code points in this range.
+    %
+    % This means that if Char is in this range, then it must be an unpaired
+    % surrogate, but since Char actually appears in String, it won't be
+    % a *replacement* of another character.
     %
 :- pred index_next_repl(string::in, int::in, int::out, char::uo,
     maybe_replaced::out) is semidet.
@@ -576,6 +611,22 @@
     % is true iff S consists of a well-formed UTF-16 code unit sequence.
     %
 :- pred is_well_formed(string::in) is semidet.
+
+    % Values of this type record whether a string is well or ill formed.
+    % In the latter case, the integer gives the offset in the string
+    % (as a count of either UTF-8 or UTF-16 code units, depending on the
+    % target language) of the first position at which the string departs
+    % from well-formedness.
+    %
+:- type well_or_ill_formed
+    --->    well_formed
+    ;       ill_formed(int).
+
+    % Does the same job as is_well_formed, but if the string is NOT well
+    % formed, it will return the offset (as a count of code units) of the
+    % first position at which the string departs from well-formedness.
+    %
+:- pred check_well_formedness(string::in, well_or_ill_formed::out) is det.
 
     % True if string contains only alphabetic characters [A-Za-z].
     %
@@ -2435,7 +2486,7 @@ duplicate_char(Char, Count, String) :-
 
 index(Str, Index, Char) :-
     Len = length(Str),
-    ( if index_check(Index, Len) then
+    ( if string_index_is_in_bounds(Index, Len) then
         unsafe_index(Str, Index, Char)
     else
         fail
@@ -2504,7 +2555,7 @@ index_next(Str, Index, NextIndex, Char) :-
 
 index_next_repl(Str, Index, NextIndex, Char, MaybeReplaced) :-
     Len = length(Str),
-    ( if index_check(Index, Len) then
+    ( if string_index_is_in_bounds(Index, Len) then
         unsafe_index_next_repl(Str, Index, NextIndex, Char, MaybeReplaced)
     else
         fail
@@ -2598,7 +2649,7 @@ prev_index(Str, Index, PrevIndex, Char) :-
 
 prev_index_repl(Str, Index, PrevIndex, Char, MaybeReplaced) :-
     Len = length(Str),
-    ( if index_check(Index - 1, Len) then
+    ( if string_index_is_in_bounds(Index - 1, Len) then
         unsafe_prev_index_repl(Str, Index, PrevIndex, Char, MaybeReplaced)
     else
         fail
@@ -2703,10 +2754,10 @@ unsafe_prev_index_repl(Str, Index, PrevIndex, Ch, MaybeReplaced) :-
 
     % XXX We should consider making this routine a compiler built-in.
     %
-:- pred index_check(int::in, int::in) is semidet.
+:- pred string_index_is_in_bounds(int::in, int::in) is semidet.
 
 :- pragma foreign_proc("C",
-    index_check(Index::in, Length::in),
+    string_index_is_in_bounds(Index::in, Length::in),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -2718,13 +2769,13 @@ unsafe_prev_index_repl(Str, Index, PrevIndex, Ch, MaybeReplaced) :-
     SUCCESS_INDICATOR = ((MR_Unsigned) Index < (MR_Unsigned) Length);
 ").
 :- pragma foreign_proc("C#",
-    index_check(Index::in, Length::in),
+    string_index_is_in_bounds(Index::in, Length::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = ((uint) Index < (uint) Length);
 ").
 
-index_check(Index, Length) :-
+string_index_is_in_bounds(Index, Length) :-
     Index >= 0,
     Index < Length.
 
@@ -2765,7 +2816,7 @@ set_char(Char, Index, Str0, Str) :-
         unexpected($pred, "surrogate code point")
     else
         Len0 = length(Str0),
-        ( if index_check(Index, Len0) then
+        ( if string_index_is_in_bounds(Index, Len0) then
             unsafe_set_char_copy_string(Char, Index, Len0, Str0, Str)
         else
             fail
@@ -3168,22 +3219,40 @@ is_empty("").
 
 %---------------------%
 
+is_well_formed(String) :-
+    find_first_ill_formed_pos(String, FirstIllFormedPos),
+    FirstIllFormedPos < 0.
+
+check_well_formedness(String, Result) :-
+    find_first_ill_formed_pos(String, FirstIllFormedPos),
+    ( if FirstIllFormedPos < 0 then
+        Result = well_formed
+    else
+        Result = ill_formed(FirstIllFormedPos)
+    ).
+
+    % Return the position (as an offset in the code unit appropriate
+    % to the UTF version used by the target platform) of the first place
+    % in the string that is not well formed.
+    %
+:- pred find_first_ill_formed_pos(string::in, int::out) is det.
+
 :- pragma foreign_proc("C",
-    is_well_formed(S::in),
+    find_first_ill_formed_pos(S::in, FirstIllFormedPos::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    SUCCESS_INDICATOR = MR_utf8_verify(S);
+    FirstIllFormedPos = MR_utf8_find_ill_formed_char(S);
 ").
 :- pragma foreign_proc("Java",
-    is_well_formed(S::in),
+    find_first_ill_formed_pos(S::in, FirstIllFormedPos::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    SUCCESS_INDICATOR = true;
+    FirstIllFormedPos = -1;
     for (int i = 0; i < S.length(); i++) {
         if (java.lang.Character.isLowSurrogate(S.charAt(i))) {
-            SUCCESS_INDICATOR = false;
+            FirstIllFormedPos = i;
             break;
         }
         if (java.lang.Character.isHighSurrogate(S.charAt(i))) {
@@ -3191,18 +3260,18 @@ is_empty("").
             if (i >= S.length() ||
                 !java.lang.Character.isLowSurrogate(S.charAt(i)))
             {
-                SUCCESS_INDICATOR = false;
+                FirstIllFormedPos = i-1;    // Could also be just i.
                 break;
             }
         }
     }
 ").
 :- pragma foreign_proc("C#",
-    is_well_formed(S::in),
+    find_first_ill_formed_pos(S::in, FirstIllFormedPos::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    SUCCESS_INDICATOR = true;
+    FirstIllFormedPos = -1;
     for (int i = 0; i < S.Length; i++) {
         if (System.Char.IsLowSurrogate(S[i])) {
             SUCCESS_INDICATOR = false;
@@ -3211,7 +3280,7 @@ is_empty("").
         if (System.Char.IsHighSurrogate(S[i])) {
             i++;
             if (i >= S.Length || !System.Char.IsLowSurrogate(S[i])) {
-                SUCCESS_INDICATOR = false;
+                FirstIllFormedPos = i-1;    // Could also be just i.
                 break;
             }
         }

@@ -556,3 +556,21 @@ MR_utf8_verify(const MR_String s)
         }
     }
 }
+
+MR_Integer
+MR_utf8_find_ill_formed_char(const MR_String s)
+{
+    MR_Integer pos = 0;
+
+    for (;;) {
+        MR_int_least32_t c;
+
+        c = MR_utf8_get_next(s, &pos);
+        if (c == 0) {
+            return -1;
+        }
+        if (c < 0) {
+            return pos;
+        }
+    }
+}

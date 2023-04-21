@@ -23,17 +23,19 @@
 :- module io.stream_ops.
 :- interface.
 
-    % do_open_binary(File, Mode, StreamId, Stream, Error, !IO):
     % do_open_text(File, Mode, StreamId, Stream, Error, !IO):
+    % do_open_binary(File, Mode, StreamId, Stream, Error, !IO):
     %
     % Attempts to open a file in the specified mode.
-    % The Mode is a string suitable for passing to fopen().
-    % StreamId is a unique integer identifying the open.
-    % StreamId and Stream are valid only if Error indicates an error occurred.
+    % The Mode must be a string suitable for passing to fopen(), and
+    % - should not have a final "b" when calling do_open_text, but
+    % - should have a final "b" when calling do_open_binary.
+    % StreamId will be a unique integer identifying the open.
+    % StreamId and Stream will be valid only if Error indicates
+    % that an error has NOT occurred.
     %
 :- pred do_open_text(string::in, string::in, int::out, stream::out,
     system_error::out, io::di, io::uo) is det.
-
 :- pred do_open_binary(string::in, string::in, int::out, stream::out,
     system_error::out, io::di, io::uo) is det.
 
@@ -676,8 +678,7 @@ stderr_stream_2(Stream, !IO) :-
 ").
 :- pragma foreign_proc("Java",
     input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
 "
     Stream = jmercury.io__stream_ops.mercury_current_text_input.get();
 ").
@@ -700,8 +701,7 @@ stderr_stream_2(Stream, !IO) :-
 ").
 :- pragma foreign_proc("Java",
     binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        may_not_duplicate],
+    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
 "
     Stream = jmercury.io__stream_ops.mercury_current_binary_input.get();
 ").
@@ -1756,9 +1756,8 @@ mercury_file_init(System.IO.Stream stream,
     return mf;
 }
 
-public static
-MR_MercuryFileStruct mercury_open(string filename, string openmode,
-    ML_line_ending_kind line_ending)
+public static MR_MercuryFileStruct
+mercury_open(string filename, string openmode, ML_line_ending_kind line_ending)
 {
     System.IO.FileMode      mode;
     System.IO.FileAccess    access;
@@ -1789,9 +1788,8 @@ MR_MercuryFileStruct mercury_open(string filename, string openmode,
         throw new System.Exception();
     }
 
-    // For Unix compatibility, we allow files
-    // to be read or written by multiple processes
-    // simultaneously. XXX Is this a good idea?
+    // For Unix compatibility, we allow files to be read or written
+    // by multiple processes simultaneously. XXX Is this a good idea?
     share = System.IO.FileShare.ReadWrite;
 
     stream = System.IO.File.Open(filename, mode, access, share);

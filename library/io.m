@@ -1293,10 +1293,15 @@
     % as a string. If either the opening or the reading fails, return
     % an error message describing the failure.
     %
-    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
-    % or UTF-16.
+    % With the first version, the returned string is NOT guaranteed
+    % to be valid UTF-8 (when targeting C) or UTF-16 (when target Java or C#).
+    % The version that has the _wf suffix DOES guarantee that the
+    % returned string is valid UTF-8 or UTF-16; if the contents of the file
+    % is not a well formed string, it will report an error.
     %
 :- pred read_named_file_as_string(string::in, io.res(string)::out,
+    io::di, io::uo) is det.
+:- pred read_named_file_as_string_wf(string::in, io.res(string)::out,
     io::di, io::uo) is det.
 
     % Open and read the named file, and if successful, return its contents
@@ -1309,10 +1314,15 @@
     % end of the file. The string returned for each line will not contain
     % the newline character.
     %
-    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
-    % or UTF-16.
+    % With the first version, the returned string is NOT guaranteed
+    % to be valid UTF-8 (when targeting C) or UTF-16 (when target Java or C#).
+    % The version that has the _wf suffix DOES guarantee that the
+    % returned string is valid UTF-8 or UTF-16; if the contents of the file
+    % is not a well formed string, it will report an error.
     %
 :- pred read_named_file_as_lines(string::in, io.res(list(string))::out,
+    io::di, io::uo) is det.
+:- pred read_named_file_as_lines_wf(string::in, io.res(list(string))::out,
     io::di, io::uo) is det.
 
     % Read all the characters (code points) from the current input stream
@@ -1330,23 +1340,37 @@
     % Returns an error if the file contains a null character, because
     % null characters are not allowed in Mercury strings.
     %
-    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
-    % or UTF-16.
+    % With the first two versions, the returned string is NOT guaranteed
+    % to be valid UTF-8 (when targeting C) or UTF-16 (when target Java or C#).
+    % The two versions that have the _wf suffix DO guarantee that the
+    % returned string is valid UTF-8 or UTF-16; if the contents of the file
+    % is not a well formed string, they will report an error.
     %
 :- pred read_file_as_string(io.maybe_partial_res(string)::out,
     io::di, io::uo) is det.
 :- pred read_file_as_string(io.text_input_stream::in,
     io.maybe_partial_res(string)::out, io::di, io::uo) is det.
+:- pred read_file_as_string_wf(io.maybe_partial_res(string)::out,
+    io::di, io::uo) is det.
+:- pred read_file_as_string_wf(io.text_input_stream::in,
+    io.maybe_partial_res(string)::out, io::di, io::uo) is det.
 
     % The same as read_file_as_string, but returns not only a string,
     % but also the number of code units in that string.
     %
-    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
-    % or UTF-16.
+    % With the first two versions, the returned string is NOT guaranteed
+    % to be valid UTF-8 (when targeting C) or UTF-16 (when target Java or C#).
+    % The two versions that have the _wf suffix DO guarantee that the
+    % returned string is valid UTF-8 or UTF-16; if the contents of the file
+    % is not a well formed string, they will report an error.
     %
 :- pred read_file_as_string_and_num_code_units(
     io.maybe_partial_res_2(string, int)::out, io::di, io::uo) is det.
 :- pred read_file_as_string_and_num_code_units(io.text_input_stream::in,
+    io.maybe_partial_res_2(string, int)::out, io::di, io::uo) is det.
+:- pred read_file_as_string_and_num_code_units_wf(
+    io.maybe_partial_res_2(string, int)::out, io::di, io::uo) is det.
+:- pred read_file_as_string_and_num_code_units_wf(io.text_input_stream::in,
     io.maybe_partial_res_2(string, int)::out, io::di, io::uo) is det.
 
     % Reads all the bytes until eof or error from the current binary input
@@ -2427,8 +2451,8 @@ open_input(FileName, Result, !IO) :-
     ;
         MaybeIOError = no,
         Result = ok(input_stream(NewStream)),
-        insert_stream_info(NewStream,
-            stream(OpenCount, input, text, file(FileName)), !IO)
+        StreamInfo = stream(OpenCount, input, text, file(FileName)),
+        insert_stream_info(NewStream, StreamInfo, !IO)
     ).
 
 open_binary_input(FileName, Result, !IO) :-
@@ -2440,8 +2464,8 @@ open_binary_input(FileName, Result, !IO) :-
     ;
         MaybeIOError = no,
         Result = ok(binary_input_stream(NewStream)),
-        insert_stream_info(NewStream,
-            stream(OpenCount, input, binary, file(FileName)), !IO)
+        StreamInfo = stream(OpenCount, input, binary, file(FileName)),
+        insert_stream_info(NewStream, StreamInfo, !IO)
     ).
 
 %---------------------%
@@ -2455,8 +2479,8 @@ open_output(FileName, Result, !IO) :-
     ;
         MaybeIOError = no,
         Result = ok(output_stream(NewStream)),
-        insert_stream_info(NewStream,
-            stream(OpenCount, output, text, file(FileName)), !IO)
+        StreamInfo = stream(OpenCount, output, text, file(FileName)),
+        insert_stream_info(NewStream, StreamInfo, !IO)
     ).
 
 open_binary_output(FileName, Result, !IO) :-
@@ -2468,8 +2492,8 @@ open_binary_output(FileName, Result, !IO) :-
     ;
         MaybeIOError = no,
         Result = ok(binary_output_stream(NewStream)),
-        insert_stream_info(NewStream,
-            stream(OpenCount, output, binary, file(FileName)), !IO)
+        StreamInfo = stream(OpenCount, output, binary, file(FileName)),
+        insert_stream_info(NewStream, StreamInfo, !IO)
     ).
 
 %---------------------%
@@ -2483,8 +2507,8 @@ open_append(FileName, Result, !IO) :-
     ;
         MaybeIOError = no,
         Result = ok(output_stream(NewStream)),
-        insert_stream_info(NewStream,
-            stream(OpenCount, append, text, file(FileName)), !IO)
+        StreamInfo = stream(OpenCount, append, text, file(FileName)),
+        insert_stream_info(NewStream, StreamInfo, !IO)
     ).
 
 open_binary_append(FileName, Result, !IO) :-
@@ -2496,8 +2520,8 @@ open_binary_append(FileName, Result, !IO) :-
     ;
         MaybeIOError = no,
         Result = ok(binary_output_stream(NewStream)),
-        insert_stream_info(NewStream,
-            stream(OpenCount, append, binary, file(FileName)), !IO)
+        StreamInfo = stream(OpenCount, append, binary, file(FileName)),
+        insert_stream_info(NewStream, StreamInfo, !IO)
     ).
 
 %---------------------%
@@ -3673,8 +3697,8 @@ print(Term, !IO) :-
 print(Stream, Term, !IO) :-
     stream.string_writer.print(Stream, canonicalize, Term, !IO).
 
-print(Stream, NonCanon, Term, !IO) :-
-    stream.string_writer.print(Stream, NonCanon, Term, !IO).
+print(Stream, MaybeCanon, Term, !IO) :-
+    stream.string_writer.print(Stream, MaybeCanon, Term, !IO).
 
 print_cc(Term, !IO) :-
     output_stream(Stream, !IO),
@@ -3688,8 +3712,8 @@ print_line(Stream, Term, !IO) :-
     io.print(Stream, Term, !IO),
     io.nl(Stream, !IO).
 
-print_line(Stream, NonCanon, Term, !IO) :-
-    io.print(Stream, NonCanon, Term, !IO),
+print_line(Stream, MaybeCanon, Term, !IO) :-
+    io.print(Stream, MaybeCanon, Term, !IO),
     io.nl(Stream, !IO).
 
 print_line_cc(Term, !IO) :-
@@ -3717,8 +3741,8 @@ write(X, !IO) :-
 write(Stream, X, !IO) :-
     stream.string_writer.write(Stream, canonicalize, X, !IO).
 
-write(Stream, NonCanon, X, !IO) :-
-    stream.string_writer.write(Stream, NonCanon, X, !IO).
+write(Stream, MaybeCanon, X, !IO) :-
+    stream.string_writer.write(Stream, MaybeCanon, X, !IO).
 
 write_cc(X, !IO) :-
     output_stream(Stream, !IO),
@@ -3735,8 +3759,8 @@ write_line(Stream, X, !IO) :-
     io.write(Stream, X, !IO),
     io.nl(Stream, !IO).
 
-write_line(Stream, NonCanon, X, !IO) :-
-    io.write(Stream, NonCanon, X, !IO),
+write_line(Stream, MaybeCanon, X, !IO) :-
+    io.write(Stream, MaybeCanon, X, !IO),
     io.nl(Stream, !IO).
 
 write_line_cc(X, !IO) :-
@@ -3953,6 +3977,27 @@ read_named_file_as_string(FileName, Result, !IO) :-
         Result = error(Error)
     ).
 
+read_named_file_as_string_wf(FileName, Result, !IO) :-
+    read_named_file_as_string(FileName, Result0, !IO),
+    (
+        Result0 = error(_),
+        Result = Result0
+    ;
+        Result0 = ok(String),
+        check_well_formedness(String, MaybeWellFormed),
+        (
+            MaybeWellFormed = ill_formed(FirstIllFormedPos),
+            Msg = "ill formed character at offset " ++
+                string.int_to_string(FirstIllFormedPos),
+            Result = error(io_error_string(Msg))
+        ;
+            MaybeWellFormed = well_formed,
+            Result = Result0
+        )
+    ).
+
+%---------------------%
+
 read_named_file_as_lines(FileName, Result, !IO) :-
     io.open_input(FileName, OpenResult, !IO),
     (
@@ -3962,6 +4007,37 @@ read_named_file_as_lines(FileName, Result, !IO) :-
             ReadResult = ok(String),
             Lines = split_into_lines(String),
             Result = ok(Lines)
+        ;
+            ReadResult = error(_PartialString, Error),
+            Result = error(Error)
+        ),
+        io.close_input(FileStream, !IO)
+    ;
+        OpenResult = error(Error),
+        Result = error(Error)
+    ).
+
+read_named_file_as_lines_wf(FileName, Result, !IO) :-
+    % We duplicate the logic of read_named_file_as_lines here because
+    % it is simpler and faster to check the well-formedness of String
+    % than it is to check the well-formedness of all the Lines.
+    io.open_input(FileName, OpenResult, !IO),
+    (
+        OpenResult = ok(FileStream),
+        io.read_file_as_string(FileStream, ReadResult, !IO),
+        (
+            ReadResult = ok(String),
+            check_well_formedness(String, MaybeWellFormed),
+            (
+                MaybeWellFormed = ill_formed(FirstIllFormedPos),
+                Msg = "ill formed character at offset " ++
+                    string.int_to_string(FirstIllFormedPos),
+                Result = error(io_error_string(Msg))
+            ;
+                MaybeWellFormed = well_formed,
+                Lines = split_into_lines(String),
+                Result = ok(Lines)
+            )
         ;
             ReadResult = error(_PartialString, Error),
             Result = error(Error)
@@ -4021,6 +4097,31 @@ read_file_as_string(input_stream(Stream), Result, !IO) :-
         )
     ).
 
+read_file_as_string_wf(Result, !IO) :-
+    input_stream(Stream, !IO),
+    read_file_as_string_wf(Stream, Result, !IO).
+
+read_file_as_string_wf(Stream, Result, !IO) :-
+    read_file_as_string(Stream, Result0, !IO),
+    (
+        Result0 = error(_, _),
+        Result = Result0
+    ;
+        Result0 = ok(String),
+        check_well_formedness(String, MaybeWellFormed),
+        (
+            MaybeWellFormed = ill_formed(FirstIllFormedPos),
+            Msg = "ill formed character at offset " ++
+                string.int_to_string(FirstIllFormedPos),
+            Result = error("", io_error_string(Msg))
+        ;
+            MaybeWellFormed = well_formed,
+            Result = Result0
+        )
+    ).
+
+%---------------------%
+
 read_file_as_string_and_num_code_units(Result, !IO) :-
     input_stream(Stream, !IO),
     read_file_as_string_and_num_code_units(Stream, Result, !IO).
@@ -4039,6 +4140,29 @@ read_file_as_string_and_num_code_units(input_stream(Stream), Result, !IO) :-
         ;
             NullCharError = no,
             Result = ok2(String, NumCUs)
+        )
+    ).
+
+read_file_as_string_and_num_code_units_wf(Result, !IO) :-
+    input_stream(Stream, !IO),
+    read_file_as_string_and_num_code_units_wf(Stream, Result, !IO).
+
+read_file_as_string_and_num_code_units_wf(Stream, Result, !IO) :-
+    read_file_as_string_and_num_code_units(Stream, Result0, !IO),
+    (
+        Result0 = error2(_, _, _),
+        Result = Result0
+    ;
+        Result0 = ok2(String, _NumCUs),
+        check_well_formedness(String, MaybeWellFormed),
+        (
+            MaybeWellFormed = ill_formed(FirstIllFormedPos),
+            Msg = "ill formed character at offset " ++
+                string.int_to_string(FirstIllFormedPos),
+            Result = error2("", 0, io_error_string(Msg))
+        ;
+            MaybeWellFormed = well_formed,
+            Result = Result0
         )
     ).
 

@@ -498,4 +498,11 @@ extern size_t           MR_utf8_encode(char s[], MR_Char c);
 
 extern MR_bool          MR_utf8_verify(const MR_String s);
 
+// If `s' contains an invalid UTF-8 encoded string, return the number of
+// UTF-8 code units between its start and the first invalid UTF-8 character.
+// This number may be zero or positive.
+// If `s' contains a valid UTF-8 encoded string, return a negative value.
+
+extern MR_Integer       MR_utf8_find_ill_formed_char(const MR_String s);
+
 #endif // not MERCURY_STRING_H

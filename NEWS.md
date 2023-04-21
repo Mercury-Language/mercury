@@ -297,13 +297,19 @@ Changes to the Mercury standard library
 
     - pred `make_io_error_from_system_error/5`
     - pred `make_io_error_from_windows_error/5`
-    - pred `get_system_error/2`
     - pred `get_errno_error/2`
-    - pred `get_windows_error/2`
     - pred `get_exception_object_error/2`
+    - pred `get_system_error/2`
     - pred `get_system_error_name/2`
-    - pred `system_error_is_success/1`
+    - pred `get_windows_error/2`
     - func `init_posn/0`
+    - pred `read_file_as_string_wf/3`
+    - pred `read_file_as_string_wf/4`
+    - pred `read_file_as_string_and_num_code_units_wf/3`
+    - pred `read_file_as_string_and_num_code_units_wf/4`
+    - pred `read_named_file_as_string_wf/4`
+    - pred `read_named_file_as_lines_wf/4`
+    - pred `system_error_is_success/1`
     - pred `write_binary_string_utf8/3`
     - pred `write_binary_string_utf8/4`
 
@@ -393,9 +399,9 @@ Changes to the Mercury standard library
     - pred `call_system_return_signal/4`
             (replacement: `io.call_system.call_system_return_signal/4`)
 
-    - pred `get_globals/3`          (replacement: a mutable)
-    - pred `set_globals/3`          (replacement: a mutable)
-    - pred `update_globals/3`       (replacement: a mutable)
+    - pred `get_globals/3`          (replacement: a user-defined mutable)
+    - pred `set_globals/3`          (replacement: a user-defined mutable)
+    - pred `update_globals/3`       (replacement: a user-defined mutable)
 
     - pred `input_stream_foldl/5`
            (replacement: `stream.input_stream_fold/6`)
@@ -707,6 +713,7 @@ Changes to the Mercury standard library
 
     - func `between_code_points/3`
     - pred `between_code_points/4`
+    - pred `check_well_formedness/2`
     - pred `contains_match/2`
     - pred `code_point_offset/3`
     - pred `code_point_offset/4`

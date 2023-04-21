@@ -650,9 +650,12 @@ buffer_and_pos_to_string_and_length(buffer(Array), Pos, Str, NumCUs) :-
 ").
 
 read_into_buffer(Stream, buffer(Array0), buffer(Array), BufferSize,
-        Pos0, Pos, Error, !IO) :-
+        !Pos, Error, !IO) :-
+    % This predicate is used only when compiling to C and C#, and when
+    % targeting C, we use the foreign_proc above, so this clause is used
+    % only when targeting C#.
     read_into_array(input_stream(Stream), Array0, Array, BufferSize,
-        Pos0, Pos, Error, !IO).
+        !Pos, Error, !IO).
 
 :- pred read_into_array(input_stream::in,
     array(char)::array_di, array(char)::array_uo, int::in, int::in, int::out,
