@@ -1267,7 +1267,7 @@ AC_ARG_ENABLE(shared-libs,
 
 #-----------------------------------------------------------------------------#
 #
-# Check whether to use symbolic links
+# Check whether to use symbolic links.
 #
 
 enable_symlinks_opt=no
@@ -1453,14 +1453,14 @@ fi
 
 #-----------------------------------------------------------------------------#
 #
-# Check whether we can set the FP rounding mode
+# Check whether we can set the FP rounding mode.
 #
 
 MERCURY_CHECK_FOR_FENV_FUNC([fesetround], [$MATH_LIB])
 
 #-----------------------------------------------------------------------------#
 #
-# Check whether we have __builtin_bswap builtin functions
+# Check whether we have __builtin_bswap builtin functions.
 #
 
 AC_MSG_CHECKING(whether we have __builtin_bswap16)
@@ -1501,7 +1501,7 @@ fi
 
 #-----------------------------------------------------------------------------#
 #
-# Check whether getopt() is available
+# Check whether getopt() is available.
 #
 
 AC_CHECK_FUNC(getopt,
@@ -1511,7 +1511,7 @@ AC_SUBST(HAVE_GETOPT)
 
 #-----------------------------------------------------------------------------#
 #
-# Check the basics of SA_SIGINFO and siginfo_t
+# Check the basics of SA_SIGINFO and siginfo_t.
 #
 
 if test "$ac_cv_func_sigaction" = yes; then
@@ -3916,7 +3916,7 @@ case "$host" in
         ;;
     x86_64*)
         # NUM_REAL_REGS=4
-        # but succip and sp are real reg, so subtract 2
+        # but succip and sp are real regs, so subtract 2
         NUM_REAL_R_REGS=2
         NUM_REAL_R_TEMPS=0
         HAVE_DELAY_SLOT=
@@ -4671,7 +4671,7 @@ AC_SUBST_FILE(CONFIGURE_HELP)
 #-----------------------------------------------------------------------------#
 #
 # Check for the POSIX struct tms and times() function.
-# This is used for the time__times procedure in library/times.m.
+# This is used for the times predicate in library/time.m.
 #
 
 AC_MSG_CHECKING(for struct tms and times function)
@@ -4732,7 +4732,7 @@ fi
 
 #-----------------------------------------------------------------------------#
 #
-# Check for the WIN32 Sleep function
+# Check for the WIN32 Sleep function.
 #
 
 AC_MSG_CHECKING(for Sleep function)
@@ -4755,7 +4755,7 @@ fi
 
 #-----------------------------------------------------------------------------#
 #
-# Check for the various IEEE predicates
+# Check for the various IEEE predicates.
 #
 
 MERCURY_CHECK_FOR_IEEE_FUNC(isnan)
@@ -4767,7 +4767,7 @@ MERCURY_CHECK_FOR_IEEE_FUNC(isfinite)
 
 #-----------------------------------------------------------------------------#
 #
-# Check whether sockets work (we need them for the external debugger)
+# Check whether sockets work (we need them for the external debugger).
 #
 
 # Check whether we need -lsocket.
@@ -5000,7 +5000,7 @@ AC_SUBST(TRACE_BASE_LIBS_SYSTEM)
 
 #-----------------------------------------------------------------------------#
 #
-# Check whether to use the MercuryFile struct
+# Check whether to use the MercuryFile struct.
 #
 
 AC_MSG_CHECKING(whether to enable the new MercuryFile struct)
@@ -5018,7 +5018,7 @@ fi
 
 #-----------------------------------------------------------------------------#
 #
-# Check whether to disable the use of tagged trail entries
+# Check whether to disable the use of tagged trail entries.
 #
 
 AC_ARG_ENABLE([tagged-trail],
@@ -5153,7 +5153,7 @@ AC_SUBST(HWLOC_STATIC_LIBS)
 
 #-----------------------------------------------------------------------------#
 #
-# Check for flex and bison
+# Check for flex and bison.
 #
 
 # We only require flex and bison if we are going to compile the trace
