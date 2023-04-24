@@ -890,11 +890,6 @@ mercury_getc(mercury.io__stream_ops.MR_MercuryFileStruct mf)
         return c;
     }
 
-    if (mf.reader == null) {
-        mf.reader = new System.IO.StreamReader(mf.stream,
-            mercury.io__stream_ops.text_encoding);
-    }
-
     c = mf.reader.Read();
     switch (mf.line_ending) {
     case mercury.io__stream_ops.ML_line_ending_kind.ML_raw_binary:

@@ -133,16 +133,12 @@
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
-    mercury.io__stream_ops.MR_MercuryFileStruct stream = Stream;
+    mercury.io__stream_ops.MR_MercuryFileStruct mf = Stream;
     try {
         // See mercury_print_string().
-        if (stream.writer == null) {
-            stream.writer = new System.IO.StreamWriter(stream.stream,
-                mercury.io__stream_ops.text_encoding);
-        }
-        System.IO.TextWriter w = stream.writer;
+        System.IO.TextWriter w = mf.writer;
         if (Character == '\\n') {
-            switch (stream.line_ending) {
+            switch (mf.line_ending) {
             case mercury.io__stream_ops.ML_line_ending_kind.ML_raw_binary:
             case mercury.io__stream_ops.ML_line_ending_kind.ML_Unix_line_ending:
                 mercury.io__primitives_write.mercury_write_codepoint(w,
@@ -152,7 +148,7 @@
                 w.WriteLine("""");
                 break;
             }
-            stream.line_number++;
+            mf.line_number++;
         } else {
             mercury.io__primitives_write.mercury_write_codepoint(w, Character);
         }
@@ -1247,11 +1243,6 @@ mercury_write_codepoint(System.IO.TextWriter w, int c)
 public static void
 mercury_print_string(mercury.io__stream_ops.MR_MercuryFileStruct mf, string s)
 {
-    if (mf.writer == null) {
-        mf.writer = new System.IO.StreamWriter(mf.stream,
-            mercury.io__stream_ops.text_encoding);
-    }
-
     switch (mf.line_ending) {
     case mercury.io__stream_ops.ML_line_ending_kind.ML_raw_binary:
     case mercury.io__stream_ops.ML_line_ending_kind.ML_Unix_line_ending:

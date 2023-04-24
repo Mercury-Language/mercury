@@ -1719,24 +1719,45 @@ public static readonly System.Text.Encoding text_encoding =
     new System.Text.UTF8Encoding(false);
 
 public class MR_MercuryFileStruct {
-    // Note that stream reader and writer are initialized lazily;
-    // that is, if the stream has not yet been used for reading,
-    // the `reader' field may be null. Any code which accesses that
-    // field must check for null and initialize it if needed.
-    // Likewise for the `writer' field.
-
-    public System.IO.Stream     stream; // The stream itself.
-    public System.IO.TextReader reader; // The stream reader for it.
-    public System.IO.TextWriter writer; // The stream writer for it.
+    public System.IO.Stream     stream;     // The stream itself.
+    // The reader and/or writer for the stream.
+    // At the moment, we allow a stream only to be read OR written, not both,
+    // so exactly one of the following two fields will used (and be non-null)
+    // for any particular stream.
+    // Note also that we use the TextReader class interface to read both
+    // text AND binary files, and like use the TextWriter class interface
+    // to write both text and binary files, which to me (zs) looks strange,
+    // given that C# also has a System.IO.BinaryReader class.
+    //
+    // XXX Using four subclasses, for text input, binary input,
+    // text output and binary output, as the Java code above does,
+    // would allow each Mercury file struct to include only the fields
+    // relevant to it. I (zs) don't know whether the downcasts necessary
+    // to use that design would have an acceptable cost or not.
+    // XXX Note that we *could* avoid those downcasts by making the types
+    // {,binary_}{input,out}_stream each be a wrapper around a *different*
+    // type, instead of all four being a wrapper around the same stream type.
+    // At that point, the notag wrapping would have no use left, except to
+    // make the output of e.g. ""io.write(io.stdout_stream, X, !IO)"" more
+    // readable when X, the value being written, is itself a stream.
+    public System.IO.TextReader reader;
+    public System.IO.TextWriter writer;
 
     // The next character or byte to read,
     // or -1 if no putback char/byte is stored.
+    // This field is used only for input streams, both text and binary;
+    // it is not used for output streams.
     public int                  putback;
 
     // DOS, Unix, or raw binary.
+    // This field is used only for text streams, both input and output;
+    // it is not used for binary streams.
     public ML_line_ending_kind  line_ending;
 
+    // This field is used only for text streams, both input and output;
+    // it is not used for binary streams.
     public int                  line_number;
+
     public int                  id;
 };
 
@@ -1748,8 +1769,8 @@ mercury_file_init(System.IO.Stream stream,
     MR_MercuryFileStruct mf = new MR_MercuryFileStruct();
     mf.stream = stream;
     mf.reader = reader;
-    mf.putback = -1;
     mf.writer = writer;
+    mf.putback = -1;
     mf.line_ending = line_ending;
     mf.line_number = 1;
     mf.id = ML_next_stream_id++;
@@ -1763,22 +1784,40 @@ mercury_open(string filename, string openmode, ML_line_ending_kind line_ending)
     System.IO.FileAccess    access;
     System.IO.FileShare     share;
     System.IO.Stream        stream = null;
+    System.IO.TextReader    reader;
+    System.IO.TextWriter    writer;
+
+    // For Unix compatibility, we allow files to be read or written
+    // by multiple processes simultaneously. XXX Is this a good idea?
+    share = System.IO.FileShare.ReadWrite;
 
     if (openmode == ""r"" || openmode == ""rb"") {
         // Like '<' in Bourne shell.
         // Read a file. The file must exist already.
         mode   = System.IO.FileMode.Open;
         access = System.IO.FileAccess.Read;
+        stream = System.IO.File.Open(filename, mode, access, share);
+        reader = new System.IO.StreamReader(stream,
+            mercury.io__stream_ops.text_encoding);
+        writer = null;
     } else if (openmode == ""w"" || openmode == ""wb"") {
         // Like '>' in Bourne shell.
         // Overwrite an existing file, or create a new file.
         mode   = System.IO.FileMode.Create;
         access = System.IO.FileAccess.Write;
+        stream = System.IO.File.Open(filename, mode, access, share);
+        reader = null;
+        writer = new System.IO.StreamWriter(stream,
+            mercury.io__stream_ops.text_encoding);
     } else if (openmode == ""a"" || openmode == ""ab"") {
         // Like '>>' in Bourne shell.
         // Append to an existing file, or create a new file.
         mode   = System.IO.FileMode.Append;
         access = System.IO.FileAccess.Write;
+        stream = System.IO.File.Open(filename, mode, access, share);
+        reader = null;
+        writer = new System.IO.StreamWriter(stream,
+            mercury.io__stream_ops.text_encoding);
     } else {
         runtime.Errors.SORRY(System.String.Concat(
             ""foreign code for this function, open mode:"",
@@ -1788,16 +1827,8 @@ mercury_open(string filename, string openmode, ML_line_ending_kind line_ending)
         throw new System.Exception();
     }
 
-    // For Unix compatibility, we allow files to be read or written
-    // by multiple processes simultaneously. XXX Is this a good idea?
-    share = System.IO.FileShare.ReadWrite;
-
-    stream = System.IO.File.Open(filename, mode, access, share);
-
-    // We initialize the `reader' and `writer' fields to null;
-    // they will be filled in later if they are needed.
     return mercury_file_init(new System.IO.BufferedStream(stream),
-        null, null, line_ending);
+        reader, writer, line_ending);
 }
 
 public static void
