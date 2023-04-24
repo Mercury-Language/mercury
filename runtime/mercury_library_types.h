@@ -22,41 +22,44 @@
 // because we keep track of a lot more information.
 
 #ifndef MR_NEW_MERCURYFILE_STRUCT
+  // The old, standard, default MercuryFile structure.
+
   typedef struct mercury_file {
-    FILE *file1;
-    int line_number1;
+    FILE    *file1;
+    int     line_number1;
   #ifdef MR_NATIVE_GC
-    int id;
+    int     id;
   #endif
   } MercuryFile;
 
-  #define MR_file(mf)           (mf).file1
-  #define MR_line_number(mf)    (mf).line_number1
-
-  #define MR_IS_FILE_STREAM(mf) ( MR_TRUE )
-
+  // These two macros are specific to the old MercuryFile structure.
   #define MR_MERCURYFILE_INIT(file, line_number)                        \
         { (file), (line_number) }
+  #define MR_IS_FILE_STREAM(mf) ( MR_TRUE )
 
-  #define MR_CLOSE(mf)      fclose(MR_file(mf))
-  #define MR_FLUSH(mf)      fflush(MR_file(mf))
+  // The following macros are shared with the new MercuryFile structure.
+  #define MR_file(mf)           (mf).file1
+  #define MR_line_number(mf)    (mf).line_number1
 
   #define MR_READ(mf, ptr, size)                                        \
         fread((ptr), sizeof(unsigned char), (size), MR_file(mf))
   #define MR_WRITE(mf, ptr, size)                                       \
         fwrite((ptr), sizeof(unsigned char), (size), MR_file(mf))
 
+  #define MR_GETCH(mf)          getc(MR_file(mf))
   #define MR_UNGETCH(mf, ch)    ungetc((ch), MR_file(mf))
-  #define MR_GETCH(mf)      getc(MR_file(mf))
 
+  #define MR_PUTCH(mf, ch)      putc((ch), MR_file(mf))
   #define MR_VFPRINTF(mf, fmt, args)                                    \
         vfprintf(MR_file(mf), (fmt), (args))
+  #define MR_FLUSH(mf)          fflush(MR_file(mf))
 
-  #define MR_PUTCH(mf, ch)  putc((ch), MR_file(mf))
-
-  #define MR_FERROR(mf) ferror(MR_file(mf))
+  #define MR_FERROR(mf)         ferror(MR_file(mf))
+  #define MR_CLOSE(mf)          fclose(MR_file(mf))
 
 #else // MR_NEW_MERCURYFILE_STRUCT
+  // The new MercuryFile structure, whose use can be enabled
+  // only at configuration time.
 
   // The possible types of a MercuryFile.
   typedef enum {
@@ -67,10 +70,9 @@
   } MR_StreamType;
 
   // A pointer to the data which can be used to access the MercuryFile.
-
   typedef union {
-    FILE *file;
-    void *data;
+    FILE    *file;
+    void    *data;
   } MR_StreamInfo;
 
   typedef int (MR_Stream_close)(MR_StreamInfo *);
@@ -120,7 +122,6 @@
     MR_Stream_vprintf   *vprintf;
     MR_Stream_putc      *putc;
     MR_Stream_ferror    *ferror;
-
   } MercuryFile;
 
   // Access the file and line number fields.
@@ -130,21 +131,21 @@
 
   // Call the functions associated with the MercuryFile structure.
 
-  #define MR_CLOSE(mf)  ((mf).close)(&((mf).stream_info))
   #define MR_READ(mf, ptr, size)                                        \
         ((mf).read)(&((mf).stream_info), (ptr), (size))
   #define MR_WRITE(mf, ptr, size)                                       \
         ((mf).write)(&((mf).stream_info), (ptr), (size))
 
-  #define MR_FLUSH(mf)  ((mf).flush)(&((mf).stream_info))
-  #define MR_UNGETCH(mf, ch)                                            \
-        ((mf).ungetc)(&((mf).stream_info), (ch))
-  #define MR_GETCH(mf)  ((mf).getc)(&((mf).stream_info))
+  #define MR_GETCH(mf)          ((mf).getc)(&((mf).stream_info))
+  #define MR_UNGETCH(mf, ch)    ((mf).ungetc)(&((mf).stream_info), (ch))
+
+  #define MR_PUTCH(mf, ch)      ((mf).putc)(&((mf).stream_info), (ch))
   #define MR_VFPRINTF(mf, fmt, args)                                    \
         ((mf).vprintf)(&((mf).stream_info), (fmt), (args))
-  #define MR_PUTCH(mf, ch)                                              \
-        ((mf).putc)(&((mf).stream_info), (ch))
-  #define MR_FERROR(mf) ((mf).ferror)(&((mf).stream_info))
+  #define MR_FLUSH(mf)          ((mf).flush)(&((mf).stream_info))
+
+  #define MR_FERROR(mf)         ((mf).ferror)(&((mf).stream_info))
+  #define MR_CLOSE(mf)          ((mf).close)(&((mf).stream_info))
 
 #endif  // MR_NEW_MERCURYFILE_STRUCT
 
@@ -164,7 +165,6 @@ typedef MercuryFile *MercuryFilePtr;
 
 #define MR_wrap_input_stream(mf) ((MR_Word)(mf))
 
-//
 // Do the reverse to above.
 // The only place we use this in browser/listing.m.
 
