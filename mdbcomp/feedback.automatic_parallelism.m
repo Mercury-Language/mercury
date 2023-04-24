@@ -138,6 +138,8 @@
 
     % The set of candidate parallel conjunctions within a procedure.
     %
+:- type candidate_par_conjunctions_proc ==
+    candidate_par_conjunctions_proc(pard_goal).
 :- type candidate_par_conjunctions_proc(GoalType)
     --->    candidate_par_conjunctions_proc(
                 % A variable name table for the variables that have
@@ -186,9 +188,6 @@
                 % This list should not be empty.
                 pg_pushed_into  :: list(goal_path_string)
             ).
-
-:- type candidate_par_conjunctions_proc ==
-    candidate_par_conjunctions_proc(pard_goal).
 
     % A conjunction that is a candidate for parallelisation, it is identified
     % by a procedure label, goal path to the conjunction and the call sites
