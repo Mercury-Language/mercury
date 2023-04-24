@@ -2699,7 +2699,7 @@ binary_input_stream_name(binary_input_stream(Stream), Name, !IO) :-
 %---------------------%
 
 output_stream_name(Name, !IO) :-
-    output_stream(text_output_stream(Stream), !IO),
+    io.output_stream(text_output_stream(Stream), !IO),
     stream_name(Stream, Name, !IO).
 
 output_stream_name(text_output_stream(Stream), Name, !IO) :-
@@ -3139,7 +3139,7 @@ read_binary_uint64_be(binary_input_stream(Stream), Result, !IO) :-
 %
 
 write_char(Character, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_char(Stream, Character, !IO).
 
 write_char(text_output_stream(Stream), Character, !IO) :-
@@ -3149,7 +3149,7 @@ write_char(text_output_stream(Stream), Character, !IO) :-
 %---------------------%
 
 write_int(Val, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_int(Stream, Val, !IO).
 
 write_int(text_output_stream(Stream), Val, !IO) :-
@@ -3159,7 +3159,7 @@ write_int(text_output_stream(Stream), Val, !IO) :-
 %---------------------%
 
 write_uint(Val, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_uint(Stream, Val, !IO).
 
 write_uint(text_output_stream(Stream), Val, !IO) :-
@@ -3169,7 +3169,7 @@ write_uint(text_output_stream(Stream), Val, !IO) :-
 %---------------------%
 
 write_int8(Val, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_int8(Stream, Val, !IO).
 
 write_int8(text_output_stream(Stream), Val, !IO) :-
@@ -3179,7 +3179,7 @@ write_int8(text_output_stream(Stream), Val, !IO) :-
 %---------------------%
 
 write_uint8(Val, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_uint8(Stream, Val, !IO).
 
 write_uint8(text_output_stream(Stream), Val, !IO) :-
@@ -3189,7 +3189,7 @@ write_uint8(text_output_stream(Stream), Val, !IO) :-
 %---------------------%
 
 write_int16(Val, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_int16(Stream, Val, !IO).
 
 write_int16(text_output_stream(Stream), Val, !IO) :-
@@ -3199,7 +3199,7 @@ write_int16(text_output_stream(Stream), Val, !IO) :-
 %---------------------%
 
 write_uint16(Val, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_uint16(Stream, Val, !IO).
 
 write_uint16(text_output_stream(Stream), Val, !IO) :-
@@ -3209,7 +3209,7 @@ write_uint16(text_output_stream(Stream), Val, !IO) :-
 %---------------------%
 
 write_int32(Val, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_int32(Stream, Val, !IO).
 
 write_int32(text_output_stream(Stream), Val, !IO) :-
@@ -3219,7 +3219,7 @@ write_int32(text_output_stream(Stream), Val, !IO) :-
 %---------------------%
 
 write_uint32(Val, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_uint32(Stream, Val, !IO).
 
 write_uint32(text_output_stream(Stream), Val, !IO) :-
@@ -3229,7 +3229,7 @@ write_uint32(text_output_stream(Stream), Val, !IO) :-
 %---------------------%
 
 write_int64(Val, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_int64(Stream, Val, !IO).
 
 write_int64(text_output_stream(Stream), Val, !IO) :-
@@ -3239,7 +3239,7 @@ write_int64(text_output_stream(Stream), Val, !IO) :-
 %---------------------%
 
 write_uint64(Val, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_uint64(Stream, Val, !IO).
 
 write_uint64(text_output_stream(Stream), Val, !IO) :-
@@ -3249,7 +3249,7 @@ write_uint64(text_output_stream(Stream), Val, !IO) :-
 %---------------------%
 
 write_float(Val, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_float(Stream, Val, !IO).
 
 write_float(text_output_stream(Stream), Val, !IO) :-
@@ -3259,7 +3259,7 @@ write_float(text_output_stream(Stream), Val, !IO) :-
 %---------------------%
 
 write_string(Message, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_string(Stream, Message, !IO).
 
 write_string(text_output_stream(Stream), Message, !IO) :-
@@ -3693,7 +3693,7 @@ read_binary_from_text_input_stream(Stream, Result, !IO) :-
 %
 
 print(Term, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     stream.string_writer.print(Stream, canonicalize, Term, !IO).
 
 print(Stream, Term, !IO) :-
@@ -3703,7 +3703,7 @@ print(Stream, MaybeCanon, Term, !IO) :-
     stream.string_writer.print(Stream, MaybeCanon, Term, !IO).
 
 print_cc(Term, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     stream.string_writer.print_cc(Stream, Term, !IO).
 
 print_line(Term, !IO) :-
@@ -3737,7 +3737,7 @@ print_to_stream(Stream, Term, !IO) :-
 %---------------------%
 
 write(X, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     stream.string_writer.write(Stream, canonicalize, X, !IO).
 
 write(Stream, X, !IO) :-
@@ -3747,14 +3747,14 @@ write(Stream, MaybeCanon, X, !IO) :-
     stream.string_writer.write(Stream, MaybeCanon, X, !IO).
 
 write_cc(X, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     io.write_cc(Stream, X, !IO).
 
 write_cc(Stream, X, !IO) :-
     stream.string_writer.write(Stream, include_details_cc, X, !IO).
 
 write_line(X, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_line(Stream, X, !IO).
 
 write_line(Stream, X, !IO) :-
@@ -3766,7 +3766,7 @@ write_line(Stream, MaybeCanon, X, !IO) :-
     io.nl(Stream, !IO).
 
 write_line_cc(X, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_line_cc(Stream, X, !IO).
 
 write_line_cc(Stream, X, !IO) :-
@@ -3793,7 +3793,7 @@ write_binary(binary_output_stream(Stream), Term, !IO) :-
 %
 
 format(FormatString, Arguments, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     disable_warning [unknown_format_calls] (
         io.format(Stream, FormatString, Arguments, !IO)
     ).
@@ -3810,7 +3810,7 @@ format(Stream, FormatString, Arguments, !IO) :-
 %
 
 write_strings(Strings, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_strings(Stream, Strings, !IO).
 
 write_strings(_Stream, [], !IO).
@@ -3821,7 +3821,7 @@ write_strings(Stream, [S | Ss], !IO) :-
 %---------------------%
 
 write_many(Vals, !IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     write_many(Stream, Vals, !IO).
 
 write_many(_Stream, [], !IO).
@@ -3939,7 +3939,7 @@ write_array(Stream, Array, Separator, OutputPred, !IO) :-
 %
 
 flush_output(!IO) :-
-    output_stream(Stream, !IO),
+    io.output_stream(Stream, !IO),
     flush_output(Stream, !IO).
 
 flush_output(text_output_stream(Stream), !IO) :-

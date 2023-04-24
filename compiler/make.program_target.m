@@ -458,7 +458,7 @@ get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
     file_name::in, maybe_error(timestamp)::in, set(module_name)::in,
     list(module_name)::in, compilation_target::in, pic::in,
     maybe_succeeded::in, dependencies_result::in,
-    globals::in, io.output_stream::in, maybe_succeeded::out,
+    globals::in, io.text_output_stream::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
@@ -495,7 +495,7 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
     linked_target_type::in, file_name::in, maybe_error(timestamp)::in,
     set(module_name)::in, list(module_name)::in, compilation_target::in,
     pic::in, maybe_succeeded::in, dependencies_result::in,
-    io.output_stream::in, maybe_succeeded::out,
+    io.text_output_stream::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
@@ -803,8 +803,8 @@ build_java_files(Globals, MainModuleName, ModuleNames, Succeeded,
         unredirect_output(Globals, MainModuleName, ErrorStream, !Info, !IO)
     ).
 
-:- pred build_java_files_2(list(string)::in, globals::in, io.output_stream::in,
-    maybe_succeeded::out,
+:- pred build_java_files_2(list(string)::in, globals::in,
+    io.text_output_stream::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 build_java_files_2(JavaFiles, Globals, ErrorStream, Succeeded, !Info, !IO) :-

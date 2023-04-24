@@ -713,7 +713,7 @@ read_trace_counts_list(ShowProgress, FileName, Result, !IO) :-
     %
 :- pred read_trace_counts_list_stream(maybe(io.text_output_stream)::in,
     trace_count_file_type::in, trace_counts::in, string::in,
-    io.input_stream::in, read_trace_counts_list_result::out,
+    io.text_input_stream::in, read_trace_counts_list_result::out,
     io::di, io::uo) is det.
 
 read_trace_counts_list_stream(ShowProgress, FileType0, TraceCounts0,

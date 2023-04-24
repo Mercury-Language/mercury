@@ -126,7 +126,7 @@
     % Display information about the current question and the state
     % of the search to the supplied output stream.
     %
-:- pred show_info(S::in, io.output_stream::in, analyser_state(T)::in,
+:- pred show_info(S::in, io.text_output_stream::in, analyser_state(T)::in,
     io::di, io::uo) is det <= mercury_edt(S, T).
 
     % Return information within the analyser state that is intended for

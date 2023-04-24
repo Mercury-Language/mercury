@@ -139,8 +139,8 @@ trace_get_command(MdbIn, MdbOut, Prompt, Line, !IO) :-
     % This is called by trace_get_command when the trace library is not linked
     % in.
     %
-:- pred trace_get_command_fallback(io.input_stream::in, io.output_stream::in,
-    string::in, string::out, io::di, io::uo) is det.
+:- pred trace_get_command_fallback(io.text_input_stream::in,
+    io.text_output_stream::in, string::in, string::out, io::di, io::uo) is det.
 
 :- pragma foreign_export("C",
     trace_get_command_fallback(in, in, in, out, di, uo),

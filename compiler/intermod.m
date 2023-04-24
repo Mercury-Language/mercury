@@ -68,7 +68,7 @@
     % mercury_compile_front_end.m, since they must be called after
     % the last time anything is appended to the .opt.tmp file.
     %
-:- pred write_initial_opt_file(io.output_stream::in, module_info::in,
+:- pred write_initial_opt_file(io.text_output_stream::in, module_info::in,
     intermod_info::out, parse_tree_plain_opt::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%

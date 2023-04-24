@@ -174,7 +174,7 @@
 
     % Write out messages.
     %
-:- pred write_out_messages(io.output_stream::in, cord(message)::in,
+:- pred write_out_messages(io.text_output_stream::in, cord(message)::in,
     io::di, io::uo) is det.
 
     % Set the verbosity level to use above.  Higher levels print out more
@@ -404,8 +404,8 @@ indent_size(N) = 2 * N.
 write_out_messages(Stream, Messages, !IO) :-
     cord.foldl_pred(write_out_message(Stream), Messages, !IO).
 
-:- pred write_out_message(output_stream::in, message::in, io::di, io::uo)
-    is det.
+:- pred write_out_message(io.text_output_stream::in, message::in,
+    io::di, io::uo) is det.
 
 write_out_message(Stream, Message, !IO) :-
     Level = message_get_level(Message),

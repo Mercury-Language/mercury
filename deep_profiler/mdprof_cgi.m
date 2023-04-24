@@ -515,7 +515,7 @@ handle_query_from_new_server(OutputStream, Cmd, PrefInd, FileName,
     % of the critical region.
     %
 :- pred start_server(option_table::in, string::in, string::in,
-    maybe(io.output_stream)::in, string::in, string::in,
+    maybe(io.text_output_stream)::in, string::in, string::in,
     deep::in, io::di, io::uo) is cc_multi.
 
 start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
@@ -601,7 +601,7 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
     ).
 
 :- pred server_loop(string::in, string::in, int::in,
-    maybe(io.output_stream)::in, bool::in, bool::in, int::in,
+    maybe(io.text_output_stream)::in, bool::in, bool::in, int::in,
     deep::in, io::di, io::uo) is cc_multi.
 
 server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,

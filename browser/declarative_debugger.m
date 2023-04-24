@@ -299,8 +299,8 @@
     %
     % Initialise a new diagnoser with the given properties.
     %
-:- pred diagnoser_state_init(io.input_stream::in, io.output_stream::in,
-    browser_info.browser_persistent_state::in,
+:- pred diagnoser_state_init(io.text_input_stream::in,
+    io.text_output_stream::in, browser_info.browser_persistent_state::in,
     help_system::in, diagnoser_state(R)::out) is det.
 
 :- pred diagnosis(S::in, analysis_type(edt_node(R))::in,
@@ -675,7 +675,8 @@ overrule_bug(Store, Response, Diagnoser0, Diagnoser, !IO) :-
     % Export a monomorphic version of diagnosis_state_init/4,
     % to make it easier to call from C code.
     %
-:- pred diagnoser_state_init_store(io.input_stream::in, io.output_stream::in,
+:- pred diagnoser_state_init_store(io.text_input_stream::in,
+    io.text_output_stream::in,
     browser_info.browser_persistent_state::in, help_system::in,
     diagnoser_state(trace_node_id)::out) is det.
 

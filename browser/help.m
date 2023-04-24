@@ -55,20 +55,20 @@
     % Print the top-level help nodes. This should give an overview
     % of the main topics for which help is available.
     %
-:- pred print_top_level_help_nodes(io.output_stream::in, help_system::in,
+:- pred print_top_level_help_nodes(io.text_output_stream::in, help_system::in,
     io::di, io::uo) is det.
 
     % Print the help node at the given path. If there is none,
     % print the top-level nodes.
     %
-:- pred print_help_node_at_path(io.output_stream::in, help_system::in,
+:- pred print_help_node_at_path(io.text_output_stream::in, help_system::in,
     path::in, help_res::out, io::di, io::uo) is det.
 
     % Print all help nodes with the given name. If there are none,
     % print the top-level nodes.
     %
-:- pred print_help_for_name(io.output_stream::in, help_system::in, string::in,
-    io::di, io::uo) is det.
+:- pred print_help_for_name(io.text_output_stream::in, help_system::in,
+    string::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -249,7 +249,7 @@ search_node_list([Node | Nodes], Name, !RevMatchedNodes) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred print_node_list(io.output_stream::in, list(help_node)::in,
+:- pred print_node_list(io.text_output_stream::in, list(help_node)::in,
     io::di, io::uo) is det.
 
 print_node_list(_, [], !IO).
@@ -257,7 +257,8 @@ print_node_list(Stream, [Node | Nodes], !IO) :-
     print_node(Stream, Node, !IO),
     print_node_list(Stream, Nodes, !IO).
 
-:- pred print_node(io.output_stream::in, help_node::in, io::di, io::uo) is det.
+:- pred print_node(io.text_output_stream::in, help_node::in,
+    io::di, io::uo) is det.
 
 print_node(Stream, Node, !IO) :-
     Node = help_node(_, _, Text, _),

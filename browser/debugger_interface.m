@@ -337,7 +337,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
     /* declarated module name */ string::in,
     /* definition module name */ string::in, /* pred name */ string::in,
     arity::in, /* mode num */ int::in, determinism::in, goal_path_string::in,
-    line_number::in, io.output_stream::in, io::di, io::uo) is det.
+    line_number::in, io.text_output_stream::in, io::di, io::uo) is det.
 
 output_current_slots_user(EventNumber, CallNumber, DepthNumber, Port,
         PredOrFunc, DeclModuleName, DefModuleName, PredName, Arity, ModeNum,
@@ -363,7 +363,7 @@ output_current_slots_user(EventNumber, CallNumber, DepthNumber, Port,
     /* module type */ string::in, /* definition module */ string::in,
     /* pred name */ string::in, arity::in, /* mode num */ int::in,
     determinism::in, goal_path_string::in, line_number::in,
-    io.output_stream::in, io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
 output_current_slots_comp(EventNumber, CallNumber, DepthNumber, Port,
         NameType, ModuleType, DefModuleName, PredName, Arity,
@@ -383,7 +383,7 @@ output_current_slots_comp(EventNumber, CallNumber, DepthNumber, Port,
     "ML_DI_output_current_vars").
 
 :- pred output_current_vars(list(univ)::in, list(string)::in,
-    io.output_stream::in, io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
 output_current_vars(VarList, StringList, OutputStream, !IO) :-
     Response = response_current_vars(VarList, StringList),
@@ -397,7 +397,8 @@ output_current_vars(VarList, StringList, OutputStream, !IO) :-
 :- pragma foreign_export("C", output_current_nth_var(in, in, di, uo),
     "ML_DI_output_current_nth_var").
 
-:- pred output_current_nth_var(univ::in, io.output_stream::in, io::di, io::uo)
+:- pred output_current_nth_var(univ::in, io.text_output_stream::in,
+    io::di, io::uo)
     is det.
 
 output_current_nth_var(Var, OutputStream, !IO) :-
@@ -411,7 +412,7 @@ output_current_nth_var(Var, OutputStream, !IO) :-
     "ML_DI_output_current_live_var_names").
 
 :- pred output_current_live_var_names(list(string)::in, list(string)::in,
-    io.output_stream::in, io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
 output_current_live_var_names(LiveVarNameList, LiveVarTypeList, OutputStream,
         !IO) :-
@@ -551,8 +552,8 @@ found_match_comp(EventNumber, CallNumber, DepthNumber, Port, NameType,
 
 %---------------------------------------------------------------------------%
 
-:- pred read_request_from_socket(io.input_stream::in, debugger_request::out,
-    int::out, io::di, io::uo) is det.
+:- pred read_request_from_socket(io.text_input_stream::in,
+    debugger_request::out, int::out, io::di, io::uo) is det.
 
 :- pragma foreign_export("C",
     read_request_from_socket(in, out, out, di, uo),

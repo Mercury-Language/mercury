@@ -224,7 +224,7 @@ write_include_file_contents(OutputStream, FileName, Res, !IO) :-
         Res = error(cannot_open_file_for_input(FileName, Message))
     ).
 
-:- pred copy_file_to_stream(string::in, io.output_stream::in, io.res::out,
+:- pred copy_file_to_stream(string::in, io.text_output_stream::in, io.res::out,
     io::di, io::uo) is det.
 
 copy_file_to_stream(FileName, OutputStream, Res, !IO) :-
@@ -250,7 +250,7 @@ copy_file_to_stream(FileName, OutputStream, Res, !IO) :-
         Res = error(Error)
     ).
 
-:- pred copy_stream(io.input_stream::in, io.output_stream::in,
+:- pred copy_stream(io.text_input_stream::in, io.text_output_stream::in,
     io.res::out, io::di, io::uo) is det.
 
 copy_stream(InputStream, OutputStream, Res, !IO) :-

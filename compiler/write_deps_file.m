@@ -2620,7 +2620,7 @@ output_module_order(Globals, ModuleName, Ext, DepsOrdering, !IO) :-
         report_error(ErrorStream, OrdMessage, !IO)
     ).
 
-:- pred write_module_scc(io.output_stream::in, set(module_name)::in,
+:- pred write_module_scc(io.text_output_stream::in, set(module_name)::in,
     io::di, io::uo) is det.
 
 write_module_scc(Stream, SCC0, !IO) :-

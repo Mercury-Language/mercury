@@ -211,11 +211,11 @@
 %-----------------------------------------------------------------------------%
 
 :- pred create_launcher_shell_script(globals::in, module_name::in,
-    pred(io.output_stream, io, io)::in(pred(in, di, uo) is det),
+    pred(io.text_output_stream, io, io)::in(pred(in, di, uo) is det),
     maybe_succeeded::out, io::di, io::uo) is det.
 
 :- pred create_launcher_batch_file(globals::in, module_name::in,
-    pred(io.output_stream, io, io)::in(pred(in, di, uo) is det),
+    pred(io.text_output_stream, io, io)::in(pred(in, di, uo) is det),
     maybe_succeeded::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%

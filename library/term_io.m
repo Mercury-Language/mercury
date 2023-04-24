@@ -35,7 +35,7 @@
     % Writes _N for all unnamed variables, with N starting at 0.
     %
 :- pred write_term(varset(T)::in, term(T)::in, io::di, io::uo) is det.
-:- pred write_term(io.output_stream::in, varset(T)::in, term(T)::in,
+:- pred write_term(io.text_output_stream::in, varset(T)::in, term(T)::in,
     io::di, io::uo) is det.
 
     % As above, except uses the given operator table instead of the
@@ -196,17 +196,17 @@
 :- func quoted_atom_agt(string, adjacent_to_graphic_token) = string.
 
 :- pragma type_spec(pred(term_io.quote_string/4),
-    (Stream = io.output_stream, State = io.state)).
+    (Stream = io.text_output_stream, State = io.state)).
 :- pragma type_spec(pred(term_io.quote_atom/4),
-    (Stream = io.output_stream, State = io.state)).
+    (Stream = io.text_output_stream, State = io.state)).
 :- pragma type_spec(pred(term_io.write_escaped_string/4),
-    (Stream = io.output_stream, State = io.state)).
+    (Stream = io.text_output_stream, State = io.state)).
 :- pragma type_spec(pred(term_io.write_escaped_char/4),
-    (Stream = io.output_stream, State = io.state)).
+    (Stream = io.text_output_stream, State = io.state)).
 :- pragma type_spec(pred(term_io.quote_char/4),
-    (Stream = io.output_stream, State = io.state)).
+    (Stream = io.text_output_stream, State = io.state)).
 :- pragma type_spec(pred(term_io.quote_atom_agt/5),
-    (Stream = io.output_stream, State = io.state)).
+    (Stream = io.text_output_stream, State = io.state)).
 
 %---------------------------------------------------------------------------%
 

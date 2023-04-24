@@ -39,13 +39,13 @@
     % `print' or `print_all'. The default portray format for that
     % caller type is used.
     %
-:- pred print_browser_term(io.output_stream::in, browse_caller_type::in,
+:- pred print_browser_term(io.text_output_stream::in, browse_caller_type::in,
     browser_term::in, browser_persistent_state::in,
     io::di, io::uo) is cc_multi.
 
     % As above, except that the supplied format will override the default.
     %
-:- pred print_browser_term_format(io.output_stream::in,
+:- pred print_browser_term_format(io.text_output_stream::in,
     browse_caller_type::in, portray_format::in, browser_term::in,
     browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
@@ -56,16 +56,17 @@
     % this predicate is exported to be used by C code, no browser term
     % mode function can be supplied.
     %
-:- pred browse_browser_term_no_modes(io.input_stream::in, io.output_stream::in,
-    browser_term::in, maybe_track_subterm(list(down_dir))::out,
+:- pred browse_browser_term_no_modes(io.text_input_stream::in,
+    io.text_output_stream::in, browser_term::in,
+    maybe_track_subterm(list(down_dir))::out,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
     % The interactive term browser. The caller type will be `browse' and
     % the default format for the `browse' caller type will be used.
     %
-:- pred browse_browser_term(io.input_stream::in, io.output_stream::in,
-    maybe(browser_mode_func)::in, browser_term::in,
+:- pred browse_browser_term(io.text_input_stream::in,
+    io.text_output_stream::in, maybe(browser_mode_func)::in, browser_term::in,
     maybe_track_subterm(list(down_dir))::out,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
@@ -74,15 +75,16 @@
     % Again, this is exported to C code, so the browser term mode function
     % can't be supplied.
     %
-:- pred browse_browser_term_format_no_modes(io.input_stream::in,
-    io.output_stream::in, portray_format::in, browser_term::in,
+:- pred browse_browser_term_format_no_modes(io.text_input_stream::in,
+    io.text_output_stream::in, portray_format::in, browser_term::in,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
     % As above, except that the supplied format will override the default.
     %
-:- pred browse_browser_term_format(io.input_stream::in, io.output_stream::in,
-    portray_format::in, maybe(browser_mode_func)::in, browser_term::in,
+:- pred browse_browser_term_format(io.text_input_stream::in,
+    io.text_output_stream::in, portray_format::in,
+    maybe(browser_mode_func)::in, browser_term::in,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
@@ -91,14 +93,15 @@
     % This version is exported for use in C code, so no browser term mode
     % function can be supplied.
     %
-:- pred browse_external_no_modes(io.input_stream::in, io.output_stream::in,
-    T::in, browser_persistent_state::in, browser_persistent_state::out,
+:- pred browse_external_no_modes(io.text_input_stream::in,
+    io.text_output_stream::in, T::in,
+    browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
     % The browser interface for the external debugger. The caller type
     % will be `browse', and the default format will be used.
     %
-:- pred browse_external(io.input_stream::in, io.output_stream::in,
+:- pred browse_external(io.text_input_stream::in, io.text_output_stream::in,
     maybe(browser_mode_func)::in, T::in,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
@@ -132,7 +135,7 @@
     % The format of the saved term can be influenced by the Format
     % argument, but how this works is not specified.
     %
-:- pred save_term_to_file(io.output_stream::in, string::in, string::in,
+:- pred save_term_to_file(io.text_output_stream::in, string::in, string::in,
     browser_term::in, io::di, io::uo) is cc_multi.
 
     % save_term_to_file_xml(OutputStream, FileName, BrowserTerm, !IO):
@@ -140,7 +143,7 @@
     % Save BrowserTerm to FileName as an XML document. If there is an error,
     % print an error message to OutputStream.
     %
-:- pred save_term_to_file_xml(io.output_stream::in, string::in,
+:- pred save_term_to_file_xml(io.text_output_stream::in, string::in,
     browser_term::in, io::di, io::uo) is cc_multi.
 
     % save_term_to_file_doc(OutputStream, FileName, BrowserTerm, !IO):
@@ -149,14 +152,14 @@
     % pretty_printer module in the Mercury standard library. If there is
     % an error, print an error message to OutputStream.
     %
-:- pred save_term_to_file_doc(io.output_stream::in, string::in,
+:- pred save_term_to_file_doc(io.text_output_stream::in, string::in,
     browser_term::in, io::di, io::uo) is det.
 
     % Save BrowserTerm in an HTML file and launch the web browser specified
     % by the web_browser_cmd field in the browser_persistent_state.
     %
-:- pred save_and_browse_browser_term_web(io.output_stream::in,
-    io.output_stream::in, browser_term::in,
+:- pred save_and_browse_browser_term_web(io.text_output_stream::in,
+    io.text_output_stream::in, browser_term::in,
     browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
     % Exported for term_to_html.
@@ -256,7 +259,7 @@ print_browser_term_format(OutputStream, CallerType, Format, Term, State,
         !IO) :-
     print_common(OutputStream, CallerType, yes(Format), Term, State, !IO).
 
-:- pred print_common(io.output_stream::in, browse_caller_type::in,
+:- pred print_common(io.text_output_stream::in, browse_caller_type::in,
     maybe(portray_format)::in, browser_term::in,
     browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
@@ -322,7 +325,7 @@ browse_external(InputStream, OutputStream, MaybeModeFunc, Term, !State, !IO) :-
     browse_common(InputStream, debugger_external(OutputStream),
         MaybeFormat, MaybeModeFunc, plain_term(univ(Term)), _, !State, !IO).
 
-:- pred browse_common(io.input_stream::in, debugger::in,
+:- pred browse_common(io.text_input_stream::in, debugger::in,
     maybe(portray_format)::in, maybe(browser_mode_func)::in, browser_term::in,
     maybe_track_subterm(list(down_dir))::out,
     browser_persistent_state::in, browser_persistent_state::out,
@@ -1493,7 +1496,7 @@ get_mdb_dir(Res, !IO) :-
     ).
 
 :- pred save_term_to_file_web(string::in, browser_term::in, string::in,
-    io.res(io.output_stream)::out, io::di, io::uo) is cc_multi.
+    io.res(io.text_output_stream)::out, io::di, io::uo) is cc_multi.
 
 save_term_to_file_web(FileName, BrowserTerm, MdbDir, FileStreamRes,
         !IO) :-
@@ -1506,8 +1509,8 @@ save_term_to_file_web(FileName, BrowserTerm, MdbDir, FileStreamRes,
         FileStreamRes = error(_)
     ).
 
-:- pred launch_web_browser(io.output_stream::in, io.output_stream::in,
-    string::in, io::di, io::uo) is det.
+:- pred launch_web_browser(io.text_output_stream::in,
+    io.text_output_stream::in, string::in, io::di, io::uo) is det.
 
 launch_web_browser(OutputStream, ErrorStream, CommandStr, !IO) :-
     io.write_string(OutputStream, "Launching web browser...\n", !IO),

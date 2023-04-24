@@ -200,7 +200,7 @@ at_file_error(File, E) =
     % Read each of the command line arguments from the given input file.
     % Note lines which consist purely of whitespace are ignored.
     %
-:- pred expand_file_into_arg_list(io.input_stream::in,
+:- pred expand_file_into_arg_list(io.text_input_stream::in,
     io.res(list(string))::out, io::di, io::uo) is det.
 
 expand_file_into_arg_list(S, Res, !IO) :-

@@ -21,7 +21,7 @@
 
 :- import_module mdb.browser_term.
 
-:- pred write_html_doc(io.output_stream::in, browser_term::in, string::in,
+:- pred write_html_doc(io.text_output_stream::in, browser_term::in, string::in,
     maybe_error::out, io::di, io::uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
@@ -60,8 +60,8 @@ write_html_doc(Stream, BrowserTerm, MdbDir, Result, !IO) :-
         )
     ).
 
-:- pred write_html_doc_2(io.output_stream::in, browser_term::in, string::in,
-    {}::out, io::di, io::uo) is cc_multi.
+:- pred write_html_doc_2(io.text_output_stream::in, browser_term::in,
+    string::in, {}::out, io::di, io::uo) is cc_multi.
 
 write_html_doc_2(Stream, BrowserTerm, MdbDir, {}, !IO) :-
     make_file_url_prefix(MdbDir, FilePrefix),
@@ -123,7 +123,8 @@ footer = ";\n</script>\n".
     % element. Object keys are left unquoted and we depend on being able to
     % write trailing commas, so the output is not JSON.
     %
-:- pred write_browser_term_in_script(io.output_stream, browser_term, io, io).
+:- pred write_browser_term_in_script(io.text_output_stream, browser_term,
+    io, io).
 :- mode write_browser_term_in_script(in, in(plain_term), di, uo) is cc_multi.
 :- mode write_browser_term_in_script(in, in, di, uo) is cc_multi.
 
@@ -204,7 +205,7 @@ write_browser_term_in_script(Stream, BrowserTerm, !IO) :-
 
     js_end_object(Stream, !IO).
 
-:- pred write_browser_term_args_in_script(io.output_stream, browser_term,
+:- pred write_browser_term_args_in_script(io.text_output_stream, browser_term,
     io, io).
 :- mode write_browser_term_args_in_script(in, in(plain_term), di, uo)
     is cc_multi.
@@ -247,26 +248,26 @@ write_browser_term_args_in_script(Stream, BrowserTerm, !IO) :-
         )
     ).
 
-:- pred write_du_field_in_script(io.output_stream::in, univ::in,
+:- pred write_du_field_in_script(io.text_output_stream::in, univ::in,
     maybe(string)::in, int::in, int::out, io::di, io::uo) is cc_multi.
 
 write_du_field_in_script(Stream, ArgUniv, MaybeFieldName, ArgNum, ArgNum + 1,
         !IO) :-
     write_arg_in_script(Stream, ArgUniv, MaybeFieldName, ArgNum, !IO).
 
-:- pred write_numbered_arg_in_script(io.output_stream::in, univ::in,
+:- pred write_numbered_arg_in_script(io.text_output_stream::in, univ::in,
     int::in, int::out, io::di, io::uo) is cc_multi.
 
 write_numbered_arg_in_script(Stream, ArgUniv, ArgNum, ArgNum + 1, !IO) :-
     write_arg_in_script(Stream, ArgUniv, no, ArgNum, !IO).
 
-:- pred write_numbered_element_in_script(io.output_stream::in, univ::in,
+:- pred write_numbered_element_in_script(io.text_output_stream::in, univ::in,
     int::in, int::out, io::di, io::uo) is cc_multi.
 
 write_numbered_element_in_script(Stream, ArgUniv, Num, Num + 1, !IO) :-
     write_arg_in_script(Stream, ArgUniv, yes("#" ++ from_int(Num)), Num, !IO).
 
-:- pred write_arg_in_script(io.output_stream::in, univ::in,
+:- pred write_arg_in_script(io.text_output_stream::in, univ::in,
     maybe(string)::in, int::in, io::di, io::uo) is cc_multi.
 
 write_arg_in_script(Stream, ArgUniv, MaybeFieldName, ArgNum, !IO) :-
@@ -311,17 +312,17 @@ flatten_list(Term, ElementUnivs) :-
 % deeply nested terms quickly, and we want the web browser to parse the file
 % as quickly as possible.
 
-:- pred js_begin_object(io.output_stream::in, io::di, io::uo) is det.
+:- pred js_begin_object(io.text_output_stream::in, io::di, io::uo) is det.
 
 js_begin_object(Stream, !IO) :-
     io.write_string(Stream, "{\n", !IO).
 
-:- pred js_end_object(io.output_stream::in, io::di, io::uo) is det.
+:- pred js_end_object(io.text_output_stream::in, io::di, io::uo) is det.
 
 js_end_object(Stream, !IO) :-
     io.write_char(Stream, '}', !IO).
 
-:- pred js_object_key(io.output_stream::in, string::in, io::di, io::uo)
+:- pred js_object_key(io.text_output_stream::in, string::in, io::di, io::uo)
     is det.
 
 js_object_key(Stream, Key, !IO) :-
@@ -329,22 +330,22 @@ js_object_key(Stream, Key, !IO) :-
     io.write_string(Stream, Key, !IO),
     io.write_char(Stream, ':', !IO).
 
-:- pred js_begin_array(io.output_stream::in, io::di, io::uo) is det.
+:- pred js_begin_array(io.text_output_stream::in, io::di, io::uo) is det.
 
 js_begin_array(Stream, !IO) :-
     io.write_string(Stream, "[\n", !IO).
 
-:- pred js_end_array(io.output_stream::in, io::di, io::uo) is det.
+:- pred js_end_array(io.text_output_stream::in, io::di, io::uo) is det.
 
 js_end_array(Stream, !IO) :-
     io.write_char(Stream, ']', !IO).
 
-:- pred js_comma(io.output_stream::in, io::di, io::uo) is det.
+:- pred js_comma(io.text_output_stream::in, io::di, io::uo) is det.
 
 js_comma(Stream, !IO) :-
     io.write_string(Stream, ",\n", !IO).
 
-:- pred js_bool(io.output_stream::in, bool::in, io::di, io::uo) is det.
+:- pred js_bool(io.text_output_stream::in, bool::in, io::di, io::uo) is det.
 
 js_bool(Stream, B, !IO) :-
     (
@@ -356,19 +357,19 @@ js_bool(Stream, B, !IO) :-
     ),
     io.write_string(Stream, S, !IO).
 
-:- pred js_int(io.output_stream::in, int::in, io::di, io::uo) is det.
+:- pred js_int(io.text_output_stream::in, int::in, io::di, io::uo) is det.
 
 js_int(Stream, Int, !IO) :-
     io.write_int(Stream, Int, !IO).
 
-:- pred js_string(io.output_stream::in, string::in, io::di, io::uo) is det.
+:- pred js_string(io.text_output_stream::in, string::in, io::di, io::uo) is det.
 
 js_string(Stream, String, !IO) :-
     io.write_char(Stream, '"', !IO),
     string.foldl(escape_and_put_char(Stream), String, !IO),
     io.write_char(Stream, '"', !IO).
 
-:- pred escape_and_put_char(io.output_stream::in, char::in,
+:- pred escape_and_put_char(io.text_output_stream::in, char::in,
     io::di, io::uo) is det.
 
 escape_and_put_char(Stream, Char, !IO) :-

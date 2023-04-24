@@ -30,11 +30,11 @@
 %---------------------------------------------------------------------------%
 
 :- pred read_and_startup_default_deep_options(string::in, string::in,
-    string::in, bool::in, maybe(io.output_stream)::in, list(string)::in,
+    string::in, bool::in, maybe(io.text_output_stream)::in, list(string)::in,
     maybe_error(deep)::out, io::di, io::uo) is det.
 
 :- pred read_and_startup(string::in, string::in,
-    string::in, bool::in, maybe(io.output_stream)::in, list(string)::in,
+    string::in, bool::in, maybe(io.text_output_stream)::in, list(string)::in,
     dump_options::in, maybe_error(deep)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -102,7 +102,7 @@ make_progrep_filename(DataFileName) = ProgrepFileName :-
     ).
 
 :- pred startup(string::in, string::in, string::in, bool::in,
-    maybe(io.output_stream)::in, list(string)::in, dump_options::in,
+    maybe(io.text_output_stream)::in, list(string)::in, dump_options::in,
     initial_deep::in, deep::out, io::di, io::uo) is det.
 
 startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
@@ -1093,7 +1093,7 @@ gather_call_site_csdptrs(Slot, CSDPtrs0, CSDPtrs1, IsZeroed0, IsZeroed) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_report_stats(maybe(io.output_stream)::in,
+:- pred maybe_report_stats(maybe(io.text_output_stream)::in,
     io::di, io::uo) is det.
 
 % XXX: io.report_stats writes to stderr, which mdprof_cgi has closed.
@@ -1106,7 +1106,7 @@ maybe_report_stats(yes(_OutputStream), !IO).
     % io.report_stats("standard", !IO).
 maybe_report_stats(no, !IO).
 
-:- pred maybe_report_msg(maybe(io.output_stream)::in, string::in,
+:- pred maybe_report_msg(maybe(io.text_output_stream)::in, string::in,
     io::di, io::uo) is det.
 
 maybe_report_msg(yes(OutputStream), Msg, !IO) :-

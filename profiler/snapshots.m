@@ -175,7 +175,7 @@ parse_size_map(Line, SizeMap) :-
         unexpected($pred, "format error: bad size_map line")
     ).
 
-:- pred read_and_parse_alloc_site_lines(io.input_stream::in,
+:- pred read_and_parse_alloc_site_lines(io.text_input_stream::in,
     alloc_site_map::in, alloc_site_map::out, io::di, io::uo) is det.
 
 read_and_parse_alloc_site_lines(InputStream, !AllocSiteMap, !IO) :-
@@ -251,7 +251,7 @@ show_single_snapshot(InputStream, OutputStream, Options,
     make_sorted_groups(MajorAxis, AllocCounts, Groups),
     output_snapshot(OutputStream, Options, Groups, !IO).
 
-:- pred read_and_parse_snapshot(io.input_stream::in, snapshot_options::in,
+:- pred read_and_parse_snapshot(io.text_input_stream::in, snapshot_options::in,
     alloc_site_map::in, size_map::in, list(alloc_site_counts)::out,
     io::di, io::uo) is det.
 

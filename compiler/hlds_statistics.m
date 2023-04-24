@@ -25,7 +25,7 @@
     % The statistics state the size of the procedure's body (the number of
     % subgoals of each possible kind) and the number of its variables.
     %
-:- pred write_proc_stats_for_module(io.output_stream::in, string::in,
+:- pred write_proc_stats_for_module(io.text_output_stream::in, string::in,
     module_info::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -64,7 +64,7 @@ write_proc_stats_for_module(OutStream, Msg, ModuleInfo, !IO) :-
     list.foldl(write_proc_stats_for_pred(OutStream, Msg, ModuleInfo),
         PredIdsInfos, !IO).
 
-:- pred write_proc_stats_for_pred(io.output_stream::in, string::in,
+:- pred write_proc_stats_for_pred(io.text_output_stream::in, string::in,
     module_info::in, pair(pred_id, pred_info)::in, io::di, io::uo) is det.
 
 write_proc_stats_for_pred(OutStream, Msg, ModuleInfo, PredId - PredInfo,
@@ -83,7 +83,7 @@ write_proc_stats_for_pred(OutStream, Msg, ModuleInfo, PredId - PredInfo,
             Procs, !IO)
     ).
 
-:- pred write_proc_stats_for_proc(io.output_stream::in, string::in,
+:- pred write_proc_stats_for_proc(io.text_output_stream::in, string::in,
     module_info::in, pred_id::in, pair(proc_id, proc_info)::in,
     io::di, io::uo) is det.
 
@@ -330,7 +330,7 @@ init_proc_stats = Stats :-
     Stats = proc_stats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).
 
-:- pred write_proc_stat_components(io.output_stream::in, string::in,
+:- pred write_proc_stat_components(io.text_output_stream::in, string::in,
     string::in, pred_id::in, proc_id::in, proc_stats::in, io::di, io::uo)
     is det.
 
@@ -412,7 +412,7 @@ write_proc_stat_components(OutStream, Msg, Name, PredId, ProcId, Stats, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred do_write_proc_stats(io.output_stream::in,
+:- pred do_write_proc_stats(io.text_output_stream::in,
     string::in, string::in, pred_id::in, proc_id::in,
     proc_stats::in, set_tree234(prog_var)::in, var_table::in,
     io::di, io::uo) is det.
@@ -432,7 +432,7 @@ do_write_proc_stats(OutStream, Msg, Name, PredId, ProcId,
     io.format(OutStream, "VARS %d %d\n",
         [i(VarTableCount), i(NumUsedVars)], !IO).
 
-:- pred output_proc_stat_component(io.output_stream::in,
+:- pred output_proc_stat_component(io.text_output_stream::in,
     string::in, string::in, pred_id::in, proc_id::in,
     string::in, int::in, io::di, io::uo) is det.
 

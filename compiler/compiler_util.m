@@ -67,7 +67,7 @@
     % Report a warning to the specified stream, and set the exit status
     % to error if the --halt-at-warn option is set.
     %
-:- pred report_warning(io.output_stream::in, globals::in, string::in,
+:- pred report_warning(io.text_output_stream::in, globals::in, string::in,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%

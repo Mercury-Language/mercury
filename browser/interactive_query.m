@@ -46,14 +46,16 @@
     %
 :- pred query(query_type::in, imports::in, options_string::in,
     list(string)::in, list(univ)::in,
-    io.input_stream::in, io.output_stream::in, io::di, io::uo) is cc_multi.
+    io.text_input_stream::in, io.text_output_stream::in,
+    io::di, io::uo) is cc_multi.
 
     % query_external/9 is the same as query/9 but for the use
     % of the external debugger.
     %
 :- pred query_external(query_type::in, imports::in, options_string::in,
     list(string)::in, list(univ)::in,
-    io.input_stream::in, io.output_stream::in, io::di, io::uo) is cc_multi.
+    io.text_input_stream::in, io.text_output_stream::in,
+    io::di, io::uo) is cc_multi.
 
 :- type query_type
     --->    normal_query
@@ -95,8 +97,8 @@
                 qe_imports          :: imports,
                 qe_options          :: options_string,
                 qe_bindings         :: bindings,
-                qe_instream         :: io.input_stream,
-                qe_outstream        :: io.output_stream
+                qe_instream         :: io.text_input_stream,
+                qe_outstream        :: io.text_output_stream
             ).
 
 :- type bindings == map(string, univ).
@@ -237,7 +239,7 @@ query_external_2(Env, !IO) :-
         )
     ).
 
-:- pred query_send_term_to_socket(io.output_stream::in,
+:- pred query_send_term_to_socket(io.text_output_stream::in,
     interactive_query_response::in, io::di, io::uo) is det.
 
 query_send_term_to_socket(SocketStream, Term, !IO) :-

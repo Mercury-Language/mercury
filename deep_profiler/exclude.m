@@ -128,7 +128,7 @@ read_exclude_file(FileName, ModuleDataMap, ExcludeFile, !IO) :-
     ),
     ExcludeFile = exclude_file(FileName, ExcludeContents).
 
-:- pred read_exclude_lines(string::in, io.input_stream::in,
+:- pred read_exclude_lines(string::in, io.text_input_stream::in,
     list(exclude_spec)::in, maybe_error(list(exclude_spec))::out,
     io::di, io::uo) is det.
 

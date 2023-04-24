@@ -341,23 +341,23 @@ init_list_params = list_params(new_list_path, 2).
 
 %-----------------------------------------------------------------------------%
 
-:- mutable(tty_in, io.input_stream, io.stdin_stream, ground,
-    [untrailed, attach_to_io_state]).
-:- mutable(tty_out, io.output_stream, io.stdout_stream, ground,
-    [untrailed, attach_to_io_state]).
+:- mutable(tty_in, io.text_input_stream, io.stdin_stream,
+    ground, [untrailed, attach_to_io_state]).
+:- mutable(tty_out, io.text_output_stream, io.stdout_stream,
+    ground, [untrailed, attach_to_io_state]).
 
-:- mutable(saved_input_stream, io.input_stream, io.stdin_stream, ground,
-    [untrailed, attach_to_io_state]).
-:- mutable(saved_output_stream, io.output_stream, io.stdout_stream, ground,
-    [untrailed, attach_to_io_state]).
+:- mutable(saved_input_stream, io.text_input_stream, io.stdin_stream,
+    ground, [untrailed, attach_to_io_state]).
+:- mutable(saved_output_stream, io.text_output_stream, io.stdout_stream,
+    ground, [untrailed, attach_to_io_state]).
 
     % This is thread-local to allow debugging of the initial thread in
     % multi-threaded programs. As thread-local mutables inherit their values
     % from the parent thread, the user must temporarily disable debugging while
     % the child thread is created, using `pause_debugging'.
     %
-:- mutable(debugger_state, debugger_state, debugger_off, ground,
-    [untrailed, thread_local, attach_to_io_state]).
+:- mutable(debugger_state, debugger_state, debugger_off,
+    ground, [untrailed, thread_local, attach_to_io_state]).
 
 :- initialise(init_debugger_state/2).
 
@@ -2635,7 +2635,7 @@ execute_ssdb_source(Args, !IO) :-
             !IO)
     ).
 
-:- pred read_command_lines(io.input_stream::in,
+:- pred read_command_lines(io.text_input_stream::in,
     list(string)::in, list(string)::out, io::di, io::uo) is det.
 
 read_command_lines(Stream, !RevLines, !IO) :-

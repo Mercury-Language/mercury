@@ -250,7 +250,7 @@ maybe_get_line_info(Filename, MaybeInfo, !IO) :-
     --->    begin_block
     ;       end_block.
 
-:- pred read_line_marks(input_stream::in, int::in, list(line_mark)::in,
+:- pred read_line_marks(io.text_input_stream::in, int::in, list(line_mark)::in,
     maybe_error(list(line_mark))::out, io::di, io::uo) is det.
 
 read_line_marks(Stream, JavaLineNo, Marks0, MaybeMarks, !IO) :-

@@ -81,13 +81,13 @@
 :- func get_user_browser_state(user_state) =
     browser_info.browser_persistent_state.
 
-    % Return the output stream used for interacting with the user.
-    %
-:- func get_user_output_stream(user_state) = io.text_output_stream.
-
     % Return the input stream used for interacting with the user.
     %
 :- func get_user_input_stream(user_state) = io.text_input_stream.
+
+    % Return the output stream used for interacting with the user.
+    %
+:- func get_user_output_stream(user_state) = io.text_output_stream.
 
 :- type are_we_testing
     --->    we_are_not_testing
@@ -1277,8 +1277,8 @@ print_tabled_io_action(User, tabled(IoAction), !IO) :-
 %---------------------------------------------------------------------------%
 
 get_user_browser_state(User) = User ^ browser.
-get_user_output_stream(User) = User ^ outstream.
 get_user_input_stream(User) = User ^ instream.
+get_user_output_stream(User) = User ^ outstream.
 
 set_user_browser_state(Browser, !User) :-
     !User ^ browser := Browser.

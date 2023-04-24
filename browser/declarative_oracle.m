@@ -46,7 +46,7 @@
     %
 :- type oracle_response(T)
     --->    oracle_response_answer(decl_answer(T))
-    ;       oracle_response_show_info(io.output_stream)
+    ;       oracle_response_show_info(io.text_output_stream)
     ;       oracle_response_change_search(user_search_mode)
     ;       oracle_response_undo
 
@@ -66,7 +66,7 @@
 
     % Produce a new oracle state.
     %
-:- pred oracle_state_init(io.input_stream::in, io.output_stream::in,
+:- pred oracle_state_init(io.text_input_stream::in, io.text_output_stream::in,
     browser_info.browser_persistent_state::in, help_system::in,
     oracle_state::out) is det.
 
@@ -149,13 +149,13 @@
 :- func get_oracle_browser_state(oracle_state)
     = browser_info.browser_persistent_state.
 
-    % Return the output stream used for interacting with the user.
-    %
-:- func get_oracle_user_output_stream(oracle_state) = io.output_stream.
-
     % Return the input stream used for interacting with the user.
     %
-:- func get_oracle_user_input_stream(oracle_state) = io.input_stream.
+:- func get_oracle_user_input_stream(oracle_state) = io.text_input_stream.
+
+    % Return the output stream used for interacting with the user.
+    %
+:- func get_oracle_user_output_stream(oracle_state) = io.text_output_stream.
 
     % Sets the state of the term browser.
     %
@@ -969,11 +969,11 @@ remove_atom_from_ground_map(FinalAtom, ProcLayout, !Map) :-
 get_oracle_browser_state(Oracle) =
     mdb.declarative_user.get_user_browser_state(Oracle ^ user_state).
 
-get_oracle_user_output_stream(Oracle) =
-    declarative_user.get_user_output_stream(Oracle ^ user_state).
-
 get_oracle_user_input_stream(Oracle) =
     declarative_user.get_user_input_stream(Oracle ^ user_state).
+
+get_oracle_user_output_stream(Oracle) =
+    declarative_user.get_user_output_stream(Oracle ^ user_state).
 
 set_oracle_browser_state(Browser, !Oracle) :-
     User0 = !.Oracle ^ user_state,

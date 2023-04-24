@@ -425,7 +425,7 @@ maybe_read(Pred, Result0, Result, !IO) :-
     % Read and check a line of the file.
     %
 :- pred read_check_line(string::in, feedback_read_error::in,
-    io.input_stream::in, unit::in, feedback_read_result(unit)::out,
+    io.text_input_stream::in, unit::in, feedback_read_result(unit)::out,
     io::di, io::uo) is det.
 
 read_check_line(TestLine, NotMatchError, Stream, _, Result, !IO) :-
@@ -449,7 +449,7 @@ read_check_line(TestLine, NotMatchError, Stream, _, Result, !IO) :-
         Result = error(fre_read_error(Error))
     ).
 
-:- pred read_profiled_program_name(maybe(string)::in, io.input_stream::in,
+:- pred read_profiled_program_name(maybe(string)::in, io.text_input_stream::in,
     unit::in, feedback_read_result(string)::out, io::di, io::uo) is det.
 
 read_profiled_program_name(MaybeExpectedProfiledProgramName, Stream,
@@ -489,7 +489,7 @@ read_profiled_program_name(MaybeExpectedProfiledProgramName, Stream,
     % The overall term is handled by read_all_feedback_data, while
     % the list elements are handled by add_feedback_components.
     %
-:- pred read_all_feedback_data(io.input_stream::in, string::in,
+:- pred read_all_feedback_data(io.text_input_stream::in, string::in,
     feedback_read_result(feedback_info)::out, io::di, io::uo) is det.
 
 read_all_feedback_data(Stream, ProfiledProgramName, Result, !IO) :-
@@ -563,9 +563,10 @@ write_feedback_file(Path, Feedback, Result, !IO) :-
     % Write out the data. This is called by try_io to catch any exceptions
     % that close_output and the other predicates we call here (e.g. io.write)
     % may throw.
+    % XXX This should NOT be necessary.
     %
-:- pred actually_write_feedback_file(output_stream::in, feedback_info::in,
-    unit::out, io::di, io::uo) is det.
+:- pred actually_write_feedback_file(io.text_output_stream::in,
+    feedback_info::in, unit::out, io::di, io::uo) is det.
 
 actually_write_feedback_file(Stream, FeedbackInfo, unit, !IO) :-
     FeedbackInfo = feedback_info(ProfiledProgramName,

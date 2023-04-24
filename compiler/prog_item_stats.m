@@ -25,7 +25,7 @@
     % Gather statistics about the given augmented compilation unit,
     % and write them to the given stream.
     %
-:- pred gather_and_write_item_stats(io.output_stream::in,
+:- pred gather_and_write_item_stats(io.text_output_stream::in,
     aug_compilation_unit::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -521,7 +521,7 @@ gather_stats_in_catch_exprs([CatchExpr | CatchExprs], !GoalStats) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_comp_unit_stats(io.output_stream::in, module_name::in,
+:- pred write_comp_unit_stats(io.text_output_stream::in, module_name::in,
     comp_unit_stats::in, io::di, io::uo) is det.
 
 write_comp_unit_stats(Stream, ModuleName, CompUnitStats, !IO) :-
@@ -529,7 +529,7 @@ write_comp_unit_stats(Stream, ModuleName, CompUnitStats, !IO) :-
     map.to_assoc_list(CompUnitStats, SectionStatPairs),
     list.foldl(write_section_stats(Stream), SectionStatPairs, !IO).
 
-:- pred write_section_stats(io.output_stream::in,
+:- pred write_section_stats(io.text_output_stream::in,
     pair(string, section_stats)::in, io::di, io::uo) is det.
 
 write_section_stats(Stream, SectionName - SectionStats, !IO) :-
@@ -537,7 +537,7 @@ write_section_stats(Stream, SectionName - SectionStats, !IO) :-
     write_item_stats(Stream, SectionName, ItemStats, !IO),
     write_goal_stats(Stream, SectionName, GoalStats, !IO).
 
-:- pred write_item_stats(io.output_stream::in, string::in, item_stats::in,
+:- pred write_item_stats(io.text_output_stream::in, string::in, item_stats::in,
     io::di, io::uo) is det.
 
 write_item_stats(Stream, SectionName, ItemStats, !IO) :-
@@ -573,7 +573,7 @@ write_item_stats(Stream, SectionName, ItemStats, !IO) :-
     write_one_stat(Stream, SectionName, "item_mutable", Mutable, !IO),
     write_one_stat(Stream, SectionName, "item_type_repn", TypeRepn, !IO).
 
-:- pred write_goal_stats(io.output_stream::in, string::in, goal_stats::in,
+:- pred write_goal_stats(io.text_output_stream::in, string::in, goal_stats::in,
     io::di, io::uo) is det.
 
 write_goal_stats(Stream, SectionName, GoalStats, !IO) :-
@@ -619,8 +619,8 @@ write_goal_stats(Stream, SectionName, GoalStats, !IO) :-
     write_one_stat(Stream, SectionName, "goal_call", Call, !IO),
     write_one_stat(Stream, SectionName, "goal_unify", Unify, !IO).
 
-:- pred write_one_stat(io.output_stream::in, string::in, string::in, int::in,
-    io::di, io::uo) is det.
+:- pred write_one_stat(io.text_output_stream::in, string::in, string::in,
+    int::in, io::di, io::uo) is det.
 
 write_one_stat(Stream, SectionName, StatName, StatNum, !IO) :-
     io.write_string(Stream, SectionName, !IO),

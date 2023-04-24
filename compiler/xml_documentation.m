@@ -132,10 +132,10 @@ xml_documentation(ModuleInfo, !IO) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % Given the input_stream build the comments datastructure which
+    % Given the input_stream build the comments data structure which
     % represents this stream.
     %
-:- pred build_comments(io.input_stream::in, comments::in, comments::out,
+:- pred build_comments(io.text_input_stream::in, comments::in, comments::out,
     io::di, io::uo) is det.
 
 build_comments(S, comments(!.C), comments(!:C), !IO) :-

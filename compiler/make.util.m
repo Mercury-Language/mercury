@@ -211,8 +211,8 @@
 :- pred maybe_make_target_message(globals::in, target_file::in,
     io::di, io::uo) is det.
 
-:- pred maybe_make_target_message_to_stream(globals::in, io.output_stream::in,
-    target_file::in, io::di, io::uo) is det.
+:- pred maybe_make_target_message_to_stream(globals::in,
+    io.text_output_stream::in, target_file::in, io::di, io::uo) is det.
 
     % Write a message "Reanalysing invalid/suboptimal modules" if
     % `--verbose-make' is set.

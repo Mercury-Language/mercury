@@ -115,7 +115,7 @@ read_spec_file(FileName, MaybeNumLinesProcMap, !IO) :-
         )
     ).
 
-:- pred read_spec_file_lines(io.input_stream::in, int::in, int::out,
+:- pred read_spec_file_lines(io.text_input_stream::in, int::in, int::out,
     maybe(string)::out, map(string, int)::in, map(string, int)::out,
     io::di, io::uo) is det.
 

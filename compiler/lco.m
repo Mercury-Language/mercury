@@ -349,7 +349,7 @@ lco_scc(SCC, !VariantMap, !ModuleInfo) :-
         !:ModuleInfo = ModuleInfo0
     ).
 
-:- pred lco_log_update(io.output_stream::in, module_info::in,
+:- pred lco_log_update(io.text_output_stream::in, module_info::in,
     pair(pred_proc_id, proc_info)::in, io::di, io::uo) is det.
 
 lco_log_update(Stream, ModuleInfo, PredProcId - _NewProcInfo, !IO) :-

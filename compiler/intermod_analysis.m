@@ -97,7 +97,7 @@
 % to append_unused_arg_pragmas_to_opt_file separately.
 %
 
-:- pred append_analysis_pragmas_to_opt_file(io.output_stream::in,
+:- pred append_analysis_pragmas_to_opt_file(io.text_output_stream::in,
     module_info::in, set(pragma_info_unused_args)::in,
     parse_tree_plain_opt::in, parse_tree_plain_opt::out,
     io::di, io::uo) is det.
@@ -106,7 +106,7 @@
 
     % Write out the contents of a module's .trans_opt file.
     %
-:- pred write_trans_opt_file(io.output_stream::in, module_info::in,
+:- pred write_trans_opt_file(io.text_output_stream::in, module_info::in,
     parse_tree_trans_opt::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%

@@ -464,7 +464,7 @@ filter_imports_graph(A - B, DepsGraph) =
     % that we ever use, sym_name_to_node_id.
 :- type gen_node_name(T) == (func(T) = string).
 
-:- pred write_graph(io.output_stream::in, string::in,
+:- pred write_graph(io.text_output_stream::in, string::in,
     gen_node_name(T)::in, digraph(T)::in, io::di, io::uo) is det.
 
 write_graph(Stream, Name, GenNodeName, Graph, !IO) :-
@@ -475,14 +475,14 @@ write_graph(Stream, Name, GenNodeName, Graph, !IO) :-
         write_edge(Stream, GenNodeName), !IO),
     io.write_string(Stream, "}\n", !IO).
 
-:- pred write_node(io.output_stream::in,
+:- pred write_node(io.text_output_stream::in,
     gen_node_name(T)::in, T::in, io::di, io::uo) is det.
 
 write_node(Stream, GenNodeName, Node, !IO) :-
     io.format(Stream, "%s;\n", [s(GenNodeName(Node))], !IO).
 
-:- pred write_edge(io.output_stream::in, gen_node_name(T)::in, T::in, T::in,
-    io::di, io::uo) is det.
+:- pred write_edge(io.text_output_stream::in, gen_node_name(T)::in,
+    T::in, T::in, io::di, io::uo) is det.
 
 write_edge(Stream, GenNodeName, A, B, !IO) :-
     io.format(Stream, "%s -> %s;\n",
