@@ -283,13 +283,13 @@ stream_info(Stream, MaybeInfo, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-input_stream_info(StreamDb, input_stream(Stream)) =
+input_stream_info(StreamDb, text_input_stream(Stream)) =
     get_maybe_stream_info(StreamDb, Stream).
 
 binary_input_stream_info(StreamDb, binary_input_stream(Stream)) =
     get_maybe_stream_info(StreamDb, Stream).
 
-output_stream_info(StreamDb, output_stream(Stream)) =
+output_stream_info(StreamDb, text_output_stream(Stream)) =
     get_maybe_stream_info(StreamDb, Stream).
 
 binary_output_stream_info(StreamDb, binary_output_stream(Stream)) =
@@ -309,9 +309,9 @@ get_maybe_stream_info(StreamDb, Stream) = Info :-
 %---------------------%
 
 get_io_stream_info(StreamDB, Stream) = StreamInfo :-
-    ( if dynamic_cast(Stream, input_stream(IOStream0)) then
+    ( if dynamic_cast(Stream, text_input_stream(IOStream0)) then
         IOStream = IOStream0
-    else if dynamic_cast(Stream, output_stream(IOStream0)) then
+    else if dynamic_cast(Stream, text_output_stream(IOStream0)) then
         IOStream = IOStream0
     else if dynamic_cast(Stream, binary_input_stream(IOStream0)) then
         IOStream = IOStream0

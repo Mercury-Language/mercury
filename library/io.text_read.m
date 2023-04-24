@@ -22,13 +22,13 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred read_word_2(io.input_stream::in, io.result(list(char))::out,
+:- pred read_word_2(io.text_input_stream::in, io.result(list(char))::out,
     io::di, io::uo) is det.
 
 %---------------------%
 
-:- pred read_line_2(io.input_stream::in, result_code::out, system_error::out,
-    list(char)::out, io::di, io::uo) is det.
+:- pred read_line_2(io.text_input_stream::in, result_code::out,
+    system_error::out, list(char)::out, io::di, io::uo) is det.
 
 %---------------------%
 
@@ -213,7 +213,7 @@ read_line_2(Stream, Result, Error, Chars, !IO) :-
 read_line_as_string_2(Stream, FirstCall, Res, Error, String, !IO) :-
     % XXX This is terribly inefficient, a better approach would be
     % to use a buffer like what is done for io.read_file_as_string.
-    read_char_code(input_stream(Stream), ResultCode, Error0, Char, !IO),
+    read_char_code(text_input_stream(Stream), ResultCode, Error0, Char, !IO),
     (
         ResultCode = result_code_ok,
         ( if Char = '\n' then
@@ -269,7 +269,7 @@ read_file_as_string_2(Stream, Str, NumCUs, Error, NullCharError, !IO) :-
     % Check if the stream is a regular file; if so, allocate a buffer
     % according to the size of the file. Otherwise, just use a default buffer
     % size of 4k minus a bit (to give malloc some room).
-    input_stream_file_size(input_stream(Stream), FileSize, !IO),
+    input_stream_file_size(text_input_stream(Stream), FileSize, !IO),
     ( if FileSize >= 0 then
         % When targeting C, this reserves just enough space for all the bytes
         % in the file, plus the final NUL character.
@@ -292,10 +292,10 @@ read_file_as_string_2(Stream, Str, NumCUs, Error, NullCharError, !IO) :-
     % When targeting C#, Pos counts code *points*.
     % When targeting Java, the foreign_proc above replaces this clause.
     Pos0 = 0,
-    read_file_as_string_loop(input_stream(Stream), Buffer0, BufferSize0, Pos0,
-        Str, NumCUs, Error, NullCharError, !IO).
+    read_file_as_string_loop(text_input_stream(Stream), Buffer0, BufferSize0,
+        Pos0, Str, NumCUs, Error, NullCharError, !IO).
 
-:- pred read_file_as_string_loop(input_stream::in, buffer::buffer_di,
+:- pred read_file_as_string_loop(text_input_stream::in, buffer::buffer_di,
     int::in, int::in, string::out, int::out, system_error::out, bool::out,
     io::di, io::uo) is det.
 % This predicate is not used when compiling to Java; this pragma avoids
@@ -304,7 +304,7 @@ read_file_as_string_2(Stream, Str, NumCUs, Error, NullCharError, !IO) :-
 
 read_file_as_string_loop(Stream, !.Buffer, BufferSize0, !.Pos,
         Str, NumCUs, Error, NullCharError, !IO) :-
-    Stream = input_stream(RealStream),
+    Stream = text_input_stream(RealStream),
     read_into_buffer(RealStream, !Buffer, BufferSize0, !Pos, Error0, !IO),
     ( if !.Pos < BufferSize0 then
         % Buffer is not full: end-of-file or error.
@@ -418,11 +418,11 @@ read_binary_file_as_bitmap_from_stream(Stream, BufferSize, Res, !BMs, !IO) :-
 %---------------------%
 
     % XXX FIXME this should return an int64.
-:- pred input_stream_file_size(io.input_stream::in, int::out,
+:- pred input_stream_file_size(io.text_input_stream::in, int::out,
     io::di, io::uo) is det.
 :- pragma consider_used(pred(input_stream_file_size/4)).
 
-input_stream_file_size(input_stream(Stream), Size, !IO) :-
+input_stream_file_size(text_input_stream(Stream), Size, !IO) :-
     stream_file_size(Stream, Size64, !IO),
     Size = int64.cast_to_int(Size64).
 
@@ -434,8 +434,8 @@ binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
 
     % stream_file_size(Stream, Size):
     %
-    % If Stream is a regular file, then Size is its size (in bytes),
-    % otherwise Size is -1.
+    % If Stream is a regular file, then set Size to its size (in bytes),
+    % otherwise set Size to -1.
     %
 :- pred stream_file_size(stream::in, int64::out, io::di, io::uo) is det.
 
@@ -654,10 +654,10 @@ read_into_buffer(Stream, buffer(Array0), buffer(Array), BufferSize,
     % This predicate is used only when compiling to C and C#, and when
     % targeting C, we use the foreign_proc above, so this clause is used
     % only when targeting C#.
-    read_into_array(input_stream(Stream), Array0, Array, BufferSize,
+    read_into_array(text_input_stream(Stream), Array0, Array, BufferSize,
         !Pos, Error, !IO).
 
-:- pred read_into_array(input_stream::in,
+:- pred read_into_array(io.text_input_stream::in,
     array(char)::array_di, array(char)::array_uo, int::in, int::in, int::out,
     system_error::out, io::di, io::uo) is det.
 % This predicate is not used when compiling to C or Java; this pragma avoids

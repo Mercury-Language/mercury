@@ -2067,7 +2067,8 @@ read_bitmap_range(InputStream, Start, NumBytes, !Bitmap,
 do_read_bitmap_range(Stream, Start, NumBytes, !Bitmap, !BytesRead,
         Error, !IO) :-
     ( if NumBytes > 0 then
-        read_byte_val(input_stream(Stream), ResultCode, Byte, Error0, !IO),
+        read_byte_val(text_input_stream(Stream), ResultCode, Byte,
+            Error0, !IO),
         (
             ResultCode = result_code_ok,
             unsafe_set_byte(Start, Byte, !Bitmap),

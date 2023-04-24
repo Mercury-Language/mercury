@@ -28,8 +28,8 @@
     % character representation and (for text streams) converting OS line
     % indicators, e.g. CR-LF for Windows, to '\n' characters.
     %
-:- pred read_char_code(input_stream::in, result_code::out, system_error::out,
-    char::out, io::di, io::uo) is det.
+:- pred read_char_code(io.text_input_stream::in, result_code::out,
+    system_error::out, char::out, io::di, io::uo) is det.
 
 :- pred putback_char_2(stream::in, char::in, bool::out, io::di, io::uo) is det.
 
@@ -37,8 +37,8 @@
 
     % Reads a byte from specified stream.
     %
-:- pred read_byte_val(input_stream::in, result_code::out, system_error::out,
-    int::out, io::di, io::uo) is det.
+:- pred read_byte_val(io.text_input_stream::in, result_code::out,
+    system_error::out, int::out, io::di, io::uo) is det.
 
 :- pred putback_uint8_2(stream::in, uint8::in, bool::out,
     io::di, io::uo) is det.
@@ -63,7 +63,7 @@
 
 %---------------------------------------------------------------------------%
 
-read_char_code(input_stream(Stream), ResultCode, Error, Char, !IO) :-
+read_char_code(text_input_stream(Stream), ResultCode, Error, Char, !IO) :-
     read_char_code_2(Stream, ResultCode, Error, Char, !IO).
 
 :- pred read_char_code_2(stream::in, result_code::out, system_error::out,
@@ -246,7 +246,7 @@ read_char_code(input_stream(Stream), ResultCode, Error, Char, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-read_byte_val(input_stream(Stream), Result, Error, ByteVal, !IO) :-
+read_byte_val(text_input_stream(Stream), Result, Error, ByteVal, !IO) :-
     read_byte_val_2(Stream, Result, Error, ByteVal, !IO).
 
 :- pred read_byte_val_2(stream::in, result_code::out, system_error::out,

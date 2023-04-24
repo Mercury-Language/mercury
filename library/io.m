@@ -64,13 +64,13 @@
 
     % Opaque handles for text I/O streams.
     %
-:- type input_stream.
-:- type output_stream.
+:- type text_input_stream.
+:- type text_output_stream.
 
     % Alternative names for the above.
     %
-:- type text_input_stream == input_stream.
-:- type text_output_stream == output_stream.
+:- type input_stream == text_input_stream.
+:- type output_stream == text_output_stream.
 
     % Opaque handles for binary I/O streams.
     %
@@ -2311,8 +2311,8 @@
 %
 
 :- type stream.
-:- func input_stream_get_stream(input_stream) = stream.
-:- func output_stream_get_stream(output_stream) = stream.
+:- func input_stream_get_stream(text_input_stream) = stream.
+:- func output_stream_get_stream(text_output_stream) = stream.
 :- func binary_input_stream_get_stream(binary_input_stream) = stream.
 :- func binary_output_stream_get_stream(binary_output_stream) = stream.
 
@@ -2408,11 +2408,11 @@ io_state_equal(_, _) :-
 io_state_compare(_, _, _) :-
     error("attempt to compare two I/O states").
 
-:- type input_stream
-    --->    input_stream(stream).
-:- type output_stream
-    --->    output_stream(stream).
-% While these definitions of the input_stream and output_stream types
+:- type text_input_stream
+    --->    text_input_stream(stream).
+:- type text_output_stream
+    --->    text_output_stream(stream).
+% While these definitions of the text_input_stream and text_output_stream types
 % are visible only in io.m for Mercury code, you can access the underlying
 % stdio streams using MR_file(*MR_unwrap_{input,output}_stream(Stream))
 % in C code.
@@ -2450,7 +2450,7 @@ open_input(FileName, Result, !IO) :-
         Result = error(IOError)
     ;
         MaybeIOError = no,
-        Result = ok(input_stream(NewStream)),
+        Result = ok(text_input_stream(NewStream)),
         StreamInfo = stream(OpenCount, input, text, file(FileName)),
         insert_stream_info(NewStream, StreamInfo, !IO)
     ).
@@ -2478,7 +2478,7 @@ open_output(FileName, Result, !IO) :-
         Result = error(IOError)
     ;
         MaybeIOError = no,
-        Result = ok(output_stream(NewStream)),
+        Result = ok(text_output_stream(NewStream)),
         StreamInfo = stream(OpenCount, output, text, file(FileName)),
         insert_stream_info(NewStream, StreamInfo, !IO)
     ).
@@ -2506,7 +2506,7 @@ open_append(FileName, Result, !IO) :-
         Result = error(IOError)
     ;
         MaybeIOError = no,
-        Result = ok(output_stream(NewStream)),
+        Result = ok(text_output_stream(NewStream)),
         StreamInfo = stream(OpenCount, append, text, file(FileName)),
         insert_stream_info(NewStream, StreamInfo, !IO)
     ).
@@ -2526,7 +2526,7 @@ open_binary_append(FileName, Result, !IO) :-
 
 %---------------------%
 
-close_input(input_stream(Stream), !IO) :-
+close_input(text_input_stream(Stream), !IO) :-
     maybe_delete_stream_info(Stream, !IO),
     close_stream(Stream, Error, !IO),
     throw_on_close_error(Error, !IO).
@@ -2538,7 +2538,7 @@ close_binary_input(binary_input_stream(Stream), !IO) :-
 
 %---------------------%
 
-close_output(output_stream(Stream), !IO) :-
+close_output(text_output_stream(Stream), !IO) :-
     maybe_delete_stream_info(Stream, !IO),
     close_stream(Stream, Error, !IO),
     throw_on_close_error(Error, !IO).
@@ -2553,7 +2553,8 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
 % Switching streams.
 %
 
-set_input_stream(input_stream(NewStream), input_stream(OutStream), !IO) :-
+set_input_stream(text_input_stream(NewStream),
+        text_input_stream(OutStream), !IO) :-
     set_input_stream_2(NewStream, OutStream, !IO).
 
 set_binary_input_stream(binary_input_stream(NewStream),
@@ -2562,7 +2563,8 @@ set_binary_input_stream(binary_input_stream(NewStream),
 
 %---------------------%
 
-set_output_stream(output_stream(NewStream), output_stream(OutStream), !IO) :-
+set_output_stream(text_output_stream(NewStream),
+        text_output_stream(OutStream), !IO) :-
     set_output_stream_2(NewStream, OutStream, !IO).
 
 set_binary_output_stream(binary_output_stream(NewStream),
@@ -2631,9 +2633,9 @@ binary_output_stream_offset64(binary_output_stream(Stream), Offset, !IO) :-
 % Standard stream id predicates.
 %
 
-stdin_stream = input_stream(stdin_stream_2).
+stdin_stream = text_input_stream(stdin_stream_2).
 
-stdin_stream(input_stream(Stream), !IO) :-
+stdin_stream(text_input_stream(Stream), !IO) :-
     stdin_stream_2(Stream, !IO).
 
 stdin_binary_stream(binary_input_stream(Stream), !IO) :-
@@ -2641,9 +2643,9 @@ stdin_binary_stream(binary_input_stream(Stream), !IO) :-
 
 %---------------------%
 
-stdout_stream = output_stream(stdout_stream_2).
+stdout_stream = text_output_stream(stdout_stream_2).
 
-stdout_stream(output_stream(Stream), !IO) :-
+stdout_stream(text_output_stream(Stream), !IO) :-
     stdout_stream_2(Stream, !IO).
 
 stdout_binary_stream(binary_output_stream(Stream), !IO) :-
@@ -2651,9 +2653,9 @@ stdout_binary_stream(binary_output_stream(Stream), !IO) :-
 
 %---------------------%
 
-stderr_stream = output_stream(stderr_stream_2).
+stderr_stream = text_output_stream(stderr_stream_2).
 
-stderr_stream(output_stream(Stream), !IO) :-
+stderr_stream(text_output_stream(Stream), !IO) :-
     stderr_stream_2(Stream, !IO).
 
 %---------------------------------------------------------------------------%
@@ -2661,7 +2663,7 @@ stderr_stream(output_stream(Stream), !IO) :-
 % Current stream id predicates.
 %
 
-input_stream(input_stream(Stream), !IO) :-
+input_stream(text_input_stream(Stream), !IO) :-
     input_stream_2(Stream, !IO).
 
 binary_input_stream(binary_input_stream(Stream), !IO) :-
@@ -2669,7 +2671,7 @@ binary_input_stream(binary_input_stream(Stream), !IO) :-
 
 %---------------------%
 
-output_stream(output_stream(Stream), !IO) :-
+output_stream(text_output_stream(Stream), !IO) :-
     output_stream_2(Stream, !IO).
 
 binary_output_stream(binary_output_stream(Stream), !IO) :-
@@ -2681,10 +2683,10 @@ binary_output_stream(binary_output_stream(Stream), !IO) :-
 %
 
 input_stream_name(Name, !IO) :-
-    input_stream(input_stream(Stream), !IO),
+    io.input_stream(text_input_stream(Stream), !IO),
     stream_name(Stream, Name, !IO).
 
-input_stream_name(input_stream(Stream), Name, !IO) :-
+input_stream_name(text_input_stream(Stream), Name, !IO) :-
     stream_name(Stream, Name, !IO).
 
 binary_input_stream_name(Name, !IO) :-
@@ -2697,10 +2699,10 @@ binary_input_stream_name(binary_input_stream(Stream), Name, !IO) :-
 %---------------------%
 
 output_stream_name(Name, !IO) :-
-    output_stream(output_stream(Stream), !IO),
+    output_stream(text_output_stream(Stream), !IO),
     stream_name(Stream, Name, !IO).
 
-output_stream_name(output_stream(Stream), Name, !IO) :-
+output_stream_name(text_output_stream(Stream), Name, !IO) :-
     stream_name(Stream, Name, !IO).
 
 binary_output_stream_name(Name, !IO) :-
@@ -2716,7 +2718,7 @@ get_line_number(LineNum, !IO) :-
     input_stream_2(Stream, !IO),
     get_input_line_number_2(Stream, LineNum, !IO).
 
-get_line_number(input_stream(Stream), LineNum, !IO) :-
+get_line_number(text_input_stream(Stream), LineNum, !IO) :-
     get_input_line_number_2(Stream, LineNum, !IO).
 
 %---------------------%
@@ -2725,7 +2727,7 @@ set_line_number(LineNum, !IO) :-
     output_stream_2(Stream, !IO),
     set_input_line_number_2(Stream, LineNum, !IO).
 
-set_line_number(input_stream(Stream), LineNum, !IO) :-
+set_line_number(text_input_stream(Stream), LineNum, !IO) :-
     set_input_line_number_2(Stream, LineNum,!IO).
 
 %---------------------%
@@ -2734,7 +2736,7 @@ get_output_line_number(LineNum, !IO) :-
     output_stream_2(Stream, !IO),
     get_output_line_number_2(Stream, LineNum, !IO).
 
-get_output_line_number(output_stream(Stream), LineNum, !IO) :-
+get_output_line_number(text_output_stream(Stream), LineNum, !IO) :-
     get_output_line_number_2(Stream, LineNum, !IO).
 
 %---------------------%
@@ -2743,7 +2745,7 @@ set_output_line_number(LineNum, !IO) :-
     output_stream_2(Stream, !IO),
     set_output_line_number_2(Stream, LineNum, !IO).
 
-set_output_line_number(output_stream(Stream), LineNum, !IO) :-
+set_output_line_number(text_output_stream(Stream), LineNum, !IO) :-
     set_output_line_number_2(Stream, LineNum, !IO).
 
 %---------------------------------------------------------------------------%
@@ -2753,7 +2755,7 @@ set_output_line_number(output_stream(Stream), LineNum, !IO) :-
 
 :- pragma inline(pred(read_char/3)).          % Inline to allow deforestation.
 read_char(Result, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     read_char(Stream, Result, !IO).
 
 :- pragma inline(pred(read_char/4)).          % Inline to allow deforestation.
@@ -2769,10 +2771,10 @@ read_char_unboxed(Stream, Result, Char, !IO) :-
 %---------------------%
 
 putback_char(Char, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     putback_char(Stream, Char, !IO).
 
-putback_char(input_stream(Stream), Character, !IO) :-
+putback_char(text_input_stream(Stream), Character, !IO) :-
     putback_char_2(Stream, Character, Ok, !IO),
     (
         Ok = yes
@@ -2790,7 +2792,7 @@ read_byte(Result, !IO) :-
 
 :- pragma inline(pred(read_byte/4)).          % Inline to allow deforestation.
 read_byte(binary_input_stream(Stream), Result, !IO) :-
-    read_byte_val(input_stream(Stream), ResultCode, Error, Byte, !IO),
+    read_byte_val(text_input_stream(Stream), ResultCode, Error, Byte, !IO),
     interpret_result_code1(ResultCode, Error, Byte, Result, !IO).
 
 read_binary_int8(Result, !IO) :-
@@ -2798,12 +2800,12 @@ read_binary_int8(Result, !IO) :-
     read_binary_int8(Stream, Result, !IO).
 
 read_binary_int8(binary_input_stream(Stream), Result, !IO) :-
-    read_byte_val(input_stream(Stream), ResultCode, Error, Int, !IO),
+    read_byte_val(text_input_stream(Stream), ResultCode, Error, Int, !IO),
     Int8 = cast_from_int(Int), % This call cannot throw an exception.
     interpret_result_code1(ResultCode, Error, Int8, Result, !IO).
 
 read_binary_int8_unboxed(binary_input_stream(Stream), Result, Int8, !IO) :-
-    read_byte_val(input_stream(Stream), ResultCode, Error, Int, !IO),
+    read_byte_val(text_input_stream(Stream), ResultCode, Error, Int, !IO),
     Int8 = cast_from_int(Int),
     interpret_result_code0(ResultCode, Error, Result, !IO).
 
@@ -2812,12 +2814,12 @@ read_binary_uint8(Result, !IO) :-
     read_binary_uint8(Stream, Result, !IO).
 
 read_binary_uint8(binary_input_stream(Stream), Result, !IO) :-
-    read_byte_val(input_stream(Stream), ResultCode, Error, Int, !IO),
+    read_byte_val(text_input_stream(Stream), ResultCode, Error, Int, !IO),
     UInt8 = cast_from_int(Int), % This call cannot throw an exception.
     interpret_result_code1(ResultCode, Error, UInt8, Result, !IO).
 
 read_binary_uint8_unboxed(binary_input_stream(Stream), Result, UInt8, !IO) :-
-    read_byte_val(input_stream(Stream), ResultCode, Error, Int, !IO),
+    read_byte_val(text_input_stream(Stream), ResultCode, Error, Int, !IO),
     UInt8 = cast_from_int(Int),
     interpret_result_code0(ResultCode, Error, Result, !IO).
 
@@ -3140,7 +3142,7 @@ write_char(Character, !IO) :-
     output_stream(Stream, !IO),
     write_char(Stream, Character, !IO).
 
-write_char(output_stream(Stream), Character, !IO) :-
+write_char(text_output_stream(Stream), Character, !IO) :-
     do_write_char(Stream, Character, Error, !IO),
     throw_on_output_error(Error, !IO).
 
@@ -3150,7 +3152,7 @@ write_int(Val, !IO) :-
     output_stream(Stream, !IO),
     write_int(Stream, Val, !IO).
 
-write_int(output_stream(Stream), Val, !IO) :-
+write_int(text_output_stream(Stream), Val, !IO) :-
     do_write_int(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
@@ -3160,7 +3162,7 @@ write_uint(Val, !IO) :-
     output_stream(Stream, !IO),
     write_uint(Stream, Val, !IO).
 
-write_uint(output_stream(Stream), Val, !IO) :-
+write_uint(text_output_stream(Stream), Val, !IO) :-
     do_write_uint(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
@@ -3170,7 +3172,7 @@ write_int8(Val, !IO) :-
     output_stream(Stream, !IO),
     write_int8(Stream, Val, !IO).
 
-write_int8(output_stream(Stream), Val, !IO) :-
+write_int8(text_output_stream(Stream), Val, !IO) :-
     do_write_int8(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
@@ -3180,7 +3182,7 @@ write_uint8(Val, !IO) :-
     output_stream(Stream, !IO),
     write_uint8(Stream, Val, !IO).
 
-write_uint8(output_stream(Stream), Val, !IO) :-
+write_uint8(text_output_stream(Stream), Val, !IO) :-
     do_write_uint8(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
@@ -3190,7 +3192,7 @@ write_int16(Val, !IO) :-
     output_stream(Stream, !IO),
     write_int16(Stream, Val, !IO).
 
-write_int16(output_stream(Stream), Val, !IO) :-
+write_int16(text_output_stream(Stream), Val, !IO) :-
     do_write_int16(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
@@ -3200,7 +3202,7 @@ write_uint16(Val, !IO) :-
     output_stream(Stream, !IO),
     write_uint16(Stream, Val, !IO).
 
-write_uint16(output_stream(Stream), Val, !IO) :-
+write_uint16(text_output_stream(Stream), Val, !IO) :-
     do_write_uint16(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
@@ -3210,7 +3212,7 @@ write_int32(Val, !IO) :-
     output_stream(Stream, !IO),
     write_int32(Stream, Val, !IO).
 
-write_int32(output_stream(Stream), Val, !IO) :-
+write_int32(text_output_stream(Stream), Val, !IO) :-
     do_write_int32(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
@@ -3220,7 +3222,7 @@ write_uint32(Val, !IO) :-
     output_stream(Stream, !IO),
     write_uint32(Stream, Val, !IO).
 
-write_uint32(output_stream(Stream), Val, !IO) :-
+write_uint32(text_output_stream(Stream), Val, !IO) :-
     do_write_uint32(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
@@ -3230,7 +3232,7 @@ write_int64(Val, !IO) :-
     output_stream(Stream, !IO),
     write_int64(Stream, Val, !IO).
 
-write_int64(output_stream(Stream), Val, !IO) :-
+write_int64(text_output_stream(Stream), Val, !IO) :-
     do_write_int64(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
@@ -3240,7 +3242,7 @@ write_uint64(Val, !IO) :-
     output_stream(Stream, !IO),
     write_uint64(Stream, Val, !IO).
 
-write_uint64(output_stream(Stream), Val, !IO) :-
+write_uint64(text_output_stream(Stream), Val, !IO) :-
     do_write_uint64(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
@@ -3250,7 +3252,7 @@ write_float(Val, !IO) :-
     output_stream(Stream, !IO),
     write_float(Stream, Val, !IO).
 
-write_float(output_stream(Stream), Val, !IO) :-
+write_float(text_output_stream(Stream), Val, !IO) :-
     do_write_float(Stream, Val, Error, !IO),
     throw_on_output_error(Error, !IO).
 
@@ -3260,7 +3262,7 @@ write_string(Message, !IO) :-
     output_stream(Stream, !IO),
     write_string(Stream, Message, !IO).
 
-write_string(output_stream(Stream), Message, !IO) :-
+write_string(text_output_stream(Stream), Message, !IO) :-
     do_write_string(Stream, Message, Error, !IO),
     throw_on_output_error(Error, !IO).
 
@@ -3479,7 +3481,7 @@ write_binary_string_utf8(binary_output_stream(Stream), String, !IO) :-
 %
 
 read_word(Result, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     read_word(Stream, Result, !IO).
 
 read_word(Stream, Result, !IO) :-
@@ -3496,7 +3498,7 @@ read_word(Stream, Result, !IO) :-
     ).
 
 read_line(Result, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     read_line(Stream, Result, !IO).
 
 read_line(Stream, Result, !IO) :-
@@ -3514,10 +3516,10 @@ read_line(Stream, Result, !IO) :-
     ).
 
 read_line_as_string(Result, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     read_line_as_string(Stream, Result, !IO).
 
-read_line_as_string(input_stream(Stream), Result, !IO) :-
+read_line_as_string(text_input_stream(Stream), Result, !IO) :-
     read_line_as_string_2(Stream, yes, Res, Error, String, !IO),
     (
         Res = rlas_ok,
@@ -3535,7 +3537,7 @@ read_line_as_string(input_stream(Stream), Result, !IO) :-
     ).
 
 ignore_whitespace(Result, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     ignore_whitespace(Stream, Result, !IO).
 
 ignore_whitespace(Stream, Result, !IO) :-
@@ -3648,7 +3650,7 @@ read_binary(BinaryInputStream, Result, !IO) :-
     % See the comment at the top of the MR_MercuryFileStruct class definition
     % in io.stream_ops.m.
     BinaryInputStream = binary_input_stream(Stream),
-    TextInputStream = input_stream(Stream),
+    TextInputStream = text_input_stream(Stream),
     read_binary_from_text_input_stream(TextInputStream, Result, !IO).
 
 :- pred read_binary_from_text_input_stream(io.text_input_stream::in,
@@ -3730,7 +3732,7 @@ print_line_cc(Term, !IO) :-
     "ML_io_print_to_stream").
 
 print_to_stream(Stream, Term, !IO) :-
-    io.print(output_stream(Stream), canonicalize, Term, !IO).
+    io.print(text_output_stream(Stream), canonicalize, Term, !IO).
 
 %---------------------%
 
@@ -3782,8 +3784,8 @@ write_binary(binary_output_stream(Stream), Term, !IO) :-
     % (not really binary!)
     % XXX This will not work for the Java back-end. See the comment at the
     % top of the MR_MercuryFileStruct class definition.
-    io.write(output_stream(Stream), Term, !IO),
-    io.write_string(output_stream(Stream), ".\n", !IO).
+    io.write(text_output_stream(Stream), Term, !IO),
+    io.write_string(text_output_stream(Stream), ".\n", !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -3940,7 +3942,7 @@ flush_output(!IO) :-
     output_stream(Stream, !IO),
     flush_output(Stream, !IO).
 
-flush_output(output_stream(Stream), !IO) :-
+flush_output(text_output_stream(Stream), !IO) :-
     flush_text_output_2(Stream, Error, !IO),
     throw_on_output_error(Error, !IO).
 
@@ -4051,13 +4053,13 @@ read_named_file_as_lines_wf(FileName, Result, !IO) :-
 %---------------------%
 
 read_file(Result, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     read_file(Stream, Result, !IO).
 
 read_file(Stream, Result, !IO) :-
     read_file_chars_acc(Stream, [], Result, !IO).
 
-:- pred read_file_chars_acc(input_stream::in, list(char)::in,
+:- pred read_file_chars_acc(text_input_stream::in, list(char)::in,
     maybe_partial_res(list(char))::out, io::di, io::uo) is det.
 
 read_file_chars_acc(Stream, RevChars0, Result, !IO) :-
@@ -4077,10 +4079,10 @@ read_file_chars_acc(Stream, RevChars0, Result, !IO) :-
 %---------------------%
 
 read_file_as_string(Result, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     read_file_as_string(Stream, Result, !IO).
 
-read_file_as_string(input_stream(Stream), Result, !IO) :-
+read_file_as_string(text_input_stream(Stream), Result, !IO) :-
     read_file_as_string_2(Stream, String, _NumCUs, Error, NullCharError, !IO),
     is_error(Error, "read failed: ", MaybeIOError, !IO),
     (
@@ -4098,7 +4100,7 @@ read_file_as_string(input_stream(Stream), Result, !IO) :-
     ).
 
 read_file_as_string_wf(Result, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     read_file_as_string_wf(Stream, Result, !IO).
 
 read_file_as_string_wf(Stream, Result, !IO) :-
@@ -4123,10 +4125,11 @@ read_file_as_string_wf(Stream, Result, !IO) :-
 %---------------------%
 
 read_file_as_string_and_num_code_units(Result, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     read_file_as_string_and_num_code_units(Stream, Result, !IO).
 
-read_file_as_string_and_num_code_units(input_stream(Stream), Result, !IO) :-
+read_file_as_string_and_num_code_units(text_input_stream(Stream),
+        Result, !IO) :-
     read_file_as_string_2(Stream, String, NumCUs, Error, NullCharError, !IO),
     is_error(Error, "read failed: ", MaybeIOError, !IO),
     (
@@ -4144,7 +4147,7 @@ read_file_as_string_and_num_code_units(input_stream(Stream), Result, !IO) :-
     ).
 
 read_file_as_string_and_num_code_units_wf(Result, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     read_file_as_string_and_num_code_units_wf(Stream, Result, !IO).
 
 read_file_as_string_and_num_code_units_wf(Stream, Result, !IO) :-
@@ -4207,7 +4210,7 @@ read_binary_file_as_bitmap(Stream, Result, !IO) :-
 %
 
 input_stream_foldl(Pred, T0, Res, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     input_stream_foldl(Stream, Pred, T0, Res, !IO).
 
 input_stream_foldl(Stream, Pred, T0, Res, !IO) :-
@@ -4225,7 +4228,7 @@ input_stream_foldl(Stream, Pred, T0, Res, !IO) :-
     ).
 
 input_stream_foldl_io(Pred, Res, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     input_stream_foldl_io(Stream, Pred, Res, !IO).
 
 input_stream_foldl_io(Stream, Pred, Res, !IO) :-
@@ -4243,7 +4246,7 @@ input_stream_foldl_io(Stream, Pred, Res, !IO) :-
     ).
 
 input_stream_foldl2_io(Pred, T0, Res, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     input_stream_foldl2_io(Stream, Pred, T0, Res, !IO).
 
 input_stream_foldl2_io(Stream, Pred, T0, Res, !IO) :-
@@ -4261,7 +4264,7 @@ input_stream_foldl2_io(Stream, Pred, T0, Res, !IO) :-
     ).
 
 input_stream_foldl2_io_maybe_stop(Pred, T0, Res, !IO) :-
-    input_stream(Stream, !IO),
+    io.input_stream(Stream, !IO),
     input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO).
 
 input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO) :-
@@ -4994,24 +4997,24 @@ report_stats(Selector, !IO) :-
 
 %---------------------%
 
-report_standard_stats(output_stream(Stream), !IO) :-
-    benchmarking.report_standard_stats(output_stream(Stream), !IO).
+report_standard_stats(Stream, !IO) :-
+    benchmarking.report_standard_stats(Stream, !IO).
 
 report_standard_stats(!IO) :-
     benchmarking.report_standard_stats(!IO).
 
 %---------------------%
 
-report_full_memory_stats(output_stream(Stream), !IO) :-
-    benchmarking.report_full_memory_stats(output_stream(Stream), !IO).
+report_full_memory_stats(Stream, !IO) :-
+    benchmarking.report_full_memory_stats(Stream, !IO).
 
 report_full_memory_stats(!IO) :-
     benchmarking.report_full_memory_stats(!IO).
 
 %---------------------%
 
-report_tabling_statistics(output_stream(Stream), !IO) :-
-    benchmarking.report_tabling_statistics(output_stream(Stream), !IO).
+report_tabling_statistics(Stream, !IO) :-
+    benchmarking.report_tabling_statistics(Stream, !IO).
 
 report_tabling_statistics(!IO) :-
     benchmarking.report_tabling_statistics(!IO).
@@ -5258,11 +5261,11 @@ gc_init(_, _, !IO).
 :- pred insert_std_stream_names(io::di, io::uo) is det.
 
 insert_std_stream_names(!IO) :-
-    stdin_stream(input_stream(Stdin), !IO),
+    stdin_stream(text_input_stream(Stdin), !IO),
     insert_stream_info(Stdin, stream(0, input, preopen, stdin), !IO),
-    stdout_stream(output_stream(Stdout), !IO),
+    stdout_stream(text_output_stream(Stdout), !IO),
     insert_stream_info(Stdout, stream(1, output, preopen, stdout), !IO),
-    stderr_stream(output_stream(Stderr), !IO),
+    stderr_stream(text_output_stream(Stderr), !IO),
     insert_stream_info(Stderr, stream(1, output, preopen, stderr), !IO).
 
     % Currently no finalization needed...
@@ -5454,8 +5457,8 @@ file_id(FileName, Result, !IO) :-
 % For use by bitmap.m.
 %
 
-input_stream_get_stream(input_stream(Stream)) = Stream.
-output_stream_get_stream(output_stream(Stream)) = Stream.
+input_stream_get_stream(text_input_stream(Stream)) = Stream.
+output_stream_get_stream(text_output_stream(Stream)) = Stream.
 binary_input_stream_get_stream(binary_input_stream(Stream)) = Stream.
 binary_output_stream_get_stream(binary_output_stream(Stream)) = Stream.
 
@@ -5465,7 +5468,7 @@ binary_output_stream_get_stream(binary_output_stream(Stream)) = Stream.
 % XXX We should not need these if we passed streams explicitly everywhere.
 %
 
-:- pred with_output_stream(output_stream, pred(io, io), io, io).
+:- pred with_output_stream(text_output_stream, pred(io, io), io, io).
 :- mode with_output_stream(in, pred(di, uo) is det, di, uo) is det.
 :- mode with_output_stream(in, pred(di, uo) is cc_multi, di, uo) is cc_multi.
 
@@ -5482,7 +5485,7 @@ with_output_stream(Stream, Pred, !IO) :-
 call_pred_no_result(Pred, {}, !IO) :-
     Pred(!IO).
 
-:- pred restore_output_stream(pred(io, io), output_stream, io.res, io, io).
+:- pred restore_output_stream(pred(io, io), text_output_stream, io.res, io, io).
 :- mode restore_output_stream(pred(di, uo) is det, in, out, di, uo) is det.
 :- mode restore_output_stream(pred(di, uo) is cc_multi, in, out, di, uo)
     is cc_multi.

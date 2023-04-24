@@ -1632,13 +1632,13 @@ check_for_symlink_loop(DirName, SymLinkParent, ParentIds0, MaybeLoop, !IO) :-
 #endif
 ").
 
-    % A dir.stream should be treated like an io.input_stream,
+    % A dir.stream should be treated like an io.text_input_stream,
     % except using dir.read_entry, rather than io.read_char.
     % dir.streams must be closed to avoid resource leaks.
 :- type dir.stream
     --->    dir.stream.
-:- pragma foreign_type("C", dir.stream, "ML_DIR_STREAM").
-:- pragma foreign_type("C#", dir.stream, "System.Collections.IEnumerator").
+:- pragma foreign_type("C",    dir.stream, "ML_DIR_STREAM").
+:- pragma foreign_type("C#",   dir.stream, "System.Collections.IEnumerator").
 :- pragma foreign_type("Java", dir.stream, "java.util.Iterator").
 
 :- pred open(string::in, maybe_file_error(dir.stream)::out,

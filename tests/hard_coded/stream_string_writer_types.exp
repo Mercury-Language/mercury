@@ -19,7 +19,7 @@ module calendar, name date, arity 0
 module calendar, name duration, arity 0
 module type_desc, name type_desc, arity 0
 module type_desc, name type_ctor_desc, arity 0
-module io, name input_stream, arity 0
-module io, name output_stream, arity 0
+module io, name text_input_stream, arity 0
+module io, name text_output_stream, arity 0
 module io, name binary_input_stream, arity 0
 module io, name binary_output_stream, arity 0
