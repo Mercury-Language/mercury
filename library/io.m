@@ -1002,8 +1002,8 @@
     %     they form is not ground, or if the term is not a valid term of the
     %     expected type, then it returns `error(Message, LineNumber)'.
     %
-    % - If it encounters an I/O error, then it also returns
-    %   `error(Message, LineNumber)'.
+    %  - If it encounters an I/O error, then it also returns
+    %    `error(Message, LineNumber)'.
     %
     % See char.is_whitespace for the definition of whitespace characters
     % used by this predicate.
