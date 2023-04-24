@@ -217,12 +217,9 @@
 
 :- implementation.
 
-:- import_module exception.
 :- import_module list.
 :- import_module require.
 :- import_module string.
-:- import_module unit.
-:- import_module univ.
 
 % There are several kinds of information that we may be interested in
 % feeding back to the compiler. Our design for representing feedback
@@ -354,6 +351,9 @@ read_or_create_feedback_file(Path, ExpectedProfiledProgramName,
             % XXX We assume that an open error is probably caused by the file
             % not existing, but we can't be sure because io.error is a string,
             % and the message string for any error may change.
+            % XXX Given that ReadResult is given to us by the predicate
+            % just below, we could get it to tell us *directly* whether
+            % the error is caused by trying to open a non-existent file.
             Error = fre_open_error(_),
             FeedbackResult = ok(
                 init_feedback_info(ExpectedProfiledProgramName))
@@ -375,28 +375,19 @@ read_feedback_file(Path, MaybeExpectedProfiledProgramName,
     io.open_input(Path, PathResult, !IO),
     (
         PathResult = ok(PathStream),
-        some [!Result] (
-            % Read each part of the file. The calls that actually do the
-            % reading are wrapped inside calls to maybe_read, which guarantees
-            % that we stop reading as soon as we found some error.
-            %
-            % The result so far starts as a unit (containing no information),
-            % turns into a string representing the name of the profiled
-            % program after the call to read_profiled_program_name, and
-            % then into the feedback_info after read_all_feedback_data.
-
-            read_check_line(feedback_first_line, fre_incorrect_first_line,
-                PathStream, unit, !:Result, !IO),
-            maybe_read(
-                read_check_line(feedback_version,
-                    fre_incorrect_version(feedback_version), PathStream),
-                !Result, !IO),
-            maybe_read(
-                read_profiled_program_name(MaybeExpectedProfiledProgramName,
-                    PathStream),
-                !Result, !IO),
-            maybe_read(read_all_feedback_data(PathStream), !Result, !IO),
-            ResultFeedbackInfo = !.Result
+        some [!MaybeError] (
+            % Each predicate we call below stops reading when given
+            % !.MaybeError = yes(...).
+            !:MaybeError = no,
+            read_check_line(PathStream, feedback_first_line,
+                fre_incorrect_first_line, !MaybeError, !IO),
+            read_check_line(PathStream, feedback_version,
+                fre_incorrect_version(feedback_version), !MaybeError, !IO),
+            read_profiled_program_name(PathStream,
+                MaybeExpectedProfiledProgramName,
+                !.MaybeError, MaybeActualProfiledProgram, !IO),
+            read_all_feedback_data(PathStream, MaybeActualProfiledProgram,
+                ResultFeedbackInfo, !IO)
         ),
         io.close_input(PathStream, !IO)
     ;
@@ -404,80 +395,74 @@ read_feedback_file(Path, MaybeExpectedProfiledProgramName,
         ResultFeedbackInfo = error(fre_open_error(ErrorCode))
     ).
 
-    % If the result so far is successful, call the closure on the result so far
-    % (which may be a unit) and return the closure's output as the new result.
-    % Otherwise, return the previous error result without calling the closure.
-    %
-:- pred maybe_read(
-    pred(A, feedback_read_result(B), io, io)::in(pred(in, out, di, uo) is det),
-    feedback_read_result(A)::in, feedback_read_result(B)::out,
-    io::di, io::uo) is det.
-
-maybe_read(Pred, Result0, Result, !IO) :-
-    (
-        Result0 = ok(Acc),
-        Pred(Acc, Result, !IO)
-    ;
-        Result0 = error(Error),
-        Result = error(Error)
-    ).
-
     % Read and check a line of the file.
     %
-:- pred read_check_line(string::in, feedback_read_error::in,
-    io.text_input_stream::in, unit::in, feedback_read_result(unit)::out,
+:- pred read_check_line(io.text_input_stream::in, string::in,
+    feedback_read_error::in,
+    maybe(feedback_read_error)::in, maybe(feedback_read_error)::out,
     io::di, io::uo) is det.
 
-read_check_line(TestLine, NotMatchError, Stream, _, Result, !IO) :-
-    io.read_line_as_string(Stream, LineResult, !IO),
+read_check_line(Stream, TestLine, NotMatchError, !MaybeError, !IO) :-
     (
-        LineResult = ok(Line),
-        ( if
-            ( Line = TestLine
-            ; Line = TestLine ++ "\n"
+        !.MaybeError = yes(_)
+    ;
+        !.MaybeError = no,
+        io.read_line_as_string(Stream, LineResult, !IO),
+        (
+            LineResult = ok(Line),
+            ( if
+                ( Line = TestLine
+                ; Line = TestLine ++ "\n"
+                )
+            then
+                !:MaybeError = no
+            else
+                !:MaybeError = yes(NotMatchError)
             )
-        then
-            Result = ok(unit)
-        else
-            Result = error(NotMatchError)
+        ;
+            LineResult = eof,
+            !:MaybeError = yes(fre_unexpected_eof)
+        ;
+            LineResult = error(Error),
+            !:MaybeError = yes(fre_read_error(Error))
         )
-    ;
-        LineResult = eof,
-        Result = error(fre_unexpected_eof)
-    ;
-        LineResult = error(Error),
-        Result = error(fre_read_error(Error))
     ).
 
-:- pred read_profiled_program_name(maybe(string)::in, io.text_input_stream::in,
-    unit::in, feedback_read_result(string)::out, io::di, io::uo) is det.
+:- pred read_profiled_program_name(io.text_input_stream::in, maybe(string)::in,
+    maybe(feedback_read_error)::in,
+    maybe_error(string, feedback_read_error)::out, io::di, io::uo) is det.
 
-read_profiled_program_name(MaybeExpectedProfiledProgramName, Stream,
-        _, Result, !IO) :-
-    io.read_line_as_string(Stream, LineResult, !IO),
+read_profiled_program_name(Stream, MaybeExpectedProfiledProgram,
+        !.MaybeError, MaybeActualProfiledProgram, !IO) :-
     (
-        LineResult = ok(String),
-        ActualProfiledProgramName = string.strip(String),
+        !.MaybeError = yes(Error),
+        MaybeActualProfiledProgram = error(Error)
+    ;
+        !.MaybeError = no,
+        io.read_line_as_string(Stream, LineResult, !IO),
         (
-            MaybeExpectedProfiledProgramName = no,
-            Result = ok(ActualProfiledProgramName)
-        ;
-            MaybeExpectedProfiledProgramName =
-                yes(ExpectedProfiledProgramName),
-            ( if ActualProfiledProgramName = ExpectedProfiledProgramName then
-                Result = ok(ActualProfiledProgramName)
-            else
-                Result = error(fre_incorrect_profiled_program_name(
-                    ExpectedProfiledProgramName, ActualProfiledProgramName))
-
+            LineResult = ok(String),
+            ActualProfiledProgram = string.strip(String),
+            (
+                MaybeExpectedProfiledProgram = no,
+                MaybeActualProfiledProgram = ok(ActualProfiledProgram)
+            ;
+                MaybeExpectedProfiledProgram = yes(ExpectedProfiledProgram),
+                ( if ActualProfiledProgram = ExpectedProfiledProgram then
+                    MaybeActualProfiledProgram = ok(ActualProfiledProgram)
+                else
+                    MaybeActualProfiledProgram =
+                        error(fre_incorrect_profiled_program_name(
+                            ExpectedProfiledProgram, ActualProfiledProgram))
+                )
             )
+        ;
+            LineResult = eof,
+            MaybeActualProfiledProgram = error(fre_unexpected_eof)
+        ;
+            LineResult = error(Error),
+            MaybeActualProfiledProgram = error(fre_read_error(Error))
         )
-    ;
-        LineResult = eof,
-        Result = error(fre_unexpected_eof)
-    ;
-        LineResult = error(Error),
-        Result = error(fre_read_error(Error))
     ).
 
     % Read the feedback data from the file.
@@ -489,21 +474,39 @@ read_profiled_program_name(MaybeExpectedProfiledProgramName, Stream,
     % The overall term is handled by read_all_feedback_data, while
     % the list elements are handled by add_feedback_components.
     %
-:- pred read_all_feedback_data(io.text_input_stream::in, string::in,
+:- pred read_all_feedback_data(io.text_input_stream::in,
+    maybe_error(string, feedback_read_error)::in,
     feedback_read_result(feedback_info)::out, io::di, io::uo) is det.
 
-read_all_feedback_data(Stream, ProfiledProgramName, Result, !IO) :-
-    io.read(Stream, ReadResult, !IO),
+read_all_feedback_data(Stream, MaybeActualProfiledProgram, Result, !IO) :-
     (
-        ReadResult = ok(Components),
-        Info0 = init_feedback_info(ProfiledProgramName),
-        add_feedback_components(Components, Info0, Result)
+        MaybeActualProfiledProgram = error(Error),
+        Result = error(Error)
     ;
-        ReadResult = eof,
-        Result = error(fre_unexpected_eof)
-    ;
-        ReadResult = error(Error, Line),
-        Result = error(fre_parse_error(Error, Line))
+        MaybeActualProfiledProgram = ok(ActualProfiledProgram),
+        % XXX Note that the use of io.read here, and io.write in
+        % actually_write_feedback_file below, are accident-prone, because
+        % any change to any of the function symbols in the type tree of
+        % feedback_info will result in a de-facto change in the format
+        % of feedback files, *without this fact necessarily being apparent
+        % to the person making the change*, which can thus easily result
+        % in the file format version number NOT being incremented.
+        io.read(Stream, ReadResult, !IO),
+        (
+            ReadResult = ok(Components),
+            Info0 = init_feedback_info(ActualProfiledProgram),
+            add_feedback_components(Components, Info0, Result)
+            % XXX We should check there nothing in the input after this term.
+            % XXX This would be easier to do if we read in the whole file
+            % using io.read_named_file_as_lines, and parsed this last line
+            % using read_term_from_string.
+        ;
+            ReadResult = eof,
+            Result = error(fre_unexpected_eof)
+        ;
+            ReadResult = error(Error, Line),
+            Result = error(fre_parse_error(Error, Line))
+        )
     ).
 
 :- pred add_feedback_components(list(feedback_component_wrapper)::in,
@@ -536,25 +539,9 @@ write_feedback_file(Path, Feedback, Result, !IO) :-
     io.open_output(Path, PathResult, !IO),
     (
         PathResult = ok(PathStream),
-        promise_equivalent_solutions [!:IO, ExcpResult] (
-            try_io(actually_write_feedback_file(PathStream, Feedback),
-                ExcpResult, !IO)
-        ),
-        % XXX PathStream ought to be closed here.
-        % io.close_output(PathStream, !IO),
-        (
-            ExcpResult = succeeded(_),
-            Result = fwr_ok
-        ;
-            ExcpResult = exception(ExcpUniv),
-
-            % If the exception is not of a type we expected, then re-throw it.
-            ( if univ_to_type(ExcpUniv, Excp) then
-                Result = fwr_write_error(Excp)
-            else
-                rethrow(ExcpResult)
-            )
-        )
+        actually_write_feedback_file(PathStream, Feedback, !IO),
+        io.close_output(PathStream, !IO),
+        Result = fwr_ok
     ;
         PathResult = error(ErrorCode),
         Result = fwr_open_error(ErrorCode)
@@ -566,9 +553,9 @@ write_feedback_file(Path, Feedback, Result, !IO) :-
     % XXX This should NOT be necessary.
     %
 :- pred actually_write_feedback_file(io.text_output_stream::in,
-    feedback_info::in, unit::out, io::di, io::uo) is det.
+    feedback_info::in, io::di, io::uo) is det.
 
-actually_write_feedback_file(Stream, FeedbackInfo, unit, !IO) :-
+actually_write_feedback_file(Stream, FeedbackInfo, !IO) :-
     FeedbackInfo = feedback_info(ProfiledProgramName,
         MaybeCandidateParallelConjs),
     io.format(Stream, "%s\n%s\n%s\n",
@@ -586,9 +573,9 @@ actually_write_feedback_file(Stream, FeedbackInfo, unit, !IO) :-
         ),
         list.reverse(!.RevComponents, Components)
     ),
+    % XXX See the comment on the corresponding io.read above.
     io.write(Stream, Components, !IO),
-    io.write_string(Stream, ".\n", !IO),
-    io.close_output(Stream, !IO).
+    io.write_string(Stream, ".\n", !IO).
 
 %---------------------------------------------------------------------------%
 %
