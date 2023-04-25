@@ -429,26 +429,26 @@ rev_goal_path_inside_relative(RevPathA, RevPathB, RevRelativePath) :-
 %---------------------------------------------------------------------------%
 
 rgp_to_fgp(ReverseGoalPath, ForwardGoalPath) :-
-    rgp_to_fgp_2(ReverseGoalPath, fgp_nil, ForwardGoalPath).
+    rgp_to_fgp_acc(ReverseGoalPath, fgp_nil, ForwardGoalPath).
 
-:- pred rgp_to_fgp_2(reverse_goal_path::in,
+:- pred rgp_to_fgp_acc(reverse_goal_path::in,
     forward_goal_path::in, forward_goal_path::out) is det.
 
-rgp_to_fgp_2(rgp_nil, !ForwardGoalPath).
-rgp_to_fgp_2(rgp_cons(EarlierSteps, LastStep), !ForwardGoalPath) :-
+rgp_to_fgp_acc(rgp_nil, !ForwardGoalPath).
+rgp_to_fgp_acc(rgp_cons(EarlierSteps, LastStep), !ForwardGoalPath) :-
     !:ForwardGoalPath = fgp_cons(LastStep, !.ForwardGoalPath),
-    rgp_to_fgp_2(EarlierSteps, !ForwardGoalPath).
+    rgp_to_fgp_acc(EarlierSteps, !ForwardGoalPath).
 
 fgp_to_rgp(ForwardGoalPath, ReverseGoalPath) :-
-    fgp_to_rgp_2(ForwardGoalPath, rgp_nil, ReverseGoalPath).
+    fgp_to_rgp_acc(ForwardGoalPath, rgp_nil, ReverseGoalPath).
 
-:- pred fgp_to_rgp_2(forward_goal_path::in,
+:- pred fgp_to_rgp_acc(forward_goal_path::in,
     reverse_goal_path::in, reverse_goal_path::out) is det.
 
-fgp_to_rgp_2(fgp_nil, !ReverseGoalPath).
-fgp_to_rgp_2(fgp_cons(FirstStep, LaterSteps), !ReverseGoalPath) :-
+fgp_to_rgp_acc(fgp_nil, !ReverseGoalPath).
+fgp_to_rgp_acc(fgp_cons(FirstStep, LaterSteps), !ReverseGoalPath) :-
     !:ReverseGoalPath = rgp_cons(!.ReverseGoalPath, FirstStep),
-    fgp_to_rgp_2(LaterSteps, !ReverseGoalPath).
+    fgp_to_rgp_acc(LaterSteps, !ReverseGoalPath).
 
 %---------------------------------------------------------------------------%
 
@@ -524,37 +524,50 @@ rev_goal_path_from_string_det(GoalPathStr, GoalPath) :-
 %---------------------%
 
 goal_path_step_from_string(String, Step) :-
-    string.first_char(String, First, Rest),
-    goal_path_step_from_string_2(First, Rest, Step).
-
-:- pred goal_path_step_from_string_2(char::in, string::in, goal_path_step::out)
-    is semidet.
-
-goal_path_step_from_string_2('c', NStr, step_conj(N)) :-
-    string.to_int(NStr, N).
-goal_path_step_from_string_2('d', NStr, step_disj(N)) :-
-    string.to_int(NStr, N).
-goal_path_step_from_string_2('s', Str, step_switch(N, MaybeM)) :-
-    string.words_separator(unify('-'), Str) = [NStr, MStr],
-    string.to_int(NStr, N),
-    % "na" is short for "not applicable"
-    ( if MStr = "na" then
-        MaybeM = unknown_num_functors_in_type
-    else
-        string.to_int(MStr, M),
-        MaybeM = known_num_functors_in_type(M)
+    string.first_char(String, FirstChar, RestStr),
+    (
+        ( FirstChar = '?',   Step = step_ite_cond
+        ; FirstChar = 't',   Step = step_ite_then
+        ; FirstChar = 'e',   Step = step_ite_else
+        ; FirstChar = ('~'), Step = step_neg
+        ; FirstChar = 'r',   Step = step_try
+        ; FirstChar = ('='), Step = step_lambda
+        ; FirstChar = 'a',   Step = step_atomic_main
+        ),
+        RestStr = ""
+    ;
+        FirstChar = 'c',
+        string.to_int(RestStr, N),
+        Step = step_conj(N)
+    ;
+        FirstChar = 'd',
+        string.to_int(RestStr, N),
+        Step = step_disj(N)
+    ;
+        FirstChar = 'o',
+        string.to_int(RestStr, N),
+        Step = step_atomic_orelse(N)
+    ;
+        FirstChar = 's',
+        string.words_separator(unify('-'), RestStr) = [NStr, MStr],
+        string.to_int(NStr, N),
+        ( if MStr = "na" then   % "na" is short for "not applicable"
+            MaybeM = unknown_num_functors_in_type
+        else
+            string.to_int(MStr, M),
+            MaybeM = known_num_functors_in_type(M)
+        ),
+        Step = step_switch(N, MaybeM)
+    ;
+        FirstChar = 'q',
+        (
+            RestStr = "",
+            Step = step_scope(scope_is_no_cut)
+        ;
+            RestStr = "!",
+            Step = step_scope(scope_is_cut)
+        )
     ).
-goal_path_step_from_string_2('?', "", step_ite_cond).
-goal_path_step_from_string_2('t', "", step_ite_then).
-goal_path_step_from_string_2('e', "", step_ite_else).
-goal_path_step_from_string_2('~', "", step_neg).
-goal_path_step_from_string_2('q', "!", step_scope(scope_is_cut)).
-goal_path_step_from_string_2('q', "", step_scope(scope_is_no_cut)).
-goal_path_step_from_string_2('r', "", step_try).
-goal_path_step_from_string_2('=', "", step_lambda).
-goal_path_step_from_string_2('a', "", step_atomic_main).
-goal_path_step_from_string_2('o', NStr, step_atomic_orelse(N)) :-
-    string.to_int(NStr, N).
 
 is_goal_path_separator(';').
 
@@ -639,16 +652,16 @@ create_forward_goal_path_map(ContainingGoalMap) = ForwardGoalPathMap :-
 
 create_reverse_goal_path_map(ContainingGoalMap) = ReverseGoalPathMap :-
     map.to_assoc_list(ContainingGoalMap, ContainingGoalList),
-    create_reverse_goal_path_map_2(ContainingGoalList,
+    create_reverse_goal_path_map_acc(ContainingGoalList,
         map.init, ReverseGoalPathMap).
 
-:- pred create_reverse_goal_path_map_2(
+:- pred create_reverse_goal_path_map_acc(
     assoc_list(goal_id, containing_goal)::in,
     map(goal_id, reverse_goal_path)::in, map(goal_id, reverse_goal_path)::out)
     is det.
 
-create_reverse_goal_path_map_2([], !ReverseGoalPathMap).
-create_reverse_goal_path_map_2([Head | Tail], !ReverseGoalPathMap) :-
+create_reverse_goal_path_map_acc([], !ReverseGoalPathMap).
+create_reverse_goal_path_map_acc([Head | Tail], !ReverseGoalPathMap) :-
     Head = GoalId - ContainingGoal,
     (
         ContainingGoal = whole_body_goal,
@@ -660,20 +673,20 @@ create_reverse_goal_path_map_2([Head | Tail], !ReverseGoalPathMap) :-
         GoalReversePath = rgp_cons(ContainingGoalReversePath, Step)
     ),
     map.det_insert(GoalId, GoalReversePath, !ReverseGoalPathMap),
-    create_reverse_goal_path_map_2(Tail, !ReverseGoalPathMap).
+    create_reverse_goal_path_map_acc(Tail, !ReverseGoalPathMap).
 
 create_reverse_goal_path_bimap(ContainingGoalMap) = ReverseGoalPathBiMap :-
     map.to_assoc_list(ContainingGoalMap, ContainingGoalList),
-    create_reverse_goal_path_bimap_2(ContainingGoalList,
+    create_reverse_goal_path_bimap_acc(ContainingGoalList,
         bimap.init, ReverseGoalPathBiMap).
 
-:- pred create_reverse_goal_path_bimap_2(
+:- pred create_reverse_goal_path_bimap_acc(
     assoc_list(goal_id, containing_goal)::in,
     bimap(goal_id, reverse_goal_path)::in,
     bimap(goal_id, reverse_goal_path)::out) is det.
 
-create_reverse_goal_path_bimap_2([], !ReverseGoalPathBiMap).
-create_reverse_goal_path_bimap_2([Head | Tail], !ReverseGoalPathBiMap) :-
+create_reverse_goal_path_bimap_acc([], !ReverseGoalPathBiMap).
+create_reverse_goal_path_bimap_acc([Head | Tail], !ReverseGoalPathBiMap) :-
     Head = GoalId - ContainingGoal,
     (
         ContainingGoal = whole_body_goal,
@@ -685,7 +698,7 @@ create_reverse_goal_path_bimap_2([Head | Tail], !ReverseGoalPathBiMap) :-
         GoalReversePath = rgp_cons(ContainingGoalReversePath, Step)
     ),
     bimap.det_insert(GoalId, GoalReversePath, !ReverseGoalPathBiMap),
-    create_reverse_goal_path_bimap_2(Tail, !ReverseGoalPathBiMap).
+    create_reverse_goal_path_bimap_acc(Tail, !ReverseGoalPathBiMap).
 
 goal_id_inside(ContainingGoalId, GoalIdA, GoalIdB) :-
     (

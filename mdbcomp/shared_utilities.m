@@ -35,10 +35,8 @@
 
 :- pragma foreign_decl("C", "
 
-/*
-** On some systems (e.g. Mac OS X 10.3) RLIMIT_STACK is defined in the
-** header sys/resource.h.
-*/
+// On some systems (e.g. Mac OS X 10.3) RLIMIT_STACK is defined in the
+// header sys/resource.h.
 #if defined(MR_HAVE_SYS_RESOURCE_H)
     #include <sys/resource.h>
 #endif

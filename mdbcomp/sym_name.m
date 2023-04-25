@@ -211,6 +211,19 @@
 :- pred strip_outermost_qualifier(sym_name::in,
     string::out, sym_name::out) is semidet.
 
+    % sym_name_to_term(Context, SymName, ArgTerms, Term):
+    %
+    % Construct Term as the function symbol SymName applied to ArgTerms.
+    % The base name in SymName is first wrapped around ArgTerms, and then
+    % the qualifiers are each individually joined to the front of the result
+    % using the module qualifier function symbol ".".
+    %
+    % For example, if SymName is a.b.c and ArgTerms is [X, Y], then
+    % sym_name_to_term will bind Term to '.'(a, '.'(b, c(X, Y))).
+    %
+    % The context of each term constructed by the above process will be
+    % set to Context.
+    %
 :- pred sym_name_to_term(term.context::in, sym_name::in, list(term(T))::in,
     term(T)::out) is det.
 

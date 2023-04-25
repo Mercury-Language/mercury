@@ -544,18 +544,26 @@ compare_path_ports(PathPortA, PathPortB, Result) :-
 
 slice_exec_count_compare(SortStr, ExecCount1, ExecCount2, Result) :-
     ( if string.first_char(SortStr, C, SortStrTail) then
-        ( if C = 'c' then
-            builtin.compare(Result0,
-                ExecCount1 ^ slice_count, ExecCount2 ^ slice_count)
-        else if C = 'C' then
-            builtin.compare(Result0,
-                ExecCount2 ^ slice_count, ExecCount1 ^ slice_count)
-        else if C = 't' then
-            builtin.compare(Result0,
-                ExecCount1 ^ slice_tests, ExecCount2 ^ slice_tests)
-        else if C = 'T' then
-            builtin.compare(Result0,
-                ExecCount2 ^ slice_tests, ExecCount1 ^ slice_tests)
+        ( if
+            (
+                C = 'c',
+                CntA = ExecCount1 ^ slice_count,
+                CntB = ExecCount2 ^ slice_count
+            ;
+                C = 'C',
+                CntA = ExecCount2 ^ slice_count,
+                CntB = ExecCount1 ^ slice_count
+            ;
+                C = 't',
+                CntA = ExecCount1 ^ slice_tests,
+                CntB = ExecCount2 ^ slice_tests
+            ;
+                C = 'T',
+                CntA = ExecCount2 ^ slice_tests,
+                CntB = ExecCount1 ^ slice_tests
+            )
+        then
+            builtin.compare(Result0, CntA, CntB)
         else
             unexpected($pred, "invalid sort string")
         ),
@@ -756,44 +764,56 @@ dice_label_count_compare(SortStr, LabelCountA, LabelCountB, Result) :-
 
 dice_exec_count_compare(SortStr, ExecCount1, ExecCount2, Result) :-
     ( if string.first_char(SortStr, C, SortStrTail) then
-        ( if C = 'p' then
-            builtin.compare(Result0,
-                ExecCount1 ^ pass_count, ExecCount2 ^ pass_count)
-        else if C = 'P' then
-            builtin.compare(Result0,
-                ExecCount2 ^ pass_count, ExecCount1 ^ pass_count)
-        else if C = 'f' then
-            builtin.compare(Result0,
-                ExecCount1 ^ fail_count, ExecCount2 ^ fail_count)
-        else if C = 'F' then
-            builtin.compare(Result0,
-                ExecCount2 ^ fail_count, ExecCount1 ^ fail_count)
-        else if C = 's' then
-            builtin.compare(Result0,
-                suspicion_ratio(ExecCount1 ^ pass_count,
+        ( if
+            (
+                C = 'p',
+                CntA = ExecCount1 ^ pass_count,
+                CntB = ExecCount2 ^ pass_count
+            ;
+                C = 'P',
+                CntA = ExecCount2 ^ pass_count,
+                CntB = ExecCount1 ^ pass_count
+            ;
+                C = 'f',
+                CntA = ExecCount1 ^ fail_count,
+                CntB = ExecCount2 ^ fail_count
+            ;
+                C = 'F',
+                CntA = ExecCount2 ^ fail_count,
+                CntB = ExecCount1 ^ fail_count
+            ;
+                C = 'd',
+                CntA = int.minus(ExecCount1 ^ pass_count,
                     ExecCount1 ^ fail_count),
-                suspicion_ratio(ExecCount2 ^ pass_count,
-                    ExecCount2 ^ fail_count))
-        else if C = 'S' then
-            builtin.compare(Result0,
-                suspicion_ratio(ExecCount2 ^ pass_count,
+                CntB = int.minus(ExecCount2 ^ pass_count,
+                    ExecCount2 ^ fail_count)
+            ;
+                C = 'D',
+                CntA = int.minus(ExecCount1 ^ pass_count,
+                    ExecCount1 ^ fail_count),
+                CntB = int.minus(ExecCount2 ^ pass_count,
+                    ExecCount2 ^ fail_count)
+            )
+        then
+            % This is a comparison of two integers.
+            builtin.compare(Result0, CntA, CntB)
+        else if
+            (
+                C = 's',
+                RatioA = suspicion_ratio(ExecCount1 ^ pass_count,
+                    ExecCount1 ^ fail_count),
+                RatioB = suspicion_ratio(ExecCount2 ^ pass_count,
+                    ExecCount2 ^ fail_count)
+            ;
+                C = 'S',
+                RatioA = suspicion_ratio(ExecCount2 ^ pass_count,
                     ExecCount2 ^ fail_count),
-                suspicion_ratio(ExecCount1 ^ pass_count,
-                    ExecCount1 ^ fail_count))
-        else if C = 'd' then
-            % using - instead of int.minus is ambiguous.
-            Diff1 = int.minus(ExecCount1 ^ pass_count,
-                ExecCount1 ^ fail_count),
-            Diff2 = int.minus(ExecCount2 ^ pass_count,
-                ExecCount2 ^ fail_count),
-            builtin.compare(Result0, Diff1, Diff2)
-        else if C = 'D' then
-            % using - instead of int.minus is ambiguous.
-            Diff1 = int.minus(ExecCount1 ^ pass_count,
-                ExecCount1 ^ fail_count),
-            Diff2 = int.minus(ExecCount2 ^ pass_count,
-                ExecCount2 ^ fail_count),
-            builtin.compare(Result0, Diff2, Diff1)
+                RatioB = suspicion_ratio(ExecCount1 ^ pass_count,
+                    ExecCount1 ^ fail_count)
+            )
+        then
+            % This is a comparison of two floats.
+            builtin.compare(Result0, RatioA, RatioB)
         else
             unexpected($pred, "invalid sort string")
         ),
@@ -886,11 +906,12 @@ suspicion_ratio(PassCount, FailCount) = R1 :-
         R1 = 0.0
     else
         R = float(FailCount) / float(Denominator),
-        % The original threshold here was 0.2. The new value is 3/16, which is
-        % exactly representable in binary. This avoids differences in rounding
-        % between 32 and 64 bit platforms, which can show up as differences
-        % between the stage 2 and 3 versions of the code we generate
-        % for this module during a bootcheck in the C# and Java grades.
+        % The original threshold here was 0.2. The new value is 3/16,
+        % which, unlike 0.2, is exactly representable in binary. This avoids
+        % differences in rounding between 32 and 64 bit platforms, which
+        % can show up as differences between the stage 2 and 3 versions
+        % of the code we generate for this module during a bootcheck
+        % in the C# and Java grades.
         ( if R >= 0.1875 then
             R1 = R
         else

@@ -44,23 +44,37 @@
 
 :- implementation.
 
-% See library/library.m for why we implement this predicate this way.
+% See the comment on library.version in library/library.m
+% for why we implement this predicate this way.
 
 :- pragma foreign_proc("C",
-    mdbcomp.version(Version::out),
+    mdbcomp.version(FullVersion::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MR_ConstString version_string;
 
     version_string = MR_VERSION "", configured for "" MR_FULLARCH;
-    /*
-    ** Cast away const needed here, because Mercury declares Version
-    ** with type MR_String rather than MR_ConstString.
-    */
-    Version = (MR_String) (MR_Word) version_string;
+    // Cast away const needed here, because Mercury declares Version
+    // with type MR_String rather than MR_ConstString.
+    FullVersion = (MR_String) (MR_Word) version_string;
 ").
-
-mdbcomp.version("unknown version").
+:- pragma foreign_proc("C#",
+    version(FullVersion::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    string Version = runtime.Constants.MR_VERSION;
+    string Fullarch = runtime.Constants.MR_FULLARCH;
+    FullVersion = System.String.Concat(Version,
+        System.String.Concat("", configured for "", Fullarch));
+").
+:- pragma foreign_proc("Java",
+    version(FullVersion::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    String Version = jmercury.runtime.Constants.MR_VERSION;
+    String Fullarch = jmercury.runtime.Constants.MR_FULLARCH;
+    FullVersion = Version.concat("", configured for "".concat(Fullarch));
+").
 
 :- pred mercury_mdbcomp_module(string::in) is semidet.
 
