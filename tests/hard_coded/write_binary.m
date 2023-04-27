@@ -13,6 +13,8 @@
 
 :- pred main(io::di, io::uo) is cc_multi.
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module array.
@@ -22,17 +24,14 @@
 :- import_module io.file.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module require.
 :- import_module std_util.
+:- import_module string.
 :- import_module term.
+:- import_module univ.
 
-:- pred test_ops(io::di, io::uo) is cc_multi.
-:- pred test_builtins(io::di, io::uo) is cc_multi.
-:- pred test_discriminated(io::di, io::uo) is cc_multi.
-:- pred test_polymorphism(io::di, io::uo) is cc_multi.
-:- pred test_other(io::di, io::uo) is cc_multi.
-:- pred do_test(T::in, io::di, io::uo) is cc_multi.
-:- pred do_test_2(T::in, T::out, io::di, io::uo) is det.
+%---------------------------------------------------------------------------%
 
 :- type enum
     --->    one
@@ -84,6 +83,8 @@ main(!IO) :-
     test_builtins(!IO),
     test_other(!IO).
 
+:- pred test_ops(io::di, io::uo) is cc_multi.
+
 test_ops(!IO) :-
     io.write_string("TESTING TERMS WITH OPERATORS\n", !IO),
     do_test(var("X") + int(3) * var("X^2") ; (type), !IO),
@@ -95,8 +96,10 @@ test_ops(!IO) :-
     do_test(((blah ; blah), blah) * blah ; blah, !IO),
     do_test((type) * blah ; (type), !IO).
 
+:- pred test_discriminated(io::di, io::uo) is cc_multi.
+
 test_discriminated(!IO) :-
-    io.write_string("TESTING DISCRIMINATED UNIONS\n", !IO),
+    io.write_string("\nTESTING DISCRIMINATED UNIONS\n", !IO),
 
     % test enumerations
     do_test(one, !IO),
@@ -116,14 +119,18 @@ test_discriminated(!IO) :-
     do_test(wombat, !IO),
     do_test(foo, !IO).
 
+:- pred test_polymorphism(io::di, io::uo) is cc_multi.
+
 test_polymorphism(!IO) :-
-    io.write_string("TESTING POLYMORPHISM\n", !IO),
+    io.write_string("\nTESTING POLYMORPHISM\n", !IO),
     do_test(poly_one([2399.3]) `with_type` poly(list(float), int), !IO),
     do_test(poly_two(3) `with_type` poly(list(float), int), !IO),
     do_test(poly_three(3.33, 4, poly_one(9.11)), !IO).
 
+:- pred test_builtins(io::di, io::uo) is cc_multi.
+
 test_builtins(!IO) :-
-    io.write_string("TESTING BUILTINS\n", !IO),
+    io.write_string("\nTESTING BUILTINS\n", !IO),
 
     % test strings
     do_test("", !IO),
@@ -174,11 +181,13 @@ test_builtins(!IO) :-
     % test predicates
     % io.read_binary doesn't work for higher-order terms,
     % so this test is expected to fail.
-    io.write_string("next text is expected to fail:\n", !IO),
+    io.write_string("\nthe next test is expected to fail:\n", !IO),
     do_test(do_test `with_type` pred(int, io, io), !IO).
 
+:- pred test_other(io::di, io::uo) is cc_multi.
+
 test_other(!IO) :-
-    io.write_string("TESTING OTHER TYPES\n", !IO),
+    io.write_string("\nTESTING OTHER TYPES\n", !IO),
     term.init_var_supply(VarSupply `with_type` var_supply(generic)),
     term.create_var(Var, VarSupply, NewVarSupply),
     do_test(Var, !IO),
@@ -196,54 +205,130 @@ test_other(!IO) :-
     array.from_list([1, 2, 3, 4], Array),
     do_test(Array, !IO).
 
+%---------------------------------------------------------------------------%
+
+:- pred do_test(T::in, io::di, io::uo) is cc_multi.
+
 do_test(Term, !IO) :-
-    try_io(do_test_2(Term), Result, !IO),
-    ( if Result = succeeded(TermRead) then
-        io.print("test passed:\n", !IO),
-        io.print(Term, !IO), io.nl(!IO),
-        io.print(TermRead, !IO), io.nl(!IO)
-    else
-        io.print("test failed:\n", !IO),
-        io.print(Result, !IO), io.nl(!IO),
-        io.print(Term, !IO), io.nl(!IO)
+    % io.write_string("\ntest input <", !IO),
+    % io.print(Term, !IO),
+    % io.write_string(">\n", !IO),
+    io.write_string("\n", !IO),
+    io.print(Term, !IO),
+    io.write_string("\n", !IO),
+    % The code of do_test_2 itself does not throw any exceptions (anymore),
+    % but the implementations of io.write_binary and io.read_binary in the
+    % Mercury standard library *may* throw exceptions. We catch them here.
+    try_io(do_test_2(Term), TryResult, !IO),
+    (
+        TryResult = succeeded(MaybeTestErrorMsg),
+        (
+            MaybeTestErrorMsg = no,
+            io.print("test passed\n", !IO)
+        ;
+            MaybeTestErrorMsg = yes(ErrorMsg),
+            io.format("test failed with this error:\n%s\n", [s(ErrorMsg)], !IO)
+        )
+    ;
+        TryResult = exception(Univ),
+        io.write_string("test threw this exception:\n", !IO),
+        io.print_line(Univ, !IO)
     ).
 
-do_test_2(Term, TermRead, !IO) :-
+:- pred do_test_2(T::in, maybe(string)::out, io::di, io::uo) is det.
+
+do_test_2(Term, MaybeTestErrorMsg, !IO) :-
     io.file.make_temp_file(FileNameRes, !IO),
     ( if FileNameRes = ok(FileName) then
-        io.open_binary_output(FileName, OutputRes, !IO),
-        ( if OutputRes = ok(OutputStream) then
+        io.open_binary_output(FileName, OutputResult, !IO),
+        (
+            OutputResult = ok(OutputStream),
             io.write_byte(OutputStream, 42, !IO),
             io.write_binary(OutputStream, Term, !IO),
             io.write_byte(OutputStream, 43, !IO),
             io.close_binary_output(OutputStream, !IO),
-            io.open_binary_input(FileName, InputRes, !IO),
-            ( if InputRes = ok(InputStream) then
-                io.read_byte(InputStream, B42, !IO),
-                io.read_binary(InputStream, Result, !IO),
-                io.read_byte(InputStream, B43, !IO),
+            io.open_binary_input(FileName, InputResult, !IO),
+            (
+                InputResult = ok(InputStream),
+                io.read_byte(InputStream, Result42, !IO),
+                io.read_binary(InputStream, ResultTerm, !IO),
+                io.read_byte(InputStream, Result43, !IO),
                 io.close_binary_input(InputStream, !IO),
                 ( if
-                    B42 = ok(42),
-                    B43 = ok(43),
-                    Result = ok(TermRead0),
-                    TermRead0 = Term
+                    Result42 = ok(42),
+                    ResultTerm = ok(Term),
+                    Result43 = ok(43)
                 then
-                    io.file.remove_file(FileName, _, !IO),
-                    io.print("ok... ", !IO),
-                    TermRead = TermRead0
+                    MaybeTestErrorMsg = no
                 else
-                    io.file.remove_file(FileName, _, !IO),
-                    throw("error reading term back in again")
+                    ( if
+                        Result42 = ok(42),
+                        ResultTerm = ok(Term)
+                    then
+                        (
+                            Result43 = ok(ReadBack43),
+                            BackStr = string.string(ReadBack43),
+                            string.format("orig 43, readback <%s>",
+                                [s(BackStr)], Msg)
+                        ;
+                            Result43 = error(IOError),
+                            io.error_message(IOError, IOErrorMsg),
+                            string.format("orig 43, readback error\n<%s>",
+                                [s(IOErrorMsg)], Msg)
+                        ;
+                            Result43 = eof,
+                            Msg = "orig 43, readback eof"
+                        )
+                    else if
+                        Result42 = ok(42)
+                    then
+                        OrigStr = string.string(Term),
+                        (
+                            ResultTerm = ok(ReadBackTerm),
+                            BackStr = string.string(ReadBackTerm),
+                            string.format("orig %s, readback <%s>",
+                                [s(OrigStr), s(BackStr)], Msg)
+                        ;
+                            ResultTerm = error(IOError),
+                            io.error_message(IOError, IOErrorMsg),
+                            string.format("orig %s, readback error\n<%s>",
+                                [s(OrigStr), s(IOErrorMsg)], Msg)
+                        ;
+                            ResultTerm = eof,
+                            string.format("orig %s, readback eof",
+                                [s(OrigStr)], Msg)
+                        )
+                    else
+                        (
+                            Result42 = ok(ReadBack42),
+                            BackStr = string.string(ReadBack42),
+                            string.format("orig 42, readback <%s>",
+                                [s(BackStr)], Msg)
+                        ;
+                            Result42 = error(IOError),
+                            io.error_message(IOError, IOErrorMsg),
+                            string.format("orig 42, readback error\n<%s>",
+                                [s(IOErrorMsg)], Msg)
+                        ;
+                            Result42 = eof,
+                            Msg = "orig 42, readback eof"
+                        )
+                    ),
+                    MaybeTestErrorMsg = yes(Msg)
                 )
-            else
-                io.file.remove_file(FileName, _, !IO),
-                throw(InputRes)
+            ;
+                InputResult = error(IOError),
+                io.error_message(IOError, IOErrorMsg),
+                MaybeTestErrorMsg = yes(IOErrorMsg)
             )
-        else
-            io.file.remove_file(FileName, _, !IO),
-            throw(OutputRes)
-        )
+        ;
+            OutputResult = error(IOError),
+            io.error_message(IOError, IOErrorMsg),
+            MaybeTestErrorMsg = yes(IOErrorMsg)
+        ),
+        io.file.remove_file(FileName, _, !IO)
     else
-        unexpected($pred, "cannot open temp file")
+        MaybeTestErrorMsg = yes("cannot create a temp file")
     ).
+
+%---------------------------------------------------------------------------%

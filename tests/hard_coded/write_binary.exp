@@ -1,181 +1,186 @@
 TESTING TERMS WITH OPERATORS
-ok... test passed:
+
 var("X") + int(3) * var("X^2") ; (type)
-var("X") + int(3) * var("X^2") ; (type)
-ok... test passed:
+test passed
+
 { type }
-{ type }
-ok... test passed:
+test passed
+
 { '?-' }
-{ '?-' }
-ok... test passed:
+test passed
+
 '?-'
-'?-'
-ok... test passed:
+test passed
+
 { blah }
-{ blah }
-ok... test passed:
+test passed
+
 blah ; (type), (type) * blah ; (type)
-blah ; (type), (type) * blah ; (type)
-ok... test passed:
+test passed
+
 ((blah ; blah), blah) * blah ; blah
-((blah ; blah), blah) * blah ; blah
-ok... test passed:
+test passed
+
 (type) * blah ; (type)
-(type) * blah ; (type)
+test passed
+
 TESTING DISCRIMINATED UNIONS
-ok... test passed:
+
 one
-one
-ok... test passed:
+test passed
+
 two
-two
-ok... test passed:
+test passed
+
 three
-three
-ok... test passed:
+test passed
+
 apple([9, 5, 1])
-apple([9, 5, 1])
-ok... test passed:
+test passed
+
 banana([three, one, two])
-banana([three, one, two])
-ok... test passed:
+test passed
+
 zop(3.3, 2.03)
-zop(3.3, 2.03)
-ok... test passed:
+test passed
+
 zip(3, 2)
-zip(3, 2)
-ok... test passed:
+test passed
+
 zap(3, -2.111)
-zap(3, -2.111)
-ok... test passed:
+test passed
+
 wombat
-wombat
-ok... test passed:
+test passed
+
 foo
-foo
+test passed
+
 TESTING POLYMORPHISM
-ok... test passed:
+
 poly_one([2399.3])
-poly_one([2399.3])
-ok... test passed:
+test passed
+
 poly_two(3)
-poly_two(3)
-ok... test passed:
+test passed
+
 poly_three(3.33, 4, poly_one(9.11))
-poly_three(3.33, 4, poly_one(9.11))
+test passed
+
 TESTING BUILTINS
-ok... test passed:
 
 
-ok... test passed:
-Hello, world
+test passed
 
 Hello, world
 
-ok... test passed:
+test passed
+
 Foo%sFoo
-Foo%sFoo
-ok... test passed:
+test passed
+
 "
-"
-ok... test passed:
+test passed
+
 a
-a
-ok... test passed:
+test passed
+
 &
-&
-ok... test passed:
+test passed
+
 .
-.
-ok... test passed:
+test passed
+
 %
-%
-ok... test passed:
+test passed
+
  
- 
-ok... test passed:
+test passed
+
 	
-	
-ok... test passed:
+test passed
 
 
 
+test passed
 
-ok... test passed:
 \
-\
-ok... test passed:
+test passed
+
 *
-*
-ok... test passed:
+test passed
+
 /
-/
-ok... test passed:
+test passed
+
 3.14159
-3.14159
-ok... test passed:
+test passed
+
 1.128324983e-21
-1.128324983e-21
-ok... test passed:
+test passed
+
 2.23954899e+23
-2.23954899e+23
-ok... test passed:
+test passed
+
 -65
--65
-ok... test passed:
+test passed
+
 4
-4
-ok... test passed:
+test passed
+
 651
-651
-ok... test passed:
+test passed
+
 -128
--128
-ok... test passed:
+test passed
+
 127
-127
-ok... test passed:
+test passed
+
 255
-255
-ok... test passed:
+test passed
+
 -32768
--32768
-ok... test passed:
+test passed
+
 32767
-32767
-ok... test passed:
+test passed
+
 65535
-65535
-ok... test passed:
+test passed
+
 -2147483648
--2147483648
-ok... test passed:
+test passed
+
 2147483647
-2147483647
-ok... test passed:
+test passed
+
 4294967295
-4294967295
-next text is expected to fail:
-test failed:
-exception(univ_cons("error reading term back in again"))
+test passed
+
+the next test is expected to fail:
+
 '<<predicate>>'
+test failed with this error:
+orig '<<predicate>>', readback error
+<predicate `io.read'/4: the term read did not have the right type>
+
 TESTING OTHER TYPES
-ok... test passed:
+
 var(1)
-var(1)
-ok... test passed:
+test passed
+
 var_supply(0)
-var_supply(0)
-ok... test passed:
+test passed
+
 var_supply(1)
-var_supply(1)
-ok... test passed:
+test passed
+
 empty
-empty
-ok... test passed:
+test passed
+
 qwerty(4)
-qwerty(4)
-ok... test passed:
+test passed
+
 array([1, 2, 3, 4])
-array([1, 2, 3, 4])
+test passed
