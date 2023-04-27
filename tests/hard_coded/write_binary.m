@@ -210,12 +210,9 @@ test_other(!IO) :-
 :- pred do_test(T::in, io::di, io::uo) is cc_multi.
 
 do_test(Term, !IO) :-
-    % io.write_string("\ntest input <", !IO),
-    % io.print(Term, !IO),
-    % io.write_string(">\n", !IO),
-    io.write_string("\n", !IO),
+    io.write_string("\ntest input <", !IO),
     io.print(Term, !IO),
-    io.write_string("\n", !IO),
+    io.write_string(">\n", !IO),
     % The code of do_test_2 itself does not throw any exceptions (anymore),
     % but the implementations of io.write_binary and io.read_binary in the
     % Mercury standard library *may* throw exceptions. We catch them here.

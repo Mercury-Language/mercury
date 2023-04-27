@@ -1,186 +1,186 @@
 TESTING TERMS WITH OPERATORS
 
-var("X") + int(3) * var("X^2") ; (type)
+test input <var("X") + int(3) * var("X^2") ; (type)>
 test passed
 
-{ type }
+test input <{ type }>
 test passed
 
-{ '?-' }
+test input <{ '?-' }>
 test passed
 
-'?-'
+test input <'?-'>
 test passed
 
-{ blah }
+test input <{ blah }>
 test passed
 
-blah ; (type), (type) * blah ; (type)
+test input <blah ; (type), (type) * blah ; (type)>
 test passed
 
-((blah ; blah), blah) * blah ; blah
+test input <((blah ; blah), blah) * blah ; blah>
 test passed
 
-(type) * blah ; (type)
+test input <(type) * blah ; (type)>
 test passed
 
 TESTING DISCRIMINATED UNIONS
 
-one
+test input <one>
 test passed
 
-two
+test input <two>
 test passed
 
-three
+test input <three>
 test passed
 
-apple([9, 5, 1])
+test input <apple([9, 5, 1])>
 test passed
 
-banana([three, one, two])
+test input <banana([three, one, two])>
 test passed
 
-zop(3.3, 2.03)
+test input <zop(3.3, 2.03)>
 test passed
 
-zip(3, 2)
+test input <zip(3, 2)>
 test passed
 
-zap(3, -2.111)
+test input <zap(3, -2.111)>
 test passed
 
-wombat
+test input <wombat>
 test passed
 
-foo
+test input <foo>
 test passed
 
 TESTING POLYMORPHISM
 
-poly_one([2399.3])
+test input <poly_one([2399.3])>
 test passed
 
-poly_two(3)
+test input <poly_two(3)>
 test passed
 
-poly_three(3.33, 4, poly_one(9.11))
+test input <poly_three(3.33, 4, poly_one(9.11))>
 test passed
 
 TESTING BUILTINS
 
-
+test input <>
 test passed
 
-Hello, world
-
+test input <Hello, world
+>
 test passed
 
-Foo%sFoo
+test input <Foo%sFoo>
 test passed
 
-"
+test input <">
 test passed
 
-a
+test input <a>
 test passed
 
-&
+test input <&>
 test passed
 
-.
+test input <.>
 test passed
 
-%
+test input <%>
 test passed
 
- 
+test input < >
 test passed
 
-	
+test input <	>
 test passed
 
-
-
+test input <
+>
 test passed
 
-\
+test input <\>
 test passed
 
-*
+test input <*>
 test passed
 
-/
+test input </>
 test passed
 
-3.14159
+test input <3.14159>
 test passed
 
-1.128324983e-21
+test input <1.128324983e-21>
 test passed
 
-2.23954899e+23
+test input <2.23954899e+23>
 test passed
 
--65
+test input <-65>
 test passed
 
-4
+test input <4>
 test passed
 
-651
+test input <651>
 test passed
 
--128
+test input <-128>
 test passed
 
-127
+test input <127>
 test passed
 
-255
+test input <255>
 test passed
 
--32768
+test input <-32768>
 test passed
 
-32767
+test input <32767>
 test passed
 
-65535
+test input <65535>
 test passed
 
--2147483648
+test input <-2147483648>
 test passed
 
-2147483647
+test input <2147483647>
 test passed
 
-4294967295
+test input <4294967295>
 test passed
 
 the next test is expected to fail:
 
-'<<predicate>>'
+test input <'<<predicate>>'>
 test failed with this error:
 orig '<<predicate>>', readback error
 <predicate `io.read'/4: the term read did not have the right type>
 
 TESTING OTHER TYPES
 
-var(1)
+test input <var(1)>
 test passed
 
-var_supply(0)
+test input <var_supply(0)>
 test passed
 
-var_supply(1)
+test input <var_supply(1)>
 test passed
 
-empty
+test input <empty>
 test passed
 
-qwerty(4)
+test input <qwerty(4)>
 test passed
 
-array([1, 2, 3, 4])
+test input <array([1, 2, 3, 4])>
 test passed
