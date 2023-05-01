@@ -1,110 +1,114 @@
-MCFLAGS-allow_stubs =		--allow-stubs --no-warn-stubs --infer-all
-MCFLAGS-any_call_hoist_bug = 	--loop-invariants
-MCFLAGS-bad_direct_reuse =	--ctgc
-MCFLAGS-bad_indirect_reuse =	--ctgc --no-common-struct
-MCFLAGS-bad_indirect_reuse2 =	--ctgc --no-common-struct
-MCFLAGS-bad_indirect_reuse2b =	--ctgc --no-common-struct
-MCFLAGS-bad_indirect_reuse3 =	--ctgc --no-common-struct
+MCFLAGS-allow_stubs =           --allow-stubs --no-warn-stubs --infer-all
+MCFLAGS-any_call_hoist_bug =    --loop-invariants
+MCFLAGS-bad_direct_reuse =      --ctgc
+MCFLAGS-bad_indirect_reuse =    --ctgc --no-common-struct
+MCFLAGS-bad_indirect_reuse2 =   --ctgc --no-common-struct
+MCFLAGS-bad_indirect_reuse2b =  --ctgc --no-common-struct
+MCFLAGS-bad_indirect_reuse3 =   --ctgc --no-common-struct
 MCFLAGS-big_array_from_list =   --optimize-tailcalls
-MCFLAGS-bigtest =		--intermodule-optimization -O3
-MCFLAGS-boyer =			--infer-all
-MCFLAGS-bug103 =		--optimize-constructor-last-call
-MCFLAGS-bug160 =		-w --optimize-peep-mkword
-MCFLAGS-bug240 =		-O1
-MCFLAGS-bug300 =		--no-const-struct --optimize-constructor-last-call
-MCFLAGS-bug314 =		--trace deep
-MCFLAGS-bug392 =		-O0 --deforestation
-MCFLAGS-bug455_mod_a 		= --intermodule-optimization
-MCFLAGS-bug548 =        --inlining
-MCFLAGS-checked_nondet_tailcall	= --checked-nondet-tailcalls
-MCFLAGS-checked_nondet_tailcall_noinline = --checked-nondet-tailcalls --no-inlining
-MCFLAGS-cc_and_non_cc_test = 	--no-inlining
-MCFLAGS-constraint	=	--constraint-propagation --enable-termination
-MCFLAGS-constraint_order =	--constraint-propagation --enable-termination
-MCFLAGS-coerce_opt =		--intermodule-optimization
-MCFLAGS-deforest_cc_bug =	--deforestation
+MCFLAGS-bigtest =               --intermodule-optimization -O3
+MCFLAGS-boyer =                 --infer-all
+MCFLAGS-bug103 =                --optimize-constructor-last-call
+MCFLAGS-bug160 =                -w --optimize-peep-mkword
+MCFLAGS-bug240 =                -O1
+MCFLAGS-bug300 =            --no-const-struct --optimize-constructor-last-call
+MCFLAGS-bug314 =                --trace deep
+MCFLAGS-bug392 =                -O0 --deforestation
+MCFLAGS-bug455_mod_a =          --intermodule-optimization
+MCFLAGS-bug548 =                --inlining
+MCFLAGS-checked_nondet_tailcall = --checked-nondet-tailcalls
+MCFLAGS-checked_nondet_tailcall_noinline = \
+                                --checked-nondet-tailcalls --no-inlining
+MCFLAGS-cc_and_non_cc_test =    --no-inlining
+MCFLAGS-constraint =            --constraint-propagation --enable-termination
+MCFLAGS-constraint_order =      --constraint-propagation --enable-termination
+MCFLAGS-coerce_opt =            --intermodule-optimization
+MCFLAGS-deforest_cc_bug =       --deforestation
 MCFLAGS-delay_partial_test =    --delay-partial-instantiations
 MCFLAGS-delay_partial_test2 =   --delay-partial-instantiations
-MCFLAGS-ground_terms = 		--from-ground-term-threshold=2
-MCFLAGS-impl_defn_literals = 		--no-warn-simple-code
+MCFLAGS-ground_terms =          --from-ground-term-threshold=2
+MCFLAGS-impl_defn_literals =    --no-warn-simple-code
 
-MCFLAGS-lp		=	--intermodule-optimization -O3
+MCFLAGS-lp =                    --intermodule-optimization -O3
 MCFLAGS-elim_local_var_char =   --eliminate-local-vars
-MCFLAGS-float_consistency =	--optimize-constant-propagation
-MCFLAGS-foreign_enum_mod1 = 	--intermodule-optimization
-MCFLAGS-foreign_enum_mod2 = 	--intermodule-optimization
-MCFLAGS-from_ground_term_bug = 	--from-ground-term-threshold=4
-MCFLAGS-func_test	=	--infer-all
-MCFLAGS-ho_order	=	--optimize-higher-order
-MCFLAGS-ho_order2	=	--optimize-higher-order
-MCFLAGS-ho_float_reg    =       --no-warn-overlapping-scopes
-MCFLAGS-no_fully_strict	=	--no-fully-strict
-MCFLAGS-one_member	=	-O5
-MCFLAGS-impure_foreign	=	--optimize-duplicate-calls
-MCFLAGS-int8_static_data =	-O0
-MCFLAGS-intermod_c_code =	--intermodule-optimization
-MCFLAGS-intermod_c_code2 =	--intermodule-optimization
+MCFLAGS-float_consistency =     --optimize-constant-propagation
+MCFLAGS-foreign_enum_mod1 =     --intermodule-optimization
+MCFLAGS-foreign_enum_mod2 =     --intermodule-optimization
+MCFLAGS-from_ground_term_bug =  --from-ground-term-threshold=4
+MCFLAGS-func_test =             --infer-all
+MCFLAGS-ho_order =              --optimize-higher-order
+MCFLAGS-ho_order2 =             --optimize-higher-order
+MCFLAGS-ho_float_reg =          --no-warn-overlapping-scopes
+MCFLAGS-no_fully_strict =       --no-fully-strict
+MCFLAGS-one_member =            -O5
+MCFLAGS-impure_foreign =        --optimize-duplicate-calls
+MCFLAGS-int8_static_data =      -O0
+MCFLAGS-intermod_c_code =       --intermodule-optimization
+MCFLAGS-intermod_c_code2 =      --intermodule-optimization
 MCFLAGS-intermod_foreign_type = --intermodule-optimization
 MCFLAGS-intermod_foreign_type2 = --intermodule-optimization
-MCFLAGS-intermod_may_export_body =	--intermodule-optimization
-MCFLAGS-intermod_may_export_body2 =	--intermodule-optimization
-MCFLAGS-intermod_multimode =	--intermodule-optimization
+MCFLAGS-intermod_may_export_body = --intermodule-optimization
+MCFLAGS-intermod_may_export_body2 = --intermodule-optimization
+MCFLAGS-intermod_multimode =    --intermodule-optimization
 MCFLAGS-intermod_multimode_main = --intermodule-optimization
-MCFLAGS-intermod_poly_mode = 	--intermodule-optimization
-MCFLAGS-intermod_poly_mode_2 = 	--intermodule-optimization
+MCFLAGS-intermod_poly_mode =    --intermodule-optimization
+MCFLAGS-intermod_poly_mode_2 =  --intermodule-optimization
 MCFLAGS-intermod_pragma_clause = --intermodule-optimization
 MCFLAGS-intermod_pragma_clause_sub = --intermodule-optimization
-MCFLAGS-intermod_try_goal =	--intermodule-optimization
-MCFLAGS-intermod_try_goal2 =	--intermodule-optimization
-MCFLAGS-intermod_type_qual =	--intermodule-optimization
-MCFLAGS-intermod_type_qual2 =	--intermodule-optimization
-MCFLAGS-lco_double	    =	--optimize-constructor-last-call
-MCFLAGS-lco_mday_bug_1	    =	--optimize-constructor-last-call
-MCFLAGS-lco_mday_bug_2	    =	--optimize-constructor-last-call
-MCFLAGS-lco_no_inline	    =	--optimize-constructor-last-call --no-inline-builtins
-MCFLAGS-lco_pack_args	    =	--optimize-constructor-last-call
-MCFLAGS-lco_pack_args_2	    =	--optimize-constructor-last-call
-MCFLAGS-lco_pack_args_3	    =	--optimize-constructor-last-call
-MCFLAGS-lco_reorder	    =	--optimize-constructor-last-call
+MCFLAGS-intermod_try_goal =     --intermodule-optimization
+MCFLAGS-intermod_try_goal2 =    --intermodule-optimization
+MCFLAGS-intermod_type_qual =    --intermodule-optimization
+MCFLAGS-intermod_type_qual2 =   --intermodule-optimization
+MCFLAGS-lco_double =            --optimize-constructor-last-call
+MCFLAGS-lco_mday_bug_1 =        --optimize-constructor-last-call
+MCFLAGS-lco_mday_bug_2 =        --optimize-constructor-last-call
+MCFLAGS-lco_no_inline =   --optimize-constructor-last-call --no-inline-builtins
+MCFLAGS-lco_pack_args =         --optimize-constructor-last-call
+MCFLAGS-lco_pack_args_2 =       --optimize-constructor-last-call
+MCFLAGS-lco_pack_args_3 =       --optimize-constructor-last-call
+MCFLAGS-lco_reorder =           --optimize-constructor-last-call
 MCFLAGS-lookup_switch_simple_non = --no-warn-det-decls-too-lax
-MCFLAGS-mode_check_clauses  =	--no-warn-det-decls-too-lax
-MCFLAGS-mode_choice	    =	--no-warn-det-decls-too-lax
-MCFLAGS-no_fully_strict	    =	--no-warn-det-decls-too-lax
-MCFLAGS-nullary_ho_func     =	--no-warn-unresolved-polymorphism
-MCFLAGS-opt_format          =	--optimize-format-calls
+MCFLAGS-mode_check_clauses =    --no-warn-det-decls-too-lax
+MCFLAGS-mode_choice =           --no-warn-det-decls-too-lax
+MCFLAGS-no_fully_strict =       --no-warn-det-decls-too-lax
+MCFLAGS-nullary_ho_func =       --no-warn-unresolved-polymorphism
+MCFLAGS-opt_format =            --optimize-format-calls
 MCFLAGS-opt_format_sign_extend = --optimize-format-calls
-MCFLAGS-pack_args_reuse     =	--structure-reuse
-MCFLAGS-reuse_double        =	--ctgc
-MCFLAGS-reuse_ho            =	--ctgc --no-optimise-higher-order
-MCFLAGS-sharing_comb	    =	--ctgc --structure-sharing-widening 2
+MCFLAGS-pack_args_reuse =       --structure-reuse
+MCFLAGS-reuse_double =          --ctgc
+MCFLAGS-reuse_ho =              --ctgc --no-optimise-higher-order
+MCFLAGS-sharing_comb =          --ctgc --structure-sharing-widening 2
 MCFLAGS-simplify_multi_arm_switch = -O3
-MCFLAGS-spawn_native	    =	--no-ansi-c
-MCFLAGS-subtype_pack	    =	--allow-packing-dummies
-MCFLAGS-subtype_rtti	    =	--allow-packing-local-sectags --allow-packing-remote-sectags
-MCFLAGS-tail-rec-scc        =	--inine-linear-tail-rec-sccs
-MCFLAGS-term_io_test        =	--no-warn-unresolved-polymorphism
-MCFLAGS-test_imported_no_tag = --no-warn-interface-imports
-MCFLAGS-type_info_const_inst	= --const-struct --optimise-constant-propagation
-MCFLAGS-uncond_reuse	    =	--ctgc
-MCFLAGS-uncond_reuse_bad    =	--ctgc
-MCFLAGS-uo_regression1      =	--from-ground-term-threshold=4
-MCFLAGS-write               =	--no-warn-unresolved-polymorphism
+MCFLAGS-spawn_native =          --no-ansi-c
+MCFLAGS-string_alignment_bug =  --no-warn-obsolete
+MCFLAGS-subtype_pack =          --allow-packing-dummies
+MCFLAGS-subtype_rtti = \
+    --allow-packing-local-sectags --allow-packing-remote-sectags
+MCFLAGS-tail-rec-scc =          --inine-linear-tail-rec-sccs
+MCFLAGS-term_io_test =          --no-warn-unresolved-polymorphism
+MCFLAGS-test_imported_no_tag =  --no-warn-interface-imports
+MCFLAGS-type_info_const_inst =  --const-struct --optimise-constant-propagation
+MCFLAGS-uncond_reuse =          --ctgc
+MCFLAGS-uncond_reuse_bad =      --ctgc
+MCFLAGS-uo_regression1 =        --from-ground-term-threshold=4
+MCFLAGS-write =                 --no-warn-unresolved-polymorphism
 
 # We disable intermodule-optimization here because it isn't compatible with
 # intermodule-analysis.
-#
-MCFLAGS-intermod_unused_args =	--no-intermodule-optimization --intermodule-analysis --optimise-unused-args
-MCFLAGS-intermod_unused_args2 = --no-intermodule-optimization --intermodule-analysis --optimise-unused-args
+MCFLAGS-intermod_unused_args =  \
+    --no-intermodule-optimization --intermodule-analysis --optimise-unused-args
+MCFLAGS-intermod_unused_args2 = \
+    --no-intermodule-optimization --intermodule-analysis --optimise-unused-args
 
-MCFLAGS-loop_inv_test 	= 	--loop-invariants --trace-optimized
-MCFLAGS-loop_inv_test0 	= 	--loop-invariants --trace-optimized
-MCFLAGS-loop_inv_test1 	= 	--loop-invariants --trace-optimized
-MCFLAGS-loop_inv_test2 	= 	--loop-invariants --trace-optimized
-MCFLAGS-loop_inv_test3 	= 	--loop-invariants
-MCFLAGS-loop_inv_test4 	= 	--loop-invariants
-MCFLAGS-prince_frameopt = 		--intermodule-optimization -O5
-MCFLAGS-prince_frameopt_css = 		--intermodule-optimization -O5
-MCFLAGS-prince_frameopt_css.style = 	--intermodule-optimization -O5
+MCFLAGS-loop_inv_test =         --loop-invariants --trace-optimized
+MCFLAGS-loop_inv_test0 =        --loop-invariants --trace-optimized
+MCFLAGS-loop_inv_test1 =        --loop-invariants --trace-optimized
+MCFLAGS-loop_inv_test2 =        --loop-invariants --trace-optimized
+MCFLAGS-loop_inv_test3 =        --loop-invariants
+MCFLAGS-loop_inv_test4 =        --loop-invariants
+MCFLAGS-prince_frameopt =       --intermodule-optimization -O5
+MCFLAGS-prince_frameopt_css =   --intermodule-optimization -O5
+MCFLAGS-prince_frameopt_css.style = --intermodule-optimization -O5
 
 # Compile string_switch with both binary and hash switches effectively
 # disabled, to test the basic indexing algorithm.
@@ -112,49 +116,48 @@ MCFLAGS-prince_frameopt_css.style = 	--intermodule-optimization -O5
 # to test the binary search algorithm.
 # Compile string_switch3 with only binary search switches effectively disabled,
 # to test the hash search algorithm.
-MCFLAGS-string_switch   =	\
-	--string-binary-switch-size=100 --string-hash-switch-size=100
-MCFLAGS-string_switch2  =	\
-	--string-binary-switch-size=2   --string-hash-switch-size=100
-MCFLAGS-string_switch3  =	\
-	--string-binary-switch-size=100 --string-hash-switch-size=2
+MCFLAGS-string_switch =   \
+    --string-binary-switch-size=100 --string-hash-switch-size=100
+MCFLAGS-string_switch2 =   \
+    --string-binary-switch-size=2   --string-hash-switch-size=100
+MCFLAGS-string_switch3 =   \
+    --string-binary-switch-size=100 --string-hash-switch-size=2
 
 # This bug only shows up at optimization levels -O2 and below.
-#
-MCFLAGS-profdeep_seg_fault = -O2
+MCFLAGS-profdeep_seg_fault =    -O2
 
-MCFLAGS-puzzle_detism_bug = 	--trace-optimized --inlining
-MCFLAGS-no_inline_builtins =	--no-inline-builtins
-MCFLAGS-no_warn_singleton =	--halt-at-warn
-MCFLAGS-nondet_copy_out =	--no-inlining --nondet-copy-out
-MCFLAGS-opt_dup_bug	=	-O2 --optimize-dups --optimize-frames
-MCFLAGS-redoip_clobber	=	--no-inlining
-MCFLAGS-rnd		=	-O6
+MCFLAGS-puzzle_detism_bug =     --trace-optimized --inlining
+MCFLAGS-no_inline_builtins =    --no-inline-builtins
+MCFLAGS-no_warn_singleton =     --halt-at-warn
+MCFLAGS-nondet_copy_out =       --no-inlining --nondet-copy-out
+MCFLAGS-opt_dup_bug =           -O2 --optimize-dups --optimize-frames
+MCFLAGS-redoip_clobber =        --no-inlining
+MCFLAGS-rnd =                   -O6
 
-MCFLAGS-switch_detect	=	--halt-at-warn
+MCFLAGS-switch_detect =         --halt-at-warn
 # The trace_goal_1 and trace_goal_2 test cases differ only in that
 # we compile the latter without any --trace-flag arguments.
-MCFLAGS-trace_goal_1	=	--trace-flag=abc --trace-flag def
-MCFLAGS-trace_goal_3 =		--trace-flag=abc
-MCFLAGS-trace_goal_env_1 =	--trace-flag=abc
-MCFLAGS-trace_goal_env_2 =	--trace-flag=abc
-MCFLAGS-trace_goal_opt =	--intermod-opt
+MCFLAGS-trace_goal_1 =          --trace-flag=abc --trace-flag def
+MCFLAGS-trace_goal_3 =          --trace-flag=abc
+MCFLAGS-trace_goal_env_1 =      --trace-flag=abc
+MCFLAGS-trace_goal_env_2 =      --trace-flag=abc
+MCFLAGS-trace_goal_opt =        --intermod-opt
 MCFLAGS-trans_intermod_user_equality = --intermodule-optimization \
-				--transitive-intermodule-optimization
+                --transitive-intermodule-optimization
 MCFLAGS-trans_intermod_user_equality2 = --intermodule-optimization \
-				--transitive-intermodule-optimization
+                --transitive-intermodule-optimization
 MCFLAGS-trans_intermod_user_equality3 = --intermodule-optimization \
-				--transitive-intermodule-optimization
-MCFLAGS-type_qual	= 	--infer-all --from-ground-term-threshold=4
-MCFLAGS-type_spec	=	--user-guided-type-specialization
+                --transitive-intermodule-optimization
+MCFLAGS-type_qual =             --infer-all --from-ground-term-threshold=4
+MCFLAGS-type_spec =             --user-guided-type-specialization
 MCFLAGS-existential_types_test = --infer-all
-MCFLAGS-existential_float = --infer-all
-MCFLAGS-user_defined_equality	= --infer-all
-MCFLAGS-parse		=	--trace rep
-MCFLAGS-unused_float_box_test =	--infer-all
+MCFLAGS-existential_float =     --infer-all
+MCFLAGS-user_defined_equality = --infer-all
+MCFLAGS-parse =                 --trace rep
+MCFLAGS-unused_float_box_test = --infer-all
 
-MCFLAGS-target_mlobjs	= 	--pre-link-command "mmake target_mlobjs_c.o"
-MLOBJS-target_mlobjs	=	target_mlobjs_c.o
+MCFLAGS-target_mlobjs =         --pre-link-command "mmake target_mlobjs_c.o"
+MLOBJS-target_mlobjs =          target_mlobjs_c.o
 
 # We can get this warning if the user-provided type-specific compare predicate
 # compare_foo is inlined at some call sites. Since our setup asks the C
@@ -170,15 +173,13 @@ CFLAGS-user_compare = -Wno-tautological-compare
 # compile with debugging information, it is very difficult to debug.
 # It is much easier to just work around it this way rather than
 # tracking it down.
-MLFLAGS-mode_choice = --no-strip
-
-MLFLAGS-parse		=	--trace
+MLFLAGS-mode_choice =           --no-strip
 
 CFLAGS-no_refs_to_deleted_labels = -DMR_DEBUG_LABEL_NAMES
 
-MLFLAGS-split-c-files	=	--trace
-
-MLFLAGS-needs_init	= 	--include-initialization-code --extra-inits
+MLFLAGS-parse =                 --trace
+MLFLAGS-split-c-files =         --trace
+MLFLAGS-needs_init =            --include-initialization-code --extra-inits
 
 # These tests run out of memory in non-GC grades
 # unless we increase the heap size from the default 4M.
@@ -188,13 +189,15 @@ MLFLAGS-needs_init	= 	--include-initialization-code --extra-inits
 # options containing special characters.
 
 MLFLAGS-integer_test = \
-		--runtime-flags "--heap-size 70000 --mdb-out \"mdb\\mdb out\""
+        --runtime-flags "--heap-size 70000 --mdb-out \"mdb\\mdb out\""
 MLFLAGS-rational_test = --runtime-flags "--heap-size 20000"
 
-MCFLAGS-constant_prop_1 = --optimize-constant-propagation \
-		--trace-optimized
-MCFLAGS-constant_prop_2 = --optimize-constant-propagation \
-		--optimize-dead-procs --trace-optimized
-MCFLAGS-constant_prop_int = --optimize-constant-propagation
-MCFLAGS-constant_prop_loop_inv = --optimize-constant-propagation \
-		--optimize-dead-procs --trace-optimized --loop-invariants
+MCFLAGS-constant_prop_1 = \
+    --optimize-constant-propagation --trace-optimized
+MCFLAGS-constant_prop_2 = \
+    --optimize-constant-propagation --optimize-dead-procs --trace-optimized
+MCFLAGS-constant_prop_int = \
+    --optimize-constant-propagation
+MCFLAGS-constant_prop_loop_inv = \
+    --optimize-constant-propagation --optimize-dead-procs --trace-optimized \
+    --loop-invariants
