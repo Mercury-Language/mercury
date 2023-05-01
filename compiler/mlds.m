@@ -652,16 +652,19 @@
     --->    mlds_interface_id(qual_class_name, arity, mlds_class_kind).
 
 :- type mlds_class_kind
-    --->    mlds_class     % A generic class: can inherit a class and
-                           % interfaces.
+    --->    mlds_class
+            % A generic class: can inherit a class and interfaces.
 
-    ;       mlds_interface % A class with no variable data members (can only
-                           % inherit other interfaces).
+    ;       mlds_interface
+            % A class with no variable data members (can only inherit
+            % other interfaces).
 
-    ;       mlds_struct    % A value class (can only inherit other structs).
+    ;       mlds_struct
+            % A value class (can only inherit other structs).
 
-    ;       mlds_enum.     % A class with one integer member and a bunch
-                           % of static consts (cannot inherit anything).
+    ;       mlds_enum.
+            % A class with one integer member and a bunch of static consts
+            % (cannot inherit anything).
 
 :- type mlds_field_var_defn
     --->    mlds_field_var_defn(
