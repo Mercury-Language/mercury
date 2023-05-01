@@ -1293,21 +1293,21 @@
 % Folds over the characters in strings.
 %
 
-    % foldl(Closure, String, !Acc):
+    % foldl(Pred, String, !Acc):
     %
-    % Closure is an accumulator predicate which is to be called for each
+    % Pred is an accumulator predicate which is to be called for each
     % code point of the string String in turn.
-    % If String contains ill-formed sequences, Closure is called for each
+    % If String contains ill-formed sequences, Pred is called for each
     % code unit in an ill-formed sequence. If strings use UTF-8 encoding,
-    % U+FFFD is passed to Closure in place of each such code unit.
+    % U+FFFD is passed to Pred in place of each such code unit.
     % If strings use UTF-16 encoding, each code unit in an ill-formed sequence
-    % is an unpaired surrogate code point, which will be passed to Closure.
+    % is an unpaired surrogate code point, which will be passed to Pred.
     %
     % The initial value of the accumulator is !.Acc and the final value is
     % !:Acc.
-    % (foldl(Closure, String, !Acc)  is equivalent to
+    % (foldl(Pred, String, !Acc)  is equivalent to
     %   to_char_list(String, Chars),
-    %   list.foldl(Closure, Chars, !Acc)
+    %   list.foldl(Pred, Chars, !Acc)
     % but is implemented more efficiently.)
     %
 :- func foldl(func(char, A) = A, string, A) = A.
@@ -1318,7 +1318,7 @@
 :- mode foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
 :- mode foldl(pred(in, in, out) is multi, in, in, out) is multi.
 
-    % foldl2(Closure, String, !Acc1, !Acc2):
+    % foldl2(Pred, String, !Acc1, !Acc2):
     % A variant of foldl with two accumulators.
     %
 :- pred foldl2(pred(char, A, A, B, B), string, A, A, B, B).
@@ -1335,8 +1335,8 @@
 :- mode foldl2(pred(in, in, out, in, out) is multi,
     in, in, out, in, out) is multi.
 
-    % foldl_between(Closure, String, Start, End, !Acc)
-    % is equivalent to foldl(Closure, SubString, !Acc)
+    % foldl_between(Pred, String, Start, End, !Acc)
+    % is equivalent to foldl(Pred, SubString, !Acc)
     % where SubString = between(String, Start, End).
     %
     % Start and End are in terms of code units.
@@ -1354,7 +1354,7 @@
 :- mode foldl_between(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-    % foldl2_between(Closure, String, Start, End, !Acc1, !Acc2)
+    % foldl2_between(Pred, String, Start, End, !Acc1, !Acc2)
     % A variant of foldl_between with two accumulators.
     %
     % Start and End are in terms of code units.
@@ -1374,7 +1374,7 @@
 :- mode foldl2_between(pred(in, in, out, in, out) is multi,
     in, in, in, in, out, in, out) is multi.
 
-    % foldr(Closure, String, !Acc):
+    % foldr(Pred, String, !Acc):
     % As foldl/4, except that processing proceeds right-to-left.
     %
 :- func foldr(func(char, T) = T, string, T) = T.
@@ -1385,8 +1385,8 @@
 :- mode foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
 :- mode foldr(pred(in, in, out) is multi, in, in, out) is multi.
 
-    % foldr_between(Closure, String, Start, End, !Acc)
-    % is equivalent to foldr(Closure, SubString, !Acc)
+    % foldr_between(Pred, String, Start, End, !Acc)
+    % is equivalent to foldr(Pred, SubString, !Acc)
     % where SubString = between(String, Start, End).
     %
     % Start and End are in terms of code units.
@@ -3028,7 +3028,7 @@ count_utf8_code_units(String) = Length :-
     ( if internal_encoding_is_utf8 then
         Length = length(String)
     else
-        foldl(count_utf16_to_utf8_code_units, String, 0, Length)
+        string.foldl(count_utf16_to_utf8_code_units, String, 0, Length)
     ).
 
 :- pred count_utf16_to_utf8_code_units(char::in, int::in, int::out) is det.
@@ -5110,31 +5110,31 @@ break_up_string_reverse(Str, N, Prev) = Strs :-
 % Folds over the characters in strings.
 %
 
-foldl(F, S, A) = B :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    foldl(P, S, A, B).
+foldl(Func, S, A) = B :-
+    Pred = ( pred(X::in, Y::in, Z::out) is det :- Z = Func(X, Y) ),
+    foldl(Pred, S, A, B).
 
-foldl(Closure, String, !Acc) :-
-    length(String, Length),
-    foldl_between(Closure, String, 0, Length, !Acc).
+foldl(Pred, String, !Acc) :-
+    string.length(String, Length),
+    foldl_between(Pred, String, 0, Length, !Acc).
 
-foldl2(Closure, String, !Acc1, !Acc2) :-
-    length(String, Length),
-    foldl2_between(Closure, String, 0, Length, !Acc1, !Acc2).
+foldl2(Pred, String, !Acc1, !Acc2) :-
+    string.length(String, Length),
+    foldl2_between(Pred, String, 0, Length, !Acc1, !Acc2).
 
-foldl_between(F, S, Start, End, A) = B :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+foldl_between(Func, S, Start, End, A) = B :-
+    P = ( pred(X::in, Y::in, Z::out) is det :- Z = Func(X, Y) ),
     foldl_between(P, S, Start, End, A, B).
 
-foldl_between(Closure, String, Start0, End0, !Acc) :-
+foldl_between(Pred, String, Start0, End0, !Acc) :-
     Start = max(0, Start0),
     End = min(End0, length(String)),
-    foldl_between_2(Closure, String, Start, End, !Acc).
+    foldl_between_2(Pred, String, Start, End, !Acc).
 
-foldl2_between(Closure, String, Start0, End0, !Acc1, !Acc2) :-
+foldl2_between(Pred, String, Start0, End0, !Acc1, !Acc2) :-
     Start = max(0, Start0),
     End = min(End0, length(String)),
-    foldl2_between_2(Closure, String, Start, End, !Acc1, !Acc2).
+    foldl2_between_2(Pred, String, Start, End, !Acc1, !Acc2).
 
 :- pred foldl_between_2(pred(char, A, A), string, int, int, A, A).
 :- mode foldl_between_2(pred(in, di, uo) is det, in, in, in,
@@ -5148,14 +5148,14 @@ foldl2_between(Closure, String, Start0, End0, !Acc1, !Acc2) :-
 :- mode foldl_between_2(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-foldl_between_2(Closure, String, I, End, !Acc) :-
+foldl_between_2(Pred, String, I, End, !Acc) :-
     ( if
         I < End,
         unsafe_index_next(String, I, J, Char),
         J =< End
     then
-        Closure(Char, !Acc),
-        foldl_between_2(Closure, String, J, End, !Acc)
+        Pred(Char, !Acc),
+        foldl_between_2(Pred, String, J, End, !Acc)
     else
         true
     ).
@@ -5175,35 +5175,35 @@ foldl_between_2(Closure, String, I, End, !Acc) :-
 :- mode foldl2_between_2(pred(in, in, out, in, out) is multi,
     in, in, in, in, out, in, out) is multi.
 
-foldl2_between_2(Closure, String, I, End, !Acc1, !Acc2) :-
+foldl2_between_2(Pred, String, I, End, !Acc1, !Acc2) :-
     ( if
         I < End,
         unsafe_index_next(String, I, J, Char),
         J =< End
     then
-        Closure(Char, !Acc1, !Acc2),
-        foldl2_between_2(Closure, String, J, End, !Acc1, !Acc2)
+        Pred(Char, !Acc1, !Acc2),
+        foldl2_between_2(Pred, String, J, End, !Acc1, !Acc2)
     else
         true
     ).
 
 %---------------------%
 
-foldr(F, String, Acc0) = Acc :-
-    Closure = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y)),
-    foldr(Closure, String, Acc0, Acc).
+foldr(Func, String, Acc0) = Acc :-
+    Pred = ( pred(X::in, Y::in, Z::out) is det :- Z = Func(X, Y)),
+    foldr(Pred, String, Acc0, Acc).
 
-foldr(Closure, String, !Acc) :-
-    foldr_between(Closure, String, 0, length(String), !Acc).
+foldr(Pred, String, !Acc) :-
+    foldr_between(Pred, String, 0, length(String), !Acc).
 
-foldr_between(F, String, Start, Count, Acc0) = Acc :-
-    Closure = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    foldr_between(Closure, String, Start, Count, Acc0, Acc).
+foldr_between(Func, String, Start, Count, Acc0) = Acc :-
+    Pred = ( pred(X::in, Y::in, Z::out) is det :- Z = Func(X, Y) ),
+    foldr_between(Pred, String, Start, Count, Acc0, Acc).
 
-foldr_between(Closure, String, Start0, End0, !Acc) :-
+foldr_between(Pred, String, Start0, End0, !Acc) :-
     Start = max(0, Start0),
     End = min(End0, length(String)),
-    foldr_between_2(Closure, String, Start, End, !Acc).
+    foldr_between_2(Pred, String, Start, End, !Acc).
 
 :- pred foldr_between_2(pred(char, T, T), string, int, int, T, T).
 :- mode foldr_between_2(pred(in, in, out) is det, in, in, in,
@@ -5217,14 +5217,14 @@ foldr_between(Closure, String, Start0, End0, !Acc) :-
 :- mode foldr_between_2(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-foldr_between_2(Closure, String, Start, I, !Acc) :-
+foldr_between_2(Pred, String, Start, I, !Acc) :-
     ( if
         I > Start,
         unsafe_prev_index(String, I, J, Char),
         J >= Start
     then
-        Closure(Char, !Acc),
-        foldr_between_2(Closure, String, Start, J, !Acc)
+        Pred(Char, !Acc),
+        foldr_between_2(Pred, String, Start, J, !Acc)
     else
         true
     ).
