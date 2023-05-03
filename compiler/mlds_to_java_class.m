@@ -181,9 +181,8 @@ output_inherits_list(Info, Stream, Indent, Inherits, !IO) :-
             BaseType = mlds_generic_env_ptr_type
         ),
         output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "extends ", !IO),
-        output_type_for_java(Info, BaseType, Stream, !IO),
-        io.nl(Stream, !IO)
+        io.format(Stream, "extends %s\n",
+            [s(type_to_string_for_java(Info, BaseType))], !IO)
     ).
 
     % Output list of interfaces that this class implements.
@@ -302,7 +301,7 @@ output_enum_constant_for_java(_Info, Indent, ClassName, ClassArity,
     io::di, io::uo) is det.
 
 output_field_var_decl_for_java(Info, Stream, FieldVarName, Type, !IO) :-
-    output_type_for_java(Info, Type, Stream, !IO),
+    output_type_for_java(Info, Stream, Type, !IO),
     io.write_char(Stream, ' ', !IO),
     output_field_var_name_for_java(Stream, FieldVarName, !IO).
 

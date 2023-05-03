@@ -1016,9 +1016,30 @@
             % The representations of the builtin types in the target language.
             %
             % Note that some target languages do not have types corresponding
-            % *exactly* to each Mercury builtin type. For these, we generate
-            % the closest type available in the target language, e.g. "int"
-            % for mlds_builtin_type_int(int_type_uint) in Java.
+            % *exactly* to each Mercury builtin type; for example, Java has
+            % no unsigned types. For these, we use the closest type available.
+            %
+            % The following table shows the target language types we use
+            % to represent each of the above builtin types in the three
+            % MLDS target languages:
+            %
+            % Mercury type      C           Java        C#
+            %
+            % int               MR_Integer  int         int
+            % uint              MR_Unsigned int         uint
+            % int8              int8_t      byte        sbyte
+            % uint8             uint8_t     byte        byte
+            % int16             int16_t     short       short
+            % uint16            uint16_t    short       ushort
+            % int32             int32_t     int         int
+            % uint32            uint32_t    int         uint
+            % int64             int64_t     long        long
+            % uint64            uint64_t    long        ulong
+            % float             MR_Float    double      double
+            % char              MR_Char     int         int
+            % string            MR_String   j.l.String  string
+            %
+            % (j.l.String is of course short for java.lang.String).
 
     ;       mlds_native_bool_type
             % The representation of booleans in the MLDS target language.

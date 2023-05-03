@@ -14,8 +14,6 @@
 :- module ml_backend.mlds_to_java_type.
 :- interface.
 
-:- import_module backend_libs.
-:- import_module backend_libs.rtti.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_java_util.
 :- import_module parse_tree.
@@ -27,36 +25,31 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred output_type_for_java(java_out_info::in, mlds_type::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-    % type_to_string_for_java(Info, MLDS_Type, String, ArrayDims)
+    % Output the name of the Java type corresponding to the given MLDS type.
+    % Optionally return its array dimensions, if any.
     %
-    % Generate the Java name for a type. ArrayDims are the array dimensions to
-    % be written after the type name, if any, in reverse order to that of Java
-    % syntax where a non-zero integer represents a known array size and zero
-    % represents an unknown array size.
+:- pred output_type_for_java(java_out_info::in, io.text_output_stream::in,
+    mlds_type::in, io::di, io::uo) is det.
+:- pred output_type_for_java(java_out_info::in, io.text_output_stream::in,
+    mlds_type::in, list(int)::out, io::di, io::uo) is det.
+
+:- func type_to_string_for_java(java_out_info, mlds_type) = string.
+
+:- pred boxed_type_to_string_for_java(java_out_info::in, mlds_type::in,
+    string::out) is det.
+
+    % type_to_string_and_dims_for_java(Info, MLDS_Type, String, ArrayDims)
+    %
+    % Generate the Java name for a type. ArrayDims are the array dimensions,
+    % if any, to be written after the type name, in reverse order to that
+    % of Java syntax where a non-zero integer represents a known array size
+    % and zero represents an unknown array size.
     %
     % e.g. ArrayDims = [0, 3] represents the Java array `Object[3][]',
     % which should be read as `(Object[])[3]'.
     %
-:- pred type_to_string_for_java(java_out_info::in, mlds_type::in,
+:- pred type_to_string_and_dims_for_java(java_out_info::in, mlds_type::in,
     string::out, list(int)::out) is det.
-
-    % Return is_array if the corresponding Java type is an array type.
-    %
-:- func type_is_array_for_java(mlds_type) = is_array.
-
-    % hand_defined_type_for_java(Type, CtorCat, SubstituteName, ArrayDims):
-    %
-    % We need to handle type_info (etc.) types specially -- they get mapped
-    % to types in the runtime rather than in private_builtin.
-    %
-:- pred hand_defined_type_for_java(mer_type::in, type_ctor_category::in,
-    string::out, list(int)::out) is semidet.
-
-:- pred boxed_type_to_string_for_java(java_out_info::in, mlds_type::in,
-    string::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -75,10 +68,22 @@
     string::out, string::out, string::out, string::out) is semidet.
 
 %---------------------------------------------------------------------------%
+
+    % hand_defined_type_for_java(Type, CtorCat, JavaType, ArrayDims):
+    %
+    % We need to handle type_info (etc.) types specially -- they get mapped
+    % to types in the runtime rather than in private_builtin.
+    %
+:- pred hand_defined_type_for_java(mer_type::in, type_ctor_category::in,
+    string::out, list(int)::out) is semidet.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module backend_libs.
+:- import_module backend_libs.rtti.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -94,18 +99,41 @@
 
 %---------------------------------------------------------------------------%
 
-output_type_for_java(Info, MLDS_Type, Stream, !IO) :-
-    output_type_for_java_dims(Info, Stream, MLDS_Type, [], !IO).
+output_type_for_java(Info, Stream, MLDS_Type, !IO) :-
+    output_type_for_java(Info, Stream, MLDS_Type, _ArrayDims, !IO).
 
-:- pred output_type_for_java_dims(java_out_info::in, io.text_output_stream::in,
-    mlds_type::in, list(int)::in, io::di, io::uo) is det.
+output_type_for_java(Info, Stream, MLDS_Type, ArrayDims, !IO) :-
+    type_to_string_and_dims_for_java(Info, MLDS_Type, BaseTypeName, ArrayDims),
+    io.write_string(Stream, BaseTypeName, !IO),
+    (
+        ArrayDims = []
+        % Optimize the common case.
+    ;
+        ArrayDims = [_ | _],
+        io.write_string(Stream, array_dimensions_to_string(ArrayDims), !IO)
+    ).
 
-output_type_for_java_dims(Info, Stream, MLDS_Type, ArrayDims0, !IO) :-
-    type_to_string_for_java(Info, MLDS_Type, String, ArrayDims),
-    io.write_string(Stream, String, !IO),
-    output_array_dimensions(Stream, ArrayDims ++ ArrayDims0, !IO).
+type_to_string_for_java(Info, MLDS_Type) = FullTypeName :-
+    type_to_string_and_dims_for_java(Info, MLDS_Type, BaseTypeName, ArrayDims),
+    (
+        ArrayDims = [],
+        % Optimize the common case.
+        FullTypeName = BaseTypeName
+    ;
+        ArrayDims = [_ | _],
+        FullTypeName = BaseTypeName ++ array_dimensions_to_string(ArrayDims)
+    ).
 
-type_to_string_for_java(Info, MLDS_Type, String, ArrayDims) :-
+boxed_type_to_string_for_java(Info, Type, TypeName) :-
+    ( if java_builtin_type(Type, _, JavaBoxedName, _) then
+        TypeName = JavaBoxedName
+    else
+        TypeName = type_to_string_for_java(Info, Type)
+    ).
+
+%---------------------------------------------------------------------------%
+
+type_to_string_and_dims_for_java(Info, MLDS_Type, String, ArrayDims) :-
     (
         MLDS_Type = mercury_nb_type(Type, CtorCat),
         ( if
@@ -113,10 +141,10 @@ type_to_string_for_java(Info, MLDS_Type, String, ArrayDims) :-
             % they get mapped to types in the runtime rather than
             % in private_builtin.
             hand_defined_type_for_java(Type, CtorCat,
-                SubstituteName, ArrayDims0)
+                StringPrime, ArrayDimsPrime)
         then
-            String = SubstituteName,
-            ArrayDims = ArrayDims0
+            String = StringPrime,
+            ArrayDims = ArrayDimsPrime
         else if
             % io.state and store.store
             CtorCat = ctor_cat_builtin_dummy
@@ -137,47 +165,6 @@ type_to_string_for_java(Info, MLDS_Type, String, ArrayDims) :-
                 ArrayDims)
         )
     ;
-        MLDS_Type = mlds_builtin_type_int(IntType),
-        % Java lacks unsigned integers.
-        (
-            ( IntType = int_type_int
-            ; IntType = int_type_uint
-            ; IntType = int_type_int32
-            ; IntType = int_type_uint32
-            ),
-            String = "int"
-        ;
-            ( IntType = int_type_int8
-            ; IntType = int_type_uint8
-            ),
-            String = "byte"
-        ;
-            ( IntType = int_type_int16
-            ; IntType = int_type_uint16
-            ),
-            String = "short"
-        ;
-            ( IntType = int_type_int64
-            ; IntType = int_type_uint64
-            ),
-            String = "long"
-        ),
-        ArrayDims = []
-    ;
-        MLDS_Type = mlds_builtin_type_float,
-        String = "double",
-        ArrayDims = []
-    ;
-        MLDS_Type = mlds_builtin_type_string,
-        String = "java.lang.String",
-        ArrayDims = []
-    ;
-        MLDS_Type = mlds_builtin_type_char,
-        % Java `char' is not large enough for code points,
-        % so we must use `int'.
-        String = "int",
-        ArrayDims = []
-    ;
         MLDS_Type = mlds_mercury_array_type(ElementType),
         ( if ElementType = mercury_nb_type(_, ctor_cat_variable) then
             % We can't use `java.lang.Object []', since we want a generic type
@@ -195,13 +182,32 @@ type_to_string_for_java(Info, MLDS_Type, String, ArrayDims) :-
             % That doesn't work if the representative element is of a foreign
             % type, and has the value null.
             ( if java_builtin_type(ElementType, _, _, _) then
-                type_to_string_for_java(Info, ElementType, String, ArrayDims0),
+                type_to_string_and_dims_for_java(Info, ElementType,
+                    String, ArrayDims0),
                 ArrayDims = [0 | ArrayDims0]
             else
                 String = "java.lang.Object",
                 ArrayDims = [0]
             )
         )
+    ;
+        MLDS_Type = mlds_builtin_type_int(IntType),
+        java_builtin_int_type(IntType, String, _BoxTypeName, _UnboxMethod),
+        ArrayDims = []
+    ;
+        MLDS_Type = mlds_builtin_type_float,
+        String = "double",
+        ArrayDims = []
+    ;
+        MLDS_Type = mlds_builtin_type_string,
+        String = "java.lang.String",
+        ArrayDims = []
+    ;
+        MLDS_Type = mlds_builtin_type_char,
+        % Java `char' type is not large enough to hold all code points,
+        % so we must use `int'.
+        String = "int",
+        ArrayDims = []
     ;
         MLDS_Type = mlds_native_bool_type,
         String = "boolean",
@@ -220,22 +226,28 @@ type_to_string_for_java(Info, MLDS_Type, String, ArrayDims) :-
             unexpected($pred, "csharp foreign_type")
         )
     ;
-        MLDS_Type = mlds_class_type(mlds_class_id(Name, Arity, _ClassKind)),
+        MLDS_Type = mlds_class_type(ClassId),
+        ClassId = mlds_class_id(Name, Arity, _ClassKind),
         qual_class_name_to_string_for_java(Name, Arity, String),
         ArrayDims = []
     ;
-        MLDS_Type = mlds_ptr_type(Type),
+        MLDS_Type = mlds_ptr_type(PointedToType),
         % XXX Should we report an error here, if the type pointed to
         % is not a class type?
-        type_to_string_for_java(Info, Type, String, ArrayDims)
+        % XXX Isn't the bigger problem the fact that we are treating
+        % the pointer as having the same types as the thing being pointed to?
+        type_to_string_and_dims_for_java(Info, PointedToType,
+            String, ArrayDims)
     ;
-        MLDS_Type = mlds_array_type(Type),
-        type_to_string_for_java(Info, Type, String, ArrayDims0),
+        MLDS_Type = mlds_array_type(ElementType),
+        type_to_string_and_dims_for_java(Info, ElementType,
+            String, ArrayDims0),
         ArrayDims = [0 | ArrayDims0]
     ;
         MLDS_Type = mlds_mostly_generic_array_type(_Type),
-        Type = mlds_generic_type,
-        type_to_string_for_java(Info, Type, String, ArrayDims0),
+        ElementType = mlds_generic_type,
+        type_to_string_and_dims_for_java(Info, ElementType,
+            String, ArrayDims0),
         ArrayDims = [0 | ArrayDims0]
     ;
         MLDS_Type = mlds_func_type(_FuncParams),
@@ -315,48 +327,51 @@ mercury_type_to_string_for_java(Info, Type, CtorCat, String, ArrayDims) :-
         ),
         ArrayDims = []
     ;
-        CtorCat = ctor_cat_tuple,
-        String = "/* tuple */ java.lang.Object",
-        ArrayDims = [0]
-    ;
         CtorCat = ctor_cat_higher_order,
         String = "/* closure */ java.lang.Object",
         ArrayDims = [0]
     ;
-        CtorCat = ctor_cat_system(_),
-        mercury_type_to_string_for_java(Info, Type,
-            ctor_cat_user(cat_user_general), String, ArrayDims)
+        CtorCat = ctor_cat_tuple,
+        String = "/* tuple */ java.lang.Object",
+        ArrayDims = [0]
     ;
-        ( CtorCat = ctor_cat_enum(_)
+        CtorCat = ctor_cat_enum(_),
+        mercury_user_type_to_string_and_dims_for_java(Info, Type, mlds_enum,
+            String),
+        ArrayDims = []
+    ;
+        ( CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_system(_)
         ; CtorCat = ctor_cat_user(_)
-        ; CtorCat = ctor_cat_builtin_dummy
         ),
-        mercury_user_type_to_string_for_java(Info, Type, CtorCat, String,
-            ArrayDims)
+        mercury_user_type_to_string_and_dims_for_java(Info, Type, mlds_class,
+            String),
+        ArrayDims = []
     ).
 
-:- pred mercury_user_type_to_string_for_java(java_out_info::in, mer_type::in,
-    type_ctor_category::in, string::out, list(int)::out) is det.
+:- inst enum_or_class for mlds_class_kind/0
+    --->    mlds_enum
+    ;       mlds_class.
 
-mercury_user_type_to_string_for_java(Info, Type, CtorCat, String, ArrayDims) :-
+:- pred mercury_user_type_to_string_and_dims_for_java(java_out_info::in,
+    mer_type::in, mlds_class_kind::in(enum_or_class), string::out) is det.
+
+mercury_user_type_to_string_and_dims_for_java(Info, Type, ClassKind,
+        TypeNameWithGenerics) :-
     type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
     ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-    ( if CtorCat = ctor_cat_enum(_) then
-        ClassKind = mlds_enum
-    else
-        ClassKind = mlds_class
-    ),
     MLDS_Type =
         mlds_class_type(mlds_class_id(ClassName, ClassArity, ClassKind)),
-    type_to_string_for_java(Info, MLDS_Type, TypeString, ArrayDims),
+    type_to_string_and_dims_for_java(Info, MLDS_Type, TypeName, ArrayDims),
+    expect(unify(ArrayDims, []), $pred, "ArrayDims != []"),
     OutputGenerics = Info ^ joi_output_generics,
     (
         OutputGenerics = do_output_generics,
         generic_args_types_to_string_for_java(Info, ArgsTypes, GenericsString),
-        String = TypeString ++ GenericsString
+        TypeNameWithGenerics = TypeName ++ GenericsString
     ;
         OutputGenerics = do_not_output_generics,
-        String = TypeString
+        TypeNameWithGenerics = TypeName
     ).
 
 :- pred generic_args_types_to_string_for_java(java_out_info::in,
@@ -382,129 +397,19 @@ generic_args_types_to_string_for_java(Info, ArgsTypes, String) :-
 
 %---------------------------------------------------------------------------%
 
-type_is_array_for_java(Type) = IsArray :-
-    ( if Type = mlds_array_type(_) then
-        IsArray = is_array
-    else if Type = mlds_mercury_array_type(_) then
-        IsArray = is_array
-    else if Type = mercury_nb_type(_, CtorCat) then
-        IsArray = type_category_is_array(CtorCat)
-    else if Type = mlds_rtti_type(RttiIdMaybeElement) then
-        rtti_id_maybe_element_java_type(RttiIdMaybeElement,
-            _JavaTypeName, IsArray)
-    else
-        IsArray = not_array
-    ).
-
-%---------------------------------------------------------------------------%
-
-hand_defined_type_for_java(Type, CtorCat, SubstituteName, ArrayDims) :-
-    require_complete_switch [CtorCat]
-    (
-        CtorCat = ctor_cat_system(CtorCatSystem),
-        require_complete_switch [CtorCatSystem]
-        (
-            CtorCatSystem = cat_system_type_info,
-            SubstituteName = "jmercury.runtime.TypeInfo_Struct",
-            ArrayDims = []
-        ;
-            CtorCatSystem = cat_system_type_ctor_info,
-            SubstituteName = "jmercury.runtime.TypeCtorInfo_Struct",
-            ArrayDims = []
-        ;
-            CtorCatSystem = cat_system_typeclass_info,
-            SubstituteName = "/* typeclass_info */ java.lang.Object",
-            ArrayDims = [0]
-        ;
-            CtorCatSystem = cat_system_base_typeclass_info,
-            SubstituteName = "/* base_typeclass_info */ java.lang.Object",
-            ArrayDims = [0]
-        )
-    ;
-        CtorCat = ctor_cat_user(CtorCatUser),
-        require_complete_switch [CtorCatUser]
-        (
-            CtorCatUser = cat_user_general,
-            ( if Type = type_desc_type then
-                SubstituteName = "jmercury.runtime.TypeInfo_Struct"
-            else if Type = pseudo_type_desc_type then
-                SubstituteName = "jmercury.runtime.PseudoTypeInfo"
-            else if Type = type_ctor_desc_type then
-                SubstituteName = "jmercury.runtime.TypeCtorInfo_Struct"
-            else
-                fail
-            ),
-            ArrayDims = []
-        ;
-            ( CtorCatUser = cat_user_direct_dummy
-            ; CtorCatUser = cat_user_abstract_dummy
-            ; CtorCatUser = cat_user_notag
-            ; CtorCatUser = cat_user_abstract_notag
-            ),
-            fail
-        )
-    ;
-        ( CtorCat = ctor_cat_builtin(_)
-        ; CtorCat = ctor_cat_builtin_dummy
-        ; CtorCat = ctor_cat_enum(_)
-        ; CtorCat = ctor_cat_higher_order
-        ; CtorCat = ctor_cat_tuple
-        ; CtorCat = ctor_cat_variable
-        ; CtorCat = ctor_cat_void
-        ),
-        fail
-    ).
-
-%---------------------------------------------------------------------------%
-
-boxed_type_to_string_for_java(Info, Type, String) :-
-    ( if java_builtin_type(Type, _, JavaBoxedName, _) then
-        String = JavaBoxedName
-    else
-        type_to_string_for_java(Info, Type, String0, ArrayDims),
-        list.map(array_dimension_to_string, ArrayDims, RevBrackets),
-        list.reverse(RevBrackets, Brackets),
-        string.append_list([String0 | Brackets], String)
-    ).
-
-%---------------------------------------------------------------------------%
-
 java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
     require_complete_switch [MLDS_Type]
     (
-        % NOTE: Java's `char' type is not large enough to hold a code point,
-        % so we must use an integer. Java has no unsigned types, so we
-        % represent them as `int'.
-        ( MLDS_Type = mlds_builtin_type_char
-        ; MLDS_Type = mlds_builtin_type_int(int_type_int)
-        ; MLDS_Type = mlds_builtin_type_int(int_type_uint)
-        ; MLDS_Type = mlds_builtin_type_int(int_type_int32)
-        ; MLDS_Type = mlds_builtin_type_int(int_type_uint32)
-        ),
+        % NOTE Java's `char' type is not large enough to hold a code point,
+        % so we must use an integer.
+        MLDS_Type = mlds_builtin_type_char,
         JavaUnboxedType = "int",
         JavaBoxedType = "java.lang.Integer",
         UnboxMethod = "intValue"
     ;
-        ( MLDS_Type = mlds_builtin_type_int(int_type_int8)
-        ; MLDS_Type = mlds_builtin_type_int(int_type_uint8)
-        ),
-        JavaUnboxedType = "byte",
-        JavaBoxedType = "java.lang.Byte",
-        UnboxMethod = "byteValue"
-    ;
-        ( MLDS_Type = mlds_builtin_type_int(int_type_int16)
-        ; MLDS_Type = mlds_builtin_type_int(int_type_uint16)
-        ),
-        JavaUnboxedType = "short",
-        JavaBoxedType = "java.lang.Short",
-        UnboxMethod = "shortValue"
-    ;
-        ( MLDS_Type = mlds_builtin_type_int(int_type_int64)
-        ; MLDS_Type = mlds_builtin_type_int(int_type_uint64)
-        ),
-        JavaUnboxedType = "long",
-        JavaBoxedType = "java.lang.Long",
-        UnboxMethod = "longValue"
+        MLDS_Type = mlds_builtin_type_int(IntType),
+        java_builtin_int_type(IntType, JavaUnboxedType, JavaBoxedType,
+            UnboxMethod)
     ;
         MLDS_Type = mlds_builtin_type_float,
         JavaUnboxedType = "double",
@@ -512,6 +417,7 @@ java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
         UnboxMethod = "doubleValue"
     ;
         MLDS_Type = mlds_builtin_type_string,
+        % XXX The reason for this failure should be documented.
         fail
     ;
         MLDS_Type = mlds_native_bool_type,
@@ -585,6 +491,44 @@ java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
         unexpected($file, $pred, "unknown typed")
     ).
 
+:- pred java_builtin_int_type(int_type::in,
+    string::out, string::out, string::out) is det.
+
+java_builtin_int_type(IntType, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
+    % NOTE Java has no unsigned types, so we represent each unsigned type
+    % the same way as we represent the signed type of the same size.
+    (
+        ( IntType = int_type_int
+        ; IntType = int_type_uint
+        ; IntType = int_type_int32
+        ; IntType = int_type_uint32
+        ),
+        JavaUnboxedType = "int",
+        JavaBoxedType = "java.lang.Integer",
+        UnboxMethod = "intValue"
+    ;
+        ( IntType = int_type_int8
+        ; IntType = int_type_uint8
+        ),
+        JavaUnboxedType = "byte",
+        JavaBoxedType = "java.lang.Byte",
+        UnboxMethod = "byteValue"
+    ;
+        ( IntType = int_type_int16
+        ; IntType = int_type_uint16
+        ),
+        JavaUnboxedType = "short",
+        JavaBoxedType = "java.lang.Short",
+        UnboxMethod = "shortValue"
+    ;
+        ( IntType = int_type_int64
+        ; IntType = int_type_uint64
+        ),
+        JavaUnboxedType = "long",
+        JavaBoxedType = "java.lang.Long",
+        UnboxMethod = "longValue"
+    ).
+
 java_primitive_foreign_language_type(ForeignLangType, PrimitiveType,
         BoxedType, UnboxMethod, DefaultValue) :-
     require_complete_switch [ForeignLangType]
@@ -638,6 +582,65 @@ java_primitive_foreign_language_type(ForeignLangType, PrimitiveType,
         BoxedType = "java.lang.Character",
         UnboxMethod = "charValue",
         DefaultValue = "'\\u0000'"
+    ).
+
+%---------------------------------------------------------------------------%
+
+hand_defined_type_for_java(Type, CtorCat, SubstituteName, ArrayDims) :-
+    require_complete_switch [CtorCat]
+    (
+        CtorCat = ctor_cat_system(CtorCatSystem),
+        require_complete_switch [CtorCatSystem]
+        (
+            CtorCatSystem = cat_system_type_info,
+            SubstituteName = "jmercury.runtime.TypeInfo_Struct",
+            ArrayDims = []
+        ;
+            CtorCatSystem = cat_system_type_ctor_info,
+            SubstituteName = "jmercury.runtime.TypeCtorInfo_Struct",
+            ArrayDims = []
+        ;
+            CtorCatSystem = cat_system_typeclass_info,
+            SubstituteName = "/* typeclass_info */ java.lang.Object",
+            ArrayDims = [0]
+        ;
+            CtorCatSystem = cat_system_base_typeclass_info,
+            SubstituteName = "/* base_typeclass_info */ java.lang.Object",
+            ArrayDims = [0]
+        )
+    ;
+        CtorCat = ctor_cat_user(CtorCatUser),
+        require_complete_switch [CtorCatUser]
+        (
+            CtorCatUser = cat_user_general,
+            ( if Type = type_desc_type then
+                SubstituteName = "jmercury.runtime.TypeInfo_Struct"
+            else if Type = pseudo_type_desc_type then
+                SubstituteName = "jmercury.runtime.PseudoTypeInfo"
+            else if Type = type_ctor_desc_type then
+                SubstituteName = "jmercury.runtime.TypeCtorInfo_Struct"
+            else
+                fail
+            ),
+            ArrayDims = []
+        ;
+            ( CtorCatUser = cat_user_direct_dummy
+            ; CtorCatUser = cat_user_abstract_dummy
+            ; CtorCatUser = cat_user_notag
+            ; CtorCatUser = cat_user_abstract_notag
+            ),
+            fail
+        )
+    ;
+        ( CtorCat = ctor_cat_builtin(_)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_void
+        ),
+        fail
     ).
 
 %---------------------------------------------------------------------------%

@@ -164,9 +164,8 @@ output_lval_for_csharp(Info, Lval, Stream, !IO) :-
                 % in a derived class. Objects are manipulated as instances
                 % of their base class, so we need to downcast to the derived
                 % class to access some fields.
-                io.write_string(Stream, "((", !IO),
-                output_type_for_csharp(Info, CtorType, Stream, !IO),
-                io.write_string(Stream, ") ", !IO),
+                io.format(Stream, "((%s) ",
+                    [s(type_to_string_for_csharp(Info, CtorType))], !IO),
                 output_bracketed_rval_for_csharp(Info, PtrRval, Stream, !IO),
                 io.write_string(Stream, ").", !IO)
             ),
@@ -317,14 +316,18 @@ output_cast_rval_for_csharp(Info, Type, Expr, Stream, !IO) :-
         output_rval_for_csharp(Info, Expr, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     else if
+        % Given that the then-part and else-part of this if-then-else
+        % do exactly the same thing when the test succeeds, its only purpose
+        % can be optimization. However, I (zs) have strong doubts about
+        % whether this attempt at optimization actually works, because
+        % the gain, even when we get it, is very small.
         csharp_builtin_type(Type, "int")
     then
         io.write_string(Stream, "(int) ", !IO),
         output_rval_for_csharp(Info, Expr, Stream, !IO)
     else
-        io.write_string(Stream, "(", !IO),
-        output_type_for_csharp(Info, Type, Stream, !IO),
-        io.write_string(Stream, ") ", !IO),
+        io.format(Stream, "(%s) ",
+            [s(type_to_string_for_csharp(Info, Type))], !IO),
         output_rval_for_csharp(Info, Expr, Stream, !IO)
     ).
 
@@ -341,27 +344,24 @@ have_preallocated_pseudo_type_var_for_csharp(N) :-
 output_boxed_rval_for_csharp(Info, _Type, Expr, Stream, !IO) :-
     % C# does implicit boxing.
     output_rval_for_csharp(Info, Expr, Stream, !IO).
-    /*
-    ( if csharp_builtin_type(Type, _JavaName, JavaBoxedName, _) then
-        % valueOf may return cached instances instead of creating new objects.
-        io.write_string(Stream, JavaBoxedName, !IO),
-        io.write_string(Stream, ".valueOf(", !IO),
-        output_rval(Info, Expr, !IO),
-        io.write_string(Stream, ")", !IO)
-    else
-        io.write_string(Stream, "((object) (", !IO),
-        output_rval(Info, Expr, !IO),
-        io.write_string(Stream, "))", !IO)
-    ).
-    */
+%   ( if csharp_builtin_type(Type, _JavaName, JavaBoxedName, _) then
+%       % valueOf may return cached instances instead of creating new objects.
+%       io.write_string(Stream, JavaBoxedName, !IO),
+%       io.write_string(Stream, ".valueOf(", !IO),
+%       output_rval(Info, Expr, !IO),
+%       io.write_string(Stream, ")", !IO)
+%   else
+%       io.write_string(Stream, "((object) (", !IO),
+%       output_rval(Info, Expr, !IO),
+%       io.write_string(Stream, "))", !IO)
+%   ).
 
 :- pred output_unboxed_rval_for_csharp(csharp_out_info::in, mlds_type::in,
     mlds_rval::in, io.text_output_stream::in, io::di, io::uo) is det.
 
 output_unboxed_rval_for_csharp(Info, Type, Expr, Stream, !IO) :-
-    io.write_string(Stream, "((", !IO),
-    output_type_for_csharp(Info, Type, Stream, !IO),
-    io.write_string(Stream, ") ", !IO),
+    io.format(Stream, "((%s) ",
+        [s(type_to_string_for_csharp(Info, Type))], !IO),
     output_rval_for_csharp(Info, Expr, Stream, !IO),
     io.write_string(Stream, ")", !IO).
 
@@ -722,9 +722,8 @@ output_rval_const_for_csharp(Info, Stream, Const, !IO) :-
         Const = mlconst_foreign(Lang, Value, Type),
         expect(unify(Lang, lang_csharp), $pred, "language other than C#."),
         % XXX Should we parenthesize this?
-        io.write_string(Stream, "(", !IO),
-        output_type_for_csharp(Info, Type, Stream, !IO),
-        io.write_string(Stream, ") ", !IO),
+        io.format(Stream, "(%s) ",
+            [s(type_to_string_for_csharp(Info, Type))], !IO),
         io.write_string(Stream, Value, !IO)
     ;
         Const = mlconst_float(FloatVal),
@@ -938,8 +937,9 @@ output_initializer_alloc_only_for_csharp(Info, Stream, Initializer,
             Size = list.length(FieldInits),
             io.format(Stream, "object[%d]%s\n", [i(Size), s(Suffix)], !IO)
         else
-            output_type_for_csharp(Info, StructType, Stream, !IO),
-            io.format(Stream, "()%s\n", [s(Suffix)], !IO)
+            io.format(Stream, "%s()%s\n",
+                [s(type_to_string_for_csharp(Info, StructType)), s(Suffix)],
+                !IO)
         )
     ;
         Initializer = init_array(ElementInits),
@@ -947,15 +947,12 @@ output_initializer_alloc_only_for_csharp(Info, Stream, Initializer,
         io.write_string(Stream, "new ", !IO),
         (
             MaybeType = yes(Type),
-            type_to_string_for_csharp(Info, Type, String, ArrayDims),
-            io.write_string(Stream, String, !IO),
-            % Replace the innermost array dimension by the known size.
-            ( if list.split_last(ArrayDims, Heads, 0) then
-                output_array_dimensions(Stream, Heads ++ [Size], !IO),
-                io.format(Stream, "%s\n", [s(Suffix)], !IO)
-            else
-                unexpected($pred, "missing array dimension")
-            )
+            type_to_string_and_dims_for_csharp(Info, Type,
+                BaseTypeName, ArrayDims0),
+            make_last_dimension_known_size(ArrayDims0, Size, ArrayDims),
+            DimsStr = array_dimensions_to_string(ArrayDims),
+            io.format(Stream, "%s%s%s\n",
+                [s(BaseTypeName), s(DimsStr), s(Suffix)], !IO)
         ;
             MaybeType = no,
             % XXX we need to know the type here
@@ -991,9 +988,8 @@ output_initializer_body_for_csharp(Info, Stream, InitStart, Indent,
         ),
         output_n_indents(Stream, Indent, !IO),
         io.write_string(Stream, "new ", !IO),
-        output_type_for_csharp(Info, StructType, Stream, !IO),
-        IsArray = type_is_array_for_csharp(StructType),
-        init_arg_wrappers_cs_java(IsArray, Start, End),
+        output_type_for_csharp(Info, Stream, StructType, ArrayDims, !IO),
+        init_arg_wrappers_cs_java(ArrayDims, Start, End),
         (
             FieldInits = [],
             io.format(Stream, "%s%s%s", [s(Start), s(End), s(Suffix)], !IO)
@@ -1017,7 +1013,7 @@ output_initializer_body_for_csharp(Info, Stream, InitStart, Indent,
         io.write_string(Stream, "new ", !IO),
         (
             MaybeType = yes(Type),
-            output_type_for_csharp(Info, Type, Stream, !IO)
+            output_type_for_csharp(Info, Stream, Type, !IO)
         ;
             MaybeType = no,
             % XXX We need to know the type here.
@@ -1089,8 +1085,8 @@ get_default_initializer_for_csharp(Info, Type) = Initializer :-
             ; CtorCat = ctor_cat_user(_)
             ; CtorCat = ctor_cat_builtin_dummy
             ),
-            type_to_string_for_csharp(Info, Type, TypeString, _),
-            Initializer = "default(" ++ TypeString ++ ")"
+            TypeName = type_to_string_for_csharp(Info, Type),
+            Initializer = "default(" ++ TypeName ++ ")"
         )
     ;
         ( Type = mlds_builtin_type_int(int_type_int)

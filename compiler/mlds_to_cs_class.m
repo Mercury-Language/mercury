@@ -155,14 +155,13 @@ output_supers_list(Info, Stream, Indent, Inherits, Interfaces, !IO) :-
     ;
         Inherits = inherits_class(BaseClassId),
         BaseClassType = mlds_class_type(BaseClassId),
-        type_to_string_for_csharp(Info, BaseClassType, BaseClassString,
-            _ArrayDims),
-        AfterColonStrings = [BaseClassString | AfterColonStrings0]
+        BaseClassTypeName = type_to_string_for_csharp(Info, BaseClassType),
+        AfterColonStrings = [BaseClassTypeName | AfterColonStrings0]
     ;
         Inherits = inherits_generic_env_ptr_type,
-        type_to_string_for_csharp(Info, mlds_generic_env_ptr_type,
-            EnvPtrTypeString, _ArrayDims),
-        AfterColonStrings = [EnvPtrTypeString | AfterColonStrings0]
+        EnvPtrTypeName =
+            type_to_string_for_csharp(Info, mlds_generic_env_ptr_type),
+        AfterColonStrings = [EnvPtrTypeName | AfterColonStrings0]
     ),
     (
         AfterColonStrings = []
@@ -217,7 +216,7 @@ output_field_var_defn_for_csharp(Info, Stream, Indent, FieldVarDefn, !IO) :-
     io::di, io::uo) is det.
 
 output_field_var_decl_for_csharp(Info, Stream, FieldVarName, Type, !IO) :-
-    output_type_for_csharp(Info, Type, Stream, !IO),
+    output_type_for_csharp(Info, Stream, Type, !IO),
     io.write_char(Stream, ' ', !IO),
     output_field_var_name_for_csharp(Stream, FieldVarName, !IO).
 
@@ -252,10 +251,8 @@ output_enum_constant_for_csharp(Info, Indent, FieldVarDefn, Stream, !IO) :-
         else if
             Rval = ml_const(mlconst_foreign(lang_csharp, String, Type))
         then
-            io.write_string(Stream, "(", !IO),
-            output_type_for_csharp(Info, Type, Stream, !IO),
-            io.write_string(Stream, ") ", !IO),
-            io.write_string(Stream, String, !IO)
+            io.format(Stream, "(%s) %s",
+                [s(type_to_string_for_csharp(Info, Type)), s(String)], !IO)
         else
             unexpected($pred, string(Rval))
         ),

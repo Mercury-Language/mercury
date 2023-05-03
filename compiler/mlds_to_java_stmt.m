@@ -36,8 +36,6 @@
 
 :- implementation.
 
-:- import_module backend_libs.
-:- import_module backend_libs.rtti.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module libs.
@@ -232,7 +230,7 @@ output_local_var_defn_for_java(Info, Stream, Indent, LocalVarDefn, !IO) :-
     io::di, io::uo) is det.
 
 output_local_var_decl_for_java(Info, Stream, LocalVarName, Type, !IO) :-
-    output_type_for_java(Info, Type, Stream, !IO),
+    output_type_for_java(Info, Stream, Type, !IO),
     io.write_char(Stream, ' ', !IO),
     output_local_var_name_for_java(Stream, LocalVarName, !IO).
 
@@ -411,49 +409,27 @@ output_stmt_call_for_java(Info, Stream, Indent, _FuncInfo, Stmt,
         % nicely, as it needs to effectively be wrapped around the method
         % call itself, so it acts before this predicate's solution to
         % multiple return values, see above.
-
         (
-            RetTypes = []
+            RetTypes = [],
+            output_stmt_method_call_for_java(Info, Stream, FuncRval,
+                CallArgs, ArgTypes, !IO)
         ;
             RetTypes = [RetType],
             boxed_type_to_string_for_java(Info, RetType, RetTypeString),
-            io.format(Stream, "((%s) ", [s(RetTypeString)], !IO)
-        ;
-            RetTypes = [_, _ | _],
-            io.write_string(Stream, "((java.lang.Object[]) ", !IO)
-        ),
-
-        list.length(CallArgs, Arity),
-        ( if is_specialised_method_ptr_arity(Arity) then
-            io.write_string(Stream, "((jmercury.runtime.MethodPtr", !IO),
-            io.write_int(Stream, Arity, !IO),
-            io.write_string(Stream, ") ", !IO),
-            output_bracketed_rval_for_java(Info, FuncRval, Stream, !IO),
-            io.write_string(Stream, ").call___0_0(", !IO),
-            output_boxed_args(Info, Stream, CallArgs, ArgTypes, !IO)
-        else
-            io.write_string(Stream, "((jmercury.runtime.MethodPtrN) ", !IO),
-            output_bracketed_rval_for_java(Info, FuncRval, Stream, !IO),
-            io.write_string(Stream, ").call___0_0(", !IO),
-            output_args_as_array(Info, Stream, CallArgs, ArgTypes, !IO)
-        ),
-
-        % Closes brackets, and calls unbox methods for downcasting.
-        % XXX This is a hack, see the above comment.
-        io.write_string(Stream, ")", !IO),
-        (
-            RetTypes = []
-        ;
-            RetTypes = [RetType2],
-            ( if java_builtin_type(RetType2, _, _, UnboxMethod) then
-                io.write_string(Stream, ").", !IO),
-                io.write_string(Stream, UnboxMethod, !IO),
-                io.write_string(Stream, "()", !IO)
+            io.format(Stream, "((%s) ", [s(RetTypeString)], !IO),
+            output_stmt_method_call_for_java(Info, Stream, FuncRval,
+                CallArgs, ArgTypes, !IO),
+            io.write_string(Stream, ")", !IO),
+            ( if java_builtin_type(RetType, _, _, UnboxMethod) then
+                io.format(Stream, ".%s()", [s(UnboxMethod)], !IO)
             else
-                io.write_string(Stream, ")", !IO)
+                true
             )
         ;
             RetTypes = [_, _ | _],
+            io.write_string(Stream, "((java.lang.Object[]) ", !IO),
+            output_stmt_method_call_for_java(Info, Stream, FuncRval,
+                CallArgs, ArgTypes, !IO),
             io.write_string(Stream, ")", !IO)
         )
     ),
@@ -598,6 +574,30 @@ while_exit_methods_for_java(Cond, BlockExitMethods) = ExitMethods :-
 % Extra code for handling function calls/returns.
 %
 
+:- pred output_stmt_method_call_for_java(java_out_info::in,
+    io.text_output_stream::in, mlds_rval::in, list(mlds_rval)::in,
+    list(mlds_type)::in, io::di, io::uo) is det.
+:- pragma inline(pred(output_stmt_method_call_for_java/7)).
+
+output_stmt_method_call_for_java(Info, Stream, FuncRval,
+        CallArgs, ArgTypes, !IO) :-
+    list.length(CallArgs, Arity),
+    ( if is_specialised_method_ptr_arity(Arity) then
+        io.write_string(Stream, "((jmercury.runtime.MethodPtr", !IO),
+        io.write_int(Stream, Arity, !IO),
+        io.write_string(Stream, ") ", !IO),
+        output_bracketed_rval_for_java(Info, FuncRval, Stream, !IO),
+        io.write_string(Stream, ").call___0_0(", !IO),
+        output_boxed_args(Info, Stream, CallArgs, ArgTypes, !IO),
+        io.write_string(Stream, ")", !IO)
+    else
+        io.write_string(Stream, "((jmercury.runtime.MethodPtrN) ", !IO),
+        output_bracketed_rval_for_java(Info, FuncRval, Stream, !IO),
+        io.write_string(Stream, ").call___0_0(", !IO),
+        output_args_as_array(Info, Stream, CallArgs, ArgTypes, !IO),
+        io.write_string(Stream, ")", !IO)
+    ).
+
 :- pred output_args_as_array(java_out_info::in, io.text_output_stream::in,
     list(mlds_rval)::in, list(mlds_type)::in, io::di, io::uo) is det.
 
@@ -665,17 +665,13 @@ output_assign_results(Info, Stream, [Lval | Lvals], [Type | Types],
     mlds_type::in, int::in, io::di, io::uo) is det.
 
 output_unboxed_result(Info, Stream, Type, ResultIndex, !IO) :-
-    ( if java_builtin_type(Type, _, JavaBoxedName, UnboxMethod) then
-        io.write_string(Stream, "((", !IO),
-        io.write_string(Stream, JavaBoxedName, !IO),
-        io.write_string(Stream, ") ", !IO),
-        io.format(Stream, "result[%d]).%s()",
-            [i(ResultIndex), s(UnboxMethod)], !IO)
+    ( if java_builtin_type(Type, _, JavaBoxedTypeName, UnboxMethod) then
+        io.format(Stream, "((%s) result[%d]).%s()",
+            [s(JavaBoxedTypeName), i(ResultIndex), s(UnboxMethod)], !IO)
     else
-        io.write_string(Stream, "(", !IO),
-        output_type_for_java(Info, Type, Stream, !IO),
-        io.write_string(Stream, ") ", !IO),
-        io.format(Stream, "result[%d]", [i(ResultIndex)], !IO)
+        TypeName = type_to_string_for_java(Info, Type),
+        io.format(Stream, "(%s) result[%d]",
+            [s(TypeName), i(ResultIndex)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -699,8 +695,8 @@ output_switch_cases_for_java(Info, Stream, Indent, FuncInfo, Context,
     output_switch_cases_for_java(Info, Stream, Indent, FuncInfo, Context,
         Cases, Default, CasesExitMethods, !IO),
     ( if set.member(can_break, CaseExitMethods0) then
-        CaseExitMethods = set.insert(set.delete(CaseExitMethods0, can_break),
-            can_fall_through)
+        set.delete(can_break, CaseExitMethods0, CaseExitMethods1),
+        set.insert(can_fall_through, CaseExitMethods1, CaseExitMethods)
     else
         CaseExitMethods = CaseExitMethods0
     ),
@@ -837,16 +833,15 @@ output_atomic_stmt_for_java(Info, Stream, Indent, AtomicStmt, Context, !IO) :-
                 hand_defined_type_for_java(MerType, CtorCat, _, _)
             )
         then
-            output_type_for_java(Info, Type, Stream, !IO),
+            output_type_for_java(Info, Stream, Type, ArrayDims, !IO),
             io.write_char(Stream, '.', !IO),
             QualifiedCtorId = qual_ctor_id(_ModuleName, _QualKind, CtorDefn),
             CtorDefn = ctor_id(CtorName, CtorArity),
             output_unqual_class_name_for_java(Stream, CtorName, CtorArity, !IO)
         else
-            output_type_for_java(Info, Type, Stream, !IO)
+            output_type_for_java(Info, Stream, Type, ArrayDims, !IO)
         ),
-        IsArray = type_is_array_for_java(Type),
-        init_arg_wrappers_cs_java(IsArray, Start, End),
+        init_arg_wrappers_cs_java(ArrayDims, Start, End),
         % Generate constructor arguments.
         (
             ArgRvalsTypes = [],
@@ -943,7 +938,7 @@ output_target_code_component_for_java(Info, Stream, TargetCode, !IO) :-
     ;
         TargetCode = target_code_type(Type),
         InfoGenerics = Info ^ joi_output_generics := do_output_generics,
-        output_type_for_java(InfoGenerics, Type, Stream, !IO)
+        output_type_for_java(InfoGenerics, Stream, Type, !IO)
     ;
         TargetCode = target_code_function_name(FuncName),
         output_maybe_qualified_function_name_for_java(Info, Stream,

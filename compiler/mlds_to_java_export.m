@@ -93,7 +93,7 @@ output_export_for_java(Info0, Stream, Indent, Export, !IO) :-
         io.write_string(Stream, "void", !IO)
     ;
         ReturnTypes = [RetType],
-        output_type_for_java(Info, RetType, Stream, !IO)
+        output_type_for_java(Info, Stream, RetType, !IO)
     ;
         ReturnTypes = [_, _ | _],
         % For multiple outputs, we return an array of objects.
@@ -137,9 +137,8 @@ output_export_no_ref_out(Info, Stream, Indent, Export, !IO) :-
         ReturnTypes = [RetType],
         % The cast is required when the exported method uses generics but the
         % underlying method does not use generics (i.e. returns Object).
-        io.write_string(Stream, "return (", !IO),
-        output_type_for_java(Info, RetType, Stream, !IO),
-        io.write_string(Stream, ") ", !IO)
+        io.format(Stream, "return (%s) ",
+            [s(type_to_string_for_java(Info, RetType))], !IO)
     ;
         ReturnTypes = [_, _ | _],
         io.write_string(Stream, "return ", !IO)
@@ -214,7 +213,7 @@ output_export_param_ref_out(Info, Indent, Argument, Stream, !IO) :-
         io.format(Stream, "jmercury.runtime.Ref<%s> ",
             [s(InnerTypeString)], !IO)
     else
-        output_type_for_java(Info, Type, Stream, !IO),
+        output_type_for_java(Info, Stream, Type, !IO),
         io.write_string(Stream, " ", !IO)
     ),
     output_local_var_name_for_java(Stream, VarName, !IO).
@@ -292,11 +291,8 @@ output_exported_enum_constant_for_java(Info, Stream, Indent, MLDS_Type,
         ExportedConstant, !IO) :-
     ExportedConstant = mlds_exported_enum_constant(Name, Initializer),
     output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "public static final ", !IO),
-    output_type_for_java(Info, MLDS_Type, Stream, !IO),
-    io.write_string(Stream, " ", !IO),
-    io.write_string(Stream, Name, !IO),
-    io.write_string(Stream, " = ", !IO),
+    io.format(Stream, "public static final %s %s = ",
+        [s(type_to_string_for_java(Info, MLDS_Type)), s(Name)], !IO),
     output_initializer_body_for_java(Info, Stream, not_at_start_of_line,
         Indent + 1, Initializer, no, ";", !IO).
 

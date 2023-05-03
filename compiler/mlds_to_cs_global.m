@@ -53,8 +53,6 @@
 
 :- implementation.
 
-:- import_module backend_libs.
-:- import_module backend_libs.rtti.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds_to_cs_class.
@@ -97,7 +95,7 @@ output_global_var_decls_for_csharp(Info, Stream, Indent,
     io::di, io::uo) is det.
 
 output_global_var_decl_for_csharp(Info, Stream, GlobalVarName, Type, !IO) :-
-    output_type_for_csharp(Info, Type, Stream, !IO),
+    output_type_for_csharp(Info, Stream, Type, !IO),
     io.write_char(Stream, ' ', !IO),
     output_global_var_name_for_csharp(Stream, GlobalVarName, !IO).
 
@@ -181,9 +179,8 @@ output_scalar_defns_for_csharp(Info, Stream, Indent, TypeNum, CellGroup,
     RowInits = cord.list(RowInitsCord),
 
     output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "private static readonly ", !IO),
-    output_type_for_csharp(Info, Type, Stream, !IO),
-    io.format(Stream, "[] MR_scalar_common_%d = ", [i(TypeRawNum)], !IO),
+    io.format(Stream, "private static readonly %s[] MR_scalar_common_%d = ",
+        [s(type_to_string_for_csharp(Info, Type)), i(TypeRawNum)], !IO),
     output_initializer_alloc_only_for_csharp(Info, Stream,
         init_array(RowInits), yes(ArrayType), ";", !IO),
 
@@ -233,9 +230,9 @@ output_vector_cell_decl_for_csharp(Info, Stream, Indent, TypeNum,
     output_class_defn_for_csharp(Info, Stream, Indent, ClassDefn, !IO),
 
     output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "private static /* readonly */ ", !IO),
-    output_type_for_csharp(Info, Type, Stream, !IO),
-    io.format(Stream, "[] MR_vector_common_%d;\n", [i(TypeRawNum)], !IO).
+    io.format(Stream,
+        "private static /* readonly */ %s[] MR_vector_common_%d;\n",
+        [s(type_to_string_for_csharp(Info, Type)), i(TypeRawNum)], !IO).
 
 :- pred output_vector_cell_init_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, indent::in,
@@ -248,9 +245,8 @@ output_vector_cell_init_for_csharp(Info, Stream, Indent, TypeNum,
     CellGroup = ml_vector_cell_group(Type, _ClassDefn, _FieldIds, _NextRow,
         RowInits),
     output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "MR_vector_common_%d = new ", [i(TypeRawNum)], !IO),
-    output_type_for_csharp(Info, Type, Stream, !IO),
-    io.write_string(Stream, "[]\n", !IO),
+    io.format(Stream, "MR_vector_common_%d = new %s[]\n",
+        [i(TypeRawNum), s(type_to_string_for_csharp(Info, Type))], !IO),
     output_n_indents(Stream, Indent + 1, !IO),
     io.write_string(Stream, "{\n", !IO),
     output_nonempty_initializer_body_list_for_csharp(Info, Stream, Indent + 2,
@@ -297,9 +293,10 @@ output_rtti_defn_assignments_for_csharp(Info, Stream, Indent,
         unexpected($pred, "init_obj")
     ;
         Initializer = init_struct(StructType, FieldInits),
-        IsArray = type_is_array_for_csharp(StructType),
+        type_to_string_and_dims_for_csharp(Info, StructType,
+            _BaseTypeName, ArrayDims),
         (
-            IsArray = not_array,
+            ArrayDims = [],
             output_n_indents(Stream, Indent, !IO),
             output_global_var_name_for_csharp(Stream, GlobalVarName, !IO),
             io.write_string(Stream, ".init(\n", !IO),
@@ -308,7 +305,7 @@ output_rtti_defn_assignments_for_csharp(Info, Stream, Indent,
             output_n_indents(Stream, Indent, !IO),
             io.write_string(Stream, ");\n", !IO)
         ;
-            IsArray = is_array,
+            ArrayDims = [_ | _],
             % Not encountered in practice.
             unexpected($pred, "is_array")
         )

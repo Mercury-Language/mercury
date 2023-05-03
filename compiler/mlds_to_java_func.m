@@ -83,7 +83,7 @@ output_return_types_for_java(Info, Stream, RetTypes, !IO) :-
         io.write_string(Stream, "void", !IO)
     ;
         RetTypes = [RetType],
-        output_type_for_java(Info, RetType, Stream, !IO)
+        output_type_for_java(Info, Stream, RetType, !IO)
     ;
         RetTypes = [_, _ | _],
         % For multiple outputs, we return an array of objects.
@@ -108,7 +108,7 @@ output_params_for_java(Info, Stream, Indent, Parameters, !IO) :-
 output_param(Info, Indent, Arg, Stream, !IO) :-
     Arg = mlds_argument(VarName, Type, _GCStmt),
     output_n_indents(Stream, Indent, !IO),
-    output_type_for_java(Info, Type, Stream, !IO),
+    output_type_for_java(Info, Stream, Type, !IO),
     io.write_char(Stream, ' ', !IO),
     output_local_var_name_for_java(Stream, VarName, !IO).
 

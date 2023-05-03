@@ -156,19 +156,34 @@
 
 %---------------------------------------------------------------------------%
 
+    % Return the suffix to add to the name of a Java or C# type
+    % to transform it to represent an array of N elements of that type.
+    % N being zero means the number of elements is unknown.
+    %
+:- func array_dimension_to_string(int) = string.
+
+    % Return the suffix to add to the name of a Java or C# type
+    % to transform it to represent an array of array of ... elements
+    % of that type. The first dimension gets printed last.
+    %
+:- func array_dimensions_to_string(list(int)) = string.
 :- pred output_array_dimensions(io.text_output_stream::in, list(int)::in,
     io::di, io::uo) is det.
 
-:- pred array_dimension_to_string(int::in, string::out) is det.
+    % Replace the innermost array dimension (which is expected to be
+    % initially unknown) by the given known size.
+    %
+:- pred make_last_dimension_known_size(list(int)::in, int::in,
+    list(int)::out) is det.
 
 %---------------------------------------------------------------------------%
 
-    % init_arg_wrappers_cs_java(IsArray, StartWrapper, EndWrapper):
+    % init_arg_wrappers_cs_java(ArrayDims, StartWrapper, EndWrapper):
     %
     % Return the kinds of parentheses you need to wrap around an initializer
     % (for something that either is or is not an array) in C# and Java.
     %
-:- pred init_arg_wrappers_cs_java(is_array::in, string::out, string::out)
+:- pred init_arg_wrappers_cs_java(list(int)::in, string::out, string::out)
     is det.
 
 %---------------------------------------------------------------------------%
@@ -342,28 +357,40 @@ type_category_is_array(CtorCat) = IsArray :-
 
 %---------------------------------------------------------------------------%
 
-output_array_dimensions(Stream, ArrayDims, !IO) :-
-    list.map(array_dimension_to_string, ArrayDims, Strings),
-    list.foldr(io.write_string(Stream), Strings, !IO).
-
-array_dimension_to_string(N, String) :-
-    ( if N = 0 then
+array_dimension_to_string(Dim) = String :-
+    ( if Dim = 0 then
         String = "[]"
     else
-        String = string.format("[%d]", [i(N)])
+        String = string.format("[%d]", [i(Dim)])
+    ).
+
+array_dimensions_to_string(Dims) = String :-
+    DimStrs = list.map(array_dimension_to_string, Dims),
+    list.reverse(DimStrs, RevDimStrs),
+    string.append_list(RevDimStrs, String).
+
+output_array_dimensions(Stream, Dims, !IO) :-
+    io.write_string(Stream, array_dimensions_to_string(Dims), !IO).
+
+make_last_dimension_known_size(ArrayDims0, Size, ArrayDims) :-
+    ( if list.split_last(ArrayDims0, InitDims, 0) then
+        ArrayDims = InitDims ++ [Size]
+    else
+        unexpected($pred, "missing unknown array dimension")
     ).
 
 %---------------------------------------------------------------------------%
 
-init_arg_wrappers_cs_java(IsArray, StartWrapper, EndWrapper) :-
+init_arg_wrappers_cs_java(ArrayDims, StartWrapper, EndWrapper) :-
     (
-        IsArray = is_array,
+        ArrayDims = [_ | _],
         % The new object will be an array, so we need to initialise it
         % using array literals syntax.
         StartWrapper = " {",
         EndWrapper = "}"
     ;
-        IsArray = not_array,
+        ArrayDims = [],
+        % The new object will not be an array.
         StartWrapper = "(",
         EndWrapper = ")"
     ).
@@ -425,18 +452,12 @@ scope_indent(Stmt, CurIndent, ScopeIndent) :-
 
 output_auto_gen_comment(Stream, SourceFileName, !IO)  :-
     library.version(Version, Fullarch),
-    io.write_string(Stream, "//\n//\n// Automatically generated from ", !IO),
-    io.write_string(Stream, SourceFileName, !IO),
-    io.write_string(Stream, " by the Mercury Compiler,\n", !IO),
-    io.write_string(Stream, "// version ", !IO),
-    io.write_string(Stream, Version, !IO),
-    io.nl(Stream, !IO),
-    io.write_string(Stream, "// configured for ", !IO),
-    io.write_string(Stream, Fullarch, !IO),
-    io.nl(Stream, !IO),
-    io.write_string(Stream, "//\n", !IO),
-    io.write_string(Stream, "//\n", !IO),
-    io.nl(Stream, !IO).
+    io.write_string(Stream, "//\n//\n", !IO),
+    io.format(Stream, "// Automatically generated from %s by %s,\n",
+        [s(SourceFileName), s("the Mercury Compiler")], !IO),
+    io.format(Stream, "// version %s\n", [s(Version)], !IO),
+    io.format(Stream, "// configured for %s\n", [s(Fullarch)], !IO),
+    io.write_string(Stream, "//\n//\n\n", !IO).
 
 %---------------------------------------------------------------------------%
 

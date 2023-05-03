@@ -192,9 +192,8 @@ output_lval_for_java(Info, Lval, Stream, !IO) :-
                 % in a derived class. Objects are manipulated as instances
                 % of their base class, so we need to downcast to the derived
                 % class to access some fields.
-                io.write_string(Stream, "((", !IO),
-                output_type_for_java(Info, CtorType, Stream, !IO),
-                io.write_string(Stream, ") ", !IO),
+                io.format(Stream, "((%s) ",
+                    [s(type_to_string_for_java(Info, CtorType))], !IO),
                 output_bracketed_rval_for_java(Info, PtrRval, Stream, !IO),
                 io.write_string(Stream, ").", !IO)
             ),
@@ -330,21 +329,25 @@ output_cast_rval_for_java(Info, Type, Expr, Stream, !IO) :-
         % XXX We really should be able to tell if we are casting a
         % TypeCtorInfo or a TypeInfo. Julien says that's probably going to
         % be rather difficult as the compiler doesn't keep track of where
-        % type_ctor_infos are acting as type_infos properly.
+        % type_ctor_infos are acting as type_infos properly. (zs agrees.)
         maybe_output_comment_for_java(Info, Stream, "cast", !IO),
         io.write_string(Stream,
             "jmercury.runtime.TypeInfo_Struct.maybe_new(", !IO),
         output_rval_for_java(Info, Expr, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     else if
+        % Given that the then-part and else-part of this if-then-else
+        % do exactly the same thing when the test succeeds, its only purpose
+        % can be optimization. However, I (zs) have strong doubts about
+        % whether this attempt at optimization actually works, because
+        % the gain, even when we get it, is very small.
         java_builtin_type(Type, "int", _, _)
     then
         io.write_string(Stream, "(int) ", !IO),
         output_rval_maybe_with_enum_for_java(Info, Expr, Stream, !IO)
     else
-        io.write_string(Stream, "(", !IO),
-        output_type_for_java(Info, Type, Stream, !IO),
-        io.write_string(Stream, ") ", !IO),
+        io.format(Stream, "(%s) ",
+            [s(type_to_string_for_java(Info, Type))], !IO),
         output_rval_for_java(Info, Expr, Stream, !IO)
     ).
 
@@ -356,9 +359,9 @@ have_preallocated_pseudo_type_var_for_java(N) :-
     N =< 5.
 
 output_boxed_rval_for_java(Info, Type, Expr, Stream, !IO) :-
-    ( if java_builtin_type(Type, _JavaName, JavaBoxedName, _) then
+    ( if java_builtin_type(Type, _, JavaBoxedTypeName, _) then
         % valueOf may return cached instances instead of creating new objects.
-        io.write_string(Stream, JavaBoxedName, !IO),
+        io.write_string(Stream, JavaBoxedTypeName, !IO),
         io.write_string(Stream, ".valueOf(", !IO),
         output_rval_for_java(Info, Expr, Stream, !IO),
         io.write_string(Stream, ")", !IO)
@@ -372,9 +375,9 @@ output_boxed_rval_for_java(Info, Type, Expr, Stream, !IO) :-
     mlds_rval::in, io.text_output_stream::in, io::di, io::uo) is det.
 
 output_unboxed_rval_for_java(Info, Type, Expr, Stream, !IO) :-
-    ( if java_builtin_type(Type, _, JavaBoxedName, UnboxMethod) then
+    ( if java_builtin_type(Type, _, JavaBoxedTypeName, UnboxMethod) then
         io.write_string(Stream, "((", !IO),
-        io.write_string(Stream, JavaBoxedName, !IO),
+        io.write_string(Stream, JavaBoxedTypeName, !IO),
         io.write_string(Stream, ") ", !IO),
         output_bracketed_rval_for_java(Info, Expr, Stream, !IO),
         io.write_string(Stream, ").", !IO),
@@ -382,7 +385,7 @@ output_unboxed_rval_for_java(Info, Type, Expr, Stream, !IO) :-
         io.write_string(Stream, "()", !IO)
     else
         io.write_string(Stream, "((", !IO),
-        output_type_for_java(Info, Type, Stream, !IO),
+        output_type_for_java(Info, Stream, Type, !IO),
         io.write_string(Stream, ") ", !IO),
         output_rval_for_java(Info, Expr, Stream, !IO),
         io.write_string(Stream, ")", !IO)
@@ -892,8 +895,8 @@ output_rval_const_for_java(Info, Stream, Const, !IO) :-
         io.write_string(Stream, ")", !IO)
     ;
         Const = mlconst_enum(N, EnumType),
-        output_type_for_java(Info, EnumType, Stream, !IO),
-        io.write_string(Stream, ".K", !IO),
+        io.format(Stream, "%s.K",
+            [s(type_to_string_for_java(Info, EnumType))], !IO),
         output_int_const_for_java(Stream, N, !IO)
     ;
         Const = mlconst_foreign(Lang, Value, _Type),
@@ -1096,8 +1099,9 @@ output_initializer_alloc_only_for_java(Info, Stream, Initializer, MaybeType,
             io.format(Stream, "java.lang.Object[%d]%s\n",
                 [i(Size), s(Suffix)], !IO)
         else
-            output_type_for_java(Info, StructType, Stream, !IO),
-            io.format(Stream, "()%s\n", [s(Suffix)], !IO)
+            io.format(Stream, "%s()%s\n",
+                [s(type_to_string_for_java(Info, StructType)), s(Suffix)],
+                !IO)
         )
     ;
         Initializer = init_array(ElementInits),
@@ -1105,15 +1109,12 @@ output_initializer_alloc_only_for_java(Info, Stream, Initializer, MaybeType,
         io.write_string(Stream, "new ", !IO),
         (
             MaybeType = yes(Type),
-            type_to_string_for_java(Info, Type, String, ArrayDims),
-            io.write_string(Stream, String, !IO),
-            % Replace the innermost array dimension by the known size.
-            ( if list.split_last(ArrayDims, Heads, 0) then
-                output_array_dimensions(Stream, Heads ++ [Size], !IO),
-                io.format(Stream, "%s\n", [s(Suffix)], !IO)
-            else
-                unexpected($pred, "missing array dimension")
-            )
+            type_to_string_and_dims_for_java(Info, Type,
+                BaseTypeName, ArrayDims0),
+            make_last_dimension_known_size(ArrayDims0, Size, ArrayDims),
+            DimsStr = array_dimensions_to_string(ArrayDims),
+            io.format(Stream, "%s%s%s\n",
+                [s(BaseTypeName), s(DimsStr), s(Suffix)], !IO)
         ;
             MaybeType = no,
             % XXX We need to know the type here.
@@ -1149,9 +1150,8 @@ output_initializer_body_for_java(Info, Stream, InitStart, Indent, Initializer,
         ),
         output_n_indents(Stream, Indent, !IO),
         io.write_string(Stream, "new ", !IO),
-        output_type_for_java(Info, StructType, Stream, !IO),
-        IsArray = type_is_array_for_java(StructType),
-        init_arg_wrappers_cs_java(IsArray, Start, End),
+        output_type_for_java(Info, Stream, StructType, ArrayDims, !IO),
+        init_arg_wrappers_cs_java(ArrayDims, Start, End),
         (
             FieldInits = [],
             io.format(Stream, "%s%s%s\n", [s(Start), s(End), s(Suffix)], !IO)
@@ -1175,7 +1175,7 @@ output_initializer_body_for_java(Info, Stream, InitStart, Indent, Initializer,
         io.write_string(Stream, "new ", !IO),
         (
             MaybeType = yes(Type),
-            output_type_for_java(Info, Type, Stream, !IO)
+            output_type_for_java(Info, Stream, Type, !IO)
         ;
             MaybeType = no,
             % XXX We need to know the type here.

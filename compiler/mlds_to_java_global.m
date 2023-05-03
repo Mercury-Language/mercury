@@ -53,8 +53,6 @@
 
 :- implementation.
 
-:- import_module backend_libs.
-:- import_module backend_libs.rtti.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds_to_java_class.
@@ -95,7 +93,7 @@ output_global_var_decls_for_java(Info, Stream, Indent,
     io::di, io::uo) is det.
 
 output_global_var_decl_for_java(Info, Stream, GlobalVarName, Type, !IO) :-
-    output_type_for_java(Info, Type, Stream, !IO),
+    output_type_for_java(Info, Stream, Type, !IO),
     io.write_char(Stream, ' ', !IO),
     output_global_var_name_for_java(Stream, GlobalVarName, !IO).
 
@@ -220,9 +218,8 @@ output_scalar_defns_for_java(Info, Stream, Indent, TypeNum, CellGroup,
     RowInits = cord.list(RowInitsCord),
 
     output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "private static final ", !IO),
-    output_type_for_java(Info, Type, Stream, !IO),
-    io.format(Stream, "[] MR_scalar_common_%d = ", [i(TypeRawNum)], !IO),
+    io.format(Stream, "private static final %s[] MR_scalar_common_%d = ",
+        [s(type_to_string_for_java(Info, Type)), i(TypeRawNum)], !IO),
     output_initializer_alloc_only_for_java(Info, Stream, init_array(RowInits),
         yes(ArrayType), ";", !IO),
 
@@ -287,9 +284,8 @@ output_vector_cell_group_for_java(Info, Stream, Indent, TypeNum,
     output_class_defn_for_java(Info, Stream, Indent, ClassDefn, !IO),
 
     output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "private static final ", !IO),
-    output_type_for_java(Info, Type, Stream, !IO),
-    io.format(Stream, " MR_vector_common_%d[] =\n", [i(TypeRawNum)], !IO),
+    io.format(Stream, "private static final %s MR_vector_common_%d[] =\n",
+        [s(type_to_string_for_java(Info, Type)), i(TypeRawNum)], !IO),
     output_n_indents(Stream, Indent + 1, !IO),
     io.write_string(Stream, "{\n", !IO),
     output_nonempty_initializer_body_list_for_java(Info, Stream, Indent + 2,
@@ -345,9 +341,10 @@ output_rtti_defn_assignments_for_java(Info, Stream, Indent,
         unexpected($pred, "init_obj")
     ;
         Initializer = init_struct(StructType, FieldInits),
-        IsArray = type_is_array_for_java(StructType),
+        type_to_string_and_dims_for_java(Info, StructType,
+            _BaseType, ArrayDims),
         (
-            IsArray = not_array,
+            ArrayDims = [],
             output_n_indents(Stream, Indent, !IO),
             output_global_var_name_for_java(Stream, GlobalVarName, !IO),
             io.write_string(Stream, ".init(\n", !IO),
@@ -356,7 +353,7 @@ output_rtti_defn_assignments_for_java(Info, Stream, Indent,
             output_n_indents(Stream, Indent, !IO),
             io.write_string(Stream, ");\n", !IO)
         ;
-            IsArray = is_array,
+            ArrayDims = [_ | _],
             % Not encountered in practice.
             unexpected($pred, "is_array")
         )

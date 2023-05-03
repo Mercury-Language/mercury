@@ -59,6 +59,7 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
+:- import_module string.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -89,7 +90,7 @@ output_export_for_csharp(Info, Stream, Indent, Export, !IO) :-
         io.write_string(Stream, "void ", !IO)
     ;
         ReturnTypes = [RetType],
-        output_type_for_csharp(Info, RetType, Stream, !IO),
+        output_type_for_csharp(Info, Stream, RetType, !IO),
         io.write_string(Stream, " ", !IO)
     ;
         ReturnTypes = [_, _ | _],
@@ -117,9 +118,8 @@ output_export_for_csharp(Info, Stream, Indent, Export, !IO) :-
         ReturnTypes = [RetTypeB | _],
         % The cast is required when the exported method uses generics, but
         % the underlying method does not use generics (i.e. returns Object).
-        io.write_string(Stream, "return (", !IO),
-        output_type_for_csharp(Info, RetTypeB, Stream, !IO),
-        io.write_string(Stream, ") ", !IO),
+        io.format(Stream, "return (%s) ",
+            [s(type_to_string_for_csharp(Info, RetTypeB))], !IO),
         RestOutArgs = OutArgs
     ),
     write_export_call_for_csharp(Stream, MLDS_Name,
@@ -191,11 +191,8 @@ output_exported_enum_constant_for_csharp(Info, Stream, Indent, MLDS_Type,
         ExportedConstant, !IO) :-
     ExportedConstant = mlds_exported_enum_constant(Name, Initializer),
     output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "public static readonly ", !IO),
-    output_type_for_csharp(Info, MLDS_Type, Stream, !IO),
-    io.write_string(Stream, " ", !IO),
-    io.write_string(Stream, Name, !IO),
-    io.write_string(Stream, " = ", !IO),
+    io.format(Stream, "public static readonly %s %s = ",
+        [s(type_to_string_for_csharp(Info, MLDS_Type)), s(Name)], !IO),
     output_initializer_body_for_csharp(Info, Stream, not_at_start_of_line,
         Indent + 1, Initializer, no, ";", !IO).
 

@@ -193,7 +193,7 @@ output_return_types_for_csharp(Info, Stream, RetTypes, OutParams, !IO) :-
         RetTypes = [RetType | OutParams],
         % The first return value is returned directly. Any further return
         % values are returned via out parameters.
-        output_type_for_csharp(Info, RetType, Stream, !IO)
+        output_type_for_csharp(Info, Stream, RetType, !IO)
     ).
 
 output_params_for_csharp(Info, Indent, Parameters, Stream, !IO) :-
@@ -219,7 +219,7 @@ output_param_for_csharp(Info, Indent, Arg, Stream, !IO) :-
     else
         true
     ),
-    output_type_for_csharp(Info, Type, Stream, !IO),
+    output_type_for_csharp(Info, Stream, Type, !IO),
     io.write_char(Stream, ' ', !IO),
     output_local_var_name_for_csharp(Stream, Name, !IO).
 

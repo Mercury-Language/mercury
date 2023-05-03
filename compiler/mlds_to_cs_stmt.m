@@ -45,8 +45,6 @@
 
 :- implementation.
 
-:- import_module backend_libs.
-:- import_module backend_libs.rtti.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module libs.
@@ -177,7 +175,7 @@ output_local_var_defn_for_csharp(Info, Stream, Indent, LocalVarDefn, !IO) :-
     io::di, io::uo) is det.
 
 output_local_var_decl_for_csharp(Info, Stream, LocalVarName, Type, !IO) :-
-    output_type_for_csharp(Info, Type, Stream, !IO),
+    output_type_for_csharp(Info, Stream, Type, !IO),
     io.write_char(Stream, ' ', !IO),
     output_local_var_name_for_csharp(Stream, LocalVarName, !IO).
 
@@ -538,15 +536,14 @@ output_stmt_call_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
     ),
     ( if FuncRval = ml_const(mlconst_code_addr(_)) then
         % This is a standard method call.
-        CloseBracket = ""
+        output_call_rval_for_csharp(Info, FuncRval, Stream, !IO)
     else
         % This is a call using a method pointer.
         TypeString = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
         io.format(Stream, "((%s) ", [s(TypeString)], !IO),
-        CloseBracket = ")"
+        output_call_rval_for_csharp(Info, FuncRval, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ),
-    output_call_rval_for_csharp(Info, FuncRval, Stream, !IO),
-    io.write_string(Stream, CloseBracket, !IO),
     io.write_string(Stream, "(", !IO),
     write_out_list(output_rval_for_csharp(Info), ", ", CallArgs ++ OutArgs,
         Stream, !IO),
@@ -724,17 +721,16 @@ output_atomic_stmt_for_csharp(Info, Stream, Indent, AtomicStmt,
                 hand_defined_type_for_csharp(MerType, CtorCat, _, _)
             )
         then
-            output_type_for_csharp(Info, Type, Stream, !IO),
+            output_type_for_csharp(Info, Stream, Type, ArrayDims, !IO),
             io.write_char(Stream, '.', !IO),
             QualifiedCtorId = qual_ctor_id(_ModuleName, _QualKind, CtorDefn),
             CtorDefn = ctor_id(CtorName, CtorArity),
             output_unqual_class_name_for_csharp(Stream, CtorName, CtorArity,
                 !IO)
         else
-            output_type_for_csharp(Info, Type, Stream, !IO)
+            output_type_for_csharp(Info, Stream, Type, ArrayDims, !IO)
         ),
-        IsArray = type_is_array_for_csharp(Type),
-        init_arg_wrappers_cs_java(IsArray, Start, End),
+        init_arg_wrappers_cs_java(ArrayDims, Start, End),
         % Generate constructor arguments.
         (
             ArgRvalsTypes = [],
@@ -837,7 +833,7 @@ output_target_code_component_for_csharp(Info, Stream, TargetCode, !IO) :-
     ;
         TargetCode = target_code_type(Type),
         % XXX enable generics here
-        output_type_for_csharp(Info, Type, Stream, !IO)
+        output_type_for_csharp(Info, Stream, Type, !IO)
     ;
         TargetCode = target_code_function_name(FuncName),
         output_maybe_qualified_function_name_for_csharp(Info, Stream,

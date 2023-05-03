@@ -14,8 +14,6 @@
 :- module ml_backend.mlds_to_cs_type.
 :- interface.
 
-:- import_module backend_libs.
-:- import_module backend_libs.rtti.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_cs_util.
 :- import_module parse_tree.
@@ -27,29 +25,39 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred output_type_for_csharp(csharp_out_info::in, mlds_type::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+    % Output the name of the C# type corresponding to the given MLDS type.
+    % Optionally return its array dimensions, if any.
+    %
+:- pred output_type_for_csharp(csharp_out_info::in, io.text_output_stream::in,
+    mlds_type::in, io::di, io::uo) is det.
+:- pred output_type_for_csharp(csharp_out_info::in, io.text_output_stream::in,
+    mlds_type::in, list(int)::out, io::di, io::uo) is det.
+
+:- func type_to_string_for_csharp(csharp_out_info, mlds_type) = string.
+
+:- pred boxed_type_to_string_for_csharp(csharp_out_info::in, mlds_type::in,
+    string::out) is det.
 
     % type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims)
     %
-    % Generate the Java name for a type. ArrayDims are the array dimensions to
-    % be written after the type name, if any, in reverse order to that of Java
-    % syntax where a non-zero integer represents a known array size and zero
-    % represents an unknown array size.
+    % Generate the Java name for a type. ArrayDims are the array dimensions,
+    % if any, to be written after the type name, in reverse order to that
+    % of Java syntax where a non-zero integer represents a known array size
+    % and zero represents an unknown array size.
     %
     % e.g. ArrayDims = [0, 3] represents the Java array `Object[3][]',
     % which should be read as `(Object[])[3]'.
     %
     % XXX yet to check this for C#
+    % XXX The above comment still talks about Java, not C#.
     %
-:- pred type_to_string_for_csharp(csharp_out_info::in, mlds_type::in,
+:- pred type_to_string_and_dims_for_csharp(csharp_out_info::in, mlds_type::in,
     string::out, list(int)::out) is det.
-
-:- pred boxed_type_to_string_for_csharp(csharp_out_info::in, mlds_type::in,
-    string::out) is det.
 
 :- func method_ptr_type_to_string(csharp_out_info, mlds_arg_types,
     mlds_return_types) = string.
+
+%---------------------------------------------------------------------------%
 
 :- pred csharp_builtin_type(mlds_type::in, string::out) is semidet.
 
@@ -57,11 +65,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % Return is_array if the corresponding C# type is an array type.
-    %
-:- func type_is_array_for_csharp(mlds_type) = is_array.
-
-    % hand_defined_type_for_csharp(Type, CtorCat, SubstituteName, ArrayDims):
+    % hand_defined_type_for_csharp(Type, CtorCat, CsharpType, ArrayDims):
     %
     % We need to handle type_info (etc.) types specially -- they get mapped
     % to types in the runtime rather than in private_builtin.
@@ -74,6 +78,8 @@
 
 :- implementation.
 
+:- import_module backend_libs.
+:- import_module backend_libs.rtti.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module mdbcomp.
@@ -91,19 +97,39 @@
 
 %---------------------------------------------------------------------------%
 
-output_type_for_csharp(Info, MLDS_Type, Stream, !IO) :-
-    output_type_for_csharp_dims(Info, Stream, MLDS_Type, [], !IO).
+output_type_for_csharp(Info, Stream, MLDS_Type, !IO) :-
+    output_type_for_csharp(Info, Stream, MLDS_Type, _ArrayDims, !IO).
 
-:- pred output_type_for_csharp_dims(csharp_out_info::in,
-    io.text_output_stream::in, mlds_type::in, list(int)::in,
-    io::di, io::uo) is det.
+output_type_for_csharp(Info, Stream, MLDS_Type, ArrayDims, !IO) :-
+    type_to_string_and_dims_for_csharp(Info, MLDS_Type,
+        BaseTypeName, ArrayDims),
+    io.write_string(Stream, BaseTypeName, !IO),
+    (
+        ArrayDims = []
+        % Optimize the common case.
+    ;
+        ArrayDims = [_ | _],
+        io.write_string(Stream, array_dimensions_to_string(ArrayDims), !IO)
+    ).
 
-output_type_for_csharp_dims(Info, Stream, MLDS_Type, ArrayDims0, !IO) :-
-    type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims),
-    io.write_string(Stream, String, !IO),
-    output_array_dimensions(Stream, ArrayDims ++ ArrayDims0, !IO).
+type_to_string_for_csharp(Info, MLDS_Type) = FullTypeName :-
+    type_to_string_and_dims_for_csharp(Info, MLDS_Type,
+        BaseTypeName, ArrayDims),
+    (
+        ArrayDims = [],
+        % Optimize the common case.
+        FullTypeName = BaseTypeName
+    ;
+        ArrayDims = [_ | _],
+        FullTypeName = BaseTypeName ++ array_dimensions_to_string(ArrayDims)
+    ).
 
-type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
+boxed_type_to_string_for_csharp(Info, Type, TypeName) :-
+    TypeName = type_to_string_for_csharp(Info, Type).
+
+%---------------------------------------------------------------------------%
+
+type_to_string_and_dims_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
     (
         MLDS_Type = mercury_nb_type(Type, CtorCat),
         ( if
@@ -111,10 +137,10 @@ type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
             % they get mapped to types in the runtime rather than
             % in private_builtin.
             hand_defined_type_for_csharp(Type, CtorCat,
-                SubstituteName, ArrayDims0)
+                StringPrime, ArrayDimsPrime)
         then
-            String = SubstituteName,
-            ArrayDims = ArrayDims0
+            String = StringPrime,
+            ArrayDims = ArrayDimsPrime
         else if
             % io.state and store.store
             CtorCat = ctor_cat_builtin_dummy
@@ -130,8 +156,8 @@ type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
             String = "/* c_pointer */ object",
             ArrayDims = []
         else
-            mercury_type_to_string_for_csharp(Info, Type, CtorCat, String,
-                ArrayDims)
+            mercury_type_to_string_and_dims_for_csharp(Info, Type, CtorCat,
+                String, ArrayDims)
         )
     ;
         MLDS_Type = mlds_mercury_array_type(ElementType),
@@ -147,7 +173,7 @@ type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
             % That doesn't work if the representative element is of a foreign
             % type, and has the value null.
             ( if csharp_builtin_type(ElementType, _) then
-                type_to_string_for_csharp(Info, ElementType, String,
+                type_to_string_and_dims_for_csharp(Info, ElementType, String,
                     ArrayDims0),
                 ArrayDims = [0 | ArrayDims0]
             else
@@ -169,7 +195,8 @@ type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
         ArrayDims = []
     ;
         MLDS_Type = mlds_builtin_type_char,
-        % C# `char' not large enough for code points so we must use `int'.
+        % C# `char' type is not large enough to hold all code points,
+        % so we must use `int'.
         String = "int",
         ArrayDims = []
     ;
@@ -197,15 +224,15 @@ type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
         MLDS_Type = mlds_ptr_type(Type),
         % XXX Should we report an error here, if the type pointed to
         % is not a class type?
-        type_to_string_for_csharp(Info, Type, String, ArrayDims)
+        type_to_string_and_dims_for_csharp(Info, Type, String, ArrayDims)
     ;
         MLDS_Type = mlds_array_type(Type),
-        type_to_string_for_csharp(Info, Type, String, ArrayDims0),
+        type_to_string_and_dims_for_csharp(Info, Type, String, ArrayDims0),
         ArrayDims = [0 | ArrayDims0]
     ;
         MLDS_Type = mlds_mostly_generic_array_type(_),
         Type = mlds_generic_type,
-        type_to_string_for_csharp(Info, Type, String, ArrayDims0),
+        type_to_string_and_dims_for_csharp(Info, Type, String, ArrayDims0),
         ArrayDims = [0 | ArrayDims0]
     ;
         MLDS_Type = mlds_func_type(mlds_func_params(Args, RetTypes)),
@@ -249,7 +276,7 @@ type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
         )
     ;
         MLDS_Type = mlds_tabling_type(TablingId),
-        % XXX C# is not Java
+        % XXX C# is not Java, but there is no tabling_id_csharp_type
         tabling_id_java_type(TablingId, String, IsArray),
         (
             IsArray = is_array,
@@ -263,46 +290,29 @@ type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
         unexpected($pred, "unknown type")
     ).
 
-boxed_type_to_string_for_csharp(Info, Type, String) :-
-    type_to_string_for_csharp(Info, Type, String0, ArrayDims),
-    list.map(array_dimension_to_string, ArrayDims, RevBrackets),
-    list.reverse(RevBrackets, Brackets),
-    string.append_list([String0 | Brackets], String).
+:- pred mercury_type_to_string_and_dims_for_csharp(csharp_out_info::in,
+    mer_type::in, type_ctor_category::in, string::out, list(int)::out) is det.
 
-method_ptr_type_to_string(Info, ArgTypes, RetTypes) = String :-
-    Arity = list.length(ArgTypes),
-    NumRets = list.length(RetTypes),
-    list.map(boxed_type_to_string_for_csharp(Info), ArgTypes, ArgTypesStrings),
-    list.map(boxed_type_to_string_for_csharp(Info), RetTypes, RetTypesStrings),
-    TypesString = string.join_list(", ", ArgTypesStrings ++ RetTypesStrings),
-    string.format("runtime.MethodPtr%d_r%d<%s>",
-        [i(Arity), i(NumRets), s(TypesString)], String).
-
-:- pred mercury_type_to_string_for_csharp(csharp_out_info::in, mer_type::in,
-    type_ctor_category::in, string::out, list(int)::out) is det.
-
-mercury_type_to_string_for_csharp(Info, Type, CtorCat, String, ArrayDims) :-
+mercury_type_to_string_and_dims_for_csharp(Info, Type, CtorCat,
+        String, ArrayDims) :-
     (
         CtorCat = ctor_cat_builtin(BuiltinCat),
         (
             BuiltinCat = cat_builtin_int(IntType),
-            String = int_type_to_csharp_type(IntType),
-            ArrayDims = []
+            String = int_type_to_csharp_type(IntType)
         ;
             BuiltinCat = cat_builtin_float,
-            String = "double",
-            ArrayDims = []
+            String = "double"
         ;
             BuiltinCat = cat_builtin_char,
             % A C# `char' is not large enough to store a code point,
             % so we must use `int'.
-            String = "int",
-            ArrayDims = []
+            String = "int"
         ;
             BuiltinCat = cat_builtin_string,
-            String = "string",
-            ArrayDims = []
-        )
+            String = "string"
+        ),
+        ArrayDims = []
     ;
         CtorCat = ctor_cat_void,
         String = "builtin.Void_0",
@@ -313,25 +323,38 @@ mercury_type_to_string_for_csharp(Info, Type, CtorCat, String, ArrayDims) :-
         String = "object",
         ArrayDims = []
     ;
-        CtorCat = ctor_cat_tuple,
-        String = "/* tuple */ object",
-        ArrayDims = [0]
-    ;
         CtorCat = ctor_cat_higher_order,
         String = "/* closure */ object",
         ArrayDims = [0]
     ;
-        CtorCat = ctor_cat_system(_),
-        mercury_type_to_string_for_csharp(Info, Type,
-            ctor_cat_user(cat_user_general), String, ArrayDims)
+        CtorCat = ctor_cat_tuple,
+        String = "/* tuple */ object",
+        ArrayDims = [0]
     ;
-        ( CtorCat = ctor_cat_enum(_)
+        CtorCat = ctor_cat_enum(_),
+        mercury_user_type_to_string_and_dims_for_csharp(Info, Type,
+            mlds_enum, String),
+        ArrayDims = []
+    ;
+        ( CtorCat = ctor_cat_builtin_dummy
         ; CtorCat = ctor_cat_user(_)
-        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_system(_)
         ),
-        mercury_user_type_to_string_csharp(Info, Type, CtorCat, String,
-            ArrayDims)
+        mercury_user_type_to_string_and_dims_for_csharp(Info, Type,
+            mlds_class, String),
+        ArrayDims = []
     ).
+
+%---------------------------------------------------------------------------%
+
+method_ptr_type_to_string(Info, ArgTypes, RetTypes) = String :-
+    Arity = list.length(ArgTypes),
+    NumRets = list.length(RetTypes),
+    list.map(boxed_type_to_string_for_csharp(Info), ArgTypes, ArgTypesStrings),
+    list.map(boxed_type_to_string_for_csharp(Info), RetTypes, RetTypesStrings),
+    TypesString = string.join_list(", ", ArgTypesStrings ++ RetTypesStrings),
+    string.format("runtime.MethodPtr%d_r%d<%s>",
+        [i(Arity), i(NumRets), s(TypesString)], String).
 
 %---------------------------------------------------------------------------%
 
@@ -347,12 +370,19 @@ csharp_builtin_type(Type, TargetType) :-
         Type = mlds_builtin_type_float,
         TargetType = "double"
     ;
-        Type = mlds_builtin_type_string,
-        fail
-    ;
         % C# `char' is not large enough for code points so we must use `int'.
         Type = mlds_builtin_type_char,
         TargetType = "int"
+    ;
+        Type = mlds_builtin_type_string,
+        % This predicate has only two callers, as of 2023 apr 30.
+        % The one in mlds_to_cs_data.m cares about "int" types.
+        % The other one, in this module, wants to know whether values of Type
+        % should be represented by their usual C# type or by "object"
+        % in array slots. The original writer of this "fail" seems to have
+        % thought that "string should be represented by object in arrays".
+        % XXX That seems strange to me (zs).
+        fail
     ;
         Type = mercury_nb_type(MerType, TypeCtorCat),
         require_complete_switch [MerType]
@@ -412,40 +442,37 @@ csharp_builtin_type(Type, TargetType) :-
         unexpected($file, $pred, "unknown typed")
     ).
 
-int_type_to_csharp_type(int_type_int) = "int".
-int_type_to_csharp_type(int_type_uint) = "uint".
-int_type_to_csharp_type(int_type_int8) = "sbyte".
-int_type_to_csharp_type(int_type_uint8) = "byte".
-int_type_to_csharp_type(int_type_int16) = "short".
+int_type_to_csharp_type(int_type_int) =    "int".
+int_type_to_csharp_type(int_type_uint) =   "uint".
+int_type_to_csharp_type(int_type_int8) =   "sbyte".
+int_type_to_csharp_type(int_type_uint8) =  "byte".
+int_type_to_csharp_type(int_type_int16) =  "short".
 int_type_to_csharp_type(int_type_uint16) = "ushort".
-int_type_to_csharp_type(int_type_int32) = "int".
+int_type_to_csharp_type(int_type_int32) =  "int".
 int_type_to_csharp_type(int_type_uint32) = "uint".
-int_type_to_csharp_type(int_type_int64) = "long".
+int_type_to_csharp_type(int_type_int64) =  "long".
 int_type_to_csharp_type(int_type_uint64) = "ulong".
 
-:- pred mercury_user_type_to_string_csharp(csharp_out_info::in, mer_type::in,
-    type_ctor_category::in, string::out, list(int)::out) is det.
+:- pred mercury_user_type_to_string_and_dims_for_csharp(csharp_out_info::in,
+    mer_type::in, mlds_class_kind::in, string::out) is det.
 
-mercury_user_type_to_string_csharp(Info, Type, CtorCat, String, ArrayDims) :-
+mercury_user_type_to_string_and_dims_for_csharp(Info, Type, ClassKind,
+        TypeNameWithGenerics) :-
     type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
     ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-    ( if CtorCat = ctor_cat_enum(_) then
-        ClassKind = mlds_enum
-    else
-        ClassKind = mlds_class
-    ),
     ClassId = mlds_class_id(ClassName, ClassArity, ClassKind),
     MLDS_Type = mlds_class_type(ClassId),
-    type_to_string_for_csharp(Info, MLDS_Type, TypeString, ArrayDims),
+    type_to_string_and_dims_for_csharp(Info, MLDS_Type, TypeName, ArrayDims),
+    expect(unify(ArrayDims, []), $pred, "ArrayDims != []"),
     OutputGenerics = Info ^ csoi_output_generics,
     (
         OutputGenerics = do_output_generics,
         generic_args_types_to_string_for_csharp(Info, ArgsTypes,
             GenericsString),
-        String = TypeString ++ GenericsString
+        TypeNameWithGenerics = TypeName ++ GenericsString
     ;
         OutputGenerics = do_not_output_generics,
-        String = TypeString
+        TypeNameWithGenerics = TypeName
     ).
 
 :- pred generic_args_types_to_string_for_csharp(csharp_out_info::in,
@@ -470,22 +497,6 @@ generic_args_types_to_string_for_csharp(Info, ArgsTypes, String) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-type_is_array_for_csharp(Type) = IsArray :-
-    ( if Type = mlds_array_type(_) then
-        IsArray = is_array
-    else if Type = mlds_mostly_generic_array_type(_) then
-        IsArray = is_array
-    else if Type = mlds_mercury_array_type(_) then
-        IsArray = is_array
-    else if Type = mercury_nb_type(_, CtorCat) then
-        IsArray = type_category_is_array(CtorCat)
-    else if Type = mlds_rtti_type(RttiIdMaybeElement) then
-        rtti_id_maybe_element_csharp_type(RttiIdMaybeElement,
-            _TypeName, IsArray)
-    else
-        IsArray = not_array
-    ).
 
 hand_defined_type_for_csharp(Type, CtorCat, SubstituteName, ArrayDims) :-
     require_complete_switch [CtorCat]
