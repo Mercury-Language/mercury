@@ -341,18 +341,16 @@ ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = FieldVarDefn :-
     %   static class <ClassName> {
     %   public:
     % #if some_but_not_all_ctors_use_secondary_tag
-    %       /* A nested derived class for the secondary tag */
+    %       // A nested derived class for the secondary tag.
     %       static class tag_type : public <ClassName> {
     %       public:
     % #endif
     % #if some_ctors_use_secondary_tag
     %           int data_tag;
     %   #if 0
-    %   /*
-    %   ** XXX we don't yet bother with these;
-    %   ** mlds_to_c.m doesn't support static members.
-    %   */
-    %           /* constants used for data_tag */
+    %   // XXX we don't yet bother with these;
+    %   // mlds_to_c.m doesn't support static members.
+    %           // constants used for data_tag
     %           static const int <ctor1> = 0;
     %           static const int <ctor2> = 1;
     %   #endif
@@ -362,28 +360,22 @@ ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = FieldVarDefn :-
     % #endif
     %       ...
     %
-    %       /*
-    %       ** Derived classes, one for each constructor;
-    %       ** these are generated as nested classes to avoid name clashes.
-    %       ** These will derive either directly from
-    %       ** <ClassName> or from <ClassName>::tag_type
-    %       ** (which in turn derives from <ClassName>),
-    %       ** depending on whether they need a secondary tag.
-    %       ** If all the ctors for a type need a secondary tag,
-    %       ** we put the secondary tag members directly in the base class.
-    %       */
-    %       */
+    %       // Derived classes, one for each constructor;
+    %       // these are generated as nested classes to avoid name clashes.
+    %       // These will derive either directly from
+    %       // <ClassName> or from <ClassName>::tag_type
+    %       // (which in turn derives from <ClassName>),
+    %       // depending on whether they need a secondary tag.
+    %       // If all the ctors for a type need a secondary tag,
+    %       // we put the secondary tag members directly in the base class.
+    %
     %       static class <ctor1> : public <ClassName> {
     %       public:
-    %           /*
-    %           ** Fields, one for each argument of this constructor.
-    %           */
+    %           // Fields, one for each argument of this constructor.
     %           MR_Word F1;
     %           MR_Word F2;
     %           ...
-    %           /*
-    %           ** A constructor to initialize the fields.
-    %           */
+    %           // A constructor to initialize the fields.
     %           <ctor1>(MR_Word F1, MR_Word F2, ...) {
     %               this->F1 = F1;
     %               this->F2 = F2;
@@ -858,7 +850,6 @@ ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, ArgNum,
     ),
     % We only need GC tracing code for top-level variables, not for fields.
     GcStmt = gc_no_stmt,
-    % XXX MLDS_DEFN
     FieldVarDefn = mlds_field_var_defn(FieldVarName, Context, DeclFlags,
         MLDS_Type, no_initializer, GcStmt),
     FieldInfo = mlds_field_info(FieldVarName, MLDS_Type, GcStmt, Context).

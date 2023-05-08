@@ -2662,17 +2662,20 @@ mlds_get_func_signature(Params) = Signature :-
 
 mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
     ( if type_to_ctor_and_args(Type, TypeCtor, TypeArgs) then
+        TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
         ( if
-            TypeCtor = type_ctor(qualified(unqualified("array"), "array"), 1),
+            TypeCtorSymName = qualified(unqualified("array"), "array"),
             TypeArgs = [ElemType]
         then
+            expect(unify(TypeCtorArity, 1), $pred, "TypeCtorArity != 1"),
             MLDSElemType = mercury_type_to_mlds_type(ModuleInfo, ElemType),
             MLDSType = mlds_mercury_array_type(MLDSElemType)
         else if
-            TypeCtor = type_ctor(qualified(mercury_private_builtin_module,
-                "store_at_ref_type"), 1),
+            TypeCtorSymName = qualified(mercury_private_builtin_module,
+                "store_at_ref_type"),
             TypeArgs = [RefType]
         then
+            expect(unify(TypeCtorArity, 1), $pred, "TypeCtorArity != 1"),
             MLDSRefType = mercury_type_to_mlds_type(ModuleInfo, RefType),
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_target(Globals, Target),
@@ -2698,7 +2701,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
                 % classify_type_ctor_if_special will succeed on TypeCtor.
                 % It should, because if it doesn't, then it will proceed
                 % to look up TypeCtor in TypeTable, and since the condition
-                % aboye failed, that lookup will throw an exception.
+                % above failed, that lookup will throw an exception.
                 CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
                 MLDSType = type_and_category_to_mlds_type(Type, CtorCat)
             )

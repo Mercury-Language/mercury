@@ -130,14 +130,13 @@ output_java_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".java")), ModuleName, JavaSourceFileName, !IO),
-    Indent = 0,
     output_to_file_stream(Globals, ModuleName, JavaSourceFileName,
-        output_java_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).
+        output_java_src_file(ModuleInfo, MLDS), Succeeded, !IO).
 
-:- pred output_java_src_file(module_info::in, indent::in, mlds::in,
+:- pred output_java_src_file(module_info::in, mlds::in,
     io.text_output_stream::in, list(string)::out, io::di, io::uo) is det.
 
-output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
+output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
     % Run further transformations on the MLDS.
     MLDS = mlds(ModuleName, Imports, GlobalData,
         TypeDefns0, TableStructDefns0, ProcDefns0,
@@ -179,7 +178,6 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
         CodeAddrsAssocList, WrapperClassDefns0, map.init, AddrOfMap),
 
     % Rename classes with excessively long names.
-    % XXX MLDS_DEFN We know most defns in Defns1 are *not* classes.
     list.map_foldl(maybe_shorten_long_class_name,
         TypeDefns0, TypeDefns1, map.init, RenamingMap1),
     list.map_foldl(maybe_shorten_long_class_name,
@@ -210,11 +208,15 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
             ProcDefns0, ProcDefns)
     ),
 
-    % Get the foreign code for Java
-    % XXX We should not ignore _RevImports.
-    ForeignCode = mlds_get_java_foreign_code(AllForeignCode),
-    ForeignCode = mlds_foreign_code(ForeignDeclCodes, ForeignBodyCodes,
-        _Imports, ExportDefns),
+    % Get the foreign code for Java.
+    ( if map.search(AllForeignCode, lang_java, ForeignCode) then
+        ForeignCode = mlds_foreign_code(ForeignDeclCodes, ForeignBodyCodes,
+            _FIMSpecs, ExportDefns)
+    else
+        ForeignDeclCodes = [],
+        ForeignBodyCodes = [],
+        ExportDefns = []
+    ),
 
     % Output transformed MLDS as Java source.
     %
@@ -225,9 +227,9 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
     % that will get used in the RTTI definitions.
     module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
     Info = init_java_out_info(ModuleInfo, SourceFileName, AddrOfMap),
-    output_src_start_for_java(Info, Stream, Indent, ModuleName, Imports,
+    output_src_start_for_java(Info, Stream, ModuleName, Imports,
         ForeignDeclCodes, ProcDefns, ForeignDeclErrors, !IO),
-    list.map_foldl(output_java_body_code(Info, Stream, Indent),
+    list.map_foldl(output_java_body_code(Info, Stream),
         ForeignBodyCodes, ForeignCodeResults, !IO),
     list.filter_map(maybe_is_error, ForeignCodeResults, ForeignCodeErrors),
 
@@ -237,11 +239,9 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
         RttiDefns = [_ | _],
         io.write_string(Stream, "\n// RttiDefns\n", !IO),
         list.foldl(
-            output_global_var_defn_for_java(Info, Stream, Indent + 1,
-                oa_alloc_only),
+            output_global_var_defn_for_java(Info, Stream, 1, oa_alloc_only),
             RttiDefns, !IO),
-        output_rtti_assignments_for_java(Info, Stream, Indent + 1,
-            RttiDefns, !IO)
+        output_rtti_assignments_for_java(Info, Stream, 1, RttiDefns, !IO)
     ),
 
     ( if
@@ -251,11 +251,10 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
         true
     else
         io.write_string(Stream, "\n// Cell and tabling definitions\n", !IO),
-        output_global_var_decls_for_java(Info, Stream, Indent + 1,
-            CellDefns, !IO),
-        output_global_var_decls_for_java(Info, Stream, Indent + 1,
+        output_global_var_decls_for_java(Info, Stream, 1, CellDefns, !IO),
+        output_global_var_decls_for_java(Info, Stream, 1,
             TableStructDefns, !IO),
-        output_global_var_assignments_for_java(Info, Stream, Indent + 1,
+        output_global_var_assignments_for_java(Info, Stream, 1,
             CellDefns ++ TableStructDefns, !IO)
     ),
 
@@ -265,7 +264,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
         true
     else
         io.write_string(Stream, "\n// Scalar common data\n", !IO),
-        output_scalar_common_data_for_java(Info, Stream, Indent + 1,
+        output_scalar_common_data_for_java(Info, Stream, 1,
             ScalarCellGroupMap, !IO)
     ),
 
@@ -273,7 +272,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
         true
     else
         io.write_string(Stream, "\n// Vector common data\n", !IO),
-        output_vector_common_data_for_java(Info, Stream, Indent + 1,
+        output_vector_common_data_for_java(Info, Stream, 1,
             VectorCellGroupMap, !IO)
     ),
 
@@ -284,7 +283,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
         SortedFuncDefns = [_ | _],
         io.write_string(Stream, "\n// Function definitions\n", !IO),
         list.foldl(
-            output_function_defn_for_java(Info, Stream, Indent + 1, oa_none),
+            output_function_defn_for_java(Info, Stream, 1, oa_none),
             SortedFuncDefns, !IO)
     ),
 
@@ -294,7 +293,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
     ;
         SortedClassDefns = [_ | _],
         io.write_string(Stream, "\n// Class definitions\n", !IO),
-        list.foldl(output_class_defn_for_java(Info, Stream, Indent + 1),
+        list.foldl(output_class_defn_for_java(Info, Stream, 1),
             SortedClassDefns, !IO)
     ),
 
@@ -303,7 +302,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
     ;
         ExportDefns = [_ | _],
         io.write_string(Stream, "\n// ExportDefns\n", !IO),
-        output_exports_for_java(Info, Stream, Indent + 1, ExportDefns, !IO)
+        output_exports_for_java(Info, Stream, 1, ExportDefns, !IO)
     ),
 
     (
@@ -311,8 +310,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
     ;
         ExportedEnums = [_ | _],
         io.write_string(Stream, "\n// ExportedEnums\n", !IO),
-        output_exported_enums_for_java(Info, Stream, Indent + 1,
-            ExportedEnums, !IO)
+        output_exported_enums_for_java(Info, Stream, 1, ExportedEnums, !IO)
     ),
 
     (
@@ -320,7 +318,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
     ;
         InitPreds = [_ | _],
         io.write_string(Stream, "\n// InitPreds\n", !IO),
-        output_inits_for_java(Stream, Indent + 1, InitPreds, !IO)
+        output_inits_for_java(Stream, 1, InitPreds, !IO)
     ),
 
     (
@@ -328,7 +326,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
     ;
         FinalPreds = [_  | _],
         io.write_string(Stream, "\n// FinalPreds\n", !IO),
-        output_finals_for_java(Stream, Indent + 1, FinalPreds, !IO)
+        output_finals_for_java(Stream, 1, FinalPreds, !IO)
     ),
 
     set.init(EnvVarNamesSet0),
@@ -340,11 +338,11 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
         true
     else
         io.write_string(Stream, "\n// EnvVarNames\n", !IO),
-        set.foldl(output_env_var_definition_for_java(Stream, Indent + 1),
+        set.foldl(output_env_var_definition_for_java(Stream, 1),
             EnvVarNamesSet, !IO)
     ),
 
-    output_src_end_for_java(Info, Stream, Indent, ModuleName, !IO),
+    output_src_end_for_java(Info, Stream, ModuleName, !IO),
     % XXX Need to handle non-Java foreign code at this point.
 
     Errors = ForeignDeclErrors ++ ForeignCodeErrors.
@@ -366,22 +364,28 @@ make_code_addr_map_for_java([CodeAddr | CodeAddrs], !Map) :-
 % Code to output imports.
 %
 
-:- pred output_imports(java_out_info::in, io.text_output_stream::in,
-    list(mlds_import)::in, io::di, io::uo) is det.
+:- pred maybe_output_import_comments_for_java(java_out_info::in,
+    io.text_output_stream::in, list(mlds_import)::in, io::di, io::uo) is det.
 
-output_imports(Info, Stream, Imports, !IO) :-
+maybe_output_import_comments_for_java(Info, Stream, Imports, !IO) :-
     AutoComments = Info ^ joi_auto_comments,
     (
         AutoComments = yes,
-        list.foldl(output_import(Stream), Imports, !IO)
+        list.foldl(output_import_comment_for_java(Stream), Imports, !IO),
+        (
+            Imports = []
+        ;
+            Imports = [_ | _],
+            io.nl(Stream, !IO)
+        )
     ;
         AutoComments = no
     ).
 
-:- pred output_import(io.text_output_stream::in, mlds_import::in,
-    io::di, io::uo) is det.
+:- pred output_import_comment_for_java(io.text_output_stream::in,
+    mlds_import::in, io::di, io::uo) is det.
 
-output_import(Stream, Import, !IO) :-
+output_import_comment_for_java(Stream, Import, !IO) :-
     Import = mlds_import(ImportType, ModuleName),
     (
         ImportType = user_visible_interface,
@@ -402,14 +406,13 @@ output_import(Stream, Import, !IO) :-
 %
 
 :- pred output_java_decl(java_out_info::in, io.text_output_stream::in,
-    indent::in, foreign_decl_code::in, maybe_error::out,
-    io::di, io::uo) is det.
+    foreign_decl_code::in, maybe_error::out, io::di, io::uo) is det.
 
-output_java_decl(Info, Stream, Indent, DeclCode, Res, !IO) :-
+output_java_decl(Info, Stream, DeclCode, Res, !IO) :-
     DeclCode = foreign_decl_code(Lang, _IsLocal, LiteralOrInclude, Context),
     (
         Lang = lang_java,
-        output_java_foreign_literal_or_include(Info, Stream, Indent,
+        output_java_foreign_literal_or_include(Info, Stream,
             LiteralOrInclude, Context, Res, !IO)
     ;
         ( Lang = lang_c
@@ -419,15 +422,14 @@ output_java_decl(Info, Stream, Indent, DeclCode, Res, !IO) :-
     ).
 
 :- pred output_java_body_code(java_out_info::in, io.text_output_stream::in,
-    indent::in, foreign_body_code::in, maybe_error::out,
-    io::di, io::uo) is det.
+    foreign_body_code::in, maybe_error::out, io::di, io::uo) is det.
 
-output_java_body_code(Info, Stream, Indent, ForeignBodyCode, Res, !IO) :-
+output_java_body_code(Info, Stream, ForeignBodyCode, Res, !IO) :-
     ForeignBodyCode = foreign_body_code(Lang, LiteralOrInclude, Context),
     % Only output Java code.
     (
         Lang = lang_java,
-        output_java_foreign_literal_or_include(Info, Stream, Indent,
+        output_java_foreign_literal_or_include(Info, Stream,
             LiteralOrInclude, Context, Res, !IO)
     ;
         ( Lang = lang_c
@@ -437,15 +439,14 @@ output_java_body_code(Info, Stream, Indent, ForeignBodyCode, Res, !IO) :-
     ).
 
 :- pred output_java_foreign_literal_or_include(java_out_info::in,
-    io.text_output_stream::in, indent::in, foreign_literal_or_include::in,
+    io.text_output_stream::in, foreign_literal_or_include::in,
     prog_context::in, maybe_error::out, io::di, io::uo) is det.
 
-output_java_foreign_literal_or_include(Info, Stream, Indent, LiteralOrInclude,
+output_java_foreign_literal_or_include(Info, Stream, LiteralOrInclude,
         Context, Res, !IO) :-
     (
         LiteralOrInclude = floi_literal(Code),
-        write_string_with_context_block(Info, Stream, Indent, Code,
-            Context, !IO),
+        write_string_with_context_block(Info, Stream, 0, Code, Context, !IO),
         Res = ok
     ;
         LiteralOrInclude = floi_include_file(IncludeFile),
@@ -458,18 +459,6 @@ output_java_foreign_literal_or_include(Info, Stream, Indent, LiteralOrInclude,
         % We don't have the true end context readily available.
         output_context_for_java(Stream, Info ^ joi_foreign_line_numbers,
             marker_end_block, Context, !IO)
-    ).
-
-    % Get the foreign code for Java.
-    %
-:- func mlds_get_java_foreign_code(map(foreign_language, mlds_foreign_code))
-    = mlds_foreign_code.
-
-mlds_get_java_foreign_code(AllForeignCode) = ForeignCode :-
-    ( if map.search(AllForeignCode, lang_java, ForeignCode0) then
-        ForeignCode = ForeignCode0
-    else
-        ForeignCode = mlds_foreign_code([], [], [], [])
     ).
 
 %---------------------------------------------------------------------------%
@@ -570,34 +559,27 @@ output_env_var_definition_for_java(Stream, Indent, EnvVarName, !IO) :-
 %
 
 :- pred output_src_start_for_java(java_out_info::in, io.text_output_stream::in,
-    indent::in, mercury_module_name::in, list(mlds_import)::in,
+    mercury_module_name::in, list(mlds_import)::in,
     list(foreign_decl_code)::in, list(mlds_function_defn)::in,
     list(string)::out, io::di, io::uo) is det.
 
-output_src_start_for_java(Info, Stream, Indent, MercuryModuleName, Imports,
+output_src_start_for_java(Info, Stream, MercuryModuleName, Imports,
         ForeignDecls, FuncDefns, Errors, !IO) :-
     output_auto_gen_comment(Stream, Info ^ joi_source_filename, !IO),
-    AutoComments = Info ^ joi_auto_comments,
-    (
-        AutoComments = yes,
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "/* :- module ", !IO),
-        write_sym_name(Stream, MercuryModuleName, !IO),
-        io.write_string(Stream, ". */\n\n", !IO)
-    ;
-        AutoComments = no
-    ),
-    output_n_indents(Stream, Indent, !IO),
+    io.format(Stream, "// :- module %s.\n\n",
+        [s(sym_name_to_escaped_string(MercuryModuleName))], !IO),
     io.write_string(Stream, "package jmercury;\n", !IO),
 
-    output_imports(Info, Stream, Imports, !IO),
-    list.map_foldl(output_java_decl(Info, Stream, Indent),
+    maybe_output_import_comments_for_java(Info, Stream, Imports, !IO),
+    list.map_foldl(output_java_decl(Info, Stream),
         ForeignDecls, ForeignDeclResults, !IO),
     list.filter_map(maybe_is_error, ForeignDeclResults, Errors),
 
     io.write_string(Stream, "public class ", !IO),
     mangle_sym_name_for_java(MercuryModuleName, module_qual, "__", ClassName),
     io.write_string(Stream, ClassName, !IO),
+    % The close parenthesis for this open parenthesis is written out
+    % by output_src_end_for_java.
     io.write_string(Stream, " {\n", !IO),
 
     output_debug_class_init(Info, Stream, MercuryModuleName, "start", !IO),
@@ -606,7 +588,7 @@ output_src_start_for_java(Info, Stream, Indent, MercuryModuleName, Imports,
     % a `main' method in the resulting Java class that calls the `main'
     % predicate.
     ( if func_defns_contain_main(FuncDefns) then
-        write_main_driver_for_java(Stream, Indent + 1, ClassName, !IO)
+        write_main_driver_for_java(Stream, 1, ClassName, !IO)
     else
         true
     ).
@@ -646,18 +628,18 @@ write_main_driver_for_java(Stream, Indent, ClassName, !IO) :-
     io.write_string(Stream, "}\n", !IO).
 
 :- pred output_src_end_for_java(java_out_info::in, io.text_output_stream::in,
-    indent::in, mercury_module_name::in, io::di, io::uo) is det.
+    mercury_module_name::in, io::di, io::uo) is det.
 
-output_src_end_for_java(Info, Stream, Indent, ModuleName, !IO) :-
+output_src_end_for_java(Info, Stream, ModuleName, !IO) :-
     output_debug_class_init(Info, Stream, ModuleName, "end", !IO),
+    % The open parenthesis for this close parenthesis was written out
+    % by output_src_start_for_java.
     io.write_string(Stream, "}\n", !IO),
     AutoComments = Info ^ joi_auto_comments,
     (
         AutoComments = yes,
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "// :- end_module ", !IO),
-        write_sym_name(Stream, ModuleName, !IO),
-        io.write_string(Stream, ".\n", !IO)
+        io.format(Stream, "// :- end_module %s.\n",
+            [s(sym_name_to_escaped_string(ModuleName))], !IO)
     ;
         AutoComments = no
     ).

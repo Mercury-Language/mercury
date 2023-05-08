@@ -293,7 +293,7 @@ output_cast_rval_for_csharp(Info, Type, Expr, Stream, !IO) :-
         Type = mlds_pseudo_type_info_type,
         Expr = ml_const(mlconst_int(N))
     then
-        maybe_output_comment_for_csharp(Info, Stream, "cast", !IO),
+        maybe_output_inline_comment_for_csharp(Info, Stream, "cast", !IO),
         ( if have_preallocated_pseudo_type_var_for_csharp(N) then
             io.write_string(Stream, "runtime.PseudoTypeInfo.K", !IO),
             io.write_int(Stream, N, !IO)
@@ -311,7 +311,7 @@ output_cast_rval_for_csharp(Info, Type, Expr, Stream, !IO) :-
         % TypeCtorInfo or a TypeInfo. Julien says that is probably going to
         % be rather difficult as the compiler doesn't keep track of where
         % type_ctor_infos are acting as type_infos properly. (zs agrees.)
-        maybe_output_comment_for_csharp(Info, Stream, "cast", !IO),
+        maybe_output_inline_comment_for_csharp(Info, Stream, "cast", !IO),
         io.write_string(Stream, "runtime.TypeInfo_Struct.maybe_new(", !IO),
         output_rval_for_csharp(Info, Expr, Stream, !IO),
         io.write_string(Stream, ")", !IO)

@@ -319,7 +319,7 @@ output_cast_rval_for_java(Info, Type, Rval, Stream, !IO) :-
         Type = mlds_pseudo_type_info_type,
         Rval = ml_const(mlconst_int(N))
     then
-        maybe_output_comment_for_java(Info, Stream, "cast", !IO),
+        maybe_output_inline_comment_for_java(Info, Stream, "cast", !IO),
         ( if have_preallocated_pseudo_type_var_for_java(N) then
             io.write_string(Stream, "jmercury.runtime.PseudoTypeInfo.K", !IO),
             io.write_int(Stream, N, !IO)
@@ -338,7 +338,7 @@ output_cast_rval_for_java(Info, Type, Rval, Stream, !IO) :-
         % TypeCtorInfo or a TypeInfo. Julien says that's probably going to
         % be rather difficult as the compiler doesn't keep track of where
         % type_ctor_infos are acting as type_infos properly. (zs agrees.)
-        maybe_output_comment_for_java(Info, Stream, "cast", !IO),
+        maybe_output_inline_comment_for_java(Info, Stream, "cast", !IO),
         io.write_string(Stream,
             "jmercury.runtime.TypeInfo_Struct.maybe_new(", !IO),
         output_rval_for_java(Info, Rval, Stream, !IO),

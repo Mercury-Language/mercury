@@ -84,7 +84,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_output_comment_for_java(java_out_info::in,
+:- pred maybe_output_inline_comment_for_java(java_out_info::in,
     io.text_output_stream::in, string::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -225,13 +225,11 @@ count_new_lines(C, !N, Prev, C) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_output_comment_for_java(Info, Stream, Comment, !IO) :-
+maybe_output_inline_comment_for_java(Info, Stream, Comment, !IO) :-
     AutoComments = Info ^ joi_auto_comments,
     (
         AutoComments = yes,
-        io.write_string(Stream, "/* ", !IO),
-        io.write_string(Stream, Comment, !IO),
-        io.write_string(Stream, " */", !IO)
+        io.format(Stream, "/* %s */ ", [s(Comment)], !IO)
     ;
         AutoComments = no
     ).
