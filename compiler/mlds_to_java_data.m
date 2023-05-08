@@ -41,8 +41,8 @@
 :- pred output_boxed_rval_for_java(java_out_info::in, mlds_type::in,
     mlds_rval::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-    % Output an Rval and if the Rval is an enumeration object append the string
-    % ".MR_value", so we can access its value field.
+    % Output an Rval, and if the Rval is an enumeration object,
+    % append the string ".MR_value", so we can access its value field.
     %
     % XXX Note that this is necessary in some places, but not in others.
     % For example, it is important to do so for switch statements, as the
@@ -51,6 +51,14 @@
     % need to go through all the places where output_rval and
     % output_rval_maybe_with_enum are called and make sure the correct one
     % is being used.
+    %
+    % XXX At the moment, this predicate is called from only two places.
+    % If the search mentioned above is ever done (that XXX comment
+    % has been there since 2018) but it does not find any more callers,
+    % then this predicate should be probably be inlined at its call sites
+    % and then deleted. Alternatively, the comment on the definition of
+    % the ml_cast mlds_rval suggests another, possibly simpler/better
+    % approach to solving this problem.
     %
 :- pred output_rval_maybe_with_enum_for_java(java_out_info::in, mlds_rval::in,
     io.text_output_stream::in, io::di, io::uo) is det.
@@ -302,14 +310,14 @@ output_rval_for_java(Info, Rval, Stream, !IO) :-
 :- pred output_cast_rval_for_java(java_out_info::in, mlds_type::in,
     mlds_rval::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-output_cast_rval_for_java(Info, Type, Expr, Stream, !IO) :-
+output_cast_rval_for_java(Info, Type, Rval, Stream, !IO) :-
     % rtti_to_mlds.m generates casts from int to
     % jmercury.runtime.PseudoTypeInfo, but for Java
     % we need to treat these as constructions, not casts.
     % Similarly for conversions from TypeCtorInfo to TypeInfo.
     ( if
         Type = mlds_pseudo_type_info_type,
-        Expr = ml_const(mlconst_int(N))
+        Rval = ml_const(mlconst_int(N))
     then
         maybe_output_comment_for_java(Info, Stream, "cast", !IO),
         ( if have_preallocated_pseudo_type_var_for_java(N) then
@@ -318,7 +326,7 @@ output_cast_rval_for_java(Info, Type, Expr, Stream, !IO) :-
         else
             io.write_string(Stream,
                 "new jmercury.runtime.PseudoTypeInfo(", !IO),
-            output_rval_for_java(Info, Expr, Stream, !IO),
+            output_rval_for_java(Info, Rval, Stream, !IO),
             io.write_string(Stream, ")", !IO)
         )
     else if
@@ -333,22 +341,22 @@ output_cast_rval_for_java(Info, Type, Expr, Stream, !IO) :-
         maybe_output_comment_for_java(Info, Stream, "cast", !IO),
         io.write_string(Stream,
             "jmercury.runtime.TypeInfo_Struct.maybe_new(", !IO),
-        output_rval_for_java(Info, Expr, Stream, !IO),
+        output_rval_for_java(Info, Rval, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     else if
-        % Given that the then-part and else-part of this if-then-else
-        % do exactly the same thing when the test succeeds, its only purpose
-        % can be optimization. However, I (zs) have strong doubts about
-        % whether this attempt at optimization actually works, because
-        % the gain, even when we get it, is very small.
         java_builtin_type(Type, "int", _, _)
     then
         io.write_string(Stream, "(int) ", !IO),
-        output_rval_maybe_with_enum_for_java(Info, Expr, Stream, !IO)
+        % If Rval is an enum, it is an object with its value in a field,
+        % which means that we need to get that field.
+        output_rval_maybe_with_enum_for_java(Info, Rval, Stream, !IO)
     else
         io.format(Stream, "(%s) ",
             [s(type_to_string_for_java(Info, Type))], !IO),
-        output_rval_for_java(Info, Expr, Stream, !IO)
+        % XXX We don't call output_rval_maybe_with_enum_for_java here.
+        % This means that we better not cast enum values to any type
+        % other than "int".
+        output_rval_for_java(Info, Rval, Stream, !IO)
     ).
 
 :- pred have_preallocated_pseudo_type_var_for_java(int::in) is semidet.
@@ -358,28 +366,28 @@ have_preallocated_pseudo_type_var_for_java(N) :-
     N >= 1,
     N =< 5.
 
-output_boxed_rval_for_java(Info, Type, Expr, Stream, !IO) :-
+output_boxed_rval_for_java(Info, Type, Rval, Stream, !IO) :-
     ( if java_builtin_type(Type, _, JavaBoxedTypeName, _) then
         % valueOf may return cached instances instead of creating new objects.
         io.write_string(Stream, JavaBoxedTypeName, !IO),
         io.write_string(Stream, ".valueOf(", !IO),
-        output_rval_for_java(Info, Expr, Stream, !IO),
+        output_rval_for_java(Info, Rval, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     else
         io.write_string(Stream, "((java.lang.Object) (", !IO),
-        output_rval_for_java(Info, Expr, Stream, !IO),
+        output_rval_for_java(Info, Rval, Stream, !IO),
         io.write_string(Stream, "))", !IO)
     ).
 
 :- pred output_unboxed_rval_for_java(java_out_info::in, mlds_type::in,
     mlds_rval::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-output_unboxed_rval_for_java(Info, Type, Expr, Stream, !IO) :-
+output_unboxed_rval_for_java(Info, Type, Rval, Stream, !IO) :-
     ( if java_builtin_type(Type, _, JavaBoxedTypeName, UnboxMethod) then
         io.write_string(Stream, "((", !IO),
         io.write_string(Stream, JavaBoxedTypeName, !IO),
         io.write_string(Stream, ") ", !IO),
-        output_bracketed_rval_for_java(Info, Expr, Stream, !IO),
+        output_bracketed_rval_for_java(Info, Rval, Stream, !IO),
         io.write_string(Stream, ").", !IO),
         io.write_string(Stream, UnboxMethod, !IO),
         io.write_string(Stream, "()", !IO)
@@ -387,14 +395,14 @@ output_unboxed_rval_for_java(Info, Type, Expr, Stream, !IO) :-
         io.write_string(Stream, "((", !IO),
         output_type_for_java(Info, Stream, Type, !IO),
         io.write_string(Stream, ") ", !IO),
-        output_rval_for_java(Info, Expr, Stream, !IO),
+        output_rval_for_java(Info, Rval, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ).
 
 :- pred output_unop_for_java(java_out_info::in, io.text_output_stream::in,
     builtin_ops.unary_op::in, mlds_rval::in, io::di, io::uo) is det.
 
-output_unop_for_java(Info, Stream, UnaryOp, Expr, !IO) :-
+output_unop_for_java(Info, Stream, UnaryOp, Rval, !IO) :-
     % For the Java back-end, there are no tags, so all the tagging operators
     % are no-ops, except for `tag', which always returns zero (a tag of zero
     % means there is no tag).
@@ -405,12 +413,6 @@ output_unop_for_java(Info, Stream, UnaryOp, Expr, !IO) :-
         ( UnaryOp = strip_tag, UnaryOpStr = "/* strip_tag */ "
         ; UnaryOp = mkbody,    UnaryOpStr = "/* mkbody */ "
         ; UnaryOp = unmkbody,  UnaryOpStr = "/* unmkbody */ "
-        ; UnaryOp = bitwise_complement(int_type_int), UnaryOpStr = "~"
-        ; UnaryOp = bitwise_complement(int_type_uint), UnaryOpStr = "~"
-        ; UnaryOp = bitwise_complement(int_type_int32), UnaryOpStr = "~"
-        ; UnaryOp = bitwise_complement(int_type_uint32), UnaryOpStr = "~"
-        ; UnaryOp = bitwise_complement(int_type_int64), UnaryOpStr = "~"
-        ; UnaryOp = bitwise_complement(int_type_uint64), UnaryOpStr = "~"
         ; UnaryOp = logical_not, UnaryOpStr = "!"
         ; UnaryOp = hash_string,  UnaryOpStr = "mercury.String.hash_1_f_0"
         ; UnaryOp = hash_string2, UnaryOpStr = "mercury.String.hash2_1_f_0"
@@ -421,26 +423,36 @@ output_unop_for_java(Info, Stream, UnaryOp, Expr, !IO) :-
         ),
         io.write_string(Stream, UnaryOpStr, !IO),
         io.write_string(Stream, "(", !IO),
-        output_rval_for_java(Info, Expr, Stream, !IO),
+        output_rval_for_java(Info, Rval, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        ( UnaryOp = bitwise_complement(int_type_int8), UnaryOpStr = "~"
-        ; UnaryOp = bitwise_complement(int_type_uint8), UnaryOpStr = "~"
-        ),
-        io.write_string(Stream, "(byte) (", !IO),
-        io.write_string(Stream, UnaryOpStr, !IO),
-        io.write_string(Stream, "(", !IO),
-        output_rval_for_java(Info, Expr, Stream, !IO),
-        io.write_string(Stream, "))", !IO)
+        UnaryOp = bitwise_complement(IntType),
+        (
+            ( IntType = int_type_int
+            ; IntType = int_type_uint
+            ; IntType = int_type_int32
+            ; IntType = int_type_uint32
+            ; IntType = int_type_int64
+            ; IntType = int_type_uint64
+            ),
+            io.write_string(Stream, "~(", !IO),
+            output_rval_for_java(Info, Rval, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
+        ;
+            ( IntType = int_type_int8
+            ; IntType = int_type_uint8
+            ),
+            io.write_string(Stream, "(byte) (~(", !IO),
+            output_rval_for_java(Info, Rval, Stream, !IO),
+            io.write_string(Stream, "))", !IO)
     ;
-        ( UnaryOp = bitwise_complement(int_type_int16), UnaryOpStr = "~"
-        ; UnaryOp = bitwise_complement(int_type_uint16), UnaryOpStr = "~"
-        ),
-        io.write_string(Stream, "(short) (", !IO),
-        io.write_string(Stream, UnaryOpStr, !IO),
-        io.write_string(Stream, "(", !IO),
-        output_rval_for_java(Info, Expr, Stream, !IO),
-        io.write_string(Stream, "))", !IO)
+            ( IntType = int_type_int16
+            ; IntType = int_type_uint16
+            ),
+            io.write_string(Stream, "(short) (~(", !IO),
+            output_rval_for_java(Info, Rval, Stream, !IO),
+            io.write_string(Stream, "))", !IO)
+        )
     ;
         ( UnaryOp = dword_float_get_word0
         ; UnaryOp = dword_float_get_word1

@@ -346,12 +346,12 @@ output_stmt_if_then_else_for_java(Info, Stream, Indent, FuncInfo, Stmt,
 
 output_stmt_switch_for_java(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
-    Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default,
+    Stmt = ml_stmt_switch(_Type, Rval, _Range, Cases, Default,
         Context),
     indent_line_after_context(Stream, Info ^ joi_line_numbers,
         marker_comment, Context, Indent, !IO),
     io.write_string(Stream, "switch (", !IO),
-    output_rval_maybe_with_enum_for_java(Info, Val, Stream, !IO),
+    output_rval_maybe_with_enum_for_java(Info, Rval, Stream, !IO),
     io.write_string(Stream, ") {\n", !IO),
     CaseInfo = Info ^ joi_break_context := bc_switch,
     output_switch_cases_for_java(CaseInfo, Stream, Indent + 1, FuncInfo,
@@ -731,14 +731,14 @@ output_switch_case_for_java(Info, Stream, Indent, FuncInfo, Context, Case,
 
 output_case_cond_for_java(Info, Stream, Indent, Context, Match, !IO) :-
     (
-        Match = match_value(Val),
+        Match = match_value(Rval),
         indent_line_after_context(Stream, Info ^ joi_line_numbers,
             marker_comment, Context, Indent, !IO),
         io.write_string(Stream, "case ", !IO),
-        ( if Val = ml_const(mlconst_enum(N, _)) then
+        ( if Rval = ml_const(mlconst_enum(N, _)) then
             io.write_int(Stream, N, !IO)
         else
-            output_rval_for_java(Info, Val, Stream, !IO)
+            output_rval_for_java(Info, Rval, Stream, !IO)
         ),
         io.write_string(Stream, ":\n", !IO)
     ;

@@ -315,17 +315,10 @@ output_cast_rval_for_csharp(Info, Type, Expr, Stream, !IO) :-
         io.write_string(Stream, "runtime.TypeInfo_Struct.maybe_new(", !IO),
         output_rval_for_csharp(Info, Expr, Stream, !IO),
         io.write_string(Stream, ")", !IO)
-    else if
-        % Given that the then-part and else-part of this if-then-else
-        % do exactly the same thing when the test succeeds, its only purpose
-        % can be optimization. However, I (zs) have strong doubts about
-        % whether this attempt at optimization actually works, because
-        % the gain, even when we get it, is very small.
-        csharp_builtin_type(Type, "int")
-    then
-        io.write_string(Stream, "(int) ", !IO),
-        output_rval_for_csharp(Info, Expr, Stream, !IO)
     else
+        % While the Java backend represents Mercury enums as Java classes
+        % with a value field, the C# backend represents them as C# enums.
+        % We therefore have no need to get a value field.
         io.format(Stream, "(%s) ",
             [s(type_to_string_for_csharp(Info, Type))], !IO),
         output_rval_for_csharp(Info, Expr, Stream, !IO)
@@ -381,12 +374,6 @@ output_unop_for_csharp(Info, Stream, UnaryOp, Expr, !IO) :-
         ( UnaryOp = strip_tag, UnaryOpStr = "/* strip_tag */ "
         ; UnaryOp = mkbody,    UnaryOpStr = "/* mkbody */ "
         ; UnaryOp = unmkbody,  UnaryOpStr = "/* unmkbody */ "
-        ; UnaryOp = bitwise_complement(int_type_int), UnaryOpStr = "~"
-        ; UnaryOp = bitwise_complement(int_type_uint), UnaryOpStr = "~"
-        ; UnaryOp = bitwise_complement(int_type_int32), UnaryOpStr = "~"
-        ; UnaryOp = bitwise_complement(int_type_uint32), UnaryOpStr = "~"
-        ; UnaryOp = bitwise_complement(int_type_int64), UnaryOpStr = "~"
-        ; UnaryOp = bitwise_complement(int_type_uint64), UnaryOpStr = "~"
         ; UnaryOp = logical_not, UnaryOpStr = "!"
         ; UnaryOp = hash_string,  UnaryOpStr = "mercury.String.hash_1_f_0"
         ; UnaryOp = hash_string2, UnaryOpStr = "mercury.String.hash2_1_f_0"
@@ -400,40 +387,42 @@ output_unop_for_csharp(Info, Stream, UnaryOp, Expr, !IO) :-
         output_rval_for_csharp(Info, Expr, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
+        UnaryOp = bitwise_complement(IntType),
         (
-            UnaryOp = bitwise_complement(int_type_int8),
-            CastStr = "(sbyte) "
+            ( IntType = int_type_int
+            ; IntType = int_type_uint
+            ; IntType = int_type_int32
+            ; IntType = int_type_uint32
+            ; IntType = int_type_int64
+            ; IntType = int_type_uint64
+            ),
+            io.write_string(Stream, "~(", !IO),
+            output_rval_for_csharp(Info, Expr, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
         ;
-            UnaryOp = bitwise_complement(int_type_int16),
-            CastStr = "(short) "
-        ),
-        UnaryOpStr = "~",
-        io.write_string(Stream, CastStr, !IO),
-        io.write_string(Stream, UnaryOpStr, !IO),
-        io.write_string(Stream, "(", !IO),
-        output_rval_for_csharp(Info, Expr, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        % The result of the bitwise complement of byte or ushort in C# will be
-        % promoted to an int. Casting this back to the original type may result
-        % in a CS0221 error from the C# compiler due to the possible
-        % information loss involved in such a cast. We need to wrap the whole
-        % expression in an unchecked context in order to prevent the C#
-        % compiler from treating it as an error.
-        (
-            UnaryOp = bitwise_complement(int_type_uint8),
-            CastStr = "(byte) "
+            ( IntType = int_type_int8, CastStr = "(sbyte)"
+            ; IntType = int_type_int16, CastStr = "(short)"
+            ),
+            io.write_string(Stream, CastStr, !IO),
+            io.write_string(Stream, " ~(", !IO),
+            output_rval_for_csharp(Info, Expr, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
         ;
-            UnaryOp = bitwise_complement(int_type_uint16),
-            CastStr = "(ushort) "
-        ),
-        UnaryOpStr = "~",
-        io.write_string(Stream, "unchecked (", !IO),
-        io.write_string(Stream, CastStr, !IO),
-        io.write_string(Stream, UnaryOpStr, !IO),
-        io.write_string(Stream, "(", !IO),
-        output_rval_for_csharp(Info, Expr, Stream, !IO),
-        io.write_string(Stream, "))", !IO)
+            % The result of the bitwise complement of byte or ushort in C#
+            % will be promoted to an int. Casting this back to the original
+            % type may result in a CS0221 error from the C# compiler
+            % due to the possible information loss involved in such a cast.
+            % We need to wrap the whole expression in an unchecked context
+            % in order to prevent the C# compiler from treating it as an error.
+            ( IntType = int_type_uint8, CastStr = "(byte)"
+            ; IntType = int_type_uint16, CastStr = "(ushort)"
+            ),
+            io.write_string(Stream, "unchecked (", !IO),
+            io.write_string(Stream, CastStr, !IO),
+            io.write_string(Stream, " ~(", !IO),
+            output_rval_for_csharp(Info, Expr, Stream, !IO),
+            io.write_string(Stream, "))", !IO)
+        )
     ;
         ( UnaryOp = dword_float_get_word0
         ; UnaryOp = dword_float_get_word1

@@ -260,7 +260,7 @@ ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !ClassDefns) :-
     % can treat it specially if need be (e.g. generating a C# enum rather than
     % a class).
     %
-    % Note that for Java the MR_value field is inherited from the
+    % Note that for Java, the MR_value field is inherited from the
     % MercuryEnum class.
     %
 :- pred ml_gen_hld_enum_type(mlds_target_lang::in, type_ctor::in,
@@ -288,11 +288,12 @@ ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
     % Enums don't import anything.
     Imports = [],
 
-    % Make all Java classes corresponding to types implement the MercuryType
-    % interface and extend the MercuryEnum class.
     (
         Target = ml_target_java,
+        % Java classes implementing enums extend the MercuryEnum class.
         Inherits = inherits_class(ml_java_mercury_enum_class),
+        % All Java classes corresponding to types implement the MercuryType
+        % interface.
         Implements = [ml_java_mercury_type_interface]
     ;
         ( Target = ml_target_c
@@ -329,6 +330,11 @@ ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = FieldVarDefn :-
 % Discriminated union types.
 %
 
+    % XXX This comment seems to be out-of-date. It shows how we translate
+    % the high-level data representation of a discriminated union type
+    % to C code, but we have stopped supporting that representation
+    % when targeting C in May of 2020.
+    %
     % For each discriminated union type, we generate an MLDS type of the
     % following form:
     %
@@ -358,7 +364,7 @@ ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = FieldVarDefn :-
     %
     %       /*
     %       ** Derived classes, one for each constructor;
-    %       ** these are generated as nested classes avoid name clashes.
+    %       ** these are generated as nested classes to avoid name clashes.
     %       ** These will derive either directly from
     %       ** <ClassName> or from <ClassName>::tag_type
     %       ** (which in turn derives from <ClassName>),
@@ -393,9 +399,8 @@ ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = FieldVarDefn :-
     %
     %   };
     %
-    % If there is only one constructor which is not represented
-    % as a reserved_object, then we don't generate a nested derived class
-    % for that constructor, instead we just allocate the fields
+    % If there is only one constructor, then we don't generate a nested
+    % derived class for that constructor, instead we just allocate the fields
     % in the base class.
     %
 :- pred ml_gen_hld_du_type(module_info::in, mlds_target_lang::in,
@@ -465,10 +470,10 @@ ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, CtorRepns,
     Imports = [],
     Inherits = inherits_nothing,
 
-    % Make all Java classes corresponding to types implement the MercuryType
-    % interface.
     (
         Target = ml_target_java,
+        % All Java classes corresponding to types implement the MercuryType
+        % interface.
         Implements = [ml_java_mercury_type_interface]
     ;
         ( Target = ml_target_c
@@ -570,14 +575,14 @@ ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId, BaseClassQualifier,
     % Number any unnamed fields starting from 1.
     ArgNum0 = 1,
 
-    % Generate class members for the type_infos and typeclass_infos
+    % Generate class members for any type_infos and typeclass_infos
     % that hold information about existentially quantified
     % type variables and type class constraints.
-    % Note that the order of fields is as follows:
+    % The order of fields is as follows:
     %
-    %   - first typeinfos (for unconstrained type variables)
-    %   - then typeclassinfos (for class constraints)
-    %   - finally the ordinary members
+    %   - first typeinfos (for unconstrained type variables),
+    %   - then typeclassinfos (for class constraints),
+    %   - finally the ordinary members.
     (
         MaybeExistConstraints = no_exist_constraints,
         % Optimize this common case.
@@ -675,6 +680,9 @@ ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId, BaseClassQualifier,
         % But when targetting C, we want to omit empty base classes.
         % So if targetting C, don't include any base class if there is
         % no secondary tag.
+        % XXX We haven't targeted C with high level data since May 2020.
+        % However, target_uses_empty_base_classes return "no" for C#
+        % as well as for C.
         (
             MaybeSecTagVal = yes(_),
             Inherits = inherits_class(SecondaryTagClassId)

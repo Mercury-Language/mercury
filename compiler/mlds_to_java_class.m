@@ -80,26 +80,26 @@
 % Code to output classes.
 %
 
-output_class_defn_for_java(!.Info, Stream, Indent, ClassDefn, !IO) :-
+output_class_defn_for_java(Info0, Stream, Indent, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, Flags, Kind,
         _Imports, Inherits, Implements, TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors),
-    indent_line_after_context(Stream, !.Info ^ joi_line_numbers,
+    indent_line_after_context(Stream, Info0 ^ joi_line_numbers,
         marker_comment, Context, Indent, !IO),
-    output_class_decl_flags_for_java(!.Info, Stream, Flags, !IO),
+    output_class_decl_flags_for_java(Info0, Stream, Flags, !IO),
 
-    !Info ^ joi_univ_tvars := TypeParams,
-
-    % Use generics in the output if this class represents a Mercury type.
+    Info1 = Info0 ^ joi_univ_tvars := TypeParams,
+    % Use generics in the output of this predicate if this class represents
+    % a Mercury type. Note that we do NOT return Info1 or Info to our caller.
     ( if list.member(ml_java_mercury_type_interface, Implements) then
-        !Info ^ joi_output_generics := do_output_generics
+        Info = Info1 ^ joi_output_generics := do_output_generics
     else
-        true
+        Info = Info1
     ),
 
     output_class_kind_for_java(Stream, Kind, !IO),
     output_unqual_class_name_for_java(Stream, ClassName, ClassArity, !IO),
-    OutputGenerics = !.Info ^ joi_output_generics,
+    OutputGenerics = Info ^ joi_output_generics,
     (
         OutputGenerics = do_output_generics,
         output_generic_tvars(Stream, TypeParams, !IO)
@@ -108,7 +108,7 @@ output_class_defn_for_java(!.Info, Stream, Indent, ClassDefn, !IO) :-
     ),
     io.nl(Stream, !IO),
 
-    output_inherits_list(!.Info, Stream, Indent + 1, Inherits, !IO),
+    output_inherits_list(Info, Stream, Indent + 1, Inherits, !IO),
     output_implements_list(Stream, Indent + 1, Implements, !IO),
     output_n_indents(Stream, Indent, !IO),
     io.write_string(Stream, "{\n", !IO),
@@ -117,13 +117,13 @@ output_class_defn_for_java(!.Info, Stream, Indent, ClassDefn, !IO) :-
         ; Kind = mlds_interface
         ),
         list.foldl(
-            output_field_var_defn_for_java(!.Info, Stream, Indent + 1),
+            output_field_var_defn_for_java(Info, Stream, Indent + 1),
             MemberFields, !IO),
         list.foldl(
-            output_class_defn_for_java(!.Info, Stream, Indent + 1),
+            output_class_defn_for_java(Info, Stream, Indent + 1),
             MemberClasses, !IO),
         list.foldl(
-            output_function_defn_for_java(!.Info, Stream, Indent + 1, oa_none),
+            output_function_defn_for_java(Info, Stream, Indent + 1, oa_none),
             MemberMethods, !IO)
     ;
         Kind = mlds_struct,
@@ -133,7 +133,7 @@ output_class_defn_for_java(!.Info, Stream, Indent, ClassDefn, !IO) :-
         list.filter(field_var_defn_is_enum_const,
             MemberFields, EnumConstFields),
         % XXX Why +2?
-        output_enum_constants_for_java(!.Info, Stream, Indent + 2,
+        output_enum_constants_for_java(Info, Stream, Indent + 2,
             ClassName, ClassArity, EnumConstFields, !IO),
         io.nl(Stream, !IO),
         % XXX Why +2?
@@ -142,7 +142,7 @@ output_class_defn_for_java(!.Info, Stream, Indent, ClassDefn, !IO) :-
     ),
     io.nl(Stream, !IO),
     list.foldl(
-        output_function_defn_for_java(!.Info, Stream, Indent + 1,
+        output_function_defn_for_java(Info, Stream, Indent + 1,
             oa_cname(ClassName, ClassArity)),
         Ctors, !IO),
     output_n_indents(Stream, Indent, !IO),

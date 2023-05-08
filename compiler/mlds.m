@@ -1865,17 +1865,28 @@
     ;       ml_const(mlds_rval_const)
 
     ;       ml_box(mlds_type, mlds_rval)
-            % ml_box(MLDSType); convert from MLDSType to mlds_generic_type,
-            % by boxing if necessary, or just casting if not.
+            % ml_box(MLDSType, Rval); convert Rval from MLDSType to
+            % mlds_generic_type, by boxing if that is necessary,
+            % or just by casting if it is not.
 
     ;       ml_unbox(mlds_type, mlds_rval)
-            % ml_unbox(MLDSType): convert from mlds_generic_type to MLDSType,
-            % applying the inverse transformation to box/1, i.e. unboxing
-            % if boxing was necessary, and just casting otherwise.
+            % ml_unbox(MLDSType, Rval): convert Rval from mlds_generic_type
+            % to MLDSType, applying the inverse transformation to ml_box,
+            % which means unboxing if boxing was necessary, and just casting
+            % if it was not.
 
     ;       ml_cast(mlds_type, mlds_rval)
-            % ml_cast(MLDSType): Coerce the type of the rval to be MLDSType.
+            % ml_cast(MLDSType, Rval): Coerce the type of Rval to be MLDSType.
+            %
             % XXX It might be worthwhile adding the type that we cast from.
+            %
+            % XXX When the rval is an enum object, and MLDSType's unboxed form
+            % is "int", then output_cast_rval_for_java also outputs code
+            % to access the .MR_value field of the enum object. I (zs) believe
+            % that this should be an *separate* operation from the cast,
+            % represented e.g. as
+            %
+            % ml_cast(MLDSType, ml_get_enum_value(Rval))
 
     ;       ml_unop(unary_op, mlds_rval)
 
