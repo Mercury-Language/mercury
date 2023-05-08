@@ -2447,6 +2447,13 @@ then
             echo
             ;;
     esac
+
+    if test -d TEST_FAILS
+    then
+        datestr=$(date +%F_%2H:%2M)
+        cp "${tests_dir}"/UNEXPECTED_FAILED_TESTS \
+            TEST_FAILS/"${test_grade}_${datestr}"
+    fi
 fi
 
 if test "${exitstatus}" = "0"
