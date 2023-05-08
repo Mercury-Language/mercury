@@ -210,13 +210,120 @@ make_code_addr_map_for_csharp([SeqNum - CodeAddr | SeqNumsCodeAddrs],
 
 %---------------------------------------------------------------------------%
 %
+% Code to output the start and end of a source file.
+%
+
+:- pred output_src_start_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, mercury_module_name::in,
+    list(mlds_import)::in, list(foreign_decl_code)::in,
+    list(mlds_function_defn)::in, list(string)::out, io::di, io::uo) is det.
+
+output_src_start_for_csharp(Info, Stream, MercuryModuleName, _Imports,
+        ForeignDecls, FuncDefns, Errors, !IO) :-
+    output_auto_gen_comment(Stream, Info ^ csoi_source_filename, !IO),
+    io.format(Stream, "// :- module %s.\n\n",
+        [s(sym_name_to_escaped_string(MercuryModuleName))], !IO),
+    % The close parenthesis for this open parenthesis is written out
+    % by output_src_end_for_csharp.
+    io.write_string(Stream, "namespace mercury {\n\n", !IO),
+
+    list.map_foldl(output_csharp_decl_code(Info, Stream),
+        ForeignDecls, ForeignDeclResults, !IO),
+    list.filter_map(maybe_is_error, ForeignDeclResults, Errors),
+
+    mangle_sym_name_for_csharp(MercuryModuleName, module_qual, "__",
+        ClassName),
+    % The close parenthesis for this open parenthesis is written out
+    % by output_src_end_for_csharp.
+    io.format(Stream, "public static class %s {\n", [s(ClassName)], !IO),
+
+    % Check whether this module contains a `main' predicate, and if it does,
+    % then generate a `main' method that calls the `main' predicate.
+    ( if func_defns_contain_main(FuncDefns) then
+        write_main_driver_for_csharp(Stream, 1, ClassName, !IO)
+    else
+        true
+    ).
+
+    % C# only allows a single static constructor so we just call the real
+    % methods that we generated earlier.
+    %
+:- pred output_static_constructor(io.text_output_stream::in,
+    mercury_module_name::in, indent::in, list(string)::in, list(string)::in,
+    io::di, io::uo) is det.
+
+output_static_constructor(Stream, MercuryModuleName, Indent,
+        StaticConstructors, FinalPreds, !IO) :-
+    mangle_sym_name_for_csharp(MercuryModuleName, module_qual, "__",
+        ClassName),
+    output_n_indents(Stream, Indent, !IO),
+    io.format(Stream, "static %s() {\n", [s(ClassName)], !IO),
+    WriteCall =
+        ( pred(MethodName::in, !.IO::di, !:IO::uo) is det :-
+            output_n_indents(Stream, Indent + 1, !IO),
+            io.format(Stream, "%s();\n", [s(MethodName)], !IO)
+        ),
+    list.foldl(WriteCall, StaticConstructors, !IO),
+    WriteFinal =
+        ( pred(FinalPred::in, !.IO::di, !:IO::uo) is det :-
+            output_n_indents(Stream, Indent + 1, !IO),
+            list.foldl(io.write_string(Stream), [
+                "System.AppDomain.CurrentDomain.ProcessExit += ",
+                "(sender, ev) => ", FinalPred, "();\n"
+            ], !IO)
+        ),
+    list.foldl(WriteFinal, FinalPreds, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "}\n", !IO).
+
+:- pred write_main_driver_for_csharp(io.text_output_stream::in, indent::in,
+    string::in, io::di, io::uo) is det.
+
+write_main_driver_for_csharp(Stream, Indent, ClassName, !IO) :-
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "public static void Main(string[] args)\n", !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "{\n", !IO),
+    Body = [
+        "try {",
+        "   library.ML_std_library_init();",
+        "   " ++ ClassName ++ ".main_2_p_0();",
+        "} catch (runtime.Exception e) {",
+        "   exception.ML_report_uncaught_exception(",
+        "       (univ.Univ_0) e.exception);",
+        "   if (System.Environment.GetEnvironmentVariable(",
+        "           ""MERCURY_SUPPRESS_STACK_TRACE"") == null) {",
+        "       System.Console.Error.WriteLine(e.StackTrace);",
+        "   }",
+        "   if (System.Environment.ExitCode == 0) {",
+        "       System.Environment.ExitCode = 1;",
+        "   }",
+        "}"
+    ],
+    list.foldl(write_indented_line(Stream, Indent + 1), Body, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "}\n", !IO).
+
+:- pred output_src_end_for_csharp(io.text_output_stream::in,
+    mercury_module_name::in, io::di, io::uo) is det.
+
+output_src_end_for_csharp(Stream, ModuleName, !IO) :-
+    % The open parenthesis for both of these close parentheses was written out
+    % by output_src_start_for_csharp.
+    io.write_string(Stream, "}\n\n", !IO),
+    io.write_string(Stream, "}\n", !IO),
+    io.format(Stream, "// :- end_module %s.\n",
+        [s(sym_name_to_escaped_string(ModuleName))], !IO).
+
+%---------------------------------------------------------------------------%
+%
 % Code for working with `foreign_code'.
 %
 
-:- pred output_csharp_decl(csharp_out_info::in, io.text_output_stream::in,
+:- pred output_csharp_decl_code(csharp_out_info::in, io.text_output_stream::in,
     foreign_decl_code::in, maybe_error::out, io::di, io::uo) is det.
 
-output_csharp_decl(Info, Stream, DeclCode, Res, !IO) :-
+output_csharp_decl_code(Info, Stream, DeclCode, Res, !IO) :-
     DeclCode = foreign_decl_code(Lang, _IsLocal, LiteralOrInclude, Context),
     (
         Lang = lang_csharp,
@@ -312,113 +419,6 @@ output_env_var_definition_for_csharp(Stream, Indent, EnvVarName, !IO) :-
     io.format(Stream,
         "System.Environment.GetEnvironmentVariable(\"%s\") == null ? 0 : 1;\n",
         [s(EnvVarName)], !IO).
-
-%---------------------------------------------------------------------------%
-%
-% Code to output the start and end of a source file.
-%
-
-:- pred output_src_start_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, mercury_module_name::in,
-    list(mlds_import)::in, list(foreign_decl_code)::in,
-    list(mlds_function_defn)::in, list(string)::out, io::di, io::uo) is det.
-
-output_src_start_for_csharp(Info, Stream, MercuryModuleName, _Imports,
-        ForeignDecls, FuncDefns, Errors, !IO) :-
-    output_auto_gen_comment(Stream, Info ^ csoi_source_filename, !IO),
-    io.format(Stream, "// :- module %s.\n\n",
-        [s(sym_name_to_escaped_string(MercuryModuleName))], !IO),
-    % The close parenthesis for this open parenthesis is written out
-    % by output_src_end_for_csharp.
-    io.write_string(Stream, "namespace mercury {\n\n", !IO),
-
-    list.map_foldl(output_csharp_decl(Info, Stream),
-        ForeignDecls, ForeignDeclResults, !IO),
-    list.filter_map(maybe_is_error, ForeignDeclResults, Errors),
-
-    mangle_sym_name_for_csharp(MercuryModuleName, module_qual, "__",
-        ClassName),
-    % The close parenthesis for this open parenthesis is written out
-    % by output_src_end_for_csharp.
-    io.format(Stream, "public static class %s {\n", [s(ClassName)], !IO),
-
-    % Check whether this module contains a `main' predicate, and if it does,
-    % then generate a `main' method that calls the `main' predicate.
-    ( if func_defns_contain_main(FuncDefns) then
-        write_main_driver_for_csharp(Stream, 1, ClassName, !IO)
-    else
-        true
-    ).
-
-    % C# only allows a single static constructor so we just call the real
-    % methods that we generated earlier.
-    %
-:- pred output_static_constructor(io.text_output_stream::in,
-    mercury_module_name::in, indent::in, list(string)::in, list(string)::in,
-    io::di, io::uo) is det.
-
-output_static_constructor(Stream, MercuryModuleName, Indent,
-        StaticConstructors, FinalPreds, !IO) :-
-    mangle_sym_name_for_csharp(MercuryModuleName, module_qual, "__",
-        ClassName),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "static %s() {\n", [s(ClassName)], !IO),
-    WriteCall =
-        ( pred(MethodName::in, !.IO::di, !:IO::uo) is det :-
-            output_n_indents(Stream, Indent + 1, !IO),
-            io.format(Stream, "%s();\n", [s(MethodName)], !IO)
-        ),
-    list.foldl(WriteCall, StaticConstructors, !IO),
-    WriteFinal =
-        ( pred(FinalPred::in, !.IO::di, !:IO::uo) is det :-
-            output_n_indents(Stream, Indent + 1, !IO),
-            list.foldl(io.write_string(Stream), [
-                "System.AppDomain.CurrentDomain.ProcessExit += ",
-                "(sender, ev) => ", FinalPred, "();\n"
-            ], !IO)
-        ),
-    list.foldl(WriteFinal, FinalPreds, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
-
-:- pred write_main_driver_for_csharp(io.text_output_stream::in, indent::in,
-    string::in, io::di, io::uo) is det.
-
-write_main_driver_for_csharp(Stream, Indent, ClassName, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "public static void Main(string[] args)\n", !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "{\n", !IO),
-    Body = [
-        "try {",
-        "   library.ML_std_library_init();",
-        "   " ++ ClassName ++ ".main_2_p_0();",
-        "} catch (runtime.Exception e) {",
-        "   exception.ML_report_uncaught_exception(",
-        "       (univ.Univ_0) e.exception);",
-        "   if (System.Environment.GetEnvironmentVariable(",
-        "           ""MERCURY_SUPPRESS_STACK_TRACE"") == null) {",
-        "       System.Console.Error.WriteLine(e.StackTrace);",
-        "   }",
-        "   if (System.Environment.ExitCode == 0) {",
-        "       System.Environment.ExitCode = 1;",
-        "   }",
-        "}"
-    ],
-    list.foldl(write_indented_line(Stream, Indent + 1), Body, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
-
-:- pred output_src_end_for_csharp(io.text_output_stream::in,
-    mercury_module_name::in, io::di, io::uo) is det.
-
-output_src_end_for_csharp(Stream, ModuleName, !IO) :-
-    % The open parenthesis for both of these close parentheses was written out
-    % by output_src_start_for_csharp.
-    io.write_string(Stream, "}\n\n", !IO),
-    io.write_string(Stream, "}\n", !IO),
-    io.format(Stream, "// :- end_module %s.\n",
-        [s(sym_name_to_escaped_string(ModuleName))], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_cs_file.
