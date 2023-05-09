@@ -25,13 +25,13 @@
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_info.
-:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_out_type.
@@ -145,7 +145,7 @@ write_comma_type_params_loop(Stream, TVarSet, [Param | Params], !IO) :-
 
 write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
     BaseIndent = 1,
-    IndentStr = indent_string(BaseIndent),
+    IndentStr = indent2_string(BaseIndent),
     (
         TypeBody = hlds_du_type(TypeBodyDu),
         TypeBodyDu = type_body_du(Ctors, MaybeSuperType, MaybeUserEqComp,
@@ -303,7 +303,7 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
         ),
         % What we output is not valid Mercury syntax, but it is easier
         % to read than valid Mercury syntax would be.
-        Indent1Str = indent_string(BaseIndent + 1),
+        Indent1Str = indent2_string(BaseIndent + 1),
         io.format(Stream, " is foreign_type(\n%s%s,\n%s%s,\n%s%s\n%s).\n",
             [s(Indent1Str), s(MaybeCStr),
             s(Indent1Str), s(MaybeJavaStr),
@@ -411,7 +411,7 @@ write_constructor_repns(Stream, TVarSet, CtorRepns, !IO) :-
 
 write_constructors_loop(Stream, TVarSet, ArrowOrSemi0,
         HeadCtor, TailCtors, !IO) :-
-    write_indent(Stream, 1, !IO),
+    write_indent2(Stream, 1, !IO),
     io.write_string(Stream, ArrowOrSemi0, !IO),
     (
         TailCtors = [],
@@ -430,7 +430,7 @@ write_constructors_loop(Stream, TVarSet, ArrowOrSemi0,
 
 write_constructor_repns_loop(Stream, TVarSet, ArrowOrSemi0,
         HeadCtorRepn, TailCtorRepns, !IO) :-
-    write_indent(Stream, 1, !IO),
+    write_indent2(Stream, 1, !IO),
     io.write_string(Stream, ArrowOrSemi0, !IO),
     (
         TailCtorRepns = [],
@@ -463,8 +463,9 @@ write_ctor(Stream, TVarSet, Ctor, !IO) :-
     % four indents. This comes after the original one indent.
     BaseIndent = 1,
     ASIndent = 4,
+    BaseASIndentStr = indent2_string(BaseIndent + ASIndent),
     maybe_cons_exist_constraints_to_prefix_suffix(TVarSet,
-        indent_string(BaseIndent + ASIndent), "\n", MaybeExistConstraints,
+        BaseASIndentStr, "\n", MaybeExistConstraints,
         ExistConstraintsPrefix, ExistConstraintsSuffix),
     maybe_brace_for_name_prefix_suffix(Arity, Name, BracePrefix, BraceSuffix),
     io.write_string(Stream, ExistConstraintsPrefix, !IO),
@@ -476,14 +477,14 @@ write_ctor(Stream, TVarSet, Ctor, !IO) :-
         Args = [HeadArg | TailArgs],
         io.format(Stream, "%s%s(\n", [s(BracePrefix), s(NameStr)], !IO),
         AnyFieldName = does_any_arg_have_a_field_name(Args),
-        mercury_output_ctor_args(Stream, TVarSet, BaseIndent + ASIndent + 1,
+        BaseASIndent1Str = indent2_string(BaseIndent + ASIndent + 1),
+        mercury_output_ctor_args(Stream, TVarSet, BaseASIndent1Str,
             AnyFieldName, HeadArg, TailArgs, !IO),
-        write_indent(Stream, BaseIndent + ASIndent, !IO),
-        io.format(Stream, ")%s\n", [s(BraceSuffix)], !IO)
+        io.format(Stream, "%s)%s\n",
+            [s(BaseASIndentStr), s(BraceSuffix)], !IO)
     ),
-    io.write_string(Stream, BraceSuffix, !IO),
-    io.write_string(Stream, ExistConstraintsSuffix, !IO),
-    io.write_string(Stream, "\n", !IO).
+    io.format(Stream, "%s%s\n",
+        [s(BraceSuffix), s(ExistConstraintsSuffix)], !IO).
 
 :- pred write_ctor_repn(io.text_output_stream::in, tvarset::in,
     constructor_repn::in, io::di, io::uo) is det.
@@ -504,15 +505,15 @@ write_ctor_repn(Stream, TVarSet, CtorRepn, !IO) :-
     % four indents. This comes after the original one indent.
     BaseIndent = 1,
     ASIndent = 4,
+    BaseASIndentStr = indent2_string(BaseIndent + ASIndent),
     maybe_cons_exist_constraints_to_prefix_suffix(TVarSet,
-        indent_string(BaseIndent + ASIndent), "\n", MaybeExistConstraints,
+        BaseASIndentStr, "\n", MaybeExistConstraints,
         ExistConstraintsPrefix, ExistConstraintsSuffix),
     maybe_brace_for_name_prefix_suffix(Arity, Name, BracePrefix, BraceSuffix),
     io.write_string(Stream, ExistConstraintsPrefix, !IO),
     io.write_string(Stream, BracePrefix, !IO),
     ConsTagString = string.format("%s%% tag: %s\n",
-        [s(indent_string(BaseIndent + ASIndent)),
-        s(du_cons_tag_to_string(ConsTag))]),
+        [s(BaseASIndentStr), s(du_cons_tag_to_string(ConsTag))]),
     (
         ArgRepns = [],
         io.format(Stream, "%s%s%s\n%s",
@@ -520,27 +521,26 @@ write_ctor_repn(Stream, TVarSet, CtorRepn, !IO) :-
             !IO)
     ;
         ArgRepns = [HeadArgRepn | TailArgRepns],
+        BaseASIndent1Str = indent2_string(BaseIndent + ASIndent + 1),
         io.format(Stream, "%s%s(\n%s",
             [s(BracePrefix), s(NameStr), s(ConsTagString)], !IO),
         AnyFieldName = does_any_arg_repn_have_a_field_name(ArgRepns),
-        mercury_output_ctor_arg_repns(Stream, TVarSet,
-            BaseIndent + ASIndent + 1, AnyFieldName, 1,
-            HeadArgRepn, TailArgRepns, !IO),
-        write_indent(Stream, BaseIndent + ASIndent, !IO),
-        io.format(Stream, ")%s\n", [s(BraceSuffix)], !IO)
+        mercury_output_ctor_arg_repns(Stream, TVarSet, BaseASIndent1Str,
+            AnyFieldName, 1, HeadArgRepn, TailArgRepns, !IO),
+        io.format(Stream, "%s)%s\n", [s(BaseASIndentStr), s(BraceSuffix)], !IO)
     ),
     io.write_string(Stream, ExistConstraintsSuffix, !IO).
 
 %---------------------%
 
 :- pred mercury_output_ctor_args(io.text_output_stream::in, tvarset::in,
-    int::in, bool::in, constructor_arg::in, list(constructor_arg)::in,
+    string::in, bool::in, constructor_arg::in, list(constructor_arg)::in,
     io::di, io::uo) is det.
 
-mercury_output_ctor_args(Stream, TVarSet, Indent, AnyFieldName,
+mercury_output_ctor_args(Stream, TVarSet, IndentStr, AnyFieldName,
         HeadArg, TailArgs, !IO) :-
     HeadArg = ctor_arg(MaybeFieldName, Type, _Context),
-    write_indent(Stream, Indent, !IO),
+    io.write_string(Stream, IndentStr, !IO),
     (
         AnyFieldName = no
     ;
@@ -561,18 +561,18 @@ mercury_output_ctor_args(Stream, TVarSet, Indent, AnyFieldName,
     ;
         TailArgs = [HeadTailArg | TailTailArgs],
         io.write_string(Stream, ",\n", !IO),
-        mercury_output_ctor_args(Stream, TVarSet, Indent, AnyFieldName,
+        mercury_output_ctor_args(Stream, TVarSet, IndentStr, AnyFieldName,
             HeadTailArg, TailTailArgs, !IO)
     ).
 
 :- pred mercury_output_ctor_arg_repns(io.text_output_stream::in, tvarset::in,
-    int::in, bool::in, int::in, constructor_arg_repn::in,
+    string::in, bool::in, int::in, constructor_arg_repn::in,
     list(constructor_arg_repn)::in, io::di, io::uo) is det.
 
-mercury_output_ctor_arg_repns(Stream, TVarSet, Indent, AnyFieldName,
+mercury_output_ctor_arg_repns(Stream, TVarSet, IndentStr, AnyFieldName,
         CurArgNum, HeadArgRepn, TailArgRepns, !IO) :-
     HeadArgRepn = ctor_arg_repn(MaybeFieldName, Type, ArgPosWidth, _Context),
-    write_indent(Stream, Indent, !IO),
+    io.write_string(Stream, IndentStr, !IO),
     (
         AnyFieldName = no
     ;
@@ -590,12 +590,12 @@ mercury_output_ctor_arg_repns(Stream, TVarSet, Indent, AnyFieldName,
     (
         TailArgRepns = [],
         io.write_string(Stream, "\n", !IO),
-        write_arg_pos_width(Stream, Indent, CurArgNum, ArgPosWidth, !IO)
+        write_arg_pos_width(Stream, IndentStr, CurArgNum, ArgPosWidth, !IO)
     ;
         TailArgRepns = [HeadTailArgRepn | TailTailArgRepns],
         io.write_string(Stream, ",\n", !IO),
-        write_arg_pos_width(Stream, Indent, CurArgNum, ArgPosWidth, !IO),
-        mercury_output_ctor_arg_repns(Stream, TVarSet, Indent, AnyFieldName,
+        write_arg_pos_width(Stream, IndentStr, CurArgNum, ArgPosWidth, !IO),
+        mercury_output_ctor_arg_repns(Stream, TVarSet, IndentStr, AnyFieldName,
             CurArgNum + 1, HeadTailArgRepn, TailTailArgRepns, !IO)
     ).
 
@@ -746,11 +746,11 @@ local_sectag_to_string(LocalSectag) = String :-
         String = string.format("%u in %u bits", [u(SectagValue), u8(NumBits)])
     ).
 
-:- pred write_arg_pos_width(io.text_output_stream::in, int::in, int::in,
+:- pred write_arg_pos_width(io.text_output_stream::in, string::in, int::in,
     arg_pos_width::in, io::di, io::uo) is det.
 
-write_arg_pos_width(Stream, Indent, CurArgNum, ArgPosWidth, !IO) :-
-    write_indent(Stream, Indent, !IO),
+write_arg_pos_width(Stream, IndentStr, CurArgNum, ArgPosWidth, !IO) :-
+    io.write_string(Stream, IndentStr, !IO),
     (
         ArgPosWidth = apw_full(ArgOnlyOffset, CellOffset),
         ArgOnlyOffset = arg_only_offset(AOWordNum),

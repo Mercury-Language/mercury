@@ -140,6 +140,7 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
+:- import_module libs.indent.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -340,7 +341,7 @@ do_write_error_msgs(Stream, [Msg | Msgs], Globals, !.First, !PrintedSome,
         TreatAsFirst = treat_based_on_posn
         % Leave !:First as it is, even if it is treat_as_first.
     ),
-    Indent = ExtraIndentLevel * indent_increment,
+    Indent = ExtraIndentLevel * indent2_increment,
     write_msg_components(Stream, Components, MaybeContext, Indent, Globals,
         !First, !PrintedSome, !AlreadyPrintedVerbose, !IO),
     do_write_error_msgs(Stream, Msgs, Globals, !.First, !PrintedSome,
@@ -582,9 +583,10 @@ write_msg_line(Stream, PrefixStr, Line, !IO) :-
         % Don't bother to print out indents that are followed by nothing.
         io.format(Stream, "%s\n", [s(PrefixStr)], !IO)
     else
-        IndentStr = indent_string(LineIndent),
+        IndentStr = indent2_string(LineIndent),
         % If ContextStr is non-empty, it will end with a space,
-        % which guarantees that it will be separated from LineWords.
+        % which guarantees that PrefixStr, which is ContextStr possibly with
+        % some indentation added, will be separated from LineWords.
         io.format(Stream, "%s%s%s\n",
             [s(PrefixStr), s(IndentStr), s(LineWordsStr)], !IO)
     ).
@@ -999,7 +1001,7 @@ find_word_end(String, Cur, WordEnd) :-
                 % no limit on the lengths of lines.
                 maybe_avail_len     :: maybe(int),
 
-                % Indent level of the line; multiply by indent_increment
+                % Indent level of the line; multiply by indent2_increment
                 % to get the number of spaces this turns into.
                 line_indent_level   :: int,
 
@@ -1133,7 +1135,7 @@ group_nonfirst_line_words(AvailLen, FirstWord, LaterWords,
 get_line_of_words(AvailLen, FirstWord, LaterWords, Indent, LineWordsLen,
         LineWords, RestWords) :-
     string.count_code_points(FirstWord, FirstWordLen),
-    AvailLeft = AvailLen - Indent * indent_increment,
+    AvailLeft = AvailLen - Indent * indent2_increment,
     get_later_words(AvailLeft, LaterWords, FirstWordLen, LineWordsLen,
         cord.singleton(FirstWord), LineWordsCord, RestWords),
     LineWords = cord.list(LineWordsCord).
@@ -1243,7 +1245,7 @@ find_matching_rp_and_maybe_join(LPLine, TailLines0, ReplacementLines,
                 MaybeAvailLen = no
             ;
                 MaybeAvailLen = yes(AvailLen),
-                LPIndent * indent_increment + TotalLpRpLen =< AvailLen
+                LPIndent * indent2_increment + TotalLpRpLen =< AvailLen
             )
         then
             % We insert spaces

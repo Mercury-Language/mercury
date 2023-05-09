@@ -139,6 +139,7 @@
 :- import_module hlds.instmap.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
@@ -200,6 +201,7 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         Indent, Follow, Goal, !IO) :-
     % Write out goal_infos in the form of annotations around goal expressions.
 
+    IndentStr = indent2_string(Indent),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if string.contains_char(DumpOptions, 'c') then
@@ -214,10 +216,8 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         ( if GoalIdNum < 0 then
             true
         else
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% goal id: ", !IO),
-            io.write_int(Stream, GoalIdNum, !IO),
-            io.write_string(Stream, "\n", !IO)
+            io.format(Stream, "%s%% goal id: %d\n",
+                [s(IndentStr), i(GoalIdNum)], !IO)
         )
     else
         true
@@ -227,11 +227,10 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         set_of_var.to_sorted_list(NonLocalsSet, NonLocalsList),
         (
             NonLocalsList = [_ | _],
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% nonlocals: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, NonLocalsList,
-                Stream, !IO),
-            io.write_string(Stream, "\n", !IO)
+            NonLocalsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+                NonLocalsList),
+            io.format(Stream, "%s%% nonlocals: %s\n",
+                [s(IndentStr), s(NonLocalsStr)], !IO)
         ;
             NonLocalsList = []
         )
@@ -244,11 +243,10 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
             PreDeathList = set_of_var.to_sorted_list(PreDeaths),
             PreDeathList = [_ | _]
         then
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% pre-deaths: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, PreDeathList,
-                Stream, !IO),
-            io.write_string(Stream, "\n", !IO)
+            PreDeathStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+                PreDeathList),
+            io.format(Stream, "%s%% pre-deaths: %s\n",
+                [s(IndentStr), s(PreDeathStr)], !IO)
         else
             true
         ),
@@ -257,11 +255,10 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
             PreBirthList = set_of_var.to_sorted_list(PreBirths),
             PreBirthList = [_ | _]
         then
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% pre-births: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, PreBirthList,
-                Stream, !IO),
-            io.write_string(Stream, "\n", !IO)
+            PreBirthStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+                PreBirthList),
+            io.format(Stream, "%s%% pre-births: %s\n",
+                [s(IndentStr), s(PreBirthStr)], !IO)
         else
             true
         )
@@ -272,11 +269,10 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         ProducingVars = GoalInfo ^ producing_vars,
         ( if set_of_var.is_non_empty(ProducingVars) then
             set_of_var.to_sorted_list(ProducingVars, ProducingVarsList),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% producing vars: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint,
-                ProducingVarsList, Stream, !IO),
-            io.write_string(Stream, "\n", !IO)
+            ProducingVarsStr = mercury_vars_to_string_src(VarNameSrc,
+                VarNamePrint, ProducingVarsList),
+            io.format(Stream, "%s%% producing vars: %s\n",
+                [s(IndentStr), s(ProducingVarsStr)], !IO)
         else
             true
         ),
@@ -284,11 +280,10 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         ConsumingVars = GoalInfo ^ consuming_vars,
         ( if set_of_var.is_non_empty(ConsumingVars) then
             set_of_var.to_sorted_list(ConsumingVars, ConsumingVarsList),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% consuming vars: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint,
-                ConsumingVarsList, Stream, !IO),
-            io.write_string(Stream, "\n", !IO)
+            ConsumingVarsStr = mercury_vars_to_string_src(VarNameSrc,
+                VarNamePrint, ConsumingVarsList),
+            io.format(Stream, "%s%% consuming vars: %s\n",
+                [s(IndentStr), s(ConsumingVarsStr)], !IO)
         else
             true
         ),
@@ -296,11 +291,10 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         MakeVisibleVars = GoalInfo ^ make_visible_vars,
         ( if set_of_var.is_non_empty(MakeVisibleVars) then
             set_of_var.to_sorted_list(MakeVisibleVars, MakeVisibleVarsList),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% make_visible vars: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint,
-                MakeVisibleVarsList, Stream, !IO),
-            io.write_string(Stream, "\n", !IO)
+            MakeVisibleVarsStr = mercury_vars_to_string_src(VarNameSrc,
+                VarNamePrint, MakeVisibleVarsList),
+            io.format(Stream, "%s%% make_visible vars: %s\n",
+                [s(IndentStr), s(MakeVisibleVarsStr)], !IO)
         else
             true
         ),
@@ -308,11 +302,10 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         NeedVisibleVars = GoalInfo ^ need_visible_vars,
         ( if set_of_var.is_non_empty(NeedVisibleVars) then
             set_of_var.to_sorted_list(NeedVisibleVars, NeedVisibleVarsList),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% need_visible vars: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint,
-                NeedVisibleVarsList, Stream, !IO),
-            io.write_string(Stream, "\n", !IO)
+            NeedVisibleVarsStr = mercury_vars_to_string_src(VarNameSrc,
+                VarNamePrint, NeedVisibleVarsList),
+            io.format(Stream, "%s%% need_visible vars: %s\n",
+                [s(IndentStr), s(NeedVisibleVarsStr)], !IO)
         else
             true
         )
@@ -320,11 +313,9 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         true
     ),
     ( if string.contains_char(DumpOptions, 'd') then
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% determinism: ", !IO),
         Determinism = goal_info_get_determinism(GoalInfo),
-        io.write_string(Stream, determinism_to_string(Determinism), !IO),
-        io.write_string(Stream, "\n", !IO)
+        io.format(Stream, "%s%% determinism: %s\n",
+            [s(IndentStr), s(determinism_to_string(Determinism))], !IO)
     else
         true
     ),
@@ -333,37 +324,34 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         (
             MaybeRbmmInfo = yes(RbmmInfo),
             RbmmInfo = rbmm_goal_info(Created, Removed, Carried, Alloc, Used),
+
             CreatedList = set.to_sorted_list(Created),
             RemovedList = set.to_sorted_list(Removed),
             CarriedList = set.to_sorted_list(Carried),
             AllocList = set.to_sorted_list(Alloc),
             UsedList = set.to_sorted_list(Used),
 
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% Created regions: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, CreatedList,
-                Stream, !IO),
-            io.nl(Stream, !IO),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% Removed regions: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, RemovedList,
-                Stream, !IO),
-            io.nl(Stream, !IO),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% Carried regions: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, CarriedList,
-                Stream, !IO),
-            io.nl(Stream, !IO),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% Allocated into regions: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, AllocList,
-                Stream, !IO),
-            io.nl(Stream, !IO),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% Used regions: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, UsedList,
-                Stream, !IO),
-            io.nl(Stream, !IO)
+            CreatedStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+                CreatedList),
+            RemovedStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+                RemovedList),
+            CarriedStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+                CarriedList),
+            AllocStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+                AllocList),
+            UsedStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+                UsedList),
+
+            io.format(Stream, "%s%% Created regions: %s\n",
+                [s(IndentStr), s(CreatedStr)], !IO),
+            io.format(Stream, "%s%% Removed regions: %s\n",
+                [s(IndentStr), s(RemovedStr)], !IO),
+            io.format(Stream, "%s%% Carried regions: %s\n",
+                [s(IndentStr), s(CarriedStr)], !IO),
+            io.format(Stream, "%s%% Allocated into regions: %s\n",
+                [s(IndentStr), s(AllocStr)], !IO),
+            io.format(Stream, "%s%% Used regions: %s\n",
+                [s(IndentStr), s(UsedStr)], !IO)
         ;
             MaybeRbmmInfo = no
         )
@@ -376,12 +364,10 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
             Purity = purity_pure
         ;
             Purity = purity_semipure,
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% semipure\n", !IO)
+            io.format(Stream, "%s%% semipure\n", [s(IndentStr)], !IO)
         ;
             Purity = purity_impure,
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% impure\n", !IO)
+            io.format(Stream, "%s%% impure\n", [s(IndentStr)], !IO)
         )
     else
         true
@@ -392,8 +378,8 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
             MaybeDPInfo = yes(dp_goal_info(MdprofInst, MaybeDPCoverageInfo)),
             (
                 MdprofInst = goal_is_mdprof_inst,
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "% mdprof instrumentation\n", !IO)
+                io.format(Stream, "%s%% mdprof instrumentation\n",
+                    [s(IndentStr)], !IO)
             ;
                 MdprofInst = goal_is_not_mdprof_inst
             ),
@@ -401,25 +387,27 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
                 MaybeDPCoverageInfo = yes(CoverageInfo),
                 CoverageInfo = dp_coverage_goal_info(IsTrivial,
                     PortCountsGiveCoverageAfter),
-                write_indent(Stream, Indent, !IO),
                 (
                     IsTrivial = goal_is_trivial,
-                    io.write_string(Stream, "% trivial goal\n", !IO)
+                    io.format(Stream, "%s%% trivial goal\n",
+                        [s(IndentStr)], !IO)
                 ;
                     IsTrivial = goal_is_nontrivial,
-                    io.write_string(Stream, "% nontrivial goal\n", !IO)
+                    io.format(Stream, "%s%% nontrivial goal\n",
+                        [s(IndentStr)], !IO)
                 ),
-                write_indent(Stream, Indent, !IO),
                 (
                     PortCountsGiveCoverageAfter =
                         port_counts_give_coverage_after,
-                    io.write_string(Stream,
-                        "% port counts give coverage after\n", !IO)
+                    io.format(Stream,
+                        "%s%% port counts give coverage after\n",
+                        [s(IndentStr)], !IO)
                 ;
                     PortCountsGiveCoverageAfter =
                         no_port_counts_give_coverage_after,
-                    io.write_string(Stream,
-                        "% no port counts give coverage after\n", !IO)
+                    io.format(Stream,
+                        "%s%% no port counts give coverage after\n",
+                        [s(IndentStr)], !IO)
                 )
             ;
                 MaybeDPCoverageInfo = no
@@ -441,21 +429,33 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         then
             true
         else
-            write_indent(Stream, Indent, !IO),
             ( if string.contains_char(DumpOptions, 'D') then
                 ( if instmap_delta_is_unreachable(InstMapDelta) then
-                    io.write_string(Stream, "% new insts: unreachable\n", !IO)
+                    io.format(Stream, "%s%% new insts: unreachable\n",
+                        [s(IndentStr)], !IO)
                 else
-                    io.write_string(Stream, "% new insts:\n", !IO),
                     instmap_delta_to_assoc_list(InstMapDelta, NewVarInsts),
-                    write_new_var_inst_list(Stream, VarNameSrc, VarNamePrint,
-                        Indent, NewVarInsts, !IO)
+                    NewVarInstStrs = list.map(
+                        new_var_inst_to_string(VarNameSrc, VarNamePrint,
+                            IndentStr),
+                        NewVarInsts),
+                    io.format(Stream, "%s%% new insts:\n",
+                        [s(IndentStr)], !IO),
+                    list.foldl(io.write_string(Stream), NewVarInstStrs, !IO)
                 )
             else
-                io.write_string(Stream, "% vars with new insts: ", !IO),
-                write_instmap_delta_vars(Stream, VarNameSrc, VarNamePrint,
-                    InstMapDelta, !IO),
-                io.write_string(Stream, "\n", !IO)
+                ( if instmap_delta_is_unreachable(InstMapDelta) then
+                    NewVarsStr = "unreachable"
+                else
+                    instmap_delta_to_assoc_list(InstMapDelta, NewVarInsts),
+                    assoc_list.keys(NewVarInsts, NewVars),
+                    NewVarStrs = list.map(
+                        mercury_var_to_string_src(VarNameSrc, VarNamePrint),
+                        NewVars),
+                    NewVarsStr = string.join_list(", ", NewVarStrs)
+                ),
+                io.format(Stream, "%s%% vars with new insts: %s\n",
+                    [s(IndentStr), s(NewVarsStr)], !IO)
             )
         )
 
@@ -474,11 +474,10 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
             PostDeathList = set_of_var.to_sorted_list(PostDeaths),
             PostDeathList = [_ | _]
         then
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% post-deaths: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, PostDeathList,
-                Stream, !IO),
-            io.write_string(Stream, "\n", !IO)
+            PostDeathStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+                PostDeathList),
+            io.format(Stream, "%s%% post-deaths: %s\n",
+                [s(IndentStr), s(PostDeathStr)], !IO)
         else
             true
         ),
@@ -487,11 +486,10 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
             PostBirthList = set_of_var.to_sorted_list(PostBirths),
             PostBirthList = [_ | _]
         then
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% post-births: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, PostBirthList,
-                Stream, !IO),
-            io.write_string(Stream, "\n", !IO)
+            PostBirthStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+                PostBirthList),
+            io.format(Stream, "%s%% post-births: %s\n",
+                [s(IndentStr), s(PostBirthStr)], !IO)
         else
             true
         )
@@ -502,23 +500,21 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         ( if
             yes(LFU) = goal_info_get_maybe_lfu(GoalInfo),
             yes(LBU) = goal_info_get_maybe_lbu(GoalInfo),
-            yes(ReuseDescription) = goal_info_get_maybe_reuse(GoalInfo),
-            set_of_var.to_sorted_list(LFU, ListLFU),
-            set_of_var.to_sorted_list(LBU, ListLBU)
+            yes(ReuseDescription) = goal_info_get_maybe_reuse(GoalInfo)
         then
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% LFU: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, ListLFU,
-                Stream, !IO),
-            io.write_string(Stream, "\n", !IO),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% LBU: ", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, ListLBU,
-                Stream, !IO),
-            io.write_string(Stream, "\n", !IO),
+            set_of_var.to_sorted_list(LFU, ListLFU),
+            set_of_var.to_sorted_list(LBU, ListLBU),
+            StrLFU = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+                ListLFU),
+            StrLBU = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+                ListLBU),
 
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% Reuse: ", !IO),
+            io.format(Stream, "%s%% LFU: %s\n",
+                [s(IndentStr), s(StrLFU)], !IO),
+            io.format(Stream, "%s%% LBU: %s\n",
+                [s(IndentStr), s(StrLBU)], !IO),
+
+            io.format(Stream, "%s%% Reuse: ", [s(IndentStr)], !IO),
             (
                 ReuseDescription = no_reuse_info,
                 io.write_string(Stream, "no reuse info", !IO)
@@ -565,37 +561,29 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
             FeatureList = []
         ;
             FeatureList = [_ | _],
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% Goal features:  ", !IO),
-            io.write(Stream, FeatureList, !IO),
-            io.write_string(Stream, "\n", !IO)
+            io.format(Stream, "%s%% Goal features: %s\n",
+                [s(IndentStr), s(string.string(FeatureList))], !IO)
         )
     else
         true
     ).
 
-:- pred write_new_var_inst_list(io.text_output_stream::in, var_name_source::in,
-    var_name_print::in, int::in, assoc_list(prog_var, mer_inst)::in,
-    io::di, io::uo) is det.
+:- func new_var_inst_to_string(var_name_source, var_name_print, string,
+    pair(prog_var, mer_inst)) = string.
 
-write_new_var_inst_list(_, _, _VarNamePrint, _Indent, [], !IO).
-write_new_var_inst_list(Stream, VarNameSrc, VarNamePrint, Indent,
-        [Var - Inst | VarInsts], !IO) :-
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, "%   ", !IO),
-    mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO),
-    io.write_string(Stream, " -> ", !IO),
+new_var_inst_to_string(VarNameSrc, VarNamePrint, IndentStr, Var - Inst)
+        = Str :-
+    VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
     varset.init(InstVarSet),
-    mercury_output_inst(Stream, output_debug, InstVarSet, Inst, !IO),
-    io.nl(Stream, !IO),
-    write_new_var_inst_list(Stream, VarNameSrc, VarNamePrint, Indent,
-        VarInsts, !IO).
+    InstStr = mercury_inst_to_string(output_debug, InstVarSet, Inst),
+    string.format("%s%%   %s -> %s\n",
+        [s(IndentStr), s(VarStr), s(InstStr)], Str).
 
 write_goal_list(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         Indent, Separator, Goals, !IO) :-
     (
         Goals = [HeadGoal | TailGoals],
-        write_indent(Stream, Indent, !IO),
+        write_indent2(Stream, Indent, !IO),
         io.write_string(Stream, Separator, !IO),
         do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             VarNamePrint, Indent + 1, "\n", HeadGoal, !IO),
@@ -612,18 +600,16 @@ write_goal_list(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
 write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
         Indent, !IO) :-
     DumpOptions = Info ^ hoi_dump_hlds_options,
+    IndentStr = indent2_string(Indent),
     ( if string.contains_char(DumpOptions, 'f') then
         goal_info_get_follow_vars(GoalInfo, MaybeFollowVars),
         (
             MaybeFollowVars = yes(FollowVars),
             FollowVars = abs_follow_vars(FollowVarsMap, NextRegR, NextRegF),
             map.to_assoc_list(FollowVarsMap, FVlist),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% follow vars: r", !IO),
-            io.write_int(Stream, NextRegR, !IO),
-            io.write_string(Stream, ", f", !IO),
-            io.write_int(Stream, NextRegF, !IO),
-            io.write_string(Stream, "\n", !IO),
+
+            io.format(Stream, "%s%% follow vars: r%d, f%d\n",
+                [s(IndentStr), i(NextRegR), i(NextRegF)], !IO),
             write_var_to_abs_locns(Stream, VarNameSrc, VarNamePrint, Indent,
                 FVlist, !IO)
         ;
@@ -639,24 +625,23 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
         ;
             Resume = resume_point(ResumeVars, Locs),
             ResumeVarList = set_of_var.to_sorted_list(ResumeVars),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% resume point ", !IO),
+            ResumeVarsStr = mercury_vars_to_string_src(VarNameSrc,
+                VarNamePrint, ResumeVarList),
             (
                 Locs = resume_locs_orig_only,
-                io.write_string(Stream, "orig only ", !IO)
+                LocsStr = "orig only"
             ;
                 Locs = resume_locs_stack_only,
-                io.write_string(Stream, "stack only ", !IO)
+                LocsStr = "stack only"
             ;
                 Locs = resume_locs_orig_then_stack,
-                io.write_string(Stream, "orig then stack ", !IO)
+                LocsStr = "orig then stack"
             ;
                 Locs = resume_locs_stack_then_orig,
-                io.write_string(Stream, "stack then orig ", !IO)
+                LocsStr = "stack then orig"
             ),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, ResumeVarList,
-                Stream, !IO),
-            io.write_string(Stream, "\n", !IO)
+            io.format(Stream, "%s%% resume point %s %s\n",
+                [s(IndentStr), s(LocsStr), s(ResumeVarsStr)], !IO)
         )
     else
         true
@@ -667,8 +652,7 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
         map.to_assoc_list(StoreMap, StoreMapList),
         StoreMapList = [_ | _]
     then
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% store map:\n", !IO),
+        io.format(Stream, "%s%% store map:\n", [s(IndentStr)], !IO),
         write_var_to_abs_locns(Stream, VarNameSrc, VarNamePrint, Indent,
             StoreMapList, !IO)
     else
@@ -684,8 +668,8 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
         CallForwardList = set_of_var.to_sorted_list(CallForwardSet),
         CallResumeList = set_of_var.to_sorted_list(CallResumeSet),
         CallNondetList = set_of_var.to_sorted_list(CallNondetSet),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% need across call forward vars: ", !IO),
+        io.format(Stream, "%s%% need across call forward vars: ",
+            [s(IndentStr)], !IO),
         (
             CallForwardList = [],
             io.write_string(Stream, "none\n", !IO)
@@ -695,8 +679,8 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
             io.write_string(Stream, "\n", !IO)
         ),
 
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% need across call resume vars: ", !IO),
+        io.format(Stream, "%s%% need across call resume vars: ",
+            [s(IndentStr)], !IO),
         (
             CallResumeList = [],
             io.write_string(Stream, "none\n", !IO)
@@ -706,8 +690,8 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
             io.write_string(Stream, "\n", !IO)
         ),
 
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% need across call nondet vars: ", !IO),
+        io.format(Stream, "%s%% need across call nondet vars: ",
+            [s(IndentStr)], !IO),
         (
             CallNondetList = [],
             io.write_string(Stream, "none\n", !IO)
@@ -729,16 +713,17 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
         ResumeResumeList = set_of_var.to_sorted_list(ResumeResumeSet),
         ResumeNondetList = set_of_var.to_sorted_list(ResumeNondetSet),
 
-        write_indent(Stream, Indent, !IO),
         (
             ResumeOnStack = yes,
-            io.write_string(Stream, "% resume point has stack label\n", !IO)
+            io.format(Stream, "%s%% resume point has stack label\n",
+                [s(IndentStr)], !IO)
         ;
             ResumeOnStack = no,
-            io.write_string(Stream, "% resume point has no stack label\n", !IO)
+            io.format(Stream, "%s%% resume point has no stack label\n",
+                [s(IndentStr)], !IO)
         ),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% need in resume resume vars: ", !IO),
+        io.format(Stream, "%s%% need in resume resume vars: ",
+            [s(IndentStr)], !IO),
         (
             ResumeResumeList = [],
             io.write_string(Stream, "none\n", !IO)
@@ -749,8 +734,8 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
             io.write_string(Stream, "\n", !IO)
         ),
 
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% need in resume nondet vars: ", !IO),
+        io.format(Stream, "%s%% need in resume nondet vars: ",
+            [s(IndentStr)], !IO),
         (
             ResumeNondetList = [],
             io.write_string(Stream, "none\n", !IO)
@@ -770,8 +755,8 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
     then
         NeedInParConj = need_in_par_conj(ParConjSet),
         ParConjList = set_of_var.to_sorted_list(ParConjSet),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% need in par_conj vars: ", !IO),
+        io.format(Stream, "%s%% need in par_conj vars: ",
+            [s(IndentStr)], !IO),
         write_vars(Stream, VarNameSrc, VarNamePrint, ParConjList, !IO),
         io.write_string(Stream, "\n", !IO)
     else
@@ -781,36 +766,20 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
 write_var_to_abs_locns(_, _, _, _, [], !IO).
 write_var_to_abs_locns(Stream, VarNameSrc, VarNamePrint, Indent,
         [Var - Loc | VarLocs], !IO) :-
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, "%\t", !IO),
-    mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO),
-    io.write_string(Stream, "\t-> ", !IO),
+    IndentStr = indent2_string(Indent),
+    VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
     abs_locn_to_string(Loc, LocnStr, MaybeWidth),
-    io.write_string(Stream, LocnStr, !IO),
     (
-        MaybeWidth = yes(Width),
-        io.write_string(Stream, " ", !IO),
-        io.write_string(Stream, Width, !IO)
+        MaybeWidth = no,
+        WidthStr = ""
     ;
-        MaybeWidth = no
+        MaybeWidth = yes(Width),
+        WidthStr = " " ++ Width
     ),
-    io.write_string(Stream, "\n", !IO),
+    io.format(Stream, "%s%%\t%s\t-> %s%s\n",
+        [s(IndentStr), s(VarStr), s(LocnStr), s(WidthStr)], !IO),
     write_var_to_abs_locns(Stream, VarNameSrc, VarNamePrint, Indent,
         VarLocs, !IO).
-
-:- pred write_instmap_delta_vars(io.text_output_stream::in,
-    var_name_source::in, var_name_print::in, instmap_delta::in,
-    io::di, io::uo) is det.
-
-write_instmap_delta_vars(Stream, VarNameSrc, VarNamePrint, InstMapDelta,
-        !IO) :-
-    ( if instmap_delta_is_unreachable(InstMapDelta) then
-        io.write_string(Stream, "unreachable", !IO)
-    else
-        instmap_delta_to_assoc_list(InstMapDelta, AssocList),
-        assoc_list.keys(AssocList, Vars),
-        write_vars(Stream, VarNameSrc, VarNamePrint, Vars, !IO)
-    ).
 
 :- pred write_vars(io.text_output_stream::in, var_name_source::in,
     var_name_print::in, list(prog_var)::in, io::di, io::uo) is det.
@@ -839,10 +808,9 @@ write_short_reuse_description(Stream, ShortDescription, VarNameSrc,
             [s(VarStr), s(is_conditional_to_string(IsConditional))], !IO)
     ;
         ShortDescription = reuse_call(IsConditional, NoClobbers),
-        io.format(Stream, "reuse call - %s, no clobbers = ",
-            [s(is_conditional_to_string(IsConditional))], !IO),
-        io.write_string(Stream, ", no clobbers = ", !IO),
-        io.write(Stream, NoClobbers, !IO)
+        io.format(Stream, "reuse call - %s, no clobbers = %s",
+            [s(is_conditional_to_string(IsConditional)),
+            s(string.string(NoClobbers))], !IO)
     ).
 
 :- func is_conditional_to_string(is_conditional) = string.
@@ -933,9 +901,10 @@ write_goal_unify(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = unify(LHS, RHS, _, Unification, _),
     DumpOptions = Info ^ hoi_dump_hlds_options,
-    write_indent(Stream, Indent, !IO),
-    mercury_output_var_src(VarNameSrc, VarNamePrint, LHS, Stream, !IO),
-    io.write_string(Stream, " = ", !IO),
+    IndentStr = indent2_string(Indent),
+
+    LHSStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, LHS),
+    io.format(Stream, "%s%s = ", [s(IndentStr), s(LHSStr)], !IO),
     (
         TypeQual = tvarset_var_table(_, VarTable),
         lookup_var_type(VarTable, LHS, UniType),
@@ -1004,10 +973,9 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, TypeQual,
         else
             ConsId = ConsId0
         ),
-        io.write_string(Stream,
-            functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
-                ConsId, ArgVars),
-            !IO),
+        RHSStr = functor_cons_id_to_string(ModuleInfo, VarNameSrc,
+            VarNamePrint, ConsId, ArgVars),
+        io.write_string(Stream, RHSStr, !IO),
         ( if
             MaybeType = yes(Type),
             TypeQual = tvarset_var_table(TVarSet, _)
@@ -1020,6 +988,7 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, TypeQual,
     ;
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, _EvalMethod,
             NonLocals, VarsModes, Det, Goal),
+        IndentStr = indent2_string(Indent),
         Indent1 = Indent + 1,
         io.write_string(Stream, purity_prefix_to_string(Purity), !IO),
         Lang = get_output_lang(Info ^ hoi_merc_out_info),
@@ -1040,15 +1009,13 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, TypeQual,
                 VarsModes = [_ | _],
                 ModesStr = var_modes_to_string(Lang, VarNameSrc, InstVarSet,
                     VarNamePrint, VarsModes),
-                io.format(Stream, "%s(%s)",
-                    [s(Functor), s(ModesStr)], !IO)
+                io.format(Stream, "%s(%s)", [s(Functor), s(ModesStr)], !IO)
             ),
             DetStr = mercury_det_to_string(Det),
             io.format(Stream, " is %s :-\n", [s(DetStr)], !IO),
             do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
                 VarNamePrint, Indent1, "\n", Goal, !IO),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, ")", !IO)
+            io.format(Stream, "%s)", [s(IndentStr)], !IO)
         ;
             PredOrFunc = pf_function,
             (
@@ -1077,8 +1044,7 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, TypeQual,
                 [s(RetModeStr), s(DetStr)], !IO),
             do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
                 VarNamePrint, Indent1, "\n", Goal, !IO),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, ")", !IO)
+            io.format(Stream, "%s)", [s(IndentStr)], !IO)
         ),
         ( if
             MaybeType = yes(Type),
@@ -1093,11 +1059,10 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, TypeQual,
         ( if string.contains_char(DumpOptions, 'n') then
             (
                 NonLocals = [_ | _],
-                io.nl(Stream, !IO),
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "% lambda nonlocals: ", !IO),
-                mercury_output_vars_src(VarNameSrc, VarNamePrint, NonLocals,
-                    Stream, !IO)
+                NonLocalsStr = mercury_vars_to_string_src(VarNameSrc,
+                    VarNamePrint, NonLocals),
+                io.format(Stream, "\n%s%% lambda nonlocals: %s",
+                    [s(IndentStr), s(NonLocalsStr)], !IO)
             ;
                 NonLocals = []
             )
@@ -1134,29 +1099,24 @@ unify_rhs_to_string(ModuleInfo, VarTable, VarNamePrint, RHS) = Str :-
 
 write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
         VarNamePrint, Indent, Unification, !IO) :-
+    IndentStr = indent2_string(Indent),
     (
         Unification = assign(X, Y),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% ", !IO),
-        mercury_output_var_src(VarNameSrc, VarNamePrint, X, Stream, !IO),
-        io.write_string(Stream, " := ", !IO),
-        mercury_output_var_src(VarNameSrc, VarNamePrint, Y, Stream, !IO),
-        io.write_string(Stream, "\n", !IO)
+        XStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, X),
+        YStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Y),
+        io.format(Stream, "%s%% %s := %s\n",
+            [s(IndentStr), s(XStr), s(YStr)], !IO)
     ;
         Unification = simple_test(X, Y),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% ", !IO),
-        mercury_output_var_src(VarNameSrc, VarNamePrint, X, Stream, !IO),
-        io.write_string(Stream, " == ", !IO),
-        mercury_output_var_src(VarNameSrc, VarNamePrint, Y, Stream, !IO),
-        io.write_string(Stream, "\n", !IO)
+        XStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, X),
+        YStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Y),
+        io.format(Stream, "%s%% %s == %s\n",
+            [s(IndentStr), s(XStr), s(YStr)], !IO)
     ;
         Unification = construct(Var, ConsId, ArgVars, ArgModes, ConstructHow,
             Uniqueness, SubInfo),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% ", !IO),
-        mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO),
-        io.write_string(Stream, " <= ", !IO),
+        VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
+        io.format(Stream, "%s%% %s <= ", [s(IndentStr), s(VarStr)], !IO),
         write_functor_and_submodes(Info, Stream, ModuleInfo,
             VarNameSrc, InstVarSet, VarNamePrint, Indent, ConsId,
             ArgVars, ArgModes, !IO),
@@ -1165,17 +1125,16 @@ write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
         ( if string.contains_char(DumpOptions, 'u') then
             ( if ConsId = cons(_, _, TypeCtor) then
                 TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
-                write_indent(Stream, Indent, !IO),
                 TypeCtorSymNameStr = sym_name_to_string(TypeCtorSymName),
-                io.format(Stream, "%% cons_id type_ctor: %s/%d\n",
-                    [s(TypeCtorSymNameStr), i(TypeCtorArity)], !IO)
+                io.format(Stream, "%s%% cons_id type_ctor: %s/%d\n",
+                    [s(IndentStr), s(TypeCtorSymNameStr), i(TypeCtorArity)],
+                    !IO)
             else
                 true
             ),
             (
                 Uniqueness = cell_is_unique,
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "% cell_is_unique\n", !IO)
+                io.format(Stream, "%s%% cell_is_unique\n", [s(IndentStr)], !IO)
             ;
                 Uniqueness = cell_is_shared
             ),
@@ -1185,28 +1144,23 @@ write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
                 SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSize),
                 (
                     MaybeTakeAddr = yes(TakeAddressFields),
-                    write_indent(Stream, Indent, !IO),
-                    io.write_string(Stream, "% take address fields: ", !IO),
-                    write_intlist(Stream, TakeAddressFields, !IO),
-                    io.write_string(Stream, "\n", !IO)
+                    io.format(Stream, "%s%% take address fields: %s\n",
+                        [s(IndentStr), s(string.string(TakeAddressFields))],
+                        !IO)
                 ;
                     MaybeTakeAddr = no
                 ),
                 (
                     MaybeSize = yes(SizeSource),
-                    write_indent(Stream, Indent, !IO),
-                    io.write_string(Stream, "% term size ", !IO),
+                    io.format(Stream, "%s%% term size ", [s(IndentStr)], !IO),
                     (
                         SizeSource = known_size(KnownSize),
-                        io.write_string(Stream, "const ", !IO),
-                        io.write_int(Stream, KnownSize, !IO),
-                        io.write_string(Stream, "\n", !IO)
+                        io.format(Stream, "const %d\n", [i(KnownSize)], !IO)
                     ;
                         SizeSource = dynamic_size(SizeVar),
-                        io.write_string(Stream, "var ", !IO),
-                        mercury_output_var_src(VarNameSrc, VarNamePrint,
-                            SizeVar, Stream, !IO),
-                        io.write_string(Stream, "\n", !IO)
+                        SizeVarStr = mercury_var_to_string_src(VarNameSrc,
+                            VarNamePrint, SizeVar),
+                        io.format(Stream, "var %s\n", [s(SizeVarStr)], !IO)
                     )
                 ;
                     MaybeSize = no
@@ -1216,30 +1170,28 @@ write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
                 ConstructHow = construct_dynamically
             ;
                 ConstructHow = construct_statically(born_static),
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream,
-                    "% construct statically (born static)\n", !IO)
+                io.format(Stream,
+                    "%s%% construct statically (born static)\n",
+                    [s(IndentStr)], !IO)
             ;
                 ConstructHow = construct_statically(marked_static),
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream,
-                    "% construct statically (marked static)\n", !IO)
+                io.format(Stream,
+                    "%s%% construct statically (marked static)\n",
+                    [s(IndentStr)], !IO)
             ;
                 ConstructHow = reuse_cell(CellToReuse),
                 CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsIds,
                     _FieldAssigns),
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "% reuse cell: ", !IO),
-                mercury_output_var_src(VarNameSrc, VarNamePrint, ReuseVar,
-                    Stream, !IO),
-                io.write_string(Stream, "\n", !IO)
+                ReuseVarStr = mercury_var_to_string_src(VarNameSrc,
+                    VarNamePrint, ReuseVar),
+                io.format(Stream, "%s%% reuse cell: %s\n",
+                    [s(IndentStr), s(ReuseVarStr)], !IO)
             ;
                 ConstructHow = construct_in_region(RegVar),
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "% construct in region: ", !IO),
-                mercury_output_var_src(VarNameSrc, VarNamePrint, RegVar,
-                    Stream, !IO),
-                io.write_string(Stream, "\n", !IO)
+                RegVarStr = mercury_var_to_string_src(VarNameSrc,
+                    VarNamePrint, RegVar),
+                io.format(Stream, "%s%% construct in region: %s\n",
+                    [s(IndentStr), s(RegVarStr)], !IO)
             )
         else
             true
@@ -1249,45 +1201,41 @@ write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
             CanCGC),
         DumpOptions = Info ^ hoi_dump_hlds_options,
         ( if string.contains_char(DumpOptions, 'G') then
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% Compile time garbage collect: ", !IO),
-            io.write(Stream, CanCGC, !IO),
-            io.nl(Stream, !IO)
+            io.format(Stream, "%s%% Compile time garbage collect: %s\n",
+                [s(IndentStr), s(string.string(CanCGC))], !IO)
         else
             true
         ),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% ", !IO),
-        mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO),
+        VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
         (
             CanFail = can_fail,
-            io.write_string(Stream, " ?= ", !IO)
+            OpStr = "?="
         ;
             CanFail = cannot_fail,
-            io.write_string(Stream, " => ", !IO)
+            OpStr = "=>"
         ),
+        io.format(Stream, "%s%% %s %s ",
+            [s(IndentStr), s(VarStr), s(OpStr)], !IO),
         write_functor_and_submodes(Info, Stream, ModuleInfo,
             VarNameSrc, InstVarSet, VarNamePrint, Indent, ConsId,
             ArgVars, ArgModes, !IO)
     ;
         Unification = complicated_unify(Mode, CanFail, TypeInfoVars),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% ", !IO),
         (
             CanFail = can_fail,
-            io.write_string(Stream, "can_fail, ", !IO)
+            CanFailStr = "can_fail"
         ;
             CanFail = cannot_fail,
-            io.write_string(Stream, "cannot_fail, ", !IO)
+            CanFailStr = "cannot_fail"
         ),
-        io.write_string(Stream, "mode: ", !IO),
-        mercury_output_unify_mode(Stream, InstVarSet, Mode, !IO),
-        io.write_string(Stream, "\n", !IO),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% type-info vars: ", !IO),
-        mercury_output_vars_src(VarNameSrc, VarNamePrint, TypeInfoVars,
-            Stream, !IO),
-        io.write_string(Stream, "\n", !IO)
+        ModeStr = mercury_unify_mode_to_string(InstVarSet, Mode),
+        io.format(Stream, "%s%% %s, mode: %s\n",
+            [s(IndentStr), s(CanFailStr), s(ModeStr)], !IO),
+
+        TypeInfoVarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+            TypeInfoVars),
+        io.format(Stream, "%s%% type-info vars: %s\n",
+            [s(IndentStr), s(TypeInfoVarsStr)], !IO)
     ).
 
 :- pred write_functor_and_submodes(hlds_out_info::in,
@@ -1298,26 +1246,26 @@ write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
 
 write_functor_and_submodes(Info, Stream, _ModuleInfo, VarNameSrc, InstVarSet,
         VarNamePrint, Indent, ConsId, ArgVars, ArgModes, !IO) :-
-    io.write_string(Stream, cons_id_and_arity_to_string(ConsId), !IO),
+    ConsIdStr = cons_id_and_arity_to_string(ConsId),
     (
         ArgVars = [],
-        io.write_string(Stream, "\n", !IO)
+        io.format(Stream, "%s\n", [s(ConsIdStr)], !IO)
     ;
         ArgVars = [_ | _],
-        io.write_string(Stream, " (", !IO),
-        mercury_output_vars_src(VarNameSrc, VarNamePrint, ArgVars,
-            Stream, !IO),
-        io.write_string(Stream, ")\n", !IO),
+        ArgVarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+            ArgVars),
+        io.format(Stream, "%s(%s)\n", [s(ConsIdStr), s(ArgVarsStr)], !IO),
         DumpOptions = Info ^ hoi_dump_hlds_options,
         ( if string.contains_char(DumpOptions, 'a') then
+            IndentStr = indent2_string(Indent),
             ( if string.contains_char(DumpOptions, 'y') then
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "% arg-modes\n", !IO),
+                io.format(Stream, "%s%% arg-modes\n", [s(IndentStr)], !IO),
                 mercury_output_structured_unify_mode_list(Stream,
                     output_debug, InstVarSet, do_incl_addr, Indent,
                     ArgModes, !IO)
             else
-                write_arg_modes(Stream, InstVarSet, Indent, 1, ArgModes, !IO)
+                write_arg_modes(Stream, InstVarSet, IndentStr, 1,
+                    ArgModes, !IO)
             )
         else
             true
@@ -1325,16 +1273,16 @@ write_functor_and_submodes(Info, Stream, _ModuleInfo, VarNameSrc, InstVarSet,
     ).
 
 :- pred write_arg_modes(io.text_output_stream::in, inst_varset::in,
-    int::in, int::in, list(unify_mode)::in, io::di, io::uo) is det.
+    string::in, int::in, list(unify_mode)::in, io::di, io::uo) is det.
 
 write_arg_modes(_Stream, _InstVarSet, _Indent, _ArgNum, [], !IO).
-write_arg_modes(Stream, InstVarSet, Indent, ArgNum,
+write_arg_modes(Stream, InstVarSet, IndentStr, ArgNum,
         [UnifyMode | UnifyModes], !IO) :-
-    write_indent(Stream, Indent, !IO),
-    io.format(Stream, "%% arg-mode %d ", [i(ArgNum)], !IO),
-    mercury_output_unify_mode(Stream, InstVarSet, UnifyMode, !IO),
-    io.nl(Stream, !IO),
-    write_arg_modes(Stream, InstVarSet, Indent, ArgNum + 1, UnifyModes, !IO).
+    UnifyModeStr = mercury_unify_mode_to_string(InstVarSet, UnifyMode),
+    io.format(Stream, "%s%% arg-mode %d %s\n",
+        [s(IndentStr), i(ArgNum), s(UnifyModeStr)], !IO),
+    write_arg_modes(Stream, InstVarSet, IndentStr, ArgNum + 1,
+        UnifyModes, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -1351,60 +1299,59 @@ write_goal_plain_call(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
     GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin,
         MaybeUnifyContext, PredName),
     DumpOptions = Info ^ hoi_dump_hlds_options,
+    IndentStr = indent2_string(Indent),
     ( if string.contains_char(DumpOptions, 'b') then
         (
             Builtin = inline_builtin,
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% inline builtin\n", !IO)
+            io.format(Stream, "%s%% inline builtin\n", [s(IndentStr)], !IO)
         ;
             Builtin = not_builtin
         )
     else
         true
     ),
-    write_indent(Stream, Indent, !IO),
     ( if PredId = invalid_pred_id then
         % If we do not know the id of the callee yet, then treat the call
         % as being to a pure predicate. This may be misleading, but any
         % other assumption has a significantly higher chance of being
         % misleading.
-        PredOrFunc = pf_predicate
+        PredOrFunc = pf_predicate,
+        PrefixStr = ""
     else if
         module_info_get_pred_id_table(ModuleInfo, PredIdTable),
         map.search(PredIdTable, PredId, PredInfo)
     then
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         pred_info_get_purity(PredInfo, Purity),
-        io.write_string(Stream, purity_prefix_to_string(Purity), !IO)
+        % The prefix includes a trailing space character.
+        PrefixStr = purity_prefix_to_string(Purity)
     else
         % We should know the id of the callee, but the callee has been
         % deleted *without* this call to it (and maybe others) being
         % adjusted accordingly. This is a bug, so we want to draw attention
         % to it, but we cannot do so effectively if this code aborts
         % before we finish writing out the HLDS dump.
-        io.write_string(Stream, "CALL TO DELETED ", !IO),
-        PredOrFunc = pf_predicate
+        PredOrFunc = pf_predicate,
+        PrefixStr = "CALL TO DELETED "
     ),
+    io.format(Stream, "%s%s", [s(IndentStr), s(PrefixStr)], !IO),
     (
         PredOrFunc = pf_predicate,
-        NewArgVars = ArgVars
+        InParenArgVars = ArgVars
     ;
         PredOrFunc = pf_function,
-        pred_args_to_func_args(ArgVars, NewArgVars, LHSVar),
+        pred_args_to_func_args(ArgVars, InParenArgVars, LHSVar),
         mercury_output_var_src(VarNameSrc, VarNamePrint, LHSVar, Stream, !IO),
         io.write_string(Stream, " = ", !IO)
     ),
-    io.write_string(Stream,
-        sym_name_and_args_to_string(VarNameSrc, VarNamePrint, PredName,
-            NewArgVars),
-        !IO),
-    io.write_string(Stream, Follow, !IO),
+    InParenArgVarsStr = sym_name_and_args_to_string(VarNameSrc, VarNamePrint,
+        PredName, InParenArgVars),
+    io.format(Stream, "%s%s", [s(InParenArgVarsStr), s(Follow)], !IO),
     ( if string.contains_char(DumpOptions, 'l') then
         pred_id_to_int(PredId, PredNum),
         proc_id_to_int(ProcId, ProcNum),
-        write_indent(Stream, Indent, !IO),
-        io.format(Stream, "%% pred id: %i, proc id: %d%s",
-            [i(PredNum), i(ProcNum), s(Follow)], !IO),
+        io.format(Stream, "%s%% pred id: %i, proc id: %d%s",
+            [s(IndentStr), i(PredNum), i(ProcNum), s(Follow)], !IO),
         (
             MaybeUnifyContext = yes(CallUnifyContext),
             (
@@ -1416,14 +1363,14 @@ write_goal_plain_call(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
                 VarType = no
             ),
             CallUnifyContext = call_unify_context(Var, RHS, _UnifyContext),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% unify context: ", !IO),
-            mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO),
-            io.write_string(Stream, " = ", !IO),
+            VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
+            io.format(Stream, "%s%% unify context: %s = ",
+                [s(IndentStr), s(VarStr)], !IO),
             % XXX Fake the inst varset.
             varset.init(InstVarSet),
             write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
                 TypeQual, VarNamePrint, Indent, VarType, RHS, !IO),
+            % XXX If we print Follow here, we shouldn't have printed it above.
             io.write_string(Stream, Follow, !IO)
         ;
             MaybeUnifyContext = no
@@ -1461,45 +1408,41 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarNameSrc, _TypeQual,
         VarNamePrint, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = generic_call(GenericCall, ArgVars, Modes, MaybeArgRegs, _),
     DumpOptions = Info ^ hoi_dump_hlds_options,
+    IndentStr = indent2_string(Indent),
     % XXX We should print more info here.
     (
         GenericCall = higher_order(PredVar, Purity, PredOrFunc, _),
+        PurityPrefix = purity_prefix_to_string(Purity),
         (
             PredOrFunc = pf_predicate,
             ( if string.contains_char(DumpOptions, 'l') then
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream,
-                    "% higher-order predicate call\n", !IO),
+                io.format(Stream, "%s%% higher-order predicate call\n",
+                    [s(IndentStr)], !IO),
                 write_ho_arg_regs(Stream, Indent, MaybeArgRegs, !IO)
             else
                 true
             ),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, purity_prefix_to_string(Purity), !IO),
-            io.write_string(Stream,
-                functor_to_string(VarNameSrc, VarNamePrint,
-                    term.atom("call"), [PredVar | ArgVars]),
-                !IO)
+            CallStr = functor_to_string(VarNameSrc, VarNamePrint,
+                term.atom("call"), [PredVar | ArgVars]),
+            io.format(Stream, "%s%s%s",
+                [s(IndentStr), s(PurityPrefix), s(CallStr)], !IO)
         ;
             PredOrFunc = pf_function,
             ( if string.contains_char(DumpOptions, 'l') then
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream,
-                    "% higher-order function application\n", !IO),
+                io.format(Stream, "%s%% higher-order function application\n",
+                    [s(IndentStr)], !IO),
                 write_ho_arg_regs(Stream, Indent, MaybeArgRegs, !IO)
             else
                 true
             ),
             pred_args_to_func_args([PredVar | ArgVars],
                 FuncArgVars, FuncRetVar),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, purity_prefix_to_string(Purity), !IO),
-            mercury_output_var_src(VarNameSrc, VarNamePrint, FuncRetVar,
-                Stream, !IO),
-            io.write_string(Stream, " = ", !IO),
-            io.write_string(Stream,
-                functor_to_string(VarNameSrc, VarNamePrint,
-                    term.atom("apply"), FuncArgVars),
+            FuncRetVarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint,
+                FuncRetVar),
+            ApplyStr = functor_to_string(VarNameSrc, VarNamePrint,
+                term.atom("apply"), FuncArgVars),
+            io.format(Stream, "%s%s%s = %s",
+                [s(IndentStr), s(PurityPrefix), s(FuncRetVarStr), s(ApplyStr)],
                 !IO)
         ),
         io.write_string(Stream, Follow, !IO)
@@ -1507,8 +1450,7 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarNameSrc, _TypeQual,
         GenericCall = class_method(TCInfoVar, method_proc_num(MethodNum),
             _ClassId, _MethodId),
         ( if string.contains_char(DumpOptions, 'l') then
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% class method call\n", !IO),
+            io.format(Stream, "%s%% class method call\n", [s(IndentStr)], !IO),
             write_ho_arg_regs(Stream, Indent, MaybeArgRegs, !IO)
         else
             true
@@ -1520,23 +1462,21 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarNameSrc, _TypeQual,
         term_subst.var_list_to_term_list(ArgVars, ArgTerms),
         Term = term.functor(Functor, [TCInfoTerm, MethodNumTerm | ArgTerms],
             Context),
-        write_indent(Stream, Indent, !IO),
+        io.write_string(Stream, IndentStr, !IO),
         mercury_output_term_src(VarNameSrc, VarNamePrint, Term, Stream, !IO),
         io.write_string(Stream, Follow, !IO)
     ;
         GenericCall = event_call(EventName),
         ( if string.contains_char(DumpOptions, 'l') then
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% event call\n", !IO),
+            io.format(Stream, "%s%% event call\n", [s(IndentStr)], !IO),
             write_ho_arg_regs(Stream, Indent, MaybeArgRegs, !IO)
         else
             true
         ),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "event ", !IO),
         Functor = term.atom(EventName),
         term_subst.var_list_to_term_list(ArgVars, ArgTerms),
         Term = term.functor(Functor, ArgTerms, dummy_context),
+        io.format(Stream, "%sevent ", [s(IndentStr)], !IO),
         mercury_output_term_src(VarNameSrc, VarNamePrint, Term, Stream, !IO),
         io.write_string(Stream, Follow, !IO)
     ;
@@ -1555,42 +1495,44 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarNameSrc, _TypeQual,
             CastTypeString = "coerce"
         ),
         ( if string.contains_char(DumpOptions, 'l') then
-            write_indent(Stream, Indent, !IO),
-            io.write_strings(Stream, ["% ", CastTypeString, "\n"], !IO),
+            io.format(Stream, "%s%% %s\n",
+                [s(IndentStr), s(CastTypeString)], !IO),
             write_ho_arg_regs(Stream, Indent, MaybeArgRegs, !IO)
         else
             true
         ),
         ( if string.contains_char(DumpOptions, 'D') then
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "% modes: ", !IO),
             varset.init(InstVarSet),
-            mercury_output_mode_list(Stream, output_debug, InstVarSet,
-                Modes, !IO),
-            io.nl(Stream, !IO)
+            ModesStr = mercury_mode_list_to_string(output_debug, InstVarSet,
+                Modes),
+            io.format(Stream, "%s%% modes: %s\n",
+                [s(IndentStr), s(ModesStr)], !IO)
         else
             true
         ),
         PredOrFunc = write_cast_as_pred_or_func(CastType),
         (
             PredOrFunc = pf_predicate,
-            Functor = term.atom(CastTypeString),
-            term_subst.var_list_to_term_list(ArgVars, ArgTerms),
-            Term = term.functor(Functor, ArgTerms, dummy_context),
-            write_indent(Stream, Indent, !IO),
-            mercury_output_term_src(VarNameSrc, VarNamePrint, Term,
-                Stream, !IO)
+            % Functor = term.atom(CastTypeString),
+            % term_subst.var_list_to_term_list(ArgVars, ArgTerms),
+            % Term = term.functor(Functor, ArgTerms, dummy_context),
+            % ZZZ
+            % io.write_string(Stream, IndentStr, !IO),
+            % mercury_output_term_src(VarNameSrc, VarNamePrint, Term,
+            %     Stream, !IO)
+            CallStr = functor_to_string(VarNameSrc, VarNamePrint,
+                term.atom(CastTypeString), ArgVars),
+            io.format(Stream, "%s%s",
+                [s(IndentStr), s(CallStr)], !IO)
         ;
             PredOrFunc = pf_function,
             pred_args_to_func_args(ArgVars, FuncArgVars, FuncRetVar),
-            write_indent(Stream, Indent, !IO),
-            mercury_output_var_src(VarNameSrc, VarNamePrint, FuncRetVar,
-                Stream, !IO),
-            io.write_string(Stream, " = ", !IO),
-            io.write_string(Stream,
-                functor_to_string(VarNameSrc, VarNamePrint,
-                    term.atom(CastTypeString), FuncArgVars),
-                !IO)
+            FuncRetVarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint,
+                FuncRetVar),
+            CallStr = functor_to_string(VarNameSrc, VarNamePrint,
+                term.atom(CastTypeString), FuncArgVars),
+            io.format(Stream, "%s%s = %s",
+                [s(IndentStr), s(FuncRetVarStr), s(CallStr)], !IO)
         ),
         io.write_string(Stream, Follow, !IO)
     ).
@@ -1601,10 +1543,11 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarNameSrc, _TypeQual,
 write_ho_arg_regs(Stream, Indent, MaybeArgRegs, !IO) :-
     (
         MaybeArgRegs = arg_reg_types(ArgRegs),
+        IndentStr = indent2_string(Indent),
         ArgRegStrs = list.map(ho_arg_reg_to_string, ArgRegs),
         ArgRegsStr = string.join_list(", ", ArgRegStrs),
-        write_indent(Stream, Indent, !IO),
-        io.format(Stream, "%% arg regs: %s\n", [s(ArgRegsStr)], !IO)
+        io.format(Stream, "%s%% arg regs: %s\n",
+            [s(IndentStr), s(ArgRegsStr)], !IO)
     ;
         MaybeArgRegs = arg_reg_types_unset
     ).
@@ -1655,15 +1598,15 @@ write_goal_foreign_proc(_Info, Stream, ModuleInfo, VarNameSrc, _TypeQual,
     pred_id_to_int(PredId, PredIdInt),
     proc_id_to_int(ProcId, ProcIdInt),
 
-    write_indent(Stream, Indent, !IO),
-    io.format(Stream, "$pragma_foreign_proc(/* %s */, %s pred %d proc %d,\n",
-        [s(ForeignLangStr), s(PredStr), i(PredIdInt), i(ProcIdInt)], !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%s$pragma_foreign_proc(/* %s */, %s pred %d proc %d,\n",
+        [s(IndentStr), s(ForeignLangStr),
+        s(PredStr), i(PredIdInt), i(ProcIdInt)], !IO),
     (
         MaybeTraceRuntimeCond = no
     ;
         MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "% trace_runtime_cond(", !IO),
+        io.format(Stream, "%s%% trace_runtime_cond(", [s(IndentStr)], !IO),
         mercury_output_trace_expr(Stream, mercury_output_trace_runtime,
             TraceRuntimeCond, !IO),
         io.write_string(Stream, ")\n", !IO)
@@ -1673,58 +1616,80 @@ write_goal_foreign_proc(_Info, Stream, ModuleInfo, VarNameSrc, _TypeQual,
     % variables, which is not essential.
     varset.init(TypeVarSet),
     varset.init(InstVarSet),
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, "[", !IO),
-    write_foreign_args(Stream, VarNameSrc, TypeVarSet, InstVarSet,
-        VarNamePrint, Indent, Args, !IO),
-    io.write_string(Stream, "],\n", !IO),
+    ArgsStr = foreign_args_to_string(VarNameSrc, VarNamePrint,
+        TypeVarSet, InstVarSet, IndentStr, "[", "],", Args),
+    io.write_string(Stream, ArgsStr, !IO),
     (
         ExtraArgs = []
     ;
         ExtraArgs = [_ | _],
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "{", !IO),
-        write_foreign_args(Stream, VarNameSrc, TypeVarSet, InstVarSet,
-            VarNamePrint, Indent, ExtraArgs, !IO),
-        io.write_string(Stream, "},\n", !IO)
+        ExtraArgsStr = foreign_args_to_string(VarNameSrc, VarNamePrint,
+            TypeVarSet, InstVarSet, IndentStr, "{", "},", ExtraArgs),
+        io.write_string(Stream, ExtraArgsStr, !IO)
     ),
     PragmaCode = fp_impl_ordinary(Code, _),
     io.format(Stream, """%s"")%s", [s(Code), s(Follow)], !IO).
 
-:- pred write_foreign_args(io.text_output_stream::in,
-    var_name_source::in, tvarset::in, inst_varset::in, var_name_print::in,
-    int::in, list(foreign_arg)::in, io::di, io::uo) is det.
+:- func foreign_args_to_string(var_name_source, var_name_print,
+    tvarset, inst_varset, string, string, string, list(foreign_arg)) = string.
 
-write_foreign_args(_, _, _, _, _, _, [], !IO).
-write_foreign_args(Stream, VarNameSrc, TVarSet, InstVarSet,
-        VarNamePrint, Indent, [Arg | Args], !IO) :-
+foreign_args_to_string(VarNameSrc, VarNamePrint, TypeVarSet, InstVarSet,
+        IndentStr, LParen, RParen, Args) = Str :-
+    (
+        Args = [],
+        string.format("%s%s%s\n", [s(IndentStr), s(LParen), s(RParen)], Str)
+    ;
+        Args = [HeadArg | TailArgs],
+        LineStrs = foreign_args_to_string_lag(VarNameSrc, VarNamePrint,
+            TypeVarSet, InstVarSet, IndentStr, LParen, RParen,
+            HeadArg, TailArgs),
+        string.append_list(LineStrs, Str)
+    ).
+
+:- func foreign_args_to_string_lag(var_name_source, var_name_print,
+    tvarset, inst_varset, string, string, string,
+    foreign_arg, list(foreign_arg)) = list(string).
+
+foreign_args_to_string_lag(VarNameSrc, VarNamePrint, TypeVarSet, InstVarSet,
+        IndentStr, MaybeLParen0, RParen, Arg, Args) = LineStrs :-
     Arg = foreign_arg(Var, MaybeNameMode, Type, BoxPolicy),
-    mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO),
+    VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
     (
         MaybeNameMode = yes(foreign_arg_name_mode(Name, Mode)),
         % For HLDS dumps, we need clarity mode than round-trippability,
         % which is why we specify output_debug.
         ModeStr = mercury_mode_to_string(output_debug, InstVarSet, Mode),
-        io.format(Stream, "/%s(%s)", [s(Name), s(ModeStr)], !IO)
+        string.format("/%s(%s)", [s(Name), s(ModeStr)], NameModeStr)
     ;
-        MaybeNameMode = no
+        MaybeNameMode = no,
+        NameModeStr = ""
     ),
     (
-        BoxPolicy = bp_native_if_possible
+        BoxPolicy = bp_native_if_possible,
+        BoxPolicyStr = ""
     ;
         BoxPolicy = bp_always_boxed,
-        io.write_string(Stream, "$alwaysboxed", !IO)
+        BoxPolicyStr = "$alwaysboxed"
     ),
-    io.write_string(Stream, "@", !IO),
-    mercury_output_type(TVarSet, VarNamePrint, Type, Stream, !IO),
+    TypeStr = mercury_type_to_string(TypeVarSet, VarNamePrint, Type),
     (
-        Args = []
+        Args = [],
+        string.format("%s%s%s%s%s@%s%s\n",
+            [s(IndentStr), s(MaybeLParen0), s(VarStr), s(NameModeStr),
+            s(BoxPolicyStr), s(TypeStr), s(RParen)], ArgLineStr),
+        LineStrs = [ArgLineStr]
     ;
-        Args = [_ | _],
-        io.write_string(Stream, ",\n", !IO),
-        write_indent(Stream, Indent, !IO),
-        write_foreign_args(Stream, VarNameSrc, TVarSet, InstVarSet,
-            VarNamePrint, Indent, Args, !IO)
+        Args = [HeadArg | TailArgs],
+        string.format("%s%s%s%s%s@%s,\n",
+            [s(IndentStr), s(MaybeLParen0), s(VarStr), s(NameModeStr),
+            s(BoxPolicyStr), s(TypeStr)], ArgLineStr),
+        % We have already printed the left parenthesis, either in this call,
+        % or in one of our ancestors.
+        ArgsMaybeLParen = "",
+        ArgsLineStrs = foreign_args_to_string_lag(VarNameSrc, VarNamePrint,
+            TypeVarSet, InstVarSet, IndentStr, ArgsMaybeLParen, RParen,
+            HeadArg, TailArgs),
+        LineStrs = [ArgLineStr | ArgsLineStrs]
     ).
 
 %---------------------------------------------------------------------------%
@@ -1749,38 +1714,36 @@ write_goal_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
                 write_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
                     VarNamePrint, Indent, Follow, ",\n", Goal, Goals, !IO)
             else
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "( % conjunction\n", !IO),
+                IndentStr = indent2_string(Indent),
+                io.format(Stream, "%s( %% conjunction\n", [s(IndentStr)], !IO),
                 write_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
                     VarNamePrint, Indent + 1, "\n", ",\n", Goal, Goals, !IO),
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, ")", !IO),
-                io.write_string(Stream, Follow, !IO)
+                io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
             )
         ;
             ConjType = parallel_conj,
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "( % parallel conjunction\n", !IO),
+            IndentStr = indent2_string(Indent),
+            io.format(Stream, "%s( %% parallel conjunction\n",
+                [s(IndentStr)], !IO),
             do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
                 VarNamePrint, Indent + 1, "\n", Goal, !IO),
             % See comments at write_goal_list.
             write_goal_list(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
                 VarNamePrint, Indent, "&\n", Goals, !IO),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, ")", !IO),
-            io.write_string(Stream, Follow, !IO)
+            io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
         )
     ;
         List = [],
-        write_indent(Stream, Indent, !IO),
+        IndentStr = indent2_string(Indent),
         (
             ConjType = plain_conj,
-            io.write_string(Stream, "true", !IO)
+            ParStr = ""
         ;
             ConjType = parallel_conj,
-            io.write_string(Stream, "/* parallel */ true", !IO)
+            ParStr = "/* parallel */"
         ),
-        io.write_string(Stream, Follow, !IO)
+        io.format(Stream, "%s%strue%s",
+            [s(IndentStr), s(ParStr), s(Follow)], !IO)
     ).
 
 :- pred write_conj(hlds_out_info::in, io.text_output_stream::in,
@@ -1802,8 +1765,8 @@ write_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
             % and the lines before the next.
             do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
                 VarNamePrint, Indent, "\n", Goal1, !IO),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, Separator, !IO)
+            IndentStr = indent2_string(Indent),
+            io.format(Stream, "%s%s", [s(IndentStr), s(Separator)], !IO)
         ),
         write_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             VarNamePrint, Indent, Follow, Separator, Goal2, Goals2, !IO)
@@ -1826,21 +1789,18 @@ write_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
 write_goal_disj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = disj(Disjuncts),
-    write_indent(Stream, Indent, !IO),
+    IndentStr = indent2_string(Indent),
     (
         Disjuncts = [Goal | Goals],
-        io.write_string(Stream, "( % disjunction\n", !IO),
+        io.format(Stream, "%s( %% disjunction\n", [s(IndentStr)], !IO),
         do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             VarNamePrint, Indent + 1, "\n", Goal, !IO),
         write_goal_list(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             VarNamePrint, Indent, ";\n", Goals, !IO),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, ")", !IO),
-        io.write_string(Stream, Follow, !IO)
+        io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
     ;
         Disjuncts = [],
-        io.write_string(Stream, "fail", !IO),
-        io.write_string(Stream, Follow, !IO)
+        io.format(Stream, "%sfail%s", [s(IndentStr), s(Follow)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1856,11 +1816,11 @@ write_goal_disj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
 write_goal_switch(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = switch(Var, CanFail, CasesList),
+    IndentStr = indent2_string(Indent),
     CanFailStr = can_fail_to_string(CanFail),
     VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
-    write_indent(Stream, Indent, !IO),
-    io.format(Stream, "( %% %s switch on `%s'\n",
-        [s(CanFailStr), s(VarStr)], !IO),
+    io.format(Stream, "%s( %% %s switch on `%s'\n",
+        [s(IndentStr), s(CanFailStr), s(VarStr)], !IO),
     Indent1 = Indent + 1,
     (
         CasesList = [Case | Cases],
@@ -1870,12 +1830,9 @@ write_goal_switch(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
             VarNamePrint, Indent, Var, Cases, !IO)
     ;
         CasesList = [],
-        write_indent(Stream, Indent1, !IO),
-        io.write_string(Stream, "fail\n", !IO)
+        io.format(Stream, "%sfail\n", [s(IndentStr)], !IO)
     ),
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, ")", !IO),
-    io.write_string(Stream, Follow, !IO).
+    io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
 
 :- pred write_cases(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, var_name_source::in, type_qual::in,
@@ -1886,8 +1843,8 @@ write_cases(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         VarNamePrint, Indent, Var, CasesList, !IO) :-
     (
         CasesList = [Case | Cases],
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, ";\n", !IO),
+        IndentStr = indent2_string(Indent),
+        io.format(Stream, "%s;\n", [s(IndentStr)], !IO),
         write_case(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             VarNamePrint, Indent + 1, Var, Case, !IO),
         write_cases(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
@@ -1904,13 +1861,13 @@ write_cases(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
 write_case(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         Indent, Var, Case, !IO) :-
     Case = case(MainConsId, OtherConsIds, Goal),
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, "% ", !IO),
-    mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO),
-    io.write_string(Stream, " has functor ", !IO),
-    io.write_string(Stream, cons_id_and_arity_to_string(MainConsId), !IO),
-    list.foldl(write_alternative_cons_id(Stream), OtherConsIds, !IO),
-    io.write_string(Stream, "\n", !IO),
+    IndentStr = indent2_string(Indent),
+    VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
+    ConsIdStrs = list.map(cons_id_and_arity_to_string,
+        [MainConsId | OtherConsIds]),
+    ConsIdsStr = string.join_list(" or ", ConsIdStrs),
+    io.format(Stream, "%s%% %s has functor %s\n",
+        [s(IndentStr), s(VarStr), s(ConsIdsStr)], !IO),
     % XXX if the output of this is to be used, e.g. in
     % inter-module optimization, output a unification to bind the
     % Var to the functor, since simplify.m and unused_args.m remove
@@ -1918,13 +1875,6 @@ write_case(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
     % intermod.m works on the unoptimized clauses.
     do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         Indent, "\n", Goal, !IO).
-
-:- pred write_alternative_cons_id(io.text_output_stream::in, cons_id::in,
-    io::di, io::uo) is det.
-
-write_alternative_cons_id(Stream, ConsId, !IO) :-
-    io.write_string(Stream, " or ", !IO),
-    io.write_string(Stream, cons_id_and_arity_to_string(ConsId), !IO).
 
 project_cons_name_and_tag(TaggedConsId, ConsName, ConsTag) :-
     TaggedConsId = tagged_cons_id(ConsId, ConsTag),
@@ -1953,13 +1903,11 @@ case_comment(VarName, MainConsName, OtherConsNames) = Comment :-
 write_goal_negation(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         VarNamePrint, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = negation(Goal),
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, "not (\n", !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%snot (\n", [s(IndentStr)], !IO),
     do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         Indent + 1, "\n", Goal, !IO),
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, ")", !IO),
-    io.write_string(Stream, Follow, !IO).
+    io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -1974,19 +1922,25 @@ write_goal_negation(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
 write_goal_if_then_else(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         VarNamePrint, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = if_then_else(Vars, Cond, Then, Else),
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, "( if", !IO),
-    write_some(Stream, VarNameSrc, Vars, !IO),
-    io.write_string(Stream, "\n", !IO),
+    IndentStr = indent2_string(Indent),
+    (
+        Vars = [],
+        SomeVarsStr = ""
+    ;
+        Vars = [_ | _],
+        VarsStr = mercury_vars_to_string_src(VarNameSrc,
+            print_name_and_num, Vars),
+        string.format(" some [%s]", [s(VarsStr)], SomeVarsStr)
+    ),
+    io.format(Stream, "%s( if%s\n", [s(IndentStr), s(SomeVarsStr)], !IO),
+
     Indent1 = Indent + 1,
     do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         Indent1, "\n", Cond, !IO),
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, "then\n", !IO),
+    io.format(Stream, "%sthen\n", [s(IndentStr)], !IO),
     do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         Indent1, "\n", Then, !IO),
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, "else\n", !IO),
+    io.format(Stream, "%selse\n", [s(IndentStr)], !IO),
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if
         DumpOptions \= "",
@@ -1998,22 +1952,7 @@ write_goal_if_then_else(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
     ),
     do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         ElseIndent, "\n", Else, !IO),
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, ")", !IO),
-    io.write_string(Stream, Follow, !IO).
-
-:- pred write_some(io.text_output_stream::in, var_name_source::in,
-    list(prog_var)::in, io::di, io::uo) is det.
-
-write_some(Stream, VarNameSrc, Vars, !IO) :-
-    (
-        Vars = []
-    ;
-        Vars = [_ | _],
-        VarsStr = mercury_vars_to_string_src(VarNameSrc,
-            print_name_and_num, Vars),
-        io.format(Stream, " some [%s]", [s(VarsStr)], !IO)
-    ).
+    io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -2028,7 +1967,8 @@ write_some(Stream, VarNameSrc, Vars, !IO) :-
 write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         VarNamePrint, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = scope(Reason, Goal),
-    write_indent(Stream, Indent, !IO),
+    IndentStr = indent2_string(Indent),
+    io.write_string(Stream, IndentStr, !IO),
     (
         Reason = exist_quant(Vars),
         VarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint, Vars),
@@ -2040,15 +1980,9 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         io.write_string(Stream, "] (\n", !IO)
     ;
         Reason = promise_purity(Purity),
-        (
-            Purity = purity_pure,
-            PromiseStr = "promise_pure"
-        ;
-            Purity = purity_semipure,
-            PromiseStr = "promise_semipure"
-        ;
-            Purity = purity_impure,
-            PromiseStr = "promise_impure"
+        ( Purity = purity_pure,         PromiseStr = "promise_pure"
+        ; Purity = purity_semipure,     PromiseStr = "promise_semipure"
+        ; Purity = purity_impure,       PromiseStr = "promise_impure"
         ),
         io.format(Stream, "%s (\n", [s(PromiseStr)], !IO)
     ;
@@ -2067,37 +2001,20 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         io.format(Stream, "%s [%s] (\n", [s(PromiseKindStr), s(VarsStr)], !IO)
     ;
         Reason = require_detism(Detism),
-        (
-            Detism = detism_det,
-            ReqStr = "require_det"
-        ;
-            Detism = detism_semi,
-            ReqStr = "require_semidet"
-        ;
-            Detism = detism_non,
-            ReqStr = "require_nondet"
-        ;
-            Detism = detism_multi,
-            ReqStr = "require_multi"
-        ;
-            Detism = detism_cc_multi,
-            ReqStr = "require_cc_multi"
-        ;
-            Detism = detism_cc_non,
-            ReqStr = "require_cc_nondet"
-        ;
-            Detism = detism_failure,
-            ReqStr = "require_failure"
-        ;
-            Detism = detism_erroneous,
-            ReqStr = "require_erroneous"
+        ( Detism = detism_det,          ReqStr = "require_det"
+        ; Detism = detism_semi,         ReqStr = "require_semidet"
+        ; Detism = detism_non,          ReqStr = "require_nondet"
+        ; Detism = detism_multi,        ReqStr = "require_multi"
+        ; Detism = detism_cc_multi,     ReqStr = "require_cc_multi"
+        ; Detism = detism_cc_non,       ReqStr = "require_cc_nondet"
+        ; Detism = detism_failure,      ReqStr = "require_failure"
+        ; Detism = detism_erroneous,    ReqStr = "require_erroneous"
         ),
         io.format(Stream, "%s (\n", [s(ReqStr)], !IO)
     ;
         Reason = require_complete_switch(Var),
         VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
-        io.format(Stream, "require_complete_switch [%s] (\n",
-            [s(VarStr)], !IO)
+        io.format(Stream, "require_complete_switch [%s] (\n", [s(VarStr)], !IO)
     ;
         Reason = require_switch_arms_detism(Var, Detism),
         (
@@ -2130,43 +2047,34 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
     ;
         Reason = barrier(removable),
         io.write_string(Stream, "(\n", !IO),
-        write_indent(Stream, Indent, !IO),
+        write_indent2(Stream, Indent, !IO),
         io.write_string(Stream, "% barrier(removable)\n", !IO)
     ;
         Reason = barrier(not_removable),
         io.write_string(Stream, "(\n", !IO),
-        write_indent(Stream, Indent, !IO),
+        write_indent2(Stream, Indent, !IO),
         io.write_string(Stream, "% barrier(not_removable)\n", !IO)
     ;
         Reason = commit(force_pruning),
         io.write_string(Stream, "(\n", !IO),
-        write_indent(Stream, Indent, !IO),
+        write_indent2(Stream, Indent, !IO),
         io.write_string(Stream, "% commit(force_pruning)\n", !IO)
     ;
         Reason = commit(dont_force_pruning),
         io.write_string(Stream, "(\n", !IO),
-        write_indent(Stream, Indent, !IO),
+        write_indent2(Stream, Indent, !IO),
         io.write_string(Stream, "% commit(dont_force_pruning)\n", !IO)
     ;
         Reason = from_ground_term(Var, Kind),
         VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
-        (
-            Kind = from_ground_term_initial,
-            KindStr = "initial"
-        ;
-            Kind = from_ground_term_construct,
-            KindStr = "construct"
-        ;
-            Kind = from_ground_term_deconstruct,
-            KindStr = "deconstruct"
-        ;
-            Kind = from_ground_term_other,
-            KindStr = "other"
+        ( Kind = from_ground_term_initial,      KindStr = "initial"
+        ; Kind = from_ground_term_construct,    KindStr = "construct"
+        ; Kind = from_ground_term_deconstruct,  KindStr = "deconstruct"
+        ; Kind = from_ground_term_other,        KindStr = "other"
         ),
         io.write_string(Stream, "(\n", !IO),
-        write_indent(Stream, Indent, !IO),
-        io.format(Stream, "%% from_ground_term [%s, %s]\n",
-            [s(VarStr), s(KindStr)], !IO),
+        io.format(Stream, "%s%% from_ground_term [%s, %s]\n",
+            [s(IndentStr), s(VarStr), s(KindStr)], !IO),
         % The goals inside from_ground_term scopes are created with
         % all of the fields of goal infos already filled in.
         % This means printing them is meaningful, and sometimes
@@ -2179,10 +2087,10 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         io.write_string(Stream, "trace [\n", !IO),
         some [!AddCommaNewline] (
             !:AddCommaNewline = no,
+            Indent1Str = indent2_string(Indent + 1),
             (
                 MaybeCompileTime = yes(CompileTime),
-                write_indent(Stream, Indent + 1, !IO),
-                io.write_string(Stream, "compile_time(", !IO),
+                io.format(Stream, "%scompile_time(", [s(Indent1Str)], !IO),
                 mercury_output_trace_expr(Stream,
                     mercury_output_trace_compiletime, CompileTime, !IO),
                 io.write_string(Stream, ")", !IO),
@@ -2193,8 +2101,7 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             (
                 MaybeRunTime = yes(RunTime),
                 maybe_add_comma_newline(Stream, !.AddCommaNewline, !IO),
-                write_indent(Stream, Indent + 1, !IO),
-                io.write_string(Stream, "runtime(", !IO),
+                io.format(Stream, "%sruntime(", [s(Indent1Str)], !IO),
                 mercury_output_trace_expr(Stream, mercury_output_trace_runtime,
                     RunTime, !IO),
                 io.write_string(Stream, ")", !IO),
@@ -2236,7 +2143,7 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
                 % (a) deleting the calls to the get and set predicates
                 % they introduce, and (b) undoing the expansion of the
                 % state variables they specify. While (a) could be done
-                % relatively easily with the help of a goal features
+                % relatively easily with the help of a goal feature
                 % introduced specifically for this purpose, (b) is much
                 % harder. Since .ugly files are not an important use case,
                 % we don't bother.
@@ -2256,16 +2163,14 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             (
                 MaybeIO = yes(IOStateVarName),
                 maybe_add_comma_newline(Stream, !.AddCommaNewline, !IO),
-                write_indent(Stream, Indent + 1, !IO),
-                io.format(Stream, "io(!%s)", [s(IOStateVarName)], !IO),
+                io.format(Stream, "%sio(!%s)",
+                    [s(Indent1Str), s(IOStateVarName)], !IO),
                 !:AddCommaNewline = yes
             ;
                 MaybeIO = no
             ),
-
-            list.foldl2(write_trace_mutable_var_hlds(Stream, Indent + 1),
+            list.foldl2(write_trace_mutable_var_hlds(Stream, Indent1Str),
                 MutableVars, !AddCommaNewline, !IO),
-
             (
                 !.AddCommaNewline = no
             ;
@@ -2279,12 +2184,10 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
                 Lang = output_debug,
                 QuantVarsStr = mercury_vars_to_string_src(VarNameSrc,
                     VarNamePrint, QuantVars),
-                write_indent(Stream, Indent + 1, !IO),
-                io.format(Stream, "%% quantified vars [%s]\n",
-                    [s(QuantVarsStr)], !IO)
+                io.format(Stream, "%s%% quantified vars [%s]\n",
+                    [s(Indent1Str), s(QuantVarsStr)], !IO)
             ),
-
-            write_indent(Stream, Indent, !IO),
+            write_indent2(Stream, Indent, !IO),
             io.write_string(Stream, "] (\n", !IO)
         )
     ;
@@ -2296,28 +2199,24 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             UseParentStack = lc_create_frame_on_child_stack,
             UseParentStackStr = "using_child_stack"
         ),
-        io.format(Stream, "loop_control_spawn_off_%s(%s) (\n",
-            [s(UseParentStackStr),
-            s(mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
-                [LCVar, LCSVar]))],
-            !IO)
+        LCVarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+            [LCVar, LCSVar]),
+        io.format(Stream, "%s%% loop_control_spawn_off_%s(%s) (\n",
+            [s(IndentStr), s(UseParentStackStr), s(LCVarsStr)], !IO)
     ),
     do_write_goal(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         VarNamePrint, Indent + 1, "\n", Goal, !IO),
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, ")", !IO),
-    io.write_string(Stream, Follow, !IO).
+    io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
 
-:- pred write_trace_mutable_var_hlds(io.text_output_stream::in, int::in,
+:- pred write_trace_mutable_var_hlds(io.text_output_stream::in, string::in,
     trace_mutable_var_hlds::in, bool::in, bool::out, io::di, io::uo) is det.
 
-write_trace_mutable_var_hlds(Stream, Indent, MutableVar,
+write_trace_mutable_var_hlds(Stream, IndentStr, MutableVar,
         !AddCommaNewline, !IO) :-
     MutableVar = trace_mutable_var_hlds(MutableName, StateVarName),
     maybe_add_comma_newline(Stream, !.AddCommaNewline, !IO),
-    write_indent(Stream, Indent, !IO),
-    io.format(Stream, "state(%s, !%s)",
-        [s(MutableName), s(StateVarName)], !IO),
+    io.format(Stream, "%sstate(%s, !%s)",
+        [s(IndentStr), s(MutableName), s(StateVarName)], !IO),
     !:AddCommaNewline = yes.
 
 :- pred maybe_add_comma_newline(io.text_output_stream::in, bool::in,
@@ -2344,83 +2243,68 @@ maybe_add_comma_newline(Stream, AddCommaNewline, !IO) :-
 write_goal_shorthand(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         VarNamePrint, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = shorthand(ShortHand),
+    IndentStr = indent2_string(Indent),
+    Indent1 = Indent + 1,
     (
         ShortHand = atomic_goal(_GoalType, Outer, Inner, MaybeOutputVars,
             MainGoal, OrElseGoals, _OrElseInners),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "atomic [", !IO),
-        write_atomic_interface_vars(Stream, VarNameSrc, VarNamePrint,
-            "outer", Outer, !IO),
-        io.write_string(Stream, " ", !IO),
-        write_atomic_interface_vars(Stream, VarNameSrc, VarNamePrint,
-            "inner", Inner, !IO),
-        io.write_string(Stream, " ", !IO),
+        OuterStr = atomic_interface_vars_to_string(VarNameSrc, VarNamePrint,
+            "outer", Outer),
+        InnerStr = atomic_interface_vars_to_string(VarNameSrc, VarNamePrint,
+            "inner", Inner),
         (
-            MaybeOutputVars = no
+            MaybeOutputVars = no,
+            MaybeOutputVarsStr = "no_vars"
         ;
             MaybeOutputVars = yes(OutputVars),
-            io.write_string(Stream, "vars([", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, OutputVars,
-                Stream, !IO),
-            io.write_string(Stream, "])", !IO)
+            OutputVarsStr = mercury_vars_to_string_src(VarNameSrc,
+                VarNamePrint, OutputVars),
+            string.format("vars([%s])", [s(OutputVarsStr)], MaybeOutputVarsStr)
         ),
-        io.write_string(Stream, "] (\n",!IO),
-
+        io.format(Stream, "%satomic [%s %s %s] (\n",
+            [s(IndentStr), s(OuterStr), s(InnerStr), s(MaybeOutputVarsStr)],
+            !IO),
         do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent + 1, "\n", MainGoal, !IO),
+            VarNamePrint, Indent1, "\n", MainGoal, !IO),
         write_goal_list(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             VarNamePrint, Indent, "or_else\n", OrElseGoals, !IO),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, ")", !IO),
-        io.write_string(Stream, Follow, !IO)
+        io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
     ;
         ShortHand = try_goal(MaybeIO, _, SubGoal),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "( % try\n", !IO),
+        io.format(Stream, "%s( %% try\n", [s(IndentStr)], !IO),
         (
             MaybeIO = yes(try_io_state_vars(IOVarA, IOVarB)),
-            write_indent(Stream, Indent + 1, !IO),
-            io.write_string(Stream, "% io(", !IO),
-            mercury_output_vars_src(VarNameSrc, VarNamePrint, [IOVarA, IOVarB],
-                Stream, !IO),
-            io.write_string(Stream, ")\n", !IO)
+            Indent1Str = indent2_string(Indent1),
+            IOVarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
+                [IOVarA, IOVarB]),
+            io.format(Stream, "%s%% io(%s)\n",
+                [s(Indent1Str), s(IOVarsStr)], !IO)
         ;
             MaybeIO = no
         ),
         do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent + 1, "\n", SubGoal, !IO),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, ")", !IO),
-        io.write_string(Stream, Follow, !IO)
+            VarNamePrint, Indent1, "\n", SubGoal, !IO),
+        io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
     ;
         ShortHand = bi_implication(GoalA, GoalB),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "( % bi-implication\n", !IO),
-        Indent1 = Indent + 1,
+        io.format(Stream, "%s( %% bi-implication\n", [s(IndentStr)], !IO),
         do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             VarNamePrint, Indent1, "\n", GoalA, !IO),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "<=>\n", !IO),
+        io.format(Stream, "%s<=>\n", [s(IndentStr)], !IO),
         do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             VarNamePrint, Indent1, "\n", GoalB, !IO),
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, ")", !IO),
-        io.write_string(Stream, Follow, !IO)
+        io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
     ).
 
-:- pred write_atomic_interface_vars(io.text_output_stream::in,
-    var_name_source::in, var_name_print::in, string::in,
-    atomic_interface_vars::in, io::di, io::uo) is det.
+:- func atomic_interface_vars_to_string(var_name_source, var_name_print, string,
+    atomic_interface_vars) = string.
 
-write_atomic_interface_vars(Stream, VarNameSrc, VarNamePrint,
-        CompName, CompState, !IO) :-
-    io.write_string(Stream, CompName, !IO),
-    io.write_string(Stream, "(", !IO),
+atomic_interface_vars_to_string(VarNameSrc, VarNamePrint,
+        CompName, CompState) = Str :-
     CompState = atomic_interface_vars(Var1, Var2),
-    mercury_output_var_src(VarNameSrc, VarNamePrint, Var1, Stream, !IO),
-    io.write_string(Stream, ", ", !IO),
-    mercury_output_var_src(VarNameSrc, VarNamePrint, Var2, Stream, !IO),
-    io.write_string(Stream, ")", !IO).
+    Var1Str = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var1),
+    Var2Str = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var2),
+    string.format("%s(%s, %s)", [s(CompName), s(Var1Str), s(Var2Str)], Str).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_goal.

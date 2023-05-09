@@ -246,6 +246,7 @@
 :- implementation.
 
 :- import_module hlds.pred_name.
+:- import_module libs.indent.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
@@ -458,9 +459,9 @@ maybe_output_context_comment(Stream, Indent, Suffix, Context, !IO) :-
     ( if FileName = "" then
         true
     else
-        write_indent(Stream, Indent, !IO),
-        io.format(Stream, "%% context: file \"%s\", line %d%s\n",
-            [s(FileName), i(LineNumber), s(Suffix)], !IO)
+        IndentStr = indent2_string(Indent),
+        io.format(Stream, "%s%% context: file \"%s\", line %d%s\n",
+            [s(IndentStr), s(FileName), i(LineNumber), s(Suffix)], !IO)
     ).
 
 context_to_brief_string(Context) = Str :-
@@ -863,29 +864,29 @@ int_const_to_string_with_suffix(IntConst) = Str :-
 
 write_constraint_proof_map(Stream, Indent, VarNamePrint, TVarSet,
         ProofMap, !IO) :-
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, "% Proofs: \n", !IO),
     map.to_assoc_list(ProofMap, ProofsList),
-    write_out_list(write_constraint_proof(Indent, VarNamePrint, TVarSet),
-        "\n", ProofsList, Stream, !IO).
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%s%% Proofs:\n", [s(IndentStr)], !IO),
+    list.foldl(
+        write_constraint_proof(Stream, IndentStr, VarNamePrint, TVarSet),
+        ProofsList, !IO).
 
-:- pred write_constraint_proof(int::in, var_name_print::in, tvarset::in,
-    pair(prog_constraint, constraint_proof)::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred write_constraint_proof(io.text_output_stream::in, string::in,
+    var_name_print::in, tvarset::in,
+    pair(prog_constraint, constraint_proof)::in, io::di, io::uo) is det.
 
-write_constraint_proof(Indent, VarNamePrint, TVarSet, Constraint - Proof,
-        Stream, !IO) :-
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, "% ", !IO),
-    mercury_output_constraint(TVarSet, VarNamePrint, Constraint, Stream, !IO),
-    io.write_string(Stream, ": ", !IO),
+write_constraint_proof(Stream, IndentStr, VarNamePrint, TVarSet,
+        Constraint - Proof, !IO) :-
+    ConstraintStr = mercury_constraint_to_string(TVarSet, VarNamePrint,
+        Constraint),
+    io.format(Stream, "%s%% %s: ", [s(IndentStr), s(ConstraintStr)], !IO),
     (
         Proof = apply_instance(instance_id(InstanceNum)),
-        io.format(Stream, "apply instance decl #%d", [i(InstanceNum)], !IO)
+        io.format(Stream, "apply instance decl #%d\n", [i(InstanceNum)], !IO)
     ;
         Proof = superclass(Super),
-        io.write_string(Stream, "super class of ", !IO),
-        mercury_output_constraint(TVarSet, VarNamePrint, Super, Stream, !IO)
+        SuperStr = mercury_constraint_to_string(TVarSet, VarNamePrint, Super),
+        io.format(Stream, "super class of %s\n", [s(SuperStr)], !IO)
     ).
 
 %---------------------------------------------------------------------------%

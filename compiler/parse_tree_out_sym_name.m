@@ -142,6 +142,7 @@
 
 %-----------------------------------------------------------------------------%
 
+:- func class_id_to_string(class_id) = string.
 :- pred write_class_id(io.text_output_stream::in, class_id::in,
     io::di, io::uo) is det.
 
@@ -346,6 +347,8 @@ write_type_name(Stream, type_ctor(Name, _Arity), !IO) :-
 
 %-----------------------------------------------------------------------------%
 
+class_id_to_string(class_id(Name, Arity)) =
+    sym_name_arity_to_string(sym_name_arity(Name, Arity)).
 write_class_id(Stream, class_id(Name, Arity), !IO) :-
     write_sym_name_arity(Stream, sym_name_arity(Name, Arity), !IO).
 

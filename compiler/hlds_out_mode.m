@@ -329,14 +329,14 @@ get_inst_addr(_, -1).
 %---------------------------------------------------------------------------%
 
 mercury_output_structured_unify_mode_list(Stream, Lang, InstVarSet, InclAddr,
-        Indent, Insts, !IO) :-
+        Indent, UnifyModes, !IO) :-
     mercury_format_structured_unify_mode_list(Lang, InstVarSet, InclAddr,
-        Indent, 1, Insts, Stream, !IO).
+        Indent, 1, UnifyModes, Stream, !IO).
 
 mercury_structured_unify_mode_list_to_string(Lang, InstVarSet, InclAddr,
-        Indent, Insts) = String :-
+        Indent, UnifyModes) = String :-
     mercury_format_structured_unify_mode_list(Lang, InstVarSet, InclAddr,
-        Indent, 1, Insts, unit, "", String).
+        Indent, 1, UnifyModes, unit, "", String).
 
 :- pred mercury_format_structured_unify_mode_list(output_lang::in,
     inst_varset::in, incl_addr::in, int::in, int::in, list(unify_mode)::in,

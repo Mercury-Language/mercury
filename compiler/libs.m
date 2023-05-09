@@ -32,12 +32,12 @@
 % Existence checks for required libraries.
 :- include_module check_libgrades.
 
-% Generic algorithms and data structures that are not quite useful enough
-% or otherwise aren't in the standard library.
-% :- include_module atsort.       % currently unused
+% Generic algorithms and data structures that for one reason or another
+% are not in the standard library.
 :- include_module dependency_graph.
 :- include_module file_util.
 :- include_module graph_colour.
+:- include_module indent.
 :- include_module md5.
 :- include_module pickle.
 :- include_module va_map.

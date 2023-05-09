@@ -133,20 +133,6 @@
 % Write out indentation.
 %
 
-:- func indent_increment = int.
-
-    % Write out the given indent level (indent_increment spaces per indent).
-    % error_util.m
-    %
-:- pred write_indent(io.text_output_stream::in, int::in,
-    io::di, io::uo) is det.
-
-    % Return the indent for the given level as a string.
-    %
-:- func indent_string(int) = string.
-
-%---------------------------------------------------------------------------%
-
 :- pred mercury_format_tabs(int::in, S::in, U::di, U::uo) is det
     <= output(S, U).
 
@@ -369,41 +355,6 @@ context_to_string(Context, ContextStr) :-
 write_context(Stream, Context, !IO) :-
     context_to_string(Context, ContextMessage),
     io.write_string(Stream, ContextMessage, !IO).
-
-%---------------------------------------------------------------------------%
-
-indent_increment = 2.
-
-write_indent(Stream, Indent, !IO) :-
-    Str = indent_string(Indent),
-    io.write_string(Stream, Str, !IO).
-
-indent_string(Indent) = Str :-
-    % The code here is modelled after output_std_indent_levels in
-    % library/pretty_printer.m, except we can, and do, assume that
-    % Indent is never negative, and in our use case, deep indentation
-    % is much rarer.
-    ( if indent_str_09(Indent, Str0) then
-        Str = Str0
-    else
-        indent_str_10(TenIndentStr),
-        Str = TenIndentStr ++ indent_string(Indent - 10)
-    ).
-
-:- pred indent_str_09(int::in, string::out) is semidet.
-:- pred indent_str_10(string::out) is det.
-
-indent_str_09(0,  "").
-indent_str_09(1,  "  ").
-indent_str_09(2,  "    ").
-indent_str_09(3,  "      ").
-indent_str_09(4,  "        ").
-indent_str_09(5,  "          ").
-indent_str_09(6,  "            ").
-indent_str_09(7,  "              ").
-indent_str_09(8,  "                ").
-indent_str_09(9,  "                  ").
-indent_str_10(    "                    ").
 
 %---------------------------------------------------------------------------%
 

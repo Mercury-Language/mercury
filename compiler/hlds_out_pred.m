@@ -72,6 +72,7 @@
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
@@ -440,6 +441,7 @@ write_clause(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc, VarNameSrc,
         Clause, !IO) :-
     Clause = clause(ApplicableModes, Goal, ImplLang, Context,
         _StateVarWarnings),
+    IndentStr = indent2_string(Indent),
     Indent1 = Indent + 1,
     DumpOptions = Info ^ hoi_dump_hlds_options,
     (
@@ -447,9 +449,9 @@ write_clause(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc, VarNameSrc,
     ;
         ApplicableModes = selected_modes(Modes),
         ( if string.contains_char(DumpOptions, 'm') then
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream,
-                "% Modes for which this clause applies: ", !IO),
+            io.format(Stream,
+                "%s%% Modes for which this clause applies: ",
+                [s(IndentStr)], !IO),
             ModeInts = list.map(proc_id_to_int, Modes),
             write_intlist(Stream, ModeInts, !IO),
             io.write_string(Stream, "\n", !IO)
@@ -459,19 +461,18 @@ write_clause(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc, VarNameSrc,
     ;
         ApplicableModes = unify_in_in_modes,
         ( if string.contains_char(DumpOptions, 'm') then
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream,
-                "% This clause applies only to <in,in> unify modes.\n", !IO)
+            io.format(Stream,
+                "%s%% This clause applies only to <in,in> unify modes.\n",
+                [s(IndentStr)], !IO)
         else
             true
         )
     ;
         ApplicableModes = unify_non_in_in_modes,
         ( if string.contains_char(DumpOptions, 'm') then
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream,
-                "% This clause applies only to non <in,in> unify modes.\n",
-                !IO)
+            io.format(Stream,
+                "%s%% This clause applies only to non <in,in> unify modes.\n",
+                [s(IndentStr)], !IO)
         else
             true
         )
@@ -480,8 +481,8 @@ write_clause(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc, VarNameSrc,
         ImplLang = impl_lang_mercury
     ;
         ImplLang = impl_lang_foreign(ForeignLang),
-        io.write_string(Stream, "% Language of implementation: ", !IO),
-        io.write_line(Stream, ForeignLang, !IO)
+        io.format(Stream, "%s%% Language of implementation: %s\n",
+            [s(IndentStr), s(foreign_language_string(ForeignLang))], !IO)
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     AllProcIds = pred_info_all_procids(PredInfo),
@@ -650,22 +651,21 @@ write_proc(Info, Stream, VarNamePrint, ModuleInfo, PredId, PredInfo,
     proc_info_get_maybe_untuple_info(ProcInfo, MaybeUntupleInfo),
     proc_info_get_var_name_remap(ProcInfo, VarNameRemap),
     Indent1 = 1,
+    Indent1Str = indent2_string(Indent1),
 
     DumpOptions = Info ^ hoi_dump_hlds_options,
     pred_id_to_int(PredId, PredIdInt),
     proc_id_to_int(ProcId, ProcIdInt),
     PredIdStr = pred_id_to_dev_string(ModuleInfo, PredId),
     DetismStr = determinism_to_string(InferredDeterminism),
-    write_indent(Stream, Indent1, !IO),
-    io.format(Stream, "%% pred id %d: %s\n",
-        [i(PredIdInt), s(PredIdStr)], !IO),
-    write_indent(Stream, Indent1, !IO),
+    io.format(Stream, "%s%% pred id %d: %s\n",
+        [s(Indent1Str), i(PredIdInt), s(PredIdStr)], !IO),
     ( if proc_info_is_valid_mode(ProcInfo) then
-        io.format(Stream, "%% mode number %d (%s)\n",
-            [i(ProcIdInt), s(DetismStr)], !IO)
+        io.format(Stream, "%s%% mode number %d (%s)\n",
+            [s(Indent1Str), i(ProcIdInt), s(DetismStr)], !IO)
     else
-        io.format(Stream, "%% mode number %d (%s) INVALID MODE\n",
-            [i(ProcIdInt), s(DetismStr)], !IO)
+        io.format(Stream, "%s%% mode number %d (%s) INVALID MODE\n",
+            [s(Indent1Str), i(ProcIdInt), s(DetismStr)], !IO)
     ),
 
     write_var_types(Stream, VarNamePrint, TVarSet, VarTable, !IO),

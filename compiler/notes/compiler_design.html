@@ -4,15 +4,15 @@ vim: ts=4 sw=4 expandtab ft=html
 
 <html>
 <head>
-<title>Notes On The Design Of The Mercury Compiler</title>
+<title>Notes on the design of the Melbourne Mercury compiler</title>
 </head>
 
 <body>
 
-<h1>Notes On The Design Of The Mercury Compiler</h1>
+<h1>Notes on the design of the Melbourne Mercury compiler</h1>
 
 <p>
-This file contains an overview of the design of the compiler.
+This file contains an overview of the design of the Melbourne Mercury compiler.
 
 <p>
 For an overview of how the compiler fits into the rest of the Mercury system
@@ -232,6 +232,8 @@ It then invokes handle_options.m
 (and indirectly, op_mode.m and compute_grade.m)
 to postprocess the option set.
 The results are represented using the type globals, defined in globals.m.
+(Part of the globals structure is defined in optimization_options.m,
+which is generated automatically from a higher-level specification.)
 The globals structure is available in the HLDS representation,
 but it is passed around as a separate argument
 both before the HLDS is built and after it is no longer needed.
@@ -2415,6 +2417,18 @@ and predicates for printing them.
 <li>
 check_libgrades.m checks whether libraries we want to use
 are installed in the required grade.
+<li>
+md5.m implements md5 checksums.
+<li>
+va_map.m implements a map-like interface on top of version_arrays.
+<li>
+pickle.m provides means to
+serialise arbitrary data structures into a binary format,
+from which they can later be restored.
+<li>
+indent.m provides utilities for dealing with indentation
+in the text that the compiler writes out
+to e.g. target language files and HLDS dumps.
 </ul>
 
 <h2>Currently undocumented</h2>
