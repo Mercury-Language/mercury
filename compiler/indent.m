@@ -23,10 +23,16 @@
 % Write out indentation.
 %
 
+    % Return the number of spaces per indent level.
+    % This will be the number in the name of the function.
+    % For now, we support only two-spaces-per-indent-level, which is
+    % used by most of the compiler, including error_util.m and mlds_to_*.m.
+    % Later, we will also support four-spaces-per-indent-level, which is
+    % used by parse_tree_out_*.m.
+    %
 :- func indent2_increment = int.
 
-    % Write out the given indent level (indent_increment spaces per indent).
-    % error_util.m
+    % Write out the given indent level (indent2_increment spaces per level).
     %
 :- pred write_indent2(io.text_output_stream::in, int::in,
     io::di, io::uo) is det.
