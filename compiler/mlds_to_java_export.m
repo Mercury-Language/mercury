@@ -48,6 +48,7 @@
 :- import_module hlds.hlds_module.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
 :- import_module ml_backend.mlds_to_java_data.
 :- import_module ml_backend.mlds_to_java_func.
@@ -58,7 +59,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module char.
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
@@ -78,16 +78,17 @@ output_export_for_java(Info0, Stream, Indent, Export, !IO) :-
         UnivQTVars, _),
     expect(unify(Lang, lang_java), $pred,
         "foreign_export for language other than Java."),
-
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "public static ", !IO),
-    output_generic_tvars(Stream, UnivQTVars, !IO),
-    io.nl(Stream, !IO),
-    output_n_indents(Stream, Indent, !IO),
-
     MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
     Info = (Info0 ^ joi_output_generics := do_output_generics)
                   ^ joi_univ_tvars := UnivQTVars,
+
+    IndentStr = indent2_string(Indent),
+    UnivQTVarsStr = generic_tvars_to_string(UnivQTVars),
+    PadStr = (if UnivQTVarsStr = "" then "" else " "),
+    io.format(Stream, "%spublic static%s%s\n",
+        [s(IndentStr), s(PadStr), s(UnivQTVarsStr)], !IO),
+
+    write_indent2(Stream, Indent, !IO),
     (
         ReturnTypes = [],
         io.write_string(Stream, "void", !IO)
@@ -125,12 +126,16 @@ output_export_for_java(Info0, Stream, Indent, Export, !IO) :-
 output_export_no_ref_out(Info, Stream, Indent, Export, !IO) :-
     Export = ml_pragma_export(_Lang, _ExportName, QualFuncName, MLDS_Signature,
         _UnivQTVars, _Context),
+    Indent1 = Indent + 1,
+    IndentStr = indent2_string(Indent),
+    Indent1Str = indent2_string(Indent1),
+
     MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
-    output_params_for_java(Info, Stream, Indent + 1, Parameters, !IO),
+    output_params_for_java(Info, Stream, Indent1, Parameters, !IO),
     io.nl(Stream, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "{\n", !IO),
-    output_n_indents(Stream, Indent + 1, !IO),
+
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+    io.format(Stream, "%s", [s(Indent1Str)], !IO),
     (
         ReturnTypes = []
     ;
@@ -144,8 +149,7 @@ output_export_no_ref_out(Info, Stream, Indent, Export, !IO) :-
         io.write_string(Stream, "return ", !IO)
     ),
     write_export_call_for_java(Stream, QualFuncName, Parameters, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred output_export_ref_out(java_out_info::in, io.text_output_stream::in,
     indent::in, mlds_pragma_export::in, io::di, io::uo) is det.
@@ -153,15 +157,17 @@ output_export_no_ref_out(Info, Stream, Indent, Export, !IO) :-
 output_export_ref_out(Info, Stream, Indent, Export, !IO) :-
     Export = ml_pragma_export(_Lang, _ExportName, QualFuncName, MLDS_Signature,
         _UnivQTVars, _Context),
+    Indent1 = Indent + 1,
+    IndentStr = indent2_string(Indent),
+    Indent1Str = indent2_string(Indent1),
+
     MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
     list.filter(has_ptr_type, Parameters, RefParams, NonRefParams),
 
     output_export_params_ref_out(Info, Stream, Indent, Parameters, !IO),
     io.nl(Stream, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "{\n", !IO),
-    output_n_indents(Stream, Indent + 1, !IO),
-    io.write_string(Stream, "java.lang.Object[] results = ", !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+    io.format(Stream, "%sjava.lang.Object[] results = ", [s(Indent1Str)], !IO),
     write_export_call_for_java(Stream, QualFuncName, NonRefParams, !IO),
 
     ( if ReturnTypes = [] then
@@ -172,18 +178,17 @@ output_export_ref_out(Info, Stream, Indent, Export, !IO) :-
     else
         unexpected($pred, "unexpected ReturnTypes")
     ),
-    list.foldl2(assign_ref_output(Info, Stream, Indent + 1), RefParams,
+    list.foldl2(assign_ref_output(Info, Stream, Indent1), RefParams,
         FirstRefArg, _, !IO),
     (
         FirstRefArg = 0
     ;
         FirstRefArg = 1,
-        output_n_indents(Stream, Indent + 1, !IO),
-        Stmt = "return ((java.lang.Boolean) results[0]).booleanValue();\n",
-        io.write_string(Stream, Stmt, !IO)
+        io.format(Stream, 
+            "%sreturn ((java.lang.Boolean) results[0]).booleanValue();\n",
+            [s(Indent1Str)], !IO)
     ),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred output_export_params_ref_out(java_out_info::in,
     io.text_output_stream::in, indent::in, list(mlds_argument)::in,
@@ -207,50 +212,46 @@ output_export_params_ref_out(Info, Stream, Indent, Parameters, !IO) :-
 
 output_export_param_ref_out(Info, Indent, Argument, Stream, !IO) :-
     Argument = mlds_argument(VarName, Type, _),
-    output_n_indents(Stream, Indent, !IO),
+    IndentStr = indent2_string(Indent),
+    VarNameStr = local_var_name_to_string_for_java(VarName),
     ( if Type = mlds_ptr_type(InnerType) then
-        boxed_type_to_string_for_java(Info, InnerType, InnerTypeString),
-        io.format(Stream, "jmercury.runtime.Ref<%s> ",
-            [s(InnerTypeString)], !IO)
+        boxed_type_to_string_for_java(Info, InnerType, InnerTypeStr),
+        io.format(Stream, "%sjmercury.runtime.Ref<%s> %s",
+            [s(IndentStr), s(InnerTypeStr), s(VarNameStr)], !IO)
     else
-        output_type_for_java(Info, Stream, Type, !IO),
-        io.write_string(Stream, " ", !IO)
-    ),
-    output_local_var_name_for_java(Stream, VarName, !IO).
+        TypeStr = type_to_string_for_java(Info, Type),
+        io.format(Stream, "%s%s %s",
+            [s(IndentStr), s(TypeStr), s(VarNameStr)], !IO)
+    ).
 
 :- pred write_export_call_for_java(io.text_output_stream::in,
     qual_function_name::in, list(mlds_argument)::in, io::di, io::uo) is det.
 
 write_export_call_for_java(Stream, QualFuncName, Parameters, !IO) :-
     QualFuncName = qual_function_name(ModuleName, FuncName),
-    output_qual_name_prefix_java(Stream, ModuleName, module_qual, !IO),
-    output_function_name_for_java(Stream, FuncName, !IO),
-    io.write_char(Stream, '(', !IO),
-    write_out_list(write_argument_name_for_java, ", ", Parameters,
-        Stream, !IO),
-    io.write_string(Stream, ");\n", !IO).
-
-:- pred write_argument_name_for_java(mlds_argument::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-write_argument_name_for_java(Arg, Stream, !IO) :-
-    Arg = mlds_argument(VarName, _, _),
-    output_local_var_name_for_java(Stream, VarName, !IO).
+    Qualifier = qualifier_to_string_for_java(ModuleName, module_qual),
+    FuncNameStr = function_name_to_string_for_java(FuncName),
+    ParamVars =
+        list.map((func(mlds_argument(VarName, _, _)) = VarName), Parameters),
+    ParamVarStrs = list.map(local_var_name_to_string_for_java, ParamVars),
+    ParamVarsStr = string.join_list(", ", ParamVarStrs),
+    io.format(Stream, "%s.%s(%s);\n",
+        [s(Qualifier), s(FuncNameStr), s(ParamVarsStr)], !IO).
 
 :- pred assign_ref_output(java_out_info::in, io.text_output_stream::in,
     indent::in, mlds_argument::in, int::in, int::out, io::di, io::uo) is det.
 
 assign_ref_output(Info, Stream, Indent, Arg, N, N + 1, !IO) :-
+    IndentStr = indent2_string(Indent),
     Arg = mlds_argument(VarName, Type, _),
-    output_n_indents(Stream, Indent, !IO),
-    output_local_var_name_for_java(Stream, VarName, !IO),
+    VarNameStr = local_var_name_to_string_for_java(VarName),
     ( if Type = mlds_ptr_type(InnerType) then
-        boxed_type_to_string_for_java(Info, InnerType, TypeString)
+        boxed_type_to_string_for_java(Info, InnerType, TypeName)
     else
-        boxed_type_to_string_for_java(Info, Type, TypeString)
+        boxed_type_to_string_for_java(Info, Type, TypeName)
     ),
-    io.format(Stream, ".val = (%s) results[%d];\n",
-        [s(TypeString), i(N)], !IO).
+    io.format(Stream, "%s%s.val = (%s) results[%d];\n",
+        [s(IndentStr), s(VarNameStr), s(TypeName), i(N)], !IO).
 
 :- pred has_ptr_type(mlds_argument::in) is semidet.
 
@@ -289,10 +290,11 @@ output_exported_enum_for_java(Info, Stream, Indent, ExportedEnum, !IO) :-
 
 output_exported_enum_constant_for_java(Info, Stream, Indent, MLDS_Type,
         ExportedConstant, !IO) :-
+    IndentStr = indent2_string(Indent),
     ExportedConstant = mlds_exported_enum_constant(Name, Initializer),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "public static final %s %s = ",
-        [s(type_to_string_for_java(Info, MLDS_Type)), s(Name)], !IO),
+    io.format(Stream, "%spublic static final %s %s = ",
+        [s(IndentStr), s(type_to_string_for_java(Info, MLDS_Type)), s(Name)],
+        !IO),
     output_initializer_body_for_java(Info, Stream, not_at_start_of_line,
         Indent + 1, Initializer, no, ";", !IO).
 

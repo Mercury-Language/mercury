@@ -40,6 +40,7 @@
 :- import_module hlds.hlds_module.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module ml_backend.ml_util.
 :- import_module ml_backend.mlds_to_java_data.
 :- import_module ml_backend.mlds_to_java_func.  % undesirable circular dep
@@ -52,7 +53,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module char.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
@@ -120,7 +120,7 @@ output_statement_for_java(Info, Stream, Indent, FuncInfo, Stmt,
             BreakContext = Info ^ joi_break_context,
             (
                 BreakContext = bc_switch,
-                output_n_indents(Stream, Indent, !IO),
+                write_indent2(Stream, Indent, !IO),
                 io.write_string(Stream, "break;\n", !IO),
                 ExitMethods = set.make_singleton_set(can_break)
             ;
@@ -134,7 +134,7 @@ output_statement_for_java(Info, Stream, Indent, FuncInfo, Stmt,
             BreakContext = Info ^ joi_break_context,
             (
                 BreakContext = bc_loop,
-                output_n_indents(Stream, Indent, !IO),
+                write_indent2(Stream, Indent, !IO),
                 io.write_string(Stream, "break;\n", !IO),
                 ExitMethods = set.make_singleton_set(can_break)
             ;
@@ -145,7 +145,7 @@ output_statement_for_java(Info, Stream, Indent, FuncInfo, Stmt,
             )
         ;
             Target = goto_continue_loop,
-            output_n_indents(Stream, Indent, !IO),
+            write_indent2(Stream, Indent, !IO),
             io.write_string(Stream, "continue;\n", !IO),
             ExitMethods = set.make_singleton_set(can_continue)
         )
@@ -185,8 +185,8 @@ output_stmt_block_for_java(Info, Stream, Indent, FuncInfo, Stmt,
     Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context),
     BraceIndent = Indent,
     BlockIndent = Indent + 1,
-    output_n_indents(Stream, BraceIndent, !IO),
-    io.write_string(Stream, "{\n", !IO),
+    BraceIndentStr = indent2_string(BraceIndent),
+    io.format(Stream, "%s{\n", [s(BraceIndentStr)], !IO),
     (
         LocalVarDefns = [_ | _],
         list.foldl(
@@ -230,9 +230,9 @@ output_local_var_defn_for_java(Info, Stream, Indent, LocalVarDefn, !IO) :-
     io::di, io::uo) is det.
 
 output_local_var_decl_for_java(Info, Stream, LocalVarName, Type, !IO) :-
-    output_type_for_java(Info, Stream, Type, !IO),
-    io.write_char(Stream, ' ', !IO),
-    output_local_var_name_for_java(Stream, LocalVarName, !IO).
+    TypeStr = type_to_string_for_java(Info, Type),
+    LocalVarNameStr = local_var_name_to_string_for_java(LocalVarName),
+    io.format(Stream, "%s %s", [s(TypeStr), s(LocalVarNameStr)], !IO).
 
 :- pred output_stmt_while_for_java(java_out_info::in,
     io.text_output_stream::in, indent::in, func_info_csj::in,
@@ -243,22 +243,20 @@ output_stmt_while_for_java(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_while(Kind, Cond, BodyStmt, _LoopLocalVars, Context),
     scope_indent(BodyStmt, Indent, ScopeIndent),
+    IndentStr = indent2_string(Indent),
     (
         Kind = may_loop_zero_times,
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "while (", !IO),
+        io.format(Stream, "%swhile (", [s(IndentStr)], !IO),
         output_rval_for_java(Info, Cond, Stream, !IO),
         io.write_string(Stream, ")\n", !IO),
         % The contained statement is reachable iff the while statement
         % is reachable the condition is not a constant expression
         % whose value is false.
         ( if Cond = ml_const(mlconst_false) then
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, "{\n", !IO),
-            output_n_indents(Stream, Indent + 1, !IO),
-            io.write_string(Stream, "/* Unreachable code */\n", !IO),
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, "}\n", !IO),
+            io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+            io.format(Stream, "%s  /* Unreachable code */\n",
+                [s(IndentStr)], !IO),
+            io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
             ExitMethods = set.make_singleton_set(can_fall_through)
         else
             BodyInfo = Info ^ joi_break_context := bc_loop,
@@ -268,8 +266,7 @@ output_stmt_while_for_java(Info, Stream, Indent, FuncInfo, Stmt,
         )
     ;
         Kind = loop_at_least_once,
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "do\n", !IO),
+        io.format(Stream, "%sdo\n", [s(IndentStr)], !IO),
         BodyInfo = Info ^ joi_break_context := bc_loop,
         output_statement_for_java(BodyInfo, Stream, ScopeIndent, FuncInfo,
             BodyStmt, StmtExitMethods, !IO),
@@ -313,8 +310,8 @@ output_stmt_if_then_else_for_java(Info, Stream, Indent, FuncInfo, Stmt,
         Then = Then0
     ),
 
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "if (", !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%sif (", [s(IndentStr)], !IO),
     output_rval_for_java(Info, Cond, Stream, !IO),
     io.write_string(Stream, ")\n", !IO),
     scope_indent(Then, Indent, ThenScopeIndent),
@@ -370,8 +367,8 @@ output_stmt_call_for_java(Info, Stream, Indent, _FuncInfo, Stmt,
     Stmt = ml_stmt_call(Signature, FuncRval, CallArgs, Results,
         _IsTailCall, Context),
     Signature = mlds_func_signature(ArgTypes, RetTypes),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "{\n", !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
     indent_line_after_context(Stream, Info ^ joi_line_numbers,
         marker_comment, Context, Indent + 1, !IO),
     (
@@ -452,9 +449,7 @@ output_stmt_call_for_java(Info, Stream, Indent, _FuncInfo, Stmt,
     % else
     %   true
     % ),
-    %
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO),
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
     ExitMethods = set.make_singleton_set(can_fall_through).
 
 :- pred output_stmt_return_for_java(java_out_info::in,
@@ -466,13 +461,13 @@ output_stmt_call_for_java(Info, Stream, Indent, _FuncInfo, Stmt,
 output_stmt_return_for_java(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_return(Results, _Context),
-    output_n_indents(Stream, Indent, !IO),
+    IndentStr = indent2_string(Indent),
     (
         Results = [],
-        io.write_string(Stream, "return;\n", !IO)
+        io.format(Stream, "%sreturn;\n", [s(IndentStr)], !IO)
     ;
         Results = [Rval],
-        io.write_string(Stream, "return ", !IO),
+        io.format(Stream, "%sreturn ", [s(IndentStr)], !IO),
         output_rval_for_java(Info, Rval, Stream, !IO),
         io.write_string(Stream, ";\n", !IO)
     ;
@@ -481,18 +476,18 @@ output_stmt_return_for_java(Info, Stream, Indent, FuncInfo, Stmt,
         Params = mlds_func_params(_Args, ReturnTypes),
         TypesAndResults = assoc_list.from_corresponding_lists(
             ReturnTypes, Results),
-        io.write_string(Stream, "return new java.lang.Object[] {\n", !IO),
-        output_n_indents(Stream, Indent + 1, !IO),
+        io.format(Stream, "%sreturn new java.lang.Object[] {\n",
+            [s(IndentStr)], !IO),
+        Indent1Str = indent2_string(Indent + 1),
+        % Each call to OutputBoxedRval writes the entire contents of a line
+        % without the final (comma and) newline.
         OutputBoxedRval =
             ( pred((Type - Result)::in, S::in, !.IO::di, !:IO::uo) is det :-
+                io.write_string(Stream, Indent1Str, !IO),
                 output_boxed_rval_for_java(Info, Type, Result, S, !IO)
             ),
-        Separator = ",\n" ++ duplicate_char(' ', (Indent + 1) * 2),
-        write_out_list(OutputBoxedRval, Separator, TypesAndResults,
-            Stream, !IO),
-        io.write_string(Stream, "\n", !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "};\n", !IO)
+        write_out_list(OutputBoxedRval, ",\n", TypesAndResults, Stream, !IO),
+        io.format(Stream, "\n%s};\n", [s(IndentStr)], !IO)
     ),
     ExitMethods = set.make_singleton_set(can_return).
 
@@ -505,11 +500,11 @@ output_stmt_return_for_java(Info, Stream, Indent, FuncInfo, Stmt,
 output_stmt_do_commit_for_java(Info, Stream, Indent, _FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_do_commit(Ref, _Context),
-    output_n_indents(Stream, Indent, !IO),
+    IndentStr = indent2_string(Indent),
+    io.write_string(Stream, IndentStr, !IO),
     output_rval_for_java(Info, Ref, Stream, !IO),
     io.write_string(Stream, " = new jmercury.runtime.Commit();\n", !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "throw ", !IO),
+    io.format(Stream, "%sthrow ", [s(IndentStr)], !IO),
     output_rval_for_java(Info, Ref, Stream, !IO),
     io.write_string(Stream, ";\n", !IO),
     ExitMethods = set.make_singleton_set(can_throw).
@@ -523,24 +518,19 @@ output_stmt_do_commit_for_java(Info, Stream, Indent, _FuncInfo, Stmt,
 output_stmt_try_commit_for_java(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_try_commit(_Ref, BodyStmt, HandlerStmt, _Context),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "try\n", !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "{\n", !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%stry\n", [s(IndentStr)], !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
     output_statement_for_java(Info, Stream, Indent + 1, FuncInfo, BodyStmt,
         TryExitMethods0, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream,
-        "catch (jmercury.runtime.Commit commit_variable)\n", !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "{\n", !IO),
-    output_n_indents(Stream, Indent + 1, !IO),
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
+    io.format(Stream, "%scatch (jmercury.runtime.Commit commit_variable)\n",
+        [s(IndentStr)], !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+    write_indent2(Stream, Indent + 1, !IO),
     output_statement_for_java(Info, Stream, Indent + 1, FuncInfo, HandlerStmt,
         CatchExitMethods, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO),
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
     ExitMethods = set.union(set.delete(TryExitMethods0, can_throw),
         CatchExitMethods).
 
@@ -583,9 +573,7 @@ output_stmt_method_call_for_java(Info, Stream, FuncRval,
         CallArgs, ArgTypes, !IO) :-
     list.length(CallArgs, Arity),
     ( if is_specialised_method_ptr_arity(Arity) then
-        io.write_string(Stream, "((jmercury.runtime.MethodPtr", !IO),
-        io.write_int(Stream, Arity, !IO),
-        io.write_string(Stream, ") ", !IO),
+        io.format(Stream, "((jmercury.runtime.MethodPtr%d) ", [i(Arity)], !IO),
         output_bracketed_rval_for_java(Info, FuncRval, Stream, !IO),
         io.write_string(Stream, ").call___0_0(", !IO),
         output_boxed_args(Info, Stream, CallArgs, ArgTypes, !IO),
@@ -784,6 +772,7 @@ output_switch_default_for_java(Info, Stream, Indent, FuncInfo, Context,
     prog_context::in, io::di, io::uo) is det.
 
 output_atomic_stmt_for_java(Info, Stream, Indent, AtomicStmt, Context, !IO) :-
+    IndentStr = indent2_string(Indent),
     (
         AtomicStmt = comment(Comment),
         ( if Comment = "" then
@@ -791,14 +780,12 @@ output_atomic_stmt_for_java(Info, Stream, Indent, AtomicStmt, Context, !IO) :-
         else
             % XXX We should escape any "*/"'s in the Comment. We should also
             % split the comment into lines and indent each line appropriately.
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, "/* ", !IO),
-            io.write_string(Stream, Comment, !IO),
-            io.write_string(Stream, " */\n", !IO)
+            io.format(Stream, "%s/* %s */\n",
+                [s(IndentStr), s(Comment)], !IO)
         )
     ;
         AtomicStmt = assign(Lval, Rval),
-        output_n_indents(Stream, Indent, !IO),
+        write_indent2(Stream, Indent, !IO),
         output_lval_for_java(Info, Lval, Stream, !IO),
         io.write_string(Stream, " = ", !IO),
         output_rval_for_java(Info, Rval, Stream, !IO),
@@ -819,8 +806,7 @@ output_atomic_stmt_for_java(Info, Stream, Indent, AtomicStmt, Context, !IO) :-
             ExplicitSecTag = no
         ),
 
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "{\n", !IO),
+        io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
         indent_line_after_context(Stream, Info ^ joi_line_numbers,
             marker_comment, Context, Indent + 1, !IO),
         output_lval_for_java(Info, Target, Stream, !IO),
@@ -834,10 +820,11 @@ output_atomic_stmt_for_java(Info, Stream, Indent, AtomicStmt, Context, !IO) :-
             )
         then
             output_type_for_java(Info, Stream, Type, ArrayDims, !IO),
-            io.write_char(Stream, '.', !IO),
             QualifiedCtorId = qual_ctor_id(_ModuleName, _QualKind, CtorDefn),
             CtorDefn = ctor_id(CtorName, CtorArity),
-            output_unqual_class_name_for_java(Stream, CtorName, CtorArity, !IO)
+            UnqualClassNameStr =
+                unqual_class_name_to_string_for_java(CtorName, CtorArity),
+            io.format(Stream, ".%s", [s(UnqualClassNameStr)], !IO)
         else
             output_type_for_java(Info, Stream, Type, ArrayDims, !IO)
         ),
@@ -851,11 +838,10 @@ output_atomic_stmt_for_java(Info, Stream, Indent, AtomicStmt, Context, !IO) :-
             io.format(Stream, "%s\n", [s(Start)], !IO),
             output_init_args_for_java(Info, Stream, Indent + 2,
                 HeadArgRvalType, TailArgRvalsTypes, !IO),
-            output_n_indents(Stream, Indent + 1, !IO),
+            write_indent2(Stream, Indent + 1, !IO),
             io.format(Stream, "%s;\n", [s(End)], !IO)
         ),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "}\n", !IO)
+        io.format(Stream, "%s}\n", [s(IndentStr)], !IO)
     ;
         AtomicStmt = gc_check,
         unexpected($pred, "gc_check not implemented.")
@@ -872,7 +858,7 @@ output_atomic_stmt_for_java(Info, Stream, Indent, AtomicStmt, Context, !IO) :-
         AtomicStmt = inline_target_code(TargetLang, Components),
         (
             TargetLang = ml_target_java,
-            output_n_indents(Stream, Indent, !IO),
+            write_indent2(Stream, Indent, !IO),
             list.foldl(output_target_code_component_for_java(Info, Stream),
                 Components, !IO)
         ;
@@ -897,7 +883,7 @@ output_atomic_stmt_for_java(Info, Stream, Indent, AtomicStmt, Context, !IO) :-
 
 output_init_args_for_java(Info, Stream, Indent, HeadArg, TailArgs, !IO) :-
     HeadArg = ml_typed_rval(HeadArgRval, _HeadArgType),
-    output_n_indents(Stream, Indent, !IO),
+    write_indent2(Stream, Indent, !IO),
     output_rval_for_java(Info, HeadArgRval, Stream, !IO),
     (
         TailArgs = [],
@@ -941,8 +927,9 @@ output_target_code_component_for_java(Info, Stream, TargetCode, !IO) :-
         output_type_for_java(InfoGenerics, Stream, Type, !IO)
     ;
         TargetCode = target_code_function_name(FuncName),
-        output_maybe_qualified_function_name_for_java(Info, Stream,
-            FuncName, !IO)
+        FuncNameStr = maybe_qualified_function_name_to_string_for_java(Info,
+            FuncName),
+        io.write_string(Stream, FuncNameStr, !IO)
     ;
         TargetCode = target_code_alloc_id(_),
         unexpected($pred, "target_code_alloc_id not implemented")

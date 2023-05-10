@@ -21,51 +21,40 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module io.
+%---------------------------------------------------------------------------%
+
+:- func maybe_qualified_global_var_name_to_string_for_java(java_out_info,
+    qual_global_var_name) = string.
+
+:- func global_var_name_to_string_for_java(mlds_global_var_name) = string.
 
 %---------------------------------------------------------------------------%
 
-:- pred output_maybe_qualified_global_var_name_for_java(java_out_info::in,
-    io.text_output_stream::in, qual_global_var_name::in,
-    io::di, io::uo) is det.
+:- func maybe_qualified_function_name_to_string_for_java(java_out_info,
+    qual_function_name) = string.
 
-:- pred output_global_var_name_for_java(io.text_output_stream::in,
-    mlds_global_var_name::in, io::di, io::uo) is det.
+:- func function_name_to_string_for_java(mlds_function_name) = string.
 
-%---------------------------------------------------------------------------%
-
-:- pred output_maybe_qualified_function_name_for_java(java_out_info::in,
-    io.text_output_stream::in, qual_function_name::in, io::di, io::uo) is det.
-
-:- pred output_function_name_for_java(io.text_output_stream::in,
-    mlds_function_name::in, io::di, io::uo) is det.
-
-:- pred mlds_output_proc_label_for_java(io.text_output_stream::in,
-    mlds_proc_label::in, io::di, io::uo) is det.
+:- func proc_label_to_string_for_java(mlds_proc_label) = string.
 
 %---------------------------------------------------------------------------%
 
-:- pred qual_class_name_to_string_for_java(qual_class_name::in, arity::in,
-    string::out) is det.
+:- func qual_class_name_to_string_for_java(qual_class_name, arity) = string.
 
-:- pred output_unqual_class_name_for_java(io.text_output_stream::in,
-    mlds_class_name::in, arity::in, io::di, io::uo) is det.
-
-:- pred output_class_name_arity_for_java(io.text_output_stream::in,
-    mlds_class_name::in, arity::in, io::di, io::uo) is det.
-
-:- pred output_field_var_name_for_java(io.text_output_stream::in,
-    mlds_field_var_name::in, io::di, io::uo) is det.
+:- func unqual_class_name_to_string_for_java(mlds_class_name, arity) = string.
 
 %---------------------------------------------------------------------------%
 
-:- pred output_local_var_name_for_java(io.text_output_stream::in,
-    mlds_local_var_name::in, io::di, io::uo) is det.
+:- func field_var_name_to_string_for_java(mlds_field_var_name) = string.
 
 %---------------------------------------------------------------------------%
 
-:- pred output_qual_name_prefix_java(io.text_output_stream::in,
-    mlds_module_name::in, mlds_qual_kind::in, io::di, io::uo) is det.
+:- func local_var_name_to_string_for_java(mlds_local_var_name) = string.
+
+%---------------------------------------------------------------------------%
+
+:- func qualifier_to_string_for_java(mlds_module_name, mlds_qual_kind)
+    = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -94,76 +83,79 @@
 
 %---------------------------------------------------------------------------%
 
-output_maybe_qualified_global_var_name_for_java(Info, Stream,
-    QualGlobalVarName, !IO) :-
-    % Don't module qualify names which are defined in the current module.
-    % This avoids unnecessary verbosity.
-    QualGlobalVarName = qual_global_var_name(ModuleName, GlobalVarName),
-    CurrentModuleName = Info ^ joi_module_name,
-    ( if ModuleName = CurrentModuleName then
-        true
+maybe_qualified_global_var_name_to_string_for_java(Info, QualGlobalVarName)
+        = MaybeQualGlobalVarNameStr :-
+    QualGlobalVarName = qual_global_var_name(GlobalVarModule, GlobalVarName),
+    GlobalVarNameStr = global_var_name_to_string_for_java(GlobalVarName),
+    % Don't module qualify the names of global variables that are defined
+    % in the current module. This avoids unnecessary verbosity.
+    CurrentModule = Info ^ joi_module_name,
+    ( if GlobalVarModule = CurrentModule then
+        MaybeQualGlobalVarNameStr = GlobalVarNameStr
     else
-        output_qual_name_prefix_java(Stream, ModuleName, module_qual, !IO)
-    ),
-    output_global_var_name_for_java(Stream, GlobalVarName, !IO).
+        QualStr = qualifier_to_string_for_java(GlobalVarModule, module_qual),
+        string.format("%s.%s", [s(QualStr), s(GlobalVarNameStr)],
+            MaybeQualGlobalVarNameStr)
+    ).
 
-output_global_var_name_for_java(Stream, GlobalVarName, !IO) :-
+global_var_name_to_string_for_java(GlobalVarName) = GlobalVarNameStr :-
     (
         GlobalVarName = gvn_const_var(ConstVar, Num),
         NameStr = ml_global_const_var_name_to_string(ConstVar, Num),
-        output_valid_mangled_name_for_java(Stream, NameStr, !IO)
+        GlobalVarNameStr = make_valid_mangled_name_for_java(NameStr)
     ;
         GlobalVarName = gvn_rtti_var(RttiId),
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
-        io.write_string(Stream, RttiAddrName, !IO)
+        GlobalVarNameStr = RttiAddrName
     ;
-        GlobalVarName = gvn_tabling_var(ProcLabel, Id),
-        Prefix = tabling_info_id_str(Id) ++ "_",
-        io.write_string(Stream, Prefix, !IO),
-        mlds_output_proc_label_for_java(Stream,
-            mlds_std_tabling_proc_label(ProcLabel), !IO)
+        GlobalVarName = gvn_tabling_var(ProcLabel, TablingStructId),
+        TablingProcLabel = mlds_std_tabling_proc_label(ProcLabel),
+        TablingProcLabelStr = proc_label_to_string_for_java(TablingProcLabel),
+        string.format("%s_%s",
+            [s(tabling_info_id_str(TablingStructId)), s(TablingProcLabelStr)],
+            GlobalVarNameStr)
     ;
         GlobalVarName = gvn_dummy_var,
-        io.write_string(Stream, "dummy_var", !IO)
+        GlobalVarNameStr = "dummy_var"
     ).
 
 %---------------------------------------------------------------------------%
 
-output_maybe_qualified_function_name_for_java(Info, Stream, QualFuncName,
-        !IO) :-
-    % Don't module qualify names which are defined in the current module.
-    % This avoids unnecessary verbosity.
-    QualFuncName = qual_function_name(ModuleName, FuncName),
-    CurrentModuleName = Info ^ joi_module_name,
-    ( if ModuleName = CurrentModuleName then
-        true
+maybe_qualified_function_name_to_string_for_java(Info, QualFuncName)
+        = MaybeQualFuncNameStr :-
+    QualFuncName = qual_function_name(FuncModule, FuncName),
+    FuncNameStr = function_name_to_string_for_java(FuncName),
+    % Don't module qualify the names of functions that are defined
+    % in the current module. This avoids unnecessary verbosity.
+    CurrentModule = Info ^ joi_module_name,
+    ( if FuncModule = CurrentModule then
+        MaybeQualFuncNameStr = FuncNameStr
     else
-        output_qual_name_prefix_java(Stream, ModuleName, module_qual, !IO)
-    ),
-    output_function_name_for_java(Stream, FuncName, !IO).
+        QualStr = qualifier_to_string_for_java(FuncModule, module_qual),
+        string.format("%s.%s", [s(QualStr), s(FuncNameStr)],
+            MaybeQualFuncNameStr)
+    ).
 
-output_function_name_for_java(Stream, FunctionName, !IO) :-
+function_name_to_string_for_java(FunctionName) = FunctionNameStr :-
     (
         FunctionName = mlds_function_name(PlainFuncName),
         PlainFuncName = mlds_plain_func_name(FuncLabel, _PredId),
         FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
-        output_pred_label_for_java(Stream, PredLabel, !IO),
+        PredLabelStr = pred_label_to_string_for_java(PredLabel),
         proc_id_to_int(ProcId, ModeNum),
-        io.format(Stream, "_%d", [i(ModeNum)], !IO),
-        io.write_string(Stream,
-            mlds_maybe_aux_func_id_to_suffix(MaybeAux), !IO)
+        MaybeAuxSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
+        string.format("%s_%d%s",
+            [s(PredLabelStr), i(ModeNum), s(MaybeAuxSuffix)], FunctionNameStr)
     ;
-        FunctionName = mlds_function_export(Name),
-        io.write_string(Stream, Name, !IO)
+        FunctionName = mlds_function_export(FunctionNameStr)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_pred_label_for_java(io.text_output_stream::in,
-    mlds_pred_label::in, io::di, io::uo) is det.
+:- func pred_label_to_string_for_java(mlds_pred_label) = string.
 
-output_pred_label_for_java(Stream, PredLabel, !IO) :-
+pred_label_to_string_for_java(PredLabel) = PredLabelStr :-
     (
         PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
             PredFormArity, _, _),
@@ -178,92 +170,81 @@ output_pred_label_for_java(Stream, PredLabel, !IO) :-
             UserArityInt = PredFormArityInt - 1
         ),
         MangledName = name_mangle_no_leading_digit(Name),
-        io.format(Stream, "%s_%d_%s",
-            [s(MangledName), i(UserArityInt), s(Suffix)], !IO),
         (
             MaybeDefiningModule = yes(DefiningModule),
-            io.write_string(Stream, "_in__", !IO),
-            output_module_name(Stream, DefiningModule, !IO)
+            string.format("%s_%d_%s_in__%s",
+                [s(MangledName), i(UserArityInt), s(Suffix),
+                s(sym_name_mangle(DefiningModule))], PredLabelStr)
         ;
-            MaybeDefiningModule = no
+            MaybeDefiningModule = no,
+            string.format("%s_%d_%s",
+                [s(MangledName), i(UserArityInt), s(Suffix)], PredLabelStr)
         )
     ;
         PredLabel = mlds_special_pred_label(PredName, MaybeTypeModule,
             TypeName, TypeArity),
         MangledPredName = name_mangle_no_leading_digit(PredName),
         MangledTypeName = name_mangle(TypeName),
-        io.write_string(Stream, MangledPredName, !IO),
-        io.write_string(Stream, "__", !IO),
         (
             MaybeTypeModule = yes(TypeModule),
-            output_module_name(Stream, TypeModule, !IO),
-            io.write_string(Stream, "__", !IO)
+            MangledTypeModule = sym_name_mangle(TypeModule),
+            string.format("%s__%s__%s_%d",
+                [s(MangledPredName), s(MangledTypeModule),
+                s(MangledTypeName), i(TypeArity)], PredLabelStr)
         ;
-            MaybeTypeModule = no
-        ),
-        io.format(Stream, "%s_%d", [s(MangledTypeName), i(TypeArity)], !IO)
+            MaybeTypeModule = no,
+            string.format("%s__%s_%d",
+                [s(MangledPredName), s(MangledTypeName), i(TypeArity)],
+                PredLabelStr)
+        )
     ).
 
-mlds_output_proc_label_for_java(Stream, mlds_proc_label(PredLabel, ProcId),
-        !IO) :-
-    output_pred_label_for_java(Stream, PredLabel, !IO),
+proc_label_to_string_for_java(ProcLabel) = ProcLabelStr :-
+    ProcLabel = mlds_proc_label(PredLabel, ProcId),
+    PredLabelStr = pred_label_to_string_for_java(PredLabel),
     proc_id_to_int(ProcId, ModeNum),
-    io.format(Stream, "_%d", [i(ModeNum)], !IO).
+    string.format("%s_%d", [s(PredLabelStr), i(ModeNum)], ProcLabelStr).
 
 %---------------------------------------------------------------------------%
 
-qual_class_name_to_string_for_java(QualClassName, Arity, String) :-
+qual_class_name_to_string_for_java(QualClassName, Arity) = QualClassNameStr :-
     QualClassName = qual_class_name(MLDS_ModuleName, QualKind, ClassName),
     ( if
         SymName = mlds_module_name_to_sym_name(MLDS_ModuleName),
         SymName = java_mercury_runtime_package_name
     then
         % Don't mangle runtime class names.
-        String = "jmercury.runtime." ++ ClassName
+        QualClassNameStr = "jmercury.runtime." ++ ClassName
     else
-        qualifier_to_string_for_java(MLDS_ModuleName, QualKind, QualString),
-        unqual_class_name_to_string_for_java(ClassName, Arity, UnqualString),
-        String = QualString ++ "." ++ UnqualString
+        QualStr = qualifier_to_string_for_java(MLDS_ModuleName, QualKind),
+        UnqualClassNameStr =
+            unqual_class_name_to_string_for_java(ClassName, Arity),
+        string.format("%s.%s", [s(QualStr), s(UnqualClassNameStr)],
+            QualClassNameStr)
     ).
 
-output_unqual_class_name_for_java(Stream, Name, Arity, !IO) :-
-    unqual_class_name_to_string_for_java(Name, Arity, String),
-    io.write_string(Stream, String, !IO).
-
-output_class_name_arity_for_java(Stream, ClassName, ClassArity, !IO) :-
-    output_unqual_class_name_for_java(Stream, ClassName, ClassArity, !IO).
-
-:- pred unqual_class_name_to_string_for_java(mlds_class_name::in, arity::in,
-    string::out) is det.
-
-unqual_class_name_to_string_for_java(Name, Arity, String) :-
+unqual_class_name_to_string_for_java(Name, Arity) = Str :-
     MangledName = name_mangle_no_leading_digit(Name),
     % By convention, class names should start with a capital letter.
     UppercaseMangledName = flip_initial_case(MangledName),
-    String = UppercaseMangledName ++ "_" ++ string.from_int(Arity).
+    string.format("%s_%d", [s(UppercaseMangledName), i(Arity)], Str).
 
-output_field_var_name_for_java(Stream, FieldVarName, !IO) :-
+%---------------------------------------------------------------------------%
+
+field_var_name_to_string_for_java(FieldVarName) = MangledNameStr :-
     NameStr = ml_field_var_name_to_string(FieldVarName),
-    output_valid_mangled_name_for_java(Stream, NameStr, !IO).
+    MangledNameStr = make_valid_mangled_name_for_java(NameStr).
 
 %---------------------------------------------------------------------------%
 
-output_local_var_name_for_java(Stream, LocalVarName, !IO) :-
+local_var_name_to_string_for_java(LocalVarName) = MangledNameStr :-
     NameStr = ml_local_var_name_to_string(LocalVarName),
-    output_valid_mangled_name_for_java(Stream, NameStr, !IO).
+    MangledNameStr = make_valid_mangled_name_for_java(NameStr).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-output_qual_name_prefix_java(Stream, ModuleName, QualKind, !IO) :-
-    qualifier_to_string_for_java(ModuleName, QualKind, QualifierString),
-    io.write_string(Stream, QualifierString, !IO),
-    io.write_string(Stream, ".", !IO).
-
-:- pred qualifier_to_string_for_java(mlds_module_name::in, mlds_qual_kind::in,
-    string::out) is det.
-
-qualifier_to_string_for_java(MLDS_ModuleName, QualKind, String) :-
+qualifier_to_string_for_java(MLDS_ModuleName, QualKind) = Qualifier :-
     mlds_module_name_to_package_name(MLDS_ModuleName) = OuterName,
     mlds_module_name_to_sym_name(MLDS_ModuleName) = InnerName,
 
@@ -272,31 +253,22 @@ qualifier_to_string_for_java(MLDS_ModuleName, QualKind, String) :-
 
     % The later parts of the qualifier correspond to nested Java classes.
     ( if OuterName = InnerName then
-        MangledSuffix = ""
+        Qualifier = MangledOuterName
     else
         remove_sym_name_prefix(InnerName, OuterName, Suffix),
         mangle_sym_name_for_java(Suffix, convert_qual_kind(QualKind), ".",
-            MangledSuffix0),
-        MangledSuffix = "." ++ MangledSuffix0
-    ),
-
-    String = MangledOuterName ++ MangledSuffix.
+            MangledSuffix),
+        string.format("%s.%s", [s(MangledOuterName), s(MangledSuffix)],
+            Qualifier)
+    ).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_module_name(io.text_output_stream::in, mercury_module_name::in,
-    io::di, io::uo) is det.
+:- func make_valid_mangled_name_for_java(string) = string.
 
-output_module_name(Stream, ModuleName, !IO) :-
-    io.write_string(Stream, sym_name_mangle(ModuleName), !IO).
-
-:- pred output_valid_mangled_name_for_java(io.text_output_stream::in,
-    string::in, io::di, io::uo) is det.
-
-output_valid_mangled_name_for_java(Stream, Name, !IO) :-
+make_valid_mangled_name_for_java(Name) = JavaSafeName :-
     MangledName = name_mangle(Name),
-    JavaSafeName = make_valid_java_symbol_name(MangledName),
-    io.write_string(Stream, JavaSafeName, !IO).
+    JavaSafeName = make_valid_java_symbol_name(MangledName).
 
 %---------------------------------------------------------------------------%
 %

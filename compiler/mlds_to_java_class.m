@@ -54,6 +54,8 @@
 :- import_module backend_libs.c_util.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_code_util.
@@ -63,7 +65,6 @@
 :- import_module ml_backend.mlds_to_java_type.
 :- import_module parse_tree.
 :- import_module parse_tree.java_names.
-:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 
@@ -97,8 +98,9 @@ output_class_defn_for_java(Info0, Stream, Indent, ClassDefn, !IO) :-
         Info = Info1
     ),
 
-    output_class_kind_for_java(Stream, Kind, !IO),
-    output_unqual_class_name_for_java(Stream, ClassName, ClassArity, !IO),
+    KindStr = class_kind_to_string_for_java(Kind),
+    ClassNameStr = unqual_class_name_to_string_for_java(ClassName, ClassArity),
+    io.format(Stream, "%s %s", [s(KindStr), s(ClassNameStr)], !IO),
     OutputGenerics = Info ^ joi_output_generics,
     (
         OutputGenerics = do_output_generics,
@@ -110,8 +112,8 @@ output_class_defn_for_java(Info0, Stream, Indent, ClassDefn, !IO) :-
 
     output_inherits_list(Info, Stream, Indent + 1, Inherits, !IO),
     output_implements_list(Stream, Indent + 1, Implements, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "{\n", !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
     (
         ( Kind = mlds_class
         ; Kind = mlds_interface
@@ -133,8 +135,10 @@ output_class_defn_for_java(Info0, Stream, Indent, ClassDefn, !IO) :-
         list.filter(field_var_defn_is_enum_const,
             MemberFields, EnumConstFields),
         % XXX Why +2?
-        output_enum_constants_for_java(Info, Stream, Indent + 2,
-            ClassName, ClassArity, EnumConstFields, !IO),
+        list.foldl(
+            output_enum_constant_for_java(Stream, Indent + 2,
+                ClassName, ClassArity),
+            EnumConstFields, !IO),
         io.nl(Stream, !IO),
         % XXX Why +2?
         output_enum_ctor_for_java(Stream, Indent + 2,
@@ -145,22 +149,20 @@ output_class_defn_for_java(Info0, Stream, Indent, ClassDefn, !IO) :-
         output_function_defn_for_java(Info, Stream, Indent + 1,
             oa_cname(ClassName, ClassArity)),
         Ctors, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n\n", !IO).
+    io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
 
-:- pred output_class_kind_for_java(io.text_output_stream::in,
-    mlds_class_kind::in, io::di, io::uo) is det.
+:- func class_kind_to_string_for_java(mlds_class_kind) = string.
 
-output_class_kind_for_java(Stream, Kind, !IO) :-
+class_kind_to_string_for_java(Kind) = KindStr :-
     (
         Kind = mlds_interface,
-        io.write_string(Stream, "interface ", !IO)
+        KindStr = "interface"
     ;
         ( Kind = mlds_class
         ; Kind = mlds_enum
         ; Kind = mlds_struct
         ),
-        io.write_string(Stream, "class ", !IO)
+        KindStr = "class"
     ).
 
     % Output superclass that this class extends. Java does not support
@@ -180,9 +182,10 @@ output_inherits_list(Info, Stream, Indent, Inherits, !IO) :-
             Inherits = inherits_generic_env_ptr_type,
             BaseType = mlds_generic_env_ptr_type
         ),
-        output_n_indents(Stream, Indent, !IO),
-        io.format(Stream, "extends %s\n",
-            [s(type_to_string_for_java(Info, BaseType))], !IO)
+        IndentStr = indent2_string(Indent),
+        BaseTypeStr = type_to_string_for_java(Info, BaseType),
+        io.format(Stream, "%sextends %s\n",
+            [s(IndentStr), s(BaseTypeStr)], !IO)
     ).
 
     % Output list of interfaces that this class implements.
@@ -195,29 +198,28 @@ output_implements_list(Stream, Indent, InterfaceList, !IO)  :-
         InterfaceList = []
     ;
         InterfaceList = [_ | _],
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "implements ", !IO),
-        write_out_list(output_interface, ",", InterfaceList, Stream, !IO),
-        io.nl(Stream, !IO)
+        IndentStr = indent2_string(Indent),
+        InterfaceStrs = list.map(interface_to_string_for_java, InterfaceList),
+        InterfacesStr = string.join_list(", ", InterfaceStrs),
+        io.format(Stream, "%simplements %s\n",
+            [s(IndentStr), s(InterfacesStr)], !IO)
     ).
 
-:- pred output_interface(mlds_interface_id::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
+:- func interface_to_string_for_java(mlds_interface_id) = string.
 
-output_interface(Interface, Stream, !IO) :-
+interface_to_string_for_java(Interface) = String :-
     Interface = mlds_interface_id(QualClassName, Arity, _),
     QualClassName = qual_class_name(ModuleQualifier, QualKind, ClassName),
     SymName = mlds_module_name_to_sym_name(ModuleQualifier),
     mangle_sym_name_for_java(SymName, convert_qual_kind(QualKind),
         ".", ModuleNameStr),
-    io.format(Stream, "%s.%s", [s(ModuleNameStr), s(ClassName)], !IO),
-
     % Check if the interface is one of the ones in the runtime system.
     % If it is, we don't need to output the arity.
     ( if interface_is_special_for_java(ClassName) then
-        true
+        string.format("%s.%s", [s(ModuleNameStr), s(ClassName)], String)
     else
-        io.format(Stream, "%d", [i(Arity)], !IO)
+        string.format("%s.%s%d", [s(ModuleNameStr), s(ClassName), i(Arity)],
+            String)
     ).
 
 %---------------------------------------------------------------------------%
@@ -235,33 +237,22 @@ output_interface(Interface, Stream, !IO) :-
     mlds_class_name::in, arity::in, io::di, io::uo) is det.
 
 output_enum_ctor_for_java(Stream, Indent, ClassName, ClassArity, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "private ", !IO),
-    output_class_name_arity_for_java(Stream, ClassName, ClassArity, !IO),
-    io.write_string(Stream, "(int val) {\n", !IO),
-    output_n_indents(Stream, Indent + 1, !IO),
+    IndentStr = indent2_string(Indent),
+    Indent1Str = indent2_string(Indent + 1),
+    UnqualClassnameStr =
+        unqual_class_name_to_string_for_java(ClassName, ClassArity),
+    io.format(Stream, "%sprivate %s(int val) {\n",
+        [s(IndentStr), s(UnqualClassnameStr)], !IO),
     % Call the MercuryEnum constructor, which will set the MR_value field.
-    io.write_string(Stream, "super(val);\n", !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    io.format(Stream, "%ssuper(val);\n", [s(Indent1Str)], !IO),
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
-:- pred output_enum_constants_for_java(java_out_info::in,
-    io.text_output_stream::in, indent::in, mlds_class_name::in, arity::in,
-    list(mlds_field_var_defn)::in, io::di, io::uo) is det.
-
-output_enum_constants_for_java(Info, Stream, Indent, ClassName, ClassArity,
-        EnumConsts, !IO) :-
-    write_out_list(
-        output_enum_constant_for_java(Info, Indent, ClassName, ClassArity),
-        "\n", EnumConsts, Stream, !IO),
-    io.nl(Stream, !IO).
-
-:- pred output_enum_constant_for_java(java_out_info::in,
+:- pred output_enum_constant_for_java(io.text_output_stream::in,
     indent::in, mlds_class_name::in, arity::in, mlds_field_var_defn::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
-output_enum_constant_for_java(_Info, Indent, ClassName, ClassArity,
-        FieldVarDefn, Stream, !IO) :-
+output_enum_constant_for_java(Stream, Indent, ClassName, ClassArity,
+        FieldVarDefn, !IO) :-
     FieldVarDefn = mlds_field_var_defn(FieldVarName, _Context, _Flags,
         _Type, Initializer, _GCStmt),
     % Make a static instance of the constant. The MLDS doesn't retain enum
@@ -271,18 +262,14 @@ output_enum_constant_for_java(_Info, Indent, ClassName, ClassArity,
     (
         Initializer = init_obj(Rval),
         ( if Rval = ml_const(mlconst_enum(N, _)) then
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, "public static final ", !IO),
-            output_class_name_arity_for_java(Stream,
-                ClassName, ClassArity, !IO),
-            io.format(Stream, " K%d = new ", [i(N)], !IO),
-            output_class_name_arity_for_java(Stream,
-                ClassName, ClassArity, !IO),
-            io.format(Stream, "(%d); ", [i(N)], !IO),
-
-            io.write_string(Stream, " /* ", !IO),
-            output_field_var_name_for_java(Stream, FieldVarName, !IO),
-            io.write_string(Stream, " */", !IO)
+            IndentStr = indent2_string(Indent),
+            UnqualClassNameStr =
+                unqual_class_name_to_string_for_java(ClassName, ClassArity),
+            FieldVarNameStr = field_var_name_to_string_for_java(FieldVarName),
+            io.format(Stream,
+                "%spublic static final %s K%d = new %s(%d); /* %s */\n",
+                [s(IndentStr), s(UnqualClassNameStr), i(N),
+                s(UnqualClassNameStr), i(N), s(FieldVarNameStr)], !IO)
         else
             unexpected($pred, "not mlconst_enum")
         )
@@ -301,9 +288,9 @@ output_enum_constant_for_java(_Info, Indent, ClassName, ClassArity,
     io::di, io::uo) is det.
 
 output_field_var_decl_for_java(Info, Stream, FieldVarName, Type, !IO) :-
-    output_type_for_java(Info, Stream, Type, !IO),
-    io.write_char(Stream, ' ', !IO),
-    output_field_var_name_for_java(Stream, FieldVarName, !IO).
+    TypeStr = type_to_string_for_java(Info, Type),
+    FieldVarNameStr = field_var_name_to_string_for_java(FieldVarName),
+    io.format(Stream, "%s %s", [s(TypeStr), s(FieldVarNameStr)], !IO).
 
 :- pred output_field_var_defn_for_java(java_out_info::in,
     io.text_output_stream::in, indent::in, mlds_field_var_defn::in,

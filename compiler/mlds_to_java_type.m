@@ -228,7 +228,7 @@ type_to_string_and_dims_for_java(Info, MLDS_Type, String, ArrayDims) :-
     ;
         MLDS_Type = mlds_class_type(ClassId),
         ClassId = mlds_class_id(Name, Arity, _ClassKind),
-        qual_class_name_to_string_for_java(Name, Arity, String),
+        String = qual_class_name_to_string_for_java(Name, Arity),
         ArrayDims = []
     ;
         MLDS_Type = mlds_ptr_type(PointedToType),
@@ -321,7 +321,7 @@ mercury_type_to_string_for_java(Info, Type, CtorCat, String, ArrayDims) :-
             Type = type_variable(TVar, kind_star),
             list.member(TVar, Info ^ joi_univ_tvars)
         then
-            generic_tvar_to_string(TVar, String)
+            String = generic_tvar_to_string(TVar)
         else
             String = "java.lang.Object"
         ),

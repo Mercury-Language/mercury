@@ -188,10 +188,11 @@
 
 %---------------------------------------------------------------------------%
 
+:- func generic_tvar_to_string(tvar) = string.
+
+:- func generic_tvars_to_string(list(tvar)) = string.
 :- pred output_generic_tvars(io.text_output_stream::in, list(tvar)::in,
     io::di, io::uo) is det.
-
-:- pred generic_tvar_to_string(tvar::in, string::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -208,6 +209,8 @@
 :- pred output_n_indents(io.text_output_stream::in, indent::in,
     io::di, io::uo) is det.
 
+:- pred write_indentstr_line(io.text_output_stream::in, string::in, string::in,
+    io::di, io::uo) is det.
 :- pred write_indented_line(io.text_output_stream::in, indent::in, string::in,
     io::di, io::uo) is det.
 
@@ -397,18 +400,23 @@ init_arg_wrappers_cs_java(ArrayDims, StartWrapper, EndWrapper) :-
 
 %---------------------------------------------------------------------------%
 
-output_generic_tvars(Stream, Vars, !IO) :-
+generic_tvar_to_string(Var) = VarName :-
+    varset.lookup_name(varset.init, Var, "MR_tvar_", VarName).
+
+generic_tvars_to_string(Vars) = VarNamesStr :-
     (
-        Vars = []
+        Vars = [],
+        VarNamesStr = ""
     ;
         Vars = [_ | _],
-        list.map(generic_tvar_to_string, Vars, VarNames),
-        io.format(Stream, "<%s>",
-            [s(string.join_list(", ", VarNames))], !IO)
+        VarNameStrs = list.map(generic_tvar_to_string, Vars),
+        string.format("<%s>", [s(string.join_list(", ", VarNameStrs))],
+            VarNamesStr)
     ).
 
-generic_tvar_to_string(Var, VarName) :-
-    varset.lookup_name(varset.init, Var, "MR_tvar_", VarName).
+output_generic_tvars(Stream, Vars, !IO) :-
+    VarNamesStr = generic_tvars_to_string(Vars),
+    io.write_string(Stream, VarNamesStr, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -434,6 +442,9 @@ output_n_indents(Stream, N, !IO) :-
         output_n_indents(Stream, N - 1, !IO)
     ).
 
+write_indentstr_line(Stream, IndentStr, Line, !IO) :-
+    io.format(Stream, "%s%s\n", [s(IndentStr), s(Line)], !IO).
+
 write_indented_line(Stream, Indent, Line, !IO) :-
     output_n_indents(Stream, Indent, !IO),
     io.write_string(Stream, Line, !IO),
@@ -452,12 +463,12 @@ scope_indent(Stmt, CurIndent, ScopeIndent) :-
 
 output_auto_gen_comment(Stream, SourceFileName, !IO)  :-
     library.version(Version, Fullarch),
-    io.write_string(Stream, "//\n//\n", !IO),
+    io.format(Stream, "//\n//\n", [], !IO),
     io.format(Stream, "// Automatically generated from %s by %s,\n",
         [s(SourceFileName), s("the Mercury Compiler")], !IO),
     io.format(Stream, "// version %s\n", [s(Version)], !IO),
     io.format(Stream, "// configured for %s\n", [s(Fullarch)], !IO),
-    io.write_string(Stream, "//\n//\n\n", !IO).
+    io.format(Stream, "//\n//\n\n", [], !IO).
 
 %---------------------------------------------------------------------------%
 

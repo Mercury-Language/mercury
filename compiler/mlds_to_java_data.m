@@ -132,6 +132,7 @@
 :- import_module hlds.hlds_module.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_util.
@@ -205,7 +206,8 @@ output_lval_for_java(Info, Lval, Stream, !IO) :-
                 output_bracketed_rval_for_java(Info, PtrRval, Stream, !IO),
                 io.write_string(Stream, ").", !IO)
             ),
-            output_field_var_name_for_java(Stream, FieldVarName, !IO)
+            FieldVarNameStr = field_var_name_to_string_for_java(FieldVarName),
+            io.write_string(Stream, FieldVarNameStr, !IO)
         )
     ;
         Lval = ml_mem_ref(Rval, _Type),
@@ -213,15 +215,16 @@ output_lval_for_java(Info, Lval, Stream, !IO) :-
     ;
         Lval = ml_target_global_var_ref(GlobalVarRef),
         GlobalVarRef = env_var_ref(EnvVarName),
-        io.write_string(Stream, "mercury_envvar_", !IO),
-        io.write_string(Stream, EnvVarName, !IO)
+        io.format(Stream, "mercury_envvar_%s", [s(EnvVarName)], !IO)
     ;
-        Lval = ml_global_var(QualGlobalVarName, _),
-        output_maybe_qualified_global_var_name_for_java(Info, Stream,
-            QualGlobalVarName, !IO)
+        Lval = ml_global_var(GlobalVarName, _),
+        GlobalVarNameStr = maybe_qualified_global_var_name_to_string_for_java(
+            Info, GlobalVarName),
+        io.write_string(Stream, GlobalVarNameStr, !IO)
     ;
-        Lval = ml_local_var(QualLocalVarName, _),
-        output_local_var_name_for_java(Stream, QualLocalVarName, !IO)
+        Lval = ml_local_var(LocalVarName, _),
+        LocalVarNameStr = local_var_name_to_string_for_java(LocalVarName),
+        io.write_string(Stream, LocalVarNameStr, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -369,8 +372,7 @@ have_preallocated_pseudo_type_var_for_java(N) :-
 output_boxed_rval_for_java(Info, Type, Rval, Stream, !IO) :-
     ( if java_builtin_type(Type, _, JavaBoxedTypeName, _) then
         % valueOf may return cached instances instead of creating new objects.
-        io.write_string(Stream, JavaBoxedTypeName, !IO),
-        io.write_string(Stream, ".valueOf(", !IO),
+        io.format(Stream, "%s.valueOf(", [s(JavaBoxedTypeName)], !IO),
         output_rval_for_java(Info, Rval, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     else
@@ -384,13 +386,9 @@ output_boxed_rval_for_java(Info, Type, Rval, Stream, !IO) :-
 
 output_unboxed_rval_for_java(Info, Type, Rval, Stream, !IO) :-
     ( if java_builtin_type(Type, _, JavaBoxedTypeName, UnboxMethod) then
-        io.write_string(Stream, "((", !IO),
-        io.write_string(Stream, JavaBoxedTypeName, !IO),
-        io.write_string(Stream, ") ", !IO),
+        io.format(Stream, "((%s) ", [s(JavaBoxedTypeName)], !IO),
         output_bracketed_rval_for_java(Info, Rval, Stream, !IO),
-        io.write_string(Stream, ").", !IO),
-        io.write_string(Stream, UnboxMethod, !IO),
-        io.write_string(Stream, "()", !IO)
+        io.format(Stream, ").%s()", [s(UnboxMethod)], !IO)
     else
         io.write_string(Stream, "((", !IO),
         output_type_for_java(Info, Stream, Type, !IO),
@@ -421,8 +419,7 @@ output_unop_for_java(Info, Stream, UnaryOp, Rval, !IO) :-
         ; UnaryOp = hash_string5, UnaryOpStr = "mercury.String.hash5_1_f_0"
         ; UnaryOp = hash_string6, UnaryOpStr = "mercury.String.hash6_1_f_0"
         ),
-        io.write_string(Stream, UnaryOpStr, !IO),
-        io.write_string(Stream, "(", !IO),
+        io.format(Stream, "%s(", [s(UnaryOpStr)], !IO),
         output_rval_for_java(Info, Rval, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
@@ -491,9 +488,7 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
         output_rval_for_java(Info, X, Stream, !IO),
         io.write_string(Stream, ".compareTo(", !IO),
         output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ") ", !IO),
-        io.write_string(Stream, OpStr, !IO),
-        io.write_string(Stream, " 0)", !IO)
+        io.format(Stream, ") %s 0)", [s(OpStr)], !IO)
     ;
         Op = str_cmp,
         io.write_string(Stream, "(", !IO),
@@ -538,17 +533,14 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
             % a functor in an enum type.
             io.write_string(Stream, "((", !IO),
             output_rval_for_java(Info, X, Stream, !IO),
-            io.write_string(Stream, ".MR_value & 0xffffffffL) ", !IO),
-            io.write_string(Stream, OpStr, !IO),
-            io.write_string(Stream, " (", !IO),
+            io.format(Stream, ".MR_value & 0xffffffffL) %s (",
+                [s(OpStr)], !IO),
             output_rval_for_java(Info, Y, Stream, !IO),
             io.write_string(Stream, ".MR_value) & 0xffffffffL)", !IO)
         else
             io.write_string(Stream, "((", !IO),
             output_rval_for_java(Info, X, Stream, !IO),
-            io.write_string(Stream, " & 0xffffffffL) ", !IO),
-            io.write_string(Stream, OpStr, !IO),
-            io.write_string(Stream, " (", !IO),
+            io.format(Stream, " & 0xffffffffL) %s (", [s(OpStr)], !IO),
             output_rval_for_java(Info, Y, Stream, !IO),
             io.write_string(Stream, " & 0xffffffffL))", !IO)
         )
@@ -773,9 +765,7 @@ output_int_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
                 % 0 .. 63.)
                 io.write_string(Stream, "(((", !IO),
                 output_rval_for_java(Info, X, Stream, !IO),
-                io.format(Stream, ") & %s) ", [s(Mask)], !IO),
-                io.write_string(Stream, OpStr, !IO),
-                io.write_string(Stream, " ", !IO),
+                io.format(Stream, ") & %s) %s ", [s(Mask), s(OpStr)], !IO),
                 output_rval_for_java(Info, Y, Stream, !IO),
                 io.write_string(Stream, ")", !IO)
             else
@@ -794,9 +784,7 @@ output_basic_binop_maybe_with_enum_for_java(Info, Stream, OpStr, X, Y, !IO) :-
     ( if rval_is_enum_object(X) then
         io.write_string(Stream, "(", !IO),
         output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, ".MR_value ", !IO),
-        io.write_string(Stream, OpStr, !IO),
-        io.write_string(Stream, " ", !IO),
+        io.format(Stream, ".MR_value %s ", [s(OpStr)], !IO),
         output_rval_for_java(Info, Y, Stream, !IO),
         io.write_string(Stream, ".MR_value)", !IO)
     else
@@ -811,9 +799,7 @@ output_basic_binop_maybe_with_enum_for_java(Info, Stream, OpStr, X, Y, !IO) :-
 output_basic_binop_for_java(Info, Stream, OpStr, X, Y, !IO) :-
     io.write_string(Stream, "(", !IO),
     output_rval_for_java(Info, X, Stream, !IO),
-    io.write_string(Stream, " ", !IO),
-    io.write_string(Stream, OpStr, !IO),
-    io.write_string(Stream, " ", !IO),
+    io.format(Stream, " %s ", [s(OpStr)], !IO),
     output_rval_for_java(Info, Y, Stream, !IO),
     io.write_string(Stream, ")", !IO).
 
@@ -825,9 +811,7 @@ output_basic_binop_for_java(Info, Stream, OpStr, X, Y, !IO) :-
 output_basic_binop_with_mask_for_java(Info, Stream, OpStr, Mask, X, Y, !IO) :-
     io.write_string(Stream, "(((", !IO),
     output_rval_for_java(Info, X, Stream, !IO),
-    io.format(Stream, ") & %s) ", [s(Mask)], !IO),
-    io.write_string(Stream, OpStr, !IO),
-    io.write_string(Stream, " ((", !IO),
+    io.format(Stream, ") & %s) %s ((", [s(Mask), s(OpStr)], !IO),
     output_rval_for_java(Info, Y, Stream, !IO),
     io.format(Stream, ") & %s))", [s(Mask)], !IO).
 
@@ -837,8 +821,7 @@ output_basic_binop_with_mask_for_java(Info, Stream, OpStr, Mask, X, Y, !IO) :-
 :- pragma no_inline(pred(output_binop_func_call_for_java/7)).
 
 output_binop_func_call_for_java(Info, Stream, FuncName, X, Y, !IO) :-
-    io.write_string(Stream, FuncName, !IO),
-    io.write_string(Stream, "(", !IO),
+    io.format(Stream, "%s(", [s(FuncName)], !IO),
     output_rval_for_java(Info, X, Stream, !IO),
     io.write_string(Stream, ", ", !IO),
     output_rval_for_java(Info, Y, Stream, !IO),
@@ -872,20 +855,17 @@ output_rval_const_for_java(Info, Stream, Const, !IO) :-
         output_int_const_for_java(Stream, uint.cast_to_int(U), !IO)
     ;
         Const = mlconst_int8(I8),
-        io.write_string(Stream, "(byte) ", !IO),
-        io.write_int8(Stream, I8, !IO)
+        io.format(Stream, "(byte) %d", [i8(I8)], !IO)
     ;
         Const = mlconst_uint8(U8),
-        io.write_string(Stream, "(byte) ", !IO),
-        io.write_int8(Stream, int8.cast_from_uint8(U8), !IO)
+        io.format(Stream, "(byte) %d", [i8(int8.cast_from_uint8(U8))], !IO)
     ;
         Const = mlconst_int16(I16),
-        io.write_string(Stream, "(short) ", !IO),
-        io.write_int16(Stream, I16, !IO)
+        io.format(Stream, "(short) %d", [i16(I16)], !IO)
     ;
         Const = mlconst_uint16(U16),
-        io.write_string(Stream, "(short) ", !IO),
-        io.write_int16(Stream, int16.cast_from_uint16(U16), !IO)
+        io.format(Stream, "(short) %d", [i16(int16.cast_from_uint16(U16))],
+            !IO)
     ;
         Const = mlconst_int32(I32),
         io.write_int32(Stream, I32, !IO)
@@ -894,12 +874,10 @@ output_rval_const_for_java(Info, Stream, Const, !IO) :-
         io.write_int32(Stream, int32.cast_from_uint32(U32), !IO)
     ;
         Const = mlconst_int64(I64),
-        io.write_int64(Stream, I64, !IO),
-        io.write_string(Stream, "L", !IO)
+        io.format(Stream, "%dL", [i64(I64)], !IO)
     ;
         Const = mlconst_uint64(U64),
-        io.write_int64(Stream, int64.cast_from_uint64(U64), !IO),
-        io.write_string(Stream, "L", !IO)
+        io.format(Stream, "%dL", [i64(int64.cast_from_uint64(U64))], !IO)
     ;
         Const = mlconst_char(N),
         io.write_string(Stream, "(", !IO),
@@ -933,33 +911,31 @@ output_rval_const_for_java(Info, Stream, Const, !IO) :-
         mlds_output_wrapper_code_addr_for_java(Info, Stream, CodeAddr, !IO)
     ;
         Const = mlconst_data_addr_local_var(LocalVarName),
-        output_local_var_name_for_java(Stream, LocalVarName, !IO)
+        LocalVarNameStr = local_var_name_to_string_for_java(LocalVarName),
+        io.write_string(Stream, LocalVarNameStr, !IO)
     ;
         Const = mlconst_data_addr_global_var(ModuleName, GlobalVarName),
         SymName = mlds_module_name_to_sym_name(ModuleName),
         mangle_sym_name_for_java(SymName, module_qual, "__", ModuleNameStr),
-        io.write_string(Stream, ModuleNameStr, !IO),
-        io.write_string(Stream, ".", !IO),
-        output_global_var_name_for_java(Stream, GlobalVarName, !IO)
+        GlobalVarNameStr = global_var_name_to_string_for_java(GlobalVarName),
+        io.format(Stream, "%s.%s",
+            [s(ModuleNameStr), s(GlobalVarNameStr)], !IO)
     ;
         Const = mlconst_data_addr_rtti(ModuleName, RttiId),
         SymName = mlds_module_name_to_sym_name(ModuleName),
         mangle_sym_name_for_java(SymName, module_qual, "__", ModuleNameStr),
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
-        io.write_string(Stream, ModuleNameStr, !IO),
-        io.write_string(Stream, ".", !IO),
-        io.write_string(Stream, RttiAddrName, !IO)
+        io.format(Stream, "%s.%s", [s(ModuleNameStr), s(RttiAddrName)], !IO)
     ;
         Const = mlconst_data_addr_tabling(QualProcLabel, TablingId),
         QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
         SymName = mlds_module_name_to_sym_name(ModuleName),
         mangle_sym_name_for_java(SymName, module_qual, "__", ModuleNameStr),
-        io.write_string(Stream, ModuleNameStr, !IO),
-        io.write_string(Stream, ".", !IO),
-        TablingPrefix = tabling_info_id_str(TablingId) ++ "_",
-        io.write_string(Stream, TablingPrefix, !IO),
-        mlds_output_proc_label_for_java(Stream,
-            mlds_std_tabling_proc_label(ProcLabel), !IO)
+        TablingIdStr = tabling_info_id_str(TablingId),
+        TablingProcLabel = mlds_std_tabling_proc_label(ProcLabel),
+        TablingProcLabelStr = proc_label_to_string_for_java(TablingProcLabel),
+        io.format(Stream, "%s.%s_%s",
+            [s(ModuleNameStr), s(TablingIdStr), s(TablingProcLabelStr)], !IO)
     ;
         Const = mlconst_null(Type),
         Initializer = get_default_initializer_for_java(Type),
@@ -1013,9 +989,11 @@ mlds_output_call_code_addr_for_java(Stream, CodeAddr, !IO) :-
     CodeAddr = mlds_code_addr(QualFuncLabel, _Signature),
     QualFuncLabel = qual_func_label(ModuleName, FuncLabel),
     FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
-    output_qual_name_prefix_java(Stream, ModuleName, module_qual, !IO),
-    mlds_output_proc_label_for_java(Stream, ProcLabel, !IO),
-    io.write_string(Stream, mlds_maybe_aux_func_id_to_suffix(MaybeAux), !IO).
+    Qualifier = qualifier_to_string_for_java(ModuleName, module_qual),
+    ProcLabelStr = proc_label_to_string_for_java(ProcLabel),
+    MaybeAuxSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
+    io.format(Stream, "%s.%s%s",
+        [s(Qualifier), s(ProcLabelStr), s(MaybeAuxSuffix)], !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1079,8 +1057,7 @@ output_initializer_for_java(Info, Stream, OutputAux, Indent, Type,
             OutputAux = oa_force_init,
             % Local variables need to be initialised to avoid warnings.
             InitForType = get_default_initializer_for_java(Type),
-            io.write_string(Stream, " = ", !IO),
-            io.write_string(Stream, InitForType, !IO)
+            io.format(Stream, " = %s", [s(InitForType)], !IO)
         ;
             ( OutputAux = oa_none
             ; OutputAux = oa_cname(_, _)
@@ -1148,20 +1125,20 @@ output_initializer_body_for_java(Info, Stream, InitStart, Indent, Initializer,
             InitStart = not_at_start_of_line
         ;
             InitStart = at_start_of_line,
-            output_n_indents(Stream, Indent, !IO)
+            write_indent2(Stream, Indent, !IO)
         ),
         output_rval_for_java(Info, Rval, Stream, !IO),
         io.format(Stream, "%s\n", [s(Suffix)], !IO)
     ;
         Initializer = init_struct(StructType, FieldInits),
+        IndentStr = indent2_string(Indent),
         (
             InitStart = not_at_start_of_line,
             io.nl(Stream, !IO)
         ;
             InitStart = at_start_of_line
         ),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "new ", !IO),
+        io.format(Stream, "%snew ", [s(IndentStr)], !IO),
         output_type_for_java(Info, Stream, StructType, ArrayDims, !IO),
         init_arg_wrappers_cs_java(ArrayDims, Start, End),
         (
@@ -1172,8 +1149,8 @@ output_initializer_body_for_java(Info, Stream, InitStart, Indent, Initializer,
             io.format(Stream, "%s\n", [s(Start)], !IO),
             output_initializer_body_list_for_java(Info, Stream, Indent + 1,
                 HeadFieldInit, TailFieldInits, "", !IO),
-            output_n_indents(Stream, Indent, !IO),
-            io.format(Stream, "%s%s\n", [s(End), s(Suffix)], !IO)
+            io.format(Stream, "%s%s%s\n",
+                [s(IndentStr), s(End), s(Suffix)], !IO)
         )
     ;
         Initializer = init_array(ElementInits),
@@ -1183,8 +1160,8 @@ output_initializer_body_for_java(Info, Stream, InitStart, Indent, Initializer,
         ;
             InitStart = at_start_of_line
         ),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "new ", !IO),
+        IndentStr = indent2_string(Indent),
+        io.format(Stream, "%snew ", [s(IndentStr)], !IO),
         (
             MaybeType = yes(Type),
             output_type_for_java(Info, Stream, Type, !IO)
@@ -1201,8 +1178,7 @@ output_initializer_body_for_java(Info, Stream, InitStart, Indent, Initializer,
             io.write_string(Stream, " {\n", !IO),
             output_initializer_body_list_for_java(Info, Stream, Indent + 1,
                 HeadElementInit, TailElementInits, "", !IO),
-            output_n_indents(Stream, Indent, !IO),
-            io.format(Stream, "}%s\n", [s(Suffix)], !IO)
+            io.format(Stream, "%s}%s\n", [s(IndentStr), s(Suffix)], !IO)
         )
     ).
 

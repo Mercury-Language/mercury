@@ -304,6 +304,13 @@ generate_call_method_nth_arg(Type, MethodArgVariable, CallArg) :-
     Rval = ml_lval(ml_local_var(MethodArgVariable, mlds_generic_type)),
     CallArg = ml_unbox(Type, Rval).
 
+    % NOTE Since this predicate constructs Args by continually appending
+    % to an initially empty list, its complexity is O(N^2) where N is the
+    % length of first argument. Since most predicates have relatively few
+    % arguments, this is usually not a problem, but the worst-case behavior
+    % is not nice. Building up Args in reverse, or using cords, would fix this,
+    % but may yield some slowdown in the usual cost.
+    %
 :- pred generate_call_method_args_from_array(list(mlds_type)::in,
     mlds_local_var_name::in, int::in,
     list(mlds_rval)::in, list(mlds_rval)::out) is det.

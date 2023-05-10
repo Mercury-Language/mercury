@@ -97,6 +97,7 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -181,7 +182,7 @@ marker_string(marker_comment) = "".
 indent_line_after_context(Stream, OutputLineNumbers, Marker, Context,
         N, !IO) :-
     output_context_for_java(Stream, OutputLineNumbers, Marker, Context, !IO),
-    output_n_indents(Stream, N, !IO).
+    write_indent2(Stream, N, !IO).
 
 write_string_with_context_block(Info, Stream, Indent, Code, Context, !IO) :-
     indent_line_after_context(Stream, Info ^ joi_foreign_line_numbers,

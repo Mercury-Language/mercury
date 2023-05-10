@@ -27,6 +27,14 @@
     indent::in, mlds_function_name::in, output_aux::in, mlds_func_params::in,
     io::di, io::uo) is det.
 
+    % This predicate assumes that our caller
+    %
+    % - has already printed any needed indentation at the start of the
+    %   first line, and
+    %
+    % - it will print the newline after the final parenthesis
+    %   that is output by this predicate.
+    %
 :- pred output_params_for_java(java_out_info::in, io.text_output_stream::in,
     indent::in, list(mlds_argument)::in, io::di, io::uo) is det.
 
@@ -43,6 +51,8 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module ml_backend.mlds_to_java_name.
 :- import_module ml_backend.mlds_to_java_stmt.
 :- import_module ml_backend.mlds_to_java_type.
@@ -51,10 +61,9 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module char.
 :- import_module int.
 :- import_module maybe.
-:- import_module term.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -65,12 +74,14 @@ output_func_decl_for_java(Info, Stream, Indent, FuncName, OutputAux,
         OutputAux = oa_cname(ClassName, ClassArity),
         FuncName = mlds_function_export("<constructor>")
     then
-        output_class_name_arity_for_java(Stream, ClassName, ClassArity, !IO)
+        ClassNameStr =
+            unqual_class_name_to_string_for_java(ClassName, ClassArity),
+        io.write_string(Stream, ClassNameStr, !IO)
     else
         output_return_types_for_java(Info, Stream, RetTypes, !IO),
-        io.nl(Stream, !IO),
-        output_n_indents(Stream, Indent, !IO),
-        output_function_name_for_java(Stream, FuncName, !IO)
+        IndentStr = indent2_string(Indent),
+        FuncNameStr = function_name_to_string_for_java(FuncName),
+        io.format(Stream, "\n%s%s", [s(IndentStr), s(FuncNameStr)], !IO)
     ),
     output_params_for_java(Info, Stream, Indent, Parameters, !IO).
 
@@ -97,20 +108,21 @@ output_params_for_java(Info, Stream, Indent, Parameters, !IO) :-
     ;
         Parameters = [_ | _],
         io.nl(Stream, !IO),
-        write_out_list(output_param(Info, Indent + 1), ",\n", Parameters,
+        Indent1Str = indent2_string(Indent + 1),
+        write_out_list(output_param(Info, Indent1Str), ",\n", Parameters,
             Stream, !IO)
     ),
     io.write_char(Stream, ')', !IO).
 
-:- pred output_param(java_out_info::in, indent::in, mlds_argument::in,
+:- pred output_param(java_out_info::in, string::in, mlds_argument::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 
-output_param(Info, Indent, Arg, Stream, !IO) :-
+output_param(Info, IndentStr, Arg, Stream, !IO) :-
     Arg = mlds_argument(VarName, Type, _GCStmt),
-    output_n_indents(Stream, Indent, !IO),
-    output_type_for_java(Info, Stream, Type, !IO),
-    io.write_char(Stream, ' ', !IO),
-    output_local_var_name_for_java(Stream, VarName, !IO).
+    TypeStr = type_to_string_for_java(Info, Type),
+    VarNameStr = local_var_name_to_string_for_java(VarName),
+    io.format(Stream, "%s%s %s",
+        [s(IndentStr), s(TypeStr), s(VarNameStr)], !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -119,8 +131,9 @@ output_function_defn_for_java(Info, Stream, Indent, OutputAux,
     % Put a blank line before each function definition.
     io.nl(Stream, !IO),
 
-    FunctionDefn = mlds_function_defn(Name, Context, Flags, MaybePredProcId,
-        Params, MaybeBody, _EnvVarNames, _MaybeRequireTailrecInfo),
+    FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
+        MaybePredProcId, Params, MaybeBody,
+        _EnvVarNames, _MaybeRequireTailrecInfo),
     (
         MaybeBody = body_external,
         % This is just a function declaration, with no body.
@@ -137,9 +150,8 @@ output_function_defn_for_java(Info, Stream, Indent, OutputAux,
         % which Java does not allow.
         indent_line_after_context(Stream, Info ^ joi_line_numbers,
             marker_comment, Context, Indent, !IO),
-        io.write_string(Stream, "// external: ", !IO),
-        output_function_name_for_java(Stream, Name, !IO),
-        io.nl(Stream, !IO)
+        FuncNameStr = function_name_to_string_for_java(FuncName),
+        io.format(Stream, "// external: %s\n", [s(FuncNameStr)], !IO)
     ;
         MaybeBody = body_defined_here(_),
         indent_line_after_context(Stream, Info ^ joi_line_numbers,
@@ -152,8 +164,8 @@ output_function_defn_for_java(Info, Stream, Indent, OutputAux,
             maybe_output_pred_proc_id_comment(Stream, Info ^ joi_auto_comments,
                 PredProcid, !IO)
         ),
-        output_func_for_java(Info, Stream, Indent, Name, OutputAux, Context,
-            Params, MaybeBody, !IO)
+        output_func_for_java(Info, Stream, Indent, FuncName, OutputAux,
+            Context, Params, MaybeBody, !IO)
     ).
 
 :- pred output_func_for_java(java_out_info::in, io.text_output_stream::in,
@@ -176,7 +188,8 @@ output_func_for_java(Info, Stream, Indent, FuncName, OutputAux, Context,
             output_statement_for_java(Info, Stream, Indent, FuncInfo, Body,
                 _ExitMethods, !IO)
         else
-            io.write_string(Stream, "{\n", !IO),
+            IndentStr = indent2_string(Indent),
+            io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
             output_statement_for_java(Info, Stream, Indent + 1, FuncInfo, Body,
                 _ExitMethods, !IO),
             indent_line_after_context(Stream, Info ^ joi_line_numbers,

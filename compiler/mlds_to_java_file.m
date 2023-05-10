@@ -86,6 +86,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_global_data.
@@ -403,12 +404,10 @@ output_src_start_for_java(Info, Stream, MercuryModuleName, Imports,
     string::in, io::di, io::uo) is det.
 
 write_main_driver_for_java(Stream, Indent, ClassName, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "public static void main", !IO),
-    io.write_string(Stream, "(java.lang.String[] args)\n", !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "{\n", !IO),
-
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%spublic static void main(java.lang.String[] args)\n",
+        [s(IndentStr)], !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
     % Save the progname and command line arguments in the class variables
     % of `jmercury.runtime.JavaInternal', as well as setting the default
     % exit status.
@@ -428,10 +427,9 @@ write_main_driver_for_java(Stream, Indent, ClassName, !IO) :-
         "io.flush_output_3_p_0(io.stderr_stream_0_f_0());",
         "java.lang.System.exit(jmercury.runtime.JavaInternal.exit_status);"
     ],
-    list.foldl(write_indented_line(Stream, Indent + 1), Body, !IO),
-
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    Indent1Str = indent2_string(Indent + 1),
+    list.foldl(write_indentstr_line(Stream, Indent1Str), Body, !IO),
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred output_src_end_for_java(java_out_info::in, io.text_output_stream::in,
     mercury_module_name::in, io::di, io::uo) is det.
@@ -584,21 +582,20 @@ output_inits_for_java(Stream, Indent, InitPreds, !IO) :-
         InitPreds = []
     ;
         InitPreds = [_ | _],
+        IndentStr = indent2_string(Indent),
+        Indent1Str = indent2_string(Indent + 1),
         % We call the initialisation predicates from a static initialisation
         % block.
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "static {\n", !IO),
-        list.foldl(output_init_for_java_2(Stream, Indent + 1), InitPreds, !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "}\n", !IO)
+        io.format(Stream, "%sstatic {\n", [s(IndentStr)], !IO),
+        list.foldl(output_init_for_java(Stream, Indent1Str), InitPreds, !IO),
+        io.format(Stream, "%s}\n", [s(IndentStr)], !IO)
     ).
 
-:- pred output_init_for_java_2(io.text_output_stream::in, int::in, string::in,
-    io::di, io::uo) is det.
+:- pred output_init_for_java(io.text_output_stream::in, string::in,
+    string::in, io::di, io::uo) is det.
 
-output_init_for_java_2(Stream, Indent, InitPred, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "%s();\n", [s(InitPred)], !IO).
+output_init_for_java(Stream, IndentStr, InitPred, !IO) :-
+    io.format(Stream, "%s%s();\n", [s(IndentStr), s(InitPred)], !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -613,33 +610,30 @@ output_finals_for_java(Stream, Indent, FinalPreds, !IO) :-
         FinalPreds = []
     ;
         FinalPreds = [_ | _],
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "static {\n", !IO),
-        output_n_indents(Stream, Indent + 1, !IO),
-        io.write_string(Stream,
-            "jmercury.runtime.JavaInternal.register_finaliser(\n", !IO),
-        output_n_indents(Stream, Indent + 2, !IO),
-        io.write_string(Stream, "new java.lang.Runnable() {\n", !IO),
-        output_n_indents(Stream, Indent + 3, !IO),
-        io.write_string(Stream, "public void run() {\n", !IO),
-        list.foldl(output_final_pred_call(Stream, Indent + 4),
-            FinalPreds, !IO),
-        output_n_indents(Stream, Indent + 3, !IO),
-        io.write_string(Stream, "}\n", !IO),
-        output_n_indents(Stream, Indent + 2, !IO),
-        io.write_string(Stream, "}\n", !IO),
-        output_n_indents(Stream, Indent + 1, !IO),
-        io.write_string(Stream, ");\n", !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "}\n", !IO)
+        BeforeBlock = [
+            "static {",
+            "  jmercury.runtime.JavaInternal.register_finaliser(",
+            "    new java.lang.Runnable() {",
+            "      public void run() {"
+        ],
+        AfterBlock = [
+            "      }",
+            "    }",
+            "  );",
+            "}"
+        ],
+        IndentStr = indent2_string(Indent),
+        Indent4Str = indent2_string(Indent + 4),
+        list.foldl(write_indentstr_line(Stream, IndentStr), BeforeBlock, !IO),
+        list.foldl(output_final_for_java(Stream, Indent4Str), FinalPreds, !IO),
+        list.foldl(write_indentstr_line(Stream, IndentStr), AfterBlock, !IO)
     ).
 
-:- pred output_final_pred_call(io.text_output_stream::in, indent::in,
+:- pred output_final_for_java(io.text_output_stream::in, string::in,
     string::in, io::di, io::uo) is det.
 
-output_final_pred_call(Stream, Indent, FinalPred, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "%s();\n", [s(FinalPred)], !IO).
+output_final_for_java(Stream, IndentStr, FinalPred, !IO) :-
+    io.format(Stream, "%s%s();\n", [s(IndentStr), s(FinalPred)], !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -652,12 +646,11 @@ output_final_pred_call(Stream, Indent, FinalPred, !IO) :-
 output_env_var_definition_for_java(Stream, Indent, EnvVarName, !IO) :-
     % We use int because the generated code compares against zero, and changing
     % that is more trouble than it's worth as it affects the C backends.
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "private static int mercury_envvar_%s =\n",
-        [s(EnvVarName)], !IO),
-    output_n_indents(Stream, Indent + 1, !IO),
-    io.format(Stream, "java.lang.System.getenv(\"%s\") == null ? 0 : 1;\n",
-        [s(EnvVarName)], !IO).
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%sprivate static int mercury_envvar_%s =\n",
+        [s(IndentStr), s(EnvVarName)], !IO),
+    io.format(Stream, "%sjava.lang.System.getenv(\"%s\") == null ? 0 : 1;\n",
+        [s(IndentStr), s(EnvVarName)], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_java_file.
