@@ -1513,13 +1513,6 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarNameSrc, _TypeQual,
         PredOrFunc = write_cast_as_pred_or_func(CastType),
         (
             PredOrFunc = pf_predicate,
-            % Functor = term.atom(CastTypeString),
-            % term_subst.var_list_to_term_list(ArgVars, ArgTerms),
-            % Term = term.functor(Functor, ArgTerms, dummy_context),
-            % ZZZ
-            % io.write_string(Stream, IndentStr, !IO),
-            % mercury_output_term_src(VarNameSrc, VarNamePrint, Term,
-            %     Stream, !IO)
             CallStr = functor_to_string(VarNameSrc, VarNamePrint,
                 term.atom(CastTypeString), ArgVars),
             io.format(Stream, "%s%s",
