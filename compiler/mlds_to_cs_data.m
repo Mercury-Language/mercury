@@ -733,16 +733,14 @@ output_rval_const_for_csharp(Info, Stream, Const, !IO) :-
         io.write_string(Stream, Name, !IO)
     ;
         Const = mlconst_data_addr_local_var(VarName),
-        local_var_name_to_string_for_csharp(VarName, VarNameStr),
-        write_identifier_string_for_csharp(Stream, VarNameStr, !IO)
+        VarNameStr = local_var_name_to_ll_string_for_csharp(VarName),
+        io.write_string(Stream, VarNameStr, !IO)
     ;
         Const = mlconst_data_addr_global_var(ModuleName, VarName),
         MangledModuleName = strip_mercury_and_mangle_sym_name_for_csharp(
             mlds_module_name_to_sym_name(ModuleName)),
-        global_var_name_to_string_for_csharp(VarName, VarNameStr),
-        io.write_string(Stream, MangledModuleName, !IO),
-        io.write_string(Stream, ".", !IO),
-        write_identifier_string_for_csharp(Stream, VarNameStr, !IO)
+        VarNameStr = global_var_name_to_ll_string_for_csharp(VarName),
+        io.format(Stream, "%s.%s", [s(MangledModuleName), s(VarNameStr)], !IO)
     ;
         Const = mlconst_data_addr_rtti(ModuleName, RttiId),
         MangledModuleName = strip_mercury_and_mangle_sym_name_for_csharp(
@@ -860,7 +858,7 @@ mlds_output_code_addr_for_csharp(Info, Stream, CodeAddr, IsCall, !IO) :-
     FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
     MaybeAuxSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
     output_qual_name_prefix_cs(Stream, ModuleName, module_qual, !IO),
-    mlds_output_proc_label(Stream, MaybeAuxSuffix, ProcLabel, !IO).
+    output_proc_label_for_csharp(Stream, MaybeAuxSuffix, ProcLabel, !IO).
 
 %---------------------------------------------------------------------------%
 

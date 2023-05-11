@@ -218,7 +218,7 @@ type_to_string_and_dims_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
     ;
         MLDS_Type = mlds_class_type(ClassId),
         ClassId = mlds_class_id(Name, Arity, _ClassKind),
-        qual_class_name_to_string_for_csharp(Name, Arity, String),
+        String = qual_class_name_to_nll_string_for_csharp(Name, Arity),
         ArrayDims = []
     ;
         MLDS_Type = mlds_ptr_type(Type),
