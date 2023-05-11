@@ -47,13 +47,13 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module ml_backend.ml_type_gen.    % for ml_gen_type_name
 :- import_module ml_backend.mlds_to_cs_data.
 :- import_module ml_backend.mlds_to_cs_func.
 :- import_module ml_backend.mlds_to_cs_name.
 :- import_module ml_backend.mlds_to_cs_type.
 :- import_module parse_tree.
-:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 
 :- import_module int.
@@ -72,37 +72,37 @@ output_exports_for_csharp(Info, Stream, Indent, Exports, !IO) :-
     mlds_pragma_export::in, io::di, io::uo) is det.
 
 output_export_for_csharp(Info, Stream, Indent, Export, !IO) :-
-    Export = ml_pragma_export(Lang, ExportName, MLDS_Name, MLDS_Signature,
+    Export = ml_pragma_export(Lang, ExportName, QualFuncName, MLDS_Signature,
         _UnivQTVars, _),
-    MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
     expect(unify(Lang, lang_csharp), $pred,
         "foreign_export for language other than C#."),
+    list.filter(is_out_argument, Parameters, OutArgs, InArgs),
+    MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
 
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "public static ", !IO),
+    IndentStr = indent2_string(Indent),
+    % ZZZ Indent1Str = indent2_string(Indent + 1),
+
+    io.format(Stream, "%spublic static\n", [s(IndentStr)], !IO),
     % XXX C# has generics.
     % output_generic_tvars(UnivQTVars, !IO),
-    io.nl(Stream, !IO),
-    output_n_indents(Stream, Indent, !IO),
-
     (
         ReturnTypes = [],
-        io.write_string(Stream, "void ", !IO)
+        io.format(Stream, "%svoid %s", [s(IndentStr), s(ExportName)], !IO)
     ;
         ReturnTypes = [RetType],
-        output_type_for_csharp(Info, Stream, RetType, !IO),
-        io.write_string(Stream, " ", !IO)
+        RetTypeStr = type_to_string_for_csharp(Info, RetType),
+        io.format(Stream, "%s%s %s",
+            [s(IndentStr), s(RetTypeStr), s(ExportName)], !IO)
     ;
         ReturnTypes = [_, _ | _],
         unexpected($pred, "multiple return values in export method")
     ),
-    io.write_string(Stream, ExportName, !IO),
-    output_params_for_csharp(Info, Indent + 1, Parameters, Stream, !IO),
-    io.nl(Stream, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "{\n", !IO),
+    % ZZZ
+    ParamsStr = params_to_string_for_csharp(Info, Indent + 1, Parameters),
+    io.format(Stream, "%s\n", [s(ParamsStr)], !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+
     output_n_indents(Stream, Indent + 1, !IO),
-    list.filter(is_out_argument, Parameters, OutArgs, InArgs),
     (
         ReturnTypes = [],
         (
@@ -122,39 +122,38 @@ output_export_for_csharp(Info, Stream, Indent, Export, !IO) :-
             [s(type_to_string_for_csharp(Info, RetTypeB))], !IO),
         RestOutArgs = OutArgs
     ),
-    write_export_call_for_csharp(Stream, MLDS_Name,
-        InArgs ++ RestOutArgs, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    ExportCallStr = export_call_to_string_for_csharp(QualFuncName,
+        InArgs ++ RestOutArgs),
+    io.write_string(Stream, ExportCallStr, !IO),
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred is_out_argument(mlds_argument::in) is semidet.
 
 is_out_argument(mlds_argument(_, Type, _)) :-
     Type = mlds_ptr_type(_).
 
-:- pred write_export_call_for_csharp(io.text_output_stream::in,
-    qual_function_name::in, list(mlds_argument)::in, io::di, io::uo) is det.
+:- func export_call_to_string_for_csharp(qual_function_name,
+    list(mlds_argument)) = string.
 
-write_export_call_for_csharp(Stream, QualFuncName, Parameters, !IO) :-
+export_call_to_string_for_csharp(QualFuncName, Args) = CallStr :-
     QualFuncName = qual_function_name(ModuleName, FuncName),
-    output_qual_name_prefix_cs(Stream, ModuleName, module_qual, !IO),
-    output_function_name_for_csharp(Stream, FuncName, !IO),
-    io.write_char(Stream, '(', !IO),
-    write_out_list(write_argument_name_for_csharp, ", ", Parameters,
-        Stream, !IO),
-    io.write_string(Stream, ");\n", !IO).
+    Qualifier = qualifier_to_nll_string_for_csharp(ModuleName, module_qual),
+    FuncNameStr = function_name_to_ll_string_for_csharp(FuncName),
+    ArgStrs = list.map(maybe_out_argument_name_for_csharp, Args),
+    ArgsStr = string.join_list(", ", ArgStrs),
+    string.format("%s.%s(%s);\n", [s(Qualifier), s(FuncNameStr), s(ArgsStr)],
+        CallStr).
 
-:- pred write_argument_name_for_csharp(mlds_argument::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- func maybe_out_argument_name_for_csharp(mlds_argument) = string.
 
-write_argument_name_for_csharp(Arg, Stream, !IO) :-
+maybe_out_argument_name_for_csharp(Arg) = ArgStr :-
     Arg = mlds_argument(Name, Type, _),
+    NameStr = local_var_name_to_ll_string_for_csharp(Name),
     ( if Type = mlds_ptr_type(_) then
-        io.write_string(Stream, "out ", !IO)
+        string.format("out %s", [s(NameStr)], ArgStr)
     else
-        true
-    ),
-    output_local_var_name_for_csharp(Stream, Name, !IO).
+        ArgStr = NameStr
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -184,15 +183,16 @@ output_exported_enum_for_csharp(Info, Stream, Indent, ExportedEnum, !IO) :-
     ).
 
 :- pred output_exported_enum_constant_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, indent::in, mlds_type::in,
+    io.text_output_stream::in, int::in, mlds_type::in,
     mlds_exported_enum_constant::in, io::di, io::uo) is det.
 
 output_exported_enum_constant_for_csharp(Info, Stream, Indent, MLDS_Type,
         ExportedConstant, !IO) :-
+    IndentStr = indent2_string(Indent),
     ExportedConstant = mlds_exported_enum_constant(Name, Initializer),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "public static readonly %s %s = ",
-        [s(type_to_string_for_csharp(Info, MLDS_Type)), s(Name)], !IO),
+    TypeStr = type_to_string_for_csharp(Info, MLDS_Type),
+    io.format(Stream, "%spublic static readonly %s %s = ",
+        [s(IndentStr), s(TypeStr), s(Name)], !IO),
     output_initializer_body_for_csharp(Info, Stream, not_at_start_of_line,
         Indent + 1, Initializer, no, ";", !IO).
 

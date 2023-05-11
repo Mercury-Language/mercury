@@ -833,11 +833,12 @@ output_target_code_component_for_csharp(Info, Stream, TargetCode, !IO) :-
     ;
         TargetCode = target_code_type(Type),
         % XXX enable generics here
-        output_type_for_csharp(Info, Stream, Type, !IO)
+        io.write_string(Stream, type_to_string_for_csharp(Info, Type), !IO)
     ;
         TargetCode = target_code_function_name(FuncName),
-        output_maybe_qualified_function_name_for_csharp(Info, Stream,
-            FuncName, !IO)
+        FuncNameStr = maybe_qualified_function_name_to_ll_string_for_csharp(
+            Info, FuncName),
+        io.write_string(Stream, FuncNameStr, !IO)
     ;
         TargetCode = target_code_alloc_id(_),
         unexpected($pred, "target_code_alloc_id not implemented")

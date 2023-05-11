@@ -11,6 +11,41 @@
 %
 % XXX Much of this code will not work when we start enforcing names properly.
 %
+% The functions in this module which return a string containing a single
+% identifier
+%
+% - limit the length of that string if their name contains to_ll_string
+%   (ll being short for length-limited), but
+% - do not limit the length if their name contains to_nll_string
+%   (nll being short for non-length-limited).
+%
+% The reason for length limiting was originally documented with this comment:
+%
+%   Although the C# spec does not limit identifier lengths, the Microsoft
+%   compiler restricts identifiers to 511 characters and Mono restricts
+%   identifiers to 512 characters.
+%   This assumes the identifier contains only ASCII characters.
+%
+% Note that strings that contain anything other than a single identifier
+% should *not* have their length limited in this way, because the function
+% that enforces this limit, limit_identifier_length, may do the wrong thing
+% when given such a string. Specifically, if the string is longer than the
+% limit but the identifier(s) in it are all within the limit, it may
+% scramble one of those identifiers in a way that other references to that
+% same identifier would not. This is then very likely to lead to a mismatch
+% between the form of the identifier used in its definition versus some of
+% its uses.
+%
+% This consideration means that module qualifiers, which (in the case of
+% nested modules) may naturally contain more than one component, should
+% *not* be length limited as a whole. We could apply length limitation
+% to each component of the module qualifier individually, but we do not
+% do so. This should not be a problem, because module names are decided
+% by humans, and no sane human would use a >512 character string as
+% *one* component of a module name. (The length limitation is an issue
+% for *machine*-generated names, such as typeclass instances, whose names
+% contain a description of the entire instance type vector.)
+%
 %---------------------------------------------------------------------------%
 
 :- module ml_backend.mlds_to_cs_name.
@@ -31,10 +66,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Although the C# spec does not limit identifier lengths, the Microsoft
-    % compiler restricts identifiers to 511 characters and Mono restricts
-    % identifiers to 512 characters.
-    % This assumes the identifier contains only ASCII characters.
 :- func limit_identifier_length(string) = string.
     % ZZZ
 :- pred write_identifier_string_for_csharp(io.text_output_stream::in,
@@ -45,15 +76,12 @@
 :- func global_var_name_to_nll_string_for_csharp(mlds_global_var_name)
     = string.
 :- func global_var_name_to_ll_string_for_csharp(mlds_global_var_name) = string.
-:- pred output_global_var_name_for_csharp(io.text_output_stream::in,
+:- pred xoutput_global_var_name_for_csharp(io.text_output_stream::in,
     mlds_global_var_name::in, io::di, io::uo) is det.
 
-/*
-ZZZ
 :- func maybe_qualified_global_var_name_to_string_for_csharp(csharp_out_info,
     qual_global_var_name) = string.
-*/
-:- pred output_maybe_qualified_global_var_name_for_csharp(csharp_out_info::in,
+:- pred xoutput_maybe_qualified_global_var_name_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, qual_global_var_name::in,
     io::di, io::uo) is det.
 
@@ -85,18 +113,13 @@ ZZZ
 :- func qual_class_name_to_ll_string_for_csharp(qual_class_name, arity)
     = string.
 
-:- pred output_class_name_arity_for_csharp(io.text_output_stream::in,
-    mlds_class_name::in, arity::in, io::di, io::uo) is det.
-
 %---------------------------------------------------------------------------%
 
 :- func function_name_to_nll_string_for_csharp(mlds_function_name) = string.
 :- func function_name_to_ll_string_for_csharp(mlds_function_name) = string.
-:- pred output_function_name_for_csharp(io.text_output_stream::in,
-    mlds_function_name::in, io::di, io::uo) is det.
 
-:- pred output_maybe_qualified_function_name_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, qual_function_name::in, io::di, io::uo) is det.
+:- func maybe_qualified_function_name_to_ll_string_for_csharp(csharp_out_info,
+    qual_function_name) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -107,10 +130,8 @@ ZZZ
 
 %---------------------------------------------------------------------------%
 
-:- func qualifier_to_string_for_csharp(mlds_module_name, mlds_qual_kind)
+:- func qualifier_to_nll_string_for_csharp(mlds_module_name, mlds_qual_kind)
     = string.
-:- pred output_qual_name_prefix_cs(io.text_output_stream::in,
-    mlds_module_name::in, mlds_qual_kind::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -187,41 +208,32 @@ global_var_name_to_ll_string_for_csharp(GlobalVarName) = GlobalVarNameStr :-
         = global_var_name_to_nll_string_for_csharp(GlobalVarName),
     GlobalVarNameStr = limit_identifier_length(GlobalVarNameStr0).
 
-output_global_var_name_for_csharp(Stream, GlobalVarName, !IO) :-
+xoutput_global_var_name_for_csharp(Stream, GlobalVarName, !IO) :-
     GlobalVarNameStr = global_var_name_to_ll_string_for_csharp(GlobalVarName),
     io.write_string(Stream, GlobalVarNameStr, !IO).
 
-/*
 maybe_qualified_global_var_name_to_string_for_csharp(Info, QualGlobalVarName)
         = MaybeQualGlobalVarNameStr :-
     QualGlobalVarName = qual_global_var_name(GlobalVarModule, GlobalVarName),
-    % ZZZ what is length limited
-    GlobalVarNameStr = global_var_name_to_string_for_csharp(GlobalVarName),
+    GlobalVarNameStr = global_var_name_to_ll_string_for_csharp(GlobalVarName),
     % Don't module qualify names which are defined in the current module.
     % This avoids unnecessary verbosity.
     CurrentModule = Info ^ csoi_module_name,
     ( if GlobalVarModule = CurrentModule then
         MaybeQualGlobalVarNameStr = GlobalVarNameStr
     else
-        output_qual_name_prefix_cs(Stream, ModuleName, module_qual, !IO),
+        QualStr =
+            qualifier_to_nll_string_for_csharp(GlobalVarModule, module_qual),
         string.format("%s.%s", [s(QualStr), s(GlobalVarNameStr)],
             MaybeQualGlobalVarNameStr)
-    ),
-    output_global_var_name_for_csharp(Stream, GlobalVarName, !IO).
-*/
+    ).
 
-output_maybe_qualified_global_var_name_for_csharp(Info, Stream,
+xoutput_maybe_qualified_global_var_name_for_csharp(Info, Stream,
         QualGlobalVarName, !IO) :-
-    % Don't module qualify names which are defined in the current module.
-    % This avoids unnecessary verbosity.
-    QualGlobalVarName = qual_global_var_name(ModuleName, GlobalVarName),
-    CurrentModuleName = Info ^ csoi_module_name,
-    ( if ModuleName = CurrentModuleName then
-        true
-    else
-        output_qual_name_prefix_cs(Stream, ModuleName, module_qual, !IO)
-    ),
-    output_global_var_name_for_csharp(Stream, GlobalVarName, !IO).
+    MaybeQualGlobalVarNameStr =
+        maybe_qualified_global_var_name_to_string_for_csharp(Info,
+            QualGlobalVarName),
+    io.write_string(Stream, MaybeQualGlobalVarNameStr, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -280,10 +292,11 @@ qual_class_name_to_nll_string_for_csharp(QualName, Arity) = QualClassNameStr :-
         string.format("runtime.%s", [s(ClassName)], QualClassNameStr)
     else
         % XXX maybe duplicated code
-        Qualifier = qualifier_to_string_for_csharp(MLDS_ModuleName, QualKind),
+        QualStr =
+            qualifier_to_nll_string_for_csharp(MLDS_ModuleName, QualKind),
         UnqualClassNameStr =
             unqual_class_name_to_nll_string_for_csharp(ClassName, Arity),
-        string.format("%s.%s", [s(Qualifier), s(UnqualClassNameStr)],
+        string.format("%s.%s", [s(QualStr), s(UnqualClassNameStr)],
             QualClassNameStr)
     ).
 
@@ -291,13 +304,6 @@ qual_class_name_to_ll_string_for_csharp(QualName, Arity) = QualClassNameStr :-
     QualClassNameStr0 =
         qual_class_name_to_nll_string_for_csharp(QualName, Arity),
     QualClassNameStr = limit_identifier_length(QualClassNameStr0).
-
-% ZZZ ll
-output_class_name_arity_for_csharp(Stream, ClassName, ClassArity, !IO) :-
-    ClassNameStr0 =
-        unqual_class_name_to_nll_string_for_csharp(ClassName, ClassArity),
-    ClassNameStr = limit_identifier_length(ClassNameStr0),
-    io.write_string(Stream, ClassNameStr, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -320,22 +326,20 @@ function_name_to_ll_string_for_csharp(FunctionName) = FunctionNameStr :-
     FunctionNameStr0 = function_name_to_nll_string_for_csharp(FunctionName),
     FunctionNameStr = limit_identifier_length(FunctionNameStr0).
 
-output_function_name_for_csharp(Stream, FunctionName, !IO) :-
-    FunctionNameStr = function_name_to_ll_string_for_csharp(FunctionName),
-    io.write_string(Stream, FunctionNameStr, !IO).
-
-output_maybe_qualified_function_name_for_csharp(Info, Stream,
-        QualFuncName, !IO) :-
+maybe_qualified_function_name_to_ll_string_for_csharp(Info, QualFuncName)
+        = MaybeQualFuncNameStr :-
+    QualFuncName = qual_function_name(FuncModule, FuncName),
+    FuncNameStr = function_name_to_ll_string_for_csharp(FuncName),
     % Don't module qualify names which are defined in the current module.
     % This avoids unnecessary verbosity.
-    QualFuncName = qual_function_name(ModuleName, FuncName),
-    CurrentModuleName = Info ^ csoi_module_name,
-    ( if ModuleName = CurrentModuleName then
-        true
+    CurrentModule = Info ^ csoi_module_name,
+    ( if FuncModule = CurrentModule then
+        MaybeQualFuncNameStr = FuncNameStr
     else
-        output_qual_name_prefix_cs(Stream, ModuleName, module_qual, !IO)
-    ),
-    output_function_name_for_csharp(Stream, FuncName, !IO).
+        QualStr = qualifier_to_nll_string_for_csharp(FuncModule, module_qual),
+        string.format("%s.%s", [s(QualStr), s(FuncNameStr)],
+            MaybeQualFuncNameStr)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -407,7 +411,7 @@ output_proc_label_for_csharp(Stream, Suffix, ProcLabel, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-qualifier_to_string_for_csharp(MLDS_ModuleName, QualKind) = Str :-
+qualifier_to_nll_string_for_csharp(MLDS_ModuleName, QualKind) = Str :-
     mlds_module_name_to_package_name(MLDS_ModuleName) = OuterName,
     mlds_module_name_to_sym_name(MLDS_ModuleName) = InnerName,
 
@@ -424,12 +428,6 @@ qualifier_to_string_for_csharp(MLDS_ModuleName, QualKind) = Str :-
             MangledSuffix),
         string.format("%s.%s", [s(MangledOuterName), s(MangledSuffix)], Str)
     ).
-
-output_qual_name_prefix_cs(Stream, ModuleName, QualKind, !IO) :-
-    Qualifier = qualifier_to_string_for_csharp(ModuleName, QualKind),
-    % ZZZ limit_identifier_length
-    io.write_string(Stream, Qualifier, !IO),
-    io.write_string(Stream, ".", !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_cs_name.

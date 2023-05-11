@@ -55,6 +55,8 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module ml_backend.mlds_to_cs_class.
 :- import_module ml_backend.mlds_to_cs_data.
 :- import_module ml_backend.mlds_to_cs_name.
@@ -78,37 +80,31 @@
 output_global_var_decls_for_csharp(_, _, _, [], !IO).
 output_global_var_decls_for_csharp(Info, Stream, Indent,
         [GlobalVarDefn | GlobalVarDefns], !IO) :-
-    GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, Flags,
+    GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, Flags0,
         Type, _Initializer, _GCStmt),
-    output_n_indents(Stream, Indent, !IO),
+    % ZZZ move to caller
+    IndentStr = indent2_string(Indent),
     % We can't honour _Constness here as the variable is assigned separately.
-    Flags = mlds_global_var_decl_flags(Access, _Constness),
-    NonConstFlags = mlds_global_var_decl_flags(Access, modifiable),
-    output_global_var_decl_flags_for_csharp(Stream, NonConstFlags, !IO),
-    output_global_var_decl_for_csharp(Info, Stream, GlobalVarName, Type, !IO),
-    io.write_string(Stream, ";\n", !IO),
+    Flags0 = mlds_global_var_decl_flags(Access, _Constness),
+    Flags  = mlds_global_var_decl_flags(Access, modifiable),
+    FlagsStr = global_var_decl_flags_to_string_for_csharp(Flags),
+    TypeStr = type_to_string_for_csharp(Info, Type),
+    GlobalVarNameStr = global_var_name_to_ll_string_for_csharp(GlobalVarName),
+    io.format(Stream, "%s%s %s %s;\n",
+        [s(IndentStr), s(FlagsStr), s(TypeStr), s(GlobalVarNameStr)], !IO),
     output_global_var_decls_for_csharp(Info, Stream, Indent,
         GlobalVarDefns, !IO).
-
-:- pred output_global_var_decl_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, mlds_global_var_name::in, mlds_type::in,
-    io::di, io::uo) is det.
-
-output_global_var_decl_for_csharp(Info, Stream, GlobalVarName, Type, !IO) :-
-    output_type_for_csharp(Info, Stream, Type, !IO),
-    io.write_char(Stream, ' ', !IO),
-    output_global_var_name_for_csharp(Stream, GlobalVarName, !IO).
 
 %---------------------------------------------------------------------------%
 
 output_init_global_var_method_for_csharp(Info, Stream, Indent,
         GlobalVarDefns, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "private static void MR_init_data() {\n", !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%sprivate static void MR_init_data() {\n",
+        [s(IndentStr)], !IO),
     output_init_global_var_statements_for_csharp(Info, Stream, Indent + 1,
         GlobalVarDefns, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred output_init_global_var_statements_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, indent::in, list(mlds_global_var_defn)::in,
@@ -119,8 +115,9 @@ output_init_global_var_statements_for_csharp(Info, Stream, Indent,
         [GlobalVarDefn | GlobalVarDefns], !IO) :-
     GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, _Flags,
         Type, Initializer, _GCStmt),
-    output_n_indents(Stream, Indent, !IO),
-    output_global_var_name_for_csharp(Stream, GlobalVarName, !IO),
+    IndentStr = indent2_string(Indent),
+    GlobalVarNameStr = global_var_name_to_ll_string_for_csharp(GlobalVarName),
+    io.format(Stream, "%s%s", [s(IndentStr), s(GlobalVarNameStr)], !IO),
     output_initializer_for_csharp(Info, Stream, oa_none, Indent + 1,
         Type, Initializer, ";", !IO),
     output_init_global_var_statements_for_csharp(Info, Stream, Indent,
@@ -130,11 +127,14 @@ output_init_global_var_statements_for_csharp(Info, Stream, Indent,
 
 output_global_var_defn_for_csharp(Info, Stream, Indent, OutputAux,
         GlobalVarDefn, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
     GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, Flags,
         Type, Initializer, _),
-    output_global_var_decl_flags_for_csharp(Stream, Flags, !IO),
-    output_global_var_decl_for_csharp(Info, Stream, GlobalVarName, Type, !IO),
+    IndentStr = indent2_string(Indent),
+    FlagsStr = global_var_decl_flags_to_string_for_csharp(Flags),
+    TypeStr = type_to_string_for_csharp(Info, Type),
+    GlobalVarNameStr = global_var_name_to_ll_string_for_csharp(GlobalVarName),
+    io.format(Stream, "%s%s %s %s",
+        [s(IndentStr), s(FlagsStr), s(TypeStr), s(GlobalVarNameStr)], !IO),
     output_initializer_for_csharp(Info, Stream, OutputAux, Indent + 1,
         Type, Initializer, ";", !IO).
 
@@ -149,16 +149,16 @@ output_scalar_common_data_for_csharp(Info, Stream, Indent,
     map.foldl3(output_scalar_defns_for_csharp(Info, Stream, Indent),
         ScalarCellGroupMap, digraph.init, Graph, map.init, Map, !IO),
 
-    ( if digraph.tsort(Graph, SortedScalars0) then
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream,
-            "private static void MR_init_scalar_common_data() {\n", !IO),
-        list.reverse(SortedScalars0, SortedScalars),
+    ( if digraph.return_vertices_in_from_to_order(Graph, FromToScalars) then
+        list.reverse(FromToScalars, ToFromScalars),
+        IndentStr = indent2_string(Indent),
+        io.format(Stream,
+            "%sprivate static void MR_init_scalar_common_data() {\n",
+            [s(IndentStr)], !IO),
         list.foldl(
             output_scalar_init_for_csharp(Info, Stream, Indent + 1, Map),
-            SortedScalars, !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "}\n", !IO)
+            ToFromScalars, !IO),
+        io.format(Stream, "%s}\n", [s(IndentStr)], !IO)
     else
         unexpected($pred, "digraph.tsort failed")
     ).
@@ -178,9 +178,10 @@ output_scalar_defns_for_csharp(Info, Stream, Indent, TypeNum, CellGroup,
     ArrayType = mlds_array_type(Type),
     RowInits = cord.list(RowInitsCord),
 
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "private static readonly %s[] MR_scalar_common_%d = ",
-        [s(type_to_string_for_csharp(Info, Type)), i(TypeRawNum)], !IO),
+    IndentStr = indent2_string(Indent),
+    TypeStr = type_to_string_for_csharp(Info, Type),
+    io.format(Stream, "%sprivate static readonly %s[] MR_scalar_common_%d = ",
+        [s(IndentStr), s(TypeStr), i(TypeRawNum)], !IO),
     output_initializer_alloc_only_for_csharp(Info, Stream,
         init_array(RowInits), yes(ArrayType), ";", !IO),
 
@@ -194,12 +195,12 @@ output_scalar_defns_for_csharp(Info, Stream, Indent, TypeNum, CellGroup,
     io::di, io::uo) is det.
 
 output_scalar_init_for_csharp(Info, Stream, Indent, Map, Scalar, !IO) :-
+    IndentStr = indent2_string(Indent),
     map.lookup(Map, Scalar, Initializer),
     Scalar = mlds_scalar_common(_, Type, TypeNum, RowNum),
     TypeNum = ml_scalar_common_type_num(TypeRawNum),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "MR_scalar_common_%d[%d] =\n",
-        [i(TypeRawNum), i(RowNum)], !IO),
+    io.format(Stream, "%sMR_scalar_common_%d[%d] =\n",
+        [s(IndentStr), i(TypeRawNum), i(RowNum)], !IO),
     output_initializer_body_for_csharp(Info, Stream, at_start_of_line,
         Indent + 1, Initializer, yes(Type), ";", !IO).
 
@@ -209,13 +210,13 @@ output_vector_common_data_for_csharp(Info, Stream, Indent,
         VectorCellGroupMap, !IO) :-
     map.foldl(output_vector_cell_decl_for_csharp(Info, Stream, Indent),
         VectorCellGroupMap, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream,
-        "private static void MR_init_vector_common_data() {\n", !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream,
+        "%sprivate static void MR_init_vector_common_data() {\n",
+        [s(IndentStr)], !IO),
     map.foldl(output_vector_cell_init_for_csharp(Info, Stream, Indent + 1),
         VectorCellGroupMap, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred output_vector_cell_decl_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, indent::in,
@@ -229,10 +230,11 @@ output_vector_cell_decl_for_csharp(Info, Stream, Indent, TypeNum,
         _RowInits),
     output_class_defn_for_csharp(Info, Stream, Indent, ClassDefn, !IO),
 
-    output_n_indents(Stream, Indent, !IO),
+    IndentStr = indent2_string(Indent),
+    TypeStr = type_to_string_for_csharp(Info, Type),
     io.format(Stream,
-        "private static /* readonly */ %s[] MR_vector_common_%d;\n",
-        [s(type_to_string_for_csharp(Info, Type)), i(TypeRawNum)], !IO).
+        "%sprivate static /* readonly */ %s[] MR_vector_common_%d;\n",
+        [s(IndentStr), s(TypeStr), i(TypeRawNum)], !IO).
 
 :- pred output_vector_cell_init_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, indent::in,
@@ -241,30 +243,30 @@ output_vector_cell_decl_for_csharp(Info, Stream, Indent, TypeNum,
 
 output_vector_cell_init_for_csharp(Info, Stream, Indent, TypeNum,
         CellGroup, !IO) :-
+    Indent1 = Indent + 1,
+    IndentStr = indent2_string(Indent),
+    Indent1Str = indent2_string(Indent1),
     TypeNum = ml_vector_common_type_num(TypeRawNum),
     CellGroup = ml_vector_cell_group(Type, _ClassDefn, _FieldIds, _NextRow,
         RowInits),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "MR_vector_common_%d = new %s[]\n",
-        [i(TypeRawNum), s(type_to_string_for_csharp(Info, Type))], !IO),
-    output_n_indents(Stream, Indent + 1, !IO),
-    io.write_string(Stream, "{\n", !IO),
+    TypeStr = type_to_string_for_csharp(Info, Type),
+    io.format(Stream, "%sMR_vector_common_%d = new %s[]\n",
+        [s(IndentStr), i(TypeRawNum), s(TypeStr)], !IO),
+    io.format(Stream, "%s{\n", [s(Indent1Str)], !IO),
     output_nonempty_initializer_body_list_for_csharp(Info, Stream, Indent + 2,
         cord.list(RowInits), "", !IO),
-    output_n_indents(Stream, Indent + 1, !IO),
-    io.write_string(Stream, "};\n", !IO).
+    io.format(Stream, "%s};\n", [s(Indent1Str)], !IO).
 
 %---------------------------------------------------------------------------%
 
 output_rtti_assignments_for_csharp(Info, Stream, Indent, Defns, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "static void MR_init_rtti() {\n", !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%sstatic void MR_init_rtti() {\n", [s(IndentStr)], !IO),
     OrderedDefns = order_mlds_rtti_defns(Defns),
     list.foldl(
         output_rtti_defns_assignments_for_csharp(Info, Stream, Indent + 1),
         OrderedDefns, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred output_rtti_defns_assignments_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, indent::in, list(mlds_global_var_defn)::in,
@@ -272,8 +274,8 @@ output_rtti_assignments_for_csharp(Info, Stream, Indent, Defns, !IO) :-
 
 output_rtti_defns_assignments_for_csharp(Info, Stream, Indent, Defns, !IO) :-
     % Separate cliques.
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "//\n", !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%s//\n", [s(IndentStr)], !IO),
     list.foldl(output_rtti_defn_assignments_for_csharp(Info, Stream, Indent),
         Defns, !IO).
 
@@ -297,13 +299,14 @@ output_rtti_defn_assignments_for_csharp(Info, Stream, Indent,
             _BaseTypeName, ArrayDims),
         (
             ArrayDims = [],
-            output_n_indents(Stream, Indent, !IO),
-            output_global_var_name_for_csharp(Stream, GlobalVarName, !IO),
-            io.write_string(Stream, ".init(\n", !IO),
+            IndentStr = indent2_string(Indent),
+            GlobalVarNameStr =
+                global_var_name_to_ll_string_for_csharp(GlobalVarName),
+            io.format(Stream, "%s%s.init(\n",
+                [s(IndentStr), s(GlobalVarNameStr)], !IO),
             output_nonempty_initializer_body_list_for_csharp(Info, Stream,
                 Indent + 1, FieldInits, "", !IO),
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, ");\n", !IO)
+            io.format(Stream, "%s);\n", [s(IndentStr)], !IO)
         ;
             ArrayDims = [_ | _],
             % Not encountered in practice.
@@ -324,11 +327,10 @@ output_rtti_defn_assignments_for_csharp(Info, Stream, Indent,
 
 output_rtti_array_assignments_for_csharp(Info, Stream, Indent, GlobalVarName,
         ElementInit, Index, Index + 1, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
-    output_global_var_name_for_csharp(Stream, GlobalVarName, !IO),
-    io.write_string(Stream, "[", !IO),
-    io.write_int(Stream, Index, !IO),
-    io.write_string(Stream, "] =\n", !IO),
+    IndentStr = indent2_string(Indent),
+    GlobalVarNameStr = global_var_name_to_ll_string_for_csharp(GlobalVarName),
+    io.format(Stream, "%s%s[%d] =\n",
+        [s(IndentStr), s(GlobalVarNameStr), i(Index)], !IO),
     output_initializer_body_for_csharp(Info, Stream, at_start_of_line,
         Indent + 1, ElementInit, no, ";", !IO).
 
@@ -337,25 +339,29 @@ output_rtti_array_assignments_for_csharp(Info, Stream, Indent, GlobalVarName,
 % Code to output declaration specifiers.
 %
 
-:- pred output_global_var_decl_flags_for_csharp(io.text_output_stream::in,
-    mlds_global_var_decl_flags::in, io::di, io::uo) is det.
+:- func global_var_decl_flags_to_string_for_csharp(mlds_global_var_decl_flags)
+    = string.
 
-output_global_var_decl_flags_for_csharp(Stream, Flags, !IO) :-
+global_var_decl_flags_to_string_for_csharp(Flags) = FlagsStr :-
     Flags = mlds_global_var_decl_flags(Access, Constness),
     (
         Access = gvar_acc_whole_program,
-        io.write_string(Stream, "public ", !IO)
+        (
+            Constness = const,
+            FlagsStr = "public static readonly"
+        ;
+            Constness = modifiable,
+            FlagsStr = "public static"
+        )
     ;
         Access = gvar_acc_module_only,
-        io.write_string(Stream, "private ", !IO)
-    ),
-    % PerInstance = one_copy,
-    io.write_string(Stream, "static ", !IO),
-    (
-        Constness = const,
-        io.write_string(Stream, "readonly ", !IO)
-    ;
-        Constness = modifiable
+        (
+            Constness = const,
+            FlagsStr = "private static readonly"
+        ;
+            Constness = modifiable,
+            FlagsStr = "private static"
+        )
     ).
 
 %---------------------------------------------------------------------------%

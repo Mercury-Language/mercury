@@ -177,15 +177,16 @@ output_lval_for_csharp(Info, Lval, Stream, !IO) :-
     ;
         Lval = ml_target_global_var_ref(GlobalVarRef),
         GlobalVarRef = env_var_ref(EnvVarName),
-        io.write_string(Stream, "mercury_envvar_", !IO),
-        io.write_string(Stream, EnvVarName, !IO)
+        io.format(Stream, "mercury_envvar_%s", [s(EnvVarName)], !IO)
     ;
         Lval = ml_local_var(LocalVarName, _),
-        output_local_var_name_for_csharp(Stream, LocalVarName, !IO)
+        LocalVarNameStr = local_var_name_to_ll_string_for_csharp(LocalVarName),
+        io.write_string(Stream, LocalVarNameStr, !IO)
     ;
-        Lval = ml_global_var(QualGlobalVarName, _),
-        output_maybe_qualified_global_var_name_for_csharp(Info, Stream,
-            QualGlobalVarName, !IO)
+        Lval = ml_global_var(GlobalVarName, _),
+        GlobalVarNameStr = maybe_qualified_global_var_name_to_string_for_csharp(
+            Info, GlobalVarName),
+        io.write_string(Stream, GlobalVarNameStr, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -857,8 +858,10 @@ mlds_output_code_addr_for_csharp(Info, Stream, CodeAddr, IsCall, !IO) :-
     QualFuncLabel = qual_func_label(ModuleName, FuncLabel),
     FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
     MaybeAuxSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
-    output_qual_name_prefix_cs(Stream, ModuleName, module_qual, !IO),
-    output_proc_label_for_csharp(Stream, MaybeAuxSuffix, ProcLabel, !IO).
+    Qualifier = qualifier_to_nll_string_for_csharp(ModuleName, module_qual),
+    ProcLabelStr =
+        proc_label_to_ll_string_for_csharp(MaybeAuxSuffix, ProcLabel),
+    io.format(Stream, "%s.%s", [s(Qualifier), s(ProcLabelStr)], !IO).
 
 %---------------------------------------------------------------------------%
 

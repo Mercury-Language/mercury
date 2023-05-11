@@ -27,9 +27,8 @@
     io.text_output_stream::in, indent::in, output_aux::in,
     mlds_function_defn::in, io::di, io::uo) is det.
 
-:- pred output_params_for_csharp(csharp_out_info::in,
-    indent::in, list(mlds_argument)::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
+:- func params_to_string_for_csharp(csharp_out_info, indent,
+    list(mlds_argument)) = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -39,16 +38,18 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.            % for pred_proc_id
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module ml_backend.mlds_to_cs_name.
 :- import_module ml_backend.mlds_to_cs_stmt.
 :- import_module ml_backend.mlds_to_cs_type.
 :- import_module parse_tree.
-:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module int.
 :- import_module maybe.
+:- import_module string.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -57,8 +58,7 @@ output_function_defn_for_csharp(Info, Stream, Indent, OutputAux,
         FunctionDefn, !IO) :-
     % Put a blank line before each function definition.
     io.nl(Stream, !IO),
-
-    output_n_indents(Stream, Indent, !IO),
+    write_indent2(Stream, Indent, !IO),
     FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
         MaybePredProcId, Params, MaybeBody, _EnvVarNames,
         _MaybeRequireTailrecInfo),
@@ -161,17 +161,20 @@ output_func_decl_for_csharp(Info, Stream, Indent, FuncName, OutputAux,
         OutputAux = oa_cname(ClassName, ClassArity),
         FuncName = mlds_function_export("<constructor>")
     then
-        output_class_name_arity_for_csharp(Stream, ClassName, ClassArity, !IO),
-        OutParams = []
+        ClassNameStr =
+            unqual_class_name_to_ll_string_for_csharp(ClassName, ClassArity),
+        ParamsStr = params_to_string_for_csharp(Info, Indent, Parameters),
+        io.format(Stream, "%s%s", [s(ClassNameStr), s(ParamsStr)], !IO)
     else
-        output_return_types_for_csharp(Info, Stream, RetTypes,
-            RestRetTypes, !IO),
-        io.write_char(Stream, ' ', !IO),
-        output_function_name_for_csharp(Stream, FuncName, !IO),
-        list.map_foldl(make_out_param, RestRetTypes, OutParams, 2, _)
-    ),
-    output_params_for_csharp(Info, Indent, Parameters ++ OutParams,
-        Stream, !IO).
+        FuncNameStr = function_name_to_ll_string_for_csharp(FuncName),
+        get_return_type_and_out_params_for_csharp(Info, RetTypes,
+            RetTypeStr, OutParamTypes),
+        list.map_foldl(make_out_param, OutParamTypes, OutParams, 2, _),
+        ParamsStr = params_to_string_for_csharp(Info, Indent,
+            Parameters ++ OutParams),
+        io.format(Stream, "%s %s%s",
+            [s(RetTypeStr), s(FuncNameStr), s(ParamsStr)], !IO)
+    ).
 
 :- pred make_out_param(mlds_type::in, mlds_argument::out,
     int::in, int::out) is det.
@@ -180,48 +183,49 @@ make_out_param(Type, Argument, Num, Num + 1) :-
     VarName = lvn_comp_var(lvnc_out_param(Num)),
     Argument = mlds_argument(VarName, mlds_ptr_type(Type), gc_no_stmt).
 
-:- pred output_return_types_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, mlds_return_types::in, list(mlds_type)::out,
-    io::di, io::uo) is det.
+:- pred get_return_type_and_out_params_for_csharp(csharp_out_info::in,
+    mlds_return_types::in, string::out, list(mlds_type)::out) is det.
 
-output_return_types_for_csharp(Info, Stream, RetTypes, OutParams, !IO) :-
+get_return_type_and_out_params_for_csharp(Info, RetTypes,
+        RetTypeStr, OutParams) :-
     (
         RetTypes = [],
-        io.write_string(Stream, "void", !IO),
+        RetTypeStr = "void",
         OutParams = []
     ;
         RetTypes = [RetType | OutParams],
         % The first return value is returned directly. Any further return
         % values are returned via out parameters.
-        output_type_for_csharp(Info, Stream, RetType, !IO)
+        RetTypeStr = type_to_string_for_csharp(Info, RetType)
     ).
 
-output_params_for_csharp(Info, Indent, Parameters, Stream, !IO) :-
-    io.write_char(Stream, '(', !IO),
+params_to_string_for_csharp(Info, Indent, Params) = Str :-
     (
-        Parameters = []
+        Params = [],
+        Str = "()"
     ;
-        Parameters = [_ | _],
-        io.nl(Stream, !IO),
-        write_out_list(output_param_for_csharp(Info, Indent + 1),
-            ",\n", Parameters, Stream, !IO)
-    ),
-    io.write_char(Stream, ')', !IO).
+        Params = [_ | _],
+        Indent1Str = indent2_string(Indent + 1),
+        ParamStrs =
+            list.map(param_to_string_for_csharp(Info, Indent1Str), Params),
+        ParamsStr = string.join_list(",\n", ParamStrs),
+        string.format("(\n%s)", [s(ParamsStr)], Str)
+    ).
 
-:- pred output_param_for_csharp(csharp_out_info::in, indent::in,
-    mlds_argument::in, io.text_output_stream::in, io::di, io::uo) is det.
+:- func param_to_string_for_csharp(csharp_out_info, string, mlds_argument)
+    = string.
 
-output_param_for_csharp(Info, Indent, Arg, Stream, !IO) :-
-    Arg = mlds_argument(Name, Type, _GCStmt),
-    output_n_indents(Stream, Indent, !IO),
+param_to_string_for_csharp(Info, IndentStr, Arg) = Str :-
+    Arg = mlds_argument(VarName, Type, _GCStmt),
+    TypeStr = type_to_string_for_csharp(Info, Type),
+    VarNameStr = local_var_name_to_ll_string_for_csharp(VarName),
     ( if Type = mlds_ptr_type(_) then
-        io.write_string(Stream, "out ", !IO)
+        string.format("%sout %s %s",
+            [s(IndentStr), s(TypeStr), s(VarNameStr)], Str)
     else
-        true
-    ),
-    output_type_for_csharp(Info, Stream, Type, !IO),
-    io.write_char(Stream, ' ', !IO),
-    output_local_var_name_for_csharp(Stream, Name, !IO).
+        string.format("%s%s %s",
+            [s(IndentStr), s(TypeStr), s(VarNameStr)], Str)
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_cs_func.
