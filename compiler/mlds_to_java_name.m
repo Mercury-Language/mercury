@@ -23,25 +23,14 @@
 
 %---------------------------------------------------------------------------%
 
+:- func global_var_name_to_string_for_java(mlds_global_var_name) = string.
+
 :- func maybe_qualified_global_var_name_to_string_for_java(java_out_info,
     qual_global_var_name) = string.
 
-:- func global_var_name_to_string_for_java(mlds_global_var_name) = string.
-
 %---------------------------------------------------------------------------%
 
-:- func maybe_qualified_function_name_to_string_for_java(java_out_info,
-    qual_function_name) = string.
-
-:- func function_name_to_string_for_java(mlds_function_name) = string.
-
-:- func proc_label_to_string_for_java(mlds_proc_label) = string.
-
-%---------------------------------------------------------------------------%
-
-:- func qual_class_name_to_string_for_java(qual_class_name, arity) = string.
-
-:- func unqual_class_name_to_string_for_java(mlds_class_name, arity) = string.
+:- func local_var_name_to_string_for_java(mlds_local_var_name) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -49,7 +38,20 @@
 
 %---------------------------------------------------------------------------%
 
-:- func local_var_name_to_string_for_java(mlds_local_var_name) = string.
+:- func unqual_class_name_to_string_for_java(mlds_class_name, arity) = string.
+
+:- func qual_class_name_to_string_for_java(qual_class_name, arity) = string.
+
+%---------------------------------------------------------------------------%
+
+:- func function_name_to_string_for_java(mlds_function_name) = string.
+
+:- func maybe_qualified_function_name_to_string_for_java(java_out_info,
+    qual_function_name) = string.
+
+%---------------------------------------------------------------------------%
+
+:- func proc_label_to_string_for_java(mlds_proc_label) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -83,21 +85,6 @@
 
 %---------------------------------------------------------------------------%
 
-maybe_qualified_global_var_name_to_string_for_java(Info, QualGlobalVarName)
-        = MaybeQualGlobalVarNameStr :-
-    QualGlobalVarName = qual_global_var_name(GlobalVarModule, GlobalVarName),
-    GlobalVarNameStr = global_var_name_to_string_for_java(GlobalVarName),
-    % Don't module qualify the names of global variables that are defined
-    % in the current module. This avoids unnecessary verbosity.
-    CurrentModule = Info ^ joi_module_name,
-    ( if GlobalVarModule = CurrentModule then
-        MaybeQualGlobalVarNameStr = GlobalVarNameStr
-    else
-        QualStr = qualifier_to_string_for_java(GlobalVarModule, module_qual),
-        string.format("%s.%s", [s(QualStr), s(GlobalVarNameStr)],
-            MaybeQualGlobalVarNameStr)
-    ).
-
 global_var_name_to_string_for_java(GlobalVarName) = GlobalVarNameStr :-
     (
         GlobalVarName = gvn_const_var(ConstVar, Num),
@@ -119,7 +106,73 @@ global_var_name_to_string_for_java(GlobalVarName) = GlobalVarNameStr :-
         GlobalVarNameStr = "dummy_var"
     ).
 
+maybe_qualified_global_var_name_to_string_for_java(Info, QualGlobalVarName)
+        = MaybeQualGlobalVarNameStr :-
+    QualGlobalVarName = qual_global_var_name(GlobalVarModule, GlobalVarName),
+    GlobalVarNameStr = global_var_name_to_string_for_java(GlobalVarName),
+    % Don't module qualify the names of global variables that are defined
+    % in the current module. This avoids unnecessary verbosity.
+    CurrentModule = Info ^ joi_module_name,
+    ( if GlobalVarModule = CurrentModule then
+        MaybeQualGlobalVarNameStr = GlobalVarNameStr
+    else
+        QualStr = qualifier_to_string_for_java(GlobalVarModule, module_qual),
+        string.format("%s.%s", [s(QualStr), s(GlobalVarNameStr)],
+            MaybeQualGlobalVarNameStr)
+    ).
+
 %---------------------------------------------------------------------------%
+
+local_var_name_to_string_for_java(LocalVarName) = MangledNameStr :-
+    NameStr = ml_local_var_name_to_string(LocalVarName),
+    MangledNameStr = make_valid_mangled_name_for_java(NameStr).
+
+%---------------------------------------------------------------------------%
+
+field_var_name_to_string_for_java(FieldVarName) = MangledNameStr :-
+    NameStr = ml_field_var_name_to_string(FieldVarName),
+    MangledNameStr = make_valid_mangled_name_for_java(NameStr).
+
+%---------------------------------------------------------------------------%
+
+unqual_class_name_to_string_for_java(Name, Arity) = Str :-
+    MangledName = name_mangle_no_leading_digit(Name),
+    % By convention, class names should start with a capital letter.
+    UppercaseMangledName = flip_initial_case(MangledName),
+    string.format("%s_%d", [s(UppercaseMangledName), i(Arity)], Str).
+
+qual_class_name_to_string_for_java(QualClassName, Arity) = QualClassNameStr :-
+    QualClassName = qual_class_name(MLDS_ModuleName, QualKind, ClassName),
+    ( if
+        SymName = mlds_module_name_to_sym_name(MLDS_ModuleName),
+        SymName = java_mercury_runtime_package_name
+    then
+        % Don't mangle runtime class names.
+        QualClassNameStr = "jmercury.runtime." ++ ClassName
+    else
+        QualStr = qualifier_to_string_for_java(MLDS_ModuleName, QualKind),
+        UnqualClassNameStr =
+            unqual_class_name_to_string_for_java(ClassName, Arity),
+        string.format("%s.%s", [s(QualStr), s(UnqualClassNameStr)],
+            QualClassNameStr)
+    ).
+
+%---------------------------------------------------------------------------%
+
+function_name_to_string_for_java(FunctionName) = FunctionNameStr :-
+    (
+        FunctionName = mlds_function_name(PlainFuncName),
+        PlainFuncName = mlds_plain_func_name(FuncLabel, _PredId),
+        FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
+        ProcLabel = mlds_proc_label(PredLabel, ProcId),
+        PredLabelStr = pred_label_to_string_for_java(PredLabel),
+        proc_id_to_int(ProcId, ModeNum),
+        MaybeAuxSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
+        string.format("%s_%d%s",
+            [s(PredLabelStr), i(ModeNum), s(MaybeAuxSuffix)], FunctionNameStr)
+    ;
+        FunctionName = mlds_function_export(FunctionNameStr)
+    ).
 
 maybe_qualified_function_name_to_string_for_java(Info, QualFuncName)
         = MaybeQualFuncNameStr :-
@@ -136,20 +189,13 @@ maybe_qualified_function_name_to_string_for_java(Info, QualFuncName)
             MaybeQualFuncNameStr)
     ).
 
-function_name_to_string_for_java(FunctionName) = FunctionNameStr :-
-    (
-        FunctionName = mlds_function_name(PlainFuncName),
-        PlainFuncName = mlds_plain_func_name(FuncLabel, _PredId),
-        FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
-        ProcLabel = mlds_proc_label(PredLabel, ProcId),
-        PredLabelStr = pred_label_to_string_for_java(PredLabel),
-        proc_id_to_int(ProcId, ModeNum),
-        MaybeAuxSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
-        string.format("%s_%d%s",
-            [s(PredLabelStr), i(ModeNum), s(MaybeAuxSuffix)], FunctionNameStr)
-    ;
-        FunctionName = mlds_function_export(FunctionNameStr)
-    ).
+%---------------------------------------------------------------------------%
+
+proc_label_to_string_for_java(ProcLabel) = ProcLabelStr :-
+    ProcLabel = mlds_proc_label(PredLabel, ProcId),
+    PredLabelStr = pred_label_to_string_for_java(PredLabel),
+    proc_id_to_int(ProcId, ModeNum),
+    string.format("%s_%d", [s(PredLabelStr), i(ModeNum)], ProcLabelStr).
 
 %---------------------------------------------------------------------------%
 
@@ -199,49 +245,6 @@ pred_label_to_string_for_java(PredLabel) = PredLabelStr :-
         )
     ).
 
-proc_label_to_string_for_java(ProcLabel) = ProcLabelStr :-
-    ProcLabel = mlds_proc_label(PredLabel, ProcId),
-    PredLabelStr = pred_label_to_string_for_java(PredLabel),
-    proc_id_to_int(ProcId, ModeNum),
-    string.format("%s_%d", [s(PredLabelStr), i(ModeNum)], ProcLabelStr).
-
-%---------------------------------------------------------------------------%
-
-qual_class_name_to_string_for_java(QualClassName, Arity) = QualClassNameStr :-
-    QualClassName = qual_class_name(MLDS_ModuleName, QualKind, ClassName),
-    ( if
-        SymName = mlds_module_name_to_sym_name(MLDS_ModuleName),
-        SymName = java_mercury_runtime_package_name
-    then
-        % Don't mangle runtime class names.
-        QualClassNameStr = "jmercury.runtime." ++ ClassName
-    else
-        QualStr = qualifier_to_string_for_java(MLDS_ModuleName, QualKind),
-        UnqualClassNameStr =
-            unqual_class_name_to_string_for_java(ClassName, Arity),
-        string.format("%s.%s", [s(QualStr), s(UnqualClassNameStr)],
-            QualClassNameStr)
-    ).
-
-unqual_class_name_to_string_for_java(Name, Arity) = Str :-
-    MangledName = name_mangle_no_leading_digit(Name),
-    % By convention, class names should start with a capital letter.
-    UppercaseMangledName = flip_initial_case(MangledName),
-    string.format("%s_%d", [s(UppercaseMangledName), i(Arity)], Str).
-
-%---------------------------------------------------------------------------%
-
-field_var_name_to_string_for_java(FieldVarName) = MangledNameStr :-
-    NameStr = ml_field_var_name_to_string(FieldVarName),
-    MangledNameStr = make_valid_mangled_name_for_java(NameStr).
-
-%---------------------------------------------------------------------------%
-
-local_var_name_to_string_for_java(LocalVarName) = MangledNameStr :-
-    NameStr = ml_local_var_name_to_string(LocalVarName),
-    MangledNameStr = make_valid_mangled_name_for_java(NameStr).
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 qualifier_to_string_for_java(MLDS_ModuleName, QualKind) = Qualifier :-
@@ -293,6 +296,8 @@ make_valid_mangled_name_for_java(Name) = JavaSafeName :-
 enforce_java_names(Name, JavaName) :-
     % If the Name contains one or more dots (`.'), then capitalize
     % the first letter after the last dot.
+    %
+    % XXX This code looks like it has *major* efficiency problems.
     reverse_string(Name, RevName),
     ( if string.sub_string_search(RevName, ".", Pos) then
         string.split(RevName, Pos, Head0, Tail0),
