@@ -148,7 +148,7 @@ output_class_kind_for_csharp(Stream, Kind, !IO) :-
     io::di, io::uo) is det.
 
 output_supers_list(Info, Stream, Indent, Inherits, Interfaces, !IO) :-
-    list.map(interface_to_string, Interfaces, AfterColonStrings0),
+    AfterColonStrings0 = list.map(interface_to_string_for_csharp, Interfaces),
     (
         Inherits = inherits_nothing,
         AfterColonStrings = AfterColonStrings0
@@ -172,9 +172,9 @@ output_supers_list(Info, Stream, Indent, Inherits, Interfaces, !IO) :-
         io.format(Stream, ": %s\n",  [s(AfterColonString)], !IO)
     ).
 
-:- pred interface_to_string(mlds_interface_id::in, string::out) is det.
+:- func interface_to_string_for_csharp(mlds_interface_id) = string.
 
-interface_to_string(InterfaceId, String) :-
+interface_to_string_for_csharp(InterfaceId) = String :-
     InterfaceId = mlds_interface_id(QualClassName, Arity, _),
     QualClassName = qual_class_name(ModuleQualifier, _QualKind, ClassName),
     SymName = mlds_module_name_to_sym_name(ModuleQualifier),
