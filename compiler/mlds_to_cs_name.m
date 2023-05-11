@@ -76,14 +76,9 @@
 :- func global_var_name_to_nll_string_for_csharp(mlds_global_var_name)
     = string.
 :- func global_var_name_to_ll_string_for_csharp(mlds_global_var_name) = string.
-:- pred xoutput_global_var_name_for_csharp(io.text_output_stream::in,
-    mlds_global_var_name::in, io::di, io::uo) is det.
 
 :- func maybe_qualified_global_var_name_to_string_for_csharp(csharp_out_info,
     qual_global_var_name) = string.
-:- pred xoutput_maybe_qualified_global_var_name_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, qual_global_var_name::in,
-    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -125,8 +120,6 @@
 
 :- func proc_label_to_nll_string_for_csharp(string, mlds_proc_label) = string.
 :- func proc_label_to_ll_string_for_csharp(string, mlds_proc_label) = string.
-:- pred output_proc_label_for_csharp(io.text_output_stream::in, string::in,
-    mlds_proc_label::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -208,10 +201,6 @@ global_var_name_to_ll_string_for_csharp(GlobalVarName) = GlobalVarNameStr :-
         = global_var_name_to_nll_string_for_csharp(GlobalVarName),
     GlobalVarNameStr = limit_identifier_length(GlobalVarNameStr0).
 
-xoutput_global_var_name_for_csharp(Stream, GlobalVarName, !IO) :-
-    GlobalVarNameStr = global_var_name_to_ll_string_for_csharp(GlobalVarName),
-    io.write_string(Stream, GlobalVarNameStr, !IO).
-
 maybe_qualified_global_var_name_to_string_for_csharp(Info, QualGlobalVarName)
         = MaybeQualGlobalVarNameStr :-
     QualGlobalVarName = qual_global_var_name(GlobalVarModule, GlobalVarName),
@@ -227,13 +216,6 @@ maybe_qualified_global_var_name_to_string_for_csharp(Info, QualGlobalVarName)
         string.format("%s.%s", [s(QualStr), s(GlobalVarNameStr)],
             MaybeQualGlobalVarNameStr)
     ).
-
-xoutput_maybe_qualified_global_var_name_for_csharp(Info, Stream,
-        QualGlobalVarName, !IO) :-
-    MaybeQualGlobalVarNameStr =
-        maybe_qualified_global_var_name_to_string_for_csharp(Info,
-            QualGlobalVarName),
-    io.write_string(Stream, MaybeQualGlobalVarNameStr, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -404,10 +386,6 @@ proc_label_to_nll_string_for_csharp(Suffix, ProcLabel) = ProcLabelStr :-
 proc_label_to_ll_string_for_csharp(Suffix, ProcLabel) = ProcLabelStr :-
     ProcLabelStr0 = proc_label_to_nll_string_for_csharp(Suffix, ProcLabel),
     ProcLabelStr = limit_identifier_length(ProcLabelStr0).
-
-output_proc_label_for_csharp(Stream, Suffix, ProcLabel, !IO) :-
-    ProcLabelStr = proc_label_to_ll_string_for_csharp(Suffix, ProcLabel),
-    io.write_string(Stream, ProcLabelStr, !IO).
 
 %---------------------------------------------------------------------------%
 

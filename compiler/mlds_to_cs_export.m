@@ -78,54 +78,54 @@ output_export_for_csharp(Info, Stream, Indent, Export, !IO) :-
         "foreign_export for language other than C#."),
     list.filter(is_out_argument, Parameters, OutArgs, InArgs),
     MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
+    ParamsStr = params_to_string_for_csharp(Info, Indent + 1, Parameters),
 
     IndentStr = indent2_string(Indent),
-    % ZZZ Indent1Str = indent2_string(Indent + 1),
 
     io.format(Stream, "%spublic static\n", [s(IndentStr)], !IO),
     % XXX C# has generics.
     % output_generic_tvars(UnivQTVars, !IO),
     (
         ReturnTypes = [],
-        io.format(Stream, "%svoid %s", [s(IndentStr), s(ExportName)], !IO)
-    ;
-        ReturnTypes = [RetType],
-        RetTypeStr = type_to_string_for_csharp(Info, RetType),
-        io.format(Stream, "%s%s %s",
-            [s(IndentStr), s(RetTypeStr), s(ExportName)], !IO)
-    ;
-        ReturnTypes = [_, _ | _],
-        unexpected($pred, "multiple return values in export method")
-    ),
-    % ZZZ
-    ParamsStr = params_to_string_for_csharp(Info, Indent + 1, Parameters),
-    io.format(Stream, "%s\n", [s(ParamsStr)], !IO),
-    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
-
-    output_n_indents(Stream, Indent + 1, !IO),
-    (
-        ReturnTypes = [],
         (
             OutArgs = [],
-            RestOutArgs = []
+            ExportCallStr = export_call_to_string_for_csharp(QualFuncName,
+                InArgs),
+            io.format(Stream, "%svoid %s%s\n",
+                [s(IndentStr), s(ExportName), s(ParamsStr)], !IO),
+            io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+            io.format(Stream, "  %s%s;\n",
+                [s(IndentStr), s(ExportCallStr)], !IO),
+            io.format(Stream, "%s}\n", [s(IndentStr)], !IO)
         ;
             OutArgs = [FirstOutArg | RestOutArgs],
             FirstOutArg = mlds_argument(FirstOutArgName, _, _),
-            output_local_var_name_for_csharp(Stream, FirstOutArgName, !IO),
-            io.write_string(Stream, " = ", !IO)
+            FirstOutArgNameStr =
+                local_var_name_to_ll_string_for_csharp(FirstOutArgName),
+            ExportCallStr = export_call_to_string_for_csharp(QualFuncName,
+                InArgs ++ RestOutArgs),
+            io.format(Stream, "%svoid %s%s\n",
+                [s(IndentStr), s(ExportName), s(ParamsStr)], !IO),
+            io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+            io.format(Stream, "  %s%s = %s;\n",
+                [s(IndentStr), s(FirstOutArgNameStr), s(ExportCallStr)], !IO),
+            io.format(Stream, "%s}\n", [s(IndentStr)], !IO)
         )
     ;
-        ReturnTypes = [RetTypeB | _],
-        % The cast is required when the exported method uses generics, but
-        % the underlying method does not use generics (i.e. returns Object).
-        io.format(Stream, "return (%s) ",
-            [s(type_to_string_for_csharp(Info, RetTypeB))], !IO),
-        RestOutArgs = OutArgs
-    ),
-    ExportCallStr = export_call_to_string_for_csharp(QualFuncName,
-        InArgs ++ RestOutArgs),
-    io.write_string(Stream, ExportCallStr, !IO),
-    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
+        ReturnTypes = [RetType],
+        RetTypeStr = type_to_string_for_csharp(Info, RetType),
+        ExportCallStr = export_call_to_string_for_csharp(QualFuncName,
+            InArgs ++ OutArgs),
+        io.format(Stream, "%s%s %s%s\n",
+            [s(IndentStr), s(RetTypeStr), s(ExportName), s(ParamsStr)], !IO),
+        io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+        io.format(Stream, "%s  return (%s) %s;\n",
+            [s(IndentStr), s(RetTypeStr), s(ExportCallStr)], !IO),
+        io.format(Stream, "%s}\n", [s(IndentStr)], !IO)
+    ;
+        ReturnTypes = [_, _ | _],
+        unexpected($pred, "multiple return values in export method")
+    ).
 
 :- pred is_out_argument(mlds_argument::in) is semidet.
 
@@ -141,7 +141,7 @@ export_call_to_string_for_csharp(QualFuncName, Args) = CallStr :-
     FuncNameStr = function_name_to_ll_string_for_csharp(FuncName),
     ArgStrs = list.map(maybe_out_argument_name_for_csharp, Args),
     ArgsStr = string.join_list(", ", ArgStrs),
-    string.format("%s.%s(%s);\n", [s(Qualifier), s(FuncNameStr), s(ArgsStr)],
+    string.format("%s.%s(%s)", [s(Qualifier), s(FuncNameStr), s(ArgsStr)],
         CallStr).
 
 :- func maybe_out_argument_name_for_csharp(mlds_argument) = string.
