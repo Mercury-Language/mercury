@@ -167,8 +167,11 @@
     % of that type. The first dimension gets printed last.
     %
 :- func array_dimensions_to_string(list(int)) = string.
-:- pred output_array_dimensions(io.text_output_stream::in, list(int)::in,
-    io::di, io::uo) is det.
+
+    % Given the name of an element type and a list of array dimensions,
+    % return a string representing the type of array of those dimensions.
+    %
+:- func add_array_dimensions(string, list(int)) = string.
 
     % Replace the innermost array dimension (which is expected to be
     % initially unknown) by the given known size.
@@ -178,7 +181,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % init_arg_wrappers_cs_java(ArrayDims, StartWrapper, EndWrapper):
+    % init_arg_wrappers_cs_java(ArrayDims, LParen, RParen):
     %
     % Return the kinds of parentheses you need to wrap around an initializer
     % (for something that either is or is not an array) in C# and Java.
@@ -360,20 +363,27 @@ type_category_is_array(CtorCat) = IsArray :-
 
 %---------------------------------------------------------------------------%
 
-array_dimension_to_string(Dim) = String :-
-    ( if Dim = 0 then
+array_dimension_to_string(ArrayDim) = String :-
+    ( if ArrayDim = 0 then
         String = "[]"
     else
-        String = string.format("[%d]", [i(Dim)])
+        String = string.format("[%d]", [i(ArrayDim)])
     ).
 
-array_dimensions_to_string(Dims) = String :-
-    DimStrs = list.map(array_dimension_to_string, Dims),
-    list.reverse(DimStrs, RevDimStrs),
-    string.append_list(RevDimStrs, String).
+array_dimensions_to_string(ArrayDims) = ArrayDimsStr :-
+    ArrayDimStrs = list.map(array_dimension_to_string, ArrayDims),
+    list.reverse(ArrayDimStrs, RevArrayDimStrs),
+    string.append_list(RevArrayDimStrs, ArrayDimsStr).
 
-output_array_dimensions(Stream, Dims, !IO) :-
-    io.write_string(Stream, array_dimensions_to_string(Dims), !IO).
+add_array_dimensions(TypeName, ArrayDims) = ArrayTypeName :-
+    (
+        ArrayDims = [],
+        % Optimize the common case.
+        ArrayTypeName = TypeName
+    ;
+        ArrayDims = [_ | _],
+        ArrayTypeName = TypeName ++ array_dimensions_to_string(ArrayDims)
+    ).
 
 make_last_dimension_known_size(ArrayDims0, Size, ArrayDims) :-
     ( if list.split_last(ArrayDims0, InitDims, 0) then
@@ -384,18 +394,18 @@ make_last_dimension_known_size(ArrayDims0, Size, ArrayDims) :-
 
 %---------------------------------------------------------------------------%
 
-init_arg_wrappers_cs_java(ArrayDims, StartWrapper, EndWrapper) :-
+init_arg_wrappers_cs_java(ArrayDims, LParen, RParen) :-
     (
         ArrayDims = [_ | _],
         % The new object will be an array, so we need to initialise it
         % using array literals syntax.
-        StartWrapper = " {",
-        EndWrapper = "}"
+        LParen = " {",
+        RParen = "}"
     ;
         ArrayDims = [],
         % The new object will not be an array.
-        StartWrapper = "(",
-        EndWrapper = ")"
+        LParen = "(",
+        RParen = ")"
     ).
 
 %---------------------------------------------------------------------------%

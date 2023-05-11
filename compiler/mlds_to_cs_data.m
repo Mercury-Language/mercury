@@ -101,6 +101,7 @@
 :- import_module hlds.hlds_module.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_util.
@@ -148,17 +149,19 @@ output_lval_for_csharp(Info, Lval, Stream, !IO) :-
         ;
             FieldId = ml_field_named(QualFieldVarName, CtorType),
             QualFieldVarName = qual_field_var_name(_, _, FieldVarName),
+            FieldVarNameStr =
+                field_var_name_to_ll_string_for_csharp(FieldVarName),
             ( if FieldVarName = fvn_data_tag then
                 % If the field we are trying to access is just a `data_tag'
                 % then it is a member of the base class.
                 output_bracketed_rval_for_csharp(Info, PtrRval, Stream, !IO),
-                io.write_string(Stream, ".", !IO)
+                io.format(Stream, ".%s", [s(FieldVarNameStr)], !IO)
             else if PtrRval = ml_self(_) then
                 % Suppress type cast on `this' keyword. This makes a difference
                 % when assigning to `final' member variables in constructor
                 % functions.
                 output_rval_for_csharp(Info, PtrRval, Stream, !IO),
-                io.write_string(Stream, ".", !IO)
+                io.format(Stream, ".%s", [s(FieldVarNameStr)], !IO)
             else
                 % Otherwise the field we are trying to access may be
                 % in a derived class. Objects are manipulated as instances
@@ -167,9 +170,8 @@ output_lval_for_csharp(Info, Lval, Stream, !IO) :-
                 io.format(Stream, "((%s) ",
                     [s(type_to_string_for_csharp(Info, CtorType))], !IO),
                 output_bracketed_rval_for_csharp(Info, PtrRval, Stream, !IO),
-                io.write_string(Stream, ").", !IO)
-            ),
-            output_field_var_name_for_csharp(Stream, FieldVarName, !IO)
+                io.format(Stream, ").%s", [s(FieldVarNameStr)], !IO)
+            )
         )
     ;
         Lval = ml_mem_ref(Rval, _Type),
@@ -746,10 +748,10 @@ output_rval_const_for_csharp(Info, Stream, Const, !IO) :-
         Const = mlconst_data_addr_rtti(ModuleName, RttiId),
         MangledModuleName = strip_mercury_and_mangle_sym_name_for_csharp(
             mlds_module_name_to_sym_name(ModuleName)),
-        rtti.id_to_c_identifier(RttiId, RttiAddrName),
-        io.write_string(Stream, MangledModuleName, !IO),
-        io.write_string(Stream, ".", !IO),
-        write_identifier_string_for_csharp(Stream, RttiAddrName, !IO)
+        rtti.id_to_c_identifier(RttiId, RttiAddrName0),
+        RttiAddrName = limit_identifier_length(RttiAddrName0),
+        io.format(Stream, "%s.%s",
+            [s(MangledModuleName), s(RttiAddrName)], !IO)
     ;
         Const = mlconst_data_addr_tabling(_QualProcLabel, _TablingId),
         unexpected($pred, "NYI: mlconst_data_addr_tabling")
@@ -964,7 +966,7 @@ output_initializer_body_for_csharp(Info, Stream, InitStart, Indent,
             InitStart = not_at_start_of_line
         ;
             InitStart = at_start_of_line,
-            output_n_indents(Stream, Indent, !IO)
+            write_indent2(Stream, Indent, !IO)
         ),
         output_rval_for_csharp(Info, Rval, Stream, !IO),
         io.format(Stream, "%s\n", [s(Suffix)], !IO)
@@ -976,20 +978,24 @@ output_initializer_body_for_csharp(Info, Stream, InitStart, Indent,
         ;
             InitStart = at_start_of_line
         ),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "new ", !IO),
-        output_type_for_csharp(Info, Stream, StructType, ArrayDims, !IO),
-        init_arg_wrappers_cs_java(ArrayDims, Start, End),
+        IndentStr = indent2_string(Indent),
+        type_to_string_and_dims_for_csharp(Info, StructType,
+            TypeStr0, ArrayDims),
+        TypeStr = add_array_dimensions(TypeStr0, ArrayDims),
+        init_arg_wrappers_cs_java(ArrayDims, LParen, RParen),
         (
             FieldInits = [],
-            io.format(Stream, "%s%s%s", [s(Start), s(End), s(Suffix)], !IO)
+            io.format(Stream, "%snew %s%s%s%s",
+                [s(IndentStr), s(TypeStr), s(LParen), s(RParen), s(Suffix)],
+                !IO)
         ;
             FieldInits = [HeadFieldInit | TailFieldInits],
-            io.format(Stream, "%s\n", [s(Start)], !IO),
+            io.format(Stream, "%snew %s%s\n",
+                [s(IndentStr), s(TypeStr), s(LParen)], !IO),
             output_initializer_body_list_for_csharp(Info, Stream, Indent + 1,
                 HeadFieldInit, TailFieldInits, "", !IO),
-            output_n_indents(Stream, Indent, !IO),
-            io.format(Stream, "%s%s\n", [s(End), s(Suffix)], !IO)
+            io.format(Stream, "%s%s%s\n",
+                [s(IndentStr), s(RParen), s(Suffix)], !IO)
         )
     ;
         Initializer = init_array(ElementInits),
@@ -999,26 +1005,25 @@ output_initializer_body_for_csharp(Info, Stream, InitStart, Indent,
         ;
             InitStart = at_start_of_line
         ),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "new ", !IO),
+        IndentStr = indent2_string(Indent),
         (
             MaybeType = yes(Type),
-            output_type_for_csharp(Info, Stream, Type, !IO)
+            TypeStr = type_to_string_for_csharp(Info, Type)
         ;
             MaybeType = no,
             % XXX We need to know the type here.
-            io.write_string(Stream, "/* XXX init_array */ object[]", !IO)
+            TypeStr = "/* XXX init_array */ object[]"
         ),
         (
             ElementInits = [],
-            io.format(Stream, " {}%s\n", [s(Suffix)], !IO)
+            io.format(Stream, "%snew %s {}%s\n",
+                [s(IndentStr), s(TypeStr), s(Suffix)], !IO)
         ;
             ElementInits = [HeadElementInit | TailElementInits],
-            io.write_string(Stream, " {\n", !IO),
+            io.format(Stream, "%snew %s {\n", [s(IndentStr), s(TypeStr)], !IO),
             output_initializer_body_list_for_csharp(Info, Stream, Indent + 1,
                 HeadElementInit, TailElementInits, "", !IO),
-            output_n_indents(Stream, Indent, !IO),
-            io.format(Stream, "}%s\n", [s(Suffix)], !IO)
+            io.format(Stream, "%s}%s\n", [s(IndentStr), s(Suffix)], !IO)
         )
     ).
 
@@ -1042,6 +1047,7 @@ output_initializer_body_list_for_csharp(Info, Stream, Indent,
             Indent, HeadInit, no, Suffix, !IO)
     ;
         TailInits = [HeadTailInit | TailTailInits],
+        % ZZZ
         output_initializer_body_for_csharp(Info, Stream, at_start_of_line,
             Indent, HeadInit, no, ",", !IO),
         output_initializer_body_list_for_csharp(Info, Stream,

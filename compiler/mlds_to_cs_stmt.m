@@ -49,6 +49,7 @@
 :- import_module hlds.hlds_module.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module ml_backend.mlds_to_cs_data.
 :- import_module ml_backend.mlds_to_cs_func.    % undesirable circular dep
 :- import_module ml_backend.mlds_to_cs_name.
@@ -163,21 +164,15 @@ output_stmt_block_for_csharp(Info, Stream, Indent, FuncInfo, Stmt,
     io::di, io::uo) is det.
 
 output_local_var_defn_for_csharp(Info, Stream, Indent, LocalVarDefn, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
     LocalVarDefn = mlds_local_var_defn(LocalVarName, _Context,
         Type, Initializer, _),
-    output_local_var_decl_for_csharp(Info, Stream, LocalVarName, Type, !IO),
+    IndentStr = indent2_string(Indent),
+    TypeStr = type_to_string_for_csharp(Info, Type),
+    LocalVarNameStr = local_var_name_to_ll_string_for_csharp(LocalVarName),
+    io.format(Stream, "%s%s %s",
+        [s(IndentStr), s(TypeStr), s(LocalVarNameStr)], !IO),
     output_initializer_for_csharp(Info, Stream, oa_force_init, Indent + 1,
         Type, Initializer, ";", !IO).
-
-:- pred output_local_var_decl_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, mlds_local_var_name::in, mlds_type::in,
-    io::di, io::uo) is det.
-
-output_local_var_decl_for_csharp(Info, Stream, LocalVarName, Type, !IO) :-
-    output_type_for_csharp(Info, Stream, Type, !IO),
-    io.write_char(Stream, ' ', !IO),
-    output_local_var_name_for_csharp(Stream, LocalVarName, !IO).
 
 :- pred output_stmts_for_csharp(csharp_out_info::in, io.text_output_stream::in,
     indent::in, func_info_csj::in, list(mlds_stmt)::in, exit_methods::out,
@@ -712,36 +707,38 @@ output_atomic_stmt_for_csharp(Info, Stream, Indent, AtomicStmt,
         indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
             Indent + 1, !IO),
         output_lval_for_csharp(Info, Target, Stream, !IO),
-        io.write_string(Stream, " = new ", !IO),
         % Generate class constructor name.
+        % ZZZ
+        type_to_string_and_dims_for_csharp(Info, Type, TypeStr0, ArrayDims),
+        TypeStr = add_array_dimensions(TypeStr0, ArrayDims),
         ( if
-            MaybeCtorName = yes(QualifiedCtorId),
+            MaybeCtorName = yes(QualCtorId),
             not (
                 Type = mercury_nb_type(MerType, CtorCat),
                 hand_defined_type_for_csharp(MerType, CtorCat, _, _)
             )
         then
-            output_type_for_csharp(Info, Stream, Type, ArrayDims, !IO),
-            io.write_char(Stream, '.', !IO),
-            QualifiedCtorId = qual_ctor_id(_ModuleName, _QualKind, CtorDefn),
-            CtorDefn = ctor_id(CtorName, CtorArity),
-            output_unqual_class_name_for_csharp(Stream, CtorName, CtorArity,
-                !IO)
+            QualCtorId = qual_ctor_id(_ModuleName, _QualKind, CtorId),
+            CtorId = ctor_id(CtorName, CtorArity),
+            CtorClassNameStr =
+                unqual_class_name_to_ll_string_for_csharp(CtorName, CtorArity),
+            io.format(Stream, " = new %s.%s",
+                [s(TypeStr), s(CtorClassNameStr)], !IO)
         else
-            output_type_for_csharp(Info, Stream, Type, ArrayDims, !IO)
+            io.format(Stream, " = new %s", [s(TypeStr)], !IO)
         ),
-        init_arg_wrappers_cs_java(ArrayDims, Start, End),
+        init_arg_wrappers_cs_java(ArrayDims, LParen, RParen),
         % Generate constructor arguments.
         (
             ArgRvalsTypes = [],
-            io.format(Stream, "%s%s;\n", [s(Start), s(End)], !IO)
+            io.format(Stream, "%s%s;\n", [s(LParen), s(RParen)], !IO)
         ;
             ArgRvalsTypes = [HeadArgRvalType | TailArgRvalsTypes],
-            io.format(Stream, "%s\n", [s(Start)], !IO),
+            io.format(Stream, "%s\n", [s(LParen)], !IO),
             output_init_args_for_csharp(Info, Stream, Indent + 2,
                 HeadArgRvalType, TailArgRvalsTypes, !IO),
             output_n_indents(Stream, Indent + 1, !IO),
-            io.format(Stream, "%s;\n", [s(End)], !IO)
+            io.format(Stream, "%s;\n", [s(RParen)], !IO)
         ),
         indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
             Indent, !IO),

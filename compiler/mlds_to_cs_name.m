@@ -58,8 +58,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module io.
-
 %---------------------------------------------------------------------------%
 
 :- func strip_mercury_and_mangle_sym_name_for_csharp(sym_name) = string.
@@ -67,9 +65,6 @@
 %---------------------------------------------------------------------------%
 
 :- func limit_identifier_length(string) = string.
-    % ZZZ
-:- pred write_identifier_string_for_csharp(io.text_output_stream::in,
-    string::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -84,15 +79,11 @@
 
 :- func local_var_name_to_nll_string_for_csharp(mlds_local_var_name) = string.
 :- func local_var_name_to_ll_string_for_csharp(mlds_local_var_name) = string.
-:- pred output_local_var_name_for_csharp(io.text_output_stream::in,
-    mlds_local_var_name::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
 :- func field_var_name_to_nll_string_for_csharp(mlds_field_var_name) = string.
 :- func field_var_name_to_ll_string_for_csharp(mlds_field_var_name) = string.
-:- pred output_field_var_name_for_csharp(io.text_output_stream::in,
-    mlds_field_var_name::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -100,8 +91,6 @@
     = string.
 :- func unqual_class_name_to_ll_string_for_csharp(mlds_class_name, arity)
     = string.
-:- pred output_unqual_class_name_for_csharp(io.text_output_stream::in,
-    mlds_class_name::in, arity::in, io::di, io::uo) is det.
 
 :- func qual_class_name_to_nll_string_for_csharp(qual_class_name, arity)
     = string.
@@ -175,9 +164,6 @@ limit_identifier_length(Str0) = Str :-
         Str = Str0
     ).
 
-write_identifier_string_for_csharp(Stream, Str0, !IO) :-
-    io.write_string(Stream, limit_identifier_length(Str0), !IO).
-
 %---------------------------------------------------------------------------%
 
 global_var_name_to_nll_string_for_csharp(GlobalVarName) = GlobalVarNameStr :-
@@ -228,10 +214,6 @@ local_var_name_to_ll_string_for_csharp(LocalVarName) = LocalVarNameStr :-
     LocalVarNameStr0 = local_var_name_to_nll_string_for_csharp(LocalVarName),
     LocalVarNameStr = limit_identifier_length(LocalVarNameStr0).
 
-output_local_var_name_for_csharp(Stream, LocalVarName, !IO) :-
-    LocalVarNameStr = local_var_name_to_ll_string_for_csharp(LocalVarName),
-    io.write_string(Stream, LocalVarNameStr, !IO).
-
 %---------------------------------------------------------------------------%
 
 field_var_name_to_nll_string_for_csharp(FieldVarName) = FieldVarNameStr :-
@@ -242,10 +224,6 @@ field_var_name_to_nll_string_for_csharp(FieldVarName) = FieldVarNameStr :-
 field_var_name_to_ll_string_for_csharp(FieldVarName) = FieldVarNameStr :-
     FieldVarNameStr0 = field_var_name_to_nll_string_for_csharp(FieldVarName),
     FieldVarNameStr = limit_identifier_length(FieldVarNameStr0).
-
-output_field_var_name_for_csharp(Stream, FieldVarName, !IO) :-
-    FieldVarNameStr = field_var_name_to_ll_string_for_csharp(FieldVarName),
-    io.write_string(Stream, FieldVarNameStr, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -258,11 +236,6 @@ unqual_class_name_to_nll_string_for_csharp(Name, Arity) = ClassNameStr :-
 unqual_class_name_to_ll_string_for_csharp(Name, Arity) = ClassNameStr :-
     ClassNameStr0 = unqual_class_name_to_nll_string_for_csharp(Name, Arity),
     ClassNameStr = limit_identifier_length(ClassNameStr0).
-
-output_unqual_class_name_for_csharp(Stream, Name, Arity, !IO) :-
-    ClassNameStr0 = unqual_class_name_to_nll_string_for_csharp(Name, Arity),
-    ClassNameStr = limit_identifier_length(ClassNameStr0),
-    io.write_string(Stream, ClassNameStr, !IO).
 
 qual_class_name_to_nll_string_for_csharp(QualName, Arity) = QualClassNameStr :-
     QualName = qual_class_name(MLDS_ModuleName, QualKind, ClassName),

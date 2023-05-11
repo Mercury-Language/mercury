@@ -35,21 +35,20 @@
 
 :- func type_to_string_for_csharp(csharp_out_info, mlds_type) = string.
 
-:- pred boxed_type_to_string_for_csharp(csharp_out_info::in, mlds_type::in,
-    string::out) is det.
-
-    % type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims)
+    % type_to_string_for_csharp(Info, MLDS_Type, BaseTypeName, ArrayDims)
     %
-    % Generate the Java name for a type. ArrayDims are the array dimensions,
-    % if any, to be written after the type name, in reverse order to that
-    % of Java syntax where a non-zero integer represents a known array size
-    % and zero represents an unknown array size.
+    % Generate the C# name for a type. ArrayDims are the array dimensions,
+    % if any, to be appended after the type name. This can be done by
+    % calling add_array_dimensions(BaseTypeName, ArrayDims).
+    %
+    % Note that
+    %
+    % - the array dimensions are in reverse order to that of C# syntax, and
+    % - a non-zero integer represents a known array size, while
+    %   a zero represents an unknown array size.
     %
     % e.g. ArrayDims = [0, 3] represents the Java array `Object[3][]',
     % which should be read as `(Object[])[3]'.
-    %
-    % XXX yet to check this for C#
-    % XXX The above comment still talks about Java, not C#.
     %
 :- pred type_to_string_and_dims_for_csharp(csharp_out_info::in, mlds_type::in,
     string::out, list(int)::out) is det.
@@ -123,9 +122,6 @@ type_to_string_for_csharp(Info, MLDS_Type) = FullTypeName :-
         ArrayDims = [_ | _],
         FullTypeName = BaseTypeName ++ array_dimensions_to_string(ArrayDims)
     ).
-
-boxed_type_to_string_for_csharp(Info, Type, TypeName) :-
-    TypeName = type_to_string_for_csharp(Info, Type).
 
 %---------------------------------------------------------------------------%
 
@@ -347,14 +343,14 @@ mercury_type_to_string_and_dims_for_csharp(Info, Type, CtorCat,
 
 %---------------------------------------------------------------------------%
 
-method_ptr_type_to_string(Info, ArgTypes, RetTypes) = String :-
+method_ptr_type_to_string(Info, ArgTypes, RetTypes) = Str :-
     Arity = list.length(ArgTypes),
     NumRets = list.length(RetTypes),
-    list.map(boxed_type_to_string_for_csharp(Info), ArgTypes, ArgTypesStrings),
-    list.map(boxed_type_to_string_for_csharp(Info), RetTypes, RetTypesStrings),
-    TypesString = string.join_list(", ", ArgTypesStrings ++ RetTypesStrings),
+    ArgTypesStrs = list.map(type_to_string_for_csharp(Info), ArgTypes),
+    RetTypesStrs = list.map(type_to_string_for_csharp(Info), RetTypes),
+    TypesStr = string.join_list(", ", ArgTypesStrs ++ RetTypesStrs),
     string.format("runtime.MethodPtr%d_r%d<%s>",
-        [i(Arity), i(NumRets), s(TypesString)], String).
+        [i(Arity), i(NumRets), s(TypesStr)], Str).
 
 %---------------------------------------------------------------------------%
 
@@ -478,22 +474,21 @@ mercury_user_type_to_string_and_dims_for_csharp(Info, Type, ClassKind,
 :- pred generic_args_types_to_string_for_csharp(csharp_out_info::in,
     list(mer_type)::in, string::out) is det.
 
-generic_args_types_to_string_for_csharp(Info, ArgsTypes, String) :-
+generic_args_types_to_string_for_csharp(Info, ArgsTypes, Str) :-
     (
         ArgsTypes = [],
-        String = ""
+        Str = ""
     ;
         ArgsTypes = [_ | _],
-        ToString =
-            ( pred(ArgType::in, ArgTypeString::out) is det :-
+        ToStr =
+            ( pred(ArgType::in, ArgTypeStr::out) is det :-
                 ModuleInfo = Info ^ csoi_module_info,
                 MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
-                boxed_type_to_string_for_csharp(Info, MLDS_ArgType,
-                    ArgTypeString)
+                ArgTypeStr = type_to_string_for_csharp(Info, MLDS_ArgType)
             ),
-        list.map(ToString, ArgsTypes, ArgsTypesStrings),
-        ArgsTypesString = string.join_list(", ", ArgsTypesStrings),
-        String = "<" ++ ArgsTypesString ++ ">"
+        list.map(ToStr, ArgsTypes, ArgsTypesStrs),
+        ArgsTypesStr = string.join_list(", ", ArgsTypesStrs),
+        Str = "<" ++ ArgsTypesStr ++ ">"
     ).
 
 %---------------------------------------------------------------------------%
