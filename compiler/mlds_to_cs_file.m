@@ -397,8 +397,7 @@ output_method_ptr_constant(Info, Stream, IndentStr, CodeAddr, Name, !IO) :-
     TypeNameStr = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
     io.format(Stream, "%sprivate static readonly %s %s = ",
         [s(IndentStr), s(TypeNameStr), s(Name)], !IO),
-    IsCall = no,
-    mlds_output_code_addr_for_csharp(Info, Stream, CodeAddr, IsCall, !IO),
+    output_code_addr_for_csharp(Info, Stream, CodeAddr, is_not_for_call, !IO),
     io.write_string(Stream, ";\n", !IO).
 
 %---------------------------------------------------------------------------%

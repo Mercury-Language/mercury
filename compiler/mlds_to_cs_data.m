@@ -18,7 +18,6 @@
 :- import_module ml_backend.mlds_to_cs_util.
 :- import_module ml_backend.mlds_to_target_util.
 
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
@@ -36,8 +35,12 @@
 :- pred output_rval_for_csharp(csharp_out_info::in, mlds_rval::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 
-:- pred mlds_output_code_addr_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, mlds_code_addr::in, bool::in,
+:- type maybe_for_call
+    --->    is_not_for_call
+    ;       is_for_call.
+
+:- pred output_code_addr_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, mlds_code_addr::in, maybe_for_call::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -198,8 +201,7 @@ output_call_rval_for_csharp(Info, Rval, Stream, !IO) :-
         Rval = ml_const(Const),
         Const = mlconst_code_addr(CodeAddr)
     then
-        IsCall = yes,
-        mlds_output_code_addr_for_csharp(Info, Stream, CodeAddr, IsCall, !IO)
+        output_code_addr_for_csharp(Info, Stream, CodeAddr, is_for_call, !IO)
     else
         output_bracketed_rval_for_csharp(Info, Rval, Stream, !IO)
     ).
@@ -845,17 +847,17 @@ output_uint64_const_for_csharp(Stream, U64, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-mlds_output_code_addr_for_csharp(Info, Stream, CodeAddr, IsCall, !IO) :-
+output_code_addr_for_csharp(Info, Stream, CodeAddr, IsCall, !IO) :-
     CodeAddr = mlds_code_addr(QualFuncLabel, Signature),
     Signature = mlds_func_signature(ArgTypes, RetTypes),
     (
-        IsCall = no,
+        IsCall = is_not_for_call,
         % Not a function call, so we are taking the address of the
         % wrapper for that function (method).
-        TypeString = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
-        io.format(Stream, "(%s) ", [s(TypeString)], !IO)
+        PtrTypeStr = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
+        io.format(Stream, "(%s) ", [s(PtrTypeStr)], !IO)
     ;
-        IsCall = yes
+        IsCall = is_for_call
     ),
     QualFuncLabel = qual_func_label(ModuleName, FuncLabel),
     FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
