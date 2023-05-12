@@ -24,11 +24,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- func should_module_qualify_global_var_name(mlds_global_var_name) = bool.
-
-:- pred mlds_output_maybe_qualified_global_var_name(io.text_output_stream::in,
-    mlds_module_name::in, mlds_global_var_name::in, io::di, io::uo) is det.
-
 :- func global_var_name(global_var_ref) = string.
 
 :- func mlds_tabling_data_name(mlds_proc_label, proc_tabling_struct_id)
@@ -36,31 +31,55 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_fully_qualified_function_name(io.text_output_stream::in,
-    qual_function_name::in, io::di, io::uo) is det.
+:- func should_module_qualify_global_var_name(mlds_global_var_name) = bool.
 
-:- pred mlds_output_fully_qualified_proc_label(io.text_output_stream::in,
-    qual_proc_label::in, io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-
-:- pred mlds_output_class_name_arity(io.text_output_stream::in,
-    mlds_class_name::in, arity::in, io::di, io::uo) is det.
-
-:- pred mlds_output_fully_qualified_field_var_name(io.text_output_stream::in,
-    qual_field_var_name::in, io::di, io::uo) is det.
+:- func maybe_qualified_global_var_name_to_string_for_c(mlds_module_name,
+    mlds_global_var_name) = string.
+:- pred mlds_output_maybe_qualified_global_var_name(io.text_output_stream::in,
+    mlds_module_name::in, mlds_global_var_name::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
+:- func local_var_name_to_string_for_c(mlds_local_var_name) = string.
 :- pred mlds_output_local_var_name(io.text_output_stream::in,
     mlds_local_var_name::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
+:- func field_var_name_to_string_for_c(mlds_field_var_name) = string.
+:- func qual_field_var_name_to_string_for_c(qual_field_var_name) = string.
+:- pred mlds_output_fully_qualified_field_var_name(io.text_output_stream::in,
+    qual_field_var_name::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+:- func class_name_arity_to_string_for_c(mlds_class_name, arity) = string.
+:- pred mlds_output_class_name_arity(io.text_output_stream::in,
+    mlds_class_name::in, arity::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+:- func fully_qualified_function_name_to_string_for_c(qual_function_name)
+    = string.
+:- pred mlds_output_fully_qualified_function_name(io.text_output_stream::in,
+    qual_function_name::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+:- func fully_qualified_proc_label_to_string_for_c(qual_proc_label) = string.
+:- pred mlds_output_fully_qualified_proc_label(io.text_output_stream::in,
+    qual_proc_label::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+    % ZZZ This does not append "__".
+:- func qualifier_to_string_for_c(mlds_module_name) = string.
+
+    % ZZZ This does append "__".
+:- func qual_name_prefix_c(mlds_module_name) = string.
+
 :- pred output_qual_name_prefix_c(io.text_output_stream::in,
     mlds_module_name::in, io::di, io::uo) is det.
-
-:- func qual_name_prefix_c(mlds_module_name) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -81,6 +100,21 @@
 
 %---------------------------------------------------------------------------%
 
+% The calls to env_var_is_acceptable_char in parse_goal.m ensure that
+% EnvVarName is acceptable as part of a C identifier.
+% The prefix must be identical to envvar_prefix in util/mkinit.c
+% and c_global_var_name in llds_out.m.
+global_var_name(env_var_ref(EnvVarName)) = "mercury_envvar_" ++ EnvVarName.
+
+mlds_tabling_data_name(ProcLabel, TablingId) = TablingName :-
+    TablingIdStr = tabling_info_id_str(TablingId),
+    TablingProcLabel = mlds_std_tabling_proc_label(ProcLabel),
+    TablingProcLabelStr = proc_label_to_string_for_c(TablingProcLabel),
+    string.format("%s_for_%s", [s(TablingIdStr), s(TablingProcLabelStr)],
+        TablingName).
+
+%---------------------------------------------------------------------------%
+
 should_module_qualify_global_var_name(GlobalVarName) = ShouldModuleQual :-
     (
         GlobalVarName = gvn_rtti_var(RttiId),
@@ -97,53 +131,90 @@ should_module_qualify_global_var_name(GlobalVarName) = ShouldModuleQual :-
         ShouldModuleQual = yes
     ).
 
-mlds_output_maybe_qualified_global_var_name(Stream, ModuleName, GlobalVarName,
-        !IO) :-
+maybe_qualified_global_var_name_to_string_for_c(ModuleName, GlobalVarName)
+        = MaybeQualGlobalVarNameStr :-
     ShouldModuleQual = should_module_qualify_global_var_name(GlobalVarName),
+    GlobalVarNameStr = global_var_name_to_string_for_c(GlobalVarName),
     (
-        ShouldModuleQual = no
+        ShouldModuleQual = no,
+        MaybeQualGlobalVarNameStr = GlobalVarNameStr
     ;
         ShouldModuleQual = yes,
-        output_qual_name_prefix_c(Stream, ModuleName, !IO)
-    ),
-    mlds_output_global_var_name(Stream, GlobalVarName, !IO).
+        Qualifier = qualifier_to_string_for_c(ModuleName),
+        string.format("%s__%s", [s(Qualifier), s(GlobalVarNameStr)],
+            MaybeQualGlobalVarNameStr)
+    ).
 
-:- pred mlds_output_global_var_name(io.text_output_stream::in,
-    mlds_global_var_name::in, io::di, io::uo) is det.
+mlds_output_maybe_qualified_global_var_name(Stream, ModuleName, GlobalVarName,
+        !IO) :-
+    MaybeQualGlobalVarNameStr =
+        maybe_qualified_global_var_name_to_string_for_c(ModuleName,
+        GlobalVarName),
+    io.write_string(Stream, MaybeQualGlobalVarNameStr, !IO).
 
-mlds_output_global_var_name(Stream, GlobalVarName, !IO) :-
+:- func global_var_name_to_string_for_c(mlds_global_var_name) = string.
+
+global_var_name_to_string_for_c(GlobalVarName) = GlobalVarNameStr :-
     (
         GlobalVarName = gvn_const_var(ConstVar, Num),
-        MangledGlobalVarName =
-            name_mangle(ml_global_const_var_name_to_string(ConstVar, Num)),
-        io.write_string(Stream, MangledGlobalVarName, !IO)
+        GlobalVarNameStr =
+            name_mangle(ml_global_const_var_name_to_string(ConstVar, Num))
     ;
         GlobalVarName = gvn_rtti_var(RttiId),
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
-        io.write_string(Stream, RttiAddrName, !IO)
+        GlobalVarNameStr = RttiAddrName
     ;
         GlobalVarName = gvn_tabling_var(ProcLabel, TablingId),
-        io.write_string(Stream, mlds_tabling_data_name(ProcLabel, TablingId),
-            !IO)
+        GlobalVarNameStr = mlds_tabling_data_name(ProcLabel, TablingId)
     ;
         GlobalVarName = gvn_dummy_var,
-        io.write_string(Stream, "dummy_var", !IO)
+        GlobalVarNameStr = "dummy_var"
     ).
-
-% The calls to env_var_is_acceptable_char in parse_goal.m ensure that
-% EnvVarName is acceptable as part of a C identifier.
-% The prefix must be identical to envvar_prefix in util/mkinit.c
-% and c_global_var_name in llds_out.m.
-global_var_name(env_var_ref(EnvVarName)) = "mercury_envvar_" ++ EnvVarName.
-
-mlds_tabling_data_name(ProcLabel, TablingId) =
-    tabling_info_id_str(TablingId) ++ "_for_" ++
-        mlds_proc_label_to_string(mlds_std_tabling_proc_label(ProcLabel)).
 
 %---------------------------------------------------------------------------%
 
-mlds_output_fully_qualified_function_name(Stream, QualFuncName, !IO) :-
+local_var_name_to_string_for_c(LocalVarName) = LocalVarNameStr :-
+    LocalVarNameStr = name_mangle(ml_local_var_name_to_string(LocalVarName)).
+
+mlds_output_local_var_name(Stream, LocalVarName, !IO) :-
+    LocalVarNameStr = local_var_name_to_string_for_c(LocalVarName),
+    io.write_string(Stream, LocalVarNameStr, !IO).
+
+%---------------------------------------------------------------------------%
+
+field_var_name_to_string_for_c(FieldVarName) = FieldVarNameStr :-
+    % ZZZ is ml_field_var_name_to_string etc used by non-c backends?
+    FieldVarNameStr = name_mangle(ml_field_var_name_to_string(FieldVarName)).
+
+qual_field_var_name_to_string_for_c(QualFieldVarName) = QualFieldVarNameStr :-
+    QualFieldVarName = qual_field_var_name(ModuleName, _, FieldVarName),
+    Qualifier = qualifier_to_string_for_c(ModuleName),
+    FieldVarNameStr = field_var_name_to_string_for_c(FieldVarName),
+    string.format("%s__%s", [s(Qualifier), s(FieldVarNameStr)],
+        QualFieldVarNameStr).
+
+mlds_output_fully_qualified_field_var_name(Stream, QualFieldVarName, !IO) :-
+    QualFieldVarNameStr =
+        qual_field_var_name_to_string_for_c(QualFieldVarName),
+    io.write_string(Stream, QualFieldVarNameStr, !IO).
+
+%---------------------------------------------------------------------------%
+
+class_name_arity_to_string_for_c(ClassName, Arity) = ClassNameStr :-
+    % XXX We should avoid appending the arity if it is not needed.
+    MangledClassName = name_mangle(ClassName),
+    string.format("%s_%d", [s(MangledClassName), i(Arity)], ClassNameStr).
+
+mlds_output_class_name_arity(Stream, ClassName, Arity, !IO) :-
+    ClassNameStr = class_name_arity_to_string_for_c(ClassName, Arity),
+    io.write_string(Stream, ClassNameStr, !IO).
+
+%---------------------------------------------------------------------------%
+
+fully_qualified_function_name_to_string_for_c(QualFuncName)
+        = QualFuncNameStr :-
     QualFuncName = qual_function_name(ModuleName, FuncName),
+    FuncNameStr = function_name_to_string_for_c(FuncName),
     ( if
         (
             % Do not module-qualify main/2.
@@ -158,71 +229,76 @@ mlds_output_fully_qualified_function_name(Stream, QualFuncName, !IO) :-
             FuncName = mlds_function_export(_)
         )
     then
-        true
+        QualFuncNameStr = FuncNameStr
     else
-        output_qual_name_prefix_c(Stream, ModuleName, !IO)
-    ),
-    mlds_output_function_name(Stream, FuncName, !IO).
+        Qualifier = qualifier_to_string_for_c(ModuleName),
+        string.format("%s__%s", [s(Qualifier), s(FuncNameStr)],
+            QualFuncNameStr)
+    ).
 
-:- pred mlds_output_function_name(io.text_output_stream::in,
-    mlds_function_name::in, io::di, io::uo) is det.
+mlds_output_fully_qualified_function_name(Stream, QualFuncName, !IO) :-
+    QualFuncNameStr =
+        fully_qualified_function_name_to_string_for_c(QualFuncName),
+    io.write_string(Stream, QualFuncNameStr, !IO).
 
-mlds_output_function_name(Stream, FunctionName, !IO) :-
+:- func function_name_to_string_for_c(mlds_function_name) = string.
+
+function_name_to_string_for_c(FuncName) = FuncNameStr :-
     % XXX We should avoid appending the modenum and seqnum
     % if they are not needed.
     (
-        FunctionName = mlds_function_name(PlainFuncName),
+        FuncName = mlds_function_name(PlainFuncName),
         PlainFuncName = mlds_plain_func_name(FuncLabel, _PredId),
         FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
+        PredLabelStr = pred_label_to_string_for_c(PredLabel),
         proc_id_to_int(ProcId, ModeNum),
         FuncIdSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
-        io.format(Stream, "%s_%d%s",
-            [s(mlds_pred_label_to_string(PredLabel)),
-            i(ModeNum), s(FuncIdSuffix)], !IO)
+        string.format("%s_%d%s",
+            [s(PredLabelStr), i(ModeNum), s(FuncIdSuffix)], FuncNameStr)
     ;
-        FunctionName = mlds_function_export(Name),
-        io.write_string(Stream, Name, !IO)
+        FuncName = mlds_function_export(FuncNameStr)
     ).
 
 %---------------------%
 
-mlds_output_fully_qualified_proc_label(Stream, QualProcLabel, !IO) :-
-    QualProcLabel = qual_proc_label(ModuleName, Name),
-    Name = mlds_proc_label(PredLabel, _ProcId),
+fully_qualified_proc_label_to_string_for_c(QualProcLabel) = QualProcLabelStr :-
+    QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
+    ProcLabel = mlds_proc_label(PredLabel, _ProcId),
+    ProcLabelStr = proc_label_to_string_for_c(ProcLabel),
     ( if
         % Do not module-qualify main/2.
         PredLabel = mlds_user_pred_label(pf_predicate, no, "main",
             pred_form_arity(2), model_det, no)
     then
-        true
+        QualProcLabelStr = ProcLabelStr
     else
-        output_qual_name_prefix_c(Stream, ModuleName, !IO)
-    ),
-    mlds_output_proc_label(Stream, Name, !IO).
+        Qualifier = qualifier_to_string_for_c(ModuleName),
+        string.format("%s__%s", [s(Qualifier), s(ProcLabelStr)],
+            QualProcLabelStr)
+    ).
 
-:- pred mlds_output_proc_label(io.text_output_stream::in, mlds_proc_label::in,
-    io::di, io::uo) is det.
-
-mlds_output_proc_label(Stream, mlds_proc_label(PredLabel, ProcId), !IO) :-
-    proc_id_to_int(ProcId, ModeNum),
-    io.format(Stream, "%s_%d",
-        [s(mlds_pred_label_to_string(PredLabel)), i(ModeNum)], !IO).
-
-:- func mlds_proc_label_to_string(mlds_proc_label) = string.
-
-mlds_proc_label_to_string(mlds_proc_label(PredLabel, ProcId)) =
-    mlds_pred_label_to_string(PredLabel) ++ "_"
-        ++ string.int_to_string(proc_id_to_int(ProcId)).
+mlds_output_fully_qualified_proc_label(Stream, QualProcLabel, !IO) :-
+    QualProcLabelStr =
+        fully_qualified_proc_label_to_string_for_c(QualProcLabel),
+    io.write_string(Stream, QualProcLabelStr, !IO).
 
 %---------------------%
+
+:- func proc_label_to_string_for_c(mlds_proc_label) = string.
+
+proc_label_to_string_for_c(ProcLabel) = ProcLabelStr :-
+    ProcLabel = mlds_proc_label(PredLabel, ProcId),
+    PredLabelStr = pred_label_to_string_for_c(PredLabel),
+    proc_id_to_int(ProcId, ModeNum),
+    string.format("%s_%d", [s(PredLabelStr), i(ModeNum)], ProcLabelStr).
 
     % mlds_pred_label_to_string should be kept in sync with
     % browser/name_mangle.m.
     %
-:- func mlds_pred_label_to_string(mlds_pred_label) = string.
+:- func pred_label_to_string_for_c(mlds_pred_label) = string.
 
-mlds_pred_label_to_string(PredLabel) = Str :-
+pred_label_to_string_for_c(PredLabel) = Str :-
     (
         PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
             Name, PredFormArity, _CodeModel, _NonOutputFunc),
@@ -279,42 +355,18 @@ mlds_pred_label_to_string(PredLabel) = Str :-
 
 %---------------------------------------------------------------------------%
 
-mlds_output_class_name_arity(Stream, ClassName, Arity, !IO) :-
-    % XXX We should avoid appending the arity if it is not needed.
-    MangledClassName = name_mangle(ClassName),
-    io.format(Stream, "%s_%d", [s(MangledClassName), i(Arity)], !IO).
+qualifier_to_string_for_c(ModuleName) = Qualifier :-
+    SymName = mlds_module_name_to_sym_name(ModuleName),
+    Qualifier = sym_name_mangle(SymName).
 
-mlds_output_fully_qualified_field_var_name(Stream, QualFieldVarName, !IO) :-
-    QualFieldVarName = qual_field_var_name(ModuleName, _, FieldVarName),
-    output_qual_name_prefix_c(Stream, ModuleName, !IO),
-    mlds_output_field_var_name(Stream, FieldVarName, !IO).
-
-:- pred mlds_output_field_var_name(io.text_output_stream::in,
-    mlds_field_var_name::in, io::di, io::uo) is det.
-
-mlds_output_field_var_name(Stream, FieldVarName, !IO) :-
-    MangledFieldVarName =
-        name_mangle(ml_field_var_name_to_string(FieldVarName)),
-    io.write_string(Stream, MangledFieldVarName, !IO).
-
-%---------------------------------------------------------------------------%
-
-mlds_output_local_var_name(Stream, LocalVarName, !IO) :-
-    MangledLocalVarName =
-        name_mangle(ml_local_var_name_to_string(LocalVarName)),
-    io.write_string(Stream, MangledLocalVarName, !IO).
-
-%---------------------------------------------------------------------------%
+qual_name_prefix_c(ModuleName) = Qualifier :-
+    SymName = mlds_module_name_to_sym_name(ModuleName),
+    MangledModuleName = sym_name_mangle(SymName),
+    string.format("%s__", [s(MangledModuleName)], Qualifier).
 
 output_qual_name_prefix_c(Stream, ModuleName, !IO) :-
-    SymName = mlds_module_name_to_sym_name(ModuleName),
-    MangledModuleName = sym_name_mangle(SymName),
-    io.format(Stream, "%s__", [s(MangledModuleName)], !IO).
-
-qual_name_prefix_c(ModuleName) = ModuleNamePrefix :-
-    SymName = mlds_module_name_to_sym_name(ModuleName),
-    MangledModuleName = sym_name_mangle(SymName),
-    ModuleNamePrefix = MangledModuleName ++ "__".
+    Qualifier = qual_name_prefix_c(ModuleName),
+    io.write_string(Stream, Qualifier, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_c_name.
