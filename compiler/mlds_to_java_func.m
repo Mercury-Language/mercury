@@ -140,7 +140,7 @@ output_function_defn_for_java(Info, Stream, Indent, OutputAux,
         % Java doesn't support separate declarations and definitions,
         % so just output the declaration as a comment.
         % (Note that the actual definition of an external procedure
-        % must be given in `pragma java_code' in the same module.)
+        % must be given in `pragma foreign_code' in the same module.)
         %
         % XXX For now, we print only the name of the function.
         % We would like to print the whole declaration in a comment,
@@ -154,16 +154,17 @@ output_function_defn_for_java(Info, Stream, Indent, OutputAux,
         io.format(Stream, "// external: %s\n", [s(FuncNameStr)], !IO)
     ;
         MaybeBody = body_defined_here(_),
-        indent_line_after_context(Stream, Info ^ joi_line_numbers,
-            marker_comment, Context, Indent, !IO),
-        output_function_decl_flags_for_java(Info, Stream, Flags, !IO),
         (
             MaybePredProcId = no
         ;
             MaybePredProcId = yes(PredProcid),
+            IndentStr = indent2_string(Indent),
             maybe_output_pred_proc_id_comment(Stream, Info ^ joi_auto_comments,
-                PredProcid, !IO)
+                IndentStr, PredProcid, !IO)
         ),
+        indent_line_after_context(Stream, Info ^ joi_line_numbers,
+            marker_comment, Context, Indent, !IO),
+        output_function_decl_flags_for_java(Info, Stream, Flags, !IO),
         output_func_for_java(Info, Stream, Indent, FuncName, OutputAux,
             Context, Params, MaybeBody, !IO)
     ).

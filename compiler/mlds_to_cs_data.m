@@ -1047,7 +1047,6 @@ output_initializer_body_list_for_csharp(Info, Stream, Indent,
             Indent, HeadInit, no, Suffix, !IO)
     ;
         TailInits = [HeadTailInit | TailTailInits],
-        % ZZZ
         output_initializer_body_for_csharp(Info, Stream, at_start_of_line,
             Indent, HeadInit, no, ",", !IO),
         output_initializer_body_list_for_csharp(Info, Stream,

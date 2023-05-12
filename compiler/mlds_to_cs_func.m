@@ -58,7 +58,7 @@ output_function_defn_for_csharp(Info, Stream, Indent, OutputAux,
         FunctionDefn, !IO) :-
     % Put a blank line before each function definition.
     io.nl(Stream, !IO),
-    write_indent2(Stream, Indent, !IO),
+    IndentStr = indent2_string(Indent),
     FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
         MaybePredProcId, Params, MaybeBody, _EnvVarNames,
         _MaybeRequireTailrecInfo),
@@ -69,59 +69,33 @@ output_function_defn_for_csharp(Info, Stream, Indent, OutputAux,
         % so just output the declaration as a comment.
         % (Note that the actual definition of an external procedure
         % must be given in `pragma foreign_code' in the same module.)
-        PreStr = "/* external:\n",
-        PostStr = "*/\n"
+        PreStr =  IndentStr ++ "/* external:\n",
+        PostStr = IndentStr ++ "*/\n"
     ;
         MaybeBody = body_defined_here(_),
         PreStr = "",
         PostStr = ""
     ),
     io.write_string(Stream, PreStr, !IO),
-    output_function_decl_flags_for_csharp(Info, Stream, Flags, !IO),
     (
         MaybePredProcId = no
     ;
         MaybePredProcId = yes(PredProcId),
         maybe_output_pred_proc_id_comment(Stream, Info ^ csoi_auto_comments,
-            PredProcId, !IO)
+            IndentStr, PredProcId, !IO)
     ),
+    Flags = mlds_function_decl_flags(Access, PerInstance),
+    ( Access = func_public,         AccessPrefix = "public "
+    ; Access = func_private,        AccessPrefix = "private "
+    ),
+    ( PerInstance = per_instance,   PerInstancePrefix = ""
+    ; PerInstance = one_copy,       PerInstancePrefix = "static "
+    ),
+    io.format(Stream, "%s%s%s",
+        [s(IndentStr), s(AccessPrefix), s(PerInstancePrefix)], !IO),
     output_func_for_csharp(Info, Stream, Indent, FuncName, OutputAux, Context,
         Params, MaybeBody, !IO),
     io.write_string(Stream, PostStr, !IO).
-
-%---------------------------------------------------------------------------%
-
-:- pred output_function_decl_flags_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, mlds_function_decl_flags::in,
-    io::di, io::uo) is det.
-
-output_function_decl_flags_for_csharp(Info, Stream, Flags, !IO) :-
-    Flags = mlds_function_decl_flags(Access, PerInstance),
-    output_access_for_csharp(Info, Stream, Access, !IO),
-    output_per_instance_for_csharp(Stream, PerInstance, !IO).
-
-:- pred output_access_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, function_access::in, io::di, io::uo) is det.
-
-output_access_for_csharp(_Info, Stream, Access, !IO) :-
-    (
-        Access = func_public,
-        io.write_string(Stream, "public ", !IO)
-    ;
-        Access = func_private,
-        io.write_string(Stream, "private ", !IO)
-    ).
-
-:- pred output_per_instance_for_csharp(io.text_output_stream::in,
-    per_instance::in, io::di, io::uo) is det.
-
-output_per_instance_for_csharp(Stream, PerInstance, !IO) :-
-    (
-        PerInstance = per_instance
-    ;
-        PerInstance = one_copy,
-        io.write_string(Stream, "static ", !IO)
-    ).
 
 %---------------------------------------------------------------------------%
 
@@ -133,19 +107,20 @@ output_func_for_csharp(Info, Stream, Indent, FuncName, OutputAux, Context,
         Signature, MaybeBody, !IO) :-
     (
         MaybeBody = body_defined_here(Body),
+        PrintLineNumbers = Info ^ csoi_line_numbers,
+        IndentStr = indent2_string(Indent),
         output_func_decl_for_csharp(Info, Stream, Indent, FuncName, OutputAux,
             Signature, !IO),
-        io.write_string(Stream, "\n", !IO),
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "{\n", !IO),
+        cs_output_context(Stream, PrintLineNumbers, Context, !IO),
+        io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
         FuncInfo = func_info_csj(Signature),
         output_stmt_for_csharp(Info, Stream, Indent + 1, FuncInfo, Body,
             _ExitMethods, !IO),
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "}\n", !IO),    % end the function
-        cs_output_default_context(Stream, Info ^ csoi_line_numbers, !IO)
+        % XXX What is this printed context for? Its scope is limited
+        % to just one close brace.
+        cs_output_context(Stream, PrintLineNumbers, Context, !IO),
+        io.format(Stream, "%s}\n", [s(IndentStr)], !IO),    % end the function
+        cs_output_default_context(Stream, PrintLineNumbers, !IO)
     ;
         MaybeBody = body_external
     ).
@@ -164,7 +139,7 @@ output_func_decl_for_csharp(Info, Stream, Indent, FuncName, OutputAux,
         ClassNameStr =
             unqual_class_name_to_ll_string_for_csharp(ClassName, ClassArity),
         ParamsStr = params_to_string_for_csharp(Info, Indent, Parameters),
-        io.format(Stream, "%s%s", [s(ClassNameStr), s(ParamsStr)], !IO)
+        io.format(Stream, "%s%s\n", [s(ClassNameStr), s(ParamsStr)], !IO)
     else
         FuncNameStr = function_name_to_ll_string_for_csharp(FuncName),
         get_return_type_and_out_params_for_csharp(Info, RetTypes,
@@ -172,7 +147,7 @@ output_func_decl_for_csharp(Info, Stream, Indent, FuncName, OutputAux,
         list.map_foldl(make_out_param, OutParamTypes, OutParams, 2, _),
         ParamsStr = params_to_string_for_csharp(Info, Indent,
             Parameters ++ OutParams),
-        io.format(Stream, "%s %s%s",
+        io.format(Stream, "%s %s%s\n",
             [s(RetTypeStr), s(FuncNameStr), s(ParamsStr)], !IO)
     ).
 

@@ -131,9 +131,11 @@ output_stmt_block_for_csharp(Info, Stream, Indent, FuncInfo, Stmt,
     Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, Stmts, Context),
     BraceIndent = Indent,
     BlockIndent = Indent + 1,
-    indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-        BraceIndent, !IO),
-    io.write_string(Stream, "{\n", !IO),
+    LineNumbers = Info ^ csoi_line_numbers,
+    BraceIndentStr = indent2_string(BraceIndent),
+
+    cs_output_context(Stream, LineNumbers, Context, !IO),
+    io.format(Stream, "%s{\n", [s(BraceIndentStr)], !IO),
     (
         LocalVarDefns = [_ | _],
         list.foldl(
@@ -155,9 +157,8 @@ output_stmt_block_for_csharp(Info, Stream, Indent, FuncInfo, Stmt,
     ),
     output_stmts_for_csharp(Info, Stream, BlockIndent, FuncInfo, Stmts,
         ExitMethods, !IO),
-    indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-        BraceIndent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    cs_output_context(Stream, LineNumbers, Context, !IO),
+    io.format(Stream, "%s}\n", [s(BraceIndentStr)], !IO).
 
 :- pred output_local_var_defn_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, indent::in, mlds_local_var_defn::in,
@@ -211,25 +212,24 @@ output_stmts_for_csharp(Info, Stream, Indent, FuncInfo, [Stmt | Stmts],
 output_stmt_while_for_csharp(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_while(Kind, Cond, BodyStmt, _LoopLocalVars, Context),
+    LineNumbers = Info ^ csoi_line_numbers,
     scope_indent(BodyStmt, Indent, ScopeIndent),
+    IndentStr = indent2_string(Indent),
     (
         Kind = may_loop_zero_times,
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "while (", !IO),
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream, "%swhile (", [s(IndentStr)], !IO),
         output_rval_for_csharp(Info, Cond, Stream, !IO),
         io.write_string(Stream, ")\n", !IO),
         % The contained statement is reachable iff the while statement is
         % reachable and the condition expression is not a constant
         % expression whose value is false.
         ( if Cond = ml_const(mlconst_false) then
-            indent_line_after_context(Stream, Info ^ csoi_line_numbers,
-                Context, Indent, !IO),
-            io.write_string(Stream, "{\n", !IO),
-            output_n_indents(Stream, Indent + 1, !IO),
-            io.write_string(Stream, "/* Unreachable code */\n", !IO),
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, "}\n", !IO),
+            cs_output_context(Stream, LineNumbers, Context, !IO),
+            io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+            io.format(Stream, "%s  /* Unreachable code */\n",
+                [s(IndentStr)], !IO),
+            io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
             ExitMethods = set.make_singleton_set(can_fall_through)
         else
             BodyInfo = Info ^ csoi_break_context := bc_loop,
@@ -239,15 +239,13 @@ output_stmt_while_for_csharp(Info, Stream, Indent, FuncInfo, Stmt,
         )
     ;
         Kind = loop_at_least_once,
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "do\n", !IO),
         BodyInfo = Info ^ csoi_break_context := bc_loop,
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream, "%sdo\n", [s(IndentStr)], !IO),
         output_stmt_for_csharp(BodyInfo, Stream, ScopeIndent, FuncInfo,
             BodyStmt, StmtExitMethods, !IO),
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "while (", !IO),
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream, "%swhile (", [s(IndentStr)], !IO),
         output_rval_for_csharp(Info, Cond, Stream, !IO),
         io.write_string(Stream, ");\n", !IO),
         ExitMethods = while_exit_methods_for_csharp(Cond, StmtExitMethods)
@@ -286,6 +284,8 @@ while_exit_methods_for_csharp(Cond, BlockExitMethods) = ExitMethods :-
 output_stmt_if_then_else_for_csharp(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_if_then_else(Cond, Then0, MaybeElse, Context),
+    LineNumbers = Info ^ csoi_line_numbers,
+    IndentStr = indent2_string(Indent),
     % We need to take care to avoid problems caused by the dangling else
     % ambiguity.
     ( if
@@ -308,20 +308,18 @@ output_stmt_if_then_else_for_csharp(Info, Stream, Indent, FuncInfo, Stmt,
         Then = Then0
     ),
 
-    indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-        Indent, !IO),
-    io.write_string(Stream, "if (", !IO),
+    scope_indent(Then, Indent, ThenScopeIndent),
+    cs_output_context(Stream, LineNumbers, Context, !IO),
+    io.format(Stream, "%sif (", [s(IndentStr)], !IO),
     output_rval_for_csharp(Info, Cond, Stream, !IO),
     io.write_string(Stream, ")\n", !IO),
-    scope_indent(Then, Indent, ThenScopeIndent),
     output_stmt_for_csharp(Info, Stream, ThenScopeIndent, FuncInfo, Then,
         ThenExitMethods, !IO),
     (
         MaybeElse = yes(Else),
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "else\n", !IO),
         scope_indent(Else, Indent, ElseScopeIndent),
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream, "%selse\n", [s(IndentStr)], !IO),
         output_stmt_for_csharp(Info, Stream, ElseScopeIndent, FuncInfo, Else,
             ElseExitMethods, !IO),
         % An if-then-else statement can complete normally iff the
@@ -345,17 +343,17 @@ output_stmt_if_then_else_for_csharp(Info, Stream, Indent, FuncInfo, Stmt,
 output_stmt_switch_for_csharp(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default, Context),
-    indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-        Indent, !IO),
-    io.write_string(Stream, "switch (", !IO),
+    LineNumbers = Info ^ csoi_line_numbers,
+    IndentStr = indent2_string(Indent),
+    cs_output_context(Stream, LineNumbers, Context, !IO),
+    io.format(Stream, "%sswitch (", [s(IndentStr)], !IO),
     output_rval_for_csharp(Info, Val, Stream, !IO),
     io.write_string(Stream, ") {\n", !IO),
     CaseInfo = Info ^ csoi_break_context := bc_switch,
     output_switch_cases_for_csharp(CaseInfo, Stream, Indent + 1, FuncInfo,
         Context, Cases, Default, ExitMethods, !IO),
-    indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-        Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    cs_output_context(Stream, LineNumbers, Context, !IO),
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred output_switch_cases_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, indent::in, func_info_csj::in, prog_context::in,
@@ -394,9 +392,10 @@ output_switch_case_for_csharp(Info, Stream, Indent, FuncInfo, Context, Case,
     output_stmt_for_csharp(Info, Stream, Indent + 1, FuncInfo, Statement,
         StmtExitMethods, !IO),
     ( if set.member(can_fall_through, StmtExitMethods) then
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent + 1, !IO),
-        io.write_string(Stream, "break;\n", !IO),
+        LineNumbers = Info ^ csoi_line_numbers,
+        Indent1Str = indent2_string(Indent + 1),
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream, "%sbreak;\n", [s(Indent1Str)], !IO),
         ExitMethods = set.delete(set.insert(StmtExitMethods, can_break),
             can_fall_through)
     else
@@ -411,9 +410,10 @@ output_switch_case_for_csharp(Info, Stream, Indent, FuncInfo, Context, Case,
 output_case_cond_for_csharp(Info, Stream, Indent, Context, Match, !IO) :-
     (
         Match = match_value(Val),
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "case ", !IO),
+        LineNumbers = Info ^ csoi_line_numbers,
+        IndentStr = indent2_string(Indent),
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream, "%scase ", [s(IndentStr)], !IO),
         output_rval_for_csharp(Info, Val, Stream, !IO),
         io.write_string(Stream, ":\n", !IO)
     ;
@@ -432,23 +432,24 @@ output_switch_default_for_csharp(Info, Stream, Indent, FuncInfo, Context,
         ExitMethods = set.make_singleton_set(can_fall_through)
     ;
         Default = default_case(Statement),
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "default:\n", !IO),
+        LineNumbers = Info ^ csoi_line_numbers,
+        IndentStr = indent2_string(Indent),
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream, "%sdefault:\n", [s(IndentStr)], !IO),
         output_stmt_for_csharp(Info, Stream, Indent + 1, FuncInfo, Statement,
             ExitMethods, !IO),
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "break;\n", !IO)
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream, "%sbreak;\n", [s(IndentStr)], !IO)
     ;
         Default = default_is_unreachable,
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "default: /*NOTREACHED*/\n", !IO),
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent + 1, !IO),
-        io.write_string(Stream,
-            "throw new runtime.UnreachableDefault();\n", !IO),
+        LineNumbers = Info ^ csoi_line_numbers,
+        IndentStr = indent2_string(Indent),
+        io.format(Stream,
+            "%sdefault: /*NOTREACHED*/\n", [s(IndentStr)], !IO),
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream,
+            "%s  throw new runtime.UnreachableDefault();\n",
+            [s(IndentStr)], !IO),
         ExitMethods = set.make_singleton_set(can_throw)
     ).
 
@@ -462,6 +463,8 @@ output_switch_default_for_csharp(Info, Stream, Indent, FuncInfo, Context,
 output_stmt_goto_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_goto(Target, Context),
+    LineNumbers = Info ^ csoi_line_numbers,
+    IndentStr = indent2_string(Indent),
     (
         Target = goto_label(_),
         unexpected($pred, "gotos not supported in C#.")
@@ -470,9 +473,8 @@ output_stmt_goto_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
         BreakContext = Info ^ csoi_break_context,
         (
             BreakContext = bc_switch,
-            indent_line_after_context(Stream, Info ^ csoi_line_numbers,
-                Context, Indent, !IO),
-            io.write_string(Stream, "break;\n", !IO),
+            cs_output_context(Stream, LineNumbers, Context, !IO),
+            io.format(Stream, "%sbreak;\n", [s(IndentStr)], !IO),
             ExitMethods = set.make_singleton_set(can_break)
         ;
             ( BreakContext = bc_none
@@ -485,9 +487,8 @@ output_stmt_goto_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
         BreakContext = Info ^ csoi_break_context,
         (
             BreakContext = bc_loop,
-            indent_line_after_context(Stream, Info ^ csoi_line_numbers,
-                Context, Indent, !IO),
-            io.write_string(Stream, "break;\n", !IO),
+            cs_output_context(Stream, LineNumbers, Context, !IO),
+            io.format(Stream, "%sbreak;\n", [s(IndentStr)], !IO),
             ExitMethods = set.make_singleton_set(can_break)
         ;
             ( BreakContext = bc_none
@@ -497,9 +498,8 @@ output_stmt_goto_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
         )
     ;
         Target = goto_continue_loop,
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "continue;\n", !IO),
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream, "%scontinue;\n", [s(IndentStr)], !IO),
         ExitMethods = set.make_singleton_set(can_continue)
     ).
 
@@ -515,11 +515,13 @@ output_stmt_call_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
     Stmt = ml_stmt_call(Signature, FuncRval, CallArgs, Results,
         IsTailCall, Context),
     Signature = mlds_func_signature(ArgTypes, RetTypes),
-    indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-        Indent, !IO),
-    io.write_string(Stream, "{\n", !IO),
-    indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-        Indent + 1, !IO),
+    LineNumbers = Info ^ csoi_line_numbers,
+    IndentStr = indent2_string(Indent),
+    Indent1Str = indent2_string(Indent + 1),
+
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+    cs_output_context(Stream, LineNumbers, Context, !IO),
+    io.write_string(Stream, Indent1Str, !IO),
     (
         Results = [],
         OutArgs = []
@@ -534,11 +536,12 @@ output_stmt_call_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
         output_call_rval_for_csharp(Info, FuncRval, Stream, !IO)
     else
         % This is a call using a method pointer.
-        TypeString = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
-        io.format(Stream, "((%s) ", [s(TypeString)], !IO),
+        PtrTypeName = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
+        io.format(Stream, "((%s) ", [s(PtrTypeName)], !IO),
         output_call_rval_for_csharp(Info, FuncRval, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ),
+    % XXX This list of rvals on one line can result in *very* long lines.
     io.write_string(Stream, "(", !IO),
     write_out_list(output_rval_for_csharp(Info), ", ", CallArgs ++ OutArgs,
         Stream, !IO),
@@ -552,15 +555,13 @@ output_stmt_call_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
         IsTailCall = tail_call
     ;
         IsTailCall = no_return_call,
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent  + 1, !IO),
-        io.write_string(Stream,
-            "throw new runtime.UnreachableDefault();\n", !IO)
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream, "%sthrow new runtime.UnreachableDefault();\n",
+            [s(Indent1Str)], !IO)
     ),
 
-    indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-        Indent, !IO),
-    io.write_string(Stream, "}\n", !IO),
+    cs_output_context(Stream, LineNumbers, Context, !IO),
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
     ExitMethods = set.make_singleton_set(can_fall_through).
 
 %---------------------------------------------------------------------------%
@@ -574,20 +575,20 @@ output_stmt_call_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
 output_stmt_return_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_return(Results, Context),
+    LineNumbers = Info ^ csoi_line_numbers,
+    IndentStr = indent2_string(Indent),
     (
         Results = [],
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "return;\n", !IO)
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream, "%sreturn;\n", [s(IndentStr)], !IO)
     ;
         Results = [Rval | Rvals],
         % The first return value is returned directly.
         % Subsequent return values are assigned to out parameters.
         list.foldl2(output_assign_out_params(Info, Stream, Indent),
             Rvals, 2, _, !IO),
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "return ", !IO),
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream, "%sreturn ", [s(IndentStr)], !IO),
         output_rval_for_csharp(Info, Rval, Stream, !IO),
         io.write_string(Stream, ";\n", !IO)
     ),
@@ -598,8 +599,8 @@ output_stmt_return_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
     io::di, io::uo) is det.
 
 output_assign_out_params(Info, Stream, Indent, Rval, Num, Num + 1, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "out_param_%d = ", [i(Num)], !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%sout_param_%d = ", [s(IndentStr), i(Num)], !IO),
     output_rval_for_csharp(Info, Rval, Stream, !IO),
     io.write_string(Stream, ";\n", !IO).
 
@@ -614,13 +615,14 @@ output_assign_out_params(Info, Stream, Indent, Rval, Num, Num + 1, !IO) :-
 output_stmt_do_commit_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_do_commit(Ref, Context),
-    indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-        Indent, !IO),
+    LineNumbers = Info ^ csoi_line_numbers,
+    IndentStr = indent2_string(Indent),
+    cs_output_context(Stream, LineNumbers, Context, !IO),
+    io.write_string(Stream, IndentStr, !IO),
     output_rval_for_csharp(Info, Ref, Stream, !IO),
     io.write_string(Stream, " = new runtime.Commit();\n", !IO),
-    indent_line_after_context(Stream, Info ^ csoi_line_numbers,
-        Context, Indent, !IO),
-    io.write_string(Stream, "throw ", !IO),
+    cs_output_context(Stream, LineNumbers, Context, !IO),
+    io.format(Stream, "%sthrow ", [s(IndentStr)], !IO),
     output_rval_for_csharp(Info, Ref, Stream, !IO),
     io.write_string(Stream, ";\n", !IO),
     ExitMethods = set.make_singleton_set(can_throw).
@@ -635,25 +637,28 @@ output_stmt_do_commit_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
 
 output_stmt_try_commit_for_csharp(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
+    % XXX I (zs) reduced the number of times this code writes out the
+    % context (if LineNumbers = yes) from seven to four, but I think
+    % even the remaining set is probably more than is needed.
     Stmt = ml_stmt_try_commit(_Ref, BodyStmt, HandlerStmt, Context),
     LineNumbers = Info ^ csoi_line_numbers,
-    indent_line_after_context(Stream, LineNumbers, Context, Indent, !IO),
-    io.write_string(Stream, "try\n", !IO),
-    indent_line_after_context(Stream, LineNumbers, Context, Indent, !IO),
-    io.write_string(Stream, "{\n", !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%stry\n", [s(IndentStr)], !IO),
+    cs_output_context(Stream, LineNumbers, Context, !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
     output_stmt_for_csharp(Info, Stream, Indent + 1, FuncInfo, BodyStmt,
         TryExitMethods0, !IO),
-    indent_line_after_context(Stream, LineNumbers, Context, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO),
-    indent_line_after_context(Stream, LineNumbers, Context, Indent, !IO),
-    io.write_string(Stream, "catch (runtime.Commit commit_variable)\n", !IO),
-    indent_line_after_context(Stream, LineNumbers, Context, Indent, !IO),
-    io.write_string(Stream, "{\n", !IO),
-    indent_line_after_context(Stream, LineNumbers, Context, Indent + 1, !IO),
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
+    cs_output_context(Stream, LineNumbers, Context, !IO),
+    io.format(Stream, "%scatch (runtime.Commit commit_variable)\n",
+        [s(IndentStr)], !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+    cs_output_context(Stream, LineNumbers, Context, !IO),
+    io.format(Stream, "%s  ", [s(IndentStr)], !IO),
     output_stmt_for_csharp(Info, Stream, Indent + 1, FuncInfo, HandlerStmt,
         CatchExitMethods, !IO),
-    indent_line_after_context(Stream, LineNumbers, Context, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO),
+    cs_output_context(Stream, LineNumbers, Context, !IO),
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
     ExitMethods = set.union(set.delete(TryExitMethods0, can_throw),
         CatchExitMethods).
 
@@ -670,17 +675,17 @@ output_atomic_stmt_for_csharp(Info, Stream, Indent, AtomicStmt,
         ( if Comment = "" then
             io.nl(Stream, !IO)
         else
+            IndentStr = indent2_string(Indent),
             % XXX We should escape any "*/"'s in the Comment. We should also
             % split the comment into lines and indent each line appropriately.
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, "/* ", !IO),
-            io.write_string(Stream, Comment, !IO),
-            io.write_string(Stream, " */\n", !IO)
+            io.format(Stream, "%s/* %s */\n", [s(IndentStr), s(Comment)], !IO)
         )
     ;
         AtomicStmt = assign(Lval, Rval),
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
+        LineNumbers = Info ^ csoi_line_numbers,
+        IndentStr = indent2_string(Indent),
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.write_string(Stream, IndentStr, !IO),
         output_lval_for_csharp(Info, Lval, Stream, !IO),
         io.write_string(Stream, " = ", !IO),
         output_rval_for_csharp(Info, Rval, Stream, !IO),
@@ -700,15 +705,14 @@ output_atomic_stmt_for_csharp(Info, Stream, Indent, AtomicStmt,
         ;
             ExplicitSecTag = no
         ),
+        LineNumbers = Info ^ csoi_line_numbers,
+        IndentStr = indent2_string(Indent),
 
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "{\n", !IO),
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent + 1, !IO),
+        io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream, "%s  ", [s(IndentStr)], !IO),
         output_lval_for_csharp(Info, Target, Stream, !IO),
         % Generate class constructor name.
-        % ZZZ
         type_to_string_and_dims_for_csharp(Info, Type, TypeStr0, ArrayDims),
         TypeStr = add_array_dimensions(TypeStr0, ArrayDims),
         ( if
@@ -735,14 +739,13 @@ output_atomic_stmt_for_csharp(Info, Stream, Indent, AtomicStmt,
         ;
             ArgRvalsTypes = [HeadArgRvalType | TailArgRvalsTypes],
             io.format(Stream, "%s\n", [s(LParen)], !IO),
-            output_init_args_for_csharp(Info, Stream, Indent + 2,
+            Indent2Str = indent2_string(Indent + 1),
+            output_init_args_for_csharp(Info, Stream, Indent2Str,
                 HeadArgRvalType, TailArgRvalsTypes, !IO),
-            output_n_indents(Stream, Indent + 1, !IO),
-            io.format(Stream, "%s;\n", [s(RParen)], !IO)
+            io.format(Stream, "%s  %s;\n", [s(IndentStr), s(RParen)], !IO)
         ),
-        indent_line_after_context(Stream, Info ^ csoi_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Stream, "}\n", !IO)
+        cs_output_context(Stream, LineNumbers, Context, !IO),
+        io.format(Stream, "%s}\n", [s(IndentStr)], !IO)
     ;
         AtomicStmt = gc_check,
         unexpected($pred, "gc_check not implemented.")
@@ -778,12 +781,12 @@ output_atomic_stmt_for_csharp(Info, Stream, Indent, AtomicStmt,
     % object's class constructor.
     %
 :- pred output_init_args_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, int::in, mlds_typed_rval::in,
+    io.text_output_stream::in, string::in, mlds_typed_rval::in,
     list(mlds_typed_rval)::in, io::di, io::uo) is det.
 
-output_init_args_for_csharp(Info, Stream, Indent, HeadArg, TailArgs, !IO) :-
+output_init_args_for_csharp(Info, Stream, IndentStr, HeadArg, TailArgs, !IO) :-
     HeadArg = ml_typed_rval(HeadArgRval, _HeadArgType),
-    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, IndentStr, !IO),
     output_rval_for_csharp(Info, HeadArgRval, Stream, !IO),
     (
         TailArgs = [],
@@ -791,7 +794,7 @@ output_init_args_for_csharp(Info, Stream, Indent, HeadArg, TailArgs, !IO) :-
     ;
         TailArgs = [HeadTailArg | TailTailArgs],
         io.write_string(Stream, ",\n", !IO),
-        output_init_args_for_csharp(Info, Stream, Indent,
+        output_init_args_for_csharp(Info, Stream, IndentStr,
             HeadTailArg, TailTailArgs, !IO)
     ).
 
@@ -804,19 +807,17 @@ output_init_args_for_csharp(Info, Stream, Indent, HeadArg, TailArgs, !IO) :-
 output_target_code_component_for_csharp(Info, Stream, TargetCode, !IO) :-
     (
         TargetCode = user_target_code(CodeString, MaybeUserContext),
+        ForeignLineNumbers = Info ^ csoi_foreign_line_numbers,
         output_pragma_warning_restore(Stream, !IO),
         io.write_string(Stream, "{\n", !IO),
         (
             MaybeUserContext = yes(ProgContext),
-            cs_output_context(Stream, Info ^ csoi_foreign_line_numbers,
-                ProgContext, !IO)
+            cs_output_context(Stream, ForeignLineNumbers, ProgContext, !IO)
         ;
             MaybeUserContext = no
         ),
-        io.write_string(Stream, CodeString, !IO),
-        io.write_string(Stream, "}\n", !IO),
-        cs_output_default_context(Stream,
-            Info ^ csoi_foreign_line_numbers, !IO),
+        io.format(Stream, "%s}\n", [s(CodeString)], !IO),
+        cs_output_default_context(Stream, ForeignLineNumbers, !IO),
         output_pragma_warning_disable(Stream, !IO)
     ;
         TargetCode = raw_target_code(CodeString),

@@ -82,7 +82,6 @@ output_global_var_decls_for_csharp(Info, Stream, Indent,
         [GlobalVarDefn | GlobalVarDefns], !IO) :-
     GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, Flags0,
         Type, _Initializer, _GCStmt),
-    % ZZZ move to caller
     IndentStr = indent2_string(Indent),
     % We can't honour _Constness here as the variable is assigned separately.
     Flags0 = mlds_global_var_decl_flags(Access, _Constness),

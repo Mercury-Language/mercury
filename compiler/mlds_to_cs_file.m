@@ -38,6 +38,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_global_data.
@@ -218,11 +219,11 @@ make_code_addr_map_for_csharp([SeqNum - CodeAddr | SeqNumsCodeAddrs],
     list(mlds_import)::in, list(foreign_decl_code)::in,
     list(mlds_function_defn)::in, list(string)::out, io::di, io::uo) is det.
 
-output_src_start_for_csharp(Info, Stream, MercuryModuleName, _Imports,
+output_src_start_for_csharp(Info, Stream, ModuleName, _Imports,
         ForeignDecls, FuncDefns, Errors, !IO) :-
     output_auto_gen_comment(Stream, Info ^ csoi_source_filename, !IO),
     io.format(Stream, "// :- module %s.\n\n",
-        [s(sym_name_to_escaped_string(MercuryModuleName))], !IO),
+        [s(sym_name_to_escaped_string(ModuleName))], !IO),
     % The close parenthesis for this open parenthesis is written out
     % by output_src_end_for_csharp.
     io.write_string(Stream, "namespace mercury {\n\n", !IO),
@@ -231,8 +232,7 @@ output_src_start_for_csharp(Info, Stream, MercuryModuleName, _Imports,
         ForeignDecls, ForeignDeclResults, !IO),
     list.filter_map(maybe_is_error, ForeignDeclResults, Errors),
 
-    mangle_sym_name_for_csharp(MercuryModuleName, module_qual, "__",
-        ClassName),
+    mangle_sym_name_for_csharp(ModuleName, module_qual, "__", ClassName),
     % The close parenthesis for this open parenthesis is written out
     % by output_src_end_for_csharp.
     io.format(Stream, "public static class %s {\n", [s(ClassName)], !IO),
@@ -252,38 +252,39 @@ output_src_start_for_csharp(Info, Stream, MercuryModuleName, _Imports,
     mercury_module_name::in, indent::in, list(string)::in, list(string)::in,
     io::di, io::uo) is det.
 
-output_static_constructor(Stream, MercuryModuleName, Indent,
+output_static_constructor(Stream, ModuleName, Indent,
         StaticConstructors, FinalPreds, !IO) :-
-    mangle_sym_name_for_csharp(MercuryModuleName, module_qual, "__",
-        ClassName),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "static %s() {\n", [s(ClassName)], !IO),
+    IndentStr = indent2_string(Indent),
+    Indent1Str = indent2_string(Indent + 1),
+    mangle_sym_name_for_csharp(ModuleName, module_qual, "__", ClassName),
+    io.format(Stream, "%sstatic %s() {\n", [s(IndentStr), s(ClassName)], !IO),
     WriteCall =
         ( pred(MethodName::in, !.IO::di, !:IO::uo) is det :-
-            output_n_indents(Stream, Indent + 1, !IO),
-            io.format(Stream, "%s();\n", [s(MethodName)], !IO)
+            io.format(Stream, "%s%s();\n",
+                [s(Indent1Str), s(MethodName)], !IO)
         ),
     list.foldl(WriteCall, StaticConstructors, !IO),
     WriteFinal =
         ( pred(FinalPred::in, !.IO::di, !:IO::uo) is det :-
-            output_n_indents(Stream, Indent + 1, !IO),
-            list.foldl(io.write_string(Stream), [
-                "System.AppDomain.CurrentDomain.ProcessExit += ",
-                "(sender, ev) => ", FinalPred, "();\n"
-            ], !IO)
+            io.format(Stream,
+                "%sSystem.AppDomain.CurrentDomain.ProcessExit +=\n",
+                [s(Indent1Str)], !IO),
+            io.format(Stream,
+                "%s  (sender, ev) => %s();\n",
+                [s(Indent1Str), s(FinalPred)], !IO)
         ),
     list.foldl(WriteFinal, FinalPreds, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred write_main_driver_for_csharp(io.text_output_stream::in, indent::in,
     string::in, io::di, io::uo) is det.
 
 write_main_driver_for_csharp(Stream, Indent, ClassName, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "public static void Main(string[] args)\n", !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "{\n", !IO),
+    IndentStr = indent2_string(Indent),
+    Indent1Str = indent2_string(Indent + 1),
+    io.format(Stream, "%spublic static void Main(string[] args)\n",
+        [s(IndentStr)], !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
     Body = [
         "try {",
         "   library.ML_std_library_init();",
@@ -300,9 +301,8 @@ write_main_driver_for_csharp(Stream, Indent, ClassName, !IO) :-
         "   }",
         "}"
     ],
-    list.foldl(write_indented_line(Stream, Indent + 1), Body, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    list.foldl(write_indentstr_line(Stream, Indent1Str), Body, !IO),
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred output_src_end_for_csharp(io.text_output_stream::in,
     mercury_module_name::in, io::di, io::uo) is det.
@@ -359,22 +359,22 @@ output_csharp_body_code(Info, Stream, ForeignBodyCode, Res, !IO) :-
 
 output_csharp_foreign_literal_or_include(Info, Stream, LiteralOrInclude,
         Context, Res, !IO) :-
+    PrintLineNumbers = Info ^ csoi_foreign_line_numbers,
     (
         LiteralOrInclude = floi_literal(Code),
-        indent_line_after_context(Stream, Info ^ csoi_foreign_line_numbers,
-            Context, 0, !IO),
+        cs_output_context(Stream, PrintLineNumbers, Context, !IO),
         io.write_string(Stream, Code, !IO),
         Res = ok
     ;
         LiteralOrInclude = floi_include_file(IncludeFileName),
         SourceFileName = Info ^ csoi_source_filename,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
-        cs_output_context(Stream, Info ^ csoi_foreign_line_numbers,
-            context(IncludePath, 1), !IO),
+        InitialFileContext = context(IncludePath, 1),
+        cs_output_context(Stream, PrintLineNumbers, InitialFileContext, !IO),
         write_include_file_contents(Stream, IncludePath, Res, !IO)
     ),
     io.nl(Stream, !IO),
-    cs_output_default_context(Stream, Info ^ csoi_foreign_line_numbers, !IO).
+    cs_output_default_context(Stream, PrintLineNumbers, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -383,20 +383,20 @@ output_csharp_foreign_literal_or_include(Info, Stream, LiteralOrInclude,
     io::di, io::uo) is det.
 
 output_method_ptr_constants(Info, Stream, Indent, CodeAddrs, !IO) :-
-    map.foldl(output_method_ptr_constant(Info, Stream, Indent),
+    IndentStr = indent2_string(Indent),
+    map.foldl(output_method_ptr_constant(Info, Stream, IndentStr),
         CodeAddrs, !IO).
 
 :- pred output_method_ptr_constant(csharp_out_info::in,
-    io.text_output_stream::in, indent::in, mlds_code_addr::in, string::in,
+    io.text_output_stream::in, string::in, mlds_code_addr::in, string::in,
     io::di, io::uo) is det.
 
-output_method_ptr_constant(Info, Stream, Indent, CodeAddr, Name, !IO) :-
+output_method_ptr_constant(Info, Stream, IndentStr, CodeAddr, Name, !IO) :-
     CodeAddr = mlds_code_addr(_QualFuncLabel, Signature),
     Signature = mlds_func_signature(ArgTypes, RetTypes),
-    TypeString = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "private static readonly %s %s = ",
-        [s(TypeString), s(Name)], !IO),
+    TypeNameStr = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
+    io.format(Stream, "%sprivate static readonly %s %s = ",
+        [s(IndentStr), s(TypeNameStr), s(Name)], !IO),
     IsCall = no,
     mlds_output_code_addr_for_csharp(Info, Stream, CodeAddr, IsCall, !IO),
     io.write_string(Stream, ";\n", !IO).
@@ -410,15 +410,15 @@ output_method_ptr_constant(Info, Stream, Indent, CodeAddr, Name, !IO) :-
     indent::in, string::in, io::di, io::uo) is det.
 
 output_env_var_definition_for_csharp(Stream, Indent, EnvVarName, !IO) :-
+    IndentStr = indent2_string(Indent),
     % We use int because the generated code compares against zero, and changing
     % that is more trouble than it is worth, as it affects the C backends.
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "private static int mercury_envvar_%s =\n",
-        [s(EnvVarName)], !IO),
-    output_n_indents(Stream, Indent + 1, !IO),
+    io.format(Stream, "%sprivate static int mercury_envvar_%s =\n",
+        [s(IndentStr), s(EnvVarName)], !IO),
     io.format(Stream,
-        "System.Environment.GetEnvironmentVariable(\"%s\") == null ? 0 : 1;\n",
-        [s(EnvVarName)], !IO).
+        "%s  System.Environment.GetEnvironmentVariable(\"%s\") == null" ++
+        " ? 0 : 1;\n",
+        [s(IndentStr), s(EnvVarName)], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_cs_file.

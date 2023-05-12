@@ -200,7 +200,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred maybe_output_pred_proc_id_comment(io.text_output_stream::in, bool::in,
-    pred_proc_id::in, io::di, io::uo) is det.
+    string::in, pred_proc_id::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -430,14 +430,15 @@ output_generic_tvars(Stream, Vars, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_output_pred_proc_id_comment(Stream, AutoComments, PredProcId, !IO) :-
+maybe_output_pred_proc_id_comment(Stream, AutoComments, IndentStr,
+        PredProcId, !IO) :-
     (
         AutoComments = yes,
         PredProcId = proc(PredId, ProcId),
         pred_id_to_int(PredId, PredIdNum),
         proc_id_to_int(ProcId, ProcIdNum),
-        io.format(Stream, "// pred_id: %d, proc_id: %d\n",
-            [i(PredIdNum), i(ProcIdNum)], !IO)
+        io.format(Stream, "%s// pred_id: %d, proc_id: %d\n",
+            [s(IndentStr), i(PredIdNum), i(ProcIdNum)], !IO)
     ;
         AutoComments = no
     ).

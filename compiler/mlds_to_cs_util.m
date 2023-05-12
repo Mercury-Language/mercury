@@ -54,9 +54,6 @@
 :- pred cs_output_context(io.text_output_stream::in, bool::in,
     prog_context::in, io::di, io::uo) is det.
 
-:- pred indent_line_after_context(io.text_output_stream::in, bool::in,
-    prog_context::in, indent::in, io::di, io::uo) is det.
-
 :- pred cs_output_default_context(io.text_output_stream::in, bool::in,
     io::di, io::uo) is det.
 
@@ -115,10 +112,6 @@ cs_output_context(Stream, OutputLineNumbers, Context, !IO) :-
     ;
         OutputLineNumbers = no
     ).
-
-indent_line_after_context(Stream, OutputLineNumbers, Context, N, !IO) :-
-    cs_output_context(Stream, OutputLineNumbers, Context, !IO),
-    output_n_indents(Stream, N, !IO).
 
 cs_output_default_context(Stream, OutputLineNumbers, !IO) :-
     (
