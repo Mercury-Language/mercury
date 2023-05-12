@@ -15,15 +15,8 @@
 
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_c_util.
-:- import_module parse_tree.
-:- import_module parse_tree.prog_data.
 
 :- import_module io.
-
-%---------------------------------------------------------------------------%
-
-:- pred mlds_output_ptag(io.text_output_stream::in, ptag::in,
-    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -66,7 +59,9 @@
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_type.
 :- import_module ml_backend.mlds_to_target_util.
+:- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 
@@ -85,14 +80,6 @@
 :- import_module uint16.
 :- import_module uint32.
 :- import_module uint8.
-
-%---------------------------------------------------------------------------%
-
-mlds_output_ptag(Stream, Ptag, !IO) :-
-    Ptag = ptag(PtagUint8),
-    io.write_string(Stream, "MR_mktag(", !IO),
-    io.write_uint8(Stream, PtagUint8, !IO),
-    io.write_string(Stream, ")", !IO).
 
 %---------------------------------------------------------------------------%
 
