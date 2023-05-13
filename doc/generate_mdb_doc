@@ -2,9 +2,24 @@
 # vim: sw=4 ts=4 et
 #---------------------------------------------------------------------------#
 # Copyright (C) 1998-1999,2002, 2004-2006 The University of Melbourne.
+# Copyright (C) 2014, 2020, 2023 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
+
+# Some versions of the info tool will emit single quotes as directional
+# quotation marks (i.e. U+2018 and U+2019). This causes problems because awk
+# on MSYS* / MinGW* systems does not handle UTF-8 encoded input properly.
+# (Apparently, it's some weird Windows code page thing.)
+# Using the C locale makes info emit the apostrophe character for single quotes.
+# Since that is ASCII, affected versions of awk do not have a problem with it.
+# None of this is an issue on non-Windows systems since their versions of
+# awk are not affected.
+#
+platform=$(uname -a)
+case "$platform" in
+    MINGW*|MSYS*) export LC_ALL=C ;;
+esac
 
 # The info menu items that get us to the chapter on debugger commands.
 cat mdb_categories > mdb_doc
@@ -25,7 +40,7 @@ echo                                                             >> mdb_doc
 info -f ./mercury_user_guide.info -o ${tmp} \
     -n "Declarative debugging commands"
 echo "The following commands are available from within the" \
-    "declarative debugger:" `./commands ${tmp}` | \
+    "declarative debugger:" "$(./commands ${tmp})" | \
     fold -w72 -s | sed "s/^/     /"                              >> mdb_doc
 echo end                                                         >> mdb_doc
 ../util/info_to_mdb decl ${tmp} >> mdb_doc
