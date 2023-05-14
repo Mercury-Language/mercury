@@ -38,8 +38,8 @@
     mlds_type::in, mlds_initializer::in, io::di, io::uo) is det.
 
 :- pred mlds_output_initializer_body(mlds_to_c_opts::in,
-    int::in, mlds_initializer::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+    io.text_output_stream::in, int::in, mlds_initializer::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -60,7 +60,6 @@
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_type.
 :- import_module parse_tree.
-:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
@@ -1089,7 +1088,7 @@ mlds_output_initializer(Opts, Stream, _Type, Initializer, !IO) :-
     (
         NeedsInit = yes,
         io.write_string(Stream, " = ", !IO),
-        mlds_output_initializer_body(Opts, 0, Initializer, Stream, !IO)
+        mlds_output_initializer_body(Opts, Stream, 0, Initializer, !IO)
     ;
         NeedsInit = no
     ).
@@ -1102,7 +1101,7 @@ mlds_needs_initialization(init_struct(_Type, [])) = no.
 mlds_needs_initialization(init_struct(_Type, [_|_])) = yes.
 mlds_needs_initialization(init_array(_)) = yes.
 
-mlds_output_initializer_body(Opts, Indent, Initializer, Stream, !IO) :-
+mlds_output_initializer_body(Opts, Stream, Indent, Initializer, !IO) :-
     (
         Initializer = no_initializer
     ;
@@ -1110,49 +1109,65 @@ mlds_output_initializer_body(Opts, Indent, Initializer, Stream, !IO) :-
         write_indent2(Stream, Indent, !IO),
         mlds_output_rval(Opts, Rval, Stream, !IO)
     ;
-        Initializer = init_struct(_Type, FieldInitializers),
-        % Note that standard ANSI/ISO C does not allow empty structs, and
-        % it is the responsibility of the MLDS code generator to not generate
-        % any such structs.
+        ( Initializer = init_struct(_Type, Inits)
+        ; Initializer = init_array(Inits)
+        ),
         IndentStr = indent2_string(Indent),
         (
-            FieldInitializers = [],
-            unexpected($pred, "FieldInitializers = []")
+            Inits = [],
+            (
+                Initializer = init_struct(_, _),
+                % Note that standard ANSI/ISO C does not allow empty structs,
+                % and it is the responsibility of the MLDS code generator
+                % to not generate any such structs.
+                unexpected($pred, "field initializers = []")
+            ;
+                Initializer = init_array(_),
+                % Standard ANSI/ISO C does not allow empty arrays, but
+                % the MLDS does. To keep the C compiler happy, we therefore
+                % convert zero-element MLDS arrays into one-element C arrays.
+                % (The extra element is a minor waste of space, but it will
+                % otherwise be ignored.) So if the initializer list here
+                % is empty, we need to output a single initializer.
+                % We can initialize the extra element with any value.
+                % We use "0", since that is a valid initializer for any type.
+                io.format(Stream, "%s{ 0 }\n", [s(IndentStr)], !IO)
+            )
         ;
-            FieldInitializers = [FieldInitializer],
-            io.format(Stream, "%s{ ", [s(IndentStr)], !IO),
-            mlds_output_initializer_body(Opts, 0, FieldInitializer,
-                Stream, !IO),
-            io.write_string(Stream, " }", !IO)
-        ;
-            FieldInitializers = [_, _ | _],
-            io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
-            write_out_list(mlds_output_initializer_body(Opts, Indent + 1),
-                ",\n", FieldInitializers, Stream, !IO),
-            io.write_string(Stream, "\n", !IO),
-            io.format(Stream, "%s}", [s(IndentStr)], !IO)
+            Inits = [HeadInit | TailInits],
+            (
+                TailInits = [],
+                % We write the single init on a single line.
+                io.format(Stream, "%s{ ", [s(IndentStr)], !IO),
+                mlds_output_initializer_body(Opts, Stream, 0, HeadInit, !IO),
+                io.write_string(Stream, " }", !IO)
+            ;
+                TailInits = [_ | _],
+                % We write the N inits on N+2 lines.
+                io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+                mlds_output_initializer_bodies(Opts, Stream, Indent + 1,
+                    HeadInit, TailInits, !IO),
+                io.format(Stream, "%s}", [s(IndentStr)], !IO)
+            )
         )
+    ).
+
+:- pred mlds_output_initializer_bodies(mlds_to_c_opts::in,
+    io.text_output_stream::in, int::in,
+    mlds_initializer::in, list(mlds_initializer)::in, io::di, io::uo) is det.
+
+mlds_output_initializer_bodies(Opts, Stream, Indent,
+        HeadInit, TailInits, !IO) :-
+    write_indent2(Stream, Indent, !IO),
+    mlds_output_initializer_body(Opts, Stream, Indent, HeadInit, !IO),
+    (
+        TailInits = [],
+        io.write_string(Stream, "\n", !IO)
     ;
-        Initializer = init_array(ElementInitializers),
-        IndentStr = indent2_string(Indent),
-        % Standard ANSI/ISO C does not allow empty arrays. But the MLDS does.
-        % To keep the C compiler happy, we therefore convert zero-element MLDS
-        % arrays into one-element C arrays. (The extra element is a minor waste
-        % of space, but it will otherwise be ignored.) So if the initializer
-        % list here is empty, we need to output a single initializer.
-        % We can initialize the extra element with any value. We use "0",
-        % since that is a valid initializer for any type.
-        (
-            ElementInitializers = [],
-            io.format(Stream, "%s{ 0 }\n", [s(IndentStr)], !IO)
-        ;
-            ElementInitializers = [_ | _],
-            io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
-            write_out_list(mlds_output_initializer_body(Opts, Indent + 1),
-                ",\n", ElementInitializers, Stream, !IO),
-            io.write_string(Stream, "\n", !IO),
-            io.format(Stream, "%s}", [s(IndentStr)], !IO)
-        )
+        TailInits = [HeadTailInit | TailTailInits],
+        io.write_string(Stream, ",\n", !IO),
+        mlds_output_initializer_bodies(Opts, Stream, Indent,
+            HeadTailInit, TailTailInits, !IO)
     ).
 
 %---------------------------------------------------------------------------%

@@ -300,7 +300,7 @@ mlds_output_cell(Opts, Stream, Indent, Initializer, !RowNum, !IO) :-
     output_n_indents(Stream, Indent, !IO),
     io.format(Stream, "/* row %3d */%c", [i(!.RowNum), c(EndChar)], !IO),
     !:RowNum = !.RowNum + 1,
-    mlds_output_initializer_body(Opts, Indent, Initializer, Stream, !IO),
+    mlds_output_initializer_body(Opts, Stream, Indent, Initializer, !IO),
     io.write_string(Stream, ",\n", !IO).
 
 %---------------------------------------------------------------------------%
