@@ -52,13 +52,13 @@
 :- import_module backend_libs.rtti.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_util.
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_type.
-:- import_module ml_backend.mlds_to_target_util.
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
@@ -119,36 +119,38 @@ mlds_output_lval(Opts, Lval, Stream, !IO) :-
             )
         ;
             FieldId = ml_field_named(QualFieldVarName, CtorType),
-            io.write_string(Stream, "(", !IO),
+            QualFieldVarNameStr =
+                qual_field_var_name_to_string_for_c(QualFieldVarName),
             ( if MaybePtag = yes(ptag(0u8)) then
                 ( if PtrType = CtorType then
-                    true
+                    CastStr = ""
                 else
-                    mlds_output_cast(Opts, Stream, CtorType, !IO)
+                    CastStr = cast_to_prefix_string_for_c(Opts, CtorType)
                 ),
                 ( if PtrRval = ml_mem_addr(PtrAddrLval) then
+                    io.format(Stream, "(%s", [s(CastStr)], !IO),
                     mlds_output_lval(Opts, PtrAddrLval, Stream, !IO),
-                    io.write_string(Stream, ").", !IO)
+                    io.format(Stream, ").%s", [s(QualFieldVarNameStr)], !IO)
                 else
+                    io.format(Stream, "(%s", [s(CastStr)], !IO),
                     mlds_output_bracketed_rval(Opts, Stream, PtrRval, !IO),
-                    io.write_string(Stream, ")->", !IO)
+                    io.format(Stream, ")->%s", [s(QualFieldVarNameStr)], !IO)
                 )
             else
-                mlds_output_cast(Opts, Stream, CtorType, !IO),
+                CastStr = cast_to_prefix_string_for_c(Opts, CtorType),
                 (
                     MaybePtag = yes(ptag(PtagUInt8)),
-                    io.write_string(Stream, "MR_body(", !IO),
+                    io.format(Stream, "(%sMR_body(", [s(CastStr)], !IO),
                     mlds_output_rval(Opts, PtrRval, Stream, !IO),
-                    io.format(Stream, ", %u", [u8(PtagUInt8)], !IO)
+                    io.format(Stream, ", %u))->%s",
+                        [u8(PtagUInt8), s(QualFieldVarNameStr)], !IO)
                 ;
                     MaybePtag = no,
-                    io.write_string(Stream, "MR_strip_tag(", !IO),
-                    mlds_output_rval(Opts, PtrRval, Stream, !IO)
-                ),
-                io.write_string(Stream, "))->", !IO)
-            ),
-            mlds_output_fully_qualified_field_var_name(Stream,
-                QualFieldVarName, !IO)
+                    io.format(Stream, "(%sMR_strip_tag(", [s(CastStr)], !IO),
+                    mlds_output_rval(Opts, PtrRval, Stream, !IO),
+                    io.format(Stream, "))->%s", [s(QualFieldVarNameStr)], !IO)
+                )
+            )
         )
     ;
         Lval = ml_mem_ref(Rval, _Type),
@@ -161,11 +163,14 @@ mlds_output_lval(Opts, Lval, Stream, !IO) :-
         Lval = ml_global_var(QualGlobalVarName, _VarType),
         QualGlobalVarName =
             qual_global_var_name(MLDS_ModuleName, GlobalVarName),
-        mlds_output_maybe_qualified_global_var_name(Stream, MLDS_ModuleName,
-            GlobalVarName, !IO)
+        QualGlobalVarNameStr =
+            maybe_qualified_global_var_name_to_string_for_c(MLDS_ModuleName,
+                GlobalVarName),
+        io.write_string(Stream, QualGlobalVarNameStr, !IO)
     ;
         Lval = ml_local_var(LocalVarName, _VarType),
-        mlds_output_local_var_name(Stream, LocalVarName, !IO)
+        LocalVarNameStr = local_var_name_to_string_for_c(LocalVarName),
+        io.write_string(Stream, LocalVarNameStr, !IO)
     ).
 
 mlds_output_rval(Opts, Rval, Stream, !IO) :-
@@ -269,9 +274,9 @@ mlds_output_bracketed_rval(Opts, Stream, Rval, !IO) :-
     mlds_type::in, mlds_rval::in, io::di, io::uo) is det.
 
 mlds_output_cast_rval(Opts, Stream, Type, Rval, !IO) :-
-    mlds_output_cast(Opts, Stream, Type, !IO),
+    CastStr = cast_to_prefix_string_for_c(Opts, Type),
     % Cast the *whole* of Rval, not just an initial subrval.
-    io.write_char(Stream, '(', !IO),
+    io.format(Stream, "%s(", [s(CastStr)], !IO),
     mlds_output_rval(Opts, Rval, Stream, !IO),
     io.write_char(Stream, ')', !IO).
 
@@ -605,8 +610,8 @@ mlds_output_unboxed_rval_smaller_than_word(Opts, Stream, Type, Rval, !IO) :-
     %   on *this* platform.
     % - We do *not* call it values of dummy and enum types, which *are*
     %   smaller than a word.
-    io.write_string(Stream, "(", !IO),
-    mlds_output_cast(Opts, Stream, Type, !IO),
+    CastStr = cast_to_prefix_string_for_c(Opts, Type),
+    io.format(Stream, "(%s", [s(CastStr)], !IO),
     io.write_string(Stream, "(MR_Word) ", !IO),
     mlds_output_rval(Opts, Rval, Stream, !IO),
     io.write_string(Stream, ")", !IO).
@@ -617,9 +622,10 @@ mlds_output_unboxed_rval_smaller_than_word(Opts, Stream, Type, Rval, !IO) :-
 :- pragma inline(pred(mlds_output_unboxed_rval_default/6)).
 
 mlds_output_unboxed_rval_default(Opts, Stream, Type, Rval, !IO) :-
-    io.write_string(Stream, "(", !IO),
-    mlds_output_cast(Opts, Stream, Type, !IO),
-    io.write_string(Stream, "(", !IO),
+    % XXX This does the same job as mlds_output_cast_rval, except for
+    % writing out an outer pair of parentheses.
+    CastStr = cast_to_prefix_string_for_c(Opts, Type),
+    io.format(Stream, "(%s(", [s(CastStr)], !IO),
     mlds_output_rval(Opts, Rval, Stream, !IO),
     io.write_string(Stream, "))", !IO).
 
@@ -630,8 +636,7 @@ mlds_output_unboxed_rval_default(Opts, Stream, Type, Rval, !IO) :-
 
 mlds_output_unop(Opts, Stream, UnaryOp, Expr, !IO) :-
     c_util.unary_prefix_op(UnaryOp, UnaryOpString),
-    io.write_string(Stream, UnaryOpString, !IO),
-    io.write_string(Stream, "(", !IO),
+    io.format(Stream, "%s(", [s(UnaryOpString)], !IO),
     ( if UnaryOp = tag then
         % The MR_tag macro requires its argument to be of type `MR_Word'.
         % XXX Should we put this cast inside the definition of MR_tag?
@@ -827,9 +832,7 @@ mlds_output_binop(Opts, Stream, Op, X, Y, !IO) :-
         io.write_string(Stream, ")", !IO)
     ;
         Op = offset_str_eq(N),
-        io.write_string(Stream, "MR_offset_streq(", !IO),
-        io.write_int(Stream, N, !IO),
-        io.write_string(Stream, ", ", !IO),
+        io.format(Stream, "MR_offset_streq(%d, ", [i(N)], !IO),
         mlds_output_rval_as_op_arg(Opts, Stream, X, !IO),
         io.write_string(Stream, ", ", !IO),
         mlds_output_rval_as_op_arg(Opts, Stream, Y, !IO),
@@ -846,14 +849,13 @@ mlds_output_binop(Opts, Stream, Op, X, Y, !IO) :-
         ; Op = int64_from_dword,  OpStr = "MR_int64_from_dword"
         ; Op = uint64_from_dword, OpStr = "MR_uint64_from_dword"
         ),
-        io.write_string(Stream, OpStr, !IO),
         ( if is_aligned_dword_field(X, Y, PtrRval) then
             % gcc produces faster code in this case.
-            io.write_string(Stream, "_ptr(MR_dword_ptr(", !IO),
+            io.format(Stream, "%s_ptr(MR_dword_ptr(", [s(OpStr)], !IO),
             mlds_output_rval(Opts, PtrRval, Stream, !IO),
             io.write_string(Stream, "))", !IO)
         else
-            io.write_string(Stream, "(", !IO),
+            io.format(Stream, "%s(", [s(OpStr)], !IO),
             mlds_output_rval_as_op_arg(Opts, Stream, X, !IO),
             io.write_string(Stream, ", ", !IO),
             mlds_output_rval_as_op_arg(Opts, Stream, Y, !IO),
@@ -1036,14 +1038,16 @@ mlds_output_rval_const(_Opts, Stream, Const, !IO) :-
         ),
         % If it is an array type, then we just use the name;
         % otherwise, we must prefix the name with `&'.
+        QualGlobalVarNameStr =
+            maybe_qualified_global_var_name_to_string_for_c(MLDS_ModuleName,
+                GlobalVarName),
         (
-            IsArray = is_array
+            IsArray = is_array,
+            io.format(Stream, "%s", [s(QualGlobalVarNameStr)], !IO)
         ;
             IsArray = not_array,
-            io.write_string(Stream, "&", !IO)
-        ),
-        mlds_output_maybe_qualified_global_var_name(Stream, MLDS_ModuleName,
-            GlobalVarName, !IO)
+            io.format(Stream, "&%s", [s(QualGlobalVarNameStr)], !IO)
+        )
     ;
         Const = mlconst_null(MLDS_Type),
         ( if MLDS_Type = mlds_builtin_type_float then
@@ -1073,8 +1077,10 @@ mlds_output_code_addr(Stream, CodeAddr, !IO) :-
     QualFuncLabel = qual_func_label(ModuleName, FuncLabel),
     FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
     QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
-    mlds_output_fully_qualified_proc_label(Stream, QualProcLabel, !IO),
-    io.write_string(Stream, mlds_maybe_aux_func_id_to_suffix(MaybeAux), !IO).
+    QualProcLabelStr = 
+        fully_qualified_proc_label_to_string_for_c(QualProcLabel),
+    MaybeAuxSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
+    io.format(Stream, "%s%s", [s(QualProcLabelStr), s(MaybeAuxSuffix)], !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1101,35 +1107,34 @@ mlds_output_initializer_body(Opts, Indent, Initializer, Stream, !IO) :-
         Initializer = no_initializer
     ;
         Initializer = init_obj(Rval),
-        output_n_indents(Stream, Indent, !IO),
+        write_indent2(Stream, Indent, !IO),
         mlds_output_rval(Opts, Rval, Stream, !IO)
     ;
         Initializer = init_struct(_Type, FieldInitializers),
         % Note that standard ANSI/ISO C does not allow empty structs, and
         % it is the responsibility of the MLDS code generator to not generate
         % any such structs.
+        IndentStr = indent2_string(Indent),
         (
             FieldInitializers = [],
             unexpected($pred, "FieldInitializers = []")
         ;
             FieldInitializers = [FieldInitializer],
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, "{ ", !IO),
+            io.format(Stream, "%s{ ", [s(IndentStr)], !IO),
             mlds_output_initializer_body(Opts, 0, FieldInitializer,
                 Stream, !IO),
             io.write_string(Stream, " }", !IO)
         ;
             FieldInitializers = [_, _ | _],
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, "{\n", !IO),
+            io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
             write_out_list(mlds_output_initializer_body(Opts, Indent + 1),
                 ",\n", FieldInitializers, Stream, !IO),
             io.write_string(Stream, "\n", !IO),
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, "}", !IO)
+            io.format(Stream, "%s}", [s(IndentStr)], !IO)
         )
     ;
         Initializer = init_array(ElementInitializers),
+        IndentStr = indent2_string(Indent),
         % Standard ANSI/ISO C does not allow empty arrays. But the MLDS does.
         % To keep the C compiler happy, we therefore convert zero-element MLDS
         % arrays into one-element C arrays. (The extra element is a minor waste
@@ -1139,17 +1144,14 @@ mlds_output_initializer_body(Opts, Indent, Initializer, Stream, !IO) :-
         % since that is a valid initializer for any type.
         (
             ElementInitializers = [],
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, "{ 0 }\n", !IO)
+            io.format(Stream, "%s{ 0 }\n", [s(IndentStr)], !IO)
         ;
             ElementInitializers = [_ | _],
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, "{\n", !IO),
+            io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
             write_out_list(mlds_output_initializer_body(Opts, Indent + 1),
                 ",\n", ElementInitializers, Stream, !IO),
             io.write_string(Stream, "\n", !IO),
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, "}", !IO)
+            io.format(Stream, "%s}", [s(IndentStr)], !IO)
         )
     ).
 

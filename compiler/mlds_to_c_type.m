@@ -1,4 +1,4 @@
-%---------------------------------------------------------------------------%
+%_---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2018 The Mercury team.
@@ -21,6 +21,7 @@
 
 %---------------------%
 
+:- func type_to_string_for_c(mlds_to_c_opts, mlds_type) = string.
 :- pred mlds_output_type(mlds_to_c_opts::in, mlds_type::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 
@@ -38,10 +39,15 @@
     % declaration, and then the suffix, i.e. the part which goes after
     % the variable name, e.g. the "[]" for array types.
     %
+    % ZZZ to prefix_suffix
+:- func type_prefix_for_c(mlds_to_c_opts, mlds_type) = string.
 :- pred mlds_output_type_prefix(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_type::in, io::di, io::uo) is det.
+:- func type_suffix_for_c_no_size(mlds_to_c_opts, mlds_type) = string.
 :- pred mlds_output_type_suffix_no_size(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_type::in, io::di, io::uo) is det.
+:- func type_suffix_for_c(mlds_to_c_opts, mlds_type,
+    initializer_array_size) = string.
 :- pred mlds_output_type_suffix(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_type::in, initializer_array_size::in,
     io::di, io::uo) is det.
@@ -70,12 +76,14 @@
     % mlds_output_return_list(List, OutputPred, !IO) outputs
     % a List of return types/values using OutputPred.
     %
+:- func return_list_to_string_for_c(list(string)) = string.
 :- pred mlds_output_return_list(io.text_output_stream::in,
     pred(T, io.text_output_stream, io, io)::in(pred(in, in, di, uo) is det),
     list(T)::in, io::di, io::uo) is det.
 
 %---------------------%
 
+:- func cast_to_prefix_string_for_c(mlds_to_c_opts, mlds_type) = string.
 :- pred mlds_output_cast(mlds_to_c_opts::in, io.text_output_stream::in,
     mlds_type::in, io::di, io::uo) is det.
 
@@ -101,82 +109,92 @@
 
 %---------------------------------------------------------------------------%
 
-mlds_output_type(Opts, Type, Stream, !IO) :-
+type_to_string_for_c(Opts, Type) = TypeStr :-
+    TypePrefix = type_prefix_for_c(Opts, Type),
+    TypeSuffix = type_suffix_for_c(Opts, Type, no_size),
     % In the declaration of a type, as opposed to the declaration of a
     % variable, the variable name is not there, so we have just the prefix and
     % the suffix.
-    mlds_output_type_prefix(Opts, Stream, Type, !IO),
-    mlds_output_type_suffix(Opts, Stream, Type, no_size, !IO).
+    TypeStr = TypePrefix ++ TypeSuffix.
+
+mlds_output_type(Opts, Type, Stream, !IO) :-
+    TypeStr = type_to_string_for_c(Opts, Type),
+    io.write_string(Stream, TypeStr, !IO).
 
 %---------------------%
 
+/*
 mlds_output_type_prefix(Opts, Stream, MLDS_Type, !IO) :-
+*/
+type_prefix_for_c(Opts, MLDS_Type) = TypePrefix :-
     % semicanonicalize_types_in_initializer_for_c relies on knowing
     % which MLDS_Types generate the same C types, so if this predicate
     % is updated so that two MLDS_Types that used to generate the same
     % C type no longer do so, you will need to update that function.
     (
         MLDS_Type = mercury_nb_type(_Type, TypeCategory),
-        mlds_output_mercury_type_prefix(Stream, TypeCategory, !IO)
+        TypePrefix = mercury_type_prefix_for_c(TypeCategory)
     ;
         MLDS_Type = mlds_mercury_array_type(_ElemType),
-        io.write_string(Stream, "MR_ArrayPtr", !IO)
+        TypePrefix = "MR_ArrayPtr"
     ;
         MLDS_Type = mlds_builtin_type_int(IntType),
         (
             IntType = int_type_int,
-            io.write_string(Stream, "MR_Integer", !IO)
+            TypePrefix = "MR_Integer"
         ;
             IntType = int_type_uint,
-            io.write_string(Stream, "MR_Unsigned", !IO)
+            TypePrefix = "MR_Unsigned"
         ;
             IntType = int_type_int8,
-            io.write_string(Stream, "int8_t", !IO)
+            TypePrefix = "int8_t"
         ;
             IntType = int_type_uint8,
-            io.write_string(Stream, "uint8_t", !IO)
+            TypePrefix = "uint8_t"
         ;
             IntType = int_type_int16,
-            io.write_string(Stream, "int16_t", !IO)
+            TypePrefix = "int16_t"
         ;
             IntType = int_type_uint16,
-            io.write_string(Stream, "uint16_t", !IO)
+            TypePrefix = "uint16_t"
         ;
             IntType = int_type_int32,
-            io.write_string(Stream, "int32_t", !IO)
+            TypePrefix = "int32_t"
         ;
             IntType = int_type_uint32,
-            io.write_string(Stream, "uint32_t", !IO)
+            TypePrefix = "uint32_t"
         ;
             IntType = int_type_int64,
-            io.write_string(Stream, "int64_t", !IO)
+            TypePrefix = "int64_t"
         ;
             IntType = int_type_uint64,
-            io.write_string(Stream, "uint64_t", !IO)
+            TypePrefix = "uint64_t"
         )
     ;
         MLDS_Type = mlds_builtin_type_float,
-        io.write_string(Stream, "MR_Float", !IO)
+        TypePrefix = "MR_Float"
     ;
         MLDS_Type = mlds_builtin_type_char,
-        io.write_string(Stream, "MR_Char", !IO)
+        TypePrefix = "MR_Char"
     ;
         MLDS_Type = mlds_builtin_type_string,
-        io.write_string(Stream, "MR_String", !IO)
+        TypePrefix = "MR_String"
     ;
         MLDS_Type = mlds_native_bool_type,
-        io.write_string(Stream, "MR_bool", !IO)
+        TypePrefix = "MR_bool"
     ;
         MLDS_Type = mlds_foreign_type(_ForeignType),
         % For binary compatibility with the --target asm back-end,
         % we need to output these as a generic type, rather than making
         % use of the C type name
         % XXX target asm no longer exists, so no longer need to do this.
-        io.write_string(Stream, "MR_Box", !IO)
+        TypePrefix = "MR_Box"
     ;
         MLDS_Type = mlds_class_type(ClassId),
         ClassId = mlds_class_id(QualClassName, Arity, ClassKind),
         QualClassName = qual_class_name(ModuleName, _QualKind, ClassName),
+        Qualifier = qualifier_to_string_for_c(ModuleName),
+        MangledClassName = name_mangle(ClassName),
         (
             ClassKind = mlds_enum,
             % We cannot just use the enumeration type, since the enumeration
@@ -186,9 +204,8 @@ mlds_output_type_prefix(Opts, Stream, MLDS_Type, !IO) :-
             % the enumeration might not be word-sized, which would cause
             % problems for e.g. `std_util.arg/2'. So we just use `MR_Integer',
             % and output the actual enumeration type as a comment.
-            io.format(Stream, "MR_Integer /* actually `enum %s%s_%d_e' */",
-                [s(qual_name_prefix_c(ModuleName)), s(name_mangle(ClassName)),
-                i(Arity)], !IO)
+            string.format("MR_Integer /* actually `enum %s__%s_%d_e' */",
+                [s(Qualifier), s(MangledClassName), i(Arity)], TypePrefix)
         ;
             ( ClassKind = mlds_class
             ; ClassKind = mlds_interface
@@ -196,68 +213,66 @@ mlds_output_type_prefix(Opts, Stream, MLDS_Type, !IO) :-
             ),
             % For struct types, it is OK to output an incomplete type, since
             % we do not use these types directly; we only use pointers to them.
-            io.format(Stream, "struct %s%s_%d_s",
-                [s(qual_name_prefix_c(ModuleName)), s(name_mangle(ClassName)),
-                i(Arity)], !IO)
+            string.format("struct %s__%s_%d_s",
+                [s(Qualifier), s(MangledClassName), i(Arity)], TypePrefix)
         )
     ;
-        MLDS_Type = mlds_ptr_type(Type),
-        mlds_output_type(Opts, Type, Stream, !IO),
-        io.write_string(Stream, " *", !IO)
+        MLDS_Type = mlds_ptr_type(BaseType),
+        BaseTypeStr = type_to_string_for_c(Opts, BaseType),
+        string.format("%s *", [s(BaseTypeStr)], TypePrefix)
     ;
-        MLDS_Type = mlds_array_type(Type),
+        MLDS_Type = mlds_array_type(BaseType),
         % Here we just output the element type. The "[]" goes in the type
         % suffix.
-        mlds_output_type(Opts, Type, Stream, !IO)
+        TypePrefix = type_to_string_for_c(Opts, BaseType)
     ;
         MLDS_Type = mlds_mostly_generic_array_type(_),
-        Type = mlds_generic_type,
-        mlds_output_type(Opts, Type, Stream, !IO)
+        TypePrefix = type_to_string_for_c(Opts, mlds_generic_type)
     ;
         MLDS_Type = mlds_func_type(FuncParams),
-        mlds_output_func_type_prefix(Opts, Stream, FuncParams, !IO)
+        TypePrefix = func_type_prefix_for_c(Opts, FuncParams)
     ;
         MLDS_Type = mlds_generic_type,
-        io.write_string(Stream, "MR_Box", !IO)
+        TypePrefix = "MR_Box"
     ;
         MLDS_Type = mlds_generic_env_ptr_type,
-        io.write_string(Stream, "void *", !IO)
+        TypePrefix = "void *"
     ;
         MLDS_Type = mlds_type_info_type,
-        io.write_string(Stream, "MR_TypeInfo", !IO)
+        TypePrefix = "MR_TypeInfo"
     ;
         MLDS_Type = mlds_pseudo_type_info_type,
-        io.write_string(Stream, "MR_PseudoTypeInfo", !IO)
+        TypePrefix = "MR_PseudoTypeInfo"
     ;
         MLDS_Type = mlds_cont_type(ArgTypes),
         (
             ArgTypes = [],
-            io.write_string(Stream, "MR_Cont", !IO)
+            TypePrefix = "MR_Cont"
         ;
             ArgTypes = [_ | _],
             % This case only happens for --nondet-copy-out.
-            io.write_string(Stream, "void MR_CALL (*", !IO)
+            TypePrefix = "void MR_CALL (*"
         )
     ;
         MLDS_Type = mlds_commit_type,
-        io.write_string(Stream, "jmp_buf", !IO)
+        TypePrefix = "jmp_buf"
     ;
         MLDS_Type = mlds_rtti_type(RttiIdMaybeElement),
-        rtti_id_maybe_element_c_type(RttiIdMaybeElement, CType, _IsArray),
-        io.write_string(Stream, CType, !IO)
+        rtti_id_maybe_element_c_type(RttiIdMaybeElement, TypePrefix, _IsArray)
     ;
         MLDS_Type = mlds_tabling_type(TablingId),
-        tabling_id_c_type(TablingId, CType, _IsArray),
-        io.write_string(Stream, CType, !IO)
+        tabling_id_c_type(TablingId, TypePrefix, _IsArray)
     ;
         MLDS_Type = mlds_unknown_type,
         unexpected($pred, "prefix has unknown type")
     ).
 
-:- pred mlds_output_mercury_type_prefix(io.text_output_stream::in,
-    type_ctor_category::in, io::di, io::uo) is det.
+:- func mercury_type_prefix_for_c(type_ctor_category) = string.
 
+/*
 mlds_output_mercury_type_prefix(Stream, CtorCat, !IO) :-
+*/
+mercury_type_prefix_for_c(CtorCat) = TypePrefix :-
     % semicanonicalize_types_in_initializer_for_c relies on knowing
     % which MLDS_Types generate the same C types, so if this predicate
     % is updated so that two MLDS_Types that used to generate the same
@@ -267,10 +282,10 @@ mlds_output_mercury_type_prefix(Stream, CtorCat, !IO) :-
         unexpected($pred, "ctor_cat_builtin")
     ;
         CtorCat = ctor_cat_variable,
-        io.write_string(Stream, "MR_Box", !IO)
+        TypePrefix = "MR_Box"
     ;
         CtorCat = ctor_cat_tuple,
-        io.write_string(Stream, "MR_Tuple", !IO)
+        TypePrefix = "MR_Tuple"
     ;
         % runtime/mercury_hlc_types requires typeinfos, typeclass_infos etc
         % to be treated as user defined types.
@@ -281,77 +296,90 @@ mlds_output_mercury_type_prefix(Stream, CtorCat, !IO) :-
         ; CtorCat = ctor_cat_user(_)
         ; CtorCat = ctor_cat_system(_)
         ),
-        io.write_string(Stream, "MR_Word", !IO)
+        TypePrefix = "MR_Word"
     ).
 
-:- pred mlds_output_func_type_prefix(mlds_to_c_opts::in,
-    io.text_output_stream::in, mlds_func_params::in, io::di, io::uo) is det.
+:- func func_type_prefix_for_c(mlds_to_c_opts, mlds_func_params) = string.
 
+/*
 mlds_output_func_type_prefix(Opts, Stream, Params, !IO) :-
-    Params = mlds_func_params(_Parameters, RetTypes),
+*/
+func_type_prefix_for_c(Opts, Params) = TypePrefix :-
+    Params = mlds_func_params(_Parameters, ReturnTypes),
     (
-        RetTypes = [],
-        io.write_string(Stream, "void", !IO)
+        ReturnTypes = [],
+        ReturnTypeStr = "void"
     ;
-        RetTypes = [RetType],
-        mlds_output_type(Opts, RetType, Stream, !IO)
+        ReturnTypes = [ReturnType],
+        ReturnTypeStr = type_to_string_for_c(Opts, ReturnType)
     ;
-        RetTypes = [_, _ | _],
-        mlds_output_return_list(Stream, mlds_output_type(Opts), RetTypes, !IO)
+        ReturnTypes = [_, _ | _],
+        ReturnTypeStrs = list.map(type_to_string_for_c(Opts), ReturnTypes),
+        ReturnTypeStr = return_list_to_string_for_c(ReturnTypeStrs)
     ),
     % Note that mlds_func_type actually corresponds to a function _pointer_
     % type in C. This is necessary because function types in C are not first
     % class.
-    io.write_string(Stream, " MR_CALL (*", !IO).
+    string.format("%s MR_CALL (*", [s(ReturnTypeStr)], TypePrefix).
+
+mlds_output_type_prefix(Opts, Stream, MLDS_Type, !IO) :-
+    TypePrefix = type_prefix_for_c(Opts, MLDS_Type),
+    io.write_string(Stream, TypePrefix, !IO).
 
 %---------------------%
+
+type_suffix_for_c_no_size(Opts, Type) = TypeStr :-
+    TypeStr = type_suffix_for_c(Opts, Type, no_size).
 
 mlds_output_type_suffix_no_size(Opts, Stream, Type, !IO) :-
     mlds_output_type_suffix(Opts, Stream, Type, no_size, !IO).
 
-mlds_output_type_suffix(Opts, Stream, MLDS_Type, ArraySize, !IO) :-
+type_suffix_for_c(Opts, MLDS_Type, InitSize) = TypeSuffix :-
     % semicanonicalize_types_in_initializer_for_c relies on knowing
     % which MLDS_Types generate the same C types, so if this predicate
     % is updated so that two MLDS_Types that used to generate the same
     % C type no longer do so, you will need to update that function.
     (
         MLDS_Type = mlds_array_type(_),
-        mlds_output_array_type_suffix(Stream, ArraySize, !IO)
+        TypeSuffix = array_type_suffix_for_c(InitSize)
     ;
-        MLDS_Type = mlds_mostly_generic_array_type(_)
+        MLDS_Type = mlds_mostly_generic_array_type(_),
+        TypeSuffix = ""
     ;
         MLDS_Type = mlds_func_type(FuncParams),
-        mlds_output_func_type_suffix(Opts, Stream, FuncParams, !IO)
+        TypeSuffix = func_type_suffix_for_c(Opts, FuncParams)
     ;
         MLDS_Type = mlds_cont_type(ArgTypes),
         (
-            ArgTypes = []
+            ArgTypes = [],
+            TypeSuffix = ""
         ;
             ArgTypes = [_ | _],
             % This case only happens for --nondet-copy-out.
-            io.write_string(Stream, ")(", !IO),
-            write_out_list(mlds_output_type(Opts), ", ", ArgTypes,
-                Stream, !IO),
-            % add the type for the environment parameter, if needed
-            io.write_string(Stream, ", void *)", !IO)
+            ArgTypeStrs = list.map(type_to_string_for_c(Opts), ArgTypes),
+            ArgTypesStr = string.join_list(", ", ArgTypeStrs),
+            % Add the type for the environment parameter, if needed.
+            string.format(")(%s, void *)", [s(ArgTypesStr)], TypeSuffix)
         )
     ;
         MLDS_Type = mlds_rtti_type(RttiIdMaybeElement),
         IsArrayType = rtti_id_maybe_element_has_array_type(RttiIdMaybeElement),
         (
             IsArrayType = is_array,
-            mlds_output_array_type_suffix(Stream, ArraySize, !IO)
+            TypeSuffix = array_type_suffix_for_c(InitSize)
         ;
-            IsArrayType = not_array
+            IsArrayType = not_array,
+            TypeSuffix = ""
         )
     ;
         MLDS_Type = mlds_tabling_type(TablingId),
         IsArrayType = tabling_id_has_array_type(TablingId),
         (
             IsArrayType = is_array,
-            mlds_output_array_type_suffix(Stream, ArraySize, !IO)
+            TypeSuffix = array_type_suffix_for_c(InitSize)
         ;
-            IsArrayType = not_array
+            IsArrayType = not_array,
+            TypeSuffix = ""
         )
     ;
         MLDS_Type = mlds_unknown_type,
@@ -373,50 +401,68 @@ mlds_output_type_suffix(Opts, Stream, MLDS_Type, ArraySize, !IO) :-
         ; MLDS_Type = mlds_type_info_type
         ; MLDS_Type = mlds_pseudo_type_info_type
         ; MLDS_Type = mlds_commit_type
-        )
+        ),
+        TypeSuffix = ""
     ).
 
-:- pred mlds_output_func_type_suffix(mlds_to_c_opts::in,
-    io.text_output_stream::in, mlds_func_params::in, io::di, io::uo) is det.
+mlds_output_type_suffix(Opts, Stream, MLDS_Type, ArraySize, !IO) :-
+    TypeStr = type_suffix_for_c(Opts, MLDS_Type, ArraySize),
+    io.write_string(Stream, TypeStr, !IO).
 
+:- func func_type_suffix_for_c(mlds_to_c_opts, mlds_func_params) = string.
+
+/*
 mlds_output_func_type_suffix(Opts, Stream, Params, !IO) :-
-    Params = mlds_func_params(Parameters, _RetTypes),
-    io.write_string(Stream, ")", !IO),
-    mlds_output_param_types(Opts, Stream, Parameters, !IO).
+*/
+func_type_suffix_for_c(Opts, Params) = TypeSuffix :-
+    Params = mlds_func_params(Args, _RetTypes),
+    TypeSuffix = ")" ++ param_types_to_c(Opts, Args).
 
-:- pred mlds_output_param_types(mlds_to_c_opts::in, io.text_output_stream::in,
-    list(mlds_argument)::in, io::di, io::uo) is det.
+:- func param_types_to_c(mlds_to_c_opts, list(mlds_argument)) = string.
 
+/*
 mlds_output_param_types(Opts, Stream, Parameters, !IO) :-
-    io.write_char(Stream, '(', !IO),
+*/
+param_types_to_c(Opts, Args) = ArgsStr :-
     (
-        Parameters = [],
-        io.write_string(Stream, "void", !IO)
+        Args = [],
+        ArgsStr = "(void)"
     ;
-        Parameters = [_ | _],
-        write_out_list(mlds_output_param_type(Opts), ", ", Parameters,
-            Stream, !IO)
-    ),
-    io.write_char(Stream, ')', !IO).
+        Args = [_ | _],
+        ArgTypeStrs = list.map(param_type_to_string_for_c(Opts), Args),
+        ArgTypesStr = string.join_list(", ", ArgTypeStrs),
+        string.format("(%s)", [s(ArgTypesStr)], ArgsStr)
+    ).
 
+:- func param_type_to_string_for_c(mlds_to_c_opts, mlds_argument) = string.
+
+param_type_to_string_for_c(Opts, Arg) = TypeStr :-
+    Arg = mlds_argument(_Name, Type, _GCStmt),
+    TypeStr = type_to_string_for_c(Opts, Type).
+
+/* ZZZ
 :- pred mlds_output_param_type(mlds_to_c_opts::in, mlds_argument::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 
 mlds_output_param_type(Opts, Arg, Stream, !IO) :-
     Arg = mlds_argument(_Name, Type, _GCStmt),
     mlds_output_type(Opts, Type, Stream, !IO).
+*/
 
-:- pred mlds_output_array_type_suffix(io.text_output_stream::in,
-    initializer_array_size::in, io::di, io::uo) is det.
+:- func array_type_suffix_for_c(initializer_array_size) = string.
 
-mlds_output_array_type_suffix(Stream, no_size, !IO) :-
-    io.write_string(Stream, "[]", !IO).
-mlds_output_array_type_suffix(Stream, array_size(Size0), !IO) :-
-    % Standard ANSI/ISO C does not allow arrays of size 0. But the MLDS does.
-    % To keep the C compiler happy, we therefore convert zero-element MLDS
-    % arrays into one-element C arrays.
-    int.max(Size0, 1, Size),
-    io.format(Stream, "[%d]", [i(Size)], !IO).
+array_type_suffix_for_c(InitSize) = ArraySuffix :-
+    (
+        InitSize = no_size,
+        ArraySuffix = "[]"
+    ;
+        InitSize = array_size(Size0),
+        % Standard ANSI/ISO C does not allow arrays of size 0.
+        % But the MLDS does. To keep the C compiler happy, we therefore
+        % convert zero-element MLDS arrays into one-element C arrays.
+        int.max(Size0, 1, Size),
+        string.format("[%d]", [i(Size)], ArraySuffix)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -622,6 +668,12 @@ semicanonicalize_types_in_type_for_c(Type0, Type, Changed) :-
 
 %---------------------------------------------------------------------------%
 
+% ZZZ take an indent arg
+return_list_to_string_for_c(ReturnTypeStrs) = ListStr :-
+    ReturnTypesStr = string.join_list(", ", ReturnTypeStrs),
+    string.format("\n#error multiple return values\n\t{%s}",
+        [s(ReturnTypesStr)], ListStr).
+
 mlds_output_return_list(Stream, OutputPred, List, !IO) :-
     % Even though C does not support multiple return types, this case needs
     % to be handled for e.g. MLDS dumps when compiling to Java. We generate
@@ -634,10 +686,13 @@ mlds_output_return_list(Stream, OutputPred, List, !IO) :-
 
 %---------------------------------------------------------------------------%
 
+cast_to_prefix_string_for_c(Opts, Type) = CastStr :-
+    TypeStr = type_to_string_for_c(Opts, Type),
+    string.format("(%s) ", [s(TypeStr)], CastStr).
+
 mlds_output_cast(Opts, Stream, Type, !IO) :-
-    io.write_string(Stream, "(", !IO),
-    mlds_output_type(Opts, Type, Stream, !IO),
-    io.write_string(Stream, ") ", !IO).
+    CastStr = cast_to_prefix_string_for_c(Opts, Type),
+    io.write_string(Stream, CastStr, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_c_type.
