@@ -25,6 +25,10 @@
 :- pred mlds_output_type(mlds_to_c_opts::in, mlds_type::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 
+:- pred type_to_prefix_suffix_for_c(mlds_to_c_opts::in, mlds_type::in,
+   initializer_array_size::in,  string::out, string::out) is det.
+
+    % ZZZ
     % This type/inst pair is not *used* in this module, but it is used
     % to describe the signature of the predicates in the following block
     % of declarations.
@@ -120,6 +124,13 @@ type_to_string_for_c(Opts, Type) = TypeStr :-
 mlds_output_type(Opts, Type, Stream, !IO) :-
     TypeStr = type_to_string_for_c(Opts, Type),
     io.write_string(Stream, TypeStr, !IO).
+
+%---------------------%
+
+type_to_prefix_suffix_for_c(Opts, Type, InitSize, TypePrefix, TypeSuffix) :-
+    % ZZZ merge these
+    TypePrefix = type_prefix_for_c(Opts, Type),
+    TypeSuffix = type_suffix_for_c(Opts, Type, InitSize).
 
 %---------------------%
 

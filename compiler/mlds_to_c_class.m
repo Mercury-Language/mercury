@@ -34,6 +34,7 @@
 :- import_module hlds.hlds_pred.         % for pred_proc_id.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.mlds_to_c_data.
 :- import_module ml_backend.mlds_to_c_func.
@@ -45,11 +46,11 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module char.
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
+:- import_module string.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -90,8 +91,7 @@ mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
 
     io.nl(Stream, !IO),
     % Output the class declaration.
-    mlds_output_class_decl(Opts, Stream, Indent, ModuleName, ClassDefn,
-        definition, !IO),
+    mlds_output_class_decl(Opts, Stream, Indent, ModuleName, ClassDefn, !IO),
 
     % To avoid name clashes, we need to qualify the names of the member
     % constants with the class name. (In particular, this is needed for
@@ -193,72 +193,78 @@ mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred mlds_output_class_decl(mlds_to_c_opts::in, io.text_output_stream::in,
-    indent::in, mlds_module_name::in, mlds_class_defn::in, decl_or_defn::in,
+    indent::in, mlds_module_name::in, mlds_class_defn::in,
     io::di, io::uo) is det.
 
 mlds_output_class_decl(Opts, Stream, Indent, ModuleName, ClassDefn,
-        DeclOrDefn, !IO) :-
+        !IO) :-
     ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, Flags,
         ClassKind, _Imports, _Inherits, _Implements, _TypeParams,
         _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    mlds_output_class_decl_flags(Opts, Stream, Flags, DeclOrDefn, !IO),
+    IndentStr = indent2_string(Indent),
+    FlagsPrefix = class_decl_flags_to_prefix_for_c(Opts, Flags),
+    Qualifier = qualifier_to_string_for_c(ModuleName),
+    ClassNameStr = class_name_arity_to_string_for_c(ClassName, ClassArity),
     (
         ClassKind = mlds_enum,
-        io.write_string(Stream, "enum ", !IO),
-        output_qual_name_prefix_c(Stream, ModuleName, !IO),
-        mlds_output_class_name_arity(Stream, ClassName, ClassArity, !IO),
-        io.write_string(Stream, "_e", !IO)
+        io.format(Stream, "%s%senum %s__%s_e",
+            [s(IndentStr), s(FlagsPrefix), s(Qualifier), s(ClassNameStr)], !IO)
     ;
         ( ClassKind = mlds_class
         ; ClassKind = mlds_interface
         ; ClassKind = mlds_struct
         ),
-        io.write_string(Stream, "struct ", !IO),
-        output_qual_name_prefix_c(Stream, ModuleName, !IO),
-        mlds_output_class_name_arity(Stream, ClassName, ClassArity, !IO),
-        io.write_string(Stream, "_s", !IO)
+        io.format(Stream, "%s%sstruct %s__%s_s",
+            [s(IndentStr), s(FlagsPrefix), s(Qualifier), s(ClassNameStr)], !IO)
     ).
 
-:- pred mlds_output_class_decl_flags(mlds_to_c_opts::in,
-    io.text_output_stream::in, mlds_class_decl_flags::in,
-    decl_or_defn::in, io::di, io::uo) is det.
+% ZZZ move later
+:- func class_decl_flags_to_prefix_for_c(mlds_to_c_opts,
+    mlds_class_decl_flags) = string.
 
-mlds_output_class_decl_flags(Opts, Stream, Flags, _DeclOrDefn, !IO) :-
+class_decl_flags_to_prefix_for_c(Opts, Flags) = FlagsPrefix :-
     % DeclOrDefn does not affect what we output. Callers who pass us
     % DeclOrDefn = forward_decl will put a semicolon after the declaration;
     % callers who pass us DeclOrDefn = definition will put the definition
     % itself there.
     Flags = mlds_class_decl_flags(Access, Overridability, Constness),
+    ConstnessPrefix = constness_prefix_for_c(Constness),
     Comments = Opts ^ m2co_auto_comments,
     (
         Comments = yes,
         (
             Access = class_public,
-            io.write_string(Stream, "/* public: */ ", !IO)
+            (
+                Overridability = overridable,
+                FlagsPrefix = "/* public one_copy */ " ++ ConstnessPrefix
+            ;
+                Overridability = sealed,
+                FlagsPrefix = "/* public one_copy sealed */ " ++
+                    ConstnessPrefix
+            )
         ;
             Access = class_private,
-            io.write_string(Stream, "/* private: */ ", !IO)
-        ),
-        io.write_string(Stream, "/* one_copy */ ", !IO),
-        (
-            Overridability = overridable
-        ;
-            Overridability = sealed,
-            io.write_string(Stream, "/* sealed */ ", !IO)
+            (
+                Overridability = overridable,
+                FlagsPrefix = "/* private one_copy */ " ++ ConstnessPrefix
+            ;
+                Overridability = sealed,
+                FlagsPrefix = "/* private one_copy sealed */ " ++
+                    ConstnessPrefix
+            )
         )
     ;
-        Comments = no
-    ),
-    mlds_output_constness(Stream, Constness, !IO).
+        Comments = no,
+        FlagsPrefix = ConstnessPrefix
+    ).
 
-:- pred mlds_output_constness(io.text_output_stream::in, constness::in,
-    io::di, io::uo) is det.
+% ZZZ move later
+:- func constness_prefix_for_c(constness) = string.
+:- pragma inline(func(constness_prefix_for_c/1)).
 
-mlds_output_constness(Stream, const, !IO) :-
-    io.write_string(Stream, "const ", !IO).
-mlds_output_constness(_, modifiable, !IO).
+constness_prefix_for_c(const) = "const ".
+constness_prefix_for_c(modifiable) = "".
 
 %---------------------%
 
@@ -277,12 +283,13 @@ mlds_output_class_forward_decl(Opts, Stream, Indent, ModuleName,
         true
     else
         mlds_output_class_decl(Opts, Stream, Indent, ModuleName,
-            ClassDefn, forward_decl, !IO),
+            ClassDefn, !IO),
         io.write_string(Stream, ";\n", !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
+% ZZZ placement
 :- pred function_defn_is_static_member(mlds_function_defn::in) is semidet.
 
 function_defn_is_static_member(FuncDefn) :-
@@ -294,17 +301,6 @@ field_var_defn_is_static_member(FieldVarDefn) :-
     FieldVarDefn ^ mfvd_decl_flags ^ mfvdf_per_instance = one_copy.
 
 %---------------------------------------------------------------------------%
-
-:- pred mlds_output_field_var_decl(mlds_to_c_opts::in,
-    io.text_output_stream::in, qual_field_var_name::in,
-    mlds_type::in, initializer_array_size::in, io::di, io::uo) is det.
-
-mlds_output_field_var_decl(Opts, Stream, FieldVarName, Type,
-        InitializerSize, !IO) :-
-    mlds_output_type_prefix(Opts, Stream, Type, !IO),
-    io.write_char(Stream, ' ', !IO),
-    mlds_output_fully_qualified_field_var_name(Stream, FieldVarName, !IO),
-    mlds_output_type_suffix(Opts, Stream, Type, InitializerSize, !IO).
 
 :- pred mlds_output_field_var_defns(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in, bool::in,
@@ -327,6 +323,14 @@ mlds_output_field_var_defn(Opts, Stream, Indent, Separate, ModuleName,
         FieldVarDefn, !IO) :-
     FieldVarDefn = mlds_field_var_defn(FieldVarName, Context, Flags,
         Type, Initializer, GCStmt),
+    IndentStr = indent2_string(Indent),
+    FlagsPrefix =
+        field_var_decl_flags_to_prefix_for_c(Opts, definition, Flags),
+    QualFieldVarName =
+        qual_field_var_name(ModuleName, module_qual, FieldVarName),
+    InitSize = get_initializer_array_size(Initializer),
+    type_to_prefix_suffix_for_c(Opts, Type, InitSize, TypePrefix, TypeSuffix),
+
     (
         Separate = yes,
         io.nl(Stream, !IO)
@@ -334,12 +338,10 @@ mlds_output_field_var_defn(Opts, Stream, Indent, Separate, ModuleName,
         Separate = no
     ),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    mlds_output_field_var_decl_flags(Opts, Stream, Flags, definition, !IO),
-    QualFieldVarName =
-        qual_field_var_name(ModuleName, module_qual, FieldVarName),
-    mlds_output_field_var_decl(Opts, Stream, QualFieldVarName, Type,
-        get_initializer_array_size(Initializer), !IO),
+    FieldVarNameStr = qual_field_var_name_to_string_for_c(QualFieldVarName),
+    io.format(Stream, "%s%s%s %s%s",
+        [s(IndentStr), s(FlagsPrefix),
+        s(TypePrefix), s(FieldVarNameStr), s(TypeSuffix)], !IO),
     mlds_output_initializer(Opts, Stream, Type, Initializer, !IO),
     io.write_string(Stream, ";\n", !IO),
     mlds_output_gc_statement(Opts, Stream, Indent, GCStmt, "", !IO).
@@ -382,32 +384,33 @@ mlds_output_enum_constant(Opts, Indent, EnumModuleName, FieldVarDefn,
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_field_var_decl_flags(mlds_to_c_opts::in,
-    io.text_output_stream::in, mlds_field_var_decl_flags::in,
-    decl_or_defn::in, io::di, io::uo) is det.
+:- func field_var_decl_flags_to_prefix_for_c(mlds_to_c_opts, decl_or_defn,
+    mlds_field_var_decl_flags) = string.
 
-mlds_output_field_var_decl_flags(Opts, Stream, Flags, DeclOrDefn, !IO) :-
-    Constness = Flags ^ mfvdf_constness,
+field_var_decl_flags_to_prefix_for_c(Opts, DeclOrDefn, Flags) = FlagsPrefix :-
+    Flags = mlds_field_var_decl_flags(PerInstance, Constness),
+    ConstnessPrefix = constness_prefix_for_c(Constness),
     Comments = Opts ^ m2co_auto_comments,
     (
-        Comments = yes,
-        PerInstance = Flags ^ mfvdf_per_instance,
-        (
-            PerInstance = per_instance
-        ;
-            PerInstance = one_copy,
-            io.write_string(Stream, "/* one_copy */ ", !IO)
-        )
+        DeclOrDefn = forward_decl,
+        FlagsPrefix0 = "extern " ++ ConstnessPrefix
     ;
-        Comments = no
+        DeclOrDefn = definition,
+        FlagsPrefix0 = ConstnessPrefix
     ),
     (
-        DeclOrDefn = forward_decl,
-        io.write_string(Stream, "extern ", !IO)
+        Comments = yes,
+        (
+            PerInstance = per_instance,
+            FlagsPrefix = FlagsPrefix0
+        ;
+            PerInstance = one_copy,
+            FlagsPrefix = "/* one_copy */ " ++ FlagsPrefix0
+        )
     ;
-        DeclOrDefn = definition
-    ),
-    mlds_output_constness(Stream, Constness, !IO).
+        Comments = no,
+        FlagsPrefix = FlagsPrefix0
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_c_class.
