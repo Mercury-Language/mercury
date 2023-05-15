@@ -193,6 +193,16 @@ mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     mlds_output_class_defns(Opts, Stream, Indent, ClassModuleName,
         MemberClasses, !IO).
 
+:- pred function_defn_is_static_member(mlds_function_defn::in) is semidet.
+
+function_defn_is_static_member(FuncDefn) :-
+    FuncDefn ^ mfd_decl_flags ^ mfdf_per_instance = one_copy.
+
+:- pred field_var_defn_is_static_member(mlds_field_var_defn::in) is semidet.
+
+field_var_defn_is_static_member(FieldVarDefn) :-
+    FieldVarDefn ^ mfvd_decl_flags ^ mfvdf_per_instance = one_copy.
+
 %---------------------------------------------------------------------------%
 
 :- pred mlds_output_class_flags_qual_name(mlds_to_c_opts::in,
@@ -221,53 +231,6 @@ mlds_output_class_flags_qual_name(Opts, Stream, IndentStr,
             [s(IndentStr), s(FlagsPrefix), s(Qualifier), s(ClassNameStr)], !IO)
     ).
 
-% ZZZ move later
-:- func class_decl_flags_to_prefix_for_c(mlds_to_c_opts,
-    mlds_class_decl_flags) = string.
-
-class_decl_flags_to_prefix_for_c(Opts, Flags) = FlagsPrefix :-
-    % DeclOrDefn does not affect what we output. Callers who pass us
-    % DeclOrDefn = forward_decl will put a semicolon after the declaration;
-    % callers who pass us DeclOrDefn = definition will put the definition
-    % itself there.
-    Flags = mlds_class_decl_flags(Access, Overridability, Constness),
-    ConstnessPrefix = constness_prefix_for_c(Constness),
-    Comments = Opts ^ m2co_auto_comments,
-    (
-        Comments = yes,
-        (
-            Access = class_public,
-            (
-                Overridability = overridable,
-                FlagsPrefix = "/* public one_copy */ " ++ ConstnessPrefix
-            ;
-                Overridability = sealed,
-                FlagsPrefix = "/* public one_copy sealed */ " ++
-                    ConstnessPrefix
-            )
-        ;
-            Access = class_private,
-            (
-                Overridability = overridable,
-                FlagsPrefix = "/* private one_copy */ " ++ ConstnessPrefix
-            ;
-                Overridability = sealed,
-                FlagsPrefix = "/* private one_copy sealed */ " ++
-                    ConstnessPrefix
-            )
-        )
-    ;
-        Comments = no,
-        FlagsPrefix = ConstnessPrefix
-    ).
-
-% ZZZ move later
-:- func constness_prefix_for_c(constness) = string.
-:- pragma inline(func(constness_prefix_for_c/1)).
-
-constness_prefix_for_c(const) = "const ".
-constness_prefix_for_c(modifiable) = "".
-
 %---------------------%
 
 :- pred mlds_output_class_forward_decl(mlds_to_c_opts::in,
@@ -289,19 +252,6 @@ mlds_output_class_forward_decl(Opts, Stream, Indent, ModuleName,
             ClassDefn, !IO),
         io.write_string(Stream, ";\n", !IO)
     ).
-
-%---------------------------------------------------------------------------%
-
-% ZZZ placement
-:- pred function_defn_is_static_member(mlds_function_defn::in) is semidet.
-
-function_defn_is_static_member(FuncDefn) :-
-    FuncDefn ^ mfd_decl_flags ^ mfdf_per_instance = one_copy.
-
-:- pred field_var_defn_is_static_member(mlds_field_var_defn::in) is semidet.
-
-field_var_defn_is_static_member(FieldVarDefn) :-
-    FieldVarDefn ^ mfvd_decl_flags ^ mfvdf_per_instance = one_copy.
 
 %---------------------------------------------------------------------------%
 
@@ -373,7 +323,7 @@ mlds_output_enum_constants(Opts, Stream, Indent, EnumModuleName,
             HeadEnumConstDefn, TailEnumConstDefns, !IO)
     ).
 
-    % Output the definition of a single enumeration constant.
+    % Output the definitions of a list of enumeration constants.
     %
 :- pred mlds_output_enum_constants(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in, mlds_module_name::in,
@@ -404,6 +354,45 @@ mlds_output_enum_constants(Opts, Stream, Indent, EnumModuleName,
 
 %---------------------------------------------------------------------------%
 
+:- func class_decl_flags_to_prefix_for_c(mlds_to_c_opts,
+    mlds_class_decl_flags) = string.
+
+class_decl_flags_to_prefix_for_c(Opts, Flags) = FlagsPrefix :-
+    % DeclOrDefn does not affect what we output. Callers who pass us
+    % DeclOrDefn = forward_decl will put a semicolon after the declaration;
+    % callers who pass us DeclOrDefn = definition will put the definition
+    % itself there.
+    Flags = mlds_class_decl_flags(Access, Overridability, Constness),
+    ConstnessPrefix = constness_prefix_for_c(Constness),
+    Comments = Opts ^ m2co_auto_comments,
+    (
+        Comments = yes,
+        (
+            Access = class_public,
+            (
+                Overridability = overridable,
+                FlagsPrefix = "/* public one_copy */ " ++ ConstnessPrefix
+            ;
+                Overridability = sealed,
+                FlagsPrefix = "/* public one_copy sealed */ " ++
+                    ConstnessPrefix
+            )
+        ;
+            Access = class_private,
+            (
+                Overridability = overridable,
+                FlagsPrefix = "/* private one_copy */ " ++ ConstnessPrefix
+            ;
+                Overridability = sealed,
+                FlagsPrefix = "/* private one_copy sealed */ " ++
+                    ConstnessPrefix
+            )
+        )
+    ;
+        Comments = no,
+        FlagsPrefix = ConstnessPrefix
+    ).
+
 :- func field_var_decl_flags_to_prefix_for_c(mlds_to_c_opts, decl_or_defn,
     mlds_field_var_decl_flags) = string.
 
@@ -431,6 +420,12 @@ field_var_decl_flags_to_prefix_for_c(Opts, DeclOrDefn, Flags) = FlagsPrefix :-
         Comments = no,
         FlagsPrefix = FlagsPrefix0
     ).
+
+:- func constness_prefix_for_c(constness) = string.
+:- pragma inline(func(constness_prefix_for_c/1)).
+
+constness_prefix_for_c(const) = "const ".
+constness_prefix_for_c(modifiable) = "".
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_c_class.

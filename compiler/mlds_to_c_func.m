@@ -145,7 +145,8 @@ mlds_output_func_decl_ho(Opts, Stream, GetTypePrefixSuffix, CallingConvention,
         io.format(Stream, "%s%s", [s(IndentStr), s(QualFuncNameStr)], !IO),
         mlds_output_params_in_parens(Opts, Stream, GetTypePrefixSuffix,
             Indent, Context, Parameters, !IO),
-        % ZZZ is this ever nonempty?
+        % NOTE In a --grade hlc.gc bootcheck on 2023 may 16,
+        % ReturnTypeSuffix was always empty.
         io.write_string(Stream, ReturnTypeSuffix, !IO)
     ;
         ReturnTypes = [_, _ | _],

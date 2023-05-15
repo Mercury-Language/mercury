@@ -276,30 +276,7 @@ mlds_output_pragma_export_defn_body(Opts, Stream, FuncName, Signature, !IO) :-
         list.foldl(io.write_string(Stream), OutputBoxStrs, !IO)
     ).
 
-:- func pragma_input_arg_to_box_string(mlds_argument) = string.
-
-pragma_input_arg_to_box_string(Arg) = BoxStr :-
-    Arg = mlds_argument(LocalVarName, Type, _GCStmt),
-    TypeStr = export_type_to_string_for_c(Type),
-    get_boxed_local_var_name(LocalVarName, BoxedLocalVarName),
-    LocalVarNameStr = local_var_name_to_string_for_c(LocalVarName),
-    BoxedLocalVarNameStr = local_var_name_to_string_for_c(BoxedLocalVarName),
-    string.format("\tMR_MAYBE_BOX_FOREIGN_TYPE(%s, %s, %s);\n",
-        [s(TypeStr), s(LocalVarNameStr), s(BoxedLocalVarNameStr)], BoxStr).
-
-:- func pragma_output_arg_to_unbox_string(mlds_argument) = string.
-
-pragma_output_arg_to_unbox_string(Arg) = UnboxStr :-
-    Arg = mlds_argument(LocalVarName, PtrType, _GCStmt),
-    TypeStr = export_type_to_string_for_c(pointed_to_type(PtrType)),
-    get_boxed_local_var_name(LocalVarName, BoxedLocalVarName),
-    BoxedLocalVarNameStr = local_var_name_to_string_for_c(BoxedLocalVarName),
-    LocalVarNameStr = local_var_name_to_string_for_c(LocalVarName),
-    string.format("\tMR_MAYBE_UNBOX_FOREIGN_TYPE(%s, %s, *%s);\n",
-        [s(TypeStr), s(BoxedLocalVarNameStr), s(LocalVarNameStr)], UnboxStr).
-
 %---------------------%
-% ZZZ placement
 
 :- func pragma_input_arg_to_decl(mlds_to_c_opts, mlds_argument) = string.
 
@@ -324,7 +301,31 @@ pragma_output_arg_to_decl(Opts, Arg) = DeclStr :-
 
 %---------------------%
 
-% ZZZ placement
+:- func pragma_input_arg_to_box_string(mlds_argument) = string.
+
+pragma_input_arg_to_box_string(Arg) = BoxStr :-
+    Arg = mlds_argument(LocalVarName, Type, _GCStmt),
+    TypeStr = export_type_to_string_for_c(Type),
+    get_boxed_local_var_name(LocalVarName, BoxedLocalVarName),
+    LocalVarNameStr = local_var_name_to_string_for_c(LocalVarName),
+    BoxedLocalVarNameStr = local_var_name_to_string_for_c(BoxedLocalVarName),
+    string.format("\tMR_MAYBE_BOX_FOREIGN_TYPE(%s, %s, %s);\n",
+        [s(TypeStr), s(LocalVarNameStr), s(BoxedLocalVarNameStr)], BoxStr).
+
+:- func pragma_output_arg_to_unbox_string(mlds_argument) = string.
+
+pragma_output_arg_to_unbox_string(Arg) = UnboxStr :-
+    Arg = mlds_argument(LocalVarName, PtrType, _GCStmt),
+    Type = pointed_to_type(PtrType),
+    TypeStr = export_type_to_string_for_c(Type),
+    get_boxed_local_var_name(LocalVarName, BoxedLocalVarName),
+    BoxedLocalVarNameStr = local_var_name_to_string_for_c(BoxedLocalVarName),
+    LocalVarNameStr = local_var_name_to_string_for_c(LocalVarName),
+    string.format("\tMR_MAYBE_UNBOX_FOREIGN_TYPE(%s, %s, *%s);\n",
+        [s(TypeStr), s(BoxedLocalVarNameStr), s(LocalVarNameStr)], UnboxStr).
+
+%---------------------%
+
 :- func pointed_to_type(mlds_type) = mlds_type.
 
 pointed_to_type(PtrType) =
@@ -334,7 +335,6 @@ pointed_to_type(PtrType) =
         unexpected($pred, "not pointer")
     ).
 
-% ZZZ placement
 :- pred get_boxed_local_var_name(mlds_local_var_name::in,
     mlds_local_var_name::out) is det.
 

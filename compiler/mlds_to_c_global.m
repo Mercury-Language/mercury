@@ -20,7 +20,6 @@
 :- import_module ml_backend.mlds_to_c_util.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 
@@ -60,12 +59,18 @@
 %---------------------------------------------------------------------------%
 
 :- pred mlds_output_global_var_decls(mlds_to_c_opts::in,
-    io.text_output_stream::in, indent::in, mlds_module_name::in,
-    list(mlds_global_var_defn)::in, io::di, io::uo) is det.
+    io.text_output_stream::in, indent::in,
+    mlds_module_name::in, list(mlds_global_var_defn)::in,
+    io::di, io::uo) is det.
+
+:- type maybe_blank_line_between_defns
+    --->    no_blank_line_between_defns
+    ;       blank_line_between_defns.
 
 :- pred mlds_output_global_var_defns(mlds_to_c_opts::in,
-    io.text_output_stream::in, indent::in, bool::in, mlds_module_name::in,
-    list(mlds_global_var_defn)::in, io::di, io::uo) is det.
+    io.text_output_stream::in, indent::in, maybe_blank_line_between_defns::in,
+    mlds_module_name::in, list(mlds_global_var_defn)::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -85,6 +90,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
+:- import_module bool.
 :- import_module char.
 :- import_module cord.
 :- import_module int.
@@ -114,14 +120,12 @@ mlds_output_scalar_cell_group_decl(Opts, Stream, Indent, MangledModuleName,
     TypeNum = ml_scalar_common_type_num(TypeRawNum),
     CellGroup = ml_scalar_cell_group(Type, InitArraySize,
         _Counter, _Members, Rows),
-
     ( if Type = mlds_mostly_generic_array_type(ElemTypes) then
         mlds_output_scalar_cell_group_struct_defn(Opts, Stream, Indent,
             MangledModuleName, TypeRawNum, ElemTypes, !IO)
     else
         true
     ),
-
     NumRows = cord.length(Rows),
     TypeNameStr = scalar_cell_group_type_and_name_to_string_for_c(Opts,
         MangledModuleName, TypeRawNum, Type, InitArraySize, NumRows),
@@ -360,17 +364,16 @@ mlds_output_global_var_decls(_, _, _, _, [], !IO).
 mlds_output_global_var_decls(Opts, Stream, Indent, ModuleName,
         [GlobalVarDefn | GlobalVarDefns], !IO) :-
     io.nl(Stream, !IO),
-    mlds_output_global_var_decl_opts(Opts, Stream, Indent,
+    mlds_output_global_var_decl(Opts, Stream, Indent,
         ModuleName, GlobalVarDefn, !IO),
     mlds_output_global_var_decls(Opts, Stream, Indent, ModuleName,
         GlobalVarDefns, !IO).
 
-    % ZZZ why _opts?
-:- pred mlds_output_global_var_decl_opts(mlds_to_c_opts::in,
+:- pred mlds_output_global_var_decl(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in, mlds_module_name::in,
     mlds_global_var_defn::in, io::di, io::uo) is det.
 
-mlds_output_global_var_decl_opts(Opts, Stream, Indent, MLDS_ModuleName,
+mlds_output_global_var_decl(Opts, Stream, Indent, MLDS_ModuleName,
         GlobalVarDefn, !IO) :-
     GlobalVarDefn = mlds_global_var_defn(GlobalVarName, Context, Flags,
         Type, Initializer, _GCStmt),
@@ -394,6 +397,57 @@ global_var_decl_to_type_name_string(Opts, MLDS_ModuleName, GlobalVarName,
             GlobalVarName),
     string.format("%s %s%s",
         [s(TypePrefix), s(QualGlobalVarNameStr), s(TypeSuffix)], DeclStr).
+
+%---------------------%
+
+mlds_output_global_var_defns(_, _, _, _, _, [], !IO).
+mlds_output_global_var_defns(Opts, Stream, Indent, BlankLine, ModuleName,
+        [GlobalVarDefn | GlobalVarDefns], !IO) :-
+    mlds_output_global_var_defn(Opts, Stream, Indent, BlankLine, ModuleName,
+        GlobalVarDefn, !IO),
+    mlds_output_global_var_defns(Opts, Stream, Indent, BlankLine, ModuleName,
+        GlobalVarDefns, !IO).
+
+:- pred mlds_output_global_var_defn(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in, maybe_blank_line_between_defns::in,
+    mlds_module_name::in, mlds_global_var_defn::in, io::di, io::uo) is det.
+
+mlds_output_global_var_defn(Opts, Stream, Indent, BlankLine,
+        MLDS_ModuleName, GlobalVarDefn, !IO) :-
+    GlobalVarDefn = mlds_global_var_defn(GlobalVarName, Context, Flags,
+        Type, Initializer, GCStmt),
+    Flags = mlds_global_var_decl_flags(Access, _Constness),
+    ShouldModuleQual = should_module_qualify_global_var_name(GlobalVarName),
+    ( if
+        Access = gvar_acc_whole_program,
+        ShouldModuleQual = no,
+        % Some rtti variables are supposed to be exported without being module
+        % qualified.
+        GlobalVarName \= gvn_rtti_var(_)
+    then
+        unexpected($pred,
+            "whole-program visible global var is not module qualified")
+    else
+        true
+    ),
+    (
+        BlankLine = blank_line_between_defns,
+        io.nl(Stream, !IO)
+    ;
+        BlankLine = no_blank_line_between_defns
+    ),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    IndentStr = indent2_string(Indent),
+    FlagsPrefix = global_var_decl_flags_to_prefix(definition, Flags),
+    TypeNameStr = global_var_decl_to_type_name_string(Opts, MLDS_ModuleName,
+        GlobalVarName, Type, get_initializer_array_size(Initializer)),
+    io.format(Stream, "%s%s%s",
+        [s(IndentStr), s(FlagsPrefix), s(TypeNameStr)], !IO),
+    mlds_output_initializer(Opts, Stream, Type, Initializer, !IO),
+    io.write_string(Stream, ";\n", !IO),
+    mlds_output_gc_statement(Opts, Stream, Indent, GCStmt, "", !IO).
+
+%---------------------------------------------------------------------------%
 
 :- func global_var_decl_flags_to_prefix(decl_or_defn,
     mlds_global_var_decl_flags) = string.
@@ -426,60 +480,10 @@ global_var_extern_or_static_prefix(DeclOrDefn, Access) = Prefix :-
         )
     ).
 
-    % ZZZ
 :- func constness_prefix(constness) = string.
 
 constness_prefix(const) = "const ".
 constness_prefix(modifiable) = "".
-
-%---------------------%
-
-mlds_output_global_var_defns(_, _, _, _, _, [], !IO).
-mlds_output_global_var_defns(Opts, Stream, Indent, Separate, ModuleName,
-        [GlobalVarDefn | GlobalVarDefns], !IO) :-
-    mlds_output_global_var_defn(Opts, Stream, Indent, Separate, ModuleName,
-        GlobalVarDefn, !IO),
-    mlds_output_global_var_defns(Opts, Stream, Indent, Separate, ModuleName,
-        GlobalVarDefns, !IO).
-
-:- pred mlds_output_global_var_defn(mlds_to_c_opts::in,
-    io.text_output_stream::in, indent::in, bool::in, mlds_module_name::in,
-    mlds_global_var_defn::in, io::di, io::uo) is det.
-
-mlds_output_global_var_defn(Opts, Stream, Indent, Separate,
-        MLDS_ModuleName, GlobalVarDefn, !IO) :-
-    GlobalVarDefn = mlds_global_var_defn(GlobalVarName, Context, Flags,
-        Type, Initializer, GCStmt),
-    Flags = mlds_global_var_decl_flags(Access, _Constness),
-    ShouldModuleQual = should_module_qualify_global_var_name(GlobalVarName),
-    ( if
-        Access = gvar_acc_whole_program,
-        ShouldModuleQual = no,
-        % Some rtti variables are supposed to be exported without being module
-        % qualified.
-        GlobalVarName \= gvn_rtti_var(_)
-    then
-        unexpected($pred,
-            "whole-program visible global var is not module qualified")
-    else
-        true
-    ),
-    (
-        Separate = yes,
-        io.nl(Stream, !IO)
-    ;
-        Separate = no
-    ),
-    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    IndentStr = indent2_string(Indent),
-    FlagsPrefix = global_var_decl_flags_to_prefix(definition, Flags),
-    TypeNameStr = global_var_decl_to_type_name_string(Opts, MLDS_ModuleName,
-        GlobalVarName, Type, get_initializer_array_size(Initializer)),
-    io.format(Stream, "%s%s%s",
-        [s(IndentStr), s(FlagsPrefix), s(TypeNameStr)], !IO),
-    mlds_output_initializer(Opts, Stream, Type, Initializer, !IO),
-    io.write_string(Stream, ";\n", !IO),
-    mlds_output_gc_statement(Opts, Stream, Indent, GCStmt, "", !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_c_global.
