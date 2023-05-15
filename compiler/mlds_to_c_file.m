@@ -75,6 +75,7 @@
 :- import_module hlds.hlds_pred.         % for pred_proc_id.
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
+:- import_module libs.indent.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -89,7 +90,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
-:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
@@ -477,17 +477,14 @@ mlds_output_hdr_start(Opts, Stream, Indent, ModuleName, !IO) :-
     ModuleNameStr = sym_name_to_string(ModuleName),
     MangledModuleNameStr = sym_name_mangle(ModuleName),
     mlds_output_auto_gen_comment(Opts, Stream, ModuleName, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "// :- module %s.\n",
-        [s(ModuleNameStr)], !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "// :- interface.\n\n", !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "#ifndef MR_HEADER_GUARD_%s\n",
-        [s(MangledModuleNameStr)], !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "#define MR_HEADER_GUARD_%s\n\n",
-        [s(MangledModuleNameStr)], !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%s// :- module %s.\n",
+        [s(IndentStr), s(ModuleNameStr)], !IO),
+    io.format(Stream, "%s// :- interface.\n\n", [s(IndentStr)], !IO),
+    io.format(Stream, "%s#ifndef MR_HEADER_GUARD_%s\n",
+        [s(IndentStr), s(MangledModuleNameStr)], !IO),
+    io.format(Stream, "%s#define MR_HEADER_GUARD_%s\n\n",
+        [s(IndentStr), s(MangledModuleNameStr)], !IO),
 
     % If we are outputting C (rather than C++), then add a conditional
     % `extern "C"' wrapper around the header file, so that the header file
@@ -495,20 +492,16 @@ mlds_output_hdr_start(Opts, Stream, Indent, ModuleName, !IO) :-
     Target = Opts ^ m2co_target,
     (
         Target = target_c,
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "#ifdef __cplusplus\n", !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "extern ""C"" {\n", !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "#endif\n", !IO),
+        io.format(Stream, "%s#ifdef __cplusplus\n", [s(IndentStr)], !IO),
+        io.format(Stream, "%sextern ""C"" {\n", [s(IndentStr)], !IO),
+        io.format(Stream, "%s#endif\n", [s(IndentStr)], !IO),
         io.nl(Stream, !IO)
     ;
         ( Target = target_java
         ; Target = target_csharp
         )
     ),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "#include ""mercury.h""\n", !IO).
+    io.format(Stream, "%s#include ""mercury.h""\n", [s(IndentStr)], !IO).
 
 :- pred mlds_output_src_start(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, mercury_module_name::in, mlds_foreign_code::in,
@@ -519,10 +512,10 @@ mlds_output_src_start(Opts, Stream, Indent, ModuleName, ForeignCode,
         InitPreds, FinalPreds, EnvVarNames, !IO) :-
     ModuleNameStr = sym_name_to_string(ModuleName),
     mlds_output_auto_gen_comment(Opts, Stream, ModuleName, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "// :- module %s.\n", [s(ModuleNameStr)], !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "// :- implementation.\n", !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%s// :- module %s.\n",
+        [s(IndentStr), s(ModuleNameStr)], !IO),
+    io.format(Stream, "%s// :- implementation.\n", [s(IndentStr)], !IO),
     mlds_output_src_bootstrap_defines(Stream, !IO),
     io.nl(Stream, !IO),
     output_init_c_comment(Stream, ModuleName, InitPreds, FinalPreds,
@@ -555,15 +548,13 @@ mlds_output_src_bootstrap_defines(_, !IO).
 
 mlds_output_hdr_end(Opts, Stream, Indent, ModuleName, !IO) :-
     Target = Opts ^ m2co_target,
+    IndentStr = indent2_string(Indent),
     (
         Target = target_c,
         % Terminate the `extern "C"' wrapper.
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "#ifdef __cplusplus\n", !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "}\n", !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "#endif\n", !IO),
+        io.format(Stream, "%s#ifdef __cplusplus\n", [s(IndentStr)], !IO),
+        io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
+        io.format(Stream, "%s#endif\n", [s(IndentStr)], !IO),
         io.nl(Stream, !IO)
     ;
         ( Target = target_csharp
@@ -571,20 +562,18 @@ mlds_output_hdr_end(Opts, Stream, Indent, ModuleName, !IO) :-
         )
     ),
     ModuleNameStr = sym_name_to_string(ModuleName),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "#endif // MR_HEADER_GUARD_%s\n\n",
-        [s(ModuleNameStr)], !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "// :- end_interface %s.\n",
-        [s(ModuleNameStr)], !IO).
+    io.format(Stream, "%s#endif // MR_HEADER_GUARD_%s\n\n",
+        [s(IndentStr), s(ModuleNameStr)], !IO),
+    io.format(Stream, "%s// :- end_interface %s.\n",
+        [s(IndentStr), s(ModuleNameStr)], !IO).
 
 :- pred mlds_output_src_end(io.text_output_stream::in, indent::in,
     mercury_module_name::in, io::di, io::uo) is det.
 
 mlds_output_src_end(Stream, Indent, ModuleName, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "// :- end_module %s.\n",
-        [s(sym_name_to_string(ModuleName))], !IO).
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%s// :- end_module %s.\n",
+        [s(IndentStr), s(sym_name_to_string(ModuleName))], !IO).
 
     % Output a C comment saying that the file was automatically generated
     % (and giving details such as the compiler version).
@@ -777,10 +766,11 @@ mlds_output_calls_to_init_entry(_, _, [], !IO).
 mlds_output_calls_to_init_entry(Stream, ModuleName,
         [FuncDefn | FuncDefns], !IO) :-
     FuncName = FuncDefn ^ mfd_function_name,
-    io.write_string(Stream, "\tMR_init_entry(", !IO),
-    mlds_output_fully_qualified_function_name(Stream,
-        qual_function_name(ModuleName, FuncName), !IO),
-    io.write_string(Stream, ");\n", !IO),
+    QualFuncName = qual_function_name(ModuleName, FuncName),
+    QualFuncNameStr =
+        fully_qualified_function_name_to_string_for_c(QualFuncName),
+    io.format(Stream, "\tMR_init_entry(%s);\n",
+        [s(QualFuncNameStr)], !IO),
     mlds_output_calls_to_init_entry(Stream, ModuleName, FuncDefns, !IO).
 
     % Generate calls to MR_register_type_ctor_info() for the specified
@@ -794,10 +784,11 @@ mlds_output_calls_to_register_tci(__, _, [], !IO).
 mlds_output_calls_to_register_tci(Stream, MLDS_ModuleName,
         [GlobalVarDefn | GlobalVarDefns], !IO) :-
     GlobalVarName = GlobalVarDefn ^ mgvd_name,
-    io.write_string(Stream, "\tMR_register_type_ctor_info(&", !IO),
-    mlds_output_maybe_qualified_global_var_name(Stream, MLDS_ModuleName,
-        GlobalVarName, !IO),
-    io.write_string(Stream, ");\n", !IO),
+    QualGlobalVarNameStr =
+        maybe_qualified_global_var_name_to_string_for_c(MLDS_ModuleName,
+            GlobalVarName),
+    io.format(Stream, "\tMR_register_type_ctor_info(&%s);\n",
+        [s(QualGlobalVarNameStr)], !IO),
     mlds_output_calls_to_register_tci(Stream, MLDS_ModuleName,
         GlobalVarDefns, !IO).
 
@@ -928,8 +919,9 @@ mlds_output_c_defns(Opts, Stream, ModuleName, Indent, ForeignCode,
     list.map_foldl(mlds_output_c_defn(Opts, Stream, Indent),
         BodyCodes, Results, !IO),
     io.write_string(Stream, "\n", !IO),
-    write_out_list(mlds_output_pragma_export_defn(Opts, ModuleName, Indent),
-        "\n", ExportDefns, Stream, !IO),
+    list.foldl(
+        mlds_output_pragma_export_defn(Opts, Stream, Indent, ModuleName),
+        ExportDefns, !IO),
     list.filter_map(maybe_is_error, Results, Errors).
 
 :- pred mlds_output_c_foreign_import_module(mlds_to_c_opts::in,

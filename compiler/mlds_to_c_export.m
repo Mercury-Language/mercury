@@ -23,8 +23,8 @@
 %---------------------------------------------------------------------------%
 
 :- pred mlds_output_pragma_export_defn(mlds_to_c_opts::in,
-    mlds_module_name::in, indent::in, mlds_pragma_export::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+    io.text_output_stream::in, indent::in,
+    mlds_module_name::in, mlds_pragma_export::in, io::di, io::uo) is det.
 
 :- pred mlds_output_export_enums(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, list(mlds_exported_enum)::in, io::di, io::uo) is det.
@@ -54,14 +54,14 @@
 :- import_module string.
 :- import_module term.
 
-mlds_output_pragma_export_defn(Opts, ModuleName, Indent, PragmaExport,
-        Stream, !IO) :-
+mlds_output_pragma_export_defn(Opts, Stream, Indent,
+        ModuleName, PragmaExport, !IO) :-
     PragmaExport = ml_pragma_export(Lang, _ExportName, MLDS_Name,
         MLDS_Signature, _UnivQTVars, Context),
     expect(unify(Lang, lang_c), $pred,
         "foreign_export to language other than C."),
-    mlds_output_pragma_export_func_name(Opts, Stream, ModuleName, Indent,
-        PragmaExport, !IO),
+    mlds_output_pragma_export_func_name(Opts, Stream, Indent,
+        ModuleName, PragmaExport, !IO),
     io.write_string(Stream, "\n", !IO),
     c_output_context(Stream, Opts ^ m2co_foreign_line_numbers, Context, !IO),
     IndentStr = indent2_string(Indent),
@@ -74,11 +74,11 @@ mlds_output_pragma_export_defn(Opts, ModuleName, Indent, PragmaExport,
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred mlds_output_pragma_export_func_name(mlds_to_c_opts::in,
-    io.text_output_stream::in, mlds_module_name::in, indent::in,
+    io.text_output_stream::in, indent::in, mlds_module_name::in,
     mlds_pragma_export::in, io::di, io::uo) is det.
 
-mlds_output_pragma_export_func_name(Opts, Stream, ModuleName, Indent,
-        Export, !IO) :-
+mlds_output_pragma_export_func_name(Opts, Stream, Indent,
+        ModuleName, Export, !IO) :-
     Export = ml_pragma_export(Lang, ExportName, _MLDSName, Signature,
         _UnivQTVars, Context),
     expect(unify(Lang, lang_c), $pred, "export to language other than C."),
