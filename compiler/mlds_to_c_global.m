@@ -349,8 +349,7 @@ mlds_output_alloc_site_defn(_Opts, Stream, Indent, MLDS_ModuleName,
         _AllocId - AllocData, !IO) :-
     AllocData = ml_alloc_site_data(FuncName, Context, Type, Size),
     QualFuncName = qual_function_name(MLDS_ModuleName, FuncName),
-    QualFuncNameStr =
-        fully_qualified_function_name_to_string_for_c(QualFuncName),
+    QualFuncNameStr = qual_function_name_to_string_for_c(QualFuncName),
     TypeStr = quote_string_c(Type),
     Context = context(FileName, LineNumber),
     IndentStr = indent2_string(Indent),
@@ -392,9 +391,8 @@ global_var_decl_to_type_name_string(Opts, MLDS_ModuleName, GlobalVarName,
         Type, InitializerSize) = DeclStr :-
     type_to_prefix_suffix_for_c(Opts, Type, InitializerSize,
         TypePrefix, TypeSuffix),
-    QualGlobalVarNameStr =
-        maybe_qualified_global_var_name_to_string_for_c(MLDS_ModuleName,
-            GlobalVarName),
+    QualGlobalVarNameStr = maybe_qual_global_var_name_to_string_for_c(
+        MLDS_ModuleName, GlobalVarName),
     string.format("%s %s%s",
         [s(TypePrefix), s(QualGlobalVarNameStr), s(TypeSuffix)], DeclStr).
 

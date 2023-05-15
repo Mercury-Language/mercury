@@ -353,7 +353,7 @@ get_boxed_local_var_name(VarName, BoxedVarName) :-
     io::di, io::uo) is det.
 
 mlds_output_pragma_export_call(Opts, Stream, FuncName, Parameters, !IO) :-
-    FuncNameStr = fully_qualified_function_name_to_string_for_c(FuncName),
+    FuncNameStr = qual_function_name_to_string_for_c(FuncName),
     ParameterStrs = list.map(pragma_export_arg_to_string(Opts), Parameters),
     ParametersStr = string.join_list(", ", ParameterStrs),
     io.format(Stream, "%s(%s);\n", [s(FuncNameStr), s(ParametersStr)], !IO).

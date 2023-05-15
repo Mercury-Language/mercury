@@ -127,8 +127,7 @@ mlds_output_func_decl_ho(Opts, Stream, GetTypePrefixSuffix, CallingConvention,
         list.map_foldl(standardize_param_names, Parameters0, Parameters, 1, _)
     ),
     IndentStr = indent2_string(Indent),
-    QualFuncNameStr =
-        fully_qualified_function_name_to_string_for_c(QualFuncName),
+    QualFuncNameStr = qual_function_name_to_string_for_c(QualFuncName),
     (
         ReturnTypes = [],
         io.format(Stream, "%svoid %s\n",

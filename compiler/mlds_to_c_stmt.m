@@ -727,7 +727,7 @@ find_out_if_call_has_return(CallKind, Results,
 mlds_output_call_profile_instr(Opts, Stream, Context, Indent,
         CalleeFuncRval, CallerName, !IO) :-
     IndentStr = indent2_string(Indent),
-    CallerNameStr = fully_qualified_function_name_to_string_for_c(CallerName),
+    CallerNameStr = qual_function_name_to_string_for_c(CallerName),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
     io.format(Stream, "%sMR_prof_call_profile(", [s(IndentStr)], !IO),
     mlds_output_bracketed_rval(Opts, Stream, CalleeFuncRval, !IO),
@@ -735,7 +735,7 @@ mlds_output_call_profile_instr(Opts, Stream, Context, Indent,
 
 mlds_output_time_profile_instr(Opts, Stream, Context, Indent, FuncName, !IO) :-
     IndentStr = indent2_string(Indent),
-    FuncNameStr = fully_qualified_function_name_to_string_for_c(FuncName),
+    FuncNameStr = qual_function_name_to_string_for_c(FuncName),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
     io.format(Stream, "%sMR_set_prof_current_proc(%s);\n",
         [s(IndentStr), s(FuncNameStr)], !IO).
@@ -1131,7 +1131,7 @@ mlds_output_target_code_component(Opts, Stream, Context, TargetCode, !IO) :-
         % (although some compilers, e.g. gcc 3.2, do allow it).
 
         TargetCode = target_code_function_name(FuncName),
-        FuncNameStr = fully_qualified_function_name_to_string_for_c(FuncName),
+        FuncNameStr = qual_function_name_to_string_for_c(FuncName),
         io.format(Stream, "%s\n", [s(FuncNameStr)], !IO)
     ;
         TargetCode = target_code_alloc_id(AllocId),

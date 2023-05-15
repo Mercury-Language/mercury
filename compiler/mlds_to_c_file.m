@@ -468,7 +468,7 @@ mlds_get_env_var_names_from_defn(FuncDefn, EnvVarNameSet) :-
 
 mlds_output_env_var_decl(Stream, EnvVarName, !IO) :-
     io.format(Stream, "extern MR_Word %s;\n",
-        [s(global_var_name(env_var_ref(EnvVarName)))], !IO).
+        [s(global_var_ref_to_string(env_var_ref(EnvVarName)))], !IO).
 
 :- pred mlds_output_hdr_start(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, mercury_module_name::in, io::di, io::uo) is det.
@@ -767,8 +767,7 @@ mlds_output_calls_to_init_entry(Stream, ModuleName,
         [FuncDefn | FuncDefns], !IO) :-
     FuncName = FuncDefn ^ mfd_function_name,
     QualFuncName = qual_function_name(ModuleName, FuncName),
-    QualFuncNameStr =
-        fully_qualified_function_name_to_string_for_c(QualFuncName),
+    QualFuncNameStr = qual_function_name_to_string_for_c(QualFuncName),
     io.format(Stream, "\tMR_init_entry(%s);\n",
         [s(QualFuncNameStr)], !IO),
     mlds_output_calls_to_init_entry(Stream, ModuleName, FuncDefns, !IO).
@@ -784,9 +783,8 @@ mlds_output_calls_to_register_tci(__, _, [], !IO).
 mlds_output_calls_to_register_tci(Stream, MLDS_ModuleName,
         [GlobalVarDefn | GlobalVarDefns], !IO) :-
     GlobalVarName = GlobalVarDefn ^ mgvd_name,
-    QualGlobalVarNameStr =
-        maybe_qualified_global_var_name_to_string_for_c(MLDS_ModuleName,
-            GlobalVarName),
+    QualGlobalVarNameStr = maybe_qual_global_var_name_to_string_for_c(
+        MLDS_ModuleName, GlobalVarName),
     io.format(Stream, "\tMR_register_type_ctor_info(&%s);\n",
         [s(QualGlobalVarNameStr)], !IO),
     mlds_output_calls_to_register_tci(Stream, MLDS_ModuleName,

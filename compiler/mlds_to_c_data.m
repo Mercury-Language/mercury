@@ -156,15 +156,14 @@ mlds_output_lval(Opts, Lval, Stream, !IO) :-
         io.write_string(Stream, "*", !IO),
         mlds_output_bracketed_rval(Opts, Stream, Rval, !IO)
     ;
-        Lval = ml_target_global_var_ref(GlobalVar),
-        io.write_string(Stream, global_var_name(GlobalVar), !IO)
+        Lval = ml_target_global_var_ref(GlobalVarRef),
+        io.write_string(Stream, global_var_ref_to_string(GlobalVarRef), !IO)
     ;
         Lval = ml_global_var(QualGlobalVarName, _VarType),
         QualGlobalVarName =
             qual_global_var_name(MLDS_ModuleName, GlobalVarName),
-        QualGlobalVarNameStr =
-            maybe_qualified_global_var_name_to_string_for_c(MLDS_ModuleName,
-                GlobalVarName),
+        QualGlobalVarNameStr = maybe_qual_global_var_name_to_string_for_c(
+            MLDS_ModuleName, GlobalVarName),
         io.write_string(Stream, QualGlobalVarNameStr, !IO)
     ;
         Lval = ml_local_var(LocalVarName, _VarType),
@@ -1037,9 +1036,8 @@ mlds_output_rval_const(_Opts, Stream, Const, !IO) :-
         ),
         % If it is an array type, then we just use the name;
         % otherwise, we must prefix the name with `&'.
-        QualGlobalVarNameStr =
-            maybe_qualified_global_var_name_to_string_for_c(MLDS_ModuleName,
-                GlobalVarName),
+        QualGlobalVarNameStr = maybe_qual_global_var_name_to_string_for_c(
+            MLDS_ModuleName, GlobalVarName),
         (
             IsArray = is_array,
             io.format(Stream, "%s", [s(QualGlobalVarNameStr)], !IO)
@@ -1076,8 +1074,7 @@ mlds_output_code_addr(Stream, CodeAddr, !IO) :-
     QualFuncLabel = qual_func_label(ModuleName, FuncLabel),
     FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
     QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
-    QualProcLabelStr = 
-        fully_qualified_proc_label_to_string_for_c(QualProcLabel),
+    QualProcLabelStr = qual_proc_label_to_string_for_c(QualProcLabel),
     MaybeAuxSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
     io.format(Stream, "%s%s", [s(QualProcLabelStr), s(MaybeAuxSuffix)], !IO).
 
