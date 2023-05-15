@@ -44,7 +44,6 @@
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_type.
 :- import_module parse_tree.
-:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 
@@ -60,9 +59,10 @@ mlds_output_pragma_export_defn(Opts, Stream, Indent,
         MLDS_Signature, _UnivQTVars, Context),
     expect(unify(Lang, lang_c), $pred,
         "foreign_export to language other than C."),
+    io.nl(Stream, !IO),
     mlds_output_pragma_export_func_name(Opts, Stream, Indent,
         ModuleName, PragmaExport, !IO),
-    io.write_string(Stream, "\n", !IO),
+    io.nl(Stream, !IO),
     c_output_context(Stream, Opts ^ m2co_foreign_line_numbers, Context, !IO),
     IndentStr = indent2_string(Indent),
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
@@ -70,7 +70,6 @@ mlds_output_pragma_export_defn(Opts, Stream, Indent,
     io.format(Stream, "%s", [s(IndentStr)], !IO),
     mlds_output_pragma_export_defn_body(Opts, Stream, MLDS_Name,
         MLDS_Signature, !IO),
-    % ZZZ added IndentStr
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred mlds_output_pragma_export_func_name(mlds_to_c_opts::in,
@@ -191,7 +190,7 @@ export_type_to_prefix_suffix(MLDS_Type, TypePrefix, TypeSuffix) :-
     io::di, io::uo) is det.
 
 mlds_output_pragma_export_defn_body(Opts, Stream, FuncName, Signature, !IO) :-
-    Signature = mlds_func_params(Parameters, RetTypes),
+    Signature = mlds_func_params(Parameters, ReturnTypes),
 
     % Declare local variables corresponding to any foreign_type parameters.
     IsCForeignType =
@@ -206,10 +205,11 @@ mlds_output_pragma_export_defn_body(Opts, Stream, FuncName, Signature, !IO) :-
         ),
     CForeignTypeInputs = list.filter(IsCForeignType, Parameters),
     CForeignTypeOutputs = list.filter(IsCForeignTypePtr, Parameters),
-    write_out_list(mlds_output_pragma_export_input_defns(Opts),
-        "", CForeignTypeInputs, Stream, !IO),
-    write_out_list(mlds_output_pragma_export_output_defns(Opts),
-        "", CForeignTypeOutputs, Stream, !IO),
+
+    CForeignTypeInputDecls = list.map(pragma_input_arg_to_decl(Opts),
+        CForeignTypeInputs),
+    CForeignTypeOutputDecls = list.map(pragma_output_arg_to_decl(Opts),
+        CForeignTypeOutputs),
 
     % Generate code to box any non-word-sized foreign_type input parameters;
     % these need to be converted to a uniform size before passing them
@@ -221,69 +221,59 @@ mlds_output_pragma_export_defn_body(Opts, Stream, FuncName, Signature, !IO) :-
     OutputBoxStrs =
         list.map(pragma_output_arg_to_unbox_string, CForeignTypeOutputs),
 
-    % Declare a local variable or two for the return value, if needed.
-    (
-        RetTypes = []
-    ;
-        RetTypes = [RetType1],
-        RetType1Str = export_type_to_string_for_c(RetType1),
-        io.format(Stream, "\t%s ret_value;\n", [s(RetType1Str)], !IO),
-        ( if RetType1 = mlds_foreign_type(c(_)) then
-            BoxedRetType1Str = type_to_string_for_c(Opts, RetType1),
-            io.format(Stream, "\t%s boxed_ret_value;\n",
-                [s(BoxedRetType1Str)], !IO)
-        else
-            true
-        )
-    ;
-        RetTypes = [_, _ | _]
-    ),
+    list.foldl(io.write_string(Stream), CForeignTypeInputDecls, !IO),
+    list.foldl(io.write_string(Stream), CForeignTypeOutputDecls, !IO),
 
-    list.foldl(io.write_string(Stream), InputUnboxStrs, !IO),
-
-    % Generate code to actually call the Mercury procedure which
-    % is being exported
+    % The structure of each path through this switch is
+    %
+    % - Declare a local variable or two for the return value, if there is one.
+    % - Call the Mercury procedure which is being exported.
+    % - If there is a return value, return it after any needed unboxing.
     (
-        RetTypes = [],
+        ReturnTypes = [],
+        list.foldl(io.write_string(Stream), InputUnboxStrs, !IO),
         io.write_string(Stream, "\t", !IO),
-        mlds_output_pragma_export_call(Opts, Stream, FuncName, Parameters, !IO)
+        mlds_output_pragma_export_call(Opts, Stream, FuncName,
+            Parameters, !IO),
+        list.foldl(io.write_string(Stream), OutputBoxStrs, !IO)
     ;
-        RetTypes = [RetType2],
-        ( if RetType2 = mlds_foreign_type(c(_)) then
-            io.write_string(Stream, "\tboxed_ret_value = ", !IO)
-        else
-            RetType2Str = export_type_to_string_for_c(RetType2),
-            io.format(Stream, "\tret_value = (%s)", [s(RetType2Str)], !IO)
-        ),
-        mlds_output_pragma_export_call(Opts, Stream, FuncName, Parameters, !IO)
-    ;
-        RetTypes = [_, _ | _],
-        % This is just for MLDS dumps when compiling to non-C targets.
-        % So we do not need to worry about boxing/unboxing foreign types here.
-        RetTypeStrs = list.map(export_type_to_string_for_c, RetTypes),
-        ReturnTypesStr = return_list_to_string_for_c(RetTypeStrs),
-        io.format(Stream, "\treturn (%s)", [s(ReturnTypesStr)], !IO)
-    ),
-
-    list.foldl(io.write_string(Stream), OutputBoxStrs, !IO),
-
-    % Generate the final statement to unbox and return the return value,
-    % if needed.
-    (
-        RetTypes = []
-    ;
-        RetTypes = [RetType3],
-        ( if RetType3 = mlds_foreign_type(c(_)) then
-            RetType3Str = export_type_to_string_for_c(RetType3),
+        ReturnTypes = [ReturnType],
+        ReturnTypeStr = export_type_to_string_for_c(ReturnType),
+        ( if ReturnType = mlds_foreign_type(c(_)) then
+            io.format(Stream, "\t%s ret_value;\n", [s(ReturnTypeStr)], !IO),
+            BoxedReturnTypeStr = type_to_string_for_c(Opts, ReturnType),
+            io.format(Stream, "\t%s boxed_ret_value;\n",
+                [s(BoxedReturnTypeStr)], !IO),
+            list.foldl(io.write_string(Stream), InputUnboxStrs, !IO),
+            io.write_string(Stream, "\tboxed_ret_value = ", !IO),
+            mlds_output_pragma_export_call(Opts, Stream, FuncName,
+                Parameters, !IO),
+            list.foldl(io.write_string(Stream), OutputBoxStrs, !IO),
             io.format(Stream,
                 "\tMR_MAYBE_UNBOX_FOREIGN_TYPE(%s, %s, %s);\n",
-                [s(RetType3Str), s("boxed_ret_value"), s("ret_value")], !IO)
+                [s(ReturnTypeStr), s("boxed_ret_value"), s("ret_value")], !IO),
+            io.write_string(Stream, "\treturn ret_value;\n", !IO)
         else
-            true
-        ),
-        io.write_string(Stream, "\treturn ret_value;\n", !IO)
+            io.format(Stream, "\t%s ret_value;\n", [s(ReturnTypeStr)], !IO),
+            list.foldl(io.write_string(Stream), InputUnboxStrs, !IO),
+            io.format(Stream, "\tret_value = (%s)", [s(ReturnTypeStr)], !IO),
+            mlds_output_pragma_export_call(Opts, Stream, FuncName,
+                Parameters, !IO),
+            list.foldl(io.write_string(Stream), OutputBoxStrs, !IO),
+            io.write_string(Stream, "\treturn ret_value;\n", !IO)
+        )
     ;
-        RetTypes = [_, _ | _]
+        ReturnTypes = [_, _ | _],
+        % Since C does not support functions that return more than one value,
+        % this arm is just for MLDS dumps when compiling to non-C targets.
+        % So we do not need to worry about boxing/unboxing foreign types here.
+        % NOTE Yet we do write out InputUnboxStrs and OutputBoxStrs.
+        %
+        list.foldl(io.write_string(Stream), InputUnboxStrs, !IO),
+        ReturnTypeStrs = list.map(export_type_to_string_for_c, ReturnTypes),
+        ReturnTypesStr = return_list_to_string_for_c(ReturnTypeStrs),
+        io.format(Stream, "\treturn (%s);", [s(ReturnTypesStr)], !IO),
+        list.foldl(io.write_string(Stream), OutputBoxStrs, !IO)
     ).
 
 :- func pragma_input_arg_to_box_string(mlds_argument) = string.
@@ -311,28 +301,26 @@ pragma_output_arg_to_unbox_string(Arg) = UnboxStr :-
 %---------------------%
 % ZZZ placement
 
-:- pred mlds_output_pragma_export_input_defns(mlds_to_c_opts::in,
-    mlds_argument::in, io.text_output_stream::in, io::di, io::uo) is det.
+:- func pragma_input_arg_to_decl(mlds_to_c_opts, mlds_argument) = string.
 
-mlds_output_pragma_export_input_defns(Opts, Arg, Stream, !IO) :-
+pragma_input_arg_to_decl(Opts, Arg) = DeclStr :-
     Arg = mlds_argument(LocalVarName, Type, _GCStmt),
     get_boxed_local_var_name(LocalVarName, BoxedLocalVarName),
     BoxedLocalVarNameStr = local_var_name_to_string_for_c(BoxedLocalVarName),
     type_to_prefix_suffix_for_c(Opts, Type, no_size, TypePrefix, TypeSuffix),
-    io.format(Stream, "\t%s %s%s;\n",
-        [s(TypePrefix), s(BoxedLocalVarNameStr), s(TypeSuffix)], !IO).
+    string.format("\t%s %s%s;\n",
+        [s(TypePrefix), s(BoxedLocalVarNameStr), s(TypeSuffix)], DeclStr).
 
-:- pred mlds_output_pragma_export_output_defns(mlds_to_c_opts::in,
-    mlds_argument::in, io.text_output_stream::in, io::di, io::uo) is det.
+:- func pragma_output_arg_to_decl(mlds_to_c_opts, mlds_argument) = string.
 
-mlds_output_pragma_export_output_defns(Opts, Arg, Stream, !IO) :-
+pragma_output_arg_to_decl(Opts, Arg) = DeclStr :-
     Arg = mlds_argument(LocalVarName, PtrType, _GCStmt),
     Type = pointed_to_type(PtrType),
     get_boxed_local_var_name(LocalVarName, BoxedLocalVarName),
     BoxedLocalVarNameStr = local_var_name_to_string_for_c(BoxedLocalVarName),
     type_to_prefix_suffix_for_c(Opts, Type, no_size, TypePrefix, TypeSuffix),
-    io.format(Stream, "\t%s %s%s;\n",
-        [s(TypePrefix), s(BoxedLocalVarNameStr), s(TypeSuffix)], !IO).
+    string.format("\t%s %s%s;\n",
+        [s(TypePrefix), s(BoxedLocalVarNameStr), s(TypeSuffix)], DeclStr).
 
 %---------------------%
 
