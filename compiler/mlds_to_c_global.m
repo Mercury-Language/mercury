@@ -13,10 +13,11 @@
 :- module ml_backend.mlds_to_c_global.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_c_util.
-:- import_module ml_backend.mlds_to_target_util.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -74,14 +75,13 @@
 :- import_module backend_libs.
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.rtti.
-:- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.indent.
 :- import_module ml_backend.mlds_to_c_class.
 :- import_module ml_backend.mlds_to_c_data.
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_stmt.
 :- import_module ml_backend.mlds_to_c_type.
+:- import_module ml_backend.mlds_to_target_util.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 

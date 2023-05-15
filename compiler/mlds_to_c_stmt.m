@@ -13,9 +13,10 @@
 :- module ml_backend.mlds_to_c_stmt.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_c_util.
-:- import_module ml_backend.mlds_to_target_util.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -50,7 +51,6 @@
 :- import_module backend_libs.rtti.
 :- import_module hlds.
 :- import_module hlds.hlds_data.
-:- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -58,6 +58,7 @@
 :- import_module ml_backend.mlds_to_c_func.
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_type.
+:- import_module ml_backend.mlds_to_target_util.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
@@ -137,8 +138,9 @@ mlds_output_stmt_block(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context),
     BraceIndent = Indent,
     BlockIndent = Indent + 1,
-    output_n_indents(Stream, BraceIndent, !IO),
-    io.write_string(Stream, "{\n", !IO),
+    BraceIndentStr = indent2_string(BraceIndent),
+
+    io.format(Stream, "%s{\n", [s(BraceIndentStr)], !IO),
 
     % Output forward declarations for any nested functions defined in
     % this block, in case they are referenced before they are defined.
@@ -200,9 +202,9 @@ mlds_output_stmt_block(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
         io.nl(Stream, !IO)
     ),
     mlds_output_statements(Opts, Stream, BlockIndent, FuncInfo, SubStmts, !IO),
+    % XXX Why print a context for a right brace?
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, BraceIndent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    io.format(Stream, "%s}\n", [s(BraceIndentStr)], !IO).
 
 :- pred mlds_output_local_var_defns(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in, bool::in,
@@ -224,6 +226,9 @@ mlds_output_local_var_defn(Opts, Stream, Indent, Separate, LocalVarDefn,
         !IO) :-
     LocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
         Type, Initializer, GCStmt),
+    IndentStr = indent2_string(Indent),
+    LocalVarTypeName = local_var_decl_to_type_name(Opts, LocalVarName, Type,
+        get_initializer_array_size(Initializer)),
     (
         Separate = yes,
         io.nl(Stream, !IO)
@@ -231,23 +236,21 @@ mlds_output_local_var_defn(Opts, Stream, Indent, Separate, LocalVarDefn,
         Separate = no
     ),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    mlds_output_local_var_decl(Opts, Stream, LocalVarName, Type,
-        get_initializer_array_size(Initializer), !IO),
+    io.format(Stream, "%s%s", [s(IndentStr), s(LocalVarTypeName)], !IO),
     mlds_output_initializer(Opts, Stream, Type, Initializer, !IO),
     io.write_string(Stream, ";\n", !IO),
     mlds_output_gc_statement(Opts, Stream, Indent, GCStmt, "", !IO).
 
-:- pred mlds_output_local_var_decl(mlds_to_c_opts::in,
-    io.text_output_stream::in, mlds_local_var_name::in,
-    mlds_type::in, initializer_array_size::in, io::di, io::uo) is det.
+:- func local_var_decl_to_type_name(mlds_to_c_opts, mlds_local_var_name,
+    mlds_type, initializer_array_size) = string.
 
-mlds_output_local_var_decl(Opts, Stream, LocalVarName, Type,
-        InitializerSize, !IO) :-
-    mlds_output_type_prefix(Opts, Stream, Type, !IO),
-    io.write_char(Stream, ' ', !IO),
-    mlds_output_local_var_name(Stream, LocalVarName, !IO),
-    mlds_output_type_suffix(Opts, Stream, Type, InitializerSize, !IO).
+local_var_decl_to_type_name(Opts, LocalVarName, Type, InitializerSize)
+        = TypeNameStr :-
+    type_to_prefix_suffix_for_c(Opts, Type, InitializerSize,
+        TypePrefix, TypeSuffix),
+    LocalVarNameStr = local_var_name_to_string_for_c(LocalVarName),
+    string.format("%s %s%s",
+        [s(TypePrefix), s(LocalVarNameStr), s(TypeSuffix)], TypeNameStr).
 
 %---------------------------------------------------------------------------%
 %
@@ -263,23 +266,21 @@ mlds_output_stmt_while(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_while(Kind, Cond, BodyStmt, _LoopLocalVars, Context),
     scope_indent(BodyStmt, Indent, ScopeIndent),
     BodyOpts = Opts ^ m2co_break_context := bc_loop,
+    IndentStr = indent2_string(Indent),
     (
         Kind = may_loop_zero_times,
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "while (", !IO),
+        io.format(Stream, "%swhile (", [s(IndentStr)], !IO),
         mlds_output_rval(Opts, Cond, Stream, !IO),
         io.write_string(Stream, ")\n", !IO),
         mlds_output_statement(BodyOpts, Stream, ScopeIndent, FuncInfo,
             BodyStmt, !IO)
     ;
         Kind = loop_at_least_once,
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "do\n", !IO),
+        io.format(Stream, "%sdo\n", [s(IndentStr)], !IO),
         mlds_output_statement(BodyOpts, Stream, ScopeIndent, FuncInfo,
             BodyStmt, !IO),
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "while (", !IO),
+        io.format(Stream, "%swhile (", [s(IndentStr)], !IO),
         mlds_output_rval(Opts, Cond, Stream, !IO),
         io.write_string(Stream, ");\n", !IO)
     ).
@@ -336,8 +337,8 @@ mlds_output_stmt_if_then_else(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
         Then = Then0
     ),
 
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "if (", !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%sif (", [s(IndentStr)], !IO),
     mlds_output_rval(Opts, Cond, Stream, !IO),
     io.write_string(Stream, ")\n", !IO),
     scope_indent(Then, Indent, ScopeIndent),
@@ -345,8 +346,7 @@ mlds_output_stmt_if_then_else(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     (
         MaybeElse = yes(Else),
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "else\n", !IO),
+        io.format(Stream, "%selse\n", [s(IndentStr)], !IO),
         ( if Else = ml_stmt_if_then_else(_, _, _, _) then
             % Indent each if-then-else in a if-then-else chain
             % to the same depth.
@@ -372,9 +372,9 @@ mlds_output_stmt_if_then_else(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
 
 mlds_output_stmt_switch(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default, Context),
+    IndentStr = indent2_string(Indent),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "switch (", !IO),
+    io.format(Stream, "%sswitch (", [s(IndentStr)], !IO),
     mlds_output_rval(Opts, Val, Stream, !IO),
     io.write_string(Stream, ") {\n", !IO),
     CaseOpts = Opts ^ m2co_break_context := bc_switch,
@@ -387,8 +387,7 @@ mlds_output_stmt_switch(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
             Context),
         Cases, !IO),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred mlds_output_switch_case(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, func_info_c::in, prog_context::in, mlds_switch_case::in,
@@ -396,32 +395,31 @@ mlds_output_stmt_switch(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
 
 mlds_output_switch_case(Opts, Stream, Indent, FuncInfo, Context, Case, !IO) :-
     Case = mlds_switch_case(FirstCond, LaterConds, Stmt),
-    mlds_output_case_cond(Opts, Stream, Indent, Context, FirstCond, !IO),
-    list.foldl(mlds_output_case_cond(Opts, Stream, Indent, Context),
+    IndentStr = indent2_string(Indent),
+    Indent1Str = indent2_string(Indent + 1),
+    mlds_output_case_cond(Opts, Stream, IndentStr, Context, FirstCond, !IO),
+    list.foldl(mlds_output_case_cond(Opts, Stream, IndentStr, Context),
         LaterConds, !IO),
     mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, Stmt, !IO),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent + 1, !IO),
-    io.write_string(Stream, "break;\n", !IO).
+    io.format(Stream, "%sbreak;\n", [s(Indent1Str)], !IO).
 
 :- pred mlds_output_case_cond(mlds_to_c_opts::in, io.text_output_stream::in,
-    indent::in, prog_context::in, mlds_case_match_cond::in,
+    string::in, prog_context::in, mlds_case_match_cond::in,
     io::di, io::uo) is det.
 
-mlds_output_case_cond(Opts, Stream, Indent, Context, Match, !IO) :-
+mlds_output_case_cond(Opts, Stream, IndentStr, Context, Match, !IO) :-
     (
         Match = match_value(Val),
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "case ", !IO),
+        io.format(Stream, "%scase ", [s(IndentStr)], !IO),
         mlds_output_rval(Opts, Val, Stream, !IO),
         io.write_string(Stream, ":\n", !IO)
     ;
         Match = match_range(Low, High),
         % This uses the GNU C extension `case <Low> ... <High>:'.
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "case ", !IO),
+        io.format(Stream, "%scase ", [s(IndentStr)], !IO),
         mlds_output_rval(Opts, Low, Stream, !IO),
         io.write_string(Stream, " ... ", !IO),
         mlds_output_rval(Opts, High, Stream, !IO),
@@ -436,20 +434,22 @@ mlds_output_switch_default(Opts, Stream, Indent, FuncInfo, Context,
         Default, !IO) :-
     (
         Default = default_is_unreachable,
+        IndentStr = indent2_string(Indent),
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "default: /*NOTREACHED*/ MR_assert(0);\n", !IO)
+        io.format(Stream, "%sdefault: /*NOTREACHED*/ MR_assert(0);\n",
+            [s(IndentStr)], !IO)
     ;
         Default = default_do_nothing
     ;
         Default = default_case(Stmt),
+        IndentStr = indent2_string(Indent),
+        Indent1Str = indent2_string(Indent + 1),
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "default:\n", !IO),
+        io.format(Stream, "%sdefault:\n", [s(IndentStr)], !IO),
         mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, Stmt, !IO),
+        % XXX Why put a context on a non-user-provide code such as "break"?
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Stream, Indent + 1, !IO),
-        io.write_string(Stream, "break;\n", !IO)
+        io.format(Stream, "%sbreak;\n", [s(Indent1Str)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -462,20 +462,19 @@ mlds_output_switch_default(Opts, Stream, Indent, FuncInfo, Context,
 :- pragma inline(pred(mlds_output_stmt_label/5)).
 
 mlds_output_stmt_label(Stream, Indent, Stmt, !IO) :-
-    Stmt = ml_stmt_label(LabelName, _Context),
+    Stmt = ml_stmt_label(Label, _Context),
+    IndentM1Str = indent2_string(Indent - 1),
     % Note: MLDS allows labels at the end of blocks. C does not.
     % Hence we need to insert a semicolon after the colon to ensure that
     % there is a statement to attach the label to.
+    LabelStr = label_to_string(Label),
+    io.format(Stream, "%s%s:;\n", [s(IndentM1Str), s(LabelStr)], !IO).
 
-    output_n_indents(Stream, Indent - 1, !IO),
-    mlds_output_label_name(Stream, LabelName, !IO),
-    io.write_string(Stream, ":;\n", !IO).
+% ZZZ placement
+:- func label_to_string(mlds_label) = string.
 
-:- pred mlds_output_label_name(io.text_output_stream::in, mlds_label::in,
-    io::di, io::uo) is det.
-
-mlds_output_label_name(Stream, LabelName, !IO) :-
-    io.write_string(Stream, name_mangle(LabelName), !IO).
+label_to_string(Label) = LabelStr :-
+    LabelStr= name_mangle(Label).
 
 %---------------------------------------------------------------------------%
 %
@@ -488,18 +487,17 @@ mlds_output_label_name(Stream, LabelName, !IO) :-
 
 mlds_output_stmt_goto(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_goto(Target, _Context),
-    output_n_indents(Stream, Indent, !IO),
+    IndentStr = indent2_string(Indent),
     (
-        Target = goto_label(LabelName),
-        io.write_string(Stream, "goto ", !IO),
-        mlds_output_label_name(Stream, LabelName, !IO),
-        io.write_string(Stream, ";\n", !IO)
+        Target = goto_label(Label),
+        LabelStr = label_to_string(Label),
+        io.format(Stream, "%sgoto %s;\n", [s(IndentStr), s(LabelStr)], !IO)
     ;
         Target = goto_break_switch,
         BreakContext = Opts ^ m2co_break_context,
         (
             BreakContext = bc_switch,
-            io.write_string(Stream, "break;\n", !IO)
+            io.format(Stream, "%sbreak;\n", [s(IndentStr)], !IO)
         ;
             ( BreakContext = bc_none
             ; BreakContext = bc_loop
@@ -511,7 +509,7 @@ mlds_output_stmt_goto(Opts, Stream, Indent, Stmt, !IO) :-
         BreakContext = Opts ^ m2co_break_context,
         (
             BreakContext = bc_loop,
-            io.write_string(Stream, "break;\n", !IO)
+            io.format(Stream, "%sbreak;\n", [s(IndentStr)], !IO)
         ;
             ( BreakContext = bc_none
             ; BreakContext = bc_switch
@@ -520,7 +518,7 @@ mlds_output_stmt_goto(Opts, Stream, Indent, Stmt, !IO) :-
         )
     ;
         Target = goto_continue_loop,
-        io.write_string(Stream, "continue;\n", !IO)
+        io.format(Stream, "%scontinue;\n", [s(IndentStr)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -535,35 +533,33 @@ mlds_output_stmt_goto(Opts, Stream, Indent, Stmt, !IO) :-
 
 mlds_output_stmt_computed_goto(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_computed_goto(Expr, Labels, Context),
+    IndentStr = indent2_string(Indent),
+    Indent1Str = indent2_string(Indent + 1),
     % XXX For GNU C, we could output potentially more efficient code
     % by using an array of labels; this would tell the compiler that
     % it did not need to do any range check.
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "switch (", !IO),
+    io.format(Stream, "%sswitch (", [s(IndentStr)], !IO),
     mlds_output_rval(Opts, Expr, Stream, !IO),
     io.write_string(Stream, ") {\n", !IO),
-    list.foldl2(mlds_output_computed_goto_label(Opts, Stream, Context, Indent),
+    list.foldl2(
+        mlds_output_computed_goto_label(Opts, Stream, Context, Indent1Str),
         Labels, 0, _FinalCount, !IO),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent + 1, !IO),
-    io.write_string(Stream, "default: /*NOTREACHED*/ MR_assert(0);\n", !IO),
+    io.format(Stream, "%sdefault: /*NOTREACHED*/ MR_assert(0);\n",
+        [s(Indent1Str)], !IO),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred mlds_output_computed_goto_label(mlds_to_c_opts::in,
-    io.text_output_stream::in, prog_context::in, int::in,
+    io.text_output_stream::in, prog_context::in, string::in,
     mlds_label::in, int::in, int::out, io::di, io::uo) is det.
 
-mlds_output_computed_goto_label(Opts, Stream, Context, Indent, Label,
+mlds_output_computed_goto_label(Opts, Stream, Context, IndentStr, Label,
         !Count, !IO) :-
+    LabelStr = label_to_string(Label),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent + 1, !IO),
-    io.write_string(Stream, "case ", !IO),
-    io.write_int(Stream, !.Count, !IO),
-    io.write_string(Stream, ": goto ", !IO),
-    mlds_output_label_name(Stream, Label, !IO),
-    io.write_string(Stream, ";\n", !IO),
+    io.format(Stream, "%scase %d: goto %s;\n",
+        [s(IndentStr), i(!.Count), s(LabelStr)], !IO),
     !:Count = !.Count + 1.
 
 %---------------------------------------------------------------------------%
@@ -605,9 +601,10 @@ mlds_output_stmt_call(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
             FuncRval, CallArgs, Results, !IO)
     else
         BodyIndent = Indent + 1,
+        IndentStr = indent2_string(Indent),
+        BodyIndentStr = indent2_string(BodyIndent),
 
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "{\n", !IO),
+        io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
         (
             ProfileCalls = yes,
             mlds_output_call_profile_instr(Opts, Stream, Context, BodyIndent,
@@ -620,8 +617,7 @@ mlds_output_stmt_call(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
         (
             CallHasReturn = call_has_return_stmt_suffix,
             c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Stream, BodyIndent, !IO),
-            io.write_string(Stream, "return;\n", !IO)
+            io.format(Stream, "%sreturn;\n", [s(BodyIndentStr)], !IO)
         ;
             ( CallHasReturn = call_has_no_return
             ; CallHasReturn = call_has_return_expr_prefix
@@ -634,8 +630,7 @@ mlds_output_stmt_call(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
                 ProfileTime = no
             )
         ),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "}\n", !IO)
+        io.format(Stream, "%s}\n", [s(IndentStr)], !IO)
     ).
 
 :- pred mlds_output_call(mlds_to_c_opts::in, io.text_output_stream::in,
@@ -645,8 +640,9 @@ mlds_output_stmt_call(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
 
 mlds_output_call(Opts, Stream, Context, Indent, CallHasReturn, FuncRval,
         CallArgs, Results, !IO) :-
+    IndentStr = indent2_string(Indent),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, IndentStr, !IO),
     (
         CallHasReturn = call_has_return_expr_prefix,
         io.write_string(Stream, "return ", !IO)
@@ -696,28 +692,28 @@ mlds_output_call(Opts, Stream, Context, Indent, CallHasReturn, FuncRval,
 :- func find_out_if_call_has_return(ml_call_kind, list(mlds_lval),
     mlds_func_signature, mlds_func_signature) = maybe_call_has_return.
 
-find_out_if_call_has_return(IsTailCall, Results,
+find_out_if_call_has_return(CallKind, Results,
         CalleeSignature, CallerSignature) = CallHasReturn :-
-    ( if
-        ( IsTailCall = tail_call
-        ; IsTailCall = no_return_call
-        )
-    then
-        CalleeSignature = mlds_func_signature(_, CalleeRetTypes),
-        CallerSignature = mlds_func_signature(_, CallerRetTypes),
+    (
+        ( CallKind = tail_call
+        ; CallKind = no_return_call
+        ),
+        CalleeSignature = mlds_func_signature(_, CalleeReturnTypes),
+        CallerSignature = mlds_func_signature(_, CallerReturnTypes),
         ( if
             Results = [_ | _],
-            CalleeRetTypes = CallerRetTypes
+            CalleeReturnTypes = CallerReturnTypes
         then
             CallHasReturn = call_has_return_expr_prefix
         else if
-            CallerRetTypes = []
+            CallerReturnTypes = []
         then
             CallHasReturn = call_has_return_stmt_suffix
         else
             CallHasReturn = call_has_no_return
         )
-    else
+    ;
+        CallKind = ordinary_call,
         CallHasReturn = call_has_no_return
     ).
 
@@ -730,21 +726,19 @@ find_out_if_call_has_return(IsTailCall, Results,
 
 mlds_output_call_profile_instr(Opts, Stream, Context, Indent,
         CalleeFuncRval, CallerName, !IO) :-
+    IndentStr = indent2_string(Indent),
+    CallerNameStr = fully_qualified_function_name_to_string_for_c(CallerName),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "MR_prof_call_profile(", !IO),
+    io.format(Stream, "%sMR_prof_call_profile(", [s(IndentStr)], !IO),
     mlds_output_bracketed_rval(Opts, Stream, CalleeFuncRval, !IO),
-    io.write_string(Stream, ", ", !IO),
-    mlds_output_fully_qualified_function_name(Stream, CallerName, !IO),
-    io.write_string(Stream, ");\n", !IO).
+    io.format(Stream, ", %s);\n", [s(CallerNameStr)], !IO).
 
-mlds_output_time_profile_instr(Opts, Stream, Context, Indent,
-        QualFuncName, !IO) :-
+mlds_output_time_profile_instr(Opts, Stream, Context, Indent, FuncName, !IO) :-
+    IndentStr = indent2_string(Indent),
+    FuncNameStr = fully_qualified_function_name_to_string_for_c(FuncName),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "MR_set_prof_current_proc(", !IO),
-    mlds_output_fully_qualified_function_name(Stream, QualFuncName, !IO),
-    io.write_string(Stream, ");\n", !IO).
+    io.format(Stream, "%sMR_set_prof_current_proc(%s);\n",
+        [s(IndentStr), s(FuncNameStr)], !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -757,19 +751,21 @@ mlds_output_time_profile_instr(Opts, Stream, Context, Indent,
 
 mlds_output_stmt_return(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_return(Results, _Context),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "return", !IO),
+    IndentStr = indent2_string(Indent),
     (
-        Results = []
+        Results = [],
+        io.format(Stream, "%sreturn;\n", [s(IndentStr)], !IO)
     ;
         Results = [Rval],
-        io.write_char(Stream, ' ', !IO),
-        mlds_output_rval(Opts, Rval, Stream, !IO)
+        io.format(Stream, "%sreturn ", [s(IndentStr)], !IO),
+        mlds_output_rval(Opts, Rval, Stream, !IO),
+        io.write_string(Stream, ";\n", !IO)
     ;
         Results = [_, _ | _],
-        mlds_output_return_list(Stream, mlds_output_rval(Opts), Results, !IO)
-    ),
-    io.write_string(Stream, ";\n", !IO).
+        io.format(Stream, "%sreturn", [s(IndentStr)], !IO),
+        mlds_output_return_list(Stream, mlds_output_rval(Opts), Results, !IO),
+        io.write_string(Stream, ";\n", !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 %
@@ -783,12 +779,12 @@ mlds_output_stmt_return(Opts, Stream, Indent, Stmt, !IO) :-
 
 mlds_output_stmt_do_commit(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_do_commit(Ref, _Context),
-    output_n_indents(Stream, Indent, !IO),
+    IndentStr = indent2_string(Indent),
     % Output "MR_builtin_longjmp(<Ref>, 1)". This is a macro that expands
     % to either the standard longjmp() or the GNU C's __builtin_longjmp().
     % Note that the second argument to GNU C's __builtin_longjmp()
     % *must* be `1'.
-    io.write_string(Stream, "MR_builtin_longjmp(", !IO),
+    io.format(Stream, "%sMR_builtin_longjmp(", [s(IndentStr)], !IO),
     mlds_output_rval(Opts, Ref, Stream, !IO),
     io.write_string(Stream, ", 1);\n", !IO).
 
@@ -833,16 +829,15 @@ mlds_output_stmt_try_commit(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
         BodyStmt = BodyStmt0
     ),
 
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "if (MR_builtin_setjmp(", !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%sif (MR_builtin_setjmp(", [s(IndentStr)], !IO),
     mlds_output_lval(Opts, Ref, Stream, !IO),
     io.write_string(Stream, ") == 0)\n", !IO),
 
     mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, BodyStmt, !IO),
 
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "else\n", !IO),
+    io.format(Stream, "%selse\n", [s(IndentStr)], !IO),
 
     mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, HandlerStmt,
         !IO).
@@ -858,38 +853,36 @@ mlds_output_stmt_try_commit(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
 
 mlds_output_stmt_atomic(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_atomic(AtomicStmt, Context),
+    IndentStr = indent2_string(Indent),
     (
         AtomicStmt = comment(Comment),
         ( if Comment = "" then
             true
         else
             CommentLines = split_at_separator(char.is_line_separator, Comment),
-            write_comment_lines(Stream, Indent, CommentLines, !IO)
+            write_comment_lines(Stream, IndentStr, CommentLines, !IO)
         ),
         % If a comment statement somehow ends up constituting
         % the entirety of e.g. an if-then-else statement's then part,
         % then it needs to be a C statement syntactically.
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, ";\n", !IO)
+        io.format(Stream, "%s;\n", [s(IndentStr)], !IO)
     ;
         AtomicStmt = assign(Lval, Rval),
-        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, IndentStr, !IO),
         mlds_output_lval(Opts, Lval, Stream, !IO),
         io.write_string(Stream, " = ", !IO),
         mlds_output_rval(Opts, Rval, Stream, !IO),
         io.write_string(Stream, ";\n", !IO)
     ;
         AtomicStmt = assign_if_in_heap(Lval, Rval),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "MR_assign_if_in_heap(", !IO),
+        io.format(Stream, "%sMR_assign_if_in_heap(", [s(IndentStr)], !IO),
         mlds_output_lval(Opts, Lval, Stream, !IO),
         io.write_string(Stream, ", ", !IO),
         mlds_output_rval(Opts, Rval, Stream, !IO),
         io.write_string(Stream, ");\n", !IO)
     ;
         AtomicStmt = delete_object(Rval),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "MR_free_heap(", !IO),
+        io.format(Stream, "%sMR_free_heap(", [s(IndentStr)], !IO),
         mlds_output_rval(Opts, Rval, Stream, !IO),
         io.write_string(Stream, ");\n", !IO)
     ;
@@ -898,18 +891,15 @@ mlds_output_stmt_atomic(Opts, Stream, Indent, Stmt, !IO) :-
             Context, !IO)
     ;
         AtomicStmt = gc_check,
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "MR_GC_check();\n", !IO)
+        io.format(Stream, "%sMR_GC_check();\n", [s(IndentStr)], !IO)
     ;
         AtomicStmt = mark_hp(Lval),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "MR_mark_hp(", !IO),
+        io.format(Stream, "%sMR_mark_hp(", [s(IndentStr)], !IO),
         mlds_output_lval(Opts, Lval, Stream, !IO),
         io.write_string(Stream, ");\n", !IO)
     ;
         AtomicStmt = restore_hp(Rval),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "MR_restore_hp(", !IO),
+        io.format(Stream, "%sMR_restore_hp(", [s(IndentStr)], !IO),
         mlds_output_rval(Opts, Rval, Stream, !IO),
         io.write_string(Stream, ");\n", !IO)
     ;
@@ -933,18 +923,17 @@ mlds_output_stmt_atomic(Opts, Stream, Indent, Stmt, !IO) :-
         unexpected($pred, "outline_foreign_proc is not used in C backend")
     ).
 
-:- pred write_comment_lines(io.text_output_stream::in, int::in,
+:- pred write_comment_lines(io.text_output_stream::in, string::in,
     list(string)::in, io::di, io::uo) is det.
 
 write_comment_lines(_, _, [], !IO).
-write_comment_lines(Stream, Indent, [CommentLine | CommentLines], !IO) :-
+write_comment_lines(Stream, IndentStr, [CommentLine | CommentLines], !IO) :-
     ( if CommentLine = "" then
         io.nl(Stream, !IO)
     else
-        output_n_indents(Stream, Indent, !IO),
-        io.format(Stream, "// %s\n", [s(CommentLine)], !IO)
+        io.format(Stream, "%s// %s\n", [s(IndentStr), s(CommentLine)], !IO)
     ),
-    write_comment_lines(Stream, Indent, CommentLines, !IO).
+    write_comment_lines(Stream, IndentStr, CommentLines, !IO).
 
 :- pred mlds_output_stmt_atomic_new_object(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in,
@@ -956,8 +945,9 @@ mlds_output_stmt_atomic_new_object(Opts, Stream, Indent, AtomicStmt,
         Context, !IO) :-
     AtomicStmt = new_object(Target, Ptag, _ExplicitSecTag, Type,
         MaybeSize, _MaybeCtorName, ArgRvalsTypes, MayUseAtomic, MaybeAllocId),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "{\n", !IO),
+    IndentStr = indent2_string(Indent),
+    Indent1Str = indent2_string(Indent + 1),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
 
     % When filling in the fields of a newly allocated cell, use a fresh
     % local variable as the base address for the field references in
@@ -974,13 +964,12 @@ mlds_output_stmt_atomic_new_object(Opts, Stream, Indent, AtomicStmt,
         % XXX Actually, they do not include "__" anymore.
         BaseVarName = "base",
         Base = ls_string(BaseVarName),
+        type_to_prefix_suffix_for_c(Opts, Type, no_size,
+            TypePrefix, TypeSuffix),
+
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Stream, Indent + 1, !IO),
-        mlds_output_type_prefix(Opts, Stream, Type, !IO),
-        io.write_string(Stream, " ", !IO),
-        io.write_string(Stream, BaseVarName, !IO),
-        mlds_output_type_suffix(Opts, Stream, Type, no_size, !IO),
-        io.write_string(Stream, ";\n", !IO)
+        io.format(Stream, "%s%s %s%s;\n",
+            [s(Indent1Str), s(TypePrefix), s(BaseVarName), s(TypeSuffix)], !IO)
     ),
 
     % For --gc accurate, we need to insert a call to GC_check()
@@ -988,9 +977,9 @@ mlds_output_stmt_atomic_new_object(Opts, Stream, Indent, AtomicStmt,
     GC_Method = Opts ^ m2co_gc_method,
     (
         GC_Method = gc_accurate,
+        % XXX What is this context for?
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Stream, Indent + 1, !IO),
-        io.write_string(Stream, "MR_GC_check();\n", !IO),
+        io.format(Stream, "%sMR_GC_check();\n", [s(Indent1Str)], !IO),
         % For types which hold RTTI that will be traversed by the collector
         % at GC-time, we need to allocate an extra word at the start,
         % to hold the forwarding pointer. Normally we would just overwrite
@@ -1000,13 +989,13 @@ mlds_output_stmt_atomic_new_object(Opts, Stream, Indent, AtomicStmt,
         NeedsForwardingSpace = type_needs_forwarding_pointer_space(Type),
         (
             NeedsForwardingSpace = yes,
+            % XXX What is this context for?
             c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Stream, Indent + 1, !IO),
-            io.write_string(Stream,
-                "// reserve space for GC forwarding pointer\n", !IO),
+            io.format(Stream, "%s// reserve space for GC forwarding pointer\n",
+                [s(Indent1Str)], !IO),
+            % XXX What is this context for?
             c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Stream, Indent + 1, !IO),
-            io.write_string(Stream, "MR_hp_alloc(1);\n", !IO)
+            io.format(Stream, "%sMR_hp_alloc(1);\n", [s(Indent1Str)], !IO)
         ;
             NeedsForwardingSpace = no
         )
@@ -1019,30 +1008,37 @@ mlds_output_stmt_atomic_new_object(Opts, Stream, Indent, AtomicStmt,
         )
     ),
 
+    TypeStr = type_to_string_for_c(Opts, Type),
+    (
+        MayUseAtomic = may_not_use_atomic_alloc,
+        NewObjectMacro = "MR_new_object"
+    ;
+        MayUseAtomic = may_use_atomic_alloc,
+        NewObjectMacro = "MR_new_object_atomic"
+    ),
+    MaybeAllocIdStr = maybe_alloc_id_to_string(MaybeAllocId),
+
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent + 1, !IO),
+    io.write_string(Stream, Indent1Str, !IO),
     write_lval_or_string(Opts, Stream, Base, !IO),
     io.write_string(Stream, " = ", !IO),
     Ptag = ptag(PtagUInt8),
+
+    % This if-then-else prints the first arg of NewObjectMacro, the type,
+    % and the comma after it.
     ( if PtagUInt8 = 0u8 then
         % XXX We should not need the cast here, but currently the type that
         % we include in the call to MR_new_object() is not always correct.
-        mlds_output_cast(Opts, Stream, Type, !IO),
+        io.format(Stream, "(%s) %s(%s, ",
+            [s(TypeStr), s(NewObjectMacro), s(TypeStr)], !IO),
         EndMkword = ""
     else
-        mlds_output_cast(Opts, Stream, Type, !IO),
-        io.format(Stream, "MR_mkword(%u, ", [u8(PtagUInt8)], !IO),
+        io.format(Stream, "(%s) MR_mkword(%u, %s(%s, ",
+            [s(TypeStr), u8(PtagUInt8), s(NewObjectMacro), s(TypeStr)], !IO),
         EndMkword = ")"
     ),
-    (
-        MayUseAtomic = may_not_use_atomic_alloc,
-        io.write_string(Stream, "MR_new_object(", !IO)
-    ;
-        MayUseAtomic = may_use_atomic_alloc,
-        io.write_string(Stream, "MR_new_object_atomic(", !IO)
-    ),
-    mlds_output_type(Opts, Type, Stream, !IO),
-    io.write_string(Stream, ", ", !IO),
+    % This if-then-else prints the second arg of NewObjectMacro, the size,
+    % but not the comma after it.
     (
         MaybeSize = yes(Size),
         io.write_string(Stream, "(", !IO),
@@ -1057,34 +1053,34 @@ mlds_output_stmt_atomic_new_object(Opts, Stream, Indent, AtomicStmt,
         % XXX what should we do here?
         io.write_int(Stream, -1, !IO)
     ),
-    io.write_string(Stream, ", ", !IO),
-    mlds_output_maybe_alloc_id(Stream, MaybeAllocId, !IO),
-    io.format(Stream, ", NULL)%s;\n", [s(EndMkword)], !IO),
+    % This prints the third and fourth args of NewObjectMacro,
+    % the alloc id and the name. The name, which we always set to NULL,
+    % is used only for memory profiling.
+    io.format(Stream, ", %s, NULL)%s;\n",
+        [s(MaybeAllocIdStr), s(EndMkword)], !IO),
     (
         Base = ls_lval(_)
     ;
         Base = ls_string(BaseVarName1),
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Stream, Indent + 1, !IO),
+        io.write_string(Stream, Indent1Str, !IO),
         mlds_output_lval(Opts, Target, Stream, !IO),
         io.format(Stream, " = %s;\n", [s(BaseVarName1)], !IO)
     ),
     mlds_output_init_args(Opts, Stream, ArgRvalsTypes, Context, 0, Base, Ptag,
         Indent + 1, !IO),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "}\n", !IO).
+    io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
-:- pred mlds_output_maybe_alloc_id(io.text_output_stream::in,
-    maybe(mlds_alloc_id)::in, io::di, io::uo) is det.
+:- func maybe_alloc_id_to_string(maybe(mlds_alloc_id)) = string.
 
-mlds_output_maybe_alloc_id(Stream, MaybeAllocId, !IO) :-
+maybe_alloc_id_to_string(MaybeAllocId) = MaybeAllocIdStr :-
     (
         MaybeAllocId = yes(mlds_alloc_id(Num)),
-        io.format(Stream, "&MR_alloc_sites[%d]", [i(Num)], !IO)
+        string.format("&MR_alloc_sites[%d]", [i(Num)], MaybeAllocIdStr)
     ;
         MaybeAllocId = no,
-        io.write_string(Stream, "NULL", !IO)
+        MaybeAllocIdStr = "NULL"
     ).
 
 :- pred mlds_output_target_code_component(mlds_to_c_opts::in,
@@ -1094,17 +1090,18 @@ mlds_output_maybe_alloc_id(Stream, MaybeAllocId, !IO) :-
 mlds_output_target_code_component(Opts, Stream, Context, TargetCode, !IO) :-
     (
         TargetCode = user_target_code(CodeString, MaybeUserContext),
+        LineNumbers = Opts ^ m2co_line_numbers,
         (
             MaybeUserContext = yes(UserContext),
-            c_output_context(Stream, Opts ^ m2co_line_numbers, UserContext,
-                !IO)
+            InitContext = UserContext
         ;
             MaybeUserContext = no,
-            c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO)
+            InitContext = Context
         ),
+        c_output_context(Stream, LineNumbers, InitContext, !IO),
         io.write_string(Stream, CodeString, !IO),
         io.write_string(Stream, "\n", !IO),
-        c_reset_context(Stream, Opts ^ m2co_line_numbers, !IO)
+        c_reset_context(Stream, LineNumbers, !IO)
     ;
         TargetCode = raw_target_code(CodeString),
         io.write_string(Stream, CodeString, !IO)
@@ -1134,11 +1131,12 @@ mlds_output_target_code_component(Opts, Stream, Context, TargetCode, !IO) :-
         % (although some compilers, e.g. gcc 3.2, do allow it).
 
         TargetCode = target_code_function_name(FuncName),
-        mlds_output_fully_qualified_function_name(Stream, FuncName, !IO),
-        io.write_string(Stream, "\n", !IO)
+        FuncNameStr = fully_qualified_function_name_to_string_for_c(FuncName),
+        io.format(Stream, "%s\n", [s(FuncNameStr)], !IO)
     ;
         TargetCode = target_code_alloc_id(AllocId),
-        mlds_output_maybe_alloc_id(Stream, yes(AllocId), !IO)
+        MaybeAllocIdStr = maybe_alloc_id_to_string(yes(AllocId)),
+        io.write_string(Stream, MaybeAllocIdStr, !IO)
     ).
 
 :- func type_needs_forwarding_pointer_space(mlds_type) = bool.
@@ -1201,13 +1199,15 @@ mlds_output_init_args(Opts, Stream, [ArgRvalType | ArgRvalsTypes], Context,
     % The MR_hl_field() macro expects its argument to have type MR_Box,
     % so we need to box the arguments if they are not already boxed.
     % Hence the use of mlds_output_boxed_rval below.
+    IndentStr = indent2_string(Indent),
     Ptag = ptag(PtagUInt8),
+    ArgRvalType = ml_typed_rval(ArgRval, ArgType),
+
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "MR_hl_field(%u, ", [u8(PtagUInt8)], !IO),
+    io.format(Stream, "%sMR_hl_field(%u, ",
+        [s(IndentStr), u8(PtagUInt8)], !IO),
     write_lval_or_string(Opts, Stream, Base, !IO),
     io.format(Stream, ", %d) = ", [i(ArgNum)], !IO),
-    ArgRvalType = ml_typed_rval(ArgRval, ArgType),
     mlds_output_boxed_rval(Opts, Stream, ArgType, ArgRval, !IO),
     io.write_string(Stream, ";\n", !IO),
     mlds_output_init_args(Opts, Stream, ArgRvalsTypes, Context,
@@ -1249,6 +1249,7 @@ mlds_output_gc_statement(Opts, Stream, Indent, GCStmt, MaybeNewLine, !IO) :-
         mlds_output_statement(Opts, Stream, Indent, FuncInfo, Stmt, !IO),
         io.write_string(Stream, "#endif\n", !IO)
     ).
+
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_c_stmt.
 %---------------------------------------------------------------------------%

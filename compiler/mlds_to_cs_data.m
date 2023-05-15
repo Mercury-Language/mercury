@@ -14,6 +14,8 @@
 :- module ml_backend.mlds_to_cs_data.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_cs_util.
 :- import_module ml_backend.mlds_to_target_util.
@@ -102,9 +104,7 @@
 :- import_module backend_libs.rtti.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_util.

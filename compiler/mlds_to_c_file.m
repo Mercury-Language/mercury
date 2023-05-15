@@ -918,7 +918,6 @@ mlds_output_c_defns(Opts, Stream, ModuleName, Indent, ForeignCode,
         Imports, !IO),
     list.map_foldl(mlds_output_c_defn(Opts, Stream, Indent),
         BodyCodes, Results, !IO),
-    io.write_string(Stream, "\n", !IO),
     list.foldl(
         mlds_output_pragma_export_defn(Opts, Stream, Indent, ModuleName),
         ExportDefns, !IO),

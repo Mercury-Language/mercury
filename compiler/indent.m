@@ -18,6 +18,14 @@
 
 :- import_module io.
 
+    % A value of type `indent' records the number of levels of indentation
+    % to indent a piece of text (usually code). The number of spaces
+    % per indent level depends on the particular output destination.
+    % When the MLDS backend generates C, Java or C# code, each indent level
+    % is two spaces, so the appropriate way to translate an indent level
+    % to an indent string is the indent2 family of operations below.
+:- type indent == int.
+
 %---------------------------------------------------------------------------%
 %
 % Write out indentation.

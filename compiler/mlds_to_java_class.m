@@ -14,9 +14,10 @@
 :- module ml_backend.mlds_to_java_class.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_java_util.
-:- import_module ml_backend.mlds_to_target_util.
 
 :- import_module io.
 :- import_module map.
@@ -54,8 +55,6 @@
 :- import_module backend_libs.c_util.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module libs.
-:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_code_util.
@@ -63,6 +62,7 @@
 :- import_module ml_backend.mlds_to_java_func.
 :- import_module ml_backend.mlds_to_java_name.
 :- import_module ml_backend.mlds_to_java_type.
+:- import_module ml_backend.mlds_to_target_util.
 :- import_module parse_tree.
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.prog_data.

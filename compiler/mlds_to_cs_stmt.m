@@ -28,6 +28,8 @@
 :- module ml_backend.mlds_to_cs_stmt.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_cs_util.
 :- import_module ml_backend.mlds_to_target_util.
@@ -47,9 +49,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.indent.
 :- import_module ml_backend.mlds_to_cs_data.
 :- import_module ml_backend.mlds_to_cs_func.    % undesirable circular dep
 :- import_module ml_backend.mlds_to_cs_name.

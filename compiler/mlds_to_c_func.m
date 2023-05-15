@@ -13,10 +13,11 @@
 :- module ml_backend.mlds_to_c_func.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_c_type.
 :- import_module ml_backend.mlds_to_c_util.
-:- import_module ml_backend.mlds_to_target_util.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -57,11 +58,10 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_pred.            % for pred_proc_id.
-:- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.indent.
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_stmt.
+:- import_module ml_backend.mlds_to_target_util.
 
 :- import_module bool.
 :- import_module char.
@@ -85,15 +85,19 @@ mlds_output_function_decl_opts(Opts, Stream, Indent, ModuleName,
     FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
         MaybePredProcId, Params, MaybeBody,
         _EnvVarNames, _MaybeRequireTailrecInfo),
-    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    mlds_output_function_decl_flags(Opts, Stream, Flags, MaybeBody, !IO),
     QualFuncName = qual_function_name(ModuleName, FuncName),
+    IndentStr = indent2_string(Indent),
+    FlagsPrefix = function_decl_flags_to_prefix_for_c(Opts, Flags, MaybeBody),
+
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
     (
-        MaybePredProcId = no
+        MaybePredProcId = no,
+        io.format(Stream, "%s%s", [s(IndentStr), s(FlagsPrefix)], !IO)
     ;
         MaybePredProcId = yes(PredProcId),
-        mlds_output_pred_proc_id(Opts, Stream, PredProcId, !IO)
+        CommentPrefix = pred_proc_id_comment_prefix(Opts, PredProcId),
+        io.format(Stream, "%s%s%s",
+            [s(IndentStr), s(FlagsPrefix), s(CommentPrefix)], !IO)
     ),
     mlds_output_func_decl(Opts, Stream, Indent, QualFuncName, Context,
         Params, !IO),
@@ -234,17 +238,21 @@ mlds_output_function_defns(Opts, BlankLine, Stream, Indent, ModuleName,
 
 mlds_output_function_defn(Opts, Stream, Indent, ModuleName,
         FunctionDefn, !IO) :-
-    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
     FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
         MaybePredProcId, Params, MaybeBody,
         _EnvVarNames, _MaybeRequireTailrecInfo),
-    mlds_output_function_decl_flags(Opts, Stream, Flags, MaybeBody, !IO),
+    IndentStr = indent2_string(Indent),
+    FlagsPrefix = function_decl_flags_to_prefix_for_c(Opts, Flags, MaybeBody),
+
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
     (
-        MaybePredProcId = no
+        MaybePredProcId = no,
+        io.format(Stream, "%s%s", [s(IndentStr), s(FlagsPrefix)], !IO)
     ;
         MaybePredProcId = yes(PredProcId),
-        mlds_output_pred_proc_id(Opts, Stream, PredProcId, !IO)
+        CommentPrefix = pred_proc_id_comment_prefix(Opts, PredProcId),
+        io.format(Stream, "%s%s%s",
+            [s(IndentStr), s(FlagsPrefix), s(CommentPrefix)], !IO)
     ),
     QualFuncName = qual_function_name(ModuleName, FuncName),
     mlds_output_func(Opts, Stream, Indent, QualFuncName, Context, Params,
@@ -255,17 +263,20 @@ mlds_output_function_defn(Opts, Stream, Indent, ModuleName,
 % Code to output function declarations/definitions.
 %
 
-:- pred mlds_output_pred_proc_id(mlds_to_c_opts::in, io.text_output_stream::in,
-    pred_proc_id::in, io::di, io::uo) is det.
+:- func pred_proc_id_comment_prefix(mlds_to_c_opts, pred_proc_id) = string.
 
-mlds_output_pred_proc_id(Opts, Stream, proc(PredId, ProcId), !IO) :-
+pred_proc_id_comment_prefix(Opts, PredProcId) = CommentPrefix :-
     Comments = Opts ^ m2co_auto_comments,
     (
         Comments = yes,
-        io.format(Stream, "/* pred_id: %i, proc_id: %i */ ",
-            [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))], !IO)
+        PredProcId = proc(PredId, ProcId),
+        PredIdInt = pred_id_to_int(PredId),
+        ProcIdInt = proc_id_to_int(ProcId),
+        string.format("/* pred_id: %d, proc_id: %d */ ",
+            [i(PredIdInt), i(ProcIdInt)], CommentPrefix)
     ;
-        Comments = no
+        Comments = no,
+        CommentPrefix = ""
     ).
 
 :- pred mlds_output_func(mlds_to_c_opts::in, io.text_output_stream::in,
@@ -299,8 +310,9 @@ mlds_output_func(Opts, Stream, Indent, QualFuncName, Context, Params,
                 BodyStmt, !IO)
         else
             c_output_context(Stream, LineNumbers, Context, !IO),
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, "{\n", !IO),    % start of the function
+            IndentStr = indent2_string(Indent),
+            % start of the function
+            io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
             (
                 ProfileTime = yes,
                 mlds_output_time_profile_instr(Opts, Stream, Context,
@@ -311,8 +323,8 @@ mlds_output_func(Opts, Stream, Indent, QualFuncName, Context, Params,
             mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo,
                 BodyStmt, !IO),
             c_output_context(Stream, LineNumbers, Context, !IO),
-            output_n_indents(Stream, Indent, !IO),
-            io.write_string(Stream, "}\n", !IO)     % end of the function
+            % end of the function
+            io.format(Stream, "%s}\n", [s(IndentStr)], !IO)
         )
     ).
 
@@ -321,39 +333,46 @@ mlds_output_func(Opts, Stream, Indent, QualFuncName, Context, Params,
 % Code to output declaration specifiers.
 %
 
-:- pred mlds_output_function_decl_flags(mlds_to_c_opts::in,
-    io.text_output_stream::in, mlds_function_decl_flags::in,
-    mlds_function_body::in, io::di, io::uo) is det.
+:- func function_decl_flags_to_prefix_for_c(mlds_to_c_opts,
+    mlds_function_decl_flags, mlds_function_body) = string.
 
-mlds_output_function_decl_flags(Opts, Stream, Flags, MaybeBody, !IO) :-
+function_decl_flags_to_prefix_for_c(Opts, Flags, MaybeBody) = FlagsPrefix :-
     Flags = mlds_function_decl_flags(Access, PerInstance),
-    Comments = Opts ^ m2co_auto_comments,
-    (
-        Comments = yes,
-        (
-            Access = func_public,
-            io.write_string(Stream, "/* public: */ ", !IO)
-        ;
-            Access = func_private,
-            io.write_string(Stream, "/* private: */ ", !IO)
-        ),
-        (
-            PerInstance = per_instance
-        ;
-            PerInstance = one_copy,
-            io.write_string(Stream, "/* one_copy */ ", !IO)
-        )
-    ;
-        Comments = no
-    ),
     ( if
         Access = func_private,
         % Do not output "static" for functions that do not have a body.
         MaybeBody = body_defined_here(_)
     then
-        io.write_string(Stream, "static ", !IO)
+        MaybeStaticPrefix = "static "
     else
-        true
+        MaybeStaticPrefix = ""
+    ),
+    Comments = Opts ^ m2co_auto_comments,
+    (
+        Comments = yes,
+        (
+            Access = func_public,
+            (
+                PerInstance = per_instance,
+                AccessPerInstancePrefix = "/* public */ "
+            ;
+                PerInstance = one_copy,
+                AccessPerInstancePrefix = "/* public one_copy */ "
+            )
+        ;
+            Access = func_private,
+            (
+                PerInstance = per_instance,
+                AccessPerInstancePrefix = "/* private */ "
+            ;
+                PerInstance = one_copy,
+                AccessPerInstancePrefix = "/* private one_copy */ "
+            )
+        ),
+        FlagsPrefix = AccessPerInstancePrefix ++ MaybeStaticPrefix
+    ;
+        Comments = no,
+        FlagsPrefix = MaybeStaticPrefix
     ).
 
 %---------------------------------------------------------------------------%

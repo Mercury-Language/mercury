@@ -204,17 +204,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % A value of type `indent' records the number of levels of indentation
-    % to indent the next piece of code. Currently we output two spaces
-    % for each level of indentation.
-:- type indent == int.
-
-:- pred output_n_indents(io.text_output_stream::in, indent::in,
-    io::di, io::uo) is det.
-
 :- pred write_indentstr_line(io.text_output_stream::in, string::in, string::in,
-    io::di, io::uo) is det.
-:- pred write_indented_line(io.text_output_stream::in, indent::in, string::in,
     io::di, io::uo) is det.
 
 :- pred scope_indent(mlds_stmt::in, int::in, int::out) is det.
@@ -445,21 +435,8 @@ maybe_output_pred_proc_id_comment(Stream, AutoComments, IndentStr,
 
 %---------------------------------------------------------------------------%
 
-output_n_indents(Stream, N, !IO) :-
-    ( if N =< 0 then
-        true
-    else
-        io.write_string(Stream, "  ", !IO),
-        output_n_indents(Stream, N - 1, !IO)
-    ).
-
 write_indentstr_line(Stream, IndentStr, Line, !IO) :-
     io.format(Stream, "%s%s\n", [s(IndentStr), s(Line)], !IO).
-
-write_indented_line(Stream, Indent, Line, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, Line, !IO),
-    io.nl(Stream, !IO).
 
 scope_indent(Stmt, CurIndent, ScopeIndent) :-
     ( if Stmt = ml_stmt_block(_, _, _, _) then

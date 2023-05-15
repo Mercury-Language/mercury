@@ -13,9 +13,10 @@
 :- module ml_backend.mlds_to_c_class.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_c_util.
-:- import_module ml_backend.mlds_to_target_util.
 
 :- import_module io.
 
@@ -32,17 +33,15 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_pred.         % for pred_proc_id.
-:- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.indent.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.mlds_to_c_data.
 :- import_module ml_backend.mlds_to_c_func.
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_stmt.
 :- import_module ml_backend.mlds_to_c_type.
+:- import_module ml_backend.mlds_to_target_util.
 :- import_module parse_tree.
-:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -89,9 +88,7 @@ mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     % expect(unify(MemberMethods, []), $pred, "MemberMethods != []"),
     % expect(unify(Ctors, []), $pred, "Ctors != []"),
 
-    io.nl(Stream, !IO),
-    % Output the class declaration.
-    mlds_output_class_decl(Opts, Stream, Indent, ModuleName, ClassDefn, !IO),
+    IndentStr = indent2_string(Indent),
 
     % To avoid name clashes, we need to qualify the names of the member
     % constants with the class name. (In particular, this is needed for
@@ -143,6 +140,12 @@ mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
         unexpected($pred, "inherits_generic_env_ptr_type")
     ),
 
+    % Output the class declaration.
+    io.nl(Stream, !IO),
+    io.format(Stream, "%s", [s(IndentStr)], !IO),
+    mlds_output_class_flags_qual_name(Opts, Stream, IndentStr,
+        ModuleName, ClassDefn, !IO),
+
     % Output the class members.
     % We treat enumerations specially.
     %
@@ -180,9 +183,9 @@ mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
                 ClassModuleName),
             StructMemberFields, !IO)
     ),
+    % XXX What is this context needed for? And why is it before a semicolon?
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "};\n", !IO),
+    io.format(Stream, "%s};\n", [s(IndentStr)], !IO),
     mlds_output_function_defns(Opts, blank_line_start, Stream, Indent,
         ClassModuleName, StaticCtors, !IO),
     mlds_output_field_var_defns(Opts, Stream, Indent, yes, ClassModuleName,
@@ -192,17 +195,16 @@ mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_class_decl(mlds_to_c_opts::in, io.text_output_stream::in,
-    indent::in, mlds_module_name::in, mlds_class_defn::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_class_flags_qual_name(mlds_to_c_opts::in,
+    io.text_output_stream::in, string::in,
+    mlds_module_name::in, mlds_class_defn::in, io::di, io::uo) is det.
 
-mlds_output_class_decl(Opts, Stream, Indent, ModuleName, ClassDefn,
-        !IO) :-
+mlds_output_class_flags_qual_name(Opts, Stream, IndentStr,
+        ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, Flags,
         ClassKind, _Imports, _Inherits, _Implements, _TypeParams,
         _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    IndentStr = indent2_string(Indent),
     FlagsPrefix = class_decl_flags_to_prefix_for_c(Opts, Flags),
     Qualifier = qualifier_to_string_for_c(ModuleName),
     ClassNameStr = class_name_arity_to_string_for_c(ClassName, ClassArity),
@@ -282,7 +284,8 @@ mlds_output_class_forward_decl(Opts, Stream, Indent, ModuleName,
     ( if ClassDefn ^ mcd_kind = mlds_enum then
         true
     else
-        mlds_output_class_decl(Opts, Stream, Indent, ModuleName,
+        IndentStr = indent2_string(Indent),
+        mlds_output_class_flags_qual_name(Opts, Stream, IndentStr, ModuleName,
             ClassDefn, !IO),
         io.write_string(Stream, ";\n", !IO)
     ).
@@ -360,27 +363,44 @@ mlds_output_enum_constants(Opts, Stream, Indent, EnumModuleName,
     % Select the enumeration constants from the list of members
     % for this enumeration type, and output them.
     list.filter(field_var_defn_is_enum_const, MemberFields,
-        EnumConstMemberFields),
-    write_out_list(mlds_output_enum_constant(Opts, Indent, EnumModuleName),
-        ",\n", EnumConstMemberFields, Stream, !IO),
-    io.nl(Stream, !IO).
+        EnumConstDefns),
+    (
+        EnumConstDefns = [],
+        unexpected($pred, "EnumConstDefns = []")
+    ;
+        EnumConstDefns = [HeadEnumConstDefn | TailEnumConstDefns],
+        mlds_output_enum_constants(Opts, Stream, Indent, EnumModuleName,
+            HeadEnumConstDefn, TailEnumConstDefns, !IO)
+    ).
 
     % Output the definition of a single enumeration constant.
     %
-:- pred mlds_output_enum_constant(mlds_to_c_opts::in, indent::in,
-    mlds_module_name::in, mlds_field_var_defn::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred mlds_output_enum_constants(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in, mlds_module_name::in,
+    mlds_field_var_defn::in, list(mlds_field_var_defn)::in,
+    io::di, io::uo) is det.
 
-mlds_output_enum_constant(Opts, Indent, EnumModuleName, FieldVarDefn,
-        Stream, !IO) :-
-    FieldVarDefn = mlds_field_var_defn(FieldVarName, Context, _Flags,
+mlds_output_enum_constants(Opts, Stream, Indent, EnumModuleName,
+        HeadDefn, TailDefns, !IO) :-
+    HeadDefn = mlds_field_var_defn(FieldVarName, Context, _Flags,
         Type, Initializer, _GCStmt),
-    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
+    IndentStr = indent2_string(Indent),
     QualFieldVarName =
         qual_field_var_name(EnumModuleName, type_qual, FieldVarName),
-    mlds_output_fully_qualified_field_var_name(Stream, QualFieldVarName, !IO),
-    mlds_output_initializer(Opts, Stream, Type, Initializer, !IO).
+    QualFieldVarNameStr =
+        qual_field_var_name_to_string_for_c(QualFieldVarName),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    io.format(Stream, "%s%s", [s(IndentStr), s(QualFieldVarNameStr)], !IO),
+    mlds_output_initializer(Opts, Stream, Type, Initializer, !IO),
+    (
+        TailDefns = [],
+        io.write_string(Stream, "\n", !IO)
+    ;
+        TailDefns = [HeadTailDefn | TailTailDefns],
+        io.write_string(Stream, ",\n", !IO),
+        mlds_output_enum_constants(Opts, Stream, Indent, EnumModuleName,
+            HeadTailDefn, TailTailDefns, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 

@@ -14,6 +14,8 @@
 :- module ml_backend.mlds_to_cs_func.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_cs_util.
 :- import_module ml_backend.mlds_to_target_util.
@@ -38,8 +40,6 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.            % for pred_proc_id
-:- import_module libs.
-:- import_module libs.indent.
 :- import_module ml_backend.mlds_to_cs_name.
 :- import_module ml_backend.mlds_to_cs_stmt.
 :- import_module ml_backend.mlds_to_cs_type.
