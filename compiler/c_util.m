@@ -100,7 +100,7 @@
 :- func prepare_to_quote_string_c(string) = string.
 
     % Print out a string suitably escaped for use as a string literal in
-    % C/Java/C#C/Java/C#, without double quotes around it.
+    % C/Java/C#, with double quotes around it.
     %
 :- pred output_quoted_string_c(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
@@ -723,17 +723,17 @@ quote_one_char_acc_csharp(Char, RevChars0, RevChars) :-
 :- pragma inline(pred(escape_special_char_c/3)).
 
 escape_special_char_c(Char, RevChars0, RevChars) :-
-    ( Char = '"',    RevChars = ['"', '\\'  | RevChars0]
-    ; Char = '''',   RevChars = ['''', '\\' | RevChars0]
-    ; Char = ('\\'), RevChars = ['\\', '\\' | RevChars0]
-    ; Char = '\n',   RevChars = ['n', '\\'  | RevChars0]
-    ; Char = '\t',   RevChars = ['t', '\\'  | RevChars0]
-    ; Char = '\b',   RevChars = ['b', '\\'  | RevChars0]
-    ; Char = '\a',   RevChars = ['a', '\\'  | RevChars0]
-    ; Char = '\v',   RevChars = ['v', '\\'  | RevChars0]
-    ; Char = '\r',   RevChars = ['r', '\\'  | RevChars0]
-    ; Char = '\f',   RevChars = ['f', '\\'  | RevChars0]
-    ; Char = '?',    RevChars = ['?', '\\'  | RevChars0]   % Avoid trigraphs.
+    ( Char = '"',    RevChars = ['"',  '\\'  | RevChars0]
+    ; Char = '''',   RevChars = ['''', '\\'  | RevChars0]
+    ; Char = ('\\'), RevChars = ['\\', '\\'  | RevChars0]
+    ; Char = '\n',   RevChars = ['n',  '\\'  | RevChars0]
+    ; Char = '\t',   RevChars = ['t',  '\\'  | RevChars0]
+    ; Char = '\b',   RevChars = ['b',  '\\'  | RevChars0]
+    ; Char = '\a',   RevChars = ['a',  '\\'  | RevChars0]
+    ; Char = '\v',   RevChars = ['v',  '\\'  | RevChars0]
+    ; Char = '\r',   RevChars = ['r',  '\\'  | RevChars0]
+    ; Char = '\f',   RevChars = ['f',  '\\'  | RevChars0]
+    ; Char = '?',    RevChars = ['?',  '\\'  | RevChars0]   % Avoid trigraphs.
     ).
 
 :- pred escape_special_char_java(char::in, list(char)::in, list(char)::out)
@@ -741,16 +741,16 @@ escape_special_char_c(Char, RevChars0, RevChars) :-
 :- pragma inline(pred(escape_special_char_java/3)).
 
 escape_special_char_java(Char, RevChars0, RevChars) :-
-    ( Char = '"',    RevChars = ['"', '\\'  | RevChars0]
-    ; Char = '''',   RevChars = ['''', '\\' | RevChars0]
-    ; Char = ('\\'), RevChars = ['\\', '\\' | RevChars0]
-    ; Char = '\n',   RevChars = ['n', '\\'  | RevChars0]
-    ; Char = '\t',   RevChars = ['t', '\\'  | RevChars0]
-    ; Char = '\b',   RevChars = ['b', '\\'  | RevChars0]
-    ; Char = '\a',   RevChars = ['7', '0', '0', '\\' | RevChars0]
-    ; Char = '\v',   RevChars = ['3', '1', '0', '\\' | RevChars0]
-    ; Char = '\r',   RevChars = ['r', '\\'  | RevChars0]
-    ; Char = '\f',   RevChars = ['f', '\\'  | RevChars0]
+    ( Char = '"',    RevChars = ['"',  '\\'  | RevChars0]
+    ; Char = '''',   RevChars = ['''', '\\'  | RevChars0]
+    ; Char = ('\\'), RevChars = ['\\', '\\'  | RevChars0]
+    ; Char = '\n',   RevChars = ['n',  '\\'  | RevChars0]
+    ; Char = '\t',   RevChars = ['t',  '\\'  | RevChars0]
+    ; Char = '\b',   RevChars = ['b',  '\\'  | RevChars0]
+    ; Char = '\a',   RevChars = ['7',  '0', '0', '\\' | RevChars0]
+    ; Char = '\v',   RevChars = ['3',  '1', '0', '\\' | RevChars0]
+    ; Char = '\r',   RevChars = ['r',  '\\'  | RevChars0]
+    ; Char = '\f',   RevChars = ['f',  '\\'  | RevChars0]
     ).
 
 :- pred escape_special_char_csharp(char::in, list(char)::in, list(char)::out)
@@ -758,16 +758,16 @@ escape_special_char_java(Char, RevChars0, RevChars) :-
 :- pragma inline(pred(escape_special_char_csharp/3)).
 
 escape_special_char_csharp(Char, RevChars0, RevChars) :-
-    ( Char = '"',    RevChars = ['"', '\\'  | RevChars0]
-    ; Char = '''',   RevChars = ['''', '\\' | RevChars0]
-    ; Char = ('\\'), RevChars = ['\\', '\\' | RevChars0]
-    ; Char = '\n',   RevChars = ['n', '\\'  | RevChars0]
-    ; Char = '\t',   RevChars = ['t', '\\'  | RevChars0]
-    ; Char = '\b',   RevChars = ['b', '\\'  | RevChars0]
-    ; Char = '\a',   RevChars = ['a', '\\'  | RevChars0]
-    ; Char = '\v',   RevChars = ['v', '\\'  | RevChars0]
-    ; Char = '\r',   RevChars = ['r', '\\'  | RevChars0]
-    ; Char = '\f',   RevChars = ['f', '\\'  | RevChars0]
+    ( Char = '"',    RevChars = ['"',  '\\'  | RevChars0]
+    ; Char = '''',   RevChars = ['''', '\\'  | RevChars0]
+    ; Char = ('\\'), RevChars = ['\\', '\\'  | RevChars0]
+    ; Char = '\n',   RevChars = ['n',  '\\'  | RevChars0]
+    ; Char = '\t',   RevChars = ['t',  '\\'  | RevChars0]
+    ; Char = '\b',   RevChars = ['b',  '\\'  | RevChars0]
+    ; Char = '\a',   RevChars = ['a',  '\\'  | RevChars0]
+    ; Char = '\v',   RevChars = ['v',  '\\'  | RevChars0]
+    ; Char = '\r',   RevChars = ['r',  '\\'  | RevChars0]
+    ; Char = '\f',   RevChars = ['f',  '\\'  | RevChars0]
     ).
 
 %---------------------%

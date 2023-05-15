@@ -76,6 +76,7 @@
 :- import_module backend_libs.rtti.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module ml_backend.mlds_to_c_class.
 :- import_module ml_backend.mlds_to_c_data.
 :- import_module ml_backend.mlds_to_c_name.
@@ -121,31 +122,27 @@ mlds_output_scalar_cell_group_decl(Opts, Stream, Indent, MangledModuleName,
         true
     ),
 
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "\nstatic /* final */ const ", !IO),
     NumRows = cord.length(Rows),
-    mlds_output_scalar_cell_group_type_and_name(Opts, Stream,
-        MangledModuleName, TypeRawNum, Type, InitArraySize, NumRows, !IO),
-    io.write_string(Stream, ";\n", !IO).
+    TypeNameStr = scalar_cell_group_type_and_name_to_string_for_c(Opts,
+        MangledModuleName, TypeRawNum, Type, InitArraySize, NumRows),
+    io.format(Stream, "\nstatic /* final */ const %s;\n",
+        [s(TypeNameStr)], !IO).
 
-:- pred mlds_output_scalar_cell_group_type_and_name(mlds_to_c_opts::in,
-    io.text_output_stream::in, string::in, int::in, mlds_type::in,
-    initializer_array_size::in, int::in, io::di, io::uo) is det.
+:- func scalar_cell_group_type_and_name_to_string_for_c(mlds_to_c_opts,
+    string, int, mlds_type, initializer_array_size, int) = string.
 
-mlds_output_scalar_cell_group_type_and_name(Opts, Stream, MangledModuleName,
-        TypeRawNum, Type, InitArraySize, NumRows, !IO) :-
+scalar_cell_group_type_and_name_to_string_for_c(Opts, MangledModuleName,
+        TypeRawNum, Type, InitArraySize, NumRows) = Str :-
     ( if Type = mlds_mostly_generic_array_type(_) then
-        io.format(Stream, "struct %s_scalar_cell_group_%d",
-            [s(MangledModuleName), i(TypeRawNum)], !IO)
+        string.format("struct %s_scalar_cell_group_%d %s_scalar_common_%d[%d]",
+            [s(MangledModuleName), i(TypeRawNum),
+            s(MangledModuleName), i(TypeRawNum), i(NumRows)], Str)
     else
-        mlds_output_type_prefix(Opts, Stream, Type, !IO)
-    ),
-    io.format(Stream, " %s_scalar_common_%d[%d]",
-        [s(MangledModuleName), i(TypeRawNum), i(NumRows)], !IO),
-    ( if Type = mlds_mostly_generic_array_type(_) then
-        true
-    else
-        mlds_output_type_suffix(Opts, Stream, Type, InitArraySize, !IO)
+        type_to_prefix_suffix_for_c(Opts, Type, InitArraySize,
+            TypePrefix, TypeSuffix),
+        string.format("%s %s_scalar_common_%d[%d]%s",
+            [s(TypePrefix), s(MangledModuleName), i(TypeRawNum),
+            i(NumRows), s(TypeSuffix)], Str)
     ).
 
 %---------------------%
@@ -170,13 +167,13 @@ mlds_output_scalar_cell_group_defn(Opts, Stream, Indent, MangledModuleName,
         _Counter, _Members, RowCords),
     Rows = cord.list(RowCords),
     list.length(Rows, NumRows),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "\nstatic /* final */ const ", !IO),
-    mlds_output_scalar_cell_group_type_and_name(Opts, Stream,
-        MangledModuleName, TypeRawNum, Type, InitArraySize, NumRows, !IO),
-    io.write_string(Stream, " = {\n", !IO),
+    IndentStr = indent2_string(Indent),
+    TypeNameStr = scalar_cell_group_type_and_name_to_string_for_c(Opts,
+        MangledModuleName, TypeRawNum, Type, InitArraySize, NumRows),
+    io.format(Stream, "\n%sstatic /* final */ const %s = {\n",
+        [s(IndentStr), s(TypeNameStr)], !IO),
     list.foldl2(mlds_output_cell(Opts, Stream, Indent + 1), Rows, 0, _, !IO),
-    io.write_string(Stream, "};\n", !IO).
+    io.format(Stream, "%s};\n", [s(IndentStr)], !IO).
 
 :- pred mlds_output_scalar_cell_group_struct_defn(mlds_to_c_opts::in,
     io.text_output_stream::in, int::in, string::in, int::in,
@@ -185,13 +182,13 @@ mlds_output_scalar_cell_group_defn(Opts, Stream, Indent, MangledModuleName,
 mlds_output_scalar_cell_group_struct_defn(Opts, Stream, Indent,
         MangledModuleName, TypeRawNum, ElemTypes, !IO) :-
     output_pragma_pack_push(Stream, !IO),
-    io.format(Stream, "struct %s_scalar_cell_group_%d {\n",
-        [s(MangledModuleName), i(TypeRawNum)], !IO),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%sstruct %s_scalar_cell_group_%d {\n",
+        [s(IndentStr), s(MangledModuleName), i(TypeRawNum)], !IO),
     list.foldl2(
         mlds_output_scalar_cell_group_struct_field(Opts, Stream, Indent + 1),
         ElemTypes, 1, _, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "};\n", !IO),
+    io.format(Stream, "%s};\n", [s(IndentStr)], !IO),
     output_pragma_pack_pop(Stream, !IO).
 
 :- pred mlds_output_scalar_cell_group_struct_field(mlds_to_c_opts::in,
@@ -200,7 +197,7 @@ mlds_output_scalar_cell_group_struct_defn(Opts, Stream, Indent,
 
 mlds_output_scalar_cell_group_struct_field(Opts, Stream, Indent, FieldType,
         Num, Num + 1, !IO) :-
-    output_n_indents(Stream, Indent, !IO),
+    IndentStr = indent2_string(Indent),
     ( if
         % Ensure double-word float, int64 and uint64 structure members
         % are word-aligned, not double-aligned.
@@ -218,11 +215,15 @@ mlds_output_scalar_cell_group_struct_field(Opts, Stream, Indent, FieldType,
             )
         )
     then
-        io.write_string(Stream, TypeName, !IO)
+        io.format(Stream, "%s%s f%d;\n",
+            [s(IndentStr), s(TypeName), i(Num)], !IO)
     else
-        mlds_output_type_prefix(Opts, Stream, FieldType, !IO)
-    ),
-    io.format(Stream, " f%d;\n", [i(Num)], !IO).
+        type_to_prefix_suffix_for_c_no_size(Opts, FieldType,
+            TypePrefix, TypeSuffix),
+        expect(unify(TypeSuffix, ""), $pred, "TypeSuffix is not empty"),
+        io.format(Stream, "%s%s f%d;\n",
+            [s(IndentStr), s(TypePrefix), i(Num)], !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -244,16 +245,15 @@ mlds_output_vector_cell_group_decl(Opts, Stream, Indent,
     TypeNum = ml_vector_common_type_num(TypeRawNum),
     CellGroup = ml_vector_cell_group(Type, ClassDefn, _FieldNames,
         _NextRow, Rows),
-    mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO),
-
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "\nstatic /* final */ const ", !IO),
-    mlds_output_type_prefix(Opts, Stream, Type, !IO),
     NumRows = cord.length(Rows),
-    io.format(Stream, " %s_vector_common_%d[%d]",
-        [s(MangledModuleName), i(TypeRawNum), i(NumRows)], !IO),
-    mlds_output_type_suffix(Opts, Stream, Type, no_size, !IO),
-    io.write_string(Stream, ";\n", !IO).
+    IndentStr = indent2_string(Indent),
+    type_to_prefix_suffix_for_c(Opts, Type, no_size, TypePrefix, TypeSuffix),
+
+    mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO),
+    io.format(Stream,
+        "\n%sstatic /* final */ const %s %s_vector_common_%d[%d]%s;\n",
+        [s(IndentStr), s(TypePrefix),
+        s(MangledModuleName), i(TypeRawNum), i(NumRows), s(TypeSuffix)], !IO).
 
 %---------------------%
 
@@ -277,29 +277,31 @@ mlds_output_vector_cell_group_defn(Opts, Stream, Indent, MangledModuleName,
         _NextRow, RowCords),
     Rows = cord.list(RowCords),
     list.length(Rows, NumRows),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "\nstatic /* final */ const ", !IO),
-    mlds_output_type_prefix(Opts, Stream, Type, !IO),
-    io.format(Stream, " %s_vector_common_%d[%d]",
-        [s(MangledModuleName), i(TypeRawNum), i(NumRows)], !IO),
-    mlds_output_type_suffix(Opts, Stream, Type, no_size, !IO),
-    io.write_string(Stream, " = {\n", !IO),
+    IndentStr = indent2_string(Indent),
+    type_to_prefix_suffix_for_c(Opts, Type, no_size, TypePrefix, TypeSuffix),
+
+    io.format(Stream,
+        "\n%sstatic /* final */ const %s %s_vector_common_%d[%d]%s = {\n",
+        [s(IndentStr), s(TypePrefix),
+        s(MangledModuleName), i(TypeRawNum), i(NumRows), s(TypeSuffix)], !IO),
     list.foldl2(mlds_output_cell(Opts, Stream, Indent + 1), Rows, 0, _, !IO),
-    io.write_string(Stream, "};\n", !IO).
+    io.format(Stream, "%s};\n", [s(IndentStr)], !IO).
 
 :- pred mlds_output_cell(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, mlds_initializer::in, int::in, int::out,
     io::di, io::uo) is det.
 
 mlds_output_cell(Opts, Stream, Indent, Initializer, !RowNum, !IO) :-
+    IndentStr = indent2_string(Indent),
     ( if Initializer = init_struct(_, [_]) then
         EndChar = ' '
     else
         EndChar = '\n'
     ),
-    output_n_indents(Stream, Indent, !IO),
-    io.format(Stream, "/* row %3d */%c", [i(!.RowNum), c(EndChar)], !IO),
+    ThisRowNum = !.RowNum,
     !:RowNum = !.RowNum + 1,
+    io.format(Stream, "%s/* row %3d */%c",
+        [s(IndentStr), i(ThisRowNum), c(EndChar)], !IO),
     mlds_output_initializer_body(Opts, Stream, Indent, Initializer, !IO),
     io.write_string(Stream, ",\n", !IO).
 
@@ -311,9 +313,9 @@ mlds_output_alloc_site_decls(Stream, Indent, AllocSites, !IO) :-
     ;
         AllocSites = [_ | _],
         list.length(AllocSites, NumAllocSites),
-        output_n_indents(Stream, Indent, !IO),
-        io.format(Stream, "static MR_AllocSiteInfo MR_alloc_sites[%d];\n",
-            [i(NumAllocSites)], !IO)
+        IndentStr = indent2_string(Indent),
+        io.format(Stream, "%sstatic MR_AllocSiteInfo MR_alloc_sites[%d];\n",
+            [s(IndentStr), i(NumAllocSites)], !IO)
     ).
 
 %---------------------%
@@ -324,16 +326,15 @@ mlds_output_alloc_site_defns(Opts, Stream, Indent, MLDS_ModuleName,
         AllocSites = []
     ;
         AllocSites = [_ | _],
-        output_n_indents(Stream, Indent, !IO),
         list.length(AllocSites, NumAllocSites),
-        io.format(Stream, "static MR_AllocSiteInfo MR_alloc_sites[%d] = {\n",
-            [i(NumAllocSites)], !IO),
+        IndentStr = indent2_string(Indent),
+        io.format(Stream, "%sstatic MR_AllocSiteInfo MR_alloc_sites[%d] = {\n",
+            [s(IndentStr), i(NumAllocSites)], !IO),
         list.foldl(
             mlds_output_alloc_site_defn(Opts, Stream, Indent + 1,
                 MLDS_ModuleName),
             AllocSites, !IO),
-        output_n_indents(Stream, Indent, !IO),
-        io.write_string(Stream, "};\n", !IO)
+        io.format(Stream, "%s};\n", [s(IndentStr)], !IO)
     ).
 
 :- pred mlds_output_alloc_site_defn(mlds_to_c_opts::in,
@@ -344,20 +345,14 @@ mlds_output_alloc_site_defn(_Opts, Stream, Indent, MLDS_ModuleName,
         _AllocId - AllocData, !IO) :-
     AllocData = ml_alloc_site_data(FuncName, Context, Type, Size),
     QualFuncName = qual_function_name(MLDS_ModuleName, FuncName),
-    FileName = term_context.context_file(Context),
-    LineNumber = term_context.context_line(Context),
-    output_n_indents(Stream, Indent, !IO),
-    io.write_string(Stream, "{ ", !IO),
-    mlds_output_fully_qualified_function_name(Stream, QualFuncName, !IO),
-    io.write_string(Stream, ", ", !IO),
-    output_quoted_string_c(Stream, FileName, !IO),
-    io.write_string(Stream, ", ", !IO),
-    io.write_int(Stream, LineNumber, !IO),
-    io.write_string(Stream, ", ", !IO),
-    output_quoted_string_c(Stream, Type, !IO),
-    io.write_string(Stream, ", ", !IO),
-    io.write_int(Stream, Size, !IO),
-    io.write_string(Stream, "},\n", !IO).
+    QualFuncNameStr =
+        fully_qualified_function_name_to_string_for_c(QualFuncName),
+    TypeStr = quote_string_c(Type),
+    Context = context(FileName, LineNumber),
+    IndentStr = indent2_string(Indent),
+    io.format(Stream, "%s{ %s, %s, %d, %s, %d },\n",
+        [s(IndentStr), s(QualFuncNameStr), s(FileName), i(LineNumber),
+        s(TypeStr), i(Size)], !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -370,6 +365,7 @@ mlds_output_global_var_decls(Opts, Stream, Indent, ModuleName,
     mlds_output_global_var_decls(Opts, Stream, Indent, ModuleName,
         GlobalVarDefns, !IO).
 
+    % ZZZ why _opts?
 :- pred mlds_output_global_var_decl_opts(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in, mlds_module_name::in,
     mlds_global_var_defn::in, io::di, io::uo) is det.
@@ -378,62 +374,63 @@ mlds_output_global_var_decl_opts(Opts, Stream, Indent, MLDS_ModuleName,
         GlobalVarDefn, !IO) :-
     GlobalVarDefn = mlds_global_var_defn(GlobalVarName, Context, Flags,
         Type, Initializer, _GCStmt),
+    IndentStr = indent2_string(Indent),
+    FlagsPrefix = global_var_decl_flags_to_prefix(forward_decl, Flags),
+    TypeNameStr = global_var_decl_to_type_name_string(Opts, MLDS_ModuleName,
+        GlobalVarName, Type, get_initializer_array_size(Initializer)),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    mlds_output_global_var_decl_flags(Stream, Flags, forward_decl, !IO),
-    mlds_output_global_var_decl(Opts, Stream, MLDS_ModuleName,
-        GlobalVarName, Type, get_initializer_array_size(Initializer), !IO),
-    io.write_string(Stream, ";\n", !IO).
+    io.format(Stream, "%s%s%s;\n",
+        [s(IndentStr), s(FlagsPrefix), s(TypeNameStr)], !IO).
 
-:- pred mlds_output_global_var_decl(mlds_to_c_opts::in,
-    io.text_output_stream::in, mlds_module_name::in, mlds_global_var_name::in,
-    mlds_type::in, initializer_array_size::in, io::di, io::uo) is det.
+:- func global_var_decl_to_type_name_string(mlds_to_c_opts, mlds_module_name,
+    mlds_global_var_name, mlds_type, initializer_array_size) = string.
 
-mlds_output_global_var_decl(Opts, Stream, MLDS_ModuleName, GlobalVarName, Type,
-        InitializerSize, !IO) :-
-    mlds_output_type_prefix(Opts, Stream, Type, !IO),
-    io.write_char(Stream, ' ', !IO),
-    mlds_output_maybe_qualified_global_var_name(Stream, MLDS_ModuleName,
-        GlobalVarName, !IO),
-    mlds_output_type_suffix(Opts, Stream, Type, InitializerSize, !IO).
+global_var_decl_to_type_name_string(Opts, MLDS_ModuleName, GlobalVarName,
+        Type, InitializerSize) = DeclStr :-
+    type_to_prefix_suffix_for_c(Opts, Type, InitializerSize,
+        TypePrefix, TypeSuffix),
+    QualGlobalVarNameStr =
+        maybe_qualified_global_var_name_to_string_for_c(MLDS_ModuleName,
+            GlobalVarName),
+    string.format("%s %s%s",
+        [s(TypePrefix), s(QualGlobalVarNameStr), s(TypeSuffix)], DeclStr).
 
-:- pred mlds_output_global_var_decl_flags(io.text_output_stream::in,
-    mlds_global_var_decl_flags::in, decl_or_defn::in, io::di, io::uo) is det.
+:- func global_var_decl_flags_to_prefix(decl_or_defn,
+    mlds_global_var_decl_flags) = string.
 
-mlds_output_global_var_decl_flags(Stream, Flags, DeclOrDefn, !IO) :-
+global_var_decl_flags_to_prefix(DeclOrDefn, Flags) = Prefix :-
     Flags = mlds_global_var_decl_flags(Access, Constness),
-    % Everything that one may want to know about Flags is available
-    % in the output of the next two calls, so printing comments is not useful.
-    mlds_output_global_var_extern_or_static(Stream, Access, DeclOrDefn, !IO),
-    mlds_output_constness(Stream, Constness, !IO).
+    AccessPrefix = global_var_extern_or_static_prefix(DeclOrDefn, Access),
+    ConstnessPrefix = constness_prefix(Constness),
+    Prefix = AccessPrefix ++ ConstnessPrefix.
 
     % mlds_output_global_var_extern_or_static does for global variables
     % what mlds_output_extern_or_static does for other entities.
     %
-:- pred mlds_output_global_var_extern_or_static(io.text_output_stream::in,
-    global_var_access::in, decl_or_defn::in, io::di, io::uo) is det.
+:- func global_var_extern_or_static_prefix(decl_or_defn, global_var_access)
+    = string.
 
-mlds_output_global_var_extern_or_static(Stream, Access, DeclOrDefn, !IO) :-
+global_var_extern_or_static_prefix(DeclOrDefn, Access) = Prefix :-
     (
         Access = gvar_acc_module_only,
-        io.write_string(Stream, "static ", !IO)
+        Prefix = "static "
     ;
         Access = gvar_acc_whole_program,
         (
             DeclOrDefn = forward_decl,
-            io.write_string(Stream, "extern ", !IO)
+            Prefix = "extern "
         ;
-            DeclOrDefn = definition
+            DeclOrDefn = definition,
             % Print no storage class.
+            Prefix = ""
         )
     ).
 
-:- pred mlds_output_constness(io.text_output_stream::in, constness::in,
-    io::di, io::uo) is det.
+    % ZZZ
+:- func constness_prefix(constness) = string.
 
-mlds_output_constness(Stream, const, !IO) :-
-    io.write_string(Stream, "const ", !IO).
-mlds_output_constness(_, modifiable, !IO).
+constness_prefix(const) = "const ".
+constness_prefix(modifiable) = "".
 
 %---------------------%
 
@@ -474,10 +471,12 @@ mlds_output_global_var_defn(Opts, Stream, Indent, Separate,
         Separate = no
     ),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    mlds_output_global_var_decl_flags(Stream, Flags, definition, !IO),
-    mlds_output_global_var_decl(Opts, Stream, MLDS_ModuleName, GlobalVarName,
-        Type, get_initializer_array_size(Initializer), !IO),
+    IndentStr = indent2_string(Indent),
+    FlagsPrefix = global_var_decl_flags_to_prefix(definition, Flags),
+    TypeNameStr = global_var_decl_to_type_name_string(Opts, MLDS_ModuleName,
+        GlobalVarName, Type, get_initializer_array_size(Initializer)),
+    io.format(Stream, "%s%s%s",
+        [s(IndentStr), s(FlagsPrefix), s(TypeNameStr)], !IO),
     mlds_output_initializer(Opts, Stream, Type, Initializer, !IO),
     io.write_string(Stream, ";\n", !IO),
     mlds_output_gc_statement(Opts, Stream, Indent, GCStmt, "", !IO).
