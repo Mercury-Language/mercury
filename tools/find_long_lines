@@ -1,0 +1,41 @@
+#!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
+#
+# This script, when invoked with a number (representing a line length)
+# and a list of filenames, will look for lines longer than the given length
+# in each of the listed files. When it finds such a line, it prints
+#
+# - the name of the file,
+# - line number within that file, and
+# - the length of that line.
+#
+
+case "$#" in
+    0)
+        echo "usage: find_long_lines limit_length filename1 ..."
+        exit 1
+        ;;
+    *)
+        LIMIT_LEN="$1"
+        export LIMIT_LEN
+        shift
+        ;;
+esac
+
+awk "
+BEGIN {
+        limit_len = ${LIMIT_LEN};
+        CUR_FILENAME = \"\";
+        line_number = 0;
+    }
+    {
+        if (FILENAME != CUR_FILENAME) {
+            CUR_FILENAME = FILENAME;
+            line_number = 0;
+        }
+        ++line_number;
+        len = length(\$0);
+        if (len > limit_len + 0) {
+            printf \"%s:%d: %d\n\", FILENAME, line_number, len;
+        }
+    }" "$@"

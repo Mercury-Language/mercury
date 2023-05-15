@@ -1,0 +1,27 @@
+#!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
+#
+# Generate a histogram of the line lengths in the input, whether that input
+# comes from stdin or from a list of filenames on the command line.
+#
+# Usage: line_len_stats [filename ...]
+#
+
+awk '
+START {
+        maxlen = 0;
+    }
+    {
+        len = length($0);
+        count[len] += 1;
+        if (len > maxlen) {
+            maxlen = len;
+        }
+    }
+END {
+        for (len = 1; len <= maxlen; len++) {
+            if (count[len] != 0) {
+                printf "len %4d: %d\n", len, count[len];
+            }
+        }
+    }' "$@"
