@@ -1137,10 +1137,27 @@ mlds_output_initializer_body(Opts, Stream, Indent, Initializer, !IO) :-
             Inits = [HeadInit | TailInits],
             (
                 TailInits = [],
-                % We write the single init on a single line.
-                io.format(Stream, "%s{ ", [s(IndentStr)], !IO),
-                mlds_output_initializer_body(Opts, Stream, 0, HeadInit, !IO),
-                io.write_string(Stream, " }", !IO)
+                % We write the single init on a single line, if we can.
+                (
+                    ( HeadInit = no_initializer
+                    ; HeadInit = init_obj(_)
+                    ),
+                    % We can.
+                    io.format(Stream, "%s{ ", [s(IndentStr)], !IO),
+                    mlds_output_initializer_body(Opts, Stream, 0,
+                        HeadInit, !IO),
+                    io.write_string(Stream, " }", !IO)
+                ;
+                    ( HeadInit = init_struct(_, _)
+                    ; HeadInit = init_array(_)
+                    ),
+                    % We probably can't: printing HeadInit by itself may need
+                    % more than one line.
+                    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+                    mlds_output_initializer_body(Opts, Stream, Indent + 1,
+                        HeadInit, !IO),
+                    io.format(Stream, "\n%s}", [s(IndentStr)], !IO)
+                )
             ;
                 TailInits = [_ | _],
                 % We write the N inits on N+2 lines.
@@ -1158,7 +1175,6 @@ mlds_output_initializer_body(Opts, Stream, Indent, Initializer, !IO) :-
 
 mlds_output_initializer_bodies(Opts, Stream, Indent,
         HeadInit, TailInits, !IO) :-
-    write_indent2(Stream, Indent, !IO),
     mlds_output_initializer_body(Opts, Stream, Indent, HeadInit, !IO),
     (
         TailInits = [],
