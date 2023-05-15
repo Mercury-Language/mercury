@@ -27,15 +27,19 @@
 
 :- pred type_to_prefix_suffix_for_c(mlds_to_c_opts::in, mlds_type::in,
    initializer_array_size::in,  string::out, string::out) is det.
+:- pred type_to_prefix_suffix_for_c_no_size(mlds_to_c_opts::in, mlds_type::in,
+   string::out, string::out) is det.
 
     % ZZZ
     % This type/inst pair is not *used* in this module, but it is used
     % to describe the signature of the predicates in the following block
     % of declarations.
     %
-:- type output_type == pred(mlds_to_c_opts, io.text_output_stream,
-    mlds_type, io, io).
-:- inst output_type == (pred(in, in, in, di, uo) is det).
+% :- type output_type == pred(mlds_to_c_opts, io.text_output_stream,
+%     mlds_type, io, io).
+% :- inst output_type == (pred(in, in, in, di, uo) is det).
+:- type type_prefix_suffix == pred(mlds_to_c_opts, mlds_type, string, string).
+:- inst type_prefix_suffix == (pred(in, in, out, out) is det).
 
     % Because of the joys of C syntax, the code for outputting types
     % needs to be split into two parts; first the prefix, i.e. the part
@@ -131,6 +135,9 @@ type_to_prefix_suffix_for_c(Opts, Type, InitSize, TypePrefix, TypeSuffix) :-
     % ZZZ merge these
     TypePrefix = type_prefix_for_c(Opts, Type),
     TypeSuffix = type_suffix_for_c(Opts, Type, InitSize).
+
+type_to_prefix_suffix_for_c_no_size(Opts, Type, TypePrefix, TypeSuffix) :-
+    type_to_prefix_suffix_for_c(Opts, Type, no_size, TypePrefix, TypeSuffix).
 
 %---------------------%
 

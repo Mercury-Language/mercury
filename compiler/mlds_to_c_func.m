@@ -34,9 +34,8 @@
     mlds_function_defn::in, io::di, io::uo) is det.
 
 :- pred mlds_output_func_decl_ho(mlds_to_c_opts::in, io.text_output_stream::in,
-    indent::in, qual_function_name::in, prog_context::in, string::in,
-    mlds_func_params::in,
-    output_type::in(output_type), output_type::in(output_type),
+    type_prefix_suffix::in(type_prefix_suffix), string::in,
+    indent::in, prog_context::in, qual_function_name::in, mlds_func_params::in,
     io::di, io::uo) is det.
 
 :- type maybe_blank_line
@@ -60,9 +59,9 @@
 :- import_module hlds.hlds_pred.            % for pred_proc_id.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_stmt.
-:- import_module parse_tree.parse_tree_out_info.
 
 :- import_module bool.
 :- import_module char.
@@ -109,28 +108,12 @@ mlds_output_function_decl_opts(Opts, Stream, Indent, ModuleName,
 mlds_output_func_decl(Opts, Stream, Indent, QualifiedName, Context,
         Signature, !IO) :-
     CallingConvention = "MR_CALL ",
-    mlds_output_func_decl_ho(Opts, Stream, Indent, QualifiedName, Context,
-        CallingConvention, Signature,
-        mlds_output_type_prefix, mlds_output_type_suffix_no_size, !IO).
+    mlds_output_func_decl_ho(Opts, Stream, type_to_prefix_suffix_for_c_no_size,
+        CallingConvention, Indent, Context, QualifiedName, Signature, !IO).
 
-mlds_output_func_decl_ho(Opts, Stream, Indent, QualFuncName, Context,
-        CallingConvention, Signature, OutputPrefix, OutputSuffix, !IO) :-
-    Signature = mlds_func_params(Parameters0, RetTypes),
-    (
-        RetTypes = [],
-        io.write_string(Stream, "void", !IO)
-    ;
-        RetTypes = [RetType],
-        OutputPrefix(Opts, Stream, RetType, !IO)
-    ;
-        RetTypes = [_, _ | _],
-        mlds_output_return_list(Stream,
-            mlds_output_prefix_suffix(Opts, OutputPrefix, OutputSuffix),
-            RetTypes, !IO)
-    ),
-    io.format(Stream, " %s\n", [s(CallingConvention)], !IO),
-    output_n_indents(Stream, Indent, !IO),
-    mlds_output_fully_qualified_function_name(Stream, QualFuncName, !IO),
+mlds_output_func_decl_ho(Opts, Stream, GetTypePrefixSuffix, CallingConvention,
+        Indent, Context, QualFuncName, Signature, !IO) :-
+    Signature = mlds_func_params(Parameters0, ReturnTypes),
     StdDecl = Opts ^ m2co_std_func_decl,
     (
         StdDecl = no,
@@ -139,15 +122,35 @@ mlds_output_func_decl_ho(Opts, Stream, Indent, QualFuncName, Context,
         StdDecl = yes,
         list.map_foldl(standardize_param_names, Parameters0, Parameters, 1, _)
     ),
-    mlds_output_params(Opts, Stream, OutputPrefix, OutputSuffix, Indent,
-        Context, Parameters, !IO),
+    IndentStr = indent2_string(Indent),
+    QualFuncNameStr =
+        fully_qualified_function_name_to_string_for_c(QualFuncName),
     (
-        RetTypes = []
+        ReturnTypes = [],
+        io.format(Stream, "%svoid %s\n",
+            [s(IndentStr), s(CallingConvention)], !IO),
+        io.format(Stream, "%s%s", [s(IndentStr), s(QualFuncNameStr)], !IO),
+        mlds_output_params_in_parens(Opts, Stream, GetTypePrefixSuffix,
+            Indent, Context, Parameters, !IO)
     ;
-        RetTypes = [RetType2],
-        OutputSuffix(Opts, Stream, RetType2, !IO)
+        ReturnTypes = [ReturnType],
+        GetTypePrefixSuffix(Opts, ReturnType,
+            ReturnTypePrefix, ReturnTypeSuffix),
+        io.format(Stream, "%s%s %s\n",
+            [s(IndentStr), s(ReturnTypePrefix), s(CallingConvention)], !IO),
+        io.format(Stream, "%s%s", [s(IndentStr), s(QualFuncNameStr)], !IO),
+        mlds_output_params_in_parens(Opts, Stream, GetTypePrefixSuffix,
+            Indent, Context, Parameters, !IO),
+        % ZZZ is this ever nonempty?
+        io.write_string(Stream, ReturnTypeSuffix, !IO)
     ;
-        RetTypes = [_, _ | _]
+        ReturnTypes = [_, _ | _],
+        mlds_output_return_list(Stream,
+            mlds_output_prefix_suffix(Opts, GetTypePrefixSuffix),
+            ReturnTypes, !IO),
+        io.format(Stream, "%s%s", [s(IndentStr), s(QualFuncNameStr)], !IO),
+        mlds_output_params_in_parens(Opts, Stream, GetTypePrefixSuffix,
+            Indent, Context, Parameters, !IO)
     ).
 
 :- pred standardize_param_names(mlds_argument::in, mlds_argument::out,
@@ -160,49 +163,58 @@ standardize_param_names(!Argument, !ArgNum) :-
     !:ArgNum = !.ArgNum + 1.
 
 :- pred mlds_output_prefix_suffix(mlds_to_c_opts::in,
-    output_type::in(output_type), output_type::in(output_type), mlds_type::in,
+    type_prefix_suffix::in(type_prefix_suffix), mlds_type::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 
-mlds_output_prefix_suffix(Opts, OutputPrefix, OutputSuffix, Value,
-        Stream, !IO) :-
-    OutputPrefix(Opts, Stream, Value, !IO),
-    OutputSuffix(Opts, Stream, Value, !IO).
+mlds_output_prefix_suffix(Opts, GetTypePrefixSuffix, Type, Stream, !IO) :-
+    GetTypePrefixSuffix(Opts, Type, TypePrefix, TypeSuffix),
+    io.format(Stream, "%s%s", [s(TypePrefix), s(TypeSuffix)], !IO).
 
-:- pred mlds_output_params(mlds_to_c_opts::in, io.text_output_stream::in,
-    output_type::in(output_type), output_type::in(output_type), indent::in,
-    prog_context::in, list(mlds_argument)::in, io::di, io::uo) is det.
+:- pred mlds_output_params_in_parens(mlds_to_c_opts::in,
+    io.text_output_stream::in, type_prefix_suffix::in(type_prefix_suffix),
+    indent::in, prog_context::in, list(mlds_argument)::in,
+    io::di, io::uo) is det.
 
-mlds_output_params(Opts, Stream, OutputPrefix, OutputSuffix, Indent, Context,
-        Parameters, !IO) :-
-    io.write_char(Stream, '(', !IO),
+mlds_output_params_in_parens(Opts, Stream, GetTypePrefixSuffix,
+        Indent, Context, Args, !IO) :-
     (
-        Parameters = [],
-        io.write_string(Stream, "void", !IO)
+        Args = [],
+        io.write_string(Stream, "(void)", !IO)
     ;
-        Parameters = [_ | _],
-        io.nl(Stream, !IO),
-        write_out_list(
-            mlds_output_param(Opts, OutputPrefix, OutputSuffix,
-                Indent + 1, Context),
-            ",\n", Parameters, Stream, !IO)
-    ),
-    io.write_char(Stream, ')', !IO).
+        Args = [HeadArg | TailArgs],
+        io.write_string(Stream, "(\n", !IO),
+        mlds_output_params_list(Opts, Stream, GetTypePrefixSuffix, Indent + 1,
+            Context, HeadArg, TailArgs, !IO),
+        io.write_char(Stream, ')', !IO)
+    ).
 
-:- pred mlds_output_param(mlds_to_c_opts::in,
-    output_type::in(output_type), output_type::in(output_type), indent::in,
-    prog_context::in, mlds_argument::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred mlds_output_params_list(mlds_to_c_opts::in, io.text_output_stream::in,
+    type_prefix_suffix::in(type_prefix_suffix), indent::in, prog_context::in,
+    mlds_argument::in, list(mlds_argument)::in, io::di, io::uo) is det.
 
-mlds_output_param(Opts, OutputPrefix, OutputSuffix, Indent,
-        Context, Arg, Stream, !IO) :-
-    Arg = mlds_argument(LocalVarName, Type, GCStmt),
+mlds_output_params_list(Opts, Stream, GetTypePrefixSuffix, Indent, Context,
+        HeadArg, TailArgs, !IO) :-
+    HeadArg = mlds_argument(LocalVarName, Type, GCStmt),
+    IndentStr = indent2_string(Indent),
+    GetTypePrefixSuffix(Opts, Type, TypePrefix, TypeSuffix),
+    LocalVarNameStr = local_var_name_to_string_for_c(LocalVarName),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Stream, Indent, !IO),
-    OutputPrefix(Opts, Stream, Type, !IO),
-    io.write_char(Stream, ' ', !IO),
-    mlds_output_local_var_name(Stream, LocalVarName, !IO),
-    OutputSuffix(Opts, Stream, Type, !IO),
-    mlds_output_gc_statement(Opts, Stream, Indent, GCStmt, "\n", !IO).
+    io.format(Stream, "%s%s %s%s",
+        [s(IndentStr), s(TypePrefix), s(LocalVarNameStr), s(TypeSuffix)], !IO),
+    % This call outputs nothing except with gc_accurate, which is
+    % not likely to be used in practice any time soon. We therefore
+    % don't really care how well any non-empty output this call may generate
+    % fits into the rest of our output.
+    mlds_output_gc_statement(Opts, Stream, Indent, GCStmt, "\n", !IO),
+    (
+        TailArgs = []
+        % Leave the cursor at the end of a line containing the last param.
+    ;
+        TailArgs = [HeadTailArg | TailTailArgs],
+        io.write_string(Stream, ",\n", !IO),
+        mlds_output_params_list(Opts, Stream, GetTypePrefixSuffix,
+            Indent, Context, HeadTailArg, TailTailArgs, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 
