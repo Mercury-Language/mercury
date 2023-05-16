@@ -698,11 +698,11 @@ ml_gen_info_get_copy_out(Info, CodeModel, CopyOut) :-
 generate_tail_rec_start_label(TsccKind, Id) = Label :-
     (
         TsccKind = tscc_self_rec_only,
-        Label = "top_of_proc"
+        Label = mlds_label("top_of_proc")
     ;
         TsccKind = tscc_self_and_mutual_rec,
         Id = proc_id_in_tscc(IdNum),
-        Label = string.format("top_of_proc_%d", [i(IdNum)])
+        Label = mlds_label(string.format("top_of_proc_%d", [i(IdNum)]))
     ).
 
 %---------------------------------------------------------------------------%

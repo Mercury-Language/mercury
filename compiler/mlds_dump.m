@@ -179,10 +179,10 @@ mlds_stmt_to_strcord(Indent, Stmt) = Cord :-
             mlds_switch_default_to_strcord(Indent + 1, Default) ++
             indent_strcord(Indent) ++ strcord("end switch\n")
     ;
-        Stmt = ml_stmt_label(Label, _Context),
+        Stmt = ml_stmt_label(mlds_label(LabelName), _Context),
         Cord =
-            indent_strcord(Indent) ++ strcord("label ") ++ strcord(Label) ++
-                nl_strcord
+            indent_strcord(Indent) ++ strcord("label ") ++
+                strcord(LabelName) ++ nl_strcord
     ;
         Stmt = ml_stmt_goto(Target, _Context),
         Cord =
@@ -307,8 +307,8 @@ mlds_switch_default_to_strcord(Indent, Default) = Cord :-
 
 mlds_goto_target_to_strcord(Target) = Cord :-
     (
-        Target = goto_label(Label),
-        Cord = strcord(Label)
+        Target = goto_label(mlds_label(LabelName)),
+        Cord = strcord(LabelName)
     ;
         Target = goto_break_switch,
         Cord = strcord("break_switch")
@@ -324,9 +324,10 @@ mlds_goto_target_to_strcord(Target) = Cord :-
     = strcord.
 
 mlds_computed_goto_labels_to_strcord(_Indent, _Index, []) = cord.init.
-mlds_computed_goto_labels_to_strcord(Indent, Index, [Label | Labels]) =
+mlds_computed_goto_labels_to_strcord(Indent, Index,
+        [mlds_label(LabelName) | Labels]) =
     indent_strcord(Indent) ++ intcord(Index) ++ strcord(": ") ++
-        strcord(Label) ++ nl_strcord ++
+        strcord(LabelName) ++ nl_strcord ++
     mlds_computed_goto_labels_to_strcord(Indent, Index + 1, Labels).
 
 :- func mlds_atomic_stmt_to_strcord(int, mlds_atomic_statement) = strcord.

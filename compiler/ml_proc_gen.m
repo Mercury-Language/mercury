@@ -1523,7 +1523,7 @@ make_container_proc(LoopKind, CopyOutValThroughPtrStmts, ReturnRvals,
 
 make_container_proc_with_label_goto(CopyOutValThroughPtrStmts, ReturnStmt,
         EntryProc, EntryProcContext, ProcStmtInfos, WrappedStmts) :-
-    EndLabel = "tscc_end",
+    EndLabel = mlds_label("tscc_end"),
     EndLabelStmt = ml_stmt_label(EndLabel, EntryProcContext),
     GotoEndStmt = ml_stmt_goto(goto_label(EndLabel), EntryProcContext),
     list.map(make_wrapped_proc_with_label_goto(GotoEndStmt), ProcStmtInfos,

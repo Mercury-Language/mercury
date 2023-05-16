@@ -865,7 +865,7 @@ ml_is_output_det_function(ModuleInfo, PredProcId, RetArgVar) :-
 
 ml_gen_new_label(Label, !Info) :-
     ml_gen_info_new_label(LabelNum, !Info),
-    Label = "label_" ++ string.int_to_string(LabelNum).
+    Label = mlds_label("label_" ++ string.int_to_string(LabelNum)).
 
 %---------------------------------------------------------------------------%
 %

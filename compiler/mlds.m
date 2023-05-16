@@ -1417,7 +1417,8 @@
 % Extra info for labels.
 %
 
-:- type mlds_label == string.
+:- type mlds_label
+    --->    mlds_label(string).
 
 :- type mlds_goto_target
     --->    goto_label(mlds_label)

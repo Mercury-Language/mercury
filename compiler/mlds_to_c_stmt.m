@@ -470,11 +470,10 @@ mlds_output_stmt_label(Stream, Indent, Stmt, !IO) :-
     LabelStr = label_to_string(Label),
     io.format(Stream, "%s%s:;\n", [s(IndentM1Str), s(LabelStr)], !IO).
 
-% ZZZ placement
 :- func label_to_string(mlds_label) = string.
 
-label_to_string(Label) = LabelStr :-
-    LabelStr= name_mangle(Label).
+label_to_string(mlds_label(LabelName)) = LabelStr :-
+    LabelStr= name_mangle(LabelName).
 
 %---------------------------------------------------------------------------%
 %
