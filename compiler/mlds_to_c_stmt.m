@@ -1115,8 +1115,8 @@ mlds_output_target_code_component(Opts, Stream, Context, TargetCode, !IO) :-
         io.write_string(Stream, " ", !IO)
     ;
         TargetCode = target_code_type(Type),
-        mlds_output_type(Opts, Type, Stream, !IO),
-        io.write_string(Stream, " ", !IO)
+        TypeStr = type_to_string_for_c(Opts, Type),
+        io.format(Stream, "%s ", [s(TypeStr)], !IO)
     ;
         % Note: `target_code_name(Name)' target_code_components are used to
         % generate the #define for `MR_PROC_LABEL'.

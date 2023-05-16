@@ -728,7 +728,6 @@
 
     % Return is_array iff the specified entity is an array.
     %
-:- func rtti_id_maybe_element_has_array_type(rtti_id_maybe_element) = is_array.
 :- func rtti_id_has_array_type(rtti_id) = is_array.
 :- func ctor_rtti_name_has_array_type(ctor_rtti_name) = is_array.
 :- func tc_rtti_name_has_array_type(tc_rtti_name) = is_array.
@@ -1089,12 +1088,6 @@ var_arity_id_to_rtti_type_ctor(func_type_info) = Ctor :-
 var_arity_id_to_rtti_type_ctor(tuple_type_info) = Ctor :-
     Builtin = mercury_public_builtin_module,
     Ctor = rtti_type_ctor(Builtin, "tuple", 0u16).
-
-rtti_id_maybe_element_has_array_type(item_type(RttiId)) =
-    rtti_id_has_array_type(RttiId).
-rtti_id_maybe_element_has_array_type(element_type(RttiId)) = not_array :-
-    expect(unify(rtti_id_has_array_type(RttiId), is_array), $pred,
-        "base is not array").
 
 rtti_id_has_array_type(ctor_rtti_id(_, RttiName)) =
     ctor_rtti_name_has_array_type(RttiName).
@@ -1585,27 +1578,27 @@ type_ctor_rep_to_string(TypeCtorData, TargetPrefixes, RepStr) :-
 
 :- pred builtin_ctor_rep_to_string(builtin_ctor::in, string::out) is det.
 
-builtin_ctor_rep_to_string(builtin_ctor_int, "MR_TYPECTOR_REP_INT").
-builtin_ctor_rep_to_string(builtin_ctor_uint, "MR_TYPECTOR_REP_UINT").
-builtin_ctor_rep_to_string(builtin_ctor_int8, "MR_TYPECTOR_REP_INT8").
-builtin_ctor_rep_to_string(builtin_ctor_uint8, "MR_TYPECTOR_REP_UINT8").
-builtin_ctor_rep_to_string(builtin_ctor_int16, "MR_TYPECTOR_REP_INT16").
+builtin_ctor_rep_to_string(builtin_ctor_int,    "MR_TYPECTOR_REP_INT").
+builtin_ctor_rep_to_string(builtin_ctor_uint,   "MR_TYPECTOR_REP_UINT").
+builtin_ctor_rep_to_string(builtin_ctor_int8,   "MR_TYPECTOR_REP_INT8").
+builtin_ctor_rep_to_string(builtin_ctor_uint8,  "MR_TYPECTOR_REP_UINT8").
+builtin_ctor_rep_to_string(builtin_ctor_int16,  "MR_TYPECTOR_REP_INT16").
 builtin_ctor_rep_to_string(builtin_ctor_uint16, "MR_TYPECTOR_REP_UINT16").
-builtin_ctor_rep_to_string(builtin_ctor_int32, "MR_TYPECTOR_REP_INT32").
+builtin_ctor_rep_to_string(builtin_ctor_int32,  "MR_TYPECTOR_REP_INT32").
 builtin_ctor_rep_to_string(builtin_ctor_uint32, "MR_TYPECTOR_REP_UINT32").
-builtin_ctor_rep_to_string(builtin_ctor_int64, "MR_TYPECTOR_REP_INT64").
+builtin_ctor_rep_to_string(builtin_ctor_int64,  "MR_TYPECTOR_REP_INT64").
 builtin_ctor_rep_to_string(builtin_ctor_uint64, "MR_TYPECTOR_REP_UINT64").
 builtin_ctor_rep_to_string(builtin_ctor_string, "MR_TYPECTOR_REP_STRING").
-builtin_ctor_rep_to_string(builtin_ctor_float, "MR_TYPECTOR_REP_FLOAT").
-builtin_ctor_rep_to_string(builtin_ctor_char, "MR_TYPECTOR_REP_CHAR").
-builtin_ctor_rep_to_string(builtin_ctor_void, "MR_TYPECTOR_REP_VOID").
+builtin_ctor_rep_to_string(builtin_ctor_float,  "MR_TYPECTOR_REP_FLOAT").
+builtin_ctor_rep_to_string(builtin_ctor_char,   "MR_TYPECTOR_REP_CHAR").
+builtin_ctor_rep_to_string(builtin_ctor_void,   "MR_TYPECTOR_REP_VOID").
 builtin_ctor_rep_to_string(builtin_ctor_c_pointer(is_not_stable),
     "MR_TYPECTOR_REP_C_POINTER").
 builtin_ctor_rep_to_string(builtin_ctor_c_pointer(is_stable),
     "MR_TYPECTOR_REP_STABLE_C_POINTER").
 builtin_ctor_rep_to_string(builtin_ctor_pred_ctor, "MR_TYPECTOR_REP_PRED").
 builtin_ctor_rep_to_string(builtin_ctor_func_ctor, "MR_TYPECTOR_REP_FUNC").
-builtin_ctor_rep_to_string(builtin_ctor_tuple, "MR_TYPECTOR_REP_TUPLE").
+builtin_ctor_rep_to_string(builtin_ctor_tuple,     "MR_TYPECTOR_REP_TUPLE").
 builtin_ctor_rep_to_string(builtin_ctor_ref, "MR_TYPECTOR_REP_REFERENCE").
 builtin_ctor_rep_to_string(builtin_ctor_type_ctor_desc,
     "MR_TYPECTOR_REP_TYPECTORDESC").
@@ -1622,15 +1615,15 @@ impl_ctor_rep_to_string(impl_ctor_typeclass_info,
     "MR_TYPECTOR_REP_TYPECLASSINFO").
 impl_ctor_rep_to_string(impl_ctor_base_typeclass_info,
     "MR_TYPECTOR_REP_BASETYPECLASSINFO").
-impl_ctor_rep_to_string(impl_ctor_hp, "MR_TYPECTOR_REP_HP").
-impl_ctor_rep_to_string(impl_ctor_succip, "MR_TYPECTOR_REP_SUCCIP").
-impl_ctor_rep_to_string(impl_ctor_curfr, "MR_TYPECTOR_REP_CURFR").
-impl_ctor_rep_to_string(impl_ctor_maxfr, "MR_TYPECTOR_REP_MAXFR").
-impl_ctor_rep_to_string(impl_ctor_redofr, "MR_TYPECTOR_REP_REDOFR").
-impl_ctor_rep_to_string(impl_ctor_redoip, "MR_TYPECTOR_REP_REDOIP").
+impl_ctor_rep_to_string(impl_ctor_hp,        "MR_TYPECTOR_REP_HP").
+impl_ctor_rep_to_string(impl_ctor_succip,    "MR_TYPECTOR_REP_SUCCIP").
+impl_ctor_rep_to_string(impl_ctor_curfr,     "MR_TYPECTOR_REP_CURFR").
+impl_ctor_rep_to_string(impl_ctor_maxfr,     "MR_TYPECTOR_REP_MAXFR").
+impl_ctor_rep_to_string(impl_ctor_redofr,    "MR_TYPECTOR_REP_REDOFR").
+impl_ctor_rep_to_string(impl_ctor_redoip,    "MR_TYPECTOR_REP_REDOIP").
 impl_ctor_rep_to_string(impl_ctor_trail_ptr, "MR_TYPECTOR_REP_TRAIL_PTR").
-impl_ctor_rep_to_string(impl_ctor_ticket, "MR_TYPECTOR_REP_TICKET").
-impl_ctor_rep_to_string(impl_ctor_subgoal, "MR_TYPECTOR_REP_SUBGOAL").
+impl_ctor_rep_to_string(impl_ctor_ticket,    "MR_TYPECTOR_REP_TICKET").
+impl_ctor_rep_to_string(impl_ctor_subgoal,   "MR_TYPECTOR_REP_SUBGOAL").
 
 %-----------------------------------------------------------------------------%
 

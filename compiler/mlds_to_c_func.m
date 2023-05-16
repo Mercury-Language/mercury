@@ -16,7 +16,6 @@
 :- import_module libs.
 :- import_module libs.indent.
 :- import_module ml_backend.mlds.
-:- import_module ml_backend.mlds_to_c_type.
 :- import_module ml_backend.mlds_to_c_util.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -33,6 +32,14 @@
 :- pred mlds_output_function_decl_opts(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in, mlds_module_name::in,
     mlds_function_defn::in, io::di, io::uo) is det.
+
+    % This type/inst pair describes the signature of
+    % type_to_prefix_suffix_for_c_no_size, and is used to allow callers
+    % to pass to mlds_output_func_decl_ho either this predicate, or
+    % another that acts like it.
+    %
+:- type type_prefix_suffix == pred(mlds_to_c_opts, mlds_type, string, string).
+:- inst type_prefix_suffix == (pred(in, in, out, out) is det).
 
 :- pred mlds_output_func_decl_ho(mlds_to_c_opts::in, io.text_output_stream::in,
     type_prefix_suffix::in(type_prefix_suffix), string::in,
@@ -61,6 +68,7 @@
 :- import_module libs.globals.
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_stmt.
+:- import_module ml_backend.mlds_to_c_type.
 :- import_module ml_backend.mlds_to_target_util.
 
 :- import_module bool.
@@ -149,10 +157,10 @@ mlds_output_func_decl_ho(Opts, Stream, GetTypePrefixSuffix, CallingConvention,
         io.write_string(Stream, ReturnTypeSuffix, !IO)
     ;
         ReturnTypes = [_, _ | _],
-        mlds_output_return_list(Stream,
-            mlds_output_prefix_suffix(Opts, GetTypePrefixSuffix),
-            ReturnTypes, !IO),
-        io.format(Stream, "%s%s", [s(IndentStr), s(QualFuncNameStr)], !IO),
+        ReturnTypeStrs = list.map(type_to_string_for_c(Opts), ReturnTypes),
+        ReturnTypesStr = return_list_to_string_for_c(ReturnTypeStrs),
+        io.format(Stream, "%s%s%s",
+            [s(ReturnTypesStr), s(IndentStr), s(QualFuncNameStr)], !IO),
         mlds_output_params_in_parens(Opts, Stream, GetTypePrefixSuffix,
             Indent, Context, Parameters, !IO)
     ).
@@ -165,14 +173,6 @@ standardize_param_names(!Argument, !ArgNum) :-
     !.Argument = mlds_argument(_VarName0, Type, GCStmt),
     !:Argument = mlds_argument(VarName, Type, GCStmt),
     !:ArgNum = !.ArgNum + 1.
-
-:- pred mlds_output_prefix_suffix(mlds_to_c_opts::in,
-    type_prefix_suffix::in(type_prefix_suffix), mlds_type::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-mlds_output_prefix_suffix(Opts, GetTypePrefixSuffix, Type, Stream, !IO) :-
-    GetTypePrefixSuffix(Opts, Type, TypePrefix, TypeSuffix),
-    io.format(Stream, "%s%s", [s(TypePrefix), s(TypeSuffix)], !IO).
 
 :- pred mlds_output_params_in_parens(mlds_to_c_opts::in,
     io.text_output_stream::in, type_prefix_suffix::in(type_prefix_suffix),
