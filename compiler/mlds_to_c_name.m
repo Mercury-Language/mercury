@@ -152,7 +152,6 @@ local_var_name_to_string_for_c(LocalVarName) = LocalVarNameStr :-
 %---------------------------------------------------------------------------%
 
 field_var_name_to_string_for_c(FieldVarName) = FieldVarNameStr :-
-    % ZZZ is ml_field_var_name_to_string etc used by non-c backends?
     FieldVarNameStr = name_mangle(ml_field_var_name_to_string(FieldVarName)).
 
 qual_field_var_name_to_string_for_c(QualFieldVarName) = QualFieldVarNameStr :-
@@ -165,7 +164,6 @@ qual_field_var_name_to_string_for_c(QualFieldVarName) = QualFieldVarNameStr :-
 %---------------------------------------------------------------------------%
 
 class_name_arity_to_string_for_c(ClassName, Arity) = ClassNameStr :-
-    % XXX We should avoid appending the arity if it is not needed.
     MangledClassName = name_mangle(ClassName),
     string.format("%s_%d", [s(MangledClassName), i(Arity)], ClassNameStr).
 
@@ -242,7 +240,7 @@ proc_label_to_string_for_c(ProcLabel) = ProcLabelStr :-
     proc_id_to_int(ProcId, ModeNum),
     string.format("%s_%d", [s(PredLabelStr), i(ModeNum)], ProcLabelStr).
 
-    % mlds_pred_label_to_string should be kept in sync with
+    % pred_label_to_string_for_c should be kept in sync with
     % browser/name_mangle.m.
     %
 :- func pred_label_to_string_for_c(mlds_pred_label) = string.
