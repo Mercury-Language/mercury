@@ -352,9 +352,10 @@ mlds_output_alloc_site_defn(_Opts, Stream, Indent, MLDS_ModuleName,
     QualFuncNameStr = qual_function_name_to_string_for_c(QualFuncName),
     TypeStr = quote_string_c(Type),
     Context = context(FileName, LineNumber),
+    FileNameStr = quote_string_c(FileName),
     IndentStr = indent2_string(Indent),
     io.format(Stream, "%s{ %s, %s, %d, %s, %d },\n",
-        [s(IndentStr), s(QualFuncNameStr), s(FileName), i(LineNumber),
+        [s(IndentStr), s(QualFuncNameStr), s(FileNameStr), i(LineNumber),
         s(TypeStr), i(Size)], !IO).
 
 %---------------------------------------------------------------------------%
