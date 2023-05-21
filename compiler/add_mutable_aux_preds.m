@@ -27,6 +27,7 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item.
 
+:- import_module cord.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
@@ -40,7 +41,7 @@
     sec_list(item_pred_decl_info)::out,
     ims_list(item_clause_info)::out, ims_list(item_foreign_proc)::out,
     list(foreign_decl_code)::out, list(foreign_body_code)::out,
-    list(item_fproc_export)::out,
+    cord(item_fproc_export)::out,
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -64,7 +65,6 @@
 :- import_module parse_tree.prog_mutable.
 
 :- import_module bool.
-:- import_module cord.
 :- import_module map.
 :- import_module require.
 :- import_module varset.
@@ -74,7 +74,7 @@
 
 implement_mutables_if_local(ModuleInfo, SecList, PredDecls,
         ClauseInfos, ForeignProcs, ForeignDeclCodes, ForeignBodyCodes,
-        FPEInfos, !PredTargetNames, !Specs) :-
+        FPEInfoCord, !PredTargetNames, !Specs) :-
     implement_mutables_sec_loop(ModuleInfo, SecList,
         cord.init, PredDeclCord,
         cord.init, ClauseInfoCord, cord.init, ForeignProcCord,
@@ -84,8 +84,7 @@ implement_mutables_if_local(ModuleInfo, SecList, PredDecls,
     ClauseInfos = cord.list(ClauseInfoCord),
     ForeignProcs = cord.list(ForeignProcCord),
     ForeignDeclCodes = cord.list(ForeignDeclCodeCord),
-    ForeignBodyCodes = cord.list(ForeignBodyCodeCord),
-    FPEInfos = cord.list(FPEInfoCord).
+    ForeignBodyCodes = cord.list(ForeignBodyCodeCord).
 
 :- pred implement_mutables_sec_loop(module_info::in,
     sec_list(item_mutable_info)::in,

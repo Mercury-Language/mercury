@@ -47,7 +47,7 @@
 %---------------------%
 
 :- pred add_impl_pragmas(ims_list(item_impl_pragma_info)::in,
-    ims_list(item_tabled)::in, ims_list(item_tabled)::out,
+    ims_cord(item_tabled)::in, ims_cord(item_tabled)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -181,22 +181,22 @@ add_decl_pragmas_reuse([PragmaInfo | PragmaInfos],
 
 %---------------------%
 
-add_impl_pragmas([], !RevPragmaTabled, !ModuleInfo, !QualInfo, !Specs).
+add_impl_pragmas([], !PragmaTabledListCord, !ModuleInfo, !QualInfo, !Specs).
 add_impl_pragmas([ImsList | ImsLists],
-        !RevPragmaTabledLists, !ModuleInfo, !QualInfo, !Specs) :-
+        !PragmaTabledListCord, !ModuleInfo, !QualInfo, !Specs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
     list.foldl4(add_impl_pragma(ItemMercuryStatus), Items,
-        [], RevPragmaTableds, !ModuleInfo, !QualInfo, !Specs),
+        cord.init, PragmaTabledCord, !ModuleInfo, !QualInfo, !Specs),
+    PragmaTabledList = cord.list(PragmaTabledCord),
     (
-        RevPragmaTableds = []
+        PragmaTabledList = []
     ;
-        RevPragmaTableds = [_ | _],
-        list.reverse(RevPragmaTableds, PragmaTableds),
-        PragmaTabledList = ims_sub_list(ItemMercuryStatus, PragmaTableds),
-        !:RevPragmaTabledLists = [PragmaTabledList | !.RevPragmaTabledLists]
+        PragmaTabledList = [_ | _],
+        SubList = ims_sub_list(ItemMercuryStatus, PragmaTabledList),
+        cord.snoc(SubList, !PragmaTabledListCord)
     ),
     add_impl_pragmas(ImsLists,
-        !RevPragmaTabledLists, !ModuleInfo, !QualInfo, !Specs).
+        !PragmaTabledListCord, !ModuleInfo, !QualInfo, !Specs).
 
 add_impl_pragmas_tabled([], !ModuleInfo, !QualInfo, !Specs).
 add_impl_pragmas_tabled([ImsList | ImsLists],
@@ -757,11 +757,11 @@ add_pragma_structure_reuse(ReuseInfo, Context, !ModuleInfo, !Specs):-
 %
 
 :- pred add_impl_pragma(item_mercury_status::in, item_impl_pragma_info::in,
-    list(item_tabled)::in, list(item_tabled)::out,
+    cord(item_tabled)::in, cord(item_tabled)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_impl_pragma(ItemMercuryStatus, ItemPragmaInfo, !RevPragmaTabled,
+add_impl_pragma(ItemMercuryStatus, ItemPragmaInfo, !PragmaTabledCord,
         !ModuleInfo, !QualInfo, !Specs) :-
     ItemPragmaInfo = item_pragma_info(Pragma, Context, SeqNum),
     (
@@ -795,7 +795,7 @@ add_impl_pragma(ItemMercuryStatus, ItemPragmaInfo, !RevPragmaTabled,
     ;
         Pragma = impl_pragma_tabled(TabledInfo),
         ItemPragmaTabledInfo = item_pragma_info(TabledInfo, Context, SeqNum),
-        !:RevPragmaTabled = [ItemPragmaTabledInfo | !.RevPragmaTabled]
+        cord.snoc(ItemPragmaTabledInfo, !PragmaTabledCord)
     ;
         Pragma = impl_pragma_inline(PredSymNameArity),
         % Note that mode_check_inline conflicts with inline because
