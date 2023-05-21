@@ -192,7 +192,7 @@ type_to_debug_string(TVarSet, Type, Name) :-
         Name = sym_name_to_string(SymName) ++ "(" ++ SubtypeName ++ ")"
     ;
         Type = builtin_type(builtin_type_int(IntType)),
-        int_type_to_string(IntType, Name)
+        int_type_module_name(IntType, Name)
     ;
         Type = builtin_type(builtin_type_float),
         Name = "float"

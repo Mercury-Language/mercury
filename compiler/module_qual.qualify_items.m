@@ -953,35 +953,9 @@ qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs) :-
         % `character', since the corresponding library module `char'
         % will be flagged as used in the interface if the type `char' is used.
         (
-            BuiltinType = builtin_type_int(int_type_int),
-            mq_info_set_module_used(InInt, unqualified("int"), !Info)
-        ;
-            BuiltinType = builtin_type_int(int_type_uint),
-            mq_info_set_module_used(InInt, unqualified("uint"), !Info)
-        ;
-            BuiltinType = builtin_type_int(int_type_int8),
-            mq_info_set_module_used(InInt, unqualified("int8"), !Info)
-        ;
-            BuiltinType = builtin_type_int(int_type_uint8),
-            mq_info_set_module_used(InInt, unqualified("uint8"), !Info)
-        ;
-            BuiltinType = builtin_type_int(int_type_int16),
-            mq_info_set_module_used(InInt, unqualified("int16"), !Info)
-        ;
-            BuiltinType = builtin_type_int(int_type_uint16),
-            mq_info_set_module_used(InInt, unqualified("uint16"), !Info)
-        ;
-            BuiltinType = builtin_type_int(int_type_int32),
-            mq_info_set_module_used(InInt, unqualified("int32"), !Info)
-        ;
-            BuiltinType = builtin_type_int(int_type_uint32),
-            mq_info_set_module_used(InInt, unqualified("uint32"), !Info)
-        ;
-            BuiltinType = builtin_type_int(int_type_int64),
-            mq_info_set_module_used(InInt, unqualified("int64"), !Info)
-        ;
-            BuiltinType = builtin_type_int(int_type_uint64),
-            mq_info_set_module_used(InInt, unqualified("uint64"), !Info)
+            BuiltinType = builtin_type_int(IntType),
+            int_type_module_name(IntType, IntModule),
+            mq_info_set_module_used(InInt, unqualified(IntModule), !Info)
         ;
             BuiltinType = builtin_type_float,
             mq_info_set_module_used(InInt, unqualified("float"), !Info)

@@ -123,7 +123,7 @@ type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces, Type) = Pieces :-
         Pieces = [fixed(TVarStr) | SuffixPieces]
     ;
         Type = builtin_type(BuiltinType),
-        builtin_type_to_string(BuiltinType, BuiltinTypeStr),
+        builtin_type_name(BuiltinType, BuiltinTypeStr),
         Pieces = [fixed(BuiltinTypeStr) | SuffixPieces]
     ;
         (

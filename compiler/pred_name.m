@@ -1906,7 +1906,7 @@ type_to_txq_mrtq_stuffed_string(Type) = Str :-
         string.format("txq_v_%d", [i(var_to_int(TVar))], Str)
     ;
         Type = builtin_type(BuiltinType),
-        builtin_type_to_string(BuiltinType, BuiltinTypeStr),
+        builtin_type_name(BuiltinType, BuiltinTypeStr),
         string.format("txq_b_%s", [s(BuiltinTypeStr)], Str)
     ;
         (

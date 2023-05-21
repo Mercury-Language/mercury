@@ -2714,7 +2714,7 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
         ;
             (
                 CtorCat = ctor_cat_builtin(cat_builtin_int(IntType)),
-                int_type_to_string(IntType, CatString),
+                int_type_module_name(IntType, CatString),
                 Step = table_trie_step_int(IntType)
             ;
                 CtorCat = ctor_cat_builtin(cat_builtin_char),

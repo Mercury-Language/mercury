@@ -1213,9 +1213,9 @@ report_any_invisible_int_types(ClauseContext, BuiltinTypes) = Pieces :-
         % Is there at least one integer type whose module we did not import?
         InvisIntTypesList = [HeadInvisIntType | TailInvisIntTypes]
     then
-        int_type_to_string(HeadInvisIntType, HeadInvisIntTypeStr),
+        int_type_module_name(HeadInvisIntType, HeadInvisIntTypeStr),
         list.map(
-            (pred(IT::in, Str::out) is det :- int_type_to_string(IT, Str)),
+            (pred(IT::in, Str::out) is det :- int_type_module_name(IT, Str)),
             TailInvisIntTypes, TailInvisIntTypeStrs),
         (
             TailInvisIntTypeStrs = [],
@@ -1240,7 +1240,7 @@ report_any_invisible_int_types(ClauseContext, BuiltinTypes) = Pieces :-
 
 is_int_n_module(ModuleSymName, IntType) :-
     ModuleSymName = unqualified(ModuleName),
-    int_type_to_string(IntType, ModuleName).
+    int_type_module_name(IntType, ModuleName).
 
 %---------------------------------------------------------------------------%
 

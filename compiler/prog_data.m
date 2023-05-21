@@ -902,13 +902,25 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
 :- pred is_builtin_type_name(string::in) is semidet.
 
-:- pred builtin_type_to_string(builtin_type, string).
-:- mode builtin_type_to_string(in, out) is det.
-:- mode builtin_type_to_string(out, in) is semidet.
+    % A table mapping the internal form of builtin types
+    % to the user-visible type name. Note that this type name
+    % may NOT be a valid library module name, due to the builtin
+    % "character" type name differing from the name of the "char" module
+    % in the library.
+    %
+:- pred builtin_type_name(builtin_type, string).
+:- mode builtin_type_name(in, out) is det.
+:- mode builtin_type_name(out, in) is semidet.
 
-:- pred int_type_to_string(int_type, string).
-:- mode int_type_to_string(in, out) is det.
-:- mode int_type_to_string(out, in) is semidet.
+    % A table mapping the internal form of builtin integer types
+    % to the name that is both
+    %
+    % - the user-visible type name, and
+    % - the name of the module that provides operation on the type.
+    %
+:- pred int_type_module_name(int_type, string).
+:- mode int_type_module_name(in, out) is det.
+:- mode int_type_module_name(out, in) is semidet.
 
 :- type type_term == term(tvar_type).
 
@@ -1001,39 +1013,43 @@ arg_pos_width_to_width_only(ArgPosWidth) = ArgWidth :-
 
 is_builtin_type_sym_name(SymName) :-
     SymName = unqualified(Name),
-    builtin_type_to_string(_, Name).
+    builtin_type_name(_, Name).
 
 is_builtin_type_name(Name) :-
-    builtin_type_to_string(_, Name).
+    builtin_type_name(_, Name).
 
-% Please keep this code in sync with int_type_to_string and
+% Please keep this code in sync with int_type_module_name and
 % classify_type_ctor_if_special.
-builtin_type_to_string(builtin_type_int(int_type_int), "int").
-builtin_type_to_string(builtin_type_int(int_type_uint), "uint").
-builtin_type_to_string(builtin_type_int(int_type_int8), "int8").
-builtin_type_to_string(builtin_type_int(int_type_uint8), "uint8").
-builtin_type_to_string(builtin_type_int(int_type_int16), "int16").
-builtin_type_to_string(builtin_type_int(int_type_uint16), "uint16").
-builtin_type_to_string(builtin_type_int(int_type_int32), "int32").
-builtin_type_to_string(builtin_type_int(int_type_uint32), "uint32").
-builtin_type_to_string(builtin_type_int(int_type_int64), "int64").
-builtin_type_to_string(builtin_type_int(int_type_uint64), "uint64").
-builtin_type_to_string(builtin_type_float, "float").
-builtin_type_to_string(builtin_type_string, "string").
-builtin_type_to_string(builtin_type_char, "character").
+%
+% Note that we have to effectively inline int_type_module_name here
+% to allow the compiler to see that the <out,in> mode is a switch,
+% and not just a disjunction.
+builtin_type_name(builtin_type_int(int_type_int),    "int").
+builtin_type_name(builtin_type_int(int_type_int8),   "int8").
+builtin_type_name(builtin_type_int(int_type_int16),  "int16").
+builtin_type_name(builtin_type_int(int_type_int32),  "int32").
+builtin_type_name(builtin_type_int(int_type_int64),  "int64").
+builtin_type_name(builtin_type_int(int_type_uint),   "uint").
+builtin_type_name(builtin_type_int(int_type_uint8),  "uint8").
+builtin_type_name(builtin_type_int(int_type_uint16), "uint16").
+builtin_type_name(builtin_type_int(int_type_uint32), "uint32").
+builtin_type_name(builtin_type_int(int_type_uint64), "uint64").
+builtin_type_name(builtin_type_float,  "float").
+builtin_type_name(builtin_type_string, "string").
+builtin_type_name(builtin_type_char,   "character").
 
-% Please keep this code in sync with builtin_type_to_string and
+% Please keep this code in sync with builtin_type_name and
 % classify_type_ctor_if_special.
-int_type_to_string(int_type_int, "int").
-int_type_to_string(int_type_uint,  "uint").
-int_type_to_string(int_type_int8, "int8").
-int_type_to_string(int_type_uint8, "uint8").
-int_type_to_string(int_type_int16, "int16").
-int_type_to_string(int_type_uint16,  "uint16").
-int_type_to_string(int_type_int32, "int32").
-int_type_to_string(int_type_uint32, "uint32").
-int_type_to_string(int_type_int64, "int64").
-int_type_to_string(int_type_uint64, "uint64").
+int_type_module_name(int_type_int,    "int").
+int_type_module_name(int_type_int8,   "int8").
+int_type_module_name(int_type_int16,  "int16").
+int_type_module_name(int_type_int32,  "int32").
+int_type_module_name(int_type_int64,  "int64").
+int_type_module_name(int_type_uint,   "uint").
+int_type_module_name(int_type_uint8,  "uint8").
+int_type_module_name(int_type_uint16, "uint16").
+int_type_module_name(int_type_uint32, "uint32").
+int_type_module_name(int_type_uint64, "uint64").
 
 tvarset_merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming) :-
     varset.merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming).

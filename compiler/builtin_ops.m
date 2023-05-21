@@ -396,15 +396,15 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
         PredName = "term_size_plus", ProcNum = 0, Args = [X, Y, Z],
         Code = assign(Z, binary(int_add(int_type_int), leaf(X), leaf(Y)))
     ;
-        ( ModuleName = "int", IntType = int_type_int
-        ; ModuleName = "uint", IntType = int_type_uint
-        ; ModuleName = "int8", IntType = int_type_int8
-        ; ModuleName = "uint8", IntType = int_type_uint8
-        ; ModuleName = "int16", IntType = int_type_int16
+        ( ModuleName = "int",    IntType = int_type_int
+        ; ModuleName = "int8",   IntType = int_type_int8
+        ; ModuleName = "int16",  IntType = int_type_int16
+        ; ModuleName = "int32",  IntType = int_type_int32
+        ; ModuleName = "int64",  IntType = int_type_int64
+        ; ModuleName = "uint",   IntType = int_type_uint
+        ; ModuleName = "uint8",  IntType = int_type_uint8
         ; ModuleName = "uint16", IntType = int_type_uint16
-        ; ModuleName = "int32", IntType = int_type_int32
         ; ModuleName = "uint32", IntType = int_type_uint32
-        ; ModuleName = "int64", IntType = int_type_int64
         ; ModuleName = "uint64", IntType = int_type_uint64
         ),
         (

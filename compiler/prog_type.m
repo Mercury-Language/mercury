@@ -558,7 +558,7 @@ type_to_ctor_and_args(Type, TypeCtor, ArgTypes) :-
         TypeCtor = type_ctor(SymName, Arity)
     ;
         Type = builtin_type(BuiltinType),
-        builtin_type_to_string(BuiltinType, Name),
+        builtin_type_name(BuiltinType, Name),
         SymName = unqualified(Name),
         Arity = 0,
         ArgTypes = [],
@@ -736,7 +736,7 @@ type_list_contains_var([_ | Types], Var) :-
 construct_type(TypeCtor, ArgTypes, Type) :-
     ( if
         TypeCtor = type_ctor(unqualified(Name), 0),
-        builtin_type_to_string(BuiltinType, Name)
+        builtin_type_name(BuiltinType, Name)
     then
         Type = builtin_type(BuiltinType)
     else if

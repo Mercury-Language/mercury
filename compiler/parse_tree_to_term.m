@@ -76,7 +76,7 @@ unparse_type(Type, Term) :-
         unparse_qualified_term(SymName, ArgTerms, Term)
     ;
         Type = builtin_type(BuiltinType),
-        builtin_type_to_string(BuiltinType, Name),
+        builtin_type_name(BuiltinType, Name),
         Term = term.functor(term.atom(Name), [], Context)
     ;
         Type = higher_order_type(PorF, PredArgTypes, HOInstInfo, Purity,

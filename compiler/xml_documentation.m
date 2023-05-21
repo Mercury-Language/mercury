@@ -495,7 +495,7 @@ mer_type_to_xml(TVarset, defined_type(TypeName, Args, _)) = Xml :-
     XmlArgs = xml_list("type_args", mer_type_to_xml(TVarset), Args),
     Xml = elem("type", [Ref], [XmlName, XmlArgs]).
 mer_type_to_xml(_, builtin_type(builtin_type_int(IntType))) = Xml :-
-    int_type_to_string(IntType, IntTypeString),
+    int_type_module_name(IntType, IntTypeString),
     Xml = elem(IntTypeString, [], []).
 mer_type_to_xml(_, builtin_type(builtin_type_float)) = elem("float", [], []).
 mer_type_to_xml(_, builtin_type(builtin_type_string)) = elem("string", [], []).

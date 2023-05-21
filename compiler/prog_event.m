@@ -685,7 +685,7 @@ convert_term_to_type(Term) = Type :-
     Term = event_attr_type_term(Name, Args),
     ( if
         Args = [],
-        builtin_type_to_string(BuiltinType, Name)
+        builtin_type_name(BuiltinType, Name)
     then
         Type = builtin_type(BuiltinType)
     else
@@ -818,7 +818,7 @@ describe_attr_type(Type) = Desc :-
         Desc = sym_name_to_string(SymName) ++ ArgTypeDescs
     ;
         Type = builtin_type(BuiltinType),
-        builtin_type_to_string(BuiltinType, Desc)
+        builtin_type_name(BuiltinType, Desc)
     ;
         Type = higher_order_type(_, _, _, _, _),
         Desc = "function"
