@@ -179,27 +179,11 @@
 :- pred dependency_file_to_file_name(globals::in, dependency_file::in,
     string::out, io::di, io::uo) is det.
 
-:- pred make_write_dependency_file(globals::in, dependency_file::in,
-    io::di, io::uo) is det.
-
-:- pred make_write_dependency_file_list(globals::in, list(dependency_file)::in,
-    io::di, io::uo) is det.
-
     % Return the file name for the given target_file. The I/O state pair
     % may be needed to find this file name.
     %
 :- pred get_make_target_file_name(globals::in, target_file::in, string::out,
     io::di, io::uo) is det.
-
-    % Write out the file name for the given target_file.
-    %
-:- pred make_write_target_file(globals::in, target_file::in,
-    io::di, io::uo) is det.
-
-:- pred make_write_target_file_wrapped(globals::in,
-    string::in, target_file::in, string::in, io::di, io::uo) is det.
-:- pred make_write_target_file_wrapped(io.text_output_stream::in, globals::in,
-    string::in, target_file::in, string::in, io::di, io::uo) is det.
 
     % Write a message "Making <filename>" if `--verbose-make' is set.
     %
@@ -972,58 +956,19 @@ dependency_file_to_file_name(Globals, DepFile, FileName, !IO) :-
         DepFile = dep_file(FileName)
     ).
 
-make_write_dependency_file(Globals, DepFile, !IO) :-
-    dependency_file_to_file_name(Globals, DepFile, FileName, !IO),
-    io.write_string(FileName, !IO).
-
-make_write_dependency_file_list(_, [], !IO).
-make_write_dependency_file_list(Globals, [DepFile | DepFiles], !IO) :-
-    dependency_file_to_file_name(Globals, DepFile, FileName, !IO),
-    io.format("\t%s\n", [s(FileName)], !IO),
-    make_write_dependency_file_list(Globals, DepFiles, !IO).
-
 get_make_target_file_name(Globals, TargetFile, FileName, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     module_target_to_file_name(Globals, do_not_create_dirs, TargetType,
         ModuleName, FileName, !IO).
 
-make_write_target_file(Globals, TargetFile, !IO) :-
-    get_make_target_file_name(Globals, TargetFile, FileName, !IO),
-    io.write_string(FileName, !IO).
-
-make_write_target_file_wrapped(Globals, Prefix, TargetFile, Suffix, !IO) :-
-    get_make_target_file_name(Globals, TargetFile, FileName, !IO),
-    ( if
-        Prefix = "",
-        Suffix = ""
-    then
-        io.write_string(FileName, !IO)
-    else
-        % Try to write this with one call to avoid interleaved output when
-        % doing parallel builds.
-        io.write_string(Prefix ++ FileName ++ Suffix, !IO)
-    ).
-
-make_write_target_file_wrapped(Stream, Globals, Prefix, TargetFile, Suffix,
-        !IO) :-
-    get_make_target_file_name(Globals, TargetFile, FileName, !IO),
-    ( if
-        Prefix = "",
-        Suffix = ""
-    then
-        io.write_string(Stream, FileName, !IO)
-    else
-        % Try to write this with one call to avoid interleaved output when
-        % doing parallel builds.
-        io.write_string(Stream, Prefix ++ FileName ++ Suffix, !IO)
-    ).
-
-maybe_make_linked_target_message(Globals, TargetFile, !IO) :-
+maybe_make_linked_target_message(Globals, FileName, !IO) :-
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
             % Write this with one call to avoid interleaved output
             % when doing parallel builds.
-            io.write_string("Making " ++ TargetFile ++ "\n", !IO)
+            string.format("Making %s\n", [s(FileName)], Msg),
+            % XXX The lack of a specified stream here is probably a bug.
+            io.write_string(Msg, !IO)
         ), !IO).
 
 maybe_make_target_message(Globals, TargetFile, !IO) :-
@@ -1034,8 +979,11 @@ maybe_make_target_message(Globals, TargetFile, !IO) :-
 maybe_make_target_message_to_stream(Globals, OutputStream, TargetFile, !IO) :-
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            make_write_target_file_wrapped(OutputStream, Globals,
-                "Making ", TargetFile, "\n", !IO)
+            get_make_target_file_name(Globals, TargetFile, FileName, !IO),
+            % Try to write this with one call to avoid interleaved output
+            % when doing parallel builds.
+            string.format("Making %s\n", [s(FileName)], Msg),
+            io.write_string(OutputStream, Msg, !IO)
         ), !IO).
 
 maybe_reanalyse_modules_message(Globals, !IO) :-
@@ -1048,8 +996,16 @@ maybe_reanalyse_modules_message(Globals, !IO) :-
 
 target_file_error(Info, Globals, TargetFile, !IO) :-
     with_locked_stdout(Info,
-        make_write_target_file_wrapped(Globals,
+        write_make_target_file_wrapped(Globals,
             "** Error making `", TargetFile, "'.\n"), !IO).
+
+:- pred write_make_target_file_wrapped(globals::in,
+    string::in, target_file::in, string::in, io::di, io::uo) is det.
+
+write_make_target_file_wrapped(Globals, Prefix, TargetFile, Suffix, !IO) :-
+    get_make_target_file_name(Globals, TargetFile, FileName, !IO),
+    % Our one caller just above never passes empty Prefix or Suffix.
+    io.write_string(Prefix ++ FileName ++ Suffix, !IO).
 
 file_error(Info, TargetFile, !IO) :-
     with_locked_stdout(Info,

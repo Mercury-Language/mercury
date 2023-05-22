@@ -120,7 +120,7 @@
     %
 :- pred check_dependency_timestamps(globals::in, file_name::in,
     maybe_error(timestamp)::in, maybe_succeeded::in, list(File)::in,
-    pred(File, io, io)::(pred(in, di, uo) is det),
+    pred(File, string, io, io)::in(pred(in, out, di, uo) is det),
     list(maybe_error(timestamp))::in, dependencies_result::out,
     io::di, io::uo) is det.
 
@@ -1489,7 +1489,8 @@ check_dependencies(Globals, TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
             DepTimestamps, !Info, !IO),
 
         check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
-            BuildDepsSucceeded, DepFiles, make_write_dependency_file(Globals),
+            BuildDepsSucceeded, DepFiles,
+            dependency_file_to_file_name(Globals),
             DepTimestamps, DepsResult, !IO)
     ).
 
@@ -1505,23 +1506,24 @@ check_dependencies_debug_unbuilt(Globals, TargetFileName, UnbuiltDependencies,
         UnbuiltDependencies, !IO).
 
 :- pred check_dependencies_timestamps_write_missing_deps(file_name::in,
-    maybe_succeeded::in,
-    list(File)::in, pred(File, io, io)::(pred(in, di, uo) is det),
+    maybe_succeeded::in, list(File)::in,
+    pred(File, string, io, io)::in(pred(in, out, di, uo) is det),
     list(maybe_error(timestamp))::in, io::di, io::uo) is det.
 
 check_dependencies_timestamps_write_missing_deps(TargetFileName,
-        BuildDepsSucceeded, DepFiles, WriteDepFile, DepTimestamps, !IO) :-
+        BuildDepsSucceeded, DepFiles, DepFileToStr, DepTimestamps, !IO) :-
     assoc_list.from_corresponding_lists(DepFiles, DepTimestamps,
         DepTimestampAL),
     list.filter_map(
         ( pred(Pair::in, DepFile::out) is semidet :-
             Pair = DepFile - error(_)
-        ), DepTimestampAL, ErrorDeps0),
-    list.sort(ErrorDeps0, ErrorDeps),
-    io.format("** dependencies for `%s' do not exist: ",
-        [s(TargetFileName)], !IO),
-    io.write_list(ErrorDeps, ", ", WriteDepFile, !IO),
-    io.nl(!IO),
+        ), DepTimestampAL, ErrorDeps),
+    list.map_foldl(DepFileToStr, ErrorDeps, ErrorDepStrs, !IO),
+    list.sort(ErrorDepStrs, SortedErrorDepStrs),
+    ErrorDepsStr = string.join_list(", ", SortedErrorDepStrs),
+    % This line can get very long.
+    io.format("** dependencies for `%s' do not exist: %s\n",
+        [s(TargetFileName), s(ErrorDepsStr)], !IO),
     (
         BuildDepsSucceeded = succeeded,
         io.write_string("** This indicates a bug in `mmc --make'.\n", !IO)
@@ -1530,7 +1532,7 @@ check_dependencies_timestamps_write_missing_deps(TargetFileName,
     ).
 
 check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
-        BuildDepsSucceeded, DepFiles, WriteDepFile, DepTimestamps,
+        BuildDepsSucceeded, DepFiles, DepFileToStr, DepTimestamps,
         DepsResult, !IO) :-
     (
         MaybeTimestamp = error(_),
@@ -1545,7 +1547,7 @@ check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
             WriteMissingDeps =
                 check_dependencies_timestamps_write_missing_deps(
                     TargetFileName, BuildDepsSucceeded, DepFiles,
-                    WriteDepFile, DepTimestamps),
+                    DepFileToStr, DepTimestamps),
             (
                 BuildDepsSucceeded = succeeded,
                 % Something has gone wrong -- building the target has

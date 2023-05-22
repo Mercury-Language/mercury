@@ -569,8 +569,12 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         ( if DepsResult3 = deps_error then did_not_succeed else succeeded ),
     list.map_foldl2(get_file_timestamp([dir.this_directory]),
         ObjectsToCheck, ExtraObjectTimestamps, !Info, !IO),
+    DepFileToStr =
+        ( pred(FN::in, FN::out, IO::di, IO::uo) is det :-
+            true
+        ),
     check_dependency_timestamps(NoLinkObjsGlobals, OutputFileName,
-        MaybeTimestamp, BuildDepsSucceeded, ObjectsToCheck, io.write,
+        MaybeTimestamp, BuildDepsSucceeded, ObjectsToCheck, DepFileToStr,
         ExtraObjectTimestamps, ExtraObjectDepsResult, !IO),
 
     (

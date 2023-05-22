@@ -242,11 +242,16 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
            ( pred(!.IO::di, !:IO::uo) is det :-
                 get_make_target_file_name(Globals, TargetFile,
                     TargetFileName, !IO),
-                io.format("%s: dependencies:\n", [s(TargetFileName)], !IO),
                 dependency_file_index_set_to_plain_set(!.Info,
-                    DepFiles0, PlainSet),
-                make_write_dependency_file_list(Globals,
-                    set.to_sorted_list(PlainSet), !IO)
+                    DepFiles0, DepFilesPlainSet),
+                list.map_foldl(dependency_file_to_file_name(Globals),
+                    set.to_sorted_list(DepFilesPlainSet), DepFileNames, !IO),
+                io.format("%s: dependencies:\n", [s(TargetFileName)], !IO),
+                WriteDepFileName =
+                    ( pred(FN::in, SIO0::di, SIO::uo) is det :-
+                        io.format("\t%s\n", [s(FN)], SIO0, SIO)
+                    ),
+                list.foldl(WriteDepFileName, DepFileNames, !IO)
             ), !IO),
 
         KeepGoing = !.Info ^ mki_keep_going,
@@ -387,6 +392,8 @@ force_reanalysis_of_suboptimal_module(Globals, ModuleName, ForceReanalysis,
 build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         TouchedTargetFiles, TouchedFiles, ExtraOptions, Succeeded,
         !Info, !IO) :-
+    % XXX MAKE_FILENAME Either our caller should be able to give us
+    % TargetFileName, or we could compute it here, and give it to code below.
     maybe_make_target_message(Globals, TargetFile, !IO),
     TargetFile = target_file(ModuleName, _TargetType),
     CompilationTask = task_and_options(Task, TaskOptions),
@@ -448,6 +455,11 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
             MayBuild = may_not_build(Specs),
             get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
             write_error_specs(ErrorStream, Globals, Specs, !IO),
+            % XXX MAKE A significant number of test case failures in the
+            % tests/invalid directory are caused by a missing final line,
+            % "For more information, recompile with `-E'.". I (zs) think
+            % that calling maybe_print_delayed_error_messages here should
+            % fix this.
             Succeeded0 = did_not_succeed
         ),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
@@ -462,9 +474,12 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
             DiffSecs = float(Time - Time0) / 1000.0,
             % Avoid cluttering the screen with short running times.
             ( if DiffSecs >= 0.5 then
-                io.write_string("Making ", !IO),
-                make_write_target_file(Globals, TargetFile, !IO),
-                io.format(" took %.2fs\n", [f(DiffSecs)], !IO)
+                % XXX MAKE_FILENAME The code above should be able to give us
+                % TargetFileName.
+                get_make_target_file_name(Globals, TargetFile,
+                    TargetFileName, !IO),
+                io.format("Making %s took %.2fs\n",
+                    [s(TargetFileName), f(DiffSecs)], !IO)
             else
                 true
             )
