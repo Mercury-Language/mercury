@@ -783,8 +783,7 @@
     % Non-deterministically return S1 and S2, where S1 ++ S2 = S3.
     % S3 is split after each code point or code unit in an ill-formed sequence.
     %
-:- pred nondet_append(string, string, string).
-:- mode nondet_append(out, out, in) is multi.
+:- pred nondet_append(string::out, string::out, string::in) is multi.
 
     % S1 ++ S2 = S :- append(S1, S2, S).
     %
@@ -1061,14 +1060,12 @@
     % prefix(String, Prefix) is true iff Prefix is a prefix of String.
     % Same as append(Prefix, _, String).
     %
-:- pred prefix(string, string).
-:- mode prefix(in, in) is semidet.
+:- pred prefix(string::in, string::in) is semidet.
 
     % suffix(String, Suffix) is true iff Suffix is a suffix of String.
     % Same as append(_, Suffix, String).
     %
-:- pred suffix(string, string).
-:- mode suffix(in, in) is semidet.
+:- pred suffix(string::in, string::in) is semidet.
 
     % remove_prefix(Prefix, String, Suffix):
     %
@@ -1416,17 +1413,34 @@
     % format_table(Columns, Separator) = Table:
     %
     % This function takes a list of columns and a column separator,
-    % and returns a formatted table, where each field in each column
-    % has been aligned and fields are separated with Separator.
-    % There will be a newline character between each pair of rows.
-    % Throws an exception if the columns are not all the same length.
-    % Lengths are currently measured in terms of code points.
+    % and returns a formatted table, where
     %
-    % For example:
+    % - the N'th line contains the N'th string in each column;
+    % - that string will be padded to the width of the widest string
+    %   in that column;
+    % - each field will be left justfied within that width if the column
+    %   has a "left()" wrapper, and right justified if it has a "right()"
+    %   wrapper;
+    % - the fields on each line are separated with Separator;
+    % - successive lines are separated by newlines.
+    %
+    % There won't be a newline at the end of Table, to allow callers to decide
+    % whether they want to add one or nore.
+    %
+    % This predicate considers the length of a string to be the number of
+    % code points in the string. Note that this is only an approximation:
+    % it will be unaccurate in the presence of e.g. combining characters.
+    %
+    % This predicate requires all the columns to contain the same number
+    % of strings, and throws an exception if this is not the case.
+    %
+    % An example:
     %
     % format_table([right(["a", "bb", "ccc"]), left(["1", "22", "333"])],
     %   " * ")
+    %
     % would return the table:
+    %
     %   a * 1
     %  bb * 22
     % ccc * 333
@@ -1435,6 +1449,15 @@
 
     % format_table_max(Columns, Separator) does the same job as format_table,
     % but allows the caller to associate a maximum width with each column.
+    % If some column had strings of e.g. lengths 18, 20, 35 and 45, then
+    % format_table would format that column as being 45 character wide
+    % in all rows, but if a call to format_table_max specified 30 as the
+    % max width of that column, then format_table_max would format that column
+    % as being 30 character wide in the first two rows, and would widen the
+    % column only when the value does not fit in the maximum, and in each case,
+    % it would widen the column only as much as necessary. In this example,
+    % the column would be 35 and 45 characters wide respectively in the
+    % last two rows.
     %
 :- func format_table_max(assoc_list(justified_column, maybe(int)), string)
     = string.
@@ -1805,6 +1828,7 @@
 :- include_module to_string.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module pair.
 :- import_module require.
@@ -5246,129 +5270,127 @@ foldr_between_2(Pred, String, Start, I, !Acc) :-
 %
 
 format_table(Columns, Separator) = Table :-
-    MaxWidths = list.map(find_max_length, Columns),
-    % Maybe the code below should be replaced by the code of format_table_max,
-    % with all maybe widths set to "no". They do the same job; the code of
-    % format_table_max just does it more directly, without the excessive use
-    % of higher order calls.
-    PaddedColumns = list.map_corresponding(pad_column, MaxWidths, Columns),
-    (
-        PaddedColumns = [PaddedHead | PaddedTail],
-        Rows = list.foldl(list.map_corresponding(
-            join_rev_columns(Separator)), PaddedTail, PaddedHead)
-    ;
-        PaddedColumns = [],
-        Rows = []
-    ),
-    Table = join_list("\n", Rows).
-
-format_table_max(ColumnsLimits, Separator) = Table :-
-    MaxWidthsSenses = list.map(find_max_length_with_limit, ColumnsLimits),
-    Columns = list.map(project_column_strings, ColumnsLimits),
-    SepLen = count_code_points(Separator),
-    generate_rows(MaxWidthsSenses, Separator, SepLen, Columns, [], RevRows),
-    list.reverse(RevRows, Rows),
-    Table = join_list("\n", Rows).
-
-:- func project_column_strings(pair(justified_column, maybe(int)))
-    = list(string).
-
-project_column_strings(left(Strings) - _) = Strings.
-project_column_strings(right(Strings) - _) = Strings.
-
-:- pred generate_rows(assoc_list(justify_sense, int)::in, string::in, int::in,
-    list(list(string))::in, list(string)::in, list(string)::out) is det.
-
-generate_rows(MaxWidthsSenses, Separator, SepLen, Columns0, !RevRows) :-
-    ( if all_empty(Columns0) then
-        true
+    list.map3(find_max_width, Columns, SWs, Counts, ColumnStrs),
+    ( if
+        Counts = [HeadCount | TailCounts],
+        column_counts_match(HeadCount, TailCounts)
+    then
+        SepLen = count_code_points(Separator),
+        generate_rows(Separator, SepLen, SWs, ColumnStrs, cord.init, RowCord),
+        Rows = cord.list(RowCord),
+        Table = string.join_list("\n", Rows)
     else
-        get_next_line(Columns0, Line, Columns),
-        pad_row(MaxWidthsSenses, Line, Separator, SepLen, 0, Row),
-        !:RevRows = [Row | !.RevRows],
-        generate_rows(MaxWidthsSenses, Separator, SepLen, Columns, !RevRows)
+        (
+            Counts = [],
+            unexpected($pred, "no columns")
+        ;
+            Counts = [_ | _],
+            unexpected($pred, "different columns have different lengths")
+        )
     ).
 
-:- pred all_empty(list(list(string))::in) is semidet.
+format_table_max(ColumnsLimits, Separator) = Table :-
+    list.map3(find_max_width_with_limit, ColumnsLimits,
+        SWs, Counts, ColumnStrs),
+    ( if
+        Counts = [HeadCount | TailCounts],
+        column_counts_match(HeadCount, TailCounts)
+    then
+        SepLen = count_code_points(Separator),
+        generate_rows(Separator, SepLen, SWs, ColumnStrs, cord.init, RowCord),
+        Rows = cord.list(RowCord),
+        Table = string.join_list("\n", Rows)
+    else
+        (
+            Counts = [],
+            unexpected($pred, "no columns")
+        ;
+            Counts = [_ | _],
+            unexpected($pred, "different columns have different lengths")
+        )
+    ).
 
-all_empty([]).
-all_empty([List | Lists]) :-
-    List = [],
-    all_empty(Lists).
+:- pred column_counts_match(int::in, list(int)::in) is semidet.
+
+column_counts_match(_HeadCount, []).
+column_counts_match(HeadCount, [HeadTailCount | TailTailCounts]) :-
+    HeadCount = HeadTailCount,
+    column_counts_match(HeadCount, TailTailCounts).
+
+:- pred generate_rows(string::in, int::in,
+    list(sense_width)::in, list(list(string))::in,
+    cord(string)::in, cord(string)::out) is det.
+
+generate_rows(Separator, SepLen, SWs, Columns0, !RowCord) :-
+    ( if get_next_line(Columns0, Line, Columns) then
+        pad_row(SWs, Line, Separator, SepLen, 0, Row),
+        cord.snoc(Row, !RowCord),
+        generate_rows(Separator, SepLen, SWs, Columns, !RowCord)
+    else
+        true
+    ).
 
 :- pred get_next_line(list(list(string))::in,
-    list(string)::out, list(list(string))::out) is det.
+    list(string)::out, list(list(string))::out) is semidet.
 
 get_next_line([], [], []).
 get_next_line([Column | Columns], [ColumnTop | ColumnTops],
         [ColumnRest | ColumnRests]) :-
-    (
-        Column = [],
-        error($pred, "list length mismatch")
-    ;
-        Column = [ColumnTop | ColumnRest]
-    ),
+    Column = [ColumnTop | ColumnRest],
     get_next_line(Columns, ColumnTops, ColumnRests).
 
-:- pred pad_row(assoc_list(justify_sense, int)::in, list(string)::in,
+:- pred pad_row(list(sense_width)::in, list(string)::in,
     string::in, int::in, int::in, string::out) is det.
 
 pad_row([], [], _, _, _, "").
-pad_row([Justify - MaxWidth | JustifyWidths], [ColumnStr0 | ColumnStrs0],
-        Separator, SepLen, CurColumn, Line) :-
-    NextColumn = CurColumn + MaxWidth + SepLen,
-    pad_row(JustifyWidths, ColumnStrs0, Separator, SepLen, NextColumn,
-        LineRest),
-    ( if count_code_points(ColumnStr0) =< MaxWidth then
-        (
-            Justify = just_left,
-            ColumnStr = pad_right(ColumnStr0, ' ', MaxWidth)
-        ;
-            Justify = just_right,
-            ColumnStr = pad_left(ColumnStr0, ' ', MaxWidth)
-        ),
-        (
-            JustifyWidths = [],
-            Line = ColumnStr
-        ;
-            JustifyWidths = [_ | _],
-            Line = ColumnStr ++ Separator ++ LineRest
-        )
-    else
-        (
-            JustifyWidths = [],
-            Line = ColumnStr0
-        ;
-            JustifyWidths = [_ | _],
-            Line = ColumnStr0 ++ Separator ++ "\n" ++
-                duplicate_char(' ', NextColumn) ++ LineRest
-        )
-    ).
 pad_row([], [_ | _], _, _, _, _) :-
     error($pred, "list length mismatch").
 pad_row([_ | _], [], _, _, _, _) :-
     error($pred, "list length mismatch").
-
-:- func join_rev_columns(string, string, string) = string.
-
-join_rev_columns(Separator, Col1, Col2) = Col2 ++ Separator ++ Col1.
-
-:- func find_max_length(justified_column) = int.
-
-find_max_length(JustColumn) = MaxLength :-
-    ( JustColumn = left(Strings)
-    ; JustColumn = right(Strings)
+pad_row([SenseWidth | SenseWidths], [ColumnStr0 | ColumnStrs0],
+        Separator, SepLen, CurColumn, Line) :-
+    SenseWidth = sense_width(JustifySense, ColumnWidth),
+    NextColumn = CurColumn + ColumnWidth + SepLen,
+    ( if count_code_points(ColumnStr0) =< ColumnWidth then
+        (
+            JustifySense = just_left,
+            ColumnStr = pad_right(ColumnStr0, ' ', ColumnWidth)
+        ;
+            JustifySense = just_right,
+            ColumnStr = pad_left(ColumnStr0, ' ', ColumnWidth)
+        )
+    else
+        % This is wider the "max width" of this column, but, as per
+        % the discussion on m-rev on 2023 May 22, splitting up ColumnStr0
+        % at ColumnWidth would be a bad idea, because there is a nontrivial
+        % chance that the cut would come between two combining Unicode
+        % characters.
+        %
+        % As it its, leaving ColumnStr0 uncut makes this cell in the table
+        % bulge out to the right.
+        ColumnStr = ColumnStr0
     ),
-    list.foldl(max_str_length, Strings, 0, MaxLength).
+    (
+        SenseWidths = [],
+        Line = ColumnStr
+    ;
+        SenseWidths = [_ | _],
+        pad_row(SenseWidths, ColumnStrs0, Separator, SepLen, NextColumn,
+            LineRest),
+        Line = ColumnStr ++ Separator ++ LineRest
+    ).
 
 :- type justify_sense
     --->    just_left
     ;       just_right.
 
-:- func find_max_length_with_limit(pair(justified_column, maybe(int)))
-    = pair(justify_sense, int).
+:- type sense_width
+    --->    sense_width(justify_sense, int).
 
-find_max_length_with_limit(JustColumn - MaybeLimit) = Sense - MaxLength :-
+:- pred find_max_width(justified_column::in,
+    sense_width::out, int::out, list(string)::out) is det.
+
+find_max_width(JustColumn, SW, Count, Strings) :-
     (
         JustColumn = left(Strings),
         Sense = just_left
@@ -5376,37 +5398,41 @@ find_max_length_with_limit(JustColumn - MaybeLimit) = Sense - MaxLength :-
         JustColumn = right(Strings),
         Sense = just_right
     ),
-    list.foldl(max_str_length, Strings, 0, MaxLength0),
+    list.foldl2(count_and_find_max_str_length, Strings,
+        0, Count, 0, MaxWidth),
+    SW = sense_width(Sense, MaxWidth).
+
+:- pred find_max_width_with_limit(pair(justified_column, maybe(int))::in,
+    sense_width::out, int::out, list(string)::out) is det.
+
+find_max_width_with_limit(JustColumn - MaybeLimit, SW, Count, Strings) :-
+    (
+        JustColumn = left(Strings),
+        Sense = just_left
+    ;
+        JustColumn = right(Strings),
+        Sense = just_right
+    ),
+    list.foldl2(count_and_find_max_str_length, Strings,
+        0, Count, 0, MaxWidth0),
     (
         MaybeLimit = yes(Limit),
-        ( if MaxLength0 > Limit then
-            MaxLength = Limit
+        ( if MaxWidth0 > Limit then
+            MaxWidth = Limit
         else
-            MaxLength = MaxLength0
+            MaxWidth = MaxWidth0
         )
     ;
         MaybeLimit = no,
-        MaxLength = MaxLength0
-    ).
+        MaxWidth = MaxWidth0
+    ),
+    SW = sense_width(Sense, MaxWidth).
 
-:- func pad_column(int, justified_column) = list(string).
+:- pred count_and_find_max_str_length(string::in,
+    int::in, int::out, int::in, int::out) is det.
 
-pad_column(Width, left(Strings)) =
-    list.map(rpad(' ', Width), Strings).
-pad_column(Width, right(Strings)) =
-    list.map(lpad(' ', Width), Strings).
-
-:- func rpad(char, int, string) = string.
-
-rpad(Chr, N, Str) = pad_right(Str, Chr, N).
-
-:- func lpad(char, int, string) = string.
-
-lpad(Chr, N, Str) = pad_left(Str, Chr, N).
-
-:- pred max_str_length(string::in, int::in, int::out) is det.
-
-max_str_length(Str, PrevMaxLen, MaxLen) :-
+count_and_find_max_str_length(Str, Count0, Count, PrevMaxLen, MaxLen) :-
+    Count = Count0 + 1,
     Length = count_code_points(Str),
     ( if Length > PrevMaxLen then
         MaxLen = Length

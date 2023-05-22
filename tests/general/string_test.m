@@ -12,6 +12,8 @@
 :- implementation.
 
 :- import_module list.
+:- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module string.
 
@@ -74,6 +76,15 @@ test(X, Y, !IO) :-
         right(["1,300,000.00", "9,999.00", "123,456,789.99"])
     ], "|"),
     io.write_string(Table, !IO),
+    io.nl(!IO),
+    TableMax = string.format_table_max([
+        left(["aaa", "b", "cc"]) - no,
+        left(["áaȧ", "б", "цц"]) - no,
+        right(["1111111", "", "333"]) - yes(5),
+        right(["¹½⅓¼⅕⅙⅛", "", "¾⅘⅚"]) - yes(5),
+        right(["1,300,000.00", "9,999.00", "123,456,789.99"]) - yes(7)
+    ], "|"),
+    io.write_string(TableMax, !IO),
     io.nl(!IO),
     Wrapped = string.word_wrap("*aaaaaaaaaaaaaaaaaaaa*  bbbbb bbb  b\t"
         ++ " ccccc c c c   cccc c c c c ccccc ccc cccc c  ccc ccc ccc "
