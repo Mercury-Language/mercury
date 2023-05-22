@@ -401,24 +401,6 @@
     %
 :- func get_maybe_from_ground_term_threshold = maybe(int).
 
-:- type maybe_extra_error_info
-    --->    no_extra_error_info
-    ;       some_extra_error_info.
-
-:- pred io_get_extra_error_info(maybe_extra_error_info::out,
-    io::di, io::uo) is det.
-:- pred io_set_extra_error_info(maybe_extra_error_info::in,
-    io::di, io::uo) is det.
-
-:- type context_limited_errors
-    --->    no_errors_were_context_limited
-    ;       some_errors_were_context_limited.
-
-:- pred io_get_some_errors_were_context_limited(context_limited_errors::out,
-    io::di, io::uo) is det.
-:- pred io_set_some_errors_were_context_limited(context_limited_errors::in,
-    io::di, io::uo) is det.
-
 :- type maybe_smart_recompilation
     --->    do_not_disable_smart_recompilation
     ;       disable_smart_recompilation.
@@ -1053,20 +1035,6 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
 :- mutable(maybe_from_ground_term_threshold, maybe(int), no, ground,
     [untrailed, attach_to_io_state]).
 
-    % Is there extra information about errors available that could be printed
-    % out if `-E' were enabled?
-    %
-:- mutable(extra_error_info,
-    maybe_extra_error_info, no_extra_error_info, ground,
-    [untrailed, attach_to_io_state]).
-
-    % Is there extra information about errors available that could be printed
-    % if the values of --limit-error-contexts options allowed it?
-    %
-:- mutable(some_errors_were_context_limited,
-    context_limited_errors, no_errors_were_context_limited, ground,
-    [untrailed, attach_to_io_state]).
-
 :- mutable(disable_smart_recompilation,
     maybe_smart_recompilation, do_not_disable_smart_recompilation, ground,
     [untrailed, attach_to_io_state]).
@@ -1089,18 +1057,6 @@ get_maybe_from_ground_term_threshold = MaybeThreshold :-
     promise_pure (
         semipure get_maybe_from_ground_term_threshold(MaybeThreshold)
     ).
-
-io_get_extra_error_info(ExtraErrorInfo, !IO) :-
-    get_extra_error_info(ExtraErrorInfo, !IO).
-
-io_set_extra_error_info(ExtraErrorInfo, !IO) :-
-    set_extra_error_info(ExtraErrorInfo, !IO).
-
-io_get_some_errors_were_context_limited(SomeErrorsWereContextLimited, !IO) :-
-    get_some_errors_were_context_limited(SomeErrorsWereContextLimited, !IO).
-
-io_set_some_errors_were_context_limited(SomeErrorsWereContextLimited, !IO) :-
-    set_some_errors_were_context_limited(SomeErrorsWereContextLimited, !IO).
 
 io_get_disable_smart_recompilation(DisableSmartRecomp, !IO) :-
     get_disable_smart_recompilation(DisableSmartRecomp, !IO).

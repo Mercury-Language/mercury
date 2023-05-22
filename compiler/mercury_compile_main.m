@@ -873,47 +873,6 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
         Statistics = no
     ).
 
-:- pred maybe_print_delayed_error_messages(io.text_output_stream::in,
-    globals::in, io::di, io::uo) is det.
-
-maybe_print_delayed_error_messages(ErrorStream, Globals, !IO) :-
-    % Pick up the values of these flags, and then reset them
-    % for the next module.
-    globals.io_get_some_errors_were_context_limited(Limited, !IO),
-    globals.io_set_some_errors_were_context_limited(
-        no_errors_were_context_limited, !IO),
-    globals.io_get_extra_error_info(ExtraErrorInfo, !IO),
-    globals.io_set_extra_error_info(no_extra_error_info, !IO),
-
-    % If we suppressed the printing of some errors, then tell the user
-    % about this fact, because the absence of any errors being printed
-    % during a failing compilation would otherwise be likely to be baffling.
-    (
-        Limited = no_errors_were_context_limited
-    ;
-        Limited = some_errors_were_context_limited,
-        io.write_string(ErrorStream, "Some error messages were suppressed " ++
-            "by `--limit-error-contexts' options.\n", !IO),
-        io.write_string(ErrorStream, "You can see the suppressed messages " ++
-            "if you recompile without these options.\n", !IO)
-    ),
-
-    % If we found some errors with verbose-only components, but the user
-    % did not enable the `-E' (`--verbose-errors') option, tell them about it.
-    (
-        ExtraErrorInfo = no_extra_error_info
-    ;
-        ExtraErrorInfo = some_extra_error_info,
-        globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
-        (
-            VerboseErrors = no,
-            io.write_string(ErrorStream,
-                "For more information, recompile with `-E'.\n", !IO)
-        ;
-            VerboseErrors = yes
-        )
-    ).
-
 %---------------------------------------------------------------------------%
 
 :- pred setup_and_process_compiler_stdin_args(io.text_output_stream::in,

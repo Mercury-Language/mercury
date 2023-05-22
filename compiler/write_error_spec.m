@@ -137,6 +137,16 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+    % If we withheld some error information from the user (at the users'
+    % own request, of course), then print a reminder of that fact,
+    % to avoid violating the law of least astonishment.
+    %
+:- pred maybe_print_delayed_error_messages(io.text_output_stream::in,
+    globals::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module libs.compiler_util.
@@ -401,7 +411,7 @@ write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
             )
         ;
             VerboseErrors = no,
-            globals.io_set_extra_error_info(some_extra_error_info, !IO)
+            set_extra_error_info(some_extra_error_info, !IO)
         )
     ;
         Component = verbose_and_nonverbose(VerbosePieces, NonVerbosePieces),
@@ -414,7 +424,7 @@ write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
             VerboseErrors = no,
             do_write_error_pieces(Stream, Globals, MaybeContext, !.First,
                 Indent, NonVerbosePieces, !IO),
-            globals.io_set_extra_error_info(some_extra_error_info, !IO)
+            set_extra_error_info(some_extra_error_info, !IO)
         ),
         !:First = do_not_treat_as_first,
         !:PrintedSome = printed_something
@@ -484,7 +494,7 @@ do_write_error_pieces(Stream, Globals, MaybeContext, TreatAsFirst, FixedIndent,
                 line_number_is_in_a_range(LineNumberRanges, LineNumber) = no
             )
         then
-            io_set_some_errors_were_context_limited(
+            set_some_errors_were_context_limited(
                 some_errors_were_context_limited, !IO),
             MaybeContextStr = no
         else
@@ -1747,6 +1757,69 @@ report_warning(Globals, Context, Indent, Pieces, !IO) :-
 report_warning(Stream, Globals, Context, Indent, Pieces, !IO) :-
     record_warning(Globals, !IO),
     write_error_pieces(Stream, Globals, Context, Indent, Pieces, !IO).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- type maybe_extra_error_info
+    --->    no_extra_error_info
+    ;       some_extra_error_info.
+
+:- type context_limited_errors
+    --->    no_errors_were_context_limited
+    ;       some_errors_were_context_limited.
+
+    % Is there extra information about errors available that could be printed
+    % out if `-E' were enabled?
+    %
+:- mutable(extra_error_info,
+    maybe_extra_error_info, no_extra_error_info, ground,
+    [untrailed, attach_to_io_state]).
+
+    % Is there extra information about errors available that could be printed
+    % if the values of --limit-error-contexts options allowed it?
+    %
+:- mutable(some_errors_were_context_limited,
+    context_limited_errors, no_errors_were_context_limited, ground,
+    [untrailed, attach_to_io_state]).
+
+maybe_print_delayed_error_messages(ErrorStream, Globals, !IO) :-
+    % Pick up the values of these flags, and then reset them
+    % for the next module.
+    get_some_errors_were_context_limited(Limited, !IO),
+    set_some_errors_were_context_limited(no_errors_were_context_limited, !IO),
+    get_extra_error_info(ExtraErrorInfo, !IO),
+    set_extra_error_info(no_extra_error_info, !IO),
+
+    % If we suppressed the printing of some errors, then tell the user
+    % about this fact, because the absence of any errors being printed
+    % during a failing compilation would otherwise be baffling.
+    (
+        Limited = no_errors_were_context_limited
+    ;
+        Limited = some_errors_were_context_limited,
+        io.write_string(ErrorStream, "Some error messages were suppressed " ++
+            "by `--limit-error-contexts' options.\n", !IO),
+        io.write_string(ErrorStream, "You can see the suppressed messages " ++
+            "if you recompile without these options.\n", !IO)
+    ),
+
+    % If we found some errors with verbose-only components, but the user
+    % did not enable the `-E' (`--verbose-errors') option, tell them about it.
+    (
+        ExtraErrorInfo = no_extra_error_info
+    ;
+        ExtraErrorInfo = some_extra_error_info,
+        globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
+        (
+            VerboseErrors = no,
+            io.write_string(ErrorStream,
+                "For more information, recompile with `-E'.\n", !IO)
+        ;
+            VerboseErrors = yes
+            % We have already printed the verbose parts of error messages.
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.write_error_spec.
