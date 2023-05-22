@@ -2168,7 +2168,7 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
 
     list.foldl2(remove_fact_table_c_file(Globals), FactTableFiles, !Info, !IO),
 
-    CCodeModule = foreign_language_module_name(ModuleName, lang_c),
+    foreign_language_module_name(ModuleName, lang_c, CCodeModule),
     make_remove_target_file_by_name(Globals, very_verbose, CCodeModule,
         module_target_c_code, !Info, !IO),
 

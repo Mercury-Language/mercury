@@ -114,18 +114,22 @@
     % Sub-type of foreign_language for languages for which
     % we generate external files for foreign code.
     %
-:- inst lang_gen_ext_file for globals.foreign_language/0
-    --->    lang_c
-    ;       lang_csharp.
+    % Not currently used.
+% :- inst lang_gen_ext_file for globals.foreign_language/0
+%     --->    lang_c
+%     ;       lang_csharp.
 
     % The module name used for this foreign language.
     % Not all foreign languages generate external modules,
     % so this function only succeeds for those that do.
     %
-:- func foreign_language_module_name(module_name, foreign_language) =
-    module_name.
-:- mode foreign_language_module_name(in, in(lang_gen_ext_file)) = out is det.
-:- mode foreign_language_module_name(in, in) = out is semidet.
+    % XXX That is not true. It succeeds for all our current foreign languages,
+    % and our callers expect it to do so.
+    %
+:- pred foreign_language_module_name(module_name, foreign_language,
+    module_name).
+% :- mode foreign_language_module_name(in, in(lang_gen_ext_file), out) is det.
+:- mode foreign_language_module_name(in, in, out) is det.
 
     % The file extension used for this foreign language (including the dot).
     % Not all foreign languages generate external files,
@@ -134,9 +138,9 @@
     % XXX Actually, all the foreign languages we handle *now* *do*
     % generate external files. (The exception used to be Erlang.)
     %
-:- func foreign_language_file_extension(foreign_language) = other_ext.
-:- mode foreign_language_file_extension(in) = out is semidet.
-:- mode foreign_language_file_extension(in(lang_gen_ext_file)) = out is det.
+:- pred foreign_language_file_extension(foreign_language, other_ext).
+% :- mode foreign_language_file_extension(in(lang_gen_ext_file), out) is det.
+:- mode foreign_language_file_extension(in, out) is det.
 
     % It is possible that more than one foreign language could be used to
     % implement a particular piece of code. Therefore, foreign languages
@@ -243,7 +247,7 @@ fim_spec_module_name(FIMSpec) = ModuleName :-
         ModuleName = ForeignImportModule
     ;
         Lang = lang_csharp,
-        ModuleName = foreign_language_module_name(ForeignImportModule, Lang)
+        foreign_language_module_name(ForeignImportModule, Lang, ModuleName)
     ).
 
 fim_spec_module_name_from_module(ModuleFIMSpec, CurrentModule) =
@@ -282,9 +286,9 @@ handle_std_library(CurrentModule, ModuleName0) = ModuleName :-
 
 %-----------------------------------------------------------------------------%
 
-foreign_language_module_name(ModuleName, Lang) = FullyQualifiedModuleName :-
+foreign_language_module_name(ModuleName, Lang, FullyQualifiedModuleName) :-
     % Only succeed if this language generates external files.
-    _ = foreign_language_file_extension(Lang),
+    foreign_language_file_extension(Lang, _),
 
     Ending = "__" ++ simple_foreign_language_string(Lang) ++ "_code",
     (
@@ -297,11 +301,11 @@ foreign_language_module_name(ModuleName, Lang) = FullyQualifiedModuleName :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma no_determinism_warning(func(foreign_language_file_extension/1)).
+:- pragma no_determinism_warning(pred(foreign_language_file_extension/2)).
 
-foreign_language_file_extension(lang_c) = other_ext(".c").
-foreign_language_file_extension(lang_csharp) = other_ext(".cs").
-foreign_language_file_extension(lang_java) = other_ext(".java").
+foreign_language_file_extension(lang_c,      other_ext(".c")).
+foreign_language_file_extension(lang_csharp, other_ext(".cs")).
+foreign_language_file_extension(lang_java,   other_ext(".java")).
 
 %-----------------------------------------------------------------------------%
 

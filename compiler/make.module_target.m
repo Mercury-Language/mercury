@@ -669,15 +669,8 @@ do_task_in_separate_process(task_make_xml_doc) = yes.
     foreign_language::in, foreign_code_file::out, io::di, io::uo) is det.
 
 get_foreign_code_file(Globals, ModuleName, PIC, Lang, ForeignCodeFile, !IO) :-
-    ( if
-        ForeignModName0 = foreign_language_module_name(ModuleName, Lang),
-        SrcExt0 = foreign_language_file_extension(Lang)
-    then
-        ForeignModName = ForeignModName0,
-        SrcExt = SrcExt0
-    else
-        unexpected($pred, "unsupported foreign language")
-    ),
+    foreign_language_module_name(ModuleName, Lang, ForeignModName),
+    foreign_language_file_extension(Lang, SrcExt),
     ObjOtherExt = get_object_extension(Globals, PIC),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(SrcExt), ForeignModName, SrcFileName, !IO),

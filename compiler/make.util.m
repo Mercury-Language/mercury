@@ -775,16 +775,10 @@ module_target_to_file_name_maybe_search(Globals, Search, MkDir, TargetType,
     else
         (
             TargetType = module_target_foreign_object(PIC, Lang),
-            ( if
-                ForeignModuleName =
-                    foreign_language_module_name(ModuleName, Lang)
-            then
-                module_target_to_file_name_maybe_search(Globals,
-                    Search, MkDir, module_target_object_code(PIC),
-                    ForeignModuleName, FileName, !IO)
-            else
-                unexpected($pred, "object test failed")
-            )
+            foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
+            module_target_to_file_name_maybe_search(Globals,
+                Search, MkDir, module_target_object_code(PIC),
+                ForeignModuleName, FileName, !IO)
         ;
             TargetType = module_target_fact_table_object(PIC, FactFile),
             pic_object_file_extension(Globals, PIC, OtherExt),
