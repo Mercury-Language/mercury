@@ -751,6 +751,16 @@ Changes to the Mercury standard library
     - pred `split_by_codepoint/3`    (replacement: `split_by_code_point`/3)
     - pred `split_by_codepoint/4`    (replacement: `split_by_code_point'/4`)
 
+* The semantics of the `format_table_max` function has been changed.
+  Previously, the function's documentation was silent on how the returned
+  string would be constructed if some columns contained strings that exceeded
+  that column's maximum width. What it actually did was to split the line
+  at the end of the too-long columns, continuing the row in the next line
+  at the expected initial column. Since splitting the line is probably not
+  what users of this function except, we have now changed this function
+  to never break a row into more than one line. We have also documented
+  this behavior.
+
 ### Changes to the `term` module
 
 * The following type has had its typeclass memberships changed:
