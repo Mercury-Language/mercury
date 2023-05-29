@@ -757,7 +757,7 @@ Changes to the Mercury standard library
   that column's maximum width. What it actually did was to split the line
   at the end of the too-long columns, continuing the row in the next line
   at the expected initial column. Since splitting the line is probably not
-  what users of this function except, we have now changed this function
+  what users of this function expect, we have now changed this function
   to never break a row into more than one line. We have also documented
   this behavior.
 

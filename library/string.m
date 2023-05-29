@@ -1425,7 +1425,7 @@
     % - successive lines are separated by newlines.
     %
     % There won't be a newline at the end of Table, to allow callers to decide
-    % whether they want to add one or nore.
+    % whether they want to add one or not.
     %
     % This predicate considers the length of a string to be the number of
     % code points in the string. Note that this is only an approximation:
