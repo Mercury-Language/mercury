@@ -7900,6 +7900,11 @@ May be given more than once.
 Dump at most @var{N} insts in each inst table.
 
 @sp 1
+@item --dump-hlds-inst-size-limit @var{N}
+@findex --dump-hlds-inst-size-limit
+Dump insts in an inst table only if their size does not exceed @var{N}.
+
+@sp 1
 @item --dump-hlds-file-suffix
 @findex --dump-hlds-file-suffix
 Append the given suffix to the names of the files created by the

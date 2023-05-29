@@ -16,7 +16,7 @@
 :- import_module io.
 
 :- pred write_inst_table(io.text_output_stream::in, output_lang::in,
-    int::in, inst_table::in, io::di, io::uo) is det.
+    int::in, int::in, inst_table::in, io::di, io::uo) is det.
 
 :- pred write_mode_table(io.text_output_stream::in, mode_table::in,
     io::di, io::uo) is det.
@@ -45,7 +45,7 @@
 
 %---------------------------------------------------------------------------%
 
-write_inst_table(Stream, Lang, Limit, InstTable, !IO) :-
+write_inst_table(Stream, Lang, InstNumLimit, InstSizeLimit, InstTable, !IO) :-
     io.write_string(Stream, "%-------- Insts --------\n", !IO),
 
     inst_table_get_user_insts(InstTable, UserInstTable),
@@ -70,42 +70,48 @@ write_inst_table(Stream, Lang, Limit, InstTable, !IO) :-
 
     io.write_string(Stream, "%-------- Unify insts --------\n", !IO),
     list.foldl2(
-        write_key_maybe_inst_det(Stream, Lang, Limit, write_key_unify_inst),
+        write_key_maybe_inst_det(Stream, Lang, InstNumLimit, InstSizeLimit,
+            write_key_unify_inst),
         UnifyInstPairs, 0, NumUnifyInsts, !IO),
     io.format(Stream,
         "\nTotal number of unify insts: %d\n", [i(NumUnifyInsts)], !IO),
 
     io.write_string(Stream, "%-------- Merge insts --------\n", !IO),
     list.foldl2(
-        write_key_maybe_inst(Stream, Lang, Limit, write_key_merge_inst),
+        write_key_maybe_inst(Stream, Lang, InstNumLimit, InstSizeLimit,
+            write_key_merge_inst),
         MergeInstPairs, 0, NumMergeInsts, !IO),
     io.format(Stream,
         "\nTotal number of merge insts: %d\n", [i(NumMergeInsts)], !IO),
 
     io.write_string(Stream, "%-------- Ground insts --------\n", !IO),
     list.foldl2(
-        write_key_maybe_inst_det(Stream, Lang, Limit, write_key_ground_inst),
+        write_key_maybe_inst_det(Stream, Lang, InstNumLimit, InstSizeLimit,
+            write_key_ground_inst),
         GroundInstPairs, 0, NumGroundInsts, !IO),
     io.format(Stream, "\nTotal number of ground insts: %d\n",
         [i(NumGroundInsts)], !IO),
 
     io.write_string(Stream, "%-------- Any insts --------\n", !IO),
     list.foldl2(
-        write_key_maybe_inst_det(Stream, Lang, Limit, write_key_any_inst),
+        write_key_maybe_inst_det(Stream, Lang, InstNumLimit, InstSizeLimit,
+            write_key_any_inst),
         AnyInstPairs, 0, NumAnyInsts, !IO),
     io.format(Stream,
         "\nTotal number of any insts: %d\n", [i(NumAnyInsts)], !IO),
 
     io.write_string(Stream, "%-------- Shared insts --------\n", !IO),
     list.foldl2(
-        write_key_maybe_inst(Stream, Lang, Limit, write_inst_name_nl),
+        write_key_maybe_inst(Stream, Lang, InstNumLimit, InstSizeLimit,
+            write_inst_name_nl),
         SharedInstPairs, 0, NumSharedInsts, !IO),
     io.format(Stream, "\nTotal number of shared insts: %d\n",
         [i(NumSharedInsts)], !IO),
 
     io.write_string(Stream, "%-------- MostlyUniq insts --------\n", !IO),
     list.foldl2(
-        write_key_maybe_inst(Stream, Lang, Limit, write_inst_name_nl),
+        write_key_maybe_inst(Stream, Lang, InstNumLimit, InstSizeLimit,
+            write_inst_name_nl),
         MostlyUniqInstPairs, 0, NumMostlyUniqInsts, !IO),
     io.format(Stream, "\nTotal number of mostly uniq insts: %d\n",
         [i(NumMostlyUniqInsts)], !IO),
@@ -151,24 +157,24 @@ write_inst_params(Stream, InstVar, InstVars, InstVarSet, !IO) :-
     ).
 
 :- pred write_key_maybe_inst(io.text_output_stream::in, output_lang::in,
-    int::in,
-    pred(output_lang, Key, io.text_output_stream, io, io)::
-        in(pred(in, in, in, di, uo) is det),
+    int::in, int::in,
+    pred(io.text_output_stream, output_lang, int, Key, io, io)::
+        in(pred(in, in, in, in, di, uo) is det),
     pair(Key, maybe_inst)::in, int::in, int::out, io::di, io::uo) is det.
 
-write_key_maybe_inst(Stream, Lang, Limit, WriteKey, Key - MaybeInst,
-        !N, !IO) :-
+write_key_maybe_inst(Stream, Lang, InstNumLimit, InstSizeLimit,
+        WriteKey, Key - MaybeInst, !N, !IO) :-
     !:N = !.N + 1,
-    ( if !.N =< Limit then
+    ( if !.N =< InstNumLimit then
         io.format(Stream, "\nEntry %d key\n", [i(!.N)], !IO),
-        WriteKey(Lang, Key, Stream, !IO),
+        WriteKey(Stream, Lang, InstSizeLimit, Key, !IO),
         (
             MaybeInst = inst_unknown,
             io.format(Stream, "Entry %d value UNKNOWN\n", [i(!.N)], !IO)
         ;
             MaybeInst = inst_known(Inst),
             io.format(Stream, "Entry %d value:\n", [i(!.N)], !IO),
-            write_inst(Stream, Lang, Inst, !IO),
+            write_inst(Stream, Lang, InstSizeLimit, Inst, !IO),
             io.nl(Stream, !IO)
         )
     else
@@ -176,18 +182,18 @@ write_key_maybe_inst(Stream, Lang, Limit, WriteKey, Key - MaybeInst,
     ).
 
 :- pred write_key_maybe_inst_det(io.text_output_stream::in, output_lang::in,
-    int::in,
-    pred(output_lang, Key, io.text_output_stream, io, io)::
-        in(pred(in, in, in, di, uo) is det),
+    int::in, int::in,
+    pred(io.text_output_stream, output_lang, int, Key, io, io)::
+        in(pred(in, in, in, in, di, uo) is det),
     pair(Key, maybe_inst_det)::in, int::in, int::out,
     io::di, io::uo) is det.
 
-write_key_maybe_inst_det(Stream, Lang, Limit, WriteKey, Key - MaybeInstDet,
-        !N, !IO) :-
+write_key_maybe_inst_det(Stream, Lang, InstNumLimit, InstSizeLimit,
+        WriteKey, Key - MaybeInstDet, !N, !IO) :-
     !:N = !.N + 1,
-    ( if !.N =< Limit then
+    ( if !.N =< InstNumLimit then
         io.format(Stream, "\nEntry %d key\n", [i(!.N)], !IO),
-        WriteKey(Lang, Key, Stream, !IO),
+        WriteKey(Stream, Lang, InstSizeLimit, Key, !IO),
         (
             MaybeInstDet = inst_det_unknown,
             io.format(Stream, "Entry %d value UNKNOWN\n", [i(!.N)], !IO)
@@ -196,17 +202,17 @@ write_key_maybe_inst_det(Stream, Lang, Limit, WriteKey, Key - MaybeInstDet,
             DetismStr = determinism_to_string(Detism),
             io.format(Stream, "Entry %d value (%s):\n",
                 [i(!.N), s(DetismStr)], !IO),
-            write_inst(Stream, Lang, Inst, !IO),
+            write_inst(Stream, Lang, InstSizeLimit, Inst, !IO),
             io.nl(Stream, !IO)
         )
     else
         true
     ).
 
-:- pred write_key_unify_inst(output_lang::in, unify_inst_info::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred write_key_unify_inst(io.text_output_stream::in, output_lang::in,
+    int::in, unify_inst_info::in, io::di, io::uo) is det.
 
-write_key_unify_inst(Lang, UnifyInstInfo, Stream, !IO) :-
+write_key_unify_inst(Stream, Lang, InstSizeLimit, UnifyInstInfo, !IO) :-
     UnifyInstInfo = unify_inst_info(Live, Real, InstA, InstB),
     (
         Live = is_live,
@@ -223,39 +229,39 @@ write_key_unify_inst(Lang, UnifyInstInfo, Stream, !IO) :-
         io.write_string(Stream, "fake unify\n", !IO)
     ),
     io.write_string(Stream, "InstA: ", !IO),
-    write_inst(Stream, Lang, InstA, !IO),
+    write_inst(Stream, Lang, InstSizeLimit, InstA, !IO),
     io.nl(Stream, !IO),
     io.write_string(Stream, "InstB: ", !IO),
-    write_inst(Stream, Lang, InstB, !IO),
+    write_inst(Stream, Lang, InstSizeLimit, InstB, !IO),
     io.nl(Stream, !IO).
 
-:- pred write_key_merge_inst(output_lang::in, merge_inst_info::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred write_key_merge_inst(io.text_output_stream::in, output_lang::in,
+    int::in, merge_inst_info::in, io::di, io::uo) is det.
 
-write_key_merge_inst(Lang, MergeInstInfo, Stream, !IO) :-
+write_key_merge_inst(Stream, Lang, InstSizeLimit, MergeInstInfo, !IO) :-
     MergeInstInfo = merge_inst_info(InstA, InstB),
     io.write_string(Stream, "InstA: ", !IO),
-    write_inst(Stream, Lang, InstA, !IO),
+    write_inst(Stream, Lang, InstSizeLimit, InstA, !IO),
     io.nl(Stream, !IO),
     io.write_string(Stream, "InstB: ", !IO),
-    write_inst(Stream, Lang, InstB, !IO),
+    write_inst(Stream, Lang, InstSizeLimit, InstB, !IO),
     io.nl(Stream, !IO).
 
-:- pred write_key_ground_inst(output_lang::in, ground_inst_info::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred write_key_ground_inst(io.text_output_stream::in, output_lang::in,
+    int::in, ground_inst_info::in, io::di, io::uo) is det.
 
-write_key_ground_inst(Lang, GroundInstInfo, Stream, !IO) :-
+write_key_ground_inst(Stream, Lang, InstSizeLimit, GroundInstInfo, !IO) :-
     GroundInstInfo = ground_inst_info(InstName, Uniq, Live, Real),
     write_uniq_live_real(Stream, Uniq, Live, Real, !IO),
-    write_inst_name_nl(Lang, InstName, Stream, !IO).
+    write_inst_name_nl(Stream, Lang, InstSizeLimit, InstName, !IO).
 
-:- pred write_key_any_inst(output_lang::in, any_inst_info::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred write_key_any_inst(io.text_output_stream::in, output_lang::in,
+    int::in, any_inst_info::in, io::di, io::uo) is det.
 
-write_key_any_inst(Lang, AnyInstInfo, Stream, !IO) :-
+write_key_any_inst(Stream, Lang, InstSizeLimit, AnyInstInfo, !IO) :-
     AnyInstInfo = any_inst_info(InstName, Uniq, Live, Real),
     write_uniq_live_real(Stream, Uniq, Live, Real, !IO),
-    write_inst_name_nl(Lang, InstName, Stream, !IO).
+    write_inst_name_nl(Stream, Lang, InstSizeLimit, InstName, !IO).
 
 :- pred write_uniq_live_real(io.text_output_stream::in,
     uniqueness::in, is_live::in, unify_is_real::in, io::di, io::uo) is det.
@@ -292,20 +298,21 @@ write_uniq_live_real(Stream, Uniq, Live, Real, !IO) :-
         io.write_string(Stream, "fake unify\n", !IO)
     ).
 
-:- pred write_inst_name_nl(output_lang::in, inst_name::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred write_inst_name_nl(io.text_output_stream::in, output_lang::in,
+    int::in, inst_name::in, io::di, io::uo) is det.
 
-write_inst_name_nl(Lang, InstName, Stream, !IO) :-
-    InstNameTerm = inst_name_to_term(Lang, InstName),
+write_inst_name_nl(Stream, Lang, InstSizeLimit, InstName, !IO) :-
+    InstNameTerm = inst_name_to_limited_size_term(Lang, InstSizeLimit,
+        InstName),
     varset.init(VarSet),
     mercury_output_term_vs(VarSet, print_name_only, InstNameTerm, Stream, !IO),
     io.nl(Stream, !IO).
 
-:- pred write_inst(io.text_output_stream::in, output_lang::in, mer_inst::in,
-    io::di, io::uo) is det.
+:- pred write_inst(io.text_output_stream::in, output_lang::in, int::in,
+    mer_inst::in, io::di, io::uo) is det.
 
-write_inst(Stream, Lang, Inst, !IO) :-
-    InstTerm = inst_to_term(Lang, Inst),
+write_inst(Stream, Lang, InstSizeLimit, Inst, !IO) :-
+    InstTerm = inst_to_limited_size_term(Lang, InstSizeLimit, Inst),
     varset.init(VarSet),
     mercury_output_term_vs(VarSet, print_name_only, InstTerm, Stream, !IO).
 

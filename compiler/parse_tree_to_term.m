@@ -26,15 +26,23 @@
     %
 :- pred unparse_type(mer_type::in, term::out) is det.
 
-    % Convert a mode or inst to a term representation.
+    % Convert a mode to a term representation.
     %
 :- func mode_to_term(output_lang, mer_mode) = prog_term.
 :- func mode_to_term_with_context(output_lang, prog_context, mer_mode)
     = prog_term.
+
+    % Convert an inst to a term representation.
+    %
 :- func inst_to_term(output_lang, mer_inst) = prog_term.
+:- func inst_to_limited_size_term(output_lang, int, mer_inst) = prog_term.
 :- func inst_name_to_term(output_lang, inst_name) = prog_term.
+:- func inst_name_to_limited_size_term(output_lang, int, inst_name)
+    = prog_term.
 :- func inst_test_results_to_term(prog_context, inst_test_results) = prog_term.
 
+    % Convert an integer to a term representation.
+    %
 :- func int_const_to_decimal_term(some_int_const, term.context) = term(T).
 
 %---------------------------------------------------------------------------%
@@ -48,6 +56,7 @@
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.prog_util.
 
+:- import_module int.
 :- import_module list.
 :- import_module require.
 :- import_module set.
@@ -168,8 +177,6 @@ maybe_add_detism(higher_order(pred_inst_info(_, _, _, Detism)), Term0, Term) :-
     term.coerce(DetismTerm0, DetismTerm),
     Term = term.functor(term.atom("is"), [Term0, DetismTerm], Context).
 
-%---------------------------------------------------------------------------%
-
 :- pred unparse_mode_list(list(mer_mode)::in, list(term)::out) is det.
 
 unparse_mode_list([], []).
@@ -178,10 +185,12 @@ unparse_mode_list([Mode | Modes], [Term | Terms]) :-
     term.coerce(Term0, Term),
     unparse_mode_list(Modes, Terms).
 
+%---------------------------------------------------------------------------%
+
 mode_to_term(Lang, Mode) =
     mode_to_term_with_context(Lang, dummy_context, Mode).
 
-mode_to_term_with_context(Lang, Context, Mode) = Term :-
+mode_to_term_with_context(Lang, Context, Mode) = ModeTerm :-
     (
         Mode = from_to_mode(InstA, InstB),
         ( if
@@ -190,104 +199,201 @@ mode_to_term_with_context(Lang, Context, Mode) = Term :-
             InstA = ground(_Uniq, higher_order(_)),
             InstB = InstA
         then
-            Term = inst_to_term_with_context(Lang, Context, InstA)
+            inst_to_term_with_context(Lang, Context, InstA, ModeTerm)
         else
+            inst_to_term_with_context(Lang, Context, InstA, InstTermA),
+            inst_to_term_with_context(Lang, Context, InstB, InstTermB),
             construct_qualified_term_with_context(unqualified(">>"),
-                [inst_to_term_with_context(Lang, Context, InstA),
-                inst_to_term_with_context(Lang, Context, InstB)],
-                Context, Term)
+                [InstTermA, InstTermB], Context, ModeTerm)
         )
     ;
-        Mode = user_defined_mode(Name, Args),
-        construct_qualified_term_with_context(Name,
-            list.map(inst_to_term_with_context(Lang, Context), Args),
-            Context, Term)
-    ).
-
-inst_to_term(Lang, Inst) =
-    inst_to_term_with_context(Lang, dummy_context, Inst).
-
-:- func inst_to_term_with_context(output_lang, prog_context, mer_inst)
-    = prog_term.
-
-inst_to_term_with_context(Lang, Context, Inst) = Term :-
-    (
-        Inst = any(Uniq, HOInstInfo),
-        (
-            HOInstInfo = higher_order(PredInstInfo),
-            Term = any_pred_inst_info_to_term(Lang, Context, Uniq,
-                PredInstInfo)
-        ;
-            HOInstInfo = none_or_default_func,
-            Term = make_atom(Context, any_inst_uniqueness(Uniq))
-        )
-    ;
-        Inst = free,
-        Term = make_atom(Context, "free")
-    ;
-        Inst = free(Type),
-        unparse_type(Type, Term0),
-        Term1 = term.coerce(Term0),
-        Term = term.functor(term.atom("free"), [Term1], Context)
-    ;
-        Inst = bound(Uniq, InstResults, BoundInsts),
-        (
-            Lang = output_mercury,
-            ArgTerms = [bound_insts_to_term(Lang, Context, BoundInsts)]
-        ;
-            Lang = output_debug,
-            ArgTerms =
-                [inst_test_results_to_term(Context, InstResults),
-                bound_insts_to_term(Lang, Context, BoundInsts)]
-        ),
-        construct_qualified_term_with_context(
-            unqualified(inst_uniqueness(Uniq, "bound")),
-            ArgTerms, Context, Term)
-    ;
-        Inst = ground(Uniq, HOInstInfo),
-        (
-            HOInstInfo = higher_order(PredInstInfo),
-            Term = ground_pred_inst_info_to_term(Lang, Context, Uniq,
-                PredInstInfo)
-        ;
-            HOInstInfo = none_or_default_func,
-            Term = make_atom(Context, inst_uniqueness(Uniq, "ground"))
-        )
-    ;
-        Inst = inst_var(Var),
-        Term = term.coerce(term.variable(Var, dummy_context))
-    ;
-        Inst = constrained_inst_vars(Vars, SubInst),
-        Term = set.fold(func(Var, VarTerm) =
-                term.functor(term.atom("=<"),
-                    [term.coerce(term.variable(Var, dummy_context)), VarTerm],
-                    Context),
-            Vars, inst_to_term_with_context(Lang, Context, SubInst))
-    ;
-        Inst = abstract_inst(Name, Args),
-        Term = inst_name_to_term_with_context(Lang, Context,
-            user_inst(Name, Args))
-    ;
-        Inst = defined_inst(InstName),
-        Term = inst_name_to_term_with_context(Lang, Context, InstName)
-    ;
-        Inst = not_reached,
-        Term = make_atom(Context, "not_reached")
+        Mode = user_defined_mode(Name, ArgInsts),
+        list.map(inst_to_term_with_context(Lang, Context),
+            ArgInsts, ArgInstTerms),
+        construct_qualified_term_with_context(Name, ArgInstTerms,
+            Context, ModeTerm)
     ).
 
 %---------------------------------------------------------------------------%
 
-inst_name_to_term(Lang, InstName) =
-    inst_name_to_term_with_context(Lang, dummy_context, InstName).
+inst_to_term(Lang, Inst) = InstTerm :-
+    inst_to_term_with_context(Lang, dummy_context, Inst, InstTerm).
 
-:- func inst_name_to_term_with_context(output_lang, prog_context, inst_name)
-    = prog_term.
+:- pred inst_to_term_with_context(output_lang::in, prog_context::in,
+    mer_inst::in, prog_term::out) is det.
 
-inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
+inst_to_term_with_context(Lang, Context, Inst, InstTerm) :-
     (
-        InstName = user_inst(Name, Args),
-        construct_qualified_term_with_context(Name,
-            list.map(inst_to_term_with_context(Lang, Context), Args),
+        Inst = any(Uniq, HOInstInfo),
+        (
+            HOInstInfo = higher_order(PredInstInfo),
+            any_pred_inst_info_to_term(Lang, Context, Uniq,
+                PredInstInfo, InstTerm)
+        ;
+            HOInstInfo = none_or_default_func,
+            InstTerm = make_atom(Context, any_inst_uniqueness(Uniq))
+        )
+    ;
+        Inst = free,
+        InstTerm = make_atom(Context, "free")
+    ;
+        Inst = free(Type),
+        unparse_type(Type, TypeTerm),
+        InstTerm0 = term.coerce(TypeTerm),
+        InstTerm = term.functor(term.atom("free"), [InstTerm0], Context)
+    ;
+        Inst = bound(Uniq, InstResults, BoundInsts),
+        bound_insts_to_term(Lang, Context, BoundInsts, BoundInstsTerm),
+        (
+            Lang = output_mercury,
+            ArgTerms = [BoundInstsTerm]
+        ;
+            Lang = output_debug,
+            ResultsTerm = inst_test_results_to_term(Context, InstResults),
+            ArgTerms = [ResultsTerm, BoundInstsTerm]
+        ),
+        construct_qualified_term_with_context(
+            unqualified(inst_uniqueness(Uniq, "bound")),
+            ArgTerms, Context, InstTerm)
+    ;
+        Inst = ground(Uniq, HOInstInfo),
+        (
+            HOInstInfo = higher_order(PredInstInfo),
+            ground_pred_inst_info_to_term(Lang, Context, Uniq,
+                PredInstInfo, InstTerm)
+        ;
+            HOInstInfo = none_or_default_func,
+            InstTerm = make_atom(Context, inst_uniqueness(Uniq, "ground"))
+        )
+    ;
+        Inst = inst_var(Var),
+        InstTerm = term.coerce(term.variable(Var, dummy_context))
+    ;
+        Inst = constrained_inst_vars(Vars, SubInst),
+        inst_to_term_with_context(Lang, Context, SubInst, SubInstTerm),
+        set.foldl(record_constrained_var(Context), Vars,
+            SubInstTerm, InstTerm)
+    ;
+        Inst = abstract_inst(Name, Args),
+        inst_name_to_term_with_context(Lang, Context,
+            user_inst(Name, Args), InstTerm)
+    ;
+        Inst = defined_inst(InstName),
+        inst_name_to_term_with_context(Lang, Context, InstName, InstTerm)
+    ;
+        Inst = not_reached,
+        InstTerm = make_atom(Context, "not_reached")
+    ).
+
+%---------------------------------------------------------------------------%
+
+inst_to_limited_size_term(Lang, SizeLeft, Inst) = InstTerm :-
+    inst_to_limited_size_term_with_context(Lang, dummy_context,
+        Inst, InstTerm, SizeLeft, _).
+
+:- pred inst_to_limited_size_term_with_context(output_lang::in,
+    prog_context::in, mer_inst::in, prog_term::out, int::in, int::out) is det.
+
+inst_to_limited_size_term_with_context(Lang, Context, Inst, InstTerm,
+        !SizeLeft) :-
+    (
+        Inst = any(Uniq, HOInstInfo),
+        (
+            HOInstInfo = higher_order(PredInstInfo),
+            any_pred_inst_info_to_term(Lang, Context, Uniq,
+                PredInstInfo, InstTerm)
+        ;
+            HOInstInfo = none_or_default_func,
+            InstTerm = make_atom(Context, any_inst_uniqueness(Uniq))
+        ),
+        !:SizeLeft = !.SizeLeft - 1
+    ;
+        Inst = free,
+        InstTerm = make_atom(Context, "free"),
+        !:SizeLeft = !.SizeLeft - 1
+    ;
+        Inst = free(Type),
+        unparse_type(Type, TypeTerm),
+        InstTerm0 = term.coerce(TypeTerm),
+        InstTerm = term.functor(term.atom("free"), [InstTerm0], Context),
+        !:SizeLeft = !.SizeLeft - 1
+    ;
+        Inst = bound(Uniq, InstResults, BoundInsts),
+        bound_insts_to_limited_size_term(Lang, Context,
+            BoundInsts, BoundInstsTerm, !SizeLeft),
+        (
+            Lang = output_mercury,
+            ArgTerms = [BoundInstsTerm]
+        ;
+            Lang = output_debug,
+            ResultsTerm = inst_test_results_to_term(Context, InstResults),
+            % ZZZ
+            !:SizeLeft = !.SizeLeft - 1,
+            ArgTerms = [ResultsTerm, BoundInstsTerm]
+        ),
+        construct_qualified_term_with_context(
+            unqualified(inst_uniqueness(Uniq, "bound")),
+            ArgTerms, Context, InstTerm),
+        !:SizeLeft = !.SizeLeft - 1
+    ;
+        Inst = ground(Uniq, HOInstInfo),
+        (
+            HOInstInfo = higher_order(PredInstInfo),
+            ground_pred_inst_info_to_term(Lang, Context, Uniq,
+                PredInstInfo, InstTerm)
+        ;
+            HOInstInfo = none_or_default_func,
+            InstTerm = make_atom(Context, inst_uniqueness(Uniq, "ground"))
+        ),
+        !:SizeLeft = !.SizeLeft - 1
+    ;
+        Inst = inst_var(Var),
+        InstTerm = term.coerce(term.variable(Var, dummy_context)),
+        !:SizeLeft = !.SizeLeft - 1
+    ;
+        Inst = constrained_inst_vars(Vars, SubInst),
+        inst_to_limited_size_term_with_context(Lang, Context,
+            SubInst, SubInstTerm, !SizeLeft),
+        set.foldl(record_constrained_var(Context), Vars,
+            SubInstTerm, InstTerm),
+        !:SizeLeft = !.SizeLeft - set.count(Vars)
+    ;
+        Inst = abstract_inst(Name, Args),
+        inst_name_to_limited_size_term_with_context(Lang, Context,
+            user_inst(Name, Args), InstTerm, !SizeLeft)
+    ;
+        Inst = defined_inst(InstName),
+        inst_name_to_limited_size_term_with_context(Lang, Context,
+            InstName, InstTerm, !SizeLeft)
+    ;
+        Inst = not_reached,
+        InstTerm = make_atom(Context, "not_reached")
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred record_constrained_var(prog_context::in, inst_var::in,
+    prog_term::in, prog_term::out) is det.
+
+record_constrained_var(Context, Var, SubInstTerm, InstTerm) :-
+    VarTerm = term.coerce(term.variable(Var, dummy_context)),
+    InstTerm = term.functor(term.atom("=<"), [VarTerm, SubInstTerm], Context).
+
+%---------------------------------------------------------------------------%
+
+inst_name_to_term(Lang, InstName) = InstNameTerm :-
+    inst_name_to_term_with_context(Lang, dummy_context,
+        InstName, InstNameTerm).
+
+:- pred inst_name_to_term_with_context(output_lang::in, prog_context::in,
+    inst_name::in, prog_term::out) is det.
+
+inst_name_to_term_with_context(Lang, Context, InstName, Term) :-
+    (
+        InstName = user_inst(Name, ArgInsts),
+        list.map(inst_to_term_with_context(Lang, Context),
+            ArgInsts, ArgInstTerms),
+        construct_qualified_term_with_context(Name, ArgInstTerms,
             Context, Term)
     ;
         InstName = unify_inst(Liveness, Real, InstA, InstB),
@@ -296,12 +402,12 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
             unexpected($pred, "unify_inst")
         ;
             Lang = output_debug,
+            LiveTerm = make_atom(Context, is_live_to_str(Liveness)),
+            RealTerm = make_atom(Context, unify_is_real_to_str(Real)),
+            inst_to_term_with_context(Lang, Context, InstA, InstTermA),
+            inst_to_term_with_context(Lang, Context, InstB, InstTermB),
             construct_qualified_term_with_context(unqualified("$unify"),
-                [make_atom(Context, is_live_to_str(Liveness)),
-                make_atom(Context, unify_is_real_to_str(Real)),
-                inst_to_term_with_context(Lang, Context, InstA),
-                inst_to_term_with_context(Lang, Context, InstB)],
-                Context, Term)
+                [LiveTerm, RealTerm, InstTermA, InstTermB], Context, Term)
         )
     ;
         InstName = merge_inst(InstA, InstB),
@@ -310,10 +416,10 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
             unexpected($pred, "merge_inst")
         ;
             Lang = output_debug,
+            inst_to_term_with_context(Lang, Context, InstA, InstTermA),
+            inst_to_term_with_context(Lang, Context, InstB, InstTermB),
             construct_qualified_term_with_context(unqualified("$merge_inst"),
-                list.map(inst_to_term_with_context(Lang, Context),
-                [InstA, InstB]),
-                Context, Term)
+                [InstTermA, InstTermB], Context, Term)
         )
     ;
         InstName = ground_inst(SubInstName, Uniq, IsLive, Real),
@@ -322,11 +428,13 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
             unexpected($pred, "ground_inst")
         ;
             Lang = output_debug,
+            inst_name_to_term_with_context(Lang, Context,
+                SubInstName, SubInstNameTerm),
+            UniqTerm = make_atom(Context, inst_uniqueness(Uniq, "shared")),
+            IsLiveTerm = make_atom(Context, is_live_to_str(IsLive)),
+            IsRealTerm = make_atom(Context, unify_is_real_to_str(Real)),
             construct_qualified_term_with_context(unqualified("$ground"),
-                [inst_name_to_term_with_context(Lang, Context, SubInstName),
-                make_atom(Context, inst_uniqueness(Uniq, "shared")),
-                make_atom(Context, is_live_to_str(IsLive)),
-                make_atom(Context, unify_is_real_to_str(Real))],
+                [SubInstNameTerm, UniqTerm, IsLiveTerm, IsRealTerm],
                 Context, Term)
         )
     ;
@@ -336,11 +444,13 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
             unexpected($pred, "any_inst")
         ;
             Lang = output_debug,
+            inst_name_to_term_with_context(Lang, Context,
+                SubInstName, SubInstNameTerm),
+            UniqTerm = make_atom(Context, inst_uniqueness(Uniq, "shared")),
+            IsLiveTerm = make_atom(Context, is_live_to_str(IsLive)),
+            IsRealTerm = make_atom(Context, unify_is_real_to_str(Real)),
             construct_qualified_term_with_context(unqualified("$any"),
-                [inst_name_to_term_with_context(Lang, Context, SubInstName),
-                make_atom(Context, inst_uniqueness(Uniq, "shared")),
-                make_atom(Context, is_live_to_str(IsLive)),
-                make_atom(Context, unify_is_real_to_str(Real))],
+                [SubInstNameTerm, UniqTerm, IsLiveTerm, IsRealTerm],
                 Context, Term)
         )
     ;
@@ -350,9 +460,10 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
             unexpected($pred, "shared_inst")
         ;
             Lang = output_debug,
+            inst_name_to_term_with_context(Lang, Context,
+                SubInstName, SubInstNameTerm),
             construct_qualified_term_with_context(unqualified("$shared_inst"),
-                [inst_name_to_term_with_context(Lang, Context, SubInstName)],
-                Context, Term)
+                [SubInstNameTerm], Context, Term)
         )
     ;
         InstName = mostly_uniq_inst(SubInstName),
@@ -361,10 +472,11 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
             unexpected($pred, "mostly_uniq_inst")
         ;
             Lang = output_debug,
+            inst_name_to_term_with_context(Lang, Context,
+                SubInstName, SubInstNameTerm),
             construct_qualified_term_with_context(
                 unqualified("$mostly_uniq_inst"),
-                [inst_name_to_term_with_context(Lang, Context, SubInstName)],
-                Context, Term)
+                [SubInstNameTerm], Context, Term)
         )
     ;
         InstName = typed_ground(Uniq, Type),
@@ -373,11 +485,11 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
             unexpected($pred, "typed_ground")
         ;
             Lang = output_debug,
-            unparse_type(Type, Term0),
+            UniqTerm = make_atom(Context, inst_uniqueness(Uniq, "shared")),
+            unparse_type(Type, TypeTerm0),
+            TypeTerm = term.coerce(TypeTerm0),
             construct_qualified_term_with_context(unqualified("$typed_ground"),
-                [make_atom(Context, inst_uniqueness(Uniq, "shared")),
-                term.coerce(Term0)],
-                Context, Term)
+                [UniqTerm, TypeTerm], Context, Term)
         )
     ;
         InstName = typed_inst(Type, SubInstName),
@@ -387,14 +499,198 @@ inst_name_to_term_with_context(Lang, Context, InstName) = Term :-
             % they apply pushed into them by inst_user.m. However, the typed
             % nature of such inst names cannot (yet) be expressed in Mercury
             % source code.
-            Term = inst_name_to_term_with_context(Lang, Context, SubInstName)
+            inst_name_to_term_with_context(Lang, Context, SubInstName, Term)
         ;
             Lang = output_debug,
-            unparse_type(Type, Term0),
+            unparse_type(Type, TypeTerm0),
+            TypeTerm = term.coerce(TypeTerm0),
+            inst_name_to_term_with_context(Lang, Context,
+                SubInstName, SubInstNameTerm),
             construct_qualified_term_with_context(unqualified("$typed_inst"),
-                [term.coerce(Term0),
-                inst_name_to_term_with_context(Lang, Context, SubInstName)],
-                Context, Term)
+                [TypeTerm, SubInstNameTerm], Context, Term)
+        )
+    ).
+
+inst_name_to_limited_size_term(Lang, SizeLeft, InstName) = InstNameTerm :-
+    inst_name_to_limited_size_term_with_context(Lang, dummy_context,
+        InstName, InstNameTerm, SizeLeft, _).
+
+:- pred inst_name_to_limited_size_term_with_context(output_lang::in,
+    prog_context::in, inst_name::in, prog_term::out, int::in, int::out) is det.
+
+inst_name_to_limited_size_term_with_context(Lang, Context, InstName, Term,
+        !SizeLeft) :-
+    (
+        InstName = user_inst(Name, ArgInsts),
+        insts_to_limited_size_terms_with_context(Lang, Context,
+            ArgInsts, ArgInstTerms, !SizeLeft),
+        construct_qualified_term_with_context(Name, ArgInstTerms,
+            Context, Term),
+        !:SizeLeft = !.SizeLeft - 1
+    ;
+        InstName = unify_inst(Liveness, Real, InstA, InstB),
+        (
+            Lang = output_mercury,
+            unexpected($pred, "unify_inst")
+        ;
+            Lang = output_debug,
+            LiveTerm = make_atom(Context, is_live_to_str(Liveness)),
+            RealTerm = make_atom(Context, unify_is_real_to_str(Real)),
+            !:SizeLeft = !.SizeLeft - 2,
+            inst_to_limited_size_term_with_context(Lang, Context,
+                InstA, InstTermA, !SizeLeft),
+            inst_to_limited_size_term_with_context(Lang, Context,
+                InstB, InstTermB, !SizeLeft),
+            ( if !.SizeLeft =< 0 then
+                construct_qualified_term_with_context(unqualified("$unify"),
+                    [ellipsis_term(Context)], Context, Term)
+            else
+                construct_qualified_term_with_context(unqualified("$unify"),
+                    [LiveTerm, RealTerm, InstTermA, InstTermB], Context, Term)
+            )
+        )
+    ;
+        InstName = merge_inst(InstA, InstB),
+        (
+            Lang = output_mercury,
+            unexpected($pred, "merge_inst")
+        ;
+            Lang = output_debug,
+            inst_to_limited_size_term_with_context(Lang, Context,
+                InstA, InstTermA, !SizeLeft),
+            inst_to_limited_size_term_with_context(Lang, Context,
+                InstB, InstTermB, !SizeLeft),
+            ( if !.SizeLeft =< 0 then
+                construct_qualified_term_with_context(
+                    unqualified("$merge_inst"),
+                    [ellipsis_term(Context)], Context, Term)
+            else
+                construct_qualified_term_with_context(
+                    unqualified("$merge_inst"),
+                    [InstTermA, InstTermB], Context, Term)
+            )
+        )
+    ;
+        InstName = ground_inst(SubInstName, Uniq, IsLive, Real),
+        (
+            Lang = output_mercury,
+            unexpected($pred, "ground_inst")
+        ;
+            Lang = output_debug,
+            inst_name_to_limited_size_term_with_context(Lang, Context,
+                SubInstName, SubInstNameTerm, !SizeLeft),
+            UniqTerm = make_atom(Context, inst_uniqueness(Uniq, "shared")),
+            IsLiveTerm = make_atom(Context, is_live_to_str(IsLive)),
+            IsRealTerm = make_atom(Context, unify_is_real_to_str(Real)),
+            !:SizeLeft = !.SizeLeft - 3,
+            ( if !.SizeLeft =< 0 then
+                construct_qualified_term_with_context(unqualified("$ground"),
+                    [ellipsis_term(Context)], Context, Term)
+            else
+                construct_qualified_term_with_context(unqualified("$ground"),
+                    [SubInstNameTerm, UniqTerm, IsLiveTerm, IsRealTerm],
+                    Context, Term)
+            )
+        )
+    ;
+        InstName = any_inst(SubInstName, Uniq, IsLive, Real),
+        (
+            Lang = output_mercury,
+            unexpected($pred, "any_inst")
+        ;
+            Lang = output_debug,
+            inst_name_to_limited_size_term_with_context(Lang, Context,
+                SubInstName, SubInstNameTerm, !SizeLeft),
+            UniqTerm = make_atom(Context, inst_uniqueness(Uniq, "shared")),
+            IsLiveTerm = make_atom(Context, is_live_to_str(IsLive)),
+            IsRealTerm = make_atom(Context, unify_is_real_to_str(Real)),
+            !:SizeLeft = !.SizeLeft - 3,
+            ( if !.SizeLeft =< 0 then
+                construct_qualified_term_with_context(unqualified("$any"),
+                    [ellipsis_term(Context)], Context, Term)
+            else
+                construct_qualified_term_with_context(unqualified("$any"),
+                    [SubInstNameTerm, UniqTerm, IsLiveTerm, IsRealTerm],
+                    Context, Term)
+            )
+        )
+    ;
+        InstName = shared_inst(SubInstName),
+        (
+            Lang = output_mercury,
+            unexpected($pred, "shared_inst")
+        ;
+            Lang = output_debug,
+            inst_name_to_limited_size_term_with_context(Lang, Context,
+                SubInstName, SubInstNameTerm, !SizeLeft),
+            ( if !.SizeLeft =< 0 then
+                construct_qualified_term_with_context(
+                    unqualified("$shared_inst"),
+                    [ellipsis_term(Context)], Context, Term)
+            else
+                construct_qualified_term_with_context(
+                    unqualified("$shared_inst"),
+                    [SubInstNameTerm], Context, Term)
+            )
+        )
+    ;
+        InstName = mostly_uniq_inst(SubInstName),
+        (
+            Lang = output_mercury,
+            unexpected($pred, "mostly_uniq_inst")
+        ;
+            Lang = output_debug,
+            inst_name_to_limited_size_term_with_context(Lang, Context,
+                SubInstName, SubInstNameTerm, !SizeLeft),
+            ( if !.SizeLeft =< 0 then
+                construct_qualified_term_with_context(
+                    unqualified("$mostly_uniq_inst"),
+                    [ellipsis_term(Context)], Context, Term)
+            else
+                construct_qualified_term_with_context(
+                    unqualified("$mostly_uniq_inst"),
+                    [SubInstNameTerm], Context, Term)
+            )
+        )
+    ;
+        InstName = typed_ground(Uniq, Type),
+        (
+            Lang = output_mercury,
+            unexpected($pred, "typed_ground")
+        ;
+            Lang = output_debug,
+            UniqTerm = make_atom(Context, inst_uniqueness(Uniq, "shared")),
+            unparse_type(Type, TypeTerm0),
+            TypeTerm = term.coerce(TypeTerm0),
+            construct_qualified_term_with_context(unqualified("$typed_ground"),
+                [UniqTerm, TypeTerm], Context, Term),
+            !:SizeLeft = !.SizeLeft - 1
+        )
+    ;
+        InstName = typed_inst(Type, SubInstName),
+        (
+            Lang = output_mercury,
+            % Inst names in the inst tables can (and often do) have the types
+            % they apply pushed into them by inst_user.m. However, the typed
+            % nature of such inst names cannot (yet) be expressed in Mercury
+            % source code.
+            inst_name_to_term_with_context(Lang, Context, SubInstName, Term)
+        ;
+            Lang = output_debug,
+            unparse_type(Type, TypeTerm0),
+            TypeTerm = term.coerce(TypeTerm0),
+            !:SizeLeft = !.SizeLeft - 1,
+            inst_name_to_limited_size_term_with_context(Lang, Context,
+                SubInstName, SubInstNameTerm, !SizeLeft),
+            ( if !.SizeLeft =< 0 then
+                construct_qualified_term_with_context(
+                    unqualified("$typed_inst"),
+                    [ellipsis_term(Context)], Context, Term)
+            else
+                construct_qualified_term_with_context(
+                    unqualified("$typed_inst"),
+                    [TypeTerm, SubInstNameTerm], Context, Term)
+            )
         )
     ).
 
@@ -531,10 +827,12 @@ type_ctor_to_term(Context, TypeCtor) = Term :-
         ConsName),
     Term = term.functor(term.atom(ConsName), [], Context).
 
-:- func ground_pred_inst_info_to_term(output_lang, prog_context, uniqueness,
-    pred_inst_info) = prog_term.
+%---------------------%
 
-ground_pred_inst_info_to_term(Lang, Context, _Uniq, PredInstInfo) = Term :-
+:- pred ground_pred_inst_info_to_term(output_lang::in, prog_context::in,
+    uniqueness::in, pred_inst_info::in, prog_term::out) is det.
+
+ground_pred_inst_info_to_term(Lang, Context, _Uniq, PredInstInfo, Term) :-
     % XXX we ignore Uniq
     PredInstInfo = pred_inst_info(PredOrFunc, Modes, _, Det),
     (
@@ -555,10 +853,12 @@ ground_pred_inst_info_to_term(Lang, Context, _Uniq, PredInstInfo) = Term :-
     construct_qualified_term_with_context(unqualified("is"),
         [ModesTerm, det_to_term(Context, Det)], Context, Term).
 
-:- func any_pred_inst_info_to_term(output_lang, prog_context, uniqueness,
-    pred_inst_info) = prog_term.
+%---------------------%
 
-any_pred_inst_info_to_term(Lang, Context, _Uniq, PredInstInfo) = Term :-
+:- pred any_pred_inst_info_to_term(output_lang::in, prog_context::in,
+    uniqueness::in, pred_inst_info::in, prog_term::out) is det.
+
+any_pred_inst_info_to_term(Lang, Context, _Uniq, PredInstInfo, Term) :-
     % XXX we ignore Uniq
     PredInstInfo = pred_inst_info(PredOrFunc, Modes, _, Det),
     (
@@ -607,33 +907,95 @@ inst_uniqueness(mostly_unique, _) = "mostly_unique".
 inst_uniqueness(clobbered, _) = "clobbered".
 inst_uniqueness(mostly_clobbered, _) = "mostly_clobbered".
 
-:- func bound_insts_to_term(output_lang, prog_context, list(bound_inst))
-    = prog_term.
+%---------------------%
 
-bound_insts_to_term(_, Context, []) =
+:- pred bound_insts_to_term(output_lang::in, prog_context::in,
+    list(bound_inst)::in, prog_term::out) is det.
+
+bound_insts_to_term(_, Context, [], Term) :-
     % This shouldn't happen, but when it does, the problem is a LOT easier
     % to debug if there is a HLDS dump you can read.
-    term.functor(term.atom("EMPTY_BOUND_INSTS"), [], Context).
-bound_insts_to_term(Lang, Context, [BoundInst | BoundInsts]) =
-    bound_insts_to_term_2(Lang, Context, BoundInst, BoundInsts).
+    Term = term.functor(term.atom("EMPTY_BOUND_INSTS"), [], Context).
+bound_insts_to_term(Lang, Context, [BoundInst | BoundInsts], Term) :-
+    bound_insts_to_term_lag(Lang, Context, BoundInst, BoundInsts, Term).
 
-:- func bound_insts_to_term_2(output_lang, prog_context,
-    bound_inst, list(bound_inst)) = prog_term.
+:- pred bound_insts_to_term_lag(output_lang::in, prog_context::in,
+    bound_inst::in, list(bound_inst)::in, prog_term::out) is det.
 
-bound_insts_to_term_2(Lang, Context, BoundInst, BoundInsts) = Term :-
-    BoundInst = bound_functor(ConsId, Args),
-    ArgTerms = list.map(inst_to_term_with_context(Lang, Context), Args),
-    cons_id_and_args_to_term_full(ConsId, ArgTerms, FirstTerm),
+bound_insts_to_term_lag(Lang, Context, BoundInst, BoundInsts, Term) :-
+    BoundInst = bound_functor(ConsId, ArgInsts),
+    list.map(inst_to_term_with_context(Lang, Context), ArgInsts, ArgInstTerms),
+    cons_id_and_args_to_term_full(ConsId, ArgInstTerms, FirstTerm),
     (
         BoundInsts = [],
         Term = FirstTerm
     ;
         BoundInsts = [HeadBoundInst | TailBoundInsts],
-        SecondTerm = bound_insts_to_term_2(Lang, Context,
-            HeadBoundInst, TailBoundInsts),
+        bound_insts_to_term_lag(Lang, Context,
+            HeadBoundInst, TailBoundInsts, SecondTerm),
         construct_qualified_term_with_context(unqualified(";"),
             [FirstTerm, SecondTerm], Context, Term)
     ).
+
+%---------------------%
+
+:- pred bound_insts_to_limited_size_term(output_lang::in, prog_context::in,
+    list(bound_inst)::in, prog_term::out, int::in, int::out) is det.
+
+bound_insts_to_limited_size_term(_, Context, [], Term, !SizeLeft) :-
+    % This shouldn't happen, but when it does, the problem is a LOT easier
+    % to debug if there is a HLDS dump you can read.
+    Term = term.functor(term.atom("EMPTY_BOUND_INSTS"), [], Context).
+bound_insts_to_limited_size_term(Lang, Context, [BoundInst | BoundInsts],
+        Term, !SizeLeft) :-
+    bound_insts_to_limited_size_term_lag(Lang, Context, BoundInst, BoundInsts,
+        Term, !SizeLeft).
+
+:- pred bound_insts_to_limited_size_term_lag(output_lang::in, prog_context::in,
+    bound_inst::in, list(bound_inst)::in, prog_term::out,
+    int::in, int::out) is det.
+
+bound_insts_to_limited_size_term_lag(Lang, Context, BoundInst, BoundInsts,
+        Term, !SizeLeft) :-
+    BoundInst = bound_functor(ConsId, ArgInsts),
+    insts_to_limited_size_terms_with_context(Lang, Context,
+        ArgInsts, ArgInstTerms, !SizeLeft),
+    cons_id_and_args_to_term_full(ConsId, ArgInstTerms, FirstTerm),
+    (
+        BoundInsts = [],
+        Term = FirstTerm
+    ;
+        BoundInsts = [HeadBoundInst | TailBoundInsts],
+        bound_insts_to_limited_size_term_lag(Lang, Context,
+            HeadBoundInst, TailBoundInsts, SecondTerm, !SizeLeft),
+        construct_qualified_term_with_context(unqualified(";"),
+            [FirstTerm, SecondTerm], Context, Term)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred insts_to_limited_size_terms_with_context(output_lang::in,
+    prog_context::in, list(mer_inst)::in, list(prog_term)::out,
+    int::in, int::out) is det.
+
+insts_to_limited_size_terms_with_context(_Lang, _Context, [], [], !SizeLeft).
+insts_to_limited_size_terms_with_context(Lang, Context, [HeadInst | TailInsts],
+        InstTerms, !SizeLeft) :-
+    ( if !.SizeLeft =< 0 then
+        InstTerms = [ellipsis_term(Context)]
+    else
+        inst_to_limited_size_term_with_context(Lang, Context,
+            HeadInst, HeadInstTerm, !SizeLeft),
+        insts_to_limited_size_terms_with_context(Lang, Context,
+            TailInsts, TailInstTerms, !SizeLeft),
+        InstTerms = [HeadInstTerm | TailInstTerms]
+    ).
+
+:- func ellipsis_term(prog_context) = prog_term.
+
+ellipsis_term(Context) = term.functor(term.atom("..."), [], Context).
+
+%---------------------------------------------------------------------------%
 
 :- pred cons_id_and_args_to_term_full(cons_id::in, list(prog_term)::in,
     prog_term::out) is det.

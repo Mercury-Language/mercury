@@ -211,8 +211,11 @@ write_hlds(Stream, ModuleInfo, !IO) :-
             module_info_get_inst_table(ModuleInfo, InstTable),
             module_info_get_mode_table(ModuleInfo, ModeTable),
             globals.lookup_int_option(Globals, dump_hlds_inst_limit,
-                InstLimit),
-            write_inst_table(Stream, Lang, InstLimit, InstTable, !IO),
+                InstNumLimit),
+            globals.lookup_int_option(Globals, dump_hlds_inst_size_limit,
+                InstSizeLimit),
+            write_inst_table(Stream, Lang, InstNumLimit, InstSizeLimit,
+                InstTable, !IO),
             write_mode_table(Stream, ModeTable, !IO)
         else
             true

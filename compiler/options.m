@@ -398,6 +398,7 @@
     ;       dump_hlds_alias
     ;       dump_hlds_options
     ;       dump_hlds_inst_limit
+    ;       dump_hlds_inst_size_limit
     ;       dump_hlds_file_suffix
     ;       dump_same_hlds
     ;       dump_mlds
@@ -1448,6 +1449,7 @@ optdef(oc_aux_output, dump_hlds_spec_preds_for,         accumulating([])).
 optdef(oc_aux_output, dump_hlds_alias,                  string("")).
 optdef(oc_aux_output, dump_hlds_options,                string("")).
 optdef(oc_aux_output, dump_hlds_inst_limit,             int(100)).
+optdef(oc_aux_output, dump_hlds_inst_size_limit,        int(40)).
 optdef(oc_aux_output, dump_hlds_file_suffix,            string("")).
 optdef(oc_aux_output, dump_same_hlds,                   bool(no)).
 optdef(oc_aux_output, dump_mlds,                        accumulating([])).
@@ -2402,6 +2404,7 @@ long_option("dump-hlds-spec-preds",     dump_hlds_spec_preds).
 long_option("dump-hlds-spec-preds-for", dump_hlds_spec_preds_for).
 long_option("dump-hlds-options",        dump_hlds_options).
 long_option("dump-hlds-inst-limit",     dump_hlds_inst_limit).
+long_option("dump-hlds-inst-size-limit", dump_hlds_inst_size_limit).
 long_option("dump-hlds-file-suffix",    dump_hlds_file_suffix).
 long_option("dump-same-hlds",           dump_same_hlds).
 long_option("dump-mlds",                dump_mlds).
@@ -4940,6 +4943,8 @@ options_help_aux_output(Stream, !IO) :-
         "\t(see the Mercury User's Guide for details).",
         "--dump-hlds-inst-limit <N>",
         "\tDump at most N insts in each inst table.",
+        "--dump-hlds-inst-size-limit <N>",
+        "\tDump insts in an inst table only if their size does not exceed N.",
         "--dump-hlds-file-suffix <suffix>",
         "\tAppend the given suffix to the names of the files created by",
         "\tthe `--dump-hlds' option.",

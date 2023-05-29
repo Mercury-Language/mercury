@@ -1245,7 +1245,7 @@ write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
     io::di, io::uo) is det.
 
 write_functor_and_submodes(Info, Stream, _ModuleInfo, VarNameSrc, InstVarSet,
-        VarNamePrint, Indent, ConsId, ArgVars, ArgModes, !IO) :-
+        VarNamePrint, Indent, ConsId, ArgVars, ArgUnifyModes0, !IO) :-
     ConsIdStr = cons_id_and_arity_to_string(ConsId),
     (
         ArgVars = [],
@@ -1258,14 +1258,15 @@ write_functor_and_submodes(Info, Stream, _ModuleInfo, VarNameSrc, InstVarSet,
         DumpOptions = Info ^ hoi_dump_hlds_options,
         ( if string.contains_char(DumpOptions, 'a') then
             IndentStr = indent2_string(Indent),
+            list.map(limit_size_of_unify_mode, ArgUnifyModes0, ArgUnifyModes),
             ( if string.contains_char(DumpOptions, 'y') then
                 io.format(Stream, "%s%% arg-modes\n", [s(IndentStr)], !IO),
                 mercury_output_structured_unify_mode_list(Stream,
                     output_debug, InstVarSet, do_incl_addr, Indent,
-                    ArgModes, !IO)
+                    ArgUnifyModes, !IO)
             else
                 write_arg_modes(Stream, InstVarSet, IndentStr, 1,
-                    ArgModes, !IO)
+                    ArgUnifyModes, !IO)
             )
         else
             true
@@ -1283,6 +1284,109 @@ write_arg_modes(Stream, InstVarSet, IndentStr, ArgNum,
         [s(IndentStr), i(ArgNum), s(UnifyModeStr)], !IO),
     write_arg_modes(Stream, InstVarSet, IndentStr, ArgNum + 1,
         UnifyModes, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred limit_size_of_unify_mode(unify_mode::in, unify_mode::out) is det.
+
+limit_size_of_unify_mode(UnifyMode0, UnifyMode) :-
+    UnifyMode0 = unify_modes_li_lf_ri_rf(LI0, LF0, RI0, RF0),
+    % XXX We could, and maybe should, make this an option that the
+    % programmer may set. However, that would incur the cost of an
+    % option lookup for every unification. It is probably better to wait
+    % until we find a real-life need for deeper unify_modes before
+    % we take that step.
+    Levels = 3,
+    limit_size_of_inst(Levels, LI0, LI),
+    limit_size_of_inst(Levels, LF0, LF),
+    limit_size_of_inst(Levels, RI0, RI),
+    limit_size_of_inst(Levels, RF0, RF),
+    UnifyMode = unify_modes_li_lf_ri_rf(LI, LF, RI, RF).
+
+:- pred limit_size_of_inst(int::in, mer_inst::in, mer_inst::out) is det.
+
+limit_size_of_inst(Levels, Inst0, Inst) :-
+    (
+        ( Inst0 = any(_, _)
+        ; Inst0 = ground(_, _)
+        ; Inst0 = bound(_, _, _)
+        ; Inst0 = constrained_inst_vars(_, _)
+        ; Inst0 = abstract_inst(_, _)
+        ),
+        ( if Levels < 1 then
+            Inst = defined_inst(user_inst(unqualified("..."), []))
+        else
+            (
+                Inst0 = any(Uniq, HOInstInfo0),
+                limit_size_of_pred_inst_info(Levels, HOInstInfo0, HOInstInfo),
+                Inst = any(Uniq, HOInstInfo)
+            ;
+                Inst0 = ground(Uniq, HOInstInfo0),
+                limit_size_of_pred_inst_info(Levels, HOInstInfo0, HOInstInfo),
+                Inst = ground(Uniq, HOInstInfo)
+            ;
+                Inst0 = bound(Uniq, TestResults, BoundInsts0),
+                limit_size_of_bound_insts(Levels - 1, BoundInsts0, BoundInsts),
+                Inst = bound(Uniq, TestResults, BoundInsts)
+            ;
+                Inst0 = constrained_inst_vars(Vars, SubInst0),
+                limit_size_of_inst(Levels - 1, SubInst0, SubInst),
+                Inst = constrained_inst_vars(Vars, SubInst)
+            ;
+                Inst0 = abstract_inst(Name, ArgInsts0),
+                list.map(limit_size_of_inst(Levels - 1), ArgInsts0, ArgInsts),
+                Inst = abstract_inst(Name, ArgInsts)
+            )
+        )
+    ;
+        ( Inst0 = free
+        ; Inst0 = free(_Type)
+        ; Inst0 = inst_var(_Var)
+        ; Inst0 = defined_inst(_InstName)
+        ; Inst0 = not_reached
+        ),
+        Inst = Inst0
+    ).
+
+:- pred limit_size_of_pred_inst_info(int::in,
+    ho_inst_info::in, ho_inst_info::out) is det.
+
+limit_size_of_pred_inst_info(Levels, HOInstInfo0, HOInstInfo) :-
+    (
+        HOInstInfo0 = none_or_default_func,
+        HOInstInfo = none_or_default_func
+    ;
+        HOInstInfo0 = higher_order(PredInstInfo0),
+        PredInstInfo0 = pred_inst_info(PredOrFunc, ArgModes0, RegInfo, Detism),
+        list.map(limit_size_of_mode(Levels - 1), ArgModes0, ArgModes),
+        PredInstInfo = pred_inst_info(PredOrFunc, ArgModes, RegInfo, Detism),
+        HOInstInfo = higher_order(PredInstInfo)
+    ).
+
+:- pred limit_size_of_mode(int::in, mer_mode::in, mer_mode::out) is det.
+
+limit_size_of_mode(Levels, Mode0, Mode) :-
+    (
+        Mode0 = from_to_mode(InitInst0, FinalInst0),
+        limit_size_of_inst(Levels, InitInst0, InitInst),
+        limit_size_of_inst(Levels, FinalInst0, FinalInst),
+        Mode = from_to_mode(InitInst, FinalInst)
+    ;
+        Mode0 = user_defined_mode(Name, ArgInsts0),
+        list.map(limit_size_of_inst(Levels), ArgInsts0, ArgInsts),
+        Mode = user_defined_mode(Name, ArgInsts)
+    ).
+
+:- pred limit_size_of_bound_insts(int::in,
+    list(bound_inst)::in, list(bound_inst)::out) is det.
+
+limit_size_of_bound_insts(_, [], []).
+limit_size_of_bound_insts(Levels,
+        [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts]) :-
+    BoundInst0 = bound_functor(ConsId, ArgInsts0),
+    list.map(limit_size_of_inst(Levels), ArgInsts0, ArgInsts),
+    BoundInst = bound_functor(ConsId, ArgInsts),
+    limit_size_of_bound_insts(Levels, BoundInsts0, BoundInsts).
 
 %---------------------------------------------------------------------------%
 %
