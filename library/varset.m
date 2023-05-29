@@ -10,10 +10,10 @@
 % Main author: fjh.
 % Stability: low.
 %
-% This file provides facilities for manipulating collections of variables.
-% through the 'varset' ADT. These variables are object-level variables,
-% and are represented as ground terms, so it might help to think of them
-% as "variable ids" rather than Prolog-style variables.
+% This file provides facilities for manipulating collections of variables,
+% through the 'varset' abstract data type. These variables are object-level
+% variables, and are represented as ground terms, so the right way to think
+% of them is as "variable ids" rather than Prolog-style variables.
 %
 % A varset may record a name and/or a value (binding) with each variable.
 %
@@ -31,9 +31,11 @@
 % In situations in which this is not a concern, programmers may use
 % the standard generic varset instance.
 %
-% Note that there are some design flaws in the relationship between
-% varset.m and term.m. There is too much coupling between the two,
-% which may and should be fixed later, e.g. by merging the two modules.
+% Note that varset.m and term.m are strongly coupled together, meaning that
+% they each need the other. The reason why they have not been merged into
+% one larger module is that many user modules call predicates and functions
+% from just one of these two modules, even though, through that one module,
+% they implicitly depend on the other as well.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -103,8 +105,7 @@
     % Delete the names and values for a list of variables.
     %
 :- func delete_vars(varset(T), list(var(T))) = varset(T).
-:- pred delete_vars(list(var(T))::in, varset(T)::in, varset(T)::out)
-    is det.
+:- pred delete_vars(list(var(T))::in, varset(T)::in, varset(T)::out) is det.
 
     % Delete the names and values for a sorted list of variables.
     % (If the list is not sorted, the predicate or function will
@@ -134,7 +135,7 @@
 :- func unname_var(varset(T), var(T)) = varset(T).
 :- pred unname_var(var(T)::in, varset(T)::in, varset(T)::out) is det.
 
-    % Lookup the name of a variable;
+    % Look up the name of a variable;
     % If it doesn't have one, return a default name consisting of two parts:
     % "V_" as a prefix, followed by a unique number. This is meant to evoke
     % "variable number N".
@@ -142,14 +143,20 @@
 :- func lookup_name(varset(T), var(T)) = string.
 :- pred lookup_name(varset(T)::in, var(T)::in, string::out) is det.
 
-    % Lookup the name of a variable;
+    % Look up the name of a variable;
     % if it doesn't have one, create one using the specified prefix.
     %
 :- func lookup_name(varset(T), var(T), string) = string.
 :- pred lookup_name(varset(T)::in, var(T)::in, string::in, string::out)
     is det.
+:- pragma obsolete(func(lookup_name/3), [varset.lookup_name_default_prefix/3]).
+:- pragma obsolete(pred(lookup_name/4), [varset.lookup_name_default_prefix/4]).
 
-    % Lookup the name of a variable;
+:- func lookup_name_default_prefix(varset(T), var(T), string) = string.
+:- pred lookup_name_default_prefix(varset(T)::in, var(T)::in, string::in,
+    string::out) is det.
+
+    % Look up the name of a variable;
     % fail if it doesn't have one.
     %
 :- pred search_name(varset(T)::in, var(T)::in, string::out) is semidet.
@@ -169,7 +176,7 @@
 :- pred bind_vars(substitution(T)::in,
     varset(T)::in, varset(T)::out) is det.
 
-    % Lookup the value of a variable.
+    % Look up the value of a variable.
     %
 :- pred search_var(varset(T)::in, var(T)::in, term(T)::out) is semidet.
 
@@ -177,9 +184,10 @@
 
     % Get the bindings for all the bound variables.
     %
-    % NOTE_TO_IMPLEMENTORS Redundant; identical to get_bindings.
 :- func lookup_vars(varset(T)) = substitution(T).
 :- pred lookup_vars(varset(T)::in, substitution(T)::out) is det.
+:- pragma obsolete(func(lookup_vars/1), [varset.get_bindings/1]).
+:- pragma obsolete(pred(lookup_vars/2), [varset.get_bindings/2]).
 
     % Get the bindings for all the bound variables.
     %
@@ -188,11 +196,9 @@
 
     % Set the bindings for all the bound variables.
     %
-    % NOTE_TO_IMPLEMENTORS The argument order is not conducive
-    % NOTE_TO_IMPLEMENTORS to the use of state variables.
 :- func set_bindings(varset(T), substitution(T)) = varset(T).
-:- pred set_bindings(varset(T)::in, substitution(T)::in,
-    varset(T)::out) is det.
+:- pred set_bindings(substitution(T)::in,
+    varset(T)::in, varset(T)::out) is det.
 
 %---------------------%
 
@@ -203,16 +209,16 @@
     % Renaming will map each variable in NewVarSet to the corresponding
     % fresh variable in VarSet.
     %
-:- pred merge_renaming(varset(T)::in, varset(T)::in, varset(T)::out,
-    renaming(T)::out) is det.
+:- pred merge_renaming(varset(T)::in, varset(T)::in,
+    varset(T)::out, renaming(T)::out) is det.
 
     % Same as merge_renaming, except that the names of variables
     % in NewVarSet are not included in the final varset.
     % This is useful if create_name_var_map needs to be used
     % on the resulting varset.
     %
-:- pred merge_renaming_without_names(varset(T)::in,
-    varset(T)::in, varset(T)::out, renaming(T)::out) is det.
+:- pred merge_renaming_without_names(varset(T)::in, varset(T)::in,
+    varset(T)::out, renaming(T)::out) is det.
 
     % merge(VarSet0, NewVarSet, Terms0, VarSet, Terms):
     %
@@ -227,8 +233,8 @@
     % This is useful if create_name_var_map needs to be used
     % on the resulting varset.
     %
-:- pred merge_without_names(varset(T)::in, varset(T)::in,
-    list(term(T))::in, varset(T)::out, list(term(T))::out) is det.
+:- pred merge_without_names(varset(T)::in, varset(T)::in, list(term(T))::in,
+    varset(T)::out, list(term(T))::out) is det.
 
 %---------------------%
 
@@ -256,10 +262,9 @@
     % If necessary, names will have suffixes added on the end;
     % the second argument gives the suffix to use.
     %
-:- func ensure_unique_names(list(var(T)), string, varset(T))
-    = varset(T).
-:- pred ensure_unique_names(list(var(T))::in,
-    string::in, varset(T)::in, varset(T)::out) is det.
+:- func ensure_unique_names(list(var(T)), string, varset(T)) = varset(T).
+:- pred ensure_unique_names(list(var(T))::in, string::in,
+    varset(T)::in, varset(T)::out) is det.
 
     % Unname all variables whose explicitly given names have the form
     % of the default names used by lookup_name, i.e. "V_" followed by
@@ -267,11 +272,11 @@
     %
     % This predicate is intended to be used in situations where
     % a term has been read in after being written out. The process of
-    % writing out the term forces requires every variable to given
-    % a name that can be written out, even variables that until then
-    % did not have names. If these variables are given names of the default
-    % form, then, after the written-out term is read back in, this predicate
-    % will recreate the original varset, including the variables without names.
+    % writing out the term forces every variable to given a name
+    % that can be written out, even variables that until then did not
+    % have names. If these variables are given names of the default form, then,
+    % after the written-out term is read back in, this predicate will recreate
+    % the original varset, including the variables without names.
     %
 :- pred undo_default_names(varset(T)::in, varset(T)::out) is det.
 
@@ -284,7 +289,7 @@
 :- pred select(set(var(T))::in, varset(T)::in, varset(T)::out) is det.
 
     % Given a varset and a list of variables, construct a new varset
-    % containing one variable for each one in the list (and no others).
+    % containing one variable for each one in the list, and no others.
     % Also return a substitution mapping the selected variables in the
     % original varset into variables in the new varset. The relative
     % ordering of variables in the original varset is maintained.
@@ -489,9 +494,15 @@ lookup_name(VarSet, Var, Name) :-
     ).
 
 lookup_name(VarSet, Id, Prefix) = Name :-
-    varset.lookup_name(VarSet, Id, Prefix, Name).
+    lookup_name_default_prefix(VarSet, Id, Prefix, Name).
 
 lookup_name(VarSet, Id, Prefix, Name) :-
+    lookup_name_default_prefix(VarSet, Id, Prefix, Name).
+
+lookup_name_default_prefix(VarSet, Id, Prefix) = Name :-
+    varset.lookup_name_default_prefix(VarSet, Id, Prefix, Name).
+
+lookup_name_default_prefix(VarSet, Id, Prefix, Name) :-
     ( if varset.search_name(VarSet, Id, NamePrime) then
         Name = NamePrime
     else
@@ -553,9 +564,9 @@ get_bindings(VarSet, Values) :-
     Values = VarSet ^ var_values.
 
 set_bindings(!.VarSet, Values) = !:VarSet :-
-    varset.set_bindings(!.VarSet, Values, !:VarSet).
+    varset.set_bindings(Values, !VarSet).
 
-set_bindings(!.VarSet, Values, !:VarSet) :-
+set_bindings(Values, !VarSet) :-
     !VarSet ^ var_values := Values.
 
 %---------------------------------------------------------------------------%

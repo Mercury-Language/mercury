@@ -2411,7 +2411,8 @@ write_vars(Stream, VarSet, Vars, !IO) :-
 
 :- func var_to_string(lp_varset, lp_var) = string.
 
-var_to_string(VarSet, Var) = varset.lookup_name(VarSet, Var, "Unnamed").
+var_to_string(VarSet, Var) = Name :-
+    varset.lookup_name_default_prefix(VarSet, Var, "Unnamed", Name).
 
     % Write out the matrix used during fourier elimination.
     % If `Labels' is `yes', then write out the label for each vector as well.

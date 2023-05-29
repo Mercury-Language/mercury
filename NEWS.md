@@ -1800,9 +1800,20 @@ Changes to the Mercury standard library
 
 * The following functions and predicates have been added:
 
+    - func `lookup_name_default_prefix/3`
+    - pred `lookup_name_default_prefix/4`
     - func `unname_var/2`
     - pred `unname_var/3`
     - pred `undo_default_names/2`
+
+* The following function and predicate have been marked obsolete:
+
+    - func `lookup_name/3`      (replacement: `lookup_name_default_prefix/3`)
+    - pred `lookup_name/4`      (replacement: `lookup_name_default_prefix/4`)
+
+* The following predicate has had its argument order changed:
+
+    - pred `set_bindings/3`
 
 Changes to the Mercury language
 -------------------------------

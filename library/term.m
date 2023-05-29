@@ -117,8 +117,9 @@
 
 %---------------------------------------------------------------------------%
 
-    % from_int/1 should only be applied to integers returned by to_int/1.
-    % NOTE_TO_IMPLEMENTORS This instance declaration is needed to allow
+    % from_int/1 should only be applied to integers returned by to_int/1, and
+    % from_uint/1 should only be applied to integers returned by to_uint/1.
+    % NOTE_TO_IMPLEMENTORS The uenum instance declaration is needed to allow
     % NOTE_TO_IMPLEMENTORS sets of variables to be represented using
     % NOTE_TO_IMPLEMENTORS sparse_bitset.m and the other bitset modules.
 :- instance enum(var(_)).
@@ -149,8 +150,9 @@
     % `term' i.e. `term(generic)'. It is useful because in some instances
     % it doesn't matter what the type of a term is, and passing it to this
     % predicate will ground the type avoiding unbound type variable warnings.
-    % NOTE_TO_IMPLEMENTORS XXX This is not all that useful,
-    % NOTE_TO_IMPLEMENTORS since we now have with_type.
+    %
+    % This predicate is obsolete because its job can now be done with
+    % a with_type annotation, such as `Term : term(generic)'.
     %
 :- pred generic_term(term::in) is det.
 :- pragma obsolete(pred(generic_term/1)).
@@ -182,17 +184,17 @@
     % a term.
     %
 :- func context_init(string, int) = context.
-:- pragma obsolete(func(context_init/2), [term_context.context_init/2]).
 :- pred context_init(string::in, int::in, context::out) is det.
+:- pragma obsolete(func(context_init/2), [term_context.context_init/2]).
 :- pragma obsolete(pred(context_init/3), [term_context.context_init/2]).
 
     % Return a dummy term context.
     %
 :- func dummy_context_init = context.
-:- pragma obsolete(func(dummy_context_init/0), [term_context.dummy_context/0]).
 :- func context_init = context.
-:- pragma obsolete(func(context_init/0), [term_context.dummy_context/0]).
 :- pred context_init(context::out) is det.
+:- pragma obsolete(func(dummy_context_init/0), [term_context.dummy_context/0]).
+:- pragma obsolete(func(context_init/0), [term_context.dummy_context/0]).
 :- pragma obsolete(pred(context_init/1), [term_context.dummy_context/0]).
 
 :- pred is_dummy_context(context::in) is semidet.
@@ -202,15 +204,15 @@
     % Given a term context, return the source file.
     %
 :- func context_file(context) = string.
-:- pragma obsolete(func(context_file/1), [term_context.context_file/1]).
 :- pred context_file(context::in, string::out) is det.
+:- pragma obsolete(func(context_file/1), [term_context.context_file/1]).
 :- pragma obsolete(pred(context_file/2), [term_context.context_file/1]).
 
     % Given a term context, return the source line number.
     %
 :- func context_line(context) = int.
-:- pragma obsolete(func(context_line/1), [term_context.context_line/1]).
 :- pred context_line(context::in, int::out) is det.
+:- pragma obsolete(func(context_line/1), [term_context.context_line/1]).
 :- pragma obsolete(pred(context_line/2), [term_context.context_line/1]).
 
 %---------------------------------------------------------------------------%
@@ -643,9 +645,14 @@
 
 %---------------------------------------------------------------------------%
 
+    % We number variables using small sequential positive integers:
+    % 1, 2, 3 etc.
 :- type var(T)
     --->    var(int).
 
+    % The argument of the var_supply function symbol is the integer
+    % identifying the last variable created, if there is one, and zero
+    % otherwise.
 :- type var_supply(T)
     --->    var_supply(int).
 
@@ -655,7 +662,6 @@ init_var_supply = var_supply(0).
 init_var_supply(var_supply(0)).
 
 create_var(var(V), var_supply(V0), var_supply(V)) :-
-    % We number variables using sequential integers.
     V = V0 + 1.
 
 %---------------------------------------------------------------------------%

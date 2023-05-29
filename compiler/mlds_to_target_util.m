@@ -401,7 +401,7 @@ init_arg_wrappers_cs_java(ArrayDims, LParen, RParen) :-
 %---------------------------------------------------------------------------%
 
 generic_tvar_to_string(Var) = VarName :-
-    varset.lookup_name(varset.init, Var, "MR_tvar_", VarName).
+    varset.lookup_name_default_prefix(varset.init, Var, "MR_tvar_", VarName).
 
 generic_tvars_to_string(Vars) = VarNamesStr :-
     (
