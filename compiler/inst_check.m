@@ -368,37 +368,37 @@ is_builtin_type_ctor_for_inst(ForTypeCtorName, ForTypeCtorArity,
         ForTypeCtor = int_type_ctor,
         BuiltinType = builtin_type_int(int_type_int)
     ;
-        ForTypeCtorName = "uint",
-        ForTypeCtor = uint_type_ctor,
-        BuiltinType = builtin_type_int(int_type_uint)
-    ;
         ForTypeCtorName = "int8",
         ForTypeCtor = int8_type_ctor,
         BuiltinType = builtin_type_int(int_type_int8)
-    ;
-        ForTypeCtorName = "uint8",
-        ForTypeCtor = uint8_type_ctor,
-        BuiltinType = builtin_type_int(int_type_uint8)
     ;
         ForTypeCtorName = "int16",
         ForTypeCtor = int16_type_ctor,
         BuiltinType = builtin_type_int(int_type_int16)
     ;
-        ForTypeCtorName = "uint16",
-        ForTypeCtor = uint16_type_ctor,
-        BuiltinType = builtin_type_int(int_type_uint16)
-    ;
         ForTypeCtorName = "int32",
         ForTypeCtor = int32_type_ctor,
         BuiltinType = builtin_type_int(int_type_int32)
     ;
-        ForTypeCtorName = "uint32",
-        ForTypeCtor = uint32_type_ctor,
-        BuiltinType = builtin_type_int(int_type_uint32)
-    ;
         ForTypeCtorName = "int64",
         ForTypeCtor = int64_type_ctor,
         BuiltinType = builtin_type_int(int_type_int64)
+    ;
+        ForTypeCtorName = "uint",
+        ForTypeCtor = uint_type_ctor,
+        BuiltinType = builtin_type_int(int_type_uint)
+    ;
+        ForTypeCtorName = "uint8",
+        ForTypeCtor = uint8_type_ctor,
+        BuiltinType = builtin_type_int(int_type_uint8)
+    ;
+        ForTypeCtorName = "uint16",
+        ForTypeCtor = uint16_type_ctor,
+        BuiltinType = builtin_type_int(int_type_uint16)
+    ;
+        ForTypeCtorName = "uint32",
+        ForTypeCtor = uint32_type_ctor,
+        BuiltinType = builtin_type_int(int_type_uint32)
     ;
         ForTypeCtorName = "uint64",
         ForTypeCtor = uint64_type_ctor,
@@ -426,46 +426,8 @@ type_defn_or_builtin_to_type_ctor(TypeDefnOrBuiltin, TypeCtor) :-
         TypeDefnOrBuiltin = type_user(type_ctor_and_defn(TypeCtor, _))
     ;
         TypeDefnOrBuiltin = type_builtin(BuiltinType),
-        (
-            BuiltinType = builtin_type_int(int_type_int),
-            TypeCtor = type_ctor(unqualified("int"), 0)
-        ;
-            BuiltinType = builtin_type_int(int_type_uint),
-            TypeCtor = type_ctor(unqualified("uint"), 0)
-        ;
-            BuiltinType = builtin_type_int(int_type_int8),
-            TypeCtor = type_ctor(unqualified("int8"), 0)
-        ;
-            BuiltinType = builtin_type_int(int_type_uint8),
-            TypeCtor = type_ctor(unqualified("uint8"), 0)
-        ;
-            BuiltinType = builtin_type_int(int_type_int16),
-            TypeCtor = type_ctor(unqualified("int16"), 0)
-        ;
-            BuiltinType = builtin_type_int(int_type_uint16),
-            TypeCtor = type_ctor(unqualified("uint16"), 0)
-        ;
-            BuiltinType = builtin_type_int(int_type_int32),
-            TypeCtor = type_ctor(unqualified("int32"), 0)
-        ;
-            BuiltinType = builtin_type_int(int_type_uint32),
-            TypeCtor = type_ctor(unqualified("uint32"), 0)
-        ;
-            BuiltinType = builtin_type_int(int_type_int64),
-            TypeCtor = type_ctor(unqualified("int64"), 0)
-        ;
-            BuiltinType = builtin_type_int(int_type_uint64),
-            TypeCtor = type_ctor(unqualified("uint64"), 0)
-        ;
-            BuiltinType = builtin_type_float,
-            TypeCtor = type_ctor(unqualified("float"), 0)
-        ;
-            BuiltinType = builtin_type_char,
-            TypeCtor = type_ctor(unqualified("char"), 0)
-        ;
-            BuiltinType = builtin_type_string,
-            TypeCtor = type_ctor(unqualified("string"), 0)
-        )
+        builtin_type_name(BuiltinType, TypeCtorName),
+        TypeCtor = type_ctor(unqualified(TypeCtorName), 0)
     ;
         TypeDefnOrBuiltin = type_tuple(Arity),
         TypeCtor = type_ctor(unqualified("{}"), Arity)
@@ -539,7 +501,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
                 ; TypeDefnBody = hlds_solver_type(_)
                 ; TypeDefnBody = hlds_abstract_type(_)
                 ),
-                !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
+                cord.snoc(simple_miss(ConsId), !Mismatches)
             )
         ;
             ForTypeKind = ftk_builtin(_, BuiltinType),
@@ -551,14 +513,14 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
                 then
                     true
                 else
-                    !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
+                    cord.snoc(simple_miss(ConsId), !Mismatches)
                 )
             ;
                 ( BuiltinType = builtin_type_int(_)
                 ; BuiltinType = builtin_type_float
                 ; BuiltinType = builtin_type_string
                 ),
-                !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
+                cord.snoc(simple_miss(ConsId), !Mismatches)
             )
         )
     ;
@@ -567,28 +529,28 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
         ( if ForTypeKind = ftk_builtin(_, builtin_type_int(ExpType)) then
             true
         else
-            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
+            cord.snoc(simple_miss(ConsId), !Mismatches)
         )
     ;
         ConsId = float_const(_),
         ( if ForTypeKind = ftk_builtin(_, builtin_type_float) then
             true
         else
-            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
+            cord.snoc(simple_miss(ConsId), !Mismatches)
         )
     ;
         ConsId = char_const(_),
         ( if ForTypeKind = ftk_builtin(_, builtin_type_char) then
             true
         else
-            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
+            cord.snoc(simple_miss(ConsId), !Mismatches)
         )
     ;
         ConsId = string_const(_),
         ( if ForTypeKind = ftk_builtin(_, builtin_type_string) then
             true
         else
-            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
+            cord.snoc(simple_miss(ConsId), !Mismatches)
         )
     ;
         ( ConsId = tuple_cons(_)
@@ -605,7 +567,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
         ; ConsId = deep_profiling_proc_layout(_)
         ; ConsId = table_io_entry_desc(_)
         ),
-        !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
+        cord.snoc(simple_miss(ConsId), !Mismatches)
     ),
     check_for_type_bound_insts(ForTypeKind, BoundInsts, !Mismatches).
 
@@ -647,7 +609,7 @@ report_near_misses(TypeCtor, ConsId, SymName, CtorArities, !Mismatches) :-
     NearMisses =
         list.map(make_cons_id_component(TypeCtor, SymName), CtorArities),
     Mismatch = cons_mismatch(qual_cons_id_and_maybe_arity(ConsId), NearMisses),
-    !:Mismatches = cord.snoc(!.Mismatches, Mismatch).
+    cord.snoc(Mismatch, !Mismatches).
 
 :- func make_cons_id_component(type_ctor, sym_name, arity) = format_piece.
 
@@ -1355,46 +1317,7 @@ type_defn_or_builtin_to_string(TypeDefnOrBuiltin) = Str :-
         Str = type_ctor_to_string(TypeCtor)
     ;
         TypeDefnOrBuiltin = type_builtin(BuiltinType),
-        (
-            BuiltinType = builtin_type_int(int_type_int),
-            Str = "int"
-        ;
-            BuiltinType = builtin_type_int(int_type_uint),
-            Str = "uint"
-        ;
-            BuiltinType = builtin_type_int(int_type_int8),
-            Str = "int8"
-        ;
-            BuiltinType = builtin_type_int(int_type_uint8),
-            Str = "uint8"
-        ;
-            BuiltinType = builtin_type_int(int_type_int16),
-            Str = "int16"
-        ;
-            BuiltinType = builtin_type_int(int_type_uint16),
-            Str = "uint16"
-        ;
-            BuiltinType = builtin_type_int(int_type_int32),
-            Str = "int32"
-        ;
-            BuiltinType = builtin_type_int(int_type_uint32),
-            Str = "uint32"
-        ;
-            BuiltinType = builtin_type_int(int_type_int64),
-            Str = "int64"
-        ;
-            BuiltinType = builtin_type_int(int_type_uint64),
-            Str = "uint64"
-        ;
-            BuiltinType = builtin_type_float,
-            Str = "float"
-        ;
-            BuiltinType = builtin_type_char,
-            Str = "char"
-        ;
-            BuiltinType = builtin_type_string,
-            Str = "string"
-        )
+        builtin_type_name(BuiltinType, Str)
     ;
         TypeDefnOrBuiltin = type_tuple(Arity),
         Str = string.format("{}/%d", [i(Arity)])
