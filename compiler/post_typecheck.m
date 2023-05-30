@@ -30,6 +30,7 @@
 :- module check_hlds.post_typecheck.
 :- interface.
 
+:- import_module check_hlds.inst_mode_type_prop.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -84,7 +85,7 @@
     %
 :- pred propagate_checked_types_into_pred_modes(module_info::in,
     list(proc_id)::out, list(error_spec)::out,
-    pred_info::in, pred_info::out) is det.
+    tprop_cache::in, tprop_cache::out, pred_info::in, pred_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -92,7 +93,6 @@
 :- implementation.
 
 :- import_module check_hlds.inst_match.
-:- import_module check_hlds.inst_mode_type_prop.
 :- import_module check_hlds.mode_comparison.
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.type_util.
@@ -136,19 +136,19 @@ post_typecheck_finish_preds(!ModuleInfo, NumBadErrors,
     module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
     ValidPredIdSet = set_tree234.list_to_set(ValidPredIds),
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
-    map.map_foldl3(post_typecheck_do_finish_pred(!.ModuleInfo, ValidPredIdSet),
-        PredIdTable0, PredIdTable, 0, NumBadErrors,
+    map.map_foldl4(post_typecheck_do_finish_pred(!.ModuleInfo, ValidPredIdSet),
+        PredIdTable0, PredIdTable, map.init, _Cache, 0, NumBadErrors,
         [], AlwaysSpecs, [], NoTypeErrorSpecs),
     module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
 :- pred post_typecheck_do_finish_pred(module_info::in,
-    set_tree234(pred_id)::in,
-    pred_id::in, pred_info::in, pred_info::out, int::in, int::out,
-    list(error_spec)::in, list(error_spec)::out,
+    set_tree234(pred_id)::in, pred_id::in,
+    pred_info::in, pred_info::out, tprop_cache::in, tprop_cache::out,
+    int::in, int::out, list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId, !PredInfo,
-        !NumBadErrors, !AlwaysSpecs, !NoTypeErrorSpecs) :-
+        !Cache, !NumBadErrors, !AlwaysSpecs, !NoTypeErrorSpecs) :-
     ( if set_tree234.contains(ValidPredIdSet, PredId) then
         % Regardless of the path we take when processing a valid predicate,
         % we need to ensure that we fill in the vte_is_dummy field in all
@@ -187,7 +187,7 @@ post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId, !PredInfo,
             check_type_of_main(!.PredInfo, !AlwaysSpecs)
         ),
         propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcs,
-            InstForTypeSpecs, !PredInfo),
+            InstForTypeSpecs, !Cache, !PredInfo),
         !:NoTypeErrorSpecs = InstForTypeSpecs ++ !.NoTypeErrorSpecs,
         report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo,
             !AlwaysSpecs),
@@ -695,12 +695,12 @@ setup_var_table_in_clauses_for_imported_pred(ModuleInfo, !PredInfo) :-
 %---------------------------------------------------------------------------%
 
 propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcIds,
-        !:Specs, !PredInfo) :-
+        !:Specs, !Cache, !PredInfo) :-
     pred_info_get_proc_table(!.PredInfo, Procs0),
     ProcIds = pred_info_all_procids(!.PredInfo),
     !:Specs = [],
     propagate_checked_types_into_procs_modes(ModuleInfo, !.PredInfo, ProcIds,
-        [], RevErrorProcIds, !Specs, Procs0, Procs),
+        [], RevErrorProcIds, !Cache, !Specs, Procs0, Procs),
     list.reverse(RevErrorProcIds, ErrorProcIds),
     pred_info_set_proc_table(Procs, !PredInfo),
     pred_info_get_markers(!.PredInfo, Markers),
@@ -721,7 +721,7 @@ propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcIds,
             get_clause_list_for_replacement(ClausesRep0, Clauses0),
             VarTable = ClausesInfo0 ^ cli_var_table,
             propagate_checked_types_into_lambda_modes_in_clauses(ModuleInfo,
-                VarTable, Clauses0, Clauses, !Specs),
+                VarTable, Clauses0, Clauses, !Cache, !Specs),
             set_clause_list(Clauses, ClausesRep),
             clauses_info_set_clauses_rep(ClausesRep, ItemNums,
                 ClausesInfo0, ClausesInfo),
@@ -735,30 +735,32 @@ propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcIds,
 
 :- pred propagate_checked_types_into_procs_modes(module_info::in,
     pred_info::in, list(proc_id)::in, list(proc_id)::in, list(proc_id)::out,
+    tprop_cache::in, tprop_cache::out,
     list(error_spec)::in, list(error_spec)::out,
     proc_table::in, proc_table::out) is det.
 
 propagate_checked_types_into_procs_modes(_, _, [],
-        !RevErrorProcIds, !Specs, !Procs).
+        !RevErrorProcIds, !Cache, !Specs, !Procs).
 propagate_checked_types_into_procs_modes(ModuleInfo, PredInfo,
-        [ProcId | ProcIds], !RevErrorProcIds, !Specs, !Procs) :-
+        [ProcId | ProcIds], !RevErrorProcIds, !Cache, !Specs, !Procs) :-
     propagate_checked_types_into_proc_modes(ModuleInfo, PredInfo, ProcId,
-        !RevErrorProcIds, !Specs, !Procs),
+        !RevErrorProcIds, !Cache, !Specs, !Procs),
     propagate_checked_types_into_procs_modes(ModuleInfo, PredInfo, ProcIds,
-        !RevErrorProcIds, !Specs, !Procs).
+        !RevErrorProcIds, !Cache, !Specs, !Procs).
 
 :- pred propagate_checked_types_into_proc_modes(module_info::in,
     pred_info::in, proc_id::in, list(proc_id)::in, list(proc_id)::out,
+    tprop_cache::in, tprop_cache::out,
     list(error_spec)::in, list(error_spec)::out,
     proc_table::in, proc_table::out) is det.
 
 propagate_checked_types_into_proc_modes(ModuleInfo, PredInfo, ProcId,
-        !RevErrorProcIds, !Specs, !Procs) :-
+        !RevErrorProcIds, !Cache, !Specs, !Procs) :-
     pred_info_get_arg_types(PredInfo, ArgTypes),
     map.lookup(!.Procs, ProcId, ProcInfo0),
     proc_info_get_argmodes(ProcInfo0, ArgModes0),
     propagate_checked_types_into_modes(ModuleInfo, ta_pred(PredInfo),
-        ArgTypes, ArgModes0, ArgModes, !Specs),
+        ArgTypes, ArgModes0, ArgModes, !Cache, !Specs),
 
     % Check for unbound inst vars.
     %
@@ -787,28 +789,31 @@ propagate_checked_types_into_proc_modes(ModuleInfo, PredInfo, ProcId,
 
 :- pred propagate_checked_types_into_lambda_modes_in_clauses(module_info::in,
     var_table::in, list(clause)::in, list(clause)::out,
+    tprop_cache::in, tprop_cache::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-propagate_checked_types_into_lambda_modes_in_clauses(_, _, [], [], !Specs).
+propagate_checked_types_into_lambda_modes_in_clauses(_, _, [], [],
+        !Cache, !Specs).
 propagate_checked_types_into_lambda_modes_in_clauses(ModuleInfo, VarTable,
-        [Clause0 | Clauses0], [Clause | Clauses], !Specs) :-
+        [Clause0 | Clauses0], [Clause | Clauses], !Cache, !Specs) :-
     propagate_checked_types_into_lambda_modes_in_clause(ModuleInfo, VarTable,
-        Clause0, Clause, !Specs),
+        Clause0, Clause, !Cache, !Specs),
     propagate_checked_types_into_lambda_modes_in_clauses(ModuleInfo, VarTable,
-        Clauses0, Clauses, !Specs).
+        Clauses0, Clauses, !Cache, !Specs).
 
 :- pred propagate_checked_types_into_lambda_modes_in_clause(module_info::in,
     var_table::in, clause::in, clause::out,
+    tprop_cache::in, tprop_cache::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 propagate_checked_types_into_lambda_modes_in_clause(ModuleInfo, VarTable,
-        Clause0, Clause, !Specs) :-
+        Clause0, Clause, !Cache, !Specs) :-
     Lang = Clause0 ^ clause_lang,
     (
         Lang = impl_lang_mercury,
         Goal0 = Clause0 ^ clause_body,
         propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTable,
-            Goal0, Goal, !Specs),
+            Goal0, Goal, !Cache, !Specs),
         Clause = Clause0 ^ clause_body := Goal
     ;
         Lang = impl_lang_foreign(_),
@@ -817,10 +822,11 @@ propagate_checked_types_into_lambda_modes_in_clause(ModuleInfo, VarTable,
 
 :- pred propagate_checked_types_into_lambda_modes_in_goal(module_info::in,
     var_table::in, hlds_goal::in, hlds_goal::out,
+    tprop_cache::in, tprop_cache::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTable,
-        Goal0, Goal, !Specs) :-
+        Goal0, Goal, !Cache, !Specs) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(LHS0, RHS0, UnifyMode0, Unification0, UniContext0),
@@ -836,9 +842,10 @@ propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTable,
             Context = goal_info_get_context(GoalInfo0),
             Args = ta_lambda(PorF0, NumArgs, Context),
             propagate_checked_types_into_var_modes(ModuleInfo,
-                VarTable, Args, 1, ArgVarsModes0, ArgVarsModes, !Specs),
+                VarTable, Args, 1, ArgVarsModes0, ArgVarsModes,
+                !Cache, !Specs),
             propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-                VarTable, LambdaGoal0, LambdaGoal, !Specs),
+                VarTable, LambdaGoal0, LambdaGoal, !Cache, !Specs),
             RHS = rhs_lambda_goal(Purity0, HOGroundness0, PorF0, EvalMethod0,
                 ClosureVars0, ArgVarsModes, Detism0, LambdaGoal),
             GoalExpr = unify(LHS0, RHS, UnifyMode0, Unification0, UniContext0),
@@ -853,41 +860,41 @@ propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTable,
     ;
         GoalExpr0 = conj(ConjType, Conjuncts0),
         propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo,
-            VarTable, Conjuncts0, Conjuncts, !Specs),
+            VarTable, Conjuncts0, Conjuncts, !Cache, !Specs),
         GoalExpr = conj(ConjType, Conjuncts),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Disjuncts0),
         propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo,
-            VarTable, Disjuncts0, Disjuncts, !Specs),
+            VarTable, Disjuncts0, Disjuncts, !Cache, !Specs),
         GoalExpr = disj(Disjuncts),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var0, CanFail0, Cases0),
         propagate_checked_types_into_lambda_modes_in_cases(ModuleInfo,
-            VarTable, Cases0, Cases, !Specs),
+            VarTable, Cases0, Cases, !Cache, !Specs),
         GoalExpr = switch(Var0, CanFail0, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0),
         propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-            VarTable, Cond0, Cond, !Specs),
+            VarTable, Cond0, Cond, !Cache, !Specs),
         propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-            VarTable, Then0, Then, !Specs),
+            VarTable, Then0, Then, !Cache, !Specs),
         propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-            VarTable, Else0, Else, !Specs),
+            VarTable, Else0, Else, !Cache, !Specs),
         GoalExpr = if_then_else(Vars0, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(SubGoal0),
         propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-            VarTable, SubGoal0, SubGoal, !Specs),
+            VarTable, SubGoal0, SubGoal, !Cache, !Specs),
         GoalExpr = negation(SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
         propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-            VarTable, SubGoal0, SubGoal, !Specs),
+            VarTable, SubGoal0, SubGoal, !Cache, !Specs),
         GoalExpr = scope(Reason0, SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -895,23 +902,23 @@ propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTable,
         (
             ShortHand0 = bi_implication(GoalA0, GoalB0),
             propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-                VarTable, GoalA0, GoalA, !Specs),
+                VarTable, GoalA0, GoalA, !Cache, !Specs),
             propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-                VarTable, GoalB0, GoalB, !Specs),
+                VarTable, GoalB0, GoalB, !Cache, !Specs),
             ShortHand = bi_implication(GoalA, GoalB)
         ;
             ShortHand0 = atomic_goal(AtomicGoalType0, OuterVars0, InnerVars0,
                 OutputVars0, MainGoal0, OrElseGoals0, OrElseInners0),
             propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-                VarTable, MainGoal0, MainGoal, !Specs),
+                VarTable, MainGoal0, MainGoal, !Cache, !Specs),
             propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo,
-                VarTable, OrElseGoals0, OrElseGoals, !Specs),
+                VarTable, OrElseGoals0, OrElseGoals, !Cache, !Specs),
             ShortHand = atomic_goal(AtomicGoalType0, OuterVars0, InnerVars0,
                 OutputVars0, MainGoal, OrElseGoals, OrElseInners0)
         ;
             ShortHand0 = try_goal(MaybeIOVars0, ResultVars0, SubGoal0),
             propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
-                VarTable, SubGoal0, SubGoal, !Specs),
+                VarTable, SubGoal0, SubGoal, !Cache, !Specs),
             ShortHand = try_goal(MaybeIOVars0, ResultVars0, SubGoal)
         ),
         GoalExpr = shorthand(ShortHand),
@@ -920,46 +927,52 @@ propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTable,
 
 :- pred propagate_checked_types_into_lambda_modes_in_goals(module_info::in,
     var_table::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    tprop_cache::in, tprop_cache::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-propagate_checked_types_into_lambda_modes_in_goals(_, _, [], [], !Specs).
+propagate_checked_types_into_lambda_modes_in_goals(_, _, [], [],
+        !Cache, !Specs).
 propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo, VarTable,
-        [Goal0 | Goals0], [Goal | Goals], !Specs) :-
+        [Goal0 | Goals0], [Goal | Goals], !Cache, !Specs) :-
     propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTable,
-        Goal0, Goal, !Specs),
+        Goal0, Goal, !Cache, !Specs),
     propagate_checked_types_into_lambda_modes_in_goals(ModuleInfo, VarTable,
-        Goals0, Goals, !Specs).
+        Goals0, Goals, !Cache, !Specs).
 
 :- pred propagate_checked_types_into_lambda_modes_in_cases(module_info::in,
     var_table::in, list(case)::in, list(case)::out,
+    tprop_cache::in, tprop_cache::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-propagate_checked_types_into_lambda_modes_in_cases(_, _, [], [], !Specs).
+propagate_checked_types_into_lambda_modes_in_cases(_, _, [], [],
+        !Cache, !Specs).
 propagate_checked_types_into_lambda_modes_in_cases(ModuleInfo, VarTable,
-        [Case0 | Cases0], [Case | Cases], !Specs) :-
+        [Case0 | Cases0], [Case | Cases], !Cache, !Specs) :-
     Case0 = case(MainConsId0, OtherConsIds0, Goal0),
     propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTable,
-        Goal0, Goal, !Specs),
+        Goal0, Goal, !Cache, !Specs),
     Case = case(MainConsId0, OtherConsIds0, Goal),
     propagate_checked_types_into_lambda_modes_in_cases(ModuleInfo, VarTable,
-        Cases0, Cases, !Specs).
+        Cases0, Cases, !Cache, !Specs).
 
 %---------------------%
 
 :- pred propagate_checked_types_into_var_modes(module_info::in, var_table::in,
     tprop_args::in, int::in,
     assoc_list(prog_var, mer_mode)::in, assoc_list(prog_var, mer_mode)::out,
+    tprop_cache::in, tprop_cache::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-propagate_checked_types_into_var_modes(_, _, _, _, [], [], !Specs).
+propagate_checked_types_into_var_modes(_, _, _, _, [], [], !Cache, !Specs).
 propagate_checked_types_into_var_modes(ModuleInfo, VarTable, Args, ArgNum,
-        [Var - Mode0 | VarsModes0], [Var - Mode | VarsModes], !Specs) :-
+        [Var - Mode0 | VarsModes0], [Var - Mode | VarsModes],
+        !Cache, !Specs) :-
     lookup_var_type(VarTable, Var, Type),
     Context = tprop_arg_list_slot(Args, ArgNum),
     propagate_checked_type_into_mode(ModuleInfo, Context,
-        Type, Mode0, Mode, !Specs),
+        Type, Mode0, Mode, !Cache, !Specs),
     propagate_checked_types_into_var_modes(ModuleInfo, VarTable,
-        Args, ArgNum + 1, VarsModes0, VarsModes, !Specs).
+        Args, ArgNum + 1, VarsModes0, VarsModes, !Cache, !Specs).
 
 %---------------------------------------------------------------------------%
 

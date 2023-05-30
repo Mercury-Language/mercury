@@ -23,11 +23,13 @@
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+:- import_module map.
 
 %---------------------------------------------------------------------------%
 %
@@ -135,12 +137,37 @@
 
 %---------------------%
 
+    % The purpose of this data structure is to avoid checking the propriety
+    % of propagating a given type into a given inst_name more than once.
+    % If we have already tested whether values of the type Type can have
+    % its instantiation state described by user_inst(SymName, ArgInsts),
+    % then we record the result here in this multistage map:
+    % Type -> SymName -> ArgInsts -> Result.
+    %
+    % Note that if we find N contexts that each apply the same inst name
+    % to the same wrong type, then we want to generate N error messages,
+    % one for each context, despite doing the check just once. This is why,
+    % if the check fails, we preserve the three items that
+    % do_record_bad_use_of_user_inst needs beside the current context:
+    %
+    % - the inst constructor we are applying to a type;
+    % - the type constructor that this inst constructor is *declared*
+    %   to be for; and
+    % - the type constructor that it is *actually* being applied to.
+    %
+:- type tprop_cache ==
+    map(mer_type, map(sym_name, map(list(mer_inst), tprop_cache_result))).
+:- type tprop_cache_result
+    --->    tprop_cache_result_ok
+    ;       tprop_cache_result_error(inst_ctor, type_ctor, type_ctor).
+
     % Given corresponding lists of types and modes, produce a new list
     % of modes which includes the information provided by the
     % corresponding types.
     %
 :- pred propagate_checked_types_into_modes(module_info::in, tprop_args::in,
     list(mer_type)::in, list(mer_mode)::in, list(mer_mode)::out,
+    tprop_cache::in, tprop_cache::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Given a type and a mode, produce a new mode that includes the
@@ -148,6 +175,7 @@
     %
 :- pred propagate_checked_type_into_mode(module_info::in,
     tprop_context::in, mer_type::in, mer_mode::in, mer_mode::out,
+    tprop_cache::in, tprop_cache::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -161,13 +189,12 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_inst_mode.
-:- import_module mdbcomp.sym_name.
+:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 
 :- import_module int.
-:- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module require.
@@ -175,6 +202,7 @@
 :- import_module string.
 :- import_module term.
 :- import_module unit.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -184,44 +212,49 @@
     %
 :- pred propagate_subst_types_into_insts(module_info::in, Args::in, int::in,
     tsubst::in, list(mer_type)::in, list(mer_inst)::in, list(mer_inst)::out,
-    Errors::in, Errors::out) is det <= tprop_record(Context, Args, Errors).
-:- pragma type_spec(pred(propagate_subst_types_into_insts/9),
+    tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
+    <= tprop_record(Context, Args, Errors).
+:- pragma type_spec(pred(propagate_subst_types_into_insts/11),
     (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
-:- pragma type_spec(pred(propagate_subst_types_into_insts/9),
+:- pragma type_spec(pred(propagate_subst_types_into_insts/11),
     (Context = unit, Args = unit, Errors = unit)).
 
-propagate_subst_types_into_insts(_, _, _, _, [], [], [], !Errors).
-propagate_subst_types_into_insts(_, _, _, _, [], [_ | _], [], !Errors) :-
+propagate_subst_types_into_insts(_, _, _, _, [], [], [], !Cache, !Errors).
+propagate_subst_types_into_insts(_, _, _, _, [], [_ | _], [],
+        !Cache, !Errors) :-
     unexpected($pred, "length mismatch").
-propagate_subst_types_into_insts(_, _, _, _, [_ | _], [], [], !Errors) :-
+propagate_subst_types_into_insts(_, _, _, _, [_ | _], [], [],
+        !Cache, !Errors) :-
     unexpected($pred, "length mismatch").
 propagate_subst_types_into_insts(ModuleInfo, Args, ArgNum, Subst,
-        [Type | Types], [Inst0 | Insts0], [Inst | Insts], !Errors) :-
+        [Type | Types], [Inst0 | Insts0], [Inst | Insts], !Cache, !Errors) :-
     args_slot_to_context(Args, ArgNum, Context),
     propagate_subst_type_into_inst(ModuleInfo, Context, Subst, Type,
-        Inst0, Inst, !Errors),
+        Inst0, Inst, !Cache, !Errors),
     propagate_subst_types_into_insts(ModuleInfo, Args, ArgNum + 1, Subst,
-        Types, Insts0, Insts, !Errors).
+        Types, Insts0, Insts, !Cache, !Errors).
 
 %---------------------%
 
 :- pred propagate_subst_type_into_inst(module_info::in, Context::in,
     tsubst::in, mer_type::in, mer_inst::in, mer_inst::out,
-    Errors::in, Errors::out) is det <= tprop_record(Context, Args, Errors).
-:- pragma type_spec(pred(propagate_subst_type_into_inst/8),
+    tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
+    <= tprop_record(Context, Args, Errors).
+:- pragma type_spec(pred(propagate_subst_type_into_inst/10),
     (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
-:- pragma type_spec(pred(propagate_subst_type_into_inst/8),
+:- pragma type_spec(pred(propagate_subst_type_into_inst/10),
     (Context = unit, Args = unit, Errors = unit)).
 
 propagate_subst_type_into_inst(ModuleInfo, Context, Subst, Type0, Inst0, Inst,
-        !Errors) :-
+        !Cache, !Errors) :-
     % Optimize common case.
     ( if map.is_empty(Subst) then
         Type = Type0
     else
         apply_subst_to_type(Subst, Type0, Type)
     ),
-    propagate_type_into_inst(ModuleInfo, Context, Type, Inst0, Inst, !Errors).
+    propagate_type_into_inst(ModuleInfo, Context, Type, Inst0, Inst,
+        !Cache, !Errors).
 
 %---------------------%
 
@@ -231,64 +264,69 @@ propagate_subst_type_into_inst(ModuleInfo, Context, Subst, Type0, Inst0, Inst,
     %
 :- pred propagate_types_into_insts(module_info::in, Args::in, int::in,
     list(mer_type)::in, list(mer_inst)::in, list(mer_inst)::out,
-    Errors::in, Errors::out) is det <= tprop_record(Context, Args, Errors).
-:- pragma type_spec(pred(propagate_types_into_insts/8),
+    tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
+    <= tprop_record(Context, Args, Errors).
+:- pragma type_spec(pred(propagate_types_into_insts/10),
     (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
-:- pragma type_spec(pred(propagate_types_into_insts/8),
+:- pragma type_spec(pred(propagate_types_into_insts/10),
     (Context = unit, Args = unit, Errors = unit)).
 
-propagate_types_into_insts(_, _, _, [], [], [], !Errors).
-propagate_types_into_insts(_, _, _, [], [_ | _], [], !Errors) :-
+propagate_types_into_insts(_, _, _, [], [], [], !Cache, !Errors).
+propagate_types_into_insts(_, _, _, [], [_ | _], [], !Cache, !Errors) :-
     unexpected($pred, "length mismatch").
-propagate_types_into_insts(_, _, _, [_ | _], [], [], !Errors) :-
+propagate_types_into_insts(_, _, _, [_ | _], [], [], !Cache, !Errors) :-
     unexpected($pred, "length mismatch").
 propagate_types_into_insts(ModuleInfo, Args, ArgNum,
-        [Type | Types], [Inst0 | Insts0], [Inst | Insts], !Errors) :-
+        [Type | Types], [Inst0 | Insts0], [Inst | Insts], !Cache, !Errors) :-
     args_slot_to_context(Args, ArgNum, Context),
     propagate_type_into_inst(ModuleInfo, Context,
-        Type, Inst0, Inst, !Errors),
+        Type, Inst0, Inst, !Cache, !Errors),
     propagate_types_into_insts(ModuleInfo, Args, ArgNum + 1,
-        Types, Insts0, Insts, !Errors).
+        Types, Insts0, Insts, !Cache, !Errors).
 
 propagate_unchecked_type_into_inst(ModuleInfo, Type, Inst0, Inst) :-
-    propagate_type_into_inst(ModuleInfo, unit, Type, Inst0, Inst, unit, _).
+    propagate_type_into_inst(ModuleInfo, unit, Type, Inst0, Inst,
+        map.init, _, unit, _).
 
 :- pred propagate_type_into_inst(module_info::in, Context::in,
     mer_type::in, mer_inst::in, mer_inst::out,
-    Errors::in, Errors::out) is det <= tprop_record(Context, Args, Errors).
-:- pragma type_spec(pred(propagate_type_into_inst/7),
+    tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
+    <= tprop_record(Context, Args, Errors).
+:- pragma type_spec(pred(propagate_type_into_inst/9),
     (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
-:- pragma type_spec(pred(propagate_type_into_inst/7),
+:- pragma type_spec(pred(propagate_type_into_inst/9),
     (Context = unit, Args = unit, Errors = unit)).
 
-propagate_type_into_inst(ModuleInfo, Context, Type, Inst0, Inst, !Errors) :-
+propagate_type_into_inst(ModuleInfo, Context, Type, Inst0, Inst,
+        !Cache, !Errors) :-
     ( if semidet_fail then
         % XXX We ought to expand things eagerly here, using this code.
         % However, that causes efficiency problems, so for the moment
         % we always do propagation lazily.
         ( if type_constructors(ModuleInfo, Type, Constructors) then
             propagate_type_into_inst_eagerly(ModuleInfo, Context,
-                Type, Constructors, Inst0, Inst, !Errors)
+                Type, Constructors, Inst0, Inst, !Cache, !Errors)
         else
             Inst = Inst0
         )
     else
         propagate_type_into_inst_lazily(ModuleInfo, Context,
-            Type, Inst0, Inst, !Errors)
+            Type, Inst0, Inst, !Cache, !Errors)
     ).
 
 %---------------------%
 
 :- pred propagate_type_into_inst_eagerly(module_info::in, Context::in,
     mer_type::in, list(constructor)::in, mer_inst::in, mer_inst::out,
-    Errors::in, Errors::out) is det <= tprop_record(Context, Args, Errors).
-:- pragma type_spec(pred(propagate_type_into_inst_eagerly/8),
+    tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
+    <= tprop_record(Context, Args, Errors).
+:- pragma type_spec(pred(propagate_type_into_inst_eagerly/10),
     (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
-:- pragma type_spec(pred(propagate_type_into_inst_eagerly/8),
+:- pragma type_spec(pred(propagate_type_into_inst_eagerly/10),
     (Context = unit, Args = unit, Errors = unit)).
 
 propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
-        Inst0, Inst, !Errors) :-
+        Inst0, Inst, !Cache, !Errors) :-
     (
         Inst0 = free,
         % Inst = free(Type)
@@ -304,7 +342,7 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
                 type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
             then
                 default_higher_order_func_inst(ModuleInfo, Context, ArgTypes,
-                    HigherOrderInstInfo, !Errors),
+                    HigherOrderInstInfo, !Cache, !Errors),
                 Inst = ground(Uniq, higher_order(HigherOrderInstInfo))
             else
                 type_to_ctor_det(Type, TypeCtor),
@@ -332,7 +370,7 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
                 list.length(ArgTypes, NumArgTypes),
                 step_into_ho_inst(PredOrFunc, NumArgTypes, Context, Args),
                 propagate_types_into_modes(ModuleInfo, Args, 1,
-                    ArgTypes, Modes0, Modes, !Errors)
+                    ArgTypes, Modes0, Modes, !Cache, !Errors)
             else
                 % The inst is not a valid inst for the type, so leave it alone.
                 % This can only happen if the user has made a mistake. A mode
@@ -352,7 +390,7 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
                 type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
             then
                 default_higher_order_func_inst(ModuleInfo, Context, ArgTypes,
-                    PredInstInfo, !Errors),
+                    PredInstInfo, !Cache, !Errors),
                 Inst = any(Uniq, higher_order(PredInstInfo))
             else
                 type_to_ctor_det(Type, TypeCtor),
@@ -383,7 +421,7 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
                 list.length(ArgTypes, NumArgTypes),
                 step_into_ho_inst(PredOrFunc, NumArgTypes, Context, Args),
                 propagate_types_into_modes(ModuleInfo, Args, 1,
-                    ArgTypes, Modes0, Modes, !Errors)
+                    ArgTypes, Modes0, Modes, !Cache, !Errors)
             else
                 % The inst is not a valid inst for the type, so leave it alone.
                 % This can only happen if the user has made a mistake. A mode
@@ -398,7 +436,7 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
     ;
         Inst0 = bound(_Uniq, _InstResult, _BoundInsts0),
         propagate_type_into_bound_inst(ModuleInfo, Context,
-            Type, Inst0, Inst, !Errors)
+            Type, Inst0, Inst, !Cache, !Errors)
     ;
         Inst0 = not_reached,
         Inst = Inst0
@@ -408,32 +446,31 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
     ;
         Inst0 = constrained_inst_vars(InstVars, SubInst0),
         propagate_type_into_inst_eagerly(ModuleInfo, Context,
-            Type, Constructors, SubInst0, SubInst, !Errors),
+            Type, Constructors, SubInst0, SubInst, !Cache, !Errors),
         Inst = constrained_inst_vars(InstVars, SubInst)
     ;
         Inst0 = abstract_inst(_Name, _Args),
         Inst = Inst0                        % XXX loses info
     ;
         Inst0 = defined_inst(InstName),
-        check_for_bad_use_of_user_inst(ModuleInfo, InstName, Type, Context,
-            MaybeUserInstInfo, !Errors),
-        maybe_check_user_inst_args(ModuleInfo, Type, Context,
-            MaybeUserInstInfo, !Errors),
+        check_for_bad_use_of_user_inst(ModuleInfo, Context, InstName, Type,
+            !Cache, !Errors),
         inst_lookup(ModuleInfo, InstName, NamedInst),
         propagate_type_into_inst_eagerly(ModuleInfo, Context,
-            Type, Constructors, NamedInst, Inst, !Errors)
+            Type, Constructors, NamedInst, Inst, !Cache, !Errors)
     ).
 
 :- pred propagate_type_into_inst_lazily(module_info::in, Context::in,
     mer_type::in, mer_inst::in, mer_inst::out,
-    Errors::in, Errors::out) is det <= tprop_record(Context, Args, Errors).
-:- pragma type_spec(pred(propagate_type_into_inst_lazily/7),
+    tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
+    <= tprop_record(Context, Args, Errors).
+:- pragma type_spec(pred(propagate_type_into_inst_lazily/9),
     (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
-:- pragma type_spec(pred(propagate_type_into_inst_lazily/7),
+:- pragma type_spec(pred(propagate_type_into_inst_lazily/9),
     (Context = unit, Args = unit, Errors = unit)).
 
 propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
-        !Errors) :-
+        !Cache, !Errors) :-
     (
         Inst0 = free,
         % Inst = free(Type0)
@@ -449,7 +486,7 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
                 type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
             then
                 default_higher_order_func_inst(ModuleInfo, Context, ArgTypes,
-                    HOInstInfo, !Errors),
+                    HOInstInfo, !Cache, !Errors),
                 Inst = ground(Uniq, higher_order(HOInstInfo))
             else
                 % XXX The information added by this is not yet used, so
@@ -469,7 +506,7 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
                 list.length(ArgTypes, NumArgTypes),
                 step_into_ho_inst(PredOrFunc, NumArgTypes, Context, Args),
                 propagate_types_into_modes(ModuleInfo, Args, 1,
-                    ArgTypes, Modes0, Modes, !Errors)
+                    ArgTypes, Modes0, Modes, !Cache, !Errors)
             else
                 % The inst is not a valid inst for the type, so leave it alone.
                 % This can only happen if the user has made a mistake.
@@ -489,7 +526,7 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
                 type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
             then
                 default_higher_order_func_inst(ModuleInfo, Context, ArgTypes,
-                    HOInstInfo, !Errors),
+                    HOInstInfo, !Cache, !Errors),
                 Inst = any(Uniq, higher_order(HOInstInfo))
             else
                 Inst = any(Uniq, none_or_default_func)
@@ -505,7 +542,7 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
                 list.length(ArgTypes, NumArgTypes),
                 step_into_ho_inst(PredOrFunc, NumArgTypes, Context, Args),
                 propagate_types_into_modes(ModuleInfo, Args, 1,
-                    ArgTypes, Modes0, Modes, !Errors)
+                    ArgTypes, Modes0, Modes, !Cache, !Errors)
             else
                 % The inst is not a valid inst for the type, so leave it alone.
                 % This can only happen if the user has made a mistake.
@@ -520,7 +557,7 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
     ;
         Inst0 = bound(_Uniq, _InstResult, _BoundInsts0),
         propagate_type_into_bound_inst(ModuleInfo, Context,
-            Type, Inst0, Inst, !Errors)
+            Type, Inst0, Inst, !Cache, !Errors)
     ;
         Inst0 = not_reached,
         Inst = Inst0
@@ -530,15 +567,15 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
     ;
         Inst0 = constrained_inst_vars(InstVars, SubInst0),
         propagate_type_into_inst_lazily(ModuleInfo, Context,
-            Type, SubInst0, SubInst, !Errors),
+            Type, SubInst0, SubInst, !Cache, !Errors),
         Inst = constrained_inst_vars(InstVars, SubInst)
     ;
         Inst0 = abstract_inst(_Name, _Args),
         Inst = Inst0                        % XXX loses info
     ;
         Inst0 = defined_inst(InstName0),
-        check_for_bad_use_of_user_inst(ModuleInfo, InstName0, Type, Context,
-            MaybeUserInstInfo, !Errors),
+        check_for_bad_use_of_user_inst(ModuleInfo, Context, InstName0, Type,
+            !Cache, !Errors),
         ( if InstName0 = typed_inst(_, _) then
             % If this happens, it means that we have already lazily propagated
             % type info into this inst. We want to avoid creating insts of
@@ -548,39 +585,33 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
             Inst = Inst0
         else
             InstName = typed_inst(Type, InstName0),
-            Inst = defined_inst(InstName),
-            maybe_check_user_inst_args(ModuleInfo, Type, Context,
-                MaybeUserInstInfo, !Errors)
+            Inst = defined_inst(InstName)
         )
     ).
 
-:- pred maybe_check_user_inst_args(module_info::in, mer_type::in,
-    Context::in, maybe(user_inst_info)::in,
-    Errors::in, Errors::out) is det <= tprop_record(Context, Args, Errors).
-:- pragma type_spec(pred(maybe_check_user_inst_args/6),
+:- pred check_user_inst_args(module_info::in, mer_type::in,
+    Context::in, user_inst_info::in,
+    tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
+    <= tprop_record(Context, Args, Errors).
+:- pragma type_spec(pred(check_user_inst_args/8),
     (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
-:- pragma type_spec(pred(maybe_check_user_inst_args/6),
+:- pragma type_spec(pred(check_user_inst_args/8),
     (Context = unit, Args = unit, Errors = unit)).
 
-maybe_check_user_inst_args(ModuleInfo, Type, Context, MaybeUserInstInfo,
-        !Errors) :-
-    (
-        MaybeUserInstInfo = no
-    ;
-        MaybeUserInstInfo = yes(UserInstInfo),
-        UserInstInfo = user_inst_info(SymNameArity, InstArgs, InstDefn),
-        InstDefn = hlds_inst_defn(_VarSet, Params, InstBody,
-            _IFTC, _Context, _Status),
-        InstBody = eqv_inst(Inst0),
-        inst_substitute_arg_list(Params, InstArgs, Inst0, Inst1),
-        ( if
-            user_inst_expansion_to_context(Context, SymNameArity, SubContext)
-        then
-            propagate_type_into_inst(ModuleInfo, SubContext,
-                Type, Inst1, _Inst, !Errors)
-        else
-            true
-        )
+check_user_inst_args(ModuleInfo, Type, Context, UserInstInfo,
+        !Cache, !Errors) :-
+    UserInstInfo = user_inst_info(SymNameArity, InstArgs, InstDefn),
+    InstDefn = hlds_inst_defn(_VarSet, Params, InstBody,
+        _IFTC, _Context, _Status),
+    InstBody = eqv_inst(Inst0),
+    inst_substitute_arg_list(Params, InstArgs, Inst0, Inst1),
+    ( if
+        user_inst_expansion_to_context(Context, SymNameArity, SubContext)
+    then
+        propagate_type_into_inst(ModuleInfo, SubContext,
+            Type, Inst1, _Inst, !Cache, !Errors)
+    else
+        true
     ).
 
 %---------------------%
@@ -594,14 +625,15 @@ maybe_check_user_inst_args(ModuleInfo, Type, Context, MaybeUserInstInfo,
     %
 :- pred default_higher_order_func_inst(module_info::in, Context::in,
     list(mer_type)::in, pred_inst_info::out,
-    Errors::in, Errors::out) is det <= tprop_record(Context, Args, Errors).
-:- pragma type_spec(pred(default_higher_order_func_inst/6),
+    tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
+    <= tprop_record(Context, Args, Errors).
+:- pragma type_spec(pred(default_higher_order_func_inst/8),
     (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
-:- pragma type_spec(pred(default_higher_order_func_inst/6),
+:- pragma type_spec(pred(default_higher_order_func_inst/8),
     (Context = unit, Args = unit, Errors = unit)).
 
 default_higher_order_func_inst(ModuleInfo, Context, PredArgTypes, PredInstInfo,
-        !Errors) :-
+        !Cache, !Errors) :-
     Ground = ground(shared, none_or_default_func),
     In = from_to_mode(Ground, Ground),
     Out = from_to_mode(free, Ground),
@@ -612,7 +644,7 @@ default_higher_order_func_inst(ModuleInfo, Context, PredArgTypes, PredInstInfo,
     PredArgModes0 = FuncArgModes ++ [FuncRetMode],
     step_into_ho_inst(pf_function, NumPredArgs, Context, Args),
     propagate_types_into_modes(ModuleInfo, Args, 1, PredArgTypes,
-        PredArgModes0, PredArgModes, !Errors),
+        PredArgModes0, PredArgModes, !Cache, !Errors),
     PredInstInfo = pred_inst_info(pf_function, PredArgModes,
         arg_reg_types_unset, detism_det).
 
@@ -620,18 +652,19 @@ default_higher_order_func_inst(ModuleInfo, Context, PredArgTypes, PredInstInfo,
 
 propagate_unchecked_type_into_bound_inst(ModuleInfo, Type, Inst0, Inst) :-
     propagate_type_into_bound_inst(ModuleInfo, unit, Type, Inst0, Inst,
-        unit, _).
+        map.init, _, unit, _).
 
 :- pred propagate_type_into_bound_inst(module_info::in, Context::in,
     mer_type::in, mer_inst::in(mer_inst_is_bound), mer_inst::out,
-    Errors::in, Errors::out) is det <= tprop_record(Context, Args, Errors).
-:- pragma type_spec(pred(propagate_type_into_bound_inst/7),
+    tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
+    <= tprop_record(Context, Args, Errors).
+:- pragma type_spec(pred(propagate_type_into_bound_inst/9),
     (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
-:- pragma type_spec(pred(propagate_type_into_bound_inst/7),
+:- pragma type_spec(pred(propagate_type_into_bound_inst/9),
     (Context = unit, Args = unit, Errors = unit)).
 
 propagate_type_into_bound_inst(ModuleInfo, Context, Type, Inst0, Inst,
-        !Errors) :-
+        !Cache, !Errors) :-
     Inst0 = bound(Uniq, InstResults0, BoundInsts0),
     % Test for the most frequent kinds of type_ctors first.
     % XXX Replace with a switch on Type.
@@ -660,9 +693,9 @@ propagate_type_into_bound_inst(ModuleInfo, Context, Type, Inst0, Inst,
         Type = tuple_type(ArgTypes, _Kind),
         % There is no need to sort BoundInsts; if BoundInsts0 is sorted,
         % which it should be, then BoundInsts will be sorted too.
-        list.map_foldl(
+        list.map_foldl2(
             propagate_types_into_tuple(ModuleInfo, Context, ArgTypes),
-            BoundInsts0, BoundInsts, !Errors),
+            BoundInsts0, BoundInsts, !Cache, !Errors),
         % Tuples don't have a *conventional* type_ctor.
         PropagatedResult = inst_result_no_type_ctor_propagated,
         construct_new_bound_inst(Uniq, InstResults0, PropagatedResult,
@@ -703,7 +736,7 @@ propagate_type_into_bound_inst(ModuleInfo, Context, Type, Inst0, Inst,
                 Constructors = one_or_more_to_list(OoMConstructors),
                 propagate_subst_type_ctor_into_bound_insts(ModuleInfo, Context,
                     ArgSubst, TypeCtor, TypeModule, Constructors,
-                    BoundInsts0, BoundInsts1, !Errors),
+                    BoundInsts0, BoundInsts1, !Cache, !Errors),
                 list.sort(BoundInsts1, BoundInsts),
                 PropagatedResult = inst_result_type_ctor_propagated(TypeCtor),
                 construct_new_bound_inst(Uniq, InstResults0, PropagatedResult,
@@ -718,7 +751,7 @@ propagate_type_into_bound_inst(ModuleInfo, Context, Type, Inst0, Inst,
     ;
         Type = kinded_type(KindedType, _Kind),
         propagate_type_into_bound_inst(ModuleInfo, Context, KindedType,
-            Inst0, Inst, !Errors)
+            Inst0, Inst, !Cache, !Errors)
     ).
 
 :- pred construct_new_bound_inst(uniqueness::in, inst_test_results::in,
@@ -765,14 +798,15 @@ construct_new_bound_inst(Uniq, InstResults0, PropagatedResult, BoundInsts,
 
 :- pred propagate_types_into_tuple(module_info::in, Context::in,
     list(mer_type)::in, bound_inst::in, bound_inst::out,
-    Errors::in, Errors::out) is det <= tprop_record(Context, Args, Errors).
-:- pragma type_spec(pred(propagate_types_into_tuple/7),
+    tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
+    <= tprop_record(Context, Args, Errors).
+:- pragma type_spec(pred(propagate_types_into_tuple/9),
     (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
-:- pragma type_spec(pred(propagate_types_into_tuple/7),
+:- pragma type_spec(pred(propagate_types_into_tuple/9),
     (Context = unit, Args = unit, Errors = unit)).
 
 propagate_types_into_tuple(ModuleInfo, Context, TupleArgTypes,
-        BoundInst0, BoundInst, !Errors) :-
+        BoundInst0, BoundInst, !Cache, !Errors) :-
     BoundInst0 = bound_functor(Functor, ArgInsts0),
     ( if
         ( Functor = tuple_cons(_)
@@ -784,7 +818,7 @@ propagate_types_into_tuple(ModuleInfo, Context, TupleArgTypes,
     then
         step_into_tuple_inst(Context, Args),
         propagate_types_into_insts(ModuleInfo, Args, 1,
-            TupleArgTypes, ArgInsts0, ArgInsts, !Errors)
+            TupleArgTypes, ArgInsts0, ArgInsts, !Cache, !Errors)
     else
         % The bound_inst's arity does not match the tuple's arity, so leave it
         % alone. This can only happen in a user defined bound_inst.
@@ -817,16 +851,19 @@ propagate_char_type(BoundInst0, BoundInst) :-
 :- pred propagate_subst_type_ctor_into_bound_insts(module_info::in,
     Context::in, tsubst::in, type_ctor::in, module_name::in,
     list(constructor)::in, list(bound_inst)::in, list(bound_inst)::out,
-    Errors::in, Errors::out) is det <= tprop_record(Context, Args, Errors).
-:- pragma type_spec(pred(propagate_subst_type_ctor_into_bound_insts/10),
+    tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
+    <= tprop_record(Context, Args, Errors).
+:- pragma type_spec(pred(propagate_subst_type_ctor_into_bound_insts/12),
     (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
-:- pragma type_spec(pred(propagate_subst_type_ctor_into_bound_insts/10),
+:- pragma type_spec(pred(propagate_subst_type_ctor_into_bound_insts/12),
     (Context = unit, Args = unit, Errors = unit)).
 
-propagate_subst_type_ctor_into_bound_insts(_, _, _, _, _, _, [], [], !Errors).
+propagate_subst_type_ctor_into_bound_insts(_, _, _, _, _, _, [], [],
+        !Cache, !Errors).
 propagate_subst_type_ctor_into_bound_insts(ModuleInfo, Context, Subst,
         TypeCtor, TypeModule, Constructors,
-        [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts], !Errors) :-
+        [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts],
+        !Cache, !Errors) :-
     BoundInst0 = bound_functor(ConsId0, ArgInsts0),
     ( if ConsId0 = cons(unqualified(Name), ConsArity, _ConsTypeCtor) then
         % _ConsTypeCtor should be either TypeCtor or cons_id_dummy_type_ctor.
@@ -844,7 +881,7 @@ propagate_subst_type_ctor_into_bound_insts(ModuleInfo, Context, Subst,
         get_constructor_arg_types(CtorArgs, ArgTypes),
         step_into_bound_inst(ConsId, Context, Args),
         propagate_subst_types_into_insts(ModuleInfo, Args, 1, Subst,
-            ArgTypes, ArgInsts0, ArgInsts, !Errors),
+            ArgTypes, ArgInsts0, ArgInsts, !Cache, !Errors),
         BoundInst = bound_functor(ConsId, ArgInsts)
     else
         % The cons_id is not a valid constructor for the type,
@@ -854,7 +891,8 @@ propagate_subst_type_ctor_into_bound_insts(ModuleInfo, Context, Subst,
         BoundInst = bound_functor(ConsId, ArgInsts0)
     ),
     propagate_subst_type_ctor_into_bound_insts(ModuleInfo, Context, Subst,
-        TypeCtor, TypeModule, Constructors, BoundInsts0, BoundInsts, !Errors).
+        TypeCtor, TypeModule, Constructors, BoundInsts0, BoundInsts,
+        !Cache, !Errors).
 
     % Find the first constructor in the egiven list of constructors
     % that match the given functor name and arity. Since the constructors
@@ -885,17 +923,17 @@ get_constructor_arg_types([Arg | Args], [ArgType | ArgTypes]) :-
 %---------------------------------------------------------------------------%
 
 propagate_checked_types_into_modes(ModuleInfo, Args,
-        Types, Modes0, Modes, !Specs) :-
+        Types, Modes0, Modes, !Cache, !Specs) :-
     Errors0 = tprop_errors(!.Specs),
     propagate_types_into_modes(ModuleInfo, Args, 1,
-        Types, Modes0, Modes, Errors0, Errors),
+        Types, Modes0, Modes, !Cache, Errors0, Errors),
     Errors = tprop_errors(!:Specs).
 
 propagate_checked_type_into_mode(ModuleInfo, Context,
-        Type, Mode0, Mode, !Specs) :-
+        Type, Mode0, Mode, !Cache, !Specs) :-
     Errors0 = tprop_errors(!.Specs),
     propagate_type_into_mode(ModuleInfo, Context,
-        Type, Mode0, Mode, Errors0, Errors),
+        Type, Mode0, Mode, !Cache, Errors0, Errors),
     Errors = tprop_errors(!:Specs).
 
 %---------------------%
@@ -906,41 +944,45 @@ propagate_checked_type_into_mode(ModuleInfo, Context,
     %
 :- pred propagate_types_into_modes(module_info::in, Args::in, int::in,
     list(mer_type)::in, list(mer_mode)::in, list(mer_mode)::out,
-    Errors::in, Errors::out) is det <= tprop_record(Context, Args, Errors).
-:- pragma type_spec(pred(propagate_types_into_modes/8),
+    tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
+    <= tprop_record(Context, Args, Errors).
+:- pragma type_spec(pred(propagate_types_into_modes/10),
     (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
-:- pragma type_spec(pred(propagate_types_into_modes/8),
+:- pragma type_spec(pred(propagate_types_into_modes/10),
     (Context = unit, Args = unit, Errors = unit)).
 
-propagate_types_into_modes(_, _, _, [], [], [], !Errors).
-propagate_types_into_modes(_, _, _, [], [_ | _], [], !Errors) :-
+propagate_types_into_modes(_, _, _, [], [], [], !Cache, !Errors).
+propagate_types_into_modes(_, _, _, [], [_ | _], [], !Cache, !Errors) :-
     unexpected($pred, "length mismatch").
-propagate_types_into_modes(_, _, _, [_ | _], [], [], !Errors) :-
+propagate_types_into_modes(_, _, _, [_ | _], [], [], !Cache, !Errors) :-
     unexpected($pred, "length mismatch").
 propagate_types_into_modes(ModuleInfo, Args, ArgNum, [Type | Types],
-        [Mode0 | Modes0], [Mode | Modes], !Errors) :-
+        [Mode0 | Modes0], [Mode | Modes], !Cache, !Errors) :-
     args_slot_to_context(Args, ArgNum, Context),
-    propagate_type_into_mode(ModuleInfo, Context, Type, Mode0, Mode, !Errors),
+    propagate_type_into_mode(ModuleInfo, Context, Type, Mode0, Mode,
+        !Cache, !Errors),
     propagate_types_into_modes(ModuleInfo, Args, ArgNum + 1,
-        Types, Modes0, Modes, !Errors).
+        Types, Modes0, Modes, !Cache, !Errors).
 
     % Given a type and a mode, produce a new mode that includes the
     % information provided by the type.
     %
 :- pred propagate_type_into_mode(module_info::in, Context::in,
     mer_type::in, mer_mode::in, mer_mode::out,
-    Errors::in, Errors::out) is det <= tprop_record(Context, Args, Errors).
-:- pragma type_spec(pred(propagate_type_into_mode/7),
+    tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
+    <= tprop_record(Context, Args, Errors).
+:- pragma type_spec(pred(propagate_type_into_mode/9),
     (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
-:- pragma type_spec(pred(propagate_type_into_mode/7),
+:- pragma type_spec(pred(propagate_type_into_mode/9),
     (Context = unit, Args = unit, Errors = unit)).
 
-propagate_type_into_mode(ModuleInfo, Context, Type, Mode0, Mode, !Errors) :-
+propagate_type_into_mode(ModuleInfo, Context, Type, Mode0, Mode,
+        !Cache, !Errors) :-
     mode_get_insts(ModuleInfo, Mode0, InitialInst0, FinalInst0),
     propagate_type_into_inst_lazily(ModuleInfo, Context, Type,
-        InitialInst0, InitialInst, !Errors),
+        InitialInst0, InitialInst, !Cache, !Errors),
     propagate_type_into_inst_lazily(ModuleInfo, Context, Type,
-        FinalInst0, FinalInst, !Errors),
+        FinalInst0, FinalInst, !Cache, !Errors),
     Mode = from_to_mode(InitialInst, FinalInst).
 
 %---------------------------------------------------------------------------%
@@ -987,18 +1029,27 @@ where [
     pred user_inst_expansion_to_context(Context::in, sym_name_arity::in,
         Context::out) is semidet,
 
-        % check_for_bad_use_of_user_inst(ModuleInfo, InstName, Type,
-        %   Context, MaybeUserInstInfo, !Errors):
+        % check_for_bad_use_of_user_inst(ModuleInfo, Context, InstName, Type,
+        %   !Cache, !Errors):
         %
-        % Check whether InstName is an user inst applies to zero or more
-        % argument insts, and if so, return information about it in
-        % MaybeUserInstInfo, for further checks the user inst's body.
-        % Then at check whether using it at Context to describe a value
-        % whose type is Type violates a "for type_ctor" annotation on InstName,
-        % and if it does, add an error message for this violation to !Errors.
+        % Check whether InstName has the form user_inst(SymName, ArgInsts),
+        % and if so, then
         %
-    pred check_for_bad_use_of_user_inst(module_info::in, inst_name::in,
-        mer_type::in, Context::in, maybe(user_inst_info)::out,
+        % - check whether using InstName at Context to describe a value
+        %   whose type is Type violates a "for type_ctor" annotation
+        %   on InstName, and if it does, add an error message for this
+        %   violation to !Errors; and
+        %
+        % - have check_user_inst_args do further checks on the user inst's
+        %   arguments.
+        %
+        % Since there is no point in doing these checks more than once
+        % for any given Type/InstName pair, do all of the above only if
+        % !.Cache shows that we have not processed the current combination
+        % before.
+        %
+    pred check_for_bad_use_of_user_inst(module_info::in, Context::in,
+        inst_name::in, mer_type::in, tprop_cache::in, tprop_cache::out,
         Errors::in, Errors::out) is det
 ].
 
@@ -1026,7 +1077,7 @@ where [
     (step_into_ho_inst(_, _, _, unit)),
     (args_slot_to_context(_, _, unit)),
     (user_inst_expansion_to_context(_, _, _) :- fail),
-    (check_for_bad_use_of_user_inst(_, _, _, _, no, Errors, Errors))
+    (check_for_bad_use_of_user_inst(_, _, _, _, Cache, Cache, Errors, Errors))
 ].
 
     % This instance does all the work.
@@ -1042,7 +1093,7 @@ where [
     pred(args_slot_to_context/3) is do_args_slot_to_context,
     pred(user_inst_expansion_to_context/3)
         is do_user_inst_expansion_to_context,
-    pred(check_for_bad_use_of_user_inst/7)
+    pred(check_for_bad_use_of_user_inst/8)
         is do_check_for_bad_use_of_user_inst
 ].
 
@@ -1123,12 +1174,12 @@ are_we_already_inside_user_inst_expansion(Context, SymNameArity) = Inside :-
 
 %---------------------%
 
-:- pred do_check_for_bad_use_of_user_inst(module_info::in, inst_name::in,
-    mer_type::in, tprop_context::in, maybe(user_inst_info)::out,
+:- pred do_check_for_bad_use_of_user_inst(module_info::in, tprop_context::in,
+    inst_name::in, mer_type::in, tprop_cache::in, tprop_cache::out,
     tprop_errors::in, tprop_errors::out) is det.
 
-do_check_for_bad_use_of_user_inst(ModuleInfo, InstName, Type,
-        TPropContext, MaybeUserInstInfo, !Errors) :-
+do_check_for_bad_use_of_user_inst(ModuleInfo, TPropContext, InstName, Type,
+        !Cache, !Errors) :-
     (
         ( InstName = unify_inst(_, _, _, _)
         ; InstName = merge_inst(_, _)
@@ -1138,42 +1189,102 @@ do_check_for_bad_use_of_user_inst(ModuleInfo, InstName, Type,
         ; InstName = mostly_uniq_inst(_)
         ; InstName = typed_ground(_, _)
         ; InstName = typed_inst(_, _)
-        ),
-        MaybeUserInstInfo = no
+        )
     ;
         InstName = user_inst(SymName, ArgInsts),
-        module_info_get_inst_table(ModuleInfo, InstTable),
-        inst_table_get_user_insts(InstTable, UserInstTable),
-        list.length(ArgInsts, Arity),
-        InstCtor = inst_ctor(SymName, Arity),
-        ( if map.search(UserInstTable, InstCtor, InstDefn) then
-            SymNameArity = sym_name_arity(SymName, Arity),
-            UserInstInfo = user_inst_info(SymNameArity, ArgInsts, InstDefn),
-            ( if 
-                MaybeInstForTypeCtor = InstDefn ^ inst_for_type,
-                MaybeInstForTypeCtor =
-                    iftc_applicable_declared(InstForTypeCtor),
-                type_to_ctor(Type, TypeCtor),
-                TypeCtor \= InstForTypeCtor
-            then
+        % For the tests/valid/inst_per_bug_2 test case, this cache reduces
+        % the number of checks done from above 16 million to just 12.
+        ( if
+            result_is_in_tprop_cache(!.Cache, Type, SymName, ArgInsts, Result)
+        then
+            (
+                Result = tprop_cache_result_ok
+            ;
+                Result = tprop_cache_result_error(InstCtor, InstForTypeCtor,
+                    TypeCtor),
                 do_record_bad_use_of_user_inst(InstCtor, InstForTypeCtor,
-                    TypeCtor, TPropContext, !Errors),
-                % We have found an error in this application of InstName.
-                % Since we return a meaningful MaybeUserInstInfo here,
-                % our caller will also check whether InstName's argument insts
-                % are similarly applied to values of inappropriate types.
-                % The question is: would users find this extra error report
-                % useful, or would they find it a distraction? We won't know
-                % unless we try it. If it turns out to be a distraction,
-                % we can change this to MaybeUserInstInfo = no.
-                MaybeUserInstInfo = yes(UserInstInfo)
-            else
-                MaybeUserInstInfo = yes(UserInstInfo)
+                    TypeCtor, TPropContext, !Errors)
             )
         else
-            MaybeUserInstInfo = no
+            trace [compile_time(flag("user_inst_checks")), io(!IO)] (
+                io.stderr_stream(StdErr, !IO),
+                TypeStr =
+                    mercury_type_to_string(varset.init, print_num_only, Type),
+                io.format(StdErr, "USER_INST %s %s %s\n",
+                    [s(sym_name_to_string(SymName)), s(string(ArgInsts)),
+                    s(TypeStr)], !IO)
+            ),
+            module_info_get_inst_table(ModuleInfo, InstTable),
+            inst_table_get_user_insts(InstTable, UserInstTable),
+            list.length(ArgInsts, Arity),
+            InstCtor = inst_ctor(SymName, Arity),
+            ( if map.search(UserInstTable, InstCtor, InstDefn) then
+                SymNameArity = sym_name_arity(SymName, Arity),
+                UserInstInfo =
+                    user_inst_info(SymNameArity, ArgInsts, InstDefn),
+                ( if
+                    MaybeInstForTypeCtor = InstDefn ^ inst_for_type,
+                    MaybeInstForTypeCtor =
+                        iftc_applicable_declared(InstForTypeCtor),
+                    type_to_ctor(Type, TypeCtor),
+                    TypeCtor \= InstForTypeCtor
+                then
+                    Result = tprop_cache_result_error(InstCtor,
+                        InstForTypeCtor, TypeCtor),
+                    do_record_bad_use_of_user_inst(InstCtor, InstForTypeCtor,
+                        TypeCtor, TPropContext, !Errors)
+                    % XXX
+                    % We have found an error in this application of InstName.
+                    % We do still check whether InstName's argument insts
+                    % are similarly applied to values of inappropriate types.
+                    % The question is: would users find this extra error
+                    % report useful, or would they find it a distraction?
+                    % We won't know unless we try it.
+                else
+                    Result = tprop_cache_result_ok
+                ),
+                record_result_in_tprop_cache(Type, SymName, ArgInsts, Result,
+                    !Cache),
+                check_user_inst_args(ModuleInfo, Type, TPropContext,
+                    UserInstInfo, !Cache, !Errors)
+            else
+                true
+            )
         )
     ).
+
+%---------------------%
+
+:- pred result_is_in_tprop_cache(tprop_cache::in, mer_type::in,
+    sym_name::in, list(mer_inst)::in, tprop_cache_result::out) is semidet.
+
+result_is_in_tprop_cache(Cache, Type, SymName, ArgInsts, Result) :-
+    map.search(Cache, Type, CacheTypeMap0),
+    map.search(CacheTypeMap0, SymName, CacheTypeNameMap0),
+    map.search(CacheTypeNameMap0, ArgInsts, Result).
+
+:- pred record_result_in_tprop_cache(mer_type::in,
+    sym_name::in, list(mer_inst)::in, tprop_cache_result::in,
+    tprop_cache::in, tprop_cache::out) is det.
+
+record_result_in_tprop_cache(Type, SymName, ArgInsts, Result, !Cache) :-
+    ( if map.search(!.Cache, Type, TypeMap0) then
+        ( if map.search(TypeMap0, SymName, TypeNameMap0) then
+            map.set(ArgInsts, Result, TypeNameMap0, TypeNameMap),
+            map.det_update(SymName, TypeNameMap, TypeMap0, TypeMap),
+            map.det_update(Type, TypeMap, !Cache)
+        else
+            TypeNameMap = map.singleton(ArgInsts, Result),
+            map.det_insert(SymName, TypeNameMap, TypeMap0, TypeMap),
+            map.det_update(Type, TypeMap, !Cache)
+        )
+    else
+        TypeNameMap = map.singleton(ArgInsts, Result),
+        map.det_insert(SymName, TypeNameMap, map.init, TypeMap),
+        map.det_insert(Type, TypeMap, !Cache)
+    ).
+
+%---------------------%
 
 :- pred do_record_bad_use_of_user_inst(inst_ctor::in,
     type_ctor::in, type_ctor::in, tprop_context::in,

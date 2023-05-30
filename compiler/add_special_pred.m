@@ -445,8 +445,11 @@ add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type, TypeCtor,
         setup_var_table_in_clauses_for_imported_pred(!.ModuleInfo,
             PredInfo0, PredInfo1)
     ),
+    % It would be nice if we could
+    % - rely on an existing tprop_cache, and
+    % - we did not have to throw away the updated tprop_cache.
     propagate_checked_types_into_pred_modes(!.ModuleInfo, ErrorProcs,
-        _InstForTypeSpecs, PredInfo1, PredInfo),
+        _InstForTypeSpecs, map.init, _Cache, PredInfo1, PredInfo),
     expect(unify(ErrorProcs, []), $pred, "ErrorProcs != []"),
 
     % Call polymorphism to introduce type_info arguments for polymorphic types.
