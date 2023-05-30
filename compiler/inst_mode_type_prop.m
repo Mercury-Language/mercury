@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2021-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -894,8 +894,8 @@ propagate_subst_type_ctor_into_bound_insts(ModuleInfo, Context, Subst,
         TypeCtor, TypeModule, Constructors, BoundInsts0, BoundInsts,
         !Cache, !Errors).
 
-    % Find the first constructor in the egiven list of constructors
-    % that match the given functor name and arity. Since the constructors
+    % Find the first constructor in the given list of constructors
+    % that matches the given functor name and arity. Since the constructors
     % should all come from the same type definition, there should be
     % at most one matching constructor in the list anyway.
     %
