@@ -128,9 +128,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred target_type_to_extension(globals::in, module_target_type::in,
-    ext::out) is semidet.
-
 :- pred extension_to_target_type(globals::in, string::in,
     module_target_type::out) is semidet.
 
@@ -451,7 +448,9 @@ get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
             module_name_to_source_file_name(ModuleName, FileName, !IO)
         )
     else
-        ( if target_type_to_extension(Globals, TargetType, Ext) then
+        target_type_to_target_extension(Globals, TargetType, TargetExt),
+        (
+            TargetExt = extension(Ext),
             (
                 Search = do_search,
                 module_name_to_search_file_name(Globals, From, Ext,
@@ -461,7 +460,10 @@ get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
                 module_name_to_file_name(Globals, From, do_not_create_dirs,
                     Ext, ModuleName, FileName, !IO)
             )
-        else
+        ;
+            ( TargetExt = foreign_obj(_, _)
+            ; TargetExt = fact_table_obj(_, _)
+            ),
             module_target_to_file_name_maybe_search(Globals, From, Search,
                 do_not_create_dirs, TargetType, ModuleName, FileName, !IO)
         )
@@ -585,77 +587,78 @@ make_dependency_list(ModuleNames, TargetType) =
 
 %---------------------------------------------------------------------------%
 
-target_type_to_extension(Globals, Target, Ext) :-
+:- type target_extension
+    --->    extension(ext)
+    ;       foreign_obj(pic, foreign_language)
+    ;       fact_table_obj(pic, string).
+
+:- pred target_type_to_target_extension(globals::in, module_target_type::in,
+    target_extension::out) is det.
+
+target_type_to_target_extension(Globals, Target, TargetExt) :-
     % target_type_to_extension and extension_to_target_type represent
     % the same relationship between targets and suffixes, but in different
     % directions. Their codes should be kept in sync.
     require_complete_switch [Target]
     (
         Target = module_target_source,
-        Ext = ext_src
+        TargetExt = extension(ext_src)
     ;
         Target = module_target_errors,
-        Ext = ext_other(other_ext(".err"))
+        TargetExt = extension(ext_other(other_ext(".err")))
     ;
         Target = module_target_int0,
-        Ext = ext_other(other_ext(".int0"))
+        TargetExt = extension(ext_other(other_ext(".int0")))
     ;
         Target = module_target_int1,
-        Ext = ext_other(other_ext(".int"))
+        TargetExt = extension(ext_other(other_ext(".int")))
     ;
         Target = module_target_int2,
-        Ext = ext_other(other_ext(".int2"))
+        TargetExt = extension(ext_other(other_ext(".int2")))
     ;
         Target = module_target_int3,
-        Ext = ext_other(other_ext(".int3"))
+        TargetExt = extension(ext_other(other_ext(".int3")))
     ;
         Target = module_target_opt,
-        Ext = ext_other(other_ext(".opt"))
+        TargetExt = extension(ext_other(other_ext(".opt")))
     ;
         Target = module_target_analysis_registry,
-        Ext = ext_other(other_ext(".analysis"))
+        TargetExt = extension(ext_other(other_ext(".analysis")))
     ;
         Target = module_target_track_flags,
-        Ext = ext_other(other_ext(".track_flags"))
+        TargetExt = extension(ext_other(other_ext(".track_flags")))
     ;
         Target = module_target_c_header(header_mih),
-        Ext = ext_other(other_ext(".mih"))
+        TargetExt = extension(ext_other(other_ext(".mih")))
     ;
         Target = module_target_c_header(header_mh),
-        Ext = ext_other(other_ext(".mh"))
+        TargetExt = extension(ext_other(other_ext(".mh")))
     ;
         Target = module_target_c_code,
-        Ext = ext_other(other_ext(".c"))
+        TargetExt = extension(ext_other(other_ext(".c")))
     ;
         Target = module_target_csharp_code,
         % XXX ".exe" if the module contains main.
-        Ext = ext_other(other_ext(".cs"))
+        TargetExt = extension(ext_other(other_ext(".cs")))
     ;
         Target = module_target_java_code,
-        Ext = ext_other(other_ext(".java"))
+        TargetExt = extension(ext_other(other_ext(".java")))
     ;
         Target = module_target_java_class_code,
-        Ext = ext_other(other_ext(".class"))
+        TargetExt = extension(ext_other(other_ext(".class")))
     ;
         Target = module_target_object_code(PIC),
         pic_object_file_extension(Globals, PIC, OtherExt),
-        Ext = ext_other(OtherExt)
+        TargetExt = extension(ext_other(OtherExt))
     ;
         Target = module_target_xml_doc,
-        Ext = ext_other(other_ext(".xml"))
+        TargetExt = extension(ext_other(other_ext(".xml")))
     ;
-        % These all need to be handled as special cases.
-        % XXX MAKE Succeeding here, and returning an indication of which
-        % of these two special cases has occurred, would probably significantly
-        % improve the readability of the callers of this predicate.
-        % XXX MAKE An alternate solution would be a mode for this predicate
-        % that restricts Target to be one of the values above, but in turn
-        % makes the determinism "det". That would still require a switch
-        % in all callers, through, which the code here would duplicate.
-        ( Target = module_target_foreign_object(_, _)
-        ; Target = module_target_fact_table_object(_, _)
-        ),
-        fail
+        Target = module_target_foreign_object(PIC, Lang),
+        TargetExt = foreign_obj(PIC, Lang)
+    ;
+        Target = module_target_fact_table_object(PIC, FactFile),
+        TargetExt = fact_table_obj(PIC, FactFile)
     ).
 
 extension_to_target_type(Globals, ExtStr, Target) :-
@@ -775,7 +778,9 @@ module_target_to_file_name(Globals, From, MkDir, TargetType,
 
 module_target_to_file_name_maybe_search(Globals, From, Search, MkDir,
         TargetType, ModuleName, FileName, !IO) :-
-    ( if target_type_to_extension(Globals, TargetType, Ext) then
+    target_type_to_target_extension(Globals, TargetType, TargetExt),
+    (
+        TargetExt = extension(Ext),
         (
             Search = do_search,
             module_name_to_search_file_name(Globals, From, Ext,
@@ -785,38 +790,17 @@ module_target_to_file_name_maybe_search(Globals, From, Search, MkDir,
             module_name_to_file_name(Globals, From, MkDir, Ext,
                 ModuleName, FileName, !IO)
         )
-    else
-        (
-            TargetType = module_target_foreign_object(PIC, Lang),
-            foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
-            module_target_to_file_name_maybe_search(Globals, From,
-                Search, MkDir, module_target_object_code(PIC),
-                ForeignModuleName, FileName, !IO)
-        ;
-            TargetType = module_target_fact_table_object(PIC, FactFile),
-            pic_object_file_extension(Globals, PIC, OtherExt),
-            fact_table_file_name(Globals, $pred, MkDir, OtherExt,
-                FactFile, FileName, !IO)
-        ;
-            ( TargetType = module_target_source
-            ; TargetType = module_target_int0
-            ; TargetType = module_target_int1
-            ; TargetType = module_target_int2
-            ; TargetType = module_target_int3
-            ; TargetType = module_target_analysis_registry
-            ; TargetType = module_target_c_code
-            ; TargetType = module_target_c_header(_)
-            ; TargetType = module_target_errors
-            ; TargetType = module_target_opt
-            ; TargetType = module_target_csharp_code
-            ; TargetType = module_target_java_code
-            ; TargetType = module_target_java_class_code
-            ; TargetType = module_target_object_code(_)
-            ; TargetType = module_target_xml_doc
-            ; TargetType = module_target_track_flags
-            ),
-            unexpected($pred, "unexpected TargetType")
-        )
+    ;
+        TargetExt = foreign_obj(PIC, Lang),
+        foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
+        module_target_to_file_name_maybe_search(Globals, From,
+            Search, MkDir, module_target_object_code(PIC),
+            ForeignModuleName, FileName, !IO)
+    ;
+        TargetExt = fact_table_obj(PIC, FactFile),
+        pic_object_file_extension(Globals, PIC, OtherExt),
+        fact_table_file_name(Globals, $pred, MkDir, OtherExt,
+            FactFile, FileName, !IO)
     ).
 
 timestamp_extension(ModuleTargetType, other_ext(ExtStr)) :-
