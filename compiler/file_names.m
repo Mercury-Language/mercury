@@ -80,7 +80,7 @@
     % but the subdirectory does not exist, which in this case may mean either
     %
     % - that Mercury exists but Mercury/css does not, or
-    % - that Mercury does exist, which of course means that Mercury/css
+    % - that Mercury does not exist, which of course means that Mercury/css
     %   does not exist either,
     %
     % values of this type tell the predicate they are given to whether it
@@ -89,7 +89,7 @@
     --->    do_create_dirs
     ;       do_not_create_dirs.
 
-    % For some kinds of files, we know exactly where (in which directory)
+    % For some kinds of files, we know exactly in which directory
     % they should be; for other kinds, we may have to search several
     % directories. For the latter, our clients will need to call the
     % module_name_to_search_file_name predicate, which internally sets
