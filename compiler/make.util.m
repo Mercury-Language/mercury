@@ -36,6 +36,49 @@
 
 %---------------------------------------------------------------------------%
 %
+% File names.
+%
+
+    % get_file_name(Globals, From, Search, TargetFile, FileName, !IO):
+    %
+    % Compute a file name for the given target file.
+    % `Search' should be `do_search' if the file could be part of an
+    % installed library.
+    %
+:- pred get_file_name(globals::in, string::in, maybe_search::in,
+    target_file::in, file_name::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+    % Return the file name for the given target_file. The I/O state pair
+    % may be needed to find this file name.
+    %
+:- pred get_make_target_file_name(globals::in, string::in,
+    target_file::in, string::out, io::di, io::uo) is det.
+
+:- pred dependency_file_to_file_name(globals::in, dependency_file::in,
+    string::out, io::di, io::uo) is det.
+
+:- pred linked_target_file_name(globals::in, module_name::in,
+    linked_target_type::in, file_name::out, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Extensions on file names.
+%
+
+:- pred extension_to_target_type(globals::in, string::in,
+    module_target_type::out) is semidet.
+
+:- pred target_extension_synonym(string::in, module_target_type::out)
+    is semidet.
+
+    % Find the extension for the timestamp file for the given target type,
+    % if one exists.
+    %
+:- pred timestamp_extension(module_target_type::in, other_ext::out) is semidet.
+
+%---------------------------------------------------------------------------%
+%
 % Timestamp handling.
 %
 
@@ -62,16 +105,6 @@
 :- pred get_target_timestamp(globals::in, maybe_search::in, target_file::in,
     maybe_error(timestamp)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
-
-    % get_file_name(Globals, From, Search, TargetFile, FileName, !IO):
-    %
-    % Compute a file name for the given target file.
-    % `Search' should be `do_search' if the file could be part of an
-    % installed library.
-    %
-:- pred get_file_name(globals::in, string::in, maybe_search::in,
-    target_file::in, file_name::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Find the timestamp of the first file matching the given
     % file name in one of the given directories.
@@ -128,22 +161,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred extension_to_target_type(globals::in, string::in,
-    module_target_type::out) is semidet.
-
-:- pred target_extension_synonym(string::in, module_target_type::out)
-    is semidet.
-
-%---------------------------------------------------------------------------%
-
-:- pred linked_target_file_name(globals::in, module_name::in,
-    linked_target_type::in, file_name::out, io::di, io::uo) is det.
-
-    % Find the extension for the timestamp file for the given target type,
-    % if one exists.
-    %
-:- pred timestamp_extension(module_target_type::in, other_ext::out) is semidet.
-
 :- pred target_is_grade_or_arch_dependent(module_target_type::in) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -173,15 +190,6 @@
     %
 :- pred debug_file_msg(globals::in, target_file::in, string::in,
     io::di, io::uo) is det.
-
-:- pred dependency_file_to_file_name(globals::in, dependency_file::in,
-    string::out, io::di, io::uo) is det.
-
-    % Return the file name for the given target_file. The I/O state pair
-    % may be needed to find this file name.
-    %
-:- pred get_make_target_file_name(globals::in, string::in,
-    target_file::in, string::out, io::di, io::uo) is det.
 
     % Write a message "Making <filename>" if `--verbose-make' is set.
     %
@@ -271,165 +279,6 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-init_target_file_timestamps =
-    version_hash_table.unsafe_init_default(target_file_hash).
-
-get_timestamp_file_timestamp(Globals, target_file(ModuleName, TargetType),
-        MaybeTimestamp, !Info, !IO) :-
-    ( if timestamp_extension(TargetType, TimestampOtherExt) then
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            ext_other(TimestampOtherExt), ModuleName, FileName, !IO)
-    else
-        module_target_to_file_name(Globals, $pred, do_not_create_dirs,
-            TargetType, ModuleName, FileName, !IO)
-    ),
-
-    % We should only ever look for timestamp files in the current directory.
-    % Timestamp files are only used when processing a module, and only modules
-    % in the current directory are processed.
-    SearchDirs = [dir.this_directory],
-    get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO).
-
-get_dependency_timestamp(Globals, DependencyFile, MaybeTimestamp, !Info,
-        !IO) :-
-    (
-        DependencyFile = dep_file(FileName),
-        SearchDirs = [dir.this_directory],
-        get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO)
-    ;
-        DependencyFile = dep_target(Target),
-        get_target_timestamp(Globals, do_search, Target, MaybeTimestamp0,
-            !Info, !IO),
-        ( if
-            Target = target_file(_, module_target_c_header(header_mih)),
-            MaybeTimestamp0 = ok(_)
-        then
-            % Don't rebuild the `.o' file if an irrelevant part of a
-            % `.mih' file has changed. If a relevant part of a `.mih'
-            % file changed, the interface files of the imported module
-            % must have changed in a way that would force the `.c' and
-            % `.o' files of the current module to be rebuilt.
-            MaybeTimestamp = ok(oldest_timestamp)
-        else
-            MaybeTimestamp = MaybeTimestamp0
-        )
-    ).
-
-get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
-        !IO) :-
-    TargetFile = target_file(_ModuleName, TargetType),
-    ( if TargetType = module_target_analysis_registry then
-        get_file_name(Globals, $pred, Search, TargetFile, FileName,
-            !Info, !IO),
-        get_target_timestamp_analysis_registry(Globals, Search, TargetFile,
-            FileName, MaybeTimestamp, !Info, !IO)
-    else
-        % This path is hit very frequently so it is worth caching timestamps by
-        % target_file. It avoids having to compute a file name for a
-        % target_file first, before looking up the timestamp for that file.
-        TargetFileTimestamps0 = !.Info ^ mki_target_file_timestamps,
-        ( if
-            version_hash_table.search(TargetFileTimestamps0, TargetFile,
-                Timestamp)
-        then
-            MaybeTimestamp = ok(Timestamp)
-        else
-            get_file_name(Globals, $pred, Search, TargetFile, FileName,
-                !Info, !IO),
-            get_target_timestamp_2(Globals, Search, TargetFile,
-                FileName, MaybeTimestamp, !Info, !IO),
-            (
-                MaybeTimestamp = ok(Timestamp),
-                TargetFileTimestamps1 = !.Info ^ mki_target_file_timestamps,
-                version_hash_table.det_insert(TargetFile, Timestamp,
-                    TargetFileTimestamps1, TargetFileTimestamps),
-                !Info ^ mki_target_file_timestamps := TargetFileTimestamps
-            ;
-                MaybeTimestamp = error(_)
-                % Do not record errors. These would usually be due to files not
-                % yet made, and the result would have to be updated once the
-                % file is made.
-            )
-        )
-    ).
-
-    % Special treatment for `.analysis' files. If the corresponding
-    % `.analysis_status' file says the `.analysis' file is invalid then we
-    % treat it as out of date.
-    %
-:- pred get_target_timestamp_analysis_registry(globals::in, maybe_search::in,
-    target_file::in, file_name::in, maybe_error(timestamp)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-get_target_timestamp_analysis_registry(Globals, Search, TargetFile, FileName,
-        MaybeTimestamp, !Info, !IO) :-
-    TargetFile = target_file(ModuleName, _TargetType),
-    FileTimestamps0 = !.Info ^ mki_file_timestamps,
-    ( if map.search(FileTimestamps0, FileName, MaybeTimestamp0) then
-        MaybeTimestamp = MaybeTimestamp0
-    else
-        do_read_module_overall_status(mmc, Globals, ModuleName, Status, !IO),
-        (
-            ( Status = optimal
-            ; Status = suboptimal
-            ),
-            get_target_timestamp_2(Globals, Search, TargetFile, FileName,
-                MaybeTimestamp, !Info, !IO)
-        ;
-            Status = invalid,
-            MaybeTimestamp = error("invalid module"),
-            map.det_insert(FileName, MaybeTimestamp,
-                FileTimestamps0, FileTimestamps),
-            !Info ^ mki_file_timestamps := FileTimestamps
-        )
-    ).
-
-:- pred get_target_timestamp_2(globals::in, maybe_search::in, target_file::in,
-    file_name::in, maybe_error(timestamp)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
-
-get_target_timestamp_2(Globals, Search, TargetFile, FileName, MaybeTimestamp,
-        !Info, !IO) :-
-    TargetFile = target_file(ModuleName, TargetType),
-    (
-        Search = do_search,
-        get_search_directories(Globals, TargetType, SearchDirs)
-    ;
-        Search = do_not_search,
-        SearchDirs = [dir.this_directory]
-    ),
-    get_file_timestamp(SearchDirs, FileName, MaybeTimestamp0, !Info, !IO),
-    ( if
-        MaybeTimestamp0 = error(_),
-        ( TargetType = module_target_opt
-        ; TargetType = module_target_analysis_registry
-        )
-    then
-        % If a `.opt' file in another directory doesn't exist,
-        % it just means that a library wasn't compiled with
-        % `--intermodule-optimization'.
-        % Similarly for `.analysis' files.
-
-        get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-            !Info, !IO),
-        ( if
-            MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-            module_dep_info_get_source_file_dir(ModuleDepInfo, ModuleDir),
-            ModuleDir \= dir.this_directory
-        then
-            MaybeTimestamp = ok(oldest_timestamp),
-            FileTimestamps0 = !.Info ^ mki_file_timestamps,
-            map.set(FileName, MaybeTimestamp, FileTimestamps0, FileTimestamps),
-            !Info ^ mki_file_timestamps := FileTimestamps
-        else
-            MaybeTimestamp = MaybeTimestamp0
-        )
-    else
-        MaybeTimestamp = MaybeTimestamp0
-    ).
-
-%---------------------------------------------------------------------------%
-
 get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     ( if TargetType = module_target_source then
@@ -469,121 +318,90 @@ get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
         )
     ).
 
-get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
-    FileTimestamps0 = !.Info ^ mki_file_timestamps,
-    ( if map.search(FileTimestamps0, FileName, MaybeTimestamp0) then
-        MaybeTimestamp = MaybeTimestamp0
-    else
-        search_for_file_mod_time(SearchDirs, FileName, SearchResult, !IO),
-        (
-            SearchResult = ok(TimeT),
-            Timestamp = time_t_to_timestamp(TimeT),
-            MaybeTimestamp = ok(Timestamp),
-            map.det_insert(FileName, MaybeTimestamp,
-                FileTimestamps0, FileTimestamps),
-            !Info ^ mki_file_timestamps := FileTimestamps
-        ;
-            SearchResult = error(_SearchError),
-            % XXX MAKE We should not ignore _SearchError.
-            string.format("file `%s' not found", [s(FileName)], NotFoundMsg),
-            MaybeTimestamp = error(NotFoundMsg)
-        )
-    ).
-
-:- pred get_search_directories(globals::in, module_target_type::in,
-    list(dir_name)::out) is det.
-
-get_search_directories(Globals, TargetType, SearchDirs) :-
-    MaybeOpt = search_for_file_type(TargetType),
-    (
-        MaybeOpt = yes(SearchDirOpt),
-        globals.lookup_accumulating_option(Globals, SearchDirOpt, SearchDirs0),
-        % Make sure the current directory is searched for C headers
-        % and libraries.
-        ( if list.member(dir.this_directory, SearchDirs0) then
-            SearchDirs = SearchDirs0
-        else
-            SearchDirs = [dir.this_directory | SearchDirs0]
-        )
-    ;
-        MaybeOpt = no,
-        SearchDirs = [dir.this_directory]
-    ).
-
-find_error_or_older_ok_timestamp(MaybeTimestampA, MaybeTimestampB,
-        MaybeTimestamp) :-
-    (
-        MaybeTimestampA = error(_),
-        MaybeTimestamp = MaybeTimestampA
-    ;
-        MaybeTimestampA = ok(TimestampA),
-        (
-            MaybeTimestampB = error(_),
-            MaybeTimestamp = MaybeTimestampB
-        ;
-            MaybeTimestampB = ok(TimestampB),
-            ( if compare((<), TimestampA, TimestampB) then
-                Timestamp = TimestampA
-            else
-                Timestamp = TimestampB
-            ),
-            MaybeTimestamp = ok(Timestamp)
-        )
-    ).
-
-find_error_or_oldest_ok_timestamp(MaybeTimestamps, MaybeTimestamp) :-
-    list.foldl(find_error_or_older_ok_timestamp, MaybeTimestamps,
-        ok(newest_timestamp), MaybeTimestamp).
-
-%---------------------------------------------------------------------------%
-
-remove_make_target_file(Globals, From, VerboseOption, Target, !Info, !IO) :-
-    Target = target_file(ModuleName, TargetType),
-    remove_make_target_file_by_name(Globals, From, VerboseOption,
-        ModuleName, TargetType, !Info, !IO).
-
-remove_make_target_file_by_name(Globals, From, VerboseOption,
-        ModuleName, TargetType, !Info, !IO) :-
+get_make_target_file_name(Globals, From, TargetFile, FileName, !IO) :-
+    TargetFile = target_file(ModuleName, TargetType),
     module_target_to_file_name(Globals, From, do_not_create_dirs, TargetType,
-        ModuleName, FileName, !IO),
-    make_remove_file(Globals, VerboseOption, FileName, !Info, !IO),
-    ( if timestamp_extension(TargetType, TimestampOtherExt) then
-        remove_make_module_file(Globals, VerboseOption, ModuleName,
-            ext_other(TimestampOtherExt), !Info, !IO)
-    else
-        true
+        ModuleName, FileName, !IO).
+
+dependency_file_to_file_name(Globals, DepFile, FileName, !IO) :-
+    (
+        DepFile = dep_target(TargetFile),
+        get_make_target_file_name(Globals, $pred, TargetFile, FileName, !IO)
+    ;
+        DepFile = dep_file(FileName)
     ).
 
-remove_make_module_file(Globals, VerboseOption, ModuleName, Ext, !Info, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs, Ext,
-        ModuleName, FileName, !IO),
-    make_remove_file(Globals, VerboseOption, FileName, !Info, !IO).
+linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
+    (
+        TargetType = executable,
+        globals.lookup_string_option(Globals, executable_file_extension, Ext),
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            ext_other(other_ext(Ext)), ModuleName, FileName, !IO)
+    ;
+        TargetType = static_library,
+        globals.lookup_string_option(Globals, library_extension, Ext),
+        module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs,
+            "lib", other_ext(Ext), ModuleName, FileName, !IO)
+    ;
+        TargetType = shared_library,
+        globals.lookup_string_option(Globals, shared_library_extension, Ext),
+        module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs,
+            "lib", other_ext(Ext), ModuleName, FileName, !IO)
+    ;
+        TargetType = csharp_executable,
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            ext_other(other_ext(".exe")), ModuleName, FileName, !IO)
+    ;
+        TargetType = csharp_library,
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            ext_other(other_ext(".dll")), ModuleName, FileName, !IO)
+    ;
+        ( TargetType = java_archive
+        ; TargetType = java_executable
+        ),
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            ext_other(other_ext(".jar")), ModuleName, FileName, !IO)
+    ).
 
-make_remove_file(Globals, VerboseOption, FileName, !Info, !IO) :-
-    verbose_make_msg_option(Globals, VerboseOption,
-        report_remove_file(FileName), !IO),
-    io.file.remove_file_recursively(FileName, _, !IO),
-    FileTimestamps0 = !.Info ^ mki_file_timestamps,
-    map.delete(FileName, FileTimestamps0, FileTimestamps),
-    !Info ^ mki_file_timestamps := FileTimestamps,
+:- pred module_target_to_file_name(globals::in, string::in,
+    maybe_create_dirs::in, module_target_type::in,
+    module_name::in, file_name::out, io::di, io::uo) is det.
 
-    % For simplicity, clear out all target file timestamps.
-    !Info ^ mki_target_file_timestamps := init_target_file_timestamps.
+module_target_to_file_name(Globals, From, MkDir, TargetType,
+        ModuleName, FileName, !IO) :-
+    module_target_to_file_name_maybe_search(Globals, From,
+        do_not_search, MkDir, TargetType, ModuleName, FileName, !IO).
 
-:- pred report_remove_file(string::in, io::di, io::uo) is det.
+:- pred module_target_to_file_name_maybe_search(globals::in, string::in,
+    maybe_search::in, maybe_create_dirs::in, module_target_type::in,
+    module_name::in, file_name::out, io::di, io::uo) is det.
 
-report_remove_file(FileName, !IO) :-
-    io.format("Removing %s\n", [s(FileName)], !IO).
-
-%---------------------------------------------------------------------------%
-
-make_target_file_list(ModuleNames, TargetType) =
-    list.map((func(ModuleName) = target_file(ModuleName, TargetType)),
-        ModuleNames).
-
-make_dependency_list(ModuleNames, TargetType) =
-    list.map((func(Module) = dep_target(target_file(Module, TargetType))),
-        ModuleNames).
+module_target_to_file_name_maybe_search(Globals, From, Search, MkDir,
+        TargetType, ModuleName, FileName, !IO) :-
+    target_type_to_target_extension(Globals, TargetType, TargetExt),
+    (
+        TargetExt = extension(Ext),
+        (
+            Search = do_search,
+            module_name_to_search_file_name(Globals, From, Ext,
+                ModuleName, FileName, !IO)
+        ;
+            Search = do_not_search,
+            module_name_to_file_name(Globals, From, MkDir, Ext,
+                ModuleName, FileName, !IO)
+        )
+    ;
+        TargetExt = foreign_obj(PIC, Lang),
+        foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
+        module_target_to_file_name_maybe_search(Globals, From,
+            Search, MkDir, module_target_object_code(PIC),
+            ForeignModuleName, FileName, !IO)
+    ;
+        TargetExt = fact_table_obj(PIC, FactFile),
+        pic_object_file_extension(Globals, PIC, OtherExt),
+        fact_table_file_name(Globals, $pred, MkDir, OtherExt,
+            FactFile, FileName, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -729,80 +547,6 @@ target_extension_synonym(".csharp", module_target_csharp_code).
     % Currently the ".cs" extension is still treated as the build-all target
     % for C files, so we accept ".csharp" for C# files.
 
-%---------------------------------------------------------------------------%
-
-linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
-    (
-        TargetType = executable,
-        globals.lookup_string_option(Globals, executable_file_extension, Ext),
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            ext_other(other_ext(Ext)), ModuleName, FileName, !IO)
-    ;
-        TargetType = static_library,
-        globals.lookup_string_option(Globals, library_extension, Ext),
-        module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs,
-            "lib", other_ext(Ext), ModuleName, FileName, !IO)
-    ;
-        TargetType = shared_library,
-        globals.lookup_string_option(Globals, shared_library_extension, Ext),
-        module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs,
-            "lib", other_ext(Ext), ModuleName, FileName, !IO)
-    ;
-        TargetType = csharp_executable,
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            ext_other(other_ext(".exe")), ModuleName, FileName, !IO)
-    ;
-        TargetType = csharp_library,
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            ext_other(other_ext(".dll")), ModuleName, FileName, !IO)
-    ;
-        ( TargetType = java_archive
-        ; TargetType = java_executable
-        ),
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            ext_other(other_ext(".jar")), ModuleName, FileName, !IO)
-    ).
-
-:- pred module_target_to_file_name(globals::in, string::in,
-    maybe_create_dirs::in, module_target_type::in,
-    module_name::in, file_name::out, io::di, io::uo) is det.
-
-module_target_to_file_name(Globals, From, MkDir, TargetType,
-        ModuleName, FileName, !IO) :-
-    module_target_to_file_name_maybe_search(Globals, From,
-        do_not_search, MkDir, TargetType, ModuleName, FileName, !IO).
-
-:- pred module_target_to_file_name_maybe_search(globals::in, string::in,
-    maybe_search::in, maybe_create_dirs::in, module_target_type::in,
-    module_name::in, file_name::out, io::di, io::uo) is det.
-
-module_target_to_file_name_maybe_search(Globals, From, Search, MkDir,
-        TargetType, ModuleName, FileName, !IO) :-
-    target_type_to_target_extension(Globals, TargetType, TargetExt),
-    (
-        TargetExt = extension(Ext),
-        (
-            Search = do_search,
-            module_name_to_search_file_name(Globals, From, Ext,
-                ModuleName, FileName, !IO)
-        ;
-            Search = do_not_search,
-            module_name_to_file_name(Globals, From, MkDir, Ext,
-                ModuleName, FileName, !IO)
-        )
-    ;
-        TargetExt = foreign_obj(PIC, Lang),
-        foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
-        module_target_to_file_name_maybe_search(Globals, From,
-            Search, MkDir, module_target_object_code(PIC),
-            ForeignModuleName, FileName, !IO)
-    ;
-        TargetExt = fact_table_obj(PIC, FactFile),
-        pic_object_file_extension(Globals, PIC, OtherExt),
-        fact_table_file_name(Globals, $pred, MkDir, OtherExt,
-            FactFile, FileName, !IO)
-    ).
-
 timestamp_extension(ModuleTargetType, other_ext(ExtStr)) :-
     (
         ModuleTargetType = module_target_errors,
@@ -847,6 +591,190 @@ timestamp_extension(ModuleTargetType, other_ext(ExtStr)) :-
         ExtStr = ".java_date"
     ).
 
+%---------------------------------------------------------------------------%
+
+init_target_file_timestamps =
+    version_hash_table.unsafe_init_default(target_file_hash).
+
+%---------------------%
+
+get_timestamp_file_timestamp(Globals, target_file(ModuleName, TargetType),
+        MaybeTimestamp, !Info, !IO) :-
+    ( if timestamp_extension(TargetType, TimestampOtherExt) then
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            ext_other(TimestampOtherExt), ModuleName, FileName, !IO)
+    else
+        module_target_to_file_name(Globals, $pred, do_not_create_dirs,
+            TargetType, ModuleName, FileName, !IO)
+    ),
+    % We should only ever look for timestamp files in the current directory.
+    % Timestamp files are only used when processing a module, and only modules
+    % in the current directory are processed.
+    SearchDirs = [dir.this_directory],
+    get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO).
+
+%---------------------%
+
+get_dependency_timestamp(Globals, DependencyFile, MaybeTimestamp, !Info,
+        !IO) :-
+    (
+        DependencyFile = dep_file(FileName),
+        SearchDirs = [dir.this_directory],
+        get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO)
+    ;
+        DependencyFile = dep_target(Target),
+        get_target_timestamp(Globals, do_search, Target, MaybeTimestamp0,
+            !Info, !IO),
+        ( if
+            Target = target_file(_, module_target_c_header(header_mih)),
+            MaybeTimestamp0 = ok(_)
+        then
+            % Don't rebuild the `.o' file if an irrelevant part of a
+            % `.mih' file has changed. If a relevant part of a `.mih'
+            % file changed, the interface files of the imported module
+            % must have changed in a way that would force the `.c' and
+            % `.o' files of the current module to be rebuilt.
+            MaybeTimestamp = ok(oldest_timestamp)
+        else
+            MaybeTimestamp = MaybeTimestamp0
+        )
+    ).
+
+%---------------------%
+
+get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
+        !IO) :-
+    TargetFile = target_file(_ModuleName, TargetType),
+    ( if TargetType = module_target_analysis_registry then
+        get_file_name(Globals, $pred, Search, TargetFile, FileName,
+            !Info, !IO),
+        get_target_timestamp_analysis_registry(Globals, Search, TargetFile,
+            FileName, MaybeTimestamp, !Info, !IO)
+    else
+        % This path is hit very frequently so it is worth caching timestamps by
+        % target_file. It avoids having to compute a file name for a
+        % target_file first, before looking up the timestamp for that file.
+        TargetFileTimestamps0 = !.Info ^ mki_target_file_timestamps,
+        ( if
+            version_hash_table.search(TargetFileTimestamps0, TargetFile,
+                Timestamp)
+        then
+            MaybeTimestamp = ok(Timestamp)
+        else
+            get_file_name(Globals, $pred, Search, TargetFile, FileName,
+                !Info, !IO),
+            get_target_timestamp_2(Globals, Search, TargetFile,
+                FileName, MaybeTimestamp, !Info, !IO),
+            (
+                MaybeTimestamp = ok(Timestamp),
+                TargetFileTimestamps1 = !.Info ^ mki_target_file_timestamps,
+                version_hash_table.det_insert(TargetFile, Timestamp,
+                    TargetFileTimestamps1, TargetFileTimestamps),
+                !Info ^ mki_target_file_timestamps := TargetFileTimestamps
+            ;
+                MaybeTimestamp = error(_)
+                % Do not record errors. These would usually be due to files not
+                % yet made, and the result would have to be updated once the
+                % file is made.
+            )
+        )
+    ).
+
+    % Special treatment for `.analysis' files. If the corresponding
+    % `.analysis_status' file says the `.analysis' file is invalid then we
+    % treat it as out of date.
+    %
+:- pred get_target_timestamp_analysis_registry(globals::in, maybe_search::in,
+    target_file::in, file_name::in, maybe_error(timestamp)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+get_target_timestamp_analysis_registry(Globals, Search, TargetFile, FileName,
+        MaybeTimestamp, !Info, !IO) :-
+    TargetFile = target_file(ModuleName, _TargetType),
+    FileTimestamps0 = !.Info ^ mki_file_timestamps,
+    ( if map.search(FileTimestamps0, FileName, MaybeTimestamp0) then
+        MaybeTimestamp = MaybeTimestamp0
+    else
+        do_read_module_overall_status(mmc, Globals, ModuleName, Status, !IO),
+        (
+            ( Status = optimal
+            ; Status = suboptimal
+            ),
+            get_target_timestamp_2(Globals, Search, TargetFile, FileName,
+                MaybeTimestamp, !Info, !IO)
+        ;
+            Status = invalid,
+            MaybeTimestamp = error("invalid module"),
+            map.det_insert(FileName, MaybeTimestamp,
+                FileTimestamps0, FileTimestamps),
+            !Info ^ mki_file_timestamps := FileTimestamps
+        )
+    ).
+
+:- pred get_target_timestamp_2(globals::in, maybe_search::in, target_file::in,
+    file_name::in, maybe_error(timestamp)::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
+
+get_target_timestamp_2(Globals, Search, TargetFile, FileName, MaybeTimestamp,
+        !Info, !IO) :-
+    TargetFile = target_file(ModuleName, TargetType),
+    (
+        Search = do_search,
+        get_search_directories(Globals, TargetType, SearchDirs)
+    ;
+        Search = do_not_search,
+        SearchDirs = [dir.this_directory]
+    ),
+    get_file_timestamp(SearchDirs, FileName, MaybeTimestamp0, !Info, !IO),
+    ( if
+        MaybeTimestamp0 = error(_),
+        ( TargetType = module_target_opt
+        ; TargetType = module_target_analysis_registry
+        )
+    then
+        % If a `.opt' file in another directory doesn't exist,
+        % it just means that a library wasn't compiled with
+        % `--intermodule-optimization'.
+        % Similarly for `.analysis' files.
+
+        get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
+            !Info, !IO),
+        ( if
+            MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+            module_dep_info_get_source_file_dir(ModuleDepInfo, ModuleDir),
+            ModuleDir \= dir.this_directory
+        then
+            MaybeTimestamp = ok(oldest_timestamp),
+            FileTimestamps0 = !.Info ^ mki_file_timestamps,
+            map.set(FileName, MaybeTimestamp, FileTimestamps0, FileTimestamps),
+            !Info ^ mki_file_timestamps := FileTimestamps
+        else
+            MaybeTimestamp = MaybeTimestamp0
+        )
+    else
+        MaybeTimestamp = MaybeTimestamp0
+    ).
+
+:- pred get_search_directories(globals::in, module_target_type::in,
+    list(dir_name)::out) is det.
+
+get_search_directories(Globals, TargetType, SearchDirs) :-
+    MaybeOpt = search_for_file_type(TargetType),
+    (
+        MaybeOpt = yes(SearchDirOpt),
+        globals.lookup_accumulating_option(Globals, SearchDirOpt, SearchDirs0),
+        % Make sure the current directory is searched for C headers
+        % and libraries.
+        ( if list.member(dir.this_directory, SearchDirs0) then
+            SearchDirs = SearchDirs0
+        else
+            SearchDirs = [dir.this_directory | SearchDirs0]
+        )
+    ;
+        MaybeOpt = no,
+        SearchDirs = [dir.this_directory]
+    ).
+
 :- func search_for_file_type(module_target_type) = maybe(option).
 
 search_for_file_type(ModuleTargetType) = MaybeSearchOption :-
@@ -880,6 +808,116 @@ search_for_file_type(ModuleTargetType) = MaybeSearchOption :-
         ModuleTargetType = module_target_c_header(_),
         MaybeSearchOption = yes(c_include_directory)
     ).
+
+%---------------------%
+
+get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
+    FileTimestamps0 = !.Info ^ mki_file_timestamps,
+    ( if map.search(FileTimestamps0, FileName, MaybeTimestamp0) then
+        MaybeTimestamp = MaybeTimestamp0
+    else
+        search_for_file_mod_time(SearchDirs, FileName, SearchResult, !IO),
+        (
+            SearchResult = ok(TimeT),
+            Timestamp = time_t_to_timestamp(TimeT),
+            MaybeTimestamp = ok(Timestamp),
+            map.det_insert(FileName, MaybeTimestamp,
+                FileTimestamps0, FileTimestamps),
+            !Info ^ mki_file_timestamps := FileTimestamps
+        ;
+            SearchResult = error(_SearchError),
+            % XXX MAKE We should not ignore _SearchError.
+            string.format("file `%s' not found", [s(FileName)], NotFoundMsg),
+            MaybeTimestamp = error(NotFoundMsg)
+        )
+    ).
+
+%---------------------%
+
+find_error_or_older_ok_timestamp(MaybeTimestampA, MaybeTimestampB,
+        MaybeTimestamp) :-
+    (
+        MaybeTimestampA = error(_),
+        MaybeTimestamp = MaybeTimestampA
+    ;
+        MaybeTimestampA = ok(TimestampA),
+        (
+            MaybeTimestampB = error(_),
+            MaybeTimestamp = MaybeTimestampB
+        ;
+            MaybeTimestampB = ok(TimestampB),
+            ( if compare((<), TimestampA, TimestampB) then
+                Timestamp = TimestampA
+            else
+                Timestamp = TimestampB
+            ),
+            MaybeTimestamp = ok(Timestamp)
+        )
+    ).
+
+%---------------------%
+
+find_error_or_oldest_ok_timestamp(MaybeTimestamps, MaybeTimestamp) :-
+    list.foldl(find_error_or_older_ok_timestamp, MaybeTimestamps,
+        ok(newest_timestamp), MaybeTimestamp).
+
+%---------------------------------------------------------------------------%
+
+remove_make_target_file(Globals, From, VerboseOption, Target, !Info, !IO) :-
+    Target = target_file(ModuleName, TargetType),
+    remove_make_target_file_by_name(Globals, From, VerboseOption,
+        ModuleName, TargetType, !Info, !IO).
+
+%---------------------%
+
+remove_make_target_file_by_name(Globals, From, VerboseOption,
+        ModuleName, TargetType, !Info, !IO) :-
+    module_target_to_file_name(Globals, From, do_not_create_dirs, TargetType,
+        ModuleName, FileName, !IO),
+    make_remove_file(Globals, VerboseOption, FileName, !Info, !IO),
+    ( if timestamp_extension(TargetType, TimestampOtherExt) then
+        remove_make_module_file(Globals, VerboseOption, ModuleName,
+            ext_other(TimestampOtherExt), !Info, !IO)
+    else
+        true
+    ).
+
+%---------------------%
+
+remove_make_module_file(Globals, VerboseOption, ModuleName, Ext, !Info, !IO) :-
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs, Ext,
+        ModuleName, FileName, !IO),
+    make_remove_file(Globals, VerboseOption, FileName, !Info, !IO).
+
+%---------------------%
+
+make_remove_file(Globals, VerboseOption, FileName, !Info, !IO) :-
+    verbose_make_msg_option(Globals, VerboseOption,
+        report_remove_file(FileName), !IO),
+    io.file.remove_file_recursively(FileName, _, !IO),
+    FileTimestamps0 = !.Info ^ mki_file_timestamps,
+    map.delete(FileName, FileTimestamps0, FileTimestamps),
+    !Info ^ mki_file_timestamps := FileTimestamps,
+
+    % For simplicity, clear out all target file timestamps.
+    !Info ^ mki_target_file_timestamps := init_target_file_timestamps.
+
+:- pred report_remove_file(string::in, io::di, io::uo) is det.
+
+report_remove_file(FileName, !IO) :-
+    io.format("Removing %s\n", [s(FileName)], !IO).
+
+%---------------------------------------------------------------------------%
+
+make_target_file_list(ModuleNames, TargetType) =
+    list.map((func(ModuleName) = target_file(ModuleName, TargetType)),
+        ModuleNames).
+
+make_dependency_list(ModuleNames, TargetType) =
+    list.map((func(Module) = dep_target(target_file(Module, TargetType))),
+        ModuleNames).
+
+%---------------------------------------------------------------------------%
 
 target_is_grade_or_arch_dependent(Target) :-
     is_target_grade_or_arch_dependent(Target) = yes.
@@ -943,19 +981,6 @@ debug_file_msg(Globals, TargetFile, Msg, !IO) :-
             io.format("%s: %s\n", [s(FileName), s(Msg)], !IO)
         ), !IO).
 
-dependency_file_to_file_name(Globals, DepFile, FileName, !IO) :-
-    (
-        DepFile = dep_target(TargetFile),
-        get_make_target_file_name(Globals, $pred, TargetFile, FileName, !IO)
-    ;
-        DepFile = dep_file(FileName)
-    ).
-
-get_make_target_file_name(Globals, From, TargetFile, FileName, !IO) :-
-    TargetFile = target_file(ModuleName, TargetType),
-    module_target_to_file_name(Globals, From, do_not_create_dirs, TargetType,
-        ModuleName, FileName, !IO).
-
 maybe_make_linked_target_message(Globals, FileName, !IO) :-
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
@@ -968,8 +993,8 @@ maybe_make_linked_target_message(Globals, FileName, !IO) :-
 
 maybe_make_target_message(Globals, From, TargetFile, !IO) :-
     io.output_stream(OutputStream, !IO),
-    maybe_make_target_message_to_stream(Globals, From, OutputStream, TargetFile,
-        !IO).
+    maybe_make_target_message_to_stream(Globals, From, OutputStream,
+        TargetFile, !IO).
 
 maybe_make_target_message_to_stream(Globals, From, OutputStream,
         TargetFile, !IO) :-
@@ -1090,12 +1115,12 @@ get_real_milliseconds(_, _, _) :-
 
 module_name_hash(SymName, Hash) :-
     (
-        SymName = unqualified(String),
-        Hash = string.hash(String)
+        SymName = unqualified(Name),
+        Hash = string.hash(Name)
     ;
-        SymName = qualified(_Qual, String),
-        % Hashing the module qualifier seems to be not worthwhile.
-        Hash = string.hash(String)
+        SymName = qualified(_ModuleName, Name),
+        % Hashing the module name seems to be not worthwhile.
+        Hash = string.hash(Name)
     ).
 
 dependency_file_hash(DepFile, Hash) :-
