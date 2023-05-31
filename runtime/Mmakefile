@@ -250,7 +250,7 @@ CFLAGS	+= $(DLL_CFLAGS)
 # in the runtime can be debugged without having to recompile it. The cost
 # of doing this is negligible. The runtime can be compiled without
 # debugging enabled by removing the `--c-debug' flag below.
-MGNUCFLAGS	+= --c-debug --no-ansi
+MGNUCFLAGS	+= --c-debug
 
 #-----------------------------------------------------------------------------#
 

@@ -31,9 +31,6 @@ else
     GETOPT_SRC=
 endif
 
-# mkinit.c needs `struct stat'
-MGNUCFLAGS-mkinit = --no-ansi
-
 # For the C distribution mfiltercc may not be available until after we build
 # it here.
 MGNUCFLAGS-mfiltercc = --no-filter-cc

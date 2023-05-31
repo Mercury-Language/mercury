@@ -414,14 +414,6 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         OptimizeC = do_not_opt_c,
         OptimizeOpt = ""
     ),
-    globals.lookup_bool_option(Globals, ansi_c, Ansi),
-    (
-        Ansi = yes,
-        globals.lookup_string_option(Globals, cflags_for_ansi, AnsiOpt)
-    ;
-        Ansi = no,
-        AnsiOpt = ""
-    ),
     InlineAlloc = OptTuple ^ ot_inline_alloc,
     (
         InlineAlloc = inline_alloc,
@@ -500,7 +492,6 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         SanitizerOpts, " ",
         TypeLayoutOpt,
         InlineAllocOpt,
-        AnsiOpt, " ",
         C_FnAlignOpt,
         WarningOpt, " ",
         CFLAGS, " ",

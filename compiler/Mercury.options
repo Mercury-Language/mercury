@@ -73,27 +73,10 @@ MCFLAGS-libs.md5                          = --no-warn-unused-imports
 MCFLAGS-libs.process_util                 = --no-warn-unused-imports
 MCFLAGS-make.build                        = --no-warn-unused-imports
 
-# process_util.m uses `kill' and `struct sigaction' from <signal.h>,
-# which are not available with `--ansi'.
-MGNUCFLAGS-libs.process_util              = --no-ansi
-
-# make.util.m uses POSIX IPC.
-MGNUCFLAGS-make.util                      = --no-ansi
-
-# If intermodule optimization is enabled, we also need to use `--no-ansi'
-# for the following modules, because they import process_util.
-MGNUCFLAGS-make.module_dep_file           = --no-ansi
-MGNUCFLAGS-make.module_target             = --no-ansi
-MGNUCFLAGS-make.program_target            = --no-ansi
-
 MCFLAGS-check_hlds.modes                  = --inline-vars-threshold 10000
 MCFLAGS-check_hlds.unique_modes           = --inline-vars-threshold 10000
 
-MCFLAGS-libs.process_util                 += --no-ansi-c
-MCFLAGS-make.module_dep_file              += --no-ansi-c
-MCFLAGS-make.module_target                += --no-ansi-c
-MCFLAGS-make.program_target               += --no-ansi-c
-MCFLAGS-make.util                         += --no-ansi-c --no-halt-at-warn
+MCFLAGS-make.util                         += --no-halt-at-warn
 
 MCFLAGS-backend_libs.bytecode_data           += --no-warn-implicit-stream-calls
 MCFLAGS-bytecode_backend.bytecode            += --no-warn-implicit-stream-calls

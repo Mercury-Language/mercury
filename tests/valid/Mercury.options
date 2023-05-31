@@ -133,7 +133,5 @@ MCFLAGS-unify_typeinfo_bug	= -O3
 MCFLAGS-uniq_mode_inf_bug	= --infer-all
 MCFLAGS-vn_float		= -O5
 MCFLAGS-zero_arity		= --infer-modes
-MGNUCFLAGS-reg_bug		= --no-ansi
-MCFLAGS-reg_bug			= --no-ansi-c
 MCFLAGS-unknown_warning		= --no-halt-at-warn
 MCFLAGS-use_import_only_for_instance	= --warn-unused-imports --halt-at-warn

@@ -46,8 +46,6 @@
 %   removed from sqltypes.h.
 %   (For legal reasons a patch cannot be included in the Mercury
 %   distribution.)
-%   The Microsoft ODBC header files also use some C++ style comments,
-%   so you need to use the `--no-ansi' option to mgnuc.
 %
 % To do:
 %

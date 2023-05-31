@@ -58,7 +58,6 @@ DEFAULT_MCFLAGS=\
 		--csharp-compiler "$(MERCURY_CSHARP_COMPILER)" \
 		--csharp-compiler-type "$(MERCURY_CSHARP_COMPILER_TYPE)" \
 		--cli-interpreter "$(MERCURY_CLI_INTERPRETER)" \
-		--cflags-for-ansi "@CFLAGS_FOR_ANSI@" \
 		--cflags-for-optimization "@CFLAGS_FOR_OPT@" \
 		--cflags-for-warnings "@CFLAGS_FOR_WARNINGS@" \
 		--cflags-for-threads "@CFLAGS_FOR_THREADS@" \

@@ -9977,9 +9977,7 @@ Don't enable the C compiler's optimizations.
 @sp 1
 @item --no-ansi-c
 @findex --no-ansi-c
-Don't specify to the C compiler that the ANSI dialect
-of C should be used.  Use the full contents of system
-headers, rather than the ANSI subset.
+This option is deprecated and has no effect.
 
 @sp 1
 @item --inline-alloc

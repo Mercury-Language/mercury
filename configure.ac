@@ -4388,24 +4388,6 @@ OPT_FLAGS_FOR_CLANG="-O0"
 case "$mercury_cv_cc_type" in
 
     gcc*)
-        # We no longer pass -ansi to GCC on any system for the following
-        # reasons:
-        #
-        # * It restricts the dialect of C used to C90 and that prevents us
-        #   from using various C99 library features. Every version of GCC we
-        #   support provides those features so there is no point in doing this.
-        # * It causes complications with the header files on some systems.
-        #   Notably with the definitions of the types off_t and off64_t
-        #   on MinGW systems.
-        # * This setting also affects the compilation of user written C code in
-        #   foreign_proc and foreign code pragmas.
-        #
-        # NOTE: the --no-ansi option supported by the mgnuc script does
-        # more than simply pass the value of CFLAGS_FOR_ANSI to the C compiler.
-        # (See that script for details.)
-        #
-        CFLAGS_FOR_ANSI=
-
         # For a full list of the other gcc warnings that we don't enable,
         # and why, see scripts/mgnuc.in.
         CFLAGS_FOR_WARNINGS="-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes"
@@ -4443,11 +4425,6 @@ case "$mercury_cv_cc_type" in
         ;;
 
     clang*)
-
-        # We do not compile with -ansi when using clang because that (currently) puts
-        # clang into C89 mode and we want to use C99's inline keyword with clang.
-        CFLAGS_FOR_ANSI=
-
         # XXX we need go through the warning and optimization options for clang
         # more carefully.
         CFLAGS_FOR_WARNINGS="-w"
@@ -4469,7 +4446,6 @@ case "$mercury_cv_cc_type" in
         ;;
 
     msvc*)
-        CFLAGS_FOR_ANSI=
         # Suppress the MSVC banner message.
         CFLAGS_FOR_WARNINGS="-nologo"
         CFLAGS_FOR_OPT=
@@ -4485,7 +4461,6 @@ case "$mercury_cv_cc_type" in
         ;;
 
     *)
-        CFLAGS_FOR_ANSI=
         CFLAGS_FOR_OPT="-O"
         CFLAGS_FOR_WARNINGS=
         CFLAGS_FOR_DEBUG="-g"
@@ -4496,7 +4471,6 @@ esac
 
 CFLAGS_FOR_OPT="$CFLAGS_FOR_OPT $CFLAGS_FOR_NO_STRICT_ALIASING"
 
-AC_SUBST([CFLAGS_FOR_ANSI])
 AC_SUBST([CFLAGS_FOR_WARNINGS])
 AC_SUBST([CFLAGS_FOR_OPT])
 AC_SUBST([CFLAGS_FOR_DEBUG])

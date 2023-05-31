@@ -1132,6 +1132,9 @@ Changes to the Mercury compiler
   `MACOSX_DEPLOYMENT_TARGET` environment variable as the default value for the
   deployment target, if set.
 
+* The `--no-ansi-c` option has been deprecated and will be removed in a future
+  release.  The option has not had any effect for a long time.
+
 Changes to the Mercury debugger
 -------------------------------
 

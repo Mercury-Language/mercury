@@ -5,7 +5,7 @@
 # @configure_input@
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2007, 2010-2012 The University of Melbourne.
-# Copyright (C) 2013-2020, 2022 The Mercury team.
+# Copyright (C) 2013-2020, 2022-2023 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -37,7 +37,6 @@ TMPDIR=${TMPDIR=/tmp}
 
 case "${C_COMPILER_TYPE}" in
     gcc*)
-        ANSI_OPTS="${CFLAGS_FOR_ANSI}"
         CHECK_OPTS="
             -Wall -Wwrite-strings
             -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
@@ -77,7 +76,6 @@ case "${C_COMPILER_TYPE}" in
         COMPILER=gcc
         ;;
     clang*)
-        ANSI_OPTS=
         CHECK_OPTS="-w"
         OPT_OPTS="@OPT_FLAGS_FOR_CLANG@ ${CFLAGS_FOR_NO_STRICT_ALIASING} -fomit-frame-pointer"
         DEBUG_OPTS="-g"
@@ -86,7 +84,6 @@ case "${C_COMPILER_TYPE}" in
         COMPILER=clang
         ;;
     msvc*)
-        ANSI_OPTS=""
         CHECK_OPTS="-nologo"    # Suppress the MSVC banner message.
         OPT_OPTS="-O1"
         # See README.MS-VisualC for why we don't enable C level debugging.
@@ -97,7 +94,6 @@ case "${C_COMPILER_TYPE}" in
         COMPILER=cl
         ;;
     *)
-        ANSI_OPTS=
         CHECK_OPTS=
         OPT_OPTS="-O"
         DEBUG_OPTS="-g"
@@ -131,7 +127,7 @@ Options:
     -v, --verbose
         Echo gcc command before executing it.
     --no-ansi
-        Use the full contents of system headers, rather than the ANSI subset.
+        This option is deprecatd and no longer has any effect.
     --no-check
         Don't enable any of gcc's warnings.
     -g, --c-debug
@@ -156,8 +152,8 @@ ${grade_usage}
 
 Description:
     This runs gcc with the appropriate options for compiling Mercury programs.
-    Normally it invokes gcc in ANSI mode with almost all warnings enabled,
-    but this can be changed using the \`--no-ansi' or \`--no-check' options.
+    Normally it invokes gcc with almost all warnings enabled,
+    but this can be changed using \`--no-check' option.
 Environment variables:
     MERCURY_DEFAULT_GRADE.
 Files:
@@ -309,15 +305,6 @@ esac
 case ${thread_safe} in
     true)
         THREAD_OPTS="-DMR_THREAD_SAFE ${CFLAGS_FOR_THREADS}"
-        case ${FULLARCH} in
-            *linux*)
-                # Don't use -ansi under Linux or we get parse errors
-                # at sigset_t in the pthreads headers. This doesn't seem
-                # to be necessary for recent versions of Linux/glibc
-                # (e.g. glibc 2.1.2), but I've left it in so we can remain
-                # compatible with older versions.
-                ANSI_OPTS=""
-        esac
         ;;
     false)
         THREAD_OPTS=""
@@ -561,14 +548,6 @@ case "${FULLARCH}" in
                 ;;
         esac
         ;;
-    *-solaris*|*-sunos*)
-        # The solaris headers for pthreads are not ANSI :-(
-        case ${thread_safe} in
-            true)
-                ANSI_OPTS=""
-                ;;
-        esac
-        ;;
 esac
 # gcc versions 9-12 replace calls to strcmp and related functions with
 # specialised code when some of the arguments are string constants.
@@ -692,7 +671,6 @@ case ${asm_labels},${do_filter_cc} in
 esac
 
 ALL_CC_OPTS="${MERC_ALL_C_INCL_DIRS}\
-    ${ANSI_OPTS}\
     ${CHECK_OPTS}\
     ${OPT_OPTS}\
     ${LTO_OPTS}\

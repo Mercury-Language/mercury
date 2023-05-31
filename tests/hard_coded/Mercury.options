@@ -79,7 +79,6 @@ MCFLAGS-reuse_double =          --ctgc
 MCFLAGS-reuse_ho =              --ctgc --no-optimise-higher-order
 MCFLAGS-sharing_comb =          --ctgc --structure-sharing-widening 2
 MCFLAGS-simplify_multi_arm_switch = -O3
-MCFLAGS-spawn_native =          --no-ansi-c
 MCFLAGS-string_alignment_bug =  --no-warn-obsolete
 MCFLAGS-subtype_pack =          --allow-packing-dummies
 MCFLAGS-subtype_rtti = \

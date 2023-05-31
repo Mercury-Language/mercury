@@ -6333,9 +6333,7 @@ options_help_target_code_compilation(Stream, !IO) :-
         "\tDon't enable the C compiler's optimizations.",
 
         "--no-ansi-c",
-        "\tDon't specify to the C compiler that the ANSI dialect",
-        "\tof C should be used. Use the full contents of system",
-        "\theaders, rather than the ANSI subset.",
+        "\tThis option is deprecated and does not have any effect.",
 
         "--c-debug",
         "\tEnable debugging of the generated C code.",
@@ -6368,12 +6366,13 @@ options_help_target_code_compilation(Stream, !IO) :-
 
         % The --cflags-for-regs, --cflags-for-gotos,
         % --cflags-for-threads, --cflags-for-pic, --cflags-for-lto,
-        % --cflags-for-warnings, --cflags-for-ansi,
-        % --cflags-for-optimization, --cflags-for-sanitizers,
-        % --c-flag-to-name-object-file,
+        % --cflags-for-warnings, --cflags-for-optimization,
+        % --cflags-for-sanitizers, --c-flag-to-name-object-file,
         % --object-file-extension and --pic-object-file-extension
         % options are reserved for use by the `mmc' script;
         % they are deliberately not documented.
+
+        % --cflags-for-ansi is deprecated and no longer has any effect.
 
         "--javac <javac>",
         "--java-compiler <javac>",
