@@ -318,7 +318,6 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
             IntermodDirs),
         get_opt_deps(Globals, yes, IntermodDirs, other_ext(".trans_opt"),
             TransOptDepsOrdering, TransOptOrder, !IO),
-
         (
             Mode = output_d_file_only,
             DFilesToWrite = [ModuleDep]
