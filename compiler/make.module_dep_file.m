@@ -950,7 +950,7 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
     NonFatalErrors = ReadModuleErrors ^ rm_nonfatal_errors,
     ( if set.is_empty(NonFatalErrors) then
         Target = target_file(ModuleName, module_target_int3),
-        maybe_make_target_message_to_stream(Globals, OldOutputStream,
+        maybe_make_target_message_to_stream(Globals, $pred, OldOutputStream,
             Target, !IO),
         setup_checking_for_interrupt(CookieMSI, !IO),
 
@@ -1027,7 +1027,7 @@ cleanup_int3_files(Globals, ModuleNames, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 cleanup_int3_file(Globals, ModuleName, !Info, !IO) :-
-    make_remove_target_file_by_name(Globals, very_verbose,
+    remove_make_target_file_by_name(Globals, $pred, very_verbose,
         ModuleName, module_target_int3, !Info, !IO).
 
 :- pred cleanup_module_dep_files(globals::in, list(module_name)::in,
@@ -1040,7 +1040,7 @@ cleanup_module_dep_files(Globals, ModuleNames, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 cleanup_module_dep_file(Globals, ModuleName, !Info, !IO) :-
-    make_remove_module_file(Globals, verbose_make, ModuleName,
+    remove_make_module_file(Globals, verbose_make, ModuleName,
         ext_other(make_module_dep_file_extension), !Info, !IO).
 
 :- pred maybe_write_importing_module(module_name::in,

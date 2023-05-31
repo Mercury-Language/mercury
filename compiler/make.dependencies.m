@@ -1416,7 +1416,7 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
             % .track_flags should already have been made, if required,
             % so are also up-to-date.
             ModuleTarget = module_target(module_target_source),
-            maybe_warn_up_to_date_target(Globals,
+            maybe_warn_up_to_date_target(Globals, $pred,
                 top_target_file(ModuleName, ModuleTarget), !Info, !IO),
             Status = deps_status_up_to_date
         else if
@@ -1446,7 +1446,7 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
                     ;
                         MaybeTimestamp = error(Error),
                         Status = deps_status_error,
-                        get_make_target_file_name(Globals, Target,
+                        get_make_target_file_name(Globals, $pred, Target,
                             TargetFileName, !IO),
                         string.format("** Error: file `%s' not found: %s\n",
                             [s(TargetFileName), s(Error)], ErrorMsg),

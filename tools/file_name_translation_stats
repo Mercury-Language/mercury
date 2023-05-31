@@ -16,10 +16,10 @@ $1 == "ext_sch_dir" {
         esd_sum[esd] += $3;
     }
 END {
-        printf "number of compiler invocations:      %8d\n", num_invocations;
-        printf "number of file name lookups:         %8d\n", overall_sum;
-        printf "number of file name unique results:  %8d\n", overall_count;
-        printf "number of lookups per unique result: %8.2f\n\n",
+        printf "number of compiler invocations:      %10d\n", num_invocations;
+        printf "number of file name lookups:         %10d\n", overall_sum;
+        printf "number of file name unique results:  %10d\n", overall_count;
+        printf "number of lookups per unique result: %10.4f\n\n",
             (overall_sum + 0.0) / overall_count;
 
         printf "----------------------------------------------------------\n\n";

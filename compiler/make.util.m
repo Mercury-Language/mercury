@@ -63,14 +63,15 @@
     maybe_error(timestamp)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-    % get_file_name(Globals, Search, TargetFile, FileName, !IO):
+    % get_file_name(Globals, From, Search, TargetFile, FileName, !IO):
     %
     % Compute a file name for the given target file.
     % `Search' should be `do_search' if the file could be part of an
     % installed library.
     %
-:- pred get_file_name(globals::in, maybe_search::in, target_file::in,
-    file_name::out, make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred get_file_name(globals::in, string::in, maybe_search::in,
+    target_file::in, file_name::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Find the timestamp of the first file matching the given
     % file name in one of the given directories.
@@ -99,19 +100,19 @@
 
     % Remove the target file and the corresponding timestamp file.
     %
-:- pred make_remove_target_file(globals::in, option::in, target_file::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred remove_make_target_file(globals::in, string::in, option::in,
+    target_file::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Remove the target file and the corresponding timestamp file.
     %
-:- pred make_remove_target_file_by_name(globals::in, option::in,
+:- pred remove_make_target_file_by_name(globals::in, string::in, option::in,
     module_name::in, module_target_type::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-    % make_remove_module_file(Globals, VerboseOption, ModuleName, Extension,
+    % remove_make_module_file(Globals, VerboseOption, ModuleName, Extension,
     %   !Info, !IO).
     %
-:- pred make_remove_module_file(globals::in, option::in, module_name::in,
+:- pred remove_make_module_file(globals::in, option::in, module_name::in,
     ext::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
 :- pred make_remove_file(globals::in, option::in, file_name::in,
@@ -182,8 +183,8 @@
     % Return the file name for the given target_file. The I/O state pair
     % may be needed to find this file name.
     %
-:- pred get_make_target_file_name(globals::in, target_file::in, string::out,
-    io::di, io::uo) is det.
+:- pred get_make_target_file_name(globals::in, string::in,
+    target_file::in, string::out, io::di, io::uo) is det.
 
     % Write a message "Making <filename>" if `--verbose-make' is set.
     %
@@ -192,10 +193,10 @@
 
     % Write a message "Making <filename>" if `--verbose-make' is set.
     %
-:- pred maybe_make_target_message(globals::in, target_file::in,
+:- pred maybe_make_target_message(globals::in, string::in, target_file::in,
     io::di, io::uo) is det.
 
-:- pred maybe_make_target_message_to_stream(globals::in,
+:- pred maybe_make_target_message_to_stream(globals::in, string::in,
     io.text_output_stream::in, target_file::in, io::di, io::uo) is det.
 
     % Write a message "Reanalysing invalid/suboptimal modules" if
@@ -215,13 +216,14 @@
     % If the given target was specified on the command line, warn that it
     % was already up to date.
     %
-:- pred maybe_warn_up_to_date_target(globals::in, top_target_file::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred maybe_warn_up_to_date_target(globals::in, string::in,
+    top_target_file::in, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
     % Write a message "Made symlink/copy of <filename>"
     % if `--verbose-make' is set.
     %
-:- pred maybe_symlink_or_copy_linked_target_message(globals::in,
+:- pred maybe_symlink_or_copy_linked_target_message(globals::in, string::in,
     top_target_file::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -281,8 +283,8 @@ get_timestamp_file_timestamp(Globals, target_file(ModuleName, TargetType),
         module_name_to_file_name(Globals, $pred, do_not_create_dirs,
             ext_other(TimestampOtherExt), ModuleName, FileName, !IO)
     else
-        module_target_to_file_name(Globals, do_not_create_dirs, TargetType,
-            ModuleName, FileName, !IO)
+        module_target_to_file_name(Globals, $pred, do_not_create_dirs,
+            TargetType, ModuleName, FileName, !IO)
     ),
 
     % We should only ever look for timestamp files in the current directory.
@@ -320,7 +322,8 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
         !IO) :-
     TargetFile = target_file(_ModuleName, TargetType),
     ( if TargetType = module_target_analysis_registry then
-        get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO),
+        get_file_name(Globals, $pred, Search, TargetFile, FileName,
+            !Info, !IO),
         get_target_timestamp_analysis_registry(Globals, Search, TargetFile,
             FileName, MaybeTimestamp, !Info, !IO)
     else
@@ -334,7 +337,8 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
         then
             MaybeTimestamp = ok(Timestamp)
         else
-            get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO),
+            get_file_name(Globals, $pred, Search, TargetFile, FileName,
+                !Info, !IO),
             get_target_timestamp_2(Globals, Search, TargetFile,
                 FileName, MaybeTimestamp, !Info, !IO),
             (
@@ -429,7 +433,7 @@ get_target_timestamp_2(Globals, Search, TargetFile, FileName, MaybeTimestamp,
 
 %---------------------------------------------------------------------------%
 
-get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
+get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     ( if TargetType = module_target_source then
         % In some cases the module name won't match the file name
@@ -450,15 +454,15 @@ get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
         ( if target_type_to_extension(Globals, TargetType, Ext) then
             (
                 Search = do_search,
-                module_name_to_search_file_name(Globals, $pred, Ext,
+                module_name_to_search_file_name(Globals, From, Ext,
                     ModuleName, FileName, !IO)
             ;
                 Search = do_not_search,
-                module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+                module_name_to_file_name(Globals, From, do_not_create_dirs,
                     Ext, ModuleName, FileName, !IO)
             )
         else
-            module_target_to_file_name_maybe_search(Globals, Search,
+            module_target_to_file_name_maybe_search(Globals, From, Search,
                 do_not_create_dirs, TargetType, ModuleName, FileName, !IO)
         )
     ).
@@ -477,8 +481,10 @@ get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
                 FileTimestamps0, FileTimestamps),
             !Info ^ mki_file_timestamps := FileTimestamps
         ;
-            SearchResult = error(_),
-            MaybeTimestamp = error("file `" ++ FileName ++ "' not found")
+            SearchResult = error(_SearchError),
+            % XXX MAKE We should not ignore _SearchError.
+            string.format("file `%s' not found", [s(FileName)], NotFoundMsg),
+            MaybeTimestamp = error(NotFoundMsg)
         )
     ).
 
@@ -529,24 +535,24 @@ find_error_or_oldest_ok_timestamp(MaybeTimestamps, MaybeTimestamp) :-
 
 %---------------------------------------------------------------------------%
 
-make_remove_target_file(Globals, VerboseOption, Target, !Info, !IO) :-
+remove_make_target_file(Globals, From, VerboseOption, Target, !Info, !IO) :-
     Target = target_file(ModuleName, TargetType),
-    make_remove_target_file_by_name(Globals, VerboseOption,
+    remove_make_target_file_by_name(Globals, From, VerboseOption,
         ModuleName, TargetType, !Info, !IO).
 
-make_remove_target_file_by_name(Globals, VerboseOption, ModuleName, TargetType,
-        !Info, !IO) :-
-    module_target_to_file_name(Globals, do_not_create_dirs, TargetType,
+remove_make_target_file_by_name(Globals, From, VerboseOption,
+        ModuleName, TargetType, !Info, !IO) :-
+    module_target_to_file_name(Globals, From, do_not_create_dirs, TargetType,
         ModuleName, FileName, !IO),
     make_remove_file(Globals, VerboseOption, FileName, !Info, !IO),
     ( if timestamp_extension(TargetType, TimestampOtherExt) then
-        make_remove_module_file(Globals, VerboseOption, ModuleName,
+        remove_make_module_file(Globals, VerboseOption, ModuleName,
             ext_other(TimestampOtherExt), !Info, !IO)
     else
         true
     ).
 
-make_remove_module_file(Globals, VerboseOption, ModuleName, Ext, !Info, !IO) :-
+remove_make_module_file(Globals, VerboseOption, ModuleName, Ext, !Info, !IO) :-
     module_name_to_file_name(Globals, $pred, do_not_create_dirs, Ext,
         ModuleName, FileName, !IO),
     make_remove_file(Globals, VerboseOption, FileName, !Info, !IO).
@@ -639,6 +645,13 @@ target_type_to_extension(Globals, Target, Ext) :-
         Ext = ext_other(other_ext(".xml"))
     ;
         % These all need to be handled as special cases.
+        % XXX MAKE Succeeding here, and returning an indication of which
+        % of these two special cases has occurred, would probably significantly
+        % improve the readability of the callers of this predicate.
+        % XXX MAKE An alternate solution would be a mode for this predicate
+        % that restricts Target to be one of the values above, but in turn
+        % makes the determinism "det". That would still require a switch
+        % in all callers, through, which the code here would duplicate.
         ( Target = module_target_foreign_object(_, _)
         ; Target = module_target_fact_table_object(_, _)
         ),
@@ -747,36 +760,36 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
             ext_other(other_ext(".jar")), ModuleName, FileName, !IO)
     ).
 
-:- pred module_target_to_file_name(globals::in, maybe_create_dirs::in,
-    module_target_type::in, module_name::in, file_name::out,
-    io::di, io::uo) is det.
+:- pred module_target_to_file_name(globals::in, string::in,
+    maybe_create_dirs::in, module_target_type::in,
+    module_name::in, file_name::out, io::di, io::uo) is det.
 
-module_target_to_file_name(Globals, MkDir, TargetType, ModuleName, FileName,
-        !IO) :-
-    module_target_to_file_name_maybe_search(Globals, do_not_search, MkDir,
-        TargetType, ModuleName, FileName, !IO).
+module_target_to_file_name(Globals, From, MkDir, TargetType,
+        ModuleName, FileName, !IO) :-
+    module_target_to_file_name_maybe_search(Globals, From,
+        do_not_search, MkDir, TargetType, ModuleName, FileName, !IO).
 
-:- pred module_target_to_file_name_maybe_search(globals::in,
+:- pred module_target_to_file_name_maybe_search(globals::in, string::in,
     maybe_search::in, maybe_create_dirs::in, module_target_type::in,
     module_name::in, file_name::out, io::di, io::uo) is det.
 
-module_target_to_file_name_maybe_search(Globals, Search, MkDir, TargetType,
-        ModuleName, FileName, !IO) :-
+module_target_to_file_name_maybe_search(Globals, From, Search, MkDir,
+        TargetType, ModuleName, FileName, !IO) :-
     ( if target_type_to_extension(Globals, TargetType, Ext) then
         (
             Search = do_search,
-            module_name_to_search_file_name(Globals, $pred, Ext,
+            module_name_to_search_file_name(Globals, From, Ext,
                 ModuleName, FileName, !IO)
         ;
             Search = do_not_search,
-            module_name_to_file_name(Globals, $pred, MkDir, Ext,
+            module_name_to_file_name(Globals, From, MkDir, Ext,
                 ModuleName, FileName, !IO)
         )
     else
         (
             TargetType = module_target_foreign_object(PIC, Lang),
             foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
-            module_target_to_file_name_maybe_search(Globals,
+            module_target_to_file_name_maybe_search(Globals, From,
                 Search, MkDir, module_target_object_code(PIC),
                 ForeignModuleName, FileName, !IO)
         ;
@@ -936,23 +949,27 @@ verbose_make_msg_option(Globals, Option, P, !IO) :-
     ).
 
 debug_file_msg(Globals, TargetFile, Msg, !IO) :-
+    % XXX MAKE_FILENAME If you want to log that you are doing something
+    % to a target file, you must already know its name, so why get
+    % get_make_target_file_name to compute it again?
     debug_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            get_make_target_file_name(Globals, TargetFile, FileName, !IO),
+            get_make_target_file_name(Globals, $pred, TargetFile,
+                FileName, !IO),
             io.format("%s: %s\n", [s(FileName), s(Msg)], !IO)
         ), !IO).
 
 dependency_file_to_file_name(Globals, DepFile, FileName, !IO) :-
     (
         DepFile = dep_target(TargetFile),
-        get_make_target_file_name(Globals, TargetFile, FileName, !IO)
+        get_make_target_file_name(Globals, $pred, TargetFile, FileName, !IO)
     ;
         DepFile = dep_file(FileName)
     ).
 
-get_make_target_file_name(Globals, TargetFile, FileName, !IO) :-
+get_make_target_file_name(Globals, From, TargetFile, FileName, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
-    module_target_to_file_name(Globals, do_not_create_dirs, TargetType,
+    module_target_to_file_name(Globals, From, do_not_create_dirs, TargetType,
         ModuleName, FileName, !IO).
 
 maybe_make_linked_target_message(Globals, FileName, !IO) :-
@@ -965,15 +982,17 @@ maybe_make_linked_target_message(Globals, FileName, !IO) :-
             io.write_string(Msg, !IO)
         ), !IO).
 
-maybe_make_target_message(Globals, TargetFile, !IO) :-
+maybe_make_target_message(Globals, From, TargetFile, !IO) :-
     io.output_stream(OutputStream, !IO),
-    maybe_make_target_message_to_stream(Globals, OutputStream, TargetFile,
+    maybe_make_target_message_to_stream(Globals, From, OutputStream, TargetFile,
         !IO).
 
-maybe_make_target_message_to_stream(Globals, OutputStream, TargetFile, !IO) :-
+maybe_make_target_message_to_stream(Globals, From, OutputStream,
+        TargetFile, !IO) :-
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            get_make_target_file_name(Globals, TargetFile, FileName, !IO),
+            get_make_target_file_name(Globals, From, TargetFile,
+                FileName, !IO),
             % Try to write this with one call to avoid interleaved output
             % when doing parallel builds.
             string.format("Making %s\n", [s(FileName)], Msg),
@@ -997,7 +1016,7 @@ target_file_error(Info, Globals, TargetFile, !IO) :-
     string::in, target_file::in, string::in, io::di, io::uo) is det.
 
 write_make_target_file_wrapped(Globals, Prefix, TargetFile, Suffix, !IO) :-
-    get_make_target_file_name(Globals, TargetFile, FileName, !IO),
+    get_make_target_file_name(Globals, $pred, TargetFile, FileName, !IO),
     % Our one caller just above never passes empty Prefix or Suffix.
     io.write_string(Prefix ++ FileName ++ Suffix, !IO).
 
@@ -1005,13 +1024,14 @@ file_error(Info, TargetFile, !IO) :-
     with_locked_stdout(Info,
         io.write_string("** Error making `" ++ TargetFile ++ "'.\n"), !IO).
 
-maybe_warn_up_to_date_target(Globals, Target, !Info, !IO) :-
+maybe_warn_up_to_date_target(Globals, From, Target, !Info, !IO) :-
     globals.lookup_bool_option(Globals, warn_up_to_date, Warn),
     CmdLineTargets0 = !.Info ^ mki_command_line_targets,
     (
         Warn = yes,
         ( if set.member(Target, CmdLineTargets0) then
-            module_or_linked_target_file_name(Globals, Target, FileName, !IO),
+            module_or_linked_target_file_name(Globals, From,
+                Target, FileName, !IO),
             io.format("** Nothing to be done for `%s'.\n", [s(FileName)], !IO)
         else
             true
@@ -1022,22 +1042,24 @@ maybe_warn_up_to_date_target(Globals, Target, !Info, !IO) :-
     set.delete(Target, CmdLineTargets0, CmdLineTargets),
     !Info ^ mki_command_line_targets := CmdLineTargets.
 
-maybe_symlink_or_copy_linked_target_message(Globals, Target, !IO) :-
+maybe_symlink_or_copy_linked_target_message(Globals, From, Target, !IO) :-
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            module_or_linked_target_file_name(Globals, Target, FileName, !IO),
+            module_or_linked_target_file_name(Globals, From, Target,
+                FileName, !IO),
             io.format("Made symlink/copy of %s\n", [s(FileName)], !IO)
         ), !IO).
 
-:- pred module_or_linked_target_file_name(globals::in, top_target_file::in,
-    string::out, io::di, io::uo) is det.
+:- pred module_or_linked_target_file_name(globals::in, string::in,
+    top_target_file::in, string::out, io::di, io::uo) is det.
 
-module_or_linked_target_file_name(Globals, TopTargetFile, FileName, !IO) :-
+module_or_linked_target_file_name(Globals, From, TopTargetFile,
+        FileName, !IO) :-
     TopTargetFile = top_target_file(ModuleName, TargetType),
     (
         TargetType = module_target(ModuleTargetType),
         TargetFile = target_file(ModuleName, ModuleTargetType),
-        get_make_target_file_name(Globals, TargetFile, FileName, !IO)
+        get_make_target_file_name(Globals, From, TargetFile, FileName, !IO)
     ;
         TargetType = linked_target(LinkedTargetType),
         linked_target_file_name(Globals, ModuleName, LinkedTargetType,

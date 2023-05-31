@@ -240,8 +240,8 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
 
         debug_make_msg(Globals,
            ( pred(!.IO::di, !:IO::uo) is det :-
-                get_make_target_file_name(Globals, TargetFile,
-                    TargetFileName, !IO),
+                get_make_target_file_name(Globals, $pred,
+                    TargetFile, TargetFileName, !IO),
                 dependency_file_index_set_to_plain_set(!.Info,
                     DepFiles0, DepFilesPlainSet),
                 list.map_foldl(dependency_file_to_file_name(Globals),
@@ -288,7 +288,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
                 ExtraOptions, Succeeded, !Info, !IO)
         ;
             DepsResult = deps_up_to_date,
-            maybe_warn_up_to_date_target(Globals,
+            maybe_warn_up_to_date_target(Globals, $pred,
                 top_target_file(ModuleName, module_target(TargetType)),
                 !Info, !IO),
             debug_file_msg(Globals, TargetFile, "up to date", !IO),
@@ -352,7 +352,7 @@ make_dependency_files(Globals, TargetFile, DepFilesToMake, TouchedTargetFiles,
                     TouchedTargetFileTimestamps ++ TouchedFileTimestamps,
                     MaybeOldestTimestamp),
 
-                get_file_name(Globals, do_not_search, TargetFile,
+                get_file_name(Globals, $pred, do_not_search, TargetFile,
                     TargetFileName, !Info, !IO),
                 check_dependencies(Globals, TargetFileName,
                     MaybeOldestTimestamp, MakeDepsSucceeded, DepFilesToMake,
@@ -394,7 +394,7 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         !Info, !IO) :-
     % XXX MAKE_FILENAME Either our caller should be able to give us
     % TargetFileName, or we could compute it here, and give it to code below.
-    maybe_make_target_message(Globals, TargetFile, !IO),
+    maybe_make_target_message(Globals, $pred, TargetFile, !IO),
     TargetFile = target_file(ModuleName, _TargetType),
     CompilationTask = task_and_options(Task, TaskOptions),
     ExtraAndTaskOptions = ExtraOptions ++ TaskOptions,
@@ -476,8 +476,8 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
             ( if DiffSecs >= 0.5 then
                 % XXX MAKE_FILENAME The code above should be able to give us
                 % TargetFileName.
-                get_make_target_file_name(Globals, TargetFile,
-                    TargetFileName, !IO),
+                get_make_target_file_name(Globals, $pred,
+                    TargetFile, TargetFileName, !IO),
                 io.format("Making %s took %.2fs\n",
                     [s(TargetFileName), f(DiffSecs)], !IO)
             else
@@ -500,7 +500,7 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
 cleanup_files(Globals, MaybeArgFileName, TouchedTargetFiles, TouchedFiles,
         !MakeInfo, !IO) :-
     % XXX Remove `.int.tmp' files.
-    list.foldl2(make_remove_target_file(Globals, very_verbose),
+    list.foldl2(remove_make_target_file(Globals, $pred, very_verbose),
         TouchedTargetFiles, !MakeInfo, !IO),
     list.foldl2(make_remove_file(Globals, very_verbose),
         TouchedFiles, !MakeInfo, !IO),
@@ -814,8 +814,8 @@ record_made_target_given_maybe_touched_files(Globals, Succeeded, TargetFile,
 
     list.foldl(update_target_status(TargetStatus), TouchedTargetFiles, !Info),
 
-    list.map_foldl2(get_file_name(Globals, do_not_search), TouchedTargetFiles,
-        TouchedTargetFileNames, !Info, !IO),
+    list.map_foldl2(get_file_name(Globals, $pred, do_not_search),
+        TouchedTargetFiles, TouchedTargetFileNames, !Info, !IO),
 
     some [!FileTimestamps] (
         !:FileTimestamps = !.Info ^ mki_file_timestamps,

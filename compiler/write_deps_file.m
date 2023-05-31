@@ -736,20 +736,18 @@ construct_intermod_rules(Globals, ModuleName, LongDeps, AllDeps,
             UseTransOpt),
 
         bool.not(UseTransOpt, BuildOptFiles),
+        BaseDeps = [ModuleName | set.to_sorted_list(LongDeps)],
         ( if
             ( TransOpt = yes
             ; UseTransOpt = yes
             )
         then
             get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs,
-                [ModuleName | set.to_sorted_list(LongDeps)],
-                OptDeps, TransOptDeps1, !Cache, !IO),
+                BaseDeps, OptDeps, TransOptDeps1, !Cache, !IO),
             MaybeTransOptDeps1 = yes(TransOptDeps1)
         else
             get_opt_deps(Globals, BuildOptFiles, IntermodDirs,
-                other_ext(".opt"),
-                [ModuleName | set.to_sorted_list(LongDeps)],
-                OptDeps, !IO),
+                other_ext(".opt"), BaseDeps, OptDeps, !IO),
             MaybeTransOptDeps1 = no
         ),
 
@@ -2696,10 +2694,10 @@ get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs, [Dep | Deps],
     ).
 
 get_opt_deps(_Globals, _BuildOptFiles, _IntermodDirs, _OtherExt, [], [], !IO).
-get_opt_deps(Globals, BuildOptFiles, IntermodDirs, OtherExt, [Dep | Deps],
-        !:OptDeps, !IO) :-
-    get_opt_deps(Globals, BuildOptFiles, IntermodDirs, OtherExt, Deps,
-        !:OptDeps, !IO),
+get_opt_deps(Globals, BuildOptFiles, IntermodDirs, OtherExt,
+        [Dep | Deps], !:OptDeps, !IO) :-
+    get_opt_deps(Globals, BuildOptFiles, IntermodDirs, OtherExt,
+        Deps, !:OptDeps, !IO),
     (
         BuildOptFiles = yes,
         search_for_module_source(IntermodDirs, Dep, Result1, !IO),

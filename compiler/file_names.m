@@ -76,10 +76,47 @@
 % - Repeat the exercise with the proposed replacement code, and
 %   compare the results to the baseline.
 
+    % If the proper place for a file is in a subdirectory (e.g. Mercury/css),
+    % but the subdirectory does not exist, which in this case may mean either
+    %
+    % - that Mercury exists but Mercury/css does not, or
+    % - that Mercury does exist, which of course means that Mercury/css
+    %   does not exist either,
+    %
+    % values of this type tell the predicate they are given to whether it
+    % should create any such missing directories.
 :- type maybe_create_dirs
     --->    do_create_dirs
     ;       do_not_create_dirs.
 
+    % For some kinds of files, we know exactly where (in which directory)
+    % they should be; for other kinds, we may have to search several
+    % directories. For the latter, our clients will need to call the
+    % module_name_to_search_file_name predicate, which internally sets
+    % MaybeSearch to do_search.
+    %
+    % Note that do_create_dirs is not compatible with do_search; if you
+    % know what one of several directories should contain a file, but don't
+    % know which one, you have by definition no basis you can use to choose
+    % which one to create. This invariant is enforced by the fact that
+    % module_name_to_search_file_name always passes do_not_create_dirs
+    % alongside do_search.
+    %
+    % This type is not used in the interface of this module, but it is used
+    % by the *clients* of this module.
+    %
+    % Note that module_name_to_search_file_name constructs just the
+    % *filename to search for*, and leaves the actual searching to be done
+    % by some other system component. Usually, that component is
+    % either module_name_to_search_file_name's caller, or *its* caller, etc.
+    % However, in some cases (such as .mh/.mih files), we just output
+    % the search file name, and leave it to the target language compiler
+    % to do the searching.
+    %
+    % XXX This setup makes it hard to build a database of
+    %
+    % - which extensions are ever subject to search, and
+    % - what the search path of each such extension is.
 :- type maybe_search
     --->    do_search
     ;       do_not_search.
@@ -448,8 +485,7 @@ decide_base_name_parent_dirs_other(OtherExt, ModuleName,
         )
     then
         BaseParentDirs = ["jmercury"],
-        mangle_sym_name_for_java(ModuleName, module_qual, "__",
-            BaseNameNoExt)
+        mangle_sym_name_for_java(ModuleName, module_qual, "__", BaseNameNoExt)
     else
         BaseParentDirs = [],
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, ".")
@@ -474,8 +510,8 @@ choose_file_name(Globals, _From, Search, OtherExt,
     ( if
         % If we are searching for (rather than writing) a `.mih' file,
         % use the plain file name. This is so that searches for files
-        % in installed libraries will work. `--c-include-directory' is
-        % set so that searches for files in the current directory will work.
+        % in installed libraries will work. `--c-include-directory' is set
+        % so that searches for files in the current directory will work.
         Search = do_search,
         ExtStr = ".mih"
     then
@@ -575,7 +611,6 @@ is_current_dir_extension(ExtStr) :-
     ; ExtStr = ".check"
     ; ExtStr = ".ints"
     ; ExtStr = ".int3s"
-    ; ExtStr = ".ils"
     ; ExtStr = ".javas"
     ; ExtStr = ".classes"
     ; ExtStr = ".opts"
@@ -763,8 +798,6 @@ file_is_arch_or_grade_dependent_2(".s").
 file_is_arch_or_grade_dependent_2(".s_date").
 file_is_arch_or_grade_dependent_2(".pic_s").
 file_is_arch_or_grade_dependent_2(".pic_s_date").
-file_is_arch_or_grade_dependent_2(".il").
-file_is_arch_or_grade_dependent_2(".il_date").
 file_is_arch_or_grade_dependent_2(".cs").
 file_is_arch_or_grade_dependent_2(".cs_date").
 file_is_arch_or_grade_dependent_2(".java").
@@ -890,8 +923,8 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
 % the parameters of each call to module_name_to_file_name_general: which
 % extension of which module are we trying to look up, and whether the process
 % of looking up involves searching or making directories. The values record
-% the file that results from the lookup, and the number of times, we have done
-% the exact same lookup.
+% the filename that results from the lookup, and the number of times
+% we have done the exact same lookup.
 %
 % After the profile is dumped into a file, the information in it can then be
 % subject to different kinds of postprocessing.

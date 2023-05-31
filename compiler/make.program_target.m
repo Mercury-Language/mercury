@@ -605,16 +605,16 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             (
                 MadeSymlinkOrCopy = yes,
                 maybe_symlink_or_copy_linked_target_message(NoLinkObjsGlobals,
-                    MsgTarget, !IO)
+                    $pred, MsgTarget, !IO)
             ;
                 MadeSymlinkOrCopy = no,
-                maybe_warn_up_to_date_target(NoLinkObjsGlobals, MsgTarget,
-                    !Info, !IO)
+                maybe_warn_up_to_date_target(NoLinkObjsGlobals, $pred,
+                    MsgTarget, !Info, !IO)
             )
         ;
             UseGradeSubdirs = no,
-            maybe_warn_up_to_date_target(NoLinkObjsGlobals, MsgTarget,
-                !Info, !IO),
+            maybe_warn_up_to_date_target(NoLinkObjsGlobals, $pred,
+                MsgTarget, !Info, !IO),
             Succeeded = succeeded
         )
     ;
@@ -2111,7 +2111,7 @@ make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
     list.foldl2(make_remove_file(Globals, very_verbose),
         FileNames ++ ThisDirFileNames ++ [ThisDirInitFileName],
         !Info, !IO),
-    make_remove_module_file(Globals, very_verbose, ModuleName,
+    remove_make_module_file(Globals, very_verbose, ModuleName,
         ext_other(other_ext(".init")), !Info, !IO),
     remove_init_files(Globals, very_verbose, ModuleName, !Info, !IO).
 
@@ -2123,7 +2123,7 @@ remove_init_files(Globals, Verbose, ModuleName, !Info, !IO) :-
     globals.lookup_string_option(Globals, pic_object_file_extension,
         PicObjExt),
     % XXX EXT
-    list.foldl2(make_remove_module_file(Globals, Verbose, ModuleName),
+    list.foldl2(remove_make_module_file(Globals, Verbose, ModuleName),
         [ext_other(other_ext("_init.c")),
             ext_other(other_ext("_init" ++ ObjExt)),
             ext_other(other_ext("_init" ++ PicObjExt))],
@@ -2142,7 +2142,8 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
         ), !IO),
 
     list.foldl2(
-        make_remove_target_file_by_name(Globals, very_verbose, ModuleName),
+        remove_make_target_file_by_name(Globals, $pred, very_verbose,
+            ModuleName),
         [module_target_errors,
         module_target_c_code,
         module_target_c_header(header_mih),
@@ -2150,9 +2151,9 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
         module_target_java_code,
         module_target_java_class_code], !Info, !IO),
 
-    make_remove_module_file(Globals, very_verbose, ModuleName,
+    remove_make_module_file(Globals, very_verbose, ModuleName,
         ext_other(other_ext(".used")), !Info, !IO),
-    make_remove_module_file(Globals, very_verbose, ModuleName,
+    remove_make_module_file(Globals, very_verbose, ModuleName,
         ext_other(other_ext(".prof")), !Info, !IO),
 
     get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
@@ -2169,7 +2170,7 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
     list.foldl2(remove_fact_table_c_file(Globals), FactTableFiles, !Info, !IO),
 
     foreign_language_module_name(ModuleName, lang_c, CCodeModule),
-    make_remove_target_file_by_name(Globals, very_verbose, CCodeModule,
+    remove_make_target_file_by_name(Globals, $pred, very_verbose, CCodeModule,
         module_target_c_code, !Info, !IO),
 
     remove_object_and_assembler_files(Globals, ModuleName, pic,
@@ -2191,9 +2192,9 @@ remove_fact_table_c_file(Globals, FactTableFile, !Info, !IO) :-
 
 remove_object_and_assembler_files(Globals, ModuleName, PIC, FactTableFiles,
         !Info, !IO) :-
-    make_remove_target_file_by_name(Globals, very_verbose, ModuleName,
+    remove_make_target_file_by_name(Globals, $pred, very_verbose, ModuleName,
         module_target_object_code(PIC), !Info, !IO),
-    make_remove_target_file_by_name(Globals, very_verbose, ModuleName,
+    remove_make_target_file_by_name(Globals, $pred, very_verbose, ModuleName,
         module_target_foreign_object(PIC, lang_c), !Info, !IO),
     list.foldl2(
         remove_fact_table_object_and_assembler_files(Globals, ModuleName, PIC),
@@ -2205,7 +2206,7 @@ remove_object_and_assembler_files(Globals, ModuleName, PIC, FactTableFiles,
 
 remove_fact_table_object_and_assembler_files(Globals, ModuleName, PIC,
         FactTableFile, !Info, !IO) :-
-    make_remove_target_file_by_name(Globals, very_verbose,
+    remove_make_target_file_by_name(Globals, $pred, very_verbose,
         ModuleName, module_target_fact_table_object(PIC, FactTableFile),
         !Info, !IO).
 
@@ -2228,13 +2229,14 @@ make_module_realclean(Globals, ModuleName, !Info, !IO) :-
         module_target_c_header(header_mh),
         module_target_track_flags],
     list.foldl2(
-        make_remove_target_file_by_name(Globals, very_verbose, ModuleName),
+        remove_make_target_file_by_name(Globals, $pred, very_verbose,
+            ModuleName),
         Targets, !Info, !IO),
-    make_remove_module_file(Globals, very_verbose, ModuleName,
+    remove_make_module_file(Globals, very_verbose, ModuleName,
         ext_other(make_module_dep_file_extension), !Info, !IO),
-    make_remove_module_file(Globals, very_verbose, ModuleName,
+    remove_make_module_file(Globals, very_verbose, ModuleName,
         ext_other(other_ext(".imdg")), !Info, !IO),
-    make_remove_module_file(Globals, very_verbose, ModuleName,
+    remove_make_module_file(Globals, very_verbose, ModuleName,
         ext_other(other_ext(".request")), !Info, !IO).
 
 %---------------------------------------------------------------------------%
