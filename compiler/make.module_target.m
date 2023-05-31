@@ -118,184 +118,172 @@
 %---------------------------------------------------------------------------%
 
 make_module_target(ExtraOptions, Globals, Dep, Succeeded, !Info, !IO) :-
-    (
-        Dep = dep_file(_),
-        dependency_status(Globals, Dep, Status, !Info, !IO),
-        (
-            Status = deps_status_error,
-            Succeeded = did_not_succeed
-        ;
-            ( Status = deps_status_not_considered
-            ; Status = deps_status_being_built
-            ; Status = deps_status_up_to_date
-            ),
-            Succeeded = succeeded
-        )
-    ;
-        Dep = dep_target(TargetFile),
-        make_module_target_file_extra_options(ExtraOptions, Globals,
-            TargetFile, Succeeded, !Info, !IO)
-    ).
-
-:- pred make_module_target_file_extra_options(list(string)::in, globals::in,
-    target_file::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
-        Succeeded, !Info, !IO) :-
-    Dep = dep_target(TargetFile),
     dependency_status(Globals, Dep, Status, !Info, !IO),
     (
-        Status = deps_status_not_considered,
-        TargetFile = target_file(ModuleName, _TargetType),
-        get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-            !Info, !IO),
-        (
-            MaybeModuleDepInfo = no_module_dep_info,
-            Succeeded = did_not_succeed,
-            DepStatus0 = !.Info ^ mki_dependency_status,
-            version_hash_table.set(Dep, deps_status_error,
-                DepStatus0, DepStatus),
-            !Info ^ mki_dependency_status := DepStatus
-        ;
-            MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-            make_module_target_file_main_path(ExtraOptions, Globals,
-                TargetFile, ModuleDepInfo, Succeeded, !Info, !IO)
-        )
+        Status = deps_status_error,
+        Succeeded = did_not_succeed
     ;
         Status = deps_status_up_to_date,
         Succeeded = succeeded
     ;
-        Status = deps_status_being_built,
-        unexpected($pred, "target being built, circular dependencies?")
+        Status = deps_status_not_considered,
+        (
+            Dep = dep_file(_),
+            Succeeded = succeeded
+        ;
+            Dep = dep_target(TargetFile),
+            TargetFile = target_file(ModuleName, TargetType),
+            get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
+                !Info, !IO),
+            (
+                MaybeModuleDepInfo = no_module_dep_info,
+                Succeeded = did_not_succeed,
+                DepStatus0 = !.Info ^ mki_dependency_status,
+                version_hash_table.set(Dep, deps_status_error,
+                    DepStatus0, DepStatus),
+                !Info ^ mki_dependency_status := DepStatus
+            ;
+                MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+                get_compilation_task_and_options(TargetType,
+                    CompilationTaskAndOptions),
+                module_dep_info_get_source_file_module_name(ModuleDepInfo,
+                    SourceFileModuleName),
+                CompilationTaskAndOptions =
+                    task_and_options(CompilationTaskType, _),
+                ( if
+                    % For a target built by processing a Mercury source file,
+                    % the target for a nested submodule is produced as
+                    % a side effect of making the target for the top-level
+                    % module in the file.
+                    CompilationTaskType = process_module(_),
+                    SourceFileModuleName \= ModuleName
+                then
+                    NestedTargetFile =
+                        target_file(SourceFileModuleName, TargetType),
+                    make_module_target(ExtraOptions, Globals,
+                        dep_target(NestedTargetFile), Succeeded, !Info, !IO)
+                else
+                    make_module_target_file_main_path(ExtraOptions, Globals,
+                        TargetFile, CompilationTaskAndOptions, ModuleDepInfo,
+                        Succeeded, !Info, !IO)
+                )
+            )
+        )
     ;
-        Status = deps_status_error,
-        Succeeded = did_not_succeed
+        Status = deps_status_being_built,
+        (
+            Dep = dep_file(_),
+            Succeeded = succeeded
+        ;
+            Dep = dep_target(_),
+            unexpected($pred, "target being built, circular dependencies?")
+        )
     ).
 
 :- pred make_module_target_file_main_path(list(string)::in, globals::in,
-    target_file::in, module_dep_info::in, maybe_succeeded::out,
+    target_file::in, compilation_task_type_and_options::in,
+    module_dep_info::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
-        ModuleDepInfo, Succeeded, !Info, !IO) :-
+        CompilationTaskAndOptions, ModuleDepInfo, Succeeded, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
-    CompilationTask = compilation_task(TargetType),
-    module_dep_info_get_source_file_module_name(ModuleDepInfo,
-        SourceFileModuleName),
-    CompilationTask = task_and_options(CompilationTaskType, _),
-    ( if
-        % For a target built by processing a Mercury source file,
-        % the target for a nested sub-module is produced as a side effect
-        % of making the target for the top-level module in the file.
-        CompilationTaskType = process_module(_),
-        SourceFileModuleName \= ModuleName
-    then
-        NestedTargetFile =
-            target_file(SourceFileModuleName, TargetType),
-        make_module_target(ExtraOptions, Globals, dep_target(NestedTargetFile),
-            Succeeded, !Info, !IO)
+    CompilationTaskAndOptions = task_and_options(CompilationTaskType, _),
+    find_files_maybe_touched_by_task(Globals, TargetFile,
+        CompilationTaskType, TouchedTargetFiles, TouchedFiles, !Info, !IO),
+    list.foldl(update_target_status(deps_status_being_built),
+        TouchedTargetFiles, !Info),
+
+    debug_file_msg(Globals, TargetFile, "checking dependencies", !IO),
+
+    ( if CompilationTaskType = process_module(_) then
+        module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
+        NestedSubModules =
+            get_nested_children_list_of_top_module(MaybeTopModule),
+        ModulesToCheck = [ModuleName | NestedSubModules]
     else
-        find_files_maybe_touched_by_task(Globals, TargetFile,
-            CompilationTaskType, TouchedTargetFiles, TouchedFiles, !Info, !IO),
-        list.foldl(update_target_status(deps_status_being_built),
-            TouchedTargetFiles, !Info),
+        ModulesToCheck = [ModuleName]
+    ),
+    module_names_to_index_set(ModulesToCheck, ModuleIndexesToCheckSet, !Info),
+    ModuleIndexesToCheck = to_sorted_list(ModuleIndexesToCheckSet),
 
-        debug_file_msg(Globals, TargetFile, "checking dependencies", !IO),
+    KeepGoing0 = !.Info ^ mki_keep_going,
+    find_target_dependencies_of_modules(KeepGoing0, Globals, TargetType,
+        ModuleIndexesToCheck, succeeded, DepsSucceeded,
+        sparse_bitset.init, DepFiles0, !Info, !IO),
+    % NOTE: converting the dep_set to a plain set is relatively expensive,
+    % so it would be better to avoid it. Also, there should be a definite
+    % improvement if we could represent the dependency_status map with an
+    % array indexed by dependency_file_indexes, instead of a hash table
+    % indexed by dependency_file terms.
+    dependency_file_index_set_to_plain_set(!.Info, DepFiles0, DepFilesSet0),
+    ( if TargetType = module_target_int0 then
+        % Avoid circular dependencies (the `.int0' files for the
+        % nested sub-modules depend on this module's `.int0' file).
+        PrivateInts = make_dependency_list(ModulesToCheck, module_target_int0),
+        set.delete_list(PrivateInts, DepFilesSet0, DepFilesSet)
+    else
+        DepFilesSet = DepFilesSet0
+    ),
+    DepFilesToMake = set.to_sorted_list(DepFilesSet),
 
-        ( if CompilationTaskType = process_module(_) then
-            module_dep_info_get_maybe_top_module(ModuleDepInfo,
-                MaybeTopModule),
-            NestedSubModules =
-                get_nested_children_list_of_top_module(MaybeTopModule),
-            ModulesToCheck = [ModuleName | NestedSubModules]
-        else
-            ModulesToCheck = [ModuleName]
-        ),
-        module_names_to_index_set(ModulesToCheck, ModuleIndexesToCheckSet,
-            !Info),
-        ModuleIndexesToCheck = to_sorted_list(ModuleIndexesToCheckSet),
+    debug_make_msg(Globals,
+       ( pred(!.IO::di, !:IO::uo) is det :-
+            get_make_target_file_name(Globals, $pred,
+                TargetFile, TargetFileName, !IO),
+            dependency_file_index_set_to_plain_set(!.Info,
+                DepFiles0, DepFilesPlainSet),
+            list.map_foldl(dependency_file_to_file_name(Globals),
+                set.to_sorted_list(DepFilesPlainSet), DepFileNames, !IO),
+            io.format("%s: dependencies:\n", [s(TargetFileName)], !IO),
+            WriteDepFileName =
+                ( pred(FN::in, SIO0::di, SIO::uo) is det :-
+                    io.format("\t%s\n", [s(FN)], SIO0, SIO)
+                ),
+            list.foldl(WriteDepFileName, DepFileNames, !IO)
+        ), !IO),
 
-        KeepGoing0 = !.Info ^ mki_keep_going,
-        find_target_dependencies_of_modules(KeepGoing0, Globals, TargetType,
-            ModuleIndexesToCheck, succeeded, DepsSucceeded,
-            sparse_bitset.init, DepFiles0, !Info, !IO),
-        % NOTE: converting the dep_set to a plain set is relatively expensive,
-        % so it would be better to avoid it. Also, there should be a definite
-        % improvement if we could represent the dependency_status map with an
-        % array indexed by dependency_file_indexes, instead of a hash table
-        % indexed by dependency_file terms.
-        dependency_file_index_set_to_plain_set(!.Info, DepFiles0,
-            DepFilesSet0),
-        ( if TargetType = module_target_int0 then
-            % Avoid circular dependencies (the `.int0' files for the
-            % nested sub-modules depend on this module's `.int0' file).
-            PrivateInts = make_dependency_list(ModulesToCheck,
-                module_target_int0),
-            DepFilesToMake = set.to_sorted_list(
-                set.delete_list(DepFilesSet0, PrivateInts))
-        else
-            DepFilesToMake = set.to_sorted_list(DepFilesSet0)
-        ),
-
-        debug_make_msg(Globals,
-           ( pred(!.IO::di, !:IO::uo) is det :-
-                get_make_target_file_name(Globals, $pred,
-                    TargetFile, TargetFileName, !IO),
-                dependency_file_index_set_to_plain_set(!.Info,
-                    DepFiles0, DepFilesPlainSet),
-                list.map_foldl(dependency_file_to_file_name(Globals),
-                    set.to_sorted_list(DepFilesPlainSet), DepFileNames, !IO),
-                io.format("%s: dependencies:\n", [s(TargetFileName)], !IO),
-                WriteDepFileName =
-                    ( pred(FN::in, SIO0::di, SIO::uo) is det :-
-                        io.format("\t%s\n", [s(FN)], SIO0, SIO)
-                    ),
-                list.foldl(WriteDepFileName, DepFileNames, !IO)
-            ), !IO),
-
-        KeepGoing = !.Info ^ mki_keep_going,
-        expect(unify(KeepGoing, KeepGoing0), $pred, "KeepGoing != KeepGoing0"),
-        ( if
-            DepsSucceeded = did_not_succeed,
-            KeepGoing = do_not_keep_going
-        then
-            DepsResult = deps_error
-        else
-            make_dependency_files(Globals, TargetFile, DepFilesToMake,
-                TouchedTargetFiles, TouchedFiles, DepsResult0, !Info, !IO),
-            (
-                DepsSucceeded = succeeded,
-                DepsResult = DepsResult0
-            ;
-                DepsSucceeded = did_not_succeed,
-                DepsResult = deps_error
-            )
-        ),
+    KeepGoing = !.Info ^ mki_keep_going,
+    expect(unify(KeepGoing, KeepGoing0), $pred, "KeepGoing != KeepGoing0"),
+    ( if
+        DepsSucceeded = did_not_succeed,
+        KeepGoing = do_not_keep_going
+    then
+        DepsResult = deps_error
+    else
+        make_dependency_files(Globals, TargetFile, DepFilesToMake,
+            TouchedTargetFiles, TouchedFiles, DepsResult0, !Info, !IO),
         (
-            DepsResult = deps_error,
-            Succeeded = did_not_succeed,
-            list.foldl(update_target_status(deps_status_error),
-                TouchedTargetFiles, !Info)
+            DepsSucceeded = succeeded,
+            DepsResult = DepsResult0
         ;
-            DepsResult = deps_out_of_date,
-            Targets0 = !.Info ^ mki_command_line_targets,
-            set.delete(top_target_file(ModuleName, module_target(TargetType)),
-                Targets0, Targets),
-            !Info ^ mki_command_line_targets := Targets,
-            build_target(Globals, CompilationTask, TargetFile,
-                ModuleDepInfo, TouchedTargetFiles, TouchedFiles,
-                ExtraOptions, Succeeded, !Info, !IO)
-        ;
-            DepsResult = deps_up_to_date,
-            maybe_warn_up_to_date_target(Globals, $pred,
-                top_target_file(ModuleName, module_target(TargetType)),
-                !Info, !IO),
-            debug_file_msg(Globals, TargetFile, "up to date", !IO),
-            Succeeded = succeeded,
-            list.foldl(update_target_status(deps_status_up_to_date),
-                [TargetFile | TouchedTargetFiles], !Info)
+            DepsSucceeded = did_not_succeed,
+            DepsResult = deps_error
         )
+    ),
+    (
+        DepsResult = deps_error,
+        Succeeded = did_not_succeed,
+        list.foldl(update_target_status(deps_status_error),
+            TouchedTargetFiles, !Info)
+    ;
+        DepsResult = deps_out_of_date,
+        Targets0 = !.Info ^ mki_command_line_targets,
+        set.delete(top_target_file(ModuleName, module_target(TargetType)),
+            Targets0, Targets),
+        !Info ^ mki_command_line_targets := Targets,
+        build_target(Globals, CompilationTaskAndOptions, TargetFile,
+            ModuleDepInfo, TouchedTargetFiles, TouchedFiles,
+            ExtraOptions, Succeeded, !Info, !IO)
+    ;
+        DepsResult = deps_up_to_date,
+        maybe_warn_up_to_date_target(Globals, $pred,
+            top_target_file(ModuleName, module_target(TargetType)),
+            !Info, !IO),
+        debug_file_msg(Globals, TargetFile, "up to date", !IO),
+        Succeeded = succeeded,
+        list.foldl(update_target_status(deps_status_up_to_date),
+            [TargetFile | TouchedTargetFiles], !Info)
     ).
 
 :- pred make_dependency_files(globals::in, target_file::in,
@@ -884,10 +872,10 @@ delete_timestamp(Globals, TouchedFile, !Timestamps) :-
                 list(string)
             ).
 
-:- func compilation_task(module_target_type) =
-    compilation_task_type_and_options.
+:- pred get_compilation_task_and_options(module_target_type::in,
+    compilation_task_type_and_options::out) is det.
 
-compilation_task(Target) = Result :-
+get_compilation_task_and_options(Target, Result) :-
     (
         ( Target = module_target_source
         ; Target = module_target_track_flags
