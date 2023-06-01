@@ -935,12 +935,17 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
     % XXX Why are we ignoring all previously reported errors?
     io.set_exit_status(0, !IO),
     write_error_specs(ErrorStream, Globals, Specs, !IO),
+    % XXX MAKE_STREAM
     % XXX Now that we pass ErrorStream to write_error_specs instead of
     % setting the output stream to ErrorStream, this may now be redundant.
     io.set_output_stream(OldOutputStream, _, !IO),
 
     list.foldl(make_info_add_module_and_imports_as_dep,
         BurdenedModules, !Info),
+
+    MadeTarget = target_file(ModuleName, module_target_int3),
+    get_make_target_file_name(Globals, $pred,
+        MadeTarget, MadeTargetFileName, !IO),
 
     % If there were no errors, write out the `.int3' file
     % while we have the contents of the module. The `int3' file
@@ -949,9 +954,8 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
     % We already know FatalReadError is empty.
     NonFatalErrors = ReadModuleErrors ^ rm_nonfatal_errors,
     ( if set.is_empty(NonFatalErrors) then
-        Target = target_file(ModuleName, module_target_int3),
-        maybe_make_target_message_to_stream(Globals, $pred, OldOutputStream,
-            Target, !IO),
+        maybe_make_target_message_to_stream(Globals, OldOutputStream,
+            MadeTargetFileName, !IO),
         setup_checking_for_interrupt(CookieMSI, !IO),
 
         DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
@@ -969,6 +973,7 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
             MayBuild = may_build(_AllOptions, BuildGlobals),
             % Printing progress to the current output stream
             % preserves old behavior.
+            % XXX MAKE_STREAM
             % XXX Our caller should pass us ProgressStream.
             io.output_stream(ProgressStream, !IO),
             make_int3_files(ProgressStream, ErrorStream, BuildGlobals,
@@ -988,8 +993,7 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
     teardown_checking_for_interrupt(VeryVerbose, CookieWMDF,
         CleanupWMDF, succeeded, _Succeeded, !Info, !IO),
 
-    MadeTarget = target_file(ModuleName, module_target_int3),
-    record_made_target(Globals, MadeTarget,
+    record_made_target(Globals, MadeTarget, MadeTargetFileName,
         process_module(task_make_int3), Succeeded, !Info, !IO),
     unredirect_output(Globals, ModuleName, ErrorStream, !Info, !IO).
 

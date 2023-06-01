@@ -198,11 +198,11 @@
 
     % Write a message "Making <filename>" if `--verbose-make' is set.
     %
-:- pred maybe_make_target_message(globals::in, string::in, target_file::in,
+:- pred maybe_make_target_message(globals::in, file_name::in,
     io::di, io::uo) is det.
 
-:- pred maybe_make_target_message_to_stream(globals::in, string::in,
-    io.text_output_stream::in, target_file::in, io::di, io::uo) is det.
+:- pred maybe_make_target_message_to_stream(globals::in,
+    io.text_output_stream::in, file_name::in, io::di, io::uo) is det.
 
     % Write a message "Reanalysing invalid/suboptimal modules" if
     % `--verbose-make' is set.
@@ -211,25 +211,19 @@
 
     % Write a message "** Error making <filename>".
     %
-:- pred target_file_error(make_info::in, globals::in, target_file::in,
-    io::di, io::uo) is det.
-
-    % Write a message "** Error making <filename>".
-    %
 :- pred file_error(make_info::in, file_name::in, io::di, io::uo) is det.
 
     % If the given target was specified on the command line, warn that it
     % was already up to date.
     %
-:- pred maybe_warn_up_to_date_target(globals::in, string::in,
-    top_target_file::in, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred maybe_warn_up_to_date_target(globals::in, top_target_file::in,
+    file_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Write a message "Made symlink/copy of <filename>"
     % if `--verbose-make' is set.
     %
-:- pred maybe_symlink_or_copy_linked_target_message(globals::in, string::in,
-    top_target_file::in, io::di, io::uo) is det.
+:- pred maybe_symlink_or_copy_linked_target_message(globals::in, file_name::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -270,7 +264,6 @@
 :- import_module int.
 :- import_module io.file.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module uint.
@@ -991,17 +984,14 @@ maybe_make_linked_target_message(Globals, FileName, !IO) :-
             io.write_string(Msg, !IO)
         ), !IO).
 
-maybe_make_target_message(Globals, From, TargetFile, !IO) :-
+maybe_make_target_message(Globals, FileName, !IO) :-
     io.output_stream(OutputStream, !IO),
-    maybe_make_target_message_to_stream(Globals, From, OutputStream,
-        TargetFile, !IO).
+    maybe_make_target_message_to_stream(Globals, OutputStream, FileName, !IO).
 
-maybe_make_target_message_to_stream(Globals, From, OutputStream,
-        TargetFile, !IO) :-
+maybe_make_target_message_to_stream(Globals, OutputStream, FileName, !IO) :-
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            get_make_target_file_name(Globals, From, TargetFile,
-                FileName, !IO),
+            % XXX MAKE_STREAM
             % Try to write this with one call to avoid interleaved output
             % when doing parallel builds.
             string.format("Making %s\n", [s(FileName)], Msg),
@@ -1011,36 +1001,23 @@ maybe_make_target_message_to_stream(Globals, From, OutputStream,
 maybe_reanalyse_modules_message(Globals, !IO) :-
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
+            % XXX MAKE_STREAM
             io.output_stream(OutputStream, !IO),
             io.write_string(OutputStream,
                 "Reanalysing invalid/suboptimal modules\n", !IO)
         ), !IO).
 
-target_file_error(Info, Globals, TargetFile, !IO) :-
-    with_locked_stdout(Info,
-        write_make_target_file_wrapped(Globals,
-            "** Error making `", TargetFile, "'.\n"), !IO).
+file_error(Info, FileName, !IO) :-
+    string.format("** Error making `%s'.\n", [s(FileName)], Msg),
+    % XXX MAKE_STREAM
+    with_locked_stdout(Info, io.write_string(Msg), !IO).
 
-:- pred write_make_target_file_wrapped(globals::in,
-    string::in, target_file::in, string::in, io::di, io::uo) is det.
-
-write_make_target_file_wrapped(Globals, Prefix, TargetFile, Suffix, !IO) :-
-    get_make_target_file_name(Globals, $pred, TargetFile, FileName, !IO),
-    % Our one caller just above never passes empty Prefix or Suffix.
-    io.write_string(Prefix ++ FileName ++ Suffix, !IO).
-
-file_error(Info, TargetFile, !IO) :-
-    with_locked_stdout(Info,
-        io.write_string("** Error making `" ++ TargetFile ++ "'.\n"), !IO).
-
-maybe_warn_up_to_date_target(Globals, From, Target, !Info, !IO) :-
+maybe_warn_up_to_date_target(Globals, Target, FileName, !Info, !IO) :-
     globals.lookup_bool_option(Globals, warn_up_to_date, Warn),
     CmdLineTargets0 = !.Info ^ mki_command_line_targets,
     (
         Warn = yes,
         ( if set.member(Target, CmdLineTargets0) then
-            module_or_linked_target_file_name(Globals, From,
-                Target, FileName, !IO),
             io.format("** Nothing to be done for `%s'.\n", [s(FileName)], !IO)
         else
             true
@@ -1051,32 +1028,11 @@ maybe_warn_up_to_date_target(Globals, From, Target, !Info, !IO) :-
     set.delete(Target, CmdLineTargets0, CmdLineTargets),
     !Info ^ mki_command_line_targets := CmdLineTargets.
 
-maybe_symlink_or_copy_linked_target_message(Globals, From, Target, !IO) :-
+maybe_symlink_or_copy_linked_target_message(Globals, FileName, !IO) :-
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            module_or_linked_target_file_name(Globals, From, Target,
-                FileName, !IO),
             io.format("Made symlink/copy of %s\n", [s(FileName)], !IO)
         ), !IO).
-
-:- pred module_or_linked_target_file_name(globals::in, string::in,
-    top_target_file::in, string::out, io::di, io::uo) is det.
-
-module_or_linked_target_file_name(Globals, From, TopTargetFile,
-        FileName, !IO) :-
-    TopTargetFile = top_target_file(ModuleName, TargetType),
-    (
-        TargetType = module_target(ModuleTargetType),
-        TargetFile = target_file(ModuleName, ModuleTargetType),
-        get_make_target_file_name(Globals, From, TargetFile, FileName, !IO)
-    ;
-        TargetType = linked_target(LinkedTargetType),
-        linked_target_file_name(Globals, ModuleName, LinkedTargetType,
-            FileName, !IO)
-    ;
-        TargetType = misc_target(_),
-        unexpected($pred, "misc_target")
-    ).
 
 %---------------------------------------------------------------------------%
 %

@@ -45,14 +45,15 @@
     dependency_file::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % record_made_target(Globals, Target, Task, MakeSucceeded, !Info, !IO):
+    % record_made_target(Globals, TargetFile, TargetFileName, Task,
+    %   MakeSucceeded, !Info, !IO):
     %
     % Record whether building a target succeeded or not.
     % Makes sure any timestamps for files which may have changed
     % in building the target are recomputed next time they are needed.
     % Exported for use by make.module_dep_file.write_module_dep_file.
     %
-:- pred record_made_target(globals::in, target_file::in,
+:- pred record_made_target(globals::in, target_file::in, file_name::in,
     compilation_task_type::in, maybe_succeeded::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -188,6 +189,7 @@ make_module_target(ExtraOptions, Globals, Dep, Succeeded, !Info, !IO) :-
 make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
         CompilationTaskAndOptions, ModuleDepInfo, Succeeded, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
+    get_make_target_file_name(Globals, $pred, TargetFile, TargetFileName, !IO),
     CompilationTaskAndOptions = task_and_options(CompilationTaskType, _),
     find_files_maybe_touched_by_task(Globals, TargetFile,
         CompilationTaskType, TouchedTargetFiles, TouchedFiles, !Info, !IO),
@@ -229,8 +231,6 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
 
     debug_make_msg(Globals,
        ( pred(!.IO::di, !:IO::uo) is det :-
-            get_make_target_file_name(Globals, $pred,
-                TargetFile, TargetFileName, !IO),
             dependency_file_index_set_to_plain_set(!.Info,
                 DepFiles0, DepFilesPlainSet),
             list.map_foldl(dependency_file_to_file_name(Globals),
@@ -277,8 +277,8 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
             ExtraOptions, Succeeded, !Info, !IO)
     ;
         DepsResult = deps_up_to_date,
-        maybe_warn_up_to_date_target(Globals, $pred,
-            top_target_file(ModuleName, module_target(TargetType)),
+        TopTargetFile = top_target_file(ModuleName, module_target(TargetType)),
+        maybe_warn_up_to_date_target(Globals, TopTargetFile, TargetFileName,
             !Info, !IO),
         debug_file_msg(Globals, TargetFile, "up to date", !IO),
         Succeeded = succeeded,
@@ -382,7 +382,8 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         !Info, !IO) :-
     % XXX MAKE_FILENAME Either our caller should be able to give us
     % TargetFileName, or we could compute it here, and give it to code below.
-    maybe_make_target_message(Globals, $pred, TargetFile, !IO),
+    get_make_target_file_name(Globals, $pred, TargetFile, TargetFileName, !IO),
+    maybe_make_target_message(Globals, TargetFileName, !IO),
     TargetFile = target_file(ModuleName, _TargetType),
     CompilationTask = task_and_options(Task, TaskOptions),
     ExtraAndTaskOptions = ExtraOptions ++ TaskOptions,
@@ -453,7 +454,8 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
             Succeeded0, Succeeded, !Info, !IO),
         record_made_target_given_maybe_touched_files(Globals, Succeeded,
-            TargetFile, TouchedTargetFiles, TouchedFiles, !Info, !IO),
+            TargetFile, TargetFileName, TouchedTargetFiles, TouchedFiles,
+            !Info, !IO),
         get_real_milliseconds(Time, !IO),
 
         globals.lookup_bool_option(Globals, show_make_times, ShowMakeTimes),
@@ -462,10 +464,6 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
             DiffSecs = float(Time - Time0) / 1000.0,
             % Avoid cluttering the screen with short running times.
             ( if DiffSecs >= 0.5 then
-                % XXX MAKE_FILENAME The code above should be able to give us
-                % TargetFileName.
-                get_make_target_file_name(Globals, $pred,
-                    TargetFile, TargetFileName, !IO),
                 io.format("Making %s took %.2fs\n",
                     [s(TargetFileName), f(DiffSecs)], !IO)
             else
@@ -476,6 +474,7 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         )
     ;
         ArgFileNameRes = error(ArgFileError),
+        % XXX MAKE_STREAM
         io.format(stderr_stream, "Could not create temporary file: %s\n",
             [s(error_message(ArgFileError))], !IO),
         Succeeded = did_not_succeed
@@ -506,7 +505,7 @@ cleanup_files(Globals, MaybeArgFileName, TouchedTargetFiles, TouchedFiles,
 
 build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
         AllOptionArgs, ErrorStream, Succeeded, !Info, !IO) :-
-    % XXX STREAM Printing progress messages to the current output stream
+    % XXX MAKE_STREAM Printing progress messages to the current output stream
     % is an attempt to preserve old behavior.
     io.output_stream(ProgressStream, !IO),
     (
@@ -520,6 +519,7 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
             % XXX Don't write the default options.
             AllArgStrs = list.map(quote_shell_cmd_arg, AllArgs),
             AllArgsStr = string.join_list(" ", AllArgStrs),
+            % XXX MAKE_STREAM
             io.format("Invoking self `mmc %s'\n", [s(AllArgsStr)], !IO)
         ;
             Verbose = no
@@ -778,26 +778,29 @@ target_is_java :-
 
 %---------------------------------------------------------------------------%
 
-record_made_target(Globals, TargetFile, CompilationTask, Succeeded,
-        !Info, !IO) :-
+record_made_target(Globals, TargetFile, TargetFileName,
+        CompilationTask, Succeeded, !Info, !IO) :-
     find_files_maybe_touched_by_task(Globals, TargetFile, CompilationTask,
         TouchedTargetFiles, TouchedFiles, !Info, !IO),
     record_made_target_given_maybe_touched_files(Globals, Succeeded,
-        TargetFile, TouchedTargetFiles, TouchedFiles, !Info, !IO).
+        TargetFile, TargetFileName, TouchedTargetFiles, TouchedFiles,
+        !Info, !IO).
 
 :- pred record_made_target_given_maybe_touched_files(globals::in,
-    maybe_succeeded::in, target_file::in, list(target_file)::in,
-    list(file_name)::in, make_info::in, make_info::out, io::di, io::uo) is det.
+    maybe_succeeded::in, target_file::in, string::in,
+    list(target_file)::in, list(file_name)::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-record_made_target_given_maybe_touched_files(Globals, Succeeded, TargetFile,
-        TouchedTargetFiles, OtherTouchedFiles, !Info, !IO) :-
+record_made_target_given_maybe_touched_files(Globals, Succeeded,
+        TargetFile, TargetFileName, TouchedTargetFiles, OtherTouchedFiles,
+        !Info, !IO) :-
     (
         Succeeded = succeeded,
         TargetStatus = deps_status_up_to_date
     ;
         Succeeded = did_not_succeed,
         TargetStatus = deps_status_error,
-        target_file_error(!.Info, Globals, TargetFile, !IO)
+        file_error(!.Info, TargetFileName, !IO)
     ),
 
     list.foldl(update_target_status(TargetStatus), TouchedTargetFiles, !Info),

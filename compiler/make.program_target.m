@@ -594,7 +594,10 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         Succeeded = did_not_succeed
     ;
         DepsResult = deps_up_to_date,
-        MsgTarget = top_target_file(MainModuleName, linked_target(FileType)),
+        MainModuleLinkedTarget =
+            top_target_file(MainModuleName, linked_target(FileType)),
+        linked_target_file_name(Globals, MainModuleName, FileType,
+            MainModuleLinkedFileName, !IO),
         globals.lookup_bool_option(NoLinkObjsGlobals, use_grade_subdirs,
             UseGradeSubdirs),
         (
@@ -605,16 +608,17 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             (
                 MadeSymlinkOrCopy = yes,
                 maybe_symlink_or_copy_linked_target_message(NoLinkObjsGlobals,
-                    $pred, MsgTarget, !IO)
+                    MainModuleLinkedFileName, !IO)
             ;
                 MadeSymlinkOrCopy = no,
-                maybe_warn_up_to_date_target(NoLinkObjsGlobals, $pred,
-                    MsgTarget, !Info, !IO)
+                maybe_warn_up_to_date_target(NoLinkObjsGlobals,
+                    MainModuleLinkedTarget, MainModuleLinkedFileName,
+                    !Info, !IO)
             )
         ;
             UseGradeSubdirs = no,
-            maybe_warn_up_to_date_target(NoLinkObjsGlobals, $pred,
-                MsgTarget, !Info, !IO),
+            maybe_warn_up_to_date_target(NoLinkObjsGlobals,
+                MainModuleLinkedTarget, MainModuleLinkedFileName, !Info, !IO),
             Succeeded = succeeded
         )
     ;
