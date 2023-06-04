@@ -1092,18 +1092,6 @@ referenced_dlls(Module, DepModules0) = Modules :-
 make_library_init_file(Globals, ProgressStream, ErrorStream,
         MainModuleName, AllModules, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
-    make_library_init_file_2(Globals, ProgressStream, ErrorStream,
-        MainModuleName, AllModules, ext_other(other_ext(".c")), MkInit,
-        Succeeded, !IO).
-
-% XXX This predicate should be inline at its only call site.
-:- pred make_library_init_file_2(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
-    module_name::in, list(module_name)::in, ext::in, string::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
-
-make_library_init_file_2(Globals, ProgressStream, ErrorStream,
-        MainModuleName, AllModules, TargetExt, MkInit, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".init")),
         MainModuleName, InitFileName, !IO),
@@ -1113,9 +1101,8 @@ make_library_init_file_2(Globals, ProgressStream, ErrorStream,
         InitFileRes = ok(InitFileStream),
         list.map_foldl(
             module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-                TargetExt),
+                ext_other(other_ext(".c"))),
             AllModules, AllTargetFilesList, !IO),
-
         invoke_mkinit(Globals, ProgressStream, ErrorStream, InitFileStream,
             cmd_verbose_commands, MkInit, " -k ", AllTargetFilesList,
             MkInitSucceeded, !IO),
@@ -1718,7 +1705,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         UndefOpt = "",
         ReserveStackSizeOpt = reserve_stack_size_flags(Globals)
     ),
-    
+
     globals.lookup_string_option(Globals, linker_lto_flags, LTOOpts),
 
     % Should the executable be stripped?
