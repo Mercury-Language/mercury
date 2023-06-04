@@ -664,6 +664,7 @@ construct_build_nested_children_first_rule(Globals, ModuleName, MaybeTopModule,
         MmakeRulesNestedDeps = []
     ;
         NestedModuleNames = [_ | _],
+        % XXX EXT
         NestedOtherExts = [
             other_ext(".optdate"),
             other_ext(".trans_opt_date"),
