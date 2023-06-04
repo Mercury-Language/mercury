@@ -256,6 +256,14 @@
 
 %---------------------------------------------------------------------------%
 
+    % Test whether a proposed replacement for module_name_to_file_name_ext
+    % generates the same outputs as the original.
+    %
+:- pred test_file_name_extensions(globals::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
     % This predicate is intended to output profiling data that can later
     % be used to improve the operation of this module. It appends to
     % /tmp/TRANSLATIONS_RECORD information about the frequency with which
@@ -276,6 +284,7 @@
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.source_file_map.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
@@ -283,6 +292,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module string.
 
@@ -775,7 +785,7 @@ file_is_arch_or_grade_dependent(Globals, OtherExt) :-
 :- pred file_is_arch_or_grade_dependent_2(string::in) is semidet.
 
     % The `.used' file isn't grade dependent itself, but it contains
-    % information collected while compiling a grade-dependent `.c', `il',
+    % information collected while compiling a grade-dependent `.c', `.cs',
     % etc file.
 file_is_arch_or_grade_dependent_2("").
 file_is_arch_or_grade_dependent_2(".bat").
@@ -912,6 +922,202 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
         % That seems a silly thing to write in a source file.
         Path = dirname(ModuleSourceFileName) / OrigFileName
     ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- type new_ext == ext.
+
+:- func make_new_extension(string) = new_ext.
+
+make_new_extension(Str) = ext_other(other_ext(Str)).
+
+:- pred module_name_to_file_name_ext_new(globals::in, string::in,
+    maybe_search::in, maybe_create_dirs::in, new_ext::in,
+    module_name::in, file_name::out, io::di, io::uo) is det.
+
+module_name_to_file_name_ext_new(Globals, From, MaybeSearch, MkDir,
+        NewExt, ModuleName, FileName, !IO) :-
+    module_name_to_file_name_ext(Globals, From, MaybeSearch, MkDir,
+        NewExt, ModuleName, FileName, !IO).
+
+%---------------------------------------------------------------------------%
+
+test_file_name_extensions(Globals, Stream, !IO) :-
+    TestModuleName = qualified(qualified(unqualified("abc"), "def"), "xyz"),
+    Extensions = all_extensions(Globals),
+    test_extensions_loop(Globals, Stream, TestModuleName, Extensions,
+        no, SomeErrors, !IO),
+    (
+        SomeErrors = no
+    ;
+        SomeErrors = yes,
+        io.set_exit_status(1, !IO)
+    ).
+
+:- pred test_extensions_loop(globals::in, io.text_output_stream::in,
+    module_name::in, list(string)::in, bool::in, bool::out,
+    io::di, io::uo) is det.
+
+test_extensions_loop(_, _, _, [], !SomeError, !IO).
+test_extensions_loop(Globals, Stream, ModuleName, [Ext | Exts],
+        !SomeError, !IO) :-
+    test_one_extension(Globals, Stream, do_not_search, ModuleName, Ext,
+        !SomeError, !IO),
+    test_one_extension(Globals, Stream, do_search, ModuleName, Ext,
+        !SomeError, !IO),
+    test_extensions_loop(Globals, Stream, ModuleName, Exts, !SomeError, !IO).
+
+:- pred test_one_extension(globals::in, io.text_output_stream::in,
+    maybe_search::in, module_name::in, string::in, bool::in, bool::out,
+    io::di, io::uo) is det.
+
+test_one_extension(Globals, Stream, MaybeSearch, ModuleName, Ext,
+        !SomeError, !IO) :-
+    From = "TEST",
+    % The value of MkDir does not influence the filename generated
+    % by module_name_to_file_name_ext.
+    MkDir = do_not_create_dirs,
+    module_name_to_file_name_ext(Globals, From, MaybeSearch, MkDir,
+        ext_other(other_ext(Ext)), ModuleName, OldFileName, !IO),
+    NewExt = make_new_extension(Ext),
+    module_name_to_file_name_ext_new(Globals, From, MaybeSearch, MkDir,
+        NewExt, ModuleName, NewFileName, !IO),
+    ( if OldFileName = NewFileName then
+        true
+    else
+        ( MaybeSearch = do_search,     MaybeSearchStr = "search"
+        ; MaybeSearch = do_not_search, MaybeSearchStr = "no_search"
+        ),
+        io.format(Stream, "BAD FILENAME TRANSLATION FOR %s/%s: %s vs %s\n",
+            [s(Ext), s(MaybeSearchStr), s(OldFileName), s(NewFileName)], !IO),
+        !:SomeError = yes
+    ).
+
+%---------------------%
+
+:- func all_extensions(globals) = list(string).
+
+all_extensions(Globals) = AllExtensionStrs :-
+    StrExtensions = string_extensions,
+    OptionExtensions = option_extensions,
+    StrOptionExtensions = string_option_extensions,
+    list.map(globals.lookup_string_option(Globals),
+        OptionExtensions, OptionExtensionStrs),
+    MakeStrOptStr =
+        ( pred(Str - Opt::in, StrOptStr::out) is det :-
+            globals.lookup_string_option(Globals, Opt, OptStr),
+            StrOptStr = Str ++ OptStr
+        ),
+    list.map(MakeStrOptStr,
+        StrOptionExtensions, StrOptionExtensionStrs),
+    AllExtensionStrs0 = StrExtensions ++ OptionExtensionStrs ++
+        StrOptionExtensionStrs,
+    % Depending on option values, some of OptionExtensionStrs and
+    % StrOptionExtensionStrs may duplicate strings in StrExtensions.
+    list.sort_and_remove_dups(AllExtensionStrs0, AllExtensionStrs).
+
+:- func string_extensions = list(string).
+
+% We don't test the .m extension, since that is handled separately
+% by module_name_to_source_file_name.
+string_extensions = 
+    ["",
+    ".$O",
+    ".a",
+    ".all_int3s",
+    ".all_ints",
+    ".all_opts",
+    ".all_trans_opts",
+    ".analysis",
+    ".analysis_date",
+    ".analysis_status",
+    ".bat",
+    ".bytedebug",
+    ".c",
+    ".c_date",
+    ".check",
+    ".class",
+    ".classes",
+    ".clean",
+    ".cs",
+    ".cs_date",
+    ".d",
+    ".date",
+    ".date0",
+    ".date3",
+    ".defn_extents",
+    ".defn_line_counts",
+    ".defns",
+    ".dep",
+    ".dependency_graph",
+    ".dir/*.$O",
+    ".dll",
+    ".dv",
+    ".err",
+    ".err_date",
+    ".exe",
+    ".hlds_dump",
+    ".imdg",
+    ".imports_graph",
+    ".init",
+    ".int",
+    ".int0",
+    ".int2",
+    ".int3",
+    ".int3s",
+    ".ints",
+    ".jar",
+    ".java",
+    ".java_date",
+    ".javas",
+    ".local_call_tree",
+    ".local_call_tree_order",
+    ".mbc",
+    ".mh",
+    ".mih",
+    ".mlds_dump",
+    ".mode_constraints",
+    ".module_dep",
+    ".o",
+    ".opt",
+    ".optdate",
+    ".opts",
+    ".order",
+    ".order-trans-opt",
+    ".pic_o",
+    ".prof",
+    ".realclean",
+    ".request",
+    ".so",
+    ".track_flags",
+    ".trans_opt",
+    ".trans_opt_date",
+    ".trans_opts",
+    ".type_repns",
+    ".used",
+    ".xml",
+    "CacheDir.ugly",
+    "_init.$O",
+    "_init.c",
+    "_init.o",
+    "_init.pic_o"].
+
+:- func option_extensions = list(option).
+
+option_extensions =
+    [executable_file_extension,
+    library_extension,
+    java_object_file_extension,
+    object_file_extension,
+    pic_object_file_extension,
+    shared_library_extension].
+
+:- func string_option_extensions = assoc_list(string, option).
+
+string_option_extensions =
+    ["_init" - object_file_extension,
+    "_init" - pic_object_file_extension].
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

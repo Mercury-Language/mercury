@@ -536,6 +536,14 @@ main_after_setup(ProgressStream, ErrorStream, Globals, DetectedGradeFlags,
         io.stdout_stream(StdOutStream, !IO),
         display_compiler_version(StdOutStream, !IO)
     else
+        globals.lookup_bool_option(Globals, experiment4, Experiment4),
+        (
+            Experiment4 = no
+        ;
+            Experiment4 = yes,
+            test_file_name_extensions(Globals, ErrorStream, !IO)
+        ),
+
         globals.get_op_mode(Globals, OpMode),
         HaveReadModuleMaps0 = init_have_read_module_maps,
         Specs0 = [],
@@ -1258,6 +1266,12 @@ find_modules_to_recompile(Globals0, Globals, FileOrModule, ModulesToRecompile,
             % mapping will be explicitly recorded.
             file_name_to_module_name(FileName, ModuleName)
         ),
+        % XXX EXT Is there some reason why recompilation.check.m shouldn't know
+        % how to find target and timestamp files? If not, then the
+        % FindTargetFiles and FindTargetFiles arguments passed to
+        % should_recompile should be deleted, and the logic of the next two
+        % calls should be moved to recompilation.check.m and turned into
+        % first order code.
         find_smart_recompilation_target_files(Globals, FindTargetFiles),
         find_timestamp_files(Globals, FindTimestampFiles),
         recompilation.check.should_recompile(Globals, ModuleName,
@@ -1284,9 +1298,9 @@ find_modules_to_recompile(Globals0, Globals, FileOrModule, ModulesToRecompile,
 
 find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
     globals.get_target(Globals, CompilationTarget),
-    ( CompilationTarget = target_c, TargetOtherExt = other_ext(".c")
+    ( CompilationTarget = target_c,      TargetOtherExt = other_ext(".c")
     ; CompilationTarget = target_csharp, TargetOtherExt = other_ext(".cs")
-    ; CompilationTarget = target_java, TargetOtherExt = other_ext(".java")
+    ; CompilationTarget = target_java,   TargetOtherExt = other_ext(".java")
     ),
     FindTargetFiles = usual_find_target_files(Globals, TargetOtherExt).
 
