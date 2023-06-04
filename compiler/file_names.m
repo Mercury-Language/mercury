@@ -294,6 +294,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set_tree234.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -872,23 +873,49 @@ maybe_create_dirs_on_path(MkDir, DirComponents, !IO) :-
         (
             MkDir = do_create_dirs,
             DirName = dir.relative_path_name_from_components(DirComponents),
-            make_directory(DirName, _, !IO),
-            % XXX We should avoid trying to create a directory
-            % if we have created it before, since a map lookup here
-            % should be *much* cheaper than a system call.
+            % We avoid trying to create a directory if we have created it
+            % before, because a set membership check here should be *much*
+            % cheaper than a system call.
             %
-            % This goes not just for DirName, but for all the directories
-            % between it and the current directory (i.e. for any initial
-            % subsequence of DirComponents).
+            % We could try to check not just whether we have created
+            % DirName before, but also any directory that corresponds
+            % to a prefix of DirComponents. However, library/dir.m has
+            % no mechanism we could use to tell it that a given prefix
+            % of directories in DirComponents has already been created,
+            % and that therefore checking whether they already exist
+            % is unnecessary. (If any agent other than the Mercury system
+            % is deleting some of these directories after their creation,
+            % then things will be screwed up beyond Mercury's ability to
+            % recover, *regardless* of what we do here.)
+            %
+            % This is not too much of a loss, since the crude test here
+            % will still eliminate most of the eliminable system calls
+            % involved in this task.
+            get_made_dirs(MadeDirs0, !IO),
+            ( if set_tree234.contains(MadeDirs0, DirName) then
+                Made = yes
+            else
+                Made = no,
+                make_directory(DirName, _, !IO),
+                set_tree234.insert(DirName, MadeDirs0, MadeDirs),
+                set_made_dirs(MadeDirs, !IO)
+            ),
             trace [compile_time(flag("file_name_translations")),
                 runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
             (
+                Made = no,
+                record_no_mkdir(DirName, !TIO)
+            ;
+                Made = yes,
                 record_mkdir(DirName, !TIO)
             )
         ;
             MkDir = do_not_create_dirs
         )
     ).
+
+:- mutable(made_dirs, set_tree234(string), set_tree234.init, ground,
+    [untrailed, attach_to_io_state]).
 
 %---------------------------------------------------------------------------%
 
@@ -1164,8 +1191,21 @@ record_translation(Search, MkDir, Ext, ModuleName, FileName, !IO) :-
 
 %---------------------%
 
+:- mutable(no_mkdirs, map(string, int), map.init, ground,
+    [untrailed, attach_to_io_state]).
 :- mutable(mkdirs, map(string, int), map.init, ground,
     [untrailed, attach_to_io_state]).
+
+:- pred record_no_mkdir(string::in, io::di, io::uo) is det.
+
+record_no_mkdir(DirName, !IO) :-
+    get_no_mkdirs(NoMkDirs0, !IO),
+    ( if map.search(NoMkDirs0, DirName, Count0) then
+        map.det_update(DirName, Count0 + 1, NoMkDirs0, NoMkDirs)
+    else
+        map.det_insert(DirName, 1, NoMkDirs0, NoMkDirs)
+    ),
+    set_no_mkdirs(NoMkDirs, !IO).
 
 :- pred record_mkdir(string::in, io::di, io::uo) is det.
 
@@ -1182,9 +1222,11 @@ record_mkdir(DirName, !IO) :-
 
 write_translations_record_if_any(!IO) :-
     get_translations(Translations, !IO),
+    get_no_mkdirs(NoMkDirs, !IO),
     get_mkdirs(MkDirs, !IO),
     ( if
         map.is_empty(Translations),
+        map.is_empty(NoMkDirs),
         map.is_empty(MkDirs)
     then
         true
@@ -1199,6 +1241,7 @@ write_translations_record_if_any(!IO) :-
                 [i(NumKeys), i(NumLookups)], !IO),
             map.foldl(write_out_ext_entry(Stream), ExtMap, !IO),
             map.foldl(write_out_ext_sch_dir_entry(Stream), ExtSchDirMap, !IO),
+            map.foldl(write_out_no_mkdirs_entry(Stream), NoMkDirs, !IO),
             map.foldl(write_out_mkdirs_entry(Stream), MkDirs, !IO),
             io.close_output(Stream, !IO)
         ;
@@ -1278,6 +1321,12 @@ write_out_ext_sch_dir_entry(Stream, ExtSchDir, count_sum(Cnt, Sum), !IO) :-
         [i(Cnt), i(Sum), s(ExtSchDir)], !IO).
 
 %---------------------%
+
+:- pred write_out_no_mkdirs_entry(io.text_output_stream::in,
+    string::in, int::in, io::di, io::uo) is det.
+
+write_out_no_mkdirs_entry(Stream, DirName, Cnt, !IO) :-
+    io.format(Stream, "no_dir_name %d %s\n", [i(Cnt), s(DirName)], !IO).
 
 :- pred write_out_mkdirs_entry(io.text_output_stream::in,
     string::in, int::in, io::di, io::uo) is det.
