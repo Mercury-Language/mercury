@@ -822,9 +822,9 @@ construct_c_header_rules(Globals, ModuleName, AllDeps,
     ),
 
     % We need to tell make how to make the header files. The header files
-    % are actually built by the same command that creates the .c or .s file,
-    % so we just make them depend on the .c or .s files. This is needed
-    % for the --high-level-code rule above, and for the rules introduced for
+    % are actually built by the same command that creates the .c file,
+    % so we just make them depend on the .c files. This is needed for the
+    % --high-level-code rule above, and for the rules introduced for
     % `:- pragma foreign_import_module' declarations. In some grades the header
     % file won't actually be built (e.g. LLDS grades for modules not containing
     % `:- pragma export' declarations), but this rule won't do any harm.

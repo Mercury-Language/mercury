@@ -10,7 +10,7 @@
 % File: compile_target_code.m.
 % Main authors: fjh, stayl.
 %
-% Code to compile the generated `.c', `.s', `.o', etc, files.
+% Code to compile the generated `.c', `.java', etc files.
 %
 %-----------------------------------------------------------------------------%
 

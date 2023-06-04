@@ -35,7 +35,7 @@
 %   We should replace the simple string Ext argument with a more
 %   structured specification of the extension, one that puts a wrapper
 %   around the actual suffix indicating what class the extension falls in,
-%   as in e.g. ec_library(".dylib"). For some classes, maybe the majority,
+%   as in e.g. ec_library(".a"). For some classes, maybe the majority,
 %   the list of member extensions may be fixed; for these, it would
 %   make sense to specify each member of the class by a value in an
 %   extension-class-specific enum type, not by string.
@@ -591,7 +591,7 @@ is_current_dir_extension(ExtStr) :-
     ; ExtStr = ".lib"
     ; ExtStr = ".so"
     ; ExtStr = ".dll"
-    ; ExtStr = ".dylib"
+    ; ExtStr = ".dylib"     % references can be generated only via options
     ; ExtStr = ".$(EXT_FOR_SHARED_LIB)"
     ; ExtStr = ".jar"
     ; ExtStr = ".init"
@@ -805,10 +805,6 @@ file_is_arch_or_grade_dependent_2(".request").
 file_is_arch_or_grade_dependent_2(".mih").
 file_is_arch_or_grade_dependent_2(".c").
 file_is_arch_or_grade_dependent_2(".c_date").
-file_is_arch_or_grade_dependent_2(".s").
-file_is_arch_or_grade_dependent_2(".s_date").
-file_is_arch_or_grade_dependent_2(".pic_s").
-file_is_arch_or_grade_dependent_2(".pic_s_date").
 file_is_arch_or_grade_dependent_2(".cs").
 file_is_arch_or_grade_dependent_2(".cs_date").
 file_is_arch_or_grade_dependent_2(".java").
@@ -1050,6 +1046,7 @@ all_extensions(Globals) = AllExtensionStrs :-
 % by module_name_to_source_file_name.
 string_extensions = 
     ["",
+    ".$A",
     ".$O",
     ".a",
     ".all_int3s",

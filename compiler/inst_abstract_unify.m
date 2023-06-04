@@ -1033,7 +1033,7 @@ propagate_ctor_subtypes_into_arg_insts_2([ConsArg | ConsArgs],
     % is if we are attempting to unify with a clobbered value, and this was
     % a "real" unification, not a "fake" one, and the determinism of the
     % unification is semidet. (See comment in prog_data.m for more info
-    % on "real" v.s. "fake".) Note that if a unification or sub-unification
+    % on "real" vs "fake".) Note that if a unification or sub-unification
     % is det, then it is OK to unify with a clobbered value. This can occur
     % e.g. with unifications between free and clobbered, or with free and
     % bound(..., clobbered, ...). Such det unifications are OK because the
