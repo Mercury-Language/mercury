@@ -1014,6 +1014,18 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
             % Compiler-generated interface files. and optimization files,
             % and the timestamp files showing when they were last checked.
 
+    ;       newext_target_c(string)
+    ;       newext_target_c_date(string)
+    ;       newext_target_cs(string)
+    ;       newext_target_cs_date(string)
+    ;       newext_target_java(string)
+    ;       newext_target_java_date(string)
+
+    ;       newext_target_init_c(string)
+
+    ;       newext_target_init_obj(string)
+    ;       newext_target_obj(string)
+
     ;       newext_other(other_newext).
             % The general case. The extension string must not be covered
             % by any of the other cases above.
@@ -1032,7 +1044,9 @@ make_new_extension(Str) = NewExt :-
         NewExt = newext_mih(Str)
     else if ( Str = ".d" ; Str = ".dv" ; Str = ".dep" ) then
         NewExt = newext_mmakefile_fragment(Str)
-    else if ( Str = ".int0" ; Str = ".int" ; Str = ".int2" ; Str = ".int3" ) then
+    else if ( Str = ".int0" ; Str = ".int" ) then
+        NewExt = newext_int(Str)
+    else if ( Str = ".int2" ; Str = ".int3" ) then
         NewExt = newext_int(Str)
     else if ( Str = ".date0" ; Str = ".date" ; Str = ".date3" ) then
         NewExt = newext_int_date(Str)
@@ -1040,6 +1054,24 @@ make_new_extension(Str) = NewExt :-
         NewExt = newext_opt(Str)
     else if ( Str = ".optdate" ; Str = ".trans_opt_date" ) then
         NewExt = newext_opt_date(Str)
+    else if ( Str = ".class" ; Str = ".java" ) then
+        NewExt = newext_target_java(Str)
+    else if Str = ".java_date" then
+        NewExt = newext_target_java_date(Str)
+    else if Str = ".cs" then
+        NewExt = newext_target_cs(Str)
+    else if Str = ".cs_date" then
+        NewExt = newext_target_cs_date(Str)
+    else if Str = ".c" then
+        NewExt = newext_target_c(Str)
+    else if Str = ".c_date" then
+        NewExt = newext_target_c_date(Str)
+    else if ( Str = ".$O" ; Str = ".o" ; Str = ".pic_o" ) then
+        NewExt = newext_target_obj(Str)
+    else if Str = "_init.c" then
+        NewExt = newext_target_init_c(Str)
+    else if ( Str = "_init.$O" ; Str = "_init.o" ; Str = "_init.pic_o" ) then
+        NewExt = newext_target_init_obj(Str)
     else
         NewExt = newext_other(other_newext(Str))
     ).
@@ -1213,6 +1245,131 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
         )
     ;
+        Ext = newext_target_java(ExtStr),
+        BaseParentDirs = ["jmercury"],
+        mangle_sym_name_for_java(ModuleName, module_qual, "__", BaseNameNoExt),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            DirComponents = BaseParentDirs,
+            FileName = glue_dir_names_file_name(DirComponents,
+                BaseNameNoExt, ExtStr)
+        ;
+            UseSubdirs = yes,
+            SubDirName = dot_extension_dir_name(ExtStr),
+            SubDirNames = [SubDirName | BaseParentDirs],
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubdirs),
+            (
+                UseGradeSubdirs = no,
+                DirComponents = ["Mercury" |  SubDirNames],
+                FileName = glue_dir_names_file_name(DirComponents,
+                    BaseNameNoExt, ExtStr)
+            ;
+                UseGradeSubdirs = yes,
+                make_grade_subdir_file_name_new(Globals, SubDirNames,
+                    BaseNameNoExt, ExtStr, DirComponents, FileName)
+            )
+        ),
+        maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+    ;
+        ( Ext = newext_target_c(ExtStr)
+        ; Ext = newext_target_c_date(ExtStr)
+        ; Ext = newext_target_cs(ExtStr)
+        ; Ext = newext_target_cs_date(ExtStr)
+        ; Ext = newext_target_java_date(ExtStr)
+        ),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseSubdirs = yes,
+            SubDirName = dot_extension_dir_name(ExtStr),
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubdirs),
+            (
+                UseGradeSubdirs = no,
+                DirComponents = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirComponents,
+                    BaseNameNoExt, ExtStr)
+            ;
+                UseGradeSubdirs = yes,
+                make_grade_subdir_file_name_new(Globals, [SubDirName],
+                    BaseNameNoExt, ExtStr, DirComponents, FileName)
+            ),
+            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
+    ;
+        Ext = newext_target_init_c(ExtStr),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseSubdirs = yes,
+            expect(unify(ExtStr, "_init.c"), $pred, "ExtStr != _init.c"),
+            SubDirName = "cs",
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubdirs),
+            (
+                UseGradeSubdirs = no,
+                DirComponents = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirComponents,
+                    BaseNameNoExt, ExtStr)
+            ;
+                UseGradeSubdirs = yes,
+                make_grade_subdir_file_name_new(Globals, [SubDirName],
+                    BaseNameNoExt, ExtStr, DirComponents, FileName)
+            ),
+            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
+    ;
+        ( Ext = newext_target_obj(ExtStr)
+        ; Ext = newext_target_init_obj(ExtStr)
+        ),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseSubdirs = yes,
+            % The original code that this code is derived from has
+            % this comment:
+            %
+            %   .$O, .pic_o and .lpic_o files need to go in the same directory,
+            %   so that using .$(EXT_FOR_PIC_OBJECTS) will work.
+            %
+            % XXX We stopped supporting lpic (linked-with-pic) files
+            % years ago, and we don't ever invoke filename translations
+            % with ".$(EXT_FOR_PIC_OBJECTS)" as the extension.
+            SubDirName = "os",
+
+            % XXX EXT Why aren't object files for grades that differ in e.g.
+            % whether debugging is enabled stored in grade-specific directories
+            % if --use-grade-subdirs is enabled? The .c files that they are
+            % derived from *are* stored in grade-specific directories.
+            % I (zs) expect that the reason why this hasn't been a problem
+            % is that we don't target C with --use-grade-subdirs.
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubdirs),
+            ( if
+                UseGradeSubdirs = yes,
+                Ext = newext_target_init_obj("_init.$O")
+            then
+                make_grade_subdir_file_name_new(Globals, [SubDirName],
+                    BaseNameNoExt, ExtStr, DirComponents, FileName)
+            else
+                DirComponents = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirComponents,
+                    BaseNameNoExt, ExtStr)
+            ),
+            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
+    ;
         Ext = newext_other(OtherExt),
         decide_base_name_parent_dirs_other_new(OtherExt, ModuleName,
             BaseParentDirs, BaseNameNoExt),
@@ -1252,19 +1409,8 @@ decide_base_name_parent_dirs_other_new(OtherExt, ModuleName,
     OtherExt = other_newext(ExtStr),
     expect(valid_other_newext(OtherExt), $pred,
         ExtStr ++ " is a not valid argument of ext/1"),
-    ( if
-        % Java files need to be placed into a package subdirectory
-        % and may need mangling.
-        ( string.suffix(ExtStr, ".java")
-        ; string.suffix(ExtStr, ".class")
-        )
-    then
-        BaseParentDirs = ["jmercury"],
-        mangle_sym_name_for_java(ModuleName, module_qual, "__", BaseNameNoExt)
-    else
-        BaseParentDirs = [],
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, ".")
-    ).
+    BaseParentDirs = [],
+    BaseNameNoExt = sym_name_to_string_sep(ModuleName, ".").
 
 %---------------------%
 
@@ -1282,41 +1428,29 @@ choose_file_name_new(Globals, _From, Search, OtherExt,
         BaseParentDirs, BaseNameNoExt, DirComponents, FileName) :-
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     OtherExt = other_newext(ExtStr),
-    ( if
-        % If we are searching for (rather than writing) a `.mih' file,
-        % use the plain file name. This is so that searches for files
-        % in installed libraries will work. `--c-include-directory' is set
-        % so that searches for files in the current directory will work.
-        Search = do_search,
-        ExtStr = ".mih"
-    then
-        DirComponents = [],
-        FileName = BaseNameNoExt ++ ExtStr
-    else
-        (
-            UseSubdirs = no,
-            % Even if not putting files in a `Mercury' directory,
-            % Java files will have non-empty BaseParentDirs (the package)
-            % which may need to be created.
-            % XXX We can never target Java while UseSubdirs = no. However,
-            % while making dependencies, generate_d_file in write_deps_file.m
-            % does call module_name_to_file_name with a .java suffix
-            % without --use-subdirs being enabled, so insisting on
-            % BaseParentDirs = [] here would cause an abort when making
-            % dependencies.
-            % XXX This indicates a deeper problem, which is that while
-            % different backends use different settings of --use-subdirs
-            % and --use-grade-subdirs, we are generating dependencies
-            % for *all* backends with the *same* settings of these options.
-            FileName = glue_dir_names_file_name(BaseParentDirs,
-                BaseNameNoExt, ExtStr),
-            DirComponents = BaseParentDirs
-        ;
-            UseSubdirs = yes,
-            choose_subdir_name_new(Globals, ExtStr, SubDirName),
-            make_file_name_new(Globals, [SubDirName | BaseParentDirs],
-                Search, BaseNameNoExt, OtherExt, DirComponents, FileName)
-        )
+    (
+        UseSubdirs = no,
+        % Even if not putting files in a `Mercury' directory,
+        % Java files will have non-empty BaseParentDirs (the package)
+        % which may need to be created.
+        % XXX We can never target Java while UseSubdirs = no. However,
+        % while making dependencies, generate_d_file in write_deps_file.m
+        % does call module_name_to_file_name with a .java suffix
+        % without --use-subdirs being enabled, so insisting on
+        % BaseParentDirs = [] here would cause an abort when making
+        % dependencies.
+        % XXX This indicates a deeper problem, which is that while
+        % different backends use different settings of --use-subdirs
+        % and --use-grade-subdirs, we are generating dependencies
+        % for *all* backends with the *same* settings of these options.
+        FileName = glue_dir_names_file_name(BaseParentDirs,
+            BaseNameNoExt, ExtStr),
+        DirComponents = BaseParentDirs
+    ;
+        UseSubdirs = yes,
+        choose_subdir_name_new(Globals, ExtStr, SubDirName),
+        make_file_name_new(Globals, [SubDirName | BaseParentDirs],
+            Search, BaseNameNoExt, OtherExt, DirComponents, FileName)
     ).
 
 :- pred is_current_dir_extension_new(string::in, newext::out) is semidet.
@@ -1434,38 +1568,11 @@ is_current_dir_extension_new(ExtStr, NewExt) :-
 
 choose_subdir_name_new(Globals, ExtStr, SubDirName) :-
     ( if
-        (
-            ( ExtStr = ".dir/*.o"
-            ; ExtStr = ".dir/*.$O"
-            ),
-            SubDirNamePrime = "dirs"
-        ;
-            % .$O, .pic_o and .lpic_o files need to go in the same directory,
-            % so that using .$(EXT_FOR_PIC_OBJECTS) will work.
-            ( ExtStr = ".o"
-            ; ExtStr = ".$O"
-            ; ExtStr = ".lpic_o"
-            ; ExtStr = ".pic_o"
-            ; ExtStr = "$(EXT_FOR_PIC_OBJECTS)"
-            ; ExtStr = "_init.o"
-            ; ExtStr = "_init.$O"
-            ; ExtStr = "_init.lpic_o"
-            ; ExtStr = "_init.pic_o"
-            ; ExtStr = "_init.$(EXT_FOR_PIC_OBJECTS)"
-            ),
-            SubDirNamePrime = "os"
-        ;
-            % `.dv' files go in the `deps' subdirectory,
-            % along with the `.dep' files.
-            ExtStr = ".dv",
-            SubDirNamePrime = "deps"
-        ;
-            % Launcher scripts go in the `bin' subdirectory.
-            ExtStr = "",
-            SubDirNamePrime = "bin"
+        ( ExtStr = ".dir/*.o"
+        ; ExtStr = ".dir/*.$O"
         )
     then
-        SubDirName = SubDirNamePrime
+        SubDirName = "dirs"
     else if
         % _init.c, _init.cs, _init.o etc. files go in the cs, css, os etc
         % subdirectories.
@@ -1585,20 +1692,11 @@ file_is_arch_or_grade_dependent_new(Globals, OtherExt) :-
 file_is_arch_or_grade_dependent_2_new(".analysis").
 file_is_arch_or_grade_dependent_2_new(".analysis_date").
 file_is_arch_or_grade_dependent_2_new(".analysis_status").
-file_is_arch_or_grade_dependent_2_new(".c").
-file_is_arch_or_grade_dependent_2_new(".c_date").
-file_is_arch_or_grade_dependent_2_new(".class").
-file_is_arch_or_grade_dependent_2_new(".cs").
-file_is_arch_or_grade_dependent_2_new(".cs_date").
 file_is_arch_or_grade_dependent_2_new(".dir").
 file_is_arch_or_grade_dependent_2_new(".imdg").
-file_is_arch_or_grade_dependent_2_new(".java").
-file_is_arch_or_grade_dependent_2_new(".java_date").
 file_is_arch_or_grade_dependent_2_new(".request").
 file_is_arch_or_grade_dependent_2_new(".track_flags").
 file_is_arch_or_grade_dependent_2_new(".used").
-file_is_arch_or_grade_dependent_2_new("_init.$O").
-file_is_arch_or_grade_dependent_2_new("_init.c").
 
 :- pred valid_other_newext(other_newext::in) is semidet.
 
@@ -1626,6 +1724,20 @@ valid_other_newext(other_newext(ExtStr)) :-
         ; ExtStr = ".optdate"
         ; ExtStr = ".trans_opt_date"
         ; ExtStr = ".mih"
+        ; ExtStr = ".class"
+        ; ExtStr = ".java"
+        ; ExtStr = ".java_date"
+        ; ExtStr = ".cs"
+        ; ExtStr = ".cs_date"
+        ; ExtStr = ".c"
+        ; ExtStr = ".c_date"
+        ; ExtStr = ".o"
+        ; ExtStr = ".pic_o"
+        ; ExtStr = ".$O"
+        ; ExtStr = "_init.c"
+        ; ExtStr = "_init.$O"
+        ; ExtStr = "_init.o"
+        ; ExtStr = "_init.pic_o"
         )
     ).
 
