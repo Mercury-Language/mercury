@@ -980,7 +980,15 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
 
     ;       newext_user(string)
             % Compiler-generated files that are intended to be read
-            % by the programmer, such as .err files.
+            % by the programmer, such as .err files, which are always put
+            % into the current directory.
+
+    ;       newext_user_ngs(string)
+            % Compiler-generated files that are intended to be read
+            % by the programmer, such as .err files, which will be put
+            % into the current directory with --no-use-sibdirs, but which
+            % will be put into a non-grade-specific subdirectory with
+            % --use-subdirs.
 
     ;       newext_make(string)
             % These suffixes are used not to create filenames, but to
@@ -1067,16 +1075,26 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             ( if ExtStr = "" then
                 % Launcher scripts go in the `bin' subdirectory.
                 SubDirName = "bin"
-            else if string.remove_prefix(".", ExtStr, ExtName) then
-                % The usual case: `*.foo' files go in the `foos' subdirectory.
-                SubDirName = ExtName ++ "s"
             else
-                string.format("ExtStr <%s> does not start with dot",
-                    [s(ExtStr)], Msg),
-                unexpected($pred, Msg)
+                SubDirName = dot_extension_dir_name(ExtStr)
             ),
             make_grade_subdir_file_name_new(Globals, [SubDirName],
                 BaseNameNoExt, ExtStr, DirComponents, FileName),
+            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
+    ;
+        Ext = newext_user_ngs(ExtStr),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseSubdirs = yes,
+            SubDirName = dot_extension_dir_name(ExtStr),
+            DirComponents = ["Mercury", SubDirName],
+            FileName =
+                glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr),
             maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
         )
     ).
@@ -1086,6 +1104,21 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
 %   (
 %       record_translation(Search, MkDir, Ext, ModuleName, FileName, !TIO)
 %   ).
+
+    % Given an extension of the form .xyz, return the name of the directory
+    % into which files with that etension should be put, i.e. xyzs.
+    %
+:- func dot_extension_dir_name(string) = string.
+
+dot_extension_dir_name(ExtStr) = SubDirName :-
+    ( if string.remove_prefix(".", ExtStr, ExtName) then
+        % The usual case: `*.foo' files go in the `foos' subdirectory.
+        SubDirName = ExtName ++ "s"
+    else
+        string.format("ExtStr <%s> does not start with dot",
+            [s(ExtStr)], Msg),
+        unexpected($pred, Msg)
+    ).
 
 %---------------------%
 
@@ -1236,6 +1269,19 @@ is_current_dir_extension_new(ExtStr, NewExt) :-
         ; ExtStr = ".ugly"
         ),
         NewExt = newext_user(ExtStr)
+    ;
+        ( ExtStr = ".defn_extents"
+        ; ExtStr = ".defn_line_counts"
+        ; ExtStr = ".defns"
+        ; ExtStr = ".imports_graph"
+        ; ExtStr = ".local_call_tree"
+        ; ExtStr = ".local_call_tree_order"
+        ; ExtStr = ".mode_constraints"
+        ; ExtStr = ".order_trans_opt"
+        ; ExtStr = ".type_repns"
+        ; ExtStr = ".xml"
+        ),
+        NewExt = newext_user_ngs(ExtStr)
     ;
         % Mmake targets.
         ( ExtStr = ".all_int3s"
@@ -1630,7 +1676,7 @@ string_extensions =
     ".optdate",
     ".opts",
     ".order",
-    ".order-trans-opt",
+    ".order_trans_opt",
     ".pic_o",
     ".prof",
     ".realclean",

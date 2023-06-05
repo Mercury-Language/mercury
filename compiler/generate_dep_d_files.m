@@ -307,7 +307,7 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
         (
             OutputOrder = yes,
             output_module_order(Globals, ModuleName,
-                other_ext(".order-trans-opt"), TransOptDepsOrdering0, !IO)
+                other_ext(".order_trans_opt"), TransOptDepsOrdering0, !IO)
         ;
             OutputOrder = no
         ),
