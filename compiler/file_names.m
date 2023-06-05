@@ -950,11 +950,63 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- type new_ext == ext.
+    % NOTE All of the string arguments below, with the possible exception
+    % of the argument of newext_make, should be replaced by category-specific
+    % enums.
+:- type newext
+    --->    newext_src
+            % The extension string is ".m".
 
-:- func make_new_extension(string) = new_ext.
+    ;       newext_executable(string)
+    ;       newext_library(string)
+            % Executables and library files, which are always put into
+            % the current directory.
 
-make_new_extension(Str) = ext_other(other_ext(Str)).
+    ;       newext_executable_gs(string)
+    ;       newext_library_gs(string)
+            % Executables and library files, which are
+            %
+            % - put into the current directory with --no-use-grade-subdirs,
+            % - put into a grade subdir with --use-grade-subdirs.
+            %
+            % Note that the documention of --use-grade-subdirs says
+            % "Executables and libraries will be symlinked or copied into the
+            % current directory", but if this is actually done, it is done
+            % outside file_names.m.
+
+    ;       newext_mh(string)
+            % Machine-dependent header files for generated C code.
+            % The extension string is ".mh".
+
+    ;       newext_user(string)
+            % Compiler-generated files that are intended to be read
+            % by the programmer, such as .err files.
+
+    ;       newext_make(string)
+            % These suffixes are used not to create filenames, but to
+            % create mmake target names. So do refer to real files,
+            % but they can (and some do) refer to these using exnetsion
+            % strings that can contain references to make variables.
+            % Some of the other generated make targets are phony targets,
+            % meaning that they never correspond to real files at all.
+
+    ;       newext_other(other_newext).
+            % The general case. The extension string must not be covered
+            % by any of the other cases above.
+
+:- type other_newext
+    --->    other_newext(string).
+
+:- func make_new_extension(string) = newext.
+
+make_new_extension(Str) = NewExt :-
+    ( if Str = ".m" then
+        NewExt = newext_src
+    else if is_current_dir_extension_new(Str, NewExtPrime) then
+        NewExt = NewExtPrime
+    else
+        NewExt = newext_other(other_newext(Str))
+    ).
 
 %---------------------------------------------------------------------------%
 %
@@ -968,37 +1020,82 @@ make_new_extension(Str) = ext_other(other_ext(Str)).
 % XXX START OF CODE DUPLICATION
 
 :- pred module_name_to_file_name_ext_new(globals::in, string::in,
-    maybe_search::in, maybe_create_dirs::in, ext::in,
+    maybe_search::in, maybe_create_dirs::in, newext::in,
     module_name::in, file_name::out, io::di, io::uo) is det.
 
 module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
         ModuleName, FileName, !IO) :-
     (
-        Ext = ext_src,
+        Ext = newext_src,
         module_name_to_source_file_name(ModuleName, FileName, !IO)
     ;
-        Ext = ext_other(OtherExt),
+        Ext = newext_other(OtherExt),
         decide_base_name_parent_dirs_other_new(OtherExt, ModuleName,
             BaseParentDirs, BaseNameNoExt),
         choose_file_name_new(Globals, From, Search, OtherExt,
             BaseParentDirs, BaseNameNoExt, DirComponents, FileName),
         maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
-    ),
-    trace [compile_time(flag("file_name_translations")),
-        runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
-    (
-        record_translation(Search, MkDir, Ext, ModuleName, FileName, !TIO)
+    ;
+        ( Ext = newext_executable(ExtStr)
+        ; Ext = newext_library(ExtStr)
+        ; Ext = newext_mh(ExtStr)
+        ; Ext = newext_user(ExtStr)
+        ; Ext = newext_make(ExtStr)
+        ),
+        % Output files intended for use by the user, and phony Mmake target
+        % names go in the current directory. So do .mh files, and *some*,
+        % but not all, kinds of executable and library files.
+        % XXX Why is that?
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        FileName = BaseNameNoExt ++ ExtStr
+    ;
+        ( Ext = newext_executable_gs(ExtStr)
+        ; Ext = newext_library_gs(ExtStr)
+        ),
+        % Some kinds of executables and library files go in the current
+        % directory only with --no-use-grade-subdirs; with --use-grade-subdirs,
+        % they go in a grade subdir.
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_grade_subdirs,
+            UseGradeSubdirs),
+        (
+            UseGradeSubdirs = no,
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseGradeSubdirs = yes,
+            % This implies --use-subdirs as well.
+            ( if ExtStr = "" then
+                % Launcher scripts go in the `bin' subdirectory.
+                SubDirName = "bin"
+            else if string.remove_prefix(".", ExtStr, ExtName) then
+                % The usual case: `*.foo' files go in the `foos' subdirectory.
+                SubDirName = ExtName ++ "s"
+            else
+                string.format("ExtStr <%s> does not start with dot",
+                    [s(ExtStr)], Msg),
+                unexpected($pred, Msg)
+            ),
+            make_grade_subdir_file_name_new(Globals, [SubDirName],
+                BaseNameNoExt, ExtStr, DirComponents, FileName),
+            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
     ).
+% XXX NOT YET UPDATED FOR NEWEXT
+%   trace [compile_time(flag("file_name_translations")),
+%       runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
+%   (
+%       record_translation(Search, MkDir, Ext, ModuleName, FileName, !TIO)
+%   ).
 
 %---------------------%
 
-:- pred decide_base_name_parent_dirs_other_new(other_ext::in, module_name::in,
-    list(string)::out, file_name::out) is det.
+:- pred decide_base_name_parent_dirs_other_new(other_newext::in,
+    module_name::in, list(string)::out, file_name::out) is det.
 
 decide_base_name_parent_dirs_other_new(OtherExt, ModuleName,
         BaseParentDirs, BaseNameNoExt) :-
-    OtherExt = other_ext(ExtStr),
-    expect(valid_other_ext(OtherExt), $pred,
+    OtherExt = other_newext(ExtStr),
+    expect(valid_other_newext(OtherExt), $pred,
         ExtStr ++ " is a not valid argument of ext/1"),
     ( if
         % Java files need to be placed into a package subdirectory
@@ -1023,13 +1120,13 @@ decide_base_name_parent_dirs_other_new(OtherExt, ModuleName,
     % package directories that the file needs to be placed in.
     %
 :- pred choose_file_name_new(globals::in, string::in, maybe_search::in,
-    other_ext::in, list(string)::in, string::in,
+    other_newext::in, list(string)::in, string::in,
     list(string)::out, file_name::out) is det.
 
 choose_file_name_new(Globals, _From, Search, OtherExt,
         BaseParentDirs, BaseNameNoExt, DirComponents, FileName) :-
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-    OtherExt = other_ext(ExtStr),
+    OtherExt = other_newext(ExtStr),
     ( if
         % If we are searching for (rather than writing) a `.mih' file,
         % use the plain file name. This is so that searches for files
@@ -1061,87 +1158,106 @@ choose_file_name_new(Globals, _From, Search, OtherExt,
             DirComponents = BaseParentDirs
         ;
             UseSubdirs = yes,
-            globals.lookup_bool_option(Globals, use_grade_subdirs,
-                UseGradeSubdirs),
-            ( if
-                % The source files, the final executables, library files
-                % (including .init files) output files intended for use
-                % by the user, and phony Mmake targets names go in the
-                % current directory.
-                not (
-                    UseGradeSubdirs = yes,
-                    file_is_arch_or_grade_dependent_new(Globals, OtherExt)
-                ),
-                is_current_dir_extension_new(ExtStr)
-            then
-                DirComponents = [],
-                FileName = BaseNameNoExt ++ ExtStr
-            else
-                choose_subdir_name_new(Globals, ExtStr, SubDirName),
-                make_file_name_new(Globals, [SubDirName | BaseParentDirs],
-                    Search, BaseNameNoExt, OtherExt, DirComponents, FileName)
-            )
+            choose_subdir_name_new(Globals, ExtStr, SubDirName),
+            make_file_name_new(Globals, [SubDirName | BaseParentDirs],
+                Search, BaseNameNoExt, OtherExt, DirComponents, FileName)
         )
     ).
 
-:- pred is_current_dir_extension_new(string::in) is semidet.
+:- pred is_current_dir_extension_new(string::in, newext::out) is semidet.
 
-is_current_dir_extension_new(ExtStr) :-
-    % Executable files.
-    % XXX The Ext = "" here is wrong. While an empty extension
-    % *can* mean we are building the name of an executable,
-    % it can also mean we are building the name of a phony Mmakefile
-    % target for a library, such as libmer_std in the library
-    % directory.
-    ( ExtStr = ""
-    ; ExtStr = ".bat"
-    ; ExtStr = ".exe"
-
-    % Library files.
-    ; ExtStr = ".a"
-    ; ExtStr = ".$A"
-    ; ExtStr = ".lib"
-    ; ExtStr = ".so"
-    ; ExtStr = ".dll"
-    ; ExtStr = ".dylib"     % references can be generated only via options
-    ; ExtStr = ".$(EXT_FOR_SHARED_LIB)"
-    ; ExtStr = ".jar"
-    ; ExtStr = ".init"
-
-    % XXX Describe me.
-    ; ExtStr = ".mh"
-
-    % Output files intended for use by the user.
-    % The MLDS dump files with extensions .c_dump* and .mih_dump*
-    % also fit into this category, but their filenames are constructed
-    % by getting the filenames for the .c and .mih extensions
-    % and adding a suffix to that.
-    ; ExtStr = ".err"
-    ; ExtStr = ".ugly"
-    ; ExtStr = ".hlds_dump"
-    ; ExtStr = ".mlds_dump"
-    ; ExtStr = ".dependency_graph"
-    ; ExtStr = ".order"
-
-    % Mmake targets.
-    ; ExtStr = ".clean"
-    ; ExtStr = ".realclean"
-    ; ExtStr = ".depend"
-    ; ExtStr = ".install_ints"
-    ; ExtStr = ".install_opts"
-    ; ExtStr = ".install_hdrs"
-    ; ExtStr = ".install_grade_hdrs"
-    ; ExtStr = ".check"
-    ; ExtStr = ".ints"
-    ; ExtStr = ".int3s"
-    ; ExtStr = ".javas"
-    ; ExtStr = ".classes"
-    ; ExtStr = ".opts"
-    ; ExtStr = ".trans_opts"
-    ; ExtStr = ".all_ints"
-    ; ExtStr = ".all_int3s"
-    ; ExtStr = ".all_opts"
-    ; ExtStr = ".all_trans_opts"
+is_current_dir_extension_new(ExtStr, NewExt) :-
+    % Since the newext_executable_gs and newext_library_gs alternatives
+    % go in the current directory only with --no-use-grade-subdir, this 
+    % predicate is not well named. However, the transformation it performs
+    % will become unnecessary once we switch over to using newexts exclusively
+    % in the compiler, including at the call sites calling
+    % module_name_to_file_name and its variants.
+    %
+    % XXX While separating newext_executable_gs from newext_executable
+    % separating newext_library_gs from newext_library are needed to get 
+    % test_file_name_extensions to report no discrepancies, bootchecking
+    % the compiler with --use-grade-subdirs in a grade that targets C
+    % fails as soons as it tries to build the first .c file in the library.
+    % This is because --use-grade-subdirs is not *intended* to be actually
+    % usable with mmake.
+    %
+    % According to the documentation of the --user-grade subdirs option,
+    % *all* executables and libraries *should* be put into a grade subdir
+    % if that option is specified, not just some. They should then be
+    % copied or linked to the current directory.
+    (
+        % Executable files.
+        % XXX The Ext = "" here is wrong. While an empty extension
+        % *can* mean we are building the name of an executable,
+        % it can also mean we are building the name of a phony Mmakefile
+        % target for a library, such as libmer_std in the library
+        % directory.
+        ( ExtStr = ""
+        ; ExtStr = ".bat"
+        ),
+        NewExt = newext_executable_gs(ExtStr)
+    ;
+        ExtStr = ".exe",
+        NewExt = newext_executable(ExtStr)
+    ;
+        % Library files.
+        ( ExtStr = ".a"
+        ; ExtStr = ".$A"
+        ; ExtStr = ".dll"
+        ; ExtStr = ".jar"
+        ; ExtStr = ".init"
+        ),
+        NewExt = newext_library_gs(ExtStr)
+    ;
+        ( ExtStr = ".lib"
+        ; ExtStr = ".so"
+        ; ExtStr = ".dylib"     % references can be generated only via options
+        ; ExtStr = ".$(EXT_FOR_SHARED_LIB)"
+        ),
+        NewExt = newext_library(ExtStr)
+    ;
+        % Machine-dependent header files for generated C code.
+        % XXX There is no good reason for .mh files to be treated differently
+        % from .mih files.
+        ExtStr = ".mh",
+        NewExt = newext_mh(ExtStr)
+    ;
+        % Output files intended for use by the user.
+        % The MLDS dump files with extensions .c_dump* and .mih_dump*
+        % also fit into this category, but their filenames are constructed
+        % by getting the filenames for the .c and .mih extensions
+        % and adding a suffix to that.
+        ( ExtStr = ".err"
+        ; ExtStr = ".ugly"
+        ; ExtStr = ".hlds_dump"
+        ; ExtStr = ".mlds_dump"
+        ; ExtStr = ".dependency_graph"
+        ; ExtStr = ".order"
+        ),
+        NewExt = newext_user(ExtStr)
+    ;
+        % Mmake targets.
+        ( ExtStr = ".clean"
+        ; ExtStr = ".realclean"
+        ; ExtStr = ".depend"
+        ; ExtStr = ".install_ints"
+        ; ExtStr = ".install_opts"
+        ; ExtStr = ".install_hdrs"
+        ; ExtStr = ".install_grade_hdrs"
+        ; ExtStr = ".check"
+        ; ExtStr = ".ints"
+        ; ExtStr = ".int3s"
+        ; ExtStr = ".javas"
+        ; ExtStr = ".classes"
+        ; ExtStr = ".opts"
+        ; ExtStr = ".trans_opts"
+        ; ExtStr = ".all_ints"
+        ; ExtStr = ".all_int3s"
+        ; ExtStr = ".all_opts"
+        ; ExtStr = ".all_trans_opts"
+        ),
+        NewExt = newext_make(ExtStr)
     ).
 
     % Decide which ext_other extensions go in which directories.
@@ -1208,16 +1324,16 @@ choose_subdir_name_new(Globals, ExtStr, SubDirName) :-
     ).
 
 :- pred make_file_name_new(globals::in, list(dir_name)::in, maybe_search::in,
-    file_name::in, other_ext::in, list(string)::out, file_name::out) is det.
+    file_name::in, other_newext::in, list(string)::out, file_name::out) is det.
 
 make_file_name_new(Globals, SubDirNames, Search, BaseNameNoExt, OtherExt,
         DirComponents, FileName) :-
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-    OtherExt = other_ext(ExtStr),
+    OtherExt = other_newext(ExtStr),
     ( if
         UseGradeSubdirs = yes,
-        file_is_arch_or_grade_dependent(Globals, OtherExt),
+        file_is_arch_or_grade_dependent_new(Globals, OtherExt),
 
         % If we are searching for (rather than writing) the file, just search
         % in Mercury/<ext>s. This is so that searches for files in installed
@@ -1233,31 +1349,42 @@ make_file_name_new(Globals, SubDirNames, Search, BaseNameNoExt, OtherExt,
             )
         )
     then
-        grade_directory_component(Globals, Grade),
-        globals.lookup_string_option(Globals, target_arch, TargetArch),
-
-        % The extra "Mercury" is needed so we can use `--intermod-directory
-        % Mercury/<grade>/<target_arch>' and `--c-include
-        % Mercury/<grade>/<target_arch>' to find the local `.opt' and `.mih'
-        % files without messing up the search for the files for installed
-        % libraries.
-        DirComponents = ["Mercury", Grade, TargetArch, "Mercury" | SubDirNames]
+        make_grade_subdir_file_name_new(Globals, SubDirNames,
+            BaseNameNoExt, ExtStr, DirComponents, FileName)
     else if
         UseSubdirs = yes
     then
-        DirComponents = ["Mercury" | SubDirNames]
+        DirComponents = ["Mercury" | SubDirNames],
+        FileName =
+            glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr)
     else
-        DirComponents = SubDirNames
-    ),
+        DirComponents = SubDirNames,
+        FileName =
+            glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr)
+    ).
+
+:- pred make_grade_subdir_file_name_new(globals::in, list(dir_name)::in,
+    file_name::in, string::in, list(string)::out, file_name::out) is det.
+
+make_grade_subdir_file_name_new(Globals, SubDirNames, BaseNameNoExt, ExtStr,
+        DirComponents, FileName) :-
+    grade_directory_component(Globals, Grade),
+    globals.lookup_string_option(Globals, target_arch, TargetArch),
+    % The extra "Mercury" is needed so we can use `--intermod-directory
+    % Mercury/<grade>/<target_arch>' and `--c-include
+    % Mercury/<grade>/<target_arch>' to find the local `.opt' and `.mih'
+    % files without messing up the search for the files for installed
+    % libraries.
+    DirComponents = ["Mercury", Grade, TargetArch, "Mercury" | SubDirNames],
     FileName = glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr).
 
 %---------------------%
 
-:- pred file_is_arch_or_grade_dependent_new(globals::in, other_ext::in)
+:- pred file_is_arch_or_grade_dependent_new(globals::in, other_newext::in)
     is semidet.
 
 file_is_arch_or_grade_dependent_new(Globals, OtherExt) :-
-    OtherExt = other_ext(ExtStr),
+    OtherExt = other_newext(ExtStr),
     (
         file_is_arch_or_grade_dependent_2_new(ExtStr)
     ;
@@ -1289,23 +1416,16 @@ file_is_arch_or_grade_dependent_new(Globals, OtherExt) :-
     % The `.used' file isn't grade dependent itself, but it contains
     % information collected while compiling a grade-dependent `.c', `.cs',
     % etc file.
-file_is_arch_or_grade_dependent_2_new("").
-file_is_arch_or_grade_dependent_2_new(".$A").
-file_is_arch_or_grade_dependent_2_new(".a").
 file_is_arch_or_grade_dependent_2_new(".analysis").
 file_is_arch_or_grade_dependent_2_new(".analysis_date").
 file_is_arch_or_grade_dependent_2_new(".analysis_status").
-file_is_arch_or_grade_dependent_2_new(".bat").
 file_is_arch_or_grade_dependent_2_new(".c").
 file_is_arch_or_grade_dependent_2_new(".c_date").
 file_is_arch_or_grade_dependent_2_new(".class").
 file_is_arch_or_grade_dependent_2_new(".cs").
 file_is_arch_or_grade_dependent_2_new(".cs_date").
 file_is_arch_or_grade_dependent_2_new(".dir").
-file_is_arch_or_grade_dependent_2_new(".dll").
 file_is_arch_or_grade_dependent_2_new(".imdg").
-file_is_arch_or_grade_dependent_2_new(".init").
-file_is_arch_or_grade_dependent_2_new(".jar").
 file_is_arch_or_grade_dependent_2_new(".java").
 file_is_arch_or_grade_dependent_2_new(".java_date").
 file_is_arch_or_grade_dependent_2_new(".mih").
@@ -1318,6 +1438,18 @@ file_is_arch_or_grade_dependent_2_new(".trans_opt_date").
 file_is_arch_or_grade_dependent_2_new(".used").
 file_is_arch_or_grade_dependent_2_new("_init.$O").
 file_is_arch_or_grade_dependent_2_new("_init.c").
+
+:- pred valid_other_newext(other_newext::in) is semidet.
+
+valid_other_newext(other_newext(ExtStr)) :-
+    % We define what string is valid as an argument of ext/1 negatively:
+    % any extension string is valid as an argument of ext/1 *unless*
+    % it has some other representation.
+    not (
+        ExtStr = ".m"       % ext_src
+    ;
+        is_current_dir_extension_new(ExtStr, _)
+    ).
 
 % XXX END OF CODE DUPLICATION
 
@@ -1398,11 +1530,11 @@ test_one_extension(Globals, Stream, GlobalsStr, MaybeSearch, ModuleName, Ext,
     ( if OldFileName = NewFileName then
         true
     else
-        ( MaybeSearch = do_search,     MaybeSearchStr = "search"
-        ; MaybeSearch = do_not_search, MaybeSearchStr = "no_search"
+        ( MaybeSearch = do_search,     MaybeSearchStr = "schy"
+        ; MaybeSearch = do_not_search, MaybeSearchStr = "schn"
         ),
-        io.format(Stream, "BAD FILENAME TRANSLATION FOR %s/%s/%s: %s vs %s\n",
-            [s(Ext), s(GlobalsStr), s(MaybeSearchStr),
+        io.format(Stream, "BAD FILENAME %s/%s/%-8s %s vs %s\n",
+            [s(GlobalsStr), s(MaybeSearchStr), s("<" ++ Ext ++ ">:"),
             s(OldFileName), s(NewFileName)], !IO),
         !:SomeError = yes
     ).
@@ -1509,9 +1641,9 @@ string_extensions =
     ".trans_opt_date",
     ".trans_opts",
     ".type_repns",
+    ".ugly",
     ".used",
     ".xml",
-    "CacheDir.ugly",
     "_init.$O",
     "_init.c",
     "_init.o",
