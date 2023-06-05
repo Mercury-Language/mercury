@@ -1202,18 +1202,18 @@ is_current_dir_extension_new(ExtStr, NewExt) :-
         NewExt = newext_executable(ExtStr)
     ;
         % Library files.
-        ( ExtStr = ".a"
-        ; ExtStr = ".$A"
+        ( ExtStr = ".$A"
+        ; ExtStr = ".a"
         ; ExtStr = ".dll"
-        ; ExtStr = ".jar"
         ; ExtStr = ".init"
+        ; ExtStr = ".jar"
         ),
         NewExt = newext_library_gs(ExtStr)
     ;
-        ( ExtStr = ".lib"
-        ; ExtStr = ".so"
+        ( ExtStr = ".$(EXT_FOR_SHARED_LIB)"
         ; ExtStr = ".dylib"     % references can be generated only via options
-        ; ExtStr = ".$(EXT_FOR_SHARED_LIB)"
+        ; ExtStr = ".lib"
+        ; ExtStr = ".so"
         ),
         NewExt = newext_library(ExtStr)
     ;
@@ -1228,34 +1228,34 @@ is_current_dir_extension_new(ExtStr, NewExt) :-
         % also fit into this category, but their filenames are constructed
         % by getting the filenames for the .c and .mih extensions
         % and adding a suffix to that.
-        ( ExtStr = ".err"
-        ; ExtStr = ".ugly"
+        ( ExtStr = ".dependency_graph"
+        ; ExtStr = ".err"
         ; ExtStr = ".hlds_dump"
         ; ExtStr = ".mlds_dump"
-        ; ExtStr = ".dependency_graph"
         ; ExtStr = ".order"
+        ; ExtStr = ".ugly"
         ),
         NewExt = newext_user(ExtStr)
     ;
         % Mmake targets.
-        ( ExtStr = ".clean"
-        ; ExtStr = ".realclean"
-        ; ExtStr = ".depend"
-        ; ExtStr = ".install_ints"
-        ; ExtStr = ".install_opts"
-        ; ExtStr = ".install_hdrs"
-        ; ExtStr = ".install_grade_hdrs"
-        ; ExtStr = ".check"
-        ; ExtStr = ".ints"
-        ; ExtStr = ".int3s"
-        ; ExtStr = ".javas"
-        ; ExtStr = ".classes"
-        ; ExtStr = ".opts"
-        ; ExtStr = ".trans_opts"
+        ( ExtStr = ".all_int3s"
         ; ExtStr = ".all_ints"
-        ; ExtStr = ".all_int3s"
         ; ExtStr = ".all_opts"
         ; ExtStr = ".all_trans_opts"
+        ; ExtStr = ".check"
+        ; ExtStr = ".classes"
+        ; ExtStr = ".clean"
+        ; ExtStr = ".depend"
+        ; ExtStr = ".install_grade_hdrs"
+        ; ExtStr = ".install_hdrs"
+        ; ExtStr = ".install_ints"
+        ; ExtStr = ".install_opts"
+        ; ExtStr = ".int3s"
+        ; ExtStr = ".ints"
+        ; ExtStr = ".javas"
+        ; ExtStr = ".opts"
+        ; ExtStr = ".realclean"
+        ; ExtStr = ".trans_opts"
         ),
         NewExt = newext_make(ExtStr)
     ).
@@ -1341,11 +1341,11 @@ make_file_name_new(Globals, SubDirNames, Search, BaseNameNoExt, OtherExt,
 
         not (
             Search = do_search,
-            ( ExtStr= ".opt"
-            ; ExtStr= ".trans_opt"
-            ; ExtStr= ".analysis"
+            ( ExtStr= ".analysis"
             ; ExtStr= ".imdg"
+            ; ExtStr= ".opt"
             ; ExtStr= ".request"
+            ; ExtStr= ".trans_opt"
             )
         )
     then
