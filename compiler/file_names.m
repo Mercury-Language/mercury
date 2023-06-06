@@ -62,7 +62,7 @@
 %   all the relevant directory search options.
 %
 % - Invoke choose_file_name and module_name_to_file_name_ext
-%   with all possible combinations of 
+%   with all possible combinations of
 %
 %       --use-grade-subdirs, --use-subdirs or neither
 %       empty and distinctive nonempty base parent dirs
@@ -950,6 +950,139 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+:- type ext_exec
+    --->    ext_exec_exe.
+
+:- type ext_exec_gs
+    --->    ext_exec_gs_noext
+    ;       ext_exec_gs_bat.
+
+:- type ext_lib
+    --->    ext_lib_dollar_efsl
+    ;       ext_lib_dylib
+    ;       ext_lib_lib
+    ;       ext_lib_so.
+
+:- type ext_lib_gs
+    --->    ext_lib_gs_dollar_a
+    ;       ext_lib_gs_archive
+    ;       ext_lib_gs_dll
+    ;       ext_lib_gs_init
+    ;       ext_lib_gs_jar.
+
+:- type ext_mh
+    --->    ext_mh_mh.
+
+:- type ext_mih
+    --->    ext_mih_mih.
+
+:- type ext_user
+    --->    ext_user_depgraph
+    ;       ext_user_err
+    ;       ext_user_hlds_dump
+    ;       ext_user_mlds_dump
+    ;       ext_user_order
+    ;       ext_user_ugly.
+
+:- type ext_user_ngs
+    --->    ext_user_ngs_defn_ext
+    ;       ext_user_ngs_defn_lc
+    ;       ext_user_ngs_defns
+    ;       ext_user_ngs_imports_graph
+    ;       ext_user_ngs_lct
+    ;       ext_user_ngs_lct_order
+    ;       ext_user_ngs_mode_constr
+    ;       ext_user_ngs_order_to
+    ;       ext_user_ngs_type_repns
+    ;       ext_user_ngs_xml.
+
+:- type ext_mmakefile_fragment
+    --->    ext_mf_d
+    ;       ext_mf_dv
+    ;       ext_mf_dep
+    ;       ext_mf_dir_sl_all_os.    % DODGY
+
+:- type ext_mmake_target
+    --->    ext_mt_all_int3s
+    ;       ext_mt_all_ints
+    ;       ext_mt_all_opts
+    ;       ext_mt_all_trans_opts
+    ;       ext_mt_check
+    ;       ext_mt_classes
+    ;       ext_mt_clean
+    ;       ext_mt_depend
+    ;       ext_mt_install_grade_hdrs
+    ;       ext_mt_install_hdrs
+    ;       ext_mt_install_ints
+    ;       ext_mt_install_opts
+    ;       ext_mt_int3s
+    ;       ext_mt_ints
+    ;       ext_mt_javas
+    ;       ext_mt_opts
+    ;       ext_mt_realclean
+    ;       ext_mt_trans_opts.
+
+:- type ext_int
+    --->    ext_int_int0
+    ;       ext_int_int1
+    ;       ext_int_int2
+    ;       ext_int_int3
+    ;       ext_int_date_int0
+    ;       ext_int_date_int12
+    ;       ext_int_date_int3.
+
+:- type ext_opt
+    --->    ext_opt_plain
+    ;       ext_opt_trans
+    ;       ext_opt_date_plain
+    ;       ext_opt_date_trans.
+
+:- type ext_target_c_cs
+    --->    ext_target_c
+    ;       ext_target_cs.
+
+:- type ext_target_java
+    --->    ext_target_java_java
+    ;       ext_target_java_class.
+
+:- type ext_target_date
+    --->    ext_target_date_c
+    ;       ext_target_date_cs
+    ;       ext_target_date_java.
+
+:- type ext_obj
+    --->    ext_obj_dollar_o
+    ;       ext_obj_o
+    ;       ext_obj_pic_o.
+
+:- type ext_init_c
+    --->    ext_init_c.
+
+:- type ext_init_obj
+    --->    ext_init_obj_dollar_o
+    ;       ext_init_obj_o
+    ;       ext_init_obj_pic_o.
+
+:- type ext_bytecode
+    --->    ext_bc_mbc
+    ;       ext_bc_bytedebug.
+
+:- type ext_analysis
+    --->    ext_an_analysis
+    ;       ext_an_date
+    ;       ext_an_status
+    ;       ext_an_imdg
+    ;       ext_an_request.
+
+:- type ext_misc_ngs
+    --->    ext_misc_ngs_module_dep     % DODGY
+    ;       ext_misc_ngs_err_date       % DODGY
+    ;       ext_misc_ngs_prof.          % DODGY
+
+:- type ext_misc_gs
+    --->    ext_misc_gs_used
+    ;       ext_misc_gs_track_flags.
+
     % NOTE All of the string arguments below, with the possible exception
     % of the argument of newext_mmake_target, should be replaced by
     % category-specific enums.
@@ -957,13 +1090,13 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
     --->    newext_src
             % The extension string is ".m".
 
-    ;       newext_executable(string)
-    ;       newext_library(string)
+    ;       newext_executable(ext_exec)
+    ;       newext_library(ext_lib)
             % Executables and library files, which are always put into
             % the current directory.
 
-    ;       newext_executable_gs(string)
-    ;       newext_library_gs(string)
+    ;       newext_executable_gs(ext_exec_gs)
+    ;       newext_library_gs(ext_lib_gs)
             % Executables and library files, which are
             %
             % - put into the current directory with --no-use-grade-subdirs,
@@ -974,28 +1107,32 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
             % current directory", but if this is actually done, it is done
             % outside file_names.m.
 
-    ;       newext_mh(string)
+    ;       newext_mh(ext_mh)
             % Information about Mercury code exported to outside C code.
             % The extension string is ".mh".
 
-    ;       newext_mih(string)
+    ;       newext_mih(ext_mih)
             % Machine-independent header files for generated C code.
             % XXX Yet we consider them architecture-or-grade-dependent.
             % The extension string is ".mih".
 
-    ;       newext_user(string)
+    ;       newext_user(ext_user)
             % Compiler-generated files that are intended to be read
             % by the programmer, such as .err files, which are always put
             % into the current directory.
 
-    ;       newext_user_ngs(string)
+    ;       newext_user_ngs(ext_user_ngs)
             % Compiler-generated files that are intended to be read
             % by the programmer, such as .defns files, which will be put
             % into the current directory with --no-use-subdirs, but which
             % will be put into a non-grade-specific subdirectory with
             % --use-subdirs.
 
-    ;       newext_mmake_target(string)
+    ;       newext_mmakefile_fragment(ext_mmakefile_fragment)
+            % Compiler-generated files that are designed to be bodily included
+            % in Mmakefiles.
+
+    ;       newext_mmake_target(ext_mmake_target)
             % These suffixes are used not to create filenames, but to
             % create mmake target names. Some do refer to real files,
             % but they can (and some do) refer to these using extension
@@ -1003,39 +1140,27 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
             % Some of the other generated make targets are phony targets,
             % meaning that they never correspond to real files at all.
 
-    ;       newext_mmake_var_ngs(string)
-    ;       newext_mmake_var_gs(string)
-            % These suffixes are used not to create filenames, but to
-            % create mmake variable names.
-
-    ;       newext_track_flags(string)
-
-    ;       newext_mmakefile_fragment(string)
-            % Compiler-generated files that are designed to be bodily included
-            % in Mmakefiles.
-
-    ;       newext_int(string)
-    ;       newext_int_date(string)
-    ;       newext_opt(string)
-    ;       newext_opt_date(string)
+    ;       newext_int(ext_int)
+    ;       newext_opt(ext_opt)
             % Compiler-generated interface files. and optimization files,
             % and the timestamp files showing when they were last checked.
 
-    ;       newext_target_c(string)
-    ;       newext_target_c_date(string)
-    ;       newext_target_cs(string)
-    ;       newext_target_cs_date(string)
-    ;       newext_target_java(string)
-    ;       newext_target_java_date(string)
+    ;       newext_target_c_cs(ext_target_c_cs)
+    ;       newext_target_java(ext_target_java)
+    ;       newext_target_date(ext_target_date)
 
-    ;       newext_target_init_c(string)
+    ;       newext_target_init_c(ext_init_c)
 
-    ;       newext_target_init_obj(string)
-    ;       newext_target_obj(string)
+    ;       newext_target_init_obj(ext_init_obj)
+    ;       newext_target_obj(ext_obj)
 
-    ;       newext_bytecode(string)
+    ;       newext_bytecode(ext_bytecode)
 
-    ;       newext_analysis(string)
+    ;       newext_analysis(ext_analysis)
+
+    ;       newext_misc_ngs(ext_misc_ngs)
+    ;       newext_misc_gs(ext_misc_gs)
+            % XXX Document me.
 
     ;       newext_other(other_newext).
             % The general case. The extension string must not be covered
@@ -1046,69 +1171,420 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
 
 :- func make_new_extension(string) = newext.
 
-make_new_extension(Str) = NewExt :-
+make_new_extension(ExtStr) = NewExt :-
+    % Since the newext_executable_gs and newext_library_gs alternatives
+    % go in the current directory only with --no-use-grade-subdir, this
+    % predicate is not well named. However, the transformation it performs
+    % will become unnecessary once we switch over to using newexts exclusively
+    % in the compiler, including at the call sites calling
+    % module_name_to_file_name and its variants.
+    %
+    % XXX While separating newext_executable_gs from newext_executable
+    % separating newext_library_gs from newext_library are needed to get
+    % test_file_name_extensions to report no discrepancies, bootchecking
+    % the compiler with --use-grade-subdirs in a grade that targets C
+    % fails as soons as it tries to build the first .c file in the library.
+    % This is because --use-grade-subdirs is not *intended* to be actually
+    % usable with mmake.
+    %
+    % According to the documentation of the --user-grade subdirs option,
+    % *all* executables and libraries *should* be put into a grade subdir
+    % if that option is specified, not just some. They should then be
+    % copied or linked to the current directory.
+    %
     % The classifications marked "DODGY" below select a path in
     % module_name_to_file_name_ext_new that computes the right filename
     % (the filename computed by old code), but the name of their category
     % may not be applicable.
-    ( if Str = ".m" then
-        NewExt = newext_src
-    else if is_current_dir_extension_new(Str, NewExtPrime) then
-        NewExt = NewExtPrime
-    else if Str = ".mih" then
-        NewExt = newext_mih(Str)
-    else if ( Str = ".d" ; Str = ".dv" ; Str = ".dep" ) then
-        NewExt = newext_mmakefile_fragment(Str)
-    else if ( Str = ".int0" ; Str = ".int" ) then
-        NewExt = newext_int(Str)
-    else if ( Str = ".int2" ; Str = ".int3" ) then
-        NewExt = newext_int(Str)
-    else if ( Str = ".date0" ; Str = ".date" ; Str = ".date3" ) then
-        NewExt = newext_int_date(Str)
-    else if ( Str = ".opt" ; Str = ".trans_opt" ) then
-        NewExt = newext_opt(Str)
-    else if ( Str = ".optdate" ; Str = ".trans_opt_date" ) then
-        NewExt = newext_opt_date(Str)
-    else if ( Str = ".class" ; Str = ".java" ) then
-        NewExt = newext_target_java(Str)
-    else if Str = ".java_date" then
-        NewExt = newext_target_java_date(Str)
-    else if Str = ".cs" then
-        NewExt = newext_target_cs(Str)
-    else if Str = ".cs_date" then
-        NewExt = newext_target_cs_date(Str)
-    else if Str = ".c" then
-        NewExt = newext_target_c(Str)
-    else if Str = ".c_date" then
-        NewExt = newext_target_c_date(Str)
-    else if ( Str = ".$O" ; Str = ".o" ; Str = ".pic_o" ) then
-        NewExt = newext_target_obj(Str)
-    else if Str = "_init.c" then
-        NewExt = newext_target_init_c(Str)
-    else if ( Str = "_init.$O" ; Str = "_init.o" ; Str = "_init.pic_o" ) then
-        NewExt = newext_target_init_obj(Str)
-    else if ( Str = ".mbc"; Str = ".bytedebug" ) then
-        NewExt = newext_bytecode(Str)
-    else if ( Str = ".analysis" ; Str = ".request" ; Str = ".imdg" ) then
-        NewExt = newext_analysis(Str)
-    else if ( Str = ".analysis_date"; Str = ".analysis_status" ) then
-        NewExt = newext_analysis(Str)
-    else if Str = ".module_dep" then
-        NewExt = newext_mmake_var_ngs(Str)  % DODGY
-    else if Str = ".prof" then
-        NewExt = newext_mmake_var_ngs(Str)  % DODGY
-    else if Str = ".err_date" then
-        NewExt = newext_mmake_var_ngs(Str)  % DODGY
-    else if Str = ".used" then
-        NewExt = newext_mmake_var_gs(Str)
-    else if Str = ".track_flags" then
-        NewExt = newext_track_flags(Str)
-    else if Str = ".dir/*.$O" then
-        NewExt = newext_mmakefile_fragment(Str) % DODGY
+    ( if
+        (
+            ExtStr = ".m",
+            NewExt0 = newext_src
+        ;
+            % Executable files.
+            % XXX The Ext = "" here is wrong. While an empty extension
+            % *can* mean we are building the name of an executable,
+            % it can also mean we are building the name of a phony Mmakefile
+            % target for a library, such as libmer_std in the library
+            % directory.
+            ( ExtStr = "",          ExtExecGs = ext_exec_gs_noext
+            ; ExtStr = ".bat",      ExtExecGs = ext_exec_gs_bat
+            ),
+            NewExt0 = newext_executable_gs(ExtExecGs)
+        ;
+            ExtStr = ".exe",        ExtExec = ext_exec_exe,
+            NewExt0 = newext_executable(ExtExec)
+        ;
+            % Library files.
+            ( ExtStr = ".$A",       ExtLibGs = ext_lib_gs_dollar_a
+            ; ExtStr = ".a",        ExtLibGs = ext_lib_gs_archive
+            ; ExtStr = ".dll",      ExtLibGs = ext_lib_gs_dll
+            ; ExtStr = ".init",     ExtLibGs = ext_lib_gs_init
+            ; ExtStr = ".jar",      ExtLibGs = ext_lib_gs_jar
+            ),
+            NewExt0 = newext_library_gs(ExtLibGs)
+        ;
+            % references to dylib can be generated only via options
+            ( ExtStr = ".$(EXT_FOR_SHARED_LIB)",
+                                    ExtLib = ext_lib_dollar_efsl
+            ; ExtStr = ".dylib",    ExtLib = ext_lib_dylib
+            ; ExtStr = ".lib",      ExtLib = ext_lib_lib
+            ; ExtStr = ".so",       ExtLib = ext_lib_so
+            ),
+            NewExt0 = newext_library(ExtLib)
+        ;
+            % Machine-dependent header files for generated C code.
+            % XXX There is no good reason for .mh files to be treated
+            % differently from .mih files.
+            ExtStr = ".mh",         ExtMh = ext_mh_mh,
+            NewExt0 = newext_mh(ExtMh)
+        ;
+            ExtStr = ".mih",        ExtMih = ext_mih_mih,
+            NewExt0 = newext_mih(ExtMih)
+        ;
+            % Output files intended for use by the user.
+            % The MLDS dump files with extensions .c_dump* and .mih_dump*
+            % also fit into this category, but their filenames are constructed
+            % by getting the filenames for the .c and .mih extensions
+            % and adding a suffix to that.
+            ( ExtStr = ".dependency_graph",     ExtUser = ext_user_depgraph
+            ; ExtStr = ".err",                  ExtUser = ext_user_err
+            ; ExtStr = ".hlds_dump",            ExtUser = ext_user_hlds_dump
+            ; ExtStr = ".mlds_dump",            ExtUser = ext_user_mlds_dump
+            ; ExtStr = ".order",                ExtUser = ext_user_order
+            ; ExtStr = ".ugly",                 ExtUser = ext_user_ugly
+            ),
+            NewExt0 = newext_user(ExtUser)
+        ;
+            ( ExtStr = ".defn_extents",         EUN = ext_user_ngs_defn_ext
+            ; ExtStr = ".defn_line_counts",     EUN = ext_user_ngs_defn_lc
+            ; ExtStr = ".defns",                EUN = ext_user_ngs_defns
+            ; ExtStr = ".imports_graph",        EUN = ext_user_ngs_imports_graph
+            ; ExtStr = ".local_call_tree",      EUN = ext_user_ngs_lct
+            ; ExtStr = ".local_call_tree_order",EUN = ext_user_ngs_lct_order
+            ; ExtStr = ".mode_constraints",     EUN = ext_user_ngs_mode_constr
+            ; ExtStr = ".order_trans_opt",      EUN = ext_user_ngs_order_to
+            ; ExtStr = ".type_repns",           EUN = ext_user_ngs_type_repns
+            ; ExtStr = ".xml",                  EUN = ext_user_ngs_xml
+            ),
+            NewExt0 = newext_user_ngs(EUN)
+        ;
+            ( ExtStr = ".d",                    EMF = ext_mf_d
+            ; ExtStr = ".dv",                   EMF = ext_mf_dv
+            ; ExtStr = ".dep",                  EMF = ext_mf_dep
+            ; ExtStr = ".dir/*.$O",             EMF = ext_mf_dir_sl_all_os
+            ),
+            NewExt0 = newext_mmakefile_fragment(EMF)
+        ;
+            % Mmake targets.
+            ( ExtStr = ".all_int3s",            EMT = ext_mt_all_int3s
+            ; ExtStr = ".all_ints",             EMT = ext_mt_all_ints
+            ; ExtStr = ".all_opts",             EMT = ext_mt_all_opts
+            ; ExtStr = ".all_trans_opts",       EMT = ext_mt_all_trans_opts
+            ; ExtStr = ".check",                EMT = ext_mt_check
+            ; ExtStr = ".classes",              EMT = ext_mt_classes
+            ; ExtStr = ".clean",                EMT = ext_mt_clean
+            ; ExtStr = ".depend",               EMT = ext_mt_depend
+            ; ExtStr = ".install_grade_hdrs",   EMT = ext_mt_install_grade_hdrs
+            ; ExtStr = ".install_hdrs",         EMT = ext_mt_install_hdrs
+            ; ExtStr = ".install_ints",         EMT = ext_mt_install_ints
+            ; ExtStr = ".install_opts",         EMT = ext_mt_install_opts
+            ; ExtStr = ".int3s",                EMT = ext_mt_int3s
+            ; ExtStr = ".ints",                 EMT = ext_mt_ints
+            ; ExtStr = ".javas",                EMT = ext_mt_javas
+            ; ExtStr = ".opts",                 EMT = ext_mt_opts
+            ; ExtStr = ".realclean",            EMT = ext_mt_realclean
+            ; ExtStr = ".trans_opts",           EMT = ext_mt_trans_opts
+            ),
+            NewExt0 = newext_mmake_target(EMT)
+        ;
+            ( ExtStr = ".int0",                 ExtInt = ext_int_int0
+            ; ExtStr = ".int",                  ExtInt = ext_int_int1
+            ; ExtStr = ".int2",                 ExtInt = ext_int_int2
+            ; ExtStr = ".int3",                 ExtInt = ext_int_int3
+            ; ExtStr = ".date0",                ExtInt = ext_int_date_int0
+            ; ExtStr = ".date",                 ExtInt = ext_int_date_int12
+            ; ExtStr = ".date3",                ExtInt = ext_int_date_int3
+            ),
+            NewExt0 = newext_int(ExtInt)
+        ;
+            ( ExtStr = ".opt",                  ExtOpt = ext_opt_plain
+            ; ExtStr = ".trans_opt",            ExtOpt = ext_opt_trans
+            ; ExtStr = ".optdate",              ExtOpt = ext_opt_date_plain
+            ; ExtStr = ".trans_opt_date",       ExtOpt = ext_opt_date_trans
+            ),
+            NewExt0 = newext_opt(ExtOpt)
+        ;
+            ( ExtStr = ".c",                    ExtCCs = ext_target_c
+            ; ExtStr = ".cs",                   ExtCCs = ext_target_cs
+            ),
+            NewExt0 = newext_target_c_cs(ExtCCs)
+        ;
+            ( ExtStr = ".class",                ExtJ = ext_target_java_class
+            ; ExtStr = ".java",                 ExtJ = ext_target_java_java
+            ),
+            NewExt0 = newext_target_java(ExtJ)
+        ;
+            ( ExtStr = ".c_date",               ExtDate = ext_target_date_c
+            ; ExtStr = ".cs_date",              ExtDate = ext_target_date_cs
+            ; ExtStr = ".java_date",            ExtDate = ext_target_date_java
+            ),
+            NewExt0 = newext_target_date(ExtDate)
+        ;
+            ( ExtStr = ".$O",                   ExtObj = ext_obj_dollar_o
+            ; ExtStr = ".o",                    ExtObj = ext_obj_o
+            ; ExtStr = ".pic_o",                ExtObj = ext_obj_pic_o
+            ),
+            NewExt0 = newext_target_obj(ExtObj)
+        ;
+            ExtStr = "_init.c", ExtIC = ext_init_c,
+            NewExt0 = newext_target_init_c(ExtIC)
+        ;
+            ( ExtStr = "_init.$O",              ExtIO = ext_init_obj_dollar_o
+            ; ExtStr = "_init.o",               ExtIO = ext_init_obj_o
+            ; ExtStr = "_init.pic_o",           ExtIO = ext_init_obj_pic_o
+            ),
+            NewExt0 = newext_target_init_obj(ExtIO)
+        ;
+            ( ExtStr = ".mbc",                  ExtB = ext_bc_mbc
+            ; ExtStr = ".bytedebug",            ExtB = ext_bc_bytedebug
+            ),
+            NewExt0 = newext_bytecode(ExtB)
+        ;
+            ( ExtStr = ".analysis",             ExtA = ext_an_analysis
+            ; ExtStr = ".analysis_date",        ExtA = ext_an_date
+            ; ExtStr = ".analysis_status",      ExtA = ext_an_status
+            ; ExtStr = ".imdg",                 ExtA = ext_an_imdg
+            ; ExtStr = ".request",              ExtA = ext_an_request
+            ),
+            NewExt0 = newext_analysis(ExtA)
+        ;
+            ( ExtStr = ".module_dep",           ExtM = ext_misc_ngs_module_dep
+            ; ExtStr = ".err_date",             ExtM = ext_misc_ngs_err_date
+            ; ExtStr = ".prof",                 ExtM = ext_misc_ngs_prof
+            ),
+            NewExt0 = newext_misc_ngs(ExtM)
+        ;
+            ( ExtStr = ".used",                 ExtM = ext_misc_gs_used
+            ; ExtStr = ".track_flags",          ExtM = ext_misc_gs_track_flags
+            ),
+            NewExt0 = newext_misc_gs(ExtM)
+        )
+    then
+        NewExt = NewExt0
     else
-        NewExt = newext_other(other_newext(Str)),
-        unexpected($pred, "ext_other")
+        unexpected($pred, "unrecognized ExtStr " ++ ExtStr)
     ).
+
+:- pred ext_exec_extension(ext_exec::in, string::out) is det.
+
+ext_exec_extension(ext_exec_exe, ".exe").
+
+:- pred ext_exec_gs_extension_dir(ext_exec_gs::in, string::out, string::out)
+    is det.
+
+% Launcher scripts go in the `bin' subdirectory.
+ext_exec_gs_extension_dir(ext_exec_gs_noext,    "",     "bin").
+ext_exec_gs_extension_dir(ext_exec_gs_bat,      ".bat", "bats").
+
+:- pred ext_lib_extension(ext_lib::in, string::out) is det.
+
+ext_lib_extension(ext_lib_dollar_efsl, ".$(EXT_FOR_SHARED_LIB)").
+ext_lib_extension(ext_lib_lib,          ".lib").
+ext_lib_extension(ext_lib_dylib,        ".dylib").
+ext_lib_extension(ext_lib_so,           ".so").
+
+:- pred ext_lib_gs_extension_dir(ext_lib_gs::in, string::out, string::out)
+    is det.
+
+% XXX EXT While "$As" follows the rule: "delete initial dot, add final 's'",
+% it is *extremely unlikely* to be acceptable directory name.
+ext_lib_gs_extension_dir(ext_lib_gs_dollar_a,   ".$A",      "$As").
+ext_lib_gs_extension_dir(ext_lib_gs_archive,    ".a",       "as").
+ext_lib_gs_extension_dir(ext_lib_gs_dll,        ".dll",     "dlls").
+ext_lib_gs_extension_dir(ext_lib_gs_init,       ".init",    "inits").
+ext_lib_gs_extension_dir(ext_lib_gs_jar,        ".jar",     "jars").
+
+:- pred ext_mh_extension(ext_mh::in, string::out) is det.
+
+ext_mh_extension(ext_mh_mh, ".mh").
+
+:- pred ext_mih_extension_dir(ext_mih::in, string::out, string::out) is det.
+
+ext_mih_extension_dir(ext_mih_mih, ".mih", "mihs").
+
+:- pred ext_user_extension(ext_user::in, string::out) is det.
+
+ext_user_extension(ext_user_depgraph,   ".dependency_graph").
+ext_user_extension(ext_user_err,        ".err").
+ext_user_extension(ext_user_hlds_dump,  ".hlds_dump").
+ext_user_extension(ext_user_mlds_dump,  ".mlds_dump").
+ext_user_extension(ext_user_order,      ".order").
+ext_user_extension(ext_user_ugly,       ".ugly").
+
+:- pred ext_user_ngs_extension_dir(ext_user_ngs::in, string::out, string::out)
+    is det.
+
+ext_user_ngs_extension_dir(ext_user_ngs_defn_ext,
+    ".defn_extents", "defn_extentss").
+ext_user_ngs_extension_dir(ext_user_ngs_defn_lc,
+    ".defn_line_counts", "defn_line_countss").
+ext_user_ngs_extension_dir(ext_user_ngs_defns,
+    ".defns", "defnss").
+ext_user_ngs_extension_dir(ext_user_ngs_imports_graph,
+    ".imports_graph", "imports_graphs").
+ext_user_ngs_extension_dir(ext_user_ngs_lct,
+    ".local_call_tree", "local_call_trees").
+ext_user_ngs_extension_dir(ext_user_ngs_lct_order,
+    ".local_call_tree_order", "local_call_tree_orders").
+ext_user_ngs_extension_dir(ext_user_ngs_mode_constr,
+    ".mode_constraints", "mode_constraintss").
+ext_user_ngs_extension_dir(ext_user_ngs_order_to,
+    ".order_trans_opt", "order_trans_opts").
+ext_user_ngs_extension_dir(ext_user_ngs_type_repns,
+    ".type_repns", "type_repnss").
+ext_user_ngs_extension_dir(ext_user_ngs_xml,
+    ".xml", "xmls").
+
+:- pred ext_mmake_target_extension(ext_mmake_target::in, string::out) is det.
+
+ext_mmake_target_extension(ext_mt_all_int3s,        ".all_int3s").
+ext_mmake_target_extension(ext_mt_all_ints,         ".all_ints").
+ext_mmake_target_extension(ext_mt_all_opts,         ".all_opts").
+ext_mmake_target_extension(ext_mt_all_trans_opts,   ".all_trans_opts").
+ext_mmake_target_extension(ext_mt_check,            ".check").
+ext_mmake_target_extension(ext_mt_classes,          ".classes").
+ext_mmake_target_extension(ext_mt_clean,            ".clean").
+ext_mmake_target_extension(ext_mt_depend,           ".depend").
+ext_mmake_target_extension(ext_mt_install_grade_hdrs, ".install_grade_hdrs").
+ext_mmake_target_extension(ext_mt_install_hdrs,     ".install_hdrs").
+ext_mmake_target_extension(ext_mt_install_ints,     ".install_ints").
+ext_mmake_target_extension(ext_mt_install_opts,     ".install_opts").
+ext_mmake_target_extension(ext_mt_int3s,            ".int3s").
+ext_mmake_target_extension(ext_mt_ints,             ".ints").
+ext_mmake_target_extension(ext_mt_javas,            ".javas").
+ext_mmake_target_extension(ext_mt_opts,             ".opts").
+ext_mmake_target_extension(ext_mt_realclean,        ".realclean").
+ext_mmake_target_extension(ext_mt_trans_opts,       ".trans_opts").
+
+:- pred ext_int_extension_dir(ext_int::in, string::out, string::out) is det.
+
+ext_int_extension_dir(ext_int_int0,         ".int0",    "int0s").
+ext_int_extension_dir(ext_int_int1,         ".int",     "ints").
+ext_int_extension_dir(ext_int_int2,         ".int2",    "int2s").
+ext_int_extension_dir(ext_int_int3,         ".int3",    "int3s").
+ext_int_extension_dir(ext_int_date_int0,    ".date0",   "date0s").
+ext_int_extension_dir(ext_int_date_int12,   ".date",    "dates").
+ext_int_extension_dir(ext_int_date_int3,    ".date3",   "date3s").
+
+:- pred ext_opt_extension_dir(ext_opt::in, string::out, string::out) is det.
+
+ext_opt_extension_dir(ext_opt_plain,
+    ".opt",            "opts").
+ext_opt_extension_dir(ext_opt_trans,
+    ".trans_opt",      "trans_opts").
+ext_opt_extension_dir(ext_opt_date_plain,
+    ".optdate",        "optdates").
+ext_opt_extension_dir(ext_opt_date_trans,
+    ".trans_opt_date", "trans_opt_dates").
+
+:- pred ext_bytecode_extension_dir(ext_bytecode::in,
+    string::out, string::out) is det.
+
+ext_bytecode_extension_dir(ext_bc_mbc,          ".mbc",         "mbcs").
+ext_bytecode_extension_dir(ext_bc_bytedebug,    ".bytedebug",   "bytedebugs").
+
+:- pred ext_misc_ngs_extension_dir(ext_misc_ngs::in,
+    string::out, string::out) is det.
+
+ext_misc_ngs_extension_dir(ext_misc_ngs_module_dep,
+    ".module_dep", "module_deps").
+ext_misc_ngs_extension_dir(ext_misc_ngs_err_date,
+    ".err_date", "err_dates").
+ext_misc_ngs_extension_dir(ext_misc_ngs_prof,
+    ".prof", "profs").
+
+:- pred ext_mmakefile_fragment_extension_dir(ext_mmakefile_fragment::in,
+    string::out, string::out) is det.
+
+% Both deviations below from the "delete initial dot, add final 's'" rule
+% are intentional, though I (zs) don't know the reason for the second.
+ext_mmakefile_fragment_extension_dir(ext_mf_d,      ".d",   "ds").
+ext_mmakefile_fragment_extension_dir(ext_mf_dv,     ".dv",  "deps").
+ext_mmakefile_fragment_extension_dir(ext_mf_dep,    ".dep", "deps").
+ext_mmakefile_fragment_extension_dir(ext_mf_dir_sl_all_os,
+    ".dir/*.$O", "dirs").
+
+:- pred ext_target_java_extension_dirs(ext_target_java::in,
+    string::out, list(string)::out) is det.
+
+ext_target_java_extension_dirs(ext_target_java_java,
+    ".java",    ["javas", "jmercury"]).
+ext_target_java_extension_dirs(ext_target_java_class,
+    ".class",   ["classs", "jmercury"]).
+
+:- pred ext_target_c_cs_extension_dir(ext_target_c_cs::in,
+    string::out, string::out) is det.
+
+ext_target_c_cs_extension_dir(ext_target_c,     ".c",    "cs").
+ext_target_c_cs_extension_dir(ext_target_cs,    ".cs",    "css").
+
+:- pred ext_target_date_extension_dir(ext_target_date::in,
+    string::out, string::out) is det.
+
+ext_target_date_extension_dir(ext_target_date_c,
+    ".c_date",      "c_dates").
+ext_target_date_extension_dir(ext_target_date_cs,
+    ".cs_date",     "cs_dates").
+ext_target_date_extension_dir(ext_target_date_java,
+    ".java_date",   "java_dates").
+
+:- pred ext_misc_gs_extension_dir(ext_misc_gs::in,
+    string::out, string::out) is det.
+
+ext_misc_gs_extension_dir(ext_misc_gs_used,
+    ".used",        "useds").
+ext_misc_gs_extension_dir(ext_misc_gs_track_flags,
+    ".track_flags", "track_flagss").
+
+:- pred ext_analysis_extension_dir(ext_analysis::in,
+    string::out, string::out) is det.
+
+ext_analysis_extension_dir(ext_an_analysis,
+    ".analysis",        "analysiss").
+ext_analysis_extension_dir(ext_an_date,
+    ".analysis_date",   "analysis_dates").
+ext_analysis_extension_dir(ext_an_status,
+    ".analysis_status", "analysis_statuss").
+ext_analysis_extension_dir(ext_an_imdg,
+    ".imdg",            "imdgs").
+ext_analysis_extension_dir(ext_an_request,
+    ".request",         "requests").
+
+:- pred ext_init_c_extension_dir(ext_init_c::in,
+    string::out, string::out) is det.
+
+% The deviation below from the "delete initial dot, add final 's'" rule
+% is intentional.
+ext_init_c_extension_dir(ext_init_c, "_init.c", "cs").
+
+:- pred ext_obj_extension_dir(ext_obj::in,
+    string::out, string::out) is det.
+
+% Both deviations below from the "delete initial dot, add final 's'" rule
+% are intentional.
+ext_obj_extension_dir(ext_obj_dollar_o,   ".$O",     "os").
+ext_obj_extension_dir(ext_obj_o,          ".o",      "os").
+ext_obj_extension_dir(ext_obj_pic_o,      ".pic_o",  "os").
+
+:- pred ext_init_obj_extension_dir(ext_init_obj::in,
+    string::out, string::out) is det.
+
+% All the deviations below from the "delete initial dot, add final 's'" rule
+% are intentional.
+ext_init_obj_extension_dir(ext_init_obj_dollar_o,   "_init.$O",     "os").
+ext_init_obj_extension_dir(ext_init_obj_o,          "_init.o",      "os").
+ext_init_obj_extension_dir(ext_init_obj_pic_o,      "_init.pic_o",  "os").
 
 %---------------------------------------------------------------------------%
 %
@@ -1131,11 +1607,21 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
         Ext = newext_src,
         module_name_to_source_file_name(ModuleName, FileName, !IO)
     ;
-        ( Ext = newext_executable(ExtStr)
-        ; Ext = newext_library(ExtStr)
-        ; Ext = newext_mh(ExtStr)
-        ; Ext = newext_user(ExtStr)
-        ; Ext = newext_mmake_target(ExtStr)
+        (
+            Ext = newext_executable(ExtExec),
+            ext_exec_extension(ExtExec, ExtStr)
+        ;
+            Ext = newext_library(ExtLib),
+            ext_lib_extension(ExtLib, ExtStr)
+        ;
+            Ext = newext_mh(ExtMh),
+            ext_mh_extension(ExtMh, ExtStr)
+        ;
+            Ext = newext_user(ExtUser),
+            ext_user_extension(ExtUser, ExtStr)
+        ;
+            Ext = newext_mmake_target(ExtMT),
+            ext_mmake_target_extension(ExtMT, ExtStr)
         ),
         % Output files intended for use by the user, and phony Mmake target
         % names go in the current directory. So do .mh files, and *some*,
@@ -1144,8 +1630,12 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         FileName = BaseNameNoExt ++ ExtStr
     ;
-        ( Ext = newext_executable_gs(ExtStr)
-        ; Ext = newext_library_gs(ExtStr)
+        (
+            Ext = newext_executable_gs(ExtExecGs),
+            ext_exec_gs_extension_dir(ExtExecGs, ExtStr, SubDirName)
+        ;
+            Ext = newext_library_gs(ExtLibGs),
+            ext_lib_gs_extension_dir(ExtLibGs, ExtStr, SubDirName)
         ),
         % Some kinds of executables and library files go in the current
         % directory only with --no-use-grade-subdirs; with --use-grade-subdirs,
@@ -1159,18 +1649,13 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
         ;
             UseGradeSubdirs = yes,
             % This implies --use-subdirs as well.
-            ( if ExtStr = "" then
-                % Launcher scripts go in the `bin' subdirectory.
-                SubDirName = "bin"
-            else
-                SubDirName = dot_extension_dir_name(ExtStr)
-            ),
             make_grade_subdir_file_name_new(Globals, [SubDirName],
                 BaseNameNoExt, ExtStr, DirComponents, FileName),
             maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
         )
     ;
-        Ext = newext_mih(ExtStr),
+        Ext = newext_mih(ExtMh),
+        ext_mih_extension_dir(ExtMh, ExtStr, SubDirName),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         (
             Search = do_search,
@@ -1187,7 +1672,6 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
                 FileName = BaseNameNoExt ++ ExtStr
             ;
                 UseSubdirs = yes,
-                SubDirName = dot_extension_dir_name(ExtStr),
                 globals.lookup_bool_option(Globals, use_grade_subdirs,
                     UseGradeSubdirs),
                 (
@@ -1204,11 +1688,18 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             )
         )
     ;
-        ( Ext = newext_user_ngs(ExtStr)
-        ; Ext = newext_int(ExtStr)
-        ; Ext = newext_int_date(ExtStr)
-        ; Ext = newext_bytecode(ExtStr)
-        ; Ext = newext_mmake_var_ngs(ExtStr) % XXX Probably never used.
+        (
+            Ext = newext_user_ngs(ExtUserNgs),
+            ext_user_ngs_extension_dir(ExtUserNgs, ExtStr, SubDirName)
+        ;
+            Ext = newext_int(ExtInt),
+            ext_int_extension_dir(ExtInt, ExtStr, SubDirName)
+        ;
+            Ext = newext_bytecode(ExtByte),
+            ext_bytecode_extension_dir(ExtByte, ExtStr, SubDirName)
+        ;
+            Ext = newext_misc_ngs(ExtMiscNgs), % XXX Probably never used.
+            ext_misc_ngs_extension_dir(ExtMiscNgs, ExtStr, SubDirName)
         ),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
@@ -1217,14 +1708,14 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
-            SubDirName = dot_extension_dir_name(ExtStr),
             DirComponents = ["Mercury", SubDirName],
             FileName =
                 glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr),
             maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
         )
     ;
-        Ext = newext_mmakefile_fragment(ExtStr),
+        Ext = newext_mmakefile_fragment(ExtMf),
+        ext_mmakefile_fragment_extension_dir(ExtMf, ExtStr, SubDirName),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
@@ -1232,22 +1723,14 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
-            ( if ExtStr = ".dv" then
-                SubDirName = "deps"
-            else if ExtStr = ".dir/*.$O" then
-                SubDirName = "dirs"
-            else
-                SubDirName = dot_extension_dir_name(ExtStr)
-            ),
             DirComponents = ["Mercury", SubDirName],
             FileName =
                 glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr),
             maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
         )
     ;
-        ( Ext = newext_opt(ExtStr)
-        ; Ext = newext_opt_date(ExtStr)
-        ),
+        Ext = newext_opt(ExtOpt),
+        ext_opt_extension_dir(ExtOpt, ExtStr, SubDirName),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
@@ -1255,7 +1738,6 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
-            SubDirName = dot_extension_dir_name(ExtStr),
             globals.lookup_bool_option(Globals, use_grade_subdirs,
                 UseGradeSubdirs),
             ( if
@@ -1270,7 +1752,9 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
                 % `--intermod-directories' is set so this will work."
                 not (
                     Search = do_search,
-                    Ext = newext_opt(_)
+                    ( ExtOpt = ext_opt_plain
+                    ; ExtOpt = ext_opt_trans
+                    )
                 )
             then
                 make_grade_subdir_file_name_new(Globals, [SubDirName],
@@ -1283,7 +1767,8 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
         )
     ;
-        Ext = newext_target_java(ExtStr),
+        Ext = newext_target_java(ExtJava),
+        ext_target_java_extension_dirs(ExtJava, ExtStr, SubDirNames),
         BaseParentDirs = ["jmercury"],
         mangle_sym_name_for_java(ModuleName, module_qual, "__", BaseNameNoExt),
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
@@ -1294,8 +1779,6 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
                 BaseNameNoExt, ExtStr)
         ;
             UseSubdirs = yes,
-            SubDirName = dot_extension_dir_name(ExtStr),
-            SubDirNames = [SubDirName | BaseParentDirs],
             globals.lookup_bool_option(Globals, use_grade_subdirs,
                 UseGradeSubdirs),
             (
@@ -1311,13 +1794,15 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
         ),
         maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
     ;
-        ( Ext = newext_target_c(ExtStr)
-        ; Ext = newext_target_c_date(ExtStr)
-        ; Ext = newext_target_cs(ExtStr)
-        ; Ext = newext_target_cs_date(ExtStr)
-        ; Ext = newext_target_java_date(ExtStr)
-        ; Ext = newext_mmake_var_gs(ExtStr) % XXX Probably never used.
-        ; Ext = newext_track_flags(ExtStr) % XXX Probably never used.
+        (
+            Ext = newext_target_c_cs(ExtCCs),
+            ext_target_c_cs_extension_dir(ExtCCs, ExtStr, SubDirName)
+        ;
+            Ext = newext_target_date(ExtTargetDate),
+            ext_target_date_extension_dir(ExtTargetDate, ExtStr, SubDirName)
+        ;
+            Ext = newext_misc_gs(ExtMiscGs), % XXX Probably never used.
+            ext_misc_gs_extension_dir(ExtMiscGs, ExtStr, SubDirName)
         ),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
@@ -1326,7 +1811,6 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
-            SubDirName = dot_extension_dir_name(ExtStr),
             globals.lookup_bool_option(Globals, use_grade_subdirs,
                 UseGradeSubdirs),
             (
@@ -1342,7 +1826,8 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
         )
     ;
-        Ext = newext_analysis(ExtStr),
+        Ext = newext_analysis(ExtAn),
+        ext_analysis_extension_dir(ExtAn, ExtStr, SubDirName),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
@@ -1350,7 +1835,6 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
-            SubDirName = dot_extension_dir_name(ExtStr),
             globals.lookup_bool_option(Globals, use_grade_subdirs,
                 UseGradeSubdirs),
             ( if
@@ -1365,9 +1849,9 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
                 % `--intermod-directories' is set so this will work.
                 not (
                     Search = do_search,
-                    ( ExtStr= ".analysis"
-                    ; ExtStr= ".imdg"
-                    ; ExtStr= ".request"
+                    ( ExtAn = ext_an_analysis
+                    ; ExtAn = ext_an_imdg
+                    ; ExtAn = ext_an_request
                     )
                 )
             then
@@ -1381,7 +1865,8 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
         )
     ;
-        Ext = newext_target_init_c(ExtStr),
+        Ext = newext_target_init_c(ExtInitC),
+        ext_init_c_extension_dir(ExtInitC, ExtStr, SubDirName),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
@@ -1389,8 +1874,6 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
-            expect(unify(ExtStr, "_init.c"), $pred, "ExtStr != _init.c"),
-            SubDirName = "cs",
             globals.lookup_bool_option(Globals, use_grade_subdirs,
                 UseGradeSubdirs),
             (
@@ -1406,8 +1889,12 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
         )
     ;
-        ( Ext = newext_target_obj(ExtStr)
-        ; Ext = newext_target_init_obj(ExtStr)
+        (
+            Ext = newext_target_obj(ExtObj),
+            ext_obj_extension_dir(ExtObj, ExtStr, SubDirName)
+        ;
+            Ext = newext_target_init_obj(ExtInitObj),
+            ext_init_obj_extension_dir(ExtInitObj, ExtStr, SubDirName)
         ),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
@@ -1416,17 +1903,6 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
-            % The original code that this code is derived from has
-            % this comment:
-            %
-            %   .$O, .pic_o and .lpic_o files need to go in the same directory,
-            %   so that using .$(EXT_FOR_PIC_OBJECTS) will work.
-            %
-            % XXX We stopped supporting lpic (linked-with-pic) files
-            % years ago, and we don't ever invoke filename translations
-            % with ".$(EXT_FOR_PIC_OBJECTS)" as the extension.
-            SubDirName = "os",
-
             % XXX EXT Why aren't object files for grades that differ in e.g.
             % whether debugging is enabled stored in grade-specific directories
             % if --use-grade-subdirs is enabled? The .c files that they are
@@ -1437,7 +1913,7 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
                 UseGradeSubdirs),
             ( if
                 UseGradeSubdirs = yes,
-                Ext = newext_target_init_obj("_init.$O")
+                Ext = newext_target_init_obj(ext_init_obj_dollar_o)
             then
                 make_grade_subdir_file_name_new(Globals, [SubDirName],
                     BaseNameNoExt, ExtStr, DirComponents, FileName)
@@ -1464,6 +1940,8 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
 %       record_translation(Search, MkDir, Ext, ModuleName, FileName, !TIO)
 %   ).
 
+/*
+ZZZ NOT NEEDED
     % Given an extension of the form .xyz, return the name of the directory
     % into which files with that etension should be put, i.e. xyzs.
     %
@@ -1478,6 +1956,7 @@ dot_extension_dir_name(ExtStr) = SubDirName :-
             [s(ExtStr)], Msg),
         unexpected($pred, Msg)
     ).
+*/
 
 %---------------------%
 
@@ -1531,115 +2010,6 @@ choose_file_name_new(Globals, _From, Search, OtherExt,
         choose_subdir_name_new(Globals, ExtStr, SubDirName),
         make_file_name_new(Globals, [SubDirName | BaseParentDirs],
             Search, BaseNameNoExt, OtherExt, DirComponents, FileName)
-    ).
-
-:- pred is_current_dir_extension_new(string::in, newext::out) is semidet.
-
-is_current_dir_extension_new(ExtStr, NewExt) :-
-    % Since the newext_executable_gs and newext_library_gs alternatives
-    % go in the current directory only with --no-use-grade-subdir, this 
-    % predicate is not well named. However, the transformation it performs
-    % will become unnecessary once we switch over to using newexts exclusively
-    % in the compiler, including at the call sites calling
-    % module_name_to_file_name and its variants.
-    %
-    % XXX While separating newext_executable_gs from newext_executable
-    % separating newext_library_gs from newext_library are needed to get 
-    % test_file_name_extensions to report no discrepancies, bootchecking
-    % the compiler with --use-grade-subdirs in a grade that targets C
-    % fails as soons as it tries to build the first .c file in the library.
-    % This is because --use-grade-subdirs is not *intended* to be actually
-    % usable with mmake.
-    %
-    % According to the documentation of the --user-grade subdirs option,
-    % *all* executables and libraries *should* be put into a grade subdir
-    % if that option is specified, not just some. They should then be
-    % copied or linked to the current directory.
-    (
-        % Executable files.
-        % XXX The Ext = "" here is wrong. While an empty extension
-        % *can* mean we are building the name of an executable,
-        % it can also mean we are building the name of a phony Mmakefile
-        % target for a library, such as libmer_std in the library
-        % directory.
-        ( ExtStr = ""
-        ; ExtStr = ".bat"
-        ),
-        NewExt = newext_executable_gs(ExtStr)
-    ;
-        ExtStr = ".exe",
-        NewExt = newext_executable(ExtStr)
-    ;
-        % Library files.
-        ( ExtStr = ".$A"
-        ; ExtStr = ".a"
-        ; ExtStr = ".dll"
-        ; ExtStr = ".init"
-        ; ExtStr = ".jar"
-        ),
-        NewExt = newext_library_gs(ExtStr)
-    ;
-        ( ExtStr = ".$(EXT_FOR_SHARED_LIB)"
-        ; ExtStr = ".dylib"     % references can be generated only via options
-        ; ExtStr = ".lib"
-        ; ExtStr = ".so"
-        ),
-        NewExt = newext_library(ExtStr)
-    ;
-        % Machine-dependent header files for generated C code.
-        % XXX There is no good reason for .mh files to be treated differently
-        % from .mih files.
-        ExtStr = ".mh",
-        NewExt = newext_mh(ExtStr)
-    ;
-        % Output files intended for use by the user.
-        % The MLDS dump files with extensions .c_dump* and .mih_dump*
-        % also fit into this category, but their filenames are constructed
-        % by getting the filenames for the .c and .mih extensions
-        % and adding a suffix to that.
-        ( ExtStr = ".dependency_graph"
-        ; ExtStr = ".err"
-        ; ExtStr = ".hlds_dump"
-        ; ExtStr = ".mlds_dump"
-        ; ExtStr = ".order"
-        ; ExtStr = ".ugly"
-        ),
-        NewExt = newext_user(ExtStr)
-    ;
-        ( ExtStr = ".defn_extents"
-        ; ExtStr = ".defn_line_counts"
-        ; ExtStr = ".defns"
-        ; ExtStr = ".imports_graph"
-        ; ExtStr = ".local_call_tree"
-        ; ExtStr = ".local_call_tree_order"
-        ; ExtStr = ".mode_constraints"
-        ; ExtStr = ".order_trans_opt"
-        ; ExtStr = ".type_repns"
-        ; ExtStr = ".xml"
-        ),
-        NewExt = newext_user_ngs(ExtStr)
-    ;
-        % Mmake targets.
-        ( ExtStr = ".all_int3s"
-        ; ExtStr = ".all_ints"
-        ; ExtStr = ".all_opts"
-        ; ExtStr = ".all_trans_opts"
-        ; ExtStr = ".check"
-        ; ExtStr = ".classes"
-        ; ExtStr = ".clean"
-        ; ExtStr = ".depend"
-        ; ExtStr = ".install_grade_hdrs"
-        ; ExtStr = ".install_hdrs"
-        ; ExtStr = ".install_ints"
-        ; ExtStr = ".install_opts"
-        ; ExtStr = ".int3s"
-        ; ExtStr = ".ints"
-        ; ExtStr = ".javas"
-        ; ExtStr = ".opts"
-        ; ExtStr = ".realclean"
-        ; ExtStr = ".trans_opts"
-        ),
-        NewExt = newext_mmake_target(ExtStr)
     ).
 
     % Decide which ext_other extensions go in which directories.
@@ -1761,59 +2131,8 @@ file_is_arch_or_grade_dependent_2_new(".dir").
 
 :- pred valid_other_newext(other_newext::in) is semidet.
 
-valid_other_newext(other_newext(ExtStr)) :-
-    % We define what string is valid as an argument of ext/1 negatively:
-    % any extension string is valid as an argument of ext/1 *unless*
-    % it has some other representation.
-    not (
-        ExtStr = ".m"       % ext_src
-    ;
-        is_current_dir_extension_new(ExtStr, _)
-    ;
-        ( ExtStr = ".d"
-        ; ExtStr = ".dv"
-        ; ExtStr = ".dep"
-        ; ExtStr = ".int0"
-        ; ExtStr = ".int"
-        ; ExtStr = ".int2"
-        ; ExtStr = ".int3"
-        ; ExtStr = ".date0"
-        ; ExtStr = ".date"
-        ; ExtStr = ".date3"
-        ; ExtStr = ".opt"
-        ; ExtStr = ".trans_opt"
-        ; ExtStr = ".optdate"
-        ; ExtStr = ".trans_opt_date"
-        ; ExtStr = ".mih"
-        ; ExtStr = ".class"
-        ; ExtStr = ".java"
-        ; ExtStr = ".java_date"
-        ; ExtStr = ".cs"
-        ; ExtStr = ".cs_date"
-        ; ExtStr = ".c"
-        ; ExtStr = ".c_date"
-        ; ExtStr = ".o"
-        ; ExtStr = ".pic_o"
-        ; ExtStr = ".$O"
-        ; ExtStr = "_init.c"
-        ; ExtStr = "_init.$O"
-        ; ExtStr = "_init.o"
-        ; ExtStr = "_init.pic_o"
-        ; ExtStr = ".mbc"
-        ; ExtStr = ".bytedebug"
-        ; ExtStr = ".analysis"
-        ; ExtStr = ".analysis_date"
-        ; ExtStr = ".analysis_status"
-        ; ExtStr = ".imdg"
-        ; ExtStr = ".request"
-        ; ExtStr = ".module_dep"
-        ; ExtStr = ".used"
-        ; ExtStr = ".track_flags"
-        ; ExtStr = ".prof"
-        ; ExtStr = ".err_date"
-        ; ExtStr = ".dir/*.$O"
-        )
-    ).
+valid_other_newext(_) :-
+    semidet_fail.
 
 % XXX END OF CODE DUPLICATION
 
@@ -1930,7 +2249,7 @@ all_extensions(Globals) = AllExtensionStrs :-
 
 % We don't test the .m extension, since that is handled separately
 % by module_name_to_source_file_name.
-string_extensions = 
+string_extensions =
     ["",
     ".$A",
     ".$O",
