@@ -975,7 +975,7 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
             % outside file_names.m.
 
     ;       newext_mh(string)
-            % Machine-dependent header files for generated C code.
+            % Information about Mercury code exported to outside C code.
             % The extension string is ".mh".
 
     ;       newext_mih(string)
@@ -990,18 +990,25 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
 
     ;       newext_user_ngs(string)
             % Compiler-generated files that are intended to be read
-            % by the programmer, such as .err files, which will be put
-            % into the current directory with --no-use-sibdirs, but which
+            % by the programmer, such as .defns files, which will be put
+            % into the current directory with --no-use-subdirs, but which
             % will be put into a non-grade-specific subdirectory with
             % --use-subdirs.
 
     ;       newext_mmake_target(string)
             % These suffixes are used not to create filenames, but to
-            % create mmake target names. So do refer to real files,
-            % but they can (and some do) refer to these using exnetsion
+            % create mmake target names. Some do refer to real files,
+            % but they can (and some do) refer to these using extension
             % strings that can contain references to make variables.
             % Some of the other generated make targets are phony targets,
             % meaning that they never correspond to real files at all.
+
+    ;       newext_mmake_var_ngs(string)
+    ;       newext_mmake_var_gs(string)
+            % These suffixes are used not to create filenames, but to
+            % create mmake variable names.
+
+    ;       newext_track_flags(string)
 
     ;       newext_mmakefile_fragment(string)
             % Compiler-generated files that are designed to be bodily included
@@ -1026,6 +1033,10 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
     ;       newext_target_init_obj(string)
     ;       newext_target_obj(string)
 
+    ;       newext_bytecode(string)
+
+    ;       newext_analysis(string)
+
     ;       newext_other(other_newext).
             % The general case. The extension string must not be covered
             % by any of the other cases above.
@@ -1036,6 +1047,10 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
 :- func make_new_extension(string) = newext.
 
 make_new_extension(Str) = NewExt :-
+    % The classifications marked "DODGY" below select a path in
+    % module_name_to_file_name_ext_new that computes the right filename
+    % (the filename computed by old code), but the name of their category
+    % may not be applicable.
     ( if Str = ".m" then
         NewExt = newext_src
     else if is_current_dir_extension_new(Str, NewExtPrime) then
@@ -1072,8 +1087,27 @@ make_new_extension(Str) = NewExt :-
         NewExt = newext_target_init_c(Str)
     else if ( Str = "_init.$O" ; Str = "_init.o" ; Str = "_init.pic_o" ) then
         NewExt = newext_target_init_obj(Str)
+    else if ( Str = ".mbc"; Str = ".bytedebug" ) then
+        NewExt = newext_bytecode(Str)
+    else if ( Str = ".analysis" ; Str = ".request" ; Str = ".imdg" ) then
+        NewExt = newext_analysis(Str)
+    else if ( Str = ".analysis_date"; Str = ".analysis_status" ) then
+        NewExt = newext_analysis(Str)
+    else if Str = ".module_dep" then
+        NewExt = newext_mmake_var_ngs(Str)  % DODGY
+    else if Str = ".prof" then
+        NewExt = newext_mmake_var_ngs(Str)  % DODGY
+    else if Str = ".err_date" then
+        NewExt = newext_mmake_var_ngs(Str)  % DODGY
+    else if Str = ".used" then
+        NewExt = newext_mmake_var_gs(Str)
+    else if Str = ".track_flags" then
+        NewExt = newext_track_flags(Str)
+    else if Str = ".dir/*.$O" then
+        NewExt = newext_mmakefile_fragment(Str) % DODGY
     else
-        NewExt = newext_other(other_newext(Str))
+        NewExt = newext_other(other_newext(Str)),
+        unexpected($pred, "ext_other")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1173,6 +1207,8 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
         ( Ext = newext_user_ngs(ExtStr)
         ; Ext = newext_int(ExtStr)
         ; Ext = newext_int_date(ExtStr)
+        ; Ext = newext_bytecode(ExtStr)
+        ; Ext = newext_mmake_var_ngs(ExtStr) % XXX Probably never used.
         ),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
@@ -1198,6 +1234,8 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             UseSubdirs = yes,
             ( if ExtStr = ".dv" then
                 SubDirName = "deps"
+            else if ExtStr = ".dir/*.$O" then
+                SubDirName = "dirs"
             else
                 SubDirName = dot_extension_dir_name(ExtStr)
             ),
@@ -1278,6 +1316,8 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
         ; Ext = newext_target_cs(ExtStr)
         ; Ext = newext_target_cs_date(ExtStr)
         ; Ext = newext_target_java_date(ExtStr)
+        ; Ext = newext_mmake_var_gs(ExtStr) % XXX Probably never used.
+        ; Ext = newext_track_flags(ExtStr) % XXX Probably never used.
         ),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
@@ -1298,6 +1338,45 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
                 UseGradeSubdirs = yes,
                 make_grade_subdir_file_name_new(Globals, [SubDirName],
                     BaseNameNoExt, ExtStr, DirComponents, FileName)
+            ),
+            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
+    ;
+        Ext = newext_analysis(ExtStr),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseSubdirs = yes,
+            SubDirName = dot_extension_dir_name(ExtStr),
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubdirs),
+            ( if
+                UseGradeSubdirs = yes,
+                % XXX The code from which this code is derived had this
+                % comment, which I (zs) don't think adequately describes
+                % the logic behind this confusing code:
+                %
+                % If we are searching for (rather than writing) the file,
+                % just search % in Mercury/<ext>s. This is so that searches
+                % for files in installed libraries work.
+                % `--intermod-directories' is set so this will work.
+                not (
+                    Search = do_search,
+                    ( ExtStr= ".analysis"
+                    ; ExtStr= ".imdg"
+                    ; ExtStr= ".request"
+                    )
+                )
+            then
+                make_grade_subdir_file_name_new(Globals, [SubDirName],
+                    BaseNameNoExt, ExtStr, DirComponents, FileName)
+            else
+                DirComponents = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirComponents,
+                    BaseNameNoExt, ExtStr)
             ),
             maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
         )
@@ -1375,7 +1454,8 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             BaseParentDirs, BaseNameNoExt),
         choose_file_name_new(Globals, From, Search, OtherExt,
             BaseParentDirs, BaseNameNoExt, DirComponents, FileName),
-        maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        maybe_create_dirs_on_path(MkDir, DirComponents, !IO),
+        unexpected($pred, "newext_other")
     ).
 % XXX NOT YET UPDATED FOR NEWEXT
 %   trace [compile_time(flag("file_name_translations")),
@@ -1601,26 +1681,14 @@ choose_subdir_name_new(Globals, ExtStr, SubDirName) :-
 :- pred make_file_name_new(globals::in, list(dir_name)::in, maybe_search::in,
     file_name::in, other_newext::in, list(string)::out, file_name::out) is det.
 
-make_file_name_new(Globals, SubDirNames, Search, BaseNameNoExt, OtherExt,
+make_file_name_new(Globals, SubDirNames, _Search, BaseNameNoExt, OtherExt,
         DirComponents, FileName) :-
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     OtherExt = other_newext(ExtStr),
     ( if
         UseGradeSubdirs = yes,
-        file_is_arch_or_grade_dependent_new(Globals, OtherExt),
-
-        % If we are searching for (rather than writing) the file, just search
-        % in Mercury/<ext>s. This is so that searches for files in installed
-        % libraries work. `--intermod-directories' is set so this will work.
-
-        not (
-            Search = do_search,
-            ( ExtStr= ".analysis"
-            ; ExtStr= ".imdg"
-            ; ExtStr= ".request"
-            )
-        )
+        file_is_arch_or_grade_dependent_new(Globals, OtherExt)
     then
         make_grade_subdir_file_name_new(Globals, SubDirNames,
             BaseNameNoExt, ExtStr, DirComponents, FileName)
@@ -1689,14 +1757,7 @@ file_is_arch_or_grade_dependent_new(Globals, OtherExt) :-
     % The `.used' file isn't grade dependent itself, but it contains
     % information collected while compiling a grade-dependent `.c', `.cs',
     % etc file.
-file_is_arch_or_grade_dependent_2_new(".analysis").
-file_is_arch_or_grade_dependent_2_new(".analysis_date").
-file_is_arch_or_grade_dependent_2_new(".analysis_status").
 file_is_arch_or_grade_dependent_2_new(".dir").
-file_is_arch_or_grade_dependent_2_new(".imdg").
-file_is_arch_or_grade_dependent_2_new(".request").
-file_is_arch_or_grade_dependent_2_new(".track_flags").
-file_is_arch_or_grade_dependent_2_new(".used").
 
 :- pred valid_other_newext(other_newext::in) is semidet.
 
@@ -1738,6 +1799,19 @@ valid_other_newext(other_newext(ExtStr)) :-
         ; ExtStr = "_init.$O"
         ; ExtStr = "_init.o"
         ; ExtStr = "_init.pic_o"
+        ; ExtStr = ".mbc"
+        ; ExtStr = ".bytedebug"
+        ; ExtStr = ".analysis"
+        ; ExtStr = ".analysis_date"
+        ; ExtStr = ".analysis_status"
+        ; ExtStr = ".imdg"
+        ; ExtStr = ".request"
+        ; ExtStr = ".module_dep"
+        ; ExtStr = ".used"
+        ; ExtStr = ".track_flags"
+        ; ExtStr = ".prof"
+        ; ExtStr = ".err_date"
+        ; ExtStr = ".dir/*.$O"
         )
     ).
 
