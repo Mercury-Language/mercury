@@ -259,7 +259,8 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
     (
         TmpErrorLinesRes = ok(TmpErrorLines),
         module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(other_ext(".err")), ModuleName, ErrorFileName, !IO),
+            ext_other(other_ext(".err")), newext_user(ext_user_err),
+            ModuleName, ErrorFileName, !IO),
         ( if set.member(ModuleName, !.Info ^ mki_error_file_modules) then
             io.open_append(ErrorFileName, ErrorFileRes, !IO)
         else

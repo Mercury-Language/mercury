@@ -555,7 +555,9 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
             % The `.err_date' file is needed because the `.err' file is touched
             % by all phases of compilation, including writing interfaces.
             touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
-                ModuleName, other_ext(".err_date"), TouchSucceeded, !IO),
+                ModuleName, other_ext(".err_date"),
+                newext_misc_ngs(ext_misc_ngs_err_date),
+                TouchSucceeded, !IO),
             Succeeded = CompileSucceeded `and` TouchSucceeded
         else
             Succeeded = CompileSucceeded
@@ -583,8 +585,9 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
             Succeeded, !IO)
     ;
         Task = fact_table_code_to_object_code(PIC, FactTableFileName),
-        ObjExt = get_object_extension(Globals, PIC),
-        get_fact_table_foreign_code_file(Globals, do_create_dirs, ObjExt,
+        get_object_extension(Globals, PIC, ObjExt, ObjNewExt),
+        get_fact_table_foreign_code_file(Globals, do_create_dirs,
+            ObjExt, newext_target_obj(ObjNewExt),
             FactTableFileName, FactTableForeignCode, !IO),
 
         % Run the compilation in a child process so it can be killed
@@ -608,13 +611,16 @@ build_object_code(Globals, ModuleName, Target, PIC,
     ;
         Target = target_java,
         module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(other_ext(".java")), ModuleName, JavaFile, !IO),
+            ext_other(other_ext(".java")),
+            newext_target_java(ext_target_java_java),
+            ModuleName, JavaFile, !IO),
         compile_java_files(Globals, ProgressStream, ErrorStream,
             JavaFile, [], Succeeded, !IO)
     ;
         Target = target_csharp,
         module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(other_ext(".cs")), ModuleName, CsharpFile, !IO),
+            ext_other(other_ext(".cs")), newext_target_c_cs(ext_target_cs),
+            ModuleName, CsharpFile, !IO),
         compile_target_code.link(Globals, ProgressStream, ErrorStream,
             csharp_library, ModuleName, [CsharpFile], Succeeded, !IO)
     ).
@@ -658,21 +664,23 @@ do_task_in_separate_process(task_make_xml_doc) = yes.
 
 get_foreign_code_file(Globals, ModuleName, PIC, Lang, ForeignCodeFile, !IO) :-
     foreign_language_module_name(ModuleName, Lang, ForeignModName),
-    foreign_language_file_extension(Lang, SrcExt),
-    ObjOtherExt = get_object_extension(Globals, PIC),
+    foreign_language_file_extension(Lang, SrcExt, SrcNewExt),
+    get_object_extension(Globals, PIC, ObjOtherExt, ObjNewExt),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(SrcExt), ForeignModName, SrcFileName, !IO),
+        ext_other(SrcExt), SrcNewExt, ForeignModName, SrcFileName, !IO),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(ObjOtherExt), ForeignModName, ObjFileName, !IO),
+        ext_other(ObjOtherExt), newext_target_obj(ObjNewExt),
+        ForeignModName, ObjFileName, !IO),
     ForeignCodeFile = foreign_code_file(Lang, SrcFileName, ObjFileName).
 
-:- func get_object_extension(globals, pic) = other_ext.
+:- pred get_object_extension(globals::in, pic::in,
+    other_ext::out, ext_obj::out) is det.
 
-get_object_extension(Globals, PIC) = OtherExt :-
+get_object_extension(Globals, PIC, OtherExt, NewExtObj) :-
     globals.get_target(Globals, CompilationTarget),
     (
         CompilationTarget = target_c,
-        pic_object_file_extension(Globals, PIC, OtherExt)
+        pic_object_file_extension(Globals, PIC, OtherExt, NewExtObj, _)
     ;
         CompilationTarget = target_csharp,
         sorry($pred, "object extension for csharp")
@@ -970,8 +978,9 @@ find_files_maybe_touched_by_task(Globals, TargetFile, Task,
     ;
         Task = fact_table_code_to_object_code(PIC, FactTableName),
         TouchedTargetFiles = [TargetFile],
-        ObjOtherExt = get_object_extension(Globals, PIC),
-        fact_table_file_name(Globals, $pred, do_create_dirs, ObjOtherExt,
+        get_object_extension(Globals, PIC, ObjOtherExt, ObjNewExt),
+        fact_table_file_name(Globals, $pred, do_create_dirs,
+            ObjOtherExt, newext_target_obj(ObjNewExt),
             FactTableName, FactTableObjectFile, !IO),
         TouchedFileNames = [FactTableObjectFile]
     ).
@@ -1095,9 +1104,11 @@ find_files_maybe_touched_by_process_module(Globals, TargetFile, Task,
 gather_target_file_timestamp_file_names(Globals, TouchedTargetFile,
         !TimestampFileNames, !IO) :-
     TouchedTargetFile = target_file(TargetModuleName, TargetType),
-    ( if timestamp_extension(TargetType, TimestampOtherExt) then
+    ( if
+        timestamp_extension(TargetType, TimestampOtherExt, TimestampNewExt)
+    then
         module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            ext_other(TimestampOtherExt),
+            ext_other(TimestampOtherExt), TimestampNewExt,
             TargetModuleName, TimestampFile, !IO),
         list.cons(TimestampFile, !TimestampFileNames)
     else
@@ -1113,7 +1124,7 @@ external_foreign_code_files(Globals, PIC, ModuleDepInfo, ForeignFiles, !IO) :-
     % Any changes here may require corresponding changes in
     % get_foreign_object_targets.
 
-    pic_object_file_extension(Globals, PIC, ObjExt),
+    pic_object_file_extension(Globals, PIC, ObjExt, ObjNewExt, _),
     globals.get_target(Globals, CompilationTarget),
 
     % None of the current backends require externally compiled foreign code,
@@ -1123,7 +1134,7 @@ external_foreign_code_files(Globals, PIC, ModuleDepInfo, ForeignFiles, !IO) :-
         module_dep_info_get_fact_tables(ModuleDepInfo, FactTableFiles),
         list.map_foldl(
             get_fact_table_foreign_code_file(Globals, do_not_create_dirs,
-                ObjExt),
+                ObjExt, newext_target_obj(ObjNewExt)),
             set.to_sorted_list(FactTableFiles), FactTableForeignFiles, !IO),
         ForeignFiles = FactTableForeignFiles
     ;
@@ -1134,16 +1145,17 @@ external_foreign_code_files(Globals, PIC, ModuleDepInfo, ForeignFiles, !IO) :-
     ).
 
 :- pred get_fact_table_foreign_code_file(globals::in, maybe_create_dirs::in,
-    other_ext::in, file_name::in, foreign_code_file::out,
+    other_ext::in, newext::in, file_name::in, foreign_code_file::out,
     io::di, io::uo) is det.
 
-get_fact_table_foreign_code_file(Globals, Mkdir, ObjOtherExt,
+get_fact_table_foreign_code_file(Globals, Mkdir, ObjOtherExt, ObjNewExt,
         FactTableFileName, ForeignCodeFile, !IO) :-
     % XXX EXT Neither of these calls should be needed.
     fact_table_file_name(Globals, $pred, Mkdir,
-        other_ext(".c"), FactTableFileName, FactTableCFileName, !IO),
+        other_ext(".c"), newext_target_c_cs(ext_target_c),
+        FactTableFileName, FactTableCFileName, !IO),
     fact_table_file_name(Globals, $pred, Mkdir,
-        ObjOtherExt, FactTableFileName, FactTableObjFileName, !IO),
+        ObjOtherExt, ObjNewExt, FactTableFileName, FactTableObjFileName, !IO),
     ForeignCodeFile =
         foreign_code_file(lang_c, FactTableCFileName, FactTableObjFileName).
 

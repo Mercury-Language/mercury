@@ -249,7 +249,8 @@ write_usage_file(ModuleInfo, UsedFileContents, !IO) :-
 
     module_info_get_name(ModuleInfo, ModuleName),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(other_ext(".used")), ModuleName, FileName, !IO),
+        ext_other(other_ext(".used")), newext_misc_gs(ext_misc_gs_used),
+        ModuleName, FileName, !IO),
     io.open_output(FileName, FileResult, !IO),
     (
         FileResult = ok(FileStream),
@@ -565,7 +566,7 @@ module_name_and_used_items_to_string(UsedFileContents,
         _ResolvedUsedItems, _UsedClasses, _ImportedItems, ModuleInstances),
     map.lookup(TimestampMap, ModuleName,
         module_timestamp(FileKind, ModuleTimestamp, RecompNeedQual)),
-    file_kind_to_extension(FileKind, ExtStr, _Ext),
+    file_kind_to_extension(FileKind, ExtStr, _Ext, _NewExt),
     (
         RecompNeedQual = recomp_avail_src,
         ImportStr = "src"
@@ -636,7 +637,8 @@ module_name_and_used_items_to_string(UsedFileContents,
 
 read_used_file_for_module(Globals, ModuleName, ReadUsedFileResult, !IO) :-
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(other_ext(".used")), ModuleName, UsedFileName, !IO),
+        ext_other(other_ext(".used")), newext_misc_gs(ext_misc_gs_used),
+        ModuleName, UsedFileName, !IO),
     io.read_named_file_as_string(UsedFileName, MaybeUsedFileString, !IO),
     (
         MaybeUsedFileString = ok(UsedFileString),

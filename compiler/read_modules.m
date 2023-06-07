@@ -789,14 +789,14 @@ read_module_begin_from_file(Globals, ReadReasonMsg, Search,
 
 read_module_begin(Globals, ReadReasonMsg, Search, ModuleName, FileKind,
         FileName, ReadDoneMsg, SearchDirs, !IO) :-
-    file_kind_to_extension(FileKind, _ExtStr, Ext),
+    file_kind_to_extension(FileKind, _ExtStr, Ext, NewExt),
     % The rest of this predicate should be kept in sync
     % with read_module_begin_from_file.
     (
         Search = do_search,
         % XXX CLEANUP We should either pass SearchDirs to
         % module_name_to_search_file_name, or get it to give SearchDirs to us.
-        module_name_to_search_file_name(Globals, $pred, Ext,
+        module_name_to_search_file_name(Globals, $pred, Ext, NewExt,
             ModuleName, FileName, !IO),
         (
             ( FileKind = fk_src
@@ -811,8 +811,8 @@ read_module_begin(Globals, ReadReasonMsg, Search, ModuleName, FileKind,
         )
     ;
         Search = do_not_search,
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs, Ext,
-            ModuleName, FileName, !IO),
+        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            Ext, NewExt, ModuleName, FileName, !IO),
         SearchDirs = [dir.this_directory]
     ),
     output_read_reason_msg(Globals, ReadReasonMsg, FileName, ReadDoneMsg, !IO).

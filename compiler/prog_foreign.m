@@ -138,9 +138,9 @@
     % XXX Actually, all the foreign languages we handle *now* *do*
     % generate external files. (The exception used to be Erlang.)
     %
-:- pred foreign_language_file_extension(foreign_language, other_ext).
+:- pred foreign_language_file_extension(foreign_language, other_ext, newext).
 % :- mode foreign_language_file_extension(in(lang_gen_ext_file), out) is det.
-:- mode foreign_language_file_extension(in, out) is det.
+:- mode foreign_language_file_extension(in, out, out) is det.
 
     % It is possible that more than one foreign language could be used to
     % implement a particular piece of code. Therefore, foreign languages
@@ -288,7 +288,7 @@ handle_std_library(CurrentModule, ModuleName0) = ModuleName :-
 
 foreign_language_module_name(ModuleName, Lang, FullyQualifiedModuleName) :-
     % Only succeed if this language generates external files.
-    foreign_language_file_extension(Lang, _),
+    foreign_language_file_extension(Lang, _, _),
 
     Ending = "__" ++ simple_foreign_language_string(Lang) ++ "_code",
     (
@@ -301,11 +301,14 @@ foreign_language_module_name(ModuleName, Lang, FullyQualifiedModuleName) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma no_determinism_warning(pred(foreign_language_file_extension/2)).
+:- pragma no_determinism_warning(pred(foreign_language_file_extension/3)).
 
-foreign_language_file_extension(lang_c,      other_ext(".c")).
-foreign_language_file_extension(lang_csharp, other_ext(".cs")).
-foreign_language_file_extension(lang_java,   other_ext(".java")).
+foreign_language_file_extension(lang_c,
+    other_ext(".c"),    newext_target_c_cs(ext_target_c)).
+foreign_language_file_extension(lang_csharp,
+    other_ext(".cs"),   newext_target_c_cs(ext_target_cs)).
+foreign_language_file_extension(lang_java,
+    other_ext(".java"), newext_target_java(ext_target_java_java)).
 
 %-----------------------------------------------------------------------------%
 

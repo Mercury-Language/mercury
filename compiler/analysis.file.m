@@ -215,7 +215,8 @@ analysis_status_to_string(optimal, "optimal").
 
 read_module_overall_status(Compiler, Globals, ModuleName, ModuleStatus, !IO) :-
     module_name_to_read_file_name(Compiler, Globals,
-        analysis_registry_status_ext, ModuleName, MaybeFileName, !IO),
+        analysis_registry_status_ext, newext_analysis(ext_an_status),
+        ModuleName, MaybeFileName, !IO),
     (
         MaybeFileName = ok(FileName),
         read_module_overall_status_2(FileName, ModuleStatus0, !IO)
@@ -228,7 +229,8 @@ read_module_overall_status(Compiler, Globals, ModuleName, ModuleStatus, !IO) :-
     (
         ModuleStatus0 = optimal,
         module_name_to_read_file_name(Compiler, Globals,
-            request_ext, ModuleName, MaybeRequestFileName, !IO),
+            request_ext, newext_analysis(ext_an_request),
+            ModuleName, MaybeRequestFileName, !IO),
         (
             % There are outstanding requests for this module.
             MaybeRequestFileName = ok(_),
@@ -285,7 +287,8 @@ read_module_overall_status_2(FileName, ModuleStatus, !IO) :-
 
 write_module_overall_status(Info, Globals, ModuleName, Status, !IO) :-
     module_name_to_write_file_name(Info ^ compiler, Globals,
-        analysis_registry_status_ext, ModuleName, FileName, !IO),
+        analysis_registry_status_ext, newext_analysis(ext_an_status),
+        ModuleName, FileName, !IO),
     io.open_output(FileName, OpenResult, !IO),
     (
         OpenResult = ok(Stream),
@@ -317,7 +320,8 @@ read_module_analysis_results(Info, Globals, ModuleName, ModuleResults,
     % as we want to know which results change after we reanalyse the module.
     Compiler = Info ^ compiler,
     module_name_to_read_file_name(Compiler, Globals,
-        analysis_registry_ext, ModuleName, MaybeAnalysisFileName, !IO),
+        analysis_registry_ext, newext_analysis(ext_an_analysis),
+        ModuleName, MaybeAnalysisFileName, !IO),
     (
         MaybeAnalysisFileName = ok(AnalysisFileName),
 
@@ -479,7 +483,8 @@ write_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
     ),
     find_and_write_analysis_file(Info ^ compiler, Globals,
         add_dot_temp, write_result_entry,
-        analysis_registry_ext, ModuleName, ModuleResults, FileName, !IO),
+        analysis_registry_ext, newext_analysis(ext_an_analysis),
+        ModuleName, ModuleResults, FileName, !IO),
     update_interface_return_changed(Globals, ModuleName, FileName,
         UpdateResult, !IO),
 
@@ -522,7 +527,8 @@ write_result_entry(OutStream, AnalysisName, FuncId, Result, !IO) :-
 read_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
         !Specs, !IO) :-
     find_and_read_analysis_file(Info ^ compiler, Globals,
-        parse_request_entry(Info ^ compiler), request_ext, ModuleName,
+        parse_request_entry(Info ^ compiler),
+        request_ext, newext_analysis(ext_an_request), ModuleName,
         map.init, ModuleRequests, !Specs, !IO).
 
 :- pred parse_request_entry(Compiler::in, varset::in, term::in,
@@ -578,7 +584,8 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
         !IO) :-
     Compiler = Info ^ compiler,
     module_name_to_write_file_name(Compiler, Globals,
-        request_ext, ModuleName, AnalysisFileName, !IO),
+        request_ext, newext_analysis(ext_an_request),
+        ModuleName, AnalysisFileName, !IO),
     get_debug_analysis_stream(MaybeDebugStream, !IO),
     (
         MaybeDebugStream = no
@@ -659,7 +666,8 @@ write_request_entry(Compiler, OutStream, AnalysisName, FuncId, Request, !IO) :-
 
 read_module_imdg(Info, Globals, ModuleName, ModuleEntries, Specs, !IO) :-
     find_and_read_analysis_file(Info ^ compiler, Globals,
-        parse_imdg_arc(Info ^ compiler), imdg_ext, ModuleName,
+        parse_imdg_arc(Info ^ compiler),
+        imdg_ext, newext_analysis(ext_an_imdg), ModuleName,
         map.init, ModuleEntries, [], Specs, !IO).
 
 :- pred parse_imdg_arc(Compiler::in, varset::in, term::in,
@@ -715,7 +723,8 @@ parse_imdg_arc(Compiler, VarSet, Term, !Arcs, !Specs) :-
 write_module_imdg(Info, Globals, ModuleName, ModuleEntries, !IO) :-
     find_and_write_analysis_file(Info ^ compiler, Globals,
         do_not_add_dot_temp, write_imdg_arc(Info ^ compiler),
-        imdg_ext, ModuleName, ModuleEntries, _FileName, !IO).
+        imdg_ext, newext_analysis(ext_an_imdg), ModuleName,
+        ModuleEntries, _FileName, !IO).
 
 :- pred write_imdg_arc(Compiler::in, io.text_output_stream::in,
     analysis_name::in, func_id::in, imdg_arc::in, io::di, io::uo) is det
@@ -771,14 +780,15 @@ try_parse_module_name(Term, ModuleName) :-
 %---------------------%
 
 :- pred find_and_read_analysis_file(Compiler::in, globals::in,
-    parse_entry(T)::in(parse_entry), other_ext::in, module_name::in,
-    T::in, T::out, list(error_spec)::in, list(error_spec)::out,
+    parse_entry(T)::in(parse_entry), other_ext::in, newext::in,
+    module_name::in, T::in, T::out,
+    list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det <= compiler(Compiler).
 
 find_and_read_analysis_file(Compiler, Globals, ParseEntry,
-        OtherExt, ModuleName, !ModuleResults, !Specs, !IO) :-
+        OtherExt, NewExt, ModuleName, !ModuleResults, !Specs, !IO) :-
     module_name_to_read_file_name(Compiler, Globals,
-        OtherExt, ModuleName, MaybeAnalysisFileName, !IO),
+        OtherExt, NewExt, ModuleName, MaybeAnalysisFileName, !IO),
     (
         MaybeAnalysisFileName = ok(AnalysisFileName),
         read_analysis_file(AnalysisFileName, ParseEntry,
@@ -932,12 +942,13 @@ func_id_to_string(FuncId) = String :-
 
 :- pred find_and_write_analysis_file(Compiler::in, globals::in,
     maybe_add_dot_temp::in, write_entry(T)::in(write_entry),
-    other_ext::in, module_name::in, module_analysis_map(T)::in, string::out,
-    io::di, io::uo) is det <= compiler(Compiler).
+    other_ext::in, newext::in, module_name::in,
+    module_analysis_map(T)::in, string::out, io::di, io::uo) is det
+    <= compiler(Compiler).
 
 find_and_write_analysis_file(Compiler, Globals, ToTmp, WriteEntry,
-        OtherExt, ModuleName, ModuleResults, FileName, !IO) :-
-    module_name_to_write_file_name(Compiler, Globals, OtherExt,
+        OtherExt, NewExt, ModuleName, ModuleResults, FileName, !IO) :-
+    module_name_to_write_file_name(Compiler, Globals, OtherExt, NewExt,
         ModuleName, FileName, !IO),
     (
         ToTmp = add_dot_temp,
@@ -999,7 +1010,8 @@ write_module_analysis_func(OutStream, WriteEntry, AnalysisName, FuncId,
 
 empty_request_file(Info, Globals, ModuleName, !IO) :-
     module_name_to_write_file_name(Info ^ compiler, Globals,
-        request_ext, ModuleName, RequestFileName, !IO),
+        request_ext, newext_analysis(ext_an_request),
+        ModuleName, RequestFileName, !IO),
     get_debug_analysis_stream(MaybeDebugStream, !IO),
     (
         MaybeDebugStream = no

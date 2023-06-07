@@ -1124,7 +1124,7 @@ maybe_log_augment_decision(Why, IntFileKind, ReadWhy, ModuleName, Read, !IO) :-
         runtime(env("LOG_AUGMENT_DECISION")), io(!TIO)]
     (
         ModuleNameStr = sym_name_to_string(ModuleName),
-        int_file_kind_to_extension(IntFileKind, ExtStr, _Ext),
+        int_file_kind_to_extension(IntFileKind, ExtStr, _Ext, _NewExt),
         WhyStr = string.string(ReadWhy),
         (
             Read = decided_not_to_read,

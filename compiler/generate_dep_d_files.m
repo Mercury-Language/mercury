@@ -218,7 +218,8 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
         (
             OutputOrder = yes,
             digraph.atsort(ImpDepsGraph, ImpDepsOrdering),
-            output_module_order(Globals, ModuleName, other_ext(".order"),
+            output_module_order(Globals, ModuleName,
+                other_ext(".order"), newext_user(ext_user_order),
                 ImpDepsOrdering, !IO)
         ;
             OutputOrder = no
@@ -307,7 +308,9 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
         (
             OutputOrder = yes,
             output_module_order(Globals, ModuleName,
-                other_ext(".order_trans_opt"), TransOptDepsOrdering0, !IO)
+                other_ext(".order_trans_opt"),
+                newext_user_ngs(ext_user_ngs_order_to),
+                TransOptDepsOrdering0, !IO)
         ;
             OutputOrder = no
         ),
@@ -316,7 +319,8 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
         list.condense(TransOptDepsOrdering1, TransOptDepsOrdering),
         globals.lookup_accumulating_option(Globals, intermod_directories,
             IntermodDirs),
-        get_opt_deps(Globals, yes, IntermodDirs, other_ext(".trans_opt"),
+        get_opt_deps(Globals, yes, IntermodDirs,
+            other_ext(".trans_opt"), newext_opt(ext_opt_trans),
             TransOptDepsOrdering, TransOptOrder, !IO),
         (
             Mode = output_d_file_only,
@@ -389,7 +393,9 @@ maybe_output_imports_graph(Globals, ModuleName, IntDepsGraph, ImpDepsGraph,
     (
         ImportsGraph = yes,
         module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(other_ext(".imports_graph")), ModuleName, FileName, !IO),
+            ext_other(other_ext(".imports_graph")),
+            newext_user_ngs(ext_user_ngs_imports_graph),
+            ModuleName, FileName, !IO),
         (
             Verbose = no,
             MaybeProgressStream = no

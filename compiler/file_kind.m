@@ -48,11 +48,12 @@
     --->    ofk_opt
     ;       ofk_trans_opt.
 
-:- pred file_kind_to_extension(file_kind::in, string::out, ext::out) is det.
+:- pred file_kind_to_extension(file_kind::in, string::out,
+    ext::out, newext::out) is det.
 :- pred int_file_kind_to_extension(int_file_kind::in,
-    string::out, other_ext::out) is det.
+    string::out, other_ext::out, newext::out) is det.
 :- pred opt_file_kind_to_extension(opt_file_kind::in,
-    string::out, other_ext::out) is det.
+    string::out, other_ext::out, newext::out) is det.
 
 :- pred extension_to_file_kind(string::in, file_kind::out) is semidet.
 
@@ -60,20 +61,27 @@
 
 :- implementation.
 
-file_kind_to_extension(fk_src, ".m", ext_src).
-file_kind_to_extension(fk_int(IntFileKind), ExtStr, ext_other(OtherExt)) :-
-    int_file_kind_to_extension(IntFileKind, ExtStr, OtherExt).
-file_kind_to_extension(fk_opt(OptFileKind), ExtStr, ext_other(OtherExt)) :-
-    opt_file_kind_to_extension(OptFileKind, ExtStr, OtherExt).
+file_kind_to_extension(fk_src, ".m", ext_src, newext_src).
+file_kind_to_extension(fk_int(IntFileKind), ExtStr,
+        ext_other(OtherExt), NewExt) :-
+    int_file_kind_to_extension(IntFileKind, ExtStr, OtherExt, NewExt).
+file_kind_to_extension(fk_opt(OptFileKind), ExtStr,
+        ext_other(OtherExt), NewExt) :-
+    opt_file_kind_to_extension(OptFileKind, ExtStr, OtherExt, NewExt).
 
-int_file_kind_to_extension(ifk_int0, ".int0", other_ext(".int0")).
-int_file_kind_to_extension(ifk_int2, ".int2", other_ext(".int2")).
-int_file_kind_to_extension(ifk_int3, ".int3", other_ext(".int3")).
-int_file_kind_to_extension(ifk_int1, ".int", other_ext(".int")).
+int_file_kind_to_extension(ifk_int0, ".int0",
+    other_ext(".int0"), newext_int(ext_int_int0)).
+int_file_kind_to_extension(ifk_int1, ".int",
+    other_ext(".int"),  newext_int(ext_int_int1)).
+int_file_kind_to_extension(ifk_int2, ".int2",
+    other_ext(".int2"), newext_int(ext_int_int2)).
+int_file_kind_to_extension(ifk_int3, ".int3",
+    other_ext(".int3"), newext_int(ext_int_int3)).
 
-opt_file_kind_to_extension(ofk_opt, ".opt", other_ext(".opt")).
+opt_file_kind_to_extension(ofk_opt, ".opt",
+    other_ext(".opt"),       newext_opt(ext_opt_plain)).
 opt_file_kind_to_extension(ofk_trans_opt, ".trans_opt",
-    other_ext(".trans_opt")).
+    other_ext(".trans_opt"), newext_opt(ext_opt_trans)).
 
 extension_to_file_kind(ExtStr, FileKind) :-
     (
