@@ -1,9 +1,8 @@
 bug257.m:017: In predicate `oops'/2:
 bug257.m:017:   warning: unresolved polymorphism.
 bug257.m:017:   The variable with an unbound type was:
-bug257.m:017:     Gee: V_1
-bug257.m:017:   The unbound type variable will be implicitly bound to the
-bug257.m:017:   builtin type `void'.
+bug257.m:017:     Gee
+bug257.m:017:   Its type will be implicitly set to the builtin type `void'.
 bug257.m:022: Error: the goal inside the require_complete_switch [Gee] scope is
 bug257.m:022:   not a switch on `Gee'.
 For more information, recompile with `-E'.

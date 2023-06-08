@@ -10,14 +10,14 @@ unsatisfiable_constraint.m:045:     a goal here.
 unsatisfiable_constraint.m:039: In predicate `test'/1:
 unsatisfiable_constraint.m:039:   warning: unresolved polymorphism.
 unsatisfiable_constraint.m:039:   The variables with unbound types were:
-unsatisfiable_constraint.m:039:     C: C
-unsatisfiable_constraint.m:039:     B: A
-unsatisfiable_constraint.m:039:   The unbound type variables will be implicitly
-unsatisfiable_constraint.m:039:   bound to the builtin type `void'.
+unsatisfiable_constraint.m:039:     B
+unsatisfiable_constraint.m:039:     C
+unsatisfiable_constraint.m:039:   Their types will be implicitly set to the
+unsatisfiable_constraint.m:039:   builtin type `void'.
 unsatisfiable_constraint.m:039:   The body of the clause contains a call to a
 unsatisfiable_constraint.m:039:   polymorphic predicate, but I can't determine
 unsatisfiable_constraint.m:039:   which version should be called, because the
-unsatisfiable_constraint.m:039:   type variables listed above didn't get bound.
-unsatisfiable_constraint.m:039:   (I ought to tell you which call caused the
-unsatisfiable_constraint.m:039:   problem, but I'm afraid you'll have to work
-unsatisfiable_constraint.m:039:   it out yourself. My apologies.)
+unsatisfiable_constraint.m:039:   types of the variables listed above are not
+unsatisfiable_constraint.m:039:   known. (I ought to tell you which call caused
+unsatisfiable_constraint.m:039:   the problem, but I am afraid you will have to
+unsatisfiable_constraint.m:039:   work it out yourself. My apologies.)

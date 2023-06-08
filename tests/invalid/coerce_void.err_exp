@@ -1,8 +1,8 @@
 coerce_void.m:010: In predicate `main'/2:
 coerce_void.m:010:   warning: unresolved polymorphism.
 coerce_void.m:010:   The variables with unbound types were:
-coerce_void.m:010:     V_8: list.list(T)
 coerce_void.m:010:     List: list.list(T)
+coerce_void.m:010:     V_8: list.list(T)
 coerce_void.m:010:   The unbound type variables will be implicitly bound to the
 coerce_void.m:010:   builtin type `void'.
 For more information, recompile with `-E'.

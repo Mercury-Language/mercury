@@ -1,9 +1,9 @@
 bad_sv_unify_msg.m:015: In predicate `x'/2:
 bad_sv_unify_msg.m:015:   warning: unresolved polymorphism.
 bad_sv_unify_msg.m:015:   The variable with an unbound type was:
-bad_sv_unify_msg.m:015:     STATE_VARIABLE_D_0: T
-bad_sv_unify_msg.m:015:   The unbound type variable will be implicitly bound to
-bad_sv_unify_msg.m:015:   the builtin type `void'.
+bad_sv_unify_msg.m:015:     STATE_VARIABLE_D_0
+bad_sv_unify_msg.m:015:   Its type will be implicitly set to the builtin type
+bad_sv_unify_msg.m:015:   `void'.
 bad_sv_unify_msg.m:021: Error: !D cannot appear as a unification argument.
 bad_sv_unify_msg.m:021:   You probably meant !.D or !:D.
 bad_sv_unify_msg.m:022: In clause for `x(di, uo)':

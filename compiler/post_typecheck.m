@@ -460,8 +460,15 @@ find_unresolved_types_fill_in_is_dummy_in_pred(ModuleInfo, PredId, !PredInfo,
         VarTable = VarTable1
     ;
         UnresolvedVarsEntries = [_ | _],
-        report_unresolved_type_warning(ModuleInfo, PredId, !.PredInfo,
-            UnresolvedVarsEntries, !NoTypeErrorSpecs),
+        pred_info_get_status(!.PredInfo, PredStatus),
+        DefinedHere = pred_status_defined_in_this_module(PredStatus),
+        (
+            DefinedHere = no
+        ;
+            DefinedHere = yes,
+            report_unresolved_type_warning(ModuleInfo, PredId, !.PredInfo,
+                UnresolvedVarsEntries, !NoTypeErrorSpecs)
+        ),
 
         % Bind all the type variables in `BindToVoidTVars' to `void' ...
         pred_info_get_constraint_proof_map(!.PredInfo, ProofMap0),
@@ -593,8 +600,54 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
 
     PredIdPieces =
         describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId),
-    VarTypePieceLists =
-        list.map(var_and_type_to_pieces(TypeVarSet), VarsEntries),
+    list.map_foldl2(var_vte_to_name_and_type_strs(TypeVarSet),
+        VarsEntries, VarTypeStrs0,
+        0, MaxVarNameLen0, all_tvars, MaybeAllTVars),
+    list.sort(VarTypeStrs0, VarTypeStrs),
+    (
+        MaybeAllTVars = all_tvars,
+        VarTypePieceLists = list.map(var_only_to_pieces, VarTypeStrs),
+        SetPieces = [
+            words(choose_number(VarsEntries, "Its type", "Their types")),
+            words("will be implicitly set to the builtin type"),
+            quote("void"), suffix("."), nl],
+        Known = "known"
+    ;
+        MaybeAllTVars = not_all_tvars,
+        % var_and_type_to_pieces will line things up so that instead of
+        % output such as
+        %
+        %   Var1: Type1
+        %   VarABCD: TypeABCD
+        %
+        % we get
+        %
+        %   Var1:    Type1
+        %   VarABCD: TypeABCD
+        %
+        % However, if we allow MaxVarNameLen to be *too* long, then
+        % the code writing out the error_spec we are constructing
+        % will be forced to break the line between the variable name
+        % and the type. The value 15 is a guess at a value that is
+        % - small enough not to cause such unwanted breaks, but also
+        % - long enough to allow the types to line up in blocks that
+        %   do *not* get any unwanted line breaks.
+        ( if MaxVarNameLen0 > 15 then
+            MaxVarNameLen = 15
+        else 
+            MaxVarNameLen = MaxVarNameLen0
+        ),
+        VarTypePieceLists =
+            list.map(var_and_type_to_pieces(MaxVarNameLen), VarTypeStrs),
+        % XXX Just because the is only entry in VarsEntries does NOT
+        % necessarily that there is only one type variable; the type
+        % of that one variable could be something like "map(T, U)".
+        SetPieces = [words("The unbound type"),
+            words(choose_number(VarsEntries, "variable", "variables")),
+            words("will be implicitly bound to the builtin type"),
+            quote("void"), suffix("."), nl],
+        Known = "fully known"
+    ),
     list.condense(VarTypePieceLists, VarTypePieces),
     MainPieces = [words("In")] ++ PredIdPieces ++ [suffix(":"), nl,
         words("warning: unresolved polymorphism."), nl,
@@ -602,18 +655,20 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
             "The variable with an unbound type was:",
             "The variables with unbound types were:")), nl_indent_delta(1)] ++
         VarTypePieces ++
-        [nl_indent_delta(-1), words("The unbound type"),
-        words(choose_number(VarsEntries, "variable", "variables")),
-        words("will be implicitly bound to the builtin type"),
-        quote("void"), suffix("."), nl],
+        [nl_indent_delta(-1)] ++ SetPieces,
+    TypeOrTypes = choose_number(VarsEntries, "type", "types"),
+    VarOrVars = choose_number(VarsEntries, "variable", "variables"),
+    IsOrAre = choose_number(VarsEntries, "is", "are"),
     VerbosePieces = [words("The body of the clause contains a call"),
         words("to a polymorphic predicate,"),
         words("but I can't determine which version should be called,"),
-        words("because the type variables listed above didn't get bound."),
+        words("because the"), words(TypeOrTypes),
+        words("of the"), words(VarOrVars), words("listed above"),
+        words(IsOrAre), words("not"), words(Known), suffix("."),
         % words("You may need to use an explicit type qualifier."),
         % XXX improve error message
         words("(I ought to tell you which call caused the problem,"),
-        words("but I'm afraid you'll have to work it out yourself."),
+        words("but I am afraid you will have to work it out yourself."),
         words("My apologies.)"), nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
@@ -621,14 +676,41 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         severity_warning, phase_type_check, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-:- func var_and_type_to_pieces(tvarset, pair(prog_var, var_table_entry))
-    = list(format_piece).
+:- type maybe_all_tvars
+    --->    not_all_tvars
+    ;       all_tvars.
 
-var_and_type_to_pieces(TVarSet, Var - Entry) = Pieces :-
+:- pred var_vte_to_name_and_type_strs(tvarset::in, 
+    pair(prog_var, var_table_entry)::in, pair(string, string)::out,
+    int::in, int::out, maybe_all_tvars::in, maybe_all_tvars::out) is det.
+
+var_vte_to_name_and_type_strs(TVarSet, Var - Entry, VarStr - TypeStr,
+        !MaxVarNameLen, !AllTVars) :-
     Entry = vte(Name, Type, _IsDummy),
     VarStr = mercury_var_raw_to_string(print_name_only, Var, Name),
     TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
-    Pieces = [words(VarStr), suffix(":"), words(TypeStr), nl].
+    string.count_code_points(VarStr, VarStrLen),
+    ( if VarStrLen > !.MaxVarNameLen then
+        !:MaxVarNameLen = VarStrLen
+    else
+        true
+    ),
+    ( if Type = type_variable(_, _) then
+        true
+    else
+        !:AllTVars = not_all_tvars
+    ).
+
+:- func var_only_to_pieces(pair(string, string)) = list(format_piece).
+
+var_only_to_pieces(VarStr - _TypeStr) = Pieces :-
+    Pieces = [fixed(VarStr), nl].
+
+:- func var_and_type_to_pieces(int, pair(string, string)) = list(format_piece).
+
+var_and_type_to_pieces(MaxVarNameLen, VarStr - TypeStr) = Pieces :-
+    string.pad_right(VarStr ++ ":", ' ', MaxVarNameLen, VarColonStr),
+    Pieces = [fixed(VarColonStr), words(TypeStr), nl].
 
 %---------------------------------------------------------------------------%
 

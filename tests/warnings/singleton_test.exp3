@@ -1,10 +1,10 @@
 singleton_test.m:013: In function `my_append_func'/2:
 singleton_test.m:013:   warning: unresolved polymorphism.
 singleton_test.m:013:   The variables with unbound types were:
-singleton_test.m:013:     L2: V_1
-singleton_test.m:013:     L1: V_1
-singleton_test.m:013:   The unbound type variables will be implicitly bound to
-singleton_test.m:013:   the builtin type `void'.
+singleton_test.m:013:     L1
+singleton_test.m:013:     L2
+singleton_test.m:013:   Their types will be implicitly set to the builtin type
+singleton_test.m:013:   `void'.
 singleton_test.m:031: In clause for predicate `my_append'/3:
 singleton_test.m:031:   warning: variable `L2' occurs only once in this scope.
 singleton_test.m:035: In clause for function `my_append_func'/2:
