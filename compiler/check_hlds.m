@@ -37,6 +37,7 @@
     :- include_module typecheck_info.
     :- include_module typecheck_msgs.
     :- include_module typeclasses.
+    :- include_module types_into_modes.
 %:- end_module type_analysis.
 
 % Implementation-defined literals.

@@ -1003,6 +1003,11 @@ The type checker consists of several modules.
     These tests can't be done in the main type checking pass,
     because they depend on type analysis being already complete.
     <li>
+    types_into_modes.m propagates type information into modes.
+    It is invoked as part of the post_typecheck pass,
+    since it is also a task that must be done before mode analysis
+    while needing checked type information.
+    <li>
     check_for_missing_type_defns.m checks for locally defined types
     that have an abstract definition but no corresponding concrete definition.
     </ul>
