@@ -1629,9 +1629,10 @@ foldr_intervals(P, T, !Acc) :-
 %---------------------%
 
 foldl(F, Set, Acc0) = Acc :-
-    P = (pred(E::in, PAcc0::in, PAcc::out) is det :-
-        PAcc = F(E, PAcc0)
-    ),
+    P =
+        ( pred(E::in, PAcc0::in, PAcc::out) is det :-
+            PAcc = F(E, PAcc0)
+        ),
     foldl(P, Set, Acc0, Acc).
 
 %---------------------%
@@ -1812,9 +1813,10 @@ fold_up5(P, Lo, Hi, !A, !B, !C, !D, !E) :-
 %---------------------%
 
 foldr(F, Set, Acc0) = Acc :-
-    P = (pred(E::in, PAcc0::in, PAcc::out) is det :-
-        PAcc = F(E, PAcc0)
-    ),
+    P =
+        ( pred(E::in, PAcc0::in, PAcc::out) is det :-
+            PAcc = F(E, PAcc0)
+        ),
     foldr(P, Set, Acc0, Acc).
 
 foldr(P, T, !Acc) :-
