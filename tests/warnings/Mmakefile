@@ -73,9 +73,6 @@ ERRORCHECK_PROGS = \
 	warn_stubs \
 	warn_succ_ind
 
-# We don't yet pass (or even have a .exp file for) this tests.
-#	trace_goal_dupl_defn
-
 # We do not pass these two tests, which were intended to test the shadowing
 # of standard library modules. Ironically, the reason why we compare the
 # actual .err files of these test cases with their .exp files is that
