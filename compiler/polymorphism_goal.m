@@ -215,7 +215,7 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
                 polymorphism_process_goal(SubGoal0, SubGoal, !Info),
                 GoalExpr = scope(Reason0, SubGoal)
             ;
-                Reason0 = exist_quant(_),
+                Reason0 = exist_quant(_, _),
                 % If we allowed a type_info created inside SubGoal to be reused
                 % outside GoalExpr, then we are adding an output variable to
                 % the scope. If the scope had no outputs to begin with, this

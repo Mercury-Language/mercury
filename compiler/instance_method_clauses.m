@@ -47,7 +47,6 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_hlds.add_clause.
-:- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.state_var.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
@@ -161,18 +160,9 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
             PredStatus = pred_status(OldImportStatus),
             clauses_info_add_clause(all_modes, AllProcIds, PredStatus,
                 clause_not_for_promise, PredOrFunc, PredSymName, HeadTerms,
-                Context, item_no_seq_num, Warnings,
-                BodyGoal, Goal, ClauseVarSet, VarSet, TVarSet0, TVarSet,
-                !ClausesInfo, !ModuleInfo, !QualInfo, !Specs),
-
-            PredFormArity = arg_list_arity(HeadTerms),
-            PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName,
-                PredFormArity),
-            % Warn about singleton variables.
-            warn_singletons(!.ModuleInfo, PFSymNameArity, VarSet, Goal,
-                !Specs),
-            % Warn about variables with overlapping scopes.
-            add_quant_warnings(PFSymNameArity, VarSet, Warnings, !Specs)
+                Context, item_no_seq_num, BodyGoal, ClauseVarSet,
+                TVarSet0, TVarSet, !ClausesInfo, !ModuleInfo,
+                !QualInfo, !Specs)
         )
     ).
 

@@ -936,9 +936,9 @@ record_decisions_in_goal(MaybeFeature, InsertMap, Goal0, Goal,
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
         (
-            Reason0 = exist_quant(Vars0),
+            Reason0 = exist_quant(Vars0, Creator),
             rename_var_list(need_not_rename, !.VarRename, Vars0, Vars),
-            Reason = exist_quant(Vars)
+            Reason = exist_quant(Vars, Creator)
         ;
             Reason0 = from_ground_term(Var0, Kind),
             rename_var(need_not_rename, !.VarRename, Var0, Var),

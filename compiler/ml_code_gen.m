@@ -757,7 +757,7 @@ ml_gen_goal_expr(Determinism, CodeModel, Context, GoalExpr, GoalInfo,
                 !Info),
             ml_gen_info_set_disabled_warnings(Warnings0, !Info)
         ;
-            ( Reason = exist_quant(_)
+            ( Reason = exist_quant(_, _)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = promise_solutions(_, _)

@@ -438,7 +438,7 @@ add_exist_scopes_for_dup_vars_in_goal(CurZone, ZonesToDupVars,
             counter.uallocate(NewZone, !TraceCounter),
             ( if map.search(ZonesToDupVars, NewZone, DupVars) then
                 list.sort(DupVars, SortedDupVars),
-                QuantReason = exist_quant(SortedDupVars),
+                QuantReason = exist_quant(SortedDupVars, compiler_quant),
                 QuantExpr = scope(QuantReason, SubGoal1),
                 SubGoal1 = hlds_goal(_, SubGoalInfo1),
                 SubGoal = hlds_goal(QuantExpr, SubGoalInfo1)

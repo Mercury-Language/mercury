@@ -551,7 +551,7 @@ ignore_exist_quant_scope(Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr0, _Context),
     ( if
         GoalExpr0 = scope(Reason, Goal1),
-        Reason = exist_quant(_)
+        Reason = exist_quant(_, _)
     then
         Goal = Goal1
     else
@@ -670,8 +670,8 @@ equal_goals(GoalA, GoalB, !Subst) :-
 equal_reason(ReasonA, ReasonB, !Subst) :-
     require_complete_switch [ReasonA]
     (
-        ReasonA = exist_quant(VarsA),
-        ReasonB = exist_quant(VarsB),
+        ReasonA = exist_quant(VarsA, _),
+        ReasonB = exist_quant(VarsB, _),
         equal_vars(VarsA, VarsB, !Subst)
     ;
         ReasonA = disable_warnings(HeadWarning, TailWarnings),

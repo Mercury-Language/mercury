@@ -2167,7 +2167,8 @@ build_lambda_expression(LHSVar, UnificationPurity,
             list.sort_and_remove_dups(QuantifiedVars0, QuantifiedVars),
 
             goal_info_init(Context, GoalInfo),
-            HLDS_GoalExpr = scope(exist_quant(QuantifiedVars), HLDS_Goal0),
+            Reason = exist_quant(QuantifiedVars, compiler_quant),
+            HLDS_GoalExpr = scope(Reason, HLDS_Goal0),
             HLDS_Goal = hlds_goal(HLDS_GoalExpr, GoalInfo),
 
             % We set the lambda nonlocals here to anything that could

@@ -167,7 +167,7 @@ describe_goal(ModuleInfo, VarTable, Goal) = FullDesc :-
             Reason = disable_warnings(_, _),
             Desc = "disable warnings"
         ;
-            Reason = exist_quant(_),
+            Reason = exist_quant(_, _),
             Desc = "scope exist quant"
         ;
             Reason = promise_solutions(_, _),

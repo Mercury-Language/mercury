@@ -1520,8 +1520,8 @@ reqscope_check_scope(SwitchContexts, Reason, SubGoal, ScopeGoalInfo, InstMap0,
         ),
         MaybeReportedSwitch = no
     ;
-        ( Reason = disable_warnings(_, _)
-        ; Reason = exist_quant(_)
+        ( Reason = exist_quant(_, _)
+        ; Reason = disable_warnings(_, _)
         ; Reason = commit(_)
         ; Reason = barrier(_)
         ; Reason = promise_purity(_)

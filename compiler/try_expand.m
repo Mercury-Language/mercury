@@ -375,8 +375,8 @@ expand_try_goals_in_goal(InstMap, Goal0, Goal, !Info) :-
             % There can be no try goals inside this scope.
             Goal = Goal0
         ;
-            ( Reason = disable_warnings(_, _)
-            ; Reason = exist_quant(_)
+            ( Reason = exist_quant(_, _)
+            ; Reason = disable_warnings(_, _)
             ; Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_)
             ; Reason = require_detism(_)
@@ -754,10 +754,10 @@ extract_from_succeeded_goal(ModuleInfo, SucceededGoal, Goal, Then,
         MaybeElse = yes(Else)
     else
         Conjuncts1 = [SomeGoal | AfterSomeGoal],
-        SomeGoal = hlds_goal(scope(exist_quant([]), Goal), _),
+        SomeGoal = hlds_goal(scope(exist_quant([], _), Goal), _),
         ( if
             AfterSomeGoal = [SomeThen | Rest],
-            SomeThen = hlds_goal(scope(exist_quant([]), Then0), _)
+            SomeThen = hlds_goal(scope(exist_quant([], _), Then0), _)
         then
             conjoin_goal_and_goal_list(Then0, Rest, Then),
             MaybeElse = no

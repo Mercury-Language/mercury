@@ -362,6 +362,23 @@
                 catch_goal  :: hlds_goal
             ).
 
+    % Who created an existential quantification: the user, or the compiler?
+    % The distinction matters to warn_singletons in make_hlds_warn.m, which
+    %
+    % - wants to warn about "some [B] ( <only reference to A> ), but
+    % - wants NOT to warn about "some [A] ( <some reference to A> ).
+    %
+    % This means that treating a compiler-generated "some [A] ..." wrapper
+    % around some code could cause the compiler not to generate a warning
+    % that, based on the code seen by the user, it *should* generate.
+    %
+    % The code of make_hlds_warn.m runs during the make-the-HLDS phase
+    % of the compiler. There is, as of 2023 jun 9, no later phase of the
+    % compiler that cares about this distinction.
+:- type quant_creator
+    --->    user_quant
+    ;       compiler_quant.
+
     % Each scope that is created from the expansion of a ground term above
     % a certain size is classified into one of these four categories.
     % The categories are for scopes that (a) construct a ground term, (b)
@@ -447,7 +464,7 @@
     ;       from_ground_term_other.
 
 :- type scope_reason
-    --->    exist_quant(list(prog_var))
+    --->    exist_quant(list(prog_var), quant_creator)
             % The goal inside the scope construct has the listed variables
             % existentially quantified. The compiler may do whatever
             % preserves this fact.
@@ -2763,9 +2780,9 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
     ;
         Expr0 = scope(Reason0, Goal0),
         (
-            Reason0 = exist_quant(Vars0),
+            Reason0 = exist_quant(Vars0, Creator),
             rename_var_list(Must, Subn, Vars0, Vars),
-            Reason = exist_quant(Vars)
+            Reason = exist_quant(Vars, Creator)
         ;
             Reason0 = promise_solutions(Vars0, Kind),
             rename_var_list(Must, Subn, Vars0, Vars),
@@ -3130,9 +3147,9 @@ incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
     ;
         Expr0 = scope(Reason0, Goal0),
         (
-            Reason0 = exist_quant(Vars0),
+            Reason0 = exist_quant(Vars0, Creator),
             rename_var_list(need_not_rename, Subn, Vars0, Vars),
-            Reason = exist_quant(Vars)
+            Reason = exist_quant(Vars, Creator)
         ;
             Reason0 = promise_solutions(Vars0, Kind),
             rename_var_list(need_not_rename, Subn, Vars0, Vars),

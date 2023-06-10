@@ -800,7 +800,7 @@ transform_parse_tree_goal_to_hlds_quant(LocKind, Goal, Renaming, HLDSGoal,
             transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
                 HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
-            Reason = exist_quant(Vars)
+            Reason = exist_quant(Vars, user_quant)
         ;
             VarsKind = quant_state_vars,
             BeforeOutsideSVarState = !.SVarState,
@@ -816,7 +816,7 @@ transform_parse_tree_goal_to_hlds_quant(LocKind, Goal, Renaming, HLDSGoal,
                 BeforeOutsideSVarState, AfterInsideSVarState,
                 AfterOutsideSVarState),
             !:SVarState = AfterOutsideSVarState,
-            Reason = exist_quant([])
+            Reason = exist_quant([], user_quant)
         ),
         GoalExpr = scope(Reason, HLDSSubGoal),
         goal_info_init(Context, GoalInfo),

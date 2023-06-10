@@ -208,8 +208,8 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 Goal = FinalSubGoal,
                 Common = Common1
             ;
-                ( FinalReason = commit(_)
-                ; FinalReason = exist_quant(_)
+                ( FinalReason = exist_quant(_, _)
+                ; FinalReason = commit(_)
                 ; FinalReason = promise_solutions(_, _)
                 ; FinalReason = barrier(not_removable)
                 ; FinalReason = loop_control(_, _, _)
@@ -542,7 +542,7 @@ try_to_merge_nested_scopes(Reason0, InnerGoal0, OuterGoalInfo, Goal) :-
     loop_over_any_nested_scopes(Reason0, Reason, InnerGoal0, InnerGoal),
     InnerGoal = hlds_goal(_, GoalInfo),
     ( if
-        Reason = exist_quant(_),
+        Reason = exist_quant(_, _),
         Detism = goal_info_get_determinism(GoalInfo),
         OuterDetism = goal_info_get_determinism(OuterGoalInfo),
         Detism = OuterDetism
@@ -561,10 +561,10 @@ loop_over_any_nested_scopes(Reason0, Reason, Goal0, Goal) :-
     ( if
         Goal0 = hlds_goal(scope(Reason1, Goal1), _),
         ( if
-            Reason0 = exist_quant(Vars0),
-            Reason1 = exist_quant(Vars1)
+            Reason0 = exist_quant(Vars0, _),
+            Reason1 = exist_quant(Vars1, _)
         then
-            Reason2 = exist_quant(Vars0 ++ Vars1)
+            Reason2 = exist_quant(Vars0 ++ Vars1, compiler_quant)
         else if
             Reason0 = barrier(Removable0),
             Reason1 = barrier(Removable1)

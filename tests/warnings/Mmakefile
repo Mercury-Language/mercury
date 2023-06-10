@@ -40,6 +40,7 @@ ERRORCHECK_PROGS = \
 	infinite_recursion \
 	inst_with_no_type \
 	missing_if \
+	missing_singleton_warning \
 	non_contiguous_decls \
 	non_stratification \
 	obsolete_proc_pragma \
@@ -72,8 +73,7 @@ ERRORCHECK_PROGS = \
 	warn_stubs \
 	warn_succ_ind
 
-# We don't yet pass (or even have a .exp file for) these tests.
-#	missing_singleton_warning
+# We don't yet pass (or even have a .exp file for) this tests.
 #	trace_goal_dupl_defn
 
 # We do not pass these two tests, which were intended to test the shadowing

@@ -2065,7 +2065,7 @@ delete_unneeded_copy_goals(Goal0, Goal, SeenAfter, SeenBefore) :-
                 SeenAfter, SeenBefore0),
             set_of_var.insert_list([LCVar, LCSVar], SeenBefore0, SeenBefore)
         ;
-            ( Reason = exist_quant(ScopeVars)
+            ( Reason = exist_quant(ScopeVars, _)
             ; Reason = promise_solutions(ScopeVars, _PromiseKind)
             ; Reason = trace_goal(_Comp, _Run, _MaybeIO, _Mutables, ScopeVars)
             ),

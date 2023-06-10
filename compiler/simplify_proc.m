@@ -787,8 +787,8 @@ set_goal_contains_trace_features_in_goal(Goal0, Goal, ContainsTrace) :-
                     ContainsTrace)
             )
         ;
-            ( Reason = disable_warnings(_, _)
-            ; Reason = exist_quant(_)
+            ( Reason = exist_quant(_, _)
+            ; Reason = disable_warnings(_, _)
             ; Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_)
             ; Reason = require_detism(_)

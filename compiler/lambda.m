@@ -788,7 +788,7 @@ find_used_vars_in_goal(Goal, !VarUses) :-
     ;
         GoalExpr = scope(Reason, SubGoal),
         (
-            Reason = exist_quant(Vars),
+            Reason = exist_quant(Vars, _),
             mark_vars_as_used(Vars, !VarUses)
         ;
             Reason = promise_solutions(Vars, _),

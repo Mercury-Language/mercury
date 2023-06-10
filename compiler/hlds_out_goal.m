@@ -2067,9 +2067,13 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
     IndentStr = indent2_string(Indent),
     io.write_string(Stream, IndentStr, !IO),
     (
-        Reason = exist_quant(Vars),
+        Reason = exist_quant(Vars, Creator),
         VarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint, Vars),
-        io.format(Stream, "some [%s] (\n", [s(VarsStr)], !IO)
+        ( Creator = user_quant,     CreatorStr = "user"
+        ; Creator = compiler_quant, CreatorStr = "compiler"
+        ),
+        io.format(Stream, "some [%s] ( %% %s\n",
+            [s(VarsStr), s(CreatorStr)], !IO)
     ;
         Reason = disable_warnings(HeadWarning, TailWarnings),
         io.write_string(Stream, "disable_warnings [", !IO),

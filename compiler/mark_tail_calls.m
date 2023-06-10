@@ -712,7 +712,7 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
                     !Info)
             )
         ;
-            ( Reason = exist_quant(_)
+            ( Reason = exist_quant(_, _)
             ; Reason = promise_solutions(_, _)
             ; Reason = commit(_)
             ),

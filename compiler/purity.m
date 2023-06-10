@@ -1158,14 +1158,14 @@ compute_scope_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
             )
         )
     ;
-        ( Reason0 = disable_warnings(_, _)
+        ( Reason0 = exist_quant(_, _)
+        ; Reason0 = disable_warnings(_, _)
         ; Reason0 = promise_solutions(_, _)
         ; Reason0 = require_detism(_)
         ; Reason0 = require_complete_switch(_)
         ; Reason0 = require_switch_arms_detism(_, _)
         ; Reason0 = commit(_)
         ; Reason0 = barrier(_)
-        ; Reason0 = exist_quant(_)
         ),
         compute_goal_purity(SubGoal0, SubGoal, Purity, ContainsTrace, !Info),
         GoalExpr = scope(Reason0, SubGoal)

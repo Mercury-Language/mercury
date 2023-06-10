@@ -328,7 +328,7 @@ can_push(Var, Goal) = CanPush :-
                 % such scopes.
                 CanPush = yes
             ;
-                ( Reason = exist_quant(_)
+                ( Reason = exist_quant(_, _)
                 ; Reason = from_ground_term(_, from_ground_term_deconstruct)
                 ; Reason = from_ground_term(_, from_ground_term_other)
                 ),

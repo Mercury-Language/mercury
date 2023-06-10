@@ -1133,7 +1133,7 @@ format_call_traverse_conj(Params, [Goal | Goals], CurId, !FormatCallSites,
                     !RelevantVars)
             )
         ;
-            ( Reason = exist_quant(_)
+            ( Reason = exist_quant(_, _)
             ; Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_)
             ; Reason = require_detism(_)

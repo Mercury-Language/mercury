@@ -233,6 +233,7 @@ OTHER_PROGS = \
 	size_prof_ho_bug \
 	soln_context \
 	solver_type_bug \
+	some_singleton \
 	some_switch \
 	spurious_purity_warning \
 	stack_alloc \
@@ -331,10 +332,6 @@ NON_DECLDEBUG_PROGS = \
 # XXX We also don't pass this one (see the comments in it for details):
 #
 #	mode_selection
-#
-# XXX ... or this one:
-#
-#	some_singleton
 #
 # XXX The following tests are not valid under the current Mercury
 # language rules:

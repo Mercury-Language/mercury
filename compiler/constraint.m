@@ -173,7 +173,7 @@ propagate_conj_sub_goal_2(Constraints, Goal0, FinalGoals, !Info) :-
             propagate_goal(Constraints, SubGoal0, SubGoal, !Info),
             FinalGoals = [hlds_goal(scope(Reason, SubGoal), GoalInfo)]
         ;
-            ( Reason = exist_quant(_)
+            ( Reason = exist_quant(_, _)
             ; Reason = from_ground_term(_, from_ground_term_deconstruct)
             ; Reason = from_ground_term(_, from_ground_term_other)
             ),

@@ -38,13 +38,21 @@
     list(quant_warning)::in, list(error_spec)::in, list(error_spec)::out)
     is det.
 
+    % Have we seen a quantifier with a nonempty list of variables,
+    % either in the form of a "some [Vars]" scope, or an if-then-else
+    % with a similarly nonempty list of variables being quantified
+    % across the condition and then then-part?
+:- type maybe_seen_quant
+    --->    have_not_seen_quant
+    ;       have_seen_quant.
+
     % Warn about variables which occur only once but don't start with
     % an underscore, or about variables which do start with an underscore
     % but occur more than once, or about variables that do not occur in
-    % C code strings when they should.
+    % target language code strings when they should.
     %
 :- pred warn_singletons(module_info::in, pf_sym_name_arity::in,
-    prog_varset::in, hlds_goal::in,
+    prog_varset::in, hlds_goal::in, maybe_seen_quant::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % warn_singletons_in_pragma_foreign_proc checks to see if each variable
@@ -87,11 +95,14 @@
 :- implementation.
 
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.status.
 :- import_module libs.options.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_db.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -103,18 +114,18 @@
 
 %---------------------------------------------------------------------------%
 
-add_quant_warnings(PredCallId, VarSet, Warnings, !Specs) :-
+add_quant_warnings(PfSymNameArity, VarSet, Warnings, !Specs) :-
     WarningSpecs =
-        list.map(quant_warning_to_spec(PredCallId, VarSet), Warnings),
+        list.map(quant_warning_to_spec(PfSymNameArity, VarSet), Warnings),
     !:Specs = WarningSpecs ++ !.Specs.
 
 :- func quant_warning_to_spec(pf_sym_name_arity, prog_varset, quant_warning)
     = error_spec.
 
-quant_warning_to_spec(PredCallId, VarSet, Warning) = Spec :-
+quant_warning_to_spec(PfSymNameArity, VarSet, Warning) = Spec :-
     Warning = warn_overlap(Vars, Context),
     Pieces1 = [words("In clause for"),
-        unqual_pf_sym_name_pred_form_arity(PredCallId), suffix(":"), nl],
+        unqual_pf_sym_name_pred_form_arity(PfSymNameArity), suffix(":"), nl],
     (
         Vars = [],
         unexpected($pred, "Vars = []")
@@ -135,15 +146,16 @@ quant_warning_to_spec(PredCallId, VarSet, Warning) = Spec :-
 
 %---------------------------------------------------------------------------%
 
-warn_singletons(ModuleInfo, PredCallId, VarSet, Body, !Specs) :-
+warn_singletons(ModuleInfo, PfSymNameArity, VarSet, BodyGoal, SeenQuant,
+        !Specs) :-
     % We handle warnings about variables in the clause head specially.
     % This is because the compiler transforms clause heads such as
     %
-    % p(X, Y, Z) :- ...
+    %   p(X, Y, Z) :- ...
     %
     % into
     %
-    % p(HV1, HV2, HV3) :- HV1 = X, HV2 = Y, HV3 = Z, ...
+    %   p(HV1, HV2, HV3) :- HV1 = X, HV2 = Y, HV3 = Z, ...
     %
     % If more than one of the head variables is a singleton, programmers
     % would expect a single warning naming them all, since to programmers,
@@ -159,41 +171,54 @@ warn_singletons(ModuleInfo, PredCallId, VarSet, Body, !Specs) :-
     % We also do the same thing for variables whose names indicate they should
     % be singletons, but aren't.
 
-    Info0 = warn_info(ModuleInfo, PredCallId, VarSet,
-        [], set_of_var.init, set_of_var.init, dummy_context),
+    trace [compile_time(flag("warn_singletons")), io(!IO)] (
+        io.stderr_stream(StdErr, !IO),
+        io.write_string(StdErr,
+            "\nWARN_SINGLETONS on the following goal:\n", !IO),
+        dump_goal(StdErr, ModuleInfo, vns_varset(VarSet), BodyGoal, !IO)
+    ),
+
+    Info0 = warn_info(ModuleInfo, PfSymNameArity, VarSet,
+        [], set_of_var.init, set_of_var.init, dummy_context,
+        have_not_seen_quant),
     QuantVars = set_of_var.init,
-    warn_singletons_in_goal(Body, QuantVars, Info0, Info),
-    Info = warn_info(_ModuleInfo, _PredCallId, _VarSet,
-        NewSpecs, SingletonHeadVarsSet, MultiHeadVarsSet, HeadContext),
+    warn_singletons_in_goal(BodyGoal, QuantVars, Info0, Info),
+    Info = warn_info(_ModuleInfo, _PfSymNameArity, _VarSet,
+        NewSpecs, SingletonHeadVarsSet, MultiHeadVarsSet, HeadContext,
+        SeenQuant),
     !:Specs = NewSpecs ++ !.Specs,
     set_of_var.to_sorted_list(SingletonHeadVarsSet, SingletonHeadVars),
     set_of_var.to_sorted_list(MultiHeadVarsSet, MultiHeadVars),
     (
         SingletonHeadVars = []
     ;
-        SingletonHeadVars = [_ | _],
-        generate_variable_warning(sm_single, HeadContext, PredCallId, VarSet,
-            SingletonHeadVars, SingleSpec),
+        SingletonHeadVars = [HeadSHV | TailSHVs],
+        generate_variable_warning(sm_single, HeadContext, PfSymNameArity,
+            VarSet, HeadSHV, TailSHVs, SingleSpec),
         !:Specs = [SingleSpec | !.Specs]
     ),
     (
         MultiHeadVars = []
     ;
-        MultiHeadVars = [_ | _],
-        generate_variable_warning(sm_multi, HeadContext, PredCallId, VarSet,
-            MultiHeadVars, MultiSpec),
+        MultiHeadVars = [HeadMHV | TailMHVs],
+        generate_variable_warning(sm_multi, HeadContext, PfSymNameArity,
+            VarSet, HeadMHV, TailMHVs, MultiSpec),
         !:Specs = [MultiSpec | !.Specs]
     ).
 
 :- type warn_info
     --->    warn_info(
+                % The first three fields are readonly after initialization.
+
                 % The current module.
                 wi_module_info          :: module_info,
 
                 % The id and the varset of the procedure whose body
                 % we are checking.
-                wi_pred_call_id         :: pf_sym_name_arity,
+                wi_pf_sna               :: pf_sym_name_arity,
                 wi_varset               :: prog_varset,
+
+                % The remaining fields are writeable.
 
                 % The warnings we have generated while checking.
                 wi_specs                :: list(error_spec),
@@ -213,7 +238,10 @@ warn_singletons(ModuleInfo, PredCallId, VarSet, Body, !Specs) :-
                 % line, and thus for different parts of it to have different
                 % contexts. Since we want to generate only a single error_spec,
                 % we arbitrarily pick the context of one of those variables.
-                wi_head_context         :: prog_context
+                wi_head_context         :: prog_context,
+
+                % Have we seen a quantifier with at least one variable listed?
+                wi_seen_quant           :: maybe_seen_quant
             ).
 
 :- pred warn_singletons_in_goal(hlds_goal::in, set_of_progvar::in,
@@ -235,13 +263,50 @@ warn_singletons_in_goal(Goal, QuantVars, !Info) :-
         warn_singletons_in_goal(SubGoal, QuantVars, !Info)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        % Warn if any quantified variables occur only in the quantifier.
         (
-            ( Reason = exist_quant(Vars)
-            ; Reason = promise_solutions(Vars, _)
-            ),
+            Reason = exist_quant(Vars, Creator),
             (
                 Vars = [_ | _],
+                !Info ^ wi_seen_quant := have_seen_quant,
+                SubGoalVars = free_goal_vars(SubGoal),
+                set_of_var.init(EmptySet),
+                (
+                    Creator = user_quant,
+                    % Warn if any quantified variables occur only
+                    % in the quantifier.
+                    warn_singletons_goal_vars(Vars, GoalInfo, EmptySet,
+                        SubGoalVars, !Info),
+                    set_of_var.insert_list(Vars, QuantVars, SubQuantVars)
+                ;
+                    Creator = compiler_quant,
+                    % If the exist_quant scope was created by the compiler,
+                    % and not by the user, then there two implications.
+                    %
+                    % First, there is no point in generating any warnings
+                    % about variables that occur nowhere else but in Reason,
+                    % since if there some, (a) it is the fault of the compiler,
+                    % and not the user, and (b) the user can do nothing
+                    % to prevent the compiler's screwup. This is why we
+                    % don't call warn_singletons_goal_vars here.
+                    %
+                    % Second, the occurrence of the variable in Reason
+                    % does not occur in the source code. Therefore a variable
+                    % that occurs in Reason and has exactly one occurrence
+                    % elsewhere *should* get a singleton warning generated
+                    % for it. This is why we don't add Vars to QuantVars.
+                    SubQuantVars = QuantVars
+                )
+            ;
+                Vars = [],
+                SubQuantVars = QuantVars
+            ),
+            warn_singletons_in_goal(SubGoal, SubQuantVars, !Info)
+        ;
+            Reason = promise_solutions(Vars, _),
+            (
+                Vars = [_ | _],
+                % Warn if any quantified variables occur only
+                % in the quantifier.
                 SubGoalVars = free_goal_vars(SubGoal),
                 set_of_var.init(EmptySet),
                 warn_singletons_goal_vars(Vars, GoalInfo, EmptySet,
@@ -298,6 +363,7 @@ warn_singletons_in_goal(Goal, QuantVars, !Info) :-
         % or the "then" part of the if-then-else.
         (
             Vars = [_ | _],
+            !Info ^ wi_seen_quant := have_seen_quant,
             CondVars = free_goal_vars(Cond),
             ThenVars = free_goal_vars(Then),
             set_of_var.union(CondVars, ThenVars, CondThenVars),
@@ -331,7 +397,7 @@ warn_singletons_in_goal(Goal, QuantVars, !Info) :-
         Lang = get_foreign_language(Attrs),
         NamesModes = list.map(foreign_arg_maybe_name_mode, Args),
         warn_singletons_in_pragma_foreign_proc(!.Info ^ wi_module_info,
-            PragmaImpl, Lang, NamesModes, Context, !.Info ^ wi_pred_call_id,
+            PragmaImpl, Lang, NamesModes, Context, !.Info ^ wi_pf_sna,
             PredId, ProcId, [], PragmaSpecs),
         list.foldl(add_warn_spec, PragmaSpecs, !Info)
     ;
@@ -426,30 +492,31 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, !Info) :-
     % (i.e. weren't explicitly quantified).
 
     VarSet = !.Info ^ wi_varset,
-    CallId = !.Info ^ wi_pred_call_id,
+    PfSymNameArity = !.Info ^ wi_pf_sna,
     Context = goal_info_get_context(GoalInfo),
 
     list.filter(is_singleton_var(NonLocals, QuantVars, VarSet), GoalVars,
         SingleVars),
 
     % If there were any such variables, issue a warning.
-    ( if
-        ( SingleVars = []
-        ; goal_info_has_feature(GoalInfo, feature_dont_warn_singleton)
-        )
-    then
-        true
-    else
-        ( if goal_info_has_feature(GoalInfo, feature_from_head) then
-            SingleHeadVars0 = !.Info ^ wi_singleton_headvars,
-            set_of_var.insert_list(SingleVars,
-                SingleHeadVars0, SingleHeadVars),
-            !Info ^ wi_singleton_headvars := SingleHeadVars,
-            !Info ^ wi_head_context := goal_info_get_context(GoalInfo)
+    (
+        SingleVars = []
+    ;
+        SingleVars = [HeadSV | TailSVs],
+        ( if goal_info_has_feature(GoalInfo, feature_dont_warn_singleton) then
+            true
         else
-            generate_variable_warning(sm_single, Context, CallId, VarSet,
-                SingleVars, SingleSpec),
-            add_warn_spec(SingleSpec, !Info)
+            ( if goal_info_has_feature(GoalInfo, feature_from_head) then
+                SingleHeadVars0 = !.Info ^ wi_singleton_headvars,
+                set_of_var.insert_list(SingleVars,
+                    SingleHeadVars0, SingleHeadVars),
+                !Info ^ wi_singleton_headvars := SingleHeadVars,
+                !Info ^ wi_head_context := goal_info_get_context(GoalInfo)
+            else
+                generate_variable_warning(sm_single, Context, PfSymNameArity,
+                    VarSet, HeadSV, TailSVs, SingleSpec),
+                add_warn_spec(SingleSpec, !Info)
+            )
         )
     ),
 
@@ -461,15 +528,15 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, !Info) :-
     (
         MultiVars = []
     ;
-        MultiVars = [_ | _],
+        MultiVars = [HeadMV | TailMVs],
         ( if goal_info_has_feature(GoalInfo, feature_from_head) then
             MultiHeadVars0 = !.Info ^ wi_multi_headvars,
             set_of_var.insert_list(MultiVars, MultiHeadVars0, MultiHeadVars),
             !Info ^ wi_multi_headvars := MultiHeadVars,
             !Info ^ wi_head_context := goal_info_get_context(GoalInfo)
         else
-            generate_variable_warning(sm_multi, Context, CallId, VarSet,
-                MultiVars, MultiSpec),
+            generate_variable_warning(sm_multi, Context, PfSymNameArity,
+                VarSet, HeadMV, TailMVs, MultiSpec),
             add_warn_spec(MultiSpec, !Info)
         )
     ).
@@ -479,10 +546,11 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, !Info) :-
     ;       sm_multi.
 
 :- pred generate_variable_warning(single_or_multi::in, prog_context::in,
-    pf_sym_name_arity::in, prog_varset::in, list(prog_var)::in,
+    pf_sym_name_arity::in, prog_varset::in, prog_var::in, list(prog_var)::in,
     error_spec::out) is det.
 
-generate_variable_warning(SingleMulti, Context, CallId, VarSet, Vars, Spec) :-
+generate_variable_warning(SingleMulti, Context, PfSymNameArity, VarSet,
+        Var, Vars, Spec) :-
     (
         SingleMulti = sm_single,
         Count = "only once"
@@ -490,9 +558,9 @@ generate_variable_warning(SingleMulti, Context, CallId, VarSet, Vars, Spec) :-
         SingleMulti = sm_multi,
         Count = "more than once"
     ),
-    Preamble = [words("In clause for"),
-        unqual_pf_sym_name_pred_form_arity(CallId), suffix(":"), nl],
-    VarStrs0 = list.map(mercury_var_to_name_only_vs(VarSet), Vars),
+    PreamblePieces = [words("In clause for"),
+        unqual_pf_sym_name_pred_form_arity(PfSymNameArity), suffix(":"), nl],
+    VarStrs0 = list.map(mercury_var_to_name_only_vs(VarSet), [Var | Vars]),
     list.sort_and_remove_dups(VarStrs0, VarStrs),
     VarsStr = "`" ++ string.join_list(", ", VarStrs) ++ "'",
     % We want VarsPiece to be breakable into two or more lines
@@ -500,19 +568,20 @@ generate_variable_warning(SingleMulti, Context, CallId, VarSet, Vars, Spec) :-
     VarsPiece = words(VarsStr),
     (
         VarStrs = [],
+        % Sorting a nonempty list must yield a nonempty list.
         unexpected($pred, "VarStrs = []")
     ;
         VarStrs = [_],
-        Pieces = [words("warning: variable"), VarsPiece,
+        WarnPieces = [words("warning: variable"), VarsPiece,
             words("occurs"), words(Count), words("in this scope."), nl]
     ;
         VarStrs = [_, _ | _],
-        Pieces = [words("warning: variables"), VarsPiece,
+        WarnPieces = [words("warning: variables"), VarsPiece,
             words("occur"), words(Count), words("in this scope."), nl]
     ),
     Spec = conditional_spec($pred, warn_singleton_vars, yes,
         severity_warning, phase_parse_tree_to_hlds,
-        [simplest_msg(Context, Preamble ++ Pieces)]).
+        [simplest_msg(Context, PreamblePieces ++ WarnPieces)]).
 
 :- pred add_warn_spec(error_spec::in, warn_info::in, warn_info::out) is det.
 
@@ -863,7 +932,8 @@ check_promise_ex_disj_arm(PromiseType, Goals, CallUsed, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 promise_ex_error(PromiseType, Context, Message, !Specs) :-
-    Pieces = [words("In"), quote(parse_tree_out_misc.promise_to_string(PromiseType)),
+    Pieces = [words("In"),
+        quote(parse_tree_out_misc.promise_to_string(PromiseType)),
         words("declaration:"), nl,
         words("error:"), words(Message), nl],
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,

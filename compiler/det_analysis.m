@@ -1794,8 +1794,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             det_info_add_error_spec(Spec, !DetInfo)
         )
     ;
-        ( Reason = disable_warnings(_, _)
-        ; Reason = exist_quant(_)
+        ( Reason = exist_quant(_, _)
+        ; Reason = disable_warnings(_, _)
         ; Reason = promise_purity(_)
         ; Reason = commit(_)
         ; Reason = barrier(_)

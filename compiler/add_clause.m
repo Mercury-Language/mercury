@@ -10,11 +10,9 @@
 :- interface.
 
 :- import_module hlds.hlds_clauses.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.qual_info.
-:- import_module hlds.quantification.
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -40,10 +38,8 @@
 :- pred clauses_info_add_clause(clause_applicable_modes::in, list(proc_id)::in,
     pred_status::in, clause_type::in,
     pred_or_func::in, sym_name::in, list(prog_term)::in,
-    prog_context::in, item_seq_num::in, list(quant_warning)::out,
-    goal::in, hlds_goal::out,
-    prog_varset::in, prog_varset::out, tvarset::in, tvarset::out,
-    clauses_info::in, clauses_info::out,
+    prog_context::in, item_seq_num::in, goal::in, prog_varset::in,
+    tvarset::in, tvarset::out, clauses_info::in, clauses_info::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -58,6 +54,7 @@
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -72,6 +69,7 @@
 :- import_module hlds.pre_quantification.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
+:- import_module hlds.quantification.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -242,10 +240,10 @@ module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
                     ProcIdsForThisClause, AllProcIds,
                     !ModuleInfo, !QualInfo, !Specs),
                 clauses_info_add_clause(ProcIdsForThisClause, AllProcIds,
-                    PredStatus, ClauseType, PredOrFunc, PredSymName, ArgTerms,
-                    Context, SeqNum, Warnings, BodyGoal, Goal,
-                    ClauseVarSet, VarSet, TVarSet0, TVarSet,
-                    ClausesInfo0, ClausesInfo, !ModuleInfo, !QualInfo, !Specs),
+                    PredStatus, ClauseType, PredOrFunc, PredSymName,
+                    ArgTerms, Context, SeqNum, BodyGoal, ClauseVarSet,
+                    TVarSet0, TVarSet, ClausesInfo0, ClausesInfo,
+                    !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_clauses_info(ClausesInfo, !PredInfo),
                 (
                     ClauseType = clause_for_promise(_PromiseType)
@@ -277,11 +275,7 @@ module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
                     pred_info_set_markers(EndMarkers, !PredInfo)
                 else
                     true
-                ),
-                maybe_add_singleton_and_quant_warnings(!.ModuleInfo,
-                    PredOrFunc, PredSymName, PredFormArity,
-                    PredStatus, ClausesInfo, VarSet, Goal,
-                    Warnings, !Specs)
+                )
             ),
             module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
         )
@@ -382,15 +376,14 @@ maybe_add_error_for_builtin(ModuleInfo, PredInfo, Context, !Specs) :-
         true
     ).
 
-:- pred maybe_add_singleton_and_quant_warnings(module_info::in,
-    pred_or_func::in, sym_name::in, pred_form_arity::in,
-    pred_status::in, clauses_info::in, prog_varset::in, hlds_goal::in,
-    list(quant_warning)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- type maybe_can_warn
+    --->    cannot_warn
+    ;       can_warn.
 
-maybe_add_singleton_and_quant_warnings(ModuleInfo, PredOrFunc,
-        PredSymName, PredFormArity, PredStatus, Clauses, VarSet,
-        Goal, Warnings, !Specs) :-
+:- pred can_we_do_singleton_and_quant_warnings(pred_status::in,
+    clauses_info::in, maybe_can_warn::out) is det.
+
+can_we_do_singleton_and_quant_warnings(PredStatus, ClausesInfo, CanWarn) :-
     ( if
         (
             % Any singleton warnings should be generated for the original code,
@@ -409,17 +402,12 @@ maybe_add_singleton_and_quant_warnings(ModuleInfo, PredOrFunc,
             % questionable, because some of those variables could have been
             % the result of typos affecting a word that the programmer meant
             % to be something else.
-            Clauses ^ cli_had_syntax_errors = some_clause_syntax_errors
+            ClausesInfo ^ cli_had_syntax_errors = some_clause_syntax_errors
         )
     then
-        true
+        CanWarn = cannot_warn
     else
-        % Warn about singleton variables.
-        WarnPFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName,
-            PredFormArity),
-        warn_singletons(ModuleInfo, WarnPFSymNameArity, VarSet, Goal, !Specs),
-        % Warn about variables with overlapping scopes.
-        add_quant_warnings(WarnPFSymNameArity, VarSet, Warnings, !Specs)
+        CanWarn = can_warn
     ).
 
 %-----------------%
@@ -634,12 +622,13 @@ add_annotation(_,         ma_mixed, ma_mixed).
 %-----------------------------------------------------------------------------%
 
 clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
-        PredOrFunc, PredSymName, ArgTerms, Context, SeqNum, QuantWarnings,
-        BodyGoal, Goal, ClauseVarSet, VarSet, TVarSet0, TVarSet,
+        PredOrFunc, PredSymName, ArgTerms, Context, SeqNum, BodyGoal,
+        ClauseVarSet, TVarSet0, TVarSet,
         !ClausesInfo, !ModuleInfo, !QualInfo, !Specs) :-
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes0,
-        VarTable0, RttiVarMaps0, TVarNameMap0, HeadVars, ClausesRep0,
+        VarTable0, RttiVarMaps0, TVarNameMap0, ArgVector, ClausesRep0,
         ItemNumbers0, HasForeignClauses0, HadSyntaxError0),
+    HeadVars = proc_arg_vector_to_list(ArgVector),
     IsEmpty = clause_list_is_empty(ClausesRep0),
     (
         IsEmpty = yes,
@@ -662,9 +651,17 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
     update_qual_info(TVarNameMap, TVarSet0, ExplicitVarTypes0,
         MaybeOptImported, !QualInfo),
     varset.merge_renaming(VarSet0, ClauseVarSet, VarSet1, Renaming),
-    add_clause_transform(Renaming, PredOrFunc, PredSymName, HeadVars, ArgTerms,
-        Context, ClauseType, BodyGoal, Goal0, VarSet1, VarSet,
-        QuantWarnings, StateVarWarnings, StateVarErrors,
+    can_we_do_singleton_and_quant_warnings(PredStatus, !.ClausesInfo, CanWarn),
+    % We need to keep quantified variables temporarily for use by the code
+    % that warns about singletons, and then we want to delete those quantified
+    % variables. If we cannot generate any singleton variable warnings,
+    % then there is no point in keeping those quantified variables.
+    ( CanWarn = cannot_warn, KeepQuantVars = do_not_keep_quant_vars
+    ; CanWarn = can_warn,    KeepQuantVars = keep_quant_vars
+    ),
+    add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
+        HeadVars, ArgTerms, Context, ClauseType, BodyGoal, Goal0,
+        VarSet1, VarSet2, QuantWarnings, StateVarWarnings, StateVarErrors,
         !ModuleInfo, !QualInfo, !Specs),
     qual_info_get_tvarset(!.QualInfo, TVarSet),
     qual_info_get_found_syntax_error(!.QualInfo, FoundError),
@@ -679,10 +676,42 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
         % to report spurious type errors. Don't report singleton variable
         % warnings if there were syntax errors.
         !:Specs = StateVarErrors ++ !.Specs,
-        Goal = true_goal,
         !ClausesInfo ^ cli_had_syntax_errors := some_clause_syntax_errors
     else
-        Goal = Goal0,
+        (
+            CanWarn = cannot_warn,
+            VarSet = VarSet2,
+            Goal = Goal0
+        ;
+            CanWarn = can_warn,
+            PredFormArity = arg_list_arity(HeadVars),
+            WarnPFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName,
+                PredFormArity),
+            warn_singletons(!.ModuleInfo, WarnPFSymNameArity, VarSet2, Goal0,
+                SeenQuant, !Specs),
+            % Warn about variables with overlapping scopes.
+            add_quant_warnings(WarnPFSymNameArity, VarSet, QuantWarnings,
+                !Specs),
+            (
+                SeenQuant = have_not_seen_quant,
+                % Even though we told the call to add_clause_transform above
+                % to tell quantification.m to keep any quantified variables,
+                % there were none to keep, so there is no point in trying
+                % to delete them.
+                VarSet = VarSet2,
+                Goal = Goal0
+            ;
+                SeenQuant = have_seen_quant,
+                % There *were* some to keep, so delete them.
+                qual_info_get_explicit_var_types(!.QualInfo, QuantVarTypes0),
+                rtti_varmaps_init(EmptyRttiVarmaps),
+                implicitly_quantify_clause_body_general_vs(ord_nl_maybe_lambda,
+                    do_not_keep_quant_vars, HeadVars, _QuantWarnings,
+                    Goal0, Goal, VarSet2, VarSet,
+                    QuantVarTypes0, QuantVarTypes, EmptyRttiVarmaps, _),
+                qual_info_set_explicit_var_types(QuantVarTypes, !QualInfo)
+            )
+        ),
         % If we have foreign clauses, we should only add this clause
         % for modes *not* covered by the foreign clauses.
         (
@@ -737,27 +766,26 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
         add_clause_item_number(SeqNum, Context, item_is_clause,
             ItemNumbers0, ItemNumbers),
         !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
-            VarTable0, RttiVarMaps0, TVarNameMap, HeadVars, ClausesRep,
+            VarTable0, RttiVarMaps0, TVarNameMap, ArgVector, ClausesRep,
             ItemNumbers, HasForeignClauses0, HadSyntaxError0)
     ).
 
     % ArgTerms0 has already had !S arguments replaced by
     % !.S, !:S argument pairs.
     %
-:- pred add_clause_transform(prog_var_renaming::in, pred_or_func::in,
-    sym_name::in, proc_arg_vector(prog_var)::in, list(prog_term)::in,
-    prog_context::in, clause_type::in, goal::in, hlds_goal::out,
-    prog_varset::in, prog_varset::out,
+:- pred add_clause_transform(maybe_keep_quant_vars::in, prog_var_renaming::in,
+    pred_or_func::in, sym_name::in, list(prog_var)::in,
+    list(prog_term)::in, prog_context::in, clause_type::in,
+    goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
     list(quant_warning)::out, list(error_spec)::out, list(error_spec)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_clause_transform(Renaming, PredOrFunc, PredSymName, ArgVector, ArgTerms0,
-        Context, ClauseType, ParseTreeBodyGoal, Goal, !VarSet,
-        QuantWarnings, StateVarWarnings, StateVarErrors,
+add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
+        HeadVars, ArgTerms0, Context, ClauseType, ParseTreeBodyGoal, Goal,
+        !VarSet, QuantWarnings, StateVarWarnings, StateVarErrors,
         !ModuleInfo, !QualInfo, !Specs) :-
     some [!SInfo, !SVarState, !SVarStore] (
-        HeadVars = proc_arg_vector_to_list(ArgVector),
         rename_vars_in_term_list(need_not_rename, Renaming,
             ArgTerms0, ArgTerms1),
         svar_prepare_for_clause_head(ArgTerms1, ArgTerms, !VarSet,
@@ -850,7 +878,7 @@ add_clause_transform(Renaming, PredOrFunc, PredSymName, ArgVector, ArgTerms0,
         % XXX It should be possible to exploit the fact that lambda expressions
         % are not yet recognized as such inside from_ground_term scopes.
         implicitly_quantify_clause_body_general_vs(ord_nl_maybe_lambda,
-            HeadVars, QuantWarnings, Goal1, Goal,
+            KeepQuantVars, HeadVars, QuantWarnings, Goal1, Goal,
             !VarSet, VarTypes0, VarTypes, EmptyRttiVarmaps, _),
         qual_info_set_explicit_var_types(VarTypes, !QualInfo)
     ).

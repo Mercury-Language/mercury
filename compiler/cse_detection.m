@@ -443,7 +443,7 @@ detect_cse_in_goal_update_instmap(Goal0, Goal, !CseInfo, InstMap0, InstMap) :-
                 GoalExpr = scope(Reason0, SubGoal)
             )
         ;
-            ( Reason0 = exist_quant(_)
+            ( Reason0 = exist_quant(_, _)
             ; Reason0 = disable_warnings(_, _)
             ; Reason0 = barrier(_)
             ; Reason0 = commit(_)

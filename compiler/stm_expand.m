@@ -351,8 +351,8 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
                 unexpected($pred, "unexpected scope")
             )
         ;
-            ( Reason = disable_warnings(_, _)
-            ; Reason = exist_quant(_)
+            ( Reason = exist_quant(_, _)
+            ; Reason = disable_warnings(_, _)
             ; Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_)
             ; Reason = commit(_)

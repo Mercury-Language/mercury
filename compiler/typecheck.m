@@ -1353,7 +1353,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
         (
             (
                 (
-                    Reason = exist_quant(Vars),
+                    Reason = exist_quant(Vars, _),
                     VarVectorKind = var_vector_exist_quant
                 ;
                     Reason = promise_solutions(Vars, _),

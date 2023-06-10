@@ -655,7 +655,7 @@ goal_vars_acc(Goal, !Set) :-
     ;
         GoalExpr = scope(Reason, SubGoal),
         (
-            Reason = exist_quant(Vars),
+            Reason = exist_quant(Vars, _),
             set_of_var.insert_list(Vars, !Set)
         ;
             Reason = promise_solutions(Vars, _),
