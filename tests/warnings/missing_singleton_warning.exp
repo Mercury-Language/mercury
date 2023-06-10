@@ -1,0 +1,6 @@
+missing_singleton_warning.m:027: In clause for predicate `is_it_there_test'/2:
+missing_singleton_warning.m:027:   warning: variable `Value' occurs only once
+missing_singleton_warning.m:027:   in this scope.
+missing_singleton_warning.m:036: In clause for predicate `is_it_there_str'/3:
+missing_singleton_warning.m:036:   warning: variable `Value' occurs only once
+missing_singleton_warning.m:036:   in this scope.
