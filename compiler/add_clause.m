@@ -376,40 +376,6 @@ maybe_add_error_for_builtin(ModuleInfo, PredInfo, Context, !Specs) :-
         true
     ).
 
-:- type maybe_can_warn
-    --->    cannot_warn
-    ;       can_warn.
-
-:- pred can_we_do_singleton_and_quant_warnings(pred_status::in,
-    clauses_info::in, maybe_can_warn::out) is det.
-
-can_we_do_singleton_and_quant_warnings(PredStatus, ClausesInfo, CanWarn) :-
-    ( if
-        (
-            % Any singleton warnings should be generated for the original code,
-            % not for the copy in a .opt or .trans_opt file.
-            PredStatus = pred_status(status_opt_imported)
-        ;
-            % Part of the parser's recovery from syntax errors (e.g. when
-            % they occur in lambda expressions' clause heads) may have
-            % included not translating parts of the original term
-            % into the parsed clause body, so any singleton warnings
-            % we generate for such "truncated" clauses could be misleading.
-            %
-            % We could try to record the set of variables in the parts
-            % of the original goal term that we don't include in the clause,
-            % but (a) this is not trivial to do, and (b) the payoff is
-            % questionable, because some of those variables could have been
-            % the result of typos affecting a word that the programmer meant
-            % to be something else.
-            ClausesInfo ^ cli_had_syntax_errors = some_clause_syntax_errors
-        )
-    then
-        CanWarn = cannot_warn
-    else
-        CanWarn = can_warn
-    ).
-
 %-----------------%
 
     % Extract the mode annotations (if any) from the clause arguments,
@@ -769,6 +735,44 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
             VarTable0, RttiVarMaps0, TVarNameMap, ArgVector, ClausesRep,
             ItemNumbers, HasForeignClauses0, HadSyntaxError0)
     ).
+
+%-----------------%
+
+:- type maybe_can_warn
+    --->    cannot_warn
+    ;       can_warn.
+
+:- pred can_we_do_singleton_and_quant_warnings(pred_status::in,
+    clauses_info::in, maybe_can_warn::out) is det.
+
+can_we_do_singleton_and_quant_warnings(PredStatus, ClausesInfo, CanWarn) :-
+    ( if
+        (
+            % Any singleton warnings should be generated for the original code,
+            % not for the copy in a .opt or .trans_opt file.
+            PredStatus = pred_status(status_opt_imported)
+        ;
+            % Part of the parser's recovery from syntax errors (e.g. when
+            % they occur in lambda expressions' clause heads) may have
+            % included not translating parts of the original term
+            % into the parsed clause body, so any singleton warnings
+            % we generate for such "truncated" clauses could be misleading.
+            %
+            % We could try to record the set of variables in the parts
+            % of the original goal term that we don't include in the clause,
+            % but (a) this is not trivial to do, and (b) the payoff is
+            % questionable, because some of those variables could have been
+            % the result of typos affecting a word that the programmer meant
+            % to be something else.
+            ClausesInfo ^ cli_had_syntax_errors = some_clause_syntax_errors
+        )
+    then
+        CanWarn = cannot_warn
+    else
+        CanWarn = can_warn
+    ).
+
+%-----------------%
 
     % ArgTerms0 has already had !S arguments replaced by
     % !.S, !:S argument pairs.
