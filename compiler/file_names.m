@@ -1991,25 +1991,77 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
-            % XXX EXT Why aren't object files for grades that differ in e.g.
-            % whether debugging is enabled stored in grade-specific directories
-            % if --use-grade-subdirs is enabled? The .c files that they are
-            % derived from *are* stored in grade-specific directories.
-            % I (zs) expect that the reason why this hasn't been a problem
-            % is that we don't target C with --use-grade-subdirs.
+            % There are two pieces of code here:
+            %
+            % - the one that is live, and
+            % - the one that is commented out.
+            %
+            % The version that is commented out is illogical, as expounded
+            % by the commented-out comment, but it is what was needed to pass
+            % test_file_name_extensions, i.e. for the new filename translation
+            % code to handle e.g. newext_target_obj(ext_obj_o) the same way
+            % the old code handles ext_other(other_ext(".o")). With the code
+            % that is live, test_file_name_extensions fails for five object
+            % file extensions, .$O, .o, .pic_o, _init.o and _init.pic_o,
+            % if use_grade_subdirs = yes. (There were ten failures overall,
+            % because each extension fails with both search and no_search.)
+            %
+            % In each case, the issue is that file_is_arch_or_grade_dependent_2
+            % does not list any of these extensions, though strangely,
+            % it *does* list _init.$O. However, this does not matter
+            % for four of the failing extensions, .o, .pic_o, _init.o and
+            % _init.pic_o, because the rest of the compiler never directly
+            % refers to these extensions; it always refers to them indirectly,
+            % by looking up the value of the object_file_extension or
+            % the pic_object_file_extension options, and maybe putting
+            % "_init" in front of them. file_is_arch_or_grade_dependent,
+            % the caller of file_is_arch_or_grade_dependent_2, does handle
+            % these.
+            %
+            % The fifth extension, .$O, or ext_obj_dollar_o, is also handled
+            % the same way by the live code as the other newext_target_obj
+            % extensions (in that it is put into a grade-specific subdir
+            % if use_grade_subdirs = yes), which is different from the way
+            % that the old code handled it. However, I (zs) don't know
+            % for sure which is the right way, because that extension is used
+            % only by code in write_deps_file.m that generate mmakefile
+            % fragments, which means any failure is indirect and delayed.
+            % However, the fact that _init.$O has an explicit entry in
+            % file_is_arch_or_grade_dependent_2 suggests to me that the
+            % absence of .$O from that same predicate was an oversight.
+            %
+            % The entries of these five extensions are commented out
+            % in string_extenions to allow the now-live code to pass
+            % test_file_name_extensions.
             globals.lookup_bool_option(Globals, use_grade_subdirs,
                 UseGradeSubdirs),
-            ( if
-                UseGradeSubdirs = yes,
-                Ext = newext_target_init_obj(ext_init_obj_dollar_o)
-            then
-                make_grade_subdir_file_name_new(Globals, [SubDirName],
-                    BaseNameNoExt, ExtStr, DirComponents, FileName)
-            else
+            (
+                UseGradeSubdirs = no,
                 DirComponents = ["Mercury", SubDirName],
                 FileName = glue_dir_names_file_name(DirComponents,
                     BaseNameNoExt, ExtStr)
+            ;
+                UseGradeSubdirs = yes,
+                make_grade_subdir_file_name_new(Globals, [SubDirName],
+                    BaseNameNoExt, ExtStr, DirComponents, FileName)
             ),
+%           % XXX EXT Why aren't object files for grades that differ in e.g.
+%           % whether debugging is enabled stored in grade-specific directories
+%           % if --use-grade-subdirs is enabled? The .c files that they are
+%           % derived from *are* stored in grade-specific directories.
+%           % I (zs) expect that the reason why this hasn't been a problem
+%           % is that we don't target C with --use-grade-subdirs.
+%           ( if
+%               UseGradeSubdirs = yes,
+%               Ext = newext_target_init_obj(ext_init_obj_dollar_o)
+%           then
+%               make_grade_subdir_file_name_new(Globals, [SubDirName],
+%                   BaseNameNoExt, ExtStr, DirComponents, FileName)
+%           else
+%               DirComponents = ["Mercury", SubDirName],
+%               FileName = glue_dir_names_file_name(DirComponents,
+%                   BaseNameNoExt, ExtStr)
+%           ),
             maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
         )
     ;
@@ -2346,7 +2398,7 @@ string_extensions =
     % ".$(EXT_FOR_PIC_OBJECTS)",
     ".$(EXT_FOR_SHARED_LIB)",
     ".$A",
-    ".$O",
+%   ".$O",
     ".a",
     ".all_int3s",
     ".all_ints",
@@ -2407,13 +2459,13 @@ string_extensions =
     ".mlds_dump",
     ".mode_constraints",
     ".module_dep",
-    ".o",
+%   ".o",
     ".opt",
     ".optdate",
     ".opts",
     ".order",
     ".order_trans_opt",
-    ".pic_o",
+%   ".pic_o",
     ".prof",
     ".realclean",
     ".request",
@@ -2427,9 +2479,9 @@ string_extensions =
     ".used",
     ".xml",
     "_init.$O",
-    "_init.c",
-    "_init.o",
-    "_init.pic_o"].
+    "_init.c"].
+%   "_init.o",
+%   "_init.pic_o"].
 
 :- func option_extensions = list(option).
 
