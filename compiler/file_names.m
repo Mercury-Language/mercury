@@ -2304,8 +2304,6 @@ make_cur_dir_globals(!Globals) :-
         string("lib_opt"), !Globals),
     globals.set_option(shared_library_extension,
         string("shlib_opt"), !Globals),
-    globals.set_option(java_object_file_extension,
-        string("java_obj_opt"), !Globals),
     globals.set_option(object_file_extension,
         string("obj_opt"), !Globals),
     globals.set_option(pic_object_file_extension,
@@ -2488,7 +2486,6 @@ string_extensions =
 option_extensions =
     [executable_file_extension,
     library_extension,
-    java_object_file_extension,
     object_file_extension,
     pic_object_file_extension,
     shared_library_extension].

@@ -646,19 +646,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             NewExt = newext_target_c_cs(ext_target_cs)
         ;
             CompilationTarget = target_java,
-            globals.lookup_string_option(NoLinkObjsGlobals,
-                java_object_file_extension, ObjExtToUseStr),
-            ObjOtherExtToUse = other_ext(ObjExtToUseStr),
-            % XXX EXT JULIEN This assumes that java_object_file_extension
-            % has its default value, ".class".
-            %
-            % We *could* extend the ext_target_java type with a value
-            % that means "the value of the java_object_file_extension option",
-            % as we have done with e.g. ext_exec_gc. However, the original
-            % code of file_names.m, which had code to do the right thing
-            % for options such as executable_file_extension, has no such code
-            % for java_object_file_extension. Therefore there is no GOOD code
-            % to model the handling of any such new ext_target_java value on.
+            ObjOtherExtToUse = other_ext(".class"),
             NewExt = newext_target_java(ext_target_java_class)
         ),
         list.map_foldl(

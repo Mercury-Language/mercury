@@ -966,7 +966,6 @@
     ;       java_compiler_flags
     ;       quoted_java_compiler_flag
     ;       java_classpath
-    ;       java_object_file_extension
     ;       java_runtime_flags
     ;       quoted_java_runtime_flag
 
@@ -1910,7 +1909,6 @@ optdef(oc_target_comp, java_interpreter,                string("java")).
 optdef(oc_target_comp, java_compiler_flags,             accumulating([])).
 optdef(oc_target_comp, quoted_java_compiler_flag,       string_special).
 optdef(oc_target_comp, java_classpath,                  accumulating([])).
-optdef(oc_target_comp, java_object_file_extension,      string(".class")).
 optdef(oc_target_comp, java_runtime_flags,              accumulating([])).
 optdef(oc_target_comp, quoted_java_runtime_flag,        string_special).
 
@@ -2975,7 +2973,6 @@ long_option("java-flag",            quoted_java_compiler_flag).
 % is Java. However for the moment they are just synonyms.
 long_option("java-debug",           target_debug).
 long_option("java-classpath",       java_classpath).
-long_option("java-object-file-extension", java_object_file_extension).
 long_option("java-runtime-flags",   java_runtime_flags).
 long_option("java-runtime-flag",    quoted_java_runtime_flag).
 
@@ -6392,10 +6389,6 @@ options_help_target_code_compilation(Stream, !IO) :-
 
         "--java-classpath <path>",
         "\tSet the classpath for the Java compiler and interpreter.",
-
-        "--java-object-file-extension <ext>",
-        "\tSpecify an extension for Java object (bytecode) files",
-        "\tBy default this is `.class'.",
 
         "--java-runtime-flags <options>, java-runtime-flag <option>",
         "\tSpecify options to be passed to the Java interpreter.",

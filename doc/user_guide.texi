@@ -10034,13 +10034,6 @@ to be quoted when passed to the shell.
 Set the classpath for the Java compiler and interpreter.
 
 @sp 1
-@item --java-object-file-extension @var{extension}
-@findex --java-object-file-extension
-@cindex File extensions
-Specify an extension for Java object (bytecode) files.  By default this
-is @samp{.class}.
-
-@sp 1
 @item --java-runtime-flags @var{options}
 @itemx --java-runtime-flag @var{option}
 @findex --java-runtime-flags
