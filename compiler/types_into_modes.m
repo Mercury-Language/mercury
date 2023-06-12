@@ -140,14 +140,9 @@ propagate_checked_types_into_proc_modes(ModuleInfo, PredInfo, ProcId,
     % It also needs to be done before mode analysis, to avoid internal errors
     % in mode analysis.
     ( if
-        mode_list_contains_inst_var(ArgModes, _InstVar)
-        % XXX This should be
-        %   some [InstVar] (
-        %       mode_list_contains_inst_var(ArgModes, InstVar)
-        %   )
-        % but that gets a singleton variable warning, because quantification.m
-        % replaces the list of quantified variables with the empty list
-        % BEFORE the singleton variable warning is generated.
+        some [InstVar] (
+            mode_list_contains_inst_var(ArgModes, InstVar)
+        )
     then
         !:RevErrorProcIds = [ProcId | !.RevErrorProcIds]
     else
