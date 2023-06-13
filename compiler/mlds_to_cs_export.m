@@ -170,8 +170,8 @@ output_exported_enum_for_csharp(Info, Stream, Indent, ExportedEnum, !IO) :-
     (
         Lang = lang_csharp,
         ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-        ClassId = mlds_class_id(ClassName, ClassArity, mlds_enum),
-        MLDS_Type = mlds_class_type(ClassId),
+        EnumClassId = mlds_enum_class_id(ClassName, ClassArity),
+        MLDS_Type = mlds_enum_class_type(EnumClassId),
         list.foldl(
             output_exported_enum_constant_for_csharp(Info, Stream, Indent,
                 MLDS_Type),

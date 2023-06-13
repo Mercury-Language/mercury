@@ -375,6 +375,7 @@
                 % (unless we are compiling to a target that does not need them
                 % to be flattened).
                 mlds_type_defns         :: list(mlds_class_defn),
+                mlds_enum_defns         :: list(mlds_enum_class_defn),
 
                 % Definitions of the structures that hold the tables
                 % of tabled procedures.
@@ -618,6 +619,54 @@
                 mcd_ctors           :: list(mlds_function_defn)
             ).
 
+    % Classes representing enum types and dummy types. We use these when
+    % targeting C# and Java, not when targeting C (since we use low-level
+    % data representation for C).
+:- type mlds_enum_class_defn
+    --->    mlds_enum_class_defn(
+                mecd_class_name     :: mlds_class_name,
+                mecd_class_arity    :: arity,
+                mecd_context        :: prog_context,
+                % We don't store any flags; they are always
+                % mlds_class_decl_flags(class_public, overridable, modifiable)
+
+                % The enum class inherits one base class when targeting Java,
+                % and no base classes when targeting C#.
+                mecd_inherits       :: mlds_enum_class_inherits,
+
+                % This enum class implements one interface when targeting Java,
+                % and no interfaces when targeting C#.
+                mecd_implements     :: maybe(mlds_interface_id),
+
+                % Type parameters.
+                mcd_tparams         :: list(type_param),
+
+                % XXX ml_type_gen.m generates this "value" field variable
+                % for each enum type. However, this field var's definition
+                % can never be used, because it is not written out by either
+                % mlds_to_cs_class.m or mlds_to_java_class.m, and of course
+                % mlds_to_c_class.m does not do anything with
+                % mlds_enum_class_defns at all.
+                %
+                % There is value field in java/runtime/MercuryEnum.java,
+                % which is the base type of all enumeration types in Java.
+                %
+                % Julien speculated on m-rev (2023 jun 13) that this field
+                % may have been required by a backend that does not currently
+                % exist, either because it was deleted (such as the MSIL
+                % backend), or because it was never implemented.
+                mecd_value_field    :: mlds_field_var_defn,
+
+                % A list containing one constant definition for each
+                % function symbol in the type. There will be one constant
+                % for dummy types, and two or more for enum types.
+                % XXX We should use a nonempty_list subtype of list.
+                mecd_enum_consts    :: list(mlds_enum_const_defn),
+
+                % Has these constructors.
+                mecd_ctors          :: list(mlds_function_defn)
+            ).
+
 :- type mlds_class_decl_flags
     --->    mlds_class_decl_flags(
                 mcdf_access         :: class_access,
@@ -642,12 +691,19 @@
             % structures, and only when put_nondet_env_on_heap is set,
             % which means only when targeting C# or Java.
 
+:- type mlds_enum_class_inherits =< mlds_class_inherits
+    --->    inherits_nothing
+    ;       inherits_class(mlds_class_id).
+
 :- type qual_class_name
     --->    qual_class_name(mlds_module_name, mlds_qual_kind, mlds_class_name).
 :- type mlds_class_name == string.
 
 :- type mlds_class_id
     --->    mlds_class_id(qual_class_name, arity, mlds_class_kind).
+:- type mlds_enum_class_id
+    --->    mlds_enum_class_id(qual_class_name, arity).
+
 :- type mlds_interface_id
     --->    mlds_interface_id(qual_class_name, arity, mlds_class_kind).
 
@@ -659,12 +715,8 @@
             % A class with no variable data members (can only inherit
             % other interfaces).
 
-    ;       mlds_struct
+    ;       mlds_struct.
             % A value class (can only inherit other structs).
-
-    ;       mlds_enum.
-            % A class with one integer member and a bunch of static consts
-            % (cannot inherit anything).
 
 :- type mlds_field_var_defn
     --->    mlds_field_var_defn(
@@ -687,6 +739,25 @@
                 % seem to know this, since they ignore this field.
                 mfvd_gc                 :: mlds_gc_statement
             ).
+
+:- type mlds_enum_const_defn
+    --->    mlds_enum_const_defn(
+                mecd_name               :: mlds_field_var_name,
+                mecd_context            :: prog_context,
+                % We don't store any flags for enum const definitions;
+                % they are implicitly one_copy and const.
+
+                % We don't store a type for enum const definitions either;
+                % they are always implicitly int. (Even when their value
+                % is given by a string, that string is the name of an integer
+                % constant in a foreign language.)
+                mecd_const_value        :: mlds_enum_const
+
+            ).
+
+:- type mlds_enum_const
+    --->    mlds_enum_const_uint(uint)
+    ;       mlds_enum_const_foreign(foreign_language, string, mlds_type).
 
 :- type mlds_field_var_decl_flags
     --->    mlds_field_var_decl_flags(
@@ -1052,6 +1123,11 @@
     ;       mlds_class_type(
                 % MLDS types defined using mlds_class_defn.
                 mlds_class_id
+            )
+
+    ;       mlds_enum_class_type(
+                % MLDS types defined using mlds_enum_class_defn.
+                mlds_enum_class_id
             )
 
     ;       mlds_array_type(mlds_type)

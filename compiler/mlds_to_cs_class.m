@@ -27,6 +27,10 @@
     io.text_output_stream::in, indent::in, mlds_class_defn::in,
     io::di, io::uo) is det.
 
+:- pred output_enum_class_defn_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, indent::in, mlds_enum_class_defn::in,
+    io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -49,6 +53,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module term.
@@ -92,42 +97,73 @@ output_class_defn_for_csharp(Info0, Stream, Indent, ClassDefn, !IO) :-
     ;
         SuperClassNames = [_ | _],
         SuperClassesStr = string.join_list(", ", SuperClassNames),
-        io.format(Stream, "%s  : %s\n", 
+        io.format(Stream, "%s  : %s\n",
             [s(IndentStr), s(SuperClassesStr)], !IO)
     ),
 
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
-    (
-        ( Kind = mlds_class
-        ; Kind = mlds_interface
-        ; Kind = mlds_struct
-        ),
-        list.foldl(
-            output_field_var_defn_for_csharp(Info, Stream, Indent + 1),
-            MemberFields, !IO),
-        list.foldl(
-            output_class_defn_for_csharp(Info, Stream, Indent + 1),
-            MemberClasses, !IO),
-        io.nl(Stream, !IO)
-    ;
-        Kind = mlds_enum,
-        list.filter(field_var_defn_is_enum_const,
-            MemberFields, EnumConstMemberFields),
-        % XXX Why +2?
-        Indent2Str = indent2_string(Indent + 2),
-        list.foldl(output_enum_constant_for_csharp(Info, Stream, Indent2Str),
-            EnumConstMemberFields, !IO)
+    Indent1 = Indent + 1,
+    list.foldl(
+        output_field_var_defn_for_csharp(Info, Stream, Indent1),
+        MemberFields, !IO),
+    list.foldl(
+        output_class_defn_for_csharp(Info, Stream, Indent1),
+        MemberClasses, !IO),
+    io.nl(Stream, !IO),
 
-    ),
     CtorsAux = oa_cname(ClassName, ClassArity),
     list.foldl(
-        output_function_defn_for_csharp(Info, Stream, Indent + 1, CtorsAux),
+        output_function_defn_for_csharp(Info, Stream, Indent1, CtorsAux),
         Ctors, !IO),
     io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
+
+output_enum_class_defn_for_csharp(Info0, Stream, Indent, EnumDefn, !IO) :-
+    EnumDefn = mlds_enum_class_defn(ClassName, ClassArity, _Context,
+        Inherits, Implements, TypeParams, _ValueField, EnumConsts, Ctors),
+    Info  = Info0 ^ csoi_univ_tvars := TypeParams,
+
+    IndentStr = indent2_string(Indent),
+    AccessPrefix = access_prefix_for_csharp(class_public),
+    PerInstancePrefix = per_instance_prefix_for_csharp(per_instance),
+    OverridePrefix = overrideability_prefix_for_csharp(overridable),
+    ConstnessPrefix = constness_prefix_for_csharp(modifiable),
+    ClassNameStr =
+        unqual_class_name_to_ll_string_for_csharp(ClassName, ClassArity),
+    OutputGenerics = Info ^ csoi_output_generics,
+    (
+        OutputGenerics = do_output_generics,
+        GenericTypeParamsStr = generic_tvars_to_string(TypeParams)
+    ;
+        OutputGenerics = do_not_output_generics,
+        GenericTypeParamsStr = ""
+    ),
+    io.format(Stream, "%s[System.Serializable]\n", [s(IndentStr)], !IO),
+    io.format(Stream, "%s%s%s%s%senum %s%s\n",
+        [s(IndentStr), s(AccessPrefix), s(PerInstancePrefix),
+        s(OverridePrefix), s(ConstnessPrefix),
+        s(ClassNameStr), s(GenericTypeParamsStr)], !IO),
+    expect(unify(Inherits, inherits_nothing), $pred,
+        "Inherits != inherits_nothing"),
+    expect(unify(Implements, no), $pred, "Implements != no"),
+
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+    Indent1 = Indent + 1,
+    Indent2Str = indent2_string(Indent1),
+    list.foldl(output_enum_constant_for_csharp(Info, Stream, Indent2Str),
+        EnumConsts, !IO),
+
+    CtorsAux = oa_cname(ClassName, ClassArity),
+    list.foldl(
+        output_function_defn_for_csharp(Info, Stream, Indent1, CtorsAux),
+        Ctors, !IO),
+    io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
+
+%---------------------------------------------------------------------------%
 
     % Output superclass that this class extends and interfaces implemented.
     % C# does not support multiple inheritance, so more than one superclass
     % is an error.
+    % XXX This predicate does not output anything.
     %
 :- func get_superclass_names(csharp_out_info,
     mlds_class_inherits, list(mlds_interface_id)) = list(string).
@@ -196,37 +232,23 @@ output_field_var_defn_for_csharp(Info, Stream, Indent, FieldVarDefn, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred output_enum_constant_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, string::in, mlds_field_var_defn::in, 
+    io.text_output_stream::in, string::in, mlds_enum_const_defn::in,
     io::di, io::uo) is det.
 
-output_enum_constant_for_csharp(Info, Stream, IndentStr, FieldVarDefn, !IO) :-
-    FieldVarDefn = mlds_field_var_defn(FieldVarName, _Context, _Flags,
-        _Type, Initializer, _GCStmt),
+output_enum_constant_for_csharp(Info, Stream, IndentStr, EnumConstDefn, !IO) :-
+    EnumConstDefn = mlds_enum_const_defn(VarName, _Context, EnumConst),
+    VarNameStr = field_var_name_to_ll_string_for_csharp(VarName),
     (
-        Initializer = init_obj(Rval),
-        % The name might require mangling.
-        FieldVarNameStr = field_var_name_to_ll_string_for_csharp(FieldVarName),
-        ( if
-            Rval = ml_const(mlconst_enum(N, _))
-        then
-            io.format(Stream, "%s%s = %d,\n",
-                [s(IndentStr), s(FieldVarNameStr), i(N)], !IO)
-        else if
-            Rval = ml_const(mlconst_foreign(lang_csharp, ConstStr, Type))
-        then
-            TypeStr = type_to_string_for_csharp(Info, Type),
-            io.format(Stream, "%s%s = (%s) %s,\n",
-                [s(IndentStr), s(FieldVarNameStr), s(TypeStr), s(ConstStr)],
-                !IO)
-        else
-            unexpected($pred, string(Rval))
-        )
+        EnumConst = mlds_enum_const_uint(EnumUInt),
+        io.format(Stream, "%s%s = %u,\n",
+            [s(IndentStr), s(VarNameStr), u(EnumUInt)], !IO)
     ;
-        ( Initializer = no_initializer
-        ; Initializer = init_struct(_, _)
-        ; Initializer = init_array(_)
-        ),
-        unexpected($pred, string(Initializer))
+        EnumConst = mlds_enum_const_foreign(Lang, EnumNameStr, Type),
+        % The name might require mangling.
+        expect(unify(Lang, lang_csharp), $pred, "Lang != lang_csharp"),
+        TypeStr = type_to_string_for_csharp(Info, Type),
+        io.format(Stream, "%s%s = (%s) %s,\n",
+            [s(IndentStr), s(VarNameStr), s(TypeStr), s(EnumNameStr)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -253,15 +275,9 @@ get_class_decl_flags_for_csharp(Kind, Flags, Serializable,
         KindStr) :-
     Flags = mlds_class_decl_flags(Access, Overridability0, Constness),
     (
-        (
-            % `static' keyword not allowed on enumerations.
-            Kind = mlds_enum,
-            KindStr = "enum"
-        ;
-            % `static' not wanted on classes generated for Mercury types.
-            Kind = mlds_class,
-            KindStr = "class"
-        ),
+        % `static' not wanted on classes generated for Mercury types.
+        Kind = mlds_class,
+        KindStr = "class",
         Serializable = yes,
         PerInstance = per_instance,
         Overridability = Overridability0

@@ -130,6 +130,7 @@ export_type_to_prefix_suffix(MLDS_Type, TypePrefix, TypeSuffix) :-
         ( MLDS_Type = mlds_cont_type(_)
         ; MLDS_Type = mlds_commit_type
         ; MLDS_Type = mlds_class_type(_)
+        ; MLDS_Type = mlds_enum_class_type(_)
         ; MLDS_Type = mlds_array_type(_)
         ; MLDS_Type = mlds_mostly_generic_array_type(_)
         ; MLDS_Type = mlds_func_type(_)

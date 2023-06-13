@@ -142,7 +142,7 @@ output_java_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
 output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
     % Run further transformations on the MLDS.
     MLDS = mlds(ModuleName, Imports, GlobalData,
-        TypeDefns0, TableStructDefns0, ProcDefns0,
+        ClassDefns0, EnumDefns, TableStructDefns0, ProcDefns0,
         InitPreds, FinalPreds, AllForeignCode, ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap,
@@ -157,7 +157,7 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
     % taken to be used as a function pointer.
     some [!CodeAddrsInConsts] (
         !:CodeAddrsInConsts = init_code_addrs_in_consts,
-        method_ptrs_in_class_defns(TypeDefns0, !CodeAddrsInConsts),
+        method_ptrs_in_class_defns(ClassDefns0, !CodeAddrsInConsts),
         method_ptrs_in_global_var_defns(RttiDefns0, !CodeAddrsInConsts),
         method_ptrs_in_global_var_defns(CellDefns0, !CodeAddrsInConsts),
         method_ptrs_in_global_var_defns(TableStructDefns0, !CodeAddrsInConsts),
@@ -182,11 +182,11 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
 
     % Rename classes with excessively long names.
     list.map_foldl(maybe_shorten_long_class_name,
-        TypeDefns0, TypeDefns1, map.init, RenamingMap1),
+        ClassDefns0, ClassDefns1, map.init, RenamingMap1),
     list.map_foldl(maybe_shorten_long_class_name,
         WrapperClassDefns0, WrapperClassDefns1, RenamingMap1, RenamingMap),
     ( if map.is_empty(RenamingMap) then
-        TypeDefns = TypeDefns0,
+        ClassDefns = ClassDefns0,
         WrapperClassDefns = WrapperClassDefns0,
         RttiDefns = RttiDefns0,
         CellDefns = CellDefns0,
@@ -196,7 +196,7 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
     else
         Renaming = class_name_renaming(MLDS_ModuleName, RenamingMap),
         list.map(rename_class_names_in_class_defn(Renaming),
-            TypeDefns1, TypeDefns),
+            ClassDefns1, ClassDefns),
         list.map(rename_class_names_in_class_defn(Renaming),
             WrapperClassDefns1, WrapperClassDefns),
         list.map(rename_class_names_in_global_var_defn(Renaming),
@@ -290,7 +290,7 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
             SortedFuncDefns, !IO)
     ),
 
-    list.sort(WrapperClassDefns ++ TypeDefns, SortedClassDefns),
+    list.sort(WrapperClassDefns ++ ClassDefns, SortedClassDefns),
     (
         SortedClassDefns = []
     ;
@@ -298,6 +298,16 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
         io.write_string(Stream, "\n// Class definitions\n", !IO),
         list.foldl(output_class_defn_for_java(Info, Stream, 1),
             SortedClassDefns, !IO)
+    ),
+
+    list.sort(EnumDefns, SortedEnumDefns),
+    (
+        SortedEnumDefns = []
+    ;
+        SortedEnumDefns = [_ | _],
+        io.write_string(Stream, "\n// Enum class definitions\n", !IO),
+        list.foldl(output_enum_class_defn_for_java(Info, Stream, 1),
+            SortedEnumDefns, !IO)
     ),
 
     (

@@ -1121,6 +1121,7 @@ get_default_initializer_for_csharp(Info, Type) = Initializer :-
         ; Type = mlds_cont_type(_)
         ; Type = mlds_commit_type
         ; Type = mlds_class_type(_)
+        ; Type = mlds_enum_class_type(_)
         ; Type = mlds_array_type(_)
         ; Type = mlds_mostly_generic_array_type(_)
         ; Type = mlds_ptr_type(_)

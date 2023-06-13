@@ -195,31 +195,30 @@ type_to_prefix_suffix_for_c(Opts, MLDS_Type, InitSize,
         TypeSuffix = ""
     ;
         MLDS_Type = mlds_class_type(ClassId),
-        ClassId = mlds_class_id(QualClassName, Arity, ClassKind),
+        ClassId = mlds_class_id(QualClassName, Arity, _ClassKind),
         QualClassName = qual_class_name(ModuleName, _QualKind, ClassName),
         Qualifier = qualifier_to_string_for_c(ModuleName),
         MangledClassName = name_mangle(ClassName),
-        (
-            ClassKind = mlds_enum,
-            % We cannot just use the enumeration type, since the enumeration
-            % type's definition is not guaranteed to be in scope at this point.
-            % (Fixing that would be somewhat complicated; it would require
-            % writing enum definitions to a separate header file.) Also,
-            % the enumeration might not be word-sized, which would cause
-            % problems for e.g. `std_util.arg/2'. So we just use `MR_Integer',
-            % and output the actual enumeration type as a comment.
-            string.format("MR_Integer /* actually `enum %s__%s_%d_e' */",
-                [s(Qualifier), s(MangledClassName), i(Arity)], TypePrefix)
-        ;
-            ( ClassKind = mlds_class
-            ; ClassKind = mlds_interface
-            ; ClassKind = mlds_struct
-            ),
-            % For struct types, it is OK to output an incomplete type, since
-            % we do not use these types directly; we only use pointers to them.
-            string.format("struct %s__%s_%d_s",
-                [s(Qualifier), s(MangledClassName), i(Arity)], TypePrefix)
-        ),
+        % For struct types, it is OK to output an incomplete type, since
+        % we do not use these types directly; we only use pointers to them.
+        string.format("struct %s__%s_%d_s",
+            [s(Qualifier), s(MangledClassName), i(Arity)], TypePrefix),
+        TypeSuffix = ""
+    ;
+        MLDS_Type = mlds_enum_class_type(EnumClassId),
+        EnumClassId = mlds_enum_class_id(QualClassName, Arity),
+        QualClassName = qual_class_name(ModuleName, _QualKind, ClassName),
+        Qualifier = qualifier_to_string_for_c(ModuleName),
+        MangledClassName = name_mangle(ClassName),
+        % We cannot just use the enumeration type, since the enumeration
+        % type's definition is not guaranteed to be in scope at this point.
+        % (Fixing that would be somewhat complicated; it would require
+        % writing enum definitions to a separate header file.) Also,
+        % the enumeration might not be word-sized, which would cause
+        % problems for e.g. `std_util.arg/2'. So we just use `MR_Integer',
+        % and output the actual enumeration type as a comment.
+        string.format("MR_Integer /* actually `enum %s__%s_%d_e' */",
+            [s(Qualifier), s(MangledClassName), i(Arity)], TypePrefix),
         TypeSuffix = ""
     ;
         MLDS_Type = mlds_ptr_type(BaseType),
@@ -535,6 +534,7 @@ semicanonicalize_types_in_type_for_c(Type0, Type, Changed) :-
         ; Type0 = mlds_builtin_type_string
         ; Type0 = mlds_native_bool_type
         ; Type0 = mlds_class_type(_)
+        ; Type0 = mlds_enum_class_type(_)
         ; Type0 = mlds_mostly_generic_array_type(_)
         ; Type0 = mlds_func_type(_)
         ; Type0 = mlds_generic_type

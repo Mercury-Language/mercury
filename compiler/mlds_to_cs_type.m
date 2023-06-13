@@ -217,6 +217,11 @@ type_to_string_and_dims_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
         String = qual_class_name_to_nll_string_for_csharp(Name, Arity),
         ArrayDims = []
     ;
+        MLDS_Type = mlds_enum_class_type(EnumClassId),
+        EnumClassId = mlds_enum_class_id(Name, Arity),
+        String = qual_class_name_to_nll_string_for_csharp(Name, Arity),
+        ArrayDims = []
+    ;
         MLDS_Type = mlds_ptr_type(Type),
         % XXX Should we report an error here, if the type pointed to
         % is not a class type?
@@ -328,8 +333,8 @@ mercury_type_to_string_and_dims_for_csharp(Info, Type, CtorCat,
         ArrayDims = [0]
     ;
         CtorCat = ctor_cat_enum(_),
-        mercury_user_type_to_string_and_dims_for_csharp(Info, Type,
-            mlds_enum, String),
+        mercury_user_enum_type_to_string_and_dims_for_csharp(Info, Type,
+            String),
         ArrayDims = []
     ;
         ( CtorCat = ctor_cat_builtin_dummy
@@ -421,6 +426,7 @@ csharp_builtin_type(Type, TargetType) :-
         ; Type = mlds_cont_type(_)
         ; Type = mlds_commit_type
         ; Type = mlds_class_type(_)
+        ; Type = mlds_enum_class_type(_)
         ; Type = mlds_array_type(_)
         ; Type = mlds_mostly_generic_array_type(_)
         ; Type = mlds_ptr_type(_)
@@ -458,6 +464,28 @@ mercury_user_type_to_string_and_dims_for_csharp(Info, Type, ClassKind,
     ml_gen_type_name(TypeCtor, ClassName, ClassArity),
     ClassId = mlds_class_id(ClassName, ClassArity, ClassKind),
     MLDS_Type = mlds_class_type(ClassId),
+    type_to_string_and_dims_for_csharp(Info, MLDS_Type, TypeName, ArrayDims),
+    expect(unify(ArrayDims, []), $pred, "ArrayDims != []"),
+    OutputGenerics = Info ^ csoi_output_generics,
+    (
+        OutputGenerics = do_output_generics,
+        generic_args_types_to_string_for_csharp(Info, ArgsTypes,
+            GenericsString),
+        TypeNameWithGenerics = TypeName ++ GenericsString
+    ;
+        OutputGenerics = do_not_output_generics,
+        TypeNameWithGenerics = TypeName
+    ).
+
+:- pred mercury_user_enum_type_to_string_and_dims_for_csharp(
+    csharp_out_info::in, mer_type::in, string::out) is det.
+
+mercury_user_enum_type_to_string_and_dims_for_csharp(Info, Type,
+        TypeNameWithGenerics) :-
+    type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
+    ml_gen_type_name(TypeCtor, ClassName, ClassArity),
+    ClassId = mlds_enum_class_id(ClassName, ClassArity),
+    MLDS_Type = mlds_enum_class_type(ClassId),
     type_to_string_and_dims_for_csharp(Info, MLDS_Type, TypeName, ArrayDims),
     expect(unify(ArrayDims, []), $pred, "ArrayDims != []"),
     OutputGenerics = Info ^ csoi_output_generics,

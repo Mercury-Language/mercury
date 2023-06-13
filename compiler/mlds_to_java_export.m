@@ -273,7 +273,7 @@ output_exported_enum_for_java(Info, Stream, Indent, ExportedEnum, !IO) :-
         Lang = lang_java,
         ml_gen_type_name(TypeCtor, ClassName, ClassArity),
         MLDS_Type =
-            mlds_class_type(mlds_class_id(ClassName, ClassArity, mlds_enum)),
+            mlds_enum_class_type(mlds_enum_class_id(ClassName, ClassArity)),
         list.foldl(
             output_exported_enum_constant_for_java(Info, Stream, Indent,
                 MLDS_Type),

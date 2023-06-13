@@ -1115,10 +1115,15 @@ mlds_type_to_strcord(MLDS_Type) = Cord :-
         ;
             Kind = mlds_struct,
             KindStr = "class_struct"
-        ;
-            Kind = mlds_enum,
-            KindStr = "class_enum"
         ),
+        Cord = strcord(KindStr) ++ strcord("(") ++
+            strcord(ClassName) ++ strcord("/") ++
+            intcord(Arity) ++ strcord(")")
+    ;
+        MLDS_Type = mlds_enum_class_type(EnumClassId),
+        KindStr = "class_enum",
+        EnumClassId = mlds_enum_class_id(QualClassName, Arity),
+        QualClassName = qual_class_name(_ModuleName, _QualKind, ClassName),
         Cord = strcord(KindStr) ++ strcord("(") ++
             strcord(ClassName) ++ strcord("/") ++
             intcord(Arity) ++ strcord(")")

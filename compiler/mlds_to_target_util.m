@@ -124,11 +124,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Test whether one of the members of an mlds_enum class
-    % is an enumeration constant.
-    %
-:- pred field_var_defn_is_enum_const(mlds_field_var_defn::in) is semidet.
-
     % Succeeds iff this definition is a data definition which
     % defines a type_ctor_info constant.
     %
@@ -287,9 +282,6 @@ convert_qual_kind(module_qual) = module_qual.
 convert_qual_kind(type_qual) = type_qual.
 
 %---------------------------------------------------------------------------%
-
-field_var_defn_is_enum_const(FieldVarDefn) :-
-    FieldVarDefn ^ mfvd_decl_flags ^ mfvdf_constness = const.
 
 global_var_defn_is_type_ctor_info(GlobalVarDefn) :-
     GlobalVarDefn = mlds_global_var_defn(_Name, _Context, _Flags, Type, _, _),

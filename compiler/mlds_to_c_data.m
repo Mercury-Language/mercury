@@ -310,6 +310,7 @@ mlds_output_boxed_rval(Opts, Stream, Type, Rval, !IO) :-
             ; Type = mlds_mercury_array_type(_)
             ; Type = mlds_mostly_generic_array_type(_)
             ; Type = mlds_class_type(_)
+            ; Type = mlds_enum_class_type(_)
             ; Type = mlds_commit_type
             ; Type = mlds_cont_type(_)
             ; Type = mlds_foreign_type(_)
@@ -509,6 +510,7 @@ mlds_output_unboxed_rval(Opts, Stream, Type, Rval, !IO) :-
         ; Type = mlds_mercury_array_type(_)
         ; Type = mlds_mostly_generic_array_type(_)
         ; Type = mlds_class_type(_)
+        ; Type = mlds_enum_class_type(_)
         ; Type = mlds_commit_type
         ; Type = mlds_cont_type(_)
         ; Type = mlds_foreign_type(_)

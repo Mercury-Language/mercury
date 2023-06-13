@@ -42,7 +42,7 @@
     % Generate MLDS definitions for all the types in the HLDS.
     %
 :- pred ml_gen_types(module_info::in, mlds_target_lang::in,
-    list(mlds_class_defn)::out) is det.
+    list(mlds_class_defn)::out, list(mlds_enum_class_defn)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -150,43 +150,48 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
-ml_gen_types(ModuleInfo, Target, ClassDefns) :-
+ml_gen_types(ModuleInfo, Target, ClassDefns, EnumClassDefns) :-
     HighLevelData = mlds_target_high_level_data(Target),
     (
         HighLevelData = yes,
         module_info_get_type_table(ModuleInfo, TypeTable),
         get_all_type_ctor_defns(TypeTable, TypeCtorDefns),
-        list.foldl(ml_gen_hld_type_defn_if_local(ModuleInfo, Target),
-            TypeCtorDefns, [], ClassDefns)
+        list.foldl2(ml_gen_hld_type_defn_if_local(ModuleInfo, Target),
+            TypeCtorDefns, [], ClassDefns, [], EnumClassDefns)
     ;
         HighLevelData = no,
-        ClassDefns = []
+        ClassDefns = [],
+        EnumClassDefns = []
     ).
 
 :- pred ml_gen_hld_type_defn_if_local(module_info::in, mlds_target_lang::in,
     pair(type_ctor, hlds_type_defn)::in,
-    list(mlds_class_defn)::in, list(mlds_class_defn)::out) is det.
+    list(mlds_class_defn)::in, list(mlds_class_defn)::out,
+    list(mlds_enum_class_defn)::in, list(mlds_enum_class_defn)::out) is det.
 
 ml_gen_hld_type_defn_if_local(ModuleInfo, Target, TypeCtor - TypeDefn,
-        !ClassDefns) :-
+        !ClassDefns, !EnumClassDefns) :-
     hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
     DefinedThisModule = type_status_defined_in_this_module(TypeStatus),
     (
         DefinedThisModule = yes,
         ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn,
-            !ClassDefns)
+            !ClassDefns, !EnumClassDefns)
     ;
         DefinedThisModule = no
     ).
 
 :- pred ml_gen_hld_type_defn(module_info::in, mlds_target_lang::in,
     type_ctor::in, hlds_type_defn::in,
-    list(mlds_class_defn)::in, list(mlds_class_defn)::out) is det.
+    list(mlds_class_defn)::in, list(mlds_class_defn)::out,
+    list(mlds_enum_class_defn)::in, list(mlds_enum_class_defn)::out) is det.
 
-ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !ClassDefns) :-
+ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn,
+        !ClassDefns, !EnumClassDefns) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
         ( TypeBody = hlds_abstract_type(_)
@@ -223,22 +228,24 @@ ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !ClassDefns) :-
                 ; DuTypeKind = du_type_kind_foreign_enum(_)
                 ),
                 ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
-                    MaybeEqualityMembers, ClassDefn)
+                    MaybeEqualityMembers, EnumClassDefn),
+                !:EnumClassDefns = [EnumClassDefn | !.EnumClassDefns]
             ;
                 DuTypeKind = du_type_kind_direct_dummy,
                 % XXX We shouldn't have to generate an MLDS type for these
                 % types, but it is not easy to ensure that we never refer to
                 % that type.
                 ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
-                    MaybeEqualityMembers, ClassDefn)
+                    MaybeEqualityMembers, EnumClassDefn),
+                !:EnumClassDefns = [EnumClassDefn | !.EnumClassDefns]
             ;
                 ( DuTypeKind = du_type_kind_notag(_, _, _)
                 ; DuTypeKind = du_type_kind_general
                 ),
                 ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn,
-                    CtorRepns, MaybeEqualityMembers, ClassDefn)
-            ),
-            !:ClassDefns = [ClassDefn | !.ClassDefns]
+                    CtorRepns, MaybeEqualityMembers, ClassDefn),
+                !:ClassDefns = [ClassDefn | !.ClassDefns]
+            )
         )
     ).
 
@@ -265,10 +272,10 @@ ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !ClassDefns) :-
     %
 :- pred ml_gen_hld_enum_type(mlds_target_lang::in, type_ctor::in,
     hlds_type_defn::in, list(constructor_repn)::in,
-    list(mlds_field_var_defn)::in, mlds_class_defn::out) is det.
+    list(mlds_field_var_defn)::in, mlds_enum_class_defn::out) is det.
 
 ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
-        MaybeEqualityMembers, ClassDefn) :-
+        MaybeEqualityMembers, EnumClassDefn) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
 
     % Generate the class name.
@@ -279,14 +286,12 @@ ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
     ValueMember = mlds_field_var_defn(fvn_mr_value, Context,
         ml_gen_member_data_decl_flags, mlds_builtin_type_int(int_type_int),
         no_initializer, gc_no_stmt),
-    MLDS_Type = mlds_class_type(
-        mlds_class_id(QualifiedClassName, MLDS_ClassArity, mlds_enum)),
+    MLDS_Type = mlds_enum_class_type(
+        mlds_enum_class_id(QualifiedClassName, MLDS_ClassArity)),
     EnumConstMembers = list.map(ml_gen_hld_enum_constant(Context, MLDS_Type),
         CtorRepns),
-    Members = MaybeEqualityMembers ++ [ValueMember | EnumConstMembers],
-
-    % Enums don't import anything.
-    Imports = [],
+    expect(unify(MaybeEqualityMembers, []), $pred,
+        "MaybeEqualityMembers != []"),
 
     (
         Target = ml_target_java,
@@ -294,36 +299,32 @@ ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
         Inherits = inherits_class(ml_java_mercury_enum_class),
         % All Java classes corresponding to types implement the MercuryType
         % interface.
-        Implements = [ml_java_mercury_type_interface]
+        Implements = yes(ml_java_mercury_type_interface)
     ;
         ( Target = ml_target_c
         ; Target = ml_target_csharp
         ),
         Inherits = inherits_nothing,
-        Implements = []
+        Implements = no
     ),
 
     % Put it all together.
     get_type_defn_tparams(TypeDefn, TypeVars),
-    ClassDefn = mlds_class_defn(MLDS_ClassName, MLDS_ClassArity, Context,
-        ml_gen_type_decl_flags, mlds_enum, Imports, Inherits, Implements,
-        TypeVars, Members, [], [], []).
+    EnumClassDefn = mlds_enum_class_defn(MLDS_ClassName, MLDS_ClassArity,
+        Context, Inherits, Implements, TypeVars,
+        ValueMember, EnumConstMembers, []).
 
 :- func ml_gen_hld_enum_constant(prog_context, mlds_type, constructor_repn)
-    = mlds_field_var_defn.
+    = mlds_enum_const_defn.
 
-ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = FieldVarDefn :-
+ml_gen_hld_enum_constant(Context, MLDS_Type, CtorRepn) = EnumConstDefn :-
     % Figure out the value of this enumeration constant.
     CtorRepn = ctor_repn(_, _, QualSymName, ConsTag, _, Arity, _),
-    expect(unify(Arity, 0), $pred, "arity != []"),
-    enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, ConstRval),
-
-    % Generate an MLDS definition for this enumeration constant.
     Name = unqualify_name(QualSymName),
     VarName = fvn_enum_const(Name),
-    VarFlags = mlds_field_var_decl_flags(one_copy, const),
-    FieldVarDefn = mlds_field_var_defn(VarName, Context, VarFlags,
-        mlds_builtin_type_int(int_type_int), init_obj(ConstRval), gc_no_stmt).
+    expect(unify(Arity, 0), $pred, "arity != []"),
+    enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, EnumConst, _ConstRval),
+    EnumConstDefn = mlds_enum_const_defn(VarName, Context, EnumConst).
 
 %---------------------------------------------------------------------------%
 %
@@ -1022,8 +1023,8 @@ ml_gen_exported_enum(ExportedEnumInfo, MLDS_ExportedEnum) :-
     ExportedEnumInfo = exported_enum_info(TypeCtor, CtorRepns, Lang,
         Mapping, Context),
     ml_gen_type_name(TypeCtor, QualifiedClassName, MLDS_ClassArity),
-    MLDS_Type = mlds_class_type(
-        mlds_class_id(QualifiedClassName, MLDS_ClassArity, mlds_enum)),
+    MLDS_Type = mlds_enum_class_type(
+        mlds_enum_class_id(QualifiedClassName, MLDS_ClassArity)),
     list.map(
         generate_foreign_enum_constant(Mapping, MLDS_Type),
         CtorRepns, ExportConstants),
@@ -1038,7 +1039,7 @@ generate_foreign_enum_constant(Mapping, MLDS_Type, CtorRepn,
         ExportConstant) :-
     CtorRepn = ctor_repn(_, _, SymName, ConsTag, _, Arity, _),
     expect(unify(Arity, 0), $pred, "enum constant arity != 0"),
-    enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, ConstRval),
+    enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, _EnumValue, ConstRval),
 
     Name = unqualify_name(SymName),
     map.lookup(Mapping, Name, ForeignName),
@@ -1046,32 +1047,37 @@ generate_foreign_enum_constant(Mapping, MLDS_Type, CtorRepn,
         init_obj(ConstRval)).
 
 :- pred enum_cons_tag_to_ml_const_rval(mlds_type::in, cons_tag::in,
-    mlds_rval::out) is det.
+    mlds_enum_const::out, mlds_rval::out) is det.
 
-enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, ConstRval) :-
+enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, EnumConst, ConstRval) :-
     (
         ConsTag = int_tag(IntTag),
         (
             IntTag = int_tag_int(Int),
+            EnumConst = mlds_enum_const_uint(uint.det_from_int(Int)),
             ConstRval = ml_const(mlconst_enum(Int, MLDS_Type))
         ;
-            ( IntTag = int_tag_uint(_)
-            ; IntTag = int_tag_int8(_)
-            ; IntTag = int_tag_uint8(_)
+            ( IntTag = int_tag_int8(_)
             ; IntTag = int_tag_int16(_)
-            ; IntTag = int_tag_uint16(_)
             ; IntTag = int_tag_int32(_)
-            ; IntTag = int_tag_uint32(_)
             ; IntTag = int_tag_int64(_)
+            ; IntTag = int_tag_uint(_)
+            ; IntTag = int_tag_uint8(_)
+            ; IntTag = int_tag_uint16(_)
+            ; IntTag = int_tag_uint32(_)
             ; IntTag = int_tag_uint64(_)
             ),
             unexpected($pred, "enum constant requires an int or foreign tag")
         )
     ;
         ConsTag = foreign_tag(Lang, String),
+        EnumConst = mlds_enum_const_foreign(Lang, String, MLDS_Type),
         ConstRval = ml_const(mlconst_foreign(Lang, String, MLDS_Type))
     ;
         ConsTag = dummy_tag,
+        % Dummy tags should never occur in an enum type, but we also generate
+        % an enum class for dummy types.
+        EnumConst = mlds_enum_const_uint(0u),
         ConstRval = ml_const(mlconst_enum(0, MLDS_Type))
     ;
         ( ConsTag = string_tag(_)

@@ -231,6 +231,11 @@ type_to_string_and_dims_for_java(Info, MLDS_Type, String, ArrayDims) :-
         String = qual_class_name_to_string_for_java(Name, Arity),
         ArrayDims = []
     ;
+        MLDS_Type = mlds_enum_class_type(EnumClassId),
+        EnumClassId = mlds_enum_class_id(Name, Arity),
+        String = qual_class_name_to_string_for_java(Name, Arity),
+        ArrayDims = []
+    ;
         MLDS_Type = mlds_ptr_type(PointedToType),
         % XXX Should we report an error here, if the type pointed to
         % is not a class type?
@@ -336,7 +341,7 @@ mercury_type_to_string_for_java(Info, Type, CtorCat, String, ArrayDims) :-
         ArrayDims = [0]
     ;
         CtorCat = ctor_cat_enum(_),
-        mercury_user_type_to_string_and_dims_for_java(Info, Type, mlds_enum,
+        mercury_user_enum_type_to_string_and_dims_for_java(Info, Type,
             String),
         ArrayDims = []
     ;
@@ -349,12 +354,11 @@ mercury_type_to_string_for_java(Info, Type, CtorCat, String, ArrayDims) :-
         ArrayDims = []
     ).
 
-:- inst enum_or_class for mlds_class_kind/0
-    --->    mlds_enum
-    ;       mlds_class.
+:- inst class for mlds_class_kind/0
+    --->    mlds_class.
 
 :- pred mercury_user_type_to_string_and_dims_for_java(java_out_info::in,
-    mer_type::in, mlds_class_kind::in(enum_or_class), string::out) is det.
+    mer_type::in, mlds_class_kind::in(class), string::out) is det.
 
 mercury_user_type_to_string_and_dims_for_java(Info, Type, ClassKind,
         TypeNameWithGenerics) :-
@@ -362,6 +366,27 @@ mercury_user_type_to_string_and_dims_for_java(Info, Type, ClassKind,
     ml_gen_type_name(TypeCtor, ClassName, ClassArity),
     MLDS_Type =
         mlds_class_type(mlds_class_id(ClassName, ClassArity, ClassKind)),
+    type_to_string_and_dims_for_java(Info, MLDS_Type, TypeName, ArrayDims),
+    expect(unify(ArrayDims, []), $pred, "ArrayDims != []"),
+    OutputGenerics = Info ^ joi_output_generics,
+    (
+        OutputGenerics = do_output_generics,
+        generic_args_types_to_string_for_java(Info, ArgsTypes, GenericsString),
+        TypeNameWithGenerics = TypeName ++ GenericsString
+    ;
+        OutputGenerics = do_not_output_generics,
+        TypeNameWithGenerics = TypeName
+    ).
+
+:- pred mercury_user_enum_type_to_string_and_dims_for_java(java_out_info::in,
+    mer_type::in, string::out) is det.
+
+mercury_user_enum_type_to_string_and_dims_for_java(Info, Type,
+        TypeNameWithGenerics) :-
+    type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
+    ml_gen_type_name(TypeCtor, ClassName, ClassArity),
+    MLDS_Type =
+        mlds_enum_class_type(mlds_enum_class_id(ClassName, ClassArity)),
     type_to_string_and_dims_for_java(Info, MLDS_Type, TypeName, ArrayDims),
     expect(unify(ArrayDims, []), $pred, "ArrayDims != []"),
     OutputGenerics = Info ^ joi_output_generics,
@@ -474,6 +499,7 @@ java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
         ; MLDS_Type = mlds_cont_type(_)
         ; MLDS_Type = mlds_commit_type
         ; MLDS_Type = mlds_class_type(_)
+        ; MLDS_Type = mlds_enum_class_type(_)
         ; MLDS_Type = mlds_array_type(_)
         ; MLDS_Type = mlds_mostly_generic_array_type(_)
         ; MLDS_Type = mlds_ptr_type(_)

@@ -476,6 +476,20 @@ rename_class_names_in_type(Renaming, !Type) :-
             true
         )
     ;
+        !.Type = mlds_enum_class_type(ClassId0),
+        ClassId0 = mlds_enum_class_id(QualClassName0, Arity),
+        QualClassName0 = qual_class_name(ModuleName, QualKind, ClassName0),
+        ( if
+            Renaming = class_name_renaming(ModuleName, RenamingMap),
+            map.search(RenamingMap, ClassName0, ClassName)
+        then
+            QualClassName = qual_class_name(ModuleName, QualKind, ClassName),
+            ClassId = mlds_enum_class_id(QualClassName, Arity),
+            !:Type = mlds_enum_class_type(ClassId)
+        else
+            true
+        )
+    ;
         !.Type = mlds_array_type(Type0),
         rename_class_names_in_type(Renaming, Type0, Type),
         !:Type = mlds_array_type(Type)

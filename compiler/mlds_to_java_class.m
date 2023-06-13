@@ -28,6 +28,10 @@
     io.text_output_stream::in, indent::in, mlds_class_defn::in,
     io::di, io::uo) is det.
 
+:- pred output_enum_class_defn_for_java(java_out_info::in,
+    io.text_output_stream::in, indent::in, mlds_enum_class_defn::in,
+    io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 
     % Rename class names which are too long. Each class results in a separate
@@ -72,6 +76,7 @@
 :- import_module char.
 :- import_module int.
 :- import_module list.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module term.
@@ -110,8 +115,9 @@ output_class_defn_for_java(Info0, Stream, Indent, ClassDefn, !IO) :-
     ),
     io.nl(Stream, !IO),
 
-    output_inherits_list(Info, Stream, Indent + 1, Inherits, !IO),
-    output_implements_list(Stream, Indent + 1, Implements, !IO),
+    Indent1 = Indent + 1,
+    output_inherits_list(Info, Stream, Indent1, Inherits, !IO),
+    output_implements_list(Stream, Indent1, Implements, !IO),
     IndentStr = indent2_string(Indent),
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
     (
@@ -119,37 +125,67 @@ output_class_defn_for_java(Info0, Stream, Indent, ClassDefn, !IO) :-
         ; Kind = mlds_interface
         ),
         list.foldl(
-            output_field_var_defn_for_java(Info, Stream, Indent + 1),
+            output_field_var_defn_for_java(Info, Stream, Indent1),
             MemberFields, !IO),
         list.foldl(
-            output_class_defn_for_java(Info, Stream, Indent + 1),
+            output_class_defn_for_java(Info, Stream, Indent1),
             MemberClasses, !IO),
         list.foldl(
-            output_function_defn_for_java(Info, Stream, Indent + 1, oa_none),
+            output_function_defn_for_java(Info, Stream, Indent1, oa_none),
             MemberMethods, !IO)
     ;
         Kind = mlds_struct,
         unexpected($pred, "structs not supported in Java")
-    ;
-        Kind = mlds_enum,
-        list.filter(field_var_defn_is_enum_const,
-            MemberFields, EnumConstFields),
-        % XXX Why +2?
-        list.foldl(
-            output_enum_constant_for_java(Stream, Indent + 2,
-                ClassName, ClassArity),
-            EnumConstFields, !IO),
-        io.nl(Stream, !IO),
-        % XXX Why +2?
-        output_enum_ctor_for_java(Stream, Indent + 2,
-            ClassName, ClassArity, !IO)
     ),
     io.nl(Stream, !IO),
     list.foldl(
-        output_function_defn_for_java(Info, Stream, Indent + 1,
+        output_function_defn_for_java(Info, Stream, Indent1,
             oa_cname(ClassName, ClassArity)),
         Ctors, !IO),
     io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
+
+output_enum_class_defn_for_java(Info0, Stream, Indent, EnumDefn, !IO) :-
+    EnumDefn = mlds_enum_class_defn(ClassName, ClassArity, Context,
+        Inherits, Implements, TypeParams, _ValueField, EnumConsts, Ctors),
+
+    Info1 = Info0 ^ joi_univ_tvars := TypeParams,
+    % Use generics in the output of this predicate if this class represents
+    % a Mercury type. Note that we do NOT return Info1 or Info to our caller.
+    ( if
+        Implements = yes(Interface),
+        Interface = ml_java_mercury_type_interface
+    then
+        InterfaceStr = interface_to_string_for_java(Interface),
+        Info = Info1 ^ joi_output_generics := do_output_generics
+    else
+        unexpected($pred, "no ml_java_mercury_type_interface")
+    ),
+
+    indent_line_after_context(Stream, Info0 ^ joi_line_numbers,
+        marker_comment, Context, Indent, !IO),
+    ClassNameStr = unqual_class_name_to_string_for_java(ClassName, ClassArity),
+    io.format(Stream, "public static class %s", [s(ClassNameStr)], !IO),
+    output_generic_tvars(Stream, TypeParams, !IO),
+    io.nl(Stream, !IO),
+
+    IndentStr = indent2_string(Indent),
+    Indent1 = Indent + 1,
+    output_enum_inherits_list(Info, Stream, Indent1, Inherits, !IO),
+    io.format(Stream, "%simplements %s\n",
+        [s(IndentStr), s(InterfaceStr)], !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+    list.foldl(
+        output_enum_constant_for_java(Stream, Indent1, ClassName, ClassArity),
+        EnumConsts, !IO),
+    io.nl(Stream, !IO),
+    output_enum_ctor_for_java(Stream, Indent1, ClassName, ClassArity, !IO),
+    ClassAux = oa_cname(ClassName, ClassArity),
+    list.foldl(
+        output_function_defn_for_java(Info, Stream, Indent1, ClassAux),
+        Ctors, !IO),
+    io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
+
+%---------------------------------------------------------------------------%
 
 :- func class_kind_to_string_for_java(mlds_class_kind) = string.
 
@@ -159,7 +195,6 @@ class_kind_to_string_for_java(Kind) = KindStr :-
         KindStr = "interface"
     ;
         ( Kind = mlds_class
-        ; Kind = mlds_enum
         ; Kind = mlds_struct
         ),
         KindStr = "class"
@@ -182,6 +217,21 @@ output_inherits_list(Info, Stream, Indent, Inherits, !IO) :-
             Inherits = inherits_generic_env_ptr_type,
             BaseType = mlds_generic_env_ptr_type
         ),
+        IndentStr = indent2_string(Indent),
+        BaseTypeStr = type_to_string_for_java(Info, BaseType),
+        io.format(Stream, "%sextends %s\n",
+            [s(IndentStr), s(BaseTypeStr)], !IO)
+    ).
+
+:- pred output_enum_inherits_list(java_out_info::in, io.text_output_stream::in,
+    indent::in, mlds_enum_class_inherits::in, io::di, io::uo) is det.
+
+output_enum_inherits_list(Info, Stream, Indent, Inherits, !IO) :-
+    (
+        Inherits = inherits_nothing
+    ;
+        Inherits = inherits_class(BaseClassId),
+        BaseType = mlds_class_type(BaseClassId),
         IndentStr = indent2_string(Indent),
         BaseTypeStr = type_to_string_for_java(Info, BaseType),
         io.format(Stream, "%sextends %s\n",
@@ -248,36 +298,29 @@ output_enum_ctor_for_java(Stream, Indent, ClassName, ClassArity, !IO) :-
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
 :- pred output_enum_constant_for_java(io.text_output_stream::in,
-    indent::in, mlds_class_name::in, arity::in, mlds_field_var_defn::in,
+    indent::in, mlds_class_name::in, arity::in, mlds_enum_const_defn::in,
     io::di, io::uo) is det.
 
 output_enum_constant_for_java(Stream, Indent, ClassName, ClassArity,
-        FieldVarDefn, !IO) :-
-    FieldVarDefn = mlds_field_var_defn(FieldVarName, _Context, _Flags,
-        _Type, Initializer, _GCStmt),
+        EnumConstDefn, !IO) :-
+    EnumConstDefn = mlds_enum_const_defn(FieldVarName, _Context, EnumConst),
     % Make a static instance of the constant. The MLDS doesn't retain enum
     % constructor names (that shouldn't be hard to change now) so it is
     % easier to derive the name of the constant later by naming them after
     % the integer values.
+    IndentStr = indent2_string(Indent),
+    UnqualClassNameStr =
+        unqual_class_name_to_string_for_java(ClassName, ClassArity),
+    FieldVarNameStr = field_var_name_to_string_for_java(FieldVarName),
     (
-        Initializer = init_obj(Rval),
-        ( if Rval = ml_const(mlconst_enum(N, _)) then
-            IndentStr = indent2_string(Indent),
-            UnqualClassNameStr =
-                unqual_class_name_to_string_for_java(ClassName, ClassArity),
-            FieldVarNameStr = field_var_name_to_string_for_java(FieldVarName),
-            io.format(Stream,
-                "%spublic static final %s K%d = new %s(%d); /* %s */\n",
-                [s(IndentStr), s(UnqualClassNameStr), i(N),
-                s(UnqualClassNameStr), i(N), s(FieldVarNameStr)], !IO)
-        else
-            unexpected($pred, "not mlconst_enum")
-        )
+        EnumConst = mlds_enum_const_uint(EnumUInt),
+        io.format(Stream,
+            "%spublic static final %s K%u = new %s(%u); /* %s */\n",
+            [s(IndentStr), s(UnqualClassNameStr), u(EnumUInt),
+            s(UnqualClassNameStr), u(EnumUInt), s(FieldVarNameStr)], !IO)
     ;
-        ( Initializer = no_initializer
-        ; Initializer = init_struct(_, _)
-        ; Initializer = init_array(_)
-        ),
+        EnumConst = mlds_enum_const_foreign(_Lang, _EnumNameStr, _Type),
+        % Foreign enums are not currently supported by the Java backend.
         unexpected($pred, "not mlconst_enum")
     ).
 
@@ -367,7 +410,7 @@ output_overridability_constness_for_java(Stream, Overridability,
 maybe_shorten_long_class_name(!ClassDefn, !Renaming) :-
     !.ClassDefn = mlds_class_defn(ClassName0, _ClassArity, _Context, Flags,
         _ClassKind, _Imports, _Inherits, _Implements, _TypeParams,
-        _MemberFields0, _MemberClasses0, _MemberMethods0, _Ctors0),
+        _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
     Flags = mlds_class_decl_flags(Access, _Overridability, _Constness),
     (
         % We only rename private classes for now.

@@ -200,15 +200,9 @@ ml_type_might_contain_pointers_for_gc(Type) = MightContainPointers :-
         MightContainPointers =
             ml_type_category_might_contain_pointers(TypeCategory)
     ;
-        Type = mlds_class_type(mlds_class_id(_, _, ClassKind)),
-        ( if ClassKind = mlds_enum then
-            MightContainPointers = no
-        else
-            MightContainPointers = yes
-        )
-    ;
         ( Type = mlds_mercury_array_type(_)
         ; Type = mlds_ptr_type(_)
+        ; Type = mlds_class_type(_)
         ; Type = mlds_array_type(_)
         ; Type = mlds_mostly_generic_array_type(_)
         ; Type = mlds_generic_type
@@ -228,6 +222,7 @@ ml_type_might_contain_pointers_for_gc(Type) = MightContainPointers :-
         ; Type = mlds_foreign_type(_)
         % We assume that foreign types are not allowed to contain pointers
         % to the Mercury heap.  XXX is this requirement too strict?
+        ; Type = mlds_enum_class_type(_)
         ; Type = mlds_func_type(_)
         ; Type = mlds_cont_type(_)
         ; Type = mlds_commit_type

@@ -478,7 +478,7 @@
 %---------------------------------------------------------------------------%
 
 ml_elim_nested(Action, Globals, Target, MLDS0, MLDS) :-
-    MLDS0 = mlds(ModuleName, Imports, GlobalData0, TypeDefns0,
+    MLDS0 = mlds(ModuleName, Imports, GlobalData0, TypeDefns0, EnumDefns0,
         TableStructDefns, ProcDefns0, InitPreds, FinalPreds,
         ForeignCode, ExportedEnums),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
@@ -494,7 +494,7 @@ ml_elim_nested(Action, Globals, Target, MLDS0, MLDS) :-
         GlobalData0, GlobalData),
     EnvTypeDefns = cord.to_list(EnvTypeDefnsCord),
     TypeDefns = TypeDefns0 ++ EnvTypeDefns,
-    MLDS = mlds(ModuleName, Imports, GlobalData, TypeDefns,
+    MLDS = mlds(ModuleName, Imports, GlobalData, TypeDefns, EnumDefns0,
         TableStructDefns, ProcDefns, InitPreds, FinalPreds,
         ForeignCode, ExportedEnums).
 

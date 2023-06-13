@@ -73,7 +73,7 @@ ml_code_gen(ProgressStream, Target, MLDS, !ModuleInfo, !Specs) :-
     ml_gen_foreign_code(!.ModuleInfo, ForeignCode),
     ml_gen_imports(!.ModuleInfo, Imports),
 
-    ml_gen_types(!.ModuleInfo, Target, TypeDefns),
+    ml_gen_types(!.ModuleInfo, Target, TypeDefns, EnumDefns),
     ml_gen_table_structs(!.ModuleInfo, TableStructDefns),
     ml_gen_init_global_data(!.ModuleInfo, Target, GlobalData0),
     ml_generate_const_structs(!.ModuleInfo, Target, ConstStructMap,
@@ -83,7 +83,7 @@ ml_code_gen(ProgressStream, Target, MLDS, !ModuleInfo, !Specs) :-
     module_info_user_final_pred_target_names(!.ModuleInfo, FinalPreds),
     ml_gen_preds(ProgressStream, Target, ConstStructMap, PredDefns,
         GlobalData1, GlobalData, !ModuleInfo, !Specs),
-    MLDS = mlds(ModuleName, Imports, GlobalData, TypeDefns,
+    MLDS = mlds(ModuleName, Imports, GlobalData, TypeDefns, EnumDefns,
         TableStructDefns, PredDefns, InitPreds, FinalPreds,
         ForeignCode, ExportedEnums).
 

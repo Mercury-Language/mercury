@@ -66,7 +66,7 @@ mlds_output_class_defns(Opts, Stream, Indent, ModuleName,
 
 mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, _Flags,
-        Kind, _Imports, Inherits, _Interfaces, _TypeParams,
+        _ClassKind, _Imports, Inherits, _Interfaces, _TypeParams,
         MemberFields, MemberClasses, _MemberMethods, Ctors),
     % These calls to expect/3 are based on the code constructing environment
     % structures in ml_elim_nested.m, which should be the *only* place
@@ -100,24 +100,12 @@ mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
 
     % Hoist out static members, since plain old C does not support
     % static members in structs (except for enumeration constants).
-    (
-        Kind = mlds_enum,
-        StaticCtors = [],
-        StructCtors = Ctors,
-        StaticMemberFields = [],
-        StructMemberFields = MemberFields
-    ;
-        ( Kind = mlds_class
-        ; Kind = mlds_interface
-        ; Kind = mlds_struct
-        ),
-        list.filter(function_defn_is_static_member, Ctors,
-            StaticCtors, NonStaticCtors),
-        list.filter(field_var_defn_is_static_member, MemberFields,
-            StaticMemberFields, NonStaticMemberFields),
-        StructCtors = NonStaticCtors,
-        StructMemberFields = NonStaticMemberFields
-    ),
+    list.filter(function_defn_is_static_member, Ctors,
+        StaticCtors, NonStaticCtors),
+    list.filter(field_var_defn_is_static_member, MemberFields,
+        StaticMemberFields, NonStaticMemberFields),
+    StructCtors = NonStaticCtors,
+    StructMemberFields = NonStaticMemberFields,
 
     % Convert the base classes into member variables,
     % since plain old C does not support base classes.
@@ -147,7 +135,6 @@ mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
         ModuleName, ClassDefn, !IO),
 
     % Output the class members.
-    % We treat enumerations specially.
     %
     % Note that standard ANSI/ISO C does not allow empty structs. We could
     % handle empty structs here, by adding a dummy member, but that would
@@ -158,31 +145,17 @@ mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     % `target_uses_empty_base_classes' before generating empty structs.)
     % Hence we do not need to check for empty structs here.
     io.write_string(Stream, " {\n", !IO),
-    (
-        Kind = mlds_enum,
-        mlds_output_enum_constants(Opts, Stream, Indent + 1, ClassModuleName,
-            BaseFieldVarDefns, !IO),
-        mlds_output_enum_constants(Opts, Stream, Indent + 1, ClassModuleName,
-            StructMemberFields, !IO)
-    ;
-        ( Kind = mlds_class
-        ; Kind = mlds_interface
-        ; Kind = mlds_struct
-        ),
-        % XXX Why don't we output all the field vars in one block?
-        list.foldl(
-            mlds_output_field_var_defn(Opts, Stream, Indent + 1, no,
-                ClassModuleName),
-            BaseFieldVarDefns, !IO),
-        list.foldl(
-            mlds_output_function_defn(Opts, Stream, Indent + 1,
-                ClassModuleName),
-            StructCtors, !IO),
-        list.foldl(
-            mlds_output_field_var_defn(Opts, Stream, Indent + 1, no,
-                ClassModuleName),
-            StructMemberFields, !IO)
-    ),
+    Indent1 = Indent + 1,
+    % XXX Why don't we output all the field vars in one block?
+    list.foldl(
+        mlds_output_field_var_defn(Opts, Stream, Indent1, no, ClassModuleName),
+        BaseFieldVarDefns, !IO),
+    list.foldl(
+        mlds_output_function_defn(Opts, Stream, Indent1, ClassModuleName),
+        StructCtors, !IO),
+    list.foldl(
+        mlds_output_field_var_defn(Opts, Stream, Indent1, no, ClassModuleName),
+        StructMemberFields, !IO),
     % XXX What is this context needed for? And why is it before a semicolon?
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
     io.format(Stream, "%s};\n", [s(IndentStr)], !IO),
@@ -212,24 +185,14 @@ field_var_defn_is_static_member(FieldVarDefn) :-
 mlds_output_class_flags_qual_name(Opts, Stream, IndentStr,
         ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, Flags,
-        ClassKind, _Imports, _Inherits, _Implements, _TypeParams,
+        _ClassKind, _Imports, _Inherits, _Implements, _TypeParams,
         _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
     FlagsPrefix = class_decl_flags_to_prefix_for_c(Opts, Flags),
     Qualifier = qualifier_to_string_for_c(ModuleName),
     ClassNameStr = class_name_arity_to_string_for_c(ClassName, ClassArity),
-    (
-        ClassKind = mlds_enum,
-        io.format(Stream, "%s%senum %s__%s_e",
-            [s(IndentStr), s(FlagsPrefix), s(Qualifier), s(ClassNameStr)], !IO)
-    ;
-        ( ClassKind = mlds_class
-        ; ClassKind = mlds_interface
-        ; ClassKind = mlds_struct
-        ),
-        io.format(Stream, "%s%sstruct %s__%s_s",
-            [s(IndentStr), s(FlagsPrefix), s(Qualifier), s(ClassNameStr)], !IO)
-    ).
+    io.format(Stream, "%s%sstruct %s__%s_s",
+        [s(IndentStr), s(FlagsPrefix), s(Qualifier), s(ClassNameStr)], !IO).
 
 %---------------------%
 
@@ -244,14 +207,10 @@ mlds_output_class_forward_decl(Opts, Stream, Indent, ModuleName,
     % So we just skip those. Currently they are not needed since we do not
     % actually create any mlds_enum classes when targeting C.
     % We also never output forward declarations (this pred is never called).
-    ( if ClassDefn ^ mcd_kind = mlds_enum then
-        true
-    else
-        IndentStr = indent2_string(Indent),
-        mlds_output_class_flags_qual_name(Opts, Stream, IndentStr, ModuleName,
-            ClassDefn, !IO),
-        io.write_string(Stream, ";\n", !IO)
-    ).
+    IndentStr = indent2_string(Indent),
+    mlds_output_class_flags_qual_name(Opts, Stream, IndentStr, ModuleName,
+        ClassDefn, !IO),
+    io.write_string(Stream, ";\n", !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -304,16 +263,24 @@ mlds_output_field_var_defn(Opts, Stream, Indent, Separate, ModuleName,
     % Output the definitions of the enumeration constants
     % for an enumeration type.
     %
+    % XXX We used to use (the predecessor of) this code when we represented
+    % enums using mlds_class_defns. However, we don't need this code anymore,
+    % because
+    %
+    % - the MLDS backend, when it targets C, always uses the low-level data
+    %   representation, which does not use classes of any kind to represent
+    %   enums, and
+    %
+    % - since we added mlds_dump.m, we do not need to use mlds_to_C_*.m
+    %   to dump MLDS code that was generated for other target languages.
+    %
 :- pred mlds_output_enum_constants(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in, mlds_module_name::in,
-    list(mlds_field_var_defn)::in, io::di, io::uo) is det.
+    list(mlds_enum_const_defn)::in, io::di, io::uo) is det.
+:- pragma consider_used(pred(mlds_output_enum_constants/7)).
 
 mlds_output_enum_constants(Opts, Stream, Indent, EnumModuleName,
-        MemberFields, !IO) :-
-    % Select the enumeration constants from the list of members
-    % for this enumeration type, and output them.
-    list.filter(field_var_defn_is_enum_const, MemberFields,
-        EnumConstDefns),
+        EnumConstDefns, !IO) :-
     (
         EnumConstDefns = [],
         unexpected($pred, "EnumConstDefns = []")
@@ -327,21 +294,27 @@ mlds_output_enum_constants(Opts, Stream, Indent, EnumModuleName,
     %
 :- pred mlds_output_enum_constants(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in, mlds_module_name::in,
-    mlds_field_var_defn::in, list(mlds_field_var_defn)::in,
+    mlds_enum_const_defn::in, list(mlds_enum_const_defn)::in,
     io::di, io::uo) is det.
 
 mlds_output_enum_constants(Opts, Stream, Indent, EnumModuleName,
         HeadDefn, TailDefns, !IO) :-
-    HeadDefn = mlds_field_var_defn(FieldVarName, Context, _Flags,
-        Type, Initializer, _GCStmt),
+    HeadDefn = mlds_enum_const_defn(FieldVarName, Context, EnumConst),
     IndentStr = indent2_string(Indent),
     QualFieldVarName =
         qual_field_var_name(EnumModuleName, type_qual, FieldVarName),
     QualFieldVarNameStr =
         qual_field_var_name_to_string_for_c(QualFieldVarName),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
-    io.format(Stream, "%s%s", [s(IndentStr), s(QualFieldVarNameStr)], !IO),
-    mlds_output_initializer(Opts, Stream, Type, Initializer, !IO),
+    (
+        EnumConst = mlds_enum_const_uint(EnumUInt),
+        io.format(Stream, "%s%s = (MR_Integer) %u",
+            [s(IndentStr), s(QualFieldVarNameStr), u(EnumUInt)], !IO)
+    ;
+        EnumConst = mlds_enum_const_foreign(_Lang, EnumNameStr, _Type),
+        io.format(Stream, "%s%s = (int) %s",
+            [s(IndentStr), s(QualFieldVarNameStr), s(EnumNameStr)], !IO)
+    ),
     (
         TailDefns = [],
         io.write_string(Stream, "\n", !IO)
