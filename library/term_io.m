@@ -256,6 +256,7 @@
 :- import_module integer.
 :- import_module list.
 :- import_module mercury_term_lexer.
+:- import_module require.
 :- import_module string.
 :- import_module stream.string_writer.
 
@@ -315,151 +316,227 @@ write_term_prio_anon_vars(OutStream, OpTable, Term, Priority,
         Term = term.variable(Var, _),
         write_variable_anon_vars(OutStream, OpTable, Var, !VarSet, !N, !IO)
     ;
-        Term = term.functor(Functor, Args, _),
-        ( if
-            Functor = term.atom("[|]"),
-            Args = [ListHead, ListTail]
-        then
-            io.write_char(OutStream, '[', !IO),
-            write_term_arg(OutStream, OpTable, ListHead, !VarSet, !N, !IO),
-            write_later_list_elements(OutStream, OpTable, ListTail,
-                !VarSet, !N, !IO),
-            io.write_char(OutStream, ']', !IO)
-        else if
-            Functor = term.atom("[]"),
-            Args = []
-        then
-            io.write_string(OutStream, "[]", !IO)
-        else if
-            Functor = term.atom("{}"),
-            Args = [BracedTerm]
-        then
-            io.write_string(OutStream, "{ ", !IO),
-            write_term_anon_vars(OutStream, OpTable, BracedTerm,
-                !VarSet, !N, !IO),
-            io.write_string(OutStream, " }", !IO)
-        else if
-            Functor = term.atom("{}"),
-            Args = [BracedHead | BracedTail]
-        then
-            io.write_char(OutStream, '{', !IO),
-            write_term_arg(OutStream, OpTable, BracedHead, !VarSet, !N, !IO),
-            write_term_later_args(OutStream, OpTable, BracedTail,
-                !VarSet, !N, !IO),
-            io.write_char(OutStream, '}', !IO)
-        else if
-            % The empty functor '' is used for higher-order syntax:
-            % Var(Arg, ...) gets parsed as ''(Var, Arg). When writing it out,
-            % we want to use the nice syntax.
-            Functor = term.atom(""),
-            Args = [term.variable(Var, _), FirstArg | OtherArgs]
-        then
-            write_variable_anon_vars(OutStream, OpTable, Var,
-                !VarSet, !N, !IO),
-            io.write_char(OutStream, '(', !IO),
-            write_term_arg(OutStream, OpTable, FirstArg, !VarSet, !N, !IO),
-            write_term_later_args(OutStream, OpTable, OtherArgs,
-                !VarSet, !N, !IO),
-            io.write_char(OutStream, ')', !IO)
-        else if
-            Args = [PrefixArg],
-            Functor = term.atom(OpName),
-            ops.lookup_prefix_op(OpTable, OpName, OpPriority, OpGtOrGe)
-        then
-            maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
-            write_constant(OutStream, Functor, !IO),
-            io.write_char(OutStream, ' ', !IO),
-            NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
-            write_term_prio_anon_vars(OutStream, OpTable, PrefixArg,
-                NewPriority, !VarSet, !N, !IO),
-            maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
-        else if
-            Args = [PostfixArg],
-            Functor = term.atom(OpName),
-            ops.lookup_postfix_op(OpTable, OpName, OpPriority, OpGtOrGe)
-        then
-            maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
-            NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
-            write_term_prio_anon_vars(OutStream, OpTable, PostfixArg,
-                NewPriority, !VarSet, !N, !IO),
-            io.write_char(OutStream, ' ', !IO),
-            write_constant(OutStream, Functor, !IO),
-            maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
-        else if
-            Args = [Arg1, Arg2],
-            Functor = term.atom(OpName),
-            ops.lookup_infix_op(OpTable, OpName, OpPriority,
-                LeftGtOrGe, RightGtOrGe)
-        then
-            maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
-            LeftPriority = min_priority_for_arg(OpPriority, LeftGtOrGe),
-            write_term_prio_anon_vars(OutStream, OpTable, Arg1, LeftPriority,
-                !VarSet, !N, !IO),
-            ( if OpName = "," then
-                io.write_string(OutStream, ", ", !IO)
-            else if OpName = "." then
-                % If the operator is '.'/2, then we must not put spaces
-                % around it (or at the very least, we should not put spaces
-                % afterwards) because that would make it appear as the
-                % end-of-term token. However, we do have to quote it
-                % if the right hand side can begin with a digit.
-                ( if starts_with_digit(Arg2) then
-                    Dot = "'.'"
-                else
-                    Dot = "."
-                ),
-                io.write_string(OutStream, Dot, !IO)
-            else
-                io.write_char(OutStream, ' ', !IO),
-                write_constant(OutStream, Functor, !IO),
-                io.write_char(OutStream, ' ', !IO)
-            ),
-            RightPriority = min_priority_for_arg(OpPriority, RightGtOrGe),
-            write_term_prio_anon_vars(OutStream, OpTable, Arg2, RightPriority,
-                !VarSet, !N, !IO),
-            maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
-        else if
-            Args = [Arg1, Arg2],
-            Functor = term.atom(OpName),
-            ops.lookup_binary_prefix_op(OpTable, OpName, OpPriority,
-                FirstGtOrGe, SecondGtOrGe)
-        then
-            maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
-            write_constant(OutStream, Functor, !IO),
-            io.write_char(OutStream, ' ', !IO),
-            FirstPriority = min_priority_for_arg(OpPriority, FirstGtOrGe),
-            write_term_prio_anon_vars(OutStream, OpTable, Arg1, FirstPriority,
-                !VarSet, !N, !IO),
-            io.write_char(OutStream, ' ', !IO),
-            SecondPriority = min_priority_for_arg(OpPriority, SecondGtOrGe),
-            write_term_prio_anon_vars(OutStream, OpTable, Arg2, SecondPriority,
-                !VarSet, !N, !IO),
-            maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
-        else
-            ( if
-                Args = [],
-                Functor = term.atom(Op),
-                ops.is_op(OpTable, Op),
-                priority_ge(Priority, ops.loosest_op_priority(OpTable))
-            then
-                io.write_char(OutStream, '(', !IO),
-                write_constant(OutStream, Functor, !IO),
-                io.write_char(OutStream, ')', !IO)
-            else
-                write_constant(OutStream, Functor,
-                    maybe_adjacent_to_graphic_token, !IO)
+        Term = term.functor(Functor, ArgTerms, _),
+        (
+            ( Functor = term.integer(_, _, _, _)
+            ; Functor = term.string(_)
+            ; Functor = term.float(_)
+            ; Functor = term.implementation_defined(_)
             ),
             (
-                Args = [X | Xs],
-                io.write_char(OutStream, '(', !IO),
-                write_term_arg(OutStream, OpTable, X, !VarSet, !N, !IO),
-                write_term_later_args(OutStream, OpTable, Xs,
-                    !VarSet, !N, !IO),
-                io.write_char(OutStream, ')', !IO)
+                ArgTerms = [],
+                write_constant(OutStream, Functor,
+                    maybe_adjacent_to_graphic_token, !IO)
             ;
-                Args = []
+                ArgTerms = [_ | _],
+                unexpected($pred, "constant has arguments")
+            )
+        ;
+            Functor = atom(Atom),
+            write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
+                Priority, !VarSet, !N, !IO)
+        )
+    ).
+
+:- pred write_atom_term_prio_anon_vars(io.text_output_stream::in,
+    OpTable::in, string::in, list(term(T))::in, ops.priority::in,
+    varset(T)::in, varset(T)::out, int::in, int::out, io::di, io::uo) is det
+    <= op_table(OpTable).
+
+write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
+        Priority, !VarSet, !N, !IO) :-
+    % NOTE It would be nice to handle the first four conditions at once
+    % with code such as
+    %   ( if
+    %       ( Atom = "[|]"
+    %       ; Atom = "[]"
+    %       ; Atom = "{}"
+    %       ; Atom = ""
+    %       )
+    %   then
+    %       ...
+    %   else
+    %       ...
+    %   )
+    %
+    % Unfortunately, three things conspire together to prevent code
+    % along those lines being an improvement:
+    %
+    % - the fact that the special-case codes for these values of Atom 
+    %   apply only if ArgTerms has the right shape,
+    %
+    % - the fact that these "right shapes" are different for these
+    %   values of Atom, and
+    %
+    % - that the fallback code, which we should execute if ArgTerms
+    %   does NOT have the right shape, is more complicated than a simple call
+    %   to write_atom_term_prio_anon_vars_std, since it must also consider
+    %   the possibility that Atom is an operator in a nonstandard OpTable.
+    ( if
+        Atom = "[|]",
+        ArgTerms = [ListHead, ListTail]
+    then
+        io.write_char(OutStream, '[', !IO),
+        write_term_arg(OutStream, OpTable, ListHead, !VarSet, !N, !IO),
+        write_later_list_elements(OutStream, OpTable, ListTail,
+            !VarSet, !N, !IO),
+        io.write_char(OutStream, ']', !IO)
+    else if
+        Atom = "[]",
+        ArgTerms = []
+    then
+        io.write_string(OutStream, "[]", !IO)
+    else if
+        Atom = "{}",
+        ArgTerms = [BracedHeadTerm | BracedTailTerms]
+    then
+        (
+            BracedTailTerms = [],
+            % Add spaces around the one argument term.
+            io.write_string(OutStream, "{ ", !IO),
+            write_term_anon_vars(OutStream, OpTable, BracedHeadTerm,
+                !VarSet, !N, !IO),
+            io.write_string(OutStream, " }", !IO)
+        ;
+            BracedTailTerms = [_ | _],
+            % Do not add spaces around the several argument terms.
+            io.write_char(OutStream, '{', !IO),
+            write_term_arg(OutStream, OpTable, BracedHeadTerm,
+                !VarSet, !N, !IO),
+            write_term_later_args(OutStream, OpTable, BracedTailTerms,
+                !VarSet, !N, !IO),
+            io.write_char(OutStream, '}', !IO)
+        )
+    else if
+        % The empty functor '' is used for higher-order syntax:
+        % Var(Arg, ...) gets parsed as ''(Var, Arg). When writing it out,
+        % we want to use the nice syntax.
+        Atom = "",
+        ArgTerms = [term.variable(Var, _), FirstArg | OtherArgTerms]
+    then
+        write_variable_anon_vars(OutStream, OpTable, Var,
+            !VarSet, !N, !IO),
+        io.write_char(OutStream, '(', !IO),
+        write_term_arg(OutStream, OpTable, FirstArg, !VarSet, !N, !IO),
+        write_term_later_args(OutStream, OpTable, OtherArgTerms,
+            !VarSet, !N, !IO),
+        io.write_char(OutStream, ')', !IO)
+    else if
+        lookup_op_infos(OpTable, Atom, OpInfos)
+    then
+        OpInfos = op_infos(MaybeInfix, MaybeBinPrefix,
+            MaybePrefix, MaybePostfix),
+        (
+            ( ArgTerms = []
+            ; ArgTerms = [_, _, _ | _]
+            ),
+            write_atom_term_prio_anon_vars_std(OutStream, OpTable,
+                Atom, ArgTerms, Priority, !VarSet, !N, !IO)
+        ;
+            ArgTerms = [ArgTerm1],
+            ( if MaybePrefix = pre(OpPriority, OpGtOrGe) then
+                maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
+                write_constant_atom(OutStream, Atom, !IO),
+                io.write_char(OutStream, ' ', !IO),
+                NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
+                write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
+                    NewPriority, !VarSet, !N, !IO),
+                maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
+            else if MaybePostfix = post(OpPriority, OpGtOrGe) then
+                maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
+                NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
+                write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
+                    NewPriority, !VarSet, !N, !IO),
+                io.write_char(OutStream, ' ', !IO),
+                write_constant_atom(OutStream, Atom, !IO),
+                maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
+            else
+                write_atom_term_prio_anon_vars_std(OutStream, OpTable,
+                    Atom, ArgTerms, Priority, !VarSet, !N, !IO)
+            )
+        ;
+            ArgTerms = [ArgTerm1, ArgTerm2],
+            ( if
+                MaybeInfix = in(OpPriority, LeftGtOrGe, RightGtOrGe)
+            then
+                maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
+                LeftPriority = min_priority_for_arg(OpPriority, LeftGtOrGe),
+                write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
+                    LeftPriority, !VarSet, !N, !IO),
+                ( if Atom = "," then
+                    io.write_string(OutStream, ", ", !IO)
+                else if Atom = "." then
+                    % If the operator is '.'/2, then we must not put spaces
+                    % around it (or at the very least, we should not put spaces
+                    % afterwards) because that would make it appear as the
+                    % end-of-term token. However, we do have to quote it
+                    % if the right hand side can begin with a digit.
+                    ( if starts_with_digit(ArgTerm2) then
+                        Dot = "'.'"
+                    else
+                        Dot = "."
+                    ),
+                    io.write_string(OutStream, Dot, !IO)
+                else
+                    io.write_char(OutStream, ' ', !IO),
+                    write_constant_atom(OutStream, Atom, !IO),
+                    io.write_char(OutStream, ' ', !IO)
+                ),
+                RightPriority = min_priority_for_arg(OpPriority, RightGtOrGe),
+                write_term_prio_anon_vars(OutStream, OpTable, ArgTerm2,
+                    RightPriority, !VarSet, !N, !IO),
+                maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
+            else if
+                MaybeBinPrefix = bin_pre(OpPriority, LeftGtOrGe, RightGtOrGe)
+            then
+                maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
+                write_constant_atom(OutStream, Atom, !IO),
+                io.write_char(OutStream, ' ', !IO),
+                LeftPriority = min_priority_for_arg(OpPriority, LeftGtOrGe),
+                write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
+                    LeftPriority, !VarSet, !N, !IO),
+                io.write_char(OutStream, ' ', !IO),
+                RightPriority = min_priority_for_arg(OpPriority, RightGtOrGe),
+                write_term_prio_anon_vars(OutStream, OpTable, ArgTerm2,
+                    RightPriority, !VarSet, !N, !IO),
+                maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
+            else
+                write_atom_term_prio_anon_vars_std(OutStream, OpTable,
+                    Atom, ArgTerms, Priority, !VarSet, !N, !IO)
             )
         )
+    else
+        write_atom_term_prio_anon_vars_std(OutStream, OpTable, Atom, ArgTerms,
+            Priority, !VarSet, !N, !IO)
+    ).
+
+:- pred write_atom_term_prio_anon_vars_std(io.text_output_stream::in,
+    OpTable::in, string::in, list(term(T))::in, ops.priority::in,
+    varset(T)::in, varset(T)::out, int::in, int::out, io::di, io::uo) is det
+    <= op_table(OpTable).
+
+write_atom_term_prio_anon_vars_std(OutStream, OpTable, Atom, ArgTerms,
+        Priority, !VarSet, !N, !IO) :-
+    ( if
+        ArgTerms = [],
+        ops.is_op(OpTable, Atom),
+        priority_ge(Priority, ops.loosest_op_priority(OpTable))
+    then
+        io.write_char(OutStream, '(', !IO),
+        write_constant_atom(OutStream, Atom, !IO),
+        io.write_char(OutStream, ')', !IO)
+    else
+        write_constant_atom(OutStream, Atom, !IO)
+    ),
+    (
+        ArgTerms = [HeadArgTerm | TailArgTerms],
+        io.write_char(OutStream, '(', !IO),
+        write_term_arg(OutStream, OpTable, HeadArgTerm, !VarSet, !N, !IO),
+        write_term_later_args(OutStream, OpTable, TailArgTerms,
+            !VarSet, !N, !IO),
+        io.write_char(OutStream, ')', !IO)
+    ;
+        ArgTerms = []
     ).
 
 :- pred write_term_arg(io.text_output_stream::in, OpTable::in,
@@ -468,7 +545,7 @@ write_term_prio_anon_vars(OutStream, OpTable, Term, Priority,
 
 write_term_arg(OutStream, OpTable, Term, !VarSet, !N, !IO) :-
     write_term_prio_anon_vars(OutStream, OpTable, Term,
-    ops.arg_priority(OpTable), !VarSet, !N, !IO).
+        ops.arg_priority(OpTable), !VarSet, !N, !IO).
 
     % Write the remaining arguments.
     %
@@ -535,31 +612,39 @@ write_constant(Const, !IO) :-
 write_constant(OutStream, Const, !IO) :-
     write_constant(OutStream, Const, not_adjacent_to_graphic_token, !IO).
 
+:- pred write_constant_atom(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+:- pragma inline(pred(write_constant_atom/4)).
+
+write_constant_atom(OutStream, Atom, !IO) :-
+    NGT = not_adjacent_to_graphic_token,
+    term_io.quote_atom_agt(OutStream, Atom, NGT, !IO).
+
 :- pred write_constant(io.text_output_stream::in, const::in,
     adjacent_to_graphic_token::in, io::di, io::uo) is det.
 
-write_constant(OutStream, Const, AdjacentToGraphicToken, !IO) :-
+write_constant(OutStream, Const, NGT, !IO) :-
     (
-        Const = term.integer(Base, I, Signedness, Size),
+        Const = term.integer(Base, Int, Signedness, Size),
         Prefix = integer_base_prefix(Base),
-        IntString = integer.to_base_string(I, integer_base_int(Base)),
+        IntStr = integer.to_base_string(Int, integer_base_int(Base)),
         Suffix = integer_signedness_and_size_suffix(Signedness, Size),
         io.write_string(OutStream, Prefix, !IO),
-        io.write_string(OutStream, IntString, !IO),
+        io.write_string(OutStream, IntStr, !IO),
         io.write_string(OutStream, Suffix, !IO)
     ;
-        Const = term.float(F),
-        io.write_float(OutStream, F, !IO)
+        Const = term.float(Float),
+        io.write_float(OutStream, Float, !IO)
     ;
-        Const = term.atom(A),
-        term_io.quote_atom_agt(OutStream, A, AdjacentToGraphicToken, !IO)
+        Const = term.atom(Atom),
+        term_io.quote_atom_agt(OutStream, Atom, NGT, !IO)
     ;
-        Const = term.string(S),
-        term_io.quote_string(OutStream, S, !IO)
+        Const = term.string(Str),
+        term_io.quote_string(OutStream, Str, !IO)
     ;
-        Const = term.implementation_defined(N),
+        Const = term.implementation_defined(ImplDef),
         io.write_char(OutStream, '$', !IO),
-        io.write_string(OutStream, N, !IO)
+        io.write_string(OutStream, ImplDef, !IO)
     ).
 
 format_constant(Const) =
