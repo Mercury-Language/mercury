@@ -1722,11 +1722,11 @@ get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
     %
     %                               operator        precedence
     %                               --------        ----------
-    %   1. universal quantifiers    all             950
-    %   2. existential quantifiers  some            950
-    %   3. universal constraints    <=              920
-    %   4. existential constraints  =>              920 [*]
-    %   5. the decl itself          pred or func    800
+    %   1. universal quantifiers    all             550
+    %   2. existential quantifiers  some            550
+    %   3. universal constraints    <=              580
+    %   4. existential constraints  =>              580 [*]
+    %   5. the decl itself          pred or func    700
     %
     % [*] Note that the semantic meaning of `=>' is not quite the same
     % as implication; logically speaking it's more like conjunction.
@@ -1742,9 +1742,9 @@ get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
     %
     % Universal quantification is the default, so we just ignore
     % universal quantifiers. (XXX It might be a good idea to check that
-    % any universally quantified type variables do actually occur SOMEWHERE
-    % in the type declaration, and are not also existentially quantified,
-    % and if not, issue a warning or error message.)
+    % any universally quantified type variables (a) do actually occur SOMEWHERE
+    % in the type declaration, and (2) are not also existentially quantified.
+    % If either of these checks fail, we should issue an error message.)
 
     get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
         QuantConstrAttrs, ContextPieces, [], Specs,
