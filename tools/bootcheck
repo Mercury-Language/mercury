@@ -641,6 +641,31 @@ SED=${SED:-sed}
 
 #-----------------------------------------------------------------------------#
 
+# Work out if we are running in one of the MSYS2 environments on Windows.
+# On these systems some tools, e.g. the shell and make, use POSIX style paths
+# overlaid on Windows file system, but the Mercury compiler uses Windows style
+# paths. There is some automatic translation done between the two, but we need
+# to ensure that paths put in .options or _FLAGS files are in the appropriate
+# format. For the MSYS2 environment, we also need to set some things up (e.g.
+# options to diff) for the test suite to work properly.
+case "${MSYSTEM}" in
+
+    MINGW64|MINGW32|UCRT64|CLANG64) 
+        env_is_msys2=true 
+        ;;
+
+    CLANGARM64|MSYS)
+        echo "bootchecking using MSYS2 environment ${MSYSTEM} is not supported."
+        exit 1
+        ;;
+
+    *)
+        env_is_msys2=false
+        ;;
+esac
+
+#-----------------------------------------------------------------------------#
+
 # Turn off the debugger, since accidentally leaving it on will result
 # in user interaction every time we invoke any version of the compiler
 # that was compiled with tracing. This has happened to me accidentally
@@ -1995,7 +2020,12 @@ then
         stage2_insert=""
     fi
 
-    WORKSPACE="${root}${stage2_insert}"
+    if "$env_is_msys2"
+    then
+        WORKSPACE=$(pwd -W "${root}${stage2_insert}")
+    else
+        WORKSPACE="${root}${stage2_insert}"
+    fi
     export WORKSPACE
 
     MMAKE_DIR="${root}${stage2_insert}/scripts"
@@ -2013,6 +2043,12 @@ fi
 if test -s "${HOME}"/.bootcheck_diff_opts
 then
     DIFF_OPTS=$(cat "${HOME}"/.bootcheck_diff_opts)
+    export DIFF_OPTS
+fi
+
+if "$env_is_msys2"
+then
+    DIFF_OPTS="${DIFF_OPTS:-} -u -strip-trailing-cr"
     export DIFF_OPTS
 fi
 
@@ -2061,11 +2097,11 @@ then
 
         cp "${root}"/doc/mdb_command_test.inp tests/debugger
 
-        ${SED} -e "s:@WORKSPACE@:${WORKSPACE}:" \
+        ${SED} -e "s,@WORKSPACE@,${WORKSPACE}," \
             < tests/WS_FLAGS.ws \
             > tests/WS_FLAGS
 
-        ${SED} -e "s:@WORKSPACE@:${WORKSPACE}:" \
+        ${SED} -e "s,@WORKSPACE@,${WORKSPACE}," \
             < tests/.mgnuc_copts.ws \
             > tests/.mgnuc_copts
 
