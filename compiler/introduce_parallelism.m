@@ -21,8 +21,6 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
@@ -35,8 +33,8 @@
     % Apply the implicit parallelism transformation using the specified
     % feedback file.
     %
-:- pred apply_implicit_parallelism_transformation(source_file_map::in,
-    list(error_spec)::out, module_info::in, module_info::out) is det.
+:- pred apply_implicit_parallelism_transformation(list(error_spec)::out,
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -48,6 +46,8 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module ll_backend.
 :- import_module ll_backend.prog_rep.
 :- import_module ll_backend.stack_layout.
@@ -62,7 +62,6 @@
 :- import_module transform_hlds.implicit_parallelism.push_goals_together.
 
 :- import_module assoc_list.
-:- import_module bimap.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -79,7 +78,7 @@
     --->    have_not_introduced_parallelism
     ;       introduced_parallelism.
 
-apply_implicit_parallelism_transformation(SourceFileMap, Specs, !ModuleInfo) :-
+apply_implicit_parallelism_transformation(Specs, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals0),
     globals.get_maybe_feedback_info(Globals0, MaybeFeedbackInfo),
     module_info_get_name(!.ModuleInfo, ModuleName),
@@ -103,10 +102,9 @@ apply_implicit_parallelism_transformation(SourceFileMap, Specs, !ModuleInfo) :-
             module_info_set_has_parallel_conj(!ModuleInfo)
         )
     else
-        bimap.lookup(SourceFileMap, ModuleName, ModuleFilename),
-        Context = context(ModuleFilename, 1),
+        module_info_get_name_context(!.ModuleInfo, Context),
         Pieces = [words("Implicit parallelism was requested but the"),
-            words("feedback file does not the candidate parallel"),
+            words("feedback file does not have the candidate parallel"),
             words("conjunctions feedback information.")],
         Specs = [simplest_spec($pred, severity_error, phase_auto_parallelism,
             Context, Pieces)]

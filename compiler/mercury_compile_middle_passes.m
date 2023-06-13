@@ -991,17 +991,10 @@ maybe_implicit_parallelism(ProgressStream, ErrorStream, Verbose, Stats,
         ImplicitParallelism),
     (
         ImplicitParallelism = yes,
-        io_get_maybe_source_file_map(MaybeSourceFileMap, !IO),
-        (
-            MaybeSourceFileMap = yes(SourceFileMap)
-        ;
-            MaybeSourceFileMap = no,
-            unexpected($pred, "could not retrieve the source file map")
-        ),
         maybe_write_string(ProgressStream, Verbose,
             "% Applying implicit parallelism...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        apply_implicit_parallelism_transformation(SourceFileMap, Specs, !HLDS),
+        apply_implicit_parallelism_transformation(Specs, !HLDS),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         % XXX This is a bit late for printing errors.
         write_error_specs(ErrorStream, Globals, Specs, !IO),

@@ -31,7 +31,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data_pragma.
 
-:- import_module bimap.
 :- import_module bool.
 :- import_module getopt.
 :- import_module io.
@@ -248,12 +247,6 @@
 
 %---------------------%
 
-    % Map from module name to file name.
-    %
-:- type source_file_map == bimap(module_name, string).
-
-%---------------------%
-
 :- type line_number_range
     --->    line_number_range(
                 maybe(int), % The minimum line number, if there is one.
@@ -418,11 +411,6 @@
     maybe_item_version_numbers::out, io::di, io::uo) is det.
 :- pred io_set_disable_generate_item_version_numbers(
     maybe_item_version_numbers::in, io::di, io::uo) is det.
-
-:- pred io_get_maybe_source_file_map(maybe(source_file_map)::out,
-    io::di, io::uo) is det.
-:- pred io_set_maybe_source_file_map(maybe(source_file_map)::in,
-    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1043,9 +1031,6 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
     maybe_item_version_numbers, do_not_disable_item_version_numbers, ground,
     [untrailed, attach_to_io_state]).
 
-:- mutable(maybe_source_file_map, maybe(source_file_map), no, ground,
-    [untrailed, attach_to_io_state]).
-
 %---------------------------------------------------------------------------%
 
 globals_init_mutables(Globals, !IO) :-
@@ -1069,12 +1054,6 @@ io_get_disable_generate_item_version_numbers(DisableItemVerions, !IO) :-
 
 io_set_disable_generate_item_version_numbers(DisableItemVerions, !IO) :-
     set_disable_generate_item_version_numbers(DisableItemVerions, !IO).
-
-io_get_maybe_source_file_map(MaybeSourceFileMap, !IO) :-
-    get_maybe_source_file_map(MaybeSourceFileMap, !IO).
-
-io_set_maybe_source_file_map(MaybeSourceFileMap, !IO) :-
-    set_maybe_source_file_map(MaybeSourceFileMap, !IO).
 
 %---------------------------------------------------------------------------%
 

@@ -34,25 +34,39 @@
 
 %-----------------------------------------------------------------------------%
 
-    % lookup_module_source_file(ModuleName, MaybeFileName, !IO)
+    % lookup_module_source_file(ModuleName, MaybeFileName, !IO):
+    %
     % Return `yes(FileName)' if FileName is the source file for ModuleName,
     % either through the source file map, or by default. Return `no' if no
     % source file is available for ModuleName because the default file name
-    % is mapped to another module.
+    % for ModuleName is mapped to another module.
     %
 :- pred lookup_module_source_file(module_name::in, maybe(file_name)::out,
     io::di, io::uo) is det.
 
+    % lookup_source_file_module(FileName, MaybeModuleName, !IO):
+    %
+    % Return `yes(ModuleName)' if FileName is the source file for ModuleName,
+    % either through the source file map, or by default. Return `no' if no
+    % module name is available for FileName because the default module name
+    % for FileName is stored in another file.
+    %
 :- pred lookup_source_file_module(file_name::in, maybe(module_name)::out,
     io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
 
     % Return `yes' if there is a valid Mercury.modules file.
     %
 :- pred have_source_file_map(bool::out, io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
+
     % Return the default fully qualified source file name.
     %
 :- func default_source_file_name(module_name) = file_name.
+
+%-----------------------------------------------------------------------------%
 
     % Given a list of file names, produce the Mercury.modules file.
     %
@@ -73,6 +87,10 @@
 :- import_module int.
 :- import_module string.
 
+%-----------------------------------------------------------------------------%
+%
+% ZZZ Reorder the contents of this module.
+%
 %-----------------------------------------------------------------------------%
 
 lookup_module_source_file(ModuleName, MaybeFileName, !IO) :-
@@ -104,6 +122,8 @@ lookup_source_file_module(FileName, MaybeModuleName, !IO) :-
         )
     ).
 
+%-----------------------------------------------------------------------------%
+
 have_source_file_map(HaveMap, !IO) :-
     get_source_file_map(SourceFileMap, !IO),
     ( if bimap.is_empty(SourceFileMap) then
@@ -126,13 +146,23 @@ default_module_name_for_file(FileName, DefaultModuleName) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Read the Mercury.modules file (if it exists) to find the mapping
-    % from module name to file name.
+    % Bidirectional map between module names and file names.
+    %
+:- type source_file_map == bimap(module_name, string).
+
+:- mutable(maybe_source_file_map, maybe(source_file_map), no, ground,
+    [untrailed, attach_to_io_state]).
+
+%-----------------------------------------------------------------------------%
+
+    % Read the Mercury.modules file (if it exists, and if we have not
+    % read it before) to find and return the mapping from module names
+    % to file names and vice versa.
     %
 :- pred get_source_file_map(source_file_map::out, io::di, io::uo) is det.
 
 get_source_file_map(SourceFileMap, !IO) :-
-    globals.io_get_maybe_source_file_map(MaybeSourceFileMap0, !IO),
+    get_maybe_source_file_map(MaybeSourceFileMap0, !IO),
     (
         MaybeSourceFileMap0 = yes(SourceFileMap0),
         SourceFileMap = SourceFileMap0
@@ -160,7 +190,7 @@ get_source_file_map(SourceFileMap, !IO) :-
             % For example, the open could fail due to a permission problem.
             SourceFileMap = bimap.init
         ),
-        globals.io_set_maybe_source_file_map(yes(SourceFileMap), !IO)
+        set_maybe_source_file_map(yes(SourceFileMap), !IO)
     ).
 
 :- pred parse_source_file_map(list(string)::in, string::in, int::in,
