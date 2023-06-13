@@ -358,7 +358,7 @@ maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
         TransOpt = yes,
         globals.lookup_bool_option(Globals, verbose, Verbose),
         module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            ext_other(other_ext(".d")), newext_mmakefile_fragment(ext_mf_d),
+            ext_other(other_ext(".d")), newext_mmake_fragment(ext_mf_d),
             ModuleName, DependencyFileName, !IO),
         (
             Verbose = yes,
