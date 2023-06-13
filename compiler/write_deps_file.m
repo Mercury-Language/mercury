@@ -1155,7 +1155,7 @@ construct_subdir_short_rules(Globals, ModuleName,
     list(mmake_entry)::out) is det.
 
 construct_any_needed_pattern_rules(HaveMap,
-        ModuleName ,SourceFileModuleName, SourceFileName,
+        ModuleName, SourceFileModuleName, SourceFileName,
         Date0FileName, DateFileName, Date3FileName,
         OptDateFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
         MmakeRulesPatterns) :-
