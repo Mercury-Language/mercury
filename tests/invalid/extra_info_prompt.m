@@ -15,4 +15,5 @@
 
 :- implementation.
 
-foo_eq(_, _) :- semidet_true.
+foo_eq(_, _) :-
+    semidet_true.

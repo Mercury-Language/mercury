@@ -45,10 +45,10 @@ INTERMOD_SPECIAL_SINGLEMODULE_PROGS = \
 	test_feature_set \
 
 BORING_MULTIMODULE_PROGS = \
+	bad_exported_mode \
 	exported_unify \
-	ho_default_func_2.sub \
-	ii_parent.ii_child \
-	imported_mode \
+	ho_default_func_2 \
+	instances_pc.instances_pc_helper_1 \
 	partial_implied_mode \
 	transitive_import_class
 
@@ -243,7 +243,6 @@ BORING_SINGLEMODULE_PROGS = \
 	pragma_c_code_dup_var \
 	pragma_c_code_no_det \
 	pragma_export \
-	promise_equivalent_clauses \
 	promise_equivalent_solutions_test \
 	promise_equivalent_solutions_test_2 \
 	qual_basic_test2 \
@@ -285,6 +284,7 @@ BORING_SINGLEMODULE_PROGS = \
 	tc_err2 \
 	test_may_duplicate \
 	test_may_export_body \
+	test_promise_equivalent_clauses \
 	tricky_assert1 \
 	try_bad_params \
 	try_detism \
@@ -398,7 +398,7 @@ endif
 # The following require that the compiler not ignore `pragma type_spec'
 # declarations.
 TYPE_SPEC_MODULES = \
-	type_spec
+	test_type_spec
 
 TYPE_SPEC_PROGS = $(TYPE_SPEC_MODULES)
 

@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module abstract_eqv2.
+:- module abstract_eqv_helper_1.
 :- interface.
 
 :- type foo.

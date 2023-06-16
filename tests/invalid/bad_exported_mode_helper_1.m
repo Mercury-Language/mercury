@@ -2,18 +2,11 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module type_error_use_module_2.
-
+:- module bad_exported_mode_helper_1.
 :- interface.
-:- import_module io.
 
-:- func init = int.
-
-:- pred do_main(io::di, io::uo) is det.
+:- mode p(in, in) is semidet.
 
 :- implementation.
 
-init = 42.
-
-do_main(!IO) :-
-    io.write_string("Hello, world!\n", !IO).
+p(_, "foo").

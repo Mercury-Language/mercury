@@ -13,7 +13,7 @@
 
 :- implementation.
 
-:- import_module abstract_eqv2.
+:- import_module abstract_eqv_helper_1.
 
 bad :-
     call_with_foo(bar(1)).

@@ -1,8 +1,8 @@
 abstract_eqv.m:019: In clause for predicate `bad'/0:
 abstract_eqv.m:019:   in argument 1 of call to predicate
-abstract_eqv.m:019:   `abstract_eqv2.call_with_foo'/1:
+abstract_eqv.m:019:   `abstract_eqv_helper_1.call_with_foo'/1:
 abstract_eqv.m:019:   type error: argument has type
-abstract_eqv.m:019:     abstract_eqv2.bar;
+abstract_eqv.m:019:     abstract_eqv_helper_1.bar;
 abstract_eqv.m:019:   expected type was
-abstract_eqv.m:019:     abstract_eqv2.foo.
+abstract_eqv.m:019:     abstract_eqv_helper_1.foo.
 For more information, recompile with `-E'.

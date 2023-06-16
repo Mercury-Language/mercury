@@ -16,8 +16,8 @@
 
 :- implementation.
 
-:- import_module transitive_import_class2.
+:- import_module transitive_import_class_helper_1.
 
 semidet_id(X) =
-    transitive_import_class3.to_int(
-        transitive_import_class3.from_int(X) `with_type` int).
+    transitive_import_class_helper_2.to_int(
+        transitive_import_class_helper_2.from_int(X) `with_type` int).

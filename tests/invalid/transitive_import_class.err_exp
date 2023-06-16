@@ -1,14 +1,14 @@
 transitive_import_class.m:022: In clause for function `semidet_id'/1:
 transitive_import_class.m:022:   in function result term of clause head:
 transitive_import_class.m:022:   error: undefined symbol
-transitive_import_class.m:022:   `transitive_import_class3.to_int'/1.
-transitive_import_class.m:022:   (The module `transitive_import_class3' has not
-transitive_import_class.m:022:   been imported.)
+transitive_import_class.m:022:   `transitive_import_class_helper_2.to_int'/1.
+transitive_import_class.m:022:   (The module `transitive_import_class_helper_2'
+transitive_import_class.m:022:   has not been imported.)
 transitive_import_class.m:023: In clause for function `semidet_id'/1:
 transitive_import_class.m:023:   in function result term of clause head:
 transitive_import_class.m:023:   in argument 1 of functor
-transitive_import_class.m:023:   `transitive_import_class3.to_int/1':
+transitive_import_class.m:023:   `transitive_import_class_helper_2.to_int/1':
 transitive_import_class.m:023:   error: undefined symbol
-transitive_import_class.m:023:   `transitive_import_class3.from_int'/1.
-transitive_import_class.m:023:   (The module `transitive_import_class3' has not
-transitive_import_class.m:023:   been imported.)
+transitive_import_class.m:023:   `transitive_import_class_helper_2.from_int'/1.
+transitive_import_class.m:023:   (The module `transitive_import_class_helper_2'
+transitive_import_class.m:023:   has not been imported.)

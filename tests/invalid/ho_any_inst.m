@@ -5,7 +5,7 @@
 :- module ho_any_inst.
 :- interface.
 
-% Test calling higher order terms that have `any' insts.  It is an error
+% Test calling higher order terms that have `any' insts. It is an error
 % to call such a term in a negated context.
 
 :- solver type nat.

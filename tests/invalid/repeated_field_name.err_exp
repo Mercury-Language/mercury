@@ -1,12 +1,12 @@
-repeated_field_name.m:011: Error: duplicate occurrence of the field name `f2'
-repeated_field_name.m:011:   in the function symbol `t1'.
-repeated_field_name.m:010:   The first occurrence of this field name is here.
-repeated_field_name.m:012: Error: duplicate occurrence of the field name `f2'
-repeated_field_name.m:012:   in the function symbol `t1'.
-repeated_field_name.m:010:   The first occurrence of this field name is here.
-repeated_field_name.m:015: Error: duplicate occurrence of the field name `f1'
-repeated_field_name.m:015:   in the definition of `t'/0.
-repeated_field_name.m:009:   The first occurrence of this field name is here.
-repeated_field_name.m:021: Error: duplicate occurrence of the field name `f1'
-repeated_field_name.m:021:   in the function symbol `u1'.
-repeated_field_name.m:020:   The first occurrence of this field name is here.
+repeated_field_name.m:013: Error: duplicate occurrence of the field name `f2'
+repeated_field_name.m:013:   in the function symbol `t1'.
+repeated_field_name.m:012:   The first occurrence of this field name is here.
+repeated_field_name.m:014: Error: duplicate occurrence of the field name `f2'
+repeated_field_name.m:014:   in the function symbol `t1'.
+repeated_field_name.m:012:   The first occurrence of this field name is here.
+repeated_field_name.m:017: Error: duplicate occurrence of the field name `f1'
+repeated_field_name.m:017:   in the definition of `t'/0.
+repeated_field_name.m:011:   The first occurrence of this field name is here.
+repeated_field_name.m:023: Error: duplicate occurrence of the field name `f1'
+repeated_field_name.m:023:   in the function symbol `u1'.
+repeated_field_name.m:022:   The first occurrence of this field name is here.

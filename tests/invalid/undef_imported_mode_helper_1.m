@@ -2,19 +2,15 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module ho_default_func_2.id.
+:- module undef_imported_mode_helper_1.
+
 :- interface.
 
-:- type id(T).
+:- pred bad(int, int).
+:- mode bad(int, out) is det.
 
-:- func mkid(T) = id(T).
-:- func getval(id(T)) = T.
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- type id(T)
-    --->    id(T).
-
-mkid(X) = id(X).
-
-getval(id(X)) = X.
+bad(N, N).

@@ -6,11 +6,11 @@
 % typeclasses from transitively imported modules (for which the `.int2' file
 % is read) could be referred to if the reference was fully module qualified.
 
-:- module transitive_import_class2.
+:- module transitive_import_class_helper_1.
 
 :- interface.
 
-:- import_module transitive_import_class3.
+:- import_module transitive_import_class_helper_2.
 
 :- instance my_enum(int).
 

@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module transitive_import_class3.
+:- module transitive_import_class_helper_2.
 
 :- interface.
 

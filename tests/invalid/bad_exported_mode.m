@@ -2,14 +2,14 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module imported_mode.
+:- module bad_exported_mode.
 :- interface.
 :- import_module io.
 
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module exported_mode.
+:- import_module bad_exported_mode_helper_1.
 
 main(!IO) :-
     ( if p(41, 42) then

@@ -7,7 +7,7 @@
 %
 % The bug is that the switch on Str has an arm that is explicitly for
 % "Str = k", but this test is *also* present in the first switch arm,
-% which is now for a, b and k. (This can come about naturally when
+% which is now for a, b and k. This can come about naturally when
 %
 % - k used to be treated the same way as a and b;
 % - the programmer decides to give k its own switch arm, but
@@ -36,7 +36,7 @@
 % The reason why these error messages are misleading is that despite
 % the contexts, they do not refer to that piece of code at all. They refer
 % to a *copy* of that code. When switch detection sees that there are
-% *two* switch arms for Str =k, it creates a separate arm of the switch
+% *two* switch arms for Str = k, it creates a separate arm of the switch
 % on Str for the Str = k case, and sets the code of this arm to be
 % a two-way disjunction containing the code that came after the two
 % occurrences of Str = k. This meant that the second disjunct was

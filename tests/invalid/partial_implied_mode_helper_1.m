@@ -4,7 +4,7 @@
 %
 % Type definitions for partial_implied_mode.m.
 
-:- module partial_implied_mode2.
+:- module partial_implied_mode_helper_1.
 
 :- interface.
 

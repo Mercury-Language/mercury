@@ -8,7 +8,7 @@
 % to make this program legal with the current mode checker without
 % disallowing construction of partially instantiated terms.
 %
-% The reason partial_implied_mode2.m has to be a separate module
+% The reason partial_implied_mode_helper_1.m has to be a separate module
 % is because unification procedures for local types have unique mode
 % analysis run on them (although it is really not necessary).
 % For local types, the code generator abort did not happen
@@ -22,7 +22,7 @@
 
 :- import_module list.
 :- import_module map.
-:- import_module partial_implied_mode2.
+:- import_module partial_implied_mode_helper_1.
 
 :- type quantitiesdico == map(quantity_key, physic_quantity).
 

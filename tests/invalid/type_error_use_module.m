@@ -11,7 +11,7 @@
 
 :- implementation.
 
-:- use_module type_error_use_module_2.
+:- use_module type_error_use_module_helper_1.
 :- use_module map.
 
 main(!IO) :-

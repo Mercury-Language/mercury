@@ -14,7 +14,7 @@
 
 :- implementation.
 
-:- import_module undef_imported_mode_2.
+:- import_module undef_imported_mode_helper_1.
 
 main(!IO) :-
     bad(42, N),

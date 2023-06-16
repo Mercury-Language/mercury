@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module promise_equivalent_clauses.
+:- module test_promise_equivalent_clauses.
 
 :- interface.
 

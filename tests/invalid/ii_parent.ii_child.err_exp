@@ -1,6 +1,0 @@
-ii_parent.int0:007: Inconsistent instance declaration for typeclass
-ii_parent.int0:007:   `ii_parent.foo'/2 with functional dependency `(A -> B)'.
-ii_parent.ii_child.m:012: Here is the conflicting instance.
-ii_parent.int0:009: Inconsistent instance declaration for typeclass
-ii_parent.int0:009:   `ii_parent.foo'/2 with functional dependency `(A -> B)'.
-ii_parent.ii_child.m:012: Here is the conflicting instance.

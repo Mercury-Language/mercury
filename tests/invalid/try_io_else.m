@@ -24,4 +24,3 @@ main(!IO) :-
     else    % not allowed
         true
     ).
-

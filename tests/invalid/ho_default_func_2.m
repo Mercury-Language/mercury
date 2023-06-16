@@ -1,38 +1,29 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
-% Compiling this module should generate an error message since
-% it tries to cast a non-standard func inst to ground.
 
 :- module ho_default_func_2.
-
 :- interface.
-:- import_module io.
 
-:- pred main(io::di, io::uo) is det.
+:- include_module ho_default_func_2_helper_1.
+
+:- import_module io.
+:- import_module ho_default_func_2.ho_default_func_2_helper_1.
+
+:- type t.
+
+:- pred baz(id(t)::out) is det.
+:- pred eq(t::in, t::out) is det.
+:- pred do_io(t::in, io::di, io::uo) is det.
 
 :- implementation.
 
-:- include_module ho_default_func_2.sub.
-:- include_module ho_default_func_2.id.
+:- type t == (func(int) = int).
 
-:- import_module ho_default_func_2.sub.
-:- import_module ho_default_func_2.id.
+baz(mkid(bar)).
 
-:- import_module int.
-:- import_module std_util.
+eq(X, X).
 
-main(!IO) :-
-    baz(IdF),
-    eq(getval(IdF), F),
-    do_io(F, !IO).
-
-:- func foo(int) = int.
-
-foo(X) = X + 1.
-
-:- func bar(int) = int.
-:- mode bar(out) = in is det.
-
-bar(X) = X + 1.
+do_io(F, !IO) :-
+    io.write_int(F(42), !IO),
+    io.nl(!IO).

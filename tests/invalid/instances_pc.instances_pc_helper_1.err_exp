@@ -1,0 +1,8 @@
+instances_pc.int0:007: Inconsistent instance declaration for typeclass
+instances_pc.int0:007:   `instances_pc.foo'/2 with functional dependency
+instances_pc.int0:007:   `(A -> B)'.
+instances_pc.instances_pc_helper_1.m:019: Here is the conflicting instance.
+instances_pc.int0:009: Inconsistent instance declaration for typeclass
+instances_pc.int0:009:   `instances_pc.foo'/2 with functional dependency
+instances_pc.int0:009:   `(A -> B)'.
+instances_pc.instances_pc_helper_1.m:019: Here is the conflicting instance.

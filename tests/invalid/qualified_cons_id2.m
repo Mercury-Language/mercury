@@ -10,8 +10,8 @@
 :- import_module maybe.
 
 :- type foo(T)
-    ---> yes(T)
-    ;    no.
+    --->    yes(T)
+    ;       no.
 
 :- inst yes
     --->    qualified_cons_id2.yes(ground).

@@ -2,15 +2,18 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module undef_imported_mode_2.
+:- module type_error_use_module_helper_1.
 
 :- interface.
+:- import_module io.
 
-:- pred bad(int, int).
-:- mode bad(int, out) is det.
+:- func init = int.
 
-%---------------------------------------------------------------------------%
+:- pred do_main(io::di, io::uo) is det.
 
 :- implementation.
 
-bad(N, N).
+init = 42.
+
+do_main(!IO) :-
+    io.write_string("Hello, world!\n", !IO).

@@ -1,8 +1,8 @@
-type_error_in_arg.m:036: In clause for predicate `p'/2:
-type_error_in_arg.m:036:   in unification of variable `X'
-type_error_in_arg.m:036:   and term `t(A, B, C)':
-type_error_in_arg.m:036:   type error in argument of functor `t'/3.
-type_error_in_arg.m:036:   Argument 3 (C) has type
-type_error_in_arg.m:036:     list.list(T),
-type_error_in_arg.m:036:   expected type was
-type_error_in_arg.m:036:     cord.cord(int).
+type_error_in_arg.m:038: In clause for predicate `p'/2:
+type_error_in_arg.m:038:   in unification of variable `X'
+type_error_in_arg.m:038:   and term `t(A, B, C)':
+type_error_in_arg.m:038:   type error in argument of functor `t'/3.
+type_error_in_arg.m:038:   Argument 3 (C) has type
+type_error_in_arg.m:038:     list.list(T),
+type_error_in_arg.m:038:   expected type was
+type_error_in_arg.m:038:     cord.cord(int).

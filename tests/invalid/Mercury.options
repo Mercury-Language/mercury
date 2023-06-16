@@ -17,6 +17,7 @@ MCFLAGS-abstract_eqv            = --no-intermodule-optimization
 MCFLAGS-actual_expected         = --no-intermodule-optimization
 MCFLAGS-actual_more_expected    = -E
 MCFLAGS-any_to_ground_in_ite_cond_nomax = --no-max-error-line-width
+MCFLAGS-bad_exported_mode       = --infer-all --no-intermodule-optimization
 MCFLAGS-bug214                  = --allow-stubs --no-warn-stubs
 # Mantis bug 238 shows up in bug238.m only with --constraint-propagation.
 MCFLAGS-bug238                  = --constraint-propagation
@@ -38,14 +39,13 @@ MCFLAGS-foreign_type            = --compile-only
 MCFLAGS-foreign_type_2          = --no-intermodule-optimization
 MCFLAGS-foreign_type_visibility = --no-intermodule-optimization
 MCFLAGS-gh72_errors             = --no-errorcheck-only
-MCFLAGS-ii_parent               = --no-intermodule-optimization
-MCFLAGS-ii_parent.ii_child      = --no-intermodule-optimization
 MCFLAGS-illtyped_compare        = --no-intermodule-optimization \
                                     --verbose-error-messages
-MCFLAGS-imported_mode           = --infer-all --no-intermodule-optimization
 MCFLAGS-impure_method_impl      = --no-intermodule-optimization \
                                     --verbose-error-messages
 MCFLAGS-inline_conflict         = --no-warn-ambiguous-pragmas
+MCFLAGS-instance_pc               = --no-intermodule-optimization
+MCFLAGS-instance_pc.instance_pc_helper_1 = --no-intermodule-optimization
 MCFLAGS-invalid_event           = --event-set-file-name invalid_event_spec
 MCFLAGS-invalid_mllibs          = --no-errorcheck-only --no-verbose-make \
                                     --options-file Mercury.options.invalid \

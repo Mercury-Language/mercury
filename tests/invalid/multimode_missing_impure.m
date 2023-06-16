@@ -10,15 +10,15 @@
 
 :- implementation.
 
-main -->
-    { In = 42 },
-    { test0 },
-    { test1(In) },
-    { test1(_Out0) },
-    { test2(In, In) },
-    { test2(In, _Out1) },
-    { test2(_Out2, In) },
-    { test2(_Out3, _Out4) }.
+main(!IO) :-
+    In = 42,
+    test0,
+    test1(In),
+    test1(_Out0),
+    test2(In, In),
+    test2(In, _Out1),
+    test2(_Out2, In),
+    test2(_Out3, _Out4).
 
 :- pred test0.
 :- mode test0 is det.
