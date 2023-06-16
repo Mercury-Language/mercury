@@ -31,7 +31,8 @@ run_test(N - List, !IO) :-
     %
     io.format("split_list(%s, %s) ===> ", [s(NStr), s(ListStr)], !IO),
     ( if list.split_list(N, List, SplitStart, SplitEnd) then
-        io.format("(%s, %s)\n", [s(string(SplitStart)), s(string(SplitEnd))], !IO),
+        io.format("(%s, %s)\n",
+            [s(string(SplitStart)), s(string(SplitEnd))], !IO),
         MaybeSplitStart = yes(SplitStart),
         MaybeSplitEnd = yes(SplitEnd)
     else

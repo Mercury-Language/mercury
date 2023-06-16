@@ -16,7 +16,7 @@
 :- import_module list.
 :- import_module type_desc.
 
-:- import_module coerce_opt_2.
+:- import_module coerce_opt_helper_1.
 
 main(!IO) :-
     Xs = [1, 2, 3],

@@ -132,9 +132,9 @@ main(!IO) :-
     semipure get_gv1(GV1Final),
     write(GV1Final, !IO),
     nl(!IO),
-    ( GV1Init = GV1Final ->
+    ( if GV1Init = GV1Final then
         true
-    ;
+    else
         write_string("GV1 NOT SAME!\n", !IO)
     ),
 
@@ -145,9 +145,9 @@ main(!IO) :-
     semipure get_gv2(GV2Final),
     write(GV2Final, !IO),
     nl(!IO),
-    ( GV2Init = GV2Final ->
+    ( if GV2Init = GV2Final then
         true
-    ;
+    else
         write_string("GV2 NOT SAME!\n", !IO)
     ),
 
@@ -159,9 +159,9 @@ main(!IO) :-
     semipure get_gv3(GV3Final),
     write(GV3Final, !IO),
     nl(!IO),
-    ( GV3Init = GV3Final ->
+    ( if GV3Init = GV3Final then
         true
-    ;
+    else
         write_string("GV3 NOT SAME!\n", !IO)
     ),
 
@@ -172,9 +172,9 @@ main(!IO) :-
     semipure get_gv4(GV4Final),
     write(GV4Final, !IO),
     nl(!IO),
-    ( GV4Init = GV4Final ->
+    ( if GV4Init = GV4Final then
         true
-    ;
+    else
         write_string("GV4 NOT SAME!\n", !IO)
     ),
 
@@ -186,12 +186,12 @@ main(!IO) :-
     semipure get_gv5(GV5Final),
     write(c(x(GV5Final), y(GV5Final)), !IO),
     nl(!IO),
-    (
+    ( if
         x(GV5Init) = x(GV5Final),
         y(GV5Init) = y(GV5Final)
-    ->
+    then
         true
-    ;
+    else
         write_string("GV5 NOT SAME!\n", !IO)
     ),
 
@@ -202,11 +202,11 @@ main(!IO) :-
     semipure get_gv6(GV6Final),
     write(c(x(GV6Final), y(GV6Final)), !IO),
     nl(!IO),
-    (
+    ( if
         x(GV6Init) = x(GV6Final),
         y(GV6Init) = y(GV6Final)
-    ->
+    then
         true
-    ;
+    else
         write_string("GV6 NOT SAME!\n", !IO)
     ).

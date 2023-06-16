@@ -71,21 +71,21 @@ main(!IO) :-
 test_discriminated(!IO) :-
     io.write_string("TESTING DISCRIMINATED UNIONS\n", !IO),
 
-        % test enumerations
+    % test enumerations
     test_all(one, !IO),
     test_all(two, !IO),
     test_all(three, !IO),
 
-        % test simple tags
+    % test simple tags
     test_all(apple([9, 5, 1]), !IO),
     test_all(banana([three, one, two]), !IO),
 
-        % test complicated tags
+    % test complicated tags
     test_all(zop(3.3, 2.03), !IO),
     test_all(zip(3, 2), !IO),
     test_all(zap(3, -2.111), !IO),
 
-        % test complicated constant
+    % test complicated constant
 
     test_all(wombat, !IO),
     test_all(foo, !IO),
@@ -173,33 +173,33 @@ test_polymorphism(!IO) :-
 test_builtins(!IO) :-
     io.write_string("TESTING BUILTINS\n", !IO),
 
-        % test strings
+    % test strings
     test_all("", !IO),
     test_all("Hello, world\n", !IO),
     test_all("Foo%sFoo", !IO),
     test_all("""", !IO),
 
-        % test characters
+    % test characters
     test_all('a', !IO),
     test_all('&', !IO),
 
-        % test floats
+    % test floats
     test_all(3.14159, !IO),
     test_all(11.28324983E-22, !IO),
     test_all(22.3954899E22, !IO),
 
-        % test integers
+    % test integers
     test_all(-65, !IO),
     test_all(4, !IO),
 
-        % test univ.
+    % test univ.
     type_to_univ(["hi! I'm a univ!"], Univ),
     test_all(Univ, !IO),
 
-        % test predicates
+    % test predicates
     test_all(newline, !IO),
 
-        % test tuples
+    % test tuples
     test_all({1, 'b', "third", {1, 2, 3, 4}}, !IO),
 
     io.nl(!IO).
@@ -218,12 +218,11 @@ test_other(!IO) :-
     test_all(VarSupply, !IO),
     test_all(NewVarSupply, !IO),
 
-        % presently, at least, map is an equivalence and
-        % an abstract type.
+    % presently, at least, map is an equivalence and an abstract type.
     map.init(Map : map(int, int)),
     test_all(Map, !IO),
 
-        % a no tag type
+    % a no tag type
     test_all(qwerty(4), !IO),
     io.nl(!IO).
 

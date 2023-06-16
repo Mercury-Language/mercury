@@ -137,7 +137,6 @@ rewrite(lessp(X1, X2), New) :-
     else
         New = Mid
     ).
-
 rewrite(b_member(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
@@ -147,7 +146,6 @@ rewrite(b_member(X1, X2), New) :-
     else
         New = Mid
     ).
-
 rewrite(remainder(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
@@ -157,7 +155,6 @@ rewrite(remainder(X1, X2), New) :-
     else
         New = Mid
     ).
-
 rewrite(my_plus(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
@@ -167,7 +164,6 @@ rewrite(my_plus(X1, X2), New) :-
     else
         New = Mid
     ).
-
 rewrite(and(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
@@ -177,7 +173,6 @@ rewrite(and(X1, X2), New) :-
     else
         New = Mid
     ).
-
 rewrite(equal1(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
@@ -187,7 +182,6 @@ rewrite(equal1(X1, X2), New) :-
     else
         New = Mid
     ).
-
 rewrite(difference(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
@@ -197,7 +191,6 @@ rewrite(difference(X1, X2), New) :-
     else
         New = Mid
     ).
-
 rewrite(append(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
@@ -207,7 +200,6 @@ rewrite(append(X1, X2), New) :-
     else
         New = Mid
     ).
-
 rewrite(my_times(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
@@ -217,7 +209,6 @@ rewrite(my_times(X1, X2), New) :-
     else
         New = Mid
     ).
-
 rewrite(implies(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
@@ -227,7 +218,6 @@ rewrite(implies(X1, X2), New) :-
     else
         New = Mid
     ).
-
 rewrite(b_length(X1), New) :-
     rewrite(X1, Y1),
     Mid = b_length(Y1),
@@ -236,7 +226,6 @@ rewrite(b_length(X1), New) :-
     else
         New = Mid
     ).
-
 rewrite(f(X1), New) :-
     rewrite(X1, Y1),
     Mid = f(Y1),
@@ -245,7 +234,6 @@ rewrite(f(X1), New) :-
     else
         New = Mid
     ).
-
 rewrite(reverse(X1), New) :-
     rewrite(X1, Y1),
     Mid = reverse(Y1),
@@ -254,7 +242,6 @@ rewrite(reverse(X1), New) :-
     else
         New = Mid
     ).
-
 rewrite(if(X1, X2, X3), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),

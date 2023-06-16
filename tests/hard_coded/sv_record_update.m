@@ -27,15 +27,12 @@
 
 main(!IO) :-
     test1(type1(3, 4), Type1),
-    io.write(Type1, !IO),
-    io.nl(!IO),
+    io.write_line(Type1, !IO),
     test2(type2(Type1, 5), Type2),
-    io.write(Type2, !IO),
-    io.nl(!IO),
+    io.write_line(Type2, !IO),
     test3(map.init, Map),
     map.to_assoc_list(Map, AssocList),
-    io.write(AssocList, !IO),
-    io.nl(!IO).
+    io.write_line(AssocList, !IO).
 
 :- pred test1(type1::in, type1::out) is det.
 

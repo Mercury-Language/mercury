@@ -46,10 +46,10 @@ main(!IO) :-
 :- pred describe(thing(T, U)::in, string::out) is det.
 
 describe(X, What) :-
-    ( dynamic_cast(X, _ : thing(a, a)) ->
+    ( if dynamic_cast(X, _ : thing(a, a)) then
         What = "a, a"
-    ; dynamic_cast(X, _ : thing(a, b)) ->
+    else if dynamic_cast(X, _ : thing(a, b)) then
         What = "a, b"
-    ;
+    else
         unexpected($module, $pred, string(type_of(X)))
     ).

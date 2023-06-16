@@ -635,30 +635,18 @@ int_to_note(Num, note(Rank, Mod, Oct)) :-
     Oct = Num // 12,
     Off = Num mod 12,
     ( if
-        (
-            Off = 0, Rank0 = c, Mod0 = natural
-        ;
-            Off = 1, Rank0 = c, Mod0 = sharp
-        ;
-            Off = 2, Rank0 = d, Mod0 = natural
-        ;
-            Off = 3, Rank0 = d, Mod0 = sharp
-        ;
-            Off = 4, Rank0 = e, Mod0 = natural
-        ;
-            Off = 5, Rank0 = f, Mod0 = natural
-        ;
-            Off = 6, Rank0 = f, Mod0 = sharp
-        ;
-            Off = 7, Rank0 = g, Mod0 = natural
-        ;
-            Off = 8, Rank0 = g, Mod0 = sharp
-        ;
-            Off = 9, Rank0 = a, Mod0 = natural
-        ;
-            Off = 10, Rank0 = a, Mod0 = sharp
-        ;
-            Off = 11, Rank0 = b, Mod0 = natural
+        ( Off = 0, Rank0 = c, Mod0 = natural
+        ; Off = 1, Rank0 = c, Mod0 = sharp
+        ; Off = 2, Rank0 = d, Mod0 = natural
+        ; Off = 3, Rank0 = d, Mod0 = sharp
+        ; Off = 4, Rank0 = e, Mod0 = natural
+        ; Off = 5, Rank0 = f, Mod0 = natural
+        ; Off = 6, Rank0 = f, Mod0 = sharp
+        ; Off = 7, Rank0 = g, Mod0 = natural
+        ; Off = 8, Rank0 = g, Mod0 = sharp
+        ; Off = 9, Rank0 = a, Mod0 = natural
+        ; Off = 10, Rank0 = a, Mod0 = sharp
+        ; Off = 11, Rank0 = b, Mod0 = natural
         )
     then
         Rank = Rank0,

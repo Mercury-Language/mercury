@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module intermod_foreign_type.
 
 :- interface.
@@ -12,7 +12,7 @@
 
 :- implementation.
 
-:- import_module intermod_foreign_type2.
+:- import_module intermod_foreign_type_helper_1.
 :- import_module std_util.
 
 main(!IO) :-
@@ -23,8 +23,7 @@ main(!IO) :-
     io.write_string("Y:", !IO),
     io.write_int(y(C), !IO),
     io.nl(!IO),
-    io.write(coord(1, 2), !IO),
-    io.nl(!IO).
+    io.write_line(coord(1, 2), !IO).
 
 :- type coord2
     --->    coord2(int, int).

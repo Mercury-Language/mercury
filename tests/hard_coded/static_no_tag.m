@@ -45,26 +45,19 @@
 
 main(!IO) :-
     io.write_string("get_no_tag_floats = ", !IO),
-    io.write(get_no_tag_floats, !IO),
-    io.nl(!IO),
+    io.write_line(get_no_tag_floats, !IO),
     io.write_string("get_no_tag_ints = ", !IO),
-    io.write(get_no_tag_ints, !IO),
-    io.nl(!IO),
+    io.write_line(get_no_tag_ints, !IO),
     io.write_string("get_no_tag_strings = ", !IO),
-    io.write(get_no_tag_strings, !IO),
-    io.nl(!IO),
+    io.write_line(get_no_tag_strings, !IO),
     io.write_string("get_no_tag_chars = ", !IO),
-    io.write(get_no_tag_chars, !IO),
-    io.nl(!IO),
+    io.write_line(get_no_tag_chars, !IO),
     io.write_string("get_no_tag_poly_float = ", !IO),
-    io.write(get_no_tag_poly_float, !IO),
-    io.nl(!IO),
+    io.write_line(get_no_tag_poly_float, !IO),
     io.write_string("get_float_list = ", !IO),
-    io.write(get_float_list, !IO),
-    io.nl(!IO),
+    io.write_line(get_float_list, !IO),
     io.write_string("get_list_float_pair = ", !IO),
-    io.write(get_list_float_pair, !IO),
-    io.nl(!IO).
+    io.write_line(get_list_float_pair, !IO).
 
 :- pragma no_inline(get_no_tag_floats/0).
 get_no_tag_floats = [no_tag_float(3.0), no_tag_float(4.0)].

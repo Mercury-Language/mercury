@@ -14,10 +14,10 @@
 :- implementation.
 
 main(!IO) :-
-    print("Hello world\r\n", !IO),
-    print("\r\n", !IO),
-    print("\a\b\v\f\t\n", !IO),
-    print("\077\", !IO),
-    print("\0123\", !IO),
-    print("\0321\", !IO),
-    print("\n", !IO).
+    io.print("Hello world\r\n", !IO),
+    io.print("\r\n", !IO),
+    io.print("\a\b\v\f\t\n", !IO),
+    io.print("\077\", !IO),
+    io.print("\0123\", !IO),
+    io.print("\0321\", !IO),
+    io.print("\n", !IO).

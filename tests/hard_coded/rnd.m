@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module rnd.
 
 :- interface.
@@ -10,62 +10,51 @@
 
 :- pred main(io::di, io::uo) is det.
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module float.
 :- import_module int.
 :- import_module list.
+:- import_module require.
 
-main -->
-    { rnd.init(17, Rnd) },
-    { gen_nums(10, Rnd, [], Nums) },
-    foldl(
-        ( pred(Num::in, di, uo) is det -->
-            io.print(Num), nl
-        ), Nums).
+%---------------------------------------------------------------------------%
+
+main(!IO) :-
+    rnd.init(17, Rnd),
+    gen_nums(10, Rnd, [], Nums),
+    list.foldl(io.print_line, Nums, !IO).
 
 :- pred gen_nums(int, rnd, list(int), list(int)).
 :- mode gen_nums(in, in, in, out) is det.
 
 gen_nums(N, Rnd0, Acc0, Acc) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         Acc = Acc0
-    ;
+    else
         irange(0, 100, Num, Rnd0, Rnd1),
         gen_nums(N-1, Rnd1, [Num | Acc0], Acc)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred rnd.init(int, rnd).
-:- mode rnd.init(in, out) is det.
-
-:- pred rnd(float, rnd, rnd).
-:- mode rnd(out, in, out) is det.
-
 :- pred irange(int, int, int, rnd, rnd).
 :- mode irange(in, in, out, in, out) is det.
-
-:- pred frange(float, float, float, rnd, rnd).
-:- mode frange(in, in, out, in, out) is det.
-
-:- pred shuffle(list(T), list(T), rnd, rnd).
-:- mode shuffle(in, out, in, out) is det.
-
-:- pred oneof(list(T), T, rnd, rnd).
-:- mode oneof(in, out, in, out) is det.
-
-%---------------------------------------------------------------------------%
-
-:- import_module require.
 
 irange(Min, Max, Val, R0, R) :-
     frange(rfloat(Min), rfloat(Max+1), FVal, R0, R),
     Val = rint(FVal).
 
+:- pred frange(float, float, float, rnd, rnd).
+:- mode frange(in, in, out, in, out) is det.
+
 frange(Min, Max, Val, R0, R) :-
     rnd(J, R0, R),
     Val = J*(Max - Min)+Min.
+
+:- pred shuffle(list(T), list(T), rnd, rnd).
+:- mode shuffle(in, out, in, out) is det.
 
 shuffle(Ins, Outs, R0, R) :-
     list.length(Ins, N),
@@ -103,6 +92,9 @@ delnth([X | Xs], N, Zs, Z) :-
         delnth(Xs, N-1, Ys, Z)
     ).
 
+:- pred oneof(list(T), T, rnd, rnd).
+:- mode oneof(in, out, in, out) is det.
+
 oneof(Things, Thing, R0, R) :-
     list.length(Things, Num),
     irange(0, Num-1, X, R0, R),
@@ -120,7 +112,10 @@ oneof(Things, Thing, R0, R) :-
                 int
             ).
 
-rnd.init(Seed, rnd(M1, M2, Seed)) :-
+:- pred init(int, rnd).
+:- mode init(in, out) is det.
+
+init(Seed, rnd(M1, M2, Seed)) :-
     SN = Seed /\ ((1 << 15) - 1),
     N  = Seed /\ ((1 << 30) - 1),
     M1a = vec(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
@@ -148,6 +143,9 @@ seed1(N, SNum0, Num0, M1a, M2a, M1, M2) :-
         M1 = M1a,
         M2 = M2a
     ).
+
+:- pred rnd(float, rnd, rnd).
+:- mode rnd(out, in, out) is det.
 
 rnd(Res, rnd(M1a, M2a, _Seed0), rnd(M1d, M2d, Seed1)) :-
     shift(M1a, M1b),
@@ -247,6 +245,7 @@ set(Vec0, Ind, V, Vec) :-
     ).
 
 :- func rfloat(int) = float.
+
 :- pragma foreign_proc("C",
     rfloat(I::in) = (F::out),
     [will_not_call_mercury, promise_pure],
@@ -267,6 +266,7 @@ set(Vec0, Ind, V, Vec) :-
 ").
 
 :- func rint(float) = int.
+
 :- pragma foreign_proc("C",
     rint(F::in) = (I::out),
     [will_not_call_mercury, promise_pure],

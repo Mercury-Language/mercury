@@ -35,7 +35,8 @@ main(!IO) :-
 
 test_from_uint(UInt, !IO) :-
     ( if char.from_uint(UInt, Char) then
-        io.format("from_uint(0x%x) ==> %s\n", [u(UInt), s(quoted_char(Char))], !IO)
+        io.format("from_uint(0x%x) ==> %s\n",
+            [u(UInt), s(quoted_char(Char))], !IO)
     else
         io.format("from_uint(0x%x) ==> FAILED\n", [u(UInt)], !IO)
     ).

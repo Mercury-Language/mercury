@@ -73,4 +73,4 @@ write_struct(struct(A, B, X, Y, C, D, E, F), !IO) :-
 :- pred write_animal(animal::in, io::di, io::uo) is det.
 
 write_animal(Animal, !IO) :-
-    write(Animal, !IO).
+    io.write(Animal, !IO).

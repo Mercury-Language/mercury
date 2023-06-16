@@ -15,7 +15,8 @@
 :- import_module string.
 
 main(!IO) :-
-    test_foo_mode_0([0u64, 1u64, 2u64, 3u64, 4u64, 5u64, 6u64, 7u64, 8u64], !IO).
+    test_foo_mode_0([0u64, 1u64, 2u64, 3u64, 4u64, 5u64, 6u64, 7u64, 8u64],
+        !IO).
 
 :- pred foo(uint64, string).
 :- mode foo(in, out) is semidet.
@@ -33,7 +34,8 @@ test_foo_mode_0(Values, !IO) :-
     ;
         Values = [Value | ValuesPrime],
         ( if foo(Value, Result) then
-            io.format("foo(%s, %s)\n", [s(string(Value)), s(string(Result))], !IO)
+            io.format("foo(%s, %s)\n",
+                [s(string(Value)), s(string(Result))], !IO)
         else
             io.format("foo(%s, _) ==> <<FALSE>>\n", [s(string(Value))], !IO)
         ),

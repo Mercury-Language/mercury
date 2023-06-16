@@ -44,7 +44,7 @@ ORDINARY_PROGS = \
 	bug383 \
 	bug392 \
 	bug452 \
-	bug455_mod_a \
+	bug455 \
 	bug513 \
 	bug548 \
 	bug557 \
@@ -72,6 +72,7 @@ ORDINARY_PROGS = \
 	complicated_unify_bug \
 	conditional_trace_scope \
 	constant_prop_1 \
+	constant_prop_int \
 	constraint \
 	constraint_order \
 	construct_bug \
@@ -236,7 +237,7 @@ ORDINARY_PROGS = \
 	intermod_c_code \
 	intermod_foreign_type \
 	intermod_may_export_body \
-	intermod_multimode_main \
+	intermod_multimode \
 	intermod_poly_mode \
 	intermod_pragma_clause \
 	intermod_type_qual \
@@ -299,7 +300,7 @@ ORDINARY_PROGS = \
 	pack_args \
 	pack_args_copy \
 	pack_args_float \
-	pack_args_intermod1 \
+	pack_args_intermod \
 	pack_int32 \
 	packed_arg_partial_inst \
 	parse_number_from_io \
@@ -454,7 +455,7 @@ ORDINARY_PROGS = \
 	test_yield \
 	thread_commit \
 	thread_sbrk \
-	tim_qual1 \
+	tim_qual \
 	time_test \
 	trace_goal_1 \
 	trace_goal_2 \
@@ -558,7 +559,7 @@ ifeq "$(filter java%,$(GRADE))" ""
 	FOREIGN_ENUM_PROGS = \
 		exported_foreign_enum \
 		foreign_enum_dummy \
-		foreign_enum_mod1
+		foreign_enum_test
 else
 	FOREIGN_ENUM_PROGS =
 endif
@@ -1114,9 +1115,9 @@ constant_prop_1.java: constant_prop_1.java_date
 	grep '5678\.0' $@
 	grep 2468 $@
 
-# Force intermod_unused_args2.m to be compiled and analysed before
+# Force intermod_unused_args_helper_1.m to be compiled and analysed before
 # intermod_unused_args.m.
-intermod_unused_args.c: intermod_unused_args2.c
+intermod_unused_args.c: intermod_unused_args_helper_1.c
 
 # The runtime_opt test needs to be run a number of different times with the
 # MERCURY_OPTIONS environment variable set to a different value each time.

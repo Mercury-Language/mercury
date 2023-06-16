@@ -28,7 +28,5 @@ main(!IO) :-
         mutate_db2(4, !DBB),
         destroy_db(!.DBB, BB, NB)
     ),
-    io.write(BA - NA, !IO),
-    io.nl(!IO),
-    io.write(BB - NB, !IO),
-    io.nl(!IO).
+    io.write_line(BA - NA, !IO),
+    io.write_line(BB - NB, !IO).

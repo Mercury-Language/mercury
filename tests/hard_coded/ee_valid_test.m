@@ -12,20 +12,15 @@
 
 main(!IO) :-
     io.write_string("default mapping: apple = ", !IO),
-    io.write(get_default_apple, !IO),
-    io.nl(!IO),
+    io.write_line(get_default_apple, !IO),
     io.write_string("default mapping: orange = ", !IO),
-    io.write(get_default_orange, !IO),
-    io.nl(!IO),
+    io.write_line(get_default_orange, !IO),
     io.write_string("with prefix: pear = ", !IO),
-    io.write(get_prefix_pear, !IO),
-    io.nl(!IO),
+    io.write_line(get_prefix_pear, !IO),
     io.write_string("user mapping: lemon = ", !IO),
-    io.write(get_user_lemon, !IO),
-    io.nl(!IO),
+    io.write_line(get_user_lemon, !IO),
     io.write_string("default mapping with quoted names: bar = ", !IO),
-    io.write(get_bar, !IO),
-    io.nl(!IO).
+    io.write_line(get_bar, !IO).
 
 :- type fruit
     --->    apple

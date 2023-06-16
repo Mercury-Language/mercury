@@ -4,10 +4,10 @@
 %
 % Test that subtype arguments are packed the same as their base types.
 %
-% To view the type representations are decided, run:
+% To view the type representations, run:
 %
-%   mmc --make-short-int subtype_pack_2.m
-%   mmc --make-int subtype_pack_2.m
+%   mmc --make-short-int subtype_pack_helper_1.m
+%   mmc --make-int subtype_pack_helper_1.m
 %   mmc -C --show-local-type-repns subtype_pack.m
 %   cat subtype_pack.type_repns
 %
@@ -31,7 +31,7 @@
 :- import_module type_desc.
 :- import_module univ.
 
-:- import_module subtype_pack_2.
+:- import_module subtype_pack_helper_1.
 
 :- type enum
     --->    apple

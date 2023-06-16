@@ -34,5 +34,4 @@ gen([E - F | Xs], T) :-
 
 main(!IO) :-
     gen([enum1 - 1.2345, enum2 - 2.3456, enum3 - 3.4567], T),
-    io.write(T, !IO),
-    io.nl(!IO).
+    io.write_line(T, !IO).

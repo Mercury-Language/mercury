@@ -47,14 +47,12 @@ bar(X) :- X = 1.
     use(X::in),
     [will_not_call_mercury, promise_pure],
 "
-    /*
-    ** To exhibit the bug, this predicate needs only to fail.
-    ** However, the symptom of the bug is an infinite loop.
-    ** To detect the presence of the bug in finite time,
-    ** we abort execution if this code is executed too many times.
-    **
-    ** We mention X here to shut up a warning.
-    */
+    // To exhibit the bug, this predicate needs only to fail.
+    // However, the symptom of the bug is an infinite loop.
+    // To detect the presence of the bug in finite time,
+    // we abort execution if this code is executed too many times.
+    //
+    // We mention X here to shut up a warning.
 
     static int counter = 0;
 

@@ -46,11 +46,7 @@ main(!IO) :-
     P9 =[
         poly(Nine), poly(Nine), poly(Nine), poly(Nine), poly(Nine)
     ],
-    io.write(M1, !IO),
-    io.nl(!IO),
-    io.write(M9, !IO),
-    io.nl(!IO),
-    io.write(P1, !IO),
-    io.nl(!IO),
-    io.write(P9, !IO),
-    io.nl(!IO).
+    io.write_line(M1, !IO),
+    io.write_line(M9, !IO),
+    io.write_line(P1, !IO),
+    io.write_line(P9, !IO).

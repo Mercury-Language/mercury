@@ -47,8 +47,7 @@ print_read(Stream, !IO) :-
     (
         ReadRes = ok(Char),
         io.write_string("Read: ", !IO),
-        io.write(Char, !IO),
-        io.nl(!IO)
+        io.write_line(Char, !IO)
     ;
         ReadRes = eof,
         io.write_string("Read: eof\n", !IO)
@@ -62,5 +61,4 @@ print_read(Stream, !IO) :-
 print_putback(Stream, Char, !IO) :-
     io.putback_char(Stream, Char, !IO),
     io.write_string("Put back: ", !IO),
-    io.write(Char, !IO),
-    io.nl(!IO).
+    io.write_line(Char, !IO).

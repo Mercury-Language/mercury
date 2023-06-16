@@ -23,8 +23,8 @@
 :- import_module uint.
 
 main(!IO) :-
-    io.format("%-22s %-24s %-22s%-22s\n", [s("Decimal"), s("Octal"), s("Hex"),
-        s("HEX")], !IO),
+    io.format("%-22s %-24s %-22s%-22s\n",
+        [s("Decimal"), s("Octal"), s("Hex"), s("HEX")], !IO),
     list.foldl(do_test, test_values, !IO),
     io.nl(!IO).
 

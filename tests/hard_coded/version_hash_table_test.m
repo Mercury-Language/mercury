@@ -30,8 +30,7 @@ main(!IO) :-
         version_hash_table.set("three", 3, !HT),
         version_hash_table.fold(concat, !.HT, []) = KVs,
         list.sort(KVs, SortedKVs),
-        io.write(SortedKVs, !IO),
-        io.nl(!IO)
+        io.write_line(SortedKVs, !IO)
     ).
 
 :- func concat(K, V, list(pair(K, V))) = list(pair(K, V)).

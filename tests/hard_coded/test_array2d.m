@@ -91,9 +91,7 @@ main(!IO) :-
         [41, 42, 43, 44, 45, 46]
     ]),
     FourSixLists = lists(FourSix),
-    list.foldl(io.write_line, FourSixLists, !IO),
-
-    true.
+    list.foldl(io.write_line, FourSixLists, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -113,12 +111,11 @@ write_array2d_elem(Name, Table, R, C, !IO) :-
     try(array2d.lookup(Table, R, C), Result),
     (
         Result = succeeded(Elem),
-        io.print(Elem, !IO)
+        io.print_line(Elem, !IO)
     ;
         Result = exception(_),
-        io.print(Result, !IO)
-    ),
-    io.nl(!IO).
+        io.print_line(Result, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 

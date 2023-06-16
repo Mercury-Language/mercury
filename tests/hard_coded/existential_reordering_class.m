@@ -28,6 +28,7 @@ main(!IO) :-
     same_type(L, [my_exist_t]).
 
 :- pred same_type(T::unused, T::unused) is det.
+
 same_type(_, _).
 
 :- some [T] func my_exist_t = T => enum(T).

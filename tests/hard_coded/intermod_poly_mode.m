@@ -18,9 +18,8 @@
 :- implementation.
 
 :- import_module int.
-:- import_module intermod_poly_mode_2.
+:- import_module intermod_poly_mode_helper_1.
 
 main(!IO) :-
     New = new(561),
-    io.write(New, !IO),
-    io.nl(!IO).
+    io.write_line(New, !IO).

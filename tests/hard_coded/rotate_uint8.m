@@ -1,5 +1,6 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 
 :- module rotate_uint8.
 :- interface.
@@ -12,8 +13,8 @@
 
 :- import_module exception.
 :- import_module list.
-:- import_module uint8.
 :- import_module string.
+:- import_module uint8.
 
 %---------------------------------------------------------------------------%
 

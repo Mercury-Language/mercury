@@ -14,9 +14,9 @@
 :- implementation.
 
 main(!IO) :-
-    ( p(1) ->
+    ( if p(1) then
         io.write_string("yes\n", !IO)
-    ;
+    else
         io.write_string("no\n", !IO)
     ).
 

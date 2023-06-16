@@ -54,21 +54,21 @@ test_string_format_1(Int, Char, Str, Int64, UInt64) =
 
 test_string_format_2(Int, Char, Str) = Result :-
     PolyStr = s(Str),
-    (
+    ( if
         Int > 300
-    ->
+    then
         Tail = [c(Char), PolyStr],
         IntX = Int + 1,
         Result = string.format("abc_%04d_def_%%%c_ghi_%s_jkl\\\n",
             [i(IntX) | Tail])
-    ;
+    else if
         Int > 200,
         IntY = Int - 1,
         FmtStr = "cba_%s_fed_%%%c_ghi_%d_jkl\\\n",
         Values = [PolyStr, c(Char), i(IntY)]
-    ->
+    then
         Result = string.format(FmtStr, Values)
-    ;
+    else
         IntX = Int + 1,
         Tail = [PolyStr],
         Result = string.format("cba_%c_def_%%%d_ghi_%-7s_jkl\\\n",
@@ -89,20 +89,20 @@ test_io_format_1(Int, Char, Str, Int64, UInt64, !IO) :-
 test_io_format_2(Int, Char, Str, !IO) :-
     PolyStr = s(Str),
     io.output_stream(OutStream, !IO),
-    (
+    ( if
         Int > 300
-    ->
+    then
         Tail = [c(Char), PolyStr],
         IntX = Int + 1,
         io.format("abc_%05.3d_def_%%%c_ghi_%5s_jkl\\\n", [i(IntX) | Tail], !IO)
-    ;
+    else if
         Int > 200,
         IntY = Int - 1,
         FmtStr = "cba_%s_fed_%%%c_ghi_%d_jkl\\\n",
         Values = [PolyStr, c(Char), i(IntY)]
-    ->
+    then
         io.format(FmtStr, Values, !IO)
-    ;
+    else
         IntX = Int + 1,
         Tail = [PolyStr],
         io.format(OutStream, "cba_%c_def_%%%d_ghi_%s_jkl\\\n",
@@ -116,7 +116,8 @@ test_io_format_2(Int, Char, Str, !IO) :-
     <= stream.writer(Stream, string, State).
 
 test_stream_writer_format_1(Stream, Int, Char, Str, Int64, UInt64, !State) :-
-    stream.string_writer.format(Stream, "abc_%d_def_%%%c_ghi_%s_jkl_%d_mno_%u_pqr\\\n",
+    stream.string_writer.format(Stream,
+        "abc_%d_def_%%%c_ghi_%s_jkl_%d_mno_%u_pqr\\\n",
         [i(Int), c(Char), s(Str), i64(Int64), u64(UInt64)], !State).
 
 :- pred test_stream_writer_format_2(Stream::in, int::in, char::in, string::in,
@@ -124,21 +125,21 @@ test_stream_writer_format_1(Stream, Int, Char, Str, Int64, UInt64, !State) :-
 
 test_stream_writer_format_2(Stream, Int, Char, Str, !State) :-
     PolyStr = s(Str),
-    (
+    ( if
         Int > 300
-    ->
+    then
         Tail = [c(Char), PolyStr],
         IntX = Int + 1,
         stream.string_writer.format(Stream,
             "abc_%05.3d_def_%%%c_ghi_%5s_jkl\\\n", [i(IntX) | Tail], !State)
-    ;
+    else if
         Int > 200,
         IntY = Int - 1,
         FmtStr = "cba_%s_fed_%%%c_ghi_%d_jkl\\\n",
         Values = [PolyStr, c(Char), i(IntY)]
-    ->
+    then
         stream.string_writer.format(Stream, FmtStr, Values, !State)
-    ;
+    else
         IntX = Int + 1,
         Tail = [PolyStr],
         stream.string_writer.format(Stream, "cba_%c_def_%%%d_ghi_%s_jkl\\\n",

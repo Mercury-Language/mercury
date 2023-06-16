@@ -36,7 +36,8 @@ main(!IO) :-
 run_test(ConvDesc, ConvFunc, Ints, !IO) :-
     list.foldl(do_test(ConvDesc, ConvFunc), Ints, !IO).
 
-:- pred do_test(string::in, (func(T) = float)::in, T::in, io::di, io::uo) is det.
+:- pred do_test(string::in, (func(T) = float)::in, T::in, io::di, io::uo)
+    is det.
 
 do_test(ConvDesc, ConvFunc, Int, !IO) :-
     io.write_string(ConvDesc ++ "(", !IO),
@@ -95,4 +96,3 @@ uint16s = [
     128u16,
     32767u16
 ].
-

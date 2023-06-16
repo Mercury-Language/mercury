@@ -10,7 +10,7 @@
 % that could allow it to turn a disjunction into a switch in disjuncts
 % of that disjunction, and in disjuncts inside those disjuncts; it does NOT
 % look for them in disjuncts inside disjuncts inside disjuncts. In other
-% words, it looks at a unifications at a maximum depth of two levels.
+% words, it looks at unifications at a maximum depth of two levels.
 %
 % In the written form of these predicates, the unifications in the innermost
 % disjunction "( A = 4 ; A = 5 )" are at a depth of three. Switch detection

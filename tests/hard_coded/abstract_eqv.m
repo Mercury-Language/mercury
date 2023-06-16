@@ -12,7 +12,7 @@
 
 :- implementation.
 
-:- import_module abstract_eqv_1.
+:- import_module abstract_eqv_helper_1.
 
 main(!IO) :-
     test(val1, val2, !IO),

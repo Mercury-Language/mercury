@@ -73,34 +73,34 @@ test_discriminated(!IO) :-
     io.write_string("TESTING DISCRIMINATED UNIONS\n", !IO),
 
     % test enumerations
-    io.write(one, !IO), newline(!IO),
-    io.write(two, !IO), newline(!IO),
-    io.write(three, !IO), newline(!IO),
+    io.write_line(one, !IO),
+    io.write_line(two, !IO),
+    io.write_line(three, !IO),
 
     % test simple tags
-    io.write(apple([9, 5, 1]), !IO), newline(!IO),
-    io.write(banana([three, one, two]), !IO), newline(!IO),
+    io.write_line(apple([9, 5, 1]), !IO),
+    io.write_line(banana([three, one, two]), !IO),
 
     % test complicated tags
-    io.write(zop(3.3, 2.03), !IO), newline(!IO),
-    io.write(zip(3, 2), !IO), newline(!IO),
-    io.write(zap(3, -2.111), !IO), newline(!IO),
+    io.write_line(zop(3.3, 2.03), !IO),
+    io.write_line(zip(3, 2), !IO),
+    io.write_line(zap(3, -2.111), !IO),
 
     % test complicated constant
-    io.write(wombat, !IO), newline(!IO),
-    io.write(foo, !IO), newline(!IO),
+    io.write_line(wombat, !IO),
+    io.write_line(foo, !IO),
 
-    newline(!IO).
+    io.nl(!IO).
 
 :- pred test_polymorphism(io::di, io::uo) is det.
 
 test_polymorphism(!IO) :-
     io.write_string("TESTING POLYMORPHISM\n", !IO),
-    io.write(poly_one([2399.3]) : poly(list(float), float), !IO), newline(!IO),
-    io.write(poly_two(3) : poly(int, int), !IO), newline(!IO),
-    io.write(poly_three(3.33, 4, poly_one(9.11)), !IO), newline(!IO),
+    io.write_line(poly_one([2399.3]) : poly(list(float), float), !IO),
+    io.write_line(poly_two(3) : poly(int, int), !IO),
+    io.write_line(poly_three(3.33, 4, poly_one(9.11)), !IO),
 
-    newline(!IO).
+    io.nl(!IO).
 
 :- pred test_builtins(io.output_stream::in, io::di, io::uo) is cc_multi.
 
@@ -108,33 +108,33 @@ test_builtins(StdErr, !IO) :-
     io.write_string("TESTING BUILTINS\n", !IO),
 
     % test strings
-    io.write("", !IO), newline(!IO),
-    io.write("Hello, world\n", !IO), newline(!IO),
-    io.write("Foo%sFoo", !IO), newline(!IO),
-    io.write("""", !IO), newline(!IO),   % interesting - prints """ of course
+    io.write_line("", !IO),
+    io.write_line("Hello, world\n", !IO),
+    io.write_line("Foo%sFoo", !IO),
+    io.write_line("""", !IO),   % interesting - prints """ of course
 
     % test characters
-    io.write('a', !IO), newline(!IO),
-    io.write('&', !IO), newline(!IO),
+    io.write_line('a', !IO),
+    io.write_line('&', !IO),
 
     % test floats
-    io.write(3.14159, !IO), newline(!IO),
-    io.write(11.28324983E-22, !IO), newline(!IO),
-    io.write(22.3954899E22, !IO), newline(!IO),
+    io.write_line(3.14159, !IO),
+    io.write_line(11.28324983E-22, !IO),
+    io.write_line(22.3954899E22, !IO),
 
     % test integers
-    io.write(-65, !IO), newline(!IO),
-    io.write(4, !IO), newline(!IO),
+    io.write_line(-65, !IO),
+    io.write_line(4, !IO),
 
     % test univ.
     type_to_univ(["hi! I'm a univ!"], Univ),
-    io.write(Univ, !IO), newline(!IO),
+    io.write_line(Univ, !IO),
 
     % test predicates
-    io.write(newline, !IO), newline(!IO),
-    io.write(StdErr, include_details_cc, newline, !IO), newline(!IO),
+    io.write_line(newline, !IO),
+    io.write_line(StdErr, include_details_cc, newline, !IO),
 
-    newline(!IO).
+    io.nl(!IO).
 
     % Note: testing abstract types is always going to have results
     % that are dependent on the implementation. If someone changes
@@ -146,18 +146,18 @@ test_other(!IO) :-
     io.write_string("TESTING OTHER TYPES\n", !IO),
     term.init_var_supply(VarSupply),
     term.create_var(Var : var, VarSupply, NewVarSupply),
-    io.write(Var, !IO), newline(!IO),
-    io.write(VarSupply, !IO), newline(!IO),
-    io.write(NewVarSupply, !IO), newline(!IO),
+    io.write_line(Var, !IO),
+    io.write_line(VarSupply, !IO),
+    io.write_line(NewVarSupply, !IO),
 
     % presently, at least, map is an equivalence and an abstract type.
     map.init(Map : map(int, int)),
-    io.write(Map, !IO), newline(!IO),
+    io.write_line(Map, !IO),
 
     % a no tag type
-    io.write(qwerty(4), !IO), newline(!IO),
+    io.write_line(qwerty(4), !IO),
 
-    newline(!IO).
+    io.nl(!IO).
 
 :- pred newline(io::di, io::uo) is det.
 

@@ -22,21 +22,18 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    ( foo(2, Y) ->
-        io.print(Y, !IO),
-        io.nl(!IO)
-    ;
+    ( if foo(2, Y) then
+        io.print_line(Y, !IO)
+    else
         io.print("foo failed\n", !IO)
     ),
-    ( bar(3, Y2) ->
-        io.print(Y2, !IO),
-        io.nl(!IO)
-    ;
+    ( if bar(3, Y2) then
+        io.print_line(Y2, !IO)
+    else
         io.print("bar failed\n", !IO)
     ),
     quux(Q, yes),
-    io.print(Q, !IO),
-    io.nl(!IO).
+    io.print_line(Q, !IO).
 
 :- type t
     --->    t(

@@ -41,5 +41,4 @@
 
 main(!IO) :-
     NewSym = sym_variable(ti_par_int, undefined, global_var),
-    io.write(NewSym, !IO),
-    io.nl(!IO).
+    io.write_line(NewSym, !IO).

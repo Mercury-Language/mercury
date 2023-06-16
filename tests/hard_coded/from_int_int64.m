@@ -32,9 +32,7 @@ main(!IO) :-
 
 do_test(IntStr, !IO) :-
     io.format("from_int(%s) = ", [s(IntStr)], !IO),
-    ( if
-        string.to_int(IntStr, Int)
-    then
+    ( if string.to_int(IntStr, Int) then
         Int64 = int64.from_int(Int),
         io.format("%d\n", [i64(Int64)], !IO)
     else

@@ -32,9 +32,9 @@ main(!IO) :-
 loop(Factor, N, L0, L) :-
     Value = foo(Factor, N1),
     bar(N, N1),
-    ( N1 = 0 ->
+    ( if N1 = 0 then
         L = L0
-    ;
+    else
         L1 = [Factor * Value | L0],
         loop(Factor, N - 1, L1, L)
     ).

@@ -30,13 +30,13 @@ main(!IO) :-
     F = f(A + 1, B + 1),    % unconditional reuse here
     addr(F, Addr),
 
-    ( capable_grade($grade) ->
-        ( Addr0 = Addr ->
+    ( if capable_grade($grade) then
+        ( if Addr0 = Addr then
             io.write_string("same address (good)\n", !IO)
-        ;
+        else
             io.write_string("different addresses (bad)\n", !IO)
         )
-    ;
+    else
         io.write_string("grade probably doesn't support reuse\n", !IO)
     ).
 

@@ -23,10 +23,10 @@
     ;       cherry(string).
 
 main(!IO) :-
-    ( p(apple, "a", N) ->
+    ( if p(apple, "a", N) then
         io.write_int(N, !IO),
         io.nl(!IO)
-    ;
+    else
         true
     ).
 

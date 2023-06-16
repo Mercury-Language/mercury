@@ -69,16 +69,16 @@ cycle(StartNode, NodeLs) :-
             AdjNode = d
         )
     then
-       ( if not list.member(AdjNode, NodeLs0) then
-          Status1 = traverse
-       else
-          Status1 = cycle
-       ),
-       NodeLs1 = [AdjNode | NodeLs0],
-       cycle1(StartNode, AdjNode, NodeLs1, NodeLs, Status1)
+        ( if not list.member(AdjNode, NodeLs0) then
+            Status1 = traverse
+        else
+            Status1 = cycle
+        ),
+        NodeLs1 = [AdjNode | NodeLs0],
+        cycle1(StartNode, AdjNode, NodeLs1, NodeLs, Status1)
     else
-       NodeLs2 = [StartNode],
-       cycle1(StartNode, StartNode, NodeLs2, NodeLs, no_cycle)
+        NodeLs2 = [StartNode],
+        cycle1(StartNode, StartNode, NodeLs2, NodeLs, no_cycle)
     ).
 
 %---------------------------------------------------------------------------%
@@ -110,15 +110,15 @@ cycles(N, Nodes) :-
 
 cycle1(StartNode, CurrNode, NodeLs0, NodeLs, traverse) :-
     ( if arrow(CurrNode, AdjNode) then
-       ( if not list.member(AdjNode, NodeLs0) then
-          Status1 = traverse
-       else
-          Status1 = cycle
-       ),
-       NodeLs1 = [AdjNode | NodeLs0],
-       cycle1(StartNode, AdjNode, NodeLs1, NodeLs, Status1)
+        ( if not list.member(AdjNode, NodeLs0) then
+            Status1 = traverse
+        else
+            Status1 = cycle
+        ),
+        NodeLs1 = [AdjNode | NodeLs0],
+        cycle1(StartNode, AdjNode, NodeLs1, NodeLs, Status1)
     else
-       cycle1(StartNode, StartNode, NodeLs0, NodeLs, no_cycle)
+        cycle1(StartNode, StartNode, NodeLs0, NodeLs, no_cycle)
     ).
 cycle1(StartNode, StartNode, NodeLs, NodeLs, cycle).
 

@@ -28,17 +28,13 @@
 
 main(!IO) :-
     io.write_string("Checking io.write for foreign enum ...\n", !IO),
-    io.write(foo, !IO),
-    io.nl(!IO),
-    io.write(bar, !IO),
-    io.nl(!IO),
-    io.write(baz, !IO),
-    io.nl(!IO),
+    io.write_line(foo, !IO),
+    io.write_line(bar, !IO),
+    io.write_line(baz, !IO),
     io.write_string("Checking deep copy for foreign enum ...\n", !IO),
     X = [foo, bar, baz],
     copy(X, Y),
-    io.write(Y, !IO),
-    io.nl(!IO),
+    io.write_line(Y, !IO),
     TypeDescForFoo = type_of(foo),
     io.write_string("Number of functors of foo/0: ", !IO),
     NumFunctors = det_num_functors(TypeDescForFoo),
@@ -78,8 +74,7 @@ check_deconstruct(Data, !IO) :-
 check_construct(TypeDesc, LexFunctorNum, !IO) :-
     ( if Univ = construct(TypeDesc, LexFunctorNum, []) then
         io.write_string("    ", !IO),
-        io.write(Univ, !IO),
-        io.nl(!IO)
+        io.write_line(Univ, !IO)
     else
         io.write_string("FAILED: construct.construct\n", !IO)
     ).

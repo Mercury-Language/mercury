@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module name_mangling.
 :- interface.
 :- import_module io.
@@ -36,9 +36,9 @@ mk_pair(A, B) = (A, B).
 
 'yet another test'(42).
 
-main -->
-    { 'this is a test' },
-    write('a strange functor'), nl,
-    write('another strange functor'), nl,
-    { solutions('this is another test', List) },
-    write(List), nl.
+main(!IO) :-
+    'this is a test',
+    io.write_line('a strange functor', !IO),
+    io.write_line('another strange functor', !IO),
+    solutions('this is another test', List),
+    io.write_line(List, !IO).

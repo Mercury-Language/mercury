@@ -22,5 +22,4 @@
     ;       ref.
 
 main(!IO) :-
-    io.write(value, !IO),
-    io.nl(!IO).
+    io.write_line(value, !IO).

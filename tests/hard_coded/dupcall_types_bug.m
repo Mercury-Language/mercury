@@ -21,7 +21,10 @@ main(!IO) :-
     Posn0 = posn(1, 0, 0),
     read_from_string(FileName, String, Len, Int, Posn0, _),
     read_from_string(FileName, String, Len, Str, Posn0, _),
-    ( if Int = ok(I), Str = ok(S) then
+    ( if
+        Int = ok(I),
+        Str = ok(S)
+    then
         io.write_int(I, !IO),
         io.write_string(S, !IO),
         io.nl(!IO)

@@ -9,11 +9,11 @@
 :- module existential_reordering.
 :- interface.
 
-:- some [T] func my_exist_t = T.
-
 :- import_module io.
 
 :- pred main(io::di, io::uo) is det.
+
+:- some [T] func my_exist_t = T.
 
 :- implementation.
 :- import_module list.
@@ -29,6 +29,7 @@ main(!IO) :-
     same_type(L, [my_exist_t]).
 
 :- pred same_type(T::unused, T::unused) is det.
+
 same_type(_, _).
 
 my_exist_t = 42.

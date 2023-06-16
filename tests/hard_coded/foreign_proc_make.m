@@ -18,7 +18,7 @@
 :- implementation.
 
 :- import_module int.
-:- import_module foreign_proc_make2.
+:- import_module foreign_proc_make_helper_1.
 
 main(!IO) :-
     io.write_int(f2 + f3, !IO),
@@ -26,4 +26,5 @@ main(!IO) :-
 
 :- func f2 = int.
 :- pragma foreign_proc("C#", f2 = (X::out), [promise_pure], "X=5;").
+
 f2 = 5.

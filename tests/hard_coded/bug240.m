@@ -45,9 +45,6 @@ mkfc(F1, F2, I) = G :-
 
 write_fc(X, !IO) :-
     X = fc(Y1, Y2, Y3),
-    io.write(Y1, !IO),
-    io.nl(!IO),
-    io.write(Y2, !IO),
-    io.nl(!IO),
-    io.write(Y3, !IO),
-    io.nl(!IO).
+    io.write_line(Y1, !IO),
+    io.write_line(Y2, !IO),
+    io.write_line(Y3, !IO).

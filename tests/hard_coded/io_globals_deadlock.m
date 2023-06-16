@@ -48,12 +48,12 @@ update_pred_1(unit, !IO) :-
 :- pred update_1(univ::in, univ::out) is det.
 
 update_1(!Univ) :-
-    ( univ_to_type(!.Univ, N) ->
-        ( N = 3 ->
+    ( if univ_to_type(!.Univ, N) then
+        ( if N = 3 then
             throw("N = 3")
-        ;
+        else
             !:Univ = univ(561)
         )
-    ;
+    else
         throw("cannot convert univ to integer")
     ).

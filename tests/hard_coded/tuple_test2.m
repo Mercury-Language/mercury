@@ -40,9 +40,9 @@ main(!IO) :-
 
 test_unify({A, B}, !IO) :-
     io.write(A, !IO),
-    ( unify(A, B) ->
+    ( if unify(A, B) then
         io.write_string(" =  ", !IO)
-    ;
+    else
         io.write_string(" \\= ", !IO)
     ),
     io.write(B, !IO),
@@ -63,5 +63,4 @@ test_compare({A, B}, !IO) :-
         R = (>),
         io.write_string(" > ", !IO)
     ),
-    io.write(B, !IO),
-    io.nl(!IO).
+    io.write_line(B, !IO).

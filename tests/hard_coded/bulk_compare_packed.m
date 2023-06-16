@@ -109,5 +109,4 @@ compare_one_one(A, B, !IO) :-
         io.write_string(" > ", !IO),
         expect_not(unify(A, B), $pred, "compare gt but unify")
     ),
-    io.write(B, !IO),
-    io.nl(!IO).
+    io.write_line(B, !IO).

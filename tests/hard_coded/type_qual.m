@@ -31,46 +31,35 @@ main(!IO) :-
 test1(!IO) :-
     io.write_string("test1\n", !IO),
     io.read(X : io.read_result(int), !IO),
-    io.write(X, !IO),
-    io.nl(!IO).
+    io.write_line(X, !IO).
 
 :- pred test2(T::in, io.state::di, io.state::uo) is det.
 
 test2(X, !IO) :-
     io.write_string("test2\n", !IO),
-    io.write(type_of(X : T), !IO),
-    io.nl(!IO),
-    io.write(type_of(_ : list(T)), !IO),
-    io.nl(!IO).
+    io.write_line(type_of(X : T), !IO),
+    io.write_line(type_of(_ : list(T)), !IO).
 
 :- pred test3(io.state::di, io.state::uo) is det.
 
 test3(!IO) :-
     io.write_string("test3\n", !IO),
-    io.write(empty_list, !IO),
-    io.nl(!IO),
-    io.write(type_of(empty_list), !IO),
-    io.nl(!IO),
+    io.write_line(empty_list, !IO),
+    io.write_line(type_of(empty_list), !IO),
     empty(X),
-    io.write(X, !IO),
-    io.nl(!IO),
-    io.write(type_of(X), !IO),
-    io.nl(!IO).
+    io.write_line(X, !IO),
+    io.write_line(type_of(X), !IO).
 
 :- pred test4(io.state::di, io.state::uo) is det.
 
 test4(!IO) :-
     io.write_string("test4\n", !IO),
     List = build_list : TypeOfList,
-    io.write(type_of(List), !IO),
-    io.nl(!IO),
-    io.write(List, !IO),
-    io.nl(!IO),
+    io.write_line(type_of(List), !IO),
+    io.write_line(List, !IO),
     EmptyList = [] : TypeOfList,
-    io.write(type_of(EmptyList), !IO),
-    io.nl(!IO),
-    io.write(EmptyList, !IO),
-    io.nl(!IO).
+    io.write_line(type_of(EmptyList), !IO),
+    io.write_line(EmptyList, !IO).
 
     % Test use of same type variable in different clauses.
     %
@@ -80,18 +69,14 @@ test5(yes, !IO) :-
     io.write_string("test5 yes\n", !IO),
     _ = [1, 2, 3] : T,
     Y = [] : T,
-    io.write(type_of(Y), !IO),
-    io.nl(!IO),
-    io.write(Y, !IO),
-    io.nl(!IO).
+    io.write_line(type_of(Y), !IO),
+    io.write_line(Y, !IO).
 test5(no, !IO) :-
     io.write_string("test5 no\n", !IO),
     _ = ["1", "2", "3"] : T,
     Y = [] : T,
-    io.write(type_of(Y), !IO),
-    io.nl(!IO),
-    io.write(Y, !IO),
-    io.nl(!IO).
+    io.write_line(type_of(Y), !IO),
+    io.write_line(Y, !IO).
 
 :- pred test6(io.state::di, io.state::uo) is det.
 

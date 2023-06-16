@@ -20,15 +20,16 @@
 :- implementation.
 
 main(!IO) :-
-    io.print("bar = ", !IO),  io.print(bar, !IO),  nl(!IO),
-    io.print("bar2 = ", !IO), io.print(bar2, !IO), nl(!IO),
-    io.print("baz = ", !IO),  io.print(baz, !IO),  nl(!IO),
-    io.print("baz2 = ", !IO), io.print(baz2, !IO), nl(!IO).
+    io.print("bar = ", !IO),  io.print_line(bar, !IO),
+    io.print("bar2 = ", !IO), io.print_line(bar2, !IO),
+    io.print("baz = ", !IO),  io.print_line(baz, !IO),
+    io.print("baz2 = ", !IO), io.print_line(baz2, !IO).
 
 :- type t
     --->    ambig.
 
 :- func ambig = int.
+
 ambig = 42.
 
 bar = ambig.

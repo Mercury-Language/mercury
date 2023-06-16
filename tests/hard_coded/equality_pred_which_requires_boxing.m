@@ -68,6 +68,7 @@ main(!IO) :-
     % arguments will have been boxed.  We then test if the
     % unification pred handles this correctly.
 :- pred unify(string::in, T::in, T::in, io::di, io::uo) is det.
+
 unify(S, X, Y, !IO) :-
     io.write_string(S, !IO),
     ( if X = Y then
@@ -77,6 +78,7 @@ unify(S, X, Y, !IO) :-
     ).
 
 :- func create(float) = type_which_needs_boxing.
+
 :- pragma foreign_proc("C", create(X::in) = (Y::out), [promise_pure], "
     Y = X;
 ").
@@ -88,6 +90,7 @@ unify(S, X, Y, !IO) :-
 ").
 
 :- func create_T(float) = type_which_needs_boxing(int).
+
 :- pragma foreign_proc("C", create_T(X::in) = (Y::out), [promise_pure], "
     Y = X;
 ").
@@ -99,7 +102,8 @@ unify(S, X, Y, !IO) :-
 ").
 
 :- pred unify_ft(type_which_needs_boxing::in, type_which_needs_boxing::in)
-        is semidet.
+    is semidet.
+
 :- pragma foreign_proc("C", unify_ft(X::in, Y::in), [promise_pure], "
     SUCCESS_INDICATOR = (X == Y);
 ").
@@ -111,7 +115,8 @@ unify(S, X, Y, !IO) :-
 ").
 
 :- pred unify_ft_T(type_which_needs_boxing(T)::in,
-        type_which_needs_boxing(T)::in) is semidet.
+    type_which_needs_boxing(T)::in) is semidet.
+
 :- pragma foreign_proc("C", unify_ft_T(X::in, Y::in), [promise_pure], "
     SUCCESS_INDICATOR = (X == Y);
 ").
@@ -124,8 +129,10 @@ unify(S, X, Y, !IO) :-
 
 :- pragma no_inline(float_a/0).
 :- func float_a = float.
+
 float_a = 1.0.
 
 :- pragma no_inline(float_b/0).
 :- func float_b = float.
+
 float_b = 1.0.

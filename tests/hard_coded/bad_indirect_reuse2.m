@@ -24,20 +24,16 @@ main(!IO) :-
     H1 = hide(U1),
     H2 = hide(U2),
     my_merge(U1, U2, M),    % bad indirect reuse
-    io.write(H1, !IO),
-    nl(!IO),
-    io.write(H2, !IO),
-    nl(!IO),
-    io.write(M, !IO),
-    io.nl(!IO),
+    io.write_line(H1, !IO),
+    io.write_line(H2, !IO),
+    io.write_line(M, !IO),
 
     io.write_string("--------\n", !IO),
 
     copy([0, 0, 3, 5], U3),
     copy([1, 2, 2, 4], U4),
     my_merge(U3, U4, MB),   % good indirect reuse
-    io.write(MB, !IO),
-    io.nl(!IO).
+    io.write_line(MB, !IO).
 
 :- type hide
     --->    hide(list(int)).

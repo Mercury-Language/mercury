@@ -8,7 +8,7 @@
 
 :- interface.
 
-:- import_module qual_is_test_imported.
+:- import_module qual_is_test_helper_1.
 
 :- import_module io.
 :- import_module list.
@@ -18,6 +18,6 @@
 
 :- implementation.
 
-qual_is_test.main -->
-    io.write_string(W),
-    { is("Hi!.\n", W) }.
+qual_is_test.main(!IO) :-
+    io.write_string(W, !IO),
+    is("Hi!.\n", W).

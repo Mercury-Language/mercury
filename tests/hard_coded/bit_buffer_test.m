@@ -35,11 +35,20 @@
     ;       check_buffer_status(stream.result(univ)).
 
 :- type read_error
-        --->    bits(expected_word :: word, found_word :: word, num_bits)
-        ;       bitmap(expected_bitmap :: bitmap, found_bitmap :: bitmap,
-                    request_size :: num_bits, bits_read :: num_bits)
-        ;       check_buffer_status(expected_status :: stream.result(univ),
-                    found_status :: stream.result(univ)).
+        --->    bits(
+                    expected_word   :: word,
+                    found_word      :: word, num_bits
+                )
+        ;       bitmap(
+                    expected_bitmap :: bitmap,
+                    found_bitmap    :: bitmap,
+                    request_size    :: num_bits,
+                    bits_read       :: num_bits
+                )
+        ;       check_buffer_status(
+                    expected_status :: stream.result(univ),
+                    found_status    :: stream.result(univ)
+                ).
 
 main(!IO) :-
     % Distinctive byte patterns so we can tell where bits came from.
@@ -60,7 +69,7 @@ main(!IO) :-
         io.write_string("Test reading and writing full bytes.\n", !IO),
         !:Seq = condense(duplicate(4,
             [bits(Byte1, 8), bits(Byte2, 8), check_buffer_status(ok),
-                bits(Byte3, 8), bits(0, 0), bits(Byte4, 8)]))
+            bits(Byte3, 8), bits(0, 0), bits(Byte4, 8)]))
             ++ [check_buffer_status(eof)],
         Seq1 = !.Seq,
         test_sequence(8, !.Seq, !IO),
@@ -72,8 +81,8 @@ main(!IO) :-
         % the buffer size.
 
         !:Seq = condense(duplicate(6,
-                    [bits(Byte1, 7), bits(1, 1), bits(Byte2, 6),
-                        bits(Byte3, 7), bits(Byte4, 4)])),
+            [bits(Byte1, 7), bits(1, 1), bits(Byte2, 6),
+            bits(Byte3, 7), bits(Byte4, 4)])),
         Seq2 = !.Seq,
         test_sequence(8, !.Seq, !IO),
 
@@ -81,8 +90,8 @@ main(!IO) :-
     "Test flushes when the stream is at a byte boundary and when it is not.\n",
             !IO),
         !:Seq = condense(duplicate(6,
-                    [flush, bits(Byte1, 7), bits(0, 1), flush, bits(Byte2, 6),
-                    bits(Byte3, 7), flush, bits(Byte4, 4)])),
+            [flush, bits(Byte1, 7), bits(0, 1), flush, bits(Byte2, 6),
+            bits(Byte3, 7), flush, bits(Byte4, 4)])),
         test_sequence(8, !.Seq, !IO),
 
         % A short simple bitmap.
@@ -301,8 +310,7 @@ check_that_error_occurs(Desc, P, !IO) :-
     ;
         Result = exception(Error),
         io.write_string(Desc ++ " reads failed as expected:\n", !IO),
-        io.write(Error, !IO),
-        io.nl(!IO)
+        io.write_line(Error, !IO)
     ).
 
 :- pred output_request(request::in, io::di, io::uo) is det.
@@ -668,12 +676,17 @@ bit_buffer_test_tmp_file = "bit_buffer_test_tmp".
     % instances don't allow that.  Also, the Error type of the stream
     % can't be exposed for the same reason.
     %
-:- type timebomb_byte_stream ---> timebomb_byte_stream.
-:- type timebomb_state ---> some [Stream, State, Error]
-        timebomb_state(timebombed_stream :: Stream,
-            timebombed_state :: State, countdown :: int) =>
-        (reader(Stream, byte, State, Error),
-        bulk_reader(Stream, int, bitmap, State, Error)).
+:- type timebomb_byte_stream
+    --->    timebomb_byte_stream.
+:- type timebomb_state
+    --->    some [Stream, State, Error]
+            timebomb_state(
+                timebombed_stream   :: Stream,
+                timebombed_state    :: State,
+                countdown           :: int
+            ) =>
+                (reader(Stream, byte, State, Error),
+                bulk_reader(Stream, int, bitmap, State, Error)).
 
 :- type timebomb_error
         --->    bang
@@ -693,9 +706,8 @@ bit_buffer_test_tmp_file = "bit_buffer_test_tmp".
 :- instance stream.input(timebomb_byte_stream, timebomb_state) where [].
 
 :- instance stream.reader(timebomb_byte_stream, byte,
-        timebomb_state, timebomb_error)
-    where
-[
+    timebomb_state, timebomb_error)
+where [
     (get(_Stream, Result, !.State, unsafe_promise_unique(!:State)) :-
         !.State = timebomb_state(TStream, TState0, Countdown0),
         ( if Countdown0 < 0 then
@@ -724,9 +736,8 @@ bit_buffer_test_tmp_file = "bit_buffer_test_tmp".
 ].
 
 :- instance stream.bulk_reader(timebomb_byte_stream, int, bitmap,
-        timebomb_state, timebomb_error)
-    where
-[
+    timebomb_state, timebomb_error)
+where [
     (bulk_get(_, Index, NumBytes, !BM, NumBytesRead, Result,
             !.State, unsafe_promise_unique(!:State)) :-
         !.State = timebomb_state(TStream, TState0, Countdown0),

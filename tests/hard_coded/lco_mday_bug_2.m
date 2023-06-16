@@ -8,8 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io, io).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -25,8 +24,7 @@
 
 main(!IO) :-
     call_standard_func(date_parse, Res),
-    io.write(Res, !IO),
-    io.nl(!IO).
+    io.write_line(Res, !IO).
 
 %---------------------------------------------------------------------------%
 

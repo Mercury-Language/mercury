@@ -18,10 +18,10 @@
 :- instance foo(int) where [].
 
 main(!IO) :-
-    ( foo(2, N) ->
+    ( if foo(2, N) then
         io.write_int(N, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("no solution\n", !IO)
     ).
 

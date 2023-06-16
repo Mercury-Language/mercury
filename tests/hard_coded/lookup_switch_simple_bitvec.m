@@ -28,7 +28,7 @@ main(!IO) :-
 :- pred test(int::in, io::di, io::uo) is det.
 
 test(N, !IO) :-
-    ( p(N, A, B, C, D) ->
+    ( if p(N, A, B, C, D) then
         io.format("N = %d: ", [i(N)], !IO),
         io.write(A, !IO),
         io.write_string(" ", !IO),
@@ -38,7 +38,7 @@ test(N, !IO) :-
         io.write_string(" ", !IO),
         io.write(D, !IO),
         io.write_string("\n", !IO)
-    ;
+    else
         io.format("N = %d: no solution\n", [i(N)], !IO)
     ).
 

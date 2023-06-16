@@ -23,8 +23,7 @@ main(!IO) :-
     io.write_string("calling\n", !IO),
     P("blah", S),
     io.write_string("printing\n", !IO),
-    io.print(S, !IO),
-    io.nl(!IO).
+    io.print_line(S, !IO).
 
 :- pred make_closure(T, T, pred(string, string)).
 :- mode make_closure(in, in, out(pred(in, out) is det)) is det.

@@ -23,11 +23,11 @@
 :- import_module thread.semaphore.
 
 main(!IO) :-
-    ( can_spawn ->
+    ( if can_spawn then
         semaphore.init(1, Sem, !IO),
         thread.spawn(run_problem(Sem, 2), !IO),
         thread.spawn(run_problem(Sem, 3), !IO)
-    ;
+    else
         io.write_string("spawn/3 not supported in this grade", !IO)
     ).
 
@@ -47,10 +47,11 @@ run_problem(Sem, TId0, !IO) :-
         Sols = [_ | _],
         wait(Sem, !IO),
         io.format("(TID: #%d) Solutions:\n", [i(TId)], !IO),
-        WriteSoln = (pred(Sol::in, !.IO::di, !:IO::uo) is det :-
-            io.format("(TID: #%d) ", [i(TId)], !IO),
-            io.write(Sol, !IO)
-        ),
+        WriteSoln =
+            ( pred(Sol::in, !.IO::di, !:IO::uo) is det :-
+                io.format("(TID: #%d) ", [i(TId)], !IO),
+                io.write(Sol, !IO)
+            ),
         io.write_list(Sols, ",\n", WriteSoln, !IO),
         io.nl(!IO),
         signal(Sem, !IO)
@@ -83,14 +84,14 @@ label(Sem, TId, Name, [_ | Ns], N, P) :-
     choice_id::in, choice_id::in, choice_id::in) is semidet.
 
 check(Sem, TId, A, B, C, PA, PB, PC) :-
-    ( is_nogood(A, B, C, PA, PB, PC, P) ->
+    ( if is_nogood(A, B, C, PA, PB, PC, P) then
         trace [io(!IO)] (
             locked_write_string(Sem,
                 format("(TID: #%d) backjump (%d)\n", [i(TId), i(to_int(P))]),
                 !IO)
         ),
         impure backjump(P)
-    ;
+    else
         is_solution(A, B, C),
         trace [io(!IO)] (
             locked_write_string(Sem, format("(TID: #%d) solution %d, %d, %d\n",
@@ -117,4 +118,3 @@ locked_write_string(Sem, String, !IO) :-
     wait(Sem, !IO),
     write_string(String, !IO),
     signal(Sem, !IO).
-

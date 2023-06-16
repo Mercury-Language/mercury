@@ -24,16 +24,14 @@
 main(!IO) :-
     io.write_string("TEST 1\n", !IO),
     Rev = my_foldl(cons, 1 .. 5, []),
-    io.write(Rev, !IO),
-    io.nl(!IO),
+    io.write_line(Rev, !IO),
 
     io.write_string("\nTEST 2\n", !IO),
     !:IO = my_foldl(echo, ["a", "b", "c"], !.IO),
 
     io.write_string("\nTEST 3\n", !IO),
     ( if RevB = my_foldl(maybe_cons, 1 .. 5, []) then
-        io.write(RevB, !IO),
-        io.nl(!IO)
+        io.write_line(RevB, !IO)
     else
         io.write_string("found a multiple of three\n", !IO)
     ).

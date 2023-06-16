@@ -18,7 +18,7 @@
 
 :- implementation.
 
-:- import_module test_pretty_printer_helper.
+:- import_module test_pretty_printer_helper_1.
 
 :- import_module float.
 :- import_module int.

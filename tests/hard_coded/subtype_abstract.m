@@ -13,7 +13,7 @@
 
 :- implementation.
 
-:- import_module subtype_abstract_2.
+:- import_module subtype_abstract_helper_1.
 
 :- type foo(T, U)
     --->    foo(

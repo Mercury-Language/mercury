@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module dense_lookup_switch2.
 
 :- interface.
@@ -42,7 +42,7 @@ main(!IO) :-
 :- pred test(foo::in, io::di, io::uo) is det.
 
 test(Foo, !IO) :-
-    ( p(Foo, Str, Bar, Float) ->
+    ( if p(Foo, Str, Bar, Float) then
         io.write(Foo, !IO),
         io.write_string(" -> ", !IO),
         io.write_string(Str, !IO),
@@ -51,7 +51,7 @@ test(Foo, !IO) :-
         io.write_string(" ", !IO),
         io.write_float(Float, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write(Foo, !IO),
         io.write_string(" -> failed", !IO),
         io.nl(!IO)

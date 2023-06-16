@@ -6,7 +6,7 @@
 
 :- interface.
 
-:- import_module export_test2.sub.
+:- import_module export_test2.nested_1.
 :- import_module int.
 :- import_module io.
 
@@ -18,12 +18,12 @@
 :- pred bar(io.output_stream::in, io.output_stream::out,
     foo::in, foo::out) is det.
 
-    :- module export_test2.sub.
+    :- module export_test2.nested_1.
     :- interface.
     :- import_module enum.
     :- type foo.
     :- instance enum(foo).
-    :- end_module export_test2.sub.
+    :- end_module export_test2.nested_1.
 
 :- implementation.
 
@@ -52,7 +52,7 @@ foo(S, S, X0, X) :-
 
 /*
 ** Make sure the foreign type definitions of io.input_stream
-** and export_test2.sub.foo are available here.
+** and export_test2.nested_1.foo are available here.
 ** If not, the automatically generated definition of foo() will be
 **
 **      void foo(MR_Word, MR_Word *, MR_Word, MR_Word *);
@@ -77,7 +77,7 @@ void foo(MercuryFilePtr, MercuryFilePtr *, int, int *);
     export_test2.mercury_code.foo(S, ref T, X, ref Y);
 ").
 
-    :- module export_test2.sub.
+    :- module export_test2.nested_1.
     :- implementation.
 
     :- type foo
@@ -110,4 +110,4 @@ void foo(MercuryFilePtr, MercuryFilePtr *, int, int *);
     "
         Foo = Int;
     ").
-    :- end_module export_test2.sub.
+    :- end_module export_test2.nested_1.

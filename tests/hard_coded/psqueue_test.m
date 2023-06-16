@@ -37,27 +37,27 @@ main(!IO) :-
 test_empty(!IO) :-
     psqueue.init(PSQ0),
     io.write_string("empty test: ", !IO),
-    ( psqueue.is_empty(PSQ0) ->
+    ( if psqueue.is_empty(PSQ0) then
         io.write_string("ok\n", !IO)
-    ;
+    else
         io.write_string("not ok\n", !IO)
     ),
 
     psqueue.det_insert(1, "a", PSQ0, PSQ1),
     io.write_string("nonempty test: ", !IO),
-    ( psqueue.is_empty(PSQ1) ->
+    ( if psqueue.is_empty(PSQ1) then
         io.write_string("not ok\n", !IO)
-    ;
+    else
         io.write_string("ok\n", !IO)
     ),
 
     io.write_string("empty test after remove: ", !IO),
-    (
+    ( if
         psqueue.remove(_, "a", PSQ1, PSQ2),
         psqueue.is_empty(PSQ2)
-    ->
+    then
         io.write_string("ok\n", !IO)
-    ;
+    else
         io.write_string("not ok\n", !IO)
     ).
 
@@ -89,8 +89,7 @@ det_insert_and_output(Prio, Key, !PSQ, !IO) :-
     io.format("inserting prio %d, key %s, giving\n", [i(Prio), s(Key)], !IO),
     psqueue.det_insert(Prio, Key, !PSQ),
     output_psqueue(!.PSQ, !IO),
-    io.format("size after insert is %d\n", [i(psqueue.size(!.PSQ))], !IO),
-    io.nl(!IO).
+    io.format("size after insert is %d\n\n", [i(psqueue.size(!.PSQ))], !IO).
 
 :- pred test_at_most(psqueue(int, string)::in, io::di, io::uo) is det.
 
@@ -102,13 +101,13 @@ test_at_most(PSQ, !IO) :-
     io::di, io::uo) is det.
 
 test_at_most_loop(PSQ, Cur, Max, !IO) :-
-    ( Cur < Max ->
+    ( if Cur < Max then
         io.format("at_most %d: ", [i(Cur)], !IO),
         psqueue.at_most(PSQ, Cur, AssocList),
         io.print(AssocList, !IO),
         io.nl(!IO),
         test_at_most_loop(PSQ, Cur + 1, Max, !IO)
-    ;
+    else
         true
     ).
 
@@ -140,11 +139,11 @@ test_delete(PSQ, !IO) :-
     is det.
 
 test_delete_key(PSQ0, Key, !IO) :-
-    ( remove(Prio, Key, PSQ0, PSQ) ->
+    ( if remove(Prio, Key, PSQ0, PSQ) then
         psqueue.to_assoc_list(PSQ, AssocList),
         io.format("delete key %s: prio %d, left %s\n",
             [s(Key), i(Prio), s(string(AssocList))], !IO)
-    ;
+    else
         io.format("delete key %s: failed\n", [s(Key)], !IO)
     ).
 
@@ -168,11 +167,11 @@ test_from_assoc_list(ViaAssocListPSQ, !IO) :-
     psqueue.to_assoc_list(ViaInsertsPSQ, ViaInsertsAssocList),
 
     io.write_string("via from_assoc_list and via inserts assoc lists ", !IO),
-    ( ViaAssocListAssocList = ViaInsertsAssocList ->
+    ( if ViaAssocListAssocList = ViaInsertsAssocList then
         io.write_string("agree:\n", !IO),
         io.print(ViaAssocListAssocList, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("disagree:\n", !IO),
         io.write_string("via from_assoc_list:\n", !IO),
         io.print(ViaAssocListAssocList, !IO),
@@ -183,11 +182,11 @@ test_from_assoc_list(ViaAssocListPSQ, !IO) :-
     ),
 
     io.write_string("via from_assoc_list and via inserts psqueues ", !IO),
-    ( ViaAssocListPSQ = ViaInsertsPSQ ->
+    ( if ViaAssocListPSQ = ViaInsertsPSQ then
         io.write_string("agree:\n", !IO),
         output_psqueue(ViaAssocListPSQ, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("disagree:\n", !IO),
         io.write_string("via from_assoc_list:\n", !IO),
         output_psqueue(ViaAssocListPSQ, !IO),
@@ -213,10 +212,10 @@ test_adjust(PSQ, !IO) :-
 test_adjust_key(PSQ0, NewPrio, Key, !IO) :-
     io.format("adjusting priority of %s to %d ",
         [s(Key), i(NewPrio)], !IO),
-    ( psqueue.adjust(func(_) = NewPrio, Key, PSQ0, PSQ) ->
+    ( if psqueue.adjust(func(_) = NewPrio, Key, PSQ0, PSQ) then
         to_assoc_list(PSQ, AssocList),
         io.format("succeeded\n%s\n", [s(string(AssocList))], !IO)
-    ;
+    else
         io.write_string("failed\n", !IO)
     ).
 

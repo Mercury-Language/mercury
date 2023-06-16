@@ -26,8 +26,7 @@
 
 main(!IO) :-
     p(X),
-    io.write(num_float(X), !IO),
-    io.nl(!IO),
+    io.write_line(num_float(X), !IO),
     call_standard_func(date_parse, Res),
     (
         Res = num_int(I),
@@ -40,8 +39,7 @@ main(!IO) :-
         io.write_float(F, !IO),
         io.nl(!IO)
     ),
-    io.write(Res, !IO),
-    io.nl(!IO).
+    io.write_line(Res, !IO).
 
 %---------------------------------------------------------------------------%
 

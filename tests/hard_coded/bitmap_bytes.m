@@ -51,7 +51,8 @@ do_bitmap_test(BM, Indexes, !IO) :-
     io.format("Bitmap: %s\n", [s(to_byte_string(BM))], !IO),
     list.foldl(test_byte_lookup(BM), Indexes, !IO).
 
-:- pred test_byte_lookup(bitmap::in, byte_index::in, io::di, io::uo) is cc_multi.
+:- pred test_byte_lookup(bitmap::in, byte_index::in,
+    io::di, io::uo) is cc_multi.
 
 test_byte_lookup(BM, Index, !IO) :-
     io.format("^ byte(%d): ", [i(Index)], !IO),

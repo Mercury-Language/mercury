@@ -38,21 +38,21 @@ main(!IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred run_modify_test((func(uint8, uint) = uint8)::in, string::in,
-    io::di, io::uo) is cc_multi.
+:- pred run_modify_test((func(uint8, uint) = uint8)::in,
+    string::in, io::di, io::uo) is cc_multi.
 
 run_modify_test(Func, Desc, !IO) :-
     io.format("*** Test operation '%s' ***\n\n", [s(Desc)], !IO),
     list.foldl(run_modify_on_input(Func, Desc), modify_numbers, !IO).
 
-:- pred run_modify_on_input((func(uint8, uint) = uint8)::in, string::in,
-    uint8::in, io::di, io::uo) is cc_multi.
+:- pred run_modify_on_input((func(uint8, uint) = uint8)::in,
+    string::in, uint8::in, io::di, io::uo) is cc_multi.
 
 run_modify_on_input(Func, Desc, U, !IO) :-
     list.foldl(run_modify_on_input_at_index(Func, Desc, U), bit_indexes, !IO).
 
-:- pred run_modify_on_input_at_index((func(uint8, uint) = uint8)::in, string::in,
-    uint8::in, uint::in, io::di, io::uo) is cc_multi.
+:- pred run_modify_on_input_at_index((func(uint8, uint) = uint8)::in,
+    string::in, uint8::in, uint::in, io::di, io::uo) is cc_multi.
 
 run_modify_on_input_at_index(Func, Desc, U, I, !IO) :-
     ( try []
@@ -83,7 +83,8 @@ run_value_test(Pred, Desc, !IO) :-
 run_value_on_input(Pred, Desc, U, !IO) :-
     list.foldl(run_value_on_input_at_index(Pred, Desc, U), bit_indexes, !IO).
 
-:- pred run_value_on_input_at_index(pred(uint8, uint)::in(pred(in, in) is semidet),
+:- pred run_value_on_input_at_index(
+    pred(uint8, uint)::in(pred(in, in) is semidet),
     string::in, uint8::in, uint::in, io::di, io::uo) is cc_multi.
 
 run_value_on_input_at_index(Pred, Desc, U, I, !IO) :-

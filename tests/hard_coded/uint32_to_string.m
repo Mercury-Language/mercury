@@ -26,9 +26,10 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    P = (pred(U::in, !.IO::di, !:IO::uo) is det :-
-        io.print_line(uint32_to_string(U), !IO)
-    ),
+    P =
+        ( pred(U::in, !.IO::di, !:IO::uo) is det :-
+            io.print_line(uint32_to_string(U), !IO)
+        ),
     list.foldl(P, test_numbers, !IO).
 
 :- func test_numbers = list(uint32).

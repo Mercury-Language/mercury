@@ -33,7 +33,8 @@ test_foo_mode_0(Values, !IO) :-
     ;
         Values = [Value | ValuesPrime],
         ( if foo(Value, Result) then
-            io.format("foo(%s, %s)\n", [s(string(Value)), s(string(Result))], !IO)
+            io.format("foo(%s, %s)\n",
+                [s(string(Value)), s(string(Result))], !IO)
         else
             io.format("foo(%s, _) ==> <<FALSE>>\n", [s(string(Value))], !IO)
         ),

@@ -17,16 +17,16 @@
 
 :- import_module int.
 
-qual_basic_test.main -->
-    io.write_string("Gotcha1!\n"),
-    { A = qual_basic_test.test },
-    { X = int.(A + 2) },
-    io.write_int(X),
-    io.write_string("\n"),
-    { Pred = int.max },
-    { call(Pred, 1, 2, Y) },
-    io.write_int(Y),
-    write_string("\n").
+qual_basic_test.main(!IO) :-
+    io.write_string("Gotcha1!\n", !IO),
+    A = qual_basic_test.test,
+    X = int.(A + 2),
+    io.write_int(X, !IO),
+    io.write_string("\n", !IO),
+    Pred = int.max,
+    call(Pred, 1, 2, Y),
+    io.write_int(Y, !IO),
+    io.write_string("\n", !IO).
 
 :- func test = int.
 

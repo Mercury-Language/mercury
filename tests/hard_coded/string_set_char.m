@@ -124,5 +124,5 @@ set_char_by_cp(Str0, CodePoint, Char, Str) :-
     string.set_char(Char, Offset, Str0, Str),
     trace [io(!IO), runtime(env("DEBUG"))] (
         io.write_string(Str, !IO),
-        nl(!IO)
+        io.nl(!IO)
     ).

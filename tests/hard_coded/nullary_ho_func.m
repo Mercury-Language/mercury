@@ -30,24 +30,26 @@ apply_nullary_func(F) = apply(F).
 
 apply_func(F) = apply(F).
 
-main -->
-    { F = ((func) = 42) },
-    { X = apply(F) },
-    { G = ((func) = (_ :: out) is semidet :- fail) },
-    { H = ((func) = (R :: out) is semidet :- semidet_succeed, R = X) },
-    print("X = "), print(X), nl,
-    print("apply(F) = "), print(X), nl,
-    print("apply_func(F) = "), print(X), nl,
-    print("apply_nullary_func(F) = "), print(X), nl,
-    ( { Y = apply(G) } ->
-        print("Y = "), print(Y), nl
-    ;
-        print("Y = apply(G) failed"), nl
+main(!IO) :-
+    F = ((func) = 42),
+    X = apply(F),
+    G = ((func) = (_ :: out) is semidet :- fail),
+    H = ((func) = (R :: out) is semidet :- semidet_succeed, R = X),
+    io.print("X = ", !IO), io.print_line(X, !IO),
+    io.print("apply(F) = ", !IO), io.print_line(X, !IO),
+    io.print("apply_func(F) = ", !IO), io.print_line(X, !IO),
+    io.print("apply_nullary_func(F) = ", !IO), io.print_line(X, !IO),
+    ( if Y = apply(G) then
+        io.print("Y = ", !IO), io.print_line(Y, !IO)
+    else
+        io.print_line("Y = apply(G) failed", !IO)
     ),
-    ( { Z = apply(H) } ->
-        print("Z = "), print(Z), nl
-    ;
-        print("Y = apply(G) failed"), nl
+    ( if Z = apply(H) then
+        io.print("Z = ", !IO), io.print_line(Z, !IO)
+    else
+        io.print_line("Y = apply(G) failed", !IO)
     ),
-    print("type_of(F) = "), print(type_of(F)), nl,
-    print("type_name(type_of(F)) = "), print(type_name(type_of(F))), nl.
+    print("type_of(F) = ", !IO),
+    print_line(type_of(F), !IO),
+    print("type_name(type_of(F)) = ", !IO),
+    print_line(type_name(type_of(F)), !IO).

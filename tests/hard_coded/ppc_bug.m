@@ -44,9 +44,9 @@ find_nth_yes([B | Bs], N, Cur, YesPos) :-
         find_nth_yes(Bs, N, Cur + 1, YesPos)
     ;
         B = yes,
-        ( N = 1 ->
+        ( if N = 1 then
             YesPos = Cur
-        ;
+        else
             find_nth_yes(Bs, N - 1, Cur + 1, YesPos)
         )
     ).

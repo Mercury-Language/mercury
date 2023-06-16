@@ -153,15 +153,15 @@ test(Pred, Name, !IO) :-
 :- pred validate_injection(test_inj::in) is semidet.
 
 validate_injection(J) :-
-    (
-        \+ validate_condition_1(J)
-    ->
+    ( if
+        not validate_condition_1(J)
+    then
         throw("first invariant violated")
-    ;
-        \+ validate_condition_2(J)
-    ->
+    else if
+        not validate_condition_2(J)
+    then
         throw("second invariant violated")
-    ;
+    else
         semidet_succeed
     ).
 
@@ -204,7 +204,7 @@ semidet_fail(_) :-
 :- pred is_empty_test(test_inj::in, string::out) is semidet.
 
 is_empty_test(J, "reported not empty") :-
-    \+ is_empty(J).
+    not is_empty(J).
 
 :- pred not_is_empty_test(test_inj::in, string::out) is semidet.
 
@@ -214,7 +214,7 @@ not_is_empty_test(J, "reported empty") :-
 :- pred set_same_test(test_inj::in, test_data::in, string::out) is semidet.
 
 set_same_test(J, Data, "set failed") :-
-    \+ (
+    not (
         injection.set_from_assoc_list(Data, J, NewJ),
         validate_injection(NewJ)
     ).
@@ -224,7 +224,7 @@ set_same_test(J, Data, "set failed") :-
 update_new(J, Data, "update failed") :-
     some [K, V] (
         list.member(K - V, Data),
-        \+ (
+        not (
             injection.update(J, K, V, NewJ),
             validate_injection(NewJ)
         )
@@ -236,7 +236,7 @@ update_new(J, Data, "update failed") :-
 forward_search_succ_1(J, Data, "key not found") :-
     some [K] (
         list.member(K - _, Data),
-        \+ injection.forward_search(J, K, _)
+        not injection.forward_search(J, K, _)
     ).
 
 :- pred forward_search_succ_2(test_inj::in, test_data::in, string::out)
@@ -245,7 +245,7 @@ forward_search_succ_1(J, Data, "key not found") :-
 forward_search_succ_2(J, Data, "wrong value") :-
     some [K, V] (
         list.member(K - V, Data),
-        \+ injection.forward_search(J, K, V)
+        not injection.forward_search(J, K, V)
     ).
 
 :- pred forward_search_fail(test_inj::in, int::in, string::out) is semidet.
@@ -259,7 +259,7 @@ forward_search_fail(J, K, "wrongly succeeded") :-
 reverse_search_succ_1(J, Data, "value not found") :-
     some [V] (
         list.member(_ - V, Data),
-        \+ injection.reverse_search(J, _, V)
+        not injection.reverse_search(J, _, V)
     ).
 
 :- pred reverse_search_succ_2(test_inj::in, test_data::in, string::out)
@@ -268,7 +268,7 @@ reverse_search_succ_1(J, Data, "value not found") :-
 reverse_search_succ_2(J, Data, "wrong key") :-
     some [K, V] (
         list.member(K - V, Data),
-        \+ injection.reverse_search(J, K, V)
+        not injection.reverse_search(J, K, V)
     ).
 
 :- pred reverse_search_fail(test_inj::in, int::in, string::out) is semidet.
@@ -292,7 +292,7 @@ reverse_lookup_throw(J, V, "wrongly succeeded") :-
 
 keys_test(J, Data, "keys did not match") :-
     injection.keys(J, Ks),
-    \+ (all [K] (
+    not (all [K] (
         list.member(K - _, Data) <=> list.member(K, Ks)
     )).
 
@@ -300,9 +300,11 @@ keys_test(J, Data, "keys did not match") :-
 
 values_test(J, Data, "values did not match") :-
     injection.values(J, Vs),
-    \+ (all [V] (
-        list.member(_ - V, Data) <=> list.member(V, Vs)
-    )).
+    not (
+        all [V] (
+            list.member(_ - V, Data) <=> list.member(V, Vs)
+        )
+    ).
 
 :- pred insert_fail(test_inj::in, int::in, int::in, string::out) is semidet.
 
@@ -329,7 +331,7 @@ update_throw(J, K, V, "wrongly succeeded") :-
 :- pred set_succeed(test_inj::in, int::in, int::in, string::out) is semidet.
 
 set_succeed(J, K, V, "failed with valid value") :-
-    \+ (
+    not (
         injection.set(J, K, V, NewJ),
         validate_injection(NewJ)
     ).
@@ -405,7 +407,7 @@ map_keys_test(J, F, "bad transformation") :-
     some [K, V] (
         list.member(V, Vs),
         injection.reverse_lookup(J, K, V),
-        \+ injection.reverse_lookup(NewJ, F(V, K), V)
+        not injection.reverse_lookup(NewJ, F(V, K), V)
     ).
 
 :- pred map_values_test(test_inj::in, (func(int, int) = int)::in, string::out)
@@ -419,9 +421,9 @@ map_values_test(J, F, "bad transformation") :-
     some [K, V] (
         list.member(K, Ks),
         injection.lookup(J, K, V),
-        \+ injection.lookup(NewJ, K, F(K, V))
+        not injection.lookup(NewJ, K, F(K, V))
     ;
         list.member(V, Vs),
         injection.reverse_lookup(J, K, V),
-        \+ injection.reverse_lookup(NewJ, K, F(K, V))
+        not injection.reverse_lookup(NewJ, K, F(K, V))
     ).

@@ -22,11 +22,11 @@
 
 revert(N, Target) :-
     ( if
-        ( N rem 0x02 = 0x00, Temp = first
-        ; N rem 0x03 = 0x00, Temp = second
+        ( N rem 0x02 = 0x00, TargetPrime = first
+        ; N rem 0x03 = 0x00, TargetPrime = second
         )
     then
-        Target = Temp
+        Target = TargetPrime
     else
         Target = take(N)
     ).

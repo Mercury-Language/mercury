@@ -33,9 +33,9 @@
 :- import_module string.
 
 main(!IO) :-
-    ( solve(james, spanner, library) ->
+    ( if solve(james, spanner, library) then
         Result = "committed"
-    ;
+    else
         Result = "did not commit"
     ),
     io.write_string("James " ++ Result ++

@@ -1,15 +1,16 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-
+%
 % This module tests the loop invariant hoisting optimization.
 % It does so using foreign_procs which abort if called twice:
 % if loop invariant hoisting works, these procedures will only
 % be called once, but if loop invariant hoisting doesn't work,
 % these procedures will abort.
-
+%
 % This test checks that we do loop invariant hoisting for
 % invariant goals which have no input arguments.
+%
 
 :- module loop_inv_test1.
 :- interface.
@@ -74,7 +75,7 @@ loop2(N, Acc0, Acc) :-
     p(X::out),
     [will_not_call_mercury, promise_pure],
 "
-    /* Test that p/1 only gets called once. */
+    // Test that p/1 only gets called once.
     static int num_calls = 0;
     if (num_calls++) {
         MR_fatal_error(""p/1 called more than once"");
@@ -88,7 +89,7 @@ loop2(N, Acc0, Acc) :-
     p(X::out),
     [will_not_call_mercury, promise_pure],
 "
-    /* Test that p/1 only gets called once. */
+    // Test that p/1 only gets called once.
     if (p_num_calls++ > 0) {
         mercury.runtime.Errors.fatal_error(""p/1 called more than once"");
     }
@@ -100,7 +101,7 @@ loop2(N, Acc0, Acc) :-
     p(X::out),
     [will_not_call_mercury, promise_pure],
 "
-    /* Test that p/1 only gets called once. */
+    // Test that p/1 only gets called once.
     if (p_num_calls++ > 0) {
         throw new Error(""p/1 called more than once"");
     }
@@ -113,7 +114,7 @@ loop2(N, Acc0, Acc) :-
     q(X::out),
     [will_not_call_mercury, promise_pure],
 "
-    /* Test that q/1 only gets called once. */
+    // Test that q/1 only gets called once.
     static int num_calls = 0;
     if (num_calls++) {
         MR_fatal_error(""q/1 called more than once"");
@@ -126,7 +127,7 @@ loop2(N, Acc0, Acc) :-
     q(X::out),
     [will_not_call_mercury, promise_pure],
 "
-    /* Test that q/1 only gets called once. */
+    // Test that q/1 only gets called once.
     if (q_num_calls++ > 0) {
         mercury.runtime.Errors.fatal_error(""q/1 called more than once"");
     }
@@ -138,7 +139,7 @@ loop2(N, Acc0, Acc) :-
     q(X::out),
     [will_not_call_mercury, promise_pure],
 "
-    /* Test that q/1 only gets called once. */
+    // Test that q/1 only gets called once.
     if (q_num_calls++ > 0) {
         throw new Error(""q/1 called more than once"");
     }

@@ -42,17 +42,13 @@ main(!IO) :-
     % A21 forces an implicit rollback:
     A21 = int.fold_up(make_a21, 0, 20, A1),
     io.write_string("ordering(A1, A0) = ", !IO),
-    io.write(ordering(A1, A0), !IO),
-    io.nl(!IO),
+    io.write_line(ordering(A1, A0), !IO),
     io.write_string("ordering(A0, A1) = ", !IO),
-    io.write(ordering(A0, A1), !IO),
-    io.nl(!IO),
+    io.write_line(ordering(A0, A1), !IO),
     io.write_string("ordering(A1, A2) = ", !IO),
-    io.write(ordering(A1, A2), !IO),
-    io.nl(!IO),
+    io.write_line(ordering(A1, A2), !IO),
     io.write_string("ordering(A2, A1) = ", !IO),
-    io.write(ordering(A2, A1), !IO),
-    io.nl(!IO),
+    io.write_line(ordering(A2, A1), !IO),
     write_array("A0", A0, !IO),
     write_array("A1", A1, !IO),
     write_array("A2", A2, !IO),
@@ -74,24 +70,24 @@ main(!IO) :-
     write_array("A7", A7, !IO),
 
     test_exception(
-        ((pred) is semidet :-
+        ( (pred) is semidet :-
             _ = A7 ^ elem(-1)
         ), !IO),
     test_exception(
-        ((pred) is semidet :-
+        ( (pred) is semidet :-
             _ : version_array(int) = A7 ^ elem(-1) := 2
         ), !IO),
     _ = A7 ^ elem(1) := 1,
     test_exception(
-        ((pred) is semidet :-
+        ( (pred) is semidet :-
             _ = A7 ^ elem(-1) := 2
         ), !IO),
     test_exception(
-        ((pred) is semidet :-
+        ( (pred) is semidet :-
             _ = A7 ^ elem(-1)
         ), !IO),
     test_exception(
-        ((pred) is semidet :-
+        ( (pred) is semidet :-
             _ = A7 ^ elem(4)
         ), !IO),
 
@@ -166,8 +162,7 @@ test_exception(Pred, !IO) :-
     ;
         Result = exception(Exception),
         io.write_string("Found exception as expected: ", !IO),
-        io.write(univ_value(Exception), !IO),
-        io.nl(!IO)
+        io.write_line(univ_value(Exception), !IO)
     ).
 
 :- func make_a21(int, version_array(int)) = version_array(int).

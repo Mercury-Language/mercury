@@ -101,11 +101,11 @@ compare_total_order(Result, SetA, SetB) :-
     promise_equivalent_solution_sets [Result] (
         arbitrary [SizeA, TreeA] SetA = ct(SizeA, TreeA),
         arbitrary [SizeB, TreeB] SetB = ct(SizeB, TreeB),
-        ( SizeA = SizeB ->
+        ( if SizeA = SizeB then
             do_to_sorted_list(TreeA, [], ListA),
             do_to_sorted_list(TreeB, [], ListB),
             compare(Result, ListA, ListB)
-        ;
+        else
             compare(Result, SizeA, SizeB)
         )
     ).

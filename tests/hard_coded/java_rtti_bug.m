@@ -3,9 +3,9 @@
 %---------------------------------------------------------------------------%
 %
 % Regression test.
-% The Java backend was generating code that didn't initialise an type_ctor_info
-% before another RTTI structure referenced it. This resulted in a null
-% pointer exception when this program is executed.
+% The Java backend was generating code that didn't initialise a type_ctor_info
+% before another RTTI structure referenced it. This resulted in a null pointer
+% exception when this program is executed.
 
 :- module java_rtti_bug.
 :- interface.
@@ -21,8 +21,7 @@
 
 main(!IO) :-
     X = foo(bar(baz(1))),
-    io.write(X, !IO),
-    io.nl(!IO).
+    io.write_line(X, !IO).
 
 :- type foo
     --->    foo(bar(baz(int))).

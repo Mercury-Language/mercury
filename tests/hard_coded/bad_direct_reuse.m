@@ -32,8 +32,7 @@ main(!IO) :-
     % Bug: this reused the space for SymName0 even when
     % SymName0 = unqualified(_), which is not wide enough.
     SymName = qualified(mk, Unqual),
-    io.write(SymName, !IO),
-    io.nl(!IO).
+    io.write_line(SymName, !IO).
 
 :- func mk = (sym_name::uo).
 :- pragma no_inline(func(mk/0)).

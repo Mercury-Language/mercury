@@ -27,12 +27,11 @@
 
 :- import_module string.
 
-:- import_module prince_frameopt_css.
-:- import_module prince_frameopt_css.style.
+:- import_module prince_frameopt_helper_1.
+:- import_module prince_frameopt_helper_1.prince_frameopt_helper_2.
 
 main(!IO) :-
-    write_string("About to crash\n", !IO),
+    io.write_string("About to crash\n", !IO),
     PRules = new_prules,
-    write(PRules, !IO),
-    nl(!IO),
-    write_string("Done\n", !IO).
+    io.write_line(PRules, !IO),
+    io.write_string("Done\n", !IO).

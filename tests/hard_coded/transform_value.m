@@ -33,15 +33,15 @@ main(!IO) :-
         map.set(7, 1, !M),
         map.set(8, 1, !M),
         M0 = !.M,
-        ( map.transform_value(add1, 2, !.M, M1) ->
+        ( if map.transform_value(add1, 2, !.M, M1) then
             io.write_int(M1 ^ det_elem(2), !IO)
-        ;
+        else
             io.write_string("key not found", !IO)
         ),
         io.nl(!IO),
-        ( map.transform_value(add1, 9, !.M, M2) ->
+        ( if map.transform_value(add1, 9, !.M, M2) then
             io.write_int(M2 ^ det_elem(9), !IO)
-        ;
+        else
             io.write_string("key not found", !IO)
         ),
         io.nl(!IO),
@@ -59,14 +59,14 @@ main(!IO) :-
         RB0 = rbtree.init,
         rbtree.set(1, 1, RB0, RB1),
         rbtree.set(2, 1, RB1, RB2),
-        (
+        ( if
             rbtree.transform_value(add1, 1, RB2, RB3),
             rbtree.transform_value(add1, 2, RB3, RB4)
-        ->
+        then
             A2`with_type`assoc_list(int, int) =
                 rbtree.rbtree_to_assoc_list(RB4),
             io.write(A2, !IO)
-        ;
+        else
             io.write_string("key not found", !IO)
         ),
         io.nl(!IO)

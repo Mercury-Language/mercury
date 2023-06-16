@@ -10,7 +10,7 @@
 
 :- implementation.
 
-:- import_module trans_intermod_user_equality2.
+:- import_module trans_intermod_user_equality_helper_1.
 
 main(!IO) :-
     make_bar(0, 1, Bar),

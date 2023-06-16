@@ -30,8 +30,7 @@ main(!IO) :-
     p1(A),
     p2(B),
     p3(C, D),
-    io.print([A, B, C, D], !IO),
-    io.nl(!IO).
+    io.print_line([A, B, C, D], !IO).
 
 :- pred p1(int::out) is det.
 

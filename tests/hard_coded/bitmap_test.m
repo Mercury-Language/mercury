@@ -13,8 +13,8 @@
 :- implementation.
 
 :- import_module bitmap.
-:- import_module bitmap_tester.
-:- import_module bitmap_simple.
+:- import_module bitmap_test_helper_1.
+:- import_module bitmap_test_helper_2.
 :- import_module bool.
 :- import_module deconstruct.
 :- import_module exception.
@@ -44,7 +44,7 @@ main(!IO) :-
 run_test({}, !IO) :-
     some [!BM] (
         io.write_string("Single byte bitmap\n", !IO),
-        !:BM = bitmap_tester.new(4, yes),
+        !:BM = bitmap_test_helper_1.new(4, yes),
         io.write_string(to_byte_string(!.BM), !IO),
         nl(!IO),
         write(!.BM ^ bit(0), !IO),
@@ -68,7 +68,7 @@ run_test({}, !IO) :-
     ),
     some [!BM] (
         io.write_string("Multi-byte bitmap\n", !IO),
-        !:BM = bitmap_tester.new(20, no),
+        !:BM = bitmap_test_helper_1.new(20, no),
         io.write_string(to_byte_string(!.BM), !IO),
         nl(!IO),
         !:BM = flip(!.BM, 1),
@@ -104,7 +104,7 @@ run_test({}, !IO) :-
     ),
     some [!BM] (
         io.write_string("Longer bitmap\n", !IO),
-        !:BM = bitmap_tester.new(160, no),
+        !:BM = bitmap_test_helper_1.new(160, no),
         BytePattern = 0b10111001,
         fill_in_alternating_pattern(BytePattern, !BM),
         io.write_string(to_byte_string(!.BM), !IO),
@@ -167,8 +167,8 @@ run_test({}, !IO) :-
     test_set_op("difference", difference, !IO),
     test_set_op("xor", xor, !IO),
 
-    test_binary_op("ordering", bitmap_tester.ordering, !IO),
-    test_binary_op("test_unify", bitmap_tester.test_unify, !IO),
+    test_binary_op("ordering", bitmap_test_helper_1.ordering, !IO),
+    test_binary_op("test_unify", bitmap_test_helper_1.test_unify, !IO),
 
     test_text_io(!IO),
     test_binary_io(!IO),
@@ -177,51 +177,51 @@ run_test({}, !IO) :-
         !:BM = bitmap.init(64, yes),
         !:BM = !.BM ^ bits(32, 16) := 0b1011011100100101,
         test_exception(
-            ((pred) is semidet :-
+            ( (pred) is semidet :-
                 _ = !.BM ^ bit(-1)
             ), !IO),
         test_exception(
-            ((pred) is semidet :-
+            ( (pred) is semidet :-
                 _ = !.BM ^ bit(64)
             ), !IO),
         test_exception(
-            ((pred) is semidet :-
+            ( (pred) is semidet :-
                 _ = !.BM ^ bit(73)
             ), !IO),
         test_exception(
-            ((pred) is semidet :-
+            ( (pred) is semidet :-
                 _ = copy_bits_in_bitmap(copy(!.BM), -1, 1, 32)
             ), !IO),
         test_exception(
-            ((pred) is semidet :-
+            ( (pred) is semidet :-
                 _ = copy_bits_in_bitmap(copy(!.BM), 33, 32, 32)
             ), !IO),
         test_exception(
-            ((pred) is semidet :-
+            ( (pred) is semidet :-
                 _ = copy_bits_in_bitmap(copy(!.BM), 32, 33, 32)
             ), !IO),
         test_exception(
-            ((pred) is semidet :-
+            ( (pred) is semidet :-
                 _ = copy(!.BM) ^ bits(-1, 32)
             ), !IO),
         test_exception(
-            ((pred) is semidet :-
+            ( (pred) is semidet :-
                 _ = copy(!.BM) ^ bits(33, 32)
             ), !IO),
         test_exception(
-            ((pred) is semidet :-
+            ( (pred) is semidet :-
                 _ = copy(!.BM) ^ bits(0, 65)
             ), !IO),
         test_exception(
-            ((pred) is semidet :-
+            ( (pred) is semidet :-
                 _ = copy(!.BM) ^ bits(0, -1)
             ), !IO),
         test_exception(
-            ((pred) is semidet :-
+            ( (pred) is semidet :-
                 _ = copy(!.BM) ^ bits(65, 0)
             ), !IO),
         test_exception(
-            ((pred) is semidet :-
+            ( (pred) is semidet :-
                 _ = copy(!.BM) ^ bits(-1, 0)
             ), !IO)
     ).
@@ -258,24 +258,24 @@ test_copy(SrcStart, DestStart, NumBits, !IO) :-
         io.format("Copy %i %i %i\n", [i(SrcStart), i(DestStart), i(NumBits)],
             !IO),
 
-        !:SrcBM = bitmap_tester.new(BMLength, no),
+        !:SrcBM = bitmap_test_helper_1.new(BMLength, no),
         BytePattern = 0b10111001,
         fill_in_alternating_pattern(BytePattern, !SrcBM),
 
         io.write_string("Copy to zeroed bitmap\n", !IO),
-        !:DestBM = bitmap_tester.new(BMLength, no),
+        !:DestBM = bitmap_test_helper_1.new(BMLength, no),
         !:DestBM = copy_bits(!.SrcBM, SrcStart, !.DestBM, DestStart, NumBits),
         io.write_string(to_byte_string(!.DestBM), !IO),
         nl(!IO),
 
         io.write_string("Copy to filled bitmap\n", !IO),
-        !:DestBM = bitmap_tester.new(BMLength, yes),
+        !:DestBM = bitmap_test_helper_1.new(BMLength, yes),
         !:DestBM = copy_bits(!.SrcBM, SrcStart, !.DestBM, DestStart, NumBits),
         io.write_string(to_byte_string(!.DestBM), !IO),
         nl(!IO),
 
         io.write_string("Copy to alternating bitmap\n", !IO),
-        !:DestBM = bitmap_tester.new(BMLength, yes),
+        !:DestBM = bitmap_test_helper_1.new(BMLength, yes),
         fill_in_alternating_pattern(0b10101010, !DestBM),
         !:DestBM = copy_bits(!.SrcBM, SrcStart, !.DestBM, DestStart, NumBits),
         io.write_string(to_byte_string(!.DestBM), !IO),
@@ -293,9 +293,9 @@ test_copy(SrcStart, DestStart, NumBits, !IO) :-
 
 test_set_op(OpStr, Op, !IO) :-
     test_binary_op(OpStr, Op,
-            (pred(TBM::in, !.IO::di, !:IO::uo) is det :-
-                io.write_string(to_byte_string(TBM ^ fst), !IO)
-            ), !IO).
+        ( pred(TBM::in, !.IO::di, !:IO::uo) is det :-
+            io.write_string(to_byte_string(TBM ^ fst), !IO)
+        ), !IO).
 
 :- pred test_binary_op(string, (func(tbitmap, tbitmap) = T), io, io).
 :- mode test_binary_op(in, (func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
@@ -326,14 +326,14 @@ test_binary_op(OpStr, Op, Writer, !IO) :-
     (pred(in, di, uo) is det), di, uo) is det.
 
 test_binary_op(BMLength, OpStr, Op, Writer, !IO) :-
-    ZeroedBM = bitmap_tester.new(BMLength, no),
-    OnesBM = bitmap_tester.new(BMLength, yes),
+    ZeroedBM = bitmap_test_helper_1.new(BMLength, no),
+    OnesBM = bitmap_test_helper_1.new(BMLength, yes),
 
-    PatternBM0 = bitmap_tester.new(BMLength, no),
+    PatternBM0 = bitmap_test_helper_1.new(BMLength, no),
     BytePattern = 0b10111001,
     fill_in_alternating_pattern(BytePattern, PatternBM0, PatternBM),
 
-    AlternatingBM0 = bitmap_tester.new(BMLength, yes),
+    AlternatingBM0 = bitmap_test_helper_1.new(BMLength, yes),
     fill_in_alternating_pattern(0b10101010, AlternatingBM0, AlternatingBM),
 
     test_binary_op_2("zeroes", ZeroedBM, OpStr, Op,
@@ -532,11 +532,9 @@ write_bitmap_result_error(query(Op, Input, OtherArgs, Output), !IO) :-
     io.write_string(to_byte_string(Input), !IO),
     io.nl(!IO),
     io.write_string("output = ", !IO),
-    io.write(Output ^ fst, !IO),
-    io.nl(!IO),
+    io.write_line(Output ^ fst, !IO),
     io.write_string("expected output = ", !IO),
-    io.write(Output ^ snd, !IO),
-    io.nl(!IO).
+    io.write_line(Output ^ snd, !IO).
 
 write_bitmap_result_error(binary_query(Op, Input1, Input2, OtherArgs, Output),
         !IO) :-
@@ -550,11 +548,9 @@ write_bitmap_result_error(binary_query(Op, Input1, Input2, OtherArgs, Output),
     io.write_string(to_byte_string(Input2), !IO),
     io.nl(!IO),
     io.write_string("output = ", !IO),
-    io.write(Output ^ fst, !IO),
-    io.nl(!IO),
+    io.write_line(Output ^ fst, !IO),
     io.write_string("expected output = ", !IO),
-    io.write(Output ^ snd, !IO),
-    io.nl(!IO).
+    io.write_line(Output ^ snd, !IO).
 
 write_bitmap_result_error(one_argument(Op, Input, OtherArgs, Output), !IO) :-
     io.write_string("Error in `", !IO),

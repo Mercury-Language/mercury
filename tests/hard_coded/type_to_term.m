@@ -226,8 +226,7 @@ main(!IO) :-
     io.nl(!IO),
     det_term_to_type(ArrayTerm, ArrayValue : array(int)),
     io.write_string("Type: ", !IO),
-    io.write(ArrayValue, !IO),
-    io.nl(!IO),
+    io.write_line(ArrayValue, !IO),
 
     % Test handling of version arrays.
     %
@@ -238,5 +237,4 @@ main(!IO) :-
     io.nl(!IO),
     det_term_to_type(VArrayTerm, VArrayValue : version_array(int)),
     io.write_string("Type: ", !IO),
-    io.write(VArrayValue, !IO),
-    io.nl(!IO).
+    io.write_line(VArrayValue, !IO).

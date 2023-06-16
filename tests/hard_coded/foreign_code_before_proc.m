@@ -21,7 +21,8 @@ main(!IO) :-
 
 :- func xyzzy = int.
 :- pragma foreign_proc("C",
-    xyzzy = (X::out), [promise_pure],
+    xyzzy = (X::out),
+    [promise_pure],
 "
     X = xyzzy;
 ").

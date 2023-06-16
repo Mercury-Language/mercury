@@ -275,5 +275,4 @@ print_value(Label, Value, !IO) :-
     else
         true
     ),
-    io.print(Value, !IO),
-    io.nl(!IO).
+    io.print_line(Value, !IO).

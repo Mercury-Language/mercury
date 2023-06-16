@@ -24,14 +24,13 @@
     ;       enum2
     ;       enum3.
 
+main(!IO) :-
+    gen([enum1, enum2, enum3], T),
+    io.write_line(T, !IO).
+
 :- pred gen(list(enum)::in, thing::out) is det.
 
 gen([], nil).
 gen([E | Es], T) :-
     gen(Es, Tail),
     T = thing(E, E, Tail, E, E).
-
-main(!IO) :-
-    gen([enum1, enum2, enum3], T),
-    io.write(T, !IO),
-    io.nl(!IO).

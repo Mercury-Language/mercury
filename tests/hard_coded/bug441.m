@@ -11,7 +11,7 @@
 
 :- implementation.
 
-:- import_module bug441_sub.
+:- import_module bug441_helper_1.
 
 main(!IO) :-
     do_fmain(hello, !IO).

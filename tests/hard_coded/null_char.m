@@ -48,8 +48,7 @@ test_file(P, !IO) :-
 
 run_test(P, !IO) :-
     try(P, Res),
-    io.write(Res, !IO),
-    io.nl(!IO).
+    io.write_line(Res, !IO).
 
 :- pred test1(string::out) is det.
 

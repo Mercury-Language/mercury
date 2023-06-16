@@ -3,10 +3,11 @@
 %---------------------------------------------------------------------------%
 %
 % Test case for a bug in the MLDS backend in rotd-2007-08-28 and before.
-% The ml code generator was incorrectly inserting assignment statements to
-% do casts even when the types on the lhs and rhs were identical.  This
-% was inhibiting tail call optimisation in code that used arrays.
+% The MLDS code generator was incorrectly inserting assignment statements
+% to do casts even when the types on the lhs and rhs were identical.
+% This was inhibiting tail call optimisation in code that used arrays.
 % (The code marked XXX below is one such example.).
+%
 
 :- module big_array_from_list.
 :- interface.
@@ -39,8 +40,8 @@ array_from_list(List, Array) :-
     array.init(Len, Head, Array0),
     array_insert_items(Tail, 1, Array0, Array).
 
-% XXX Tail call optimisation was not being performed on this
-% predicate in hl* grades.
+% XXX Tail call optimisation was not being performed on this predicate
+% in hl* grades.
 :- pred array_insert_items(list(T)::in, int::in,
     array(T)::array_di, array(T)::array_uo) is det.
 

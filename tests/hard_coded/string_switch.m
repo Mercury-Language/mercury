@@ -81,24 +81,21 @@ test_one_known(S, !IO) :-
 test_several(S, !IO) :-
     solutions(several_unknown(S), Solns),
     io.format("several %s -> ", [s(S)], !IO),
-    io.write(Solns, !IO),
-    io.nl(!IO).
+    io.write_line(Solns, !IO).
 
 :- pred test_several_known(string::in, io::di, io::uo) is det.
 
 test_several_known(S, !IO) :-
     solutions(several_known(S), Solns),
     io.format("several known %s -> ", [s(S)], !IO),
-    io.write(Solns, !IO),
-    io.nl(!IO).
+    io.write_line(Solns, !IO).
 
 :- pred test_several_nested(string::in, io::di, io::uo) is det.
 
 test_several_nested(S, !IO) :-
     solutions(several_nested(S), Solns),
     io.format("several nested %s -> ", [s(S)], !IO),
-    io.write(Solns, !IO),
-    io.nl(!IO).
+    io.write_line(Solns, !IO).
 
 %---------------------------------------------------------------------------%
 

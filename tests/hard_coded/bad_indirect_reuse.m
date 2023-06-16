@@ -20,13 +20,11 @@ main(!IO) :-
     copy(bar(3, 1), Sub),
     A = foo(2, Sub),
     quux(A, _),                     % bad indirect reuse call
-    io.write(Sub, !IO),
-    io.nl(!IO),
+    io.write_line(Sub, !IO),
 
     copy(foo(1, bar(2, 0)), B),
     quux(B, B1),                    % good indirect reuse call
-    io.write(B1, !IO),
-    io.nl(!IO).
+    io.write_line(B1, !IO).
 
 :- type foo
     --->    foo(int, bar).

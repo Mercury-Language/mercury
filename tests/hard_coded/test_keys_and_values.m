@@ -38,10 +38,8 @@ do_test(Map, !IO) :-
         io.write_string("KeysPrime = ", !IO),
         io.write(KeysPrime, !IO),
         io.write_string("\nValuesPrime = ", !IO),
-        io.write(ValuesPrime, !IO),
-        io.nl(!IO)
+        io.write_line(ValuesPrime, !IO)
     else
         io.write_string("ERROR: Map = ", !IO),
-        io.write(Map, !IO),
-        io.nl(!IO)
+        io.write_line(Map, !IO)
     ).

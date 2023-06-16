@@ -36,7 +36,8 @@ benchmark(Data, Out) :-
 :- mode mymember(out, in) is nondet.
 
 mymember(X, [X | _]).
-mymember(X, [_ | Xs]) :- mymember(X, Xs).
+mymember(X, [_ | Xs]) :-
+    mymember(X, Xs).
 
 :- pred test(int).
 :- mode test(in) is semidet.

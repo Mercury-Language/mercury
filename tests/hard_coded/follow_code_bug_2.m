@@ -68,17 +68,17 @@ output_exist_data(ExistData, !IO) :-
     --->    some [T] data(T) => data(T).
 
 :- typeclass data(T) where [
-        func to_string(T) = string
-    ].
+    func to_string(T) = string
+].
 
 :- instance data(int) where [
-        (to_string(N) = int_to_string(N))
-    ].
+    (to_string(N) = int_to_string(N))
+].
 
 :- instance data(string) where [
-        (to_string(S) = S)
-    ].
+    (to_string(S) = S)
+].
 
 :- instance data(foo) where [
-        (to_string(_) = "foo")
-    ].
+    (to_string(_) = "foo")
+].

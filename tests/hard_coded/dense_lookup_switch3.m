@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module dense_lookup_switch3.
 
 :- interface.
@@ -21,10 +21,10 @@ main(!IO) :-
 :- pred test_all(int::in, int::in, io::di, io::uo) is det.
 
 test_all(Cur, Max, !IO) :-
-    ( Cur < Max ->
+    ( if Cur < Max then
         test(Cur, !IO),
         test_all(Cur + 1, Max, !IO)
-    ;
+    else
         true
     ).
 
@@ -34,17 +34,17 @@ test(N, !IO) :-
     io.write_int(N, !IO),
     NC = char.det_from_int(N),
     io.write_string(": ", !IO),
-    ( local_lower_upper(NC, UC) ->
+    ( if local_lower_upper(NC, UC) then
         io.write_string("upper ", !IO),
         io.write_char(UC, !IO)
-    ;
+    else
         io.write_string("no upper", !IO)
     ),
     io.write_string(" ", !IO),
-    ( local_lower_upper(LC, NC) ->
+    ( if local_lower_upper(LC, NC) then
         io.write_string("lower ", !IO),
         io.write_char(LC, !IO)
-    ;
+    else
         io.write_string("no lower", !IO)
     ),
     io.nl(!IO).

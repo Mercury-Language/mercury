@@ -13,6 +13,7 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
+
 :- import_module float.
 :- import_module int.
 :- import_module list.
@@ -90,20 +91,17 @@ test_comparison(X, Y, !IO) :-
         R = (<),
         io.write(X, !IO),
         io.write_string(" < ", !IO),
-        io.write(Y, !IO),
-        io.nl(!IO)
+        io.write_line(Y, !IO)
     ;
         R = (=),
         io.write(X, !IO),
         io.write_string(" = ", !IO),
-        io.write(Y, !IO),
-        io.nl(!IO)
+        io.write_line(Y, !IO)
     ;
         R = (>),
         io.write(X, !IO),
         io.write_string(" > ", !IO),
-        io.write(Y, !IO),
-        io.nl(!IO)
+        io.write_line(Y, !IO)
     ).
 
 :- func f1a(float) = float.

@@ -33,4 +33,3 @@ main(!IO) :-
     io.write_string("\n", !IO),
     io.write_float(1.0e10, !IO),
     io.write_string("\n", !IO).
-

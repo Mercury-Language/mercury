@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module mode_choice.
 :- interface.
 :- import_module io.
@@ -16,45 +16,45 @@
 
 main(!IO) :-
     ( if test1("foo", T0, T0b) then
-        print("T0: ", !IO), print(T0, !IO), nl(!IO),
-        print("T0b: ", !IO), print(T0b, !IO), nl(!IO)
+        print("T0: ", !IO), print_line(T0, !IO),
+        print("T0b: ", !IO), print_line(T0b, !IO)
     else
         print("test1: failed", !IO)
     ),
     ( if test1("foo", "fooie", T1) then
-        print("T1: ", !IO), print(T1, !IO), nl(!IO)
+        print("T1: ", !IO), print_line(T1, !IO)
     else
         print("test1: failed", !IO)
     ),
     test2("bar", T2),
-    print("T2: ", !IO), print(T2, !IO), nl(!IO),
+    print("T2: ", !IO), print_line(T2, !IO),
     Z = "z",
     test2(Z, T3),
-    print("T3: ", !IO), print(T3, !IO), nl(!IO),
+    print("T3: ", !IO), print_line(T3, !IO),
     test2(Z, T4),
-    print("T4: ", !IO), print(T4, !IO), nl(!IO),
+    print("T4: ", !IO), print_line(T4, !IO),
     mkany(Any),
     test3(Any, T5),
-    print("T5: ", !IO), print(T5, !IO), nl(!IO),
+    print("T5: ", !IO), print_line(T5, !IO),
     test3(_, T6),
-    print("T6: ", !IO), print(T6, !IO), nl(!IO),
+    print("T6: ", !IO), print_line(T6, !IO),
     ( if test4("", "", T7) then
-        print("T7: ", !IO), print(T7, !IO), nl(!IO)
+        print("T7: ", !IO), print_line(T7, !IO)
     else
-        print("T7 failed\n", !IO)
+        print_line("T7 failed\n", !IO)
     ),
     test4("", T8, T9),
-    print("T8: ", !IO), print(T8, !IO), nl(!IO),
-    print("T9: ", !IO), print(T9, !IO), nl(!IO),
+    print("T8: ", !IO), print_line(T8, !IO),
+    print("T9: ", !IO), print_line(T9, !IO),
     test4(T10, "", T11),
-    print("T10: ", !IO), print(T10, !IO), nl(!IO),
-    print("T11: ", !IO), print(T11, !IO), nl(!IO),
+    print("T10: ", !IO), print_line(T10, !IO),
+    print("T11: ", !IO), print_line(T11, !IO),
     test5("a", "b", T12),
-    print("T12: ", !IO), print(T12, !IO), nl(!IO),
+    print("T12: ", !IO), print_line(T12, !IO),
     test5("a", "a", T13),
-    print("T13: ", !IO), print(T13, !IO), nl(!IO),
+    print("T13: ", !IO), print_line(T13, !IO),
     test5("b", "b", T14),
-    print("T14: ", !IO), print(T14, !IO), nl(!IO).
+    print("T14: ", !IO), print_line(T14, !IO).
 
 % prefer `in' to `out'
 

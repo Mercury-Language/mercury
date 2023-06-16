@@ -39,16 +39,13 @@ main(!IO) :-
 :- pred test_list_and_rev_list(cord(int)::in, io::di, io::uo) is det.
 
 test_list_and_rev_list(Cord, !IO) :-
-    io.write(Cord, !IO),
-    io.nl(!IO),
+    io.write_line(Cord, !IO),
 
     List = list(Cord),
-    io.write(List, !IO),
-    io.nl(!IO),
+    io.write_line(List, !IO),
 
     RevList = rev_list(Cord),
-    io.write(RevList, !IO),
-    io.nl(!IO),
+    io.write_line(RevList, !IO),
 
     expect(unify(length(List), length(Cord)),
         $module, $pred, "length(List) != length(Cord)"),

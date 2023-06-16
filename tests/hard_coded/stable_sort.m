@@ -22,10 +22,8 @@
 
 main(!IO) :-
     generate_random_list(List),
-    % io.write(List),
-    % io.nl,
-    % io.write(sort(List) `with_type` list({int, int})),
-    % io.nl,
+    % io.write_line(List, !IO),
+    % io.write_line(sort(List) `with_type` list({int, int}), !IO),
     is_sort_stable(List, Stable),
     (
         Stable = yes,

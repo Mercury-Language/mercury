@@ -26,7 +26,7 @@ main(!IO) :-
 
 test(N, !IO) :-
     io.format("N = %d: ", [i(N)], !IO),
-    ( p(N, A, B, C, D) ->
+    ( if p(N, A, B, C, D) then
         io.write(A, !IO),
         io.write_string(" ", !IO),
         io.write(B, !IO),
@@ -35,7 +35,7 @@ test(N, !IO) :-
         io.write_string(" ", !IO),
         io.write(D, !IO),
         io.write_string("\n", !IO)
-    ;
+    else
         io.format("no solution for %d\n", [i(N)], !IO)
     ).
 

@@ -30,44 +30,44 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-  N = 4000,
-  iota(N, [], List),
-  test(List, Result),
-  io.print(Result, !IO),
-  io.nl(!IO).
+    N = 4000,
+    iota(N, [], List),
+    test(List, Result),
+    io.print(Result, !IO),
+    io.nl(!IO).
 
 %---------------------------------------------------------------------------%
 
 :- pred iota(int::in, list(int)::in, list(int)::out) is det.
 
 iota(N, !List) :-
-   ( if N = 0 then
-      true
-   else
-      !:List = [N | !.List],
-      iota(N - 1, !List)
-   ).
+    ( if N = 0 then
+        true
+    else
+        !:List = [N | !.List],
+        iota(N - 1, !List)
+    ).
 
 :- pred test(list(int)::in, string::out) is det.
 
 test(List, Result) :-
-   ( if
-      % We look for a number that cannot be in the list,
-      % to force in_list to use the maximum amount of nondet stack.
-      in_list(M, List),
-      M = -1
-   then
-      Result = "found"
-   else
-      Result = "not found"
-   ).
+    ( if
+        % We look for a number that cannot be in the list,
+        % to force in_list to use the maximum amount of nondet stack.
+        in_list(M, List),
+        M = -1
+    then
+        Result = "found"
+    else
+        Result = "not found"
+    ).
 
 % Our own version of list.member(out, in) so it gets compiled how we want it.
 :- pred in_list(int::out, list(int)::in) is nondet.
 
 in_list(N, [H | T]) :-
-   (
-      N = H
-   ;
-      in_list(N, T)
-   ).
+    (
+        N = H
+    ;
+        in_list(N, T)
+    ).

@@ -28,16 +28,15 @@
 main(!IO) :-
     AL = ["one" - 1, "two" - 2],
     to_list_2(AL, L),
-    io.write(L, !IO),
-    io.nl(!IO).
+    io.write_line(L, !IO).
 
 :- pred to_list_2(list(pair(string, int))::in, list(string)::out) is det.
 
 to_list_2([], []).
 to_list_2([X - Int | Xs], Out) :-
-    ( Int =< 0 ->
+    ( if Int =< 0 then
         to_list_2(Xs, Out)
-    ;
+    else
         NewInt = Int - 1,
         to_list_2([X - NewInt | Xs], Out0),
         Out = [X | Out0]

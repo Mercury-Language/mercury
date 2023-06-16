@@ -42,9 +42,6 @@ main(!IO) :-
         poly(3.3), poly(3.3), poly(3.3), poly(3.3), poly(3.3),
         poly(3.3), poly(3.3), poly(3.3), poly(3.3), poly(3.3)
     ],
-    io.write(T1, !IO),
-    io.nl(!IO),
-    io.write(T2, !IO),
-    io.nl(!IO),
-    io.write(T3, !IO),
-    io.nl(!IO).
+    io.write_line(T1, !IO),
+    io.write_line(T2, !IO),
+    io.write_line(T3, !IO).

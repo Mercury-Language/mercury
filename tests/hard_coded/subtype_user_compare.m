@@ -13,7 +13,7 @@
 
 :- implementation.
 
-:- import_module subtype_user_compare2.
+:- import_module subtype_user_compare_helper_1.
 
 :- type fruit
     --->    apple0
@@ -41,11 +41,11 @@ fruit_compare(Res, A, B) :-
 
 fruit_int(Fruit) = Int :-
     promise_equivalent_solutions [Int]
-    ( Fruit = apple0, Int = 0
+    ( Fruit = apple0,  Int = 0
     ; Fruit = banana1, Int = -1
-    ; Fruit = lemon2, Int = -2
+    ; Fruit = lemon2,  Int = -2
     ; Fruit = orange3, Int = -3
-    ; Fruit = peach4, Int = -4
+    ; Fruit = peach4,  Int = -4
     ; Fruit = pomelo5, Int = -5
     ; Fruit = tomato6, Int = -6
     ).

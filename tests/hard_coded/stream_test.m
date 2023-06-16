@@ -46,4 +46,4 @@ main(!IO) :-
 
 :- pred char_list_cons(char::in, list(char)::in, list(char)::out) is det.
 
-char_list_cons(X, Xs, [ X | Xs ]).
+char_list_cons(X, Xs, [X | Xs]).

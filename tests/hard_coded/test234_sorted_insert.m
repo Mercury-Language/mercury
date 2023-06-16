@@ -29,18 +29,18 @@
 
 main(!IO) :-
     test_upto(1000, 0, 0, Failed, !IO),
-    ( Failed = 0 ->
+    ( if Failed = 0 then
         io.write_string("all tests passed\n", !IO)
-    ;
+    else
         io.format("%d tests failed\n", [i(Failed)], !IO)
     ).
 
 :- pred test_upto(int::in, int::in, int::in, int::out, io::di, io::uo) is det.
 
 test_upto(Max, Cur, !Failed, !IO) :-
-    ( Cur > Max ->
+    ( if Cur > Max then
         true
-    ;
+    else
         test(Cur, !Failed, !IO),
         test_upto(Max, Cur + 1, !Failed, !IO)
     ).
@@ -48,17 +48,16 @@ test_upto(Max, Cur, !Failed, !IO) :-
 :- pred test(int::in, int::in, int::out, io::di, io::uo) is det.
 
 test(N, !Failed, !IO) :-
-    trace [io(!IO), compile_time(flag("progress"))] (
-        io.format("test %d:\n", [i(N)], !IO)
+    trace [io(!TIO), compile_time(flag("progress"))] (
+        io.format("test %d:\n", [i(N)], !TIO)
     ),
 
     iota(N, List),
     tree234.from_sorted_assoc_list(List, Tree),
 
-    trace [io(!IO), compile_time(flag("print_tree"))] (
-        io.format("test %d tree:\n", [i(N)], !IO),
-        io.write(Tree, !IO),
-        io.nl(!IO)
+    trace [io(!TIO), compile_time(flag("print_tree"))] (
+        io.format("test %d tree:\n", [i(N)], !TIO),
+        io.write_line(Tree, !TIO)
     ),
 
     well_formed(Tree, MaybeDepth),
@@ -68,29 +67,28 @@ test(N, !Failed, !IO) :-
     rev_iota(N, RevList),
     tree234.from_rev_sorted_assoc_list(RevList, RevTree),
 
-    trace [io(!IO), compile_time(flag("print_tree"))] (
-        io.format("test %d tree:\n", [i(N)], !IO),
-        io.write(RevTree, !IO),
-        io.nl(!IO)
+    trace [io(!TIO), compile_time(flag("print_tree"))] (
+        io.format("test %d tree:\n", [i(N)], !TIO),
+        io.write_line(RevTree, !TIO)
     ),
 
     well_formed(RevTree, RevMaybeDepth),
     tree234_to_assoc_list(RevTree, RevTreeList),
     list.sort(RevTreeList, RevSortedTreeList),
 
-    (
+    ( if
         MaybeDepth = yes(_),
         RevMaybeDepth = yes(_),
         TreeList = SortedTreeList,
         RevTreeList = RevSortedTreeList
-    ->
+    then
         true
-    ;
+    else
         !:Failed = !.Failed + 1
     ),
 
-    trace [io(!IO), compile_time(flag("progress"))] (
-        io.nl(!IO)
+    trace [io(!TIO), compile_time(flag("progress"))] (
+        io.nl(!TIO)
     ).
 
 :- pred iota(int::in, assoc_list(int)::out) is det.
@@ -108,9 +106,9 @@ rev_iota(N, RevList) :-
     assoc_list(int, int)::in, assoc_list(int, int)::out) is det.
 
 iota_2(Max, N, !RevList) :-
-    ( N > Max ->
+    ( if N > Max then
         true
-    ;
+    else
         !:RevList = [N - N | !.RevList],
         iota_2(Max, N + 1, !RevList)
     ).

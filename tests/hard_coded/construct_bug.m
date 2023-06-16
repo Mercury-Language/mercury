@@ -13,7 +13,7 @@
 
 :- implementation.
 
-:- import_module construct_bug_submodule.
+:- import_module construct_bug_helper_1.
 
 :- import_module int.
 :- import_module io.file.
@@ -35,7 +35,7 @@ main(!IO) :-
             count(["B", "B3"], !S),
             count(["C"], !S),
             count(["C", "C1"], !S)
-        ), construct_bug_submodule.init, Map),
+        ), construct_bug_helper_1.init, Map),
 
     io.open_output(FileName, Result, !IO),
     ( if Result = ok(Temp_ORDIE_Out_OutStream) then

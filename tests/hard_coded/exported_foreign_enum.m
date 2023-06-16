@@ -14,9 +14,9 @@
 :- implementation.
 
 main(!IO) :-
-    ( test(bar) ->
+    ( if test(bar) then
         io.write_string("Success.\n", !IO)
-    ;
+    else
         io.write_string("ERROR.\n", !IO)
     ).
 

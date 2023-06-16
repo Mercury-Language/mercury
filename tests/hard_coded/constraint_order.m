@@ -48,9 +48,14 @@ test(3) :-
 
 :- impure pred puts(string::in) is det.
 
-:- pragma foreign_proc("C", puts(Str::in), [], "puts(Str);").
+:- pragma foreign_proc("C", puts(Str::in), [],
+"
+    puts(Str);
+").
 :- pragma foreign_proc("C#", puts(Str::in), [],
-        "System.Console.WriteLine(Str);").
+"
+    System.Console.WriteLine(Str);
+").
 :- pragma foreign_proc("Java", puts(Str::in), [],
 "
     System.out.println(Str);

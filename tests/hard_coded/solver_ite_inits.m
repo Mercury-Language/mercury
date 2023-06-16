@@ -30,6 +30,13 @@
 
 :- import_module int.
 
+%---------------------------------------------------------------------------%
+
+main(!IO) :-
+    write_foo(f(a), !IO),
+    write_foo(f(b), !IO),
+    write_foo(f(c), !IO).
+
 :- solver type foo
     where   representation is int,
             initialisation is init,
@@ -38,18 +45,22 @@
 
 :- pred init(foo::oa) is det.
 :- pragma promise_pure(init/1).
-init(X) :- impure X = 'representation to any foo/0'(0).
+
+init(X) :-
+    impure X = 'representation to any foo/0'(0).
 
 :- func foo(int::in) = (foo::oa) is det.
 :- pragma promise_pure(foo/1).
-foo(N) = X :- impure X = 'representation to any foo/0'(N).
+
+foo(N) = X :-
+    impure X = 'representation to any foo/0'(N).
 
 :- pred write_foo(foo::ia, io::di, io::uo) is det.
 :- pragma promise_pure(write_foo/3).
+
 write_foo(Foo, !IO) :-
     impure X = 'representation of any foo/0'(Foo),
-    io.print(X, !IO),
-    io.nl(!IO).
+    io.print_line(X, !IO).
 
 :- type bar
     --->    a
@@ -57,14 +68,8 @@ write_foo(Foo, !IO) :-
     ;       c.
 
 :- func f(bar::in) = (foo::oa) is det.
+
 f(Bar) = Foo :-
     ( if Bar = a then true else Foo = foo(1) ).
-
-%---------------------------------------------------------------------------%
-
-main(!IO) :-
-    write_foo(f(a), !IO),
-    write_foo(f(b), !IO),
-    write_foo(f(c), !IO).
 
 %---------------------------------------------------------------------------%

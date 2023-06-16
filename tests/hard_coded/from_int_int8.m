@@ -30,9 +30,7 @@ main(!IO) :-
 
 do_test(Int, !IO) :-
     io.format("from_int(%d) = ", [i(Int)], !IO),
-    ( if
-        int8.from_int(Int, Int8)
-    then
+    ( if int8.from_int(Int, Int8) then
         io.format("%s\n", [s(int8_to_string(Int8))], !IO)
     else
         io.write_string("<<out-of-range>>\n", !IO)

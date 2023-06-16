@@ -1,18 +1,19 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-
+%
 % This module tests the loop invariant hoisting optimization.
 % It does so using foreign_procs which abort if called twice.
 % If loop invariant hoisting works, these procedures will only
 % be called once, but if loop invariant hoisting doesn't work,
 % these procedures will abort.
-
+%
 % This test checks that we can do loop invariant hoisting for calls
 % which occur in different branches of an if-then-else.
-
+%
 % XXX we do not yet pass this test case (see XXX comment below).
 % Should be easy to fix??
+%
 
 :- module loop_inv_test0.
 :- interface.
@@ -38,7 +39,7 @@ main(!IO) :-
         loop2(N1, N2, N3, R2),
         io.print("R1 = ", !IO), io.print_line(R1, !IO),
         io.print("R2 = ", !IO), io.print_line(R2, !IO)
-    ;
+    else
         io.print_line("input error", !IO)
     ).
 
@@ -48,9 +49,9 @@ main(!IO) :-
 :- pred loop1(int::in, int::in, int::in, int::out) is det.
 
 loop1(N, Inv, Acc0, Acc) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         Acc = Acc0
-    ;
+    else
         p(Inv, X),
         Acc1 = Acc0 + X,
         loop1(N - 1, Inv, Acc1, Acc)
@@ -67,13 +68,13 @@ loop1(N, Inv, Acc0, Acc) :-
 :- pred loop2(int::in, int::in, int::in, int::out) is det.
 
 loop2(N, Inv, Acc0, Acc) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         Acc = Acc0
-    ;
-        ( r(N, 3) ->
+    else
+        ( if r(N, 3) then
             q(Inv, X),
             Acc1 = Acc0 * 2 + X + 1
-        ;
+        else
             q(Inv, X),
             Acc1 = Acc0 * 2 + X
         ),
@@ -88,7 +89,7 @@ loop2(N, Inv, Acc0, Acc) :-
     p(Inv::in, X::out),
     [will_not_call_mercury, promise_pure],
 "
-    /* Test that p/1 only gets called once. */
+    // Test that p/1 only gets called once.
     static int num_calls = 0;
     if (num_calls++) {
         MR_fatal_error(""p/1 called more than once"");
@@ -101,7 +102,7 @@ loop2(N, Inv, Acc0, Acc) :-
     p(Inv::in, X::out),
     [will_not_call_mercury, promise_pure],
 "
-    /* Test that p/1 only gets called once. */
+    // Test that p/1 only gets called once.
     static int num_calls = 0;
     if (num_calls++) {
         mercury.runtime.Errors.fatal_error(""p/1 called more than once"");
@@ -115,7 +116,7 @@ loop2(N, Inv, Acc0, Acc) :-
     q(Inv::in, X::out),
     [will_not_call_mercury, promise_pure],
 "
-    /* Test that q/1 only gets called once. */
+    // Test that q/1 only gets called once.
     static int num_calls = 0;
     if (num_calls++) {
         MR_fatal_error(""q/1 called more than once"");
@@ -127,7 +128,7 @@ loop2(N, Inv, Acc0, Acc) :-
     q(Inv::in, X::out),
     [will_not_call_mercury, promise_pure],
 "
-    /* Test that q/1 only gets called once. */
+    // Test that q/1 only gets called once.
     static int num_calls = 0;
     if (num_calls++) {
         mercury.runtime.Errors.fatal_error(""q/1 called more than once"");
@@ -138,6 +139,7 @@ loop2(N, Inv, Acc0, Acc) :-
 
 :- pragma no_inline(r/2).
 :- pred r(int::in, int::in) is semidet.
+
 r(X, Y) :-
     X > Y.
 

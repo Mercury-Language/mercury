@@ -37,8 +37,7 @@ do_to_integer_test(U, !IO) :-
     io.write_string("uint64 = ", !IO),
     io.write_uint64(U, !IO),
     io.write_string(", integer = ", !IO),
-    io.print(Integer, !IO),
-    io.nl(!IO).
+    io.print_line(Integer, !IO).
 
 :- pred do_from_integer_test(integer::in, io::di, io::uo) is det.
 

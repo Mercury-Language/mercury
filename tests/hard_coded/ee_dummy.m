@@ -4,6 +4,7 @@
 %
 % Check that foreign_export_enum for dummy types works.
 %
+
 :- module ee_dummy.
 :- interface.
 

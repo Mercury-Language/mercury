@@ -23,10 +23,8 @@ main(!IO) :-
     copy(foo(1, 2), U),
     H = hide(U),
     oof(U, X),
-    io.write(H, !IO),
-    io.nl(!IO),
-    io.write(X, !IO),
-    io.nl(!IO).
+    io.write_line(H, !IO),
+    io.write_line(X, !IO).
 
 :- type foo
     --->    foo(int, int).

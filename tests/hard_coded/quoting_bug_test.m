@@ -10,23 +10,24 @@
 
 :- implementation.
 :- import_module list.
-:- import_module quoting_bug.
+:- import_module quoting_bug_test_helper_1.
 
-main -->
-    write_token(*), nl,
-    write_token(&&), nl,
-    write_token(-=), nl,
-    write_token(+=), nl,
-    write_token(?), nl,
-    test([*, &&, -=, +=, ?]).
+main(!IO) :-
+    write_token(*, !IO),  io.nl(!IO),
+    write_token(&&, !IO), io.nl(!IO),
+    write_token(-=, !IO), io.nl(!IO),
+    write_token(+=, !IO), io.nl(!IO),
+    write_token(?, !IO),  io.nl(!IO),
+    test([*, &&, -=, +=, ?], !IO).
 
 :- pred write_token(token::in, state::di, state::uo) is det.
 
-write_token(T) -->
-    write(T).
+write_token(T, !IO) :-
+    io.write(T, !IO).
 
 :- pred test(list(token)::in, state::di, state::uo) is det.
 
-test(List) -->
-    write_list(List, " ", write_token), nl.
+test(List, !IO) :-
+    io.write_list(List, " ", write_token, !IO),
+    io.nl(!IO).
 

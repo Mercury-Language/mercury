@@ -10,7 +10,7 @@
 
 :- implementation.
 
-:- import_module transitive_inst_type2.
+:- import_module transitive_inst_type_helper_1.
 
 main(!IO) :-
     new_sequence(Seq),

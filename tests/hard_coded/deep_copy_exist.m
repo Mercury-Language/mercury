@@ -23,12 +23,6 @@
 :- import_module term.
 :- import_module univ.
 
-:- pred test_builtins(io::di, io::uo) is det.
-:- pred test_discriminated(io::di, io::uo) is det.
-:- pred test_polymorphism(io::di, io::uo) is det.
-
-:- pred newline(io::di, io::uo) is det.
-
 :- type my_enum
     --->    one
     ;       two
@@ -42,8 +36,6 @@
     from_int(2) = two,
     from_int(3) = three
 ].
-
-:- pred test_all(T::in, io::di, io::uo) is det.
 
 :- type fruit
     --->    some [T] apple(list(T))
@@ -149,68 +141,76 @@
 
 %---------------------------------------------------------------------------%
 
-main -->
-    test_discriminated,
-    test_polymorphism,
-    test_builtins.
+main(!IO) :-
+    test_discriminated(!IO),
+    test_polymorphism(!IO),
+    test_builtins(!IO).
 
 %---------------------------------------------------------------------------%
 
-test_all(T) -->
-    io.write(T),
-    io.write_string("\n"),
-    { copy(T, T1) },
-    io.write(T),
-    io.write_string("\n"),
-    io.write(T1),
-    newline.
+:- pred test_all(T::in, io::di, io::uo) is det.
+
+test_all(T, !IO) :-
+    io.write(T, !IO),
+    io.write_string("\n", !IO),
+    copy(T, T1),
+    io.write(T, !IO),
+    io.write_string("\n", !IO),
+    io.write_line(T1, !IO).
 
 %---------------------------------------------------------------------------%
 
-test_discriminated -->
-    io.write_string("TESTING DISCRIMINATED UNIONS\n"),
+:- pred test_discriminated(io::di, io::uo) is det.
 
-        % test no secondary tags
-    test_all('new apple'([9, 5, 1])),
-    test_all('new banana'([three, one, two])),
+test_discriminated(!IO) :-
+    io.write_string("TESTING DISCRIMINATED UNIONS\n", !IO),
 
-        % test remote secondary tags
-    test_all('new zop'(3.3, 2.03)),
-    test_all('new zip'(3, 2)),
-    test_all('new zap'(3, -2.111)),
+    % test no secondary tags
+    test_all('new apple'([9, 5, 1]), !IO),
+    test_all('new banana'([three, one, two]), !IO),
 
-        % test local secondary tags
-    test_all(wombat),
-    test_all(foo),
+    % test remote secondary tags
+    test_all('new zop'(3.3, 2.03), !IO),
+    test_all('new zip'(3, 2), !IO),
+    test_all('new zap'(3, -2.111), !IO),
 
-        % test the contains_var bit vector
+    % test local secondary tags
+    test_all(wombat, !IO),
+    test_all(foo, !IO),
+
+    % test the contains_var bit vector
     test_all('new tuple_a'(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-        14, ["a", "b", "c"], 16, 17)),
+        14, ["a", "b", "c"], 16, 17), !IO),
     test_all('new tuple_b'(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-        14, ["a", "b", "c"], 16, ["x", "y", "z"])),
+        14, ["a", "b", "c"], 16, ["x", "y", "z"]), !IO),
     test_all('new tuple_c'(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-        14, 15, ["p", "q"], 17)),
+        14, 15, ["p", "q"], 17), !IO),
     test_all('new tuple_d'(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-        'a', 15, 'z', 17)),
+        'a', 15, 'z', 17), !IO),
 
-    newline.
+    io.nl(!IO).
 
-test_polymorphism -->
-    io.write_string("TESTING POLYMORPHISM\n"),
-    test_all('new poly_three'(3.33, 4, poly_one(9.11))),
-    test_all('new poly_two'(3)),
-    test_all(poly_one([2399.3])),
+%---------------------------------------------------------------------------%
 
-    newline.
+:- pred test_polymorphism(io::di, io::uo) is det.
 
-test_builtins -->
-    io.write_string("TESTING BUILTINS\n"),
+test_polymorphism(!IO) :-
+    io.write_string("TESTING POLYMORPHISM\n", !IO),
+    test_all('new poly_three'(3.33, 4, poly_one(9.11)), !IO),
+    test_all('new poly_two'(3), !IO),
+    test_all(poly_one([2399.3]), !IO),
+    io.nl(!IO).
 
-        % test univ.
-    { type_to_univ(["hi! I'm a univ!"], Univ) },
-    test_all(Univ),
+%---------------------------------------------------------------------------%
 
-    newline.
+:- pred test_builtins(io::di, io::uo) is det.
 
-newline -->
-    io.write_char('\n').
+test_builtins(!IO) :-
+    io.write_string("TESTING BUILTINS\n", !IO),
+
+    % test univ.
+    type_to_univ(["hi! I'm a univ!"], Univ),
+    test_all(Univ, !IO),
+    io.nl(!IO).
+
+%---------------------------------------------------------------------------%

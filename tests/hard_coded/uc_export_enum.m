@@ -17,25 +17,26 @@
 
 main(!IO) :-
     test_uc(UC),
-    ( UC = foo ->
+    ( if UC = foo then
         io.write_string("test_uc - succeeded.\n", !IO)
-    ;
+    else
         io.write_string("test_uc - failed.\n", !IO)
     ),
     test_lc(LC),
-    ( LC = foo ->
+    ( if LC = foo then
         io.write_string("test_lc - succeeded.\n", !IO)
-    ;
+    else
         io.write_string("test_lc - failed.\n", !IO)
     ),
     test_or(X, Y, Z),
-    ( X = foo, Y = bar, Z = baz ->
+    ( if X = foo, Y = bar, Z = baz then
         io.write_string("test_or - succeeded.\n", !IO)
-    ;
+    else
         io.write_string("test_or - failed.\n", !IO)
     ).
 
 :- pred test_uc(foo::out) is det.
+
 :- pragma foreign_proc("C",
     test_uc(X::out),
     [will_not_call_mercury, promise_pure],
@@ -56,6 +57,7 @@ main(!IO) :-
 ").
 
 :- pred test_lc(foo::out) is det.
+
 :- pragma foreign_proc("C",
     test_lc(X::out),
     [will_not_call_mercury, promise_pure],
@@ -76,6 +78,7 @@ main(!IO) :-
 ").
 
 :- pred test_or(foo::out, foo::out, foo::out) is det.
+
 :- pragma foreign_proc("C",
     test_or(X::out, Y::out, Z::out),
     [will_not_call_mercury, promise_pure],

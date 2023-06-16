@@ -1,11 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-
+%
 % This program performs Mercury allocations in one thread (e.g. using Boehm GC)
 % and simulates malloc calls in another thread that indirectly call sbrk.
 % If both allocators use sbrk and are invoked simulataneously then
 % memory corruption can result.
+%
 
 :- module thread_sbrk.
 :- interface.
@@ -39,13 +40,13 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    ( can_spawn_native ->
+    ( if can_spawn_native then
         semaphore.init(Sem, !IO),
         thread.spawn_native(alloc_thread(Sem), _, !IO),
         semaphore.wait(Sem, !IO),
         sbrk_loop(Sem, !IO),
         io.write_string("done.\n", !IO)
-    ;
+    else
         io.write_string("spawn_native not supported.\n", !IO)
     ).
 
@@ -98,10 +99,10 @@ alloc_loop(Sem, Depth, !IO) :-
 :- pred build(int::in, tree::out, int::in, int::out) is det.
 
 build(Depth, T, Id0, Id) :-
-    ( Depth = 1 ->
+    ( if Depth = 1 then
         T = nil,
         Id = Id0
-    ;
+    else
         build(Depth - 1, L, Id0 + 1, Id2),
         build(Depth - 1, R, Id2, Id),
         T = node(Id0, L, R)

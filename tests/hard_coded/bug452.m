@@ -9,8 +9,8 @@
 % However, it does not *need* to cover Thing = nothing, because the inner
 % switch is reached only in the arm of the outer switch that is not taken
 % when Thing = nothing.
-
-% In general, cannot_fail switches should not need either bit vector
+%
+% In general, cannot_fail switches should not need either bit vectors
 % or range checks. The compiler abort happensed because the MLDS code generator
 % had sanity checks (assertions) to this effect. The LLDS code generator
 % just silently generated an unnecessary bit vector check, which would execute
@@ -46,8 +46,7 @@ test_category(Thing, Cat0, !IO) :-
     io.write_string(" ", !IO),
     io.write(Cat0, !IO),
     io.write_string(" -> ", !IO),
-    io.write(Cat, !IO),
-    io.nl(!IO).
+    io.write_line(Cat, !IO).
 
 :- type thing
     --->    thing1

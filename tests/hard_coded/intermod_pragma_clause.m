@@ -14,7 +14,7 @@
 
 :- implementation.
 
-:- import_module intermod_pragma_clause_sub.
+:- import_module intermod_pragma_clause_helper_1.
 
 main(!IO) :-
     f(X),

@@ -23,9 +23,9 @@
 
 main(!IO) :-
     ( try []
-        ( semidet_true ->
+        ( if semidet_true then
             throw(12345)
-        ;
+        else
             semidet_fail
         )
     then
@@ -34,6 +34,5 @@ main(!IO) :-
         io.write_string("else\n", !IO)
     catch_any E ->
         io.write_string("caught: ", !IO),
-        io.write(E, !IO),
-        io.nl(!IO)
+        io.write_line(E, !IO)
     ).

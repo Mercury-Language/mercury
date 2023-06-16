@@ -46,8 +46,8 @@ main(!IO) :-
     type_to_univ(PseudoXArg, XArg),
     det_arg(Y, canonicalize, 0, PseudoYArg),
     type_to_univ(PseudoYArg, YArg),
-    ( XArg = YArg ->
+    ( if XArg = YArg then
         io.write_string("same\n", !IO)
-    ;
+    else
         io.write_string("different\n", !IO)
     ).

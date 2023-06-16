@@ -117,12 +117,12 @@ insertion_sort([X | Xs], Ys0, Zs) :-
 
 insert(X, [], [X]).
 insert(X, [Y | Ys], Zs) :-
-    (
+    ( if
         compare(Res, X, Y),
         Res = (>)
-    ->
+    then
         insert(X, Ys, Zs0),
         Zs = [Y | Zs0]
-    ;
+    else
         Zs = [X, Y | Ys]
     ).

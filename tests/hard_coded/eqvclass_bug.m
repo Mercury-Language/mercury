@@ -16,5 +16,4 @@
 
 main(!IO) :-
     ensure_equivalence(0, 0, eqvclass.init, NewEqvClass),
-    io.print(NewEqvClass, !IO),
-    io.nl(!IO).
+    io.print_line(NewEqvClass, !IO).

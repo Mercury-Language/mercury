@@ -42,7 +42,7 @@ main(!IO) :-
 :- pred test1(io::di, io::uo) is det.
 
 test1(!IO) :-
-    (if foo(h(_, _)) then
+    ( if foo(h(_, _)) then
         io.write_string("implied mode call 1 ok\n", !IO)
     else
         io.write_string("implied mode call 1 bad\n", !IO)
@@ -51,7 +51,7 @@ test1(!IO) :-
 :- pred test2(io::di, io::uo) is det.
 
 test2(!IO) :-
-    (if foo(g(_, _)) then
+    ( if foo(g(_, _)) then
         io.write_string("implied mode call 2 bad\n", !IO)
     else
         io.write_string("implied mode call 2 ok\n", !IO)
@@ -74,7 +74,7 @@ test4(!IO) :-
     Bar ^ b = Baz ^ b,
     Baz ^ c = X,
     Bar ^ a = Bar ^ b,
-    (if foo(f(_)) then
+    ( if foo(f(_)) then
         X = Bar ^ c,
         Bar ^ c = 'x'
     else
@@ -83,8 +83,7 @@ test4(!IO) :-
     ),
     Baz ^ a = 43,
     Baz ^ b = -42,
-    io.print({Bar, Baz}, !IO),
-    io.nl(!IO).
+    io.print_line({Bar, Baz}, !IO).
 
 :- pred foo(t::out) is multi.
 :- pragma no_inline(foo/1).

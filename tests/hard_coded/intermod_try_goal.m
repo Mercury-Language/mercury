@@ -11,9 +11,8 @@
 
 :- implementation.
 
+:- import_module intermod_try_goal_helper_1.
 :- import_module exception.
-
-:- import_module intermod_try_goal2.
 
 main(!IO) :-
     catcher(thrower, !IO),

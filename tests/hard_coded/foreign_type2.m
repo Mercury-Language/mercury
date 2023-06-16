@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% This modules tests selection of the Mercury definition for
+% This module tests selection of the Mercury definition for
 % types with both Mercury and foreign definitions,
 % It also tests field access functions for types with
 % both Mercury and foreign definitions.

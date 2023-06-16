@@ -12,7 +12,7 @@
 
 :- implementation.
 
-:- import_module intermod_may_export_body2.
+:- import_module intermod_may_export_body_helper_1.
 
 main(!IO) :-
     plus(1, 2, A),

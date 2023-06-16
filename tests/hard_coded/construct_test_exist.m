@@ -68,13 +68,13 @@ main(!IO) :-
 
 test_all(T, !IO) :-
     TypeInfo = type_desc.type_of(T),
-    ( N = construct.num_functors(TypeInfo) ->
+    ( if N = construct.num_functors(TypeInfo) then
         io.write_int(N, !IO),
         io.write_string(" functors in this type", !IO),
         io.nl(!IO),
         test_all_functors(TypeInfo, N, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("no functors in this type\n", !IO)
     ).
 
@@ -82,9 +82,9 @@ test_all(T, !IO) :-
     is det.
 
 test_all_functors(TypeInfo, N, !IO) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         true
-    ;
+    else
         test_nth_functor(TypeInfo, N - 1, !IO),
         test_all_functors(TypeInfo, N - 1, !IO)
     ).
@@ -94,10 +94,10 @@ test_all_functors(TypeInfo, N, !IO) :-
 
 test_nth_functor(TypeInfo, N, !IO) :-
     io.write_int(N, !IO),
-    (
+    ( if
         construct.get_functor_with_names(TypeInfo, N, Name, Arity,
             ArgTypes, Names)
-    ->
+    then
         io.write_string(" - ", !IO),
         io.write_string(Name, !IO),
         io.write_string("/", !IO),
@@ -108,7 +108,7 @@ test_nth_functor(TypeInfo, N, !IO) :-
         io.write_string(" [", !IO),
         io.write_list(Names, ", ", print_maybe_name, !IO),
         io.write_string("]\n", !IO)
-    ;
+    else
         io.write_string(" failed ", !IO),
         io.nl(!IO)
     ).

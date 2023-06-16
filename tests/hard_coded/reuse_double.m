@@ -30,8 +30,7 @@ main(!IO) :-
     T0 = tt(1.1, aa, bb, 2.2, cc, dd, 3.3),
     copy(T0, T1),
     swap(T1, T2),
-    io.write(T2, !IO),
-    io.nl(!IO).
+    io.write_line(T2, !IO).
 
 :- pred swap(tt::di, tt::uo) is det.
 

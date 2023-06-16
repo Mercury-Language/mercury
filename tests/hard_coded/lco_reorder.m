@@ -33,23 +33,23 @@ main(!IO) :-
 :- func dup_literal(int) = list(char).
 
 dup_literal(N) = Xs :-
-    ( N > 0 ->
+    ( if N > 0 then
         Xs0 = dup_literal(N - 1),
         % Previously the goal which constructs the literal would not be moved
         % before the recursive goal.
         Xs = ['A' | Xs0]
-    ;
+    else
         Xs = []
     ).
 
 :- func dup_ground_term(int) = list(list(char)).
 
 dup_ground_term(N) = Xs :-
-    ( N > 0 ->
+    ( if N > 0 then
         Xs0 = dup_ground_term(N - 1),
         GT = ['A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A'],
         Xs = [GT | Xs0]
-    ;
+    else
         Xs = []
     ).
 

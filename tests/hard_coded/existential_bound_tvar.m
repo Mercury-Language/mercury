@@ -15,22 +15,26 @@
 :- import_module list.
 :- import_module type_desc.
 
-main -->
-    { blah(101, X) },
-    print("X: value = "), print(X), nl,
-    print("X: type = "), print(type_of(X)), nl,
+main(!IO) :-
+    blah(101, X),
+    io.write_string("X: value = ", !IO),
+    io.print_line(X, !IO),
+    io.write_string("X: type = ", !IO),
+    io.print_line(type_of(X), !IO),
 
-    { blah2(101, Y) },
-    print("Y: value = "), print(Y), nl,
-    print("Y: type = "), print(type_of(Y)), nl,
+    blah2(101, Y),
+    io.write_string("Y: value = ", !IO),
+    io.print_line(Y, !IO),
+    io.write_string("Y: type = ", !IO),
+    io.print_line(type_of(Y), !IO),
 
-    (
-        { blah3([101], Z) }
-    ->
-        print("Z: value = "), print(Z), nl,
-        print("Z: type = "), print(type_of(Z)), nl
-    ;
-        write("ERROR\n")
+    ( if blah3([101], Z) then
+        io.write_string("Z: value = ", !IO),
+        io.print_line(Z, !IO),
+        io.write_string("Z: type = ", !IO),
+        io.print_line(type_of(Z), !IO)
+    else
+        io.write("ERROR\n", !IO)
     ).
 
 :- some [T1] pred blah(T, T1).

@@ -22,8 +22,7 @@ main(!IO) :-
     % Although neither A, B are used afterwards they do share memory so reuse
     % is not possible.
     quux(A, B, C, D),
-    io.write({C, D}, !IO),
-    io.nl(!IO).
+    io.write_line({C, D}, !IO).
 
 :- type foo
     --->    foo(int, int).

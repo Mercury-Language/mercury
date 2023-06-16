@@ -12,9 +12,8 @@
 
 :- implementation.
 
-:- import_module intermod_c_code2.
+:- import_module intermod_c_code_helper_1.
 
 main(!IO) :-
     c_code("Hello, world\n", Y),
-    io.write(Y, !IO),
-    io.nl(!IO).
+    io.write_line(Y, !IO).

@@ -27,7 +27,7 @@
 :- import_module thread.barrier.
 :- import_module thread.mvar.
 
-:- import_module thread_test_utils.
+:- import_module thread_barrier_test_helper_1.
 
 %---------------------------------------------------------------------------%
 
@@ -91,14 +91,15 @@ test_release(AbortAt, ThreadCount, !IO) :-
     barrier.init(ThreadCount + 1, Barrier, !IO),
     mvar.init(StateMvar, !IO),
     mvar.put(StateMvar, state_before_release, !IO),
-    list.foldl((pred(Thread::in, !.IO::di, !:IO::uo) is cc_multi :-
-        t_write_string(Output, format("spawning thread #%d", [i(Thread)]),
-            !IO),
-        spawn(
-            release_thread(AllThreadOutput, Thread, AbortAt, Barrier,
-                StateMvar),
-            !IO)
-    ), 1 .. ThreadCount, !IO),
+    list.foldl(
+        ( pred(Thread::in, !.IO::di, !:IO::uo) is cc_multi :-
+            t_write_string(Output, format("spawning thread #%d", [i(Thread)]),
+                !IO),
+            spawn(
+                release_thread(AllThreadOutput, Thread, AbortAt, Barrier,
+                    StateMvar),
+                !IO)
+        ), 1 .. ThreadCount, !IO),
     % There is no guarantee that we will reach this point before the AbortAt
     % thread releases the barrier, so don't log the state as expected.
     t_write_string(Output, "waiting", !IO),

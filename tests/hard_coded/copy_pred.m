@@ -25,8 +25,7 @@ main(!IO) :-
     det_univ_to_type(Univ, F3),
     inst_cast(F3, F4),
     F4("blah", S),
-    io.print(S, !IO),
-    io.nl(!IO).
+    io.print_line(S, !IO).
 
 :- pred inst_cast(pred(string, string), pred(string, string)).
 :- mode inst_cast(in, out(pred(in, out) is det)) is det.

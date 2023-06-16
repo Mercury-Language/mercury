@@ -14,7 +14,7 @@ MCFLAGS-bug240 =                -O1
 MCFLAGS-bug300 =            --no-const-struct --optimize-constructor-last-call
 MCFLAGS-bug314 =                --trace deep
 MCFLAGS-bug392 =                -O0 --deforestation
-MCFLAGS-bug455_mod_a =          --intermodule-optimization
+MCFLAGS-bug455 =                --intermodule-optimization
 MCFLAGS-bug548 =                --inlining
 MCFLAGS-checked_nondet_tailcall = --checked-nondet-tailcalls
 MCFLAGS-checked_nondet_tailcall_noinline = \
@@ -32,8 +32,8 @@ MCFLAGS-impl_defn_literals =    --no-warn-simple-code
 MCFLAGS-lp =                    --intermodule-optimization -O3
 MCFLAGS-elim_local_var_char =   --eliminate-local-vars
 MCFLAGS-float_consistency =     --optimize-constant-propagation
-MCFLAGS-foreign_enum_mod1 =     --intermodule-optimization
-MCFLAGS-foreign_enum_mod2 =     --intermodule-optimization
+MCFLAGS-foreign_enum_mod =      --intermodule-optimization
+MCFLAGS-foreign_enum_mod_helper_1 = --intermodule-optimization
 MCFLAGS-from_ground_term_bug =  --from-ground-term-threshold=4
 MCFLAGS-func_test =             --infer-all
 MCFLAGS-ho_order =              --optimize-higher-order
@@ -44,21 +44,21 @@ MCFLAGS-one_member =            -O5
 MCFLAGS-impure_foreign =        --optimize-duplicate-calls
 MCFLAGS-int8_static_data =      -O0
 MCFLAGS-intermod_c_code =       --intermodule-optimization
-MCFLAGS-intermod_c_code2 =      --intermodule-optimization
+MCFLAGS-intermod_c_code_helper_1 = --intermodule-optimization
 MCFLAGS-intermod_foreign_type = --intermodule-optimization
-MCFLAGS-intermod_foreign_type2 = --intermodule-optimization
+MCFLAGS-intermod_foreign_type_helper_1 = --intermodule-optimization
 MCFLAGS-intermod_may_export_body = --intermodule-optimization
-MCFLAGS-intermod_may_export_body2 = --intermodule-optimization
+MCFLAGS-intermod_may_export_body_helper_1 = --intermodule-optimization
 MCFLAGS-intermod_multimode =    --intermodule-optimization
-MCFLAGS-intermod_multimode_main = --intermodule-optimization
+MCFLAGS-intermod_multimode_helper_1 = --intermodule-optimization
 MCFLAGS-intermod_poly_mode =    --intermodule-optimization
-MCFLAGS-intermod_poly_mode_2 =  --intermodule-optimization
+MCFLAGS-intermod_poly_mode_helper_1 = --intermodule-optimization
 MCFLAGS-intermod_pragma_clause = --intermodule-optimization
-MCFLAGS-intermod_pragma_clause_sub = --intermodule-optimization
+MCFLAGS-intermod_pragma_clause_helper_1 = --intermodule-optimization
 MCFLAGS-intermod_try_goal =     --intermodule-optimization
-MCFLAGS-intermod_try_goal2 =    --intermodule-optimization
+MCFLAGS-intermod_try_goal_helper_1 = --intermodule-optimization
 MCFLAGS-intermod_type_qual =    --intermodule-optimization
-MCFLAGS-intermod_type_qual2 =   --intermodule-optimization
+MCFLAGS-intermod_type_qual_helper_1 = --intermodule-optimization
 MCFLAGS-lco_double =            --optimize-constructor-last-call
 MCFLAGS-lco_mday_bug_1 =        --optimize-constructor-last-call
 MCFLAGS-lco_mday_bug_2 =        --optimize-constructor-last-call
@@ -96,7 +96,7 @@ MCFLAGS-write =                 --no-warn-unresolved-polymorphism
 # intermodule-analysis.
 MCFLAGS-intermod_unused_args =  \
     --no-intermodule-optimization --intermodule-analysis --optimise-unused-args
-MCFLAGS-intermod_unused_args2 = \
+MCFLAGS-intermod_unused_args_helper_1 = \
     --no-intermodule-optimization --intermodule-analysis --optimise-unused-args
 
 MCFLAGS-loop_inv_test =         --loop-invariants --trace-optimized
@@ -106,8 +106,9 @@ MCFLAGS-loop_inv_test2 =        --loop-invariants --trace-optimized
 MCFLAGS-loop_inv_test3 =        --loop-invariants
 MCFLAGS-loop_inv_test4 =        --loop-invariants
 MCFLAGS-prince_frameopt =       --intermodule-optimization -O5
-MCFLAGS-prince_frameopt_css =   --intermodule-optimization -O5
-MCFLAGS-prince_frameopt_css.style = --intermodule-optimization -O5
+MCFLAGS-prince_frameopt_helper_1 = --intermodule-optimization -O5
+MCFLAGS-prince_frameopt_helper_1.prince_frameopt_helper_2 = \
+                                --intermodule-optimization -O5
 
 # Compile string_switch with both binary and hash switches effectively
 # disabled, to test the basic indexing algorithm.

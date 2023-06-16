@@ -12,7 +12,7 @@
 
 :- implementation.
 
-:- import_module intermod_type_qual2.
+:- import_module intermod_type_qual_helper_1.
 :- import_module list.
 
 main(!IO) :-

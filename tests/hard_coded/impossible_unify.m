@@ -14,8 +14,7 @@
 
 main(!IO) :-
     not bar(42),
-    print("ok", !IO),
-    nl(!IO).
+    io.print_line("ok", !IO).
 
 :- pred bar(int::in) is failure.
 

@@ -42,5 +42,4 @@
 init_message = response(status_ok, no, no, no, no).
 
 main(!IO) :-
-    io.write(init_message, !IO),
-    io.nl(!IO).
+    io.write_line(init_message, !IO).

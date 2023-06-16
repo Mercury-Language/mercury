@@ -28,9 +28,10 @@ main(!IO) :-
         print("no", !IO)
     ).
 
-:- pragma inline(p/1).
 :- pred p(int).
 :- mode p(out) is nondet.
+:- pragma inline(p/1).
+
 p(1) :- semidet_fail.
 p(2) :- semidet_succeed.
 p(3) :- semidet_fail.

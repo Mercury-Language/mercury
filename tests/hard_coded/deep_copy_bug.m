@@ -28,12 +28,14 @@ main(!IO) :-
     test3(!IO).
 
 :- pred test1(io::di, io::uo) is det.
+
 test1(!IO) :-
-    Lambda = (pred(X::out) is nondet :-
-        varset.init(Varset0),
-        varset.new_vars(10, Vars, Varset0, _),
-        list.member(X, Vars)
-    ),
+    Lambda =
+        ( pred(X::out) is nondet :-
+            varset.init(Varset0),
+            varset.new_vars(10, Vars, Varset0, _),
+            list.member(X, Vars)
+        ),
     solutions(Lambda, List),
     io.write_line(List, !IO).
 
@@ -42,6 +44,7 @@ test2 -->
     test2b("blahblah").
 
 :- pred test2b(T::in, io::di, io::uo) is det.
+
 test2b(S, !IO) :-
     F = foo(S),
     solutions(F, List),
@@ -49,16 +52,19 @@ test2b(S, !IO) :-
 
 :- pred foo(T, var).
 :- mode foo(in, out) is nondet.
+
 foo(Blah, X) :-
     varset.init(Varset0),
     varset.new_vars(10, Vars, Varset0, _),
     list.member(X, Vars).
 
 :- pred test3(io::di, io::uo) is det.
+
 test3(!IO) :-
     solutions((pred(X::out) is nondet :- bar(X)), List),
     io.write_line(List, !IO).
 
 :- pred bar(int).
 :- mode bar(out) is det.
+
 bar(42).

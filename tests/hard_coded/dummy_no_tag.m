@@ -15,12 +15,9 @@
 
 :- implementation.
 
-:- import_module dummy_no_tag_2.
+:- import_module dummy_no_tag_helper_1.
 
 main(!IO) :-
-    io.write(fun, !IO),
-    nl(!IO),
-    io.write(fun_eqv, !IO),
-    nl(!IO),
-    io.write(fun_eqv2, !IO),
-    nl(!IO).
+    io.write_line(fun, !IO),
+    io.write_line(fun_eqv, !IO),
+    io.write_line(fun_eqv2, !IO).
