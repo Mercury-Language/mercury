@@ -2040,7 +2040,7 @@ fi
 
 if "$env_is_msys2"
 then
-    DIFF_OPTS="${DIFF_OPTS:-} -u -strip-trailing-cr"
+    DIFF_OPTS="${DIFF_OPTS:-} -u --strip-trailing-cr"
     export DIFF_OPTS
 fi
 
