@@ -4,6 +4,13 @@
 %
 % Test output of special characters such as \r
 %
+% The .exp file is for systems that use "\n" as the end of line.
+% The .exp2 file is for system that use "\r\n" as the end of line.
+% (While we we do compare the test outputs using diff --strip-trailing-cr,
+% diff gets confused in this case because we output additional carriage
+% returns.)
+%
+%---------------------------------------------------------------------------%
 
 :- module special_char.
 :- interface.
