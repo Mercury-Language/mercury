@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module infinite_include_direct.
+:- module infinite_include_indirect.
 
 :- interface.
 
