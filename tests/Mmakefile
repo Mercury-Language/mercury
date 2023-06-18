@@ -28,6 +28,8 @@ SUBDIRS = \
 	hard_coded \
 	invalid \
 	invalid_make_int \
+	invalid_nodepend \
+	invalid_onlydepend \
 	invalid_options_file \
 	invalid_purity \
 	invalid_submodules \
