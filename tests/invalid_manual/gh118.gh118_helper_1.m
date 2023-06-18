@@ -1,4 +1,4 @@
-:- module gh118.gh118_helper.
+:- module gh118.gh118_helper_1.
 :- interface.
 :- import_module io.
 
