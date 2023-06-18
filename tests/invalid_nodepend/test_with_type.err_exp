@@ -1,17 +1,20 @@
-with_type.m:016: In type declaration for predicate `with_type.with_type_1':
-with_type.m:016:   error: expected higher order predicate type after
-with_type.m:016:   `with_type`.
-with_type.m:017: In mode declaration for `with_type.with_type_1':
-with_type.m:017:   error: expected higher order inst after `with_inst`.
-with_type.m:022: In type declaration for function `with_type.with_type_2':
-with_type.m:022:   error: expected higher order function type after
-with_type.m:022:   `with_type`.
-with_type.m:023: Error: `:- mode' declaration for function `with_type_2'/3
-with_type.m:023:   without corresponding `:- func' declaration.
-with_type.m:025: In type declaration for predicate `with_type.with_type_3':
-with_type.m:025:   error: the `with_type` and `with_inst` annotations are
-with_type.m:025:   incompatible; they specify 3 modes but only 2 types.
-with_type.m:028: Error: `with_inst' and determinism both specified.
-with_type.m:031: Error: `with_inst' specified without `with_type'.
-with_type.m:034: Error: `foo' is not a valid determinism.
-with_type.m:036: Error: `with_inst' specified without argument modes.
+test_with_type.m:016: In type declaration for predicate
+test_with_type.m:016:   `test_with_type.with_type_1':
+test_with_type.m:016:   error: expected higher order predicate type after
+test_with_type.m:016:   `with_type`.
+test_with_type.m:017: In mode declaration for `test_with_type.with_type_1':
+test_with_type.m:017:   error: expected higher order inst after `with_inst`.
+test_with_type.m:022: In type declaration for function
+test_with_type.m:022:   `test_with_type.with_type_2':
+test_with_type.m:022:   error: expected higher order function type after
+test_with_type.m:022:   `with_type`.
+test_with_type.m:023: Error: `:- mode' declaration for function `with_type_2'/3
+test_with_type.m:023:   without corresponding `:- func' declaration.
+test_with_type.m:025: In type declaration for predicate
+test_with_type.m:025:   `test_with_type.with_type_3':
+test_with_type.m:025:   error: the `with_type` and `with_inst` annotations are
+test_with_type.m:025:   incompatible; they specify 3 modes but only 2 types.
+test_with_type.m:028: Error: `with_inst' and determinism both specified.
+test_with_type.m:031: Error: `with_inst' specified without `with_type'.
+test_with_type.m:034: Error: `foo' is not a valid determinism.
+test_with_type.m:036: Error: `with_inst' specified without argument modes.

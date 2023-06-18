@@ -75,10 +75,10 @@ PROGS = \
 	prog_io_erroneous \
 	reserved \
 	reserved_type_name \
-	some \
 	specified \
 	subtype_invalid_supertype \
 	subtype_syntax \
+	test_some \
 	test_with_type \
 	type_lhs_var \
 	type_vars \

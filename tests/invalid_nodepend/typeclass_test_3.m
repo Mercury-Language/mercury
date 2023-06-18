@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module typeclass_test_11.
+:- module typeclass_test_3.
 :- interface.
 
 :- typeclass foo(T) <= (T =< blah(X)) where [].
