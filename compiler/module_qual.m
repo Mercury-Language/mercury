@@ -489,18 +489,32 @@ mq_info_set_module_used(InInt, ModuleName, !Info) :-
 
 %---------------------------------------------------------------------------%
 %
-% Access and initialisation predicates.
+% The main data structure used by the code that does module qualification,
+% and its initialisation and access predicates.
 %
 
-:- type maybe_should_report_errors
-    --->    should_not_report_errors
-    ;       should_report_errors.
+:- type mq_info
+    --->    mq_info(
+                % Keep the size of the main mq_info structure at eight fields,
+                % as this allows Boehm gc to allocate memory blocks that don't
+                % have wasted unused space.
+                mqi_sub_info                    :: mq_sub_info,
 
-    % We process only the interface, so we will warn only about unused
-    % imports in parent's INTERFACE sections.
-:- type maybe_warn_unused_imports_in_parents
-    --->    should_not_warn_unused_imports_in_parents
-    ;       should_warn_unused_imports_in_parents.
+                % Sets of all modules, types, insts, modes, and typeclasses
+                % visible in this module.
+                mqi_modules                     :: module_id_set,
+                mqi_types                       :: type_id_set,
+                mqi_insts                       :: inst_id_set,
+                mqi_modes                       :: mode_id_set,
+                mqi_classes                     :: class_id_set,
+
+                % Map each modules known to be imported in the interface
+                % that is not yet known to be needed in the interface
+                % to the location (or sometimes, locations) of the import.
+                mqi_as_yet_unused_interface_modules :: module_names_contexts,
+
+                mqi_maybe_recompilation_info    :: maybe(recompilation_info)
+            ).
 
 :- type mq_sub_info
     --->    mq_sub_info(
@@ -546,28 +560,17 @@ mq_info_set_module_used(InInt, ModuleName, !Info) :-
                 mqsi_num_errors                 :: int
             ).
 
-:- type mq_info
-    --->    mq_info(
-                % Keep the size of the main mq_info structure at eight fields,
-                % as this allows Boehm gc to allocate memory blocks that don't
-                % have wasted unused space.
-                mqi_sub_info                    :: mq_sub_info,
+:- type maybe_should_report_errors
+    --->    should_not_report_errors
+    ;       should_report_errors.
 
-                % Sets of all modules, types, insts, modes, and typeclasses
-                % visible in this module.
-                mqi_modules                     :: module_id_set,
-                mqi_types                       :: type_id_set,
-                mqi_insts                       :: inst_id_set,
-                mqi_modes                       :: mode_id_set,
-                mqi_classes                     :: class_id_set,
+    % We process only the interface, so we will warn only about unused
+    % imports in parent's INTERFACE sections.
+:- type maybe_warn_unused_imports_in_parents
+    --->    should_not_warn_unused_imports_in_parents
+    ;       should_warn_unused_imports_in_parents.
 
-                % Map each modules known to be imported in the interface
-                % that is not yet known to be needed in the interface
-                % to the location (or sometimes, locations) of the import.
-                mqi_as_yet_unused_interface_modules :: module_names_contexts,
-
-                mqi_maybe_recompilation_info    :: maybe(recompilation_info)
-            ).
+%-----%
 
 :- pred init_mq_info(globals::in, module_name::in,
     maybe_should_report_errors::in, mq_info::out) is det.
@@ -624,7 +627,7 @@ init_mq_info(Globals, ModuleName, ReportErrors, Info) :-
         TypeIdSet, InstIdSet, ModeIdSet, ClassIdSet,
         AsYetUnusedInterfaceModules, MaybeRecompInfo).
 
-%---------------------------------------------------------------------------%
+%-----%
 
 :- pred mq_info_get_modules(mq_info::in, module_id_set::out) is det.
 :- pred mq_info_get_types(mq_info::in, type_id_set::out) is det.
