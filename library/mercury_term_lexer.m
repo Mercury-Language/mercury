@@ -3329,7 +3329,7 @@ get_binary(Stream, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        Token = error("unterminated binary literal")
+        Token = report_zero_base_no_digits(base_2)
     ;
         Result = ok,
         ( if char.is_binary_digit(Char) then
@@ -3339,7 +3339,7 @@ get_binary(Stream, Token, !IO) :-
             get_binary(Stream, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            Token = error("unterminated binary literal")
+            Token = report_zero_base_no_digits(base_2)
         )
     ).
 
@@ -3357,11 +3357,11 @@ string_get_binary(String, Len, Posn0, Token, Context, !Posn) :-
             string_get_binary(String, Len, LastPosn, Token, Context, !Posn)
         else
             !:Posn = LastPosn,
-            Token = error("unterminated binary literal"),
+            Token = report_zero_base_no_digits(base_2),
             string_get_context(Posn0, Context)
         )
     else
-        Token = error("unterminated binary literal"),
+        Token = report_zero_base_no_digits(base_2),
         string_get_context(Posn0, Context)
     ).
 
@@ -3385,11 +3385,11 @@ linestr_get_binary(String, Len, LineContext0, Token, Context,
         else
             !:LineContext = LastLineContext,
             !:LinePosn = LastLinePosn,
-            Token = error("unterminated binary literal"),
+            Token = report_zero_base_no_digits(base_2),
             linestr_get_context(LineContext0, Context)
         )
     else
-        Token = error("unterminated binary literal"),
+        Token = report_zero_base_no_digits(base_2),
         linestr_get_context(LineContext0, Context)
     ).
 
@@ -3409,7 +3409,7 @@ get_binary_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated binary literal")
+            Token = report_int_ends_in_underscore(base_2)
         )
     ;
         Result = ok,
@@ -3434,7 +3434,7 @@ get_binary_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated binary literal")
+                Token = report_int_ends_in_underscore(base_2)
             )
         )
     ).
@@ -3481,7 +3481,7 @@ string_get_binary_2(String, Len, !.LastDigit, Posn1, Token, Context, !Posn) :-
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated binary literal")
+                Token = report_int_ends_in_underscore(base_2)
             ),
             string_get_context(Posn1, Context)
         )
@@ -3493,7 +3493,7 @@ string_get_binary_2(String, Len, !.LastDigit, Posn1, Token, Context, !Posn) :-
                 Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated binary literal")
+            Token = report_int_ends_in_underscore(base_2)
         ),
         string_get_context(Posn1, Context)
     ).
@@ -3549,7 +3549,7 @@ linestr_get_binary_2(String, Len, !.LastDigit, LineContext1, LinePosn1,
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated binary literal")
+                Token = report_int_ends_in_underscore(base_2)
             ),
             linestr_get_context(LineContext1, Context)
         )
@@ -3561,7 +3561,7 @@ linestr_get_binary_2(String, Len, !.LastDigit, LineContext1, LinePosn1,
                 Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated binary literal")
+            Token = report_int_ends_in_underscore(base_2)
         ),
         linestr_get_context(LineContext1, Context)
     ).
@@ -3575,7 +3575,7 @@ get_octal(Stream, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        Token = error("unterminated octal literal")
+        Token = report_zero_base_no_digits(base_8)
     ;
         Result = ok,
         ( if char.is_octal_digit(Char) then
@@ -3585,7 +3585,7 @@ get_octal(Stream, Token, !IO) :-
             get_octal(Stream, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            Token = error("unterminated octal literal")
+            Token = report_zero_base_no_digits(base_8)
         )
     ).
 
@@ -3605,11 +3605,11 @@ string_get_octal(String, Len, Posn0, Token, Context, !Posn) :-
             )
         else
             !:Posn = LastPosn,
-            Token = error("unterminated octal literal"),
+            Token = report_zero_base_no_digits(base_8),
             string_get_context(Posn0, Context)
         )
     else
-        Token = error("unterminated octal literal"),
+        Token = report_zero_base_no_digits(base_8),
         string_get_context(Posn0, Context)
     ).
 
@@ -3635,11 +3635,11 @@ linestr_get_octal(String, Len, LineContext0, LinePosn0, Token, Context,
         else
             !:LineContext = LastLineContext,
             !:LinePosn = LastLinePosn,
-            Token = error("unterminated octal literal"),
+            Token = report_zero_base_no_digits(base_8),
             linestr_get_context(LineContext0, Context)
         )
     else
-        Token = error("unterminated octal literal"),
+        Token = report_zero_base_no_digits(base_8),
         linestr_get_context(LineContext0, Context)
     ).
 
@@ -3659,7 +3659,7 @@ get_octal_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated octal literal")
+            Token = report_int_ends_in_underscore(base_8)
         )
     ;
         Result = ok,
@@ -3684,7 +3684,7 @@ get_octal_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated octal literal")
+                Token = report_int_ends_in_underscore(base_8)
             )
         )
     ).
@@ -3720,12 +3720,12 @@ string_get_octal_2(String, Len, !.LastDigit, Posn1, Token, Context, !Posn) :-
             !:Posn = LastDigitPosn,
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                grab_string(String, Posn1, !.Posn, BinaryString),
-                conv_string_to_int(BinaryString, base_8, signed, size_word,
+                grab_string(String, Posn1, !.Posn, OctalString),
+                conv_string_to_int(OctalString, base_8, signed, size_word,
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated octal literal")
+                Token = report_int_ends_in_underscore(base_8)
             ),
             string_get_context(Posn1, Context)
         )
@@ -3736,7 +3736,7 @@ string_get_octal_2(String, Len, !.LastDigit, Posn1, Token, Context, !Posn) :-
             conv_string_to_int(BinaryString, base_8, signed, size_word, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated octal literal")
+            Token = report_int_ends_in_underscore(base_8)
         ),
         string_get_context(Posn1, Context)
     ).
@@ -3781,23 +3781,23 @@ linestr_get_octal_2(String, Len, !.LastDigit, LineContext1, LinePosn1,
             (
                 !.LastDigit = last_digit_is_not_underscore,
                 linestr_grab_string(String, LinePosn1, !.LinePosn,
-                    BinaryString),
-                conv_string_to_int(BinaryString, base_8, signed, size_word,
+                    OctalString),
+                conv_string_to_int(OctalString, base_8, signed, size_word,
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated octal literal")
+                Token = report_int_ends_in_underscore(base_8)
             ),
             linestr_get_context(LineContext1, Context)
         )
     else
         (
             !.LastDigit = last_digit_is_not_underscore,
-            linestr_grab_string(String, LinePosn1, !.LinePosn, BinaryString),
-            conv_string_to_int(BinaryString, base_8, signed, size_word, Token)
+            linestr_grab_string(String, LinePosn1, !.LinePosn, OctalString),
+            conv_string_to_int(OctalString, base_8, signed, size_word, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated octal literal")
+            Token = report_int_ends_in_underscore(base_8)
         ),
         linestr_get_context(LineContext1, Context)
     ).
@@ -3811,7 +3811,7 @@ get_hex(Stream, Token, !IO) :-
         Token = io_error(Error)
     ;
         Result = eof,
-        Token = error("unterminated hexadecimal literal")
+        Token = report_zero_base_no_digits(base_16)
     ;
         Result = ok,
         ( if char.is_hex_digit(Char) then
@@ -3821,7 +3821,7 @@ get_hex(Stream, Token, !IO) :-
             get_hex(Stream, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            Token = error("unterminated hexadecimal literal")
+            Token = report_zero_base_no_digits(base_16)
         )
     ).
 
@@ -3843,11 +3843,11 @@ string_get_hex(String, Len, Posn0, Token, Context, !Posn) :-
             )
         else
             !:Posn = LastPosn,
-            Token = error("unterminated hexadecimal literal"),
+            Token = report_zero_base_no_digits(base_16),
             string_get_context(Posn0, Context)
         )
     else
-        Token = error("unterminated hexadecimal literal"),
+        Token = report_zero_base_no_digits(base_16),
         string_get_context(Posn0, Context)
     ).
 
@@ -3875,11 +3875,11 @@ linestr_get_hex(String, Len, LineContext0, LinePosn0, Token, Context,
         else
             !:LineContext = LastLineContext,
             !:LinePosn = LastLinePosn,
-            Token = error("unterminated hexadecimal literal"),
+            Token = report_zero_base_no_digits(base_16),
             linestr_get_context(LineContext0, Context)
         )
     else
-        Token = error("unterminated hexadecimal literal"),
+        Token = report_zero_base_no_digits(base_16),
         linestr_get_context(LineContext0, Context)
     ).
 
@@ -3899,7 +3899,7 @@ get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated hexadecimal literal")
+            Token = report_int_ends_in_underscore(base_16)
         )
     ;
         Result = ok,
@@ -3926,7 +3926,7 @@ get_hex_2(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated hexadecimal literal")
+                Token = report_int_ends_in_underscore(base_16)
             )
         )
     ).
@@ -3962,24 +3962,23 @@ string_get_hex_2(String, Len, !.LastDigit, Posn1, Token, Context, !Posn) :-
             !:Posn = LastDigitPosn,
             (
                 !.LastDigit = last_digit_is_not_underscore,
-                grab_string(String, Posn1, !.Posn, BinaryString),
-                conv_string_to_int(BinaryString, base_16, signed, size_word,
+                grab_string(String, Posn1, !.Posn, HexString),
+                conv_string_to_int(HexString, base_16, signed, size_word,
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated hexadecimal literal")
+                Token = report_int_ends_in_underscore(base_16)
             ),
             string_get_context(Posn1, Context)
         )
     else
         (
             !.LastDigit = last_digit_is_not_underscore,
-            grab_string(String, Posn1, !.Posn, BinaryString),
-            conv_string_to_int(BinaryString, base_16, signed, size_word,
-                Token)
+            grab_string(String, Posn1, !.Posn, HexString),
+            conv_string_to_int(HexString, base_16, signed, size_word, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated hexadecimal literal")
+            Token = report_int_ends_in_underscore(base_16)
         ),
         string_get_context(Posn1, Context)
     ).
@@ -4024,24 +4023,23 @@ linestr_get_hex_2(String, Len, !.LastDigit, LineContext1, LinePosn1,
             (
                 !.LastDigit = last_digit_is_not_underscore,
                 linestr_grab_string(String, LinePosn1, !.LinePosn,
-                    BinaryString),
-                conv_string_to_int(BinaryString, base_16, signed, size_word,
+                    HexString),
+                conv_string_to_int(HexString, base_16, signed, size_word,
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated hexadecimal literal")
+                Token = report_int_ends_in_underscore(base_16)
             ),
             linestr_get_context(LineContext1, Context)
         )
     else
         (
             !.LastDigit = last_digit_is_not_underscore,
-            linestr_grab_string(String, LinePosn1, !.LinePosn, BinaryString),
-            conv_string_to_int(BinaryString, base_16, signed, size_word,
-                Token)
+            linestr_grab_string(String, LinePosn1, !.LinePosn, HexString),
+            conv_string_to_int(HexString, base_16, signed, size_word, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated hexadecimal literal")
+            Token = report_int_ends_in_underscore(base_16)
         ),
         linestr_get_context(LineContext1, Context)
     ).
@@ -4062,7 +4060,7 @@ get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated decimal literal")
+            Token = report_int_ends_in_underscore(base_10)
         )
     ;
         Result = ok,
@@ -4079,7 +4077,7 @@ get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 get_int_dot(Stream, !.LastDigit, !.RevChars, Token, !IO)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated decimal literal")
+                Token = report_underscore_before_decimal_point
             )
         else if Char = 'u' then
             get_integer_size_suffix(Stream, !.RevChars, base_10, unsigned,
@@ -4094,7 +4092,7 @@ get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                 get_float_exponent(Stream, !.RevChars, Token, !IO)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("underscore before exponent")
+                Token = report_underscore_before_exponent
             )
         else
             io.putback_char(Stream, Char, !IO),
@@ -4104,7 +4102,7 @@ get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated decimal literal")
+                Token = report_int_ends_in_underscore(base_10)
             )
         )
     ).
@@ -4141,7 +4139,7 @@ string_get_number(String, Len, !.LastDigit, Posn0, Token, Context, !Posn) :-
                         LastPosn, TokenPrime, ContextPrime, !Posn)
                 ;
                     !.LastDigit = last_digit_is_underscore,
-                    TokenPrime = error("unterminated decimal literal"),
+                    TokenPrime = report_underscore_before_decimal_point,
                     string_get_context(Posn0, ContextPrime)
                 )
             ;
@@ -4164,7 +4162,7 @@ string_get_number(String, Len, !.LastDigit, Posn0, Token, Context, !Posn) :-
                         TokenPrime, ContextPrime, !Posn)
                 ;
                     !.LastDigit = last_digit_is_underscore,
-                    TokenPrime = error("underscore before exponent"),
+                    TokenPrime = report_underscore_before_exponent,
                     string_get_context(Posn0, ContextPrime)
                 )
             )
@@ -4180,7 +4178,7 @@ string_get_number(String, Len, !.LastDigit, Posn0, Token, Context, !Posn) :-
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated decimal literal")
+                Token = report_int_ends_in_underscore(base_10)
             ),
             string_get_context(Posn0, Context)
         )
@@ -4192,7 +4190,7 @@ string_get_number(String, Len, !.LastDigit, Posn0, Token, Context, !Posn) :-
                 Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated decimal literal")
+            Token = report_int_ends_in_underscore(base_10)
         ),
         string_get_context(Posn0, Context)
     ).
@@ -4235,7 +4233,7 @@ linestr_get_number(String, Len, !.LastDigit, LineContext0, LinePosn0,
                         TokenPrime, ContextPrime, !LineContext, !LinePosn)
                 ;
                     !.LastDigit = last_digit_is_underscore,
-                    TokenPrime = error("unterminated decimal literal"),
+                    TokenPrime = report_underscore_before_decimal_point,
                     linestr_get_context(LineContext0, ContextPrime)
                 )
             ;
@@ -4261,7 +4259,7 @@ linestr_get_number(String, Len, !.LastDigit, LineContext0, LinePosn0,
                         TokenPrime, ContextPrime, !LineContext, !LinePosn)
                 ;
                     !.LastDigit = last_digit_is_underscore,
-                    TokenPrime = error("underscore before exponent"),
+                    TokenPrime = report_underscore_before_exponent,
                     linestr_get_context(LineContext0, ContextPrime)
                 )
             )
@@ -4279,7 +4277,7 @@ linestr_get_number(String, Len, !.LastDigit, LineContext0, LinePosn0,
                     Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated decimal literal")
+                Token = report_int_ends_in_underscore(base_10)
             ),
             linestr_get_context(LineContext0, Context)
         )
@@ -4291,7 +4289,7 @@ linestr_get_number(String, Len, !.LastDigit, LineContext0, LinePosn0,
                 Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated decimal literal")
+            Token = report_int_ends_in_underscore(base_10)
         ),
         linestr_get_context(LineContext0, Context)
     ).
@@ -5029,7 +5027,7 @@ linestr_get_float_exponent_3(String, Len, !.LastDigit, LineContext0, LinePosn0,
                 conv_to_float(FloatString, Token)
             ;
                 !.LastDigit = last_digit_is_underscore,
-                Token = error("unterminated exponent in float literal")
+                Token = report_exponent_ends_in_underscore
             ),
             linestr_get_context(LineContext0, Context)
         )
@@ -5040,7 +5038,7 @@ linestr_get_float_exponent_3(String, Len, !.LastDigit, LineContext0, LinePosn0,
             conv_to_float(FloatString, Token)
         ;
             !.LastDigit = last_digit_is_underscore,
-            Token = error("unterminated exponent in float literal")
+            Token = report_exponent_ends_in_underscore
         ),
         linestr_get_context(LineContext0, Context)
     ).
@@ -5106,6 +5104,46 @@ rev_char_list_to_string(RevChars, String) :-
 
 null_character_error =
     error("null character is illegal in strings and names").
+
+:- func report_zero_base_no_digits(integer_base) = token.
+
+report_zero_base_no_digits(base_2) =
+    error("0b is not followed by binary digits").
+report_zero_base_no_digits(base_8) =
+    error("0o is not followed by octal digits").
+report_zero_base_no_digits(base_10) = _ :-
+    % Decimal integers have no prefix.
+    unexpected($pred, "base 10").
+report_zero_base_no_digits(base_16) =
+    error("0x is not followed by hexadecimal digits").
+
+:- func report_int_ends_in_underscore(integer_base) = token.
+
+report_int_ends_in_underscore(base_2) =
+    error("a binary literal cannot end with an underscore").
+report_int_ends_in_underscore(base_8) =
+    error("an octal literal cannot end with an underscore").
+report_int_ends_in_underscore(base_10) =
+    error("a decimal literal cannot end with an underscore").
+report_int_ends_in_underscore(base_16) =
+    error("a hexadecimal literal cannot end with an underscore").
+
+:- func report_exponent_ends_in_underscore = token.
+
+report_exponent_ends_in_underscore = 
+    error("the exponent cannot end with an underscore").
+
+:- func report_underscore_before_decimal_point = token.
+
+report_underscore_before_decimal_point =
+    error("an underscore should separate two digits; " ++
+        "it should not appear just before a decimal point").
+
+:- func report_underscore_before_exponent = token.
+
+report_underscore_before_exponent =
+    error("an underscore should separate two digits; " ++
+        "it should not appear just before an exponent").
 
 %---------------------------------------------------------------------------%
 

@@ -13,8 +13,8 @@ read_term("1_000_000_000_000_000_000_000.") = functor(integer(base_10, i(5, [138
 read_term("-1_000_000_000_000_000_000_000.") = functor(integer(base_10, i(-5, [-13877, -12907, -7261, -14976, 0]), signed, size_word), [], context("", 1))
 
 Invalid decimal literals:
-read_term("123_.") = Syntax error: unterminated decimal literal
-read_term("-123_.") = Syntax error: unterminated decimal literal
+read_term("123_.") = Syntax error: an underscore should separate two digits; it should not appear just before a decimal point
+read_term("-123_.") = Syntax error: an underscore should separate two digits; it should not appear just before a decimal point
 read_term("-_123") = Syntax error: operator or `.' expected
 
 Valid binary literals:
@@ -26,12 +26,12 @@ read_term("0b_1000_100.") = functor(integer(base_2, i(1, [68]), signed, size_wor
 read_term("-0b_1000_100.") = functor(integer(base_2, i(-1, [-68]), signed, size_word), [], context("", 1))
 
 Invalid binary literals:
-read_term("0b.") = Syntax error: unterminated binary literal
-read_term("-0b.") = Syntax error: unterminated binary literal
-read_term("0b_.") = Syntax error: unterminated binary literal
-read_term("-0b_.") = Syntax error: unterminated binary literal
-read_term("0b11_.") = Syntax error: unterminated binary literal
-read_term("-0b11_.") = Syntax error: unterminated binary literal
+read_term("0b.") = Syntax error: 0b is not followed by binary digits
+read_term("-0b.") = Syntax error: 0b is not followed by binary digits
+read_term("0b_.") = Syntax error: 0b is not followed by binary digits
+read_term("-0b_.") = Syntax error: 0b is not followed by binary digits
+read_term("0b11_.") = Syntax error: a binary literal cannot end with an underscore
+read_term("-0b11_.") = Syntax error: a binary literal cannot end with an underscore
 
 Valid octal literals:
 read_term("0o77.") = functor(integer(base_8, i(1, [63]), signed, size_word), [], context("", 1))
@@ -44,12 +44,12 @@ read_term("0o_7__7___7.") = functor(integer(base_8, i(1, [511]), signed, size_wo
 read_term("-0o_7__7___7.") = functor(integer(base_8, i(-1, [-511]), signed, size_word), [], context("", 1))
 
 Invalid octal literals:
-read_term("0o.") = Syntax error: unterminated octal literal
-read_term("-0o") = Syntax error: unterminated octal literal
-read_term("0o_.") = Syntax error: unterminated octal literal
-read_term("-0o_.") = Syntax error: unterminated octal literal
-read_term("0o77_.") = Syntax error: unterminated octal literal
-read_term("-0o77_.") = Syntax error: unterminated octal literal
+read_term("0o.") = Syntax error: 0o is not followed by octal digits
+read_term("-0o") = Syntax error: 0o is not followed by octal digits
+read_term("0o_.") = Syntax error: 0o is not followed by octal digits
+read_term("-0o_.") = Syntax error: 0o is not followed by octal digits
+read_term("0o77_.") = Syntax error: an octal literal cannot end with an underscore
+read_term("-0o77_.") = Syntax error: an octal literal cannot end with an underscore
 
 Valid hexadecimal literals:
 read_term("0xff.") = functor(integer(base_16, i(1, [255]), signed, size_word), [], context("", 1))
@@ -64,12 +64,12 @@ read_term("0xfffffffffffffffffffffffff.") = functor(integer(base_16, i(8, [3, 16
 read_term("-0xfffffffffffffffffffffffff.") = functor(integer(base_16, i(-8, [-3, -16383, -16383, -16383, -16383, -16383, -16383, -16383]), signed, size_word), [], context("", 1))
 
 Invalid hexadecimal literals:
-read_term("0x.") = Syntax error: unterminated hexadecimal literal
-read_term("-0x.") = Syntax error: unterminated hexadecimal literal
-read_term("0x_.") = Syntax error: unterminated hexadecimal literal
-read_term("-0x_.") = Syntax error: unterminated hexadecimal literal
-read_term("0xff_.") = Syntax error: unterminated hexadecimal literal
-read_term("-0xff_.") = Syntax error: unterminated hexadecimal literal
+read_term("0x.") = Syntax error: 0x is not followed by hexadecimal digits
+read_term("-0x.") = Syntax error: 0x is not followed by hexadecimal digits
+read_term("0x_.") = Syntax error: 0x is not followed by hexadecimal digits
+read_term("-0x_.") = Syntax error: 0x is not followed by hexadecimal digits
+read_term("0xff_.") = Syntax error: a hexadecimal literal cannot end with an underscore
+read_term("-0xff_.") = Syntax error: a hexadecimal literal cannot end with an underscore
 
 Valid float literals:
 read_term("0.123.") = functor(float(0.123), [], context("", 1))
@@ -96,17 +96,17 @@ read_term("0_1.0.") = functor(float(1.0), [], context("", 1))
 Invalid float literals:
 read_term("1_2_3.1_2_3_.") = Syntax error: fractional part of float terminated by underscore
 read_term("1_2_3e1_2_3_.") = Syntax error: unterminated exponent in float literal
-read_term("123_._123.") = Syntax error: unterminated decimal literal
+read_term("123_._123.") = Syntax error: an underscore should separate two digits; it should not appear just before a decimal point
 read_term("123._123.") = Syntax error: underscore following decimal point
-read_term("123_.123.") = Syntax error: unterminated decimal literal
-read_term("123_e12.") = Syntax error: underscore before exponent
-read_term("123_E12.") = Syntax error: underscore before exponent
+read_term("123_.123.") = Syntax error: an underscore should separate two digits; it should not appear just before a decimal point
+read_term("123_e12.") = Syntax error: an underscore should separate two digits; it should not appear just before an exponent
+read_term("123_E12.") = Syntax error: an underscore should separate two digits; it should not appear just before an exponent
 read_term("123e_12.") = Syntax error: unterminated exponent in float literal
 read_term("123E_12.") = Syntax error: unterminated exponent in float literal
 read_term("123e12_.") = Syntax error: unterminated exponent in float literal
 read_term("123E12_.") = Syntax error: unterminated exponent in float literal
-read_term("12_e11.") = Syntax error: underscore before exponent
-read_term("12_E11.") = Syntax error: underscore before exponent
+read_term("12_e11.") = Syntax error: an underscore should separate two digits; it should not appear just before an exponent
+read_term("12_E11.") = Syntax error: an underscore should separate two digits; it should not appear just before an exponent
 read_term("123.12e-_12.") = Syntax error: unterminated exponent in float literal
 read_term("123.12e+_12.") = Syntax error: unterminated exponent in float literal
 read_term("123.12e12_.") = Syntax error: unterminated exponent in float literal

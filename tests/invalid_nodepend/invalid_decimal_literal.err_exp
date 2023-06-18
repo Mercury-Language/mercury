@@ -1,4 +1,8 @@
 invalid_decimal_literal.m:012: Error: no clauses for function `foo1'/0.
 invalid_decimal_literal.m:013: Error: no clauses for function `foo2'/0.
-invalid_decimal_literal.m:017: Syntax error: unterminated decimal literal.
-invalid_decimal_literal.m:019: Syntax error: unterminated decimal literal.
+invalid_decimal_literal.m:017: Syntax error: an underscore should separate two
+invalid_decimal_literal.m:017:   digits; it should not appear just before a
+invalid_decimal_literal.m:017:   decimal point.
+invalid_decimal_literal.m:019: Syntax error: an underscore should separate two
+invalid_decimal_literal.m:019:   digits; it should not appear just before a
+invalid_decimal_literal.m:019:   decimal point.

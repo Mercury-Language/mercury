@@ -8,24 +8,32 @@ invalid_hex_literal.m:018: Error: no clauses for function `foo7'/0.
 invalid_hex_literal.m:019: Error: no clauses for function `foo8'/0.
 invalid_hex_literal.m:023: Syntax error at token `. ': unexpected token at
 invalid_hex_literal.m:023:   start of (sub)term.
-invalid_hex_literal.m:023: Syntax error: unterminated hexadecimal literal.
+invalid_hex_literal.m:023: Syntax error: 0x is not followed by hexadecimal
+invalid_hex_literal.m:023:   digits.
 invalid_hex_literal.m:025: Syntax error at token `. ': unexpected token at
 invalid_hex_literal.m:025:   start of (sub)term.
-invalid_hex_literal.m:025: Syntax error: unterminated hexadecimal literal.
+invalid_hex_literal.m:025: Syntax error: 0x is not followed by hexadecimal
+invalid_hex_literal.m:025:   digits.
 invalid_hex_literal.m:027: Syntax error at token `. ': unexpected token at
 invalid_hex_literal.m:027:   start of (sub)term.
-invalid_hex_literal.m:027: Syntax error: unterminated hexadecimal literal.
+invalid_hex_literal.m:027: Syntax error: 0x is not followed by hexadecimal
+invalid_hex_literal.m:027:   digits.
 invalid_hex_literal.m:029: Syntax error at token `. ': unexpected token at
 invalid_hex_literal.m:029:   start of (sub)term.
-invalid_hex_literal.m:029: Syntax error: unterminated hexadecimal literal.
+invalid_hex_literal.m:029: Syntax error: 0x is not followed by hexadecimal
+invalid_hex_literal.m:029:   digits.
 invalid_hex_literal.m:031: Syntax error at token `. ': unexpected token at
 invalid_hex_literal.m:031:   start of (sub)term.
-invalid_hex_literal.m:031: Syntax error: unterminated hexadecimal literal.
+invalid_hex_literal.m:031: Syntax error: a hexadecimal literal cannot end with
+invalid_hex_literal.m:031:   an underscore.
 invalid_hex_literal.m:033: Syntax error at token `. ': unexpected token at
 invalid_hex_literal.m:033:   start of (sub)term.
-invalid_hex_literal.m:033: Syntax error: unterminated hexadecimal literal.
+invalid_hex_literal.m:033: Syntax error: a hexadecimal literal cannot end with
+invalid_hex_literal.m:033:   an underscore.
 invalid_hex_literal.m:035: Error: clause for predicate `xff'/0
 invalid_hex_literal.m:035:   without corresponding `:- pred' declaration.
 invalid_hex_literal.m:035: Inferred :- pred xff.
-invalid_hex_literal.m:035: Syntax error: unterminated decimal literal.
-invalid_hex_literal.m:037: Syntax error: unterminated decimal literal.
+invalid_hex_literal.m:035: Syntax error: a decimal literal cannot end with an
+invalid_hex_literal.m:035:   underscore.
+invalid_hex_literal.m:037: Syntax error: a decimal literal cannot end with an
+invalid_hex_literal.m:037:   underscore.
