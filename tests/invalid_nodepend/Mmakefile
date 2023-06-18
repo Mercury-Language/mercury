@@ -79,12 +79,13 @@ PROGS = \
 	specified \
 	subtype_invalid_supertype \
 	subtype_syntax \
+	test_with_type \
 	type_lhs_var \
 	type_vars \
 	typeclass_no_param \
 	typeclass_test_1 \
-	typeclass_test_11 \
 	typeclass_test_2 \
+	typeclass_test_3 \
 	types	\
 	unbound_type_vars \
 	unicode1 \
@@ -97,8 +98,6 @@ PROGS = \
 	vars_in_wrong_places \
 	where_abstract_enum \
 	where_direct_arg \
-	where_direct_arg2 \
-	with_type
 
 #-----------------------------------------------------------------------------#
 

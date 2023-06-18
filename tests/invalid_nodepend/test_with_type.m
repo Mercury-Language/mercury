@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module with_type.
+:- module test_with_type.
 
 :- interface.
 
