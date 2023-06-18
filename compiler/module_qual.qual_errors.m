@@ -146,7 +146,8 @@
     % Report an error where a type, inst, mode or typeclass had
     % multiple possible matches.
     %
-:- pred report_ambiguous_match(mq_error_context::in, mq_id::in, qual_id_kind::in,
+:- pred report_ambiguous_match(mq_error_context::in, mq_id::in,
+    qual_id_kind::in,
     list(module_name)::in, list(module_name)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
