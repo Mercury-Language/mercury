@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module parent:private_child.
+:- module test_nested_helper_1:test_nested_helper_4.
 :- interface.
 :- import_module io.
 
@@ -15,4 +15,4 @@
 :- implementation.
 
 hello(!IO) :-
-    io.write_string("parent:private_child:hello\n", !IO).
+    io.write_string("test_nested_helper_1:test_nested_helper_4:hello\n", !IO).

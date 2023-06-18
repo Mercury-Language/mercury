@@ -1,0 +1,15 @@
+missing_interface_import_test_2.m:009: In declaration of predicate
+missing_interface_import_test_2.m:009:   `write_key'/3:
+missing_interface_import_test_2.m:009:   error: undefined type
+missing_interface_import_test_2.m:009:   `partition_id'/0.
+missing_interface_import_test_2.m:009:   (The modules `eqvclass' and
+missing_interface_import_test_2.m:009:   `missing_interface_import_test_2_helper_1'
+missing_interface_import_test_2.m:009:   have not been imported in the
+missing_interface_import_test_2.m:009:   interface.)
+missing_interface_import_test_2.m:009: In declaration of predicate
+missing_interface_import_test_2.m:009:   `write_key'/3:
+missing_interface_import_test_2.m:009:   error: undefined type `io.state'/0.
+missing_interface_import_test_2.m:009:   (The module `io' has not been imported
+missing_interface_import_test_2.m:009:   in the interface.)
+`missing_interface_import_test_2.int' and
+  `missing_interface_import_test_2.int2' not written.

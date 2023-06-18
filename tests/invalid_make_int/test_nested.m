@@ -8,19 +8,19 @@
 :- type foo.
 
 :- implementation.
-:- use_module parent.
-:- use_module parent.public_child.
-:- use_module parent.private_child.
-:- use_module parent.undeclared_child.
-% :- use_module parent.nonexistent_child.
+:- use_module test_nested_helper_1.
+:- use_module test_nested_helper_1.test_nested_helper_3.
+:- use_module test_nested_helper_1.test_nested_helper_4.
+:- use_module test_nested_helper_1.test_nested_helper_5.
+% :- use_module test_nested_helper_1.nonexistent_child.
 
-:- use_module parent2.child.
+:- use_module test_nested_helper_2.test_nested_helper_6.
 
 :- type foo
     --->    foo(
-                parent.public_child.foo,
-                parent.private_child.foo,
-                parent.undeclared_child.foo,
-                parent.nonexistent_child.foo,
-                parent2.child.foo
+                test_nested_helper_1.test_nested_helper_3.foo,
+                test_nested_helper_1.test_nested_helper_4.foo,
+                test_nested_helper_1.test_nested_helper_5.foo,
+                test_nested_helper_1.nonexistent_child.foo,
+                test_nested_helper_2.child.test_nested_helper_6
             ).

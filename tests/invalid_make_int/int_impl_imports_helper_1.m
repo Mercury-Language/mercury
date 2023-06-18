@@ -1,14 +1,19 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
-% This is part of the test_nested.m test case.
 
-:- module parent2:child.
+:- module int_impl_imports_helper_1.
 :- interface.
 
-:- type foo.
+:- type bar == int.
+
+:- func one_bar = bar.
+:- func add_bars(bar, bar) = bar.
 
 :- implementation.
 
-:- type foo == int.
+:- import_module int.
+
+one_bar = 42.
+
+add_bars(A, B) = A + B.

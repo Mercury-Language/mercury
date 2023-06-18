@@ -4,7 +4,11 @@
 %
 % This is part of the test_nested.m test case.
 
-:- module parent2.
+:- module test_nested_helper_1.
 :- interface.
 
-:- include_module child.
+:- include_module test_nested_helper_3.
+
+:- implementation.
+
+:- include_module test_nested_helper_4.

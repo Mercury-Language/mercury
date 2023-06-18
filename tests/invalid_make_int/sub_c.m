@@ -12,7 +12,7 @@
 
 :- implementation.
 
-:- import_module sub_a.sub1.
+:- import_module sub_c_helper_1.sub1.
 
 main(!IO) :-
     io.write_string("Hello.\n", !IO).

@@ -2,31 +2,31 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module sub_a.
+:- module sub_c_helper_1.
 
 :- interface.
 
 :- type t1.
 
-:- module sub1.
+    :- module sub1.
 
-:- interface.
+    :- interface.
 
-:- type t2.
+    :- type t2.
 
-:- end_module sub1.
-
-:- implementation.
-
-:- module sub1.
+    :- end_module sub1.
 
 :- implementation.
 
-:- import_module int.
+    :- module sub1.
 
-:- type t2 == int.
+    :- implementation.
 
-:- end_module sub1.
+    :- import_module int.
+
+    :- type t2 == int.
+
+    :- end_module sub1.
 
 :- import_module float.
 

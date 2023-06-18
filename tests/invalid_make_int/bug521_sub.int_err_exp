@@ -1,3 +1,0 @@
-bug521_sub.m:014: In declaration of function `get_things'/2:
-bug521_sub.m:014:   error: undefined type `list'/1.
-`bug521_sub.int' and `bug521_sub.int2' not written.

@@ -4,22 +4,10 @@
 %
 % This is part of the missing_parent_import test case.
 
-:- module children2.
+:- module missing_parent_import_helper_2.
 :- interface.
 
-:- module children2.sub1.
-:- interface.
-:- import_module io.
-
-:- type foo
-    --->    bar
-    ;       baz(int).
-
-:- pred hello(io::di, io::uo) is det.
-
-:- end_module children2.sub1.
-
-:- module children2.sub2.
+:- module missing_parent_import_helper_2.sub1.
 :- interface.
 :- import_module io.
 
@@ -29,28 +17,40 @@
 
 :- pred hello(io::di, io::uo) is det.
 
-:- end_module children2.sub2.
+:- end_module missing_parent_import_helper_2.sub1.
+
+:- module missing_parent_import_helper_2.sub2.
+:- interface.
+:- import_module io.
+
+:- type foo
+    --->    bar
+    ;       baz(int).
+
+:- pred hello(io::di, io::uo) is det.
+
+:- end_module missing_parent_import_helper_2.sub2.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module children.
-:- module children2.sub1.
+:- import_module missing_parent_import_helper_1.
+:- module missing_parent_import_helper_2.sub1.
 :- implementation.
 
 hello(!IO) :-
-    io.write_string("children2.sub1.hello\n", !IO).
+    io.write_string("missing_parent_import_helper_2.sub1.hello\n", !IO).
 
-:- end_module children2.sub1.
+:- end_module missing_parent_import_helper_2.sub1.
 
-:- module children2.sub2.
+:- module missing_parent_import_helper_2.sub2.
 :- implementation.
 
 hello(!IO) :-
-    io.write_string("children2.sub2.hello\n", !IO).
+    io.write_string("missing_parent_import_helper_2.sub2.hello\n", !IO).
 
-:- end_module children2.sub2.
+:- end_module missing_parent_import_helper_2.sub2.
 
-:- end_module children2.
+:- end_module missing_parent_import_helper_2.
 
 %---------------------------------------------------------------------------%

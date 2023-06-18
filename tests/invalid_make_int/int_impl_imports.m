@@ -6,7 +6,7 @@
 :- interface.
 
 :- import_module io.
-:- use_module int_impl_imports_2.
+:- use_module int_impl_imports_helper_1.
 
 :- pred main(io::di, io::uo) is det.
 
@@ -16,7 +16,7 @@
 
 :- implementation.
 
-:- import_module int_impl_imports_2.
+:- import_module int_impl_imports_helper_1.
 
 main(!IO) :-
     % This tests whether we can refer to one_bar in the implementation section

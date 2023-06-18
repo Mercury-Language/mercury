@@ -1,8 +1,14 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+%
+% This is part of the test_nested.m test case.
 
-:- module missing_interface_import3.
+:- module test_nested_helper_2:test_nested_helper_6.
 :- interface.
 
-:- type partition_id == int.
+:- type foo.
+
+:- implementation.
+
+:- type foo == int.

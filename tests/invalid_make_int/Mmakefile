@@ -19,12 +19,12 @@ MAYBE_J1 = -j1
 SINGLE_MODULE_PROGS = \
 	bad_type_class_constraint_intermodule \
 	bug499 \
-	bug521_sub \
+	bug521 \
 	missing_interface_import
 
 MULTI_MODULE_PROGS = \
 	int_impl_imports \
-	missing_interface_import2 \
+	missing_interface_import_test_2 \
 	missing_parent_import \
 	sub_c \
 	test_nested \

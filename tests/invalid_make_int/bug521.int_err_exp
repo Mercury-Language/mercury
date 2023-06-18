@@ -1,0 +1,3 @@
+bug521.m:014: In declaration of function `get_things'/2:
+bug521.m:014:   error: undefined type `list'/1.
+`bug521.int' and `bug521.int2' not written.

@@ -2,7 +2,7 @@
 % vim: ft=mercury ff=unix ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 
-:- module bug521_sub.
+:- module bug521.
 :- interface.
 
 % :- import_module list.  % Missing module import causes the error
