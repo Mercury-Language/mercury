@@ -24,11 +24,13 @@
 :- import_module hlds.make_hlds.make_hlds_types.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item.
 
 :- import_module cord.
 :- import_module list.
+:- import_module set_tree234.
 
 %---------------------------------------------------------------------------%
 
@@ -37,7 +39,7 @@
     % and pred_target_names to be added to the HLDS by our caller.
     %
 :- pred implement_mutables_if_local(module_info::in,
-    sec_list(item_mutable_info)::in,
+    set_tree234(inst_ctor)::in, sec_list(item_mutable_info)::in,
     sec_list(item_pred_decl_info)::out,
     ims_list(item_clause_info)::out, ims_list(item_foreign_proc)::out,
     list(foreign_decl_code)::out, list(foreign_body_code)::out,
@@ -61,7 +63,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mutable.
 
 :- import_module bool.
@@ -72,10 +73,10 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-implement_mutables_if_local(ModuleInfo, SecList, PredDecls,
+implement_mutables_if_local(ModuleInfo, UndefInstCtors, SecList, PredDecls,
         ClauseInfos, ForeignProcs, ForeignDeclCodes, ForeignBodyCodes,
         FPEInfoCord, !PredTargetNames, !Specs) :-
-    implement_mutables_sec_loop(ModuleInfo, SecList,
+    implement_mutables_sec_loop(ModuleInfo, UndefInstCtors, SecList,
         cord.init, PredDeclCord,
         cord.init, ClauseInfoCord, cord.init, ForeignProcCord,
         cord.init, ForeignDeclCodeCord, cord.init, ForeignBodyCodeCord,
@@ -87,7 +88,7 @@ implement_mutables_if_local(ModuleInfo, SecList, PredDecls,
     ForeignBodyCodes = cord.list(ForeignBodyCodeCord).
 
 :- pred implement_mutables_sec_loop(module_info::in,
-    sec_list(item_mutable_info)::in,
+    set_tree234(inst_ctor)::in, sec_list(item_mutable_info)::in,
     sec_cord(item_pred_decl_info)::in, sec_cord(item_pred_decl_info)::out,
     ims_cord(item_clause_info)::in, ims_cord(item_clause_info)::out,
     ims_cord(item_foreign_proc)::in, ims_cord(item_foreign_proc)::out,
@@ -97,11 +98,12 @@ implement_mutables_if_local(ModuleInfo, SecList, PredDecls,
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-implement_mutables_sec_loop(_ModuleInfo, [],
+implement_mutables_sec_loop(_ModuleInfo, _UndefInstCtors, [],
         !PredDeclCord, !ClauseInfoCord, !ForeignProcCord,
         !ForeignDeclCodeCord, !ForeignBodyCodeCord,
         !FPEInfoCord, !PredTargetNames, !Specs).
-implement_mutables_sec_loop(ModuleInfo, [SecSubList | SecSubLists],
+implement_mutables_sec_loop(ModuleInfo, UndefInstCtors,
+        [SecSubList | SecSubLists],
         !PredDeclCord, !ClauseInfoCord, !ForeignProcCord,
         !ForeignDeclCodeCord, !ForeignBodyCodeCord,
         !FPEInfoCord, !PredTargetNames, !Specs) :-
@@ -112,7 +114,8 @@ implement_mutables_sec_loop(ModuleInfo, [SecSubList | SecSubLists],
         module_info_get_globals(ModuleInfo, Globals),
         module_info_get_name(ModuleInfo, ModuleName),
         TypeNameFunc = exported_type_to_string(ModuleInfo),
-        ModuleParams = module_params(Globals, ModuleName, TypeNameFunc),
+        ModuleParams = module_params(Globals, ModuleName, UndefInstCtors,
+            TypeNameFunc),
         implement_mutables_loop(ModuleInfo, SectionInfo, ModuleParams,
             ItemMutables,
             cord.init, PredDeclSubCord,
@@ -143,7 +146,7 @@ implement_mutables_sec_loop(ModuleInfo, [SecSubList | SecSubLists],
         % the definition of the global variable storing the mutable
         % in any submodules of the module that actually defined the mutable.
     ),
-    implement_mutables_sec_loop(ModuleInfo, SecSubLists,
+    implement_mutables_sec_loop(ModuleInfo, UndefInstCtors, SecSubLists,
         !PredDeclCord, !ClauseInfoCord, !ForeignProcCord,
         !ForeignDeclCodeCord, !ForeignBodyCodeCord,
         !FPEInfoCord, !PredTargetNames, !Specs).
@@ -168,7 +171,7 @@ implement_mutables_loop(ModuleInfo, SectionInfo, ModuleParams,
         !ClauseInfoCord, !ForeignProcCord,
         !ForeignDeclCodeCord, !ForeignBodyCodeCord,
         !FPEInfoCord, !PredTargetNames, !Specs) :-
-    check_mutable(ModuleInfo, ItemMutable, !Specs),
+    check_mutable(ModuleInfo, ModuleParams, ItemMutable, !Specs),
     implement_mutable(ModuleParams, ItemMutable,
         PredDecls, ClauseInfos, ForeignProcs, FPEInfo,
         !ForeignDeclCodeCord, !ForeignBodyCodeCord, !PredTargetNames),
@@ -184,10 +187,10 @@ implement_mutables_loop(ModuleInfo, SectionInfo, ModuleParams,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred check_mutable(module_info::in, item_mutable_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred check_mutable(module_info::in, module_params::in,
+    item_mutable_info::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-check_mutable(ModuleInfo, ItemMutable, !Specs) :-
+check_mutable(ModuleInfo, ModuleParams, ItemMutable, !Specs) :-
     ItemMutable = item_mutable_info(_MutableName,
         _OrigType, _Type, OrigInst, Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
@@ -225,8 +228,8 @@ check_mutable(ModuleInfo, ItemMutable, !Specs) :-
     % to use inst variables in a mutable declaration should already
     % been dealt with when the mutable declaration was parsed.
     DummyInstVarSet = varset.init,
-    check_mutable_inst(ModuleInfo, Context, DummyInstVarSet, [], Inst,
-        [], ExpandedInstSpecs),
+    check_mutable_inst(ModuleInfo, ModuleParams, Context, DummyInstVarSet,
+        [], Inst, [], ExpandedInstSpecs),
     (
         ExpandedInstSpecs = []
     ;
@@ -242,8 +245,8 @@ check_mutable(ModuleInfo, ItemMutable, !Specs) :-
         %
         % If ExpandedInstSpecs is nonempty, then UnexpandedInstSpecs should
         % be nonempty as well, but we prepare for it to be empty just in case.
-        check_mutable_inst(ModuleInfo, Context, DummyInstVarSet, [], OrigInst,
-            [], UnexpandedInstSpecs),
+        check_mutable_inst(ModuleInfo, ModuleParams, Context, DummyInstVarSet,
+            [], OrigInst, [], UnexpandedInstSpecs),
         (
             UnexpandedInstSpecs = [],
             % Printing error messages without the proper context is better than
@@ -261,12 +264,12 @@ check_mutable(ModuleInfo, ItemMutable, !Specs) :-
     % Add an error to !Specs for each part of the inst that isn't allowed
     % inside a mutable declaration.
     %
-:- pred check_mutable_inst(module_info::in, prog_context::in,
-    inst_varset::in, list(inst_ctor)::in, mer_inst::in,
+:- pred check_mutable_inst(module_info::in, module_params::in,
+    prog_context::in, inst_varset::in, list(inst_ctor)::in, mer_inst::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
-        !Specs) :-
+check_mutable_inst(ModuleInfo, ModuleParams, Context, InstVarSet,
+        ParentInsts, Inst, !Specs) :-
     (
         ( Inst = any(Uniq, _)
         ; Inst = ground(Uniq, _)
@@ -277,8 +280,8 @@ check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
         Inst = bound(Uniq, _, BoundInsts),
         check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet,
             ParentInsts, Inst, Uniq, !Specs),
-        check_mutable_bound_insts(ModuleInfo, Context, InstVarSet,
-            ParentInsts, BoundInsts, !Specs)
+        check_mutable_bound_insts(ModuleInfo, ModuleParams, Context,
+            InstVarSet, ParentInsts, BoundInsts, !Specs)
     ;
         Inst = defined_inst(InstName),
         (
@@ -306,8 +309,8 @@ check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
                 invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet,
                     ParentInsts, UnqualInst, FreePieces, !Specs)
             else
-                check_mutable_insts(ModuleInfo, Context, InstVarSet,
-                    ParentInsts, UserInstArgs, !Specs),
+                check_mutable_insts(ModuleInfo, ModuleParams, Context,
+                    InstVarSet, ParentInsts, UserInstArgs, !Specs),
 
                 module_info_get_inst_table(ModuleInfo, InstTable),
                 inst_table_get_user_insts(InstTable, UserInstTable),
@@ -316,12 +319,25 @@ check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
                         InstBody, _MMTC, _Context, _Status),
                     InstBody = eqv_inst(EqvInst),
                     DefnParentInsts = [UserInstCtor | ParentInsts],
-                    check_mutable_inst(ModuleInfo, Context, DefnInstVarSet,
-                        DefnParentInsts, EqvInst, !Specs)
+                    check_mutable_inst(ModuleInfo, ModuleParams, Context,
+                        DefnInstVarSet, DefnParentInsts, EqvInst, !Specs)
                 else
-                    UndefinedPieces = [words("is not defined.")],
-                    invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet,
-                        ParentInsts, Inst, UndefinedPieces, !Specs)
+                    UndefInstCtors = ModuleParams ^ mp_undef_inst_ctors,
+                    ( if
+                        set_tree234.contains(UndefInstCtors, UserInstCtor)
+                    then
+                        % An error message about UserInstCtor being undefined
+                        % has already been generated. Any message we could
+                        % generate here would only repeat the same information
+                        % in a (possibly confusingly) different form.
+                        true
+                    else
+                        % This should not happen, but just in case it does ...
+                        UndefinedPieces = [words("is not defined.")],
+                        invalid_inst_in_mutable(ModuleInfo, Context,
+                            InstVarSet, ParentInsts, Inst, UndefinedPieces,
+                            !Specs)
+                    )
                 )
             )
         ;
@@ -369,32 +385,33 @@ check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
         unexpected($pred, "not_reached")
     ).
 
-:- pred check_mutable_bound_insts(module_info::in, prog_context::in,
-    inst_varset::in, list(inst_ctor)::in, list(bound_inst)::in,
+:- pred check_mutable_bound_insts(module_info::in, module_params::in,
+    prog_context::in, inst_varset::in,
+    list(inst_ctor)::in, list(bound_inst)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_mutable_bound_insts(_ModuleInfo, _Context, _InstVarSet, _ParentInsts,
-        [], !Specs).
-check_mutable_bound_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
-        [BoundInst | BoundInsts], !Specs) :-
+check_mutable_bound_insts(_ModuleInfo, _ModuleParams, _Context,
+        _InstVarSet, _ParentInsts, [], !Specs).
+check_mutable_bound_insts(ModuleInfo, ModuleParams, Context,
+        InstVarSet, ParentInsts, [BoundInst | BoundInsts], !Specs) :-
     BoundInst = bound_functor(_ConsId, ArgInsts),
-    check_mutable_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
-        ArgInsts, !Specs),
-    check_mutable_bound_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
-        BoundInsts, !Specs).
+    check_mutable_insts(ModuleInfo, ModuleParams, Context, InstVarSet,
+        ParentInsts, ArgInsts, !Specs),
+    check_mutable_bound_insts(ModuleInfo, ModuleParams, Context, InstVarSet,
+        ParentInsts, BoundInsts, !Specs).
 
-:- pred check_mutable_insts(module_info::in, prog_context::in,
-    inst_varset::in, list(inst_ctor)::in, list(mer_inst)::in,
+:- pred check_mutable_insts(module_info::in, module_params::in,
+    prog_context::in, inst_varset::in, list(inst_ctor)::in, list(mer_inst)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_mutable_insts(_ModuleInfo, _Context, _InstVarSet, _ParentInsts,
-        [], !Specs).
-check_mutable_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
-        [Inst | Insts], !Specs) :-
-    check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts,
-        Inst, !Specs),
-    check_mutable_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
-        Insts, !Specs).
+check_mutable_insts(_ModuleInfo, _ModuleParams, _Context, _InstVarSet,
+        _ParentInsts, [], !Specs).
+check_mutable_insts(ModuleInfo, ModuleParams, Context, InstVarSet,
+        ParentInsts, [Inst | Insts], !Specs) :-
+    check_mutable_inst(ModuleInfo, ModuleParams, Context, InstVarSet,
+        ParentInsts, Inst, !Specs),
+    check_mutable_insts(ModuleInfo, ModuleParams, Context, InstVarSet,
+        ParentInsts, Insts, !Specs).
 
 %---------------------%
 

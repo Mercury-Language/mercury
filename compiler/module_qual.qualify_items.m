@@ -1151,7 +1151,10 @@ qualify_inst_name(InInt, ErrorContext, InstName0, InstName,
             SymName0 = unqualified("")
         then
             report_invalid_user_inst(SymName0, Insts, ErrorContext, !Specs),
-            mq_info_set_found_undef_inst(!Info),
+            InstCtor = inst_ctor(SymName0, list.length(Insts0)),
+            mq_info_get_undef_insts(!.Info, UndefInsts0),
+            set_tree234.insert(InstCtor, UndefInsts0, UndefInsts),
+            mq_info_set_undef_insts(UndefInsts, !Info),
             SymName = SymName0
         else
             list.length(Insts0, Arity),

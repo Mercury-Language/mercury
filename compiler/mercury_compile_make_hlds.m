@@ -82,6 +82,7 @@
 :- import_module char.
 :- import_module library.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module solutions.
 :- import_module string.
 
@@ -199,8 +200,8 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         Verbose, Stats, HLDS0, !IO),
 
     ( if
-        MQUndefTypes = did_not_find_undef_type,
-        MQUndefTypeClasses = did_not_find_undef_typeclass,
+        set_tree234.is_empty(MQUndefTypes),
+        set_tree234.is_empty(MQUndefTypeClasses),
         EventSetErrors = no,
         ExpandErrors = no,
         MakeHLDSFoundInvalidType = did_not_find_invalid_type
@@ -210,8 +211,8 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         UndefTypes = yes
     ),
     ( if
-        MQUndefInsts = did_not_find_undef_inst,
-        MQUndefModes = did_not_find_undef_mode,
+        set_tree234.is_empty(MQUndefInsts),
+        set_tree234.is_empty(MQUndefModes),
         MakeHLDSFoundInvalidInstOrMode = did_not_find_invalid_inst_or_mode
     then
         UndefModes = no

@@ -1,7 +1,6 @@
 bad_mutable.m:009: Error: `:- mutable' declaration in module interface.
 bad_mutable.m:017: In declaration for mutable `not_a_type':
 bad_mutable.m:017:   error: undefined type `no_type'/0.
-bad_mutable.m:019: Error: the inst `special_ground' is not defined.
 bad_mutable.m:019: In declaration for mutable `not_an_inst':
 bad_mutable.m:019:   error: undefined inst `special_ground'/0.
 bad_mutable.m:021: Error in `:- mutable' declaration:

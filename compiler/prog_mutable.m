@@ -25,11 +25,13 @@
 
 :- import_module cord.
 :- import_module list.
+:- import_module set_tree234.
 
 :- type module_params
     --->    module_params(
                 mp_globals          :: globals,
                 mp_module_name      :: sym_name,
+                mp_undef_inst_ctors :: set_tree234(inst_ctor),
                 mp_type_name_func   :: type_foreign_name_func
             ).
 

@@ -131,6 +131,7 @@
 
 :- import_module assoc_list.
 :- import_module require.
+:- import_module set.
 
 % This want efficient retrieval of all the modules which define an id
 % with a certain name and arity. We therefore implement an id_set as a
@@ -248,7 +249,7 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
         mq_info_get_should_report_errors(!.Info, ReportErrors),
         (
             ReportErrors = should_report_errors,
-            mq_info_record_undef_mq_id(IdType, !Info),
+            mq_info_record_undef_mq_id(IdType, Id0, !Info),
 
             mq_info_get_this_module(!.Info, ThisModuleName),
             id_set_search_sym(IdSet, SymName0, PossibleArities),
@@ -276,7 +277,7 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
         mq_info_get_should_report_errors(!.Info, ReportErrors),
         (
             ReportErrors = should_report_errors,
-            mq_info_record_undef_mq_id(IdType, !Info),
+            mq_info_record_undef_mq_id(IdType, Id0, !Info),
             NonUsableModuleNames = IntMismatches ++ QualMismatches,
             report_ambiguous_match(ErrorContext, Id0, IdType,
                 Matches, NonUsableModuleNames, !Specs)

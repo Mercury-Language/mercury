@@ -15,7 +15,7 @@
     ;       [T | list(T)].
 
 :- mutable(not_a_type, no_type, 0, ground, [untrailed]).
-% XXX We should get one error message for this, not two.
+
 :- mutable(not_an_inst, int, 0, special_ground, [untrailed]).
 
 :- mutable(bad_attribute, int, 0, ground, [untrailed, bad_attrib]).

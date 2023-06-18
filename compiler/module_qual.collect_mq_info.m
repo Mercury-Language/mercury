@@ -50,6 +50,7 @@
 :- import_module one_or_more.
 :- import_module one_or_more_map.
 :- import_module require.
+:- import_module set_tree234.
 :- import_module string.
 :- import_module term.
 
@@ -140,12 +141,12 @@ collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
 
 :- pred collect_mq_info_in_src_avail_map_entry(module_section::in,
     module_name::in, one_or_more(prog_context)::in,
-    set(module_name)::in, set(module_name)::out,
+    set_tree234(module_name)::in, set_tree234(module_name)::out,
     module_names_contexts::in, module_names_contexts::out) is det.
 
 collect_mq_info_in_src_avail_map_entry(Section, ModuleName, Contexts,
         !ImportedModules, !UnusedIntModules) :-
-    set.insert(ModuleName, !ImportedModules),
+    set_tree234.insert(ModuleName, !ImportedModules),
     (
         Section = ms_interface,
         % Most of the time, ModuleName does not occur in !.UnusedIntModules.
@@ -708,16 +709,16 @@ collect_mq_info_in_int_incl_context(IntPermissions, ModuleName, !Modules) :-
     id_set_insert(IntPermissions, mq_id(ModuleName, Arity), !Modules).
 
 :- pred collect_mq_info_in_int0_import_or_use(module_name::in,
-    set(module_name)::in, set(module_name)::out) is det.
+    set_tree234(module_name)::in, set_tree234(module_name)::out) is det.
 
 collect_mq_info_in_int0_import_or_use(ModuleName, !ImportedModules) :-
-    set.insert(ModuleName, !ImportedModules).
+    set_tree234.insert(ModuleName, !ImportedModules).
 
 :- pred collect_mq_info_in_int3_import(module_name::in,
-    set(module_name)::in, set(module_name)::out) is det.
+    set_tree234(module_name)::in, set_tree234(module_name)::out) is det.
 
 collect_mq_info_in_int3_import(ModuleName, !ImportedModules) :-
-    set.insert(ModuleName, !ImportedModules).
+    set_tree234.insert(ModuleName, !ImportedModules).
 
 :- func item_type_defn_info_to_mq_id(item_type_defn_info) = mq_id.
 
@@ -753,7 +754,7 @@ collect_mq_info_in_item_typeclass(Permissions, ItemTypeClass, !Info) :-
 collect_mq_info_in_item_instance(ItemInstance, !Info) :-
     InstanceModule = ItemInstance ^ ci_module_containing_instance,
     mq_info_get_imported_instance_modules(!.Info, ImportedInstanceModules0),
-    set.insert(InstanceModule,
+    set_tree234.insert(InstanceModule,
         ImportedInstanceModules0, ImportedInstanceModules),
     mq_info_set_imported_instance_modules(ImportedInstanceModules, !Info).
 
@@ -764,10 +765,11 @@ collect_mq_info_in_item_promise(InInt, ItemPromise, !Info) :-
     ItemPromise = item_promise_info(_PromiseType, Goal, _ProgVarSet,
         _UnivVars, _Context, _SeqNum),
     collect_used_modules_in_promise_goal(Goal,
-        set.init, UsedModuleNames, no, FoundUnqual),
+        set_tree234.init, UsedModuleNames, no, FoundUnqual),
     (
         FoundUnqual = no,
-        set.fold(mq_info_set_module_used(InInt), UsedModuleNames, !Info)
+        set_tree234.fold(mq_info_set_module_used(InInt),
+            UsedModuleNames, !Info)
     ;
         % Any unqualified symbol in the promise might come from *any* of
         % the imported modules. There is no way for us to tell which ones,
@@ -784,7 +786,8 @@ collect_mq_info_in_item_promise(InInt, ItemPromise, !Info) :-
     % in Goal, set !Success to no.
     %
 :- pred collect_used_modules_in_promise_goal(goal::in,
-    set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
+    set_tree234(module_name)::in, set_tree234(module_name)::out,
+    bool::in, bool::out) is det.
 
 collect_used_modules_in_promise_goal(Goal, !UsedModuleNames, !FoundUnqual) :-
     (
@@ -876,7 +879,7 @@ collect_used_modules_in_promise_goal(Goal, !UsedModuleNames, !FoundUnqual) :-
         Goal = call_expr(_, SymName, ArgTerms0, _Purity),
         (
             SymName = qualified(ModuleName, _),
-            set.insert(ModuleName, !UsedModuleNames)
+            set_tree234.insert(ModuleName, !UsedModuleNames)
         ;
             SymName = unqualified(_),
             !:FoundUnqual = yes
@@ -894,7 +897,8 @@ collect_used_modules_in_promise_goal(Goal, !UsedModuleNames, !FoundUnqual) :-
     % Performs collect_used_modules_in_promise_goal on a list of goals.
     %
 :- pred collect_used_modules_in_promise_goals(list(goal)::in,
-    set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
+    set_tree234(module_name)::in, set_tree234(module_name)::out,
+    bool::in, bool::out) is det.
 
 collect_used_modules_in_promise_goals([], !UsedModuleNames, !FoundUnqual).
 collect_used_modules_in_promise_goals([Goal | Goals],
@@ -905,7 +909,8 @@ collect_used_modules_in_promise_goals([Goal | Goals],
         !UsedModuleNames, !FoundUnqual).
 
 :- pred collect_used_modules_in_promise_catch(catch_expr::in,
-    set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
+    set_tree234(module_name)::in, set_tree234(module_name)::out,
+    bool::in, bool::out) is det.
 
 collect_used_modules_in_promise_catch(CatchExpr,
         !UsedModuleNames, !FoundUnqual) :-
@@ -919,13 +924,14 @@ collect_used_modules_in_promise_catch(CatchExpr,
     % in Term is unqualified.
     %
 :- pred collect_used_modules_in_term(term::in,
-    set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
+    set_tree234(module_name)::in, set_tree234(module_name)::out,
+    bool::in, bool::out) is det.
 
 collect_used_modules_in_term(Term, !UsedModuleNames, !FoundUnqual) :-
     ( if try_parse_sym_name_and_args(Term, SymName, ArgTerms) then
         (
             SymName = qualified(ModuleName, _),
-            set.insert(ModuleName, !UsedModuleNames)
+            set_tree234.insert(ModuleName, !UsedModuleNames)
         ;
             SymName = unqualified(_),
             !:FoundUnqual = yes
@@ -936,7 +942,8 @@ collect_used_modules_in_term(Term, !UsedModuleNames, !FoundUnqual) :-
     ).
 
 :- pred collect_used_modules_in_terms(list(term)::in,
-    set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
+    set_tree234(module_name)::in, set_tree234(module_name)::out,
+    bool::in, bool::out) is det.
 
 collect_used_modules_in_terms([], !UsedModuleNames, !FoundUnqual).
 collect_used_modules_in_terms([Term | Terms],

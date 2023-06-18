@@ -86,6 +86,7 @@
 
 :- import_module list.
 :- import_module maybe.
+:- import_module set_tree234.
 
 %---------------------------------------------------------------------------%
 
@@ -117,8 +118,8 @@
 :- pred module_qualify_aug_comp_unit(globals::in,
     aug_compilation_unit::in, aug_compilation_unit::out,
     event_spec_map::in, event_spec_map::out, string::in, mq_info::out,
-    maybe_found_undef_type::out, maybe_found_undef_inst::out,
-    maybe_found_undef_mode::out, maybe_found_undef_typeclass::out,
+    set_tree234(type_ctor)::out, set_tree234(inst_ctor)::out,
+    set_tree234(mode_ctor)::out, set_tree234(sym_name_arity)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred module_qualify_aug_make_int_unit(globals::in,
@@ -216,14 +217,14 @@
 
 :- pred mq_info_get_recompilation_info(mq_info::in,
     maybe(recompilation_info)::out) is det.
-:- pred mq_info_get_found_undef_type(mq_info::in,
-    maybe_found_undef_type::out) is det.
-:- pred mq_info_get_found_undef_inst(mq_info::in,
-    maybe_found_undef_inst::out) is det.
-:- pred mq_info_get_found_undef_mode(mq_info::in,
-    maybe_found_undef_mode::out) is det.
-:- pred mq_info_get_found_undef_typeclass(mq_info::in,
-    maybe_found_undef_typeclass::out) is det.
+:- pred mq_info_get_undef_types(mq_info::in,
+    set_tree234(type_ctor)::out) is det.
+:- pred mq_info_get_undef_insts(mq_info::in,
+    set_tree234(inst_ctor)::out) is det.
+:- pred mq_info_get_undef_modes(mq_info::in,
+    set_tree234(mode_ctor)::out) is det.
+:- pred mq_info_get_undef_typeclasses(mq_info::in,
+    set_tree234(sym_name_arity)::out) is det.
 :- pred mq_info_get_suppress_found_undef(mq_info::in,
     maybe_suppress_found_undef::out) is det.
 
@@ -254,7 +255,6 @@
 :- import_module map.
 :- import_module one_or_more.
 :- import_module pair.
-:- import_module set.
 
 %---------------------------------------------------------------------------%
 
@@ -284,10 +284,10 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
     qualify_event_specs(mq_not_used_in_interface, EventSpecFileName,
         EventSpecList0, EventSpecList, !Info, !Specs),
     map.from_assoc_list(EventSpecList, EventSpecMap),
-    mq_info_get_found_undef_type(!.Info, UndefTypes),
-    mq_info_get_found_undef_inst(!.Info, UndefInsts),
-    mq_info_get_found_undef_mode(!.Info, UndefModes),
-    mq_info_get_found_undef_typeclass(!.Info, UndefTypeClasses),
+    mq_info_get_undef_types(!.Info, UndefTypes),
+    mq_info_get_undef_insts(!.Info, UndefInsts),
+    mq_info_get_undef_modes(!.Info, UndefModes),
+    mq_info_get_undef_typeclasses(!.Info, UndefTypeClasses),
     maybe_report_qual_errors(Globals, !.Info, ModuleName, !Specs).
 
 %---------------------%
@@ -348,7 +348,7 @@ maybe_report_qual_errors(Globals, Info, ModuleName, !Specs) :-
     (
         ModuleExportsInstances = yes,
         mq_info_get_imported_instance_modules(Info, InstanceImports),
-        map.delete_list(set.to_sorted_list(InstanceImports),
+        map.delete_list(set_tree234.to_sorted_list(InstanceImports),
             UnusedImportsMap0, UnusedImportsMap)
     ;
         ModuleExportsInstances = no,
@@ -529,20 +529,20 @@ mq_info_set_module_used(InInt, ModuleName, !Info) :-
                 % to decide whether to add "No module named xyz has been
                 % imported" to error messages when we find a reference
                 % to an undefined type, inst, mode, pred etc.
-                mqsi_imported_modules           :: set(module_name),
+                mqsi_imported_modules           :: set_tree234(module_name),
 
                 % Modules from which `:- instance' declarations have
                 % been imported.
-                mqsi_imported_instance_modules  :: set(module_name),
+                mqsi_imported_instance_modules  :: set_tree234(module_name),
 
                 % Does this module export any type class instances?
                 mqsi_exported_instances_flag    :: bool,
 
-                % Are there any undefined types, insts, modes or typeclasses?
-                mqsi_found_undef_type           :: maybe_found_undef_type,
-                mqsi_found_undef_inst           :: maybe_found_undef_inst,
-                mqsi_found_undef_mode           :: maybe_found_undef_mode,
-                mqsi_found_undef_typeclass      :: maybe_found_undef_typeclass,
+                % What types, insts, modes or typeclasses are undefined?
+                mqsi_undef_types                :: set_tree234(type_ctor),
+                mqsi_undef_insts                :: set_tree234(inst_ctor),
+                mqsi_undef_modes                :: set_tree234(mode_ctor),
+                mqsi_undef_typeclasses          :: set_tree234(sym_name_arity),
 
                 % Do we want to suppress the recording of an undef type, inst,
                 % mode or typeclass, as such? We sometimes do, when the error
@@ -576,7 +576,7 @@ mq_info_set_module_used(InInt, ModuleName, !Info) :-
     maybe_should_report_errors::in, mq_info::out) is det.
 
 init_mq_info(Globals, ModuleName, ReportErrors, Info) :-
-    set.init(InstanceModules),
+    InstanceModules = set_tree234.init,
     ExportedInstancesFlag = no,
     globals.lookup_bool_option(Globals, warn_interface_imports_in_parents,
         WarnInterfaceImportsInParents),
@@ -600,13 +600,13 @@ init_mq_info(Globals, ModuleName, ReportErrors, Info) :-
     % implicitly imported modules, including private_builtin, but get
     % the names of those entities wrong, it is ok to tell them that the
     % affected module hasn't been (explicitly) imported.
-    set.list_to_set([mercury_public_builtin_module], ImportedOrUsedModules),
+    ImportedOrUsedModules =
+        set_tree234.make_singleton_set(mercury_public_builtin_module),
     SubInfo = mq_sub_info(ModuleName, Globals, ImportedOrUsedModules,
         InstanceModules, ExportedInstancesFlag,
-        did_not_find_undef_type, did_not_find_undef_inst,
-        did_not_find_undef_mode, did_not_find_undef_typeclass,
-        do_not_suppress_found_undef,
-        ReportErrors, WarnUnusedImportsInParents, 0),
+        set_tree234.init, set_tree234.init, set_tree234.init, set_tree234.init,
+        do_not_suppress_found_undef, ReportErrors,
+        WarnUnusedImportsInParents, 0),
 
     id_set_init(ModuleIdSet),
     id_set_init(TypeIdSet),
@@ -640,10 +640,10 @@ init_mq_info(Globals, ModuleName, ReportErrors, Info) :-
 
 :- pred mq_info_get_this_module(mq_info::in, module_name::out) is det.
 :- pred mq_info_get_globals(mq_info::in, globals::out) is det.
-:- pred mq_info_get_imported_modules(mq_info::in, set(module_name)::out)
-    is det.
+:- pred mq_info_get_imported_modules(mq_info::in,
+    set_tree234(module_name)::out) is det.
 :- pred mq_info_get_imported_instance_modules(mq_info::in,
-    set(module_name)::out) is det.
+    set_tree234(module_name)::out) is det.
 :- pred mq_info_get_exported_instances_flag(mq_info::in, bool::out) is det.
 % mq_info_get_type_error_flag is exported
 % mq_info_get_mode_error_flag is exported
@@ -677,14 +677,14 @@ mq_info_get_imported_instance_modules(Info, X) :-
     X = Info ^ mqi_sub_info ^ mqsi_imported_instance_modules.
 mq_info_get_exported_instances_flag(Info, X) :-
     X = Info ^ mqi_sub_info ^ mqsi_exported_instances_flag.
-mq_info_get_found_undef_type(Info, X) :-
-    X = Info ^ mqi_sub_info ^ mqsi_found_undef_type.
-mq_info_get_found_undef_inst(Info, X) :-
-    X = Info ^ mqi_sub_info ^ mqsi_found_undef_inst.
-mq_info_get_found_undef_mode(Info, X) :-
-    X = Info ^ mqi_sub_info ^ mqsi_found_undef_mode.
-mq_info_get_found_undef_typeclass(Info, X) :-
-    X = Info ^ mqi_sub_info ^ mqsi_found_undef_typeclass.
+mq_info_get_undef_types(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_undef_types.
+mq_info_get_undef_insts(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_undef_insts.
+mq_info_get_undef_modes(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_undef_modes.
+mq_info_get_undef_typeclasses(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_undef_typeclasses.
 mq_info_get_suppress_found_undef(Info, X) :-
     X = Info ^ mqi_sub_info ^ mqsi_suppress_found_undef.
 mq_info_get_should_report_errors(Info, X) :-
@@ -706,16 +706,20 @@ mq_info_get_should_warn_unused_imports_in_parents(Info, X) :-
     mq_info::in, mq_info::out) is det.
 % mq_info_get_recompilation_info is exported
 
-:- pred mq_info_set_imported_modules(set(module_name)::in,
+:- pred mq_info_set_imported_modules(set_tree234(module_name)::in,
     mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_imported_instance_modules(set(module_name)::in,
+:- pred mq_info_set_imported_instance_modules(set_tree234(module_name)::in,
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_exported_instances_flag(bool::in,
     mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_found_undef_type(mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_found_undef_inst(mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_found_undef_mode(mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_found_undef_typeclass(mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_undef_types(set_tree234(type_ctor)::in,
+    mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_undef_insts(set_tree234(inst_ctor)::in,
+    mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_undef_modes(set_tree234(mode_ctor)::in,
+    mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_undef_typeclasses(set_tree234(sym_name_arity)::in,
+    mq_info::in, mq_info::out) is det.
 
 mq_info_set_modules(X, !Info) :-
     !Info ^ mqi_modules := X.
@@ -738,18 +742,14 @@ mq_info_set_imported_instance_modules(X, !Info) :-
     !Info ^ mqi_sub_info ^ mqsi_imported_instance_modules := X.
 mq_info_set_exported_instances_flag(X, !Info) :-
     !Info ^ mqi_sub_info ^ mqsi_exported_instances_flag := X.
-mq_info_set_found_undef_type(!Info) :-
-    X = found_undef_type,
-    !Info ^ mqi_sub_info ^ mqsi_found_undef_type := X.
-mq_info_set_found_undef_inst(!Info) :-
-    X = found_undef_inst,
-    !Info ^ mqi_sub_info ^ mqsi_found_undef_inst := X.
-mq_info_set_found_undef_mode(!Info) :-
-    X = found_undef_mode,
-    !Info ^ mqi_sub_info ^ mqsi_found_undef_mode := X.
-mq_info_set_found_undef_typeclass(!Info) :-
-    X = found_undef_typeclass,
-    !Info ^ mqi_sub_info ^ mqsi_found_undef_typeclass := X.
+mq_info_set_undef_types(X, !Info) :-
+    !Info ^ mqi_sub_info ^ mqsi_undef_types := X.
+mq_info_set_undef_insts(X, !Info) :-
+    !Info ^ mqi_sub_info ^ mqsi_undef_insts := X.
+mq_info_set_undef_modes(X, !Info) :-
+    !Info ^ mqi_sub_info ^ mqsi_undef_modes := X.
+mq_info_set_undef_typeclasses(X, !Info) :-
+    !Info ^ mqi_sub_info ^ mqsi_undef_typeclasses := X.
 mq_info_set_suppress_found_undef(X, !Info) :-
     !Info ^ mqi_sub_info ^ mqsi_suppress_found_undef := X.
 
@@ -765,27 +765,40 @@ get_mq_debug_output_stream(Info, DebugStream, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mq_info_record_undef_mq_id(qual_id_kind::in,
+:- pred mq_info_record_undef_mq_id(qual_id_kind::in, mq_id::in,
     mq_info::in, mq_info::out) is det.
 
-mq_info_record_undef_mq_id(IdType, !Info) :-
+mq_info_record_undef_mq_id(IdType, Id, !Info) :-
     mq_info_get_suppress_found_undef(!.Info, SuppressFoundUndef),
     (
         SuppressFoundUndef = suppress_found_undef
     ;
         SuppressFoundUndef = do_not_suppress_found_undef,
+        Id = mq_id(SymName, Arity),
         (
             IdType = qual_id_type,
-            mq_info_set_found_undef_type(!Info)
+            TypeCtor = type_ctor(SymName, Arity),
+            mq_info_get_undef_types(!.Info, UndefTypes0),
+            set_tree234.insert(TypeCtor, UndefTypes0, UndefTypes),
+            mq_info_set_undef_types(UndefTypes, !Info)
         ;
             IdType = qual_id_inst,
-            mq_info_set_found_undef_inst(!Info)
+            InstCtor = inst_ctor(SymName, Arity),
+            mq_info_get_undef_insts(!.Info, UndefInsts0),
+            set_tree234.insert(InstCtor, UndefInsts0, UndefInsts),
+            mq_info_set_undef_insts(UndefInsts, !Info)
         ;
             IdType = qual_id_mode,
-            mq_info_set_found_undef_mode(!Info)
+            ModeCtor = mode_ctor(SymName, Arity),
+            mq_info_get_undef_modes(!.Info, UndefModes0),
+            set_tree234.insert(ModeCtor, UndefModes0, UndefModes),
+            mq_info_set_undef_modes(UndefModes, !Info)
         ;
             IdType = qual_id_class,
-            mq_info_set_found_undef_typeclass(!Info)
+            SNA = sym_name_arity(SymName, Arity),
+            mq_info_get_undef_typeclasses(!.Info, UndefTypeclasses0),
+            set_tree234.insert(SNA, UndefTypeclasses0, UndefTypeclasses),
+            mq_info_set_undef_typeclasses(UndefTypeclasses, !Info)
         )
     ).
 

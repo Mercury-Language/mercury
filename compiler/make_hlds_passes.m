@@ -96,6 +96,7 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module term_context.
 :- import_module term_subst.
 :- import_module varset.
@@ -351,7 +352,8 @@ parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     AllMutables = Mutables ++ SolverMutables,
     module_info_get_user_init_pred_target_names(!.ModuleInfo,
         InitPredTargetNames0),
-    implement_mutables_if_local(!.ModuleInfo, AllMutables,
+    mq_info_get_undef_insts(MQInfo0, MQUndefInsts0),
+    implement_mutables_if_local(!.ModuleInfo, MQUndefInsts0, AllMutables,
         MutablePredDecls, MutableClauses, MutableForeignProcs,
         MutableForeignDeclCodes, MutableForeignBodyCodes, FPEInfosCord1,
         InitPredTargetNames0, InitPredTargetNames1, !Specs),
@@ -558,13 +560,13 @@ parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         !QualInfo),
 
     qual_info_get_mq_info(!.QualInfo, MQInfo),
-    mq_info_get_found_undef_type(MQInfo, MQUndefType),
-    mq_info_get_found_undef_inst(MQInfo, MQUndefInst),
-    mq_info_get_found_undef_mode(MQInfo, MQUndefMode),
-    mq_info_get_found_undef_typeclass(MQInfo, MQUndefTypeClass),
+    mq_info_get_undef_types(MQInfo, MQUndefTypes),
+    mq_info_get_undef_insts(MQInfo, MQUndefInsts),
+    mq_info_get_undef_modes(MQInfo, MQUndefModes),
+    mq_info_get_undef_typeclasses(MQInfo, MQUndefTypeClasses),
     ( if
-        ( MQUndefType = found_undef_type
-        ; MQUndefTypeClass = found_undef_typeclass
+        ( set_tree234.is_non_empty(MQUndefTypes)
+        ; set_tree234.is_non_empty(MQUndefTypeClasses)
         )
     then
         !:FoundInvalidType = found_invalid_type
@@ -572,8 +574,8 @@ parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         true
     ),
     ( if
-        ( MQUndefInst = found_undef_inst
-        ; MQUndefMode = found_undef_mode
+        ( set_tree234.is_non_empty(MQUndefInsts)
+        ; set_tree234.is_non_empty(MQUndefModes)
         )
     then
         !:FoundInvalidInstOrMode = found_invalid_inst_or_mode

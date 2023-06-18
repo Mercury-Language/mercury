@@ -17,6 +17,8 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 
+:- import_module set.
+
 %---------------------------------------------------------------------------%
 %
 % Facilities for recording the contexts of errors.
@@ -261,7 +263,7 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         mq_info_get_this_module(Info, ThisModuleName),
         mq_info_get_imported_modules(Info, ImportedModuleNames),
         AvailModuleNames =
-            [ThisModuleName | set.to_sorted_list(ImportedModuleNames)],
+            [ThisModuleName | set_tree234.to_sorted_list(ImportedModuleNames)],
         module_name_matches_some(IdModuleName, AvailModuleNames) = no
     then
         % This used to say "The module IdModuleName has not been imported.".
