@@ -194,7 +194,7 @@ max_line_width(Lines) = MaxWidth :-
 :- pred acc_line_width(string::in, int::in, int::out) is det.
 
 acc_line_width(Line, !MaxWidth) :-
-    string.count_codepoints(Line, LineWidth),
+    string.count_code_points(Line, LineWidth),
     ( if LineWidth > !.MaxWidth then
         !:MaxWidth = LineWidth
     else
@@ -270,7 +270,7 @@ bottom_bubble_border(MaxLineWidth) =
 :- func normalize_line(int, string) = string.
 
 normalize_line(MaxLineWidth, Line) = NormalLine :-
-    string.count_codepoints(Line, LineWidth),
+    string.count_code_points(Line, LineWidth),
     NormalLine = Line ++ string.duplicate_char(' ', MaxLineWidth - LineWidth).
 
 %---------------------------------------------------------------------------%
@@ -394,25 +394,25 @@ special_option_handler(youthful_mode, none, OptionTable, Result) :-
     set_cow_mode("..", "  ", OptionTable, Result).
 special_option_handler(user_eyes, string(UserEyes), !.OptionTable,
         Result) :-
-    string.count_codepoints(UserEyes, NumEyeCodePoints),
+    string.count_code_points(UserEyes, NumEyeCodePoints),
     ( if NumEyeCodePoints < 1 then
         Eyes = "  "
     else if NumEyeCodePoints = 1 then
         Eyes = UserEyes ++ " "
     else
-        Eyes = string.left_by_codepoint(UserEyes, 2)
+        Eyes = string.left_by_code_point(UserEyes, 2)
     ),
     map.set(eyes_string, string(Eyes), !OptionTable),
     Result = ok(!.OptionTable).
 special_option_handler(user_tongue, string(UserTongue), !.OptionTable,
         Result) :-
-    string.count_codepoints(UserTongue, NumTongueCodePoints),
+    string.count_code_points(UserTongue, NumTongueCodePoints),
     ( if NumTongueCodePoints < 1 then
         Tongue = "  "
     else if NumTongueCodePoints = 1 then
         Tongue = UserTongue ++ " "
     else
-        Tongue = string.left_by_codepoint(UserTongue, 2)
+        Tongue = string.left_by_code_point(UserTongue, 2)
     ),
     map.set(tongue_string, string(Tongue), !OptionTable),
     Result = ok(!.OptionTable).
