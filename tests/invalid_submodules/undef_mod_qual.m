@@ -17,15 +17,15 @@ main(!IO) :-
 %-------------------------------------------------------------------------
 % foo is a submodule
 
-:- module foo.
+    :- module foo.
 
-:- interface.
-:- pred bletch(io::di, io::uo) is det.
+    :- interface.
+    :- pred bletch(io::di, io::uo) is det.
 
-:- implementation.
-bletch(!IO) :-
-    io.write_string("Hi There", !IO).
+    :- implementation.
+    bletch(!IO) :-
+        io.write_string("Hi There", !IO).
 
-:- end_module foo.
+    :- end_module foo.
 
 :- end_module undef_mod_qual.

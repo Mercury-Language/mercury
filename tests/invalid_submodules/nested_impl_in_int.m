@@ -25,8 +25,8 @@
     :- module nested_impl_in_int.child.
     :- implementation.
 
-        hello(!IO) :-
-            io.write_string("nested_impl_in_int.child.hello\n", !IO).
+    hello(!IO) :-
+        io.write_string("nested_impl_in_int.child.hello\n", !IO).
 
     :- end_module nested_impl_in_int:child.
 
@@ -34,18 +34,18 @@
 
     :- module nested_impl_in_int.child2.
     :- interface.
-        :- import_module io.
+    :- import_module io.
 
-        :- type foo
-            --->    bar
-            ;       baz(int).
+    :- type foo
+        --->    bar
+        ;       baz(int).
 
-        :- pred hello(io::di, io::uo) is det.
+    :- pred hello(io::di, io::uo) is det.
 
     :- implementation.
 
-        hello(!IO) :-
-            io.write_string("nested_impl_in_int.child2.hello\n", !IO).
+    hello(!IO) :-
+        io.write_string("nested_impl_in_int.child2.hello\n", !IO).
 
     :- end_module nested_impl_in_int.child2.
 
@@ -53,7 +53,7 @@
 
 %---------------------------------------------------------------------------%
 
-% now we're back in the parent module.
+% Here we are back in the parent module.
 
 :- import_module nested_impl_in_int.child.
 :- use_module nested_impl_in_int.child2.

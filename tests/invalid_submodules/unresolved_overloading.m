@@ -39,17 +39,18 @@ loud_and_annoying(_, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- module unresolved_overloading.sub.
-:- interface.
+    :- module unresolved_overloading.sub.
+    :- interface.
 
-:- import_module io.
+    :- import_module io.
 
-:- typeclass howler_monkey(T) where [].
+    :- typeclass howler_monkey(T) where [].
 
-:- pred loud_and_annoying(T::in, io::di, io::uo) is det <= howler_monkey(T).
+    :- pred loud_and_annoying(T::in, io::di, io::uo) is det
+        <= howler_monkey(T).
 
-:- implementation.
+    :- implementation.
 
-loud_and_annoying(_, !IO).
+    loud_and_annoying(_, !IO).
 
-:- end_module unresolved_overloading.sub.
+    :- end_module unresolved_overloading.sub.

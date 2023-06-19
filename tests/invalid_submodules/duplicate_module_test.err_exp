@@ -1,25 +1,45 @@
-duplicate_module.m:020: In module `duplicate_module':
-duplicate_module.m:020:   error: submodule `duplicate_module.child', declared
-duplicate_module.m:020:   here as a nested submodule, was previously declared
-duplicate_module.m:020:   to be a separate submodule.
-duplicate_module.m:018:   This is the location of that previous declaration.
-duplicate_module.m:041: In module `duplicate_module':
-duplicate_module.m:041:   error: submodule `duplicate_module.child2', declared
-duplicate_module.m:041:   here as a nested submodule, was previously declared
-duplicate_module.m:041:   to be a separate submodule.
-duplicate_module.m:039:   This is the location of that previous declaration.
-duplicate_module.m:062: In module `duplicate_module':
-duplicate_module.m:062:   error: submodule `duplicate_module.child3', declared
-duplicate_module.m:062:   here as a nested submodule, was previously declared
-duplicate_module.m:062:   to be a separate submodule.
-duplicate_module.m:060:   This is the location of that previous declaration.
-duplicate_module.m:094: In module `duplicate_module':
-duplicate_module.m:094:   error: submodule `duplicate_module.child4', included
-duplicate_module.m:094:   here as separate submodule, was previously declared
-duplicate_module.m:094:   to be a nested submodule.
-duplicate_module.m:081:   This is the location of that previous declaration.
-duplicate_module.m:099: In module `duplicate_module':
-duplicate_module.m:099:   error: submodule `duplicate_module.child5', included
-duplicate_module.m:099:   here as separate submodule, has already been declared
-duplicate_module.m:099:   to be a separate submodule.
-duplicate_module.m:098:   This is the location of that previous declaration.
+duplicate_module_test_helper_1.m:020: In module
+duplicate_module_test_helper_1.m:020:   `duplicate_module_test_helper_1':
+duplicate_module_test_helper_1.m:020:   error: submodule
+duplicate_module_test_helper_1.m:020:   `duplicate_module_test_helper_1.child',
+duplicate_module_test_helper_1.m:020:   declared here as a nested submodule,
+duplicate_module_test_helper_1.m:020:   was previously declared to be a
+duplicate_module_test_helper_1.m:020:   separate submodule.
+duplicate_module_test_helper_1.m:018:   This is the location of that previous
+duplicate_module_test_helper_1.m:018:   declaration.
+duplicate_module_test_helper_1.m:041: In module
+duplicate_module_test_helper_1.m:041:   `duplicate_module_test_helper_1':
+duplicate_module_test_helper_1.m:041:   error: submodule
+duplicate_module_test_helper_1.m:041:   `duplicate_module_test_helper_1.child2',
+duplicate_module_test_helper_1.m:041:   declared here as a nested submodule,
+duplicate_module_test_helper_1.m:041:   was previously declared to be a
+duplicate_module_test_helper_1.m:041:   separate submodule.
+duplicate_module_test_helper_1.m:039:   This is the location of that previous
+duplicate_module_test_helper_1.m:039:   declaration.
+duplicate_module_test_helper_1.m:062: In module
+duplicate_module_test_helper_1.m:062:   `duplicate_module_test_helper_1':
+duplicate_module_test_helper_1.m:062:   error: submodule
+duplicate_module_test_helper_1.m:062:   `duplicate_module_test_helper_1.child3',
+duplicate_module_test_helper_1.m:062:   declared here as a nested submodule,
+duplicate_module_test_helper_1.m:062:   was previously declared to be a
+duplicate_module_test_helper_1.m:062:   separate submodule.
+duplicate_module_test_helper_1.m:060:   This is the location of that previous
+duplicate_module_test_helper_1.m:060:   declaration.
+duplicate_module_test_helper_1.m:094: In module
+duplicate_module_test_helper_1.m:094:   `duplicate_module_test_helper_1':
+duplicate_module_test_helper_1.m:094:   error: submodule
+duplicate_module_test_helper_1.m:094:   `duplicate_module_test_helper_1.child4',
+duplicate_module_test_helper_1.m:094:   included here as separate submodule,
+duplicate_module_test_helper_1.m:094:   was previously declared to be a nested
+duplicate_module_test_helper_1.m:094:   submodule.
+duplicate_module_test_helper_1.m:081:   This is the location of that previous
+duplicate_module_test_helper_1.m:081:   declaration.
+duplicate_module_test_helper_1.m:099: In module
+duplicate_module_test_helper_1.m:099:   `duplicate_module_test_helper_1':
+duplicate_module_test_helper_1.m:099:   error: submodule
+duplicate_module_test_helper_1.m:099:   `duplicate_module_test_helper_1.child5',
+duplicate_module_test_helper_1.m:099:   included here as separate submodule,
+duplicate_module_test_helper_1.m:099:   has already been declared to be a
+duplicate_module_test_helper_1.m:099:   separate submodule.
+duplicate_module_test_helper_1.m:098:   This is the location of that previous
+duplicate_module_test_helper_1.m:098:   declaration.

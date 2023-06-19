@@ -13,7 +13,7 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module duplicate_module.
+:- import_module duplicate_module_test_helper_1.
 
 mainI(!IO) :-
-    duplicate_module.do_main(!IO).
+    duplicate_module_test_helper_1.do_main(!IO).
