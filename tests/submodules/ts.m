@@ -12,7 +12,7 @@
 :- module ts.
 :- interface.
 
-:- include_module tsub.
+:- include_module ts_helper_1.
 :- import_module io.
 
 :- pred main(io::di, io::uo) is det.

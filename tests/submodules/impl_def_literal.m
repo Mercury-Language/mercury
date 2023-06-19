@@ -125,51 +125,52 @@ fun_with_lines_2(!IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- module sub.
-:- interface.
+    :- module sub.
+    :- interface.
 
-:- pred in_submodule(io::di, io::uo) is det.
+    :- pred in_submodule(io::di, io::uo) is det.
 
-:- type tt(T)
-    --->    tt(T).
+    :- type tt(T)
+        --->    tt(T).
 
-:- instance tc(int, character, tt(T)).
-:- instance tc(string, string, string).
+    :- instance tc(int, character, tt(T)).
+    :- instance tc(string, string, string).
 
-:- implementation.
+    :- implementation.
 
-in_submodule(!IO) :-
-    io.write_string($module, !IO),
-    io.nl(!IO),
-    io.write_string($pred, !IO),
-    io.nl(!IO),
-    io.write_string($file, !IO),
-    io.nl(!IO),
-#10101
-    io.write_int($line, !IO),
-    io.nl(!IO).
-
-:- instance tc(int, character, tt(T)) where [
-    ( tc_p(_, _, _, !IO) :-
+    in_submodule(!IO) :-
+        io.write_string($module, !IO),
+        io.nl(!IO),
         io.write_string($pred, !IO),
-        io.nl(!IO)
-    ),
-    ( tc_f(_, _, _) = $pred )
-].
+        io.nl(!IO),
+        io.write_string($file, !IO),
+        io.nl(!IO),
+#10101
+        io.write_int($line, !IO),
+        io.nl(!IO).
 
-:- instance tc(string, string, string) where [
-    pred(tc_p/5) is string_p,
-    func(tc_f/3) is string_f
-].
+    :- instance tc(int, character, tt(T)) where [
+        ( tc_p(_, _, _, !IO) :-
+            io.write_string($pred, !IO),
+            io.nl(!IO)
+        ),
+        ( tc_f(_, _, _) = $pred )
+    ].
 
-:- pred string_p(string::in, string::in, string::in, io::di, io::uo) is det.
+    :- instance tc(string, string, string) where [
+        pred(tc_p/5) is string_p,
+        func(tc_f/3) is string_f
+    ].
 
-string_p(_, _, _, !IO) :-
-    io.write_string($pred, !IO),
-    io.nl(!IO).
+    :- pred string_p(string::in, string::in, string::in, io::di, io::uo)
+        is det.
 
-:- func string_f(string, string, string) = string.
+    string_p(_, _, _, !IO) :-
+        io.write_string($pred, !IO),
+        io.nl(!IO).
 
-string_f(_, _, _) = $pred.
+    :- func string_f(string, string, string) = string.
 
-:- end_module sub.
+    string_f(_, _, _) = $pred.
+
+    :- end_module sub.

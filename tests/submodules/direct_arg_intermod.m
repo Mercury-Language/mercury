@@ -2,10 +2,10 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% Test potential problems with direct argument type representation and
-% submodules.
+% A tricky situation for the direct argument type representation optimisation.
+%
 
-:- module direct_arg_parent.
+:- module direct_arg_intermod.
 :- interface.
 
 :- import_module io.
@@ -17,22 +17,18 @@
 
 :- implementation.
 
-:- include_module direct_arg_parent.direct_arg_parent_helper_1.
-:- import_module direct_arg_parent.direct_arg_parent_helper_1.
-
-:- type maybe_foo
-    --->    no
-    ;       not_possible(foo)
-    ;       forced(foo)
-    where direct_arg is [forced/1].
+:- import_module direct_arg_intermod_helper_1.
 
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    M1 = not_possible(foo(one, 1)),
-    M2 = forced(foo(one, 2)),
-    direct_arg_parent_helper_1.write_maybe_foo(M1, !IO),
-    direct_arg_parent_helper_1.write_maybe_foo(M2, !IO).
+    M1 = mk_maybe_inline(one, 1),
+    write_maybe_inline(M1, !IO),
+    write_maybe_no_inline(M1, !IO),
+
+    M2 = mk_maybe_no_inline(one, 2),
+    write_maybe_inline(M2, !IO),
+    write_maybe_no_inline(M2, !IO).
 
 :- func one = int.
 :- pragma no_inline(one/0).

@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- include_module mutable_child.
+:- include_module mutable_parent_helper_1.
 
 :- pred main(io::di, io::uo) is det.
 
@@ -18,16 +18,16 @@
 :- import_module list.
 :- import_module string.
 
-:- import_module mutable_parent.mutable_child.
-:- import_module mutable_parent.mutable_child.mutable_grandchild.
+:- import_module mutable_parent.mutable_parent_helper_1.
+:- import_module mutable_parent.mutable_parent_helper_1.mutable_parent_helper_2.
 
 :- mutable(parent_global, int, 100, ground,
     [untrailed, attach_to_io_state]).
 
 main(!IO) :-
     mutable_parent.run_parent(!IO),
-    mutable_parent.mutable_child.run_child(!IO),
-    mutable_parent.mutable_child.mutable_grandchild.run_grandchild(!IO),
+    mutable_parent.mutable_parent_helper_1.run_child(!IO),
+    mutable_parent.mutable_parent_helper_1.mutable_parent_helper_2.run_grandchild(!IO),
     io.write_string("Back in parent ...\n", !IO),
     get_parent_global(ParentGlobal, !IO),
     io.format("    parent_global = %d\n", [i(ParentGlobal)], !IO).

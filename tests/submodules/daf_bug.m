@@ -3,8 +3,8 @@
 %---------------------------------------------------------------------------%
 %
 % Rotd-2011-11-21 (and a bit before) apply the direct arg functor optimisation
-% to the outer_public/0 type in the daf_bug_sub submodule but not in its
-% parent, daf_bug_parent, module.
+% to the outer_public/0 type in the daf_bug_helper_2 submodule but not in its
+% parent module, daf_bug_helper_1,
 % "Parent Value" and "Child Value" below should be identical.
 %
 
@@ -17,8 +17,8 @@
 
 :- implementation.
 
-:- import_module daf_bug_parent.
-:- import_module daf_bug_parent.daf_bug_sub.
+:- import_module daf_bug_helper_1.
+:- import_module daf_bug_helper_1.daf_bug_helper_2.
 
 main(!IO) :-
     io.write_string("Parent Value = ", !IO),

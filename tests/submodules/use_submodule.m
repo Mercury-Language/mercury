@@ -3,6 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % Test that we can use both nested and separate sub-modules.
+%
 
 :- module use_submodule.
 
@@ -14,22 +15,22 @@
 
 :- implementation.
 
-:- import_module include_parent.
-:- import_module include_parent.nested.
-:- import_module include_parent.separate.
-:- import_module include_parent.separate.nested.
-:- use_module    include_parent.separate2.
-:- use_module    include_parent.separate2.nested.
+:- import_module use_submodule_helper_1.
+:- import_module use_submodule_helper_1.nested.
+:- import_module use_submodule_helper_1.use_submodule_helper_2.
+:- import_module use_submodule_helper_1.use_submodule_helper_2.nested.
+:- use_module    use_submodule_helper_1.use_submodule_helper_3.
+:- use_module    use_submodule_helper_1.use_submodule_helper_3.nested.
 
 main(!IO) :-
-    include_parent.hello(!IO),
-    include_parent.nested.hello(!IO),
+    use_submodule_helper_1.hello(!IO),
+    use_submodule_helper_1.nested.hello(!IO),
     nested.hello(!IO),
-    include_parent.separate.hello(!IO),
-    separate.hello(!IO),
-    include_parent.separate.hello2(!IO),
-    separate.hello2(!IO),
+    use_submodule_helper_1.use_submodule_helper_2.hello(!IO),
+    use_submodule_helper_2.hello(!IO),
+    use_submodule_helper_1.use_submodule_helper_2.hello2(!IO),
+    use_submodule_helper_2.hello2(!IO),
     hello2(!IO),
     hello3(!IO),
-    include_parent.separate2.hello(!IO),
-    include_parent.separate2.nested.hello(!IO).
+    use_submodule_helper_1.use_submodule_helper_3.hello(!IO),
+    use_submodule_helper_1.use_submodule_helper_3.nested.hello(!IO).

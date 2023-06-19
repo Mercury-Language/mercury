@@ -1,0 +1,15 @@
+parent_t1.parent_t1_helper_1.hello
+parent_t1.parent_t1_helper_1.hello
+parent_t1.parent_t1_helper_1.hello
+parent_t1.parent_t1_helper_2.hello
+parent_t1.parent_t1_helper_2.hello
+t1 = parent_t1.parent_t1_helper_1.foo
+t2 = parent_t1.parent_t1_helper_1.foo
+t3 = parent_t1.parent_t1_helper_1.foo
+t4 = parent_t1.parent_t1_helper_2.foo
+t5 = parent_t1.parent_t1_helper_2.foo
+has_type_t1 = bar
+has_type_t2 = bar
+has_type_t3 = bar
+has_type_t4 = bar
+has_type_t5 = bar

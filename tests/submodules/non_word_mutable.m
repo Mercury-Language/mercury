@@ -1,7 +1,10 @@
+%---------------------------------------------------------------------------%
 % vim: ft=mercury sw=4 ts=4 expandtab
+%---------------------------------------------------------------------------%
 %
 % This regression test is an expanded version of the program files by Greg Duck
 % in a bug report on Feb 22 2006.
+%
 
 :- module non_word_mutable.
 
@@ -13,9 +16,9 @@
 
 :- implementation.
 
-:- include_module non_word_mutable.child.
+:- include_module non_word_mutable.non_word_mutable_helper_1.
 
-:- import_module non_word_mutable.child.
+:- import_module non_word_mutable.non_word_mutable_helper_1.
 :- import_module float.
 
 :- type c
@@ -45,8 +48,6 @@ public static class coord {
 ").
 
 :- func new_coord(int, int) = coord.
-:- func x(coord) = int.
-:- func y(coord) = int.
 
 :- pragma foreign_proc(c,
     new_coord(X::in, Y::in) = (C::out),
@@ -56,21 +57,6 @@ public static class coord {
     C->x = X;
     C->y = Y;
 ").
-
-:- pragma foreign_proc(c,
-    x(C::in) = (X::out),
-    [will_not_call_mercury, promise_pure],
-"
-    X = C->x;
-").
-
-:- pragma foreign_proc(c,
-    y(C::in) = (Y::out),
-    [will_not_call_mercury, promise_pure],
-"
-    Y = C->y;
-").
-
 :- pragma foreign_proc("C#",
     new_coord(X::in, Y::in) = (C::out),
     [will_not_call_mercury, promise_pure],
@@ -79,21 +65,6 @@ public static class coord {
     C.x = X;
     C.y = Y;
 ").
-
-:- pragma foreign_proc("C#",
-    x(C::in) = (X::out),
-    [will_not_call_mercury, promise_pure],
-"
-    X = C.x;
-").
-
-:- pragma foreign_proc("C#",
-    y(C::in) = (Y::out),
-    [will_not_call_mercury, promise_pure],
-"
-    Y = C.y;
-").
-
 :- pragma foreign_proc("Java",
     new_coord(X::in, Y::in) = (C::out),
     [will_not_call_mercury, promise_pure],
@@ -103,6 +74,20 @@ public static class coord {
     C.y = Y;
 ").
 
+:- func x(coord) = int.
+
+:- pragma foreign_proc(c,
+    x(C::in) = (X::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = C->x;
+").
+:- pragma foreign_proc("C#",
+    x(C::in) = (X::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = C.x;
+").
 :- pragma foreign_proc("Java",
     x(C::in) = (X::out),
     [will_not_call_mercury, promise_pure],
@@ -110,6 +95,20 @@ public static class coord {
     X = C.x;
 ").
 
+:- func y(coord) = int.
+
+:- pragma foreign_proc(c,
+    y(C::in) = (Y::out),
+    [will_not_call_mercury, promise_pure],
+"
+    Y = C->y;
+").
+:- pragma foreign_proc("C#",
+    y(C::in) = (Y::out),
+    [will_not_call_mercury, promise_pure],
+"
+    Y = C.y;
+").
 :- pragma foreign_proc("Java",
     y(C::in) = (Y::out),
     [will_not_call_mercury, promise_pure],

@@ -1,0 +1,15 @@
+nested_t1.child.hello
+nested_t1.child.hello
+nested_t1.child.hello
+nested_t1.child2.hello
+nested_t1.child2.hello
+t1 = nested_t1.child.foo
+t2 = nested_t1.child.foo
+t3 = nested_t1.child.foo
+t4 = nested_t1.child2.foo
+t5 = nested_t1.child2.foo
+has_type_t1 = bar
+has_type_t2 = bar
+has_type_t3 = bar
+has_type_t4 = bar
+has_type_t5 = bar

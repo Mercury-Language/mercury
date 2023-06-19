@@ -12,8 +12,8 @@
 
 :- import_module io.
 
-:- include_module solvers.
-:- include_module generic_search.
+:- include_module g12_fe_bug_helper_1.
+:- include_module g12_fe_bug_helper_2.
 
 :- pred main(io::di, io::uo) is det.
 

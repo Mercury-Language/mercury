@@ -12,7 +12,7 @@
 :- module sm_exp_bug.
 :- interface.
 
-:- include_module sm_exp_bug.child.
+:- include_module sm_exp_bug.sm_exp_bug_helper_1.
 
 :- import_module io.
 
@@ -32,7 +32,6 @@ main(!IO) :-
     WRITE_HELLO();
     IO = IO0;
 ").
-
 :- pragma foreign_proc("C#",
     call_foreign(IO0::di, IO::uo),
     [may_call_mercury, promise_pure],
@@ -40,7 +39,6 @@ main(!IO) :-
     WRITE_HELLO();
     IO = IO0;
 ").
-
 :- pragma foreign_proc("Java",
     call_foreign(IO0::di, IO::uo),
     [may_call_mercury, promise_pure],
@@ -49,10 +47,10 @@ main(!IO) :-
     IO = IO0;
 ").
 
+:- pred write_hello(io::di, io::uo) is det.
 :- pragma foreign_export("C", write_hello(di, uo), "WRITE_HELLO").
 :- pragma foreign_export("C#", write_hello(di, uo), "WRITE_HELLO").
 :- pragma foreign_export("Java", write_hello(di, uo), "WRITE_HELLO").
-:- pred write_hello(io::di, io::uo) is det.
 
 write_hello(!IO) :-
     io.write_string("Hello World!\n", !IO).

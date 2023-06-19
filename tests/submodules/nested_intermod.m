@@ -3,41 +3,35 @@
 %---------------------------------------------------------------------------%
 
 :- module nested_intermod.
-
 :- interface.
+:- import_module io.
 
-:- import_module int.
+:- pred xyzzy(int).
+:- mode xyzzy(in) is semidet.
 
-:- pred foo(int).
-:- mode foo(in) is semidet.
-
-    :- module sub.
-
-    :- interface.
-
-    :- pred fu(int).
-    :- mode fu(in) is semidet.
-    :- end_module sub.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
+:- import_module nested_intermod_helper_1.
 
-    :- module sub.
-    :- implementation.
+main(!IO) :-
+    test(1, !IO),
+    test(2, !IO),
+    test(3, !IO),
+    test(4, !IO),
+    test(5, !IO).
 
-    fu(X) :-
-        X < 4.
+:- pred test(int::in, io::di, io::uo) is det.
 
-    :- end_module sub.
+test(X, !IO) :-
+    io.print("X = ", !IO), io.print(X, !IO), io.print(": ", !IO),
+    ( if xyzzy(X) then
+        io.print_line("yes", !IO)
+    else
+        io.print_line("no", !IO)
+    ).
 
-:- pragma inline(foo/1).
-
-foo(X) :-
-    bar(X).
-
-:- pred bar(int).
-:- mode bar(in) is semidet.
-
-bar(X) :-
-    X > 3.
+xyzzy(X) :-
+    foo(X).
 
 :- end_module nested_intermod.

@@ -13,7 +13,7 @@
 
 :- pred main(io::di, io::uo) is det.
 
-:- include_module initialise_child.
+:- include_module initialise_parent_helper_1.
 
 :- implementation.
 

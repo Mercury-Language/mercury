@@ -2,21 +2,31 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% This test case tests the use of module names that are C/C++/Java
-% keywords, namely `int', `char', and `class'. These might cause
-% problems for back-ends targetting C/Java.
+% "Hello World" in Mercury, using nested modules.
 
-:- module class.
+:- module nested_t3.
 :- interface.
 :- import_module io.
 
 :- pred main(io::di, io::uo) is det.
 
+    :- module nested_t3.child.
+    :- interface.
+    :- import_module io.
+
+    :- type foo
+        --->    bar
+        ;       baz(int).
+
+    :- pred hello(io::di, io::uo) is det.
+
+    :- end_module nested_t3.child.
+
 :- implementation.
 
 %---------------------------------------------------------------------------%
 
-    :- module class.char.
+    :- module nested_t3.child2.
     :- interface.
     :- import_module io.
 
@@ -26,54 +36,48 @@
 
     :- pred hello(io::di, io::uo) is det.
 
-    :- implementation.
-
-    hello(!IO) :-
-        io.write_string("class.char.hello\n", !IO).
-
-    :- end_module class.char.
+    :- end_module nested_t3.child2.
 
 %---------------------------------------------------------------------------%
 
-    :- module class.int.
-    :- interface.
-    :- import_module io.
-
-    :- type foo
-        --->    bar
-        ;       baz(int).
-
-    :- pred hello(io::di, io::uo) is det.
-
+    :- module nested_t3.child.
     :- implementation.
 
     hello(!IO) :-
-        io.write_string("class.int.hello\n", !IO).
+        io.write_string("nested_t3.child.hello\n", !IO).
 
-    :- end_module class.int.
+    :- end_module nested_t3.child.
+
+    :- module nested_t3.child2.
+    :- implementation.
+
+    hello(!IO) :-
+        io.write_string("nested_t3.child2.hello\n", !IO).
+
+    :- end_module nested_t3.child2.
 
 %---------------------------------------------------------------------------%
 
-% Now we are back in the parent module.
+% Here we are back in the parent module.
 
-:- import_module class.char.
-:- use_module class.int.
-:- import_module type_desc.
-:- import_module std_util.
+:- import_module nested_t3.child.
+:- use_module nested_t3.child2.
 :- import_module require.
+:- import_module std_util.
+:- import_module type_desc.
 
-:- type t1 == class.char.foo.
-:- type t2 == char.foo.
+:- type t1 == nested_t3.child.foo.
+:- type t2 == child.foo.
 :- type t3 == foo.
-:- type t4 == class.int.foo.
-:- type t5 == class.int.foo.    % was int.foo, but that is not fully qualified
+:- type t4 == nested_t3.child2.foo.
+:- type t5 == nested_t3.child2.foo.
 
 main(!IO) :-
-    class.char.hello(!IO),
-    char.hello(!IO),
+    nested_t3.child.hello(!IO),
+    child.hello(!IO),
     hello(!IO),
-    class.int.hello(!IO),
-    int.hello(!IO),
+    nested_t3.child2.hello(!IO),
+    child2.hello(!IO),
 
     io.print("t1 = ", !IO), io.print_line(type_of(has_type_t1), !IO),
     io.print("t2 = ", !IO), io.print_line(type_of(has_type_t2), !IO),
@@ -93,10 +97,10 @@ main(!IO) :-
 :- func has_type_t4 = t4.
 :- func has_type_t5 = t5.
 
-has_type_t1 = class.char.bar.
-has_type_t2 = char.bar.
+has_type_t1 = nested_t3.child.bar.
+has_type_t2 = child.bar.
 has_type_t3 = bar.
-has_type_t4 = class.int.bar.
-has_type_t5 = int.bar.
+has_type_t4 = nested_t3.child2.bar.
+has_type_t5 = child2.bar.
 
-:- end_module class.
+:- end_module nested_t3.

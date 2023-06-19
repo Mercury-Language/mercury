@@ -15,14 +15,14 @@ MAYBE_J1 = -j1
 #-----------------------------------------------------------------------------#
 
 SUB_MODULE_PROGS = \
-	accessibility \
-	accessibility2 \
+	accessibility_t1 \
+	accessibility_t2 \
 	backquoted_qualified_ops \
 	class \
 	daf_bug \
 	deeply_nested \
-	direct_arg_cyclic1 \
-	direct_arg_intermod1 \
+	direct_arg_cyclic \
+	direct_arg_intermod \
 	direct_arg_parent \
 	dot_separator \
 	external_unification_pred \
@@ -31,13 +31,13 @@ SUB_MODULE_PROGS = \
 	impl_def_literal \
 	initialise_parent \
 	mutable_parent \
-	nested \
-	nested2 \
-	nested3 \
-	nested_intermod_main \
+	nested_t1 \
+	nested_t2 \
+	nested_t3 \
+	nested_intermod \
 	non_word_mutable \
-	parent \
-	parent2 \
+	parent_t1 \
+	parent_t2 \
 	sm_exp_bug \
 	use_submodule
 
