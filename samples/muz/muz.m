@@ -20,6 +20,7 @@
 :- import_module bool.
 :- import_module dict.
 :- import_module getopt.
+:- import_module io.environment.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
@@ -76,7 +77,7 @@ get_flags(Option_Table) = !:F :-
 
 main(!IO) :-
     io.set_exit_status(0, !IO),
-    io.get_environment_var("MUZ_TOOLKIT", MT, !IO),
+    io.environment.get_environment_var("MUZ_TOOLKIT", MT, !IO),
     ( MT = no, DT = "/usr/local/apps/muz/lib/toolkit.tex"
     ; MT = yes(DT)
     ),
