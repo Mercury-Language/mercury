@@ -17,7 +17,6 @@
 :- module curs.panel.
 :- interface.
 
-:- import_module bool.
 :- import_module int.
 :- import_module io.
 :- import_module string.

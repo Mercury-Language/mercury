@@ -163,6 +163,7 @@
 :- import_module pair.
 :- import_module string.
 :- import_module solutions.
+:- import_module term_subst.
 
 %---------------------------------------------------------------------------%
 
@@ -266,7 +267,7 @@ start_rule(Id, Rule) :-
             string.format("V%d", [i(I)], N),
             varset.name_var(V, N, VS0, VS)
         ), Vars, VarSet1, VarSet),
-    term.var_list_to_term_list(Vars, Args),
+    term_subst.var_list_to_term_list(Vars, Args),
     Context = context("foobie", 1),
     string.append(Name, "'", NewName),
     NewId = start,

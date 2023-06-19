@@ -58,13 +58,14 @@
 
 :- import_module char.
 :- import_module int.
+:- import_module io.environment.
 :- import_module list.
 :- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
 maybe_get_form(FormEntries, !IO) :-
-    io.get_environment_var("REQUEST_METHOD", REQUEST_METHOD, !IO),
+    io.environment.get_environment_var("REQUEST_METHOD", REQUEST_METHOD, !IO),
     ( if REQUEST_METHOD \= yes("POST") then
         FormEntries = no
     else
@@ -72,7 +73,7 @@ maybe_get_form(FormEntries, !IO) :-
     ).
 
 get_form(FormEntries, !IO) :-
-    io.get_environment_var("REQUEST_METHOD", REQUEST_METHOD, !IO),
+    io.environment.get_environment_var("REQUEST_METHOD", REQUEST_METHOD, !IO),
     ( if REQUEST_METHOD \= yes("POST") then
        cgi.error([
             "This script should be referenced with a ",
@@ -90,8 +91,8 @@ get_form(FormEntries, !IO) :-
     io::di, io::uo) is det.
 
 get_form_contents(FormEntries, !IO) :-
-    io.get_environment_var("CONTENT_TYPE", CONTENT_TYPE, !IO),
-    io.get_environment_var("CONTENT_LENGTH", CONTENT_LENGTH, !IO),
+    io.environment.get_environment_var("CONTENT_TYPE", CONTENT_TYPE, !IO),
+    io.environment.get_environment_var("CONTENT_LENGTH", CONTENT_LENGTH, !IO),
     ( if CONTENT_TYPE \= yes("application/x-www-form-urlencoded") then
         cgi.error([
             "This script can only be used to decode form results.\n",
