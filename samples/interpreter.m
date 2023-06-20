@@ -41,6 +41,7 @@
 :- import_module solutions.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module term_io.
 :- import_module varset.
 
@@ -241,7 +242,7 @@ unify_term_pair(TermX, TermY, !VarSet) :-
                 ( if VarX = VarY then
                     true
                 else
-                    TermY = term.variable(VarY, term.context_init),
+                    TermY = term.variable(VarY, term_context.dummy_context),
                     varset.bind_var(VarX, TermY, !VarSet)
                 )
             )
@@ -344,7 +345,7 @@ apply_rec_substitution(VarSet, Term0, Term) :-
             % Recursively apply the substitution to the replacement.
             apply_rec_substitution(VarSet, Replacement, Term)
         else
-            Term = term.variable(Var, context_init)
+            Term = term.variable(Var, term_context.dummy_context)
         )
     ;
         Term0 = term.functor(Name, ArgTerms0, Context),
@@ -391,7 +392,7 @@ database_assert_clause(VarSet, Term, Database, [Clause | Database]) :-
         Body = B
     else
         Head = Term,
-        term.context_init(Context),
+        Context = term_context.dummy_context,
         Body = term.functor(term.atom("true"), [], Context)
     ),
     Clause = clause(VarSet, Head, Body).
