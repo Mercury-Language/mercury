@@ -329,7 +329,6 @@
 
 :- type ext_lib
     --->    ext_lib_dollar_efsl
-    ;       ext_lib_dylib
     ;       ext_lib_lib
     ;       ext_lib_so.
 
@@ -1002,7 +1001,6 @@ is_current_dir_extension(ExtStr) :-
     ; ExtStr = ".lib"
     ; ExtStr = ".so"
     ; ExtStr = ".dll"
-    ; ExtStr = ".dylib"     % references can be generated only via options
     ; ExtStr = ".$(EXT_FOR_SHARED_LIB)"
     ; ExtStr = ".jar"
     ; ExtStr = ".init"
@@ -1432,10 +1430,8 @@ make_new_extension(ExtStr) = NewExt :-
             ),
             NewExt0 = newext_lib_gs(ExtLibGs)
         ;
-            % references to dylib can be generated only via options
             ( ExtStr = ".$(EXT_FOR_SHARED_LIB)",
                                     ExtLib = ext_lib_dollar_efsl
-            ; ExtStr = ".dylib",    ExtLib = ext_lib_dylib
             ; ExtStr = ".lib",      ExtLib = ext_lib_lib
             ; ExtStr = ".so",       ExtLib = ext_lib_so
             ),
@@ -2277,7 +2273,6 @@ ext_exec_gs_extension_dir(Globals, ext_exec_exec_opt, ExtStr, "bin") :-
 
 ext_lib_extension(ext_lib_dollar_efsl, ".$(EXT_FOR_SHARED_LIB)").
 ext_lib_extension(ext_lib_lib,          ".lib").
-ext_lib_extension(ext_lib_dylib,        ".dylib").
 ext_lib_extension(ext_lib_so,           ".so").
 
 :- pred ext_lib_gs_extension_dir(globals::in, ext_lib_gs::in,
