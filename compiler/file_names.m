@@ -641,6 +641,88 @@ module_name_to_source_file_name(ModuleName, SourceFileName, !IO) :-
 
 %---------------------------------------------------------------------------%
 
+:- pred newext_uses_option(newext::in) is semidet.
+
+newext_uses_option(Ext) :-
+    require_complete_switch [Ext]
+    (
+        ( Ext = newext_src
+        ; Ext = newext_analysis(_)
+        ; Ext = newext_bytecode(_)
+        ; Ext = newext_exec(_)
+        ; Ext = newext_int(_)
+        ; Ext = newext_lib(_)
+        ; Ext = newext_mh(_)
+        ; Ext = newext_mih(_)
+        ; Ext = newext_misc_gs(_)
+        ; Ext = newext_misc_ngs(_)
+        ; Ext = newext_mmake_fragment(_)
+        ; Ext = newext_mmake_target(_)
+        ; Ext = newext_opt(_)
+        ; Ext = newext_other(_)
+        ; Ext = newext_target_c_cs(_)
+        ; Ext = newext_target_date(_)
+        ; Ext = newext_target_init_c(_)
+        ; Ext = newext_target_java(_)
+        ; Ext = newext_user(_)
+        ; Ext = newext_user_ngs(_)
+        ),
+        fail
+    ;
+        Ext = newext_target_obj(ExtObj),
+        require_complete_switch [ExtObj]
+        (
+            ( ExtObj = ext_obj_dollar_o
+            ; ExtObj = ext_obj_dollar_efpo
+            ; ExtObj = ext_obj_o
+            ; ExtObj = ext_obj_pic_o
+            ),
+            fail
+        ;
+            ( ExtObj = ext_obj_obj_opt
+            ; ExtObj = ext_obj_pic_obj_opt
+            )
+        )
+    ;
+        Ext = newext_target_init_obj(ExtInitObj),
+        (
+            ( ExtInitObj = ext_init_obj_dollar_o
+            ; ExtInitObj = ext_init_obj_o
+            ; ExtInitObj = ext_init_obj_pic_o
+            ),
+            fail
+        ;
+            ( ExtInitObj = ext_init_obj_obj_opt
+            ; ExtInitObj = ext_init_obj_pic_obj_opt
+            )
+        )
+    ;
+        Ext = newext_exec_gs(ExtExecGs),
+        (
+            ( ExtExecGs = ext_exec_gs_noext
+            ; ExtExecGs = ext_exec_gs_bat
+            ),
+            fail
+        ;
+            ExtExecGs = ext_exec_exec_opt
+        )
+    ;
+        Ext = newext_lib_gs(ExtLibGs),
+        (
+            ( ExtLibGs = ext_lib_gs_dollar_a
+            ; ExtLibGs = ext_lib_gs_archive
+            ; ExtLibGs = ext_lib_gs_dll
+            ; ExtLibGs = ext_lib_gs_init
+            ; ExtLibGs = ext_lib_gs_jar
+            ),
+            fail
+        ;
+            ( ExtLibGs = ext_lib_gs_lib_opt
+            ; ExtLibGs = ext_lib_gs_sh_lib_opt
+            )
+        )
+    ).
+
 module_name_to_file_name(Globals, From, MkDir, Ext, NewExt,
         ModuleName, FileName, !IO) :-
     module_name_to_file_name_ext(Globals, From, do_not_search, MkDir,
@@ -649,7 +731,7 @@ module_name_to_file_name(Globals, From, MkDir, Ext, NewExt,
     (
         module_name_to_file_name_ext_new(Globals, From, do_not_search, MkDir,
             NewExt, ModuleName, NewFileName, !TIO),
-        ( if FileName = NewFileName then
+        ( if ( newext_uses_option(NewExt) ; FileName = NewFileName ) then
             true
         else
             ExtStr = string.string(Ext),
@@ -668,7 +750,7 @@ module_name_to_search_file_name(Globals, From, Ext, NewExt,
     (
         module_name_to_file_name_ext_new(Globals, From, do_search,
             do_not_create_dirs, NewExt, ModuleName, NewFileName, !TIO),
-        ( if FileName = NewFileName then
+        ( if ( newext_uses_option(NewExt) ; FileName = NewFileName ) then
             true
         else
             ExtStr = string.string(Ext),
@@ -693,7 +775,7 @@ module_name_to_lib_file_name(Globals, From, MkDir, Prefix, Ext, NewExt,
         FakeModuleName = unqualified(BaseNameNoExt),
         module_name_to_file_name_ext_new(Globals, From, do_not_search, MkDir,
             NewExt, FakeModuleName, NewFileName, !TIO),
-        ( if FileName = NewFileName then
+        ( if ( newext_uses_option(NewExt) ; FileName = NewFileName ) then
             true
         else
             ExtStr = string.string(Ext),
@@ -716,7 +798,7 @@ fact_table_file_name(Globals, From, MkDir, Ext, NewExt,
         FakeModuleName = unqualified(FactTableFileName),
         module_name_to_file_name_ext_new(Globals, From, do_not_search, MkDir,
             NewExt, FakeModuleName, NewFileName, !TIO),
-        ( if FileName = NewFileName then
+        ( if ( newext_uses_option(NewExt) ; FileName = NewFileName ) then
             true
         else
             ExtStr = string.string(Ext),
@@ -1000,12 +1082,6 @@ choose_subdir_name(Globals, ExtStr, SubDirName) :-
     then
         SubDirName = SubDirNamePrime
     else if
-        % _init.c, _init.cs, _init.o etc. files go in the cs, css, os etc
-        % subdirectories.
-        string.remove_prefix("_init.", ExtStr, ExtName)
-    then
-        SubDirName = ExtName ++ "s"
-    else if
         globals.lookup_string_option(Globals, library_extension, LibExt),
         globals.lookup_string_option(Globals, shared_library_extension,
             SharedLibExt),
@@ -1015,6 +1091,29 @@ choose_subdir_name(Globals, ExtStr, SubDirName) :-
         )
     then
         SubDirName = "lib"
+    else if
+        some [ObjExtStr] (
+            (
+                globals.lookup_string_option(Globals,
+                    object_file_extension, ObjExtStr)
+            ;
+                globals.lookup_string_option(Globals,
+                    pic_object_file_extension, ObjExtStr)
+            ),
+            (
+                ExtStr = ObjExtStr
+            ;
+                ExtStr = "_init" ++ ObjExtStr
+            )
+        )
+    then
+        SubDirName = "os"
+    else if
+        % _init.c, _init.cs, etc. files go in the cs, css, etc
+        % subdirectories.
+        string.remove_prefix("_init.", ExtStr, ExtName)
+    then
+        SubDirName = ExtName ++ "s"
     else if
         % The usual case: `*.foo' files go in the `foos' subdirectory.
         string.remove_prefix(".", ExtStr, ExtName)
