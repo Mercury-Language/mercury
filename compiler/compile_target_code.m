@@ -2011,6 +2011,7 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             globals.lookup_string_option(Globals, library_extension,
                 LibExtStr),
             LibOtherExt = other_ext(LibExtStr),
+            LibNewExt = newext_lib_gs(ext_lib_gs_lib_opt),
             globals.lookup_string_option(Globals, mercury_linkage,
                 MercuryOrCsharpLinkage)
         ;
@@ -2018,6 +2019,7 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             ; TargetType = csharp_library
             ),
             LibOtherExt = other_ext(".dll"),
+            LibNewExt = newext_lib_gs(ext_lib_gs_dll),
             MercuryOrCsharpLinkage = "csharp"
         ;
             ( TargetType = java_executable
@@ -2076,8 +2078,8 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
                 Parallel = no,
                 GCGrade = GCGrade2
             ),
-            link_lib_args(Globals, TargetType, StdLibDir, "", LibOtherExt,
-                GCGrade, StaticGCLibs, SharedGCLibs)
+            link_lib_args(Globals, TargetType, StdLibDir, "",
+                LibOtherExt, LibNewExt, GCGrade, StaticGCLibs, SharedGCLibs)
         ;
             GCMethod = gc_accurate,
             StaticGCLibs = "",
@@ -2094,14 +2096,16 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
         ;
             TraceEnabled = exec_trace_is_enabled,
             link_lib_args(Globals, TargetType, StdLibDir, GradeDir,
-                LibOtherExt, "mer_trace", StaticTraceLib, TraceLib),
+                LibOtherExt, LibNewExt, "mer_trace", StaticTraceLib, TraceLib),
             link_lib_args(Globals, TargetType, StdLibDir, GradeDir,
-                LibOtherExt, "mer_eventspec", StaticEventSpecLib,
-                EventSpecLib),
+                LibOtherExt, LibNewExt, "mer_eventspec",
+                StaticEventSpecLib, EventSpecLib),
             link_lib_args(Globals, TargetType, StdLibDir, GradeDir,
-                LibOtherExt, "mer_browser", StaticBrowserLib, BrowserLib),
+                LibOtherExt, LibNewExt, "mer_browser",
+                StaticBrowserLib, BrowserLib),
             link_lib_args(Globals, TargetType, StdLibDir, GradeDir,
-                LibOtherExt, "mer_mdbcomp", StaticMdbCompLib, MdbCompLib),
+                LibOtherExt, LibNewExt, "mer_mdbcomp",
+                StaticMdbCompLib, MdbCompLib),
             StaticTraceLibs = string.join_list(" ",
                 [StaticTraceLib, StaticEventSpecLib, StaticBrowserLib,
                 StaticMdbCompLib]),
@@ -2114,11 +2118,13 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
         (
             SourceDebug = yes,
             link_lib_args(Globals, TargetType, StdLibDir, GradeDir,
-                LibOtherExt, "mer_ssdb", StaticSsdbLib, SsdbLib),
+                LibOtherExt, LibNewExt, "mer_ssdb", StaticSsdbLib, SsdbLib),
             link_lib_args(Globals, TargetType, StdLibDir, GradeDir,
-                LibOtherExt, "mer_browser", StaticBrowserLib2, BrowserLib2),
+                LibOtherExt, LibNewExt, "mer_browser",
+                StaticBrowserLib2, BrowserLib2),
             link_lib_args(Globals, TargetType, StdLibDir, GradeDir,
-                LibOtherExt, "mer_mdbcomp", StaticMdbCompLib2, MdbCompLib2),
+                LibOtherExt, LibNewExt, "mer_mdbcomp",
+                StaticMdbCompLib2, MdbCompLib2),
             StaticSourceDebugLibs = string.join_list(" ",
                 [StaticSsdbLib, StaticBrowserLib2, StaticMdbCompLib2]),
             SharedSourceDebugLibs = string.join_list(" ",
@@ -2129,10 +2135,10 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             SharedSourceDebugLibs = ""
         ),
 
-        link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibOtherExt,
-            "mer_std", StaticStdLib, StdLib),
-        link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibOtherExt,
-            "mer_rt", StaticRuntimeLib, RuntimeLib),
+        link_lib_args(Globals, TargetType, StdLibDir, GradeDir,
+            LibOtherExt, LibNewExt, "mer_std", StaticStdLib, StdLib),
+        link_lib_args(Globals, TargetType, StdLibDir, GradeDir,
+            LibOtherExt, LibNewExt, "mer_rt", StaticRuntimeLib, RuntimeLib),
         ( if MercuryOrCsharpLinkage = "static" then
             StdLibs = string.join_list(" ", [
                 StaticTraceLibs,
@@ -2164,10 +2170,11 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
     ).
 
 :- pred link_lib_args(globals::in, linked_target_type::in, string::in,
-    string::in, other_ext::in, string::in, string::out, string::out) is det.
+    string::in, other_ext::in, newext::in, string::in,
+    string::out, string::out) is det.
 
-link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibOtherExt, Name,
-        StaticArg, SharedArg) :-
+link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibOtherExt, NewExt,
+        Name, StaticArg, SharedArg) :-
     (
         ( TargetType = executable
         ; TargetType = shared_library
@@ -2186,7 +2193,7 @@ link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibOtherExt, Name,
         unexpected($pred, string(TargetType))
     ),
     StaticLibName = LibPrefix ++ Name ++
-        other_extension_to_string(LibOtherExt),
+        extension_to_string(ext_other(LibOtherExt), NewExt),
     StaticArg = quote_shell_cmd_arg(StdLibDir/"lib"/GradeDir/StaticLibName),
     make_link_lib(Globals, TargetType, Name, SharedArg).
 
@@ -3262,8 +3269,10 @@ make_standalone_int_body(Globals, ProgressStream, ErrorStream,
     (
         MkInitCmdSucceeded = succeeded,
         get_object_code_type(Globals, executable, PIC),
-        pic_object_file_extension(Globals, PIC, ObjOtherExt, _, _),
-        ObjFileName = BaseName ++ other_extension_to_string(ObjOtherExt),
+        pic_object_file_extension(Globals, PIC, ObjOtherExt, NewExtObj, _),
+        Ext = ext_other(ObjOtherExt),
+        NewExt = newext_target_obj(NewExtObj),
+        ObjFileName = BaseName ++ extension_to_string(Ext, NewExt),
         do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
             CFileName, ObjFileName, CompileSucceeded, !IO),
         (

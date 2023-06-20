@@ -948,10 +948,11 @@ compile_fact_table_file(Globals, ProgressStream, ErrorStream,
         BaseName, O_FileName, Succeeded, !IO) :-
     get_linked_target_type(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
-    pic_object_file_extension(Globals, PIC, ObjOtherExt, _, _),
+    pic_object_file_extension(Globals, PIC, ObjOtherExt, NewExtObj, _),
     % XXX EXT
     C_FileName = BaseName ++ ".c",
-    O_FileName = BaseName ++ other_extension_to_string(ObjOtherExt),
+    O_FileName = BaseName ++ extension_to_string(ext_other(ObjOtherExt),
+        newext_target_obj(NewExtObj)),
     compile_target_code.do_compile_c_file(Globals, ProgressStream, ErrorStream,
         PIC, C_FileName, O_FileName, Succeeded, !IO).
 

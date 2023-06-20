@@ -800,7 +800,7 @@ find_and_read_analysis_file(Compiler, Globals, ParseEntry,
             MaybeDebugStream = no
         ;
             MaybeDebugStream = yes(DebugStream),
-            OtherExtStr = other_extension_to_string(OtherExt),
+            OtherExtStr = extension_to_string(ext_other(OtherExt), NewExt),
             io.format(DebugStream, "Couldn't find %s file for module %s: %s\n",
                 [s(OtherExtStr), s(sym_name_to_string(ModuleName)),
                 s(Message)], !IO)
