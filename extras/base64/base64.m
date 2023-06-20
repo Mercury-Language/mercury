@@ -103,7 +103,7 @@ static unsigned char alphabet[64] =
             // Invalidates the size of allocated memory.
 //          cols += 4;
 //          if (cols == 72) {
-//              putchar('\n');
+//              putchar('\\n');
 //              cols = 0;
 //          }
             bits = 0;
@@ -125,7 +125,7 @@ static unsigned char alphabet[64] =
             *base64_ptr++ = '=';
         }
 //      if (cols > 0) {
-//          putchar('\n');
+//          putchar('\\n');
 //      }
     }
 
