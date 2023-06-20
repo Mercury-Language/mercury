@@ -49,6 +49,8 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
+:- import_module term_int.
 :- import_module term_io.
 :- import_module varset.
 
@@ -547,11 +549,11 @@ write_state_actions(SS, End, StateActions, !IO) :-
     map.foldl(
         ( pred(Terminal::in, Action::in, !.IO::di, !:IO::uo) is det :-
             terminal_to_term(Terminal, End, Token),
-            term.context_init(Ctxt),
+            Ctxt = term_context.dummy_context,
             Term = functor(atom(Name),
                 [Token,
                 functor(atom(Kind), [], Ctxt),
-                int_to_decimal_term(Val, Ctxt)], Ctxt),
+                term_int.int_to_decimal_term(Val, Ctxt)], Ctxt),
             (
                 Action = shift(Val),
                 Kind = "shift"
@@ -575,7 +577,7 @@ terminal_to_term(epsilon, _, _) :-
 terminal_to_term(Name/Arity, _, Term) :-
     varset.init(V0),
     varset.new_vars(Arity, Vars, V0, _),
-    term.context_init(Ctxt),
+    Ctxt = term_context.dummy_context,
     list.map(
         ( pred(Var::in, T::out) is det :-
             T = variable(Var, Ctxt)
@@ -628,7 +630,7 @@ write_nonterminal_type(Ds, !IO) :-
             ),
             NTType = functor(atom(Name), Args, TC)
         ), Ds, NTTypes),
-    term.context_init(Ctxt),
+    Ctxt = term_context.dummy_context,
     varset.init(Varset),
     Type = disj(functor(atom("nonterminal"), [], Ctxt), NTTypes),
     Element = type(Type, Varset),
@@ -643,9 +645,9 @@ write_state_gotos(SS, StateActions, !IO) :-
     map.foldl(
         ( pred(NT::in, NS::in, !.IO::di, !:IO::uo) is det :-
             nonterminal_to_term(NT, Token),
-            term.context_init(Ctxt),
+            Ctxt = term_context.dummy_context,
             Term = functor(atom(Name),
-                [Token, int_to_decimal_term(NS, Ctxt)], Ctxt),
+                [Token, term_int.int_to_decimal_term(NS, Ctxt)], Ctxt),
             varset.init(Varset),
             term_io.write_term_nl(Varset, Term, !IO)
         ), StateActions, !IO),
@@ -658,7 +660,7 @@ nonterminal_to_term(start, _) :-
 nonterminal_to_term(Name/Arity, Term) :-
     varset.init(V0),
     varset.new_vars(Arity, Vars, V0, _),
-    term.context_init(Ctxt),
+    Ctxt = term_context.dummy_context,
     list.map(
         ( pred(Var::in, T::out) is det :-
             T = variable(Var, Ctxt)
@@ -681,7 +683,7 @@ write_parser(Where, NT, Decl, _TT, InAtom, OutAtom, !IO) :-
     varset.init(Varset0),
     mkstartargs(StartArity, [], StartArgs, Varset0, Varset),
     StartTerm = functor(atom(StartName), StartArgs, Ctxt),
-    term.context_init(Ctxt),
+    Ctxt = term_context.dummy_context,
     ParseResultType = type(disj(functor(atom("parse_result"), [], Ctxt),
         [OkayType, ErrorType]), DeclVarset),
     OkayType = functor(atom(StartName), DeclArgs, DeclCtxt),
@@ -767,7 +769,7 @@ mkstartargs(N, !Terms, !Varset) :-
     else
         string.format("V%d", [i(N)], VarName),
         varset.new_named_var(VarName, Var, !Varset),
-        Term = term.variable(Var, context_init),
+        Term = term.variable(Var, dummy_context),
         list.append([Term], !Terms),
         mkstartargs(N - 1, !Terms, !Varset)
     ).
@@ -845,7 +847,7 @@ reduce0(%s, S0, S, T0, T, U0, U) :-
                     [s(RnS), s(RedName), s(RedName), s(RedName),
                         s(InAtom), s(OutAtom)], !IO),
                 Rule = rule(RNt, Head, _, Body, Actions, Varset0, _C),
-                term.context_init(Ctxt),
+                Ctxt = term_context.dummy_context,
                 varset.new_named_var("M_St0", St0v, Varset0, Varset1),
                 St0 = variable(St0v, Ctxt),
                 varset.new_named_var("M_St1", St1v, Varset1, Varset2),
@@ -945,7 +947,7 @@ reduce0_error(State) :-
 mkstacks([], !St, !Sy, !VS).
 mkstacks([E0 | Es], !St, !Sy, !VS) :-
     varset.new_var(U, !VS),
-    term.context_init(Ctxt),
+    Ctxt = term_context.dummy_context,
     (
         E0 = terminal(ET),
         E = functor(atom("t"), [ET], Ctxt)
@@ -961,8 +963,7 @@ mkstacks([E0 | Es], !St, !Sy, !VS) :-
 
 mkactions([], !Term).
 mkactions([E | Es], !Term) :-
-    term.context_init(Ctxt),
-    !:Term = functor(atom(","), [E, !.Term], Ctxt),
+    !:Term = functor(atom(","), [E, !.Term], dummy_context),
     mkactions(Es, !Term).
 
 %---------------------------------------------------------------------------%

@@ -87,6 +87,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term_io.
+:- import_module term_vars.
 
 %---------------------------------------------------------------------------%
 
@@ -409,11 +410,11 @@ term_to_goal0("not", [A], _, not(Goal)) :-
 term_to_goal0("\\+", [A], _, not(Goal)) :-
     term_to_goal(A, Goal).
 term_to_goal0("some", [VarsTerm, GoalTerm], _, exists(Vars, Goal)) :-
-    vars(VarsTerm, Vars0),
+    vars_in_term(VarsTerm, Vars0),
     sort_and_remove_dups(Vars0, Vars),
     term_to_goal(GoalTerm, Goal).
 term_to_goal0("all", [VarsTerm, GoalTerm], _, forall(Vars, Goal)) :-
-    vars(VarsTerm, Vars0),
+    vars_in_term(VarsTerm, Vars0),
     sort_and_remove_dups(Vars0, Vars),
     term_to_goal(GoalTerm, Goal).
 % term_to_goal0("=>", [A, B], _, (GoalA => GoalB)) :-
