@@ -46,13 +46,14 @@
 :- pred write_term_with_op_table(io.text_output_stream::in, OpTable::in,
     varset(T)::in, term(T)::in, io::di, io::uo) is det <= op_table(OpTable).
 
-    % As above, except it appends a period and new-line.
+    % As write_term, except it appends a period and a newline.
     %
 :- pred write_term_nl(varset(T)::in, term(T)::in, io::di, io::uo) is det.
 :- pred write_term_nl(io.text_output_stream::in, varset(T)::in, term(T)::in,
     io::di, io::uo) is det.
 
-    % As above, except it appends a period and new-line.
+    % As write_term_with_op_table above, except it appends a period
+    % and a newline.
     %
 :- pred write_term_nl_with_op_table(OpTable::in,
     varset(T)::in, term(T)::in, io::di, io::uo) is det <= op_table(OpTable).
@@ -252,6 +253,7 @@
 :- implementation.
 
 :- import_module bool.
+:- import_module counter.
 :- import_module int.
 :- import_module integer.
 :- import_module list.
@@ -276,7 +278,8 @@ write_term_with_op_table(OpTable, VarSet, Term, !IO) :-
     write_term_with_op_table(OutStream, OpTable, VarSet, Term, !IO).
 
 write_term_with_op_table(OutStream, OpTable, VarSet, Term, !IO) :-
-    write_term_anon_vars(OutStream, OpTable, Term, VarSet, _, 0, _, !IO).
+    write_term_anon_vars(OutStream, OpTable, Term, VarSet, _,
+        anon_var_to_int, _, !IO).
 
 %---------------------%
 
@@ -299,22 +302,24 @@ write_term_nl_with_op_table(OutStream, OpTable, VarSet, Term, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred write_term_anon_vars(io.text_output_stream::in, OpTable::in,
-    term(T)::in, varset(T)::in, varset(T)::out, int::in, int::out,
-    io::di, io::uo) is det <= op_table(OpTable).
+    term(T)::in, varset(T)::in, varset(T)::out,
+    anon_var_info::in, anon_var_info::out, io::di, io::uo) is det
+    <= op_table(OpTable).
 
-write_term_anon_vars(OutStream, OpTable, Term, !VarSet, !N, !IO) :-
+write_term_anon_vars(OutStream, OpTable, Term, !VarSet, !Anon, !IO) :-
     write_term_prio_anon_vars(OutStream, OpTable, Term,
-        ops.universal_priority(OpTable), !VarSet, !N, !IO).
+        ops.universal_priority(OpTable), !VarSet, !Anon, !IO).
 
 :- pred write_term_prio_anon_vars(io.text_output_stream::in, OpTable::in,
     term(T)::in, ops.priority::in, varset(T)::in, varset(T)::out,
-    int::in, int::out, io::di, io::uo) is det <= op_table(OpTable).
+    anon_var_info::in, anon_var_info::out, io::di, io::uo) is det
+    <= op_table(OpTable).
 
 write_term_prio_anon_vars(OutStream, OpTable, Term, Priority,
-        !VarSet, !N, !IO) :-
+        !VarSet, !Anon, !IO) :-
     (
         Term = term.variable(Var, _),
-        write_variable_anon_vars(OutStream, OpTable, Var, !VarSet, !N, !IO)
+        write_variable_anon_vars(OutStream, OpTable, Var, !VarSet, !Anon, !IO)
     ;
         Term = term.functor(Functor, ArgTerms, _),
         (
@@ -323,6 +328,7 @@ write_term_prio_anon_vars(OutStream, OpTable, Term, Priority,
             ; Functor = term.float(_)
             ; Functor = term.implementation_defined(_)
             ),
+            % Terms with these functors should NOT have arguments.
             (
                 ArgTerms = [],
                 write_constant(OutStream, Functor,
@@ -334,17 +340,17 @@ write_term_prio_anon_vars(OutStream, OpTable, Term, Priority,
         ;
             Functor = atom(Atom),
             write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
-                Priority, !VarSet, !N, !IO)
+                Priority, !VarSet, !Anon, !IO)
         )
     ).
 
 :- pred write_atom_term_prio_anon_vars(io.text_output_stream::in,
     OpTable::in, string::in, list(term(T))::in, ops.priority::in,
-    varset(T)::in, varset(T)::out, int::in, int::out, io::di, io::uo) is det
-    <= op_table(OpTable).
+    varset(T)::in, varset(T)::out, anon_var_info::in, anon_var_info::out,
+    io::di, io::uo) is det <= op_table(OpTable).
 
 write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
-        Priority, !VarSet, !N, !IO) :-
+        Priority, !VarSet, !Anon, !IO) :-
     % NOTE It would be nice to handle the first four conditions at once
     % with code such as
     %   ( if
@@ -360,7 +366,7 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
     %   )
     %
     % Unfortunately, three things conspire together to prevent code
-    % along those lines being an improvement:
+    % along those lines from being an improvement:
     %
     % - the fact that the special-case codes for these values of Atom 
     %   apply only if ArgTerms has the right shape,
@@ -377,9 +383,9 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
         ArgTerms = [ListHead, ListTail]
     then
         io.write_char(OutStream, '[', !IO),
-        write_term_arg(OutStream, OpTable, ListHead, !VarSet, !N, !IO),
+        write_term_arg(OutStream, OpTable, ListHead, !VarSet, !Anon, !IO),
         write_later_list_elements(OutStream, OpTable, ListTail,
-            !VarSet, !N, !IO),
+            !VarSet, !Anon, !IO),
         io.write_char(OutStream, ']', !IO)
     else if
         Atom = "[]",
@@ -395,16 +401,16 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
             % Add spaces around the one argument term.
             io.write_string(OutStream, "{ ", !IO),
             write_term_anon_vars(OutStream, OpTable, BracedHeadTerm,
-                !VarSet, !N, !IO),
+                !VarSet, !Anon, !IO),
             io.write_string(OutStream, " }", !IO)
         ;
             BracedTailTerms = [_ | _],
             % Do not add spaces around the several argument terms.
             io.write_char(OutStream, '{', !IO),
             write_term_arg(OutStream, OpTable, BracedHeadTerm,
-                !VarSet, !N, !IO),
+                !VarSet, !Anon, !IO),
             write_term_later_args(OutStream, OpTable, BracedTailTerms,
-                !VarSet, !N, !IO),
+                !VarSet, !Anon, !IO),
             io.write_char(OutStream, '}', !IO)
         )
     else if
@@ -415,11 +421,11 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
         ArgTerms = [term.variable(Var, _), FirstArg | OtherArgTerms]
     then
         write_variable_anon_vars(OutStream, OpTable, Var,
-            !VarSet, !N, !IO),
+            !VarSet, !Anon, !IO),
         io.write_char(OutStream, '(', !IO),
-        write_term_arg(OutStream, OpTable, FirstArg, !VarSet, !N, !IO),
+        write_term_arg(OutStream, OpTable, FirstArg, !VarSet, !Anon, !IO),
         write_term_later_args(OutStream, OpTable, OtherArgTerms,
-            !VarSet, !N, !IO),
+            !VarSet, !Anon, !IO),
         io.write_char(OutStream, ')', !IO)
     else if
         lookup_op_infos(OpTable, Atom, OpInfos)
@@ -431,7 +437,7 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
             ; ArgTerms = [_, _, _ | _]
             ),
             write_atom_term_prio_anon_vars_std(OutStream, OpTable,
-                Atom, ArgTerms, Priority, !VarSet, !N, !IO)
+                Atom, ArgTerms, Priority, !VarSet, !Anon, !IO)
         ;
             ArgTerms = [ArgTerm1],
             ( if MaybePrefix = pre(OpPriority, OpGtOrGe) then
@@ -440,19 +446,19 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
                 io.write_char(OutStream, ' ', !IO),
                 NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
                 write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
-                    NewPriority, !VarSet, !N, !IO),
+                    NewPriority, !VarSet, !Anon, !IO),
                 maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
             else if MaybePostfix = post(OpPriority, OpGtOrGe) then
                 maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
                 NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
                 write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
-                    NewPriority, !VarSet, !N, !IO),
+                    NewPriority, !VarSet, !Anon, !IO),
                 io.write_char(OutStream, ' ', !IO),
                 write_constant_atom(OutStream, Atom, !IO),
                 maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
             else
                 write_atom_term_prio_anon_vars_std(OutStream, OpTable,
-                    Atom, ArgTerms, Priority, !VarSet, !N, !IO)
+                    Atom, ArgTerms, Priority, !VarSet, !Anon, !IO)
             )
         ;
             ArgTerms = [ArgTerm1, ArgTerm2],
@@ -462,7 +468,7 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
                 maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
                 LeftPriority = min_priority_for_arg(OpPriority, LeftGtOrGe),
                 write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
-                    LeftPriority, !VarSet, !N, !IO),
+                    LeftPriority, !VarSet, !Anon, !IO),
                 ( if Atom = "," then
                     io.write_string(OutStream, ", ", !IO)
                 else if Atom = "." then
@@ -484,7 +490,7 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
                 ),
                 RightPriority = min_priority_for_arg(OpPriority, RightGtOrGe),
                 write_term_prio_anon_vars(OutStream, OpTable, ArgTerm2,
-                    RightPriority, !VarSet, !N, !IO),
+                    RightPriority, !VarSet, !Anon, !IO),
                 maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
             else if
                 MaybeBinPrefix = bin_pre(OpPriority, LeftGtOrGe, RightGtOrGe)
@@ -494,29 +500,29 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
                 io.write_char(OutStream, ' ', !IO),
                 LeftPriority = min_priority_for_arg(OpPriority, LeftGtOrGe),
                 write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
-                    LeftPriority, !VarSet, !N, !IO),
+                    LeftPriority, !VarSet, !Anon, !IO),
                 io.write_char(OutStream, ' ', !IO),
                 RightPriority = min_priority_for_arg(OpPriority, RightGtOrGe),
                 write_term_prio_anon_vars(OutStream, OpTable, ArgTerm2,
-                    RightPriority, !VarSet, !N, !IO),
+                    RightPriority, !VarSet, !Anon, !IO),
                 maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
             else
                 write_atom_term_prio_anon_vars_std(OutStream, OpTable,
-                    Atom, ArgTerms, Priority, !VarSet, !N, !IO)
+                    Atom, ArgTerms, Priority, !VarSet, !Anon, !IO)
             )
         )
     else
         write_atom_term_prio_anon_vars_std(OutStream, OpTable, Atom, ArgTerms,
-            Priority, !VarSet, !N, !IO)
+            Priority, !VarSet, !Anon, !IO)
     ).
 
 :- pred write_atom_term_prio_anon_vars_std(io.text_output_stream::in,
     OpTable::in, string::in, list(term(T))::in, ops.priority::in,
-    varset(T)::in, varset(T)::out, int::in, int::out, io::di, io::uo) is det
-    <= op_table(OpTable).
+    varset(T)::in, varset(T)::out, anon_var_info::in, anon_var_info::out,
+    io::di, io::uo) is det <= op_table(OpTable).
 
 write_atom_term_prio_anon_vars_std(OutStream, OpTable, Atom, ArgTerms,
-        Priority, !VarSet, !N, !IO) :-
+        Priority, !VarSet, !Anon, !IO) :-
     ( if
         ArgTerms = [],
         ops.is_op(OpTable, Atom),
@@ -531,58 +537,62 @@ write_atom_term_prio_anon_vars_std(OutStream, OpTable, Atom, ArgTerms,
     (
         ArgTerms = [HeadArgTerm | TailArgTerms],
         io.write_char(OutStream, '(', !IO),
-        write_term_arg(OutStream, OpTable, HeadArgTerm, !VarSet, !N, !IO),
+        write_term_arg(OutStream, OpTable, HeadArgTerm, !VarSet, !Anon, !IO),
         write_term_later_args(OutStream, OpTable, TailArgTerms,
-            !VarSet, !N, !IO),
+            !VarSet, !Anon, !IO),
         io.write_char(OutStream, ')', !IO)
     ;
         ArgTerms = []
     ).
 
 :- pred write_term_arg(io.text_output_stream::in, OpTable::in,
-    term(T)::in, varset(T)::in, varset(T)::out, int::in, int::out,
+    term(T)::in, varset(T)::in, varset(T)::out, anon_var_info::in,
+    anon_var_info::out,
     io::di, io::uo) is det <= op_table(OpTable).
 
-write_term_arg(OutStream, OpTable, Term, !VarSet, !N, !IO) :-
+write_term_arg(OutStream, OpTable, Term, !VarSet, !Anon, !IO) :-
     write_term_prio_anon_vars(OutStream, OpTable, Term,
-        ops.arg_priority(OpTable), !VarSet, !N, !IO).
+        ops.arg_priority(OpTable), !VarSet, !Anon, !IO).
 
     % Write the remaining arguments.
     %
 :- pred write_term_later_args(io.text_output_stream::in, OpTable::in,
-    list(term(T))::in, varset(T)::in, varset(T)::out, int::in, int::out,
-    io::di, io::uo) is det <= op_table(OpTable).
+    list(term(T))::in, varset(T)::in, varset(T)::out,
+    anon_var_info::in, anon_var_info::out, io::di, io::uo) is det
+    <= op_table(OpTable).
 
-write_term_later_args(_, _, [], !VarSet, !N, !IO).
-write_term_later_args(OutStream, OpTable, [X | Xs], !VarSet, !N, !IO) :-
+write_term_later_args(_, _, [], !VarSet, !Anon, !IO).
+write_term_later_args(OutStream, OpTable, [X | Xs], !VarSet, !Anon, !IO) :-
     io.write_string(OutStream, ", ", !IO),
-    write_term_arg(OutStream, OpTable, X, !VarSet, !N, !IO),
-    write_term_later_args(OutStream, OpTable, Xs, !VarSet, !N, !IO).
+    write_term_arg(OutStream, OpTable, X, !VarSet, !Anon, !IO),
+    write_term_later_args(OutStream, OpTable, Xs, !VarSet, !Anon, !IO).
 
 :- pred write_later_list_elements(io.text_output_stream::in, OpTable::in,
-    term(T)::in, varset(T)::in, varset(T)::out, int::in, int::out,
-    io::di, io::uo) is det <= op_table(OpTable).
+    term(T)::in, varset(T)::in, varset(T)::out,
+    anon_var_info::in, anon_var_info::out, io::di, io::uo) is det
+    <= op_table(OpTable).
 
-write_later_list_elements(OutStream, OpTable, Term, !VarSet, !N, !IO) :-
+write_later_list_elements(OutStream, OpTable, Term, !VarSet, !Anon, !IO) :-
     ( if
         Term = term.variable(Var, _),
         varset.search_var(!.VarSet, Var, Value)
     then
-        write_later_list_elements(OutStream, OpTable, Value, !VarSet, !N, !IO)
+        write_later_list_elements(OutStream, OpTable, Value,
+            !VarSet, !Anon, !IO)
     else if
         Term = term.functor(term.atom("[|]"), [ListHead, ListTail], _)
     then
         io.write_string(OutStream, ", ", !IO),
-        write_term_arg(OutStream, OpTable, ListHead, !VarSet, !N, !IO),
+        write_term_arg(OutStream, OpTable, ListHead, !VarSet, !Anon, !IO),
         write_later_list_elements(OutStream, OpTable, ListTail,
-            !VarSet, !N, !IO)
+            !VarSet, !Anon, !IO)
     else if
         Term = term.functor(term.atom("[]"), [], _)
     then
         true
     else
         io.write_string(OutStream, " | ", !IO),
-        write_term_anon_vars(OutStream, OpTable, Term, !VarSet, !N, !IO)
+        write_term_anon_vars(OutStream, OpTable, Term, !VarSet, !Anon, !IO)
     ).
 
     % Succeeds iff outputting the given term would start with a digit.
@@ -701,7 +711,20 @@ write_variable_with_op_table(OpTable, Var, VarSet, !IO) :-
     write_variable_with_op_table(OutStream, OpTable, Var, VarSet, !IO).
 
 write_variable_with_op_table(OutStream, OpTable, Var, VarSet, !IO) :-
-    write_variable_anon_vars(OutStream, OpTable, Var, VarSet, _, 0, _, !IO).
+    write_variable_anon_vars(OutStream, OpTable, Var, VarSet, _,
+        anon_var_to_int, _, !IO).
+
+:- type anon_var_info
+    --->    anon_var_to_int
+            % The string we use to write out an anonymous variable
+            % should be derived from its variable number, obtained
+            % by calling var_to_int on it.
+    ;       anon_occur_order(counter).
+            % The string we use to write out an anonymous variable
+            % should be based on whether it is the first, second, third etc
+            % anonymous variable that our traversal of the whole term
+            % has encountered. The counter tells us the number we should give
+            % to the *next* one we encounter.
 
     % Write a variable.
     %
@@ -709,49 +732,58 @@ write_variable_with_op_table(OutStream, OpTable, Var, VarSet, !IO) :-
     %
     % 1 Convert the variable to the integer that represents it and write
     %   `_N' where N is that integer. This has the advantage that
-    %    such variables get printed in a canonical way, so rearranging terms
-    %    containing such variables will not effect the way they are numbered
-    %    (this includes breaking up a term and printing the pieces separately).
+    %   such variables get printed in a canonical way, so rearranging terms
+    %   containing such variables will not affect the way they are numbered
+    %   (this includes breaking up a term and printing the pieces separately).
+    %   We use this way if !.Anon is anon_var_to_int.
     %
     % 2 Number the unnamed variables from 0 and write `_N' where
     %   N is the next number in the sequence of such variables.
     %   This has the advantage that such variables can be visually scanned
     %   rather more easily (for example in error messages).
+    %   We use this way if !.Anon is anon_occur_order.
     %
-    % An ideal solution would be to provide both, and a flag to choose
-    % between the two. At the moment we provide only the first, though
-    % the infrastructure for the second is present in the code.
-    % That infrastructure is the threading of the (as yet unused)
-    % !N state variables through the code that writes terms.
+    % We provide full support for both approaches internally to term_io.m,
+    % but expose only anon_var_to_int to users, for now.
+    %
+    % XXX The names we generate here, with either approach,
+    % *could* clash with the name of an explicit-named variable.
     %
 :- pred write_variable_anon_vars(io.text_output_stream::in, OpTable::in,
-    var(T)::in, varset(T)::in, varset(T)::out, int::in, int::out,
-    io::di, io::uo) is det <= op_table(OpTable).
+    var(T)::in, varset(T)::in, varset(T)::out,
+    anon_var_info::in, anon_var_info::out, io::di, io::uo) is det
+    <= op_table(OpTable).
 
-write_variable_anon_vars(OutStream, OpTable, Var, !VarSet, !N, !IO) :-
+write_variable_anon_vars(OutStream, OpTable, Var, !VarSet, !Anon, !IO) :-
     ( if varset.search_var(!.VarSet, Var, Value) then
-        write_term_anon_vars(OutStream, OpTable, Value, !VarSet, !N, !IO)
+        write_term_anon_vars(OutStream, OpTable, Value, !VarSet, !Anon, !IO)
     else if varset.search_name(!.VarSet, Var, Name) then
         io.write_string(OutStream, Name, !IO)
     else
-        % XXX The names we generate here, with either approach,
-        % *could* clash with the name of an explicit-named variable.
+        (
+            !.Anon = anon_var_to_int,
+            term.var_to_int(Var, VarNum)
+        ;
+            !.Anon = anon_occur_order(Counter0),
+            counter.allocate(VarNum, Counter0, Counter),
+            !:Anon = anon_occur_order(Counter)
+        ),
+        string.format("_%d", [i(VarNum)], VarName),
 
-        % This code implements the first approach described above.
-        term.var_to_int(Var, VarNum),
-
-        % This code would implement the second approach described above.
-        % VarNum = !.N,
-        % !:N = !.N + 1,
-
-        string.int_to_string(VarNum, VarNumStr),
-        VarName = "_" ++ VarNumStr,
-
-        % Recording the name we have given Var in !VarSet is needed
-        % only with the second approach. The first would give the same
-        % name to the same variable even without it, but since it would
-        % allocate memory on *every* occurrence of the variable rather than
-        % on just the first one, we record the name anyway.
+        % Recording the name we have given Var in !VarSet is needed only
+        % with anon_occur_order; with anon_var_to_int, we would give the same
+        % name to the same variable even without it. However, that would
+        % require allocating memory for VarName on *every* use. The alternative
+        % is recording the name in !VarSet here. Depending on the length
+        % of VarName and the depth of the var name map in !.VarSet,
+        % this recording could take as much time and memory as several
+        % reconstructions of VarName. Since we don't know how many more
+        % times we will need the name of Var, we cannot know for sure
+        % which approach will be faster or use more memory. The difference
+        % if that the memory usage of the "record the name" approach is
+        % *bounded*, while the memory usage of the "rebuild the name each time"
+        % approach is not. That is why we choose the former even with
+        % anon_var_to_int.
         varset.name_var(Var, VarName, !VarSet),
         io.write_string(OutStream, VarName, !IO)
     ).
