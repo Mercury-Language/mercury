@@ -32,11 +32,11 @@
 :- import_module higher_order.
 :- import_module int.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module univ.
 
 % :- pred main(io::di, io::uo) is det.
 % main --> readTokenList(TS), writeTokenList(TS).
@@ -64,22 +64,23 @@
                 operators
             ).
 
+:- mutable(global_var, globals, globals([], no, map.init), ground,
+    [untrailed, attach_to_io_state]).
+
 :- pred get_globals(globals::out, io::di, io::uo) is det.
 
 get_globals(G, !IO) :-
-    io.get_globals(G0, !IO),
-    det_univ_to_type(G0, G).
+    get_global_var(G, !IO).
 
 :- pred init_globals(operators::in, io::di, io::uo) is det.
 
 init_globals(O, !IO) :-
-    set_globals(globals([], no, O), !IO).
+    set_global_var(globals([], no, O), !IO).
 
 :- pred set_globals(globals::in, io::di, io::uo) is det.
 
 set_globals(G, !IO) :-
-    type_to_univ(G, GU),
-    io.set_globals(GU, !IO).
+    set_global_var(G, !IO).
 
 % BUG: add_token uses the wrong line number (+1) if the token ends at
 % end-of-line because the input is on the next line when add_token is called.
