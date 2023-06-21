@@ -181,7 +181,7 @@ output_scalar_common_data_for_java(Info, Stream, Indent,
     map.foldl3(output_scalar_defns_for_java(Info, Stream, Indent),
         ScalarCellGroupMap, digraph.init, Graph, map.init, Map, !IO),
 
-    ( if digraph.tsort(Graph, SortedScalars0) then
+    ( if digraph.return_vertices_in_from_to_order(Graph, SortedScalars0) then
         % Divide into small methods to avoid running into the maximum method
         % size limit.
         list.reverse(SortedScalars0, SortedScalars),

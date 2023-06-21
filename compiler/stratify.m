@@ -93,7 +93,7 @@ check_module_for_stratification(!ModuleInfo, Specs) :-
     % higher order proc is hidden in some complex data structure.
     %
     % gen_conservative_graph(!.ModuleInfo, DepGraph0, DepGraph, HOInfo),
-    % digraph.atsort(DepGraph, HOSCCs1),
+    % digraph.return_sccs_in_from_to_order(DepGraph, HOSCCs1),
     % dep_sets_to_lists_and_sets(HOSCCs1, [], HOSCCs),
     % higher_order_check_sccs(HOSCCs, HOInfo, ModuleInfo, !Specs).
 

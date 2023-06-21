@@ -374,22 +374,33 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
         AttrTypeMap0, AttrTypeMap, DepRel0, DepRel, !ErrorSpecs),
     convert_terms_to_attrs(EventName, FileName, AttrNameMap,
         AttrTypeMap, 0, AttrTerms, [], RevAttrs, !ErrorSpecs),
-    ( if digraph.tsort(DepRel, AllAttrNameOrder) then
+    ( if
+        digraph.return_vertices_in_from_to_order(DepRel, AllAttrNameOrder)
+    then
         % There is an order for computing the synthesized attributes.
         keep_only_synth_attr_nums(AttrNameMap, AllAttrNameOrder,
             SynthAttrNumOrder)
     else
-        % It would be nice to print a list of the attributes involved in the
-        % (one or more) circular dependencies detected by digraph.tsort,
-        % but at present digraph.m does not have any predicates that can
-        % report the information we would need for that.
-        Pieces = [words("Circular dependency among"),
-            words("the synthesized attributes of event"),
-            quote(EventName), suffix("."), nl],
-        CircErrorSpec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree,
-            term_context.context(FileName, EventLineNumber), Pieces),
-        !:ErrorSpecs = [CircErrorSpec | !.ErrorSpecs],
+        Context = term_context.context(FileName, EventLineNumber),
+        Sccs = digraph.return_sccs_in_to_from_order(DepRel),
+        list.filter(two_or_more_attrs_in_scc, Sccs, TooLargeSccs),
+        digraph.to_assoc_list(DepRel, DepRelEdges),
+        list.foldl(acc_self_dependent_nodes, DepRelEdges, [], RevSelfRecSccs),
+        list.reverse(RevSelfRecSccs, SelfRecSccs),
+        % Each scc in TooLargeSccs contains mutual recursion, while
+        % each scc in SelfRecSccs contains self recursion.
+        BadSccs = TooLargeSccs ++ SelfRecSccs,
+        (
+            BadSccs = [_ | _],
+            list.foldl(acc_circular_synth_attr_error(Context, EventName),
+                BadSccs, !ErrorSpecs)
+        ;
+            BadSccs = [],
+            % Print an error message even if we can't blame a specific
+            % subset of the synthesized attributes.
+            acc_circular_synth_attr_error(Context, EventName,
+                set.init, !ErrorSpecs)
+        ),
         SynthAttrNumOrder = []
     ),
     list.reverse(RevAttrs, Attrs),
@@ -410,6 +421,52 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
     else
         map.det_insert(EventName, EventSpec, !EventSpecMap)
     ).
+
+:- pred two_or_more_attrs_in_scc(set(string)::in) is semidet.
+
+two_or_more_attrs_in_scc(Scc) :-
+    set.count(Scc) > 1.
+
+:- pred acc_self_dependent_nodes(pair(string, string)::in,
+    list(set(string))::in, list(set(string))::out) is det.
+
+acc_self_dependent_nodes(From - To, !RevSelfRecSccs) :-
+    ( if From = To then
+        !:RevSelfRecSccs = [set.make_singleton_set(From) | !.RevSelfRecSccs]
+    else
+        true
+    ).
+
+:- pred acc_circular_synth_attr_error(prog_context::in, string::in,
+    set(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+acc_circular_synth_attr_error(Context, EventName, Scc, !ErrorSpecs) :-
+    Attrs = set.to_sorted_list(Scc),
+    (
+        Attrs = [_, _ | _],
+        Pieces =
+            [words("Synthesized attributes")] ++
+            list_to_quoted_pieces(set.to_sorted_list(Scc)) ++
+            [words("of event"), quote(EventName),
+            words("depend on each other."), nl]
+    ;
+        Attrs = [Attr],
+        Pieces =
+            [words("Synthesized attribute"), quote(Attr),
+            words("of event"), quote(EventName),
+            words("depends on itself."), nl]
+    ;
+        Attrs = [],
+        % This should never happen, as all circular dependencies
+        % should be classifiable as due to either mutual or self recursion,
+        % but just in case ...
+        Pieces =
+            [words("Circular dependency among the synthesized attributes"),
+            words("of event"), quote(EventName), suffix("."), nl]
+    ),
+    CircErrorSpec = simplest_spec($pred, severity_error,
+        phase_term_to_parse_tree, Context, Pieces),
+    !:ErrorSpecs = [CircErrorSpec | !.ErrorSpecs].
 
 :- pred keep_only_synth_attr_nums(attr_name_map::in, list(string)::in,
     list(int)::out) is det.

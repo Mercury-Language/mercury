@@ -217,7 +217,8 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
             OutputOrder),
         (
             OutputOrder = yes,
-            digraph.atsort(ImpDepsGraph, ImpDepsOrdering),
+            ImpDepsOrdering =
+                digraph.return_sccs_in_from_to_order(ImpDepsGraph),
             output_module_order(Globals, ModuleName,
                 other_ext(".order"), newext_user(ext_user_order),
                 ImpDepsOrdering, !IO)
@@ -304,7 +305,8 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
             MaybeSpecFileName = no,
             TransOptDepsGraph = IndirectOptDepsGraph
         ),
-        digraph.atsort(TransOptDepsGraph, TransOptDepsOrdering0),
+        TransOptDepsOrdering0 =
+            digraph.return_sccs_in_from_to_order(TransOptDepsGraph),
         (
             OutputOrder = yes,
             output_module_order(Globals, ModuleName,

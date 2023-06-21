@@ -3,13 +3,13 @@ event set invalid_event
 % should process this comment correctly.
 
 event nodiag_fail(
-	test_failed:	string,
-	arg_b:		int,
-	/* the syntax error is the missing : on the next line */
-	arg_d 		int,
-	arg_list:	list(int)
+    test_failed:    string,
+    arg_b:      int,
+    /* the syntax error is the missing : on the next line */
+    arg_d       int,
+    arg_list:   list(int)
 )
 
 event safe_test(
-	test_list:	listint
+    test_list:  listint
 )

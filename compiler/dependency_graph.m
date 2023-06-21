@@ -101,10 +101,9 @@
             ).
 
 make_dependency_info(Graph, Arcs) = DepInfo :-
-    % digraph.atsort puts the cliques of parents before the cliques
-    % of their children. This is a top down order.
-    digraph.atsort(Graph, TopDownOrdering),
-    list.reverse(TopDownOrdering, BottomUpOrdering),
+    % digraph.return_sccs_in_to_from_order puts the cliques of parents
+    % after the cliques of their children. This is a bottom down order.
+    BottomUpOrdering = digraph.return_sccs_in_to_from_order(Graph),
     DepInfo = dependency_info(Graph, Arcs, BottomUpOrdering).
 
 %-----------------------------------------------------------------------%

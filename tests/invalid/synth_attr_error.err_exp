@@ -1,12 +1,12 @@
-synth_attr_error_spec:003: Circular dependency among the synthesized attributes
-synth_attr_error_spec:003:   of event `nodiag_fail'.
+synth_attr_error_spec:003: Synthesized attribute `sorted_list' of event
+synth_attr_error_spec:003:   `nodiag_fail' depends on itself.
 synth_attr_error_spec:007: Attribute `arg_list_len' of event `nodiag_fail' uses
 synth_attr_error_spec:007:   nonexistent attribute `xsorted_list' in its
 synth_attr_error_spec:007:   synthesis.
 synth_attr_error_spec:009: Attribute `arg_list_lenb' cannot be synthesized by
 synth_attr_error_spec:009:   non-function attribute `arg_list'.
-synth_attr_error_spec:015: Circular dependency among the synthesized attributes
-synth_attr_error_spec:015:   of event `safe_test'.
+synth_attr_error_spec:015: Synthesized attributes `excp' and `excp2' of event
+synth_attr_error_spec:015:   `safe_test' depend on each other.
 synth_attr_error_spec:017: Attribute `f' is assigned inconsistent types by
 synth_attr_error_spec:017:   synthesized attributes.
 synth_attr_error_spec:026: Duplicate event specification for event `safe_test'.

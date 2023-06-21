@@ -280,6 +280,7 @@ BORING_SINGLEMODULE_PROGS = \
 	subtype_not_subset \
 	subtype_user_compare \
 	switch_arm_multi_not_det \
+	synth_attr_error \
 	tc_err1 \
 	tc_err2 \
 	test_may_duplicate \

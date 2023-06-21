@@ -1,22 +1,22 @@
 event set queens
 
 event nodiag_fail(
-       	test_failed:	string,
-       	arg_b:		int,
-       	arg_d:		int,
-       	arg_list_len:	int synthesized by list_len_func(xsorted_list),
-       	sorted_list:	list(int) synthesized by list_sort_func(sorted_list),
-       	arg_list_lenb:	int synthesized by arg_list(sorted_list),
-       	list_len_func:	function,
-       	list_sort_func:	function,
-       	arg_list:	list(int)
+    test_failed:    string,
+    arg_b:          int,
+    arg_d:          int,
+    arg_list_len:   int synthesized by list_len_func(xsorted_list),
+    sorted_list:    list(int) synthesized by list_sort_func(sorted_list),
+    arg_list_lenb:  int synthesized by arg_list(sorted_list),
+    list_len_func:  function,
+    list_sort_func: function,
+    arg_list:       list(int)
 )
 
 event safe_test(
-	test_list:	listint,
-	f:		function,
-	excp:		int synthesized by f(test_list, excp2),
-	excp2:		int synthesized by f(excp, test_list)
+    test_list:      listint,
+    f:              function,
+    excp:           int synthesized by f(test_list, excp2),
+    excp2:          int synthesized by f(excp, test_list)
 )
 
 /*
@@ -24,22 +24,22 @@ event safe_test(
 */
 
 event safe_test(
-	dup:		listint
+    dup:            listint
 )
 
 event e(
-	dupx:		listint,
-	dupx:		listint,
-	f:		function,
-	a:		string,
-	s1:		int synthesized by f(a),
-	s2:		string synthesized by f(a)
+    dupx:           listint,
+    dupx:           listint,
+    f:              function,
+    a:              string,
+    s1:             int synthesized by f(a),
+    s2:             string synthesized by f(a)
 )
 
 event f(
-	f:		function,
-	a:		string,
-	b:		float,
-	s1:		int synthesized by f(a),
-	s2:		int synthesized by f(b)
+    f:              function,
+    a:              string,
+    b:              float,
+    s1:             int synthesized by f(a),
+    s2:             int synthesized by f(b)
 )

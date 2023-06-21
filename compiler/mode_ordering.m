@@ -484,7 +484,7 @@ mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
                 ), set_of_var.to_sorted_list(GI ^ need_visible_vars), !.R)
         ), GoalMap, digraph.init),
 
-    ( if digraph.tsort(Graph, TSort) then
+    ( if digraph.return_vertices_in_from_to_order(Graph, TSort) then
         Goals = map.apply_to_list(TSort, GoalMap)
     else
         % XXX Report a mode error for this.

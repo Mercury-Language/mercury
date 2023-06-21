@@ -1311,10 +1311,9 @@ reverse_ordered_modules(ModuleDeps, Modules0, Modules) :-
     list.foldl2(
         add_module_relations(lookup_module_dep_info_in_maybe_map(ModuleDeps)),
         Modules0, digraph.init, _IntDepsGraph, digraph.init, ImpDepsGraph),
-    digraph.atsort(ImpDepsGraph, Order0),
-    list.reverse(Order0, Order1),
-    list.map(set.to_sorted_list, Order1, Order2),
-    list.condense(Order2, Modules).
+    SccSets = digraph.return_sccs_in_to_from_order(ImpDepsGraph),
+    list.map(set.to_sorted_list, SccSets, SccLists),
+    list.condense(SccLists, Modules).
 
     % add_module_relations(LookupModuleImports, ModuleName,
     %   !IntDepsRel, !ImplDepsRel)

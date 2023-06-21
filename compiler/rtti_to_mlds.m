@@ -1753,8 +1753,6 @@ gen_init_type_ctor_rep(TypeCtorData) = Initializer :-
     Initializer = gen_init_builtin_const(TargetPrefixes, Name).
 
 %-----------------------------------------------------------------------------%
-
-%-----------------------------------------------------------------------------%
 %
 % Ordering RTTI definitions.
 %
@@ -1764,9 +1762,8 @@ order_mlds_rtti_defns(Defns) = OrdDefns :-
         digraph.init(!:Graph),
         list.foldl2(add_rtti_defn_nodes, Defns, !Graph, map.init, NameMap),
         list.foldl(add_rtti_defn_arcs, Defns, !Graph),
-        digraph.atsort(!.Graph, RevOrdSets)
+        OrdSets = digraph.return_sccs_in_to_from_order(!.Graph)
     ),
-    list.reverse(RevOrdSets, OrdSets),
     list.map(set.to_sorted_list, OrdSets, OrdLists),
     list.map(list.filter_map(map.search(NameMap)), OrdLists, OrdDefns).
 
