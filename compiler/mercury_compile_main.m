@@ -130,7 +130,11 @@ real_main(!IO) :-
     io.set_output_stream(StdErr, _, !IO),
     io.command_line_arguments(CmdLineArgs, !IO),
 
-    trace [compile_time(flag("cmd_line_args")), io(!TIO)] (
+    trace [
+        compile_time(flag("cmd_line_args")),
+        run_time(env("MMC_CMD_LINE_ARGS")),
+        io(!TIO)]
+    (
         dump_args(ErrorStream, "REAL_MAIN", CmdLineArgs, !TIO)
     ),
 
@@ -262,7 +266,11 @@ real_main_after_expansion(ProgressStream, ErrorStream, CmdLineArgs, !IO) :-
         % currently not defined. It does not matter at the moment, since
         % Mercury.config does not contain either of those two flags.
         AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
-        trace [compile_time(flag("cmd_line_args")), io(!TIO)] (
+        trace [
+            compile_time(flag("cmd_line_args")),
+            run_time(env("MMC_CMD_LINE_ARGS")),
+            io(!TIO)]
+        (
             dump_args(ErrorStream, "AllFlags", AllFlags, !TIO)
         ),
         handle_given_options(ErrorStream, AllFlags, _, _, Specs,
@@ -401,7 +409,11 @@ process_options_plain_opt_file_ok(ErrorStream, CmdLineArgs, ArgsGlobals,
         MaybeMCFlags0 = ok1(MCFlags0),
         % Process the options again to find out which configuration
         % file to read.
-        trace [compile_time(flag("cmd_line_args")), io(!TIO)] (
+        trace [
+            compile_time(flag("cmd_line_args")),
+            run_time(env("MMC_CMD_LINE_ARGS")),
+            io(!TIO)]
+        (
             dump_args(ErrorStream, "MCFlags0", MCFlags0, !TIO),
             dump_args(ErrorStream, "CmdLineArgs", CmdLineArgs, !TIO)
         ),
