@@ -951,8 +951,8 @@ compile_fact_table_file(Globals, ProgressStream, ErrorStream,
     pic_object_file_extension(Globals, PIC, ObjOtherExt, NewExtObj, _),
     % XXX EXT
     C_FileName = BaseName ++ ".c",
-    O_FileName = BaseName ++ extension_to_string(ext_other(ObjOtherExt),
-        newext_target_obj(NewExtObj)),
+    O_FileName = BaseName ++ extension_to_string(Globals,
+        ext_other(ObjOtherExt), newext_target_obj(NewExtObj)),
     compile_target_code.do_compile_c_file(Globals, ProgressStream, ErrorStream,
         PIC, C_FileName, O_FileName, Succeeded, !IO).
 

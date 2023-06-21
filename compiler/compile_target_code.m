@@ -2193,7 +2193,7 @@ link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibOtherExt, NewExt,
         unexpected($pred, string(TargetType))
     ),
     StaticLibName = LibPrefix ++ Name ++
-        extension_to_string(ext_other(LibOtherExt), NewExt),
+        extension_to_string(Globals, ext_other(LibOtherExt), NewExt),
     StaticArg = quote_shell_cmd_arg(StdLibDir/"lib"/GradeDir/StaticLibName),
     make_link_lib(Globals, TargetType, Name, SharedArg).
 
@@ -3272,7 +3272,7 @@ make_standalone_int_body(Globals, ProgressStream, ErrorStream,
         pic_object_file_extension(Globals, PIC, ObjOtherExt, NewExtObj, _),
         Ext = ext_other(ObjOtherExt),
         NewExt = newext_target_obj(NewExtObj),
-        ObjFileName = BaseName ++ extension_to_string(Ext, NewExt),
+        ObjFileName = BaseName ++ extension_to_string(Globals, Ext, NewExt),
         do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
             CFileName, ObjFileName, CompileSucceeded, !IO),
         (

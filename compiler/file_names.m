@@ -139,7 +139,7 @@
 :- type other_ext
     --->    other_ext(string).
 
-:- func extension_to_string(ext, newext) = string.
+:- func extension_to_string(globals, ext, newext) = string.
 
 :- func make_module_dep_file_extension = other_ext is det.
 
@@ -584,11 +584,11 @@ old_extension_to_string(Ext) = ExtStr :-
 other_extension_to_string(OtherExt) = ExtStr :-
     OtherExt = other_ext(ExtStr).
 
-extension_to_string(Ext, NewExt) = ExtStr :-
+extension_to_string(Globals, Ext, NewExt) = ExtStr :-
     ExtStr = old_extension_to_string(Ext),
     trace [run_time(not(env("NO_EXT_CHECKS"))), io(!TIO)]
     (
-        NewExtStr = newext_to_string(NewExt),
+        NewExtStr = newext_to_string(Globals, NewExt),
         ( if ExtStr = NewExtStr then
             true
         else
@@ -600,9 +600,9 @@ extension_to_string(Ext, NewExt) = ExtStr :-
         )
     ).
 
-:- func newext_to_string(newext) = string.
+:- func newext_to_string(globals, newext) = string.
 
-newext_to_string(Ext) = ExtStr :-
+newext_to_string(Globals, Ext) = ExtStr :-
     (
         Ext = newext_src,
         ExtStr = ".m"
@@ -629,25 +629,25 @@ newext_to_string(Ext) = ExtStr :-
         ext_target_date_extension_dir(ExtTargetDate, ExtStr, _SubDirName)
     ;
         Ext = newext_target_obj(ExtObj),
-        ext_obj_extension(ExtObj, ExtStr)
+        ext_obj_extension_dir(Globals, ExtObj, ExtStr, _SubDirName)
     ;
         Ext = newext_target_init_c(ExtInitC),
         ext_init_c_extension_dir(ExtInitC, ExtStr, _SubDirName)
     ;
         Ext = newext_target_init_obj(ExtInitObj),
-        ext_init_obj_extension(ExtInitObj, ExtStr)
+        ext_init_obj_extension_dir(Globals, ExtInitObj, ExtStr, _SubDirName)
     ;
         Ext = newext_exec(ExtExec),
         ext_exec_extension(ExtExec, ExtStr)
     ;
         Ext = newext_exec_gs(ExtExecGs),
-        ext_exec_gs_extension(ExtExecGs, ExtStr)
+        ext_exec_gs_extension_dir(Globals, ExtExecGs, ExtStr, _SubDirName)
     ;
         Ext = newext_lib(ExtLib),
         ext_lib_extension(ExtLib, ExtStr)
     ;
         Ext = newext_lib_gs(ExtLibGs),
-        ext_lib_gs_extension(ExtLibGs, ExtStr)
+        ext_lib_gs_extension_dir(Globals, ExtLibGs, ExtStr, _SubDirName)
     ;
         Ext = newext_mmake_fragment(ExtMf),
         ext_mmake_fragment_extension_dir(ExtMf, ExtStr, _SubDirName)
@@ -2330,17 +2330,6 @@ ext_obj_extension_dir(Globals, ext_obj_obj_opt, ExtStr, "os") :-
 ext_obj_extension_dir(Globals, ext_obj_pic_obj_opt, ExtStr, "os") :-
     globals.lookup_string_option(Globals, pic_object_file_extension, ExtStr).
 
-:- pred ext_obj_extension(ext_obj::in, string::out) is det.
-
-ext_obj_extension(ext_obj_dollar_o,   ".$O").
-ext_obj_extension(ext_obj_dollar_efpo, ".$(EXT_FOR_PIC_OBJECTS)").
-ext_obj_extension(ext_obj_o,          ".o").
-ext_obj_extension(ext_obj_pic_o,      ".pic_o").
-ext_obj_extension(ext_obj_obj_opt, _) :-
-    unexpected($pred, "ext_obj_obj_opt").
-ext_obj_extension(ext_obj_pic_obj_opt, _) :-
-    unexpected($pred, "ext_obj_pic_obj_opt").
-
 :- pred ext_init_c_extension_dir(ext_init_c::in,
     string::out, string::out) is det.
 
@@ -2363,16 +2352,6 @@ ext_init_obj_extension_dir(Globals, ext_init_obj_pic_obj_opt, ExtStr, "os") :-
     globals.lookup_string_option(Globals, pic_object_file_extension, ExtStr0),
     ExtStr = "_init" ++ ExtStr0.
 
-:- pred ext_init_obj_extension(ext_init_obj::in, string::out) is det.
-
-ext_init_obj_extension(ext_init_obj_dollar_o,  "_init.$O").
-ext_init_obj_extension(ext_init_obj_o,         "_init.o").
-ext_init_obj_extension(ext_init_obj_pic_o,     "_init.pic_o").
-ext_init_obj_extension(ext_init_obj_obj_opt, _) :-
-    unexpected($pred, "ext_init_obj_obj_opt").
-ext_init_obj_extension(ext_init_obj_pic_obj_opt, _) :-
-    unexpected($pred, "ext_init_obj_pic_obj_opt").
-
 :- pred ext_exec_extension(ext_exec::in, string::out) is det.
 
 ext_exec_extension(ext_exec_exe, ".exe").
@@ -2385,13 +2364,6 @@ ext_exec_gs_extension_dir(_, ext_exec_gs_noext,    "",     "bin").
 ext_exec_gs_extension_dir(_, ext_exec_gs_bat,      ".bat", "bats").
 ext_exec_gs_extension_dir(Globals, ext_exec_exec_opt, ExtStr, "bin") :-
     globals.lookup_string_option(Globals, executable_file_extension, ExtStr).
-
-:- pred ext_exec_gs_extension(ext_exec_gs::in, string::out) is det.
-
-ext_exec_gs_extension(ext_exec_gs_noext,    "").
-ext_exec_gs_extension(ext_exec_gs_bat,      ".bat").
-ext_exec_gs_extension(ext_exec_exec_opt, _) :-
-    unexpected($pred, "ext_exec_exec_opt").
 
 :- pred ext_lib_extension(ext_lib::in, string::out) is det.
 
@@ -2413,18 +2385,6 @@ ext_lib_gs_extension_dir(Globals, ext_lib_gs_lib_opt, ExtStr, "lib") :-
     globals.lookup_string_option(Globals, library_extension, ExtStr).
 ext_lib_gs_extension_dir(Globals, ext_lib_gs_sh_lib_opt, ExtStr, "lib") :-
     globals.lookup_string_option(Globals, shared_library_extension, ExtStr).
-
-:- pred ext_lib_gs_extension(ext_lib_gs::in, string::out) is det.
-
-ext_lib_gs_extension(ext_lib_gs_dollar_a,   ".$A").
-ext_lib_gs_extension(ext_lib_gs_archive,    ".a").
-ext_lib_gs_extension(ext_lib_gs_dll,        ".dll").
-ext_lib_gs_extension(ext_lib_gs_init,       ".init").
-ext_lib_gs_extension(ext_lib_gs_jar,        ".jar").
-ext_lib_gs_extension(ext_lib_gs_lib_opt, _) :-
-    unexpected($pred, "ext_lib_gs_lib_opt").
-ext_lib_gs_extension(ext_lib_gs_sh_lib_opt, _) :-
-    unexpected($pred, "ext_lib_gs_sh_lib_opt").
 
 :- pred ext_mmake_fragment_extension_dir(ext_mmake_fragment::in,
     string::out, string::out) is det.
