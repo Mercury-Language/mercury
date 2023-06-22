@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred interpreter.main/2-0 (det) interpreter.m:47
+      E1:     C1 CALL pred interpreter.main/2-0 (det) interpreter.m:48
 mdb> echo on
 Command echo enabled.
 mdb> context none
@@ -14,10 +14,10 @@ mdb> delete 0
  0: E stop  interface pred interpreter.consult_file/5-0 (det)
 mdb> vars
         1 File (arg 1)
-        2 Database0 (arg 2)
+        2 STATE_VARIABLE_Database_0 (arg 2)
 mdb> print *
        File (arg 1)           	"interpreter.m"
-       Database0 (arg 2)      	[]
+       STATE_VARIABLE_Database_0 (arg 2)	[]
 mdb> b database_assert_clause
  0: + stop  interface pred interpreter.database_assert_clause/4-0 (det)
 mdb> c

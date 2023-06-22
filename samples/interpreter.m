@@ -48,16 +48,17 @@
 main(!IO) :-
     io.write_string("Pure Prolog Interpreter.\n\n", !IO),
     io.command_line_arguments(Args, !IO),
-    database_init(Database0),
     (
         Args = [],
-        io.write_string("No files consulted.\n", !IO),
-        Database = Database0
+        io.stderr_stream(StdErr, !IO),
+        io.write_string(StdErr, "No files consulted.\n", !IO),
+        io.set_exit_status(1, !IO)
     ;
         Args = [_ | _],
-        consult_files(Args, Database0, Database, !IO)
-    ),
-    main_loop(Database, !IO).
+        database_init(Database0),
+        consult_files(Args, Database0, Database, !IO),
+        main_loop(Database, !IO)
+    ).
 
 :- pred main_loop(database::in, io::di, io::uo) is det.
 
@@ -107,35 +108,34 @@ consult_files([File | Files], !Database, !IO) :-
 :- pred consult_file(string::in, database::in, database::out,
     io::di, io::uo) is det.
 
-consult_file(File, Database0, Database, !IO) :-
+consult_file(File, !Database, !IO) :-
     io.format("Consulting file `%s'...\n", [s(File)], !IO),
     io.open_input(File, OpenResult, !IO),
     (
-        OpenResult = ok(Stream),
-        consult_until_eof(Stream, Database0, Database, !IO),
-        io.close_input(Stream, !IO)
+        OpenResult = ok(InStream),
+        consult_until_eof(InStream, !Database, !IO),
+        io.close_input(InStream, !IO)
     ;
         OpenResult = error(_),
-        io.format("Error opening file `%s' for input.\n", [s(File)], !IO),
-        Database = Database0
+        io.format("Error opening file `%s' for input.\n", [s(File)], !IO)
     ).
 
 :- pred consult_until_eof(io.text_input_stream::in,
     database::in, database::out, io::di, io::uo) is det.
 
-consult_until_eof(Stream, !Database, !IO) :-
-    read_term(Stream, ReadTerm, !IO),
+consult_until_eof(InStream, !Database, !IO) :-
+    read_term(InStream, ReadTerm, !IO),
     (
         ReadTerm = eof
     ;
         ReadTerm = error(ErrorMessage, LineNumber),
         io.format("Error reading term at line %d of standard input: %s\n",
             [i(LineNumber), s(ErrorMessage)], !IO),
-        consult_until_eof(Stream, !Database, !IO)
+        consult_until_eof(InStream, !Database, !IO)
     ;
         ReadTerm = term(VarSet, Term),
         database_assert_clause(VarSet, Term, !Database),
-        consult_until_eof(Stream, !Database, !IO)
+        consult_until_eof(InStream, !Database, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -392,8 +392,7 @@ database_assert_clause(VarSet, Term, Database, [Clause | Database]) :-
         Body = B
     else
         Head = Term,
-        Context = term_context.dummy_context,
-        Body = term.functor(term.atom("true"), [], Context)
+        Body = term.functor(term.atom("true"), [], term_context.dummy_context)
     ),
     Clause = clause(VarSet, Head, Body).
 
