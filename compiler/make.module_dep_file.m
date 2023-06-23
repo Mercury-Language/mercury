@@ -138,9 +138,9 @@ get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo, !Info, !IO) :-
         map.lookup(ModuleDepMap, ModuleName, MaybeModuleDepInfo)
     ).
 
-:- pred maybe_get_modules_dependencies(globals::in, rebuild_module_deps::in,
-    list(module_name)::in, bool::in, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred maybe_get_modules_dependencies(globals::in,
+    maybe_rebuild_module_deps::in, list(module_name)::in, bool::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 maybe_get_modules_dependencies(_Globals, _RebuildModuleDeps,
         [], _, !Info, !IO).
@@ -168,8 +168,8 @@ maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
     maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
         ModuleNames, !.Error, !Info, !IO).
 
-:- pred maybe_get_module_dependencies(globals::in, rebuild_module_deps::in,
-    module_name::in, maybe_module_dep_info::out,
+:- pred maybe_get_module_dependencies(globals::in,
+    maybe_rebuild_module_deps::in, module_name::in, maybe_module_dep_info::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
@@ -182,7 +182,7 @@ maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
             MaybeModuleDepInfo, !Info, !IO)
     ).
 
-:- pred do_get_module_dependencies(globals::in, rebuild_module_deps::in,
+:- pred do_get_module_dependencies(globals::in, maybe_rebuild_module_deps::in,
     module_name::in, maybe_module_dep_info::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -484,8 +484,9 @@ contains_foreign_export_to_string(ContainsForeignExport,
 
 %---------------------------------------------------------------------------%
 
-:- pred read_module_dependencies_search(globals::in, rebuild_module_deps::in,
-    module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred read_module_dependencies_search(globals::in,
+    maybe_rebuild_module_deps::in, module_name::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 read_module_dependencies_search(Globals, RebuildModuleDeps, ModuleName,
         !Info, !IO) :-
@@ -495,15 +496,15 @@ read_module_dependencies_search(Globals, RebuildModuleDeps, ModuleName,
         ModuleName, !Info, !IO).
 
 :- pred read_module_dependencies_no_search(globals::in,
-    rebuild_module_deps::in, module_name::in, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+    maybe_rebuild_module_deps::in, module_name::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 read_module_dependencies_no_search(Globals, RebuildModuleDeps, ModuleName,
         !Info, !IO) :-
     read_module_dependencies_2(Globals, RebuildModuleDeps,
         [dir.this_directory], ModuleName, !Info, !IO).
 
-:- pred read_module_dependencies_2(globals::in, rebuild_module_deps::in,
+:- pred read_module_dependencies_2(globals::in, maybe_rebuild_module_deps::in,
     list(dir_name)::in, module_name::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
@@ -792,9 +793,9 @@ check_regular_file_exists(FileName, FileExists, !IO) :-
 
     % Something went wrong reading the dependencies, so just rebuild them.
     %
-:- pred read_module_dependencies_remake(globals::in, rebuild_module_deps::in,
-    module_name::in, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred read_module_dependencies_remake(globals::in,
+    maybe_rebuild_module_deps::in, module_name::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 read_module_dependencies_remake(Globals, RebuildModuleDeps, ModuleName,
         !Info, !IO) :-
@@ -805,7 +806,7 @@ read_module_dependencies_remake(Globals, RebuildModuleDeps, ModuleName,
         RebuildModuleDeps = do_not_rebuild_module_deps
     ).
 
-:- pred read_module_dependencies_remake_msg(rebuild_module_deps::in,
+:- pred read_module_dependencies_remake_msg(maybe_rebuild_module_deps::in,
     string::in, string::in, io::di, io::uo) is det.
 
 read_module_dependencies_remake_msg(RebuildModuleDeps, ModuleDepsFile, Msg,

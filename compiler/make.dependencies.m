@@ -1309,9 +1309,6 @@ do_find_transitive_module_dependencies_uncached(KeepGoing, DependenciesType,
     module_names_to_index_set(set.to_sorted_list(IncludesToCheck),
         IncludesToCheckSet, !Info),
     Modules1 = insert(Modules0, ModuleIndex),
-    % XXX The pattern of use of the mki_importing_module field
-    % here suggest that it should not be a field of make_info
-    % at all, but rather a separate parameter of this predicate.
     OldImportingModule = !.Info ^ mki_importing_module,
     !Info ^ mki_importing_module := yes(ioi_import(ModuleName)),
     deps_set_foldl3_find_trans_deps(KeepGoing, DependenciesType,

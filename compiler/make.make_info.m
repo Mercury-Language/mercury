@@ -43,7 +43,7 @@
 :- type make_info
     --->    make_info(
                 % For modules whose sources we have read in, the
-                % maybe_module_dep_info will contain module_and_imports.
+                % maybe_module_dep_info will contain a burdened_module.
                 % For modules for which we have read only the .dep file,
                 % maybe_module_dep_info will contain a module_dep_summary.
                 %
@@ -52,6 +52,8 @@
                 % "The items field of each module_and_imports structure should
                 % be empty -- we are not trying to cache the items here",
                 % but I (zs) don't whether that is actually true.
+                % (The burdened_module structure replaced the old
+                % module_and_imports structure.)
                 mki_module_dependencies :: map(module_name,
                                             maybe_module_dep_info),
 
@@ -95,6 +97,7 @@
                 % `.opt' files. The bool records whether there was an error
                 % in the dependencies.
                 % XXX Use a better representation for the sets.
+                % XXX zs: What bool? What sets?
                 mki_cached_direct_imports :: cached_direct_imports,
 
                 mki_cached_non_intermod_direct_imports
@@ -105,6 +108,7 @@
 
                 % The boolean is `yes' if the result is complete.
                 % XXX Use a better representation for the sets.
+                % XXX zs: What sets?
                 mki_cached_transitive_dependencies
                                         :: cached_transitive_dependencies,
 
@@ -118,7 +122,7 @@
 
                 % Should the `.module_dep' files be rebuilt?
                 % Set to `do_not_rebuild_module_deps' for `mmc --make clean'.
-                mki_rebuild_module_deps :: rebuild_module_deps,
+                mki_rebuild_module_deps :: maybe_rebuild_module_deps,
 
                 mki_keep_going          :: maybe_keep_going,
 
@@ -126,8 +130,18 @@
                 % to a `.err' file during this invocation of mmc.
                 mki_error_file_modules  :: set(module_name),
 
-                % Used for reporting which module imported a nonexistent
-                % module.
+                % Used for reporting which module imported or included
+                % a nonexistent module.
+                %
+                % This field is initialized to `no', and is set to `yes'
+                % only in do_find_transitive_module_dependencies_uncached,
+                % and then only temporarily. The only users of this field
+                % are two calls to maybe_write_importing_module in
+                % make.module_dep_file.m. We *could* therefore delete
+                % this field from the make_info, and pass its contents
+                % as separate arguments. However, that would require passing
+                % this info through a whole bunch of unrelated predicates.
+                % Keeping this field in make_info is the lesser evil.
                 mki_importing_module    :: maybe(import_or_include),
 
                 % Targets specified on the command line.
@@ -191,7 +205,7 @@
     ;       deps_status_up_to_date
     ;       deps_status_error.
 
-:- type rebuild_module_deps
+:- type maybe_rebuild_module_deps
     --->    do_rebuild_module_deps
     ;       do_not_rebuild_module_deps.
 

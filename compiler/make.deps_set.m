@@ -135,10 +135,10 @@ module_name_to_index(ModuleName, Index, !Info) :-
         Index = module_index(USize0),
         USize = USize0 + 1u,
         version_hash_table.det_insert(ModuleName, Index, Forward0, Forward),
-        TrueSize = version_array.size(Reverse0),
-        ( if cast_to_int(USize) > TrueSize then
-            NewSize = increase_array_size(TrueSize),
-            version_array.resize(NewSize, ModuleName, Reverse0, Reverse)
+        CurReverseSize = version_array.size(Reverse0),
+        ( if cast_to_int(USize) > CurReverseSize then
+            NewReverseSize = increase_array_size(CurReverseSize),
+            version_array.resize(NewReverseSize, ModuleName, Reverse0, Reverse)
         else
             version_array.set(cast_to_int(Slot), ModuleName, Reverse0, Reverse)
         ),
