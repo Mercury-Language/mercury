@@ -15,6 +15,8 @@
 
 :- implementation.
 
+:- import_module int.
+
 :- type id(T)
     --->    id(T).
 
