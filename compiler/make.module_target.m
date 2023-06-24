@@ -209,8 +209,8 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
     module_names_to_index_set(ModulesToCheck, ModuleIndexesToCheckSet, !Info),
     ModuleIndexesToCheck = to_sorted_list(ModuleIndexesToCheckSet),
 
-    KeepGoing0 = make_info_get_keep_going(!.Info),
-    find_target_dependencies_of_modules(KeepGoing0, Globals, TargetType,
+    KeepGoing = make_info_get_keep_going(!.Info),
+    find_target_dependencies_of_modules(KeepGoing, Globals, TargetType,
         ModuleIndexesToCheck, succeeded, DepsSucceeded,
         sparse_bitset.init, DepFiles0, !Info, !IO),
     % NOTE: converting the dep_set to a plain set is relatively expensive,
@@ -243,9 +243,6 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
             list.foldl(WriteDepFileName, DepFileNames, !IO)
         ), !IO),
 
-    KeepGoing = make_info_get_keep_going(!.Info),
-    % ZZZ
-    expect(unify(KeepGoing, KeepGoing0), $pred, "KeepGoing != KeepGoing0"),
     ( if
         DepsSucceeded = did_not_succeed,
         KeepGoing = do_not_keep_going
