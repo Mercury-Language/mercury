@@ -156,12 +156,16 @@ MCFLAGS-user_defined_equality = --infer-all
 MCFLAGS-parse =                 --trace rep
 MCFLAGS-unused_float_box_test = --infer-all
 
+# XXX MSVC - this won't work due to the object file extension being hardcoded
+# to ".o".
 MCFLAGS-target_mlobjs =         --pre-link-command "mmake target_mlobjs_c.o"
 MLOBJS-target_mlobjs =          target_mlobjs_c.o
 
 # We can get this warning if the user-provided type-specific compare predicate
 # compare_foo is inlined at some call sites. Since our setup asks the C
 # compiler to treat any warning as an error, we turn off the warning.
+#
+# XXX MSVC - passing GCC / clang options to MSVC will not work.
 CFLAGS-user_compare = -Wno-tautological-compare
 
 # In grade `none' with options `-O1 --opt-space' on kryten
