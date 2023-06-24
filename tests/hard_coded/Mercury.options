@@ -156,7 +156,7 @@ MCFLAGS-user_defined_equality = --infer-all
 MCFLAGS-parse =                 --trace rep
 MCFLAGS-unused_float_box_test = --infer-all
 
-# XXX MSVC - this wo't work due to the object file extension being hardcoded
+# XXX MSVC - this won't work due to the object file extension being hardcoded
 # to ".o".
 MCFLAGS-target_mlobjs =         --pre-link-command "mmake target_mlobjs_c.o"
 MLOBJS-target_mlobjs =          target_mlobjs_c.o
