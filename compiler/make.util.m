@@ -685,7 +685,7 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
         % This path is hit very frequently so it is worth caching timestamps by
         % target_file. It avoids having to compute a file name for a
         % target_file first, before looking up the timestamp for that file.
-        TargetFileTimestamps0 = !.Info ^ mki_target_file_timestamps,
+        TargetFileTimestamps0 = make_info_get_target_file_timestamps(!.Info),
         ( if
             version_hash_table.search(TargetFileTimestamps0, TargetFile,
                 Timestamp)
@@ -698,10 +698,12 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
                 FileName, MaybeTimestamp, !Info, !IO),
             (
                 MaybeTimestamp = ok(Timestamp),
-                TargetFileTimestamps1 = !.Info ^ mki_target_file_timestamps,
+                TargetFileTimestamps1 =
+                    make_info_get_target_file_timestamps(!.Info),
                 version_hash_table.det_insert(TargetFile, Timestamp,
                     TargetFileTimestamps1, TargetFileTimestamps),
-                !Info ^ mki_target_file_timestamps := TargetFileTimestamps
+                make_info_set_target_file_timestamps(TargetFileTimestamps,
+                    !Info)
             ;
                 MaybeTimestamp = error(_)
                 % Do not record errors. These would usually be due to files not
@@ -722,7 +724,7 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
 get_target_timestamp_analysis_registry(Globals, Search, TargetFile, FileName,
         MaybeTimestamp, !Info, !IO) :-
     TargetFile = target_file(ModuleName, _TargetType),
-    FileTimestamps0 = !.Info ^ mki_file_timestamps,
+    FileTimestamps0 = make_info_get_file_timestamps(!.Info),
     ( if map.search(FileTimestamps0, FileName, MaybeTimestamp0) then
         MaybeTimestamp = MaybeTimestamp0
     else
@@ -738,7 +740,7 @@ get_target_timestamp_analysis_registry(Globals, Search, TargetFile, FileName,
             MaybeTimestamp = error("invalid module"),
             map.det_insert(FileName, MaybeTimestamp,
                 FileTimestamps0, FileTimestamps),
-            !Info ^ mki_file_timestamps := FileTimestamps
+            make_info_set_file_timestamps(FileTimestamps, !Info)
         )
     ).
 
@@ -776,9 +778,9 @@ get_target_timestamp_2(Globals, Search, TargetFile, FileName, MaybeTimestamp,
             ModuleDir \= dir.this_directory
         then
             MaybeTimestamp = ok(oldest_timestamp),
-            FileTimestamps0 = !.Info ^ mki_file_timestamps,
+            FileTimestamps0 = make_info_get_file_timestamps(!.Info),
             map.set(FileName, MaybeTimestamp, FileTimestamps0, FileTimestamps),
-            !Info ^ mki_file_timestamps := FileTimestamps
+            make_info_set_file_timestamps(FileTimestamps, !Info)
         else
             MaybeTimestamp = MaybeTimestamp0
         )
@@ -843,7 +845,7 @@ search_for_file_type(ModuleTargetType) = MaybeSearchOption :-
 %---------------------%
 
 get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
-    FileTimestamps0 = !.Info ^ mki_file_timestamps,
+    FileTimestamps0 = make_info_get_file_timestamps(!.Info),
     ( if map.search(FileTimestamps0, FileName, MaybeTimestamp0) then
         MaybeTimestamp = MaybeTimestamp0
     else
@@ -854,7 +856,7 @@ get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
             MaybeTimestamp = ok(Timestamp),
             map.det_insert(FileName, MaybeTimestamp,
                 FileTimestamps0, FileTimestamps),
-            !Info ^ mki_file_timestamps := FileTimestamps
+            make_info_set_file_timestamps(FileTimestamps, !Info)
         ;
             SearchResult = error(_SearchError),
             % XXX MAKE We should not ignore _SearchError.
@@ -929,12 +931,12 @@ make_remove_file(Globals, VerboseOption, FileName, !Info, !IO) :-
     verbose_make_msg_option(Globals, VerboseOption,
         report_remove_file(FileName), !IO),
     io.file.remove_file_recursively(FileName, _, !IO),
-    FileTimestamps0 = !.Info ^ mki_file_timestamps,
+    FileTimestamps0 = make_info_get_file_timestamps(!.Info),
     map.delete(FileName, FileTimestamps0, FileTimestamps),
-    !Info ^ mki_file_timestamps := FileTimestamps,
+    make_info_set_file_timestamps(FileTimestamps, !Info),
 
     % For simplicity, clear out all target file timestamps.
-    !Info ^ mki_target_file_timestamps := init_target_file_timestamps.
+    make_info_set_target_file_timestamps(init_target_file_timestamps, !Info).
 
 :- pred report_remove_file(string::in, io::di, io::uo) is det.
 
@@ -1055,7 +1057,7 @@ file_error(Info, FileName, !IO) :-
 
 maybe_warn_up_to_date_target(Globals, Target, FileName, !Info, !IO) :-
     globals.lookup_bool_option(Globals, warn_up_to_date, Warn),
-    CmdLineTargets0 = !.Info ^ mki_command_line_targets,
+    CmdLineTargets0 = make_info_get_command_line_targets(!.Info),
     (
         Warn = yes,
         ( if set.member(Target, CmdLineTargets0) then
@@ -1067,7 +1069,7 @@ maybe_warn_up_to_date_target(Globals, Target, FileName, !Info, !IO) :-
         Warn = no
     ),
     set.delete(Target, CmdLineTargets0, CmdLineTargets),
-    !Info ^ mki_command_line_targets := CmdLineTargets.
+    make_info_set_command_line_targets(CmdLineTargets, !Info).
 
 maybe_symlink_or_copy_linked_target_message(Globals, FileName, !IO) :-
     verbose_make_msg(Globals,

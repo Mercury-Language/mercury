@@ -139,10 +139,10 @@ make_module_target(ExtraOptions, Globals, Dep, Succeeded, !Info, !IO) :-
             (
                 MaybeModuleDepInfo = no_module_dep_info,
                 Succeeded = did_not_succeed,
-                DepStatus0 = !.Info ^ mki_dependency_status,
+                DepStatusMap0 = make_info_get_dependency_status(!.Info),
                 version_hash_table.set(Dep, deps_status_error,
-                    DepStatus0, DepStatus),
-                !Info ^ mki_dependency_status := DepStatus
+                    DepStatusMap0, DepStatusMap),
+                make_info_set_dependency_status(DepStatusMap, !Info)
             ;
                 MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
                 get_compilation_task_and_options(TargetType,
@@ -209,7 +209,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
     module_names_to_index_set(ModulesToCheck, ModuleIndexesToCheckSet, !Info),
     ModuleIndexesToCheck = to_sorted_list(ModuleIndexesToCheckSet),
 
-    KeepGoing0 = !.Info ^ mki_keep_going,
+    KeepGoing0 = make_info_get_keep_going(!.Info),
     find_target_dependencies_of_modules(KeepGoing0, Globals, TargetType,
         ModuleIndexesToCheck, succeeded, DepsSucceeded,
         sparse_bitset.init, DepFiles0, !Info, !IO),
@@ -243,7 +243,8 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
             list.foldl(WriteDepFileName, DepFileNames, !IO)
         ), !IO),
 
-    KeepGoing = !.Info ^ mki_keep_going,
+    KeepGoing = make_info_get_keep_going(!.Info),
+    % ZZZ
     expect(unify(KeepGoing, KeepGoing0), $pred, "KeepGoing != KeepGoing0"),
     ( if
         DepsSucceeded = did_not_succeed,
@@ -268,10 +269,10 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
             TouchedTargetFiles, !Info)
     ;
         DepsResult = deps_out_of_date,
-        Targets0 = !.Info ^ mki_command_line_targets,
+        Targets0 = make_info_get_command_line_targets(!.Info),
         set.delete(top_target_file(ModuleName, module_target(TargetType)),
             Targets0, Targets),
-        !Info ^ mki_command_line_targets := Targets,
+        make_info_set_command_line_targets(Targets, !Info),
         build_target(Globals, CompilationTaskAndOptions, TargetFile,
             ModuleDepInfo, TouchedTargetFiles, TouchedFiles,
             ExtraOptions, Succeeded, !Info, !IO)
@@ -294,7 +295,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
 make_dependency_files(Globals, TargetFile, DepFilesToMake, TouchedTargetFiles,
         TouchedFiles, DepsResult, !Info, !IO) :-
     % Build the dependencies.
-    KeepGoing = !.Info ^ mki_keep_going,
+    KeepGoing = make_info_get_keep_going(!.Info),
     foldl2_make_module_targets(KeepGoing, [], Globals, DepFilesToMake,
         MakeDepsSucceeded, !Info, !IO),
 
@@ -354,7 +355,7 @@ make_dependency_files(Globals, TargetFile, DepFilesToMake, TouchedTargetFiles,
 
 force_reanalysis_of_suboptimal_module(Globals, ModuleName, ForceReanalysis,
         Info, !IO) :-
-    ( if Info ^ mki_reanalysis_passes > 0 then
+    ( if make_info_get_reanalysis_passes(Info) > 0 then
         do_read_module_overall_status(mmc, Globals, ModuleName, AnalysisStatus,
             !IO),
         (
@@ -421,9 +422,9 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         Cleanup = cleanup_files(Globals, MaybeArgFileName,
             TouchedTargetFiles, TouchedFiles),
         setup_checking_for_interrupt(Cookie, !IO),
-        DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
-        OptionVariables = !.Info ^ mki_options_variables,
-        OptionArgs = !.Info ^ mki_option_args,
+        DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
+        OptionVariables = make_info_get_options_variables(!.Info),
+        OptionArgs = make_info_get_option_args(!.Info),
         setup_for_build_with_module_options(invoked_by_mmc_make, ModuleName,
             DetectedGradeFlags, OptionVariables, OptionArgs,
             ExtraAndTaskOptions, MayBuild, !IO),
@@ -817,7 +818,7 @@ record_made_target_given_maybe_touched_files(Globals, Succeeded,
         TouchedTargetFiles, TouchedTargetFileNames, !Info, !IO),
 
     some [!FileTimestamps] (
-        !:FileTimestamps = !.Info ^ mki_file_timestamps,
+        !:FileTimestamps = make_info_get_file_timestamps(!.Info),
         list.foldl(delete_timestamp(Globals), TouchedTargetFileNames,
             !FileTimestamps),
         list.foldl(delete_timestamp(Globals), OtherTouchedFiles,
@@ -834,23 +835,22 @@ record_made_target_given_maybe_touched_files(Globals, Succeeded,
         else
             true
         ),
-
-        !Info ^ mki_file_timestamps := !.FileTimestamps
+        make_info_set_file_timestamps(!.FileTimestamps, !Info)
     ),
 
-    TargetFileTimestamps0 = !.Info ^ mki_target_file_timestamps,
+    TargetFileTimestamps0 = make_info_get_target_file_timestamps(!.Info),
     version_hash_table.delete(TargetFile,
         TargetFileTimestamps0, TargetFileTimestamps),
-    !Info ^ mki_target_file_timestamps := TargetFileTimestamps.
+    make_info_set_target_file_timestamps(TargetFileTimestamps, !Info).
 
 :- pred update_target_status(dependency_status::in, target_file::in,
     make_info::in, make_info::out) is det.
 
 update_target_status(TargetStatus, TargetFile, !Info) :-
     Dep = dep_target(TargetFile),
-    DepStatus0 = !.Info ^ mki_dependency_status,
-    version_hash_table.set(Dep, TargetStatus, DepStatus0, DepStatus),
-    !Info ^ mki_dependency_status := DepStatus.
+    DepStatusMap0 = make_info_get_dependency_status(!.Info),
+    version_hash_table.set(Dep, TargetStatus, DepStatusMap0, DepStatusMap),
+    make_info_set_dependency_status(DepStatusMap, !Info).
 
 :- pred delete_analysis_registry_timestamps(globals::in, string::in,
     maybe_error(timestamp)::in,

@@ -117,7 +117,7 @@ version_number(module_dep_file_v2, 2).
 %---------------------------------------------------------------------------%
 
 get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo, !Info, !IO) :-
-    RebuildModuleDeps = !.Info ^ mki_rebuild_module_deps,
+    RebuildModuleDeps = make_info_get_rebuild_module_deps(!.Info),
     (
         ModuleName = unqualified(_),
         maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
@@ -134,7 +134,7 @@ get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo, !Info, !IO) :-
         maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
             AncestorsAndSelf, Error0, !Info, !IO),
 
-        ModuleDepMap = !.Info ^ mki_module_dependencies,
+        ModuleDepMap = make_info_get_module_dependencies(!.Info),
         map.lookup(ModuleDepMap, ModuleName, MaybeModuleDepInfo)
     ).
 
@@ -160,10 +160,10 @@ maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
         !.Error = yes,
         % If we found a problem when processing an ancestor, don't even try
         % to process the later modules.
-        ModuleDepMap0 = !.Info ^ mki_module_dependencies,
+        ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
         % XXX Could this be map.det_update or map.det_insert?
         map.set(ModuleName, no_module_dep_info, ModuleDepMap0, ModuleDepMap),
-        !Info ^ mki_module_dependencies := ModuleDepMap
+        make_info_set_module_dependencies(ModuleDepMap, !Info)
     ),
     maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
         ModuleNames, !.Error, !Info, !IO).
@@ -174,7 +174,7 @@ maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
 
 maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         MaybeModuleDepInfo, !Info, !IO) :-
-    ModuleDepMap0 = !.Info ^ mki_module_dependencies,
+    ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
     ( if map.search(ModuleDepMap0, ModuleName, MaybeModuleDepInfo0) then
         MaybeModuleDepInfo = MaybeModuleDepInfo0
     else
@@ -238,7 +238,7 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         % Get the correct source file name from the module dependency file,
         % then check whether the module dependency file is up to date.
 
-        map.lookup(!.Info ^ mki_module_dependencies, ModuleName,
+        map.lookup(make_info_get_module_dependencies(!.Info), ModuleName,
             !:MaybeModuleDepInfo),
         ( if
             !.MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo0),
@@ -284,7 +284,7 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
                     "to generate dependencies: %s.\n",
                     [s(SourceFileName1), s(Message)], !IO),
                 maybe_write_importing_module(ModuleName,
-                    !.Info ^ mki_importing_module, !IO)
+                    make_info_get_importing_module(!.Info), !IO)
             )
         else
             true
@@ -308,21 +308,21 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
             make_module_dependencies(Globals, ModuleName, !Info, !IO)
         ;
             RebuildModuleDeps = do_not_rebuild_module_deps,
-            ModuleDepMap0 = !.Info ^ mki_module_dependencies,
+            ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
             % XXX Could this be map.det_update or map.det_insert?
             map.set(ModuleName, no_module_dep_info,
                 ModuleDepMap0, ModuleDepMap1),
-            !Info ^ mki_module_dependencies := ModuleDepMap1
+            make_info_set_module_dependencies(ModuleDepMap1, !Info)
         )
     ),
-    ModuleDepMap2 = !.Info ^ mki_module_dependencies,
+    ModuleDepMap2 = make_info_get_module_dependencies(!.Info),
     ( if map.search(ModuleDepMap2, ModuleName, MaybeModuleDepInfo0) then
         !:MaybeModuleDepInfo = MaybeModuleDepInfo0
     else
         !:MaybeModuleDepInfo = no_module_dep_info,
         map.det_insert(ModuleName, no_module_dep_info,
             ModuleDepMap2, ModuleDepMap),
-        !Info ^ mki_module_dependencies := ModuleDepMap
+        make_info_set_module_dependencies(ModuleDepMap, !Info)
     ).
 
 %---------------------------------------------------------------------------%
@@ -578,11 +578,11 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         ),
         (
             SourceFileExists = ok,
-            ModuleDepMap0 = !.Info ^ mki_module_dependencies,
+            ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
             % XXX Could this be map.det_insert?
             map.set(ModuleName, MaybeModuleDepInfo,
                 ModuleDepMap0, ModuleDepMap),
-            !Info ^ mki_module_dependencies := ModuleDepMap,
+            make_info_set_module_dependencies(ModuleDepMap, !Info),
 
             % Read the dependencies for any nested children. If something
             % goes wrong (for example one of the files was removed), the
@@ -756,7 +756,8 @@ contains_foreign_export_term(Term, ContainsForeignExport) :-
 
 some_bad_module_dependency(Info, ModuleNames) :-
     list.member(ModuleName, ModuleNames),
-    map.search(Info ^ mki_module_dependencies, ModuleName, no_module_dep_info).
+    map.search(make_info_get_module_dependencies(Info), ModuleName,
+        no_module_dep_info).
 
 :- pred check_regular_file_exists(file_name::in, maybe_error::out,
     io::di, io::uo) is det.
@@ -900,7 +901,7 @@ make_module_dependencies_fatal_error(Globals, OldOutputStream, ErrorStream,
         io.format("** Error reading file `%s' to generate dependencies.\n",
             [s(SourceFileName)], !IO),
         maybe_write_importing_module(ModuleName,
-            !.Info ^ mki_importing_module, !IO)
+            make_info_get_importing_module(!.Info), !IO)
     ;
         DisplayErrorReadingFile = no
     ),
@@ -915,10 +916,10 @@ make_module_dependencies_fatal_error(Globals, OldOutputStream, ErrorStream,
         ModuleName, ErrFileName, !IO),
     io.file.remove_file(ErrFileName, _, !IO),
 
-    ModuleDepMap0 = !.Info ^ mki_module_dependencies,
+    ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
     % XXX Could this be map.det_update?
     map.set(ModuleName, no_module_dep_info, ModuleDepMap0, ModuleDepMap),
-    !Info ^ mki_module_dependencies := ModuleDepMap.
+    make_info_set_module_dependencies(ModuleDepMap, !Info).
 
 :- pred make_module_dependencies_no_fatal_error(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
@@ -963,9 +964,9 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
             MadeTargetFileName, !IO),
         setup_checking_for_interrupt(CookieMSI, !IO),
 
-        DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
-        OptionVariables = !.Info ^ mki_options_variables,
-        OptionArgs = !.Info ^ mki_option_args,
+        DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
+        OptionVariables = make_info_get_options_variables(!.Info),
+        OptionArgs = make_info_get_option_args(!.Info),
         ExtraOptions = ["--make-short-interface"],
         setup_for_build_with_module_options(invoked_by_mmc_make,
             ModuleName, DetectedGradeFlags, OptionVariables,
@@ -1010,10 +1011,10 @@ make_info_add_module_and_imports_as_dep(BurdenedModule, !Info) :-
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleDepInfo = module_dep_info_full(BurdenedModule),
     MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-    ModuleDeps0 = !.Info ^ mki_module_dependencies,
+    ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
     % XXX Could this be map.det_insert?
-    map.set(ModuleName, MaybeModuleDepInfo, ModuleDeps0, ModuleDeps),
-    !Info ^ mki_module_dependencies := ModuleDeps.
+    map.set(ModuleName, MaybeModuleDepInfo, ModuleDepMap0, ModuleDepMap),
+    make_info_set_module_dependencies(ModuleDepMap, !Info).
 
 :- pred make_int3_files(io.text_output_stream::in, io.text_output_stream::in,
     globals::in, list(parse_tree_module_src)::in, maybe_succeeded::out,

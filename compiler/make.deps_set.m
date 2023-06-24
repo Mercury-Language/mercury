@@ -92,11 +92,7 @@
 
 :- implementation.
 
-:- import_module libs.
-:- import_module parse_tree.
-
 :- import_module int.
-:- import_module maybe.
 :- import_module uint.
 :- import_module version_array.
 :- import_module version_hash_table.
@@ -125,7 +121,7 @@
 %---------------------------------------------------------------------------%
 
 module_name_to_index(ModuleName, Index, !Info) :-
-    Map0 = !.Info ^ mki_module_index_map,
+    Map0 = make_info_get_module_index_map(!.Info),
     Map0 = module_index_map(Forward0, _Reverse0, _Size0),
     ( if version_hash_table.search(Forward0, ModuleName, Index0) then
         Index = Index0
@@ -143,7 +139,7 @@ module_name_to_index(ModuleName, Index, !Info) :-
             version_array.set(cast_to_int(Slot), ModuleName, Reverse0, Reverse)
         ),
         Map = module_index_map(Forward, Reverse, USize),
-        !Info ^ mki_module_index_map := Map
+        make_info_set_module_index_map(Map, !Info)
     ).
 
 :- func increase_array_size(int) = int.
@@ -169,7 +165,8 @@ module_names_to_index_set_2([ModuleName | ModuleNames], !Set, !Info) :-
 %---------------------------------------------------------------------------%
 
 module_index_to_name(Info, Index, ModuleName) :-
-    Info ^ mki_module_index_map = module_index_map(_Forward, Reverse, _Size),
+    make_info_get_module_index_map(Info) =
+        module_index_map(_Forward, Reverse, _Size),
     Index = module_index(I),
     ModuleName = version_array.lookup(Reverse, cast_to_int(I)).
 
@@ -189,7 +186,7 @@ module_index_set_to_plain_set_2(Info, ModuleIndex, !Set) :-
 %---------------------------------------------------------------------------%
 
 dependency_file_to_index(DepFile, Index, !Info) :-
-    Map0 = !.Info ^ mki_dep_file_index_map,
+    Map0 = make_info_get_dep_file_index_map(!.Info),
     ForwardMap0 = Map0 ^ dfim_forward_map,
     ( if version_hash_table.search(ForwardMap0, DepFile, Index0) then
         Index = Index0
@@ -207,7 +204,7 @@ dependency_file_to_index(DepFile, Index, !Info) :-
             version_array.set(cast_to_int(Slot), DepFile, Reverse0, Reverse)
         ),
         Map = dependency_file_index_map(Forward, Reverse, USize),
-        !Info ^ mki_dep_file_index_map := Map
+        make_info_set_dep_file_index_map(Map, !Info)
     ).
 
 %---------------------%
@@ -238,7 +235,7 @@ dependency_files_to_index_set_2(DepFile0, !Set, !Info) :-
     dependency_file::out) is det.
 
 index_to_dependency_file(Info, Index, DepFile) :-
-    Info ^ mki_dep_file_index_map =
+    make_info_get_dep_file_index_map(Info) =
         dependency_file_index_map(_Forward, Reverse, _Size),
     Index = dependency_file_index(I),
     version_array.lookup(Reverse, cast_to_int(I), DepFile0),

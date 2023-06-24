@@ -261,7 +261,8 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
         module_name_to_file_name(Globals, $pred, do_create_dirs,
             ext_other(other_ext(".err")), newext_user(ext_user_err),
             ModuleName, ErrorFileName, !IO),
-        ( if set.member(ModuleName, !.Info ^ mki_error_file_modules) then
+        ErrorFileModules0 = make_info_get_error_file_modules(!.Info),
+        ( if set.contains(ErrorFileModules0, ModuleName) then
             io.open_append(ErrorFileName, ErrorFileRes, !IO)
         else
             io.open_output(ErrorFileName, ErrorFileRes, !IO)
@@ -277,8 +278,12 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
                 !IO),
             io.close_output(ErrorFileOutputStream, !IO),
 
-            !Info ^ mki_error_file_modules :=
-                set.insert(!.Info ^ mki_error_file_modules, ModuleName)
+            % XXX Can the code between the previous call to
+            % make_info_get_error_file_modules and the previous one
+            % affect this field?
+            ErrorFileModules1 = make_info_get_error_file_modules(!.Info),
+            set.insert(ModuleName, ErrorFileModules1, ErrorFileModules),
+            make_info_set_error_file_modules(ErrorFileModules, !Info)
         ;
             ErrorFileRes = error(Error),
             with_locked_stdout(!.Info,
@@ -425,7 +430,7 @@ foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
     create_job_ctl(TotalTasks, MaybeJobCtl, !IO),
     (
         MaybeJobCtl = yes(JobCtl),
-        !Info ^ mki_maybe_stdout_lock := yes(JobCtl),
+        make_info_set_maybe_stdout_lock(yes(JobCtl), !Info),
         list.foldl2(
             start_worker_process(Globals, KeepGoing, MakeTarget, Targets,
                 JobCtl, !.Info),
@@ -438,7 +443,7 @@ foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
             Succeeded0, Succeeded1, !Info, !IO),
         list.foldl2(reap_worker_process, Pids, Succeeded1, Succeeded, !IO),
-        !Info ^ mki_maybe_stdout_lock := no,
+        make_info_set_maybe_stdout_lock(no, !Info),
         destroy_job_ctl(JobCtl, !IO)
     ;
         MaybeJobCtl = no,
@@ -924,7 +929,7 @@ lock_stdout(_, !IO).
 unlock_stdout(_, !IO).
 
 with_locked_stdout(Info, Pred, !IO) :-
-    MaybeLock = Info ^ mki_maybe_stdout_lock,
+    MaybeLock = make_info_get_maybe_stdout_lock(Info),
     (
         MaybeLock = yes(Lock),
         lock_stdout(Lock, !IO),

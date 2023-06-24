@@ -43,15 +43,12 @@
 :- import_module libs.handle_options.
 :- import_module libs.md5.
 :- import_module libs.options.
-:- import_module libs.timestamp.
-:- import_module make.build.
 :- import_module make.dependencies.
 :- import_module make.options_file.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
-:- import_module parse_tree.read_modules.
 :- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
@@ -64,7 +61,6 @@
 :- import_module set.
 :- import_module set_tree234.
 :- import_module string.
-:- import_module version_hash_table.
 
 %---------------------------------------------------------------------------%
 
@@ -117,12 +113,12 @@ foldl3_make_track_flags_for_modules_loop(Globals, [ModuleName | ModuleNames],
 
 make_track_flags_files_for_module(Globals, ModuleName, Succeeded,
         !LastHash, !Info, !IO) :-
-    lookup_mmc_module_options(!.Info ^ mki_options_variables, ModuleName,
-        MaybeModuleOptionArgs),
+    lookup_mmc_module_options(make_info_get_options_variables(!.Info),
+        ModuleName, MaybeModuleOptionArgs),
     (
         MaybeModuleOptionArgs = ok1(ModuleOptionArgs),
-        DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
-        OptionArgs = !.Info ^ mki_option_args,
+        DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
+        OptionArgs = make_info_get_option_args(!.Info),
         AllOptionArgs = DetectedGradeFlags ++ ModuleOptionArgs ++ OptionArgs,
 
         % The set of options from one module to the next is usually identical,

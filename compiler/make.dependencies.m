@@ -502,7 +502,7 @@ files_of(FindFiles, FindDeps) =
 
 files_of_2(FindFiles, FindDeps, Globals, ModuleIndex, Succeeded, DepIndices,
         !Info, !IO) :-
-    KeepGoing = !.Info ^ mki_keep_going,
+    KeepGoing = make_info_get_keep_going(!.Info),
     FindDeps(Globals, ModuleIndex, Succeeded1, ModuleIndices, !Info, !IO),
     ( if
         Succeeded1 = did_not_succeed,
@@ -526,7 +526,7 @@ files_of_2(FindFiles, FindDeps, Globals, ModuleIndex, Succeeded, DepIndices,
 
 get_intermod_imports_and_their_ancestors(Globals, ModuleIndex, Succeeded,
         Result, !Info, !IO) :-
-    KeepGoing = !.Info ^ mki_keep_going,
+    KeepGoing = make_info_get_keep_going(!.Info),
     intermod_imports(Globals, ModuleIndex, Succeeded1, Modules1, !Info, !IO),
     ( if
         Succeeded1 = did_not_succeed,
@@ -548,7 +548,7 @@ get_intermod_imports_and_their_ancestors(Globals, ModuleIndex, Succeeded,
 
 get_intermod_imports_their_ancestors_and_012(Globals, ModuleIndex,
         Succeeded, Result, !Info, !IO) :-
-    KeepGoing = !.Info ^ mki_keep_going,
+    KeepGoing = make_info_get_keep_going(!.Info),
     get_intermod_imports_and_their_ancestors(Globals,
         ModuleIndex, Succeeded1, Modules1, !Info, !IO),
     ( if
@@ -569,7 +569,7 @@ get_intermod_imports_their_ancestors_and_012(Globals, ModuleIndex,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_own_imports_012(Globals, ModuleIndex, Succeeded, Result, !Info, !IO) :-
-    KeepGoing = !.Info ^ mki_keep_going,
+    KeepGoing = make_info_get_keep_going(!.Info),
     deps_set_foldl3_maybe_stop_at_error_find_union_fi(KeepGoing,
         imports_012, Globals, [ModuleIndex],
         succeeded, Succeeded, init, Result, !Info, !IO).
@@ -617,11 +617,11 @@ add_targets_of_ancestors_as_deps(TargetType, ModuleIndex, !Deps, !Info) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 direct_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
-    CachedDirectImports0 = !.Info ^ mki_cached_direct_imports,
+    CachedDirectImports0 = make_info_get_cached_direct_imports(!.Info),
     ( if map.search(CachedDirectImports0, ModuleIndex, Result0) then
         Result0 = deps_result(Succeeded, Modules)
     else
-        KeepGoing = !.Info ^ mki_keep_going,
+        KeepGoing = make_info_get_keep_going(!.Info),
         non_intermod_direct_imports(Globals, ModuleIndex, Succeeded0, Modules0,
             !Info, !IO),
         ( if
@@ -652,10 +652,10 @@ direct_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
             )
         ),
         Result = deps_result(Succeeded, Modules),
-        CachedDirectImports1 = !.Info ^ mki_cached_direct_imports,
+        CachedDirectImports1 = make_info_get_cached_direct_imports(!.Info),
         map.det_insert(ModuleIndex, Result,
             CachedDirectImports1, CachedDirectImports),
-        !Info ^ mki_cached_direct_imports := CachedDirectImports
+        make_info_set_cached_direct_imports(CachedDirectImports, !Info)
     ).
 
     % Return the modules for which `.int' files are read in a compilation
@@ -668,7 +668,7 @@ direct_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
 non_intermod_direct_imports(Globals, ModuleIndex, Succeeded, Modules,
         !Info, !IO) :-
     CachedNonIntermodDirectImports0 =
-        !.Info ^ mki_cached_non_intermod_direct_imports,
+        make_info_get_cached_non_intermod_direct_imports(!.Info),
     ( if map.search(CachedNonIntermodDirectImports0, ModuleIndex, Result0) then
         Result0 = deps_result(Succeeded, Modules)
     else
@@ -676,11 +676,11 @@ non_intermod_direct_imports(Globals, ModuleIndex, Succeeded, Modules,
             Modules, !Info, !IO),
         Result = deps_result(Succeeded, Modules),
         CachedNonIntermodDirectImports1 =
-            !.Info ^ mki_cached_non_intermod_direct_imports,
+            make_info_get_cached_non_intermod_direct_imports(!.Info),
         map.det_insert(ModuleIndex, Result,
             CachedNonIntermodDirectImports1, CachedNonIntermodDirectImports),
-        !Info ^ mki_cached_non_intermod_direct_imports
-            := CachedNonIntermodDirectImports
+        make_info_set_cached_non_intermod_direct_imports(
+            CachedNonIntermodDirectImports, !Info)
     ).
 
 :- pred non_intermod_direct_imports_uncached(globals::in, module_index::in,
@@ -734,17 +734,17 @@ non_intermod_direct_imports_uncached(Globals, ModuleIndex, Succeeded, Modules,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 indirect_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
-    CachedIndirectImports0 = !.Info ^ mki_cached_indirect_imports,
+    CachedIndirectImports0 = make_info_get_cached_indirect_imports(!.Info),
     ( if map.search(CachedIndirectImports0, ModuleIndex, CachedResult) then
         CachedResult = deps_result(Succeeded, Modules)
     else
         indirect_imports_uncached(Globals, direct_imports, ModuleIndex,
             Succeeded, Modules, !Info, !IO),
         Result = deps_result(Succeeded, Modules),
-        CachedIndirectImports1 = !.Info ^ mki_cached_indirect_imports,
+        CachedIndirectImports1 = make_info_get_cached_indirect_imports(!.Info),
         map.det_insert(ModuleIndex, Result,
             CachedIndirectImports1, CachedIndirectImports),
-        !Info ^ mki_cached_indirect_imports := CachedIndirectImports
+        make_info_set_cached_indirect_imports(CachedIndirectImports, !Info)
     ).
 
     % Return the list of modules for which we should read `.int2' files,
@@ -772,7 +772,7 @@ indirect_imports_uncached(Globals, FindDirectImports, ModuleIndex, Succeeded,
     % XXX The original version of this code by stayl had the line assigning
     % to KeepGoing textually *before* the call to FindDirectImports, but
     % looked up the keep_going in the version of !Info *after* that call.
-    KeepGoing = !.Info ^ mki_keep_going,
+    KeepGoing = make_info_get_keep_going(!.Info),
     ( if
         DirectSucceeded = did_not_succeed,
         KeepGoing = do_not_keep_going
@@ -833,7 +833,7 @@ foreign_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     globals.get_backend_foreign_languages(Globals, Languages),
     intermod_imports(Globals, ModuleIndex, IntermodSucceeded, IntermodModules,
         !Info, !IO),
-    KeepGoing = !.Info ^ mki_keep_going,
+    KeepGoing = make_info_get_keep_going(!.Info),
     deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
         find_module_foreign_imports(set.list_to_set(Languages)),
         Globals, to_sorted_list(insert(IntermodModules, ModuleIndex)),
@@ -849,7 +849,8 @@ find_module_foreign_imports(Languages, Globals, ModuleIndex, Succeeded,
         ForeignModules, !Info, !IO) :-
     % Languages should be constant for the duration of the process,
     % so is unnecessary to include in the cache key.
-    CachedForeignImports0 = !.Info ^ mki_cached_transitive_foreign_imports,
+    CachedForeignImports0 =
+        make_info_get_cached_transitive_foreign_imports(!.Info),
     ( if map.search(CachedForeignImports0, ModuleIndex, CachedResult) then
         CachedResult = deps_result(Succeeded, ForeignModules)
     else
@@ -857,18 +858,18 @@ find_module_foreign_imports(Languages, Globals, ModuleIndex, Succeeded,
             Succeeded0, ImportedModules, !Info, !IO),
         (
             Succeeded0 = succeeded,
-            KeepGoing = !.Info ^ mki_keep_going,
+            KeepGoing = make_info_get_keep_going(!.Info),
             deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
                 find_module_foreign_imports_uncached(Languages),
                 Globals, to_sorted_list(insert(ImportedModules, ModuleIndex)),
                 succeeded, Succeeded, init, ForeignModules, !Info, !IO),
             Result = deps_result(Succeeded, ForeignModules),
             CachedForeignImports1 =
-                !.Info ^ mki_cached_transitive_foreign_imports,
+                make_info_get_cached_transitive_foreign_imports(!.Info),
             map.det_insert(ModuleIndex, Result,
                 CachedForeignImports1, CachedForeignImports),
-            !Info ^ mki_cached_transitive_foreign_imports :=
-                CachedForeignImports
+            make_info_set_cached_transitive_foreign_imports(
+                CachedForeignImports, !Info)
         ;
             Succeeded0 = did_not_succeed,
             Succeeded = did_not_succeed,
@@ -994,7 +995,7 @@ combine_deps_2(FindDeps1, FindDeps2, Globals, ModuleIndex, Succeeded, Deps,
     FindDeps1(Globals, ModuleIndex, Succeeded1, Deps1, !Info, !IO),
     ( if
         Succeeded1 = did_not_succeed,
-        !.Info ^ mki_keep_going = do_not_keep_going
+        make_info_get_keep_going(!.Info) = do_not_keep_going
     then
         Succeeded = did_not_succeed,
         Deps = Deps1
@@ -1027,16 +1028,16 @@ combine_deps_list([FindDeps1, FindDeps2 | FindDepsTail]) =
 
 cache_computed_module_deps(Label, FindDeps, Globals, ModuleIndex, Succeeded,
         Deps, !Info, !IO) :-
-    Cache0 = !.Info ^ mki_cached_computed_module_deps,
+    Cache0 = make_info_get_cached_computed_module_deps(!.Info),
     Key = computed_module_deps_key(ModuleIndex, Label),
     ( if map.search(Cache0, Key, CachedResult) then
         CachedResult = deps_result(Succeeded, Deps)
     else
         FindDeps(Globals, ModuleIndex, Succeeded, Deps, !Info, !IO),
-        Cache1 = !.Info ^ mki_cached_computed_module_deps,
+        Cache1 = make_info_get_cached_computed_module_deps(!.Info),
         Result = deps_result(Succeeded, Deps),
         map.det_insert(Key, Result, Cache1, Cache),
-        !Info ^ mki_cached_computed_module_deps := Cache
+        make_info_set_cached_computed_module_deps(Cache, !Info)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1196,18 +1197,19 @@ find_transitive_module_dependencies(Globals, DependenciesType,
         IsModuleInCurDir, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     DepsRoot = transitive_dependencies_root(ModuleIndex, DependenciesType,
         IsModuleInCurDir),
-    CachedTransDeps0 = !.Info ^ mki_cached_transitive_dependencies,
+    CachedTransDeps0 = make_info_get_cached_transitive_dependencies(!.Info),
     ( if map.search(CachedTransDeps0, DepsRoot, Result0) then
         Result0 = deps_result(Succeeded, Modules)
     else
-        KeepGoing = !.Info ^ mki_keep_going,
+        KeepGoing = make_info_get_keep_going(!.Info),
         find_transitive_module_dependencies_uncached(KeepGoing,
             DependenciesType, IsModuleInCurDir, Globals, ModuleIndex,
             Succeeded, init, Modules, !Info, !IO),
         Result = deps_result(Succeeded, Modules),
-        CachedTransDeps1 = !.Info ^ mki_cached_transitive_dependencies,
+        CachedTransDeps1 =
+            make_info_get_cached_transitive_dependencies(!.Info),
         map.det_insert(DepsRoot, Result, CachedTransDeps1, CachedTransDeps),
-        !Info ^ mki_cached_transitive_dependencies := CachedTransDeps
+        make_info_set_cached_transitive_dependencies(CachedTransDeps, !Info)
     ).
 
 :- pred find_transitive_module_dependencies_uncached(maybe_keep_going::in,
@@ -1227,8 +1229,8 @@ find_transitive_module_dependencies_uncached(KeepGoing, DependenciesType,
     else if
         DepsRoot = transitive_dependencies_root(ModuleIndex,
             DependenciesType, IsModuleInCurDir),
-        map.search(!.Info ^ mki_cached_transitive_dependencies, DepsRoot,
-            Result0)
+        map.search(make_info_get_cached_transitive_dependencies(!.Info),
+            DepsRoot, Result0)
     then
         Result0 = deps_result(Succeeded, Modules1),
         Modules = union(Modules0, Modules1)
@@ -1309,16 +1311,16 @@ do_find_transitive_module_dependencies_uncached(KeepGoing, DependenciesType,
     module_names_to_index_set(set.to_sorted_list(IncludesToCheck),
         IncludesToCheckSet, !Info),
     Modules1 = insert(Modules0, ModuleIndex),
-    OldImportingModule = !.Info ^ mki_importing_module,
-    !Info ^ mki_importing_module := yes(ioi_import(ModuleName)),
+    OldImportingModule = make_info_get_importing_module(!.Info),
+    make_info_set_importing_module(yes(ioi_import(ModuleName)), !Info),
     deps_set_foldl3_find_trans_deps(KeepGoing, DependenciesType,
         IsModuleInCurDir, Globals, to_sorted_list(ImportsToCheckSet),
         succeeded, SucceededImports, Modules1, Modules2, !Info, !IO),
-    !Info ^ mki_importing_module := yes(ioi_include(ModuleName)),
+    make_info_set_importing_module(yes(ioi_include(ModuleName)), !Info),
     deps_set_foldl3_find_trans_deps(KeepGoing, DependenciesType,
         IsModuleInCurDir, Globals, to_sorted_list(IncludesToCheckSet),
         succeeded, SucceededIncludes, Modules2, Modules, !Info, !IO),
-    !Info ^ mki_importing_module := OldImportingModule,
+    make_info_set_importing_module(OldImportingModule, !Info),
     Succeeded = SucceededImports `and` SucceededIncludes.
 
 %---------------------------------------------------------------------------%
@@ -1384,7 +1386,7 @@ make_write_target_dependency_status(Globals, DepTarget - DepStatus, !IO) :-
 dependency_status(Globals, Dep, Status, !Info, !IO) :-
     (
         Dep = dep_file(_FileName),
-        DepStatusMap0 = !.Info ^ mki_dependency_status,
+        DepStatusMap0 = make_info_get_dependency_status(!.Info),
         ( if version_hash_table.search(DepStatusMap0, Dep, StatusPrime) then
             Status = StatusPrime
         else
@@ -1399,7 +1401,7 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
             ),
             version_hash_table.det_insert(Dep, Status,
                 DepStatusMap0, DepStatusMap),
-            !Info ^ mki_dependency_status := DepStatusMap
+            make_info_set_dependency_status(DepStatusMap, !Info)
         )
     ;
         Dep = dep_target(Target),
@@ -1419,7 +1421,7 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
                 TargetFileName, !Info, !IO),
             Status = deps_status_up_to_date
         else if
-            DepStatusMap0 = !.Info ^ mki_dependency_status,
+            DepStatusMap0 = make_info_get_dependency_status(!.Info),
             version_hash_table.search(DepStatusMap0, Dep, StatusPrime)
         then
             Status = StatusPrime
@@ -1454,10 +1456,10 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
                     )
                 )
             ),
-            DepStatusMap1 = !.Info ^ mki_dependency_status,
+            DepStatusMap1 = make_info_get_dependency_status(!.Info),
             version_hash_table.det_insert(Dep, Status,
                 DepStatusMap1, DepStatusMap),
-            !Info ^ mki_dependency_status := DepStatusMap
+            make_info_set_dependency_status(DepStatusMap, !Info)
         )
     ).
 

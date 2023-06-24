@@ -62,13 +62,10 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
-:- import_module parse_tree.read_modules.
 :- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
 :- import_module dir.
-:- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module solutions.
@@ -78,10 +75,11 @@
 
 %---------------------------------------------------------------------------%
 
-make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
-        Targets0, !IO) :-
+make_process_compiler_args(Globals, DetectedGradeFlags, OptionsVariables,
+        OptionArgs, Targets0, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
-    get_main_target_if_needed(ProgName, Variables, Targets0, MaybeTargets0),
+    get_main_target_if_needed(ProgName, OptionsVariables,
+        Targets0, MaybeTargets0),
     report_any_absolute_targets(ProgName, MaybeTargets0, MaybeTargets),
     (
         MaybeTargets = error1(Specs),
@@ -93,6 +91,7 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
         ( KeepGoingBool = no,  KeepGoing = do_not_keep_going
         ; KeepGoingBool = yes, KeepGoing = do_keep_going
         ),
+        globals.lookup_int_option(Globals, analysis_repeat, AnalysisRepeat),
 
         ModuleIndexMap = module_index_map(
             version_hash_table.init_default(module_name_hash),
@@ -113,41 +112,12 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
         % Classify the remaining targets.
         list.map(classify_target(Globals), NonDependTargets,
             ClassifiedTargets),
+        ClassifiedTargetSet = set.list_to_set(ClassifiedTargets),
 
-        ShouldRebuildModuleDeps = do_rebuild_module_deps,
-        globals.lookup_int_option(Globals, analysis_repeat, AnalysisRepeat),
-
-        map.init(ModuleDependencies),
-        map.init(FileTimestamps),
-        TargetTimestamps = init_target_file_timestamps,
-        set.init(ErrorFileModules),
-        MaybeImportingModule = maybe.no,
-        MaybeStdoutLock = maybe.no,
-        MakeInfo0 = make_info(
-            ModuleDependencies,
-            FileTimestamps,
-            TargetTimestamps,
-            DetectedGradeFlags,
-            OptionArgs,
-            Variables,
-            ModuleIndexMap,
-            DepIndexMap,
-            DepStatusMap,
-            init_cached_direct_imports,
-            init_cached_direct_imports,
-            init_cached_indirect_imports,
-            init_cached_transitive_dependencies,
-            init_cached_transitive_foreign_imports,
-            init_cached_computed_module_deps,
-            ShouldRebuildModuleDeps,
-            KeepGoing,
-            ErrorFileModules,
-            MaybeImportingModule,
-            set.list_to_set(ClassifiedTargets),
-            AnalysisRepeat,
-            MaybeStdoutLock,
-            init_have_read_module_maps
-        ),
+        MakeInfo0 = init_make_info(OptionsVariables, DetectedGradeFlags,
+            KeepGoing, OptionArgs, ClassifiedTargetSet, AnalysisRepeat,
+            init_target_file_timestamps, ModuleIndexMap,
+            DepIndexMap, DepStatusMap),
 
         % Build the targets, stopping on any errors if `--keep-going'
         % was not set.

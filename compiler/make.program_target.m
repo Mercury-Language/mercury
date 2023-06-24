@@ -172,9 +172,9 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions, Succeeded,
     ),
     (
         IntermodAnalysisSucceeded = succeeded,
-        DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
-        OptionVariables = !.Info ^ mki_options_variables,
-        OptionArgs = !.Info ^ mki_option_args,
+        DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
+        OptionVariables = make_info_get_options_variables(!.Info),
+        OptionArgs = make_info_get_option_args(!.Info),
         setup_for_build_with_module_options(invoked_by_mmc_make,
             MainModuleName, DetectedGradeFlags, OptionVariables, OptionArgs,
             ExtraOptions, MayBuild, !IO),
@@ -201,7 +201,7 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
     LinkedTargetFile = linked_target_file(MainModuleName, FileType),
     find_reachable_local_modules(Globals, MainModuleName, DepsSucceeded,
         AllModules, !Info, !IO),
-    KeepGoing = !.Info ^ mki_keep_going,
+    KeepGoing = make_info_get_keep_going(!.Info),
     ( if
         DepsSucceeded = did_not_succeed,
         KeepGoing = do_not_keep_going
@@ -535,9 +535,9 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         (
             InitObjectResult1 = yes(InitObject),
             % We may need to update the timestamp of the `_init.o' file.
-            FileTimestamps0 = !.Info ^ mki_file_timestamps,
+            FileTimestamps0 = make_info_get_file_timestamps(!.Info),
             map.delete(InitObject, FileTimestamps0, FileTimestamps1),
-            !Info ^ mki_file_timestamps := FileTimestamps1,
+            make_info_set_file_timestamps(FileTimestamps1, !Info),
             % There is no module_target_type for the `_init.o' file,
             % so mki_target_file_timestamps should not contain anything
             % that needs to be invalidated.
@@ -670,15 +670,15 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
                     MainModuleName, AllObjects),
                 Succeeded, !IO)
         ),
-        CmdLineTargets0 = !.Info ^ mki_command_line_targets,
+        CmdLineTargets0 = make_info_get_command_line_targets(!.Info),
         set.delete(top_target_file(MainModuleName, linked_target(FileType)),
             CmdLineTargets0, CmdLineTargets),
-        !Info ^ mki_command_line_targets := CmdLineTargets,
+        make_info_set_command_line_targets(CmdLineTargets, !Info),
         (
             Succeeded = succeeded,
-            FileTimestamps2 = !.Info ^ mki_file_timestamps,
+            FileTimestamps2 = make_info_get_file_timestamps(!.Info),
             map.delete(OutputFileName, FileTimestamps2, FileTimestamps),
-            !Info ^ mki_file_timestamps := FileTimestamps
+            make_info_set_file_timestamps(FileTimestamps, !Info)
             % There is no module_target_type for the linked target,
             % so mki_target_file_timestamps should not contain anything
             % that needs to be invalidated.
@@ -752,12 +752,13 @@ make_java_files(Globals, MainModuleName, ObjModules, Succeeded, !Info, !IO) :-
         % javac might write more `.class' files than we anticipated (though
         % it probably won't) so clear out all the timestamps which might be
         % affected.
-        Timestamps0 = !.Info ^ mki_file_timestamps,
+        Timestamps0 = make_info_get_file_timestamps(!.Info),
         map.foldl(delete_java_class_timestamps, Timestamps0,
             map.init, Timestamps),
-        !Info ^ mki_file_timestamps := Timestamps,
+        make_info_set_file_timestamps(Timestamps, !Info),
         % For simplicity, clear out all target file timestamps.
-        !Info ^ mki_target_file_timestamps := init_target_file_timestamps
+        make_info_set_target_file_timestamps(init_target_file_timestamps,
+            !Info)
     ).
 
 :- pred out_of_date_java_modules(globals::in, list(module_name)::in,
@@ -843,9 +844,9 @@ delete_java_class_timestamps(FileName, MaybeTimestamp, !Timestamps) :-
 
 make_misc_target(Globals, MainModuleName - TargetType, Succeeded,
         !Info, !Specs, !IO) :-
-    DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
-    OptionVariables = !.Info ^ mki_options_variables,
-    OptionArgs = !.Info ^ mki_option_args,
+    DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
+    OptionVariables = make_info_get_options_variables(!.Info),
+    OptionArgs = make_info_get_option_args(!.Info),
     ExtraOptions = [],
     setup_for_build_with_module_options(invoked_by_mmc_make, MainModuleName,
         DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
@@ -868,19 +869,19 @@ make_misc_target(Globals, MainModuleName - TargetType, Succeeded,
 make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
         !Info, !Specs, !IO) :-
     % Don't rebuild .module_dep files when cleaning up.
-    RebuildModuleDeps = !.Info ^ mki_rebuild_module_deps,
+    RebuildModuleDeps = make_info_get_rebuild_module_deps(!.Info),
     ( if
         ( TargetType = misc_target_clean
         ; TargetType = misc_target_realclean
         )
     then
-        !Info ^ mki_rebuild_module_deps := do_not_rebuild_module_deps
+        make_info_set_rebuild_module_deps(do_not_rebuild_module_deps, !Info)
     else
         true
     ),
     find_reachable_local_modules(Globals, MainModuleName, Succeeded0,
         AllModulesSet, !Info, !IO),
-    !Info ^ mki_rebuild_module_deps := RebuildModuleDeps,
+    make_info_set_rebuild_module_deps(RebuildModuleDeps, !Info),
     AllModules = set.to_sorted_list(AllModulesSet),
     (
         TargetType = misc_target_clean,
@@ -896,7 +897,7 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
         TargetType = misc_target_build_all(ModuleTargetType),
         get_target_modules(Globals, ModuleTargetType, AllModules,
             TargetModules, !Info, !IO),
-        KeepGoing = !.Info ^ mki_keep_going,
+        KeepGoing = make_info_get_keep_going(!.Info),
         ( if Succeeded0 = did_not_succeed, KeepGoing = do_not_keep_going then
             Succeeded = did_not_succeed
         else
@@ -953,7 +954,7 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
         TargetType = misc_target_build_xml_docs,
         get_target_modules(Globals, module_target_xml_doc, AllModules,
             TargetModules, !Info, !IO),
-        KeepGoing = !.Info ^ mki_keep_going,
+        KeepGoing = make_info_get_keep_going(!.Info),
         ( if Succeeded0 = did_not_succeed, KeepGoing = do_not_keep_going then
             Succeeded = did_not_succeed
         else
@@ -986,7 +987,7 @@ make_all_interface_files(Globals, AllModules0, Succeeded, !Info, !IO) :-
         AnyIntermod = no,
         Opts = []
     ),
-    KeepGoing = !.Info ^ mki_keep_going,
+    KeepGoing = make_info_get_keep_going(!.Info),
     % Private interfaces (.int0) need to be made before building long interface
     % files in parallel, otherwise two processes may try to build the same
     % private interface file.
@@ -1058,10 +1059,10 @@ maybe_with_analysis_cache_dir_2(Globals, P, Succeeded, !Info, !IO) :-
         P(Succeeded, !Info, !IO)
     ;
         UseAnalysisCacheDir = use_analysis_cache_dir(CacheDir, CacheDirOption),
-        OrigOptionArgs = !.Info ^ mki_option_args,
+        OrigOptionArgs = make_info_get_option_args(!.Info),
         % Pass the name of the cache directory to child processes
-        !Info ^ mki_option_args :=
-            OrigOptionArgs ++ [CacheDirOption, CacheDir],
+        make_info_set_option_args(OrigOptionArgs ++ [CacheDirOption, CacheDir],
+            !Info),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
         P(Succeeded1, !Info, !IO),
@@ -1069,7 +1070,7 @@ maybe_with_analysis_cache_dir_2(Globals, P, Succeeded, !Info, !IO) :-
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
             Succeeded1, Succeeded, !Info, !IO),
         remove_cache_dir(Globals, CacheDir, !Info, !IO),
-        !Info ^ mki_option_args := OrigOptionArgs
+        make_info_set_option_args(OrigOptionArgs, !Info)
     ;
         UseAnalysisCacheDir = analysis_cache_dir_create_failed,
         Succeeded = did_not_succeed
@@ -1098,10 +1099,10 @@ maybe_with_analysis_cache_dir_3(Globals, P, Succeeded, !Info, !Specs, !IO) :-
         P(Succeeded, !Info, !Specs, !IO)
     ;
         UseAnalysisCacheDir = use_analysis_cache_dir(CacheDir, CacheDirOption),
-        OrigOptionArgs = !.Info ^ mki_option_args,
+        OrigOptionArgs = make_info_get_option_args(!.Info),
         % Pass the name of the cache directory to child processes
-        !Info ^ mki_option_args :=
-            OrigOptionArgs ++ [CacheDirOption, CacheDir],
+        make_info_set_option_args(OrigOptionArgs ++ [CacheDirOption, CacheDir],
+            !Info),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
         P(Succeeded1, !Info, !Specs, !IO),
@@ -1109,7 +1110,7 @@ maybe_with_analysis_cache_dir_3(Globals, P, Succeeded, !Info, !Specs, !IO) :-
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
             Succeeded1, Succeeded, !Info, !IO),
         remove_cache_dir(Globals, CacheDir, !Info, !IO),
-        !Info ^ mki_option_args := OrigOptionArgs
+        make_info_set_option_args(OrigOptionArgs, !Info)
     ;
         UseAnalysisCacheDir = analysis_cache_dir_create_failed,
         Succeeded = did_not_succeed
@@ -1144,7 +1145,7 @@ should_we_use_analysis_cache_dir(Globals, Info, UseAnalysisCacheDir, !IO) :-
             CacheDir0 \= ""
         ;
             % Analysis file cache directory already set up in a parent call.
-            list.member(CacheDirOption, Info ^ mki_option_args)
+            list.member(CacheDirOption, make_info_get_option_args(Info))
         )
     then
         UseAnalysisCacheDir = do_not_use_analysis_cache_dir
@@ -1212,7 +1213,7 @@ remove_cache_dir(Globals, CacheDir, !Info, !IO) :-
 
 build_analysis_files(Globals, MainModuleName, AllModules,
         Succeeded0, Succeeded, !Info, !IO) :-
-    KeepGoing = !.Info ^ mki_keep_going,
+    KeepGoing = make_info_get_keep_going(!.Info),
     ( if
         Succeeded0 = did_not_succeed,
         KeepGoing = do_not_keep_going
@@ -1243,7 +1244,7 @@ build_analysis_files_1(Globals, MainModuleName, AllModules, Succeeded,
         !Info, !IO) :-
     get_target_modules(Globals, module_target_analysis_registry, AllModules,
         TargetModules0, !Info, !IO),
-    reverse_ordered_modules(!.Info ^ mki_module_dependencies,
+    reverse_ordered_modules(make_info_get_module_dependencies(!.Info),
         TargetModules0, TargetModules1),
     % Filter out the non-local modules so we don't try to reanalyse them.
     list.filter(list.contains(AllModules), TargetModules1, TargetModules),
@@ -1265,7 +1266,7 @@ build_analysis_files_1(Globals, MainModuleName, AllModules, Succeeded,
 
 build_analysis_files_2(Globals, MainModuleName, TargetModules,
         LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO) :-
-    KeepGoing = !.Info ^ mki_keep_going,
+    KeepGoing = make_info_get_keep_going(!.Info),
     foldl2_make_module_targets(KeepGoing, LocalModulesOpts, Globals,
         make_dependency_list(TargetModules, module_target_analysis_registry),
         Succeeded1, !Info, !IO),
@@ -1276,7 +1277,7 @@ build_analysis_files_2(Globals, MainModuleName, TargetModules,
     % If there are any invalid files then we repeat the analysis pass.
     % If there are only suboptimal files then we repeat the analysis up
     % to the number of times given by the user.
-    ReanalysisPasses = !.Info ^ mki_reanalysis_passes,
+    ReanalysisPasses = make_info_get_reanalysis_passes(!.Info),
     ReanalyseSuboptimal = (if ReanalysisPasses > 1 then yes else no),
     modules_needing_reanalysis(ReanalyseSuboptimal, Globals, TargetModules,
         InvalidModules, SuboptimalModules, !IO),
@@ -1289,7 +1290,7 @@ build_analysis_files_2(Globals, MainModuleName, TargetModules,
     else if list.is_not_empty(SuboptimalModules) then
         list.foldl(reset_analysis_registry_dependency_status,
             SuboptimalModules, !Info),
-        !Info ^ mki_reanalysis_passes := ReanalysisPasses - 1,
+        make_info_set_reanalysis_passes(ReanalysisPasses - 1, !Info),
         maybe_reanalyse_modules_message(Globals, !IO),
         build_analysis_files_2(Globals, MainModuleName, TargetModules,
             LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)
@@ -1382,10 +1383,10 @@ modules_needing_reanalysis(ReanalyseSuboptimal, Globals, [Module | Modules],
 
 reset_analysis_registry_dependency_status(ModuleName, !Info) :-
     Dep = dep_target(target_file(ModuleName, module_target_analysis_registry)),
-    DepStatusMap0 = !.Info ^ mki_dependency_status,
+    DepStatusMap0 = make_info_get_dependency_status(!.Info),
     version_hash_table.set(Dep, deps_status_not_considered,
         DepStatusMap0, DepStatusMap),
-    !Info ^ mki_dependency_status := DepStatusMap.
+    make_info_set_dependency_status(DepStatusMap, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -1495,7 +1496,7 @@ install_library(Globals, MainModuleName, Succeeded, !Info, !IO) :-
             and_list([ExtraHdrsSucceeded | IntsSucceeded]) = succeeded,
             GradeSucceeded = succeeded
         then
-            KeepGoing = !.Info ^ mki_keep_going,
+            KeepGoing = make_info_get_keep_going(!.Info),
             % XXX With Mmake, LIBGRADES is target-specific.
             globals.lookup_accumulating_option(Globals, libgrades, LibGrades0),
             LibGrades = list.delete_all(LibGrades0, Grade),
@@ -1617,7 +1618,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
 
     % Set up so that grade-dependent files for the current grade
     % don't overwrite the files for the default grade.
-    OptionArgs0 = !.Info ^ mki_option_args,
+    OptionArgs0 = make_info_get_option_args(!.Info),
     OptionArgs = OptionArgs0 ++ ["--grade", Grade, "--use-grade-subdirs"],
 
     verbose_make_msg(Globals,
@@ -1625,10 +1626,10 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
             io.format("Installing grade %s\n", [s(Grade)], !IO)
         ), !IO),
 
-    lookup_mmc_options(!.Info ^ mki_options_variables, MaybeMCFlags),
+    lookup_mmc_options(make_info_get_options_variables(!.Info), MaybeMCFlags),
     (
         MaybeMCFlags = ok1(MCFlags),
-        DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
+        DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
         AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
         io.output_stream(CurStream, !IO),
         handle_given_options(CurStream, AllFlags, _, _, OptionsSpecs,
@@ -1659,8 +1660,8 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
         %     StatusMap0, StatusMap0),
         StatusMap = version_hash_table.init_default(dependency_file_hash),
 
-        !Info ^ mki_dependency_status := StatusMap,
-        !Info ^ mki_option_args := OptionArgs,
+        make_info_set_dependency_status(StatusMap, !Info),
+        make_info_set_option_args(OptionArgs, !Info),
 
         % Building the library in the new grade is done in a separate process
         % to make it easier to stop and clean up on an interrupt.
