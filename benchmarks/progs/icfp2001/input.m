@@ -15,10 +15,12 @@
 
 :- interface.
 
-:- import_module io, list, array, char, prolog.
+:- import_module array.
+:- import_module char.
+:- import_module io.
+:- import_module list.
+
 :- import_module attrs.
-
-
 
 :- type tag
     --->    b ; em ; i ; pl ; s ; tt ; u(int) ; size(int) ; colour(colour).
@@ -76,9 +78,13 @@
 
 :- implementation.
 
-:- import_module int, exception, string, bool.
+:- import_module bool.
+:- import_module exception.
+:- import_module int.
 :- import_module maybe.
 :- import_module pair.
+:- import_module prolog.
+:- import_module string.
 
 %------------------------------------------------------------------------------%
 
