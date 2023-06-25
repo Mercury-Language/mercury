@@ -522,11 +522,18 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         C_CompilerType = C_CompilerTypePrime
     else
         C_CompilerType = cc_unknown,   % dummy
+        ValidC_CompilerTypes = [
+            "gcc",
+            "clang",
+            "msvc_x86",
+            "msvc_x64",
+            "unknown"
+        ],
         CCTpec =
             [words("Invalid argument"), quote(C_CompilerTypeStr),
             words("to the"), quote("--c-compiler-type"), words("option;"),
             words("must be")] ++
-            list_to_quoted_pieces_or(["gcc", "clang", "msvc", "unknown"]) ++
+            list_to_quoted_pieces_or(ValidC_CompilerTypes) ++
             [suffix("."), nl],
         add_error(phase_options, CCTpec, !Specs)
     ),

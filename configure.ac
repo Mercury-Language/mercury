@@ -170,16 +170,27 @@ case "$mercury_cv_cc_type" in
         C_COMPILER_TYPE="gcc_${mercury_cv_gcc_version}"
         ;;
 
-    msvc)
+    msvc_x86|msvc_x64)
         MERCURY_HAVE_MSVC=yes
         MERCURY_MSVC_VERSION
-        C_COMPILER_TYPE="msvc_${mercury_cv_msvc_version}"
+        C_COMPILER_TYPE="${mercury_cv_cc_type}_${mercury_cv_msvc_version}"
         ;;
 
     *)
         C_COMPILER_TYPE="unknown"
         ;;
 esac
+
+#-----------------------------------------------------------------------------#
+
+# Work out what CPU type we need to pass to boehm_gc/NT_MAKEFILE.
+
+case "$mercury_cv_cc_type" in
+    msvc_x64) BOEHM_WINDOWS_CPU_TYPE="x64" ;;
+    *) BOEHM_WINDOWS_CPU_TYPE="x86" ;;
+esac
+
+AC_SUBST([BOEHM_WINDOWS_CPU_TYPE])
 
 #-----------------------------------------------------------------------------#
 
@@ -2955,7 +2966,7 @@ case "$host" in
     *cygwin*)
         THREAD_LIBS=""
         case "$mercury_cv_cc_type" in
-            msvc)
+            msvc*)
                 CFLAGS_FOR_THREADS="-DGC_THREADS -MD"
                 LDFLAGS_FOR_THREADS="-MD"
                 LD_LIBFLAGS_FOR_THREADS="-MD"
@@ -2973,7 +2984,7 @@ case "$host" in
     i*86-pc-mingw*)
         THREAD_LIBS=""
         case "$mercury_cv_cc_type" in
-            msvc)
+            msvc*)
                 CFLAGS_FOR_THREADS="-DGC_THREADS -MD"
                 LDFLAGS_FOR_THREADS="-MD"
                 LD_LIBFLAGS_FOR_THREADS="-MD"
@@ -3005,7 +3016,7 @@ case "$host" in
     *-w64-mingw*|x86_64-pc-mingw*)
         THREAD_LIBS=""
         case "$mercury_cv_cc_type" in
-            msvc)
+            msvc*)
                 CFLAGS_FOR_THREADS="-DGC_THREADS -MD"
                 LDFLAGS_FOR_THREADS="-MD"
                 LD_LIBFLAGS_FOR_THREADS="-MD"

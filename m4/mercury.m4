@@ -686,7 +686,13 @@ int main(int argc, char **argv)
     #elif defined(__GNUC__)
        printf("gcc");
     #elif defined(_MSC_VER)
-       printf("msvc");
+       #if defined(_M_IX86)
+          printf("msvc_x86");
+       #elif defined(_M_X64)
+          printf("msvc_x64");
+       #else
+          printf("unknown");
+       #endif
     #else
        printf("unknown");
     #endif

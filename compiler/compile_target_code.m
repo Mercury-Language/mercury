@@ -395,7 +395,8 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         ;
             % XXX Check whether we need to do anything for these C compilers?
             ( C_CompilerType = cc_clang(_)
-            ; C_CompilerType = cc_cl(_)
+            ; C_CompilerType = cc_cl_x86(_)
+            ; C_CompilerType = cc_cl_x64(_)
             ),
             C_FnAlignOpt = ""
         ;
@@ -835,7 +836,9 @@ gather_compiler_specific_flags(Globals, Flags) :-
         C_CompilerType = cc_clang(_),
         globals.lookup_accumulating_option(Globals, clang_flags, FlagsList)
     ;
-        C_CompilerType = cc_cl(_),
+        ( C_CompilerType = cc_cl_x86(_)
+        ; C_CompilerType = cc_cl_x64(_)
+        ),
         globals.lookup_accumulating_option(Globals, msvc_flags, FlagsList)
     ;
         C_CompilerType = cc_unknown,
@@ -2368,13 +2371,21 @@ get_restricted_command_line_link_opts(Globals, LinkTargetType,
             LinkTargetType = executable,
             get_c_compiler_type(Globals, C_CompilerType),
             (
-                C_CompilerType = cc_cl(_),
-                % XXX WIN64 - this will need to be revisited when we begin
-                % supporting 64-bit Windows with MSVC.
+                C_CompilerType = cc_cl_x86(_),
                 ResCmdLinkFlags = [
                     "-nologo",
                     "-subsystem:console",
                     "-machine:x86",
+                    "-entry:wmainCRTStartup",
+                    "-defaultlib:libcmt"
+                ],
+                join_string_list(ResCmdLinkFlags, "", "", " ", ResCmdLinkOpts)
+            ;
+                C_CompilerType = cc_cl_x64(_),
+                ResCmdLinkFlags = [
+                    "-nologo",
+                    "-subsystem:console",
+                    "-machine:x64",
                     "-entry:wmainCRTStartup",
                     "-defaultlib:libcmt"
                 ],
@@ -2556,10 +2567,12 @@ get_linker_output_option(Globals, LinkTargetType, OutputOpt) :-
     % NOTE: the spacing around the value of OutputOpt here is important.
     % Any changes should be reflected in predicate link_exe_or_shared_lib/9.
     (
-        C_CompilerType = cc_cl(_),
+        ( C_CompilerType = cc_cl_x86(_)
+        ; C_CompilerType = cc_cl_x64(_)
+        ),
         ( if LinkTargetType = executable then
             % NOTE: -Fe _must not_ be separated from its argument by any
-            % whitspace; the lack of a trailing space in the following
+            % whitespace; the lack of a trailing space in the following
             % is deliberate.
             OutputOpt = " -Fe"
         else
@@ -2591,7 +2604,9 @@ reserve_stack_size_flags(Globals) = Flags :-
             ),
             string.format("-Wl,--stack=%d", [i(ReserveStackSize)], Flags)
         ;
-            C_CompilerType = cc_cl(_),
+            ( C_CompilerType = cc_cl_x86(_)
+            ; C_CompilerType = cc_cl_x64(_)
+            ),
             string.format("-stack:%d", [i(ReserveStackSize)], Flags)
         )
     ).
@@ -2617,7 +2632,9 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
             LinkOpt = "-l",
             LibSuffix = ""
         ;
-            CCompilerType = cc_cl(_),
+            ( CCompilerType = cc_cl_x86(_)
+            ; CCompilerType = cc_cl_x64(_)
+            ),
             LinkOpt = "",
             LibSuffix = ".lib"
         )
@@ -2702,7 +2719,9 @@ create_archive(Globals, ProgressStream, ErrorStream, LibFileName, Quote,
     (
         % If we are using Visual C then we must be using the Microsoft
         % lib tool.
-        C_CompilerType = cc_cl(_),
+        ( C_CompilerType = cc_cl_x86(_)
+        ; C_CompilerType = cc_cl_x64(_)
+        ),
         ArOutputSpace = ""
     ;
         ( C_CompilerType = cc_gcc(_, _, _)

@@ -163,7 +163,8 @@
                 % This is only available since gcc 3.0.
             )
     ;       cc_clang(maybe(clang_version))
-    ;       cc_cl(maybe(int))
+    ;       cc_cl_x86(maybe(int))  % MSVC targeting x86.
+    ;       cc_cl_x64(maybe(int))  % MSVC targeting x86_64 (x64).
     ;       cc_unknown.
 
     % For the csharp backend, which csharp compiler are we using?
@@ -532,7 +533,11 @@ convert_c_compiler_type(CC_Str, C_CompilerType) :-
 
 convert_c_compiler_type_simple("gcc",      cc_gcc(no, no, no)).
 convert_c_compiler_type_simple("clang",    cc_clang(no)).
-convert_c_compiler_type_simple("msvc",     cc_cl(no)).
+% For backwards compatibility we currently recognise "msvc"
+% as a synonym for "msvc_x86".
+convert_c_compiler_type_simple("msvc",     cc_cl_x86(no)).
+convert_c_compiler_type_simple("msvc_x86", cc_cl_x86(no)).
+convert_c_compiler_type_simple("msvc_x64", cc_cl_x64(no)).
 convert_c_compiler_type_simple("unknown",  cc_unknown).
 
 :- pred convert_c_compiler_type_with_version(string::in, c_compiler_type::out)
@@ -544,8 +549,14 @@ convert_c_compiler_type_with_version(CC_Str, C_CompilerType) :-
         convert_gcc_version(Major, Minor, Patch, C_CompilerType)
     else if Tokens = ["clang", Major, Minor, Patch] then
         convert_clang_version(Major, Minor, Patch, C_CompilerType)
-    else if Tokens = ["msvc", Version] then
-        convert_msvc_version(Version, C_CompilerType)
+    else if
+        ( Tokens = ["msvc", Version]
+        ; Tokens = ["msvc", "x86", Version]
+        )
+    then
+        convert_msvc_x86_version(Version, C_CompilerType)
+    else if Tokens = ["msvc", "x64", Version] then
+        convert_msvc_x64_version(Version, C_CompilerType)
     else
         false
     ).
@@ -629,12 +640,19 @@ convert_clang_version(MajorStr, MinorStr, PatchStr, C_CompilerType) :-
     % The version number is an integer literal (corresponding to the value
     % of the builtin macro _MSC_VER).
     %
-:- pred convert_msvc_version(string::in, c_compiler_type::out) is semidet.
+:- pred convert_msvc_x86_version(string::in, c_compiler_type::out) is semidet.
 
-convert_msvc_version(VersionStr, C_CompilerType) :-
+convert_msvc_x86_version(VersionStr, C_CompilerType) :-
     string.to_int(VersionStr, Version),
     Version > 0,
-    C_CompilerType = cc_cl(yes(Version)).
+    C_CompilerType = cc_cl_x86(yes(Version)).
+
+:- pred convert_msvc_x64_version(string::in, c_compiler_type::out) is semidet.
+
+convert_msvc_x64_version(VersionStr, C_CompilerType) :-
+    string.to_int(VersionStr, Version),
+    Version > 0,
+    C_CompilerType = cc_cl_x64(yes(Version)).
 
 convert_csharp_compiler_type("microsoft", csharp_microsoft).
 convert_csharp_compiler_type("mono", csharp_mono).

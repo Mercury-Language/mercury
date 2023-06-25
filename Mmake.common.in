@@ -185,6 +185,10 @@ BOEHM_CFLAGS_FOR_THREADS = @BOEHM_CFLAGS_FOR_THREADS@ \
 	@ENABLE_BOEHM_THREAD_LOCAL_ALLOC@ \
 	@ENABLE_BOEHM_PARALLEL_MARK@
 
+# The CPU type to pass via the "cpu" argument of boehm_gc/NT_MAKEFILE.
+# (This is only relevant when using MSVC.)
+BOEHM_WINDOWS_CPU_TYPE = @BOEHM_WINDOWS_CPU_TYPE@
+
 # Do we want to deal with intermodule information when building the library?
 # By default yes, since this way we note immediately when intermodule
 # optimization breaks, and always at installation time, since we must install
