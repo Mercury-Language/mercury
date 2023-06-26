@@ -1,5 +1,6 @@
 *.pic_o
 *.o
+*.obj
 *.ilk
 *.pdb
 libmer_trace.a

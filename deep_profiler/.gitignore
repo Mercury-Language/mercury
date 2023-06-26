@@ -34,6 +34,7 @@ Mercury.modules
 .deep.tags
 DEEP_FLAGS
 *.o
+*.obj
 *.opt
 *.optdate
 config.log

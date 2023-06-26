@@ -27,6 +27,7 @@ Mercury
 *.mih
 Mercury.modules
 *.o
+*.obj
 *.opt
 *.optdate
 *.trans_opt

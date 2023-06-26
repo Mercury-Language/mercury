@@ -1,3 +1,4 @@
 *.o
+*.obj
 *.pic_o
 robdd_conf.h
