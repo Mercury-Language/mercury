@@ -578,8 +578,9 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
 
             // Display AV address and access mode.
             fprintf(stderr, "\n***   An access violation occured"
-                    " at address 0x%08lx, while attempting"
-                    " to ", (unsigned long) address);
+                    " at address 0x%08" MR_INTEGER_LENGTH_MODIFIER
+                    "x, while attempting"
+                    " to ", (MR_Word) address);
 
             if (access_mode == READ) {
                 fprintf(stderr, "\n***   read inaccessible data");
@@ -603,11 +604,13 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
                 fprintf(stderr,
                     "\n***    Checking zone %s#%"
                     MR_INTEGER_LENGTH_MODIFIER "d: "
-                    "0x%08lx - 0x%08lx - 0x%08lx",
+                    "0x%08" MR_INTEGER_LENGTH_MODIFIER "x - "
+                    "0x%08" MR_INTEGER_LENGTH_MODIFIER "x - "
+                    "0x%08" MR_INTEGER_LENGHT_MODIFIER "x",
                     zone->MR_zone_name, zone->MR_zone_id,
-                    (unsigned long) zone->MR_zone_bottom,
-                    (unsigned long) zone->MR_zone_redzone,
-                    (unsigned long) zone->MR_zone_top);
+                    zone->MR_zone_bottom,
+                    zone->MR_zone_redzone,
+                    zone->MR_zone_top);
 
                 if ((zone->MR_zone_redzone <= address) &&
                     (address <= zone->MR_zone_top))
@@ -647,22 +650,27 @@ MR_dump_exception_record(EXCEPTION_RECORD *rec)
         return;
     }
 
-    fprintf(stderr, "\n***   Exception record at 0x%08lx:",
-        (unsigned long) rec);
-    fprintf(stderr, "\n***    MR_Code        : 0x%08lx (%s)",
-        (unsigned long) rec->ExceptionCode,
+    fprintf(stderr, "\n***   Exception record at 0x%08"
+        MR_INTEGER_LENGTH_MODIFIER "x:",
+        (MR_Word) rec);
+    fprintf(stderr, "\n***    MR_Code        : 0x%08"
+        MR_INTEGER_LENGTH_MODIFIER "x (%s)",
+        (MR_Word) rec->ExceptionCode,
         MR_find_exception_name(rec->ExceptionCode));
-    fprintf(stderr, "\n***    Flags       : 0x%08lx",
-        (unsigned long) rec->ExceptionFlags);
-    fprintf(stderr, "\n***    Address     : 0x%08lx",
-        (unsigned long) rec->ExceptionAddress);
+    fprintf(stderr, "\n***    Flags       : 0x%08"
+        MR_INTEGER_LENGTH_MODIFIER "x",
+        (MR_Word) rec->ExceptionFlags);
+    fprintf(stderr, "\n***    Address     : 0x%08"
+        MR_INTEGER_LENGTH_MODIFIER "x",
+        (MR_Word) rec->ExceptionAddress);
 
     for (i = 0; i < rec->NumberParameters; i++) {
         fprintf(stderr, "\n***    Parameter %d : 0x%08lx", i,
             (unsigned long) rec->ExceptionInformation[i]);
     }
-    fprintf(stderr, "\n***    Next record : 0x%08lx",
-        (unsigned long) rec->ExceptionRecord);
+    fprintf(stderr, "\n***    Next record : 0x%08"
+        MR_INTEGER_LENGTH_MODIFIER "x",
+        (MR_Word) rec->ExceptionRecord);
 
     // Try to explain the exception more "gracefully".
     MR_explain_exception_record(rec);
