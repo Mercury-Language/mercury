@@ -18,6 +18,7 @@
 *.date3
 *.pic_o
 *.o
+*.obj
 *.opt
 *.optdate
 *.trans_opt

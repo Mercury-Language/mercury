@@ -21,6 +21,7 @@ mcov
 *.mh
 *.mih
 *.o
+*.obj
 *.opt
 *.optdate
 *.prof
