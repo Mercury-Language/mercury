@@ -930,7 +930,7 @@ llds_c_to_obj(Globals, ProgressStream, ErrorStream, ModuleName,
         Succeeded, !IO) :-
     get_linked_target_type(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
-    pic_object_file_extension(Globals, PIC, ObjOtherExt, ObjNewExt, _),
+    maybe_pic_object_file_extension(Globals, PIC, ObjOtherExt, ObjNewExt, _),
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
         ext_other(other_ext(".c")), newext_target_c_cs(ext_target_c),
         ModuleName, C_File, !IO),
@@ -948,7 +948,7 @@ compile_fact_table_file(Globals, ProgressStream, ErrorStream,
         BaseName, O_FileName, Succeeded, !IO) :-
     get_linked_target_type(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
-    pic_object_file_extension(Globals, PIC, ObjOtherExt, NewExtObj, _),
+    maybe_pic_object_file_extension(Globals, PIC, ObjOtherExt, NewExtObj, _),
     % XXX EXT
     C_FileName = BaseName ++ ".c",
     O_FileName = BaseName ++ extension_to_string(Globals,

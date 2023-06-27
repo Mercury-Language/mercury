@@ -636,7 +636,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
 
         (
             CompilationTarget = target_c,
-            pic_object_file_extension(NoLinkObjsGlobals, PIC,
+            maybe_pic_object_file_extension(NoLinkObjsGlobals, PIC,
                 ObjOtherExtToUse, ObjNewExt, _),
             NewExt = newext_target_obj(ObjNewExt)
         ;

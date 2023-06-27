@@ -398,7 +398,7 @@ module_target_to_file_name_maybe_search(Globals, From, Search, MkDir,
             ForeignModuleName, FileName, !IO)
     ;
         TargetExt = fact_table_obj(PIC, FactFile),
-        pic_object_file_extension(Globals, PIC, OtherExt, ObjNewExt, _),
+        maybe_pic_object_file_extension(Globals, PIC, OtherExt, ObjNewExt, _),
         fact_table_file_name(Globals, $pred, MkDir,
             OtherExt, newext_target_obj(ObjNewExt), FactFile, FileName, !IO)
     ).
@@ -480,7 +480,7 @@ target_type_to_target_extension(Globals, Target, TargetExt) :-
             newext_target_java(ext_target_java_class))
     ;
         Target = module_target_object_code(PIC),
-        pic_object_file_extension(Globals, PIC, OtherExt, ObjNewExt, _),
+        maybe_pic_object_file_extension(Globals, PIC, OtherExt, ObjNewExt, _),
         TargetExt = extension(ext_other(OtherExt),
             newext_target_obj(ObjNewExt))
     ;
@@ -522,12 +522,6 @@ extension_to_target_type(Globals, ExtStr, Target) :-
             ExtStr = ".opt",
             TargetPrime = module_target_opt
         ;
-            ExtStr = ".analysis",
-            TargetPrime = module_target_analysis_registry
-        ;
-            ExtStr = ".track_flags",
-            TargetPrime = module_target_track_flags
-        ;
             ExtStr = ".mih",
             TargetPrime = module_target_c_header(header_mih)
         ;
@@ -546,13 +540,19 @@ extension_to_target_type(Globals, ExtStr, Target) :-
             ExtStr = ".class",
             TargetPrime = module_target_java_class_code
         ;
+            ExtStr = ".track_flags",
+            TargetPrime = module_target_track_flags
+        ;
             ExtStr = ".xml",
             TargetPrime = module_target_xml_doc
+        ;
+            ExtStr = ".analysis",
+            TargetPrime = module_target_analysis_registry
         )
     then
         Target = TargetPrime
     else if
-        is_pic_object_file_extension(Globals, ExtStr, PIC)
+        is_maybe_pic_object_file_extension(Globals, ExtStr, PIC)
     then
         Target = module_target_object_code(PIC)
     else
@@ -682,8 +682,8 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
         get_target_timestamp_analysis_registry(Globals, Search, TargetFile,
             FileName, MaybeTimestamp, !Info, !IO)
     else
-        % This path is hit very frequently so it is worth caching timestamps by
-        % target_file. It avoids having to compute a file name for a
+        % This path is hit very frequently so it is worth caching timestamps
+        % by target_file. It avoids having to compute a file name for a
         % target_file first, before looking up the timestamp for that file.
         TargetFileTimestamps0 = make_info_get_target_file_timestamps(!.Info),
         ( if
@@ -714,8 +714,8 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
     ).
 
     % Special treatment for `.analysis' files. If the corresponding
-    % `.analysis_status' file says the `.analysis' file is invalid then we
-    % treat it as out of date.
+    % `.analysis_status' file says the `.analysis' file is invalid,
+    % then we treat it as out of date.
     %
 :- pred get_target_timestamp_analysis_registry(globals::in, maybe_search::in,
     target_file::in, file_name::in, maybe_error(timestamp)::out,
@@ -792,7 +792,7 @@ get_target_timestamp_2(Globals, Search, TargetFile, FileName, MaybeTimestamp,
     list(dir_name)::out) is det.
 
 get_search_directories(Globals, TargetType, SearchDirs) :-
-    MaybeOpt = search_for_file_type(TargetType),
+    MaybeOpt = get_search_option_for_file_type(TargetType),
     (
         MaybeOpt = yes(SearchDirOpt),
         globals.lookup_accumulating_option(Globals, SearchDirOpt, SearchDirs0),
@@ -808,9 +808,9 @@ get_search_directories(Globals, TargetType, SearchDirs) :-
         SearchDirs = [dir.this_directory]
     ).
 
-:- func search_for_file_type(module_target_type) = maybe(option).
+:- func get_search_option_for_file_type(module_target_type) = maybe(option).
 
-search_for_file_type(ModuleTargetType) = MaybeSearchOption :-
+get_search_option_for_file_type(ModuleTargetType) = MaybeSearchOption :-
     (
         ( ModuleTargetType = module_target_source
         ; ModuleTargetType = module_target_errors

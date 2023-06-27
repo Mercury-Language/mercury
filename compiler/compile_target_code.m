@@ -167,7 +167,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % pic_object_file_extension(Globals, PIC, OtherExt,
+    % maybe_pic_object_file_extension(Globals, PIC, OtherExt,
     %   NewExtObj, NewExtInitObj):
     %
     % OtherExt is the old-style extension and NewExtObj is the new-style
@@ -181,7 +181,7 @@
     % of <mainmodule>_init's object file, whose "pic-ness' is handled
     % the same way as the other extensions we return.
     %
-:- pred pic_object_file_extension(globals::in, pic::in,
+:- pred maybe_pic_object_file_extension(globals::in, pic::in,
     other_ext::out, ext_obj::out, ext_init_obj::out) is det.
 
     % This predicate is the converse of pic_object_file_extension.
@@ -189,7 +189,7 @@
     % or not, and if it is, it tells you whether such object files are
     % PIC or not.
     %
-:- pred is_pic_object_file_extension(globals::in, string::in, pic::out)
+:- pred is_maybe_pic_object_file_extension(globals::in, string::in, pic::out)
     is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -270,7 +270,7 @@ compile_c_file(Globals, ProgressStream, ErrorStream, PIC, ModuleName,
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".c")), newext_target_c_cs(ext_target_c),
         ModuleName, C_File, !IO),
-    pic_object_file_extension(Globals, PIC, ObjOtherExt, NewExtObj, _),
+    maybe_pic_object_file_extension(Globals, PIC, ObjOtherExt, NewExtObj, _),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(ObjOtherExt), newext_target_obj(NewExtObj),
         ModuleName, O_File, !IO),
@@ -1269,7 +1269,8 @@ do_make_init_obj_file(Globals, ProgressStream, ErrorStream, MustCompile,
         MaybeInitTargetFile, !IO),
 
     get_object_code_type(Globals, executable, PIC),
-    pic_object_file_extension(Globals, PIC, ObjOtherExt, _, NewExtInitObj),
+    maybe_pic_object_file_extension(Globals, PIC, ObjOtherExt,
+        _, NewExtInitObj),
 
     % XXX EXT
     ObjOtherExt = other_ext(ObjExtStr),
@@ -1533,7 +1534,7 @@ link_module_list(ProgressStream, ErrorStream, Modules, ExtraObjFiles,
         TargetType = executable
     ),
     get_object_code_type(Globals, TargetType, PIC),
-    pic_object_file_extension(Globals, PIC, ObjOtherExt, ObjNewExt, _),
+    maybe_pic_object_file_extension(Globals, PIC, ObjOtherExt, ObjNewExt, _),
 
     join_module_list(Globals,
         ext_other(ObjOtherExt), newext_target_obj(ObjNewExt),
@@ -3104,7 +3105,8 @@ make_all_module_command(Command0, MainModule, AllModules, Command, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-pic_object_file_extension(Globals, PIC, OtherExt, NewExtObj, NewExtInitObj) :-
+maybe_pic_object_file_extension(Globals, PIC,
+        OtherExt, NewExtObj, NewExtInitObj) :-
     % The code of pic_object_file_extension and
     % is_pic_object_file_extension should be kept in sync.
     (
@@ -3121,7 +3123,7 @@ pic_object_file_extension(Globals, PIC, OtherExt, NewExtObj, NewExtInitObj) :-
     ),
     OtherExt = other_ext(ExtStr).
 
-is_pic_object_file_extension(Globals, ExtStr, PIC) :-
+is_maybe_pic_object_file_extension(Globals, ExtStr, PIC) :-
     % The code of pic_object_file_extension and
     % is_pic_object_file_extension should be kept in sync.
     ( if
@@ -3288,7 +3290,8 @@ make_standalone_int_body(Globals, ProgressStream, ErrorStream,
     (
         MkInitCmdSucceeded = succeeded,
         get_object_code_type(Globals, executable, PIC),
-        pic_object_file_extension(Globals, PIC, ObjOtherExt, NewExtObj, _),
+        maybe_pic_object_file_extension(Globals, PIC, ObjOtherExt,
+            NewExtObj, _),
         Ext = ext_other(ObjOtherExt),
         NewExt = newext_target_obj(NewExtObj),
         ObjFileName = BaseName ++ extension_to_string(Globals, Ext, NewExt),

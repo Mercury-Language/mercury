@@ -678,7 +678,7 @@ get_object_extension(Globals, PIC, OtherExt, NewExtObj) :-
     globals.get_target(Globals, CompilationTarget),
     (
         CompilationTarget = target_c,
-        pic_object_file_extension(Globals, PIC, OtherExt, NewExtObj, _)
+        maybe_pic_object_file_extension(Globals, PIC, OtherExt, NewExtObj, _)
     ;
         CompilationTarget = target_csharp,
         sorry($pred, "object extension for csharp")
@@ -1121,7 +1121,7 @@ external_foreign_code_files(Globals, PIC, ModuleDepInfo, ForeignFiles, !IO) :-
     % Any changes here may require corresponding changes in
     % get_foreign_object_targets.
 
-    pic_object_file_extension(Globals, PIC, ObjExt, ObjNewExt, _),
+    maybe_pic_object_file_extension(Globals, PIC, ObjExt, ObjNewExt, _),
     globals.get_target(Globals, CompilationTarget),
 
     % None of the current backends require externally compiled foreign code,
