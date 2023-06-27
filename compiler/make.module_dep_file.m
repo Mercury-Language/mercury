@@ -960,8 +960,8 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
     % We already know FatalReadError is empty.
     NonFatalErrors = ReadModuleErrors ^ rm_nonfatal_errors,
     ( if set.is_empty(NonFatalErrors) then
-        maybe_make_target_message_to_stream(Globals, OldOutputStream,
-            MadeTargetFileName, !IO),
+        maybe_making_filename_msg(Globals, MadeTargetFileName, MakingMsg),
+        maybe_write_msg(OldOutputStream, MakingMsg, !IO),
         setup_checking_for_interrupt(CookieMSI, !IO),
 
         DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),

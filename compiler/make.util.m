@@ -192,39 +192,82 @@
 :- pred debug_file_msg(globals::in, string::in, string::in,
     io::di, io::uo) is det.
 
-    % Write a message "Making <filename>" if `--verbose-make' is set.
+    % If `--verbose-make' is set, return a progress message saying that
+    % the compiler is "Making <filename>". Otherwise, return the empty string.
     %
-:- pred maybe_make_linked_target_message(globals::in, file_name::in,
-    io::di, io::uo) is det.
+:- pred maybe_making_filename_msg(globals::in, file_name::in,
+    string::out) is det.
 
-    % Write a message "Making <filename>" if `--verbose-make' is set.
+    % If `--verbose-make' is set, return a progress message saying that
+    % the compiler is reanalysing invalid/suboptimal modules.
+    % Otherwise, return the empty string.
     %
-:- pred maybe_make_target_message(globals::in, file_name::in,
-    io::di, io::uo) is det.
+:- pred maybe_reanalyse_modules_msg(globals::in, string::out) is det.
 
-:- pred maybe_make_target_message_to_stream(globals::in,
-    io.text_output_stream::in, file_name::in, io::di, io::uo) is det.
-
-    % Write a message "Reanalysing invalid/suboptimal modules" if
-    % `--verbose-make' is set.
+    % Return an error nessage saying there was an error making the given
+    % target, which has the given filename.
     %
-:- pred maybe_reanalyse_modules_message(globals::in, io::di, io::uo) is det.
+:- pred file_error_msg(file_name::in, string::out) is det.
 
-    % Write a message "** Error making <filename>".
+    % If
+    % - the warn_up_to_date option is set, and
+    % - the given target was specified on the command line, and
+    % - the given targe has not yet been deleted from that list of
+    %   command line targets,
+    % then return a warning about it already being up to date.
+    % Otherwise, return the empty string. In both cases, this predicate
+    % will delete ths given target from the list of command line targets,
+    % which prevents duplicate "up to date" messages.
     %
-:- pred file_error(make_info::in, file_name::in, io::di, io::uo) is det.
-
-    % If the given target was specified on the command line, warn that it
-    % was already up to date.
+    % XXX The list of command line targets is never used for any purpose
+    % other than this last test. I (zs) am not sure that it is actually useful
+    % for this purpose, because
     %
-:- pred maybe_warn_up_to_date_target(globals::in, top_target_file::in,
-    file_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
+    % - the two places other than maybe_warn_up_to_date_target_msg that can
+    %   delete targets from the list of command line targets, in
+    %   make.module_target.m and make.program_target.m respectively,
+    %   both do so only if the target is NOT up to date, and
+    %
+    % - it should not require this make_info field to prevent duplicate
+    %   calls to this predicate if the target IS up to date.
+    %
+:- pred maybe_warn_up_to_date_target_msg(globals::in, top_target_file::in,
+    file_name::in, make_info::in, make_info::out, string::out) is det.
 
     % Write a message "Made symlink/copy of <filename>"
     % if `--verbose-make' is set.
     %
-:- pred maybe_symlink_or_copy_linked_target_message(globals::in, file_name::in,
+:- pred maybe_symlink_or_copy_linked_target_msg(globals::in, file_name::in,
+    string::out) is det.
+
+%---------------------%
+%
+% All messages from the make-like functionality of "mmc --make" should be
+% written out using a single call to io.write_string, and then a flush
+% of the stream. This should allow messages from different processes
+% during parallel builds to be interleaved *only* on message boundaries.
+%
+% XXX This is only really true for the "locked" variants, and even then,
+% see the other XXX just below.
+%
+
+    % Write out a message from mmc --make, if the message is not empty.
+    %
+:- pred maybe_write_msg(string::in,
     io::di, io::uo) is det.
+:- pred maybe_write_msg(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+
+    % Write out a message from mmc --make, if the message is not empty,
+    % while locking stdout.
+    %
+    % XXX The current stream, or the specified stream, may be a stream
+    % OTHER THAN stdout.
+    %
+:- pred maybe_write_msg_locked(make_info::in,
+    string::in, io::di, io::uo) is det.
+:- pred maybe_write_msg_locked(io.text_output_stream::in, make_info::in,
+    string::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -1029,65 +1072,95 @@ debug_file_msg(Globals, FileName, Msg, !IO) :-
             io.format("%s: %s\n", [s(FileName), s(Msg)], !IO)
         ), !IO).
 
-maybe_make_linked_target_message(Globals, FileName, !IO) :-
-    verbose_make_msg(Globals,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            % Write this with one call to avoid interleaved output
-            % when doing parallel builds.
-            string.format("Making %s\n", [s(FileName)], Msg),
-            % XXX The lack of a specified stream here is probably a bug.
-            io.write_string(Msg, !IO)
-        ), !IO).
+%---------------------%
 
-maybe_make_target_message(Globals, FileName, !IO) :-
-    io.output_stream(OutputStream, !IO),
-    maybe_make_target_message_to_stream(Globals, OutputStream, FileName, !IO).
+maybe_making_filename_msg(Globals, FileName, Msg) :-
+    globals.lookup_bool_option(Globals, verbose_make, VerboseMake),
+    (
+        VerboseMake = no,
+        Msg = ""
+    ;
+        VerboseMake = yes,
+        string.format("Making %s\n", [s(FileName)], Msg)
+    ).
 
-maybe_make_target_message_to_stream(Globals, OutputStream, FileName, !IO) :-
-    verbose_make_msg(Globals,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            % XXX MAKE_STREAM
-            % Try to write this with one call to avoid interleaved output
-            % when doing parallel builds.
-            string.format("Making %s\n", [s(FileName)], Msg),
-            io.write_string(OutputStream, Msg, !IO)
-        ), !IO).
+maybe_reanalyse_modules_msg(Globals, Msg) :-
+    globals.lookup_bool_option(Globals, verbose_make, VerboseMake),
+    (
+        VerboseMake = no,
+        Msg = ""
+    ;
+        VerboseMake = yes,
+        Msg = "Reanalysing invalid/suboptimal modules\n"
+    ).
 
-maybe_reanalyse_modules_message(Globals, !IO) :-
-    verbose_make_msg(Globals,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            % XXX MAKE_STREAM
-            io.output_stream(OutputStream, !IO),
-            io.write_string(OutputStream,
-                "Reanalysing invalid/suboptimal modules\n", !IO)
-        ), !IO).
+file_error_msg(FileName, Msg) :-
+    string.format("** Error making `%s'.\n", [s(FileName)], Msg).
+    % with_locked_stdout(Info, io.write_string(Msg), !IO).
 
-file_error(Info, FileName, !IO) :-
-    string.format("** Error making `%s'.\n", [s(FileName)], Msg),
-    % XXX MAKE_STREAM
-    with_locked_stdout(Info, io.write_string(Msg), !IO).
-
-maybe_warn_up_to_date_target(Globals, Target, FileName, !Info, !IO) :-
+maybe_warn_up_to_date_target_msg(Globals, Target, FileName, !Info, Msg) :-
     globals.lookup_bool_option(Globals, warn_up_to_date, Warn),
     CmdLineTargets0 = make_info_get_command_line_targets(!.Info),
     (
         Warn = yes,
         ( if set.member(Target, CmdLineTargets0) then
-            io.format("** Nothing to be done for `%s'.\n", [s(FileName)], !IO)
+            string.format("** Nothing to be done for `%s'.\n", [s(FileName)],
+                Msg)
         else
-            true
+            Msg = ""
         )
     ;
-        Warn = no
+        Warn = no,
+        Msg = ""
     ),
     set.delete(Target, CmdLineTargets0, CmdLineTargets),
     make_info_set_command_line_targets(CmdLineTargets, !Info).
 
-maybe_symlink_or_copy_linked_target_message(Globals, FileName, !IO) :-
-    verbose_make_msg(Globals,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            io.format("Made symlink/copy of %s\n", [s(FileName)], !IO)
-        ), !IO).
+maybe_symlink_or_copy_linked_target_msg(Globals, FileName, Msg) :-
+    globals.lookup_bool_option(Globals, verbose_make, VerboseMake),
+    (
+        VerboseMake = no,
+        Msg = ""
+    ;
+        VerboseMake = yes,
+        string.format("Made symlink/copy of %s\n", [s(FileName)], Msg)
+    ).
+
+%---------------------%
+
+maybe_write_msg(Msg, !IO) :-    
+    io.output_stream(OutStream, !IO),
+    maybe_write_msg(OutStream, Msg, !IO).
+
+maybe_write_msg(OutStream, Msg, !IO) :-    
+    ( if Msg = "" then
+        true
+    else
+        io.write_string(OutStream, Msg, !IO),
+        io.flush_output(OutStream, !IO)
+    ).
+
+maybe_write_msg_locked(Info, Msg, !IO) :-    
+    io.output_stream(OutStream, !IO),
+    maybe_write_msg_locked(OutStream, Info, Msg, !IO).
+
+maybe_write_msg_locked(OutStream, Info, Msg, !IO) :-    
+    ( if Msg = "" then
+        true
+    else
+        MaybeLock = make_info_get_maybe_stdout_lock(Info),
+        (
+            MaybeLock = yes(Lock),
+            lock_stdout(Lock, !IO),
+            io.write_string(OutStream, Msg, !IO),
+            io.flush_output(OutStream, !IO),
+            unlock_stdout(Lock, !IO)
+        ;
+            MaybeLock = no,
+            io.write_string(OutStream, Msg, !IO),
+            io.flush_output(OutStream, !IO)
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 %

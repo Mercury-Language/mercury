@@ -277,8 +277,10 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
     ;
         DepsResult = deps_up_to_date,
         TopTargetFile = top_target_file(ModuleName, module_target(TargetType)),
-        maybe_warn_up_to_date_target(Globals, TopTargetFile, TargetFileName,
-            !Info, !IO),
+        maybe_warn_up_to_date_target_msg(Globals, TopTargetFile,
+            TargetFileName, !Info, UpToDateMsg),
+        % XXX MAKE_STREAM
+        maybe_write_msg(UpToDateMsg, !IO),
         debug_file_msg(Globals, TargetFileName, "up to date", !IO),
         Succeeded = succeeded,
         list.foldl(update_target_status(deps_status_up_to_date),
@@ -415,7 +417,9 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
     % XXX MAKE_FILENAME Either our caller should be able to give us
     % TargetFileName, or we could compute it here, and give it to code below.
     get_make_target_file_name(Globals, $pred, TargetFile, TargetFileName, !IO),
-    maybe_make_target_message(Globals, TargetFileName, !IO),
+    maybe_making_filename_msg(Globals, TargetFileName, MakingMsg),
+    % XXX MAKE_STREAM
+    maybe_write_msg(MakingMsg, !IO),
     TargetFile = target_file(ModuleName, _TargetType),
     CompilationTask = task_and_options(Task, TaskOptions),
     ExtraAndTaskOptions = ExtraOptions ++ TaskOptions,
@@ -840,7 +844,9 @@ record_made_target_given_maybe_touched_files(Globals, Succeeded,
     ;
         Succeeded = did_not_succeed,
         TargetStatus = deps_status_error,
-        file_error(!.Info, TargetFileName, !IO)
+        file_error_msg(TargetFileName, ErrorMsg),
+        % XXX MAKE_STREAM
+        maybe_write_msg_locked(!.Info, ErrorMsg, !IO)
     ),
 
     list.foldl(update_target_status(TargetStatus), TouchedTargetFiles, !Info),

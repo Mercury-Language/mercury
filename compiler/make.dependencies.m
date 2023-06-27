@@ -1417,8 +1417,10 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
             % so are also up-to-date.
             ModuleTarget = module_target(module_target_source),
             TopTargetFile = top_target_file(ModuleName, ModuleTarget),
-            maybe_warn_up_to_date_target(Globals, TopTargetFile,
-                TargetFileName, !Info, !IO),
+            maybe_warn_up_to_date_target_msg(Globals, TopTargetFile,
+                TargetFileName, !Info, UpToDateMsg),
+            % XXX MAKE_STREAM
+            maybe_write_msg(UpToDateMsg, !IO),
             Status = deps_status_up_to_date
         else if
             DepStatusMap0 = make_info_get_dependency_status(!.Info),

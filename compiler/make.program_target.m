@@ -590,7 +590,9 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
     ),
     (
         DepsResult = deps_error,
-        file_error(!.Info, OutputFileName, !IO),
+        file_error_msg(OutputFileName, ErrorMsg),
+        % XXX MAKE_STREAM
+        maybe_write_msg_locked(!.Info, ErrorMsg, !IO),
         Succeeded = did_not_succeed
     ;
         DepsResult = deps_up_to_date,
@@ -607,24 +609,33 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
                 Succeeded, MadeSymlinkOrCopy, !IO),
             (
                 MadeSymlinkOrCopy = yes,
-                maybe_symlink_or_copy_linked_target_message(NoLinkObjsGlobals,
-                    MainModuleLinkedFileName, !IO)
+                maybe_symlink_or_copy_linked_target_msg(NoLinkObjsGlobals,
+                    MainModuleLinkedFileName, LinkMsg),
+                % XXX MAKE_STREAM
+                maybe_write_msg(LinkMsg, !IO)
             ;
                 MadeSymlinkOrCopy = no,
-                maybe_warn_up_to_date_target(NoLinkObjsGlobals,
+                maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
                     MainModuleLinkedTarget, MainModuleLinkedFileName,
-                    !Info, !IO)
+                    !Info, UpToDateMsg),
+                % XXX MAKE_STREAM
+                maybe_write_msg(UpToDateMsg, !IO)
             )
         ;
             UseGradeSubdirs = no,
-            maybe_warn_up_to_date_target(NoLinkObjsGlobals,
-                MainModuleLinkedTarget, MainModuleLinkedFileName, !Info, !IO),
+            maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
+                MainModuleLinkedTarget, MainModuleLinkedFileName, !Info,
+                UpToDateMsg),
+            % XXX MAKE_STREAM
+            maybe_write_msg(UpToDateMsg, !IO),
             Succeeded = succeeded
         )
     ;
         DepsResult = deps_out_of_date,
-        maybe_make_linked_target_message(NoLinkObjsGlobals, OutputFileName,
-            !IO),
+        maybe_making_filename_msg(NoLinkObjsGlobals, OutputFileName,
+            MakingMsg),
+        % XXX MAKE_STREAM
+        maybe_write_msg(MakingMsg, !IO),
 
         % Find the extra object files for externally compiled foreign
         % procedures and fact tables. We don't need to include these in the
@@ -684,7 +695,9 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             % that needs to be invalidated.
         ;
             Succeeded = did_not_succeed,
-            file_error(!.Info, OutputFileName, !IO)
+            file_error_msg(OutputFileName, ErrorMsg),
+            % XXX MAKE_STREAM
+            maybe_write_msg_locked(!.Info, ErrorMsg, !IO)
         )
     ).
 
@@ -1167,7 +1180,7 @@ should_we_use_analysis_cache_dir(Globals, Info, UseAnalysisCacheDir, !IO) :-
     string::out, io::di, io::uo) is det.
 
 create_analysis_cache_dir(Globals, Succeeded, CacheDir, !IO) :-
-    choose_cache_dir_name(Globals, CacheDir, !IO),
+    choose_analysis_cache_dir_name(Globals, CacheDir),
     verbose_make_msg_option(Globals, verbose_make,
         io.format("Creating %s\n", [s(CacheDir)]), !IO),
     dir.make_directory(CacheDir, MakeRes, !IO),
@@ -1181,9 +1194,15 @@ create_analysis_cache_dir(Globals, Succeeded, CacheDir, !IO) :-
         Succeeded = did_not_succeed
     ).
 
-:- pred choose_cache_dir_name(globals::in, string::out, io::di, io::uo) is det.
+:- pred choose_analysis_cache_dir_name(globals::in, string::out) is det.
 
-choose_cache_dir_name(Globals, DirName, !IO) :-
+choose_analysis_cache_dir_name(Globals, DirName) :-
+    % XXX This code should be unnecessary.
+    % The code of file_names.m should return filenames as not one string,
+    % but as a <directory path, file name> pair. Besides leaving it up
+    % to the caller whether they want to create the directory path,
+    % the directory path would (or at least, SHOULD) be exactly what
+    % this predicate computes.
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     globals.lookup_string_option(Globals, target_arch, TargetArch),
     (
@@ -1282,7 +1301,9 @@ build_analysis_files_2(Globals, MainModuleName, TargetModules,
     modules_needing_reanalysis(ReanalyseSuboptimal, Globals, TargetModules,
         InvalidModules, SuboptimalModules, !IO),
     ( if list.is_not_empty(InvalidModules) then
-        maybe_reanalyse_modules_message(Globals, !IO),
+        maybe_reanalyse_modules_msg(Globals, ReanalysingMsg),
+        % XXX MAKE_STREAM
+        maybe_write_msg(ReanalysingMsg, !IO),
         list.foldl(reset_analysis_registry_dependency_status,
             InvalidModules, !Info),
         build_analysis_files_2(Globals, MainModuleName, TargetModules,
@@ -1291,7 +1312,9 @@ build_analysis_files_2(Globals, MainModuleName, TargetModules,
         list.foldl(reset_analysis_registry_dependency_status,
             SuboptimalModules, !Info),
         make_info_set_reanalysis_passes(ReanalysisPasses - 1, !Info),
-        maybe_reanalyse_modules_message(Globals, !IO),
+        maybe_reanalyse_modules_msg(Globals, ReanalysingMsg),
+        % XXX MAKE_STREAM
+        maybe_write_msg(ReanalysingMsg, !IO),
         build_analysis_files_2(Globals, MainModuleName, TargetModules,
             LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)
     else

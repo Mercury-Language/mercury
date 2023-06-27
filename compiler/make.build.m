@@ -163,6 +163,9 @@
     %
 :- type stdout_lock.
 
+:- pred lock_stdout(stdout_lock::in, io::di, io::uo) is det.
+:- pred unlock_stdout(stdout_lock::in, io::di, io::uo) is det.
+
 :- pred with_locked_stdout(make_info::in,
     pred(io, io)::in(pred(di, uo) is det), io::di, io::uo) is det.
 
@@ -900,8 +903,6 @@ make_no_job_ctl = no.
     %
 :- type stdout_lock == job_ctl.
 
-:- pred lock_stdout(stdout_lock::in, io::di, io::uo) is det.
-
 :- pragma foreign_proc("C",
     lock_stdout(JobCtl::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
@@ -913,8 +914,6 @@ make_no_job_ctl = no.
 ").
 
 lock_stdout(_, !IO).
-
-:- pred unlock_stdout(stdout_lock::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     unlock_stdout(JobCtl::in, _IO0::di, _IO::uo),
