@@ -196,7 +196,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
     list.foldl(update_target_status(deps_status_being_built),
         TouchedTargetFiles, !Info),
 
-    debug_file_msg(Globals, TargetFile, "checking dependencies", !IO),
+    debug_file_msg(Globals, TargetFileName, "checking dependencies", !IO),
 
     ( if CompilationTaskType = process_module(_) then
         module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
@@ -249,8 +249,9 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
     then
         DepsResult = deps_error
     else
-        make_dependency_files(Globals, TargetFile, DepFilesToMake,
-            TouchedTargetFiles, TouchedFiles, DepsResult0, !Info, !IO),
+        make_dependency_files(Globals, TargetFile, TargetFileName,
+            DepFilesToMake, TouchedTargetFiles, TouchedFiles,
+            DepsResult0, !Info, !IO),
         (
             DepsSucceeded = succeeded,
             DepsResult = DepsResult0
@@ -278,19 +279,19 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
         TopTargetFile = top_target_file(ModuleName, module_target(TargetType)),
         maybe_warn_up_to_date_target(Globals, TopTargetFile, TargetFileName,
             !Info, !IO),
-        debug_file_msg(Globals, TargetFile, "up to date", !IO),
+        debug_file_msg(Globals, TargetFileName, "up to date", !IO),
         Succeeded = succeeded,
         list.foldl(update_target_status(deps_status_up_to_date),
             [TargetFile | TouchedTargetFiles], !Info)
     ).
 
-:- pred make_dependency_files(globals::in, target_file::in,
+:- pred make_dependency_files(globals::in, target_file::in, file_name::in,
     list(dependency_file)::in, list(target_file)::in, list(file_name)::in,
     dependencies_result::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-make_dependency_files(Globals, TargetFile, DepFilesToMake, TouchedTargetFiles,
-        TouchedFiles, DepsResult, !Info, !IO) :-
+make_dependency_files(Globals, TargetFile, TargetFileName, DepFilesToMake,
+        TouchedTargetFiles, TouchedFiles, DepsResult, !Info, !IO) :-
     % Build the dependencies.
     KeepGoing = make_info_get_keep_going(!.Info),
     foldl2_make_module_targets(KeepGoing, [], Globals, DepFilesToMake,
@@ -301,13 +302,14 @@ make_dependency_files(Globals, TargetFile, DepFilesToMake, TouchedTargetFiles,
         TouchedTargetFiles, TargetTimestamps, !Info, !IO),
     (
         MakeDepsSucceeded = did_not_succeed,
-        debug_file_msg(Globals, TargetFile, "error making dependencies", !IO),
+        debug_file_msg(Globals, TargetFileName,
+            "error making dependencies", !IO),
         DepsResult = deps_error
     ;
         MakeDepsSucceeded = succeeded,
         ( if list.member(error(_), TargetTimestamps) then
-            debug_file_msg(Globals, TargetFile, "target file does not exist",
-                !IO),
+            debug_file_msg(Globals, TargetFileName,
+                "target file does not exist", !IO),
             DepsResult = deps_out_of_date
         else
             ( if
@@ -338,9 +340,41 @@ make_dependency_files(Globals, TargetFile, DepFilesToMake, TouchedTargetFiles,
                     TouchedTargetFileTimestamps ++ TouchedFileTimestamps,
                     MaybeOldestTimestamp),
 
+                % Our caller computes TargetFileName using the call
+                %
+                %   get_make_target_file_name(Globals, $pred, TargetFile,
+                %       TargetFileName, !IO)
+                %
+                % get_file_name(... do_not_search, ...) and
+                % get_make_target_file_name both just call
+                % module_name_to_file_name for *most*, but not *all*
+                % target file types. For the other three target types, namely
+                %
+                %   module_target_source
+                %   module_target_foreign_object
+                %   module_target_fact_table_object
+                %
+                % one of the following three must hold:
+                %
+                % - the different code paths in the above two predicates
+                %   may be equivalent, in which case one of those predicates
+                %   is redundant;
+                %
+                % - this code point cannot be reached with these target file
+                %   types, a proposition for which I (zs) see no evidence, or
+                %
+                % - the call to get_file_name here, instead of
+                %   get_make_target_file_name, is, and always has been,
+                %   a BUG.
+                %
+                % The fact that a hlc.gc bootcheck does not cause the
+                % call to expect below to throw an exception seems to argue
+                % against the last alternative above.
                 get_file_name(Globals, $pred, do_not_search, TargetFile,
-                    TargetFileName, !Info, !IO),
-                check_dependencies(Globals, TargetFileName,
+                    TargetFileNameB, !Info, !IO),
+                expect(unify(TargetFileName, TargetFileNameB), $pred,
+                    "TargetFileName mismatch"),
+                check_dependencies(Globals, TargetFileNameB,
                     MaybeOldestTimestamp, MakeDepsSucceeded, DepFilesToMake,
                     DepsResult, !Info, !IO)
             )

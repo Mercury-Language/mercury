@@ -166,7 +166,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Debugging, verbose messages, and error messages.
+% Debugging, progress, and error messages.
 %
 
     % Apply the given predicate if `--debug-make' is set.
@@ -187,9 +187,9 @@
 :- pred verbose_make_msg_option(globals::in, option::in,
     pred(io, io)::(pred(di, uo) is det), io::di, io::uo) is det.
 
-    % Write a debugging message relating to a given target file.
+    % Write a debugging message relating to a given file.
     %
-:- pred debug_file_msg(globals::in, target_file::in, string::in,
+:- pred debug_file_msg(globals::in, string::in, string::in,
     io::di, io::uo) is det.
 
     % Write a message "Making <filename>" if `--verbose-make' is set.
@@ -295,27 +295,34 @@ get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
         (
             TargetExt = extension(Ext, NewExt),
             (
-                Search = do_search,
-                module_name_to_search_file_name(Globals, From, Ext, NewExt,
-                    ModuleName, FileName, !IO)
-            ;
                 Search = do_not_search,
                 module_name_to_file_name(Globals, From, do_not_create_dirs,
                     Ext, NewExt, ModuleName, FileName, !IO)
+            ;
+                Search = do_search,
+                module_name_to_search_file_name(Globals, From, Ext, NewExt,
+                    ModuleName, FileName, !IO)
             )
         ;
             ( TargetExt = foreign_obj(_, _)
             ; TargetExt = fact_table_obj(_, _)
             ),
-            module_target_to_file_name_maybe_search(Globals, From, Search,
-                do_not_create_dirs, TargetType, ModuleName, FileName, !IO)
+            (
+                Search = do_not_search,
+                module_target_to_file_name(Globals, From,
+                    do_not_create_dirs, TargetType, ModuleName, FileName, !IO)
+            ;
+                Search = do_search,
+                module_target_to_search_file_name(Globals, From,
+                    TargetType, ModuleName, FileName, !IO)
+            )
         )
     ).
 
 get_make_target_file_name(Globals, From, TargetFile, FileName, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
-    module_target_to_file_name(Globals, From, do_not_create_dirs, TargetType,
-        ModuleName, FileName, !IO).
+    module_target_to_file_name(Globals, From, do_not_create_dirs,
+        TargetType, ModuleName, FileName, !IO).
 
 dependency_file_to_file_name(Globals, DepFile, FileName, !IO) :-
     (
@@ -369,37 +376,44 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
 
 module_target_to_file_name(Globals, From, MkDir, TargetType,
         ModuleName, FileName, !IO) :-
-    module_target_to_file_name_maybe_search(Globals, From,
-        do_not_search, MkDir, TargetType, ModuleName, FileName, !IO).
-
-:- pred module_target_to_file_name_maybe_search(globals::in, string::in,
-    maybe_search::in, maybe_create_dirs::in, module_target_type::in,
-    module_name::in, file_name::out, io::di, io::uo) is det.
-
-module_target_to_file_name_maybe_search(Globals, From, Search, MkDir,
-        TargetType, ModuleName, FileName, !IO) :-
     target_type_to_target_extension(Globals, TargetType, TargetExt),
     (
         TargetExt = extension(Ext, NewExt),
-        (
-            Search = do_search,
-            module_name_to_search_file_name(Globals, From, Ext, NewExt,
-                ModuleName, FileName, !IO)
-        ;
-            Search = do_not_search,
-            module_name_to_file_name(Globals, From, MkDir, Ext, NewExt,
-                ModuleName, FileName, !IO)
-        )
+        module_name_to_file_name(Globals, From, MkDir, Ext, NewExt,
+            ModuleName, FileName, !IO)
     ;
         TargetExt = foreign_obj(PIC, Lang),
         foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
-        module_target_to_file_name_maybe_search(Globals, From,
-            Search, MkDir, module_target_object_code(PIC),
-            ForeignModuleName, FileName, !IO)
+        module_target_to_file_name(Globals, From, MkDir,
+            module_target_object_code(PIC), ForeignModuleName, FileName, !IO)
     ;
         TargetExt = fact_table_obj(PIC, FactFile),
         maybe_pic_object_file_extension(Globals, PIC, OtherExt, ObjNewExt, _),
         fact_table_file_name(Globals, $pred, MkDir,
+            OtherExt, newext_target_obj(ObjNewExt), FactFile, FileName, !IO)
+    ).
+
+:- pred module_target_to_search_file_name(globals::in, string::in,
+    module_target_type::in,
+    module_name::in, file_name::out, io::di, io::uo) is det.
+
+module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
+        FileName, !IO) :-
+    target_type_to_target_extension(Globals, TargetType, TargetExt),
+    (
+        TargetExt = extension(Ext, NewExt),
+        module_name_to_search_file_name(Globals, From, Ext, NewExt,
+            ModuleName, FileName, !IO)
+    ;
+        TargetExt = foreign_obj(PIC, Lang),
+        foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
+        module_target_to_search_file_name(Globals, From,
+            module_target_object_code(PIC), ForeignModuleName, FileName, !IO)
+    ;
+        TargetExt = fact_table_obj(PIC, FactFile),
+        maybe_pic_object_file_extension(Globals, PIC, OtherExt, ObjNewExt, _),
+        % XXX This call ignores the implicit do_search setting.
+        fact_table_file_name(Globals, $pred, do_not_create_dirs,
             OtherExt, newext_target_obj(ObjNewExt), FactFile, FileName, !IO)
     ).
 
@@ -905,8 +919,8 @@ remove_make_target_file(Globals, From, VerboseOption, Target, !Info, !IO) :-
 
 remove_make_target_file_by_name(Globals, From, VerboseOption,
         ModuleName, TargetType, !Info, !IO) :-
-    module_target_to_file_name(Globals, From, do_not_create_dirs, TargetType,
-        ModuleName, FileName, !IO),
+    module_target_to_file_name(Globals, From, do_not_create_dirs,
+        TargetType, ModuleName, FileName, !IO),
     make_remove_file(Globals, VerboseOption, FileName, !Info, !IO),
     ( if
         timestamp_extension(TargetType, TimestampOtherExt, TimestampNewExt)
@@ -989,6 +1003,9 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
     ).
 
 %---------------------------------------------------------------------------%
+%
+% Debugging, progress, and error messages.
+%
 
 debug_make_msg(Globals, P, !IO) :-
     verbose_make_msg_option(Globals, debug_make, P, !IO).
@@ -1006,14 +1023,9 @@ verbose_make_msg_option(Globals, Option, P, !IO) :-
         OptionValue = no
     ).
 
-debug_file_msg(Globals, TargetFile, Msg, !IO) :-
-    % XXX MAKE_FILENAME If you want to log that you are doing something
-    % to a target file, you must already know its name, so why get
-    % get_make_target_file_name to compute it again?
+debug_file_msg(Globals, FileName, Msg, !IO) :-
     debug_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            get_make_target_file_name(Globals, $pred, TargetFile,
-                FileName, !IO),
             io.format("%s: %s\n", [s(FileName), s(Msg)], !IO)
         ), !IO).
 
