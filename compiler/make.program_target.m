@@ -92,6 +92,7 @@
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module digraph.
 :- import_module dir.
 :- import_module getopt.
@@ -228,8 +229,11 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
         ),
 
         AllModulesList = set.to_sorted_list(AllModules),
-        get_target_modules(Globals, IntermediateTargetType, AllModulesList,
-            ObjModulesAlpha, !Info, !IO),
+        % XXX This assignment to ObjModulesAlpha represents inlining
+        %   get_target_modules(Globals, IntermediateTargetType, AllModulesList,
+        %       ObjModulesAlpha, !Info, !IO),
+        % knowing that IntermediateTargetType cannot be module_target_errors.
+        ObjModulesAlpha = AllModulesList,
         order_target_modules(Globals, ObjModulesAlpha, ObjModules, !Info, !IO),
         remove_nested_modules(Globals, ObjModules, ObjModulesNonnested,
             !Info, !IO),
@@ -327,39 +331,6 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
         else
             Succeeded = did_not_succeed
         )
-    ).
-
-:- pred get_target_modules(globals::in, module_target_type::in,
-    list(module_name)::in, list(module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-get_target_modules(Globals, TargetType, AllModules, TargetModules,
-        !Info, !IO) :-
-    ( if TargetType = module_target_errors then
-        % `.err' files are only produced for the top-level module
-        % in each source file.
-        list.foldl3(get_target_modules_2(Globals), AllModules,
-            [], TargetModules, !Info, !IO)
-    else
-        TargetModules = AllModules
-    ).
-
-:- pred get_target_modules_2(globals::in, module_name::in,
-    list(module_name)::in, list(module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-get_target_modules_2(Globals, ModuleName, !TargetModules, !Info, !IO) :-
-    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-        !Info, !IO),
-    ( if
-        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-        module_dep_info_get_source_file_module_name(ModuleDepInfo,
-            SourceFileModuleName),
-        ModuleName = SourceFileModuleName
-    then
-        !:TargetModules = [ModuleName | !.TargetModules]
-    else
-        true
     ).
 
 :- pred order_target_modules(globals::in,
@@ -1075,7 +1046,7 @@ maybe_with_analysis_cache_dir_2(Globals, P, Succeeded, !Info, !IO) :-
     ;
         UseAnalysisCacheDir = use_analysis_cache_dir(CacheDir, CacheDirOption),
         OrigOptionArgs = make_info_get_option_args(!.Info),
-        % Pass the name of the cache directory to child processes
+        % Pass the name of the cache directory to child processes.
         make_info_set_option_args(OrigOptionArgs ++ [CacheDirOption, CacheDir],
             !Info),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -1115,7 +1086,7 @@ maybe_with_analysis_cache_dir_3(Globals, P, Succeeded, !Info, !Specs, !IO) :-
     ;
         UseAnalysisCacheDir = use_analysis_cache_dir(CacheDir, CacheDirOption),
         OrigOptionArgs = make_info_get_option_args(!.Info),
-        % Pass the name of the cache directory to child processes
+        % Pass the name of the cache directory to child processes.
         make_info_set_option_args(OrigOptionArgs ++ [CacheDirOption, CacheDir],
             !Info),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -1323,6 +1294,43 @@ build_analysis_files_2(Globals, MainModuleName, TargetModules,
             LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)
     else
         Succeeded = Succeeded0 `and` Succeeded1
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred get_target_modules(globals::in, module_target_type::in,
+    list(module_name)::in, list(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+get_target_modules(Globals, TargetType, AllModules, TargetModules,
+        !Info, !IO) :-
+    ( if TargetType = module_target_errors then
+        % `.err' files are only produced for the top-level module
+        % in each source file.
+        list.foldl3(get_non_nested_target_modules(Globals), AllModules,
+            cord.init, TargetModulesCord, !Info, !IO),
+        TargetModules = cord.list(TargetModulesCord)
+    else
+        TargetModules = AllModules
+    ).
+
+:- pred get_non_nested_target_modules(globals::in, module_name::in,
+    cord(module_name)::in, cord(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+get_non_nested_target_modules(Globals, ModuleName, !TargetModulesCord,
+        !Info, !IO) :-
+    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
+        !Info, !IO),
+    ( if
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+        module_dep_info_get_source_file_module_name(ModuleDepInfo,
+            SourceFileModuleName),
+        ModuleName = SourceFileModuleName
+    then
+        cord.snoc(ModuleName, !TargetModulesCord)
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%
