@@ -50,7 +50,7 @@ shells do the following:
 
         C:\> C:\msys64\msys2_shell.cmd -use-full-path -mingw32
 
-   or this one ot start the MSYS2 shell with 64-bit MSVC:
+   or this one to start the MSYS2 shell with 64-bit MSVC:
         
         C:\> C:\msys64\msys2_shell.cmd -use-full-path -mingw64
 
@@ -65,8 +65,8 @@ returned by autoconf match `*mingw*`; in particular it must *not* match
 `*-pc-msys`. You can use the `config.guess` script to see what configuration
 type autoconf detects.
 
-To install the C# or Java grades you will require a C# or Java compiler to be
-included in the Windows `PATH`.
+To install the C# or Java grades, you will need a C# or Java compiler
+respectively to be included in the Windows `PATH`.
 (See the relevant README files for further details, e.g.
 [README.Java.md](README.Java.md) etc)
 
