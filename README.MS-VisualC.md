@@ -3,7 +3,9 @@ Mercury with Microsoft Visual C++
 
 Mercury has been ported to use the Microsoft Visual C++ compiler (MSVC).
 It requires at least version 12.0 (2013); older versions lack sufficient C99
-support.
+support. Version 19.0 (2022) is recommended when using the 64-bit (x64) version
+of MSVC. Support for 64-bit code and MSVC has *not* been tested with older
+versions.
 
 Setting up the build environment
 --------------------------------
@@ -24,18 +26,35 @@ shells do the following:
 
          Start -> Visual Studio YYYY -> Visual Studio Tools
 
-    although the name and location vary between different versions and editions
-    of Visual Studio.  (*YYYY* is the year.)
+   although the name and location vary between different versions and editions
+   of Visual Studio. (*YYYY* is the year.) Note that this will give you the
+   x86 version of MSVC.
+
+   The Visual Studio entry in the `Start` menu may also have items named
+   similarly to:
+
+        * x64 Native Tools Command Prompt for VS 2022
+        * x86 Native Tools Command Prompt for VS 2022
+
+   These allow you to select between the x64 and x86 versions of MSVC toolchain.
+
+   Alternatively, you can start a `cmd.exe` session and use the batch files supplied
+   with Visual Studio (e.g. `vcvarsall.bat`, `vcvars32.bat` or `vcvars64.bat`) to
+   set up the environment for MSVC.
 
 2. Enter the following command to start the MSYS shell:
 
         C:\> C:\MinGW\MSYS\1.0\msys.bat
 
-    or this one to start the MSYS2 shell:
+   or this one to start the MSYS2 shell with 32-bit MSVC:
 
         C:\> C:\msys64\msys2_shell.cmd -use-full-path -mingw32
 
-    or this one to start the Cygwin shell:
+   or this one ot start the MSYS2 shell with 64-bit MSVC:
+        
+        C:\> C:\msys64\msys2_shell.cmd -use-full-path -mingw64
+
+   or this one to start the Cygwin shell:
 
         C:\> C:\CYGWIN\cygwin.bat
 
@@ -46,14 +65,10 @@ returned by autoconf match `*mingw*`; in particular it must *not* match
 `*-pc-msys`. You can use the `config.guess` script to see what configuration
 type autoconf detects.
 
-In order to install the C# or Java grades you will require a C# or Java
-compiler to be included in the Windows `PATH`.
+To install the C# or Java grades you will require a C# or Java compiler to be
+included in the Windows `PATH`.
 (See the relevant README files for further details, e.g.
 [README.Java.md](README.Java.md) etc)
-
-Note that `boehm_gc/NT_MAKEFILE` supports both i386 and x64 architectures,
-but the MSVC port can only target i386 for now. The architecture is controlled
-by the CPU parameter of `NT_MAKEFILE`.
 
 Configuration and Installation
 ------------------------------
@@ -134,10 +149,6 @@ The MSVC port currently has a number of limitations:
 * The deep profiling tool (`mdprof_cgi`) does not currently work with MSVC.
   This is due to it containing a number of Unix dependencies. (Other
   tools that work with deep profiles should be fine.)
-
-* Generation of 64-bit code using Mercury and MSVC is not yet supported.
-  To generate native 64-bit executables on Windows you will need to use
-  the MinGW64 port (see README.MinGW for details).
 
 * When used directly from the Windows command prompt, mmake will not work.
   You should use `mmc --make` instead. (`mmake` requires a POSIX-like shell
