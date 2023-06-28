@@ -169,28 +169,40 @@
 % Debugging, progress, and error messages.
 %
 
-    % Apply the given predicate if `--debug-make' is set.
-    % XXX Do we need this, now that we have trace goals?
-    %
-:- pred debug_make_msg(globals::in, pred(io, io)::(pred(di, uo) is det),
-    io::di, io::uo) is det.
+:- pred debug_make_msg(globals::in, pred(string)::in(pred(out) is det),
+    string::out) is det.
 
-    % Apply the given predicate if `--verbose-make' is set.
-    % XXX Do we need this, now that we have trace goals?
-    %
-:- pred verbose_make_msg(globals::in, pred(io, io)::(pred(di, uo) is det),
-    io::di, io::uo) is det.
+%---------------------%
 
-    % Apply the given predicate if the given boolean option is set to `yes'.
-    % XXX Do we need this, now that we have trace goals?
+    % verbose_make_N_part_msg(Globals, Part1, ..., Msg):
     %
-:- pred verbose_make_msg_option(globals::in, option::in,
-    pred(io, io)::(pred(di, uo) is det), io::di, io::uo) is det.
+    % If `--verbose-make' is set, return a message consisting of the
+    % given input strings (with spaces between them) and a newline.
+    % Otherwise, return the empty string.
+    %
+:- pred verbose_make_one_part_msg(globals::in,
+    string::in, string::out) is det.
+:- pred verbose_make_two_part_msg(globals::in,
+    string::in, string::in, string::out) is det.
+:- pred verbose_make_three_part_msg(globals::in,
+    string::in, string::in, string::in, string::out) is det.
+:- pred verbose_make_four_part_msg(globals::in,
+    string::in, string::in, string::in, string::in, string::out) is det.
 
-    % Write a debugging message relating to a given file.
+    % option_set_N_part_msg(Globals, Option, Part1, ..., Msg):
     %
-:- pred debug_file_msg(globals::in, string::in, string::in,
-    io::di, io::uo) is det.
+    % If the given option is set, return a message consisting of the
+    % given input strings (with spaces between them) and a newline.
+    % Otherwise, return the empty string.
+    %
+:- pred option_set_one_part_msg(globals::in, option::in,
+    string::in, string::out) is det.
+:- pred option_set_two_part_msg(globals::in, option::in,
+    string::in, string::in, string::out) is det.
+:- pred option_set_three_part_msg(globals::in, option::in,
+    string::in, string::in, string::in, string::out) is det.
+:- pred option_set_four_part_msg(globals::in, option::in,
+    string::in, string::in, string::in, string::in, string::out) is det.
 
     % If `--verbose-make' is set, return a progress message saying that
     % the compiler is "Making <filename>". Otherwise, return the empty string.
@@ -985,20 +997,16 @@ remove_make_module_file(Globals, VerboseOption, ModuleName, Ext, NewExt,
 %---------------------%
 
 make_remove_file(Globals, VerboseOption, FileName, !Info, !IO) :-
-    verbose_make_msg_option(Globals, VerboseOption,
-        report_remove_file(FileName), !IO),
+    option_set_two_part_msg(Globals, VerboseOption,
+        "Removing", FileName, RemovingMsg),
+    % XXX MAKE_STREAM
+    maybe_write_msg(RemovingMsg, !IO),
     io.file.remove_file_recursively(FileName, _, !IO),
     FileTimestamps0 = make_info_get_file_timestamps(!.Info),
     map.delete(FileName, FileTimestamps0, FileTimestamps),
     make_info_set_file_timestamps(FileTimestamps, !Info),
-
     % For simplicity, clear out all target file timestamps.
     make_info_set_target_file_timestamps(init_target_file_timestamps, !Info).
-
-:- pred report_remove_file(string::in, io::di, io::uo) is det.
-
-report_remove_file(FileName, !IO) :-
-    io.format("Removing %s\n", [s(FileName)], !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1050,27 +1058,71 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
 % Debugging, progress, and error messages.
 %
 
-debug_make_msg(Globals, P, !IO) :-
-    verbose_make_msg_option(Globals, debug_make, P, !IO).
-
-verbose_make_msg(Globals, P, !IO) :-
-    verbose_make_msg_option(Globals, verbose_make, P, !IO).
-
-verbose_make_msg_option(Globals, Option, P, !IO) :-
-    globals.lookup_bool_option(Globals, Option, OptionValue),
+debug_make_msg(Globals, MakeMsgPred, Msg) :-
+    globals.lookup_bool_option(Globals, debug_make, DebugMake),
     (
-        OptionValue = yes,
-        P(!IO),
-        io.flush_output(!IO)
+        DebugMake = no,
+        Msg = ""
     ;
-        OptionValue = no
+        DebugMake = yes,
+        MakeMsgPred(Msg)
     ).
 
-debug_file_msg(Globals, FileName, Msg, !IO) :-
-    debug_make_msg(Globals,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            io.format("%s: %s\n", [s(FileName), s(Msg)], !IO)
-        ), !IO).
+%---------------------%
+
+verbose_make_one_part_msg(Globals, Part1, Msg) :-
+    option_set_one_part_msg(Globals, verbose_make, Part1, Msg).
+
+verbose_make_two_part_msg(Globals, Part1, Part2, Msg) :-
+    option_set_two_part_msg(Globals, verbose_make, Part1, Part2, Msg).
+
+verbose_make_three_part_msg(Globals, Part1, Part2, Part3, Msg) :-
+    option_set_three_part_msg(Globals, verbose_make, Part1, Part2, Part3, Msg).
+
+verbose_make_four_part_msg(Globals, Part1, Part2, Part3, Part4, Msg) :-
+    option_set_four_part_msg(Globals, verbose_make, Part1, Part2, Part3,
+        Part4, Msg).
+
+option_set_one_part_msg(Globals, Option, Part1, Msg) :-
+    globals.lookup_bool_option(Globals, Option, OptionValue),
+    (
+        OptionValue = no,
+        Msg = ""
+    ;
+        OptionValue = yes,
+        string.format("%s\n", [s(Part1)], Msg)
+    ).
+
+option_set_two_part_msg(Globals, Option, Part1, Part2, Msg) :-
+    globals.lookup_bool_option(Globals, Option, OptionValue),
+    (
+        OptionValue = no,
+        Msg = ""
+    ;
+        OptionValue = yes,
+        string.format("%s %s\n", [s(Part1), s(Part2)], Msg)
+    ).
+
+option_set_three_part_msg(Globals, Option, Part1, Part2, Part3, Msg) :-
+    globals.lookup_bool_option(Globals, Option, OptionValue),
+    (
+        OptionValue = no,
+        Msg = ""
+    ;
+        OptionValue = yes,
+        string.format("%s %s %s\n", [s(Part1), s(Part2), s(Part3)], Msg)
+    ).
+
+option_set_four_part_msg(Globals, Option, Part1, Part2, Part3, Part4, Msg) :-
+    globals.lookup_bool_option(Globals, Option, OptionValue),
+    (
+        OptionValue = no,
+        Msg = ""
+    ;
+        OptionValue = yes,
+        string.format("%s %s %s %s\n",
+            [s(Part1), s(Part2), s(Part3), s(Part4)], Msg)
+    ).
 
 %---------------------%
 

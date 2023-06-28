@@ -294,10 +294,12 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         SearchDirsString = join_list(", ",
             map((func(Dir) = "`" ++ Dir ++ "'"), SearchDirs)),
         debug_make_msg(Globals,
-            io.format(
+            string.format(
                 "Module dependencies file '%s' not found in directories %s.\n",
                 [s(DepFileName), s(SearchDirsString)]),
-            !IO),
+            DebugMsg),
+        % XXX MAKE_STREAM
+        maybe_write_msg(DebugMsg, !IO),
 
         % Try to make the dependencies. This will succeed when the module name
         % doesn't match the file name and the dependencies for this module
@@ -534,18 +536,22 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
         (
             Result = ok
         ;
-            Result = error(Msg),
+            Result = error(ErrorMsg),
             read_module_dependencies_remake_msg(RebuildModuleDeps,
-                ModuleDir ++ "/" ++ ModuleDepFile, Msg, !IO),
+                ModuleDir ++ "/" ++ ModuleDepFile, ErrorMsg, Msg),
+            % XXX MAKE_STREAM
+            io.write_string(Msg, !IO),
             read_module_dependencies_remake(Globals, RebuildModuleDeps,
                 ModuleName, !Info, !IO)
         )
     ;
-        MaybeDirAndStream = error(Msg),
+        MaybeDirAndStream = error(ErrorMsg),
         debug_make_msg(Globals,
             read_module_dependencies_remake_msg(RebuildModuleDeps,
-                ModuleDepFile, Msg),
-            !IO),
+                ModuleDepFile, ErrorMsg),
+            DebugMsg),
+        % XXX MAKE_STREAM
+        maybe_write_msg(DebugMsg, !IO),
         read_module_dependencies_remake(Globals, RebuildModuleDeps,
             ModuleName, !Info, !IO)
     ).
@@ -808,10 +814,10 @@ read_module_dependencies_remake(Globals, RebuildModuleDeps, ModuleName,
     ).
 
 :- pred read_module_dependencies_remake_msg(maybe_rebuild_module_deps::in,
-    string::in, string::in, io::di, io::uo) is det.
+    string::in, string::in, string::out) is det.
 
-read_module_dependencies_remake_msg(RebuildModuleDeps, ModuleDepsFile, Msg,
-        !IO) :-
+read_module_dependencies_remake_msg(RebuildModuleDeps, ModuleDepsFile,
+        ErrorMsg, Msg) :-
     (
         RebuildModuleDeps = do_rebuild_module_deps,
         RebuildSuffix = " ...rebuilding"
@@ -819,8 +825,8 @@ read_module_dependencies_remake_msg(RebuildModuleDeps, ModuleDepsFile, Msg,
         RebuildModuleDeps = do_not_rebuild_module_deps,
         RebuildSuffix = ""
     ),
-    io.format("** Error reading file `%s': %s%s\n",
-        [s(ModuleDepsFile), s(Msg), s(RebuildSuffix)], !IO).
+    string.format("** Error reading file `%s': %s%s\n",
+        [s(ModuleDepsFile), s(ErrorMsg), s(RebuildSuffix)], Msg).
 
     % The module_name given must be the top level module in the source file.
     % get_module_dependencies ensures this by making the dependencies

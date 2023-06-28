@@ -119,7 +119,8 @@
 %---------------------------------------------------------------------------%
 
 make_module_target(ExtraOptions, Globals, Dep, Succeeded, !Info, !IO) :-
-    dependency_status(Globals, Dep, Status, !Info, !IO),
+    get_dependency_status(Globals, Dep, {_Dep, _DepFileName, Status},
+        !Info, !IO),
     (
         Status = deps_status_error,
         Succeeded = did_not_succeed
@@ -196,7 +197,11 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
     list.foldl(update_target_status(deps_status_being_built),
         TouchedTargetFiles, !Info),
 
-    debug_file_msg(Globals, TargetFileName, "checking dependencies", !IO),
+    debug_make_msg(Globals,
+        string.format("%s: checking dependencies\n", [s(TargetFileName)]),
+        CheckingMsg),
+    % XXX MAKE_STREAM
+    maybe_write_msg(CheckingMsg, !IO),
 
     ( if CompilationTaskType = process_module(_) then
         module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
@@ -229,19 +234,24 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
     ),
     DepFilesToMake = set.to_sorted_list(DepFilesSet),
 
-    debug_make_msg(Globals,
-       ( pred(!.IO::di, !:IO::uo) is det :-
-            dependency_file_index_set_to_plain_set(!.Info,
-                DepFiles0, DepFilesPlainSet),
-            list.map_foldl(dependency_file_to_file_name(Globals),
-                set.to_sorted_list(DepFilesPlainSet), DepFileNames, !IO),
-            io.format("%s: dependencies:\n", [s(TargetFileName)], !IO),
-            WriteDepFileName =
-                ( pred(FN::in, SIO0::di, SIO::uo) is det :-
-                    io.format("\t%s\n", [s(FN)], SIO0, SIO)
-                ),
-            list.foldl(WriteDepFileName, DepFileNames, !IO)
-        ), !IO),
+    globals.lookup_bool_option(Globals, debug_make, DebugMake),
+    (
+        DebugMake = no
+    ;
+        DebugMake = yes,
+        dependency_file_index_set_to_plain_set(!.Info,
+            DepFiles0, DepFilesPlainSet),
+        list.map_foldl(dependency_file_to_file_name(Globals),
+            set.to_sorted_list(DepFilesPlainSet), DepFileNames, !IO),
+        % XXX MAKE_STREAM
+        io.format("%s: dependencies:\n", [s(TargetFileName)], !IO),
+        WriteDepFileName =
+            ( pred(FN::in, SIO0::di, SIO::uo) is det :-
+                % XXX MAKE_STREAM
+                io.format("\t%s\n", [s(FN)], SIO0, SIO)
+            ),
+        list.foldl(WriteDepFileName, DepFileNames, !IO)
+    ),
 
     ( if
         DepsSucceeded = did_not_succeed,
@@ -281,7 +291,11 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
             TargetFileName, !Info, UpToDateMsg),
         % XXX MAKE_STREAM
         maybe_write_msg(UpToDateMsg, !IO),
-        debug_file_msg(Globals, TargetFileName, "up to date", !IO),
+        debug_make_msg(Globals,
+            string.format("%s: up to date\n", [s(TargetFileName)]),
+            DebugMsg),
+        % XXX MAKE_STREAM
+        maybe_write_msg(DebugMsg, !IO),
         Succeeded = succeeded,
         list.foldl(update_target_status(deps_status_up_to_date),
             [TargetFile | TouchedTargetFiles], !Info)
@@ -304,14 +318,22 @@ make_dependency_files(Globals, TargetFile, TargetFileName, DepFilesToMake,
         TouchedTargetFiles, TargetTimestamps, !Info, !IO),
     (
         MakeDepsSucceeded = did_not_succeed,
-        debug_file_msg(Globals, TargetFileName,
-            "error making dependencies", !IO),
+        debug_make_msg(Globals,
+            string.format("%s: error msking dependencies\n",
+                [s(TargetFileName)]),
+            DebugMsg),
+        % XXX MAKE_STREAM
+        maybe_write_msg(DebugMsg, !IO),
         DepsResult = deps_error
     ;
         MakeDepsSucceeded = succeeded,
         ( if list.member(error(_), TargetTimestamps) then
-            debug_file_msg(Globals, TargetFileName,
-                "target file does not exist", !IO),
+            debug_make_msg(Globals,
+                string.format("%s: target file does not exist\n",
+                    [s(TargetFileName)]),
+                DebugMsg),
+            % XXX MAKE_STREAM
+            maybe_write_msg(DebugMsg, !IO),
             DepsResult = deps_out_of_date
         else
             ( if
@@ -906,9 +928,10 @@ delete_analysis_registry_timestamps(Globals, FileName, _, !Timestamps) :-
 delete_timestamp(Globals, TouchedFile, !Timestamps) :-
     trace [io(!IO)] (
         debug_make_msg(Globals,
-            ( pred(!.IO::di, !:IO::uo) is det :-
-                io.format("Deleting timestamp for %s\n", [s(TouchedFile)], !IO)
-            ), !IO)
+            string.format("Deleting timestamp for %s\n", [s(TouchedFile)]),
+            DebugMsg),
+        % XXX MAKE_STREAM
+        maybe_write_msg(DebugMsg, !IO)
     ),
     map.delete(TouchedFile, !Timestamps).
 

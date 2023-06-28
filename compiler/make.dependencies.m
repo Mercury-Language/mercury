@@ -55,7 +55,7 @@
     %     ModuleIndexes, !Succeeded, !Deps, !Info, !IO):
     %
     % The TargetType and ModuleIndexes arguments define a set of make targets.
-    % Add to !Deps the dependency_file_indexes of all the files that 
+    % Add to !Deps the dependency_file_indexes of all the files that
     % these make targets depend on, and which therefore have to be built
     % before we can build those make targets.
     %
@@ -92,8 +92,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred dependency_status(globals::in, dependency_file::in,
-    dependency_status::out,
+:- pred get_dependency_status(globals::in, dependency_file::in,
+    {dependency_file, file_name, dependency_status}::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -119,8 +119,8 @@
     % Check that all the dependency files are up-to-date.
     %
 :- pred check_dependency_timestamps(globals::in, file_name::in,
-    maybe_error(timestamp)::in, maybe_succeeded::in, list(File)::in,
-    pred(File, string, io, io)::in(pred(in, out, di, uo) is det),
+    maybe_error(timestamp)::in, maybe_succeeded::in,
+    list({dependency_file, file_name, dependency_status})::in,
     list(maybe_error(timestamp))::in, dependencies_result::out,
     io::di, io::uo) is det.
 
@@ -1361,31 +1361,11 @@ make_local_module_id_option(ModuleName, Opts0, Opts) :-
     ModuleNameStr = sym_name_to_string(ModuleName),
     Opts = ["--local-module-id", ModuleNameStr | Opts0].
 
-:- pred make_write_target_dependency_status(globals::in,
-    pair(dependency_file, dependency_status)::in, io::di, io::uo) is det.
-
-make_write_target_dependency_status(Globals, DepTarget - DepStatus, !IO) :-
-    (
-        DepStatus = deps_status_not_considered,
-        DepStatusStr = "deps_status_not_considered"
-    ;
-        DepStatus = deps_status_being_built,
-        DepStatusStr = "deps_status_being_built"
-    ;
-        DepStatus = deps_status_up_to_date,
-        DepStatusStr = "deps_status_up_to_date"
-    ;
-        DepStatus = deps_status_error,
-        DepStatusStr = "deps_status_error"
-    ),
-    dependency_file_to_file_name(Globals, DepTarget, DepTargetFileName, !IO),
-    io.format("\t%s - %s\n", [s(DepTargetFileName), s(DepStatusStr)], !IO).
-
 %---------------------------------------------------------------------------%
 
-dependency_status(Globals, Dep, Status, !Info, !IO) :-
+get_dependency_status(Globals, Dep, Tuple, !Info, !IO) :-
     (
-        Dep = dep_file(_FileName),
+        Dep = dep_file(TargetFileName),
         DepStatusMap0 = make_info_get_dependency_status(!.Info),
         ( if version_hash_table.search(DepStatusMap0, Dep, StatusPrime) then
             Status = StatusPrime
@@ -1463,102 +1443,138 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
                 DepStatusMap1, DepStatusMap),
             make_info_set_dependency_status(DepStatusMap, !Info)
         )
-    ).
+    ),
+    Tuple = {Dep, TargetFileName, Status}.
 
 check_dependencies(Globals, TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
         DepFiles, DepsResult, !Info, !IO) :-
-    list.map_foldl2(dependency_status(Globals), DepFiles, DepStatusList,
+    list.map_foldl2(get_dependency_status(Globals), DepFiles, DepStatusTuples,
         !Info, !IO),
-    assoc_list.from_corresponding_lists(DepFiles, DepStatusList, DepStatusAL),
     list.filter(
-        ( pred((_ - DepStatus)::in) is semidet :-
+        ( pred(({_, _, DepStatus})::in) is semidet :-
             DepStatus \= deps_status_up_to_date
-        ), DepStatusAL, UnbuiltDependencies),
+        ), DepStatusTuples, UnbuiltDependencyTuples),
     (
-        UnbuiltDependencies = [_ | _],
+        UnbuiltDependencyTuples = [_ | _],
         debug_make_msg(Globals,
-            check_dependencies_debug_unbuilt(Globals, TargetFileName,
-                UnbuiltDependencies),
-            !IO),
+            describe_unbuilt_dependencies(TargetFileName,
+                UnbuiltDependencyTuples),
+            DebugMsg),
+        % XXX MAKE_STREAM
+        maybe_write_msg(DebugMsg, !IO),
         DepsResult = deps_error
     ;
-        UnbuiltDependencies = [],
+        UnbuiltDependencyTuples = [],
         debug_make_msg(Globals,
-            io.format("%s: finished dependencies\n",
+            string.format("%s: finished dependencies\n",
                 [s(TargetFileName)]),
-            !IO),
+            DebugMsg),
+        maybe_write_msg(DebugMsg, !IO),
         list.map_foldl2(get_dependency_timestamp(Globals), DepFiles,
             DepTimestamps, !Info, !IO),
 
         check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
-            BuildDepsSucceeded, DepFiles,
-            dependency_file_to_file_name(Globals),
+            BuildDepsSucceeded, DepStatusTuples,
             DepTimestamps, DepsResult, !IO)
     ).
 
-:- pred check_dependencies_debug_unbuilt(globals::in, file_name::in,
-    assoc_list(dependency_file, dependency_status)::in,
-    io::di, io::uo) is det.
+:- pred describe_unbuilt_dependencies(file_name::in,
+    list({dependency_file, file_name, dependency_status})::in,
+    string::out) is det.
 
-check_dependencies_debug_unbuilt(Globals, TargetFileName, UnbuiltDependencies,
-        !IO) :-
-    io.format("%s: dependencies could not be built.\n\t",
-        [s(TargetFileName)], !IO),
-    list.foldl(make_write_target_dependency_status(Globals),
-        UnbuiltDependencies, !IO).
+describe_unbuilt_dependencies(TargetFileName, UnbuiltDependencies,
+        UnbuiltDependenciesDesc) :-
+    string.format("%s: dependencies could not be built.\n\t",
+        [s(TargetFileName)], Header),
+    list.map(describe_target_dependency_status, UnbuiltDependencies,
+        UnbuiltDependencyDescs),
+    string.append_list([Header | UnbuiltDependencyDescs],
+        UnbuiltDependenciesDesc).
 
-:- pred check_dependencies_timestamps_write_missing_deps(file_name::in,
-    maybe_succeeded::in, list(File)::in,
-    pred(File, string, io, io)::in(pred(in, out, di, uo) is det),
-    list(maybe_error(timestamp))::in, io::di, io::uo) is det.
+:- pred describe_target_dependency_status(
+    {dependency_file, file_name, dependency_status}::in, string::out) is det.
 
-check_dependencies_timestamps_write_missing_deps(TargetFileName,
-        BuildDepsSucceeded, DepFiles, DepFileToStr, DepTimestamps, !IO) :-
-    assoc_list.from_corresponding_lists(DepFiles, DepTimestamps,
+describe_target_dependency_status(DepTuple, Desc) :-
+    DepTuple = {_, DepTargetFileName, DepStatus},
+    (
+        DepStatus = deps_status_not_considered,
+        DepStatusStr = "deps_status_not_considered"
+    ;
+        DepStatus = deps_status_being_built,
+        DepStatusStr = "deps_status_being_built"
+    ;
+        DepStatus = deps_status_up_to_date,
+        DepStatusStr = "deps_status_up_to_date"
+    ;
+        DepStatus = deps_status_error,
+        DepStatusStr = "deps_status_error"
+    ),
+    string.format("\t%s - %s\n", [s(DepTargetFileName), s(DepStatusStr)],
+        Desc).
+
+    % XXX Move this predicate *below* its only caller.
+    %
+:- pred check_dependencies_timestamps_missing_deps_msg(file_name::in,
+    maybe_succeeded::in,
+    list({dependency_file, file_name, dependency_status})::in,
+    list(maybe_error(timestamp))::in, string::out) is det.
+
+check_dependencies_timestamps_missing_deps_msg(TargetFileName,
+        BuildDepsSucceeded, DepFileTuples, DepTimestamps, Msg) :-
+    assoc_list.from_corresponding_lists(DepFileTuples, DepTimestamps,
         DepTimestampAL),
     list.filter_map(
-        ( pred(Pair::in, DepFile::out) is semidet :-
-            Pair = DepFile - error(_)
-        ), DepTimestampAL, ErrorDeps),
-    list.map_foldl(DepFileToStr, ErrorDeps, ErrorDepStrs, !IO),
-    list.sort(ErrorDepStrs, SortedErrorDepStrs),
-    ErrorDepsStr = string.join_list(", ", SortedErrorDepStrs),
+        ( pred(Pair::in, Tuple::out) is semidet :-
+            Pair = Tuple - error(_)
+        ), DepTimestampAL, ErrorDepTuples),
+    ErrorFileNames = list.map((func({_, FN, _}) = FN), ErrorDepTuples),
+    list.sort(ErrorFileNames, SortedErrorFileNames),
+    SortedErrorFileNamesStr = string.join_list(", ", SortedErrorFileNames),
     % This line can get very long.
-    io.format("** dependencies for `%s' do not exist: %s\n",
-        [s(TargetFileName), s(ErrorDepsStr)], !IO),
+    string.format("** dependencies for `%s' do not exist: %s\n",
+        [s(TargetFileName), s(SortedErrorFileNamesStr)], DoNotExistMsg),
     (
         BuildDepsSucceeded = succeeded,
-        io.write_string("** This indicates a bug in `mmc --make'.\n", !IO)
+        Msg = DoNotExistMsg ++
+            "** This indicates a bug in `mmc --make'.\n"
     ;
-        BuildDepsSucceeded = did_not_succeed
+        BuildDepsSucceeded = did_not_succeed,
+        Msg = DoNotExistMsg
     ).
 
 check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
-        BuildDepsSucceeded, DepFiles, DepFileToStr, DepTimestamps,
-        DepsResult, !IO) :-
+        BuildDepsSucceeded, DepFileTuples, DepTimestamps, DepsResult, !IO) :-
     (
         MaybeTimestamp = error(_),
         DepsResult = deps_out_of_date,
         debug_make_msg(Globals,
-            io.format("%s does not exist.\n", [s(TargetFileName)]),
-            !IO)
+            string.format("%s does not exist.\n", [s(TargetFileName)]),
+            DebugMsg),
+        % XXX MAKE_STREAM
+        maybe_write_msg(DebugMsg, !IO)
     ;
         MaybeTimestamp = ok(Timestamp),
         ( if error_in_timestamps(DepTimestamps) then
             DepsResult = deps_error,
-            WriteMissingDeps =
-                check_dependencies_timestamps_write_missing_deps(
-                    TargetFileName, BuildDepsSucceeded, DepFiles,
-                    DepFileToStr, DepTimestamps),
             (
                 BuildDepsSucceeded = succeeded,
                 % Something has gone wrong -- building the target has
                 % succeeded, but there are some files missing.
                 % Report an error.
-                WriteMissingDeps(!IO)
+                check_dependencies_timestamps_missing_deps_msg(
+                    TargetFileName, BuildDepsSucceeded, DepFileTuples,
+                    DepTimestamps, MissingDepsMsg),
+                % XXX MAKE_STREAM
+                io.write_string(MissingDepsMsg, !IO)
             ;
                 BuildDepsSucceeded = did_not_succeed,
-                debug_make_msg(Globals, WriteMissingDeps, !IO)
+                debug_make_msg(Globals,
+                    check_dependencies_timestamps_missing_deps_msg(
+                        TargetFileName, BuildDepsSucceeded, DepFileTuples,
+                        DepTimestamps),
+                    MaybeMissingDepsMsg),
+                % XXX MAKE_STREAM
+                maybe_write_msg(MaybeMissingDepsMsg, !IO)
             )
         else
             globals.lookup_bool_option(Globals, rebuild, Rebuild),
@@ -1571,8 +1587,12 @@ check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
             ;
                 Rebuild = no,
                 ( if newer_timestamp(DepTimestamps, Timestamp) then
-                    debug_newer_dependencies(Globals, TargetFileName,
-                        MaybeTimestamp, DepFiles, DepTimestamps, !IO),
+                    debug_make_msg(Globals,
+                        describe_newer_dependencies(TargetFileName,
+                            MaybeTimestamp, DepFileTuples, DepTimestamps),
+                        DebugMsg),
+                    % XXX MAKE_STREAM
+                    maybe_write_msg(DebugMsg, !IO),
                     DepsResult = deps_out_of_date
                 else
                     DepsResult = deps_up_to_date
@@ -1599,28 +1619,18 @@ newer_timestamp([H | T], Timestamp) :-
         newer_timestamp(T, Timestamp)
     ).
 
-:- pred debug_newer_dependencies(globals::in, string::in,
-    maybe_error(timestamp)::in, list(T)::in, list(maybe_error(timestamp))::in,
-    io::di, io::uo) is det.
+:- pred describe_newer_dependencies(string::in, maybe_error(timestamp)::in,
+    list({dependency_file, file_name, dependency_status})::in,
+    list(maybe_error(timestamp))::in, string::out) is det.
 
-debug_newer_dependencies(Globals, TargetFileName, MaybeTimestamp,
-        DepFiles, DepTimestamps, !IO) :-
-    debug_make_msg(Globals,
-        debug_newer_dependencies_2(TargetFileName, MaybeTimestamp,
-            DepFiles, DepTimestamps),
-        !IO).
-
-:- pred debug_newer_dependencies_2(string::in, maybe_error(timestamp)::in,
-    list(T)::in, list(maybe_error(timestamp))::in, io::di, io::uo) is det.
-
-debug_newer_dependencies_2(TargetFileName, MaybeTimestamp,
-        DepFiles, DepTimestamps, !IO) :-
-    io.format("%s [%s]: newer dependencies:\n",
-        [s(TargetFileName), s(string(MaybeTimestamp))], !IO),
-    assoc_list.from_corresponding_lists(DepFiles, DepTimestamps,
+describe_newer_dependencies(TargetFileName, MaybeTimestamp,
+        DepFileTuples, DepTimestamps, Desc) :-
+    string.format("%s [%s]: newer dependencies:\n",
+        [s(TargetFileName), s(string(MaybeTimestamp))], Header),
+    assoc_list.from_corresponding_lists(DepFileTuples, DepTimestamps,
         DepTimestampAL),
     list.filter(
-        ( pred((_DepFile - MaybeDepTimestamp)::in) is semidet :-
+        ( pred((_DepFileTuple - MaybeDepTimestamp)::in) is semidet :-
             (
                 MaybeDepTimestamp = error(_)
             ;
@@ -1630,17 +1640,19 @@ debug_newer_dependencies_2(TargetFileName, MaybeTimestamp,
             )
         ), DepTimestampAL, NewerDepsAL0),
     list.sort(NewerDepsAL0, NewerDepsAL),
-    write_dependency_file_and_timestamp_list(NewerDepsAL, !IO).
+    list.map(describe_dependency_file_and_timestamp, NewerDepsAL,
+        NewerDepsDescs),
+    string.append_list([Header | NewerDepsDescs], Desc).
 
-:- pred write_dependency_file_and_timestamp_list(
-    assoc_list(T, maybe_error(timestamp))::in, io::di, io::uo) is det.
+:- pred describe_dependency_file_and_timestamp(
+    pair({dependency_file, file_name, dependency_status},
+        maybe_error(timestamp))::in,
+    string::out) is det.
 
-write_dependency_file_and_timestamp_list([], !IO).
-write_dependency_file_and_timestamp_list([Head | Tail], !IO) :-
-    Head = DepFile - MaybeTimestamp,
-    io.format("\t%s %s\n",
-        [s(string(DepFile)), s(string(MaybeTimestamp))], !IO),
-    write_dependency_file_and_timestamp_list(Tail, !IO).
+describe_dependency_file_and_timestamp(DepFileTuple - MaybeTimestamp, Desc) :-
+    DepFileTuple = {DepFile, DepFileName, _},
+    string.format("\t%s %s %s\n",
+        [s(string(DepFile)), s(DepFileName), s(string(MaybeTimestamp))], Desc).
 
 %---------------------------------------------------------------------------%
 

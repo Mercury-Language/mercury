@@ -557,10 +557,15 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
     ObjectsToCheck = InitObjects ++ LinkObjects,
 
     % Report errors if any of the extra objects aren't present.
-    list.map_foldl2(dependency_status(NoLinkObjsGlobals),
-        list.map((func(F) = dep_file(F)), ObjectsToCheck), ExtraObjStatus,
+    list.map_foldl2(get_dependency_status(NoLinkObjsGlobals),
+        list.map((func(F) = dep_file(F)), ObjectsToCheck), ExtraObjTuples,
         !Info, !IO),
-    ( if list.member(deps_status_error, ExtraObjStatus) then
+    ( if
+        some [ExtraObjTuple] (
+            list.member(ExtraObjTuple, ExtraObjTuples),
+            ExtraObjTuple = {_, _, deps_status_error}
+        )
+    then
         DepsResult3 = deps_error
     else
         DepsResult3 = DepsResult2
@@ -569,12 +574,8 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         ( if DepsResult3 = deps_error then did_not_succeed else succeeded ),
     list.map_foldl2(get_file_timestamp([dir.this_directory]),
         ObjectsToCheck, ExtraObjectTimestamps, !Info, !IO),
-    DepFileToStr =
-        ( pred(FN::in, FN::out, IO::di, IO::uo) is det :-
-            true
-        ),
     check_dependency_timestamps(NoLinkObjsGlobals, OutputFileName,
-        MaybeTimestamp, BuildDepsSucceeded, ObjectsToCheck, DepFileToStr,
+        MaybeTimestamp, BuildDepsSucceeded, ExtraObjTuples,
         ExtraObjectTimestamps, ExtraObjectDepsResult, !IO),
 
     (
@@ -809,8 +810,9 @@ out_of_date_java_modules(Globals, ObjModules, OutOfDateModules, !Info, !IO) :-
 
 build_java_files(Globals, MainModuleName, ModuleNames, Succeeded,
         !Info, !IO) :-
-    verbose_make_msg(Globals,
-        io.write_string("Making Java class files\n"), !IO),
+    verbose_make_one_part_msg(Globals, "Making Java class files", MakingMsg),
+    % XXX MAKE_STREAM
+    maybe_write_msg(MakingMsg, !IO),
     list.map_foldl(
         module_name_to_file_name(Globals, $pred, do_create_dirs,
             ext_other(other_ext(".java")),
@@ -1181,8 +1183,9 @@ should_we_use_analysis_cache_dir(Globals, Info, UseAnalysisCacheDir, !IO) :-
 
 create_analysis_cache_dir(Globals, Succeeded, CacheDir, !IO) :-
     choose_analysis_cache_dir_name(Globals, CacheDir),
-    verbose_make_msg_option(Globals, verbose_make,
-        io.format("Creating %s\n", [s(CacheDir)]), !IO),
+    verbose_make_two_part_msg(Globals, "Creating", CacheDir, CreatingMsg),
+    % XXX MAKE_STREAM
+    maybe_write_msg(CreatingMsg, !IO),
     dir.make_directory(CacheDir, MakeRes, !IO),
     (
         MakeRes = ok,
@@ -1220,8 +1223,9 @@ choose_analysis_cache_dir_name(Globals, DirName) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 remove_cache_dir(Globals, CacheDir, !Info, !IO) :-
-    verbose_make_msg_option(Globals, verbose_make,
-        io.format("Removing %s\n", [s(CacheDir)]), !IO),
+    verbose_make_two_part_msg(Globals, "Removing", CacheDir, RemovingMsg),
+    % XXX MAKE_STREAM
+    maybe_write_msg(RemovingMsg, !IO),
     io.file.remove_file_recursively(CacheDir, _, !IO).
 
 %---------------------------------------------------------------------------%
@@ -1644,10 +1648,9 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
     OptionArgs0 = make_info_get_option_args(!.Info),
     OptionArgs = OptionArgs0 ++ ["--grade", Grade, "--use-grade-subdirs"],
 
-    verbose_make_msg(Globals,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            io.format("Installing grade %s\n", [s(Grade)], !IO)
-        ), !IO),
+    verbose_make_two_part_msg(Globals, "Installing grade", Grade, InstallMsg),
+    % XXX MAKE_STREAM
+    maybe_write_msg(InstallMsg, !IO),
 
     lookup_mmc_options(make_info_get_options_variables(!.Info), MaybeMCFlags),
     (
@@ -1945,12 +1948,9 @@ install_file(Globals, FileName, InstallDir, Succeeded, !IO) :-
     io.output_stream(OutputStream, !IO),
     ProgressStream = OutputStream,
     ErrorStream = OutputStream,
-    verbose_make_msg(Globals,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            io.format(ProgressStream, "Installing file %s in %s\n",
-                [s(FileName), s(InstallDir)], !IO),
-            io.flush_output(ProgressStream, !IO)
-        ), !IO),
+    verbose_make_four_part_msg(Globals, "Installing file", FileName,
+        "in", InstallDir, InstallMsg),
+    maybe_write_msg(ProgressStream, InstallMsg, !IO),
     Command = make_install_file_command(Globals, FileName, InstallDir),
     invoke_system_command(Globals, ProgressStream, ErrorStream, OutputStream,
         cmd_verbose, Command, Succeeded, !IO).
@@ -1965,12 +1965,9 @@ install_directory(Globals, SourceDirName, InstallDir, Succeeded, !IO) :-
     io.output_stream(OutputStream, !IO),
     ProgressStream = OutputStream,
     ErrorStream = OutputStream,
-    verbose_make_msg(Globals,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            io.format(ProgressStream, "Installing directory %s in %s\n",
-                [s(SourceDirName), s(InstallDir)], !IO),
-            io.flush_output(ProgressStream, !IO)
-        ), !IO),
+    verbose_make_four_part_msg(Globals, "Installing directory", SourceDirName,
+        "in", InstallDir, InstallMsg),
+    maybe_write_msg(ProgressStream, InstallMsg, !IO),
     Command = make_install_dir_command(Globals, SourceDirName, InstallDir),
     invoke_system_command(Globals, ProgressStream, ErrorStream, OutputStream,
         cmd_verbose, Command, Succeeded, !IO).
@@ -2071,13 +2068,9 @@ generate_archive_index(Globals, FileName, InstallDir, Succeeded, !IO) :-
     io.output_stream(OutputStream, !IO),
     ProgressStream = OutputStream,
     ErrorStream = OutputStream,
-    verbose_make_msg(Globals,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            io.format(ProgressStream,
-                "Generating archive index for file %s in %s\n",
-                [s(FileName), s(InstallDir)], !IO),
-            io.flush_output(ProgressStream, !IO)
-        ), !IO),
+    verbose_make_four_part_msg(Globals, "Generating archive index for file",
+         FileName, "in", InstallDir, InstallMsg),
+    maybe_write_msg(ProgressStream, InstallMsg, !IO),
     globals.lookup_string_option(Globals, ranlib_command, RanLibCommand),
     globals.lookup_string_option(Globals, ranlib_flags, RanLibFlags),
     % XXX What is the point of using more than one space?
@@ -2109,13 +2102,13 @@ maybe_make_grade_clean(Globals, Clean, ModuleName, AllModules, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_grade_clean(Globals, ModuleName, AllModules, !Info, !IO) :-
-    verbose_make_msg(Globals,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            grade_directory_component(Globals, Grade),
-            io.format(
-                "Cleaning up grade-dependent files for `%s' in grade %s.\n",
-                [s(sym_name_to_escaped_string(ModuleName)), s(Grade)], !IO)
-        ), !IO),
+    grade_directory_component(Globals, Grade),
+    % XXX MAKE_EXTRA_PERIOD
+    string.format("Cleaning up grade-dependent files for `%s' in grade %s.",
+        [s(sym_name_to_escaped_string(ModuleName)), s(Grade)], Part1),
+    verbose_make_one_part_msg(Globals, Part1, CleaningMsg),
+    % XXX MAKE_STREAM
+    maybe_write_msg(CleaningMsg, !IO),
 
     make_main_module_realclean(Globals, ModuleName, !Info, !IO),
     list.foldl2(make_module_clean(Globals), AllModules, !Info, !IO).
@@ -2124,11 +2117,12 @@ make_grade_clean(Globals, ModuleName, AllModules, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
-    verbose_make_msg(Globals,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            io.format("Removing executable and library files for `%s'.\n",
-                [s(sym_name_to_escaped_string(ModuleName))], !IO)
-        ), !IO),
+    % XXX MAKE_EXTRA_PERIOD
+    string.format("Removing executable and library files for `%s'.",
+        [s(sym_name_to_escaped_string(ModuleName))], Part1),
+    verbose_make_one_part_msg(Globals, Part1, CleaningMsg),
+    % XXX MAKE_STREAM
+    maybe_write_msg(CleaningMsg, !IO),
 
     LinkedTargetTypes = [
         executable,
@@ -2182,11 +2176,12 @@ remove_init_files(Globals, Verbose, ModuleName, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_module_clean(Globals, ModuleName, !Info, !IO) :-
-    verbose_make_msg_option(Globals, verbose_make,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            io.format("Cleaning up target files for module `%s'.\n",
-                [s(sym_name_to_escaped_string(ModuleName))], !IO)
-        ), !IO),
+    % XXX MAKE_EXTRA_PERIOD
+    string.format("Cleaning up target files for module `%s'.",
+        [s(sym_name_to_escaped_string(ModuleName))], Part1),
+    verbose_make_one_part_msg(Globals, Part1, CleaningMsg),
+    % XXX MAKE_STREAM
+    maybe_write_msg(CleaningMsg, !IO),
 
     list.foldl2(
         remove_make_target_file_by_name(Globals, $pred, very_verbose,
@@ -2268,11 +2263,11 @@ remove_fact_table_object_and_assembler_files(Globals, ModuleName, PIC,
 make_module_realclean(Globals, ModuleName, !Info, !IO) :-
     make_module_clean(Globals, ModuleName, !Info, !IO),
 
-    verbose_make_msg_option(Globals, verbose_make,
-        ( pred(!.IO::di, !:IO::uo) is det :-
-            io.format("Cleaning up interface files for module `%s'\n",
-                [s(sym_name_to_escaped_string(ModuleName))], !IO)
-        ), !IO),
+    string.format("Cleaning up interface files for module `%s'",
+        [s(sym_name_to_escaped_string(ModuleName))], Part1),
+    verbose_make_one_part_msg(Globals, Part1, CleaningMsg),
+    % XXX MAKE_STREAM
+    maybe_write_msg(CleaningMsg, !IO),
     Targets = [module_target_int0, module_target_int1, module_target_int2,
         module_target_int3, module_target_opt,
         module_target_analysis_registry,
