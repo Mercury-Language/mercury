@@ -1,8 +1,10 @@
+<!DOCTYPE html>
+
 <!--
 vim: ts=4 sw=4 expandtab ft=html
 -->
 
-<html>
+<html lang="en">
 <head>
 <title>
 How to upgrade to a new version of Boehm Garbage Collector in Mercury.
@@ -18,7 +20,7 @@ How to upgrade to a new version of Boehm Garbage Collector in Mercury.
 This process is difficult and should not be undertaken lightly.
 Before attempting to upgrade Boehm GC,
 you should definitely discuss it on the reviews mailing list first.
-</P>
+</p>
 
 <h2>The setup</h2>
 
@@ -76,7 +78,7 @@ release-7_4-mercury
 
 <p>
 On a clean checkout of the Mercury repository,
-I created a branch off of the master branch.
+I created a branch off of the <code>master</code> branch.
 </p>
 
 <code><pre>
@@ -85,7 +87,7 @@ $ git checkout upgrade_boehm
 </pre></code>
 
 <p>
-Then, on this branch I deleted the existing boehm_gc directory from the
+Then, on this branch I deleted the existing <code>boehm_gc</code> directory from the
 repository.
 </p>
 
@@ -95,14 +97,14 @@ $ git commit -a
 </pre></code>
 
 <p>
-Next we add the bdwgc and libatomic_ops repositories as git submodules.
-This basically creates a reference from the Mercury repository to these
-other repositories without importing their history into the Mercury
-repository.
+Next we add the <code>bdwgc</code> and <code>libatomic_ops</code> repositories
+as git submodules.
+This basically creates a reference from the Mercury repository to these other
+repositories without importing their history into the Mercury repository.
 </p>
 <p>
-The references to submodules are relative.  So if the remote named origin
-has the url
+The references to submodules are relative. So if the remote named
+<code>origin</code> has the url
 <code>https://www.github.com/Mercury-Language/mercury.git</code>
 then we can have git look for the bdwgc repository at the relative path
 <code>../bdwgc.git</code> or
@@ -201,7 +203,7 @@ Now, publish this change with <code>--force</code> because we are changing
 history.
 </p>
 
-<code><Pre>
+<code><pre>
 $ git tag release-7_4-mercury-20160915
 $ git push --force github-mercury release-7_4-mercury
 $ git push github-mercury --tags
@@ -256,7 +258,7 @@ $ git rebase release-7_6
 Now I need to update the version of libatomic_ops we include with as a
 submodule in the boehm repository.
 If the branch name in libatomic_ops was changing I would need to check
-the .gitmodules file, but in this example it isn't.
+the <code>.gitmodules</code> file, but in this example it isn't.
 </p>
 
 <code><pre>
@@ -288,21 +290,21 @@ $ git push github-mercury --tags
 </ol>
 
 <p>
-Back in the mercury repository I needed to point the boehm_gc submodule to a
+Back in the mercury repository I needed to point the <code>boehm_gc</code> submodule to a
 different branch,
-Depending on which option we chose above we may need to update the branch
-name that the Mercury repository refers to.
+Depending on which option we chose above we may need to update the branch name
+that the Mercury repository refers to.
 </p>
 
 <ol>
   <li>
-    <p>The branch name hasn't changed</p>
+    <p>The branch name has not changed</p>
   </li>
   <li>
     <p>
       The branch name was <code>release-7_4_mercury</code> and is now
       <code>release-7_6-mercury</code>.
-      The branch is adjusted by editing .gitmodules
+      The branch is adjusted by editing <code>.gitmodules</code>
     </p>
 
 <code><pre>
@@ -323,23 +325,58 @@ $ git commit
 </pre></code>
 
 <p>
-Once done,
-bootcheck the compiler in at least asm_fast.gc and hlc.gc.
+Once done, bootcheck the compiler in at least the <code>asm_fast.gc</code>
+and <code>hlc.gc</code> grades.
 Then use the new system to do an install (with non-empty LIBGRADES)
 and test that the installed version can compile some test programs.
 This is because the update may have added some new files which may not be
 copied into the install directories.
 Some build scripts may also need to be updated (in particular
-tools/bootcheck and scripts/prepare_install_dir.in).
+<code>tools/bootcheck</code> and <code>scripts/prepare_install_dir.in</code>).
 </p>
 
 <p>
-Finally update .README.in (in the root directory) and
-bindist/bindist.README to reflect the current version of the collector
+Finally update <code>.README.in</code> (in the root directory) and
+<code>bindist/bindist.README</code> to reflect the current version of the collector
 being used.
 Then commit these changes and have the changes reviewed before pushing them
 into the public repository.
 </p>
+
+<h2>Modifying Mercury's customisations to the Boehm GC</h2>
+<p>
+It is sometimes necessary to modify the files in the <code>boehm_gc</code>
+directory that we have customised while not updating the collector.
+For example, the set of options accepted by the <code>mgnuc</code> script may change and
+<code>boehm_gc/Mmakefile</code> or <code>boehm_gc/Makefile.direct</code> may need to be updated
+accordingly.
+</p>
+
+The procedure for doing this is:
+<ol>
+<li>Clone the Mercury <a href="https://github.com/Mercury-Language/bdwgc">bdwgc</a> repository.</li>
+
+<li>Checkout the <code>release-<var>M</var>_<var>N</var>-mercury</code> branch
+of the collector, where <var>M</var> and <var>N</var> are respectively the
+major and minor release numbers of version of the collector that Mercury is
+currently using.</li>
+
+<li>Make your changes and commit them.</li>
+
+<li>Add a tag named
+<code>release-<var>M</var>_<var>N</var>-mercury-<var>YYYYMMDD</var></code>
+where <var>YYYYMMDD</var> is the date.</li>
+
+<li>Push the changes and the tag.</li>
+
+<li>Checkout the above tag in the <code>mercury/boehm_gc</code> submodule.</li>
+
+<li>The output of the <kbd>git status</kbd> command will say that <code>boehm_gc</code> has been modified.
+You can <kbd>git add</kbd> and commit that change.</li>
+
+<li>Remind other developers to run <kbd>git submodule update --recursive</kbd> in their
+workspaces.</li>
+</ol>
 
 </body>
 </html>
