@@ -50,6 +50,8 @@
 %
 % XXX We do not currently expand out clauses.
 % This will leave any with_type annotations in clauses unexpanded.
+% XXX This applies both to clauses that define predicates and functions,
+% and to clauses that define instance methods.
 %
 %---------------------------------------------------------------------------%
 %
@@ -1353,8 +1355,9 @@ replace_in_typeclass_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
 
 %---------------------%
 %
-% The next two predicates have identical definitions, but one is for
-% item_instance_infos, while the other is for item_abstract_instance_infos.
+% The next two predicates have identical definitions except for the treatment
+% of the instance bodies, but one is for item_instance_infos, while the other
+% is for item_abstract_instance_infos.
 % XXX Ideally, this should not be necessary.
 %
 
@@ -1367,7 +1370,7 @@ replace_in_typeclass_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
 replace_in_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
         InstanceInfo0, InstanceInfo, !RecompInfo, !UsedModules, []) :-
     InstanceInfo0 = item_instance_info(ClassName, Types0, OriginalTypes,
-        Constraints0, InstanceBody, TVarSet0, ContainingModuleName,
+        Constraints0, InstanceBody0, TVarSet0, ContainingModuleName,
         Context, SeqNum),
     ( if
         ( !.RecompInfo = no
@@ -1383,6 +1386,20 @@ replace_in_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
         UsedTypeCtors0, UsedTypeCtors1, !UsedModules),
     replace_in_type_list_location_circ(MaybeRecord, TypeEqvMap, Types0, Types,
         _, _, TVarSet1, TVarSet, UsedTypeCtors1, UsedTypeCtors, !UsedModules),
+    (
+        InstanceBody0 = instance_body_abstract,
+        InstanceBody = instance_body_abstract
+    ;
+        InstanceBody0 = instance_body_concrete(_InstanceMethods0),
+        InstanceBody = InstanceBody0
+% We don't yet have code to expand out type equivalences in explicit
+% type qualifications in clauses.
+%
+%       replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+%           replace_in_instance_method, InstanceMethods0, InstanceMethods,
+%           !RecompInfo, !UsedModules, [], Specs),
+%       InstanceBody = instance_body_concrete(InstanceMethods)
+    ),
     % We specifically do NOT expand equivalence types in OriginalTypes.
     % If we did, that would defeat the purpose of the field.
     ItemName = recomp_item_name(ClassName, list.length(Types0)),
@@ -1425,6 +1442,30 @@ replace_in_abstract_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _,
     InstanceInfo = item_instance_info(ClassName, Types, OriginalTypes,
         Constraints, InstanceBody, TVarSet, ContainingModuleName,
         Context, SeqNum).
+
+%---------------------%
+
+% We don't yet have code to expand out type equivalences in explicit
+% type qualifications in clauses.
+%
+% :- pred replace_in_instance_method(module_name::in,
+%   maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
+%   instance_method::in, instance_method::out,
+%   maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+%   used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+% replace_in_instance_method(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
+%       InstanceMethod0, InstanceMethod, !RecompInfo, !UsedModules, Specs) :-
+%   InstanceMethod0 = instance_method(_MethorNameArity, _ProcDef0, _Context),
+%   (
+%       ProcDef0 = instance_proc_def_name(_Name),
+%       InstanceMethod = InstanceMethod0
+%   ;
+%       ProcDef0 = instance_proc_def_clauses(Clauses0),
+%       replace_in_clauses(..., Clauses0, Clauses, ...),
+%       ProcDef = instance_proc_def_clauses(Clauses),
+%       InstanceMethod = instance_method(MethorNameArity, ProcDef, Context)
+%   ).
 
 %---------------------%
 
