@@ -78,7 +78,7 @@ if test "$MMC_USE_SHARED_LIBS" != ""
 then
     O="$MMC_USE_SHARED_LIBS"
 else
-    O="a"
+    O="@LIB_SUFFIX@"
 fi
 
 if test -s $WORKSPACE/boehm_gc/libgc.$O
