@@ -1,5 +1,7 @@
 CLEAN
 *.err
+*.ilk
+*.pdb
 .mgnuc_copts
 .mgnuc_opts
 Prof.CallPair

@@ -17,6 +17,7 @@ tags
 *.err
 *.exe
 *.h
+*.ilk
 *.int
 *.int0
 *.int2

@@ -3,12 +3,14 @@
 *.date0
 *.date3
 *.dep
+*.ilk
 *.int
 *.int0
 *.int2
 *.int3
 *.opt
 *.optdate
+*.pdb
 *.res
 undead_proc.h
 CLEAN

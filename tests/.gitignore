@@ -11,6 +11,7 @@
 *.err2
 *.err_res
 *.err_res1
+*.ilk
 *.int
 *.int0
 *.int2
@@ -19,6 +20,7 @@
 *.log
 *.mh
 *.mih
+*.pdb
 .allres
 .mgnuc_copts
 .mgnuc_opts

@@ -17,6 +17,8 @@
 *.res1
 *.c_date
 *.log
+*.ilk
+*.pdb
 export_test.h pragma_import.h
 .allres
 address_of_builtins
