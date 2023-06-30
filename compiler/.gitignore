@@ -1,6 +1,7 @@
 *.c
 *.d
 *.h
+*.ilk
 *.obj
 *.exe
 *.prof

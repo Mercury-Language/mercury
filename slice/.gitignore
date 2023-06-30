@@ -14,6 +14,7 @@ mcov
 *.dv
 *.err
 *.exe
+*.ilk
 *.int
 *.int0
 *.int2
@@ -24,6 +25,7 @@ mcov
 *.obj
 *.opt
 *.optdate
+*.pdb
 *.prof
 SLICE_FLAGS
 Mercury

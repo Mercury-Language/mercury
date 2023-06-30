@@ -1,8 +1,10 @@
+*.ilk
 *.o
 *.obj
 *.opt
 *.optdate
 *.out
+*.pdb
 *.res
 *.res1
 FAILED_TESTS

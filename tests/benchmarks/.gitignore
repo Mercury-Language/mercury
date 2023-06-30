@@ -1,4 +1,6 @@
 *.c *.nux *.nux.save *.exp *.out *.res
+*.ilk
+*.pdb
 deriv deriv2 nrev poly primes qsort queens tak query cqueens crypt
 poly.*.memprof.mprof
 poly.*.memprof.CallPair

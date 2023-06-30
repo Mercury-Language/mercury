@@ -20,6 +20,8 @@ base_string_to_integer
 *.d
 *.mih
 *.mh
+*.ilk
+*.pdb
 Prof.CallPair
 Prof.Decl
 Prof.MemoryCells

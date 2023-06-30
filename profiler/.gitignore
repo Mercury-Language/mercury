@@ -10,6 +10,7 @@
 *.prof
 *.err
 *.exe
+*.ilk
 *.int
 *.int0
 *.int2

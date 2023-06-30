@@ -1,5 +1,7 @@
 *.out
 *.res
+*.ilk
+*.pdb
 FAILED_TESTS
 constrained_lambda
 extract_typeinfo
