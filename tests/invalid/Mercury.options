@@ -44,8 +44,8 @@ MCFLAGS-illtyped_compare        = --no-intermodule-optimization \
 MCFLAGS-impure_method_impl      = --no-intermodule-optimization \
                                     --verbose-error-messages
 MCFLAGS-inline_conflict         = --no-warn-ambiguous-pragmas
-MCFLAGS-instance_pc               = --no-intermodule-optimization
-MCFLAGS-instance_pc.instance_pc_helper_1 = --no-intermodule-optimization
+MCFLAGS-instances_pc               = --no-intermodule-optimization
+MCFLAGS-instances_pc.instances_pc_helper_1 = --no-intermodule-optimization
 MCFLAGS-invalid_event           = --event-set-file-name invalid_event_spec
 MCFLAGS-invalid_mllibs          = --no-errorcheck-only --no-verbose-make \
                                     --options-file Mercury.options.invalid \

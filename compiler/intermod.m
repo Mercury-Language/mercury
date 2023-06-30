@@ -1342,18 +1342,14 @@ should_opt_export_type_defn(ModuleName, TypeCtor, TypeDefn) :-
     intermod_info::in, parse_tree_plain_opt::out, io::di, io::uo) is det.
 
 write_opt_file_initial(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
-    intermod_info_get_module_info(IntermodInfo, ModuleInfo),
+    IntermodInfo =
+        intermod_info(ModuleInfo, _, PredDecls, PredDefns, Instances, _, _),
     module_info_get_name(ModuleInfo, ModuleName),
     ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
     io.format(Stream, ":- module %s.\n", [s(ModuleNameStr)], !IO),
-
-    intermod_info_get_pred_decls(IntermodInfo, PredDecls),
-    intermod_info_get_pred_defns(IntermodInfo, PredDefns),
-    intermod_info_get_instances(IntermodInfo, Instances),
     ( if
-        % If none of these item types need writing, nothing else
-        % needs to be written.
-
+        % If none of these kinds of items need writing, then
+        % nothing else needs to be written.
         set.is_empty(PredDecls),
         set.is_empty(PredDefns),
         Instances = [],
@@ -1801,9 +1797,8 @@ intermod_gather_instances(InstanceDefns, Instances) :-
     cord(item_instance_info)::in, cord(item_instance_info)::out) is det.
 
 intermod_gather_instance(ClassId - InstanceDefn, !InstancesCord) :-
-    InstanceDefn = hlds_instance_defn(ModuleName, _,
-        TVarSet, OriginalTypes, Types, Constraints, _, _,
-        Body, _, Context),
+    InstanceDefn = hlds_instance_defn(ModuleName, _, TVarSet,
+        OriginalTypes, Types, Constraints, _, _, Body, _, Context),
     ClassId = class_id(ClassName, _),
     ItemInstance = item_instance_info(ClassName, Types, OriginalTypes,
         Constraints, Body, TVarSet, ModuleName, Context, item_no_seq_num),

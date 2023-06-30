@@ -1202,6 +1202,9 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     --->    instance_body_abstract
     ;       instance_body_concrete(list(instance_method)).
 
+:- type abstract_instance_body =< instance_body
+    --->    instance_body_abstract.
+
 :- func prog_constraint_get_class(prog_constraint) = class_name.
 :- func prog_constraint_get_arg_types(prog_constraint) = list(mer_type).
 

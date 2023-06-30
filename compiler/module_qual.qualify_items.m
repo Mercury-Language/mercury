@@ -175,7 +175,7 @@ module_qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
         IntModeDefnMap0, IntModeDefnMap, !Info, !Specs),
     list.map_foldl2(module_qualify_item_typeclass(InInt),
         IntTypeClasses0, IntTypeClasses, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_instance(InInt),
+    list.map_foldl2(module_qualify_item_abstract_instance(InInt),
         IntInstances0, IntInstances, !Info, !Specs),
     map.map_values_foldl2(module_qualify_item_type_repn(ModuleName, InInt),
         IntTypeRepns0, IntTypeRepns, !Info, !Specs),
@@ -521,14 +521,12 @@ module_qualify_item_instance(InInt, ItemInstance0, ItemInstance,
         Constraints0, Body0, VarSet, ModName, Context, SeqNum),
     list.length(Types0, Arity),
     ErrorContext = mqec_instance(Context, class_id(Name0, Arity)),
-
     (
         InInt = mq_used_in_interface,
         mq_info_set_exported_instances_flag(yes, !Info)
     ;
         InInt = mq_not_used_in_interface
     ),
-
     % We don't qualify the implementation yet, since that requires
     % us to resolve overloading.
     ConstraintErrorContext = mqcec_instance_defn(Context, Name0,
@@ -548,6 +546,46 @@ module_qualify_item_instance(InInt, ItemInstance0, ItemInstance,
     qualify_type_list(InInt, ErrorContext, OriginalTypes0, OriginalTypes,
         !Info, !.Specs, _),
     qualify_instance_body(Name, Body0, Body),
+    ItemInstance = item_instance_info(Name, Types, OriginalTypes,
+        Constraints, Body, VarSet, ModName, Context, SeqNum).
+
+:- pred module_qualify_item_abstract_instance(mq_in_interface::in,
+    item_abstract_instance_info::in, item_abstract_instance_info::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+module_qualify_item_abstract_instance(InInt, ItemInstance0, ItemInstance,
+        !Info, !Specs) :-
+    % The definition of this predicate differs from the definition
+    % of module_qualify_item_instance only in that it does not update Body.
+    ItemInstance0 = item_instance_info(Name0, Types0, OriginalTypes0,
+        Constraints0, Body, VarSet, ModName, Context, SeqNum),
+    list.length(Types0, Arity),
+    ErrorContext = mqec_instance(Context, class_id(Name0, Arity)),
+    (
+        InInt = mq_used_in_interface,
+        mq_info_set_exported_instances_flag(yes, !Info)
+    ;
+        InInt = mq_not_used_in_interface
+    ),
+    % We don't qualify the implementation yet, since that requires
+    % us to resolve overloading.
+    ConstraintErrorContext = mqcec_instance_defn(Context, Name0,
+        OriginalTypes0),
+    qualify_prog_constraint_list(InInt, ConstraintErrorContext,
+        Constraints0, Constraints, !Info, !Specs),
+    Id0 = mq_id(Name0, Arity),
+    qualify_class_name(InInt, ErrorContext, Id0, Name, !Info, !Specs),
+    % XXX We don't want to keep the errors from the expansion of both
+    % forms of the instance types, since printing two error messages about
+    % one instance definition that make apparently contradictory
+    % assumptions about whether the instance types are equiv-type-expanded
+    % or not would be confusing. However, I (zs) cannot think of any
+    % compelling reason right now for preferring the error messages
+    % from one version of the types over the other.
+    qualify_type_list(InInt, ErrorContext, Types0, Types, !Info, !Specs),
+    qualify_type_list(InInt, ErrorContext, OriginalTypes0, OriginalTypes,
+        !Info, !.Specs, _),
     ItemInstance = item_instance_info(Name, Types, OriginalTypes,
         Constraints, Body, VarSet, ModName, Context, SeqNum).
 

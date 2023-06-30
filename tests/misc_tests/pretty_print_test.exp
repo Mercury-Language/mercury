@@ -24,7 +24,7 @@ main(DCG_0, DCG_2) :-
 	pred type_num_4(T, int),
 	mode type_num_4(in, out)
 ].
-:- instance (numbered_type(int)) where [
+:- instance numbered_type(int) where [
 	func(type_num/1) is foo_type_num,
 	func(type_num_2/1) is foo_type_num,
 	pred(type_num_3/2) is foo_type_num_p,

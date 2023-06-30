@@ -251,8 +251,8 @@ collect_mq_info_in_parse_tree_int0(ReadWhy0, ParseTreeInt0, !Info) :-
         IntTypeClasses, !Info),
     list.foldl(collect_mq_info_in_item_typeclass(ImpPermissions),
         ImpTypeClasses, !Info),
-    list.foldl(collect_mq_info_in_item_instance, IntInstances, !Info),
-    list.foldl(collect_mq_info_in_item_instance, ImpInstances, !Info),
+    list.foldl(collect_mq_info_in_item_instance, coerce(IntInstances), !Info),
+    list.foldl(collect_mq_info_in_item_instance, coerce(ImpInstances), !Info),
     list.foldl(collect_mq_info_in_item_promise(mq_used_in_interface),
         IntPromises, !Info),
     list.foldl(collect_mq_info_in_item_promise(mq_not_used_in_interface),
@@ -337,7 +337,7 @@ collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info) :-
 
     list.foldl(collect_mq_info_in_item_typeclass(IntPermissions),
         IntTypeClasses, !Info),
-    list.foldl(collect_mq_info_in_item_instance, IntInstances, !Info),
+    list.foldl(collect_mq_info_in_item_instance, coerce(IntInstances), !Info),
     list.foldl(collect_mq_info_in_item_promise(mq_used_in_interface),
         IntPromises, !Info).
 
@@ -659,7 +659,7 @@ collect_mq_info_in_parse_tree_int3(Role, ParseTreeInt3, !Info) :-
 
     list.foldl(collect_mq_info_in_item_typeclass(Permissions), IntTypeClasses,
         !Info),
-    list.foldl(collect_mq_info_in_item_instance, IntInstances, !Info).
+    list.foldl(collect_mq_info_in_item_instance, coerce(IntInstances), !Info).
 
 %---------------------------------------------------------------------------%
 

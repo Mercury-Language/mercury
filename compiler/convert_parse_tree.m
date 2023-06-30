@@ -287,7 +287,8 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
     list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
     list(item_mode_defn_info)::in, list(item_mode_defn_info)::out,
     list(item_typeclass_info)::in, list(item_typeclass_info)::out,
-    list(item_instance_info)::in, list(item_instance_info)::out,
+    list(item_abstract_instance_info)::in,
+        list(item_abstract_instance_info)::out,
     list(item_pred_decl_info)::in, list(item_pred_decl_info)::out,
     list(item_mode_decl_info)::in, list(item_mode_decl_info)::out,
     list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::out,
@@ -316,7 +317,22 @@ classify_int0_items_int_or_imp([Item | Items], !TypeDefns,
         !:TypeClasses = [ItemTypeClass | !.TypeClasses]
     ;
         Item = item_instance(ItemInstance),
-        !:Instances = [ItemInstance | !.Instances]
+        ItemInstance = item_instance_info(ClassName, Types, OrigTypes,
+            Constraints, Body, TVarSet, Module, Context, SeqNum),
+        (
+            Body = instance_body_abstract,
+            ItemAbstractInstance = item_instance_info(ClassName,
+                Types, OrigTypes, Constraints, instance_body_abstract,
+                TVarSet, Module, Context, SeqNum),
+            !:Instances = [ItemAbstractInstance | !.Instances]
+        ;
+            Body = instance_body_concrete(_),
+            Pieces = [words("A .int0 file may not contain"),
+                words("a concrete instance declaration."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        )
     ;
         Item = item_pred_decl(ItemPredDecl),
         !:PredDecls = [ItemPredDecl | !.PredDecls]
@@ -435,7 +451,8 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
     list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
     list(item_mode_defn_info)::in, list(item_mode_defn_info)::out,
     list(item_typeclass_info)::in, list(item_typeclass_info)::out,
-    list(item_instance_info)::in, list(item_instance_info)::out,
+    list(item_abstract_instance_info)::in,
+        list(item_abstract_instance_info)::out,
     list(item_pred_decl_info)::in, list(item_pred_decl_info)::out,
     list(item_mode_decl_info)::in, list(item_mode_decl_info)::out,
     list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::out,
@@ -464,7 +481,23 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         !:TypeClasses = [ItemTypeClass | !.TypeClasses]
     ;
         Item = item_instance(ItemInstance),
-        !:Instances = [ItemInstance | !.Instances]
+        ItemInstance = item_instance_info(ClassName, Types, OrigTypes,
+            Constraints, Body, TVarSet, Module, Context, SeqNum),
+        (
+            Body = instance_body_abstract,
+            ItemAbstractInstance = item_instance_info(ClassName,
+                Types, OrigTypes, Constraints, instance_body_abstract,
+                TVarSet, Module, Context, SeqNum),
+            !:Instances = [ItemAbstractInstance | !.Instances]
+        ;
+            Body = instance_body_concrete(_),
+            Pieces = [words("A .int file may not contain"),
+                words("a concrete instance declaration"),
+                words("in its interface section."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        )
     ;
         Item = item_type_repn(ItemTypeRepn),
         !:TypeRepns = [ItemTypeRepn | !.TypeRepns]
@@ -491,7 +524,7 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
             !:Promises = [ItemPromise | !.Promises]
         ;
             PromiseType = promise_type_true,
-            Pieces = [words("A .int1 file may not contain")] ++
+            Pieces = [words("A .int file may not contain")] ++
                 item_desc_pieces(Item) ++
                 [words("in its interface section."), nl],
             Spec = simplest_spec($pred, severity_error,
@@ -507,7 +540,7 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
         ),
-        Pieces = [words("A .int1 file may not contain")] ++
+        Pieces = [words("A .int file may not contain")] ++
             item_desc_pieces(Item) ++
             [words("in its interface section."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
@@ -661,7 +694,8 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
     list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
     list(item_mode_defn_info)::in, list(item_mode_defn_info)::out,
     list(item_typeclass_info)::in, list(item_typeclass_info)::out,
-    list(item_instance_info)::in, list(item_instance_info)::out,
+    list(item_abstract_instance_info)::in,
+        list(item_abstract_instance_info)::out,
     list(item_type_repn_info)::in, list(item_type_repn_info)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -683,7 +717,23 @@ classify_int2_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         !:TypeClasses = [ItemTypeClass | !.TypeClasses]
     ;
         Item = item_instance(ItemInstance),
-        !:Instances = [ItemInstance | !.Instances]
+        ItemInstance = item_instance_info(ClassName, Types, OrigTypes,
+            Constraints, Body, TVarSet, Module, Context, SeqNum),
+        (
+            Body = instance_body_abstract,
+            ItemAbstractInstance = item_instance_info(ClassName,
+                Types, OrigTypes, Constraints, instance_body_abstract,
+                TVarSet, Module, Context, SeqNum),
+            !:Instances = [ItemAbstractInstance | !.Instances]
+        ;
+            Body = instance_body_concrete(_),
+            Pieces = [words("A .int2 file may not contain"),
+                words("a concrete instance declaration"),
+                words("in its interface section."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        )
     ;
         Item = item_type_repn(ItemTypeRepn),
         !:TypeRepns = [ItemTypeRepn | !.TypeRepns]
@@ -873,7 +923,8 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
     list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
     list(item_mode_defn_info)::in, list(item_mode_defn_info)::out,
     list(item_typeclass_info)::in, list(item_typeclass_info)::out,
-    list(item_instance_info)::in, list(item_instance_info)::out,
+    list(item_abstract_instance_info)::in,
+        list(item_abstract_instance_info)::out,
     list(item_type_repn_info)::in, list(item_type_repn_info)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -895,7 +946,22 @@ classify_int3_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         !:TypeClasses = [ItemTypeClass | !.TypeClasses]
     ;
         Item = item_instance(ItemInstance),
-        !:Instances = [ItemInstance | !.Instances]
+        ItemInstance = item_instance_info(ClassName, Types, OrigTypes,
+            Constraints, Body, TVarSet, Module, Context, SeqNum),
+        (
+            Body = instance_body_abstract,
+            ItemAbstractInstance = item_instance_info(ClassName,
+                Types, OrigTypes, Constraints, instance_body_abstract,
+                TVarSet, Module, Context, SeqNum),
+            !:Instances = [ItemAbstractInstance | !.Instances]
+        ;
+            Body = instance_body_concrete(_),
+            Pieces = [words("A .int3 file may not contain"),
+                words("a concrete instance declaration."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        )
     ;
         Item = item_type_repn(ItemTypeRepn),
         !:TypeRepns = [ItemTypeRepn | !.TypeRepns]

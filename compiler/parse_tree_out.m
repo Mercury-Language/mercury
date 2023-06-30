@@ -162,6 +162,12 @@
 :- pred mercury_output_item_instance(merc_out_info::in,
     io.text_output_stream::in, item_instance_info::in, io::di, io::uo) is det.
 
+:- func item_abstract_instance_to_string(merc_out_info,
+    item_abstract_instance_info) = string.
+:- pred mercury_format_item_abstract_instance(merc_out_info::in,
+    S::in, item_abstract_instance_info::in, U::di, U::uo) is det
+    <= output(S, U).
+
 :- pred mercury_output_instance_method(instance_method::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 
@@ -210,11 +216,13 @@
 :- import_module cord.
 :- import_module map.
 :- import_module one_or_more.
+:- import_module ops.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module term_context.
+:- import_module unit.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -572,7 +580,7 @@ mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
         IntModeDefns, !IO),
     list.foldl(mercury_output_item_typeclass(Info, Stream),
         list.sort(IntTypeClasses), !IO),
-    list.foldl(mercury_output_item_instance(Info, Stream),
+    list.foldl(mercury_format_item_abstract_instance(Info, Stream),
         list.sort(IntInstances), !IO),
     order_pred_and_mode_decls(IntPredDecls, IntModeDecls, IntPredOrModeDecls),
     mercury_output_pred_or_mode_decls(Info, print_name_only, Stream,
@@ -616,7 +624,7 @@ mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
             ImpModeDefns, !IO),
         list.foldl(mercury_output_item_typeclass(Info, Stream),
             list.sort(ImpTypeClasses), !IO),
-        list.foldl(mercury_output_item_instance(Info, Stream),
+        list.foldl(mercury_format_item_abstract_instance(Info, Stream),
             list.sort(ImpInstances), !IO),
         order_pred_and_mode_decls(ImpPredDecls, ImpModeDecls,
             ImpPredOrModeDecls),
@@ -663,7 +671,7 @@ mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO) :-
         IntModeDefns, !IO),
     list.foldl(mercury_output_item_typeclass(Info, Stream),
         list.sort(IntTypeClasses), !IO),
-    list.foldl(mercury_output_item_instance(Info, Stream),
+    list.foldl(mercury_format_item_abstract_instance(Info, Stream),
         list.sort(IntInstances), !IO),
     order_pred_and_mode_decls(IntPredDecls, IntModeDecls, IntPredOrModeDecls),
     mercury_output_pred_or_mode_decls(Info, print_name_only, Stream,
@@ -731,7 +739,7 @@ mercury_output_parse_tree_int2(Info, Stream, ParseTreeInt2, !IO) :-
         IntModeDefns, !IO),
     list.foldl(mercury_output_item_typeclass(Info, Stream),
         list.sort(IntTypeClasses), !IO),
-    list.foldl(mercury_output_item_instance(Info, Stream),
+    list.foldl(mercury_format_item_abstract_instance(Info, Stream),
         list.sort(IntInstances), !IO),
     map.foldl_values(mercury_output_item_type_repn(Info, Stream),
         IntTypeRepnMap, !IO),
@@ -777,7 +785,7 @@ mercury_output_parse_tree_int3(Info, Stream, ParseTreeInt3, !IO) :-
     list.foldl(mercury_output_item_mode_defn(Info, Stream), IntModeDefns, !IO),
     list.foldl(mercury_output_item_typeclass(Info, Stream),
         list.sort(IntTypeClasses), !IO),
-    list.foldl(mercury_output_item_instance(Info, Stream),
+    list.foldl(mercury_format_item_abstract_instance(Info, Stream),
         list.sort(IntInstances), !IO),
     map.foldl_values(mercury_output_item_type_repn(Info, Stream),
         IntTypeRepnMap, !IO).
@@ -1944,10 +1952,17 @@ mercury_output_item_typeclass(Info, Stream, ItemTypeClass, !IO) :-
         io.write_string(Stream, ".\n", !IO)
     ;
         Interface = class_interface_concrete(ClassDecls),
-        io.write_string(Stream, " where [\n", !IO),
-        Lang = get_output_lang(Info),
-        output_class_decls(Stream, Lang, print_name_only, ClassDecls, !IO),
-        io.write_string(Stream, "\n].\n", !IO)
+        (
+            ClassDecls = [],
+            io.write_string(Stream, " where [].\n", !IO)
+        ;
+            ClassDecls = [HeadClassDecl | TailClassDecls],
+            io.write_string(Stream, " where [\n", !IO),
+            Lang = get_output_lang(Info),
+            output_class_decls(Stream, Lang, print_name_only,
+                HeadClassDecl, TailClassDecls, !IO),
+            io.write_string(Stream, "].\n", !IO)
+        )
     ).
 
 :- pred mercury_format_fundeps_and_prog_constraint_list(tvarset::in,
@@ -1995,17 +2010,26 @@ mercury_format_fundep(TypeVarSet, VarNamePrint, fundep(Domain, Range),
     add_string(")", S, !U).
 
 :- pred output_class_decls(io.text_output_stream::in,
-    output_lang::in, var_name_print::in, list(class_decl)::in,
+    output_lang::in, var_name_print::in, class_decl::in, list(class_decl)::in,
     io::di, io::uo) is det.
 
-output_class_decls(Stream, Lang, VarNamePrint, ClassDecls, !IO) :-
-    write_out_list(output_class_decl(Lang, VarNamePrint), ",\n",
-        ClassDecls, Stream, !IO).
+output_class_decls(Stream, Lang, VarNamePrint,
+        HeadClassDecl, TailClassDecls, !IO) :-
+    output_class_decl(Stream, Lang, VarNamePrint, HeadClassDecl, !IO),
+    (
+        TailClassDecls = [],
+        io.write_string(Stream, "\n", !IO)
+    ;
+        TailClassDecls = [HeadTailClassDecl | TailTailClassDecls],
+        io.write_string(Stream, ",\n", !IO),
+        output_class_decls(Stream, Lang, VarNamePrint,
+            HeadTailClassDecl, TailTailClassDecls, !IO)
+    ).
 
-:- pred output_class_decl(output_lang::in, var_name_print::in, class_decl::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred output_class_decl(io.text_output_stream::in, output_lang::in,
+    var_name_print::in, class_decl::in, io::di, io::uo) is det.
 
-output_class_decl(Lang, VarNamePrint, Decl, Stream, !IO) :-
+output_class_decl(Stream, Lang, VarNamePrint, Decl, !IO) :-
     io.write_string(Stream, "\t", !IO),
     (
         Decl = class_decl_pred_or_func(PredOrFuncInfo),
@@ -2062,40 +2086,81 @@ output_class_decl(Lang, VarNamePrint, Decl, Stream, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-mercury_output_item_instance(_, Stream, ItemInstance, !IO) :-
-    % XXX When prettyprinting a Mercury module, we want to print the original
-    % types. When generating interface types, we want to print the
-    % equiv-type-expanded types. We do the latter.
-    ItemInstance = item_instance_info(ClassName,Types, _OriginalTypes,
-        Constraints, Body, VarSet, _InstanceModuleName, _Context, _SeqNum),
-    io.write_string(Stream, ":- instance ", !IO),
-    % We put an extra set of brackets around the class name in case
-    % the name is an operator.
-    io.write_char(Stream, '(', !IO),
-    mercury_output_sym_name(ClassName, Stream, !IO),
-    io.write_char(Stream, '(', !IO),
-    write_out_list(mercury_output_type(VarSet, print_name_only),
-        ", ", Types, Stream, !IO),
-    io.write_char(Stream, ')', !IO),
-    io.write_char(Stream, ')', !IO),
-    mercury_format_prog_constraint_list(VarSet, print_name_only, "<=",
-        Constraints, Stream, !IO),
+mercury_output_item_instance(_Info, Stream, ItemInstance, !IO) :-
+    ItemInstance = item_instance_info(_ClassName, _Types, _OriginalTypes,
+        _Constraints, Body, _VarSet, _InstanceModuleName, _Context, _SeqNum),
+    HeaderStr = mercury_instance_header_to_string(ItemInstance),
     (
-        Body = instance_body_abstract
+        Body = instance_body_abstract,
+        io.format(Stream, "%s.\n", [s(HeaderStr)], !IO)
     ;
         Body = instance_body_concrete(Methods),
-        io.write_string(Stream, " where [\n", !IO),
-        mercury_output_instance_methods(Stream, Methods, !IO),
-        io.write_string(Stream, "\n]", !IO)
-    ),
-    io.write_string(Stream, ".\n", !IO).
+        (
+            Methods = [],
+            io.format(Stream, "%s where [].\n", [s(HeaderStr)], !IO)
+        ;
+            Methods = [HeadMethod | TailMethods],
+            io.format(Stream, "%s where [\n", [s(HeaderStr)], !IO),
+            mercury_output_instance_methods(Stream,
+                HeadMethod, TailMethods, !IO),
+            io.write_string(Stream, "].\n", !IO)
+        )
+    ).
+
+item_abstract_instance_to_string(Info, ItemAbstractInstance) = Str :-
+    mercury_format_item_abstract_instance(Info, unit, ItemAbstractInstance,
+        "", Str).
+
+mercury_format_item_abstract_instance(_Info, S, ItemAbstractInstance, !U) :-
+    HeaderStr =
+        mercury_instance_header_to_string(coerce(ItemAbstractInstance)),
+    string.format("%s.\n", [s(HeaderStr)], DeclStr),
+    add_string(DeclStr, S, !U).
+
+:- func mercury_instance_header_to_string(item_instance_info) = string.
+
+mercury_instance_header_to_string(ItemInstance) = Str :-
+    % XXX When prettyprinting a Mercury module, we want to print the original
+    % types. When generating interface files, we want to print the
+    % equiv-type-expanded types. We do the latter.
+    % XXX We could add an argument, or a field to merc_out_info,
+    % that says which kind of file we are generating.
+    ItemInstance = item_instance_info(ClassName, Types, _OriginalTypes,
+        Constraints, _Body, VarSet, _InstanceModuleName, _Context, _SeqNum),
+    ClassNameStr = mercury_sym_name_to_string(ClassName),
+    TypeStrs =
+        list.map(mercury_type_to_string(VarSet, print_name_only), Types),
+    TypesStr = string.join_list(", ", TypeStrs),
+    ConstraintsStr = mercury_prog_constraint_list_to_string(VarSet,
+        print_name_only, "<=", Constraints),
+    ( if
+        ( ops.mercury_op_table_is_op(ClassNameStr)
+        ; not is_all_alnum_or_underscore(ClassNameStr)
+        )
+    then
+        % We put an extra set of brackets around the class name
+        % if the name is an operator or contains non-alphanumeric characters.
+        string.format(":- instance (%s(%s))%s",
+            [s(ClassNameStr), s(TypesStr), s(ConstraintsStr)], Str)
+    else
+        string.format(":- instance %s(%s)%s",
+            [s(ClassNameStr), s(TypesStr), s(ConstraintsStr)], Str)
+    ).
 
 :- pred mercury_output_instance_methods(io.text_output_stream::in,
-    list(instance_method)::in, io::di, io::uo) is det.
+    instance_method::in, list(instance_method)::in, io::di, io::uo) is det.
 
-mercury_output_instance_methods(Stream, Methods, !IO) :-
-    write_out_list(mercury_output_instance_method,
-        ",\n", Methods, Stream, !IO).
+mercury_output_instance_methods(Stream, HeadMethod, TailMethods, !IO) :-
+    mercury_output_instance_method(HeadMethod, Stream, !IO),
+    (
+        TailMethods = [],
+        io.write_string(Stream, "\n", !IO)
+    ;
+        TailMethods = [HeadTailMethod | TailTailMethods],
+        io.write_string(Stream, ",\n", !IO),
+        mercury_output_instance_methods(Stream,
+            HeadTailMethod, TailTailMethods, !IO)
+    ).
 
 mercury_output_instance_method(Method, Stream, !IO) :-
     Method = instance_method(MethodId, Defn, _Context),
@@ -2103,21 +2168,13 @@ mercury_output_instance_method(Method, Stream, !IO) :-
     UserArity = user_arity(UserArityInt),
     (
         Defn = instance_proc_def_name(PredName),
-        % XXX ARITY io.format
-        io.write_char(Stream, '\t', !IO),
-        (
-            PredOrFunc = pf_function,
-            io.write_string(Stream, "func(", !IO)
-        ;
-            PredOrFunc = pf_predicate,
-            io.write_string(Stream, "pred(", !IO)
-        ),
-        mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-            MethodSymName, Stream, !IO),
-        io.write_string(Stream, "/", !IO),
-        io.write_int(Stream, UserArityInt, !IO),
-        io.write_string(Stream, ") is ", !IO),
-        mercury_output_bracketed_sym_name(PredName, Stream, !IO)
+        PFStr = pred_or_func_to_str(PredOrFunc),
+        MethodSymNameStr = mercury_bracketed_sym_name_to_string_ngt(
+            next_to_graphic_token, MethodSymName),
+        PredNameStr = mercury_bracketed_sym_name_to_string(PredName),
+        io.format(Stream, "\t%s(%s/%d) is %s",
+            [s(PFStr), s(MethodSymNameStr), i(UserArityInt), s(PredNameStr)],
+            !IO)
     ;
         Defn = instance_proc_def_clauses(ItemsCord),
         Items = cord.list(ItemsCord),

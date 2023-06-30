@@ -109,6 +109,8 @@
 :- import_module parse_tree.decide_type_repn.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.parse_tree_out.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
@@ -125,6 +127,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -508,8 +511,18 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
     % Make the implementation FIMs disjoint from the interface FIMs.
     set.difference(ImpFIMSpecs1, IntFIMSpecs, ImpFIMSpecs),
 
+    OutInfo = init_write_int_merc_out_info,
     IntInstances = list.map(make_instance_abstract, IntInstances0),
-    ImpInstances = list.map(make_instance_abstract, ImpInstances0),
+    IntInstanceStrs =
+        list.map(item_abstract_instance_to_string(OutInfo), IntInstances),
+    set_tree234.list_to_set(IntInstanceStrs, IntInstanceStrSet),
+    ImpInstances1 = list.map(make_instance_abstract, ImpInstances0),
+    KeepImpInstanceTest =
+        ( pred(AbsInstance::in) is semidet :-
+            Str = item_abstract_instance_to_string(OutInfo, AbsInstance),
+            not set_tree234.contains(IntInstanceStrSet, Str)
+        ),
+    list.filter(KeepImpInstanceTest, ImpInstances1, ImpInstances),
 
     ImpPredDecls = ImpPredDecls0 ++ list.condense(
         list.map(declare_mutable_aux_preds_for_int0(ModuleName), ImpMutables)),
@@ -561,8 +574,9 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
         IntTypeCtorCheckedMap, IntInstCtorCheckedMap, IntModeCtorCheckedMap,
         TypeSpecs, InstModeSpecs,
 
-        IntTypeClasses, IntInstancesAbstract, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises, IntBadClausePreds,
+        IntTypeClasses, coerce(IntInstancesAbstract),
+        IntPredDecls, IntModeDecls, IntDeclPragmas, IntPromises,
+        IntBadClausePreds,
 
         AbstractImpTypeClasses, [], [], [], [], [], [], [], [], [], [], []).
 
@@ -820,7 +834,7 @@ generate_interface_int1(Globals, AugMakeIntUnit,
         TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
         _TypeSpecs, _InstModeSpecs,
 
-        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
+        IntTypeClasses, IntInstances0, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises0, _IntBadClausePreds,
 
         ImpTypeClasses, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
@@ -925,6 +939,7 @@ generate_interface_int1(Globals, AugMakeIntUnit,
         !:Specs = !.Specs ++ RepnSpecs
     ),
 
+    IntInstances = list.map(check_instance_is_abstract, IntInstances0),
     list.filter(keep_promise_item_int, IntPromises0, IntPromises),
 
     DummyMaybeVersionNumbers = no_version_numbers,
@@ -2525,15 +2540,18 @@ get_int2_items_from_int1_int_typeclass([TypeClassInfo | TypeClassInfos],
 :- pred get_int2_items_from_int1_int_instance(list(item_instance_info)::in,
     maybe_unqual_symnames::in, maybe_unqual_symnames::out,
     set(module_name)::in, set(module_name)::out,
-    cord(item_instance_info)::in, cord(item_instance_info)::out) is det.
+    cord(item_abstract_instance_info)::in,
+        cord(item_abstract_instance_info)::out) is det.
 
 get_int2_items_from_int1_int_instance([],
         !MaybeUnqual, !ModuleNames, !IntInstancesCord).
 get_int2_items_from_int1_int_instance([InstanceInfo | InstanceInfos],
         !MaybeUnqual, !ModuleNames, !IntInstancesCord) :-
     InstanceInfo = item_instance_info(ClassSymName,
-        ArgTypes, OrigArgTypes, ClassConstraints, _InstanceBody0,
+        ArgTypes, OrigArgTypes, ClassConstraints, InstanceBody0,
         TVarSet, ContainingModuleName, Context, SeqNum),
+    expect(unify(InstanceBody0, instance_body_abstract), $pred,
+        "instance_body_abstract"),
     accumulate_module(ClassSymName, !MaybeUnqual, !ModuleNames),
     accumulate_modules_in_types(ArgTypes, !MaybeUnqual, !ModuleNames),
     accumulate_modules_in_types(OrigArgTypes, !MaybeUnqual, !ModuleNames),
@@ -2791,13 +2809,41 @@ make_mode_defn_abstract(ModeDefn) =
 
 :- func make_typeclass_abstract(item_typeclass_info) = item_typeclass_info.
 
-make_typeclass_abstract(TypeClass) =
-    TypeClass ^ tc_class_methods := class_interface_abstract.
+make_typeclass_abstract(TypeClassInfo) =
+    TypeClassInfo ^ tc_class_methods := class_interface_abstract.
 
-:- func make_instance_abstract(item_instance_info) = item_instance_info.
+:- func make_instance_abstract(item_instance_info)
+    = item_abstract_instance_info.
 
-make_instance_abstract(Instance) =
-    Instance ^ ci_method_instances := instance_body_abstract.
+make_instance_abstract(InstanceInfo) = AbstractInstanceInfo :-
+    % XXX AbstractInstanceInfo = InstanceInfo ^ ci_method_instances :=
+    %   instance_body_abstract
+    % does not work; it gets an error about InstanceInfo not being
+    % *already* of type item_abstract_instance_info.
+    InstanceInfo = item_instance_info(ClassName, Types, OrigTypes,
+        Constraints, _Methods, TVarSet, Module, Context, SeqNum),
+    AbstractInstanceInfo = item_instance_info(ClassName, Types, OrigTypes,
+        Constraints, instance_body_abstract, TVarSet, Module, Context, SeqNum).
+
+:- func check_instance_is_abstract(item_instance_info)
+    = item_abstract_instance_info.
+
+check_instance_is_abstract(InstanceInfo) = AbstractInstanceInfo :-
+    % XXX AbstractInstanceInfo = InstanceInfo ^ ci_method_instances :=
+    %   instance_body_abstract
+    % does not work; it gets an error about InstanceInfo not being
+    % *already* of type item_abstract_instance_info.
+    InstanceInfo = item_instance_info(ClassName, Types, OrigTypes,
+        Constraints, Methods, TVarSet, Module, Context, SeqNum),
+    (
+        Methods = instance_body_abstract,
+        AbstractInstanceInfo = item_instance_info(ClassName, Types, OrigTypes,
+            Constraints, instance_body_abstract, TVarSet, Module,
+            Context, SeqNum)
+    ;
+        Methods = instance_body_concrete(_),
+        unexpected($pred, "instance_body_concrete")
+    ).
 
 %---------------------------------------------------------------------------%
 

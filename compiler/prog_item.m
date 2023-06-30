@@ -470,7 +470,7 @@
                 % interface or implementation section. We should make that
                 % distinction here ONLY when we have to.
                 pti0_int_typeclasses        :: list(item_typeclass_info),
-                pti0_int_instances          :: list(item_instance_info),
+                pti0_int_instances        :: list(item_abstract_instance_info),
                 pti0_int_pred_decls         :: list(item_pred_decl_info),
                 pti0_int_mode_decls         :: list(item_mode_decl_info),
                 pti0_int_decl_pragmas       :: list(item_decl_pragma_info),
@@ -478,7 +478,7 @@
 
                 % Items of various kinds in the implementation section.
                 pti0_imp_typeclasses        :: list(item_typeclass_info),
-                pti0_imp_instances          :: list(item_instance_info),
+                pti0_imp_instances        :: list(item_abstract_instance_info),
                 pti0_imp_pred_decls         :: list(item_pred_decl_info),
                 pti0_imp_mode_decls         :: list(item_mode_decl_info),
                 pti0_imp_decl_pragmas       :: list(item_decl_pragma_info),
@@ -521,7 +521,7 @@
 
                 % Items of various kinds in the interface.
                 pti1_int_typeclasses        :: list(item_typeclass_info),
-                pti1_int_instances          :: list(item_instance_info),
+                pti1_int_instances        :: list(item_abstract_instance_info),
                 pti1_int_pred_decls         :: list(item_pred_decl_info),
                 pti1_int_mode_decls         :: list(item_mode_decl_info),
                 pti1_int_decl_pragmas       :: list(item_decl_pragma_info),
@@ -573,7 +573,7 @@
 
                 % Items of various kinds in the interface.
                 pti2_int_typeclasses        :: list(item_typeclass_info),
-                pti2_int_instances          :: list(item_instance_info),
+                pti2_int_instances        :: list(item_abstract_instance_info),
 
                 % The representations of all types defined in the module,
                 % whether exported or not.
@@ -604,7 +604,7 @@
 
                 % Items of various kinds in the interface.
                 pti3_int_typeclasses        :: list(item_typeclass_info),
-                pti3_int_instances          :: list(item_instance_info),
+                pti3_int_instances        :: list(item_abstract_instance_info),
                 pti3_int_type_repns         :: type_ctor_repn_map
             ).
 
@@ -1437,6 +1437,22 @@
                 ci_original_types               :: list(mer_type),
                 ci_deriving_class               :: list(prog_constraint),
                 ci_method_instances             :: instance_body,
+                ci_varset                       :: tvarset,
+                ci_module_containing_instance   :: module_name,
+                ci_context                      :: prog_context,
+                ci_seq_num                      :: item_seq_num
+            ).
+
+:- type item_abstract_instance_info =< item_instance_info
+    --->    item_instance_info(
+                % The original types field preserves the types in the instance
+                % declaration as written by the programmer. The types field
+                % is subject to the expansion of equivalence types.
+                ci_class_name                   :: class_name,
+                ci_types                        :: list(mer_type),
+                ci_original_types               :: list(mer_type),
+                ci_deriving_class               :: list(prog_constraint),
+                ci_method_instances             :: abstract_instance_body,
                 ci_varset                       :: tvarset,
                 ci_module_containing_instance   :: module_name,
                 ci_context                      :: prog_context,

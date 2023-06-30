@@ -106,6 +106,7 @@
     ;       output_debug.
 
 :- func init_debug_merc_out_info = merc_out_info.
+:- func init_write_int_merc_out_info = merc_out_info.
 :- func init_merc_out_info(globals, maybe_qualified_item_names, output_lang)
     = merc_out_info.
 :- func merc_out_info_disable_line_numbers(merc_out_info) = merc_out_info.
@@ -194,6 +195,10 @@
 init_debug_merc_out_info = Info :-
     Info = merc_out_info(qualified_item_names, dont_output_line_numbers,
         output_debug, type_repn_for_machines, ", ").
+
+init_write_int_merc_out_info = Info :-
+    Info = merc_out_info(qualified_item_names, dont_output_line_numbers,
+        output_mercury, type_repn_for_machines, ", ").
 
 init_merc_out_info(Globals, MaybeQualifiedItemNames, Lang) = Info :-
     globals.lookup_bool_option(Globals, line_numbers, LineNumbersOpt),

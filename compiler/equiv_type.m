@@ -751,7 +751,7 @@ replace_in_parse_tree_int0(ModuleName, TypeEqvMap, InstEqvMap,
         replace_in_typeclass_info, IntTypeClasses0, IntTypeClasses,
         !RecompInfo, !UsedModules, !Specs),
     replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
-        replace_in_instance_info, IntInstances0, IntInstances,
+        replace_in_abstract_instance_info, IntInstances0, IntInstances,
         !RecompInfo, !UsedModules, !Specs),
     replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_pred_decl_info, IntPredDecls0, IntPredDecls,
@@ -767,7 +767,7 @@ replace_in_parse_tree_int0(ModuleName, TypeEqvMap, InstEqvMap,
         replace_in_typeclass_info, ImpTypeClasses0, ImpTypeClasses,
         !RecompInfo, !UsedModules, !Specs),
     replace_in_list(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
-        replace_in_instance_info, ImpInstances0, ImpInstances,
+        replace_in_abstract_instance_info, ImpInstances0, ImpInstances,
         !RecompInfo, !UsedModules, !Specs),
     replace_in_list(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
         replace_in_pred_decl_info, ImpPredDecls0, ImpPredDecls,
@@ -818,7 +818,7 @@ replace_in_parse_tree_int1(ModuleName, TypeEqvMap, InstEqvMap,
         replace_in_typeclass_info, IntTypeClasses0, IntTypeClasses,
         !RecompInfo, !UsedModules, !Specs),
     replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
-        replace_in_instance_info, IntInstances0, IntInstances,
+        replace_in_abstract_instance_info, IntInstances0, IntInstances,
         !RecompInfo, !UsedModules, !Specs),
     replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
         replace_in_pred_decl_info, IntPredDecls0, IntPredDecls,
@@ -874,7 +874,7 @@ replace_in_parse_tree_int2(ModuleName, TypeEqvMap, InstEqvMap,
         replace_in_typeclass_info, IntTypeClasses0, IntTypeClasses,
         !RecompInfo, !UsedModules, !Specs),
     replace_in_list(ModuleName, MaybeRecordInt, TypeEqvMap, InstEqvMap,
-        replace_in_instance_info, IntInstances0, IntInstances,
+        replace_in_abstract_instance_info, IntInstances0, IntInstances,
         !RecompInfo, !UsedModules, !Specs),
     map.map_values_foldl3(
         replace_in_type_repn_info(ModuleName, MaybeRecordInt, TypeEqvMap),
@@ -1352,6 +1352,11 @@ replace_in_typeclass_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
         ClassInterface, TVarSet, Context, SeqNum).
 
 %---------------------%
+%
+% The next two predicates have identical definitions, but one is for
+% item_instance_infos, while the other is for item_abstract_instance_infos.
+% XXX Ideally, this should not be necessary.
+%
 
 :- pred replace_in_instance_info(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
@@ -1360,6 +1365,40 @@ replace_in_typeclass_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
 replace_in_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
+        InstanceInfo0, InstanceInfo, !RecompInfo, !UsedModules, []) :-
+    InstanceInfo0 = item_instance_info(ClassName, Types0, OriginalTypes,
+        Constraints0, InstanceBody, TVarSet0, ContainingModuleName,
+        Context, SeqNum),
+    ( if
+        ( !.RecompInfo = no
+        ; ContainingModuleName = ModuleName
+        )
+    then
+        UsedTypeCtors0 = no_eqv_expand_info
+    else
+        UsedTypeCtors0 = eqv_expand_info(ModuleName, set.init)
+    ),
+    replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
+        Constraints0, Constraints, TVarSet0, TVarSet1,
+        UsedTypeCtors0, UsedTypeCtors1, !UsedModules),
+    replace_in_type_list_location_circ(MaybeRecord, TypeEqvMap, Types0, Types,
+        _, _, TVarSet1, TVarSet, UsedTypeCtors1, UsedTypeCtors, !UsedModules),
+    % We specifically do NOT expand equivalence types in OriginalTypes.
+    % If we did, that would defeat the purpose of the field.
+    ItemName = recomp_item_name(ClassName, list.length(Types0)),
+    ItemId = recomp_item_id(recomp_typeclass, ItemName),
+    finish_recording_expanded_items(ItemId, UsedTypeCtors, !RecompInfo),
+    InstanceInfo = item_instance_info(ClassName, Types, OriginalTypes,
+        Constraints, InstanceBody, TVarSet, ContainingModuleName,
+        Context, SeqNum).
+
+:- pred replace_in_abstract_instance_info(module_name::in,
+    maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
+    item_abstract_instance_info::in, item_abstract_instance_info::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_abstract_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _,
         InstanceInfo0, InstanceInfo, !RecompInfo, !UsedModules, []) :-
     InstanceInfo0 = item_instance_info(ClassName, Types0, OriginalTypes,
         Constraints0, InstanceBody, TVarSet0, ContainingModuleName,

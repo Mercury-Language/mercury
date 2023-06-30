@@ -453,14 +453,14 @@ acc_implicit_avail_needs_in_parse_tree_int0(ParseTreeInt0,
     % XXX IMPLICIT Instance items in the interface must be abstract,
     % so they cannot have any implicit avail needs.
     list.foldl(acc_implicit_avail_needs_in_instance,
-        IntInstances, !ImplicitAvailNeeds),
+        coerce(IntInstances), !ImplicitAvailNeeds),
     % XXX IMPLICIT None of the implicit avail needs this call looks for
     % has any business occurring in a promise.
     list.foldl(acc_implicit_avail_needs_in_promise,
         IntPromises, !ImplicitAvailNeeds),
 
     list.foldl(acc_implicit_avail_needs_in_instance,
-        ImpInstances, !ImplicitAvailNeeds),
+        coerce(ImpInstances), !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_promise,
         ImpPromises, !ImplicitAvailNeeds).
 
@@ -480,7 +480,7 @@ acc_implicit_avail_needs_in_parse_tree_int1(ParseTreeInt1,
     map.foldl_values(acc_implicit_avail_needs_in_type_ctor_checked_defn,
         TypeDefnCheckedMap, !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_instance,
-        IntInstances, !ImplicitAvailNeeds),
+        coerce(IntInstances), !ImplicitAvailNeeds),
     list.foldl(acc_implicit_avail_needs_in_promise,
         IntPromises, !ImplicitAvailNeeds).
 
@@ -500,7 +500,7 @@ acc_implicit_avail_needs_in_parse_tree_int2(ParseTreeInt2,
     % XXX IMPLICIT Instance items in the interface must be abstract,
     % so they cannot have any implicit avail needs.
     list.foldl(acc_implicit_avail_needs_in_instance,
-        IntInstances, !ImplicitAvailNeeds).
+        coerce(IntInstances), !ImplicitAvailNeeds).
 
 :- pred acc_implicit_avail_needs_in_parse_tree_plain_opt(
     parse_tree_plain_opt::in,
