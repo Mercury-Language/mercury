@@ -45,6 +45,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module int.
 :- import_module map.
 
 %---------------------------------------------------------------------------%
@@ -57,8 +58,7 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
     ;
         ExportWarning = yes,
         ParseTreeModuleSrc = parse_tree_module_src(ModuleName,
-            ModuleNameContext, IntIncls, _ImpIncls, _InclMap,
-            _IntImports, _IntUses, _ImpImports, _ImpUses, _ImportUseMap,
+            ModuleNameContext, InclMap, _ImportUseMap,
             _IntFIMs, _ImpFIMs, _IntSelfFIMLangs, _ImpSelfFIMLangs,
 
             TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
@@ -71,7 +71,18 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
             _ImpClauses, _ImpForeignExportEnums,
             _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
             _ImpInitialises, _ImpFinalises, _ImpMutables),
-        map.count(IntIncls, NumIntIncls),
+        CountIntIncls =
+            ( pred(_MN::in, InclInfo::in, Cnt0::in, Cnt::out) is det :-
+                InclInfo = include_module_info(Section, _),
+                (
+                    Section = ms_interface,
+                    Cnt = Cnt0 + 1
+                ;
+                    Section = ms_implementation,
+                    Cnt = Cnt0
+                )
+            ),
+        map.foldl(CountIntIncls, InclMap, 0, NumIntIncls),
         ( if
             ( NumIntIncls = 0
             ; NumIntIncls = 1

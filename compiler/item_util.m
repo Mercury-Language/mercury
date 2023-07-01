@@ -31,29 +31,10 @@
 
 %---------------------------------------------------------------------------%
 
-    % Return the lexically first context in the range of the given map.
-    %
-:- pred first_context_in_module_names_contexts(module_names_contexts::in,
-    prog_context::out) is semidet.
-:- pred first_context_in_two_module_names_contexts(
-    module_names_contexts::in, module_names_contexts::in,
-    prog_context::out) is semidet.
-
-%---------------------------------------------------------------------------%
-
-    % Add the name of the included module to the given map.
-    %
-:- pred get_included_modules_in_item_include_acc(item_include::in,
-    module_names_contexts::in, module_names_contexts::out) is det.
-
-    % classify_include_modules(IntIncludes, ImpIncludes,
-    %   IntInclsMap, ImpInclsMap, IntInclMap, ImpInclMap, !:InclMap, !Specs):
+    % classify_include_modules(IntIncludes, ImpIncludes, InclMap, !Specs):
     %
     % Record the inclusion of each submodule in the section and at the context
-    % where it happens. Return a representation of each section's contents
-    % with all the contexts in {Int,Imp}InclsMap, with just one context
-    % per included module in {Int,Imp}InclMap (note Incl, not Incls),
-    % and a unified map in !:InclMap.
+    % where it happens in InclMap.
     %
     % If a submodule is included more than once within the same section,
     % keep only the first inclusion. If a submodule is included in both
@@ -62,25 +43,14 @@
     % the other inclusions.
     %
 :- pred classify_include_modules(
-    list(item_include)::in, list(item_include)::in,
-    module_names_contexts::out, module_names_contexts::out,
-    int_incl_context_map::out, imp_incl_context_map::out,
-    include_module_map::out,
+    list(item_include)::in, list(item_include)::in, include_module_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred include_map_to_int_imp_modules(include_module_map::in,
     set(module_name)::out, set(module_name)::out) is det.
 
-:- pred include_map_to_item_includes(include_module_map::in,
-    list(item_include)::out, list(item_include)::out) is det.
-
-:- pred acc_include_for_module_and_context(module_name::in, prog_context::in,
-    list(item_include)::in, list(item_include)::out) is det.
-
-:- func module_names_contexts_to_item_includes(module_names_contexts)
-    = list(item_include).
-:- func module_name_context_to_item_includes(module_name_context)
-    = list(item_include).
+:- pred add_only_int_include(module_name::in, include_module_info::in,
+    int_include_module_map::in, int_include_module_map::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -94,15 +64,6 @@
     set(module_name)::in, set(module_name)::out,
     set(module_name)::in, set(module_name)::out) is det.
 
-    % get_imports_uses_maps(Avails, ImportMap, UseMap):
-    %
-    % Given the avails of a raw compilation unit, return the set of modules
-    % imported and used in those sections, mapped to the list of locations
-    % of those imports and uses.
-    %
-:- pred get_imports_uses_maps(list(item_avail)::in,
-    module_names_contexts::out, module_names_contexts::out) is det.
-
     % accumulate_imports_uses_maps(Avails, !ImportMap, !UseMap):
     %
     % Add the imports in Avails to !ImportMap, and
@@ -112,30 +73,29 @@
     module_names_contexts::in, module_names_contexts::out,
     module_names_contexts::in, module_names_contexts::out) is det.
 
-    % classify_int_imp_import_use_modules(ModuleName,
-    %   IntImportContextsMap, IntUseContextsMap,
-    %   ImpImportContextsMap, ImpUseContextsMap,
-    %   IntImportContextMap, IntUseContextMap,
-    %   ImpImportContextMap, ImpUseContextMap,
-    %   !:ImportUseMap, !Specs) :-
+    % classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
+    %   ImportUseMap, !Specs) :-
     %
-    % Given the locations where modules are imported and/or used
-    % in the interface and implementation sections, record all their
-    % contexts in {Int,Imp}{Import,Use}ContextsMap. In the arguments
-    % whose names replace Contexts (plural) with Context (singular),
-    % we record just one context with each module name, with an error
-    % message for any duplicates. We diagnose more potential
-    % problems when constructing !:ImportUseMap, including modules
-    % which occur in more than one of {Int,Imp}{Import,Use}ContextMap,
-    % with the exception of the permitted combination of "used in interface,
-    % imported in implementation", and imports of ancestor modules
-    % or self-imports.
+    % The input is item_avails showing which modules are imported and/or used
+    % where in the interface and implementation sections. This input
+    % which may contain duplicates of several kinds:
+    %
+    % - a module may be imported more than once in the same section
+    % - a module may be used more than once in the same section
+    % - a module may be both imported and used in the same section
+    % - a module may be both imported and used in different sections
+    %   *other than* the one permitted combination, which is
+    %   "used in the interface, imported in the implementation".
+    %
+    % Report each occurrence of any of these forms of duplication,
+    % and we also report self-imports/self-ises, and imports/uses
+    % of ancestor modules.
+    %
+    % We return a structured representation of the non-duplicate entries
+    % in ImportUseMap.
     %
 :- pred classify_int_imp_import_use_modules(module_name::in,
-    module_names_contexts::in, module_names_contexts::in,
-    module_names_contexts::in, module_names_contexts::in,
-    int_import_context_map::out, int_use_context_map::out,
-    imp_import_context_map::out, imp_use_context_map::out,
+    list(item_avail)::in, list(item_avail)::in,
     section_import_and_or_use_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -390,69 +350,26 @@
 
 %---------------------------------------------------------------------------%
 
-first_context_in_module_names_contexts(ModuleNamesContexts, FirstContext) :-
-    ( if one_or_more_map.is_empty(ModuleNamesContexts) then
-        fail
-    else
-        map.values(ModuleNamesContexts, ContextsLists),
-        one_or_more.condense(ContextsLists, Contexts),
-        list.sort(Contexts, SortedContexts),
-        SortedContexts = [FirstContext | _]
-    ).
-
-first_context_in_two_module_names_contexts(
-        ModuleNamesContextsA, ModuleNamesContextsB, FirstContext) :-
-    ( if
-        one_or_more_map.is_empty(ModuleNamesContextsA),
-        one_or_more_map.is_empty(ModuleNamesContextsB)
-    then
-        fail
-    else
-        map.values(ModuleNamesContextsA, ContextsListsA),
-        map.values(ModuleNamesContextsB, ContextsListsB),
-        one_or_more.condense(ContextsListsA, ContextsA),
-        one_or_more.condense(ContextsListsB, ContextsB),
-        list.sort(ContextsA ++ ContextsB, SortedContexts),
-        SortedContexts = [FirstContext | _]
-    ).
-
-%---------------------------------------------------------------------------%
-
-get_included_modules_in_item_include_acc(Incl, !IncludedModuleNames) :-
-    Incl = item_include(ModuleName, Context, _SeqNum),
-    one_or_more_map.add(ModuleName, Context, !IncludedModuleNames).
-
 classify_include_modules(IntIncludes, ImpIncludes,
-        IntInclsMap, ImpInclsMap,
-        int_incl_context_map(IntInclMap), imp_incl_context_map(ImpInclMap),
         !:InclMap, !Specs) :-
     map.init(!:InclMap),
-    list.foldl4(classify_include_module(ms_interface), IntIncludes,
-        map.init, IntInclsMap, map.init, IntInclMap, !InclMap, !Specs),
-    list.foldl4(classify_include_module(ms_implementation), ImpIncludes,
-        map.init, ImpInclsMap, map.init, ImpInclMap, !InclMap, !Specs).
+    list.foldl2(classify_include_module(ms_interface), IntIncludes,
+        !InclMap, !Specs),
+    list.foldl2(classify_include_module(ms_implementation), ImpIncludes,
+        !InclMap, !Specs).
 
 :- pred classify_include_module(module_section::in, item_include::in,
-    module_names_contexts::in, module_names_contexts::out,
-    module_name_context::in, module_name_context::out,
     include_module_map::in, include_module_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-classify_include_module(Section, ItemInclude,
-        !ContextsMap, !ContextMap, !InclMap, !Specs) :-
+classify_include_module(Section, ItemInclude, !InclMap, !Specs) :-
     ItemInclude = item_include(ModuleName, Context, _SeqNum),
-    one_or_more_map.add(ModuleName, Context, !ContextsMap),
-    ( if map.search(!.ContextMap, ModuleName, PrevContext) then
+    ( if map.search(!.InclMap, ModuleName, PrevEntry) then
+        PrevEntry = include_module_info(_PrevSection, PrevContext),
         report_duplicate_include(ModuleName, PrevContext, Context, !Specs)
     else
-        map.det_insert(ModuleName, Context, !ContextMap),
-        ( if map.search(!.InclMap, ModuleName, PrevEntry) then
-            PrevEntry = include_module_info(_PrevSection, PrevContext),
-            report_duplicate_include(ModuleName, PrevContext, Context, !Specs)
-        else
-            Entry = include_module_info(Section, Context),
-            map.det_insert(ModuleName, Entry, !InclMap)
-        )
+        Entry = include_module_info(Section, Context),
+        map.det_insert(ModuleName, Entry, !InclMap)
     ).
 
 :- pred report_duplicate_include(module_name::in,
@@ -493,63 +410,15 @@ include_map_to_int_imp_modules_acc(ModuleName, InclInfo,
 
 %---------------------%
 
-include_map_to_item_includes(IncludeMap, IntIncludes, ImpIncludes) :-
-    map.foldl2(include_map_to_item_includes_acc, IncludeMap,
-        [], RevIntIncludes, [], RevImpIncludes),
-    list.reverse(RevIntIncludes, IntIncludes),
-    list.reverse(RevImpIncludes, ImpIncludes).
-
-:- pred include_map_to_item_includes_acc(
-    module_name::in, include_module_info::in,
-    list(item_include)::in, list(item_include)::out,
-    list(item_include)::in, list(item_include)::out) is det.
-
-include_map_to_item_includes_acc(ModuleName, InclInfo,
-        !RevIntIncludes, !RevImpIncludes) :-
+add_only_int_include(ModuleName, InclInfo, !IntInclMap) :-
     InclInfo = include_module_info(Section, Context),
-    Include = item_include(ModuleName, Context, item_no_seq_num),
     (
         Section = ms_interface,
-        !:RevIntIncludes = [Include | !.RevIntIncludes]
+        IntInclInfo = include_module_info(ms_interface, Context),
+        map.det_insert(ModuleName, IntInclInfo, !IntInclMap)
     ;
-        Section = ms_implementation,
-        !:RevImpIncludes = [Include | !.RevImpIncludes]
+        Section = ms_implementation
     ).
-
-%---------------------%
-
-acc_include_for_module_and_context(ModuleName, Context, !RevIncludes) :-
-    Incl = item_include(ModuleName, Context, item_no_seq_num),
-    !:RevIncludes = [Incl | !.RevIncludes].
-
-module_names_contexts_to_item_includes(IncludeMap) = Includes :-
-    map.foldl(module_names_contexts_to_item_includes_acc, IncludeMap,
-        [], RevIncludes),
-    list.reverse(RevIncludes, Includes).
-
-:- pred module_names_contexts_to_item_includes_acc(module_name::in,
-    one_or_more(prog_context)::in,
-    list(item_include)::in, list(item_include)::out) is det.
-
-module_names_contexts_to_item_includes_acc(ModuleName, Contexts,
-        !RevIncludes) :-
-    Contexts = one_or_more(Context, _),
-    Include = item_include(ModuleName, Context, item_no_seq_num),
-    !:RevIncludes = [Include | !.RevIncludes].
-
-module_name_context_to_item_includes(IncludeMap) = Includes :-
-    map.foldl(module_name_context_to_item_includes_acc, IncludeMap,
-        [], RevIncludes),
-    list.reverse(RevIncludes, Includes).
-
-:- pred module_name_context_to_item_includes_acc(module_name::in,
-    prog_context::in,
-    list(item_include)::in, list(item_include)::out) is det.
-
-module_name_context_to_item_includes_acc(ModuleName, Context,
-        !RevIncludes) :-
-    Include = item_include(ModuleName, Context, item_no_seq_num),
-    !:RevIncludes = [Include | !.RevIncludes].
 
 %---------------------------------------------------------------------------%
 
@@ -584,6 +453,15 @@ get_uses(ModuleName, Use, !IntUses, !ImpUses) :-
 
 %---------------------%
 
+    % get_imports_uses_maps(Avails, ImportMap, UseMap):
+    %
+    % Given the avails of a raw compilation unit, return the set of modules
+    % imported and used in those sections, mapped to the list of locations
+    % of those imports and uses.
+    %
+:- pred get_imports_uses_maps(list(item_avail)::in,
+    module_names_contexts::out, module_names_contexts::out) is det.
+
 get_imports_uses_maps(Avails, ImportMap, UseMap) :-
     accumulate_imports_uses_maps(Avails,
         one_or_more_map.init, ImportMap, one_or_more_map.init, UseMap).
@@ -601,12 +479,10 @@ accumulate_imports_uses_maps([Avail | Avails], !ImportMap, !UseMap) :-
 
 %---------------------%
 
-classify_int_imp_import_use_modules(ModuleName,
-        IntImportContextsMap, IntUseContextsMap,
-        ImpImportContextsMap, ImpUseContextsMap,
-        IntImportContextMap, IntUseContextMap,
-        ImpImportContextMap, ImpUseContextMap,
+classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
         !:ImportUseMap, !Specs) :-
+    get_imports_uses_maps(IntAvails, IntImportContextsMap, IntUseContextsMap),
+    get_imports_uses_maps(ImpAvails, ImpImportContextsMap, ImpUseContextsMap),
     map.map_foldl(
         report_any_duplicate_avail_contexts("interface", "import_module"),
         IntImportContextsMap, IntImportMap, !Specs),
@@ -619,16 +495,12 @@ classify_int_imp_import_use_modules(ModuleName,
     map.map_foldl(
         report_any_duplicate_avail_contexts("implementation", "use_module"),
         ImpUseContextsMap, ImpUseMap, !Specs),
-    IntImportContextMap = int_import_context_map(IntImportMap),
-    IntUseContextMap = int_use_context_map(IntUseMap),
-    ImpImportContextMap = imp_import_context_map(ImpImportMap),
-    ImpUseContextMap = imp_use_context_map(ImpUseMap),
 
     map.init(!:ImportUseMap),
-    map.foldl(record_int_import, IntImportMap, !ImportUseMap),
-    map.foldl2(record_int_use, IntUseMap, !ImportUseMap, !Specs),
+    map.foldl(record_int_import,  IntImportMap, !ImportUseMap),
+    map.foldl2(record_int_use,    IntUseMap,    !ImportUseMap, !Specs),
     map.foldl2(record_imp_import, ImpImportMap, !ImportUseMap, !Specs),
-    map.foldl2(record_imp_use, ImpUseMap, !ImportUseMap, !Specs),
+    map.foldl2(record_imp_use,    ImpUseMap,    !ImportUseMap, !Specs),
 
     warn_if_import_for_self(ModuleName, !ImportUseMap, !Specs),
     list.foldl2(warn_if_import_for_ancestor(ModuleName),

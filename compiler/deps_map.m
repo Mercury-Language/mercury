@@ -98,7 +98,6 @@
 
 :- import_module cord.
 :- import_module maybe.
-:- import_module one_or_more.
 :- import_module set.
 :- import_module term_context.
 

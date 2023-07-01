@@ -64,8 +64,7 @@ collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
     ImpPermissions = module_permissions(ImpPermInInt, PermInImp),
 
     ParseTreeModuleSrc = parse_tree_module_src(_ModuleName, _ModuleNameContext,
-        _IntInclMap, _ImpInclMap, InclMap,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, _ImportUseMap,
+        InclMap, ImportUseMap,
         _IntFIMSpecMap, _ImpFIMSpecMap, _IntSelfFIMLangs, _ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
@@ -86,18 +85,9 @@ collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
 
     mq_info_get_imported_modules(!.Info, ImportedModules0),
     mq_info_get_as_yet_unused_interface_modules(!.Info, UnusedIntModules0),
-    map.foldl2(collect_mq_info_in_src_avail_map_entry(ms_interface),
-        IntImportMap, ImportedModules0, ImportedModules1,
-        UnusedIntModules0, UnusedIntModules1),
-    map.foldl2(collect_mq_info_in_src_avail_map_entry(ms_interface),
-        IntUseMap, ImportedModules1, ImportedModules2,
-        UnusedIntModules1, UnusedIntModules2),
-    map.foldl2(collect_mq_info_in_src_avail_map_entry(ms_implementation),
-        ImpImportMap, ImportedModules2, ImportedModules3,
-        UnusedIntModules2, UnusedIntModules3),
-    map.foldl2(collect_mq_info_in_src_avail_map_entry(ms_implementation),
-        ImpUseMap, ImportedModules3, ImportedModules,
-        UnusedIntModules3, UnusedIntModules),
+    map.foldl2(collect_mq_info_in_src_avail_map_entry,
+        ImportUseMap, ImportedModules0, ImportedModules,
+        UnusedIntModules0, UnusedIntModules),
     mq_info_set_imported_modules(ImportedModules, !Info),
     mq_info_set_as_yet_unused_interface_modules(UnusedIntModules, !Info),
 
@@ -139,29 +129,53 @@ collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
     list.foldl(collect_mq_info_in_item_promise(mq_not_used_in_interface),
         ImpPromises, !Info).
 
-:- pred collect_mq_info_in_src_avail_map_entry(module_section::in,
-    module_name::in, one_or_more(prog_context)::in,
+:- pred collect_mq_info_in_src_avail_map_entry(
+    module_name::in, maybe_implicit_import_and_or_use::in,
     set_tree234(module_name)::in, set_tree234(module_name)::out,
     module_names_contexts::in, module_names_contexts::out) is det.
 
-collect_mq_info_in_src_avail_map_entry(Section, ModuleName, Contexts,
+collect_mq_info_in_src_avail_map_entry(ModuleName, MaybeImplicit,
         !ImportedModules, !UnusedIntModules) :-
     set_tree234.insert(ModuleName, !ImportedModules),
-    (
-        Section = ms_interface,
+    ( if
+        (
+            MaybeImplicit = implicit_avail(_Implicit, MaybeSection),
+            MaybeSection = yes(Section)
+        ;
+            MaybeImplicit = explicit_avail(Section)
+        ),
+        require_complete_switch [Section]
+        (
+            Section = int_import(IntContext)
+        ;
+            Section = int_use(IntContext)
+        ;
+            Section = int_use_imp_import(IntContext, _ImpContext)
+        ;
+            ( Section = imp_import(_ImpContext)
+            ; Section = imp_use(_ImpContext)
+            ),
+            fail
+        )
+    then
         % Most of the time, ModuleName does not occur in !.UnusedIntModules.
         % We therefore try the insertion first, and only if the insertion
         % fails do we look up and update the existing entry (OldContexts)
         % that caused that failure.
-        ( if map.insert(ModuleName, Contexts, !UnusedIntModules) then
+        IntContexts = one_or_more(IntContext, []),
+        ( if map.insert(ModuleName, IntContexts, !UnusedIntModules) then
             true
         else
+            % ZZZ Is this needed anymore?
             map.lookup(!.UnusedIntModules, ModuleName, OldContexts),
-            NewContexts = OldContexts ++ Contexts,
+            NewContexts = OldContexts ++ IntContexts,
             map.det_update(ModuleName, NewContexts, !UnusedIntModules)
         )
-    ;
-        Section = ms_implementation
+    else
+        % Either there is no explicit import or use of ModuleName at all,
+        % or there is such an import or use, but only in the implementation
+        % section.
+        true
     ).
 
 %---------------------------------------------------------------------------%
@@ -631,14 +645,12 @@ collect_mq_info_in_parse_tree_int3(Role, ParseTreeInt3, !Info) :-
         IntTypeClasses, IntInstances, _IntTypeRepns),
 
     mq_info_get_modules(!.Info, Modules0),
-    IntInclMap = int_incl_context_map(IntInclMap0),
     list.foldl(collect_mq_info_in_int_incl_context(Permissions),
-        map.keys(IntInclMap0), Modules0, Modules),
+        map.keys(IntInclMap), Modules0, Modules),
     mq_info_set_modules(Modules, !Info),
 
     mq_info_get_imported_modules(!.Info, ImportedModules0),
-    IntImportMap = int_import_context_map(IntImportMap0),
-    list.foldl(collect_mq_info_in_int3_import, map.keys(IntImportMap0),
+    list.foldl(collect_mq_info_in_int3_import, map.keys(IntImportMap),
         ImportedModules0, ImportedModules),
     mq_info_set_imported_modules(ImportedModules, !Info),
 

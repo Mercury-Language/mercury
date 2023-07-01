@@ -82,8 +82,7 @@
 module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
         !Info, !Specs) :-
     ParseTreeModuleSrc0 = parse_tree_module_src(ModuleName, ModuleNameContext,
-        IntInclMap, ImpInclMap, InclMap,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
+        InclMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
@@ -143,8 +142,7 @@ module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
         ImpMutables0, ImpMutables, !Info, !Specs),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
-        IntInclMap, ImpInclMap, InclMap,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
+        InclMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,

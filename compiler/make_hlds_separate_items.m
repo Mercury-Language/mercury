@@ -382,8 +382,7 @@ acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc) :-
     % that now has the job of computing the set of FIMs implicitly needed
     % by the code of this module.
     ParseTreeModuleSrc = parse_tree_module_src(_ModuleName, _ModuleNameContext,
-        _IntInclMap, _ImpInclMap, InclMap,
-        _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, ImportUseMap,
+        InclMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, _IntSelfFIMLangs, _ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,

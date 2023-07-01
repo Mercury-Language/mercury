@@ -168,7 +168,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
-:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
 :- import_module sparse_bitset.
@@ -321,6 +320,25 @@ generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameString = sym_name_to_string(ModuleName),
     Ancestors = get_ancestors_set(ModuleName),
+    InclMap = ParseTreeModuleSrc ^ ptms_include_map,
+    AccPublicChildren =
+        ( pred(MN::in, InclInfo::in, PC0::in, PC::out) is det :-
+            InclInfo = include_module_info(Section, _Context),
+            (
+                Section = ms_interface,
+                set.insert(MN, PC0, PC)
+            ;
+                Section = ms_implementation,
+                % XXX If you leave out the next line,
+                % the error message you get is very uninformative;
+                % it merely tells you, at the call to map.foldl,
+                % that AccPublicChildren is free; it does not say *why*
+                % its unification with this lambda expression does not
+                % bind it.
+                PC = PC0
+            )
+        ),
+    map.foldl(AccPublicChildren, InclMap, set.init, PublicChildren),
     (
         IntermodDeps = no_intermod_deps,
         map.keys_as_set(ParseTreeModuleSrc ^ ptms_import_use_map, LongDeps0),
@@ -331,8 +349,6 @@ generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
             _TransOptDeps),
         set.union(IntDeps, ImpDeps, LongDeps0)
     ),
-    PublicChildrenMap = ParseTreeModuleSrc ^ ptms_int_includes,
-    one_or_more_map.keys_as_set(PublicChildrenMap, PublicChildren),
     get_fact_tables(ParseTreeModuleSrc, FactTableFileNamesSet),
     get_foreign_include_file_infos(ParseTreeModuleSrc, ForeignIncludeFiles),
 

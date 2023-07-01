@@ -345,8 +345,7 @@ acc_implicit_avail_needs_in_aug_compilation_unit(AugCompUnit,
 acc_implicit_avail_needs_in_parse_tree_module_src(ParseTreeModuleSrc,
         !ImplicitAvailNeeds) :-
     ParseTreeModuleSrc = parse_tree_module_src(_ModuleName, _ModuleNameContext,
-        _IntInclMap, _ImpInclMap, _InclMap,
-        _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, _ImportUseMap,
+        _InclMap, _ImportUseMap,
         _IntFIMSpecMap, _ImpFIMSpecMap, _IntSelfFIMLangs, _ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, _InstCtorCheckedMap, _ModeCtorCheckedMap,

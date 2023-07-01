@@ -1096,9 +1096,8 @@ process_module_int3(ProgressStream, Globals, ReadWhy3, ModuleName, IntImports,
             aug_make_int_unit_add_indirect_int3_spec(IndirectIntSpec,
                 !AugMakeIntUnit)
         ),
-        IntImportMap = ParseTreeInt3 ^ pti3_int_imports,
-        IntImportMap = int_import_context_map(IntImportMap0),
-        map.keys_as_set(IntImportMap0, IntImports),
+        IntImportMap = ParseTreeInt3 ^ pti3_int_import_map,
+        map.keys_as_set(IntImportMap, IntImports),
         maybe_record_interface_timestamp(ModuleName, ifk_int3, RecompAvail,
             MaybeTimestamp, !Baggage)
     ;
@@ -1490,6 +1489,7 @@ aug_make_int_unit_get_import_accessibility_info(AugMakeIntUnit,
     module_import_or_use_map::in, module_import_or_use_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out) is det.
 
+% ZZZ !AncestorImportUseMap
 record_includes_imports_uses_in_parse_tree_module_src(ParseTreeModuleSrc,
         !ReadModules, !MaybeAbstractInclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
@@ -1497,26 +1497,14 @@ record_includes_imports_uses_in_parse_tree_module_src(ParseTreeModuleSrc,
     % some of the work below? Note that _ImportUseMap includes implicit
     % avails, while {Int,Imp}{Import,Use}Map do not.
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, _,
-        _IntInclMap, _ImpInclMap, InclMap,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, _ImportUseMap,
+        InclMap, ImportUseMap,
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
         _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
-    include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
-    AllIncls = IntIncls ++ ImpIncls,
-    record_includes_acc(non_abstract_section, AllIncls, !MaybeAbstractInclMap),
-    map.foldl(acc_avails_with_contexts(import_decl),
-        IntImportMap, [], RevIntImportAvails),
-    map.foldl(acc_avails_with_contexts(use_decl),
-        IntUseMap, [], RevIntUseAvails),
-    map.foldl(acc_avails_with_contexts(import_decl),
-        ImpImportMap, [], RevImpImportAvails),
-    map.foldl(acc_avails_with_contexts(use_decl),
-        ImpUseMap, [], RevImpUseAvails),
-    recomp_avails_acc(RevIntImportAvails, !SrcIntImportUseMap),
-    recomp_avails_acc(RevIntUseAvails,    !SrcIntImportUseMap),
-    recomp_avails_acc(RevImpImportAvails, !SrcImpImportUseMap),
-    recomp_avails_acc(RevImpUseAvails,    !SrcImpImportUseMap).
+    map.foldl(record_include(non_abstract_section, yes(non_abstract_section)),
+        InclMap, !MaybeAbstractInclMap),
+    map.foldl2(record_avail_in_import_use_map_entry, ImportUseMap,
+        !SrcIntImportUseMap, !SrcImpImportUseMap).
 
 :- pred record_includes_imports_uses_in_ancestor_int_spec(set(module_name)::in,
     ancestor_int_spec::in,
@@ -1642,11 +1630,10 @@ record_includes_imports_uses_in_parse_tree_int0(Ancestors,
     ParseTreeInt0 = parse_tree_int0(ModuleName, _, _, InclMap, ImportUseMap,
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
-    include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
-    AllIncls = IntIncls ++ ImpIncls,
     % Both possible values of ReadWhyInt0 call for treating the file contents
     % as non-abstract.
-    record_includes_acc(non_abstract_section, AllIncls, !MaybeAbstractInclMap),
+    map.foldl(record_include(non_abstract_section, yes(non_abstract_section)),
+        InclMap, !MaybeAbstractInclMap),
     ( if set.contains(Ancestors, ModuleName) then
         % XXX CLEANUP This work could be done on ImportUseMap,
         % *without* constructing AllAvails.
@@ -1672,7 +1659,6 @@ record_includes_imports_uses_in_parse_tree_int1(Ancestors,
     ParseTreeInt1 = parse_tree_int1(ModuleName, _, _, InclMap, _,
         _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
-    include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
     (
         ( ReadWhyInt1 = rwi1_int_import
         ; ReadWhyInt1 = rwi1_imp_import
@@ -1683,12 +1669,14 @@ record_includes_imports_uses_in_parse_tree_int1(Ancestors,
         % All these values of ReadWhyInt1 call for treating
         % - the interface as non-abstract, and
         % - the implementation as abstract.
-        record_includes_acc(non_abstract_section, IntIncls, !InclMap),
-        record_includes_acc(abstract_section, ImpIncls, !InclMap)
+        map.foldl(
+            record_include(non_abstract_section, yes(abstract_section)),
+            InclMap, !InclMap)
     ;
         ReadWhyInt1 = rwi1_opt,
-        record_includes_acc(non_abstract_section, IntIncls, !InclMap),
-        record_includes_acc(non_abstract_section, ImpIncls, !InclMap)
+        map.foldl(
+            record_include(non_abstract_section, yes(non_abstract_section)),
+            InclMap, !InclMap)
     ;
         ReadWhyInt1 = rwi1_type_repn
     ),
@@ -1710,16 +1698,15 @@ record_includes_imports_uses_in_parse_tree_int2(Ancestors,
         IntInclMap, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
     InclMap = coerce(IntInclMap),
-    include_map_to_item_includes(InclMap, IntIncls, _ImpIncls),
     (
         ( ReadWhyInt2 = rwi2_int_use
         ; ReadWhyInt2 = rwi2_imp_use
         ; ReadWhyInt2 = rwi2_opt
         ),
-        record_includes_acc(non_abstract_section, IntIncls, !InclMap)
+        map.foldl(record_include(non_abstract_section, no), InclMap, !InclMap)
     ;
         ReadWhyInt2 = rwi2_abstract,
-        record_includes_acc(abstract_section, IntIncls, !InclMap)
+        map.foldl(record_include(abstract_section, no), InclMap, !InclMap)
     ),
     expect_not(set.contains(Ancestors, ModuleName), $pred,
         "processing the .int2 file of an ancestor").
@@ -1738,9 +1725,8 @@ record_includes_imports_uses_in_parse_tree_int3(Ancestors,
     ParseTreeInt3 = parse_tree_int3(ModuleName, _, IntInclMap,
         _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
-    IntInclMap = int_incl_context_map(IntInclMap0),
-    IntIncls = module_name_context_to_item_includes(IntInclMap0),
-    record_includes_acc(MaybeAbstractSection, IntIncls, !InclMap),
+    InclMap = coerce(IntInclMap),
+    map.foldl(record_include(MaybeAbstractSection, no), InclMap, !InclMap),
     expect_not(set.contains(Ancestors, ModuleName), $pred,
         "processing the .int3 file of an ancestor").
 
@@ -1766,22 +1752,106 @@ record_includes_imports_uses_in_parse_tree_plain_opt(Ancestors,
 
 %---------------------------------------------------------------------------%
 
-:- pred record_includes_acc(maybe_abstract_section::in, list(item_include)::in,
+:- pred record_include(maybe_abstract_section::in,
+    maybe(maybe_abstract_section)::in,
+    module_name::in, include_module_info::in,
     module_inclusion_map::in, module_inclusion_map::out) is det.
 
-record_includes_acc(_, [], !InclMap).
-record_includes_acc(Section, [Include | Includes], !InclMap) :-
-    Include = item_include(ModuleName, Context, _SeqNum),
-    IncludeContext = include_context(Section, Context),
-    ( if map.search(!.InclMap, ModuleName, OneOrMore0) then
-        OneOrMore0 = one_or_more(HeadContext, TailContexts),
-        OneOrMore = one_or_more(IncludeContext, [HeadContext | TailContexts]),
-        map.det_update(ModuleName, OneOrMore, !InclMap)
-    else
-        OneOrMore = one_or_more(IncludeContext, []),
-        map.det_insert(ModuleName, OneOrMore, !InclMap)
+record_include(MaybeAbsSectionInt, MaybeMaybeAbsSectionImp,
+        ModuleName, InclInfo, !InclMap) :-
+    InclInfo = include_module_info(Section, Context),
+    (
+        Section = ms_interface,
+        IncludeContext0 = include_context(MaybeAbsSectionInt, Context),
+        MaybeIncludeContext = yes(IncludeContext0)
+    ;
+        Section = ms_implementation,
+        (
+            MaybeMaybeAbsSectionImp = yes(MaybeAbsSectionImp),
+            IncludeContext0 = include_context(MaybeAbsSectionImp, Context),
+            MaybeIncludeContext = yes(IncludeContext0)
+        ;
+            MaybeMaybeAbsSectionImp = no,
+            MaybeIncludeContext = no
+        )
     ),
-    record_includes_acc(Section, Includes, !InclMap).
+    (
+        MaybeIncludeContext = yes(IncludeContext),
+        ( if map.search(!.InclMap, ModuleName, OneOrMore0) then
+            OneOrMore0 = one_or_more(HeadContext, TailContexts),
+            OneOrMore =
+                one_or_more(IncludeContext, [HeadContext | TailContexts]),
+            map.det_update(ModuleName, OneOrMore, !InclMap)
+        else
+            OneOrMore = one_or_more(IncludeContext, []),
+            map.det_insert(ModuleName, OneOrMore, !InclMap)
+        )
+    ;
+        MaybeIncludeContext = no
+    ).
+
+%---------------------%
+
+:- pred record_avail_in_import_use_map_entry(module_name::in,
+    maybe_implicit_import_and_or_use::in,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_avail_in_import_use_map_entry(ModuleName, MaybeImplicit,
+        !IntImportUseMap, !ImpImportUseMap) :-
+    (
+        MaybeImplicit = implicit_avail(_ImplicitImportOrUse,
+            MaybeSectionImportOrUse),
+        (
+            MaybeSectionImportOrUse = no
+        ;
+            MaybeSectionImportOrUse = yes(SectionImportOrUse),
+            record_avail_in_section(ModuleName, SectionImportOrUse,
+                !IntImportUseMap, !ImpImportUseMap)
+        )
+    ;
+        MaybeImplicit = explicit_avail(SectionImportOrUse),
+        record_avail_in_section(ModuleName, SectionImportOrUse,
+            !IntImportUseMap, !ImpImportUseMap)
+    ).
+
+:- pred record_avail_in_section(module_name::in, section_import_and_or_use::in,
+    module_import_or_use_map::in, module_import_or_use_map::out,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_avail_in_section(ModuleName, SectionImportOrUse,
+        !IntImportUseMap, !ImpImportUseMap) :-
+    (
+        ( SectionImportOrUse = int_import(Context), IoU = import_decl
+        ; SectionImportOrUse = int_use(Context),    IoU = use_decl
+        ),
+        record_avail(ModuleName, IoU, Context, !IntImportUseMap)
+    ;
+        ( SectionImportOrUse = imp_import(Context), IoU = import_decl
+        ; SectionImportOrUse = imp_use(Context),    IoU = use_decl
+        ),
+        record_avail(ModuleName, IoU, Context, !ImpImportUseMap)
+    ;
+        SectionImportOrUse = int_use_imp_import(IntContext, ImpContext),
+        record_avail(ModuleName, use_decl, IntContext, !IntImportUseMap),
+        record_avail(ModuleName, import_decl, ImpContext, !ImpImportUseMap)
+    ).
+
+:- pred record_avail(module_name::in, import_or_use::in, prog_context::in,
+    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+
+record_avail(ModuleName, ImportOrUse, Context, !ImportUseMap) :-
+    IoUC = import_or_use_context(ImportOrUse, Context),
+    ( if map.search(!.ImportUseMap, ModuleName, OneOrMore0) then
+        OneOrMore0 = one_or_more(HeadIoUC, TailIoUCs),
+        OneOrMore = one_or_more(IoUC, [HeadIoUC | TailIoUCs]),
+        map.det_update(ModuleName, OneOrMore, !ImportUseMap)
+    else
+        OneOrMore = one_or_more(IoUC, []),
+        map.det_insert(ModuleName, OneOrMore, !ImportUseMap)
+    ).
+
+%---------------------%
 
 :- pred recomp_avails_acc(list(item_avail)::in,
     module_import_or_use_map::in, module_import_or_use_map::out) is det.

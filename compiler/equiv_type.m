@@ -572,8 +572,7 @@ replace_in_parse_tree_module_src(TypeEqvMap, InstEqvMap,
     MaybeRecordImp = record_sym_name_use(visibility_private),
 
     ParseTreeModuleSrc0 = parse_tree_module_src(ModuleName, ModuleNameContext,
-        IntInclMap, ImpInclMap, InclMap,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
+        InclMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
@@ -635,8 +634,7 @@ replace_in_parse_tree_module_src(TypeEqvMap, InstEqvMap,
         !RecompInfo, !UsedModules, !Specs),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
-        IntInclMap, ImpInclMap, InclMap,
-        IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, ImportUseMap,
+        InclMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,

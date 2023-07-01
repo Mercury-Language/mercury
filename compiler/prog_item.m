@@ -169,6 +169,9 @@
     --->    int_use(prog_context)
     ;       imp_use(prog_context).
 
+:- type int_section_import =< section_import_and_or_use
+    --->    int_import(prog_context).
+
 :- type implicit_import_or_use
     --->    implicit_int_import
     ;       implicit_int_use
@@ -197,6 +200,8 @@
     map(module_name, section_import_and_or_use).
 :- type section_use_map ==
     map(module_name, section_use).
+:- type int_import_map ==
+    map(module_name, int_section_import).
 :- type import_and_or_use_map ==
     map(module_name, maybe_implicit_import_and_or_use).
 
@@ -263,45 +268,32 @@
 
                 % The set of modules mentioned in `:- include_module'
                 % declarations in the interface and in the implementation,
-                % and their locations. If a module has been included N times,
-                % which is an error, it will appear in (one or both of)
-                % these maps N times.
-                ptms_int_includes           :: module_names_contexts,
-                ptms_imp_includes           :: module_names_contexts,
-
-                % A cleaned-up version of the above two fields,
-                % which maps each included module to *one* effective
-                % section of inclusion (which will be the interface section
-                % if the module is ever included in the interface)
-                % and *one* effective context. The process of filling in
-                % this field will generate error messages for any duplicate
-                % inclusions.
+                % in a cleaned-up form. The cleanup requires that
+                %
+                % - no module be included more than once in a section, and
+                % - no module be included in both sections.
+                %
+                % Any violations of these requirements will have had
+                % an error message generated for it before the
+                % parse_tree_module_src structure is constructed.
                 ptms_include_map            :: include_module_map,
 
                 % A specification of the set of modules mentioned in
                 % `:- import_module' and/or `:- use_module' declarations
-                % in each section, mapped to their location(s).
-                % Again, any module imported and/or used N times
-                % will appear in these maps N times.
-                ptms_int_imports            :: module_names_contexts,
-                ptms_int_uses               :: module_names_contexts,
-                ptms_imp_imports            :: module_names_contexts,
-                ptms_imp_uses               :: module_names_contexts,
-
-                % A cleaned-up and extended version of the above four fields.
+                % in each section, possibly augmented with implicit
+                % imports/uses, in a cleaned-up form. The cleanup requires
+                % that
                 %
-                % The cleaned-up part means that each module is mapped
-                % to exactly *one* section_import_and_or_use,
-                % reporting any invalid duplicate availability in the process.
-                % (Having a use_module in the interface section and an
-                % import_module in the implementation section is the only
-                % allowed situation in which a module may have more than one
-                % import or use declaration.)
+                % - no module be imported more than once in a section,
+                % - no module be used more than once in a section,
+                % - no module be both imported and used used in a section, and
+                % - no module be imported or used in more than once section,
+                %   with the one permitted exception is when a module is
+                %   used in the interface and imported in the implementation.
                 %
-                % The extended part means that this field contains information
-                % about implicit availability of builtin modules as well,
-                % in a form that allows explicit vs implicit availability
-                % to be clearly distinguished from each other.
+                % Any violations of these requirements will have had
+                % an error message generated for it before the
+                % parse_tree_module_src structure is constructed.
                 ptms_import_use_map         :: import_and_or_use_map,
 
                 % A cleaned-up version of the set of explicit
@@ -551,7 +543,7 @@
 
                 % The set of modules mentioned in `:- include_module'
                 % declarations in the interface, and their locations.
-                pti3_int_includes           :: int_include_module_map,
+                pti2_int_includes           :: int_include_module_map,
 
                 % The set of modules mentioned in `:- use_module'
                 % declarations in the interface, and their locations.
@@ -590,11 +582,11 @@
 
                 % The set of modules mentioned in `:- include_module'
                 % declarations in the interface, and their locations.
-                pti3_int_includes           :: int_incl_context_map,
+                pti3_int_includes           :: int_include_module_map,
 
                 % The set of modules mentioned in `:- import_module'
                 % declarations in the interface, and their locations.
-                pti3_int_imports            :: int_import_context_map,
+                pti3_int_import_map         :: int_import_map,
 
                 % Type, inst and mode definitions, all of which are
                 % in the interface.

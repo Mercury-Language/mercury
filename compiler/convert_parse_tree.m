@@ -212,20 +212,11 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
         IntFIMs, ImpFIMs, IntItems, ImpItems),
-
     expect(unify(IntFileKind, ifk_int0), $pred,
         "trying to convert non-ifk_int0 parse_tree_int to parse_tree_int0"),
 
-    classify_include_modules(IntIncls, ImpIncls,
-        _IntInclsMap, _ImpInclsMap, _IntInclMap, _ImpInclMap, InclMap, !Specs),
-
-    accumulate_imports_uses_maps(IntAvails,
-        one_or_more_map.init, IntImportsMap, one_or_more_map.init, IntUsesMap),
-    accumulate_imports_uses_maps(ImpAvails,
-        one_or_more_map.init, ImpImportsMap, one_or_more_map.init, ImpUsesMap),
-    classify_int_imp_import_use_modules(ModuleName,
-        IntImportsMap, IntUsesMap, ImpImportsMap, ImpUsesMap,
-        _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap,
+    classify_include_modules(IntIncls, ImpIncls, InclMap, !Specs),
+    classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
         SectionImportUseMap, !Specs),
 
     set.list_to_set(list.map(fim_item_to_spec, IntFIMs), IntFIMSpecs),
@@ -374,31 +365,14 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
     ParseTreeInt = parse_tree_int(ModuleName, IntFileKind, ModuleNameContext,
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
         IntFIMs, ImpFIMs, IntItems, ImpItems),
-
     expect(unify(IntFileKind, ifk_int1), $pred,
         "trying to convert non-ifk_int1 parse_tree_int to parse_tree_int1"),
 
-    classify_include_modules(IntIncls, ImpIncls,
-        _IntInclsMap, _ImpInclsMap, _IntInclMap, _ImpInclMap, InclMap, !Specs),
-
-    accumulate_imports_uses_maps(IntAvails,
-        one_or_more_map.init, IntImportMap, one_or_more_map.init, IntUseMap),
-    accumulate_imports_uses_maps(ImpAvails,
-        one_or_more_map.init, ImpImportMap, one_or_more_map.init, ImpUseMap),
-    ( if
-        first_context_in_two_module_names_contexts(IntImportMap, ImpImportMap,
-            FirstImportContext)
-    then
-        ImportPieces = [words("A .int2 file may not contain any"),
-            decl("import_module"), words("declarations."), nl],
-        ImportSpec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, FirstImportContext, ImportPieces),
-        !:Specs = [ImportSpec | !.Specs]
-    else
-        true
-    ),
-    classify_int_imp_use_modules(ModuleName, IntUseMap, ImpUseMap,
-        SectionUseMap, !Specs),
+    classify_include_modules(IntIncls, ImpIncls, InclMap, !Specs),
+    classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
+        SectionImportUseMap, !Specs),
+    map.foldl2(restrict_to_section_use_map_entry(".int"),
+        SectionImportUseMap, map.init, SectionUseMap, !Specs),
 
     set.list_to_set(list.map(fim_item_to_spec, IntFIMs), IntFIMSpecs),
     set.list_to_set(list.map(fim_item_to_spec, ImpFIMs), ImpFIMSpecs),
@@ -618,43 +592,13 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
             FirstImpIncl ^ incl_context, ImpInclPieces),
         !:Specs = [ImpInclSpec | !.Specs]
     ),
-    classify_include_modules(IntIncls, [],
-        _IntInclsMap, _ImpInclsMap, IntInclMap, _ImpInclMap, _InclMap, !Specs),
-    ContextToInfo =
-        ( pred(Context::in, Info::out) is det :-
-            Info = include_module_info(ms_interface, Context)
-        ),
-    IntInclMap = int_incl_context_map(IntInclMap0),
-    map.map_values_only(ContextToInfo, IntInclMap0, IntInclInfoMap),
+    classify_include_modules(IntIncls, [], InclMap, !Specs),
+    map.foldl(add_only_int_include, InclMap, map.init, IntInclMap),
 
-    accumulate_imports_uses_maps(IntAvails,
-        one_or_more_map.init, IntImportMap, one_or_more_map.init, IntUseMap),
-    ( if
-        first_context_in_module_names_contexts(IntImportMap,
-            FirstIntImportContext)
-    then
-        IntImportPieces = [words("A .int2 file may not contain any"),
-            decl("import_module"), words("declarations."), nl],
-        IntImportSpec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, FirstIntImportContext, IntImportPieces),
-        !:Specs = [IntImportSpec | !.Specs]
-    else
-        true
-    ),
-    (
-        ImpAvails = []
-    ;
-        ImpAvails = [FirstImpAvail | _],
-        ImpAvailPieces = [words("A .int2 file may not contain any"),
-            decl("import_module"), words("or"), decl("use_module"),
-            words("declarations in its implementation section."), nl],
-        ImpAvailSpec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree,
-            get_avail_context(FirstImpAvail), ImpAvailPieces),
-        !:Specs = [ImpAvailSpec | !.Specs]
-    ),
-    classify_int_imp_use_modules(ModuleName, IntUseMap, map.init,
+    classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
         SectionImportUseMap, !Specs),
+    map.foldl2(restrict_to_section_use_map_entry(".int2"),
+        SectionImportUseMap, map.init, SectionUseMap, !Specs),
 
     set.list_to_set(list.map(fim_item_to_spec, IntFIMs), IntFIMSpecs),
     set.list_to_set(list.map(fim_item_to_spec, ImpFIMs), ImpFIMSpecs),
@@ -684,8 +628,8 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
         IntModeDefnMap, ImpModeDefnMap, IntModeCheckedMap, !Specs),
 
     ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
-        MaybeVersionNumbers, IntInclInfoMap,
-        SectionImportUseMap, IntFIMSpecs, ImpFIMSpecs,
+        MaybeVersionNumbers, IntInclMap,
+        SectionUseMap, IntFIMSpecs, ImpFIMSpecs,
         IntTypeCheckedMap, IntInstCheckedMap, IntModeCheckedMap,
         IntTypeClasses, IntInstances, IntTypeRepnMap).
 
@@ -820,27 +764,14 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
         !:Specs = [VNSpec | !.Specs]
     ),
 
-    classify_include_modules(IntIncls, [], _IntInclsMap, _ImpInclsMap,
-        IntInclMap, _ImpInclMap, _InclMap, !Specs),
+    classify_include_modules(IntIncls, [], InclMap, !Specs),
+    map.foldl(add_only_int_include, InclMap, map.init, IntInclMap),
 
-    accumulate_imports_uses_maps(IntAvails,
-        one_or_more_map.init, IntImportsMap, one_or_more_map.init, IntUsesMap),
-    ( if map.is_empty(IntUsesMap) then
-        true
-    else
-        IntUseContextLists = map.values(IntUsesMap),
-        one_or_more.condense(IntUseContextLists, IntUseContexts),
-        IntUsePieces = [words("A .int3 file may not contain any"),
-            decl("use_module"), words("declarations."), nl],
-        IntUseSpec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree,
-            list.det_head(IntUseContexts), IntUsePieces),
-        !:Specs = [IntUseSpec | !.Specs]
-    ),
-    classify_int_imp_import_use_modules(ModuleName,
-        IntImportsMap, map.init, map.init, map.init,
-        IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap,
-        _SectionImportUseMap, !Specs),
+    classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
+        SectionImportUseMap, !Specs),
+    map.foldl2(restrict_to_int_import_map_entry(".int3"),
+        SectionImportUseMap, map.init, IntImportMap, !Specs),
+
     (
         IntFIMs = []
     ;
@@ -1461,20 +1392,14 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
         ItemBlocks),
 
-    one_or_more_map.init(IntImportsMap0),
-    one_or_more_map.init(IntUsesMap0),
     map.init(IntFIMSpecMap0),
-    one_or_more_map.init(ImpImportsMap0),
-    one_or_more_map.init(ImpUsesMap0),
     map.init(ImpFIMSpecMap0),
 
     IntImplicitAvailNeeds0 = init_implicit_avail_needs,
     ImpImplicitAvailNeeds0 = init_implicit_avail_needs,
 
     classify_src_items_in_blocks(ItemBlocks,
-        [], IntIncls,
-        IntImportsMap0, IntImportsMap, IntUsesMap0, IntUsesMap,
-        IntFIMSpecMap0, IntFIMSpecMap,
+        [], IntIncls, [], IntAvails, IntFIMSpecMap0, IntFIMSpecMap,
 
         [], RevIntTypeDefns, [], RevIntInstDefns, [], RevIntModeDefns,
         [], RevIntTypeClasses, [], RevIntInstances0,
@@ -1485,9 +1410,7 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         IntImplicitAvailNeeds0, IntImplicitAvailNeeds,
         set.init, IntSelfFIMLangs,
 
-        [], ImpIncls,
-        ImpImportsMap0, ImpImportsMap, ImpUsesMap0, ImpUsesMap,
-        ImpFIMSpecMap0, ImpFIMSpecMap1,
+        [], ImpIncls, [], ImpAvails, ImpFIMSpecMap0, ImpFIMSpecMap1,
         [], RevImpTypeDefns, [], RevImpInstDefns, [], RevImpModeDefns,
         [], RevImpTypeClasses, [], RevImpInstances0,
         [], RevImpPredDecls, [], RevImpModeDecls, [], RevImpClauses,
@@ -1499,8 +1422,7 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
 
         !Specs),
 
-    classify_include_modules(IntIncls, ImpIncls, IntInclsMap, ImpInclsMap,
-        _IntInclMap, _ImpInclMap, InclMap, !Specs),
+    classify_include_modules(IntIncls, ImpIncls, InclMap, !Specs),
 
     list.reverse(RevIntTypeDefns, IntTypeDefns),
     list.reverse(RevIntInstDefns, IntInstDefns),
@@ -1577,10 +1499,7 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     ImpFinalises = IntFinalises ++ ImpFinalises0,
     ImpMutables = IntMutables ++ ImpMutables0,
 
-    % XXX Consider using _IntImportMap etc instead of IntImportsMap etc.
-    classify_int_imp_import_use_modules(ModuleName,
-        IntImportsMap, IntUsesMap, ImpImportsMap, ImpUsesMap,
-        _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap,
+    classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
         SectionImportUseMap, !Specs),
     import_and_or_use_map_section_to_maybe_implicit(SectionImportUseMap,
         ImportUseMap0),
@@ -1596,15 +1515,13 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         ImpFIMSpecMap1, ImpFIMSpecMap, !Specs),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
-        IntInclsMap, ImpInclsMap, InclMap,
-        IntImportsMap, IntUsesMap, ImpImportsMap, ImpUsesMap, ImportUseMap,
+        InclMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
 
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         TypeSpecs, InstModeSpecs,
 
-        IntTypeClasses, IntInstances,
-        IntPredDecls, IntModeDecls,
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, IntBadClausePreds,
 
         ImpTypeClasses, ImpInstances,
@@ -1983,8 +1900,7 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
 
 :- pred classify_src_items_in_blocks(list(raw_item_block)::in,
     list(item_include)::in, list(item_include)::out,
-    module_names_contexts::in, module_names_contexts::out,
-    module_names_contexts::in, module_names_contexts::out,
+    list(item_avail)::in, list(item_avail)::out,
     map(fim_spec, prog_context)::in, map(fim_spec, prog_context)::out,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
     list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
@@ -2003,8 +1919,7 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     implicit_avail_needs::in, implicit_avail_needs::out,
     set(foreign_language)::in, set(foreign_language)::out,
     list(item_include)::in, list(item_include)::out,
-    module_names_contexts::in, module_names_contexts::out,
-    module_names_contexts::in, module_names_contexts::out,
+    list(item_avail)::in, list(item_avail)::out,
     map(fim_spec, prog_context)::in, map(fim_spec, prog_context)::out,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
     list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
@@ -2028,7 +1943,7 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 classify_src_items_in_blocks([],
-        !IntIncls, !IntImportsMap, !IntUsesMap, !IntFIMSpecMap,
+        !IntIncls, !IntAvails, !IntFIMSpecMap,
         !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
@@ -2036,7 +1951,7 @@ classify_src_items_in_blocks([],
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntImplicitAvailNeeds, !IntSelfFIMLangs,
-        !ImpIncls, !ImpImportsMap, !ImpUsesMap, !ImpFIMSpecMap,
+        !ImpIncls, !ImpAvails, !ImpFIMSpecMap,
         !RevImpTypeDefns, !RevImpInstDefns, !RevImpModeDefns,
         !RevImpTypeClasses, !RevImpInstances,
         !RevImpPredDecls, !RevImpModeDecls, !RevImpClauses,
@@ -2045,7 +1960,7 @@ classify_src_items_in_blocks([],
         !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
         !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !Specs).
 classify_src_items_in_blocks([ItemBlock | ItemBlocks],
-        !IntIncls, !IntImportsMap, !IntUsesMap, !IntFIMSpecMap,
+        !IntIncls, !IntAvails, !IntFIMSpecMap,
         !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
@@ -2053,7 +1968,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntImplicitAvailNeeds, !IntSelfFIMLangs,
-        !ImpIncls, !ImpImportsMap, !ImpUsesMap, !ImpFIMSpecMap,
+        !ImpIncls, !ImpAvails, !ImpFIMSpecMap,
         !RevImpTypeDefns, !RevImpInstDefns, !RevImpModeDefns,
         !RevImpTypeClasses, !RevImpInstances,
         !RevImpPredDecls, !RevImpModeDecls, !RevImpClauses,
@@ -2065,7 +1980,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
     (
         Section = ms_interface,
         !:IntIncls = !.IntIncls ++ Incls,
-        accumulate_imports_uses_maps(Avails, !IntImportsMap, !IntUsesMap),
+        !:IntAvails = !.IntAvails ++ Avails,
         list.foldl2(classify_foreign_import_module, FIMs, !IntFIMSpecMap,
             !Specs),
         classify_src_items_int(Items,
@@ -2079,7 +1994,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
     ;
         Section = ms_implementation,
         !:ImpIncls = !.ImpIncls ++ Incls,
-        accumulate_imports_uses_maps(Avails, !ImpImportsMap, !ImpUsesMap),
+        !:ImpAvails = !.ImpAvails ++ Avails,
         list.foldl2(classify_foreign_import_module, FIMs, !ImpFIMSpecMap,
             !Specs),
         classify_src_items_imp(Items,
@@ -2092,7 +2007,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
             !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !Specs)
     ),
     classify_src_items_in_blocks(ItemBlocks,
-        !IntIncls, !IntImportsMap, !IntUsesMap, !IntFIMSpecMap,
+        !IntIncls, !IntAvails, !IntFIMSpecMap,
         !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
@@ -2100,7 +2015,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntImplicitAvailNeeds, !IntSelfFIMLangs,
-        !ImpIncls, !ImpImportsMap, !ImpUsesMap, !ImpFIMSpecMap,
+        !ImpIncls, !ImpAvails, !ImpFIMSpecMap,
         !RevImpTypeDefns, !RevImpInstDefns, !RevImpModeDefns,
         !RevImpTypeClasses, !RevImpInstances,
         !RevImpPredDecls, !RevImpModeDecls, !RevImpClauses,
@@ -2602,6 +2517,80 @@ accumulate_uses_maps([Use | Uses], !UseMap) :-
     Use = avail_use_info(ModuleName, Context, _),
     one_or_more_map.add(ModuleName, Context, !UseMap),
     accumulate_uses_maps(Uses, !UseMap).
+
+%---------------------------------------------------------------------------%
+
+:- pred restrict_to_section_use_map_entry(string::in,
+    module_name::in, section_import_and_or_use::in,
+    section_use_map::in, section_use_map::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+restrict_to_section_use_map_entry(Extension, ModuleName, SectionImportAndOrUse,
+        !SectionUseMap, !Specs) :-
+    (
+        ( SectionImportAndOrUse = int_import(Context)
+        ; SectionImportAndOrUse = imp_import(Context)
+        ; SectionImportAndOrUse = int_use_imp_import(_, Context)
+        ),
+        report_forbidden_avail(Extension, "import_module", no, Context, !Specs)
+    ;
+        (
+            SectionImportAndOrUse = int_use(Context),
+            SectionUse = int_use(Context)
+        ;
+            SectionImportAndOrUse = imp_use(Context),
+            SectionUse = imp_use(Context)
+        ),
+        map.det_insert(ModuleName, SectionUse, !SectionUseMap)
+    ).
+
+:- pred restrict_to_int_import_map_entry(string::in,
+    module_name::in, section_import_and_or_use::in,
+    int_import_map::in, int_import_map::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+restrict_to_int_import_map_entry(Extension, ModuleName, SectionImportAndOrUse,
+        !IntImportMap, !Specs) :-
+    (
+        SectionImportAndOrUse = int_import(Context),
+        IntImport = int_import(Context),
+        map.det_insert(ModuleName, IntImport, !IntImportMap)
+    ;
+        SectionImportAndOrUse = imp_import(Context),
+        report_forbidden_avail(Extension, "import_module",
+            yes("implementation"), Context, !Specs)
+    ;
+        ( SectionImportAndOrUse = int_use(Context)
+        ; SectionImportAndOrUse = imp_use(Context)
+        ),
+        report_forbidden_avail(Extension, "use_module", no, Context, !Specs)
+    ;
+        SectionImportAndOrUse = int_use_imp_import(IntContext, ImpContext),
+        report_forbidden_avail(Extension, "use_module",
+            no, IntContext, !Specs),
+        report_forbidden_avail(Extension, "import_module",
+            yes("implementation"), ImpContext, !Specs)
+    ).
+
+%---------------------%
+
+:- pred report_forbidden_avail(string::in, string::in, maybe(string)::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+report_forbidden_avail(Extension, Decl, MaybeSection, Context, !Specs) :-
+    (
+        MaybeSection = no,
+        Pieces = [words("A"), words(Extension), words("file may not contain"),
+            words("any"), decl(Decl), words("declarations."), nl]
+    ;
+        MaybeSection = yes(Section),
+        Pieces = [words("A"), words(Extension), words("file may not contain"),
+            words("any"), decl(Decl), words("declarations"),
+            words("in its"), words(Section), words("section."), nl]
+    ),
+    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Context, Pieces),
+    !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.convert_parse_tree.
