@@ -20,6 +20,7 @@
 *.mh
 *.mih
 *.o
+*.obj
 *.opt
 *.pic_o
 *.trans_opt
