@@ -66,8 +66,7 @@ endif
 # The default C stack size of 1Mb on Windows is not enough to compile the
 # standard library in the hlc.gc grade using a Mercury compiler built in
 # the hlc.gc grade with the MinGW64 GCC or clang.
-# XXX When we support the 64-bit version of the Microsoft toolchain, we will
-# need to do something different here.
+# XXX For MSVC, we currently set the stack size in the ml script.
 ifneq ("$(USING_MICROSOFT_CL_COMPILER)", "yes")
 ifneq ("$(findstring x86_64-w64-mingw32,$(FULLARCH))","")
 LDFLAGS += -Wl,--stack=8388608
