@@ -280,8 +280,9 @@ module_name_to_escaped_string(ModuleName) =
 %-----------------------------------------------------------------------------%
 
 pf_sym_name_pred_form_arity_to_string(PFSymNameArity) = Str :-
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
-    Str = pf_sym_name_pred_form_arity_to_string(PredOrFunc, SymName, Arity).
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
+    Str = pf_sym_name_pred_form_arity_to_string(PredOrFunc, SymName,
+        PredFormArity).
 
 pf_sym_name_pred_form_arity_to_string(PredOrFunc, SNA) = Str :-
     SNA = sym_name_arity(SymName, Arity),

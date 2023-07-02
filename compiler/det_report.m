@@ -552,7 +552,7 @@ check_determinism_if_pred_is_main(PredInfo, ProcInfo, !Specs) :-
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     ( if
         pred_info_name(PredInfo) = "main",
-        pred_info_orig_arity(PredInfo) = 2,
+        pred_info_pred_form_arity(PredInfo) = pred_form_arity(2),
         pred_info_is_exported(PredInfo),
         MaybeDetism = yes(DeclaredDetism),
         not (

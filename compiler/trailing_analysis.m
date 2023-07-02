@@ -360,11 +360,13 @@ check_goal_for_trail_mods(SCC, VarTable, Goal, Result, MaybeAnalysisStatus,
             ModuleName = pred_info_module(CallPredInfo),
             any_mercury_builtin_module(ModuleName),
             Name = pred_info_name(CallPredInfo),
-            Arity = pred_info_orig_arity(CallPredInfo),
+            pred_info_get_orig_arity(CallPredInfo,
+                pred_form_arity(CallPredFormArityInt)),
             ( SpecialPredId = spec_pred_compare
             ; SpecialPredId = spec_pred_unify
             ),
-            special_pred_name_arity(SpecialPredId, Name, _, Arity)
+            special_pred_name_arity(SpecialPredId, Name, _,
+                CallPredFormArityInt)
         then
             % XXX We should examine the argument types of calls to
             % builtin.unify/2 and builtin.compare/3 and then make a decision
@@ -583,7 +585,7 @@ pred_info_has_known_trail_status(PredInfo, Status) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     ModuleName = pred_info_module(PredInfo),
     ModuleName = unqualified(ModuleNameStr),
-    Arity = pred_info_orig_arity(PredInfo),
+    pred_info_get_orig_arity(PredInfo, pred_form_arity(Arity)),
     trail_known_procedure(PredOrFunc, ModuleNameStr, Name, Arity, Status).
 
     % known_procedure/4 is a table of library predicates whose trailing
@@ -895,11 +897,13 @@ trail_annotate_goal_2(VarTable, GoalInfo, !GoalExpr, Status, !ModuleInfo) :-
             ModuleName = pred_info_module(CallPredInfo),
             any_mercury_builtin_module(ModuleName),
             Name = pred_info_name(CallPredInfo),
-            Arity = pred_info_orig_arity(CallPredInfo),
+            pred_info_get_orig_arity(CallPredInfo,
+                pred_form_arity(CallPredFormArityInt)),
             ( SpecialPredId = spec_pred_compare
             ; SpecialPredId = spec_pred_unify
             ),
-            special_pred_name_arity(SpecialPredId, Name, _, Arity)
+            special_pred_name_arity(SpecialPredId, Name, _,
+                CallPredFormArityInt)
         then
             Status = trail_may_modify
         else if

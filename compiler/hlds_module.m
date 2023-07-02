@@ -561,11 +561,11 @@
 %---------------------%
 
 :- pred predicate_id(module_info::in, pred_id::in, module_name::out,
-    string::out, arity::out) is det.
+    string::out, pred_form_arity::out) is det.
 
 :- func predicate_module(module_info, pred_id) = module_name.
 :- func predicate_name(module_info, pred_id) = string.
-:- func predicate_arity(module_info, pred_id) = arity.
+:- func predicate_arity(module_info, pred_id) = pred_form_arity.
 
 %---------------------%
 
@@ -1626,11 +1626,11 @@ module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo, !MI) :-
 
 %---------------------%
 
-predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity) :-
+predicate_id(ModuleInfo, PredId, ModuleName, PredName, PredFormArity) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo).
+    pred_info_get_orig_arity(PredInfo, PredFormArity).
 
 predicate_module(ModuleInfo, PredId) = ModuleName :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -1640,9 +1640,9 @@ predicate_name(ModuleInfo, PredId) = PredName :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PredName = pred_info_name(PredInfo).
 
-predicate_arity(ModuleInfo, PredId) = Arity :-
+predicate_arity(ModuleInfo, PredId) = PredFormArity :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    Arity = pred_info_orig_arity(PredInfo).
+    pred_info_get_orig_arity(PredInfo, PredFormArity).
 
 %---------------------%
 

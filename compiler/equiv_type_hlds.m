@@ -621,7 +621,7 @@ replace_in_pred(TypeEqvMap, PredId, !ModuleInfo, !Cache) :-
         ItemType = pred_or_func_to_recomp_item_type(PredOrFunc),
         PredModuleName = pred_info_module(!.PredInfo),
         PredSymName = qualified(PredModuleName, PredName),
-        PredFormArity = pred_info_orig_arity(!.PredInfo),
+        pred_info_get_orig_arity(!.PredInfo, pred_form_arity(PredFormArity)),
         ItemName = recomp_item_name(PredSymName, PredFormArity),
         ItemId = recomp_item_id(ItemType, ItemName),
         finish_recording_expanded_items(ItemId, !.EquivTypeInfo,

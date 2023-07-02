@@ -353,27 +353,31 @@ can_resolve_pred_or_func(ModuleInfo, _SymName, Arity, PredId, ResolvedCtor) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredModule = pred_info_module(PredInfo),
-    PredArity = pred_info_orig_arity(PredInfo),
+    pred_info_get_orig_arity(PredInfo, OrigPredFormArity),
+    user_arity_pred_form_arity(PredOrFunc, OrigUserArity, OrigPredFormArity),
+    OrigUserArity = user_arity(OrigUserArityInt),
     pred_info_get_exist_quant_tvars(PredInfo, PredExistQVars),
-    adjust_func_arity(PredOrFunc, OrigArity, PredArity),
     (
         PredOrFunc = pf_predicate,
-        OrigArity >= Arity,
+        OrigUserArityInt >= Arity,
         % We don't support first-class polymorphism, so you can't take
         % the address of an existentially quantified predicate.
         PredExistQVars = []
     ;
         PredOrFunc = pf_function,
-        OrigArity >= Arity,
+        OrigUserArityInt >= Arity,
         % We don't support first-class polymorphism, so you can't take
         % the address of an existentially quantified function. You can however
         % call such a function, so long as you pass *all* the parameters.
         ( PredExistQVars = []
-        ; OrigArity = Arity
+        ; OrigUserArityInt = Arity
         )
     ),
+    % XXX We are asserting that OrigUserArityInt, which is a user arity,
+    % is a pred_form_arity. This means that for functions, the arity
+    % we record here will be incorrect.
     ResolvedCtor = resolved_functor_pred_or_func(PredId, PredOrFunc,
-        PredModule, pred_form_arity(OrigArity)).
+        PredModule, pred_form_arity(OrigUserArityInt)).
 
 %---------------------------------------------------------------------------%
 

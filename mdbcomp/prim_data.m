@@ -78,6 +78,10 @@
                 ord_p_or_f              :: pred_or_func,
                 ord_declaring_module    :: module_name,
                 ord_pred_name           :: string,
+                % XXX ARITY This should specify whether it is
+                % a pred_form_arity or a user_arity. However,
+                % we cannot use those types here, *unless* we move them
+                % to this directory, next to the pred_or_func type.
                 ord_arity               :: int,
                 ord_mode_number         :: int
             )

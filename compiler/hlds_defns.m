@@ -221,8 +221,8 @@ gather_local_pred_names(ModuleName, [PredDefn | PredDefns],
         Origin = origin_user(user_made_pred(_, _, _))
     then
         pred_info_get_name(PredInfo, PredName),
-        PredArity = pred_info_orig_arity(PredInfo),
-        NameArity = name_arity(PredName, PredArity),
+        user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
+        NameArity = name_arity(PredName, UserArityInt),
         PorF = pred_info_is_pred_or_func(PredInfo),
         (
             PorF = pf_function,
@@ -313,11 +313,7 @@ instance_type_to_desc(Type, TypeDesc) :-
 output_prefixed_name_arities(_Stream, _Prefix, [], !IO).
 output_prefixed_name_arities(Stream, Prefix, [NameArity | NameArities], !IO) :-
     NameArity = name_arity(Name, Arity),
-    io.write_string(Stream, Prefix, !IO),
-    io.write_string(Stream, Name, !IO),
-    io.write_string(Stream, "/", !IO),
-    io.write_int(Stream, Arity, !IO),
-    io.nl(Stream, !IO),
+    io.format(Stream, "%s%s/%d\n", [s(Prefix), s(Name), i(Arity)], !IO),
     output_prefixed_name_arities(Stream, Prefix, NameArities, !IO).
 
 :- pred output_prefixed_strings(io.text_output_stream::in,
@@ -325,9 +321,7 @@ output_prefixed_name_arities(Stream, Prefix, [NameArity | NameArities], !IO) :-
 
 output_prefixed_strings(_Stream, _Prefix, [], !IO).
 output_prefixed_strings(Stream, Prefix, [Str | Strs], !IO) :-
-    io.write_string(Stream, Prefix, !IO),
-    io.write_string(Stream, Str, !IO),
-    io.nl(Stream, !IO),
+    io.format(Stream, "%s%s\n", [s(Prefix), s(Str)], !IO),
     output_prefixed_strings(Stream, Prefix, Strs, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -422,9 +416,19 @@ gather_pred_line_counts(ModuleName, PredInfo, !PredLineCounts) :-
             ),
             ( if FirstFileName = LastFileName then
                 pred_info_get_name(PredInfo, PredName),
-                PredArity = pred_info_orig_arity(PredInfo),
-                string.format("%s/%d", [s(PredName), i(PredArity)],
-                    PredNameArityStr),
+                pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+                pred_info_get_orig_arity(PredInfo, PredFormArity),
+                PredFormArity = pred_form_arity(PredFormArityInt),
+                (
+                    PredOrFunc = pf_predicate,
+                    string.format("%s/%d",
+                        [s(PredName), i(PredFormArityInt)], PredNameArityStr)
+                ;
+                    PredOrFunc = pf_function,
+                    string.format("%s/%d+1",
+                        [s(PredName), i(PredFormArityInt - 1)],
+                        PredNameArityStr)
+                ),
                 LineCount = LastLineNumber - FirstLineNumber + 1,
                 PLC = pred_line_count(PredNameArityStr, FirstFileName,
                     FirstLineNumber, LastLineNumber, LineCount),

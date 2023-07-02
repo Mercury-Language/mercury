@@ -70,6 +70,8 @@
     % real arguments get positive argument numbers and type_info arguments
     % get argument numbers less than or equal to 0.
     %
+    % XXX This predicate needs a better name.
+    %
 :- pred compute_arg_offset(pred_info::in, int::out) is det.
 
     % Given a list of variables and a list of expected liveness, ensure
@@ -345,10 +347,12 @@ handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
 %-----------------------------------------------------------------------------%
 
 compute_arg_offset(PredInfo, ArgOffset) :-
-    OrigArity = pred_info_orig_arity(PredInfo),
+    pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
     pred_info_get_arg_types(PredInfo, ArgTypes),
+    % Note that this is not num_extra_args; it does the subtraction
+    % in the *other* direction.
     list.length(ArgTypes, CurrentArity),
-    ArgOffset = OrigArity - CurrentArity.
+    ArgOffset = PredFormArityInt - CurrentArity.
 
 %-----------------------------------------------------------------------------%
 

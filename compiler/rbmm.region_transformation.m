@@ -143,8 +143,9 @@ annotate_pred(PPId, FormalRegionArgs, !Processed, !ModuleInfo) :-
             FormalRegionArgs = region_args(Constants, Deads, Borns),
             NumberOfRegArgs = list.length(Constants) + list.length(Deads) +
                 list.length(Borns),
-            Arity = pred_info_orig_arity(!.PredInfo),
-            pred_info_set_orig_arity(Arity + NumberOfRegArgs, !PredInfo),
+            pred_info_get_orig_arity(!.PredInfo, pred_form_arity(Arity)),
+            pred_info_set_orig_arity(pred_form_arity(Arity + NumberOfRegArgs),
+                !PredInfo),
 
             list.duplicate(NumberOfRegArgs, region_type, RegionTypes),
             pred_info_get_arg_types(!.PredInfo, TypeVarSet, ExistQuantTVars,

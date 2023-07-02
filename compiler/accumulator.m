@@ -1263,12 +1263,12 @@ accu_process_assoc_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         ModuleName = pred_info_module(PredInfo),
         PredName = pred_info_name(PredInfo),
-        Arity = pred_info_orig_arity(PredInfo),
-        ( if accu_has_heuristic(ModuleName, PredName, Arity) then
+        pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
+        ( if accu_has_heuristic(ModuleName, PredName, PredFormArityInt) then
             % Only do the transformation if the accumulator variable is
             % *not* in a position where it will control the running time
             % of the predicate.
-            accu_heuristic(ModuleName, PredName, Arity, Args,
+            accu_heuristic(ModuleName, PredName, PredFormArityInt, Args,
                 PossibleDuringAssocVars),
             set_of_var.member(PossibleDuringAssocVars, DuringAssocVar),
             CurWarnings = []

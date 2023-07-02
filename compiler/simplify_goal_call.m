@@ -360,16 +360,17 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
         % and/or typeclass_info args added by polymorphism, but before any
         % of the user-visible arguments.
 
-        pred_info_get_orig_arity(PredInfo, OrigArity),
-        list.length(ArgTypes, FullArity),
-        NumExtraArgs = FullArity - OrigArity,
+        pred_info_get_orig_arity(PredInfo, PredFormArity),
+        NumExtraArgs = num_extra_args(PredFormArity, ArgTypes),
         list.det_split_list(NumExtraArgs, ArgTypes,
             ExtraArgTypes, UserArgTypes),
 
         module_info_get_predicate_table(ModuleInfo, PredTable),
         PredSymName = qualified(ModuleName, PredName),
+        PredFormArity = pred_form_arity(PredFormArityInt),
+        PredFormArityPlus1 = pred_form_arity(PredFormArityInt + 1),
         predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
-            PredOrFunc, PredSymName, pred_form_arity(OrigArity + 1), PredIds),
+            PredOrFunc, PredSymName, PredFormArityPlus1, PredIds),
         list.filter(
             one_extra_stream_arg(ModuleInfo, NumExtraArgs,
                 ExtraArgTypes, UserArgTypes),

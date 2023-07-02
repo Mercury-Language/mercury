@@ -215,10 +215,9 @@ maybe_parallelise_pred(ParallelismInfo, PredId, !PredIdTable,
 maybe_parallelise_proc(ParallelismInfo, PredInfo, _PredId, ProcId,
         !ProcTable, !AnyProcIntroducedParallelism, !ModuleInfo, !Specs) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
-
     % Lookup the Candidate Parallel Conjunction (CPC) Map for this procedure.
     Name = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
+    pred_info_get_orig_arity(PredInfo, pred_form_arity(Arity)),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Mode = proc_id_to_int(ProcId),
     IMProcLabel = intra_module_proc_label(Name, Arity, PredOrFunc, Mode),
@@ -550,13 +549,14 @@ build_seq_conjuncts(ProcRepInfo, VarNameTable, [GoalRep | GoalReps],
 
 report_failed_parallelisation(PredInfo, GoalPath, Error) = Spec :-
     % Should the severity be informational?
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
-    SNA = sym_name_arity(qualified(ModuleName, PredName), Arity),
-    Pieces = [words("In"), p_or_f(PredOrFunc),
-        unqual_sym_name_arity(SNA), suffix(":"), nl,
+    SymName = qualified(ModuleName, PredName),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
+    PFSNA = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
+    Pieces = [words("In"),
+        qual_pf_sym_name_pred_form_arity(PFSNA), suffix(":"), nl,
         words("Warning: could not auto-parallelise"),
         quote(GoalPath), suffix(":"), words(Error), nl],
     pred_info_get_context(PredInfo, Context),
@@ -569,13 +569,14 @@ report_failed_parallelisation(PredInfo, GoalPath, Error) = Spec :-
 
 report_already_parallelised(PredInfo) = Spec :-
     % Should the severity be informational?
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
-    SNA = sym_name_arity(qualified(ModuleName, PredName), Arity),
-    Pieces = [words("In"), p_or_f(PredOrFunc),
-        qual_sym_name_arity(SNA), suffix(":"), nl,
+    SymName = qualified(ModuleName, PredName),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
+    PFSNA = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
+    Pieces = [words("In"),
+        qual_pf_sym_name_pred_form_arity(PFSNA), suffix(":"), nl,
         words("Warning: this procedure contains explicit parallel"),
         words("conjunctions, it will not be automatically parallelised."), nl],
     pred_info_get_context(PredInfo, Context),

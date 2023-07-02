@@ -544,7 +544,7 @@
 % all the places in the compiler that do such cloning.
 
 :- pred pred_prepare_to_clone(pred_info::in,
-    module_name::out, string::out, arity::out, pred_or_func::out,
+    module_name::out, pred_or_func::out, string::out, pred_form_arity::out,
     pred_origin::out, pred_status::out, pred_markers::out, list(mer_type)::out,
     tvarset::out, tvarset::out, existq_tvars::out, int::out,
     prog_constraints::out, clauses_info::out,
@@ -556,7 +556,8 @@
     maybe(list(sym_name_arity))::out, maybe(format_call)::out,
     list(mer_type)::out) is det.
 
-:- pred pred_create(module_name::in, string::in, arity::in, pred_or_func::in,
+:- pred pred_create(module_name::in,
+    pred_or_func::in, string::in, pred_form_arity::in,
     pred_origin::in, pred_status::in, pred_markers::in, list(mer_type)::in,
     tvarset::in, tvarset::in, existq_tvars::in, int::in, prog_constraints::in,
     clauses_info::in, proc_table::in, prog_context::in,
@@ -595,13 +596,6 @@
 :- func pred_info_module(pred_info) = module_name.
 :- func pred_info_name(pred_info) = string.
 
-    % Pred_info_orig_arity returns the arity of the predicate
-    % *not* counting inserted type_info arguments for polymorphic preds.
-    %
-:- func pred_info_orig_arity(pred_info) = arity.
-:- func pred_info_pred_form_arity(pred_info) = pred_form_arity.
-:- func pred_info_user_arity(pred_info) = user_arity.
-
     % N-ary functions are converted into N+1-ary predicates.
     % (Clauses are converted in make_hlds, but calls to functions
     % cannot be converted until after type-checking, once we have
@@ -612,14 +606,20 @@
     %
 :- func pred_info_is_pred_or_func(pred_info) = pred_or_func.
 
+    % Pred_info_orig_arity returns the arity of the predicate
+    % *not* counting inserted type_info arguments for polymorphic preds.
+    %
+:- func pred_info_pred_form_arity(pred_info) = pred_form_arity.
+:- func pred_info_user_arity(pred_info) = user_arity.
+
 :- pred pred_info_get_module_name(pred_info::in,
     module_name::out) is det.
+:- pred pred_info_get_is_pred_or_func(pred_info::in,
+    pred_or_func::out) is det.
 :- pred pred_info_get_name(pred_info::in,
     string::out) is det.
 :- pred pred_info_get_orig_arity(pred_info::in,
-    arity::out) is det.
-:- pred pred_info_get_is_pred_or_func(pred_info::in,
-    pred_or_func::out) is det.
+    pred_form_arity::out) is det.
 :- pred pred_info_get_context(pred_info::in,
     prog_context::out) is det.
 :- pred pred_info_get_cur_user_decl_info(pred_info::in,
@@ -680,12 +680,11 @@
     %
 :- pred pred_info_set_module_name(module_name::in,
     pred_info::in, pred_info::out) is det.
+:- pred pred_info_set_is_pred_or_func(pred_or_func::in,
+    pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_name(string::in,
     pred_info::in, pred_info::out) is det.
-
-:- pred pred_info_set_orig_arity(arity::in,
-    pred_info::in, pred_info::out) is det.
-:- pred pred_info_set_is_pred_or_func(pred_or_func::in,
+:- pred pred_info_set_orig_arity(pred_form_arity::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_origin(pred_origin::in,
     pred_info::in, pred_info::out) is det.
@@ -1035,8 +1034,11 @@ marker_name(marker_fact_table_semantic_errors, "fact_table_semantic_errors").
                 % Module in which pred occurs.
 /*  1 */        pi_module_name          :: module_name,
 
+                % Is this "predicate" really a predicate or a function?
+/*  2 */        pi_is_pred_or_func      :: pred_or_func,
+
                 % Predicate name.
-/*  2 */        pi_name                 :: string,
+/*  3 */        pi_name                 :: string,
 
                 % The original arity of the pred, i.e. its arity *not* counting
                 % any type_info and/or typeclass_info arguments inserted
@@ -1044,11 +1046,7 @@ marker_name(marker_fact_table_semantic_errors, "fact_table_semantic_errors").
                 %
                 % For functions, the original arity *includes* the return
                 % value, so that e.g. the original arity of int.+ would be 3.
-                % XXX ARITY Make the type pred_form_arity.
-/*  3 */        pi_orig_arity           :: arity,
-
-                % Is this "predicate" really a predicate or a function?
-/*  4 */        pi_is_pred_or_func      :: pred_or_func,
+/*  4 */        pi_orig_arity           :: pred_form_arity,
 
                 % Where did the predicate come from?
 /*  5 */        pi_pred_origin          :: pred_origin,
@@ -1243,7 +1241,6 @@ pred_info_init(PredOrFunc, PredModuleName, PredName, PredFormArity, Context,
 
     % argument PredModuleName
     % argument PredName
-    PredFormArity = pred_form_arity(PredFormArityInt),
     % NOTE We cannot assert anything about the relationship
     % between PredFormArity and the number of arguments in ArgTypes, because
     %
@@ -1270,9 +1267,8 @@ pred_info_init(PredOrFunc, PredModuleName, PredName, PredFormArity, Context,
     % argument ClassContext
     % argument ClausesInfo
     map.init(ProcTable),
-    % XXX ARITY The PredFormArityInt should be just PredFormArity.
-    PredInfo = pred_info(PredModuleName, PredName, PredFormArityInt,
-        PredOrFunc, Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
+    PredInfo = pred_info(PredModuleName, PredOrFunc, PredName, PredFormArity,
+        Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
 pred_info_create(PredOrFunc, PredModuleName, PredName,
@@ -1324,7 +1320,8 @@ pred_info_create(PredOrFunc, PredModuleName, PredName,
 
     % argument PredModuleName
     % argument PredName
-    list.length(ArgTypes, Arity),
+    list.length(ArgTypes, NumArgs),
+    PredFormArity = pred_form_arity(NumArgs),
     % argument PredOrFunc
     % argument Origin
     % argument Status
@@ -1336,11 +1333,11 @@ pred_info_create(PredOrFunc, PredModuleName, PredName,
     map.init(ProcTable0),
     next_proc_id(ProcTable0, ProcId),
     map.det_insert(ProcId, ProcInfo, ProcTable0, ProcTable),
-    PredInfo = pred_info(PredModuleName, PredName, Arity, PredOrFunc,
+    PredInfo = pred_info(PredModuleName, PredOrFunc, PredName, PredFormArity,
         Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
-pred_prepare_to_clone(PredInfo, ModuleName, PredName, Arity, PredOrFunc,
+pred_prepare_to_clone(PredInfo, ModuleName, PredOrFunc, PredName, PredFormArity,
         Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
         ExistQVars, PolymorphismAddedArgs,
         ClassContext, ClausesInfo, ProcTable, Context,
@@ -1348,7 +1345,7 @@ pred_prepare_to_clone(PredInfo, ModuleName, PredName, Arity, PredOrFunc,
         ClassProofs, ClassConstraintMap, UnprovenBodyConstraints,
         InstGraphInfo, ArgModesMaps, VarNameRemap, Assertions,
         ObsoleteInFavourOf, FormatCall, InstanceMethodArgTypes) :-
-    PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
+    PredInfo = pred_info(ModuleName, PredOrFunc, PredName, PredFormArity,
         Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo),
     PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
@@ -1358,7 +1355,7 @@ pred_prepare_to_clone(PredInfo, ModuleName, PredName, Arity, PredOrFunc,
         VarNameRemap, Assertions, ObsoleteInFavourOf, FormatCall,
         InstanceMethodArgTypes).
 
-pred_create(ModuleName, PredName, Arity, PredOrFunc,
+pred_create(ModuleName, PredOrFunc, PredName, PredFormArity,
         Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
         ExistQVars, PolymorphismAddedArgs,
         ClassContext, ClausesInfo, ProcTable, Context,
@@ -1372,7 +1369,7 @@ pred_create(ModuleName, PredName, Arity, PredOrFunc,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
         VarNameRemap, Assertions, ObsoleteInFavourOf, FormatCall,
         InstanceMethodArgTypes),
-    PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
+    PredInfo = pred_info(ModuleName, PredOrFunc, PredName, PredFormArity,
         Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
@@ -1481,25 +1478,23 @@ pred_info_module(PI) = X :-
     pred_info_get_module_name(PI, X).
 pred_info_name(PI) = X :-
     pred_info_get_name(PI, X).
-pred_info_orig_arity(PI) = Arity :-
-    pred_info_get_orig_arity(PI, Arity).
-pred_info_pred_form_arity(PI) = pred_form_arity(Arity) :-
-    pred_info_get_orig_arity(PI, Arity).
-pred_info_user_arity(PI) = UserArity :-
-    pred_info_get_is_pred_or_func(PI, PredOrFunc),
-    PredFormArity = pred_info_pred_form_arity(PI),
-    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity).
 pred_info_is_pred_or_func(PI) = X :-
     pred_info_get_is_pred_or_func(PI, X).
+pred_info_pred_form_arity(PI) = PredFormArity :-
+    pred_info_get_orig_arity(PI, PredFormArity).
+pred_info_user_arity(PI) = UserArity :-
+    pred_info_get_is_pred_or_func(PI, PredOrFunc),
+    pred_info_get_orig_arity(PI, PredFormArity),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity).
 
 pred_info_get_module_name(!.PI, X) :-
     X = !.PI ^ pi_module_name.
+pred_info_get_is_pred_or_func(!.PI, X) :-
+    X = !.PI ^ pi_is_pred_or_func.
 pred_info_get_name(!.PI, X) :-
     X = !.PI ^ pi_name.
 pred_info_get_orig_arity(!.PI, X) :-
     X = !.PI ^ pi_orig_arity.
-pred_info_get_is_pred_or_func(!.PI, X) :-
-    X = !.PI ^ pi_is_pred_or_func.
 
 pred_info_get_context(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_context.
@@ -1556,16 +1551,16 @@ pred_info_get_proc_table(!.PI, X) :-
 
 pred_info_set_module_name(X, !PI) :-
     !PI ^ pi_module_name := X.
-pred_info_set_name(X, !PI) :-
-    !PI ^ pi_name := X.
-pred_info_set_orig_arity(X, !PI) :-
-    !PI ^ pi_orig_arity := X.
 pred_info_set_is_pred_or_func(X, !PI) :-
     ( if X = !.PI ^ pi_is_pred_or_func then
         true
     else
         !PI ^ pi_is_pred_or_func := X
     ).
+pred_info_set_name(X, !PI) :-
+    !PI ^ pi_name := X.
+pred_info_set_orig_arity(X, !PI) :-
+    !PI ^ pi_orig_arity := X.
 pred_info_set_origin(X, !PI) :-
     ( if private_builtin.pointer_equal(X, !.PI ^ pi_pred_origin) then
         true
@@ -4115,8 +4110,8 @@ proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
         InterfaceTypeInfoLiveness) :-
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    PredArity = pred_info_orig_arity(PredInfo),
-    ( if no_type_info_builtin(PredModule, PredName, PredArity) then
+    pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
+    ( if no_type_info_builtin(PredModule, PredName, PredFormArityInt) then
         InterfaceTypeInfoLiveness = no
     else
         pred_info_get_status(PredInfo, Status),
@@ -4171,8 +4166,8 @@ non_special_interface_should_use_typeinfo_liveness(PredStatus, IsAddressTaken,
 body_should_use_typeinfo_liveness(PredInfo, Globals, BodyTypeInfoLiveness) :-
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    PredArity = pred_info_orig_arity(PredInfo),
-    ( if no_type_info_builtin(PredModule, PredName, PredArity) then
+    pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
+    ( if no_type_info_builtin(PredModule, PredName, PredFormArityInt) then
         BodyTypeInfoLiveness = no
     else
         non_special_body_should_use_typeinfo_liveness(Globals,
@@ -4341,6 +4336,9 @@ ensure_all_headvars_are_named_loop([Var | Vars], SeqNum, !VarTable) :-
     %
     % Inverse of the above.
     %
+    % XXX ARITY The third argument should be either pred_form_arity or
+    % user_arity.
+    %
 :- pred is_field_access_function_name(module_info::in, sym_name::in,
     arity::out, field_access_type::out, sym_name::out) is semidet.
 
@@ -4386,10 +4384,11 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
     pred_info_is_pred_or_func(PredInfo) = pf_function,
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
-    PredArity = pred_info_orig_arity(PredInfo),
-    adjust_func_arity(pf_function, FuncArity, PredArity),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
+    user_arity_pred_form_arity(pf_function, user_arity(FuncArityInt),
+        PredFormArity),
     is_field_access_function_name(ModuleInfo, qualified(Module, Name),
-        FuncArity, _, _).
+        FuncArityInt, _, _).
 
 %---------------------------------------------------------------------------%
 

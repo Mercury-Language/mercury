@@ -121,7 +121,7 @@
     --->    ta_pred(pred_info)
             % The inst is in the argument list of the given predicate or
             % function.
-    ;       ta_lambda(pred_or_func, int, prog_context)
+    ;       ta_lambda(pred_or_func, pred_form_arity, prog_context)
             % The inst is in the argument list of a lambda expression
             % whose nature (predicate or function, arity, and source location)
             % are specified by the arguments.
@@ -131,7 +131,7 @@
     ;       ta_tuple_inst(tprop_context)
             % The inst is in the argument list of a bound_inst for a tuple,
             % which itself occurs at the given context.
-    ;       ta_ho_inst(pred_or_func, int, tprop_context).
+    ;       ta_ho_inst(pred_or_func, pred_form_arity, tprop_context).
             % The inst is in the argument list of a higher order inst,
             % which has the given arity, and which occurs at the given context.
 
@@ -367,8 +367,8 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
                 type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
                 list.same_length(ArgTypes, Modes0)
             then
-                list.length(ArgTypes, NumArgTypes),
-                step_into_ho_inst(PredOrFunc, NumArgTypes, Context, Args),
+                PredFormArity = arg_list_arity(ArgTypes),
+                step_into_ho_inst(PredOrFunc, PredFormArity, Context, Args),
                 propagate_types_into_modes(ModuleInfo, Args, 1,
                     ArgTypes, Modes0, Modes, !Cache, !Errors)
             else
@@ -418,8 +418,8 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
                 type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
                 list.same_length(ArgTypes, Modes0)
             then
-                list.length(ArgTypes, NumArgTypes),
-                step_into_ho_inst(PredOrFunc, NumArgTypes, Context, Args),
+                PredFormArity = arg_list_arity(ArgTypes),
+                step_into_ho_inst(PredOrFunc, PredFormArity, Context, Args),
                 propagate_types_into_modes(ModuleInfo, Args, 1,
                     ArgTypes, Modes0, Modes, !Cache, !Errors)
             else
@@ -503,8 +503,8 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
                 type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
                 list.same_length(ArgTypes, Modes0)
             then
-                list.length(ArgTypes, NumArgTypes),
-                step_into_ho_inst(PredOrFunc, NumArgTypes, Context, Args),
+                PredFormArity = arg_list_arity(ArgTypes),
+                step_into_ho_inst(PredOrFunc, PredFormArity, Context, Args),
                 propagate_types_into_modes(ModuleInfo, Args, 1,
                     ArgTypes, Modes0, Modes, !Cache, !Errors)
             else
@@ -539,8 +539,8 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
                 type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
                 list.same_length(ArgTypes, Modes0)
             then
-                list.length(ArgTypes, NumArgTypes),
-                step_into_ho_inst(PredOrFunc, NumArgTypes, Context, Args),
+                PredFormArity = arg_list_arity(ArgTypes),
+                step_into_ho_inst(PredOrFunc, PredFormArity, Context, Args),
                 propagate_types_into_modes(ModuleInfo, Args, 1,
                     ArgTypes, Modes0, Modes, !Cache, !Errors)
             else
@@ -642,7 +642,8 @@ default_higher_order_func_inst(ModuleInfo, Context, PredArgTypes, PredInstInfo,
     list.duplicate(NumFuncArgs, In, FuncArgModes),
     FuncRetMode = Out,
     PredArgModes0 = FuncArgModes ++ [FuncRetMode],
-    step_into_ho_inst(pf_function, NumPredArgs, Context, Args),
+    step_into_ho_inst(pf_function, pred_form_arity(NumPredArgs),
+        Context, Args),
     propagate_types_into_modes(ModuleInfo, Args, 1, PredArgTypes,
         PredArgModes0, PredArgModes, !Cache, !Errors),
     PredInstInfo = pred_inst_info(pf_function, PredArgModes,
@@ -1013,7 +1014,7 @@ where [
         % the higher order inst of the given pred_or_func and arity
         % at the given context.
         %
-    pred step_into_ho_inst(pred_or_func::in, int::in,
+    pred step_into_ho_inst(pred_or_func::in, pred_form_arity::in,
         Context::in, Args::out) is det,
 
         % Return a representation of the N'th argument of the given
@@ -1114,11 +1115,11 @@ do_step_into_bound_inst(ConsId, Context, Args) :-
 do_step_into_tuple_inst(Context, Args) :-
     Args = ta_tuple_inst(Context).
 
-:- pred do_step_into_ho_inst(pred_or_func::in, int::in,
+:- pred do_step_into_ho_inst(pred_or_func::in, pred_form_arity::in,
     tprop_context::in, tprop_args::out) is det.
 
-do_step_into_ho_inst(PredOrFunc, NumArgs, Context, Args) :-
-    Args = ta_ho_inst(PredOrFunc, NumArgs, Context).
+do_step_into_ho_inst(PredOrFunc, PredFormArity, Context, Args) :-
+    Args = ta_ho_inst(PredOrFunc, PredFormArity, Context).
 
 :- pred do_args_slot_to_context(tprop_args::in, int::in,
     tprop_context::out) is det.
@@ -1322,15 +1323,16 @@ tprop_context_to_pieces(TPropContext, Context, Pieces) :-
             (
                 Args = ta_pred(PredInfo),
                 pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-                pred_info_get_orig_arity(PredInfo, NumArgs),
+                pred_info_get_orig_arity(PredInfo, PredFormArity),
                 pred_info_get_context(PredInfo, Context),
                 PredPieces = describe_one_pred_info_name(
                     should_not_module_qualify, PredInfo)
             ;
-                Args = ta_lambda(PredOrFunc, NumArgs, Context),
+                Args = ta_lambda(PredOrFunc, PredFormArity, Context),
                 PredPieces = [words("the lambda expression")]
             ),
-            ArgDescPieces = pred_or_func_arg_desc(PredOrFunc, NumArgs, ArgNum),
+            ArgDescPieces =
+                pred_or_func_arg_desc(PredOrFunc, PredFormArity, ArgNum),
             Pieces = [words("In")] ++ ArgDescPieces ++ [words("of")] ++
                 PredPieces ++ [suffix(":"), nl]
         ;
@@ -1365,10 +1367,10 @@ tprop_context_to_pieces(TPropContext, Context, Pieces) :-
         Pieces = OuterPieces ++ InnerPieces
     ).
 
-:- func pred_or_func_arg_desc(pred_or_func, int, int)
+:- func pred_or_func_arg_desc(pred_or_func, pred_form_arity, int)
     = list(format_piece).
 
-pred_or_func_arg_desc(PredOrFunc, NumArgs, ArgNum) = Pieces :-
+pred_or_func_arg_desc(PredOrFunc, pred_form_arity(NumArgs), ArgNum) = Pieces :-
     ( if
         PredOrFunc = pf_function,
         ArgNum = NumArgs

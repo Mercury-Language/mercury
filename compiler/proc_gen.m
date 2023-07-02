@@ -111,6 +111,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
+:- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
@@ -559,7 +560,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
     global_data_add_new_alloc_sites(AllocSites, !GlobalData),
 
     Name = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
 
     get_label_counter(CodeInfo, LabelCounter),
     % You can have user trace events even if the effective trace level is none.
@@ -592,10 +593,12 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         ProcInstructions = Instructions,
         ProcLabelCounter = LabelCounter
     ),
+    pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     get_used_env_vars(CodeInfo, UsedEnvVars),
-    CProc = c_procedure(Name, Arity, proc(PredId, ProcId), ProcLabel,
-        CodeModel, EffTraceLevel, ProcInstructions, ProcLabelCounter,
-        MayAlterRtti, UsedEnvVars).
+    CProc = c_procedure(PredOrFunc, Name, UserArity, proc(PredId, ProcId),
+        ProcLabel, CodeModel, EffTraceLevel, ProcInstructions,
+        ProcLabelCounter, MayAlterRtti, UsedEnvVars).
 
 :- pred maybe_set_trace_level(pred_info::in,
     module_info::in, module_info::out) is det.
@@ -605,8 +608,8 @@ maybe_set_trace_level(PredInfo, !ModuleInfo) :-
     ( if
         PredModule = pred_info_module(PredInfo),
         PredName = pred_info_name(PredInfo),
-        PredArity = pred_info_orig_arity(PredInfo),
-        no_type_info_builtin(PredModule, PredName, PredArity)
+        pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
+        no_type_info_builtin(PredModule, PredName, PredFormArityInt)
     then
         % These predicates should never be traced, since they do not obey
         % typeinfo_liveness. Since they may be opt_imported into other
@@ -1346,8 +1349,8 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
     PredName = pred_info_name(PredInfo),
     proc_id_to_int(ProcId, ProcNum),
     string.int_to_string(ProcNum, ProcStr),
-    Arity = pred_info_orig_arity(PredInfo),
-    int_to_string(Arity, ArityStr),
+    user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
+    int_to_string(UserArityInt, ArityStr),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 
     CallStructName = "bytecode_call_info",

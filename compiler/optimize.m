@@ -58,6 +58,9 @@
 :- import_module ll_backend.use_local_vars.
 :- import_module ll_backend.wrap_blocks.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.parse_tree_out_misc.
 
 :- import_module bool.
 :- import_module char.
@@ -83,10 +86,11 @@ optimize_procs(Globals, ModuleName, GlobalData,
 optimize_proc(Globals, ModuleName, GlobalData, CProc0, CProc) :-
     Info = init_llds_opt_info(Globals, ModuleName),
     some [!OptDebugInfo, !LabelNumCounter, !Instrs] (
-        CProc0 = c_procedure(Name, Arity, PredProcId, ProcLabel, CodeModel,
-            EffTraceLevel, !:Instrs, !:LabelNumCounter,
+        CProc0 = c_procedure(PorF, Name, UserArity, PredProcId, ProcLabel,
+            CodeModel, EffTraceLevel, !:Instrs, !:LabelNumCounter,
             MayAlterRtti, CGlobalVars),
-        need_opt_debug_info(Info, Name, Arity, PredProcId, MaybeBaseName),
+        need_opt_debug_info(Info, PorF, Name, UserArity, PredProcId,
+            MaybeBaseName),
         (
             MaybeBaseName = no,
             !:OptDebugInfo = no_opt_debug_info
@@ -135,8 +139,8 @@ optimize_proc(Globals, ModuleName, GlobalData, CProc0, CProc) :-
             get_opt_progress_output_stream(Info, ProgressStream, !IO),
             maybe_report_stats(ProgressStream, Statistics, !IO)
         ),
-        CProc = c_procedure(Name, Arity, PredProcId, ProcLabel, CodeModel,
-            EffTraceLevel, !.Instrs, !.LabelNumCounter,
+        CProc = c_procedure(PorF, Name, UserArity, PredProcId, ProcLabel,
+            CodeModel, EffTraceLevel, !.Instrs, !.LabelNumCounter,
             MayAlterRtti, CGlobalVars)
     ).
 
@@ -172,10 +176,10 @@ make_internal_label_for_proc_label(ProcLabel, LabelNum)
             )
     ;       no_opt_debug_info.
 
-:- pred need_opt_debug_info(llds_opt_info::in, string::in, int::in,
-    pred_proc_id::in, maybe(string)::out) is det.
+:- pred need_opt_debug_info(llds_opt_info::in, pred_or_func::in, string::in,
+    user_arity::in, pred_proc_id::in, maybe(string)::out) is det.
 
-need_opt_debug_info(Info, Name, Arity, PredProcId, MaybeBaseName) :-
+need_opt_debug_info(Info, PorF, Name, UserArity, PredProcId, MaybeBaseName) :-
     DebugOpt = Info ^ lopt_debug_opt,
     DebugOptPredIdStrs = Info ^ lopt_debug_opt_pred_ids,
     DebugOptPredNames = Info ^ lopt_debug_opt_pred_names,
@@ -213,10 +217,11 @@ need_opt_debug_info(Info, Name, Arity, PredProcId, MaybeBaseName) :-
             DebugOptPredNames = []
         )
     then
-        BaseName = opt_subdir_name ++ "/"
-            ++ mangle_name_as_filename(Name) ++ "_" ++ int_to_string(Arity)
-            ++ ".pred" ++ int_to_string(PredIdInt)
-            ++ ".proc" ++ int_to_string(ProcIdInt),
+        UserArity = user_arity(UserArityInt),
+        string.format("%s/%s_%s_%d.pred%d.proc%d",
+            [s(opt_subdir_name), s(pred_or_func_to_str(PorF)),
+            s(mangle_name_as_filename(Name)), i(UserArityInt),
+            i(PredIdInt), i(ProcIdInt)], BaseName),
         MaybeBaseName = yes(BaseName)
     else
         MaybeBaseName = no

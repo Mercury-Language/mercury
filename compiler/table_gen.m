@@ -91,6 +91,7 @@
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 
@@ -3388,12 +3389,14 @@ generate_error_goal(TableInfo, Context, Msg, !VarTable, Goal) :-
 
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
     PredNameStr = sym_name_to_string(qualified(ModuleName, PredName)),
+    user_arity_pred_form_arity(PredOrFunc,
+        user_arity(UserArityInt), PredFormArity),
     Message = string.format("%s in %s %s/%d",
-        [s(Msg), s(PredOrFuncStr), s(PredNameStr), i(Arity)]),
+        [s(Msg), s(PredOrFuncStr), s(PredNameStr), i(UserArityInt)]),
     make_string_const_construction_alloc(Message, "Message",
         MessageStrGoal, MessageVar, !VarTable),
 

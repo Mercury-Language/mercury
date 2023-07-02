@@ -96,6 +96,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.write_error_spec.
@@ -310,8 +311,9 @@ llds_backend_pass_by_preds_do_one_pred(ProgressStream, !HLDS, ConstStructMap,
         ( if
             PredModule = pred_info_module(PredInfo),
             PredName = pred_info_name(PredInfo),
-            PredArity = pred_info_orig_arity(PredInfo),
-            no_type_info_builtin(PredModule, PredName, PredArity)
+            pred_info_get_orig_arity(PredInfo, PredFormArity),
+            PredFormArity = pred_form_arity(PredFormArityInt),
+            no_type_info_builtin(PredModule, PredName, PredFormArityInt)
         then
             % These predicates should never be traced, since they do not obey
             % typeinfo_liveness. Since they may be opt_imported into other

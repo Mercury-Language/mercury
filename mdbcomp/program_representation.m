@@ -693,6 +693,8 @@
     % won't yet know about P. The stage 1 compiler _will_ know about P,
     % so stage 2 is when P will be compiled differently.
     %
+    % XXX ARITY The last argument should be pred_form_arity.
+    %
 :- pred no_type_info_builtin(module_name::in, string::in, int::in) is semidet.
 
 %---------------------------------------------------------------------------%

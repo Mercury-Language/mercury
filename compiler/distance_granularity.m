@@ -211,8 +211,9 @@ apply_dg_to_preds([PredId | PredIds], Distance, !ModuleInfo) :-
 
             % The arity and the argument types of the specialized predicate
             % must be modified.
-            Arity = pred_info_orig_arity(!.ClonePredInfo),
-            pred_info_set_orig_arity(Arity + 1, !ClonePredInfo),
+            pred_info_get_orig_arity(!.ClonePredInfo, pred_form_arity(Arity)),
+            pred_info_set_orig_arity(pred_form_arity(Arity + 1),
+                !ClonePredInfo),
             pred_info_get_typevarset(!.ClonePredInfo, TypeVarSet),
             pred_info_get_exist_quant_tvars(!.ClonePredInfo, ExistQTypeVars),
             pred_info_get_arg_types(!.ClonePredInfo, ArgTypes0),

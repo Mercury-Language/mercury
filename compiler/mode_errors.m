@@ -642,15 +642,13 @@ mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    QualifiedName = qualified(PredModule, PredName),
-    Arity = pred_info_orig_arity(PredInfo),
-    adjust_func_arity(PredOrFunc, FuncArity, Arity),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
+    SymName = qualified(PredModule, PredName),
+    PFSNA = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
     StartPieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarTable, X)),
         words("and higher-order term based on multi-moded"),
-        p_or_f(PredOrFunc),
-        qual_sym_name_arity(sym_name_arity(QualifiedName, FuncArity)),
-        suffix("."), nl],
+        qual_pf_sym_name_pred_form_arity(PFSNA), suffix("."), nl],
     (
         MultiModeError = some_ho_args_non_ground(NonGroundArgVars),
         VarOrVars = choose_number(NonGroundArgVars, "variable", "variables"),
@@ -921,8 +919,8 @@ mode_error_no_matching_mode_to_spec(ModeInfo, InstMap, Vars, ProcInitialInsts)
             CallId = plain_call_id(PFSymNameArity),
 
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
-            pred_info_get_orig_arity(PredInfo, OrigArity),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+            pred_info_get_orig_arity(PredInfo, pred_form_arity(OrigArity)),
             list.length(Vars, NumVars),
             NumExtra = NumVars - OrigArity
         )

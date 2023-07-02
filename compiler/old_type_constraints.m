@@ -40,6 +40,7 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_name.
@@ -2067,15 +2068,14 @@ diagnose_ambig_pred_error(PredEnv, Conjunctions, Msg) :-
 
 ambig_pred_error_message(PredEnv, (_ - PredId), Component) :-
     % XXX Should use describe_one_pred_name.
-    predicate_table_get_pred_id_table(PredEnv, Preds),
-    map.lookup(Preds, PredId, PredInfo),
-    Name = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
+    predicate_table_get_pred_id_table(PredEnv, PredTable),
+    map.lookup(PredTable, PredId, PredInfo),
+    PredPieces = describe_one_pred_info_name(should_module_qualify, PredInfo),
     pred_info_get_context(PredInfo, Context),
     LineNumber = term_context.context_line(Context),
     FileName = term_context.context_file(Context),
-    Pieces = [fixed(Name), suffix("/"), suffix(int_to_string(Arity)),
-        prefix("("), words(FileName), suffix(": "), int_fixed(LineNumber),
+    Pieces = PredPieces ++
+        [prefix("("), words(FileName), suffix(": "), int_fixed(LineNumber),
         suffix(")"), nl],
     Component = always(Pieces).
 

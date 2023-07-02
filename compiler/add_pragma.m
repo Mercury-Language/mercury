@@ -591,7 +591,7 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
 
 lookup_pred_orig_arity(ModuleInfo, PredId, Piece) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    OrigArity = pred_info_orig_arity(PredInfo),
+    pred_info_get_orig_arity(PredInfo, pred_form_arity(OrigArity)),
     Piece = int_fixed(OrigArity).
 
 %---------------------%
@@ -1033,10 +1033,11 @@ mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
         IsEmpty = no,
         PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
         pred_info_get_name(PredInfo0, PredName),
-        Arity = pred_info_orig_arity(PredInfo0),
-        SNA = sym_name_arity(unqualified(PredName), Arity),
-        Pieces = [words("The"), p_or_f(PredOrFunc),
-            unqual_sym_name_arity(SNA), words("has clauses,"),
+        UserArity = pred_info_user_arity(PredInfo0),
+        PFSNA =
+            pred_pf_name_arity(PredOrFunc, unqualified(PredName), UserArity),
+        Pieces = [words("The"), unqual_pf_sym_name_user_arity(PFSNA),
+            words("has clauses,"),
             words("so it cannot be marked as external."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),

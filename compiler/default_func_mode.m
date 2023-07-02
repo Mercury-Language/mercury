@@ -40,7 +40,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 
-:- import_module int.
 :- import_module map.
 :- import_module varset.
 
@@ -75,8 +74,7 @@ maybe_add_default_func_mode(ModuleInfo, PredInfo0, PredInfo, MaybeProcId) :-
         % explicitly declared as semidet.)
 
         SeqNum = item_no_seq_num,
-        PredArity = pred_info_orig_arity(PredInfo0),
-        FuncArity = PredArity - 1,
+        user_arity(FuncArity) = pred_info_user_arity(PredInfo0),
         in_mode(InMode),
         out_mode(OutMode),
         list.duplicate(FuncArity, InMode, FuncArgModes),

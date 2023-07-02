@@ -212,11 +212,10 @@
 
 :- type c_procedure
     --->    c_procedure(
-                % Predicate name.
+                % The predicate or function's user-facing identity.
+                cproc_p_or_f            :: pred_or_func,
                 cproc_name              :: string,
-
-                % Original arity.
-                cproc_orig_arity        :: int,
+                cproc_user_arity        :: user_arity,
 
                 % The pred_proc_id of this code.
                 cproc_id                :: pred_proc_id,

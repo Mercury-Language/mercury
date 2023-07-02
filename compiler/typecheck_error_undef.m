@@ -636,9 +636,10 @@ return_function_arities(ModuleInfo, [PredId | PredIds], !FuncArities) :-
         PredOrFunc = pf_predicate
     ;
         PredOrFunc = pf_function,
-        pred_info_get_orig_arity(PredInfo, OrigArity),
-        adjust_func_arity(pf_function, FuncArity, OrigArity),
-        !:FuncArities = [FuncArity | !.FuncArities]
+        pred_info_get_orig_arity(PredInfo, PredFormArity),
+        user_arity_pred_form_arity(PredOrFunc,
+            user_arity(FuncUserArityInt), PredFormArity),
+        !:FuncArities = [FuncUserArityInt | !.FuncArities]
     ),
     return_function_arities(ModuleInfo, PredIds, !FuncArities).
 

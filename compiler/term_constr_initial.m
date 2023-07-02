@@ -372,9 +372,10 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
         % XXX The origin test should be the only one needed;
         % we should pay no attention to the name.
         ( if
-            Name  = pred_info_name(PredInfo),
-            Arity = pred_info_orig_arity(PredInfo),
-            special_pred_name_arity(SpecialPredId0, Name, _, Arity),
+            Name = pred_info_name(PredInfo),
+            pred_info_get_orig_arity(PredInfo,
+                pred_form_arity(PredFormArityInt)),
+            special_pred_name_arity(SpecialPredId0, Name, _, PredFormArityInt),
             ModuleName = pred_info_module(PredInfo),
             any_mercury_builtin_module(ModuleName)
         then
@@ -498,9 +499,9 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     proc_info_get_headvars(ProcInfo0, HeadVars),
     PredModule = pred_info_module(PredInfo),
     PredName   = pred_info_name(PredInfo),
-    PredArity  = pred_info_orig_arity(PredInfo),
+    pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
     make_size_var_map(HeadVars, _SizeVarset, SizeVarMap),
-    ( if no_type_info_builtin(PredModule, PredName, PredArity) then
+    ( if no_type_info_builtin(PredModule, PredName, PredFormArityInt) then
         Constrs = process_no_type_info_builtin(PredName, HeadVars, SizeVarMap)
     else if all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo0) then
         Constrs = []

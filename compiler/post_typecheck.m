@@ -706,7 +706,7 @@ check_type_of_main(PredInfo, !Specs) :-
     ( if
         % Check if this predicate is the program entry point main/2.
         pred_info_name(PredInfo) = "main",
-        pred_info_orig_arity(PredInfo) = 2,
+        pred_info_get_orig_arity(PredInfo, pred_form_arity(2)),
         pred_info_is_exported(PredInfo)
     then
         pred_info_get_arg_types(PredInfo, ArgTypes),

@@ -150,7 +150,6 @@
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.write_error_spec.
 
-:- import_module int.
 :- import_module map.
 :- import_module require.
 :- import_module set.
@@ -170,9 +169,8 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
     % XXX This predicate should subcontract its work to pred_name.m.
     PredName = pred_info_name(PredInfo),
     ModuleName = pred_info_module(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    adjust_func_arity(PredOrFunc, OrigArity, Arity),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_origin(PredInfo, Origin),
     ( if Origin = origin_compiler(made_for_uci(SpecialId, TypeCtor)) then
@@ -204,7 +202,9 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
             Prefix = [p_or_f(PredOrFunc)]
         ),
         PredSymName = qualified(ModuleName, PredName),
-        PredSymNameAndArity = sym_name_arity(PredSymName, OrigArity),
+        user_arity_pred_form_arity(PredOrFunc,
+            user_arity(UserArityInt), PredFormArity),
+        PredSymNameAndArity = sym_name_arity(PredSymName, UserArityInt),
         (
             ShouldModuleQualify = should_module_qualify,
             PredSymNamePiece = qual_sym_name_arity(PredSymNameAndArity)
@@ -220,17 +220,17 @@ describe_one_pred_name_mode(ModuleInfo, Lang, ShouldModuleQualify, PredId,
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    list.length(ArgModes0, NumArgModes),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
+    NumExtraArgs = num_extra_args(PredFormArity, ArgModes0),
     % We need to strip off the extra type_info arguments inserted at the
-    % front by polymorphism.m - we only want the last `Arity' of them.
-    ( if list.drop(NumArgModes - Arity, ArgModes0, ArgModes) then
+    % front by polymorphism.m - we only want the last `PredFormArity' of them.
+    ( if list.drop(NumExtraArgs, ArgModes0, ArgModes) then
         strip_module_names_from_mode_list(strip_builtin_module_name,
             ArgModes, StrippedArgModes)
     else
         unexpected($pred, "bad argument list")
     ),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     (
         PredOrFunc = pf_predicate,
         ArgModesPart = arg_modes_to_string(Lang, InstVarSet, StrippedArgModes)
@@ -346,8 +346,7 @@ find_pred_arities_set(_, [], set.init).
 find_pred_arities_set(PredTable, [PredId | PredIds], AritiesSet) :-
     find_pred_arities_set(PredTable, PredIds, AritiesSet0),
     map.lookup(PredTable, PredId, PredInfo),
-    PredFormArityInt = pred_info_orig_arity(PredInfo),
-    PredFormArity = pred_form_arity(PredFormArityInt),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
     set.insert(PredFormArity, AritiesSet0, AritiesSet).
 
 :- pred find_user_arities_set(pred_id_table::in, list(pred_id)::in,
@@ -358,8 +357,7 @@ find_user_arities_set(PredTable, [PredId | PredIds], AritiesSet) :-
     find_user_arities_set(PredTable, PredIds, AritiesSet0),
     map.lookup(PredTable, PredId, PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    PredFormArityInt = pred_info_orig_arity(PredInfo),
-    PredFormArity = pred_form_arity(PredFormArityInt),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     set.insert(UserArity, AritiesSet0, AritiesSet).
 

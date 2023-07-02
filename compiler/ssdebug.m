@@ -1018,15 +1018,14 @@ ssdebug_process_proc_erroneous(SSTraceLevel, PredId, ProcId,
 get_stripped_headvars(PredInfo, ProcInfo, FullHeadVars, HeadVars, ArgModes) :-
     % XXX using orig_arity here does not work when the predicate is one
     % produced by higher-order specialization. See tests/valid/gh89.m.
-    PredArity = pred_info_orig_arity(PredInfo),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
     proc_info_get_headvars(ProcInfo, FullHeadVars),
     proc_info_get_argmodes(ProcInfo, FullArgModes),
-    list.length(FullHeadVars, NumHeadVars),
+    NumExtraArgs = num_extra_args(PredFormArity, FullHeadVars),
     % Strip off the extra type_info arguments inserted at the front by
     % polymorphism.m.
-    NumToDrop = NumHeadVars - PredArity,
-    list.det_drop(NumToDrop, FullHeadVars, HeadVars),
-    list.det_drop(NumToDrop, FullArgModes, ArgModes).
+    list.det_drop(NumExtraArgs, FullHeadVars, HeadVars),
+    list.det_drop(NumExtraArgs, FullArgModes, ArgModes).
 
 :- pred get_output_args(module_info::in, list(prog_var)::in,
     list(mer_mode)::in, list(prog_var)::out) is det.

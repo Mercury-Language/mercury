@@ -431,7 +431,8 @@ output_type_class_id_tvar_name(Stream, TVarName, !IO) :-
     tc_method_id::in, io::di, io::uo) is det.
 
 output_type_class_id_method_id(Stream, MethodId, !IO) :-
-    MethodId = tc_method_id(MethodName, MethodArity, PredOrFunc),
+    MethodId =
+        tc_method_id(MethodName, pred_form_arity(MethodArity), PredOrFunc),
     io.write_string(Stream, "\t{ ", !IO),
     output_quoted_string_c(Stream, MethodName, !IO),
     io.write_string(Stream, ", ", !IO),

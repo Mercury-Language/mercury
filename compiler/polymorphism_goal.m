@@ -101,8 +101,8 @@ polymorphism_process_goal(Goal0, Goal, !Info) :-
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         PredModule = pred_info_module(PredInfo),
         PredName = pred_info_name(PredInfo),
-        PredArity = pred_info_orig_arity(PredInfo),
-        ( if no_type_info_builtin(PredModule, PredName, PredArity) then
+        pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
+        ( if no_type_info_builtin(PredModule, PredName, PredFormArityInt) then
             Goal = Goal0
         else
             polymorphism_process_foreign_proc(PredInfo, GoalExpr0, GoalInfo0,
@@ -802,7 +802,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    PredArity = pred_info_orig_arity(PredInfo),
+    pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
     ( if
         (
             % Optimize for the common case of nonpolymorphic call
@@ -811,7 +811,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
             PredClassContext = constraints([], [])
         ;
             % Some builtins don't need or want the type_info.
-            no_type_info_builtin(PredModule, PredName, PredArity)
+            no_type_info_builtin(PredModule, PredName, PredFormArityInt)
         )
     then
         GoalInfo = GoalInfo0,

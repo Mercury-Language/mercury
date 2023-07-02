@@ -120,9 +120,9 @@ generate_method_id(ModuleInfo, ClassProc) = MethodId :-
     ClassProc = proc(PredId, _ProcId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     MethodName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    MethodId = tc_method_id(MethodName, Arity, PredOrFunc).
+    MethodId = tc_method_id(MethodName, PredFormArity, PredOrFunc).
 
 %---------------------------------------------------------------------------%
 

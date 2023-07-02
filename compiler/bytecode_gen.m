@@ -105,9 +105,9 @@ gen_preds(ModuleInfo, [PredId | PredIds], Code, !IO) :-
         gen_pred(PredId, ProcIds, PredInfo, ModuleInfo, ProcsCode, !IO),
         PredName = predicate_name(ModuleInfo, PredId),
         list.length(ProcIds, ProcsCount),
-        Arity = pred_info_orig_arity(PredInfo),
-        get_is_func(PredInfo, IsFunc),
-        EnterCode = cord.singleton(byte_enter_pred(PredName, Arity, IsFunc,
+        pred_info_get_orig_arity(PredInfo, pred_form_arity(Arity)),
+        get_is_func(PredInfo, IsFuncCode),
+        EnterCode = cord.singleton(byte_enter_pred(PredName, Arity, IsFuncCode,
             ProcsCount)),
         EndofCode = cord.singleton(byte_endof_pred),
         PredCode = EnterCode ++ ProcsCode ++ EndofCode
@@ -414,7 +414,8 @@ gen_call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
     call_gen.output_arg_locs(ArgVarsInfos, OutputArgs),
     gen_pickups(OutputArgs, ByteInfo, PickupArgs),
 
-    predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
+    predicate_id(ModuleInfo, PredId, ModuleName, PredName,
+        pred_form_arity(Arity)),
     proc_id_to_int(ProcId, ProcInt),
     Call = cord.singleton(
         byte_call(ModuleName, PredName, Arity, IsFunc, ProcInt)),
@@ -804,7 +805,8 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
     ;
         ConsId = closure_cons(ShroudedPredProcId, _EvalMethod),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
+        predicate_id(ModuleInfo, PredId, ModuleName, PredName,
+            pred_form_arity(Arity)),
 
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         get_is_func(PredInfo, IsFunc),

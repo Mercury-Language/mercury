@@ -215,8 +215,8 @@ maybe_polymorphism_process_pred(ProgressStream, PredId, !SafeToContinue,
     ( if
         PredModule = pred_info_module(PredInfo),
         PredName = pred_info_name(PredInfo),
-        PredArity = pred_info_orig_arity(PredInfo),
-        no_type_info_builtin(PredModule, PredName, PredArity)
+        pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
+        no_type_info_builtin(PredModule, PredName, PredFormArityInt)
     then
         true
     else

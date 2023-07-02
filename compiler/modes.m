@@ -1628,7 +1628,7 @@ proc_check_eval_methods_and_main(ModuleInfo, PredInfo, [ProcId | ProcIds],
     ),
     ( if
         pred_info_name(PredInfo) = "main",
-        pred_info_orig_arity(PredInfo) = 2,
+        pred_info_get_orig_arity(PredInfo, pred_form_arity(2)),
         pred_info_is_exported(PredInfo),
         not modes_are_valid_for_main(ModuleInfo, Modes)
     then
@@ -1803,16 +1803,15 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
     PredName = pred_info_name(PredInfo),
     Name = unqualified(PredName),
     pred_info_get_context(PredInfo, Context),
-    PredArity = pred_info_orig_arity(PredInfo),
+    pred_info_get_orig_arity(PredInfo, OrigPredFormArity),
     some [!ArgModes, !MaybeDet] (
         proc_info_get_argmodes(ProcInfo, !:ArgModes),
 
         % We need to strip off the extra type_info arguments inserted at the
-        % front by polymorphism.m - we only want the last `PredArity' of them.
-        %
-        list.length(!.ArgModes, NumArgModes),
-        NumToDrop = NumArgModes - PredArity,
-        ( if list.drop(NumToDrop, !ArgModes) then
+        % front by polymorphism.m - we only want the last `OrigPredFormArity'
+        % of them.
+        NumExtraArg = num_extra_args(OrigPredFormArity, !.ArgModes),
+        ( if list.drop(NumExtraArg, !ArgModes) then
             true
         else
             unexpected($pred, "list.drop failed")
@@ -1837,7 +1836,8 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
             % partial inference we did before detecting the error.
             mode_list_get_initial_insts(ModuleInfo, !.ArgModes, InitialInsts),
             DummyInst = defined_inst(user_inst(unqualified("..."), [])),
-            list.duplicate(PredArity, DummyInst, FinalInsts),
+            OrigPredFormArity = pred_form_arity(OrigPredFormArityInt),
+            list.duplicate(OrigPredFormArityInt, DummyInst, FinalInsts),
             !:ArgModes = list.map(func(I - F) = from_to_mode(I, F),
                 assoc_list.from_corresponding_lists(InitialInsts, FinalInsts)),
             % Likewise delete the determinism.

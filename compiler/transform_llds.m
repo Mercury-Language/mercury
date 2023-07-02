@@ -115,9 +115,9 @@ gen_end_label_module(ModuleName, LastModule) = EndLabelModule :-
         PredName, Arity, proc_id_to_int(ProcId)),
     Instrs = [llds_instr(label(entry_label(entry_label_local, ProcLabel)),
         "label to indicate end of previous procedure")],
-    DummyProc = c_procedure(PredName, Arity, proc(PredId, ProcId), ProcLabel,
-        model_det, eff_trace_level_none, Instrs, counter.init(0),
-        must_not_alter_rtti, set.init),
+    DummyProc = c_procedure(pf_predicate, PredName, user_arity(Arity),
+        proc(PredId, ProcId), ProcLabel, model_det, eff_trace_level_none,
+        Instrs, counter.init(0), must_not_alter_rtti, set.init),
     EndLabelModule = comp_gen_c_module(LastModule ++ "_END", [DummyProc]).
 
 %-----------------------------------------------------------------------------%

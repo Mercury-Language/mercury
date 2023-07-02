@@ -470,7 +470,7 @@ check_goal_for_exceptions_plain_call(SCC, VarTable, CallPredId, CallProcId,
             ModuleName = pred_info_module(CallPredInfo),
             any_mercury_builtin_module(ModuleName),
             Name = pred_info_name(CallPredInfo),
-            Arity = pred_info_orig_arity(CallPredInfo),
+            pred_info_get_orig_arity(CallPredInfo, pred_form_arity(Arity)),
             ( SpecialPredId = spec_pred_compare
             ; SpecialPredId = spec_pred_unify
             ),
@@ -483,10 +483,10 @@ check_goal_for_exceptions_plain_call(SCC, VarTable, CallPredId, CallProcId,
             )
         )
     then
-        % For unification/comparison the exception status depends upon the
-        % types of the arguments. In particular whether some component of
+        % For unifications/comparisons. the exception status depends upon the
+        % types of the arguments. In particular. on whether some component of
         % that type has a user-defined equality/comparison predicate that
-        % throws an exception.
+        % may throw an exception.
         module_info_get_globals(!.ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, intermodule_analysis,
             IntermodAnalysis),

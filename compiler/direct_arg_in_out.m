@@ -719,8 +719,8 @@ make_direct_arg_in_out_clone(ProgressStream, PredProcId, OoMInOutArgs,
         MaybeObsoleteInFavourOf, MaybeDeepProfProcInfo, MaybeArgSizes,
         MaybeTermInfo, Term2Info, MaybeExceptionInfo, MaybeTrailingInfo,
         MaybeMMTablingInfo, SharingInfo, ReuseInfo),
-    pred_prepare_to_clone(PredInfo0, ModuleName, PredName, OrigArity,
-        PredOrFunc, Origin, Status, Markers, ArgTypes,
+    pred_prepare_to_clone(PredInfo0, ModuleName, PredOrFunc,
+        PredName, OrigArity, Origin, Status, Markers, ArgTypes,
         DeclTypeVarSet, TypeVarSet, ExistQVars, PolyAddedArgs, ClassContext,
         ClausesInfo, _ProcTable, Context, CurUserDecl, GoalType,
         Kinds, ExistQVarBindings, HeadTypeParams,
@@ -764,7 +764,7 @@ make_direct_arg_in_out_clone(ProgressStream, PredProcId, OoMInOutArgs,
     CloneOrigin = origin_proc_transform(proc_transform_direct_arg_in_out,
         Origin, PredId, ProcId),
     CloneProcTable = map.singleton(ProcId, CloneProcInfo),
-    pred_create(ModuleName, ClonePredName, OrigArity, PredOrFunc,
+    pred_create(ModuleName, PredOrFunc, ClonePredName, OrigArity,
         CloneOrigin, Status, Markers, CloneArgTypes,
         DeclTypeVarSet, TypeVarSet, ExistQVars, PolyAddedArgs, ClassContext,
         ClausesInfo, CloneProcTable, Context, CurUserDecl, GoalType,
@@ -2074,24 +2074,25 @@ generate_error_if_cloned_proc_is_exported(ModuleInfo, DirectArgProcMap,
     then
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_get_name(PredInfo, PredName),
-        pred_info_get_orig_arity(PredInfo, OrigArity),
+        pred_info_get_is_pred_or_func(PredInfo, PorF),
+        pred_info_get_orig_arity(PredInfo, PredFormArity),
         % We don't print the module qualifier anyway.
-        PredSNA = sym_name_arity(unqualified(PredName), OrigArity),
-        generate_foreign_export_error(PredSNA, ExportedName, Context, Spec),
+        PFSNA = pf_sym_name_arity(PorF, unqualified(PredName), PredFormArity),
+        generate_foreign_export_error(PFSNA, ExportedName, Context, Spec),
         !:Specs = [Spec | !.Specs]
     else
         !:RevExportedProcs = [ExportedProc0 | !.RevExportedProcs]
     ).
 
-:- pred generate_foreign_export_error(sym_name_arity::in, string::in,
+:- pred generate_foreign_export_error(pf_sym_name_arity::in, string::in,
     prog_context::in, error_spec::out) is det.
 
-generate_foreign_export_error(PredSNA, ExportedName, Context, Spec) :-
+generate_foreign_export_error(PFSNA, ExportedName, Context, Spec) :-
     Pieces = [words("Error: the C code for"),
-        unqual_sym_name_arity(PredSNA), words("cannot be exported to C"),
-        words("as"), quote(ExportedName), suffix(","),
-        words("because"), unqual_sym_name_arity(PredSNA), words("has"),
-        words("a nonstandard and undocumented calling convention"),
+        unqual_pf_sym_name_pred_form_arity(PFSNA),
+        words("cannot be exported to C as"), quote(ExportedName), suffix(","),
+        words("because"), unqual_pf_sym_name_pred_form_arity(PFSNA),
+        words("has a nonstandard and undocumented calling convention"),
         words("due to interactions between its use of"),
         words("partially instantiated data structures"),
         words("and the"), quote("direct_arg"),

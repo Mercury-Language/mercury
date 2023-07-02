@@ -77,6 +77,8 @@
 
 :- type recomp_item_name
     --->    recomp_item_name(sym_name, arity).
+            % For predicates and functions, the arity is the pred_form_arity,
+            % I think (zs).
 
     % XXX RECOMP Consider splitting this type into two or more types,
     % one for each separate purpose. We use this, amongst other things,

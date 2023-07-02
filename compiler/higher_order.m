@@ -73,6 +73,7 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.
@@ -2343,8 +2344,9 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
     mercury_public_builtin_module = pred_info_module(CalledPredInfo),
     pred_info_module(CalledPredInfo) = mercury_public_builtin_module,
     PredName = pred_info_name(CalledPredInfo),
-    PredArity = pred_info_orig_arity(CalledPredInfo),
-    special_pred_name_arity(SpecialId, PredName, _, PredArity),
+    pred_info_get_orig_arity(CalledPredInfo,
+        pred_form_arity(PredFormArityInt)),
+    special_pred_name_arity(SpecialId, PredName, _, PredFormArityInt),
     special_pred_get_type(SpecialId, Args, Var),
     lookup_var_type(VarTable, Var, Type),
     Type \= type_variable(_, _),
@@ -3016,9 +3018,8 @@ output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, Indent,
         [HOArg | HOArgs], !IO) :-
     HOArg = higher_order_arg(ConsId, ArgNo, NumArgs, _, _, _,
         CurriedHOArgs, IsConst),
-    io.write_string(OutputStream, "% ", !IO),
-    list.duplicate(Indent + 1, "  ", Spaces),
-    list.foldl(io.write_string(OutputStream), Spaces, !IO),
+    Indent1Str = indent2_string(Indent + 1),
+    io.format(OutputStream, "%% %s", [s(Indent1Str)], !IO),
     (
         IsConst = yes,
         io.write_string(OutputStream, "const ", !IO)
@@ -3029,11 +3030,11 @@ output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, Indent,
         proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         Name = pred_info_name(PredInfo),
-        PredArity = pred_info_orig_arity(PredInfo),
+        pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
         % Adjust message for type_infos.
         DeclaredArgNo = ArgNo - NumToDrop,
         io.format(OutputStream, "HeadVar__%d = `%s'/%d",
-            [i(DeclaredArgNo), s(Name), i(PredArity)], !IO)
+            [i(DeclaredArgNo), s(Name), i(PredFormArityInt)], !IO)
     else if ConsId = type_ctor_info_const(TypeModule, TypeName, TypeArity) then
         io.format(OutputStream, "type_ctor_info for `%s'/%d",
             [s(sym_name_to_escaped_string(qualified(TypeModule, TypeName))),

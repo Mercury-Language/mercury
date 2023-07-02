@@ -556,7 +556,6 @@ predicate_documentation(C, PredInfo) = Xml :-
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
     PredName = qualified(Module, Name),
-    Arity = pred_info_orig_arity(PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
 
     Types = get_orig_arg_types(PredInfo),
@@ -569,7 +568,12 @@ predicate_documentation(C, PredInfo) = Xml :-
         IsPredOrFunc = pf_function,
         Tag = "function"
     ),
-    Id = sym_name_arity_to_id(Tag, PredName, Arity),
+    pred_info_get_orig_arity(PredInfo, PredInfoArity),
+    PredInfoArity = pred_form_arity(PredInfoArityInt),
+    % user_arity_pred_form_arity(IsPredOrFunc, UserArity, PredInfoArity),
+    % UserArity = user_arity(UserArityInt),
+    % XXX Should this be UserArityInt instead of PredInfoArityInt?
+    Id = sym_name_arity_to_id(Tag, PredName, PredInfoArityInt),
 
     XmlName = name_to_xml(PredName),
     XmlContext = prog_context_to_xml(Context),
@@ -593,7 +597,8 @@ predicate_documentation(C, PredInfo) = Xml :-
 
 get_orig_arg_types(PredInfo) = Types :-
     pred_info_get_arg_types(PredInfo, Types0),
-    Types = keep_last_n(pred_info_orig_arity(PredInfo), Types0).
+    pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArity)),
+    Types = keep_last_n(PredFormArity, Types0).
 
 :- import_module require.
 

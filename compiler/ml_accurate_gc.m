@@ -154,8 +154,9 @@ ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context, GCStmt,
         ml_type_might_contain_pointers_for_gc(MLDS_DeclType) = yes,
         % Don't generate GC tracing code in no_type_info_builtins.
         ml_gen_info_get_pred_proc_id(!.Info, proc(PredId, _ProcId)),
-        predicate_id(ModuleInfo, PredId, PredModule, PredName, PredArity),
-        not no_type_info_builtin(PredModule, PredName, PredArity)
+        predicate_id(ModuleInfo, PredId, PredModule, PredName, PredFormArity),
+        PredFormArity = pred_form_arity(PredFormArityInt),
+        not no_type_info_builtin(PredModule, PredName, PredFormArityInt)
     then
         (
             HowToGetTypeInfo = construct_from_type(ActualType0),

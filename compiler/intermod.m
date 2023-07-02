@@ -345,7 +345,7 @@ opt_exporting_pred_is_likely_worthwhile(Params, ModuleInfo,
     % At this point, the goal size includes some dummy unifications
     % HeadVar1 = X, HeadVar2 = Y, etc. which will be optimized away
     % later. To account for this, we add the arity to the size thresholds.
-    Arity = pred_info_orig_arity(PredInfo),
+    pred_info_get_orig_arity(PredInfo, pred_form_arity(Arity)),
     (
         inlining.is_simple_clause_list(Clauses,
             Params ^ ip_inline_simple_threshold + Arity)
@@ -1955,9 +1955,8 @@ intermod_gather_pred_marker_pragmas(PredInfo, PredMarkerPragmas) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredSymName = qualified(ModuleName, PredName),
-    PredFormArity = pred_info_orig_arity(PredInfo),
-    user_arity_pred_form_arity(PredOrFunc, UserArity,
-        pred_form_arity(PredFormArity)),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     pred_info_get_markers(PredInfo, Markers),
     markers_to_marker_list(Markers, MarkerList),
     intermod_gather_pred_marker_pragmas_loop(PredOrFunc,

@@ -3640,15 +3640,15 @@ accumulate_cons_type_infos_for_pred_id(Info, PredTable, GoalId,
     typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_class_table(ModuleInfo, ClassTable),
     map.lookup(PredTable, PredId, PredInfo),
-    PredArity = pred_info_orig_arity(PredInfo),
-    IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
+    pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc),
     pred_info_get_class_context(PredInfo, PredClassContext),
     pred_info_get_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
         CompleteArgTypes),
     pred_info_get_purity(PredInfo, Purity),
     ( if
         IsPredOrFunc = pf_predicate,
-        PredArity >= FuncArity,
+        PredFormArityInt >= FuncArity,
         % We don't support first-class polymorphism, so you can't take the
         % address of an existentially quantified predicate.
         PredExistQVars = []
@@ -3664,7 +3664,7 @@ accumulate_cons_type_infos_for_pred_id(Info, PredTable, GoalId,
         !:ConsTypeInfos = [ConsTypeInfo | !.ConsTypeInfos]
     else if
         IsPredOrFunc = pf_function,
-        PredAsFuncArity = PredArity - 1,
+        PredAsFuncArity = PredFormArityInt - 1,
         PredAsFuncArity >= FuncArity,
         % We don't support first-class polymorphism, so you can't take
         % the address of an existentially quantified function. You can however

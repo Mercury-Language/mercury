@@ -385,7 +385,8 @@ gen_tc_id_method_ids(RttiId, TCName, MethodIds, !GlobalData) :-
 :- func gen_tc_id_method_id(tc_name, tc_method_id) = mlds_initializer.
 
 gen_tc_id_method_id(TCName, MethodId) = Initializer :-
-    MethodId = tc_method_id(MethodName, MethodArity, PredOrFunc),
+    MethodId =
+        tc_method_id(MethodName, pred_form_arity(MethodArity), PredOrFunc),
     RttiId = tc_rtti_id(TCName, type_class_id_method_ids),
     Initializer = init_struct(mlds_rtti_type(element_type(RttiId)), [
         gen_init_string(MethodName),

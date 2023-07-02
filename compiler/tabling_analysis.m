@@ -435,12 +435,13 @@ check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTable, Result,
         ModuleName = pred_info_module(CalleePredInfo),
         any_mercury_builtin_module(ModuleName),
         Name = pred_info_name(CalleePredInfo),
-        Arity = pred_info_orig_arity(CalleePredInfo),
+        pred_info_get_orig_arity(CalleePredInfo,
+            pred_form_arity(PredFormArityInt)),
         ( SpecialPredId = spec_pred_compare
         ; SpecialPredId = spec_pred_unify
         ),
         special_pred_name_arity(SpecialPredId, GenericPredName,
-            _TypeSpecificPredName, Arity),
+            _TypeSpecificPredName, PredFormArityInt),
         Name = GenericPredName
     then
         % XXX user-defined uc
@@ -744,12 +745,13 @@ mm_tabling_annotate_call(VarTable, CalleePPId, CallArgs, Status,
         ModuleName = pred_info_module(CalleePredInfo),
         any_mercury_builtin_module(ModuleName),
         Name = pred_info_name(CalleePredInfo),
-        Arity = pred_info_orig_arity(CalleePredInfo),
+        pred_info_get_orig_arity(CalleePredInfo,
+            pred_form_arity(PredFormArityInt)),
         ( SpecialPredId = spec_pred_compare
         ; SpecialPredId = spec_pred_unify
         ),
         special_pred_name_arity(SpecialPredId, GenericPredName,
-            _TypeSpecPredName, Arity),
+            _TypeSpecPredName, PredFormArityInt),
         Name = GenericPredName
     then
         % XXX user-defined uc

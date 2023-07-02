@@ -1,15 +1,15 @@
-gh72_errors.m:043: Error: the C code for `test_export_1'/3 cannot be exported
-gh72_errors.m:043:   to C as `exported_test_export_1', because
-gh72_errors.m:043:   `test_export_1'/3 has a nonstandard and undocumented
-gh72_errors.m:043:   calling convention due to interactions between its use of
-gh72_errors.m:043:   partially instantiated data structures and the
-gh72_errors.m:043:   `direct_arg' data representation optimization.
-gh72_errors.m:055: Error: the C code for `test_export_2'/5 cannot be exported
-gh72_errors.m:055:   to C as `exported_test_export_2', because
-gh72_errors.m:055:   `test_export_2'/5 has a nonstandard and undocumented
-gh72_errors.m:055:   calling convention due to interactions between its use of
-gh72_errors.m:055:   partially instantiated data structures and the
-gh72_errors.m:055:   `direct_arg' data representation optimization.
+gh72_errors.m:043: Error: the C code for predicate `test_export_1'/3 cannot be
+gh72_errors.m:043:   exported to C as `exported_test_export_1', because
+gh72_errors.m:043:   predicate `test_export_1'/3 has a nonstandard and
+gh72_errors.m:043:   undocumented calling convention due to interactions
+gh72_errors.m:043:   between its use of partially instantiated data structures
+gh72_errors.m:043:   and the `direct_arg' data representation optimization.
+gh72_errors.m:055: Error: the C code for predicate `test_export_2'/5 cannot be
+gh72_errors.m:055:   exported to C as `exported_test_export_2', because
+gh72_errors.m:055:   predicate `test_export_2'/5 has a nonstandard and
+gh72_errors.m:055:   undocumented calling convention due to interactions
+gh72_errors.m:055:   between its use of partially instantiated data structures
+gh72_errors.m:055:   and the `direct_arg' data representation optimization.
 gh72_errors.m:082: Error: a procedure implemented using a
 gh72_errors.m:082:   `:- pragma foreign_proc' declaration may not have any
 gh72_errors.m:082:   arguments whose types use the `direct_arg' data

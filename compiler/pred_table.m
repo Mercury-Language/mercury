@@ -1342,7 +1342,7 @@ get_single_proc_id(ModuleInfo, PredId, ProcId) :-
     else
         Name = pred_info_name(PredInfo),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-        Arity = pred_info_orig_arity(PredInfo),
+        user_arity(Arity) = pred_info_user_arity(PredInfo),
         PredOrFuncStr = parse_tree_out_misc.pred_or_func_to_str(PredOrFunc),
         string.int_to_string(Arity, ArityString),
         (

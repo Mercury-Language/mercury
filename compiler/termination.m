@@ -696,8 +696,9 @@ set_compiler_gen_terminates(ModuleInfo, PredInfo, ProcIds, PredId,
         ( if
             ModuleName = pred_info_module(PredInfo),
             Name = pred_info_name(PredInfo),
-            Arity = pred_info_orig_arity(PredInfo),
-            special_pred_name_arity(SpecPredId0, Name, _, Arity),
+            pred_info_get_orig_arity(PredInfo,
+                pred_form_arity(PredFormArityInt)),
+            special_pred_name_arity(SpecPredId0, Name, _, PredFormArityInt),
             any_mercury_builtin_module(ModuleName)
         then
             SpecialPredId = SpecPredId0

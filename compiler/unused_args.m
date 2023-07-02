@@ -169,6 +169,7 @@
 
 :- type unused_args_func_info
     --->    unused_args_func_info(arity).
+            % XXX ARITY Say whether this is a pred_form_arity or a user_arity.
 
 :- type unused_args_call
     --->    unused_args_call.
@@ -194,8 +195,8 @@ get_unused_args(UnusedArgs) = UnusedArgs ^ args.
     (get_func_info(ModuleInfo, ModuleName, FuncId, _, _, FuncInfo) :-
         func_id_to_ppid(ModuleInfo, ModuleName, FuncId, proc(PredId, _)),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        Arity = pred_info_orig_arity(PredInfo),
-        FuncInfo = unused_args_func_info(Arity)
+        pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
+        FuncInfo = unused_args_func_info(PredFormArityInt)
     )
 ].
 
@@ -442,8 +443,9 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcIds, !OptProcs,
             not is_unify_index_or_compare_pred(PredInfo)
         then
             PredModuleName = pred_info_module(PredInfo),
-            PredArity = pred_info_orig_arity(PredInfo),
-            FuncInfo = unused_args_func_info(PredArity),
+            pred_info_get_orig_arity(PredInfo,
+                pred_form_arity(PredFormArityInt)),
+            FuncInfo = unused_args_func_info(PredFormArityInt),
             module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
             module_name_func_id_from_pred_info(PredInfo, ProcId, ModuleId,
                 FuncId),
@@ -1099,8 +1101,9 @@ unused_args_create_new_pred(UnusedArgInfo, OrigPredProcId,
         IntermodOldAnswers = list.map((func(R) = R ^ ar_answer),
             IntermodResultsTriples),
 
-        PredArity = pred_info_orig_arity(OrigPredInfo),
-        FuncInfo = unused_args_func_info(PredArity),
+        pred_info_get_orig_arity(OrigPredInfo,
+            pred_form_arity(PredFormArityInt)),
+        FuncInfo = unused_args_func_info(PredFormArityInt),
         Answer = unused_args_answer(UnusedArgs),
 
         FilterUnused =
@@ -1404,11 +1407,16 @@ unused_args_fixup_proc(VeryVerbose, VarUsage, ProcCallInfo, PredProcId,
         trace [io(!IO)] (
             get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
             PredProcId = proc(PredId, ProcId),
-            Name = predicate_name(!.ModuleInfo, PredId),
-            Arity = predicate_arity(!.ModuleInfo, PredId),
+            module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+            pred_info_get_name(PredInfo, Name),
+            pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+            pred_info_get_orig_arity(PredInfo, PredFormArity),
+            user_arity_pred_form_arity(PredOrFunc,
+                user_arity(UserArityInt), PredFormArity),
             proc_id_to_int(ProcId, ProcInt),
-            io.format(DebugStream, "%% Fixing up `%s/%d in mode %d\n",
-                [s(Name), i(Arity), i(ProcInt)], !IO)
+            io.format(DebugStream, "%% Fixing up %s `%s/%d in mode %d\n",
+                [s(pred_or_func_to_str(PredOrFunc)), s(Name),
+                i(UserArityInt), i(ProcInt)], !IO)
         )
     ;
         VeryVerbose = no
@@ -1873,13 +1881,12 @@ maybe_gather_warning(ModuleInfo, PredInfo, PredId, ProcId, UnusedArgs0,
         set.insert(PredId, !WarnedPredIds),
         pred_info_get_proc_table(PredInfo, Procs),
         map.lookup(Procs, ProcId, Proc),
+        pred_info_get_orig_arity(PredInfo, PredFormArity),
         proc_info_get_headvars(Proc, HeadVars),
-        list.length(HeadVars, NumHeadVars),
-
+        NumExtraArgs = num_extra_args(PredFormArity, HeadVars),
         % Strip off the extra type_info/typeclass_info arguments
         % inserted at the front by polymorphism.m.
-        NumToDrop = NumHeadVars - pred_info_orig_arity(PredInfo),
-        drop_poly_inserted_args(NumToDrop, UnusedArgs0, UnusedArgs),
+        drop_poly_inserted_args(NumExtraArgs, UnusedArgs0, UnusedArgs),
         (
             UnusedArgs = [_ | _],
             Spec = report_unused_args(ModuleInfo, PredInfo, UnusedArgs),
@@ -1920,8 +1927,10 @@ report_unused_args(_ModuleInfo, PredInfo, UnusedArgs) = Spec :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
-    SNA = sym_name_arity(qualified(ModuleName, PredName), Arity),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
+    user_arity_pred_form_arity(PredOrFunc,
+        user_arity(UserArityInt), PredFormArity),
+    SNA = sym_name_arity(qualified(ModuleName, PredName), UserArityInt),
     Pieces1 = [words("In"), fixed(pred_or_func_to_full_str(PredOrFunc)),
         qual_sym_name_arity(SNA), suffix(":"), nl, words("warning:")],
     ( if NumArgs = 1 then
@@ -1978,9 +1987,8 @@ maybe_gather_unused_args_pragma(PredInfo, ProcId, UnusedArgs,
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         PredName = pred_info_name(PredInfo),
         PredSymName = qualified(ModuleName, PredName),
-        PredFormArity = pred_info_orig_arity(PredInfo),
-        user_arity_pred_form_arity(PredOrFunc, UserArity,
-            pred_form_arity(PredFormArity)),
+        pred_info_get_orig_arity(PredInfo, PredFormArity),
+        user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
         proc_id_to_int(ProcId, ModeNum),
         PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, PredSymName,
             UserArity, ModeNum),

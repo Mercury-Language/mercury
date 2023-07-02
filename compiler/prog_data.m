@@ -2082,6 +2082,13 @@ valid_trace_grade_name(GradeName) :-
 
 :- func arg_list_arity(list(T)) = pred_form_arity.
 
+    % Given a predicate or function's *original* pred_form_arity,
+    % and its *current* list of arguments (in the form of arg variables,
+    % arg types, arg modes, etc), return the number of extra arguments
+    % added to the original arguments.
+    %
+:- func num_extra_args(pred_form_arity, list(T)) = int.
+
     % Describes whether an item can be used without an explicit module
     % qualifier.
     %
@@ -2099,7 +2106,13 @@ valid_trace_grade_name(GradeName) :-
 
 :- implementation.
 
+:- import_module int.
+
 arg_list_arity(ArgList) = pred_form_arity(list.length(ArgList)).
+
+num_extra_args(pred_form_arity(OrigNumArgs), Args) = NumExtraArgs :-
+    list.length(Args, NumArgs),
+    NumExtraArgs = NumArgs - OrigNumArgs.
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_data.

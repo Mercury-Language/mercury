@@ -1250,8 +1250,9 @@ output_annotated_c_procedure(Info, Stream, AnnotatedProc, !IO) :-
     Proc = AnnotatedProc ^ acp_proc,
     LabelOutputInfo = AnnotatedProc ^ acp_label_output_info,
 
+    PorF = Proc ^ cproc_p_or_f,
     Name = Proc ^ cproc_name,
-    Arity = Proc ^ cproc_orig_arity,
+    user_arity(Arity) = Proc ^ cproc_user_arity,
     Instrs = Proc ^ cproc_code,
     PredProcId = Proc ^ cproc_id,
     PredProcId = proc(_, ProcId),
@@ -1261,8 +1262,8 @@ output_annotated_c_procedure(Info, Stream, AnnotatedProc, !IO) :-
     io.write_string(Stream, "------------------------------------*/\n", !IO),
     % Now that we have unused_args.m mangling predicate names,
     % we should probably demangle them here.
-    io.format(Stream, "/* code for '%s'/%d mode %d */\n",
-        [s(Name), i(Arity), i(ModeNum)], !IO),
+    io.format(Stream, "/* code for %s '%s'/%d mode %d */\n",
+        [s(pred_or_func_to_str(PorF)), s(Name), i(Arity), i(ModeNum)], !IO),
 
     LocalThreadEngineBase = Info ^ lout_local_thread_engine_base,
     (

@@ -508,7 +508,7 @@
 :- type tc_method_id
     --->    tc_method_id(
                 tcm_name                :: string,
-                tcm_arity               :: int,
+                tcm_arity               :: pred_form_arity,
                 tcm_pred_or_func        :: pred_or_func
             ).
 

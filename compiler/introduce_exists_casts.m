@@ -121,8 +121,8 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     pred_info_get_arg_types(PredInfo, ArgTypes),
     pred_info_get_existq_tvar_binding(PredInfo, Subn),
     pred_info_get_class_context(PredInfo, PredConstraints),
-    OrigArity = pred_info_orig_arity(PredInfo),
-    NumExtraHeadVars = list.length(ArgTypes) - OrigArity,
+    pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
+    NumExtraHeadVars = list.length(ArgTypes) - PredFormArityInt,
 
     proc_info_get_var_table(!.ProcInfo, VarTable0),
     proc_info_get_headvars(!.ProcInfo, HeadVars0),

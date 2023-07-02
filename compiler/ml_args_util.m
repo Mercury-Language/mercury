@@ -546,8 +546,9 @@ ml_gen_info_proc_params(PredProcId, ArgTuples, FuncParams,
     % that don't get passed.
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
-    PredArity = pred_info_orig_arity(PredInfo),
-    ( if no_type_info_builtin(PredModule, PredName, PredArity) then
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
+    PredFormArity = pred_form_arity(PredFormArityInt),
+    ( if no_type_info_builtin(PredModule, PredName, PredFormArityInt) then
         ml_gen_params_base(ModuleInfo, PredOrFunc, CodeModel,
             input_and_output_params, ArgTuples, FuncParams,
             ByRefOutputVars, CopiedOutputVars, no, _)
