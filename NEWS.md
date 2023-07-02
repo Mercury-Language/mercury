@@ -1094,6 +1094,10 @@ Changes to the Mercury language
   and the supplied values, even if the module is compiled with
   `--warn-unknown-format-calls`.
 
+* Floating point number literals may now contain an underscore
+  between the digits forming the fraction part and the `e` or `E` that
+  introduces the exponent part.
+
 Changes to the Mercury compiler
 -------------------------------
 

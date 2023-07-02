@@ -4086,14 +4086,8 @@ get_number(Stream, !.LastDigit, !.RevChars, Token, !IO) :-
             get_integer_size_suffix(Stream, !.RevChars, base_10, signed,
                 Token, !IO)
         else if ( Char = 'e' ; Char = 'E' ) then
-            (
-                !.LastDigit = last_digit_is_not_underscore,
-                !:RevChars = [Char | !.RevChars],
-                get_float_exponent(Stream, !.RevChars, Token, !IO)
-            ;
-                !.LastDigit = last_digit_is_underscore,
-                Token = report_underscore_before_exponent
-            )
+            !:RevChars = [Char | !.RevChars],
+            get_float_exponent(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             (
@@ -4156,15 +4150,8 @@ string_get_number(String, Len, !.LastDigit, Posn0, Token, Context, !Posn) :-
                 ( Char = 'e'
                 ; Char = 'E'
                 ),
-                (
-                    !.LastDigit = last_digit_is_not_underscore,
-                    string_get_float_exponent(String, Len, Posn0,
-                        TokenPrime, ContextPrime, !Posn)
-                ;
-                    !.LastDigit = last_digit_is_underscore,
-                    TokenPrime = report_underscore_before_exponent,
-                    string_get_context(Posn0, ContextPrime)
-                )
+                string_get_float_exponent(String, Len, Posn0,
+                    TokenPrime, ContextPrime, !Posn)
             )
         then
             Token = TokenPrime,
@@ -4252,16 +4239,9 @@ linestr_get_number(String, Len, !.LastDigit, LineContext0, LinePosn0,
                 ( Char = 'e'
                 ; Char = 'E'
                 ),
-                (
-                    !.LastDigit = last_digit_is_not_underscore,
-                    linestr_get_float_exponent(String, Len,
-                        LineContext0, LinePosn0,
-                        TokenPrime, ContextPrime, !LineContext, !LinePosn)
-                ;
-                    !.LastDigit = last_digit_is_underscore,
-                    TokenPrime = report_underscore_before_exponent,
-                    linestr_get_context(LineContext0, ContextPrime)
-                )
+                linestr_get_float_exponent(String, Len,
+                    LineContext0, LinePosn0, TokenPrime, ContextPrime,
+                    !LineContext, !LinePosn)
             )
         then
             Token = TokenPrime,
@@ -5138,12 +5118,6 @@ report_exponent_ends_in_underscore =
 report_underscore_before_decimal_point =
     error("an underscore should separate two digits; " ++
         "it should not appear just before a decimal point").
-
-:- func report_underscore_before_exponent = token.
-
-report_underscore_before_exponent =
-    error("an underscore should separate two digits; " ++
-        "it should not appear just before an exponent").
 
 %---------------------------------------------------------------------------%
 
