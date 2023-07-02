@@ -78,6 +78,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.make_goal.
+:- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
@@ -501,7 +502,9 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
         simplify_info_get_module_info(!.Info, ModuleInfo),
         module_info_pred_info(ModuleInfo, ThisPredId, ThisPredInfo),
         pred_info_get_obsolete_in_favour_of(ThisPredInfo, ThisMaybeObsolete),
-        ThisMaybeObsolete = no
+        ThisMaybeObsolete = no,
+        pred_info_get_origin(ThisPredInfo, ThisPredOrigin),
+        maybe_warn_obsolete_for_origin(ThisPredOrigin) = yes
     then
         GoalContext = goal_info_get_context(GoalInfo),
         MainPieces = [words("Warning: call to obsolete")] ++
@@ -534,6 +537,20 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
 
 wrap_sym_name_arity(SymNameAndArity) =
     qual_sym_name_arity(SymNameAndArity).
+
+:- func maybe_warn_obsolete_for_origin(pred_origin) = bool.
+
+maybe_warn_obsolete_for_origin(Origin) = MaybeWarnObsolete :-
+    (
+        Origin = origin_user(_),
+        MaybeWarnObsolete = yes
+    ;
+        ( Origin = origin_compiler(_)
+        ; Origin = origin_pred_transform(_, _, _)
+        ; Origin = origin_proc_transform(_, _, _, _)
+        ),
+        MaybeWarnObsolete = no
+    ).
 
 %---------------------%
 

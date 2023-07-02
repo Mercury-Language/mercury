@@ -3219,6 +3219,8 @@ long_option("format-2023-01-27",
                                     compiler_sufficiently_recent).
 long_option("singleton-2023-06-10",
                                     compiler_sufficiently_recent).
+long_option("warn-obsolete-transform-2023-07-03",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("experiment1",          experiment1).
 long_option("experiment2",          experiment2).
