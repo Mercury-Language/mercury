@@ -483,8 +483,8 @@ check_goal_for_exceptions_plain_call(SCC, VarTable, CallPredId, CallProcId,
             )
         )
     then
-        % For unifications/comparisons. the exception status depends upon the
-        % types of the arguments. In particular. on whether some component of
+        % For unifications/comparisons, the exception status depends upon the
+        % types of the arguments. In particular, on whether some component of
         % that type has a user-defined equality/comparison predicate that
         % may throw an exception.
         module_info_get_globals(!.ModuleInfo, Globals),
