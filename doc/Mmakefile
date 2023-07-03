@@ -271,6 +271,7 @@ library-chapters.texi_pp: ../VERSION $(LIBRARY_DIR)/*.m
 		echo "@chapter $$file"; 				\
 		echo "@example"; 					\
 		sed -n -e '/:- implementation/q' 			\
+			-e '/UNDOC_PART_START/,/UNDOC_PART_END/d'	\
 			-e '/NOTE_TO_IMPLEMENTORS/d'			\
 			-e 's/^%----*----% *$$/%--------------------------------------------------%/' 	\
 			-e 's/@/@@/g' 					\
