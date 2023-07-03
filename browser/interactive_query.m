@@ -624,7 +624,7 @@ write_comma_var(OutputStream, Var, !IO) :-
 
 write_module_import(OutputStream, ModuleName, !IO) :-
     io.write_string(OutputStream, ":- import_module ", !IO),
-    term_io.quote_atom(OutputStream, ModuleName, !IO),
+    term_io.format_quoted_atom(OutputStream, ModuleName, !IO),
     io.write_string(OutputStream, ".\n", !IO).
 
 %---------------------------------------------------------------------------%

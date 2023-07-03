@@ -405,13 +405,13 @@ write_purity_prefix(Purity, Stream, !IO) :-
     io::di, io::uo) is det.
 
 write_quoted_atom(Atom, Stream, !IO) :-
-    term_io.quote_atom(Stream, Atom, !IO).
+    term_io.format_quoted_atom(Stream, Atom, !IO).
 
 :- pred write_quoted_string(string::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 
 write_quoted_string(Str, Stream, !IO) :-
-    term_io.quote_string(Stream, Str, !IO).
+    term_io.format_quoted_string(Stream, Str, !IO).
 
 :- pred write_constant(const::in, io.text_output_stream::in,
     io::di, io::uo) is det.
@@ -438,7 +438,7 @@ write_lambda_eval_method(LambdaEvalMethod, Stream, !IO) :-
     io::di, io::uo) is det.
 
 write_escaped_string(Str, Stream, !IO) :-
-    term_io.write_escaped_string(Stream, Str, !IO).
+    term_io.format_escaped_string(Stream, Str, !IO).
 
 %-------------%
 
@@ -568,7 +568,7 @@ output_quoted_string(A, _, Str0, Str) :-
 :- pred output_constant(const::in, unit::in, string::di, string::uo) is det.
 
 output_constant(C, _, Str0, Str) :-
-    CS = term_io.format_constant(C),
+    CS = term_io.constant_to_string(C),
     string.append(Str0, CS, Str).
 
 :- pred output_escaped_string(string::in, unit::in,

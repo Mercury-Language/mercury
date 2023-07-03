@@ -109,7 +109,7 @@ value_to_revstrings_prio(NonCanon, OpTable, Priority, X, !Rs) :-
     ( if dynamic_cast(X, String) then
         add_revstring(term_io.quoted_string(String), !Rs)
     else if dynamic_cast(X, Char) then
-        add_revstring(term_io.quoted_char(Char), !Rs)
+        add_revstring(term_io.quoted_char_to_string(Char), !Rs)
     else if dynamic_cast(X, Int) then
         add_revstring(string.int_to_string(Int), !Rs)
     else if dynamic_cast(X, UInt) then

@@ -16,7 +16,7 @@
 % string builder state by calling the init function. You can then use
 % any instances of stream.writer that write strings or characters to update the
 % string builder state, using string.builder.handle as the stream argument.
-% Once you've finished writing to the string builder you can get the final
+% Once you have finished writing to the string builder, you can get the final
 % string by calling string.builder.to_string/1.
 %
 % For example:
@@ -78,25 +78,25 @@ init = state([]).
 :- instance stream.writer(string.builder.handle, string, string.builder.state)
         where [
     ( put(_, String, !State) :-
-        !.State = state(StringList0),
+        !.State = state(RevStrings0),
         copy(String, UniqueString),
-        StringList = [UniqueString | StringList0],
-        !:State = state(StringList)
+        RevStrings = [UniqueString | RevStrings0],
+        !:State = state(RevStrings)
     )
 ].
 
 :- instance stream.writer(string.builder.handle, char, string.builder.state)
         where [
     ( put(_, Char, !State) :-
-        !.State = state(StringList0),
-        StringList = [string.from_char(Char) | StringList0],
-        !:State = state(StringList)
+        !.State = state(RevStrings0),
+        RevStrings = [string.from_char(Char) | RevStrings0],
+        !:State = state(RevStrings)
     )
 ].
 
 to_string(State) = String :-
-    State = state(StringList),
-    String = string.append_list(list.reverse(StringList)).
+    State = state(RevStrings),
+    String = string.append_list(list.reverse(RevStrings)).
 
 %---------------------------------------------------------------------------%
 :- end_module string.builder.

@@ -254,9 +254,9 @@ sym_name_to_escaped_string(unqualified(Name)) =
 write_sym_name(Stream, qualified(Module, Name), !IO) :-
     write_sym_name(Stream, Module, !IO),
     io.write_string(Stream, ".", !IO),
-    term_io.write_escaped_string(Stream, Name, !IO).
+    term_io.format_escaped_string(Stream, Name, !IO).
 write_sym_name(Stream, unqualified(Name), !IO) :-
-    term_io.write_escaped_string(Stream, Name, !IO).
+    term_io.format_escaped_string(Stream, Name, !IO).
 
 write_quoted_sym_name(Stream, SymName, !IO) :-
     io.write_string(Stream, "'", !IO),

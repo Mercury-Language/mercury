@@ -657,7 +657,7 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
         % and 'z' should acceptable too. I (zs) think that 'z' should
         % be acceptable to the scanner and parser (which currently it isn't),
         % but (z) should not be.
-        Str = "(" ++ term_io.quoted_char(Char) ++ ")"
+        Str = "(" ++ term_io.quoted_char_to_string(Char) ++ ")"
     ;
         ConsId = string_const(String),
         Str = functor_to_string(VarNameSrc, VarNamePrint,
@@ -795,7 +795,7 @@ cons_id_and_vars_or_arity_to_string(VarTable, Qual, ConsId, MaybeArgVars)
         String = float_to_string(Float)
     ;
         ConsId = char_const(CharConst),
-        String = term_io.quoted_char(CharConst)
+        String = term_io.quoted_char_to_string(CharConst)
     ;
         ConsId = string_const(StringConst),
         String = term_io.quoted_string(StringConst)

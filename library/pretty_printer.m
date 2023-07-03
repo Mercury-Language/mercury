@@ -1701,7 +1701,7 @@ set_default_params(Params, !IO) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-char_to_doc(C) = str(term_io.quoted_char(C)).
+char_to_doc(C) = str(term_io.quoted_char_to_string(C)).
 
 string_to_doc(S) = str(term_io.quoted_string(S)).
 

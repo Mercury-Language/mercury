@@ -912,7 +912,7 @@ foreign_type_assertion_to_string(Assertion) = Str :-
     io::di, io::uo) is det.
 
 mercury_output_functor_name(FunctorName, Stream, !IO) :-
-    term_io.quote_string(Stream, FunctorName, !IO).
+    term_io.format_quoted_string(Stream, FunctorName, !IO).
 
     % Output one functor's name in a list of functor names.
     %

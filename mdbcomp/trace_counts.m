@@ -879,7 +879,7 @@ write_proc_label_and_file_trace_counts(OutputStream, ProcLabelInContext,
     else
         ModuleName = sym_name_to_string(ModuleNameSym),
         io.write_string(OutputStream, "module ", !IO),
-        term_io.quote_atom(OutputStream, ModuleName, !IO),
+        term_io.format_quoted_atom(OutputStream, ModuleName, !IO),
         io.write_string(OutputStream, "\n", !IO),
         !:CurModuleNameSym = ModuleNameSym
     ),
@@ -887,7 +887,7 @@ write_proc_label_and_file_trace_counts(OutputStream, ProcLabelInContext,
         true
     else
         io.write_string(OutputStream, "file ", !IO),
-        term_io.quote_atom(OutputStream, FileName, !IO),
+        term_io.format_quoted_atom(OutputStream, FileName, !IO),
         io.write_string(OutputStream, "\n", !IO),
         !:CurFileName = FileName
     ),
@@ -920,7 +920,7 @@ write_proc_label(OutputStream, ProcLabel, !IO) :-
             else
                 DeclModule = sym_name_to_string(DeclModuleSym),
                 io.write_string(OutputStream, "pprocdecl ", !IO),
-                term_io.quote_atom(OutputStream, DeclModule, !IO),
+                term_io.format_quoted_atom(OutputStream, DeclModule, !IO),
                 io.write_string(OutputStream, " ", !IO)
             )
         ;
@@ -930,11 +930,11 @@ write_proc_label(OutputStream, ProcLabel, !IO) :-
             else
                 DeclModule = sym_name_to_string(DeclModuleSym),
                 io.write_string(OutputStream, "fprocdecl ", !IO),
-                term_io.quote_atom(OutputStream, DeclModule, !IO),
+                term_io.format_quoted_atom(OutputStream, DeclModule, !IO),
                 io.write_string(OutputStream, " ", !IO)
             )
         ),
-        term_io.quote_atom(OutputStream, Name, !IO),
+        term_io.format_quoted_atom(OutputStream, Name, !IO),
         io.format(OutputStream, " %d %d\n", [i(Arity), i(Mode)], !IO)
     ;
         % We don't record trace counts in special preds.

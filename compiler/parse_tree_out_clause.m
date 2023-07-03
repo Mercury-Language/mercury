@@ -863,7 +863,7 @@ mercury_output_trace_compiletime(CompileTime, Stream, !IO) :-
 
 mercury_output_trace_runtime(trace_envvar(EnvVarName), Stream, !IO) :-
     io.write_string(Stream, "env(", !IO),
-    term_io.quote_string(Stream, EnvVarName, !IO),
+    term_io.format_quoted_string(Stream, EnvVarName, !IO),
     io.write_string(Stream, ")", !IO).
 
 %---------------------------------------------------------------------------%

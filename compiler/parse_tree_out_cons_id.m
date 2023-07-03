@@ -151,7 +151,7 @@ mercury_format_cons_id(Lang, NeedsBrackets, ConsId, S, !U) :-
         add_float(Float, S, !U)
     ;
         ConsId = char_const(Char),
-        add_string(term_io.quoted_char(Char), S, !U)
+        add_string(term_io.quoted_char_to_string(Char), S, !U)
     ;
         ConsId = string_const(Str),
         add_quoted_string(Str, S, !U)
@@ -287,7 +287,7 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, ConsId)
         String = float_to_string(Float)
     ;
         ConsId = char_const(CharConst),
-        String = term_io.quoted_char(CharConst)
+        String = term_io.quoted_char_to_string(CharConst)
     ;
         ConsId = string_const(StringConst),
         String = term_io.quoted_string(StringConst)

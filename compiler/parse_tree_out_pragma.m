@@ -473,9 +473,9 @@ mercury_format_escaped_char(S, Char, !U) :-
     %
 :- pred escape_special_char(char::in, char::out) is semidet.
 
+escape_special_char('\\', '\\').
 escape_special_char('''', '''').
 escape_special_char('"', '"').
-escape_special_char('\\', '\\').
 escape_special_char('\b', 'b').
 
     % Succeed if Char is a character which is allowed in

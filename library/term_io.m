@@ -62,16 +62,21 @@
 
 %---------------------%
 
+    % Convert the given constant to a string.
+    %
+:- func format_constant(const) = string.
+% NOTE_TO_IMPLEMENTORS OBS :- pragma obsolete(func(format_constant/1), [constant_to_string/1]).
+:- func constant_to_string(const) = string.
+
     % Writes a constant (integer, float, string, or atom) to
     % the current output stream, or to the specified output stream.
     %
 :- pred write_constant(const::in, io::di, io::uo) is det.
 :- pred write_constant(io.text_output_stream::in, const::in,
     io::di, io::uo) is det.
-
-    % Like write_constant, but return the result in a string.
-    %
-:- func format_constant(const) = string.
+:- pred format_constant(Stream::in, const::in, State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
 
 %---------------------%
 
@@ -92,32 +97,51 @@
 
 %---------------------%
 
-    % Given a character C, write C in single-quotes, escaped if necessary,
+    % Given a character C, return C, escaped if necessary, in single-quotes.
+    %
+:- func quoted_char(char) = string.
+% NOTE_TO_IMPLEMENTORS OBS :- pragma obsolete(func(quoted_char/1), [quoted_char_to_string/1]).
+:- func quoted_char_to_string(char) = string.
+
+    % Given a character C, write C, escaped if necessary, in single-quotes,
     % to the current output stream, or to the specified output stream.
     %
 :- pred quote_char(char::in, io::di, io::uo) is det.
+% NOTE_TO_IMPLEMENTORS OBS :- pragma obsolete(pred(quote_char/3), [write_quoted_char/3]).
+:- pred write_quoted_char(char::in, io::di, io::uo) is det.
+:- pred write_quoted_char(io.text_output_stream::in, char::in,
+    io::di, io::uo) is det.
 :- pred quote_char(Stream::in, char::in, State::di, State::uo) is det
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
+% NOTE_TO_IMPLEMENTORS OBS :- pragma obsolete(pred(quote_char/4), [format_quoted_char/4]).
+:- pred format_quoted_char(Stream::in, char::in, State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
 
-    % Like quote_char, but return the result in a string.
+%---------------------%
+
+    % Given a character C, return C, escaped if necessary.
+    % Do not enclose it in single-quotes.
     %
-:- func quoted_char(char) = string.
+:- func escaped_char(char) = string.
+% NOTE_TO_IMPLEMENTORS OBS :- pragma obsolete(func(escaped_char/1), [escaped_char_to_string/1]).
+:- func escaped_char_to_string(char) = string.
 
     % Given a character C, write C, escaped if necessary,
-    % to the current output stream, or to the specified output stream.
-    % Do not enclose the character in quotes.
+    % and not enclosed in single-quotes, to the current output stream,
+    % or to the specified output stream.
     %
 :- pred write_escaped_char(char::in, io::di, io::uo) is det.
 :- pred write_escaped_char(Stream::in, char::in, State::di, State::uo) is det
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
+% NOTE_TO_IMPLEMENTORS OBS :- pragma obsolete(pred(write_escaped_char/4), [format_escaped_char/4]).
+:- pred format_escaped_char(Stream::in, char::in, State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
 
-    % Like write_escaped_char, but return the result in a string.
-    %
-:- func escaped_char(char) = string.
-
-    % A reversible version of escaped_char.
+    % A reversible version of escaped_char_to_string.
     %
 :- pred string_is_escaped_char(char, string).
 :- mode string_is_escaped_char(in, out) is det.
@@ -125,46 +149,71 @@
 
 %---------------------%
 
-    % Given a string S, write S in double-quotes, with characters
-    % escaped if necessary, to the current output stream, or to the
-    % specified output stream.
-    %
-:- pred quote_string(string::in, io::di, io::uo) is det.
-:- pred quote_string(Stream::in, string::in, State::di, State::uo) is det
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
-
-    % Like quote_string, but return the result in a string.
+    % Given a string S, return a version of S, with its characters escaped
+    % if necessary, in double-quotes.
     %
 :- func quoted_string(string) = string.
 
-    % Given a string S, write S, with characters escaped if necessary.
-    % Do not enclose the string in quotes. Write to the current output stream,
+    % Given a string S, write a version of S, with its characters escaped
+    % if necessary, in double-quotes, to the current output stream,
     % or to the specified output stream.
+    %
+:- pred quote_string(string::in, io::di, io::uo) is det.
+% NOTE_TO_IMPLEMENTORS OBS :- pragma obsolete(pred(quote_string/3), [write_quoted_string/3]).
+:- pred write_quoted_string(string::in, io::di, io::uo) is det.
+:- pred write_quoted_string(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+:- pred quote_string(Stream::in, string::in, State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+% NOTE_TO_IMPLEMENTORS OBS :- pragma obsolete(pred(quote_string/4), [format_quoted_string/4]).
+:- pred format_quoted_string(Stream::in, string::in, State::di, State::uo)
+    is det <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+
+%---------------------%
+
+    % Given a string S, return a version of S in which its characters
+    % are escaped if necessary. Do not enclose the string in quotes.
+    %
+:- func escaped_string(string) = string.
+
+    % Given a string S, write a version of S in which its characters
+    % are escaped if necessary. Do not enclose the string in quotes.
+    % Write it to the current output stream, or to the specified output stream.
     %
 :- pred write_escaped_string(string::in, io::di, io::uo) is det.
 :- pred write_escaped_string(Stream::in, string::in, State::di, State::uo)
     is det <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
-
-    % Like write_escaped_string, but return the result in a string.
-    %
-:- func escaped_string(string) = string.
+% NOTE_TO_IMPLEMENTORS OBS :- pragma obsolete(pred(write_escaped_string/4), [format_escaped_string/4]).
+:- pred format_escaped_string(Stream::in, string::in, State::di, State::uo)
+    is det <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
 
 %---------------------%
 
-    % Given an atom-name A, write A, enclosed in single-quotes if necessary,
-    % with characters escaped if necessary. Write to the current output stream,
-    % or to the specified output stream.
+    % Given a string S, return a version of S in which its characters
+    % are escaped if necessary. Enclose the string in quotes.
+    %
+:- func quoted_atom(string) = string.
+
+    % Given a string S, write a version of S in which its characters
+    % are escaped if necessary. Enclose the string in quotes.
+    % Write it to the current output stream, or to the specified output stream.
     %
 :- pred quote_atom(string::in, io::di, io::uo) is det.
+:- pred write_quoted_atom(string::in, io::di, io::uo) is det.
+:- pred write_quoted_atom(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+
 :- pred quote_atom(Stream::in, string::in, State::di, State::uo) is det
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
-
-    % Like quote_atom, but return the result in a string.
-    %
-:- func quoted_atom(string) = string.
+% NOTE_TO_IMPLEMENTORS OBS :- pragma obsolete(pred(quote_atom/4), [format_quoted_atom/4]).
+:- pred format_quoted_atom(Stream::in, string::in, State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -186,15 +235,25 @@
     --->    maybe_adjacent_to_graphic_token
     ;       not_adjacent_to_graphic_token.
 
+:- func quoted_atom_agt(string, adjacent_to_graphic_token) = string.
+
 :- pred quote_atom_agt(string::in, adjacent_to_graphic_token::in,
     io::di, io::uo) is det.
+% NOTE_TO_IMPLEMENTORS OBS :- pragma obsolete(pred(quote_atom_agt/4), [write_quoted_atom_agt/4]).
+:- pred write_quoted_atom_agt(string::in,
+    adjacent_to_graphic_token::in, io::di, io::uo) is det.
+:- pred write_quoted_atom_agt(io.text_output_stream::in, string::in,
+    adjacent_to_graphic_token::in, io::di, io::uo) is det.
 
 :- pred quote_atom_agt(Stream::in, string::in,
     adjacent_to_graphic_token::in, State::di, State::uo) is det
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
-
-:- func quoted_atom_agt(string, adjacent_to_graphic_token) = string.
+% NOTE_TO_IMPLEMENTORS OBS :- pragma obsolete(pred(quote_atom_agt/5), [format_quoted_atom_agt/5]).
+:- pred format_quoted_atom_agt(Stream::in, string::in,
+    adjacent_to_graphic_token::in, State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
 
 :- pragma type_spec(pred(term_io.quote_string/4),
     (Stream = io.text_output_stream, State = io.state)).
@@ -206,7 +265,11 @@
     (Stream = io.text_output_stream, State = io.state)).
 :- pragma type_spec(pred(term_io.quote_char/4),
     (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(term_io.format_quoted_char/4),
+    (Stream = io.text_output_stream, State = io.state)).
 :- pragma type_spec(pred(term_io.quote_atom_agt/5),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(term_io.format_quoted_atom_agt/5),
     (Stream = io.text_output_stream, State = io.state)).
 
 %---------------------------------------------------------------------------%
@@ -260,6 +323,7 @@
 :- import_module mercury_term_lexer.
 :- import_module require.
 :- import_module string.
+:- import_module string.builder.
 :- import_module stream.string_writer.
 
 %---------------------------------------------------------------------------%
@@ -331,7 +395,7 @@ write_term_prio_anon_vars(OutStream, OpTable, Term, Priority,
             % Terms with these functors should NOT have arguments.
             (
                 ArgTerms = [],
-                write_constant(OutStream, Functor,
+                format_constant_agt(OutStream, Functor,
                     maybe_adjacent_to_graphic_token, !IO)
             ;
                 ArgTerms = [_ | _],
@@ -442,7 +506,7 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
             ArgTerms = [ArgTerm1],
             ( if MaybePrefix = pre(OpPriority, OpGtOrGe) then
                 maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
-                write_constant_atom(OutStream, Atom, !IO),
+                format_constant_atom(OutStream, Atom, !IO),
                 io.write_char(OutStream, ' ', !IO),
                 NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
                 write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
@@ -454,7 +518,7 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
                 write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
                     NewPriority, !VarSet, !Anon, !IO),
                 io.write_char(OutStream, ' ', !IO),
-                write_constant_atom(OutStream, Atom, !IO),
+                format_constant_atom(OutStream, Atom, !IO),
                 maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
             else
                 write_atom_term_prio_anon_vars_std(OutStream, OpTable,
@@ -485,7 +549,7 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
                     io.write_string(OutStream, Dot, !IO)
                 else
                     io.write_char(OutStream, ' ', !IO),
-                    write_constant_atom(OutStream, Atom, !IO),
+                    format_constant_atom(OutStream, Atom, !IO),
                     io.write_char(OutStream, ' ', !IO)
                 ),
                 RightPriority = min_priority_for_arg(OpPriority, RightGtOrGe),
@@ -496,7 +560,7 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
                 MaybeBinPrefix = bin_pre(OpPriority, LeftGtOrGe, RightGtOrGe)
             then
                 maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
-                write_constant_atom(OutStream, Atom, !IO),
+                format_constant_atom(OutStream, Atom, !IO),
                 io.write_char(OutStream, ' ', !IO),
                 LeftPriority = min_priority_for_arg(OpPriority, LeftGtOrGe),
                 write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
@@ -529,10 +593,10 @@ write_atom_term_prio_anon_vars_std(OutStream, OpTable, Atom, ArgTerms,
         priority_ge(Priority, ops.loosest_op_priority(OpTable))
     then
         io.write_char(OutStream, '(', !IO),
-        write_constant_atom(OutStream, Atom, !IO),
+        format_constant_atom(OutStream, Atom, !IO),
         io.write_char(OutStream, ')', !IO)
     else
-        write_constant_atom(OutStream, Atom, !IO)
+        format_constant_atom(OutStream, Atom, !IO)
     ),
     (
         ArgTerms = [HeadArgTerm | TailArgTerms],
@@ -615,83 +679,77 @@ starts_with_digit(functor(atom(Op), Args, _)) :-
 
 %---------------------------------------------------------------------------%
 
+format_constant(Const) =
+    constant_to_string(Const).
+
+constant_to_string(Const) = Str :-
+    AGT = not_adjacent_to_graphic_token,
+    State0 = string.builder.init,
+    format_constant_agt(string.builder.handle, Const, AGT, State0, State),
+    Str = string.builder.to_string(State).
+
 write_constant(Const, !IO) :-
     io.output_stream(OutStream, !IO),
     write_constant(OutStream, Const, !IO).
 
 write_constant(OutStream, Const, !IO) :-
-    write_constant(OutStream, Const, not_adjacent_to_graphic_token, !IO).
+    AGT = not_adjacent_to_graphic_token,
+    format_constant_agt(OutStream, Const, AGT, !IO).
 
-:- pred write_constant_atom(io.text_output_stream::in, string::in,
-    io::di, io::uo) is det.
-:- pragma inline(pred(write_constant_atom/4)).
+format_constant(Stream, Const, !State) :-
+    AGT = not_adjacent_to_graphic_token,
+    format_constant_agt(Stream, Const, AGT, !State).
 
-write_constant_atom(OutStream, Atom, !IO) :-
-    NGT = not_adjacent_to_graphic_token,
-    term_io.quote_atom_agt(OutStream, Atom, NGT, !IO).
+:- pred format_constant_agt(Stream::in, const::in,
+    adjacent_to_graphic_token::in, State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
 
-:- pred write_constant(io.text_output_stream::in, const::in,
-    adjacent_to_graphic_token::in, io::di, io::uo) is det.
-
-write_constant(OutStream, Const, NGT, !IO) :-
+format_constant_agt(Stream, Const, AGT, !State) :-
     (
         Const = term.integer(Base, Int, Signedness, Size),
         Prefix = integer_base_prefix(Base),
         IntStr = integer.to_base_string(Int, integer_base_int(Base)),
         Suffix = integer_signedness_and_size_suffix(Signedness, Size),
-        io.write_string(OutStream, Prefix, !IO),
-        io.write_string(OutStream, IntStr, !IO),
-        io.write_string(OutStream, Suffix, !IO)
+        stream.put(Stream, Prefix, !State),
+        stream.put(Stream, IntStr, !State),
+        stream.put(Stream, Suffix, !State)
     ;
         Const = term.float(Float),
-        io.write_float(OutStream, Float, !IO)
+        put_float(Stream, Float, !State)
     ;
         Const = term.atom(Atom),
-        term_io.quote_atom_agt(OutStream, Atom, NGT, !IO)
+        term_io.format_quoted_atom_agt(Stream, Atom, AGT, !State)
     ;
         Const = term.string(Str),
-        term_io.quote_string(OutStream, Str, !IO)
+        term_io.format_quoted_string(Stream, Str, !State)
     ;
         Const = term.implementation_defined(ImplDef),
-        io.write_char(OutStream, '$', !IO),
-        io.write_string(OutStream, ImplDef, !IO)
+        stream.put(Stream, '$', !State),
+        put(Stream, ImplDef, !State)
     ).
 
-format_constant(Const) =
-    term_io.format_constant_agt(Const, not_adjacent_to_graphic_token).
+    % This does the job of format_constant just for atom constants.
+    %
+:- pred format_constant_atom(Stream::in, string::in, State::di, State::uo)
+    is det <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+:- pragma inline(pred(format_constant_atom/4)).
 
-:- func format_constant_agt(const, adjacent_to_graphic_token) = string.
-
-format_constant_agt(Const, AdjacentToGraphicToken) = Str :-
-    (
-        Const = term.integer(Base, I, Signedness, Size),
-        Str = integer_base_prefix(Base) ++
-            to_base_string(I, integer_base_int(Base)) ++
-            integer_signedness_and_size_suffix(Signedness, Size)
-    ;
-        Const = term.float(F),
-        Str = string.float_to_string(F)
-    ;
-        Const = term.atom(A),
-        Str = term_io.quoted_atom_agt(A, AdjacentToGraphicToken)
-    ;
-        Const = term.string(S),
-        Str = term_io.quoted_string(S)
-    ;
-        Const = term.implementation_defined(N),
-        Str = "$" ++ N
-    ).
+format_constant_atom(Stream, Atom, !IO) :-
+    AGT = not_adjacent_to_graphic_token,
+    term_io.format_quoted_atom_agt(Stream, Atom, AGT, !IO).
 
 :- func integer_signedness_and_size_suffix(term.signedness,
     term.integer_size) = string.
 
-integer_signedness_and_size_suffix(signed, size_word) = "".
-integer_signedness_and_size_suffix(signed, size_8_bit) = "i8".
-integer_signedness_and_size_suffix(signed, size_16_bit) = "i16".
-integer_signedness_and_size_suffix(signed, size_32_bit) = "i32".
-integer_signedness_and_size_suffix(signed, size_64_bit) = "i64".
-integer_signedness_and_size_suffix(unsigned, size_word) = "u".
-integer_signedness_and_size_suffix(unsigned, size_8_bit) = "u8".
+integer_signedness_and_size_suffix(signed,   size_word) =   "".
+integer_signedness_and_size_suffix(signed,   size_8_bit) =  "i8".
+integer_signedness_and_size_suffix(signed,   size_16_bit) = "i16".
+integer_signedness_and_size_suffix(signed,   size_32_bit) = "i32".
+integer_signedness_and_size_suffix(signed,   size_64_bit) = "i64".
+integer_signedness_and_size_suffix(unsigned, size_word) =   "u".
+integer_signedness_and_size_suffix(unsigned, size_8_bit) =  "u8".
 integer_signedness_and_size_suffix(unsigned, size_16_bit) = "u16".
 integer_signedness_and_size_suffix(unsigned, size_32_bit) = "u32".
 integer_signedness_and_size_suffix(unsigned, size_64_bit) = "u64".
@@ -790,23 +848,45 @@ write_variable_anon_vars(OutStream, OpTable, Var, !VarSet, !Anon, !IO) :-
 
 %---------------------------------------------------------------------------%
 
+quoted_char(C) =
+    quoted_char_to_string(C).
+
+quoted_char_to_string(C) =
+    string.format("'%s'", [s(term_io.escaped_char_to_string(C))]).
+
 quote_char(C, !IO) :-
+    write_quoted_char(C, !IO).
+
+write_quoted_char(C, !IO) :-
     io.output_stream(OutStream, !IO),
-    io.write_string(OutStream, term_io.quoted_char(C), !IO).
+    format_quoted_char(OutStream, C, !IO).
+
+write_quoted_char(OutStream, C, !IO) :-
+    format_quoted_char(OutStream, C, !IO).
 
 quote_char(Stream, C, !State) :-
-    stream.put(Stream, term_io.quoted_char(C), !State).
+    format_quoted_char(Stream, C, !State).
 
-quoted_char(C) =
-    string.format("'%s'", [s(term_io.escaped_char(C))]).
+format_quoted_char(Stream, C, !State) :-
+    stream.put(Stream, term_io.quoted_char_to_string(C), !State).
+
+%---------------------%
+
+escaped_char(Char) =
+    escaped_char_to_string(Char).
+
+escaped_char_to_string(Char) = String :-
+    string_is_escaped_char(Char, String).
 
 write_escaped_char(Char, !IO) :-
     io.output_stream(Stream, !IO),
-    term_io.write_escaped_char(Stream, Char, !IO).
+    term_io.format_escaped_char(Stream, Char, !IO).
 
 write_escaped_char(Stream, Char, !State) :-
-    % Note: the code of add_escaped_char and write_escaped_char
-    % should be kept in sync. The code of both is similar to code in
+    format_escaped_char(Stream, Char, !State).
+
+format_escaped_char(Stream, Char, !State) :-
+    % Note: the code of format_escaped_char is similar to code in
     % compiler/parse_tree_out_pragma.m and MR_escape_string_quote
     % in runtime/mercury_string.c; any changes here may require similar
     % changes in those spots.
@@ -818,9 +898,6 @@ write_escaped_char(Stream, Char, !State) :-
     else
         stream.put(Stream, mercury_escape_char(Char), !State)
     ).
-
-escaped_char(Char) = String :-
-    string_is_escaped_char(Char, String).
 
 :- pragma promise_equivalent_clauses(pred(string_is_escaped_char/2)).
 
@@ -874,83 +951,104 @@ is_mercury_source_char(Char) :-
 % Note: the code here is similar to code in compiler/parse_tree_out_pragma.m;
 % any changes here may require similar changes there.
 
-quote_string(S, !IO) :-
-    io.output_stream(Stream, !IO),
-    term_io.quote_string(Stream, S, !IO).
+quoted_string(Str0) = Str :-
+    State0 = string.builder.init,
+    format_quoted_string(string.builder.handle, Str0, State0, State),
+    Str = string.builder.to_string(State).
 
-quote_string(Stream, S, !State) :-
+quote_string(Str, !IO) :-
+    io.output_stream(OutStream, !IO),
+    term_io.format_quoted_string(OutStream, Str, !IO).
+
+write_quoted_string(Str, !IO) :-
+    io.output_stream(OutStream, !IO),
+    format_quoted_string(OutStream, Str, !IO).
+
+write_quoted_string(OutStream, Str, !State) :-
+    format_quoted_string(OutStream, Str, !State).
+
+quote_string(Stream, Str, !State) :-
+    format_quoted_string(Stream, Str, !State).
+
+format_quoted_string(Stream, Str, !State) :-
     stream.put(Stream, '"', !State),
-    term_io.write_escaped_string(Stream, S, !State),
+    term_io.format_escaped_string(Stream, Str, !State),
     stream.put(Stream, '"', !State).
 
-quoted_string(S) =
-    string.append_list(["""", term_io.escaped_string(S), """"]).
+%---------------------%
 
-write_escaped_string(String, !IO) :-
+escaped_string(Str0) = Str :-
+    State0 = string.builder.init,
+    format_escaped_string(string.builder.handle, Str0, State0, State),
+    Str = string.builder.to_string(State).
+
+write_escaped_string(Str, !IO) :-
     io.output_stream(Stream, !IO),
-    term_io.write_escaped_string(Stream, String, !IO).
+    term_io.format_escaped_string(Stream, Str, !IO).
 
-write_escaped_string(Stream, String, !State) :-
+write_escaped_string(Stream, Str, !State) :-
+    format_escaped_string(Stream, Str, !State).
+
+format_escaped_string(Stream, Str, !State) :-
     % XXX ILSEQ Decide what to do with ill-formed sequences.
-    string.foldl(term_io.write_escaped_char(Stream), String, !State).
-
-escaped_string(String0) = String :-
-    % XXX ILSEQ Decide what to do with ill-formed sequences.
-    string.foldl(add_escaped_char, String0, [], RevStrings),
-    list.reverse(RevStrings, Strings),
-    string.append_list(Strings, String).
-
-:- pred add_escaped_char(char::in, list(string)::in, list(string)::out) is det.
-
-add_escaped_char(Char, RevStrings0, RevStrings) :-
-    % Note: the code of add_escaped_char and write_escaped_char
-    % should be kept in sync. The code of both is similar to code in
-    % compiler/parse_tree_out_pragma.m; any changes here may require
-    % similar changes there.
-    ( if mercury_escape_special_char(Char, QuoteChar) then
-        RevStrings = [from_char_list(['\\', QuoteChar]) | RevStrings0]
-    else if is_mercury_source_char(Char) then
-        RevStrings = [string.char_to_string(Char) | RevStrings0]
-    else
-        RevStrings = [mercury_escape_char(Char) | RevStrings0]
-    ).
+    string.foldl(term_io.format_escaped_char(Stream), Str, !State).
 
 %---------------------------------------------------------------------------%
 
+quoted_atom(Str0) = Str :-
+    State0 = string.builder.init,
+    format_quoted_atom(string.builder.handle, Str0, State0, State),
+    Str = string.builder.to_string(State).
+
 quote_atom(Str, !IO) :-
-    term_io.quote_atom_agt(Str, not_adjacent_to_graphic_token, !IO).
+    term_io.write_quoted_atom(Str, !IO).
 
-quote_atom(Stream, S, !State) :-
-    term_io.quote_atom_agt(Stream, S, not_adjacent_to_graphic_token, !State).
+write_quoted_atom(Str, !IO) :-
+    AGT = not_adjacent_to_graphic_token,
+    term_io.write_quoted_atom_agt(Str, AGT, !IO).
 
-quoted_atom(S) =
-    term_io.quoted_atom_agt(S, not_adjacent_to_graphic_token).
+write_quoted_atom(OutStream, Str, !IO) :-
+    AGT = not_adjacent_to_graphic_token,
+    term_io.write_quoted_atom_agt(OutStream, Str, AGT, !IO).
 
-quote_atom_agt(Str, AdjacentToGraphicToken, !IO) :-
+quote_atom(Stream, Str, !State) :-
+    format_quoted_atom(Stream, Str, !State).
+
+format_quoted_atom(Stream, Str, !State) :-
+    AGT = not_adjacent_to_graphic_token,
+    term_io.format_quoted_atom_agt(Stream, Str, AGT, !State).
+
+%---------------------%
+
+quoted_atom_agt(Str0, AGT) = Str :-
+    State0 = string.builder.init,
+    format_quoted_atom_agt(string.builder.handle, Str0, AGT, State0, State),
+    Str = string.builder.to_string(State).
+
+quote_atom_agt(Str, AGT, !IO) :-
     io.output_stream(Stream, !IO),
-    term_io.quote_atom_agt(Stream, Str, AdjacentToGraphicToken, !IO).
+    term_io.write_quoted_atom_agt(Stream, Str, AGT, !IO).
 
-quote_atom_agt(Stream, S, AdjacentToGraphicToken, !State) :-
-    ShouldQuote = should_atom_be_quoted(S, AdjacentToGraphicToken),
+write_quoted_atom_agt(Str, AGT, !IO) :-
+    io.output_stream(OutStream, !IO),
+    write_quoted_atom_agt(OutStream, Str, AGT, !IO).
+
+write_quoted_atom_agt(OutStream, Str, AGT, !IO) :-
+    format_quoted_atom_agt(OutStream, Str, AGT, !IO).
+
+quote_atom_agt(Stream, Str, AGT, !State) :-
+    term_io.format_quoted_atom_agt(Stream, Str, AGT, !State).
+
+format_quoted_atom_agt(Stream, Str, AGT, !State) :-
+    ShouldQuote = should_atom_be_quoted(Str, AGT),
     (
         ShouldQuote = no,
-        stream.put(Stream, S, !State)
+        stream.put(Stream, Str, !State)
     ;
         ShouldQuote = yes,
         stream.put(Stream, '''', !State),
-        term_io.write_escaped_string(Stream, S, !State),
+        term_io.format_escaped_string(Stream, Str, !State),
         stream.put(Stream, '''', !State)
-    ).
-
-quoted_atom_agt(S, AdjacentToGraphicToken) = String :-
-    ShouldQuote = should_atom_be_quoted(S, AdjacentToGraphicToken),
-    (
-        ShouldQuote = no,
-        String = S
-    ;
-        ShouldQuote = yes,
-        ES = term_io.escaped_string(S),
-        String = string.append_list(["'", ES, "'"])
     ).
 
 :- func should_atom_be_quoted(string, adjacent_to_graphic_token) = bool.
@@ -1091,14 +1189,20 @@ encode_escaped_char(Char::out, Str::in) :-
     % EscapeChar that can be used after a backslash in string literals or
     % atoms to represent Char.
     %
-    % Note: the code here is similar to code in compiler/mercury_to_mercury.m;
-    % any changes here may require similar changes there.
-    % Likewise for the similar code in library/rtti_implementation.m.
+    % Note: the code here is similar (but not identical) to
+    %
+    % - escape_special_char in compiler/parse_tree_out_pragma.m, and
+    % - quote_special_escape_char in library/rtti_implementation.m.
+    %
+    % Any changes here may require similar changes there.
     %
 :- pred mercury_escape_special_char(char, char).
 :- mode mercury_escape_special_char(in, out) is semidet.
 :- mode mercury_escape_special_char(out, in) is semidet.
 
+mercury_escape_special_char('\\', '\\').
+mercury_escape_special_char('''', '''').
+mercury_escape_special_char('"', '"').
 mercury_escape_special_char('\a', 'a').
 mercury_escape_special_char('\b', 'b').
 mercury_escape_special_char('\f', 'f').
@@ -1106,9 +1210,6 @@ mercury_escape_special_char('\n', 'n').
 mercury_escape_special_char('\r', 'r').
 mercury_escape_special_char('\t', 't').
 mercury_escape_special_char('\v', 'v').
-mercury_escape_special_char('\\', '\\').
-mercury_escape_special_char('''', '''').
-mercury_escape_special_char('"', '"').
 
 %---------------------------------------------------------------------------%
 :- end_module term_io.

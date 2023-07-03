@@ -785,7 +785,7 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
                 (
                     TB = type_builtin_string,
                     ( if univ_to_type(Univ, String) then
-                        term_io.quote_string(Stream, String, !State)
+                        term_io.format_quoted_string(Stream, String, !State)
                     else
                         write_ordinary_term(Stream, NonCanon, Univ, Priority,
                             !State)
@@ -793,7 +793,7 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
                 ;
                     TB = type_builtin_character,
                     ( if univ_to_type(Univ, Char) then
-                        term_io.quote_char(Stream, Char, !State)
+                        term_io.format_quoted_char(Stream, Char, !State)
                     else
                         write_ordinary_term(Stream, NonCanon, Univ, Priority,
                             !State)
@@ -1073,7 +1073,7 @@ write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
             Args = [ArgA],
             ( if OpInfos ^ oi_prefix = pre(OpPriority, GtOrGeA) then
                 maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
-                term_io.quote_atom(Stream, Functor, !State),
+                term_io.format_quoted_atom(Stream, Functor, !State),
                 put(Stream, " ", !State),
                 MinPrioA = min_priority_for_arg(OpPriority, GtOrGeA),
                 do_write_univ_prio(Stream, NonCanon, ArgA, MinPrioA, !State),
@@ -1083,7 +1083,7 @@ write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
                 MinPrioA = min_priority_for_arg(OpPriority, GtOrGeA),
                 do_write_univ_prio(Stream, NonCanon, ArgA, MinPrioA, !State),
                 put(Stream, " ", !State),
-                term_io.quote_atom(Stream, Functor, !State),
+                term_io.format_quoted_atom(Stream, Functor, !State),
                 maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
             else
                 write_functor_and_args_prio(Stream, NonCanon, Priority,
@@ -1102,7 +1102,7 @@ write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
                     put(Stream, ", ", !State)
                 else
                     put(Stream, " ", !State),
-                    term_io.quote_atom(Stream, Functor, !State),
+                    term_io.format_quoted_atom(Stream, Functor, !State),
                     put(Stream, " ", !State)
                 ),
                 do_write_univ_prio(Stream, NonCanon, ArgB, MinPrioB, !State),
@@ -1114,7 +1114,7 @@ write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
                 MinPrioA = min_priority_for_arg(OpPriority, GtOrGeA),
                 MinPrioB = min_priority_for_arg(OpPriority, GtOrGeB),
                 maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
-                term_io.quote_atom(Stream, Functor, !State),
+                term_io.format_quoted_atom(Stream, Functor, !State),
                 put(Stream, " ", !State),
                 do_write_univ_prio(Stream, NonCanon, ArgA, MinPrioA, !State),
                 put(Stream, " ", !State),
@@ -1160,7 +1160,7 @@ write_functor_and_args_prio(Stream, NonCanon, Priority, Functor, Args,
         priority_ge(Priority, ops.mercury_op_table_loosest_op_priority)
     then
         put(Stream, '(', !State),
-        term_io.quote_atom(Stream, Functor, !State),
+        term_io.format_quoted_atom(Stream, Functor, !State),
         put(Stream, ')', !State)
     else
         write_functor_and_args(Stream, NonCanon, Functor, Args, !State)
@@ -1185,8 +1185,8 @@ write_functor_and_args_prio(Stream, NonCanon, Priority, Functor, Args,
 :- pragma inline(pred(write_functor_and_args/6)).
 
 write_functor_and_args(Stream, NonCanon, Functor, Args, !State) :-
-    term_io.quote_atom_agt(Stream, Functor,
-        maybe_adjacent_to_graphic_token, !State),
+    AGT = maybe_adjacent_to_graphic_token,
+    term_io.format_quoted_atom_agt(Stream, Functor, AGT, !State),
     (
         Args = [X | Xs],
         put(Stream, '(', !State),

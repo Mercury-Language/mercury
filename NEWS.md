@@ -921,6 +921,24 @@ Changes to the Mercury standard library
 
 ### Changes to the `term_io` module
 
+* The following predicates have been added:
+
+    - func `constant_to_string/2`
+    - func `escaped_char_to_string/2`
+    - func `quoted_char_to_string/2`
+    - pred `format_constant/4`
+    - pred `format_escaped_char/4`
+    - pred `format_escaped_string/4`
+    - pred `format_quoted_atom/4`
+    - pred `format_quoted_char/4`
+    - pred `format_quoted_string/4`
+    - pred `write_quoted_atom/3`
+    - pred `write_quoted_atom/4`
+    - pred `write_quoted_char/3`
+    - pred `write_quoted_char/4`
+    - pred `write_quoted_string/3`
+    - pred `write_quoted_string/4`
+
 * The following predicates have been removed:
 
     - pred `read_term/3`
