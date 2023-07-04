@@ -119,8 +119,7 @@
 output_llds(Globals, CFile, Succeeded, !IO) :-
     ModuleName = CFile ^ cfile_modulename,
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(other_ext(".c")), newext_target_c_cs(ext_target_c),
-        ModuleName, FileName, !IO),
+        newext_target_c_cs(ext_target_c), ModuleName, FileName, !IO),
     output_to_file_stream(Globals, ModuleName, FileName,
         output_llds_2(Globals, CFile), Succeeded, !IO).
 

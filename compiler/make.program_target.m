@@ -619,22 +619,19 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
 
         (
             CompilationTarget = target_c,
-            maybe_pic_object_file_extension(NoLinkObjsGlobals, PIC,
-                ObjOtherExtToUse, ObjNewExt, _),
+            maybe_pic_object_file_extension(PIC, ObjNewExt, _),
             NewExt = newext_target_obj(ObjNewExt)
         ;
             CompilationTarget = target_csharp,
             % There is no separate object code step.
-            ObjOtherExtToUse = other_ext(".cs"),
             NewExt = newext_target_c_cs(ext_target_cs)
         ;
             CompilationTarget = target_java,
-            ObjOtherExtToUse = other_ext(".class"),
             NewExt = newext_target_java(ext_target_java_class)
         ),
         list.map_foldl(
             module_name_to_file_name(NoLinkObjsGlobals, $pred,
-                do_not_create_dirs, ext_other(ObjOtherExtToUse), NewExt),
+                do_not_create_dirs, NewExt),
             ObjModules, ObjList, !IO),
 
         % LinkObjects may contain `.a' files which must come
@@ -786,7 +783,6 @@ build_java_files(Globals, MainModuleName, ModuleNames, Succeeded,
     maybe_write_msg(MakingMsg, !IO),
     list.map_foldl(
         module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(other_ext(".java")),
             newext_target_java(ext_target_java_java)),
         ModuleNames, JavaFiles, !IO),
     % We redirect errors to a file named after the main module.
@@ -1566,22 +1562,20 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
         ( if set.is_empty(Children) then
             Exts0 = []
         else
-            Exts0 = [{other_ext(".int0"), newext_int(ext_int_int0), "int0s"}]
+            Exts0 = [{newext_int(ext_int_int0), "int0s"}]
         ),
         globals.get_any_intermod(Globals, AnyIntermod),
         (
             AnyIntermod = yes,
-            Exts1 = [{other_ext(".opt"), newext_opt(ext_opt_plain), "opts"}
-                | Exts0]
+            Exts1 = [{newext_opt(ext_opt_plain), "opts"} | Exts0]
         ;
             AnyIntermod = no,
             Exts1 = Exts0
         ),
-        Exts = [{other_ext(".int"), newext_int(ext_int_int1), "ints"},
-            {other_ext(".int2"), newext_int(ext_int_int2), "int2s"},
-            {other_ext(".int3"), newext_int(ext_int_int3), "int3s"},
-            {other_ext(".module_dep"),
-                newext_misc_ngs(ext_misc_ngs_module_dep), "module_deps"}
+        Exts = [{newext_int(ext_int_int1), "ints"},
+            {newext_int(ext_int_int2), "int2s"},
+            {newext_int(ext_int_int3), "int3s"},
+            {newext_misc_ngs(ext_misc_ngs_module_dep), "module_deps"}
             | Exts1],
         globals.lookup_string_option(Globals, install_prefix, Prefix),
         LibDir = Prefix/"lib"/"mercury",
@@ -1603,14 +1597,13 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
             % ModuleDepInfo ^ contains_foreign_export
             %   = contains_foreign_export?
             module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-                ext_other(other_ext(".mh")), newext_mh(ext_mh_mh),
-                ModuleName, FileName, !IO),
+                newext_mh(ext_mh_mh), ModuleName, FileName, !IO),
             install_file(Globals, FileName, LibDir/"inc", HeaderSucceeded1,
                 !IO),
 
             % This is needed so that the file will be found in Mmake's VPATH.
             install_subdir_file(Globals, SubdirLinkSucceeded, LibDir/"ints",
-                ModuleName, {other_ext(".mh"), newext_mh(ext_mh_mh), "mhs"},
+                ModuleName, {newext_mh(ext_mh_mh), "mhs"},
                 HeaderSucceeded2, !IO),
 
             HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
@@ -1821,8 +1814,7 @@ install_grade_init(Globals, GradeDir, ModuleName, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     GradeModulesDir = Prefix / "lib" / "mercury" / "modules" / GradeDir,
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(other_ext(".init")), newext_lib_gs(ext_lib_gs_init),
-        ModuleName, InitFileName, !IO),
+        newext_lib_gs(ext_lib_gs_init), ModuleName, InitFileName, !IO),
     install_file(Globals, InitFileName, GradeModulesDir, Succeeded, !IO).
 
     % Install the `.opt', `.analysis' and `.mih' files for the current grade.
@@ -1848,15 +1840,13 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
         then
             GradeIncDir = LibDir/"lib"/GradeDir/"inc",
             install_subdir_file(Globals, LinkSucceeded, GradeIncDir,
-                ModuleName,
-                {other_ext(".mih"), newext_mih(ext_mih_mih), "mihs"},
+                ModuleName, {newext_mih(ext_mih_mih), "mihs"},
                 HeaderSucceeded1, !IO),
 
             % This is needed so that the file will be found in Mmake's VPATH.
             IntDir = LibDir/"ints",
             install_subdir_file(Globals, LinkSucceeded, IntDir, ModuleName,
-                {other_ext(".mih"), newext_mih(ext_mih_mih), "mihs"},
-                HeaderSucceeded2, !IO),
+                {newext_mih(ext_mih_mih), "mihs"}, HeaderSucceeded2, !IO),
             HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
         else
             HeaderSucceeded = succeeded
@@ -1867,8 +1857,7 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
         (
             AnyIntermod = yes,
             install_subdir_file(Globals, LinkSucceeded, GradeIntDir,
-                ModuleName,
-                {other_ext(".opt"), newext_opt(ext_opt_plain), "opts"},
+                ModuleName, {newext_opt(ext_opt_plain), "opts"},
                 OptSucceeded, !IO)
         ;
             AnyIntermod = no,
@@ -1879,9 +1868,7 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
         (
             IntermodAnalysis = yes,
             install_subdir_file(Globals, LinkSucceeded, GradeIntDir,
-                ModuleName,
-                {other_ext(".analysis"), newext_analysis(ext_an_analysis),
-                    "analysiss"},
+                ModuleName, {newext_analysis(ext_an_analysis), "analysiss"},
                 IntermodAnalysisSucceeded, !IO)
         ;
             IntermodAnalysis = no,
@@ -1899,13 +1886,13 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
     % (e.g. on Windows).
     %
 :- pred install_subdir_file(globals::in, maybe_succeeded::in, dir_name::in,
-    module_name::in, {other_ext, newext, string}::in,
+    module_name::in, {newext, string}::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
 install_subdir_file(Globals, SubdirLinkSucceeded, InstallDir, ModuleName,
-        {Ext, NewExt, Exts}, Succeeded, !IO) :-
+        {NewExt, Exts}, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(Ext), NewExt, ModuleName, FileName, !IO),
+        NewExt, ModuleName, FileName, !IO),
     install_file(Globals, FileName, InstallDir, Succeeded1, !IO),
     (
         SubdirLinkSucceeded = did_not_succeed,
@@ -2149,33 +2136,24 @@ make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
         LinkedTargetTypes, ThisDirFileNames, !IO),
     % XXX This symlink should not be necessary anymore for `mmc --make'.
     module_name_to_file_name(NoSubdirGlobals, $pred, do_not_create_dirs,
-        ext_other(other_ext(".init")), newext_lib_gs(ext_lib_gs_init),
-        ModuleName, ThisDirInitFileName, !IO),
+        newext_lib_gs(ext_lib_gs_init), ModuleName, ThisDirInitFileName, !IO),
 
     list.foldl2(make_remove_file(Globals, very_verbose),
         FileNames ++ ThisDirFileNames ++ [ThisDirInitFileName],
         !Info, !IO),
     remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_other(other_ext(".init")), newext_lib_gs(ext_lib_gs_init),
-        !Info, !IO),
+        newext_lib_gs(ext_lib_gs_init), !Info, !IO),
     remove_init_files(Globals, very_verbose, ModuleName, !Info, !IO).
 
 :- pred remove_init_files(globals::in, option::in, module_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 remove_init_files(Globals, Verbose, ModuleName, !Info, !IO) :-
-    globals.lookup_string_option(Globals, object_file_extension, ObjExt),
-    globals.lookup_string_option(Globals, pic_object_file_extension,
-        PicObjExt),
-    % XXX EXT
     remove_make_module_file(Globals, Verbose, ModuleName,
-        ext_other(other_ext("_init.c")),
         newext_target_init_c(ext_init_c), !Info, !IO),
     remove_make_module_file(Globals, Verbose, ModuleName,
-        ext_other(other_ext("_init" ++ ObjExt)),
         newext_target_init_obj(ext_init_obj_obj_opt), !Info, !IO),
     remove_make_module_file(Globals, Verbose, ModuleName,
-        ext_other(other_ext("_init" ++ PicObjExt)),
         newext_target_init_obj(ext_init_obj_pic_obj_opt), !Info, !IO).
 
 %---------------------------------------------------------------------------%
@@ -2202,11 +2180,9 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
         module_target_java_class_code], !Info, !IO),
 
     remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_other(other_ext(".used")), newext_misc_gs(ext_misc_gs_used),
-        !Info, !IO),
+        newext_misc_gs(ext_misc_gs_used), !Info, !IO),
     remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_other(other_ext(".prof")), newext_misc_ngs(ext_misc_ngs_prof),
-        !Info, !IO),
+        newext_misc_ngs(ext_misc_ngs_prof), !Info, !IO),
 
     get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
         !Info, !IO),
@@ -2235,8 +2211,7 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
 
 remove_fact_table_c_file(Globals, FactTableFile, !Info, !IO) :-
     fact_table_file_name(Globals, $pred, do_not_create_dirs,
-        other_ext(".c"), newext_target_c_cs(ext_target_c),
-        FactTableFile, FactTableCFile, !IO),
+        newext_target_c_cs(ext_target_c), FactTableFile, FactTableCFile, !IO),
     make_remove_file(Globals, very_verbose, FactTableCFile, !Info, !IO).
 
 :- pred remove_object_and_assembler_files(globals::in, module_name::in,
@@ -2286,14 +2261,11 @@ make_module_realclean(Globals, ModuleName, !Info, !IO) :-
             ModuleName),
         Targets, !Info, !IO),
     remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_other(make_module_dep_file_extension),
         newext_misc_ngs(ext_misc_ngs_module_dep), !Info, !IO),
     remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_other(other_ext(".imdg")), newext_analysis(ext_an_imdg),
-        !Info, !IO),
+        newext_analysis(ext_an_imdg), !Info, !IO),
     remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_other(other_ext(".request")), newext_analysis(ext_an_request),
-        !Info, !IO).
+        newext_analysis(ext_an_request), !Info, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module make.program_target.

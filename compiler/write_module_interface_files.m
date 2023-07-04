@@ -154,14 +154,13 @@ write_short_interface_file_int3(ProgressStream, ErrorStream, Globals,
         actually_write_interface_file3(ProgressStream, ErrorStream,
             Globals, ParseTreeInt3, "", no, OutputSucceeded, !IO),
         touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
-            ModuleName, other_ext(".date3"), newext_int(ext_int_date_int3),
+            ModuleName, newext_int(ext_int_date_int3),
             TouchSucceeded, !IO),
         Succeeded = OutputSucceeded `and` TouchSucceeded
     ;
         EffectivelyErrors = yes,
         report_file_not_written(ErrorStream, Globals, Specs, [], ModuleName,
-            other_ext(".int3"), newext_int(ext_int_int3), no,
-            other_ext(".date3"), newext_int(ext_int_date_int3), !IO),
+            newext_int(ext_int_int3), no, newext_int(ext_int_date_int3), !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -210,15 +209,15 @@ write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
                 Globals, ParseTreeInt0, "", MaybeTimestamp,
                 OutputSucceeded, !IO),
             touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
-                ModuleName, other_ext(".date0"), newext_int(ext_int_date_int0),
+                ModuleName, newext_int(ext_int_date_int0),
                 TouchSucceeded, !IO),
             Succeeded = OutputSucceeded `and` TouchSucceeded
         ;
             EffectiveGetQualSpecs = [_ | _],
             report_file_not_written(ErrorStream, Globals,
                 EffectiveGetQualSpecs, [], ModuleName,
-                other_ext(".int0"), newext_int(ext_int_int0), no,
-                other_ext(".date0"), newext_int(ext_int_date_int0), !IO),
+                newext_int(ext_int_int0), no,
+                newext_int(ext_int_date_int0), !IO),
             Succeeded = did_not_succeed
         )
     else
@@ -227,9 +226,8 @@ write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
         PrefixPieces = [words("Error reading interface files."),
             nl_indent_delta(-1)],
         report_file_not_written(ErrorStream, Globals, GetSpecs,
-            PrefixPieces, ModuleName,
-            other_ext(".int0"), newext_int(ext_int_int0), no,
-            other_ext(".date0"), newext_int(ext_int_date_int0), !IO),
+            PrefixPieces, ModuleName, newext_int(ext_int_int0), no,
+            newext_int(ext_int_date_int0), !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -292,7 +290,7 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
                 Globals, ParseTreeInt2, "", MaybeTimestamp,
                 OutputSucceeded2, !IO),
             touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
-                ModuleName, other_ext(".date"), newext_int(ext_int_date_int12),
+                ModuleName, newext_int(ext_int_date_int12),
                 TouchSucceeded, !IO),
             Succeeded = and_list([OutputSucceeded1, OutputSucceeded2,
                 TouchSucceeded])
@@ -300,9 +298,8 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
             EffectiveGetQualSpecs = [_ | _],
             report_file_not_written(ErrorStream, Globals,
                 EffectiveGetQualSpecs, [], ModuleName,
-                other_ext(".int"), newext_int(ext_int_int1),
-                yes({other_ext(".int2"), newext_int(ext_int_int2)}),
-                other_ext(".date"), newext_int(ext_int_date_int12), !IO),
+                newext_int(ext_int_int1), yes(newext_int(ext_int_int2)),
+                newext_int(ext_int_date_int12), !IO),
             Succeeded = did_not_succeed
         )
     else
@@ -311,9 +308,9 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
         PrefixPieces = [words("Error reading .int3 files."),
             nl_indent_delta(-1)],
         report_file_not_written(ErrorStream, Globals, GetSpecs, PrefixPieces,
-            ModuleName, other_ext(".int"), newext_int(ext_int_int1),
-            yes({other_ext(".int2"), newext_int(ext_int_int2)}),
-            other_ext(".date"), newext_int(ext_int_date_int12), !IO),
+            ModuleName, newext_int(ext_int_int1),
+            yes(newext_int(ext_int_int2)),
+            newext_int(ext_int_date_int12), !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -411,9 +408,9 @@ actually_write_interface_file3(ProgressStream, ErrorStream, Globals,
 
 construct_int_file_name(Globals, ModuleName, IntFileKind, ExtraSuffix,
         OutputFileName, TmpOutputFileName, !IO) :-
-    int_file_kind_to_extension(IntFileKind, _ExtStr, OtherExt, NewExt),
+    int_file_kind_to_extension(IntFileKind, _ExtStr, NewExt),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(OtherExt), NewExt, ModuleName, OutputFileName0, !IO),
+        NewExt, ModuleName, OutputFileName0, !IO),
     OutputFileName = OutputFileName0 ++ ExtraSuffix,
     TmpOutputFileName = OutputFileName ++ ".tmp".
 
@@ -584,27 +581,25 @@ insist_on_timestamp(MaybeTimestamp, Timestamp) :-
 
 :- pred report_file_not_written(io.text_output_stream::in, globals::in, 
     list(error_spec)::in, list(format_piece)::in, module_name::in,
-    other_ext::in, newext::in, maybe({other_ext, newext})::in,
-    other_ext::in, newext::in, io::di, io::uo) is det.
+    newext::in, maybe(newext)::in, newext::in, io::di, io::uo) is det.
 
 report_file_not_written(ErrorStream, Globals, Specs, PrefixPieces,
-        ModuleName, OtherExtA, NewExtA, MaybeOtherNewExtB,
-        OtherExtDate, NewExtDate, !IO) :-
+        ModuleName, NewExtA, MaybeNewExtB, NewExtDate, !IO) :-
     % We use write_error_spec to print the message the interface file or
     % files not being written in order to wrap the message if it is
     % longer than the line length.
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(OtherExtA), NewExtA, ModuleName, IntAFileName, !IO),
+        NewExtA, ModuleName, IntAFileName, !IO),
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(OtherExtDate), NewExtDate, ModuleName, DateFileName, !IO),
+        NewExtDate, ModuleName, DateFileName, !IO),
     (
-        MaybeOtherNewExtB = no,
+        MaybeNewExtB = no,
         NotWrittenPieces = [quote(IntAFileName), words("not written."), nl],
         ToRemoveFileNames = [IntAFileName, DateFileName]
     ;
-        MaybeOtherNewExtB = yes({OtherExtB, NewExtB}),
+        MaybeNewExtB = yes(NewExtB),
         module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            ext_other(OtherExtB), NewExtB, ModuleName, IntBFileName, !IO),
+            NewExtB, ModuleName, IntBFileName, !IO),
         NotWrittenPieces = [quote(IntAFileName), words("and"),
             quote(IntBFileName), words("not written."), nl],
         ToRemoveFileNames = [IntAFileName, IntBFileName, DateFileName]

@@ -106,36 +106,35 @@
                 unit1 : unit(structure_reuse_answer))
         ),
 
-    module_name_to_read_file_name(mmc, Globals, OtherExt, NewExt,
+    module_name_to_read_file_name(mmc, Globals, NewExt,
             ModuleName, MaybeFileName, !IO) :-
-        mmc_module_name_to_read_file_name(Globals, OtherExt, NewExt,
+        mmc_module_name_to_read_file_name(Globals, NewExt,
             ModuleName, MaybeFileName, !IO),
 
-    module_name_to_write_file_name(mmc, Globals, OtherExt, NewExt,
+    module_name_to_write_file_name(mmc, Globals, NewExt,
             ModuleName, FileName, !IO) :-
-        mmc_module_name_to_write_file_name(Globals, OtherExt, NewExt,
+        mmc_module_name_to_write_file_name(Globals, NewExt,
             ModuleName, FileName, !IO)
 ].
 
 :- pred mmc_module_name_to_read_file_name(globals::in,
-    other_ext::in, newext::in, module_name::in, maybe_error(string)::out,
+    newext::in, module_name::in, maybe_error(string)::out,
     io::di, io::uo) is det.
 
-mmc_module_name_to_read_file_name(Globals, OtherExt, NewExt,
+mmc_module_name_to_read_file_name(Globals, NewExt,
         ModuleName, MaybeFileName, !IO) :-
-    module_name_to_search_file_name(Globals, $pred,
-        ext_other(OtherExt), NewExt, ModuleName, FileName0, !IO),
+    module_name_to_search_file_name(Globals, $pred, NewExt,
+        ModuleName, FileName0, !IO),
     globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
     search_for_file(Dirs, FileName0, MaybeFileName, !IO).
 
 :- pred mmc_module_name_to_write_file_name(globals::in,
-    other_ext::in, newext::in, module_name::in, string::out,
-    io::di, io::uo) is det.
+    newext::in, module_name::in, string::out, io::di, io::uo) is det.
 
-mmc_module_name_to_write_file_name(Globals, OtherExt, NewExt,
+mmc_module_name_to_write_file_name(Globals, NewExt,
         ModuleName, FileName, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(OtherExt), NewExt, ModuleName, FileName, !IO).
+    module_name_to_file_name(Globals, $pred, do_create_dirs, NewExt,
+        ModuleName, FileName, !IO).
 
 module_name_func_id(ModuleInfo, proc(PredId, ProcId), PredModule, FuncId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),

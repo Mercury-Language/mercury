@@ -129,8 +129,7 @@ output_c_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(other_ext(".c")), newext_target_c_cs(ext_target_c),
-        ModuleName, SourceFileName0, !IO),
+        newext_target_c_cs(ext_target_c), ModuleName, SourceFileName0, !IO),
     SourceFileName = SourceFileName0 ++ Suffix,
     Indent = 0,
     output_to_file_stream(Globals, ModuleName, SourceFileName,
@@ -147,8 +146,7 @@ output_c_header_file_opts(MLDS, Opts, Suffix, !:Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(other_ext(".mih")), newext_mih(ext_mih_mih),
-        ModuleName, MihFileName, !IO),
+        newext_mih(ext_mih_mih), ModuleName, MihFileName, !IO),
     HeaderFileName = MihFileName ++ Suffix,
     TmpHeaderFileName = HeaderFileName ++ ".tmp",
     globals.lookup_bool_option(Globals, line_numbers_for_c_headers,
@@ -174,8 +172,7 @@ output_c_dump_preds(MLDS, Globals, TargetOrDump, Suffix, DumpPredNames, !IO) :-
     module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
     Opts = init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(other_ext(".mlds_dump")), newext_user(ext_user_mlds_dump),
-        ModuleName, DumpBaseName, !IO),
+        newext_user(ext_user_mlds_dump), ModuleName, DumpBaseName, !IO),
     DumpFileName = DumpBaseName ++ Suffix,
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ProcDefns = MLDS ^ mlds_proc_defns,
@@ -316,11 +313,9 @@ mlds_output_src_import(Opts, Stream, _Indent, Import, !IO) :-
     Import = mlds_import(ImportType, ModuleName0),
     (
         ImportType = user_visible_interface,
-        HeaderOtherExt = other_ext(".mh"),
         HeaderNewExt = newext_mh(ext_mh_mh)
     ;
         ImportType = compiler_visible_interface,
-        HeaderOtherExt = other_ext(".mih"),
         HeaderNewExt = newext_mih(ext_mih_mih)
     ),
 
@@ -336,7 +331,7 @@ mlds_output_src_import(Opts, Stream, _Indent, Import, !IO) :-
 
     Globals = Opts ^ m2co_all_globals,
     module_name_to_search_file_name(Globals, $pred,
-        ext_other(HeaderOtherExt), HeaderNewExt, ModuleName, HeaderFile, !IO),
+        HeaderNewExt, ModuleName, HeaderFile, !IO),
     io.format(Stream, "#include \"%s\"\n", [s(HeaderFile)], !IO).
 
     % Generate the `.c' file.

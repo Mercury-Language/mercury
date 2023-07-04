@@ -646,8 +646,7 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
     % modules. so we need to produce a .mh file even if it contains nothing.
     module_info_get_globals(ModuleInfo, Globals),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(other_ext(".mh")), newext_mh(ext_mh_mh),
-        ModuleName, FileName, !IO),
+        newext_mh(ext_mh_mh), ModuleName, FileName, !IO),
     MaybeThisFileName = yes(FileName),
     TmpFileName = FileName ++ ".tmp",
     io.open_output(TmpFileName, Result, !IO),

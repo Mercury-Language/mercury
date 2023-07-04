@@ -152,9 +152,6 @@ real_main(!IO) :-
         io.set_exit_status(1, !IO)
     ),
     record_instmap_delta_restrict_stats(!IO),
-    trace [compile_time(flag("file_name_translations")), io(!TIO)] (
-        write_translations_record_if_any(!TIO)
-    ),
     close_any_specific_compiler_streams(!IO).
 
     % Expand @File arguments.
@@ -288,7 +285,10 @@ real_main_after_expansion(ProgressStream, ErrorStream, CmdLineArgs, !IO) :-
         ;
             Specs = [],
             main_after_setup(ProgressStream, ErrorStream, ActualGlobals,
-                DetectedGradeFlags, Variables, OptionArgs, NonOptionArgs, !IO)
+                DetectedGradeFlags, Variables, OptionArgs, NonOptionArgs, !IO),
+            trace [compile_time(flag("file_name_translations")), io(!TIO)] (
+                write_translations_record_if_any(ActualGlobals, !TIO)
+            )
         )
     ;
         MaybeMCFlags = no,
@@ -548,14 +548,6 @@ main_after_setup(ProgressStream, ErrorStream, Globals, DetectedGradeFlags,
         io.stdout_stream(StdOutStream, !IO),
         display_compiler_version(StdOutStream, !IO)
     else
-        globals.lookup_bool_option(Globals, experiment4, Experiment4),
-        (
-            Experiment4 = no
-        ;
-            Experiment4 = yes,
-            test_file_name_extensions(Globals, ErrorStream, !IO)
-        ),
-
         globals.get_op_mode(Globals, OpMode),
         HaveReadModuleMaps0 = init_have_read_module_maps,
         Specs0 = [],
@@ -1143,7 +1135,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
             else
                 ModuleName = ParseTreeSrc ^ pts_module_name,
                 module_name_to_file_name(Globals, $pred, do_create_dirs,
-                    ext_other(other_ext(".ugly")), newext_user(ext_user_ugly),
+                    newext_user(ext_user_ugly),
                     ModuleName, OutputFileName, !IO),
                 output_parse_tree_src(ProgressStream, ErrorStream, Globals,
                     OutputFileName, ParseTreeSrc, _Succeeded, !IO)
@@ -1312,28 +1304,25 @@ find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
     globals.get_target(Globals, CompilationTarget),
     (
         CompilationTarget = target_c,
-        TargetOtherExt = other_ext(".c"),
         TargetNewExt = newext_target_c_cs(ext_target_c)
     ;
         CompilationTarget = target_csharp,
-        TargetOtherExt = other_ext(".cs"),
         TargetNewExt = newext_target_c_cs(ext_target_cs)
     ;
         CompilationTarget = target_java,
-        TargetOtherExt = other_ext(".java"),
         TargetNewExt = newext_target_java(ext_target_java_java)
     ),
     FindTargetFiles =
-        usual_find_target_files(Globals, TargetOtherExt, TargetNewExt).
+        usual_find_target_files(Globals, TargetNewExt).
 
-:- pred usual_find_target_files(globals::in, other_ext::in, newext::in,
+:- pred usual_find_target_files(globals::in, newext::in,
     module_name::in, list(file_name)::out, io::di, io::uo) is det.
 
-usual_find_target_files(Globals, TargetOtherExt, TargetNewExt,
+usual_find_target_files(Globals, TargetNewExt,
         ModuleName, TargetFiles, !IO) :-
     % XXX Should we check the generated header files?
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(TargetOtherExt), TargetNewExt, ModuleName, FileName, !IO),
+        TargetNewExt, ModuleName, FileName, !IO),
     TargetFiles = [FileName].
 
 :- pred find_timestamp_files(globals::in,
@@ -1343,28 +1332,24 @@ find_timestamp_files(Globals, FindTimestampFiles) :-
     globals.get_target(Globals, CompilationTarget),
     (
         CompilationTarget = target_c,
-        TimestampOtherExt = other_ext(".c_date"),
         TimestampNewExt = newext_target_date(ext_target_date_c)
     ;
         CompilationTarget = target_csharp,
-        TimestampOtherExt = other_ext(".cs_date"),
         TimestampNewExt = newext_target_date(ext_target_date_cs)
     ;
         CompilationTarget = target_java,
-        TimestampOtherExt = other_ext(".java_date"),
         TimestampNewExt = newext_target_date(ext_target_date_java)
     ),
     FindTimestampFiles =
-        find_timestamp_files_2(Globals, TimestampOtherExt, TimestampNewExt).
+        find_timestamp_files_2(Globals, TimestampNewExt).
 
-:- pred find_timestamp_files_2(globals::in, other_ext::in, newext::in,
+:- pred find_timestamp_files_2(globals::in, newext::in,
     module_name::in, list(file_name)::out, io::di, io::uo) is det.
 
-find_timestamp_files_2(Globals, TimestampOtherExt, TimestampNewExt,
+find_timestamp_files_2(Globals, TimestampNewExt,
         ModuleName, TimestampFiles, !IO) :-
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(TimestampOtherExt), TimestampNewExt,
-        ModuleName, FileName, !IO),
+        TimestampNewExt, ModuleName, FileName, !IO),
     TimestampFiles = [FileName].
 
 %---------------------------------------------------------------------------%
@@ -1882,7 +1867,6 @@ maybe_write_dependency_graph(ProgressStream, ErrorStream, Verbose, Stats,
             "% Writing dependency graph...", !IO),
         module_info_get_name(!.HLDS, ModuleName),
         module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(other_ext(".dependency_graph")),
             newext_user(ext_user_depgraph), ModuleName, FileName, !IO),
         io.open_output(FileName, Res, !IO),
         (
@@ -1972,8 +1956,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
 
     module_info_get_name(!.HLDS, ModuleName),
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(other_ext(".used")), newext_misc_gs(ext_misc_gs_used),
-        ModuleName, UsageFileName, !IO),
+        newext_misc_gs(ext_misc_gs_used), ModuleName, UsageFileName, !IO),
     io.file.remove_file(UsageFileName, _, !IO),
 
     FrontEndErrors =
@@ -2011,7 +1994,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                 ;
                     TargetCodeSucceeded = succeeded,
                     module_name_to_file_name(Globals, $pred,
-                        do_not_create_dirs, ext_other(other_ext(".java")),
+                        do_not_create_dirs,
                         newext_target_java(ext_target_java_java),
                         ModuleName, JavaFile, !IO),
                     compile_java_files(Globals, ProgressStream, ErrorStream,
@@ -2047,16 +2030,14 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                     ;
                         TargetCodeSucceeded = succeeded,
                         module_name_to_file_name(Globals, $pred,
-                            do_not_create_dirs, ext_other(other_ext(".c")),
+                            do_not_create_dirs,
                             newext_target_c_cs(ext_target_c),
                             ModuleName, C_File, !IO),
                         get_linked_target_type(Globals, TargetType),
                         get_object_code_type(Globals, TargetType, PIC),
-                        maybe_pic_object_file_extension(Globals, PIC,
-                            ObjOtherExt, ObjNewExt, _),
+                        maybe_pic_object_file_extension(PIC, ObjNewExt, _),
                         module_name_to_file_name(Globals, $pred,
-                            do_create_dirs, ext_other(ObjOtherExt),
-                            newext_target_obj(ObjNewExt),
+                            do_create_dirs, newext_target_obj(ObjNewExt),
                             ModuleName, O_File, !IO),
                         do_compile_c_file(Globals, ProgressStream, ErrorStream,
                             PIC, C_File, O_File, Succeeded, !IO),
@@ -2132,8 +2113,7 @@ maybe_output_prof_call_graph(ProgressStream, ErrorStream, Verbose, Stats,
         maybe_flush_output(ProgressStream, Verbose, !IO),
         module_info_get_name(!.HLDS, ModuleName),
         module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(other_ext(".prof")), newext_misc_ngs(ext_misc_ngs_prof),
-            ModuleName, ProfFileName, !IO),
+            newext_misc_ngs(ext_misc_ngs_prof), ModuleName, ProfFileName, !IO),
         io.open_output(ProfFileName, Res, !IO),
         (
             Res = ok(FileStream),

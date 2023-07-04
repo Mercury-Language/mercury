@@ -886,8 +886,7 @@ make_foreign_import_header_code(Globals, FIMSpec, Include, !IO) :-
     (
         Lang = lang_c,
         module_name_to_search_file_name(Globals, $pred,
-            ext_other(other_ext(".mh")), newext_mh(ext_mh_mh),
-            ModuleName, HeaderFileName, !IO),
+            newext_mh(ext_mh_mh), ModuleName, HeaderFileName, !IO),
         IncludeString = "#include """ ++ HeaderFileName ++ """\n",
         Include = foreign_decl_code(lang_c, foreign_decl_is_exported,
             floi_literal(IncludeString), dummy_context)
@@ -932,13 +931,11 @@ llds_c_to_obj(Globals, ProgressStream, ErrorStream, ModuleName,
         Succeeded, !IO) :-
     get_linked_target_type(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
-    maybe_pic_object_file_extension(Globals, PIC, ObjOtherExt, ObjNewExt, _),
+    maybe_pic_object_file_extension(PIC, ObjNewExt, _),
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(other_ext(".c")), newext_target_c_cs(ext_target_c),
-        ModuleName, C_File, !IO),
+        newext_target_c_cs(ext_target_c), ModuleName, C_File, !IO),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(ObjOtherExt), newext_target_obj(ObjNewExt),
-        ModuleName, O_File, !IO),
+        newext_target_obj(ObjNewExt), ModuleName, O_File, !IO),
     compile_target_code.do_compile_c_file(Globals, ProgressStream, ErrorStream,
         PIC, C_File, O_File, Succeeded, !IO).
 
@@ -950,11 +947,11 @@ compile_fact_table_file(Globals, ProgressStream, ErrorStream,
         BaseName, O_FileName, Succeeded, !IO) :-
     get_linked_target_type(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
-    maybe_pic_object_file_extension(Globals, PIC, ObjOtherExt, NewExtObj, _),
+    maybe_pic_object_file_extension(PIC, NewExtObj, _),
     % XXX EXT
     C_FileName = BaseName ++ ".c",
     O_FileName = BaseName ++ extension_to_string(Globals,
-        ext_other(ObjOtherExt), newext_target_obj(NewExtObj)),
+        newext_target_obj(NewExtObj)),
     compile_target_code.do_compile_c_file(Globals, ProgressStream, ErrorStream,
         PIC, C_FileName, O_FileName, Succeeded, !IO).
 
