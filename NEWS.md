@@ -703,9 +703,8 @@ Changes to the Mercury standard library
 
 ### Changes to the `std_util` module
 
-* We have changed the behaviour of `pow/3` so that it throws an
-  exception if it is called with a negative integer as its second
-  argument.
+* We have changed the behaviour of `pow/3` so that it throws an exception
+  if it is called with a negative integer as its second argument.
 
 ### Changes to the `string` module
 
@@ -921,7 +920,7 @@ Changes to the Mercury standard library
 
 ### Changes to the `term_io` module
 
-* The following predicates have been added:
+* The following predicates and functions have been added:
 
     - func `constant_to_string/2`
     - func `escaped_char_to_string/2`
@@ -932,6 +931,18 @@ Changes to the Mercury standard library
     - pred `format_quoted_atom/4`
     - pred `format_quoted_char/4`
     - pred `format_quoted_string/4`
+    - pred `format_term/5`
+    - pred `format_term_nl/5`
+    - pred `format_term_with_op_table/6`
+    - pred `format_term_nl_with_op_table/6`
+    - pred `format_variable/5`
+    - pred `format_variable_with_op_table/6`
+    - func `term_to_string/2`
+    - func `term_nl_to_string/2`
+    - func `term_with_op_table_to_string/3`
+    - func `term_nl_with_op_table_to_string/3`
+    - func `variable_to_string/2`
+    - func `variable_with_op_table_to_string/3`
     - pred `write_quoted_atom/3`
     - pred `write_quoted_atom/4`
     - pred `write_quoted_char/3`

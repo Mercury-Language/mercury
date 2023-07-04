@@ -15,6 +15,34 @@
 %
 % Predicates to read in such terms are available in mercury_term_parser.m.
 %
+% All the operations exported by this module write out a term or a component
+% of a term. Each operation is available in four versions.
+%
+% 1.  A function that converts the given term or component to a string.
+% 2a. A predicate that writes out the given term or component
+%     to the current output stream,
+% 2b. A predicate that writes out the given term or component
+%     to a specified output stream,
+% 3.  A predicate that writes out the given term or component
+%     to any entity that implements the appropriate stream operations.
+%
+% These versions normally follow a naming scheme:
+%
+% - X_to_string for version 1,
+% - write_X for version 2a and 2b (these two differing only in arity,
+%   with 2b having an extra initial output stream argument), and
+% - format_X for version 3
+%
+% where X is the name of the entity being operated on. However, when
+% X is a string, the name of the function version will not end in `to_string',
+% since that would be strange.
+%
+% Some operations have more than these four versions, but in every case,
+% the extra versions are just old and now obsolete names for one of the four.
+%
+% The four versions of the same operation will generate the same output,
+% they will just put that output in different places.
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -30,52 +58,170 @@
 
 %---------------------------------------------------------------------------%
 
-    % Writes a term to the current output stream or to the specified output
-    % stream. Uses the variable names specified by the varset.
-    % Writes _N for all unnamed variables, with N starting at 0.
+    % These operations output a term
+    % - to a string,
+    % - to the current output stream,
+    % - to the specified output stream, or
+    % - to any implementation of the stream typeclass.
     %
+    % They use the Mercury operator table.
+    %
+    % They all output variable names as specified by the given varset.
+    % They write _N for all unnamed variables, with N starting at 0.
+
+:- func term_to_string(varset(T), term(T)) = string.
+
 :- pred write_term(varset(T)::in, term(T)::in, io::di, io::uo) is det.
 :- pred write_term(io.text_output_stream::in, varset(T)::in, term(T)::in,
     io::di, io::uo) is det.
 
-    % As above, except uses the given operator table instead of the
-    % standard Mercury operators.
+:- pred format_term(Stream::in,
+    varset(T)::in, term(T)::in, State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+
+%---------------------%
+
+    % These operations output a term
+    % - to a string,
+    % - to the current output stream,
+    % - to the specified output stream, or
+    % - to any implementation of the stream typeclass,
     %
+    % They use the specified operator table.
+    %
+    % They all output variable names as specified by the given varset.
+    % They write _N for all unnamed variables, with N starting at 0.
+
+:- func term_with_op_table_to_string(OpTable, varset(T), term(T))
+    = string <= op_table(OpTable).
+
 :- pred write_term_with_op_table(OpTable::in,
     varset(T)::in, term(T)::in, io::di, io::uo) is det <= op_table(OpTable).
 :- pred write_term_with_op_table(io.text_output_stream::in, OpTable::in,
     varset(T)::in, term(T)::in, io::di, io::uo) is det <= op_table(OpTable).
 
-    % As write_term, except it appends a period and a newline.
+:- pred format_term_with_op_table(Stream::in, OpTable::in,
+    varset(T)::in, term(T)::in, State::di, State::uo) is det
+    <= (op_table(OpTable), stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+
+%---------------------%
+
+    % These operations output a term
+    % - to a string,
+    % - to the current output stream,
+    % - to the specified output stream, or
+    % - to any implementation of the stream typeclass
+    % followed by a period and a newline.
     %
+    % They use the Mercury operator table.
+    %
+    % They all output variable names as specified by the given varset.
+    % They write _N for all unnamed variables, with N starting at 0.
+
+:- func term_nl_to_string(varset(T), term(T)) = string.
+
 :- pred write_term_nl(varset(T)::in, term(T)::in, io::di, io::uo) is det.
 :- pred write_term_nl(io.text_output_stream::in, varset(T)::in, term(T)::in,
     io::di, io::uo) is det.
 
-    % As write_term_with_op_table above, except it appends a period
-    % and a newline.
+:- pred format_term_nl(Stream::in,
+    varset(T)::in, term(T)::in, State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+
+%---------------------%
+
+    % These operations output a term
+    % - to a string,
+    % - to the current output stream,
+    % - to the specified output stream, or
+    % - to any implementation of the stream typeclass
+    % followed by a period and a newline.
     %
+    % They use the specified operator table.
+    %
+    % They all output variable names as specified by the given varset.
+    % They write _N for all unnamed variables, with N starting at 0.
+
+:- func term_nl_with_op_table_to_string(OpTable, varset(T), term(T))
+    = string <= op_table(OpTable).
+
 :- pred write_term_nl_with_op_table(OpTable::in,
     varset(T)::in, term(T)::in, io::di, io::uo) is det <= op_table(OpTable).
 :- pred write_term_nl_with_op_table(io.text_output_stream::in, OpTable::in,
     varset(T)::in, term(T)::in, io::di, io::uo) is det <= op_table(OpTable).
 
-%---------------------%
+:- pred format_term_nl_with_op_table(Stream::in, OpTable::in,
+    varset(T)::in, term(T)::in, State::di, State::uo) is det
+    <= (op_table(OpTable), stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
 
-    % Writes a variable to the current output stream, or to the
-    % specified output stream.
+%---------------------%
+% XXX NOTE_TO_IMPLEMENTORS The argument order is inconsiste between the
+% XXX NOTE_TO_IMPLEMENTORS write_term* predicates above and the write_variable*
+% XXX NOTE_TO_IMPLEMENTORS predicates below. In the former, the varset precedes
+% XXX NOTE_TO_IMPLEMENTORS the entity to be written, in the latter,
+% XXX NOTE_TO_IMPLEMENTORS it follows the entity to be written.
+% XXX NOTE_TO_IMPLEMENTORS I (zs) think we should consistently put
+% XXX NOTE_TO_IMPLEMENTORS the varset first, to make fold ops easier.
+
+    % These operations output either
+    % - the value of the variable, if it is bound in the given varset, or
+    % - the name of the variable, if it is not bound in the given varset,
     %
+    % - to a string,
+    % - to the current output stream,
+    % - to the specified output stream, or
+    % - to any implementation of the stream typeclass
+    % followed by a period and a newline.
+    %
+    % They use the Mercury operator table when printing a value.
+    %
+    % They all output variable names as specified by the given varset.
+    % They write _N for all unnamed variables, with N starting at 0.
+
+:- func variable_to_string(var(T), varset(T)) = string.
+
 :- pred write_variable(var(T)::in, varset(T)::in, io::di, io::uo) is det.
 :- pred write_variable(io.text_output_stream::in, var(T)::in, varset(T)::in,
     io::di, io::uo) is det.
 
-    % As above, except uses the given operator table instead of the
-    % standard Mercury operators.
+:- pred format_variable(Stream::in,
+    var(T)::in, varset(T)::in, State::di, State::uo) is det
+    <= (stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
+
+%---------------------%
+
+    % These operations output either
+    % - the value of the variable, if it is bound in the given varset, or
+    % - the name of the variable, if it is not bound in the given varset,
     %
+    % - to a string,
+    % - to the current output stream,
+    % - to the specified output stream, or
+    % - to any implementation of the stream typeclass
+    % followed by a period and a newline.
+    %
+    % They use the specified operator table when printing a value.
+    %
+    % They all output variable names as specified by the given varset.
+    % They write _N for all unnamed variables, with N starting at 0.
+
+:- func variable_with_op_table_to_string(OpTable, var(T), varset(T)) = string
+    <= op_table(OpTable).
+
 :- pred write_variable_with_op_table(OpTable::in,
     var(T)::in, varset(T)::in, io::di, io::uo) is det <= op_table(OpTable).
 :- pred write_variable_with_op_table(io.text_output_stream::in, OpTable::in,
     var(T)::in, varset(T)::in, io::di, io::uo) is det <= op_table(OpTable).
+
+:- pred format_variable_with_op_table(Stream::in, OpTable::in,
+    var(T)::in, varset(T)::in, State::di, State::uo) is det
+    <= (op_table(OpTable), stream.writer(Stream, string, State),
+    stream.writer(Stream, char, State)).
 
 %---------------------%
 
@@ -91,6 +237,7 @@
 :- pred write_constant(const::in, io::di, io::uo) is det.
 :- pred write_constant(io.text_output_stream::in, const::in,
     io::di, io::uo) is det.
+
 :- pred format_constant(Stream::in, const::in, State::di, State::uo) is det
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
@@ -261,25 +408,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- pragma type_spec(pred(term_io.quote_string/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(term_io.quote_atom/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(term_io.write_escaped_string/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(term_io.write_escaped_char/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(term_io.quote_char/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(term_io.format_quoted_char/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(term_io.quote_atom_agt/5),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(term_io.format_quoted_atom_agt/5),
-    (Stream = io.text_output_stream, State = io.state)).
-
-%---------------------------------------------------------------------------%
-
     % Convert `integer_base' constant to its numeric value.
     %
 :- func integer_base_int(integer_base) = int.
@@ -335,23 +463,56 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+term_to_string(VarSet, Term) = Str :-
+    State0 = string.builder.init,
+    format_term(string.builder.handle, VarSet, Term, State0, State),
+    Str = string.builder.to_string(State).
+
 write_term(VarSet, Term, !IO) :-
     io.output_stream(OutStream, !IO),
-    write_term(OutStream, VarSet, Term, !IO).
+    format_term(OutStream, VarSet, Term, !IO).
 
 write_term(OutStream, VarSet, Term, !IO) :-
+    format_term(OutStream, VarSet, Term, !IO).
+
+:- pragma type_spec(pred(format_term/5),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_term/5),
+    (Stream = string.builder.handle, State = string.builder.state)).
+format_term(Stream, VarSet, Term, !State) :-
     OpTable = init_mercury_op_table,
-    write_term_with_op_table(OutStream, OpTable, VarSet, Term, !IO).
+    format_term_with_op_table(Stream, OpTable, VarSet, Term, !State).
+
+%---------------------%
+
+term_with_op_table_to_string(OpTable, VarSet, Term) = Str :-
+    State0 = string.builder.init,
+    format_term_with_op_table(string.builder.handle, OpTable, VarSet, Term,
+        State0, State),
+    Str = string.builder.to_string(State).
 
 write_term_with_op_table(OpTable, VarSet, Term, !IO) :-
     io.output_stream(OutStream, !IO),
-    write_term_with_op_table(OutStream, OpTable, VarSet, Term, !IO).
+    format_term_with_op_table(OutStream, OpTable, VarSet, Term, !IO).
 
 write_term_with_op_table(OutStream, OpTable, VarSet, Term, !IO) :-
-    write_term_anon_vars(OutStream, OpTable, Term, VarSet, _,
+    format_term_anon_vars(OutStream, OpTable, Term, VarSet, _,
         anon_var_to_int, _, !IO).
 
+:- pragma type_spec(pred(format_term_with_op_table/6),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_term_with_op_table/6),
+    (Stream = string.builder.handle, State = string.builder.state)).
+format_term_with_op_table(Stream, OpTable, VarSet, Term, !State) :-
+    format_term_anon_vars(Stream, OpTable, Term, VarSet, _,
+        anon_var_to_int, _, !State).
+
 %---------------------%
+
+term_nl_to_string(VarSet, Term) = Str :-
+    State0 = string.builder.init,
+    format_term_nl(string.builder.handle, VarSet, Term, State0, State),
+    Str = string.builder.to_string(State).
 
 write_term_nl(VarSet, Term, !IO) :-
     io.output_stream(OutStream, !IO),
@@ -361,35 +522,68 @@ write_term_nl(OutStream, VarSet, Term, !IO) :-
     OpTable = init_mercury_op_table,
     write_term_nl_with_op_table(OutStream, OpTable, VarSet, Term, !IO).
 
+:- pragma type_spec(pred(format_term_nl/5),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_term_nl/5),
+    (Stream = string.builder.handle, State = string.builder.state)).
+format_term_nl(Stream, VarSet, Term, !State) :-
+    OpTable = init_mercury_op_table,
+    format_term_with_op_table(Stream, OpTable, VarSet, Term, !State).
+
+%---------------------%
+
+term_nl_with_op_table_to_string(OpTable, VarSet, Term) = Str :-
+    State0 = string.builder.init,
+    format_term_nl_with_op_table(string.builder.handle, OpTable, VarSet, Term,
+        State0, State),
+    Str = string.builder.to_string(State).
+
 write_term_nl_with_op_table(OpTable, VarSet, Term, !IO) :-
     io.output_stream(OutStream, !IO),
     write_term_nl_with_op_table(OutStream, OpTable, VarSet, Term, !IO).
 
 write_term_nl_with_op_table(OutStream, OpTable, VarSet, Term, !IO) :-
-    write_term_with_op_table(OutStream, OpTable, VarSet, Term, !IO),
-    io.write_string(OutStream, ".\n", !IO).
+    format_term_nl_with_op_table(OutStream, OpTable, VarSet, Term, !IO).
+
+:- pragma type_spec(pred(format_term_nl_with_op_table/6),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_term_nl_with_op_table/6),
+    (Stream = string.builder.handle, State = string.builder.state)).
+format_term_nl_with_op_table(Stream, OpTable, VarSet, Term, !State) :-
+    format_term_with_op_table(Stream, OpTable, VarSet, Term, !State),
+    stream.put(Stream, ".\n", !State).
 
 %---------------------------------------------------------------------------%
 
-:- pred write_term_anon_vars(io.text_output_stream::in, OpTable::in,
+:- pred format_term_anon_vars(Stream::in, OpTable::in,
     term(T)::in, varset(T)::in, varset(T)::out,
-    anon_var_info::in, anon_var_info::out, io::di, io::uo) is det
-    <= op_table(OpTable).
+    anon_var_info::in, anon_var_info::out,
+    State::di, State::uo) is det <= (op_table(OpTable),
+    stream.writer(Stream, string, State), stream.writer(Stream, char, State)).
+:- pragma type_spec(pred(format_term_anon_vars/9),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_term_anon_vars/9),
+    (Stream = string.builder.handle, State = string.builder.state)).
 
-write_term_anon_vars(OutStream, OpTable, Term, !VarSet, !Anon, !IO) :-
-    write_term_prio_anon_vars(OutStream, OpTable, Term,
-        ops.universal_priority(OpTable), !VarSet, !Anon, !IO).
+format_term_anon_vars(Stream, OpTable, Term, !VarSet, !Anon, !State) :-
+    format_term_prio_anon_vars(Stream, OpTable, Term,
+        ops.universal_priority(OpTable), !VarSet, !Anon, !State).
 
-:- pred write_term_prio_anon_vars(io.text_output_stream::in, OpTable::in,
+:- pred format_term_prio_anon_vars(Stream::in, OpTable::in,
     term(T)::in, ops.priority::in, varset(T)::in, varset(T)::out,
-    anon_var_info::in, anon_var_info::out, io::di, io::uo) is det
-    <= op_table(OpTable).
+    anon_var_info::in, anon_var_info::out,
+    State::di, State::uo) is det <= (op_table(OpTable),
+    stream.writer(Stream, string, State), stream.writer(Stream, char, State)).
+:- pragma type_spec(pred(format_term_prio_anon_vars/10),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_term_prio_anon_vars/10),
+    (Stream = string.builder.handle, State = string.builder.state)).
 
-write_term_prio_anon_vars(OutStream, OpTable, Term, Priority,
-        !VarSet, !Anon, !IO) :-
+format_term_prio_anon_vars(Stream, OpTable, Term, Priority,
+        !VarSet, !Anon, !State) :-
     (
         Term = term.variable(Var, _),
-        write_variable_anon_vars(OutStream, OpTable, Var, !VarSet, !Anon, !IO)
+        format_variable_anon_vars(Stream, OpTable, Var, !VarSet, !Anon, !State)
     ;
         Term = term.functor(Functor, ArgTerms, _),
         (
@@ -401,26 +595,31 @@ write_term_prio_anon_vars(OutStream, OpTable, Term, Priority,
             % Terms with these functors should NOT have arguments.
             (
                 ArgTerms = [],
-                format_constant_agt(OutStream, Functor,
-                    maybe_adjacent_to_graphic_token, !IO)
+                format_constant_agt(Stream, Functor,
+                    maybe_adjacent_to_graphic_token, !State)
             ;
                 ArgTerms = [_ | _],
                 unexpected($pred, "constant has arguments")
             )
         ;
             Functor = atom(Atom),
-            write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
-                Priority, !VarSet, !Anon, !IO)
+            format_atom_term_prio_anon_vars(Stream, OpTable, Atom, ArgTerms,
+                Priority, !VarSet, !Anon, !State)
         )
     ).
 
-:- pred write_atom_term_prio_anon_vars(io.text_output_stream::in,
+:- pred format_atom_term_prio_anon_vars(Stream::in,
     OpTable::in, string::in, list(term(T))::in, ops.priority::in,
     varset(T)::in, varset(T)::out, anon_var_info::in, anon_var_info::out,
-    io::di, io::uo) is det <= op_table(OpTable).
+    State::di, State::uo) is det <= (op_table(OpTable),
+    stream.writer(Stream, string, State), stream.writer(Stream, char, State)).
+:- pragma type_spec(pred(format_atom_term_prio_anon_vars/11),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_atom_term_prio_anon_vars/11),
+    (Stream = string.builder.handle, State = string.builder.state)).
 
-write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
-        Priority, !VarSet, !Anon, !IO) :-
+format_atom_term_prio_anon_vars(Stream, OpTable, Atom, ArgTerms,
+        Priority, !VarSet, !Anon, !State) :-
     % NOTE It would be nice to handle the first four conditions at once
     % with code such as
     %   ( if
@@ -446,22 +645,22 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
     %
     % - that the fallback code, which we should execute if ArgTerms
     %   does NOT have the right shape, is more complicated than a simple call
-    %   to write_atom_term_prio_anon_vars_std, since it must also consider
+    %   to format_atom_term_prio_anon_vars_std, since it must also consider
     %   the possibility that Atom is an operator in a nonstandard OpTable.
     ( if
         Atom = "[|]",
         ArgTerms = [ListHead, ListTail]
     then
-        io.write_char(OutStream, '[', !IO),
-        write_term_arg(OutStream, OpTable, ListHead, !VarSet, !Anon, !IO),
-        write_later_list_elements(OutStream, OpTable, ListTail,
-            !VarSet, !Anon, !IO),
-        io.write_char(OutStream, ']', !IO)
+        stream.put(Stream, '[', !State),
+        format_term_arg(Stream, OpTable, ListHead, !VarSet, !Anon, !State),
+        format_later_list_elements(Stream, OpTable, ListTail,
+            !VarSet, !Anon, !State),
+        stream.put(Stream, ']', !State)
     else if
         Atom = "[]",
         ArgTerms = []
     then
-        io.write_string(OutStream, "[]", !IO)
+        stream.put(Stream, "[]", !State)
     else if
         Atom = "{}",
         ArgTerms = [BracedHeadTerm | BracedTailTerms]
@@ -469,19 +668,19 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
         (
             BracedTailTerms = [],
             % Add spaces around the one argument term.
-            io.write_string(OutStream, "{ ", !IO),
-            write_term_anon_vars(OutStream, OpTable, BracedHeadTerm,
-                !VarSet, !Anon, !IO),
-            io.write_string(OutStream, " }", !IO)
+            stream.put(Stream, "{ ", !State),
+            format_term_anon_vars(Stream, OpTable, BracedHeadTerm,
+                !VarSet, !Anon, !State),
+            stream.put(Stream, " }", !State)
         ;
             BracedTailTerms = [_ | _],
             % Do not add spaces around the several argument terms.
-            io.write_char(OutStream, '{', !IO),
-            write_term_arg(OutStream, OpTable, BracedHeadTerm,
-                !VarSet, !Anon, !IO),
-            write_term_later_args(OutStream, OpTable, BracedTailTerms,
-                !VarSet, !Anon, !IO),
-            io.write_char(OutStream, '}', !IO)
+            stream.put(Stream, '{', !State),
+            format_term_arg(Stream, OpTable, BracedHeadTerm,
+                !VarSet, !Anon, !State),
+            format_term_later_args(Stream, OpTable, BracedTailTerms,
+                !VarSet, !Anon, !State),
+            stream.put(Stream, '}', !State)
         )
     else if
         % The empty functor '' is used for higher-order syntax:
@@ -490,13 +689,13 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
         Atom = "",
         ArgTerms = [term.variable(Var, _), FirstArg | OtherArgTerms]
     then
-        write_variable_anon_vars(OutStream, OpTable, Var,
-            !VarSet, !Anon, !IO),
-        io.write_char(OutStream, '(', !IO),
-        write_term_arg(OutStream, OpTable, FirstArg, !VarSet, !Anon, !IO),
-        write_term_later_args(OutStream, OpTable, OtherArgTerms,
-            !VarSet, !Anon, !IO),
-        io.write_char(OutStream, ')', !IO)
+        format_variable_anon_vars(Stream, OpTable, Var,
+            !VarSet, !Anon, !State),
+        stream.put(Stream, '(', !State),
+        format_term_arg(Stream, OpTable, FirstArg, !VarSet, !Anon, !State),
+        format_term_later_args(Stream, OpTable, OtherArgTerms,
+            !VarSet, !Anon, !State),
+        stream.put(Stream, ')', !State)
     else if
         lookup_op_infos(OpTable, Atom, OpInfos)
     then
@@ -506,41 +705,41 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
             ( ArgTerms = []
             ; ArgTerms = [_, _, _ | _]
             ),
-            write_atom_term_prio_anon_vars_std(OutStream, OpTable,
-                Atom, ArgTerms, Priority, !VarSet, !Anon, !IO)
+            format_atom_term_prio_anon_vars_std(Stream, OpTable,
+                Atom, ArgTerms, Priority, !VarSet, !Anon, !State)
         ;
             ArgTerms = [ArgTerm1],
             ( if MaybePrefix = pre(OpPriority, OpGtOrGe) then
-                maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
-                format_constant_atom(OutStream, Atom, !IO),
-                io.write_char(OutStream, ' ', !IO),
+                maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
+                format_constant_atom(Stream, Atom, !State),
+                stream.put(Stream, ' ', !State),
                 NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
-                write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
-                    NewPriority, !VarSet, !Anon, !IO),
-                maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
+                format_term_prio_anon_vars(Stream, OpTable, ArgTerm1,
+                    NewPriority, !VarSet, !Anon, !State),
+                maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
             else if MaybePostfix = post(OpPriority, OpGtOrGe) then
-                maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
+                maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
                 NewPriority = min_priority_for_arg(OpPriority, OpGtOrGe),
-                write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
-                    NewPriority, !VarSet, !Anon, !IO),
-                io.write_char(OutStream, ' ', !IO),
-                format_constant_atom(OutStream, Atom, !IO),
-                maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
+                format_term_prio_anon_vars(Stream, OpTable, ArgTerm1,
+                    NewPriority, !VarSet, !Anon, !State),
+                stream.put(Stream, ' ', !State),
+                format_constant_atom(Stream, Atom, !State),
+                maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
             else
-                write_atom_term_prio_anon_vars_std(OutStream, OpTable,
-                    Atom, ArgTerms, Priority, !VarSet, !Anon, !IO)
+                format_atom_term_prio_anon_vars_std(Stream, OpTable,
+                    Atom, ArgTerms, Priority, !VarSet, !Anon, !State)
             )
         ;
             ArgTerms = [ArgTerm1, ArgTerm2],
             ( if
                 MaybeInfix = in(OpPriority, LeftGtOrGe, RightGtOrGe)
             then
-                maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
+                maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
                 LeftPriority = min_priority_for_arg(OpPriority, LeftGtOrGe),
-                write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
-                    LeftPriority, !VarSet, !Anon, !IO),
+                format_term_prio_anon_vars(Stream, OpTable, ArgTerm1,
+                    LeftPriority, !VarSet, !Anon, !State),
                 ( if Atom = "," then
-                    io.write_string(OutStream, ", ", !IO)
+                    stream.put(Stream, ", ", !State)
                 else if Atom = "." then
                     % If the operator is '.'/2, then we must not put spaces
                     % around it (or at the very least, we should not put spaces
@@ -552,117 +751,137 @@ write_atom_term_prio_anon_vars(OutStream, OpTable, Atom, ArgTerms,
                     else
                         Dot = "."
                     ),
-                    io.write_string(OutStream, Dot, !IO)
+                    stream.put(Stream, Dot, !State)
                 else
-                    io.write_char(OutStream, ' ', !IO),
-                    format_constant_atom(OutStream, Atom, !IO),
-                    io.write_char(OutStream, ' ', !IO)
+                    stream.put(Stream, ' ', !State),
+                    format_constant_atom(Stream, Atom, !State),
+                    stream.put(Stream, ' ', !State)
                 ),
                 RightPriority = min_priority_for_arg(OpPriority, RightGtOrGe),
-                write_term_prio_anon_vars(OutStream, OpTable, ArgTerm2,
-                    RightPriority, !VarSet, !Anon, !IO),
-                maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
+                format_term_prio_anon_vars(Stream, OpTable, ArgTerm2,
+                    RightPriority, !VarSet, !Anon, !State),
+                maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
             else if
                 MaybeBinPrefix = bin_pre(OpPriority, LeftGtOrGe, RightGtOrGe)
             then
-                maybe_write_paren(OutStream, '(', Priority, OpPriority, !IO),
-                format_constant_atom(OutStream, Atom, !IO),
-                io.write_char(OutStream, ' ', !IO),
+                maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
+                format_constant_atom(Stream, Atom, !State),
+                stream.put(Stream, ' ', !State),
                 LeftPriority = min_priority_for_arg(OpPriority, LeftGtOrGe),
-                write_term_prio_anon_vars(OutStream, OpTable, ArgTerm1,
-                    LeftPriority, !VarSet, !Anon, !IO),
-                io.write_char(OutStream, ' ', !IO),
+                format_term_prio_anon_vars(Stream, OpTable, ArgTerm1,
+                    LeftPriority, !VarSet, !Anon, !State),
+                stream.put(Stream, ' ', !State),
                 RightPriority = min_priority_for_arg(OpPriority, RightGtOrGe),
-                write_term_prio_anon_vars(OutStream, OpTable, ArgTerm2,
-                    RightPriority, !VarSet, !Anon, !IO),
-                maybe_write_paren(OutStream, ')', Priority, OpPriority, !IO)
+                format_term_prio_anon_vars(Stream, OpTable, ArgTerm2,
+                    RightPriority, !VarSet, !Anon, !State),
+                maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
             else
-                write_atom_term_prio_anon_vars_std(OutStream, OpTable,
-                    Atom, ArgTerms, Priority, !VarSet, !Anon, !IO)
+                format_atom_term_prio_anon_vars_std(Stream, OpTable,
+                    Atom, ArgTerms, Priority, !VarSet, !Anon, !State)
             )
         )
     else
-        write_atom_term_prio_anon_vars_std(OutStream, OpTable, Atom, ArgTerms,
-            Priority, !VarSet, !Anon, !IO)
+        format_atom_term_prio_anon_vars_std(Stream, OpTable, Atom, ArgTerms,
+            Priority, !VarSet, !Anon, !State)
     ).
 
-:- pred write_atom_term_prio_anon_vars_std(io.text_output_stream::in,
+:- pred format_atom_term_prio_anon_vars_std(Stream::in,
     OpTable::in, string::in, list(term(T))::in, ops.priority::in,
     varset(T)::in, varset(T)::out, anon_var_info::in, anon_var_info::out,
-    io::di, io::uo) is det <= op_table(OpTable).
+    State::di, State::uo) is det <= (op_table(OpTable),
+    stream.writer(Stream, string, State), stream.writer(Stream, char, State)).
+:- pragma type_spec(pred(format_atom_term_prio_anon_vars_std/11),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_atom_term_prio_anon_vars_std/11),
+    (Stream = string.builder.handle, State = string.builder.state)).
 
-write_atom_term_prio_anon_vars_std(OutStream, OpTable, Atom, ArgTerms,
-        Priority, !VarSet, !Anon, !IO) :-
+format_atom_term_prio_anon_vars_std(Stream, OpTable, Atom, ArgTerms,
+        Priority, !VarSet, !Anon, !State) :-
     ( if
         ArgTerms = [],
         ops.is_op(OpTable, Atom),
         priority_ge(Priority, ops.loosest_op_priority(OpTable))
     then
-        io.write_char(OutStream, '(', !IO),
-        format_constant_atom(OutStream, Atom, !IO),
-        io.write_char(OutStream, ')', !IO)
+        stream.put(Stream, '(', !State),
+        format_constant_atom(Stream, Atom, !State),
+        stream.put(Stream, ')', !State)
     else
-        format_constant_atom(OutStream, Atom, !IO)
+        format_constant_atom(Stream, Atom, !State)
     ),
     (
         ArgTerms = [HeadArgTerm | TailArgTerms],
-        io.write_char(OutStream, '(', !IO),
-        write_term_arg(OutStream, OpTable, HeadArgTerm, !VarSet, !Anon, !IO),
-        write_term_later_args(OutStream, OpTable, TailArgTerms,
-            !VarSet, !Anon, !IO),
-        io.write_char(OutStream, ')', !IO)
+        stream.put(Stream, '(', !State),
+        format_term_arg(Stream, OpTable, HeadArgTerm, !VarSet, !Anon, !State),
+        format_term_later_args(Stream, OpTable, TailArgTerms,
+            !VarSet, !Anon, !State),
+        stream.put(Stream, ')', !State)
     ;
         ArgTerms = []
     ).
 
-:- pred write_term_arg(io.text_output_stream::in, OpTable::in,
-    term(T)::in, varset(T)::in, varset(T)::out, anon_var_info::in,
-    anon_var_info::out,
-    io::di, io::uo) is det <= op_table(OpTable).
+:- pred format_term_arg(Stream::in, OpTable::in,
+    term(T)::in, varset(T)::in, varset(T)::out,
+    anon_var_info::in, anon_var_info::out,
+    State::di, State::uo) is det <= (op_table(OpTable),
+    stream.writer(Stream, string, State), stream.writer(Stream, char, State)).
+:- pragma type_spec(pred(format_term_arg/9),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_term_arg/9),
+    (Stream = string.builder.handle, State = string.builder.state)).
 
-write_term_arg(OutStream, OpTable, Term, !VarSet, !Anon, !IO) :-
-    write_term_prio_anon_vars(OutStream, OpTable, Term,
-        ops.arg_priority(OpTable), !VarSet, !Anon, !IO).
+format_term_arg(Stream, OpTable, Term, !VarSet, !Anon, !State) :-
+    format_term_prio_anon_vars(Stream, OpTable, Term,
+        ops.arg_priority(OpTable), !VarSet, !Anon, !State).
 
     % Write the remaining arguments.
     %
-:- pred write_term_later_args(io.text_output_stream::in, OpTable::in,
+:- pred format_term_later_args(Stream::in, OpTable::in,
     list(term(T))::in, varset(T)::in, varset(T)::out,
-    anon_var_info::in, anon_var_info::out, io::di, io::uo) is det
-    <= op_table(OpTable).
+    anon_var_info::in, anon_var_info::out,
+    State::di, State::uo) is det <= (op_table(OpTable),
+    stream.writer(Stream, string, State), stream.writer(Stream, char, State)).
+:- pragma type_spec(pred(format_term_later_args/9),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_term_later_args/9),
+    (Stream = string.builder.handle, State = string.builder.state)).
 
-write_term_later_args(_, _, [], !VarSet, !Anon, !IO).
-write_term_later_args(OutStream, OpTable, [X | Xs], !VarSet, !Anon, !IO) :-
-    io.write_string(OutStream, ", ", !IO),
-    write_term_arg(OutStream, OpTable, X, !VarSet, !Anon, !IO),
-    write_term_later_args(OutStream, OpTable, Xs, !VarSet, !Anon, !IO).
+format_term_later_args(_, _, [], !VarSet, !Anon, !State).
+format_term_later_args(Stream, OpTable, [X | Xs], !VarSet, !Anon, !State) :-
+    stream.put(Stream, ", ", !State),
+    format_term_arg(Stream, OpTable, X, !VarSet, !Anon, !State),
+    format_term_later_args(Stream, OpTable, Xs, !VarSet, !Anon, !State).
 
-:- pred write_later_list_elements(io.text_output_stream::in, OpTable::in,
+:- pred format_later_list_elements(Stream::in, OpTable::in,
     term(T)::in, varset(T)::in, varset(T)::out,
-    anon_var_info::in, anon_var_info::out, io::di, io::uo) is det
-    <= op_table(OpTable).
+    anon_var_info::in, anon_var_info::out,
+    State::di, State::uo) is det <= (op_table(OpTable),
+    stream.writer(Stream, string, State), stream.writer(Stream, char, State)).
+:- pragma type_spec(pred(format_later_list_elements/9),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_later_list_elements/9),
+    (Stream = string.builder.handle, State = string.builder.state)).
 
-write_later_list_elements(OutStream, OpTable, Term, !VarSet, !Anon, !IO) :-
+format_later_list_elements(Stream, OpTable, Term, !VarSet, !Anon, !State) :-
     ( if
         Term = term.variable(Var, _),
         varset.search_var(!.VarSet, Var, Value)
     then
-        write_later_list_elements(OutStream, OpTable, Value,
-            !VarSet, !Anon, !IO)
+        format_later_list_elements(Stream, OpTable, Value,
+            !VarSet, !Anon, !State)
     else if
         Term = term.functor(term.atom("[|]"), [ListHead, ListTail], _)
     then
-        io.write_string(OutStream, ", ", !IO),
-        write_term_arg(OutStream, OpTable, ListHead, !VarSet, !Anon, !IO),
-        write_later_list_elements(OutStream, OpTable, ListTail,
-            !VarSet, !Anon, !IO)
+        stream.put(Stream, ", ", !State),
+        format_term_arg(Stream, OpTable, ListHead, !VarSet, !Anon, !State),
+        format_later_list_elements(Stream, OpTable, ListTail,
+            !VarSet, !Anon, !State)
     else if
         Term = term.functor(term.atom("[]"), [], _)
     then
         true
     else
-        io.write_string(OutStream, " | ", !IO),
-        write_term_anon_vars(OutStream, OpTable, Term, !VarSet, !Anon, !IO)
+        stream.put(Stream, " | ", !State),
+        format_term_anon_vars(Stream, OpTable, Term, !VarSet, !Anon, !State)
     ).
 
     % Succeeds iff outputting the given term would start with a digit.
@@ -685,6 +904,12 @@ starts_with_digit(functor(atom(Op), Args, _)) :-
 
 %---------------------------------------------------------------------------%
 
+variable_to_string(Var, VarSet) = Str :-
+    State0 = string.builder.init,
+    format_variable(string.builder.handle, Var, VarSet,
+        State0, State),
+    Str = string.builder.to_string(State).
+
 write_variable(Var, VarSet, !IO) :-
     io.output_stream(OutStream, !IO),
     write_variable(OutStream, Var, VarSet, !IO).
@@ -693,13 +918,32 @@ write_variable(OutStream, Var, VarSet, !IO) :-
     OpTable = init_mercury_op_table,
     term_io.write_variable_with_op_table(OutStream, OpTable, Var, VarSet, !IO).
 
+format_variable(Stream, Var, VarSet, !State) :-
+    OpTable = init_mercury_op_table,
+    term_io.format_variable_with_op_table(Stream, OpTable, Var, VarSet,
+        !State).
+
+%---------------------%
+
+variable_with_op_table_to_string(OpTable, Var, VarSet) = Str :-
+    State0 = string.builder.init,
+    format_variable_with_op_table(string.builder.handle, OpTable, Var, VarSet,
+        State0, State),
+    Str = string.builder.to_string(State).
+
 write_variable_with_op_table(OpTable, Var, VarSet, !IO) :-
     io.output_stream(OutStream, !IO),
     write_variable_with_op_table(OutStream, OpTable, Var, VarSet, !IO).
 
 write_variable_with_op_table(OutStream, OpTable, Var, VarSet, !IO) :-
-    write_variable_anon_vars(OutStream, OpTable, Var, VarSet, _,
+    format_variable_anon_vars(OutStream, OpTable, Var, VarSet, _,
         anon_var_to_int, _, !IO).
+
+format_variable_with_op_table(Stream, OpTable, Var, VarSet, !State) :-
+    format_variable_anon_vars(Stream, OpTable, Var, VarSet, _,
+        anon_var_to_int, _, !State).
+
+%---------------------%
 
 :- type anon_var_info
     --->    anon_var_to_int
@@ -736,16 +980,20 @@ write_variable_with_op_table(OutStream, OpTable, Var, VarSet, !IO) :-
     % XXX The names we generate here, with either approach,
     % *could* clash with the name of an explicit-named variable.
     %
-:- pred write_variable_anon_vars(io.text_output_stream::in, OpTable::in,
-    var(T)::in, varset(T)::in, varset(T)::out,
-    anon_var_info::in, anon_var_info::out, io::di, io::uo) is det
-    <= op_table(OpTable).
+:- pred format_variable_anon_vars(Stream::in, OpTable::in, var(T)::in,
+    varset(T)::in, varset(T)::out, anon_var_info::in, anon_var_info::out,
+    State::di, State::uo) is det <= (op_table(OpTable),
+    stream.writer(Stream, string, State), stream.writer(Stream, char, State)).
+:- pragma type_spec(pred(format_variable_anon_vars/9),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_variable_anon_vars/9),
+    (Stream = string.builder.handle, State = string.builder.state)).
 
-write_variable_anon_vars(OutStream, OpTable, Var, !VarSet, !Anon, !IO) :-
+format_variable_anon_vars(Stream, OpTable, Var, !VarSet, !Anon, !State) :-
     ( if varset.search_var(!.VarSet, Var, Value) then
-        write_term_anon_vars(OutStream, OpTable, Value, !VarSet, !Anon, !IO)
+        format_term_anon_vars(Stream, OpTable, Value, !VarSet, !Anon, !State)
     else if varset.search_name(!.VarSet, Var, Name) then
-        io.write_string(OutStream, Name, !IO)
+        stream.put(Stream, Name, !State)
     else
         (
             !.Anon = anon_var_to_int,
@@ -756,7 +1004,6 @@ write_variable_anon_vars(OutStream, OpTable, Var, !VarSet, !Anon, !IO) :-
             !:Anon = anon_occur_order(Counter)
         ),
         string.format("_%d", [i(VarNum)], VarName),
-
         % Recording the name we have given Var in !VarSet is needed only
         % with anon_occur_order; with anon_var_to_int, we would give the same
         % name to the same variable even without it. However, that would
@@ -772,7 +1019,7 @@ write_variable_anon_vars(OutStream, OpTable, Var, !VarSet, !Anon, !IO) :-
         % approach is not. That is why we choose the former even with
         % anon_var_to_int.
         varset.name_var(Var, VarName, !VarSet),
-        io.write_string(OutStream, VarName, !IO)
+        stream.put(Stream, VarName, !State)
     ).
 
 %---------------------------------------------------------------------------%
@@ -802,6 +1049,10 @@ format_constant(Stream, Const, !State) :-
     adjacent_to_graphic_token::in, State::di, State::uo) is det
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
+:- pragma type_spec(pred(format_constant_agt/5),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_constant_agt/5),
+    (Stream = string.builder.handle, State = string.builder.state)).
 
 format_constant_agt(Stream, Const, AGT, !State) :-
     (
@@ -833,6 +1084,10 @@ format_constant_agt(Stream, Const, AGT, !State) :-
     is det <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 :- pragma inline(pred(format_constant_atom/4)).
+:- pragma type_spec(pred(format_constant_atom/4),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_constant_atom/4),
+    (Stream = string.builder.handle, State = string.builder.state)).
 
 format_constant_atom(Stream, Atom, !IO) :-
     AGT = not_adjacent_to_graphic_token,
@@ -870,9 +1125,17 @@ write_quoted_atom(OutStream, Str, !IO) :-
     AGT = not_adjacent_to_graphic_token,
     term_io.write_quoted_atom_agt(OutStream, Str, AGT, !IO).
 
+:- pragma type_spec(pred(quote_atom/4),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(quote_atom/4),
+    (Stream = string.builder.handle, State = string.builder.state)).
 quote_atom(Stream, Str, !State) :-
     format_quoted_atom(Stream, Str, !State).
 
+:- pragma type_spec(pred(format_quoted_atom/4),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_quoted_atom/4),
+    (Stream = string.builder.handle, State = string.builder.state)).
 format_quoted_atom(Stream, Str, !State) :-
     AGT = not_adjacent_to_graphic_token,
     term_io.format_quoted_atom_agt(Stream, Str, AGT, !State).
@@ -895,9 +1158,17 @@ write_quoted_atom_agt(Str, AGT, !IO) :-
 write_quoted_atom_agt(OutStream, Str, AGT, !IO) :-
     format_quoted_atom_agt(OutStream, Str, AGT, !IO).
 
+:- pragma type_spec(pred(quote_atom_agt/5),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(quote_atom_agt/5),
+    (Stream = string.builder.handle, State = string.builder.state)).
 quote_atom_agt(Stream, Str, AGT, !State) :-
     term_io.format_quoted_atom_agt(Stream, Str, AGT, !State).
 
+:- pragma type_spec(pred(format_quoted_atom_agt/5),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_quoted_atom_agt/5),
+    (Stream = string.builder.handle, State = string.builder.state)).
 format_quoted_atom_agt(Stream, Str, AGT, !State) :-
     ShouldQuote = should_atom_be_quoted(Str, AGT),
     (
@@ -966,9 +1237,17 @@ write_escaped_string(Str, !IO) :-
     io.output_stream(Stream, !IO),
     term_io.format_escaped_string(Stream, Str, !IO).
 
+:- pragma type_spec(pred(write_escaped_string/4),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(write_escaped_string/4),
+    (Stream = string.builder.handle, State = string.builder.state)).
 write_escaped_string(Stream, Str, !State) :-
     format_escaped_string(Stream, Str, !State).
 
+:- pragma type_spec(pred(format_escaped_string/4),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_escaped_string/4),
+    (Stream = string.builder.handle, State = string.builder.state)).
 format_escaped_string(Stream, Str, !State) :-
     % XXX ILSEQ Decide what to do with ill-formed sequences.
     string.foldl(term_io.format_escaped_char(Stream), Str, !State).
@@ -994,9 +1273,17 @@ write_quoted_string(Str, !IO) :-
 write_quoted_string(OutStream, Str, !State) :-
     format_quoted_string(OutStream, Str, !State).
 
+:- pragma type_spec(pred(quote_string/4),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(quote_string/4),
+    (Stream = string.builder.handle, State = string.builder.state)).
 quote_string(Stream, Str, !State) :-
     format_quoted_string(Stream, Str, !State).
 
+:- pragma type_spec(pred(format_quoted_string/4),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_quoted_string/4),
+    (Stream = string.builder.handle, State = string.builder.state)).
 format_quoted_string(Stream, Str, !State) :-
     stream.put(Stream, '"', !State),
     term_io.format_escaped_string(Stream, Str, !State),
@@ -1014,9 +1301,17 @@ write_escaped_char(Char, !IO) :-
     io.output_stream(Stream, !IO),
     term_io.format_escaped_char(Stream, Char, !IO).
 
+:- pragma type_spec(pred(write_escaped_char/4),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(write_escaped_char/4),
+    (Stream = string.builder.handle, State = string.builder.state)).
 write_escaped_char(Stream, Char, !State) :-
     format_escaped_char(Stream, Char, !State).
 
+:- pragma type_spec(pred(format_escaped_char/4),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_escaped_char/4),
+    (Stream = string.builder.handle, State = string.builder.state)).
 format_escaped_char(Stream, Char, !State) :-
     % Note: the code of format_escaped_char is similar to code in
     % compiler/parse_tree_out_pragma.m and MR_escape_string_quote
@@ -1096,9 +1391,17 @@ write_quoted_char(C, !IO) :-
 write_quoted_char(OutStream, C, !IO) :-
     format_quoted_char(OutStream, C, !IO).
 
+:- pragma type_spec(pred(quote_char/4),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(quote_char/4),
+    (Stream = string.builder.handle, State = string.builder.state)).
 quote_char(Stream, C, !State) :-
     format_quoted_char(Stream, C, !State).
 
+:- pragma type_spec(pred(format_quoted_char/4),
+    (Stream = io.text_output_stream, State = io.state)).
+:- pragma type_spec(pred(format_quoted_char/4),
+    (Stream = string.builder.handle, State = string.builder.state)).
 format_quoted_char(Stream, C, !State) :-
     stream.put(Stream, term_io.quoted_char_to_string(C), !State).
 
