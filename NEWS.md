@@ -8,6 +8,11 @@ Changes that may break compatibility
   `read_term_with_op_table/5` have been removed from the `term_io` module
   of the Mercury standard library.
 
+* The order of two arguments in the predicates `write_variable/4`,
+  `write_variable/5`, `write_variable_with_op_table/4`, and
+  `write_variable_with_op_table/5`in the `term_io` module
+  has been swapped.
+
 * The `io` module is being reorganized. Some predicates have been marked
   as obsolete, while other predicates that had been marked as obsolete
   before the release of Mercury 22.01 have been removed.
@@ -949,6 +954,13 @@ Changes to the Mercury standard library
     - pred `write_quoted_char/4`
     - pred `write_quoted_string/3`
     - pred `write_quoted_string/4`
+
+* The order of the arguments of the following predicates has been changed:
+
+    - pred `write_variable/4`
+    - pred `write_variable/5`
+    - pred `write_variable_with_op_table/4`
+    - pred `write_variable_with_op_table/5`
 
 * The following predicates have been removed:
 

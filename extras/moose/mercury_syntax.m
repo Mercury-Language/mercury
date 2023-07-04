@@ -625,9 +625,9 @@ write_ite0(Lines, Ind, Type, [If - Then | Rest], VarSet, !IO) :-
 
 write_vars([], _, !IO).
 write_vars([V], VarSet, !IO) :-
-    term_io.write_variable(V, VarSet, !IO).
+    term_io.write_variable(VarSet, V, !IO).
 write_vars([V | Vs], VarSet, !IO) :-
     Vs = [_ | _],
-    term_io.write_variable(V, VarSet, !IO),
+    term_io.write_variable(VarSet, V, !IO),
     io.write_string(", ", !IO),
     write_vars(Vs, VarSet, !IO).

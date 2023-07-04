@@ -159,13 +159,6 @@
     stream.writer(Stream, char, State)).
 
 %---------------------%
-% XXX NOTE_TO_IMPLEMENTORS The argument order is inconsiste between the
-% XXX NOTE_TO_IMPLEMENTORS write_term* predicates above and the write_variable*
-% XXX NOTE_TO_IMPLEMENTORS predicates below. In the former, the varset precedes
-% XXX NOTE_TO_IMPLEMENTORS the entity to be written, in the latter,
-% XXX NOTE_TO_IMPLEMENTORS it follows the entity to be written.
-% XXX NOTE_TO_IMPLEMENTORS I (zs) think we should consistently put
-% XXX NOTE_TO_IMPLEMENTORS the varset first, to make fold ops easier.
 
     % These operations output either
     % - the value of the variable, if it is bound in the given varset, or
@@ -182,14 +175,14 @@
     % They all output variable names as specified by the given varset.
     % They write _N for all unnamed variables, with N starting at 0.
 
-:- func variable_to_string(var(T), varset(T)) = string.
+:- func variable_to_string(varset(T), var(T)) = string.
 
-:- pred write_variable(var(T)::in, varset(T)::in, io::di, io::uo) is det.
-:- pred write_variable(io.text_output_stream::in, var(T)::in, varset(T)::in,
+:- pred write_variable(varset(T)::in, var(T)::in, io::di, io::uo) is det.
+:- pred write_variable(io.text_output_stream::in, varset(T)::in, var(T)::in,
     io::di, io::uo) is det.
 
 :- pred format_variable(Stream::in,
-    var(T)::in, varset(T)::in, State::di, State::uo) is det
+    varset(T)::in, var(T)::in, State::di, State::uo) is det
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 
@@ -210,16 +203,16 @@
     % They all output variable names as specified by the given varset.
     % They write _N for all unnamed variables, with N starting at 0.
 
-:- func variable_with_op_table_to_string(OpTable, var(T), varset(T)) = string
+:- func variable_with_op_table_to_string(OpTable, varset(T), var(T)) = string
     <= op_table(OpTable).
 
 :- pred write_variable_with_op_table(OpTable::in,
-    var(T)::in, varset(T)::in, io::di, io::uo) is det <= op_table(OpTable).
+    varset(T)::in, var(T)::in, io::di, io::uo) is det <= op_table(OpTable).
 :- pred write_variable_with_op_table(io.text_output_stream::in, OpTable::in,
-    var(T)::in, varset(T)::in, io::di, io::uo) is det <= op_table(OpTable).
+    varset(T)::in, var(T)::in, io::di, io::uo) is det <= op_table(OpTable).
 
 :- pred format_variable_with_op_table(Stream::in, OpTable::in,
-    var(T)::in, varset(T)::in, State::di, State::uo) is det
+    varset(T)::in, var(T)::in, State::di, State::uo) is det
     <= (op_table(OpTable), stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 
@@ -904,42 +897,42 @@ starts_with_digit(functor(atom(Op), Args, _)) :-
 
 %---------------------------------------------------------------------------%
 
-variable_to_string(Var, VarSet) = Str :-
+variable_to_string(VarSet, Var) = Str :-
     State0 = string.builder.init,
-    format_variable(string.builder.handle, Var, VarSet,
+    format_variable(string.builder.handle, VarSet, Var,
         State0, State),
     Str = string.builder.to_string(State).
 
-write_variable(Var, VarSet, !IO) :-
+write_variable(VarSet, Var, !IO) :-
     io.output_stream(OutStream, !IO),
-    write_variable(OutStream, Var, VarSet, !IO).
+    write_variable(OutStream, VarSet, Var, !IO).
 
-write_variable(OutStream, Var, VarSet, !IO) :-
+write_variable(OutStream, VarSet, Var, !IO) :-
     OpTable = init_mercury_op_table,
-    term_io.write_variable_with_op_table(OutStream, OpTable, Var, VarSet, !IO).
+    term_io.write_variable_with_op_table(OutStream, OpTable, VarSet, Var, !IO).
 
-format_variable(Stream, Var, VarSet, !State) :-
+format_variable(Stream, VarSet, Var, !State) :-
     OpTable = init_mercury_op_table,
-    term_io.format_variable_with_op_table(Stream, OpTable, Var, VarSet,
+    term_io.format_variable_with_op_table(Stream, OpTable, VarSet, Var,
         !State).
 
 %---------------------%
 
-variable_with_op_table_to_string(OpTable, Var, VarSet) = Str :-
+variable_with_op_table_to_string(OpTable, VarSet, Var) = Str :-
     State0 = string.builder.init,
-    format_variable_with_op_table(string.builder.handle, OpTable, Var, VarSet,
+    format_variable_with_op_table(string.builder.handle, OpTable, VarSet, Var,
         State0, State),
     Str = string.builder.to_string(State).
 
-write_variable_with_op_table(OpTable, Var, VarSet, !IO) :-
+write_variable_with_op_table(OpTable, VarSet, Var, !IO) :-
     io.output_stream(OutStream, !IO),
-    write_variable_with_op_table(OutStream, OpTable, Var, VarSet, !IO).
+    write_variable_with_op_table(OutStream, OpTable, VarSet, Var, !IO).
 
-write_variable_with_op_table(OutStream, OpTable, Var, VarSet, !IO) :-
+write_variable_with_op_table(OutStream, OpTable, VarSet, Var, !IO) :-
     format_variable_anon_vars(OutStream, OpTable, Var, VarSet, _,
         anon_var_to_int, _, !IO).
 
-format_variable_with_op_table(Stream, OpTable, Var, VarSet, !State) :-
+format_variable_with_op_table(Stream, OpTable, VarSet, Var, !State) :-
     format_variable_anon_vars(Stream, OpTable, Var, VarSet, _,
         anon_var_to_int, _, !State).
 

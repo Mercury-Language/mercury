@@ -404,11 +404,11 @@ dump(InstGraph, VarSet, !IO) :-
 dump_node(VarSet, Var, Node, !IO) :-
     Node = node(Functors, MaybeParent),
     io.write_string("%% ", !IO),
-    term_io.write_variable(Var, VarSet, !IO),
+    term_io.write_variable(VarSet, Var, !IO),
     io.write_string(": ", !IO),
     (
         MaybeParent = parent(Parent),
-        term_io.write_variable(Parent, VarSet, !IO)
+        term_io.write_variable(VarSet, Parent, !IO)
     ;
         MaybeParent = top_level
     ),
@@ -434,7 +434,7 @@ dump_functor(VarSet, ConsId, Args, !IO) :-
 :- pred dump_var(prog_varset::in, prog_var::in, io::di, io::uo) is det.
 
 dump_var(VarSet, Var, !IO) :-
-    term_io.write_variable(Var, VarSet, !IO).
+    term_io.write_variable(VarSet, Var, !IO).
 
 %-----------------------------------------------------------------------------%
 
