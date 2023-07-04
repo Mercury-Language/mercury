@@ -133,7 +133,7 @@ make_track_flags_files_for_module(Globals, ModuleName, Succeeded,
         ),
 
         module_name_to_file_name(Globals, $pred, do_create_dirs,
-            newext_misc_gs(ext_misc_gs_track_flags),
+            ext_misc_gs(ext_misc_gs_track_flags),
             ModuleName, HashFileName, !IO),
         compare_hash_file(Globals, HashFileName, Hash, Same, !IO),
         (

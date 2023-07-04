@@ -130,7 +130,7 @@ output_java_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     ModuleName = mlds_get_module_name(MLDS),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        newext_target_java(ext_target_java_java),
+        ext_target_java(ext_target_java_java),
         ModuleName, JavaSourceFileName, !IO),
     output_to_file_stream(Globals, ModuleName, JavaSourceFileName,
         output_java_src_file(ModuleInfo, MLDS), Succeeded, !IO).

@@ -199,7 +199,7 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         MaybeSourceFileTimestamp, !Info, !IO),
 
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        newext_misc_ngs(ext_misc_ngs_module_dep),
+        ext_misc_ngs(ext_misc_ngs_module_dep),
         ModuleName, DepFileName, !IO),
     globals.lookup_accumulating_option(Globals, search_directories,
         SearchDirs),
@@ -352,7 +352,7 @@ do_write_module_dep_file(Globals, BurdenedModule, !IO) :-
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        newext_misc_ngs(ext_misc_ngs_module_dep),
+        ext_misc_ngs(ext_misc_ngs_module_dep),
         ModuleName, ProgDepFile, !IO),
     io.open_output(ProgDepFile, ProgDepResult, !IO),
     (
@@ -511,7 +511,7 @@ read_module_dependencies_no_search(Globals, RebuildModuleDeps, ModuleName,
 read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
         !Info, !IO) :-
     module_name_to_search_file_name(Globals, $pred,
-        newext_misc_ngs(ext_misc_ngs_module_dep),
+        ext_misc_ngs(ext_misc_ngs_module_dep),
         ModuleName, ModuleDepFile, !IO),
     search_for_file_returning_dir_and_stream(SearchDirs, ModuleDepFile,
         MaybeDirAndStream, !IO),
@@ -915,7 +915,7 @@ make_module_dependencies_fatal_error(Globals, OldOutputStream, ErrorStream,
         Globals, UnredirectGlobals),
     unredirect_output(UnredirectGlobals, ModuleName, ErrorStream, !Info, !IO),
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        newext_user(ext_user_err), ModuleName, ErrFileName, !IO),
+        ext_user(ext_user_err), ModuleName, ErrFileName, !IO),
     io.file.remove_file(ErrFileName, _, !IO),
 
     ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
@@ -1053,7 +1053,7 @@ cleanup_module_dep_files(Globals, ModuleNames, !Info, !IO) :-
 
 cleanup_module_dep_file(Globals, ModuleName, !Info, !IO) :-
     remove_make_module_file(Globals, verbose_make, ModuleName,
-        newext_misc_ngs(ext_misc_ngs_module_dep), !Info, !IO).
+        ext_misc_ngs(ext_misc_ngs_module_dep), !Info, !IO).
 
 :- pred maybe_write_importing_module(module_name::in,
     maybe(import_or_include)::in, io::di, io::uo) is det.

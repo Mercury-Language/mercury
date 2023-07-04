@@ -48,11 +48,11 @@
     --->    ofk_opt
     ;       ofk_trans_opt.
 
-:- pred file_kind_to_extension(file_kind::in, string::out, newext::out) is det.
+:- pred file_kind_to_extension(file_kind::in, string::out, ext::out) is det.
 :- pred int_file_kind_to_extension(int_file_kind::in,
-    string::out, newext::out) is det.
+    string::out, ext::out) is det.
 :- pred opt_file_kind_to_extension(opt_file_kind::in,
-    string::out, newext::out) is det.
+    string::out, ext::out) is det.
 
 :- pred extension_to_file_kind(string::in, file_kind::out) is semidet.
 
@@ -60,21 +60,21 @@
 
 :- implementation.
 
-file_kind_to_extension(fk_src, ".m", newext_src).
-file_kind_to_extension(fk_int(IntFileKind), ExtStr, NewExt) :-
-    int_file_kind_to_extension(IntFileKind, ExtStr, NewExt).
-file_kind_to_extension(fk_opt(OptFileKind), ExtStr, NewExt) :-
-    opt_file_kind_to_extension(OptFileKind, ExtStr, NewExt).
+file_kind_to_extension(fk_src, ".m", ext_src).
+file_kind_to_extension(fk_int(IntFileKind), ExtStr, Ext) :-
+    int_file_kind_to_extension(IntFileKind, ExtStr, Ext).
+file_kind_to_extension(fk_opt(OptFileKind), ExtStr, Ext) :-
+    opt_file_kind_to_extension(OptFileKind, ExtStr, Ext).
 
-int_file_kind_to_extension(ifk_int0, ".int0", newext_int(ext_int_int0)).
-int_file_kind_to_extension(ifk_int1, ".int",  newext_int(ext_int_int1)).
-int_file_kind_to_extension(ifk_int2, ".int2", newext_int(ext_int_int2)).
-int_file_kind_to_extension(ifk_int3, ".int3", newext_int(ext_int_int3)).
+int_file_kind_to_extension(ifk_int0, ".int0", ext_int(ext_int_int0)).
+int_file_kind_to_extension(ifk_int1, ".int",  ext_int(ext_int_int1)).
+int_file_kind_to_extension(ifk_int2, ".int2", ext_int(ext_int_int2)).
+int_file_kind_to_extension(ifk_int3, ".int3", ext_int(ext_int_int3)).
 
 opt_file_kind_to_extension(ofk_opt, ".opt",
-    newext_opt(ext_opt_plain)).
+    ext_opt(ext_opt_plain)).
 opt_file_kind_to_extension(ofk_trans_opt, ".trans_opt",
-    newext_opt(ext_opt_trans)).
+    ext_opt(ext_opt_trans)).
 
 extension_to_file_kind(ExtStr, FileKind) :-
     (

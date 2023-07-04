@@ -198,7 +198,7 @@ dump_abstract_constraints(ModuleInfo, ConstraintVarSet, ModeConstraints,
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        newext_user_ngs(ext_user_ngs_mode_constr), ModuleName, FileName, !IO),
+        ext_user_ngs(ext_user_ngs_mode_constr), ModuleName, FileName, !IO),
     OutputFile = FileName,
 
     io.open_output(OutputFile, IOResult, !IO),

@@ -75,7 +75,7 @@
     % Find the extension for the timestamp file for the given target type,
     % if one exists.
     %
-:- pred timestamp_extension(module_target_type::in, newext::out) is semidet.
+:- pred timestamp_extension(module_target_type::in, ext::out) is semidet.
 
 %---------------------------------------------------------------------------%
 %
@@ -146,7 +146,7 @@
     %   !Info, !IO).
     %
 :- pred remove_make_module_file(globals::in, option::in, module_name::in,
-    newext::in, make_info::in, make_info::out, io::di, io::uo) is det.
+    ext::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
 :- pred make_remove_file(globals::in, option::in, file_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -347,14 +347,14 @@ get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
     else
         target_type_to_target_extension(Globals, TargetType, TargetExt),
         (
-            TargetExt = extension(NewExt),
+            TargetExt = extension(Ext),
             (
                 Search = do_not_search,
                 module_name_to_file_name(Globals, From, do_not_create_dirs,
-                    NewExt, ModuleName, FileName, !IO)
+                    Ext, ModuleName, FileName, !IO)
             ;
                 Search = do_search,
-                module_name_to_search_file_name(Globals, From, NewExt,
+                module_name_to_search_file_name(Globals, From, Ext,
                     ModuleName, FileName, !IO)
             )
         ;
@@ -390,31 +390,31 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
     (
         TargetType = executable,
         module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            newext_exec_gs(ext_exec_exec_opt), ModuleName, FileName, !IO)
+            ext_exec_gs(ext_exec_exec_opt), ModuleName, FileName, !IO)
     ;
         TargetType = static_library,
         module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs,
-            "lib", newext_lib_gs(ext_lib_gs_lib_opt),
+            "lib", ext_lib_gs(ext_lib_gs_lib_opt),
             ModuleName, FileName, !IO)
     ;
         TargetType = shared_library,
         module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs,
-            "lib", newext_lib_gs(ext_lib_gs_sh_lib_opt),
+            "lib", ext_lib_gs(ext_lib_gs_sh_lib_opt),
             ModuleName, FileName, !IO)
     ;
         TargetType = csharp_executable,
         module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            newext_exec(ext_exec_exe), ModuleName, FileName, !IO)
+            ext_exec(ext_exec_exe), ModuleName, FileName, !IO)
     ;
         TargetType = csharp_library,
         module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            newext_lib_gs(ext_lib_gs_dll), ModuleName, FileName, !IO)
+            ext_lib_gs(ext_lib_gs_dll), ModuleName, FileName, !IO)
     ;
         ( TargetType = java_archive
         ; TargetType = java_executable
         ),
         module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            newext_lib_gs(ext_lib_gs_jar), ModuleName, FileName, !IO)
+            ext_lib_gs(ext_lib_gs_jar), ModuleName, FileName, !IO)
     ).
 
 :- pred module_target_to_file_name(globals::in, string::in,
@@ -425,8 +425,8 @@ module_target_to_file_name(Globals, From, MkDir, TargetType,
         ModuleName, FileName, !IO) :-
     target_type_to_target_extension(Globals, TargetType, TargetExt),
     (
-        TargetExt = extension(NewExt),
-        module_name_to_file_name(Globals, From, MkDir, NewExt,
+        TargetExt = extension(Ext),
+        module_name_to_file_name(Globals, From, MkDir, Ext,
             ModuleName, FileName, !IO)
     ;
         TargetExt = foreign_obj(PIC, Lang),
@@ -435,9 +435,9 @@ module_target_to_file_name(Globals, From, MkDir, TargetType,
             module_target_object_code(PIC), ForeignModuleName, FileName, !IO)
     ;
         TargetExt = fact_table_obj(PIC, FactFile),
-        maybe_pic_object_file_extension(PIC, ObjNewExt, _),
+        maybe_pic_object_file_extension(PIC, ObjExt, _),
         fact_table_file_name(Globals, $pred, MkDir,
-            newext_target_obj(ObjNewExt), FactFile, FileName, !IO)
+            ext_target_obj(ObjExt), FactFile, FileName, !IO)
     ).
 
 :- pred module_target_to_search_file_name(globals::in, string::in,
@@ -448,8 +448,8 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
         FileName, !IO) :-
     target_type_to_target_extension(Globals, TargetType, TargetExt),
     (
-        TargetExt = extension(NewExt),
-        module_name_to_search_file_name(Globals, From, NewExt,
+        TargetExt = extension(Ext),
+        module_name_to_search_file_name(Globals, From, Ext,
             ModuleName, FileName, !IO)
     ;
         TargetExt = foreign_obj(PIC, Lang),
@@ -458,16 +458,16 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
             module_target_object_code(PIC), ForeignModuleName, FileName, !IO)
     ;
         TargetExt = fact_table_obj(PIC, FactFile),
-        maybe_pic_object_file_extension(PIC, ObjNewExt, _),
+        maybe_pic_object_file_extension(PIC, ObjExt, _),
         % XXX This call ignores the implicit do_search setting.
         fact_table_file_name(Globals, $pred, do_not_create_dirs,
-            newext_target_obj(ObjNewExt), FactFile, FileName, !IO)
+            ext_target_obj(ObjExt), FactFile, FileName, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
 :- type target_extension
-    --->    extension(newext)
+    --->    extension(ext)
     ;       foreign_obj(pic, foreign_language)
     ;       fact_table_obj(pic, string).
 
@@ -481,57 +481,57 @@ target_type_to_target_extension(Globals, Target, TargetExt) :-
     require_complete_switch [Target]
     (
         Target = module_target_source,
-        TargetExt = extension(newext_src)
+        TargetExt = extension(ext_src)
     ;
         Target = module_target_errors,
-        TargetExt = extension(newext_user(ext_user_err))
+        TargetExt = extension(ext_user(ext_user_err))
     ;
         Target = module_target_int0,
-        TargetExt = extension(newext_int(ext_int_int0))
+        TargetExt = extension(ext_int(ext_int_int0))
     ;
         Target = module_target_int1,
-        TargetExt = extension(newext_int(ext_int_int1))
+        TargetExt = extension(ext_int(ext_int_int1))
     ;
         Target = module_target_int2,
-        TargetExt = extension(newext_int(ext_int_int2))
+        TargetExt = extension(ext_int(ext_int_int2))
     ;
         Target = module_target_int3,
-        TargetExt = extension(newext_int(ext_int_int3))
+        TargetExt = extension(ext_int(ext_int_int3))
     ;
         Target = module_target_opt,
-        TargetExt = extension(newext_opt(ext_opt_plain))
+        TargetExt = extension(ext_opt(ext_opt_plain))
     ;
         Target = module_target_analysis_registry,
-        TargetExt = extension(newext_analysis(ext_an_analysis))
+        TargetExt = extension(ext_analysis(ext_an_analysis))
     ;
         Target = module_target_track_flags,
-        TargetExt = extension(newext_misc_gs(ext_misc_gs_track_flags))
+        TargetExt = extension(ext_misc_gs(ext_misc_gs_track_flags))
     ;
         Target = module_target_c_header(header_mih),
-        TargetExt = extension(newext_mih(ext_mih_mih))
+        TargetExt = extension(ext_mih(ext_mih_mih))
     ;
         Target = module_target_c_header(header_mh),
-        TargetExt = extension(newext_mh(ext_mh_mh))
+        TargetExt = extension(ext_mh(ext_mh_mh))
     ;
         Target = module_target_c_code,
-        TargetExt = extension(newext_target_c_cs(ext_target_c))
+        TargetExt = extension(ext_target_c_cs(ext_target_c))
     ;
         Target = module_target_csharp_code,
         % XXX ".exe" if the module contains main.
-        TargetExt = extension(newext_target_c_cs(ext_target_cs))
+        TargetExt = extension(ext_target_c_cs(ext_target_cs))
     ;
         Target = module_target_java_code,
-        TargetExt = extension(newext_target_java(ext_target_java_java))
+        TargetExt = extension(ext_target_java(ext_target_java_java))
     ;
         Target = module_target_java_class_code,
-        TargetExt = extension(newext_target_java(ext_target_java_class))
+        TargetExt = extension(ext_target_java(ext_target_java_class))
     ;
         Target = module_target_object_code(PIC),
-        maybe_pic_object_file_extension(PIC, ObjNewExt, _),
-        TargetExt = extension( newext_target_obj(ObjNewExt))
+        maybe_pic_object_file_extension(PIC, ObjExt, _),
+        TargetExt = extension( ext_target_obj(ObjExt))
     ;
         Target = module_target_xml_doc,
-        TargetExt = extension(newext_user_ngs(ext_user_ngs_xml))
+        TargetExt = extension(ext_user_ngs(ext_user_ngs_xml))
     ;
         Target = module_target_foreign_object(PIC, Lang),
         TargetExt = foreign_obj(PIC, Lang)
@@ -608,7 +608,7 @@ target_extension_synonym(".csharp", module_target_csharp_code).
     % Currently the ".cs" extension is still treated as the build-all target
     % for C files, so we accept ".csharp" for C# files.
 
-timestamp_extension(ModuleTargetType, NewExt) :-
+timestamp_extension(ModuleTargetType, Ext) :-
     % XXX EXT The absence of code handling .trans_opt_date files
     % would seem to me (zs) to be a bug.
     (
@@ -616,42 +616,42 @@ timestamp_extension(ModuleTargetType, NewExt) :-
         % We need a timestamp file for `.err' files because errors are written
         % to the `.err' file even when writing interfaces. The timestamp
         % is only updated when compiling to target code.
-        NewExt = newext_misc_ngs(ext_misc_ngs_err_date)
+        Ext = ext_misc_ngs(ext_misc_ngs_err_date)
     ;
         ModuleTargetType = module_target_int0,
-        NewExt = newext_int(ext_int_date_int0)
+        Ext = ext_int(ext_int_date_int0)
     ;
         ModuleTargetType = module_target_int1,
-        NewExt = newext_int(ext_int_date_int12)
+        Ext = ext_int(ext_int_date_int12)
     ;
         ModuleTargetType = module_target_int2,
-        NewExt = newext_int(ext_int_date_int12)
+        Ext = ext_int(ext_int_date_int12)
     ;
         ModuleTargetType = module_target_int3,
-        NewExt = newext_int(ext_int_date_int3)
+        Ext = ext_int(ext_int_date_int3)
     ;
         ModuleTargetType = module_target_opt,
-        NewExt = newext_opt(ext_opt_date_plain)
+        Ext = ext_opt(ext_opt_date_plain)
     ;
         ModuleTargetType = module_target_analysis_registry,
         % We need a timestamp file for `.analysis' files because they
         % can be modified in the process of analysing _another_ module.
         % The timestamp is only updated after actually analysing the module
         % that the `.analysis' file corresponds to.
-        NewExt = newext_analysis(ext_an_date)
+        Ext = ext_analysis(ext_an_date)
     ;
         % Header files share a timestamp file with their corresponding
         % target code files.
         ( ModuleTargetType = module_target_c_code
         ; ModuleTargetType = module_target_c_header(_)
         ),
-        NewExt = newext_target_date(ext_target_date_c)
+        Ext = ext_target_date(ext_target_date_c)
     ;
         ModuleTargetType = module_target_csharp_code,
-        NewExt = newext_target_date(ext_target_date_cs)
+        Ext = ext_target_date(ext_target_date_cs)
     ;
         ModuleTargetType = module_target_java_code,
-        NewExt = newext_target_date(ext_target_date_java)
+        Ext = ext_target_date(ext_target_date_java)
     ).
 
 %---------------------------------------------------------------------------%
@@ -663,9 +663,9 @@ init_target_file_timestamps =
 
 get_timestamp_file_timestamp(Globals, target_file(ModuleName, TargetType),
         MaybeTimestamp, !Info, !IO) :-
-    ( if timestamp_extension(TargetType, TimestampNewExt) then
+    ( if timestamp_extension(TargetType, TimestampExt) then
         module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            TimestampNewExt, ModuleName, FileName, !IO)
+            TimestampExt, ModuleName, FileName, !IO)
     else
         module_target_to_file_name(Globals, $pred, do_not_create_dirs,
             TargetType, ModuleName, FileName, !IO)
@@ -940,18 +940,18 @@ remove_make_target_file_by_name(Globals, From, VerboseOption,
     module_target_to_file_name(Globals, From, do_not_create_dirs,
         TargetType, ModuleName, FileName, !IO),
     make_remove_file(Globals, VerboseOption, FileName, !Info, !IO),
-    ( if timestamp_extension(TargetType, TimestampNewExt) then
+    ( if timestamp_extension(TargetType, TimestampExt) then
         remove_make_module_file(Globals, VerboseOption, ModuleName,
-            TimestampNewExt, !Info, !IO)
+            TimestampExt, !Info, !IO)
     else
         true
     ).
 
 %---------------------%
 
-remove_make_module_file(Globals, VerboseOption, ModuleName, NewExt,
+remove_make_module_file(Globals, VerboseOption, ModuleName, Ext,
         !Info, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs, NewExt,
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs, Ext,
         ModuleName, FileName, !IO),
     make_remove_file(Globals, VerboseOption, FileName, !Info, !IO).
 

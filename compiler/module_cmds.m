@@ -105,7 +105,7 @@
     %
 :- pred touch_interface_datestamp(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
-    module_name::in, newext::in, maybe_succeeded::out, io::di, io::uo) is det.
+    module_name::in, ext::in, maybe_succeeded::out, io::di, io::uo) is det.
 
     % touch_datestamp(Globals, ProgressStream, ErrorStream, FileName,
     %   Succeeded, !IO):
@@ -584,9 +584,9 @@ make_symlink_or_copy_dir(Globals, ProgressStream, ErrorStream,
 %-----------------------------------------------------------------------------%
 
 touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
-        ModuleName, NewExt, Succeeded, !IO) :-
+        ModuleName, Ext, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        NewExt, ModuleName, OutputFileName, !IO),
+        Ext, ModuleName, OutputFileName, !IO),
     touch_datestamp(Globals, ProgressStream, ErrorStream, OutputFileName,
         Succeeded, !IO).
 
@@ -861,7 +861,7 @@ use_win32 :-
 
 create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        newext_lib_gs(ext_lib_gs_jar), MainModuleName, JarFileName, !IO),
+        ext_lib_gs(ext_lib_gs_jar), MainModuleName, JarFileName, !IO),
     get_target_env_type(Globals, TargetEnvType),
     (
         ( TargetEnvType = env_type_posix
@@ -1205,7 +1205,7 @@ get_env_classpath(Classpath, !IO) :-
 
 create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        newext_exec_gs(ext_exec_gs_noext), MainModuleName, FileName, !IO),
+        ext_exec_gs(ext_exec_gs_noext), MainModuleName, FileName, !IO),
 
     get_progress_output_stream(Globals, MainModuleName, ProgressStream, !IO),
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -1244,7 +1244,7 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
 
 create_launcher_batch_file(Globals, MainModuleName, Pred, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, do_create_dirs,
-        newext_exec_gs(ext_exec_gs_bat), MainModuleName, FileName, !IO),
+        ext_exec_gs(ext_exec_gs_bat), MainModuleName, FileName, !IO),
 
     get_progress_output_stream(Globals, MainModuleName, ProgressStream, !IO),
     globals.lookup_bool_option(Globals, verbose, Verbose),

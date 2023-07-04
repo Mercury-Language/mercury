@@ -4479,7 +4479,7 @@ maybe_show_type_repns(ModuleInfo, TypeCtorsTypeDefns, !IO) :-
 
         module_info_get_name(ModuleInfo, ModuleName),
         module_name_to_file_name(Globals, $pred, do_create_dirs,
-            newext_user_ngs(ext_user_ngs_type_repns),
+            ext_user_ngs(ext_user_ngs_type_repns),
             ModuleName, TypeRepnFileName, !IO),
         io.open_output(TypeRepnFileName, TypeRepnFileResult, !IO),
         (

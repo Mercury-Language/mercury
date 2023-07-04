@@ -582,7 +582,7 @@ fact_table_compile_facts(ModuleInfo, FileName, Context, GenInfo,
     (
         FileResult = ok(FileStream),
         fact_table_file_name(Globals, $pred, do_create_dirs,
-            newext_target_c_cs(ext_target_c), FileName, OutputFileName, !IO),
+            ext_target_c_cs(ext_target_c), FileName, OutputFileName, !IO),
         io.open_output(OutputFileName, OpenResult, !IO),
         (
             OpenResult = ok(OutputStream),

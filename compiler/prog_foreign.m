@@ -138,7 +138,7 @@
     % XXX Actually, all the foreign languages we handle *now* *do*
     % generate external files. (The exception used to be Erlang.)
     %
-:- pred foreign_language_file_extension(foreign_language, newext).
+:- pred foreign_language_file_extension(foreign_language, ext).
 % :- mode foreign_language_file_extension(in(lang_gen_ext_file), out) is det.
 :- mode foreign_language_file_extension(in, out) is det.
 
@@ -304,11 +304,11 @@ foreign_language_module_name(ModuleName, Lang, FullyQualifiedModuleName) :-
 :- pragma no_determinism_warning(pred(foreign_language_file_extension/2)).
 
 foreign_language_file_extension(lang_c,
-    newext_target_c_cs(ext_target_c)).
+    ext_target_c_cs(ext_target_c)).
 foreign_language_file_extension(lang_csharp,
-    newext_target_c_cs(ext_target_cs)).
+    ext_target_c_cs(ext_target_cs)).
 foreign_language_file_extension(lang_java,
-    newext_target_java(ext_target_java_java)).
+    ext_target_java(ext_target_java_java)).
 
 %-----------------------------------------------------------------------------%
 

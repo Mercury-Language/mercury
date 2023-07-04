@@ -60,14 +60,14 @@
         %   ModuleName, MaybeFileName, !IO)
         %
     pred module_name_to_read_file_name(Compiler::in, globals::in,
-        newext::in, module_name::in, maybe_error(string)::out,
+        ext::in, module_name::in, maybe_error(string)::out,
         io::di, io::uo) is det,
 
         % module_name_to_write_file_name(Compiler, Globals, Ext,
         %   ModuleName, FileName, !IO)
         %
     pred module_name_to_write_file_name(Compiler::in, globals::in,
-        newext::in, module_name::in, string::out, io::di, io::uo) is det
+        ext::in, module_name::in, string::out, io::di, io::uo) is det
 ].
 
 :- type analysis_name == string.
@@ -1402,7 +1402,7 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModules0,
         % Touch a timestamp file to indicate the last time that this module was
         % analysed.
         module_name_to_write_file_name(Compiler, Globals,
-            newext_analysis(ext_an_date), ThisModule, TimestampFileName, !IO),
+            ext_analysis(ext_an_date), ThisModule, TimestampFileName, !IO),
         get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         get_error_output_stream(ModuleInfo, ErrorStream, !IO),
         touch_datestamp(Globals, ProgressStream, ErrorStream,
