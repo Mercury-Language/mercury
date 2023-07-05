@@ -1124,7 +1124,8 @@ maybe_log_augment_decision(Why, IntFileKind, ReadWhy, ModuleName, Read, !IO) :-
     (
         ModuleNameStr = sym_name_to_string(ModuleName),
         ( IntFileKind = ifk_int0, ExtStr = ".int0"
-        ; IntFileKind = ifk_int1, ExtStr = ".int1"  % for alignment
+        % We print ".int1" instead of the correct ".int" for alignment.
+        ; IntFileKind = ifk_int1, ExtStr = ".int1"
         ; IntFileKind = ifk_int2, ExtStr = ".int2"
         ; IntFileKind = ifk_int3, ExtStr = ".int3"
         ),
