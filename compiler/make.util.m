@@ -345,7 +345,7 @@ get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
             module_name_to_source_file_name(ModuleName, FileName, !IO)
         )
     else
-        target_type_to_target_extension(Globals, TargetType, TargetExt),
+        target_type_to_target_extension(TargetType, TargetExt),
         (
             TargetExt = extension(Ext),
             (
@@ -423,7 +423,7 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
 
 module_target_to_file_name(Globals, From, MkDir, TargetType,
         ModuleName, FileName, !IO) :-
-    target_type_to_target_extension(Globals, TargetType, TargetExt),
+    target_type_to_target_extension(TargetType, TargetExt),
     (
         TargetExt = extension(Ext),
         module_name_to_file_name(Globals, From, MkDir, Ext,
@@ -446,7 +446,7 @@ module_target_to_file_name(Globals, From, MkDir, TargetType,
 
 module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
         FileName, !IO) :-
-    target_type_to_target_extension(Globals, TargetType, TargetExt),
+    target_type_to_target_extension(TargetType, TargetExt),
     (
         TargetExt = extension(Ext),
         module_name_to_search_file_name(Globals, From, Ext,
@@ -471,10 +471,10 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
     ;       foreign_obj(pic, foreign_language)
     ;       fact_table_obj(pic, string).
 
-:- pred target_type_to_target_extension(globals::in, module_target_type::in,
+:- pred target_type_to_target_extension(module_target_type::in,
     target_extension::out) is det.
 
-target_type_to_target_extension(Globals, Target, TargetExt) :-
+target_type_to_target_extension(Target, TargetExt) :-
     % target_type_to_extension and extension_to_target_type represent
     % the same relationship between targets and suffixes, but in different
     % directions. Their codes should be kept in sync.
