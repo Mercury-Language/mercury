@@ -7923,10 +7923,11 @@ Dump the MLDS (a C-like intermediate representation) after
 the specified stage number or stage name.
 The MLDS is converted to a C source file/header file pair,
 which is dumped to @file{@var{module}.c_dump.@var{num}-@var{name}}
-and @file{@var{module}.h_dump.@var{num}-@var{name}}.
+and @file{@var{module}.mih_dump.@var{num}-@var{name}}.
 Stage numbers range from 1 to 99; not all stage numbers are valid.
 The special stage name @samp{all} causes the dumping of all stages.
 Multiple dump options accumulate.
+This option works only in MLDS grades that target C.
 
 @sp 1
 @item --dump-mlds-pred-name @var{name}
@@ -7944,6 +7945,7 @@ more than one), and nothing else.
 Dump the internal compiler representation of the MLDS,
 after the specified stage number or stage name, to
 @file{@var{module}.mlds_dump.@var{num}-@var{name}}.
+This option works in all MLDS grades.
 
 @c @sp 1
 @c @item --dump-options-file @var{output_file}

@@ -26,27 +26,16 @@
 
 %---------------------------------------------------------------------------%
 %
-% XXX This interface should be improved in two ways.
+% XXX This interface could be improved in several ways.
 %
 % - First, the implementation of this predicate effectively divides
 %   the set of possible values of Ext into classes of extensions,
 %   treating every extension in a given class the same way.
-%
-%   We should replace the simple string Ext argument with a more
-%   structured specification of the extension, one that puts a wrapper
-%   around the actual suffix indicating what class the extension falls in,
-%   as in e.g. ec_library(".a"). For some classes, maybe the majority,
-%   the list of member extensions may be fixed; for these, it would
-%   make sense to specify each member of the class by a value in an
-%   extension-class-specific enum type, not by string.
-%
 %   While the code handling some of classes accesses the filesystem,
 %   the code handling some other classes does not. If we put the wrappers
 %   for these two kinds of classes into two separate types, we could
 %   have a version of this predicate for each type, one with and one
 %   without an I/O state pair.
-%
-%   Work along these lines has begun.
 %
 % - Second, calls which search for a source file for reading (that may not
 %   exist) should be separated from calls that construct a file name
@@ -62,6 +51,14 @@
     %
     % values of this type tell the predicate they are given to whether it
     % should create any such missing directories.
+    %
+    % XXX Or, we could just return the path to the file (in the form of
+    % a list of directory names) to our caller, and let *it* call
+    % the predicate to create those directories (a non-maybe version of
+    % maybe_create_dirs_on_path below). This way, we wouldn't have to pass
+    % a I/O state pair to a filename translation predicate *just in case*
+    % Mkdir is do_create_dirs.
+    %
 :- type maybe_create_dirs
     --->    do_create_dirs
     ;       do_not_create_dirs.
@@ -94,11 +91,90 @@
     %
     % - which extensions are ever subject to search, and
     % - what the search path of each such extension is.
+    %
+    % XXX The function symbols of this type are misnamed. The code in
+    % this module *never* does any searches. What this flag controls
+    % is whether we return a "file name to search for in a list of dirs"
+    % or a "file name where it is known exactly what directory it is in".
+    % The former never has a directory name (as distinct from file name)
+    % component; the latter may have some.
 :- type maybe_search
     --->    do_search
     ;       do_not_search.
 
 %---------------------%
+
+% Values of the "ext" type partition the set of filename extensions
+% that the Mercury compiler cares about into several categories.
+% Generally speaking, the extensions in each category are treated
+% the same by the module_name_to_* predicates below. (There are exceptions,
+% but they should be eliminated soon).
+%
+% The two considerations that control which category a given extension
+% belongs to are
+%
+% - the purpose of the files with that extension, and
+% - how the placement of files with that extension in directories is affected
+%   by the --use-subdir and --use-grade-subdir options being set.
+%
+% Generally speaking, the places where the files using a given extension
+% (or category of extensions) will usually be either
+%
+% - the current directory,
+% - a non-grade-specific subdirectory, which will be "Mercury/<X>s"
+%   for some string X,
+% - a grade-specific subdirectory, which will be
+%   "Mercury/<grade>/<arch>/Mercury/<X>s" for some string X.
+%   (See make_grade_subdir_file_name) for the rationale for this scheme.)
+%
+% Java extensions are an exception; they include an extra "jmercury" component
+% in the path.
+%
+% There are several approaches we can use to decide which directory the files
+% using an extension should be put into. The main ones are the following.
+%
+% - The files of some extensions are always stored in the current directory.
+%
+% - The files of some extensions are stored in a non-grade-specific
+%   subdirectory if --use-subdirs is specified, and in the current directory
+%   otherwise.
+%
+% - The files of some extensions are stored in a grade-specific subdirectory
+%   if --use-grade-subdirs is specified, and in the current directory
+%   otherwise.
+%
+% - The files of some extensions are stored in a grade-specific subdirectory
+%   if --use-grade-subdirs is specified, in a non-grade-specified dubdirectory
+%   if --use-grade-subdirs is not specified but --use-subdirs is, and
+%   in the current directory otherwise.
+%
+% (Note that --use-grade-subdirs is not *intended* to be actually usable
+% with mmake.)
+%
+% However, other approaches also exist, though they are all variations
+% on these themes.
+%
+% One common variation is that when constructing a filename to search for,
+% we never include any directory name component in the filename we return.
+% XXX There are extension classes for which we *do* return directory name
+% components even when constructing a filename to be searched for.
+% It is not (yet) clear to me (zs) whether this is an intentional choice,
+% or whether what we do with do_search is immaterial because we *always*
+% translate those extensions with do_not_search.
+%
+% In the function symbols below,
+% - the "gs" suffix stands for the use of a grade-specific directory, while
+% - the "ngs" suffix stands for the use of a non-grade-specific directory.
+%
+% XXX We should probably invert the classification scheme.
+% Instead of making the role (interface file, target file, object file, etc)
+% be the primary division point, and the directory treatment the second
+% division point, we should make the directory treatment the first one.
+% However, there is no point in dong that until we have firmly, and
+% *explicitly*, decided the directory treatment we want for each and every
+% extension. (The current system was arrived at by piling patch upon patch
+% on a large piece of over-complex code, and cannot be considered to
+% represent the result of explicit deliberation.)
 
 :- type ext
     --->    ext_src
@@ -160,6 +236,11 @@
             %
             % Most of these extensions are intended to name real files,
             % but some are intended to name mmake targets.
+            %
+            % XXX According to the documentation of the --user-grade subdirs
+            % option, *all* executables and libraries *should* be put
+            % into a grade subdir if that option is specified, not just some.
+            % They should then be copied or linked to the current directory.
 
     ;       ext_lib(ext_lib)
     ;       ext_lib_gs(ext_lib_gs)
@@ -177,6 +258,11 @@
             %
             % Most of these extensions are intended to name real files,
             % but some are intended to name mmake targets.
+            %
+            % XXX According to the documentation of the --user-grade subdirs
+            % option, *all* executables and libraries *should* be put
+            % into a grade subdir if that option is specified, not just some.
+            % They should then be copied or linked to the current directory.
 
     ;       ext_mmake_fragment(ext_mmake_fragment)
             % Compiler-generated files that are designed to be bodily included
@@ -217,149 +303,181 @@
     ;       ext_misc_gs(ext_misc_gs).
             % XXX Document me.
 
+%-------------%
+
+% Each extension specification is followed below
+%
+% - either by a string giving the extension (the usual case),
+% - the name of an option giving the extension, or
+% - a prefix and the name of an option giving the rest of the extension.
+
 :- type ext_int
-    --->    ext_int_int0
-    ;       ext_int_int1
-    ;       ext_int_int2
-    ;       ext_int_int3
-    ;       ext_int_date_int0
-    ;       ext_int_date_int12
-    ;       ext_int_date_int3.
+    --->    ext_int_int0                % ".int0"
+    ;       ext_int_int1                % ".int"
+    ;       ext_int_int2                % ".int2"
+    ;       ext_int_int3                % ".int3"
+    ;       ext_int_date_int0           % ".date0"
+    ;       ext_int_date_int12          % ".date"
+    ;       ext_int_date_int3.          % ".date3"
 
 :- type ext_opt
-    --->    ext_opt_plain
-    ;       ext_opt_trans
-    ;       ext_opt_date_plain
-    ;       ext_opt_date_trans.
+    --->    ext_opt_plain               % ".opt"
+    ;       ext_opt_trans               % ".trans_opt"
+    ;       ext_opt_date_plain          % ".optdate"
+    ;       ext_opt_date_trans.         % ".trace_opt_date"
 
 :- type ext_mh
-    --->    ext_mh_mh.
+    --->    ext_mh_mh.                  % ".mh"
 
 :- type ext_mih
-    --->    ext_mih_mih.
+    --->    ext_mih_mih.                % ".mih"
 
 :- type ext_target_c_cs
-    --->    ext_target_c
-    ;       ext_target_cs.
+    --->    ext_target_c                % ".c"
+    ;       ext_target_cs.              % ".cs"
 
 :- type ext_target_java
-    --->    ext_target_java_java
-    ;       ext_target_java_class.
+    --->    ext_target_java_java        % ".java"
+    ;       ext_target_java_class.      % ".class"
 
 :- type ext_target_date
-    --->    ext_target_date_c
-    ;       ext_target_date_cs
-    ;       ext_target_date_java.
+    --->    ext_target_date_c           % ".c_date"
+    ;       ext_target_date_cs          % ".cs_date"
+    ;       ext_target_date_java.       % ".java_date"
 
 :- type ext_obj
-    --->    ext_obj_dollar_o
-    ;       ext_obj_dollar_efpo
-    ;       ext_obj_o
-    ;       ext_obj_pic_o
-    ;       ext_obj_obj_opt
-    ;       ext_obj_pic_obj_opt.
+    --->    ext_obj_dollar_o            % ".$O"
+    ;       ext_obj_dollar_efpo         % ".$(EXT_FOR_PIC_OBJECTS)"
+    ;       ext_obj_o                   % ".o"
+    ;       ext_obj_pic_o               % ".pic_o"
+    ;       ext_obj_obj_opt             % object_file_extension option
+    ;       ext_obj_pic_obj_opt.        % pic_object_file_extension option
 
 :- type ext_init_c
-    --->    ext_init_c.
+    --->    ext_init_c.                 % ".init_c"
 
 :- type ext_init_obj
-    --->    ext_init_obj_dollar_o
-    ;       ext_init_obj_o
-    ;       ext_init_obj_pic_o
-    ;       ext_init_obj_obj_opt
-    ;       ext_init_obj_pic_obj_opt.
+    --->    ext_init_obj_dollar_o       % ".init.$O"
+    ;       ext_init_obj_o              % ".init.c"
+    ;       ext_init_obj_pic_o          % ".init.pic_o"
+    ;       ext_init_obj_obj_opt        % "_init" ++ object_file_extension
+    ;       ext_init_obj_pic_obj_opt.   % "_init" ++ pic_object_file_extension
 
 :- type ext_exec
-    --->    ext_exec_exe.
+    --->    ext_exec_exe.               % ".exe"
 
 :- type ext_exec_gs
-    --->    ext_exec_gs_noext
-    ;       ext_exec_gs_bat
-    ;       ext_exec_exec_opt.
+    --->    ext_exec_gs_noext           % ""
+            % XXX While an empty extension *usually means we are building
+            % the name of an executable, it can also mean we are building
+            % the name of a phony Mmakefile target for a library, such as
+            % libmer_std in the library directory.
+    ;       ext_exec_gs_bat             % ".bat"
+    ;       ext_exec_exec_opt.          % executable_file_extension
 
 :- type ext_lib
-    --->    ext_lib_dollar_efsl
-    ;       ext_lib_lib
-    ;       ext_lib_so.
+    --->    ext_lib_dollar_efsl         % ".(EXT_FOR_SHARED_LIB)"
+    ;       ext_lib_lib                 % ".lib"
+    ;       ext_lib_so.                 % ".so"
 
 :- type ext_lib_gs
-    --->    ext_lib_gs_dollar_a
-    ;       ext_lib_gs_archive
-    ;       ext_lib_gs_dll
-    ;       ext_lib_gs_init
-    ;       ext_lib_gs_jar
-    ;       ext_lib_gs_lib_opt
-    ;       ext_lib_gs_sh_lib_opt.
+    --->    ext_lib_gs_dollar_a         % ".$A"
+    ;       ext_lib_gs_archive          % ".a"
+    ;       ext_lib_gs_dll              % ".dll"
+    ;       ext_lib_gs_init             % ".init"
+    ;       ext_lib_gs_jar              % ".jar"
+    ;       ext_lib_gs_lib_opt          % library_extension
+    ;       ext_lib_gs_sh_lib_opt.      % shared_library_extension
 
 :- type ext_mmake_fragment
-    --->    ext_mf_d
-    ;       ext_mf_dv
-    ;       ext_mf_dep
-    ;       ext_mf_dir_sl_all_os.    % DODGY
+    --->    ext_mf_d                    % ".d"
+    ;       ext_mf_dv                   % ".dv"
+    ;       ext_mf_dep                  % ".dep"
+    % XXX DODGY This extension is use in only one place, in write_deps_file.m.
+    % It looks strange to me (zs), because I have no idea where ".dir"
+    % comes from, or what system component puts object files there.
+    ;       ext_mf_dir_sl_all_os.       % ".dir/*.$O"
 
 :- type ext_mmake_target
-    --->    ext_mt_all_int3s
-    ;       ext_mt_all_ints
-    ;       ext_mt_all_opts
-    ;       ext_mt_all_trans_opts
-    ;       ext_mt_check
-    ;       ext_mt_classes
-    ;       ext_mt_clean
-    ;       ext_mt_depend
-    ;       ext_mt_install_grade_hdrs
-    ;       ext_mt_install_hdrs
-    ;       ext_mt_install_ints
-    ;       ext_mt_install_opts
-    ;       ext_mt_int3s
-    ;       ext_mt_ints
-    ;       ext_mt_javas
-    ;       ext_mt_opts
-    ;       ext_mt_realclean
-    ;       ext_mt_trans_opts.
+    --->    ext_mt_all_int3s            % ".all_int3s"
+    ;       ext_mt_all_ints             % ".all_int3"
+    ;       ext_mt_all_opts             % ".all_opts"
+    ;       ext_mt_all_trans_opts       % ".all_trans_opts"
+    ;       ext_mt_check                % ".check"
+    ;       ext_mt_classes              % ".classes"
+    ;       ext_mt_clean                % ".clean"
+    ;       ext_mt_depend               % ".depend"
+    ;       ext_mt_install_grade_hdrs   % ".install_grade_hdrs"
+    ;       ext_mt_install_hdrs         % ".install_hdrs"
+    ;       ext_mt_install_ints         % ".install_ints"
+    ;       ext_mt_install_opts         % ".install_opts"
+    ;       ext_mt_int3s                % ".int3s"
+    ;       ext_mt_ints                 % ".ints"
+    ;       ext_mt_javas                % ".javas"
+    ;       ext_mt_opts                 % ".opts"
+    ;       ext_mt_realclean            % ".realclean"
+    ;       ext_mt_trans_opts.          % ".trans_opts"
 
 :- type ext_user
-    --->    ext_user_depgraph
-    ;       ext_user_err
-    ;       ext_user_hlds_dump
-    ;       ext_user_mlds_dump
-    ;       ext_user_order
-    ;       ext_user_ugly.
+    --->    ext_user_depgraph           % ".dependency_graph"
+    ;       ext_user_err                % ".err"
+    ;       ext_user_hlds_dump          % ".hlds_dump"
+    ;       ext_user_mlds_dump          % ".mlds_dump"
+    ;       ext_user_order              % ".order"
+    ;       ext_user_ugly.              % ".ugly"
 
 :- type ext_user_ngs
-    --->    ext_user_ngs_defn_ext
-    ;       ext_user_ngs_defn_lc
-    ;       ext_user_ngs_defns
-    ;       ext_user_ngs_imports_graph
-    ;       ext_user_ngs_lct
-    ;       ext_user_ngs_lct_order
-    ;       ext_user_ngs_mode_constr
-    ;       ext_user_ngs_order_to
-    ;       ext_user_ngs_type_repns
-    ;       ext_user_ngs_xml.
+    --->    ext_user_ngs_defn_ext       % ".defn_extents"
+    ;       ext_user_ngs_defn_lc        % ".defn_line_counts"
+    ;       ext_user_ngs_defns          % ".defns"
+    ;       ext_user_ngs_imports_graph  % ".imports_graph"
+    ;       ext_user_ngs_lct            % ".local_call_tree"
+    ;       ext_user_ngs_lct_order      % ".local_call_tree_order"
+    ;       ext_user_ngs_mode_constr    % ".mode_constraints"
+    ;       ext_user_ngs_order_to       % ".order_trans_opt"
+    ;       ext_user_ngs_type_repns     % ".type_repns"
+    ;       ext_user_ngs_xml.           % ".xnl"
 
 :- type ext_analysis
-    --->    ext_an_analysis
-    ;       ext_an_date
-    ;       ext_an_status
-    ;       ext_an_imdg
-    ;       ext_an_request.
+    --->    ext_an_analysis             % ".analysis"
+    ;       ext_an_date                 % ".analysis_date"
+    ;       ext_an_status               % ".analysis_status"
+    ;       ext_an_imdg                 % ".imdg"
+    ;       ext_an_request.             % ".request"
 
 :- type ext_bytecode
-    --->    ext_bc_mbc
-    ;       ext_bc_bytedebug.
+    --->    ext_bc_mbc                  % ".bc"
+    ;       ext_bc_bytedebug.           % ".bytedebug"
+
+% XXX The extensions in the two misc categories probably belong
+% in one or another category above, but I (zs) am not sure where
+% each *would* belong.
 
 :- type ext_misc_ngs
-    --->    ext_misc_ngs_module_dep     % DODGY
-    ;       ext_misc_ngs_err_date       % DODGY
-    ;       ext_misc_ngs_prof.          % DODGY
+    --->    ext_misc_ngs_module_dep     % ".module_dep"
+            % XXX DODGY What is the correctness argument for making this
+            % a NON-grade-specific extension? If *anything* in a .module_dep
+            % file can *ever* be grade dependent, this should be a
+            % grade-specific extension.
+    ;       ext_misc_ngs_err_date       % ".err_date"
+            % XXX DODGY If you recompile a module in a different grade,
+            % the contents of the .err file may change, for example
+            % because one grade satisfies the requirements of a
+            % require_feature_set declaration and the other does not.
+            % To me (zs), this argues in favor of .err_date files
+            % belonging in a grade-specific directory. The fact that
+            % it would obviously be harder to people to find them there
+            % is no relevant, since people shouldn't *have* to find
+            % .err_date files.
+    ;       ext_misc_ngs_prof.          % ".prof"
+            % XXX DODGY Given that different profiling grades generate
+            % different profiles (specifically, they produce different subsets
+            % of the whole set of kinds of info that the non-deep profiler can
+            % generate), shouldn't this be a grade-specific extension?
 
 :- type ext_misc_gs
-    --->    ext_misc_gs_used
-    ;       ext_misc_gs_track_flags.
-
-    % XXX To be deleted soon.
-:- type other_ext
-    --->    other_ext(string).
+    --->    ext_misc_gs_used            % ".used"
+    ;       ext_misc_gs_track_flags.    % ".track_flags"
 
 :- func extension_to_string(globals, ext) = string.
 
@@ -649,63 +767,6 @@ fact_table_file_name(Globals, From, MkDir, Ext,
 
 %---------------------------------------------------------------------------%
 
-% XXX The implementations of the following predicates, namely
-% module_name_to_file_name_ext and its subcontractors choose_file_name
-% and make_file_name, effectively divide the set of possible values
-% of Ext into classes of extensions, treating every extension
-% in a given class the same way.
-%
-% We should replace the simple Ext argument, which currently represents
-% all extensions using the same function symbol, with a more structured
-% specification of the extension, one which has several function symbols,
-% each indicating which class the extension falls in. For example, ext_src
-% would indicate source files (without need for storing the suffix), while
-% ext_obj(...) would indicate an object file, with its string argument could
-% be e.g. .o, .pic_o, .lpic_o etc to indicate what *kind* of object file.
-% Such function symbols could have other arguments to indicate e.g. the
-% presence or absence of "_init" between the base name of the file
-% and the extension itself. For some classes, maybe the majority, the list of
-% member extensions may be fixed. For these, it would make sense to specify
-% each member of the class by a value in an extension-class-specific enum type,
-% not by a string. And for a class containing only one extension, such as
-% source files, even that should not be needed. A possible difficulty is that
-% the strings of some extensions are not fixed, but are taken from compiler
-% options. However, for most, if not all of these options, the class that
-% the extension they represent falls into should be clear.
-%
-% The extension class should specify whether
-%
-% - the extensions in the class are (architecture or) grade dependent,
-% - if yes, what the name of the grade and non-grade directories are,
-% - if not, what the name of the non-grade directory is, and
-% - whether it is worth caching the translation (a translation that is
-%   either trivially cheap or usually only done once per compiler invocation
-%   is not worth caching).
-%
-% While the code handling some of classes accesses the filesystem,
-% the code handling some other classes does not. If we put the wrappers
-% for these two kinds of classes into two separate types, we could
-% have two versions of these predicates for each type, one with and one
-% without an I/O state pair.
-%
-% It may also be a good idea to also separate the representations of extensions
-% of filenames (which can also be mmake targets) vs strings whose *only* use
-% is as mmake targets (since they are not also filenames). This is because
-% it makes sense to search in the filesystem for filenames, but not for
-% mmake targets, and because mmake targets (should) never need directories
-% created for them.
-%
-% The classification does not need to include .tmp suffixes on extensions,
-% since (due to the behavior of the mercury_update_interface script, which
-% the .tmp suffixes are for) the .tmp suffix *always* goes directly after
-% the end of the corresponding non-.tmp filename, and can never be e.g.
-% found in a different directory in a search. Calls to the exported predicates
-% of this module should never specify .tmp as part of the extension; instead,
-% they should add the .tmp suffix to the filename they get back from those
-% predicates instead.
-
-%---------------------------------------------------------------------------%
-
 mercury_std_library_module_name(ModuleName) :-
     (
         ModuleName = unqualified(Name),
@@ -833,219 +894,6 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
     ).
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-/*
-XXX Condense the lessons below and move them to comments either on the
-ext type or to the top-of-module comment.
-
-:- func make_new_extension(string) = ext.
-
-make_new_extension(ExtStr) = Ext :-
-    % Since the ext_exec_gs and ext_lib_gs alternatives
-    % go in the current directory only with --no-use-grade-subdir, this
-    % predicate is not well named. However, the transformation it performs
-    % will become unnecessary once we switch over to using exts exclusively
-    % in the compiler, including at the call sites calling
-    % module_name_to_file_name and its variants.
-    %
-    % XXX While separating ext_exec_gs from ext_exec
-    % separating ext_lib_gs from ext_lib are needed to get
-    % test_file_name_extensions to report no discrepancies, bootchecking
-    % the compiler with --use-grade-subdirs in a grade that targets C
-    % fails as soons as it tries to build the first .c file in the library.
-    % This is because --use-grade-subdirs is not *intended* to be actually
-    % usable with mmake.
-    %
-    % According to the documentation of the --user-grade subdirs option,
-    % *all* executables and libraries *should* be put into a grade subdir
-    % if that option is specified, not just some. They should then be
-    % copied or linked to the current directory.
-    %
-    % The classifications marked "DODGY" below select a path in
-    % module_name_to_file_name_ext_new that computes the right filename
-    % (the filename computed by old code), but the name of their category
-    % may not be applicable.
-    ( if
-        (
-            ExtStr = ".m",
-            Ext0 = ext_src
-        ;
-            % Executable files.
-            % XXX The Ext = "" here is wrong. While an empty extension
-            % *can* mean we are building the name of an executable,
-            % it can also mean we are building the name of a phony Mmakefile
-            % target for a library, such as libmer_std in the library
-            % directory.
-            ( ExtStr = "",          ExtExecGs = ext_exec_gs_noext
-            ; ExtStr = ".bat",      ExtExecGs = ext_exec_gs_bat
-            ),
-            Ext0 = ext_exec_gs(ExtExecGs)
-        ;
-            ExtStr = ".exe",        ExtExec = ext_exec_exe,
-            Ext0 = ext_exec(ExtExec)
-        ;
-            % Library files.
-            ( ExtStr = ".$A",       ExtLibGs = ext_lib_gs_dollar_a
-            ; ExtStr = ".a",        ExtLibGs = ext_lib_gs_archive
-            ; ExtStr = ".dll",      ExtLibGs = ext_lib_gs_dll
-            ; ExtStr = ".init",     ExtLibGs = ext_lib_gs_init
-            ; ExtStr = ".jar",      ExtLibGs = ext_lib_gs_jar
-            ),
-            Ext0 = ext_lib_gs(ExtLibGs)
-        ;
-            ( ExtStr = ".$(EXT_FOR_SHARED_LIB)",
-                                    ExtLib = ext_lib_dollar_efsl
-            ; ExtStr = ".lib",      ExtLib = ext_lib_lib
-            ; ExtStr = ".so",       ExtLib = ext_lib_so
-            ),
-            Ext0 = ext_lib(ExtLib)
-        ;
-            % Machine-dependent header files for generated C code.
-            % XXX There is no good reason for .mh files to be treated
-            % differently from .mih files.
-            ExtStr = ".mh",         ExtMh = ext_mh_mh,
-            Ext0 = ext_mh(ExtMh)
-        ;
-            ExtStr = ".mih",        ExtMih = ext_mih_mih,
-            Ext0 = ext_mih(ExtMih)
-        ;
-            % Output files intended for use by the user.
-            % The MLDS dump files with extensions .c_dump* and .mih_dump*
-            % also fit into this category, but their filenames are constructed
-            % by getting the filenames for the .c and .mih extensions
-            % and adding a suffix to that.
-            ( ExtStr = ".dependency_graph",     EU = ext_user_depgraph
-            ; ExtStr = ".err",                  EU = ext_user_err
-            ; ExtStr = ".hlds_dump",            EU = ext_user_hlds_dump
-            ; ExtStr = ".mlds_dump",            EU = ext_user_mlds_dump
-            ; ExtStr = ".order",                EU = ext_user_order
-            ; ExtStr = ".ugly",                 EU = ext_user_ugly
-            ),
-            Ext0 = ext_user(EU)
-        ;
-            ( ExtStr = ".defn_extents",         EU = ext_user_ngs_defn_ext
-            ; ExtStr = ".defn_line_counts",     EU = ext_user_ngs_defn_lc
-            ; ExtStr = ".defns",                EU = ext_user_ngs_defns
-            ; ExtStr = ".imports_graph",        EU = ext_user_ngs_imports_graph
-            ; ExtStr = ".local_call_tree",      EU = ext_user_ngs_lct
-            ; ExtStr = ".local_call_tree_order",EU = ext_user_ngs_lct_order
-            ; ExtStr = ".mode_constraints",     EU = ext_user_ngs_mode_constr
-            ; ExtStr = ".order_trans_opt",      EU = ext_user_ngs_order_to
-            ; ExtStr = ".type_repns",           EU = ext_user_ngs_type_repns
-            ; ExtStr = ".xml",                  EU = ext_user_ngs_xml
-            ),
-            Ext0 = ext_user_ngs(EU)
-        ;
-            ( ExtStr = ".d",                    EMF = ext_mf_d
-            ; ExtStr = ".dv",                   EMF = ext_mf_dv
-            ; ExtStr = ".dep",                  EMF = ext_mf_dep
-            ; ExtStr = ".dir/*.$O",             EMF = ext_mf_dir_sl_all_os
-            ),
-            Ext0 = ext_mmake_fragment(EMF)
-        ;
-            % Mmake targets.
-            ( ExtStr = ".all_int3s",            EMT = ext_mt_all_int3s
-            ; ExtStr = ".all_ints",             EMT = ext_mt_all_ints
-            ; ExtStr = ".all_opts",             EMT = ext_mt_all_opts
-            ; ExtStr = ".all_trans_opts",       EMT = ext_mt_all_trans_opts
-            ; ExtStr = ".check",                EMT = ext_mt_check
-            ; ExtStr = ".classes",              EMT = ext_mt_classes
-            ; ExtStr = ".clean",                EMT = ext_mt_clean
-            ; ExtStr = ".depend",               EMT = ext_mt_depend
-            ; ExtStr = ".install_grade_hdrs",   EMT = ext_mt_install_grade_hdrs
-            ; ExtStr = ".install_hdrs",         EMT = ext_mt_install_hdrs
-            ; ExtStr = ".install_ints",         EMT = ext_mt_install_ints
-            ; ExtStr = ".install_opts",         EMT = ext_mt_install_opts
-            ; ExtStr = ".int3s",                EMT = ext_mt_int3s
-            ; ExtStr = ".ints",                 EMT = ext_mt_ints
-            ; ExtStr = ".javas",                EMT = ext_mt_javas
-            ; ExtStr = ".opts",                 EMT = ext_mt_opts
-            ; ExtStr = ".realclean",            EMT = ext_mt_realclean
-            ; ExtStr = ".trans_opts",           EMT = ext_mt_trans_opts
-            ),
-            Ext0 = ext_mmake_target(EMT)
-        ;
-            ( ExtStr = ".int0",                 ExtInt = ext_int_int0
-            ; ExtStr = ".int",                  ExtInt = ext_int_int1
-            ; ExtStr = ".int2",                 ExtInt = ext_int_int2
-            ; ExtStr = ".int3",                 ExtInt = ext_int_int3
-            ; ExtStr = ".date0",                ExtInt = ext_int_date_int0
-            ; ExtStr = ".date",                 ExtInt = ext_int_date_int12
-            ; ExtStr = ".date3",                ExtInt = ext_int_date_int3
-            ),
-            Ext0 = ext_int(ExtInt)
-        ;
-            ( ExtStr = ".opt",                  ExtOpt = ext_opt_plain
-            ; ExtStr = ".trans_opt",            ExtOpt = ext_opt_trans
-            ; ExtStr = ".optdate",              ExtOpt = ext_opt_date_plain
-            ; ExtStr = ".trans_opt_date",       ExtOpt = ext_opt_date_trans
-            ),
-            Ext0 = ext_opt(ExtOpt)
-        ;
-            ( ExtStr = ".c",                    ExtCCs = ext_target_c
-            ; ExtStr = ".cs",                   ExtCCs = ext_target_cs
-            ),
-            Ext0 = ext_target_c_cs(ExtCCs)
-        ;
-            ( ExtStr = ".class",                ExtJ = ext_target_java_class
-            ; ExtStr = ".java",                 ExtJ = ext_target_java_java
-            ),
-            Ext0 = ext_target_java(ExtJ)
-        ;
-            ( ExtStr = ".c_date",               ExtDate = ext_target_date_c
-            ; ExtStr = ".cs_date",              ExtDate = ext_target_date_cs
-            ; ExtStr = ".java_date",            ExtDate = ext_target_date_java
-            ),
-            Ext0 = ext_target_date(ExtDate)
-        ;
-            ( ExtStr = ".$O",                   ExtObj = ext_obj_dollar_o
-            ; ExtStr = ".$(EXT_FOR_PIC_OBJECTS)",ExtObj = ext_obj_dollar_efpo
-            ; ExtStr = ".o",                    ExtObj = ext_obj_o
-            ; ExtStr = ".pic_o",                ExtObj = ext_obj_pic_o
-            ),
-            Ext0 = ext_target_obj(ExtObj)
-        ;
-            ExtStr = "_init.c", ExtIC = ext_init_c,
-            Ext0 = ext_target_init_c(ExtIC)
-        ;
-            ( ExtStr = "_init.$O",              ExtIO = ext_init_obj_dollar_o
-            ; ExtStr = "_init.o",               ExtIO = ext_init_obj_o
-            ; ExtStr = "_init.pic_o",           ExtIO = ext_init_obj_pic_o
-            ),
-            Ext0 = ext_target_init_obj(ExtIO)
-        ;
-            ( ExtStr = ".mbc",                  ExtB = ext_bc_mbc
-            ; ExtStr = ".bytedebug",            ExtB = ext_bc_bytedebug
-            ),
-            Ext0 = ext_bytecode(ExtB)
-        ;
-            ( ExtStr = ".analysis",             ExtA = ext_an_analysis
-            ; ExtStr = ".analysis_date",        ExtA = ext_an_date
-            ; ExtStr = ".analysis_status",      ExtA = ext_an_status
-            ; ExtStr = ".imdg",                 ExtA = ext_an_imdg
-            ; ExtStr = ".request",              ExtA = ext_an_request
-            ),
-            Ext0 = ext_analysis(ExtA)
-        ;
-            ( ExtStr = ".module_dep",           ExtM = ext_misc_ngs_module_dep
-            ; ExtStr = ".err_date",             ExtM = ext_misc_ngs_err_date
-            ; ExtStr = ".prof",                 ExtM = ext_misc_ngs_prof
-            ),
-            Ext0 = ext_misc_ngs(ExtM)
-        ;
-            ( ExtStr = ".used",                 ExtM = ext_misc_gs_used
-            ; ExtStr = ".track_flags",          ExtM = ext_misc_gs_track_flags
-            ),
-            Ext0 = ext_misc_gs(ExtM)
-        )
-    then
-        Ext = Ext0
-    else
-        unexpected($pred, "unrecognized ExtStr " ++ ExtStr)
-    ).
-*/
-
 %---------------------------------------------------------------------------%
 
 :- pred module_name_to_file_name_ext_new(globals::in, string::in,
@@ -1186,7 +1034,7 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             Ext = ext_target_date(ExtTargetDate),
             ext_target_date_extension_dir(ExtTargetDate, ExtStr, SubDirName)
         ;
-            Ext = ext_misc_gs(ExtMiscGs), % XXX Probably never used.
+            Ext = ext_misc_gs(ExtMiscGs),
             ext_misc_gs_extension_dir(ExtMiscGs, ExtStr, SubDirName)
         ),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
@@ -1252,48 +1100,6 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
-            % There are two pieces of code here:
-            %
-            % - the one that is live, and
-            % - the one that is commented out.
-            %
-            % The version that is commented out is illogical, as expounded
-            % by the commented-out comment, but it is what was needed to pass
-            % test_file_name_extensions, i.e. for the new filename translation
-            % code to handle e.g. ext_target_obj(ext_obj_o) the same way
-            % the old code handles ext_other(other_ext(".o")). With the code
-            % that is live, test_file_name_extensions fails for five object
-            % file extensions, .$O, .o, .pic_o, _init.o and _init.pic_o,
-            % if use_grade_subdirs = yes. (There were ten failures overall,
-            % because each extension fails with both search and no_search.)
-            %
-            % In each case, the issue is that file_is_arch_or_grade_dependent_2
-            % does not list any of these extensions, though strangely,
-            % it *does* list _init.$O. However, this does not matter
-            % for four of the failing extensions, .o, .pic_o, _init.o and
-            % _init.pic_o, because the rest of the compiler never directly
-            % refers to these extensions; it always refers to them indirectly,
-            % by looking up the value of the object_file_extension or
-            % the pic_object_file_extension options, and maybe putting
-            % "_init" in front of them. file_is_arch_or_grade_dependent,
-            % the caller of file_is_arch_or_grade_dependent_2, does handle
-            % these.
-            %
-            % The fifth extension, .$O, or ext_obj_dollar_o, is also handled
-            % the same way by the live code as the other ext_target_obj
-            % extensions (in that it is put into a grade-specific subdir
-            % if use_grade_subdirs = yes), which is different from the way
-            % that the old code handled it. However, I (zs) don't know
-            % for sure which is the right way, because that extension is used
-            % only by code in write_deps_file.m that generate mmakefile
-            % fragments, which means any failure is indirect and delayed.
-            % However, the fact that _init.$O has an explicit entry in
-            % file_is_arch_or_grade_dependent_2 suggests to me that the
-            % absence of .$O from that same predicate was an oversight.
-            %
-            % The entries of these five extensions are commented out
-            % in string_extenions to allow the now-live code to pass
-            % test_file_name_extensions.
             globals.lookup_bool_option(Globals, use_grade_subdirs,
                 UseGradeSubdirs),
             (
@@ -1306,23 +1112,6 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
                 make_grade_subdir_file_name_new(Globals, [SubDirName],
                     BaseNameNoExt, ExtStr, DirComponents, FileName)
             ),
-%           % XXX EXT Why aren't object files for grades that differ in e.g.
-%           % whether debugging is enabled stored in grade-specific directories
-%           % if --use-grade-subdirs is enabled? The .c files that they are
-%           % derived from *are* stored in grade-specific directories.
-%           % I (zs) expect that the reason why this hasn't been a problem
-%           % is that we don't target C with --use-grade-subdirs.
-%           ( if
-%               UseGradeSubdirs = yes,
-%               Ext = ext_target_init_obj(ext_init_obj_dollar_o)
-%           then
-%               make_grade_subdir_file_name_new(Globals, [SubDirName],
-%                   BaseNameNoExt, ExtStr, DirComponents, FileName)
-%           else
-%               DirComponents = ["Mercury", SubDirName],
-%               FileName = glue_dir_names_file_name(DirComponents,
-%                   BaseNameNoExt, ExtStr)
-%           ),
             maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
         )
     ;
@@ -1407,7 +1196,7 @@ module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
                 % the logic behind this confusing code:
                 %
                 % If we are searching for (rather than writing) the file,
-                % just search % in Mercury/<ext>s. This is so that searches
+                % just search in Mercury/<ext>s. This is so that searches
                 % for files in installed libraries work.
                 % `--intermod-directories' is set so this will work.
                 not (

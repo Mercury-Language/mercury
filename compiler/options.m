@@ -4956,9 +4956,10 @@ options_help_aux_output(Stream, !IO) :-
         "\tDump the MLDS (medium level intermediate representation)",
         "\tafter the specified stage, as C code,",
         "\tto`<module>.c_dump.<num>-<name>',",
-        "\tand `<module>.h_dump.<num>-<name>'.",
+        "\tand `<module>.mih_dump.<num>-<name>'.",
         "\tStage numbers range from 1-99.",
         "\tMultiple dump options accumulate.",
+        "\tThis option works only in MLDS grades that target C.",
         "--dump-mlds-pred-name <pred or func name>",
         "\tDump the MLDS (medium level intermediate representation)",
         "\tof the predicate or function with the specified name",
@@ -4968,7 +4969,8 @@ options_help_aux_output(Stream, !IO) :-
         "\tmore than one), and nothing else.",
         "--verbose-dump-mlds <stage number or name>",
         "\tDump the internal compiler representation of the MLDS, after",
-        "\tthe specified stage, to `<module>.mlds_dump.<num>-<name>'."
+        "\tthe specified stage, to `<module>.mlds_dump.<num>-<name>'.",
+        "\tThis option works in all MLDS grades."
 % This option is only intended to be used for debugging the compiler.
 %       "--dump-options-file output_file",
 %       "\tDump the internal compiler representation of files named in",
