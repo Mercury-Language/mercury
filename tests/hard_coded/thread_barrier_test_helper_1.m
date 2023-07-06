@@ -164,7 +164,7 @@ get_all_messages(AllOutput, OpenThreads, !Messages, !IO) :-
 
 write_out_thread_messages(Thread, Messages, !IO) :-
     io.format("Messages from thread %d:\n", [i(Thread)], !IO),
-    list-foldr(write_out_message, Messages, !IO).
+    list.foldr(write_out_message, Messages, !IO).
 
 close_thread_output(Output, !IO) :-
     put(Output ^ to_chan, message_close(Output ^ to_thread), !IO).
