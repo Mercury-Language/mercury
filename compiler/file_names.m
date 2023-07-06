@@ -566,37 +566,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Succeeds iff the module referred to by the module name is one
-    % of the modules in the standard library.
-    %
-:- pred mercury_std_library_module_name(module_name::in) is semidet.
-
-    % qualify_mercury_std_library_module_name(ModuleName) = QualModuleName:
-    %
-    % If ModuleName is a standard library module then return the module with an
-    % extra `mercury' prefix. Otherwise, return the module name unchanged.
-    %
-:- func qualify_mercury_std_library_module_name(module_name) = module_name.
-
-%---------------------------------------------------------------------------%
-
-    % Convert a file name (excluding the trailing `.m') to the corresponding
-    % module name.
-    %
-:- pred file_name_to_module_name(file_name::in, module_name::out) is det.
-
-    % Convert a module name to a file name stem (e.g. foo.bar.baz).
-    %
-:- pred module_name_to_file_name_stem(module_name::in, file_name::out) is det.
-
-    % Convert a module name to something that is suitable
-    % for use as a variable name in makefiles.
-    %
-:- pred module_name_to_make_var_name(module_name::in, string::out) is det.
-
-%---------------------------------------------------------------------------%
-% XXX Move to just after the predicates that use these.
-
     % If the proper place for a file is in a subdirectory (e.g. Mercury/css),
     % but the subdirectory does not exist, which in this case may mean either
     %
@@ -625,6 +594,36 @@
     % component names.
     %
 :- pred create_any_dirs_on_path(list(string)::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+    % Succeeds iff the module referred to by the module name is one
+    % of the modules in the standard library.
+    %
+:- pred mercury_std_library_module_name(module_name::in) is semidet.
+
+    % qualify_mercury_std_library_module_name(ModuleName) = QualModuleName:
+    %
+    % If ModuleName is a standard library module then return the module with an
+    % extra `mercury' prefix. Otherwise, return the module name unchanged.
+    %
+:- func qualify_mercury_std_library_module_name(module_name) = module_name.
+
+%---------------------------------------------------------------------------%
+
+    % Convert a file name (excluding the trailing `.m') to the corresponding
+    % module name.
+    %
+:- pred file_name_to_module_name(file_name::in, module_name::out) is det.
+
+    % Convert a module name to a file name stem (e.g. foo.bar.baz).
+    %
+:- pred module_name_to_file_name_stem(module_name::in, file_name::out) is det.
+
+    % Convert a module name to something that is suitable
+    % for use as a variable name in makefiles.
+    %
+:- pred module_name_to_make_var_name(module_name::in, string::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1438,45 +1437,6 @@ glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr) = FileName :-
     ).
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-mercury_std_library_module_name(ModuleName) :-
-    (
-        ModuleName = unqualified(Name),
-        mercury_std_library_module(Name)
-    ;
-        ModuleName = qualified(_ParentModule, _Name),
-        (
-            module_name_to_file_name_stem(ModuleName, ModuleNameStr),
-            mercury_std_library_module(ModuleNameStr)
-        ;
-            strip_outermost_qualifier(ModuleName, "mercury",
-                StrippedModuleName),
-            module_name_to_file_name_stem(StrippedModuleName,
-                StrippedModuleNameStr),
-            mercury_std_library_module(StrippedModuleNameStr)
-        )
-    ).
-
-qualify_mercury_std_library_module_name(ModuleName) = QualModuleName :-
-    ( if mercury_std_library_module_name(ModuleName) then
-        QualModuleName = add_outermost_qualifier("mercury", ModuleName)
-    else
-        QualModuleName = ModuleName
-    ).
-
-%---------------------------------------------------------------------------%
-
-file_name_to_module_name(FileName, ModuleName) :-
-    ModuleName = string_to_sym_name(FileName).
-
-module_name_to_file_name_stem(ModuleName, FileName) :-
-    FileName = sym_name_to_string(ModuleName).
-
-module_name_to_make_var_name(ModuleName, MakeVarName) :-
-    MakeVarName = sym_name_to_string(ModuleName).
-
-%---------------------------------------------------------------------------%
 
 maybe_create_any_dirs_on_path(Mkdir, DirComponents, !IO) :-
     (
@@ -1532,6 +1492,45 @@ create_any_dirs_on_path(DirComponents, !IO) :-
 
 :- mutable(made_dirs, set_tree234(string), set_tree234.init, ground,
     [untrailed, attach_to_io_state]).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+mercury_std_library_module_name(ModuleName) :-
+    (
+        ModuleName = unqualified(Name),
+        mercury_std_library_module(Name)
+    ;
+        ModuleName = qualified(_ParentModule, _Name),
+        (
+            module_name_to_file_name_stem(ModuleName, ModuleNameStr),
+            mercury_std_library_module(ModuleNameStr)
+        ;
+            strip_outermost_qualifier(ModuleName, "mercury",
+                StrippedModuleName),
+            module_name_to_file_name_stem(StrippedModuleName,
+                StrippedModuleNameStr),
+            mercury_std_library_module(StrippedModuleNameStr)
+        )
+    ).
+
+qualify_mercury_std_library_module_name(ModuleName) = QualModuleName :-
+    ( if mercury_std_library_module_name(ModuleName) then
+        QualModuleName = add_outermost_qualifier("mercury", ModuleName)
+    else
+        QualModuleName = ModuleName
+    ).
+
+%---------------------------------------------------------------------------%
+
+file_name_to_module_name(FileName, ModuleName) :-
+    ModuleName = string_to_sym_name(FileName).
+
+module_name_to_file_name_stem(ModuleName, FileName) :-
+    FileName = sym_name_to_string(ModuleName).
+
+module_name_to_make_var_name(ModuleName, MakeVarName) :-
+    MakeVarName = sym_name_to_string(ModuleName).
 
 %---------------------------------------------------------------------------%
 
