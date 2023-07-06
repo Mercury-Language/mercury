@@ -700,561 +700,6 @@ extension_to_string(Globals, Ext) = ExtStr :-
 
 %---------------------------------------------------------------------------%
 
-module_name_to_source_file_name(ModuleName, SourceFileName, !IO) :-
-    % Look up the module in the module->file mapping.
-    source_file_map.lookup_module_source_file(ModuleName, MaybeFileName, !IO),
-    (
-        MaybeFileName = yes(SourceFileName)
-    ;
-        MaybeFileName = no,
-        % We get here only if
-        %
-        % - the source file map says that the default source file name
-        %   for ModuleName is actually being used to store a module
-        %   *other than* ModuleName, *and*
-        % - the source file map itself does not know in which file ModuleName
-        %   is stored.
-        %
-        % This can happen only if either the source file map was built from
-        % an incomplete list of source files, or if that list became incomplete
-        % later, as new source files were added.
-        %
-        % XXX What we do here is *seriously* suboptimal. Any programmer
-        % who is clueless enough to screw up the naming of source files
-        % this badly will be even more confused by the mess resulting
-        % from the code below.
-        %
-        % The old XXX suggested that we should propagate the fact that
-        % no source file name is available for the given module back to
-        % our caller, but I think it would be simpler for the code here
-        % to print an error message
-        %
-        % - describing the problem, and
-        % - suggest ways to fix it (put modules into files with non-colliding
-        %   names, or running mmc -f *.m),
-        %
-        % and then exit with an error status, *without* returning to our
-        % caller.
-        SourceFileName =
-            "Mercury/.missing." ++ default_source_file_name(ModuleName)
-    ).
-
-%---------------------------------------------------------------------------%
-
-module_name_to_file_name(Globals, From, MkDir, Ext,
-        ModuleName, FileName, !IO) :-
-    module_name_to_file_name_ext_new(Globals, From, do_not_search, MkDir,
-        Ext, ModuleName, FileName, !IO).
-
-module_name_to_search_file_name(Globals, From, Ext,
-        ModuleName, FileName, !IO) :-
-    module_name_to_file_name_ext_new(Globals, From, do_search,
-        do_not_create_dirs, Ext, ModuleName, FileName, !IO).
-
-module_name_to_lib_file_name(Globals, From, MkDir, Prefix, Ext,
-        ModuleName, FileName, !IO) :-
-    BaseFileName = sym_name_to_string(ModuleName),
-    BaseNameNoExt = Prefix ++ BaseFileName,
-    FakeModuleName = unqualified(BaseNameNoExt),
-    module_name_to_file_name_ext_new(Globals, From, do_not_search, MkDir,
-        Ext, FakeModuleName, FileName, !IO).
-
-fact_table_file_name(Globals, From, MkDir, Ext,
-        FactTableFileName, FileName, !IO) :-
-    FakeModuleName = unqualified(FactTableFileName),
-    module_name_to_file_name_ext_new(Globals, From, do_not_search, MkDir,
-        Ext, FakeModuleName, FileName, !IO).
-
-%---------------------------------------------------------------------------%
-
-mercury_std_library_module_name(ModuleName) :-
-    (
-        ModuleName = unqualified(Name),
-        mercury_std_library_module(Name)
-    ;
-        ModuleName = qualified(_ParentModule, _Name),
-        (
-            module_name_to_file_name_stem(ModuleName, ModuleNameStr),
-            mercury_std_library_module(ModuleNameStr)
-        ;
-            strip_outermost_qualifier(ModuleName, "mercury",
-                StrippedModuleName),
-            module_name_to_file_name_stem(StrippedModuleName,
-                StrippedModuleNameStr),
-            mercury_std_library_module(StrippedModuleNameStr)
-        )
-    ).
-
-qualify_mercury_std_library_module_name(ModuleName) = QualModuleName :-
-    ( if mercury_std_library_module_name(ModuleName) then
-        QualModuleName = add_outermost_qualifier("mercury", ModuleName)
-    else
-        QualModuleName = ModuleName
-    ).
-
-%---------------------------------------------------------------------------%
-
-file_name_to_module_name(FileName, ModuleName) :-
-    ModuleName = string_to_sym_name(FileName).
-
-module_name_to_file_name_stem(ModuleName, FileName) :-
-    FileName = sym_name_to_string(ModuleName).
-
-module_name_to_make_var_name(ModuleName, MakeVarName) :-
-    MakeVarName = sym_name_to_string(ModuleName).
-
-%---------------------------------------------------------------------------%
-
-:- pred maybe_create_dirs_on_path(maybe_create_dirs::in, list(string)::in,
-    io::di, io::uo) is det.
-
-maybe_create_dirs_on_path(MkDir, DirComponents, !IO) :-
-    (
-        DirComponents = []
-    ;
-        DirComponents = [_ | _],
-        (
-            MkDir = do_create_dirs,
-            DirName = dir.relative_path_name_from_components(DirComponents),
-            % We avoid trying to create a directory if we have created it
-            % before, because a set membership check here should be *much*
-            % cheaper than a system call.
-            %
-            % We could try to check not just whether we have created
-            % DirName before, but also any directory that corresponds
-            % to a prefix of DirComponents. However, library/dir.m has
-            % no mechanism we could use to tell it that a given prefix
-            % of directories in DirComponents has already been created,
-            % and that therefore checking whether they already exist
-            % is unnecessary. (If any agent other than the Mercury system
-            % is deleting some of these directories after their creation,
-            % then things will be screwed up beyond Mercury's ability to
-            % recover, *regardless* of what we do here.)
-            %
-            % This is not too much of a loss, since the crude test here
-            % will still eliminate most of the eliminable system calls
-            % involved in this task.
-            get_made_dirs(MadeDirs0, !IO),
-            ( if set_tree234.contains(MadeDirs0, DirName) then
-                Made = yes
-            else
-                Made = no,
-                make_directory(DirName, _, !IO),
-                set_tree234.insert(DirName, MadeDirs0, MadeDirs),
-                set_made_dirs(MadeDirs, !IO)
-            ),
-            trace [compile_time(flag("file_name_translations")),
-                runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
-            (
-                Made = no,
-                record_no_mkdir(DirName, !TIO)
-            ;
-                Made = yes,
-                record_mkdir(DirName, !TIO)
-            )
-        ;
-            MkDir = do_not_create_dirs
-        )
-    ).
-
-:- mutable(made_dirs, set_tree234(string), set_tree234.init, ground,
-    [untrailed, attach_to_io_state]).
-
-%---------------------------------------------------------------------------%
-
-get_class_dir_name(Globals, ClassDirName) :-
-    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-    (
-        UseGradeSubdirs = yes,
-        grade_directory_component(Globals, Grade),
-        globals.lookup_string_option(Globals, target_arch, TargetArch),
-        ClassDirName = "Mercury" / Grade / TargetArch / "Mercury" / "classs"
-    ;
-        UseGradeSubdirs = no,
-        (
-            UseSubdirs = yes,
-            ClassDirName = "Mercury" / "classs"
-        ;
-            UseSubdirs = no,
-            ClassDirName = "."
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
-make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
-    ( if path_name_is_absolute(OrigFileName) then
-        Path = OrigFileName
-    else
-        % XXX This will throw an exception on Windows if OrigFileName is a path
-        % "X:foo", i.e. relative to the current directory on the X: drive.
-        % That seems a silly thing to write in a source file.
-        Path = dirname(ModuleSourceFileName) / OrigFileName
-    ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- pred module_name_to_file_name_ext_new(globals::in, string::in,
-    maybe_search::in, maybe_create_dirs::in, ext::in,
-    module_name::in, file_name::out, io::di, io::uo) is det.
-
-module_name_to_file_name_ext_new(Globals, From, Search, MkDir, Ext,
-        ModuleName, FileName, !IO) :-
-    (
-        Ext = ext_src,
-        module_name_to_source_file_name(ModuleName, FileName, !IO)
-    ;
-        (
-            Ext = ext_int(ExtInt),
-            ext_int_extension_dir(ExtInt, ExtStr, SubDirName)
-        ;
-            Ext = ext_user_ngs(ExtUserNgs),
-            ext_user_ngs_extension_dir(ExtUserNgs, ExtStr, SubDirName)
-        ;
-            Ext = ext_bytecode(ExtByte),
-            ext_bytecode_extension_dir(ExtByte, ExtStr, SubDirName)
-        ;
-            Ext = ext_misc_ngs(ExtMiscNgs), % XXX Probably never used.
-            ext_misc_ngs_extension_dir(ExtMiscNgs, ExtStr, SubDirName)
-        ),
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-        (
-            UseSubdirs = no,
-            FileName = BaseNameNoExt ++ ExtStr
-        ;
-            UseSubdirs = yes,
-            DirComponents = ["Mercury", SubDirName],
-            FileName =
-                glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
-        )
-    ;
-        Ext = ext_opt(ExtOpt),
-        ext_opt_extension_dir(ExtOpt, ExtStr, SubDirName),
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-        (
-            UseSubdirs = no,
-            FileName = BaseNameNoExt ++ ExtStr
-        ;
-            UseSubdirs = yes,
-            globals.lookup_bool_option(Globals, use_grade_subdirs,
-                UseGradeSubdirs),
-            ( if
-                UseGradeSubdirs = yes,
-                % XXX The code from which this code is derived had this
-                % comment, which I (zs) don't think adequately describes
-                % the logic behind this confusing code:
-                %
-                % "If we are searching for (rather than writing) the file,
-                % just search in Mercury/<ext>s. This is so that searches
-                % for files in installed libraries work.
-                % `--intermod-directories' is set so this will work."
-                not (
-                    Search = do_search,
-                    ( ExtOpt = ext_opt_plain
-                    ; ExtOpt = ext_opt_trans
-                    )
-                )
-            then
-                make_grade_subdir_file_name_new(Globals, [SubDirName],
-                    BaseNameNoExt, ExtStr, DirComponents, FileName)
-            else
-                DirComponents = ["Mercury", SubDirName],
-                FileName = glue_dir_names_file_name(DirComponents,
-                    BaseNameNoExt, ExtStr)
-            ),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
-        )
-    ;
-        (
-            Ext = ext_mh(ExtMh),
-            ext_mh_extension(ExtMh, ExtStr)
-        ;
-            Ext = ext_exec(ExtExec),
-            ext_exec_extension(ExtExec, ExtStr)
-        ;
-            Ext = ext_lib(ExtLib),
-            ext_lib_extension(ExtLib, ExtStr)
-        ;
-            Ext = ext_mmake_target(ExtMT),
-            ext_mmake_target_extension(ExtMT, ExtStr)
-        ;
-            Ext = ext_user(ExtUser),
-            ext_user_extension(ExtUser, ExtStr)
-        ),
-        % Output files intended for use by the user, and phony Mmake target
-        % names go in the current directory. So do .mh files, and *some*,
-        % but not all, kinds of executable and library files.
-        % XXX Why is that?
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        FileName = BaseNameNoExt ++ ExtStr
-    ;
-        Ext = ext_mih(ExtMh),
-        ext_mih_extension_dir(ExtMh, ExtStr, SubDirName),
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        (
-            Search = do_search,
-            % If we are searching for (rather than writing) a `.mih' file,
-            % use the plain file name. This is so that searches for files
-            % in installed libraries will work. `--c-include-directory' is set
-            % so that searches for files in the current directory will work.
-            FileName = BaseNameNoExt ++ ExtStr
-        ;
-            Search = do_not_search,
-            globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-            (
-                UseSubdirs = no,
-                FileName = BaseNameNoExt ++ ExtStr
-            ;
-                UseSubdirs = yes,
-                globals.lookup_bool_option(Globals, use_grade_subdirs,
-                    UseGradeSubdirs),
-                (
-                    UseGradeSubdirs = no,
-                    DirComponents = ["Mercury", SubDirName],
-                    FileName = glue_dir_names_file_name(DirComponents,
-                        BaseNameNoExt, ExtStr)
-                ;
-                    UseGradeSubdirs = yes,
-                    make_grade_subdir_file_name_new(Globals, [SubDirName],
-                        BaseNameNoExt, ExtStr, DirComponents, FileName)
-                ),
-                maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
-            )
-        )
-    ;
-        (
-            Ext = ext_target_c_cs(ExtCCs),
-            ext_target_c_cs_extension_dir(ExtCCs, ExtStr, SubDirName)
-        ;
-            Ext = ext_target_date(ExtTargetDate),
-            ext_target_date_extension_dir(ExtTargetDate, ExtStr, SubDirName)
-        ;
-            Ext = ext_misc_gs(ExtMiscGs),
-            ext_misc_gs_extension_dir(ExtMiscGs, ExtStr, SubDirName)
-        ),
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-        (
-            UseSubdirs = no,
-            FileName = BaseNameNoExt ++ ExtStr
-        ;
-            UseSubdirs = yes,
-            globals.lookup_bool_option(Globals, use_grade_subdirs,
-                UseGradeSubdirs),
-            (
-                UseGradeSubdirs = no,
-                DirComponents = ["Mercury", SubDirName],
-                FileName = glue_dir_names_file_name(DirComponents,
-                    BaseNameNoExt, ExtStr)
-            ;
-                UseGradeSubdirs = yes,
-                make_grade_subdir_file_name_new(Globals, [SubDirName],
-                    BaseNameNoExt, ExtStr, DirComponents, FileName)
-            ),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
-        )
-    ;
-        Ext = ext_target_java(ExtJava),
-        ext_target_java_extension_dirs(ExtJava, ExtStr, SubDirNames),
-        BaseParentDirs = ["jmercury"],
-        mangle_sym_name_for_java(ModuleName, module_qual, "__", BaseNameNoExt),
-        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-        (
-            UseSubdirs = no,
-            DirComponents = BaseParentDirs,
-            FileName = glue_dir_names_file_name(DirComponents,
-                BaseNameNoExt, ExtStr)
-        ;
-            UseSubdirs = yes,
-            globals.lookup_bool_option(Globals, use_grade_subdirs,
-                UseGradeSubdirs),
-            (
-                UseGradeSubdirs = no,
-                DirComponents = ["Mercury" |  SubDirNames],
-                FileName = glue_dir_names_file_name(DirComponents,
-                    BaseNameNoExt, ExtStr)
-            ;
-                UseGradeSubdirs = yes,
-                make_grade_subdir_file_name_new(Globals, SubDirNames,
-                    BaseNameNoExt, ExtStr, DirComponents, FileName)
-            )
-        ),
-        maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
-    ;
-        (
-            Ext = ext_target_obj(ExtObj),
-            ext_obj_extension_dir(Globals, ExtObj, ExtStr, SubDirName)
-        ;
-            Ext = ext_target_init_obj(ExtInitObj),
-            ext_init_obj_extension_dir(Globals, ExtInitObj, ExtStr, SubDirName)
-        ),
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-        (
-            UseSubdirs = no,
-            FileName = BaseNameNoExt ++ ExtStr
-        ;
-            UseSubdirs = yes,
-            globals.lookup_bool_option(Globals, use_grade_subdirs,
-                UseGradeSubdirs),
-            (
-                UseGradeSubdirs = no,
-                DirComponents = ["Mercury", SubDirName],
-                FileName = glue_dir_names_file_name(DirComponents,
-                    BaseNameNoExt, ExtStr)
-            ;
-                UseGradeSubdirs = yes,
-                make_grade_subdir_file_name_new(Globals, [SubDirName],
-                    BaseNameNoExt, ExtStr, DirComponents, FileName)
-            ),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
-        )
-    ;
-        Ext = ext_target_init_c(ExtInitC),
-        ext_init_c_extension_dir(ExtInitC, ExtStr, SubDirName),
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-        (
-            UseSubdirs = no,
-            FileName = BaseNameNoExt ++ ExtStr
-        ;
-            UseSubdirs = yes,
-            globals.lookup_bool_option(Globals, use_grade_subdirs,
-                UseGradeSubdirs),
-            (
-                UseGradeSubdirs = no,
-                DirComponents = ["Mercury", SubDirName],
-                FileName = glue_dir_names_file_name(DirComponents,
-                    BaseNameNoExt, ExtStr)
-            ;
-                UseGradeSubdirs = yes,
-                make_grade_subdir_file_name_new(Globals, [SubDirName],
-                    BaseNameNoExt, ExtStr, DirComponents, FileName)
-            ),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
-        )
-    ;
-        (
-            Ext = ext_exec_gs(ExtExecGs),
-            ext_exec_gs_extension_dir(Globals, ExtExecGs, ExtStr, SubDirName)
-        ;
-            Ext = ext_lib_gs(ExtLibGs),
-            ext_lib_gs_extension_dir(Globals, ExtLibGs, ExtStr, SubDirName)
-        ),
-        % Some kinds of executables and library files go in the current
-        % directory only with --no-use-grade-subdirs; with --use-grade-subdirs,
-        % they go in a grade subdir.
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        globals.lookup_bool_option(Globals, use_grade_subdirs,
-            UseGradeSubdirs),
-        (
-            UseGradeSubdirs = no,
-            FileName = BaseNameNoExt ++ ExtStr
-        ;
-            UseGradeSubdirs = yes,
-            % This implies --use-subdirs as well.
-            make_grade_subdir_file_name_new(Globals, [SubDirName],
-                BaseNameNoExt, ExtStr, DirComponents, FileName),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
-        )
-    ;
-        Ext = ext_mmake_fragment(ExtMf),
-        ext_mmake_fragment_extension_dir(ExtMf, ExtStr, SubDirName),
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-        (
-            UseSubdirs = no,
-            FileName = BaseNameNoExt ++ ExtStr
-        ;
-            UseSubdirs = yes,
-            DirComponents = ["Mercury", SubDirName],
-            FileName =
-                glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
-        )
-    ;
-        Ext = ext_analysis(ExtAn),
-        ext_analysis_extension_dir(ExtAn, ExtStr, SubDirName),
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-        (
-            UseSubdirs = no,
-            FileName = BaseNameNoExt ++ ExtStr
-        ;
-            UseSubdirs = yes,
-            globals.lookup_bool_option(Globals, use_grade_subdirs,
-                UseGradeSubdirs),
-            ( if
-                UseGradeSubdirs = yes,
-                % XXX The code from which this code is derived had this
-                % comment, which I (zs) don't think adequately describes
-                % the logic behind this confusing code:
-                %
-                % If we are searching for (rather than writing) the file,
-                % just search in Mercury/<ext>s. This is so that searches
-                % for files in installed libraries work.
-                % `--intermod-directories' is set so this will work.
-                not (
-                    Search = do_search,
-                    ( ExtAn = ext_an_analysis
-                    ; ExtAn = ext_an_imdg
-                    ; ExtAn = ext_an_request
-                    )
-                )
-            then
-                make_grade_subdir_file_name_new(Globals, [SubDirName],
-                    BaseNameNoExt, ExtStr, DirComponents, FileName)
-            else
-                DirComponents = ["Mercury", SubDirName],
-                FileName = glue_dir_names_file_name(DirComponents,
-                    BaseNameNoExt, ExtStr)
-            ),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
-        )
-    ),
-    trace [compile_time(flag("file_name_translations")),
-        runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
-    (
-        record_translation(From, Search, MkDir, Ext, ModuleName, FileName,
-            !TIO)
-    ).
-
-:- func glue_dir_names_file_name(list(string), string, string) = string.
-
-glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr) = FileName :-
-    (
-        DirComponents = [],
-        FileName = BaseNameNoExt ++ ExtStr
-    ;
-        DirComponents = [_ | _],
-        Components = DirComponents ++ [BaseNameNoExt ++ ExtStr],
-        FileName = dir.relative_path_name_from_components(Components)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred make_grade_subdir_file_name_new(globals::in, list(dir_name)::in,
-    file_name::in, string::in, list(string)::out, file_name::out) is det.
-
-make_grade_subdir_file_name_new(Globals, SubDirNames, BaseNameNoExt, ExtStr,
-        DirComponents, FileName) :-
-    grade_directory_component(Globals, Grade),
-    globals.lookup_string_option(Globals, target_arch, TargetArch),
-    % The extra "Mercury" is needed so we can use `--intermod-directory
-    % Mercury/<grade>/<target_arch>' and `--c-include
-    % Mercury/<grade>/<target_arch>' to find the local `.opt' and `.mih'
-    % files without messing up the search for the files for installed
-    % libraries.
-    DirComponents = ["Mercury", Grade, TargetArch, "Mercury" | SubDirNames],
-    FileName = glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr).
-
-%---------------------------------------------------------------------------%
-
 :- pred ext_int_extension_dir(ext_int::in, string::out, string::out) is det.
 
 ext_int_extension_dir(ext_int_int0,         ".int0",    "int0s").
@@ -1480,6 +925,562 @@ ext_misc_gs_extension_dir(ext_misc_gs_used,
     ".used",        "useds").
 ext_misc_gs_extension_dir(ext_misc_gs_track_flags,
     ".track_flags", "track_flagss").
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+module_name_to_source_file_name(ModuleName, SourceFileName, !IO) :-
+    % Look up the module in the module->file mapping.
+    source_file_map.lookup_module_source_file(ModuleName, MaybeFileName, !IO),
+    (
+        MaybeFileName = yes(SourceFileName)
+    ;
+        MaybeFileName = no,
+        % We get here only if
+        %
+        % - the source file map says that the default source file name
+        %   for ModuleName is actually being used to store a module
+        %   *other than* ModuleName, *and*
+        % - the source file map itself does not know in which file ModuleName
+        %   is stored.
+        %
+        % This can happen only if either the source file map was built from
+        % an incomplete list of source files, or if that list became incomplete
+        % later, as new source files were added.
+        %
+        % XXX What we do here is *seriously* suboptimal. Any programmer
+        % who is clueless enough to screw up the naming of source files
+        % this badly will be even more confused by the mess resulting
+        % from the code below.
+        %
+        % The old XXX suggested that we should propagate the fact that
+        % no source file name is available for the given module back to
+        % our caller, but I think it would be simpler for the code here
+        % to print an error message
+        %
+        % - describing the problem, and
+        % - suggest ways to fix it (put modules into files with non-colliding
+        %   names, or running mmc -f *.m),
+        %
+        % and then exit with an error status, *without* returning to our
+        % caller.
+        SourceFileName =
+            "Mercury/.missing." ++ default_source_file_name(ModuleName)
+    ).
+
+%---------------------------------------------------------------------------%
+
+module_name_to_file_name(Globals, From, MkDir, Ext,
+        ModuleName, FileName, !IO) :-
+    module_name_to_file_name_ext(Globals, From, do_not_search, MkDir,
+        Ext, ModuleName, FileName, !IO).
+
+module_name_to_search_file_name(Globals, From, Ext,
+        ModuleName, FileName, !IO) :-
+    module_name_to_file_name_ext(Globals, From, do_search,
+        do_not_create_dirs, Ext, ModuleName, FileName, !IO).
+
+module_name_to_lib_file_name(Globals, From, MkDir, Prefix, Ext,
+        ModuleName, FileName, !IO) :-
+    BaseFileName = sym_name_to_string(ModuleName),
+    BaseNameNoExt = Prefix ++ BaseFileName,
+    FakeModuleName = unqualified(BaseNameNoExt),
+    module_name_to_file_name_ext(Globals, From, do_not_search, MkDir,
+        Ext, FakeModuleName, FileName, !IO).
+
+fact_table_file_name(Globals, From, MkDir, Ext,
+        FactTableFileName, FileName, !IO) :-
+    FakeModuleName = unqualified(FactTableFileName),
+    module_name_to_file_name_ext(Globals, From, do_not_search, MkDir,
+        Ext, FakeModuleName, FileName, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred module_name_to_file_name_ext(globals::in, string::in,
+    maybe_search::in, maybe_create_dirs::in, ext::in,
+    module_name::in, file_name::out, io::di, io::uo) is det.
+
+module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
+        ModuleName, FileName, !IO) :-
+    (
+        Ext = ext_src,
+        module_name_to_source_file_name(ModuleName, FileName, !IO)
+    ;
+        (
+            Ext = ext_int(ExtInt),
+            ext_int_extension_dir(ExtInt, ExtStr, SubDirName)
+        ;
+            Ext = ext_user_ngs(ExtUserNgs),
+            ext_user_ngs_extension_dir(ExtUserNgs, ExtStr, SubDirName)
+        ;
+            Ext = ext_bytecode(ExtByte),
+            ext_bytecode_extension_dir(ExtByte, ExtStr, SubDirName)
+        ;
+            Ext = ext_misc_ngs(ExtMiscNgs), % XXX Probably never used.
+            ext_misc_ngs_extension_dir(ExtMiscNgs, ExtStr, SubDirName)
+        ),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseSubdirs = yes,
+            DirComponents = ["Mercury", SubDirName],
+            FileName =
+                glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr),
+            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
+    ;
+        Ext = ext_opt(ExtOpt),
+        ext_opt_extension_dir(ExtOpt, ExtStr, SubDirName),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseSubdirs = yes,
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubdirs),
+            ( if
+                UseGradeSubdirs = yes,
+                % XXX The code from which this code is derived had this
+                % comment, which I (zs) don't think adequately describes
+                % the logic behind this confusing code:
+                %
+                % "If we are searching for (rather than writing) the file,
+                % just search in Mercury/<ext>s. This is so that searches
+                % for files in installed libraries work.
+                % `--intermod-directories' is set so this will work."
+                not (
+                    Search = do_search,
+                    ( ExtOpt = ext_opt_plain
+                    ; ExtOpt = ext_opt_trans
+                    )
+                )
+            then
+                make_grade_subdir_file_name(Globals, [SubDirName],
+                    BaseNameNoExt, ExtStr, DirComponents, FileName)
+            else
+                DirComponents = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirComponents,
+                    BaseNameNoExt, ExtStr)
+            ),
+            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
+    ;
+        (
+            Ext = ext_mh(ExtMh),
+            ext_mh_extension(ExtMh, ExtStr)
+        ;
+            Ext = ext_exec(ExtExec),
+            ext_exec_extension(ExtExec, ExtStr)
+        ;
+            Ext = ext_lib(ExtLib),
+            ext_lib_extension(ExtLib, ExtStr)
+        ;
+            Ext = ext_mmake_target(ExtMT),
+            ext_mmake_target_extension(ExtMT, ExtStr)
+        ;
+            Ext = ext_user(ExtUser),
+            ext_user_extension(ExtUser, ExtStr)
+        ),
+        % Output files intended for use by the user, and phony Mmake target
+        % names go in the current directory. So do .mh files, and *some*,
+        % but not all, kinds of executable and library files.
+        % XXX Why is that?
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        FileName = BaseNameNoExt ++ ExtStr
+    ;
+        Ext = ext_mih(ExtMh),
+        ext_mih_extension_dir(ExtMh, ExtStr, SubDirName),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        (
+            Search = do_search,
+            % If we are searching for (rather than writing) a `.mih' file,
+            % use the plain file name. This is so that searches for files
+            % in installed libraries will work. `--c-include-directory' is set
+            % so that searches for files in the current directory will work.
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            Search = do_not_search,
+            globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+            (
+                UseSubdirs = no,
+                FileName = BaseNameNoExt ++ ExtStr
+            ;
+                UseSubdirs = yes,
+                globals.lookup_bool_option(Globals, use_grade_subdirs,
+                    UseGradeSubdirs),
+                (
+                    UseGradeSubdirs = no,
+                    DirComponents = ["Mercury", SubDirName],
+                    FileName = glue_dir_names_file_name(DirComponents,
+                        BaseNameNoExt, ExtStr)
+                ;
+                    UseGradeSubdirs = yes,
+                    make_grade_subdir_file_name(Globals, [SubDirName],
+                        BaseNameNoExt, ExtStr, DirComponents, FileName)
+                ),
+                maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+            )
+        )
+    ;
+        (
+            Ext = ext_target_c_cs(ExtCCs),
+            ext_target_c_cs_extension_dir(ExtCCs, ExtStr, SubDirName)
+        ;
+            Ext = ext_target_date(ExtTargetDate),
+            ext_target_date_extension_dir(ExtTargetDate, ExtStr, SubDirName)
+        ;
+            Ext = ext_misc_gs(ExtMiscGs),
+            ext_misc_gs_extension_dir(ExtMiscGs, ExtStr, SubDirName)
+        ),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseSubdirs = yes,
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubdirs),
+            (
+                UseGradeSubdirs = no,
+                DirComponents = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirComponents,
+                    BaseNameNoExt, ExtStr)
+            ;
+                UseGradeSubdirs = yes,
+                make_grade_subdir_file_name(Globals, [SubDirName],
+                    BaseNameNoExt, ExtStr, DirComponents, FileName)
+            ),
+            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
+    ;
+        Ext = ext_target_java(ExtJava),
+        ext_target_java_extension_dirs(ExtJava, ExtStr, SubDirNames),
+        BaseParentDirs = ["jmercury"],
+        mangle_sym_name_for_java(ModuleName, module_qual, "__", BaseNameNoExt),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            DirComponents = BaseParentDirs,
+            FileName = glue_dir_names_file_name(DirComponents,
+                BaseNameNoExt, ExtStr)
+        ;
+            UseSubdirs = yes,
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubdirs),
+            (
+                UseGradeSubdirs = no,
+                DirComponents = ["Mercury" |  SubDirNames],
+                FileName = glue_dir_names_file_name(DirComponents,
+                    BaseNameNoExt, ExtStr)
+            ;
+                UseGradeSubdirs = yes,
+                make_grade_subdir_file_name(Globals, SubDirNames,
+                    BaseNameNoExt, ExtStr, DirComponents, FileName)
+            )
+        ),
+        maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+    ;
+        (
+            Ext = ext_target_obj(ExtObj),
+            ext_obj_extension_dir(Globals, ExtObj, ExtStr, SubDirName)
+        ;
+            Ext = ext_target_init_obj(ExtInitObj),
+            ext_init_obj_extension_dir(Globals, ExtInitObj, ExtStr, SubDirName)
+        ),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseSubdirs = yes,
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubdirs),
+            (
+                UseGradeSubdirs = no,
+                DirComponents = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirComponents,
+                    BaseNameNoExt, ExtStr)
+            ;
+                UseGradeSubdirs = yes,
+                make_grade_subdir_file_name(Globals, [SubDirName],
+                    BaseNameNoExt, ExtStr, DirComponents, FileName)
+            ),
+            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
+    ;
+        Ext = ext_target_init_c(ExtInitC),
+        ext_init_c_extension_dir(ExtInitC, ExtStr, SubDirName),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseSubdirs = yes,
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubdirs),
+            (
+                UseGradeSubdirs = no,
+                DirComponents = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirComponents,
+                    BaseNameNoExt, ExtStr)
+            ;
+                UseGradeSubdirs = yes,
+                make_grade_subdir_file_name(Globals, [SubDirName],
+                    BaseNameNoExt, ExtStr, DirComponents, FileName)
+            ),
+            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
+    ;
+        (
+            Ext = ext_exec_gs(ExtExecGs),
+            ext_exec_gs_extension_dir(Globals, ExtExecGs, ExtStr, SubDirName)
+        ;
+            Ext = ext_lib_gs(ExtLibGs),
+            ext_lib_gs_extension_dir(Globals, ExtLibGs, ExtStr, SubDirName)
+        ),
+        % Some kinds of executables and library files go in the current
+        % directory only with --no-use-grade-subdirs; with --use-grade-subdirs,
+        % they go in a grade subdir.
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_grade_subdirs,
+            UseGradeSubdirs),
+        (
+            UseGradeSubdirs = no,
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseGradeSubdirs = yes,
+            % This implies --use-subdirs as well.
+            make_grade_subdir_file_name(Globals, [SubDirName],
+                BaseNameNoExt, ExtStr, DirComponents, FileName),
+            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
+    ;
+        Ext = ext_mmake_fragment(ExtMf),
+        ext_mmake_fragment_extension_dir(ExtMf, ExtStr, SubDirName),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseSubdirs = yes,
+            DirComponents = ["Mercury", SubDirName],
+            FileName =
+                glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr),
+            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
+    ;
+        Ext = ext_analysis(ExtAn),
+        ext_analysis_extension_dir(ExtAn, ExtStr, SubDirName),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseSubdirs = yes,
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubdirs),
+            ( if
+                UseGradeSubdirs = yes,
+                % XXX The code from which this code is derived had this
+                % comment, which I (zs) don't think adequately describes
+                % the logic behind this confusing code:
+                %
+                % If we are searching for (rather than writing) the file,
+                % just search in Mercury/<ext>s. This is so that searches
+                % for files in installed libraries work.
+                % `--intermod-directories' is set so this will work.
+                not (
+                    Search = do_search,
+                    ( ExtAn = ext_an_analysis
+                    ; ExtAn = ext_an_imdg
+                    ; ExtAn = ext_an_request
+                    )
+                )
+            then
+                make_grade_subdir_file_name(Globals, [SubDirName],
+                    BaseNameNoExt, ExtStr, DirComponents, FileName)
+            else
+                DirComponents = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirComponents,
+                    BaseNameNoExt, ExtStr)
+            ),
+            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
+    ),
+    trace [compile_time(flag("file_name_translations")),
+        runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
+    (
+        record_translation(From, Search, MkDir, Ext, ModuleName, FileName,
+            !TIO)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred make_grade_subdir_file_name(globals::in, list(dir_name)::in,
+    file_name::in, string::in, list(string)::out, file_name::out) is det.
+
+make_grade_subdir_file_name(Globals, SubDirNames, BaseNameNoExt, ExtStr,
+        DirComponents, FileName) :-
+    grade_directory_component(Globals, Grade),
+    globals.lookup_string_option(Globals, target_arch, TargetArch),
+    % The extra "Mercury" is needed so we can use `--intermod-directory
+    % Mercury/<grade>/<target_arch>' and `--c-include
+    % Mercury/<grade>/<target_arch>' to find the local `.opt' and `.mih'
+    % files without messing up the search for the files for installed
+    % libraries.
+    DirComponents = ["Mercury", Grade, TargetArch, "Mercury" | SubDirNames],
+    FileName = glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr).
+
+:- func glue_dir_names_file_name(list(string), string, string) = string.
+
+glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr) = FileName :-
+    (
+        DirComponents = [],
+        FileName = BaseNameNoExt ++ ExtStr
+    ;
+        DirComponents = [_ | _],
+        Components = DirComponents ++ [BaseNameNoExt ++ ExtStr],
+        FileName = dir.relative_path_name_from_components(Components)
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+mercury_std_library_module_name(ModuleName) :-
+    (
+        ModuleName = unqualified(Name),
+        mercury_std_library_module(Name)
+    ;
+        ModuleName = qualified(_ParentModule, _Name),
+        (
+            module_name_to_file_name_stem(ModuleName, ModuleNameStr),
+            mercury_std_library_module(ModuleNameStr)
+        ;
+            strip_outermost_qualifier(ModuleName, "mercury",
+                StrippedModuleName),
+            module_name_to_file_name_stem(StrippedModuleName,
+                StrippedModuleNameStr),
+            mercury_std_library_module(StrippedModuleNameStr)
+        )
+    ).
+
+qualify_mercury_std_library_module_name(ModuleName) = QualModuleName :-
+    ( if mercury_std_library_module_name(ModuleName) then
+        QualModuleName = add_outermost_qualifier("mercury", ModuleName)
+    else
+        QualModuleName = ModuleName
+    ).
+
+%---------------------------------------------------------------------------%
+
+file_name_to_module_name(FileName, ModuleName) :-
+    ModuleName = string_to_sym_name(FileName).
+
+module_name_to_file_name_stem(ModuleName, FileName) :-
+    FileName = sym_name_to_string(ModuleName).
+
+module_name_to_make_var_name(ModuleName, MakeVarName) :-
+    MakeVarName = sym_name_to_string(ModuleName).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_create_dirs_on_path(maybe_create_dirs::in, list(string)::in,
+    io::di, io::uo) is det.
+
+maybe_create_dirs_on_path(MkDir, DirComponents, !IO) :-
+    (
+        DirComponents = []
+    ;
+        DirComponents = [_ | _],
+        (
+            MkDir = do_create_dirs,
+            DirName = dir.relative_path_name_from_components(DirComponents),
+            % We avoid trying to create a directory if we have created it
+            % before, because a set membership check here should be *much*
+            % cheaper than a system call.
+            %
+            % We could try to check not just whether we have created
+            % DirName before, but also any directory that corresponds
+            % to a prefix of DirComponents. However, library/dir.m has
+            % no mechanism we could use to tell it that a given prefix
+            % of directories in DirComponents has already been created,
+            % and that therefore checking whether they already exist
+            % is unnecessary. (If any agent other than the Mercury system
+            % is deleting some of these directories after their creation,
+            % then things will be screwed up beyond Mercury's ability to
+            % recover, *regardless* of what we do here.)
+            %
+            % This is not too much of a loss, since the crude test here
+            % will still eliminate most of the eliminable system calls
+            % involved in this task.
+            get_made_dirs(MadeDirs0, !IO),
+            ( if set_tree234.contains(MadeDirs0, DirName) then
+                Made = yes
+            else
+                Made = no,
+                make_directory(DirName, _, !IO),
+                set_tree234.insert(DirName, MadeDirs0, MadeDirs),
+                set_made_dirs(MadeDirs, !IO)
+            ),
+            trace [compile_time(flag("file_name_translations")),
+                runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
+            (
+                Made = no,
+                record_no_mkdir(DirName, !TIO)
+            ;
+                Made = yes,
+                record_mkdir(DirName, !TIO)
+            )
+        ;
+            MkDir = do_not_create_dirs
+        )
+    ).
+
+:- mutable(made_dirs, set_tree234(string), set_tree234.init, ground,
+    [untrailed, attach_to_io_state]).
+
+%---------------------------------------------------------------------------%
+
+get_class_dir_name(Globals, ClassDirName) :-
+    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
+    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+    (
+        UseGradeSubdirs = yes,
+        grade_directory_component(Globals, Grade),
+        globals.lookup_string_option(Globals, target_arch, TargetArch),
+        ClassDirName = "Mercury" / Grade / TargetArch / "Mercury" / "classs"
+    ;
+        UseGradeSubdirs = no,
+        (
+            UseSubdirs = yes,
+            ClassDirName = "Mercury" / "classs"
+        ;
+            UseSubdirs = no,
+            ClassDirName = "."
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
+    ( if path_name_is_absolute(OrigFileName) then
+        Path = OrigFileName
+    else
+        % XXX This will throw an exception on Windows if OrigFileName is a path
+        % "X:foo", i.e. relative to the current directory on the X: drive.
+        % That seems a silly thing to write in a source file.
+        Path = dirname(ModuleSourceFileName) / OrigFileName
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
