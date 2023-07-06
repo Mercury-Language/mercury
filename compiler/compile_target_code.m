@@ -265,10 +265,10 @@
 
 compile_c_file(Globals, ProgressStream, ErrorStream, PIC, ModuleName,
         Succeeded, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_target_c_cs(ext_target_c), ModuleName, C_File, !IO),
     maybe_pic_object_file_extension(PIC, ExtObj, _),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_target_obj(ExtObj), ModuleName, O_File, !IO),
     do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
         C_File, O_File, Succeeded, !IO).
@@ -1051,7 +1051,7 @@ compile_csharp_file(Globals, ProgressStream, ErrorStream, ModuleAndImports,
     ReferencedDlls = referenced_dlls(ModuleName, IntImpForeignDeps),
     list.map_foldl(
         ( pred(Mod::in, Result::out, IO0::di, IO::uo) is det :-
-            module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            module_name_to_file_name(Globals, $pred,
                 ext_lib_gs(ext_lib_gs_dll), Mod, FileName, IO0, IO),
             Result = [Prefix, FileName, " "]
         ), set.to_sorted_list(ReferencedDlls), ReferencedDllsList, !IO),
@@ -1101,14 +1101,14 @@ referenced_dlls(Module, DepModules0) = Modules :-
 make_library_init_file(Globals, ProgressStream, ErrorStream,
         MainModuleName, AllModules, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_lib_gs(ext_lib_gs_init), MainModuleName, InitFileName, !IO),
     TmpInitFileName = InitFileName ++ ".tmp",
     io.open_output(TmpInitFileName, InitFileRes, !IO),
     (
         InitFileRes = ok(InitFileStream),
         list.map_foldl(
-            module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+            module_name_to_file_name(Globals, $pred,
                 ext_target_c_cs(ext_target_c)),
             AllModules, AllTargetFilesList, !IO),
         invoke_mkinit(Globals, ProgressStream, ErrorStream, InitFileStream,
@@ -1151,7 +1151,7 @@ make_library_init_file(Globals, ProgressStream, ErrorStream,
                 globals.set_option(use_grade_subdirs, bool(no),
                     NoSubdirGlobals0, NoSubdirGlobals),
                 module_name_to_file_name(NoSubdirGlobals, $pred,
-                    do_not_create_dirs, ext_lib_gs(ext_lib_gs_init),
+                    ext_lib_gs(ext_lib_gs_init),
                     MainModuleName, UserDirFileName, !IO),
                 % Remove the target of the symlink/copy in case it already
                 % exists.
@@ -1263,9 +1263,8 @@ do_make_init_obj_file(Globals, ProgressStream, ErrorStream, MustCompile,
     get_object_code_type(Globals, executable, PIC),
     maybe_pic_object_file_extension(PIC, _, ExtInitObj),
 
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_target_init_obj(ExtInitObj),
-        ModuleName, InitObjFileName, !IO),
+    module_name_to_file_name_create_dirs(Globals, $pred,
+        ext_target_init_obj(ExtInitObj), ModuleName, InitObjFileName, !IO),
     CompileCInitFile =
         ( pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
             do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
@@ -1291,12 +1290,11 @@ make_init_target_file(Globals, ProgressStream, ErrorStream, MkInit,
 
     compute_grade(Globals, Grade),
 
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
-        InitTargetOtherExt, ModuleName, InitTargetFileName, !IO),
+    module_name_to_file_name_create_dirs(Globals, $pred, InitTargetOtherExt,
+        ModuleName, InitTargetFileName, !IO),
 
     list.map_foldl(
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            TargetOtherExt),
+        module_name_to_file_name(Globals, $pred, TargetOtherExt),
         ModuleNames, TargetFileNameList, !IO),
 
     globals.lookup_accumulating_option(Globals, init_file_directories,
@@ -1614,34 +1612,34 @@ link_output_filename(Globals, LinkTargetType, ModuleName, Ext,
     (
         LinkTargetType = executable,
         Ext = ext_exec_gs(ext_exec_exec_opt),
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
+        module_name_to_file_name_create_dirs(Globals, $pred,
             Ext, ModuleName, OutputFileName, !IO)
     ;
         LinkTargetType = static_library,
         Ext = ext_lib_gs(ext_lib_gs_lib_opt),
-        module_name_to_lib_file_name(Globals, $pred, do_create_dirs,
+        module_name_to_lib_file_name_create_dirs(Globals, $pred,
             "lib", Ext, ModuleName, OutputFileName, !IO)
     ;
         LinkTargetType = shared_library,
         Ext = ext_lib_gs(ext_lib_gs_sh_lib_opt),
-        module_name_to_lib_file_name(Globals, $pred, do_create_dirs,
+        module_name_to_lib_file_name_create_dirs(Globals, $pred,
             "lib", Ext, ModuleName, OutputFileName, !IO)
     ;
         LinkTargetType = csharp_executable,
         Ext = ext_exec(ext_exec_exe),
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
+        module_name_to_file_name_create_dirs(Globals, $pred,
             Ext, ModuleName, OutputFileName, !IO)
     ;
         LinkTargetType = csharp_library,
         Ext = ext_lib_gs(ext_lib_gs_dll),
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
+        module_name_to_file_name_create_dirs(Globals, $pred,
             Ext, ModuleName, OutputFileName, !IO)
     ;
         ( LinkTargetType = java_executable
         ; LinkTargetType = java_archive
         ),
         Ext = ext_lib_gs(ext_lib_gs_jar),
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
+        module_name_to_file_name_create_dirs(Globals, $pred,
             Ext, ModuleName, OutputFileName, !IO)
     ).
 
@@ -2411,14 +2409,13 @@ post_link_make_symlink_or_copy(Globals, ProgressStream, ErrorStream,
             ; LinkTargetType = java_archive
             ),
             module_name_to_file_name(NoSubdirGlobals, $pred,
-                do_not_create_dirs, Ext, ModuleName, UserDirFileName, !IO)
+                Ext, ModuleName, UserDirFileName, !IO)
         ;
             ( LinkTargetType = static_library
             ; LinkTargetType = shared_library
             ),
             module_name_to_lib_file_name(NoSubdirGlobals, $pred,
-                do_not_create_dirs, "lib", Ext,
-                ModuleName, UserDirFileName, !IO)
+                "lib", Ext, ModuleName, UserDirFileName, !IO)
         ),
 
         same_timestamp(OutputFileName, UserDirFileName, SameTimestamp, !IO),
@@ -2453,11 +2450,9 @@ post_link_make_symlink_or_copy(Globals, ProgressStream, ErrorStream,
         then
             get_launcher_script_extension(Globals, ScriptExt),
             module_name_to_file_name(Globals, $pred,
-                do_not_create_dirs, ScriptExt,
-                ModuleName, OutputScriptName, !IO),
+                ScriptExt, ModuleName, OutputScriptName, !IO),
             module_name_to_file_name(NoSubdirGlobals, $pred,
-                do_not_create_dirs, ScriptExt,
-                ModuleName, UserDirScriptName, !IO),
+                ScriptExt, ModuleName, UserDirScriptName, !IO),
 
             same_timestamp(OutputScriptName, UserDirScriptName,
                 ScriptSameTimestamp, !IO),
@@ -2615,9 +2610,8 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
         file_name_to_module_name(LibName, LibModuleName),
         globals.set_option(use_grade_subdirs, bool(no),
             Globals, NoSubDirGlobals),
-        module_name_to_lib_file_name(NoSubDirGlobals, $pred,
-            do_not_create_dirs, "lib", ext_lib_gs(ext_lib_gs_lib_opt),
-            LibModuleName, LibFileName, !IO),
+        module_name_to_lib_file_name(NoSubDirGlobals, $pred, "lib",
+            ext_lib_gs(ext_lib_gs_lib_opt), LibModuleName, LibFileName, !IO),
 
         search_for_file_returning_dir(MercuryLibDirs,
             LibFileName, MaybeDirName, !IO),
@@ -3041,7 +3035,7 @@ join_module_list(_Globals, _Ext, [], [], !IO).
 join_module_list(Globals, Ext,
         [Module | Modules], [FileName | FileNames], !IO) :-
     file_name_to_module_name(dir.det_basename(Module), ModuleName),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs, Ext,
+    module_name_to_file_name(Globals, $pred, Ext,
         ModuleName, FileName, !IO),
     join_module_list(Globals, Ext, Modules, FileNames, !IO).
 

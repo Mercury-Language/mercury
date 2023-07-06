@@ -1134,11 +1134,11 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
                 true
             else
                 ModuleName = ParseTreeSrc ^ pts_module_name,
-                module_name_to_file_name(Globals, $pred, do_create_dirs,
+                module_name_to_file_name_create_dirs(Globals, $pred,
                     ext_user(ext_user_ugly),
-                    ModuleName, OutputFileName, !IO),
+                    ModuleName, UglyFileName, !IO),
                 output_parse_tree_src(ProgressStream, ErrorStream, Globals,
-                    OutputFileName, ParseTreeSrc, _Succeeded, !IO)
+                    UglyFileName, ParseTreeSrc, _Succeeded, !IO)
             )
         ),
         ModulesToLink = [],
@@ -1321,8 +1321,8 @@ find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
 usual_find_target_files(Globals, TargetExt,
         ModuleName, TargetFiles, !IO) :-
     % XXX Should we check the generated header files?
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
-        TargetExt, ModuleName, FileName, !IO),
+    module_name_to_file_name_create_dirs(Globals, $pred, TargetExt,
+        ModuleName, FileName, !IO),
     TargetFiles = [FileName].
 
 :- pred find_timestamp_files(globals::in,
@@ -1348,8 +1348,8 @@ find_timestamp_files(Globals, FindTimestampFiles) :-
 
 find_timestamp_files_2(Globals, TimestampExt,
         ModuleName, TimestampFiles, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
-        TimestampExt, ModuleName, FileName, !IO),
+    module_name_to_file_name_create_dirs(Globals, $pred, TimestampExt,
+        ModuleName, FileName, !IO),
     TimestampFiles = [FileName].
 
 %---------------------------------------------------------------------------%
@@ -1866,16 +1866,16 @@ maybe_write_dependency_graph(ProgressStream, ErrorStream, Verbose, Stats,
         maybe_write_string(ProgressStream, Verbose,
             "% Writing dependency graph...", !IO),
         module_info_get_name(!.HLDS, ModuleName),
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_user(ext_user_depgraph), ModuleName, FileName, !IO),
-        io.open_output(FileName, Res, !IO),
+        module_name_to_file_name_create_dirs(Globals, $pred,
+            ext_user(ext_user_depgraph), ModuleName, DepGraphFileName, !IO),
+        io.open_output(DepGraphFileName, OpenResult, !IO),
         (
-            Res = ok(FileStream),
+            OpenResult = ok(FileStream),
             write_dependency_graph(FileStream, !HLDS, !IO),
             io.close_output(FileStream, !IO),
             maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
         ;
-            Res = error(IOError),
+            OpenResult = error(IOError),
             ErrorMsg = "unable to write dependency graph: " ++
                 io.error_message(IOError),
             report_error(ErrorStream, ErrorMsg, !IO)
@@ -1955,7 +1955,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
     % `.used' file is written.
 
     module_info_get_name(!.HLDS, ModuleName),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+    module_name_to_file_name(Globals, $pred,
         ext_misc_gs(ext_misc_gs_used), ModuleName, UsageFileName, !IO),
     io.file.remove_file(UsageFileName, _, !IO),
 
@@ -1994,7 +1994,6 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                 ;
                     TargetCodeSucceeded = succeeded,
                     module_name_to_file_name(Globals, $pred,
-                        do_not_create_dirs,
                         ext_target_java(ext_target_java_java),
                         ModuleName, JavaFile, !IO),
                     compile_java_files(Globals, ProgressStream, ErrorStream,
@@ -2029,16 +2028,15 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                         Succeeded = did_not_succeed
                     ;
                         TargetCodeSucceeded = succeeded,
+                        % XXX EXT Why not _create_dirs?
                         module_name_to_file_name(Globals, $pred,
-                            do_not_create_dirs,
                             ext_target_c_cs(ext_target_c),
                             ModuleName, C_File, !IO),
                         get_linked_target_type(Globals, TargetType),
                         get_object_code_type(Globals, TargetType, PIC),
                         maybe_pic_object_file_extension(PIC, ObjExt, _),
-                        module_name_to_file_name(Globals, $pred,
-                            do_create_dirs, ext_target_obj(ObjExt),
-                            ModuleName, O_File, !IO),
+                        module_name_to_file_name_create_dirs(Globals, $pred,
+                            ext_target_obj(ObjExt), ModuleName, O_File, !IO),
                         do_compile_c_file(Globals, ProgressStream, ErrorStream,
                             PIC, C_File, O_File, Succeeded, !IO),
                         maybe_set_exit_status(Succeeded, !IO)
@@ -2112,7 +2110,7 @@ maybe_output_prof_call_graph(ProgressStream, ErrorStream, Verbose, Stats,
             "% Outputting profiling call graph...", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
         module_info_get_name(!.HLDS, ModuleName),
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
+        module_name_to_file_name_create_dirs(Globals, $pred,
             ext_misc_ngs(ext_misc_ngs_prof), ModuleName, ProfFileName, !IO),
         io.open_output(ProfFileName, Res, !IO),
         (

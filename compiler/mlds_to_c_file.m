@@ -128,7 +128,7 @@ output_c_mlds(MLDS, Globals, TargetOrDump, Suffix, Succeeded, !IO) :-
 output_c_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_target_c_cs(ext_target_c), ModuleName, SourceFileName0, !IO),
     SourceFileName = SourceFileName0 ++ Suffix,
     Indent = 0,
@@ -145,7 +145,7 @@ output_c_header_file_opts(MLDS, Opts, Suffix, !:Succeeded, !IO) :-
     % changed.
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_mih(ext_mih_mih), ModuleName, MihFileName, !IO),
     HeaderFileName = MihFileName ++ Suffix,
     TmpHeaderFileName = HeaderFileName ++ ".tmp",
@@ -171,7 +171,7 @@ output_c_dump_preds(MLDS, Globals, TargetOrDump, Suffix, DumpPredNames, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
     Opts = init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_user(ext_user_mlds_dump), ModuleName, DumpBaseName, !IO),
     DumpFileName = DumpBaseName ++ Suffix,
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),

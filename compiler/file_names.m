@@ -23,6 +23,7 @@
 :- import_module mdbcomp.sym_name.
 
 :- import_module io.
+:- import_module list.
 
 %---------------------------------------------------------------------------%
 %
@@ -41,27 +42,6 @@
 %   exist) should be separated from calls that construct a file name
 %   to write the file.
 %
-
-    % If the proper place for a file is in a subdirectory (e.g. Mercury/css),
-    % but the subdirectory does not exist, which in this case may mean either
-    %
-    % - that Mercury exists but Mercury/css does not, or
-    % - that Mercury does not exist, which of course means that Mercury/css
-    %   does not exist either,
-    %
-    % values of this type tell the predicate they are given to whether it
-    % should create any such missing directories.
-    %
-    % XXX Or, we could just return the path to the file (in the form of
-    % a list of directory names) to our caller, and let *it* call
-    % the predicate to create those directories (a non-maybe version of
-    % maybe_create_dirs_on_path below). This way, we wouldn't have to pass
-    % a I/O state pair to a filename translation predicate *just in case*
-    % Mkdir is do_create_dirs.
-    %
-:- type maybe_create_dirs
-    --->    do_create_dirs
-    ;       do_not_create_dirs.
 
     % For some kinds of files, we know exactly in which directory
     % they should be; for other kinds, we may have to search several
@@ -303,7 +283,7 @@
     ;       ext_misc_gs(ext_misc_gs).
             % XXX Document me.
 
-%-------------%
+%---------------------%
 
 % Each extension specification is followed below
 %
@@ -494,10 +474,25 @@
 :- pred module_name_to_source_file_name(module_name::in, file_name::out,
     io::di, io::uo) is det.
 
-    % module_name_to_file_name(Globals, Mkdir, Ext, Module, FileName, !IO):
+    % module_name_to_file_name_return_dirs(Globals, Ext, Module,
+    %   DirNames, FileName, !IO):
     %
     % Convert a module name and file extension to the corresponding file name.
-    % If `MkDir' is do_create_dirs, then create any directories needed.
+    % Return the directory pathname in FileName as DirNames. The caller
+    % can then create those directories (with create_any_dirs_on_path below),
+    % or not, as they wish.
+    %
+    % The version without the _return_dirs suffix does not return the
+    % DirNames argument, which is what callers that don't want to create
+    % those directories usually want.
+    %
+    % The version with the _create_dirs suffix instead calls
+    % create_any_dirs_on_path itself.
+    %
+    % The idea is that the first two versions shouldn't need to be passed
+    % an I/O state pair. XXX At the moment, the I/O state pair is needed
+    % to handle Mercury source files, but we already export the
+    % module_name_to_source_file_name to handle those.
     %
     % Currently we use the convention that the module `foo.bar.baz' should be
     % named `foo.bar.baz.m', and allow other naming conventions with the
@@ -506,14 +501,22 @@
     % Note that this predicate is also used to create some "phony" Makefile
     % targets that do not have corresponding files, e.g. `<foo>.clean'.
     %
-:- pred module_name_to_file_name(globals::in, string::in,
-    maybe_create_dirs::in, ext::in, module_name::in, file_name::out,
+:- pred module_name_to_file_name_return_dirs(globals::in, string::in,
+    ext::in, module_name::in, list(dir_name)::out, file_name::out,
     io::di, io::uo) is det.
+:- pred module_name_to_file_name(globals::in, string::in,
+    ext::in, module_name::in, file_name::out, io::di, io::uo) is det.
+:- pred module_name_to_file_name_create_dirs(globals::in, string::in,
+    ext::in, module_name::in, file_name::out, io::di, io::uo) is det.
 
     % module_name_to_search_file_name(Globals, Ext, Module, FileName, !IO):
     %
-    % As above, but for a file which might be in an installed library,
-    % not the current directory.
+    % As module_name_to_file_name, but for a file which might be
+    % in an installed library, not the current directory. There are no
+    % variants with _return_dirs or _create_dirs suffixes, because
+    % there is no point in creating the directories you are trying to search;
+    % if you have to create a directory, it won't contain the file
+    % you are looking for.
     %
     % With `--use-grade-subdirs', the current directory's `.mih' files are in
     % `Mercury/<grade>/<arch>/Mercury/mihs', and those for installed libraries
@@ -530,24 +533,36 @@
 :- pred module_name_to_search_file_name(globals::in, string::in,
     ext::in, module_name::in, file_name::out, io::di, io::uo) is det.
 
-    % module_name_to_lib_file_name(Globals, MkDir, Prefix, Ext,
-    %   Module, FileName, !IO):
+    % module_name_to_lib_file_name_return_dirs(Globals, Prefix, Ext,
+    %   Module, DirNames, FileName, !IO):
     %
-    % Like module_name_to_file_name, but also allows a prefix.
+    % Like module_name_to_file_name_return_dirs, but also allows a prefix.
+    % The variants without the _return_dirs suffix and with the _create_dirs
+    % suffix mean the same thing as with module_name_to_file_name_return_dirs.
+    %
     % Used for creating library names, e.g. `lib<foo>.$A' and `lib<foo>.so'.
     %
+:- pred module_name_to_lib_file_name_return_dirs(globals::in, string::in,
+    string::in, ext::in, module_name::in, list(dir_name)::out, file_name::out,
+    io::di, io::uo) is det.
 :- pred module_name_to_lib_file_name(globals::in, string::in,
-    maybe_create_dirs::in, string::in, ext::in,
-    module_name::in, file_name::out, io::di, io::uo) is det.
+    string::in, ext::in, module_name::in, file_name::out,
+    io::di, io::uo) is det.
+:- pred module_name_to_lib_file_name_create_dirs(globals::in, string::in,
+    string::in, ext::in, module_name::in, file_name::out,
+    io::di, io::uo) is det.
 
-    % fact_table_file_name(Globals, MkDir, Ext, FactTableFileName,
-    %   FileName, !IO):
+    % fact_table_file_name_return_dirs(Globals, Ext, FactTableFileName,
+    %   DirNames, FileName, !IO):
     %
     % Returns the filename to use when compiling fact table files.
-    % If `MkDir' is do_create_dirs, then create any directories needed.
+    % Return the directory pathname in FileName as DirNames. The caller
+    % can then create those directories (with create_any_dirs_on_path below),
+    % or not, as they wish.
     %
-:- pred fact_table_file_name(globals::in, string::in, maybe_create_dirs::in,
-    ext::in, file_name::in, file_name::out, io::di, io::uo) is det.
+:- pred fact_table_file_name_return_dirs(globals::in, string::in,
+    ext::in, file_name::in, list(dir_name)::out, file_name::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -578,6 +593,38 @@
     % for use as a variable name in makefiles.
     %
 :- pred module_name_to_make_var_name(module_name::in, string::out) is det.
+
+%---------------------------------------------------------------------------%
+% XXX Move to just after the predicates that use these.
+
+    % If the proper place for a file is in a subdirectory (e.g. Mercury/css),
+    % but the subdirectory does not exist, which in this case may mean either
+    %
+    % - that Mercury exists but Mercury/css does not, or
+    % - that Mercury does not exist, which of course means that Mercury/css
+    %   does not exist either,
+    %
+    % values of this type tell maybe_create_dirs_on_path whether
+    % it should create any such missing directories.
+    %
+:- type maybe_create_dirs
+    --->    do_create_dirs
+    ;       do_not_create_dirs.
+
+    % maybe_create_any_dirs_on_path(Mkdir, DirNames, !IO):
+    %
+    % If Mkdir = do_create_dirs, then create the directory whose name
+    % given by the given directory component names.
+    %
+:- pred maybe_create_any_dirs_on_path(maybe_create_dirs::in,
+    list(string)::in, io::di, io::uo) is det.
+
+    % create_any_dirs_on_path(DirNames, !IO):
+    %
+    % Create the directory whose name given by the given directory
+    % component names.
+    %
+:- pred create_any_dirs_on_path(list(string)::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -617,7 +664,6 @@
 :- import_module dir.
 :- import_module int.
 :- import_module library.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -970,40 +1016,77 @@ module_name_to_source_file_name(ModuleName, SourceFileName, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-module_name_to_file_name(Globals, From, MkDir, Ext,
+module_name_to_file_name_return_dirs(Globals, From, Ext,
+        ModuleName, DirNames, FileName, !IO) :-
+    module_name_to_file_name_ext(Globals, From, do_not_search, no,
+        Ext, ModuleName, DirNames, FileName, !IO).
+
+module_name_to_file_name(Globals, From, Ext,
         ModuleName, FileName, !IO) :-
-    module_name_to_file_name_ext(Globals, From, do_not_search, MkDir,
-        Ext, ModuleName, FileName, !IO).
+    module_name_to_file_name_ext(Globals, From, do_not_search,
+        yes(do_not_create_dirs), Ext, ModuleName, _DirNames, FileName, !IO).
+
+module_name_to_file_name_create_dirs(Globals, From, Ext,
+        ModuleName, FileName, !IO) :-
+    module_name_to_file_name_ext(Globals, From, do_not_search,
+        yes(do_create_dirs), Ext, ModuleName, DirNames, FileName, !IO),
+    create_any_dirs_on_path(DirNames, !IO).
+
+%---------------------%
 
 module_name_to_search_file_name(Globals, From, Ext,
         ModuleName, FileName, !IO) :-
     module_name_to_file_name_ext(Globals, From, do_search,
-        do_not_create_dirs, Ext, ModuleName, FileName, !IO).
+        yes(do_not_create_dirs), Ext, ModuleName, _DirNames, FileName, !IO).
 
-module_name_to_lib_file_name(Globals, From, MkDir, Prefix, Ext,
+%---------------------%
+
+module_name_to_lib_file_name_return_dirs(Globals, From, Prefix, Ext,
+        ModuleName, DirNames, FileName, !IO) :-
+    FakeModuleName = make_fake_module_name(Prefix, ModuleName),
+    module_name_to_file_name_ext(Globals, From, do_not_search,
+        no, Ext, FakeModuleName, DirNames, FileName, !IO).
+
+module_name_to_lib_file_name(Globals, From, Prefix, Ext,
         ModuleName, FileName, !IO) :-
+    FakeModuleName = make_fake_module_name(Prefix, ModuleName),
+    module_name_to_file_name_ext(Globals, From, do_not_search,
+        yes(do_not_create_dirs), Ext, FakeModuleName,
+        _DirNames, FileName, !IO).
+
+module_name_to_lib_file_name_create_dirs(Globals, From, Prefix, Ext,
+        ModuleName, FileName, !IO) :-
+    FakeModuleName = make_fake_module_name(Prefix, ModuleName),
+    module_name_to_file_name_ext(Globals, From, do_not_search,
+        yes(do_create_dirs), Ext, FakeModuleName, DirNames, FileName, !IO),
+    create_any_dirs_on_path(DirNames, !IO).
+
+:- func make_fake_module_name(string, module_name) = module_name.
+
+make_fake_module_name(Prefix, ModuleName) = FakeModuleName :-
     BaseFileName = sym_name_to_string(ModuleName),
     BaseNameNoExt = Prefix ++ BaseFileName,
-    FakeModuleName = unqualified(BaseNameNoExt),
-    module_name_to_file_name_ext(Globals, From, do_not_search, MkDir,
-        Ext, FakeModuleName, FileName, !IO).
+    FakeModuleName = unqualified(BaseNameNoExt).
 
-fact_table_file_name(Globals, From, MkDir, Ext,
-        FactTableFileName, FileName, !IO) :-
+%---------------------%
+
+fact_table_file_name_return_dirs(Globals, From, Ext,
+        FactTableFileName, DirNames, FileName, !IO) :-
     FakeModuleName = unqualified(FactTableFileName),
-    module_name_to_file_name_ext(Globals, From, do_not_search, MkDir,
-        Ext, FakeModuleName, FileName, !IO).
+    module_name_to_file_name_ext(Globals, From, do_not_search,
+        no, Ext, FakeModuleName, DirNames, FileName, !IO).
 
 %---------------------------------------------------------------------------%
 
 :- pred module_name_to_file_name_ext(globals::in, string::in,
-    maybe_search::in, maybe_create_dirs::in, ext::in,
-    module_name::in, file_name::out, io::di, io::uo) is det.
+    maybe_search::in, maybe(maybe_create_dirs)::in, ext::in, module_name::in,
+    list(dir_name)::out, file_name::out, io::di, io::uo) is det.
 
-module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
-        ModuleName, FileName, !IO) :-
+module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
+        ModuleName, DirNames, FileName, !IO) :-
     (
         Ext = ext_src,
+        DirNames = [],
         module_name_to_source_file_name(ModuleName, FileName, !IO)
     ;
         (
@@ -1023,13 +1106,13 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
             UseSubdirs = no,
+            DirNames = [],
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
-            DirComponents = ["Mercury", SubDirName],
+            DirNames = ["Mercury", SubDirName],
             FileName =
-                glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+                glue_dir_names_file_name(DirNames, BaseNameNoExt, ExtStr)
         )
     ;
         Ext = ext_opt(ExtOpt),
@@ -1038,6 +1121,7 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
             UseSubdirs = no,
+            DirNames = [],
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
@@ -1061,13 +1145,12 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
                 )
             then
                 make_grade_subdir_file_name(Globals, [SubDirName],
-                    BaseNameNoExt, ExtStr, DirComponents, FileName)
+                    BaseNameNoExt, ExtStr, DirNames, FileName)
             else
-                DirComponents = ["Mercury", SubDirName],
-                FileName = glue_dir_names_file_name(DirComponents,
+                DirNames = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirNames,
                     BaseNameNoExt, ExtStr)
-            ),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+            )
         )
     ;
         (
@@ -1090,6 +1173,7 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
         % names go in the current directory. So do .mh files, and *some*,
         % but not all, kinds of executable and library files.
         % XXX Why is that?
+        DirNames = [],
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         FileName = BaseNameNoExt ++ ExtStr
     ;
@@ -1102,12 +1186,14 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
             % use the plain file name. This is so that searches for files
             % in installed libraries will work. `--c-include-directory' is set
             % so that searches for files in the current directory will work.
+            DirNames = [],
             FileName = BaseNameNoExt ++ ExtStr
         ;
             Search = do_not_search,
             globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
             (
                 UseSubdirs = no,
+                DirNames = [],
                 FileName = BaseNameNoExt ++ ExtStr
             ;
                 UseSubdirs = yes,
@@ -1115,15 +1201,14 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
                     UseGradeSubdirs),
                 (
                     UseGradeSubdirs = no,
-                    DirComponents = ["Mercury", SubDirName],
-                    FileName = glue_dir_names_file_name(DirComponents,
+                    DirNames = ["Mercury", SubDirName],
+                    FileName = glue_dir_names_file_name(DirNames,
                         BaseNameNoExt, ExtStr)
                 ;
                     UseGradeSubdirs = yes,
                     make_grade_subdir_file_name(Globals, [SubDirName],
-                        BaseNameNoExt, ExtStr, DirComponents, FileName)
-                ),
-                maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+                        BaseNameNoExt, ExtStr, DirNames, FileName)
+                )
             )
         )
     ;
@@ -1141,6 +1226,7 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
             UseSubdirs = no,
+            DirNames = [],
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
@@ -1148,15 +1234,14 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
                 UseGradeSubdirs),
             (
                 UseGradeSubdirs = no,
-                DirComponents = ["Mercury", SubDirName],
-                FileName = glue_dir_names_file_name(DirComponents,
+                DirNames = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirNames,
                     BaseNameNoExt, ExtStr)
             ;
                 UseGradeSubdirs = yes,
                 make_grade_subdir_file_name(Globals, [SubDirName],
-                    BaseNameNoExt, ExtStr, DirComponents, FileName)
-            ),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+                    BaseNameNoExt, ExtStr, DirNames, FileName)
+            )
         )
     ;
         Ext = ext_target_java(ExtJava),
@@ -1166,8 +1251,8 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
             UseSubdirs = no,
-            DirComponents = BaseParentDirs,
-            FileName = glue_dir_names_file_name(DirComponents,
+            DirNames = BaseParentDirs,
+            FileName = glue_dir_names_file_name(DirNames,
                 BaseNameNoExt, ExtStr)
         ;
             UseSubdirs = yes,
@@ -1175,16 +1260,15 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
                 UseGradeSubdirs),
             (
                 UseGradeSubdirs = no,
-                DirComponents = ["Mercury" |  SubDirNames],
-                FileName = glue_dir_names_file_name(DirComponents,
+                DirNames = ["Mercury" |  SubDirNames],
+                FileName = glue_dir_names_file_name(DirNames,
                     BaseNameNoExt, ExtStr)
             ;
                 UseGradeSubdirs = yes,
                 make_grade_subdir_file_name(Globals, SubDirNames,
-                    BaseNameNoExt, ExtStr, DirComponents, FileName)
+                    BaseNameNoExt, ExtStr, DirNames, FileName)
             )
-        ),
-        maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+        )
     ;
         (
             Ext = ext_target_obj(ExtObj),
@@ -1197,6 +1281,7 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
             UseSubdirs = no,
+            DirNames = [],
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
@@ -1204,15 +1289,14 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
                 UseGradeSubdirs),
             (
                 UseGradeSubdirs = no,
-                DirComponents = ["Mercury", SubDirName],
-                FileName = glue_dir_names_file_name(DirComponents,
+                DirNames = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirNames,
                     BaseNameNoExt, ExtStr)
             ;
                 UseGradeSubdirs = yes,
                 make_grade_subdir_file_name(Globals, [SubDirName],
-                    BaseNameNoExt, ExtStr, DirComponents, FileName)
-            ),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+                    BaseNameNoExt, ExtStr, DirNames, FileName)
+            )
         )
     ;
         Ext = ext_target_init_c(ExtInitC),
@@ -1221,6 +1305,7 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
             UseSubdirs = no,
+            DirNames = [],
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
@@ -1228,15 +1313,14 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
                 UseGradeSubdirs),
             (
                 UseGradeSubdirs = no,
-                DirComponents = ["Mercury", SubDirName],
-                FileName = glue_dir_names_file_name(DirComponents,
+                DirNames = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirNames,
                     BaseNameNoExt, ExtStr)
             ;
                 UseGradeSubdirs = yes,
                 make_grade_subdir_file_name(Globals, [SubDirName],
-                    BaseNameNoExt, ExtStr, DirComponents, FileName)
-            ),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+                    BaseNameNoExt, ExtStr, DirNames, FileName)
+            )
         )
     ;
         (
@@ -1254,13 +1338,13 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
             UseGradeSubdirs),
         (
             UseGradeSubdirs = no,
+            DirNames = [],
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseGradeSubdirs = yes,
             % This implies --use-subdirs as well.
             make_grade_subdir_file_name(Globals, [SubDirName],
-                BaseNameNoExt, ExtStr, DirComponents, FileName),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+                BaseNameNoExt, ExtStr, DirNames, FileName)
         )
     ;
         Ext = ext_mmake_fragment(ExtMf),
@@ -1269,13 +1353,13 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
             UseSubdirs = no,
+            DirNames = [],
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
-            DirComponents = ["Mercury", SubDirName],
+            DirNames = ["Mercury", SubDirName],
             FileName =
-                glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+                glue_dir_names_file_name(DirNames, BaseNameNoExt, ExtStr)
         )
     ;
         Ext = ext_analysis(ExtAn),
@@ -1284,6 +1368,7 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
             UseSubdirs = no,
+            DirNames = [],
             FileName = BaseNameNoExt ++ ExtStr
         ;
             UseSubdirs = yes,
@@ -1308,20 +1393,19 @@ module_name_to_file_name_ext(Globals, From, Search, MkDir, Ext,
                 )
             then
                 make_grade_subdir_file_name(Globals, [SubDirName],
-                    BaseNameNoExt, ExtStr, DirComponents, FileName)
+                    BaseNameNoExt, ExtStr, DirNames, FileName)
             else
-                DirComponents = ["Mercury", SubDirName],
-                FileName = glue_dir_names_file_name(DirComponents,
+                DirNames = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirNames,
                     BaseNameNoExt, ExtStr)
-            ),
-            maybe_create_dirs_on_path(MkDir, DirComponents, !IO)
+            )
         )
     ),
     trace [compile_time(flag("file_name_translations")),
         runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
     (
-        record_translation(From, Search, MkDir, Ext, ModuleName, FileName,
-            !TIO)
+        record_translation(From, Search, StatOnlyMkdir,
+            Ext, ModuleName, FileName, !TIO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1394,55 +1478,55 @@ module_name_to_make_var_name(ModuleName, MakeVarName) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_create_dirs_on_path(maybe_create_dirs::in, list(string)::in,
-    io::di, io::uo) is det.
+maybe_create_any_dirs_on_path(Mkdir, DirComponents, !IO) :-
+    (
+        Mkdir = do_not_create_dirs
+    ;
+        Mkdir = do_create_dirs,
+        create_any_dirs_on_path(DirComponents, !IO)
+    ).
 
-maybe_create_dirs_on_path(MkDir, DirComponents, !IO) :-
+create_any_dirs_on_path(DirComponents, !IO) :-
     (
         DirComponents = []
     ;
         DirComponents = [_ | _],
+        DirName = dir.relative_path_name_from_components(DirComponents),
+        % We avoid trying to create a directory if we have created it
+        % before, because a set membership check here should be *much*
+        % cheaper than a system call.
+        %
+        % We could try to check not just whether we have created
+        % DirName before, but also any directory that corresponds
+        % to a prefix of DirComponents. However, library/dir.m has
+        % no mechanism we could use to tell it that a given prefix
+        % of directories in DirComponents has already been created,
+        % and that therefore checking whether they already exist
+        % is unnecessary. (If any agent other than the Mercury system
+        % is deleting some of these directories after their creation,
+        % then things will be screwed up beyond Mercury's ability to
+        % recover, *regardless* of what we do here.)
+        %
+        % This is not too much of a loss, since the crude test here
+        % will still eliminate most of the eliminable system calls
+        % involved in this task.
+        get_made_dirs(MadeDirs0, !IO),
+        ( if set_tree234.contains(MadeDirs0, DirName) then
+            Made = yes
+        else
+            Made = no,
+            make_directory(DirName, _, !IO),
+            set_tree234.insert(DirName, MadeDirs0, MadeDirs),
+            set_made_dirs(MadeDirs, !IO)
+        ),
+        trace [compile_time(flag("file_name_translations")),
+            runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
         (
-            MkDir = do_create_dirs,
-            DirName = dir.relative_path_name_from_components(DirComponents),
-            % We avoid trying to create a directory if we have created it
-            % before, because a set membership check here should be *much*
-            % cheaper than a system call.
-            %
-            % We could try to check not just whether we have created
-            % DirName before, but also any directory that corresponds
-            % to a prefix of DirComponents. However, library/dir.m has
-            % no mechanism we could use to tell it that a given prefix
-            % of directories in DirComponents has already been created,
-            % and that therefore checking whether they already exist
-            % is unnecessary. (If any agent other than the Mercury system
-            % is deleting some of these directories after their creation,
-            % then things will be screwed up beyond Mercury's ability to
-            % recover, *regardless* of what we do here.)
-            %
-            % This is not too much of a loss, since the crude test here
-            % will still eliminate most of the eliminable system calls
-            % involved in this task.
-            get_made_dirs(MadeDirs0, !IO),
-            ( if set_tree234.contains(MadeDirs0, DirName) then
-                Made = yes
-            else
-                Made = no,
-                make_directory(DirName, _, !IO),
-                set_tree234.insert(DirName, MadeDirs0, MadeDirs),
-                set_made_dirs(MadeDirs, !IO)
-            ),
-            trace [compile_time(flag("file_name_translations")),
-                runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
-            (
-                Made = no,
-                record_no_mkdir(DirName, !TIO)
-            ;
-                Made = yes,
-                record_mkdir(DirName, !TIO)
-            )
+            Made = no,
+            record_no_mkdir(DirName, !TIO)
         ;
-            MkDir = do_not_create_dirs
+            Made = yes,
+            record_mkdir(DirName, !TIO)
         )
     ).
 
@@ -1499,7 +1583,12 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
 % subject to different kinds of postprocessing.
 
 :- type record_key
-    --->    record_key(module_name, ext, maybe_search, maybe_create_dirs).
+    --->    record_key(
+                module_name,
+                ext,
+                maybe_search,
+                maybe(maybe_create_dirs)
+            ).
 
 :- type record_value
     --->    record_value(string, int).
@@ -1507,8 +1596,9 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
 :- mutable(translations, map(record_key, record_value), map.init, ground,
     [untrailed, attach_to_io_state]).
 
-:- pred record_translation(string::in, maybe_search::in, maybe_create_dirs::in,
-    ext::in, module_name::in, string::in, io::di, io::uo) is det.
+:- pred record_translation(string::in, maybe_search::in,
+    maybe(maybe_create_dirs)::in, ext::in, module_name::in, string::in,
+    io::di, io::uo) is det.
 
 record_translation(_From, Search, MkDir, Ext, ModuleName, FileName, !IO) :-
     % XXX We could record _From in the table. It could show us where
@@ -1602,7 +1692,7 @@ gather_translation_stats(Globals, Key, Value, !NumKeys, !NumLookups,
     !:NumKeys = !.NumKeys + 1,
     Value = record_value(_FileName, Count),
     !:NumLookups = !.NumLookups + Count,
-    Key = record_key(_ModuleName, Ext, Search, MkDir),
+    Key = record_key(_ModuleName, Ext, Search, MaybeMkdir),
     ExtStr0 = extension_to_string(Globals, Ext),
     ( if ExtStr0 = "" then
         ExtStr = "no_suffix"
@@ -1617,11 +1707,17 @@ gather_translation_stats(Globals, Key, Value, !NumKeys, !NumLookups,
         SearchStr = "_nosearch"
     ),
     (
-        MkDir = do_create_dirs,
-        MkDirStr = "_mkdir"
+        MaybeMkdir = no,
+        MkDirStr = "_returndir"
     ;
-        MkDir = do_not_create_dirs,
-        MkDirStr = "_nomkdir"
+        MaybeMkdir = yes(MkDir),
+        (
+            MkDir = do_create_dirs,
+            MkDirStr = "_mkdir"
+        ;
+            MkDir = do_not_create_dirs,
+            MkDirStr = "_nomkdir"
+        )
     ),
     ExtSchDir = ExtStr ++ SearchStr ++ MkDirStr,
     update_count_sum_map(ExtStr, Count, !ExtMap),

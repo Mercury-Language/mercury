@@ -585,8 +585,8 @@ make_symlink_or_copy_dir(Globals, ProgressStream, ErrorStream,
 
 touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
         ModuleName, Ext, Succeeded, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
-        Ext, ModuleName, OutputFileName, !IO),
+    module_name_to_file_name_create_dirs(Globals, $pred, Ext,
+        ModuleName, OutputFileName, !IO),
     touch_datestamp(Globals, ProgressStream, ErrorStream, OutputFileName,
         Succeeded, !IO).
 
@@ -860,8 +860,8 @@ use_win32 :-
 %
 
 create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_lib_gs(ext_lib_gs_jar), MainModuleName, JarFileName, !IO),
+    module_name_to_file_name(Globals, $pred, ext_lib_gs(ext_lib_gs_jar),
+        MainModuleName, JarFileName, !IO),
     get_target_env_type(Globals, TargetEnvType),
     (
         ( TargetEnvType = env_type_posix
@@ -1204,7 +1204,7 @@ get_env_classpath(Classpath, !IO) :-
 %-----------------------------------------------------------------------------%
 
 create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_exec_gs(ext_exec_gs_noext), MainModuleName, FileName, !IO),
 
     get_progress_output_stream(Globals, MainModuleName, ProgressStream, !IO),
@@ -1243,7 +1243,7 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
 %-----------------------------------------------------------------------------%
 
 create_launcher_batch_file(Globals, MainModuleName, Pred, Succeeded, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_exec_gs(ext_exec_gs_bat), MainModuleName, FileName, !IO),
 
     get_progress_output_stream(Globals, MainModuleName, ProgressStream, !IO),

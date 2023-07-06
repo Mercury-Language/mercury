@@ -667,14 +667,14 @@ build_object_code(Globals, ModuleName, Target, PIC,
             ModuleName, Succeeded, !IO)
     ;
         Target = target_java,
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
+        module_name_to_file_name_create_dirs(Globals, $pred,
             ext_target_java(ext_target_java_java),
             ModuleName, JavaFile, !IO),
         compile_java_files(Globals, ProgressStream, ErrorStream,
             JavaFile, [], Succeeded, !IO)
     ;
         Target = target_csharp,
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
+        module_name_to_file_name_create_dirs(Globals, $pred,
             ext_target_c_cs(ext_target_cs), ModuleName, CsharpFile, !IO),
         compile_target_code.link(Globals, ProgressStream, ErrorStream,
             csharp_library, ModuleName, [CsharpFile], Succeeded, !IO)
@@ -721,9 +721,9 @@ get_foreign_code_file(Globals, ModuleName, PIC, Lang, ForeignCodeFile, !IO) :-
     foreign_language_module_name(ModuleName, Lang, ForeignModName),
     foreign_language_file_extension(Lang, SrcExt),
     get_object_extension(Globals, PIC, ObjExt),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         SrcExt, ForeignModName, SrcFileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_target_obj(ObjExt), ForeignModName, ObjFileName, !IO),
     ForeignCodeFile = foreign_code_file(Lang, SrcFileName, ObjFileName).
 
@@ -1034,9 +1034,10 @@ find_files_maybe_touched_by_task(Globals, TargetFile, Task,
         Task = fact_table_code_to_object_code(PIC, FactTableName),
         TouchedTargetFiles = [TargetFile],
         get_object_extension(Globals, PIC, ObjExt),
-        fact_table_file_name(Globals, $pred, do_create_dirs,
+        fact_table_file_name_return_dirs(Globals, $pred,
             ext_target_obj(ObjExt),
-            FactTableName, FactTableObjectFile, !IO),
+            FactTableName, FactTableDirs, FactTableObjectFile, !IO),
+        create_any_dirs_on_path(FactTableDirs, !IO),
         TouchedFileNames = [FactTableObjectFile]
     ).
 
@@ -1160,8 +1161,8 @@ gather_target_file_timestamp_file_names(Globals, TouchedTargetFile,
         !TimestampFileNames, !IO) :-
     TouchedTargetFile = target_file(TargetModuleName, TargetType),
     ( if timestamp_extension(TargetType, TimestampExt) then
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            TimestampExt, TargetModuleName, TimestampFile, !IO),
+        module_name_to_file_name(Globals, $pred, TimestampExt,
+            TargetModuleName, TimestampFile, !IO),
         list.cons(TimestampFile, !TimestampFileNames)
     else
         true
@@ -1202,11 +1203,13 @@ external_foreign_code_files(Globals, PIC, ModuleDepInfo, ForeignFiles, !IO) :-
 get_fact_table_foreign_code_file(Globals, Mkdir, ObjExt,
         FactTableFileName, ForeignCodeFile, !IO) :-
     % XXX EXT Neither of these calls should be needed.
-    fact_table_file_name(Globals, $pred, Mkdir,
+    fact_table_file_name_return_dirs(Globals, $pred,
         ext_target_c_cs(ext_target_c),
-        FactTableFileName, FactTableCFileName, !IO),
-    fact_table_file_name(Globals, $pred, Mkdir,
-        ObjExt, FactTableFileName, FactTableObjFileName, !IO),
+        FactTableFileName, FactTableDirsC, FactTableCFileName, !IO),
+    maybe_create_any_dirs_on_path(Mkdir, FactTableDirsC, !IO),
+    fact_table_file_name_return_dirs(Globals, $pred, ObjExt,
+        FactTableFileName, FactTableDirsO, FactTableObjFileName, !IO),
+    maybe_create_any_dirs_on_path(Mkdir, FactTableDirsO, !IO),
     ForeignCodeFile =
         foreign_code_file(lang_c, FactTableCFileName, FactTableObjFileName).
 

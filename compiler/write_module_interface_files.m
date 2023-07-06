@@ -409,8 +409,8 @@ actually_write_interface_file3(ProgressStream, ErrorStream, Globals,
 construct_int_file_name(Globals, ModuleName, IntFileKind, ExtraSuffix,
         OutputFileName, TmpOutputFileName, !IO) :-
     int_file_kind_to_extension(IntFileKind, _ExtStr, Ext),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
-        Ext, ModuleName, OutputFileName0, !IO),
+    module_name_to_file_name_create_dirs(Globals, $pred, Ext,
+        ModuleName, OutputFileName0, !IO),
     OutputFileName = OutputFileName0 ++ ExtraSuffix,
     TmpOutputFileName = OutputFileName ++ ".tmp".
 
@@ -588,9 +588,9 @@ report_file_not_written(ErrorStream, Globals, Specs, PrefixPieces,
     % We use write_error_spec to print the message the interface file or
     % files not being written in order to wrap the message if it is
     % longer than the line length.
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+    module_name_to_file_name(Globals, $pred,
         ExtA, ModuleName, IntAFileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+    module_name_to_file_name(Globals, $pred,
         ExtDate, ModuleName, DateFileName, !IO),
     (
         MaybeExtB = no,
@@ -598,7 +598,7 @@ report_file_not_written(ErrorStream, Globals, Specs, PrefixPieces,
         ToRemoveFileNames = [IntAFileName, DateFileName]
     ;
         MaybeExtB = yes(ExtB),
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        module_name_to_file_name(Globals, $pred,
             ExtB, ModuleName, IntBFileName, !IO),
         NotWrittenPieces = [quote(IntAFileName), words("and"),
             quote(IntBFileName), words("not written."), nl],

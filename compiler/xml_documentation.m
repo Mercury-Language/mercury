@@ -93,7 +93,7 @@
 xml_documentation(ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_user_ngs(ext_user_ngs_xml), ModuleName, FileName, !IO),
 
     lookup_module_source_file(ModuleName, MaybeSrcFileName, !IO),

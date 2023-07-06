@@ -199,7 +199,7 @@ write_dependency_file_fn_cache(Globals, BurdenedAugCompUnit, IntermodDeps,
     BurdenedAugCompUnit = burdened_aug_comp_unit(_, AugCompUnit),
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_mmake_fragment(ext_mf_d), ModuleName, DependencyFileName, !IO),
     io.file.make_temp_file(dir.dirname(DependencyFileName), "tmp_d", "",
         TmpDependencyFileNameRes, !IO),
@@ -1315,8 +1315,8 @@ make_module_file_name(Globals, From, Ext, ModuleName, FileName,
         % it is worth caching files with those extensions.
         Ext = ext_src
     then
-        module_name_to_file_name(Globals, From, do_not_create_dirs,
-            Ext, ModuleName, FileName, !IO)
+        module_name_to_file_name(Globals, From, Ext,
+            ModuleName, FileName, !IO)
     else
         ModuleNameExt = module_name_and_ext(ModuleName, Ext),
         ( if map.search(!.Cache, ModuleNameExt, FileName0) then
@@ -1324,8 +1324,8 @@ make_module_file_name(Globals, From, Ext, ModuleName, FileName,
         else
             % The result of module_name_to_file_name is cached to save on
             % temporary string constructions.
-            module_name_to_file_name(Globals, From, do_not_create_dirs,
-                Ext, ModuleName, FileName, !IO),
+            module_name_to_file_name(Globals, From, Ext,
+                ModuleName, FileName, !IO),
             map.det_insert(ModuleNameExt, FileName, !Cache)
         )
     ).
@@ -1366,10 +1366,9 @@ foreign_include_file_path_name(SourceFileName, IncludeFile) = IncludePath :-
 get_fact_table_dependencies(_, _, [], [], !IO).
 get_fact_table_dependencies(Globals, Ext,
         [ExtraLink | ExtraLinks], [FileName | FileNames], !IO) :-
-    fact_table_file_name(Globals, $pred, do_not_create_dirs, Ext,
-        ExtraLink, FileName, !IO),
-    get_fact_table_dependencies(Globals, Ext,
-        ExtraLinks, FileNames, !IO).
+    fact_table_file_name_return_dirs(Globals, $pred, Ext, ExtraLink,
+        _Dirs, FileName, !IO),
+    get_fact_table_dependencies(Globals, Ext, ExtraLinks, FileNames, !IO).
 
     % With `--use-subdirs', allow users to type `mmake module.c'
     % rather than `mmake Mercury/cs/module.c'.
@@ -1516,7 +1515,7 @@ get_dependencies_from_graph(DepsGraph, ModuleName, Dependencies) :-
 generate_dependencies_write_dv_file(Globals, SourceFileName, ModuleName,
         DepsMap, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_mmake_fragment(ext_mf_dv), ModuleName, DvFileName, !IO),
     get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
     string.format("%% Creating auto-dependency file `%s'...\n",
@@ -1616,7 +1615,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
 
     MakeFileName =
         ( pred({M, NE}::in, F::out, IO0::di, IO::uo) is det :-
-            module_name_to_file_name(Globals, $pred, do_create_dirs, NE,
+            module_name_to_file_name_create_dirs(Globals, $pred, NE,
                 M, F0, IO0, IO),
             F = "$(os_subdir)" ++ F0
         ),
@@ -1920,7 +1919,7 @@ get_fact_table_file_names(DepsMap, [Module | Modules], !FactTableFileNames) :-
 generate_dependencies_write_dep_file(Globals, SourceFileName, ModuleName,
         DepsMap, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_mmake_fragment(ext_mf_dep), ModuleName, DepFileName, !IO),
     get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
     string.format("%% Creating auto-dependency file `%s'...\n",
@@ -1962,14 +1961,14 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
 
     module_name_to_make_var_name(ModuleName, ModuleMakeVarName),
 
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_lib_gs(ext_lib_gs_init), ModuleName, InitFileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_target_init_c(ext_init_c), ModuleName, InitCFileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_target_init_obj(ext_init_obj_dollar_o),
         ModuleName, InitObjFileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_target_init_obj(ext_init_obj_pic_o),
         ModuleName, InitPicObjFileName, !IO),
 
@@ -2042,7 +2041,7 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
         MaybeOptsVar, MaybeTransOptsVar,
         ExeFileName, JarFileName, LibFileName, SharedLibFileName,
         !MmakeFile, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+    module_name_to_file_name(Globals, $pred,
         ext_exec_gs(ext_exec_gs_noext), ModuleName, ExeFileName, !IO),
     MmakeRuleExtForExe = mmake_simple_rule("ext_for_exe",
         mmake_rule_is_phony,
@@ -2098,17 +2097,17 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
         mmake_cond_grade_has_component("java"),
         MmakeRuleExecutableJava, MmakeRuleExecutableNonJava),
 
-    module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs, "lib",
+    % XXX EXT This call uses ext_exec_gs for a LIBRARY, not an EXECUTABLE
+    module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
         ext_exec_gs(ext_exec_gs_noext), ModuleName, LibTargetName, !IO),
-    module_name_to_lib_file_name(Globals, $pred, do_create_dirs, "lib",
+    module_name_to_lib_file_name(Globals, $pred, "lib",
         ext_lib_gs(ext_lib_gs_dollar_a), ModuleName, LibFileName, !IO),
-    module_name_to_lib_file_name(Globals, $pred, do_create_dirs, "lib",
+    module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
         ext_lib(ext_lib_dollar_efsl), ModuleName, SharedLibFileName, !IO),
     % XXX EXT What is the point of this call, given the call just above?
-    module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs, "lib",
-        ext_lib(ext_lib_dollar_efsl), ModuleName,
-        MaybeSharedLibFileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+    module_name_to_lib_file_name(Globals, $pred, "lib",
+        ext_lib(ext_lib_dollar_efsl), ModuleName, MaybeSharedLibFileName, !IO),
+    module_name_to_file_name(Globals, $pred,
         ext_lib_gs(ext_lib_gs_jar), ModuleName, JarFileName, !IO),
 
     % Set up the installed name for shared libraries.
@@ -2193,9 +2192,9 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
 generate_dep_file_init_targets(Globals, ModuleName, ModuleMakeVarName,
         InitCFileName, InitFileName, DepFileName, DvFileName,
         !MmakeFile, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+    module_name_to_file_name(Globals, $pred,
         ext_mmake_fragment(ext_mf_dep), ModuleName, DepFileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+    module_name_to_file_name(Globals, $pred,
         ext_mmake_fragment(ext_mf_dv), ModuleName, DvFileName, !IO),
 
     ModuleMakeVarNameCs = "$(" ++ ModuleMakeVarName ++ ".cs)",
@@ -2258,16 +2257,16 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
     MaybeTransOptsVarPair = MaybeTransOptsVar - MaybeTransOptsVarSpace,
     MaybeModuleDepsVarPair = MaybeModuleDepsVar - MaybeModuleDepsVarSpace,
 
-    module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs, "lib",
+    module_name_to_lib_file_name(Globals, $pred, "lib",
         ext_mmake_target(ext_mt_install_ints),
         ModuleName, LibInstallIntsTargetName, !IO),
-    module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs, "lib",
+    module_name_to_lib_file_name(Globals, $pred, "lib",
         ext_mmake_target(ext_mt_install_opts),
         ModuleName, LibInstallOptsTargetName, !IO),
-    module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs, "lib",
+    module_name_to_lib_file_name(Globals, $pred, "lib",
         ext_mmake_target(ext_mt_install_hdrs),
         ModuleName, LibInstallHdrsTargetName, !IO),
-    module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs, "lib",
+    module_name_to_lib_file_name(Globals, $pred, "lib",
         ext_mmake_target(ext_mt_install_grade_hdrs),
         ModuleName, LibInstallGradeHdrsTargetName, !IO),
 
@@ -2499,7 +2498,7 @@ generate_dep_file_collective_targets(Globals, ModuleName,
 
 generate_dep_file_collective_target(Globals, ModuleName, ModuleMakeVarName,
         {Ext, VarExtension}, MmakeRule, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs, Ext,
+    module_name_to_file_name(Globals, $pred, Ext,
         ModuleName, TargetName, !IO),
     Source = string.format("$(%s%s)", [s(ModuleMakeVarName), s(VarExtension)]),
     ExtStr = extension_to_string(Globals, Ext),
@@ -2520,10 +2519,10 @@ generate_dep_file_clean_targets(Globals, ModuleName, ModuleMakeVarName,
     % If you change the clean targets below, please also update the
     % documentation in doc/user_guide.texi.
 
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+    module_name_to_file_name(Globals, $pred,
         ext_mmake_target(ext_mt_clean),
         ModuleName, CleanTargetName, !IO),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+    module_name_to_file_name(Globals, $pred,
         ext_mmake_target(ext_mt_realclean),
         ModuleName, RealCleanTargetName, !IO),
 
@@ -2606,8 +2605,8 @@ get_source_file(DepsMap, ModuleName, FileName) :-
 %---------------------------------------------------------------------------%
 
 output_module_order(Globals, ModuleName, Ext, DepsOrdering, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
-        Ext, ModuleName, OrdFileName, !IO),
+    module_name_to_file_name_create_dirs(Globals, $pred, Ext,
+        ModuleName, OrdFileName, !IO),
     get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     string.format("%% Creating module order file `%s'...",

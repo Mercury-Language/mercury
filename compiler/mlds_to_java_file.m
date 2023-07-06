@@ -129,7 +129,7 @@ output_java_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     % that is why we don't call mercury_module_name_to_mlds here.
     module_info_get_globals(ModuleInfo, Globals),
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_target_java(ext_target_java_java),
         ModuleName, JavaSourceFileName, !IO),
     output_to_file_stream(Globals, ModuleName, JavaSourceFileName,

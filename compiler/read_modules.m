@@ -811,8 +811,8 @@ read_module_begin(Globals, ReadReasonMsg, Search, ModuleName, FileKind,
         )
     ;
         Search = do_not_search,
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            Ext, ModuleName, FileName, !IO),
+        module_name_to_file_name(Globals, $pred, Ext,
+            ModuleName, FileName, !IO),
         SearchDirs = [dir.this_directory]
     ),
     output_read_reason_msg(Globals, ReadReasonMsg, FileName, ReadDoneMsg, !IO).

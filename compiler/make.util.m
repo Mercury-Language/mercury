@@ -350,8 +350,8 @@ get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
             TargetExt = extension(Ext),
             (
                 Search = do_not_search,
-                module_name_to_file_name(Globals, From, do_not_create_dirs,
-                    Ext, ModuleName, FileName, !IO)
+                module_name_to_file_name(Globals, From, Ext,
+                    ModuleName, FileName, !IO)
             ;
                 Search = do_search,
                 module_name_to_search_file_name(Globals, From, Ext,
@@ -363,19 +363,19 @@ get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
             ),
             (
                 Search = do_not_search,
-                module_target_to_file_name(Globals, From,
-                    do_not_create_dirs, TargetType, ModuleName, FileName, !IO)
+                module_target_to_file_name(Globals, From, TargetType,
+                    ModuleName, FileName, !IO)
             ;
                 Search = do_search,
-                module_target_to_search_file_name(Globals, From,
-                    TargetType, ModuleName, FileName, !IO)
+                module_target_to_search_file_name(Globals, From, TargetType,
+                    ModuleName, FileName, !IO)
             )
         )
     ).
 
 get_make_target_file_name(Globals, From, TargetFile, FileName, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
-    module_target_to_file_name(Globals, From, do_not_create_dirs,
+    module_target_to_file_name(Globals, From,
         TargetType, ModuleName, FileName, !IO).
 
 dependency_file_to_file_name(Globals, DepFile, FileName, !IO) :-
@@ -389,55 +389,56 @@ dependency_file_to_file_name(Globals, DepFile, FileName, !IO) :-
 linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
     (
         TargetType = executable,
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        module_name_to_file_name(Globals, $pred,
             ext_exec_gs(ext_exec_exec_opt), ModuleName, FileName, !IO)
     ;
         TargetType = static_library,
-        module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs,
-            "lib", ext_lib_gs(ext_lib_gs_lib_opt),
-            ModuleName, FileName, !IO)
+        module_name_to_lib_file_name(Globals, $pred, "lib",
+            ext_lib_gs(ext_lib_gs_lib_opt), ModuleName, FileName, !IO)
     ;
         TargetType = shared_library,
-        module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs,
-            "lib", ext_lib_gs(ext_lib_gs_sh_lib_opt),
-            ModuleName, FileName, !IO)
+        module_name_to_lib_file_name(Globals, $pred, "lib",
+            ext_lib_gs(ext_lib_gs_sh_lib_opt), ModuleName, FileName, !IO)
     ;
         TargetType = csharp_executable,
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        module_name_to_file_name(Globals, $pred,
             ext_exec(ext_exec_exe), ModuleName, FileName, !IO)
     ;
         TargetType = csharp_library,
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        module_name_to_file_name(Globals, $pred,
             ext_lib_gs(ext_lib_gs_dll), ModuleName, FileName, !IO)
     ;
         ( TargetType = java_archive
         ; TargetType = java_executable
         ),
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        module_name_to_file_name(Globals, $pred,
             ext_lib_gs(ext_lib_gs_jar), ModuleName, FileName, !IO)
     ).
 
+    % XXX Move this below all its callers.
+    %
 :- pred module_target_to_file_name(globals::in, string::in,
-    maybe_create_dirs::in, module_target_type::in,
-    module_name::in, file_name::out, io::di, io::uo) is det.
+    module_target_type::in, module_name::in, file_name::out,
+    io::di, io::uo) is det.
 
-module_target_to_file_name(Globals, From, MkDir, TargetType,
+module_target_to_file_name(Globals, From, TargetType,
         ModuleName, FileName, !IO) :-
     target_type_to_target_extension(TargetType, TargetExt),
     (
         TargetExt = extension(Ext),
-        module_name_to_file_name(Globals, From, MkDir, Ext,
+        module_name_to_file_name(Globals, From, Ext,
             ModuleName, FileName, !IO)
     ;
         TargetExt = foreign_obj(PIC, Lang),
         foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
-        module_target_to_file_name(Globals, From, MkDir,
-            module_target_object_code(PIC), ForeignModuleName, FileName, !IO)
+        module_target_to_file_name(Globals, From,
+            module_target_object_code(PIC),
+            ForeignModuleName, FileName, !IO)
     ;
         TargetExt = fact_table_obj(PIC, FactFile),
         maybe_pic_object_file_extension(PIC, ObjExt, _),
-        fact_table_file_name(Globals, $pred, MkDir,
-            ext_target_obj(ObjExt), FactFile, FileName, !IO)
+        fact_table_file_name_return_dirs(Globals, $pred,
+            ext_target_obj(ObjExt), FactFile, _FactDirs, FileName, !IO)
     ).
 
 :- pred module_target_to_search_file_name(globals::in, string::in,
@@ -460,8 +461,8 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
         TargetExt = fact_table_obj(PIC, FactFile),
         maybe_pic_object_file_extension(PIC, ObjExt, _),
         % XXX This call ignores the implicit do_search setting.
-        fact_table_file_name(Globals, $pred, do_not_create_dirs,
-            ext_target_obj(ObjExt), FactFile, FileName, !IO)
+        fact_table_file_name_return_dirs(Globals, $pred,
+            ext_target_obj(ObjExt), FactFile, _FactDirs, FileName, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -664,11 +665,11 @@ init_target_file_timestamps =
 get_timestamp_file_timestamp(Globals, target_file(ModuleName, TargetType),
         MaybeTimestamp, !Info, !IO) :-
     ( if timestamp_extension(TargetType, TimestampExt) then
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        module_name_to_file_name(Globals, $pred,
             TimestampExt, ModuleName, FileName, !IO)
     else
-        module_target_to_file_name(Globals, $pred, do_not_create_dirs,
-            TargetType, ModuleName, FileName, !IO)
+        module_target_to_file_name(Globals, $pred, TargetType,
+            ModuleName, FileName, !IO)
     ),
     % We should only ever look for timestamp files in the current directory.
     % Timestamp files are only used when processing a module, and only modules
@@ -937,8 +938,8 @@ remove_make_target_file(Globals, From, VerboseOption, Target, !Info, !IO) :-
 
 remove_make_target_file_by_name(Globals, From, VerboseOption,
         ModuleName, TargetType, !Info, !IO) :-
-    module_target_to_file_name(Globals, From, do_not_create_dirs,
-        TargetType, ModuleName, FileName, !IO),
+    module_target_to_file_name(Globals, From, TargetType,
+        ModuleName, FileName, !IO),
     make_remove_file(Globals, VerboseOption, FileName, !Info, !IO),
     ( if timestamp_extension(TargetType, TimestampExt) then
         remove_make_module_file(Globals, VerboseOption, ModuleName,
@@ -951,7 +952,7 @@ remove_make_target_file_by_name(Globals, From, VerboseOption,
 
 remove_make_module_file(Globals, VerboseOption, ModuleName, Ext,
         !Info, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs, Ext,
+    module_name_to_file_name(Globals, $pred, Ext,
         ModuleName, FileName, !IO),
     make_remove_file(Globals, VerboseOption, FileName, !Info, !IO).
 

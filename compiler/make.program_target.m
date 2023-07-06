@@ -630,8 +630,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             Ext = ext_target_java(ext_target_java_class)
         ),
         list.map_foldl(
-            module_name_to_file_name(NoLinkObjsGlobals, $pred,
-                do_not_create_dirs, Ext),
+            module_name_to_file_name(NoLinkObjsGlobals, $pred, Ext),
             ObjModules, ObjList, !IO),
 
         % LinkObjects may contain `.a' files which must come
@@ -782,7 +781,7 @@ build_java_files(Globals, MainModuleName, ModuleNames, Succeeded,
     % XXX MAKE_STREAM
     maybe_write_msg(MakingMsg, !IO),
     list.map_foldl(
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
+        module_name_to_file_name_create_dirs(Globals, $pred,
             ext_target_java(ext_target_java_java)),
         ModuleNames, JavaFiles, !IO),
     % We redirect errors to a file named after the main module.
@@ -1596,8 +1595,8 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
             % XXX Should we test
             % ModuleDepInfo ^ contains_foreign_export
             %   = contains_foreign_export?
-            module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-                ext_mh(ext_mh_mh), ModuleName, FileName, !IO),
+            module_name_to_file_name(Globals, $pred, ext_mh(ext_mh_mh),
+                ModuleName, FileName, !IO),
             install_file(Globals, FileName, LibDir/"inc", HeaderSucceeded1,
                 !IO),
 
@@ -1813,8 +1812,8 @@ install_library_grade_files(Globals, LinkSucceeded0, GradeDir, ModuleName,
 install_grade_init(Globals, GradeDir, ModuleName, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     GradeModulesDir = Prefix / "lib" / "mercury" / "modules" / GradeDir,
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_lib_gs(ext_lib_gs_init), ModuleName, InitFileName, !IO),
+    module_name_to_file_name(Globals, $pred, ext_lib_gs(ext_lib_gs_init),
+        ModuleName, InitFileName, !IO),
     install_file(Globals, InitFileName, GradeModulesDir, Succeeded, !IO).
 
     % Install the `.opt', `.analysis' and `.mih' files for the current grade.
@@ -1891,8 +1890,7 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
 
 install_subdir_file(Globals, SubdirLinkSucceeded, InstallDir, ModuleName,
         {Ext, Exts}, Succeeded, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        Ext, ModuleName, FileName, !IO),
+    module_name_to_file_name(Globals, $pred, Ext, ModuleName, FileName, !IO),
     install_file(Globals, FileName, InstallDir, Succeeded1, !IO),
     (
         SubdirLinkSucceeded = did_not_succeed,
@@ -2135,7 +2133,7 @@ make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
     list.map_foldl(linked_target_file_name(NoSubdirGlobals, ModuleName),
         LinkedTargetTypes, ThisDirFileNames, !IO),
     % XXX This symlink should not be necessary anymore for `mmc --make'.
-    module_name_to_file_name(NoSubdirGlobals, $pred, do_not_create_dirs,
+    module_name_to_file_name(NoSubdirGlobals, $pred,
         ext_lib_gs(ext_lib_gs_init), ModuleName, ThisDirInitFileName, !IO),
 
     list.foldl2(make_remove_file(Globals, very_verbose),
@@ -2210,8 +2208,9 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 remove_fact_table_c_file(Globals, FactTableFile, !Info, !IO) :-
-    fact_table_file_name(Globals, $pred, do_not_create_dirs,
-        ext_target_c_cs(ext_target_c), FactTableFile, FactTableCFile, !IO),
+    fact_table_file_name_return_dirs(Globals, $pred,
+        ext_target_c_cs(ext_target_c),
+        FactTableFile, _FactTableDirs, FactTableCFile, !IO),
     make_remove_file(Globals, very_verbose, FactTableCFile, !Info, !IO).
 
 :- pred remove_object_and_assembler_files(globals::in, module_name::in,

@@ -645,7 +645,7 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
     % enabled, the .o file depends on all the .mh files of the imported
     % modules. so we need to produce a .mh file even if it contains nothing.
     module_info_get_globals(ModuleInfo, Globals),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_mh(ext_mh_mh), ModuleName, FileName, !IO),
     MaybeThisFileName = yes(FileName),
     TmpFileName = FileName ++ ".tmp",

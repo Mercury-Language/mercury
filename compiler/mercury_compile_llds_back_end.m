@@ -932,9 +932,10 @@ llds_c_to_obj(Globals, ProgressStream, ErrorStream, ModuleName,
     get_linked_target_type(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
     maybe_pic_object_file_extension(PIC, ObjExt, _),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+    % XXX Why not _create_dirs?
+    module_name_to_file_name(Globals, $pred,
         ext_target_c_cs(ext_target_c), ModuleName, C_File, !IO),
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
+    module_name_to_file_name_create_dirs(Globals, $pred,
         ext_target_obj(ObjExt), ModuleName, O_File, !IO),
     compile_target_code.do_compile_c_file(Globals, ProgressStream, ErrorStream,
         PIC, C_File, O_File, Succeeded, !IO).

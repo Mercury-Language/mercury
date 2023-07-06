@@ -132,7 +132,7 @@ make_track_flags_files_for_module(Globals, ModuleName, Succeeded,
             !:LastHash = last_hash(AllOptionArgs, Hash)
         ),
 
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
+        module_name_to_file_name_create_dirs(Globals, $pred,
             ext_misc_gs(ext_misc_gs_track_flags),
             ModuleName, HashFileName, !IO),
         compare_hash_file(Globals, HashFileName, Hash, Same, !IO),

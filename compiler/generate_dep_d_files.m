@@ -391,7 +391,7 @@ maybe_output_imports_graph(Globals, ModuleName, IntDepsGraph, ImpDepsGraph,
     globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         ImportsGraph = yes,
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
+        module_name_to_file_name_create_dirs(Globals, $pred,
             ext_user_ngs(ext_user_ngs_imports_graph),
             ModuleName, FileName, !IO),
         (

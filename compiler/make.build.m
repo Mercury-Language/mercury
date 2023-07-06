@@ -261,7 +261,7 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
     io.read_named_file_as_lines(TmpErrorFileName, TmpErrorLinesRes, !IO),
     (
         TmpErrorLinesRes = ok(TmpErrorLines),
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
+        module_name_to_file_name_create_dirs(Globals, $pred,
             ext_user(ext_user_err), ModuleName, ErrorFileName, !IO),
         ErrorFileModules0 = make_info_get_error_file_modules(!.Info),
         ( if set.contains(ErrorFileModules0, ModuleName) then

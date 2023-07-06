@@ -133,7 +133,7 @@ mmc_module_name_to_read_file_name(Globals, Ext,
 
 mmc_module_name_to_write_file_name(Globals, Ext,
         ModuleName, FileName, !IO) :-
-    module_name_to_file_name(Globals, $pred, do_create_dirs, Ext,
+    module_name_to_file_name_create_dirs(Globals, $pred, Ext,
         ModuleName, FileName, !IO).
 
 module_name_func_id(ModuleInfo, proc(PredId, ProcId), PredModule, FuncId) :-
