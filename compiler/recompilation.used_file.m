@@ -565,7 +565,7 @@ module_name_and_used_items_to_string(UsedFileContents,
         _ResolvedUsedItems, _UsedClasses, _ImportedItems, ModuleInstances),
     map.lookup(TimestampMap, ModuleName,
         module_timestamp(FileKind, ModuleTimestamp, RecompNeedQual)),
-    file_kind_to_extension(FileKind, ExtStr, _Ext),
+    file_kind_to_extension(FileKind, ExtStr),
     (
         RecompNeedQual = recomp_avail_src,
         ImportStr = "src"
@@ -636,7 +636,7 @@ module_name_and_used_items_to_string(UsedFileContents,
 
 read_used_file_for_module(Globals, ModuleName, ReadUsedFileResult, !IO) :-
     module_name_to_file_name(Globals, $pred, ext_misc_gs(ext_misc_gs_used),
-        ModuleName, UsedFileName, !IO),
+        ModuleName, UsedFileName),
     io.read_named_file_as_string(UsedFileName, MaybeUsedFileString, !IO),
     (
         MaybeUsedFileString = ok(UsedFileString),

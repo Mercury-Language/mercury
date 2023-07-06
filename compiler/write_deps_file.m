@@ -1308,26 +1308,18 @@ gather_foreign_import_deps(Globals, ForeignImportExt, ForeignImportTargets,
 
 make_module_file_name(Globals, From, Ext, ModuleName, FileName,
         !Cache, !IO) :-
-    ( if
-        % No point caching these.
-        % XXX This should be a complete switch on Ext, with an
-        % explcit decision for each category of extension about whether
-        % it is worth caching files with those extensions.
-        Ext = ext_src
-    then
-        module_name_to_file_name(Globals, From, Ext,
-            ModuleName, FileName, !IO)
+    % XXX This should be a complete switch on Ext, with an
+    % explcit decision for each category of extension about whether
+    % it is worth caching files with those extensions.
+    ModuleNameExt = module_name_and_ext(ModuleName, Ext),
+    ( if map.search(!.Cache, ModuleNameExt, FileName0) then
+        FileName = FileName0
     else
-        ModuleNameExt = module_name_and_ext(ModuleName, Ext),
-        ( if map.search(!.Cache, ModuleNameExt, FileName0) then
-            FileName = FileName0
-        else
-            % The result of module_name_to_file_name is cached to save on
-            % temporary string constructions.
-            module_name_to_file_name(Globals, From, Ext,
-                ModuleName, FileName, !IO),
-            map.det_insert(ModuleNameExt, FileName, !Cache)
-        )
+        % The result of module_name_to_file_name is cached to save on
+        % temporary string constructions.
+        module_name_to_file_name(Globals, From, Ext,
+            ModuleName, FileName),
+        map.det_insert(ModuleNameExt, FileName, !Cache)
     ).
 
 :- pred make_module_file_names_with_suffix(globals::in, ext::in,
@@ -1367,7 +1359,7 @@ get_fact_table_dependencies(_, _, [], [], !IO).
 get_fact_table_dependencies(Globals, Ext,
         [ExtraLink | ExtraLinks], [FileName | FileNames], !IO) :-
     fact_table_file_name_return_dirs(Globals, $pred, Ext, ExtraLink,
-        _Dirs, FileName, !IO),
+        _Dirs, FileName),
     get_fact_table_dependencies(Globals, Ext, ExtraLinks, FileNames, !IO).
 
     % With `--use-subdirs', allow users to type `mmake module.c'
@@ -2042,7 +2034,7 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
         ExeFileName, JarFileName, LibFileName, SharedLibFileName,
         !MmakeFile, !IO) :-
     module_name_to_file_name(Globals, $pred,
-        ext_exec_gs(ext_exec_gs_noext), ModuleName, ExeFileName, !IO),
+        ext_exec_gs(ext_exec_gs_noext), ModuleName, ExeFileName),
     MmakeRuleExtForExe = mmake_simple_rule("ext_for_exe",
         mmake_rule_is_phony,
         ExeFileName,
@@ -2100,15 +2092,16 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
     % XXX EXT This call uses ext_exec_gs for a LIBRARY, not an EXECUTABLE
     module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
         ext_exec_gs(ext_exec_gs_noext), ModuleName, LibTargetName, !IO),
-    module_name_to_lib_file_name(Globals, $pred, "lib",
+    % XXX Doing _create_dirs for a $A seems strange.
+    module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
         ext_lib_gs(ext_lib_gs_dollar_a), ModuleName, LibFileName, !IO),
     module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
         ext_lib(ext_lib_dollar_efsl), ModuleName, SharedLibFileName, !IO),
     % XXX EXT What is the point of this call, given the call just above?
     module_name_to_lib_file_name(Globals, $pred, "lib",
-        ext_lib(ext_lib_dollar_efsl), ModuleName, MaybeSharedLibFileName, !IO),
+        ext_lib(ext_lib_dollar_efsl), ModuleName, MaybeSharedLibFileName),
     module_name_to_file_name(Globals, $pred,
-        ext_lib_gs(ext_lib_gs_jar), ModuleName, JarFileName, !IO),
+        ext_lib_gs(ext_lib_gs_jar), ModuleName, JarFileName),
 
     % Set up the installed name for shared libraries.
 
@@ -2193,9 +2186,9 @@ generate_dep_file_init_targets(Globals, ModuleName, ModuleMakeVarName,
         InitCFileName, InitFileName, DepFileName, DvFileName,
         !MmakeFile, !IO) :-
     module_name_to_file_name(Globals, $pred,
-        ext_mmake_fragment(ext_mf_dep), ModuleName, DepFileName, !IO),
+        ext_mmake_fragment(ext_mf_dep), ModuleName, DepFileName),
     module_name_to_file_name(Globals, $pred,
-        ext_mmake_fragment(ext_mf_dv), ModuleName, DvFileName, !IO),
+        ext_mmake_fragment(ext_mf_dv), ModuleName, DvFileName),
 
     ModuleMakeVarNameCs = "$(" ++ ModuleMakeVarName ++ ".cs)",
     InitAction1 = "echo > " ++ InitFileName,
@@ -2259,16 +2252,16 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
 
     module_name_to_lib_file_name(Globals, $pred, "lib",
         ext_mmake_target(ext_mt_install_ints),
-        ModuleName, LibInstallIntsTargetName, !IO),
+        ModuleName, LibInstallIntsTargetName),
     module_name_to_lib_file_name(Globals, $pred, "lib",
         ext_mmake_target(ext_mt_install_opts),
-        ModuleName, LibInstallOptsTargetName, !IO),
+        ModuleName, LibInstallOptsTargetName),
     module_name_to_lib_file_name(Globals, $pred, "lib",
         ext_mmake_target(ext_mt_install_hdrs),
-        ModuleName, LibInstallHdrsTargetName, !IO),
+        ModuleName, LibInstallHdrsTargetName),
     module_name_to_lib_file_name(Globals, $pred, "lib",
         ext_mmake_target(ext_mt_install_grade_hdrs),
-        ModuleName, LibInstallGradeHdrsTargetName, !IO),
+        ModuleName, LibInstallGradeHdrsTargetName),
 
     ModuleMakeVarNameInts = "$(" ++ ModuleMakeVarName ++ ".ints)",
     ModuleMakeVarNameInt3s = "$(" ++ ModuleMakeVarName ++ ".int3s)",
@@ -2499,7 +2492,7 @@ generate_dep_file_collective_targets(Globals, ModuleName,
 generate_dep_file_collective_target(Globals, ModuleName, ModuleMakeVarName,
         {Ext, VarExtension}, MmakeRule, !IO) :-
     module_name_to_file_name(Globals, $pred, Ext,
-        ModuleName, TargetName, !IO),
+        ModuleName, TargetName),
     Source = string.format("$(%s%s)", [s(ModuleMakeVarName), s(VarExtension)]),
     ExtStr = extension_to_string(Globals, Ext),
     MmakeRule = mmake_simple_rule(
@@ -2521,10 +2514,10 @@ generate_dep_file_clean_targets(Globals, ModuleName, ModuleMakeVarName,
 
     module_name_to_file_name(Globals, $pred,
         ext_mmake_target(ext_mt_clean),
-        ModuleName, CleanTargetName, !IO),
+        ModuleName, CleanTargetName),
     module_name_to_file_name(Globals, $pred,
         ext_mmake_target(ext_mt_realclean),
-        ModuleName, RealCleanTargetName, !IO),
+        ModuleName, RealCleanTargetName),
 
     % XXX Put these into a logical order.
     CleanSuffixes = [".dirs", ".cs", ".mihs", ".all_os", ".all_pic_os",
@@ -2727,7 +2720,7 @@ get_opt_deps(Globals, BuildOptFiles, IntermodDirs, Ext,
     (
         Found = no,
         module_name_to_search_file_name(Globals, $pred,
-            Ext, Dep, OptName, !IO),
+            Ext, Dep, OptName),
         search_for_file(IntermodDirs, OptName, MaybeOptDir, !IO),
         (
             MaybeOptDir = ok(_),

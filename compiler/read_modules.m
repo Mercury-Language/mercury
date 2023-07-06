@@ -789,31 +789,51 @@ read_module_begin_from_file(Globals, ReadReasonMsg, Search,
 
 read_module_begin(Globals, ReadReasonMsg, Search, ModuleName, FileKind,
         FileName, ReadDoneMsg, SearchDirs, !IO) :-
-    file_kind_to_extension(FileKind, _ExtStr, Ext),
-    % The rest of this predicate should be kept in sync
-    % with read_module_begin_from_file.
     (
-        Search = do_search,
-        % XXX CLEANUP We should either pass SearchDirs to
-        % module_name_to_search_file_name, or get it to give SearchDirs to us.
-        module_name_to_search_file_name(Globals, $pred, Ext,
-            ModuleName, FileName, !IO),
+        FileKind = fk_src,
+        % For the call to module_name_to_source_file_name, the value of Search
+        % does not matter.
+        module_name_to_source_file_name(ModuleName, FileName, !IO),
         (
-            ( FileKind = fk_src
-            ; FileKind = fk_int(_)
-            ),
+            Search = do_search,
             globals.lookup_accumulating_option(Globals, search_directories,
                 SearchDirs)
         ;
-            FileKind = fk_opt(_),
-            globals.lookup_accumulating_option(Globals, intermod_directories,
-                SearchDirs)
+            Search = do_not_search,
+            SearchDirs = [dir.this_directory]
         )
     ;
-        Search = do_not_search,
-        module_name_to_file_name(Globals, $pred, Ext,
-            ModuleName, FileName, !IO),
-        SearchDirs = [dir.this_directory]
+        (
+            FileKind = fk_int(IntFileKind),
+            int_file_kind_to_extension(IntFileKind, _ExtStr, Ext)
+        ;
+            FileKind = fk_opt(OptFileKind),
+            opt_file_kind_to_extension(OptFileKind, _ExtStr, Ext)
+        ),
+        % The rest of this predicate should be kept in sync
+        % with read_module_begin_from_file.
+        (
+            Search = do_search,
+            % XXX CLEANUP We should either pass SearchDirs to
+            % module_name_to_search_file_name, or get it to give SearchDirs
+            % to us.
+            module_name_to_search_file_name(Globals, $pred, Ext,
+                ModuleName, FileName),
+            (
+                FileKind = fk_int(_),
+                globals.lookup_accumulating_option(Globals,
+                    search_directories, SearchDirs)
+            ;
+                FileKind = fk_opt(_),
+                globals.lookup_accumulating_option(Globals,
+                    intermod_directories, SearchDirs)
+            )
+        ;
+            Search = do_not_search,
+            module_name_to_file_name(Globals, $pred, Ext,
+                ModuleName, FileName),
+            SearchDirs = [dir.this_directory]
+        )
     ),
     output_read_reason_msg(Globals, ReadReasonMsg, FileName, ReadDoneMsg, !IO).
 

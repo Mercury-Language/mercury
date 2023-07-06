@@ -124,7 +124,7 @@
 mmc_module_name_to_read_file_name(Globals, Ext,
         ModuleName, MaybeFileName, !IO) :-
     module_name_to_search_file_name(Globals, $pred, Ext,
-        ModuleName, FileName0, !IO),
+        ModuleName, FileName0),
     globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
     search_for_file(Dirs, FileName0, MaybeFileName, !IO).
 

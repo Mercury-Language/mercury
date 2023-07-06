@@ -629,9 +629,9 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             CompilationTarget = target_java,
             Ext = ext_target_java(ext_target_java_class)
         ),
-        list.map_foldl(
+        list.map(
             module_name_to_file_name(NoLinkObjsGlobals, $pred, Ext),
-            ObjModules, ObjList, !IO),
+            ObjModules, ObjList),
 
         % LinkObjects may contain `.a' files which must come
         % after all the object files on the linker command line.
@@ -1596,7 +1596,7 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
             % ModuleDepInfo ^ contains_foreign_export
             %   = contains_foreign_export?
             module_name_to_file_name(Globals, $pred, ext_mh(ext_mh_mh),
-                ModuleName, FileName, !IO),
+                ModuleName, FileName),
             install_file(Globals, FileName, LibDir/"inc", HeaderSucceeded1,
                 !IO),
 
@@ -1813,7 +1813,7 @@ install_grade_init(Globals, GradeDir, ModuleName, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     GradeModulesDir = Prefix / "lib" / "mercury" / "modules" / GradeDir,
     module_name_to_file_name(Globals, $pred, ext_lib_gs(ext_lib_gs_init),
-        ModuleName, InitFileName, !IO),
+        ModuleName, InitFileName),
     install_file(Globals, InitFileName, GradeModulesDir, Succeeded, !IO).
 
     % Install the `.opt', `.analysis' and `.mih' files for the current grade.
@@ -1890,7 +1890,7 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
 
 install_subdir_file(Globals, SubdirLinkSucceeded, InstallDir, ModuleName,
         {Ext, Exts}, Succeeded, !IO) :-
-    module_name_to_file_name(Globals, $pred, Ext, ModuleName, FileName, !IO),
+    module_name_to_file_name(Globals, $pred, Ext, ModuleName, FileName),
     install_file(Globals, FileName, InstallDir, Succeeded1, !IO),
     (
         SubdirLinkSucceeded = did_not_succeed,
@@ -2134,7 +2134,7 @@ make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
         LinkedTargetTypes, ThisDirFileNames, !IO),
     % XXX This symlink should not be necessary anymore for `mmc --make'.
     module_name_to_file_name(NoSubdirGlobals, $pred,
-        ext_lib_gs(ext_lib_gs_init), ModuleName, ThisDirInitFileName, !IO),
+        ext_lib_gs(ext_lib_gs_init), ModuleName, ThisDirInitFileName),
 
     list.foldl2(make_remove_file(Globals, very_verbose),
         FileNames ++ ThisDirFileNames ++ [ThisDirInitFileName],
@@ -2210,7 +2210,7 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
 remove_fact_table_c_file(Globals, FactTableFile, !Info, !IO) :-
     fact_table_file_name_return_dirs(Globals, $pred,
         ext_target_c_cs(ext_target_c),
-        FactTableFile, _FactTableDirs, FactTableCFile, !IO),
+        FactTableFile, _FactTableDirs, FactTableCFile),
     make_remove_file(Globals, very_verbose, FactTableCFile, !Info, !IO).
 
 :- pred remove_object_and_assembler_files(globals::in, module_name::in,

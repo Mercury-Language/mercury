@@ -347,15 +347,18 @@ get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
     else
         target_type_to_target_extension(TargetType, TargetExt),
         (
+            TargetExt = source,
+            module_name_to_source_file_name(ModuleName, FileName, !IO)
+        ;
             TargetExt = extension(Ext),
             (
                 Search = do_not_search,
                 module_name_to_file_name(Globals, From, Ext,
-                    ModuleName, FileName, !IO)
+                    ModuleName, FileName)
             ;
                 Search = do_search,
                 module_name_to_search_file_name(Globals, From, Ext,
-                    ModuleName, FileName, !IO)
+                    ModuleName, FileName)
             )
         ;
             ( TargetExt = foreign_obj(_, _)
@@ -390,29 +393,29 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
     (
         TargetType = executable,
         module_name_to_file_name(Globals, $pred,
-            ext_exec_gs(ext_exec_exec_opt), ModuleName, FileName, !IO)
+            ext_exec_gs(ext_exec_exec_opt), ModuleName, FileName)
     ;
         TargetType = static_library,
         module_name_to_lib_file_name(Globals, $pred, "lib",
-            ext_lib_gs(ext_lib_gs_lib_opt), ModuleName, FileName, !IO)
+            ext_lib_gs(ext_lib_gs_lib_opt), ModuleName, FileName)
     ;
         TargetType = shared_library,
         module_name_to_lib_file_name(Globals, $pred, "lib",
-            ext_lib_gs(ext_lib_gs_sh_lib_opt), ModuleName, FileName, !IO)
+            ext_lib_gs(ext_lib_gs_sh_lib_opt), ModuleName, FileName)
     ;
         TargetType = csharp_executable,
         module_name_to_file_name(Globals, $pred,
-            ext_exec(ext_exec_exe), ModuleName, FileName, !IO)
+            ext_exec(ext_exec_exe), ModuleName, FileName)
     ;
         TargetType = csharp_library,
         module_name_to_file_name(Globals, $pred,
-            ext_lib_gs(ext_lib_gs_dll), ModuleName, FileName, !IO)
+            ext_lib_gs(ext_lib_gs_dll), ModuleName, FileName)
     ;
         ( TargetType = java_archive
         ; TargetType = java_executable
         ),
         module_name_to_file_name(Globals, $pred,
-            ext_lib_gs(ext_lib_gs_jar), ModuleName, FileName, !IO)
+            ext_lib_gs(ext_lib_gs_jar), ModuleName, FileName)
     ).
 
     % XXX Move this below all its callers.
@@ -425,9 +428,12 @@ module_target_to_file_name(Globals, From, TargetType,
         ModuleName, FileName, !IO) :-
     target_type_to_target_extension(TargetType, TargetExt),
     (
+        TargetExt = source,
+        module_name_to_source_file_name(ModuleName, FileName, !IO)
+    ;
         TargetExt = extension(Ext),
         module_name_to_file_name(Globals, From, Ext,
-            ModuleName, FileName, !IO)
+            ModuleName, FileName)
     ;
         TargetExt = foreign_obj(PIC, Lang),
         foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
@@ -438,7 +444,7 @@ module_target_to_file_name(Globals, From, TargetType,
         TargetExt = fact_table_obj(PIC, FactFile),
         maybe_pic_object_file_extension(PIC, ObjExt, _),
         fact_table_file_name_return_dirs(Globals, $pred,
-            ext_target_obj(ObjExt), FactFile, _FactDirs, FileName, !IO)
+            ext_target_obj(ObjExt), FactFile, _FactDirs, FileName)
     ).
 
 :- pred module_target_to_search_file_name(globals::in, string::in,
@@ -449,9 +455,12 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
         FileName, !IO) :-
     target_type_to_target_extension(TargetType, TargetExt),
     (
+        TargetExt = source,
+        module_name_to_source_file_name(ModuleName, FileName, !IO)
+    ;
         TargetExt = extension(Ext),
         module_name_to_search_file_name(Globals, From, Ext,
-            ModuleName, FileName, !IO)
+            ModuleName, FileName)
     ;
         TargetExt = foreign_obj(PIC, Lang),
         foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
@@ -462,13 +471,14 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
         maybe_pic_object_file_extension(PIC, ObjExt, _),
         % XXX This call ignores the implicit do_search setting.
         fact_table_file_name_return_dirs(Globals, $pred,
-            ext_target_obj(ObjExt), FactFile, _FactDirs, FileName, !IO)
+            ext_target_obj(ObjExt), FactFile, _FactDirs, FileName)
     ).
 
 %---------------------------------------------------------------------------%
 
 :- type target_extension
-    --->    extension(ext)
+    --->    source
+    ;       extension(ext)
     ;       foreign_obj(pic, foreign_language)
     ;       fact_table_obj(pic, string).
 
@@ -482,7 +492,7 @@ target_type_to_target_extension(Target, TargetExt) :-
     require_complete_switch [Target]
     (
         Target = module_target_source,
-        TargetExt = extension(ext_src)
+        TargetExt = source
     ;
         Target = module_target_errors,
         TargetExt = extension(ext_user(ext_user_err))
@@ -666,7 +676,7 @@ get_timestamp_file_timestamp(Globals, target_file(ModuleName, TargetType),
         MaybeTimestamp, !Info, !IO) :-
     ( if timestamp_extension(TargetType, TimestampExt) then
         module_name_to_file_name(Globals, $pred,
-            TimestampExt, ModuleName, FileName, !IO)
+            TimestampExt, ModuleName, FileName)
     else
         module_target_to_file_name(Globals, $pred, TargetType,
             ModuleName, FileName, !IO)
@@ -953,7 +963,7 @@ remove_make_target_file_by_name(Globals, From, VerboseOption,
 remove_make_module_file(Globals, VerboseOption, ModuleName, Ext,
         !Info, !IO) :-
     module_name_to_file_name(Globals, $pred, Ext,
-        ModuleName, FileName, !IO),
+        ModuleName, FileName),
     make_remove_file(Globals, VerboseOption, FileName, !Info, !IO).
 
 %---------------------%

@@ -1956,7 +1956,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
 
     module_info_get_name(!.HLDS, ModuleName),
     module_name_to_file_name(Globals, $pred,
-        ext_misc_gs(ext_misc_gs_used), ModuleName, UsageFileName, !IO),
+        ext_misc_gs(ext_misc_gs_used), ModuleName, UsageFileName),
     io.file.remove_file(UsageFileName, _, !IO),
 
     FrontEndErrors =
@@ -1995,7 +1995,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                     TargetCodeSucceeded = succeeded,
                     module_name_to_file_name(Globals, $pred,
                         ext_target_java(ext_target_java_java),
-                        ModuleName, JavaFile, !IO),
+                        ModuleName, JavaFile),
                     compile_java_files(Globals, ProgressStream, ErrorStream,
                         JavaFile, [], Succeeded, !IO),
                     maybe_set_exit_status(Succeeded, !IO)
@@ -2030,8 +2030,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                         TargetCodeSucceeded = succeeded,
                         % XXX EXT Why not _create_dirs?
                         module_name_to_file_name(Globals, $pred,
-                            ext_target_c_cs(ext_target_c),
-                            ModuleName, C_File, !IO),
+                            ext_target_c_cs(ext_target_c), ModuleName, C_File),
                         get_linked_target_type(Globals, TargetType),
                         get_object_code_type(Globals, TargetType, PIC),
                         maybe_pic_object_file_extension(PIC, ObjExt, _),

@@ -1036,7 +1036,7 @@ find_files_maybe_touched_by_task(Globals, TargetFile, Task,
         get_object_extension(Globals, PIC, ObjExt),
         fact_table_file_name_return_dirs(Globals, $pred,
             ext_target_obj(ObjExt),
-            FactTableName, FactTableDirs, FactTableObjectFile, !IO),
+            FactTableName, FactTableDirs, FactTableObjectFile),
         create_any_dirs_on_path(FactTableDirs, !IO),
         TouchedFileNames = [FactTableObjectFile]
     ).
@@ -1162,7 +1162,7 @@ gather_target_file_timestamp_file_names(Globals, TouchedTargetFile,
     TouchedTargetFile = target_file(TargetModuleName, TargetType),
     ( if timestamp_extension(TargetType, TimestampExt) then
         module_name_to_file_name(Globals, $pred, TimestampExt,
-            TargetModuleName, TimestampFile, !IO),
+            TargetModuleName, TimestampFile),
         list.cons(TimestampFile, !TimestampFileNames)
     else
         true
@@ -1205,10 +1205,10 @@ get_fact_table_foreign_code_file(Globals, Mkdir, ObjExt,
     % XXX EXT Neither of these calls should be needed.
     fact_table_file_name_return_dirs(Globals, $pred,
         ext_target_c_cs(ext_target_c),
-        FactTableFileName, FactTableDirsC, FactTableCFileName, !IO),
+        FactTableFileName, FactTableDirsC, FactTableCFileName),
     maybe_create_any_dirs_on_path(Mkdir, FactTableDirsC, !IO),
     fact_table_file_name_return_dirs(Globals, $pred, ObjExt,
-        FactTableFileName, FactTableDirsO, FactTableObjFileName, !IO),
+        FactTableFileName, FactTableDirsO, FactTableObjFileName),
     maybe_create_any_dirs_on_path(Mkdir, FactTableDirsO, !IO),
     ForeignCodeFile =
         foreign_code_file(lang_c, FactTableCFileName, FactTableObjFileName).

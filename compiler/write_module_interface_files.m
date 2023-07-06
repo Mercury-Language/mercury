@@ -589,9 +589,9 @@ report_file_not_written(ErrorStream, Globals, Specs, PrefixPieces,
     % files not being written in order to wrap the message if it is
     % longer than the line length.
     module_name_to_file_name(Globals, $pred,
-        ExtA, ModuleName, IntAFileName, !IO),
+        ExtA, ModuleName, IntAFileName),
     module_name_to_file_name(Globals, $pred,
-        ExtDate, ModuleName, DateFileName, !IO),
+        ExtDate, ModuleName, DateFileName),
     (
         MaybeExtB = no,
         NotWrittenPieces = [quote(IntAFileName), words("not written."), nl],
@@ -599,7 +599,7 @@ report_file_not_written(ErrorStream, Globals, Specs, PrefixPieces,
     ;
         MaybeExtB = yes(ExtB),
         module_name_to_file_name(Globals, $pred,
-            ExtB, ModuleName, IntBFileName, !IO),
+            ExtB, ModuleName, IntBFileName),
         NotWrittenPieces = [quote(IntAFileName), words("and"),
             quote(IntBFileName), words("not written."), nl],
         ToRemoveFileNames = [IntAFileName, IntBFileName, DateFileName]

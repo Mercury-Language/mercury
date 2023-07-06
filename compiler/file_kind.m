@@ -48,7 +48,7 @@
     --->    ofk_opt
     ;       ofk_trans_opt.
 
-:- pred file_kind_to_extension(file_kind::in, string::out, ext::out) is det.
+:- pred file_kind_to_extension(file_kind::in, string::out) is det.
 :- pred int_file_kind_to_extension(int_file_kind::in,
     string::out, ext::out) is det.
 :- pred opt_file_kind_to_extension(opt_file_kind::in,
@@ -60,11 +60,11 @@
 
 :- implementation.
 
-file_kind_to_extension(fk_src, ".m", ext_src).
-file_kind_to_extension(fk_int(IntFileKind), ExtStr, Ext) :-
-    int_file_kind_to_extension(IntFileKind, ExtStr, Ext).
-file_kind_to_extension(fk_opt(OptFileKind), ExtStr, Ext) :-
-    opt_file_kind_to_extension(OptFileKind, ExtStr, Ext).
+file_kind_to_extension(fk_src, ".m").
+file_kind_to_extension(fk_int(IntFileKind), ExtStr) :-
+    int_file_kind_to_extension(IntFileKind, ExtStr, _Ext).
+file_kind_to_extension(fk_opt(OptFileKind), ExtStr) :-
+    opt_file_kind_to_extension(OptFileKind, ExtStr, _Ext).
 
 int_file_kind_to_extension(ifk_int0, ".int0", ext_int(ext_int_int0)).
 int_file_kind_to_extension(ifk_int1, ".int",  ext_int(ext_int_int1)).

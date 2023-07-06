@@ -861,7 +861,7 @@ use_win32 :-
 
 create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, ext_lib_gs(ext_lib_gs_jar),
-        MainModuleName, JarFileName, !IO),
+        MainModuleName, JarFileName),
     get_target_env_type(Globals, TargetEnvType),
     (
         ( TargetEnvType = env_type_posix

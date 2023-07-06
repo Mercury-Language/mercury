@@ -331,7 +331,7 @@ mlds_output_src_import(Opts, Stream, _Indent, Import, !IO) :-
 
     Globals = Opts ^ m2co_all_globals,
     module_name_to_search_file_name(Globals, $pred,
-        HeaderExt, ModuleName, HeaderFile, !IO),
+        HeaderExt, ModuleName, HeaderFile),
     io.format(Stream, "#include \"%s\"\n", [s(HeaderFile)], !IO).
 
     % Generate the `.c' file.

@@ -886,7 +886,7 @@ make_foreign_import_header_code(Globals, FIMSpec, Include, !IO) :-
     (
         Lang = lang_c,
         module_name_to_search_file_name(Globals, $pred,
-            ext_mh(ext_mh_mh), ModuleName, HeaderFileName, !IO),
+            ext_mh(ext_mh_mh), ModuleName, HeaderFileName),
         IncludeString = "#include """ ++ HeaderFileName ++ """\n",
         Include = foreign_decl_code(lang_c, foreign_decl_is_exported,
             floi_literal(IncludeString), dummy_context)
@@ -934,7 +934,7 @@ llds_c_to_obj(Globals, ProgressStream, ErrorStream, ModuleName,
     maybe_pic_object_file_extension(PIC, ObjExt, _),
     % XXX Why not _create_dirs?
     module_name_to_file_name(Globals, $pred,
-        ext_target_c_cs(ext_target_c), ModuleName, C_File, !IO),
+        ext_target_c_cs(ext_target_c), ModuleName, C_File),
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_target_obj(ObjExt), ModuleName, O_File, !IO),
     compile_target_code.do_compile_c_file(Globals, ProgressStream, ErrorStream,

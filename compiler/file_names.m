@@ -157,11 +157,22 @@
 % represent the result of explicit deliberation.)
 
 :- type ext
-    --->    ext_src
+%   --->    ext_src
             % Mercury source files.
             % The extension string is ".m".
+            %
+            % This extension is not part of the ext type, because
+            %
+            % - converting it to a filename requires an I/O state pair,
+            %   because it may need to read Mercury.modules; while
+            % - none of the *other* extensions need an I/O state pair
+            %   for *their* conversions to file names.
+            %
+            % Deleting the I/O state pair from the predicates that do
+            % filename translations only therefore requires removing
+            % this extension from the ext type.
 
-    ;       ext_int(ext_int)
+    --->    ext_int(ext_int)
     ;       ext_opt(ext_opt)
             % Compiler-generated interface files and optimization files,
             % and the timestamp files showing when they were last checked.
@@ -474,8 +485,8 @@
 :- pred module_name_to_source_file_name(module_name::in, file_name::out,
     io::di, io::uo) is det.
 
-    % module_name_to_file_name_return_dirs(Globals, Ext, Module,
-    %   DirNames, FileName, !IO):
+    % module_name_to_file_name_return_dirs(Globals, From, Ext, Module,
+    %   DirNames, FileName):
     %
     % Convert a module name and file extension to the corresponding file name.
     % Return the directory pathname in FileName as DirNames. The caller
@@ -489,10 +500,8 @@
     % The version with the _create_dirs suffix instead calls
     % create_any_dirs_on_path itself.
     %
-    % The idea is that the first two versions shouldn't need to be passed
-    % an I/O state pair. XXX At the moment, the I/O state pair is needed
-    % to handle Mercury source files, but we already export the
-    % module_name_to_source_file_name to handle those.
+    % This arrangement allows the first two versions to work *without*
+    % being passed an I/O state pair.
     %
     % Currently we use the convention that the module `foo.bar.baz' should be
     % named `foo.bar.baz.m', and allow other naming conventions with the
@@ -502,14 +511,13 @@
     % targets that do not have corresponding files, e.g. `<foo>.clean'.
     %
 :- pred module_name_to_file_name_return_dirs(globals::in, string::in,
-    ext::in, module_name::in, list(dir_name)::out, file_name::out,
-    io::di, io::uo) is det.
+    ext::in, module_name::in, list(dir_name)::out, file_name::out) is det.
 :- pred module_name_to_file_name(globals::in, string::in,
-    ext::in, module_name::in, file_name::out, io::di, io::uo) is det.
+    ext::in, module_name::in, file_name::out) is det.
 :- pred module_name_to_file_name_create_dirs(globals::in, string::in,
     ext::in, module_name::in, file_name::out, io::di, io::uo) is det.
 
-    % module_name_to_search_file_name(Globals, Ext, Module, FileName, !IO):
+    % module_name_to_search_file_name(Globals, From, Ext, Module, FileName):
     %
     % As module_name_to_file_name, but for a file which might be
     % in an installed library, not the current directory. There are no
@@ -531,10 +539,10 @@
     % which would be used when writing or removing the `.mih' file.
     %
 :- pred module_name_to_search_file_name(globals::in, string::in,
-    ext::in, module_name::in, file_name::out, io::di, io::uo) is det.
+    ext::in, module_name::in, file_name::out) is det.
 
-    % module_name_to_lib_file_name_return_dirs(Globals, Prefix, Ext,
-    %   Module, DirNames, FileName, !IO):
+    % module_name_to_lib_file_name_return_dirs(Globals, From, Prefix, Ext,
+    %   Module, DirNames, FileName):
     %
     % Like module_name_to_file_name_return_dirs, but also allows a prefix.
     % The variants without the _return_dirs suffix and with the _create_dirs
@@ -543,17 +551,16 @@
     % Used for creating library names, e.g. `lib<foo>.$A' and `lib<foo>.so'.
     %
 :- pred module_name_to_lib_file_name_return_dirs(globals::in, string::in,
-    string::in, ext::in, module_name::in, list(dir_name)::out, file_name::out,
-    io::di, io::uo) is det.
+    string::in, ext::in, module_name::in, list(dir_name)::out, file_name::out)
+    is det.
 :- pred module_name_to_lib_file_name(globals::in, string::in,
-    string::in, ext::in, module_name::in, file_name::out,
-    io::di, io::uo) is det.
+    string::in, ext::in, module_name::in, file_name::out) is det.
 :- pred module_name_to_lib_file_name_create_dirs(globals::in, string::in,
     string::in, ext::in, module_name::in, file_name::out,
     io::di, io::uo) is det.
 
     % fact_table_file_name_return_dirs(Globals, Ext, FactTableFileName,
-    %   DirNames, FileName, !IO):
+    %   DirNames, FileName):
     %
     % Returns the filename to use when compiling fact table files.
     % Return the directory pathname in FileName as DirNames. The caller
@@ -561,8 +568,7 @@
     % or not, as they wish.
     %
 :- pred fact_table_file_name_return_dirs(globals::in, string::in,
-    ext::in, file_name::in, list(dir_name)::out, file_name::out,
-    io::di, io::uo) is det.
+    ext::in, file_name::in, list(dir_name)::out, file_name::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -673,9 +679,6 @@
 
 extension_to_string(Globals, Ext) = ExtStr :-
     (
-        Ext = ext_src,
-        ExtStr = ".m"
-    ;
         Ext = ext_int(ExtInt),
         ext_int_extension_dir(ExtInt, ExtStr, _SubDirName)
     ;
@@ -1016,48 +1019,48 @@ module_name_to_source_file_name(ModuleName, SourceFileName, !IO) :-
 %---------------------------------------------------------------------------%
 
 module_name_to_file_name_return_dirs(Globals, From, Ext,
-        ModuleName, DirNames, FileName, !IO) :-
+        ModuleName, DirNames, FileName) :-
     module_name_to_file_name_ext(Globals, From, do_not_search, no,
-        Ext, ModuleName, DirNames, FileName, !IO).
+        Ext, ModuleName, DirNames, FileName).
 
 module_name_to_file_name(Globals, From, Ext,
-        ModuleName, FileName, !IO) :-
+        ModuleName, FileName) :-
     module_name_to_file_name_ext(Globals, From, do_not_search,
-        yes(do_not_create_dirs), Ext, ModuleName, _DirNames, FileName, !IO).
+        yes(do_not_create_dirs), Ext, ModuleName, _DirNames, FileName).
 
 module_name_to_file_name_create_dirs(Globals, From, Ext,
         ModuleName, FileName, !IO) :-
     module_name_to_file_name_ext(Globals, From, do_not_search,
-        yes(do_create_dirs), Ext, ModuleName, DirNames, FileName, !IO),
+        yes(do_create_dirs), Ext, ModuleName, DirNames, FileName),
     create_any_dirs_on_path(DirNames, !IO).
 
 %---------------------%
 
 module_name_to_search_file_name(Globals, From, Ext,
-        ModuleName, FileName, !IO) :-
+        ModuleName, FileName) :-
     module_name_to_file_name_ext(Globals, From, do_search,
-        yes(do_not_create_dirs), Ext, ModuleName, _DirNames, FileName, !IO).
+        yes(do_not_create_dirs), Ext, ModuleName, _DirNames, FileName).
 
 %---------------------%
 
 module_name_to_lib_file_name_return_dirs(Globals, From, Prefix, Ext,
-        ModuleName, DirNames, FileName, !IO) :-
+        ModuleName, DirNames, FileName) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
     module_name_to_file_name_ext(Globals, From, do_not_search,
-        no, Ext, FakeModuleName, DirNames, FileName, !IO).
+        no, Ext, FakeModuleName, DirNames, FileName).
 
 module_name_to_lib_file_name(Globals, From, Prefix, Ext,
-        ModuleName, FileName, !IO) :-
+        ModuleName, FileName) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
     module_name_to_file_name_ext(Globals, From, do_not_search,
         yes(do_not_create_dirs), Ext, FakeModuleName,
-        _DirNames, FileName, !IO).
+        _DirNames, FileName).
 
 module_name_to_lib_file_name_create_dirs(Globals, From, Prefix, Ext,
         ModuleName, FileName, !IO) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
     module_name_to_file_name_ext(Globals, From, do_not_search,
-        yes(do_create_dirs), Ext, FakeModuleName, DirNames, FileName, !IO),
+        yes(do_create_dirs), Ext, FakeModuleName, DirNames, FileName),
     create_any_dirs_on_path(DirNames, !IO).
 
 :- func make_fake_module_name(string, module_name) = module_name.
@@ -1070,24 +1073,20 @@ make_fake_module_name(Prefix, ModuleName) = FakeModuleName :-
 %---------------------%
 
 fact_table_file_name_return_dirs(Globals, From, Ext,
-        FactTableFileName, DirNames, FileName, !IO) :-
+        FactTableFileName, DirNames, FileName) :-
     FakeModuleName = unqualified(FactTableFileName),
     module_name_to_file_name_ext(Globals, From, do_not_search,
-        no, Ext, FakeModuleName, DirNames, FileName, !IO).
+        no, Ext, FakeModuleName, DirNames, FileName).
 
 %---------------------------------------------------------------------------%
 
 :- pred module_name_to_file_name_ext(globals::in, string::in,
     maybe_search::in, maybe(maybe_create_dirs)::in, ext::in, module_name::in,
-    list(dir_name)::out, file_name::out, io::di, io::uo) is det.
+    list(dir_name)::out, file_name::out) is det.
 
 module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
-        ModuleName, DirNames, FileName, !IO) :-
+        ModuleName, DirNames, FileName) :-
     (
-        Ext = ext_src,
-        DirNames = [],
-        module_name_to_source_file_name(ModuleName, FileName, !IO)
-    ;
         (
             Ext = ext_int(ExtInt),
             ext_int_extension_dir(ExtInt, ExtStr, SubDirName)
