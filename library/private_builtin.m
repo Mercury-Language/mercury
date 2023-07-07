@@ -1410,7 +1410,7 @@ __Compare__private_builtin__ref_1_0(
 :- impure pred store_at_ref_impure(store_at_ref_type(T)::in, T::in) is det.
 
     % This type should be used only by the program transformation that
-    % introduces calls to store_at_ref_impure. Any other use is will cause
+    % introduces calls to store_at_ref_impure. Any other use will cause
     % bad things to happen.
 :- type store_at_ref_type(T)
     --->    store_at_ref_type(int).
@@ -1425,43 +1425,43 @@ __Compare__private_builtin__ref_1_0(
 
 :- semipure pred trace_evaluate_runtime_condition is semidet.
 
-    % unify_remote_arg_words(TermVarX, TermVarY, Ptag, CellOffsetVar):
+    % unify_remote_arg_words(TermX, TermY, Ptag, CellOffset):
     %
     % Succeed iff the argument words at the given offset are the same
-    % in TermVarX and TermVarY.
+    % in TermX and TermY.
     %
 :- pred unify_remote_arg_words(T::in, T::in, int::in, int::in) is semidet.
 
-    % compare_remote_uint_words(TermVarX, TermVarY,
-    %   Ptag, CellOffsetVar, ResultVar):
+    % compare_remote_uint_words(TermX, TermY,
+    %   Ptag, CellOffset, Result):
     %
-    % Set ResultVar to the result of the unsigned comparison between
-    % two bitfields in the memory cells of TermVarX and TermVarY.
+    % Set Result to the result of the unsigned comparison between
+    % two bitfields in the memory cells of TermX and TermY.
     % The bitfields occupy the entirety of the words at offset
-    % CellOffsetVar.
+    % CellOffset.
     %
 :- pred compare_remote_uint_words(T::in, T::in, int::in, int::in,
     comparison_result::uo) is det.
 
-    % compare_remote_uint_bitfields(TermVarX, TermVarY,
-    %   Ptag, CellOffsetVar, ShiftVar, NumBitsVar, ResultVar):
+    % compare_remote_uint_bitfields(TermX, TermY,
+    %   Ptag, CellOffset, Shift, NumBits, Result):
     %
-    % Set ResultVar to the result of the unsigned comparison between
-    % two bitfields in the memory cells of TermVarX and TermVarY.
-    % The bitfields are in the word at offset CellOffsetVar, with the
-    % LSBs of the bitfields being ShiftVar bits from the LSB of the word.
-    % Their size is NumBitsVar bits.
+    % Set Result to the result of the unsigned comparison between
+    % two bitfields in the memory cells of TermX and TermY.
+    % The bitfields are in the word at offset CellOffset, with the
+    % LSBs of the bitfields being Shift bits from the LSB of the word.
+    % Their size is NumBits bits.
     %
 :- pred compare_remote_uint_bitfields(T::in, T::in, int::in, int::in,
     int::in, int::in, comparison_result::uo) is det.
 
-    % compare_remote_int{8,16,32}_bitfields(TermVarX, TermVarY,
-    %   Ptag, CellOffsetVar, ShiftVar, ResultVar):
+    % compare_remote_int{8,16,32}_bitfields(TermX, TermY,
+    %   Ptag, CellOffset, Shift, Result):
     %
-    % Set ResultVar to the result of the signed comparison between two
-    % {8,16,32} bit bitfields in the memory cells of TermVarX and TermVarY.
-    % The bitfields are in the word at offset CellOffsetVar, with the
-    % LSBs of the bitfields being ShiftVar bits from the LSB of the word.
+    % Set Result to the result of the signed comparison between two
+    % {8,16,32} bit bitfields in the memory cells of TermX and TermY.
+    % The bitfields are in the word at offset CellOffset, with the
+    % LSBs of the bitfields being Shift bits from the LSB of the word.
     %
 :- pred compare_remote_int8_bitfields(T::in, T::in, int::in, int::in, int::in,
     comparison_result::uo) is det.
@@ -1470,35 +1470,35 @@ __Compare__private_builtin__ref_1_0(
 :- pred compare_remote_int32_bitfields(T::in, T::in, int::in, int::in, int::in,
     comparison_result::uo) is det.
 
-    % compare_local_uint_words(TermVarX, TermVarY, ResultVar):
+    % compare_local_uint_words(TermX, TermY, Result):
     %
-    % Set ResultVar to the result of the unsigned comparison between
-    % two bitfields in TermVarX and TermVarY.
+    % Set Result to the result of the unsigned comparison between
+    % two bitfields in TermX and TermY.
     % The bitfields occupy the entirety of the words containing
     % the terms themselves.
     %
 :- pred compare_local_uint_words(T::in, T::in,
     comparison_result::uo) is det.
 
-    % compare_local_uint_bitfields(TermVarX, TermVarY,
-    %   ShiftVar, NumBitsVar, ResultVar):
+    % compare_local_uint_bitfields(TermX, TermY,
+    %   Shift, NumBits, Result):
     %
-    % Set ResultVar to the result of the unsigned comparison between
-    % two bitfields in TermVarX and TermVarY.
+    % Set Result to the result of the unsigned comparison between
+    % two bitfields in TermX and TermY.
     % The bitfields are in the term words themselves, with the LSBs
-    % of the bitfields being ShiftVar bits from the LSB of the word.
-    % Their size is NumBitsVar bits.
+    % of the bitfields being Shift bits from the LSB of the word.
+    % Their size is NumBits bits.
     %
 :- pred compare_local_uint_bitfields(T::in, T::in, int::in, int::in,
     comparison_result::uo) is det.
 
-    % compare_local_int{8,16,32}_bitfields(TermVarX, TermVarY,
-    %   ShiftVar, ResultVar):
+    % compare_local_int{8,16,32}_bitfields(TermX, TermY,
+    %   Shift, Result):
     %
-    % Set ResultVar to the result of the signed comparison between two
-    % {8,16,32} bit bitfields in TermVarX and TermVarY.
+    % Set Result to the result of the signed comparison between two
+    % {8,16,32} bit bitfields in TermX and TermY.
     % The bitfields are in the term words themselves, with the LSBs
-    % of the bitfields being ShiftVar bits from the LSB of the word.
+    % of the bitfields being Shift bits from the LSB of the word.
     %
 :- pred compare_local_int8_bitfields(T::in, T::in, int::in,
     comparison_result::uo) is det.
@@ -1599,8 +1599,7 @@ nyi_foreign_type_compare(Result, _, _) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
-    unify_remote_arg_words(TermVarX::in, TermVarY::in,
-        Ptag::in, CellOffsetVar::in),
+    unify_remote_arg_words(TermX::in, TermY::in, Ptag::in, CellOffset::in),
     [will_not_call_mercury, thread_safe, promise_pure,
         does_not_affect_liveness, may_not_duplicate],
 "
@@ -1608,10 +1607,10 @@ nyi_foreign_type_compare(Result, _, _) :-
     // but just in case they don't ...
     MR_Unsigned *cell_x;
     MR_Unsigned *cell_y;
-    cell_x = (MR_Unsigned *) (((MR_Unsigned) TermVarX) - (MR_Unsigned) Ptag);
-    cell_y = (MR_Unsigned *) (((MR_Unsigned) TermVarY) - (MR_Unsigned) Ptag);
-    MR_Unsigned word_x = cell_x[CellOffsetVar];
-    MR_Unsigned word_y = cell_y[CellOffsetVar];
+    cell_x = (MR_Unsigned *) (((MR_Unsigned) TermX) - (MR_Unsigned) Ptag);
+    cell_y = (MR_Unsigned *) (((MR_Unsigned) TermY) - (MR_Unsigned) Ptag);
+    MR_Unsigned word_x = cell_x[CellOffset];
+    MR_Unsigned word_y = cell_y[CellOffset];
     SUCCESS_INDICATOR = (word_x == word_y);
 ").
 
@@ -1621,8 +1620,8 @@ unify_remote_arg_words(_, _, _, _) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
-    compare_remote_uint_words(TermVarX::in, TermVarY::in,
-        Ptag::in, CellOffsetVar::in, ResultVar::uo),
+    compare_remote_uint_words(TermX::in, TermY::in, Ptag::in,
+        CellOffset::in, Result::uo),
     [will_not_call_mercury, thread_safe, promise_pure,
         does_not_affect_liveness, may_not_duplicate],
 "
@@ -1630,16 +1629,16 @@ unify_remote_arg_words(_, _, _, _) :-
     // but just in case they don't ...
     MR_Unsigned *cell_x;
     MR_Unsigned *cell_y;
-    cell_x = (MR_Unsigned *) (((MR_Unsigned) TermVarX) - (MR_Unsigned) Ptag);
-    cell_y = (MR_Unsigned *) (((MR_Unsigned) TermVarY) - (MR_Unsigned) Ptag);
-    MR_Unsigned word_x = cell_x[CellOffsetVar];
-    MR_Unsigned word_y = cell_y[CellOffsetVar];
+    cell_x = (MR_Unsigned *) (((MR_Unsigned) TermX) - (MR_Unsigned) Ptag);
+    cell_y = (MR_Unsigned *) (((MR_Unsigned) TermY) - (MR_Unsigned) Ptag);
+    MR_Unsigned word_x = cell_x[CellOffset];
+    MR_Unsigned word_y = cell_y[CellOffset];
     if (word_x < word_y) {
-        ResultVar = MR_COMPARE_LESS;
+        Result = MR_COMPARE_LESS;
     } else if (word_x > word_y) {
-        ResultVar = MR_COMPARE_GREATER;
+        Result = MR_COMPARE_GREATER;
     } else {
-        ResultVar = MR_COMPARE_EQUAL;
+        Result = MR_COMPARE_EQUAL;
     }
 ").
 
@@ -1653,9 +1652,8 @@ compare_remote_uint_words(_, _, _, _, Result) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
-    compare_remote_uint_bitfields(TermVarX::in, TermVarY::in,
-        Ptag::in, CellOffsetVar::in, ShiftVar::in, NumBitsVar::in,
-        ResultVar::uo),
+    compare_remote_uint_bitfields(TermX::in, TermY::in, Ptag::in,
+        CellOffset::in, Shift::in, NumBits::in, Result::uo),
     [will_not_call_mercury, thread_safe, promise_pure,
         does_not_affect_liveness, may_not_duplicate],
 "
@@ -1663,18 +1661,18 @@ compare_remote_uint_words(_, _, _, _, Result) :-
     // but just in case they don't ...
     MR_Unsigned *cell_x;
     MR_Unsigned *cell_y;
-    cell_x = (MR_Unsigned *) (((MR_Unsigned) TermVarX) - (MR_Unsigned) Ptag);
-    cell_y = (MR_Unsigned *) (((MR_Unsigned) TermVarY) - (MR_Unsigned) Ptag);
-    MR_Unsigned word_x = cell_x[CellOffsetVar];
-    MR_Unsigned word_y = cell_y[CellOffsetVar];
-    MR_Unsigned value_x = ((word_x >> ShiftVar) & ((1 << NumBitsVar) - 1));
-    MR_Unsigned value_y = ((word_y >> ShiftVar) & ((1 << NumBitsVar) - 1));
+    cell_x = (MR_Unsigned *) (((MR_Unsigned) TermX) - (MR_Unsigned) Ptag);
+    cell_y = (MR_Unsigned *) (((MR_Unsigned) TermY) - (MR_Unsigned) Ptag);
+    MR_Unsigned word_x = cell_x[CellOffset];
+    MR_Unsigned word_y = cell_y[CellOffset];
+    MR_Unsigned value_x = ((word_x >> Shift) & ((1 << NumBits) - 1));
+    MR_Unsigned value_y = ((word_y >> Shift) & ((1 << NumBits) - 1));
     if (value_x < value_y) {
-        ResultVar = MR_COMPARE_LESS;
+        Result = MR_COMPARE_LESS;
     } else if (value_x > value_y) {
-        ResultVar = MR_COMPARE_GREATER;
+        Result = MR_COMPARE_GREATER;
     } else {
-        ResultVar = MR_COMPARE_EQUAL;
+        Result = MR_COMPARE_EQUAL;
     }
 ").
 
@@ -1688,8 +1686,8 @@ compare_remote_uint_bitfields(_, _, _, _, _, _, Result) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
-    compare_remote_int8_bitfields(TermVarX::in, TermVarY::in,
-        Ptag::in, CellOffsetVar::in, ShiftVar::in, ResultVar::uo),
+    compare_remote_int8_bitfields(TermX::in, TermY::in, Ptag::in,
+        CellOffset::in, Shift::in, Result::uo),
     [will_not_call_mercury, thread_safe, promise_pure,
         does_not_affect_liveness, may_not_duplicate],
 "
@@ -1697,18 +1695,18 @@ compare_remote_uint_bitfields(_, _, _, _, _, _, Result) :-
     // but just in case they don't ...
     MR_Unsigned *cell_x;
     MR_Unsigned *cell_y;
-    cell_x = (MR_Unsigned *) (((MR_Unsigned) TermVarX) - (MR_Unsigned) Ptag);
-    cell_y = (MR_Unsigned *) (((MR_Unsigned) TermVarY) - (MR_Unsigned) Ptag);
-    MR_Unsigned word_x = cell_x[CellOffsetVar];
-    MR_Unsigned word_y = cell_y[CellOffsetVar];
-    int8_t value_x = (int8_t) ((word_x >> ShiftVar) & ((1 << 8) - 1));
-    int8_t value_y = (int8_t) ((word_y >> ShiftVar) & ((1 << 8) - 1));
+    cell_x = (MR_Unsigned *) (((MR_Unsigned) TermX) - (MR_Unsigned) Ptag);
+    cell_y = (MR_Unsigned *) (((MR_Unsigned) TermY) - (MR_Unsigned) Ptag);
+    MR_Unsigned word_x = cell_x[CellOffset];
+    MR_Unsigned word_y = cell_y[CellOffset];
+    int8_t value_x = (int8_t) ((word_x >> Shift) & ((1 << 8) - 1));
+    int8_t value_y = (int8_t) ((word_y >> Shift) & ((1 << 8) - 1));
     if (value_x < value_y) {
-        ResultVar = MR_COMPARE_LESS;
+        Result = MR_COMPARE_LESS;
     } else if (value_x > value_y) {
-        ResultVar = MR_COMPARE_GREATER;
+        Result = MR_COMPARE_GREATER;
     } else {
-        ResultVar = MR_COMPARE_EQUAL;
+        Result = MR_COMPARE_EQUAL;
     }
 ").
 
@@ -1722,8 +1720,8 @@ compare_remote_int8_bitfields(_, _, _, _, _, Result) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
-    compare_remote_int16_bitfields(TermVarX::in, TermVarY::in,
-        Ptag::in, CellOffsetVar::in, ShiftVar::in, ResultVar::uo),
+    compare_remote_int16_bitfields(TermX::in, TermY::in, Ptag::in,
+        CellOffset::in, Shift::in, Result::uo),
     [will_not_call_mercury, thread_safe, promise_pure,
         does_not_affect_liveness, may_not_duplicate],
 "
@@ -1731,18 +1729,18 @@ compare_remote_int8_bitfields(_, _, _, _, _, Result) :-
     // but just in case they don't ...
     MR_Unsigned *cell_x;
     MR_Unsigned *cell_y;
-    cell_x = (MR_Unsigned *) (((MR_Unsigned) TermVarX) - (MR_Unsigned) Ptag);
-    cell_y = (MR_Unsigned *) (((MR_Unsigned) TermVarY) - (MR_Unsigned) Ptag);
-    MR_Unsigned word_x = cell_x[CellOffsetVar];
-    MR_Unsigned word_y = cell_y[CellOffsetVar];
-    int16_t value_x = (int16_t) ((word_x >> ShiftVar) & ((1 << 16) - 1));
-    int16_t value_y = (int16_t) ((word_y >> ShiftVar) & ((1 << 16) - 1));
+    cell_x = (MR_Unsigned *) (((MR_Unsigned) TermX) - (MR_Unsigned) Ptag);
+    cell_y = (MR_Unsigned *) (((MR_Unsigned) TermY) - (MR_Unsigned) Ptag);
+    MR_Unsigned word_x = cell_x[CellOffset];
+    MR_Unsigned word_y = cell_y[CellOffset];
+    int16_t value_x = (int16_t) ((word_x >> Shift) & ((1 << 16) - 1));
+    int16_t value_y = (int16_t) ((word_y >> Shift) & ((1 << 16) - 1));
     if (value_x < value_y) {
-        ResultVar = MR_COMPARE_LESS;
+        Result = MR_COMPARE_LESS;
     } else if (value_x > value_y) {
-        ResultVar = MR_COMPARE_GREATER;
+        Result = MR_COMPARE_GREATER;
     } else {
-        ResultVar = MR_COMPARE_EQUAL;
+        Result = MR_COMPARE_EQUAL;
     }
 ").
 
@@ -1756,8 +1754,8 @@ compare_remote_int16_bitfields(_, _, _, _, _, Result) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
-    compare_remote_int32_bitfields(TermVarX::in, TermVarY::in,
-        Ptag::in, CellOffsetVar::in, ShiftVar::in, ResultVar::uo),
+    compare_remote_int32_bitfields(TermX::in, TermY::in, Ptag::in,
+        CellOffset::in, Shift::in, Result::uo),
     [will_not_call_mercury, thread_safe, promise_pure,
         does_not_affect_liveness, may_not_duplicate],
 "
@@ -1766,20 +1764,20 @@ compare_remote_int16_bitfields(_, _, _, _, _, Result) :-
     // but just in case they don't ...
     MR_Unsigned *cell_x;
     MR_Unsigned *cell_y;
-    cell_x = (MR_Unsigned *) (((MR_Unsigned) TermVarX) - (MR_Unsigned) Ptag);
-    cell_y = (MR_Unsigned *) (((MR_Unsigned) TermVarY) - (MR_Unsigned) Ptag);
-    MR_Unsigned word_x = cell_x[CellOffsetVar];
-    MR_Unsigned word_y = cell_y[CellOffsetVar];
+    cell_x = (MR_Unsigned *) (((MR_Unsigned) TermX) - (MR_Unsigned) Ptag);
+    cell_y = (MR_Unsigned *) (((MR_Unsigned) TermY) - (MR_Unsigned) Ptag);
+    MR_Unsigned word_x = cell_x[CellOffset];
+    MR_Unsigned word_y = cell_y[CellOffset];
     int32_t value_x =
-        (int32_t) ((word_x >> ShiftVar) & ((INT64_C(1) << 32) - 1));
+        (int32_t) ((word_x >> Shift) & ((INT64_C(1) << 32) - 1));
     int32_t value_y =
-        (int32_t) ((word_y >> ShiftVar) & ((INT64_C(1) << 32) - 1));
+        (int32_t) ((word_y >> Shift) & ((INT64_C(1) << 32) - 1));
     if (value_x < value_y) {
-        ResultVar = MR_COMPARE_LESS;
+        Result = MR_COMPARE_LESS;
     } else if (value_x > value_y) {
-        ResultVar = MR_COMPARE_GREATER;
+        Result = MR_COMPARE_GREATER;
     } else {
-        ResultVar = MR_COMPARE_EQUAL;
+        Result = MR_COMPARE_EQUAL;
     }
 #else
     MR_fatal_error(""compare_remote_int32_bitfields called on ""
@@ -1797,21 +1795,20 @@ compare_remote_int32_bitfields(_, _, _, _, _, Result) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
-    compare_local_uint_words(TermVarX::in, TermVarY::in,
-        ResultVar::uo),
+    compare_local_uint_words(TermX::in, TermY::in, Result::uo),
     [will_not_call_mercury, thread_safe, promise_pure,
         does_not_affect_liveness, may_not_duplicate],
 "
     // All uses of this predicate should override the body,
     // but just in case they don't ...
-    MR_Unsigned value_x = (MR_Unsigned) TermVarX;
-    MR_Unsigned value_y = (MR_Unsigned) TermVarY;
+    MR_Unsigned value_x = (MR_Unsigned) TermX;
+    MR_Unsigned value_y = (MR_Unsigned) TermY;
     if (value_x < value_y) {
-        ResultVar = MR_COMPARE_LESS;
+        Result = MR_COMPARE_LESS;
     } else if (value_x > value_y) {
-        ResultVar = MR_COMPARE_GREATER;
+        Result = MR_COMPARE_GREATER;
     } else {
-        ResultVar = MR_COMPARE_EQUAL;
+        Result = MR_COMPARE_EQUAL;
     }
 ").
 
@@ -1825,23 +1822,23 @@ compare_local_uint_words(_, _, Result) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
-    compare_local_uint_bitfields(TermVarX::in, TermVarY::in,
-        ShiftVar::in, NumBitsVar::in, ResultVar::uo),
+    compare_local_uint_bitfields(TermX::in, TermY::in, Shift::in, NumBits::in,
+        Result::uo),
     [will_not_call_mercury, thread_safe, promise_pure,
         does_not_affect_liveness, may_not_duplicate],
 "
     // All uses of this predicate should override the body,
     // but just in case they don't ...
-    MR_Unsigned word_x = (MR_Unsigned) TermVarX;
-    MR_Unsigned word_y = (MR_Unsigned) TermVarY;
-    MR_Unsigned value_x = ((word_x >> ShiftVar) & ((1 << NumBitsVar) - 1));
-    MR_Unsigned value_y = ((word_y >> ShiftVar) & ((1 << NumBitsVar) - 1));
+    MR_Unsigned word_x = (MR_Unsigned) TermX;
+    MR_Unsigned word_y = (MR_Unsigned) TermY;
+    MR_Unsigned value_x = ((word_x >> Shift) & ((1 << NumBits) - 1));
+    MR_Unsigned value_y = ((word_y >> Shift) & ((1 << NumBits) - 1));
     if (value_x < value_y) {
-        ResultVar = MR_COMPARE_LESS;
+        Result = MR_COMPARE_LESS;
     } else if (value_x > value_y) {
-        ResultVar = MR_COMPARE_GREATER;
+        Result = MR_COMPARE_GREATER;
     } else {
-        ResultVar = MR_COMPARE_EQUAL;
+        Result = MR_COMPARE_EQUAL;
     }
 ").
 
@@ -1855,23 +1852,22 @@ compare_local_uint_bitfields(_, _, _, _, Result) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
-    compare_local_int8_bitfields(TermVarX::in, TermVarY::in,
-        ShiftVar::in, ResultVar::uo),
+    compare_local_int8_bitfields(TermX::in, TermY::in, Shift::in, Result::uo),
     [will_not_call_mercury, thread_safe, promise_pure,
         does_not_affect_liveness, may_not_duplicate],
 "
     // All uses of this predicate should override the body,
     // but just in case they don't ...
-    MR_Unsigned word_x = (MR_Unsigned) TermVarX;
-    MR_Unsigned word_y = (MR_Unsigned) TermVarY;
-    int8_t value_x = (int8_t) ((word_x >> ShiftVar) & ((1 << 8) - 1));
-    int8_t value_y = (int8_t) ((word_y >> ShiftVar) & ((1 << 8) - 1));
+    MR_Unsigned word_x = (MR_Unsigned) TermX;
+    MR_Unsigned word_y = (MR_Unsigned) TermY;
+    int8_t value_x = (int8_t) ((word_x >> Shift) & ((1 << 8) - 1));
+    int8_t value_y = (int8_t) ((word_y >> Shift) & ((1 << 8) - 1));
     if (value_x < value_y) {
-        ResultVar = MR_COMPARE_LESS;
+        Result = MR_COMPARE_LESS;
     } else if (value_x > value_y) {
-        ResultVar = MR_COMPARE_GREATER;
+        Result = MR_COMPARE_GREATER;
     } else {
-        ResultVar = MR_COMPARE_EQUAL;
+        Result = MR_COMPARE_EQUAL;
     }
 ").
 
@@ -1885,23 +1881,22 @@ compare_local_int8_bitfields(_, _, _, Result) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
-    compare_local_int16_bitfields(TermVarX::in, TermVarY::in,
-        ShiftVar::in, ResultVar::uo),
+    compare_local_int16_bitfields(TermX::in, TermY::in, Shift::in, Result::uo),
     [will_not_call_mercury, thread_safe, promise_pure,
         does_not_affect_liveness, may_not_duplicate],
 "
     // All uses of this predicate should override the body,
     // but just in case they don't ...
-    MR_Unsigned word_x = (MR_Unsigned) TermVarX;
-    MR_Unsigned word_y = (MR_Unsigned) TermVarY;
-    int16_t value_x = (int16_t) ((word_x >> ShiftVar) & ((1 << 16) - 1));
-    int16_t value_y = (int16_t) ((word_y >> ShiftVar) & ((1 << 16) - 1));
+    MR_Unsigned word_x = (MR_Unsigned) TermX;
+    MR_Unsigned word_y = (MR_Unsigned) TermY;
+    int16_t value_x = (int16_t) ((word_x >> Shift) & ((1 << 16) - 1));
+    int16_t value_y = (int16_t) ((word_y >> Shift) & ((1 << 16) - 1));
     if (value_x < value_y) {
-        ResultVar = MR_COMPARE_LESS;
+        Result = MR_COMPARE_LESS;
     } else if (value_x > value_y) {
-        ResultVar = MR_COMPARE_GREATER;
+        Result = MR_COMPARE_GREATER;
     } else {
-        ResultVar = MR_COMPARE_EQUAL;
+        Result = MR_COMPARE_EQUAL;
     }
 ").
 
@@ -1915,26 +1910,25 @@ compare_local_int16_bitfields(_, _, _, Result) :-
 %---------------------%
 
 :- pragma foreign_proc("C",
-    compare_local_int32_bitfields(TermVarX::in, TermVarY::in,
-        ShiftVar::in, ResultVar::uo),
+    compare_local_int32_bitfields(TermX::in, TermY::in, Shift::in, Result::uo),
     [will_not_call_mercury, thread_safe, promise_pure,
         does_not_affect_liveness, may_not_duplicate],
 "
 #ifdef MR_MERCURY_IS_64_BITS
     // All uses of this predicate should override the body,
     // but just in case they don't ...
-    MR_Unsigned word_x = (MR_Unsigned) TermVarX;
-    MR_Unsigned word_y = (MR_Unsigned) TermVarY;
+    MR_Unsigned word_x = (MR_Unsigned) TermX;
+    MR_Unsigned word_y = (MR_Unsigned) TermY;
     int32_t value_x =
-        (int32_t) ((word_x >> ShiftVar) & ((INT64_C(1) << 32) - 1));
+        (int32_t) ((word_x >> Shift) & ((INT64_C(1) << 32) - 1));
     int32_t value_y =
-        (int32_t) ((word_y >> ShiftVar) & ((INT64_C(1) << 32) - 1));
+        (int32_t) ((word_y >> Shift) & ((INT64_C(1) << 32) - 1));
     if (value_x < value_y) {
-        ResultVar = MR_COMPARE_LESS;
+        Result = MR_COMPARE_LESS;
     } else if (value_x > value_y) {
-        ResultVar = MR_COMPARE_GREATER;
+        Result = MR_COMPARE_GREATER;
     } else {
-        ResultVar = MR_COMPARE_EQUAL;
+        Result = MR_COMPARE_EQUAL;
     }
 #else
     MR_fatal_error(""compare_local_int32_bitfields called on ""
