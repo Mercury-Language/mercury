@@ -435,8 +435,8 @@ mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
         ImpClauses, !IO),
     list.foldl(mercury_format_item_foreign_enum(Info, Stream),
         ImpForeignEnums, !IO),
-    add_list(mercury_format_item_foreign_export_enum(Info),
-        "", ImpForeignExportEnums, Stream, !IO),
+    list.foldl(mercury_format_item_foreign_export_enum(Info, Stream),
+        ImpForeignExportEnums, !IO),
     list.foldl(mercury_output_item_decl_pragma(Info, Stream),
         ImpDeclPragmas, !IO),
     list.foldl(mercury_output_item_impl_pragma(Info, Stream),
@@ -1070,8 +1070,8 @@ mercury_output_item(Info, Stream, Item, !IO) :-
         mercury_format_item_foreign_enum(Info, Stream, ItemForeignEnum, !IO)
     ;
         Item = item_foreign_export_enum(ItemForeignExportEnum),
-        mercury_format_item_foreign_export_enum(Info, ItemForeignExportEnum,
-            Stream, !IO)
+        mercury_format_item_foreign_export_enum(Info, Stream,
+            ItemForeignExportEnum, !IO)
     ;
         Item = item_decl_pragma(ItemDeclPragma),
         mercury_output_item_decl_pragma(Info, Stream, ItemDeclPragma, !IO)
@@ -1857,10 +1857,10 @@ mercury_format_unqual_sym_name_string_pair(SymName0 - String, S, !U) :-
 %---------------------------------------------------------------------------%
 
 :- pred mercury_format_item_foreign_export_enum(merc_out_info::in,
-    item_foreign_export_enum_info::in, S::in,
+    S::in, item_foreign_export_enum_info::in,
     U::di, U::uo) is det <= output(S, U).
 
-mercury_format_item_foreign_export_enum(_Info, ItemForeignExportEnum, S, !U) :-
+mercury_format_item_foreign_export_enum(_Info, S, ItemForeignExportEnum, !U) :-
     ItemForeignExportEnum = item_foreign_export_enum_info(Lang, TypeCtor,
         Attributes, Overrides, _Context, _SeqNum),
     add_string(":- pragma foreign_export_enum(", S, !U),
