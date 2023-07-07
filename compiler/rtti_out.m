@@ -307,9 +307,10 @@ output_base_typeclass_info_defn(Info, Stream, TCName, InstanceModuleName,
     output_rtti_id_storage_type_name(Info, Stream, RttiId, yes, !DeclSet, !IO),
     % XXX It would be nice to avoid generating redundant declarations
     % of base_typeclass_infos, but currently we don't.
-    io.write_string(Stream, " = {\n\t(MR_Code *) ", !IO),
-    add_list(add_int, ",\n\t(MR_Code *) ", [N1, N2, N3, N4, N5], Stream, !IO),
-    io.write_string(Stream, ",\n\t", !IO),
+    io.write_string(Stream, " = {\n", !IO),
+    IntToSlot = (func(N) = string.format("\t(MR_Code *) %d,\n", [i(N)])),
+    NumSlots = list.map(IntToSlot, [N1, N2, N3, N4, N5]),
+    list.foldl(io.write_string(Stream), NumSlots, !IO),
     write_out_list(output_static_code_addr, ",\n\t", CodeAddrs, Stream, !IO),
     io.write_string(Stream, "\n};\n", !IO).
 
