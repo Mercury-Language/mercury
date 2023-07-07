@@ -107,8 +107,8 @@
 %   "Mercury/<grade>/<arch>/Mercury/<X>s" for some string X.
 %   (See make_grade_subdir_file_name) for the rationale for this scheme.)
 %
-% Java extensions are an exception; they include an extra "jmercury" component
-% in the path.
+% Some Java extensions are an exception; they include an extra "jmercury"
+% component in the path.
 %
 % There are several approaches we can use to decide which directory the files
 % using an extension should be put into. The main ones are the following.
@@ -124,7 +124,7 @@
 %   otherwise.
 %
 % - The files of some extensions are stored in a grade-specific subdirectory
-%   if --use-grade-subdirs is specified, in a non-grade-specified dubdirectory
+%   if --use-grade-subdirs is specified, in a non-grade-specified subdirectory
 %   if --use-grade-subdirs is not specified but --use-subdirs is, and
 %   in the current directory otherwise.
 %
@@ -228,7 +228,7 @@
             % Most of these extensions are intended to name real files,
             % but some are intended to name mmake targets.
             %
-            % XXX According to the documentation of the --user-grade subdirs
+            % XXX According to the documentation of the --use-grade-subdirs
             % option, *all* executables and libraries *should* be put
             % into a grade subdir if that option is specified, not just some.
             % They should then be copied or linked to the current directory.
@@ -250,7 +250,7 @@
             % Most of these extensions are intended to name real files,
             % but some are intended to name mmake targets.
             %
-            % XXX According to the documentation of the --user-grade subdirs
+            % XXX According to the documentation of the --use-grade-subdirs
             % option, *all* executables and libraries *should* be put
             % into a grade subdir if that option is specified, not just some.
             % They should then be copied or linked to the current directory.
@@ -336,6 +336,8 @@
     ;       ext_target_date_cs          % ".cs_date"
     ;       ext_target_date_java.       % ".java_date"
 
+    % Note that extensions for object files that differ from .o,
+    % such as .obj with MSVC, 
 :- type ext_obj
     --->    ext_obj_dollar_o            % ".$O"
     ;       ext_obj_dollar_efpo         % ".$(EXT_FOR_PIC_OBJECTS)"
@@ -427,7 +429,7 @@
     ;       ext_user_ngs_mode_constr    % ".mode_constraints"
     ;       ext_user_ngs_order_to       % ".order_trans_opt"
     ;       ext_user_ngs_type_repns     % ".type_repns"
-    ;       ext_user_ngs_xml.           % ".xnl"
+    ;       ext_user_ngs_xml.           % ".xml"
 
 :- type ext_analysis
     --->    ext_an_analysis             % ".analysis"
@@ -460,11 +462,13 @@
             % it would obviously be harder to people to find them there
             % is no relevant, since people shouldn't *have* to find
             % .err_date files.
+            % XXX zs and juliensf agree on this.
     ;       ext_misc_ngs_prof.          % ".prof"
             % XXX DODGY Given that different profiling grades generate
             % different profiles (specifically, they produce different subsets
             % of the whole set of kinds of info that the non-deep profiler can
             % generate), shouldn't this be a grade-specific extension?
+            % XXX zs and juliensf agree on this.
 
 :- type ext_misc_gs
     --->    ext_misc_gs_used            % ".used"
