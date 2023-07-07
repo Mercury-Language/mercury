@@ -131,20 +131,26 @@
 %---------------------------------------------------------------------------%
 
 :- typeclass output(S, U) <= (U -> S) where [
+    pred add_char(char::in, S::in, U::di, U::uo) is det,
+
     pred add_string(string::in, S::in, U::di, U::uo) is det,
     pred add_strings(list(string)::in, S::in, U::di, U::uo) is det,
-    pred add_char(char::in, S::in, U::di, U::uo) is det,
+    pred add_escaped_string(string::in, S::in, U::di, U::uo) is det,
+
     pred add_int(int::in, S::in, U::di, U::uo) is det,
-    pred add_uint(uint::in, S::in, U::di, U::uo) is det,
     pred add_int8(int8::in, S::in, U::di, U::uo) is det,
-    pred add_uint8(uint8::in, S::in, U::di, U::uo) is det,
     pred add_int16(int16::in, S::in, U::di, U::uo) is det,
-    pred add_uint16(uint16::in, S::in, U::di, U::uo) is det,
     pred add_int32(int32::in, S::in, U::di, U::uo) is det,
-    pred add_uint32(uint32::in, S::in, U::di, U::uo) is det,
     pred add_int64(int64::in, S::in, U::di, U::uo) is det,
+
+    pred add_uint(uint::in, S::in, U::di, U::uo) is det,
+    pred add_uint8(uint8::in, S::in, U::di, U::uo) is det,
+    pred add_uint16(uint16::in, S::in, U::di, U::uo) is det,
+    pred add_uint32(uint32::in, S::in, U::di, U::uo) is det,
     pred add_uint64(uint64::in, S::in, U::di, U::uo) is det,
+
     pred add_float(float::in, S::in, U::di, U::uo) is det,
+
     pred add_purity_prefix(purity::in, S::in, U::di, U::uo) is det,
     pred add_quoted_atom(string::in, S::in, U::di, U::uo) is det,
     pred add_quoted_string(string::in, S::in, U::di, U::uo) is det,
@@ -152,7 +158,7 @@
     pred add_eval_method(eval_method::in, S::in, U::di, U::uo) is det,
     pred add_lambda_eval_method(lambda_eval_method::in, S::in,
         U::di, U::uo) is det,
-    pred add_escaped_string(string::in, S::in, U::di, U::uo) is det,
+
     % The add_list predicate calls the predicate argument to add each
     % element of the list to the specified stream, printing the specified
     % separator between each pair of elements.
@@ -249,81 +255,107 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
 %---------------------------------------------------------------------------%
 
 :- instance output(io.text_output_stream, io.state) where [
+    pred(add_char/4) is write_char_literal,
+
     pred(add_string/4) is write_string,
     pred(add_strings/4) is write_strings,
-    pred(add_char/4) is write_char_literal,
+    pred(add_escaped_string/4) is write_escaped_string,
+
     pred(add_int/4) is write_int_literal,
-    pred(add_uint/4) is write_uint_literal,
     pred(add_int8/4) is write_int8_literal,
-    pred(add_uint8/4) is write_uint8_literal,
     pred(add_int16/4) is write_int16_literal,
-    pred(add_uint16/4) is write_uint16_literal,
     pred(add_int32/4) is write_int32_literal,
-    pred(add_uint32/4) is write_uint32_literal,
     pred(add_int64/4) is write_int64_literal,
+
+    pred(add_uint/4) is write_uint_literal,
+    pred(add_uint8/4) is write_uint8_literal,
+    pred(add_uint16/4) is write_uint16_literal,
+    pred(add_uint32/4) is write_uint32_literal,
     pred(add_uint64/4) is write_uint64_literal,
+
     pred(add_float/4) is write_float_literal,
+
     pred(add_purity_prefix/4) is write_purity_prefix,
     pred(add_quoted_atom/4) is write_quoted_atom,
     pred(add_quoted_string/4) is write_quoted_string,
     pred(add_constant/4) is write_constant,
     pred(add_eval_method/4) is write_eval_eval_method,
     pred(add_lambda_eval_method/4) is write_lambda_eval_method,
-    pred(add_escaped_string/4) is write_escaped_string,
+
     pred(add_list/6) is write_out_list
 ].
 
 :- instance output(unit, string) where [
+    pred(add_char/4) is output_char,
+
     pred(add_string/4) is output_string,
     pred(add_strings/4) is output_strings,
-    pred(add_char/4) is output_char,
+    pred(add_escaped_string/4) is output_escaped_string,
+
     pred(add_int/4) is output_int,
-    pred(add_uint/4) is output_uint,
     pred(add_int8/4) is output_int8,
-    pred(add_uint8/4) is output_uint8,
     pred(add_int16/4) is output_int16,
-    pred(add_uint16/4) is output_uint16,
     pred(add_int32/4) is output_int32,
-    pred(add_uint32/4) is output_uint32,
     pred(add_int64/4) is output_int64,
+
+    pred(add_uint/4) is output_uint,
+    pred(add_uint8/4) is output_uint8,
+    pred(add_uint16/4) is output_uint16,
+    pred(add_uint32/4) is output_uint32,
     pred(add_uint64/4) is output_uint64,
+
     pred(add_float/4) is output_float,
+
     pred(add_purity_prefix/4) is output_purity_prefix,
     pred(add_quoted_atom/4) is output_quoted_atom,
     pred(add_quoted_string/4) is output_quoted_string,
     pred(add_constant/4) is output_constant,
     pred(add_eval_method/4) is output_eval_eval_method,
     pred(add_lambda_eval_method/4) is output_lambda_eval_method,
-    pred(add_escaped_string/4) is output_escaped_string,
+
     pred(add_list/6) is output_list
 ].
 
 :- instance output(string.builder.handle, string.builder.state) where [
+    pred(add_char/4) is build_char,
+
     pred(add_string/4) is build_string,
     pred(add_strings/4) is build_strings,
-    pred(add_char/4) is build_char,
+    pred(add_escaped_string/4) is build_escaped_string,
+
     pred(add_int/4) is build_int,
-    pred(add_uint/4) is build_uint,
     pred(add_int8/4) is build_int8,
-    pred(add_uint8/4) is build_uint8,
     pred(add_int16/4) is build_int16,
-    pred(add_uint16/4) is build_uint16,
     pred(add_int32/4) is build_int32,
-    pred(add_uint32/4) is build_uint32,
     pred(add_int64/4) is build_int64,
+
+    pred(add_uint/4) is build_uint,
+    pred(add_uint8/4) is build_uint8,
+    pred(add_uint16/4) is build_uint16,
+    pred(add_uint32/4) is build_uint32,
     pred(add_uint64/4) is build_uint64,
+
     pred(add_float/4) is build_float,
+
     pred(add_purity_prefix/4) is build_purity_prefix,
     pred(add_quoted_atom/4) is build_quoted_atom,
     pred(add_quoted_string/4) is build_quoted_string,
     pred(add_constant/4) is build_constant,
     pred(add_eval_method/4) is build_eval_eval_method,
     pred(add_lambda_eval_method/4) is build_lambda_eval_method,
-    pred(add_escaped_string/4) is build_escaped_string,
+
     pred(add_list/6) is build_list
 ].
 
 %---------------------------------------------------------------------------%
+
+:- pred write_char_literal(char::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
+
+write_char_literal(C, Stream, !IO) :-
+    io.write_char(Stream, C, !IO).
+
+%---------------------%
 
 :- pred write_string(string::in, io.text_output_stream::in,
     io::di, io::uo) is det.
@@ -337,24 +369,19 @@ write_string(Str, Stream, !IO) :-
 write_strings(Strs, Stream, !IO) :-
     io.write_strings(Stream, Strs, !IO).
 
-:- pred write_char_literal(char::in, io.text_output_stream::in,
+:- pred write_escaped_string(string::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 
-write_char_literal(C, Stream, !IO) :-
-    io.write_char(Stream, C, !IO).
+write_escaped_string(Str, Stream, !IO) :-
+    term_io.format_escaped_string(Stream, Str, !IO).
+
+%---------------------%
 
 :- pred write_int_literal(int::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 
 write_int_literal(Int, Stream, !IO) :-
     io.write_int(Stream, Int, !IO).
-
-:- pred write_uint_literal(uint::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
-
-write_uint_literal(UInt, Stream, !IO) :-
-    io.write_uint(Stream, UInt, !IO),
-    io.write_char(Stream, 'u', !IO).
 
 :- pred write_int8_literal(int8::in, io.text_output_stream::in,
     io::di, io::uo) is det.
@@ -363,26 +390,12 @@ write_int8_literal(Int8, Stream, !IO) :-
     io.write_int8(Stream, Int8, !IO),
     io.write_string(Stream, "i8", !IO).
 
-:- pred write_uint8_literal(uint8::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
-
-write_uint8_literal(UInt8, Stream, !IO) :-
-    io.write_uint8(Stream, UInt8, !IO),
-    io.write_string(Stream, "u8", !IO).
-
 :- pred write_int16_literal(int16::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 
 write_int16_literal(Int16, Stream, !IO) :-
     io.write_int16(Stream, Int16, !IO),
     io.write_string(Stream, "i16", !IO).
-
-:- pred write_uint16_literal(uint16::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
-
-write_uint16_literal(UInt16, Stream, !IO) :-
-    io.write_uint16(Stream, UInt16, !IO),
-    io.write_string(Stream, "u16", !IO).
 
 :- pred write_int32_literal(int32::in, io.text_output_stream::in,
     io::di, io::uo) is det.
@@ -391,19 +404,42 @@ write_int32_literal(Int32, Stream, !IO) :-
     io.write_int32(Stream, Int32, !IO),
     io.write_string(Stream, "i32", !IO).
 
-:- pred write_uint32_literal(uint32::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
-
-write_uint32_literal(UInt32, Stream, !IO) :-
-    io.write_uint32(Stream, UInt32, !IO),
-    io.write_string(Stream, "u32", !IO).
-
 :- pred write_int64_literal(int64::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 
 write_int64_literal(Int64, Stream, !IO) :-
     io.write_int64(Stream, Int64, !IO),
     io.write_string(Stream, "i64", !IO).
+
+%---------------------%
+
+:- pred write_uint_literal(uint::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
+
+write_uint_literal(UInt, Stream, !IO) :-
+    io.write_uint(Stream, UInt, !IO),
+    io.write_char(Stream, 'u', !IO).
+
+:- pred write_uint8_literal(uint8::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
+
+write_uint8_literal(UInt8, Stream, !IO) :-
+    io.write_uint8(Stream, UInt8, !IO),
+    io.write_string(Stream, "u8", !IO).
+
+:- pred write_uint16_literal(uint16::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
+
+write_uint16_literal(UInt16, Stream, !IO) :-
+    io.write_uint16(Stream, UInt16, !IO),
+    io.write_string(Stream, "u16", !IO).
+
+:- pred write_uint32_literal(uint32::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
+
+write_uint32_literal(UInt32, Stream, !IO) :-
+    io.write_uint32(Stream, UInt32, !IO),
+    io.write_string(Stream, "u32", !IO).
 
 :- pred write_uint64_literal(uint64::in, io.text_output_stream::in,
     io::di, io::uo) is det.
@@ -412,13 +448,15 @@ write_uint64_literal(UInt64, Stream, !IO) :-
     io.write_uint64(Stream, UInt64, !IO),
     io.write_string(Stream, "u64", !IO).
 
+%---------------------%
+
 :- pred write_float_literal(float::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 
 write_float_literal(Float, Stream, !IO) :-
     io.write_float(Stream, Float, !IO).
 
-%-------------%
+%---------------------%
 
 :- pred write_purity_prefix(purity::in, io.text_output_stream::in,
     io::di, io::uo) is det.
@@ -460,13 +498,7 @@ write_lambda_eval_method(LambdaEvalMethod, Stream, !IO) :-
         "", LambdaEvalMethodStr),
     io.write_string(Stream, LambdaEvalMethodStr, !IO).
 
-:- pred write_escaped_string(string::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
-
-write_escaped_string(Str, Stream, !IO) :-
-    term_io.format_escaped_string(Stream, Str, !IO).
-
-%-------------%
+%---------------------%
 
 write_out_list(_, _, [], _, !IO).
 write_out_list(WritePred, Separator, [Item | Items], Stream, !IO) :-
@@ -490,6 +522,13 @@ write_out_list_lag(WritePred, Separator, Item1, Items2plus, Stream, !IO) :-
 
 %---------------------------------------------------------------------------%
 
+:- pred output_char(char::in, unit::in, string::di, string::uo) is det.
+
+output_char(C, _, Str0, Str) :-
+    Str = Str0 ++ string.char_to_string(C).
+
+%---------------------%
+
 :- pred output_string(string::in, unit::in, string::di, string::uo) is det.
 
 output_string(S, _, Str0, Str) :-
@@ -501,31 +540,24 @@ output_string(S, _, Str0, Str) :-
 output_strings(Strs, _, Str0, Str) :-
     string.append_list([Str0 | Strs], Str).
 
-:- pred output_char(char::in, unit::in, string::di, string::uo) is det.
+:- pred output_escaped_string(string::in, unit::in,
+    string::di, string::uo) is det.
 
-output_char(C, _, Str0, Str) :-
-    Str = Str0 ++ string.char_to_string(C).
+output_escaped_string(S, _, Str0, Str) :-
+    ES = term_io.escaped_string(S),
+    string.append(Str0, ES, Str).
+
+%---------------------%
 
 :- pred output_int(int::in, unit::in, string::di, string::uo) is det.
 
 output_int(I, _, Str0, Str) :-
     Str = Str0 ++ string.int_to_string(I).
 
-:- pred output_uint(uint::in, unit::in, string::di, string::uo) is det.
-
-output_uint(U, _, Str0, Str) :-
-    Str = Str0 ++ string.uint_to_string(U) ++ "u".
-
 :- pred output_int8(int8::in, unit::in, string::di, string::uo) is det.
 
 output_int8(I8, _, Str0, Str) :-
     S = string.int8_to_string(I8) ++ "i8",
-    string.append(Str0, S, Str).
-
-:- pred output_uint8(uint8::in, unit::in, string::di, string::uo) is det.
-
-output_uint8(U8, _, Str0, Str) :-
-    S = string.uint8_to_string(U8) ++ "u8",
     string.append(Str0, S, Str).
 
 :- pred output_int16(int16::in, unit::in, string::di, string::uo) is det.
@@ -534,22 +566,10 @@ output_int16(I16, _, Str0, Str) :-
     S = string.int16_to_string(I16) ++ "i16",
     string.append(Str0, S, Str).
 
-:- pred output_uint16(uint16::in, unit::in, string::di, string::uo) is det.
-
-output_uint16(U16, _, Str0, Str) :-
-    S = string.uint16_to_string(U16) ++ "u16",
-    string.append(Str0, S, Str).
-
 :- pred output_int32(int32::in, unit::in, string::di, string::uo) is det.
 
 output_int32(I32, _, Str0, Str) :-
     S = string.int32_to_string(I32) ++ "i32",
-    string.append(Str0, S, Str).
-
-:- pred output_uint32(uint32::in, unit::in, string::di, string::uo) is det.
-
-output_uint32(U32, _, Str0, Str) :-
-    S = string.uint32_to_string(U32) ++ "u32",
     string.append(Str0, S, Str).
 
 :- pred output_int64(int64::in, unit::in, string::di, string::uo) is det.
@@ -558,17 +578,46 @@ output_int64(I64, _, Str0, Str) :-
     S = string.int64_to_string(I64) ++ "i64",
     string.append(Str0, S, Str).
 
+%---------------------%
+
+:- pred output_uint(uint::in, unit::in, string::di, string::uo) is det.
+
+output_uint(U, _, Str0, Str) :-
+    Str = Str0 ++ string.uint_to_string(U) ++ "u".
+
+:- pred output_uint8(uint8::in, unit::in, string::di, string::uo) is det.
+
+output_uint8(U8, _, Str0, Str) :-
+    S = string.uint8_to_string(U8) ++ "u8",
+    string.append(Str0, S, Str).
+
+:- pred output_uint16(uint16::in, unit::in, string::di, string::uo) is det.
+
+output_uint16(U16, _, Str0, Str) :-
+    S = string.uint16_to_string(U16) ++ "u16",
+    string.append(Str0, S, Str).
+
+:- pred output_uint32(uint32::in, unit::in, string::di, string::uo) is det.
+
+output_uint32(U32, _, Str0, Str) :-
+    S = string.uint32_to_string(U32) ++ "u32",
+    string.append(Str0, S, Str).
+
 :- pred output_uint64(uint64::in, unit::in, string::di, string::uo) is det.
 
 output_uint64(U64, _, Str0, Str) :-
     S = string.uint64_to_string(U64) ++ "u64",
     string.append(Str0, S, Str).
 
+%---------------------%
+
 :- pred output_float(float::in, unit::in, string::di, string::uo) is det.
 
 output_float(F, _, Str0, Str) :-
     string.float_to_string(F, S),
     string.append(Str0, S, Str).
+
+%---------------------%
 
 :- pred output_purity_prefix(purity::in, unit::in,
     string::di, string::uo) is det.
@@ -597,13 +646,6 @@ output_constant(C, _, Str0, Str) :-
     CS = term_io.constant_to_string(C),
     string.append(Str0, CS, Str).
 
-:- pred output_escaped_string(string::in, unit::in,
-    string::di, string::uo) is det.
-
-output_escaped_string(S, _, Str0, Str) :-
-    ES = term_io.escaped_string(S),
-    string.append(Str0, ES, Str).
-
 :- pred output_eval_eval_method(eval_method::in, unit::in,
     string::di, string::uo) is det.
 
@@ -616,6 +658,8 @@ output_eval_eval_method(EvalMethod, _, !Str) :-
 
 output_lambda_eval_method(lambda_normal, _, !Str) :-
     output_string("normal", unit, !Str).
+
+%---------------------%
 
 :- pred output_list(
     pred(T, unit, string, string)::in(pred(in, in, di, uo) is det),
@@ -641,6 +685,14 @@ output_list_lag(OutputPred, Sep, Item1, Items, !Str) :-
 
 %---------------------------------------------------------------------------%
 
+:- pred build_char(char::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_char(Char, _, !State) :-
+    string.builder.append_char(Char, !State).
+
+%---------------------%
+
 :- pred build_string(string::in, string.builder.handle::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -653,24 +705,20 @@ build_string(Str, _, !State) :-
 build_strings(Strs, _, !State) :-
     string.builder.append_strings(Strs, !State).
 
-:- pred build_char(char::in, string.builder.handle::in,
+:- pred build_escaped_string(string::in, string.builder.handle::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-build_char(Char, _, !State) :-
-    string.builder.append_char(Char, !State).
+build_escaped_string(S, _, !State) :-
+    % ZZZ format_escaped_string
+    string.builder.append_string(term_io.escaped_string(S), !State).
+
+%---------------------%
 
 :- pred build_int(int::in, string.builder.handle::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
 build_int(I, _, !State) :-
     string.builder.append_string(string.int_to_string(I), !State).
-
-:- pred build_uint(uint::in, string.builder.handle::in,
-    string.builder.state::di, string.builder.state::uo) is det.
-
-build_uint(U, _, !State) :-
-    string.builder.append_string(string.uint_to_string(U), !State),
-    string.builder.append_string("u", !State).
 
 :- pred build_int8(int8::in, string.builder.handle::in,
     string.builder.state::di, string.builder.state::uo) is det.
@@ -679,26 +727,12 @@ build_int8(I8, _, !State) :-
     string.builder.append_string(string.int8_to_string(I8), !State),
     string.builder.append_string("i8", !State).
 
-:- pred build_uint8(uint8::in, string.builder.handle::in,
-    string.builder.state::di, string.builder.state::uo) is det.
-
-build_uint8(U8, _, !State) :-
-    string.builder.append_string(string.uint8_to_string(U8), !State),
-    string.builder.append_string("u8", !State).
-
 :- pred build_int16(int16::in, string.builder.handle::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
 build_int16(I16, _, !State) :-
     string.builder.append_string(string.int16_to_string(I16), !State),
     string.builder.append_string("i16", !State).
-
-:- pred build_uint16(uint16::in, string.builder.handle::in,
-    string.builder.state::di, string.builder.state::uo) is det.
-
-build_uint16(U16, _, !State) :-
-    string.builder.append_string(string.uint16_to_string(U16), !State),
-    string.builder.append_string("u16", !State).
 
 :- pred build_int32(int32::in, string.builder.handle::in,
     string.builder.state::di, string.builder.state::uo) is det.
@@ -707,19 +741,42 @@ build_int32(I32, _, !State) :-
     string.builder.append_string(string.int32_to_string(I32), !State),
     string.builder.append_string("i32", !State).
 
-:- pred build_uint32(uint32::in, string.builder.handle::in,
-    string.builder.state::di, string.builder.state::uo) is det.
-
-build_uint32(U32, _, !State) :-
-    string.builder.append_string(string.uint32_to_string(U32), !State),
-    string.builder.append_string("u32", !State).
-
 :- pred build_int64(int64::in, string.builder.handle::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
 build_int64(I64, _, !State) :-
     string.builder.append_string(string.int64_to_string(I64), !State),
     string.builder.append_string("i64", !State).
+
+%---------------------%
+
+:- pred build_uint(uint::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_uint(U, _, !State) :-
+    string.builder.append_string(string.uint_to_string(U), !State),
+    string.builder.append_string("u", !State).
+
+:- pred build_uint8(uint8::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_uint8(U8, _, !State) :-
+    string.builder.append_string(string.uint8_to_string(U8), !State),
+    string.builder.append_string("u8", !State).
+
+:- pred build_uint16(uint16::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_uint16(U16, _, !State) :-
+    string.builder.append_string(string.uint16_to_string(U16), !State),
+    string.builder.append_string("u16", !State).
+
+:- pred build_uint32(uint32::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_uint32(U32, _, !State) :-
+    string.builder.append_string(string.uint32_to_string(U32), !State),
+    string.builder.append_string("u32", !State).
 
 :- pred build_uint64(uint64::in, string.builder.handle::in,
     string.builder.state::di, string.builder.state::uo) is det.
@@ -728,11 +785,15 @@ build_uint64(U64, _, !State) :-
     string.builder.append_string(string.uint64_to_string(U64), !State),
     string.builder.append_string("u64", !State).
 
+%---------------------%
+
 :- pred build_float(float::in, string.builder.handle::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
 build_float(F, _, !State) :-
     string.builder.append_string(string.float_to_string(F), !State).
+
+%---------------------%
 
 :- pred build_purity_prefix(purity::in, string.builder.handle::in,
     string.builder.state::di, string.builder.state::uo) is det.
@@ -761,13 +822,6 @@ build_constant(C, _, !State) :-
     % ZZZ format_constant
     string.builder.append_string(term_io.constant_to_string(C), !State).
 
-:- pred build_escaped_string(string::in, string.builder.handle::in,
-    string.builder.state::di, string.builder.state::uo) is det.
-
-build_escaped_string(S, _, !State) :-
-    % ZZZ format_escaped_string
-    string.builder.append_string(term_io.escaped_string(S), !State).
-
 :- pred build_eval_eval_method(eval_method::in, string.builder.handle::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -781,6 +835,8 @@ build_eval_eval_method(EvalMethod, _, !State) :-
 
 build_lambda_eval_method(lambda_normal, _, !State) :-
     string.builder.append_string("normal", !State).
+
+%---------------------%
 
 :- pred build_list(
     pred(T, string.builder.handle, string.builder.state, string.builder.state)
