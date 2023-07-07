@@ -89,7 +89,7 @@ init = state([]).
         where [
     ( put(_, Char, !State) :-
         !.State = state(RevStrings0),
-        RevStrings = [string.from_char(Char) | RevStrings0],
+        RevStrings = [string.char_to_string(Char) | RevStrings0],
         !:State = state(RevStrings)
     )
 ].

@@ -102,16 +102,13 @@
     % defined using the foreign language interface.
     %
 :- pred print(Stream::in, T::in, State::di, State::uo) is det
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    <= stream.writer(Stream, string, State).
 
 :- pred print_cc(Stream::in, T::in, State::di, State::uo) is cc_multi
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    <= stream.writer(Stream, string, State).
 
 :- pred print(Stream, deconstruct.noncanon_handling, T, State, State)
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    <= stream.writer(Stream, string, State).
 :- mode print(in, in(do_not_allow), in, di, uo) is det.
 :- mode print(in, in(canonicalize), in, di, uo) is det.
 :- mode print(in, in(include_details_cc), in, di, uo) is cc_multi.
@@ -140,16 +137,13 @@
     % `canonicalize'.
     %
 :- pred write(Stream::in, T::in, State::di, State::uo) is det
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    <= stream.writer(Stream, string, State).
 
 :- pred write_cc(Stream::in, T::in, State::di, State::uo) is cc_multi
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    <= stream.writer(Stream, string, State).
 
 :- pred write(Stream, deconstruct.noncanon_handling, T, State, State)
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    <= stream.writer(Stream, string, State).
 :- mode write(in, in(do_not_allow), in, di, uo) is det.
 :- mode write(in, in(canonicalize), in, di, uo) is det.
 :- mode write(in, in(include_details_cc), in, di, uo) is cc_multi.
@@ -171,13 +165,10 @@
 % Predicates for writing out univs.
 
 :- pred write_univ(Stream::in, univ::in, State::di, State::uo) is det
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    <= stream.writer(Stream, string, State).
 
-:- pred write_univ(Stream, deconstruct.noncanon_handling,
-    univ, State, State)
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+:- pred write_univ(Stream, deconstruct.noncanon_handling, univ, State, State)
+    <= stream.writer(Stream, string, State).
 :- mode write_univ(in, in(do_not_allow), in, di, uo) is det.
 :- mode write_univ(in, in(canonicalize), in, di, uo) is det.
 :- mode write_univ(in, in(include_details_cc), in, di, uo) is cc_multi.
@@ -187,10 +178,9 @@
 % For use by term_io.m.
 %
 
-:- pred maybe_write_paren(Stream::in, char::in, ops.priority::in,
+:- pred maybe_write_paren(Stream::in, string::in, ops.priority::in,
     ops.priority::in, State::di, State::uo) is det
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    <= stream.writer(Stream, string, State).
 :- pragma type_spec(pred(maybe_write_paren/6),
     (Stream = io.text_output_stream, State = io.state)).
 
@@ -556,7 +546,7 @@ print(Stream, NonCanon, Term, !State) :-
                 ;
                     TB = type_builtin_character,
                     ( if dynamic_cast(Term, Char : char) then
-                        put(Stream, Char, !State)
+                        put(Stream, char_to_string(Char), !State)
                     else
                         print_quoted(Stream, NonCanon, Term, !State)
                     )
@@ -670,8 +660,7 @@ print(Stream, NonCanon, Term, !State) :-
     ).
 
 :- pred print_quoted(Stream, deconstruct.noncanon_handling, T, State, State)
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    <= stream.writer(Stream, string, State).
 :- mode print_quoted(in, in(do_not_allow), in, di, uo) is det.
 :- mode print_quoted(in, in(canonicalize), in, di, uo) is det.
 :- mode print_quoted(in, in(include_details_cc), in, di, uo) is cc_multi.
@@ -715,9 +704,7 @@ write_univ(Stream, NonCanon, Univ, !State) :-
     do_write_univ(Stream, NonCanon, Univ, !State).
 
 :- pred do_write_univ(Stream, deconstruct.noncanon_handling, univ,
-    State, State)
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    State, State) <= stream.writer(Stream, string, State).
 :- mode do_write_univ(in, in(do_not_allow), in, di, uo) is det.
 :- mode do_write_univ(in, in(canonicalize), in, di, uo) is det.
 :- mode do_write_univ(in, in(include_details_cc), in, di, uo) is cc_multi.
@@ -730,9 +717,7 @@ do_write_univ(Stream, NonCanon, Univ, !State) :-
         ops.mercury_op_table_universal_priority, !State).
 
 :- pred do_write_univ_prio(Stream, deconstruct.noncanon_handling, univ,
-    ops.priority, State, State)
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    ops.priority, State, State) <= stream.writer(Stream, string, State).
 :- mode do_write_univ_prio(in, in(do_not_allow), in, in, di, uo) is det.
 :- mode do_write_univ_prio(in, in(canonicalize), in, in, di, uo) is det.
 :- mode do_write_univ_prio(in, in(include_details_cc), in, in, di, uo)
@@ -854,7 +839,7 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
                     TB = type_builtin_uint,
                     ( if univ_to_type(Univ, UInt) then
                         put_uint(Stream, UInt, !State),
-                        put_char(Stream, 'u', !State)
+                        put(Stream, "u", !State)
                     else
                         write_ordinary_term(Stream, NonCanon, Univ, Priority,
                             !State)
@@ -911,9 +896,9 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
             TypeCtorModuleName = "bitmap",
             ( if univ_to_type(Univ, Bitmap) then
                 % Bitmaps are converted to strings of hex digits.
-                put_char(Stream, '"', !State),
+                put(Stream, "\"", !State),
                 put(Stream, bitmap.to_string(Bitmap), !State),
-                put_char(Stream, '"', !State)
+                put(Stream, "\"", !State)
             else
                 write_ordinary_term(Stream, NonCanon, Univ, Priority, !State)
             )
@@ -1005,9 +990,7 @@ same_version_array_elem_type(_, _).
 same_private_builtin_type(_, _).
 
 :- pred write_ordinary_term(Stream, deconstruct.noncanon_handling, univ,
-    ops.priority, State, State)
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    ops.priority, State, State) <= stream.writer(Stream, string, State).
 :- mode write_ordinary_term(in, in(do_not_allow), in, in, di, uo) is det.
 :- mode write_ordinary_term(in, in(canonicalize), in, in, di, uo) is det.
 :- mode write_ordinary_term(in, in(include_details_cc), in, in, di, uo)
@@ -1026,10 +1009,10 @@ write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
         Functor = "[|]",
         Args = [ListHead, ListTail]
     then
-        put(Stream, '[', !State),
+        put(Stream, "[", !State),
         write_arg(Stream, NonCanon, ListHead, !State),
         write_list_tail(Stream, NonCanon, ListTail, !State),
-        put(Stream, ']', !State)
+        put(Stream, "]", !State)
     else if
         Functor = "[]",
         Args = []
@@ -1055,10 +1038,10 @@ write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
             % by tradition, they have spaces between the goal and
             % the { and }.) However, that is not an argument for
             % doing this for *all* uses of {}.
-            put(Stream, '{', !State),
+            put(Stream, "{", !State),
             write_arg(Stream, NonCanon, BracedHead, !State),
             write_term_args(Stream, NonCanon, BracedTail, !State),
-            put(Stream, '}', !State)
+            put(Stream, "}", !State)
         )
     else if
         ops.lookup_op_infos(ops.init_mercury_op_table, Functor, OpInfos)
@@ -1072,19 +1055,19 @@ write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
         ;
             Args = [ArgA],
             ( if OpInfos ^ oi_prefix = pre(OpPriority, GtOrGeA) then
-                maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
+                maybe_write_paren(Stream, "(", Priority, OpPriority, !State),
                 term_io.format_quoted_atom(Stream, Functor, !State),
                 put(Stream, " ", !State),
                 MinPrioA = min_priority_for_arg(OpPriority, GtOrGeA),
                 do_write_univ_prio(Stream, NonCanon, ArgA, MinPrioA, !State),
-                maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
+                maybe_write_paren(Stream, ")", Priority, OpPriority, !State)
             else if OpInfos ^ oi_postfix = post(OpPriority, GtOrGeA) then
-                maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
+                maybe_write_paren(Stream, "(", Priority, OpPriority, !State),
                 MinPrioA = min_priority_for_arg(OpPriority, GtOrGeA),
                 do_write_univ_prio(Stream, NonCanon, ArgA, MinPrioA, !State),
                 put(Stream, " ", !State),
                 term_io.format_quoted_atom(Stream, Functor, !State),
-                maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
+                maybe_write_paren(Stream, ")", Priority, OpPriority, !State)
             else
                 write_functor_and_args_prio(Stream, NonCanon, Priority,
                     Functor, Args, !State)
@@ -1096,7 +1079,7 @@ write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
             then
                 MinPrioA = min_priority_for_arg(OpPriority, GtOrGeA),
                 MinPrioB = min_priority_for_arg(OpPriority, GtOrGeB),
-                maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
+                maybe_write_paren(Stream, "(", Priority, OpPriority, !State),
                 do_write_univ_prio(Stream, NonCanon, ArgA, MinPrioA, !State),
                 ( if Functor = "," then
                     put(Stream, ", ", !State)
@@ -1106,20 +1089,20 @@ write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
                     put(Stream, " ", !State)
                 ),
                 do_write_univ_prio(Stream, NonCanon, ArgB, MinPrioB, !State),
-                maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
+                maybe_write_paren(Stream, ")", Priority, OpPriority, !State)
             else if
                 OpInfos ^ oi_binary_prefix =
                     bin_pre(OpPriority, GtOrGeA, GtOrGeB)
             then
                 MinPrioA = min_priority_for_arg(OpPriority, GtOrGeA),
                 MinPrioB = min_priority_for_arg(OpPriority, GtOrGeB),
-                maybe_write_paren(Stream, '(', Priority, OpPriority, !State),
+                maybe_write_paren(Stream, "(", Priority, OpPriority, !State),
                 term_io.format_quoted_atom(Stream, Functor, !State),
                 put(Stream, " ", !State),
                 do_write_univ_prio(Stream, NonCanon, ArgA, MinPrioA, !State),
                 put(Stream, " ", !State),
                 do_write_univ_prio(Stream, NonCanon, ArgB, MinPrioB, !State),
-                maybe_write_paren(Stream, ')', Priority, OpPriority, !State)
+                maybe_write_paren(Stream, ")", Priority, OpPriority, !State)
             else
                 write_functor_and_args_prio(Stream, NonCanon, Priority,
                     Functor, Args, !State)
@@ -1139,8 +1122,7 @@ write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
     %
 :- pred write_functor_and_args_prio(Stream, deconstruct.noncanon_handling,
     priority, string, list(univ), State, State)
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    <= stream.writer(Stream, string, State).
 :- mode write_functor_and_args_prio(in, in(do_not_allow), in, in, in,
     di, uo) is det.
 :- mode write_functor_and_args_prio(in, in(canonicalize), in, in, in,
@@ -1159,9 +1141,9 @@ write_functor_and_args_prio(Stream, NonCanon, Priority, Functor, Args,
         Args = [],
         priority_ge(Priority, ops.mercury_op_table_loosest_op_priority)
     then
-        put(Stream, '(', !State),
+        put(Stream, "(", !State),
         term_io.format_quoted_atom(Stream, Functor, !State),
-        put(Stream, ')', !State)
+        put(Stream, ")", !State)
     else
         write_functor_and_args(Stream, NonCanon, Functor, Args, !State)
     ).
@@ -1172,8 +1154,7 @@ write_functor_and_args_prio(Stream, NonCanon, Priority, Functor, Args,
     %
 :- pred write_functor_and_args(Stream, deconstruct.noncanon_handling, string,
     list(univ), State, State)
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    <= stream.writer(Stream, string, State).
 :- mode write_functor_and_args(in, in(do_not_allow), in, in, di, uo) is det.
 :- mode write_functor_and_args(in, in(canonicalize), in, in, di, uo) is det.
 :- mode write_functor_and_args(in, in(include_details_cc), in, in, di, uo)
@@ -1189,10 +1170,10 @@ write_functor_and_args(Stream, NonCanon, Functor, Args, !State) :-
     term_io.format_quoted_atom_agt(Stream, Functor, AGT, !State),
     (
         Args = [X | Xs],
-        put(Stream, '(', !State),
+        put(Stream, "(", !State),
         write_arg(Stream, NonCanon, X, !State),
         write_term_args(Stream, NonCanon, Xs, !State),
-        put(Stream, ')', !State)
+        put(Stream, ")", !State)
     ;
         Args = []
     ).
@@ -1207,9 +1188,7 @@ maybe_write_paren(Stream, String, Priority, OpPriority, !State) :-
     ).
 
 :- pred write_list_tail(Stream, deconstruct.noncanon_handling, univ,
-    State, State)
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    State, State) <= stream.writer(Stream, string, State).
 :- mode write_list_tail(in, in(do_not_allow), in, di, uo) is det.
 :- mode write_list_tail(in, in(canonicalize), in, di, uo) is det.
 :- mode write_list_tail(in, in(include_details_cc), in, di, uo) is cc_multi.
@@ -1240,9 +1219,7 @@ write_list_tail(Stream, NonCanon, Univ, !State) :-
     % Write the remaining arguments.
     %
 :- pred write_term_args(Stream, deconstruct.noncanon_handling, list(univ),
-    State, State)
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    State, State) <= stream.writer(Stream, string, State).
 :- mode write_term_args(in, in(do_not_allow), in, di, uo) is det.
 :- mode write_term_args(in, in(canonicalize), in, di, uo) is det.
 :- mode write_term_args(in, in(include_details_cc), in, di, uo) is cc_multi.
@@ -1257,8 +1234,7 @@ write_term_args(Stream, NonCanon, [X | Xs], !State) :-
     write_term_args(Stream, NonCanon, Xs, !State).
 
 :- pred write_arg(Stream, deconstruct.noncanon_handling, univ, State, State)
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    <= stream.writer(Stream, string, State).
 :- mode write_arg(in, in(do_not_allow), in, di, uo) is det.
 :- mode write_arg(in, in(canonicalize), in, di, uo) is det.
 :- mode write_arg(in, in(include_details_cc), in, di, uo) is cc_multi.
@@ -1307,8 +1283,7 @@ write_c_pointer(Stream, C_Pointer, !State) :-
     put(Stream, c_pointer_to_string(C_Pointer), !State).
 
 :- pred write_array(Stream::in, array(T)::in, State::di, State::uo) is det
-    <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    <= stream.writer(Stream, string, State).
 :- pragma type_spec(pred(write_array/4),
     (Stream = io.text_output_stream, State = io.state)).
 
@@ -1319,8 +1294,7 @@ write_array(Stream, Array, !State) :-
     put(Stream, ")", !State).
 
 :- pred write_version_array(Stream::in, version_array(T)::in,
-    State::di, State::uo) is det <= (stream.writer(Stream, string, State),
-    stream.writer(Stream, char, State)).
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 :- pragma type_spec(pred(write_version_array/4),
     (Stream = io.text_output_stream, State = io.state)).
 
