@@ -42,14 +42,23 @@
 
 :- func init = (string.builder.state::uo) is det.
 
+:- pred append_char(char::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+:- pred append_string(string::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+:- pred append_strings(list(string)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+:- func to_string(string.builder.state::di) = (string::uo) is det.
+
+%---------------------------------------------------------------------------%
+
 :- instance stream.stream(string.builder.handle, string.builder.state).
 
 :- instance stream.output(string.builder.handle, string.builder.state).
 
 :- instance stream.writer(string.builder.handle, string, string.builder.state).
 :- instance stream.writer(string.builder.handle, char, string.builder.state).
-
-:- func to_string(string.builder.state::di) = (string::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -58,12 +67,40 @@
 
 :- import_module list.
 
+%---------------------------------------------------------------------------%
+
 :- type state
     --->    state(list(string)).
             % A reversed list of the strings that, when unreversed
             % and appended together, yields the string we have built.
 
+%---------------------------------------------------------------------------%
+
 init = state([]).
+
+:- pragma inline(pred(append_char/3)).      % inline in instance method
+append_char(Char, !State) :-
+    !.State = state(RevStrings0),
+    RevStrings = [string.char_to_string(Char) | RevStrings0],
+    !:State = state(RevStrings).
+
+:- pragma inline(pred(append_string/3)).    % inline in instance method
+append_string(Str, !State) :-
+    !.State = state(RevStrs0),
+    copy(Str, UniqueStr),
+    RevStrs = [UniqueStr | RevStrs0],
+    !:State = state(RevStrs).
+
+append_strings([], !State).
+append_strings([Str | Strs], !State) :-
+    append_string(Str, !State),
+    append_strings(Strs, !State).
+
+to_string(State) = String :-
+    State = state(RevStrings),
+    String = string.append_list(list.reverse(RevStrings)).
+
+%---------------------------------------------------------------------------%
 
 :- instance stream.stream(string.builder.handle, string.builder.state)
         where [
@@ -77,26 +114,17 @@ init = state([]).
 
 :- instance stream.writer(string.builder.handle, string, string.builder.state)
         where [
-    ( put(_, String, !State) :-
-        !.State = state(RevStrings0),
-        copy(String, UniqueString),
-        RevStrings = [UniqueString | RevStrings0],
-        !:State = state(RevStrings)
+    ( put(_, Str, !State) :-
+        append_string(Str, !State)
     )
 ].
 
 :- instance stream.writer(string.builder.handle, char, string.builder.state)
         where [
     ( put(_, Char, !State) :-
-        !.State = state(RevStrings0),
-        RevStrings = [string.char_to_string(Char) | RevStrings0],
-        !:State = state(RevStrings)
+        append_char(Char, !State)
     )
 ].
-
-to_string(State) = String :-
-    State = state(RevStrings),
-    String = string.append_list(list.reverse(RevStrings)).
 
 %---------------------------------------------------------------------------%
 :- end_module string.builder.

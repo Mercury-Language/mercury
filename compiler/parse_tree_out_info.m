@@ -173,6 +173,7 @@
 
 :- import_module bool.
 :- import_module string.
+:- import_module string.builder.
 :- import_module term_io.
 
 %---------------------------------------------------------------------------%
@@ -295,6 +296,31 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_lambda_eval_method/4) is output_lambda_eval_method,
     pred(add_escaped_string/4) is output_escaped_string,
     pred(add_list/6) is output_list
+].
+
+:- instance output(string.builder.handle, string.builder.state) where [
+    pred(add_string/4) is build_string,
+    pred(add_strings/4) is build_strings,
+    pred(add_char/4) is build_char,
+    pred(add_int/4) is build_int,
+    pred(add_uint/4) is build_uint,
+    pred(add_int8/4) is build_int8,
+    pred(add_uint8/4) is build_uint8,
+    pred(add_int16/4) is build_int16,
+    pred(add_uint16/4) is build_uint16,
+    pred(add_int32/4) is build_int32,
+    pred(add_uint32/4) is build_uint32,
+    pred(add_int64/4) is build_int64,
+    pred(add_uint64/4) is build_uint64,
+    pred(add_float/4) is build_float,
+    pred(add_purity_prefix/4) is build_purity_prefix,
+    pred(add_quoted_atom/4) is build_quoted_atom,
+    pred(add_quoted_string/4) is build_quoted_string,
+    pred(add_constant/4) is build_constant,
+    pred(add_eval_method/4) is build_eval_eval_method,
+    pred(add_lambda_eval_method/4) is build_lambda_eval_method,
+    pred(add_escaped_string/4) is build_escaped_string,
+    pred(add_list/6) is build_list
 ].
 
 %---------------------------------------------------------------------------%
@@ -611,6 +637,175 @@ output_list_lag(OutputPred, Sep, Item1, Items, !Str) :-
         Items = [Item2 | Items3plus],
         output_string(Sep, unit, !Str),
         output_list_lag(OutputPred, Sep, Item2, Items3plus, !Str)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred build_string(string::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_string(Str, _, !State) :-
+    string.builder.append_string(Str, !State).
+
+:- pred build_strings(list(string)::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_strings(Strs, _, !State) :-
+    string.builder.append_strings(Strs, !State).
+
+:- pred build_char(char::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_char(Char, _, !State) :-
+    string.builder.append_char(Char, !State).
+
+:- pred build_int(int::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_int(I, _, !State) :-
+    string.builder.append_string(string.int_to_string(I), !State).
+
+:- pred build_uint(uint::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_uint(U, _, !State) :-
+    string.builder.append_string(string.uint_to_string(U), !State),
+    string.builder.append_string("u", !State).
+
+:- pred build_int8(int8::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_int8(I8, _, !State) :-
+    string.builder.append_string(string.int8_to_string(I8), !State),
+    string.builder.append_string("i8", !State).
+
+:- pred build_uint8(uint8::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_uint8(U8, _, !State) :-
+    string.builder.append_string(string.uint8_to_string(U8), !State),
+    string.builder.append_string("u8", !State).
+
+:- pred build_int16(int16::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_int16(I16, _, !State) :-
+    string.builder.append_string(string.int16_to_string(I16), !State),
+    string.builder.append_string("i16", !State).
+
+:- pred build_uint16(uint16::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_uint16(U16, _, !State) :-
+    string.builder.append_string(string.uint16_to_string(U16), !State),
+    string.builder.append_string("u16", !State).
+
+:- pred build_int32(int32::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_int32(I32, _, !State) :-
+    string.builder.append_string(string.int32_to_string(I32), !State),
+    string.builder.append_string("i32", !State).
+
+:- pred build_uint32(uint32::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_uint32(U32, _, !State) :-
+    string.builder.append_string(string.uint32_to_string(U32), !State),
+    string.builder.append_string("u32", !State).
+
+:- pred build_int64(int64::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_int64(I64, _, !State) :-
+    string.builder.append_string(string.int64_to_string(I64), !State),
+    string.builder.append_string("i64", !State).
+
+:- pred build_uint64(uint64::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_uint64(U64, _, !State) :-
+    string.builder.append_string(string.uint64_to_string(U64), !State),
+    string.builder.append_string("u64", !State).
+
+:- pred build_float(float::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_float(F, _, !State) :-
+    string.builder.append_string(string.float_to_string(F), !State).
+
+:- pred build_purity_prefix(purity::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_purity_prefix(P, _, !State) :-
+    string.builder.append_string(purity_prefix_to_string(P), !State).
+
+:- pred build_quoted_atom(string::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_quoted_atom(A, _, !State) :-
+    % ZZZ format_quoted_atom
+    string.builder.append_string(term_io.quoted_atom(A), !State).
+
+:- pred build_quoted_string(string::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_quoted_string(A, _, !State) :-
+    % ZZZ format_quoted_string
+    string.builder.append_string(term_io.quoted_string(A), !State).
+
+:- pred build_constant(const::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_constant(C, _, !State) :-
+    % ZZZ format_constant
+    string.builder.append_string(term_io.constant_to_string(C), !State).
+
+:- pred build_escaped_string(string::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_escaped_string(S, _, !State) :-
+    % ZZZ format_escaped_string
+    string.builder.append_string(term_io.escaped_string(S), !State).
+
+:- pred build_eval_eval_method(eval_method::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_eval_eval_method(EvalMethod, _, !State) :-
+    string.builder.append_string("eval_", !State),
+    string.builder.append_string(eval_method_to_string(EvalMethod), !State).
+
+:- pred build_lambda_eval_method(lambda_eval_method::in,
+    string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_lambda_eval_method(lambda_normal, _, !State) :-
+    string.builder.append_string("normal", !State).
+
+:- pred build_list(
+    pred(T, string.builder.handle, string.builder.state, string.builder.state)
+        ::in(pred(in, in, di, uo) is det),
+    string::in, list(T)::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_list(_, _, [], _, !State).
+build_list(OutputPred, Sep, [Item | Items], _, !State) :-
+    build_list_lag(OutputPred, Sep, Item, Items, !State).
+
+:- pred build_list_lag(
+    pred(T, string.builder.handle, string.builder.state, string.builder.state)
+        ::in(pred(in, in, di, uo) is det),
+    string::in, T::in, list(T)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_list_lag(OutputPred, Sep, Item1, Items, !State) :-
+    OutputPred(Item1, string.builder.handle, !State),
+    (
+        Items = []
+    ;
+        Items = [Item2 | Items3plus],
+        string.builder.append_string(Sep, !State),
+        build_list_lag(OutputPred, Sep, Item2, Items3plus, !State)
     ).
 
 %---------------------------------------------------------------------------%

@@ -765,6 +765,14 @@ Changes to the Mercury standard library
   to never break a row into more than one line. We have also documented
   this behavior.
 
+### Changes to the `string` module
+
+* The following predicates have been added:
+
+    - pred `append_char/3`
+    - pred `append_string/3`
+    - pred `append_strings/3`
+
 ### Changes to the `term` module
 
 * The following type has had its typeclass memberships changed:
