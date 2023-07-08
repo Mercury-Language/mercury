@@ -2630,7 +2630,7 @@ write_module_scc(Stream, SCC0, !IO) :-
     set.to_sorted_list(SCC0, SCC),
     % XXX This is suboptimal (the stream should be specified once, not twice),
     % but in the absence of a test case, I (zs) am leaving it alone for now.
-    io.write_list(Stream, SCC, "\n", write_sym_name(Stream), !IO).
+    io.write_list(Stream, SCC, "\n", write_escaped_sym_name(Stream), !IO).
 
 %---------------------------------------------------------------------------%
 

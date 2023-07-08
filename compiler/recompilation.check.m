@@ -193,7 +193,7 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
 
 write_not_recompiling_message(ModuleName, Stream, !IO) :-
     io.format(Stream, "Not recompiling module %s.\n",
-        [s(sym_name_to_escaped_string(ModuleName))], !IO).
+        [s(escaped_sym_name_to_string(ModuleName))], !IO).
 
 :- pred write_reasons_message(globals::in, module_name::in,
     list(recompile_reason)::in, io.text_output_stream::in,

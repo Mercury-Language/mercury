@@ -93,7 +93,7 @@
 :- pred mercury_output_quantifier(tvarset::in, var_name_print::in,
     existq_tvars::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_quantifier(tvarset::in, var_name_print::in,
-    existq_tvars::in, S::in, U::di, U::uo) is det <= output(S, U).
+    existq_tvars::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
@@ -109,7 +109,7 @@
 :- pred mercury_output_foreign_language_string(foreign_language::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_foreign_language_string(foreign_language::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 %
@@ -134,7 +134,7 @@
 %
 
 :- pred mercury_format_tabs(int::in, S::in, U::di, U::uo) is det
-    <= output(S, U).
+    <= pt_output(S, U).
 
 :- pred mercury_output_newline(int::in, io.text_output_stream::in,
     io::di, io::uo) is det.

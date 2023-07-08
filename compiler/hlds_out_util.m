@@ -679,14 +679,14 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
     ;
         ConsId = type_ctor_info_const(Module, Name, Arity),
         Str = string.format("type_ctor_info(%s, %s, %d)",
-            [s(sym_name_to_escaped_string(Module)), s(Name), i(Arity)])
+            [s(escaped_sym_name_to_string(Module)), s(Name), i(Arity)])
     ;
         ConsId = base_typeclass_info_const(Module, ClassId, _, Instance),
         ClassId = class_id(Name, Arity),
         ClassIdStr = string.format("class_id(%s, %d)",
-            [s(sym_name_to_escaped_string(Name)), i(Arity)]),
+            [s(escaped_sym_name_to_string(Name)), i(Arity)]),
         Str = string.format("base_typeclass_info(%s, %s, %s)",
-            [s(sym_name_to_escaped_string(Module)),
+            [s(escaped_sym_name_to_string(Module)),
             s(ClassIdStr), s(Instance)])
     ;
         ConsId = type_info_cell_constructor(_),

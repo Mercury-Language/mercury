@@ -53,27 +53,27 @@
 :- pred mercury_output_var(var_table::in, var_name_print::in, prog_var::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_var(var_table::in, var_name_print::in, prog_var::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- func mercury_var_to_string_vs(varset(T), var_name_print, var(T)) = string.
 :- pred mercury_output_var_vs(varset(T)::in, var_name_print::in, var(T)::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_var_vs(varset(T)::in, var_name_print::in, var(T)::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- func mercury_var_to_string_src(var_name_source, var_name_print, prog_var)
     = string.
 :- pred mercury_output_var_src(var_name_source::in, var_name_print::in,
     prog_var::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_var_src(var_name_source::in, var_name_print::in,
-    prog_var::in, S::in, U::di, U::uo) is det <= output(S, U).
+    prog_var::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- func mercury_var_raw_to_string(var_name_print, prog_var, string) = string.
 :- pred mercury_format_var_raw(var_name_print::in, var(T)::in, string::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- pred mercury_format_var_num_only(var(T)::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
     % Output a comma-separated list of variables.
     %
@@ -82,21 +82,21 @@
 :- pred mercury_output_vars(var_table::in, var_name_print::in,
     list(prog_var)::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_vars(var_table::in, var_name_print::in,
-    list(prog_var)::in, S::in, U::di, U::uo) is det <= output(S, U).
+    list(prog_var)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- func mercury_vars_to_string_vs(varset(T), var_name_print, list(var(T)))
     = string.
 :- pred mercury_output_vars_vs(varset(T)::in, var_name_print::in,
     list(var(T))::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_vars_vs(varset(T)::in, var_name_print::in,
-    list(var(T))::in, S::in, U::di, U::uo) is det <= output(S, U).
+    list(var(T))::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- func mercury_vars_to_string_src(var_name_source, var_name_print,
     list(prog_var)) = string.
 :- pred mercury_output_vars_src(var_name_source::in, var_name_print::in,
     list(prog_var)::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_vars_src(var_name_source::in, var_name_print::in,
-    list(prog_var)::in, S::in, U::di, U::uo) is det <= output(S, U).
+    list(prog_var)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
     % Output a variable or a list of variables with print_name_only.
     %
@@ -120,14 +120,14 @@
 :- pred mercury_output_term_vs(varset(T)::in, var_name_print::in, term(T)::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_term_vs(varset(T)::in, var_name_print::in, term(T)::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- func mercury_term_to_string(var_table, var_name_print, prog_term)
     = string.
 :- pred mercury_output_term(var_table::in, var_name_print::in,
     prog_term::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_term(var_table::in, var_name_print::in,
-    prog_term::in, S::in, U::di, U::uo) is det <= output(S, U).
+    prog_term::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- pred mercury_output_term_src(var_name_source::in, var_name_print::in,
     prog_term::in, io.text_output_stream::in, io::di, io::uo) is det.
@@ -138,7 +138,7 @@
     needs_quotes::in, term(T)::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 :- pred mercury_format_term_nq_vs(varset(T)::in, var_name_print::in,
-    needs_quotes::in, term(T)::in, S::in, U::di, U::uo) is det <= output(S, U).
+    needs_quotes::in, term(T)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- func mercury_term_nq_to_string(var_table, var_name_print,
     needs_quotes, prog_term) = string.
@@ -147,7 +147,7 @@
     io::di, io::uo) is det.
 :- pred mercury_format_term_nq(var_table::in, var_name_print::in,
     needs_quotes::in, prog_term::in, S::in, U::di, U::uo) is det
-    <= output(S, U).
+    <= pt_output(S, U).
 
 :- func mercury_term_nq_to_string_src(var_name_source, var_name_print,
     needs_quotes, prog_term) = string.
@@ -157,10 +157,10 @@
 
 :- pred mercury_format_comma_separated_terms_vs(varset(T)::in,
     var_name_print::in, term(T)::in, list(term(T))::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 :- pred mercury_format_comma_separated_terms(var_table::in,
     var_name_print::in, prog_term::in, list(prog_term)::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- func mercury_limited_term_to_string_vs(varset(T), var_name_print, int,
     term(T)) = string.
@@ -177,10 +177,10 @@
 
 :- func mercury_bracketed_atom_to_string(needs_quotes, string) = string.
 :- pred mercury_format_bracketed_atom(needs_quotes::in, string::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 :- pred mercury_format_quoted_atom(needs_quotes::in, string::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
@@ -569,7 +569,7 @@ mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
 
 :- pred mercury_format_plain_functor_args_nq_vs(varset(T)::in,
     var_name_print::in, needs_quotes::in, const::in, list(term(T))::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_plain_functor_args_nq_vs(VarSet, VarNamePrint,
         NextToGraphicToken, Functor, Args, S, !U) :-
@@ -711,7 +711,7 @@ mercury_format_term_nq(VarTable, VarNamePrint, NextToGraphicToken, Term,
 
 :- pred mercury_format_plain_functor_args_nq(var_table::in,
     var_name_print::in, needs_quotes::in, const::in, list(prog_term)::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_plain_functor_args_nq(VarTable, VarNamePrint,
         NextToGraphicToken, Functor, Args, S, !U) :-
@@ -731,7 +731,7 @@ mercury_format_plain_functor_args_nq(VarTable, VarNamePrint,
 %---------------------%
 
 :- pred mercury_format_list_args_vs(varset(T)::in, var_name_print::in,
-    term(T)::in, S::in, U::di, U::uo) is det <= output(S, U).
+    term(T)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_list_args_vs(VarSet, VarNamePrint, Term, S, !U) :-
     % Please keep in sync with mercury_format_list_args_src.
@@ -752,7 +752,7 @@ mercury_format_list_args_vs(VarSet, VarNamePrint, Term, S, !U) :-
     ).
 
 :- pred mercury_format_list_args(var_table::in, var_name_print::in,
-    prog_term::in, S::in, U::di, U::uo) is det <= output(S, U).
+    prog_term::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_list_args(VarTable, VarNamePrint, Term, S, !U) :-
     % Please keep in sync with mercury_format_list_args.
@@ -811,7 +811,7 @@ mercury_format_comma_separated_terms(VarTable, VarNamePrint,
     mercury_format_remaining_terms(VarTable, VarNamePrint, TailTerms, S, !U).
 
 :- pred mercury_format_remaining_terms_vs(varset(T)::in, var_name_print::in,
-    list(term(T))::in, S::in, U::di, U::uo) is det <= output(S, U).
+    list(term(T))::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_remaining_terms_vs(_VarSet, _VarNamePrint, [], _S, !U).
 mercury_format_remaining_terms_vs(VarSet, VarNamePrint, [Term | Terms],
@@ -821,7 +821,7 @@ mercury_format_remaining_terms_vs(VarSet, VarNamePrint, [Term | Terms],
     mercury_format_remaining_terms_vs(VarSet, VarNamePrint, Terms, S, !U).
 
 :- pred mercury_format_remaining_terms(var_table::in, var_name_print::in,
-    list(prog_term)::in, S::in, U::di, U::uo) is det <= output(S, U).
+    list(prog_term)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_remaining_terms(_VarTable, _VarNamePrint, [], _S, !U).
 mercury_format_remaining_terms(VarTable, VarNamePrint, [Term | Terms],
@@ -833,7 +833,7 @@ mercury_format_remaining_terms(VarTable, VarNamePrint, [Term | Terms],
 %---------------------------------------------------------------------------%
 
 :- pred mercury_format_bracketed_constant_ngt(needs_quotes::in, const::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_bracketed_constant_ngt(NextToGraphicToken, Const, S, !U) :-
     ( if
@@ -848,7 +848,7 @@ mercury_format_bracketed_constant_ngt(NextToGraphicToken, Const, S, !U) :-
     ).
 
 :- pred mercury_format_constant(needs_quotes::in, const::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_constant(NextToGraphicToken, Const, S, !U) :-
     ( if Const = term.atom(Atom) then

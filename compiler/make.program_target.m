@@ -2098,7 +2098,7 @@ make_grade_clean(Globals, ModuleName, AllModules, !Info, !IO) :-
     grade_directory_component(Globals, Grade),
     % XXX MAKE_EXTRA_PERIOD
     string.format("Cleaning up grade-dependent files for `%s' in grade %s.",
-        [s(sym_name_to_escaped_string(ModuleName)), s(Grade)], Part1),
+        [s(escaped_sym_name_to_string(ModuleName)), s(Grade)], Part1),
     verbose_make_one_part_msg(Globals, Part1, CleaningMsg),
     % XXX MAKE_STREAM
     maybe_write_msg(CleaningMsg, !IO),
@@ -2112,7 +2112,7 @@ make_grade_clean(Globals, ModuleName, AllModules, !Info, !IO) :-
 make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
     % XXX MAKE_EXTRA_PERIOD
     string.format("Removing executable and library files for `%s'.",
-        [s(sym_name_to_escaped_string(ModuleName))], Part1),
+        [s(escaped_sym_name_to_string(ModuleName))], Part1),
     verbose_make_one_part_msg(Globals, Part1, CleaningMsg),
     % XXX MAKE_STREAM
     maybe_write_msg(CleaningMsg, !IO),
@@ -2162,7 +2162,7 @@ remove_init_files(Globals, Verbose, ModuleName, !Info, !IO) :-
 make_module_clean(Globals, ModuleName, !Info, !IO) :-
     % XXX MAKE_EXTRA_PERIOD
     string.format("Cleaning up target files for module `%s'.",
-        [s(sym_name_to_escaped_string(ModuleName))], Part1),
+        [s(escaped_sym_name_to_string(ModuleName))], Part1),
     verbose_make_one_part_msg(Globals, Part1, CleaningMsg),
     % XXX MAKE_STREAM
     maybe_write_msg(CleaningMsg, !IO),
@@ -2246,7 +2246,7 @@ make_module_realclean(Globals, ModuleName, !Info, !IO) :-
     make_module_clean(Globals, ModuleName, !Info, !IO),
 
     string.format("Cleaning up interface files for module `%s'",
-        [s(sym_name_to_escaped_string(ModuleName))], Part1),
+        [s(escaped_sym_name_to_string(ModuleName))], Part1),
     verbose_make_one_part_msg(Globals, Part1, CleaningMsg),
     % XXX MAKE_STREAM
     maybe_write_msg(CleaningMsg, !IO),

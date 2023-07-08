@@ -150,7 +150,7 @@
 :- pred mercury_output_item_mode_decl(merc_out_info::in,
     io.text_output_stream::in, item_mode_decl_info::in, io::di, io::uo) is det.
 :- pred mercury_format_item_foreign_enum(merc_out_info::in, S::in,
-    item_foreign_enum_info::in, U::di, U::uo) is det <= output(S, U).
+    item_foreign_enum_info::in, U::di, U::uo) is det <= pt_output(S, U).
 :- pred mercury_output_item_typeclass(merc_out_info::in,
     io.text_output_stream::in, item_typeclass_info::in, io::di, io::uo) is det.
 
@@ -166,7 +166,7 @@
     item_abstract_instance_info) = string.
 :- pred mercury_format_item_abstract_instance(merc_out_info::in,
     S::in, item_abstract_instance_info::in, U::di, U::uo) is det
-    <= output(S, U).
+    <= pt_output(S, U).
 
 :- pred mercury_output_instance_method(instance_method::in,
     io.text_output_stream::in, io::di, io::uo) is det.
@@ -1708,7 +1708,7 @@ mercury_output_item_mode_defn(Info, Stream, ItemModeDefn, !IO) :-
     %
 :- pred mercury_format_mode_defn(output_lang::in, inst_varset::in,
     prog_context::in, sym_name::in, list(inst_var)::in,
-    maybe_abstract_mode_defn::in, S::in, U::di, U::uo) is det <= output(S, U).
+    maybe_abstract_mode_defn::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_mode_defn(Lang, InstVarSet, Context, Name, Args,
         MaybeAbstractModeDefn, S, !U) :-
@@ -1728,7 +1728,7 @@ mercury_format_mode_defn(Lang, InstVarSet, Context, Name, Args,
 
 :- pred mercury_format_mode_defn_head(inst_varset::in, prog_context::in,
     sym_name::in, list(inst_var)::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_mode_defn_head(InstVarSet, Context, Name, Args, S, !U) :-
     ArgTerms = list.map(func(V) = variable(V, Context), Args),
@@ -1835,7 +1835,7 @@ mercury_format_item_foreign_enum(_Info, S, ItemForeignEnum, !U) :-
     %
 :- pred mercury_format_unqual_sym_name_string_assoc_list(
     assoc_list(sym_name, string)::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_unqual_sym_name_string_assoc_list(AssocList, S, !U) :-
     add_char('[', S, !U),
@@ -1844,7 +1844,7 @@ mercury_format_unqual_sym_name_string_assoc_list(AssocList, S, !U) :-
     add_char(']', S, !U).
 
 :- pred mercury_format_unqual_sym_name_string_pair(
-    pair(sym_name, string)::in, S::in, U::di, U::uo) is det <= output(S, U).
+    pair(sym_name, string)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_unqual_sym_name_string_pair(SymName0 - String, S, !U) :-
     Name = unqualify_name(SymName0),
@@ -1858,7 +1858,7 @@ mercury_format_unqual_sym_name_string_pair(SymName0 - String, S, !U) :-
 
 :- pred mercury_format_item_foreign_export_enum(merc_out_info::in,
     S::in, item_foreign_export_enum_info::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_item_foreign_export_enum(_Info, S, ItemForeignExportEnum, !U) :-
     ItemForeignExportEnum = item_foreign_export_enum_info(Lang, TypeCtor,
@@ -1878,7 +1878,7 @@ mercury_format_item_foreign_export_enum(_Info, S, ItemForeignExportEnum, !U) :-
     add_string(").\n", S, !U).
 
 :- pred mercury_format_foreign_export_enum_attributes(
-    export_enum_attributes::in, S::in, U::di, U::uo) is det <= output(S, U).
+    export_enum_attributes::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_foreign_export_enum_attributes(Attributes, S, !U) :-
     MaybePrefix = Attributes ^ ee_attr_prefix,
@@ -1898,7 +1898,7 @@ mercury_format_foreign_export_enum_attributes(Attributes, S, !U) :-
     %
 :- pred mercury_format_sym_name_string_assoc_list(
     assoc_list(sym_name, string)::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_sym_name_string_assoc_list(AssocList, S, !U) :-
     add_char('[', S, !U),
@@ -1906,7 +1906,7 @@ mercury_format_sym_name_string_assoc_list(AssocList, S, !U) :-
     add_char(']', S, !U).
 
 :- pred mercury_format_sym_name_string_pair(
-    pair(sym_name, string)::in, S::in, U::di, U::uo) is det <= output(S, U).
+    pair(sym_name, string)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_sym_name_string_pair(SymName - String, S, !U) :-
     mercury_format_bracketed_sym_name_ngt(next_to_graphic_token, SymName,
@@ -1977,7 +1977,7 @@ mercury_output_item_typeclass(Info, Stream, ItemTypeClass, !IO) :-
 
 :- pred mercury_format_fundeps_and_prog_constraint_list(tvarset::in,
     var_name_print::in, list(prog_fundep)::in, list(prog_constraint)::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_fundeps_and_prog_constraint_list(VarSet, VarNamePrint,
         FunDeps, Constraints, S, !U) :-
@@ -2007,7 +2007,7 @@ mercury_format_fundeps_and_prog_constraint_list(VarSet, VarNamePrint,
     ).
 
 :- pred mercury_format_fundep(tvarset::in, var_name_print::in, prog_fundep::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_fundep(TypeVarSet, VarNamePrint, fundep(Domain, Range),
         S, !U) :-

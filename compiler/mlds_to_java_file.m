@@ -385,7 +385,7 @@ output_src_start_for_java(Info, Stream, MercuryModuleName, Imports,
         ForeignDecls, FuncDefns, Errors, !IO) :-
     output_auto_gen_comment(Stream, Info ^ joi_source_filename, !IO),
     io.format(Stream, "// :- module %s.\n\n",
-        [s(sym_name_to_escaped_string(MercuryModuleName))], !IO),
+        [s(escaped_sym_name_to_string(MercuryModuleName))], !IO),
     io.write_string(Stream, "package jmercury;\n", !IO),
 
     maybe_output_import_comments_for_java(Info, Stream, Imports, !IO),
@@ -454,7 +454,7 @@ output_src_end_for_java(Info, Stream, ModuleName, !IO) :-
     (
         AutoComments = yes,
         io.format(Stream, "// :- end_module %s.\n",
-            [s(sym_name_to_escaped_string(ModuleName))], !IO)
+            [s(escaped_sym_name_to_string(ModuleName))], !IO)
     ;
         AutoComments = no
     ).

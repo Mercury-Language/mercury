@@ -33,7 +33,7 @@
 :- pred mercury_output_type(tvarset::in, var_name_print::in, mer_type::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_type(tvarset::in, var_name_print::in, mer_type::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
@@ -42,13 +42,13 @@
 :- pred mercury_output_constraint(tvarset::in, var_name_print::in,
     prog_constraint::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_constraint(tvarset::in, var_name_print::in,
-    prog_constraint::in, S::in, U::di, U::uo) is det <= output(S, U).
+    prog_constraint::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- func mercury_prog_constraint_list_to_string(tvarset, var_name_print,
     string, list(prog_constraint)) = string.
 :- pred mercury_format_prog_constraint_list(tvarset::in, var_name_print::in,
     string::in, list(prog_constraint)::in, S::in, U::di, U::uo) is det
-    <= output(S, U).
+    <= pt_output(S, U).
 
 :- type maybe_exist_constraints
     --->    no_exist_constraints
@@ -64,7 +64,7 @@
     io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_class_context(tvarset::in, var_name_print::in,
     list(prog_constraint)::in, maybe_exist_constraints::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 

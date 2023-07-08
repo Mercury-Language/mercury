@@ -45,7 +45,7 @@
 :- pred mercury_output_cons_id(output_lang::in, needs_brackets::in,
     cons_id::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_cons_id(output_lang::in, needs_brackets::in,
-    cons_id::in, S::in, U::di, U::uo) is det <= output(S, U).
+    cons_id::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 

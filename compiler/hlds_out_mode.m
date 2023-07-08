@@ -147,7 +147,7 @@ mercury_structured_inst_list_to_string(Lang, InstVarSet, InclAddr, Indent,
 
 :- pred mercury_format_structured_inst_list(output_lang::in,
     inst_varset::in, incl_addr::in, int::in, list(mer_inst)::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_structured_inst_list(_, _, _, _, [], _, !U).
 mercury_format_structured_inst_list(Lang, InstVarSet, InclAddr, Indent,
@@ -178,7 +178,7 @@ mercury_structured_inst_to_string(Lang, InstVarSet, InclAddr, Indent, Inst)
 
 :- pred mercury_format_structured_inst(output_lang::in, inst_varset::in,
     incl_addr::in, int::in, string::in, mer_inst::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_structured_inst(Lang, InstVarSet, InclAddr, Indent,
         Suffix, Inst, S, !U) :-
@@ -282,7 +282,7 @@ mercury_format_structured_inst(Lang, InstVarSet, InclAddr, Indent,
 
 :- pred mercury_format_structured_bound_insts(output_lang::in,
     inst_varset::in, incl_addr::in, int::in, list(bound_inst)::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_structured_bound_insts(_, _, _, _, [], _, !U).
 mercury_format_structured_bound_insts(Lang, InstVarSet, InclAddr, Indent0,
@@ -340,7 +340,7 @@ mercury_structured_unify_mode_list_to_string(Lang, InstVarSet, InclAddr,
 
 :- pred mercury_format_structured_unify_mode_list(output_lang::in,
     inst_varset::in, incl_addr::in, int::in, int::in, list(unify_mode)::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_structured_unify_mode_list(_, _, _, _, _, [], _, !U).
 mercury_format_structured_unify_mode_list(Lang, InstVarSet, InclAddr, Indent,
@@ -368,7 +368,7 @@ mercury_structured_unify_mode_to_string(Lang, InstVarSet, InclAddr,
 
 :- pred mercury_format_structured_unify_mode(output_lang::in, inst_varset::in,
     incl_addr::in, int::in, unify_mode::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_structured_unify_mode(Lang, InstVarSet, InclAddr, Indent,
         UnifyMode, S, !U) :-
@@ -423,7 +423,7 @@ mercury_format_structured_unify_mode(Lang, InstVarSet, InclAddr, Indent,
 
 :- pred mercury_format_structured_inst_name(output_lang::in, inst_varset::in,
     incl_addr::in, int::in, bool::in, string::in, inst_name::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr, Indent,
         FirstIndentPrinted, Suffix, InstName, S, !U) :-
@@ -538,7 +538,7 @@ mercury_unify_mode_list_to_string(InstVarSet, UnifyModes) = String :-
     mercury_format_unify_mode_list(InstVarSet, UnifyModes, unit, "", String).
 
 :- pred mercury_format_unify_mode_list(inst_varset::in, list(unify_mode)::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_unify_mode_list(_InstVarSet, [], _S, !U).
 mercury_format_unify_mode_list(InstVarSet, [Mode | Modes], S, !U) :-
@@ -558,7 +558,7 @@ mercury_unify_mode_to_string(InstVarSet, UnifyMode) = String :-
     mercury_format_unify_mode(InstVarSet, UnifyMode, unit, "", String).
 
 :- pred mercury_format_unify_mode(inst_varset::in, unify_mode::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_unify_mode(InstVarSet, UnifyMode, S, !U) :-
     UnifyMode = unify_modes_li_lf_ri_rf(LHSInit, LHSFinal, RHSInit, RHSFinal),

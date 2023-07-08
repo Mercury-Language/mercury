@@ -267,7 +267,7 @@ write_header(Stream, Module, !IO) :-
     module_info_get_name(Module, ModuleName),
     io.write_string(Stream, "% vim: ts=2 sw=2 ft=mercury\n\n", !IO),
     io.format(Stream, ":- module %s.\n\n",
-        [s(sym_name_to_escaped_string(ModuleName))], !IO).
+        [s(escaped_sym_name_to_string(ModuleName))], !IO).
 
 :- pred write_footer(io.text_output_stream::in, module_info::in,
     io::di, io::uo) is det.
@@ -275,7 +275,7 @@ write_header(Stream, Module, !IO) :-
 write_footer(Stream, Module, !IO) :-
     module_info_get_name(Module, ModuleName),
     io.format(Stream, ":- end_module %s.\n",
-        [s(sym_name_to_escaped_string(ModuleName))], !IO).
+        [s(escaped_sym_name_to_string(ModuleName))], !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -295,7 +295,7 @@ write_avail_entry(Stream, ModuleName, Entry, !IO) :-
         ImportOrUseDecl = "use_module"
     ),
     io.format(Stream, ":- %s %s.\n",
-        [s(ImportOrUseDecl), s(sym_name_to_escaped_string(ModuleName))], !IO),
+        [s(ImportOrUseDecl), s(escaped_sym_name_to_string(ModuleName))], !IO),
     io.write_string(Stream, "% ", !IO),
     io.write(Stream, Section, !IO),
     io.write_string(Stream, ", ", !IO),

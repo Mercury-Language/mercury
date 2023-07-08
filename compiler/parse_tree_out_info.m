@@ -26,11 +26,11 @@
 %       io::di, io::uo) is det.
 %   :- func mercury_xyz_to_string(...) = string.
 %   :- pred mercury_format_xyz(..., S::in, U::di, U::uo) is det
-%       <= output(S, U).
+%       <= pt_output(S, U).
 %
 % In most cases, the first two simply forward all the work to the third.
 % This is possible because the tuples (io.text_output_stream, io.state)
-% and (unit, string) are members of the output(S, U) typeclass.
+% and (unit, string) are members of the pt_output(S, U) typeclass.
 %
 % For the mercury_output_xyz versions, going through a typeclass interface is
 % (for now) a slight slowdown, but the time cost is still small compared to
@@ -65,6 +65,9 @@
 :- import_module char.
 :- import_module io.
 :- import_module list.
+:- import_module stream.
+:- import_module string.
+:- import_module string.builder.
 :- import_module term.
 :- import_module unit.
 
@@ -130,7 +133,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- typeclass output(S, U) <= (U -> S) where [
+:- typeclass pt_output(S, U) <= ((U -> S), stream.writer(S, string, U)) where
+[
     pred add_char(char::in, S::in, U::di, U::uo) is det,
 
     pred add_string(string::in, S::in, U::di, U::uo) is det,
@@ -166,8 +170,15 @@
         string::in, list(T)::in, S::in, U::di, U::uo) is det
 ].
 
-:- instance output(io.text_output_stream, io.state).
-:- instance output(unit, string).
+:- instance pt_output(io.text_output_stream, io.state).
+:- instance pt_output(unit, string).
+:- instance pt_output(string.builder.handle, string.builder.state).
+
+% XXX We should think about whether these instances should *need* to be
+% exported.
+:- instance stream.stream(unit, string).
+:- instance stream.output(unit, string).
+:- instance stream.writer(unit, string, string).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -178,8 +189,6 @@
 :- import_module parse_tree.parse_tree_out_misc.
 
 :- import_module bool.
-:- import_module string.
-:- import_module string.builder.
 :- import_module term_io.
 
 %---------------------------------------------------------------------------%
@@ -254,7 +263,8 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
 
 %---------------------------------------------------------------------------%
 
-:- instance output(io.text_output_stream, io.state) where [
+:- instance pt_output(io.text_output_stream, io.state) where
+[
     pred(add_char/4) is write_char_literal,
 
     pred(add_string/4) is write_string,
@@ -285,7 +295,8 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_list/6) is write_out_list
 ].
 
-:- instance output(unit, string) where [
+:- instance pt_output(unit, string) where
+[
     pred(add_char/4) is output_char,
 
     pred(add_string/4) is output_string,
@@ -316,7 +327,8 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_list/6) is output_list
 ].
 
-:- instance output(string.builder.handle, string.builder.state) where [
+:- instance pt_output(string.builder.handle, string.builder.state) where
+[
     pred(add_char/4) is build_char,
 
     pred(add_string/4) is build_string,
@@ -345,6 +357,33 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_lambda_eval_method/4) is build_lambda_eval_method,
 
     pred(add_list/6) is build_list
+].
+
+%---------------------%
+
+% These instances are needed to satisfy the superclass constraint
+% on pt_output(S, U) for the pt_output(unit, string) instance.
+%
+% For the pt_output(io.text_output_stream, io.state) and
+% pt_output(string.builder.handle, string.builder.state) instances,
+% the superclass constraint is satisfied by similar instances in
+% library/io.m and library/string.builder.m respectively.
+
+:- instance stream.stream(unit, string) where
+[
+    name(_, "<<string append stream>>", !String)
+].
+
+:- instance stream.output(unit, string) where
+[
+    flush(_, !String)
+].
+
+:- instance stream.writer(unit, string, string) where
+[
+    ( put(_, Str, String0, String) :-
+        String = String0 ++ Str
+    )
 ].
 
 %---------------------------------------------------------------------------%

@@ -223,7 +223,7 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
                     ArgName = "no arg name"
                 ),
                 io.format(Stream, "%s%% KIND notag: %s, %s, %s\n",
-                    [s(IndentStr), s(sym_name_to_escaped_string(FunctorName)),
+                    [s(IndentStr), s(escaped_sym_name_to_string(FunctorName)),
                     s(ArgTypeStr), s(ArgName)], !IO)
             ;
                 DuTypeKind = du_type_kind_general,

@@ -39,7 +39,7 @@
     sym_name::in, list(type_and_mode)::in,
     maybe(mer_type)::in, maybe(mer_inst)::in, maybe(determinism)::in,
     purity::in, prog_constraints::in, string::in, string::in, string::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
     % XXX Document me.
     %
@@ -47,7 +47,7 @@
     tvarset::in, inst_varset::in, existq_tvars::in,
     sym_name::in, list(type_and_mode)::in, type_and_mode::in,
     maybe(determinism)::in, purity::in, prog_constraints::in, string::in,
-    string::in, string::in, S::in, U::di, U::uo) is det <= output(S, U).
+    string::in, string::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
@@ -84,7 +84,7 @@
 :- pred mercury_format_pred_or_func_mode_decl(output_lang::in,
     inst_varset::in, sym_name::in, list(mer_mode)::in, maybe(mer_inst)::in,
     maybe(determinism)::in, string::in, string::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
     % XXX Document me.
     %
@@ -96,7 +96,7 @@
     io::di, io::uo) is det.
 :- pred mercury_format_func_mode_decl(output_lang::in, inst_varset::in,
     sym_name::in, list(mer_mode)::in, mer_mode::in, maybe(determinism)::in,
-    string::in, string::in, S::in, U::di, U::uo) is det <= output(S, U).
+    string::in, string::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
     % XXX Document me.
     %
@@ -197,7 +197,7 @@ mercury_output_pred_type(Stream, TypeVarSet, VarNamePrint, ExistQVars,
 :- pred mercury_format_pred_type(tvarset::in, var_name_print::in,
     existq_tvars::in, sym_name::in, list(mer_type)::in, maybe(mer_type)::in,
     maybe(determinism)::in, purity::in, prog_constraints::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pred_type(TypeVarSet, VarNamePrint, ExistQVars, PredName,
         Types, WithType, MaybeDet, Purity, ClassContext, S, !U) :-
@@ -222,7 +222,7 @@ mercury_output_func_type(Stream, VarSet, ExistQVars, FuncName,
 :- pred mercury_format_func_type(tvarset::in, var_name_print::in,
     existq_tvars::in, sym_name::in, list(mer_type)::in, mer_type::in,
     maybe(determinism)::in, purity::in, prog_constraints::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_func_type(TypeVarSet, VarNamePrint, ExistQVars, FuncName,
         ArgTypes, RetType, MaybeDet, Purity, ClassContext, S, !U) :-
@@ -242,7 +242,7 @@ mercury_format_func_type(TypeVarSet, VarNamePrint, ExistQVars, FuncName,
     pred_or_func::in, existq_tvars::in, sym_name::in, list(mer_type)::in,
     maybe(mer_type)::in, maybe(determinism)::in, purity::in,
     prog_constraints::in, string::in, string::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint, PredOrFunc,
         ExistQVars, PredName, Types, MaybeWithType, MaybeDet, Purity,
@@ -312,7 +312,7 @@ mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint, PredOrFunc,
 :- pred mercury_format_func_type_2(tvarset::in, var_name_print::in,
     existq_tvars::in, sym_name::in, list(mer_type)::in, mer_type::in,
     maybe(determinism)::in, purity::in, prog_constraints::in,
-    string::in, string::in, S::in, U::di, U::uo) is det <= output(S, U).
+    string::in, string::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_func_type_2(VarSet, VarNamePrint, ExistQVars, FuncName, Types,
         RetType, MaybeDet, Purity, Constraints, StartString, Separator,
@@ -404,7 +404,7 @@ mercury_output_mode_subdecl(Stream, Lang, PredOrFunc, InstVarSet, Name, Modes,
 
 :- pred mercury_format_mode_subdecl(output_lang::in, pred_or_func::in,
     inst_varset::in, sym_name::in, list(mer_mode)::in, maybe(determinism)::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_mode_subdecl(Lang, PredOrFunc, InstVarSet, Name, Modes,
         MaybeDet, S, !U) :-
@@ -433,7 +433,7 @@ mercury_output_pred_mode_subdecl(Stream, Lang, VarSet, PredName, Modes,
 
 :- pred mercury_format_pred_or_func_mode_subdecl(output_lang::in,
     inst_varset::in, sym_name::in, list(mer_mode)::in, maybe(mer_inst)::in,
-    maybe(determinism)::in, S::in, U::di, U::uo) is det <= output(S, U).
+    maybe(determinism)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pred_or_func_mode_subdecl(Lang, InstVarSet, PredName, Modes,
         MaybeWithInst, MaybeDet, S, !U) :-
@@ -471,7 +471,7 @@ mercury_output_func_mode_subdecl(Stream, Lang, VarSet, FuncName,
 
 :- pred mercury_format_func_mode_subdecl(output_lang::in, inst_varset::in,
     sym_name::in, list(mer_mode)::in, mer_mode::in, maybe(determinism)::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_func_mode_subdecl(Lang, InstVarSet, FuncName, Modes, RetMode,
         MaybeDet, S, !U) :-
@@ -492,7 +492,7 @@ mercury_format_func_mode_subdecl(Lang, InstVarSet, FuncName, Modes, RetMode,
 %---------------------------------------------------------------------------%
 
 :- pred mercury_format_det_annotation(maybe(determinism)::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_det_annotation(MaybeDet, S, !U) :-
     (

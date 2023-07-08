@@ -1060,13 +1060,13 @@ maybe_write_importing_module(ModuleName, yes(ImportOrInclude), !IO) :-
     (
         ImportOrInclude = ioi_import(ImportingModuleName),
         io.format("** Module `%s' is imported by module `%s'.\n",
-            [s(sym_name_to_escaped_string(ModuleName)),
-            s(sym_name_to_escaped_string(ImportingModuleName))], !IO)
+            [s(escaped_sym_name_to_string(ModuleName)),
+            s(escaped_sym_name_to_string(ImportingModuleName))], !IO)
     ;
         ImportOrInclude = ioi_include(IncludingModuleName),
         io.format("** Module `%s' is included by module `%s'.\n",
-            [s(sym_name_to_escaped_string(ModuleName)),
-            s(sym_name_to_escaped_string(IncludingModuleName))], !IO)
+            [s(escaped_sym_name_to_string(ModuleName)),
+            s(escaped_sym_name_to_string(IncludingModuleName))], !IO)
     ).
 
 %---------------------------------------------------------------------------%

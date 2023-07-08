@@ -299,7 +299,7 @@ write_source_file_map_2(Globals, MapStream, FileName,
             true
         else
             io.format(MapStream, "%s\t%s\n",
-                [s(sym_name_to_escaped_string(ModuleName)), s(FileName)], !IO)
+                [s(escaped_sym_name_to_string(ModuleName)), s(FileName)], !IO)
         )
     ;
         MaybeModuleName = no,

@@ -3037,12 +3037,12 @@ output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, Indent,
             [i(DeclaredArgNo), s(Name), i(PredFormArityInt)], !IO)
     else if ConsId = type_ctor_info_const(TypeModule, TypeName, TypeArity) then
         io.format(OutputStream, "type_ctor_info for `%s'/%d",
-            [s(sym_name_to_escaped_string(qualified(TypeModule, TypeName))),
+            [s(escaped_sym_name_to_string(qualified(TypeModule, TypeName))),
             i(TypeArity)], !IO)
     else if ConsId = base_typeclass_info_const(_, ClassId, _, _) then
         ClassId = class_id(ClassSymName, ClassArity),
         io.format(OutputStream, "base_typeclass_info for `%s'/%d",
-            [s(sym_name_to_escaped_string(ClassSymName)), i(ClassArity)], !IO)
+            [s(escaped_sym_name_to_string(ClassSymName)), i(ClassArity)], !IO)
     else
         % XXX output the type.
         io.write_string(OutputStream, "type_info/typeclass_info", !IO)

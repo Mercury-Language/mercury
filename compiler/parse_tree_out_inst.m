@@ -40,44 +40,44 @@
 :- pred mercury_output_inst(io.text_output_stream::in, output_lang::in,
     inst_varset::in, mer_inst::in, io::di, io::uo) is det.
 :- pred mercury_format_inst(output_lang::in, inst_varset::in, mer_inst::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
 :- pred mercury_format_inst_name(output_lang::in, inst_varset::in,
-    inst_name::in, S::in, U::di, U::uo) is det <= output(S, U).
+    inst_name::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
 :- pred mercury_format_constrained_inst_vars(output_lang::in, inst_varset::in,
     set(inst_var)::in, mer_inst::in, S::in, U::di, U::uo) is det
-    <= output(S, U).
+    <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
 :- pred mercury_format_ground_pred_inst_info(output_lang::in, inst_varset::in,
     uniqueness::in, pred_inst_info::in, S::in, U::di, U::uo) is det
-    <= output(S, U).
+    <= pt_output(S, U).
 
 :- pred mercury_format_any_pred_inst_info(output_lang::in, inst_varset::in,
     uniqueness::in, pred_inst_info::in, S::in, U::di, U::uo) is det
-    <= output(S, U).
+    <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
 :- pred mercury_format_is_live_comma(is_live::in, S::in, U::di, U::uo)
-    is det <= output(S, U).
+    is det <= pt_output(S, U).
 
 :- pred mercury_format_real_comma(unify_is_real::in, S::in, U::di, U::uo)
-    is det <= output(S, U).
+    is det <= pt_output(S, U).
 
 :- func mercury_uniqueness_to_string(uniqueness, string) = string.
 :- pred mercury_format_uniqueness(uniqueness::in, string::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- func mercury_any_uniqueness_to_string(uniqueness) = string.
 :- pred mercury_format_any_uniqueness(uniqueness::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
@@ -86,13 +86,13 @@
 :- pred mercury_output_mode_list(io.text_output_stream::in, output_lang::in,
     inst_varset::in, list(mer_mode)::in, io::di, io::uo) is det.
 :- pred mercury_format_mode_list(output_lang::in, inst_varset::in,
-    list(mer_mode)::in, S::in, U::di, U::uo) is det <= output(S, U).
+    list(mer_mode)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- func mercury_mode_to_string(output_lang, inst_varset, mer_mode) = string.
 :- pred mercury_output_mode(io.text_output_stream::in, output_lang::in,
     inst_varset::in, mer_mode::in, io::di, io::uo) is det.
 :- pred mercury_format_mode(output_lang::in, inst_varset::in, mer_mode::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -123,7 +123,7 @@ mercury_output_inst_list(Stream, Lang, InstVarSet, Insts, !IO) :-
     mercury_format_inst_list(Lang, InstVarSet, Insts, Stream, !IO).
 
 :- pred mercury_format_inst_list(output_lang::in, inst_varset::in,
-    list(mer_inst)::in, S::in, U::di, U::uo) is det <= output(S, U).
+    list(mer_inst)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_inst_list(_, _, [], _S, !U).
 mercury_format_inst_list(Lang, InstVarSet, [Inst | Insts], S, !U) :-
@@ -197,7 +197,7 @@ mercury_format_inst(Lang, InstVarSet, Inst, S, !U) :-
     ).
 
 :- pred mercury_format_bound_insts(output_lang::in,  inst_varset::in,
-    list(bound_inst)::in, S::in, U::di, U::uo) is det <= output(S, U).
+    list(bound_inst)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_bound_insts(_, _, [], _S, !U).
 mercury_format_bound_insts(Lang, InstVarSet, [BoundInst | BoundInsts],
@@ -471,7 +471,7 @@ mercury_format_any_pred_inst_info(Lang, InstVarSet, Uniq, PredInstInfo,
     ).
 
 :- pred mercury_format_arg_reg_list(list(ho_arg_reg)::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_arg_reg_list([], _S, !U).
 mercury_format_arg_reg_list([Reg | Regs], S, !U) :-
@@ -511,7 +511,7 @@ mercury_format_real_comma(Real, S, !U) :-
     ).
 
 :- pred mercury_format_comma_real(unify_is_real::in, S::in, U::di, U::uo)
-    is det <= output(S, U).
+    is det <= pt_output(S, U).
 
 mercury_format_comma_real(Real, S, !U) :-
     (
@@ -631,7 +631,7 @@ mercury_format_mode(Lang, InstVarSet, Mode0, S, !U) :-
     ).
 
 :- pred mercury_format_from_to_mode(output_lang::in, inst_varset::in,
-    mer_inst::in, mer_inst::in, S::in, U::di, U::uo) is det <= output(S, U).
+    mer_inst::in, mer_inst::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_from_to_mode(Lang, InstVarSet, FromInst, ToInst, S, !U) :-
     add_string("(", S, !U),
@@ -642,7 +642,7 @@ mercury_format_from_to_mode(Lang, InstVarSet, FromInst, ToInst, S, !U) :-
 
 :- pred mercury_format_user_defined_mode(output_lang::in, inst_varset::in,
     sym_name::in, list(mer_inst)::in, S::in, U::di, U::uo) is det
-    <= output(S, U).
+    <= pt_output(S, U).
 
 mercury_format_user_defined_mode(Lang, InstVarSet, SymName, ArgInsts, S, !U) :-
     % When generating output for a human, we

@@ -311,7 +311,7 @@ mercury_output_item_pred_marker(Stream, PredMarker, !IO) :-
 
 :- pred mercury_format_pragma_decl_pred_or_proc_pfumm_name(string::in,
     pred_or_proc_pfumm_name::in, string::in, S::in, U::di, U::uo)
-    is det <= output(S, U).
+    is det <= pt_output(S, U).
 
 mercury_format_pragma_decl_pred_or_proc_pfumm_name(PragmaName,
         PredOrProcSpec, AfterStr, S, !U) :-
@@ -338,7 +338,7 @@ mercury_pragma_decl_pred_pf_name_arity_to_string(PragmaName, PredSpec,
 
 :- pred mercury_format_pragma_decl_pred_pf_name_arity(string::in,
     pred_pf_name_arity::in, string::in, S::in, U::di, U::uo) is det
-    <= output(S, U).
+    <= pt_output(S, U).
 
 mercury_format_pragma_decl_pred_pf_name_arity(PragmaName, PredSpec0,
         AfterStr, S, !U) :-
@@ -354,7 +354,7 @@ mercury_format_pragma_decl_pred_pf_name_arity(PragmaName, PredSpec0,
 
 :- pred mercury_format_pragma_decl_pred_pfu_name_arity(string::in,
     pred_pfu_name_arity::in, string::in, S::in, U::di, U::uo)
-    is det <= output(S, U).
+    is det <= pt_output(S, U).
 
 mercury_format_pragma_decl_pred_pfu_name_arity(PragmaName, PredSpec0,
         AfterStr, S, !U) :-
@@ -378,7 +378,7 @@ mercury_pragma_foreign_decl_to_string(FDInfo) = String :-
     mercury_format_pragma_foreign_decl(FDInfo, unit, "", String).
 
 :- pred mercury_format_pragma_foreign_decl(pragma_info_foreign_decl::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pragma_foreign_decl(FDInfo, S, !U) :-
     FDInfo = pragma_info_foreign_decl(Lang, IsLocal, LiteralOrInclude),
@@ -419,7 +419,7 @@ foreign_literal_or_include_to_string(LiteralOrInclude) = Str :-
 
 :- pred mercury_format_foreign_literal_or_include(
     foreign_literal_or_include::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_foreign_literal_or_include(LiteralOrInclude, S, !U) :-
     (
@@ -439,7 +439,7 @@ mercury_format_foreign_literal_or_include(LiteralOrInclude, S, !U) :-
 % Any changes here may require corresponding changes to term_io and vice versa.
 
 :- pred mercury_format_foreign_code_string(string::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_foreign_code_string(Str, S, !U) :-
     add_string("""", S, !U),
@@ -447,13 +447,13 @@ mercury_format_foreign_code_string(Str, S, !U) :-
     add_string("""", S, !U).
 
 :- pred mercury_format_escaped_string(string::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_escaped_string(String, S, !U) :-
     string.foldl(mercury_format_escaped_char(S), String, !U).
 
 :- pred mercury_format_escaped_char(S::in, char::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_escaped_char(S, Char, !U) :-
     ( if escape_special_char(Char, QuoteChar) then
@@ -503,7 +503,7 @@ mercury_pragma_foreign_proc_to_string(Lang, FPInfo) = String :-
 
 :- pred mercury_format_pragma_foreign_proc(output_lang::in,
     pragma_info_foreign_proc::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pragma_foreign_proc(Lang, FPInfo, S, !U) :-
     FPInfo = pragma_info_foreign_proc(Attributes, PredName, PredOrFunc, Vars0,
@@ -551,7 +551,7 @@ mercury_format_pragma_foreign_proc(Lang, FPInfo, S, !U) :-
 
 :- pred mercury_format_pragma_foreign_proc_vars(output_lang::in,
     prog_varset::in, inst_varset::in, list(pragma_var)::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pragma_foreign_proc_vars(_, _, _, [], _S, !U).
 mercury_format_pragma_foreign_proc_vars(Lang, ProgVarSet, InstVarSet,
@@ -573,7 +573,7 @@ mercury_format_pragma_foreign_proc_vars(Lang, ProgVarSet, InstVarSet,
 
 :- pred mercury_format_pragma_foreign_attributes(prog_varset::in,
     pragma_foreign_proc_attributes::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pragma_foreign_attributes(VarSet, Attributes, S, !U) :-
     add_string("[", S, !U),
@@ -852,7 +852,7 @@ extra_attribute_to_string(needs_call_standard_output_registers) =
 
 :- pred mercury_format_pragma_foreign_proc_export(output_lang::in,
     pragma_info_foreign_proc_export::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, S, !U) :-
     FPEInfo = pragma_info_foreign_proc_export(_Origin, ForeignLang,
@@ -886,7 +886,7 @@ mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, S, !U) :-
 %
 
 :- pred mercury_format_pragma_external_proc(pragma_info_external_proc::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pragma_external_proc(ExternalInfo, S, !U) :-
     ExternalInfo = pragma_info_external_proc(PFNameArity, MaybeBackend),
@@ -1296,7 +1296,7 @@ mercury_output_pragma_tabled(Stream, TabledInfo, !IO) :-
 %
 
 :- pred mercury_format_pragma_fact_table(pragma_info_fact_table::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pragma_fact_table(FactTableInfo, S, !U) :-
     FactTableInfo = pragma_info_fact_table(PredSpec, FileName),
@@ -1319,7 +1319,7 @@ mercury_output_pragma_oisu(Stream, OISUInfo, !IO) :-
     mercury_format_pragma_oisu(OISUInfo, Stream, !IO).
 
 :- pred mercury_format_pragma_oisu(pragma_info_oisu::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pragma_oisu(OISUInfo, S, !U) :-
     OISUInfo = pragma_info_oisu(TypeCtor, CreatorPreds, MutatorPreds,
@@ -1343,7 +1343,7 @@ mercury_format_pragma_oisu(OISUInfo, S, !U) :-
     add_string(").\n", S, !U).
 
 :- pred mercury_format_pred_pf_name_arity_list(list(pred_pf_name_arity)::in,
-    S::in, U::di, U::uo) is det <= output(S, U).
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pred_pf_name_arity_list([], _S, !U).
 mercury_format_pred_pf_name_arity_list([PredSpec | PredSpecs], S, !U) :-
@@ -1351,7 +1351,7 @@ mercury_format_pred_pf_name_arity_list([PredSpec | PredSpecs], S, !U) :-
 
 :- pred mercury_format_pred_pf_name_arity_list_lag(pred_pf_name_arity::in,
     list(pred_pf_name_arity)::in, S::in, U::di, U::uo) is det
-    <= output(S, U).
+    <= pt_output(S, U).
 
 mercury_format_pred_pf_name_arity_list_lag(PredSpec, PredSpecs, S, !U) :-
     add_string("\t\t", S, !U),
@@ -1561,7 +1561,7 @@ write_vars_and_types(Stream, VarSet, TypeVarSet, HeadVars, HeadVarTypes,
 
 :- pred mercury_format_pragma_require_feature_set(
     pragma_info_require_feature_set::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pragma_require_feature_set(RFSInfo, S, !U) :-
     RFSInfo = pragma_info_require_feature_set(Features0),
@@ -1571,7 +1571,7 @@ mercury_format_pragma_require_feature_set(RFSInfo, S, !U) :-
     add_string(").\n", S, !U).
 
 :- pred mercury_format_required_feature(required_feature::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_required_feature(Feature, S, !U) :-
     ( Feature = reqf_concurrency, Str = "concurrency"
@@ -1596,7 +1596,7 @@ mercury_pred_name_arity_to_string(PredName, UserArity) = String :-
     mercury_format_pred_name_arity(PredName, UserArity, unit, "", String).
 
 :- pred mercury_format_pred_name_arity(sym_name::in, user_arity::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pred_name_arity(PredName, user_arity(Arity), S, !U) :-
     NGT = next_to_graphic_token,
@@ -1612,7 +1612,7 @@ mercury_pred_pf_name_arity_to_string(PredOrFunc, PredName, Arity) = String :-
         unit, "", String).
 
 :- pred mercury_format_pred_pf_name_arity(pred_or_func::in,
-    sym_name::in, user_arity::in, S::in, U::di, U::uo) is det <= output(S, U).
+    sym_name::in, user_arity::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pred_pf_name_arity(PredOrFunc, PredName, UserArity, S, !U) :-
     add_string(pred_or_func_to_str(PredOrFunc), S, !U),
@@ -1628,7 +1628,7 @@ mercury_pred_pfu_name_arity_to_string(PFU, PredName, UserArity) = String :-
         unit, "", String).
 
 :- pred mercury_format_pred_pfu_name_arity(pred_func_or_unknown::in,
-    sym_name::in, user_arity::in, S::in, U::di, U::uo) is det <= output(S, U).
+    sym_name::in, user_arity::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pred_pfu_name_arity(PFU, PredName, UserArity, S, !U) :-
     (
@@ -1669,7 +1669,7 @@ int_list_to_string(Ints) = Str :-
     mercury_format_int_list(Ints, unit, "", Str).
 
 :- pred mercury_format_int_list(list(int)::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_int_list([], _S, !U).
 mercury_format_int_list([Head | Tail], S, !U) :-
@@ -1677,7 +1677,7 @@ mercury_format_int_list([Head | Tail], S, !U) :-
     mercury_format_int_list_2(Tail, S, !U).
 
 :- pred mercury_format_int_list_2(list(int)::in, S::in,
-    U::di, U::uo) is det <= output(S, U).
+    U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_int_list_2([], _S, !U).
 mercury_format_int_list_2([Head | Tail], S, !U) :-

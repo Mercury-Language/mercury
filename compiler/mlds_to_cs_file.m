@@ -228,7 +228,7 @@ output_src_start_for_csharp(Info, Stream, ModuleName, _Imports,
         ForeignDecls, FuncDefns, Errors, !IO) :-
     output_auto_gen_comment(Stream, Info ^ csoi_source_filename, !IO),
     io.format(Stream, "// :- module %s.\n\n",
-        [s(sym_name_to_escaped_string(ModuleName))], !IO),
+        [s(escaped_sym_name_to_string(ModuleName))], !IO),
     % The close parenthesis for this open parenthesis is written out
     % by output_src_end_for_csharp.
     io.write_string(Stream, "namespace mercury {\n\n", !IO),
@@ -318,7 +318,7 @@ output_src_end_for_csharp(Stream, ModuleName, !IO) :-
     io.write_string(Stream, "}\n\n", !IO),
     io.write_string(Stream, "}\n", !IO),
     io.format(Stream, "// :- end_module %s.\n",
-        [s(sym_name_to_escaped_string(ModuleName))], !IO).
+        [s(escaped_sym_name_to_string(ModuleName))], !IO).
 
 %---------------------------------------------------------------------------%
 %
