@@ -136,6 +136,7 @@
     pred add_string(string::in, S::in, U::di, U::uo) is det,
     pred add_strings(list(string)::in, S::in, U::di, U::uo) is det,
     pred add_escaped_string(string::in, S::in, U::di, U::uo) is det,
+    pred add_quoted_string(string::in, S::in, U::di, U::uo) is det,
 
     pred add_int(int::in, S::in, U::di, U::uo) is det,
     pred add_int8(int8::in, S::in, U::di, U::uo) is det,
@@ -153,7 +154,6 @@
 
     pred add_purity_prefix(purity::in, S::in, U::di, U::uo) is det,
     pred add_quoted_atom(string::in, S::in, U::di, U::uo) is det,
-    pred add_quoted_string(string::in, S::in, U::di, U::uo) is det,
     pred add_constant(const::in, S::in, U::di, U::uo) is det,
     pred add_eval_method(eval_method::in, S::in, U::di, U::uo) is det,
     pred add_lambda_eval_method(lambda_eval_method::in, S::in,
@@ -260,6 +260,7 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_string/4) is write_string,
     pred(add_strings/4) is write_strings,
     pred(add_escaped_string/4) is write_escaped_string,
+    pred(add_quoted_string/4) is write_quoted_string,
 
     pred(add_int/4) is write_int_literal,
     pred(add_int8/4) is write_int8_literal,
@@ -277,7 +278,6 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
 
     pred(add_purity_prefix/4) is write_purity_prefix,
     pred(add_quoted_atom/4) is write_quoted_atom,
-    pred(add_quoted_string/4) is write_quoted_string,
     pred(add_constant/4) is write_constant,
     pred(add_eval_method/4) is write_eval_eval_method,
     pred(add_lambda_eval_method/4) is write_lambda_eval_method,
@@ -291,6 +291,7 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_string/4) is output_string,
     pred(add_strings/4) is output_strings,
     pred(add_escaped_string/4) is output_escaped_string,
+    pred(add_quoted_string/4) is output_quoted_string,
 
     pred(add_int/4) is output_int,
     pred(add_int8/4) is output_int8,
@@ -308,7 +309,6 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
 
     pred(add_purity_prefix/4) is output_purity_prefix,
     pred(add_quoted_atom/4) is output_quoted_atom,
-    pred(add_quoted_string/4) is output_quoted_string,
     pred(add_constant/4) is output_constant,
     pred(add_eval_method/4) is output_eval_eval_method,
     pred(add_lambda_eval_method/4) is output_lambda_eval_method,
@@ -322,6 +322,7 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_string/4) is build_string,
     pred(add_strings/4) is build_strings,
     pred(add_escaped_string/4) is build_escaped_string,
+    pred(add_quoted_string/4) is build_quoted_string,
 
     pred(add_int/4) is build_int,
     pred(add_int8/4) is build_int8,
@@ -339,7 +340,6 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
 
     pred(add_purity_prefix/4) is build_purity_prefix,
     pred(add_quoted_atom/4) is build_quoted_atom,
-    pred(add_quoted_string/4) is build_quoted_string,
     pred(add_constant/4) is build_constant,
     pred(add_eval_method/4) is build_eval_eval_method,
     pred(add_lambda_eval_method/4) is build_lambda_eval_method,
@@ -374,6 +374,12 @@ write_strings(Strs, Stream, !IO) :-
 
 write_escaped_string(Str, Stream, !IO) :-
     term_io.format_escaped_string(Stream, Str, !IO).
+
+:- pred write_quoted_string(string::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
+
+write_quoted_string(Str, Stream, !IO) :-
+    term_io.format_quoted_string(Stream, Str, !IO).
 
 %---------------------%
 
@@ -471,12 +477,6 @@ write_purity_prefix(Purity, Stream, !IO) :-
 write_quoted_atom(Atom, Stream, !IO) :-
     term_io.format_quoted_atom(Stream, Atom, !IO).
 
-:- pred write_quoted_string(string::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
-
-write_quoted_string(Str, Stream, !IO) :-
-    term_io.format_quoted_string(Stream, Str, !IO).
-
 :- pred write_constant(const::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 
@@ -546,6 +546,13 @@ output_strings(Strs, _, Str0, Str) :-
 output_escaped_string(S, _, Str0, Str) :-
     ES = term_io.escaped_string(S),
     string.append(Str0, ES, Str).
+
+:- pred output_quoted_string(string::in, unit::in,
+    string::di, string::uo) is det.
+
+output_quoted_string(A, _, Str0, Str) :-
+    QA = term_io.quoted_string(A),
+    string.append(Str0, QA, Str).
 
 %---------------------%
 
@@ -633,13 +640,6 @@ output_quoted_atom(A, _, Str0, Str) :-
     QA = term_io.quoted_atom(A),
     string.append(Str0, QA, Str).
 
-:- pred output_quoted_string(string::in, unit::in,
-    string::di, string::uo) is det.
-
-output_quoted_string(A, _, Str0, Str) :-
-    QA = term_io.quoted_string(A),
-    string.append(Str0, QA, Str).
-
 :- pred output_constant(const::in, unit::in, string::di, string::uo) is det.
 
 output_constant(C, _, Str0, Str) :-
@@ -709,8 +709,13 @@ build_strings(Strs, _, !State) :-
     string.builder.state::di, string.builder.state::uo) is det.
 
 build_escaped_string(S, _, !State) :-
-    % ZZZ format_escaped_string
-    string.builder.append_string(term_io.escaped_string(S), !State).
+    term_io.format_escaped_string(string.builder.handle, S, !State).
+
+:- pred build_quoted_string(string::in, string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+build_quoted_string(A, _, !State) :-
+    term_io.format_quoted_string(string.builder.handle, A, !State).
 
 %---------------------%
 
@@ -805,22 +810,13 @@ build_purity_prefix(P, _, !State) :-
     string.builder.state::di, string.builder.state::uo) is det.
 
 build_quoted_atom(A, _, !State) :-
-    % ZZZ format_quoted_atom
-    string.builder.append_string(term_io.quoted_atom(A), !State).
-
-:- pred build_quoted_string(string::in, string.builder.handle::in,
-    string.builder.state::di, string.builder.state::uo) is det.
-
-build_quoted_string(A, _, !State) :-
-    % ZZZ format_quoted_string
-    string.builder.append_string(term_io.quoted_string(A), !State).
+    term_io.format_quoted_atom(string.builder.handle, A, !State).
 
 :- pred build_constant(const::in, string.builder.handle::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
 build_constant(C, _, !State) :-
-    % ZZZ format_constant
-    string.builder.append_string(term_io.constant_to_string(C), !State).
+    term_io.format_constant(string.builder.handle, C, !State).
 
 :- pred build_eval_eval_method(eval_method::in, string.builder.handle::in,
     string.builder.state::di, string.builder.state::uo) is det.
