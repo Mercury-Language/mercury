@@ -49,22 +49,22 @@
     % Variables whose name originally started with `V_' have their name changed
     % to start with `V_V_' to avoid name clashes.
     %
+:- func mercury_var_to_string(var_table, var_name_print, prog_var) = string.
 :- pred mercury_output_var(var_table::in, var_name_print::in, prog_var::in,
     io.text_output_stream::in, io::di, io::uo) is det.
-:- func mercury_var_to_string(var_table, var_name_print, prog_var) = string.
 :- pred mercury_format_var(var_table::in, var_name_print::in, prog_var::in,
     S::in, U::di, U::uo) is det <= output(S, U).
 
+:- func mercury_var_to_string_vs(varset(T), var_name_print, var(T)) = string.
 :- pred mercury_output_var_vs(varset(T)::in, var_name_print::in, var(T)::in,
     io.text_output_stream::in, io::di, io::uo) is det.
-:- func mercury_var_to_string_vs(varset(T), var_name_print, var(T)) = string.
 :- pred mercury_format_var_vs(varset(T)::in, var_name_print::in, var(T)::in,
     S::in, U::di, U::uo) is det <= output(S, U).
 
-:- pred mercury_output_var_src(var_name_source::in, var_name_print::in,
-    prog_var::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_var_to_string_src(var_name_source, var_name_print, prog_var)
     = string.
+:- pred mercury_output_var_src(var_name_source::in, var_name_print::in,
+    prog_var::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_var_src(var_name_source::in, var_name_print::in,
     prog_var::in, S::in, U::di, U::uo) is det <= output(S, U).
 
@@ -77,24 +77,24 @@
 
     % Output a comma-separated list of variables.
     %
-:- pred mercury_output_vars(var_table::in, var_name_print::in,
-    list(prog_var)::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_vars_to_string(var_table, var_name_print, list(prog_var))
     = string.
+:- pred mercury_output_vars(var_table::in, var_name_print::in,
+    list(prog_var)::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_vars(var_table::in, var_name_print::in,
     list(prog_var)::in, S::in, U::di, U::uo) is det <= output(S, U).
 
-:- pred mercury_output_vars_vs(varset(T)::in, var_name_print::in,
-    list(var(T))::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_vars_to_string_vs(varset(T), var_name_print, list(var(T)))
     = string.
+:- pred mercury_output_vars_vs(varset(T)::in, var_name_print::in,
+    list(var(T))::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_vars_vs(varset(T)::in, var_name_print::in,
     list(var(T))::in, S::in, U::di, U::uo) is det <= output(S, U).
 
-:- pred mercury_output_vars_src(var_name_source::in, var_name_print::in,
-    list(prog_var)::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_vars_to_string_src(var_name_source, var_name_print,
     list(prog_var)) = string.
+:- pred mercury_output_vars_src(var_name_source::in, var_name_print::in,
+    list(prog_var)::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_vars_src(var_name_source::in, var_name_print::in,
     list(prog_var)::in, S::in, U::di, U::uo) is det <= output(S, U).
 
@@ -116,44 +116,44 @@
 
     % Output a term.
     %
+:- func mercury_term_to_string_vs(varset(T), var_name_print, term(T)) = string.
 :- pred mercury_output_term_vs(varset(T)::in, var_name_print::in, term(T)::in,
     io.text_output_stream::in, io::di, io::uo) is det.
-:- func mercury_term_to_string_vs(varset(T), var_name_print, term(T)) = string.
 :- pred mercury_format_term_vs(varset(T)::in, var_name_print::in, term(T)::in,
     S::in, U::di, U::uo) is det <= output(S, U).
 
-:- pred mercury_output_term(var_table::in, var_name_print::in,
-    prog_term::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_term_to_string(var_table, var_name_print, prog_term)
     = string.
+:- pred mercury_output_term(var_table::in, var_name_print::in,
+    prog_term::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_term(var_table::in, var_name_print::in,
     prog_term::in, S::in, U::di, U::uo) is det <= output(S, U).
 
 :- pred mercury_output_term_src(var_name_source::in, var_name_print::in,
     prog_term::in, io.text_output_stream::in, io::di, io::uo) is det.
 
+:- func mercury_term_nq_to_string_vs(varset(T), var_name_print, needs_quotes,
+    term(T)) = string.
 :- pred mercury_output_term_nq_vs(varset(T)::in, var_name_print::in,
     needs_quotes::in, term(T)::in, io.text_output_stream::in,
     io::di, io::uo) is det.
-:- func mercury_term_nq_to_string_vs(varset(T), var_name_print, needs_quotes,
-    term(T)) = string.
 :- pred mercury_format_term_nq_vs(varset(T)::in, var_name_print::in,
     needs_quotes::in, term(T)::in, S::in, U::di, U::uo) is det <= output(S, U).
 
+:- func mercury_term_nq_to_string(var_table, var_name_print,
+    needs_quotes, prog_term) = string.
 :- pred mercury_output_term_nq(var_table::in, var_name_print::in,
     needs_quotes::in, prog_term::in, io.text_output_stream::in,
     io::di, io::uo) is det.
-:- func mercury_term_nq_to_string(var_table, var_name_print,
-    needs_quotes, prog_term) = string.
 :- pred mercury_format_term_nq(var_table::in, var_name_print::in,
     needs_quotes::in, prog_term::in, S::in, U::di, U::uo) is det
     <= output(S, U).
 
+:- func mercury_term_nq_to_string_src(var_name_source, var_name_print,
+    needs_quotes, prog_term) = string.
 :- pred mercury_output_term_nq_src(var_name_source::in, var_name_print::in,
     needs_quotes::in, prog_term::in, io.text_output_stream::in,
     io::di, io::uo) is det.
-:- func mercury_term_nq_to_string_src(var_name_source, var_name_print,
-    needs_quotes, prog_term) = string.
 
 :- pred mercury_format_comma_separated_terms_vs(varset(T)::in,
     var_name_print::in, term(T)::in, list(term(T))::in,
@@ -162,16 +162,16 @@
     var_name_print::in, prog_term::in, list(prog_term)::in,
     S::in, U::di, U::uo) is det <= output(S, U).
 
-:- pred mercury_output_limited_term_vs(varset(T)::in, var_name_print::in,
-    int::in, term(T)::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_limited_term_to_string_vs(varset(T), var_name_print, int,
     term(T)) = string.
+:- pred mercury_output_limited_term_vs(varset(T)::in, var_name_print::in,
+    int::in, term(T)::in, io.text_output_stream::in, io::di, io::uo) is det.
 
+:- func mercury_limited_term_nq_to_string_vs(varset(T), var_name_print,
+    needs_quotes, int, term(T)) = string.
 :- pred mercury_output_limited_term_nq_vs(varset(T)::in, var_name_print::in,
     needs_quotes::in, int::in, term(T)::in, io.text_output_stream::in,
     io::di, io::uo) is det.
-:- func mercury_limited_term_nq_to_string_vs(varset(T), var_name_print,
-    needs_quotes, int, term(T)) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -251,11 +251,11 @@ strip_trailing_primes(Name0, Name, Num) :-
 
 %---------------------------------------------------------------------------%
 
-mercury_output_var(VarTable, VarNamePrint, Var, Stream, !IO) :-
-    mercury_format_var(VarTable, VarNamePrint, Var, Stream, !IO).
-
 mercury_var_to_string(VarTable, VarNamePrint, Var) = String :-
     mercury_format_var(VarTable, VarNamePrint, Var, unit, "", String).
+
+mercury_output_var(VarTable, VarNamePrint, Var, Stream, !IO) :-
+    mercury_format_var(VarTable, VarNamePrint, Var, Stream, !IO).
 
 mercury_format_var(VarTable, VarNamePrint, Var, S, !U) :-
     ( if var_table.search_var_name(VarTable, Var, Name) then
@@ -266,11 +266,11 @@ mercury_format_var(VarTable, VarNamePrint, Var, S, !U) :-
 
 %---------------------%
 
-mercury_output_var_vs(VarSet, VarNamePrint, Var, Stream, !IO) :-
-    mercury_format_var_vs(VarSet, VarNamePrint, Var, Stream, !IO).
-
 mercury_var_to_string_vs(VarSet, VarNamePrint, Var) = String :-
     mercury_format_var_vs(VarSet, VarNamePrint, Var, unit, "", String).
+
+mercury_output_var_vs(VarSet, VarNamePrint, Var, Stream, !IO) :-
+    mercury_format_var_vs(VarSet, VarNamePrint, Var, Stream, !IO).
 
 mercury_format_var_vs(VarSet, VarNamePrint, Var, S, !U) :-
     ( if varset.search_name(VarSet, Var, Name) then
@@ -281,11 +281,11 @@ mercury_format_var_vs(VarSet, VarNamePrint, Var, S, !U) :-
 
 %---------------------%
 
-mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO) :-
-    mercury_format_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO).
-
 mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var) = String :-
     mercury_format_var_src(VarNameSrc, VarNamePrint, Var, unit, "", String).
+
+mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO) :-
+    mercury_format_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO).
 
 mercury_format_var_src(VarNameSrc, VarNamePrint, Var, S, !U) :-
     ( if var_db.search_var_name_in_source(VarNameSrc, Var, Name) then
@@ -331,33 +331,33 @@ mercury_format_var_num_only(Var, S, !U) :-
 
 %---------------------------------------------------------------------------%
 
-mercury_output_vars(VarTable, VarNamePrint, Vars, Stream, !IO) :-
-    mercury_format_vars(VarTable, VarNamePrint, Vars, Stream, !IO).
-
 mercury_vars_to_string(VarTable, VarNamePrint, Vars) = String :-
     mercury_format_vars(VarTable, VarNamePrint, Vars, unit, "", String).
+
+mercury_output_vars(VarTable, VarNamePrint, Vars, Stream, !IO) :-
+    mercury_format_vars(VarTable, VarNamePrint, Vars, Stream, !IO).
 
 mercury_format_vars(VarTable, VarNamePrint, Vars, S, !U) :-
     add_list(mercury_format_var(VarTable, VarNamePrint), ", ", Vars, S, !U).
 
 %---------------------%
 
-mercury_output_vars_vs(VarTable, VarNamePrint, Vars, Stream, !IO) :-
-    mercury_format_vars_vs(VarTable, VarNamePrint, Vars, Stream, !IO).
-
 mercury_vars_to_string_vs(VarSet, VarNamePrint, Vars) = String :-
     mercury_format_vars_vs(VarSet, VarNamePrint, Vars, unit, "", String).
+
+mercury_output_vars_vs(VarTable, VarNamePrint, Vars, Stream, !IO) :-
+    mercury_format_vars_vs(VarTable, VarNamePrint, Vars, Stream, !IO).
 
 mercury_format_vars_vs(VarSet, VarNamePrint, Vars, S, !U) :-
     add_list(mercury_format_var_vs(VarSet, VarNamePrint), ", ", Vars, S, !U).
 
 %---------------------%
 
-mercury_output_vars_src(VarNameSrc, VarNamePrint, Vars, Stream, !IO) :-
-    mercury_format_vars_src(VarNameSrc, VarNamePrint, Vars, Stream, !IO).
-
 mercury_vars_to_string_src(VarNameSrc, VarNamePrint, Vars) = String :-
     mercury_format_vars_src(VarNameSrc, VarNamePrint, Vars, unit, "", String).
+
+mercury_output_vars_src(VarNameSrc, VarNamePrint, Vars, Stream, !IO) :-
+    mercury_format_vars_src(VarNameSrc, VarNamePrint, Vars, Stream, !IO).
 
 mercury_format_vars_src(VarNameSrc, VarNamePrint, Vars, S, !U) :-
     add_list(mercury_format_var_src(VarNameSrc, VarNamePrint), ", ", Vars,
@@ -405,13 +405,13 @@ max_term_string_size_in_syntax_error = 80.
 
 %---------------------------------------------------------------------------%
 
-mercury_output_term_vs(VarSet, VarNamePrint, Term, Stream, !IO) :-
-    mercury_output_term_nq_vs(VarSet, VarNamePrint,
-        not_next_to_graphic_token, Term, Stream, !IO).
-
 mercury_term_to_string_vs(VarSet, VarNamePrint, Term) =
     mercury_term_nq_to_string_vs(VarSet, VarNamePrint,
         not_next_to_graphic_token, Term).
+
+mercury_output_term_vs(VarSet, VarNamePrint, Term, Stream, !IO) :-
+    mercury_output_term_nq_vs(VarSet, VarNamePrint,
+        not_next_to_graphic_token, Term, Stream, !IO).
 
 mercury_format_term_vs(VarSet, VarNamePrint, Term, S, !U) :-
     mercury_format_term_nq_vs(VarSet, VarNamePrint,
@@ -419,13 +419,13 @@ mercury_format_term_vs(VarSet, VarNamePrint, Term, S, !U) :-
 
 %---------------------%
 
-mercury_output_term(VarTable, VarNamePrint, Term, Stream, !IO) :-
-    mercury_output_term_nq(VarTable, VarNamePrint,
-        not_next_to_graphic_token, Term, Stream, !IO).
-
 mercury_term_to_string(VarTable, VarNamePrint, Term) =
     mercury_term_nq_to_string(VarTable, VarNamePrint,
         not_next_to_graphic_token, Term).
+
+mercury_output_term(VarTable, VarNamePrint, Term, Stream, !IO) :-
+    mercury_output_term_nq(VarTable, VarNamePrint,
+        not_next_to_graphic_token, Term, Stream, !IO).
 
 mercury_format_term(VarTable, VarNamePrint, Term, S, !U) :-
     mercury_format_term_nq(VarTable, VarNamePrint,
@@ -446,15 +446,15 @@ mercury_output_term_src(VarNameSrc, VarNamePrint, Term, Stream, !IO) :-
 
 %---------------------%
 
-mercury_output_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
-        Stream, !IO) :-
-    mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
-        Stream, !IO).
-
 mercury_term_nq_to_string_vs(VarSet, VarNamePrint, NextToGraphicToken, Term)
         = String :-
     mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
         unit, "", String).
+
+mercury_output_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
+        Stream, !IO) :-
+    mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
+        Stream, !IO).
 
 mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
         S, !U) :-
@@ -588,15 +588,15 @@ mercury_format_plain_functor_args_nq_vs(VarSet, VarNamePrint,
 
 %---------------------%
 
-mercury_output_term_nq(VarTable, VarNamePrint, NextToGraphicToken,
-        Term, Stream, !IO) :-
-    mercury_format_term_nq(VarTable, VarNamePrint, NextToGraphicToken,
-        Term, Stream, !IO).
-
 mercury_term_nq_to_string(VarTable, VarNamePrint, NextToGraphicToken,
         Term) = String :-
     mercury_format_term_nq(VarTable, VarNamePrint, NextToGraphicToken,
         Term, unit, "", String).
+
+mercury_output_term_nq(VarTable, VarNamePrint, NextToGraphicToken,
+        Term, Stream, !IO) :-
+    mercury_format_term_nq(VarTable, VarNamePrint, NextToGraphicToken,
+        Term, Stream, !IO).
 
 mercury_format_term_nq(VarTable, VarNamePrint, NextToGraphicToken, Term,
         S, !U) :-
@@ -774,18 +774,6 @@ mercury_format_list_args(VarTable, VarNamePrint, Term, S, !U) :-
 
 %---------------------%
 
-mercury_output_term_nq_src(VarNameSrc, VarNamePrint, NextToGraphicToken,
-        Term, Stream, !IO) :-
-    (
-        VarNameSrc = vns_varset(VarSet),
-        mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken,
-            Term, Stream, !IO)
-    ;
-        VarNameSrc = vns_var_table(VarTable),
-        mercury_format_term_nq(VarTable, VarNamePrint, NextToGraphicToken,
-            Term, Stream, !IO)
-    ).
-
 mercury_term_nq_to_string_src(VarNameSrc, VarNamePrint, NextToGraphicToken,
         Term) = String :-
     (
@@ -796,6 +784,18 @@ mercury_term_nq_to_string_src(VarNameSrc, VarNamePrint, NextToGraphicToken,
         VarNameSrc = vns_var_table(VarTable),
         String = mercury_term_nq_to_string(VarTable, VarNamePrint,
             NextToGraphicToken, Term)
+    ).
+
+mercury_output_term_nq_src(VarNameSrc, VarNamePrint, NextToGraphicToken,
+        Term, Stream, !IO) :-
+    (
+        VarNameSrc = vns_varset(VarSet),
+        mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken,
+            Term, Stream, !IO)
+    ;
+        VarNameSrc = vns_var_table(VarTable),
+        mercury_format_term_nq(VarTable, VarNamePrint, NextToGraphicToken,
+            Term, Stream, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -859,22 +859,16 @@ mercury_format_constant(NextToGraphicToken, Const, S, !U) :-
 
 %---------------------%
 
+mercury_limited_term_to_string_vs(VarSet, VarNamePrint, Limit, Term) =
+    mercury_limited_term_nq_to_string_vs(VarSet, VarNamePrint,
+        not_next_to_graphic_token, Limit, Term).
+
 mercury_output_limited_term_vs(VarSet, VarNamePrint, Limit, Term,
         Stream, !IO) :-
     mercury_output_limited_term_nq_vs(VarSet, VarNamePrint,
         not_next_to_graphic_token, Limit, Term, Stream, !IO).
 
-mercury_limited_term_to_string_vs(VarSet, VarNamePrint, Limit, Term) =
-    mercury_limited_term_nq_to_string_vs(VarSet, VarNamePrint,
-        not_next_to_graphic_token, Limit, Term).
-
 %---------------------%
-
-mercury_output_limited_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken,
-        Limit, Term, Stream, !IO) :-
-    Str = mercury_limited_term_nq_to_string_vs(VarSet, VarNamePrint,
-        NextToGraphicToken, Limit, Term),
-    io.write_string(Stream, Str, !IO).
 
 mercury_limited_term_nq_to_string_vs(VarSet, VarNamePrint, NextToGraphicToken,
         Limit, Term) = String :-
@@ -907,6 +901,12 @@ mercury_limited_term_nq_to_string_vs(VarSet, VarNamePrint, NextToGraphicToken,
             )
         )
     ).
+
+mercury_output_limited_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken,
+        Limit, Term, Stream, !IO) :-
+    Str = mercury_limited_term_nq_to_string_vs(VarSet, VarNamePrint,
+        NextToGraphicToken, Limit, Term),
+    io.write_string(Stream, Str, !IO).
 
 %---------------------%
 

@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
 % Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This module converts the parse tree structure representations
 % of insts and modes back into Mercury source text.
@@ -15,7 +15,7 @@
 % be able to output the latter kind of inst as well. For these, we cannot
 % print them as valid Mercury.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.parse_tree_out_inst.
 :- interface.
@@ -27,33 +27,33 @@
 :- import_module list.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred mercury_output_inst_list(io.text_output_stream::in, output_lang::in,
-    inst_varset::in, list(mer_inst)::in, io::di, io::uo) is det.
 :- func mercury_inst_list_to_string(output_lang, inst_varset, list(mer_inst))
     = string.
+:- pred mercury_output_inst_list(io.text_output_stream::in, output_lang::in,
+    inst_varset::in, list(mer_inst)::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
+:- func mercury_inst_to_string(output_lang, inst_varset, mer_inst) = string.
 :- pred mercury_output_inst(io.text_output_stream::in, output_lang::in,
     inst_varset::in, mer_inst::in, io::di, io::uo) is det.
-:- func mercury_inst_to_string(output_lang, inst_varset, mer_inst) = string.
 :- pred mercury_format_inst(output_lang::in, inst_varset::in, mer_inst::in,
     S::in, U::di, U::uo) is det <= output(S, U).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred mercury_format_inst_name(output_lang::in, inst_varset::in,
     inst_name::in, S::in, U::di, U::uo) is det <= output(S, U).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred mercury_format_constrained_inst_vars(output_lang::in, inst_varset::in,
     set(inst_var)::in, mer_inst::in, S::in, U::di, U::uo) is det
     <= output(S, U).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred mercury_format_ground_pred_inst_info(output_lang::in, inst_varset::in,
     uniqueness::in, pred_inst_info::in, S::in, U::di, U::uo) is det
@@ -63,7 +63,7 @@
     uniqueness::in, pred_inst_info::in, S::in, U::di, U::uo) is det
     <= output(S, U).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred mercury_format_is_live_comma(is_live::in, S::in, U::di, U::uo)
     is det <= output(S, U).
@@ -79,23 +79,23 @@
 :- pred mercury_format_any_uniqueness(uniqueness::in,
     S::in, U::di, U::uo) is det <= output(S, U).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred mercury_output_mode_list(io.text_output_stream::in, output_lang::in,
-    inst_varset::in, list(mer_mode)::in, io::di, io::uo) is det.
 :- func mercury_mode_list_to_string(output_lang, inst_varset, list(mer_mode))
     = string.
+:- pred mercury_output_mode_list(io.text_output_stream::in, output_lang::in,
+    inst_varset::in, list(mer_mode)::in, io::di, io::uo) is det.
 :- pred mercury_format_mode_list(output_lang::in, inst_varset::in,
     list(mer_mode)::in, S::in, U::di, U::uo) is det <= output(S, U).
 
+:- func mercury_mode_to_string(output_lang, inst_varset, mer_mode) = string.
 :- pred mercury_output_mode(io.text_output_stream::in, output_lang::in,
     inst_varset::in, mer_mode::in, io::di, io::uo) is det.
-:- func mercury_mode_to_string(output_lang, inst_varset, mer_mode) = string.
 :- pred mercury_format_mode(output_lang::in, inst_varset::in, mer_mode::in,
     S::in, U::di, U::uo) is det <= output(S, U).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -114,13 +114,13 @@
 :- import_module unit.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
-
-mercury_output_inst_list(Stream, Lang, InstVarSet, Insts, !IO) :-
-    mercury_format_inst_list(Lang, InstVarSet, Insts, Stream, !IO).
+%---------------------------------------------------------------------------%
 
 mercury_inst_list_to_string(Lang, InstVarSet, Insts) = String :-
     mercury_format_inst_list(Lang, InstVarSet, Insts, unit, "", String).
+
+mercury_output_inst_list(Stream, Lang, InstVarSet, Insts, !IO) :-
+    mercury_format_inst_list(Lang, InstVarSet, Insts, Stream, !IO).
 
 :- pred mercury_format_inst_list(output_lang::in, inst_varset::in,
     list(mer_inst)::in, S::in, U::di, U::uo) is det <= output(S, U).
@@ -136,13 +136,13 @@ mercury_format_inst_list(Lang, InstVarSet, [Inst | Insts], S, !U) :-
         mercury_format_inst_list(Lang, InstVarSet, Insts, S, !U)
     ).
 
-%-----------------------------------------------------------------------------%
-
-mercury_output_inst(Stream, Lang, InstVarSet, Inst, !IO) :-
-    mercury_format_inst(Lang, InstVarSet, Inst, Stream, !IO).
+%---------------------------------------------------------------------------%
 
 mercury_inst_to_string(Lang, InstVarSet, Inst) = String :-
     mercury_format_inst(Lang, InstVarSet, Inst, unit, "", String).
+
+mercury_output_inst(Stream, Lang, InstVarSet, Inst, !IO) :-
+    mercury_format_inst(Lang, InstVarSet, Inst, Stream, !IO).
 
 mercury_format_inst(Lang, InstVarSet, Inst, S, !U) :-
     (
@@ -221,7 +221,7 @@ mercury_format_bound_insts(Lang, InstVarSet, [BoundInst | BoundInsts],
         mercury_format_bound_insts(Lang, InstVarSet, BoundInsts, S, !U)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mercury_format_inst_name(Lang, InstVarSet, InstName, S, !U) :-
     (
@@ -342,7 +342,7 @@ mercury_format_inst_name(Lang, InstVarSet, InstName, S, !U) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mercury_format_constrained_inst_vars(Lang, InstVarSet, !.Vars, Inst, S, !U) :-
     ( if set.remove_least(Var, !Vars) then
@@ -356,7 +356,7 @@ mercury_format_constrained_inst_vars(Lang, InstVarSet, !.Vars, Inst, S, !U) :-
         mercury_format_inst(Lang, InstVarSet, Inst, S, !U)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mercury_format_ground_pred_inst_info(Lang, InstVarSet, Uniq, PredInstInfo,
         S, !U) :-
@@ -490,7 +490,7 @@ mercury_format_arg_reg_list([Reg | Regs], S, !U) :-
         mercury_format_arg_reg_list(Regs, S, !U)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mercury_format_is_live_comma(IsLive, S, !U) :-
     (
@@ -522,6 +522,8 @@ mercury_format_comma_real(Real, S, !U) :-
         add_string(", fake", S, !U)
     ).
 
+%---------------------------------------------------------------------------%
+
 mercury_uniqueness_to_string(Uniq, Suffix) = String :-
     mercury_format_uniqueness(Uniq, Suffix, unit, "", String).
 
@@ -550,13 +552,13 @@ mercury_format_any_uniqueness(clobbered, S, !U) :-
 mercury_format_any_uniqueness(mostly_clobbered, S, !U) :-
     add_string("mostly_clobbered_any", S, !U).
 
-%-----------------------------------------------------------------------------%
-
-mercury_output_mode_list(Stream, Lang, InstVarSet, Modes, !IO) :-
-    mercury_format_mode_list(Lang, InstVarSet, Modes, Stream, !IO).
+%---------------------------------------------------------------------------%
 
 mercury_mode_list_to_string(Lang, InstVarSet, Modes) = String :-
     mercury_format_mode_list(Lang, InstVarSet, Modes, unit, "", String).
+
+mercury_output_mode_list(Stream, Lang, InstVarSet, Modes, !IO) :-
+    mercury_format_mode_list(Lang, InstVarSet, Modes, Stream, !IO).
 
 mercury_format_mode_list(_, _, [], _S, !U).
 mercury_format_mode_list(Lang, InstVarSet, [Mode | Modes], S, !U) :-
@@ -569,11 +571,13 @@ mercury_format_mode_list(Lang, InstVarSet, [Mode | Modes], S, !U) :-
         mercury_format_mode_list(Lang, InstVarSet, Modes, S, !U)
     ).
 
-mercury_output_mode(Stream, Lang, InstVarSet, Mode, !IO) :-
-    mercury_format_mode(Lang, InstVarSet, Mode, Stream, !IO).
+%---------------------%
 
 mercury_mode_to_string(Lang, InstVarSet, Mode) = String :-
     mercury_format_mode(Lang, InstVarSet, Mode, unit, "", String).
+
+mercury_output_mode(Stream, Lang, InstVarSet, Mode, !IO) :-
+    mercury_format_mode(Lang, InstVarSet, Mode, Stream, !IO).
 
 mercury_format_mode(Lang, InstVarSet, Mode0, S, !U) :-
     (
@@ -678,6 +682,6 @@ mercury_format_user_defined_mode(Lang, InstVarSet, SymName, ArgInsts, S, !U) :-
         add_string(")", S, !U)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_tree_out_inst.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

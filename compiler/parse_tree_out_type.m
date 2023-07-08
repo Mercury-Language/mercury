@@ -29,18 +29,18 @@
 
 :- func mercury_type_list_to_string(tvarset, list(mer_type)) = string.
 
+:- func mercury_type_to_string(tvarset, var_name_print, mer_type) = string.
 :- pred mercury_output_type(tvarset::in, var_name_print::in, mer_type::in,
     io.text_output_stream::in, io::di, io::uo) is det.
-:- func mercury_type_to_string(tvarset, var_name_print, mer_type) = string.
 :- pred mercury_format_type(tvarset::in, var_name_print::in, mer_type::in,
     S::in, U::di, U::uo) is det <= output(S, U).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_constraint(tvarset::in, var_name_print::in,
-    prog_constraint::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_constraint_to_string(tvarset, var_name_print, prog_constraint)
     = string.
+:- pred mercury_output_constraint(tvarset::in, var_name_print::in,
+    prog_constraint::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_constraint(tvarset::in, var_name_print::in,
     prog_constraint::in, S::in, U::di, U::uo) is det <= output(S, U).
 
@@ -106,11 +106,13 @@ mercury_comma_type_list_to_string(VarSet, [Type | Types]) = String :-
     TailString = mercury_comma_type_list_to_string(VarSet, Types),
     String = ", " ++ HeadString ++ TailString.
 
-mercury_output_type(VarSet, VarNamePrint, Type, Stream, !IO) :-
-    mercury_format_type(VarSet, VarNamePrint, Type, Stream, !IO).
+%---------------------------------------------------------------------------%
 
 mercury_type_to_string(VarSet, VarNamePrint, Type) = String :-
     mercury_format_type(VarSet, VarNamePrint, Type, unit, "", String).
+
+mercury_output_type(VarSet, VarNamePrint, Type, Stream, !IO) :-
+    mercury_format_type(VarSet, VarNamePrint, Type, Stream, !IO).
 
 mercury_format_type(TypeVarSet, VarNamePrint, Type, S, !U) :-
     % We convert to a term and then use mercury_format_term. The reason
@@ -123,13 +125,13 @@ mercury_format_type(TypeVarSet, VarNamePrint, Type, S, !U) :-
 
 %---------------------------------------------------------------------------%
 
-mercury_output_constraint(TypeVarSet, VarNamePrint, Constraint, Stream, !IO) :-
-    mercury_format_constraint(TypeVarSet, VarNamePrint,
-        Constraint, Stream, !IO).
-
 mercury_constraint_to_string(TypeVarSet, VarNamePrint, Constraint) = String :-
     mercury_format_constraint(TypeVarSet, VarNamePrint, Constraint,
         unit, "", String).
+
+mercury_output_constraint(TypeVarSet, VarNamePrint, Constraint, Stream, !IO) :-
+    mercury_format_constraint(TypeVarSet, VarNamePrint,
+        Constraint, Stream, !IO).
 
 mercury_format_constraint(TypeVarSet, VarNamePrint, Constraint, S, !U) :-
     Constraint = constraint(Name, Types),

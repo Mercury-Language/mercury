@@ -44,9 +44,9 @@
     ;       does_not_need_brackets.
             % Doesn't need brackets.
 
+:- func mercury_sym_name_to_string(sym_name) = string.
 :- pred mercury_output_sym_name(sym_name::in, io.text_output_stream::in,
     io::di, io::uo) is det.
-:- func mercury_sym_name_to_string(sym_name) = string.
 :- pred mercury_format_sym_name(sym_name::in, S::in,
     U::di, U::uo) is det <= output(S, U).
 
@@ -59,9 +59,9 @@
 
 %---------------------%
 
+:- func mercury_bracketed_sym_name_to_string(sym_name) = string.
 :- pred mercury_output_bracketed_sym_name(sym_name::in,
     io.text_output_stream::in, io::di, io::uo) is det.
-:- func mercury_bracketed_sym_name_to_string(sym_name) = string.
 :- pred mercury_format_bracketed_sym_name(sym_name::in, S::in,
     U::di, U::uo) is det <= output(S, U).
 
@@ -71,10 +71,10 @@
 
 %---------------------%
 
-:- pred mercury_output_bracketed_sym_name_ngt(needs_quotes::in, sym_name::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_bracketed_sym_name_to_string_ngt(needs_quotes, sym_name)
     = string.
+:- pred mercury_output_bracketed_sym_name_ngt(needs_quotes::in, sym_name::in,
+    io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_bracketed_sym_name_ngt(needs_quotes::in, sym_name::in,
     S::in, U::di, U::uo) is det <= output(S, U).
 
@@ -106,13 +106,13 @@
 :- pred write_sym_name_arity(io.text_output_stream::in, sym_name_arity::in,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Write out a module name.
     %
 :- func module_name_to_escaped_string(module_name) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func pf_sym_name_pred_form_arity_to_string(pf_sym_name_arity) = string.
 :- func pf_sym_name_pred_form_arity_to_string(pred_or_func, sym_name_arity)
@@ -132,7 +132,7 @@
 :- func pf_sym_name_user_arity_to_unquoted_string(pred_or_func, sym_name,
     arity) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func type_ctor_to_string(type_ctor) = string.
 
@@ -140,7 +140,7 @@
 :- pred write_type_name(io.text_output_stream::in, type_ctor::in,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func class_id_to_string(class_id) = string.
 :- pred write_class_id(io.text_output_stream::in, class_id::in,
@@ -160,12 +160,12 @@
 
 %---------------------------------------------------------------------------%
 
+mercury_sym_name_to_string(SymName) = Str :-
+    mercury_format_sym_name(SymName, unit, "", Str).
+
 mercury_output_sym_name(SymName, Stream, !IO) :-
     mercury_format_sym_name_ngt(not_next_to_graphic_token, SymName,
         Stream, !IO).
-
-mercury_sym_name_to_string(SymName) = Str :-
-    mercury_format_sym_name(SymName, unit, "", Str).
 
 mercury_format_sym_name(SymName, S, !U) :-
     mercury_format_sym_name_ngt(not_next_to_graphic_token, SymName, S, !U).
@@ -194,13 +194,13 @@ mercury_format_sym_name_arity(sym_name_arity(SymName, Arity), S, !U) :-
 
 %---------------------%
 
-mercury_output_bracketed_sym_name(SymName, Stream, !IO) :-
-    mercury_output_bracketed_sym_name_ngt(not_next_to_graphic_token, SymName,
-        Stream, !IO).
-
 mercury_bracketed_sym_name_to_string(SymName) =
     mercury_bracketed_sym_name_to_string_ngt(not_next_to_graphic_token,
         SymName).
+
+mercury_output_bracketed_sym_name(SymName, Stream, !IO) :-
+    mercury_output_bracketed_sym_name_ngt(not_next_to_graphic_token, SymName,
+        Stream, !IO).
 
 mercury_format_bracketed_sym_name(SymName, S, !U) :-
     mercury_format_bracketed_sym_name_ngt(not_next_to_graphic_token, SymName,
@@ -219,14 +219,14 @@ mercury_format_bracketed_sym_name_arity(sym_name_arity(SymName, Arity),
 
 %---------------------%
 
+mercury_bracketed_sym_name_to_string_ngt(NextToGraphicToken, SymName) = Str :-
+    mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName,
+        unit, "", Str).
+
 mercury_output_bracketed_sym_name_ngt(NextToGraphicToken, SymName,
         Stream, !IO) :-
     mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName,
         Stream, !IO).
-
-mercury_bracketed_sym_name_to_string_ngt(NextToGraphicToken, SymName) = Str :-
-    mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName,
-        unit, "", Str).
 
 mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName, S, !U) :-
     (
@@ -258,10 +258,14 @@ write_sym_name(Stream, qualified(Module, Name), !IO) :-
 write_sym_name(Stream, unqualified(Name), !IO) :-
     term_io.format_escaped_string(Stream, Name, !IO).
 
+%---------------------%
+
 write_quoted_sym_name(Stream, SymName, !IO) :-
     io.write_string(Stream, "'", !IO),
     write_sym_name(Stream, SymName, !IO),
     io.write_string(Stream, "'", !IO).
+
+%---------------------%
 
 sym_name_arity_to_string(sym_name_arity(SymName, Arity)) = Str :-
     SymNameStr = sym_name_to_string(SymName),
@@ -272,12 +276,12 @@ write_sym_name_arity(Stream, sym_name_arity(Name, Arity), !IO) :-
     io.write_string(Stream, "/", !IO),
     io.write_int(Stream, Arity, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 module_name_to_escaped_string(ModuleName) =
     sym_name_to_escaped_string(ModuleName).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pf_sym_name_pred_form_arity_to_string(PFSymNameArity) = Str :-
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
@@ -299,7 +303,7 @@ pf_sym_name_pred_form_arity_to_string(PredOrFunc, SymName, PredFormArity)
     string.format("%s `%s'/%d",
         [s(PredOrFuncStr), s(SymNameStr), i(UserArityInt)], Str).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pf_sym_name_user_arity_to_string(PFSymNameArity) = Str :-
     PFSymNameArity =
@@ -316,7 +320,7 @@ pf_sym_name_user_arity_to_string(PredOrFunc, SymName, Arity) = Str :-
     string.format("%s `%s'/%d",
         [s(PredOrFuncStr), s(SymNameStr), i(Arity)], Str).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pf_sym_name_user_arity_to_unquoted_string(PFSymNameArity) = Str :-
     PFSymNameArity =
@@ -335,7 +339,7 @@ pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SymName, Arity) = Str :-
     string.format("%s %s/%d",
         [s(PredOrFuncStr), s(SymNameStr), i(Arity)], Str).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 type_ctor_to_string(type_ctor(Name, Arity)) =
     sym_name_arity_to_string(sym_name_arity(Name, Arity)).
@@ -346,10 +350,11 @@ type_name_to_string(type_ctor(Name, _Arity)) =
 write_type_name(Stream, type_ctor(Name, _Arity), !IO) :-
     write_sym_name(Stream, Name, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 class_id_to_string(class_id(Name, Arity)) =
     sym_name_arity_to_string(sym_name_arity(Name, Arity)).
+
 write_class_id(Stream, class_id(Name, Arity), !IO) :-
     write_sym_name_arity(Stream, sym_name_arity(Name, Arity), !IO).
 

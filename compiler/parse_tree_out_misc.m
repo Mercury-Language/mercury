@@ -88,10 +88,10 @@
 
     % Output an existential quantifier.
     %
-:- pred mercury_output_quantifier(tvarset::in, var_name_print::in,
-    existq_tvars::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_quantifier_to_string(tvarset, var_name_print, existq_tvars)
     = string.
+:- pred mercury_output_quantifier(tvarset::in, var_name_print::in,
+    existq_tvars::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_quantifier(tvarset::in, var_name_print::in,
     existq_tvars::in, S::in, U::di, U::uo) is det <= output(S, U).
 
@@ -105,9 +105,9 @@
 
 %---------------------------------------------------------------------------%
 
+:- func mercury_foreign_language_to_string(foreign_language) = string.
 :- pred mercury_output_foreign_language_string(foreign_language::in,
     io.text_output_stream::in, io::di, io::uo) is det.
-:- func mercury_foreign_language_to_string(foreign_language) = string.
 :- pred mercury_format_foreign_language_string(foreign_language::in,
     S::in, U::di, U::uo) is det <= output(S, U).
 
@@ -299,13 +299,13 @@ goal_warning_to_string(Warning) = Str :-
 
 %---------------------------------------------------------------------------%
 
-mercury_output_quantifier(TypeVarSet, VarNamePrint, ExistQVars, Stream, !IO) :-
-    mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars,
-        Stream, !IO).
-
 mercury_quantifier_to_string(TypeVarSet, VarNamePrint, ExistQVars) = String :-
     mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars,
         unit, "", String).
+
+mercury_output_quantifier(TypeVarSet, VarNamePrint, ExistQVars, Stream, !IO) :-
+    mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars,
+        Stream, !IO).
 
 mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars, S, !U) :-
     (
@@ -332,11 +332,11 @@ mercury_output_state_var(VarSet, VarNamePrint, Var, Stream, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-mercury_output_foreign_language_string(Lang, Stream, !IO) :-
-    mercury_format_foreign_language_string(Lang, Stream, !IO).
-
 mercury_foreign_language_to_string(Lang) = String :-
     mercury_format_foreign_language_string(Lang, unit, "", String).
+
+mercury_output_foreign_language_string(Lang, Stream, !IO) :-
+    mercury_format_foreign_language_string(Lang, Stream, !IO).
 
 mercury_format_foreign_language_string(Lang, S, !U) :-
     add_string("""" ++ foreign_language_string(Lang) ++ """", S, !U).
@@ -365,6 +365,8 @@ mercury_format_tabs(Indent, S, !U) :-
     else
         true
     ).
+
+%---------------------------------------------------------------------------%
 
 mercury_output_newline(Indent, Stream, !IO) :-
     io.write_char(Stream, '\n', !IO),

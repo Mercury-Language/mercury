@@ -40,10 +40,10 @@
 
     % Output a cons_id, parenthesizing it if necessary.
     %
-:- pred mercury_output_cons_id(output_lang::in, needs_brackets::in,
-    cons_id::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_cons_id_to_string(output_lang, needs_brackets, cons_id)
     = string.
+:- pred mercury_output_cons_id(output_lang::in, needs_brackets::in,
+    cons_id::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_cons_id(output_lang::in, needs_brackets::in,
     cons_id::in, S::in, U::di, U::uo) is det <= output(S, U).
 
@@ -88,11 +88,11 @@
 
 %---------------------------------------------------------------------------%
 
-mercury_output_cons_id(Lang, NeedsBrackets, ConsId, Stream, !IO) :-
-    mercury_format_cons_id(Lang, NeedsBrackets, ConsId, Stream, !IO).
-
 mercury_cons_id_to_string(Lang, NeedsBrackets, ConsId) = String :-
     mercury_format_cons_id(Lang, NeedsBrackets, ConsId, unit, "", String).
+
+mercury_output_cons_id(Lang, NeedsBrackets, ConsId, Stream, !IO) :-
+    mercury_format_cons_id(Lang, NeedsBrackets, ConsId, Stream, !IO).
 
 mercury_format_cons_id(Lang, NeedsBrackets, ConsId, S, !U) :-
     (
