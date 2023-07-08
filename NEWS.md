@@ -765,7 +765,7 @@ Changes to the Mercury standard library
   to never break a row into more than one line. We have also documented
   this behavior.
 
-### Changes to the `string` module
+### Changes to the `string.builder` module
 
 * The following predicates have been added:
 
