@@ -1,0 +1,23 @@
+inf_incl_indirect.options_file:002: Error: options file
+inf_incl_indirect.options_file:002:   `.\inf_incl_indirect.options_file_a'
+inf_incl_indirect.options_file:002:   indirectly includes itself through the
+inf_incl_indirect.options_file:002:   following chain of include directives.
+inf_incl_indirect.options_file:002:   The include directive for
+inf_incl_indirect.options_file:002:   `.\inf_incl_indirect.options_file_a'
+inf_incl_indirect.options_file:002:   here.
+inf_incl_indirect.options_file_a:002:   The include directive for
+inf_incl_indirect.options_file_a:002:   `.\inf_incl_indirect.options_file_b'
+inf_incl_indirect.options_file_a:002:   here.
+inf_incl_indirect.options_file_b:002:   The include directive for
+inf_incl_indirect.options_file_b:002:   `.\inf_incl_indirect.options_file'
+inf_incl_indirect.options_file_b:002:   here.
+inf_incl_indirect.options_file:003: Error: options file
+inf_incl_indirect.options_file:003:   `.\inf_incl_indirect.options_file_b'
+inf_incl_indirect.options_file:003:   indirectly includes itself through the
+inf_incl_indirect.options_file:003:   following chain of include directives.
+inf_incl_indirect.options_file:003:   The include directive for
+inf_incl_indirect.options_file:003:   `.\inf_incl_indirect.options_file_b'
+inf_incl_indirect.options_file:003:   here.
+inf_incl_indirect.options_file_b:002:   The include directive for
+inf_incl_indirect.options_file_b:002:   `.\inf_incl_indirect.options_file'
+inf_incl_indirect.options_file_b:002:   here.
