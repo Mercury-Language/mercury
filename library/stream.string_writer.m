@@ -178,8 +178,8 @@
 % For use by term_io.m.
 %
 
-:- pred maybe_write_paren(Stream::in, string::in, ops.priority::in,
-    ops.priority::in, State::di, State::uo) is det
+:- pred maybe_write_paren(Stream::in, string::in,
+    ops.priority::in, ops.priority::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
 :- pragma type_spec(pred(maybe_write_paren/6),
     (Stream = io.text_output_stream, State = io.state)).
