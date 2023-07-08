@@ -3,11 +3,14 @@
 %---------------------------------------------------------------------------%
 % The .exp file is for the low-level C grades.
 % The .exp2 file is for the high-level C grades.
+% The .exp3 file is for the high-level C grades on Windows.
 %
-% The difference between the .exp and .exp2 is due to deconstruct/5's handling
-% of predicate- and function-valued terms differing between the low- and
-% high-level C backends when using include_details_cc. That should be the only
-% point of difference between the two expected outputs.
+% The main difference between the expected outputs is due to deconstruct/5's
+% handling of predicate- and function-valued terms differing between the low-
+% and high-level C backends when using include_details_cc. Additionally, since
+% foreign type values are represented using sprintf's %p conversion specifier,
+% there may be some platform specific differences to how foreign types are
+% represented in the output.
 
 :- module write_xml.
 
