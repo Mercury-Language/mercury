@@ -59,8 +59,14 @@ main(void)
 
     for (repeat = 0; repeat < 2; repeat++) {
         for (i = 1; i < 256; i++) {
-            if (i != '\n') {
-                put_utf8(i);
+            switch (i) {
+                case '\n':
+                // Skip Substitute since it's treated as EOF
+                // for text mode files on Windows.
+                case 26:     
+                    continue;
+                default:
+                    put_utf8(i);
             }
         }
 

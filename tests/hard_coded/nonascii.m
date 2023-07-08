@@ -25,7 +25,7 @@ main(!IO) :-
     (
         Result = ok(Stream),
         test1(Stream, !IO),
-        test2(Stream, 260, !IO)
+        test2(Stream, 259, !IO)
     ;
         Result = error(Error),
         io.error_message(Error, Msg),
@@ -56,7 +56,7 @@ test1(Stream, !IO) :-
 :- pred test2(io.input_stream::in, int::in, io::di, io::uo) is det.
 
 test2(Stream, N, !IO) :-
-    ( N > 0 ->
+    ( if N > 0 then
         io.read_char(Stream, Result, !IO),
         (
             Result = ok(Char),
@@ -73,6 +73,6 @@ test2(Stream, N, !IO) :-
             io.nl(!IO)
         ),
         test2(Stream, N - 1, !IO)
-    ;
+    else
         true
     ).
