@@ -6,6 +6,8 @@
 % pragmas in the interface on error messages about missing clauses
 % for the named predicates and/or functions.
 %
+% The .err_exp file is for systems that do not use the .exe extension.
+% The .err_exp2 file is for systems that do use the .exe extension.
 
 :- module fact_table_in_interface.
 
