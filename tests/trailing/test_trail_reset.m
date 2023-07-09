@@ -11,9 +11,9 @@
 :- import_module int.
 
 main(!IO) :-
-    ( test(10, _) ->
+    ( if test(10, _) then
         io.write_string("Call to test/1 succeeded\n", !IO)
-    ;
+    else
         io.write_string("Call to test/1 failed\n", !IO)
     ),
     reset_trail(!IO).
@@ -47,11 +47,10 @@ foo(void *, MR_untrail_reason);
 :- pred reset_trail(io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    reset_trail(IO0::di, IO::uo),
+    reset_trail(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MR_reset_trail();
-    IO = IO0;
 ").
 
 :- pragma foreign_code("C", "
@@ -59,8 +58,10 @@ foo(void *, MR_untrail_reason);
 void
 foo(void *value, MR_untrail_reason reason)
 {
-    printf(\"calling function trail entry with %ld: \",
-        (long) value);
+    printf(
+        \"calling function trail entry with %\"
+        MR_INTEGER_LENGTH_MODIFIER \"d: \",
+        (MR_Integer) value);
 
     switch (reason) {
 
