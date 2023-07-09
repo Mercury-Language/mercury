@@ -69,7 +69,6 @@
 :- import_module string.
 :- import_module string.builder.
 :- import_module term.
-:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
@@ -171,14 +170,7 @@
 ].
 
 :- instance pt_output(io.text_output_stream, io.state).
-:- instance pt_output(unit, string).
 :- instance pt_output(string.builder.handle, string.builder.state).
-
-% XXX We should think about whether these instances should *need* to be
-% exported.
-:- instance stream.stream(unit, string).
-:- instance stream.output(unit, string).
-:- instance stream.writer(unit, string, string).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -295,38 +287,6 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_list/6) is write_out_list
 ].
 
-:- instance pt_output(unit, string) where
-[
-    pred(add_char/4) is output_char,
-
-    pred(add_string/4) is output_string,
-    pred(add_strings/4) is output_strings,
-    pred(add_escaped_string/4) is output_escaped_string,
-    pred(add_quoted_string/4) is output_quoted_string,
-
-    pred(add_int/4) is output_int,
-    pred(add_int8/4) is output_int8,
-    pred(add_int16/4) is output_int16,
-    pred(add_int32/4) is output_int32,
-    pred(add_int64/4) is output_int64,
-
-    pred(add_uint/4) is output_uint,
-    pred(add_uint8/4) is output_uint8,
-    pred(add_uint16/4) is output_uint16,
-    pred(add_uint32/4) is output_uint32,
-    pred(add_uint64/4) is output_uint64,
-
-    pred(add_float/4) is output_float,
-
-    pred(add_purity_prefix/4) is output_purity_prefix,
-    pred(add_quoted_atom/4) is output_quoted_atom,
-    pred(add_constant/4) is output_constant,
-    pred(add_eval_method/4) is output_eval_eval_method,
-    pred(add_lambda_eval_method/4) is output_lambda_eval_method,
-
-    pred(add_list/6) is output_list
-].
-
 :- instance pt_output(string.builder.handle, string.builder.state) where
 [
     pred(add_char/4) is build_char,
@@ -357,33 +317,6 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_lambda_eval_method/4) is build_lambda_eval_method,
 
     pred(add_list/6) is build_list
-].
-
-%---------------------%
-
-% These instances are needed to satisfy the superclass constraint
-% on pt_output(S, U) for the pt_output(unit, string) instance.
-%
-% For the pt_output(io.text_output_stream, io.state) and
-% pt_output(string.builder.handle, string.builder.state) instances,
-% the superclass constraint is satisfied by similar instances in
-% library/io.m and library/string.builder.m respectively.
-
-:- instance stream.stream(unit, string) where
-[
-    name(_, "<<string append stream>>", !String)
-].
-
-:- instance stream.output(unit, string) where
-[
-    flush(_, !String)
-].
-
-:- instance stream.writer(unit, string, string) where
-[
-    ( put(_, Str, String0, String) :-
-        String = String0 ++ Str
-    )
 ].
 
 %---------------------------------------------------------------------------%
@@ -526,16 +459,14 @@ write_constant(Const, Stream, !IO) :-
     io::di, io::uo) is det.
 
 write_eval_eval_method(EvalMethod, Stream, !IO) :-
-    output_eval_eval_method(EvalMethod, unit, "", EvalMethodStr),
-    io.write_string(Stream, EvalMethodStr, !IO).
+    io.write_string(Stream, "eval_", !IO),
+    io.write_string(Stream, eval_method_to_string(EvalMethod), !IO).
 
 :- pred write_lambda_eval_method(lambda_eval_method::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 
-write_lambda_eval_method(LambdaEvalMethod, Stream, !IO) :-
-    output_lambda_eval_method(LambdaEvalMethod, unit,
-        "", LambdaEvalMethodStr),
-    io.write_string(Stream, LambdaEvalMethodStr, !IO).
+write_lambda_eval_method(lambda_normal, Stream, !IO) :-
+    io.write_string(Stream, "normal", !IO).
 
 %---------------------%
 
@@ -557,169 +488,6 @@ write_out_list_lag(WritePred, Separator, Item1, Items2plus, Stream, !IO) :-
         io.write_string(Stream, Separator, !IO),
         write_out_list_lag(WritePred, Separator, Item2, Items3plus,
             Stream, !IO)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred output_char(char::in, unit::in, string::di, string::uo) is det.
-
-output_char(C, _, Str0, Str) :-
-    Str = Str0 ++ string.char_to_string(C).
-
-%---------------------%
-
-:- pred output_string(string::in, unit::in, string::di, string::uo) is det.
-
-output_string(S, _, Str0, Str) :-
-    Str = Str0 ++ S.
-
-:- pred output_strings(list(string)::in, unit::in,
-    string::di, string::uo) is det.
-
-output_strings(Strs, _, Str0, Str) :-
-    string.append_list([Str0 | Strs], Str).
-
-:- pred output_escaped_string(string::in, unit::in,
-    string::di, string::uo) is det.
-
-output_escaped_string(S, _, Str0, Str) :-
-    ES = term_io.escaped_string(S),
-    string.append(Str0, ES, Str).
-
-:- pred output_quoted_string(string::in, unit::in,
-    string::di, string::uo) is det.
-
-output_quoted_string(A, _, Str0, Str) :-
-    QA = term_io.quoted_string(A),
-    string.append(Str0, QA, Str).
-
-%---------------------%
-
-:- pred output_int(int::in, unit::in, string::di, string::uo) is det.
-
-output_int(I, _, Str0, Str) :-
-    Str = Str0 ++ string.int_to_string(I).
-
-:- pred output_int8(int8::in, unit::in, string::di, string::uo) is det.
-
-output_int8(I8, _, Str0, Str) :-
-    S = string.int8_to_string(I8) ++ "i8",
-    string.append(Str0, S, Str).
-
-:- pred output_int16(int16::in, unit::in, string::di, string::uo) is det.
-
-output_int16(I16, _, Str0, Str) :-
-    S = string.int16_to_string(I16) ++ "i16",
-    string.append(Str0, S, Str).
-
-:- pred output_int32(int32::in, unit::in, string::di, string::uo) is det.
-
-output_int32(I32, _, Str0, Str) :-
-    S = string.int32_to_string(I32) ++ "i32",
-    string.append(Str0, S, Str).
-
-:- pred output_int64(int64::in, unit::in, string::di, string::uo) is det.
-
-output_int64(I64, _, Str0, Str) :-
-    S = string.int64_to_string(I64) ++ "i64",
-    string.append(Str0, S, Str).
-
-%---------------------%
-
-:- pred output_uint(uint::in, unit::in, string::di, string::uo) is det.
-
-output_uint(U, _, Str0, Str) :-
-    Str = Str0 ++ string.uint_to_string(U) ++ "u".
-
-:- pred output_uint8(uint8::in, unit::in, string::di, string::uo) is det.
-
-output_uint8(U8, _, Str0, Str) :-
-    S = string.uint8_to_string(U8) ++ "u8",
-    string.append(Str0, S, Str).
-
-:- pred output_uint16(uint16::in, unit::in, string::di, string::uo) is det.
-
-output_uint16(U16, _, Str0, Str) :-
-    S = string.uint16_to_string(U16) ++ "u16",
-    string.append(Str0, S, Str).
-
-:- pred output_uint32(uint32::in, unit::in, string::di, string::uo) is det.
-
-output_uint32(U32, _, Str0, Str) :-
-    S = string.uint32_to_string(U32) ++ "u32",
-    string.append(Str0, S, Str).
-
-:- pred output_uint64(uint64::in, unit::in, string::di, string::uo) is det.
-
-output_uint64(U64, _, Str0, Str) :-
-    S = string.uint64_to_string(U64) ++ "u64",
-    string.append(Str0, S, Str).
-
-%---------------------%
-
-:- pred output_float(float::in, unit::in, string::di, string::uo) is det.
-
-output_float(F, _, Str0, Str) :-
-    string.float_to_string(F, S),
-    string.append(Str0, S, Str).
-
-%---------------------%
-
-:- pred output_purity_prefix(purity::in, unit::in,
-    string::di, string::uo) is det.
-
-output_purity_prefix(P, _, Str0, Str) :-
-    S = purity_prefix_to_string(P),
-    string.append(Str0, S, Str).
-
-:- pred output_quoted_atom(string::in, unit::in,
-    string::di, string::uo) is det.
-
-output_quoted_atom(A, _, Str0, Str) :-
-    QA = term_io.quoted_atom(A),
-    string.append(Str0, QA, Str).
-
-:- pred output_constant(const::in, unit::in, string::di, string::uo) is det.
-
-output_constant(C, _, Str0, Str) :-
-    CS = term_io.constant_to_string(C),
-    string.append(Str0, CS, Str).
-
-:- pred output_eval_eval_method(eval_method::in, unit::in,
-    string::di, string::uo) is det.
-
-output_eval_eval_method(EvalMethod, _, !Str) :-
-    output_string("eval_", unit, !Str),
-    output_string(eval_method_to_string(EvalMethod), unit, !Str).
-
-:- pred output_lambda_eval_method(lambda_eval_method::in, unit::in,
-    string::di, string::uo) is det.
-
-output_lambda_eval_method(lambda_normal, _, !Str) :-
-    output_string("normal", unit, !Str).
-
-%---------------------%
-
-:- pred output_list(
-    pred(T, unit, string, string)::in(pred(in, in, di, uo) is det),
-    string::in, list(T)::in, unit::in, string::di, string::uo) is det.
-
-output_list(_, _, [], _, !Str).
-output_list(OutputPred, Sep, [Item | Items], _, !Str) :-
-    output_list_lag(OutputPred, Sep, Item, Items, !Str).
-
-:- pred output_list_lag(
-    pred(T, unit, string, string)::in(pred(in, in, di, uo) is det),
-    string::in, T::in, list(T)::in, string::di, string::uo) is det.
-
-output_list_lag(OutputPred, Sep, Item1, Items, !Str) :-
-    OutputPred(Item1, unit, !Str),
-    (
-        Items = []
-    ;
-        Items = [Item2 | Items3plus],
-        output_string(Sep, unit, !Str),
-        output_list_lag(OutputPred, Sep, Item2, Items3plus, !Str)
     ).
 
 %---------------------------------------------------------------------------%

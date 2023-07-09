@@ -140,13 +140,15 @@ write_pred(Info, Stream, Lang, ModuleInfo, PredId, PredInfo, !IO) :-
         PredSymName = qualified(PredModuleName, PredName),
         (
             PredOrFunc = pf_predicate,
+            MaybeDet = maybe.no,
             mercury_output_pred_type(Stream, TVarSet, VarNamePrint, ExistQVars,
-                PredSymName, ArgTypes, no, Purity, ClassContext, !IO)
+                PredSymName, ArgTypes, MaybeDet, Purity, ClassContext, !IO)
         ;
             PredOrFunc = pf_function,
             pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType),
+            MaybeDet = maybe.no,
             mercury_output_func_type(Stream, TVarSet, VarNamePrint, ExistQVars,
-                PredSymName, FuncArgTypes, FuncRetType, no, Purity,
+                PredSymName, FuncArgTypes, FuncRetType, MaybeDet, Purity,
                 ClassContext, !IO)
         ),
         ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,

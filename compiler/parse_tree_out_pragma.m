@@ -136,6 +136,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module string.builder.
 :- import_module term.
 :- import_module term_io.
 :- import_module unit.
@@ -332,9 +333,11 @@ mercury_output_pragma_decl_pred_pf_name_arity(Stream, PragmaName, PredSpec,
         MaybeAfter, Stream, !IO).
 
 mercury_pragma_decl_pred_pf_name_arity_to_string(PragmaName, PredSpec,
-        MaybeAfter) = String :-
+        MaybeAfter) = Str :-
+    State0 = string.builder.init,
     mercury_format_pragma_decl_pred_pf_name_arity(PragmaName, PredSpec,
-        MaybeAfter, unit, "", String).
+        MaybeAfter, string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 :- pred mercury_format_pragma_decl_pred_pf_name_arity(string::in,
     pred_pf_name_arity::in, string::in, S::in, U::di, U::uo) is det
@@ -374,8 +377,11 @@ mercury_format_pragma_decl_pred_pfu_name_arity(PragmaName, PredSpec0,
 mercury_output_pragma_foreign_decl(Stream, FDInfo, !IO) :-
     mercury_format_pragma_foreign_decl(FDInfo, Stream, !IO).
 
-mercury_pragma_foreign_decl_to_string(FDInfo) = String :-
-    mercury_format_pragma_foreign_decl(FDInfo, unit, "", String).
+mercury_pragma_foreign_decl_to_string(FDInfo) = Str :-
+    State0 = string.builder.init,
+    mercury_format_pragma_foreign_decl(FDInfo,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 :- pred mercury_format_pragma_foreign_decl(pragma_info_foreign_decl::in, S::in,
     U::di, U::uo) is det <= pt_output(S, U).
@@ -415,7 +421,10 @@ mercury_output_pragma_foreign_code(Stream, FCInfo, !IO) :-
     =  string.
 
 foreign_literal_or_include_to_string(LiteralOrInclude) = Str :-
-    mercury_format_foreign_literal_or_include(LiteralOrInclude, unit, "", Str).
+    State0 = string.builder.init,
+    mercury_format_foreign_literal_or_include(LiteralOrInclude,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 :- pred mercury_format_foreign_literal_or_include(
     foreign_literal_or_include::in, S::in,
@@ -498,8 +507,11 @@ mercury_is_source_char(Char) :-
 mercury_output_pragma_foreign_proc(Stream, Lang, FPInfo, !IO) :-
     mercury_format_pragma_foreign_proc(Lang, FPInfo, Stream, !IO).
 
-mercury_pragma_foreign_proc_to_string(Lang, FPInfo) = String :-
-    mercury_format_pragma_foreign_proc(Lang, FPInfo, unit, "", String).
+mercury_pragma_foreign_proc_to_string(Lang, FPInfo) = Str :-
+    State0 = string.builder.init,
+    mercury_format_pragma_foreign_proc(Lang, FPInfo,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 :- pred mercury_format_pragma_foreign_proc(output_lang::in,
     pragma_info_foreign_proc::in, S::in,
@@ -1592,8 +1604,11 @@ mercury_format_required_feature(Feature, S, !U) :-
 
 :- func mercury_pred_name_arity_to_string(sym_name, user_arity) = string.
 
-mercury_pred_name_arity_to_string(PredName, UserArity) = String :-
-    mercury_format_pred_name_arity(PredName, UserArity, unit, "", String).
+mercury_pred_name_arity_to_string(PredName, UserArity) = Str :-
+    State0 = string.builder.init,
+    mercury_format_pred_name_arity(PredName, UserArity,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 :- pred mercury_format_pred_name_arity(sym_name::in, user_arity::in, S::in,
     U::di, U::uo) is det <= pt_output(S, U).
@@ -1607,12 +1622,15 @@ mercury_format_pred_name_arity(PredName, user_arity(Arity), S, !U) :-
 :- func mercury_pred_pf_name_arity_to_string(pred_or_func, sym_name,
     user_arity) = string.
 
-mercury_pred_pf_name_arity_to_string(PredOrFunc, PredName, Arity) = String :-
-    mercury_format_pred_pf_name_arity(PredOrFunc, PredName, Arity,
-        unit, "", String).
+mercury_pred_pf_name_arity_to_string(PredOrFunc, PredName, UserArity) = Str :-
+    State0 = string.builder.init,
+    mercury_format_pred_pf_name_arity(PredOrFunc, PredName, UserArity,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 :- pred mercury_format_pred_pf_name_arity(pred_or_func::in,
-    sym_name::in, user_arity::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
+    sym_name::in, user_arity::in, S::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
 mercury_format_pred_pf_name_arity(PredOrFunc, PredName, UserArity, S, !U) :-
     add_string(pred_or_func_to_str(PredOrFunc), S, !U),
@@ -1623,12 +1641,15 @@ mercury_format_pred_pf_name_arity(PredOrFunc, PredName, UserArity, S, !U) :-
 :- func mercury_pred_pfu_name_arity_to_string(pred_func_or_unknown,
     sym_name, user_arity) = string.
 
-mercury_pred_pfu_name_arity_to_string(PFU, PredName, UserArity) = String :-
+mercury_pred_pfu_name_arity_to_string(PFU, PredName, UserArity) = Str :-
+    State0 = string.builder.init,
     mercury_format_pred_pfu_name_arity(PFU, PredName, UserArity,
-        unit, "", String).
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 :- pred mercury_format_pred_pfu_name_arity(pred_func_or_unknown::in,
-    sym_name::in, user_arity::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
+    sym_name::in, user_arity::in, S::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
 mercury_format_pred_pfu_name_arity(PFU, PredName, UserArity, S, !U) :-
     (
@@ -1666,7 +1687,9 @@ proc_pf_name_modes_to_string(Lang, PredNameModesPF) = Str :-
 :- func int_list_to_string(list(int)) = string.
 
 int_list_to_string(Ints) = Str :-
-    mercury_format_int_list(Ints, unit, "", Str).
+    State0 = string.builder.init,
+    mercury_format_int_list(Ints, string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 :- pred mercury_format_int_list(list(int)::in, S::in,
     U::di, U::uo) is det <= pt_output(S, U).
