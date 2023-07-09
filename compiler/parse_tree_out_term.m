@@ -138,7 +138,8 @@
     needs_quotes::in, term(T)::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 :- pred mercury_format_term_nq_vs(varset(T)::in, var_name_print::in,
-    needs_quotes::in, term(T)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
+    needs_quotes::in, term(T)::in, S::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
 :- func mercury_term_nq_to_string(var_table, var_name_print,
     needs_quotes, prog_term) = string.
@@ -166,12 +167,17 @@
     term(T)) = string.
 :- pred mercury_output_limited_term_vs(varset(T)::in, var_name_print::in,
     int::in, term(T)::in, io.text_output_stream::in, io::di, io::uo) is det.
+:- pred mercury_format_limited_term_vs(varset(T)::in, var_name_print::in,
+    int::in, term(T)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- func mercury_limited_term_nq_to_string_vs(varset(T), var_name_print,
     needs_quotes, int, term(T)) = string.
 :- pred mercury_output_limited_term_nq_vs(varset(T)::in, var_name_print::in,
     needs_quotes::in, int::in, term(T)::in, io.text_output_stream::in,
     io::di, io::uo) is det.
+:- pred mercury_format_limited_term_nq_vs(varset(T)::in, var_name_print::in,
+    needs_quotes::in, int::in, term(T)::in, S::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
@@ -207,7 +213,7 @@
 :- import_module mercury_term_lexer.
 :- import_module ops.
 :- import_module string.
-:- import_module unit.
+:- import_module string.builder.
 
 %---------------------------------------------------------------------------%
 
@@ -251,8 +257,11 @@ strip_trailing_primes(Name0, Name, Num) :-
 
 %---------------------------------------------------------------------------%
 
-mercury_var_to_string(VarTable, VarNamePrint, Var) = String :-
-    mercury_format_var(VarTable, VarNamePrint, Var, unit, "", String).
+mercury_var_to_string(VarTable, VarNamePrint, Var) = Str :-
+    State0 = string.builder.init,
+    mercury_format_var(VarTable, VarNamePrint, Var,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_var(VarTable, VarNamePrint, Var, Stream, !IO) :-
     mercury_format_var(VarTable, VarNamePrint, Var, Stream, !IO).
@@ -266,8 +275,11 @@ mercury_format_var(VarTable, VarNamePrint, Var, S, !U) :-
 
 %---------------------%
 
-mercury_var_to_string_vs(VarSet, VarNamePrint, Var) = String :-
-    mercury_format_var_vs(VarSet, VarNamePrint, Var, unit, "", String).
+mercury_var_to_string_vs(VarSet, VarNamePrint, Var) = Str :-
+    State0 = string.builder.init,
+    mercury_format_var_vs(VarSet, VarNamePrint, Var,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_var_vs(VarSet, VarNamePrint, Var, Stream, !IO) :-
     mercury_format_var_vs(VarSet, VarNamePrint, Var, Stream, !IO).
@@ -281,8 +293,11 @@ mercury_format_var_vs(VarSet, VarNamePrint, Var, S, !U) :-
 
 %---------------------%
 
-mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var) = String :-
-    mercury_format_var_src(VarNameSrc, VarNamePrint, Var, unit, "", String).
+mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var) = Str :-
+    State0 = string.builder.init,
+    mercury_format_var_src(VarNameSrc, VarNamePrint, Var,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO) :-
     mercury_format_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO).
@@ -296,8 +311,11 @@ mercury_format_var_src(VarNameSrc, VarNamePrint, Var, S, !U) :-
 
 %---------------------%
 
-mercury_var_raw_to_string(VarNamePrint, Var, Name) = String :-
-    mercury_format_var_raw(VarNamePrint, Var, Name, unit, "", String).
+mercury_var_raw_to_string(VarNamePrint, Var, Name) = Str :-
+    State0 = string.builder.init,
+    mercury_format_var_raw(VarNamePrint, Var, Name,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_format_var_raw(VarNamePrint, Var, Name, S, !U) :-
     ( if Name = "" then
@@ -308,19 +326,16 @@ mercury_format_var_raw(VarNamePrint, Var, Name, S, !U) :-
             VarNamePrint = print_num_only,
             mercury_format_var_num_only(Var, S, !U)
         ;
-            ( VarNamePrint = print_name_only
-            ; VarNamePrint = print_name_and_num
-            ),
+            VarNamePrint = print_name_only,
+            mercury_convert_var_name(Name, ConvertedName),
+            add_string(ConvertedName, S, !U)
+        ;
+            VarNamePrint = print_name_and_num,
             mercury_convert_var_name(Name, ConvertedName),
             add_string(ConvertedName, S, !U),
-            (
-                VarNamePrint = print_name_only
-            ;
-                VarNamePrint = print_name_and_num,
-                term.var_to_int(Var, VarNum),
-                add_string("_", S, !U),
-                add_int(VarNum, S, !U)
-            )
+            term.var_to_int(Var, VarNum),
+            add_string("_", S, !U),
+            add_int(VarNum, S, !U)
         )
     ).
 
@@ -331,8 +346,11 @@ mercury_format_var_num_only(Var, S, !U) :-
 
 %---------------------------------------------------------------------------%
 
-mercury_vars_to_string(VarTable, VarNamePrint, Vars) = String :-
-    mercury_format_vars(VarTable, VarNamePrint, Vars, unit, "", String).
+mercury_vars_to_string(VarTable, VarNamePrint, Vars) = Str :-
+    State0 = string.builder.init,
+    mercury_format_vars(VarTable, VarNamePrint, Vars,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_vars(VarTable, VarNamePrint, Vars, Stream, !IO) :-
     mercury_format_vars(VarTable, VarNamePrint, Vars, Stream, !IO).
@@ -342,8 +360,11 @@ mercury_format_vars(VarTable, VarNamePrint, Vars, S, !U) :-
 
 %---------------------%
 
-mercury_vars_to_string_vs(VarSet, VarNamePrint, Vars) = String :-
-    mercury_format_vars_vs(VarSet, VarNamePrint, Vars, unit, "", String).
+mercury_vars_to_string_vs(VarSet, VarNamePrint, Vars) = Str :-
+    State0 = string.builder.init,
+    mercury_format_vars_vs(VarSet, VarNamePrint, Vars,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_vars_vs(VarTable, VarNamePrint, Vars, Stream, !IO) :-
     mercury_format_vars_vs(VarTable, VarNamePrint, Vars, Stream, !IO).
@@ -353,8 +374,11 @@ mercury_format_vars_vs(VarSet, VarNamePrint, Vars, S, !U) :-
 
 %---------------------%
 
-mercury_vars_to_string_src(VarNameSrc, VarNamePrint, Vars) = String :-
-    mercury_format_vars_src(VarNameSrc, VarNamePrint, Vars, unit, "", String).
+mercury_vars_to_string_src(VarNameSrc, VarNamePrint, Vars) = Str :-
+    State0 = string.builder.init,
+    mercury_format_vars_src(VarNameSrc, VarNamePrint, Vars,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_vars_src(VarNameSrc, VarNamePrint, Vars, Stream, !IO) :-
     mercury_format_vars_src(VarNameSrc, VarNamePrint, Vars, Stream, !IO).
@@ -447,9 +471,11 @@ mercury_output_term_src(VarNameSrc, VarNamePrint, Term, Stream, !IO) :-
 %---------------------%
 
 mercury_term_nq_to_string_vs(VarSet, VarNamePrint, NextToGraphicToken, Term)
-        = String :-
+        = Str :-
+    State0 = string.builder.init,
     mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
-        unit, "", String).
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
         Stream, !IO) :-
@@ -589,9 +615,11 @@ mercury_format_plain_functor_args_nq_vs(VarSet, VarNamePrint,
 %---------------------%
 
 mercury_term_nq_to_string(VarTable, VarNamePrint, NextToGraphicToken,
-        Term) = String :-
-    mercury_format_term_nq(VarTable, VarNamePrint, NextToGraphicToken,
-        Term, unit, "", String).
+        Term) = Str :-
+    State0 = string.builder.init,
+    mercury_format_term_nq(VarTable, VarNamePrint, NextToGraphicToken, Term,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_term_nq(VarTable, VarNamePrint, NextToGraphicToken,
         Term, Stream, !IO) :-
@@ -775,14 +803,14 @@ mercury_format_list_args(VarTable, VarNamePrint, Term, S, !U) :-
 %---------------------%
 
 mercury_term_nq_to_string_src(VarNameSrc, VarNamePrint, NextToGraphicToken,
-        Term) = String :-
+        Term) = Str :-
     (
         VarNameSrc = vns_varset(VarSet),
-        String = mercury_term_nq_to_string_vs(VarSet, VarNamePrint,
+        Str = mercury_term_nq_to_string_vs(VarSet, VarNamePrint,
             NextToGraphicToken, Term)
     ;
         VarNameSrc = vns_var_table(VarTable),
-        String = mercury_term_nq_to_string(VarTable, VarNamePrint,
+        Str = mercury_term_nq_to_string(VarTable, VarNamePrint,
             NextToGraphicToken, Term)
     ).
 
@@ -868,36 +896,48 @@ mercury_output_limited_term_vs(VarSet, VarNamePrint, Limit, Term,
     mercury_output_limited_term_nq_vs(VarSet, VarNamePrint,
         not_next_to_graphic_token, Limit, Term, Stream, !IO).
 
+mercury_format_limited_term_vs(VarSet, VarNamePrint, Limit, Term, S, !U) :-
+    mercury_format_limited_term_nq_vs(VarSet, VarNamePrint,
+        not_next_to_graphic_token, Limit, Term, S, !U).
+
 %---------------------%
 
 mercury_limited_term_nq_to_string_vs(VarSet, VarNamePrint, NextToGraphicToken,
-        Limit, Term) = String :-
+        Limit, Term) = Str :-
+    % Note that we *could* implement mercury_limited_term_nq_to_string_vs
+    % in terms of mercury_format_limited_term_nq_vs, but the approach here
+    % is simpler, because it makes explicit the "try one way, and if that
+    % gives too long a string, try another way" approach.
+    FullState0 = string.builder.init,
     mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
-        unit, "", FullString),
-    FullLen = string.count_code_points(FullString),
+        string.builder.handle, FullState0, FullState),
+    FullStr = string.builder.to_string(FullState),
+    FullLen = string.count_code_points(FullStr),
     ( if FullLen =< Limit then
-        String = FullString
+        Str = FullStr
     else
         (
             Term = term.variable(_, _),
             % We cannot reduce the length of the string.
-            String = FullString
+            Str = FullStr
         ;
             Term = term.functor(Functor, Args, Context),
             NoArgTerm = term.functor(Functor, [], Context),
+            FunctorState0 = string.builder.init,
             mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken,
-                NoArgTerm, unit, "", FunctorString),
+                NoArgTerm, string.builder.handle, FunctorState0, FunctorState),
+            FunctorStr = string.builder.to_string(FunctorState),
             (
                 Functor = term.atom(_),
                 ArityStr = int_to_string(list.length(Args)),
-                String = FunctorString ++ "/" ++ ArityStr
+                Str = FunctorStr ++ "/" ++ ArityStr
             ;
                 ( Functor = term.integer(_, _, _, _)
                 ; Functor = term.float(_)
                 ; Functor = term.string(_)
                 ; Functor = term.implementation_defined(_)
                 ),
-                String = FunctorString
+                Str = FunctorStr
             )
         )
     ).
@@ -908,10 +948,19 @@ mercury_output_limited_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken,
         NextToGraphicToken, Limit, Term),
     io.write_string(Stream, Str, !IO).
 
+mercury_format_limited_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken,
+        Limit, Term, S, !U) :-
+    Str = mercury_limited_term_nq_to_string_vs(VarSet, VarNamePrint,
+        NextToGraphicToken, Limit, Term),
+    add_string(Str, S, !U).
+
 %---------------------%
 
-mercury_bracketed_atom_to_string(NextToGraphicToken, Name) = String :-
-    mercury_format_bracketed_atom(NextToGraphicToken, Name, unit, "", String).
+mercury_bracketed_atom_to_string(NextToGraphicToken, Name) = Str :-
+    State0 = string.builder.init,
+    mercury_format_bracketed_atom(NextToGraphicToken, Name,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_format_bracketed_atom(NextToGraphicToken, Name, S, !U) :-
     ( if mercury_op(Name) then
@@ -922,19 +971,18 @@ mercury_format_bracketed_atom(NextToGraphicToken, Name, S, !U) :-
         mercury_format_quoted_atom(NextToGraphicToken, Name, S, !U)
     ).
 
+%---------------------------------------------------------------------------%
+
 mercury_format_quoted_atom(NextToGraphicToken, Name, S, !U) :-
     % If the symname is composed of only graphic token chars, then
-    % term_io.quote_atom will not quote it; but if it is next another
+    % term_io.quote_atom will not quote it; but if it is next to another
     % graphic token, it needs to be quoted, otherwise the two would be
     % considered part of one symbol name (e.g. In "int:<", the ":<" parses
     % as one token, so when writing out the "<" after the ":" we need
     % to quote it.
     ( if
         NextToGraphicToken = next_to_graphic_token,
-        string.to_char_list(Name, Chars),
-        ( list.member(Char, Chars) =>
-            mercury_term_lexer.graphic_token_char(Char)
-        )
+        string.all_match(mercury_term_lexer.graphic_token_char, Name)
     then
         add_string("'", S, !U),
         add_escaped_string(Name, S, !U),

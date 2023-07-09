@@ -149,8 +149,8 @@
 :- import_module int.
 :- import_module require.
 :- import_module string.
+:- import_module string.builder.
 :- import_module term_context.
-:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
@@ -179,16 +179,16 @@ purity_name(purity_pure, "pure").
 purity_name(purity_semipure, "semipure").
 purity_name(purity_impure, "impure").
 
-purity_prefix_to_string(Purity) = String :-
+purity_prefix_to_string(Purity) = Str :-
     (
         Purity = purity_pure,
-        String = ""
+        Str = ""
     ;
         ( Purity = purity_impure
         ; Purity = purity_semipure
         ),
         purity_name(Purity, PurityName),
-        String = PurityName ++ " "
+        Str = PurityName ++ " "
     ).
 
 tabled_eval_method_to_pragma_name(tabled_loop_check) = "loop_check".
@@ -299,9 +299,11 @@ goal_warning_to_string(Warning) = Str :-
 
 %---------------------------------------------------------------------------%
 
-mercury_quantifier_to_string(TypeVarSet, VarNamePrint, ExistQVars) = String :-
+mercury_quantifier_to_string(TypeVarSet, VarNamePrint, ExistQVars) = Str :-
+    State0 = string.builder.init,
     mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars,
-        unit, "", String).
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_quantifier(TypeVarSet, VarNamePrint, ExistQVars, Stream, !IO) :-
     mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars,
@@ -332,14 +334,14 @@ mercury_output_state_var(VarSet, VarNamePrint, Var, Stream, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-mercury_foreign_language_to_string(Lang) = String :-
-    mercury_format_foreign_language_string(Lang, unit, "", String).
+mercury_foreign_language_to_string(Lang) = Str :-
+    Str = "\"" ++ foreign_language_string(Lang) ++ "\"".
 
 mercury_output_foreign_language_string(Lang, Stream, !IO) :-
     mercury_format_foreign_language_string(Lang, Stream, !IO).
 
 mercury_format_foreign_language_string(Lang, S, !U) :-
-    add_string("""" ++ foreign_language_string(Lang) ++ """", S, !U).
+    add_string(mercury_foreign_language_to_string(Lang), S, !U).
 
 %---------------------------------------------------------------------------%
 

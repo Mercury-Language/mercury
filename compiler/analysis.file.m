@@ -633,11 +633,11 @@ write_request_entry(Compiler, OutStream, AnalysisName, FuncId, Request, !IO) :-
     ),
 
     FuncIdStr = func_id_to_string(FuncId),
-    write_quoted_sym_name(OutStream, CallerModule, !IO),
-    io.format(OutStream, " -> %s(%i, %s, ",
-        [s(AnalysisName), i(VersionNumber), s(FuncIdStr)], !IO),
-    term_io.write_term(OutStream, varset.init, to_term(Call), !IO),
-    io.write_string(OutStream, ").\n", !IO).
+    CallerModuleStr = escaped_sym_name_to_string(CallerModule),
+    CallTermStr = term_io.term_to_string(varset.init, to_term(Call)),
+    io.format(OutStream, "'%s' -> %s(%d, %s, %s).\n",
+        [s(CallerModuleStr), s(AnalysisName),
+        i(VersionNumber), s(FuncIdStr), s(CallTermStr)], !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -721,11 +721,11 @@ write_imdg_arc(Compiler, OutStream, AnalysisName, FuncId, Arc, !IO) :-
     ),
 
     FuncIdStr = func_id_to_string(FuncId),
-    write_quoted_sym_name(OutStream, DependentModule, !IO),
-    io.format(OutStream, " -> %s(%d, %s, ",
-        [s(AnalysisName), i(VersionNumber), s(FuncIdStr)], !IO),
-    term_io.write_term(OutStream, varset.init, to_term(Call), !IO),
-    io.write_string(OutStream, ").\n", !IO).
+    DependentModuleStr = escaped_sym_name_to_string(DependentModule),
+    CallTermStr = term_io.term_to_string(varset.init, to_term(Call)),
+    io.format(OutStream, "'%s' -> %s(%i, %s, %s).\n",
+        [s(DependentModuleStr), s(AnalysisName),
+        i(VersionNumber), s(FuncIdStr), s(CallTermStr)], !IO).
 
 %---------------------------------------------------------------------------%
 %

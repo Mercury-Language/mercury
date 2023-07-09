@@ -87,8 +87,8 @@
 :- import_module parse_tree.parse_tree_to_term.
 
 :- import_module string.
+:- import_module string.builder.
 :- import_module term.
-:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
@@ -108,8 +108,11 @@ mercury_comma_type_list_to_string(VarSet, [Type | Types]) = String :-
 
 %---------------------------------------------------------------------------%
 
-mercury_type_to_string(VarSet, VarNamePrint, Type) = String :-
-    mercury_format_type(VarSet, VarNamePrint, Type, unit, "", String).
+mercury_type_to_string(VarSet, VarNamePrint, Type) = Str :-
+    State0 = string.builder.init,
+    mercury_format_type(VarSet, VarNamePrint, Type, string.builder.handle,
+        State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_type(VarSet, VarNamePrint, Type, Stream, !IO) :-
     mercury_format_type(VarSet, VarNamePrint, Type, Stream, !IO).
@@ -125,9 +128,11 @@ mercury_format_type(TypeVarSet, VarNamePrint, Type, S, !U) :-
 
 %---------------------------------------------------------------------------%
 
-mercury_constraint_to_string(TypeVarSet, VarNamePrint, Constraint) = String :-
+mercury_constraint_to_string(TypeVarSet, VarNamePrint, Constraint) = Str :-
+    State0 = string.builder.init,
     mercury_format_constraint(TypeVarSet, VarNamePrint, Constraint,
-        unit, "", String).
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_constraint(TypeVarSet, VarNamePrint, Constraint, Stream, !IO) :-
     mercury_format_constraint(TypeVarSet, VarNamePrint,
@@ -142,9 +147,11 @@ mercury_format_constraint(TypeVarSet, VarNamePrint, Constraint, S, !U) :-
     add_string(")", S, !U).
 
 mercury_prog_constraint_list_to_string(TypeVarSet, VarNamePrint,
-        Operator, Constraints) = String :-
+        Operator, Constraints) = Str :-
+    State0 = string.builder.init,
     mercury_format_prog_constraint_list(TypeVarSet, VarNamePrint,
-        Operator, Constraints, unit, "", String).
+        Operator, Constraints, string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_format_prog_constraint_list(TypeVarSet, VarNamePrint, Operator,
         Constraints, S, !U) :-

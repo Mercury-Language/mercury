@@ -111,13 +111,17 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module require.
-:- import_module unit.
+:- import_module string.
+:- import_module string.builder.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
 
-mercury_inst_list_to_string(Lang, InstVarSet, Insts) = String :-
-    mercury_format_inst_list(Lang, InstVarSet, Insts, unit, "", String).
+mercury_inst_list_to_string(Lang, InstVarSet, Insts) = Str :-
+    State0 = string.builder.init,
+    mercury_format_inst_list(Lang, InstVarSet, Insts, string.builder.handle,
+        State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_inst_list(Stream, Lang, InstVarSet, Insts, !IO) :-
     mercury_format_inst_list(Lang, InstVarSet, Insts, Stream, !IO).
@@ -138,8 +142,11 @@ mercury_format_inst_list(Lang, InstVarSet, [Inst | Insts], S, !U) :-
 
 %---------------------------------------------------------------------------%
 
-mercury_inst_to_string(Lang, InstVarSet, Inst) = String :-
-    mercury_format_inst(Lang, InstVarSet, Inst, unit, "", String).
+mercury_inst_to_string(Lang, InstVarSet, Inst) = Str :-
+    State0 = string.builder.init,
+    mercury_format_inst(Lang, InstVarSet, Inst, string.builder.handle,
+        State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_inst(Stream, Lang, InstVarSet, Inst, !IO) :-
     mercury_format_inst(Lang, InstVarSet, Inst, Stream, !IO).
@@ -524,38 +531,31 @@ mercury_format_comma_real(Real, S, !U) :-
 
 %---------------------------------------------------------------------------%
 
-mercury_uniqueness_to_string(Uniq, Suffix) = String :-
-    mercury_format_uniqueness(Uniq, Suffix, unit, "", String).
+mercury_uniqueness_to_string(shared, SharedStr) = SharedStr.
+mercury_uniqueness_to_string(unique, _) = "unique".
+mercury_uniqueness_to_string(mostly_unique, _) = "mostly_unique".
+mercury_uniqueness_to_string(clobbered, _) = "clobbered".
+mercury_uniqueness_to_string(mostly_clobbered, _) = "mostly_clobbered".
 
-mercury_format_uniqueness(shared, SharedString, S, !U) :-
-    add_string(SharedString, S, !U).
-mercury_format_uniqueness(unique, _, S, !U) :-
-    add_string("unique", S, !U).
-mercury_format_uniqueness(mostly_unique, _, S, !U) :-
-    add_string("mostly_unique", S, !U).
-mercury_format_uniqueness(clobbered, _, S, !U) :-
-    add_string("clobbered", S, !U).
-mercury_format_uniqueness(mostly_clobbered, _, S, !U) :-
-    add_string("mostly_clobbered", S, !U).
+mercury_format_uniqueness(Uniq, SharedStr, S, !U) :-
+    add_string(mercury_uniqueness_to_string(Uniq, SharedStr), S, !U).
 
-mercury_any_uniqueness_to_string(Uniq) = String :-
-    mercury_format_any_uniqueness(Uniq, unit, "", String).
+mercury_any_uniqueness_to_string(shared) = "any".
+mercury_any_uniqueness_to_string(unique) = "unique_any".
+mercury_any_uniqueness_to_string(mostly_unique) = "mostly_unique_any".
+mercury_any_uniqueness_to_string(clobbered) = "clobbered_any".
+mercury_any_uniqueness_to_string(mostly_clobbered) = "mostly_clobbered_any".
 
-mercury_format_any_uniqueness(shared, S, !U) :-
-    add_string("any", S, !U).
-mercury_format_any_uniqueness(unique, S, !U) :-
-    add_string("unique_any", S, !U).
-mercury_format_any_uniqueness(mostly_unique, S, !U) :-
-    add_string("mostly_unique_any", S, !U).
-mercury_format_any_uniqueness(clobbered, S, !U) :-
-    add_string("clobbered_any", S, !U).
-mercury_format_any_uniqueness(mostly_clobbered, S, !U) :-
-    add_string("mostly_clobbered_any", S, !U).
+mercury_format_any_uniqueness(Uniq, S, !U) :-
+    add_string(mercury_any_uniqueness_to_string(Uniq), S, !U).
 
 %---------------------------------------------------------------------------%
 
-mercury_mode_list_to_string(Lang, InstVarSet, Modes) = String :-
-    mercury_format_mode_list(Lang, InstVarSet, Modes, unit, "", String).
+mercury_mode_list_to_string(Lang, InstVarSet, Modes) = Str :-
+    State0 = string.builder.init,
+    mercury_format_mode_list(Lang, InstVarSet, Modes, string.builder.handle,
+        State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_mode_list(Stream, Lang, InstVarSet, Modes, !IO) :-
     mercury_format_mode_list(Lang, InstVarSet, Modes, Stream, !IO).
@@ -573,8 +573,11 @@ mercury_format_mode_list(Lang, InstVarSet, [Mode | Modes], S, !U) :-
 
 %---------------------%
 
-mercury_mode_to_string(Lang, InstVarSet, Mode) = String :-
-    mercury_format_mode(Lang, InstVarSet, Mode, unit, "", String).
+mercury_mode_to_string(Lang, InstVarSet, Mode) = Str :-
+    State0 = string.builder.init,
+    mercury_format_mode(Lang, InstVarSet, Mode, string.builder.handle,
+        State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_mode(Stream, Lang, InstVarSet, Mode, !IO) :-
     mercury_format_mode(Lang, InstVarSet, Mode, Stream, !IO).

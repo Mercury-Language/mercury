@@ -34,6 +34,12 @@
 %
 % Output sym_names, maybe with their arities.
 %
+% All the predicates and functions in this module separate sym name components
+% using the standard Mercury module qualifier operator ".".
+%
+% The escaped versions always generate a valid term; the unescaped versions
+% may generate invalid Mercury terms.
+%
 % Use mercury_output_bracketed_sym_name when the sym_name has no arguments,
 % otherwise use mercury_output_sym_name.
 %
@@ -80,39 +86,31 @@
 
 %---------------------------------------------------------------------------%
 
-    % Return or write out a symbol name, with special characters escaped,
-    % but without any quotes. This is suitable for use in error messages,
-    % where the caller should print out an enclosing forward/backward-quote
-    % pair (`...').
+    % Convert a symbol name to a string.
     %
+:- func unescaped_sym_name_to_string(sym_name) = string.
+:- pred write_unescaped_sym_name(io.text_output_stream::in, sym_name::in,
+    io::di, io::uo) is det.
+:- pred format_unescaped_sym_name(S::in, sym_name::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 :- func escaped_sym_name_to_string(sym_name) = string.
 :- pred write_escaped_sym_name(io.text_output_stream::in, sym_name::in,
     io::di, io::uo) is det.
 :- pred format_escaped_sym_name(S::in, sym_name::in, U::di, U::uo) is det
     <= pt_output(S, U).
 
-    % Write out a symbol name, enclosed in single forward quotes ('...'),
-    % and with any special characters escaped.
-    % The output should be a syntactically valid Mercury term.
+    % Convert a symbol name and arity to a "<SymName>/<Arity>" string.
     %
-:- pred write_quoted_sym_name(io.text_output_stream::in, sym_name::in,
-    io::di, io::uo) is det.
-
-    % sym_name_arity_to_string(SymName, String):
-    %
-    % Convert a symbol name and arity to a "<Name>/<Arity>" string,
-    % with module qualifiers separated by the standard Mercury module
-    % qualifier operator.
-    %
-:- func sym_name_arity_to_string(sym_name_arity) = string.
-:- pred write_sym_name_arity(io.text_output_stream::in, sym_name_arity::in,
-    io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-
-    % Write out a module name.
-    %
-:- func escaped_module_name_to_string(module_name) = string.
+:- func unescaped_sym_name_arity_to_string(sym_name_arity) = string.
+:- pred write_unescaped_sym_name_arity(io.text_output_stream::in,
+    sym_name_arity::in, io::di, io::uo) is det.
+:- pred format_unescaped_sym_name_arity(S::in,
+    sym_name_arity::in, U::di, U::uo) is det <= pt_output(S, U).
+:- func escaped_sym_name_arity_to_string(sym_name_arity) = string.
+:- pred write_escaped_sym_name_arity(io.text_output_stream::in,
+    sym_name_arity::in, io::di, io::uo) is det.
+:- pred format_escaped_sym_name_arity(S::in,
+    sym_name_arity::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
@@ -136,17 +134,31 @@
 
 %---------------------------------------------------------------------------%
 
+    % Convert a type constructor name, including its arity to a string.
+    % The string is escaped.
+    %
 :- func type_ctor_to_string(type_ctor) = string.
+:- pred write_type_ctor(io.text_output_stream::in, type_ctor::in,
+    io::di, io::uo) is det.
+:- pred format_type_ctor(S::in, type_ctor::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
+    % Convert a type name name, without its arity, to a string.
+    % The string is escaped.
+    %
 :- func type_name_to_string(type_ctor) = string.
 :- pred write_type_name(io.text_output_stream::in, type_ctor::in,
     io::di, io::uo) is det.
+:- pred format_type_name(S::in, type_ctor::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
 :- func class_id_to_string(class_id) = string.
 :- pred write_class_id(io.text_output_stream::in, class_id::in,
     io::di, io::uo) is det.
+:- pred format_class_id(S::in, class_id::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -159,12 +171,14 @@
 :- import_module string.
 :- import_module string.builder.
 :- import_module term_io.
-:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
 mercury_sym_name_to_string(SymName) = Str :-
-    mercury_format_sym_name(SymName, unit, "", Str).
+    State0 = string.builder.init,
+    mercury_format_sym_name_ngt(not_next_to_graphic_token, SymName,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_sym_name(SymName, Stream, !IO) :-
     mercury_format_sym_name_ngt(not_next_to_graphic_token, SymName,
@@ -188,7 +202,9 @@ mercury_format_sym_name_ngt(NextToGraphicToken, SymName, S, !U) :-
 %---------------------%
 
 mercury_sym_name_arity_to_string(SNA) = Str :-
-    mercury_format_sym_name_arity(SNA, unit, "", Str).
+    State0 = string.builder.init,
+    mercury_format_sym_name_arity(SNA, string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_format_sym_name_arity(sym_name_arity(SymName, Arity), S, !U) :-
     mercury_format_sym_name(SymName, S, !U),
@@ -212,7 +228,10 @@ mercury_format_bracketed_sym_name(SymName, S, !U) :-
 %---------------------%
 
 mercury_bracketed_sym_name_arity_to_string(SNA) = Str :-
-    mercury_format_bracketed_sym_name_arity(SNA, unit, "", Str).
+    State0 = string.builder.init,
+    mercury_format_bracketed_sym_name_arity(SNA, string.builder.handle,
+        State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_format_bracketed_sym_name_arity(sym_name_arity(SymName, Arity),
         S, !U) :-
@@ -223,8 +242,10 @@ mercury_format_bracketed_sym_name_arity(sym_name_arity(SymName, Arity),
 %---------------------%
 
 mercury_bracketed_sym_name_to_string_ngt(NextToGraphicToken, SymName) = Str :-
+    State0 = string.builder.init,
     mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName,
-        unit, "", Str).
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_bracketed_sym_name_ngt(NextToGraphicToken, SymName,
         Stream, !IO) :-
@@ -247,6 +268,27 @@ mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName, S, !U) :-
 
 %---------------------------------------------------------------------------%
 
+unescaped_sym_name_to_string(SymName) = Str :-
+    State0 = string.builder.init,
+    format_unescaped_sym_name(string.builder.handle, SymName, State0, State),
+    Str = string.builder.to_string(State).
+
+write_unescaped_sym_name(Stream, SymName, !IO) :-
+    format_unescaped_sym_name(Stream, SymName, !IO).
+
+format_unescaped_sym_name(S, SymName, !U) :-
+    (
+        SymName = qualified(ModuleName, Name),
+        format_unescaped_sym_name(S, ModuleName, !U),
+        add_string(".", S, !U),
+        add_string(Name, S, !U)
+    ;
+        SymName = unqualified(Name),
+        add_string(Name, S, !U)
+    ).
+
+%---------------------%
+
 escaped_sym_name_to_string(SymName) = Str :-
     State0 = string.builder.init,
     format_escaped_sym_name(string.builder.handle, SymName, State0, State),
@@ -268,27 +310,35 @@ format_escaped_sym_name(S, SymName, !U) :-
 
 %---------------------%
 
-write_quoted_sym_name(Stream, SymName, !IO) :-
-    io.write_string(Stream, "'", !IO),
-    write_escaped_sym_name(Stream, SymName, !IO),
-    io.write_string(Stream, "'", !IO).
+unescaped_sym_name_arity_to_string(SymNameArity) = Str :-
+    State0 = string.builder.init,
+    format_unescaped_sym_name_arity(string.builder.handle, SymNameArity,
+        State0, State),
+    Str = string.builder.to_string(State).
+
+write_unescaped_sym_name_arity(Stream, SymNameArity, !IO) :-
+    format_escaped_sym_name_arity(Stream, SymNameArity, !IO).
+
+format_unescaped_sym_name_arity(S, sym_name_arity(SymName, Arity), !U) :-
+    format_unescaped_sym_name(S, SymName, !U),
+    add_string("/", S, !U),
+    add_int(Arity, S, !U).
 
 %---------------------%
 
-sym_name_arity_to_string(sym_name_arity(SymName, Arity)) = Str :-
-    % XXX This should be escaped_sym_name_to_string.
-    SymNameStr = sym_name_to_string(SymName),
-    string.format("%s/%d", [s(SymNameStr), i(Arity)], Str).
+escaped_sym_name_arity_to_string(SymNameArity) = Str :-
+    State0 = string.builder.init,
+    format_escaped_sym_name_arity(string.builder.handle, SymNameArity,
+        State0, State),
+    Str = string.builder.to_string(State).
 
-write_sym_name_arity(Stream, sym_name_arity(Name, Arity), !IO) :-
-    write_escaped_sym_name(Stream, Name, !IO),
-    io.write_string(Stream, "/", !IO),
-    io.write_int(Stream, Arity, !IO).
+write_escaped_sym_name_arity(Stream, SymNameArity, !IO) :-
+    format_escaped_sym_name_arity(Stream, SymNameArity, !IO).
 
-%---------------------------------------------------------------------------%
-
-escaped_module_name_to_string(ModuleName) =
-    escaped_sym_name_to_string(ModuleName).
+format_escaped_sym_name_arity(S, sym_name_arity(SymName, Arity), !U) :-
+    format_escaped_sym_name(S, SymName, !U),
+    add_string("/", S, !U),
+    add_int(Arity, S, !U).
 
 %---------------------------------------------------------------------------%
 
@@ -350,22 +400,42 @@ pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SymName, Arity) = Str :-
 
 %---------------------------------------------------------------------------%
 
-type_ctor_to_string(type_ctor(Name, Arity)) =
-    sym_name_arity_to_string(sym_name_arity(Name, Arity)).
+type_ctor_to_string(TypeCtor) = Str :-
+    State0 = string.builder.init,
+    format_type_ctor(string.builder.handle, TypeCtor, State0, State),
+    Str = string.builder.to_string(State).
 
-type_name_to_string(type_ctor(Name, _Arity)) =
-    escaped_sym_name_to_string(Name).
+write_type_ctor(Stream, TypeCtor, !IO) :-
+    format_type_ctor(Stream, TypeCtor, !IO).
 
-write_type_name(Stream, type_ctor(Name, _Arity), !IO) :-
-    write_escaped_sym_name(Stream, Name, !IO).
+format_type_ctor(S, type_ctor(SymName, Arity), !U) :-
+    format_escaped_sym_name_arity(S, sym_name_arity(SymName, Arity), !U).
+
+%---------------------%
+
+type_name_to_string(TypeCtor) = Str :-
+    State0 = string.builder.init,
+    format_type_name(string.builder.handle, TypeCtor, State0, State),
+    Str = string.builder.to_string(State).
+
+write_type_name(Stream, TypeCtor, !IO) :-
+    format_type_name(Stream, TypeCtor, !IO).
+
+format_type_name(S, type_ctor(SymName, _Arity), !U) :-
+    format_escaped_sym_name(S, SymName, !U).
 
 %---------------------------------------------------------------------------%
 
-class_id_to_string(class_id(Name, Arity)) =
-    sym_name_arity_to_string(sym_name_arity(Name, Arity)).
+class_id_to_string(ClassId) = Str :-
+    State0 = string.builder.init,
+    format_class_id(string.builder.handle, ClassId, State0, State),
+    Str = string.builder.to_string(State).
 
-write_class_id(Stream, class_id(Name, Arity), !IO) :-
-    write_sym_name_arity(Stream, sym_name_arity(Name, Arity), !IO).
+write_class_id(Stream, ClassId, !IO) :-
+    format_class_id(Stream, ClassId, !IO).
+
+format_class_id(S, class_id(SymName, Arity), !U) :-
+    format_escaped_sym_name_arity(S, sym_name_arity(SymName, Arity), !U).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_tree_out_sym_name.

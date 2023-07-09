@@ -83,13 +83,16 @@
 
 :- import_module list.
 :- import_module string.
+:- import_module string.builder.
 :- import_module term_io.
-:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
-mercury_cons_id_to_string(Lang, NeedsBrackets, ConsId) = String :-
-    mercury_format_cons_id(Lang, NeedsBrackets, ConsId, unit, "", String).
+mercury_cons_id_to_string(Lang, NeedsBrackets, ConsId) = Str :-
+    State0 = string.builder.init,
+    mercury_format_cons_id(Lang, NeedsBrackets, ConsId, string.builder.handle,
+        State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_output_cons_id(Lang, NeedsBrackets, ConsId, Stream, !IO) :-
     mercury_format_cons_id(Lang, NeedsBrackets, ConsId, Stream, !IO).
@@ -170,11 +173,11 @@ mercury_format_cons_id(Lang, NeedsBrackets, ConsId, S, !U) :-
         % add_lambda_eval_method(EvalMethod, S, !U),
         add_string(")>", S, !U)
     ;
-        ConsId = type_ctor_info_const(ModuleName, Type, Arity),
-        ModuleString = sym_name_to_string(ModuleName),
-        string.int_to_string(Arity, ArityString),
-        add_strings(["<type_ctor_info for ",
-            ModuleString, ".", Type, "/", ArityString, ">"], S, !U)
+        ConsId = type_ctor_info_const(ModuleName, TypeName, Arity),
+        ModuleStr = sym_name_to_string(ModuleName),
+        string.int_to_string(Arity, ArityStr),
+        add_strings(["<type_ctor_info for ", ModuleStr, ".", TypeName,
+            "/", ArityStr, ">"], S, !U)
     ;
         ConsId = base_typeclass_info_const(ModuleSymName, ClassId,
             InstanceNum, InstanceStr),
@@ -354,29 +357,29 @@ int_const_to_string_and_suffix(IntConst, Str, Suffix) :-
         IntConst = int_const(Int),
         Str = string.int_to_string(Int),        Suffix = ""
     ;
-        IntConst = uint_const(UInt),
-        Str = string.uint_to_string(UInt),      Suffix = "u"
-    ;
         IntConst = int8_const(Int8),
         Str = string.int8_to_string(Int8),      Suffix = "i8"
-    ;
-        IntConst = uint8_const(UInt8),
-        Str = string.uint8_to_string(UInt8),    Suffix = "u8"
     ;
         IntConst = int16_const(Int16),
         Str = string.int16_to_string(Int16),    Suffix = "i16"
     ;
-        IntConst = uint16_const(UInt16),
-        Str = string.uint16_to_string(UInt16),  Suffix = "u16"
-    ;
         IntConst = int32_const(Int32),
         Str = string.int32_to_string(Int32),    Suffix = "i32"
     ;
-        IntConst = uint32_const(UInt32),
-        Str = string.uint32_to_string(UInt32),  Suffix = "u32"
-    ;
         IntConst = int64_const(Int64),
         Str = string.int64_to_string(Int64),    Suffix = "i64"
+    ;
+        IntConst = uint_const(UInt),
+        Str = string.uint_to_string(UInt),      Suffix = "u"
+    ;
+        IntConst = uint8_const(UInt8),
+        Str = string.uint8_to_string(UInt8),    Suffix = "u8"
+    ;
+        IntConst = uint16_const(UInt16),
+        Str = string.uint16_to_string(UInt16),  Suffix = "u16"
+    ;
+        IntConst = uint32_const(UInt32),
+        Str = string.uint32_to_string(UInt32),  Suffix = "u32"
     ;
         IntConst = uint64_const(UInt64),
         Str = string.uint64_to_string(UInt64),  Suffix = "u64"

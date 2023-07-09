@@ -221,9 +221,9 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module string.builder.
 :- import_module term.
 :- import_module term_context.
-:- import_module unit.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -2118,8 +2118,12 @@ mercury_output_item_instance(_Info, Stream, ItemInstance, !IO) :-
     ).
 
 item_abstract_instance_to_string(Info, ItemAbstractInstance) = Str :-
-    mercury_format_item_abstract_instance(Info, unit, ItemAbstractInstance,
-        "", Str).
+%   mercury_format_item_abstract_instance(Info, unit, ItemAbstractInstance,
+%       "", Str).
+    State0 = string.builder.init,
+    mercury_format_item_abstract_instance(Info, string.builder.handle,
+        ItemAbstractInstance, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_format_item_abstract_instance(_Info, S, ItemAbstractInstance, !U) :-
     HeaderStr =

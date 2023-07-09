@@ -2010,7 +2010,7 @@ ctor_to_string(Ctor, Str) :-
     Ctor = ctor(_, _, SymName, _, Arity, _),
     UnqualName = unqualify_name(SymName),
     SNA = sym_name_arity(unqualified(UnqualName), Arity),
-    Str = sym_name_arity_to_string(SNA).
+    Str = unescaped_sym_name_arity_to_string(SNA).
 
 %---------------------%
 

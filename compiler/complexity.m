@@ -159,9 +159,9 @@ complexity_proc_name(ModuleInfo, PredId, ProcId) = FullName :-
     PredName = pred_info_name(PredInfo),
     SymName = qualified(ModuleSymName, PredName),
     pred_info_get_orig_arity(PredInfo, pred_form_arity(Arity)),
-    NameAndArity = sym_name_arity_to_string(sym_name_arity(SymName, Arity)),
+    SNA = unescaped_sym_name_arity_to_string(sym_name_arity(SymName, Arity)),
     proc_id_to_int(ProcId, ProcIdInt),
-    FullName = NameAndArity ++ "-" ++ int_to_string(ProcIdInt).
+    FullName = SNA ++ "-" ++ int_to_string(ProcIdInt).
 
 %-----------------------------------------------------------------------------%
 
