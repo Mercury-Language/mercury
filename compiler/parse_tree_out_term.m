@@ -911,15 +911,13 @@ mercury_limited_term_nq_to_string_vs(VarSet, VarNamePrint, NextToGraphicToken,
     FullState0 = string.builder.init,
     mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
         string.builder.handle, FullState0, FullState),
-    FullStr = string.builder.to_string(FullState),
-    FullLen = string.count_code_points(FullStr),
-    ( if FullLen =< Limit then
-        Str = FullStr
+    ( if total_length_is_at_most(FullState, Limit) then
+        Str = string.builder.to_string(FullState)
     else
         (
             Term = term.variable(_, _),
             % We cannot reduce the length of the string.
-            Str = FullStr
+            Str = string.builder.to_string(FullState)
         ;
             Term = term.functor(Functor, Args, Context),
             NoArgTerm = term.functor(Functor, [], Context),

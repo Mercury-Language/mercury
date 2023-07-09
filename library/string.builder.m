@@ -42,14 +42,44 @@
 
 :- func init = (string.builder.state::uo) is det.
 
+    % Add a character to the end of the the string builder.
+    %
 :- pred append_char(char::in,
     string.builder.state::di, string.builder.state::uo) is det.
+
+    % Add a string to the end of the the string builder.
+    %
 :- pred append_string(string::in,
     string.builder.state::di, string.builder.state::uo) is det.
+
+    % Add a list of strings to the end of the the string builder.
+    %
 :- pred append_strings(list(string)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-:- func to_string(string.builder.state::di) = (string::uo) is det.
+%---------------------%
+
+    % Return the total length of the string that to_string would return,
+    % without constructing that string (yet).
+    %
+    % Note that once you call this function, you cannot add any new entries
+    % to the given string builder state, because it loses its uniqueness.
+    %
+:- func total_length(string.builder.state) = int.
+
+    % Succeed if and only if the total length of the string that to_string
+    % would return. Determinie this without constructing that string (yet).
+    %
+    % Note that once you call this predicate, you cannot add any new entries
+    % to the given string builder state, because it loses its uniqueness.
+    %
+:- pred total_length_is_at_most(string.builder.state::in, int::in) is semidet.
+
+%---------------------%
+
+    % Return the string that the previous calls to append_* constructed.
+    %
+:- func to_string(string.builder.state::in) = (string::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -65,6 +95,7 @@
 
 :- implementation.
 
+:- import_module int.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
@@ -77,6 +108,8 @@
 %---------------------------------------------------------------------------%
 
 init = state([]).
+
+%---------------------%
 
 :- pragma inline(pred(append_char/3)).      % inline in instance method
 append_char(Char, !State) :-
@@ -95,6 +128,37 @@ append_strings([], !State).
 append_strings([Str | Strs], !State) :-
     append_string(Str, !State),
     append_strings(Strs, !State).
+
+%---------------------%
+
+total_length(State) = TotalLen :-
+    State = state(RevStrs),
+    total_length_acc(RevStrs, 0, TotalLen).
+
+:- pred total_length_acc(list(string)::in, int::in, int::out) is det.
+
+total_length_acc([], !TotalLen).
+total_length_acc([Str | Strs], !TotalLen) :-
+    !:TotalLen = !.TotalLen + string.count_code_points(Str),
+    total_length_acc(Strs, !TotalLen).
+
+total_length_is_at_most(State, MaxLen) :-
+    State = state(RevStrs),
+    total_length_is_at_most_loop(RevStrs, MaxLen).
+
+:- pred total_length_is_at_most_loop(list(string)::in, int::in) is semidet.
+
+total_length_is_at_most_loop([], _MaxLen0).
+total_length_is_at_most_loop([Str | Strs], MaxLen0) :-
+    string.count_code_points(Str, StrLen),
+    ( if MaxLen0 >= StrLen then
+        MaxLen1 = MaxLen0 - StrLen,
+        total_length_is_at_most_loop(Strs, MaxLen1)
+    else
+        fail
+    ).
+
+%---------------------%
 
 to_string(State) = String :-
     State = state(RevStrings),

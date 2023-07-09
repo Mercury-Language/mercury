@@ -767,11 +767,13 @@ Changes to the Mercury standard library
 
 ### Changes to the `string.builder` module
 
-* The following predicates have been added:
+* The following predicates and functions have been added:
 
     - pred `append_char/3`
     - pred `append_string/3`
     - pred `append_strings/3`
+    - func `total_length/1`
+    - pred `total_length_is_at_most/2`
 
 ### Changes to the `term` module
 
