@@ -146,11 +146,11 @@ Options:
         in modules compiled with debugging, and put the raw data needed
         by the mct script into a bunch of files in the coverage directory.
     -W, --windows
-        Translate paths into the Microsoft Windows format and use the
-        extension \`.lib' for libraries. This option also implies
-        --no-sym-links.
+        Translate paths into the Microsoft Windows format. This is
+        automatically selected when using MSYS2.
+        This option also implies --no-sym-links.
     --no-sym-links
-        Use this option on systems which don't support symbolic links.
+        Use this option on systems which do not support symbolic links.
     --disable-debug-libs
         Make the trace, browser, ssdb libraries empty. This can be useful
         when trying to track down the reason why they are being linked
@@ -626,14 +626,6 @@ else
     LN_S="ln -s"
 fi
 
-#-----------------------------------------------------------------------------#
-
-if ${windows}
-then
-    CYGPATH='cygpath -m'
-else
-    CYGPATH='echo'
-fi
 
 #-----------------------------------------------------------------------------#
 
@@ -652,6 +644,7 @@ case "${MSYSTEM}" in
 
     MINGW64|MINGW32|UCRT64|CLANG64) 
         env_is_msys2=true 
+        windows=true
         ;;
 
     CLANGARM64|MSYS)
@@ -663,6 +656,15 @@ case "${MSYSTEM}" in
         env_is_msys2=false
         ;;
 esac
+
+#-----------------------------------------------------------------------------#
+
+if ${windows}
+then
+    CYGPATH='cygpath -m'
+else
+    CYGPATH='echo'
+fi
 
 #-----------------------------------------------------------------------------#
 
@@ -2014,7 +2016,7 @@ then
 
     if "$env_is_msys2"
     then
-        WORKSPACE=$(pwd -W "${root}${stage2_insert}")
+        WORKSPACE=$($CYGPATH "${root}${stage2_insert}")
     else
         WORKSPACE="${root}${stage2_insert}"
     fi
