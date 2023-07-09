@@ -4,6 +4,7 @@
 % The .exp file is for the low-level C grades.
 % The .exp2 file is for the high-level C grades.
 % The .exp3 file is for the high-level C grades on Windows.
+% The .exp4 file is for the low-level C grades on Windows.
 %
 % The main difference between the expected outputs is due to deconstruct/5's
 % handling of predicate- and function-valued terms differing between the low-
