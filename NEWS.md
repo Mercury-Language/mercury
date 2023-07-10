@@ -772,8 +772,8 @@ Changes to the Mercury standard library
     - pred `append_char/3`
     - pred `append_string/3`
     - pred `append_strings/3`
-    - func `total_length/1`
-    - pred `total_length_is_at_most/2`
+    - func `total_num_code_points/1`
+    - pred `total_num_code_points_is_at_most/2`
 
 ### Changes to the `term` module
 

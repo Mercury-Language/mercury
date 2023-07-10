@@ -59,21 +59,23 @@
 
 %---------------------%
 
-    % Return the total length of the string that to_string would return,
-    % without constructing that string (yet).
+    % Return the total number of code points in the string that
+    % to_string would return, without constructing that string (yet).
     %
     % Note that once you call this function, you cannot add any new entries
     % to the given string builder state, because it loses its uniqueness.
     %
-:- func total_length(string.builder.state) = int.
+:- func total_num_code_points(string.builder.state) = int.
 
-    % Succeed if and only if the total length of the string that to_string
-    % would return. Determinie this without constructing that string (yet).
+    % Succeed if and only if the total number of code points in the string
+    % that to_string would return. Determine this without constructing
+    % that string (yet).
     %
     % Note that once you call this predicate, you cannot add any new entries
     % to the given string builder state, because it loses its uniqueness.
     %
-:- pred total_length_is_at_most(string.builder.state::in, int::in) is semidet.
+:- pred total_num_code_points_is_at_most(string.builder.state::in, int::in)
+    is semidet.
 
 %---------------------%
 
@@ -131,29 +133,30 @@ append_strings([Str | Strs], !State) :-
 
 %---------------------%
 
-total_length(State) = TotalLen :-
+total_num_code_points(State) = TotalLen :-
     State = state(RevStrs),
-    total_length_acc(RevStrs, 0, TotalLen).
+    total_num_code_points_acc(RevStrs, 0, TotalLen).
 
-:- pred total_length_acc(list(string)::in, int::in, int::out) is det.
+:- pred total_num_code_points_acc(list(string)::in, int::in, int::out) is det.
 
-total_length_acc([], !TotalLen).
-total_length_acc([Str | Strs], !TotalLen) :-
+total_num_code_points_acc([], !TotalLen).
+total_num_code_points_acc([Str | Strs], !TotalLen) :-
     !:TotalLen = !.TotalLen + string.count_code_points(Str),
-    total_length_acc(Strs, !TotalLen).
+    total_num_code_points_acc(Strs, !TotalLen).
 
-total_length_is_at_most(State, MaxLen) :-
+total_num_code_points_is_at_most(State, MaxLen) :-
     State = state(RevStrs),
-    total_length_is_at_most_loop(RevStrs, MaxLen).
+    total_num_code_points_is_at_most_loop(RevStrs, MaxLen).
 
-:- pred total_length_is_at_most_loop(list(string)::in, int::in) is semidet.
+:- pred total_num_code_points_is_at_most_loop(list(string)::in, int::in)
+    is semidet.
 
-total_length_is_at_most_loop([], _MaxLen0).
-total_length_is_at_most_loop([Str | Strs], MaxLen0) :-
+total_num_code_points_is_at_most_loop([], _MaxLen0).
+total_num_code_points_is_at_most_loop([Str | Strs], MaxLen0) :-
     string.count_code_points(Str, StrLen),
     ( if MaxLen0 >= StrLen then
         MaxLen1 = MaxLen0 - StrLen,
-        total_length_is_at_most_loop(Strs, MaxLen1)
+        total_num_code_points_is_at_most_loop(Strs, MaxLen1)
     else
         fail
     ).

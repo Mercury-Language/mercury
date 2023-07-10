@@ -911,7 +911,7 @@ mercury_limited_term_nq_to_string_vs(VarSet, VarNamePrint, NextToGraphicToken,
     FullState0 = string.builder.init,
     mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
         string.builder.handle, FullState0, FullState),
-    ( if total_length_is_at_most(FullState, Limit) then
+    ( if total_num_code_points_is_at_most(FullState, Limit) then
         Str = string.builder.to_string(FullState)
     else
         (
