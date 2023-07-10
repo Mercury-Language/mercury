@@ -20,6 +20,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.maybe_util.
+:- import_module libs.options.
 :- import_module make.dependencies.
 :- import_module make.make_info.
 :- import_module make.options_file.
@@ -28,6 +29,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
+:- import_module getopt.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
@@ -47,7 +49,7 @@
             % All the arguments for the build, and the globals we have set up
             % for the build.
 
-    % setup_for_build_with_module_options(InvokedByMmcMake,
+    % setup_for_build_with_module_options(DefaultOptionTable, InvokedByMmcMake,
     %   ModuleName, DetectedGradeFlags, OptionVariables, OptionArgs,
     %   ExtraOptions, MayBuild, !Info, !IO):
     %
@@ -67,9 +69,10 @@
     % XXX The type of ExtraOptions should be assoc_list(option, option_data),
     % or possibly just a maybe(op_mode). not list(string),
     %
-:- pred setup_for_build_with_module_options(maybe_invoked_by_mmc_make::in,
-    module_name::in, list(string)::in, options_variables::in,
-    list(string)::in, list(string)::in, may_build::out, io::di, io::uo) is det.
+:- pred setup_for_build_with_module_options(option_table(option)::in,
+    maybe_invoked_by_mmc_make::in, module_name::in, list(string)::in,
+    options_variables::in, list(string)::in, list(string)::in,
+    may_build::out, io::di, io::uo) is det.
 
 %---------------------%
 
@@ -179,7 +182,6 @@
 % by moving each fold predicate to its main (usually only) user module.
 :- import_module libs.file_util.
 :- import_module libs.handle_options.
-:- import_module libs.options.
 :- import_module libs.process_util.
 :- import_module make.module_target.    % XXX undesirable dependency.
 :- import_module make.program_target.   % XXX undesirable dependency.
@@ -189,7 +191,6 @@
 
 :- import_module bool.
 :- import_module char.
-:- import_module getopt.
 :- import_module int.
 :- import_module io.file.
 :- import_module require.
@@ -198,9 +199,9 @@
 
 %---------------------------------------------------------------------------%
 
-setup_for_build_with_module_options(InvokedByMmcMake, ModuleName,
-        DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
-        MayBuild, !IO) :-
+setup_for_build_with_module_options(DefaultOptionTable, InvokedByMmcMake,
+        ModuleName, DetectedGradeFlags, OptionVariables,
+        OptionArgs, ExtraOptions, MayBuild, !IO) :-
     lookup_mmc_module_options(OptionVariables, ModuleName,
         MaybeModuleOptionArgs),
     (
@@ -226,8 +227,9 @@ setup_for_build_with_module_options(InvokedByMmcMake, ModuleName,
             ModuleOptionArgs ++ OptionArgs ++ ExtraOptions ++ UseSubdirs,
         % XXX STREAM
         io.output_stream(CurStream, !IO),
-        handle_given_options(CurStream, AllOptionArgs, _, _,
-            OptionSpecs, BuildGlobals, !IO),
+        ProgressStream = CurStream,
+        handle_given_options(ProgressStream, DefaultOptionTable, AllOptionArgs,
+            _, _, OptionSpecs, BuildGlobals, !IO),
         (
             OptionSpecs = [_ | _],
             MayBuild = may_not_build(OptionSpecs)

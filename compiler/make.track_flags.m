@@ -128,7 +128,8 @@ make_track_flags_files_for_module(Globals, ModuleName, Succeeded,
         ( if !.LastHash = last_hash(AllOptionArgs, HashPrime) then
             Hash = HashPrime
         else
-            option_table_hash(AllOptionArgs, Hash, !IO),
+            get_default_options(Globals, DefaultOptionTable),
+            option_table_hash(DefaultOptionTable, AllOptionArgs, Hash, !IO),
             !:LastHash = last_hash(AllOptionArgs, Hash)
         ),
 
@@ -151,10 +152,10 @@ make_track_flags_files_for_module(Globals, ModuleName, Succeeded,
 
 %---------------------------------------------------------------------------%
 
-:- pred option_table_hash(list(string)::in, string::out,
+:- pred option_table_hash(option_table::in, list(string)::in, string::out,
     io::di, io::uo) is det.
 
-option_table_hash(AllOptionArgs, Hash, !IO) :-
+option_table_hash(DefaultOptionTable, AllOptionArgs, Hash, !IO) :-
     % This code is part of the --track-flags implementation. We hash the
     % options in the updated globals because they include module-specific
     % options. The hash is then compared with the hash stored in the
@@ -208,9 +209,20 @@ option_table_hash(AllOptionArgs, Hash, !IO) :-
     % all three of these kinds of changes grounds for updating a timestamp
     % of when the option database last changed.
     %
+    % XXX A somewhat more backwards-compatible version of the above approach
+    % would be to hash both DefaultOptionTable AND the result invoking
+    % getopt.record_arguments, after filtering inconsequential options
+    % out of both. This would effectively hash the *input* of the call to
+    % handle_given_options, rather than its output. It would also be
+    % logically cleaner, since in some cases, handle_given_options does
+    % updates on mutables (e.g. for disabling smart recompilation)
+    % whose effects persist *beyond* the processing of a given module.
+    %
+    % XXX MAKE_STREAM
     io.output_stream(CurStream, !IO),
-    handle_given_options(CurStream, AllOptionArgs, _, _, OptionsErrors,
-        AllOptionArgsGlobals, !IO),
+    ProgressStream = CurStream,
+    handle_given_options(ProgressStream, DefaultOptionTable, AllOptionArgs,
+        _, _, OptionsErrors, AllOptionArgsGlobals, !IO),
     (
         OptionsErrors = []
     ;

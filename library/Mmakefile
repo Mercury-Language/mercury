@@ -221,7 +221,8 @@ $(STD_LIB_NAME).trans_opts: $($(STD_LIB_NAME).trans_opts)
 #-----------------------------------------------------------------------------#
 
 getopt.m:	getopt_io.m
-		sed -e '/getopt_io/s//getopt/' < getopt_io.m > getopt.m
+		sed -e '/getopt_io/s//getopt/' -e /NOTE_TO_IMPLEMENTORS/d \
+			< getopt_io.m > getopt.m
 
 #-----------------------------------------------------------------------------#
 

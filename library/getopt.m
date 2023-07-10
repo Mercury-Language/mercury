@@ -106,10 +106,6 @@
 % arguments. This is sometimes needed to tell a program to treat strings
 % that start with a dash as non-option arguments.
 %
-% NOTE_TO_IMPLEMENTORS: Until we delete getopt.m, all maintenance
-% NOTE_TO_IMPLEMENTORS: should be done on getopt.m, NOT getopt.m.
-% NOTE_TO_IMPLEMENTORS: getopt.m should then be derived from getopt.m
-% NOTE_TO_IMPLEMENTORS: by invoking "mmake getopt.m"
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 

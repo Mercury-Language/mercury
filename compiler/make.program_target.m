@@ -173,12 +173,13 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions, Succeeded,
     ),
     (
         IntermodAnalysisSucceeded = succeeded,
+        get_default_options(Globals, DefaultOptionTable),
         DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
         OptionVariables = make_info_get_options_variables(!.Info),
         OptionArgs = make_info_get_option_args(!.Info),
-        setup_for_build_with_module_options(invoked_by_mmc_make,
-            MainModuleName, DetectedGradeFlags, OptionVariables, OptionArgs,
-            ExtraOptions, MayBuild, !IO),
+        setup_for_build_with_module_options(DefaultOptionTable,
+            invoked_by_mmc_make, MainModuleName, DetectedGradeFlags,
+            OptionVariables, OptionArgs, ExtraOptions, MayBuild, !IO),
         (
             MayBuild = may_build(_AllOptionArgs, BuildGlobals),
             make_linked_target_2(BuildGlobals, LinkedTargetFile,
@@ -825,13 +826,14 @@ delete_java_class_timestamps(FileName, MaybeTimestamp, !Timestamps) :-
 
 make_misc_target(Globals, MainModuleName - TargetType, Succeeded,
         !Info, !Specs, !IO) :-
+    get_default_options(Globals, DefaultOptionTable),
     DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
     OptionVariables = make_info_get_options_variables(!.Info),
     OptionArgs = make_info_get_option_args(!.Info),
     ExtraOptions = [],
-    setup_for_build_with_module_options(invoked_by_mmc_make, MainModuleName,
-        DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
-        MayBuild, !IO),
+    setup_for_build_with_module_options(DefaultOptionTable,
+        invoked_by_mmc_make, MainModuleName, DetectedGradeFlags,
+        OptionVariables, OptionArgs, ExtraOptions, MayBuild, !IO),
     (
         MayBuild = may_build(_AllOptionArgs, BuildGlobals),
         make_misc_target_builder(BuildGlobals, MainModuleName,
@@ -1655,11 +1657,14 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
     lookup_mmc_options(make_info_get_options_variables(!.Info), MaybeMCFlags),
     (
         MaybeMCFlags = ok1(MCFlags),
+        get_default_options(Globals, DefaultOptionTable),
         DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
         AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
+        % XXX MAKE_STREAM
         io.output_stream(CurStream, !IO),
-        handle_given_options(CurStream, AllFlags, _, _, OptionsSpecs,
-            LibGlobals, !IO)
+        ProgressStream = CurStream,
+        handle_given_options(ProgressStream, DefaultOptionTable, AllFlags,
+            _, _, OptionsSpecs, LibGlobals, !IO)
     ;
         MaybeMCFlags = error1(LookupSpecs),
         write_error_specs(Globals, LookupSpecs, !IO),

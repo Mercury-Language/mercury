@@ -19,9 +19,11 @@
 :- interface.
 
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
+:- import_module getopt.
 :- import_module io.
 :- import_module list.
 
@@ -30,15 +32,15 @@
     % Generate a dummy globals value based on the default values of the
     % options.
     %
-:- pred generate_default_globals(io.text_output_stream::in, globals::out,
-    io::di, io::uo) is det.
-
-    % handle_given_options(ProgressStream, Args, OptionArgs, NonOptionArgs,
-    %   Specs, Globals, !IO).
-    %
-:- pred handle_given_options(io.text_output_stream::in, list(string)::in,
-    list(string)::out, list(string)::out, list(error_spec)::out,
+:- pred generate_default_globals(io.text_output_stream::in, option_table::in,
     globals::out, io::di, io::uo) is det.
+
+    % handle_given_options(ProgressStream, DefaultOptionTable,
+    %   Args, OptionArgs, NonOptionArgs, Specs, Globals, !IO).
+    %
+:- pred handle_given_options(io.text_output_stream::in, option_table::in,
+    list(string)::in, list(string)::out, list(string)::out,
+    list(error_spec)::out, globals::out, io::di, io::uo) is det.
 
     % Display the compiler version.
     %
@@ -70,7 +72,6 @@
 :- import_module libs.compute_grade.
 :- import_module libs.op_mode.
 :- import_module libs.optimization_options.
-:- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
@@ -79,7 +80,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module dir.
-:- import_module getopt.
 :- import_module int.
 :- import_module io.environment.
 :- import_module io.file.
@@ -91,17 +91,19 @@
 
 %---------------------------------------------------------------------------%
 
-generate_default_globals(ProgressStream, DefaultGlobals, !IO) :-
-    handle_given_options(ProgressStream, [], _, _, _, DefaultGlobals, !IO).
+generate_default_globals(ProgressStream, DefaultOptionTable,
+        DefaultGlobals, !IO) :-
+    handle_given_options(ProgressStream, DefaultOptionTable, [], _, _, _,
+        DefaultGlobals, !IO).
 
-handle_given_options(ProgressStream, Args0, OptionArgs, Args, Specs,
-        !:Globals, !IO) :-
+handle_given_options(ProgressStream, DefaultOptionTable,
+        Args0, OptionArgs, Args, Specs, !:Globals, !IO) :-
     trace [compile_time(flag("debug_handle_given_options")), io(!TIO)] (
         io.write_string(ProgressStream, "\noriginal arguments\n", !TIO),
         dump_arguments(ProgressStream, Args0, !TIO)
     ),
-    process_given_options(Args0, OptionArgs, Args, MaybeError, OptionTable,
-        OptOptions, !IO),
+    process_given_options(DefaultOptionTable, Args0, OptionArgs, Args,
+        MaybeError, OptionTable, OptOptions, !IO),
     trace [compile_time(flag("debug_handle_given_options")), io(!TIO)] (
         io.write_string(ProgressStream, "\nfinal option arguments\n", !TIO),
         dump_arguments(ProgressStream, OptionArgs, !TIO),
@@ -109,8 +111,8 @@ handle_given_options(ProgressStream, Args0, OptionArgs, Args, Specs,
             !TIO),
         dump_arguments(ProgressStream, Args, !TIO)
     ),
-    convert_option_table_result_to_globals(ProgressStream, MaybeError,
-        OptionTable, OptOptions, Specs, !:Globals, !IO),
+    convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
+        MaybeError, OptionTable, OptOptions, Specs, !:Globals, !IO),
     (
         Specs = [_ | _]
         % Do NOT set the exit status. This predicate may be called before all
@@ -136,26 +138,24 @@ handle_given_options(ProgressStream, Args0, OptionArgs, Args, Specs,
         )
     ).
 
-    % process_given_options(Args, OptionArgs, NonOptionArgs, MaybeOptionTable,
-    %   !IO):
+    % process_given_options(DefaultOptionTable, Args,
+    %   OptionArgs, NonOptionArgs, MaybeOptionTable, !IO):
     %
     % Process the options, but don't do any post-processing. This is mainly
     % useful for separating the list of arguments into option and non-option
     % arguments.
     %
-:- pred process_given_options(list(string)::in, list(string)::out,
-    list(string)::out, maybe(option_error(option))::out,
-    option_table(option)::out, cord(optimization_option)::out,
-    io::di, io::uo) is det.
+:- pred process_given_options(option_table::in, list(string)::in,
+    list(string)::out, list(string)::out, maybe(option_error(option))::out,
+    option_table::out, cord(optimization_option)::out, io::di, io::uo) is det.
 
-process_given_options(RawArgs, OptionArgs, NonOptionArgs, MaybeError,
-        OptionTable, OptOptionsCord, !IO) :-
+process_given_options(DefaultOptionTable, RawArgs, OptionArgs, NonOptionArgs,
+        MaybeError, OptionTable, OptOptionsCord, !IO) :-
     OptionOps =
         option_ops_userdata(short_option, long_option, special_handler),
-    getopt.init_option_table(option_defaults, OptionTable0),
     getopt.process_options_userdata_io(OptionOps, RawArgs,
         OptionArgs, NonOptionArgs, MaybeError, _OptionsSet,
-        OptionTable0, OptionTable, cord.init, OptOptionsCord, !IO).
+        DefaultOptionTable, OptionTable, cord.init, OptOptionsCord, !IO).
 
 :- pred dump_arguments(io.text_output_stream::in, list(string)::in,
     io::di, io::uo) is det.
@@ -172,19 +172,20 @@ dump_arguments(ProgressStream, [Arg | Args], !IO) :-
     % one option implies setting/unsetting another one).
     %
 :- pred convert_option_table_result_to_globals(io.text_output_stream::in,
-    maybe(option_error(option))::in, option_table(option)::in,
+    option_table::in, maybe(option_error(option))::in, option_table::in,
     cord(optimization_option)::in,
     list(error_spec)::out, globals::out, io::di, io::uo) is det.
 
-convert_option_table_result_to_globals(ProgressStream, MaybeError,
-        OptionTable0, OptOptionsCord, !:Specs, Globals, !IO) :-
+convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
+        MaybeError, OptionTable0, OptOptionsCord, !:Specs, Globals, !IO) :-
     (
         MaybeError = yes(Error),
         ErrorMessage = option_error_to_string(Error),
         OptionTableSpec = simplest_no_context_spec($pred, severity_error,
             phase_options, [words(ErrorMessage)]),
         !:Specs = [OptionTableSpec],
-        generate_default_globals(ProgressStream, Globals, !IO)
+        generate_default_globals(ProgressStream, DefaultOptionTable,
+            Globals, !IO)
     ;
         MaybeError = no,
         OptOptions = cord.list(OptOptionsCord),
@@ -210,8 +211,9 @@ convert_option_table_result_to_globals(ProgressStream, MaybeError,
         ),
         (
             !.Specs = [],
-            convert_options_to_globals(ProgressStream, OptionTable, OptTuple,
-                OpMode, Target, WordSize, GC_Method, TermNorm, Term2Norm,
+            convert_options_to_globals(ProgressStream,
+                DefaultOptionTable, OptionTable, OptTuple, OpMode, Target,
+                WordSize, GC_Method, TermNorm, Term2Norm,
                 TraceLevel, TraceSuppress, SSTraceLevel, MaybeThreadSafe,
                 C_CompilerType, CSharp_CompilerType,
                 ReuseStrategy, MaybeFeedbackInfo,
@@ -219,7 +221,8 @@ convert_option_table_result_to_globals(ProgressStream, MaybeError,
                 LimitErrorContextsMap, !Specs, Globals, !IO)
         ;
             !.Specs = [_ | _],
-            generate_default_globals(ProgressStream, Globals, !IO)
+            generate_default_globals(ProgressStream, DefaultOptionTable,
+                Globals, !IO)
         )
     ).
 
@@ -661,8 +664,9 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
     % termination analyser (the old and the new) has its own norm setting.
     %
 :- pred convert_options_to_globals(io.text_output_stream::in,
-    option_table::in, opt_tuple::in, op_mode::in, compilation_target::in,
-    word_size::in, gc_method::in, termination_norm::in, termination_norm::in,
+    option_table::in, option_table::in, opt_tuple::in, op_mode::in,
+    compilation_target::in, word_size::in, gc_method::in,
+    termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
     reuse_strategy::in, maybe(feedback_info)::in,
@@ -670,8 +674,8 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
     list(error_spec)::in, list(error_spec)::out,
     globals::out, io::di, io::uo) is det.
 
-convert_options_to_globals(ProgressStream, OptionTable0, !.OptTuple, OpMode,
-        Target, WordSize, GC_Method, TermNorm, Term2Norm,
+convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
+        !.OptTuple, OpMode, Target, WordSize, GC_Method, TermNorm, Term2Norm,
         TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedbackInfo,
@@ -720,8 +724,9 @@ convert_options_to_globals(ProgressStream, OptionTable0, !.OptTuple, OpMode,
         FileInstallCmd = install_cmd_user(InstallCmd, InstallCmdDirOption)
     ),
 
-    globals_init(OptionTable0, !.OptTuple, OpMode, Target, WordSize, GC_Method,
-        TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
+    globals_init(DefaultOptionTable, OptionTable0, !.OptTuple, OpMode, Target,
+        WordSize, GC_Method, TermNorm, Term2Norm,
+        TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, FileInstallCmd,
