@@ -235,14 +235,22 @@ expand_file_into_arg_list(S, Res, !IO) :-
     io.text_output_stream::in, list(string)::in, io::di, io::uo) is det.
 
 real_main_after_expansion(ProgressStream, ErrorStream, CmdLineArgs, !IO) :-
-    % XXX Processing the options up to three times is not what you call
-    % elegant.
+    % XXX HANDLE_OPTIONS Processing the options up to three times
+    % is not what you call elegant.
     ( if CmdLineArgs = ["--arg-file", ArgFile | ExtraArgs] then
-        process_options_arg_file(ArgFile, ExtraArgs,
-            DetectedGradeFlags, Variables, MaybeMCFlags,
-            OptionArgs, NonOptionArgs, OptionSpecs, !IO)
+        % Diagnose bad invocations, e.g. shell redirection operators treated
+        % as command line arguments.
+        (
+            ExtraArgs = []
+        ;
+            ExtraArgs = [_ | _],
+            unexpected($pred,
+                "extra arguments with --arg-file: " ++ string(ExtraArgs))
+        ),
+        process_options_arg_file(ArgFile, DetectedGradeFlags, Variables,
+            MaybeMCFlags, OptionArgs, NonOptionArgs, OptionSpecs, !IO)
     else
-        process_options_plain(ErrorStream, CmdLineArgs, DetectedGradeFlags,
+        process_options_std(ErrorStream, CmdLineArgs, DetectedGradeFlags,
             Variables, MaybeMCFlags, OptionArgs, NonOptionArgs,
             OptionSpecs, !IO)
     ),
@@ -300,12 +308,12 @@ real_main_after_expansion(ProgressStream, ErrorStream, CmdLineArgs, !IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-:- pred process_options_arg_file(string::in, list(string)::in,
+:- pred process_options_arg_file(string::in,
     list(string)::out, options_variables::out, maybe(list(string))::out,
     list(string)::out, list(string)::out, list(error_spec)::out,
     io::di, io::uo) is det.
 
-process_options_arg_file(ArgFile, ExtraArgs, DetectedGradeFlags, Variables,
+process_options_arg_file(ArgFile, DetectedGradeFlags, Variables,
         MaybeMCFlags, OptionArgs, NonOptionArgs, Specs, !IO) :-
     io.environment.get_environment_var_map(EnvVarMap, !IO),
     % All the configuration and options file options are passed in the
@@ -313,16 +321,6 @@ process_options_arg_file(ArgFile, ExtraArgs, DetectedGradeFlags, Variables,
     % (make.module_target does this to overcome limits on the lengths
     % of command lines on Windows.) The environment is ignored, unlike
     % with @file syntax.
-
-    % Diagnose bad invocations, e.g. shell redirection operators treated
-    % as command line arguments.
-    (
-        ExtraArgs = []
-    ;
-        ExtraArgs = [_ | _],
-        unexpected($pred,
-            "extra arguments with --arg-file: " ++ string(ExtraArgs))
-    ),
 
     % read_args_file may attempt to look up options, so we need to
     % initialize the globals.
@@ -336,7 +334,13 @@ process_options_arg_file(ArgFile, ExtraArgs, DetectedGradeFlags, Variables,
     Specs = ArgsNonUndefSpecs ++ ArgsUndefSpecs,
     (
         MaybeArgs1 = yes(Args1),
-        separate_option_args(Args1, OptionArgs, NonOptionArgs)
+        % Separate the option args from the non-option args.
+        % XXX HANDLE_OPTIONS Later calls to handle_given_options
+        % will compute OptionTable0 again and again.
+        % XXX HANDLE_OPTIONS Ignoring _MaybeError seems a bit careless.
+        getopt.init_option_table(option_defaults, OptionTable0),
+        getopt.record_arguments(short_option, long_option, OptionTable0,
+            Args1, NonOptionArgs, OptionArgs, _MaybeError, _OptionValues)
     ;
         MaybeArgs1 = no,
         OptionArgs = [],
@@ -346,12 +350,12 @@ process_options_arg_file(ArgFile, ExtraArgs, DetectedGradeFlags, Variables,
     Variables = options_variables_init(EnvVarMap),
     MaybeMCFlags = yes([]).
 
-:- pred process_options_plain(io.text_output_stream::in, list(string)::in,
+:- pred process_options_std(io.text_output_stream::in, list(string)::in,
     list(string)::out, options_variables::out, maybe(list(string))::out,
     list(string)::out, list(string)::out, list(error_spec)::out,
     io::di, io::uo) is det.
 
-process_options_plain(ErrorStream, CmdLineArgs, DetectedGradeFlags, Variables,
+process_options_std(ErrorStream, CmdLineArgs, DetectedGradeFlags, Variables,
         MaybeMCFlags, OptionArgs, NonOptionArgs, Specs, !IO) :-
     % Find out which options files to read.
     % Don't report errors yet, as the errors may no longer exist
@@ -383,10 +387,41 @@ process_options_plain(ErrorStream, CmdLineArgs, DetectedGradeFlags, Variables,
     io.environment.get_environment_var_map(EnvVarMap, !IO),
     (
         OptFileErrors = no,
-        process_options_plain_opt_file_ok(ErrorStream, CmdLineArgs,
-            ArgsGlobals, EnvVarMap, WarnUndef, DetectedGradeFlags,
-            Variables0, Variables, MaybeMCFlags, OptFileOkSpecs, !IO),
-        Specs = OptFileSpecs ++ OptFileOkSpecs
+        maybe_dump_options_file(ErrorStream, ArgsGlobals, Variables0, !IO),
+        lookup_mmc_options(Variables0, MaybeMCFlags0),
+        (
+            MaybeMCFlags0 = error1(Specs),
+            DetectedGradeFlags = [],
+            Variables = options_variables_init(EnvVarMap),
+            MaybeMCFlags = no
+        ;
+            MaybeMCFlags0 = ok1(MCFlags0),
+            trace [
+                compile_time(flag("cmd_line_args")),
+                run_time(env("MMC_CMD_LINE_ARGS")),
+                io(!TIO)]
+            (
+                dump_args(ErrorStream, "MCFlags0", MCFlags0, !TIO),
+                dump_args(ErrorStream, "CmdLineArgs", CmdLineArgs, !TIO)
+            ),
+            % Process the options again to find out which configuration
+            % file to read.
+            handle_given_options(ErrorStream, MCFlags0 ++ CmdLineArgs, _, _,
+                FlagsSpecs, FlagsArgsGlobals, !IO),
+            (
+                FlagsSpecs = [_ | _],
+                DetectedGradeFlags = [],
+                Variables = options_variables_init(EnvVarMap),
+                MaybeMCFlags = no,
+                Specs = FlagsSpecs
+            ;
+                FlagsSpecs = [],
+                process_options_std_config_file(FlagsArgsGlobals, EnvVarMap,
+                    WarnUndef, DetectedGradeFlags, Variables0, Variables,
+                    MaybeMCFlags, OptFileOkSpecs, !IO),
+                Specs = OptFileSpecs ++ OptFileOkSpecs
+            )
+        )
     ;
         OptFileErrors = yes,
         DetectedGradeFlags = [],
@@ -395,108 +430,72 @@ process_options_plain(ErrorStream, CmdLineArgs, DetectedGradeFlags, Variables,
         Specs = OptFileSpecs
     ).
 
-:- pred process_options_plain_opt_file_ok(io.text_output_stream::in,
-    list(string)::in, globals::in, environment_var_map::in, bool::in,
-    list(string)::out, options_variables::in, options_variables::out,
+:- pred process_options_std_config_file(globals::in, environment_var_map::in,
+    bool::in, list(string)::out, options_variables::in, options_variables::out,
     maybe(list(string))::out, list(error_spec)::out, io::di, io::uo) is det.
 
-process_options_plain_opt_file_ok(ErrorStream, CmdLineArgs, ArgsGlobals,
-        EnvVarMap, WarnUndef, DetectedGradeFlags, Variables0, Variables,
-        MaybeMCFlags, Specs, !IO) :-
-    maybe_dump_options_file(ErrorStream, ArgsGlobals, Variables0, !IO),
-    lookup_mmc_options(Variables0, MaybeMCFlags0),
+process_options_std_config_file(FlagsArgsGlobals, EnvVarMap, WarnUndef,
+        DetectedGradeFlags, Variables0, Variables, MaybeMCFlags, Specs, !IO) :-
+    globals.lookup_maybe_string_option(FlagsArgsGlobals, config_file,
+        MaybeConfigFile),
     (
-        MaybeMCFlags0 = ok1(MCFlags0),
-        % Process the options again to find out which configuration
-        % file to read.
-        trace [
-            compile_time(flag("cmd_line_args")),
-            run_time(env("MMC_CMD_LINE_ARGS")),
-            io(!TIO)]
+        MaybeConfigFile = yes(ConfigFile),
+        read_named_options_file(ConfigFile, Variables0, Variables,
+            ConfigNonUndefSpecs, ConfigUndefSpecs, !IO),
         (
-            dump_args(ErrorStream, "MCFlags0", MCFlags0, !TIO),
-            dump_args(ErrorStream, "CmdLineArgs", CmdLineArgs, !TIO)
-        ),
-        handle_given_options(ErrorStream, MCFlags0 ++ CmdLineArgs, _, _,
-            FlagsSpecs, FlagsArgsGlobals, !IO),
-        (
-            FlagsSpecs = [_ | _],
-            DetectedGradeFlags = [],
-            Variables = options_variables_init(EnvVarMap),
-            MaybeMCFlags = no,
-            Specs = FlagsSpecs
+            WarnUndef = no,
+            ConfigSpecs = ConfigNonUndefSpecs
         ;
-            FlagsSpecs = [],
-            globals.lookup_maybe_string_option(FlagsArgsGlobals, config_file,
-                MaybeConfigFile),
+            WarnUndef = yes,
+            ConfigSpecs = ConfigNonUndefSpecs ++ ConfigUndefSpecs
+        ),
+        ConfigErrors = contains_errors(FlagsArgsGlobals, ConfigSpecs),
+        (
+            ConfigErrors = no,
+            lookup_mmc_options(Variables, MaybeMCFlags1),
+            Specs0 = ConfigSpecs ++ get_any_errors1(MaybeMCFlags1),
+            Errors0 = contains_errors(FlagsArgsGlobals, Specs0),
             (
-                MaybeConfigFile = yes(ConfigFile),
-                read_named_options_file(ConfigFile, Variables0, Variables,
-                    ConfigNonUndefSpecs, ConfigUndefSpecs, !IO),
-                (
-                    WarnUndef = no,
-                    ConfigSpecs = ConfigNonUndefSpecs
-                ;
-                    WarnUndef = yes,
-                    ConfigSpecs = ConfigNonUndefSpecs ++ ConfigUndefSpecs
-                ),
-                ConfigErrors = contains_errors(FlagsArgsGlobals, ConfigSpecs),
-                (
-                    ConfigErrors = no,
-                    lookup_mmc_options(Variables, MaybeMCFlags1),
-                    Specs0 = ConfigSpecs ++ get_any_errors1(MaybeMCFlags1),
-                    Errors0 = contains_errors(FlagsArgsGlobals, Specs0),
-                    (
-                        Errors0 = no,
-                        det_project_ok1(MaybeMCFlags1, MCFlags1),
-                        MaybeMCFlags = yes(MCFlags1)
-                    ;
-                        Errors0 = yes,
-                        MaybeMCFlags = no
-                    ),
-                    % XXX Record _StdLibGrades in the final globals structure.
-                    maybe_detect_stdlib_grades(FlagsArgsGlobals, Variables,
-                        _MaybeStdLibGrades, DetectedGradeFlags, !IO),
-                    % maybe_detect_stdlib_grades does this lookup, but
-                    % it returns any error in MaybeConfigMerStdLibDir
-                    % (as part of _MaybeStdLibGrades) only if that error
-                    % is relevant, i.e. if we cannot get the location
-                    % of the Mercury standard library from the
-                    % mercury_standard_library_directory option.
-                    % Including such irrelevant errors in Specs preserves
-                    % old behavior, though I (zs) do not understand
-                    % the reason for that behavior.
-                    lookup_mercury_stdlib_dir(Variables,
-                        MaybeConfigMerStdLibDir),
-                    Specs = Specs0 ++ get_any_errors1(MaybeConfigMerStdLibDir)
-                ;
-                    ConfigErrors = yes,
-                    DetectedGradeFlags = [],
-                    MaybeMCFlags = no,
-                    Specs = ConfigSpecs
-                )
+                Errors0 = no,
+                det_project_ok1(MaybeMCFlags1, MCFlags1),
+                MaybeMCFlags = yes(MCFlags1)
             ;
-                MaybeConfigFile = no,
-                DetectedGradeFlags = [],
-                Variables = options_variables_init(EnvVarMap),
-                lookup_mmc_options(Variables, MaybeMCFlags1),
-                Specs = get_any_errors1(MaybeMCFlags1),
-                Errors = contains_errors(FlagsArgsGlobals, Specs),
-                (
-                    Errors = no,
-                    det_project_ok1(MaybeMCFlags1, MCFlags1),
-                    MaybeMCFlags = yes(MCFlags1)
-                ;
-                    Errors = yes,
-                    MaybeMCFlags = no
-                )
-            )
+                Errors0 = yes,
+                MaybeMCFlags = no
+            ),
+            % XXX Record _StdLibGrades in the final globals structure.
+            maybe_detect_stdlib_grades(FlagsArgsGlobals, Variables,
+                _MaybeStdLibGrades, DetectedGradeFlags, !IO),
+            % maybe_detect_stdlib_grades does this lookup, but it returns
+            % any error in MaybeConfigMerStdLibDir (as part of
+            % _MaybeStdLibGrades) only if that error is relevant,
+            % i.e. if we cannot get the location of the Mercury standard
+            % library from the mercury_standard_library_directory option.
+            % Including such irrelevant errors in Specs preserves old behavior,
+            % though I (zs) do not understand the reason for that behavior.
+            lookup_mercury_stdlib_dir(Variables, MaybeConfigMerStdLibDir),
+            Specs = Specs0 ++ get_any_errors1(MaybeConfigMerStdLibDir)
+        ;
+            ConfigErrors = yes,
+            DetectedGradeFlags = [],
+            MaybeMCFlags = no,
+            Specs = ConfigSpecs
         )
     ;
-        MaybeMCFlags0 = error1(Specs),
+        MaybeConfigFile = no,
         DetectedGradeFlags = [],
         Variables = options_variables_init(EnvVarMap),
-        MaybeMCFlags = no
+        lookup_mmc_options(Variables, MaybeMCFlags1),
+        Specs = get_any_errors1(MaybeMCFlags1),
+        Errors = contains_errors(FlagsArgsGlobals, Specs),
+        (
+            Errors = no,
+            det_project_ok1(MaybeMCFlags1, MCFlags1),
+            MaybeMCFlags = yes(MCFlags1)
+        ;
+            Errors = yes,
+            MaybeMCFlags = no
+        )
     ).
 
 :- pred maybe_dump_options_file(io.text_output_stream::in, globals::in,
@@ -2168,17 +2167,15 @@ gc_init(!IO).
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
 #ifdef MR_BOEHM_GC
-    /*
-    ** Explicitly force the initial heap size to be at least 4 Mb.
-    **
-    ** This works around a bug in the Boehm collector (for versions up
-    ** to at least 6.2) where the collector would sometimes abort with
-    ** the message `unexpected mark stack overflow' (e.g. in grade hlc.gc
-    ** on dec-alpha-osf3.2).
-    **
-    ** Doing this should also improve performance slightly by avoiding
-    ** frequent garbage collection during start-up.
-    */
+    // Explicitly force the initial heap size to be at least 4 Mb.
+    //
+    // This works around a bug in the Boehm collector (for versions up
+    // to at least 6.2) where the collector would sometimes abort with
+    // the message `unexpected mark stack overflow' (e.g. in grade hlc.gc
+    // on dec-alpha-osf3.2).
+    //
+    // Doing this should also improve performance slightly by avoiding
+    // frequent garbage collection during start-up.
     GC_expand_hp(4 * 1024 * 1024);
 #endif
 ").

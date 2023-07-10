@@ -40,13 +40,6 @@
     list(string)::out, list(string)::out, list(error_spec)::out,
     globals::out, io::di, io::uo) is det.
 
-    % separate_option_args(Args, OptionArgs, NonOptionArgs):
-    %
-    % Separate the list of arguments into option and non-option arguments.
-    %
-:- pred separate_option_args(list(string)::in,
-    list(string)::out, list(string)::out) is det.
-
     % Display the compiler version.
     %
 :- pred display_compiler_version(io.text_output_stream::in,
@@ -142,12 +135,6 @@ handle_given_options(ProgressStream, Args0, OptionArgs, Args, Specs,
             true
         )
     ).
-
-separate_option_args(RawArgs, OptionArgs, NonOptionArgs) :-
-    getopt.init_option_table(option_defaults, OptionTable0),
-    % XXX Ignoring _MaybeError seems a bit careless.
-    getopt.record_arguments(short_option, long_option, OptionTable0,
-        RawArgs, NonOptionArgs, OptionArgs, _MaybeError, _OptionValues).
 
     % process_given_options(Args, OptionArgs, NonOptionArgs, MaybeOptionTable,
     %   !IO):
