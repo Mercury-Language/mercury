@@ -46,9 +46,10 @@
     % assignments in those files (and the other files they may include, either
     % directly or indirectly) and return it as Variables.
     %
-    % We return two lists of error specs. The second should be printed
-    % only if the option warn_undefined_options_variables is set, while
-    % the first list should be printed unconditionally.
+    % We return two lists of error specs. The first list consists of errors,
+    % which should be printed unconditionally. The second list consists
+    % of warnings, which should be printed only if the option
+    % warn_undefined_options_variables is set.
     %
 :- pred read_options_files_named_in_options_file_option(list(string)::in,
     list(string)::in, options_variables::out,
@@ -61,9 +62,10 @@
     % --options-search-directories, updating the database of make variable
     % name/value pairs. This is used to read the configuration file.
     %
-    % We return two lists of error specs. The second should be printed
-    % only if the option warn_undefined_options_variables is set, while
-    % the first list should be printed unconditionally.
+    % We return two lists of error specs. The first list consists of errors,
+    % which should be printed unconditionally. The second list consists
+    % of warnings, which should be printed only if the option
+    % warn_undefined_options_variables is set.
     %
 :- pred read_named_options_file(file_name::in,
     options_variables::in, options_variables::out,
@@ -79,9 +81,10 @@
     %
     % This is not quite the same as @file syntax as the environment is ignored.
     %
-    % We return two lists of error specs. The second should be printed
-    % only if the option warn_undefined_options_variables is set, while
-    % the first list should be printed unconditionally.
+    % We return two lists of error specs. The first list consists of errors,
+    % which should be printed unconditionally. The second list consists
+    % of warnings, which should be printed only if the option
+    % warn_undefined_options_variables is set.
     % XXX But see the comments near the only call to this predicate
     % in mercury_compile_main.m.
     %
@@ -90,6 +93,13 @@
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
+%
+% If any of the following predicates return error1(Specs), Specs will
+% contain only errors, not warnings. (There is only one piece of code
+% in this module that generates an error_spec with severity_warning,
+% and the only exported operations whose call tree includes that code
+% are ones listed *above*.)
+%
 
     % Look up $(MAIN_TARGET).
     %
@@ -409,14 +419,6 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
                     io.format(DebugStream, "Reading options file %s... ",
                         [s(FoundDir/FileToFind)], !TIO)
                 ),
-
-                % XXX Instead of setting and unsetting the input stream,
-                % we should simply pass FoundStream to read_options_lines.
-                % However, when I (zs) tried that, I quickly found that
-                % the call tree of read_options_lines includes many predicates
-                % for which it is not at all clear whether they *intend*
-                % to read from a current standard input that originates as
-                % FoundStream, or they just *happen* to do so.
 
                 SubSearchInfo = search_info(yes(FoundDir), Search),
                 read_options_lines(SubSearchInfo, InclStack0,

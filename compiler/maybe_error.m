@@ -83,6 +83,9 @@
 :- pred project_ok1(maybe1(T1)::in, T1::out) is semidet.
 :- pred det_project_ok1(maybe1(T1)::in, T1::out) is det.
 
+:- pred separate_ok1_error1(list(maybe1(T1))::in,
+    list(T1)::out, list(error_spec)::out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -138,6 +141,27 @@ det_project_ok1(Maybe1, Item) :-
         Maybe1 = error1(_Specs),
         unexpected($pred, "error1")
     ).
+
+%---------------------%
+
+separate_ok1_error1(Maybes, OKs, Specs) :-
+    separate_ok1_error1_loop(Maybes, [], RevOKs, [], Specs),
+    list.reverse(RevOKs, OKs).
+
+:- pred separate_ok1_error1_loop(list(maybe1(T1))::in,
+    list(T1)::in, list(T1)::out, list(error_spec)::in, list(error_spec)::out)
+    is det.
+
+separate_ok1_error1_loop([], !RevOKs, !Specs).
+separate_ok1_error1_loop([Maybe | Maybes], !RevOKs, !Specs) :-
+    (
+        Maybe = ok1(OK),
+        !:RevOKs = [OK | !.RevOKs]
+    ;
+        Maybe = error1(CurSpecs),
+        !:Specs = CurSpecs ++ !.Specs
+    ),
+    separate_ok1_error1_loop(Maybes, !RevOKs, !Specs).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.maybe_error.

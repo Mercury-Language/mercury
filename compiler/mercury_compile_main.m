@@ -248,8 +248,9 @@ real_main_after_expansion(ProgressStream, ErrorStream, CmdLineArgs, !IO) :-
             unexpected($pred,
                 "extra arguments with --arg-file: " ++ string(ExtraArgs))
         ),
-        process_options_arg_file(ArgFile, DetectedGradeFlags, OptionsVariables,
-            MaybeMCFlags, OptionArgs, NonOptionArgs, OptionSpecs, !IO)
+        process_options_arg_file(DefaultOptionTable, ArgFile,
+            DetectedGradeFlags, OptionsVariables, MaybeMCFlags,
+            OptionArgs, NonOptionArgs, OptionSpecs, !IO)
     else
         process_options_std(ErrorStream, DefaultOptionTable, CmdLineArgs,
             DetectedGradeFlags, OptionsVariables, MaybeMCFlags,
@@ -311,13 +312,14 @@ real_main_after_expansion(ProgressStream, ErrorStream, CmdLineArgs, !IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-:- pred process_options_arg_file(string::in,
+:- pred process_options_arg_file(option_table::in, string::in,
     list(string)::out, options_variables::out, maybe(list(string))::out,
     list(string)::out, list(string)::out, list(error_spec)::out,
     io::di, io::uo) is det.
 
-process_options_arg_file(ArgFile, DetectedGradeFlags, OptionsVariables,
-        MaybeMCFlags, OptionArgs, NonOptionArgs, Specs, !IO) :-
+process_options_arg_file(DefaultOptionTable, ArgFile, DetectedGradeFlags,
+        OptionsVariables, MaybeMCFlags, OptionArgs, NonOptionArgs,
+        Specs, !IO) :-
     io.environment.get_environment_var_map(EnvVarMap, !IO),
     % All the configuration and options file options are passed in the
     % given file, which is created by the parent `mmc --make' process.
@@ -338,11 +340,8 @@ process_options_arg_file(ArgFile, DetectedGradeFlags, OptionsVariables,
     (
         MaybeArgs1 = yes(Args1),
         % Separate the option args from the non-option args.
-        % XXX HANDLE_OPTIONS Later calls to handle_given_options
-        % will compute OptionTable0 again and again.
         % XXX HANDLE_OPTIONS Ignoring _MaybeError seems a bit careless.
-        getopt.init_option_table(option_defaults, OptionTable0),
-        getopt.record_arguments(short_option, long_option, OptionTable0,
+        getopt.record_arguments(short_option, long_option, DefaultOptionTable,
             Args1, NonOptionArgs, OptionArgs, _MaybeError, _OptionValues)
     ;
         MaybeArgs1 = no,
@@ -353,11 +352,10 @@ process_options_arg_file(ArgFile, DetectedGradeFlags, OptionsVariables,
     OptionsVariables = options_variables_init(EnvVarMap),
     MaybeMCFlags = yes([]).
 
-:- pred process_options_std(io.text_output_stream::in,
-    option_table(option)::in, list(string)::in,
-    list(string)::out, options_variables::out, maybe(list(string))::out,
-    list(string)::out, list(string)::out, list(error_spec)::out,
-    io::di, io::uo) is det.
+:- pred process_options_std(io.text_output_stream::in, option_table::in,
+    list(string)::in, list(string)::out, options_variables::out,
+    maybe(list(string))::out, list(string)::out, list(string)::out,
+    list(error_spec)::out, io::di, io::uo) is det.
 
 process_options_std(ErrorStream, DefaultOptionTable, CmdLineArgs,
         DetectedGradeFlags, OptionsVariables, MaybeMCFlags,
@@ -369,7 +367,7 @@ process_options_std(ErrorStream, DefaultOptionTable, CmdLineArgs,
     % XXX Doing every task in handle_given_options is wasteful
     % in the very likely case of their being an option file.
     % We should do just enough to find the setting of the two options
-    % whose values we look up right here.
+    % whose values we look up right here, and the few options we need below.
     handle_given_options(ErrorStream, DefaultOptionTable, CmdLineArgs,
         OptionArgs, NonOptionArgs, _Errors0, ArgsGlobals, !IO),
     globals.lookup_accumulating_option(ArgsGlobals, options_search_directories,
@@ -463,15 +461,15 @@ process_options_std_config_file(FlagsArgsGlobals, EnvVarMap, WarnUndef,
         (
             ConfigErrors = no,
             lookup_mmc_options(OptionsVariables, MaybeMCFlags1),
-            Specs0 = ConfigSpecs ++ get_any_errors1(MaybeMCFlags1),
-            Errors0 = contains_errors(FlagsArgsGlobals, Specs0),
             (
-                Errors0 = no,
-                det_project_ok1(MaybeMCFlags1, MCFlags1),
-                MaybeMCFlags = yes(MCFlags1)
+                MaybeMCFlags1 = ok1(MCFlags1),
+                MaybeMCFlags = yes(MCFlags1),
+                Specs0 = ConfigSpecs
             ;
-                Errors0 = yes,
-                MaybeMCFlags = no
+                MaybeMCFlags1 = error1(MCFlagsSpecs),
+                % All error_specs in MCFlagsSpecs are errors, not warnings.
+                MaybeMCFlags = no,
+                Specs0 = ConfigSpecs ++ MCFlagsSpecs
             ),
             % XXX Record _StdLibGrades in the final globals structure.
             maybe_detect_stdlib_grades(FlagsArgsGlobals, OptionsVariables,
@@ -497,15 +495,15 @@ process_options_std_config_file(FlagsArgsGlobals, EnvVarMap, WarnUndef,
         DetectedGradeFlags = [],
         OptionsVariables = options_variables_init(EnvVarMap),
         lookup_mmc_options(OptionsVariables, MaybeMCFlags1),
-        Specs = get_any_errors1(MaybeMCFlags1),
-        Errors = contains_errors(FlagsArgsGlobals, Specs),
         (
-            Errors = no,
-            det_project_ok1(MaybeMCFlags1, MCFlags1),
-            MaybeMCFlags = yes(MCFlags1)
+            MaybeMCFlags1 = ok1(MCFlags1),
+            MaybeMCFlags = yes(MCFlags1),
+            Specs = []
         ;
-            Errors = yes,
-            MaybeMCFlags = no
+            MaybeMCFlags1 = error1(MCFlagsSpecs),
+            % All error_specs in MCFlagsSpecs are errors, not warnings.
+            MaybeMCFlags = no,
+            Specs = MCFlagsSpecs
         )
     ).
 
