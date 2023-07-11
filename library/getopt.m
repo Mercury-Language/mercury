@@ -1937,6 +1937,11 @@ convert_to_maybe_option_table(MaybeStructuredError) = MaybeError :-
     ).
 
 %---------------------------------------------------------------------------%
+%
+% The rest of this module contains a version of the cord type that
+% supports operations that preserve the insts of the items in the cord.
+% We duplicate only the subset of the cord operations that we need.
+%
 
 :- type go_cord(T)
     --->    go_empty_cord
@@ -2002,7 +2007,7 @@ go_cord_append(A, B, C) :-
 
 :- pred cord_snoc(T::in(I =< ground),
     go_cord(T)::in(go_cord_skel(I =< ground)),
-     go_cord(T)::out(go_cord_skel(I =< ground))) is det.
+    go_cord(T)::out(go_cord_skel(I =< ground))) is det.
 
 cord_snoc(X, C, CX) :-
     (
