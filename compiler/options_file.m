@@ -843,10 +843,12 @@ parse_options_line(FileName, LineNumber, Line0, MaybeOptionsFileLine) :-
                 MaybeOptionsFileLine = ofl_ok(
                     ofl_var_defn(SetOrAdd, VarName, VarValue))
             else
+                Line2Str = string.from_char_list(Line2),
                 Context = term_context.context(FileName, LineNumber),
-                Pieces = [words("expected"), quote("="), suffix(","),
+                Pieces = [words("Expected"), quote("="), suffix(","),
                     quote(":="), words("or"), quote("+="),
-                    words("after"), quote(VarName), suffix("."), nl],
+                    words("after"), quote(VarName), suffix(","),
+                    words("got"), quote(Line2Str), suffix("."), nl],
                 Spec = simplest_spec($pred, severity_error, phase_read_files,
                     Context, Pieces),
                 MaybeOptionsFileLine = ofl_error(Spec)

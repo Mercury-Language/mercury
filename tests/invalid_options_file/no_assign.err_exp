@@ -1,1 +1,3 @@
-no_assign.options_file:002: expected `=', `:=' or `+=' after `MCFLAGS-global'.
+no_assign.options_file:002: Expected `=', `:=' or `+=' after `MCFLAGS-global',
+no_assign.options_file:002:   got
+no_assign.options_file:002:   `> --no-warn-nothing-exported --no-warn-interface-imports'.
