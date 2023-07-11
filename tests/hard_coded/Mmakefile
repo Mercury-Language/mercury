@@ -991,11 +991,16 @@ term_io_test.res: term_io_test.out term_io_test.fix_out
 
 nonascii.out:	nonascii.data
 
-nonascii.data:	nonascii_gen
+nonascii.data:	nonascii_gen$(EXT_FOR_EXE)
 	./nonascii_gen > nonascii.data
 
-nonascii_gen:	nonascii_gen.c
+ifeq ($(USING_MICROSOFT_CL_COMPILER),yes)
+nonascii_gen$(EXT_FOR_EXE): nonascii_gen.c
+	cl -nologo -Fenoascii_gen$(EXT_FOR_EXE) nonascii_gen.c
+else
+nonascii_gen$(EXT_FOR_EXE): nonascii_gen.c
 	$(CC) nonascii_gen.c -o nonascii_gen
+endif
 
 stream_test.out: stream_test
 	./stream_test < stream_test.data > stream_test.out
@@ -1191,7 +1196,7 @@ realclean_local: realclean_hard_coded
 
 realclean_hard_coded:
 	rm -f Mercury.modules
-	rm -f nonascii_gen
+	rm -f nonascii_gen$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#
 
