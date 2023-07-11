@@ -1111,7 +1111,6 @@ then
                 # The rules to generate *_FLAGS files from *_FLAGS.in files
                 # will not run if we are using `mmc --make', so run them now.
                 if (cd ${stage2dir} && \
-                then
                     ${MMAKE} \
                         library/LIB_FLAGS \
                         mdbcomp/MDBCOMP_FLAGS \
@@ -1123,6 +1122,7 @@ then
                         profiler/PROF_FLAGS \
                         deep_profiler/DEEP_FLAGS \
                         mfilterjavac/MFILTERJAVAC_FLAGS)
+                then
                     echo "building of stage 2 flags files successful"
                 else
                     echo "building of stage 2 flags files not successful"
