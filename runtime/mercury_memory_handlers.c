@@ -606,7 +606,7 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
                     MR_INTEGER_LENGTH_MODIFIER "d: "
                     "0x%08" MR_INTEGER_LENGTH_MODIFIER "x - "
                     "0x%08" MR_INTEGER_LENGTH_MODIFIER "x - "
-                    "0x%08" MR_INTEGER_LENGHT_MODIFIER "x",
+                    "0x%08" MR_INTEGER_LENGTH_MODIFIER "x",
                     zone->MR_zone_name, zone->MR_zone_id,
                     zone->MR_zone_bottom,
                     zone->MR_zone_redzone,
