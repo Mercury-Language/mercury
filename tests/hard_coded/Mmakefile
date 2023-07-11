@@ -996,7 +996,7 @@ nonascii.data:	nonascii_gen$(EXT_FOR_EXE)
 
 ifeq ($(USING_MICROSOFT_CL_COMPILER),yes)
 nonascii_gen$(EXT_FOR_EXE): nonascii_gen.c
-	cl -nologo -Fenoascii_gen$(EXT_FOR_EXE) nonascii_gen.c
+	cl -nologo -Fenonascii_gen$(EXT_FOR_EXE) nonascii_gen.c
 else
 nonascii_gen$(EXT_FOR_EXE): nonascii_gen.c
 	$(CC) nonascii_gen.c -o nonascii_gen
