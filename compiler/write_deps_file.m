@@ -681,7 +681,8 @@ construct_build_nested_children_first_rule(Globals, ModuleName, MaybeTopModule,
             [ext_opt(ext_opt_date_plain),
             ext_opt(ext_opt_date_trans),
             ext_target_date(ext_target_date_c),
-            ext_mmake_fragment(ext_mf_dir_sl_all_os),
+            % XXX C# We would need this to support targeting C# with mmake.
+            % ext_target_date(ext_target_date_cs),
             ext_target_date(ext_target_date_java)],
         list.map_foldl2(
             gather_nested_deps(Globals, ModuleName, NestedModuleNames),

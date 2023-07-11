@@ -385,11 +385,7 @@
 :- type ext_mmake_fragment
     --->    ext_mf_d                    % ".d"
     ;       ext_mf_dv                   % ".dv"
-    ;       ext_mf_dep                  % ".dep"
-    % XXX DODGY This extension is use in only one place, in write_deps_file.m.
-    % It looks strange to me (zs), because I have no idea where ".dir"
-    % comes from, or what system component puts object files there.
-    ;       ext_mf_dir_sl_all_os.       % ".dir/*.$O"
+    ;       ext_mf_dep.                 % ".dep"
 
 :- type ext_mmake_target
     --->    ext_mt_all_int3s            % ".all_int3s"
@@ -883,8 +879,6 @@ ext_lib_gs_extension_dir(Globals, ext_lib_gs_sh_lib_opt, ExtStr, "lib") :-
 ext_mmake_fragment_extension_dir(ext_mf_d,      ".d",   "ds").
 ext_mmake_fragment_extension_dir(ext_mf_dv,     ".dv",  "deps").
 ext_mmake_fragment_extension_dir(ext_mf_dep,    ".dep", "deps").
-ext_mmake_fragment_extension_dir(ext_mf_dir_sl_all_os,
-    ".dir/*.$O", "dirs").
 
 :- pred ext_mmake_target_extension(ext_mmake_target::in, string::out) is det.
 
