@@ -1138,8 +1138,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             default:
                 // Print remaining control characters using octal escapes.
                 if (MR_is_control(data_word)) {
-                    sprintf(buf, "\'\\%03" MR_INTEGER_LENGTH_MODIFIER "o\\\'",
-                        data_word);
+                    sprintf(buf, "\'\\%03o\\\'", (int) (data_word & 0xff));
                 } else if (MR_is_ascii(data_word)) {
                     sprintf(buf, "\'%c\'", (char) data_word);
                 } else if (MR_is_surrogate(data_word)) {
