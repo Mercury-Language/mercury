@@ -2382,7 +2382,6 @@ maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO) :-
 
     % Options updated:
     %   c_include_directory
-    %   config_file
     %   default_runtime_library_directory
     %   init_file_directories
     %   intermod_directories
@@ -2484,23 +2483,6 @@ handle_directory_options(OpMode, !Globals) :-
             accumulating([ConfDir/"conf" | CIncludeDirs0]), !Globals)
     ;
         MaybeConfDir = no
-    ),
-
-    % Find the configuration file.
-    globals.lookup_maybe_string_option(!.Globals, config_file,
-        ConfigFile),
-    % yes("") means `--config-file' was not passed on the command line.
-    ( if ConfigFile = yes("") then
-        (
-            MaybeConfDir = yes(ConfDir1),
-            globals.set_option(config_file, maybe_string(yes(
-                ConfDir1/"conf"/"Mercury.config")), !Globals)
-        ;
-            MaybeConfDir = no,
-            globals.set_option(config_file, maybe_string(no), !Globals)
-        )
-    else
-        true
     ),
 
     % Handle the `.opt', C header, init file and library search
