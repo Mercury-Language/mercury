@@ -105,7 +105,7 @@ then
     exit 2
 fi
 
-if test ! -d "${orig_ws}/.git"
+if test ! -e "${orig_ws}/.git"
 then
     echo "Error: ${orig_ws} is not a git workspace"
     exit 2
