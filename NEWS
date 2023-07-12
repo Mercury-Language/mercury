@@ -1,3 +1,17 @@
+NEWS for Mercury 22.01.7
+========================
+
+This is a bug-fix release.
+
+* [Github issue #123]. We have fixed a problem that was causing compilation
+  with GCC 13 to fail.
+
+* We have renamed a macro used in the compiler to avoid a clash with
+  the system headers in the MSYS2 UCRT64 environment.
+
+* We have fixed a problem that was causing the generation of the debugger
+  documentation to fail on Windows.
+
 NEWS for Mercury 22.01.6
 ========================
 
