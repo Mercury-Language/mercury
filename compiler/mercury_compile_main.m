@@ -105,6 +105,7 @@
 :- import_module benchmarking.
 :- import_module bool.
 :- import_module cord.
+:- import_module dir.
 :- import_module gc.
 :- import_module getopt.
 :- import_module io.environment.
@@ -438,7 +439,21 @@ process_options_std_config_file(FlagsArgsOptionTable, EnvVarMap, WarnUndef,
         DetectedGradeFlags, OptionsVariables0, OptionsVariables,
         MaybeMCFlags, Specs, !IO) :-
     getopt.lookup_maybe_string_option(FlagsArgsOptionTable, config_file,
-        MaybeConfigFile),
+        MaybeConfigFile0),
+    % yes("") means `--config-file' was not passed on the command line.
+    ( if MaybeConfigFile0 = yes("") then
+        getopt.lookup_maybe_string_option(FlagsArgsOptionTable,
+            mercury_configuration_directory, MaybeConfDir),
+        (
+            MaybeConfDir = yes(ConfDir),
+            MaybeConfigFile = yes(ConfDir/"conf"/"Mercury.config")
+        ;
+            MaybeConfDir = no,
+            MaybeConfigFile = no
+        )
+    else
+        MaybeConfigFile = MaybeConfigFile0
+    ),
     (
         MaybeConfigFile = yes(ConfigFile),
         read_named_options_file(ConfigFile,
