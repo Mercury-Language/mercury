@@ -19,9 +19,11 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module parse_tree.error_spec.
 
 :- import_module bool.
+:- import_module getopt.
 :- import_module list.
 :- import_module maybe.
 
@@ -45,27 +47,36 @@
     %
 :- func actual_error_severity(globals, error_severity)
     = maybe(actual_severity).
+:- func actual_error_severity_opt_table(option_table, error_severity)
+    = maybe(actual_severity).
 
     % Compute the actual severity of an error_spec
     % (if it actually prints anything).
     %
 :- func actual_spec_severity(globals, error_spec) = maybe(actual_severity).
+:- func actual_spec_severity_opt_table(option_table, error_spec) =
+    maybe(actual_severity).
 
     % Compute the worst actual severity (if any) occurring in a list of
     % error_specs.
     %
 :- func worst_severity_in_specs(globals, list(error_spec))
     = maybe(actual_severity).
+:- func worst_severity_in_specs_opt_table(option_table, list(error_spec))
+    = maybe(actual_severity).
 
     % Return `yes' if the given list contains error_specs whose actual severity
     % is actual_severity_error.
     %
 :- func contains_errors(globals, list(error_spec)) = bool.
+:- func contains_errors_option_table(option_table, list(error_spec)) = bool.
 
     % Return `yes' if the given list contains error_specs whose actual severity
     % is actual_severity_error or actual_severity_warning.
     %
 :- func contains_errors_and_or_warnings(globals, list(error_spec)) = bool.
+:- func contains_errors_and_or_warnings_opt_table(option_table,
+    list(error_spec)) = bool.
 
     % If --halt-at-warn is not set, then return `yes' if the given list
     % contains error_specs whose actual severity is actual_severity_error.
@@ -75,6 +86,8 @@
     % actual_severity_error or actual_severity_warning.
     %
 :- func contains_errors_or_warnings_treated_as_errors(globals,
+    list(error_spec)) = bool.
+:- func contains_errors_or_warnings_treated_as_errors_opt_table(option_table,
     list(error_spec)) = bool.
 
 %---------------------------------------------------------------------------%
@@ -110,8 +123,6 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module libs.options.
 
 :- import_module pair.
 :- import_module set.
@@ -205,7 +216,13 @@ worst_severity(actual_severity_informational, actual_severity_warning) =
 worst_severity(actual_severity_informational, actual_severity_informational) =
     actual_severity_informational.
 
+%---------------------%
+
 actual_error_severity(Globals, Severity) = MaybeActual :-
+    globals.get_options(Globals, OptionTable),
+    MaybeActual = actual_error_severity_opt_table(OptionTable, Severity).
+
+actual_error_severity_opt_table(OptionTable, Severity) = MaybeActual :-
     (
         Severity = severity_error,
         MaybeActual = yes(actual_severity_error)
@@ -218,46 +235,60 @@ actual_error_severity(Globals, Severity) = MaybeActual :-
     ;
         Severity = severity_conditional(Option, MatchValue,
             Match, MaybeNoMatch),
-        globals.lookup_bool_option(Globals, Option, Value),
+        getopt.lookup_bool_option(OptionTable, Option, Value),
         ( if Value = MatchValue then
-            MaybeActual = actual_error_severity(Globals, Match)
+            MaybeActual = actual_error_severity_opt_table(OptionTable, Match)
         else
             (
                 MaybeNoMatch = no,
                 MaybeActual = no
             ;
                 MaybeNoMatch = yes(NoMatch),
-                MaybeActual = actual_error_severity(Globals, NoMatch)
+                MaybeActual =
+                    actual_error_severity_opt_table(OptionTable, NoMatch)
             )
         )
     ).
 
+%---------------------%
+
 actual_spec_severity(Globals, Spec) = MaybeSeverity :-
+    globals.get_options(Globals, OptionTable),
+    MaybeSeverity = actual_spec_severity_opt_table(OptionTable, Spec).
+
+actual_spec_severity_opt_table(OptionTable, Spec) = MaybeSeverity :-
     (
         ( Spec = error_spec(_, Severity, _, _)
         ; Spec = simplest_spec(_, Severity, _, _, _)
         ; Spec = simplest_no_context_spec(_, Severity, _, _)
         ),
-        MaybeSeverity = actual_error_severity(Globals, Severity)
+        MaybeSeverity = actual_error_severity_opt_table(OptionTable, Severity)
     ;
         Spec = conditional_spec(_, Option, MatchValue, Severity, _, _),
-        globals.lookup_bool_option(Globals, Option, OptionValue),
+        getopt.lookup_bool_option(OptionTable, Option, OptionValue),
         ( if OptionValue = MatchValue then
-            MaybeSeverity = actual_error_severity(Globals, Severity)
+            MaybeSeverity =
+                actual_error_severity_opt_table(OptionTable, Severity)
         else
             MaybeSeverity = no
         )
     ).
 
-worst_severity_in_specs(Globals, Specs) = MaybeWorst :-
-    worst_severity_in_specs_2(Globals, Specs, no, MaybeWorst).
+%---------------------%
 
-:- pred worst_severity_in_specs_2(globals::in, list(error_spec)::in,
+worst_severity_in_specs(Globals, Specs) = MaybeWorst :-
+    globals.get_options(Globals, OptionTable),
+    worst_severity_in_specs_loop(OptionTable, Specs, no, MaybeWorst).
+
+worst_severity_in_specs_opt_table(OptionTable, Specs) = MaybeWorst :-
+    worst_severity_in_specs_loop(OptionTable, Specs, no, MaybeWorst).
+
+:- pred worst_severity_in_specs_loop(option_table::in, list(error_spec)::in,
     maybe(actual_severity)::in, maybe(actual_severity)::out) is det.
 
-worst_severity_in_specs_2(_Globals, [], !MaybeWorst).
-worst_severity_in_specs_2(Globals, [Spec | Specs], !MaybeWorst) :-
-    MaybeThis = actual_spec_severity(Globals, Spec),
+worst_severity_in_specs_loop(_OptionTable, [], !MaybeWorst).
+worst_severity_in_specs_loop(OptionTable, [Spec | Specs], !MaybeWorst) :-
+    MaybeThis = actual_spec_severity_opt_table(OptionTable, Spec),
     (
         !.MaybeWorst = no,
         !:MaybeWorst = MaybeThis
@@ -270,10 +301,16 @@ worst_severity_in_specs_2(Globals, [Spec | Specs], !MaybeWorst) :-
             !:MaybeWorst = yes(worst_severity(Worst, This))
         )
     ),
-    worst_severity_in_specs_2(Globals, Specs, !MaybeWorst).
+    worst_severity_in_specs_loop(OptionTable, Specs, !MaybeWorst).
+
+%---------------------%
 
 contains_errors(Globals, Specs) = Errors :-
-    MaybeWorstActual = worst_severity_in_specs(Globals, Specs),
+    globals.get_options(Globals, OptionTable),
+    Errors = contains_errors_option_table(OptionTable, Specs).
+
+contains_errors_option_table(OptionTable, Specs) = Errors :-
+    MaybeWorstActual = worst_severity_in_specs_opt_table(OptionTable, Specs),
     (
         MaybeWorstActual = no,
         Errors = no
@@ -290,8 +327,16 @@ contains_errors(Globals, Specs) = Errors :-
         )
     ).
 
+%---------------------%
+
 contains_errors_and_or_warnings(Globals, Specs) = ErrorsOrWarnings :-
-    MaybeWorstActual = worst_severity_in_specs(Globals, Specs),
+    globals.get_options(Globals, OptionTable),
+    ErrorsOrWarnings =
+        contains_errors_and_or_warnings_opt_table(OptionTable, Specs).
+
+contains_errors_and_or_warnings_opt_table(OptionTable, Specs) =
+        ErrorsOrWarnings :-
+    MaybeWorstActual = worst_severity_in_specs_opt_table(OptionTable, Specs),
     (
         MaybeWorstActual = no,
         ErrorsOrWarnings = no
@@ -308,8 +353,16 @@ contains_errors_and_or_warnings(Globals, Specs) = ErrorsOrWarnings :-
         )
     ).
 
+%---------------------%
+
 contains_errors_or_warnings_treated_as_errors(Globals, Specs) = Halt :-
-    MaybeWorstActual = worst_severity_in_specs(Globals, Specs),
+    globals.get_options(Globals, OptionTable),
+    Halt = contains_errors_or_warnings_treated_as_errors_opt_table(OptionTable,
+        Specs).
+
+contains_errors_or_warnings_treated_as_errors_opt_table(OptionTable, Specs)
+        = Halt :-
+    MaybeWorstActual = worst_severity_in_specs_opt_table(OptionTable, Specs),
     (
         MaybeWorstActual = no,
         Halt = no
@@ -320,7 +373,7 @@ contains_errors_or_warnings_treated_as_errors(Globals, Specs) = Halt :-
             Halt = yes
         ;
             WorstActual = actual_severity_warning,
-            globals.lookup_bool_option(Globals, halt_at_warn, HaltAtWarn),
+            getopt.lookup_bool_option(OptionTable, halt_at_warn, HaltAtWarn),
             (
                 HaltAtWarn = yes,
                 Halt = yes

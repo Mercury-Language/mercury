@@ -32,6 +32,7 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
@@ -72,6 +73,9 @@
 :- pragma obsolete(pred(write_error_specs/4), [write_error_specs/5]).
 :- pred write_error_specs(io.text_output_stream::in, globals::in,
     list(error_spec)::in, io::di, io::uo) is det.
+
+:- pred write_error_specs_opt_table(io.text_output_stream::in,
+    option_table::in, list(error_spec)::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -151,7 +155,6 @@
 
 :- import_module libs.compiler_util.
 :- import_module libs.indent.
-:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -165,6 +168,7 @@
 
 :- import_module char.
 :- import_module cord.
+:- import_module getopt.
 :- import_module int.
 :- import_module map.
 :- import_module require.
@@ -191,7 +195,10 @@ write_error_spec(Globals, Spec, !IO) :-
     write_error_spec(Stream, Globals, Spec, !IO).
 
 write_error_spec(Stream, Globals, Spec, !IO) :-
-    do_write_error_spec(Stream, Globals, Spec, 0, _, 0, _, set.init, _, !IO).
+    globals.get_options(Globals, OptionTable),
+    globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
+    do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap,
+        Spec, set.init, _, !IO).
 
 %---------------------%
 
@@ -200,43 +207,60 @@ write_error_specs(Globals, Specs0, !IO) :-
     write_error_specs(Stream, Globals, Specs0, !IO).
 
 write_error_specs(Stream, Globals, Specs0, !IO) :-
+    globals.get_options(Globals, OptionTable),
+    globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
     sort_error_specs(Globals, Specs0, Specs),
-    list.foldl4(do_write_error_spec(Stream, Globals), Specs, 0, _, 0, _,
-        set.init, _, !IO).
+    list.foldl2(
+        do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap),
+        Specs, set.init, _, !IO).
+
+%---------------------%
+
+write_error_specs_opt_table(Stream, OptionTable, Specs0, !IO) :-
+    sort_error_specs_opt_table(OptionTable, Specs0, Specs),
+    getopt.lookup_accumulating_option(OptionTable, limit_error_contexts,
+        LimitErrorContexts),
+    % There is nothing we can usefully do about _BadOptions.
+    convert_limit_error_contexts(LimitErrorContexts, _BadOptions,
+        LimitErrorContextsMap),
+    list.foldl2(
+        do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap),
+        Specs, set.init, _, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred do_write_error_spec(io.text_output_stream::in, globals::in,
-    error_spec::in, int::in, int::out, int::in, int::out,
+:- pred do_write_error_spec(io.text_output_stream::in, option_table::in,
+    limit_error_contexts_map::in, error_spec::in,
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.
 
-do_write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors,
+do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap, Spec,
         !AlreadyPrintedVerbose, !IO) :-
     (
         Spec = error_spec(Id, Severity, _Phase, Msgs1),
-        MaybeActual = actual_error_severity(Globals, Severity)
+        MaybeActual = actual_error_severity_opt_table(OptionTable, Severity)
     ;
         Spec = simplest_spec(Id, Severity, _Phase, Context, Pieces),
-        MaybeActual = actual_error_severity(Globals, Severity),
+        MaybeActual = actual_error_severity_opt_table(OptionTable, Severity),
         Msgs1 = [simplest_msg(Context, Pieces)]
     ;
         Spec = simplest_no_context_spec(Id, Severity, _Phase, Pieces),
-        MaybeActual = actual_error_severity(Globals, Severity),
+        MaybeActual = actual_error_severity_opt_table(OptionTable, Severity),
         Msgs1 = [simplest_no_context_msg(Pieces)]
     ;
         Spec = conditional_spec(Id, Option, MatchValue,
             Severity, _Phase, Msgs0),
-        globals.lookup_bool_option(Globals, Option, Value),
+        getopt.lookup_bool_option(OptionTable, Option, Value),
         ( if Value = MatchValue then
-            MaybeActual = actual_error_severity(Globals, Severity),
+            MaybeActual =
+                actual_error_severity_opt_table(OptionTable, Severity),
             Msgs1 = Msgs0
         else
             MaybeActual = no,
             Msgs1 = []
         )
     ),
-    globals.lookup_bool_option(Globals, print_error_spec_id, PrintId),
+    getopt.lookup_bool_option(OptionTable, print_error_spec_id, PrintId),
     (
         PrintId = no,
         Msgs = Msgs1
@@ -265,8 +289,9 @@ do_write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors,
             Msgs = Msgs1 ++ [IdMsg]
         )
     ),
-    do_write_error_msgs(Stream, Msgs, Globals, treat_as_first,
-        have_not_printed_anything, PrintedSome, !AlreadyPrintedVerbose, !IO),
+    do_write_error_msgs(Stream, OptionTable, LimitErrorContextsMap, Msgs,
+        treat_as_first, have_not_printed_anything, PrintedSome,
+        !AlreadyPrintedVerbose, !IO),
     (
         PrintedSome = have_not_printed_anything
         % XXX The following assertion is commented out because the compiler
@@ -282,12 +307,10 @@ do_write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors,
             MaybeActual = yes(Actual),
             (
                 Actual = actual_severity_error,
-                !:NumErrors = !.NumErrors + 1,
                 io.set_exit_status(1, !IO)
             ;
                 Actual = actual_severity_warning,
-                !:NumWarnings = !.NumWarnings + 1,
-                record_warning(Globals, !IO)
+                record_warning_opt_table(OptionTable, !IO)
             ;
                 Actual = actual_severity_informational
             )
@@ -314,15 +337,16 @@ do_write_error_spec(Stream, Globals, Spec, !NumWarnings, !NumErrors,
 :- type already_printed_verbose == set(list(format_piece)).
 
 :- pred do_write_error_msgs(io.text_output_stream::in,
-    list(error_msg)::in, globals::in, maybe_treat_as_first::in,
+    option_table::in, limit_error_contexts_map::in,
+    list(error_msg)::in, maybe_treat_as_first::in,
     maybe_printed_something::in, maybe_printed_something::out,
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.
 
-do_write_error_msgs(_Stream, [], _Globals, _First, !PrintedSome,
+do_write_error_msgs(_Stream, _, _, [], _, !PrintedSome,
         !AlreadyPrintedVerbose, !IO).
-do_write_error_msgs(Stream, [Msg | Msgs], Globals, !.First, !PrintedSome,
-        !AlreadyPrintedVerbose, !IO) :-
+do_write_error_msgs(Stream, OptionTable, LimitErrorContextsMap, [Msg | Msgs],
+        !.First, !PrintedSome, !AlreadyPrintedVerbose, !IO) :-
     (
         Msg = simplest_msg(SimpleContext, Pieces),
         Components = [always(Pieces)],
@@ -352,49 +376,53 @@ do_write_error_msgs(Stream, [Msg | Msgs], Globals, !.First, !PrintedSome,
         % Leave !:First as it is, even if it is treat_as_first.
     ),
     Indent = ExtraIndentLevel * indent2_increment,
-    write_msg_components(Stream, Components, MaybeContext, Indent, Globals,
-        !First, !PrintedSome, !AlreadyPrintedVerbose, !IO),
-    do_write_error_msgs(Stream, Msgs, Globals, !.First, !PrintedSome,
-        !AlreadyPrintedVerbose, !IO).
+    write_msg_components(Stream, OptionTable, LimitErrorContextsMap,
+        MaybeContext, Components, Indent, !First, !PrintedSome,
+        !AlreadyPrintedVerbose, !IO),
+    do_write_error_msgs(Stream, OptionTable, LimitErrorContextsMap,
+        Msgs, !.First, !PrintedSome, !AlreadyPrintedVerbose, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred write_msg_components(io.text_output_stream::in,
-    list(error_msg_component)::in, maybe(prog_context)::in,
-    int::in, globals::in, maybe_treat_as_first::in, maybe_treat_as_first::out,
+:- pred write_msg_components(io.text_output_stream::in, option_table::in,
+    limit_error_contexts_map::in, maybe(prog_context)::in,
+    list(error_msg_component)::in, int::in,
+    maybe_treat_as_first::in, maybe_treat_as_first::out,
     maybe_printed_something::in, maybe_printed_something::out,
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.
 
-write_msg_components(_Stream, [], _, _, _, !First, !PrintedSome,
+write_msg_components(_Stream, _, _, _, [], _, !First, !PrintedSome,
         !AlreadyPrintedVerbose, !IO).
-write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
-        Globals, !First, !PrintedSome, !AlreadyPrintedVerbose, !IO) :-
+write_msg_components(Stream, OptionTable, LimitErrorContextsMap, MaybeContext,
+        [Component | Components], Indent, !First, !PrintedSome,
+        !AlreadyPrintedVerbose, !IO) :-
     (
         Component = always(Pieces),
-        do_write_error_pieces(Stream, Globals, MaybeContext, !.First, Indent,
-            Pieces, !IO),
+        do_write_error_pieces(Stream, OptionTable, LimitErrorContextsMap,
+            MaybeContext, !.First, Indent, Pieces, !IO),
         !:First = do_not_treat_as_first,
         !:PrintedSome = printed_something
     ;
         Component = option_is_set(Option, MatchValue, EmbeddedComponents),
-        globals.lookup_bool_option(Globals, Option, OptionValue),
+        getopt.lookup_bool_option(OptionTable, Option, OptionValue),
         ( if OptionValue = MatchValue then
-            write_msg_components(Stream, EmbeddedComponents, MaybeContext,
-                Indent, Globals, !First, !PrintedSome,
+            write_msg_components(Stream, OptionTable, LimitErrorContextsMap,
+                MaybeContext, EmbeddedComponents, Indent, !First, !PrintedSome,
                 !AlreadyPrintedVerbose, !IO)
         else
             true
         )
     ;
         Component = verbose_only(AlwaysOrOnce, Pieces),
-        globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
+        getopt.lookup_bool_option(OptionTable, verbose_errors, VerboseErrors),
         (
             VerboseErrors = yes,
             (
                 AlwaysOrOnce = verbose_always,
-                do_write_error_pieces(Stream, Globals, MaybeContext, !.First,
-                    Indent, Pieces, !IO),
+                do_write_error_pieces(Stream, OptionTable,
+                    LimitErrorContextsMap, MaybeContext,
+                    !.First, Indent, Pieces, !IO),
                 !:First = do_not_treat_as_first,
                 !:PrintedSome = printed_something
             ;
@@ -402,7 +430,8 @@ write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
                 ( if set.contains(!.AlreadyPrintedVerbose, Pieces) then
                     true
                 else
-                    do_write_error_pieces(Stream, Globals, MaybeContext,
+                    do_write_error_pieces(Stream, OptionTable,
+                        LimitErrorContextsMap, MaybeContext,
                         !.First, Indent, Pieces, !IO),
                     !:First = do_not_treat_as_first,
                     !:PrintedSome = printed_something,
@@ -415,15 +444,15 @@ write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
         )
     ;
         Component = verbose_and_nonverbose(VerbosePieces, NonVerbosePieces),
-        globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
+        getopt.lookup_bool_option(OptionTable, verbose_errors, VerboseErrors),
         (
             VerboseErrors = yes,
-            do_write_error_pieces(Stream, Globals, MaybeContext, !.First,
-                Indent, VerbosePieces, !IO)
+            do_write_error_pieces(Stream, OptionTable, LimitErrorContextsMap,
+                MaybeContext, !.First, Indent, VerbosePieces, !IO)
         ;
             VerboseErrors = no,
-            do_write_error_pieces(Stream, Globals, MaybeContext, !.First,
-                Indent, NonVerbosePieces, !IO),
+            do_write_error_pieces(Stream, OptionTable, LimitErrorContextsMap,
+                MaybeContext, !.First, Indent, NonVerbosePieces, !IO),
             set_extra_error_info(some_extra_error_info, !IO)
         ),
         !:First = do_not_treat_as_first,
@@ -434,8 +463,9 @@ write_msg_components(Stream, [Component | Components], MaybeContext, Indent,
         !:First = do_not_treat_as_first,
         !:PrintedSome = printed_something
     ),
-    write_msg_components(Stream, Components, MaybeContext, Indent, Globals,
-        !First, !PrintedSome, !AlreadyPrintedVerbose, !IO).
+    write_msg_components(Stream, OptionTable, LimitErrorContextsMap,
+        MaybeContext, Components, Indent, !First, !PrintedSome,
+        !AlreadyPrintedVerbose, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -444,7 +474,10 @@ write_error_pieces_plain(Globals, Pieces, !IO) :-
     write_error_pieces_plain(Stream, Globals, Pieces, !IO).
 
 write_error_pieces_plain(Stream, Globals, Pieces, !IO) :-
-    do_write_error_pieces(Stream, Globals, no, treat_as_first, 0, Pieces, !IO).
+    globals.get_options(Globals, OptionTable),
+    globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
+    do_write_error_pieces(Stream, OptionTable, LimitErrorContextsMap,
+        no, treat_as_first, 0, Pieces, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -453,8 +486,10 @@ write_error_pieces(Globals, Context, Indent, Pieces, !IO) :-
     write_error_pieces(Stream, Globals, Context, Indent, Pieces, !IO).
 
 write_error_pieces(Stream, Globals, Context, Indent, Pieces, !IO) :-
-    do_write_error_pieces(Stream, Globals, yes(Context), treat_as_first,
-        Indent, Pieces, !IO).
+    globals.get_options(Globals, OptionTable),
+    globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
+    do_write_error_pieces(Stream, OptionTable, LimitErrorContextsMap,
+        yes(Context), treat_as_first, Indent, Pieces, !IO).
 
 %---------------------%
 
@@ -466,20 +501,22 @@ write_error_pieces_maybe_with_context(Globals, MaybeContext,
 
 write_error_pieces_maybe_with_context(Stream, Globals, MaybeContext, Indent,
         Pieces, !IO) :-
-    do_write_error_pieces(Stream, Globals, MaybeContext, treat_as_first,
-        Indent, Pieces, !IO).
+    globals.get_options(Globals, OptionTable),
+    globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
+    do_write_error_pieces(Stream, OptionTable, LimitErrorContextsMap,
+        MaybeContext, treat_as_first, Indent, Pieces, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred do_write_error_pieces(io.text_output_stream::in, globals::in,
-    maybe(prog_context)::in, maybe_treat_as_first::in, int::in,
-    list(format_piece)::in, io::di, io::uo) is det.
+:- pred do_write_error_pieces(io.text_output_stream::in, option_table::in,
+    limit_error_contexts_map::in, maybe(prog_context)::in,
+    maybe_treat_as_first::in, int::in, list(format_piece)::in,
+    io::di, io::uo) is det.
 
-do_write_error_pieces(Stream, Globals, MaybeContext, TreatAsFirst, FixedIndent,
-        Pieces, !IO) :-
-    globals.lookup_maybe_int_option(Globals, max_error_line_width,
+do_write_error_pieces(Stream, OptionTable, LimitErrorContextsMap, MaybeContext,
+        TreatAsFirst, FixedIndent, Pieces, !IO) :-
+    getopt.lookup_maybe_int_option(OptionTable, max_error_line_width,
         MaybeMaxWidth),
-    globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
     (
         MaybeContext = yes(Context),
         FileName = term_context.context_file(Context),

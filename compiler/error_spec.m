@@ -610,6 +610,8 @@
 
 :- pred extract_spec_msgs(globals::in, error_spec::in,
     list(error_msg)::out) is det.
+:- pred extract_spec_msgs_opt_table(option_table::in, error_spec::in,
+    list(error_msg)::out) is det.
 
 :- pred accumulate_contexts(error_spec::in,
     set(prog_context)::in, set(prog_context)::out) is det.
@@ -619,6 +621,7 @@
 
 :- implementation.
 
+:- import_module getopt.
 :- import_module require.
 :- import_module string.
 :- import_module term_context.
@@ -759,6 +762,26 @@ extract_spec_msgs(Globals, Spec, Msgs) :-
         Spec = conditional_spec(_Id, Option, MatchValue, _Severity, _Phase,
             Msgs0),
         globals.lookup_bool_option(Globals, Option, Value),
+        ( if Value = MatchValue then
+            Msgs = Msgs0
+        else
+            Msgs = []
+        )
+    ).
+
+extract_spec_msgs_opt_table(OptionTable, Spec, Msgs) :-
+    (
+        Spec = error_spec(_Id, _Severity, _Phase, Msgs)
+    ;
+        Spec = simplest_spec(_Id, _Severity, _Phase, Context, Pieces),
+        Msgs = [simplest_msg(Context, Pieces)]
+    ;
+        Spec = simplest_no_context_spec(_Id, _Severity, _Phase, Pieces),
+        Msgs = [simplest_no_context_msg(Pieces)]
+    ;
+        Spec = conditional_spec(_Id, Option, MatchValue, _Severity, _Phase,
+            Msgs0),
+        getopt.lookup_bool_option(OptionTable, Option, Value),
         ( if Value = MatchValue then
             Msgs = Msgs0
         else

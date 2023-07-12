@@ -18,6 +18,7 @@
 :- interface.
 
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
@@ -63,6 +64,7 @@
     % to error if the `--halt-at-warn' option is set.
     %
 :- pred record_warning(globals::in, io::di, io::uo) is det.
+:- pred record_warning_opt_table(option_table::in, io::di, io::uo) is det.
 
     % Report a warning to the specified stream, and set the exit status
     % to error if the --halt-at-warn option is set.
@@ -75,9 +77,8 @@
 
 :- implementation.
 
-:- import_module libs.options.
-
 :- import_module bool.
+:- import_module getopt.
 
 %-----------------------------------------------------------------------------%
 
@@ -105,6 +106,15 @@ add_warning(Phase, Pieces, !Specs) :-
 
 record_warning(Globals, !IO) :-
     globals.lookup_bool_option(Globals, halt_at_warn, HaltAtWarn),
+    (
+        HaltAtWarn = yes,
+        io.set_exit_status(1, !IO)
+    ;
+        HaltAtWarn = no
+    ).
+
+record_warning_opt_table(OptionTable, !IO) :-
+    getopt.lookup_bool_option(OptionTable, halt_at_warn, HaltAtWarn),
     (
         HaltAtWarn = yes,
         io.set_exit_status(1, !IO)

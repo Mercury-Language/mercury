@@ -23,6 +23,7 @@
 :- interface.
 
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module make.
 :- import_module make.options_file.
 :- import_module parse_tree.
@@ -35,7 +36,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_detect_stdlib_grades(globals::in, options_variables::in,
+:- pred maybe_detect_stdlib_grades(option_table::in, options_variables::in,
     maybe1(set(string))::out, list(string)::out, io::di, io::uo) is det.
 
     % Where is the Mercury standard library?
@@ -43,7 +44,7 @@
     % NOTE: A standard library directory specified on the command line
     % overrides one set using the MERCURY_STDLIB_DIR variable.
     %
-:- pred find_mercury_stdlib(globals::in, options_variables::in,
+:- pred find_mercury_stdlib(option_table::in, options_variables::in,
     maybe1(string)::out, io::di, io::uo) is det.
 
 :- pred do_detect_libgrades(string::in, set(string)::out,
@@ -65,32 +66,32 @@
 
 :- import_module libs.compute_grade.
 :- import_module libs.file_util.
-:- import_module libs.options.
 :- import_module parse_tree.find_module.
 
 :- import_module bool.
 :- import_module dir.
+:- import_module getopt.
 :- import_module io.file.
 :- import_module maybe.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
-maybe_detect_stdlib_grades(Globals, Variables,
+maybe_detect_stdlib_grades(OptionTable, Variables,
         MaybeStdlibGrades, StdlibGradeOpts, !IO) :-
     % Enable the compile-time trace flag "debug-detect-libgrades" to enable
     % debugging messages for library grade detection in the very verbose
     % output.
-    globals.lookup_bool_option(Globals, detect_libgrades, Detect),
+    getopt.lookup_bool_option(OptionTable, detect_libgrades, Detect),
     (
         Detect = yes,
         io.stdout_stream(StdOut, !IO),
-        globals.lookup_bool_option(Globals, verbose, Verbose),
+        getopt.lookup_bool_option(OptionTable, verbose, Verbose),
         trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
             maybe_write_string(StdOut, Verbose,
                 "% Detecting library grades ...\n", !TIO)
         ),
-        find_mercury_stdlib(Globals, Variables, MaybeMerStdLibDir, !IO),
+        find_mercury_stdlib(OptionTable, Variables, MaybeMerStdLibDir, !IO),
         % If we cannot find the Mercury standard library directory,
         % we return the error message(s) explaining the reason for that
         % in MaybeStdlibGrades, which one our caller pays attention to,
@@ -107,8 +108,7 @@ maybe_detect_stdlib_grades(Globals, Variables,
         trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
             (
                 Verbose = yes,
-                set.fold(report_detected_libgrade(StdOut),
-                    StdlibGrades, !TIO),
+                set.fold(report_detected_libgrade(StdOut), StdlibGrades, !TIO),
                 io.write_string(StdOut, "% done.\n", !TIO)
             ;
                 Verbose = no
@@ -124,10 +124,10 @@ maybe_detect_stdlib_grades(Globals, Variables,
         list.map(GradeToOpts, set.to_sorted_list(StdlibGrades)),
     list.condense(StdlibGradeOptionPairs, StdlibGradeOpts).
 
-find_mercury_stdlib(Globals, Variables, MaybeMerStdLibDir, !IO) :-
+find_mercury_stdlib(OptionTable, Variables, MaybeMerStdLibDir, !IO) :-
     ( if
         % Was the standard library directory set on the command line?
-        globals.lookup_maybe_string_option(Globals,
+        getopt.lookup_maybe_string_option(OptionTable,
             mercury_standard_library_directory, MaybeStdLibDir),
         MaybeStdLibDir = yes(MerStdLibDir)
     then

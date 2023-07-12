@@ -18,6 +18,7 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module parse_tree.error_spec.
 
 :- import_module list.
@@ -25,6 +26,8 @@
 %---------------------------------------------------------------------------%
 
 :- pred sort_error_specs(globals::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred sort_error_specs_opt_table(option_table::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -36,18 +39,22 @@
 
 :- implementation.
 
-:- import_module libs.options.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module cord.
+:- import_module getopt.
 :- import_module maybe.
 :- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
 sort_error_specs(Globals, !Specs) :-
+    globals.get_options(Globals, OptionTable),
+    sort_error_specs_opt_table(OptionTable, !Specs).
+
+sort_error_specs_opt_table(OptionTable, !Specs) :-
     % The purpose of remove_conditionals_in_spec is to remove differences
     % between error_specs that exist only in the structure of the error_specs
     % themselves, as opposed to the text that we output for them.
@@ -69,36 +76,41 @@ sort_error_specs(Globals, !Specs) :-
     % for bad module names, but we still keep this workaround in place,
     % since the cost of doing so is trivial.)
     %
-    list.filter_map(remove_conditionals_in_spec(Globals), !Specs),
-    globals.lookup_bool_option(Globals, reverse_error_order,
+    list.filter_map(remove_conditionals_in_spec(OptionTable), !Specs),
+    getopt.lookup_bool_option(OptionTable, reverse_error_order,
         ReverseErrorOrder),
-    list.sort_and_remove_dups(compare_error_specs(Globals, ReverseErrorOrder),
+    list.sort_and_remove_dups(
+        compare_error_specs(OptionTable, ReverseErrorOrder),
         !Specs).
 
-:- pred remove_conditionals_in_spec(globals::in,
+:- pred remove_conditionals_in_spec(option_table::in,
     error_spec::in, error_spec::out) is semidet.
 
-remove_conditionals_in_spec(Globals, Spec0, Spec) :-
+remove_conditionals_in_spec(OptionTable, Spec0, Spec) :-
     require_det (
         (
             Spec0 = error_spec(Id, Severity0, Phase, Msgs0),
-            MaybeActualSeverity = actual_error_severity(Globals, Severity0),
-            list.filter_map(remove_conditionals_in_msg(Globals), Msgs0, Msgs)
+            MaybeActualSeverity =
+                actual_error_severity_opt_table(OptionTable, Severity0),
+            list.filter_map(remove_conditionals_in_msg(OptionTable),
+                Msgs0, Msgs)
         ;
             Spec0 = simplest_spec(Id, Severity0, Phase, Context0, Pieces0),
-            MaybeActualSeverity = actual_error_severity(Globals, Severity0),
+            MaybeActualSeverity =
+                actual_error_severity_opt_table(OptionTable, Severity0),
             Msgs = [simplest_msg(Context0, Pieces0)]
         ;
             Spec0 = simplest_no_context_spec(Id, Severity0, Phase, Pieces0),
-            MaybeActualSeverity = actual_error_severity(Globals, Severity0),
+            MaybeActualSeverity =
+                actual_error_severity_opt_table(OptionTable, Severity0),
             Msgs = [simplest_no_context_msg(Pieces0)]
         ;
             Spec0 = conditional_spec(Id, Option, MatchValue,
                 Severity0, Phase, Msgs0),
-            globals.lookup_bool_option(Globals, Option, OptionValue),
+            getopt.lookup_bool_option(OptionTable, Option, OptionValue),
             ( if OptionValue = MatchValue then
                 MaybeActualSeverity =
-                    actual_error_severity(Globals, Severity0),
+                    actual_error_severity_opt_table(OptionTable, Severity0),
                 Msgs = Msgs0
             else
                 MaybeActualSeverity = no,
@@ -128,10 +140,10 @@ remove_conditionals_in_spec(Globals, Spec0, Spec) :-
         fail
     ).
 
-:- pred remove_conditionals_in_msg(globals::in,
+:- pred remove_conditionals_in_msg(option_table::in,
     error_msg::in, error_msg::out) is semidet.
 
-remove_conditionals_in_msg(Globals, Msg0, Msg) :-
+remove_conditionals_in_msg(OptionTable, Msg0, Msg) :-
     require_det (
         (
             Msg0 = simplest_msg(Context, Pieces0),
@@ -154,7 +166,7 @@ remove_conditionals_in_msg(Globals, Msg0, Msg) :-
             Msg0 = error_msg(MaybeContext, TreatAsFirst, ExtraIndent,
                 Components0)
         ),
-        list.foldl(remove_conditionals_in_msg_component(Globals),
+        list.foldl(remove_conditionals_in_msg_component(OptionTable),
             Components0, cord.init, ComponentCord),
         Components = cord.list(ComponentCord),
         Msg = error_msg(MaybeContext, TreatAsFirst, ExtraIndent, Components)
@@ -162,18 +174,18 @@ remove_conditionals_in_msg(Globals, Msg0, Msg) :-
     % Don't include the Msg if Components is empty.
     Components = [_ | _].
 
-:- pred remove_conditionals_in_msg_component(globals::in,
+:- pred remove_conditionals_in_msg_component(option_table::in,
     error_msg_component::in,
     cord(error_msg_component)::in, cord(error_msg_component)::out) is det.
 
-remove_conditionals_in_msg_component(Globals, Component, !ComponentCord) :-
+remove_conditionals_in_msg_component(OptionTable, Component, !ComponentCord) :-
     (
         Component = option_is_set(Option, MatchValue, EmbeddedComponents),
         % We could recurse down into EmbeddedComponents, but we currently
         % have any places in the compiler that can generate two error messages
         % that differ only in nested option settings, so there would be
         % no point.
-        globals.lookup_bool_option(Globals, Option, OptionValue),
+        getopt.lookup_bool_option(OptionTable, Option, OptionValue),
         ( if OptionValue = MatchValue then
             !:ComponentCord =
                 !.ComponentCord ++ cord.from_list(EmbeddedComponents)
@@ -199,12 +211,12 @@ remove_conditionals_in_msg_component(Globals, Component, !ComponentCord) :-
 
 %---------------------%
 
-:- pred compare_error_specs(globals::in, bool::in,
+:- pred compare_error_specs(option_table::in, bool::in,
     error_spec::in, error_spec::in, comparison_result::out) is det.
 
-compare_error_specs(Globals, ReverseErrorOrder, SpecA, SpecB, Result) :-
-    extract_spec_msgs(Globals, SpecA, MsgsA),
-    extract_spec_msgs(Globals, SpecB, MsgsB),
+compare_error_specs(OptionTable, ReverseErrorOrder, SpecA, SpecB, Result) :-
+    extract_spec_msgs_opt_table(OptionTable, SpecA, MsgsA),
+    extract_spec_msgs_opt_table(OptionTable, SpecB, MsgsB),
     compare_error_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, MsgsResult),
     (
         MsgsResult = (=),

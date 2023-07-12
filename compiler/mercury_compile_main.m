@@ -363,22 +363,22 @@ process_options_std(ErrorStream, DefaultOptionTable, CmdLineArgs,
     % Find out which options files to read.
     % Don't report errors yet, as the errors may no longer exist
     % after we have read in options files.
-    %
-    % XXX Doing every task in handle_given_options is wasteful
-    % in the very likely case of their being an option file.
-    % We should do just enough to find the setting of the two options
-    % whose values we look up right here, and the few options we need below.
-    handle_given_options(ErrorStream, DefaultOptionTable, CmdLineArgs,
-        OptionArgs, NonOptionArgs, _Errors0, ArgsGlobals, !IO),
-    globals.lookup_accumulating_option(ArgsGlobals, options_search_directories,
-        OptionSearchDirectories),
-    globals.lookup_accumulating_option(ArgsGlobals, options_files,
-        OptionsFiles),
+
+    OptionOps =
+        option_ops_userdata(short_option, long_option, special_handler),
+    % XXX HANDLE_OPTIONS Ignoring _MaybeError seems a bit careless.
+    getopt.process_options_userdata_io(OptionOps, CmdLineArgs,
+        OptionArgs, NonOptionArgs, _MaybeError, _OptionsSet,
+        DefaultOptionTable, ArgsOptionTable, cord.init, _UserData, !IO),
+    getopt.lookup_accumulating_option(ArgsOptionTable,
+        options_search_directories, OptionSearchDirectories),
+    getopt.lookup_accumulating_option(ArgsOptionTable,
+        options_files, OptionsFiles),
     read_options_files_named_in_options_file_option(OptionSearchDirectories,
         OptionsFiles, OptionsVariables0,
         OptFileNonUndefSpecs, OptFileUndefSpecs, !IO),
-    globals.lookup_bool_option(ArgsGlobals, warn_undefined_options_variables,
-        WarnUndef),
+    getopt.lookup_bool_option(ArgsOptionTable,
+        warn_undefined_options_variables, WarnUndef),
     (
         WarnUndef = no,
         OptFileSpecs = OptFileNonUndefSpecs
@@ -386,11 +386,10 @@ process_options_std(ErrorStream, DefaultOptionTable, CmdLineArgs,
         WarnUndef = yes,
         OptFileSpecs = OptFileNonUndefSpecs ++ OptFileUndefSpecs
     ),
-    OptFileErrors = contains_errors(ArgsGlobals, OptFileSpecs),
     io.environment.get_environment_var_map(EnvVarMap, !IO),
     (
-        OptFileErrors = no,
-        maybe_dump_options_file(ErrorStream, ArgsGlobals,
+        OptFileSpecs = [],
+        maybe_dump_options_file(ErrorStream, ArgsOptionTable,
             OptionsVariables0, !IO),
         lookup_mmc_options(OptionsVariables0, MaybeMCFlags0),
         (
@@ -410,46 +409,43 @@ process_options_std(ErrorStream, DefaultOptionTable, CmdLineArgs,
             ),
             % Process the options again to find out which configuration
             % file to read.
-            handle_given_options(ErrorStream, DefaultOptionTable,
-                MCFlags0 ++ CmdLineArgs, _, _,
-                FlagsSpecs, FlagsArgsGlobals, !IO),
-            (
-                FlagsSpecs = [_ | _],
-                DetectedGradeFlags = [],
-                OptionsVariables = options_variables_init(EnvVarMap),
-                MaybeMCFlags = no,
-                Specs = FlagsSpecs
-            ;
-                FlagsSpecs = [],
-                process_options_std_config_file(FlagsArgsGlobals, EnvVarMap,
-                    WarnUndef, DetectedGradeFlags,
-                    OptionsVariables0, OptionsVariables,
-                    MaybeMCFlags, OptFileOkSpecs, !IO),
-                Specs = OptFileSpecs ++ OptFileOkSpecs
-            )
+            % XXX HANDLE_OPTIONS Ignoring _MaybeError seems a bit careless.
+            getopt.process_options_userdata_io(OptionOps,
+                MCFlags0 ++ CmdLineArgs, _OptionArgsMC, _NonOptionArgsMC,
+                _MaybeErrorMC, _OptionsSetMC,
+                DefaultOptionTable, FlagsArgsOptionTable,
+                cord.init, _UserDataMC, !IO),
+            process_options_std_config_file(FlagsArgsOptionTable,
+                EnvVarMap, WarnUndef, DetectedGradeFlags,
+                OptionsVariables0, OptionsVariables,
+                MaybeMCFlags, OptFileOkSpecs, !IO),
+            Specs = OptFileSpecs ++ OptFileOkSpecs
         )
     ;
-        OptFileErrors = yes,
+        OptFileSpecs = [_ | _],
         DetectedGradeFlags = [],
         OptionsVariables = options_variables_init(EnvVarMap),
         MaybeMCFlags = no,
         Specs = OptFileSpecs
     ).
 
-:- pred process_options_std_config_file(globals::in, environment_var_map::in,
-    bool::in, list(string)::out, options_variables::in, options_variables::out,
+:- pred process_options_std_config_file(option_table::in,
+    environment_var_map::in, bool::in, list(string)::out,
+    options_variables::in, options_variables::out,
     maybe(list(string))::out, list(error_spec)::out, io::di, io::uo) is det.
 
-process_options_std_config_file(FlagsArgsGlobals, EnvVarMap, WarnUndef,
+process_options_std_config_file(FlagsArgsOptionTable, EnvVarMap, WarnUndef,
         DetectedGradeFlags, OptionsVariables0, OptionsVariables,
         MaybeMCFlags, Specs, !IO) :-
-    globals.lookup_maybe_string_option(FlagsArgsGlobals, config_file,
+    getopt.lookup_maybe_string_option(FlagsArgsOptionTable, config_file,
         MaybeConfigFile),
     (
         MaybeConfigFile = yes(ConfigFile),
         read_named_options_file(ConfigFile,
             OptionsVariables0, OptionsVariables,
             ConfigNonUndefSpecs, ConfigUndefSpecs, !IO),
+        % All entries in ConfigNonUndefSpecs are unconditionally errors.
+        % All entries in ConfigUndefSpecs are unconditionally warnings.
         (
             WarnUndef = no,
             ConfigSpecs = ConfigNonUndefSpecs
@@ -457,9 +453,8 @@ process_options_std_config_file(FlagsArgsGlobals, EnvVarMap, WarnUndef,
             WarnUndef = yes,
             ConfigSpecs = ConfigNonUndefSpecs ++ ConfigUndefSpecs
         ),
-        ConfigErrors = contains_errors(FlagsArgsGlobals, ConfigSpecs),
         (
-            ConfigErrors = no,
+            ConfigNonUndefSpecs = [],
             lookup_mmc_options(OptionsVariables, MaybeMCFlags1),
             (
                 MaybeMCFlags1 = ok1(MCFlags1),
@@ -472,7 +467,9 @@ process_options_std_config_file(FlagsArgsGlobals, EnvVarMap, WarnUndef,
                 Specs0 = ConfigSpecs ++ MCFlagsSpecs
             ),
             % XXX Record _StdLibGrades in the final globals structure.
-            maybe_detect_stdlib_grades(FlagsArgsGlobals, OptionsVariables,
+            % XXX Or even better, do this call only when we have finished
+            % *all* option processing, and have the *final* globals structure.
+            maybe_detect_stdlib_grades(FlagsArgsOptionTable, OptionsVariables,
                 _MaybeStdLibGrades, DetectedGradeFlags, !IO),
             % maybe_detect_stdlib_grades does this lookup, but it returns
             % any error in MaybeConfigMerStdLibDir (as part of
@@ -485,7 +482,7 @@ process_options_std_config_file(FlagsArgsGlobals, EnvVarMap, WarnUndef,
                 MaybeConfigMerStdLibDir),
             Specs = Specs0 ++ get_any_errors1(MaybeConfigMerStdLibDir)
         ;
-            ConfigErrors = yes,
+            ConfigNonUndefSpecs = [_ | _],
             DetectedGradeFlags = [],
             MaybeMCFlags = no,
             Specs = ConfigSpecs
@@ -507,11 +504,11 @@ process_options_std_config_file(FlagsArgsGlobals, EnvVarMap, WarnUndef,
         )
     ).
 
-:- pred maybe_dump_options_file(io.text_output_stream::in, globals::in,
+:- pred maybe_dump_options_file(io.text_output_stream::in, option_table::in,
     options_variables::in, io::di, io::uo) is det.
 
-maybe_dump_options_file(OutStream, ArgsGlobals, OptionsVariables, !IO) :-
-    lookup_string_option(ArgsGlobals, dump_options_file, DumpOptionsFile),
+maybe_dump_options_file(OutStream, ArgsOptionTable, OptionsVariables, !IO) :-
+    lookup_string_option(ArgsOptionTable, dump_options_file, DumpOptionsFile),
     ( if DumpOptionsFile = "" then
         true
     else
@@ -702,7 +699,9 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery,
         list.foldl(io.print_line(StdOutStream), LibGrades, !IO)
     ;
         OpModeQuery = opmq_output_stdlib_grades,
-        find_mercury_stdlib(Globals, OptionVariables, MaybeMerStdLibDir, !IO),
+        globals.get_options(Globals, OptionTable),
+        find_mercury_stdlib(OptionTable, OptionVariables,
+            MaybeMerStdLibDir, !IO),
         (
             MaybeMerStdLibDir = ok1(MerStdLibDir),
             do_detect_libgrades(MerStdLibDir, StdlibGrades, !IO),
