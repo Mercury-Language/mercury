@@ -950,7 +950,6 @@ then
             cp "${root}"/boehm_gc/Mmake* .
             cp "${root}"/boehm_gc/Makefile.direct .
             cp "${root}"/boehm_gc/NT*_MAKEFILE .
-            cp "${root}"/boehm_gc/gc.mak .
             cp "${root}"/boehm_gc/gc_cpp.cc .
             cp "${root}"/boehm_gc/gc_cpp.cpp .
             cp -r "${root}"/boehm_gc/cord .
