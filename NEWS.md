@@ -1199,6 +1199,11 @@ Changes to the Mercury debugger
 * The `dump` command has a new option: `dump -p Var` will dump the value
   of the given variable in a prettyprinted form.
 
+Changes to the Mercury implementation
+-------------------------------------
+
+* We have upgraded the bundled Boehm GC to v8.2.4 and libatomic_ops to v7.8.0.
+
 Portability improvements
 ------------------------
 
