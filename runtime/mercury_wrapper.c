@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1994-2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2020-2023 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // file: mercury_wrapper.c
@@ -426,6 +426,9 @@ void        (*MR_address_of_trace_init_external)(void);
 void        (*MR_address_of_trace_final_external)(void);
 #endif
 
+#ifdef MR_BOEHM_GC
+static MR_bool MR_gc_disable;
+#endif
 #ifdef MR_CONSERVATIVE_GC
 void        (*MR_address_of_init_gc)(void);
 #endif
@@ -672,8 +675,10 @@ mercury_runtime_init(int argc, char **argv)
 #endif // ! 0
 
 #ifdef MR_BOEHM_GC
-    // XXX overrides MERCURY_OPTIONS -x
-    GC_enable();
+    // We keep GC disabled during startup. Enable it now unless forced off.
+    if (! MR_gc_disable) {
+        GC_enable();
+    }
 #endif
 
     if (MR_memdebug) {
@@ -2284,7 +2289,7 @@ MR_process_options(int argc, char **argv)
 
             case 'x':
 #ifdef MR_BOEHM_GC
-                GC_disable();
+                MR_gc_disable = MR_TRUE;
 #endif
                 break;
 
