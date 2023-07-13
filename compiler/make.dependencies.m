@@ -93,7 +93,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred get_dependency_status(globals::in, dependency_file::in,
-    {dependency_file, file_name, dependency_status}::out,
+    {dependency_file, maybe(file_name), dependency_status}::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -120,7 +120,7 @@
     %
 :- pred check_dependency_timestamps(globals::in, file_name::in,
     maybe_error(timestamp)::in, maybe_succeeded::in,
-    list({dependency_file, file_name, dependency_status})::in,
+    list({dependency_file, maybe(file_name), dependency_status})::in,
     list(maybe_error(timestamp))::in, dependencies_result::out,
     io::di, io::uo) is det.
 
@@ -1366,6 +1366,7 @@ make_local_module_id_option(ModuleName, Opts0, Opts) :-
 get_dependency_status(Globals, Dep, Tuple, !Info, !IO) :-
     (
         Dep = dep_file(TargetFileName),
+        MaybeTargetFileName = yes(TargetFileName),
         DepStatusMap0 = make_info_get_dependency_status(!.Info),
         ( if version_hash_table.search(DepStatusMap0, Dep, StatusPrime) then
             Status = StatusPrime
@@ -1386,7 +1387,6 @@ get_dependency_status(Globals, Dep, Tuple, !Info, !IO) :-
     ;
         Dep = dep_target(Target),
         Target = target_file(ModuleName, FileType),
-        get_make_target_file_name(Globals, $pred, Target, TargetFileName, !IO),
         ( if
             ( FileType = module_target_source
             ; FileType = module_target_track_flags
@@ -1397,6 +1397,9 @@ get_dependency_status(Globals, Dep, Tuple, !Info, !IO) :-
             % so are also up-to-date.
             ModuleTarget = module_target(module_target_source),
             TopTargetFile = top_target_file(ModuleName, ModuleTarget),
+            get_make_target_file_name(Globals, $pred, Target,
+                TargetFileName, !IO),
+            MaybeTargetFileName = yes(TargetFileName),
             maybe_warn_up_to_date_target_msg(Globals, TopTargetFile,
                 TargetFileName, !Info, UpToDateMsg),
             % XXX MAKE_STREAM
@@ -1406,8 +1409,14 @@ get_dependency_status(Globals, Dep, Tuple, !Info, !IO) :-
             DepStatusMap0 = make_info_get_dependency_status(!.Info),
             version_hash_table.search(DepStatusMap0, Dep, StatusPrime)
         then
-            Status = StatusPrime
+            Status = StatusPrime,
+            % Avoid calling get_make_target_file_name in this common case --
+            % it makes a big difference to performance.
+            MaybeTargetFileName = no
         else
+            get_make_target_file_name(Globals, $pred, Target, TargetFileName,
+                !IO),
+            MaybeTargetFileName = yes(TargetFileName),
             get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
                 !Info, !IO),
             (
@@ -1444,7 +1453,34 @@ get_dependency_status(Globals, Dep, Tuple, !Info, !IO) :-
             make_info_set_dependency_status(DepStatusMap, !Info)
         )
     ),
+    Tuple = {Dep, MaybeTargetFileName, Status}.
+
+%---------------------------------------------------------------------------%
+
+:- pred get_dependency_file_names(globals::in,
+    list({dependency_file, maybe(file_name), dependency_status})::in,
+    list({dependency_file, file_name, dependency_status})::out,
+    io::di, io::uo) is det.
+
+get_dependency_file_names(Globals, Tuples0, Tuples, !IO) :-
+    list.map_foldl(get_dependency_file_name(Globals), Tuples0, Tuples, !IO).
+
+:- pred get_dependency_file_name(globals::in,
+    {dependency_file, maybe(file_name), dependency_status}::in,
+    {dependency_file, file_name, dependency_status}::out,
+    io::di, io::uo) is det.
+
+get_dependency_file_name(Globals, Tuple0, Tuple, !IO) :-
+    Tuple0 = {Dep, MaybeTargetFileName, Status},
+    (
+        MaybeTargetFileName = yes(TargetFileName)
+    ;
+        MaybeTargetFileName = no,
+        dependency_file_to_file_name(Globals, Dep, TargetFileName, !IO)
+    ),
     Tuple = {Dep, TargetFileName, Status}.
+
+%---------------------------------------------------------------------------%
 
 check_dependencies(Globals, TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
         DepFiles, DepsResult, !Info, !IO) :-
@@ -1453,9 +1489,11 @@ check_dependencies(Globals, TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
     list.filter(
         ( pred(({_, _, DepStatus})::in) is semidet :-
             DepStatus \= deps_status_up_to_date
-        ), DepStatusTuples, UnbuiltDependencyTuples),
+        ), DepStatusTuples, UnbuiltDependencyTuples0),
     (
-        UnbuiltDependencyTuples = [_ | _],
+        UnbuiltDependencyTuples0 = [_ | _],
+        get_dependency_file_names(Globals,
+            UnbuiltDependencyTuples0, UnbuiltDependencyTuples, !IO),
         debug_make_msg(Globals,
             describe_unbuilt_dependencies(TargetFileName,
                 UnbuiltDependencyTuples),
@@ -1464,7 +1502,7 @@ check_dependencies(Globals, TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
         maybe_write_msg(DebugMsg, !IO),
         DepsResult = deps_error
     ;
-        UnbuiltDependencyTuples = [],
+        UnbuiltDependencyTuples0 = [],
         debug_make_msg(Globals,
             string.format("%s: finished dependencies\n",
                 [s(TargetFileName)]),
@@ -1543,7 +1581,7 @@ check_dependencies_timestamps_missing_deps_msg(TargetFileName,
     ).
 
 check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
-        BuildDepsSucceeded, DepFileTuples, DepTimestamps, DepsResult, !IO) :-
+        BuildDepsSucceeded, DepFileTuples0, DepTimestamps, DepsResult, !IO) :-
     (
         MaybeTimestamp = error(_),
         DepsResult = deps_out_of_date,
@@ -1556,6 +1594,8 @@ check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
         MaybeTimestamp = ok(Timestamp),
         ( if error_in_timestamps(DepTimestamps) then
             DepsResult = deps_error,
+            get_dependency_file_names(Globals, DepFileTuples0, DepFileTuples,
+                !IO),
             (
                 BuildDepsSucceeded = succeeded,
                 % Something has gone wrong -- building the target has
@@ -1587,6 +1627,8 @@ check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
             ;
                 Rebuild = no,
                 ( if newer_timestamp(DepTimestamps, Timestamp) then
+                    get_dependency_file_names(Globals,
+                        DepFileTuples0, DepFileTuples, !IO),
                     debug_make_msg(Globals,
                         describe_newer_dependencies(TargetFileName,
                             MaybeTimestamp, DepFileTuples, DepTimestamps),
