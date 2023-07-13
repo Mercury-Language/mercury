@@ -450,17 +450,6 @@ void        (*MR_io_stdout_stream)(MercuryFilePtr *);
 void        (*MR_io_stdin_stream)(MercuryFilePtr *);
 void        (*MR_io_print_to_stream)(MR_Word, MercuryFilePtr, MR_Word);
 
-void        (*MR_DI_output_current_ptr)(MR_Integer, MR_Integer, MR_Integer,
-                MR_Word, MR_String, MR_String, MR_Integer, MR_Integer,
-                MR_Integer, MR_Word, MR_String, MR_Word, MR_Word);
-                // normally ML_DI_output_current (output_current/13)
-MR_bool     (*MR_DI_found_match)(MR_Integer, MR_Integer, MR_Integer, MR_Word,
-                MR_String, MR_String, MR_Integer, MR_Integer, MR_Integer,
-                MR_Word, MR_String, MR_Word);
-                // normally ML_DI_found_match (output_current/12)
-void        (*MR_DI_read_request_from_socket)(MR_Word, MR_Word *,
-                MR_Integer *);
-
 MR_Code     *(*MR_exec_trace_func_ptr)(const MR_LabelLayout *);
 
 void        (*MR_address_of_trace_interrupt_handler)(void);
