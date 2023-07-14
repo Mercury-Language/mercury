@@ -142,6 +142,7 @@ is_integral_type(MLDSType, IntType) :-
         ; MLDSType = mlds_foreign_type(_)
         ; MLDSType = mlds_class_type(_)
         ; MLDSType = mlds_enum_class_type(_)
+        ; MLDSType = mlds_env_type(_)
         ; MLDSType = mlds_ptr_type(_)
         ; MLDSType = mlds_func_type(_)
         ; MLDSType = mlds_type_info_type

@@ -31,6 +31,9 @@
 :- pred rename_class_names_in_class_defn(class_name_renaming::in,
     mlds_class_defn::in, mlds_class_defn::out) is det.
 
+:- pred rename_class_names_in_env_defn(class_name_renaming::in,
+    mlds_env_defn::in, mlds_env_defn::out) is det.
+
 :- pred rename_class_names_in_function_defn(class_name_renaming::in,
     mlds_function_defn::in, mlds_function_defn::out) is det.
 
@@ -63,6 +66,12 @@ rename_class_names_in_class_defn(Renaming, ClassDefn0, ClassDefn) :-
     ClassDefn = mlds_class_defn(ClassName, Arity, Context, Flags, ClassKind,
         Imports, Inherits, Implements, TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors).
+
+rename_class_names_in_env_defn(Renaming, EnvDefn0, EnvDefn) :-
+    EnvDefn0 = mlds_env_defn(ClassName, Context, MemberFields0),
+    list.map(rename_class_names_in_field_var_defn(Renaming),
+        MemberFields0, MemberFields),
+    EnvDefn = mlds_env_defn(ClassName, Context, MemberFields).
 
 :- pred rename_class_names_in_field_var_defn(class_name_renaming::in,
     mlds_field_var_defn::in, mlds_field_var_defn::out) is det.
@@ -486,6 +495,20 @@ rename_class_names_in_type(Renaming, !Type) :-
             QualClassName = qual_class_name(ModuleName, QualKind, ClassName),
             ClassId = mlds_enum_class_id(QualClassName, Arity),
             !:Type = mlds_enum_class_type(ClassId)
+        else
+            true
+        )
+    ;
+        !.Type = mlds_env_type(EnvId0),
+        EnvId0 = mlds_env_id(QualClassName0),
+        QualClassName0 = qual_class_name(ModuleName, QualKind, ClassName0),
+        ( if
+            Renaming = class_name_renaming(ModuleName, RenamingMap),
+            map.search(RenamingMap, ClassName0, ClassName)
+        then
+            QualClassName = qual_class_name(ModuleName, QualKind, ClassName),
+            EnvId = mlds_env_id(QualClassName),
+            !:Type = mlds_env_type(EnvId)
         else
             true
         )

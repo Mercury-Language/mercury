@@ -376,6 +376,7 @@
                 % to be flattened).
                 mlds_type_defns         :: list(mlds_class_defn),
                 mlds_enum_defns         :: list(mlds_enum_class_defn),
+                mlds_env_defns          :: list(mlds_env_defn),
 
                 % Definitions of the structures that hold the tables
                 % of tabled procedures.
@@ -667,6 +668,51 @@
                 mecd_ctors          :: list(mlds_function_defn)
             ).
 
+    % The environment structure we use to package up the local variables
+    % needed by model_non continuations.
+    %
+:- type mlds_env_defn
+    --->    mlds_env_defn(
+                med_env_name        :: string,
+                med_context         :: prog_context,
+
+                med_field_vars      :: list(mlds_field_var_defn)
+                % The field vars, both those representing HLDS variables
+                % and those implementing accurate gc. Both kinds will
+                % always have flags per_instance, modifiable.
+
+                % The following comments specify the relationship between
+                % this type and mlds_class_defn (from which mlds_env_defn
+                % was derived).
+                %
+                % Environment structures never have any type parameters.
+                % This means that their "arity" is always zero.
+                % (We do include the _0 suffix in their names in the
+                % C/C#/Java code we generate, at least for now.)
+                %
+                % We treat environment structures as structs when targeting C,
+                % and as classes when targeting C# or Java.
+                %
+                % Environments structures inherit nothing when targeting C,
+                % but inherit the generic env_ptr type when targeting C# or
+                % Java.
+                %
+                % Environment structures are always class_private,
+                % overridable, and modifiable.
+                % XXX The overridable part is probably just an accident.
+                % It is certainly irrelevant, because (a) users cannot create
+                % references to environment structures, so they cannot possibly
+                % inherit from it, and (b) the compiler itself never tries
+                % to inherit from them either.
+                %
+                % Environment structures never import anything.
+                %
+                % Environment structures never implement any interfaces.
+                %
+                % Environment structures never define any classes or methods,
+                % and never have any constructors.
+            ).
+
 :- type mlds_class_decl_flags
     --->    mlds_class_decl_flags(
                 mcdf_access         :: class_access,
@@ -678,18 +724,12 @@
     --->    inherits_nothing
             % There is no base class.
 
-    ;       inherits_class(mlds_class_id)
+    ;       inherits_class(mlds_class_id).
             % There is one base class. (We do not have a case for
             % more than one base class, because
             % (a) none of the (current) MLDS target languages support
             % multiple inheritance; and
             % (b) even if some did, we may not want to use that capability.
-
-    ;       inherits_generic_env_ptr_type.
-            % There is no base class, but there is a base *type*, and it is
-            % mlds_generic_env_ptr_type. Used only to implement environment
-            % structures, and only when put_nondet_env_on_heap is set,
-            % which means only when targeting C# or Java.
 
 :- type mlds_enum_class_inherits =< mlds_class_inherits
     --->    inherits_nothing
@@ -703,6 +743,8 @@
     --->    mlds_class_id(qual_class_name, arity, mlds_class_kind).
 :- type mlds_enum_class_id
     --->    mlds_enum_class_id(qual_class_name, arity).
+:- type mlds_env_id
+    --->    mlds_env_id(qual_class_name).
 
 :- type mlds_interface_id
     --->    mlds_interface_id(qual_class_name, arity, mlds_class_kind).
@@ -1128,6 +1170,11 @@
     ;       mlds_enum_class_type(
                 % MLDS types defined using mlds_enum_class_defn.
                 mlds_enum_class_id
+            )
+
+    ;       mlds_env_type(
+                % MLDS types defined using mlds_env_defn.
+                mlds_env_id
             )
 
     ;       mlds_array_type(mlds_type)

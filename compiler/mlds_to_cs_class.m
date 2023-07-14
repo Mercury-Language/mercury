@@ -31,6 +31,10 @@
     io.text_output_stream::in, indent::in, mlds_enum_class_defn::in,
     io::di, io::uo) is det.
 
+:- pred output_env_defn_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, indent::in, mlds_env_defn::in,
+    io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -158,6 +162,24 @@ output_enum_class_defn_for_csharp(Info0, Stream, Indent, EnumDefn, !IO) :-
         Ctors, !IO),
     io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
 
+output_env_defn_for_csharp(Info, Stream, Indent, EnvDefn, !IO) :-
+    EnvDefn = mlds_env_defn(EnvName, _Context, MemberFields),
+    IndentStr = indent2_string(Indent),
+    Indent1 = Indent + 1,
+    Indent1Str = indent2_string(Indent1),
+    EnvNameStr = unqual_class_name_to_ll_string_for_csharp(EnvName, 0),
+    EnvTypeStr = type_to_string_for_csharp(Info, mlds_generic_env_ptr_type),
+
+    io.format(Stream, "%s[System.Serializable]\n", [s(IndentStr)], !IO),
+    io.format(Stream, "%sprivate class %s\n",
+        [s(IndentStr), s(EnvNameStr)], !IO),
+    io.format(Stream, "%s: %s\n", [s(Indent1Str), s(EnvTypeStr)], !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+    list.foldl(
+        output_field_var_defn_for_csharp(Info, Stream, Indent1),
+        MemberFields, !IO),
+    io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
+
 %---------------------------------------------------------------------------%
 
     % Output superclass that this class extends and interfaces implemented.
@@ -178,11 +200,6 @@ get_superclass_names(Info, Inherits, Interfaces) = Supers :-
         BaseClassType = mlds_class_type(BaseClassId),
         BaseClassTypeName = type_to_string_for_csharp(Info, BaseClassType),
         Supers = [BaseClassTypeName | Supers0]
-    ;
-        Inherits = inherits_generic_env_ptr_type,
-        EnvPtrTypeName =
-            type_to_string_for_csharp(Info, mlds_generic_env_ptr_type),
-        Supers = [EnvPtrTypeName | Supers0]
     ).
 
 :- func interface_to_string_for_csharp(mlds_interface_id) = string.

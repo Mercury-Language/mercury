@@ -32,6 +32,10 @@
     io.text_output_stream::in, indent::in, mlds_enum_class_defn::in,
     io::di, io::uo) is det.
 
+:- pred output_env_defn_for_java(java_out_info::in,
+    io.text_output_stream::in, indent::in, mlds_env_defn::in,
+    io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 
     % Rename class names which are too long. Each class results in a separate
@@ -40,6 +44,10 @@
     %
 :- pred maybe_shorten_long_class_name(
     mlds_class_defn::in, mlds_class_defn::out,
+    map(mlds_class_name, mlds_class_name)::in,
+    map(mlds_class_name, mlds_class_name)::out) is det.
+:- pred maybe_shorten_long_env_name(
+    mlds_env_defn::in, mlds_env_defn::out,
     map(mlds_class_name, mlds_class_name)::in,
     map(mlds_class_name, mlds_class_name)::out) is det.
 
@@ -185,6 +193,24 @@ output_enum_class_defn_for_java(Info0, Stream, Indent, EnumDefn, !IO) :-
         Ctors, !IO),
     io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
 
+output_env_defn_for_java(Info, Stream, Indent, EnvDefn, !IO) :-
+    EnvDefn = mlds_env_defn(EnvName, Context, MemberFields),
+    IndentStr = indent2_string(Indent),
+    Indent1 = Indent + 1,
+    Indent1Str = indent2_string(Indent1),
+    EnvNameStr = unqual_class_name_to_string_for_java(EnvName, 0),
+    BaseTypeStr = type_to_string_for_java(Info, mlds_generic_env_ptr_type),
+
+    indent_line_after_context(Stream, Info ^ joi_line_numbers,
+        marker_comment, Context, Indent, !IO),
+    io.format(Stream, "private static class %s\n", [s(EnvNameStr)], !IO),
+    io.format(Stream, "%sextends %s\n", [s(Indent1Str), s(BaseTypeStr)], !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+    list.foldl(
+        output_field_var_defn_for_java(Info, Stream, Indent1),
+        MemberFields, !IO),
+    io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
+
 %---------------------------------------------------------------------------%
 
 :- func class_kind_to_string_for_java(mlds_class_kind) = string.
@@ -210,14 +236,9 @@ output_inherits_list(Info, Stream, Indent, Inherits, !IO) :-
     (
         Inherits = inherits_nothing
     ;
-        (
-            Inherits = inherits_class(BaseClassId),
-            BaseType = mlds_class_type(BaseClassId)
-        ;
-            Inherits = inherits_generic_env_ptr_type,
-            BaseType = mlds_generic_env_ptr_type
-        ),
+        Inherits = inherits_class(BaseClassId),
         IndentStr = indent2_string(Indent),
+        BaseType = mlds_class_type(BaseClassId),
         BaseTypeStr = type_to_string_for_java(Info, BaseType),
         io.format(Stream, "%sextends %s\n",
             [s(IndentStr), s(BaseTypeStr)], !IO)
@@ -424,6 +445,17 @@ maybe_shorten_long_class_name(!ClassDefn, !Renaming) :-
         )
     ;
         Access = class_public
+    ).
+
+maybe_shorten_long_env_name(!EnvDefn, !Renaming) :-
+    !.EnvDefn = mlds_env_defn(EnvName0, Context, MemberFields),
+    % All environment definitions are private.
+    EnvName = shorten_class_name(EnvName0),
+    ( if EnvName = EnvName0 then
+        true
+    else
+        !:EnvDefn = mlds_env_defn(EnvName, Context, MemberFields),
+        map.det_insert(EnvName0, EnvName, !Renaming)
     ).
 
 :- func shorten_class_name(string) = string.

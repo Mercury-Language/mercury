@@ -88,7 +88,7 @@ output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
 output_csharp_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
     % Run further transformations on the MLDS.
     MLDS = mlds(ModuleName, Imports, GlobalData,
-        ClassDefns, EnumDefns, TableStructDefns, ProcDefns,
+        ClassDefns, EnumDefns, EnvDefns, TableStructDefns, ProcDefns,
         InitPreds, FinalPreds, AllForeignCode, ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, _AllocIdMap,
@@ -174,6 +174,11 @@ output_csharp_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
     list.sort(EnumDefns, SortedEnumDefns),
     list.foldl(output_enum_class_defn_for_csharp(Info, Stream, 1),
         SortedEnumDefns, !IO),
+
+    io.write_string(Stream, "\n// Env definitions\n", !IO),
+    list.sort(EnvDefns, SortedEnvDefns),
+    list.foldl(output_env_defn_for_csharp(Info, Stream, 1),
+        SortedEnvDefns, !IO),
 
     io.write_string(Stream, "\n// ExportDefns\n", !IO),
     output_exports_for_csharp(Info, Stream, 1, ExportDefns, !IO),

@@ -182,7 +182,7 @@ mlds_backend(ProgressStream, ErrorStream, !HLDS, !:MLDS, !:Specs,
         GC = gc_accurate,
         maybe_write_string(ProgressStream, Verbose,
             "% Threading GC stack frames...\n", !IO),
-        ml_elim_nested(chain_gc_stack_frames, Globals, MLDS_Target, !MLDS),
+        ml_elim_nested(MLDS_Target, chain_gc_stack_frames, !MLDS),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
     ;
         ( GC = gc_automatic
@@ -197,7 +197,7 @@ mlds_backend(ProgressStream, ErrorStream, !HLDS, !:MLDS, !:Specs,
 
     maybe_write_string(ProgressStream, Verbose,
         "% Flattening nested functions...\n", !IO),
-    ml_elim_nested(hoist_nested_funcs, Globals, MLDS_Target, !MLDS),
+    ml_elim_nested(MLDS_Target, hoist_nested_funcs, !MLDS),
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO),
     maybe_dump_mlds(ProgressStream, Globals, !.MLDS, 35, "nested_funcs", !IO),

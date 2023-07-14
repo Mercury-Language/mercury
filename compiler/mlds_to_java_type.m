@@ -236,6 +236,11 @@ type_to_string_and_dims_for_java(Info, MLDS_Type, String, ArrayDims) :-
         String = qual_class_name_to_string_for_java(Name, Arity),
         ArrayDims = []
     ;
+        MLDS_Type = mlds_env_type(EnvId),
+        EnvId = mlds_env_id(Name),
+        String = qual_class_name_to_string_for_java(Name, 0),
+        ArrayDims = []
+    ;
         MLDS_Type = mlds_ptr_type(PointedToType),
         % XXX Should we report an error here, if the type pointed to
         % is not a class type?
@@ -500,6 +505,7 @@ java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
         ; MLDS_Type = mlds_commit_type
         ; MLDS_Type = mlds_class_type(_)
         ; MLDS_Type = mlds_enum_class_type(_)
+        ; MLDS_Type = mlds_env_type(_)
         ; MLDS_Type = mlds_array_type(_)
         ; MLDS_Type = mlds_mostly_generic_array_type(_)
         ; MLDS_Type = mlds_ptr_type(_)

@@ -83,8 +83,10 @@ ml_code_gen(ProgressStream, Target, MLDS, !ModuleInfo, !Specs) :-
     module_info_user_final_pred_target_names(!.ModuleInfo, FinalPreds),
     ml_gen_preds(ProgressStream, Target, ConstStructMap, PredDefns,
         GlobalData1, GlobalData, !ModuleInfo, !Specs),
+    % Environment definitions are added later by ml_elim_nested.m.
+    EnvDefns = [],
     MLDS = mlds(ModuleName, Imports, GlobalData, TypeDefns, EnumDefns,
-        TableStructDefns, PredDefns, InitPreds, FinalPreds,
+        EnvDefns, TableStructDefns, PredDefns, InitPreds, FinalPreds,
         ForeignCode, ExportedEnums).
 
 :- pred ml_gen_foreign_code(module_info::in,

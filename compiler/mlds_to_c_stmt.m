@@ -1158,6 +1158,7 @@ type_needs_forwarding_pointer_space(Type) = NeedsForwardingPtrSpace :-
         ; Type = mlds_foreign_type(_)
         ; Type = mlds_class_type(_)
         ; Type = mlds_enum_class_type(_)
+        ; Type = mlds_env_type(_)
         ; Type = mlds_array_type(_)
         ; Type = mlds_mostly_generic_array_type(_)
         ; Type = mlds_ptr_type(_)

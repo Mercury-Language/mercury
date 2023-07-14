@@ -1128,6 +1128,13 @@ mlds_type_to_strcord(MLDS_Type) = Cord :-
             strcord(ClassName) ++ strcord("/") ++
             intcord(Arity) ++ strcord(")")
     ;
+        MLDS_Type = mlds_env_type(EnvId),
+        KindStr = "env_struct",
+        EnvId = mlds_env_id(QualClassName),
+        QualClassName = qual_class_name(_ModuleName, _QualKind, ClassName),
+        Cord = strcord(KindStr) ++ strcord("(") ++
+            strcord(ClassName) ++ strcord(")")
+    ;
         MLDS_Type = mlds_ptr_type(PointedToType),
         Cord = strcord("ptr_to(") ++ mlds_type_to_strcord(PointedToType) ++
             strcord(")")

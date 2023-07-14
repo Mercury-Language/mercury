@@ -642,8 +642,8 @@ SED=${SED:-sed}
 # options to diff) for the test suite to work properly.
 case "${MSYSTEM}" in
 
-    MINGW64|MINGW32|UCRT64|CLANG64) 
-        env_is_msys2=true 
+    MINGW64|MINGW32|UCRT64|CLANG64)
+        env_is_msys2=true
         windows=true
         ;;
 
@@ -2226,7 +2226,8 @@ then
                     cd "${root}/tests/${specified_test_dir}"
                     mmake ${mmake_opts} ${target_opt} ${jfactor} \
                         ${test_grade_opt} \
-                        SPECIFIED_TESTS="${specified_test_base}" runtests_local
+                        SPECIFIED_TESTS="${specified_test_base}" \
+                        runtests_local < /dev/null
                     if test "$?" -ne "0"
                     then
                         test_status=$?
@@ -2248,7 +2249,8 @@ then
                 then
                     cd "${root}/tests/${testdir}"
                     mmake ${mmake_opts} ${target_opt} ${jfactor} \
-                        ${test_grade_opt} ${test_log_opt} runtests_dir
+                        ${test_grade_opt} ${test_log_opt} \
+                        runtests_dir < /dev/null
                     if test "$?" -ne 0
                     then
                         test_status=1
