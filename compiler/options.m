@@ -570,7 +570,6 @@
     ;       det_copy_out
     ;       nondet_copy_out
     ;       put_commit_in_own_func
-    ;       put_nondet_env_on_heap
 
     % Options for internal use only (the values of these options are implied
     % by the settings of other options)
@@ -1592,7 +1591,6 @@ optdef(oc_grade, c_debug_grade,                         bool(no)).
 optdef(oc_grade, det_copy_out,                          bool(no)).
 optdef(oc_grade, nondet_copy_out,                       bool(no)).
 optdef(oc_grade, put_commit_in_own_func,                bool(no)).
-optdef(oc_grade, put_nondet_env_on_heap,                bool(no)).
 
     % Options for internal use only.
 
@@ -2559,7 +2557,6 @@ long_option("c-debug-grade",        c_debug_grade).
 long_option("det-copy-out",         det_copy_out).
 long_option("nondet-copy-out",      nondet_copy_out).
 long_option("put-commit-in-own-func",   put_commit_in_own_func).
-long_option("put-nondet-env-on-heap",   put_nondet_env_on_heap).
 
 % internal use options
 long_option("backend-foreign-languages", backend_foreign_languages).
@@ -5498,13 +5495,6 @@ options_help_compilation_model(Stream, !IO) :-
 %       "\twhere commits are implemented via setjmp()/longjmp(),",
 %       "\tsince longjmp() may clobber any non-volatile local vars",
 %       "\tin the function that called setjmp().",
-% The --put-nondet-env-on-heap option is not documented because
-% it is enabled automatically (by handle_options) in the situations
-% where it is needed; the user should never need to set it.
-%       "--put-nondet-env-on-heap",
-%       "\tAllocate the environment structures used for",
-%       "\tnondeterministic Mercury procedures on the heap,",
-%       "\trather than on the stack."
 %   ])
     ], !IO),
 

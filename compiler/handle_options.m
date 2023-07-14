@@ -1251,7 +1251,6 @@ check_for_incompatibilities(!.Globals, OpMode, !Specs) :-
     %   num_ptag_bits
     %   pretest_equality_cast_pointers
     %   put_commit_in_own_func
-    %   put_nondet_env_on_heap
     %   reclaim_heap_on_nondet_failure
     %   reclaim_heap_on_semidet_failure
     %   single_prec_float
@@ -1423,7 +1422,6 @@ handle_implications_of_pregen_target_spf(!Globals, Target,
         globals.set_option(nondet_copy_out, bool(yes), !Globals),
         globals.set_option(det_copy_out, bool(yes), !Globals),
         globals.set_option(unboxed_no_tag_types, bool(no), !Globals),
-        globals.set_option(put_nondet_env_on_heap, bool(yes), !Globals),
         globals.set_option(pretest_equality_cast_pointers, bool(yes),
             !Globals),
         globals.set_option(structure_reuse_analysis, bool(no), !Globals),
@@ -1607,18 +1605,19 @@ handle_gc_options(!Globals, GC_Method, OT_OptFrames0, OT_OptFrames, !Specs) :-
         % ml_gen_params_base and ml_declare_env_ptr_arg, in ml_code_util.m,
         % both assume (for accurate GC) that continuation environments
         % are always allocated on the stack, which means that things won't
-        % work if --gc accurate and --put-nondet-env-on-heap are both enabled.
+        % work if --gc accurate is enabled when targeting any language
+        % other than C. (Java and C# put their environments on the heap.)
         globals.lookup_bool_option(!.Globals, highlevel_code,
             HighLevelCode),
-        globals.lookup_bool_option(!.Globals, put_nondet_env_on_heap,
-            PutNondetEnvOnHeap),
+        globals.get_target(!.Globals, Target),
         ( if
             HighLevelCode = bool.yes,
-            PutNondetEnvOnHeap = bool.yes
+            Target \= target_c
         then
             AGCEnvSpec =
-                [words_quote("--gc accurate"), words("is incompatible with"),
-                words_quote("--put-nondet-env-on-heap"), suffix("."), nl],
+                [words("The only target language that"),
+                words_quote("--gc accurate"), words("is incompatible with"),
+                words("is C."), nl],
             add_error(phase_options, AGCEnvSpec, !Specs)
         else
             true

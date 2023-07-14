@@ -647,11 +647,12 @@ ml_gen_params_base(ModuleInfo, PredOrFunc, CodeModel, WhatParams, ArgTuples,
         ContArg = mlds_argument(ContVarName, ContType, gc_no_stmt),
         ContEnvType = mlds_generic_env_ptr_type,
         ContEnvVarName = lvn_comp_var(lvnc_cont_env_ptr),
-        % The cont_env_ptr always points to the stack, since continuation
-        % environments are always allocated on the stack (unless
-        % put_nondet_env_on_heap is true, which won't be the case when doing
-        % our own GC -- this is enforced in handle_options.m).
-        % So the GC doesn't need to trace it.
+        % When targeting C, we always allocate continuation environments
+        % on the stack. Since cont_env_ptr points to the stack, accurage GC
+        % does not need to trace it.
+        % When targeting C# or Java, we use the target's builtin GC,
+        % so again, there is no need for any info meant for our own
+        % accurate GC system.
         ContEnvArg = mlds_argument(ContEnvVarName, ContEnvType, gc_no_stmt),
         FuncArgs = FuncArgs0 ++ [ContArg, ContEnvArg]
     ),

@@ -1633,11 +1633,11 @@ ml_get_env_ptr(ml_lval(EnvPtrLval)) :-
 ml_declare_env_ptr_arg(Arg) :-
     VarName = lvn_comp_var(lvnc_env_ptr_arg),
     Type = mlds_generic_env_ptr_type,
-    % The env_ptr_arg always points to the stack, since continuation
-    % environments are always allocated on the stack (unless
-    % put_nondet_env_on_heap is true, which won't be the case when
-    % doing our own GC -- this is enforced in handle_options.m).
-    % So the GC doesn't need to trace it.
+    % When targeting C, we always allocate continuation environments
+    % on the stack, where our accurage GC does not need to trace it.
+    % When targeting C# or Java, we use the target's builtin GC,
+    % so again, there is no need for any info meant for our own
+    % accurate GC system.
     GCStatement = gc_no_stmt,
     Arg = mlds_argument(VarName, Type, GCStatement).
 
