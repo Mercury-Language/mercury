@@ -36,14 +36,6 @@ Usage:
 
 		mprof -c | more
 
-	Note: If you just want to run your program N times with
-	the same arguments, a simpler way of achieving this
-	is to instead use the \`-r<N>' (\"repeat N times\")
-	option to the Mercury runtime, which you can pass by
-	setting the environment variable MERCURY_OPTIONS, e.g.
-
-		env MERCURY_OPTIONS=-r100 ./my_program
-
 Options:
 	-h, --help
 		Print this help message."

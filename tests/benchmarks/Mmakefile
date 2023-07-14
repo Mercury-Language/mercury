@@ -40,20 +40,19 @@ include Mercury.options
 %.runtest: %.res ;
 
 CS =	$(PROGS:%=%.c)
-TIMES =	$(PROGS:%=%.time)
 
 cs:	$(CS)
-
-times:	$(TIMES)
 
 dir.%:	$(PROGS)
 	-mkdir $@
 	cp $(PROGS) $@
 	cp BenchEntry $@
 
-%.time: %
-	{ count=`awk '/$*/ { print $$2; exit; }' < BenchRepeatCounts`; \
-	echo "$$count	"; \
-	MERCURY_OPTIONS="-t -r$$count" ./repeat_time 3 ./$*; } 2>&1 | tee $@
+# The MERCURY_OPTIONS -r option was removed so if you want to time these
+# programs you will need to modify them to use the benchmarking module.
+#%.time: %
+#	{ count=`awk '/$*/ { print $$2; exit; }' < BenchRepeatCounts`; \
+#	echo "$$count	"; \
+#	MERCURY_OPTIONS="-t -r$$count" ./repeat_time 3 ./$*; } 2>&1 | tee $@
 
 #-----------------------------------------------------------------------------#

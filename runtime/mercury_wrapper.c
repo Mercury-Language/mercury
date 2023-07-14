@@ -289,9 +289,6 @@ char                *MR_lld_print_more_min_max = NULL;
 // other options
 
 MR_bool             MR_check_space = MR_FALSE;
-static  MR_bool     benchmark_all_solns = MR_FALSE;
-static  MR_bool     use_own_timer = MR_FALSE;
-static  int         repeats = 1;
 
 #define MAX_MEM_USAGE_REPORT_ATTEMPTS       100
 
@@ -312,7 +309,6 @@ static  MR_bool     MR_print_table_statistics = MR_FALSE;
 // Timing.
 int                 MR_user_time_at_last_stat;
 int                 MR_user_time_at_start;
-static  int         MR_user_time_at_finish;
 
 int                 MR_real_time_at_last_stat;
 int                 MR_real_time_at_start;
@@ -1407,7 +1403,7 @@ MR_process_options(int argc, char **argv)
     int             c;
     int             long_index;
 
-    while ((c = MR_getopt_long(argc, argv, "acC:d:D:e:i:m:n:o:pP:r:sStT:xX",
+    while ((c = MR_getopt_long(argc, argv, "cC:d:D:e:i:m:n:o:pP:sST:xX",
         MR_long_opts, &long_index)) != EOF)
     {
         switch (c)
@@ -2082,10 +2078,6 @@ MR_process_options(int argc, char **argv)
 #endif
                 break;
 
-            case 'a':
-                benchmark_all_solns = MR_TRUE;
-                break;
-
             case 'c':
                 MR_check_space = MR_TRUE;
                 break;
@@ -2207,8 +2199,6 @@ MR_process_options(int argc, char **argv)
                 } else {
                     MR_usage();
                 }
-
-                use_own_timer = MR_FALSE;
                 break;
 
             case 'D':
@@ -2247,13 +2237,6 @@ MR_process_options(int argc, char **argv)
 #endif
                 break;
 
-            case 'r':
-                if (sscanf(MR_optarg, "%d", &repeats) != 1) {
-                    MR_usage();
-                }
-
-                break;
-
             case 's':
                 MR_deep_profiling_save_results = MR_FALSE;
                 MR_complexity_save_results = MR_FALSE;
@@ -2261,18 +2244,6 @@ MR_process_options(int argc, char **argv)
 
             case 'S':
                 MR_print_deep_profiling_statistics = MR_TRUE;
-                break;
-
-            case 't':
-                use_own_timer = MR_TRUE;
-
-                MR_calldebug        = MR_FALSE;
-                MR_nondetstackdebug = MR_FALSE;
-                MR_detstackdebug    = MR_FALSE;
-                MR_heapdebug        = MR_FALSE;
-                MR_gotodebug        = MR_FALSE;
-                MR_sregdebug        = MR_FALSE;
-                MR_finaldebug       = MR_FALSE;
                 break;
 
             case 'T':
@@ -2428,8 +2399,6 @@ mercury_runtime_main(void)
     MR_CallSiteDynamic  *saved_cur_csd;
 #endif
 
-    static  int repcounter;
-
 #ifdef MR_MSVC_STRUCTURED_EXCEPTIONS
     // Under Win32 we use the following construction to handle exceptions.
     //   __try
@@ -2485,42 +2454,32 @@ mercury_runtime_main(void)
     MR_real_time_at_start = MR_get_real_milliseconds();
     MR_real_time_at_last_stat = MR_real_time_at_start;
 
-    for (repcounter = 0; repcounter < repeats; repcounter++) {
 #ifdef  MR_DEEP_PROFILING
-        saved_cur_callback = MR_current_callback_site;
-        saved_cur_csd = MR_current_call_site_dynamic;
-        MR_setup_callback(MR_program_entry_point);
+    saved_cur_callback = MR_current_callback_site;
+    saved_cur_csd = MR_current_call_site_dynamic;
+    MR_setup_callback(MR_program_entry_point);
 #endif
 
 #ifdef MR_THREADSCOPE
-
-        MR_threadscope_post_calling_main();
-
+    MR_threadscope_post_calling_main();
 #endif
 
 #ifdef MR_HIGHLEVEL_CODE
-        MR_do_interpreter();
+    MR_do_interpreter();
 #else
-        MR_debugmsg0("About to call engine\n");
-        (void) MR_call_engine(MR_ENTRY(MR_do_interpreter), MR_FALSE);
-        MR_debugmsg0("Returning from MR_call_engine()\n");
+    MR_debugmsg0("About to call engine\n");
+    (void) MR_call_engine(MR_ENTRY(MR_do_interpreter), MR_FALSE);
+    MR_debugmsg0("Returning from MR_call_engine()\n");
 #endif
 
 #ifdef MR_THREADSCOPE
-
-        MR_threadscope_post_stop_context(MR_TS_STOP_REASON_FINISHED);
-
+    MR_threadscope_post_stop_context(MR_TS_STOP_REASON_FINISHED);
 #endif
 
 #ifdef  MR_DEEP_PROFILING
-        MR_current_call_site_dynamic = saved_cur_csd;
-        MR_current_callback_site = saved_cur_callback;
+    MR_current_call_site_dynamic = saved_cur_csd;
+    MR_current_callback_site = saved_cur_callback;
 #endif
-    }
-
-    if (use_own_timer) {
-        MR_user_time_at_finish = MR_get_user_cpu_milliseconds();
-    }
 
 #if defined(MR_USE_GCC_NONLOCAL_GOTOS) && defined(MR_DEBUG_THE_RUNTIME)
     {
@@ -2573,12 +2532,6 @@ mercury_runtime_main(void)
         }
     }
 #endif
-
-    if (use_own_timer) {
-        printf("%8.3fu ",
-            ((double) (MR_user_time_at_finish - MR_user_time_at_start))
-                / 1000);
-    }
 
 #ifdef  MR_TYPE_CTOR_STATS
     MR_print_type_ctor_stats();
@@ -2882,11 +2835,7 @@ MR_define_label(global_success_2);
     }
 #endif
 
-    if (benchmark_all_solns) {
-        MR_redo();
-    } else {
-        MR_GOTO_LABEL(all_done);
-    }
+    MR_GOTO_LABEL(all_done);
 
 MR_define_label(global_fail);
 #ifdef  MR_DEBUG_THE_RUNTIME
