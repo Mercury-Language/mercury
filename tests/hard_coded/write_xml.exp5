@@ -1,0 +1,583 @@
+Result 1:
+unsupported_dtd_type(pred(int))
+
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/css" href="http://www.cs.mu.oz.au/a_css.css"?>
+<Array--array-46array-40write_xml-46mytype-41 functor="&lt;&lt;array&gt;&gt;" type="array.array(write_xml.mytype)" arity="13">
+	<Tag_Tag-45--1--write_xml-46mytype functor="Tag-" type="write_xml.mytype" arity="1">
+		<Int type="int">44</Int>
+	</Tag_Tag-45--1--write_xml-46mytype>
+	<Tag_String--1--write_xml-46mytype functor="String" type="write_xml.mytype" arity="1">
+		<String type="string">a string</String>
+	</Tag_String--1--write_xml-46mytype>
+	<hello--5--write_xml-46mytype functor="hello" type="write_xml.mytype" arity="5">
+		<String type="string" field="field1">this 
+
+is a &lt;string&gt;&amp;</String>
+		<Int type="int" field="Field&lt;2&gt;">-123</Int>
+		<Char type="character">&lt;</Char>
+		<Float type="float" field="another field">1.123</Float>
+		<yes--0--bool-46bool functor="yes" type="bool.bool" arity="0" />
+	</hello--5--write_xml-46mytype>
+	<a_tuple--1--write_xml-46mytype functor="a_tuple" type="write_xml.mytype" arity="1">
+		<Tuple--3--Tag_-123string-44-32int-44-32-123character-44-32float-125-125 functor="{}" type="{string, int, {character, float}}" arity="3">
+			<String type="string">some more stuf</String>
+			<Int type="int">123456</Int>
+			<Tuple--2--Tag_-123character-44-32float-125 functor="{}" type="{character, float}" arity="2">
+				<Char type="character">a</Char>
+				<Float type="float">1.2355322522e-97</Float>
+			</Tuple--2--Tag_-123character-44-32float-125>
+		</Tuple--3--Tag_-123string-44-32int-44-32-123character-44-32float-125-125>
+	</a_tuple--1--write_xml-46mytype>
+	<Tag_List--1--write_xml-46mytype functor="List" type="write_xml.mytype" arity="1">
+		<List--2--list-46list-40write_xml-46listPart-41 functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+			<listPart--1--write_xml-46listPart functor="listPart" type="write_xml.listPart" arity="1">
+				<Int type="int">1</Int>
+			</listPart--1--write_xml-46listPart>
+			<List--2--list-46list-40write_xml-46listPart-41 functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+				<listPart--1--write_xml-46listPart functor="listPart" type="write_xml.listPart" arity="1">
+					<Int type="int">2</Int>
+				</listPart--1--write_xml-46listPart>
+				<List--2--list-46list-40write_xml-46listPart-41 functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+					<nothing--0--write_xml-46listPart functor="nothing" type="write_xml.listPart" arity="0" />
+					<List--2--list-46list-40write_xml-46listPart-41 functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+						<listPart--1--write_xml-46listPart functor="listPart" type="write_xml.listPart" arity="1">
+							<Int type="int">4</Int>
+						</listPart--1--write_xml-46listPart>
+						<List--2--list-46list-40write_xml-46listPart-41 functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+							<nothing--0--write_xml-46listPart functor="nothing" type="write_xml.listPart" arity="0" />
+							<List--2--list-46list-40write_xml-46listPart-41 functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+								<listPart--1--write_xml-46listPart functor="listPart" type="write_xml.listPart" arity="1">
+									<Int type="int">6</Int>
+								</listPart--1--write_xml-46listPart>
+								<List--2--list-46list-40write_xml-46listPart-41 functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+									<listPart--1--write_xml-46listPart functor="listPart" type="write_xml.listPart" arity="1">
+										<Int type="int">7</Int>
+									</listPart--1--write_xml-46listPart>
+									<List--2--list-46list-40write_xml-46listPart-41 functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+										<listPart--1--write_xml-46listPart functor="listPart" type="write_xml.listPart" arity="1">
+											<Int type="int">8</Int>
+										</listPart--1--write_xml-46listPart>
+										<List--2--list-46list-40write_xml-46listPart-41 functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+											<nothing--0--write_xml-46listPart functor="nothing" type="write_xml.listPart" arity="0" />
+											<Nil--0--list-46list-40write_xml-46listPart-41 functor="[]" type="list.list(write_xml.listPart)" arity="0" />
+										</List--2--list-46list-40write_xml-46listPart-41>
+									</List--2--list-46list-40write_xml-46listPart-41>
+								</List--2--list-46list-40write_xml-46listPart-41>
+							</List--2--list-46list-40write_xml-46listPart-41>
+						</List--2--list-46list-40write_xml-46listPart-41>
+					</List--2--list-46list-40write_xml-46listPart-41>
+				</List--2--list-46list-40write_xml-46listPart-41>
+			</List--2--list-46list-40write_xml-46listPart-41>
+		</List--2--list-46list-40write_xml-46listPart-41>
+	</Tag_List--1--write_xml-46mytype>
+	<a_map--1--write_xml-46mytype functor="a_map" type="write_xml.mytype" arity="1">
+		<four--10--tree234-46tree234-40int-44-32string-41 functor="four" type="tree234.tree234(int, string)" arity="10">
+			<Int type="int">2</Int>
+			<String type="string">hello1</String>
+			<Int type="int">4</Int>
+			<String type="string">hello3</String>
+			<Int type="int">6</Int>
+			<String type="string">hello5</String>
+			<two--4--tree234-46tree234-40int-44-32string-41 functor="two" type="tree234.tree234(int, string)" arity="4">
+				<Int type="int">1</Int>
+				<String type="string">hello</String>
+				<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+				<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+			</two--4--tree234-46tree234-40int-44-32string-41>
+			<two--4--tree234-46tree234-40int-44-32string-41 functor="two" type="tree234.tree234(int, string)" arity="4">
+				<Int type="int">3</Int>
+				<String type="string">hello2</String>
+				<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+				<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+			</two--4--tree234-46tree234-40int-44-32string-41>
+			<two--4--tree234-46tree234-40int-44-32string-41 functor="two" type="tree234.tree234(int, string)" arity="4">
+				<Int type="int">5</Int>
+				<String type="string">hello4</String>
+				<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+				<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+			</two--4--tree234-46tree234-40int-44-32string-41>
+			<three--7--tree234-46tree234-40int-44-32string-41 functor="three" type="tree234.tree234(int, string)" arity="7">
+				<Int type="int">7</Int>
+				<String type="string">hello6</String>
+				<Int type="int">8</Int>
+				<String type="string">hello7</String>
+				<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+				<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+				<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+			</three--7--tree234-46tree234-40int-44-32string-41>
+		</four--10--tree234-46tree234-40int-44-32string-41>
+	</a_map--1--write_xml-46mytype>
+	<a-32-60-33-64-35-36-37-94-38-42-40-41-62-32functor-32name-33-33-33--1--write_xml-46mytype functor="a &lt;!@#$%^&amp;*()&gt; functor name!!!" type="write_xml.mytype" arity="1">
+		<Int type="int">999</Int>
+	</a-32-60-33-64-35-36-37-94-38-42-40-41-62-32functor-32name-33-33-33--1--write_xml-46mytype>
+	<a_pred--1--write_xml-46mytype functor="a_pred" type="write_xml.mytype" arity="1">
+		<pred-40int-41 functor="&lt;&lt;predicate&gt;&gt;" type="pred(int)" arity="0" />
+	</a_pred--1--write_xml-46mytype>
+	<t--1--write_xml-46mytype functor="t" type="write_xml.mytype" arity="1">
+		<type_desc-46type_desc functor="tree234" type="type_desc.type_desc" arity="2">
+			<type_desc-46type_desc functor="int" type="type_desc.type_desc" arity="0" />
+			<type_desc-46type_desc functor="string" type="type_desc.type_desc" arity="0" />
+		</type_desc-46type_desc>
+	</t--1--write_xml-46mytype>
+	<ctor--1--write_xml-46mytype functor="ctor" type="write_xml.mytype" arity="1">
+		<type_desc-46type_ctor_desc functor="tree234.tree234/2" type="type_desc.type_ctor_desc" arity="0" />
+	</ctor--1--write_xml-46mytype>
+	<foreign--1--write_xml-46mytype functor="foreign" type="write_xml.mytype" arity="1">
+		<write_xml-46ftype functor="&lt;&lt;foreign(ftype, 00000001)&gt;&gt;" type="write_xml.ftype" arity="0" />
+	</foreign--1--write_xml-46mytype>
+	<pointer--1--write_xml-46mytype functor="pointer" type="write_xml.mytype" arity="1">
+		<c_pointer functor="c_pointer(0x0)" type="c_pointer" arity="0" />
+	</pointer--1--write_xml-46mytype>
+	<primitives--10--write_xml-46mytype functor="primitives" type="write_xml.mytype" arity="10">
+		<Int type="int">1</Int>
+		<Int8 type="int8">2</Int8>
+		<Int16 type="int16">3</Int16>
+		<Int32 type="int32">4</Int32>
+		<Int64 type="int64">5</Int64>
+		<UInt type="uint">6</UInt>
+		<UInt8 type="uint8">7</UInt8>
+		<UInt16 type="uint16">8</UInt16>
+		<UInt32 type="uint32">9</UInt32>
+		<UInt64 type="uint64">10</UInt64>
+	</primitives--10--write_xml-46mytype>
+</Array--array-46array-40write_xml-46mytype-41>
+Result 2:
+ok
+
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/css" href="http://www.cs.mu.oz.au/a_css.css"?>
+<!DOCTYPE wrap--1--write_xml-46wrap-40tree234-46tree234-40int-44-32string-41-41 [
+
+<!-- Elements for functors of type "write_xml.wrap(tree234.tree234(int, string))" -->
+
+<!ELEMENT wrap--1--write_xml-46wrap-40tree234-46tree234-40int-44-32string-41-41 (empty--0--tree234-46tree234-40int-44-32string-41|four--10--tree234-46tree234-40int-44-32string-41|three--7--tree234-46tree234-40int-44-32string-41|two--4--tree234-46tree234-40int-44-32string-41)>
+<!ATTLIST wrap--1--write_xml-46wrap-40tree234-46tree234-40int-44-32string-41-41 functor CDATA #FIXED "wrap">
+<!ATTLIST wrap--1--write_xml-46wrap-40tree234-46tree234-40int-44-32string-41-41 field CDATA #IMPLIED>
+<!ATTLIST wrap--1--write_xml-46wrap-40tree234-46tree234-40int-44-32string-41-41 type CDATA #FIXED "write_xml.wrap(tree234.tree234(int, string))">
+<!ATTLIST wrap--1--write_xml-46wrap-40tree234-46tree234-40int-44-32string-41-41 arity CDATA #FIXED "1">
+
+<!-- Elements for functors of type "tree234.tree234(int, string)" -->
+
+<!ELEMENT empty--0--tree234-46tree234-40int-44-32string-41 EMPTY>
+<!ATTLIST empty--0--tree234-46tree234-40int-44-32string-41 functor CDATA #FIXED "empty">
+<!ATTLIST empty--0--tree234-46tree234-40int-44-32string-41 field CDATA #IMPLIED>
+<!ATTLIST empty--0--tree234-46tree234-40int-44-32string-41 type CDATA #FIXED "tree234.tree234(int, string)">
+<!ATTLIST empty--0--tree234-46tree234-40int-44-32string-41 arity CDATA #FIXED "0">
+
+<!ELEMENT four--10--tree234-46tree234-40int-44-32string-41 (Int,String,Int,String,Int,String,(empty--0--tree234-46tree234-40int-44-32string-41|four--10--tree234-46tree234-40int-44-32string-41|three--7--tree234-46tree234-40int-44-32string-41|two--4--tree234-46tree234-40int-44-32string-41),(empty--0--tree234-46tree234-40int-44-32string-41|four--10--tree234-46tree234-40int-44-32string-41|three--7--tree234-46tree234-40int-44-32string-41|two--4--tree234-46tree234-40int-44-32string-41),(empty--0--tree234-46tree234-40int-44-32string-41|four--10--tree234-46tree234-40int-44-32string-41|three--7--tree234-46tree234-40int-44-32string-41|two--4--tree234-46tree234-40int-44-32string-41),(empty--0--tree234-46tree234-40int-44-32string-41|four--10--tree234-46tree234-40int-44-32string-41|three--7--tree234-46tree234-40int-44-32string-41|two--4--tree234-46tree234-40int-44-32string-41))>
+<!ATTLIST four--10--tree234-46tree234-40int-44-32string-41 functor CDATA #FIXED "four">
+<!ATTLIST four--10--tree234-46tree234-40int-44-32string-41 field CDATA #IMPLIED>
+<!ATTLIST four--10--tree234-46tree234-40int-44-32string-41 type CDATA #FIXED "tree234.tree234(int, string)">
+<!ATTLIST four--10--tree234-46tree234-40int-44-32string-41 arity CDATA #FIXED "10">
+
+<!ELEMENT three--7--tree234-46tree234-40int-44-32string-41 (Int,String,Int,String,(empty--0--tree234-46tree234-40int-44-32string-41|four--10--tree234-46tree234-40int-44-32string-41|three--7--tree234-46tree234-40int-44-32string-41|two--4--tree234-46tree234-40int-44-32string-41),(empty--0--tree234-46tree234-40int-44-32string-41|four--10--tree234-46tree234-40int-44-32string-41|three--7--tree234-46tree234-40int-44-32string-41|two--4--tree234-46tree234-40int-44-32string-41),(empty--0--tree234-46tree234-40int-44-32string-41|four--10--tree234-46tree234-40int-44-32string-41|three--7--tree234-46tree234-40int-44-32string-41|two--4--tree234-46tree234-40int-44-32string-41))>
+<!ATTLIST three--7--tree234-46tree234-40int-44-32string-41 functor CDATA #FIXED "three">
+<!ATTLIST three--7--tree234-46tree234-40int-44-32string-41 field CDATA #IMPLIED>
+<!ATTLIST three--7--tree234-46tree234-40int-44-32string-41 type CDATA #FIXED "tree234.tree234(int, string)">
+<!ATTLIST three--7--tree234-46tree234-40int-44-32string-41 arity CDATA #FIXED "7">
+
+<!ELEMENT two--4--tree234-46tree234-40int-44-32string-41 (Int,String,(empty--0--tree234-46tree234-40int-44-32string-41|four--10--tree234-46tree234-40int-44-32string-41|three--7--tree234-46tree234-40int-44-32string-41|two--4--tree234-46tree234-40int-44-32string-41),(empty--0--tree234-46tree234-40int-44-32string-41|four--10--tree234-46tree234-40int-44-32string-41|three--7--tree234-46tree234-40int-44-32string-41|two--4--tree234-46tree234-40int-44-32string-41))>
+<!ATTLIST two--4--tree234-46tree234-40int-44-32string-41 functor CDATA #FIXED "two">
+<!ATTLIST two--4--tree234-46tree234-40int-44-32string-41 field CDATA #IMPLIED>
+<!ATTLIST two--4--tree234-46tree234-40int-44-32string-41 type CDATA #FIXED "tree234.tree234(int, string)">
+<!ATTLIST two--4--tree234-46tree234-40int-44-32string-41 arity CDATA #FIXED "4">
+
+<!-- Elements for functors of type "int" -->
+
+<!ELEMENT Int (#PCDATA)>
+<!ATTLIST Int type CDATA #FIXED "int">
+<!ATTLIST Int field CDATA #IMPLIED>
+
+<!-- Elements for functors of type "string" -->
+
+<!ELEMENT String (#PCDATA)>
+<!ATTLIST String type CDATA #FIXED "string">
+<!ATTLIST String field CDATA #IMPLIED>
+
+
+]>
+<wrap--1--write_xml-46wrap-40tree234-46tree234-40int-44-32string-41-41 functor="wrap" type="write_xml.wrap(tree234.tree234(int, string))" arity="1">
+	<four--10--tree234-46tree234-40int-44-32string-41 functor="four" type="tree234.tree234(int, string)" arity="10">
+		<Int type="int">2</Int>
+		<String type="string">hello1</String>
+		<Int type="int">4</Int>
+		<String type="string">hello3</String>
+		<Int type="int">6</Int>
+		<String type="string">hello5</String>
+		<two--4--tree234-46tree234-40int-44-32string-41 functor="two" type="tree234.tree234(int, string)" arity="4">
+			<Int type="int">1</Int>
+			<String type="string">hello</String>
+			<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+			<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+		</two--4--tree234-46tree234-40int-44-32string-41>
+		<two--4--tree234-46tree234-40int-44-32string-41 functor="two" type="tree234.tree234(int, string)" arity="4">
+			<Int type="int">3</Int>
+			<String type="string">hello2</String>
+			<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+			<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+		</two--4--tree234-46tree234-40int-44-32string-41>
+		<two--4--tree234-46tree234-40int-44-32string-41 functor="two" type="tree234.tree234(int, string)" arity="4">
+			<Int type="int">5</Int>
+			<String type="string">hello4</String>
+			<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+			<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+		</two--4--tree234-46tree234-40int-44-32string-41>
+		<three--7--tree234-46tree234-40int-44-32string-41 functor="three" type="tree234.tree234(int, string)" arity="7">
+			<Int type="int">7</Int>
+			<String type="string">hello6</String>
+			<Int type="int">8</Int>
+			<String type="string">hello7</String>
+			<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+			<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+			<empty--0--tree234-46tree234-40int-44-32string-41 functor="empty" type="tree234.tree234(int, string)" arity="0" />
+		</three--7--tree234-46tree234-40int-44-32string-41>
+	</four--10--tree234-46tree234-40int-44-32string-41>
+</wrap--1--write_xml-46wrap-40tree234-46tree234-40int-44-32string-41-41>
+Result 3:
+ok
+
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/css" href="http://www.cs.mu.oz.au/a_css.css"?>
+<!DOCTYPE wrap [
+
+<!-- Elements for functors of type "write_xml.wrap(tree234.tree234(int, string))" -->
+
+<!ELEMENT wrap (empty|four|three|two)>
+<!ATTLIST wrap functor CDATA #FIXED "wrap">
+<!ATTLIST wrap field CDATA #IMPLIED>
+<!ATTLIST wrap type CDATA #FIXED "write_xml.wrap(tree234.tree234(int, string))">
+<!ATTLIST wrap arity CDATA #FIXED "1">
+
+<!-- Elements for functors of type "tree234.tree234(int, string)" -->
+
+<!ELEMENT empty EMPTY>
+<!ATTLIST empty functor CDATA #FIXED "empty">
+<!ATTLIST empty field CDATA #IMPLIED>
+<!ATTLIST empty type CDATA #FIXED "tree234.tree234(int, string)">
+<!ATTLIST empty arity CDATA #FIXED "0">
+
+<!ELEMENT four (Int,String,Int,String,Int,String,(empty|four|three|two),(empty|four|three|two),(empty|four|three|two),(empty|four|three|two))>
+<!ATTLIST four functor CDATA #FIXED "four">
+<!ATTLIST four field CDATA #IMPLIED>
+<!ATTLIST four type CDATA #FIXED "tree234.tree234(int, string)">
+<!ATTLIST four arity CDATA #FIXED "10">
+
+<!ELEMENT three (Int,String,Int,String,(empty|four|three|two),(empty|four|three|two),(empty|four|three|two))>
+<!ATTLIST three functor CDATA #FIXED "three">
+<!ATTLIST three field CDATA #IMPLIED>
+<!ATTLIST three type CDATA #FIXED "tree234.tree234(int, string)">
+<!ATTLIST three arity CDATA #FIXED "7">
+
+<!ELEMENT two (Int,String,(empty|four|three|two),(empty|four|three|two))>
+<!ATTLIST two functor CDATA #FIXED "two">
+<!ATTLIST two field CDATA #IMPLIED>
+<!ATTLIST two type CDATA #FIXED "tree234.tree234(int, string)">
+<!ATTLIST two arity CDATA #FIXED "4">
+
+<!-- Elements for functors of type "int" -->
+
+<!ELEMENT Int (#PCDATA)>
+<!ATTLIST Int type CDATA #FIXED "int">
+<!ATTLIST Int field CDATA #IMPLIED>
+
+<!-- Elements for functors of type "string" -->
+
+<!ELEMENT String (#PCDATA)>
+<!ATTLIST String type CDATA #FIXED "string">
+<!ATTLIST String field CDATA #IMPLIED>
+
+
+]>
+<wrap functor="wrap" type="write_xml.wrap(tree234.tree234(int, string))" arity="1">
+	<four functor="four" type="tree234.tree234(int, string)" arity="10">
+		<Int type="int">2</Int>
+		<String type="string">hello1</String>
+		<Int type="int">4</Int>
+		<String type="string">hello3</String>
+		<Int type="int">6</Int>
+		<String type="string">hello5</String>
+		<two functor="two" type="tree234.tree234(int, string)" arity="4">
+			<Int type="int">1</Int>
+			<String type="string">hello</String>
+			<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+			<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+		</two>
+		<two functor="two" type="tree234.tree234(int, string)" arity="4">
+			<Int type="int">3</Int>
+			<String type="string">hello2</String>
+			<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+			<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+		</two>
+		<two functor="two" type="tree234.tree234(int, string)" arity="4">
+			<Int type="int">5</Int>
+			<String type="string">hello4</String>
+			<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+			<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+		</two>
+		<three functor="three" type="tree234.tree234(int, string)" arity="7">
+			<Int type="int">7</Int>
+			<String type="string">hello6</String>
+			<Int type="int">8</Int>
+			<String type="string">hello7</String>
+			<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+			<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+			<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+		</three>
+	</four>
+</wrap>
+Result 3_1:
+ok
+
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/css" href="http://www.cs.mu.oz.au/a_css.css"?>
+<!DOCTYPE Array--array-46array-40write_xml-46listPart-41 [
+
+<!-- Elements for functors of type "array.array(write_xml.listPart)" -->
+
+<!ELEMENT Array--array-46array-40write_xml-46listPart-41 ((listPart--1--write_xml-46listPart|nothing--0--write_xml-46listPart)*)>
+<!ATTLIST Array--array-46array-40write_xml-46listPart-41 functor CDATA #IMPLIED>
+<!ATTLIST Array--array-46array-40write_xml-46listPart-41 field CDATA #IMPLIED>
+<!ATTLIST Array--array-46array-40write_xml-46listPart-41 type CDATA #FIXED "array.array(write_xml.listPart)">
+<!ATTLIST Array--array-46array-40write_xml-46listPart-41 arity CDATA #IMPLIED>
+
+<!-- Elements for functors of type "write_xml.listPart" -->
+
+<!ELEMENT listPart--1--write_xml-46listPart (Int)>
+<!ATTLIST listPart--1--write_xml-46listPart functor CDATA #FIXED "listPart">
+<!ATTLIST listPart--1--write_xml-46listPart field CDATA #IMPLIED>
+<!ATTLIST listPart--1--write_xml-46listPart type CDATA #FIXED "write_xml.listPart">
+<!ATTLIST listPart--1--write_xml-46listPart arity CDATA #FIXED "1">
+
+<!ELEMENT nothing--0--write_xml-46listPart EMPTY>
+<!ATTLIST nothing--0--write_xml-46listPart functor CDATA #FIXED "nothing">
+<!ATTLIST nothing--0--write_xml-46listPart field CDATA #IMPLIED>
+<!ATTLIST nothing--0--write_xml-46listPart type CDATA #FIXED "write_xml.listPart">
+<!ATTLIST nothing--0--write_xml-46listPart arity CDATA #FIXED "0">
+
+<!-- Elements for functors of type "int" -->
+
+<!ELEMENT Int (#PCDATA)>
+<!ATTLIST Int type CDATA #FIXED "int">
+<!ATTLIST Int field CDATA #IMPLIED>
+
+
+]>
+<Array--array-46array-40write_xml-46listPart-41 functor="&lt;&lt;array&gt;&gt;" type="array.array(write_xml.listPart)" arity="9">
+	<listPart--1--write_xml-46listPart functor="listPart" type="write_xml.listPart" arity="1">
+		<Int type="int">1</Int>
+	</listPart--1--write_xml-46listPart>
+	<listPart--1--write_xml-46listPart functor="listPart" type="write_xml.listPart" arity="1">
+		<Int type="int">2</Int>
+	</listPart--1--write_xml-46listPart>
+	<nothing--0--write_xml-46listPart functor="nothing" type="write_xml.listPart" arity="0" />
+	<listPart--1--write_xml-46listPart functor="listPart" type="write_xml.listPart" arity="1">
+		<Int type="int">4</Int>
+	</listPart--1--write_xml-46listPart>
+	<nothing--0--write_xml-46listPart functor="nothing" type="write_xml.listPart" arity="0" />
+	<listPart--1--write_xml-46listPart functor="listPart" type="write_xml.listPart" arity="1">
+		<Int type="int">6</Int>
+	</listPart--1--write_xml-46listPart>
+	<listPart--1--write_xml-46listPart functor="listPart" type="write_xml.listPart" arity="1">
+		<Int type="int">7</Int>
+	</listPart--1--write_xml-46listPart>
+	<listPart--1--write_xml-46listPart functor="listPart" type="write_xml.listPart" arity="1">
+		<Int type="int">8</Int>
+	</listPart--1--write_xml-46listPart>
+	<nothing--0--write_xml-46listPart functor="nothing" type="write_xml.listPart" arity="0" />
+</Array--array-46array-40write_xml-46listPart-41>
+Result 4:
+ok
+
+<?xml version="1.0"?>
+<!DOCTYPE List PUBLIC "test" "test.dtd">
+<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
+	<Tag_Tag-45 functor="Tag-" type="write_xml.mytype" arity="1">
+		<Int type="int">44</Int>
+	</Tag_Tag-45>
+	<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
+		<Tag_String functor="String" type="write_xml.mytype" arity="1">
+			<String type="string">a string</String>
+		</Tag_String>
+		<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
+			<hello functor="hello" type="write_xml.mytype" arity="5">
+				<String type="string" field="field1">this 
+
+is a &lt;string&gt;&amp;</String>
+				<Int type="int" field="Field&lt;2&gt;">-123</Int>
+				<Char type="character">&lt;</Char>
+				<Float type="float" field="another field">1.123</Float>
+				<yes functor="yes" type="bool.bool" arity="0" />
+			</hello>
+			<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
+				<a_tuple functor="a_tuple" type="write_xml.mytype" arity="1">
+					<Tuple functor="{}" type="{string, int, {character, float}}" arity="3">
+						<String type="string">some more stuf</String>
+						<Int type="int">123456</Int>
+						<Tuple functor="{}" type="{character, float}" arity="2">
+							<Char type="character">a</Char>
+							<Float type="float">1.2355322522e-97</Float>
+						</Tuple>
+					</Tuple>
+				</a_tuple>
+				<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
+					<Tag_List functor="List" type="write_xml.mytype" arity="1">
+						<List functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+							<listPart functor="listPart" type="write_xml.listPart" arity="1">
+								<Int type="int">1</Int>
+							</listPart>
+							<List functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+								<listPart functor="listPart" type="write_xml.listPart" arity="1">
+									<Int type="int">2</Int>
+								</listPart>
+								<List functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+									<nothing functor="nothing" type="write_xml.listPart" arity="0" />
+									<List functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+										<listPart functor="listPart" type="write_xml.listPart" arity="1">
+											<Int type="int">4</Int>
+										</listPart>
+										<List functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+											<nothing functor="nothing" type="write_xml.listPart" arity="0" />
+											<List functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+												<listPart functor="listPart" type="write_xml.listPart" arity="1">
+													<Int type="int">6</Int>
+												</listPart>
+												<List functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+													<listPart functor="listPart" type="write_xml.listPart" arity="1">
+														<Int type="int">7</Int>
+													</listPart>
+													<List functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+														<listPart functor="listPart" type="write_xml.listPart" arity="1">
+															<Int type="int">8</Int>
+														</listPart>
+														<List functor="[|]" type="list.list(write_xml.listPart)" arity="2">
+															<nothing functor="nothing" type="write_xml.listPart" arity="0" />
+															<Nil functor="[]" type="list.list(write_xml.listPart)" arity="0" />
+														</List>
+													</List>
+												</List>
+											</List>
+										</List>
+									</List>
+								</List>
+							</List>
+						</List>
+					</Tag_List>
+					<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
+						<a_map functor="a_map" type="write_xml.mytype" arity="1">
+							<four functor="four" type="tree234.tree234(int, string)" arity="10">
+								<Int type="int">2</Int>
+								<String type="string">hello1</String>
+								<Int type="int">4</Int>
+								<String type="string">hello3</String>
+								<Int type="int">6</Int>
+								<String type="string">hello5</String>
+								<two functor="two" type="tree234.tree234(int, string)" arity="4">
+									<Int type="int">1</Int>
+									<String type="string">hello</String>
+									<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+									<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+								</two>
+								<two functor="two" type="tree234.tree234(int, string)" arity="4">
+									<Int type="int">3</Int>
+									<String type="string">hello2</String>
+									<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+									<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+								</two>
+								<two functor="two" type="tree234.tree234(int, string)" arity="4">
+									<Int type="int">5</Int>
+									<String type="string">hello4</String>
+									<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+									<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+								</two>
+								<three functor="three" type="tree234.tree234(int, string)" arity="7">
+									<Int type="int">7</Int>
+									<String type="string">hello6</String>
+									<Int type="int">8</Int>
+									<String type="string">hello7</String>
+									<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+									<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+									<empty functor="empty" type="tree234.tree234(int, string)" arity="0" />
+								</three>
+							</four>
+						</a_map>
+						<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
+							<a-32-60-33-64-35-36-37-94-38-42-40-41-62-32functor-32name-33-33-33 functor="a &lt;!@#$%^&amp;*()&gt; functor name!!!" type="write_xml.mytype" arity="1">
+								<Int type="int">999</Int>
+							</a-32-60-33-64-35-36-37-94-38-42-40-41-62-32functor-32name-33-33-33>
+							<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
+								<a_pred functor="a_pred" type="write_xml.mytype" arity="1">
+									<Unknown functor="&lt;&lt;predicate&gt;&gt;" type="pred(int)" arity="0" />
+								</a_pred>
+								<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
+									<t functor="t" type="write_xml.mytype" arity="1">
+										<Unknown functor="tree234" type="type_desc.type_desc" arity="2">
+											<Unknown functor="int" type="type_desc.type_desc" arity="0" />
+											<Unknown functor="string" type="type_desc.type_desc" arity="0" />
+										</Unknown>
+									</t>
+									<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
+										<ctor functor="ctor" type="write_xml.mytype" arity="1">
+											<Unknown functor="tree234.tree234/2" type="type_desc.type_ctor_desc" arity="0" />
+										</ctor>
+										<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
+											<foreign functor="foreign" type="write_xml.mytype" arity="1">
+												<Unknown functor="&lt;&lt;foreign(ftype, 00000001)&gt;&gt;" type="write_xml.ftype" arity="0" />
+											</foreign>
+											<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
+												<pointer functor="pointer" type="write_xml.mytype" arity="1">
+													<Unknown functor="c_pointer(0x0)" type="c_pointer" arity="0" />
+												</pointer>
+												<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
+													<primitives functor="primitives" type="write_xml.mytype" arity="10">
+														<Int type="int">1</Int>
+														<Int8 type="int8">2</Int8>
+														<Int16 type="int16">3</Int16>
+														<Int32 type="int32">4</Int32>
+														<Int64 type="int64">5</Int64>
+														<UInt type="uint">6</UInt>
+														<UInt8 type="uint8">7</UInt8>
+														<UInt16 type="uint16">8</UInt16>
+														<UInt32 type="uint32">9</UInt32>
+														<UInt64 type="uint64">10</UInt64>
+													</primitives>
+													<Nil functor="[]" type="list.list(write_xml.mytype)" arity="0" />
+												</List>
+											</List>
+										</List>
+									</List>
+								</List>
+							</List>
+						</List>
+					</List>
+				</List>
+			</List>
+		</List>
+	</List>
+</List>
+Result 5:
+ok
+
+<?xml version="1.0"?>
+<!DOCTYPE X SYSTEM "test">
+<X>
+	<X>666</X>
+</X>
+Result 6:
+ok
+
+Result 7:
+duplicate_elements("X", [write_xml.listPart, write_xml.wrap(write_xml.listPart)])
+
+Result 8:
+multiple_functors_for_root
+
+<?xml version="1.0"?>
+<ext--1--write_xml-46ext functor="ext" type="write_xml.ext" arity="1">
+	<Int type="int" field="ext_field_1">1</Int>
+</ext--1--write_xml-46ext>
+Result 9:
+ok
+
+Result 10:
+type_not_ground(tvar513)
