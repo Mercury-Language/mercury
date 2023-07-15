@@ -70,7 +70,7 @@
 :- type ml_vector_cell_group
     --->    ml_vector_cell_group(
                 mvcg_type           :: mlds_type,
-                mvcg_type_defn      :: mlds_class_defn,
+                mvcg_type_defn      :: mlds_struct_defn,
                 mvcg_field_ids      :: list(mlds_field_id),
 
                 mvcg_next_row       :: int,
@@ -644,39 +644,28 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
         StructClassName = "vector_common_type_" ++ TypeRawNumStr,
         QualStructClassName =
             qual_class_name(MLDS_ModuleName, module_qual, StructClassName),
-        StructClassId = mlds_class_id(QualStructClassName, 0, mlds_struct),
-        % The "modifiable" is only to shut up a gcc warning about constant
-        % fields.
-        StructClassFlags =
-            mlds_class_decl_flags(class_private, sealed, modifiable),
+        StructId = mlds_struct_id(QualStructClassName),
         (
             Target = ml_target_c,
-            ClassKind = mlds_struct,
-            CtorDefns = []
+            MaybeCtorDefn = maybe.no
         ;
-            (
-                Target = ml_target_java,
-                ClassKind = mlds_class
-            ;
-                Target = ml_target_csharp,
-                ClassKind = mlds_struct
+            ( Target = ml_target_java
+            ; Target = ml_target_csharp
             ),
-            CtorDefn = ml_gen_constructor_function(Target, StructClassId,
-                StructClassId, MLDS_ModuleName, StructClassId, no, FieldInfos,
-                Context),
-            CtorDefns = [CtorDefn]
+            CtorDefn = ml_gen_struct_constructor_function(StructId,
+                MLDS_ModuleName, FieldInfos, Context),
+            MaybeCtorDefn = yes(CtorDefn)
         ),
-        StructClassDefn = mlds_class_defn(StructClassName, 0, Context,
-            StructClassFlags, ClassKind, [], inherits_nothing, [], [],
-            FieldDefns, [], [], CtorDefns),
+        StructDefn = mlds_struct_defn(StructClassName, Context,
+            FieldDefns, MaybeCtorDefn),
 
         MLDS_ClassModuleName = mlds_append_class_qualifier_module_qual(
             MLDS_ModuleName, StructClassName, 0),
-        StructType = mlds_class_type(StructClassId),
+        StructType = mlds_struct_type(StructId),
         make_named_fields(MLDS_ClassModuleName, StructType, FieldNames,
            FieldIds),
 
-        CellGroup = ml_vector_cell_group(StructType, StructClassDefn,
+        CellGroup = ml_vector_cell_group(StructType, StructDefn,
             FieldIds, 0, cord.empty),
 
         CellGroupMap0 = !.GlobalData ^ mgd_vector_cell_group_map,

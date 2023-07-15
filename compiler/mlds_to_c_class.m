@@ -30,6 +30,10 @@
     indent::in, mlds_module_name::in, mlds_env_defn::in,
     io::di, io::uo) is det.
 
+:- pred mlds_output_struct_defn(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, mlds_module_name::in, mlds_struct_defn::in,
+    io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -214,6 +218,50 @@ mlds_output_env_defn(Opts, Stream, Indent, ModuleName, EnvDefn, !IO) :-
     Indent1 = Indent + 1,
     list.foldl(
         mlds_output_field_var_defn(Opts, Stream, Indent1, no, EnvModuleName),
+        MemberFields, !IO),
+    io.format(Stream, "%s};\n", [s(IndentStr)], !IO).
+
+%---------------------------------------------------------------------------%
+
+mlds_output_struct_defn(Opts, Stream, Indent, ModuleName, StructDefn, !IO) :-
+    StructDefn = mlds_struct_defn(StructName, Context,
+        MemberFields, MaybeCtor),
+    expect(unify(MaybeCtor, no), $pred, "MaybeCtor != no"),
+
+    IndentStr = indent2_string(Indent),
+
+    % To avoid name clashes, we need to qualify the names of the member
+    % constants with the class name. (In particular, this is needed for
+    % enumeration constants and for the nested classes that we generate for
+    % constructors of discriminated union types.) Here we compute the
+    % appropriate qualifier.
+    ClassModuleName = mlds_append_class_qualifier_module_qual(ModuleName,
+        StructName, 0),
+
+    % Output the class declaration.
+    io.nl(Stream, !IO),
+    io.format(Stream, "%s", [s(IndentStr)], !IO),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    FlagsPrefix = struct_decl_flags_to_prefix_for_c(Opts),
+    Qualifier = qualifier_to_string_for_c(ModuleName),
+    StructNameStr = class_name_arity_to_string_for_c(StructName, 0),
+    io.format(Stream, "%s%sstruct %s__%s_s",
+        [s(IndentStr), s(FlagsPrefix), s(Qualifier), s(StructNameStr)], !IO),
+
+    % Output the class members.
+    %
+    % Note that standard ANSI/ISO C does not allow empty structs. We could
+    % handle empty structs here, by adding a dummy member, but that would
+    % waste a lot of space, and would also cause incompatibilities between
+    % the data layout for --high-level-data and --no-high-level-data.
+    % So instead, we make it is the responsibility of the MLDS code generator
+    % to not generate any. (E.g. ml_type_gen.m checks whether
+    % `target_uses_empty_base_classes' before generating empty structs.)
+    % Hence we do not need to check for empty structs here.
+    io.write_string(Stream, " {\n", !IO),
+    Indent1 = Indent + 1,
+    list.foldl(
+        mlds_output_field_var_defn(Opts, Stream, Indent1, no, ClassModuleName),
         MemberFields, !IO),
     io.format(Stream, "%s};\n", [s(IndentStr)], !IO).
 
@@ -418,6 +466,22 @@ env_decl_flags_to_prefix_for_c(Opts) = FlagsPrefix :-
     (
         Comments = yes,
         FlagsPrefix = "/* private one_copy */ "
+    ;
+        Comments = no,
+        FlagsPrefix = ""
+    ).
+
+:- func struct_decl_flags_to_prefix_for_c(mlds_to_c_opts) = string.
+
+struct_decl_flags_to_prefix_for_c(Opts) = FlagsPrefix :-
+    % DeclOrDefn does not affect what we output. Callers who pass us
+    % DeclOrDefn = forward_decl will put a semicolon after the declaration;
+    % callers who pass us DeclOrDefn = definition will put the definition
+    % itself there.
+    Comments = Opts ^ m2co_auto_comments,
+    (
+        Comments = yes,
+        FlagsPrefix = "/* private one_copy sealed */ "
     ;
         Comments = no,
         FlagsPrefix = ""

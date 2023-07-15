@@ -36,6 +36,10 @@
     io.text_output_stream::in, indent::in, mlds_env_defn::in,
     io::di, io::uo) is det.
 
+:- pred output_struct_defn_for_java(java_out_info::in,
+    io.text_output_stream::in, indent::in, mlds_struct_defn::in,
+    io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 
     % Rename class names which are too long. Each class results in a separate
@@ -141,9 +145,6 @@ output_class_defn_for_java(Info0, Stream, Indent, ClassDefn, !IO) :-
         list.foldl(
             output_function_defn_for_java(Info, Stream, Indent1, oa_none),
             MemberMethods, !IO)
-    ;
-        Kind = mlds_struct,
-        unexpected($pred, "structs not supported in Java")
     ),
     io.nl(Stream, !IO),
     list.foldl(
@@ -211,19 +212,39 @@ output_env_defn_for_java(Info, Stream, Indent, EnvDefn, !IO) :-
         MemberFields, !IO),
     io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
 
+output_struct_defn_for_java(Info, Stream, Indent, StructDefn, !IO) :-
+    StructDefn = mlds_struct_defn(StructName, Context,
+        MemberFields, MaybeCtor),
+    (
+        MaybeCtor = no,
+        unexpected($pred, "MaybeCtor = no")
+    ;
+        MaybeCtor = yes(Ctor)
+    ),
+    StructNameStr = unqual_class_name_to_string_for_java(StructName, 0),
+    Indent1 = Indent + 1,
+    IndentStr = indent2_string(Indent),
+
+    indent_line_after_context(Stream, Info ^ joi_line_numbers,
+        marker_comment, Context, Indent, !IO),
+    io.format(Stream, "private static final class %s\n",
+        [s(StructNameStr)], !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+    list.foldl(
+        output_field_var_defn_for_java(Info, Stream, Indent1),
+        MemberFields, !IO),
+    io.nl(Stream, !IO),
+    output_function_defn_for_java(Info, Stream, Indent1,
+        oa_cname(StructName, 0), Ctor, !IO),
+    io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
+
 %---------------------------------------------------------------------------%
 
 :- func class_kind_to_string_for_java(mlds_class_kind) = string.
 
 class_kind_to_string_for_java(Kind) = KindStr :-
-    (
-        Kind = mlds_interface,
-        KindStr = "interface"
-    ;
-        ( Kind = mlds_class
-        ; Kind = mlds_struct
-        ),
-        KindStr = "class"
+    ( Kind = mlds_interface, KindStr = "interface"
+    ; Kind = mlds_class,     KindStr = "class"
     ).
 
     % Output superclass that this class extends. Java does not support

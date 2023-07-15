@@ -57,6 +57,8 @@
 :- func ml_gen_constructor_function(mlds_target_lang, mlds_class_id,
     mlds_class_id, mlds_module_name, mlds_class_id, maybe(int),
     list(mlds_field_info), prog_context) = mlds_function_defn.
+:- func ml_gen_struct_constructor_function(mlds_struct_id, mlds_module_name,
+    list(mlds_field_info), prog_context) = mlds_function_defn.
 
 %---------------------------------------------------------------------------%
 
@@ -729,10 +731,29 @@ ml_gen_constructor_function(Target, BaseClassId, CtorClassId, ClassQualifier,
         InitMembers = InitMembers0
     ),
 
-    % Note that the name of constructor is determined by the backend
+    % Note that the name of the constructor is determined by the backend
     % convention.
     FunctionName = mlds_function_export("<constructor>"),
     CtorFlags = mlds_function_decl_flags(func_public, per_instance),
+    Params = mlds_func_params(Args, ReturnValues),
+    Stmt = ml_stmt_block([], [], InitMembers, Context),
+    EnvVarNames = set.init,
+    CtorDefn = mlds_function_defn(FunctionName, Context,
+        CtorFlags, no, Params, body_defined_here(Stmt), EnvVarNames, no).
+
+ml_gen_struct_constructor_function(StructId, ClassQualifier, FieldInfos,
+        Context) = CtorDefn :-
+    Args = list.map(make_arg, FieldInfos),
+    ReturnValues = [],
+
+    InitMembers = list.map(gen_init_struct_field(StructId, ClassQualifier),
+        FieldInfos),
+
+    % Note that the name of the constructor is determined by the backend
+    % convention.
+    FunctionName = mlds_function_export("<constructor>"),
+    CtorFlags = mlds_function_decl_flags(func_public, per_instance),
+    % XXX We probably don't want func_public.
     Params = mlds_func_params(Args, ReturnValues),
     Stmt = ml_stmt_block([], [], InitMembers, Context),
     EnvVarNames = set.init,
@@ -767,6 +788,23 @@ gen_init_field(BaseClassId, CtorClassId, ClassQualifier, FieldInfo) = Stmt :-
         % fixup_class_qualifiers doesn't work.
         % XXX That isn't an issue anymore.
         ml_self(CtorClassType), mlds_class_type(BaseClassId),
+        FieldId, FieldType),
+    Stmt = ml_stmt_atomic(assign(FieldLval, Param), Context).
+
+    % Generate "this-><fieldname> = <fieldname>;".
+    %
+:- func gen_init_struct_field(mlds_struct_id, mlds_module_name,
+    mlds_field_info) = mlds_stmt is det.
+
+gen_init_struct_field(StructId, ClassQualifier, FieldInfo) = Stmt :-
+    FieldInfo = mlds_field_info(FieldVarName, FieldType, _GcStmt, Context),
+    LocalVarName = lvn_field_var_as_local(FieldVarName),
+    Param = ml_lval(ml_local_var(LocalVarName, FieldType)),
+    StructType = mlds_struct_type(StructId),
+    FieldId = ml_field_named(
+        qual_field_var_name(ClassQualifier, type_qual, FieldVarName),
+        mlds_ptr_type(StructType)),
+    FieldLval = ml_field(yes(ptag(0u8)), ml_self(StructType), StructType,
         FieldId, FieldType),
     Stmt = ml_stmt_atomic(assign(FieldLval, Param), Context).
 

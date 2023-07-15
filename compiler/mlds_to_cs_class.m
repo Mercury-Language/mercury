@@ -35,6 +35,10 @@
     io.text_output_stream::in, indent::in, mlds_env_defn::in,
     io::di, io::uo) is det.
 
+:- pred output_struct_defn_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, indent::in, mlds_struct_defn::in,
+    io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -180,6 +184,30 @@ output_env_defn_for_csharp(Info, Stream, Indent, EnvDefn, !IO) :-
         MemberFields, !IO),
     io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
 
+output_struct_defn_for_csharp(Info, Stream, Indent, StructDefn, !IO) :-
+    StructDefn = mlds_struct_defn(StructName, _Context,
+        MemberFields, MaybeCtor),
+    (
+        MaybeCtor = no,
+        unexpected($pred, "MaybeCtor = no")
+    ;
+        MaybeCtor = yes(Ctor)
+    ),
+    Indent1 = Indent + 1,
+    IndentStr = indent2_string(Indent),
+    StructNameStr = unqual_class_name_to_ll_string_for_csharp(StructName, 0),
+
+    io.format(Stream, "%sprivate struct %s\n",
+        [s(IndentStr), s(StructNameStr)], !IO),
+    io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
+    list.foldl(
+        output_field_var_defn_for_csharp(Info, Stream, Indent1),
+        MemberFields, !IO),
+    io.nl(Stream, !IO),
+    output_function_defn_for_csharp(Info, Stream, Indent1, 
+        oa_cname(StructName, 0), Ctor, !IO),
+    io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
+
 %---------------------------------------------------------------------------%
 
     % Output superclass that this class extends and interfaces implemented.
@@ -298,13 +326,6 @@ get_class_decl_flags_for_csharp(Kind, Flags, Serializable,
         Serializable = yes,
         PerInstance = per_instance,
         Overridability = Overridability0
-    ;
-        % `static' and `sealed' not wanted or allowed on structs.
-        Kind = mlds_struct,
-        KindStr = "struct",
-        Serializable = no,
-        PerInstance = per_instance,
-        Overridability = overridable
     ;
         Kind = mlds_interface,
         KindStr = "interface",

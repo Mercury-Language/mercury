@@ -279,9 +279,9 @@ output_vector_common_data_for_java(Info, Stream, Indent,
 output_vector_cell_group_for_java(Info, Stream, Indent, TypeNum,
         CellGroup, !IO) :-
     TypeNum = ml_vector_common_type_num(TypeRawNum),
-    CellGroup = ml_vector_cell_group(Type, ClassDefn, _FieldIds, _NextRow,
+    CellGroup = ml_vector_cell_group(Type, StructDefn, _FieldIds, _NextRow,
         RowInits),
-    output_class_defn_for_java(Info, Stream, Indent, ClassDefn, !IO),
+    output_struct_defn_for_java(Info, Stream, Indent, StructDefn, !IO),
 
     IndentStr = indent2_string(Indent),
     Indent1Str = indent2_string(Indent + 1),

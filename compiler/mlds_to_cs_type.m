@@ -227,6 +227,11 @@ type_to_string_and_dims_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
         String = qual_class_name_to_nll_string_for_csharp(Name, 0),
         ArrayDims = []
     ;
+        MLDS_Type = mlds_struct_type(StructId),
+        StructId = mlds_struct_id(Name),
+        String = qual_class_name_to_nll_string_for_csharp(Name, 0),
+        ArrayDims = []
+    ;
         MLDS_Type = mlds_ptr_type(Type),
         % XXX Should we report an error here, if the type pointed to
         % is not a class type?
@@ -433,6 +438,7 @@ csharp_builtin_type(Type, TargetType) :-
         ; Type = mlds_class_type(_)
         ; Type = mlds_enum_class_type(_)
         ; Type = mlds_env_type(_)
+        ; Type = mlds_struct_type(_)
         ; Type = mlds_array_type(_)
         ; Type = mlds_mostly_generic_array_type(_)
         ; Type = mlds_ptr_type(_)

@@ -599,7 +599,7 @@
                 % Imports these classes (or modules, packages, ...).
                 mcd_imports         :: list(mlds_import),
 
-                % Inherits these base classes (unless it is an env class).
+                % Inherits these base classes.
                 mcd_inherits        :: mlds_class_inherits,
 
                 % Implements these interfaces.
@@ -623,6 +623,7 @@
     % Classes representing enum types and dummy types. We use these when
     % targeting C# and Java, not when targeting C (since we use low-level
     % data representation for C).
+    %
 :- type mlds_enum_class_defn
     --->    mlds_enum_class_defn(
                 mecd_class_name     :: mlds_class_name,
@@ -676,10 +677,10 @@
                 med_env_name        :: string,
                 med_context         :: prog_context,
 
-                med_field_vars      :: list(mlds_field_var_defn)
                 % The field vars, both those representing HLDS variables
                 % and those implementing accurate gc. Both kinds will
                 % always have flags per_instance, modifiable.
+                med_field_vars      :: list(mlds_field_var_defn)
 
                 % The following comments specify the relationship between
                 % this type and mlds_class_defn (from which mlds_env_defn
@@ -690,6 +691,15 @@
                 % (We do include the _0 suffix in their names in the
                 % C/C#/Java code we generate, at least for now.)
                 %
+                % Environment structures are always private,
+                % overridable, and modifiable.
+                % XXX The overridable part is probably just an accident.
+                % It is certainly irrelevant, because (a) users cannot create
+                % references to environment structures, so they cannot possibly
+                % inherit from it, and (b) the compiler itself never tries
+                % to inherit from them either.
+                % (This XXX was written by zs; juliensf agrees.)
+                %
                 % We treat environment structures as structs when targeting C,
                 % and as classes when targeting C# or Java.
                 %
@@ -697,20 +707,57 @@
                 % but inherit the generic env_ptr type when targeting C# or
                 % Java.
                 %
-                % Environment structures are always class_private,
-                % overridable, and modifiable.
-                % XXX The overridable part is probably just an accident.
-                % It is certainly irrelevant, because (a) users cannot create
-                % references to environment structures, so they cannot possibly
-                % inherit from it, and (b) the compiler itself never tries
-                % to inherit from them either.
-                %
                 % Environment structures never import anything.
                 %
                 % Environment structures never implement any interfaces.
                 %
                 % Environment structures never define any classes or methods,
                 % and never have any constructors.
+            ).
+
+    % An mlds_struct_defn defines the types of the fields in one row
+    % of a vector cell group. (A vector cell group is effectively an array
+    % of structs; an mlds_struct_defn serves as the struct type of the elements
+    % of the array.) The compiler uses these to implement e.g. switches
+    % that act as lookup tables.
+    %
+:- type mlds_struct_defn
+    --->    mlds_struct_defn(
+                msd_class_name      :: mlds_class_name,
+                msd_context         :: prog_context,
+
+                % The field vars representing the fields of one row
+                % in the vector data structure.
+                % All fields are per_instance and const.
+                msd_member_fields   :: list(mlds_field_var_defn),
+
+                % The constructor for values of this type, if needed.
+                % This "maybe" will always be "no" when targeting C,
+                % and "yes(...)" when targeting C# or Java.
+                msd_maybe_ctor        :: maybe(mlds_function_defn)
+
+                % The following comments specify the relationship between
+                % this type and mlds_class_defn (from which mlds_struct_defn
+                % was derived).
+                %
+                % mlds_struct_defns never have any type parameters.
+                % This means that their "arity" is always zero.
+                % (We do include the _0 suffix in their names in the
+                % C/C#/Java code we generate, at least for now.)
+                %
+                % These structures are always private, sealed, and modifiable,
+                % but the original comment on the "modifiable" part said
+                % "The 'modifiable' is only to shut up a gcc warning about
+                % constant fields." Certainly, all structures we include
+                % in ml_global_data are designed to be read-only.
+                %
+                % We treat these structures as structs when targeting
+                % C or C#, and as classes when targeting Java.
+                %
+                % These structures inherit nothing, import nothing,
+                % and implement no interfaces.
+                %
+                % They also have no member classes or methods.
             ).
 
 :- type mlds_class_decl_flags
@@ -745,6 +792,8 @@
     --->    mlds_enum_class_id(qual_class_name, arity).
 :- type mlds_env_id
     --->    mlds_env_id(qual_class_name).
+:- type mlds_struct_id
+    --->    mlds_struct_id(qual_class_name).
 
 :- type mlds_interface_id
     --->    mlds_interface_id(qual_class_name, arity, mlds_class_kind).
@@ -753,12 +802,9 @@
     --->    mlds_class
             % A generic class: can inherit a class and interfaces.
 
-    ;       mlds_interface
+    ;       mlds_interface.
             % A class with no variable data members (can only inherit
             % other interfaces).
-
-    ;       mlds_struct.
-            % A value class (can only inherit other structs).
 
 :- type mlds_field_var_defn
     --->    mlds_field_var_defn(
@@ -1175,6 +1221,11 @@
     ;       mlds_env_type(
                 % MLDS types defined using mlds_env_defn.
                 mlds_env_id
+            )
+
+    ;       mlds_struct_type(
+                % MLDS types defined using mlds_env_defn.
+                mlds_struct_id
             )
 
     ;       mlds_array_type(mlds_type)

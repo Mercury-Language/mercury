@@ -225,6 +225,9 @@ ml_type_might_contain_pointers_for_gc(Type) = MightContainPointers :-
         % We assume that foreign types are not allowed to contain pointers
         % to the Mercury heap.  XXX is this requirement too strict?
         ; Type = mlds_enum_class_type(_)
+        % The vector common structs that we use mlds_struct_types for
+        % should contain pointers only to static data.
+        ; Type = mlds_struct_type(_)
         ; Type = mlds_func_type(_)
         ; Type = mlds_cont_type(_)
         ; Type = mlds_commit_type

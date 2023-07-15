@@ -513,6 +513,20 @@ rename_class_names_in_type(Renaming, !Type) :-
             true
         )
     ;
+        !.Type = mlds_struct_type(StructId0),
+        StructId0 = mlds_struct_id(QualClassName0),
+        QualClassName0 = qual_class_name(ModuleName, QualKind, ClassName0),
+        ( if
+            Renaming = class_name_renaming(ModuleName, RenamingMap),
+            map.search(RenamingMap, ClassName0, ClassName)
+        then
+            QualClassName = qual_class_name(ModuleName, QualKind, ClassName),
+            StructId = mlds_struct_id(QualClassName),
+            !:Type = mlds_struct_type(StructId)
+        else
+            true
+        )
+    ;
         !.Type = mlds_array_type(Type0),
         rename_class_names_in_type(Renaming, Type0, Type),
         !:Type = mlds_array_type(Type)

@@ -232,6 +232,17 @@ type_to_prefix_suffix_for_c(Opts, MLDS_Type, InitSize,
             [s(Qualifier), s(MangledEnvName)], TypePrefix),
         TypeSuffix = ""
     ;
+        MLDS_Type = mlds_struct_type(StructId),
+        StructId = mlds_struct_id(QualClassName),
+        QualClassName = qual_class_name(ModuleName, _QualKind, ClassName),
+        Qualifier = qualifier_to_string_for_c(ModuleName),
+        MangledClassName = name_mangle(ClassName),
+        % For struct types, it is OK to output an incomplete type, since
+        % we do not use these types directly; we only use pointers to them.
+        string.format("struct %s__%s_0_s",
+            [s(Qualifier), s(MangledClassName)], TypePrefix),
+        TypeSuffix = ""
+    ;
         MLDS_Type = mlds_ptr_type(BaseType),
         BaseTypeStr = type_to_string_for_c(Opts, BaseType),
         string.format("%s *", [s(BaseTypeStr)], TypePrefix),
@@ -547,6 +558,7 @@ semicanonicalize_types_in_type_for_c(Type0, Type, Changed) :-
         ; Type0 = mlds_class_type(_)
         ; Type0 = mlds_enum_class_type(_)
         ; Type0 = mlds_env_type(_)
+        ; Type0 = mlds_struct_type(_)
         ; Type0 = mlds_mostly_generic_array_type(_)
         ; Type0 = mlds_func_type(_)
         ; Type0 = mlds_generic_type

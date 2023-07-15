@@ -225,9 +225,9 @@ output_vector_common_data_for_csharp(Info, Stream, Indent,
 output_vector_cell_decl_for_csharp(Info, Stream, Indent, TypeNum,
         CellGroup, !IO) :-
     TypeNum = ml_vector_common_type_num(TypeRawNum),
-    CellGroup = ml_vector_cell_group(Type, ClassDefn, _FieldIds, _NextRow,
+    CellGroup = ml_vector_cell_group(Type, StructDefn, _FieldIds, _NextRow,
         _RowInits),
-    output_class_defn_for_csharp(Info, Stream, Indent, ClassDefn, !IO),
+    output_struct_defn_for_csharp(Info, Stream, Indent, StructDefn, !IO),
 
     IndentStr = indent2_string(Indent),
     TypeStr = type_to_string_for_csharp(Info, Type),

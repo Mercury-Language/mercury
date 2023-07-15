@@ -1106,15 +1106,8 @@ mlds_type_to_strcord(MLDS_Type) = Cord :-
         MLDS_Type = mlds_class_type(ClassId),
         ClassId = mlds_class_id(QualClassName, Arity, Kind),
         QualClassName = qual_class_name(_ModuleName, _QualKind, ClassName),
-        (
-            Kind = mlds_class,
-            KindStr = "class"
-        ;
-            Kind = mlds_interface,
-            KindStr = "interface"
-        ;
-            Kind = mlds_struct,
-            KindStr = "class_struct"
+        ( Kind = mlds_class,     KindStr = "class"
+        ; Kind = mlds_interface, KindStr = "interface"
         ),
         Cord = strcord(KindStr) ++ strcord("(") ++
             strcord(ClassName) ++ strcord("/") ++
@@ -1131,6 +1124,13 @@ mlds_type_to_strcord(MLDS_Type) = Cord :-
         MLDS_Type = mlds_env_type(EnvId),
         KindStr = "env_struct",
         EnvId = mlds_env_id(QualClassName),
+        QualClassName = qual_class_name(_ModuleName, _QualKind, ClassName),
+        Cord = strcord(KindStr) ++ strcord("(") ++
+            strcord(ClassName) ++ strcord(")")
+    ;
+        MLDS_Type = mlds_struct_type(StructId),
+        KindStr = "struct",
+        StructId = mlds_struct_id(QualClassName),
         QualClassName = qual_class_name(_ModuleName, _QualKind, ClassName),
         Cord = strcord(KindStr) ++ strcord("(") ++
             strcord(ClassName) ++ strcord(")")

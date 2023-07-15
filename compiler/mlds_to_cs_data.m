@@ -1086,27 +1086,32 @@ get_default_initializer_for_csharp(Info, Type) = Initializer :-
             Initializer = "default(" ++ TypeName ++ ")"
         )
     ;
-        ( Type = mlds_builtin_type_int(int_type_int)
-        ; Type = mlds_builtin_type_int(int_type_int8)
-        ; Type = mlds_builtin_type_int(int_type_int16)
-        ; Type = mlds_builtin_type_int(int_type_int32)
-        % C# byte and ushort literals don't have a suffix.
-        ; Type = mlds_builtin_type_int(int_type_uint8)
-        ; Type = mlds_builtin_type_int(int_type_uint16)
-        ; Type = mlds_builtin_type_float
-        ),
+        Type = mlds_builtin_type_int(IntType),
+        (
+            ( IntType = int_type_int
+            ; IntType = int_type_int8
+            ; IntType = int_type_int16
+            ; IntType = int_type_int32
+            % C# byte and ushort literals don't have a suffix.
+            ; IntType = int_type_uint8
+            ; IntType = int_type_uint16
+            ),
+            Initializer = "0"
+        ;
+            ( IntType = int_type_uint
+            ; IntType = int_type_uint32
+            ),
+            Initializer = "0U"
+        ;
+            IntType = int_type_int64,
+            Initializer = "0L"
+        ;
+            IntType = int_type_uint64,
+            Initializer = "0UL"
+        )
+    ;
+        Type = mlds_builtin_type_float,
         Initializer = "0"
-    ;
-        ( Type = mlds_builtin_type_int(int_type_uint)
-        ; Type = mlds_builtin_type_int(int_type_uint32)
-        ),
-        Initializer = "0U"
-    ;
-        Type = mlds_builtin_type_int(int_type_int64),
-        Initializer = "0L"
-    ;
-        Type = mlds_builtin_type_int(int_type_uint64),
-        Initializer = "0UL"
     ;
         Type = mlds_builtin_type_char,
         Initializer = "'\\u0000'"
@@ -1123,6 +1128,7 @@ get_default_initializer_for_csharp(Info, Type) = Initializer :-
         ; Type = mlds_class_type(_)
         ; Type = mlds_enum_class_type(_)
         ; Type = mlds_env_type(_)
+        ; Type = mlds_struct_type(_)
         ; Type = mlds_array_type(_)
         ; Type = mlds_mostly_generic_array_type(_)
         ; Type = mlds_ptr_type(_)
