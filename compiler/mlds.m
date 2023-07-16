@@ -796,7 +796,9 @@
     --->    mlds_struct_id(mlds_module_name, string).
 
 :- type mlds_interface_id
-    --->    mlds_interface_id(qual_class_name, arity, mlds_class_kind).
+    --->    mlds_interface_id(mlds_module_name, mlds_class_name).
+            % Interfaces are always module qualified.
+            % The arity of the interfaces we use is always zero.
 
 :- type mlds_class_kind
     --->    mlds_class

@@ -704,9 +704,7 @@ ml_make_boxed_types(Arity) = BoxedTypes :-
 ml_java_mercury_type_interface = TypeInterfaceDefn :-
     InterfaceModuleName =
         mercury_module_name_to_mlds(java_mercury_runtime_package_name),
-    TypeInterface =
-        qual_class_name(InterfaceModuleName, module_qual, "MercuryType"),
-    TypeInterfaceDefn = mlds_interface_id(TypeInterface, 0, mlds_interface).
+    TypeInterfaceDefn = mlds_interface_id(InterfaceModuleName, "MercuryType").
 
 ml_java_mercury_enum_class = EnumClassId :-
     InterfaceModuleName =

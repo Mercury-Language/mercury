@@ -300,16 +300,15 @@ output_implements_list(Stream, Indent, InterfaceList, !IO)  :-
 :- func interface_to_string_for_java(mlds_interface_id) = string.
 
 interface_to_string_for_java(Interface) = String :-
-    Interface = mlds_interface_id(QualClassName, Arity, _),
-    QualClassName = qual_class_name(ModuleQualifier, QualKind, ClassName),
-    SymName = mlds_module_name_to_sym_name(ModuleQualifier),
-    mangle_sym_name_for_java(SymName, convert_qual_kind(QualKind),
-        ".", ModuleNameStr),
+    Interface = mlds_interface_id(ModuleName, ClassName),
+    SymName = mlds_module_name_to_sym_name(ModuleName),
+    mangle_sym_name_for_java(SymName, module_qual, ".", ModuleNameStr),
     % Check if the interface is one of the ones in the runtime system.
     % If it is, we don't need to output the arity.
     ( if interface_is_special_for_java(ClassName) then
         string.format("%s.%s", [s(ModuleNameStr), s(ClassName)], String)
     else
+        Arity = 0,
         string.format("%s.%s%d", [s(ModuleNameStr), s(ClassName), i(Arity)],
             String)
     ).

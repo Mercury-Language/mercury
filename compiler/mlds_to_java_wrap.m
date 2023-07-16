@@ -134,13 +134,11 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
     ),
     InterfaceModuleName = mercury_module_name_to_mlds(
         java_mercury_runtime_package_name),
-    Interface =
-        qual_class_name(InterfaceModuleName, module_qual, InterfaceName),
 
     % Create class components.
     ClassImports = [],
     ClassInherits = inherits_nothing,
-    InterfaceId = mlds_interface_id(Interface, 0, mlds_interface),
+    InterfaceId = mlds_interface_id(InterfaceModuleName, InterfaceName),
     ClassImplements = [InterfaceId],
     TypeParams = [],
 

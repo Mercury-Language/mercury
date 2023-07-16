@@ -233,9 +233,8 @@ get_superclass_names(Info, Inherits, Interfaces) = Supers :-
 :- func interface_to_string_for_csharp(mlds_interface_id) = string.
 
 interface_to_string_for_csharp(InterfaceId) = String :-
-    InterfaceId = mlds_interface_id(QualClassName, Arity, _),
-    QualClassName = qual_class_name(ModuleQualifier, _QualKind, ClassName),
-    SymName = mlds_module_name_to_sym_name(ModuleQualifier),
+    InterfaceId = mlds_interface_id(ModuleName, ClassName),
+    SymName = mlds_module_name_to_sym_name(ModuleName),
     mangle_sym_name_for_csharp(SymName, module_qual, ".", ModuleNameStr),
 
     % Check if the interface is one of the ones in the runtime system.
@@ -243,6 +242,7 @@ interface_to_string_for_csharp(InterfaceId) = String :-
     ( if interface_is_special_for_csharp(ClassName) then
         String = string.format("%s.%s", [s(ModuleNameStr), s(ClassName)])
     else
+        Arity = 0,
         String = string.format("%s.%s%d",
             [s(ModuleNameStr), s(ClassName), i(Arity)])
     ).
