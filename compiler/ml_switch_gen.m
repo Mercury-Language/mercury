@@ -561,7 +561,7 @@ ml_switch_gen_range(Info, MLDS_Type, Range) :-
     ( if
         ml_gen_info_get_module_info(Info, ModuleInfo),
         MLDS_Type = mercury_nb_type(Type, TypeCategory),
-        switch_util.type_range(ModuleInfo, TypeCategory, Type,
+        switch_util.type_range(ModuleInfo, coerce(TypeCategory), Type,
             MinRange, MaxRange, _NumValuesInRange)
     then
         Range = mlds_switch_range(MinRange, MaxRange)

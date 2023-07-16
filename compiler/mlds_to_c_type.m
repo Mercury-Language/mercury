@@ -317,7 +317,7 @@ type_to_prefix_suffix_for_c_no_size(Opts, Type, TypePrefix, TypeSuffix) :-
 
 %---------------------------------------------------------------------------%
 
-:- func mercury_type_prefix_for_c(type_ctor_category) = string.
+:- func mercury_type_prefix_for_c(nb_type_ctor_category) = string.
 
 mercury_type_prefix_for_c(CtorCat) = TypePrefix :-
     % semicanonicalize_types_in_initializer_for_c relies on knowing
@@ -325,9 +325,6 @@ mercury_type_prefix_for_c(CtorCat) = TypePrefix :-
     % is updated so that two MLDS_Types that used to generate the same
     % C type no longer do so, you will need to update that function.
     (
-        CtorCat = ctor_cat_builtin(_),
-        unexpected($pred, "ctor_cat_builtin")
-    ;
         CtorCat = ctor_cat_variable,
         TypePrefix = "MR_Box"
     ;
@@ -588,9 +585,6 @@ semicanonicalize_types_in_type_for_c(Type0, Type, Changed) :-
     ;
         Type0 = mercury_nb_type(MerType0, CtorCat0),
         (
-            CtorCat0 = ctor_cat_builtin(_),
-            unexpected($pred, "ctor_cat_builtin")
-        ;
             CtorCat0 = ctor_cat_variable,
             % The C type we generate is "MR_Box" regardless of MerType.
             Type = mlds_generic_type,

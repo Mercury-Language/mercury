@@ -74,7 +74,7 @@
     % We need to handle type_info (etc.) types specially -- they get mapped
     % to types in the runtime rather than in private_builtin.
     %
-:- pred hand_defined_type_for_java(mer_type::in, type_ctor_category::in,
+:- pred hand_defined_type_for_java(mer_type::in, nb_type_ctor_category::in,
     string::out, list(int)::out) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -140,7 +140,7 @@ type_to_string_and_dims_for_java(Info, MLDS_Type, String, ArrayDims) :-
             % We need to handle type_info (etc.) types specially --
             % they get mapped to types in the runtime rather than
             % in private_builtin.
-            hand_defined_type_for_java(Type, CtorCat,
+            hand_defined_type_for_java(Type, coerce(CtorCat),
                 StringPrime, ArrayDimsPrime)
         then
             String = StringPrime,
@@ -161,8 +161,8 @@ type_to_string_and_dims_for_java(Info, MLDS_Type, String, ArrayDims) :-
             String = "/* c_pointer */ java.lang.Object",
             ArrayDims = []
         else
-            mercury_type_to_string_for_java(Info, Type, CtorCat, String,
-                ArrayDims)
+            mercury_type_to_string_for_java(Info, Type, coerce(CtorCat),
+                String, ArrayDims)
         )
     ;
         MLDS_Type = mlds_mercury_array_type(ElementType),
@@ -477,8 +477,7 @@ java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
                 JavaBoxedType = "java.lang.Integer",
                 UnboxMethod = "intValue"
             ;
-                ( TypeCtorCat = ctor_cat_builtin(_)
-                ; TypeCtorCat = ctor_cat_higher_order
+                ( TypeCtorCat = ctor_cat_higher_order
                 ; TypeCtorCat = ctor_cat_tuple
                 ; TypeCtorCat = ctor_cat_enum(_)
                 ; TypeCtorCat = ctor_cat_variable
@@ -670,8 +669,7 @@ hand_defined_type_for_java(Type, CtorCat, SubstituteName, ArrayDims) :-
             fail
         )
     ;
-        ( CtorCat = ctor_cat_builtin(_)
-        ; CtorCat = ctor_cat_builtin_dummy
+        ( CtorCat = ctor_cat_builtin_dummy
         ; CtorCat = ctor_cat_enum(_)
         ; CtorCat = ctor_cat_higher_order
         ; CtorCat = ctor_cat_tuple

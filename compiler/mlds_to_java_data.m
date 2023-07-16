@@ -1082,7 +1082,7 @@ output_initializer_alloc_only_for_java(Info, Stream, Initializer, MaybeType,
         io.write_string(Stream, "new ", !IO),
         ( if
             StructType = mercury_nb_type(_, CtorCat),
-            type_category_is_array(CtorCat) = is_array
+            type_category_is_array(coerce(CtorCat)) = is_array
         then
             Size = list.length(FieldInits),
             io.format(Stream, "java.lang.Object[%d]%s\n",
@@ -1213,21 +1213,16 @@ output_initializer_body_list_for_java(Info, Stream,
 get_default_initializer_for_java(Type) = Initializer :-
     (
         Type = mercury_nb_type(_, CtorCat),
-        (
-            CtorCat = ctor_cat_builtin(_),
-            unexpected($pred, "mercury_nb_type but ctor_cat_builtin")
-        ;
-            ( CtorCat = ctor_cat_system(_)
-            ; CtorCat = ctor_cat_higher_order
-            ; CtorCat = ctor_cat_tuple
-            ; CtorCat = ctor_cat_enum(_)
-            ; CtorCat = ctor_cat_builtin_dummy
-            ; CtorCat = ctor_cat_variable
-            ; CtorCat = ctor_cat_void
-            ; CtorCat = ctor_cat_user(_)
-            ),
-            Initializer = "null"
-        )
+        ( CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_user(_)
+        ),
+        Initializer = "null"
     ;
         ( Type = mlds_builtin_type_int(_)
         ; Type = mlds_builtin_type_float

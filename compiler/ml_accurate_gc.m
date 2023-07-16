@@ -238,14 +238,11 @@ ml_type_might_contain_pointers_for_gc(Type) = MightContainPointers :-
         MightContainPointers = no
     ).
 
-:- func ml_type_category_might_contain_pointers(type_ctor_category) = bool.
+:- func ml_type_category_might_contain_pointers(nb_type_ctor_category) = bool.
 
 ml_type_category_might_contain_pointers(CtorCat) = MayContainPointers :-
     (
-        ( CtorCat = ctor_cat_builtin(cat_builtin_int(_))
-        ; CtorCat = ctor_cat_builtin(cat_builtin_char)
-        ; CtorCat = ctor_cat_builtin(cat_builtin_float)
-        ; CtorCat = ctor_cat_builtin_dummy
+        ( CtorCat = ctor_cat_builtin_dummy
         ; CtorCat = ctor_cat_void
         ; CtorCat = ctor_cat_enum(_)
         ; CtorCat = ctor_cat_system(cat_system_type_ctor_info)
@@ -255,8 +252,7 @@ ml_type_category_might_contain_pointers(CtorCat) = MayContainPointers :-
         ),
         MayContainPointers = no
     ;
-        ( CtorCat = ctor_cat_builtin(cat_builtin_string)
-        ; CtorCat = ctor_cat_system(cat_system_type_info)
+        ( CtorCat = ctor_cat_system(cat_system_type_info)
         ; CtorCat = ctor_cat_system(cat_system_typeclass_info)
         ; CtorCat = ctor_cat_higher_order
         ; CtorCat = ctor_cat_tuple

@@ -1116,14 +1116,22 @@
                 mer_type,
 
                 % What kind of type it is: enum, dummy, notag, ...
-                % It cannot be ctor_cat_builtin(_).
+                % It cannot be ctor_cat_builtin(_), and we enforce this
+                % by using nb_type_ctor_category, which is a subtype
+                % of type_ctor_category that lacks ctor_cat_builtin.
+                % (We could also change the type of the first field
+                % from mer_type to nb_mer_type, a subtype of mertype
+                % that for now is commented-out in prog_data.m, but
+                % using nb_type_ctor_category is sufficient, given that
+                % we already assume that the second field accurately
+                % describes the first.)
                 %
                 % We could use a bespoke type here that would be isomorphic
                 % to type_ctor_category except for disallowing builtins,
                 % and maybe type variables (see above). However, that would
                 % require us to duplicate a nontrivial amount of code.
                 % XXX This has not been true since Peter implemented subtypes.
-                type_ctor_category
+                nb_type_ctor_category
             )
 
     ;       mlds_mercury_array_type(mlds_type)
@@ -2950,7 +2958,8 @@ mercury_type_ctor_defn_to_mlds_type(ModuleInfo, Type, TypeCtor, TypeDefn) =
     = mlds_type.
 
 type_and_category_to_mlds_type(Type, CtorCat) = MLDSType :-
-    ( if CtorCat = ctor_cat_builtin(BuiltinTypeCat) then
+    (
+        CtorCat = ctor_cat_builtin(BuiltinTypeCat),
         (
             BuiltinTypeCat = cat_builtin_int(IntType),
             MLDSType = mlds_builtin_type_int(IntType)
@@ -2964,8 +2973,17 @@ type_and_category_to_mlds_type(Type, CtorCat) = MLDSType :-
             BuiltinTypeCat = cat_builtin_char,
             MLDSType = mlds_builtin_type_char
         )
-    else
-        MLDSType = mercury_nb_type(Type, CtorCat)
+    ;
+        ( CtorCat = ctor_cat_builtin_dummy
+        ; CtorCat = ctor_cat_void
+        ; CtorCat = ctor_cat_variable
+        ; CtorCat = ctor_cat_higher_order
+        ; CtorCat = ctor_cat_tuple
+        ; CtorCat = ctor_cat_enum(_)
+        ; CtorCat = ctor_cat_system(_)
+        ; CtorCat = ctor_cat_user(_)
+        ),
+        MLDSType = mercury_nb_type(Type, coerce(CtorCat))
     ).
 
 %---------------------%

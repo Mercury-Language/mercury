@@ -69,7 +69,7 @@
     % We need to handle type_info (etc.) types specially -- they get mapped
     % to types in the runtime rather than in private_builtin.
     %
-:- pred hand_defined_type_for_csharp(mer_type::in, type_ctor_category::in,
+:- pred hand_defined_type_for_csharp(mer_type::in, nb_type_ctor_category::in,
     string::out, list(int)::out) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -302,29 +302,12 @@ type_to_string_and_dims_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
     ).
 
 :- pred mercury_type_to_string_and_dims_for_csharp(csharp_out_info::in,
-    mer_type::in, type_ctor_category::in, string::out, list(int)::out) is det.
+    mer_type::in, nb_type_ctor_category::in, string::out, list(int)::out)
+    is det.
 
 mercury_type_to_string_and_dims_for_csharp(Info, Type, CtorCat,
         String, ArrayDims) :-
     (
-        CtorCat = ctor_cat_builtin(BuiltinCat),
-        (
-            BuiltinCat = cat_builtin_int(IntType),
-            String = int_type_to_csharp_type(IntType)
-        ;
-            BuiltinCat = cat_builtin_float,
-            String = "double"
-        ;
-            BuiltinCat = cat_builtin_char,
-            % A C# `char' is not large enough to store a code point,
-            % so we must use `int'.
-            String = "int"
-        ;
-            BuiltinCat = cat_builtin_string,
-            String = "string"
-        ),
-        ArrayDims = []
-    ;
         CtorCat = ctor_cat_void,
         String = "builtin.Void_0",
         ArrayDims = []
@@ -410,8 +393,7 @@ csharp_builtin_type(Type, TargetType) :-
                 TypeCtorCat = ctor_cat_builtin_dummy,
                 TargetType = "int"
             ;
-                ( TypeCtorCat = ctor_cat_builtin(_)
-                ; TypeCtorCat = ctor_cat_higher_order
+                ( TypeCtorCat = ctor_cat_higher_order
                 ; TypeCtorCat = ctor_cat_tuple
                 ; TypeCtorCat = ctor_cat_enum(_)
                 ; TypeCtorCat = ctor_cat_variable
@@ -494,7 +476,7 @@ mercury_user_type_to_string_and_dims_for_csharp(Info, Type, ClassKind,
 
 mercury_user_enum_type_to_string_and_dims_for_csharp(Info, Type,
         TypeNameWithGenerics) :-
-    type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
+    type_to_ctor_and_args_det(coerce(Type), TypeCtor, ArgsTypes),
     ml_gen_type_name(TypeCtor, ClassName, ClassArity),
     ClassId = mlds_enum_class_id(ClassName, ClassArity),
     MLDS_Type = mlds_enum_class_type(ClassId),
@@ -579,8 +561,7 @@ hand_defined_type_for_csharp(Type, CtorCat, SubstituteName, ArrayDims) :-
             fail
         )
     ;
-        ( CtorCat = ctor_cat_builtin(_)
-        ; CtorCat = ctor_cat_builtin_dummy
+        ( CtorCat = ctor_cat_builtin_dummy
         ; CtorCat = ctor_cat_enum(_)
         ; CtorCat = ctor_cat_higher_order
         ; CtorCat = ctor_cat_tuple

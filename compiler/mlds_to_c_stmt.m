@@ -1171,7 +1171,7 @@ type_needs_forwarding_pointer_space(Type) = NeedsForwardingPtrSpace :-
     ;
         Type = mercury_nb_type(_, TypeCategory),
         NeedsForwardingPtrSpace =
-            is_introduced_type_info_type_category(TypeCategory)
+            is_introduced_type_info_type_category(coerce(TypeCategory))
     ;
         Type = mlds_rtti_type(_),
         % These should all be statically allocated, not dynamically allocated,

@@ -303,6 +303,16 @@
     ;       ctor_cat_system(type_ctor_cat_system)
     ;       ctor_cat_user(type_ctor_cat_user).
 
+:- type nb_type_ctor_category =< type_ctor_category
+    --->    ctor_cat_builtin_dummy
+    ;       ctor_cat_void
+    ;       ctor_cat_variable
+    ;       ctor_cat_higher_order
+    ;       ctor_cat_tuple
+    ;       ctor_cat_enum(type_ctor_cat_enum)
+    ;       ctor_cat_system(type_ctor_cat_system)
+    ;       ctor_cat_user(type_ctor_cat_user).
+
 :- type type_ctor_cat_builtin
     --->    cat_builtin_int(int_type)
     ;       cat_builtin_float

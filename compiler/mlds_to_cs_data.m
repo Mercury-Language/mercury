@@ -926,7 +926,7 @@ output_initializer_alloc_only_for_csharp(Info, Stream, Initializer,
         io.write_string(Stream, "new ", !IO),
         ( if
             StructType = mercury_nb_type(_, CtorCat),
-            type_category_is_array(CtorCat) = is_array
+            type_category_is_array(coerce(CtorCat)) = is_array
         then
             Size = list.length(FieldInits),
             io.format(Stream, "object[%d]%s\n", [i(Size), s(Suffix)], !IO)
@@ -1067,9 +1067,6 @@ get_default_initializer_for_csharp(Info, Type) = Initializer :-
     (
         Type = mercury_nb_type(_, CtorCat),
         (
-            CtorCat = ctor_cat_builtin(_),
-            unexpected($pred, "mercury_nb_type but ctor_cat_builtin")
-        ;
             ( CtorCat = ctor_cat_system(_)
             ; CtorCat = ctor_cat_higher_order
             ; CtorCat = ctor_cat_tuple

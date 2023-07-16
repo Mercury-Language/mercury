@@ -182,9 +182,6 @@ is_integral_type(MLDSType, IntType) :-
             % XXX We can switch on foreign enumerations in C, but this may
             % not be the case for the other target languages.
             fail
-        ;
-            CtorCat = ctor_cat_builtin(_),
-            unexpected($pred, "mercury_nb_type but ctor_cat_builtin")
         )
     ).
 

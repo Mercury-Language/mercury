@@ -871,6 +871,18 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
             % A type expression with an explicit kind annotation.
             % (These are not yet used.)
 
+% We could use this subtype in the mercury_nb_type function symbol
+% of mlds_type in mlds.m.
+%
+% :- type nb_mer_type =< mer_type
+%   --->    type_variable(tvar, kind)
+%   ;       defined_type(sym_name, list(mer_type), kind)
+%   ;       tuple_type(list(mer_type), kind)
+%   ;       higher_order_type(pred_or_func, list(mer_type), ho_inst_info,
+%               purity, lambda_eval_method)
+%   ;       apply_n_type(tvar, list(mer_type), kind)
+%   ;       kinded_type(mer_type, kind).
+
     % This type enumerates all of the builtin primitive types in Mercury.
     % If you add a new alternative then you may also need to update the
     % following predicates:
