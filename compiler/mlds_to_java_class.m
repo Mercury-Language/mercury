@@ -99,7 +99,7 @@
 %
 
 output_class_defn_for_java(Info0, Stream, Indent, ClassDefn, !IO) :-
-    ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, Flags, Kind,
+    ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, Flags,
         _Imports, Inherits, Implements, TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors),
     indent_line_after_context(Stream, Info0 ^ joi_line_numbers,
@@ -115,9 +115,8 @@ output_class_defn_for_java(Info0, Stream, Indent, ClassDefn, !IO) :-
         Info = Info1
     ),
 
-    KindStr = class_kind_to_string_for_java(Kind),
     ClassNameStr = unqual_class_name_to_string_for_java(ClassName, ClassArity),
-    io.format(Stream, "%s %s", [s(KindStr), s(ClassNameStr)], !IO),
+    io.format(Stream, "class %s", [s(ClassNameStr)], !IO),
     OutputGenerics = Info ^ joi_output_generics,
     (
         OutputGenerics = do_output_generics,
@@ -132,20 +131,15 @@ output_class_defn_for_java(Info0, Stream, Indent, ClassDefn, !IO) :-
     output_implements_list(Stream, Indent1, Implements, !IO),
     IndentStr = indent2_string(Indent),
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
-    (
-        ( Kind = mlds_class
-        ; Kind = mlds_interface
-        ),
-        list.foldl(
-            output_field_var_defn_for_java(Info, Stream, Indent1),
-            MemberFields, !IO),
-        list.foldl(
-            output_class_defn_for_java(Info, Stream, Indent1),
-            MemberClasses, !IO),
-        list.foldl(
-            output_function_defn_for_java(Info, Stream, Indent1, oa_none),
-            MemberMethods, !IO)
-    ),
+    list.foldl(
+        output_field_var_defn_for_java(Info, Stream, Indent1),
+        MemberFields, !IO),
+    list.foldl(
+        output_class_defn_for_java(Info, Stream, Indent1),
+        MemberClasses, !IO),
+    list.foldl(
+        output_function_defn_for_java(Info, Stream, Indent1, oa_none),
+        MemberMethods, !IO),
     io.nl(Stream, !IO),
     list.foldl(
         output_function_defn_for_java(Info, Stream, Indent1,
@@ -239,13 +233,6 @@ output_struct_defn_for_java(Info, Stream, Indent, StructDefn, !IO) :-
     io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
 
 %---------------------------------------------------------------------------%
-
-:- func class_kind_to_string_for_java(mlds_class_kind) = string.
-
-class_kind_to_string_for_java(Kind) = KindStr :-
-    ( Kind = mlds_interface, KindStr = "interface"
-    ; Kind = mlds_class,     KindStr = "class"
-    ).
 
     % Output superclass that this class extends. Java does not support
     % multiple inheritance, so more than one superclass is an error.
@@ -450,7 +437,7 @@ output_overridability_constness_for_java(Stream, Overridability,
 
 maybe_shorten_long_class_name(!ClassDefn, !Renaming) :-
     !.ClassDefn = mlds_class_defn(ClassName0, _ClassArity, _Context, Flags,
-        _ClassKind, _Imports, _Inherits, _Implements, _TypeParams,
+        _Imports, _Inherits, _Implements, _TypeParams,
         _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
     Flags = mlds_class_decl_flags(Access, _Overridability, _Constness),
     (

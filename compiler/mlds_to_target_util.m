@@ -602,7 +602,7 @@ method_ptrs_in_class_defns([ClassDefn | ClassDefns], !CodeAddrsInConsts) :-
     code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
 
 method_ptrs_in_class_defn(ClassDefn, !CodeAddrsInConsts) :-
-    ClassDefn = mlds_class_defn(_, _, _, _, _, _, _, _, _,
+    ClassDefn = mlds_class_defn(_, _, _, _, _, _, _, _,
         MemberFields, MemberClasses, MemberMethods, Ctors),
     method_ptrs_in_field_var_defns(MemberFields, !CodeAddrsInConsts),
     method_ptrs_in_class_defns(MemberClasses, !CodeAddrsInConsts),

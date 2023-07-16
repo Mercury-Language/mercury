@@ -2029,7 +2029,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             ConsId = cons(CtorSymName, CtorArity, _TypeCtor),
             (
                 MLDS_Type =
-                    mlds_class_type(mlds_class_id(QualTypeName, TypeArity, _))
+                    mlds_class_type(mlds_class_id(QualTypeName, TypeArity))
             ;
                 MLDS_Type = mercury_nb_type(MercuryType, ctor_cat_user(_)),
                 type_to_ctor(MercuryType, TypeCtor),
@@ -2047,7 +2047,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
                 MLDS_Module, TypeName, TypeArity),
             QualClassName =
                 qual_class_name(ClassQualifier, type_qual, CtorName),
-            ClassId = mlds_class_id(QualClassName, CtorArity, mlds_class),
+            ClassId = mlds_class_id(QualClassName, CtorArity),
             ConstType = mlds_class_type(ClassId)
         else if
             % Convert mercury_types for user-defined types to the corresponding
@@ -2059,7 +2059,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             type_to_ctor(MercuryType, TypeCtor)
         then
             ml_gen_class_name(TypeCtor, ClassName, ClassArity),
-            ClassId = mlds_class_id(ClassName, ClassArity, mlds_class),
+            ClassId = mlds_class_id(ClassName, ClassArity),
             ConstType = mlds_class_type(ClassId)
         else if
             % For tuples, a similar issue arises; we want tuple constants

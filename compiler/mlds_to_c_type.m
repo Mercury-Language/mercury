@@ -195,7 +195,7 @@ type_to_prefix_suffix_for_c(Opts, MLDS_Type, InitSize,
         TypeSuffix = ""
     ;
         MLDS_Type = mlds_class_type(ClassId),
-        ClassId = mlds_class_id(QualClassName, Arity, _ClassKind),
+        ClassId = mlds_class_id(QualClassName, Arity),
         QualClassName = qual_class_name(ModuleName, _QualKind, ClassName),
         Qualifier = qualifier_to_string_for_c(ModuleName),
         MangledClassName = name_mangle(ClassName),

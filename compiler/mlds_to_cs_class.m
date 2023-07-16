@@ -69,16 +69,17 @@
 %---------------------------------------------------------------------------%
 
 output_class_defn_for_csharp(Info0, Stream, Indent, ClassDefn, !IO) :-
-    ClassDefn = mlds_class_defn(ClassName, ClassArity, _Context, Flags, Kind,
+    ClassDefn = mlds_class_defn(ClassName, ClassArity, _Context, Flags,
         _Imports, Inherits, Implements, TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors),
     expect(unify(MemberMethods, []), $pred, "MemberMethods != []"),
     Info  = Info0 ^ csoi_univ_tvars := TypeParams,
 
     IndentStr = indent2_string(Indent),
-    get_class_decl_flags_for_csharp(Kind, Flags, Serializable,
-        AccessPrefix, PerInstancePrefix, OverridePrefix, ConstnessPrefix,
-        ClassKindStr),
+    Flags = mlds_class_decl_flags(Access, Overridability, Constness),
+    AccessPrefix = access_prefix_for_csharp(Access),
+    OverridePrefix = overrideability_prefix_for_csharp(Overridability),
+    ConstnessPrefix = constness_prefix_for_csharp(Constness),
     ClassNameStr =
         unqual_class_name_to_ll_string_for_csharp(ClassName, ClassArity),
     OutputGenerics = Info ^ csoi_output_generics,
@@ -89,15 +90,10 @@ output_class_defn_for_csharp(Info0, Stream, Indent, ClassDefn, !IO) :-
         OutputGenerics = do_not_output_generics,
         GenericTypeParamsStr = ""
     ),
-    (
-        Serializable = no
-    ;
-        Serializable = yes,
-        io.format(Stream, "%s[System.Serializable]\n", [s(IndentStr)], !IO)
-    ),
-    io.format(Stream, "%s%s%s%s%s%s %s%s\n",
-        [s(IndentStr), s(AccessPrefix), s(PerInstancePrefix),
-        s(OverridePrefix), s(ConstnessPrefix), s(ClassKindStr),
+    io.format(Stream, "%s[System.Serializable]\n", [s(IndentStr)], !IO),
+    io.format(Stream, "%s%s%s%sclass %s%s\n",
+        [s(IndentStr), s(AccessPrefix),
+        s(OverridePrefix), s(ConstnessPrefix),
         s(ClassNameStr), s(GenericTypeParamsStr)], !IO),
     SuperClassNames = get_superclass_names(Info, Inherits, Implements),
     (
@@ -264,8 +260,10 @@ output_field_var_defn_for_csharp(Info, Stream, Indent, FieldVarDefn, !IO) :-
     FieldVarDefn = mlds_field_var_defn(FieldVarName, _Context, Flags,
         Type, Initializer, _),
     IndentStr = indent2_string(Indent),
-    get_field_var_decl_flags_for_csharp(Flags, AccessPrefix, PerInstancePrefix,
-        ConstnessPrefix),
+    Flags = mlds_field_var_decl_flags(PerInstance, Constness),
+    AccessPrefix = "public ",
+    PerInstancePrefix = per_instance_prefix_for_csharp(PerInstance),
+    ConstnessPrefix = constness_prefix_for_csharp(Constness),
     TypeStr = type_to_string_for_csharp(Info, Type),
     FieldVarNameStr = field_var_name_to_ll_string_for_csharp(FieldVarName),
     io.format(Stream, "%s%s%s%s%s %s",
@@ -295,48 +293,6 @@ output_enum_constant_for_csharp(Info, Stream, IndentStr, EnumConstDefn, !IO) :-
         io.format(Stream, "%s%s = (%s) %s,\n",
             [s(IndentStr), s(VarNameStr), s(TypeStr), s(EnumNameStr)], !IO)
     ).
-
-%---------------------------------------------------------------------------%
-%
-% Code to output declaration specifiers.
-%
-
-:- pred get_field_var_decl_flags_for_csharp(mlds_field_var_decl_flags::in,
-    string::out, string::out, string::out) is det.
-
-get_field_var_decl_flags_for_csharp(Flags, AccessPrefix, PerInstancePrefix,
-        ConstnessPrefix) :-
-    Flags = mlds_field_var_decl_flags(PerInstance, Constness),
-    AccessPrefix = "public ",
-    PerInstancePrefix = per_instance_prefix_for_csharp(PerInstance),
-    ConstnessPrefix = constness_prefix_for_csharp(Constness).
-
-:- pred get_class_decl_flags_for_csharp(mlds_class_kind::in,
-    mlds_class_decl_flags::in, bool::out,
-    string::out, string::out, string::out, string::out, string::out) is det.
-
-get_class_decl_flags_for_csharp(Kind, Flags, Serializable,
-        AccessPrefix, PerInstancePrefix, OverridePrefix, ConstnessPrefix,
-        KindStr) :-
-    Flags = mlds_class_decl_flags(Access, Overridability0, Constness),
-    (
-        % `static' not wanted on classes generated for Mercury types.
-        Kind = mlds_class,
-        KindStr = "class",
-        Serializable = yes,
-        PerInstance = per_instance,
-        Overridability = Overridability0
-    ;
-        Kind = mlds_interface,
-        KindStr = "interface",
-        Serializable = no,
-        PerInstance = one_copy,
-        Overridability = Overridability0
-    ),
-    AccessPrefix = access_prefix_for_csharp(Access),
-    PerInstancePrefix = per_instance_prefix_for_csharp(PerInstance),
-    OverridePrefix = overrideability_prefix_for_csharp(Overridability),
-    ConstnessPrefix = constness_prefix_for_csharp(Constness).
 
 %---------------------------------------------------------------------------%
 %

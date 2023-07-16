@@ -227,7 +227,7 @@ type_to_string_and_dims_for_java(Info, MLDS_Type, String, ArrayDims) :-
         )
     ;
         MLDS_Type = mlds_class_type(ClassId),
-        ClassId = mlds_class_id(Name, Arity, _ClassKind),
+        ClassId = mlds_class_id(Name, Arity),
         String = qual_class_name_to_string_for_java(Name, Arity),
         ArrayDims = []
     ;
@@ -359,23 +359,18 @@ mercury_type_to_string_for_java(Info, Type, CtorCat, String, ArrayDims) :-
         ; CtorCat = ctor_cat_system(_)
         ; CtorCat = ctor_cat_user(_)
         ),
-        mercury_user_type_to_string_and_dims_for_java(Info, Type, mlds_class,
-            String),
+        mercury_user_type_to_string_and_dims_for_java(Info, Type, String),
         ArrayDims = []
     ).
 
-:- inst class for mlds_class_kind/0
-    --->    mlds_class.
-
 :- pred mercury_user_type_to_string_and_dims_for_java(java_out_info::in,
-    mer_type::in, mlds_class_kind::in(class), string::out) is det.
+    mer_type::in, string::out) is det.
 
-mercury_user_type_to_string_and_dims_for_java(Info, Type, ClassKind,
+mercury_user_type_to_string_and_dims_for_java(Info, Type,
         TypeNameWithGenerics) :-
     type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
     ml_gen_class_name(TypeCtor, ClassName, ClassArity),
-    MLDS_Type =
-        mlds_class_type(mlds_class_id(ClassName, ClassArity, ClassKind)),
+    MLDS_Type = mlds_class_type(mlds_class_id(ClassName, ClassArity)),
     type_to_string_and_dims_for_java(Info, MLDS_Type, TypeName, ArrayDims),
     expect(unify(ArrayDims, []), $pred, "ArrayDims != []"),
     OutputGenerics = Info ^ joi_output_generics,

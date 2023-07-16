@@ -99,8 +99,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         % Create the constructor function.
         QualClassName =
             qual_class_name(MLDS_ModuleName, module_qual, ClassName),
-        ClassType =
-            mlds_class_type(mlds_class_id(QualClassName, 0, mlds_class)),
+        ClassType = mlds_class_type(mlds_class_id(QualClassName, 0)),
 
         FieldName =
             qual_field_var_name(MLDS_ModuleName, type_qual, fvn_ptr_num),
@@ -146,7 +145,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
     ClassContext = dummy_context,
     ClassFlags = mlds_class_decl_flags(class_private, sealed, const),
     ClassDefn = mlds_class_defn(ClassName, 0, ClassContext, ClassFlags,
-        mlds_class, ClassImports, ClassInherits, ClassImplements,
+        ClassImports, ClassInherits, ClassImplements,
         TypeParams, FieldVarDefns, [], [MethodDefn], CtorDefns),
 
     add_to_address_map(ClassName, CodeAddrs, !AddrOfMap).

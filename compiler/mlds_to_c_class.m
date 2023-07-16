@@ -74,7 +74,7 @@ mlds_output_class_defns(Opts, Stream, Indent, ModuleName,
 
 mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, _Flags,
-        _ClassKind, _Imports, Inherits, _Interfaces, _TypeParams,
+        _Imports, Inherits, _Interfaces, _TypeParams,
         MemberFields, MemberClasses, _MemberMethods, Ctors),
     % These calls to expect/3 are based on the code constructing environment
     % structures in ml_elim_nested.m, which should be the *only* place
@@ -274,7 +274,7 @@ mlds_output_struct_defn(Opts, Stream, Indent, ModuleName, StructDefn, !IO) :-
 mlds_output_class_flags_qual_name(Opts, Stream, IndentStr,
         ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, Flags,
-        _ClassKind, _Imports, _Inherits, _Implements, _TypeParams,
+        _Imports, _Inherits, _Implements, _TypeParams,
         _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
     FlagsPrefix = class_decl_flags_to_prefix_for_c(Opts, Flags),

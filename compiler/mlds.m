@@ -594,8 +594,6 @@
                 mcd_context         :: prog_context,
                 mcd_decl_flags      :: mlds_class_decl_flags,
 
-                mcd_kind            :: mlds_class_kind,
-
                 % Imports these classes (or modules, packages, ...).
                 mcd_imports         :: list(mlds_import),
 
@@ -787,7 +785,7 @@
 :- type mlds_class_name == string.
 
 :- type mlds_class_id
-    --->    mlds_class_id(qual_class_name, arity, mlds_class_kind).
+    --->    mlds_class_id(qual_class_name, arity).
 :- type mlds_enum_class_id
     --->    mlds_enum_class_id(mlds_module_name, string, arity).
 :- type mlds_env_id
@@ -799,14 +797,6 @@
     --->    mlds_interface_id(mlds_module_name, mlds_class_name).
             % Interfaces are always module qualified.
             % The arity of the interfaces we use is always zero.
-
-:- type mlds_class_kind
-    --->    mlds_class
-            % A generic class: can inherit a class and interfaces.
-
-    ;       mlds_interface.
-            % A class with no variable data members (can only inherit
-            % other interfaces).
 
 :- type mlds_field_var_defn
     --->    mlds_field_var_defn(

@@ -538,7 +538,7 @@ decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, Ptag, FieldGen) :-
                 UsesBaseClass = tag_uses_base_class,
                 % There is only one functor for the type, and so
                 % the class name is determined by the type name.
-                ClassId = mlds_class_id(QualTypeName, TypeArity, mlds_class),
+                ClassId = mlds_class_id(QualTypeName, TypeArity),
                 FieldQualifier = TypeQualifier
             ;
                 UsesBaseClass = tag_does_not_use_base_class,
@@ -547,7 +547,7 @@ decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, Ptag, FieldGen) :-
                     ConsSymName, ConsArity),
                 QualConsName =
                     qual_class_name(TypeQualifier, type_qual, ConsName),
-                ClassId = mlds_class_id(QualConsName, ConsArity, mlds_class),
+                ClassId = mlds_class_id(QualConsName, ConsArity),
                 FieldQualifier = mlds_append_class_qualifier(Target,
                     TypeQualifier, type_qual, ConsName, ConsArity)
             ),
@@ -639,7 +639,7 @@ ml_gen_hl_tag_field_id(ModuleInfo, Target, Type) = FieldId :-
 
     % Put it all together.
     QualClassName = qual_class_name(ClassQualifier, ClassQualKind, ClassName),
-    ClassId = mlds_class_id(QualClassName, ClassArity, mlds_class),
+    ClassId = mlds_class_id(QualClassName, ClassArity),
     ClassPtrType = mlds_ptr_type(mlds_class_type(ClassId)),
     FieldQualifier = mlds_append_class_qualifier(Target, ClassQualifier,
         ClassQualKind, ClassName, ClassArity),

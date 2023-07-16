@@ -213,7 +213,7 @@ type_to_string_and_dims_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
         )
     ;
         MLDS_Type = mlds_class_type(ClassId),
-        ClassId = mlds_class_id(Name, Arity, _ClassKind),
+        ClassId = mlds_class_id(Name, Arity),
         String = qual_class_name_to_nll_string_for_csharp(Name, Arity),
         ArrayDims = []
     ;
@@ -335,8 +335,7 @@ mercury_type_to_string_and_dims_for_csharp(Info, Type, CtorCat,
         ; CtorCat = ctor_cat_user(_)
         ; CtorCat = ctor_cat_system(_)
         ),
-        mercury_user_type_to_string_and_dims_for_csharp(Info, Type,
-            mlds_class, String),
+        mercury_user_type_to_string_and_dims_for_csharp(Info, Type, String),
         ArrayDims = []
     ).
 
@@ -451,13 +450,13 @@ int_type_to_csharp_type(int_type_int64) =  "long".
 int_type_to_csharp_type(int_type_uint64) = "ulong".
 
 :- pred mercury_user_type_to_string_and_dims_for_csharp(csharp_out_info::in,
-    mer_type::in, mlds_class_kind::in, string::out) is det.
+    mer_type::in, string::out) is det.
 
-mercury_user_type_to_string_and_dims_for_csharp(Info, Type, ClassKind,
+mercury_user_type_to_string_and_dims_for_csharp(Info, Type,
         TypeNameWithGenerics) :-
     type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
     ml_gen_class_name(TypeCtor, ClassName, ClassArity),
-    ClassId = mlds_class_id(ClassName, ClassArity, ClassKind),
+    ClassId = mlds_class_id(ClassName, ClassArity),
     MLDS_Type = mlds_class_type(ClassId),
     type_to_string_and_dims_for_csharp(Info, MLDS_Type, TypeName, ArrayDims),
     expect(unify(ArrayDims, []), $pred, "ArrayDims != []"),

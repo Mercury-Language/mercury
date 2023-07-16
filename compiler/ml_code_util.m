@@ -711,7 +711,7 @@ ml_java_mercury_enum_class = EnumClassId :-
         mercury_module_name_to_mlds(java_mercury_runtime_package_name),
     EnumClass =
         qual_class_name(InterfaceModuleName, module_qual, "MercuryEnum"),
-    EnumClassId = mlds_class_id(EnumClass, 0, mlds_class).
+    EnumClassId = mlds_class_id(EnumClass, 0).
 
 %---------------------------------------------------------------------------%
 %

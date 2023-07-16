@@ -408,7 +408,7 @@ ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, CtorRepns,
 
     % Generate the class name.
     ml_gen_class_name(TypeCtor, QualBaseClassName, BaseClassArity),
-    BaseClassId = mlds_class_id(QualBaseClassName, BaseClassArity, mlds_class),
+    BaseClassId = mlds_class_id(QualBaseClassName, BaseClassArity),
     QualBaseClassName =
         qual_class_name(BaseClassModuleName, QualKind, BaseClassName),
     BaseClassQualifier = mlds_append_class_qualifier(Target,
@@ -485,7 +485,7 @@ ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, CtorRepns,
     MemberClasses = TagClassMembers ++ CtorMemberClasses,
     MLDS_ClassFlags = ml_gen_type_decl_flags,
     ClassDefn = mlds_class_defn(BaseClassName, BaseClassArity, Context,
-        MLDS_ClassFlags, mlds_class, Imports, Inherits, Implements, TypeParams,
+        MLDS_ClassFlags, Imports, Inherits, Implements, TypeParams,
         MemberFields, MemberClasses, [], BaseClassCtorMethods).
 
 %---------------------------------------------------------------------------%
@@ -507,7 +507,7 @@ ml_gen_hld_secondary_tag_class(Context, BaseClassQualifier, BaseClassId,
     ClassName =
         qual_class_name(BaseClassQualifier, type_qual, UnqualClassName),
     ClassArity = 0,
-    SecondaryTagClassId = mlds_class_id(ClassName, ClassArity, mlds_class),
+    SecondaryTagClassId = mlds_class_id(ClassName, ClassArity),
 
     % The secondary tag class inherits the base class for this type,
     % unless we are compiling to C -- in that case, we omit it,
@@ -532,8 +532,8 @@ ml_gen_hld_secondary_tag_class(Context, BaseClassQualifier, BaseClassId,
     % Put it all together.
     MLDS_ClassFlags = ml_gen_type_decl_flags,
     MLDS_ClassDefn = mlds_class_defn(UnqualClassName, ClassArity, Context,
-        MLDS_ClassFlags, mlds_class, Imports, Inherits, Implements,
-        TypeParams, Members, [], [], Ctors).
+        MLDS_ClassFlags, Imports, Inherits, Implements, TypeParams,
+        Members, [], [], Ctors).
 
     % Generate definitions corresponding to a constructor of a discriminated
     % union type. This will be one of the following:
@@ -625,10 +625,9 @@ ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId, BaseClassQualifier,
             CtorClassQualifier = BaseClassQualifier
         ;
             UsesBaseClass = tag_does_not_use_base_class,
-            CtorClassId = mlds_class_id(
-                qual_class_name(BaseClassQualifier, type_qual,
-                    UnqualCtorName),
-                CtorArity, mlds_class),
+            CtorQualName = qual_class_name(BaseClassQualifier, type_qual,
+                UnqualCtorName),
+            CtorClassId = mlds_class_id(CtorQualName, CtorArity),
             CtorClassQualifier = mlds_append_class_qualifier(Target,
                 BaseClassQualifier, type_qual, UnqualCtorName, CtorArity)
         ),
@@ -699,8 +698,8 @@ ml_gen_hld_du_ctor_member(ModuleInfo, Target, BaseClassId, BaseClassQualifier,
         % Put it all together.
         SubClassFlags = ml_gen_type_decl_flags,
         SubClassDefn = mlds_class_defn(UnqualCtorName, CtorArity, Context,
-            SubClassFlags, mlds_class, Imports, Inherits, Implements,
-            TypeParams, SubClassFields, [], [], SubClassCtors),
+            SubClassFlags, Imports, Inherits, Implements, TypeParams,
+            SubClassFields, [], [], SubClassCtors),
 
         BaseClassFields = BaseClassFields0,
         BaseClassClasses = [SubClassDefn | BaseClassClasses0],
@@ -815,7 +814,7 @@ gen_init_struct_field(StructId, ClassQualifier, FieldInfo) = Stmt :-
 
 gen_init_tag(Target, CtorClassId, SecondaryTagClassId, TagVal, Context)
         = Stmt :-
-    SecondaryTagClassId = mlds_class_id(TagClass, TagArity, _),
+    SecondaryTagClassId = mlds_class_id(TagClass, TagArity),
     TagClass = qual_class_name(BaseClassQualifier, QualKind, TagClassName),
     TagClassQualifier = mlds_append_class_qualifier(Target,
         BaseClassQualifier, QualKind, TagClassName, TagArity),

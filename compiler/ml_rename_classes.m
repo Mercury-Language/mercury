@@ -53,7 +53,7 @@
 %
 
 rename_class_names_in_class_defn(Renaming, ClassDefn0, ClassDefn) :-
-    ClassDefn0 = mlds_class_defn(ClassName, Arity, Context, Flags, ClassKind,
+    ClassDefn0 = mlds_class_defn(ClassName, Arity, Context, Flags,
         Imports, Inherits, Implements, TypeParams,
         MemberFields0, MemberClasses0, MemberMethods0, Ctors0),
     list.map(rename_class_names_in_field_var_defn(Renaming),
@@ -63,7 +63,7 @@ rename_class_names_in_class_defn(Renaming, ClassDefn0, ClassDefn) :-
     list.map(rename_class_names_in_function_defn(Renaming),
         MemberMethods0, MemberMethods),
     list.map(rename_class_names_in_function_defn(Renaming), Ctors0, Ctors),
-    ClassDefn = mlds_class_defn(ClassName, Arity, Context, Flags, ClassKind,
+    ClassDefn = mlds_class_defn(ClassName, Arity, Context, Flags,
         Imports, Inherits, Implements, TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors).
 
@@ -472,14 +472,14 @@ rename_class_names_in_type(Renaming, !Type) :-
         !:Type = mlds_cont_type(RetTypes)
     ;
         !.Type = mlds_class_type(ClassId0),
-        ClassId0 = mlds_class_id(QualClassName0, Arity, ClassKind),
+        ClassId0 = mlds_class_id(QualClassName0, Arity),
         QualClassName0 = qual_class_name(ModuleName, QualKind, ClassName0),
         ( if
             Renaming = class_name_renaming(ModuleName, RenamingMap),
             map.search(RenamingMap, ClassName0, ClassName)
         then
             QualClassName = qual_class_name(ModuleName, QualKind, ClassName),
-            ClassId = mlds_class_id(QualClassName, Arity, ClassKind),
+            ClassId = mlds_class_id(QualClassName, Arity),
             !:Type = mlds_class_type(ClassId)
         else
             true
