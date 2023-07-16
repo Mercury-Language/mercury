@@ -653,7 +653,7 @@ MR_dump_exception_record(EXCEPTION_RECORD *rec)
     fprintf(stderr, "\n***   Exception record at 0x%08"
         MR_INTEGER_LENGTH_MODIFIER "x:",
         (MR_Word) rec);
-    fprintf(stderr, "\n***    MR_Code        : 0x%08"
+    fprintf(stderr, "\n***    MR_Code     : 0x%08"
         MR_INTEGER_LENGTH_MODIFIER "x (%s)",
         (MR_Word) rec->ExceptionCode,
         MR_find_exception_name(rec->ExceptionCode));
