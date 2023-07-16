@@ -371,9 +371,7 @@
 
                 % Definitions of the classes that represent types
                 % with high level data, and the types of the environment
-                % structures we introduce while flattening nested functions
-                % (unless we are compiling to a target that does not need them
-                % to be flattened).
+                % structures we introduce while flattening nested functions.
                 mlds_type_defns         :: list(mlds_class_defn),
                 mlds_enum_defns         :: list(mlds_enum_class_defn),
                 mlds_env_defns          :: list(mlds_env_defn),
@@ -942,35 +940,45 @@
     --->    mlds_proc_label(mlds_pred_label, proc_id).
 
     % An mlds_pred_label is a structure containing information that
-    % uniquely identifies a HLDS predicate within a given module.
+    % uniquely identifies a HLDS predicate or function within a given module.
     %
-    % Note that a predicate can have both a declaring and a defining module.
-    % The defining module is the module that provides the code for the
-    % predicate, the declaring module contains the `:- pred' declaration.
+    % Note that a predicate or function can have both a declaring and
+    % a defining module. The defining module is the module that provides
+    % the code for the predicate or function, while the declaring module
+    % contains the `:- pred' or `:- func' declaration.
+    %
     % When these are different, as for specialised versions of predicates
-    % from `.opt' files, the defining module's name is added as a
-    % qualifier to the pred name.
+    % from `.opt' files, the defining module's name is added as a qualifier
+    % to the predicate or function's name.
     %
 :- type mlds_pred_label
     --->    mlds_user_pred_label(
-                pred_or_func,       % predicate/function
+                pred_or_func,
+
+                % The declaring module, if different to the defining module.
                 maybe(mercury_module_name),
-                                    % The declaring module,
-                                    % if different to the defining module
-                string,             % Name.
-                pred_form_arity,    % Arity.
-                code_model,         % Code model.
-                bool                % Function without return value
-                                    % (i.e. non-default mode).
+
+                % The name of the predicate or function, its arity,
+                % and its code model.
+                string,
+                pred_form_arity,
+                code_model,
+
+                % Function without return value (i.e. non-default mode).
+                % XXX What does that mean?
+                bool
             )
     ;       mlds_special_pred_label(
-                string,             % pred name
+                % The predicate name.
+                string,
+
+                % The module declaring the type, if this is different
+                % to module defining the special_pred.
                 maybe(mercury_module_name),
-                                    % The module declaring the type,
-                                    % if this is different to module defining
-                                    % the special_pred.
-                string,             % The type name.
-                arity               % The type arity.
+
+                % The type's name and arity.
+                string,
+                arity
             ).
 
 %---------------------%
@@ -1224,7 +1232,7 @@
             )
 
     ;       mlds_struct_type(
-                % MLDS types defined using mlds_env_defn.
+                % MLDS types defined using mlds_struct_defn.
                 mlds_struct_id
             )
 
@@ -2991,7 +2999,6 @@ compilation_target_uses_high_level_data(ModuleInfo) :-
     mer_type::out) is det.
 
 get_base_type_maybe_phony_arg_types(ModuleInfo, SuperTypeCtor, BaseType) :-
-    %
     % XXX If a type is a subtype of a subtype, we should substitute the type
     % arguments into the supertype recursively until we get to the base type.
     % This requires that the tvarset containing the variables of the original
