@@ -789,11 +789,11 @@
 :- type mlds_class_id
     --->    mlds_class_id(qual_class_name, arity, mlds_class_kind).
 :- type mlds_enum_class_id
-    --->    mlds_enum_class_id(qual_class_name, arity).
+    --->    mlds_enum_class_id(mlds_module_name, string, arity).
 :- type mlds_env_id
-    --->    mlds_env_id(qual_class_name).
+    --->    mlds_env_id(mlds_module_name, string).
 :- type mlds_struct_id
-    --->    mlds_struct_id(qual_class_name).
+    --->    mlds_struct_id(mlds_module_name, string).
 
 :- type mlds_interface_id
     --->    mlds_interface_id(qual_class_name, arity, mlds_class_kind).

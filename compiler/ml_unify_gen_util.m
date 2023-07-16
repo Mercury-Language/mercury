@@ -528,7 +528,7 @@ decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, Ptag, FieldGen) :-
                 TypeCtor = ConsTypeCtor
             ),
 
-            ml_gen_type_name(TypeCtor, QualTypeName, TypeArity),
+            ml_gen_class_name(TypeCtor, QualTypeName, TypeArity),
             QualTypeName = qual_class_name(MLDS_Module, QualKind, TypeName),
             TypeQualifier = mlds_append_class_qualifier(Target, MLDS_Module,
                 QualKind, TypeName, TypeArity),
@@ -593,7 +593,7 @@ ml_gen_secondary_tag_rval(Info, VarType, Rval, Ptag, SectagFieldRval) :-
 ml_gen_hl_tag_field_id(ModuleInfo, Target, Type) = FieldId :-
     % Figure out the type name and arity.
     type_to_ctor_det(Type, TypeCtor),
-    ml_gen_type_name(TypeCtor, QualifiedTypeName, TypeArity),
+    ml_gen_class_name(TypeCtor, QualifiedTypeName, TypeArity),
     QualifiedTypeName = qual_class_name(MLDS_Module, TypeQualKind, TypeName),
 
     % Figure out whether this type has constructors both with and without

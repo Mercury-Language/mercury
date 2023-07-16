@@ -218,18 +218,19 @@ type_to_string_and_dims_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
         ArrayDims = []
     ;
         MLDS_Type = mlds_enum_class_type(EnumClassId),
-        EnumClassId = mlds_enum_class_id(Name, Arity),
-        String = qual_class_name_to_nll_string_for_csharp(Name, Arity),
+        EnumClassId = mlds_enum_class_id(ModuleName, Name, Arity),
+        String =
+            qual_nrt_name_to_nll_string_for_csharp(ModuleName, Name, Arity),
         ArrayDims = []
     ;
         MLDS_Type = mlds_env_type(EnvId),
-        EnvId = mlds_env_id(Name),
-        String = qual_class_name_to_nll_string_for_csharp(Name, 0),
+        EnvId = mlds_env_id(ModuleName, Name),
+        String = qual_nrt_name_to_nll_string_for_csharp(ModuleName, Name, 0),
         ArrayDims = []
     ;
         MLDS_Type = mlds_struct_type(StructId),
-        StructId = mlds_struct_id(Name),
-        String = qual_class_name_to_nll_string_for_csharp(Name, 0),
+        StructId = mlds_struct_id(ModuleName, Name),
+        String = qual_nrt_name_to_nll_string_for_csharp(ModuleName, Name, 0),
         ArrayDims = []
     ;
         MLDS_Type = mlds_ptr_type(Type),
@@ -455,7 +456,7 @@ int_type_to_csharp_type(int_type_uint64) = "ulong".
 mercury_user_type_to_string_and_dims_for_csharp(Info, Type, ClassKind,
         TypeNameWithGenerics) :-
     type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
-    ml_gen_type_name(TypeCtor, ClassName, ClassArity),
+    ml_gen_class_name(TypeCtor, ClassName, ClassArity),
     ClassId = mlds_class_id(ClassName, ClassArity, ClassKind),
     MLDS_Type = mlds_class_type(ClassId),
     type_to_string_and_dims_for_csharp(Info, MLDS_Type, TypeName, ArrayDims),
@@ -477,9 +478,9 @@ mercury_user_type_to_string_and_dims_for_csharp(Info, Type, ClassKind,
 mercury_user_enum_type_to_string_and_dims_for_csharp(Info, Type,
         TypeNameWithGenerics) :-
     type_to_ctor_and_args_det(coerce(Type), TypeCtor, ArgsTypes),
-    ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-    ClassId = mlds_enum_class_id(ClassName, ClassArity),
-    MLDS_Type = mlds_enum_class_type(ClassId),
+    ml_gen_type_name(TypeCtor, EnumModule, EnumName, EnumArity),
+    EnumId = mlds_enum_class_id(EnumModule, EnumName, EnumArity),
+    MLDS_Type = mlds_enum_class_type(EnumId),
     type_to_string_and_dims_for_csharp(Info, MLDS_Type, TypeName, ArrayDims),
     expect(unify(ArrayDims, []), $pred, "ArrayDims != []"),
     OutputGenerics = Info ^ csoi_output_generics,

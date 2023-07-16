@@ -206,10 +206,9 @@ type_to_prefix_suffix_for_c(Opts, MLDS_Type, InitSize,
         TypeSuffix = ""
     ;
         MLDS_Type = mlds_enum_class_type(EnumClassId),
-        EnumClassId = mlds_enum_class_id(QualClassName, Arity),
-        QualClassName = qual_class_name(ModuleName, _QualKind, ClassName),
+        EnumClassId = mlds_enum_class_id(ModuleName, EnumClassName, Arity),
         Qualifier = qualifier_to_string_for_c(ModuleName),
-        MangledClassName = name_mangle(ClassName),
+        MangledEnumClassName = name_mangle(EnumClassName),
         % We cannot just use the enumeration type, since the enumeration
         % type's definition is not guaranteed to be in scope at this point.
         % (Fixing that would be somewhat complicated; it would require
@@ -218,12 +217,11 @@ type_to_prefix_suffix_for_c(Opts, MLDS_Type, InitSize,
         % problems for e.g. `std_util.arg/2'. So we just use `MR_Integer',
         % and output the actual enumeration type as a comment.
         string.format("MR_Integer /* actually `enum %s__%s_%d_e' */",
-            [s(Qualifier), s(MangledClassName), i(Arity)], TypePrefix),
+            [s(Qualifier), s(MangledEnumClassName), i(Arity)], TypePrefix),
         TypeSuffix = ""
     ;
         MLDS_Type = mlds_env_type(EnvId),
-        EnvId = mlds_env_id(QualEnvName),
-        QualEnvName = qual_class_name(ModuleName, _QualKind, EnvName),
+        EnvId = mlds_env_id(ModuleName, EnvName),
         Qualifier = qualifier_to_string_for_c(ModuleName),
         MangledEnvName = name_mangle(EnvName),
         % For struct types, it is OK to output an incomplete type, since
@@ -233,14 +231,13 @@ type_to_prefix_suffix_for_c(Opts, MLDS_Type, InitSize,
         TypeSuffix = ""
     ;
         MLDS_Type = mlds_struct_type(StructId),
-        StructId = mlds_struct_id(QualClassName),
-        QualClassName = qual_class_name(ModuleName, _QualKind, ClassName),
+        StructId = mlds_struct_id(ModuleName, StructName),
         Qualifier = qualifier_to_string_for_c(ModuleName),
-        MangledClassName = name_mangle(ClassName),
+        MangledStructName = name_mangle(StructName),
         % For struct types, it is OK to output an incomplete type, since
         % we do not use these types directly; we only use pointers to them.
         string.format("struct %s__%s_0_s",
-            [s(Qualifier), s(MangledClassName)], TypePrefix),
+            [s(Qualifier), s(MangledStructName)], TypePrefix),
         TypeSuffix = ""
     ;
         MLDS_Type = mlds_ptr_type(BaseType),

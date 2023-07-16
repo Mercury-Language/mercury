@@ -1115,25 +1115,22 @@ mlds_type_to_strcord(MLDS_Type) = Cord :-
     ;
         MLDS_Type = mlds_enum_class_type(EnumClassId),
         KindStr = "class_enum",
-        EnumClassId = mlds_enum_class_id(QualClassName, Arity),
-        QualClassName = qual_class_name(_ModuleName, _QualKind, ClassName),
+        EnumClassId = mlds_enum_class_id(_ModuleName, EnumClassName, Arity),
         Cord = strcord(KindStr) ++ strcord("(") ++
-            strcord(ClassName) ++ strcord("/") ++
+            strcord(EnumClassName) ++ strcord("/") ++
             intcord(Arity) ++ strcord(")")
     ;
         MLDS_Type = mlds_env_type(EnvId),
         KindStr = "env_struct",
-        EnvId = mlds_env_id(QualClassName),
-        QualClassName = qual_class_name(_ModuleName, _QualKind, ClassName),
+        EnvId = mlds_env_id(_ModuleName, EnvsName),
         Cord = strcord(KindStr) ++ strcord("(") ++
-            strcord(ClassName) ++ strcord(")")
+            strcord(EnvsName) ++ strcord(")")
     ;
         MLDS_Type = mlds_struct_type(StructId),
         KindStr = "struct",
-        StructId = mlds_struct_id(QualClassName),
-        QualClassName = qual_class_name(_ModuleName, _QualKind, ClassName),
+        StructId = mlds_struct_id(_ModuleName, StructName),
         Cord = strcord(KindStr) ++ strcord("(") ++
-            strcord(ClassName) ++ strcord(")")
+            strcord(StructName) ++ strcord(")")
     ;
         MLDS_Type = mlds_ptr_type(PointedToType),
         Cord = strcord("ptr_to(") ++ mlds_type_to_strcord(PointedToType) ++

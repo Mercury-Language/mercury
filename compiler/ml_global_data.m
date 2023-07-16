@@ -641,10 +641,8 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
         ml_gen_vector_cell_field_types(Context, FieldFlags,
             TypeRawNum, 0, ArgTypes, FieldNames, FieldDefns, FieldInfos),
 
-        StructClassName = "vector_common_type_" ++ TypeRawNumStr,
-        QualStructClassName =
-            qual_class_name(MLDS_ModuleName, module_qual, StructClassName),
-        StructId = mlds_struct_id(QualStructClassName),
+        StructName = "vector_common_type_" ++ TypeRawNumStr,
+        StructId = mlds_struct_id(MLDS_ModuleName, StructName),
         (
             Target = ml_target_c,
             MaybeCtorDefn = maybe.no
@@ -656,11 +654,11 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
                 MLDS_ModuleName, FieldInfos, Context),
             MaybeCtorDefn = yes(CtorDefn)
         ),
-        StructDefn = mlds_struct_defn(StructClassName, Context,
+        StructDefn = mlds_struct_defn(StructName, Context,
             FieldDefns, MaybeCtorDefn),
 
         MLDS_ClassModuleName = mlds_append_class_qualifier_module_qual(
-            MLDS_ModuleName, StructClassName, 0),
+            MLDS_ModuleName, StructName, 0),
         StructType = mlds_struct_type(StructId),
         make_named_fields(MLDS_ClassModuleName, StructType, FieldNames,
            FieldIds),

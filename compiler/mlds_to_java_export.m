@@ -271,9 +271,9 @@ output_exported_enum_for_java(Info, Stream, Indent, ExportedEnum, !IO) :-
     ExportedEnum = mlds_exported_enum(Lang, _, TypeCtor, ExportedConstants),
     (
         Lang = lang_java,
-        ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-        MLDS_Type =
-            mlds_enum_class_type(mlds_enum_class_id(ClassName, ClassArity)),
+        ml_gen_type_name(TypeCtor, EnumModule, EnumName, EnumArity),
+        EnumId = mlds_enum_class_id(EnumModule, EnumName, EnumArity),
+        MLDS_Type = mlds_enum_class_type(EnumId),
         list.foldl(
             output_exported_enum_constant_for_java(Info, Stream, Indent,
                 MLDS_Type),

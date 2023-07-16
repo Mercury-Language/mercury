@@ -486,42 +486,36 @@ rename_class_names_in_type(Renaming, !Type) :-
         )
     ;
         !.Type = mlds_enum_class_type(ClassId0),
-        ClassId0 = mlds_enum_class_id(QualClassName0, Arity),
-        QualClassName0 = qual_class_name(ModuleName, QualKind, ClassName0),
+        ClassId0 = mlds_enum_class_id(ModuleName, ClassName0, Arity),
         ( if
             Renaming = class_name_renaming(ModuleName, RenamingMap),
             map.search(RenamingMap, ClassName0, ClassName)
         then
-            QualClassName = qual_class_name(ModuleName, QualKind, ClassName),
-            ClassId = mlds_enum_class_id(QualClassName, Arity),
+            ClassId = mlds_enum_class_id(ModuleName, ClassName, Arity),
             !:Type = mlds_enum_class_type(ClassId)
         else
             true
         )
     ;
         !.Type = mlds_env_type(EnvId0),
-        EnvId0 = mlds_env_id(QualClassName0),
-        QualClassName0 = qual_class_name(ModuleName, QualKind, ClassName0),
+        EnvId0 = mlds_env_id(ModuleName, ClassName0),
         ( if
             Renaming = class_name_renaming(ModuleName, RenamingMap),
             map.search(RenamingMap, ClassName0, ClassName)
         then
-            QualClassName = qual_class_name(ModuleName, QualKind, ClassName),
-            EnvId = mlds_env_id(QualClassName),
+            EnvId = mlds_env_id(ModuleName, ClassName),
             !:Type = mlds_env_type(EnvId)
         else
             true
         )
     ;
         !.Type = mlds_struct_type(StructId0),
-        StructId0 = mlds_struct_id(QualClassName0),
-        QualClassName0 = qual_class_name(ModuleName, QualKind, ClassName0),
+        StructId0 = mlds_struct_id(ModuleName, ClassName0),
         ( if
             Renaming = class_name_renaming(ModuleName, RenamingMap),
             map.search(RenamingMap, ClassName0, ClassName)
         then
-            QualClassName = qual_class_name(ModuleName, QualKind, ClassName),
-            StructId = mlds_struct_id(QualClassName),
+            StructId = mlds_struct_id(ModuleName, ClassName),
             !:Type = mlds_struct_type(StructId)
         else
             true

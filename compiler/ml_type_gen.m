@@ -65,8 +65,10 @@
     % Given an HLDS type_ctor, generate the MLDS class name and arity
     % for the corresponding MLDS type.
     %
-:- pred ml_gen_type_name(type_ctor::in, qual_class_name::out, arity::out)
+:- pred ml_gen_class_name(type_ctor::in, qual_class_name::out, arity::out)
     is det.
+:- pred ml_gen_type_name(type_ctor::in, mlds_module_name::out, string::out,
+    arity::out) is det.
 
     % Generate a data constructor name given the type constructor.
     %
@@ -281,15 +283,14 @@ ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
     hlds_data.get_type_defn_context(TypeDefn, Context),
 
     % Generate the class name.
-    ml_gen_type_name(TypeCtor, QualifiedClassName, MLDS_ClassArity),
-    QualifiedClassName = qual_class_name(_, _, MLDS_ClassName),
+    ml_gen_type_name(TypeCtor, EnumModuleName, EnumName, EnumArity),
 
     % Generate the class members.
     ValueMember = mlds_field_var_defn(fvn_mr_value, Context,
         ml_gen_member_data_decl_flags, mlds_builtin_type_int(int_type_int),
         no_initializer, gc_no_stmt),
     MLDS_Type = mlds_enum_class_type(
-        mlds_enum_class_id(QualifiedClassName, MLDS_ClassArity)),
+        mlds_enum_class_id(EnumModuleName, EnumName, EnumArity)),
     EnumConstMembers = list.map(ml_gen_hld_enum_constant(Context, MLDS_Type),
         CtorRepns),
     expect(unify(MaybeEqualityMembers, []), $pred,
@@ -312,9 +313,8 @@ ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
 
     % Put it all together.
     get_type_defn_tparams(TypeDefn, TypeVars),
-    EnumClassDefn = mlds_enum_class_defn(MLDS_ClassName, MLDS_ClassArity,
-        Context, Inherits, Implements, TypeVars,
-        ValueMember, EnumConstMembers, []).
+    EnumClassDefn = mlds_enum_class_defn(EnumName, EnumArity, Context,
+        Inherits, Implements, TypeVars, ValueMember, EnumConstMembers, []).
 
 :- func ml_gen_hld_enum_constant(prog_context, mlds_type, constructor_repn)
     = mlds_enum_const_defn.
@@ -407,7 +407,7 @@ ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn, CtorRepns,
     hlds_data.get_type_defn_context(TypeDefn, Context),
 
     % Generate the class name.
-    ml_gen_type_name(TypeCtor, QualBaseClassName, BaseClassArity),
+    ml_gen_class_name(TypeCtor, QualBaseClassName, BaseClassArity),
     BaseClassId = mlds_class_id(QualBaseClassName, BaseClassArity, mlds_class),
     QualBaseClassName =
         qual_class_name(BaseClassModuleName, QualKind, BaseClassName),
@@ -898,7 +898,11 @@ ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, ArgNum,
 % Miscellaneous helper routines.
 %
 
-ml_gen_type_name(type_ctor(Name, Arity), QualifiedTypeName, Arity) :-
+ml_gen_class_name(TypeCtor, QualifiedTypeName, Arity) :-
+    ml_gen_type_name(TypeCtor, MLDS_Module, TypeName, Arity),
+    QualifiedTypeName = qual_class_name(MLDS_Module, module_qual, TypeName).
+
+ml_gen_type_name(type_ctor(Name, Arity), MLDS_Module, TypeName, Arity) :-
     (
         Name = qualified(ModuleName, TypeName)
     ;
@@ -906,8 +910,7 @@ ml_gen_type_name(type_ctor(Name, Arity), QualifiedTypeName, Arity) :-
         Name = unqualified(TypeName),
         ModuleName = mercury_public_builtin_module
     ),
-    MLDS_Module = mercury_module_name_to_mlds(ModuleName),
-    QualifiedTypeName = qual_class_name(MLDS_Module, module_qual, TypeName).
+    MLDS_Module = mercury_module_name_to_mlds(ModuleName).
 
 ml_gen_du_ctor_name(CompilationTarget, TypeCtor, Name, Arity) = CtorName :-
     TypeCtor = type_ctor(TypeName, TypeArity),
@@ -1060,9 +1063,9 @@ ml_gen_exported_enums(ModuleInfo, MLDS_ExportedEnums) :-
 ml_gen_exported_enum(ExportedEnumInfo, MLDS_ExportedEnum) :-
     ExportedEnumInfo = exported_enum_info(TypeCtor, CtorRepns, Lang,
         Mapping, Context),
-    ml_gen_type_name(TypeCtor, QualifiedClassName, MLDS_ClassArity),
+    ml_gen_type_name(TypeCtor, EnumModuleName, EnumClassName, EnumArity),
     MLDS_Type = mlds_enum_class_type(
-        mlds_enum_class_id(QualifiedClassName, MLDS_ClassArity)),
+        mlds_enum_class_id(EnumModuleName, EnumClassName, EnumArity)),
     list.map(
         generate_foreign_enum_constant(Mapping, MLDS_Type),
         CtorRepns, ExportConstants),

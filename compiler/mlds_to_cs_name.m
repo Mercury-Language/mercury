@@ -97,6 +97,13 @@
 :- func qual_class_name_to_ll_string_for_csharp(qual_class_name, arity)
     = string.
 
+    % The nrt part of the name is short for "not runtime";
+    % it says that the mlds_module_name argument must not refer to
+    % csharp_mercury_runtime_package_name.
+    %
+:- func qual_nrt_name_to_nll_string_for_csharp(mlds_module_name, string, arity)
+    = string.
+
 %---------------------------------------------------------------------------%
 
 :- func function_name_to_nll_string_for_csharp(mlds_function_name) = string.
@@ -238,17 +245,14 @@ unqual_class_name_to_ll_string_for_csharp(Name, Arity) = ClassNameStr :-
     ClassNameStr = limit_identifier_length(ClassNameStr0).
 
 qual_class_name_to_nll_string_for_csharp(QualName, Arity) = QualClassNameStr :-
-    QualName = qual_class_name(MLDS_ModuleName, QualKind, ClassName),
-    ( if
-        SymName = mlds_module_name_to_sym_name(MLDS_ModuleName),
-        SymName = csharp_mercury_runtime_package_name
-    then
+    QualName = qual_class_name(ModuleName, QualKind, ClassName),
+    SymName = mlds_module_name_to_sym_name(ModuleName),
+    ( if SymName = csharp_mercury_runtime_package_name then
         % Don't mangle runtime class names.
         string.format("runtime.%s", [s(ClassName)], QualClassNameStr)
     else
         % XXX maybe duplicated code
-        QualStr =
-            qualifier_to_nll_string_for_csharp(MLDS_ModuleName, QualKind),
+        QualStr = qualifier_to_nll_string_for_csharp(ModuleName, QualKind),
         UnqualClassNameStr =
             unqual_class_name_to_nll_string_for_csharp(ClassName, Arity),
         string.format("%s.%s", [s(QualStr), s(UnqualClassNameStr)],
@@ -259,6 +263,13 @@ qual_class_name_to_ll_string_for_csharp(QualName, Arity) = QualClassNameStr :-
     QualClassNameStr0 =
         qual_class_name_to_nll_string_for_csharp(QualName, Arity),
     QualClassNameStr = limit_identifier_length(QualClassNameStr0).
+
+qual_nrt_name_to_nll_string_for_csharp(ModuleName, Name, Arity)
+        = QualNameStr :-
+    QualStr = qualifier_to_nll_string_for_csharp(ModuleName, module_qual),
+    UnqualNameStr = unqual_class_name_to_nll_string_for_csharp(Name, Arity),
+    string.format("%s.%s", [s(QualStr), s(UnqualNameStr)],
+        QualNameStr).
 
 %---------------------------------------------------------------------------%
 
@@ -362,9 +373,9 @@ proc_label_to_ll_string_for_csharp(Suffix, ProcLabel) = ProcLabelStr :-
 
 %---------------------------------------------------------------------------%
 
-qualifier_to_nll_string_for_csharp(MLDS_ModuleName, QualKind) = Str :-
-    mlds_module_name_to_package_name(MLDS_ModuleName) = OuterName,
-    mlds_module_name_to_sym_name(MLDS_ModuleName) = InnerName,
+qualifier_to_nll_string_for_csharp(ModuleName, QualKind) = Str :-
+    mlds_module_name_to_package_name(ModuleName) = OuterName,
+    mlds_module_name_to_sym_name(ModuleName) = InnerName,
 
     % The part of the qualifier that corresponds to a top-level class.
     % Remove the outermost mercury qualifier.

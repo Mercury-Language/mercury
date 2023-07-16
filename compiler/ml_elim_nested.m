@@ -560,7 +560,7 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
     ;
         Body0 = body_defined_here(FuncBody0),
         EnvName = ml_env_name(Name, Action),
-        EnvId = ml_create_env_id(ModuleName, EnvName),
+        EnvId = mlds_env_id(ModuleName, EnvName),
 
         % Traverse the function body, finding (and removing) any nested
         % functions, and fixing up any references to the arguments or to local
@@ -571,7 +571,7 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
         % Also, for accurate GC, add code to save and restore the stack chain
         % pointer at any `try_commit' statements.
 
-        ElimInfo0 = elim_info_init(EnvId, Target),
+        ElimInfo0 = elim_info_init(EnvId),
         Params0 = mlds_func_params(Arguments0, RetValues),
         ml_maybe_add_args(Action, Arguments0, FuncBody0, ModuleName,
             Context, ElimInfo0, ElimInfo1),
@@ -736,8 +736,7 @@ ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, EnvId,
         % Generate code to copy this arg to the environment struct:
         %   env_ptr->foo = foo;
         %
-        Target = elim_info_get_target_lang(Info),
-        EnvModuleName = ml_env_module_name(Target, EnvId),
+        EnvModuleName = ml_env_module_name(EnvId),
         FieldName = ml_field_named(
             qual_field_var_name(EnvModuleName, type_qual,
                 fvn_env_field_from_local_var(VarName)),
@@ -757,14 +756,6 @@ ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, EnvId,
         ArgsToCopy = ArgsToCopyTail,
         CodeToCopyArgs = CodeToCopyArgsTail
     ).
-
-    % Create the environment struct "type".
-    %
-:- func ml_create_env_id(mlds_module_name, mlds_class_name) = mlds_env_id.
-
-ml_create_env_id(ModuleName, EnvName) = EnvId :-
-    ClassName = qual_class_name(ModuleName, module_qual, EnvName),
-    EnvId = mlds_env_id(ClassName).
 
     % Create the environment struct type, the declaration of the environment
     % variable, and the declaration and initializer for the environment
@@ -2084,9 +2075,8 @@ fixup_gc_statements_defn(Action, Defn0, Defn, !Info) :-
 
 fixup_var(Action, Info, ThisVarName, ThisVarType, Lval) :-
     Locals = elim_info_get_local_vars(Info),
-    ClassId = elim_info_get_env_type_name(Info),
+    EnvId = elim_info_get_env_type_name(Info),
     EnvPtrVarType = elim_info_get_env_ptr_type_name(Info),
-    Target = elim_info_get_target_lang(Info),
     ( if
         % Check for references to local variables that are used by
         % nested functions, and replace them with `env_ptr->foo'.
@@ -2098,7 +2088,7 @@ fixup_var(Action, Info, ThisVarName, ThisVarType, Lval) :-
     then
         FieldType = ThisVarDefn ^ mlvd_type,
         EnvPtr = ml_lval(ml_local_var(env_ptr_var(Action), EnvPtrVarType)),
-        EnvModuleName = ml_env_module_name(Target, ClassId),
+        EnvModuleName = ml_env_module_name(EnvId),
         FieldName = ml_field_named(
             qual_field_var_name(EnvModuleName, type_qual,
                 fvn_env_field_from_local_var(ThisVarName)),
@@ -2184,14 +2174,13 @@ fixup_var(Action, Info, ThisVarName, ThisVarType, Lval) :-
 %       Lval = make_envptr_ref(Depth - 1, NewEnvPtr, EnvPtrVar, Var)
 %   ).
 
-:- func ml_env_module_name(mlds_target_lang, mlds_env_id) = mlds_module_name.
+:- func ml_env_module_name(mlds_env_id) = mlds_module_name.
 
-ml_env_module_name(Target, EnvId) = EnvModuleName :-
-    EnvId = mlds_env_id(ClassModuleName),
+ml_env_module_name(EnvId) = EnvModuleName :-
+    EnvId = mlds_env_id(EnvModule, EnvName),
     Arity = 0,
-    ClassModuleName = qual_class_name(ClassModule, QualKind, ClassName),
-    EnvModuleName = mlds_append_class_qualifier(Target, ClassModule,
-        QualKind, ClassName, Arity).
+    EnvModuleName =
+        mlds_append_class_qualifier_module_qual(EnvModule, EnvName, Arity).
 
 %---------------------------------------------------------------------------%
 %
@@ -2555,22 +2544,19 @@ gen_save_and_restore_of_stack_chain_var(Id, Context, SaveStmt, RestoreStmt) :-
 
                 % A counter used to number the local variables
                 % used to save the stack chain.
-                ei_saved_stack_chain_counter    :: counter,
-
-                ei_target_lang                  :: mlds_target_lang
+                ei_saved_stack_chain_counter    :: counter
             ).
 
-:- func elim_info_init(mlds_env_id, mlds_target_lang) = elim_info.
+:- func elim_info_init(mlds_env_id) = elim_info.
 
-elim_info_init(EnvId, Target) = ElimInfo :-
+elim_info_init(EnvId) = ElimInfo :-
     EnvPtrTypeName = ml_make_env_ptr_type(EnvId),
     ElimInfo = elim_info(cord.init, cord.init, EnvId, EnvPtrTypeName,
-        counter.init(0), Target).
+        counter.init(0)).
 
 :- func elim_info_get_local_vars(elim_info) = cord(mlds_local_var_defn).
 :- func elim_info_get_env_type_name(elim_info) = mlds_env_id.
 :- func elim_info_get_env_ptr_type_name(elim_info) = mlds_type.
-:- func elim_info_get_target_lang(elim_info) = mlds_target_lang.
 
 :- pred elim_info_set_local_vars(cord(mlds_local_var_defn)::in,
     elim_info::in, elim_info::out) is det.
@@ -2581,8 +2567,6 @@ elim_info_get_env_type_name(ElimInfo) = X :-
     X = ElimInfo ^ ei_env_type_name.
 elim_info_get_env_ptr_type_name(ElimInfo) = X :-
     X = ElimInfo ^ ei_env_ptr_type_name.
-elim_info_get_target_lang(ElimInfo) = X :-
-    X = ElimInfo ^ ei_target_lang.
 
 elim_info_set_local_vars(X, !ElimInfo) :-
     !ElimInfo ^ ei_local_vars := X.

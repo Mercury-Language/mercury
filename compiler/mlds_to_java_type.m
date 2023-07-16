@@ -232,18 +232,18 @@ type_to_string_and_dims_for_java(Info, MLDS_Type, String, ArrayDims) :-
         ArrayDims = []
     ;
         MLDS_Type = mlds_enum_class_type(EnumClassId),
-        EnumClassId = mlds_enum_class_id(Name, Arity),
-        String = qual_class_name_to_string_for_java(Name, Arity),
+        EnumClassId = mlds_enum_class_id(ModuleName, Name, Arity),
+        String = qual_nrt_name_to_string_for_java(ModuleName, Name, Arity),
         ArrayDims = []
     ;
         MLDS_Type = mlds_env_type(EnvId),
-        EnvId = mlds_env_id(Name),
-        String = qual_class_name_to_string_for_java(Name, 0),
+        EnvId = mlds_env_id(ModuleName, Name),
+        String = qual_nrt_name_to_string_for_java(ModuleName, Name, 0),
         ArrayDims = []
     ;
         MLDS_Type = mlds_struct_type(StructId),
-        StructId = mlds_struct_id(Name),
-        String = qual_class_name_to_string_for_java(Name, 0),
+        StructId = mlds_struct_id(ModuleName, Name),
+        String = qual_nrt_name_to_string_for_java(ModuleName, Name, 0),
         ArrayDims = []
     ;
         MLDS_Type = mlds_ptr_type(PointedToType),
@@ -373,7 +373,7 @@ mercury_type_to_string_for_java(Info, Type, CtorCat, String, ArrayDims) :-
 mercury_user_type_to_string_and_dims_for_java(Info, Type, ClassKind,
         TypeNameWithGenerics) :-
     type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
-    ml_gen_type_name(TypeCtor, ClassName, ClassArity),
+    ml_gen_class_name(TypeCtor, ClassName, ClassArity),
     MLDS_Type =
         mlds_class_type(mlds_class_id(ClassName, ClassArity, ClassKind)),
     type_to_string_and_dims_for_java(Info, MLDS_Type, TypeName, ArrayDims),
@@ -394,9 +394,9 @@ mercury_user_type_to_string_and_dims_for_java(Info, Type, ClassKind,
 mercury_user_enum_type_to_string_and_dims_for_java(Info, Type,
         TypeNameWithGenerics) :-
     type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
-    ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-    MLDS_Type =
-        mlds_enum_class_type(mlds_enum_class_id(ClassName, ClassArity)),
+    ml_gen_type_name(TypeCtor, EnumModule, EnumName, EnumArity),
+    EnumId = mlds_enum_class_id(EnumModule, EnumName, EnumArity),
+    MLDS_Type = mlds_enum_class_type(EnumId),
     type_to_string_and_dims_for_java(Info, MLDS_Type, TypeName, ArrayDims),
     expect(unify(ArrayDims, []), $pred, "ArrayDims != []"),
     OutputGenerics = Info ^ joi_output_generics,

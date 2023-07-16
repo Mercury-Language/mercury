@@ -2033,7 +2033,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             ;
                 MLDS_Type = mercury_nb_type(MercuryType, ctor_cat_user(_)),
                 type_to_ctor(MercuryType, TypeCtor),
-                ml_gen_type_name(TypeCtor, QualTypeName, TypeArity)
+                ml_gen_class_name(TypeCtor, QualTypeName, TypeArity)
             )
         then
             % If so, append the name of the derived class to the name of the
@@ -2058,7 +2058,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             MLDS_Type = mercury_nb_type(MercuryType, ctor_cat_user(_)),
             type_to_ctor(MercuryType, TypeCtor)
         then
-            ml_gen_type_name(TypeCtor, ClassName, ClassArity),
+            ml_gen_class_name(TypeCtor, ClassName, ClassArity),
             ClassId = mlds_class_id(ClassName, ClassArity, mlds_class),
             ConstType = mlds_class_type(ClassId)
         else if

@@ -42,6 +42,13 @@
 
 :- func qual_class_name_to_string_for_java(qual_class_name, arity) = string.
 
+    % The nrt part of the name is short for "not runtime";
+    % it says that the mlds_module_name argument must not refer to
+    % java_mercury_runtime_package_name.
+    %
+:- func qual_nrt_name_to_string_for_java(mlds_module_name, string, arity)
+    = string.
+
 %---------------------------------------------------------------------------%
 
 :- func function_name_to_string_for_java(mlds_function_name) = string.
@@ -143,10 +150,8 @@ unqual_class_name_to_string_for_java(Name, Arity) = Str :-
 
 qual_class_name_to_string_for_java(QualClassName, Arity) = QualClassNameStr :-
     QualClassName = qual_class_name(MLDS_ModuleName, QualKind, ClassName),
-    ( if
-        SymName = mlds_module_name_to_sym_name(MLDS_ModuleName),
-        SymName = java_mercury_runtime_package_name
-    then
+    SymName = mlds_module_name_to_sym_name(MLDS_ModuleName),
+    ( if SymName = java_mercury_runtime_package_name then
         % Don't mangle runtime class names.
         QualClassNameStr = "jmercury.runtime." ++ ClassName
     else
@@ -156,6 +161,12 @@ qual_class_name_to_string_for_java(QualClassName, Arity) = QualClassNameStr :-
         string.format("%s.%s", [s(QualStr), s(UnqualClassNameStr)],
             QualClassNameStr)
     ).
+
+qual_nrt_name_to_string_for_java(MLDS_ModuleName, Name, Arity)
+        = QualNameStr :-
+    QualStr = qualifier_to_string_for_java(MLDS_ModuleName, module_qual),
+    UnqualNameStr = unqual_class_name_to_string_for_java(Name, Arity),
+    string.format("%s.%s", [s(QualStr), s(UnqualNameStr)], QualNameStr).
 
 %---------------------------------------------------------------------------%
 
