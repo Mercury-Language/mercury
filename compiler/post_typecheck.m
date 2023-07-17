@@ -185,33 +185,44 @@ post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId, !PredInfo,
 %---------------------%
 
 :- pred report_unbound_inst_vars(module_info::in, pred_id::in,
-    list(proc_id)::in, pred_info::in, pred_info::out,
+    assoc_list(proc_id, list(inst_var))::in, pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcIds, !PredInfo,
+report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo,
         !Specs) :-
     (
-        ErrorProcIds = []
+        ErrorProcs = []
     ;
-        ErrorProcIds = [_ | _],
+        ErrorProcs = [_ | _],
         pred_info_get_proc_table(!.PredInfo, ProcTable0),
         list.foldl2(report_unbound_inst_var_error(ModuleInfo, PredId),
-            ErrorProcIds, ProcTable0, ProcTable, !Specs),
+            ErrorProcs, ProcTable0, ProcTable, !Specs),
         pred_info_set_proc_table(ProcTable, !PredInfo)
     ).
 
 :- pred report_unbound_inst_var_error(module_info::in,
-    pred_id::in, proc_id::in, proc_table::in, proc_table::out,
+    pred_id::in, pair(proc_id, list(inst_var))::in,
+    proc_table::in, proc_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_unbound_inst_var_error(ModuleInfo, PredId, ProcId, Procs0, Procs,
-        !Specs) :-
+report_unbound_inst_var_error(ModuleInfo, PredId, ProcId - UnboundInstVars,
+        Procs0, Procs, !Specs) :-
     map.lookup(Procs0, ProcId, ProcInfo),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
+    UnboundInstVarStrs =
+        list.map(mercury_var_to_string_vs(InstVarSet, print_name_only),
+            UnboundInstVars),
+    InstVarVars = choose_number(UnboundInstVarStrs,
+        "inst variable", "inst variables"),
+    IsAreUnbound = choose_number(UnboundInstVarStrs,
+        "is unbound", "are unbound"),
     proc_info_get_context(ProcInfo, Context),
     Pieces = [words("In"), decl("mode"), words("declaration for")] ++
         describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId)
         ++ [suffix(":"), nl,
-        words("error: unbound inst variable(s)."), nl,
+        words("error:"), words(InstVarVars)] ++
+        list_to_pieces(UnboundInstVarStrs) ++
+        [words(IsAreUnbound), suffix("."), nl,
         words("(Sorry, polymorphic modes are not supported.)"), nl],
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces),

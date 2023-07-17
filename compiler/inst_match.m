@@ -28,8 +28,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module list.
-
 %-----------------------------------------------------------------------------%
 
     % inst_matches_initial(ModuleInfo, Type, InstA, InstB):
@@ -187,14 +185,6 @@
     pred_inst_info::in, pred_inst_info::in) is semidet.
 
 %-----------------------------------------------------------------------------%
-
-    % Nondeterministically produce all the inst_vars contained in the
-    % specified list of modes.
-    %
-:- pred mode_list_contains_inst_var(list(mer_mode)::in, inst_var::out)
-    is nondet.
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -213,6 +203,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module list.
 :- import_module map.
 :- import_module require.
 :- import_module set.
@@ -630,10 +621,10 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
 ground_matches_initial_bound_inst_list(_, _, [], !Info).
 ground_matches_initial_bound_inst_list(Uniq, Type,
         [BoundInst | BoundInsts], !Info) :-
-    BoundInst = bound_functor(ConsId, Args),
+    BoundInst = bound_functor(ConsId, ArgInsts),
     get_cons_id_arg_types(!.Info ^ imi_module_info, Type, ConsId,
-        list.length(Args), Types),
-    ground_matches_initial_inst_list(Uniq, Types, Args, !Info),
+        list.length(ArgInsts), Types),
+    ground_matches_initial_inst_list(Uniq, Types, ArgInsts, !Info),
     ground_matches_initial_bound_inst_list(Uniq, Type, BoundInsts, !Info).
 
 :- pred ground_matches_initial_inst_list(uniqueness::in,
@@ -825,21 +816,23 @@ uniq_matches_bound_inst_list(ModuleInfo, Uniq, BoundInsts) :-
     inst_match_info::in, inst_match_info::out) is semidet.
 
 bound_inst_list_matches_initial_mt(_, [], _, !Info).
-bound_inst_list_matches_initial_mt(Type, [X | Xs], [Y | Ys], !Info) :-
-    X = bound_functor(ConsIdX, ArgsX),
-    Y = bound_functor(ConsIdY, ArgsY),
+bound_inst_list_matches_initial_mt(Type,
+        [BoundX | BoundXs], [BoundY | BoundYs], !Info) :-
+    BoundX = bound_functor(ConsIdX, ArgInstsX),
+    BoundY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         get_cons_id_arg_types(!.Info ^ imi_module_info, Type,
-            ConsIdX, list.length(ArgsX), Types),
-        inst_list_matches_initial_mt(Types, ArgsX, ArgsY, !Info),
-        bound_inst_list_matches_initial_mt(Type, Xs, Ys, !Info)
+            ConsIdX, list.length(ArgInstsX), Types),
+        inst_list_matches_initial_mt(Types, ArgInstsX, ArgInstsY, !Info),
+        bound_inst_list_matches_initial_mt(Type, BoundXs, BoundYs, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdY does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_initial Y. We just
         % need to check that [X | Xs] matches_initial Ys.
-        bound_inst_list_matches_initial_mt(Type, [X | Xs], Ys, !Info)
+        bound_inst_list_matches_initial_mt(Type, [BoundX | BoundXs], BoundYs,
+            !Info)
     ).
 
 :- pred inst_list_matches_initial_mt(list(mer_type)::in,
@@ -847,9 +840,10 @@ bound_inst_list_matches_initial_mt(Type, [X | Xs], [Y | Ys], !Info) :-
     inst_match_info::in, inst_match_info::out) is semidet.
 
 inst_list_matches_initial_mt([], [], [], !Info).
-inst_list_matches_initial_mt([Type | Types], [X | Xs], [Y | Ys], !Info) :-
-    inst_matches_initial_mt(Type, X, Y, !Info),
-    inst_list_matches_initial_mt(Types, Xs, Ys, !Info).
+inst_list_matches_initial_mt([Type | Types],
+        [InstX | InstXs], [InstY | InstYs], !Info) :-
+    inst_matches_initial_mt(Type, InstX, InstY, !Info),
+    inst_list_matches_initial_mt(Types, InstXs, InstYs, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -1030,10 +1024,10 @@ ho_inst_info_matches_final(Type, HOInstInfoA, HOInstInfoB, !Info) :-
     inst_match_info::in, inst_match_info::out) is semidet.
 
 inst_list_matches_final([], [], [], !Info).
-inst_list_matches_final([Type | Types], [ArgA | ArgsA], [ArgB | ArgsB],
-        !Info) :-
-    inst_matches_final_mt(Type, ArgA, ArgB, !Info),
-    inst_list_matches_final(Types, ArgsA, ArgsB, !Info).
+inst_list_matches_final([Type | Types],
+        [ArgInstA | ArgInstsA], [ArgInstB | ArgInstsB], !Info) :-
+    inst_matches_final_mt(Type, ArgInstA, ArgInstB, !Info),
+    inst_list_matches_final(Types, ArgInstsA, ArgInstsB, !Info).
 
     % Here we check that the functors in the first list are a subset of the
     % functors in the second list. (If a bound(...) inst only specifies
@@ -1047,21 +1041,22 @@ inst_list_matches_final([Type | Types], [ArgA | ArgsA], [ArgB | ArgsB],
     inst_match_info::in, inst_match_info::out) is semidet.
 
 bound_inst_list_matches_final(_, [], _, !Info).
-bound_inst_list_matches_final(Type, [X | Xs], [Y | Ys], !Info) :-
-    X = bound_functor(ConsIdX, ArgInstsX),
-    Y = bound_functor(ConsIdY, ArgInstsY),
+bound_inst_list_matches_final(Type, [BoundX | BoundXs], [BoundY | BoundYs],
+        !Info) :-
+    BoundX = bound_functor(ConsIdX, ArgInstsX),
+    BoundY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         get_cons_id_arg_types(!.Info ^ imi_module_info, Type,
             ConsIdX, list.length(ArgInstsX), Types),
         inst_list_matches_final(Types, ArgInstsX, ArgInstsY, !Info),
-        bound_inst_list_matches_final(Type, Xs, Ys, !Info)
+        bound_inst_list_matches_final(Type, BoundXs, BoundYs, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdY does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_final Y. We just
         % need to check that [X | Xs] matches_final Ys.
-        bound_inst_list_matches_final(Type, [X | Xs], Ys, !Info)
+        bound_inst_list_matches_final(Type, [BoundX | BoundXs], BoundYs, !Info)
     ).
 
 inst_is_at_least_as_instantiated(ModuleInfo, Type, InstA, InstB) :-
@@ -1212,10 +1207,10 @@ ho_inst_info_matches_binding(ModuleInfo, Type, HOInstInfoA, HOInstInfoB) :-
     inst_match_info::in, inst_match_info::out) is semidet.
 
 inst_list_matches_binding([], [], [], !Info).
-inst_list_matches_binding([Type | Types], [ArgA | ArgsA], [ArgB | ArgsB],
-        !Info) :-
-    inst_matches_binding_mt(Type, ArgA, ArgB, !Info),
-    inst_list_matches_binding(Types, ArgsA, ArgsB, !Info).
+inst_list_matches_binding([Type | Types],
+        [ArgInstA | ArgInstsA], [ArgInstB | ArgInstsB], !Info) :-
+    inst_matches_binding_mt(Type, ArgInstA, ArgInstB, !Info),
+    inst_list_matches_binding(Types, ArgInstsA, ArgInstsB, !Info).
 
     % Here we check that the functors in the first list are a subset of the
     % functors in the second list. (If a bound(...) inst only specifies
@@ -1229,21 +1224,23 @@ inst_list_matches_binding([Type | Types], [ArgA | ArgsA], [ArgB | ArgsB],
     inst_match_info::in, inst_match_info::out) is semidet.
 
 bound_inst_list_matches_binding(_, [], _, !Info).
-bound_inst_list_matches_binding(Type, [X | Xs], [Y | Ys], !Info) :-
-    X = bound_functor(ConsIdX, ArgsX),
-    Y = bound_functor(ConsIdY, ArgsY),
+bound_inst_list_matches_binding(Type, [BoundX | BoundXs], [BoundY | BoundYs],
+        !Info) :-
+    BoundX = bound_functor(ConsIdX, ArgInstsX),
+    BoundY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         get_cons_id_arg_types(!.Info ^ imi_module_info, Type,
-            ConsIdX, list.length(ArgsX), Types),
-        inst_list_matches_binding(Types, ArgsX, ArgsY, !Info),
-        bound_inst_list_matches_binding(Type, Xs, Ys, !Info)
+            ConsIdX, list.length(ArgInstsX), Types),
+        inst_list_matches_binding(Types, ArgInstsX, ArgInstsY, !Info),
+        bound_inst_list_matches_binding(Type, BoundXs, BoundYs, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdX does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_binding Y. We just
         % need to check that [X | Xs] matches_binding Ys.
-        bound_inst_list_matches_binding(Type, [X | Xs], Ys, !Info)
+        bound_inst_list_matches_binding(Type, [BoundX | BoundXs], BoundYs,
+            !Info)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1510,124 +1507,6 @@ maybe_apply_substitution(Info, Inst0, Inst) :-
         Info ^ imi_maybe_sub = no_inst_var_sub,
         Inst = Inst0
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred inst_name_contains_inst_var(inst_name::in, inst_var::out) is nondet.
-
-inst_name_contains_inst_var(InstName, InstVar) :-
-    require_complete_switch [InstName]
-    (
-        InstName = user_inst(_Name, ArgInsts),
-        inst_list_contains_inst_var(ArgInsts, InstVar)
-    ;
-        InstName = merge_inst(InstA, InstB),
-        ( inst_contains_inst_var(InstA, InstVar)
-        ; inst_contains_inst_var(InstB, InstVar)
-        )
-    ;
-        InstName = unify_inst(_Live, _Real, InstA, InstB),
-        ( inst_contains_inst_var(InstA, InstVar)
-        ; inst_contains_inst_var(InstB, InstVar)
-        )
-    ;
-        InstName = ground_inst(SubInstName, _Live, _Uniq, _Real),
-        inst_name_contains_inst_var(SubInstName, InstVar)
-    ;
-        InstName = any_inst(SubInstName, _Live, _Uniq, _Real),
-        inst_name_contains_inst_var(SubInstName, InstVar)
-    ;
-        InstName = shared_inst(SubInstName),
-        inst_name_contains_inst_var(SubInstName, InstVar)
-    ;
-        InstName = mostly_uniq_inst(SubInstName),
-        inst_name_contains_inst_var(SubInstName, InstVar)
-    ;
-        InstName = typed_ground(_Uniq, _Type),
-        fail
-    ;
-        InstName = typed_inst(_Type, SubInstName),
-        inst_name_contains_inst_var(SubInstName, InstVar)
-    ).
-
-:- pred inst_contains_inst_var(mer_inst::in, inst_var::out) is nondet.
-
-inst_contains_inst_var(Inst, InstVar) :-
-    (
-        Inst = inst_var(InstVar)
-    ;
-        Inst = defined_inst(InstName),
-        inst_name_contains_inst_var(InstName, InstVar)
-    ;
-        Inst = bound(_Uniq, InstResults, BoundInsts),
-        (
-            InstResults = inst_test_results_fgtc,
-            fail
-        ;
-            InstResults = inst_test_results(_, _, _, InstVarResult, _, _),
-            (
-                InstVarResult = inst_result_contains_inst_vars_known(InstVars),
-                set.member(InstVar, InstVars),
-                % Membership in InstVars means that BoundInsts *may* contain
-                % InstVar, not that it *does*, so we have to check whether
-                % it actually does.
-                bound_inst_list_contains_inst_var(BoundInsts, InstVar)
-            ;
-                InstVarResult = inst_result_contains_inst_vars_unknown,
-                bound_inst_list_contains_inst_var(BoundInsts, InstVar)
-            )
-        ;
-            InstResults = inst_test_no_results,
-            bound_inst_list_contains_inst_var(BoundInsts, InstVar)
-        )
-    ;
-        Inst = ground(_Uniq, HOInstInfo),
-        HOInstInfo = higher_order(pred_inst_info(_PredOrFunc, Modes, _, _Det)),
-        mode_list_contains_inst_var(Modes, InstVar)
-    ;
-        Inst = abstract_inst(_Name, ArgInsts),
-        inst_list_contains_inst_var(ArgInsts, InstVar)
-    ).
-
-:- pred bound_inst_list_contains_inst_var(list(bound_inst)::in, inst_var::out)
-    is nondet.
-
-bound_inst_list_contains_inst_var([BoundInst | BoundInsts], InstVar) :-
-    BoundInst = bound_functor(_Functor, ArgInsts),
-    (
-        inst_list_contains_inst_var(ArgInsts, InstVar)
-    ;
-        bound_inst_list_contains_inst_var(BoundInsts, InstVar)
-    ).
-
-:- pred inst_list_contains_inst_var(list(mer_inst)::in, inst_var::out)
-    is nondet.
-
-inst_list_contains_inst_var([Inst | Insts], InstVar) :-
-    (
-        inst_contains_inst_var(Inst, InstVar)
-    ;
-        inst_list_contains_inst_var(Insts, InstVar)
-    ).
-
-mode_list_contains_inst_var([Mode | Modes], InstVar) :-
-    (
-        mode_contains_inst_var(Mode, InstVar)
-    ;
-        mode_list_contains_inst_var(Modes, InstVar)
-    ).
-
-:- pred mode_contains_inst_var(mer_mode::in, inst_var::out) is nondet.
-
-mode_contains_inst_var(Mode, InstVar) :-
-    (
-        Mode = from_to_mode(Initial, Final),
-        ( Inst = Initial ; Inst = Final )
-    ;
-        Mode = user_defined_mode(_Name, Insts),
-        list.member(Inst, Insts)
-    ),
-    inst_contains_inst_var(Inst, InstVar).
 
 %-----------------------------------------------------------------------------%
 

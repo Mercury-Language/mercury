@@ -20,7 +20,9 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
+:- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
@@ -37,7 +39,7 @@
     % most of the task of this module itself, but delegates this one to us.
     %
 :- pred propagate_checked_types_into_pred_modes(module_info::in,
-    list(proc_id)::out, list(error_spec)::out,
+    assoc_list(proc_id, list(inst_var))::out, list(error_spec)::out,
     tprop_cache::in, tprop_cache::out, pred_info::in, pred_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -45,33 +47,31 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_match.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
 
-:- import_module assoc_list.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module set.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
 
-propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcIds,
+propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcs,
         !:Specs, !Cache, !PredInfo) :-
     pred_info_get_proc_table(!.PredInfo, Procs0),
     ProcIds = pred_info_all_procids(!.PredInfo),
     !:Specs = [],
     propagate_checked_types_into_procs_modes(ModuleInfo, !.PredInfo, ProcIds,
-        [], RevErrorProcIds, !Cache, !Specs, Procs0, Procs),
-    list.reverse(RevErrorProcIds, ErrorProcIds),
+        [], RevErrorProcs, !Cache, !Specs, Procs0, Procs),
+    list.reverse(RevErrorProcs, ErrorProcs),
     pred_info_set_proc_table(Procs, !PredInfo),
     pred_info_get_markers(!.PredInfo, Markers),
     ( if check_marker(Markers, marker_has_rhs_lambda) then
@@ -104,28 +104,32 @@ propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcIds,
 %---------------------%
 
 :- pred propagate_checked_types_into_procs_modes(module_info::in,
-    pred_info::in, list(proc_id)::in, list(proc_id)::in, list(proc_id)::out,
+    pred_info::in, list(proc_id)::in,
+    assoc_list(proc_id, list(inst_var))::in,
+    assoc_list(proc_id, list(inst_var))::out,
     tprop_cache::in, tprop_cache::out,
     list(error_spec)::in, list(error_spec)::out,
     proc_table::in, proc_table::out) is det.
 
 propagate_checked_types_into_procs_modes(_, _, [],
-        !RevErrorProcIds, !Cache, !Specs, !Procs).
+        !RevErrorProcs, !Cache, !Specs, !Procs).
 propagate_checked_types_into_procs_modes(ModuleInfo, PredInfo,
-        [ProcId | ProcIds], !RevErrorProcIds, !Cache, !Specs, !Procs) :-
+        [ProcId | ProcIds], !RevErrorProcs, !Cache, !Specs, !Procs) :-
     propagate_checked_types_into_proc_modes(ModuleInfo, PredInfo, ProcId,
-        !RevErrorProcIds, !Cache, !Specs, !Procs),
+        !RevErrorProcs, !Cache, !Specs, !Procs),
     propagate_checked_types_into_procs_modes(ModuleInfo, PredInfo, ProcIds,
-        !RevErrorProcIds, !Cache, !Specs, !Procs).
+        !RevErrorProcs, !Cache, !Specs, !Procs).
 
 :- pred propagate_checked_types_into_proc_modes(module_info::in,
-    pred_info::in, proc_id::in, list(proc_id)::in, list(proc_id)::out,
+    pred_info::in, proc_id::in,
+    assoc_list(proc_id, list(inst_var))::in,
+    assoc_list(proc_id, list(inst_var))::out,
     tprop_cache::in, tprop_cache::out,
     list(error_spec)::in, list(error_spec)::out,
     proc_table::in, proc_table::out) is det.
 
 propagate_checked_types_into_proc_modes(ModuleInfo, PredInfo, ProcId,
-        !RevErrorProcIds, !Cache, !Specs, !Procs) :-
+        !RevErrorProcs, !Cache, !Specs, !Procs) :-
     pred_info_get_arg_types(PredInfo, ArgTypes),
     map.lookup(!.Procs, ProcId, ProcInfo0),
     proc_info_get_argmodes(ProcInfo0, ArgModes0),
@@ -139,13 +143,14 @@ propagate_checked_types_into_proc_modes(ModuleInfo, PredInfo, ProcId,
     %
     % It also needs to be done before mode analysis, to avoid internal errors
     % in mode analysis.
-    ( if
-        some [InstVar] (
-            mode_list_contains_inst_var(ArgModes, InstVar)
-        )
-    then
-        !:RevErrorProcIds = [ProcId | !.RevErrorProcIds]
-    else
+    acc_inst_vars_in_modes(ArgModes, set.init, InstVarsInArgModesSet),
+    set.to_sorted_list(InstVarsInArgModesSet, InstVarsInArgModes),
+    (
+        InstVarsInArgModes = [_ | _],
+        % Return InstVarsInArgModes for inclusion in the error message.
+        !:RevErrorProcs = [ProcId - InstVarsInArgModes | !.RevErrorProcs]
+    ;
+        InstVarsInArgModes = [],
         proc_info_set_argmodes(ArgModes, ProcInfo0, ProcInfo),
         map.det_update(ProcId, ProcInfo, !Procs)
     ).
@@ -338,6 +343,126 @@ propagate_checked_types_into_var_modes(ModuleInfo, VarTable, Args, ArgNum,
         Type, Mode0, Mode, !Cache, !Specs),
     propagate_checked_types_into_var_modes(ModuleInfo, VarTable,
         Args, ArgNum + 1, VarsModes0, VarsModes, !Cache, !Specs).
+
+%---------------------------------------------------------------------------%
+
+:- pred acc_inst_vars_in_modes(list(mer_mode)::in,
+    set(inst_var)::in, set(inst_var)::out) is det.
+
+acc_inst_vars_in_modes([], !InstVars).
+acc_inst_vars_in_modes([Mode | Modes], !InstVars) :-
+    acc_inst_vars_in_mode(Mode, !InstVars),
+    acc_inst_vars_in_modes(Modes, !InstVars).
+
+:- pred acc_inst_vars_in_mode(mer_mode::in,
+    set(inst_var)::in, set(inst_var)::out) is det.
+
+acc_inst_vars_in_mode(Mode, !InstVars) :-
+    (
+        Mode = from_to_mode(Initial, Final),
+        acc_inst_vars_in_inst(Initial, !InstVars),
+        acc_inst_vars_in_inst(Final, !InstVars)
+    ;
+        Mode = user_defined_mode(_Name, Insts),
+        acc_inst_vars_in_insts(Insts, !InstVars)
+    ).
+
+:- pred acc_inst_vars_in_insts(list(mer_inst)::in,
+    set(inst_var)::in, set(inst_var)::out) is det.
+
+acc_inst_vars_in_insts([], !InstVars).
+acc_inst_vars_in_insts([Inst | Insts], !InstVars) :-
+    acc_inst_vars_in_inst(Inst, !InstVars),
+    acc_inst_vars_in_insts(Insts, !InstVars).
+
+:- pred acc_inst_vars_in_inst(mer_inst::in,
+    set(inst_var)::in, set(inst_var)::out) is det.
+
+acc_inst_vars_in_inst(Inst, !InstVars) :-
+    (
+        ( Inst = free
+        ; Inst = free(_Type)
+        ; Inst = not_reached
+        )
+    ;
+        Inst = inst_var(InstVar),
+        set.insert(InstVar, !InstVars)
+    ;
+        Inst = defined_inst(InstName),
+        acc_inst_vars_in_inst_name(InstName, !InstVars)
+    ;
+        Inst = bound(_Uniq, InstResults, BoundInsts),
+        (
+            InstResults = inst_test_results_fgtc
+            % There can be no inst variables in BoundInsts.
+        ;
+            InstResults = inst_test_results(_, _, _, _InstVarResult, _, _),
+            % Even with InstVarResult =
+            %   inst_result_contains_inst_vars_known(_KnownInstVars),
+            % Membership of an instvar in _KnownInstVars means that
+            % BoundInsts *may* contain that inst_var, not that it *does*,
+            % so we have to check whether it actually does.
+            acc_inst_vars_in_bound_insts(BoundInsts, !InstVars)
+        ;
+            InstResults = inst_test_no_results,
+            acc_inst_vars_in_bound_insts(BoundInsts, !InstVars)
+        )
+    ;
+        ( Inst = ground(_Uniq, HOInstInfo)
+        ; Inst = any(_Uniq, HOInstInfo)
+        ),
+        % Before 2023 Jul 17, we used to ignore any insts.
+        (
+            HOInstInfo = none_or_default_func
+        ;
+            HOInstInfo = higher_order(PredInstInfo),
+            PredInstInfo = pred_inst_info(_PredOrFunc, Modes, _, _Det),
+            acc_inst_vars_in_modes(Modes, !InstVars)
+        )
+    ;
+        Inst = constrained_inst_vars(ConstrainedVars, SubInst),
+        % Before 2023 Jul 17, we used to ignore constrained_inst_vars insts.
+        acc_inst_vars_in_inst(SubInst, set.init, SubInstVars),
+        set.difference(SubInstVars, ConstrainedVars, FreeInstVars),
+        set.union(FreeInstVars, !InstVars)
+    ;
+        Inst = abstract_inst(_Name, ArgInsts),
+        acc_inst_vars_in_insts(ArgInsts, !InstVars)
+    ).
+
+:- pred acc_inst_vars_in_inst_name(inst_name::in,
+    set(inst_var)::in, set(inst_var)::out) is det.
+
+acc_inst_vars_in_inst_name(InstName, !InstVars) :-
+    (
+        InstName = user_inst(_Name, ArgInsts),
+        acc_inst_vars_in_insts(ArgInsts, !InstVars)
+    ;
+        ( InstName = merge_inst(InstA, InstB)
+        ; InstName = unify_inst(_Live, _Real, InstA, InstB)
+        ),
+        acc_inst_vars_in_inst(InstA, !InstVars),
+        acc_inst_vars_in_inst(InstB, !InstVars)
+    ;
+        ( InstName = ground_inst(SubInstName, _Live, _Uniq, _Real)
+        ; InstName = any_inst(SubInstName, _Live, _Uniq, _Real)
+        ; InstName = shared_inst(SubInstName)
+        ; InstName = mostly_uniq_inst(SubInstName)
+        ; InstName = typed_inst(_Type, SubInstName)
+        ),
+        acc_inst_vars_in_inst_name(SubInstName, !InstVars)
+    ;
+        InstName = typed_ground(_Uniq, _Type)
+    ).
+
+:- pred acc_inst_vars_in_bound_insts(list(bound_inst)::in,
+    set(inst_var)::in, set(inst_var)::out) is det.
+
+acc_inst_vars_in_bound_insts([], !InstVars).
+acc_inst_vars_in_bound_insts([BoundInst | BoundInsts], !InstVars) :-
+    BoundInst = bound_functor(_Functor, ArgInsts),
+    acc_inst_vars_in_insts(ArgInsts, !InstVars),
+    acc_inst_vars_in_bound_insts(BoundInsts, !InstVars).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.types_into_modes.
