@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
+% Copyright (C) 2015-2018, 2020-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -313,7 +314,15 @@ output_table_steps_table(Info, Stream, DataId, StepDescs, !IO) :-
     io.write_string(Stream, "static const MR_TableStepDesc ", !IO),
     output_data_id(Info, Stream, DataId, !IO),
     io.write_string(Stream, "[] = {\n", !IO),
-    output_table_steps(Stream, StepDescs, !IO),
+    (
+        % ISO C does not allow empty arrays, so place a dummy value in the
+        % array if necessary.
+        StepDescs = [],
+        io.write_string(Stream, "{0}", !IO)
+    ;
+        StepDescs = [_ | _],
+        output_table_steps(Stream, StepDescs, !IO)
+    ),
     io.write_string(Stream, "};\n", !IO).
 
 :- pred output_table_steps(io.text_output_stream::in,
