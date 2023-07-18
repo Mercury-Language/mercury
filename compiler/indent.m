@@ -72,9 +72,12 @@ indent2_string(Indent) = Str :-
     % is much rarer.
     ( if indent2_str_lo(Indent, StrPrime) then
         Str = StrPrime
-    else
+    else if Indent > 0 then
         indent2_str_16(SixteenIndentStr),
         Str = SixteenIndentStr ++ indent2_string(Indent - 16)
+    else
+        % A negative indent is a bug.
+        Str = ""
     ).
 
 :- pred indent2_str_lo(int::in, string::out) is semidet.

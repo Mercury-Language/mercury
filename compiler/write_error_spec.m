@@ -1113,7 +1113,25 @@ divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
             TreatAsFirst = do_not_treat_as_first,
             RestIndent = CurIndent
         ),
-        NextIndent = RestIndent + FirstIndentDelta,
+        NextIndent0 = RestIndent + FirstIndentDelta,
+        ( if NextIndent0 < 0 then
+            % This indicates a bug in the code constructing the error_spec
+            % that we are trying to output here, with the being a
+            % nl_indent_delta with a negative delta that exceeeds the current
+            % indent level.
+            %
+            % We *could* abort here to warn about the problem, but that
+            % would be drastic. Adding this warning to the output should grab
+            % just as much attention, but it also allows the problem to be
+            % addressed at a time chosen by the programmer.
+            WarningLine = error_line(MaybeAvailLen, CurIndent,
+                "WARNING: NEGATIVE INDENT", 0, paren_none),
+            FirstParaWarningLines = [WarningLine],
+            NextIndent = 0
+        else
+            FirstParaWarningLines = [],
+            NextIndent = NextIndent0
+        ),
 
         BlankLine = error_line(MaybeAvailLen, CurIndent, "", 0, paren_none),
         list.duplicate(NumBlankLines, BlankLine, FirstParaBlankLines),
@@ -1151,7 +1169,8 @@ divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
         ),
         divide_paragraphs_into_lines(MaybeAvailLen, NextTreatAsFirst,
             NextIndent, LaterParas, LaterParaLines),
-        Lines = FirstParaLines ++ FirstParaBlankLines ++ LaterParaLines
+        Lines = FirstParaWarningLines ++ FirstParaLines ++
+            FirstParaBlankLines ++ LaterParaLines
     ).
 
 :- pred group_nonfirst_line_words(int::in, string::in, list(string)::in,

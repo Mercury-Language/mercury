@@ -1173,15 +1173,43 @@ mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
             ; PredVarInst = free(_)
             )
         then
-            BadInstPieces = [words("but"), words(PredVarName),
+            MismatchPieces = [words("mode error: context requires a"),
+                words(ExpPFStr), words("of"), ExpArityPiece, suffix(","),
+                words("but"), fixed(PredVarName),
                 words("is a free variable."), nl]
         else
-            BadInstPieces = [words("but the inst of"), words(PredVarName),
-                words("is not a higher order inst."), nl]
-        ),
-        MismatchPieces = [words("mode error: context requires a"),
-            words(ExpPFStr), words("of"), ExpArityPiece, suffix(",")] ++
-            BadInstPieces
+            MismatchPieces = [words("mode error: context requires a"),
+                words(ExpPFStr), words("of"), ExpArityPiece, suffix(","),
+                words("and the type of"), fixed(PredVarName),
+                words("does match that expectation,"),
+                words("but to check the correctness of the call,"),
+                words("the compiler also needs to know"),
+                words("the modes of the arguments and the determinism"),
+                words("of the"), words(ExpPFStr),
+                words("that"), fixed(PredVarName), words("represents,"),
+                words("and"), fixed(PredVarName), suffix("'s"),
+                words("inst does not contain that information."), nl,
+                words("The usual fix for this error"),
+                words("is to add this information."), nl,
+                words("Given a higher order type such as"),
+                nl_indent_delta(1),
+                fixed(":- type callback_t == (pred(world, world, io, io)."),
+                nl_indent_delta(-1),
+                words("you would define a corresponding inst, such as"),
+                nl_indent_delta(1),
+                fixed(":- inst callback_i == (pred(in, out, di, uo) is det)."),
+                nl_indent_delta(-1),
+                words("This inst specifies the modes of the arguments"),
+                words("and the determinism of a predicate."),
+                words("You can then tell the compiler that"),
+                words("a value of type callback_t has inst callback_i"),
+                words("by specifying"),
+                words("either the mode"), quote("in(callback_i)"),
+                words("(when taking a value of type callback_t as input)"),
+                words("or the mode"), quote("out(callback_i)"),
+                words("(when returning a value of type callback_t as output)"),
+                suffix("."), nl]
+        )
     ;
         Mismatch = mismatch_pred_vs_func(ActualPredOrFunc),
         ActPFStr = pred_or_func_to_full_str(ActualPredOrFunc),
