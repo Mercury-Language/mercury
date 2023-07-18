@@ -1296,33 +1296,72 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     % bound by the other branches), so the first question cannot be considered
     % separately from the others either :-(
     %
+    % The order of these function symbols now follows their frequency of
+    % occurrence, with the most frequently occurring function symbols first.
+    % The result of specifying --inst-statistics during the stage 2 of a
+    % bootcheck and then summarizing the results with tools/inst_statistics
+    % on 2023 July 18 was as follow:
+    %
+    % proc  ground                      30976049                72.63%
+    % proc  free/0                       7559540                17.73%
+    % proc  bound                        4017523                 9.42%
+    % proc  defined                        89760                 0.21%
+    % proc  constrained                     4310                 0.01%
+    % proc  any                             1775                 0.00%
+    % proc  abstract                           0                 0.00%
+    % proc  free/1                             0                 0.00%
+    % proc  inst_var                           0                 0.00%
+    % proc  not_reached                        0                 0.00%
+    %
+    % table ground                        968139                58.70%
+    % table bound                         551660                33.45%
+    % table free/0                        108101                 6.55%
+    % table defined                        10291                 0.62%
+    % table not_reached                     9865                 0.60%
+    % table constrained                     1287                 0.08%
+    % table abstract                           0                 0.00%
+    % table any                                0                 0.00%
+    % table free/1                             0                 0.00%
+    % table inst_var                           0                 0.00%
+    %
+    % The "proc" entries come from insts in goals' instmap_deltas, while
+    % the "table" entries come from insts in the global inst tables.
+    % In several of these tables, the keys are pairs of insts that are
+    % input to an operation, with the associated value being the result
+    % of that operation. Several operations are trivial, and therefore
+    % not worth putting into the table, if one of the insts is free/0.
+    % This effect is certainly partially responsible for the lower frequency
+    % of occurrence of free/0 in inst tables compared to instmap_deltas.
+    %
 :- type mer_inst
-    --->        free
-    ;           free(mer_type)
-
-    ;           any(uniqueness, ho_inst_info)
+    --->        ground(uniqueness, ho_inst_info)
                 % The ho_inst_info holds extra information
                 % about higher-order values.
+
+    ;           free
 
     ;           bound(uniqueness, inst_test_results, list(bound_inst))
                 % The list(bound_inst) must be sorted.
 
-    ;           ground(uniqueness, ho_inst_info)
-                % The ho_inst_info holds extra information
-                % about higher-order values.
-
-    ;           not_reached
-    ;           inst_var(inst_var)
+    ;           defined_inst(inst_name)
+                % A defined_inst is possibly recursive inst whose value is
+                % stored in the inst_table. This is used both for user-defined
+                % insts and for compiler-generated insts.
 
     ;           constrained_inst_vars(set(inst_var), mer_inst)
                 % Constrained_inst_vars is a set of inst variables that are
                 % constrained to have the same uniqueness as and to match_final
                 % the specified inst.
 
-    ;           defined_inst(inst_name)
-                % A defined_inst is possibly recursive inst whose value is
-                % stored in the inst_table. This is used both for user-defined
-                % insts and for compiler-generated insts.
+    ;           not_reached
+
+    ;           any(uniqueness, ho_inst_info)
+                % The ho_inst_info holds extra information
+                % about higher-order values.
+
+    ;           free(mer_type)
+
+    ;           inst_var(inst_var)
 
     ;           abstract_inst(sym_name, list(mer_inst)).
                 % An abstract inst is a defined inst which has been declared
