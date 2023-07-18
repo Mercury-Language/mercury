@@ -256,6 +256,7 @@
     ;       statistics
     ;       detailed_statistics
     ;       proc_size_statistics
+    ;       inst_statistics
     ;       limit_error_contexts
     ;       debug_types
     ;       debug_types_pred_name
@@ -1330,6 +1331,7 @@ optdef(oc_verbosity, report_cmd_line_args_in_doterr,    bool(no)).
 optdef(oc_verbosity, statistics,                        bool(no)).
 optdef(oc_verbosity, detailed_statistics,               bool(no)).
 optdef(oc_verbosity, proc_size_statistics,              string("")).
+optdef(oc_verbosity, inst_statistics,                   string("")).
 optdef(oc_verbosity, limit_error_contexts,              accumulating([])).
 optdef(oc_verbosity, debug_types,                       bool(no)).
 optdef(oc_verbosity, debug_types_pred_name,             accumulating([])).
@@ -2244,6 +2246,7 @@ long_option("report-cmd-line-args-in-doterr",
 long_option("statistics",               statistics).
 long_option("detailed-statistics",      detailed_statistics).
 long_option("proc-size-statistics",     proc_size_statistics).
+long_option("inst-statistics",          inst_statistics).
 long_option("limit-error-contexts",     limit_error_contexts).
 long_option("debug-types",              debug_types).
 long_option("debug-types-pred-name",    debug_types_pred_name).
@@ -4459,6 +4462,9 @@ options_help_verbosity(Stream, !IO) :-
         "\tAppend information about the size of each procedure in the",
         "\tmodule in terms of goals and variables to the end of the",
         "\tnamed file.",
+%       "--inst-statistics <filename>",
+%       "\tAppend a count of each kind of insts in the procedures in the",
+%       "\tmodule to the end of the named file.",
         "--limit-error-contexts filename:minline1-maxline1,minline2-maxline2",
         "\tPrint errors and warnings for the named file only when their",
         "\tline number is in one of the specified ranges.",

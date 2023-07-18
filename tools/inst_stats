@@ -1,0 +1,53 @@
+#!/usr/bin/awk -f
+# vim: ts=4 sw=4 et ft=awk
+#
+# Given input containing only lines of the form
+#
+#   category count
+#
+# this script computes and prints the total count for each category.
+
+$1 == "INST_STATS" {
+                next;
+            }
+$1 == "proc" {
+                if (NF == 3) {
+                    proc[$2] += $3;
+                } else {
+                    printf("unexpected line: <%s>\n", $0);
+                }
+                next;
+            }
+$1 == "table" {
+                if (NF == 3) {
+                    table[$2] += $3;
+                } else {
+                    printf("unexpected line: <%s>\n", $0);
+                }
+                next;
+            }
+            {
+                printf("unexpected line: <%s>\n", $0);
+            }
+END         {
+                proc_total = 0;
+                for (i in proc) {
+                    proc_total += proc[i];
+                }
+
+                table_total = 0;
+                for (i in table) {
+                    table_total += table[i];
+                }
+
+                for (i in proc) {
+                    printf("proc  %-15s %20d %20.2f%%\n",
+                        i, proc[i], (100 * proc[i]) / proc_total);
+                }
+
+                printf("\n");
+                for (i in table) {
+                    printf("table %-15s %20d %20.2f%%\n",
+                        i, table[i], (100 * table[i]) / table_total);
+                }
+            }

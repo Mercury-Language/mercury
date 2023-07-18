@@ -774,6 +774,8 @@ frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS, FoundError,
 
             maybe_proc_statistics(ProgressStream, ErrorStream,
                 Verbose, Stats, "AfterFrontEnd", !HLDS, !Specs, !IO),
+            maybe_inst_statistics(ProgressStream, ErrorStream,
+                Verbose, Stats, !HLDS, !Specs, !IO),
 
             % Work out whether we encountered any errors.
             MaybeWorstSpecsSeverity =
@@ -1601,6 +1603,41 @@ maybe_proc_statistics(ProgressStream, ErrorStream, Verbose, Stats, Msg,
             StatsFileNameResult = error(StatsFileError),
             io.error_message(StatsFileError, StatsFileErrorStr),
             string.format("%% Cannot write proc statistics: %s\n",
+                [s(StatsFileErrorStr)], StatsFileErrorMsg),
+            maybe_write_string(ProgressStream, Verbose, StatsFileErrorMsg, !IO)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_inst_statistics(io.text_output_stream::in,
+    io.text_output_stream::in, bool::in, bool::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+maybe_inst_statistics(ProgressStream, ErrorStream, Verbose, Stats,
+        !HLDS, !Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
+
+    globals.lookup_string_option(Globals, inst_statistics, StatsFileName),
+    ( if StatsFileName = "" then
+        % The user has not asked us to print these statistics.
+        true
+    else
+        io.open_append(StatsFileName, StatsFileNameResult, !IO),
+        (
+            StatsFileNameResult = ok(StatsFileStream),
+            maybe_write_string(ProgressStream, Verbose,
+                "% Generating inst statistics...\n", !IO),
+            write_inst_stats_for_module(StatsFileStream, !.HLDS, !IO),
+            io.close_output(StatsFileStream, !IO),
+            maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
+            maybe_report_stats(ProgressStream, Stats, !IO)
+        ;
+            StatsFileNameResult = error(StatsFileError),
+            io.error_message(StatsFileError, StatsFileErrorStr),
+            string.format("%% Cannot write inst statistics: %s\n",
                 [s(StatsFileErrorStr)], StatsFileErrorMsg),
             maybe_write_string(ProgressStream, Verbose, StatsFileErrorMsg, !IO)
         )
