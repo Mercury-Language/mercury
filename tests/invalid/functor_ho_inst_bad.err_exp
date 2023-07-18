@@ -1,5 +1,5 @@
 functor_ho_inst_bad.m:039: In clause for `main(di, uo)':
-functor_ho_inst_bad.m:039:   in list element #0:
+functor_ho_inst_bad.m:039:   in list element #1:
 functor_ho_inst_bad.m:039:   mode error in unification of `V_7' and
 functor_ho_inst_bad.m:039:   `functor_ho_inst_bad.job(V_8)'.
 functor_ho_inst_bad.m:039:   Variable `V_7' has instantiatedness `free',

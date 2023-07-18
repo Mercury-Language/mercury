@@ -407,7 +407,9 @@ contexts_describe_list_element([SubContext | SubContexts],
     ),
     (
         ArgNum = 1,
-        ElementNum = NumElementsBefore,
+        % If there were zero elements before this element,
+        % then this is element #1.
+        ElementNum = NumElementsBefore + 1,
         AfterContexts = SubContexts
     ;
         ArgNum = 2,

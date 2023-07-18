@@ -1,6 +1,6 @@
 getopt_old.m:027: In clause for predicate `main'/2:
 getopt_old.m:027:   in argument 2 of call to predicate `io.format'/4:
-getopt_old.m:027:   in list element #0:
+getopt_old.m:027:   in list element #1:
 getopt_old.m:027:   in unification of argument
 getopt_old.m:027:   and term `s(ErrorMsg)':
 getopt_old.m:027:   type error in argument of functor `s'/1.
