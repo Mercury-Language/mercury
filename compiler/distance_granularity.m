@@ -191,7 +191,7 @@ apply_dg_to_preds([PredId | PredIds], Distance, !ModuleInfo) :-
     make_transformed_pred_name(PredName0, Transform, ClonePredName),
     ClonePredSymName = qualified(ModuleName, ClonePredName),
 
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo0),
+    ProcIds = pred_info_all_non_imported_procids(PredInfo0),
     some [!ClonePredInfo] (
         !:ClonePredInfo = PredInfo0,
         apply_dg_to_procs(PredId, ProcIds, Distance, ClonePredId,

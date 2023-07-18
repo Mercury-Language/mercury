@@ -293,7 +293,7 @@ par_process_valid_nonimported_procs_in_preds(ModuleInfo, Task, ValidPredIdSet,
     PredIdInfo0 = PredId - PredInfo0,
     ( if
         set_tree234.contains(ValidPredIdSet, PredId),
-        ProcIds = pred_info_valid_non_imported_procids(PredInfo0),
+        ProcIds = pred_info_all_non_imported_procids(PredInfo0),
         ProcIds = [_ | _]
     then
         % Potential parallelization site.
@@ -346,7 +346,7 @@ seq_process_valid_nonimported_procs_in_preds([], !Task, !ModuleInfo).
 seq_process_valid_nonimported_procs_in_preds([PredId | PredIds], !Task,
         !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
+    ProcIds = pred_info_all_non_imported_procids(PredInfo),
     seq_process_valid_nonimported_procs(PredId, ProcIds, !Task, !ModuleInfo),
     seq_process_valid_nonimported_procs_in_preds(PredIds, !Task, !ModuleInfo).
 

@@ -317,16 +317,12 @@ polymorphism_process_pred(PredId, SafeToContinue, !Specs, !ModuleInfo) :-
     proc_info::in, proc_info::out) is det.
 
 add_extra_arg_modes_to_proc(ExtraArgModes, !ProcInfo) :-
-    ( if proc_info_is_valid_mode(!.ProcInfo) then
-        % Add the ExtraArgModes to the proc_info argmodes.
-        % XXX ARGVEC - revisit this when the proc_info uses proc_arg_vectors.
-        proc_info_get_argmodes(!.ProcInfo, ArgModes1),
-        ExtraArgModesList = poly_arg_vector_to_list(ExtraArgModes),
-        ArgModes = ExtraArgModesList ++ ArgModes1,
-        proc_info_set_argmodes(ArgModes, !ProcInfo)
-    else
-        true
-    ).
+    % Add the ExtraArgModes to the proc_info argmodes.
+    % XXX ARGVEC - revisit this when the proc_info uses proc_arg_vectors.
+    proc_info_get_argmodes(!.ProcInfo, ArgModes1),
+    ExtraArgModesList = poly_arg_vector_to_list(ExtraArgModes),
+    ArgModes = ExtraArgModesList ++ ArgModes1,
+    proc_info_set_argmodes(ArgModes, !ProcInfo).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

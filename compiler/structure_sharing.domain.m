@@ -2169,7 +2169,7 @@ load_structure_sharing_table(ModuleInfo) = SharingTable :-
 
 load_structure_sharing_table_2(ModuleInfo, PredId, !SharingTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_valid_procids(PredInfo),
+    ProcIds = pred_info_all_procids(PredInfo),
     list.foldl(load_structure_sharing_table_3(ModuleInfo, PredId),
         ProcIds, !SharingTable).
 

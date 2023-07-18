@@ -708,7 +708,7 @@ make_direct_arg_in_out_clone(ProgressStream, PredProcId, OoMInOutArgs,
 
     proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarTable,
         RttiVarMaps, InstVarSet, DeclaredModes, Modes, _MaybeArgLives,
-        MaybeDeclaredDetism, Detism, EvalMethod, _ModeErrors,
+        MaybeDeclaredDetism, Detism, EvalMethod,
         MainContext, ItemNumber, CanProcess, _MaybeHeadModesConstr,
         _DetismDecl, _CseNopullContexts, MaybeUntupleInfo, VarNameRemap,
         _StateVarWarnings, DeletedCallees, IsAddressTaken,
@@ -739,7 +739,6 @@ make_direct_arg_in_out_clone(ProgressStream, PredProcId, OoMInOutArgs,
         CloneDeclaredModes = maybe.yes(CloneModes)
     ),
     CloneMaybeArgLives = maybe.no,          % Rebuilt on demand from modes.
-    CloneModeErrors = [],                   % All users of this field have run.
     CloneMaybeHeadModesConstr = maybe.no,   % This field has no current users.
     CloneDetismDecl = detism_decl_none,
     CloneCseNopullContexts = [],            % All users of this field have run.
@@ -747,7 +746,7 @@ make_direct_arg_in_out_clone(ProgressStream, PredProcId, OoMInOutArgs,
     proc_create(CloneHeadVars, Goal, CloneVarTable,
         RttiVarMaps, InstVarSet, CloneDeclaredModes, CloneModes,
         CloneMaybeArgLives, MaybeDeclaredDetism, Detism, EvalMethod,
-        CloneModeErrors, MainContext, ItemNumber, CanProcess,
+        MainContext, ItemNumber, CanProcess,
         CloneMaybeHeadModesConstr, CloneDetismDecl, CloneCseNopullContexts,
         MaybeUntupleInfo, VarNameRemap, CloneStateVarWarnings,
         DeletedCallees, IsAddressTaken, HasForeignProcExports, HasParallelConj,
@@ -955,29 +954,11 @@ transform_direct_arg_in_out_calls_in_pred(ProgressStream, DirectArgProcMap,
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.map_foldl2(
-        maybe_transform_direct_arg_in_out_calls_in_proc(ProgressStream,
+        transform_direct_arg_in_out_calls_in_proc(ProgressStream,
             DirectArgProcMap, DirectArgProcInOutMap, CloneInOutMap, PredId),
         ProcTable0, ProcTable, !ModuleInfo, !Specs),
     pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
-
-:- pred maybe_transform_direct_arg_in_out_calls_in_proc(
-    io.text_output_stream::in, direct_arg_proc_map::in,
-    direct_arg_proc_in_out_map::in, clone_in_out_map::in,
-    pred_id::in, proc_id::in, proc_info::in, proc_info::out,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-maybe_transform_direct_arg_in_out_calls_in_proc(ProgressStream,
-        DirectArgProcMap, DirectArgProcInOutMap, CloneInOutMap, PredId, ProcId,
-        !ProcInfo, !ModuleInfo, !Specs) :-
-    ( if proc_info_is_valid_mode(!.ProcInfo) then
-        transform_direct_arg_in_out_calls_in_proc(ProgressStream,
-            DirectArgProcMap, DirectArgProcInOutMap, CloneInOutMap,
-            PredId, ProcId, !ProcInfo, !ModuleInfo, !Specs)
-    else
-        true
-    ).
 
 :- pred transform_direct_arg_in_out_calls_in_proc(io.text_output_stream::in,
     direct_arg_proc_map::in, direct_arg_proc_in_out_map::in,

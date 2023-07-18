@@ -397,7 +397,7 @@ maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs,
     then
         true
     else
-        ProcIds = pred_info_valid_procids(PredInfo),
+        ProcIds = pred_info_all_procids(PredInfo),
         setup_pred_args(PredId, ProcIds, !VarUsage, !PredProcList, !OptProcs,
             !ModuleInfo)
     ).
@@ -2007,7 +2007,7 @@ maybe_gather_unused_args_pragma(PredInfo, ProcId, UnusedArgs,
 maybe_record_intermod_unused_args(ModuleInfo, UnusedArgInfo, PredId,
         !AnalysisInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_valid_procids(PredInfo),
+    ProcIds = pred_info_all_procids(PredInfo),
     list.foldl(
         maybe_record_intermod_unused_args_2(ModuleInfo, UnusedArgInfo,
             PredId, PredInfo),

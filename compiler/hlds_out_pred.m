@@ -662,13 +662,8 @@ write_proc(Info, Stream, VarNamePrint, ModuleInfo, PredId, PredInfo,
     DetismStr = determinism_to_string(InferredDeterminism),
     io.format(Stream, "%s%% pred id %d: %s\n",
         [s(Indent1Str), i(PredIdInt), s(PredIdStr)], !IO),
-    ( if proc_info_is_valid_mode(ProcInfo) then
-        io.format(Stream, "%s%% mode number %d (%s)\n",
-            [s(Indent1Str), i(ProcIdInt), s(DetismStr)], !IO)
-    else
-        io.format(Stream, "%s%% mode number %d (%s) INVALID MODE\n",
-            [s(Indent1Str), i(ProcIdInt), s(DetismStr)], !IO)
-    ),
+    io.format(Stream, "%s%% mode number %d (%s)\n",
+        [s(Indent1Str), i(ProcIdInt), s(DetismStr)], !IO),
 
     write_var_types(Stream, VarNamePrint, TVarSet, VarTable, !IO),
     write_rtti_varmaps(Stream, VarNamePrint, TVarSet, VarTable,

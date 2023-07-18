@@ -542,11 +542,11 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
             PredIdsArgs0, _, PredIdsArgs),
         PredIdsArgs = [{PredId, ArgVars}]
     then
-        mode_info_get_instmap(!.ModeInfo, InstMap),
+        mode_info_get_proc_mode_error_map(!.ModeInfo, ProcModeErrorMap),
         mode_info_get_var_table(!.ModeInfo, VarTable),
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        match_modes_by_higher_order_insts(ModuleInfo, VarTable, InstMap,
-            ArgVars, PredInfo, MatchResult),
+        mode_info_get_instmap(!.ModeInfo, InstMap),
+        match_modes_by_higher_order_insts(ModuleInfo, ProcModeErrorMap,
+            VarTable, InstMap, ArgVars, PredId, MatchResult),
         (
             (
                 MatchResult = some_ho_args_not_ground(NonGroundArgVars),
@@ -1507,21 +1507,27 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTable, UnifyContext,
     ;       some_ho_args_not_ground(list(prog_var)).
 
 :- pred match_modes_by_higher_order_insts(module_info::in,
-    var_table::in, instmap::in, prog_vars::in, pred_info::in,
-    match_modes_result::out) is det.
+    proc_mode_error_map::in, var_table::in, instmap::in, prog_vars::in,
+    pred_id::in, match_modes_result::out) is det.
 
-match_modes_by_higher_order_insts(ModuleInfo, VarTable, InstMap, ArgVars,
-        CalleePredInfo, Result) :-
-    CalleeProcIds = pred_info_valid_procids(CalleePredInfo),
-    match_modes_by_higher_order_insts_2(ModuleInfo, VarTable, InstMap,
-        ArgVars, CalleePredInfo, CalleeProcIds, [], [], Result).
+match_modes_by_higher_order_insts(ModuleInfo, ProcModeErrorMap, VarTable,
+        InstMap, ArgVars, CalleePredId, Result) :-
+    module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
+    ( if map.search(ProcModeErrorMap, CalleePredId, CalleeErrorMapPrime) then
+        CalleeErrorMap = CalleeErrorMapPrime
+    else
+        map.init(CalleeErrorMap)
+    ),
+    CalleeProcIds = pred_info_all_procids(CalleePredInfo),
+    match_modes_by_higher_order_insts_2(ModuleInfo, VarTable, InstMap, ArgVars,
+        CalleePredInfo, CalleeErrorMap, CalleeProcIds, [], [], Result).
 
 :- pred match_modes_by_higher_order_insts_2(module_info::in,
-    var_table::in, instmap::in, prog_vars::in, pred_info::in,
-    list(proc_id)::in, list(proc_id)::in, list(prog_var)::in,
-    match_modes_result::out) is det.
+    var_table::in, instmap::in, list(prog_var)::in,
+    pred_info::in, map(proc_id, list(mode_error_info))::in, list(proc_id)::in,
+    list(proc_id)::in, list(prog_var)::in, match_modes_result::out) is det.
 
-match_modes_by_higher_order_insts_2(_, _, _, _, _, [],
+match_modes_by_higher_order_insts_2(_, _, _, _, _, _, [],
         !.RevMatchedProcIds, !.NonGroundNonLocals, Result) :-
     (
         !.NonGroundNonLocals = [],
@@ -1531,22 +1537,30 @@ match_modes_by_higher_order_insts_2(_, _, _, _, _, [],
         !:NonGroundNonLocals = list.sort_and_remove_dups(!.NonGroundNonLocals),
         Result = some_ho_args_not_ground(!.NonGroundNonLocals)
     ).
-match_modes_by_higher_order_insts_2(ModuleInfo, VarTable, InstMap,
-        ArgVars, CalleePredInfo, [ProcId | ProcIds],
+match_modes_by_higher_order_insts_2(ModuleInfo, VarTable, InstMap, ArgVars,
+        CalleePredInfo, CalleeErrorMap, [ProcId | ProcIds],
         !.RevMatchedProcIds, !.NonGroundNonLocals, Result) :-
-    pred_info_proc_info(CalleePredInfo, ProcId, CalleeProcInfo),
-    proc_info_get_argmodes(CalleeProcInfo, ArgModes),
-    match_mode_by_higher_order_insts(ModuleInfo, VarTable, InstMap, ArgVars,
-        ArgModes, ProcNonGroundNonLocals, ProcResult),
-    !:NonGroundNonLocals = ProcNonGroundNonLocals ++ !.NonGroundNonLocals,
-    (
-        ProcResult = ho_insts_match,
-        !:RevMatchedProcIds = [ProcId | !.RevMatchedProcIds]
-    ;
-        ProcResult = ho_insts_do_not_match
+    ( if
+        map.search(CalleeErrorMap, ProcId, CalleeModeErrors),
+        CalleeModeErrors = [_ | _]
+    then
+        % This mode of the callee is not valid.
+        true
+    else
+        pred_info_proc_info(CalleePredInfo, ProcId, CalleeProcInfo),
+        proc_info_get_argmodes(CalleeProcInfo, ArgModes),
+        match_mode_by_higher_order_insts(ModuleInfo, VarTable, InstMap, ArgVars,
+            ArgModes, ProcNonGroundNonLocals, ProcResult),
+        !:NonGroundNonLocals = ProcNonGroundNonLocals ++ !.NonGroundNonLocals,
+        (
+            ProcResult = ho_insts_match,
+            !:RevMatchedProcIds = [ProcId | !.RevMatchedProcIds]
+        ;
+            ProcResult = ho_insts_do_not_match
+        )
     ),
-    match_modes_by_higher_order_insts_2(ModuleInfo, VarTable, InstMap,
-        ArgVars, CalleePredInfo, ProcIds,
+    match_modes_by_higher_order_insts_2(ModuleInfo, VarTable, InstMap, ArgVars,
+        CalleePredInfo, CalleeErrorMap, ProcIds,
         !.RevMatchedProcIds, !.NonGroundNonLocals, Result).
 
 :- type match_mode_result

@@ -256,7 +256,7 @@ impl_dep_par_conjs_in_module(!ModuleInfo) :-
 maybe_sync_dep_par_conjs_in_pred(PredId, !ModuleInfo, !ProcsToScan,
         !TSStringTable) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
+    ProcIds = pred_info_all_non_imported_procids(PredInfo),
     list.foldl3(maybe_sync_dep_par_conjs_in_proc(PredId), ProcIds,
         !ModuleInfo, !ProcsToScan, !TSStringTable).
 
@@ -1883,7 +1883,7 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
         % test does not look for them is that we used to run dep_par_conj only
         % *after* mercury_compile used to invoke dead_proc_elim to delete
         % opt_imported procedures.
-        list.member(ProcId, pred_info_valid_non_imported_procids(PredInfo)),
+        list.member(ProcId, pred_info_all_non_imported_procids(PredInfo)),
 
         % This test avoids some problems we have had with pushing signals and
         % waits into callees, in some cases incorrect code is generated.

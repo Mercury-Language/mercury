@@ -467,7 +467,7 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
         pred_info_set_markers(Markers, !PredInfo)
     else if
         less_pure(OldPurity, Bodypurity),
-        [_] = pred_info_valid_procids(!.PredInfo)
+        [_] = pred_info_all_procids(!.PredInfo)
     then
         % If there is only one procedure, update the purity in the pred_info
         % if the purity improved.

@@ -267,7 +267,7 @@ interleave_loop([H | T], RevAs0, RevAs, RevBs0, RevBs) :-
 generate_code_for_pred(ModuleInfo, ConstStructMap, VeryVerbose, Statistics,
         PredId, !CProcsCord, !GlobalData) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
+    ProcIds = pred_info_all_non_imported_procids(PredInfo),
     (
         ProcIds = []
     ;

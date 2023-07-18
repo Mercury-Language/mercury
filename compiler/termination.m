@@ -605,7 +605,7 @@ term_preprocess_pred(BelieveCheckTerm, PredId, !ModuleInfo) :-
     pred_info_get_context(PredInfo0, Context),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     pred_info_get_markers(PredInfo0, Markers),
-    ProcIds = pred_info_valid_procids(PredInfo0),
+    ProcIds = pred_info_all_procids(PredInfo0),
     ( if
         % It is possible for compiler generated/mercury builtin
         % predicates to be imported or locally defined, so they

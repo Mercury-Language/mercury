@@ -96,7 +96,7 @@ gen_module(ModuleInfo, Code, !IO) :-
 gen_preds(_ModuleInfo, [], empty, !IO).
 gen_preds(ModuleInfo, [PredId | PredIds], Code, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
+    ProcIds = pred_info_all_non_imported_procids(PredInfo),
     (
         ProcIds = [],
         PredCode = empty

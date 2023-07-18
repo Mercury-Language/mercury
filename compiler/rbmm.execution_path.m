@@ -60,7 +60,7 @@ execution_path_analysis(ModuleInfo, ExecPathTable) :-
 
 execution_path_analysis_pred(ModuleInfo, PredId, !ExecPathTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
+    ProcIds = pred_info_all_non_imported_procids(PredInfo),
     list.foldl(execution_path_analysis_proc(ModuleInfo, PredId), ProcIds,
         !ExecPathTable).
 

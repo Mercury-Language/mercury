@@ -337,9 +337,9 @@ dead_proc_initialize_preds(PredTable, [PredId | PredIds], !Queue, !Needed) :-
     map.lookup(PredTable, PredId, PredInfo),
     pred_info_get_markers(PredInfo, PredMarkers),
     ( if check_marker(PredMarkers, marker_consider_used) then
-        LiveProcIds = pred_info_valid_procids(PredInfo)
+        LiveProcIds = pred_info_all_procids(PredInfo)
     else
-        LiveProcIds = pred_info_valid_exported_procids(PredInfo)
+        LiveProcIds = pred_info_all_exported_procids(PredInfo)
     ),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, Procs),
@@ -354,11 +354,10 @@ dead_proc_initialize_preds(PredTable, [PredId | PredIds], !Queue, !Needed) :-
     is det.
 
 dead_proc_initialize_procs(_PredId, [], _LiveProcIds, !Queue, !Needed).
-dead_proc_initialize_procs(PredId, [Proc | Procs], LiveProcIds,
+dead_proc_initialize_procs(PredId, [ProcIdInfo | ProcIdInfos], LiveProcIds,
         !Queue, !Needed) :-
-    Proc = ProcId - ProcInfo,
+    ProcIdInfo = ProcId - ProcInfo,
     ( if
-        proc_info_is_valid_mode(ProcInfo),
         (
             list.member(ProcId, LiveProcIds)
         ;
@@ -372,7 +371,8 @@ dead_proc_initialize_procs(PredId, [Proc | Procs], LiveProcIds,
     else
         true
     ),
-    dead_proc_initialize_procs(PredId, Procs, LiveProcIds, !Queue, !Needed).
+    dead_proc_initialize_procs(PredId, ProcIdInfos, LiveProcIds,
+        !Queue, !Needed).
 
     % Add procedures exported to foreign language by a `:- pragma
     % foreign_export(...)' declaration to the queue and map.
@@ -649,7 +649,7 @@ dead_proc_examine_proc(ModuleInfo, AnalyzeDeletedCalls, PredProcId,
         !Queue, !Needed) :-
     PredProcId = proc(PredId, ProcId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
+    ProcIds = pred_info_all_non_imported_procids(PredInfo),
     ( if
         list.member(ProcId, ProcIds),
         pred_info_get_proc_table(PredInfo, ProcTable),
@@ -1091,7 +1091,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
             KeepAnyProc = yes(InitProcId)
         )
     then
-        ProcIds = pred_info_valid_procids(PredInfo0),
+        ProcIds = pred_info_all_procids(PredInfo0),
         pred_info_get_proc_table(PredInfo0, ProcTable0),
         list.foldl2(
             dead_proc_eliminate_proc(!.ProcElimInfo, KeepAnyProc, PredId),
@@ -1120,7 +1120,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
         ElimOptImported = elim_opt_imported,
         PredStatus = pred_status(status_opt_imported)
     then
-        ProcIds = pred_info_valid_procids(PredInfo0),
+        ProcIds = pred_info_all_procids(PredInfo0),
         pred_info_get_proc_table(PredInfo0, ProcTable0),
 
         % Reduce memory usage by replacing the goals with "true".
@@ -1234,7 +1234,7 @@ dead_proc_warn_pred(ModuleInfo, PredTable, WarnWithLiveSiblings, Needed,
         % type specialization.
         not string.prefix(PredName, "TypeSpecOf__")
     then
-        ProcIds = pred_info_valid_procids(PredInfo),
+        ProcIds = pred_info_all_procids(PredInfo),
         pred_info_get_proc_table(PredInfo, ProcTable),
         list.foldl(
             dead_proc_maybe_warn_proc(ModuleInfo, Needed, PredId, PredInfo,

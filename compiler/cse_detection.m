@@ -163,7 +163,7 @@ detect_cse_in_pred(ProgressStream, PredId, PredInfo, !ModuleInfo) :-
     ;
         VeryVerbose = no
     ),
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
+    ProcIds = pred_info_all_non_imported_procids(PredInfo),
     detect_cse_in_procs(ProgressStream, PredId, ProcIds, !ModuleInfo).
 
 :- pred detect_cse_in_procs(io.text_output_stream::in,
@@ -209,10 +209,16 @@ detect_cse_in_proc(MaybeProgressStream, PredId, ProcId, !ModuleInfo) :-
                 true
             )
         ),
-        modecheck_proc(PredId, ProcId, !ModuleInfo, _Changed, ModeSpecs),
+        map.init(ProcModeErrorMap0),
+        modecheck_proc(PredId, ProcId, !ModuleInfo,
+            ProcModeErrorMap0, _ProcModeErrorMap, _Changed, ModeSpecs),
         trace [io(!IO)] (
-            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
-            maybe_report_stats(ProgressStream, Statistics, !IO)
+            (
+                MaybeProgressStream = yes(ProgressStream),
+                maybe_report_stats(ProgressStream, Statistics, !IO)
+            ;
+                MaybeProgressStream = no
+            )
         ),
         ContainsErrors = contains_errors(Globals, ModeSpecs),
         (

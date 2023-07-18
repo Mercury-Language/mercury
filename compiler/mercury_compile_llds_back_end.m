@@ -290,7 +290,7 @@ llds_backend_pass_by_preds_loop_over_preds(ProgressStream, !HLDS,
 llds_backend_pass_by_preds_do_one_pred(ProgressStream, !HLDS, ConstStructMap,
         SCCMap, PredId, !MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs) :-
     module_info_pred_info(!.HLDS, PredId, PredInfo),
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
+    ProcIds = pred_info_all_non_imported_procids(PredInfo),
     (
         ProcIds = []
     ;

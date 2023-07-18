@@ -96,7 +96,7 @@ intra_proc_rpta(ModuleInfo, !InfoTable) :-
 
 intra_proc_rpta_pred(ModuleInfo, PredId, !InfoTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
+    ProcIds = pred_info_all_non_imported_procids(PredInfo),
     list.foldl(intra_proc_rpta_proc(ModuleInfo, PredId), ProcIds, !InfoTable).
 
 :- pred intra_proc_rpta_proc(module_info::in, pred_id::in, proc_id::in,

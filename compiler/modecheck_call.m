@@ -158,7 +158,7 @@ modecheck_call_pred(PredId, MaybeDetism, ProcId0, SelectedProcId,
         mode_info_set_errors([], !ModeInfo),
 
         set_of_var.init(WaitingVars0),
-        modecheck_find_matching_modes(ProcIds, ProcTable, ArgVars0,
+        modecheck_find_matching_modes(PredId, ProcTable, ArgVars0, ProcIds,
             [], RevMatchingProcModes, [], RevProcInitialInsts,
             WaitingVars0, WaitingVars1, !ModeInfo),
         (
@@ -174,7 +174,8 @@ modecheck_call_pred(PredId, MaybeDetism, ProcId0, SelectedProcId,
             choose_best_match(!.ModeInfo, MatchingProcModes, PredId, ProcTable,
                 ArgVars0, SelectedProcId, InstVarSub, ProcArgModes),
             map.lookup(ProcTable, SelectedProcId, ProcInfo),
-            proc_info_get_mode_errors(ProcInfo, CalleeModeErrors),
+            look_up_proc_mode_errors(!.ModeInfo, PredId, SelectedProcId,
+                CalleeModeErrors),
             (
                 CalleeModeErrors = [],
                 modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0,
@@ -201,17 +202,17 @@ modecheck_call_pred(PredId, MaybeDetism, ProcId0, SelectedProcId,
 
 %---------------------%
 
-:- pred modecheck_find_matching_modes(list(proc_id)::in,
-    proc_table::in, list(prog_var)::in,
+:- pred modecheck_find_matching_modes(pred_id::in, proc_table::in,
+    list(prog_var)::in, list(proc_id)::in,
     list(proc_mode)::in, list(proc_mode)::out,
     list(list(mer_inst))::in, list(list(mer_inst))::out,
     set_of_progvar::in, set_of_progvar::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_find_matching_modes([], _ProcTable, _ArgVars,
+modecheck_find_matching_modes(_PredId, _ProcTable, _ArgVars, [],
         !RevMatchingProcModes, !RevProcInitialInsts,
         !WaitingVars, !ModeInfo).
-modecheck_find_matching_modes([ProcId | ProcIds], ProcTable, ArgVars0,
+modecheck_find_matching_modes(PredId, ProcTable, ArgVars0, [ProcId | ProcIds],
         !RevMatchingProcModes, !RevProcInitialInsts,
         !WaitingVars, !ModeInfo) :-
     % Find the initial insts and the final livenesses of the arguments
@@ -245,10 +246,13 @@ modecheck_find_matching_modes([ProcId | ProcIds], ProcTable, ArgVars0,
 
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
     !:RevProcInitialInsts = [InitialInsts | !.RevProcInitialInsts],
-    ( if proc_info_is_valid_mode(ProcInfo) then
+    look_up_proc_mode_errors(!.ModeInfo, PredId, ProcId, ProcModeErrors),
+    (
+        ProcModeErrors = [],
         modecheck_var_has_inst_list_no_exact_match(ArgVars0, InitialInsts, 0,
             InstVarSub, !ModeInfo)
-    else
+    ;
+        ProcModeErrors = [_ | _],
         modecheck_var_has_inst_list_exact_match(ArgVars0, InitialInsts, 0,
             InstVarSub, !ModeInfo)
     ),
@@ -269,7 +273,7 @@ modecheck_find_matching_modes([ProcId | ProcIds], ProcTable, ArgVars0,
     ),
 
     % Keep trying with the other modes for the called pred.
-    modecheck_find_matching_modes(ProcIds, ProcTable, ArgVars0,
+    modecheck_find_matching_modes(PredId, ProcTable, ArgVars0, ProcIds,
         !RevMatchingProcModes, !RevProcInitialInsts, !WaitingVars, !ModeInfo).
 
 %---------------------%

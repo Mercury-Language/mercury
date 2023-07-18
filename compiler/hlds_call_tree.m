@@ -244,13 +244,7 @@ gather_pred_callees(PredIdTable, LocalPredIds, [HeadPredId | TailPredIds],
 
 find_first_valid_proc([], _) :-
     fail.
-find_first_valid_proc([_ProcId - ProcInfo | ProcIdsInfos],
-        FirstValidProcInfo) :-
-    ( if proc_info_is_valid_mode(ProcInfo) then
-        FirstValidProcInfo = ProcInfo
-    else
-        find_first_valid_proc(ProcIdsInfos, FirstValidProcInfo)
-    ).
+find_first_valid_proc([_ProcId - ProcInfo | _ProcIdsInfos], ProcInfo).
 
 %---------------------%
 

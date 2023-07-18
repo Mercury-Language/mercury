@@ -127,7 +127,7 @@ detect_non_contiguous_pred_decls(ModuleInfo, WarnPredDeclDefnOrder, PredId,
         MaybePredDeclItemNumber = item_seq_num(PredDeclItemNumber)
     then
         pred_info_get_proc_table(PredInfo, ProcTable),
-        map.foldl2_values(gather_proc_item_numbers, ProcTable,
+        map.foldl3(gather_proc_item_numbers, ProcTable, 0, _,
             [], UnsortedProcINCs, proc_contiguity_makes_sense, MakesSense),
         list.sort(UnsortedProcINCs, ProcINCs),
         ( if
@@ -193,12 +193,14 @@ detect_non_contiguous_pred_decls(ModuleInfo, WarnPredDeclDefnOrder, PredId,
     --->    proc_contiguity_makes_sense
     ;       proc_contiguity_does_not_makes_sense.
 
-:- pred gather_proc_item_numbers(proc_info::in,
-    list(inc)::in, list(inc)::out,
+:- pred gather_proc_item_numbers(proc_id::in, proc_info::in,
+    int::in, int::out, list(inc)::in, list(inc)::out,
     proc_contiguity::in, proc_contiguity::out) is det.
 
-gather_proc_item_numbers(ProcInfo, !ProcINCs, !MakesSense) :-
-    ( if proc_info_is_valid_mode(ProcInfo) then
+gather_proc_item_numbers(ProcId, ProcInfo, !ExpectedProcNum,
+        !ProcINCs, !MakesSense) :-
+    ( if proc_id_to_int(ProcId) = !.ExpectedProcNum then
+        !:ExpectedProcNum = !.ExpectedProcNum + 1,
         proc_info_get_item_number(ProcInfo, ItemNumber),
         (
             ItemNumber = item_seq_num(SeqNum),
@@ -216,11 +218,21 @@ gather_proc_item_numbers(ProcInfo, !ProcINCs, !MakesSense) :-
             !:MakesSense = proc_contiguity_does_not_makes_sense
         )
     else
-        % We must have already generated an error message that says
-        % *why* the invalid procedure is invalid. Fixing that error
-        % may also fix any current non-contiguity in the procedures'
-        % item numbers. Generating an error message for such
-        % non-contiguities here could therefore be misleading.
+        % There is a missing procedure number in the sequence of procedures
+        % in this predicate. We delete procedures from predicates only when
+        % we detect an error in them. When we did so, we must have already
+        % generated a message for that error. Fixing that error may also
+        % fix any current non-contiguity in the procedures' item numbers.
+        % Generating an error message for such non-contiguities here
+        % could therefore be misleading.
+        %
+        % XXX If the only procedure in a predicate that has been deleted
+        % due to a mode error is the last one, then execution won't get here,
+        % and so in that case we *can* generate just such a potentially
+        % misleading message.
+        %
+        % Given this fact, should we just generate warnings regardless of
+        % the presence of any invalid modes?
         !:MakesSense = proc_contiguity_does_not_makes_sense
     ).
 

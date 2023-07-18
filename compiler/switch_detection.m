@@ -171,7 +171,7 @@ detect_switches_in_preds(ProgressStream, Info, ValidPredIdSet,
     switch_detect_info::in, pred_id::in, pred_info::in, pred_info::out) is det.
 
 detect_switches_in_pred(ProgressStream, Info, PredId, !PredInfo) :-
-    NonImportedProcIds = pred_info_valid_non_imported_procids(!.PredInfo),
+    NonImportedProcIds = pred_info_all_non_imported_procids(!.PredInfo),
     (
         NonImportedProcIds = [_ | _],
         trace [io(!IO)] (

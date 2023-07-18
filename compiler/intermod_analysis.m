@@ -407,26 +407,22 @@ gather_pragma_termination_for_pred(ModuleInfo, OrderPredInfo,
 
 gather_pragma_termination_for_proc(OrderPredInfo, _ProcId, ProcInfo,
         !TermInfosCord) :-
-    ( if proc_info_is_valid_mode(ProcInfo) then
-        OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
-            _PredId, PredInfo),
-        ModuleName = pred_info_module(PredInfo),
-        PredSymName = qualified(ModuleName, PredName),
-        proc_info_declared_argmodes(ProcInfo, ArgModes),
-        proc_info_get_maybe_arg_size_info(ProcInfo, MaybeArgSize),
-        proc_info_get_maybe_termination_info(ProcInfo, MaybeTermination),
-        PredNameModesPF =
-            proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
-        MaybeParseTreeArgSize =
-            maybe_arg_size_info_to_parse_tree(MaybeArgSize),
-        MaybeParseTreeTermination =
-            maybe_termination_info_to_parse_tree(MaybeTermination),
-        TermInfo = pragma_info_termination_info(PredNameModesPF,
-            MaybeParseTreeArgSize, MaybeParseTreeTermination),
-        cord.snoc(TermInfo, !TermInfosCord)
-    else
-        true
-    ).
+    OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
+        _PredId, PredInfo),
+    ModuleName = pred_info_module(PredInfo),
+    PredSymName = qualified(ModuleName, PredName),
+    proc_info_declared_argmodes(ProcInfo, ArgModes),
+    proc_info_get_maybe_arg_size_info(ProcInfo, MaybeArgSize),
+    proc_info_get_maybe_termination_info(ProcInfo, MaybeTermination),
+    PredNameModesPF =
+        proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
+    MaybeParseTreeArgSize =
+        maybe_arg_size_info_to_parse_tree(MaybeArgSize),
+    MaybeParseTreeTermination =
+        maybe_termination_info_to_parse_tree(MaybeTermination),
+    TermInfo = pragma_info_termination_info(PredNameModesPF,
+        MaybeParseTreeArgSize, MaybeParseTreeTermination),
+    cord.snoc(TermInfo, !TermInfosCord).
 
 :- func maybe_arg_size_info_to_parse_tree(maybe(arg_size_info)) =
     maybe(pragma_arg_size_info).
@@ -506,54 +502,50 @@ gather_pragma_termination2_for_pred(ModuleInfo, OrderPredInfo,
 
 gather_pragma_termination2_for_proc(OrderPredInfo, _ProcId, ProcInfo,
         !TermInfo2sCord) :-
-    ( if proc_info_is_valid_mode(ProcInfo) then
-        OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
-            _PredId, PredInfo),
-        ModuleName = pred_info_module(PredInfo),
-        PredSymName = qualified(ModuleName, PredName),
+    OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
+        _PredId, PredInfo),
+    ModuleName = pred_info_module(PredInfo),
+    PredSymName = qualified(ModuleName, PredName),
 
-        proc_info_declared_argmodes(ProcInfo, ArgModes),
-        proc_info_get_termination2_info(ProcInfo, Term2Info),
-        MaybeSuccessConstraints = term2_info_get_success_constrs(Term2Info),
-        MaybeFailureConstraints = term2_info_get_failure_constrs(Term2Info),
-        MaybeTermination = term2_info_get_term_status(Term2Info),
+    proc_info_declared_argmodes(ProcInfo, ArgModes),
+    proc_info_get_termination2_info(ProcInfo, Term2Info),
+    MaybeSuccessConstraints = term2_info_get_success_constrs(Term2Info),
+    MaybeFailureConstraints = term2_info_get_failure_constrs(Term2Info),
+    MaybeTermination = term2_info_get_term_status(Term2Info),
 
-        % NOTE: If this predicate is changed, then parse_pragma.m must also
-        % be changed, so that it can parse the resulting pragmas.
-        PredNameModesPF =
-            proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
+    % NOTE: If this predicate is changed, then parse_pragma.m must also
+    % be changed, so that it can parse the resulting pragmas.
+    PredNameModesPF =
+        proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
 
-        proc_info_get_headvars(ProcInfo, HeadVars),
-        SizeVarMap = term2_info_get_size_var_map(Term2Info),
-        HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadVars),
-        list.length(HeadVars, NumHeadSizeVars),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    SizeVarMap = term2_info_get_size_var_map(Term2Info),
+    HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadVars),
+    list.length(HeadVars, NumHeadSizeVars),
 
-        HeadSizeVarIds = 0 .. NumHeadSizeVars - 1,
-        map.det_insert_from_corresponding_lists(HeadSizeVars, HeadSizeVarIds,
-            map.init, VarToVarIdMap),
-        maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
-            MaybeSuccessConstraints, MaybeSuccessArgSizeInfo),
-        maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
-            MaybeFailureConstraints, MaybeFailureArgSizeInfo),
+    HeadSizeVarIds = 0 .. NumHeadSizeVars - 1,
+    map.det_insert_from_corresponding_lists(HeadSizeVars, HeadSizeVarIds,
+        map.init, VarToVarIdMap),
+    maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
+        MaybeSuccessConstraints, MaybeSuccessArgSizeInfo),
+    maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
+        MaybeFailureConstraints, MaybeFailureArgSizeInfo),
 
-        (
-            MaybeTermination = no,
-            MaybePragmaTermination = no
-        ;
-            MaybeTermination = yes(cannot_loop(_)),
-            MaybePragmaTermination = yes(cannot_loop(unit))
-        ;
-            MaybeTermination = yes(can_loop(_)),
-            MaybePragmaTermination = yes(can_loop(unit))
-        ),
+    (
+        MaybeTermination = no,
+        MaybePragmaTermination = no
+    ;
+        MaybeTermination = yes(cannot_loop(_)),
+        MaybePragmaTermination = yes(cannot_loop(unit))
+    ;
+        MaybeTermination = yes(can_loop(_)),
+        MaybePragmaTermination = yes(can_loop(unit))
+    ),
 
-        TermInfo2 = pragma_info_termination2_info(PredNameModesPF,
-            MaybeSuccessArgSizeInfo, MaybeFailureArgSizeInfo,
-            MaybePragmaTermination),
-        cord.snoc(TermInfo2, !TermInfo2sCord)
-    else
-        true
-    ).
+    TermInfo2 = pragma_info_termination2_info(PredNameModesPF,
+        MaybeSuccessArgSizeInfo, MaybeFailureArgSizeInfo,
+        MaybePragmaTermination),
+    cord.snoc(TermInfo2, !TermInfo2sCord).
 
 %---------------------%
 
@@ -626,7 +618,6 @@ gather_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
     OrderPredInfo = order_pred_info(PredName, UserArity, PredOrFunc,
         PredId, PredInfo),
     ( if
-        proc_info_is_valid_mode(ProcInfo),
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
         not is_unify_index_or_compare_pred(PredInfo),
 
@@ -685,7 +676,6 @@ gather_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo,
         PredId, PredInfo),
     proc_info_get_trailing_info(ProcInfo, MaybeProcTrailingInfo),
     ( if
-        proc_info_is_valid_mode(ProcInfo),
         MaybeProcTrailingInfo = yes(ProcTrailingInfo),
         should_write_trailing_info(ModuleInfo, PredId, ProcId, PredInfo,
             for_pragma, ShouldWrite),
@@ -731,7 +721,6 @@ gather_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo,
         PredId, PredInfo),
     proc_info_get_mm_tabling_info(ProcInfo, MaybeProcMMTablingInfo),
     ( if
-        proc_info_is_valid_mode(ProcInfo),
         MaybeProcMMTablingInfo = yes(ProcMMTablingInfo),
         should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo,
             for_pragma, ShouldWrite),
@@ -776,7 +765,6 @@ gather_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
     ( if
-        proc_info_is_valid_mode(ProcInfo),
         should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
             for_pragma, ShouldWrite),
         ShouldWrite = should_write,
@@ -827,7 +815,6 @@ gather_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
     ( if
-        proc_info_is_valid_mode(ProcInfo),
         should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
             for_pragma, ShouldWrite),
         ShouldWrite = should_write,

@@ -1152,7 +1152,7 @@ search_trail_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus,
 
 maybe_record_trailing_result(ModuleInfo, PredId, !AnalysisInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_valid_procids(PredInfo),
+    ProcIds = pred_info_all_procids(PredInfo),
     list.foldl(maybe_record_trailing_result_2(ModuleInfo, PredId, PredInfo),
         ProcIds, !AnalysisInfo).
 

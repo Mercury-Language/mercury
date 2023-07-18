@@ -79,7 +79,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % modecheck_module(ProgressStream, !HLDS, SafeToContinue, Specs):
+    % modecheck_module(ProgressStream, !HLDS, !ProcModeErrorMap,
+    %   SafeToContinue, Specs):
     %
     % Perform mode inference and checking for a whole module.
     %
@@ -107,8 +108,9 @@
     % which is true iff another pass of fixpoint analysis may be needed.
     %
 :- pred modecheck_proc(pred_id::in, proc_id::in,
-    module_info::in, module_info::out, bool::out,
-    list(error_spec)::out) is det.
+    module_info::in, module_info::out,
+    proc_mode_error_map::in, proc_mode_error_map::out,
+    bool::out, list(error_spec)::out) is det.
 
     % Mode-check or unique-mode-check the code for the given predicate
     % in a given mode.
@@ -117,8 +119,9 @@
     %
 :- pred modecheck_proc_general(how_to_check_goal::in,
     may_change_called_proc::in, pred_id::in, proc_id::in,
-    module_info::in, module_info::out, bool::out,
-    list(error_spec)::out) is det.
+    module_info::in, module_info::out,
+    proc_mode_error_map::in, proc_mode_error_map::out,
+    bool::out, list(error_spec)::out) is det.
 
     % Check that the actual final insts of the head vars of a lambda goal
     % matches their expected final insts.
@@ -200,26 +203,32 @@ modecheck_module(ProgressStream, !ModuleInfo, SafeToContinue, Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-check_pred_modes(ProgressStream, WhatToCheck, MayChangeCalledProc, !ModuleInfo,
-        SafeToContinue, !:Specs) :-
+check_pred_modes(ProgressStream, WhatToCheck, MayChangeCalledProc,
+        !ModuleInfo, SafeToContinue, !:Specs) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_int_option(Globals, mode_inference_iteration_limit,
         MaxIterations),
+    map.init(ProcModeErrorMap0),
     modecheck_to_fixpoint(ProgressStream, PredIds, MaxIterations, WhatToCheck,
-        MayChangeCalledProc, !ModuleInfo, SafeToContinue0, !:Specs),
+        MayChangeCalledProc, !ModuleInfo, ProcModeErrorMap0, ProcModeErrorMap1,
+        SafeToContinue0, !:Specs),
     (
         WhatToCheck = check_unique_modes,
+        ProcModeErrorMap = ProcModeErrorMap1,
         report_mode_inference_messages_for_preds(!.ModuleInfo,
-            include_detism_on_modes, PredIds, !Specs),
-        module_check_eval_methods_and_main(!.ModuleInfo, !Specs),
+            ProcModeErrorMap, include_detism_on_modes, PredIds, !Specs),
+        module_check_eval_methods_and_main(!.ModuleInfo, ProcModeErrorMap,
+            !Specs),
         SafeToContinue = SafeToContinue0
     ;
         WhatToCheck = check_modes,
         (
             SafeToContinue0 = unsafe_to_continue,
+            ProcModeErrorMap = ProcModeErrorMap1,
             report_mode_inference_messages_for_preds(!.ModuleInfo,
-                do_not_include_detism_on_modes, PredIds, !Specs),
+                ProcModeErrorMap, do_not_include_detism_on_modes, PredIds,
+                !Specs),
             SafeToContinue = unsafe_to_continue
         ;
             SafeToContinue0 = safe_to_continue,
@@ -230,6 +239,7 @@ check_pred_modes(ProgressStream, WhatToCheck, MayChangeCalledProc, !ModuleInfo,
                 BeforeDPISafeToContinue = SafeToContinue0,
                 BeforeDPISpecs = !.Specs,
                 BeforeDPIModuleInfo = !.ModuleInfo,
+                BeforeDPIProcModeErrorMap = ProcModeErrorMap1,
                 delay_partial_inst_preds(ProgressStream, PredIds, ChangedPreds,
                     !ModuleInfo),
                 % --delay-partial-instantiations requires mode checking to be
@@ -237,6 +247,7 @@ check_pred_modes(ProgressStream, WhatToCheck, MayChangeCalledProc, !ModuleInfo,
                 modecheck_to_fixpoint(ProgressStream, ChangedPreds,
                     MaxIterations, WhatToCheck, MayChangeCalledProc,
                     !.ModuleInfo, AfterDPIModuleInfo,
+                    ProcModeErrorMap1, AfterDPIProcModeErrorMap,
                     AfterDPISafeToContinue, AfterDPISpecs),
                 MaybeBeforeDPISeverity =
                     worst_severity_in_specs(Globals, BeforeDPISpecs),
@@ -263,6 +274,7 @@ check_pred_modes(ProgressStream, WhatToCheck, MayChangeCalledProc, !ModuleInfo,
                     % are equivalent. Pick one.
                     !:Specs = AfterDPISpecs,
                     !:ModuleInfo = AfterDPIModuleInfo,
+                    ProcModeErrorMap = AfterDPIProcModeErrorMap,
                     SafeToContinue = AfterDPISafeToContinue
                 ;
                     MaybeBeforeDPISeverity = no,
@@ -270,6 +282,7 @@ check_pred_modes(ProgressStream, WhatToCheck, MayChangeCalledProc, !ModuleInfo,
                     % delay_partial_inst introduced a problem. Undo its effect.
                     !:Specs = BeforeDPISpecs,
                     !:ModuleInfo = BeforeDPIModuleInfo,
+                    ProcModeErrorMap = BeforeDPIProcModeErrorMap,
                     SafeToContinue = BeforeDPISafeToContinue
                 ;
                     MaybeBeforeDPISeverity = yes(_),
@@ -277,6 +290,7 @@ check_pred_modes(ProgressStream, WhatToCheck, MayChangeCalledProc, !ModuleInfo,
                     % delay_partial_inst fixed a problem. Keep its effect.
                     !:Specs = AfterDPISpecs,
                     !:ModuleInfo = AfterDPIModuleInfo,
+                    ProcModeErrorMap = AfterDPIProcModeErrorMap,
                     SafeToContinue = AfterDPISafeToContinue
                 ;
                     MaybeBeforeDPISeverity = yes(BeforeDPISeverity),
@@ -300,19 +314,55 @@ check_pred_modes(ProgressStream, WhatToCheck, MayChangeCalledProc, !ModuleInfo,
                     ( if AfterDPISeverity = WorstSeverity then
                         !:Specs = BeforeDPISpecs,
                         !:ModuleInfo = BeforeDPIModuleInfo,
+                        ProcModeErrorMap = BeforeDPIProcModeErrorMap,
                         SafeToContinue = BeforeDPISafeToContinue
                     else
                         !:Specs = AfterDPISpecs,
                         !:ModuleInfo = AfterDPIModuleInfo,
+                        ProcModeErrorMap = AfterDPIProcModeErrorMap,
                         SafeToContinue = AfterDPISafeToContinue
                     )
                 )
             ;
                 DelayPartialInstantiations = no,
+                ProcModeErrorMap = ProcModeErrorMap1,
                 SafeToContinue = safe_to_continue
-            )
+            ),
+            % When we stored lists of mode_error_infos in proc_infos,
+            % we used to print out mode inference messages for all procedures
+            % at the last opportunity, which was
+            % - either when it was unsafe to continue,
+            % - or after doing unique mode checking.
+            % Now that we store lists of mode_error_infos in ProcModeErrorMap,
+            % this continues to be the case for all procedures *except*
+            % the ones we are about to delete below. So for these,
+            % we print any such messages now.
+            %
+            % XXX We *could* pass the ProcModeErrorMap to unique mode checking
+            % and let it start with that, instead of with an empty map.
+            % That would also work, but this code here is simpler.
+            map.keys(ProcModeErrorMap, ToBeDeletedPredIds),
+            report_mode_inference_messages_for_preds(!.ModuleInfo,
+                ProcModeErrorMap, do_not_include_detism_on_modes,
+                ToBeDeletedPredIds, !Specs)
         )
-    ).
+    ),
+    % We used to include the mode_error_infos related to each procedure
+    % in that procedure's proc_info, marking it as invalid, and therefore
+    % to be ignored by later passes. We now just delete invalid procedures.
+    map.foldl(delete_invalid_procs_from_pred, ProcModeErrorMap, !ModuleInfo).
+
+:- pred delete_invalid_procs_from_pred(pred_id::in,
+    map(proc_id, list(mode_error_info))::in,
+    module_info::in, module_info::out) is det.
+
+delete_invalid_procs_from_pred(PredId, ProcMap, !ModuleInfo) :-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    pred_info_get_proc_table(PredInfo0, ProcTable0),
+    map.keys(ProcMap, ProcIdsToDelete),
+    map.delete_list(ProcIdsToDelete, ProcTable0, ProcTable),
+    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
     % Iterate over the list of pred_ids in a module.
     % XXX Document this predicate rather better than that.
@@ -396,24 +446,26 @@ check_pred_modes(ProgressStream, WhatToCheck, MayChangeCalledProc, !ModuleInfo,
     %
 :- pred modecheck_to_fixpoint(io.text_output_stream::in, list(pred_id)::in,
     int::in, how_to_check_goal::in, may_change_called_proc::in,
-    module_info::in, module_info::out, maybe_safe_to_continue::out,
-    list(error_spec)::out) is det.
+    module_info::in, module_info::out,
+    proc_mode_error_map::in, proc_mode_error_map::out,
+    maybe_safe_to_continue::out, list(error_spec)::out) is det.
 
 modecheck_to_fixpoint(ProgressStream, PredIds, NumIterationsLeft, WhatToCheck,
-        MayChangeCalledProc, !ModuleInfo, SafeToContinue, !:Specs) :-
+        MayChangeCalledProc, !ModuleInfo, !ProcModeErrorMap,
+        SafeToContinue, !:Specs) :-
     % Save the old procedure bodies, so that we can restore any procedure body 
     % for the next pass if necessary.
     module_info_get_pred_id_table(!.ModuleInfo, OldPredIdTable0),
 
     % Analyze every procedure whose "CanProcess" flag is `can_process_now'.
-    list.foldl3(
+    list.foldl4(
         maybe_modecheck_pred(ProgressStream, WhatToCheck, MayChangeCalledProc),
-        PredIds, !ModuleInfo, no, Changed1, [], !:Specs),
+        PredIds, !ModuleInfo, !ProcModeErrorMap, no, Changed1, [], !:Specs),
 
     % Analyze the procedures whose "CanProcess" flag was cannot_process_yet;
     % those procedures were inserted into the unify requests queue.
     modecheck_queued_procs(WhatToCheck, OldPredIdTable0, OldPredIdTable,
-        !ModuleInfo, Changed1, Changed, !Specs),
+        !ModuleInfo, !ProcModeErrorMap, Changed1, Changed, !Specs),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     ErrorsSoFar = contains_errors(Globals, !.Specs),
@@ -440,8 +492,8 @@ modecheck_to_fixpoint(ProgressStream, PredIds, NumIterationsLeft, WhatToCheck,
                 (
                     DebugModes = yes,
                     report_mode_inference_messages_for_preds(!.ModuleInfo,
-                        do_not_include_detism_on_modes, PredIds,
-                        [], InferenceSpecs),
+                        !.ProcModeErrorMap, do_not_include_detism_on_modes,
+                        PredIds, [], InferenceSpecs),
                     trace [io(!IO)] (
                         module_info_get_name(!.ModuleInfo, ModuleName),
                         get_debug_output_stream(Globals, ModuleName,
@@ -483,7 +535,7 @@ modecheck_to_fixpoint(ProgressStream, PredIds, NumIterationsLeft, WhatToCheck,
 
                 modecheck_to_fixpoint(ProgressStream, PredIds,
                     NumIterationsLeft - 1, WhatToCheck, MayChangeCalledProc,
-                    !ModuleInfo, SafeToContinue, !:Specs)
+                    !ModuleInfo, !ProcModeErrorMap, SafeToContinue, !:Specs)
             )
         )
     ).
@@ -583,10 +635,11 @@ should_modecheck_pred(PredInfo) = ShouldModeCheck :-
 
 :- pred maybe_modecheck_pred(io.text_output_stream::in, how_to_check_goal::in,
     may_change_called_proc::in, pred_id::in, module_info::in, module_info::out,
+    proc_mode_error_map::in, proc_mode_error_map::out,
     bool::in, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
 
 maybe_modecheck_pred(ProgressStream, WhatToCheck, MayChangeCalledProc, PredId,
-        !ModuleInfo, !Changed, !Specs) :-
+        !ModuleInfo, !ProcModeErrorMap, !Changed, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     ShouldModeCheck = should_modecheck_pred(PredInfo0),
     (
@@ -598,7 +651,7 @@ maybe_modecheck_pred(ProgressStream, WhatToCheck, MayChangeCalledProc, PredId,
                 WhatToCheck, PredId, PredInfo0, !IO)
         ),
         do_modecheck_pred(PredId, PredInfo0, WhatToCheck,
-            MayChangeCalledProc, !ModuleInfo, !Changed,
+            MayChangeCalledProc, !ModuleInfo, !ProcModeErrorMap, !Changed,
             ThisPredDeclSpecs, ThisPredProcSpecs),
         !:Specs = ThisPredDeclSpecs ++ ThisPredProcSpecs ++ !.Specs,
         % The lack of a mode declaration for the predicate is not a reason
@@ -650,11 +703,12 @@ maybe_write_modes_progress_message(ProgressStream, ModuleInfo, WhatToCheck,
 
 :- pred do_modecheck_pred(pred_id::in, pred_info::in,
     how_to_check_goal::in, may_change_called_proc::in,
-    module_info::in, module_info::out, bool::in, bool::out,
-    list(error_spec)::out, list(error_spec)::out) is det.
+    module_info::in, module_info::out,
+    proc_mode_error_map::in, proc_mode_error_map::out,
+    bool::in, bool::out, list(error_spec)::out, list(error_spec)::out) is det.
 
 do_modecheck_pred(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, !Changed, DeclSpecs, ProcSpecs) :-
+        !ModuleInfo, !ProcModeErrorMap, !Changed, DeclSpecs, ProcSpecs) :-
     (
         WhatToCheck = check_modes,
         pred_info_get_proc_table(PredInfo0, ProcTable),
@@ -675,13 +729,11 @@ do_modecheck_pred(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
         WhatToCheck = check_unique_modes,
         DeclSpecs = []
     ),
-    % Note that we use pred_info_valid_procids, rather than
-    % pred_info_all_procids here, which means that we don't process modes
-    % that have already been inferred as invalid.
     pred_info_get_proc_table(PredInfo0, ProcTable0),
-    ProcIds = pred_info_valid_procids(PredInfo0),
+    ProcIds = pred_info_all_procids(PredInfo0),
     maybe_modecheck_procs(WhatToCheck, MayChangeCalledProc, PredId, ProcTable0,
-        ProcIds, !ModuleInfo, !Changed, init_error_spec_accumulator, SpecsAcc),
+        ProcIds, !ModuleInfo, !ProcModeErrorMap, !Changed,
+        init_error_spec_accumulator, SpecsAcc),
     ProcSpecs = error_spec_accumulator_to_list(SpecsAcc).
 
     % Return an error for a predicate with no mode declarations
@@ -748,60 +800,74 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
     %
 :- pred maybe_modecheck_procs(how_to_check_goal::in,
     may_change_called_proc::in, pred_id::in, proc_table::in, list(proc_id)::in,
-    module_info::in, module_info::out, bool::in, bool::out,
+    module_info::in, module_info::out,
+    proc_mode_error_map::in, proc_mode_error_map::out, bool::in, bool::out,
     error_spec_accumulator::in, error_spec_accumulator::out) is det.
 
-maybe_modecheck_procs(_, _, _, _, [], !ModuleInfo, !Changed, !Specs).
+maybe_modecheck_procs(_, _, _, _, [],
+        !ModuleInfo, !ProcModeErrorMap, !Changed, !SpecsAcc).
 maybe_modecheck_procs(WhatToCheck, MayChangeCalledProc, PredId, ProcTable0,
-        [ProcId | ProcIds], !ModuleInfo, !Changed, !SpecsAcc) :-
+        [ProcId | ProcIds],
+        !ModuleInfo, !ProcModeErrorMap, !Changed, !SpecsAcc) :-
     map.lookup(ProcTable0, ProcId, ProcInfo0),
-    maybe_modecheck_proc(WhatToCheck, MayChangeCalledProc,
-        PredId, ProcId, ProcInfo0, !ModuleInfo, !Changed, ProcSpecs),
+    maybe_modecheck_proc(WhatToCheck, MayChangeCalledProc, PredId, ProcId,
+        ProcInfo0, !ModuleInfo, !ProcModeErrorMap, !Changed, ProcSpecs),
     accumulate_error_specs_for_proc(ProcSpecs, !SpecsAcc),
     maybe_modecheck_procs(WhatToCheck, MayChangeCalledProc, PredId, ProcTable0,
-        ProcIds, !ModuleInfo, !Changed, !SpecsAcc).
+        ProcIds, !ModuleInfo, !ProcModeErrorMap, !Changed, !SpecsAcc).
 
 %-----------------------------------------------------------------------------%
 
-modecheck_proc(PredId, ProcId, !ModuleInfo, Changed, Specs) :-
+modecheck_proc(PredId, ProcId, !ModuleInfo, !ProcModeErrorMap,
+        Changed, Specs) :-
     modecheck_proc_general(check_modes, may_change_called_proc,
-        PredId, ProcId, !ModuleInfo, Changed, Specs).
+        PredId, ProcId, !ModuleInfo, !ProcModeErrorMap, Changed, Specs).
 
 modecheck_proc_general(WhatToCheck, MayChangeCalledProc, PredId, ProcId,
-        !ModuleInfo, Changed, Specs) :-
+        !ModuleInfo, !ProcModeErrorMap, Changed, Specs) :-
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         _PredInfo, ProcInfo),
     maybe_modecheck_proc(WhatToCheck, MayChangeCalledProc,
-        PredId, ProcId, ProcInfo, !ModuleInfo, no, Changed, Specs).
+        PredId, ProcId, ProcInfo, !ModuleInfo, !ProcModeErrorMap,
+        no, Changed, Specs).
 
 :- pred maybe_modecheck_proc(how_to_check_goal::in, may_change_called_proc::in,
     pred_id::in, proc_id::in, proc_info::in,
-    module_info::in, module_info::out, bool::in, bool::out,
-    list(error_spec)::out) is det.
+    module_info::in, module_info::out,
+    proc_mode_error_map::in, proc_mode_error_map::out,
+    bool::in, bool::out, list(error_spec)::out) is det.
 
 maybe_modecheck_proc(WhatToCheck, MayChangeCalledProc,
-        PredId, ProcId, ProcInfo0, !ModuleInfo, !Changed, Specs) :-
+        PredId, ProcId, ProcInfo0, !ModuleInfo, !ProcModeErrorMap,
+        !Changed, Specs) :-
+    look_up_proc_mode_errors_raw(!.ProcModeErrorMap, PredId, ProcId,
+        ProcModeErrors),
     proc_info_get_can_process(ProcInfo0, CanProcess),
-    (
-        CanProcess = cannot_process_yet,
-        Specs = []
-    ;
-        CanProcess = can_process_now,
+    ( if
+        % We don't want to process modes that have already been inferred
+        % as invalid.
+        ProcModeErrors = [],
+        CanProcess = can_process_now
+    then
         definitely_modecheck_proc(WhatToCheck, MayChangeCalledProc,
-            PredId, ProcId, ProcInfo0, !ModuleInfo, !Changed, Specs)
+            PredId, ProcId, ProcInfo0,
+            !ModuleInfo, !ProcModeErrorMap, !Changed, Specs)
+    else
+        Specs = []
     ).
 
 :- pred definitely_modecheck_proc(how_to_check_goal::in,
     may_change_called_proc::in, pred_id::in, proc_id::in, proc_info::in,
-    module_info::in, module_info::out, bool::in, bool::out,
-    list(error_spec)::out) is det.
+    module_info::in, module_info::out,
+    proc_mode_error_map::in, proc_mode_error_map::out,
+    bool::in, bool::out, list(error_spec)::out) is det.
 
-definitely_modecheck_proc(WhatToCheck, MayChangeCalledProc,
-        PredId, ProcId, ProcInfo0, !ModuleInfo, !Changed, Specs) :-
+definitely_modecheck_proc(WhatToCheck, MayChangeCalledProc, PredId, ProcId,
+        ProcInfo0, !ModuleInfo, !ProcModeErrorMap, !Changed, Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
         PredId, PredInfo0, ProcId, ProcInfo0, ProcInfo, ClausesInfo,
-        !ModuleInfo, !Changed, Specs),
+        !ModuleInfo, !ProcModeErrorMap, !Changed, Specs),
 
     % We get the pred_info from the ModuleInfo *again*, because
     % while we are doing mode inference on one procedure of a predicate,
@@ -826,11 +892,12 @@ definitely_modecheck_proc(WhatToCheck, MayChangeCalledProc,
 :- pred do_modecheck_proc(how_to_check_goal::in, may_change_called_proc::in,
     pred_id::in, pred_info::in, proc_id::in, proc_info::in, proc_info::out,
     clauses_info::out, module_info::in, module_info::out,
+    proc_mode_error_map::in, proc_mode_error_map::out,
     bool::in, bool::out, list(error_spec)::out) is det.
 
 do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
         PredId, PredInfo0, ProcId, !ProcInfo, ClausesInfo,
-        !ModuleInfo, !Changed, ErrorAndWarningSpecs) :-
+        !ModuleInfo, !ProcModeErrorMap, !Changed, ErrorAndWarningSpecs) :-
     pred_info_get_markers(PredInfo0, Markers),
     ( if check_marker(Markers, marker_infer_modes) then
         InferModes = do_infer_modes
@@ -880,9 +947,9 @@ do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
         get_constrained_inst_vars(!.ModuleInfo, ArgModes0, HeadInstVars),
 
         % Initialize the mode info.
-        mode_info_init(!.ModuleInfo, PredId, ProcId, Context, LiveVars,
-            HeadInstVars, InstMap0, WhatToCheck, MayChangeCalledProc,
-            !:ModeInfo),
+        mode_info_init(!.ModuleInfo, !.ProcModeErrorMap, PredId, ProcId,
+            Context, LiveVars, HeadInstVars, InstMap0, WhatToCheck,
+            MayChangeCalledProc, !:ModeInfo),
         mode_info_set_changed_flag(!.Changed, !ModeInfo),
 
         mode_list_get_final_insts(!.ModuleInfo, ArgModes0, ArgFinalInsts0),
@@ -897,7 +964,8 @@ do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
             % For inferred predicates, we don't report the error(s) here;
             % instead we just save them in the proc_info, thus marking that
             % procedure as invalid.
-            proc_info_set_mode_errors(ModeErrors, !ProcInfo),
+            set_proc_mode_errors(PredId, ProcId, ModeErrors,
+                !ProcModeErrorMap),
             ErrorAndWarningSpecs = []
         ;
             InferModes = do_not_infer_modes,
@@ -1153,10 +1221,11 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, IsUnifyPred,
     %
 :- pred modecheck_queued_procs(how_to_check_goal::in,
     pred_id_table::in, pred_id_table::out, module_info::in, module_info::out,
+    proc_mode_error_map::in, proc_mode_error_map::out,
     bool::in, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
 
 modecheck_queued_procs(HowToCheckGoal, !OldPredIdTable, !ModuleInfo,
-        !Changed, !Specs) :-
+        !ProcModeErrorMap, !Changed, !Specs) :-
     module_info_get_proc_requests(!.ModuleInfo, Requests0),
     get_req_queue(Requests0, RequestQueue0),
     ( if queue.get(PredProcId, RequestQueue0, RequestQueue1) then
@@ -1178,7 +1247,8 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredIdTable, !ModuleInfo,
                     HowToCheckGoal, !IO)
             ),
             modecheck_queued_proc(HowToCheckGoal, PredProcId,
-                !OldPredIdTable, !ModuleInfo, HeadChanged, HeadSpecs),
+                !OldPredIdTable, !ModuleInfo, !ProcModeErrorMap,
+                HeadChanged, HeadSpecs),
             bool.or(HeadChanged, !Changed),
             !:Specs = HeadSpecs ++ !.Specs
         else
@@ -1186,7 +1256,7 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredIdTable, !ModuleInfo,
         ),
         disable_warning [suspicious_recursion] (
             modecheck_queued_procs(HowToCheckGoal, !OldPredIdTable,
-                !ModuleInfo, !Changed, !Specs)
+                !ModuleInfo, !ProcModeErrorMap, !Changed, !Specs)
         )
     else
         true
@@ -1217,11 +1287,13 @@ queued_proc_progress_message(ModuleInfo, PredProcId, HowToCheckGoal, !IO) :-
     ).
 
 :- pred modecheck_queued_proc(how_to_check_goal::in, pred_proc_id::in,
-    pred_id_table::in, pred_id_table::out, module_info::in, module_info::out,
+    pred_id_table::in, pred_id_table::out,
+    module_info::in, module_info::out,
+    proc_mode_error_map::in, proc_mode_error_map::out,
     bool::out, list(error_spec)::out) is det.
 
-modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredIdTable, !ModuleInfo,
-        !:Changed, Specs) :-
+modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredIdTable,
+        !ModuleInfo, !ProcModeErrorMap, !:Changed, Specs) :-
     PredProcId = proc(PredId, ProcId),
 
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
@@ -1235,7 +1307,8 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredIdTable, !ModuleInfo,
 
     % Modecheck the procedure.
     definitely_modecheck_proc(check_modes, may_change_called_proc,
-        PredId, ProcId, ProcInfo1, !ModuleInfo, no, !:Changed, ModeSpecs),
+        PredId, ProcId, ProcInfo1, !ModuleInfo, !ProcModeErrorMap,
+        no, !:Changed, ModeSpecs),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     ModeErrors = contains_errors(Globals, ModeSpecs),
@@ -1261,9 +1334,10 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredIdTable, !ModuleInfo,
             determinism_check_proc(PredId, ProcId, !ModuleInfo, DetismSpecs),
             expect(unify(DetismSpecs, []), $pred, "found detism error"),
             save_proc_info(!.ModuleInfo, ProcId, PredId, !OldPredIdTable),
-            unique_modes_check_proc(PredId, ProcId, !ModuleInfo,
-                NewChanged, UniqueSpecs),
-            bool.or(NewChanged, !Changed),
+            modecheck_proc_general(check_unique_modes, may_change_called_proc,
+                PredId, ProcId, !ModuleInfo, !ProcModeErrorMap,
+                UniqueChanged, UniqueSpecs),
+            bool.or(UniqueChanged, !Changed),
             Specs = ModeSpecs ++ UniqueSpecs
         ;
             HowToCheckGoal = check_modes,
@@ -1577,67 +1651,81 @@ check_final_inst(InferModes, GroundMatchesBound,
     % We also check the mode of main/2 here.
     %
 :- pred module_check_eval_methods_and_main(module_info::in,
+    proc_mode_error_map::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_check_eval_methods_and_main(ModuleInfo, !Specs) :-
+module_check_eval_methods_and_main(ModuleInfo, ProcModeErrorMap, !Specs) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-    pred_check_eval_methods_and_main(ModuleInfo, PredIds, !Specs).
+    pred_check_eval_methods_and_main(ModuleInfo, ProcModeErrorMap, PredIds,
+        !Specs).
 
-:- pred pred_check_eval_methods_and_main(module_info::in, list(pred_id)::in,
+:- pred pred_check_eval_methods_and_main(module_info::in,
+    proc_mode_error_map::in, list(pred_id)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-pred_check_eval_methods_and_main(_, [], !Specs).
-pred_check_eval_methods_and_main(ModuleInfo, [PredId | PredIds], !Specs) :-
+pred_check_eval_methods_and_main(_, _, [], !Specs).
+pred_check_eval_methods_and_main(ModuleInfo, ProcModeErrorMap,
+        [PredId | PredIds], !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_valid_procids(PredInfo),
-    proc_check_eval_methods_and_main(ModuleInfo, PredInfo, ProcIds, !Specs),
-    pred_check_eval_methods_and_main(ModuleInfo, PredIds, !Specs).
+    ProcIds = pred_info_all_procids(PredInfo),
+    proc_check_eval_methods_and_main(ModuleInfo, ProcModeErrorMap,
+        PredId, PredInfo, ProcIds, !Specs),
+    pred_check_eval_methods_and_main(ModuleInfo, ProcModeErrorMap, PredIds,
+        !Specs).
 
-:- pred proc_check_eval_methods_and_main(module_info::in, pred_info::in,
-    list(proc_id)::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred proc_check_eval_methods_and_main(module_info::in,
+    proc_mode_error_map::in, pred_id::in, pred_info::in, list(proc_id)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-proc_check_eval_methods_and_main(_, _, [], !Specs).
-proc_check_eval_methods_and_main(ModuleInfo, PredInfo, [ProcId | ProcIds],
-        !Specs) :-
-    pred_info_get_proc_table(PredInfo, ProcTable),
-    map.lookup(ProcTable, ProcId, ProcInfo),
-    proc_info_get_eval_method(ProcInfo, EvalMethod),
-    proc_info_get_argmodes(ProcInfo, Modes),
+proc_check_eval_methods_and_main(_, _, _, _, [], !Specs).
+proc_check_eval_methods_and_main(ModuleInfo, ProcModeErrorMap,
+        PredId, PredInfo, [ProcId | ProcIds], !Specs) :-
+    look_up_proc_mode_errors_raw(ProcModeErrorMap, PredId, ProcId, ModeErrors),
     (
-        EvalMethod = eval_normal
-    ;
-        EvalMethod = eval_tabled(TabledMethod),
-        ( if only_fully_in_out_modes(ModuleInfo, Modes) then
-            true
-        else
-            % All tabled methods require ground arguments.
-            GroundArgsSpec = report_eval_method_requires_ground_args(ProcInfo,
-                TabledMethod),
-            !:Specs = [GroundArgsSpec | !.Specs]
+        ModeErrors = [],
+        pred_info_get_proc_table(PredInfo, ProcTable),
+        map.lookup(ProcTable, ProcId, ProcInfo),
+        proc_info_get_eval_method(ProcInfo, EvalMethod),
+        proc_info_get_argmodes(ProcInfo, Modes),
+        (
+            EvalMethod = eval_normal
+        ;
+            EvalMethod = eval_tabled(TabledMethod),
+            ( if only_fully_in_out_modes(ModuleInfo, Modes) then
+                true
+            else
+                % All tabled methods require ground arguments.
+                GroundArgsSpec = report_eval_method_requires_ground_args(
+                    ProcInfo, TabledMethod),
+                !:Specs = [GroundArgsSpec | !.Specs]
+            ),
+            ( if
+                tabled_eval_method_destroys_uniqueness(TabledMethod) = yes,
+                not only_nonunique_modes(ModuleInfo, Modes)
+            then
+                UniquenessSpec = report_eval_method_destroys_uniqueness(
+                    ProcInfo, TabledMethod),
+                !:Specs = [UniquenessSpec | !.Specs]
+            else
+                true
+            )
         ),
         ( if
-            tabled_eval_method_destroys_uniqueness(TabledMethod) = yes,
-            not only_nonunique_modes(ModuleInfo, Modes)
+            pred_info_name(PredInfo) = "main",
+            pred_info_get_orig_arity(PredInfo, pred_form_arity(2)),
+            pred_info_is_exported(PredInfo),
+            not modes_are_valid_for_main(ModuleInfo, Modes)
         then
-            UniquenessSpec =
-                report_eval_method_destroys_uniqueness(ProcInfo, TabledMethod),
-            !:Specs = [UniquenessSpec | !.Specs]
+            MainSpec = report_wrong_mode_for_main(ProcInfo),
+            !:Specs = [MainSpec | !.Specs]
         else
             true
         )
+    ;
+        ModeErrors = [_ | _]
     ),
-    ( if
-        pred_info_name(PredInfo) = "main",
-        pred_info_get_orig_arity(PredInfo, pred_form_arity(2)),
-        pred_info_is_exported(PredInfo),
-        not modes_are_valid_for_main(ModuleInfo, Modes)
-    then
-        MainSpec = report_wrong_mode_for_main(ProcInfo),
-        !:Specs = [MainSpec | !.Specs]
-    else
-        true
-    ),
-    proc_check_eval_methods_and_main(ModuleInfo, PredInfo, ProcIds, !Specs).
+    proc_check_eval_methods_and_main(ModuleInfo, ProcModeErrorMap,
+        PredId, PredInfo, ProcIds, !Specs).
 
 :- pred only_fully_in_out_modes(module_info::in, list(mer_mode)::in)
     is semidet.
@@ -1742,64 +1830,73 @@ report_wrong_mode_for_main(ProcInfo) = Spec :-
     % be set to `include_detism_on_modes' _after_ determinism analysis.)
     %
 :- pred report_mode_inference_messages_for_preds(module_info::in,
-    include_detism_on_modes::in, list(pred_id)::in,
+    proc_mode_error_map::in, include_detism_on_modes::in, list(pred_id)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_mode_inference_messages_for_preds(_, _, [], !Specs).
-report_mode_inference_messages_for_preds(ModuleInfo, OutputDetism,
-        [PredId | PredIds], !Specs) :-
+report_mode_inference_messages_for_preds(_, _, _, [], !Specs).
+report_mode_inference_messages_for_preds(ModuleInfo, ProcModeErrorMap,
+        OutputDetism, [PredId | PredIds], !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     ( if check_marker(Markers, marker_infer_modes) then
         ProcIds = pred_info_all_procids(PredInfo),
         pred_info_get_proc_table(PredInfo, Procs),
-        report_mode_inference_messages_for_procs(ModuleInfo, OutputDetism,
-            PredInfo, Procs, ProcIds, !Specs)
+        report_mode_inference_messages_for_procs(ModuleInfo, ProcModeErrorMap,
+            OutputDetism, PredId, PredInfo, Procs, ProcIds, !Specs)
     else
         true
     ),
-    report_mode_inference_messages_for_preds(ModuleInfo, OutputDetism,
-        PredIds, !Specs).
+    report_mode_inference_messages_for_preds(ModuleInfo, ProcModeErrorMap,
+        OutputDetism, PredIds, !Specs).
 
     % Generate the inferred `mode' declarations for a list of proc_ids.
     %
 :- pred report_mode_inference_messages_for_procs(module_info::in,
-    include_detism_on_modes::in, pred_info::in, proc_table::in,
-    list(proc_id)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    proc_mode_error_map::in, include_detism_on_modes::in,
+    pred_id::in, pred_info::in, proc_table::in, list(proc_id)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-report_mode_inference_messages_for_procs(_, _, _, _, [], !Specs).
-report_mode_inference_messages_for_procs(ModuleInfo, OutputDetism,
-        PredInfo, Procs, [ProcId | ProcIds], !Specs) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
-    map.lookup(Procs, ProcId, ProcInfo),
+report_mode_inference_messages_for_procs(_, _, _, _, _, _, [], !Specs).
+report_mode_inference_messages_for_procs(ModuleInfo, ProcModeErrorMap,
+        OutputDetism, PredId, PredInfo, Procs, [ProcId | ProcIds], !Specs) :-
+    look_up_proc_mode_errors_raw(ProcModeErrorMap, PredId, ProcId, ModeErrors),
     ( if
         (
-            % We always output `Inferred :- mode ...'
-            proc_info_is_valid_mode(ProcInfo)
+            % We always output `Inferred :- mode ...' for valid modes.
+            ModeErrors = [],
+            IsValid = is_valid
         ;
+            ModeErrors = [_ | _],
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
             % We only output `REJECTED :- mode ...'
             % if --verbose-errors is enabled
-            VerboseErrors = yes
+            VerboseErrors = yes,
+            IsValid = is_not_valid
         )
     then
+        map.lookup(Procs, ProcId, ProcInfo),
         Spec = report_mode_inference_message(ModuleInfo, OutputDetism,
-            PredInfo, ProcInfo),
+            PredInfo, ProcInfo, IsValid),
         !:Specs = [Spec | !.Specs]
     else
         true
     ),
-    report_mode_inference_messages_for_procs(ModuleInfo,
-        OutputDetism, PredInfo, Procs, ProcIds, !Specs).
+    report_mode_inference_messages_for_procs(ModuleInfo, ProcModeErrorMap,
+        OutputDetism, PredId, PredInfo, Procs, ProcIds, !Specs).
+
+:- type is_proc_valid
+    --->    is_not_valid
+    ;       is_valid.
 
     % Return a description of the inferred mode declaration for the given
     % predicate or function.
     %
 :- func report_mode_inference_message(module_info, include_detism_on_modes,
-    pred_info, proc_info) = error_spec.
+    pred_info, proc_info, is_proc_valid) = error_spec.
 
-report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
-        = Spec :-
+report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo,
+        IsValid) = Spec :-
     PredName = pred_info_name(PredInfo),
     Name = unqualified(PredName),
     pred_info_get_context(PredInfo, Context),
@@ -1827,9 +1924,11 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
             OutputDetism = do_not_include_detism_on_modes,
             !:MaybeDet = no
         ),
-        ( if proc_info_is_valid_mode(ProcInfo) then
+        (
+            IsValid = is_valid,
             Verb = "Inferred"
-        else
+        ;
+            IsValid = is_not_valid,
             Verb = "REJECTED",
             % Replace the final insts with dummy insts '...', since they
             % won't be valid anyway -- they are just the results of whatever

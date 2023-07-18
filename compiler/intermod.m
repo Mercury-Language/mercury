@@ -1921,31 +1921,26 @@ intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
 
 intermod_gather_pred_valid_modes(_, _, [], []).
 intermod_gather_pred_valid_modes(PredOrFunc, PredSymName,
-        [ProcIdInfo | ProcIdInfos], ModeDecls) :-
+        [ProcIdInfo | ProcIdInfos], [HeadModeDecl | TailModeDecls]) :-
     intermod_gather_pred_valid_modes(PredOrFunc, PredSymName,
         ProcIdInfos, TailModeDecls),
     ProcIdInfo = _ProcId - ProcInfo,
-    ( if proc_info_is_valid_mode(ProcInfo) then
-        proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
-        proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
-        ( if
-            MaybeArgModes = yes(ArgModesPrime),
-            MaybeDetism = yes(DetismPrime)
-        then
-            ArgModes = ArgModesPrime,
-            Detism = DetismPrime
-        else
-            unexpected($pred, "attempt to write undeclared mode")
-        ),
-        MaybeWithInst = maybe.no,
-        varset.init(InstVarSet),
-        HeadModeDecl = item_mode_decl_info(PredSymName, yes(PredOrFunc),
-            ArgModes, MaybeWithInst, yes(Detism), InstVarSet,
-            dummy_context, item_no_seq_num),
-        ModeDecls = [HeadModeDecl | TailModeDecls]
+    proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
+    proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
+    ( if
+        MaybeArgModes = yes(ArgModesPrime),
+        MaybeDetism = yes(DetismPrime)
+    then
+        ArgModes = ArgModesPrime,
+        Detism = DetismPrime
     else
-        ModeDecls = TailModeDecls
-    ).
+        unexpected($pred, "attempt to write undeclared mode")
+    ),
+    MaybeWithInst = maybe.no,
+    varset.init(InstVarSet),
+    HeadModeDecl = item_mode_decl_info(PredSymName, yes(PredOrFunc),
+        ArgModes, MaybeWithInst, yes(Detism), InstVarSet,
+        dummy_context, item_no_seq_num).
 
 :- pred intermod_gather_pred_marker_pragmas(pred_info::in,
     list(pragma_info_pred_marker)::out) is det.

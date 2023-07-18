@@ -193,10 +193,10 @@ gather_pred_proc_ids(ModuleInfo, Imported, PredId, !PredProcIds) :-
         % their bodies.
         % XXX We do have bodies for opt_imported procedures.
         Imported = do_not_include_imported,
-        ProcIds = pred_info_valid_non_imported_procids(PredInfo)
+        ProcIds = pred_info_all_non_imported_procids(PredInfo)
     ;
         Imported = include_imported,
-        ProcIds = pred_info_valid_procids(PredInfo)
+        ProcIds = pred_info_all_procids(PredInfo)
     ),
     list.foldl(gather_pred_proc_id(PredId), ProcIds, !PredProcIds).
 

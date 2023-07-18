@@ -11,17 +11,17 @@
 % Main authors: ohutch, conway.
 %
 % This module performs stratification analysis.
-% It works by processing the call graph 1 scc at a time. It traverses
-% the goal for each procedure in the scc and reports an error or
-% warning (depending on the context) for any negated call to another member
-% of the scc. If it encounters a higher order call or a call to an
-% outside module it will also emit a message.
+% It works by processing the call graph one scc at a time.
+% It traverses the goal for each procedure in the scc and reports an error
+% or warning (depending on the context) for any negated call to another member
+% of the scc. It will also emit a message if it encounters a higher order call,
+% or a call to an outside module.
 %
 % It has a second pass which is not currently enabled.
 %
 % The second pass looks for possible non stratified code by looking at
 % higher order calls. This second pass works by rebuilding the call
-% graph with any possible arcs that can arise though higher order calls
+% graph with any possible arcs that can arise though higher order calls,
 % and then traversing the new sccs looking for negative loops.
 %
 % The second pass is necessary because the rebuilt call graph does not
@@ -648,7 +648,7 @@ expand_predids([], _, !ProcCalls, !HOInfo, !CallsHO).
 expand_predids([PredId | PredIds], ModuleInfo, !ProcCalls, !HOInfo,
         !CallsHO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    Procs = pred_info_valid_non_imported_procids(PredInfo),
+    Procs = pred_info_all_non_imported_procids(PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     stratify_process_procs(Procs, ModuleInfo, PredId, ArgTypes, ProcTable,

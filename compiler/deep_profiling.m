@@ -594,7 +594,7 @@ figure_out_rec_call_numbers_in_case_list([Case|Cases], !N, !TailCallSites) :-
 
 deep_prof_transform_pred(ModuleInfo, PredId, !PredMap) :-
     map.lookup(!.PredMap, PredId, PredInfo0),
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo0),
+    ProcIds = pred_info_all_non_imported_procids(PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     list.foldl(deep_prof_maybe_transform_proc(ModuleInfo, PredId),
         ProcIds, ProcTable0, ProcTable),

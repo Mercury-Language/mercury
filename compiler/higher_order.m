@@ -481,7 +481,7 @@ get_np_version_ppid(NewPred) = NewPred ^ np_version_ppid.
 get_specialization_requests(PredId, !GlobalInfo) :-
     ModuleInfo0 = !.GlobalInfo ^ hogi_module_info,
     module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
-    NonImportedProcs = pred_info_valid_non_imported_procids(PredInfo0),
+    NonImportedProcs = pred_info_all_non_imported_procids(PredInfo0),
     (
         NonImportedProcs = []
     ;

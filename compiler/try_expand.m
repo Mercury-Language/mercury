@@ -271,7 +271,7 @@ expand_try_goals_in_module(!ModuleInfo, !Specs) :-
 
 expand_try_goals_in_pred(PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
+    ProcIds = pred_info_all_non_imported_procids(PredInfo),
     list.foldl2(expand_try_goals_in_proc(PredId), ProcIds,
         !ModuleInfo, !Specs).
 
@@ -311,7 +311,9 @@ update_changed_proc(Goal, PredId, ProcId, PredInfo, !.ProcInfo, !ModuleInfo,
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, !.ProcInfo,
         !ModuleInfo),
 
-    modecheck_proc(PredId, ProcId, !ModuleInfo, _Changed, ModeSpecs),
+    map.init(ProcModeErrorMap0),
+    modecheck_proc(PredId, ProcId, !ModuleInfo,
+        ProcModeErrorMap0, _ProcModeErrorMap0, _Changed, ModeSpecs),
     module_info_get_globals(!.ModuleInfo, Globals),
     HasModeErrors = contains_errors(Globals, ModeSpecs),
     (
@@ -319,7 +321,14 @@ update_changed_proc(Goal, PredId, ProcId, PredInfo, !.ProcInfo, !ModuleInfo,
         % In some cases we may detect mode errors after expanding try goals
         % which were missed before, so we don't abort the compiler, but we do
         % stop compiling not long after this pass.
-        !:Specs = ModeSpecs ++ !.Specs
+        !:Specs = ModeSpecs ++ !.Specs,
+        % Since the changed procedure is now invalid, delete it.
+        % XXX If our caller needed PredInfo to be valid after the call
+        % to this predicate, we would return it, but since it doesn't ...
+        pred_info_get_proc_table(PredInfo, ProcTable0),
+        map.delete(ProcId, ProcTable0, ProcTable),
+        pred_info_set_proc_table(ProcTable, PredInfo, UpdatedPredInfo),
+        module_info_set_pred_info(PredId, UpdatedPredInfo, !ModuleInfo)
     ;
         HasModeErrors = no,
         % Determinism errors should have been detected before expansion, but

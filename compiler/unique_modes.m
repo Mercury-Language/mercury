@@ -38,13 +38,11 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 
@@ -54,12 +52,6 @@
     %
 :- pred unique_modes_check_module(io.text_output_stream::in,
     module_info::in, module_info::out, list(error_spec)::out) is det.
-
-    % Just check a single procedure.
-    %
-:- pred unique_modes_check_proc(pred_id::in, proc_id::in,
-    module_info::in, module_info::out, bool::out, list(error_spec)::out)
-    is det.
 
     % Just check a single goal.
     %
@@ -92,6 +84,7 @@
 :- import_module check_hlds.modecheck_unify.
 :- import_module check_hlds.modecheck_util.
 :- import_module check_hlds.modes.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
 :- import_module mdbcomp.
@@ -113,10 +106,6 @@
 unique_modes_check_module(ProgressStream, !ModuleInfo, Specs) :-
     check_pred_modes(ProgressStream, check_unique_modes,
         may_change_called_proc, !ModuleInfo, _SafeToContinue, Specs).
-
-unique_modes_check_proc(PredId, ProcId, !ModuleInfo, Changed, Specs) :-
-    modecheck_proc_general(check_unique_modes, may_change_called_proc,
-        PredId, ProcId, !ModuleInfo, Changed, Specs).
 
 unique_modes_check_goal(Goal0, Goal, !ModeInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
@@ -452,10 +441,10 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
     proc_info_never_succeeds(ProcInfo, CanSucceed),
     unique_modes_check_call_modes(ArgVars, ProcArgModes0, ArgOffset,
         InterfaceDeterminism, CanSucceed, !ModeInfo),
-    proc_info_get_mode_errors(ProcInfo, ModeErrors),
+    look_up_proc_mode_errors(!.ModeInfo, PredId, ProcId0, ModeErrors),
     (
         ModeErrors = [_ | _],
-        % mode error in callee for this mode
+        % Mode error in callee for this mode.
         WaitingVars = set_of_var.list_to_set(ArgVars),
         mode_info_get_instmap(!.ModeInfo, InstMap),
         instmap_lookup_vars(InstMap, ArgVars, ArgInsts),

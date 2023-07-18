@@ -213,16 +213,12 @@ compute_goal_modes_in_pred(ModuleInfo, ValidPredIds, PredId, !PredInfo) :-
     proc_info::in, proc_info::out) is det.
 
 compute_goal_modes_in_proc(ModuleInfo, !ProcInfo) :-
-    ( if proc_info_is_valid_mode(!.ProcInfo) then
-        proc_info_get_var_table(!.ProcInfo, VarTable),
-        proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
-        proc_info_get_goal(!.ProcInfo, Goal0),
-        compute_goal_modes_in_goal(ModuleInfo, VarTable, InstMap0, _InstMap,
-            Goal0, Goal),
-        proc_info_set_goal(Goal, !ProcInfo)
-    else
-        true
-    ).
+    proc_info_get_var_table(!.ProcInfo, VarTable),
+    proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    compute_goal_modes_in_goal(ModuleInfo, VarTable, InstMap0, _InstMap,
+        Goal0, Goal),
+    proc_info_set_goal(Goal, !ProcInfo).
 
 :- pred compute_goal_modes_in_goal(module_info::in, var_table::in,
     instmap::in, instmap::out, hlds_goal::in, hlds_goal::out) is det.

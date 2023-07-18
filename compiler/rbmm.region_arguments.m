@@ -99,7 +99,7 @@ record_actual_region_arguments_pred(ModuleInfo, RptaInfoTable,
         ConstantRTable, DeadRTable, BornRTable, PredId,
         !FormalRegionArgTable, !ActualRegionArgTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_valid_non_imported_procids(PredInfo),
+    ProcIds = pred_info_all_non_imported_procids(PredInfo),
     list.foldl2(record_region_arguments_proc(ModuleInfo, PredId,
         RptaInfoTable, ConstantRTable, DeadRTable, BornRTable), ProcIds,
         !FormalRegionArgTable, !ActualRegionArgTable).

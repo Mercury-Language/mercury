@@ -48,13 +48,18 @@
 :- type mode_context
     --->    mode_context_call(
                 mode_call_id,
-                int             % Argument number (offset so that the real
-                                % arguments start at number 1 whereas the
-                                % type_info arguments have numbers <= 0).
+
+                % Argument number (offset so that the real arguments
+                % start at number 1 whereas the type_info arguments
+                % have numbers <= 0).
+                int
             )
     ;       mode_context_unify(
-                unify_context,  % original source of the unification
-                side            % LHS or RHS
+                % original source of the unification
+                unify_context,
+
+                % LHS or RHS
+                side
             )
     ;       mode_context_not_call_or_unify.
 
@@ -120,9 +125,10 @@
 
     % Initialize the mode_info.
     %
-:- pred mode_info_init(module_info::in, pred_id::in, proc_id::in,
-    prog_context::in, set_of_progvar::in, head_inst_vars::in, instmap::in,
-    how_to_check_goal::in, may_change_called_proc::in, mode_info::out) is det.
+:- pred mode_info_init(module_info::in, proc_mode_error_map::in,
+    pred_id::in, proc_id::in, prog_context::in, set_of_progvar::in,
+    head_inst_vars::in, instmap::in, how_to_check_goal::in,
+    may_change_called_proc::in, mode_info::out) is det.
 
 :- type in_promise_purity_scope
     --->    in_promise_purity_scope
@@ -157,8 +163,11 @@
                 par_conj_bound      :: set_of_progvar
             ).
 
-:- type pred_var_multimode_error_map
-    == map(prog_var, pred_id_var_multimode_error).
+:- type pred_var_multimode_error_map ==
+    map(prog_var, pred_id_var_multimode_error).
+
+:- type proc_mode_error_map ==
+    map(pred_id, map(proc_id, list(mode_error_info))).
 
 %---------------------------------------------------------------------------%
 %
@@ -196,6 +205,8 @@
     is det.
 :- pred mode_info_get_pred_var_multimode_error_map(mode_info::in,
     pred_var_multimode_error_map::out) is det.
+:- pred mode_info_get_proc_mode_error_map(mode_info::in,
+    proc_mode_error_map::out) is det.
 :- pred mode_info_get_how_to_check(mode_info::in,
     how_to_check_goal::out) is det.
 :- pred mode_info_get_may_change_called_proc(mode_info::in,
@@ -257,6 +268,8 @@
 :- pred mode_info_set_pred_var_multimode_error_map(
     pred_var_multimode_error_map::in,
     mode_info::in, mode_info::out) is det.
+:- pred mode_info_set_proc_mode_error_map(proc_mode_error_map::in,
+    mode_info::in, mode_info::out) is det.
 % There is no mode_info_set_how_to_check; this field is read-only.
 :- pred mode_info_set_may_change_called_proc(may_change_called_proc::in,
     mode_info::in, mode_info::out) is det.
@@ -291,6 +304,11 @@
 :- pred mode_info_get_types_of_vars(mode_info::in,
     list(prog_var)::in, list(mer_type)::out) is det.
 
+:- pred look_up_proc_mode_errors(mode_info::in, pred_id::in, proc_id::in,
+    list(mode_error_info)::out) is det.
+:- pred look_up_proc_mode_errors_raw(proc_mode_error_map::in,
+    pred_id::in, proc_id::in, list(mode_error_info)::out) is det.
+
 %---------------------------------------------------------------------------%
 %
 % Nontrivial setter predicates.
@@ -309,6 +327,10 @@
     mode_info::in, mode_info::out) is det.
 
 :- pred mode_info_need_to_requantify(mode_info::in, mode_info::out) is det.
+
+:- pred set_proc_mode_errors(pred_id::in, proc_id::in,
+    list(mode_error_info)::in,
+    proc_mode_error_map::in, proc_mode_error_map::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -455,7 +477,7 @@
                 % e.g. where the insts they handle come from.
                 %
                 % XXX The reason this field exists is probably because
-                % Fergus thought that it is easier to stuff this informatio
+                % Fergus thought that it is easier to stuff this information
                 % into the mode_info, which those general-purpose predicates
                 % have already got, than to pass them in separate arguments,
                 % even though the latter would be semantically cleaner.
@@ -575,6 +597,13 @@
                 msi_pred_var_multimode_error_map
                                             :: pred_var_multimode_error_map,
 
+                % This field records which procedures have mode errors
+                % generated for them. A procedure which has a nonempty list
+                % of mode errors is considered invalid by mode analysis,
+                % and will be deleted from the HLDS at end of the current
+                % mode analysis pass.
+                msi_proc_mode_error_map     :: proc_mode_error_map,
+
                 % All the arguments from here on are sub-word-sized,
                 % which should allow the compiler to pack them together.
 
@@ -625,10 +654,11 @@
 
 mode_context_init(mode_context_not_call_or_unify).
 
+
 %---------------------------------------------------------------------------%
 
-mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
-        InstMap0, HowToCheck, MayChangeProc, ModeInfo) :-
+mode_info_init(ModuleInfo, ProcModeErrorMap, PredId, ProcId, Context, LiveVars,
+        HeadInstVars, InstMap0, HowToCheck, MayChangeProc, ModeInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_modes, DebugModes),
     globals.lookup_int_option(Globals, debug_modes_pred_id, DebugModesPredId),
@@ -678,7 +708,7 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
     ModeSubInfo = mode_sub_info(PredId, ProcId, VarTable,
         MaybeDebug, LockedVars, LiveVarsBag, InstVarSet, ParallelVars,
         LastCheckpointInstMap, InstMap0, HeadInstVars, Warnings,
-        PredVarMultiModeMap,
+        PredVarMultiModeMap, ProcModeErrorMap,
         HowToCheck, MayChangeProc, Changed, CheckingExtraGoals,
         NeedToRequantify, InPromisePurityScope, InFromGroundTerm,
         HadFromGroundTerm, MakeGroundTermsUnique, InDuplForSwitch),
@@ -748,6 +778,8 @@ mode_info_get_warnings(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_warnings.
 mode_info_get_pred_var_multimode_error_map(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_pred_var_multimode_error_map.
+mode_info_get_proc_mode_error_map(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_proc_mode_error_map.
 mode_info_get_how_to_check(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_how_to_check.
 mode_info_get_may_change_called_proc(MI, X) :-
@@ -833,6 +865,8 @@ mode_info_set_pred_var_multimode_error_map(X, !MI) :-
     else
         !MI ^ mi_sub_info ^ msi_pred_var_multimode_error_map := X
     ).
+mode_info_set_proc_mode_error_map(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_proc_mode_error_map := X.
 mode_info_set_may_change_called_proc(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_may_change_called_proc := X.
 mode_info_set_changed_flag(X, !MI) :-
@@ -979,6 +1013,21 @@ mode_info_get_types_of_vars(ModeInfo, Vars, TypesOfVars) :-
     mode_info_get_var_table(ModeInfo, VarTable),
     lookup_var_types(VarTable, Vars, TypesOfVars).
 
+look_up_proc_mode_errors(ModeInfo, PredId, ProcId, ModeErrors) :-
+    mode_info_get_proc_mode_error_map(ModeInfo, ProcModeErrorMap),
+    look_up_proc_mode_errors_raw(ProcModeErrorMap, PredId, ProcId, ModeErrors).
+
+look_up_proc_mode_errors_raw(ProcModeErrorMap, PredId, ProcId, ModeErrors) :-
+    ( if map.search(ProcModeErrorMap, PredId, ProcMap) then
+        ( if map.search(ProcMap, ProcId, ModeErrorsPrime) then
+            ModeErrors = ModeErrorsPrime
+        else
+            ModeErrors = []
+        )
+    else
+        ModeErrors = []
+    ).
+
 %---------------------------------------------------------------------------%
 
 mode_info_set_instmap(InstMap, !MI) :-
@@ -1038,6 +1087,32 @@ mode_info_set_call_arg_context(ArgNum, !ModeInfo) :-
 
 mode_info_need_to_requantify(!ModeInfo) :-
     mode_info_set_need_to_requantify(need_to_requantify, !ModeInfo).
+
+set_proc_mode_errors(PredId, ProcId, ModeErrors, !ProcModeErrorMap) :-
+    (
+        ModeErrors = [],
+        % We delete the entry for the PredId/ProcId combo in !ProcModeErrorMap,
+        % together with the entry for PredId if it has become empty.
+        ( if map.search(!.ProcModeErrorMap, PredId, ProcMap0) then
+            map.delete(ProcId, ProcMap0, ProcMap),
+            ( if map.is_empty(ProcMap) then
+                map.delete(PredId, !ProcModeErrorMap)
+            else
+                map.det_update(PredId, ProcMap, !ProcModeErrorMap)
+            )
+        else
+            true
+        )
+    ;
+        ModeErrors = [_ | _],
+        ( if map.search(!.ProcModeErrorMap, PredId, ProcMap0) then
+            map.set(ProcId, ModeErrors, ProcMap0, ProcMap),
+            map.det_update(PredId, ProcMap, !ProcModeErrorMap)
+        else
+            ProcMap = map.singleton(ProcId, ModeErrors),
+            map.det_insert(PredId, ProcMap, !ProcModeErrorMap)
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 

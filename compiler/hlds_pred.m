@@ -20,7 +20,6 @@
 :- import_module analysis.
 :- import_module check_hlds.
 :- import_module check_hlds.mode_constraint_robdd.
-:- import_module check_hlds.mode_errors.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_cons.
@@ -739,34 +738,19 @@
     %
 :- type arg_modes_map == pair(map(prog_var, bool)).
 
-    % Return a list of all the proc_ids for the valid modes of this predicate.
-    % This does not include candidate modes that were generated during mode
-    % inference but which mode inference found were not valid modes.
-    %
-:- func pred_info_valid_procids(pred_info) = list(proc_id).
-
     % Return a list of the proc_ids for all the modes of this predicate,
-    % including invalid modes.
     %
 :- func pred_info_all_procids(pred_info) = list(proc_id).
 
-    % Return a list of the proc_ids for all the valid modes of this predicate
-    % that are not imported.
-    %
-:- func pred_info_valid_non_imported_procids(pred_info) = list(proc_id).
-
     % Return a list of the proc_ids for all the modes of this predicate
-    % that are not imported (including invalid modes).
-    %
-    % XXX The implementation of this function is currently identical
-    % to the implementation of pred_info_non_imported_procids.
+    % that are not imported.
     %
 :- func pred_info_all_non_imported_procids(pred_info) = list(proc_id).
 
-    % Return a list of the proc_ids for all the valid modes of this predicate
+    % Return a list of the proc_ids for all the modes of this predicate
     % that are exported.
     %
-:- func pred_info_valid_exported_procids(pred_info) = list(proc_id).
+:- func pred_info_all_exported_procids(pred_info) = list(proc_id).
 
     % Remove a procedure from the pred_info.
     %
@@ -1660,52 +1644,11 @@ pred_info_set_proc_table(X, !PI) :-
 
 % The non-trivial access predicates.
 
-pred_info_valid_procids(PredInfo) = ValidProcIds :-
-    AllProcIds = pred_info_all_procids(PredInfo),
-    pred_info_get_proc_table(PredInfo, ProcTable),
-    IsValid =
-        ( pred(ProcId::in) is semidet :-
-            ProcInfo = map.lookup(ProcTable, ProcId),
-            proc_info_is_valid_mode(ProcInfo)
-        ),
-    list.filter(IsValid, AllProcIds, ValidProcIds).
-
 pred_info_all_procids(PredInfo) = ProcIds :-
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.keys(ProcTable, ProcIds).
 
-pred_info_valid_non_imported_procids(PredInfo) = ProcIds :-
-    % The codes of pred_info_{valid,all}_non_imported_procids
-    % should be kept identical, except for the calls to
-    % pred_info_{valid,all}_procids respectively.
-    pred_info_get_status(PredInfo, pred_status(OldImportStatus)),
-    (
-        ( OldImportStatus = status_imported(_)
-        ; OldImportStatus = status_external(_)
-        ),
-        ProcIds = []
-    ;
-        OldImportStatus = status_pseudo_imported,
-        ProcIds0 = pred_info_valid_procids(PredInfo),
-        % For pseudo_imported preds, procid 0 is imported.
-        list.delete_all(ProcIds0, 0, ProcIds)
-    ;
-        ( OldImportStatus = status_opt_imported
-        ; OldImportStatus = status_abstract_imported
-        ; OldImportStatus = status_exported
-        ; OldImportStatus = status_opt_exported
-        ; OldImportStatus = status_abstract_exported
-        ; OldImportStatus = status_pseudo_exported
-        ; OldImportStatus = status_exported_to_submodules
-        ; OldImportStatus = status_local
-        ),
-        ProcIds = pred_info_valid_procids(PredInfo)
-    ).
-
 pred_info_all_non_imported_procids(PredInfo) = ProcIds :-
-    % The codes of pred_info_{valid,all}_non_imported_procids
-    % should be kept identical, except for the calls to
-    % pred_info_{valid,all}_procids respectively.
     pred_info_get_status(PredInfo, pred_status(OldImportStatus)),
     (
         ( OldImportStatus = status_imported(_)
@@ -1730,14 +1673,14 @@ pred_info_all_non_imported_procids(PredInfo) = ProcIds :-
         ProcIds = pred_info_all_procids(PredInfo)
     ).
 
-pred_info_valid_exported_procids(PredInfo) = ProcIds :-
+pred_info_all_exported_procids(PredInfo) = ProcIds :-
     pred_info_get_status(PredInfo, pred_status(OldImportStatus)),
     (
         ( OldImportStatus = status_exported
         ; OldImportStatus = status_opt_exported
         ; OldImportStatus = status_exported_to_submodules
         ),
-        ProcIds = pred_info_valid_procids(PredInfo)
+        ProcIds = pred_info_all_procids(PredInfo)
     ;
         OldImportStatus = status_pseudo_exported,
         ProcIds = [0]
@@ -2310,8 +2253,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
     hlds_goal::out, var_table::out, rtti_varmaps::out,
     inst_varset::out, maybe(list(mer_mode))::out, list(mer_mode)::out,
     maybe(list(is_live))::out, maybe(determinism)::out, determinism::out,
-    eval_method::out, list(mode_error_info)::out,
-    prog_context::out, item_seq_num::out,
+    eval_method::out, prog_context::out, item_seq_num::out,
     can_process::out, maybe(mode_constraint)::out, detism_decl::out,
     list(prog_context)::out, maybe(untuple_proc_info)::out,
     map(prog_var, string)::out, list(error_spec)::out, set(pred_proc_id)::out,
@@ -2332,8 +2274,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
     hlds_goal::in, var_table::in, rtti_varmaps::in,
     inst_varset::in, maybe(list(mer_mode))::in, list(mer_mode)::in,
     maybe(list(is_live))::in, maybe(determinism)::in, determinism::in,
-    eval_method::in, list(mode_error_info)::in,
-    prog_context::in, item_seq_num::in, can_process::in,
+    eval_method::in, prog_context::in, item_seq_num::in, can_process::in,
     maybe(mode_constraint)::in, detism_decl::in,
     list(prog_context)::in, maybe(untuple_proc_info)::in,
     map(prog_var, string)::in, list(error_spec)::in, set(pred_proc_id)::in,
@@ -2446,8 +2387,6 @@ marker_list_to_markers(Markers, MarkerSet) :-
 :- pred proc_info_get_inferred_determinism(proc_info::in,
     determinism::out) is det.
 :- pred proc_info_get_eval_method(proc_info::in, eval_method::out) is det.
-:- pred proc_info_get_mode_errors(proc_info::in,
-    list(mode_error_info)::out) is det.
 
 :- pred proc_info_get_context(proc_info::in, prog_context::out) is det.
 :- pred proc_info_get_item_number(proc_info::in, item_seq_num::out) is det.
@@ -2531,8 +2470,6 @@ marker_list_to_markers(Markers, MarkerSet) :-
 :- pred proc_info_set_inferred_determinism(determinism::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_eval_method(eval_method::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_mode_errors(list(mode_error_info)::in,
     proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_set_can_process(can_process::in,
@@ -2738,12 +2675,6 @@ marker_list_to_markers(Markers, MarkerSet) :-
     %
 :- pred clone_proc_id(proc_table::in, proc_id::in, proc_id::out) is det.
 
-    % When mode inference is enabled, we record for each inferred mode
-    % whether it is valid or not by keeping a list of error messages
-    % in the proc_info. The mode is valid iff this list is empty.
-    %
-:- pred proc_info_is_valid_mode(proc_info::in) is semidet.
-
     % Make sure that all headvars are named. This can be useful e.g.
     % because the debugger ignores unnamed variables.
     %
@@ -2766,12 +2697,8 @@ marker_list_to_markers(Markers, MarkerSet) :-
                 % The Boehm collector allocates blocks whose sizes are
                 % multiples (and usually powers) of 2. Ideally, we would want
                 % the number of fields of proc_info to match one of the Boehm
-                % block sizes, but as of 2017 march 15, this seems to be the
+                % block sizes, but as of 2017 march 15, this seemed to be the
                 % optimal arrangement (zs).
-                %
-                % XXX Fusing the varset and vartypes fields together into
-                % the var_table field has left room for a field to be
-                % "promoted" from the proc_sub_info to the proc_info.
 
 /*  1 */        proc_head_vars                  :: list(prog_var),
 /*  2 */        proc_body                       :: hlds_goal,
@@ -2801,13 +2728,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
                 % How should the proc be evaluated.
 /* 11 */        proc_eval_method                :: eval_method,
 
-                % This field is used only by mode analysis and unique mode
-                % analysis. Almost all the time, it contains an empty list.
-                % XXX This info should be stored in a separate data structure
-                % maintained by mode analysis.
-/* 12 */        proc_mode_errors                :: list(mode_error_info),
-
-/* 13 */        proc_sub_info                   :: proc_sub_info
+/* 12 */        proc_sub_info                   :: proc_sub_info
             ).
 
 :- type proc_sub_info
@@ -3260,7 +3181,6 @@ proc_info_init(ModuleInfo, MainContext, ItemNumber, Types,
     % will later provide the correct inferred determinism for it.
     InferredDetism = detism_erroneous,
     EvalMethod = eval_normal,
-    ModeErrors = [],
 
     ProcInfo = proc_info(
         HeadVars,
@@ -3274,7 +3194,6 @@ proc_info_init(ModuleInfo, MainContext, ItemNumber, Types,
         MaybeDeclaredDetism,
         InferredDetism,
         EvalMethod,
-        ModeErrors,
         ProcSubInfo).
 
 proc_info_create(Context, ItemNumber, VarTable, HeadVars,
@@ -3390,7 +3309,6 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
     % argument MaybeDeclaredDetism
     % argument Detism
     EvalMethod = eval_normal,
-    ModeErrors = [],
 
     ProcInfo = proc_info(
         HeadVars,
@@ -3404,12 +3322,11 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
         MaybeDeclaredDetism,
         Detism,
         EvalMethod,
-        ModeErrors,
         ProcSubInfo).
 
 proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarTable, RttiVarMaps,
         InstVarSet, DeclaredModes, Modes, MaybeArgLives,
-        MaybeDeclaredDetism, Detism, EvalMethod, ModeErrors,
+        MaybeDeclaredDetism, Detism, EvalMethod,
         MainContext, ItemNumber, CanProcess, MaybeHeadModesConstr, DetismDecl,
         CseNopullContexts, MaybeUntupleInfo, VarNameRemap, StateVarWarnings,
         DeletedCallees, IsAddressTaken, HasForeignProcExports, HasParallelConj,
@@ -3431,7 +3348,6 @@ proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarTable, RttiVarMaps,
         MaybeDeclaredDetism,
         Detism,
         EvalMethod,
-        ModeErrors,
         ProcSubInfo),
     ProcSubInfo = proc_sub_info(
         MainContext,
@@ -3473,7 +3389,7 @@ proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarTable, RttiVarMaps,
 
 proc_create(HeadVars, Goal, VarTable, RttiVarMaps,
         InstVarSet, DeclaredModes, Modes, MaybeArgLives,
-        MaybeDeclaredDetism, Detism, EvalMethod, ModeErrors,
+        MaybeDeclaredDetism, Detism, EvalMethod,
         MainContext, ItemNumber, CanProcess, MaybeHeadModesConstr, DetismDecl,
         CseNopullContexts, MaybeUntupleInfo, VarNameRemap, StateVarWarnings,
         DeletedCallees, IsAddressTaken, HasForeignProcExports, HasParallelConj,
@@ -3533,7 +3449,6 @@ proc_create(HeadVars, Goal, VarTable, RttiVarMaps,
         MaybeDeclaredDetism,
         Detism,
         EvalMethod,
-        ModeErrors,
         ProcSubInfo).
 
 proc_info_set_body(VarTable, HeadVars, Goal, RttiVarMaps, !ProcInfo) :-
@@ -3564,8 +3479,6 @@ proc_info_get_inferred_determinism(PI, X) :-
     X = PI ^ proc_inferred_detism.
 proc_info_get_eval_method(PI, X) :-
     X = PI ^ proc_eval_method.
-proc_info_get_mode_errors(PI, X) :-
-    X = PI ^ proc_mode_errors.
 
 proc_info_get_context(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_context.
@@ -3654,8 +3567,6 @@ proc_info_set_inferred_determinism(X, !PI) :-
     !PI ^ proc_inferred_detism := X.
 proc_info_set_eval_method(X, !PI) :-
     !PI ^ proc_eval_method := X.
-proc_info_set_mode_errors(X, !PI) :-
-    !PI ^ proc_mode_errors := X.
 
 proc_info_set_can_process(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_can_process := X.
@@ -4278,10 +4189,6 @@ find_lowest_unused_proc_id_2(TrialProcId, ProcTable, CloneProcId) :-
     else
         CloneProcId = TrialProcId
     ).
-
-proc_info_is_valid_mode(ProcInfo) :-
-    proc_info_get_mode_errors(ProcInfo, ModeErrors),
-    ModeErrors = [].
 
 ensure_all_headvars_are_named(!ProcInfo) :-
     proc_info_get_headvars(!.ProcInfo, HeadVars),
