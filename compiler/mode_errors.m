@@ -1253,10 +1253,10 @@ mode_error_unschedulable_conjuncts_to_spec(ModeInfo, OoMErrors, Culprit)
         ;
             VerboseErrors = yes,
             Preamble = mode_info_context_preamble(ModeInfo),
+            NumErrorsStr = int_to_string(list.length(Errors)),
             ConjPieces = [words("mode error in conjunction. The next"),
-                fixed(int_to_string(list.length(Errors))),
-                words("error messages indicate"),
-                words("possible causes of this error.")],
+                fixed(NumErrorsStr), words("error messages"),
+                words("indicate possible causes of this error."), nl],
             Msgs1Start = [simplest_msg(Context, Preamble ++ ConjPieces)],
             Msgs1Rest0 = list.map(
                 mode_error_conjunct_to_msgs(Context, ModeInfo),
@@ -1275,20 +1275,20 @@ mode_error_unschedulable_conjuncts_to_spec(ModeInfo, OoMErrors, Culprit)
     ;
         Culprit = goal_itself_was_impure,
         Pieces = [words("The goal could not be reordered,"),
-            words("because it was impure.")],
+            words("because it was impure."), nl],
         Msgs2 = [simplest_msg(Context, Pieces)]
     ;
         Culprit = goals_followed_by_impure_goal(ImpureGoal),
         ImpureGoal = hlds_goal(_, ImpureGoalInfo),
         ImpureGoalContext = goal_info_get_context(ImpureGoalInfo),
         Pieces1 = [words("The goal could not be reordered,"),
-            words("because it was followed by an impure goal.")],
-        Pieces2 = [words("This is the location of the impure goal.")],
+            words("because it was followed by an impure goal."), nl],
+        Pieces2 = [words("This is the location of the impure goal."), nl],
         Msgs2 = [simplest_msg(Context, Pieces1),
             simplest_msg(ImpureGoalContext, Pieces2)]
     ),
-    Spec = error_spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Msgs1 ++ Msgs2).
+    Phase = phase_mode_check(report_in_any_mode),
+    Spec = error_spec($pred, severity_error, Phase, Msgs1 ++ Msgs2).
 
 :- func prefix_with_blank_line(prog_context, list(error_msg))
     = list(error_msg).
