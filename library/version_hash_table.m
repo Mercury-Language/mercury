@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2022 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -324,7 +324,7 @@ search(HT, K, V) :-
     promise_equivalent_solutions [Buckets] (
         Buckets = HT ^ ht_buckets
     ),
-    AL = Buckets ^ elem(H),
+    version_array.lookup(Buckets, H, AL),
     alist_search(AL, K, V).
 
 :- pred alist_search(hash_table_alist(K, V)::in, K::in, V::out) is semidet.
@@ -367,7 +367,7 @@ set(HT0, K, V) = HT :-
             Buckets0] (
         HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0)
     ),
-    AL0 = Buckets0 ^ elem(H),
+    version_array.lookup(Buckets0, H, AL0),
     (
         AL0 = ht_nil,
         AL = ht_single(K, V),
@@ -391,7 +391,7 @@ set(HT0, K, V) = HT :-
             MayExpand = yes
         )
     ),
-    Buckets = Buckets0 ^ elem(H) := AL,
+    version_array.set(H, AL, Buckets0, Buckets),
     (
         MayExpand = no,
         HT = ht(NumOccupants0, MaxOccupants, HashPred, Buckets)
@@ -439,7 +439,7 @@ det_insert(HT0, K, V) = HT :-
     (
         HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0)
     ),
-    AL0 = Buckets0 ^ elem(H),
+    version_array.lookup(Buckets0, H, AL0),
     (
         AL0 = ht_nil,
         AL = ht_single(K, V)
@@ -454,7 +454,7 @@ det_insert(HT0, K, V) = HT :-
             AL = ht_cons(K, V, AL0)
         )
     ),
-    Buckets = Buckets0 ^ elem(H) := AL,
+    version_array.set(H, AL, Buckets0, Buckets),
     NumOccupants = NumOccupants0 + 1,
     ( if NumOccupants > MaxOccupants then
         HT = expand(NumOccupants, MaxOccupants, HashPred, Buckets)
@@ -471,13 +471,13 @@ det_update(HT0, K, V) = HT :-
     promise_equivalent_solutions [Buckets0] (
         Buckets0 = HT0 ^ ht_buckets
     ),
-    AL0 = Buckets0 ^ elem(H),
+    version_array.lookup(Buckets0, H, AL0),
     ( if alist_replace(AL0, K, V, AL1) then
         AL = AL1
     else
         error($pred, "key not found")
     ),
-    Buckets = Buckets0 ^ elem(H) := AL,
+    version_array.set(H, AL, Buckets0, Buckets),
     promise_equivalent_solutions [HT] (
         HT = HT0 ^ ht_buckets := Buckets
     ).
@@ -493,9 +493,9 @@ delete(HT0, K) = HT :-
     (
         HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0)
     ),
-    AL0 = Buckets0 ^ elem(H),
+    version_array.lookup(Buckets0, H, AL0),
     ( if alist_remove(AL0, K, AL) then
-        Buckets = Buckets0 ^ elem(H) := AL,
+        version_array.set(H, AL, Buckets0, Buckets),
         NumOccupants = NumOccupants0 - 1,
         HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets)
     else
@@ -551,22 +551,24 @@ to_assoc_list_2(X, AL0, AL) :-
     ).
 
 from_assoc_list(HashPred, N, MaxOccupants, AList) = HT :-
-    from_assoc_list_2(AList, init(HashPred, N, MaxOccupants), HT).
+    HT0 = init(HashPred, N, MaxOccupants),
+    from_assoc_list_2(AList, HT0, HT).
 
 from_assoc_list(HashPred, AList) = HT :-
-    from_assoc_list_2(AList, init_default(HashPred), HT).
+    HT0 = init_default(HashPred),
+    from_assoc_list_2(AList, HT0, HT).
 
 :- pred from_assoc_list_2(assoc_list(K, V)::in,
     version_hash_table(K, V)::in, version_hash_table(K, V)::out) is det.
 
 from_assoc_list_2([], !HT).
 from_assoc_list_2([K - V | T], !HT) :-
-    !HT ^ elem(K) := V,
+    set(K, V, !HT),
     from_assoc_list_2(T, !HT).
 
 %---------------------------------------------------------------------------%
 
-    % Hash tables expand by doubling in size.
+    % Hash tables expand by doubling the number of buckets.
     %
     % Ensuring expand/4 is _not_ inlined into version_hash_table.det_insert,
     % etc. actually makes those predicates more efficient.
@@ -584,7 +586,11 @@ expand(NumOccupants, MaxOccupants0, HashPred, Buckets0) = HT :-
     NumBuckets0 = size(Buckets0),
     NumBuckets = NumBuckets0 + NumBuckets0,
     MaxOccupants = MaxOccupants0 + MaxOccupants0,
-    Buckets1 = version_array.init(NumBuckets, ht_nil),
+    ( if version_array.has_lock(Buckets0) then
+        Buckets1 = version_array.init(NumBuckets, ht_nil)
+    else
+        Buckets1 = version_array.unsafe_init(NumBuckets, ht_nil)
+    ),
     reinsert_bindings(0, Buckets0, HashPred, NumBuckets, Buckets1, Buckets),
     HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets).
 
@@ -596,7 +602,7 @@ reinsert_bindings(I, OldBuckets, HashPred, NumBuckets, !Buckets) :-
     ( if I >= size(OldBuckets) then
         true
     else
-        AL = OldBuckets ^ elem(I),
+        version_array.lookup(OldBuckets, I, AL),
         reinsert_alist(AL, HashPred, NumBuckets, !Buckets),
         reinsert_bindings(I + 1, OldBuckets, HashPred, NumBuckets, !Buckets)
     ).
@@ -621,7 +627,7 @@ reinsert_alist(AL, HashPred, NumBuckets, !Buckets) :-
 
 unsafe_insert(K, V, HashPred, NumBuckets, Buckets0, Buckets) :-
     find_slot_2(HashPred, K, NumBuckets, H),
-    AL0 = Buckets0 ^ elem(H),
+    version_array.lookup(Buckets0, H, AL0),
     (
         AL0 = ht_nil,
         AL = ht_single(K, V)
@@ -631,7 +637,7 @@ unsafe_insert(K, V, HashPred, NumBuckets, Buckets0, Buckets) :-
         ),
         AL = ht_cons(K, V, AL0)
     ),
-    Buckets = Buckets0 ^ elem(H) := AL.
+    version_array.set(H, AL, Buckets0, Buckets).
 
 %---------------------------------------------------------------------------%
 

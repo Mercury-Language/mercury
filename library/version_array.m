@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2012 The University of Melbourne.
-% Copyright (C) 2014-2022 The Mercury Team.
+% Copyright (C) 2014-2023 The Mercury Team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -70,7 +70,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % empty_array returns the empty array.
+    % empty returns the empty array.
     %
 :- func empty = version_array(T).
 
@@ -137,7 +137,7 @@
     %
 :- func size(version_array(T)) = int.
 
-    % max(Z) = size(A) - 1.
+    % max(A) = size(A) - 1.
     % Returns -1 for an empty array.
     %
 :- func max(version_array(T)) = int.
@@ -263,11 +263,28 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+:- implementation.
+
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+%---------------------------------------------------------------------------%
+
+:- interface.
+
+    % Succeeds if the version array has an internal lock to protect against
+    % concurrent updates. This predicate is privately exported so that
+    % version_hash_table does not need an extra flag to record whether the
+    % version_array was created with a lock or not.
+    %
+:- pred has_lock(version_array(T)::in) is semidet.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 % The first implementation of version arrays used nb_references.
 % This incurred three memory allocations for every update. This version
 % works at a lower level, but only performs one allocation per update.
-
-%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -553,11 +570,13 @@ resize(N, X, VA, resize(VA, N, X)).
 
 %---------------------------------------------------------------------------%
 
-copy(VA) =
-    ( if size(VA) = 0 then
-        VA
+copy(VA0) = VA :-
+    Size = size(VA0),
+    ( if Size = 0 then
+        VA = VA0
     else
-        resize(VA, size(VA), lookup(VA, 0))
+        lookup(VA0, 0, Init),
+        resize(Size, Init, VA0, VA)
     ).
 
 %---------------------------------------------------------------------------%
@@ -574,10 +593,11 @@ foldl(F, VA, Acc0) = Acc :-
 :- pred do_foldl_func((func(T1, T2) = T2)::in,
     version_array(T1)::in, int::in, int::in, T2::in, T2::out) is det.
 
-do_foldl_func(F, VA, Lo, Hi, !Acc) :-
-    ( if Lo < Hi then
-        !:Acc = F(lookup(VA, Lo), !.Acc),
-        do_foldl_func(F, VA, Lo + 1, Hi, !Acc)
+do_foldl_func(F, VA, I, Size, !Acc) :-
+    ( if I < Size then
+        lookup(VA, I, X),
+        !:Acc = F(X, !.Acc),
+        do_foldl_func(F, VA, I + 1, Size, !Acc)
     else
         true
     ).
@@ -598,10 +618,11 @@ foldl(P, VA, !Acc) :-
 :- mode do_foldl_pred(pred(in, di, uo) is semidet, in, in, in, di, uo)
     is semidet.
 
-do_foldl_pred(P, VA, Lo, Hi, !Acc) :-
-    ( if Lo < Hi then
-        P(lookup(VA, Lo), !Acc),
-        do_foldl_pred(P, VA, Lo + 1, Hi, !Acc)
+do_foldl_pred(P, VA, I, Size, !Acc) :-
+    ( if I < Size then
+        lookup(VA, I, X),
+        P(X, !Acc),
+        do_foldl_pred(P, VA, I + 1, Size, !Acc)
     else
         true
     ).
@@ -626,10 +647,11 @@ foldl2(P, VA, !Acc1, !Acc2) :-
 :- mode do_foldl2(pred(in, in, out, di, uo) is semidet, in, in, in,
     in, out, di, uo) is semidet.
 
-do_foldl2(P, VA, Lo, Hi, !Acc1, !Acc2) :-
-    ( if Lo < Hi then
-        P(lookup(VA, Lo), !Acc1, !Acc2),
-        do_foldl2(P, VA, Lo + 1, Hi, !Acc1, !Acc2)
+do_foldl2(P, VA, I, Size, !Acc1, !Acc2) :-
+    ( if I < Size then
+        lookup(VA, I, X),
+        P(X, !Acc1, !Acc2),
+        do_foldl2(P, VA, I + 1, Size, !Acc1, !Acc2)
     else
         true
     ).
@@ -637,15 +659,16 @@ do_foldl2(P, VA, Lo, Hi, !Acc1, !Acc2) :-
 %---------------------------------------------------------------------------%
 
 foldr(F, VA, Acc0) = Acc :-
-    do_foldr_func(F, VA, max(VA), Acc0, Acc).
+    do_foldr_func(F, VA, size(VA) - 1, Acc0, Acc).
 
 :- pred do_foldr_func((func(T1, T2) = T2)::in, version_array(T1)::in,
     int::in, T2::in, T2::out) is det.
 
-do_foldr_func(F, VA, Hi, !Acc) :-
-    ( if 0 =< Hi then
-        !:Acc = F(lookup(VA, Hi), !.Acc),
-        do_foldr_func(F, VA, Hi - 1, !Acc)
+do_foldr_func(F, VA, I, !Acc) :-
+    ( if I >= 0 then
+        lookup(VA, I, X),
+        !:Acc = F(X, !.Acc),
+        do_foldr_func(F, VA, I - 1, !Acc)
     else
         true
     ).
@@ -653,7 +676,7 @@ do_foldr_func(F, VA, Hi, !Acc) :-
 %---------------------------------------------------------------------------%
 
 foldr(P, VA, !Acc) :-
-    do_foldr_pred(P, VA, max(VA), !Acc).
+    do_foldr_pred(P, VA, size(VA) - 1, !Acc).
 
 :- pred do_foldr_pred(pred(T1, T2, T2), version_array(T1), int, T2, T2).
 :- mode do_foldr_pred(pred(in, in, out) is det, in, in, in, out) is det.
@@ -668,7 +691,8 @@ foldr(P, VA, !Acc) :-
 
 do_foldr_pred(P, VA, I, !Acc) :-
     ( if I >= 0 then
-        P(lookup(VA, I), !Acc),
+        lookup(VA, I, X),
+        P(X, !Acc),
         do_foldr_pred(P, VA, I - 1, !Acc)
     else
         true
@@ -677,7 +701,7 @@ do_foldr_pred(P, VA, I, !Acc) :-
 %---------------------------------------------------------------------------%
 
 foldr2(P, VA, !Acc1, !Acc2) :-
-    do_foldr2(P, VA, max(VA), !Acc1, !Acc2).
+    do_foldr2(P, VA, size(VA) - 1, !Acc1, !Acc2).
 
 :- pred do_foldr2(pred(T1, T2, T2, T3, T3), version_array(T1), int,
     T2, T2, T3, T3).
@@ -696,7 +720,8 @@ foldr2(P, VA, !Acc1, !Acc2) :-
 
 do_foldr2(P, VA, I, !Acc1, !Acc2) :-
     ( if I >= 0 then
-        P(lookup(VA, I), !Acc1, !Acc2),
+        lookup(VA, I, X),
+        P(X, !Acc1, !Acc2),
         do_foldr2(P, VA, I - 1, !Acc1, !Acc2)
     else
         true
@@ -772,9 +797,9 @@ unsafe_rewind(VA, unsafe_rewind(VA)).
 :- pragma terminates(pred(eq_version_array/2)).
 
 eq_version_array(VAa, VAb) :-
-    N = max(VAa),
-    N = max(VAb),
-    eq_version_array_2(N, VAa, VAb).
+    N = size(VAa),
+    N = size(VAb),
+    eq_version_array_2(N - 1, VAa, VAb).
 
 :- pred eq_version_array_2(int::in,
     version_array(T)::in, version_array(T)::in) is semidet.
@@ -1372,6 +1397,7 @@ using System;
 :- pragma foreign_code("C#", "
 
 public interface ML_va {
+    bool has_lock();
     object get(int I);
     ML_va set(int I, object X);
     ML_va resize(int N, object X);
@@ -1395,6 +1421,10 @@ public class ML_sva : ML_va {
     }
 
     private ML_sva() {}
+
+    public bool has_lock() {
+        return true;
+    }
 
     public object get(int I) {
         lock (va_lock) {
@@ -1477,6 +1507,10 @@ public class ML_uva : ML_va {
             va.array()[i] = X;
         }
         return va;
+    }
+
+    public bool has_lock() {
+        return false;
     }
 
     public ML_va resize(int N, object X) {
@@ -1691,6 +1725,7 @@ import jmercury.runtime.MercuryBitmap;
 :- pragma foreign_code("Java", "
 
 public interface ML_va {
+    public boolean has_lock();
     public Object get(int I) throws ArrayIndexOutOfBoundsException;
     public ML_va set(int I, Object X);
     public ML_va resize(int N, Object X);
@@ -1716,7 +1751,11 @@ public static class ML_sva implements ML_va, java.io.Serializable {
         lock = new Lock();
     }
 
-    private ML_sva() {};
+    private ML_sva() {}
+
+    public boolean has_lock() {
+        return true;
+    }
 
     public Object get(int I) throws ArrayIndexOutOfBoundsException {
         synchronized (lock) {
@@ -1795,6 +1834,10 @@ public static class ML_uva implements ML_va, java.io.Serializable {
         va.rest  = new Object[N];
         java.util.Arrays.fill(va.array(), X);
         return va;
+    }
+
+    public boolean has_lock() {
+        return false;
     }
 
     public ML_uva resize(int N, Object X) {
@@ -2006,6 +2049,37 @@ out_of_bounds_error(Index, Max, PredName) :-
 %---------------------------------------------------------------------------%
 
 version_array_to_doc(A) = pretty_printer.version_array_to_doc(A).
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    has_lock(VA::in),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+#ifdef MR_THREAD_SAFE
+    SUCCESS_INDICATOR = (VA->lock != NULL) ? MR_TRUE : MR_FALSE;
+#else
+    // The following means has_lock(VA) will fail in non-.par C grades even if
+    // VA was created with a 'safe' init function. That is acceptable for the
+    // use in version_hash_table.m, but if we wanted to publicly export
+    // has_lock, it is something we might want to change.
+    SUCCESS_INDICATOR = MR_FALSE;
+#endif
+").
+
+:- pragma foreign_proc("C#",
+    has_lock(VA::in),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    SUCCESS_INDICATOR = VA.has_lock();
+").
+
+:- pragma foreign_proc("Java",
+    has_lock(VA::in),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    SUCCESS_INDICATOR = VA.has_lock();
+").
 
 %---------------------------------------------------------------------------%
 :- end_module version_array.
