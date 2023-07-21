@@ -359,102 +359,137 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
     % `int' which can't support `any'. It might also make the mode system
     % too weak -- it might not be able to detect bugs as well as it can
     % currently.
-
-    % ZZZ
+    %
+    % We process four kinds of insts: free, ground, any, and bound.
+    % In both the top-level switch and in the nested switches,
+    % we process them in this order.
+    %
+    % If we are merging free with ground or bound, regardless of
+    % which is InstA and which is InstB, then two of the branches
+    % of the branched control structure whose final insts we are merging
+    % disagree about whether the variable whose insts we are processing
+    % is bound by the whole control structure or not. In such cases,
+    % we fail, to tell our ancestors this fact.
+    %
+    % Both the main switch and the nested switches should be complete
+    % switches on the function symbols of Inst[AB] that can get here.
+    % (Note that inst_merge_2 and inst_merge_3 filter out the not_reached
+    % and constrained_inst_vars function symbols respectively, while
+    % the call to inst_expand in inst_merge_2 should do the same
+    % for defined_insts.)
+    %
+    % That still leaves inst_var and free/1.
+    % XXX Is there any particular reason why we don't treat free/1
+    % the same way as we treat free/0?
     (
-        InstA = any(UniqA, HOInstInfoA),
-        InstB = any(UniqB, HOInstInfoB),
-        merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo),
-        merge_uniq(UniqA, UniqB, Uniq),
-        InstAB = any(Uniq, HOInstInfo)
-    ;
-        InstA = any(Uniq, HOInstInfo),
-        InstB = free,
-        % We do not yet allow merge of any with free, except for
-        % clobbered anys.
-        ( Uniq = clobbered ; Uniq = mostly_clobbered ),
-        InstAB = any(Uniq, HOInstInfo)
-    ;
-        InstA = any(UniqA, _),
-        InstB = bound(UniqB, InstResultsB, BoundInstsB),
-        merge_uniq_bound(!.ModuleInfo, UniqA, UniqB, BoundInstsB, Uniq),
-        % We do not yet allow merge of any with free, except for
-        % clobbered anys.
-        ( if ( Uniq = clobbered ; Uniq = mostly_clobbered ) then
-            true
-        else
-            % XXX We will lose any nondefault higher-order info in
-            % BoundInstsB. We should at least check that there isn't any
-            % such info, as the result may be treated as default.
-            inst_results_bound_inst_list_is_ground_or_any(!.ModuleInfo,
-                InstResultsB, BoundInstsB)
-        ),
-        InstAB = any(Uniq, none_or_default_func)
-    ;
-        InstA = any(UniqA, HOInstInfoA),
-        InstB = ground(UniqB, HOInstInfoB),
-        merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo),
-        merge_uniq(UniqA, UniqB, Uniq),
-        InstAB = any(Uniq, HOInstInfo)
-    ;
         InstA = free,
-        InstB = any(Uniq, HOInstInfo),
-        % We do not yet allow merge of any with free, except for
-        % clobbered anys.
-        ( Uniq = clobbered ; Uniq = mostly_clobbered ),
-        InstAB = any(Uniq, HOInstInfo)
-    ;
-        InstA = bound(UniqA, InstResultsA, BoundInstsA),
-        InstB = any(UniqB, _),
-        merge_uniq_bound(!.ModuleInfo, UniqB, UniqA, BoundInstsA, Uniq),
-        % We do not yet allow merge of any with free, except
-        % for clobbered anys.
-        ( if ( Uniq = clobbered ; Uniq = mostly_clobbered ) then
-            true
-        else
-            % XXX We will lose any nondefault higher-order info in
-            % BoundInstsA. We should at least check that there isn't any
-            % such info, as the result may be treated as default.
-            inst_results_bound_inst_list_is_ground_or_any(!.ModuleInfo,
-                InstResultsA, BoundInstsA)
-        ),
-        InstAB = any(Uniq, none_or_default_func)
+        (
+            InstB = free,
+            InstAB = free
+        ;
+            InstB = any(Uniq, HOInstInfo),
+            % We do not yet allow merge of any with free, except for
+            % clobbered anys.
+            ( Uniq = clobbered ; Uniq = mostly_clobbered ),
+            InstAB = any(Uniq, HOInstInfo)
+%       ;
+%           ( InstB = ground(_, _)
+%           ; InstB = bound(_, _, _)
+%           ),
+%           fail
+        )
     ;
         InstA = ground(UniqA, HOInstInfoA),
-        InstB = any(UniqB, HOInstInfoB),
-        merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo),
-        merge_uniq(UniqA, UniqB, Uniq),
-        InstAB = any(Uniq, HOInstInfo)
+        (
+%           InstB = free,
+%           fail
+%       ;
+            InstB = ground(UniqB, HOInstInfoB),
+            merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo,
+                !ModuleInfo),
+            merge_uniq(UniqA, UniqB, Uniq),
+            InstAB = ground(Uniq, HOInstInfo)
+        ;
+            InstB = any(UniqB, HOInstInfoB),
+            merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo,
+                !ModuleInfo),
+            merge_uniq(UniqA, UniqB, Uniq),
+            InstAB = any(Uniq, HOInstInfo)
+        ;
+            InstB = bound(UniqB, InstResultsB, BoundInstsB),
+            inst_merge_bound_ground(Type, UniqB, InstResultsB, BoundInstsB,
+                UniqA, InstAB, !ModuleInfo),
+            not inst_contains_nondefault_func_mode(!.ModuleInfo, InstB)
+        )
     ;
-        InstA = free,
-        InstB = free,
-        InstAB = free
-    ;
-        InstA = bound(UniqA, _InstResultsA, BoundInstsA),
-        InstB = bound(UniqB, _InstResultsB, BoundInstsB),
-        merge_uniq(UniqA, UniqB, Uniq),
-        bound_inst_list_merge(Type, BoundInstsA, BoundInstsB, BoundInstsAB,
-            !ModuleInfo),
-        % XXX A better approximation of InstResults is probably possible.
-        InstAB = bound(Uniq, inst_test_no_results, BoundInstsAB)
+        InstA = any(UniqA, HOInstInfoA),
+        (
+            InstB = free,
+            % We do not yet allow merge of any with free, except for
+            % clobbered anys.
+            ( UniqA = clobbered ; UniqA = mostly_clobbered ),
+            InstAB = any(UniqA, HOInstInfoA)
+        ;
+            InstB = ground(UniqB, HOInstInfoB),
+            merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo,
+                !ModuleInfo),
+            merge_uniq(UniqA, UniqB, Uniq),
+            InstAB = any(Uniq, HOInstInfo)
+        ;
+            InstB = any(UniqB, HOInstInfoB),
+            merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo,
+                !ModuleInfo),
+            merge_uniq(UniqA, UniqB, Uniq),
+            InstAB = any(Uniq, HOInstInfo)
+        ;
+            InstB = bound(UniqB, InstResultsB, BoundInstsB),
+            merge_uniq_bound(!.ModuleInfo, UniqA, UniqB, BoundInstsB, Uniq),
+            % We do not yet allow merge of any with free, except for
+            % clobbered anys.
+            ( if ( Uniq = clobbered ; Uniq = mostly_clobbered ) then
+                true
+            else
+                % XXX We will lose any nondefault higher-order info in
+                % BoundInstsB. We should at least check that there isn't any
+                % such info, as the result may be treated as default.
+                inst_results_bound_inst_list_is_ground_or_any(!.ModuleInfo,
+                    InstResultsB, BoundInstsB)
+            ),
+            InstAB = any(Uniq, none_or_default_func)
+        )
     ;
         InstA = bound(UniqA, InstResultsA, BoundInstsA),
-        InstB = ground(UniqB, _),
-        inst_merge_bound_ground(Type, UniqA, InstResultsA, BoundInstsA, UniqB,
-            InstAB, !ModuleInfo),
-        not inst_contains_nondefault_func_mode(!.ModuleInfo, InstA)
-    ;
-        InstA = ground(UniqA, _),
-        InstB = bound(UniqB, InstResultsB, BoundInstsB),
-        inst_merge_bound_ground(Type, UniqB, InstResultsB, BoundInstsB, UniqA,
-            InstAB, !ModuleInfo),
-        not inst_contains_nondefault_func_mode(!.ModuleInfo, InstB)
-    ;
-        InstA = ground(UniqA, HOInstInfoA),
-        InstB = ground(UniqB, HOInstInfoB),
-        merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo),
-        merge_uniq(UniqA, UniqB, Uniq),
-        InstAB = ground(Uniq, HOInstInfo)
+        (
+%           InstB = free,
+%           fail
+%       ;
+            InstB = ground(UniqB, _),
+            inst_merge_bound_ground(Type, UniqA, InstResultsA, BoundInstsA,
+                UniqB, InstAB, !ModuleInfo),
+            not inst_contains_nondefault_func_mode(!.ModuleInfo, InstA)
+        ;
+            InstB = any(UniqB, _),
+            merge_uniq_bound(!.ModuleInfo, UniqB, UniqA, BoundInstsA, Uniq),
+            % We do not yet allow merge of any with free, except
+            % for clobbered anys.
+            ( if ( Uniq = clobbered ; Uniq = mostly_clobbered ) then
+                true
+            else
+                % XXX We will lose any nondefault higher-order info in
+                % BoundInstsA. We should at least check that there isn't any
+                % such info, as the result may be treated as default.
+                inst_results_bound_inst_list_is_ground_or_any(!.ModuleInfo,
+                    InstResultsA, BoundInstsA)
+            ),
+            InstAB = any(Uniq, none_or_default_func)
+        ;
+            InstB = bound(UniqB, _InstResultsB, BoundInstsB),
+            merge_uniq(UniqA, UniqB, Uniq),
+            bound_inst_list_merge(Type, BoundInstsA, BoundInstsB, BoundInstsAB,
+                !ModuleInfo),
+            % XXX A better approximation of InstResults is probably possible.
+            InstAB = bound(Uniq, inst_test_no_results, BoundInstsAB)
+        )
     ).
 
     % merge_uniq(A, B, C) succeeds if C is minimum of A and B in the ordering
