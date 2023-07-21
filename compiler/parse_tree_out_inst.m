@@ -192,10 +192,6 @@ mercury_format_inst(Lang, InstVarSet, Inst, S, !U) :-
         mercury_format_constrained_inst_vars(Lang, InstVarSet, Vars, CInst,
             S, !U)
     ;
-        Inst = abstract_inst(Name, Args),
-        mercury_format_inst_name(Lang, InstVarSet, user_inst(Name, Args),
-            S, !U)
-    ;
         Inst = defined_inst(InstName),
         mercury_format_inst_name(Lang, InstVarSet, InstName, S, !U)
     ;

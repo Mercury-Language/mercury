@@ -271,10 +271,6 @@ mercury_format_structured_inst(Lang, InstVarSet, InclAddr, Indent,
             Vars, ConstrainedInst, S, !U),
         add_string(Suffix, S, !U)
     ;
-        Inst = abstract_inst(Name, Args),
-        mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr,
-            Indent, yes, Suffix, user_inst(Name, Args), S, !U)
-    ;
         Inst = defined_inst(InstName),
         mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr,
             Indent, yes, Suffix, InstName, S, !U)

@@ -1135,11 +1135,6 @@ qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs) :-
         qualify_inst_name(InInt, ErrorContext, InstName0, InstName,
             !Info, !Specs),
         Inst = defined_inst(InstName)
-    ;
-        Inst0 = abstract_inst(Name, Args0),
-        % XXX We could pass a more specific error context.
-        qualify_inst_list(InInt, ErrorContext, Args0, Args, !Info, !Specs),
-        Inst = abstract_inst(Name, Args)
     ).
 
 :- pred qualify_inst_list(mq_in_interface::in, mq_error_context::in,

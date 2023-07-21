@@ -429,7 +429,6 @@ add_arg_regs_in_inst(ModuleInfo, Seen0, Type, Inst0, Inst) :-
         ; Inst0 = free(_)
         ; Inst0 = not_reached
         ; Inst0 = inst_var(_)
-        ; Inst0 = abstract_inst(_, _)
         ),
         Inst = Inst0
     ).
@@ -982,9 +981,6 @@ rebuild_cell_inst(ModuleInfo, InstMap, ConsId, Args, Inst0, Inst) :-
         ),
         Inst = Inst0
     ;
-        Inst0 = abstract_inst(_, _),
-        unexpected($pred, "abstract_inst")
-    ;
         Inst0 = inst_var(_),
         unexpected($pred, "inst_var")
     ).
@@ -1421,7 +1417,6 @@ search_pred_inst_info_2(ModuleInfo, Inst, PredInstInfo) :-
         ; Inst = bound(_, _, _)
         ; Inst = not_reached
         ; Inst = inst_var(_)
-        ; Inst = abstract_inst(_, _)
         ),
         fail
     ).

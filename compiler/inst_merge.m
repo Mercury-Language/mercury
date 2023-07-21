@@ -81,7 +81,6 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_inst_mode.
-:- import_module mdbcomp.
 :- import_module parse_tree.prog_type.
 
 :- import_module require.
@@ -361,6 +360,7 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
     % too weak -- it might not be able to detect bugs as well as it can
     % currently.
 
+    % ZZZ
     (
         InstA = any(UniqA, HOInstInfoA),
         InstB = any(UniqB, HOInstInfoB),
@@ -397,14 +397,6 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
         merge_uniq(UniqA, UniqB, Uniq),
         InstAB = any(Uniq, HOInstInfo)
     ;
-        InstA = any(UniqA, _),
-        InstB = abstract_inst(_, _),
-        merge_uniq(UniqA, shared, Uniq),
-        % We do not yet allow merge of any with free, except for
-        % clobbered anys.
-        ( Uniq = clobbered ; Uniq = mostly_clobbered ),
-        InstAB = any(Uniq, none_or_default_func)
-    ;
         InstA = free,
         InstB = any(Uniq, HOInstInfo),
         % We do not yet allow merge of any with free, except for
@@ -433,14 +425,6 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
         merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo),
         merge_uniq(UniqA, UniqB, Uniq),
         InstAB = any(Uniq, HOInstInfo)
-    ;
-        InstA = abstract_inst(_, _),
-        InstB = any(UniqB, _),
-        merge_uniq(shared, UniqB, Uniq),
-        % We do not yet allow merge of any with free, except for
-        % clobbered anys.
-        ( Uniq = clobbered ; Uniq = mostly_clobbered ),
-        InstAB = any(Uniq, none_or_default_func)
     ;
         InstA = free,
         InstB = free,
@@ -471,13 +455,6 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
         merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo),
         merge_uniq(UniqA, UniqB, Uniq),
         InstAB = ground(Uniq, HOInstInfo)
-    ;
-        InstA = abstract_inst(Name, ArgsA),
-        InstB = abstract_inst(Name, ArgsB),
-        % We don't know the arguments types of an abstract inst.
-        Types = list.duplicate(list.length(ArgsA), no_type_available),
-        inst_list_merge(Types, ArgsA, ArgsB, ArgsAB, !ModuleInfo),
-        InstAB = abstract_inst(Name, ArgsAB)
     ).
 
     % merge_uniq(A, B, C) succeeds if C is minimum of A and B in the ordering
@@ -568,9 +545,6 @@ merge_inst_uniq(ModuleInfo, InstA, UniqB, !Expansions, Uniq) :-
         ; InstA = any(UniqA, _)
         ),
         merge_uniq(UniqA, UniqB, Uniq)
-    ;
-        InstA = abstract_inst(_, _),
-        merge_uniq(shared, UniqB, Uniq)
     ;
         InstA = bound(UniqA, _InstResultsA, BoundInstsA),
         merge_uniq(UniqA, UniqB, Uniq0),

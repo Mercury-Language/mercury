@@ -212,10 +212,6 @@ pretest_inst(Inst0, Inst, UserInstTable0, Groundness, ContainsAny,
         ContainsTypes = inst_result_contains_types_unknown,
         Inst = Inst0
     ;
-        Inst0 = abstract_inst(_SymName, _SubInsts),
-        % These aren't supported.
-        unexpected($pred, "Inst0 = abstract_inst")
-    ;
         Inst0 = bound(Uniq, _TestResults0, BoundInsts0),
         pretest_bound_insts(BoundInsts0, BoundInsts, UserInstTable0,
             inst_result_is_ground, Groundness,

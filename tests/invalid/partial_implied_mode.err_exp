@@ -27,5 +27,4 @@ partial_implied_mode.m:038:     ),
 partial_implied_mode.m:038:   term
 partial_implied_mode.m:038:   `partial_implied_mode_helper_1.physic_quantity(V_13,
 partial_implied_mode.m:038:   ArgX2, V_14)' has instantiatedness
-partial_implied_mode.m:038:     named inst
 partial_implied_mode.m:038:     partial_implied_mode_helper_1.physic_quantity(free, ground, free).

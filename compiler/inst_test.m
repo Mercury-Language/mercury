@@ -421,12 +421,6 @@ inst_is_ground_mt_2(ModuleInfo, Type, Inst, !Expansions) :-
     ;
         Inst = inst_var(_),
         unexpected($pred, "uninstantiated inst parameter")
-    ;
-        Inst = abstract_inst(_, _),
-        % XXX I (zs) am not sure this is the right thing to do here.
-        % The original code of this predicate simply did not consider
-        % this kind of Inst.
-        fail
     ).
 
 %-----------------------------------------------------------------------------%
@@ -455,7 +449,6 @@ inst_is_ground_or_any_2(ModuleInfo, Inst, !Expansions) :-
     ;
         ( Inst = free
         ; Inst = free(_)
-        ; Inst = abstract_inst(_, _)   % XXX is this right?
         ),
         fail
     ;
@@ -575,12 +568,6 @@ inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions) :-
         else
             true
         )
-    ;
-        Inst = abstract_inst(_, _),
-        % XXX I (zs) am not sure this is the right thing to do here.
-        % The original code of this predicate simply did not consider
-        % this kind of Inst.
-        fail
     ).
 
 %-----------------------------------------------------------------------------%
@@ -629,12 +616,6 @@ inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions) :-
         else
             true
         )
-    ;
-        Inst = abstract_inst(_, _),
-        % XXX I (zs) am not sure this is the right thing to do here.
-        % The original code of this predicate simply did not consider
-        % this kind of Inst.
-        fail
     ).
 
 %-----------------------------------------------------------------------------%
@@ -688,12 +669,6 @@ inst_is_not_fully_unique_2(ModuleInfo, Inst, !Expansions) :-
         else
             true
         )
-    ;
-        Inst = abstract_inst(_, _),
-        % XXX I (zs) am not sure this is the right thing to do here.
-        % The original code of this predicate simply did not consider
-        % this kind of Inst.
-        fail
     ).
 
 %-----------------------------------------------------------------------------%
@@ -704,7 +679,6 @@ inst_is_clobbered(ModuleInfo, Inst) :-
         ( Inst = free
         ; Inst = free(_)
         ; Inst = not_reached
-        ; Inst = abstract_inst(_, _)    % XXX is this right?
         ),
         fail
     ;
@@ -738,7 +712,6 @@ inst_is_free(ModuleInfo, Inst) :-
         ; Inst = bound(_, _, _)
         ; Inst = any(_, _)
         ; Inst = not_reached
-        ; Inst = abstract_inst(_, _)    % XXX is this right?
         ),
         fail
     ;
@@ -763,7 +736,6 @@ inst_is_any(ModuleInfo, Inst) :-
         ; Inst = ground(_, _)
         ; Inst = bound(_, _, _)
         ; Inst = not_reached
-        ; Inst = abstract_inst(_, _)    % XXX is this right?
         ),
         fail
     ;
@@ -784,7 +756,6 @@ inst_is_bound(ModuleInfo, Inst) :-
         ( Inst = ground(_, _)
         ; Inst = bound(_, _, _)
         ; Inst = any(_, _)
-        ; Inst = abstract_inst(_, _)    % XXX is this right?
         ; Inst = not_reached
         )
     ;
@@ -827,7 +798,6 @@ inst_is_bound_to_functors(ModuleInfo, Inst, Functors) :-
         ; Inst = free(_)
         ; Inst = any(_, _)
         ; Inst = ground(_, _)
-        ; Inst = abstract_inst(_, _)
         ; Inst = not_reached
         ),
         fail
@@ -1212,8 +1182,7 @@ inst_contains_inst_name(ModuleInfo, InstName, Inst) :-
 
 inst_contains_inst_name_2(ModuleInfo, InstName, Inst, Contains, !Expansions) :-
     (
-        ( Inst = abstract_inst(_, _)
-        ; Inst = any(_, _)
+        ( Inst = any(_, _)
         ; Inst = free
         ; Inst = free(_)
         ; Inst = ground(_, _)
@@ -1433,7 +1402,6 @@ inst_contains_any_2(ModuleInfo, Inst, !.Expansions) = ContainsAny :-
         ; Inst = free(_)
         ; Inst = not_reached
         ; Inst = ground(_, _)
-        ; Inst = abstract_inst(_, _)
         ),
         ContainsAny = no
     ).
@@ -1513,10 +1481,6 @@ inst_contains_higher_order_2(ModuleInfo, Inst, !.Expansions) = ContainsHO :-
         ContainsHO =
             inst_contains_higher_order_2(ModuleInfo, SubInst, !.Expansions)
     ;
-        Inst = abstract_inst(_, ArgInsts),
-        ContainsHO = inst_list_contains_higher_order(ModuleInfo, ArgInsts,
-            !.Expansions)
-    ;
         ( Inst = free
         ; Inst = free(_)
         ; Inst = not_reached
@@ -1578,7 +1542,6 @@ inst_may_restrict_cons_ids(ModuleInfo, Inst) = MayRestrict :-
         ; Inst = bound(_, _, _)
         ; Inst = inst_var(_)
         ; Inst = constrained_inst_vars(_, _)    % XXX is this right?
-        ; Inst = abstract_inst(_, _)
         ),
         MayRestrict = yes
     ;

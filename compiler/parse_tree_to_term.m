@@ -274,10 +274,6 @@ inst_to_term_with_context(Lang, Context, Inst, InstTerm) :-
         set.foldl(record_constrained_var(Context), Vars,
             SubInstTerm, InstTerm)
     ;
-        Inst = abstract_inst(Name, Args),
-        inst_name_to_term_with_context(Lang, Context,
-            user_inst(Name, Args), InstTerm)
-    ;
         Inst = defined_inst(InstName),
         inst_name_to_term_with_context(Lang, Context, InstName, InstTerm)
     ;
@@ -357,10 +353,6 @@ inst_to_limited_size_term_with_context(Lang, Context, Inst, InstTerm,
         set.foldl(record_constrained_var(Context), Vars,
             SubInstTerm, InstTerm),
         !:SizeLeft = !.SizeLeft - set.count(Vars)
-    ;
-        Inst = abstract_inst(Name, Args),
-        inst_name_to_limited_size_term_with_context(Lang, Context,
-            user_inst(Name, Args), InstTerm, !SizeLeft)
     ;
         Inst = defined_inst(InstName),
         inst_name_to_limited_size_term_with_context(Lang, Context,

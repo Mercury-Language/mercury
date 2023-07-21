@@ -5,7 +5,7 @@ functor_ho_inst_bad.m:039:   `functor_ho_inst_bad.job(V_8)'.
 functor_ho_inst_bad.m:039:   Variable `V_7' has instantiatedness `free',
 functor_ho_inst_bad.m:039:   term `functor_ho_inst_bad.job(V_8)' has
 functor_ho_inst_bad.m:039:   instantiatedness
-functor_ho_inst_bad.m:039:     named inst functor_ho_inst_bad.job(
+functor_ho_inst_bad.m:039:     functor_ho_inst_bad.job(
 functor_ho_inst_bad.m:039:       /* unique */ (pred(in, di, uo) is det)
 functor_ho_inst_bad.m:039:     ).
 For more information, recompile with `-E'.

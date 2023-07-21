@@ -153,9 +153,6 @@ make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo) :-
             Inst = SubInst
         )
     ;
-        Inst0 = abstract_inst(_, _),
-        unexpected($pred, "abstract_inst")
-    ;
         Inst0 = defined_inst(InstName),
         % Check whether the inst name is already in the mostly_uniq_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable0),
@@ -299,9 +296,6 @@ make_shared_inst(Inst0, Inst, !ModuleInfo) :-
         else
             Inst = SubInst1
         )
-    ;
-        Inst0 = abstract_inst(_, _),
-        unexpected($pred, "abstract_inst")
     ;
         Inst0 = defined_inst(InstName),
         % Check whether the inst name is already in the shared_inst table.

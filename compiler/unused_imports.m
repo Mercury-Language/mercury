@@ -1059,10 +1059,6 @@ mer_inst_used_modules(Visibility, Inst, !UsedModules) :-
     ;
         Inst = defined_inst(InstName),
         inst_name_used_modules(Visibility, InstName, !UsedModules)
-    ;
-        Inst = abstract_inst(Name, ArgInsts),
-        record_sym_name_module_as_used(Visibility, Name, !UsedModules),
-        list.foldl(mer_inst_used_modules(Visibility), ArgInsts, !UsedModules)
     ).
 
 %-----------------------------------------------------------------------------%

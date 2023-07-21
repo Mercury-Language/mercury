@@ -136,17 +136,13 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
         ; EqvInst = inst_var(_)
         ; EqvInst = constrained_inst_vars(_, _)
         ; EqvInst = defined_inst(_)
-        ; EqvInst = abstract_inst(_, _)
         ),
         IFTC = iftc_not_applicable,
         ( if
             MaybeForType = yes(_ForType),
             inst_status_defined_in_this_module(InstStatus) = yes
         then
-            ShortInstSymName = unqualified(unqualify_name(InstSymName)),
-            Pieces = [words("Error: inst"),
-                qual_sym_name_arity(
-                    sym_name_arity(ShortInstSymName, InstArity)),
+            Pieces = [words("Error: inst"), unqual_inst_ctor(InstCtor),
                 words("is specified to be for a given type constructor,"),
                 words("but it is not defined to be equivalent to a"),
                 quote("bound"), words("inst."), nl],

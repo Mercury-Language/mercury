@@ -405,7 +405,6 @@ mode_needs_direct_arg_in_out(ModuleInfo, DirectArgFunctors, FromInst, ToInst)
         ; FromInst = not_reached
         ; FromInst = ground(_, _)
         ; FromInst = inst_var(_)
-        ; FromInst = abstract_inst(_, _)
         ),
         IsDAIO = mode_is_not_daio
     ;
@@ -423,24 +422,6 @@ mode_needs_direct_arg_in_out(ModuleInfo, DirectArgFunctors, FromInst, ToInst)
                 ),
                 % ToInst cannot be less instantiated than FromInst.
                 unexpected($pred, "bound to free")
-            ;
-                ToInst = abstract_inst(_, _),
-                % XXX In this extremely rare case, we have no idea whether
-                % the actual inst that this abstract inst stands for
-                % requires its argument to be cloned or not. We *could*
-                % clone all such arguments, but we have seen no need for it
-                % just yet.
-                % XXX I (zs) do not even know whether the compiler
-                % permits any procedure whose mode includes an abstract inst
-                % to pass semantic analysis, though as far as I can tell,
-                % the reference manual does not prohibit this. (Though it
-                % also does not explicitly say that it is permitted.)
-                % 
-                % XXX We could return messages as error_specs,
-                % instead of as abort messages.
-                unexpected($pred,
-                    "NYI: abstract inst in predicate mode in a module " ++
-                    "that uses partially-instantiated direct_arg terms")
             ;
                 ToInst = inst_var(_),
                 % XXX Another instance of the problem described for
@@ -569,9 +550,7 @@ some_bound_inst_has_direct_arg_out(ModuleInfo, FreeArgDirectArgFunctors,
             SomeDirectArgIsBound = some_direct_arg_is_bound,
             CanSeeAllArgModes = TailCanSeeAllArgModes
         ;
-            ( ArgInst = inst_var(_)
-            ; ArgInst = abstract_inst(_, _)
-            ),
+            ArgInst = inst_var(_),
             SomeDirectArgIsBound = TailSomeDirectArgIsBound,
             CanSeeAllArgModes = cannot_see_all_arg_modes
         ;
@@ -898,7 +877,6 @@ clobber_daio_inst(ModuleInfo, Inst0) = ClobberedInst :-
         ; Inst = any(_, _)
         ; Inst = not_reached
         ; Inst = inst_var(_)
-        ; Inst = abstract_inst(_, _)
         ),
         unexpected($pred, "inst is not a daio inst")
     ;
@@ -932,7 +910,6 @@ clobber_daio_arg_inst(ModuleInfo, Inst0) = ClobberedInst :-
         ( Inst = any(_, _)
         ; Inst = not_reached
         ; Inst = inst_var(_)
-        ; Inst = abstract_inst(_, _)
         ),
         unexpected($pred, "inst is not a daio arg inst")
     ;

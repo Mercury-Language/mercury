@@ -1361,11 +1361,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 
     ;           free(mer_type)
 
-    ;           inst_var(inst_var)
-
-    ;           abstract_inst(sym_name, list(mer_inst)).
-                % An abstract inst is a defined inst which has been declared
-                % but not actually been defined (yet).
+    ;           inst_var(inst_var).
 
 :- inst mer_inst_is_bound for mer_inst/0
     --->        bound(ground, ground, ground).

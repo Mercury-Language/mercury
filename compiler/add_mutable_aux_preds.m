@@ -305,6 +305,9 @@ check_mutable_inst(ModuleInfo, ModuleParams, Context, InstVarSet,
                     decl("mutable"), words("declarations.")],
                 UnqualInstName =
                     user_inst(unqualified(UserInstBaseName), UserInstArgs),
+                % There is special code in error_msg_inst.m to handle
+                % inst names from which the qualification by
+                % mercury_public_builtin_module has been stripped.
                 UnqualInst = defined_inst(UnqualInstName),
                 invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet,
                     ParentInsts, UnqualInst, FreePieces, !Specs)
@@ -367,13 +370,6 @@ check_mutable_inst(ModuleInfo, ModuleParams, Context, InstVarSet,
             words("declarations.")],
         invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
             Inst, ConstrainedPieces, !Specs)
-    ;
-        Inst = abstract_inst(_, _),
-        AbstractPieces = [words("is abstract, and thus"),
-            words("may not appear in"), decl("mutable"),
-            words("declarations.")],
-        invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
-            Inst, AbstractPieces, !Specs)
     ;
         Inst = inst_var(_)
         % The parser ensures that the inst in the mutable declaration does

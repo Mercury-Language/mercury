@@ -509,7 +509,7 @@ write_inst_stats_for_module(OutStream, ModuleInfo, !IO) :-
 
 write_inst_stats(OutStream, KindStr, Stats, !IO) :-
     Stats = inst_stats(Free0, Free1, Any, Bound, Ground, NotReached, Var,
-        Constrained, Defined, Abstract),
+        Constrained, Defined),
 
     io.format(OutStream, "%-5s %-15s %20d\n",
         [s(KindStr), s("free/0"), i(Free0)], !IO),
@@ -528,9 +528,7 @@ write_inst_stats(OutStream, KindStr, Stats, !IO) :-
     io.format(OutStream, "%-5s %-15s %20d\n",
         [s(KindStr), s("constrained"), i(Constrained)], !IO),
     io.format(OutStream, "%-5s %-15s %20d\n",
-        [s(KindStr), s("defined"), i(Defined)], !IO),
-    io.format(OutStream, "%-5s %-15s %20d\n",
-        [s(KindStr), s("abstract"), i(Abstract)], !IO).
+        [s(KindStr), s("defined"), i(Defined)], !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -544,13 +542,12 @@ write_inst_stats(OutStream, KindStr, Stats, !IO) :-
                 is_notreached   :: int,
                 is_var          :: int,
                 is_constrained  :: int,
-                is_defined      :: int,
-                is_abstract     :: int
+                is_defined      :: int
             ).
 
 :- func init_inst_stats = inst_stats.
 
-init_inst_stats = inst_stats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0).
+init_inst_stats = inst_stats(0, 0, 0, 0, 0, 0, 0, 0, 0).
 
 %-----------------------------------------------------------------------------%
 
@@ -745,10 +742,6 @@ acc_inst_stats_in_inst(Inst, !Stats) :-
     ;
         Inst = defined_inst(_Name),
         !Stats ^ is_defined := !.Stats ^ is_defined + 1
-    ;
-        Inst = abstract_inst(_SymName, SubInsts),
-        !Stats ^ is_abstract := !.Stats ^ is_abstract + 1,
-        list.foldl(acc_inst_stats_in_inst, SubInsts, !Stats)
     ).
 
 :- pred acc_inst_stats_in_bound_inst(bound_inst::in,

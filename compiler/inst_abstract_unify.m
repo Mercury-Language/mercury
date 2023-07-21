@@ -242,9 +242,6 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 abstractly_unify_constrained_inst_vars(Live, InstVarsB,
                     SubInstB, InstA, Real, Inst, Detism, !ModuleInfo)
             ;
-                InstB = abstract_inst(_, _),
-                fail
-            ;
                 ( InstB = defined_inst(_)
                 ; InstB = free(_)
                 ; InstB = inst_var(_)
@@ -350,29 +347,6 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
             abstractly_unify_constrained_inst_vars(Live, InstVarsB,
                 SubInstB, InstA, Real, Inst, Detism, !ModuleInfo)
         ;
-            InstB = abstract_inst(_N, _As),
-            fail
-            % Abstract insts are not supported.
-            %
-            % (
-            %   Live = is_live,
-            %   unify_uniq(is_live, Real, detism_semi, unique, UniqB, Uniq),
-            %   bound_inst_list_is_ground(BoundInstsA, !.ModuleInfo),
-            %   Inst = ground(shared),
-            %   Detism = detism_semi
-            % ;
-            %   Live = is_dead,
-            %   ( if bound_inst_list_is_ground(BoundInstsA, !.ModuleInfo) then
-            %       Inst = bound(Uniq, BoundInstsA),
-            %       Detism = semidet
-            %   else if bound_inst_list_is_free(BoundInstsA, !.ModuleInfo) then
-            %       Inst = abstract_inst(N, As),
-            %       Detism = det
-            %   else
-            %       fail
-            %   )
-            % )
-        ;
             ( InstB = defined_inst(_)
             ; InstB = free(_)
             ; InstB = inst_var(_)
@@ -449,10 +423,6 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 abstractly_unify_constrained_inst_vars(Live, InstVarsB,
                     SubInstB, InstA, Real, Inst, Detism, !ModuleInfo)
             ;
-                InstB = abstract_inst(_N, _As),
-                % Abstract insts are not supported.
-                fail
-            ;
                 ( InstB = defined_inst(_)
                 ; InstB = free(_)
                 ; InstB = inst_var(_)
@@ -526,10 +496,6 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 abstractly_unify_constrained_inst_vars(Live, InstVarsB,
                     SubInstB, InstA, Real, Inst, Detism, !ModuleInfo)
             ;
-                InstB = abstract_inst(_N, _As),
-                % Abstract insts are not supported.
-                fail
-            ;
                 ( InstB = defined_inst(_)
                 ; InstB = free(_)
                 ; InstB = inst_var(_)
@@ -547,49 +513,6 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
         InstA = constrained_inst_vars(InstVarsA, SubInstA),
         abstractly_unify_constrained_inst_vars(Live, InstVarsA,
             SubInstA, InstB, Real, Inst, Detism, !ModuleInfo)
-    ;
-        InstA = abstract_inst(_N, _As),
-        % Abstract insts are not supported.
-        fail
-%       (
-%           Live = is_live,
-%           (
-%               InstB = bound(_Uniq, _BoundInstsB),
-%               check_not_clobbered(Real, Uniq),
-%               bound_inst_list_is_ground(BoundInstsB, !.ModuleInfo).
-%               Inst = ground(shared, none),
-%               Detism = detism_semi
-%           ;
-%               InstB = ground(_Uniq, none),
-%               check_not_clobbered(Real, Uniq),
-%               Inst = ground(shared, none),
-%               Detism = detism_semi
-%           ;
-%               InstB = abstract_inst(_NameB, _ArgsB),
-%               abstractly_unify_inst_list(ArgsA, ArgsB, is_live, Real,
-%                   Args, Detism, !ModuleInfo),
-%               Inst = abstract_inst(Name, Args)
-%           )
-%       ;
-%           Live = is_dead,
-%           (
-%               InstB = bound(_, _BoundInstsB),
-%               ( if bound_inst_list_is_ground(BoundInstsB, ModuleInfo) then
-%                   Inst = bound(BoundInstsB),
-%                   Detism = semidet
-%               else if bound_inst_list_is_free(BoundInstsB, ModuleInfo) then
-%                   Inst = abstract_inst(N, As),
-%                   Detism = det
-%               else
-%                   fail
-%               ).
-%           ;
-%               InstB = abstract_inst(_NameB, _ArgsB),
-%               abstractly_unify_inst_list(ArgsA, ArgsB, is_dead, Real,
-%                   Args, Detism, !ModuleInfo),
-%               Inst = abstract_inst(Name, Args)
-%           )
-%       )
     ;
         ( InstA = defined_inst(_)
         ; InstA = free(_)
@@ -738,9 +661,6 @@ abstractly_unify_inst_functor_2(Live, InstA, ConsIdB, ArgInstsB, ArgLives,
             %    of situations it would actually be useful for.
             Inst = Inst0
         )
-    ;
-        InstA = abstract_inst(_, _),
-        fail
     ;
         ( InstA = defined_inst(_)
         ; InstA = free(_)
@@ -1239,10 +1159,6 @@ make_ground_inst(Live, Uniq1, Real, Inst0, Inst, Detism, !ModuleInfo) :-
             SubInst0, ground(Uniq1, none_or_default_func), Real, Inst, Detism,
             !ModuleInfo)
     ;
-        Inst0 = abstract_inst(_, _),
-        Inst = ground(shared, none_or_default_func),
-        Detism = detism_semi
-    ;
         Inst0 = defined_inst(InstName),
         % Check whether the inst name is already in the ground_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable0),
@@ -1375,10 +1291,6 @@ make_any_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
         abstractly_unify_constrained_inst_vars(Live, InstVars,
             SubInst0, any(Uniq1, none_or_default_func), Real, Inst, Detism,
             !ModuleInfo)
-    ;
-        Inst0 = abstract_inst(_, _),
-        Inst = any(shared, none_or_default_func),
-        Detism = detism_semi
     ;
         Inst0 = defined_inst(InstName),
         % Check whether the inst name is already in the any_inst table.

@@ -3134,10 +3134,6 @@ accumulate_modules_in_inst(Inst, !MaybeUnqual, !ModuleNames) :-
     ;
         Inst = defined_inst(InstName),
         accumulate_modules_in_inst_name(InstName, !MaybeUnqual, !ModuleNames)
-    ;
-        Inst = abstract_inst(SymName, ArgInsts),
-        accumulate_module(SymName, !MaybeUnqual, !ModuleNames),
-        accumulate_modules_in_insts(ArgInsts, !MaybeUnqual, !ModuleNames)
     ).
 
 :- pred accumulate_modules_in_inst_name(inst_name::in,

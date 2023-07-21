@@ -1311,7 +1311,6 @@ limit_size_of_inst(Levels, Inst0, Inst) :-
         ; Inst0 = ground(_, _)
         ; Inst0 = bound(_, _, _)
         ; Inst0 = constrained_inst_vars(_, _)
-        ; Inst0 = abstract_inst(_, _)
         ),
         ( if Levels < 1 then
             Inst = defined_inst(user_inst(unqualified("..."), []))
@@ -1332,10 +1331,6 @@ limit_size_of_inst(Levels, Inst0, Inst) :-
                 Inst0 = constrained_inst_vars(Vars, SubInst0),
                 limit_size_of_inst(Levels - 1, SubInst0, SubInst),
                 Inst = constrained_inst_vars(Vars, SubInst)
-            ;
-                Inst0 = abstract_inst(Name, ArgInsts0),
-                list.map(limit_size_of_inst(Levels - 1), ArgInsts0, ArgInsts),
-                Inst = abstract_inst(Name, ArgInsts)
             )
         )
     ;

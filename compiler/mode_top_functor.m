@@ -156,9 +156,6 @@ get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInst) :-
         Inst = any(Uniq, _),
         ArgInst = any(Uniq, none_or_default_func)
     ;
-        Inst = abstract_inst(_, _),
-        unexpected($pred, "abstract insts not supported")
-    ;
         Inst = inst_var(_),
         unexpected($pred, "inst_var")
     ;

@@ -979,11 +979,6 @@ find_items_used_by_inst(Inst, !Info) :-
     ;
         Inst = defined_inst(InstName),
         find_items_used_by_inst_name(InstName, !Info)
-    ;
-        Inst = abstract_inst(Name, ArgInsts),
-        ItemName = recomp_item_name(Name, list.length(ArgInsts)),
-        maybe_record_item_to_process(recomp_inst, ItemName, !Info),
-        find_items_used_by_insts(ArgInsts, !Info)
     ).
 
 :- pred find_items_used_by_bound_inst(bound_inst::in,

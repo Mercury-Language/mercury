@@ -406,11 +406,6 @@ match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
         InstB = defined_inst(InstNameB),
         match_inst_names_with_renaming(ModuleInfo, InstNameA, InstNameB,
             Renaming)
-    ;
-        InstA = abstract_inst(Name, ArgsA),
-        InstB = abstract_inst(Name, ArgsB),
-        match_corresponding_inst_lists_with_renaming(ModuleInfo, ArgsA, ArgsB,
-            map.init, Renaming)
     ).
 
 :- pred match_ho_inst_infos_with_renaming(module_info::in, ho_inst_info::in,

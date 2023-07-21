@@ -296,9 +296,6 @@ modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX, RevTermPath0,
                 unexpected($pred, "not user-defined inst")
             )
         )
-    ;
-        InstX = abstract_inst(_, _),
-        unexpected($pred, "abstract inst")
     ).
 
 :- func uniqueness_for_coerce_result(is_live, uniqueness) = uniqueness.

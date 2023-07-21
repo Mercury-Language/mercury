@@ -350,7 +350,6 @@ check_inst_defn_has_matching_type(WarnInstsWithoutMatchingType,
         ; Inst = inst_var(_)
         ; Inst = constrained_inst_vars(_, _)
         ; Inst = defined_inst(_)
-        ; Inst = abstract_inst(_, _)
         ),
         expect(unify(IFTC0, iftc_not_applicable), $pred,
             "not bound, IFTC0 != iftc_not_applicable"),

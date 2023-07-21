@@ -449,9 +449,6 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
             Type, Constructors, SubInst0, SubInst, !Cache, !Errors),
         Inst = constrained_inst_vars(InstVars, SubInst)
     ;
-        Inst0 = abstract_inst(_Name, _Args),
-        Inst = Inst0                        % XXX loses info
-    ;
         Inst0 = defined_inst(InstName),
         check_for_bad_use_of_user_inst(ModuleInfo, Context, InstName, Type,
             !Cache, !Errors),
@@ -569,9 +566,6 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
         propagate_type_into_inst_lazily(ModuleInfo, Context,
             Type, SubInst0, SubInst, !Cache, !Errors),
         Inst = constrained_inst_vars(InstVars, SubInst)
-    ;
-        Inst0 = abstract_inst(_Name, _Args),
-        Inst = Inst0                        % XXX loses info
     ;
         Inst0 = defined_inst(InstName0),
         check_for_bad_use_of_user_inst(ModuleInfo, Context, InstName0, Type,

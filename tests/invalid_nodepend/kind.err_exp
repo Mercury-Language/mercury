@@ -6,3 +6,17 @@ kind.m:016: In definition of inst `i'/1:
 kind.m:016:   error: variable used as inst constructor.
 kind.m:018: In definition of mode `m'/1:
 kind.m:018:   error: variable used as inst constructor.
+kind.m:020: Error: free inst parameters `K5' and `K6' on right hand side of
+kind.m:020:   inst definition.
+kind.m:020: In the definition of the inst `t': error: a variable such as `K5'
+kind.m:020:   is not a valid mode.
+kind.m:021: Error: free inst parameter `K7' on right hand side of mode
+kind.m:021:   definition.
+kind.m:021: In the definition of the mode `u': error: a variable such as `K7'
+kind.m:021:   is not a valid mode.
+kind.m:022: In definition of mode `v'/0:
+kind.m:022:   error: undefined inst `q'/0.
+kind.m:022: In definition of mode `v'/0:
+kind.m:022:   error: undefined mode `p'/0.
+kind.m:027: In definition of inst `fi'/0:
+kind.m:027:   error: undefined inst `f9'/0.

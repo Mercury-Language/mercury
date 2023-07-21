@@ -498,10 +498,6 @@ inst_apply_substitution(Subst, Inst0, Inst) :-
         else
             Inst = Inst0
         )
-    ;
-        Inst0 = abstract_inst(Name, ArgInsts0),
-        inst_list_apply_substitution_2(Subst, ArgInsts0, ArgInsts),
-        Inst = abstract_inst(Name, ArgInsts)
     ).
 
 :- pred no_inst_var_is_in_map(list(inst_var)::in, map(inst_var, T)::in)
@@ -689,11 +685,6 @@ rename_apart_inst_vars_in_inst(Renaming, Inst0, Inst) :-
         else
             Inst = Inst0
         )
-    ;
-        Inst0 = abstract_inst(Sym, SubInsts0),
-        list.map(rename_apart_inst_vars_in_inst(Renaming),
-            SubInsts0, SubInsts),
-        Inst = abstract_inst(Sym, SubInsts)
     ).
 
 :- pred rename_apart_inst_vars_in_bound_inst(renaming(inst_var_type)::in,
@@ -776,10 +767,6 @@ inst_contains_unconstrained_var(Inst) :-
     ;
         Inst = defined_inst(InstName),
         inst_name_contains_unconstrained_var(InstName)
-    ;
-        Inst = abstract_inst(_SymName, ArgInsts),
-        list.member(ArgInst, ArgInsts),
-        inst_contains_unconstrained_var(ArgInst)
     ;
         Inst = constrained_inst_vars(_, _),
         % XXX Is this the right thing to do here? Just because Inst constrains
@@ -867,9 +854,7 @@ get_arg_insts(Inst, ConsId, Arity, ArgInsts) :-
         Inst = constrained_inst_vars(_Vars, SubInst),
         get_arg_insts(SubInst, ConsId, Arity, ArgInsts)
     ;
-        ( Inst = inst_var(_)
-        ; Inst = abstract_inst(_, _)
-        ),
+        Inst = inst_var(_),
         % The compiler has no information about what function symbol
         % the variable whose inst Inst represents is bound to, so it
         % cannot have any information about the insts of its arguments.
@@ -989,11 +974,6 @@ strip_module_names_from_inst(StripWhat, Inst0, Inst) :-
         Inst0 = defined_inst(InstName0),
         strip_module_names_from_inst_name(StripWhat, InstName0, InstName),
         Inst = defined_inst(InstName)
-    ;
-        Inst0 = abstract_inst(Name0, Args0),
-        strip_module_names_from_sym_name(StripWhat, Name0, Name),
-        strip_module_names_from_inst_list(StripWhat, Args0, Args),
-        Inst = abstract_inst(Name, Args)
     ).
 
 :- pred strip_module_names_from_bound_inst_list(strip_what_module_names::in,
@@ -1123,10 +1103,6 @@ strip_typed_insts_from_inst(Inst0, Inst) :-
         Inst0 = defined_inst(InstName0),
         strip_typed_insts_from_inst_name(InstName0, InstName),
         Inst = defined_inst(InstName)
-    ;
-        Inst0 = abstract_inst(Name, Args0),
-        strip_typed_insts_from_inst_list(Args0, Args),
-        Inst = abstract_inst(Name, Args)
     ).
 
 :- pred strip_typed_insts_from_bound_inst_list(list(bound_inst)::in,
@@ -1298,11 +1274,6 @@ constrain_inst_vars_in_inst(InstConstraints, Inst0, Inst) :-
         Inst0 = defined_inst(Name0),
         constrain_inst_vars_in_inst_name(InstConstraints, Name0, Name),
         Inst = defined_inst(Name)
-    ;
-        Inst0 = abstract_inst(InstName, SubInsts0),
-        list.map(constrain_inst_vars_in_inst(InstConstraints),
-            SubInsts0, SubInsts),
-        Inst = abstract_inst(InstName, SubInsts)
     ).
 
 :- pred constrain_inst_vars_in_bound_inst(inst_var_sub::in,
@@ -1479,10 +1450,6 @@ gather_inconsistent_constrained_inst_vars_in_inst(Inst,
         else
             true
         )
-    ;
-        Inst = abstract_inst(_, ArgInsts),
-        gather_inconsistent_constrained_inst_vars_in_insts(ArgInsts,
-            !InconsistentVars, !Sub)
     ;
         Inst = constrained_inst_vars(InstVars, SubInst),
         set.fold2(

@@ -425,9 +425,6 @@ acc_inst_vars_in_inst(Inst, !InstVars) :-
         acc_inst_vars_in_inst(SubInst, set.init, SubInstVars),
         set.difference(SubInstVars, ConstrainedVars, FreeInstVars),
         set.union(FreeInstVars, !InstVars)
-    ;
-        Inst = abstract_inst(_Name, ArgInsts),
-        acc_inst_vars_in_insts(ArgInsts, !InstVars)
     ).
 
 :- pred acc_inst_vars_in_inst_name(inst_name::in,

@@ -875,11 +875,6 @@ inst_MSG_2(ModuleInfo, Expansions, InstA, InstB, Inst) :-
         InstA = any(_, _),
         InstB = any(_, _),
         Inst = InstB
-    ;
-        InstA = abstract_inst(Name, ArgsA),
-        InstB = abstract_inst(Name, ArgsB),
-        inst_list_MSG(ModuleInfo, Expansions, ArgsA, ArgsB, Args),
-        Inst = abstract_inst(Name, Args)
     ).
 
 :- pred inst_list_MSG(module_info::in, expansions::in,
@@ -962,7 +957,6 @@ inst_size_2(ModuleInfo, !.Expansions, Inst, Size) :-
         ; Inst = ground(_, _)
         ; Inst = any(_, _)
         ; Inst = inst_var(_)
-        ; Inst = abstract_inst(_, _)
         ),
         Size = 0
     ;

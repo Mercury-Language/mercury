@@ -57,10 +57,13 @@
 :- import_module check_hlds.inst_mode_type_prop.
 :- import_module hlds.hlds_inst_mode.
 :- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_mode.
 
 :- import_module list.
 :- import_module map.
+:- import_module require.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -147,7 +150,9 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
             InstBody = eqv_inst(Inst0),
             inst_substitute_arg_list(Params, Args, Inst0, Inst)
         else
-            Inst = abstract_inst(Name, Args)
+            NameStr = sym_name_to_string(Name),
+            string.format("reference to undefined inst %s", [s(NameStr)], Msg),
+            unexpected($pred, Msg)
         )
     ;
         InstName = typed_ground(Uniq, Type),

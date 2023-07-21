@@ -596,7 +596,13 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, ArgVars,
         vns_var_table(VarTable), print_name_only, ConsId, ArgVars),
     ConsIdStr = mercury_cons_id_to_string(output_mercury,
         does_not_need_brackets, ConsId),
-    FakeTermInst = defined_inst(user_inst(unqualified(ConsIdStr), ArgInsts)),
+    % inst_name_to_pieces and inst_name_to_inline_pieces look for this
+    % specific fake module qualifier, and allow the lookup of a user_inst
+    % with this qualifier to fail. They will then treat ConsIdStr as we
+    % want it to be treated: as a wrapper around ArgInsts.
+    FakeTermInstModuleName = unqualified("FAKE_CONS_ID"),
+    FakeTermInstSymName = qualified(FakeTermInstModuleName, ConsIdStr),
+    FakeTermInst = defined_inst(user_inst(FakeTermInstSymName, ArgInsts)),
     Pieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarTable, X)),
         words("and"), words_quote(FunctorConsIdStr), suffix("."), nl,
@@ -830,7 +836,6 @@ inst_has_uniqueness(Inst, SearchUniq) :-
         ( Inst = free
         ; Inst = free(_)
         ; Inst = any(_, _)
-        ; Inst = abstract_inst(_, _)
         ; Inst = not_reached
         ; Inst = inst_var(_)
         ),

@@ -1034,9 +1034,6 @@ get_constrained_insts_in_inst(ModuleInfo, Inst, !Map, !Expansions) :-
     ;
         Inst = inst_var(_),
         unexpected($pred, "inst_var")
-    ;
-        Inst = abstract_inst(_, _),
-        sorry($pred, "abstract_inst")
     ).
 
 :- pred get_constrained_insts_in_bound_inst(module_info::in, bound_inst::in,

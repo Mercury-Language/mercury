@@ -1062,9 +1062,6 @@ type_may_occur_in_inst(Inst) = MayOccur :-
             )
         )
     ;
-        Inst = abstract_inst(_, ArgInsts),
-        MayOccur = type_may_occur_in_insts(ArgInsts)
-    ;
         Inst = constrained_inst_vars(_, CInst),
         MayOccur = type_may_occur_in_inst(CInst)
     ).
@@ -1301,13 +1298,6 @@ replace_in_inst_2(TypeEqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
         replace_in_inst_name(TypeEqvMap, InstName0, InstName, Changed,
             !TVarSet, !Cache),
         ( Changed = changed, Inst = defined_inst(InstName)
-        ; Changed = unchanged, Inst = Inst0
-        )
-    ;
-        Inst0 = abstract_inst(Name, ArgInsts0),
-        replace_in_insts(TypeEqvMap, ArgInsts0, ArgInsts, Changed,
-            !TVarSet, !Cache),
-        ( Changed = changed, Inst = abstract_inst(Name, ArgInsts)
         ; Changed = unchanged, Inst = Inst0
         )
     ).

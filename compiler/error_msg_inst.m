@@ -53,7 +53,8 @@
     % without quotations, put LongInstPrefix before it, and LongInstSuffix
     % after it. Normally, LongInstPrefix will start with nl or nl_indent_delta
     % to start the inst on a new line, and LongInstSuffix will end with nl
-    % or nl_indent_delta as well.
+    % or nl_indent_delta as well. (The second nl_indent_delta will usually
+    % undo the effect of the first.)
     %
 :- func error_msg_inst(module_info, inst_varset, maybe_expand_named_insts,
     short_inst, list(format_piece),
@@ -66,7 +67,9 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.inst_lookup.
+:- import_module hlds.hlds_inst_mode.
 :- import_module mdbcomp.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_cons_id.
@@ -81,6 +84,7 @@
 :- import_module counter.
 :- import_module int.
 :- import_module map.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 
@@ -237,10 +241,6 @@ inst_to_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
         Pieces = [fixed("("), words(Names), fixed("=<") | SubInstPieces] ++
             [fixed(")") | Suffix]
     ;
-        Inst = abstract_inst(Name, ArgInsts),
-        InstName = user_inst(Name, ArgInsts),
-        inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces)
-    ;
         Inst = defined_inst(InstName),
         inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces)
     ;
@@ -308,10 +308,6 @@ inst_to_inline_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
         inst_to_inline_pieces(Info, !Expansions, SubInst, [], SubInstPieces),
         Pieces = [fixed("("), words(Names), fixed("=<") | SubInstPieces] ++
             [fixed(")") | Suffix]
-    ;
-        Inst = abstract_inst(Name, ArgInsts),
-        InstName = user_inst(Name, ArgInsts),
-        inst_name_to_inline_pieces(Info, !Expansions, InstName, Suffix, Pieces)
     ;
         Inst = defined_inst(InstName),
         inst_name_to_inline_pieces(Info, !Expansions, InstName, Suffix, Pieces)
@@ -454,33 +450,71 @@ inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
             % occurs in EqvInst more than once, it will be the *last*
             % occurrence, not the first, which will be expanded.
             NameInfo = Info ^ imi_named_insts := dont_expand_named_insts,
-            name_and_arg_insts_to_pieces(NameInfo, !.Expansions, _,
-                SymNameStr, ArgInsts, [], NamePieces),
-            NamedNamePieces = [words("named inst") | NamePieces],
-
-            ExpandInsts = Info ^ imi_named_insts,
-            (
-                ExpandInsts = dont_expand_named_insts,
-                Pieces = NamePieces ++ Suffix
-            ;
-                ExpandInsts = expand_named_insts,
-                record_user_inst_name(InstName, NamedNamePieces, !Expansions),
-                ModuleInfo = Info ^ imi_module_info,
-                inst_lookup(ModuleInfo, InstName, EqvInst),
-                ( if
-                    ( EqvInst = defined_inst(InstName)
-                    ; EqvInst = abstract_inst(SymName, ArgInsts)
+            ModuleInfo = Info ^ imi_module_info,
+            module_info_get_inst_table(ModuleInfo, InstTable),
+            inst_table_get_user_insts(InstTable, UserInstTable),
+            list.length(ArgInsts, Arity),
+            InstCtor = inst_ctor(SymName, Arity),
+            ( if
+                map.search(UserInstTable, InstCtor, InstDefn)
+            then
+                name_and_arg_insts_to_pieces(NameInfo, !.Expansions, _,
+                    SymNameStr, ArgInsts, [], NamePieces),
+                NamedNamePieces = [words("named inst") | NamePieces],
+                ExpandInsts = Info ^ imi_named_insts,
+                (
+                    ExpandInsts = dont_expand_named_insts,
+                    Pieces = NamePieces ++ Suffix
+                ;
+                    ExpandInsts = expand_named_insts,
+                    record_user_inst_name(InstName, NamedNamePieces,
+                        !Expansions),
+                    InstDefn = hlds_inst_defn(_VarSet, Params, InstBody, _MMTC,
+                        _Context, _Status),
+                    InstBody = eqv_inst(EqvInst0),
+                    inst_substitute_arg_list(Params, ArgInsts,
+                        EqvInst0, EqvInst),
+                    ( if EqvInst = defined_inst(InstName) then
+                        % XXX Would NamePieces look better in the output?
+                        Pieces = NamedNamePieces ++ Suffix
+                    else
+                        inst_to_pieces(Info, !Expansions, EqvInst,
+                            Suffix, EqvPieces),
+                        Pieces = NamedNamePieces ++
+                            [nl, words("which expands to"),
+                            nl_indent_delta(1) | EqvPieces] ++
+                            [nl_indent_delta(-1)]
                     )
+                )
+            else if
+                SymName = unqualified(BaseName),
+                Builtin = mercury_public_builtin_module,
+                BuiltinInstCtor =
+                    inst_ctor(qualified(Builtin, BaseName), Arity),
+                map.search(UserInstTable, BuiltinInstCtor, _InstDefn)
+            then
+                % check_mutable_insts in add_mutable_aux_pred.m removes
+                % any module qualifications by mercury_public_builtin_module
+                % from the inst name, to signal us that the qualification
+                % should not be printed in the error message.
+                name_and_arg_insts_to_pieces(NameInfo, !.Expansions, _,
+                    SymNameStr, ArgInsts, [], NamePieces),
+                Pieces = NamePieces ++ Suffix
+            else
+                ( if
+                    SymName = qualified(unqualified("FAKE_CONS_ID"),
+                        ConsIdName)
                 then
-                    % XXX Would NamePieces look better in the output?
-                    Pieces = NamedNamePieces ++ Suffix
+                    % mode_error_unify_var_functor_to_spec created InstName,
+                    % asking us to treat it just as a wrapper around ArgInsts.
+                    name_and_arg_insts_to_pieces(NameInfo,
+                        !.Expansions, _, ConsIdName, ArgInsts, [], NamePieces),
+                    Pieces = NamePieces ++ Suffix
                 else
-                    inst_to_pieces(Info, !Expansions, EqvInst,
-                        Suffix, EqvPieces),
-                    Pieces = NamedNamePieces ++
-                        [nl, words("which expands to"),
-                        nl_indent_delta(1) | EqvPieces] ++
-                        [nl_indent_delta(-1)]
+                    InstCtorName = sym_name_to_string(SymName),
+                    string.format("undefined inst %s/%d",
+                        [s(InstCtorName), i(Arity)], Msg),
+                    unexpected($pred, Msg)
                 )
             )
         ;
@@ -549,31 +583,67 @@ inst_name_to_inline_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
             % occurs in EqvInst more than once, it will be the *last*
             % occurrence, not the first, which will be expanded.
             NameInfo = Info ^ imi_named_insts := dont_expand_named_insts,
-            name_and_arg_insts_to_inline_pieces(NameInfo, !.Expansions, _,
-                SymNameStr, ArgInsts, [], NamePieces),
-            NamedNamePieces = [words("named inst") | NamePieces],
-
-            ExpandInsts = Info ^ imi_named_insts,
-            (
-                ExpandInsts = dont_expand_named_insts,
-                Pieces = NamePieces ++ Suffix
-            ;
-                ExpandInsts = expand_named_insts,
-                record_user_inst_name(InstName, NamedNamePieces, !Expansions),
-                ModuleInfo = Info ^ imi_module_info,
-                inst_lookup(ModuleInfo, InstName, EqvInst),
-                ( if
-                    ( EqvInst = defined_inst(InstName)
-                    ; EqvInst = abstract_inst(SymName, ArgInsts)
+            ModuleInfo = Info ^ imi_module_info,
+            module_info_get_inst_table(ModuleInfo, InstTable),
+            inst_table_get_user_insts(InstTable, UserInstTable),
+            list.length(ArgInsts, Arity),
+            InstCtor = inst_ctor(SymName, Arity),
+            ( if map.search(UserInstTable, InstCtor, InstDefn) then
+                name_and_arg_insts_to_inline_pieces(NameInfo, !.Expansions, _,
+                    SymNameStr, ArgInsts, [], NamePieces),
+                NamedNamePieces = [words("named inst") | NamePieces],
+                ExpandInsts = Info ^ imi_named_insts,
+                (
+                    ExpandInsts = dont_expand_named_insts,
+                    Pieces = NamePieces ++ Suffix
+                ;
+                    ExpandInsts = expand_named_insts,
+                    record_user_inst_name(InstName, NamedNamePieces,
+                        !Expansions),
+                    InstDefn = hlds_inst_defn(_VarSet, Params, InstBody, _MMTC,
+                        _Context, _Status),
+                    InstBody = eqv_inst(EqvInst0),
+                    inst_substitute_arg_list(Params, ArgInsts,
+                        EqvInst0, EqvInst),
+                    ( if EqvInst = defined_inst(InstName) then
+                        % XXX Would NamePieces look better in the output?
+                        Pieces = NamedNamePieces ++ Suffix
+                    else
+                        inst_to_inline_pieces(Info, !Expansions, EqvInst,
+                            Suffix, ExpandedPieces),
+                        Pieces = NamedNamePieces ++ [words("which expands to"),
+                            prefix("<") | ExpandedPieces] ++ [suffix(">")]
                     )
+                )
+            else if
+                SymName = unqualified(BaseName),
+                Builtin = mercury_public_builtin_module,
+                BuiltinInstCtor =
+                    inst_ctor(qualified(Builtin, BaseName), Arity),
+                map.search(UserInstTable, BuiltinInstCtor, _InstDefn)
+            then
+                % check_mutable_insts in add_mutable_aux_pred.m removes
+                % any module qualifications by mercury_public_builtin_module
+                % from the inst name, to signal us that the qualification
+                % should not be printed in the error message.
+                name_and_arg_insts_to_pieces(NameInfo, !.Expansions, _,
+                    SymNameStr, ArgInsts, [], NamePieces),
+                Pieces = NamePieces ++ Suffix
+            else
+                ( if
+                    SymName = qualified(unqualified("FAKE_CONS_ID"),
+                        ConsIdName)
                 then
-                    % XXX Would NamePieces look better in the output?
-                    Pieces = NamedNamePieces ++ Suffix
+                    % mode_error_unify_var_functor_to_spec created InstName,
+                    % asking us to treat it just as a wrapper around ArgInsts.
+                    name_and_arg_insts_to_inline_pieces(NameInfo,
+                        !.Expansions, _, ConsIdName, ArgInsts, [], NamePieces),
+                    Pieces = NamePieces ++ Suffix
                 else
-                    inst_to_inline_pieces(Info, !Expansions, EqvInst,
-                        Suffix, ExpandedPieces),
-                    Pieces = NamedNamePieces ++ [words("which expands to"),
-                        prefix("<") | ExpandedPieces] ++ [suffix(">")]
+                    InstCtorName = sym_name_to_string(SymName),
+                    string.format("undefined inst %s/%d",
+                        [s(InstCtorName), i(Arity)], Msg),
+                    unexpected($pred, Msg)
                 )
             )
         ;

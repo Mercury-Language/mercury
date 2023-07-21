@@ -544,20 +544,6 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
             compare_bound_inst_list_uniq(!.Info ^ imi_module_info,
                 !.Info ^ imi_uniqueness_comparison, BoundInstsA, UniqB),
             inst_contains_nondefault_func_mode_1(InstA, no, !Info)
-        ;
-            InstB = abstract_inst(_,_),
-            inst_results_bound_inst_list_is_ground_mt(!.Info ^ imi_module_info,
-                Type, InstResultsA, BoundInstsA),
-            (
-                UniqA = unique,
-                bound_inst_list_is_unique(!.Info ^ imi_module_info,
-                    BoundInstsA)
-            ;
-                UniqA = mostly_unique,
-                bound_inst_list_is_mostly_unique(!.Info ^ imi_module_info,
-                    BoundInstsA)
-            ),
-            inst_contains_nondefault_func_mode_1(InstA, no, !Info)
         )
     ;
         InstA = ground(UniqA, HOInstInfoA),
@@ -585,25 +571,6 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
             ho_inst_info_matches_initial(Type, HOInstInfoA, HOInstInfoB, !Info)
-        ;
-            InstB = abstract_inst(_,_),
-            HOInstInfoA = none_or_default_func,
-            % I don't know what this should do.
-            % Abstract insts aren't really supported.
-            unexpected($pred,
-                "inst_matches_initial(ground, abstract_inst) == ??")
-        )
-    ;
-        InstA = abstract_inst(Name, ArgsA),
-        (
-            InstB = any(shared, none_or_default_func)
-        ;
-            InstB = free
-        ;
-            InstB = abstract_inst(Name, ArgsB),
-            list.duplicate(list.length(ArgsA), no_type_available, Types),
-            % XXX how do we get the argument types for an abstract inst?
-            inst_list_matches_initial_mt(Types, ArgsA, ArgsB, !Info)
         )
     ;
         InstA = not_reached
@@ -707,7 +674,6 @@ inst_is_complete_for_type(ModuleInfo, Expansions, Type, Inst) :-
         ; Inst = ground(_, _)
         ; Inst = inst_var(_)
         ; Inst = constrained_inst_vars(_, _)
-        ; Inst = abstract_inst(_, _)
         )
     ;
         Inst = not_reached,
@@ -974,16 +940,6 @@ inst_matches_final_3(Type, InstA, InstB, !Info) :-
             unique_matches_final(UniqA, UniqB)
         )
     ;
-        InstA = abstract_inst(Name, ArgsA),
-        (
-            InstB = any(shared, none_or_default_func)
-        ;
-            InstB = abstract_inst(Name, ArgsB),
-            list.duplicate(list.length(ArgsA), no_type_available, Types),
-            % XXX how do we get the argument types for an abstract inst?
-            inst_list_matches_final(Types, ArgsA, ArgsB, !Info)
-        )
-    ;
         InstA = not_reached
     ;
         InstA = constrained_inst_vars(InstVarsA, SubInstA),
@@ -1172,12 +1128,6 @@ inst_matches_binding_3(Type, InstA, InstB, !Info) :-
                 Type, HOInstInfoA, HOInstInfoB)
         )
     ;
-        InstA = abstract_inst(Name, ArgsA),
-        InstB = abstract_inst(Name, ArgsB),
-        list.duplicate(list.length(ArgsA), no_type_available, Types),
-        % XXX how do we get the argument types for an abstract inst?
-        inst_list_matches_binding(Types, ArgsA, ArgsB, !Info)
-    ;
         InstA = not_reached
     ).
 
@@ -1336,7 +1286,6 @@ inst_contains_nondefault_func_mode_2(Inst, !.Expansions, ContainsNonstd,
         ( Inst = free
         ; Inst = free(_)
         ; Inst = not_reached
-        ; Inst = abstract_inst(_, _)
         ),
         ContainsNonstd = no
     ;

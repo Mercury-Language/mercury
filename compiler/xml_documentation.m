@@ -689,10 +689,6 @@ mer_inst_to_xml(InstVarSet, Inst) = Xml :-
         Inst = defined_inst(Name),
         XmlName = inst_name_to_xml(InstVarSet, Name),
         Xml = elem("defined_inst", [], [XmlName])
-    ;
-        Inst = abstract_inst(SymName, ArgInsts),
-        Xml = mer_inst_to_xml(InstVarSet,
-            defined_inst(user_inst(SymName, ArgInsts)))
     ).
 
 :- func inst_name_to_xml(inst_varset, inst_name) = xml.
