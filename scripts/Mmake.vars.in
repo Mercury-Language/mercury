@@ -222,7 +222,6 @@ LIB_CFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 # Stuff for the .NET back-end
 #
 
-FIX_PATH_FOR_CSC = @CYGPATH@
 CSC		= @CSC@
 ALL_CSCFLAGS	= $(CSCFLAGS) $(EXTRA_CSCFLAGS) $(TARGET_CSCFLAGS) \
 		$(LIB_CSCFLAGS)
