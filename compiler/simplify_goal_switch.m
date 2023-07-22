@@ -56,6 +56,7 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
+:- import_module set_tree234.
 
 simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, Common0, Common, !Info) :-
@@ -68,8 +69,9 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         type_to_ctor_det(VarType, VarTypeCtor),
         bound_insts_to_cons_ids(VarTypeCtor, BoundInsts, ConsIds),
         list.sort_and_remove_dups(ConsIds, SortedConsIds),
-        delete_unreachable_cases(Cases0, SortedConsIds, Cases1,
-            UnreachableCaseGoals),
+        set_tree234.sorted_list_to_set(ConsIds, ConsIdSet),
+        delete_unreachable_cases(Cases0, ConsIdSet,
+            Cases1, UnreachableCaseGoals),
         MaybeInstConsIds = yes(SortedConsIds),
 
         simplify_info_get_deleted_call_callees(!.Info, DeletedCallCallees0),
@@ -81,10 +83,9 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         Cases1 = Cases0,
         MaybeInstConsIds = no
     ),
-    simplify_switch_cases(Var, Cases1, [], RevCases, [], RevInstMapDeltas,
-        not_seen_non_ground_term, SeenNonGroundTerm,
-        SwitchCanFail0, SwitchCanFail, NestedContext0, InstMap0, Common0,
-        !Info),
+    simplify_switch_cases(Var, Cases1, NestedContext0, InstMap0, Common0,
+        [], RevCases, [], RevInstMapDeltas, SwitchCanFail0, SwitchCanFail,
+        not_seen_non_ground_term, SeenNonGroundTerm, !Info),
     list.reverse(RevCases, Cases),
     (
         Cases = [],
@@ -158,8 +159,8 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             ; SeenNonGroundTerm = not_seen_non_ground_term
             )
         then
-            % Recomputing the instmap delta would take very long and is
-            % very unlikely to get any better precision.
+            % Recomputing the instmap delta would take very long
+            % and is very unlikely to get any better precision.
             GoalInfo = GoalInfo0
         else
             simplify_info_get_module_info(!.Info, ModuleInfo1),
@@ -186,10 +187,9 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         % be used by the switch, which means they may no longer be nonlocal
         % to the switch. Also, the determinism may have changed (especially
         % if we pruned all the cases). If the switch now can't succeed,
-        % we have to recompute instmap_deltas and rerun determinism
-        % analysis to avoid aborts in the code generator because the switch
-        % now cannot produce variables it did before.
-
+        % we have to recompute instmap_deltas and rerun determinism analysis
+        % to avoid aborts in the code generator because the switch now
+        % cannot produce variables it did before.
         simplify_info_set_rerun_quant_instmap_delta(!Info),
         simplify_info_set_rerun_det(!Info)
     ).
@@ -200,18 +200,18 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     --->    not_seen_non_ground_term
     ;       seen_non_ground_term.
 
-:- pred simplify_switch_cases(prog_var::in, list(case)::in, list(case)::in,
-    list(case)::out, list(instmap_delta)::in, list(instmap_delta)::out,
+:- pred simplify_switch_cases(prog_var::in, list(case)::in,
+    simplify_nested_context::in, instmap::in, common_info::in,
+    list(case)::in, list(case)::out,
+    list(instmap_delta)::in, list(instmap_delta)::out,
+    can_fail::in, can_fail::out,
     seen_non_ground_term::in, seen_non_ground_term::out,
-    can_fail::in, can_fail::out, simplify_nested_context::in, instmap::in,
-    common_info::in, simplify_info::in, simplify_info::out) is det.
+    simplify_info::in, simplify_info::out) is det.
 
-simplify_switch_cases(_, [], !RevCases, !RevInstMapDeltas,
-        !SeenNonGroundTerm, !CanFail, _NestedContext0, _InstMap0, _Common0,
-        !Info).
-simplify_switch_cases(Var, [Case0 | Cases0], !RevCases, !RevInstMapDeltas,
-        !SeenNonGroundTerm, !CanFail, NestedContext0, InstMap0, Common0,
-        !Info) :-
+simplify_switch_cases(_, [], _NestedContext0, _InstMap0, _Common0,
+        !RevCases, !RevInstMapDeltas, !CanFail, !SeenNonGroundTerm, !Info).
+simplify_switch_cases(Var, [Case0 | Cases0], NestedContext0, InstMap0, Common0,
+        !RevCases, !RevInstMapDeltas, !CanFail, !SeenNonGroundTerm, !Info) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     simplify_info_get_var_table(!.Info, VarTable),
@@ -255,9 +255,8 @@ simplify_switch_cases(Var, [Case0 | Cases0], !RevCases, !RevInstMapDeltas,
         !:RevCases = [Case | !.RevCases]
     ),
 
-    simplify_switch_cases(Var, Cases0, !RevCases, !RevInstMapDeltas,
-        !SeenNonGroundTerm, !CanFail, NestedContext0, InstMap0, Common0,
-        !Info).
+    simplify_switch_cases(Var, Cases0, NestedContext0, InstMap0, Common0,
+        !RevCases, !RevInstMapDeltas, !CanFail, !SeenNonGroundTerm, !Info).
 
     % Create a semidet unification at the start of a singleton case
     % in a can_fail switch.

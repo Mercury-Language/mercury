@@ -30,6 +30,7 @@
 :- import_module parse_tree.var_table.
 
 :- import_module list.
+:- import_module set_tree234.
 
 %-----------------------------------------------------------------------------%
 
@@ -78,13 +79,13 @@
     % delete_unreachable_cases(Cases0, ConsIds, ReachableCases,
     %   UnreachableGoals):
     %
-    % Given Cases, and ConsIds, a list of the possible cons_ids that
+    % Given Cases, and ConsIds, a set of the possible cons_ids that
     % the switch variable could be bound to, return as ReachableCases
     % the subset of Cases whose cons_id occurs in ConsIds.
     %
     % Return the goals of the unreachable cases in UnreachableGoals.
     %
-:- pred delete_unreachable_cases(list(case)::in, list(cons_id)::in,
+:- pred delete_unreachable_cases(list(case)::in, set_tree234(cons_id)::in,
     list(case)::out, list(hlds_goal)::out) is det.
 
     % Update the current substitution to account for the effects
@@ -135,7 +136,6 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module map.
-:- import_module set_tree234.
 :- import_module term.
 :- import_module term_context.
 :- import_module term_subst.
@@ -145,10 +145,9 @@
 
 delete_unreachable_cases(Cases0, PossibleConsIds, ReachableCases,
         UnreachableGoals) :-
-    PossibleConsIdSet = set_tree234.list_to_set(PossibleConsIds),
     % We use a reverse list accumulator because we want to avoid requiring
     % O(n) stack space.
-    delete_unreachable_cases_acc(Cases0, PossibleConsIdSet,
+    delete_unreachable_cases_acc(Cases0, PossibleConsIds,
         [], RevReachableCases, [], RevUnreachableGoals),
     list.reverse(RevReachableCases, ReachableCases),
     list.reverse(RevUnreachableGoals, UnreachableGoals).

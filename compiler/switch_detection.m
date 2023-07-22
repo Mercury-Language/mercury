@@ -1046,8 +1046,10 @@ can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
     ( if inst_is_bound_to_functors(ModuleInfo, VarInst0, Functors) then
         type_to_ctor_det(VarType, TypeCtor),
         bound_insts_to_cons_ids(TypeCtor, Functors, ConsIds),
-        delete_unreachable_cases(Cases0, ConsIds, Cases, UnreachableCaseGoals),
-        compute_can_fail(ConsIds, Cases, CanFail, CasesMissing)
+        set_tree234.list_to_set(ConsIds, ConsIdSet),
+        delete_unreachable_cases(Cases0, ConsIdSet,
+            Cases, UnreachableCaseGoals),
+        compute_can_fail(ConsIdSet, Cases, CanFail, CasesMissing)
     else
         % We do not have any inst information that would allow us to decide
         % that any case is unreachable.
@@ -1482,11 +1484,11 @@ cases_to_switch(Candidate, InstMap0, GoalExpr, !LocalInfo) :-
         GoalExpr = switch(Var, CanFail, Cases)
     ).
 
-:- pred compute_can_fail(list(cons_id)::in, list(case)::in,
+:- pred compute_can_fail(set_tree234(cons_id)::in, list(case)::in,
     can_fail::out, cases_missing::out) is det.
 
 compute_can_fail(Functors, Cases, SwitchCanFail, CasesMissing) :-
-    UncoveredFunctors0 = set_tree234.list_to_set(Functors),
+    UncoveredFunctors0 = Functors,
     delete_covered_functors(Cases, UncoveredFunctors0, UncoveredFunctors),
     ( if set_tree234.is_empty(UncoveredFunctors) then
         SwitchCanFail = cannot_fail,
