@@ -24,11 +24,10 @@ main(!IO) :-
 :- pred c_write_string(string::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    c_write_string(Str::in, IO0::di, IO::uo),
+    c_write_string(Str::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     fputs(Str, stdout);
-    IO = IO0;
 ").
 
 c_write_string(Str, !IO) :-

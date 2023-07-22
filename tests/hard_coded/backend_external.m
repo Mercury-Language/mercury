@@ -36,7 +36,7 @@ main(!IO) :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    p(N::in, IO0::di, IO::uo),
+    p(N::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, high_level_backend],
 "
 #ifdef MR_HIGHLEVEL_CODE
@@ -46,12 +46,10 @@ main(!IO) :-
     printf(""p(%"" MR_INTEGER_LENGTH_MODIFIER ""d): "", N);
     printf(""expected highlevel, found lowlevel, BUG\\n"");
 #endif
-
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    q(N::in, IO0::di, IO::uo),
+    q(N::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, low_level_backend],
 "
 #ifdef MR_HIGHLEVEL_CODE
@@ -61,8 +59,6 @@ main(!IO) :-
     printf(""q(%"" MR_INTEGER_LENGTH_MODIFIER ""d): "", N);
     printf(""expected lowlevel, found lowlevel, OK\\n"");
 #endif
-
-    IO = IO0;
 ").
 
 %---------------------------------------------------------------------------%

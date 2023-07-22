@@ -31,11 +31,10 @@ main(!IO) :-
 
 :- pred c_write_string(string::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    c_write_string(Message::in, IO0::di, IO::uo),
+    c_write_string(Message::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
     printf(""%s"", Message);
-    IO = IO0;
 ").
 c_write_string(Str, !IO) :-
     io.write_string(Str, !IO).

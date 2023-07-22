@@ -28,19 +28,17 @@ hello_world(!IO) :-
     io.write_string("Hello World!\n", !IO).
 
 :- pragma foreign_proc("C",
-    call_foreign(IO0::di, IO::uo),
+    call_foreign(_IO0::di, _IO::uo),
     [promise_pure, may_call_mercury],
 "
     exported_hello_world();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C#",
-    call_foreign(IO0::di, IO::uo),
+    call_foreign(_IO0::di, _IO::uo),
     [promise_pure, may_call_mercury],
 "
     exported_hello_world();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("Java",
