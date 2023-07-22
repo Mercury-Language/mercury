@@ -113,9 +113,10 @@ CSHARP_WRAPPER_SCRIPTS = \
 test_mdbrc: mdbrc.in mdbrc
 	@echo making test_mdbrc
 	@ABS_MERCURY_DIR=`(cd $(MERCURY_DIR); /bin/pwd)` ; \
+	ABS_MERCURY_DIR=`$(FIX_PATH_FOR_CC) $${ABS_MERCURY_DIR}` ; \
 	sed \
-		-e "s:@DEFAULT_MERCURY_DEBUGGER_DOC@:$${ABS_MERCURY_DIR}/doc/mdb_doc:" \
-		-e "s:@DEFAULT_MERCURY_DEBUGGER_INIT_DIR@:$${ABS_MERCURY_DIR}/scripts:" \
+		-e "s,@DEFAULT_MERCURY_DEBUGGER_DOC@,$${ABS_MERCURY_DIR}/doc/mdb_doc," \
+		-e "s,@DEFAULT_MERCURY_DEBUGGER_INIT_DIR@,$${ABS_MERCURY_DIR}/scripts," \
 		-e '/^web_/d' \
 	< mdbrc.in > test_mdbrc
 	@egrep '^web_' < mdbrc >> test_mdbrc
