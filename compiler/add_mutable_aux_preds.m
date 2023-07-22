@@ -356,9 +356,7 @@ check_mutable_inst(ModuleInfo, ModuleParams, Context, InstVarSet,
             unexpected($pred, "non-user inst")
         )
     ;
-        ( Inst = free
-        ; Inst = free(_)
-        ),
+        Inst = free,
         FreePieces = [words("may not appear in"),
             decl("mutable"), words("declarations.")],
         invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,

@@ -3122,9 +3122,6 @@ accumulate_modules_in_inst(Inst, !MaybeUnqual, !ModuleNames) :-
         ; Inst = any(_Uniq, _HOInstInfo)
         )
     ;
-        Inst = free(Type),
-        accumulate_modules_in_type(Type, !MaybeUnqual, !ModuleNames)
-    ;
         Inst = bound(_Uniq, _InstTestsResults, BoundInsts),
         accumulate_modules_in_bound_insts(BoundInsts,
             !MaybeUnqual, !ModuleNames)

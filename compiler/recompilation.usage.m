@@ -957,7 +957,6 @@ find_items_used_by_inst(Inst, !Info) :-
     (
         ( Inst = not_reached
         ; Inst = free
-        ; Inst = free(_)
         ; Inst = inst_var(_)
         )
     ;

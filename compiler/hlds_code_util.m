@@ -354,10 +354,6 @@ match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
         InstB = free,
         map.init(Renaming)
     ;
-        InstA = free(Type),
-        InstB = free(Type),
-        map.init(Renaming)
-    ;
         InstA = any(Uniq, HOInstInfoA),
         InstB = any(Uniq, HOInstInfoB),
         match_ho_inst_infos_with_renaming(ModuleInfo, HOInstInfoA, HOInstInfoB,

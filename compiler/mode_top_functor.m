@@ -150,9 +150,6 @@ get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInst) :-
         Inst = free,
         ArgInst = free
     ;
-        Inst = free(_Type),
-        ArgInst = free   % XXX loses type info
-    ;
         Inst = any(Uniq, _),
         ArgInst = any(Uniq, none_or_default_func)
     ;

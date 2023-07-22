@@ -1335,7 +1335,6 @@ limit_size_of_inst(Levels, Inst0, Inst) :-
         )
     ;
         ( Inst0 = free
-        ; Inst0 = free(_Type)
         ; Inst0 = inst_var(_Var)
         ; Inst0 = defined_inst(_InstName)
         ; Inst0 = not_reached

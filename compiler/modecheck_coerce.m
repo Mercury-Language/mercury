@@ -216,9 +216,7 @@ create_fresh_var(VarType, Var, !ModeInfo) :-
 modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX, RevTermPath0,
         TypeX, TypeY, ExpandedInsts0, InstX, Res) :-
     (
-        ( InstX = free
-        ; InstX = free(_)
-        ),
+        InstX = free,
         unexpected($pred, "free inst")
     ;
         InstX = any(_, _),

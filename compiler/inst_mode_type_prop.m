@@ -330,10 +330,7 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
     (
         Inst0 = free,
         % Inst = free(Type)
-        Inst = free             % XXX temporary hack
-    ;
-        Inst0 = free(_),
-        unexpected($pred, "type info already present")
+        Inst = free             % XXX temporary hack (since 1994!)
     ;
         Inst0 = ground(Uniq, HOInstInfo0),
         (
@@ -471,10 +468,7 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
     (
         Inst0 = free,
         % Inst = free(Type0)
-        Inst = free             % XXX temporary hack
-    ;
-        Inst0 = free(_),
-        unexpected($pred, "typeinfo already present")
+        Inst = free             % XXX temporary hack (since 1994!)
     ;
         Inst0 = ground(Uniq, HOInstInfo0),
         (

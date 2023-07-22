@@ -400,7 +400,6 @@ mode_needs_direct_arg_in_out(ModuleInfo, DirectArgFunctors, FromInst, ToInst)
         = IsDAIO :-
     (
         ( FromInst = free
-        ; FromInst = free(_)
         ; FromInst = any(_, _)
         ; FromInst = not_reached
         ; FromInst = ground(_, _)
@@ -417,9 +416,7 @@ mode_needs_direct_arg_in_out(ModuleInfo, DirectArgFunctors, FromInst, ToInst)
         ;
             FreeArgDirectArgFunctors = [_ | _],
             (
-                ( ToInst = free
-                ; ToInst = free(_)
-                ),
+                ToInst = free,
                 % ToInst cannot be less instantiated than FromInst.
                 unexpected($pred, "bound to free")
             ;
@@ -487,9 +484,7 @@ some_bound_inst_has_direct_arg_free(ModuleInfo, DirectArgFunctors,
         ArgInsts0 = [ArgInst0],
         inst_expand_and_remove_constrained_inst_vars(ModuleInfo,
             ArgInst0, ArgInst),
-        ( ArgInst = free
-        ; ArgInst = free(_)
-        )
+        ArgInst = free
     then
         !:FreeArgDirectArgFunctors = [SymName | !.FreeArgDirectArgFunctors]
     else
@@ -532,9 +527,7 @@ some_bound_inst_has_direct_arg_out(ModuleInfo, FreeArgDirectArgFunctors,
         inst_expand_and_remove_constrained_inst_vars(ModuleInfo,
             ArgInst0, ArgInst),
         (
-            ( ArgInst = free
-            ; ArgInst = free(_)
-            ),
+            ArgInst = free,
             SomeDirectArgIsBound = TailSomeDirectArgIsBound,
             CanSeeAllArgModes = TailCanSeeAllArgModes
         ;
@@ -872,7 +865,6 @@ clobber_daio_inst(ModuleInfo, Inst0) = ClobberedInst :-
             ClobberedBoundInsts)
     ;
         ( Inst = free
-        ; Inst = free(_)
         ; Inst = ground(_, _)
         ; Inst = any(_, _)
         ; Inst = not_reached
@@ -903,7 +895,6 @@ clobber_daio_arg_inst(ModuleInfo, Inst0) = ClobberedInst :-
     ;
         ( Inst = bound(_, _, _)
         ; Inst = free
-        ; Inst = free(_)
         ),
         ClobberedInst = ground(clobbered, none_or_default_func)
     ;
@@ -1440,8 +1431,8 @@ expand_daio_in_unify(GoalInfo0, GoalExpr0, GoalExpr, InstMap0,
         ( if
             UnifyModes = [UnifyMode],
             UnifyMode = unify_modes_li_lf_ri_rf(LI, LF, _RI, _RF),
-            ( LI = free ; LI = free(_) ),
-            not ( LF = free ; LF = free(_) ),
+            LI = free,
+            not ( LF = free ),
             ConsId = cons(ConsIdSymName, ConsIdArity, ConsIdTypeCtor),
             module_info_get_type_table(ModuleInfo, TypeTable),
             search_type_ctor_defn(TypeTable, ConsIdTypeCtor, TypeDefn),

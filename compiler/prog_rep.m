@@ -1005,15 +1005,9 @@ encode_head_var_func(Info, InitialInstmap, InstmapDelta, Var) = Bytes :-
 :- func inst_to_byte(module_info, mer_inst) = int.
 
 inst_to_byte(ModuleInfo, MerInst) = Byte :-
-    ( if
-        ( MerInst = free
-        ; MerInst = free(_)
-        )
-    then
+    ( if MerInst = free then
         InstRep = ir_free_rep
-    else if
-        inst_is_ground(ModuleInfo, MerInst)
-    then
+    else if inst_is_ground(ModuleInfo, MerInst) then
         InstRep = ir_ground_rep
     else
         InstRep = ir_other_rep

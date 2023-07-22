@@ -344,7 +344,6 @@ check_inst_defn_has_matching_type(WarnInstsWithoutMatchingType,
     ;
         ( Inst = any(_, _)
         ; Inst = free
-        ; Inst = free(_)
         ; Inst = ground(_, _)
         ; Inst = not_reached
         ; Inst = inst_var(_)

@@ -186,9 +186,7 @@ error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts,
 
 inst_to_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
     (
-        ( Inst = free
-        ; Inst = free(_)
-        ),
+        Inst = free,
         Pieces = [fixed("free") | Suffix]
     ;
         Inst = bound(Uniq, _, BoundInsts),
@@ -254,9 +252,7 @@ inst_to_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
 
 inst_to_inline_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
     (
-        ( Inst = free
-        ; Inst = free(_)
-        ),
+        Inst = free,
         Pieces = [fixed("free") | Suffix]
     ;
         Inst = bound(Uniq, _, BoundInsts),

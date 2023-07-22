@@ -1046,9 +1046,6 @@ mer_inst_used_modules(Visibility, Inst, !UsedModules) :-
         ),
         ho_inst_info_used_modules(Visibility, HOInstInfo, !UsedModules)
     ;
-        Inst = free(Type),
-        mer_type_used_modules(Visibility, Type, !UsedModules)
-    ;
         Inst = bound(_, _InstResults, BoundInsts),
         % Anything appearing in InstResults should also appear in BoundInsts.
         list.foldl(bound_inst_info_used_modules(Visibility), BoundInsts,

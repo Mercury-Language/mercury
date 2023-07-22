@@ -243,7 +243,6 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                     SubInstB, InstA, Real, Inst, Detism, !ModuleInfo)
             ;
                 ( InstB = defined_inst(_)
-                ; InstB = free(_)
                 ; InstB = inst_var(_)
                 ),
                 % XXX Failing here preserves the old behavior of this predicate
@@ -348,7 +347,6 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 SubInstB, InstA, Real, Inst, Detism, !ModuleInfo)
         ;
             ( InstB = defined_inst(_)
-            ; InstB = free(_)
             ; InstB = inst_var(_)
             ),
             % XXX Failing here preserves the old behavior of this predicate
@@ -424,7 +422,6 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                     SubInstB, InstA, Real, Inst, Detism, !ModuleInfo)
             ;
                 ( InstB = defined_inst(_)
-                ; InstB = free(_)
                 ; InstB = inst_var(_)
                 ),
                 % XXX Failing here preserves the old behavior of this predicate
@@ -497,7 +494,6 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                     SubInstB, InstA, Real, Inst, Detism, !ModuleInfo)
             ;
                 ( InstB = defined_inst(_)
-                ; InstB = free(_)
                 ; InstB = inst_var(_)
                 ),
                 % XXX Failing here preserves the old behavior of this predicate
@@ -515,7 +511,6 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
             SubInstA, InstB, Real, Inst, Detism, !ModuleInfo)
     ;
         ( InstA = defined_inst(_)
-        ; InstA = free(_)
         ; InstA = inst_var(_)
         ),
         % XXX Failing here preserves the old behavior of this predicate
@@ -663,7 +658,6 @@ abstractly_unify_inst_functor_2(Live, InstA, ConsIdB, ArgInstsB, ArgLives,
         )
     ;
         ( InstA = defined_inst(_)
-        ; InstA = free(_)
         ; InstA = inst_var(_)
         ),
         % XXX Failing here preserves the old behavior of this predicate
@@ -1134,11 +1128,6 @@ make_ground_inst(Live, Uniq1, Real, Inst0, Inst, Detism, !ModuleInfo) :-
         Inst = ground(Uniq, none_or_default_func),
         Detism = detism_det
     ;
-        Inst0 = free(T),
-        unify_uniq(Live, Real, detism_det, unique, Uniq1, Uniq),
-        Inst = defined_inst(typed_ground(Uniq, T)),
-        Detism = detism_det
-    ;
         Inst0 = bound(Uniq0, InstResults0, BoundInsts0),
         unify_uniq(Live, Real, detism_semi, Uniq0, Uniq1, Uniq),
         make_ground_bound_inst_list(Live, Uniq1, Real,
@@ -1257,16 +1246,6 @@ make_any_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
         Inst0 = free,
         unify_uniq(Live, Real, detism_det, unique, Uniq1, Uniq),
         Inst = any(Uniq, none_or_default_func),
-        Detism = detism_det
-    ;
-        Inst0 = free(T),
-        % The following is a round-about way of doing this
-        %   unify_uniq(Live, Real, detism_det, unique, Uniq0, Uniq),
-        %   TypedAny = typed_any(Uniq, T).
-        % without the need for a `typed_any' inst.
-        Any = any(Uniq1, none_or_default_func),
-        TypedAny = typed_inst(T, unify_inst(Live, Real, free, Any)),
-        Inst = defined_inst(TypedAny),
         Detism = detism_det
     ;
         Inst0 = bound(Uniq0, _InstResults0, BoundInsts0),

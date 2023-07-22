@@ -237,11 +237,6 @@ inst_to_term_with_context(Lang, Context, Inst, InstTerm) :-
         Inst = free,
         InstTerm = make_atom(Context, "free")
     ;
-        Inst = free(Type),
-        unparse_type(Type, TypeTerm),
-        InstTerm0 = term.coerce(TypeTerm),
-        InstTerm = term.functor(term.atom("free"), [InstTerm0], Context)
-    ;
         Inst = bound(Uniq, InstResults, BoundInsts),
         bound_insts_to_term(Lang, Context, BoundInsts, BoundInstsTerm),
         (
@@ -306,12 +301,6 @@ inst_to_limited_size_term_with_context(Lang, Context, Inst, InstTerm,
     ;
         Inst = free,
         InstTerm = make_atom(Context, "free"),
-        !:SizeLeft = !.SizeLeft - 1
-    ;
-        Inst = free(Type),
-        unparse_type(Type, TypeTerm),
-        InstTerm0 = term.coerce(TypeTerm),
-        InstTerm = term.functor(term.atom("free"), [InstTerm0], Context),
         !:SizeLeft = !.SizeLeft - 1
     ;
         Inst = bound(Uniq, InstResults, BoundInsts),

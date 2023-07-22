@@ -982,7 +982,6 @@ get_constrained_insts_in_mode(ModuleInfo, Mode, !Map, !Expansions) :-
 get_constrained_insts_in_inst(ModuleInfo, Inst, !Map, !Expansions) :-
     (
         ( Inst = free
-        ; Inst = free(_)
         ; Inst = not_reached
         )
     ;

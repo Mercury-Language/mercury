@@ -1017,10 +1017,9 @@ type_may_occur_in_inst(Inst) = MayOccur :-
         ),
         MayOccur = no
     ;
-        % The last three entries here are conservative approximations;
+        % These three entries are conservative approximations;
         % e.g. the _PredInstInfo may contain a reference to a type.
-        ( Inst = free(_)
-        ; Inst = ground(_, higher_order(_PredInstInfo))
+        ( Inst = ground(_, higher_order(_PredInstInfo))
         ; Inst = any(_, higher_order(_PredInstInfo))
         ; Inst = defined_inst(_)
         ),
@@ -1225,13 +1224,6 @@ replace_in_inst_2(TypeEqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
         ;
             Changed = unchanged,
             Inst = Inst0
-        )
-    ;
-        Inst0 = free(Type0),
-        equiv_type.replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet,
-            no_eqv_expand_info, _),
-        ( Changed = changed, Inst = free(Type)
-        ; Changed = unchanged, Inst = Inst0
         )
     ;
         Inst0 = bound(Uniq, InstResults0, BoundInsts0),

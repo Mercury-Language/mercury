@@ -123,7 +123,6 @@ make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo) :-
     (
         ( Inst0 = not_reached
         ; Inst0 = free
-        ; Inst0 = free(_)
         ),
         Inst = Inst0
     ;
@@ -244,10 +243,6 @@ make_shared_inst(Inst0, Inst, !ModuleInfo) :-
         Inst0 = free,
         % The caller should ensure that this never happens.
         unexpected($pred, "cannot make shared version of `free'")
-    ;
-        Inst0 = free(_),
-        % The caller should ensure that this never happens.
-        unexpected($pred, "cannot make shared version of `free(T)'")
     ;
         Inst0 = any(Uniq0, HOInstInfo),
         make_shared(Uniq0, Uniq),

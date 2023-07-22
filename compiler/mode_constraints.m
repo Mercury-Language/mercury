@@ -981,9 +981,7 @@ do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
             then
                 Bound(Var, !.Constraint, C, S0, S)
             else if
-                ( Inst = free
-                ; Inst = free(_)
-                )
+                Inst = free
             then
                 Free(Var, !.Constraint, C, S0, S)
             else

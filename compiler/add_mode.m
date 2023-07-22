@@ -130,7 +130,6 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
     ;
         ( EqvInst = any(_, _)
         ; EqvInst = free
-        ; EqvInst = free(_)
         ; EqvInst = ground(_, _)
         ; EqvInst = not_reached
         ; EqvInst = inst_var(_)

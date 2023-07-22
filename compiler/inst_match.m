@@ -669,7 +669,6 @@ inst_is_complete_for_type(ModuleInfo, Expansions, Type, Inst) :-
         % for which we do the wrong thing here will never be given to us
         % by our callers.
         ( Inst = free
-        ; Inst = free(_)
         ; Inst = any(_, _)
         ; Inst = ground(_, _)
         ; Inst = inst_var(_)
@@ -1284,7 +1283,6 @@ inst_contains_nondefault_func_mode_2(Inst, !.Expansions, ContainsNonstd,
             ContainsNonstd, !Info)
     ;
         ( Inst = free
-        ; Inst = free(_)
         ; Inst = not_reached
         ),
         ContainsNonstd = no

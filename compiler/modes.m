@@ -1766,10 +1766,10 @@ modes_are_valid_for_main(ModuleInfo, [Di, Uo]) :-
     % manual specifies, rather than looking for a particular abstract property.
     Unique = ground(unique, none_or_default_func),
     Clobbered = ground(clobbered, none_or_default_func),
+    Free = free,
     inst_expand(ModuleInfo, DiInitialInst, Unique),
     inst_expand(ModuleInfo, DiFinalInst, Clobbered),
     inst_expand(ModuleInfo, UoInitialInst, Free),
-    ( Free = free ; Free = free(_Type) ),
     inst_expand(ModuleInfo, UoFinalInst, Unique).
 
 :- func report_eval_method_requires_ground_args(proc_info, tabled_eval_method)

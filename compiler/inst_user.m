@@ -31,7 +31,6 @@
 :- import_module hlds.hlds_inst_mode.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module list.
@@ -152,19 +151,6 @@ pretest_inst(Inst0, Inst, UserInstTable0, Groundness, ContainsAny,
         ContainsInstNames = inst_result_contains_inst_names_known(set.init),
         ContainsInstVars = inst_result_contains_inst_vars_known(set.init),
         ContainsTypes = inst_result_contains_types_known(set.init),
-        Inst = Inst0
-    ;
-        Inst0 = free(Type),
-        Groundness = inst_result_is_not_ground,
-        ContainsAny = inst_result_does_not_contain_any,
-        ContainsInstNames = inst_result_contains_inst_names_known(set.init),
-        ContainsInstVars = inst_result_contains_inst_vars_known(set.init),
-        ( if type_to_ctor(Type, TypeCtor) then
-            set.singleton_set(TypeCtor, TypeCtors),
-            ContainsTypes = inst_result_contains_types_known(TypeCtors)
-        else
-            ContainsTypes = inst_result_contains_types_unknown
-        ),
         Inst = Inst0
     ;
         Inst0 = ground(_Uniq, _HOInstInfo),

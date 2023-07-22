@@ -395,9 +395,7 @@ inst_is_ground_mt_1(ModuleInfo, Type, Inst, !Expansions) :-
 inst_is_ground_mt_2(ModuleInfo, Type, Inst, !Expansions) :-
     require_complete_switch [Inst]
     (
-        ( Inst = free
-        ; Inst = free(_)
-        ),
+        Inst = free,
         fail
     ;
         ( Inst = not_reached
@@ -447,9 +445,7 @@ inst_is_ground_or_any_2(ModuleInfo, Inst, !Expansions) :-
         inst_results_bound_inst_list_is_ground_or_any_2(ModuleInfo,
             InstResults, BoundInsts, !Expansions)
     ;
-        ( Inst = free
-        ; Inst = free(_)
-        ),
+        Inst = free,
         fail
     ;
         Inst = inst_var(_),
@@ -536,7 +532,6 @@ inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions) :-
     (
         ( Inst = not_reached
         ; Inst = free
-        ; Inst = free(_)
         ; Inst = ground(unique, _)
         ; Inst = ground(mostly_unique, _)
         ; Inst = any(unique, _)
@@ -587,7 +582,6 @@ inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions) :-
     (
         ( Inst = not_reached
         ; Inst = free
-        ; Inst = free(_)
         ; Inst = any(shared, _)
         ; Inst = ground(shared, _)
         )
@@ -635,7 +629,6 @@ inst_is_not_fully_unique_2(ModuleInfo, Inst, !Expansions) :-
     (
         ( Inst = not_reached
         ; Inst = free
-        ; Inst = free(_)
         ; Inst = ground(shared, _)
         ; Inst = ground(mostly_unique, _)
         ; Inst = any(shared, _)
@@ -677,7 +670,6 @@ inst_is_clobbered(ModuleInfo, Inst) :-
     require_complete_switch [Inst]
     (
         ( Inst = free
-        ; Inst = free(_)
         ; Inst = not_reached
         ),
         fail
@@ -704,9 +696,7 @@ inst_is_clobbered(ModuleInfo, Inst) :-
 inst_is_free(ModuleInfo, Inst) :-
     require_complete_switch [Inst]
     (
-        ( Inst = free
-        ; Inst = free(_)
-        )
+        Inst = free
     ;
         ( Inst = ground(_, _)
         ; Inst = bound(_, _, _)
@@ -732,7 +722,6 @@ inst_is_any(ModuleInfo, Inst) :-
         Inst = any(_, _)
     ;
         ( Inst = free
-        ; Inst = free(_)
         ; Inst = ground(_, _)
         ; Inst = bound(_, _, _)
         ; Inst = not_reached
@@ -759,9 +748,7 @@ inst_is_bound(ModuleInfo, Inst) :-
         ; Inst = not_reached
         )
     ;
-        ( Inst = free
-        ; Inst = free(_)
-        ),
+        Inst = free,
         fail
     ;
         Inst = inst_var(_),
@@ -795,7 +782,6 @@ inst_is_bound_to_functors(ModuleInfo, Inst, Functors) :-
         inst_is_bound_to_functors(ModuleInfo, NextInst, Functors)
     ;
         ( Inst = free
-        ; Inst = free(_)
         ; Inst = any(_, _)
         ; Inst = ground(_, _)
         ; Inst = not_reached
@@ -1184,7 +1170,6 @@ inst_contains_inst_name_2(ModuleInfo, InstName, Inst, Contains, !Expansions) :-
     (
         ( Inst = any(_, _)
         ; Inst = free
-        ; Inst = free(_)
         ; Inst = ground(_, _)
         ; Inst = inst_var(_)
         ; Inst = not_reached
@@ -1399,7 +1384,6 @@ inst_contains_any_2(ModuleInfo, Inst, !.Expansions) = ContainsAny :-
         ContainsAny = inst_contains_any_2(ModuleInfo, SubInst, !.Expansions)
     ;
         ( Inst = free
-        ; Inst = free(_)
         ; Inst = not_reached
         ; Inst = ground(_, _)
         ),
@@ -1482,7 +1466,6 @@ inst_contains_higher_order_2(ModuleInfo, Inst, !.Expansions) = ContainsHO :-
             inst_contains_higher_order_2(ModuleInfo, SubInst, !.Expansions)
     ;
         ( Inst = free
-        ; Inst = free(_)
         ; Inst = not_reached
         ),
         ContainsHO = no
@@ -1546,7 +1529,6 @@ inst_may_restrict_cons_ids(ModuleInfo, Inst) = MayRestrict :-
         MayRestrict = yes
     ;
         ( Inst = free
-        ; Inst = free(_)
         ; Inst = not_reached
         ; Inst = ground(_, _)
         ),

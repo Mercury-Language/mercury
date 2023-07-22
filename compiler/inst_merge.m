@@ -378,9 +378,7 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
     % the call to inst_expand in inst_merge_2 should do the same
     % for defined_insts.)
     %
-    % That still leaves inst_var and free/1.
-    % XXX Is there any particular reason why we don't treat free/1
-    % the same way as we treat free/0?
+    % That still leaves inst_var.
     (
         InstA = free,
         (
@@ -571,7 +569,6 @@ merge_inst_list_uniq(ModuleInfo, [Inst | Insts], Uniq0, !Expansions, Uniq) :-
 merge_inst_uniq(ModuleInfo, InstA, UniqB, !Expansions, Uniq) :-
     (
         ( InstA = free
-        ; InstA = free(_)
         ; InstA = not_reached
         ),
         Uniq = UniqB

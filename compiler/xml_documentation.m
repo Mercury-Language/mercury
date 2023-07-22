@@ -660,9 +660,6 @@ mer_inst_to_xml(InstVarSet, Inst) = Xml :-
         Inst = free,
         Xml = elem("free", [], [])
     ;
-        Inst = free(_),
-        Xml = elem("free", [], [])
-    ;
         Inst = bound(U, _, BoundInsts),
         XmlUniq = uniqueness_to_xml(U),
         XmlInsts = xml_list("bound_insts", bound_inst_to_xml(InstVarSet),

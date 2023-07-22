@@ -166,9 +166,6 @@ mercury_format_inst(Lang, InstVarSet, Inst, S, !U) :-
         Inst = free,
         add_string("free", S, !U)
     ;
-        Inst = free(_T),
-        add_string("free(with some type)", S, !U)
-    ;
         Inst = bound(Uniq, _, BoundInsts),
         mercury_format_uniqueness(Uniq, "bound", S, !U),
         add_string("(", S, !U),

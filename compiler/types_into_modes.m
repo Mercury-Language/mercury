@@ -381,7 +381,6 @@ acc_inst_vars_in_insts([Inst | Insts], !InstVars) :-
 acc_inst_vars_in_inst(Inst, !InstVars) :-
     (
         ( Inst = free
-        ; Inst = free(_Type)
         ; Inst = not_reached
         )
     ;

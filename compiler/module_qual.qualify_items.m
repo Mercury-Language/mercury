@@ -1102,9 +1102,6 @@ qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs) :-
         ),
         Inst = Inst0
     ;
-        Inst0 = free(_),
-        unexpected($pred, "compiler generated inst not expected")
-    ;
         Inst0 = bound(Uniq, InstResults0, BoundInsts0),
         (
             ( InstResults0 = inst_test_results_fgtc

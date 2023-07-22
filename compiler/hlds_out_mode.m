@@ -212,10 +212,6 @@ mercury_format_structured_inst(Lang, InstVarSet, InclAddr, Indent,
         add_string("free", S, !U),
         add_string(Suffix, S, !U)
     ;
-        Inst = free(_T),
-        add_string("free(with some type)", S, !U),
-        add_string(Suffix, S, !U)
-    ;
         Inst = bound(Uniq, InstResults, BoundInsts),
         mercury_format_uniqueness(Uniq, "bound", S, !U),
         add_string("(\n", S, !U),

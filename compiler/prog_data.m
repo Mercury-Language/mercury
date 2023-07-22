@@ -1359,8 +1359,6 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
                 % The ho_inst_info holds extra information
                 % about higher-order values.
 
-    ;           free(mer_type)
-
     ;           inst_var(inst_var).
 
 :- inst mer_inst_is_bound for mer_inst/0

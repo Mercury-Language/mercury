@@ -508,13 +508,11 @@ write_inst_stats_for_module(OutStream, ModuleInfo, !IO) :-
     inst_stats::in, io::di, io::uo) is det.
 
 write_inst_stats(OutStream, KindStr, Stats, !IO) :-
-    Stats = inst_stats(Free0, Free1, Any, Bound, Ground, NotReached, Var,
+    Stats = inst_stats(Free, Any, Bound, Ground, NotReached, Var,
         Constrained, Defined),
 
     io.format(OutStream, "%-5s %-15s %20d\n",
-        [s(KindStr), s("free/0"), i(Free0)], !IO),
-    io.format(OutStream, "%-5s %-15s %20d\n",
-        [s(KindStr), s("free/1"), i(Free1)], !IO),
+        [s(KindStr), s("free"), i(Free)], !IO),
     io.format(OutStream, "%-5s %-15s %20d\n",
         [s(KindStr), s("any"), i(Any)], !IO),
     io.format(OutStream, "%-5s %-15s %20d\n",
@@ -535,7 +533,6 @@ write_inst_stats(OutStream, KindStr, Stats, !IO) :-
 :- type inst_stats
     --->    inst_stats(
                 is_free0        :: int,
-                is_free1        :: int,
                 is_any          :: int,
                 is_bound        :: int,
                 is_ground       :: int,
@@ -547,7 +544,7 @@ write_inst_stats(OutStream, KindStr, Stats, !IO) :-
 
 :- func init_inst_stats = inst_stats.
 
-init_inst_stats = inst_stats(0, 0, 0, 0, 0, 0, 0, 0, 0).
+init_inst_stats = inst_stats(0, 0, 0, 0, 0, 0, 0, 0).
 
 %-----------------------------------------------------------------------------%
 
@@ -714,9 +711,6 @@ acc_inst_stats_in_inst(Inst, !Stats) :-
     (
         Inst = free,
         !Stats ^ is_free0 := !.Stats ^ is_free0 + 1
-    ;
-        Inst = free(_),
-        !Stats ^ is_free1 := !.Stats ^ is_free1 + 1
     ;
         Inst = any(_Uniq, HOInstInfo),
         !Stats ^ is_any := !.Stats ^ is_any + 1,

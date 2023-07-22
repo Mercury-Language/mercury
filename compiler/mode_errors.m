@@ -834,7 +834,6 @@ inst_has_uniqueness(Inst, SearchUniq) :-
     require_complete_switch [Inst]
     (
         ( Inst = free
-        ; Inst = free(_)
         ; Inst = any(_, _)
         ; Inst = not_reached
         ; Inst = inst_var(_)
@@ -1173,11 +1172,7 @@ mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
             words("is not a higher order type."), nl]
     ;
         Mismatch = mismatch_no_higher_order_inst_info,
-        ( if
-            ( PredVarInst = free
-            ; PredVarInst = free(_)
-            )
-        then
+        ( if PredVarInst = free then
             MismatchPieces = [words("mode error: context requires a"),
                 words(ExpPFStr), words("of"), ExpArityPiece, suffix(","),
                 words("but"), fixed(PredVarName),
@@ -1984,7 +1979,7 @@ report_inst_in_context(ModeInfo, VarNamePiece, ReportIsGround, Context - Inst)
         mode_info_get_module_info(ModeInfo, ModuleInfo),
         ( if inst_is_ground(ModuleInfo, Inst) then
             Pieces = report_inst_in_branch_simple(VarNamePiece, "ground")
-        else if ( Inst = free ; Inst = free(_) ) then
+        else if Inst = free then
             Pieces = report_inst_in_branch_simple(VarNamePiece, "free")
         else
             Pieces = report_inst_in_branch_simple(VarNamePiece, "not ground")
@@ -2017,7 +2012,7 @@ report_inst_in_branch(ModeInfo, VarNamePiece, MaybeGroundOrNonGround, Inst)
         MaybeGroundOrNonGround = no,
         ( if Inst = ground(shared, none_or_default_func) then
             Pieces = report_inst_in_branch_simple(VarNamePiece, "ground")
-        else if ( Inst = free ; Inst = free(_) ) then
+        else if Inst = free then
             Pieces = report_inst_in_branch_simple(VarNamePiece, "free")
         else
             IntroPieces = [words("In this branch,"), VarNamePiece,
@@ -2037,7 +2032,7 @@ report_inst_in_branch(ModeInfo, VarNamePiece, MaybeGroundOrNonGround, Inst)
         )
     ;
         MaybeGroundOrNonGround = yes(nonground),
-        ( if ( Inst = free ; Inst = free(_) ) then
+        ( if Inst = free then
             Pieces = report_inst_in_branch_simple(VarNamePiece, "free")
         else
             IntroPieces = [words("In this branch,"), VarNamePiece,

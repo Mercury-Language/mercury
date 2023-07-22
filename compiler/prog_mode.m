@@ -430,7 +430,6 @@ inst_apply_substitution(Subst, Inst0, Inst) :-
     (
         ( Inst0 = not_reached
         ; Inst0 = free
-        ; Inst0 = free(_)
         ),
         Inst = Inst0
     ;
@@ -599,7 +598,6 @@ rename_apart_inst_vars_in_inst(Renaming, Inst0, Inst) :-
     (
         ( Inst0 = not_reached
         ; Inst0 = free
-        ; Inst0 = free(_)
         ),
         Inst = Inst0
     ;
@@ -721,7 +719,6 @@ inst_contains_unconstrained_var(Inst) :-
     (
         ( Inst = not_reached
         ; Inst = free
-        ; Inst = free(_)
         ),
         fail
     ;
@@ -838,9 +835,7 @@ get_arg_insts(Inst, ConsId, Arity, ArgInsts) :-
             list.duplicate(Arity, not_reached, ArgInsts)
         )
     ;
-        ( Inst = free
-        ; Inst = free(_)
-        ),
+        Inst = free,
         list.duplicate(Arity, free, ArgInsts)
     ;
         Inst = any(Uniq, _),
@@ -948,7 +943,6 @@ strip_module_names_from_inst(StripWhat, Inst0, Inst) :-
         ( Inst0 = inst_var(_)
         ; Inst0 = not_reached
         ; Inst0 = free
-        ; Inst0 = free(_)
         ),
         Inst = Inst0
     ;
@@ -1080,7 +1074,6 @@ strip_typed_insts_from_inst(Inst0, Inst) :-
         ( Inst0 = inst_var(_)
         ; Inst0 = not_reached
         ; Inst0 = free
-        ; Inst0 = free(_)
         ),
         Inst = Inst0
     ;
@@ -1204,7 +1197,6 @@ constrain_inst_vars_in_inst(InstConstraints, Inst0, Inst) :-
     (
         ( Inst0 = not_reached
         ; Inst0 = free
-        ; Inst0 = free(_)
         ; Inst0 = ground(_Uniq, none_or_default_func)
         ; Inst0 = any(_Uniq, none_or_default_func)
         ),
@@ -1402,7 +1394,6 @@ gather_inconsistent_constrained_inst_vars_in_inst(Inst,
         !InconsistentVars, !Sub) :-
     (
         ( Inst = free
-        ; Inst = free(_)
         ; Inst = not_reached
         )
     ;
