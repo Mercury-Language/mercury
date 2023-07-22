@@ -111,13 +111,15 @@ CSHARP_WRAPPER_SCRIPTS = \
 # directories access to mdb_doc and mdbrc files in the current workspace,
 # *not* in the installed system.
 test_mdbrc: mdbrc.in mdbrc
-	ABS_MERCURY_DIR=`(cd $(MERCURY_DIR); /bin/pwd)` ; \
+	@echo making test_mdbrc
+	@ABS_MERCURY_DIR=`(cd $(MERCURY_DIR); /bin/pwd)` ; \
+	ABS_MERCURY_DIR=`$(FIX_PATH_FOR_CC) $${ABS_MERCURY_DIR}` ; \
 	sed \
-		-e "s:@DEFAULT_MERCURY_DEBUGGER_DOC@:$${ABS_MERCURY_DIR}/doc/mdb_doc:" \
-		-e "s:@DEFAULT_MERCURY_DEBUGGER_INIT_DIR@:$${ABS_MERCURY_DIR}/scripts:" \
+		-e "s,@DEFAULT_MERCURY_DEBUGGER_DOC@,$${ABS_MERCURY_DIR}/doc/mdb_doc," \
+		-e "s,@DEFAULT_MERCURY_DEBUGGER_INIT_DIR@,$${ABS_MERCURY_DIR}/scripts," \
 		-e '/^web_/d' \
 	< mdbrc.in > test_mdbrc
-	egrep '^web_' < mdbrc >> test_mdbrc
+	@egrep '^web_' < mdbrc >> test_mdbrc
 	@if grep '@' test_mdbrc; then \
 		echo "unhandled configuration variable in test_mdbrc"; \
 		exit 1; \
