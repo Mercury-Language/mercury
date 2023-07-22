@@ -1954,7 +1954,10 @@ write_case(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
     Case = case(MainConsId, OtherConsIds, Goal),
     IndentStr = indent2_string(Indent),
     VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
-    ConsIdStrs = list.map(cons_id_and_arity_to_string,
+    % Any module qualifications on the cons_ids would be copies of
+    % the module qualification on the type they are from, which can be
+    % looked up in the procedure's type table.
+    ConsIdStrs = list.map(unqual_cons_id_and_arity_to_string,
         [MainConsId | OtherConsIds]),
     ConsIdsStr = string.join_list(" or ", ConsIdStrs),
     io.format(Stream, "%s%% %s has functor %s\n",

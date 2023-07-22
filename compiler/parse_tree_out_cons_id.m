@@ -68,6 +68,7 @@
     %
 :- func maybe_quoted_cons_id_and_arity_to_string(cons_id) = string.
 :- func cons_id_and_arity_to_string(cons_id) = string.
+:- func unqual_cons_id_and_arity_to_string(cons_id) = string.
 
 :- pred int_const_to_string_and_suffix(some_int_const::in,
     string::out, string::out) is det.
@@ -227,11 +228,15 @@ mercury_format_cons_id(Lang, NeedsBrackets, ConsId, S, !U) :-
 
 maybe_quoted_cons_id_and_arity_to_string(ConsId) =
     cons_id_and_arity_to_string_maybe_quoted(dont_mangle_cons, quote_cons,
-        ConsId).
+        dont_strip_qual, ConsId).
 
 cons_id_and_arity_to_string(ConsId) =
     cons_id_and_arity_to_string_maybe_quoted(mangle_cons, dont_quote_cons,
-        ConsId).
+        dont_strip_qual, ConsId).
+
+unqual_cons_id_and_arity_to_string(ConsId) =
+    cons_id_and_arity_to_string_maybe_quoted(mangle_cons, dont_quote_cons,
+        strip_qual, ConsId).
 
 :- type maybe_quote_cons
     --->    dont_quote_cons
@@ -241,14 +246,24 @@ cons_id_and_arity_to_string(ConsId) =
     --->    dont_mangle_cons
     ;       mangle_cons.
 
-:- func cons_id_and_arity_to_string_maybe_quoted(maybe_mangle_cons,
-    maybe_quote_cons, cons_id) = string.
+:- type maybe_strip_qual
+    --->    dont_strip_qual
+    ;       strip_qual.
 
-cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, ConsId)
-        = String :-
+:- func cons_id_and_arity_to_string_maybe_quoted(maybe_mangle_cons,
+    maybe_quote_cons, maybe_strip_qual, cons_id) = string.
+
+cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, StripQual,
+        ConsId) = String :-
     (
         ConsId = cons(SymName, Arity, _TypeCtor),
-        SymNameString0 = sym_name_to_string(SymName),
+        (
+            StripQual = dont_strip_qual,
+            SymNameString0 = sym_name_to_string(SymName)
+        ;   
+            StripQual = strip_qual,
+            SymNameString0 = unqualify_name(SymName)
+        ),
         (
             MangleCons = dont_mangle_cons,
             SymNameString = SymNameString0
