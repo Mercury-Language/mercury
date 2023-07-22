@@ -35,19 +35,37 @@
 
 %---------------------------------------------------------------------------%
 
+:- inst mer_inst_expanded for mer_inst/0
+    --->        ground(ground, ground)
+    ;           free
+    ;           bound(ground, ground, ground)
+    ;           constrained_inst_vars(ground, ground)
+    ;           not_reached
+    ;           any(ground, ground)
+    ;           inst_var(ground).
+
+:- inst mer_inst_expanded_no_constraints for mer_inst/0
+    --->        ground(ground, ground)
+    ;           free
+    ;           bound(ground, ground, ground)
+    ;           not_reached
+    ;           any(ground, ground)
+    ;           inst_var(ground).
+
     % inst_expand(ModuleInfo, Inst0, Inst) checks if the top-level part
     % of the inst is a defined inst, and if so replaces it with the definition.
     %
     % This leaves insts with constrained_inst_vars at the top level unchanged.
     %
-:- pred inst_expand(module_info::in, mer_inst::in, mer_inst::out) is det.
+:- pred inst_expand(module_info::in, mer_inst::in,
+    mer_inst::out(mer_inst_expanded)) is det.
 
     % inst_expand_and_remove_constrained_inst_vars is the same as inst_expand
     % except that it also removes constrained_inst_vars from the top level,
     % replacing them with the constraining inst.
     %
 :- pred inst_expand_and_remove_constrained_inst_vars(module_info::in,
-    mer_inst::in, mer_inst::out) is det.
+    mer_inst::in, mer_inst::out(mer_inst_expanded_no_constraints)) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -177,23 +195,39 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
 %---------------------------------------------------------------------------%
 
 inst_expand(ModuleInfo, !Inst) :-
-    ( if !.Inst = defined_inst(InstName) then
+    (
+        !.Inst = defined_inst(InstName),
         inst_lookup(ModuleInfo, InstName, !:Inst),
         disable_warning [suspicious_recursion] (
             inst_expand(ModuleInfo, !Inst)
         )
-    else
-        true
+    ;
+        ( !.Inst = free
+        ; !.Inst = not_reached
+        ; !.Inst = ground(_, _)
+        ; !.Inst = any(_, _)
+        ; !.Inst = bound(_, _, _)
+        ; !.Inst = constrained_inst_vars(_, _)
+        ; !.Inst = inst_var(_)
+        )
     ).
 
 inst_expand_and_remove_constrained_inst_vars(ModuleInfo, !Inst) :-
-    ( if !.Inst = defined_inst(InstName) then
+    (
+        !.Inst = defined_inst(InstName),
         inst_lookup(ModuleInfo, InstName, !:Inst),
-        inst_expand(ModuleInfo, !Inst)
-    else if !.Inst = constrained_inst_vars(_, !:Inst) then
-        inst_expand(ModuleInfo, !Inst)
-    else
-        true
+        inst_expand_and_remove_constrained_inst_vars(ModuleInfo, !Inst)
+    ;
+        !.Inst = constrained_inst_vars(_, !:Inst),
+        inst_expand_and_remove_constrained_inst_vars(ModuleInfo, !Inst)
+    ;
+        ( !.Inst = free
+        ; !.Inst = not_reached
+        ; !.Inst = ground(_, _)
+        ; !.Inst = any(_, _)
+        ; !.Inst = bound(_, _, _)
+        ; !.Inst = inst_var(_)
+        )
     ).
 
 %---------------------------------------------------------------------------%

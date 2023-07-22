@@ -546,11 +546,6 @@ some_bound_inst_has_direct_arg_out(ModuleInfo, FreeArgDirectArgFunctors,
             ArgInst = inst_var(_),
             SomeDirectArgIsBound = TailSomeDirectArgIsBound,
             CanSeeAllArgModes = cannot_see_all_arg_modes
-        ;
-            ( ArgInst = constrained_inst_vars(_, _)
-            ; ArgInst = defined_inst(_)
-            ),
-            unexpected($pred, "unexpanded inst")
         )
     else
         SomeDirectArgIsBound = TailSomeDirectArgIsBound,
@@ -840,7 +835,7 @@ daio_mode_to_mode_pair(ModuleInfo, Mode, ClobberedMode, CloneMode) :-
 :- func clobber_daio_inst(module_info, mer_inst) = mer_inst.
 
 clobber_daio_inst(ModuleInfo, Inst0) = ClobberedInst :-
-    inst_expand(ModuleInfo, Inst0, Inst),
+    inst_expand_and_remove_constrained_inst_vars(ModuleInfo, Inst0, Inst),
     (
         Inst = bound(_Uniq, TestResults, BoundInsts),
         (
@@ -871,11 +866,6 @@ clobber_daio_inst(ModuleInfo, Inst0) = ClobberedInst :-
         ; Inst = inst_var(_)
         ),
         unexpected($pred, "inst is not a daio inst")
-    ;
-        ( Inst = constrained_inst_vars(_, _)
-        ; Inst = defined_inst(_)
-        ),
-        unexpected($pred, "unexpanded inst")
     ).
 
 :- func clobber_daio_bound_inst(module_info, bound_inst) = bound_inst.
@@ -888,7 +878,7 @@ clobber_daio_bound_inst(ModuleInfo, BoundInst) = ClobberedBoundInst :-
 :- func clobber_daio_arg_inst(module_info, mer_inst) = mer_inst.
 
 clobber_daio_arg_inst(ModuleInfo, Inst0) = ClobberedInst :-
-    inst_expand(ModuleInfo, Inst0, Inst),
+    inst_expand_and_remove_constrained_inst_vars(ModuleInfo, Inst0, Inst),
     (
         Inst = ground(_Uniq, HOInstInfo),
         ClobberedInst = ground(clobbered, HOInstInfo)
@@ -903,11 +893,6 @@ clobber_daio_arg_inst(ModuleInfo, Inst0) = ClobberedInst :-
         ; Inst = inst_var(_)
         ),
         unexpected($pred, "inst is not a daio arg inst")
-    ;
-        ( Inst = constrained_inst_vars(_, _)
-        ; Inst = defined_inst(_)
-        ),
-        unexpected($pred, "unexpanded arg inst")
     ).
 
 %---------------------------------------------------------------------------%

@@ -1364,6 +1364,8 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 :- inst mer_inst_is_bound for mer_inst/0
     --->        bound(ground, ground, ground).
 
+% There are some more insts for mer_inst in inst_lookup.m.
+
     % Values of this type give the outcome of various tests on an inst,
     % if that information is available when the inst is constructed.
     % The purpose is to allow those tests to work in constant time,
@@ -1883,7 +1885,7 @@ best_purity(purity_impure, purity_impure) = purity_impure.
     % - If we *do* know whether a predicate or function has foreign_procs,
     %   but we have to interoperate with code that doesn't, we still have
     %   to use print_name_only.
-    %   
+    %
     % - Pragmas that refer to type_infos in predicate and function signatures,
     %   such as type_spec pragmas, have to follow the same rules.
     %
@@ -1916,7 +1918,7 @@ best_purity(purity_impure, purity_impure) = purity_impure.
     %   so using variable numbers, not using variable names.
     %
     % The first seems easier.
-    % 
+    %
 :- type var_name_print
     --->    print_name_only
     ;       print_name_and_num
