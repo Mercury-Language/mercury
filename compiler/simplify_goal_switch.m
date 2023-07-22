@@ -94,82 +94,75 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         Context = goal_info_get_context(GoalInfo0),
         hlds_goal(GoalExpr, GoalInfo) = fail_goal_with_context(Context)
     ;
-        Cases = [case(MainConsId, [], SingleGoal)],
-        % A singleton switch is equivalent to the goal itself with a
-        % possibly can_fail unification with the functor on the front.
-        MainConsIdArity = cons_id_arity(MainConsId),
-        ( if
-            SwitchCanFail = can_fail,
-            MaybeInstConsIds \= yes([MainConsId])
-        then
-            % Don't optimize in the case of an existentially typed constructor
-            % because currently create_test_unification does not handle the
-            % existential type variables in the types of the constructor
-            % arguments or their typeinfos.
+        Cases = [Case],
+        Case = case(MainConsId, OtherConsIds, SingleGoal),
+        (
+            OtherConsIds = [],
+            % A singleton switch is equivalent to the goal itself with a
+            % possibly can_fail unification with the functor on the front.
+            MainConsIdArity = cons_id_arity(MainConsId),
+            ( if
+                SwitchCanFail = can_fail,
+                MaybeInstConsIds \= yes([MainConsId])
+            then
+                % Don't optimize in the case of an existentially typed
+                % constructor, because currently create_test_unification
+                % does not handle the existential type variables in the types
+                % of the constructor arguments or their typeinfos.
 
-            lookup_var_type(VarTable, Var, Type),
-            simplify_info_get_module_info(!.Info, ModuleInfo1),
-            ( if cons_id_is_existq_cons(ModuleInfo1, Type, MainConsId) then
-                GoalExpr = switch(Var, SwitchCanFail, Cases),
-                NonLocals = goal_info_get_nonlocals(GoalInfo0),
-                merge_instmap_deltas(VarTable, NonLocals, InstMap0,
-                    RevInstMapDeltas, NewDelta, ModuleInfo1, ModuleInfo2),
-                simplify_info_set_module_info(ModuleInfo2, !Info),
-                goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
+                lookup_var_type(VarTable, Var, Type),
+                simplify_info_get_module_info(!.Info, ModuleInfo1),
+                ( if cons_id_is_existq_cons(ModuleInfo1, Type, MainConsId) then
+                    GoalExpr = switch(Var, SwitchCanFail, Cases),
+                    NonLocals = goal_info_get_nonlocals(GoalInfo0),
+                    merge_instmap_deltas(VarTable, NonLocals, InstMap0,
+                        RevInstMapDeltas, NewDelta, ModuleInfo1, ModuleInfo2),
+                    simplify_info_set_module_info(ModuleInfo2, !Info),
+                    goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
+                else
+                    create_test_unification(Var, MainConsId, MainConsIdArity,
+                        UnifyGoal, InstMap0, !Info),
+
+                    % Conjoin the test and the rest of the case.
+                    goal_to_conj_list(SingleGoal, SingleGoalConj),
+                    GoalList = [UnifyGoal | SingleGoalConj],
+
+                    % Work out the nonlocals, instmap_delta
+                    % and determinism of the entire conjunction.
+                    NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
+                    set_of_var.insert(Var, NonLocals0, NonLocals),
+                    InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
+                    instmap_delta_bind_var_to_functor(Var, Type, MainConsId,
+                        InstMap0, InstMapDelta0, InstMapDelta,
+                        ModuleInfo1, ModuleInfo),
+                    simplify_info_set_module_info(ModuleInfo, !Info),
+                    CaseDetism = goal_info_get_determinism(GoalInfo0),
+                    det_conjunction_detism(detism_semi, CaseDetism, Detism),
+                    goal_list_purity(GoalList, Purity),
+                    goal_info_init(NonLocals, InstMapDelta, Detism, Purity,
+                        CombinedGoalInfo),
+
+                    simplify_info_set_rerun_quant_instmap_delta(!Info),
+                    GoalExpr = conj(plain_conj, GoalList),
+                    GoalInfo = CombinedGoalInfo
+                )
             else
-                create_test_unification(Var, MainConsId, MainConsIdArity,
-                    UnifyGoal, InstMap0, !Info),
-
-                % Conjoin the test and the rest of the case.
-                goal_to_conj_list(SingleGoal, SingleGoalConj),
-                GoalList = [UnifyGoal | SingleGoalConj],
-
-                % Work out the nonlocals, instmap_delta
-                % and determinism of the entire conjunction.
-                NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-                set_of_var.insert(Var, NonLocals0, NonLocals),
-                InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
-                instmap_delta_bind_var_to_functor(Var, Type, MainConsId,
-                    InstMap0, InstMapDelta0, InstMapDelta,
-                    ModuleInfo1, ModuleInfo),
-                simplify_info_set_module_info(ModuleInfo, !Info),
-                CaseDetism = goal_info_get_determinism(GoalInfo0),
-                det_conjunction_detism(detism_semi, CaseDetism, Detism),
-                goal_list_purity(GoalList, Purity),
-                goal_info_init(NonLocals, InstMapDelta, Detism, Purity,
-                    CombinedGoalInfo),
-
-                simplify_info_set_rerun_quant_instmap_delta(!Info),
-                GoalExpr = conj(plain_conj, GoalList),
-                GoalInfo = CombinedGoalInfo
-            )
-        else
-            % The var can only be bound to this cons_id, so a test
-            % is unnecessary.
-            SingleGoal = hlds_goal(GoalExpr, GoalInfo)
-        ),
-        simplify_info_incr_cost_delta(cost_of_eliminate_switch, !Info)
-    ;
-        ( Cases = [case(_MainConsId, [_ | _], _SingleGoal)]
-        ; Cases = [_, _ | _]
-        ),
-        GoalExpr = switch(Var, SwitchCanFail, Cases),
-        ( if
-            ( goal_info_has_feature(GoalInfo0, feature_mode_check_clauses_goal)
-            ; SeenNonGroundTerm = not_seen_non_ground_term
-            )
-        then
-            % Recomputing the instmap delta would take very long
-            % and is very unlikely to get any better precision.
-            GoalInfo = GoalInfo0
-        else
-            simplify_info_get_module_info(!.Info, ModuleInfo1),
-            NonLocals = goal_info_get_nonlocals(GoalInfo0),
-            merge_instmap_deltas(VarTable, NonLocals, InstMap0,
-                RevInstMapDeltas, NewDelta, ModuleInfo1, ModuleInfo2),
-            simplify_info_set_module_info(ModuleInfo2, !Info),
-            goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
+                % The var can only be bound to this cons_id, so a test
+                % is unnecessary.
+                SingleGoal = hlds_goal(GoalExpr, GoalInfo)
+            ),
+            simplify_info_incr_cost_delta(cost_of_eliminate_switch, !Info)
+        ;
+            OtherConsIds = [_ | _],
+            GoalExpr = switch(Var, SwitchCanFail, Cases),
+            update_switch_goal_info(VarTable, InstMap0, RevInstMapDeltas,
+                SeenNonGroundTerm, GoalInfo0, GoalInfo, !Info)
         )
+    ;
+        Cases = [_, _ | _],
+        GoalExpr = switch(Var, SwitchCanFail, Cases),
+        update_switch_goal_info(VarTable, InstMap0, RevInstMapDeltas,
+            SeenNonGroundTerm, GoalInfo0, GoalInfo, !Info)
     ),
     % Any information that is in the updated Common at the end of a switch arm
     % is valid only for that arm. We cannot use that information after the
@@ -192,6 +185,30 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         % cannot produce variables it did before.
         simplify_info_set_rerun_quant_instmap_delta(!Info),
         simplify_info_set_rerun_det(!Info)
+    ).
+
+:- pred update_switch_goal_info(var_table::in, instmap::in,
+    list(instmap_delta)::in, seen_non_ground_term::in,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out) is det.
+
+update_switch_goal_info(VarTable, InstMap0, InstMapDeltas, SeenNonGroundTerm,
+        GoalInfo0, GoalInfo, !Info) :-
+    ( if
+        ( goal_info_has_feature(GoalInfo0, feature_mode_check_clauses_goal)
+        ; SeenNonGroundTerm = not_seen_non_ground_term
+        )
+    then
+        % Recomputing the instmap delta would take very long
+        % and is very unlikely to get any better precision.
+        GoalInfo = GoalInfo0
+    else
+        simplify_info_get_module_info(!.Info, ModuleInfo1),
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
+        merge_instmap_deltas(VarTable, NonLocals, InstMap0,
+            InstMapDeltas, NewDelta, ModuleInfo1, ModuleInfo2),
+        simplify_info_set_module_info(ModuleInfo2, !Info),
+        goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
     ).
 
 %---------------------------------------------------------------------------%
