@@ -310,20 +310,60 @@ inst_merge_2(Type, InstA, InstB, InstAB, !ModuleInfo) :-
 %   else
     inst_expand(!.ModuleInfo, InstA, ExpandedInstA),
     inst_expand(!.ModuleInfo, InstB, ExpandedInstB),
-    ( if ExpandedInstB = not_reached then
-        InstAB = ExpandedInstA
-    else if ExpandedInstA = not_reached then
+    require_complete_switch [ExpandedInstA]
+    (
+        ExpandedInstA = not_reached,
         InstAB = ExpandedInstB
-    else
-        inst_merge_3(Type, ExpandedInstA, ExpandedInstB, InstAB, !ModuleInfo)
+    ;
+        ExpandedInstA = inst_var(_),
+        % If ExpandedInstA = ExpandedInstB, we could succeed with
+        % InstAB = ExpandedInstA, though that would amount to a de-facto
+        % change in the language.
+        fail
+    ;
+        ( ExpandedInstA = ground(_, _)
+        ; ExpandedInstA = free
+        ; ExpandedInstA = bound(_, _, _)
+        ; ExpandedInstA = any(_, _)
+        ; ExpandedInstA = constrained_inst_vars(_, _)
+        ),
+        require_complete_switch [ExpandedInstB]
+        (
+            ExpandedInstB = not_reached,
+            InstAB = ExpandedInstA
+        ;
+            ExpandedInstB = inst_var(_),
+            fail
+        ;
+            ( ExpandedInstB = ground(_, _)
+            ; ExpandedInstB = free
+            ; ExpandedInstB = bound(_, _, _)
+            ; ExpandedInstB = any(_, _)
+            ; ExpandedInstB = constrained_inst_vars(_, _)
+            ),
+            inst_merge_3(Type, ExpandedInstA, ExpandedInstB, InstAB,
+                !ModuleInfo)
+        )
     ).
 
-:- pred inst_merge_3(mer_type::in, mer_inst::in, mer_inst::in, mer_inst::out,
-    module_info::in, module_info::out) is semidet.
+:- inst inst_merge_3_input for mer_inst/0
+    --->        ground(ground, ground)
+    ;           free
+    ;           bound(ground, ground, ground)
+    ;           constrained_inst_vars(ground, ground)
+    ;           any(ground, ground).
+
+:- pred inst_merge_3(mer_type::in,
+    mer_inst::in(inst_merge_3_input), mer_inst::in(inst_merge_3_input),
+    mer_inst::out, module_info::in, module_info::out) is semidet.
 
 inst_merge_3(Type, InstA, InstB, InstAB, !ModuleInfo) :-
-    ( if InstA = constrained_inst_vars(InstVarsA, SubInstA) then
-        ( if InstB = constrained_inst_vars(InstVarsB, SubInstB) then
+    require_complete_switch [InstA]
+    (
+        InstA = constrained_inst_vars(InstVarsA, SubInstA),
+        require_complete_switch [InstB]
+        (
+            InstB = constrained_inst_vars(InstVarsB, SubInstB),
             inst_merge(Type, SubInstA, SubInstB, InstAB0, !ModuleInfo),
             set.intersect(InstVarsA, InstVarsB, InstVars),
             ( if set.is_non_empty(InstVars) then
@@ -335,19 +375,45 @@ inst_merge_3(Type, InstA, InstB, InstAB, !ModuleInfo) :-
             else
                 InstAB = InstAB0
             )
-        else
+        ;
+            ( InstB = ground(_, _)
+            ; InstB = free
+            ; InstB = bound(_, _, _)
+            ; InstB = any(_, _)
+            ),
             inst_merge(Type, SubInstA, InstB, InstAB, !ModuleInfo)
         )
-    else if InstB = constrained_inst_vars(_InstVarsB, SubInstB) then
-        % InstA \= constrained_inst_vars(_, _) is equivalent to
-        % constrained_inst_vars(InstVarsA, InstA) where InstVarsA = empty.
-        inst_merge(Type, InstA, SubInstB, InstAB, !ModuleInfo)
-    else
-        inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo)
+    ;
+        ( InstA = ground(_, _)
+        ; InstA = free
+        ; InstA = bound(_, _, _)
+        ; InstA = any(_, _)
+        ),
+        require_complete_switch [InstB]
+        (
+            InstB = constrained_inst_vars(_InstVarsB, SubInstB),
+            % InstA \= constrained_inst_vars(_, _) is equivalent to
+            % constrained_inst_vars(InstVarsA, InstA) where InstVarsA = empty.
+            inst_merge(Type, InstA, SubInstB, InstAB, !ModuleInfo)
+        ;
+            ( InstB = ground(_, _)
+            ; InstB = free
+            ; InstB = bound(_, _, _)
+            ; InstB = any(_, _)
+            ),
+            inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo)
+        )
     ).
 
-:- pred inst_merge_4(mer_type::in, mer_inst::in, mer_inst::in, mer_inst::out,
-    module_info::in, module_info::out) is semidet.
+:- inst inst_merge_4_input for mer_inst/0
+    --->        ground(ground, ground)
+    ;           free
+    ;           bound(ground, ground, ground)
+    ;           any(ground, ground).
+
+:- pred inst_merge_4(mer_type::in,
+    mer_inst::in(inst_merge_4_input), mer_inst::in(inst_merge_4_input),
+    mer_inst::out, module_info::in, module_info::out) is semidet.
 
 inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
     % We do not yet allow merging of `free' and `any', except in the case
@@ -356,7 +422,7 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
     %
     % We do NOT plan to allow merging of `free' and `ground' to produce `any',
     % because that would introduce `any' insts even for builtin types such as
-    % `int' which can't support `any'. It might also make the mode system
+    % `int' which can't support `any'. It would also make the mode system
     % too weak -- it might not be able to detect bugs as well as it can
     % currently.
     %
@@ -370,17 +436,10 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
     % disagree about whether the variable whose insts we are processing
     % is bound by the whole control structure or not. In such cases,
     % we fail, to tell our ancestors this fact.
-    %
-    % Both the main switch and the nested switches should be complete
-    % switches on the function symbols of Inst[AB] that can get here.
-    % (Note that inst_merge_2 and inst_merge_3 filter out the not_reached
-    % and constrained_inst_vars function symbols respectively, while
-    % the call to inst_expand in inst_merge_2 should do the same
-    % for defined_insts.)
-    %
-    % That still leaves inst_var.
+    require_complete_switch [InstA]
     (
         InstA = free,
+        require_complete_switch [InstB]
         (
             InstB = free,
             InstAB = free
@@ -390,18 +449,19 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
             % clobbered anys.
             ( Uniq = clobbered ; Uniq = mostly_clobbered ),
             InstAB = any(Uniq, HOInstInfo)
-%       ;
-%           ( InstB = ground(_, _)
-%           ; InstB = bound(_, _, _)
-%           ),
-%           fail
+        ;
+            ( InstB = ground(_, _)
+            ; InstB = bound(_, _, _)
+            ),
+            fail
         )
     ;
         InstA = ground(UniqA, HOInstInfoA),
+        require_complete_switch [InstB]
         (
-%           InstB = free,
-%           fail
-%       ;
+            InstB = free,
+            fail
+        ;
             InstB = ground(UniqB, HOInstInfoB),
             merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo,
                 !ModuleInfo),
@@ -421,6 +481,7 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
         )
     ;
         InstA = any(UniqA, HOInstInfoA),
+        require_complete_switch [InstB]
         (
             InstB = free,
             % We do not yet allow merge of any with free, except for
@@ -457,10 +518,11 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
         )
     ;
         InstA = bound(UniqA, InstResultsA, BoundInstsA),
+        require_complete_switch [InstB]
         (
-%           InstB = free,
-%           fail
-%       ;
+            InstB = free,
+            fail
+        ;
             InstB = ground(UniqB, _),
             inst_merge_bound_ground(Type, UniqA, InstResultsA, BoundInstsA,
                 UniqB, InstAB, !ModuleInfo),
