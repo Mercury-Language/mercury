@@ -26,25 +26,22 @@ main(!IO) :-
 :- pred call_foreign(io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    call_foreign(IO0::di, IO::uo),
+    call_foreign(_IO0::di, _IO::uo),
     [may_call_mercury, promise_pure],
 "
     WRITE_HELLO();
-    IO = IO0;
 ").
 :- pragma foreign_proc("C#",
-    call_foreign(IO0::di, IO::uo),
+    call_foreign(_IO0::di, _IO::uo),
     [may_call_mercury, promise_pure],
 "
     WRITE_HELLO();
-    IO = IO0;
 ").
 :- pragma foreign_proc("Java",
-    call_foreign(IO0::di, IO::uo),
+    call_foreign(_IO0::di, _IO::uo),
     [may_call_mercury, promise_pure],
 "
     WRITE_HELLO();
-    IO = IO0;
 ").
 
 :- pred write_hello(io::di, io::uo) is det.

@@ -28,7 +28,7 @@ extern const struct MR_TypeCtorInfo_Struct
 ").
 
 :- pragma foreign_proc("C",
-    main(IO0::di, IO::uo),
+    main(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     MR_TypeCtorInfo tc1;
@@ -46,5 +46,4 @@ extern const struct MR_TypeCtorInfo_Struct
     printf(""%s %s\\n"",
         MR_type_ctor_module_name(tc2),
         MR_type_ctor_name(tc2));
-    IO = IO0;
 ").

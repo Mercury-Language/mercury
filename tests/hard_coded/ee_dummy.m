@@ -50,47 +50,41 @@ main(!IO) :-
 
 :- pred check_dummy_type(dummy_type::in, bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    check_dummy_type(X::in, Result::out, IO0::di, IO::uo),
+    check_dummy_type(X::in, Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     Result = (X == FOO_dummy_type) ? MR_YES : MR_NO;
-    IO = IO0;
 ").
 :- pragma foreign_proc("C#",
-    check_dummy_type(X::in, Result::out, IO0::di, IO::uo),
+    check_dummy_type(X::in, Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     Result = (X == FOO_dummy_type) ? mr_bool.YES : mr_bool.NO;
-    IO = IO0;
 ").
 :- pragma foreign_proc("Java",
-    check_dummy_type(X::in, Result::out, IO0::di, IO::uo),
+    check_dummy_type(X::in, Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     Result = (X == FOO_dummy_type) ? bool.YES : bool.NO;
-    IO = IO0;
 ").
 
 :- pred check_poly_dummy_type(poly_dummy_type(dummy_type)::in, bool::out,
     io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    check_poly_dummy_type(X::in, Result::out, IO0::di, IO::uo),
+    check_poly_dummy_type(X::in, Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     Result = (X == BAR_poly_dummy_type) ? MR_YES : MR_NO;
-    IO = IO0;
 ").
 :- pragma foreign_proc("C#",
-    check_poly_dummy_type(X::in, Result::out, IO0::di, IO::uo),
+    check_poly_dummy_type(X::in, Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     Result = (X == BAR_poly_dummy_type) ? mr_bool.YES : mr_bool.NO;
-    IO = IO0;
 ").
 :- pragma foreign_proc("Java",
-    check_poly_dummy_type(X::in, Result::out, IO0::di, IO::uo),
+    check_poly_dummy_type(X::in, Result::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     Result = (X == BAR_poly_dummy_type) ? bool.YES : bool.NO;
-    IO = IO0;
 ").
