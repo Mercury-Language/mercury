@@ -429,7 +429,8 @@ field_names.out: field_names field_names.inp
 
 foreign_type.out: foreign_type foreign_type.inp
 	$(MDB_STD) ./foreign_type < foreign_type.inp | \
-		sed 's/0x[-0-9A-Fa-f]*/0xXXXX/g' \
+		sed 's/coord, 0x[-0-9A-Fa-f]*/coord, 0xXXXX/g'  |\
+		sed 's/coord, [0-9A-F][0-9A-F][0-9A-F]*/coord, 0xXXXX/g'  \
 		> foreign_type.out 2>&1
 
 higher_order.out: higher_order higher_order.inp
@@ -555,7 +556,9 @@ nondet_stack.out: nondet_stack nondet_stack.inp
 	$(MDB_STD) ./nondet_stack < nondet_stack.inp 2>&1 | \
 		sed 's/entry label MR_do_trace_redo_fail_deep/label UNKNOWN/g' \
 		| sed 's/unnamed label 0x.*/unnamed label/' \
+		| sed 's/unnamed label [0-9A-F][0-9A-F]*/unnamed label/' \
 		| sed 's/unnamed entry label 0x.*/unnamed entry label/' \
+		| sed 's/unnamed entry label [0-9A-F][0-9A-F]*/unnamed entry label/' \
 		| sed 's/label UNKNOWN .*/label UNKNOWN/' \
 		| sed 's/nondet_stack.m:[0-9]*/nondet_stack.m:NNNN/g' \
 		> nondet_stack.out 2>&1
