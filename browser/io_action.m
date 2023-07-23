@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002, 2004-2007 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2018 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2021-2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -88,7 +88,7 @@ io_action_to_browser_term(IoAction) = Term :-
 :- pragma no_determinism_warning(pred(pickup_io_action/4)).
 
 :- pragma foreign_proc("C",
-    pickup_io_action(SeqNum::in, MaybeIOAction::out, S0::di, S::uo),
+    pickup_io_action(SeqNum::in, MaybeIOAction::out, _IO0::di, _IO::uo),
     [thread_safe, promise_pure, tabled_for_io, may_call_mercury],
 "{
     const char  *problem;
@@ -112,8 +112,6 @@ io_action_to_browser_term(IoAction) = Term :-
     } else {
         MaybeIOAction = MR_IO_ACTION_make_no_io_action();
     }
-
-    S = S0;
 }").
 
 pickup_io_action(_, _, _, _) :-
