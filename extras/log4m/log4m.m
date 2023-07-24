@@ -1,8 +1,10 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006 The University of Melbourne.
 % Copyright (C) 2015-2016, 2018, 2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 /****M* libs/log4m/log4m.m/log4m
  * NAME
  *   log4m
@@ -77,7 +79,8 @@
  * SOURCE
  */
 :- typeclass appender(T) where [
-    pred write_string(T::in, id::in, level::in, string::in, io::di, io::uo) is det
+    pred write_string(T::in, id::in, level::in, string::in,
+        io::di, io::uo) is det
 ].
 /*****/
 
@@ -251,7 +254,8 @@
 :- type check_condition == pred(string).
 :- inst check == (pred(out) is semidet).
 
-:- pred log_p(id::in, level::in, check_condition::in(check), io::di, io::uo) is det.
+:- pred log_p(id::in, level::in, check_condition::in(check),
+    io::di, io::uo) is det.
 /*****/
 
 /****P* libs/log4m/log4m.m/unsafe_log_f
@@ -294,7 +298,7 @@
 :- pred update_log(string::in, io.res::out, io::di, io::uo) is det.
 /*****/
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 /****T* libs/log4m/log4m.m/spec
  * NAME
@@ -367,8 +371,8 @@
 :- instance appender(io.output_stream).
 /*****/
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -390,13 +394,22 @@
     --->    some [T] appender(T) => appender(T).
 
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-debug(!IO) :- set_log(debug, !IO).
-info(!IO) :- set_log(info, !IO).
-warn(!IO) :- set_log(warn, !IO).
-error(!IO) :- set_log(error, !IO).
-fatal(!IO) :- set_log(fatal, !IO).
+debug(!IO) :-
+    set_log(debug, !IO).
+
+info(!IO) :-
+    set_log(info, !IO).
+
+warn(!IO) :-
+    set_log(warn, !IO).
+
+error(!IO) :-
+    set_log(error, !IO).
+
+fatal(!IO) :-
+    set_log(fatal, !IO).
 
 :- func debug = log.
 :- func info = log.
@@ -405,8 +418,8 @@ fatal(!IO) :- set_log(fatal, !IO).
 :- func fatal = log.
 
 debug = log(map.set(map.init, [], debug), map.init).
-info = log(map.set(map.init, [], info), map.init).
-warn = log(map.set(map.init, [], warn), map.init).
+info =  log(map.set(map.init, [], info),  map.init).
+warn =  log(map.set(map.init, [], warn),  map.init).
 error = log(map.set(map.init, [], error), map.init).
 fatal = log(map.set(map.init, [], fatal), map.init).
 
@@ -415,53 +428,56 @@ will_log(Id, Level, WillLog, !IO) :-
     Log = log(LevelsMap, _),
     LoggerLevel = find_logger_level(Id, LevelsMap),
     compare(Res, Level, LoggerLevel),
-    ( (Res = (=) ; Res = (>)) ->
+    ( if ( Res = (=) ; Res = (>) ) then
         WillLog = yes
-    ;
+    else
         WillLog = no
     ).
 
 log(Id, Level, Msg, !IO) :-
     will_log(Id, Level, WillLog, !IO),
-    ( WillLog = yes ->
+    (
+        WillLog = yes,
         get_log(Log, !IO),
         Log = log(_, Appenders),
         write_levels(Id, Level, Msg, Appenders, !IO)
     ;
-        true
+        WillLog = no
     ).
 
 log_f(Id, Level, Func, !IO) :-
     will_log(Id, Level, WillLog, !IO),
-    ( WillLog = yes ->
+    (
+        WillLog = yes,
         get_log(Log, !IO),
         Log = log(_, Appenders),
         write_levels(Id, Level, apply(Func), Appenders, !IO)
     ;
-        true
+        WillLog = no
     ).
 
 :- func find_logger_level(id, level_map) = level.
 
 find_logger_level([], LevelMap) = map.lookup(LevelMap, []).
 find_logger_level([H|T], LevelMap) =
-    ( map.search(LevelMap, [H|T], Level) ->
+    ( if map.search(LevelMap, [H|T], Level) then
         Level
-    ;
+    else
         find_logger_level(T, LevelMap)
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 log_p(Id, Level, P, !IO) :-
     will_log(Id, Level, WillLog, !IO),
-    ( WillLog = yes, P(ToLog) ->
+    ( if WillLog = yes, P(ToLog) then
         get_log(Log, !IO),
         Log = log(_, Appenders),
         write_levels(Id, Level, ToLog, Appenders, !IO)
-    ;
+    else
         true
     ).
-%------------------------------------------------------------------------------%
+
+%---------------------------------------------------------------------------%
 
 :- pragma promise_pure(unsafe_log_f/3).
 unsafe_log_f(Id, Level, Func) :-
@@ -478,47 +494,51 @@ impure_log_f(Id, Level, Func) :-
     IO = 0;
 ").
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred write_levels(id::in, level::in, string::in,
-                appenders_map::in, io::di, io::uo) is det.
+    appenders_map::in, io::di, io::uo) is det.
 
 write_levels(Id, Level, String, Map, !IO) :-
     write_levels(Id, Id, Level, String, Map, !IO).
 
 :- pred write_levels(id::in, id::in, level::in, string::in,
-                appenders_map::in, io::di, io::uo) is det.
+    appenders_map::in, io::di, io::uo) is det.
 
 write_levels([], Id, Level, String, Map, !IO) :-
-    ( map.search(Map, [], Data) ->
+    ( if map.search(Map, [], Data) then
         write_appenders(Id, Level, String, Data, !IO)
-    ;
+    else
         true
     ).
 write_levels([H|T], Id, Level, String, Map, !IO) :-
-    ( map.search(Map, [H|T], Data) ->
+    ( if map.search(Map, [H|T], Data) then
         write_appenders(Id, Level, String, Data, !IO),
-        ( Data = stop(_)
-        ; Data = continue(_),
+        (
+            Data = stop(_)
+        ;
+            Data = continue(_),
             write_levels(T, Id, Level, String, Map, !IO)
         )
-    ;
+    else
         write_levels(T, Id, Level, String, Map, !IO)
     ).
 
-:- pred write_appenders(id::in, level::in, string::in, appenders::in, io::di, io::uo) is det.
+:- pred write_appenders(id::in, level::in, string::in, appenders::in,
+    io::di, io::uo) is det.
 
 write_appenders(Id, Level, String, stop(Appenders), !IO) :-
-        list.foldl(write_appender(Id, Level, String), Appenders, !IO).
+    list.foldl(write_appender(Id, Level, String), Appenders, !IO).
 write_appenders(Id, Level, String, continue(Appenders), !IO) :-
-        list.foldl(write_appender(Id, Level, String), Appenders, !IO).
+    list.foldl(write_appender(Id, Level, String), Appenders, !IO).
 
-:- pred write_appender(id::in, level::in, string::in, appender::in, io::di, io::uo) is det.
+:- pred write_appender(id::in, level::in, string::in, appender::in,
+    io::di, io::uo) is det.
 
 write_appender(Id, Level, S, appender(A), !IO) :-
     write_string(A, Id, Level, S, !IO).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- import_module require, string.
 
@@ -527,13 +547,15 @@ write_appender(Id, Level, S, appender(A), !IO) :-
 
 update_log(FileName, Result, !IO) :-
     io.open_input(FileName, OpenRes, !IO),
-    ( OpenRes = ok(Stream),
+    (
+        OpenRes = ok(Stream),
         get_log(Log0, !IO),
         read_file(Stream, Log0, Log, !IO),
         set_log(Log, !IO),
         io.close_input(Stream, !IO),
         Result = ok
-    ; OpenRes = error(E),
+    ;
+        OpenRes = error(E),
         Result = error(E)
     ).
 
@@ -542,18 +564,20 @@ update_log(FileName, Result, !IO) :-
 
 read_file(Input, !Log, !IO) :-
     io.read(Input, Result, !IO),
-    ( Result = ok(set_level(Id, Level)),
+    (
+        Result = ok(set_level(Id, Level)),
         !:Log = update_level(Id, Level, !.Log),
         read_file(Input, !Log, !IO)
-    ; Result = eof,
-        true
-    ; Result = error(Msg, Line),
+    ;
+        Result = eof
+    ;
+        Result = error(Msg, Line),
         input_stream_name(Input, Name, !IO),
         error(format("log4m.read_file: %s line %d has error %s.",
-                [s(Name), i(Line), s(Msg)]))
+            [s(Name), i(Line), s(Msg)]))
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 update_level(Id, Level, !IO) :-
     get_log(Log, !IO),
@@ -563,7 +587,7 @@ update_level(Id, Level, !IO) :-
 
 update_level(Id, Level, log(M, A)) = log(map.set(M, Id, Level), A).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 add_appender(Id, Addivity, Appender, !IO) :-
     get_log(Log0, !IO),
@@ -577,35 +601,41 @@ add_appender(Id, Addivity, Appender, !IO) :-
 
 add_appender_2(Id, Addivity, T, !Map) :-
     App = 'new appender'(T),
-    ( map.search(!.Map, Id, Data0) ->
-        ( Data0 = stop(Appenders),
+    ( if map.search(!.Map, Id, Data0) then
+        (
+            Data0 = stop(Appenders),
             Data = stop([App | Appenders])
-        ; Data0 = continue(Appenders),
-            ( Addivity = stop,
+        ;
+            Data0 = continue(Appenders),
+            (
+                Addivity = stop,
                 Data = stop([App | Appenders])
-            ; Addivity = continue,
+            ;
+                Addivity = continue,
                 Data = continue([App | Appenders])
             )
         )
-    ;
-        ( Addivity = stop,
+    else
+        (
+            Addivity = stop,
             Data = stop([App])
-        ; Addivity = continue,
+        ;
+            Addivity = continue,
             Data = continue([App])
         )
     ),
-    !:Map = map.set(!.Map, Id, Data).
+    map.set(Id, Data, !Map).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- instance appender(io.output_stream) where [
-    (write_string(S, _Id, _Level, Str, !.IO, !:IO) :-
+    ( write_string(S, _Id, _Level, Str, !.IO, !:IO) :-
         io.write_string(S, Str, !IO),
         io.flush_output(S, !IO)
     )
 ].
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % XXX none of this thread safe.
 :- pragma foreign_decl(c, local, "
@@ -616,9 +646,9 @@ static MR_Word LOG4M_log = (MR_Word) NULL;
 :- pragma promise_pure(get_log/3).
 
 get_log(Log, !IO) :-
-    ( impure get_log(Log0) ->
+    ( if impure get_log(Log0) then
         Log = Log0
-    ;
+    else
         Log = fatal
     ).
 
@@ -630,7 +660,8 @@ set_log(Log, !IO) :-
 
 :- impure pred get_log(log::out) is semidet.
 :- pragma foreign_proc(c, get_log(Log::out),
-        [will_not_call_mercury], "
+    [will_not_call_mercury],
+"
     if (LOG4M_log) {
         Log = LOG4M_log;
         SUCCESS_INDICATOR = MR_TRUE;
@@ -641,12 +672,13 @@ set_log(Log, !IO) :-
 
 :- impure pred set_log(log::in) is det.
 :- pragma foreign_proc(c, set_log(Log::in),
-        [will_not_call_mercury], "
+    [will_not_call_mercury],
+"
     LOG4M_log = Log;
 ").
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- import_module cord, int, time.
 
@@ -655,15 +687,15 @@ set_log(Log, !IO) :-
         list.foldl(write_format(A, Id, Level, Message), Specs, !IO)
 ].
 
-:- pred write_format(A::in, id::in, level::in, string::in,
-                spec::in, io::di, io::uo) is det <= appender(A).
+:- pred write_format(A::in, id::in, level::in, string::in, spec::in,
+    io::di, io::uo) is det <= appender(A).
 
 write_format(A, Id, Level, _Message, date, !IO) :-
     time(Time, !IO),
     localtime(Time, TM, !IO),
     TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, _YD, _WD, _DST),
     Date = string.format("%4d-%02d-%02d %02d:%02d:%02d",
-            [i(Yr + 1900), i(Mnt + 1), i(MD), i(Hrs), i(Min), i(Sec)]),
+        [i(Yr + 1900), i(Mnt + 1), i(MD), i(Hrs), i(Min), i(Sec)]),
     write_string(A, Id, Level, Date, !IO).
 write_format(A, Id, Level, _Message, id, !IO) :-
     write_string(A, Id, Level, id(Id), !IO).
@@ -702,7 +734,8 @@ level(fatal) = "fatal".
 :- pred thread_id(int::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc(c, thread_id(Id::out, _IO0::di, _IO::uo),
-                [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io], "
+    [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io],
+"
 #ifdef MR_THREAD_SAFE
     pthread_t thread;
     thread = pthread_self();
@@ -711,7 +744,3 @@ level(fatal) = "fatal".
     Id = getpid();
 #endif
 ").
-
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et tw=0 wm=0
