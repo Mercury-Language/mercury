@@ -493,12 +493,19 @@
     % Given two maps MapA and MapB, create a third map, IntersectMap,
     % that has only the keys that occur in both MapA and MapB. For keys
     % that occur in both MapA and MapB, compute the value in the final map
-    % by applying the supplied predicate to the values associated with
-    % the key in MapA and MapB. Fail if and only if this predicate fails
+    % by applying the supplied function to the values associated with
+    % the key in MapA and MapB.
     % on the values associated with some common key.
     %
 :- func intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 
+    % Given two maps MapA and MapB, create a third map, IntersectMap,
+    % that has only the keys that occur in both MapA and MapB. For keys
+    % that occur in both MapA and MapB, compute the value in the final map
+    % by applying the supplied predicate to the values associated with
+    % the key in MapA and MapB. Fail if and only if this predicate fails
+    % on the values associated with some common key.
+    %
 :- pred intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
 :- mode intersect(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode intersect(pred(in, in, out) is det, in, in, out) is det.
@@ -527,11 +534,18 @@
     % Given two maps MapA and MapB, create a third map, UnionMap, that
     % contains all the keys that occur in either MapA and MapB. For keys
     % that occur in both MapA and MapB, compute the value in the final map
-    % by applying the supplied closure to the values associated with the key
-    % in MapA and MapB. Fail if and only if this closure fails on
-    % the values associated with some common key.
+    % by applying the supplied function to the values associated with the key
+    % in MapA and MapB.
     %
 :- func union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
+
+    % Given two maps MapA and MapB, create a third map, UnionMap, that
+    % contains all the keys that occur in either MapA and MapB. For keys
+    % that occur in both MapA and MapB, compute the value in the final map
+    % by applying the supplied predicate to the values associated with the key
+    % in MapA and MapB. Fail if and only if this predicate fails on
+    % the values associated with some common key.
+    %
 :- pred union(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
 :- mode union(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode union(pred(in, in, out) is det, in, in, out) is det.
