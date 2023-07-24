@@ -1,22 +1,30 @@
 no_ho_inst.m:044: In clause for `run_loop(in, in, out, di, uo)':
 no_ho_inst.m:044:   in argument 1 (i.e. the predicate term) of higher-order
 no_ho_inst.m:044:   predicate call:
-no_ho_inst.m:044:   mode error: context requires a predicate of arity 4, and
-no_ho_inst.m:044:   the type of AppHandler does match that expectation, but to
+no_ho_inst.m:044:   mode error: context requires a predicate of arity 4. The
+no_ho_inst.m:044:   type of AppHandler does match that expectation. However, to
 no_ho_inst.m:044:   check the correctness of the call, the compiler also needs
 no_ho_inst.m:044:   to know the modes of the arguments and the determinism of
-no_ho_inst.m:044:   the predicate that AppHandler represents, and AppHandler's
-no_ho_inst.m:044:   inst does not contain that information.
-no_ho_inst.m:044:   The usual fix for this error is to add this information.
-no_ho_inst.m:044:   Given a higher order type such as
-no_ho_inst.m:044:     :- type callback_t == (pred(world, world, io, io).
+no_ho_inst.m:044:   the predicate that AppHandler represents. The insts of
+no_ho_inst.m:044:   higher order values should contain this information, but
+no_ho_inst.m:044:   AppHandler's inst, which is `ground' at this point, does
+no_ho_inst.m:044:   not.
+no_ho_inst.m:044: 
+no_ho_inst.m:044:   The fix for this error is to add this information. For
+no_ho_inst.m:044:   example, given a higher order type such as
+no_ho_inst.m:044:     :- type callback_t == (pred(world, world, io, io)).
 no_ho_inst.m:044:   you would define a corresponding inst, such as
 no_ho_inst.m:044:     :- inst callback_i == (pred(in, out, di, uo) is det).
-no_ho_inst.m:044:   This inst specifies the modes of the arguments and the
-no_ho_inst.m:044:   determinism of a predicate. You can then tell the compiler
-no_ho_inst.m:044:   that a value of type callback_t has inst callback_i by
-no_ho_inst.m:044:   specifying either the mode `in(callback_i)' (when taking a
-no_ho_inst.m:044:   value of type callback_t as input) or the mode
-no_ho_inst.m:044:   `out(callback_i)' (when returning a value of type
-no_ho_inst.m:044:   callback_t as output).
+no_ho_inst.m:044:   This inst, which is usually called a higher order inst,
+no_ho_inst.m:044:   specifies both the modes of the arguments and the
+no_ho_inst.m:044:   determinism of a predicate. Search for `higher order inst'
+no_ho_inst.m:044:   in the Mercury language reference manual's chapter for
+no_ho_inst.m:044:   higher order programming for a corresponding example for
+no_ho_inst.m:044:   functions.
+no_ho_inst.m:044: 
+no_ho_inst.m:044:   You can then tell the compiler that a value of type
+no_ho_inst.m:044:   callback_t has inst callback_i by specifying either the
+no_ho_inst.m:044:   mode `in(callback_i)' (when taking a value of type
+no_ho_inst.m:044:   callback_t as input) or the mode `out(callback_i)' (when
+no_ho_inst.m:044:   returning a value of type callback_t as output).
 For more information, recompile with `-E'.

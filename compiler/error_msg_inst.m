@@ -37,7 +37,7 @@
     ;       fixed_short_inst.
 
     % error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts,
-    %   ShortInstQF, ShortInstSuffix, LongInstPrefix, LongInstSuffix, Inst0)
+    %   QuoteShortInst, ShortInstSuffix, LongInstPrefix, LongInstSuffix, Inst0)
     %   = Pieces:
     %
     % Format Inst0 for use in an error message, in a short form that fits at
@@ -45,7 +45,7 @@
     % on a separate line, if it is not.
     %
     % When using the short form, put the inst's text representation into quotes
-    % if ShortInstSuffix = quote_short_inst. Don't put anything before it
+    % if QuoteShortInst = quote_short_inst. Don't put anything before it
     % (our caller will do that), but add ShortInstSuffix after it. Normally,
     % ShortInstSuffix will end with either nl or nl_indent_delta.
     %
@@ -124,7 +124,7 @@
             ).
 
 error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts,
-        ShortInstQF, ShortInstSuffix, LongInstPrefix, LongInstSuffix, Inst0)
+        QuoteShortInst, ShortInstSuffix, LongInstPrefix, LongInstSuffix, Inst0)
         = Pieces :-
     Info = inst_msg_info(ModuleInfo, InstVarSet, ExpandNamedInsts),
     strip_module_names_from_inst(strip_builtin_module_name, Inst0, Inst),
@@ -149,7 +149,7 @@ error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts,
         Len < 40
     then
         (
-            ShortInstQF = quote_short_inst,
+            QuoteShortInst = quote_short_inst,
             % An inst that is shown on the same line as English text needs
             % something to visually separate it from the English text.
             % The quotes provide that separation.
@@ -159,7 +159,7 @@ error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts,
             InlinePiece = quote(InlineStr)
         ;
             % Our caller has told us that it ensured this separation already.
-            ShortInstQF = fixed_short_inst,
+            QuoteShortInst = fixed_short_inst,
             InlinePiece = fixed(InlineStr)
         ),
         Pieces = [InlinePiece | ShortInstSuffix]
