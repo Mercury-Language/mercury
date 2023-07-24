@@ -5131,7 +5131,7 @@ A switch can succeed at most zero times
 only if all the reachable arms of the switch can succeed at most zero times.
 (A switch arm is not reachable
 if it unifies the switched-on variable with a function symbol
-that is ruled out by that variable' initial instantation state.)
+that is ruled out by that variable' initial instantiation state.)
 
 Only unifications may occur
 before the test of the switched-on variable in each disjunct.
@@ -5799,14 +5799,15 @@ The compiler is not required to check this.
 Mercury supports higher-order functions and predicates
 with currying, closures, and lambda expressions.
 (To be pedantic, it would be more accurate to say that
-Mercury supports higher-order procedures:
-in Mercury, when you construct a higher-order term,
-you only get one mode of a predicate or function;
-if you want multiple modes, you must pass multiple higher-order procedures.)
+Mercury supports higher-order procedures.
+This is because in Mercury, when you construct a higher-order term,
+you only get one mode of a predicate or function.
+If you want multiple modes, you must pass multiple higher-order procedures.)
 
 @menu
 * Creating higher-order terms::
 * Calling higher-order terms::
+* Comparing higher-order terms::
 * Higher-order insts and modes::
 @end menu
 
@@ -5912,24 +5913,26 @@ in the goal of the expression.
 For example,
 
 @example
-Pred = (pred(Strings::in, Num::out, di, uo) is det -->
-    io.write_string("The strings are: "),
-    @{ list.length(Strings, Num) @},
-    io.write_strings(Strings),
-    io.nl
-)
+Pred =
+    ( pred(Strings::in, Num::out, di, uo) is det -->
+        io.write_string("The strings are: "),
+        @{ list.length(Strings, Num) @},
+        io.write_strings(Strings),
+        io.nl
+    )
 @end example
 
 @noindent
 is equivalent to
 
 @example
-Pred = (pred(Strings::in, Num::out, IO0::di, IO::uo) is det :-
-    io.write_string("The strings are: ", IO0, IO1),
-    list.length(Strings, Num),
-    io.write_strings(Strings, IO1, IO2),
-    io.nl(IO2, IO)
-)
+Pred =
+    ( pred(Strings::in, Num::out, IO0::di, IO::uo) is det :-
+        io.write_string("The strings are: ", IO0, IO1),
+        list.length(Strings, Num),
+        io.write_strings(Strings, IO1, IO2),
+        io.nl(IO2, IO)
+    )
 @end example
 
 Higher-order function terms of zero arity
@@ -6098,6 +6101,21 @@ See also @samp{unsorted_solutions/2} and @samp{solutions_set/2},
 which are defined in the standard library module @samp{solutions}
 and documented in the Mercury Library Reference Manual.
 
+@node Comparing higher-order terms
+@section Comparing higher-order terms
+
+In Mercury, it is an error
+to attempt to unify or to compare two higher-order terms.
+This is because the question of whether two higher-order terms are equivalent
+is undecidable in the general case.
+
+Note that the compiler will catch only
+@emph{direct} attempts at unifications or comparisons of higher-order terms.
+Indirect attempts,
+using for example polymorphic predicates
+such as @samp{(list.append([], [P], [Q])},
+will result in an error at run-time rather than at compile-time.
+
 @node Higher-order insts and modes
 @section Higher-order insts and modes
 
@@ -6105,105 +6123,260 @@ In Mercury, the mode and determinism
 of a higher-order predicate or function term
 are generally part of that term's @emph{inst}, not its @emph{type}.
 This allows a single higher-order predicate to work
-on argument predicates of different modes and determinism,
+on argument predicates that differ in their modes and in their determinisms,
 which is particularly useful for library predicates
 such as @samp{list.map} and @samp{list.foldl}.
 
-@menu
-* Builtin higher-order insts and modes::
-* Default insts for functions::
-* Combined higher-order types and insts::
-@end menu
+Consider @samp{list.foldl}, one of the standard fold predicates on lists.
+The types of its arguments are given by this predicate declaration:
+@example
+:- pred foldl(pred(L, A, A), list(L), A, A).
+@end example
 
-@node Builtin higher-order insts and modes
-@subsection Builtin higher-order insts and modes
+The first argument is a higher order value (a predicate in this case),
+whose types are the types bound by the caller
+to the type variables @var{L}, @var{A} and @var{A} respectively,
+where @var{L} is the type of the elements in the list in the second argument,
+and @var{A} is the type of the accumulator
+whose initial and final values are the third and fourth arguments.
+The job of the predicate passed in the first argument
+is to combine each element in the list
+with the current value of the accumulator
+to generate the next value of the accumulator,
+so in most calls to @samp{list.foldl},
+the argument modes and the determinism of that predicate will be
+@example
+pred(in, in, out) is det
+@end example
 
-The language contains builtin @samp{inst} values
+@noindent
+This is a @emph{higher order inst}:
+an inst describing the modes of the arguments and the determinism
+of a higher order value, which in this case is a predicate.
+A @emph{higher order mode} is a mode in which
+the initial and/or final inst is a higher order inst.
+These @emph{can} be written like this:
+
+@example
+pred(in, in, out) is det >> pred(in, in, out) is det
+@end example
+
+@noindent
+for a predicate being passed to another predicate or function,
+and like this
+
+@example
+free >> pred(in, in, out) is det
+@end example
+
+@noindent
+for a predicate being returned from another predicate or function,
+but in practice, it is far more convenient
+to use the builtin mode constructors @samp{in/1} and @samp{out/1} to write
+
+@example
+in(pred(in, in, out) is det)
+out(pred(in, in, out) is det)
+@end example
+
+@noindent
+which are each equivalent to the corresponding example just above.
+
+You can use higher order insts and modes in mode declarations like this:
+
+@example
+:- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
+@end example
+
+@noindent
+The @samp{in()} wrapper around the higher order inst here
+declares the first argument of @samp{list.foldl} to be an input,
+but the higher order inst inside the wrapper goes further,
+and tells the compiler the argument modes and the determinism
+of the predicate that @samp{list.foldl} takes @emph{in this mode}.
+
+That last qualification is important,
+because @samp{list.foldl} has several modes,
+each differing in the argument modes, in the determinism, or both.
+The set of mode declarations for @samp{list.foldl} (at least in July 2023) is
+
+@c Should we show just a subset of the modes?
+@c
+@c This list is a good argument for (possibly constrained) mode variables
+@c and determinism variables, which would allow all of the modes above
+@c to declared with just
+@c :- mode foldl(pred(in, InMode, OutMode) is Det, in, InMode, OutMode) is Det.
+@example
+:- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldl(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldl(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldl(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldl(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldl(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
+:- mode foldl(in(pred(in, in, out) is multi), in, in, out) is multi.
+:- mode foldl(in(pred(in, in, out) is nondet), in, in, out) is nondet.
+:- mode foldl(in(pred(in, mdi, muo) is nondet), in, mdi, muo) is nondet.
+:- mode foldl(in(pred(in, in, out) is cc_multi), in, in, out) is cc_multi.
+:- mode foldl(in(pred(in, di, uo) is cc_multi), in, di, uo) is cc_multi.
+@end example
+
+As you can see, you can pass predicates
+with several different argument mode/determinism combinations
+as the first argument.
+In the case of @samp{list.foldl},
+the modes of the accumulator arguments
+and the determinism of the whole predicate will follow
+the argument modes and the determinism of the higher-order argument,
+but one can create predicates (and functions) where this would not be true.
+@c An example of that may be nice, but putting it here
+@c would probably be more confusing than helpful.
+
+You can give names to such insts and modes
+using declarations such as
+
+@example
+:- inst std_fold_pred == (pred(in, in, out) is det).
+:- mode std_fold_pred_in == in(pred(in, in, out) is det).
+@end example
+
+@noindent
+Note that the parentheses around the right hand side
+are required by the relative precedences of the operators involved,
+such as @samp{==} and @samp{is}.
+
+Given these definitions, the declarations
+
+@example
+:- mode foldl(in(std_fold_pred), in, in, out) is det.
+:- mode foldl(std_fold_pred_in, in, in, out) is det.
+@end example
+
+@noindent
+will each tell the compiler exactly the same information as
+
+@example
+:- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
+@end example
+
+@noindent
+but they may be more convenient to write,
+especially in the presence of more arguments.
+@footnote{If there is a single inst or a single mode
+that all instances of a given type are expected to use,
+programmers will often give that inst or mode
+the same name as the name of the type.
+The compiler looks up names in its type table when it expects a type,
+in its inst table when it expects an inst,
+and in its mode table when it expects a mode,
+so this does not confuse the compiler.
+However, this practice @emph{can} confuse Mercury programmers
+who (a) do not know this fact, or (b) are not familiar with this convention.}
+
+As a convenience, the language allows the @samp{in()} wrapper
+around higher order insts, which turn them into higher order modes,
+to be omitted in the mode declarations of predicates and functions.
+@c ZZZ or is that true more generally, of all places that expect modes
+@c but find insts?
+@c I (zs) don't know the answer.
+In those parts of these declarations
+where the compiler expects to find a mode, if it finds an inst instead,
+it implicitly inserts the @samp{in()} around that inst.
+This is why the usualy mode of @samp{list.foldl},
+which we introduced above as being
+
+@example
+:- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
+@end example
+
+@noindent
+can also be written as
+
+@example
+:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
+@end example
+
+@noindent
+and is actually written in the source code like this.
+@c ZZZ *Should* it be written like that?
+@c Arguably, it makes the code harder to read for novices.
+
+@c ZZZ can you omit the in(...) wrapper around named insts?
+@c Answer: NO. it is not even true of the inst is an inst name that expands
+@c to a higher order inst, rather than being an *explicit* higher order inst.
+@c ZZZ Next question: *why* is the answer NO?
+
+The general form of higher order insts follows one of two patterns,
+one for predicates, and one for functions.
+
+The pattern for predicates is
 
 @example
 (pred) is @var{Determinism}
 pred(@var{Mode}) is @var{Determinism}
 pred(@var{Mode1}, @var{Mode2}) is @var{Determinism}
 @dots{}
+@end example
+
+while the pattern for functions is
+
+@example
 (func) = @var{Mode} is @var{Determinism}
 func(@var{Mode1}) = @var{Mode} is @var{Determinism}
 func(@var{Mode1}, @var{Mode2}) = @var{Mode} is @var{Determinism}
 @dots{}
 @end example
 
-These insts represent the instantiation state
-of variables bound to higher-order predicate and function terms
-with the appropriate mode and determinism.
-For example, @samp{pred(out) is det} represents the instantiation state
-of being bound to a higher-order predicate term which is @code{det}
-and accepts one output argument;
-the term @samp{sum([1,2,3])} from the example above
-is one such higher-order predicate term which matches this instantiation state.
+In the case of zero-argument predicates and functions,
+the parentheses around @samp{pred} and @samp{func}
+are required to tell the compiler that these words
+are not being used as operators in this case.
+And, as explained about, one will usually need parentheses
+around any instances of these patterns in Mercury code.
 
-As a convenience, the language also contains
-builtin @samp{mode} values of the same name
-(and they are what we have been using in the examples up to now).
-These modes map from the corresponding @samp{inst} to itself.
-It is as if they were defined by
+@c ZZZ Note that nontrivial examples for functions
+@c are much harder to find than for predicates, because
+@c - any functions with the default arg modes and determinism need no decl
+@c - we don't want to encourage people to write functions which are not det
+@c - we don't want to encourage people to write functions whose args
+@c   have uniqueness requirements
+@c This leaves functions whose arg modes restrict the allowed function symbols
+@c (which would be better expressed using subtypes) and functions whose arg
+@c modes include higher order insts/modes, which would be too complex to
+@c be useful as an example to novices.
+
+Consider the declaration of a function
+that computes the intersection of two maps from keys to values:
 
 @example
-:- mode (pred is @var{Determinism}) == in(pred is @var{Determinism}).
-:- mode (pred(@var{Inst}) is @var{Determinism}) ==
-    in(pred(@var{Inst}) is @var{Determinism}).
-@dots{}
+:- func intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 @end example
 
 @noindent
-using the parametric inst @samp{in/1} mentioned in @ref{Modes}
-which maps an inst to itself.
-
-If you want to define a predicate which returns a higher-order predicate term,
-you would use a mode such as @samp{free >> pred(@dots{}) is @dots{}},
-or @samp{out(pred(@dots{}) is @dots{} )}.
-For example:
-@c XXX The space after the dots{} above works around a bug in texi2html
+One could declare the mode of this function
+either using a separate mode declaration, like this:
 
 @example
-:- pred foo(pred(int)).
-:- mode foo(free >> (pred(out) is det)) is det.
-
-foo(sum([1,2,3])).
-@end example
-
-In the above mode declaration, the current Mercury implementation
-requires parentheses around the higher-order inst.
-(This is because the operator @samp{>>} binds more tightly then the operator
-@samp{is}.)
-
-Note that in Mercury it is an error to attempt to unify two higher-order terms.
-This is because equivalence of higher-order terms
-is undecidable in the general case.
-
-For example, given the definition of @samp{foo} above, the goal
-
-@example
-foo((pred(X::out) is det :- X = 6))
+:- mode intersect(in(func(in, in) = out is det), in, in) = (out) is det.
 @end example
 
 @noindent
-is illegal.
-If you really want to compare higher-order predicates for equivalence,
-you must program it yourself;
-for example, the above goal could legally be written as
+or by combining the mode declaration with the function declaration, like this:
 
 @example
-P = (pred(X::out) is det :- X = 6),
-foo(Q),
-all [X] (call(P, X) <=> call(Q, X)).
+:- func intersect((func(V, V) = V)::in(func(in, in) = out is det),
+    map(K, V)::in, map(K, V)::in) = (map(K, V)::out) is det.
 @end example
 
-Note that the compiler will only catch
-direct attempts at higher-order unifications;
-indirect attempts (via polymorphic predicates,
-for example @samp{(list.append([], [P], [Q])}
-may result in an error at run-time rather than at compile-time.
+@noindent
+In both cases, just as for the predicate examples above,
+the @samp{in()} wrapper around the higher order inst is optional,
+though in the combined declaration the parentheses must stay.
 
-Mercury also provides builtin @samp{inst} values for use with solver types:
+@c ZZZ should we have an example of a pred or func of arity zero?
+@c If so, we could use the force function from lazy.m.
+
+Mercury also provides builtin @samp{inst} values for use with solver types.
+These follow the patterns
 
 @example
 any_pred is @var{Determinism}
@@ -6217,6 +6390,98 @@ any_func(@var{Mode1}, @var{Mode2}) = @var{Mode} is @var{Determinism}
 @end example
 
 See @ref{Solver types} for more details.
+
+@c ZZZ What follows is the remains of the original text of the initial part
+@c of section 8. It should be deleted when the discussion of the commit
+@c that created this commit on 24/25 july 2023 has finished.
+@c
+@c The language contains builtin @samp{inst} values
+@c 
+@c @example
+@c (pred) is @var{Determinism}
+@c pred(@var{Mode}) is @var{Determinism}
+@c pred(@var{Mode1}, @var{Mode2}) is @var{Determinism}
+@c @dots{}
+@c (func) = @var{Mode} is @var{Determinism}
+@c func(@var{Mode1}) = @var{Mode} is @var{Determinism}
+@c func(@var{Mode1}, @var{Mode2}) = @var{Mode} is @var{Determinism}
+@c @dots{}
+@c @end example
+@c 
+@c These insts represent the instantiation state
+@c of variables bound to higher-order predicate and function terms
+@c with the appropriate mode and determinism.
+@c For example, @samp{pred(out) is det} represents the instantiation state
+@c of being bound to a higher-order predicate term which is @code{det}
+@c and accepts one output argument;
+@c the term @samp{sum([1,2,3])} from the example above
+@c is one such higher-order predicate term
+@c which matches this instantiation state.
+@c 
+@c As a convenience, the language also contains
+@c builtin @samp{mode} values of the same name
+@c (and they are what we have been using in the examples up to now).
+@c These modes map from the corresponding @samp{inst} to itself.
+@c It is as if they were defined by
+@c 
+@c @example
+@c :- mode (pred is @var{Determinism}) == in(pred is @var{Determinism}).
+@c :- mode (pred(@var{Inst}) is @var{Determinism}) ==
+@c     in(pred(@var{Inst}) is @var{Determinism}).
+@c @dots{}
+@c @end example
+@c 
+@c @noindent
+@c using the parametric mode @samp{in/1} mentioned in @ref{Modes}
+@c which specified its argument inst
+@c as both the initial and the final instantiation state in the mode.
+@c 
+@c @c @node Builtin higher-order insts and modes
+@c @c @subsection Builtin higher-order insts and modes
+@c 
+@c If you want to define a predicate
+@c which returns a higher-order predicate term,
+@c you would use a mode such as @samp{free >> pred(@dots{}) is @dots{}},
+@c or @samp{out(pred(@dots{}) is @dots{} )}.
+@c @c XXX The space after the dots{} above works around a bug in texi2html.
+@c For example:
+@c 
+@c @example
+@c :- pred foo(pred(int)).
+@c :- mode foo(free >> (pred(out) is det)) is det.
+@c 
+@c foo(sum([1,2,3])).
+@c @end example
+@c 
+@c In the above mode declaration, the current Mercury implementation
+@c requires parentheses around the higher-order inst.
+@c (This is because the operator @samp{>>} binds more tightly than the operator
+@c @samp{is}.)
+@c 
+@c For example, given the definition of @samp{foo} above, the goal
+@c 
+@c @example
+@c foo((pred(X::out) is det :- X = 6))
+@c @end example
+@c 
+@c @noindent
+@c is illegal.
+@c If you really want to compare higher-order predicates for equivalence,
+@c you must program it yourself;
+@c for example, the above goal could legally be written as
+@c 
+@c @example
+@c P = (pred(X::out) is det :- X = 6),
+@c foo(Q),
+@c all [X] (call(P, X) <=> call(Q, X)).
+@c @end example
+
+@c Delete first menu item, move menu to just before old second item's heading
+@c * Builtin higher-order insts and modes::
+@menu
+* Default insts for functions::
+* Combined higher-order types and insts::
+@end menu
 
 @node Default insts for functions
 @subsection Default insts for functions
@@ -6241,9 +6506,9 @@ where a term with no higher-order inst information is expected
 if it can be passed
 where a term with the default higher-order function inst is expected.
 Higher-order predicate terms can always be passed to such a place,
-but note that there is little value in doing so
-because there is no default higher-order inst for predicates
-therefore it will not be possible to call those terms.
+but there is little value in doing so,
+because there is no default higher-order inst for predicates,
+and therefore it will not be possible to call those terms.
 
 @node Combined higher-order types and insts
 @subsection Combined higher-order types and insts
@@ -6266,9 +6531,9 @@ types of this form have two effects.
 First, for any unification that constructs a term using such an argument,
 there is an additional mode constraint that
 the argument must be approximated by the inst.
-In other words, to be mode correct a program must not construct any term
+In other words, to be mode correct, a program must not construct any term
 where a functor has an argument that does not have the declared inst,
-if present.
+if one is present.
 
 The second effect is that when a unification deconstructs a ground term
 to extract an argument with such a declared inst,
@@ -6790,7 +7055,7 @@ then no finalisation predicates will be executed.
 @section Module-local mutable variables
 
 Certain special cases require a module to have
-one or more mutable (i.e.@: destructively updatable) variables,
+one or more mutable (i.e.@: destructively updateable) variables,
 for example to hold the constraint store for a solver type.
 
 A mutable variable is declared using the @samp{mutable} directive:
