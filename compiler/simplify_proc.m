@@ -88,7 +88,10 @@
 :- import_module check_hlds.simplify.format_call.
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module check_hlds.simplify.simplify_info.
+:- import_module check_hlds.simplify.split_switch_arms.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
@@ -101,6 +104,7 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 :- import_module transform_hlds.
 :- import_module transform_hlds.direct_arg_in_out.
@@ -179,15 +183,20 @@ simplify_goal_update_vars_in_proc(SimplifyTasks, !ModuleInfo,
         SimplifyTasks, SimplifyInfo0),
     % The nested context we construct is probably a lie; we don't actually
     % know whether we are inside a goal duplicated for a switch, or a lambda,
-    % or a model_non procedure. However, this should be ok. The nested context
-    % is used for deciding what warnings and errors to generate, and
-    % we are not interested in those.
+    % or a model_non procedure. However, this should be ok. The first three
+    % fields of the nested context are used for deciding what warnings and
+    % errors to generate, and we are not interested in those, while the fourth
+    % is there to support an optimization that we explicitly disallow
+    % below by passing do_not_allow_splitting_switch_arms.
     InsideDuplForSwitch = no,
-    NumEnclosingBarriers = 0u,
     ProcIsModelNon = no,
+    NumEnclosingBarriers = 0u,
+    SwitchArmContext = [],
     NestedContext0 = simplify_nested_context(InsideDuplForSwitch,
-        ProcIsModelNon, NumEnclosingBarriers),
-    simplify_top_level_goal(!Goal, NestedContext0, InstMap0,
+        ProcIsModelNon, NumEnclosingBarriers, SwitchArmContext),
+    % Passing do_not_allow_splitting_switch_arms here is conservative.
+    simplify_top_level_goal(NestedContext0, InstMap0,
+        do_not_allow_splitting_switch_arms, !Goal,
         SimplifyInfo0, SimplifyInfo),
 
     simplify_info_get_module_info(SimplifyInfo, !:ModuleInfo),
@@ -258,7 +267,6 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
         SimplifyTasks, Info0),
 
     InsideDuplForSwitch = no,
-    NumEnclosingBarriers = 0u,
     CodeModel = proc_info_interface_code_model(!.ProcInfo),
     (
         ( CodeModel = model_det
@@ -269,13 +277,15 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
         CodeModel = model_non,
         ProcIsModelNon = yes(imp_whole_proc)
     ),
+    NumEnclosingBarriers = 0u,
+    SwitchArmContext = [],
     NestedContext0 = simplify_nested_context(InsideDuplForSwitch,
-        ProcIsModelNon, NumEnclosingBarriers),
+        ProcIsModelNon, NumEnclosingBarriers, SwitchArmContext),
     proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
-    simplify_top_level_goal(Goal0, Goal, NestedContext0, InstMap0,
-        Info0, Info),
+    simplify_top_level_goal(NestedContext0, InstMap0,
+        allow_splitting_switch_arms, Goal0, Goal, Info0, Info),
     proc_info_set_goal(Goal, !ProcInfo),
 
     simplify_info_get_var_table(Info, VarTable0),
@@ -560,11 +570,16 @@ maybe_warn_about_may_export_body_attribute(MayExportBody, Markers, Context,
 
 %-----------------------------------------------------------------------------%
 
-:- pred simplify_top_level_goal(hlds_goal::in, hlds_goal::out,
-    simplify_nested_context::in, instmap::in,
+:- type maybe_allow_splitting_switch_arms
+    --->    do_not_allow_splitting_switch_arms
+    ;       allow_splitting_switch_arms.
+
+:- pred simplify_top_level_goal(simplify_nested_context::in, instmap::in,
+    maybe_allow_splitting_switch_arms::in, hlds_goal::in, hlds_goal::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
+simplify_top_level_goal(NestedContext0, InstMap0, AllowSplitSwitchArms,
+        !Goal, !Info) :-
     % Simplification is done in two passes, which is we have two calls to
     % do_simplify_top_level_goal below. The first pass performs common
     % structure and duplicate call elimination. The second pass performs
@@ -589,7 +604,8 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
                 := do_not_mark_code_model_changes,
             !SimplifyTasks ^ do_excess_assign := do_not_elim_excess_assigns,
             simplify_info_set_simplify_tasks(!.SimplifyTasks, !Info),
-            do_simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info),
+            % PASS 1.
+            do_simplify_top_level_goal(NestedContext0, InstMap0, !Goal, !Info),
 
             !:SimplifyTasks = OriginalSimplifyTasks,
 
@@ -615,11 +631,52 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             !SimplifyTasks ^ do_opt_duplicate_calls := do_not_opt_dup_calls,
             simplify_info_reinit(!.SimplifyTasks, !Info)
         else
+            % We have not been asked to perform PASS 1.
             true
         ),
-        % On the second pass do excess assignment elimination and
+        % PASS 2.
+        % In this pass, do excess assignment elimination and
         % some cleaning up after the common structure pass.
-        do_simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info),
+        do_simplify_top_level_goal(NestedContext0, InstMap0, !Goal, !Info),
+
+        simplify_info_get_switch_arms_to_split(!.Info, ToSplitArms),
+        ( if
+            set.is_non_empty(ToSplitArms),
+            OriginalSimplifyTasks ^ do_switch_split_arms = split_switch_arms,
+            AllowSplitSwitchArms = allow_splitting_switch_arms
+        then
+            trace [compile_time(flag("split_switch_arms")),
+                runtime(env("SPLIT_SWITCH_ARMS")),
+                io(!IO)]
+            (
+                io.stderr_stream(StdErr, !IO),
+                io.write_string(StdErr, "BEFORE split_switch_arms\n", !IO),
+                simplify_info_get_module_info(!.Info, ModuleInfo),
+                simplify_info_get_var_table(!.Info, VarTable),
+                dump_goal_nl(StdErr, ModuleInfo, vns_var_table(VarTable),
+                    !.Goal, !IO)
+            ),
+            split_switch_arms_in_goal(ToSplitArms, !Goal),
+            trace [compile_time(flag("split_switch_arms")),
+                runtime(env("SPLIT_SWITCH_ARMS")),
+                io(!IO)]
+            (
+                io.stderr_stream(StdErr, !IO),
+                io.write_string(StdErr, "AFTER split_switch_arms\n", !IO),
+                simplify_info_get_module_info(!.Info, ModuleInfo),
+                simplify_info_get_var_table(!.Info, VarTable),
+                dump_goal_nl(StdErr, ModuleInfo, vns_var_table(VarTable),
+                    !.Goal, !IO)
+            ),
+
+            !.Goal = hlds_goal(_, GoalInfo0),
+            simplify_info_set_rerun_quant_instmap_delta(!Info),
+            simplify_info_set_rerun_det(!Info),
+            maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
+                !Goal, !Info)
+        else
+            true
+        ),
 
         simplify_info_get_found_contains_trace(!.Info, FoundContainsTrace),
         (
@@ -631,14 +688,15 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
         % We do not have to put OriginalSimplifyTasks back into !:Info
         % at the end, because neither of our two callers will look at
         % the tasks field of the !:Info value we return. We could return
-        % just the fields they *do* look at, but there are many of them.
+        % just the fields of !:Info they *do* look at, but there are
+        % many of them.
     ).
 
-:- pred do_simplify_top_level_goal(hlds_goal::in, hlds_goal::out,
-    simplify_nested_context::in, instmap::in,
+:- pred do_simplify_top_level_goal(simplify_nested_context::in, instmap::in,
+    hlds_goal::in, hlds_goal::out,
     simplify_info::in, simplify_info::out) is det.
 
-do_simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
+do_simplify_top_level_goal(NestedContext0, InstMap0, !Goal, !Info) :-
     !.Goal = hlds_goal(_, GoalInfo0),
     simplify_info_get_simplify_tasks(!.Info, SimplifyTasks),
     Common0 = common_info_init(SimplifyTasks),

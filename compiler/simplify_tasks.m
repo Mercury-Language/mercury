@@ -98,8 +98,16 @@
             % on a data structure that the code *does* refer to using
             % state variable notation.
 
-    ;       simptask_warn_no_solution_disjunct.
+    ;       simptask_warn_no_solution_disjunct
             % Warn about disjuncts that can have no solution.
+
+    ;       simptask_split_switch_arms.
+            % Invoke split_switch_arms.m to perform its transformation,
+            % if the main part of simplification discovers that it has
+            % some redundant switches to optimize.
+            %
+            % For the details of the transformation done by
+            % split_switch_arms.m, see its top-of-module comment.
 
 %---------------------%
 
@@ -159,6 +167,10 @@
     --->    do_not_warn_no_soln_disjunct
     ;       warn_no_soln_disjunct.
 
+:- type maybe_opt_split_switch_arms
+    --->    do_not_opt_split_switch_arms
+    ;       split_opt_switch_arms.
+
     % Each value of this type represents the full set of tasks
     % that simplification should perform. The submodules of simplify.m
     % use it to find out whether they should perform a specific task
@@ -187,7 +199,8 @@
                 do_opt_const_structs            :: maybe_opt_const_structs,
                 do_ignore_par_conjunctions      :: maybe_ignore_par_conjs,
                 do_warn_suspicious_recursion    :: maybe_warn_suspicious_rec,
-                do_warn_no_solution_disjunct    :: maybe_warn_no_soln_disjunct
+                do_warn_no_solution_disjunct    :: maybe_warn_no_soln_disjunct,
+                do_switch_split_arms            :: maybe_split_switch_arms
             ).
 
     % XXX Now that each field of the simplify_tasks structure
@@ -227,7 +240,7 @@ simplify_tasks_to_list(SimplifyTasks) = !:List :-
         ElimRemovableScopes, OptDuplicateCalls, ConstantProp,
         OptCommonStructs, OptExtraStructs,
         TryOptConstStructs, _OptConstStructs, IgnoreParConjs,
-        WarnSuspiciousRecursion, WarnNoSolutionDisjunct),
+        WarnSuspiciousRecursion, WarnNoSolutionDisjunct, SplitSwitchArms),
     !:List = [],
     ( if WarnSimpleCode = warn_simple_code
         then list.cons(simptask_warn_simple_code, !List) else true ),
@@ -264,7 +277,9 @@ simplify_tasks_to_list(SimplifyTasks) = !:List :-
     ( if WarnSuspiciousRecursion = warn_suspicious_rec
         then list.cons(simptask_warn_suspicious_recursion, !List) else true ),
     ( if WarnNoSolutionDisjunct = warn_no_soln_disjunct
-        then list.cons(simptask_warn_no_solution_disjunct, !List) else true ).
+        then list.cons(simptask_warn_no_solution_disjunct, !List) else true ),
+    ( if SplitSwitchArms = split_switch_arms
+        then list.cons(simptask_split_switch_arms, !List) else true ).
 
 list_to_simplify_tasks(Globals, List) = Tasks :-
     globals.get_opt_tuple(Globals, OptTuple),
@@ -312,7 +327,9 @@ list_to_simplify_tasks(Globals, List) = Tasks :-
         ( if list.member(simptask_warn_suspicious_recursion, List)
             then warn_suspicious_rec else do_not_warn_suspicious_rec ),
         ( if list.member(simptask_warn_no_solution_disjunct, List)
-            then warn_no_soln_disjunct else do_not_warn_no_soln_disjunct )
+            then warn_no_soln_disjunct else do_not_warn_no_soln_disjunct ),
+        ( if list.member(simptask_split_switch_arms, List)
+            then split_switch_arms else do_not_split_switch_arms )
     ).
 
 find_simplify_tasks(Globals, WarnThisPass, SimplifyTasks) :-
@@ -354,6 +371,7 @@ find_simplify_tasks(Globals, WarnThisPass, SimplifyTasks) :-
         RemoveParConjunctions),
     globals.lookup_bool_option(Globals, warn_suspicious_recursion,
         WarnSuspiciousRecursion),
+    SplitSwitchArms = OptTuple ^ ot_split_switch_arms,
 
     SimplifyTasks = simplify_tasks(
         ( if WarnSimple = yes, WarnThisPass = generate_warnings
@@ -383,7 +401,8 @@ find_simplify_tasks(Globals, WarnThisPass, SimplifyTasks) :-
         % Warnings about "no solution disjuncts" are a category of warnings
         % about simple code that happens to have its own disabling mechanism.
         ( if WarnSimple = yes, WarnThisPass = generate_warnings
-            then warn_no_soln_disjunct else do_not_warn_no_soln_disjunct )
+            then warn_no_soln_disjunct else do_not_warn_no_soln_disjunct ),
+        SplitSwitchArms
     ).
 
 %---------------------------------------------------------------------------%

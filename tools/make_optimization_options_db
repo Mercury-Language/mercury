@@ -20,6 +20,7 @@ bool   n    constant_propagation                           prop_constants
 bool   n    excess_assign                                  elim_excess_assigns
 bool   n    test_after_switch                              opt_test_after_switch
 bool   y    optimize_format_calls                          opt_format_calls
+bool   y    split_switch_arms
 bool   n    loop_invariants                                opt_loop_invariants
 bool   n    optimize_saved_vars_const                      opt_saved_vars_const
 bool   n    optimize_saved_vars_cell                       opt_svcell
@@ -90,7 +91,7 @@ bool   n    use_atomic_cells
 bool   n    middle_rec                                     opt_middle_rec
 bool   n    simple_neg                                     opt_simple_neg
 bool   y    allow_hijacks                                  
-bool   n    optimize_tailcalls                             opt_mlds_tailcalls
+bool   n    optimize_mlds_tailcalls                        opt_mlds_tailcalls
 bool   n    optimize_initializations                       opt_initializations
 bool   y    eliminate_unused_mlds_assigns                  elim_unused_mlds_assigns
 bool   n    eliminate_local_vars                           elim_local_vars
@@ -120,6 +121,5 @@ bool   n    emit_c_loops
 int    1    procs_per_c_function                           
 bool   n    everything_in_one_c_function                   use_just_one_c_func
 bool   y    local_thread_engine_base                       use_local_thread_engine_base
-bool   n    erlang_switch_on_strings_as_atoms              switch_on_strings_as_atoms
 bool   n    inline_alloc
 bool   n    c_optimize                                     opt_c

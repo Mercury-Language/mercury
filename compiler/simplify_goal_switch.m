@@ -54,7 +54,6 @@
 
 :- import_module list.
 :- import_module maybe.
-:- import_module require.
 :- import_module set.
 :- import_module set_tree234.
 
@@ -162,7 +161,17 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         Cases = [_, _ | _],
         GoalExpr = switch(Var, SwitchCanFail, Cases),
         update_switch_goal_info(VarTable, InstMap0, RevInstMapDeltas,
-            SeenNonGroundTerm, GoalInfo0, GoalInfo, !Info)
+            SeenNonGroundTerm, GoalInfo0, GoalInfo, !Info),
+        SwitchArms0 = NestedContext0 ^ snc_switch_arms,
+        ( if
+            find_outermost_switch_on_var(Var, SwitchArms0, OutermostArm)
+        then
+            simplify_info_get_switch_arms_to_split(!.Info, ToSplit0),
+            set.insert(OutermostArm, ToSplit0, ToSplit),
+            simplify_info_set_switch_arms_to_split(ToSplit, !Info)
+        else
+            true
+        )
     ),
     % Any information that is in the updated Common at the end of a switch arm
     % is valid only for that arm. We cannot use that information after the
@@ -211,6 +220,29 @@ update_switch_goal_info(VarTable, InstMap0, InstMapDeltas, SeenNonGroundTerm,
         goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
     ).
 
+:- pred find_outermost_switch_on_var(prog_var::in, list(switch_arm)::in,
+    switch_arm::out) is semidet.
+
+find_outermost_switch_on_var(Var, Arms, OutermostArm) :-
+    (
+        Arms = [],
+        fail
+    ;
+        Arms = [InnerArm | OuterArms],
+        InnerArm = switch_arm(ArmVar, _),
+        ( if Var = ArmVar then
+            ( if 
+                find_outermost_switch_on_var(Var, OuterArms, OutermostArmPrime)
+            then
+                OutermostArm = OutermostArmPrime
+            else
+                OutermostArm = InnerArm
+            )
+        else
+            find_outermost_switch_on_var(Var, OuterArms, OutermostArm)
+        )
+    ).
+
 %---------------------------------------------------------------------------%
 
 :- type seen_non_ground_term
@@ -236,12 +268,19 @@ simplify_switch_cases(Var, [Case0 | Cases0], NestedContext0, InstMap0, Common0,
     bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
         InstMap0, CaseInstMap0, ModuleInfo0, ModuleInfo1),
     simplify_info_set_module_info(ModuleInfo1, !Info),
-    simplify_goal(Goal0, Goal, NestedContext0, CaseInstMap0,
+
+    set.list_to_set([MainConsId | OtherConsIds], ConsIdSet),
+    SwitchArms0 = NestedContext0 ^ snc_switch_arms,
+    SwitchArm = switch_arm(Var, ConsIdSet),
+    SwitchArms = [SwitchArm | SwitchArms0],
+    NestedContext = NestedContext0 ^ snc_switch_arms := SwitchArms,
+
+    simplify_goal(Goal0, Goal, NestedContext, CaseInstMap0,
         Common0, _Common1, !Info),
 
     % Remove failing branches.
     ( if Goal = hlds_goal(disj([]), _) then
-        % We don't add the case to RevCases.
+        % We don't add the case to !RevCases.
         !:CanFail = can_fail
     else
         Case = case(MainConsId, OtherConsIds, Goal),
@@ -250,7 +289,7 @@ simplify_switch_cases(Var, [Case0 | Cases0], NestedContext0, InstMap0, Common0,
             GoalExpr = scope(Reason, _),
             Reason = from_ground_term(_, from_ground_term_construct)
         then
-            % Leave SeenNonGroundTerm as it is.
+            % Leave !SeenNonGroundTerm as it is.
             true
         else
             !:SeenNonGroundTerm = seen_non_ground_term
@@ -295,14 +334,8 @@ create_test_unification(Var, ConsId, ConsArity, ExtraGoal, InstMap0, !Info) :-
     list.map_foldl(add_var_entry, ArgEntries, ArgVars, VarTable0, VarTable),
     simplify_info_set_var_table(VarTable, !Info),
     instmap_lookup_var(InstMap0, Var, Inst0),
-    ( if
-        inst_expand(ModuleInfo, Inst0, Inst1),
-        get_arg_insts(Inst1, ConsId, ConsArity, ArgInsts1)
-    then
-        ArgInsts = ArgInsts1
-    else
-        unexpected($pred, "get_arg_insts failed")
-    ),
+    inst_expand(ModuleInfo, Inst0, Inst1),
+    get_arg_insts_det(Inst1, ConsId, ConsArity, ArgInsts),
     InstToArgUnifyMode =
         ( pred(ArgInst::in, ArgUnifyMode::out) is det :-
             ArgUnifyMode = unify_modes_li_lf_ri_rf(ArgInst, ArgInst,

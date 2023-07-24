@@ -80,14 +80,15 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             LambdaProcIsModelNon = yes(imp_lambda(Context))
         ),
         NestedContext0 = simplify_nested_context(InsideDuplForSwitch,
-            _ProcModelNon, NumEnclosingBarriers),
+            _ProcModelNon, NumEnclosingBarriers, SwitchArmContexts),
         ( if goal_info_has_feature(GoalInfo0, feature_lambda_from_try) then
             LambdaNumEnclosingBarriers = NumEnclosingBarriers
         else
             LambdaNumEnclosingBarriers = NumEnclosingBarriers + 1u
         ),
         LambdaNestedContext = simplify_nested_context(InsideDuplForSwitch,
-            LambdaProcIsModelNon, LambdaNumEnclosingBarriers),
+            LambdaProcIsModelNon, LambdaNumEnclosingBarriers,
+            SwitchArmContexts),
 
         simplify_info_get_module_info(!.Info, ModuleInfo),
         instmap.pre_lambda_update(ModuleInfo, VarsModes,

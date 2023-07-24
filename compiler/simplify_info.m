@@ -48,6 +48,15 @@
             % at the given source location, which a later compiler pass
             % will transform into a separate procedure.
 
+            % A switch arm context records the fact that we are inside
+            % a switch on the given variable, and specifically, we are
+            % inside the arm of that switch that is for the given cons_ids.
+:- type switch_arm
+    --->    switch_arm(
+                prog_var,
+                set(cons_id)
+            ).
+
 :- type simplify_nested_context
     --->    simplify_nested_context(
                 % Are we currently inside a goal that was duplicated
@@ -78,8 +87,14 @@
                 % arguments to the clause head *will* yield an infinite loop;
                 % if this field is greater than zero; it only *may* yield
                 % an infinite loop.
-                %
-                snc_num_enclosing_barriers  :: uint
+                snc_num_enclosing_barriers  :: uint,
+
+                % The list of switch arms we are inside. The outermost
+                % (and therefore largest, in terms of the amount of code
+                % inside it) switch arm will be at the tail end of the list,
+                % while the innermost switch arm will be at the head
+                % of the list.
+                snc_switch_arms             :: list(switch_arm)
             ).
 
 :- type maybe_allow_messages
@@ -183,6 +198,8 @@
     has_user_event::out) is det.
 :- pred simplify_info_get_deleted_call_callees(simplify_info::in,
     set(pred_proc_id)::out) is det.
+:- pred simplify_info_get_switch_arms_to_split(simplify_info::in,
+    set(switch_arm)::out) is det.
 :- pred simplify_info_get_defined_where(simplify_info::in,
     defined_where::out) is det.
 
@@ -214,6 +231,8 @@
 :- pred simplify_info_set_has_user_event(has_user_event::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_deleted_call_callees(set(pred_proc_id)::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_switch_arms_to_split(set(switch_arm)::in,
     simplify_info::in, simplify_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -354,6 +373,14 @@
                 % simplifying the procedure body.
                 ssimp_deleted_call_callees  :: set(pred_proc_id),
 
+                % The set of outermost switch arm contexts within which
+                % there is at least one *other* switch on the same variable.
+                % (We collect only the *outermost* switch arms, because when
+                % the transformation in split_switch_arms.m processes a switch
+                % arm, it also implicitly processes all switches on that
+                % same variable inside the code of that arm.)
+                ssimp_switch_arms_to_split  :: set(switch_arm),
+
                 % Is the predicate we are simplifying defined in this module?
                 ssimp_defined_where         :: defined_where
             ).
@@ -396,6 +423,7 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
     FoundContainsTrace = no,
     HasUserEvent = has_no_user_event,
     set.init(TraceGoalProcs),
+    set.init(SwitchArmsToSplit),
     pred_info_get_status(PredInfo, PredStatus),
     pred_status_defined_in_this_module(PredStatus) = InThisModule,
     ( InThisModule = yes, DefinedWhere = defined_in_this_module
@@ -404,7 +432,7 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
 
     SubInfo = simplify_sub_info(RttiVarMaps, ElimVars, Specs, CostDelta,
         AllowMsgs, HasParallelConj, FoundContainsTrace, HasUserEvent,
-        TraceGoalProcs, DefinedWhere),
+        TraceGoalProcs, SwitchArmsToSplit, DefinedWhere),
 
     % SimplifyTasks
     % ModuleInfo
@@ -508,6 +536,8 @@ simplify_info_get_has_user_event(Info, X) :-
     X = Info ^ simp_sub_info ^ ssimp_has_user_event.
 simplify_info_get_deleted_call_callees(Info, X) :-
     X = Info ^ simp_sub_info ^ ssimp_deleted_call_callees.
+simplify_info_get_switch_arms_to_split(Info, X) :-
+    X = Info ^ simp_sub_info ^ ssimp_switch_arms_to_split.
 simplify_info_get_defined_where(Info, X) :-
     X = Info ^ simp_sub_info ^ ssimp_defined_where.
 
@@ -590,6 +620,8 @@ simplify_info_set_deleted_call_callees(X, !Info) :-
     else
         !Info ^ simp_sub_info ^ ssimp_deleted_call_callees := X
     ).
+simplify_info_set_switch_arms_to_split(X, !Info) :-
+    !Info ^ simp_sub_info ^ ssimp_switch_arms_to_split := X.
 
 % Access stats for the det_info structure, derived on 2017 march 8
 % using the commented-out code below:

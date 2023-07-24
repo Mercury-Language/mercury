@@ -72,6 +72,9 @@
 :- type maybe_opt_format_calls
     --->    opt_format_calls
     ;       do_not_opt_format_calls.
+:- type maybe_split_switch_arms
+    --->    split_switch_arms
+    ;       do_not_split_switch_arms.
 :- type maybe_opt_loop_invariants
     --->    opt_loop_invariants
     ;       do_not_opt_loop_invariants.
@@ -279,9 +282,6 @@
 :- type maybe_use_local_thread_engine_base
     --->    use_local_thread_engine_base
     ;       do_not_use_local_thread_engine_base.
-:- type maybe_switch_on_strings_as_atoms
-    --->    switch_on_strings_as_atoms
-    ;       do_not_switch_on_strings_as_atoms.
 :- type maybe_inline_alloc
     --->    inline_alloc
     ;       do_not_inline_alloc.
@@ -307,6 +307,7 @@
     ;       oo_elim_excess_assigns(bool)
     ;       oo_opt_test_after_switch(bool)
     ;       oo_opt_format_calls(bool)
+    ;       oo_split_switch_arms(bool)
     ;       oo_opt_loop_invariants(bool)
     ;       oo_opt_saved_vars_const(bool)
     ;       oo_opt_svcell(bool)
@@ -376,7 +377,6 @@
     ;       oo_emit_c_loops(bool)
     ;       oo_use_just_one_c_func(bool)
     ;       oo_use_local_thread_engine_base(bool)
-    ;       oo_switch_on_strings_as_atoms(bool)
     ;       oo_inline_alloc(bool)
     ;       oo_opt_c(bool)
     ;       oo_inline_call_cost(int)
@@ -439,6 +439,7 @@
                 ot_elim_excess_assigns        :: maybe_elim_excess_assigns,
                 ot_opt_test_after_switch      :: maybe_opt_test_after_switch,
                 ot_opt_format_calls           :: maybe_opt_format_calls,
+                ot_split_switch_arms          :: maybe_split_switch_arms,
                 ot_opt_loop_invariants        :: maybe_opt_loop_invariants,
                 ot_opt_saved_vars_const       :: maybe_opt_saved_vars_const,
                 ot_opt_svcell                 :: maybe_opt_svcell,
@@ -508,7 +509,6 @@
                 ot_emit_c_loops               :: maybe_emit_c_loops,
                 ot_use_just_one_c_func        :: maybe_use_just_one_c_func,
                 ot_use_local_thread_engine_base :: maybe_use_local_thread_engine_base,
-                ot_switch_on_strings_as_atoms :: maybe_switch_on_strings_as_atoms,
                 ot_inline_alloc               :: maybe_inline_alloc,
                 ot_opt_c                      :: maybe_opt_c,
                 ot_inline_call_cost           :: int,
@@ -599,6 +599,7 @@ init_opt_tuple = opt_tuple(
         do_not_elim_excess_assigns,
         do_not_opt_test_after_switch,
         opt_format_calls,
+        split_switch_arms,
         do_not_opt_loop_invariants,
         do_not_opt_saved_vars_const,
         do_not_opt_svcell,
@@ -668,7 +669,6 @@ init_opt_tuple = opt_tuple(
         do_not_emit_c_loops,
         do_not_use_just_one_c_func,
         use_local_thread_engine_base,
-        do_not_switch_on_strings_as_atoms,
         do_not_inline_alloc,
         do_not_opt_c,
         0,
@@ -773,6 +773,9 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
     ;
         OptOption = oo_opt_format_calls(Bool),
         update_opt_tuple_bool_opt_format_calls(Bool, !OptTuple)
+    ;
+        OptOption = oo_split_switch_arms(Bool),
+        update_opt_tuple_bool_split_switch_arms(Bool, !OptTuple)
     ;
         OptOption = oo_opt_loop_invariants(Bool),
         update_opt_tuple_bool_opt_loop_invariants(Bool, !OptTuple)
@@ -980,9 +983,6 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
     ;
         OptOption = oo_use_local_thread_engine_base(Bool),
         update_opt_tuple_bool_use_local_thread_engine_base(Bool, !OptTuple)
-    ;
-        OptOption = oo_switch_on_strings_as_atoms(Bool),
-        update_opt_tuple_bool_switch_on_strings_as_atoms(Bool, !OptTuple)
     ;
         OptOption = oo_inline_alloc(Bool),
         update_opt_tuple_bool_inline_alloc(Bool, !OptTuple)
@@ -1454,6 +1454,29 @@ update_opt_tuple_bool_opt_format_calls(Bool, !OptTuple) :-
         ;
             OldValue = opt_format_calls,
             !OptTuple ^ ot_opt_format_calls := do_not_opt_format_calls
+        )
+    ).
+
+:- pred update_opt_tuple_bool_split_switch_arms(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_split_switch_arms(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_split_switch_arms,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_split_switch_arms,
+            !OptTuple ^ ot_split_switch_arms := split_switch_arms
+        ;
+            OldValue = split_switch_arms
+        )
+    else
+        (
+            OldValue = do_not_split_switch_arms
+        ;
+            OldValue = split_switch_arms,
+            !OptTuple ^ ot_split_switch_arms := do_not_split_switch_arms
         )
     ).
 
@@ -3045,29 +3068,6 @@ update_opt_tuple_bool_use_local_thread_engine_base(Bool, !OptTuple) :-
         )
     ).
 
-:- pred update_opt_tuple_bool_switch_on_strings_as_atoms(bool::in,
-    opt_tuple::in, opt_tuple::out) is det.
-
-update_opt_tuple_bool_switch_on_strings_as_atoms(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_switch_on_strings_as_atoms,
-    ( if
-        Bool = yes
-    then
-        (
-            OldValue = do_not_switch_on_strings_as_atoms,
-            !OptTuple ^ ot_switch_on_strings_as_atoms := switch_on_strings_as_atoms
-        ;
-            OldValue = switch_on_strings_as_atoms
-        )
-    else
-        (
-            OldValue = do_not_switch_on_strings_as_atoms
-        ;
-            OldValue = switch_on_strings_as_atoms,
-            !OptTuple ^ ot_switch_on_strings_as_atoms := do_not_switch_on_strings_as_atoms
-        )
-    ).
-
 :- pred update_opt_tuple_bool_inline_alloc(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
@@ -3632,6 +3632,9 @@ update_opt_tuple_int_procs_per_c_function(FromOptLevel, N, !OptTuple) :-
         !OptTuple ^ ot_procs_per_c_function := int.max(OldN, N)
     ).
 
+%---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 
 :- pred get_default_opt_level(option_table::in, int::out) is det.
 
@@ -3726,7 +3729,8 @@ opts_enabled_at_level(2, [
     oo_spec_types_user_guided(yes),
     oo_opt_simple_neg(yes),
     oo_opt_test_after_switch(yes),
-    oo_opt_initializations(yes)
+    oo_opt_initializations(yes),
+    oo_split_switch_arms(yes)
 ]).
 opts_enabled_at_level(3, [
     % Optimization level 3: apply optimizations which usually have a good

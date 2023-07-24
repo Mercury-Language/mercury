@@ -9492,6 +9492,14 @@ string.format and related predicates at compile time;
 always leave this to be done at runtime.
 
 @sp 1
+@item --split-switch-arms
+@findex --split-switch-arms
+When a switch on a variable
+has an inner switch on that same variable inside one of its arms,
+split up that arm of the outer switch along the same lines,
+effectively inlining the inner switch.
+
+@sp 1
 @item --optimize-duplicate-calls
 @findex --optimize-duplicate-calls
 @cindex Duplicate call optimization

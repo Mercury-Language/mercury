@@ -86,6 +86,7 @@ MCFLAGS-subtype_rtti = \
 MCFLAGS-tail-rec-scc =          --inine-linear-tail-rec-sccs
 MCFLAGS-term_io_test =          --no-warn-unresolved-polymorphism
 MCFLAGS-test_imported_no_tag =  --no-warn-interface-imports
+MCFLAGS-test_split_switch_arms = --split-switch-arms
 MCFLAGS-type_info_const_inst =  --const-struct --optimise-constant-propagation
 MCFLAGS-uncond_reuse =          --ctgc
 MCFLAGS-uncond_reuse_bad =      --ctgc

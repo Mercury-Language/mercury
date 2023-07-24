@@ -772,6 +772,7 @@
     ;       optopt_excess_assign
     ;       optopt_test_after_switch
     ;       optopt_optimize_format_calls
+    ;       optopt_split_switch_arms
     ;       optopt_optimize_saved_vars_const
     ;       optopt_optimize_saved_vars_cell
     ;       optopt_optimize_saved_vars_cell_loop
@@ -869,7 +870,7 @@
     ;       optopt_use_macro_for_redo_fail
     ;       optopt_emit_c_loops
     ;       optopt_procs_per_c_function
-    ;       everything_in_one_c_function
+    ;       optopt_everything_in_one_c_function
     ;       optopt_local_thread_engine_base
     ;       optopt_inline_alloc
     ;       optopt_c_optimize
@@ -1748,21 +1749,25 @@ optdef(oc_opt, optopt_constant_propagation,             bool_special).
 optdef(oc_opt, optopt_excess_assign,                    bool_special).
 optdef(oc_opt, optopt_test_after_switch,                bool_special).
 optdef(oc_opt, optopt_optimize_format_calls,            bool_special).
+optdef(oc_opt, optopt_split_switch_arms,                bool_special).
 optdef(oc_opt, optopt_loop_invariants,                  bool_special).
 optdef(oc_opt, optopt_optimize_saved_vars_const,        bool_special).
 optdef(oc_opt, optopt_optimize_saved_vars_cell,         bool_special).
 optdef(oc_opt, optopt_optimize_saved_vars_cell_loop,    bool_special).
 optdef(oc_opt, optopt_optimize_saved_vars_cell_full_path, bool_special).
 optdef(oc_opt, optopt_optimize_saved_vars_cell_on_stack, bool_special).
-optdef(oc_opt, optopt_optimize_saved_vars_cell_candidate_headvars, bool_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_candidate_headvars,
+                                                        bool_special).
 optdef(oc_opt, optopt_optimize_saved_vars_cell_cv_store_cost, int_special).
 optdef(oc_opt, optopt_optimize_saved_vars_cell_cv_load_cost, int_special).
 optdef(oc_opt, optopt_optimize_saved_vars_cell_fv_store_cost, int_special).
 optdef(oc_opt, optopt_optimize_saved_vars_cell_fv_load_cost, int_special).
 optdef(oc_opt, optopt_optimize_saved_vars_cell_op_ratio, int_special).
 optdef(oc_opt, optopt_optimize_saved_vars_cell_node_ratio, int_special).
-optdef(oc_opt, optopt_optimize_saved_vars_cell_all_path_node_ratio, int_special).
-optdef(oc_opt, optopt_optimize_saved_vars_cell_include_all_candidates, bool_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_all_path_node_ratio,
+                                                        int_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_include_all_candidates,
+                                                        bool_special).
 optdef(oc_opt, optimize_saved_vars,                     bool_special).
 optdef(oc_opt, optopt_delay_construct,                  bool_special).
 optdef(oc_opt, optopt_follow_code,                      bool_special).
@@ -1857,7 +1862,7 @@ optdef(oc_opt, optopt_layout_compression_limit,         int_special).
 optdef(oc_opt, optopt_use_macro_for_redo_fail,          bool_special).
 optdef(oc_opt, optopt_emit_c_loops,                     bool_special).
 optdef(oc_opt, optopt_procs_per_c_function,             int_special).
-optdef(oc_opt, everything_in_one_c_function,            special).
+optdef(oc_opt, optopt_everything_in_one_c_function,     bool_special).
 optdef(oc_opt, optopt_local_thread_engine_base,         bool_special).
 optdef(oc_opt, optopt_inline_alloc,                     bool_special).
 optdef(oc_opt, optopt_c_optimize,                       bool_special).
@@ -2673,6 +2678,7 @@ long_option("common-struct",        optopt_common_struct).
 long_option("excess-assign",        optopt_excess_assign).
 long_option("test-after-switch",    optopt_test_after_switch).
 long_option("optimize-format-calls",         optopt_optimize_format_calls).
+long_option("split-switch-arms",         optopt_split_switch_arms).
 long_option("optimize-duplicate-calls", optopt_optimize_duplicate_calls).
 long_option("optimise-duplicate-calls", optopt_optimize_duplicate_calls).
 long_option("optimise-constant-propagation", optopt_constant_propagation).
@@ -2859,8 +2865,10 @@ long_option("use-macro-for-redo-fail",  optopt_use_macro_for_redo_fail).
 long_option("emit-c-loops",         optopt_emit_c_loops).
 long_option("procs-per-c-function", optopt_procs_per_c_function).
 long_option("procs-per-C-function", optopt_procs_per_c_function).
-long_option("everything-in-one-c-function", everything_in_one_c_function).
-long_option("everything-in-one-C-function", everything_in_one_c_function).
+long_option("everything-in-one-c-function",
+                                    optopt_everything_in_one_c_function).
+long_option("everything-in-one-C-function",
+                                    optopt_everything_in_one_c_function).
 long_option("inline-alloc",         optopt_inline_alloc).
 long_option("local-thread-engine-base", optopt_local_thread_engine_base).
 
@@ -3500,6 +3508,7 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
         ),
         Result = ok(!.OptionTable)
     ;
+        % INCLUDE tools/handler_file HERE
         (
             Option = optopt_allow_inlining,
             SpecialData = bool(Bool),
@@ -3560,6 +3569,10 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             Option = optopt_optimize_format_calls,
             SpecialData = bool(Bool),
             OptOption = oo_opt_format_calls(Bool)
+        ;
+            Option = optopt_split_switch_arms,
+            SpecialData = bool(Bool),
+            OptOption = oo_split_switch_arms(Bool)
         ;
             Option = optopt_loop_invariants,
             SpecialData = bool(Bool),
@@ -3829,6 +3842,10 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_emit_c_loops(Bool)
         ;
+            Option = optopt_everything_in_one_c_function,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_just_one_c_func(Bool)
+        ;
             Option = optopt_local_thread_engine_base,
             SpecialData = bool(Bool),
             OptOption = oo_use_local_thread_engine_base(Bool)
@@ -3988,10 +4005,6 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             Option = optopt_procs_per_c_function,
             SpecialData = int(N),
             OptOption = oo_procs_per_c_function(N)
-        ;
-            Option = everything_in_one_c_function,
-            SpecialData = none,
-            OptOption = oo_use_just_one_c_func(yes)
         ;
             Option = optopt_tuple_trace_counts_file,
             SpecialData = string(Str),
@@ -5951,6 +5964,11 @@ options_help_hlds_hlds_optimization(Stream, !IO) :-
         "\tDo not attempt to interpret the format string in calls to",
         "\tstring.format and related predicates at compile time;",
         "\talways leave this to be done at runtime.",
+        "--split-switch-arms",
+        "\tWhen a switch on a variable has an inner switch on that",
+        "\tsame variable inside one of its arms, split up that arm of the",
+        "\touter switch along the same lines, effectively inlining",
+        "\tthe inner switch.",
         "--optimize-duplicate-calls",
         "\tOptimize away multiple calls to a predicate",
         "\twith the same input arguments.",

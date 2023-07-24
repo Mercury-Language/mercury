@@ -1376,6 +1376,13 @@ simplify.m is a package of submodules.
     It also attempts to partially evaluate the correct calls,
     essentially interpreting the format string at compile time, not runtime.
     <li>
+    split_switch_arms.m optimizes code in which one or more switches
+    on a variable are nested inside one arm of a larger switch on the same
+    variable. It does so by making all the distinctions between the cons_id
+    of that outermost arm that any of the switches nested inside of it do.
+    By splitting up that arm according to those distinctions, it effectively
+    replaces several switches with just one switch.
+    <li>
     simplify_proc.m handles the top-level processing of procedures
     and their bodies.
     <li>

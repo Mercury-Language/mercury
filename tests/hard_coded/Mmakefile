@@ -452,6 +452,7 @@ ORDINARY_PROGS = \
 	test_pretty_printer \
 	test_pretty_printer_defaults \
 	test_semaphore \
+	test_split_switch_arms \
 	test_yield \
 	thread_commit \
 	thread_sbrk \

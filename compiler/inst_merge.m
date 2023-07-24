@@ -356,6 +356,7 @@ inst_merge_2(Type, InstA, InstB, InstAB, !ModuleInfo) :-
 :- pred inst_merge_3(mer_type::in,
     mer_inst::in(inst_merge_3_input), mer_inst::in(inst_merge_3_input),
     mer_inst::out, module_info::in, module_info::out) is semidet.
+:- pragma inline(pred(inst_merge_3/6)).
 
 inst_merge_3(Type, InstA, InstB, InstAB, !ModuleInfo) :-
     require_complete_switch [InstA]
@@ -414,6 +415,7 @@ inst_merge_3(Type, InstA, InstB, InstAB, !ModuleInfo) :-
 :- pred inst_merge_4(mer_type::in,
     mer_inst::in(inst_merge_4_input), mer_inst::in(inst_merge_4_input),
     mer_inst::out, module_info::in, module_info::out) is semidet.
+:- pragma inline(pred(inst_merge_4/6)).
 
 inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
     % We do not yet allow merging of `free' and `any', except in the case

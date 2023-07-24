@@ -1,3 +1,6 @@
+%---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
 
 :- pred get_default_opt_level(option_table::in, int::out) is det.
 
@@ -92,7 +95,8 @@ opts_enabled_at_level(2, [
     oo_spec_types_user_guided(yes),
     oo_opt_simple_neg(yes),
     oo_opt_test_after_switch(yes),
-    oo_opt_initializations(yes)
+    oo_opt_initializations(yes),
+    oo_split_switch_arms(yes)
 ]).
 opts_enabled_at_level(3, [
     % Optimization level 3: apply optimizations which usually have a good

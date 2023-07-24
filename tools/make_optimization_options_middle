@@ -29,9 +29,9 @@
 #   If there is no fourth field, the name is taken to be the same
 #   as the name in the third field.
 #
-#   For boolean options, the name in optimization_options.m should be a verb,
-#   because when we generate a bespoke type for it, its two function symbols
-#   will be named "verb" and "do_not_verb".
+#   For boolean options, the name in make_optimization_options_db should be
+#   a verb, because when we generate a bespoke type for it, its two function
+#   symbols will be named "verb" and "do_not_verb".
 #
 
 BEGIN {
@@ -376,15 +376,14 @@ END {
         }
 
         printf("%-8s;\n", "") > handler_file;
-        printf("%-12sOption = optopt_level,\n", "") > handler_file;
-        printf("%-12sSpecialData = string(N),\n", "") > handler_file;
+        printf("%-12sOption = opt_level,\n", "") > handler_file;
+        printf("%-12sSpecialData = int(N),\n", "") > handler_file;
         printf("%-12sOptOption = oo_opt_level(N)\n", "") > handler_file;
 
         printf("%-8s;\n", "") > handler_file;
-        printf("%-12sOption = optopt_space,\n", "") > handler_file;
+        printf("%-12sOption = opt_space,\n", "") > handler_file;
         printf("%-12sSpecialData = none,\n", "") > handler_file;
         printf("%-12sOptOption = oo_opt_for_space\n", "") > handler_file;
 
         printf("%-8s),\n", "") > handler_file;
-        printf("%-8scord.snoc(OptOption, !OptOptions)\n", "") > handler_file;
     }
