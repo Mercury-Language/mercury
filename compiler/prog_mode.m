@@ -154,10 +154,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred mode_ctor_to_int(mode_ctor::in, int::out) is det.
-
-%---------------------------------------------------------------------------%
-
     % Given a (list of) bound_insts, get the corresponding cons_ids.
     % The type_ctor should be the type constructor of the variable
     % the bound_insts are for.
@@ -875,11 +871,6 @@ get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
     else
         get_arg_insts_2(BoundInsts, ConsId, ArgInsts)
     ).
-
-%---------------------------------------------------------------------------%
-
-    % In case we later decide to change the representation of mode_ctors.
-mode_ctor_to_int(mode_ctor(_, X), X).
 
 %---------------------------------------------------------------------------%
 
