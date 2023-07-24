@@ -492,7 +492,7 @@ transaction(Source, User, Password, Closure, Result, !IO) :-
 :- pragma foreign_proc("C",
     transaction_2(Connection::in, Closure::in(pred(out, di, uo) is det),
         Results::out, GotMercuryException::out, Exception::out,
-        Status::out, Msgs::out, IO0::di, IO::uo),
+        Status::out, Msgs::out, _IO0::di, _IO::uo),
     [promise_pure, may_call_mercury],
 "
     // The Mercury registers must be valid at the call to odbc_catch
@@ -507,7 +507,6 @@ transaction(Source, User, Password, Closure, Result, !IO) :-
         &Results, &GotMercuryException, &Exception,
         &Status, &Msgs);
     MR_restore_transient_registers();
-    IO = IO0;
 ").
 
 :- pragma foreign_code("C", "
@@ -1817,11 +1816,10 @@ data_sources(MaybeSources - Messages, !IO) :-
 
 :- pragma foreign_proc("C",
     sql_data_sources(SourceNames::out, SourceDescs::out, Status::out,
-        Messages::out, IO0::di, IO::uo),
+        Messages::out, _IO0::di, _IO::uo),
     [promise_pure, may_call_mercury],
 "
     Status = odbc_do_get_data_sources(&SourceNames, &SourceDescs, &Messages);
-    IO = IO0;
 ").
 
 :- pragma foreign_decl("C", "

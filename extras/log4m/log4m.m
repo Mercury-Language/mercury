@@ -1,6 +1,6 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006 The University of Melbourne.
-% Copyright (C) 2015-2016, 2018 The Mercury team.
+% Copyright (C) 2015-2016, 2018, 2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %------------------------------------------------------------------------------%
 /****M* libs/log4m/log4m.m/log4m
@@ -78,13 +78,13 @@
  */
 :- typeclass appender(T) where [
     pred write_string(T::in, id::in, level::in, string::in, io::di, io::uo) is det
-].  
+].
 /*****/
 
 
-/****P* libs/log4m/log4m.m/debug 
+/****P* libs/log4m/log4m.m/debug
  * NAME
- *    debug 
+ *    debug
  * SYNOPSIS
  *    Resets the logger state to be empty, then sets the level of the
  *    root logger to be debug.
@@ -95,9 +95,9 @@
 :- pred debug(io::di, io::uo) is det.
 /*****/
 
-/****P* libs/log4m/log4m.m/info 
+/****P* libs/log4m/log4m.m/info
  * NAME
- *    info 
+ *    info
  * SYNOPSIS
  *    Resets the logger state to be empty, then sets the level of the
  *    root logger to be info.
@@ -108,9 +108,9 @@
 :- pred info(io::di, io::uo) is det.
 /*****/
 
-/****P* libs/log4m/log4m.m/warn 
+/****P* libs/log4m/log4m.m/warn
  * NAME
- *    warn 
+ *    warn
  * SYNOPSIS
  *    Resets the logger state to be empty, then sets the level of the
  *    root logger to be warn.
@@ -121,9 +121,9 @@
 :- pred warn(io::di, io::uo) is det.
 /*****/
 
-/****P* libs/log4m/log4m.m/error 
+/****P* libs/log4m/log4m.m/error
  * NAME
- *    error 
+ *    error
  * SYNOPSIS
  *    Resets the logger state to be empty, then sets the level of the
  *    root logger to be error.
@@ -134,9 +134,9 @@
 :- pred error(io::di, io::uo) is det.
 /*****/
 
-/****P* libs/log4m/log4m.m/fatal 
+/****P* libs/log4m/log4m.m/fatal
  * NAME
- *    fatal 
+ *    fatal
  * SYNOPSIS
  *    Resets the logger state to be empty, then sets the level of the
  *    root logger to be fatal.
@@ -147,9 +147,9 @@
 :- pred fatal(io::di, io::uo) is det.
 /*****/
 
-/****P* libs/log4m/log4m.m/update_level 
+/****P* libs/log4m/log4m.m/update_level
  * NAME
- *    update_level 
+ *    update_level
  * SYNOPSIS
  *    Update the logging level of an id.
  * PARAMETERS
@@ -163,9 +163,9 @@
 :- pred update_level(id::in, level::in, io::di, io::uo) is det.
 /*****/
 
-/****P* libs/log4m/log4m.m/add_appender 
+/****P* libs/log4m/log4m.m/add_appender
  * NAME
- *    add_appender 
+ *    add_appender
  * SYNOPSIS
  *    Add an appender to be called when logging at a specified id,
  *    and specify via the addivity whether to continue searching for
@@ -198,9 +198,9 @@
                 io::di, io::uo) is det <= appender(T).
 /*****/
 
-/****P* libs/log4m/log4m.m/will_log 
+/****P* libs/log4m/log4m.m/will_log
  * NAME
- *    will_log 
+ *    will_log
  * SYNOPSIS
  *    For a given logger id at the specified level return an indicator
  *    of whether or not logging would occur.
@@ -209,9 +209,9 @@
 :- pred will_log(id::in, level::in, bool::out, io::di, io::uo) is det.
 /*****/
 
-/****P* libs/log4m/log4m.m/log 
+/****P* libs/log4m/log4m.m/log
  * NAME
- *    log 
+ *    log
  * SYNOPSIS
  *    If will_log < log4m/log4m.m/will_log > indicates that logging
  *    should occur then call the appenders implied by the logger id
@@ -258,7 +258,7 @@
  * NAME
  *    unsafe_log_f
  * SYNOPSIS
- *    Gets a fake io__state and calls log_f.
+ *    Gets a fake io.state and calls log_f.
  *    Unsafe because the compiler might decide to eliminate this call on you.
  * SOURCE
  */
@@ -269,16 +269,16 @@
  * NAME
  *    impure_log_f
  * SYNOPSIS
- *    Gets a fake io__state and calls log_f.
+ *    Gets a fake io.state and calls log_f.
  * SOURCE
  */
 :- impure pred impure_log_f(id::in, level::in, ((func) = string)::in) is det.
 /*****/
 
 
-/****P* libs/log4m/log4m.m/update_log 
+/****P* libs/log4m/log4m.m/update_log
  * NAME
- *    update_log 
+ *    update_log
  * SYNOPSIS
  *    Update the logger state with levels read from a file.
  *    Returns an error if the file couldn't be opened.
@@ -291,7 +291,7 @@
  *    incorrect format.
  * SOURCE
  */
-:- pred update_log(string::in, io__res::out, io::di, io::uo) is det.
+:- pred update_log(string::in, io.res::out, io::di, io::uo) is det.
 /*****/
 
 %------------------------------------------------------------------------------%
@@ -355,16 +355,16 @@
 :- instance appender(formatted_appender(T)) <= appender(T).
 /*****/
 
-/****T* libs/log4m/log4m.m/appender(io__output_stream)
+/****T* libs/log4m/log4m.m/appender(io.output_stream)
  * NAME
- *    Instance: appender(io__output_stream)
+ *    Instance: appender(io.output_stream)
  * DESCRIPTION
- *    Write the specified string to the io__output_stream.
+ *    Write the specified string to the io.output_stream.
  * DERIVED FROM
  *    log4m/log4m.m/appender
  * SOURCE
  */
-:- instance appender(io__output_stream).
+:- instance appender(io.output_stream).
 /*****/
 
 %------------------------------------------------------------------------------%
@@ -404,11 +404,11 @@ fatal(!IO) :- set_log(fatal, !IO).
 :- func error = log.
 :- func fatal = log.
 
-debug = log(map__set(map__init, [], debug), map__init).
-info = log(map__set(map__init, [], info), map__init).
-warn = log(map__set(map__init, [], warn), map__init).
-error = log(map__set(map__init, [], error), map__init).
-fatal = log(map__set(map__init, [], fatal), map__init).
+debug = log(map.set(map.init, [], debug), map.init).
+info = log(map.set(map.init, [], info), map.init).
+warn = log(map.set(map.init, [], warn), map.init).
+error = log(map.set(map.init, [], error), map.init).
+fatal = log(map.set(map.init, [], fatal), map.init).
 
 will_log(Id, Level, WillLog, !IO) :-
     get_log(Log, !IO),
@@ -443,9 +443,9 @@ log_f(Id, Level, Func, !IO) :-
 
 :- func find_logger_level(id, level_map) = level.
 
-find_logger_level([], LevelMap) = map__lookup(LevelMap, []).
+find_logger_level([], LevelMap) = map.lookup(LevelMap, []).
 find_logger_level([H|T], LevelMap) =
-    ( map__search(LevelMap, [H|T], Level) ->
+    ( map.search(LevelMap, [H|T], Level) ->
         Level
     ;
         find_logger_level(T, LevelMap)
@@ -490,13 +490,13 @@ write_levels(Id, Level, String, Map, !IO) :-
                 appenders_map::in, io::di, io::uo) is det.
 
 write_levels([], Id, Level, String, Map, !IO) :-
-    ( map__search(Map, [], Data) ->
+    ( map.search(Map, [], Data) ->
         write_appenders(Id, Level, String, Data, !IO)
     ;
         true
     ).
 write_levels([H|T], Id, Level, String, Map, !IO) :-
-    ( map__search(Map, [H|T], Data) ->
+    ( map.search(Map, [H|T], Data) ->
         write_appenders(Id, Level, String, Data, !IO),
         ( Data = stop(_)
         ; Data = continue(_),
@@ -509,9 +509,9 @@ write_levels([H|T], Id, Level, String, Map, !IO) :-
 :- pred write_appenders(id::in, level::in, string::in, appenders::in, io::di, io::uo) is det.
 
 write_appenders(Id, Level, String, stop(Appenders), !IO) :-
-        list__foldl(write_appender(Id, Level, String), Appenders, !IO).
+        list.foldl(write_appender(Id, Level, String), Appenders, !IO).
 write_appenders(Id, Level, String, continue(Appenders), !IO) :-
-        list__foldl(write_appender(Id, Level, String), Appenders, !IO).
+        list.foldl(write_appender(Id, Level, String), Appenders, !IO).
 
 :- pred write_appender(id::in, level::in, string::in, appender::in, io::di, io::uo) is det.
 
@@ -526,22 +526,22 @@ write_appender(Id, Level, S, appender(A), !IO) :-
     --->    set_level(id, level).
 
 update_log(FileName, Result, !IO) :-
-    io__open_input(FileName, OpenRes, !IO),
+    io.open_input(FileName, OpenRes, !IO),
     ( OpenRes = ok(Stream),
         get_log(Log0, !IO),
         read_file(Stream, Log0, Log, !IO),
         set_log(Log, !IO),
-        io__close_input(Stream, !IO),
+        io.close_input(Stream, !IO),
         Result = ok
     ; OpenRes = error(E),
         Result = error(E)
     ).
 
-:- pred read_file(io__input_stream::in,
+:- pred read_file(io.input_stream::in,
                 log::in, log::out, io::di, io::uo) is det.
 
 read_file(Input, !Log, !IO) :-
-    io__read(Input, Result, !IO),
+    io.read(Input, Result, !IO),
     ( Result = ok(set_level(Id, Level)),
         !:Log = update_level(Id, Level, !.Log),
         read_file(Input, !Log, !IO)
@@ -552,7 +552,6 @@ read_file(Input, !Log, !IO) :-
         error(format("log4m.read_file: %s line %d has error %s.",
                 [s(Name), i(Line), s(Msg)]))
     ).
-    
 
 %------------------------------------------------------------------------------%
 
@@ -562,7 +561,7 @@ update_level(Id, Level, !IO) :-
 
 :- func update_level(id, level, log) = log.
 
-update_level(Id, Level, log(M, A)) = log(map__set(M, Id, Level), A).
+update_level(Id, Level, log(M, A)) = log(map.set(M, Id, Level), A).
 
 %------------------------------------------------------------------------------%
 
@@ -578,7 +577,7 @@ add_appender(Id, Addivity, Appender, !IO) :-
 
 add_appender_2(Id, Addivity, T, !Map) :-
     App = 'new appender'(T),
-    ( map__search(!.Map, Id, Data0) ->
+    ( map.search(!.Map, Id, Data0) ->
         ( Data0 = stop(Appenders),
             Data = stop([App | Appenders])
         ; Data0 = continue(Appenders),
@@ -595,14 +594,14 @@ add_appender_2(Id, Addivity, T, !Map) :-
             Data = continue([App])
         )
     ),
-    !:Map = map__set(!.Map, Id, Data).
+    !:Map = map.set(!.Map, Id, Data).
 
 %------------------------------------------------------------------------------%
 
-:- instance appender(io__output_stream) where [
+:- instance appender(io.output_stream) where [
     (write_string(S, _Id, _Level, Str, !.IO, !:IO) :-
-        io__write_string(S, Str, !IO),
-        io__flush_output(S, !IO)
+        io.write_string(S, Str, !IO),
+        io.flush_output(S, !IO)
     )
 ].
 
@@ -653,7 +652,7 @@ set_log(Log, !IO) :-
 
 :- instance appender(formatted_appender(T)) <= appender(T) where [
     write_string(formatted_appender(Specs, A), Id, Level, Message, !IO) :-
-        list__foldl(write_format(A, Id, Level, Message), Specs, !IO)
+        list.foldl(write_format(A, Id, Level, Message), Specs, !IO)
 ].
 
 :- pred write_format(A::in, id::in, level::in, string::in,
@@ -662,9 +661,9 @@ set_log(Log, !IO) :-
 write_format(A, Id, Level, _Message, date, !IO) :-
     time(Time, !IO),
     localtime(Time, TM, !IO),
-	TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, _YD, _WD, _DST),
-    Date = string__format("%4d-%02d-%02d %02d:%02d:%02d",
-            [i(Yr+1900), i(Mnt+1), i(MD), i(Hrs), i(Min), i(Sec)]),
+    TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, _YD, _WD, _DST),
+    Date = string.format("%4d-%02d-%02d %02d:%02d:%02d",
+            [i(Yr + 1900), i(Mnt + 1), i(MD), i(Hrs), i(Min), i(Sec)]),
     write_string(A, Id, Level, Date, !IO).
 write_format(A, Id, Level, _Message, id, !IO) :-
     write_string(A, Id, Level, id(Id), !IO).
@@ -676,20 +675,22 @@ write_format(A, Id, Level, _Message, str(S), !IO) :-
     write_string(A, Id, Level, S, !IO).
 write_format(A, Id, Level, _Message, thread_id, !IO) :-
     thread_id(TId, !IO),
-    write_string(A, Id, Level, string__format("%06d", [i(TId)]), !IO).
+    write_string(A, Id, Level, string.format("%06d", [i(TId)]), !IO).
 
 :- func id(id) = string.
 
 id([]) = "[]".
-id([X|Xs]) = append_list(list(s("[") ++ s(string(X)) ++ id2(Xs) ++ s("]"))).
+id([X | Xs]) = append_list(list(s("[") ++ s(string(X)) ++ id2(Xs) ++ s("]"))).
 
 :- func id2(id) = cord(string).
 
 id2([]) = empty.
-id2([X|Xs]) = s(", ") ++ s(string(X)) ++ id2(Xs).
+id2([X | Xs]) = s(", ") ++ s(string(X)) ++ id2(Xs).
 
 :- func s(T) = cord(T).
+
 s(X) = singleton(X).
+
 :- func level(level) = string.
 
 level(debug) = "debug".
@@ -698,18 +699,17 @@ level(warn) = "warn".
 level(error) = "error".
 level(fatal) = "fatal".
 
-:- pred thread_id(int::out, io::di, io::uo) is det.  
+:- pred thread_id(int::out, io::di, io::uo) is det.
 
-:- pragma foreign_proc(c, thread_id(Id::out, IO0::di, IO::uo),
+:- pragma foreign_proc(c, thread_id(Id::out, _IO0::di, _IO::uo),
                 [will_not_call_mercury, thread_safe, promise_pure, tabled_for_io], "
 #ifdef MR_THREAD_SAFE
-	pthread_t thread;
-	thread = pthread_self();
+    pthread_t thread;
+    thread = pthread_self();
     Id = (int) thread;
 #else
     Id = getpid();
 #endif
-    IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
