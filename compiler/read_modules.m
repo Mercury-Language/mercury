@@ -238,6 +238,67 @@
     read_reason_msg::in, maybe_search::in, read_module_and_timestamps::in,
     have_read_module(parse_tree_src)::out, io::di, io::uo) is det.
 
+%---------------------------------------------------------------------------%
+
+    % maybe_read_module_intN(ProgressStream, Globals, ReadReasonMsg, Search,
+    %   ModuleName, IntFileKind, ReturnTimestamp, HaveReadModule,
+    %   !HaveReadModuleMaps, !IO):
+    %
+    % If HaveReadModuleMap contains the already-read contents of the
+    % relevant kind of interface file for ModuleName, then return
+    % the information stored in HaveReadModuleMap for that file.
+    % If it is not there, read that interface file using read_module_intN,
+    % regardless of its timestamp.
+    %
+:- pred maybe_read_module_int0(io.text_output_stream::in, globals::in,
+    maybe_search::in, module_name::in, maybe_return_timestamp::in,
+    have_read_module(parse_tree_int0)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    io::di, io::uo) is det.
+:- pred maybe_read_module_int1(io.text_output_stream::in, globals::in,
+    maybe_search::in, module_name::in, maybe_return_timestamp::in,
+    have_read_module(parse_tree_int1)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    io::di, io::uo) is det.
+:- pred maybe_read_module_int2(io.text_output_stream::in, globals::in,
+    maybe_search::in, module_name::in, maybe_return_timestamp::in,
+    have_read_module(parse_tree_int2)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    io::di, io::uo) is det.
+:- pred maybe_read_module_int3(io.text_output_stream::in, globals::in,
+    maybe_search::in, module_name::in, maybe_return_timestamp::in,
+    have_read_module(parse_tree_int3)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+    % read_module_intN_no_stream(Globals, ReadReasonMsg,
+    %   IgnoreErrors, Search, ModuleName, FileName, ReadModuleAndTimestamps,
+    %   HaveReadModule, !IO):
+    %
+    % Call the corresponding read_module_intN predicate, passing "no"
+    % as the MaybeProgressStream.
+    %
+:- pred read_module_int0_no_stream(globals::in,
+    read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
+    module_name::in, read_module_and_timestamps::in,
+    have_read_module(parse_tree_int0)::out, io::di, io::uo) is det.
+:- pred read_module_int1_no_stream(globals::in,
+    read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
+    module_name::in, read_module_and_timestamps::in,
+    have_read_module(parse_tree_int1)::out, io::di, io::uo) is det.
+:- pred read_module_int2_no_stream(globals::in,
+    read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
+    module_name::in, read_module_and_timestamps::in,
+    have_read_module(parse_tree_int2)::out, io::di, io::uo) is det.
+:- pred read_module_int3_no_stream(globals::in,
+    read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
+    module_name::in, read_module_and_timestamps::in,
+    have_read_module(parse_tree_int3)::out, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
     % read_module_intN(MaybeProgressStream, Globals, ReadReasonMsg,
     %   IgnoreErrors, Search, ModuleName, FileName, ReadModuleAndTimestamps,
     %   HaveReadModule, !IO):
@@ -271,22 +332,7 @@
     module_name::in, read_module_and_timestamps::in,
     have_read_module(parse_tree_int3)::out, io::di, io::uo) is det.
 
-:- pred read_module_int0_no_stream(globals::in,
-    read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
-    module_name::in, read_module_and_timestamps::in,
-    have_read_module(parse_tree_int0)::out, io::di, io::uo) is det.
-:- pred read_module_int1_no_stream(globals::in,
-    read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
-    module_name::in, read_module_and_timestamps::in,
-    have_read_module(parse_tree_int1)::out, io::di, io::uo) is det.
-:- pred read_module_int2_no_stream(globals::in,
-    read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
-    module_name::in, read_module_and_timestamps::in,
-    have_read_module(parse_tree_int2)::out, io::di, io::uo) is det.
-:- pred read_module_int3_no_stream(globals::in,
-    read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
-    module_name::in, read_module_and_timestamps::in,
-    have_read_module(parse_tree_int3)::out, io::di, io::uo) is det.
+%---------------------------------------------------------------------------%
 
     % read_module_{plain,trans}_opt(ProgressStream, Globals, ModuleName,
     %   FileName, HaveReadModule, !IO):
@@ -332,39 +378,6 @@
     %
 :- pred get_default_module_name_for_file(file_name::in, file_name::in,
     module_name::out, io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-
-    % maybe_read_module_intN(ProgressStream, Globals, ReadReasonMsg, Search,
-    %   ModuleName, IntFileKind, ReturnTimestamp, HaveReadModule,
-    %   !HaveReadModuleMaps, !IO):
-    %
-    % If HaveReadModuleMap contains the already-read contents of the
-    % relevant kind of interface file for ModuleName, then return
-    % the information stored in HaveReadModuleMap for that file.
-    % If it is not there, read that interface file using read_module_intN,
-    % regardless of its timestamp.
-    %
-:- pred maybe_read_module_int0(io.text_output_stream::in, globals::in,
-    maybe_search::in, module_name::in, maybe_return_timestamp::in,
-    have_read_module(parse_tree_int0)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
-    io::di, io::uo) is det.
-:- pred maybe_read_module_int1(io.text_output_stream::in, globals::in,
-    maybe_search::in, module_name::in, maybe_return_timestamp::in,
-    have_read_module(parse_tree_int1)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
-    io::di, io::uo) is det.
-:- pred maybe_read_module_int2(io.text_output_stream::in, globals::in,
-    maybe_search::in, module_name::in, maybe_return_timestamp::in,
-    have_read_module(parse_tree_int2)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
-    io::di, io::uo) is det.
-:- pred maybe_read_module_int3(io.text_output_stream::in, globals::in,
-    maybe_search::in, module_name::in, maybe_return_timestamp::in,
-    have_read_module(parse_tree_int3)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
-    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -476,6 +489,106 @@ read_module_src_from_file(Globals, FileName, FileNameDotM, ReadReasonMsg,
             no, _MaybeTimestamp, Errors0, Errors, !IO),
         HaveReadModule = have_not_read_module(FileNameDotM, Errors)
     ).
+
+%---------------------------------------------------------------------------%
+
+maybe_read_module_int0(ProgressStream, Globals, Search, ModuleName,
+        ReturnTimestamp, HaveReadModule, !HaveReadModuleMaps, !IO) :-
+    OrigHRMM = !.HaveReadModuleMaps ^ hrmm_int0,
+    ( if
+        search_module_name_timestamp_if_needed(OrigHRMM, ModuleName,
+            ReturnTimestamp, HaveReadModulePrime)
+    then
+        HaveReadModule = HaveReadModulePrime
+    else
+        read_module_int0(yes(ProgressStream), Globals, rrm_std(ModuleName),
+            do_not_ignore_errors, Search, ModuleName,
+            always_read_module(ReturnTimestamp), HaveReadModule, !IO),
+        map.set(ModuleName, HaveReadModule, OrigHRMM, HRMM),
+        !HaveReadModuleMaps ^ hrmm_int0 := HRMM
+    ).
+
+maybe_read_module_int1(ProgressStream, Globals, Search, ModuleName,
+        ReturnTimestamp, HaveReadModule, !HaveReadModuleMaps, !IO) :-
+    OrigHRMM = !.HaveReadModuleMaps ^ hrmm_int1,
+    ( if
+        search_module_name_timestamp_if_needed(OrigHRMM, ModuleName,
+            ReturnTimestamp, HaveReadModulePrime)
+    then
+        HaveReadModule = HaveReadModulePrime
+    else
+        read_module_int1(yes(ProgressStream), Globals, rrm_std(ModuleName),
+            do_not_ignore_errors, Search, ModuleName,
+            always_read_module(ReturnTimestamp), HaveReadModule, !IO),
+        map.set(ModuleName, HaveReadModule, OrigHRMM, HRMM),
+        !HaveReadModuleMaps ^ hrmm_int1 := HRMM
+    ).
+
+maybe_read_module_int2(ProgressStream, Globals, Search, ModuleName,
+        ReturnTimestamp, HaveReadModule, !HaveReadModuleMaps, !IO) :-
+    OrigHRMM = !.HaveReadModuleMaps ^ hrmm_int2,
+    ( if
+        search_module_name_timestamp_if_needed(OrigHRMM, ModuleName,
+            ReturnTimestamp, HaveReadModulePrime)
+    then
+        HaveReadModule = HaveReadModulePrime
+    else
+        read_module_int2(yes(ProgressStream), Globals, rrm_std(ModuleName),
+            do_not_ignore_errors, Search, ModuleName,
+            always_read_module(ReturnTimestamp), HaveReadModule, !IO),
+        map.set(ModuleName, HaveReadModule, OrigHRMM, HRMM),
+        !HaveReadModuleMaps ^ hrmm_int2 := HRMM
+    ).
+
+maybe_read_module_int3(ProgressStream, Globals, Search, ModuleName,
+        ReturnTimestamp, HaveReadModule, !HaveReadModuleMaps, !IO) :-
+    OrigHRMM = !.HaveReadModuleMaps ^ hrmm_int3,
+    ( if
+        search_module_name_timestamp_if_needed(OrigHRMM, ModuleName,
+            ReturnTimestamp, HaveReadModulePrime)
+    then
+        HaveReadModule = HaveReadModulePrime
+    else
+        read_module_int3(yes(ProgressStream), Globals, rrm_std(ModuleName),
+            do_not_ignore_errors, Search, ModuleName,
+            always_read_module(ReturnTimestamp), HaveReadModule, !IO),
+        map.set(ModuleName, HaveReadModule, OrigHRMM, HRMM),
+        !HaveReadModuleMaps ^ hrmm_int3 := HRMM
+    ).
+
+:- pred search_module_name_timestamp_if_needed(have_read_module_map(PT)::in,
+    module_name::in, maybe_return_timestamp::in, have_read_module(PT)::out)
+    is semidet.
+
+search_module_name_timestamp_if_needed(HRMM, ModuleName, ReturnTimestamp,
+        HaveReadModule) :-
+    map.search(HRMM, ModuleName, HaveReadModule0),
+    HaveReadModule0 = have_read_module(FN, MaybeTimeStamp0, PT, E),
+    return_timestamp_if_needed(ReturnTimestamp,
+        MaybeTimeStamp0, MaybeTimeStamp),
+    HaveReadModule = have_read_module(FN, MaybeTimeStamp, PT, E).
+
+%---------------------%
+
+read_module_int0_no_stream(Globals, ReadReasonMsg, IgnoreErrors,
+        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO) :-
+    read_module_int0(no, Globals, ReadReasonMsg, IgnoreErrors,
+        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO).
+
+read_module_int1_no_stream(Globals, ReadReasonMsg, IgnoreErrors,
+        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO) :-
+    read_module_int1(no, Globals, ReadReasonMsg, IgnoreErrors,
+        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO).
+
+read_module_int2_no_stream(Globals, ReadReasonMsg, IgnoreErrors,
+        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO) :-
+    read_module_int2(no, Globals, ReadReasonMsg, IgnoreErrors,
+        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO).
+
+read_module_int3_no_stream(Globals, ReadReasonMsg, IgnoreErrors,
+        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO) :-
+    read_module_int3(no, Globals, ReadReasonMsg, IgnoreErrors,
+        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO).
 
 %---------------------%
 
@@ -609,28 +722,6 @@ read_module_int3(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
 
 %---------------------%
 
-read_module_int0_no_stream(Globals, ReadReasonMsg, IgnoreErrors,
-        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO) :-
-    read_module_int0(no, Globals, ReadReasonMsg, IgnoreErrors,
-        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO).
-
-read_module_int1_no_stream(Globals, ReadReasonMsg, IgnoreErrors,
-        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO) :-
-    read_module_int1(no, Globals, ReadReasonMsg, IgnoreErrors,
-        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO).
-
-read_module_int2_no_stream(Globals, ReadReasonMsg, IgnoreErrors,
-        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO) :-
-    read_module_int2(no, Globals, ReadReasonMsg, IgnoreErrors,
-        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO).
-
-read_module_int3_no_stream(Globals, ReadReasonMsg, IgnoreErrors,
-        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO) :-
-    read_module_int3(no, Globals, ReadReasonMsg, IgnoreErrors,
-        Search, ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO).
-
-%---------------------%
-
 read_module_plain_opt(ProgressStream, Globals, ModuleName,
         HaveReadModule, !IO) :-
     ReadReasonMsg = rrm_std(ModuleName),
@@ -759,6 +850,20 @@ get_default_module_name_for_file(FileName, FileNameDotM,
         )
     ).
 
+%---------------------------------------------------------------------------%
+
+:- type read_done_msg
+    --->    rdm_none
+            % Do not print a "done" message.
+    ;       rdm_current
+            % Print a "done" message to the current output stream.
+            % XXX MAKE_STREAM Any use of rdm_current is effectively
+            % an implicit stream call.
+    ;       rdm_progress(io.text_output_stream).
+            % Print a "done" message to the specified progress output stream.
+
+%---------------------%
+
 :- pred read_module_begin_from_file(globals::in, read_reason_msg::in,
     maybe_search::in, file_name::in, file_name::in, module_name::out,
     read_done_msg::out, list(string)::out, io::di, io::uo) is det.
@@ -855,9 +960,9 @@ read_module_end_module(MaybeProgressStream, Globals, MaybeFileNameAndStream,
         FileName = FileName0
     ),
     check_timestamp_report_if_needed_and_missing(Globals, FileName0,
-        MaybeTimestampRes, MaybeTimestamp, !IO),
+        MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
     handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg,
-        IgnoreErrors, Errors0, Errors, !IO),
+        IgnoreErrors, Errors1, Errors, !IO),
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     (
         MaybeProgressStream = no
@@ -868,18 +973,19 @@ read_module_end_module(MaybeProgressStream, Globals, MaybeFileNameAndStream,
 
 :- pred read_module_end_file(globals::in, file_kind::in, read_done_msg::in,
     file_name::in, maybe(io.res(timestamp))::in, maybe(timestamp)::out,
-    read_module_errors::in, read_module_errors::out,
-    io::di, io::uo) is det.
+    read_module_errors::in, read_module_errors::out, io::di, io::uo) is det.
 
 read_module_end_file(Globals, FileKind, ReadDoneMsg, FileName,
         MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO) :-
     % The code of read_module_end_module and read_module_end_file
     % should be kept in sync.
     check_timestamp_report_if_needed_and_missing(Globals, FileName,
-        MaybeTimestampRes, MaybeTimestamp, !IO),
+        MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
     % Unlike read_module_end_module, we assume do_not_ignore_errors.
     handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg,
-        do_not_ignore_errors, Errors0, Errors, !IO).
+        do_not_ignore_errors, Errors1, Errors, !IO).
+
+%---------------------------------------------------------------------------%
 
 :- func no_file_errors(maybe_ignore_errors, read_module_errors)
     = read_module_errors.
@@ -907,12 +1013,14 @@ no_file_errors_ignored = Errors :-
         set.make_singleton_set(frme_could_not_open_file), [],
         set.init, [], []).
 
+%---------------------%
+
 :- pred handle_any_read_module_errors(globals::in, file_kind::in,
     read_done_msg::in, maybe_ignore_errors::in,
     read_module_errors::in, read_module_errors::out, io::di, io::uo) is det.
 
-handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg,
-        IgnoreErrors, Errors0, Errors, !IO) :-
+handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg, IgnoreErrors,
+        Errors0, Errors, !IO) :-
     (
         IgnoreErrors = ignore_errors,
         FatalErrors0 = Errors0 ^ rm_fatal_errors,
@@ -926,20 +1034,40 @@ handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg,
         )
     ;
         IgnoreErrors = do_not_ignore_errors,
-        ( if there_are_no_errors(Errors0) then
-            Errors = Errors0,
-            % XXX CLEANUP This should just print "done".
-            output_read_done_msg(ReadDoneMsg, "successful parse.\n", !IO)
-        else
-            FatalErrors0 = Errors0 ^ rm_fatal_errors,
-            ( if set.contains(FatalErrors0, frme_could_not_open_file) then
-                output_read_done_msg(ReadDoneMsg, "not found.\n", !IO)
-            else if set.is_non_empty(FatalErrors0) then
-                output_read_done_msg(ReadDoneMsg, "fatal error(s).\n", !IO)
+        FatalErrors0 = Errors0 ^ rm_fatal_errors,
+        NonFatalErrors0 = Errors0 ^ rm_nonfatal_errors,
+        ( if
+            ( set.is_non_empty(FatalErrors0)
+            ; set.is_non_empty(NonFatalErrors0)
+            )
+        then
+            ( if set.is_non_empty(FatalErrors0) then
+                ( if set.contains(FatalErrors0, frme_could_not_open_file) then
+                    Msg = "not found.\n"
+                else
+                    Msg = "fatal error(s).\n"
+                )
             else
-                % XXX CLEANUP Some of the errors are not PARSE errors.
-                output_read_done_msg(ReadDoneMsg, "parse error(s).\n", !IO)
+                % Any errors must be nonfatal. Are they syntax errors?
+                ( if
+                    ( set.contains(NonFatalErrors0,
+                        rme_no_module_decl_at_start)
+                    ; set.contains(NonFatalErrors0,
+                        rme_no_section_decl_at_start)
+                    ; set.contains(NonFatalErrors0,
+                        rme_end_module_not_at_end_of_src)
+                    ; set.contains(NonFatalErrors0,
+                        rme_unexpected_term_in_int_or_opt)
+                    ; set.contains(NonFatalErrors0, rme_could_not_read_term)
+                    ; set.contains(NonFatalErrors0, rme_could_not_parse_item)
+                    )
+                then
+                    Msg = "parse error(s).\n"
+                else
+                    Msg = "nonfatal error(s).\n"
+                )
             ),
+            output_read_done_msg(ReadDoneMsg, Msg, !IO),
             (
                 FileKind = fk_opt(_),
                 Errors = Errors0
@@ -970,18 +1098,14 @@ handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg,
                 ),
                 io.set_exit_status(1, !IO)
             )
+        else
+            Errors = Errors0,
+            % XXX CLEANUP This should just print "done".
+            output_read_done_msg(ReadDoneMsg, "successful parse.\n", !IO)
         )
     ).
 
 %---------------------%
-
-:- type read_done_msg
-    --->    rdm_none
-            % Do not print a "done" message.
-    ;       rdm_current
-            % Print a "done" message to the current output stream.
-    ;       rdm_progress(io.text_output_stream).
-            % Print a "done" message to the specified progress output stream.
 
 :- pred output_read_reason_msg(globals::in, read_reason_msg::in, string::in,
     read_done_msg::out, io::di, io::uo) is det.
@@ -1043,84 +1167,6 @@ output_read_done_msg(ReadDoneMsg, Msg, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_read_module_int0(ProgressStream, Globals, Search, ModuleName,
-        ReturnTimestamp, HaveReadModule, !HaveReadModuleMaps, !IO) :-
-    OrigHRMM = !.HaveReadModuleMaps ^ hrmm_int0,
-    ( if
-        search_module_name_timestamp_if_needed(OrigHRMM, ModuleName,
-            ReturnTimestamp, HaveReadModulePrime)
-    then
-        HaveReadModule = HaveReadModulePrime
-    else
-        read_module_int0(yes(ProgressStream), Globals, rrm_std(ModuleName),
-            do_not_ignore_errors, Search, ModuleName,
-            always_read_module(ReturnTimestamp), HaveReadModule, !IO),
-        map.set(ModuleName, HaveReadModule, OrigHRMM, HRMM),
-        !HaveReadModuleMaps ^ hrmm_int0 := HRMM
-    ).
-
-maybe_read_module_int1(ProgressStream, Globals, Search, ModuleName,
-        ReturnTimestamp, HaveReadModule, !HaveReadModuleMaps, !IO) :-
-    OrigHRMM = !.HaveReadModuleMaps ^ hrmm_int1,
-    ( if
-        search_module_name_timestamp_if_needed(OrigHRMM, ModuleName,
-            ReturnTimestamp, HaveReadModulePrime)
-    then
-        HaveReadModule = HaveReadModulePrime
-    else
-        read_module_int1(yes(ProgressStream), Globals, rrm_std(ModuleName),
-            do_not_ignore_errors, Search, ModuleName,
-            always_read_module(ReturnTimestamp), HaveReadModule, !IO),
-        map.set(ModuleName, HaveReadModule, OrigHRMM, HRMM),
-        !HaveReadModuleMaps ^ hrmm_int1 := HRMM
-    ).
-
-maybe_read_module_int2(ProgressStream, Globals, Search, ModuleName,
-        ReturnTimestamp, HaveReadModule, !HaveReadModuleMaps, !IO) :-
-    OrigHRMM = !.HaveReadModuleMaps ^ hrmm_int2,
-    ( if
-        search_module_name_timestamp_if_needed(OrigHRMM, ModuleName,
-            ReturnTimestamp, HaveReadModulePrime)
-    then
-        HaveReadModule = HaveReadModulePrime
-    else
-        read_module_int2(yes(ProgressStream), Globals, rrm_std(ModuleName),
-            do_not_ignore_errors, Search, ModuleName,
-            always_read_module(ReturnTimestamp), HaveReadModule, !IO),
-        map.set(ModuleName, HaveReadModule, OrigHRMM, HRMM),
-        !HaveReadModuleMaps ^ hrmm_int2 := HRMM
-    ).
-
-maybe_read_module_int3(ProgressStream, Globals, Search, ModuleName,
-        ReturnTimestamp, HaveReadModule, !HaveReadModuleMaps, !IO) :-
-    OrigHRMM = !.HaveReadModuleMaps ^ hrmm_int3,
-    ( if
-        search_module_name_timestamp_if_needed(OrigHRMM, ModuleName,
-            ReturnTimestamp, HaveReadModulePrime)
-    then
-        HaveReadModule = HaveReadModulePrime
-    else
-        read_module_int3(yes(ProgressStream), Globals, rrm_std(ModuleName),
-            do_not_ignore_errors, Search, ModuleName,
-            always_read_module(ReturnTimestamp), HaveReadModule, !IO),
-        map.set(ModuleName, HaveReadModule, OrigHRMM, HRMM),
-        !HaveReadModuleMaps ^ hrmm_int3 := HRMM
-    ).
-
-:- pred search_module_name_timestamp_if_needed(have_read_module_map(PT)::in,
-    module_name::in, maybe_return_timestamp::in, have_read_module(PT)::out)
-    is semidet.
-
-search_module_name_timestamp_if_needed(HRMM, ModuleName, ReturnTimestamp,
-        HaveReadModule) :-
-    map.search(HRMM, ModuleName, HaveReadModule0),
-    HaveReadModule0 = have_read_module(FN, MaybeTimeStamp0, PT, E),
-    return_timestamp_if_needed(ReturnTimestamp,
-        MaybeTimeStamp0, MaybeTimeStamp),
-    HaveReadModule = have_read_module(FN, MaybeTimeStamp, PT, E).
-
-%---------------------------------------------------------------------------%
-
 return_timestamp_if_needed(ReturnTimestamp, MaybeTimestamp0, MaybeTimestamp) :-
     (
         ReturnTimestamp = do_return_timestamp,
@@ -1159,10 +1205,10 @@ return_timestamp_if_needed(ReturnTimestamp, MaybeTimestamp0, MaybeTimestamp) :-
 
 :- pred check_timestamp_report_if_needed_and_missing(globals::in,
     file_name::in, maybe(io.res(timestamp))::in, maybe(timestamp)::out,
-    io::di, io::uo) is det.
+    read_module_errors::in, read_module_errors::out, io::di, io::uo) is det.
 
 check_timestamp_report_if_needed_and_missing(Globals, FileName,
-        MaybeTimestampRes, MaybeTimestamp, !IO) :-
+        MaybeTimestampRes, MaybeTimestamp, !Errors, !IO) :-
     (
         MaybeTimestampRes = yes(TimestampRes),
         (
@@ -1178,7 +1224,7 @@ check_timestamp_report_if_needed_and_missing(Globals, FileName,
             (
                 SmartRecompilation = yes,
                 record_and_report_missing_timestamp(Globals, FileName,
-                    IOError, !IO)
+                    IOError, !Errors, !IO)
             ;
                 SmartRecompilation = no
             )
@@ -1189,23 +1235,25 @@ check_timestamp_report_if_needed_and_missing(Globals, FileName,
     ).
 
 :- pred record_and_report_missing_timestamp(globals::in, file_name::in,
-    io.error::in, io::di, io::uo) is det.
+    io.error::in, read_module_errors::in, read_module_errors::out,
+    io::di, io::uo) is det.
 
-record_and_report_missing_timestamp(Globals, FileName, Error, !IO) :-
+record_and_report_missing_timestamp(Globals, FileName, IOError,
+        !Errors, !IO) :-
     io_set_disable_smart_recompilation(disable_smart_recompilation, !IO),
     io_set_disable_generate_item_version_numbers(disable_item_version_numbers,
         !IO),
     globals.lookup_bool_option(Globals, warn_smart_recompilation, Warn),
     (
         Warn = yes,
-        io.error_message(Error, ErrorMsg),
+        io.error_message(IOError, IOErrorMsg),
         Pieces = [words("Warning: cannot find modification time for"),
-            quote(FileName), suffix(":"), nl,
-            words(ErrorMsg), suffix("."), nl,
+            quote(FileName), suffix(":"), nl_indent_delta(1),
+            words(IOErrorMsg), suffix("."), nl_indent_delta(-1),
             words("Smart recompilation will not work."), nl],
         Spec = simplest_no_context_spec($pred, severity_warning,
             phase_read_files, Pieces),
-        write_error_spec(Globals, Spec, !IO)
+        add_nonfatal_error(rme_cannot_find_modify_time, [Spec], !Errors)
     ;
         Warn = no
     ).
