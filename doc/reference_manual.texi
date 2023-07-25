@@ -5131,7 +5131,7 @@ A switch can succeed at most zero times
 only if all the reachable arms of the switch can succeed at most zero times.
 (A switch arm is not reachable
 if it unifies the switched-on variable with a function symbol
-that is ruled out by that variable' initial instantiation state.)
+that is ruled out by that variable's initial instantiation state.)
 
 Only unifications may occur
 before the test of the switched-on variable in each disjunct.
