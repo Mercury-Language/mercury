@@ -6170,8 +6170,8 @@ free >> pred(in, in, out) is det
 @end example
 
 @noindent
-for a predicate being returned from another predicate or function,
-but in practice, it is far more convenient
+for a predicate being returned from another predicate or function.
+In practice, it is far more convenient
 to use the builtin mode constructors @samp{in/1} and @samp{out/1} to write
 
 @example
@@ -6192,35 +6192,35 @@ You can use higher order insts and modes in mode declarations like this:
 The @samp{in()} wrapper around the higher order inst here
 declares the first argument of @samp{list.foldl} to be an input,
 but the higher order inst inside the wrapper goes further,
-and tells the compiler the argument modes and the determinism
+by specifying the argument modes and the determinism
 of the predicate that @samp{list.foldl} takes @emph{in this mode}.
 
 That last qualification is important,
 because @samp{list.foldl} has several modes,
 each differing in the argument modes, in the determinism, or both.
-The set of mode declarations for @samp{list.foldl} (at least in July 2023) is
+The set of mode declarations for @samp{list.foldl} includes
 
-@c Should we show just a subset of the modes?
-@c
 @c This list is a good argument for (possibly constrained) mode variables
 @c and determinism variables, which would allow all of the modes above
 @c to declared with just
 @c :- mode foldl(pred(in, InMode, OutMode) is Det, in, InMode, OutMode) is Det.
 @example
 :- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
-:- mode foldl(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode foldl(in(pred(in, di, uo) is det), in, di, uo) is det.
 :- mode foldl(in(pred(in, in, out) is semidet), in, in, out) is semidet.
-:- mode foldl(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
-:- mode foldl(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
-:- mode foldl(in(pred(in, in, out) is multi), in, in, out) is multi.
-:- mode foldl(in(pred(in, in, out) is nondet), in, in, out) is nondet.
-:- mode foldl(in(pred(in, mdi, muo) is nondet), in, mdi, muo) is nondet.
 :- mode foldl(in(pred(in, in, out) is cc_multi), in, in, out) is cc_multi.
 :- mode foldl(in(pred(in, di, uo) is cc_multi), in, di, uo) is cc_multi.
 @end example
 
-As you can see, you can pass predicates
+@c These are the modes (as of 25 July 2023) that we are not showing.
+@c :- mode foldl(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
+@c :- mode foldl(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+@c :- mode foldl(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+@c :- mode foldl(in(pred(in, mdi, muo) is nondet), in, mdi, muo) is nondet.
+@c :- mode foldl(in(pred(in, in, out) is multi), in, in, out) is multi.
+@c :- mode foldl(in(pred(in, in, out) is nondet), in, in, out) is nondet.
+
+That means you can pass predicates
 with several different argument mode/determinism combinations
 as the first argument.
 In the case of @samp{list.foldl},
@@ -6240,9 +6240,9 @@ using declarations such as
 @end example
 
 @noindent
-Note that the parentheses around the right hand side
-are required by the relative precedences of the operators involved,
-such as @samp{==} and @samp{is}.
+Note that the parentheses around the right hand side of the inst declaration
+are required, due to the relative precedences
+of the @samp{==} and @samp{is} operators.
 
 Given these definitions, the declarations
 
@@ -6252,7 +6252,7 @@ Given these definitions, the declarations
 @end example
 
 @noindent
-will each tell the compiler exactly the same information as
+are both equivalent to
 
 @example
 :- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
@@ -6281,7 +6281,7 @@ to be omitted in the mode declarations of predicates and functions.
 In those parts of these declarations
 where the compiler expects to find a mode, if it finds an inst instead,
 it implicitly inserts the @samp{in()} around that inst.
-This is why the usualy mode of @samp{list.foldl},
+This is why the usual mode of @samp{list.foldl},
 which we introduced above as being
 
 @example
@@ -6330,7 +6330,7 @@ In the case of zero-argument predicates and functions,
 the parentheses around @samp{pred} and @samp{func}
 are required to tell the compiler that these words
 are not being used as operators in this case.
-And, as explained about, one will usually need parentheses
+And, as explained above, one will usually need parentheses
 around any instances of these patterns in Mercury code.
 
 @c ZZZ Note that nontrivial examples for functions
@@ -6371,9 +6371,6 @@ or by combining the mode declaration with the function declaration, like this:
 In both cases, just as for the predicate examples above,
 the @samp{in()} wrapper around the higher order inst is optional,
 though in the combined declaration the parentheses must stay.
-
-@c ZZZ should we have an example of a pred or func of arity zero?
-@c If so, we could use the force function from lazy.m.
 
 Mercury also provides builtin @samp{inst} values for use with solver types.
 These follow the patterns
