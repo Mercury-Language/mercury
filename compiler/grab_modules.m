@@ -318,7 +318,7 @@ grab_qual_imported_modules_augment(ProgressStream, Globals, SourceFileName,
             ImportAccessibilityInfo),
         check_imports_accessibility(ParseTreeModuleSrc,
             ImportAccessibilityInfo, AccessSpecs),
-        module_baggage_add_specs(AccessSpecs, !Baggage)
+        module_baggage_add_nonfatal_specs(AccessSpecs, !Baggage)
     ).
 
 %---------------------------------------------------------------------------%
@@ -432,7 +432,7 @@ grab_unqual_imported_modules_make_int(ProgressStream, Globals, SourceFileName,
             ImportAccessibilityInfo),
         check_imports_accessibility(ParseTreeModuleSrc,
             ImportAccessibilityInfo, AccessSpecs),
-        module_baggage_add_specs(AccessSpecs, !Baggage)
+        module_baggage_add_nonfatal_specs(AccessSpecs, !Baggage)
     ).
 
 :- pred dump_modules(io.text_output_stream::in, set(module_name)::in,
@@ -517,7 +517,7 @@ grab_plain_opt_and_int_for_opt_files(ProgressStream, ErrorStream, Globals,
 
     list.foldl(aug_compilation_unit_add_plain_opt, ParseTreePlainOpts,
         !AugCompUnit),
-    module_baggage_add_specs(OptSpecs, !Baggage),
+    module_baggage_add_nonfatal_specs(OptSpecs, !Baggage),
 
     % Read .int0 files required by the `.opt' files, except the ones
     % we have already read as ancestors of ModuleName,
@@ -585,7 +585,7 @@ grab_trans_opt_files(ProgressStream, Globals, TransOptModuleNames, FoundError,
         [], TransOptSpecs, no_opt_file_error, FoundError, !IO),
     list.foldl(aug_compilation_unit_add_trans_opt,
         cord.list(ParseTreeTransOptsCord), !AugCompUnit),
-    module_baggage_add_specs(TransOptSpecs, !Baggage),
+    module_baggage_add_nonfatal_specs(TransOptSpecs, !Baggage),
     % XXX why ignore any existing errors?
     !Baggage ^ mb_errors := init_read_module_errors,
 
@@ -1184,10 +1184,10 @@ module_baggage_add_grabbed_file(ModuleName, FileWhy, !Baggage) :-
     map.set(ModuleName, FileWhy, GrabbedFileMap0, GrabbedFileMap),
     !Baggage ^ mb_grabbed_file_map := GrabbedFileMap.
 
-:- pred module_baggage_add_specs(list(error_spec)::in,
+:- pred module_baggage_add_nonfatal_specs(list(error_spec)::in,
     module_baggage::in, module_baggage::out) is det.
 
-module_baggage_add_specs(NewSpecs, !Baggage) :-
+module_baggage_add_nonfatal_specs(NewSpecs, !Baggage) :-
     Errors0 = !.Baggage ^ mb_errors,
     NonFatalErrorSpecs0 = Errors0 ^ rm_nonfatal_error_specs,
     NonFatalErrorSpecs = NewSpecs ++ NonFatalErrorSpecs0,
@@ -2394,9 +2394,9 @@ update_opt_error_status_on_failure(Globals, WarnOption, FileName,
     % Note that we can ignore *not finding* a .opt or .trans_opt file,
     % a situation handled by update_opt_error_status_on_failure,
     % finding any error, whether syntax or semantic, inside one of these files
-    % that does exist is always fatal. This is because it indicates either
-    % that the Mercury compiler invocation that created it had a bug,
-    % or that the files been tampered with later.
+    % that does exist is always fatal. This is because it indicates that
+    % - either the Mercury compiler invocation that created it had a bug,
+    % - or that the file has been tampered with later.
     %
 :- pred update_opt_error_status_on_success(read_module_errors::in,
     list(error_spec)::in, list(error_spec)::out,

@@ -45,9 +45,9 @@
 
     ;       frme_bad_submodule_start
             % We encountered a declaration for the start of a submodule,
-            % but the name of the new submodule is not that can be immediately
-            % nested inside the current module.
-            % NOTE: This error can happen only for submodules of the main
+            % but the name of the new submodule is not one that
+            % can be immediately nested inside the current module.
+            % NOTE This error can happen only for submodules of the main
             % module in the file. For the main module itself, we would generate
             % the rme_unexpected_module_name error.
 
@@ -55,7 +55,7 @@
             % We encountered a declaration for the end of a module,
             % but the name of the ended module is not the name of the
             % until-then-current module.
-            % NOTE: This error can happen both for the main module of the
+            % NOTE This error can happen both for the main module of the
             % file and for its submodules.
 
     % This type represents the kinds of nonfatal errors that can happen
@@ -85,11 +85,18 @@
     ;       rme_could_not_read_term
     ;       rme_could_not_parse_item
             % When we attempted to read an item from the file, we got a failure
-            % either in the first stage of parsing (reading in a term), or
-            % the second stage of parsing (converting that term to an item).
+            % either in the first stage of parsing (reading in a term, i.e.
+            % converting a subsequence of the character in the file to a term),
+            % or the second stage of parsing (converting that term to an item).
             % Since the rest of the compiler should not care whether parsing
             % is done in one or two stages, it should treat both these errors
             % the same. We distinguish them only for completeness.
+
+    ;       rme_cannot_find_modify_time
+            % We cannot find out the modification time of he file.
+            % This error is not fatal, because its only effect is
+            % to disable smart recompilation, whose implementation
+            % is not completed yet.
 
     ;       rme_nec.
             % A read module error that is Not Elsewhere Classified, i.e.
