@@ -395,7 +395,6 @@
 :- import_module parse_tree.find_module.
 :- import_module parse_tree.parse_module.
 :- import_module parse_tree.source_file_map.
-:- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
 :- import_module cord.
@@ -961,7 +960,7 @@ read_module_end_module(MaybeProgressStream, Globals, MaybeFileNameAndStream,
     ),
     check_timestamp_report_if_needed_and_missing(Globals, FileName0,
         MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
-    handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg,
+    handle_any_read_module_errors(FileKind, ReadDoneMsg,
         IgnoreErrors, Errors1, Errors, !IO),
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     (
@@ -982,7 +981,7 @@ read_module_end_file(Globals, FileKind, ReadDoneMsg, FileName,
     check_timestamp_report_if_needed_and_missing(Globals, FileName,
         MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
     % Unlike read_module_end_module, we assume do_not_ignore_errors.
-    handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg,
+    handle_any_read_module_errors(FileKind, ReadDoneMsg,
         do_not_ignore_errors, Errors1, Errors, !IO).
 
 %---------------------------------------------------------------------------%
@@ -1006,6 +1005,9 @@ no_file_errors(IgnoreErrors, Errors0) = Errors :-
     % created for them, which is not appropriate for a file
     % that does not exist, at least in the current directory.
     %
+    % XXX Why not add a field to read_module_errors that specifically
+    % says whether the module should be put into deps_maps?
+    %
 :- func no_file_errors_ignored = read_module_errors.
 
 no_file_errors_ignored = Errors :-
@@ -1015,11 +1017,11 @@ no_file_errors_ignored = Errors :-
 
 %---------------------%
 
-:- pred handle_any_read_module_errors(globals::in, file_kind::in,
+:- pred handle_any_read_module_errors(file_kind::in,
     read_done_msg::in, maybe_ignore_errors::in,
     read_module_errors::in, read_module_errors::out, io::di, io::uo) is det.
 
-handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg, IgnoreErrors,
+handle_any_read_module_errors(FileKind, ReadDoneMsg, IgnoreErrors,
         Errors0, Errors, !IO) :-
     (
         IgnoreErrors = ignore_errors,
@@ -1075,27 +1077,9 @@ handle_any_read_module_errors(Globals, FileKind, ReadDoneMsg, IgnoreErrors,
                 ( FileKind = fk_src
                 ; FileKind = fk_int(_)
                 ),
-                (
-                    ReadDoneMsg = rdm_none,
-                    Errors = Errors0
-                ;
-                    (
-                        ReadDoneMsg = rdm_current,
-                        io.output_stream(ErrorStream, !IO)
-                    ;
-                        ReadDoneMsg = rdm_progress(ErrorStream)
-                    ),
-                    % XXX STREAM It should be possible to print error messages
-                    % to the relevant module's .err file, not just to the
-                    % progress stream.
-                    FatalErrorSpecs0 = Errors0 ^ rm_fatal_error_specs,
-                    NonFatalErrorSpecs0 = Errors0 ^ rm_nonfatal_error_specs,
-                    write_error_specs(ErrorStream, Globals,
-                        FatalErrorSpecs0 ++ NonFatalErrorSpecs0, !IO),
-                    Errors = ((Errors0
-                        ^ rm_fatal_error_specs := [])
-                        ^ rm_nonfatal_error_specs := [])
-                ),
+                Errors = Errors0,
+                % XXX This *may* be unnecessary; the exit status should be set
+                % when the error specs are written out.
                 io.set_exit_status(1, !IO)
             )
         else
