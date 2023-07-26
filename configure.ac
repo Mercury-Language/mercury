@@ -1148,6 +1148,7 @@ if test "$ac_microsoft" = "yes" ; then
 
     USING_MICROSOFT_CL_COMPILER="yes"
     FIX_PATH_FOR_CC="$CYGPATH"
+    FIX_PATH_FOR_WINDOWS="$CYGPATH"
 
     # MS doesn't use a ranlib.
     RANLIB="echo"
@@ -1204,6 +1205,12 @@ else
     USING_MICROSOFT_CL_COMPILER="no"
 
     FIX_PATH_FOR_CC=echo
+    FIX_PATH_FOR_WINDOWS=echo
+    case "$host" in
+        *mingw*)
+            FIX_PATH_FOR_WINDOWS="$CYGPATH"
+        ;;
+    esac
 
     AC_PROG_RANLIB
     RANLIBFLAGS=""
@@ -1246,6 +1253,7 @@ AC_SUBST(LINK_LIB)
 AC_SUBST(LINK_LIB_SUFFIX)
 AC_SUBST(LINK_OPT_SEP)
 AC_SUBST(FIX_PATH_FOR_CC)
+AC_SUBST(FIX_PATH_FOR_WINDOWS)
 AC_SUBST(CYGPATH)
 
 #-----------------------------------------------------------------------------#

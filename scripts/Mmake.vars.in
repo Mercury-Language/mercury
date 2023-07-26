@@ -254,6 +254,19 @@ JAR_CREATE_FLAGS = cf
 
 #-----------------------------------------------------------------------------#
 #
+# Stuff which is specific to Windows.
+#
+
+# On Unix-like environments on Windows (e.g. MSYS2, Cygwin) this is a command
+# that converts Unix-style paths to (mixed) Windows-style paths.
+# This is separate from the other FIX_PATH_FOR_* variables since there are
+# places (e.g. scripts/test_mdbrc with MSYS2/MinGW64 or MSVC) where we *must*
+# do path conversion regardless of what kind of paths the C compiler accepts.
+#
+FIX_PATH_FOR_WINDOWS = @FIX_PATH_FOR_WINDOWS@
+
+#-----------------------------------------------------------------------------#
+#
 # Stuff related to linking (for the C back-end).
 #
 
