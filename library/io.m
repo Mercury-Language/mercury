@@ -1224,8 +1224,8 @@
     % (to the current output stream or to Stream) between each element.
     %
 :- pred write_list(list(T), string, pred(T, io, io), io, io).
-:- mode write_list(in, in, pred(in, di, uo) is det, di, uo) is det.
-:- mode write_list(in, in, pred(in, di, uo) is cc_multi, di, uo)
+:- mode write_list(in, in, in(pred(in, di, uo) is det), di, uo) is det.
+:- mode write_list(in, in, in(pred(in, di, uo) is cc_multi), di, uo)
     is cc_multi.
 
     % write_list(Stream, List, Separator, OutputPred, !IO):
@@ -1236,8 +1236,8 @@
     %
 :- pred write_list(io.text_output_stream, list(T), string,
     pred(T, io, io), io, io).
-:- mode write_list(in, in, in, pred(in, di, uo) is det, di, uo) is det.
-:- mode write_list(in, in, in, pred(in, di, uo) is cc_multi, di, uo)
+:- mode write_list(in, in, in, in(pred(in, di, uo) is det), di, uo) is det.
+:- mode write_list(in, in, in, in(pred(in, di, uo) is cc_multi), di, uo)
     is cc_multi.
 
     % write_array(Array, Separator, OutputPred, !IO):
@@ -1245,10 +1245,11 @@
     % to the current output stream between each element.
     %
 :- pred write_array(array(T), string, pred(T, io, io), io, io).
-:- mode write_array(in, in, pred(in, di, uo) is det, di, uo) is det.
-%:- mode write_array(array_ui, in, pred(in, di, uo) is det, di uo) is det.
-:- mode write_array(in, in, pred(in, di, uo) is cc_multi, di, uo) is cc_multi.
-%:- mode write_array(array_ui, in, pred(in, di, uo) is cc_multi, di uo)
+:- mode write_array(in, in, in(pred(in, di, uo) is det), di, uo) is det.
+%:- mode write_array(array_ui, in, in(pred(in, di, uo) is det), di uo) is det.
+:- mode write_array(in, in, in(pred(in, di, uo) is cc_multi), di, uo)
+    is cc_multi.
+%:- mode write_array(array_ui, in, in(pred(in, di, uo) is cc_multi), di uo)
 % is cc_multi.
 
     % write_array(Stream, Array, Separator, OutputPred, !IO):
@@ -1259,12 +1260,13 @@
     %
 :- pred write_array(io.text_output_stream, array(T), string, pred(T, io, io),
     io, io).
-:- mode write_array(in, in, in, pred(in, di, uo) is det, di, uo) is det.
-%:- mode write_array(in, array_ui, in, pred(in, di, uo) is det, di uo) is det.
-:- mode write_array(in, in, in, pred(in, di, uo) is cc_multi, di, uo)
+:- mode write_array(in, in, in, in(pred(in, di, uo) is det), di, uo) is det.
+%:- mode write_array(in, array_ui, in, in(pred(in, di, uo) is det), di uo)
+%   is det.
+:- mode write_array(in, in, in, in(pred(in, di, uo) is cc_multi), di, uo)
     is cc_multi.
-%:- mode write_array(in, array_ui, in, pred(in, di, uo) is cc_multi, di uo)
-% is cc_multi.
+%:- mode write_array(in, array_ui, in, in(pred(in, di, uo) is cc_multi), di uo)
+%   is cc_multi.
 
 %---------------------------------------------------------------------------%
 %
@@ -1399,9 +1401,9 @@
     %
 :- pred input_stream_foldl(pred(char, T, T), T, io.maybe_partial_res(T),
     io, io).
-:- mode input_stream_foldl((pred(in, in, out) is det), in, out,
+:- mode input_stream_foldl(in(pred(in, in, out) is det), in, out,
     di, uo) is det.
-:- mode input_stream_foldl((pred(in, in, out) is cc_multi), in, out,
+:- mode input_stream_foldl(in(pred(in, in, out) is cc_multi), in, out,
     di, uo) is cc_multi.
 :- pragma obsolete(pred(input_stream_foldl/5), [stream.input_stream_fold/6]).
 
@@ -1420,9 +1422,9 @@
     % the input stream in turn, until eof or error.
     %
 :- pred input_stream_foldl_io(pred(char, io, io), io.res, io, io).
-:- mode input_stream_foldl_io((pred(in, di, uo) is det), out, di, uo)
+:- mode input_stream_foldl_io(in(pred(in, di, uo) is det), out, di, uo)
     is det.
-:- mode input_stream_foldl_io((pred(in, di, uo) is cc_multi), out, di, uo)
+:- mode input_stream_foldl_io(in(pred(in, di, uo) is cc_multi), out, di, uo)
     is cc_multi.
 :- pragma obsolete(pred(input_stream_foldl_io/4),
     [stream.input_stream_fold_state/5]).
@@ -1444,9 +1446,9 @@
     %
 :- pred input_stream_foldl2_io(pred(char, T, T, io, io),
     T, io.maybe_partial_res(T), io, io).
-:- mode input_stream_foldl2_io((pred(in, in, out, di, uo) is det),
+:- mode input_stream_foldl2_io(in(pred(in, in, out, di, uo) is det),
     in, out, di, uo) is det.
-:- mode input_stream_foldl2_io((pred(in, in, out, di, uo) is cc_multi),
+:- mode input_stream_foldl2_io(in(pred(in, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 :- pragma obsolete(pred(input_stream_foldl2_io/5),
     [stream.input_stream_fold_state/6]).
@@ -1474,10 +1476,10 @@
     pred(char, bool, T, T, io, io),
     T, io.maybe_partial_res(T), io, io).
 :- mode input_stream_foldl2_io_maybe_stop(
-    (pred(in, out, in, out, di, uo) is det),
+    in(pred(in, out, in, out, di, uo) is det),
     in, out, di, uo) is det.
 :- mode input_stream_foldl2_io_maybe_stop(
-    (pred(in, out, in, out, di, uo) is cc_multi),
+    in(pred(in, out, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 :- pragma obsolete(pred(input_stream_foldl2_io_maybe_stop/5),
     [stream.input_stream_fold2_state_maybe_stop/6]).
@@ -1490,10 +1492,10 @@
     pred(char, bool, T, T, io, io),
     T, maybe_partial_res(T), io, io).
 :- mode input_stream_foldl2_io_maybe_stop(in,
-    (pred(in, out, in, out, di, uo) is det),
+    in(pred(in, out, in, out, di, uo) is det),
     in, out, di, uo) is det.
 :- mode input_stream_foldl2_io_maybe_stop(in,
-    (pred(in, out, in, out, di, uo) is cc_multi),
+    in(pred(in, out, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 :- pragma obsolete(pred(input_stream_foldl2_io_maybe_stop/5),
     [stream.input_stream_fold2_state_maybe_stop/6]).
@@ -1505,9 +1507,9 @@
     %
 :- pred binary_input_stream_foldl(pred(int, T, T),
     T, maybe_partial_res(T), io, io).
-:- mode binary_input_stream_foldl((pred(in, in, out) is det),
+:- mode binary_input_stream_foldl(in(pred(in, in, out) is det),
     in, out, di, uo) is det.
-:- mode binary_input_stream_foldl((pred(in, in, out) is cc_multi),
+:- mode binary_input_stream_foldl(in(pred(in, in, out) is cc_multi),
     in, out, di, uo) is cc_multi.
 :- pragma obsolete(pred(binary_input_stream_foldl/5),
     [stream.input_stream_fold/6]).
@@ -1529,9 +1531,9 @@
     %
 :- pred binary_input_stream_foldl_io(pred(int, io, io),
     io.res, io, io).
-:- mode binary_input_stream_foldl_io((pred(in, di, uo) is det),
+:- mode binary_input_stream_foldl_io(in(pred(in, di, uo) is det),
     out, di, uo) is det.
-:- mode binary_input_stream_foldl_io((pred(in, di, uo) is cc_multi),
+:- mode binary_input_stream_foldl_io(in(pred(in, di, uo) is cc_multi),
     out, di, uo) is cc_multi.
 :- pragma obsolete(pred(binary_input_stream_foldl_io/4),
     [stream.input_stream_fold_state/6]).
@@ -1566,9 +1568,9 @@
 :- pred binary_input_stream_foldl2_io(io.binary_input_stream,
     pred(int, T, T, io, io), T, maybe_partial_res(T), io, io).
 :- mode binary_input_stream_foldl2_io(in,
-    (pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
+    in(pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
 :- mode binary_input_stream_foldl2_io(in,
-    (pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
+    in(pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
 :- pragma obsolete(pred(binary_input_stream_foldl2_io/6),
     [stream.input_stream_fold2_state/6]).
 
@@ -1579,9 +1581,10 @@
 :- pred binary_input_stream_foldl2_io_maybe_stop(
     pred(int, bool, T, T, io, io), T, maybe_partial_res(T), io, io).
 :- mode binary_input_stream_foldl2_io_maybe_stop(
-    (pred(in, out, in, out, di, uo) is det), in, out, di, uo) is det.
+    in(pred(in, out, in, out, di, uo) is det), in, out, di, uo) is det.
 :- mode binary_input_stream_foldl2_io_maybe_stop(
-    (pred(in, out, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
+    in(pred(in, out, in, out, di, uo) is cc_multi), in, out, di, uo)
+    is cc_multi.
 :- pragma obsolete(pred(binary_input_stream_foldl2_io_maybe_stop/5),
     [stream.input_stream_fold2_state_maybe_stop/6]).
 
@@ -1592,9 +1595,10 @@
 :- pred binary_input_stream_foldl2_io_maybe_stop(io.binary_input_stream,
     pred(int, bool, T, T, io, io), T, maybe_partial_res(T), io, io).
 :- mode binary_input_stream_foldl2_io_maybe_stop(in,
-    (pred(in, out, in, out, di, uo) is det), in, out, di, uo) is det.
+    in(pred(in, out, in, out, di, uo) is det), in, out, di, uo) is det.
 :- mode binary_input_stream_foldl2_io_maybe_stop(in,
-    (pred(in, out, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
+    in(pred(in, out, in, out, di, uo) is cc_multi), in, out, di, uo)
+    is cc_multi.
 :- pragma obsolete(pred(binary_input_stream_foldl2_io_maybe_stop/6),
     [stream.input_stream_fold2_state_maybe_stop/6]).
 
@@ -3881,9 +3885,10 @@ write_list([Head | Tail], Separator, OutputPred, !IO) :-
     ).
 
 :- pred write_list_lag(T, list(T), string, pred(T, io, io), io, io).
-:- mode write_list_lag(in, in, in, pred(in, di, uo) is det, di, uo) is det.
-:- mode write_list_lag(in, in, in, pred(in, di, uo) is cc_multi, di, uo)
-    is cc_multi.
+:- mode write_list_lag(in, in, in, in(pred(in, di, uo) is det),
+    di, uo) is det.
+:- mode write_list_lag(in, in, in, in(pred(in, di, uo) is cc_multi),
+    di, uo) is cc_multi.
 
 write_list_lag(Head, Tail, Separator, OutputPred, !IO) :-
     write_string(Separator, !IO),
@@ -3913,10 +3918,10 @@ write_array(Array, Separator, OutputPred, !IO) :-
     ).
 
 :- pred do_write_array(array(T), string, pred(T, io, io), int, int, io, io).
-:- mode do_write_array(in, in, pred(in, di, uo) is det, in, in, di, uo)
-    is det.
-:- mode do_write_array(in, in, pred(in, di, uo) is cc_multi, in, in, di, uo)
-    is cc_multi.
+:- mode do_write_array(in, in, in(pred(in, di, uo) is det),
+    in, in, di, uo) is det.
+:- mode do_write_array(in, in, in(pred(in, di, uo) is cc_multi),
+    in, in, di, uo) is cc_multi.
 
 do_write_array(Array, Separator, OutputPred, I, Hi, !IO) :-
     ( if I =< Hi then
@@ -4324,9 +4329,9 @@ binary_input_stream_foldl_io(Stream, Pred, Res, !IO) :-
 :- pred binary_input_stream_foldl_io_plain(binary_input_stream,
     pred(int, io, io), io.res, io, io).
 :- mode binary_input_stream_foldl_io_plain(in,
-    (pred(in, di, uo) is det), out, di, uo) is det.
+    in(pred(in, di, uo) is det), out, di, uo) is det.
 :- mode binary_input_stream_foldl_io_plain(in,
-    (pred(in, di, uo) is cc_multi), out, di, uo) is cc_multi.
+    in(pred(in, di, uo) is cc_multi), out, di, uo) is cc_multi.
 
 binary_input_stream_foldl_io_plain(Stream, Pred, Res, !IO) :-
     read_byte(Stream, ByteResult, !IO),
@@ -4376,9 +4381,9 @@ binary_input_stream_foldl_io_chunk(Stream, Pred, Res, !IO) :-
 :- pred binary_input_stream_foldl_io_inner(int, binary_input_stream,
     pred(int, io, io), chunk_inner_res0, io, io).
 :- mode binary_input_stream_foldl_io_inner(in, in,
-    (pred(in, di, uo) is det), out, di, uo) is det.
+    in(pred(in, di, uo) is det), out, di, uo) is det.
 :- mode binary_input_stream_foldl_io_inner(in, in,
-    (pred(in, di, uo) is cc_multi), out, di, uo) is cc_multi.
+    in(pred(in, di, uo) is cc_multi), out, di, uo) is cc_multi.
 
 binary_input_stream_foldl_io_inner(Left, Stream, Pred, Res, !IO) :-
     ( if Left > 0 then
@@ -4416,9 +4421,9 @@ binary_input_stream_foldl2_io(Stream, Pred, T0, Res, !IO) :-
 :- pred binary_input_stream_foldl2_io_plain(binary_input_stream,
     pred(int, T, T, io, io), T, io.maybe_partial_res(T), io, io).
 :- mode binary_input_stream_foldl2_io_plain(in,
-    (pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
+    in(pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
 :- mode binary_input_stream_foldl2_io_plain(in,
-    (pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
+    in(pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
 
 binary_input_stream_foldl2_io_plain(Stream, Pred, T0, Res, !IO) :-
     read_byte(Stream, ByteResult, !IO),
@@ -4437,9 +4442,9 @@ binary_input_stream_foldl2_io_plain(Stream, Pred, T0, Res, !IO) :-
 :- pred binary_input_stream_foldl2_io_chunk(binary_input_stream,
     pred(int, T, T, io, io), T, io.maybe_partial_res(T), io, io).
 :- mode binary_input_stream_foldl2_io_chunk(in,
-    (pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
+    in(pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
 :- mode binary_input_stream_foldl2_io_chunk(in,
-    (pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
+    in(pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
 
 binary_input_stream_foldl2_io_chunk(Stream, Pred, T0, Res, !IO) :-
     binary_input_stream_foldl2_io_inner(chunk_size, Stream, Pred, T0,
@@ -4458,9 +4463,9 @@ binary_input_stream_foldl2_io_chunk(Stream, Pred, T0, Res, !IO) :-
 :- pred binary_input_stream_foldl2_io_inner(int, binary_input_stream,
     pred(int, T, T, io, io), T, chunk_inner_res(T), io, io).
 :- mode binary_input_stream_foldl2_io_inner(in, in,
-    (pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
+    in(pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
 :- mode binary_input_stream_foldl2_io_inner(in, in,
-    (pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
+    in(pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
 
 binary_input_stream_foldl2_io_inner(Left, Stream, Pred, T0, Res, !IO) :-
     ( if Left > 0 then
@@ -4501,10 +4506,10 @@ binary_input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO) :-
     binary_input_stream, pred(int, bool, T, T, io, io),
     T, io.maybe_partial_res(T), io, io).
 :- mode binary_input_stream_foldl2_io_maybe_stop_plain(
-    in, (pred(in, out, in, out, di, uo) is det),
+    in, in(pred(in, out, in, out, di, uo) is det),
     in, out, di, uo) is det.
 :- mode binary_input_stream_foldl2_io_maybe_stop_plain(
-    in, (pred(in, out, in, out, di, uo) is cc_multi),
+    in, in(pred(in, out, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 
 binary_input_stream_foldl2_io_maybe_stop_plain(Stream, Pred, T0, Res,
@@ -4533,10 +4538,10 @@ binary_input_stream_foldl2_io_maybe_stop_plain(Stream, Pred, T0, Res,
     binary_input_stream, pred(int, bool, T, T, io, io),
     T, io.maybe_partial_res(T), io, io).
 :- mode binary_input_stream_foldl2_io_maybe_stop_chunk(
-    in, (pred(in, out, in, out, di, uo) is det),
+    in, in(pred(in, out, in, out, di, uo) is det),
     in, out, di, uo) is det.
 :- mode binary_input_stream_foldl2_io_maybe_stop_chunk(
-    in, (pred(in, out, in, out, di, uo) is cc_multi),
+    in, in(pred(in, out, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 
 binary_input_stream_foldl2_io_maybe_stop_chunk(Stream, Pred, T0, Res,
@@ -4559,10 +4564,10 @@ binary_input_stream_foldl2_io_maybe_stop_chunk(Stream, Pred, T0, Res,
     binary_input_stream, pred(int, bool, T, T, io, io),
     T, chunk_inner_res(T), io, io).
 :- mode binary_input_stream_foldl2_io_maybe_stop_inner(in,
-    in, (pred(in, out, in, out, di, uo) is det),
+    in, in(pred(in, out, in, out, di, uo) is det),
     in, out, di, uo) is det.
 :- mode binary_input_stream_foldl2_io_maybe_stop_inner(in,
-    in, (pred(in, out, in, out, di, uo) is cc_multi),
+    in, in(pred(in, out, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 
 binary_input_stream_foldl2_io_maybe_stop_inner(Left, Stream, Pred, T0, Res,
@@ -5469,8 +5474,10 @@ binary_output_stream_get_stream(binary_output_stream(Stream)) = Stream.
 %
 
 :- pred with_output_stream(text_output_stream, pred(io, io), io, io).
-:- mode with_output_stream(in, pred(di, uo) is det, di, uo) is det.
-:- mode with_output_stream(in, pred(di, uo) is cc_multi, di, uo) is cc_multi.
+:- mode with_output_stream(in, in(pred(di, uo) is det),
+    di, uo) is det.
+:- mode with_output_stream(in, in(pred(di, uo) is cc_multi),
+    di, uo) is cc_multi.
 
 with_output_stream(Stream, Pred, !IO) :-
     set_output_stream(Stream, OrigStream, !IO),
@@ -5478,17 +5485,19 @@ with_output_stream(Stream, Pred, !IO) :-
         restore_output_stream(Pred, OrigStream), _CleanupRes, !IO).
 
 :- pred call_pred_no_result(pred(io, io), {}, io, io).
-:- mode call_pred_no_result(pred(di, uo) is det, out, di, uo) is det.
-:- mode call_pred_no_result(pred(di, uo) is cc_multi, out, di, uo)
-    is cc_multi.
+:- mode call_pred_no_result(in(pred(di, uo) is det),
+    out, di, uo) is det.
+:- mode call_pred_no_result(in(pred(di, uo) is cc_multi),
+    out, di, uo) is cc_multi.
 
 call_pred_no_result(Pred, {}, !IO) :-
     Pred(!IO).
 
 :- pred restore_output_stream(pred(io, io), text_output_stream, io.res, io, io).
-:- mode restore_output_stream(pred(di, uo) is det, in, out, di, uo) is det.
-:- mode restore_output_stream(pred(di, uo) is cc_multi, in, out, di, uo)
-    is cc_multi.
+:- mode restore_output_stream(in(pred(di, uo) is det),
+    in, out, di, uo) is det.
+:- mode restore_output_stream(in(pred(di, uo) is cc_multi),
+    in, out, di, uo) is cc_multi.
 :- pragma no_determinism_warning(pred(restore_output_stream/5)).
 
 restore_output_stream(_DummyPred, Stream, ok, !IO) :-

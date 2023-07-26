@@ -314,22 +314,22 @@
     % filter(Pred, Set) returns the elements of Set for which Pred succeeds.
     %
 :- func filter(pred(T), diet(T)) = diet(T) <= diet_element(T).
-:- mode filter(pred(in) is semidet, in) = out is det.
+:- mode filter(in(pred(in) is semidet), in) = out is det.
 
     % filter(Pred, Set, TrueSet, FalseSet) returns the elements of Set
     % for which Pred succeeds, and those for which it fails.
     %
 :- pred filter(pred(T), diet(T), diet(T), diet(T)) <= diet_element(T).
-:- mode filter(pred(in) is semidet, in, out, out) is det.
+:- mode filter(in(pred(in) is semidet), in, out, out) is det.
 
     % foldl_intervals(Pred, Set, Start) calls Pred with each interval of
     % Set (in sorted order) and an accumulator (with the initial value of
     % Start), and returns the final value.
     %
 :- pred foldl_intervals(pred(T, T, A, A), diet(T), A, A) <= diet_element(T).
-:- mode foldl_intervals(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode foldl_intervals(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode foldl_intervals(pred(in, in, in, out) is semidet, in, in, out)
+:- mode foldl_intervals(in(pred(in, in, in, out) is det), in, in, out) is det.
+:- mode foldl_intervals(in(pred(in, in, di, uo) is det), in, di, uo) is det.
+:- mode foldl_intervals(in(pred(in, in, in, out) is semidet), in, in, out)
     is semidet.
 
     % foldr_intervals(Pred, Set, Start) calls Pred with each interval of
@@ -337,9 +337,9 @@
     % value of Start), and returns the final value.
     %
 :- pred foldr_intervals(pred(T, T, A, A), diet(T), A, A) <= diet_element(T).
-:- mode foldr_intervals(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode foldr_intervals(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode foldr_intervals(pred(in, in, in, out) is semidet, in, in, out)
+:- mode foldr_intervals(in(pred(in, in, in, out) is det), in, in, out) is det.
+:- mode foldr_intervals(in(pred(in, in, di, uo) is det), in, di, uo) is det.
+:- mode foldr_intervals(in(pred(in, in, in, out) is semidet), in, in, out)
     is semidet.
 
     % foldl(Func, Set, Start) calls Func with each element of Set
@@ -349,87 +349,87 @@
 :- func foldl(func(T, A) = A, diet(T), A) = A <= diet_element(T).
 
 :- pred foldl(pred(T, A, A), diet(T), A, A) <= diet_element(T).
-:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldl(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldl(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldl(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldl(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldl(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldl(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
 :- pred foldl2(pred(T, A, A, B, B), diet(T), A, A, B, B) <= diet_element(T).
-:- mode foldl2(pred(in, in, out, in, out) is det, in,
+:- mode foldl2(in(pred(in, in, out, in, out) is det), in,
     in, out, in, out) is det.
-:- mode foldl2(pred(in, in, out, mdi, muo) is det, in,
+:- mode foldl2(in(pred(in, in, out, mdi, muo) is det), in,
     in, out, mdi, muo) is det.
-:- mode foldl2(pred(in, in, out, di, uo) is det, in,
+:- mode foldl2(in(pred(in, in, out, di, uo) is det), in,
     in, out, di, uo) is det.
-:- mode foldl2(pred(in, in, out, in, out) is semidet, in,
+:- mode foldl2(in(pred(in, in, out, in, out) is semidet), in,
     in, out, in, out) is semidet.
-:- mode foldl2(pred(in, in, out, mdi, muo) is semidet, in,
+:- mode foldl2(in(pred(in, in, out, mdi, muo) is semidet), in,
     in, out, mdi, muo) is semidet.
-:- mode foldl2(pred(in, in, out, di, uo) is semidet, in,
+:- mode foldl2(in(pred(in, in, out, di, uo) is semidet), in,
     in, out, di, uo) is semidet.
 
 :- pred foldl3(pred(T, A, A, B, B, C, C), diet(T),
     A, A, B, B, C, C) <= diet_element(T).
-:- mode foldl3(pred(in, in, out, in, out, in, out) is det, in,
+:- mode foldl3(in(pred(in, in, out, in, out, in, out) is det), in,
     in, out, in, out, in, out) is det.
-:- mode foldl3(pred(in, in, out, in, out, mdi, muo) is det, in,
+:- mode foldl3(in(pred(in, in, out, in, out, mdi, muo) is det), in,
     in, out, in, out, mdi, muo) is det.
-:- mode foldl3(pred(in, in, out, in, out, di, uo) is det, in,
+:- mode foldl3(in(pred(in, in, out, in, out, di, uo) is det), in,
     in, out, in, out, di, uo) is det.
-:- mode foldl3(pred(in, in, out, in, out, in, out) is semidet, in,
+:- mode foldl3(in(pred(in, in, out, in, out, in, out) is semidet), in,
     in, out, in, out, in, out) is semidet.
-:- mode foldl3(pred(in, in, out, in, out, mdi, muo) is semidet, in,
+:- mode foldl3(in(pred(in, in, out, in, out, mdi, muo) is semidet), in,
     in, out, in, out, mdi, muo) is semidet.
-:- mode foldl3(pred(in, in, out, in, out, di, uo) is semidet, in,
+:- mode foldl3(in(pred(in, in, out, in, out, di, uo) is semidet), in,
     in, out, in, out, di, uo) is semidet.
 
 :- pred foldl4(pred(T, A, A, B, B, C, C, D, D), diet(T),
     A, A, B, B, C, C, D, D) <= diet_element(T).
-:- mode foldl4(pred(in, in, out, in, out, in, out, in, out) is det, in,
-    in, out, in, out, in, out, in, out) is det.
-:- mode foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is det, in,
-    in, out, in, out, in, out, mdi, muo) is det.
-:- mode foldl4(pred(in, in, out, in, out, in, out, di, uo) is det, in,
-    in, out, in, out, in, out, di, uo) is det.
-:- mode foldl4(pred(in, in, out, in, out, in, out, in, out) is semidet, in,
-    in, out, in, out, in, out, in, out) is semidet.
-:- mode foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is semidet, in,
-    in, out, in, out, in, out, mdi, muo) is semidet.
-:- mode foldl4(pred(in, in, out, in, out, in, out, di, uo) is semidet, in,
-    in, out, in, out, in, out, di, uo) is semidet.
+:- mode foldl4(in(pred(in, in, out, in, out, in, out, in, out) is det),
+    in, in, out, in, out, in, out, in, out) is det.
+:- mode foldl4(in(pred(in, in, out, in, out, in, out, mdi, muo) is det),
+    in, in, out, in, out, in, out, mdi, muo) is det.
+:- mode foldl4(in(pred(in, in, out, in, out, in, out, di, uo) is det),
+    in, in, out, in, out, in, out, di, uo) is det.
+:- mode foldl4(in(pred(in, in, out, in, out, in, out, in, out) is semidet),
+    in, in, out, in, out, in, out, in, out) is semidet.
+:- mode foldl4(in(pred(in, in, out, in, out, in, out, mdi, muo) is semidet),
+    in, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode foldl4(in(pred(in, in, out, in, out, in, out, di, uo) is semidet),
+    in, in, out, in, out, in, out, di, uo) is semidet.
 
 :- pred foldl5(pred(T, A, A, B, B, C, C, D, D, E, E), diet(T),
     A, A, B, B, C, C, D, D, E, E) <= diet_element(T).
 :- mode foldl5(
-    pred(in, in, out, in, out, in, out, in, out, in, out) is det,
+    in(pred(in, in, out, in, out, in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out, in, out, in, out) is det.
 :- mode foldl5(
-    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is det,
+    in(pred(in, in, out, in, out, in, out, in, out, mdi, muo) is det),
     in, in, out, in, out, in, out, in, out, mdi, muo) is det.
 :- mode foldl5(
-    pred(in, in, out, in, out, in, out, in, out, di, uo) is det,
+    in(pred(in, in, out, in, out, in, out, in, out, di, uo) is det),
     in, in, out, in, out, in, out, in, out, di, uo) is det.
 :- mode foldl5(
-    pred(in, in, out, in, out, in, out, in, out, in, out) is semidet,
+    in(pred(in, in, out, in, out, in, out, in, out, in, out) is semidet),
     in, in, out, in, out, in, out, in, out, in, out) is semidet.
 :- mode foldl5(
-    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is semidet,
+    in(pred(in, in, out, in, out, in, out, in, out, mdi, muo) is semidet),
     in, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode foldl5(
-    pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet,
+    in(pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet),
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
 :- func foldr(func(T, A) = A, diet(T), A) = A <= diet_element(T).
 
 :- pred foldr(pred(T, A, A), diet(T), A, A) <= diet_element(T).
-:- mode foldr(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldr(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode foldr(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldr(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode foldr(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode foldr(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldr(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldr(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldr(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldr(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldr(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1496,9 +1496,9 @@ divide(Pred, Set, TrueSet, FalseSet) :-
     % Can do better.
     foldl2(divide_2(Pred), Set, init, TrueSet, init, FalseSet).
 
-:- pred divide_2(pred(T), T, diet(T), diet(T), diet(T), diet(T))
+:- pred divide_2(pred(T)::in(pred(in) is semidet), T::in,
+    diet(T)::in, diet(T)::out, diet(T)::in, diet(T)::out) is det
     <= diet_element(T).
-:- mode divide_2(pred(in) is semidet, in, in, out, in, out) is det.
 
 divide_2(Pred, Elem, !TrueSet, !FalseSet) :-
     ( if Pred(Elem) then
@@ -1648,12 +1648,13 @@ foldl(P, T, !Acc) :-
     ).
 
 :- pred foldl_2(pred(T, Acc, Acc), T, T, Acc, Acc) <= diet_element(T).
-:- mode foldl_2(pred(in, in, out) is det, in, in, in, out) is det.
-:- mode foldl_2(pred(in, mdi, muo) is det, in, in, mdi, muo) is det.
-:- mode foldl_2(pred(in, di, uo) is det, in, in, di, uo) is det.
-:- mode foldl_2(pred(in, in, out) is semidet, in, in, in, out) is semidet.
-:- mode foldl_2(pred(in, mdi, muo) is semidet, in, in, mdi, muo) is semidet.
-:- mode foldl_2(pred(in, di, uo) is semidet, in, in, di, uo) is semidet.
+:- mode foldl_2(in(pred(in, in, out) is det), in, in, in, out) is det.
+:- mode foldl_2(in(pred(in, mdi, muo) is det), in, in, mdi, muo) is det.
+:- mode foldl_2(in(pred(in, di, uo) is det), in, in, di, uo) is det.
+:- mode foldl_2(in(pred(in, in, out) is semidet), in, in, in, out) is semidet.
+:- mode foldl_2(in(pred(in, mdi, muo) is semidet), in, in, mdi, muo)
+    is semidet.
+:- mode foldl_2(in(pred(in, di, uo) is semidet), in, in, di, uo) is semidet.
 
 foldl_2(P, Lo, Hi, !Acc) :-
     ( if Lo =< Hi then
@@ -1677,17 +1678,17 @@ foldl2(P, T, !Acc1, !Acc2) :-
 
 :- pred fold_up2(pred(T, Acc1, Acc1, Acc2, Acc2), T, T,
     Acc1, Acc1, Acc2, Acc2) <= diet_element(T).
-:- mode fold_up2(pred(in, in, out, in, out) is det, in, in,
+:- mode fold_up2(in(pred(in, in, out, in, out) is det), in, in,
     in, out, in, out) is det.
-:- mode fold_up2(pred(in, in, out, mdi, muo) is det, in, in,
+:- mode fold_up2(in(pred(in, in, out, mdi, muo) is det), in, in,
     in, out, mdi, muo) is det.
-:- mode fold_up2(pred(in, in, out, di, uo) is det, in, in,
+:- mode fold_up2(in(pred(in, in, out, di, uo) is det), in, in,
     in, out, di, uo) is det.
-:- mode fold_up2(pred(in, in, out, in, out) is semidet, in, in,
+:- mode fold_up2(in(pred(in, in, out, in, out) is semidet), in, in,
     in, out, in, out) is semidet.
-:- mode fold_up2(pred(in, in, out, mdi, muo) is semidet, in, in,
+:- mode fold_up2(in(pred(in, in, out, mdi, muo) is semidet), in, in,
     in, out, mdi, muo) is semidet.
-:- mode fold_up2(pred(in, in, out, di, uo) is semidet, in, in,
+:- mode fold_up2(in(pred(in, in, out, di, uo) is semidet), in, in,
     in, out, di, uo) is semidet.
 
 fold_up2(P, Lo, Hi, !A, !B) :-
@@ -1712,17 +1713,17 @@ foldl3(P, T, !Acc1, !Acc2, !Acc3) :-
 
 :- pred fold_up3(pred(T, Acc1, Acc1, Acc2, Acc2, Acc3, Acc3), T, T,
     Acc1, Acc1, Acc2, Acc2, Acc3, Acc3) <= diet_element(T).
-:- mode fold_up3(pred(in, in, out, in, out, in, out) is det, in, in,
+:- mode fold_up3(in(pred(in, in, out, in, out, in, out) is det), in, in,
     in, out, in, out, in, out) is det.
-:- mode fold_up3(pred(in, in, out, in, out, mdi, muo) is det, in, in,
+:- mode fold_up3(in(pred(in, in, out, in, out, mdi, muo) is det), in, in,
     in, out, in, out, mdi, muo) is det.
-:- mode fold_up3(pred(in, in, out, in, out, di, uo) is det, in, in,
+:- mode fold_up3(in(pred(in, in, out, in, out, di, uo) is det), in, in,
     in, out, in, out, di, uo) is det.
-:- mode fold_up3(pred(in, in, out, in, out, in, out) is semidet, in, in,
+:- mode fold_up3(in(pred(in, in, out, in, out, in, out) is semidet), in, in,
     in, out, in, out, in, out) is semidet.
-:- mode fold_up3(pred(in, in, out, in, out, mdi, muo) is semidet, in, in,
+:- mode fold_up3(in(pred(in, in, out, in, out, mdi, muo) is semidet), in, in,
     in, out, in, out, mdi, muo) is semidet.
-:- mode fold_up3(pred(in, in, out, in, out, di, uo) is semidet, in, in,
+:- mode fold_up3(in(pred(in, in, out, in, out, di, uo) is semidet), in, in,
     in, out, in, out, di, uo) is semidet.
 
 fold_up3(P, Lo, Hi, !A, !B, !C) :-
@@ -1747,17 +1748,17 @@ foldl4(P, T, !A, !B, !C, !D) :-
 
 :- pred fold_up4(pred(T, A, A, B, B, C, C, D, D),
     T, T, A, A, B, B, C, C, D, D) <= diet_element(T).
-:- mode fold_up4(pred(in, in, out, in, out, in, out, in, out) is det,
+:- mode fold_up4(in(pred(in, in, out, in, out, in, out, in, out) is det),
     in, in, in, out, in, out, in, out, in, out) is det.
-:- mode fold_up4(pred(in, in, out, in, out, in, out, mdi, muo) is det,
+:- mode fold_up4(in(pred(in, in, out, in, out, in, out, mdi, muo) is det),
     in, in, in, out, in, out, in, out, mdi, muo) is det.
-:- mode fold_up4(pred(in, in, out, in, out, in, out, di, uo) is det,
+:- mode fold_up4(in(pred(in, in, out, in, out, in, out, di, uo) is det),
     in, in, in, out, in, out, in, out, di, uo) is det.
-:- mode fold_up4(pred(in, in, out, in, out, in, out, in, out) is semidet,
+:- mode fold_up4(in(pred(in, in, out, in, out, in, out, in, out) is semidet),
     in, in, in, out, in, out, in, out, in, out) is semidet.
-:- mode fold_up4(pred(in, in, out, in, out, in, out, mdi, muo) is semidet,
+:- mode fold_up4(in(pred(in, in, out, in, out, in, out, mdi, muo) is semidet),
     in, in, in, out, in, out, in, out, mdi, muo) is semidet.
-:- mode fold_up4(pred(in, in, out, in, out, in, out, di, uo) is semidet,
+:- mode fold_up4(in(pred(in, in, out, in, out, in, out, di, uo) is semidet),
     in, in, in, out, in, out, in, out, di, uo) is semidet.
 
 fold_up4(P, Lo, Hi, !A, !B, !C, !D) :-
@@ -1784,22 +1785,22 @@ foldl5(P, T, !A, !B, !C, !D, !E) :-
     pred(T, A, A, B, B, C, C, D, D, E, E),
     T, T, A, A, B, B, C, C, D, D, E, E) <= diet_element(T).
 :- mode fold_up5(
-    pred(in, in, out, in, out, in, out, in, out, in, out) is det,
+    in(pred(in, in, out, in, out, in, out, in, out, in, out) is det),
     in, in, in, out, in, out, in, out, in, out, in, out) is det.
 :- mode fold_up5(
-    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is det,
+    in(pred(in, in, out, in, out, in, out, in, out, mdi, muo) is det),
     in, in, in, out, in, out, in, out, in, out, mdi, muo) is det.
 :- mode fold_up5(
-    pred(in, in, out, in, out, in, out, in, out, di, uo) is det,
+    in(pred(in, in, out, in, out, in, out, in, out, di, uo) is det),
     in, in, in, out, in, out, in, out, in, out, di, uo) is det.
 :- mode fold_up5(
-    pred(in, in, out, in, out, in, out, in, out, in, out) is semidet,
+    in(pred(in, in, out, in, out, in, out, in, out, in, out) is semidet),
     in, in, in, out, in, out, in, out, in, out, in, out) is semidet.
 :- mode fold_up5(
-    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is semidet,
+    in(pred(in, in, out, in, out, in, out, in, out, mdi, muo) is semidet),
     in, in, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode fold_up5(
-    pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet,
+    in(pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet),
     in, in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
 fold_up5(P, Lo, Hi, !A, !B, !C, !D, !E) :-
@@ -1830,12 +1831,18 @@ foldr(P, T, !Acc) :-
     ).
 
 :- pred fold_down(pred(T, A, A), T, T, A, A) <= diet_element(T).
-:- mode fold_down(pred(in, in, out) is det, in, in, in, out) is det.
-:- mode fold_down(pred(in, mdi, muo) is det, in, in, mdi, muo) is det.
-:- mode fold_down(pred(in, di, uo) is det, in, in, di, uo) is det.
-:- mode fold_down(pred(in, in, out) is semidet, in, in, in, out) is semidet.
-:- mode fold_down(pred(in, mdi, muo) is semidet, in, in, mdi, muo) is semidet.
-:- mode fold_down(pred(in, di, uo) is semidet, in, in, di, uo) is semidet.
+:- mode fold_down(in(pred(in, in, out) is det),
+    in, in, in, out) is det.
+:- mode fold_down(in(pred(in, mdi, muo) is det),
+    in, in, mdi, muo) is det.
+:- mode fold_down(in(pred(in, di, uo) is det),
+    in, in, di, uo) is det.
+:- mode fold_down(in(pred(in, in, out) is semidet),
+    in, in, in, out) is semidet.
+:- mode fold_down(in(pred(in, mdi, muo) is semidet),
+    in, in, mdi, muo) is semidet.
+:- mode fold_down(in(pred(in, di, uo) is semidet),
+    in, in, di, uo) is semidet.
 
 fold_down(P, Lo, Hi, !A) :-
     ( if Lo =< Hi then

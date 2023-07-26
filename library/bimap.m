@@ -279,12 +279,12 @@
     %
 :- func foldl(func(K, V, A) = A, bimap(K, V), A) = A.
 :- pred foldl(pred(K, V, A, A), bimap(K, V), A, A).
-:- mode foldl(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode foldl(in(pred(in, in, in, out) is det), in, in, out) is det.
+:- mode foldl(in(pred(in, in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldl(in(pred(in, in, di, uo) is det), in, di, uo) is det.
+:- mode foldl(in(pred(in, in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldl(in(pred(in, in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldl(in(pred(in, in, di, uo) is semidet), in, di, uo) is semidet.
 
     % Perform a traversal of the bimap, applying an accumulator predicate
     % with two accumulators for each key-value pair. (Although no more
@@ -292,19 +292,19 @@
     % and a little more efficient).
     %
 :- pred foldl2(pred(K, V, A, A, B, B), bimap(K, V), A, A, B, B).
-:- mode foldl2(pred(in, in, in, out, in, out) is det,
+:- mode foldl2(in(pred(in, in, in, out, in, out) is det),
     in, in, out, in, out) is det.
-:- mode foldl2(pred(in, in, in, out, mdi, muo) is det,
+:- mode foldl2(in(pred(in, in, in, out, mdi, muo) is det),
     in, in, out, mdi, muo) is det.
-:- mode foldl2(pred(in, in, in, out, di, uo) is det,
+:- mode foldl2(in(pred(in, in, in, out, di, uo) is det),
     in, in, out, di, uo) is det.
-:- mode foldl2(pred(in, in, di, uo, di, uo) is det,
+:- mode foldl2(in(pred(in, in, di, uo, di, uo) is det),
     in, di, uo, di, uo) is det.
-:- mode foldl2(pred(in, in, in, out, in, out) is semidet,
+:- mode foldl2(in(pred(in, in, in, out, in, out) is semidet),
     in, in, out, in, out) is semidet.
-:- mode foldl2(pred(in, in, in, out, mdi, muo) is semidet,
+:- mode foldl2(in(pred(in, in, in, out, mdi, muo) is semidet),
     in, in, out, mdi, muo) is semidet.
-:- mode foldl2(pred(in, in, in, out, di, uo) is semidet,
+:- mode foldl2(in(pred(in, in, in, out, di, uo) is semidet),
     in, in, out, di, uo) is semidet.
 
     % Perform a traversal of the bimap, applying an accumulator predicate
@@ -314,21 +314,21 @@
     %
 :- pred foldl3(pred(K, V, A, A, B, B, C, C), bimap(K, V),
     A, A, B, B, C, C).
-:- mode foldl3(pred(in, in, in, out, in, out, in, out) is det,
+:- mode foldl3(in(pred(in, in, in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out) is det.
-:- mode foldl3(pred(in, in, in, out, in, out, mdi, muo) is det,
+:- mode foldl3(in(pred(in, in, in, out, in, out, mdi, muo) is det),
     in, in, out, in, out, mdi, muo) is det.
-:- mode foldl3(pred(in, in, in, out, in, out, di, uo) is det,
+:- mode foldl3(in(pred(in, in, in, out, in, out, di, uo) is det),
     in, in, out, in, out, di, uo) is det.
-:- mode foldl3(pred(in, in, in, out, di, uo, di, uo) is det,
+:- mode foldl3(in(pred(in, in, in, out, di, uo, di, uo) is det),
     in, in, out, di, uo, di, uo) is det.
-:- mode foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
+:- mode foldl3(in(pred(in, in, di, uo, di, uo, di, uo) is det),
     in, di, uo, di, uo, di, uo) is det.
-:- mode foldl3(pred(in, in, in, out, in, out, in, out) is semidet,
+:- mode foldl3(in(pred(in, in, in, out, in, out, in, out) is semidet),
     in, in, out, in, out, in, out) is semidet.
-:- mode foldl3(pred(in, in, in, out, in, out, mdi, muo) is semidet,
+:- mode foldl3(in(pred(in, in, in, out, in, out, mdi, muo) is semidet),
     in, in, out, in, out, mdi, muo) is semidet.
-:- mode foldl3(pred(in, in, in, out, in, out, di, uo) is semidet,
+:- mode foldl3(in(pred(in, in, in, out, in, out, di, uo) is semidet),
     in, in, out, in, out, di, uo) is semidet.
 
     % Extract a the forward map from the bimap, the map from key to value.
