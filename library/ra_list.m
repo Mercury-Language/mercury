@@ -163,12 +163,12 @@
     %
 :- func map(func(X) = Y, ra_list(X)) = ra_list(Y).
 :- pred map(pred(X, Y), ra_list(X), ra_list(Y)).
-:- mode map(pred(in, out) is det, in, out) is det.
-:- mode map(pred(in, out) is cc_multi, in, out) is cc_multi.
-:- mode map(pred(in, out) is semidet, in, out) is semidet.
-:- mode map(pred(in, out) is multi, in, out) is multi.
-:- mode map(pred(in, out) is nondet, in, out) is nondet.
-:- mode map(pred(in, in) is semidet, in, in) is semidet.
+:- mode map(in(pred(in, out) is det), in, out) is det.
+:- mode map(in(pred(in, out) is cc_multi), in, out) is cc_multi.
+:- mode map(in(pred(in, out) is semidet), in, out) is semidet.
+:- mode map(in(pred(in, out) is multi), in, out) is multi.
+:- mode map(in(pred(in, out) is nondet), in, out) is nondet.
+:- mode map(in(pred(in, in) is semidet), in, in) is semidet.
 
     % foldl(Func, List, Start) = End:
     % foldl(Pred, List, Start, End):
@@ -184,17 +184,17 @@
     %
 :- func foldl(func(L, A) = A, ra_list(L), A) = A.
 :- pred foldl(pred(L, A, A), ra_list(L), A, A).
-:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldl(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode foldl(pred(in, in, out) is multi, in, in, out) is multi.
-:- mode foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode foldl(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
-:- mode foldl(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
-:- mode foldl(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldl(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldl(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldl(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldl(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldl(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
+:- mode foldl(in(pred(in, in, out) is multi), in, in, out) is multi.
+:- mode foldl(in(pred(in, in, out) is nondet), in, in, out) is nondet.
+:- mode foldl(in(pred(in, mdi, muo) is nondet), in, mdi, muo) is nondet.
+:- mode foldl(in(pred(in, in, out) is cc_multi), in, in, out) is cc_multi.
+:- mode foldl(in(pred(in, di, uo) is cc_multi), in, di, uo) is cc_multi.
 
     % foldr(Func, List, Start) = End:
     % foldr(Pred, List, Start, End):
@@ -210,17 +210,17 @@
     %
 :- func foldr(func(L, A) = A, ra_list(L), A) = A.
 :- pred foldr(pred(L, A, A), ra_list(L), A, A).
-:- mode foldr(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldr(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode foldr(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldr(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode foldr(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode foldr(pred(in, in, out) is multi, in, in, out) is multi.
-:- mode foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode foldr(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
-:- mode foldr(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode foldr(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- mode foldr(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldr(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldr(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldr(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldr(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldr(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
+:- mode foldr(in(pred(in, in, out) is multi), in, in, out) is multi.
+:- mode foldr(in(pred(in, in, out) is nondet), in, in, out) is nondet.
+:- mode foldr(in(pred(in, mdi, muo) is nondet), in, mdi, muo) is nondet.
+:- mode foldr(in(pred(in, di, uo) is cc_multi), in, di, uo) is cc_multi.
+:- mode foldr(in(pred(in, in, out) is cc_multi), in, in, out) is cc_multi.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -649,12 +649,12 @@ map(P, cons(Size, BinTree0, RAList0), cons(Size, BinTree, RAList)) :-
 
 :- func map_bintree(func(X) = Y, ra_list_bintree(X)) = ra_list_bintree(Y).
 :- pred map_bintree(pred(X, Y), ra_list_bintree(X), ra_list_bintree(Y)).
-:- mode map_bintree(pred(in, out) is det, in, out) is det.
-:- mode map_bintree(pred(in, out) is cc_multi, in, out) is cc_multi.
-:- mode map_bintree(pred(in, out) is semidet, in, out) is semidet.
-:- mode map_bintree(pred(in, out) is multi, in, out) is multi.
-:- mode map_bintree(pred(in, out) is nondet, in, out) is nondet.
-:- mode map_bintree(pred(in, in) is semidet, in, in) is semidet.
+:- mode map_bintree(in(pred(in, out) is det), in, out) is det.
+:- mode map_bintree(in(pred(in, out) is cc_multi), in, out) is cc_multi.
+:- mode map_bintree(in(pred(in, out) is semidet), in, out) is semidet.
+:- mode map_bintree(in(pred(in, out) is multi), in, out) is multi.
+:- mode map_bintree(in(pred(in, out) is nondet), in, out) is nondet.
+:- mode map_bintree(in(pred(in, in) is semidet), in, in) is semidet.
 
 map_bintree(F, BinTree0) = BinTree :-
     (
@@ -696,17 +696,28 @@ foldl(P, cons(_Size, BinTree, RAList), !A) :-
 
 :- func foldl_bintree(func(L, A) = A, ra_list_bintree(L), A) = A.
 :- pred foldl_bintree(pred(L, A, A), ra_list_bintree(L), A, A).
-:- mode foldl_bintree(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldl_bintree(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode foldl_bintree(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode foldl_bintree(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldl_bintree(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode foldl_bintree(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode foldl_bintree(pred(in, in, out) is multi, in, in, out) is multi.
-:- mode foldl_bintree(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode foldl_bintree(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
-:- mode foldl_bintree(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
-:- mode foldl_bintree(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode foldl_bintree(in(pred(in, in, out) is det),
+    in, in, out) is det.
+:- mode foldl_bintree(in(pred(in, mdi, muo) is det),
+    in, mdi, muo) is det.
+:- mode foldl_bintree(in(pred(in, di, uo) is det),
+    in, di, uo) is det.
+:- mode foldl_bintree(in(pred(in, in, out) is semidet),
+    in, in, out) is semidet.
+:- mode foldl_bintree(in(pred(in, mdi, muo) is semidet),
+    in, mdi, muo) is semidet.
+:- mode foldl_bintree(in(pred(in, di, uo) is semidet),
+    in, di, uo) is semidet.
+:- mode foldl_bintree(in(pred(in, in, out) is multi),
+    in, in, out) is multi.
+:- mode foldl_bintree(in(pred(in, in, out) is nondet),
+    in, in, out) is nondet.
+:- mode foldl_bintree(in(pred(in, mdi, muo) is nondet),
+    in, mdi, muo) is nondet.
+:- mode foldl_bintree(in(pred(in, in, out) is cc_multi),
+    in, in, out) is cc_multi.
+:- mode foldl_bintree(in(pred(in, di, uo) is cc_multi),
+    in, di, uo) is cc_multi.
 
 foldl_bintree(F, BinTree, !.A) = !:A :-
     (
@@ -744,17 +755,28 @@ foldr(P, cons(_Size, BinTree, RAList), !A) :-
 
 :- func foldr_bintree(func(L, A) = A, ra_list_bintree(L), A) = A.
 :- pred foldr_bintree(pred(L, A, A), ra_list_bintree(L), A, A).
-:- mode foldr_bintree(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldr_bintree(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode foldr_bintree(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode foldr_bintree(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldr_bintree(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode foldr_bintree(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode foldr_bintree(pred(in, in, out) is multi, in, in, out) is multi.
-:- mode foldr_bintree(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode foldr_bintree(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
-:- mode foldr_bintree(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
-:- mode foldr_bintree(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode foldr_bintree(in(pred(in, in, out) is det),
+    in, in, out) is det.
+:- mode foldr_bintree(in(pred(in, mdi, muo) is det),
+    in, mdi, muo) is det.
+:- mode foldr_bintree(in(pred(in, di, uo) is det),
+    in, di, uo) is det.
+:- mode foldr_bintree(in(pred(in, in, out) is semidet),
+    in, in, out) is semidet.
+:- mode foldr_bintree(in(pred(in, mdi, muo) is semidet),
+    in, mdi, muo) is semidet.
+:- mode foldr_bintree(in(pred(in, di, uo) is semidet),
+    in, di, uo) is semidet.
+:- mode foldr_bintree(in(pred(in, in, out) is multi),
+    in, in, out) is multi.
+:- mode foldr_bintree(in(pred(in, in, out) is nondet),
+    in, in, out) is nondet.
+:- mode foldr_bintree(in(pred(in, mdi, muo) is nondet),
+    in, mdi, muo) is nondet.
+:- mode foldr_bintree(in(pred(in, in, out) is cc_multi),
+    in, in, out) is cc_multi.
+:- mode foldr_bintree(in(pred(in, di, uo) is cc_multi),
+    in, di, uo) is cc_multi.
 
 foldr_bintree(F, BinTree, !.A) = !:A :-
     (

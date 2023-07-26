@@ -444,37 +444,40 @@
 :- func foldl(func(T, U) = U, fatter_sparse_bitset(T), U) = U <= uenum(T).
 
 :- pred foldl(pred(T, U, U), fatter_sparse_bitset(T), U, U) <= uenum(T).
-:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldl(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode foldl(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
-:- mode foldl(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldl(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldl(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldl(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldl(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldl(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
+:- mode foldl(in(pred(in, in, out) is nondet), in, in, out) is nondet.
+:- mode foldl(in(pred(in, in, out) is cc_multi), in, in, out) is cc_multi.
+:- mode foldl(in(pred(in, di, uo) is cc_multi), in, di, uo) is cc_multi.
 
 :- pred foldl2(pred(T, U, U, V, V), fatter_sparse_bitset(T), U, U, V, V)
     <= uenum(T).
-:- mode foldl2(pred(in, in, out, in, out) is det, in, in, out, in, out) is det.
-:- mode foldl2(pred(in, in, out, mdi, muo) is det, in, in, out, mdi, muo)
-    is det.
-:- mode foldl2(pred(in, in, out, di, uo) is det, in, in, out, di, uo) is det.
-:- mode foldl2(pred(in, di, uo, di, uo) is det, in, di, uo, di, uo) is det.
-:- mode foldl2(pred(in, in, out, in, out) is semidet, in, in, out, in, out)
-    is semidet.
-:- mode foldl2(pred(in, in, out, mdi, muo) is semidet, in, in, out, mdi, muo)
-    is semidet.
-:- mode foldl2(pred(in, in, out, di, uo) is semidet, in, in, out, di, uo)
-    is semidet.
-:- mode foldl2(pred(in, in, out, in, out) is nondet, in, in, out, in, out)
-    is nondet.
-:- mode foldl2(pred(in, in, out, in, out) is cc_multi, in, in, out, in, out)
-    is cc_multi.
-:- mode foldl2(pred(in, in, out, di, uo) is cc_multi, in, in, out, di, uo)
-    is cc_multi.
-:- mode foldl2(pred(in, di, uo, di, uo) is cc_multi, in, di, uo, di, uo)
-    is cc_multi.
+:- mode foldl2(in(pred(in, in, out, in, out) is det),
+    in, in, out, in, out) is det.
+:- mode foldl2(in(pred(in, in, out, mdi, muo) is det),
+    in, in, out, mdi, muo) is det.
+:- mode foldl2(in(pred(in, in, out, di, uo) is det),
+    in, in, out, di, uo) is det.
+:- mode foldl2(in(pred(in, di, uo, di, uo) is det),
+    in, di, uo, di, uo) is det.
+:- mode foldl2(in(pred(in, in, out, in, out) is semidet),
+    in, in, out, in, out) is semidet.
+:- mode foldl2(in(pred(in, in, out, mdi, muo) is semidet),
+    in, in, out, mdi, muo) is semidet.
+:- mode foldl2(in(pred(in, in, out, di, uo) is semidet),
+    in, in, out, di, uo) is semidet.
+:- mode foldl2(in(pred(in, in, out, in, out) is nondet),
+    in, in, out, in, out) is nondet.
+:- mode foldl2(in(pred(in, in, out, in, out) is cc_multi),
+    in, in, out, in, out) is cc_multi.
+:- mode foldl2(in(pred(in, in, out, di, uo) is cc_multi),
+    in, in, out, di, uo) is cc_multi.
+:- mode foldl2(in(pred(in, di, uo, di, uo) is cc_multi),
+    in, di, uo, di, uo) is cc_multi.
 
     % foldr(Func, Set, Start) calls Func with each element of Set
     % (in reverse sorted order) and an accumulator (with the initial value
@@ -483,37 +486,40 @@
 :- func foldr(func(T, U) = U, fatter_sparse_bitset(T), U) = U <= uenum(T).
 
 :- pred foldr(pred(T, U, U), fatter_sparse_bitset(T), U, U) <= uenum(T).
-:- mode foldr(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldr(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode foldr(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldr(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode foldr(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode foldr(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
-:- mode foldr(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode foldr(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldr(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldr(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldr(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldr(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldr(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
+:- mode foldr(in(pred(in, in, out) is nondet), in, in, out) is nondet.
+:- mode foldr(in(pred(in, in, out) is cc_multi), in, in, out) is cc_multi.
+:- mode foldr(in(pred(in, di, uo) is cc_multi), in, di, uo) is cc_multi.
 
 :- pred foldr2(pred(T, U, U, V, V), fatter_sparse_bitset(T), U, U, V, V)
     <= uenum(T).
-:- mode foldr2(pred(in, in, out, in, out) is det, in, in, out, in, out) is det.
-:- mode foldr2(pred(in, in, out, mdi, muo) is det, in, in, out, mdi, muo)
-    is det.
-:- mode foldr2(pred(in, in, out, di, uo) is det, in, in, out, di, uo) is det.
-:- mode foldr2(pred(in, di, uo, di, uo) is det, in, di, uo, di, uo) is det.
-:- mode foldr2(pred(in, in, out, in, out) is semidet, in, in, out, in, out)
-    is semidet.
-:- mode foldr2(pred(in, in, out, mdi, muo) is semidet, in, in, out, mdi, muo)
-    is semidet.
-:- mode foldr2(pred(in, in, out, di, uo) is semidet, in, in, out, di, uo)
-    is semidet.
-:- mode foldr2(pred(in, in, out, in, out) is nondet, in, in, out, in, out)
-    is nondet.
-:- mode foldr2(pred(in, di, uo, di, uo) is cc_multi, in, di, uo, di, uo)
-    is cc_multi.
-:- mode foldr2(pred(in, in, out, di, uo) is cc_multi, in, in, out, di, uo)
-    is cc_multi.
-:- mode foldr2(pred(in, in, out, in, out) is cc_multi, in, in, out, in, out)
-    is cc_multi.
+:- mode foldr2(in(pred(in, in, out, in, out) is det),
+    in, in, out, in, out) is det.
+:- mode foldr2(in(pred(in, in, out, mdi, muo) is det),
+    in, in, out, mdi, muo) is det.
+:- mode foldr2(in(pred(in, in, out, di, uo) is det),
+    in, in, out, di, uo) is det.
+:- mode foldr2(in(pred(in, di, uo, di, uo) is det),
+    in, di, uo, di, uo) is det.
+:- mode foldr2(in(pred(in, in, out, in, out) is semidet),
+    in, in, out, in, out) is semidet.
+:- mode foldr2(in(pred(in, in, out, mdi, muo) is semidet),
+    in, in, out, mdi, muo) is semidet.
+:- mode foldr2(in(pred(in, in, out, di, uo) is semidet),
+    in, in, out, di, uo) is semidet.
+:- mode foldr2(in(pred(in, in, out, in, out) is nondet),
+    in, in, out, in, out) is nondet.
+:- mode foldr2(in(pred(in, di, uo, di, uo) is cc_multi),
+    in, di, uo, di, uo) is cc_multi.
+:- mode foldr2(in(pred(in, in, out, di, uo) is cc_multi),
+    in, in, out, di, uo) is cc_multi.
+:- mode foldr2(in(pred(in, in, out, in, out) is cc_multi),
+    in, in, out, in, out) is cc_multi.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1751,15 +1757,24 @@ foldl(Pred, fatter_sparse_bitset(Elems), !Acc) :-
     do_foldl_pred(Pred, Elems, !Acc).
 
 :- pred do_foldl_pred(pred(T, U, U), bitset_elems, U, U) <= uenum(T).
-:- mode do_foldl_pred(pred(in, in, out) is det, in, in, out) is det.
-:- mode do_foldl_pred(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode do_foldl_pred(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode do_foldl_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode do_foldl_pred(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode do_foldl_pred(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode do_foldl_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode do_foldl_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
-:- mode do_foldl_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode do_foldl_pred(in(pred(in, in, out) is det),
+    in, in, out) is det.
+:- mode do_foldl_pred(in(pred(in, mdi, muo) is det),
+    in, mdi, muo) is det.
+:- mode do_foldl_pred(in(pred(in, di, uo) is det),
+    in, di, uo) is det.
+:- mode do_foldl_pred(in(pred(in, in, out) is semidet),
+    in, in, out) is semidet.
+:- mode do_foldl_pred(in(pred(in, mdi, muo) is semidet),
+    in, mdi, muo) is semidet.
+:- mode do_foldl_pred(in(pred(in, di, uo) is semidet),
+    in, di, uo) is semidet.
+:- mode do_foldl_pred(in(pred(in, in, out) is nondet),
+    in, in, out) is nondet.
+:- mode do_foldl_pred(in(pred(in, in, out) is cc_multi),
+    in, in, out) is cc_multi.
+:- mode do_foldl_pred(in(pred(in, di, uo) is cc_multi),
+    in, di, uo) is cc_multi.
 
 :- pragma type_spec(pred(do_foldl_pred/4), T = uint).
 :- pragma type_spec(pred(do_foldl_pred/4), T = var(_)).
@@ -1779,27 +1794,27 @@ foldl2(Pred, fatter_sparse_bitset(Elems), !Acc1, !Acc2) :-
 
 :- pred do_foldl2_pred(pred(T, U, U, V, V), bitset_elems, U, U, V, V)
     <= uenum(T).
-:- mode do_foldl2_pred(pred(in, in, out, in, out) is det,
+:- mode do_foldl2_pred(in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
-:- mode do_foldl2_pred(pred(in, in, out, mdi, muo) is det,
+:- mode do_foldl2_pred(in(pred(in, in, out, mdi, muo) is det),
     in, in, out, mdi, muo) is det.
-:- mode do_foldl2_pred(pred(in, di, uo, di, uo) is det,
+:- mode do_foldl2_pred(in(pred(in, di, uo, di, uo) is det),
     in, di, uo, di, uo) is det.
-:- mode do_foldl2_pred(pred(in, in, out, di, uo) is det,
+:- mode do_foldl2_pred(in(pred(in, in, out, di, uo) is det),
     in, in, out, di, uo) is det.
-:- mode do_foldl2_pred(pred(in, in, out, in, out) is semidet,
+:- mode do_foldl2_pred(in(pred(in, in, out, in, out) is semidet),
     in, in, out, in, out) is semidet.
-:- mode do_foldl2_pred(pred(in, in, out, mdi, muo) is semidet,
+:- mode do_foldl2_pred(in(pred(in, in, out, mdi, muo) is semidet),
     in, in, out, mdi, muo) is semidet.
-:- mode do_foldl2_pred(pred(in, in, out, di, uo) is semidet,
+:- mode do_foldl2_pred(in(pred(in, in, out, di, uo) is semidet),
     in, in, out, di, uo) is semidet.
-:- mode do_foldl2_pred(pred(in, in, out, in, out) is nondet,
+:- mode do_foldl2_pred(in(pred(in, in, out, in, out) is nondet),
     in, in, out, in, out) is nondet.
-:- mode do_foldl2_pred(pred(in, di, uo, di, uo) is cc_multi,
+:- mode do_foldl2_pred(in(pred(in, di, uo, di, uo) is cc_multi),
     in, di, uo, di, uo) is cc_multi.
-:- mode do_foldl2_pred(pred(in, in, out, di, uo) is cc_multi,
+:- mode do_foldl2_pred(in(pred(in, in, out, di, uo) is cc_multi),
     in, in, out, di, uo) is cc_multi.
-:- mode do_foldl2_pred(pred(in, in, out, in, out) is cc_multi,
+:- mode do_foldl2_pred(in(pred(in, in, out, in, out) is cc_multi),
     in, in, out, in, out) is cc_multi.
 
 :- pragma type_spec(pred(do_foldl2_pred/6), T = uint).
@@ -1826,15 +1841,24 @@ foldr(Pred, fatter_sparse_bitset(Elems), !Acc) :-
     do_foldr_pred(Pred, Elems, !Acc).
 
 :- pred do_foldr_pred(pred(T, U, U), bitset_elems, U, U) <= uenum(T).
-:- mode do_foldr_pred(pred(in, in, out) is det, in, in, out) is det.
-:- mode do_foldr_pred(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode do_foldr_pred(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode do_foldr_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode do_foldr_pred(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode do_foldr_pred(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode do_foldr_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode do_foldr_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode do_foldr_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- mode do_foldr_pred(in(pred(in, in, out) is det),
+    in, in, out) is det.
+:- mode do_foldr_pred(in(pred(in, mdi, muo) is det),
+    in, mdi, muo) is det.
+:- mode do_foldr_pred(in(pred(in, di, uo) is det),
+    in, di, uo) is det.
+:- mode do_foldr_pred(in(pred(in, in, out) is semidet),
+    in, in, out) is semidet.
+:- mode do_foldr_pred(in(pred(in, mdi, muo) is semidet),
+    in, mdi, muo) is semidet.
+:- mode do_foldr_pred(in(pred(in, di, uo) is semidet),
+    in, di, uo) is semidet.
+:- mode do_foldr_pred(in(pred(in, in, out) is nondet),
+    in, in, out) is nondet.
+:- mode do_foldr_pred(in(pred(in, di, uo) is cc_multi),
+    in, di, uo) is cc_multi.
+:- mode do_foldr_pred(in(pred(in, in, out) is cc_multi),
+    in, in, out) is cc_multi.
 
 :- pragma type_spec(pred(do_foldr_pred/4), T = uint).
 :- pragma type_spec(pred(do_foldr_pred/4), T = var(_)).
@@ -1857,27 +1881,27 @@ foldr2(Pred, fatter_sparse_bitset(Elems), !Acc1, !Acc2) :-
 
 :- pred do_foldr2_pred(pred(T, U, U, V, V), bitset_elems, U, U, V, V)
     <= uenum(T).
-:- mode do_foldr2_pred(pred(in, in, out, in, out) is det,
+:- mode do_foldr2_pred(in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
-:- mode do_foldr2_pred(pred(in, in, out, mdi, muo) is det,
+:- mode do_foldr2_pred(in(pred(in, in, out, mdi, muo) is det),
     in, in, out, mdi, muo) is det.
-:- mode do_foldr2_pred(pred(in, in, out, di, uo) is det,
+:- mode do_foldr2_pred(in(pred(in, in, out, di, uo) is det),
     in, in, out, di, uo) is det.
-:- mode do_foldr2_pred(pred(in, di, uo, di, uo) is det,
+:- mode do_foldr2_pred(in(pred(in, di, uo, di, uo) is det),
     in, di, uo, di, uo) is det.
-:- mode do_foldr2_pred(pred(in, in, out, in, out) is semidet,
+:- mode do_foldr2_pred(in(pred(in, in, out, in, out) is semidet),
     in, in, out, in, out) is semidet.
-:- mode do_foldr2_pred(pred(in, in, out, mdi, muo) is semidet,
+:- mode do_foldr2_pred(in(pred(in, in, out, mdi, muo) is semidet),
     in, in, out, mdi, muo) is semidet.
-:- mode do_foldr2_pred(pred(in, in, out, di, uo) is semidet,
+:- mode do_foldr2_pred(in(pred(in, in, out, di, uo) is semidet),
     in, in, out, di, uo) is semidet.
-:- mode do_foldr2_pred(pred(in, in, out, in, out) is nondet,
+:- mode do_foldr2_pred(in(pred(in, in, out, in, out) is nondet),
     in, in, out, in, out) is nondet.
-:- mode do_foldr2_pred(pred(in, di, uo, di, uo) is cc_multi,
+:- mode do_foldr2_pred(in(pred(in, di, uo, di, uo) is cc_multi),
     in, di, uo, di, uo) is cc_multi.
-:- mode do_foldr2_pred(pred(in, in, out, di, uo) is cc_multi,
+:- mode do_foldr2_pred(in(pred(in, in, out, di, uo) is cc_multi),
     in, in, out, di, uo) is cc_multi.
-:- mode do_foldr2_pred(pred(in, in, out, in, out) is cc_multi,
+:- mode do_foldr2_pred(in(pred(in, in, out, in, out) is cc_multi),
     in, in, out, in, out) is cc_multi.
 
 :- pragma type_spec(pred(do_foldr2_pred/6), T = uint).
@@ -1899,23 +1923,23 @@ do_foldr2_pred(Pred, bitset_cons(Offset, BitsLo, BitsHi, Tail),
 
 :- pred fold_bits_low_to_high(pred(T, U, U),
     uint, uint, uint, U, U) <= uenum(T).
-:- mode fold_bits_low_to_high(pred(in, in, out) is det,
+:- mode fold_bits_low_to_high(in(pred(in, in, out) is det),
     in, in, in, in, out) is det.
-:- mode fold_bits_low_to_high(pred(in, mdi, muo) is det,
+:- mode fold_bits_low_to_high(in(pred(in, mdi, muo) is det),
     in, in, in, mdi, muo) is det.
-:- mode fold_bits_low_to_high(pred(in, di, uo) is det,
+:- mode fold_bits_low_to_high(in(pred(in, di, uo) is det),
     in, in, in, di, uo) is det.
-:- mode fold_bits_low_to_high(pred(in, in, out) is semidet,
+:- mode fold_bits_low_to_high(in(pred(in, in, out) is semidet),
     in, in, in, in, out) is semidet.
-:- mode fold_bits_low_to_high(pred(in, mdi, muo) is semidet,
+:- mode fold_bits_low_to_high(in(pred(in, mdi, muo) is semidet),
     in, in, in, mdi, muo) is semidet.
-:- mode fold_bits_low_to_high(pred(in, di, uo) is semidet,
+:- mode fold_bits_low_to_high(in(pred(in, di, uo) is semidet),
     in, in, in, di, uo) is semidet.
-:- mode fold_bits_low_to_high(pred(in, in, out) is nondet,
+:- mode fold_bits_low_to_high(in(pred(in, in, out) is nondet),
     in, in, in, in, out) is nondet.
-:- mode fold_bits_low_to_high(pred(in, di, uo) is cc_multi,
+:- mode fold_bits_low_to_high(in(pred(in, di, uo) is cc_multi),
     in, in, in, di, uo) is cc_multi.
-:- mode fold_bits_low_to_high(pred(in, in, out) is cc_multi,
+:- mode fold_bits_low_to_high(in(pred(in, in, out) is cc_multi),
     in, in, in, in, out) is cc_multi.
 :- pragma type_spec(pred(fold_bits_low_to_high/6), T = uint).
 :- pragma type_spec(pred(fold_bits_low_to_high/6), T = var(_)).
@@ -1942,23 +1966,23 @@ fold_bits_low_to_high(Pred, Offset, Bits, Size, !Acc) :-
 
 :- pred fold_bits_high_to_low(pred(T, U, U),
     uint, uint, uint, U, U) <= uenum(T).
-:- mode fold_bits_high_to_low(pred(in, in, out) is det,
+:- mode fold_bits_high_to_low(in(pred(in, in, out) is det),
     in, in, in, in, out) is det.
-:- mode fold_bits_high_to_low(pred(in, mdi, muo) is det,
+:- mode fold_bits_high_to_low(in(pred(in, mdi, muo) is det),
     in, in, in, mdi, muo) is det.
-:- mode fold_bits_high_to_low(pred(in, di, uo) is det,
+:- mode fold_bits_high_to_low(in(pred(in, di, uo) is det),
     in, in, in, di, uo) is det.
-:- mode fold_bits_high_to_low(pred(in, in, out) is semidet,
+:- mode fold_bits_high_to_low(in(pred(in, in, out) is semidet),
     in, in, in, in, out) is semidet.
-:- mode fold_bits_high_to_low(pred(in, mdi, muo) is semidet,
+:- mode fold_bits_high_to_low(in(pred(in, mdi, muo) is semidet),
     in, in, in, mdi, muo) is semidet.
-:- mode fold_bits_high_to_low(pred(in, di, uo) is semidet,
+:- mode fold_bits_high_to_low(in(pred(in, di, uo) is semidet),
     in, in, in, di, uo) is semidet.
-:- mode fold_bits_high_to_low(pred(in, in, out) is nondet,
+:- mode fold_bits_high_to_low(in(pred(in, in, out) is nondet),
     in, in, in, in, out) is nondet.
-:- mode fold_bits_high_to_low(pred(in, di, uo) is cc_multi,
+:- mode fold_bits_high_to_low(in(pred(in, di, uo) is cc_multi),
     in, in, in, di, uo) is cc_multi.
-:- mode fold_bits_high_to_low(pred(in, in, out) is cc_multi,
+:- mode fold_bits_high_to_low(in(pred(in, in, out) is cc_multi),
     in, in, in, in, out) is cc_multi.
 :- pragma type_spec(pred(fold_bits_high_to_low/6), T = uint).
 :- pragma type_spec(pred(fold_bits_high_to_low/6), T = var(_)).
@@ -1985,27 +2009,27 @@ fold_bits_high_to_low(Pred, Offset, Bits, Size, !Acc) :-
 
 :- pred fold2_bits_low_to_high(pred(T, U, U, V, V),
     uint, uint, uint, U, U, V, V) <= uenum(T).
-:- mode fold2_bits_low_to_high(pred(in, in, out, in, out) is det,
+:- mode fold2_bits_low_to_high(in(pred(in, in, out, in, out) is det),
     in, in, in, in, out, in, out) is det.
-:- mode fold2_bits_low_to_high(pred(in, in, out, mdi, muo) is det,
+:- mode fold2_bits_low_to_high(in(pred(in, in, out, mdi, muo) is det),
     in, in, in, in, out, mdi, muo) is det.
-:- mode fold2_bits_low_to_high(pred(in, di, uo, di, uo) is det,
+:- mode fold2_bits_low_to_high(in(pred(in, di, uo, di, uo) is det),
     in, in, in, di, uo, di, uo) is det.
-:- mode fold2_bits_low_to_high(pred(in, in, out, di, uo) is det,
+:- mode fold2_bits_low_to_high(in(pred(in, in, out, di, uo) is det),
     in, in, in, in, out, di, uo) is det.
-:- mode fold2_bits_low_to_high(pred(in, in, out, in, out) is semidet,
+:- mode fold2_bits_low_to_high(in(pred(in, in, out, in, out) is semidet),
     in, in, in, in, out, in, out) is semidet.
-:- mode fold2_bits_low_to_high(pred(in, in, out, mdi, muo) is semidet,
+:- mode fold2_bits_low_to_high(in(pred(in, in, out, mdi, muo) is semidet),
     in, in, in, in, out, mdi, muo) is semidet.
-:- mode fold2_bits_low_to_high(pred(in, in, out, di, uo) is semidet,
+:- mode fold2_bits_low_to_high(in(pred(in, in, out, di, uo) is semidet),
     in, in, in, in, out, di, uo) is semidet.
-:- mode fold2_bits_low_to_high(pred(in, in, out, in, out) is nondet,
+:- mode fold2_bits_low_to_high(in(pred(in, in, out, in, out) is nondet),
     in, in, in, in, out, in, out) is nondet.
-:- mode fold2_bits_low_to_high(pred(in, di, uo, di, uo) is cc_multi,
+:- mode fold2_bits_low_to_high(in(pred(in, di, uo, di, uo) is cc_multi),
     in, in, in, di, uo, di, uo) is cc_multi.
-:- mode fold2_bits_low_to_high(pred(in, in, out, di, uo) is cc_multi,
+:- mode fold2_bits_low_to_high(in(pred(in, in, out, di, uo) is cc_multi),
     in, in, in, in, out, di, uo) is cc_multi.
-:- mode fold2_bits_low_to_high(pred(in, in, out, in, out) is cc_multi,
+:- mode fold2_bits_low_to_high(in(pred(in, in, out, in, out) is cc_multi),
     in, in, in, in, out, in, out) is cc_multi.
 :- pragma type_spec(pred(fold2_bits_low_to_high/8), T = uint).
 :- pragma type_spec(pred(fold2_bits_low_to_high/8), T = var(_)).
@@ -2031,27 +2055,27 @@ fold2_bits_low_to_high(Pred, Offset, Bits, Size, !Acc1, !Acc2) :-
 
 :- pred fold2_bits_high_to_low(pred(T, U, U, V, V),
     uint, uint, uint, U, U, V, V) <= uenum(T).
-:- mode fold2_bits_high_to_low(pred(in, in, out, in, out) is det,
+:- mode fold2_bits_high_to_low(in(pred(in, in, out, in, out) is det),
     in, in, in, in, out, in, out) is det.
-:- mode fold2_bits_high_to_low(pred(in, in, out, mdi, muo) is det,
+:- mode fold2_bits_high_to_low(in(pred(in, in, out, mdi, muo) is det),
     in, in, in, in, out, mdi, muo) is det.
-:- mode fold2_bits_high_to_low(pred(in, di, uo, di, uo) is det,
+:- mode fold2_bits_high_to_low(in(pred(in, di, uo, di, uo) is det),
     in, in, in, di, uo, di, uo) is det.
-:- mode fold2_bits_high_to_low(pred(in, in, out, di, uo) is det,
+:- mode fold2_bits_high_to_low(in(pred(in, in, out, di, uo) is det),
     in, in, in, in, out, di, uo) is det.
-:- mode fold2_bits_high_to_low(pred(in, in, out, in, out) is semidet,
+:- mode fold2_bits_high_to_low(in(pred(in, in, out, in, out) is semidet),
     in, in, in, in, out, in, out) is semidet.
-:- mode fold2_bits_high_to_low(pred(in, in, out, mdi, muo) is semidet,
+:- mode fold2_bits_high_to_low(in(pred(in, in, out, mdi, muo) is semidet),
     in, in, in, in, out, mdi, muo) is semidet.
-:- mode fold2_bits_high_to_low(pred(in, in, out, di, uo) is semidet,
+:- mode fold2_bits_high_to_low(in(pred(in, in, out, di, uo) is semidet),
     in, in, in, in, out, di, uo) is semidet.
-:- mode fold2_bits_high_to_low(pred(in, in, out, in, out) is nondet,
+:- mode fold2_bits_high_to_low(in(pred(in, in, out, in, out) is nondet),
     in, in, in, in, out, in, out) is nondet.
-:- mode fold2_bits_high_to_low(pred(in, di, uo, di, uo) is cc_multi,
+:- mode fold2_bits_high_to_low(in(pred(in, di, uo, di, uo) is cc_multi),
     in, in, in, di, uo, di, uo) is cc_multi.
-:- mode fold2_bits_high_to_low(pred(in, in, out, di, uo) is cc_multi,
+:- mode fold2_bits_high_to_low(in(pred(in, in, out, di, uo) is cc_multi),
     in, in, in, in, out, di, uo) is cc_multi.
-:- mode fold2_bits_high_to_low(pred(in, in, out, in, out) is cc_multi,
+:- mode fold2_bits_high_to_low(in(pred(in, in, out, in, out) is cc_multi),
     in, in, in, in, out, in, out) is cc_multi.
 :- pragma type_spec(pred(fold2_bits_high_to_low/8), T = uint).
 :- pragma type_spec(pred(fold2_bits_high_to_low/8), T = var(_)).

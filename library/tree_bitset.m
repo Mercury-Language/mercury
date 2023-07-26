@@ -347,15 +347,15 @@
 
     % filter(Pred, Set) returns the elements of Set for which Pred succeeds.
     %
-:- func filter(pred(T), tree_bitset(T)) = tree_bitset(T) <= uenum(T).
-:- mode filter(pred(in) is semidet, in) = out is det.
+:- func filter(pred(T)::in(pred(in) is semidet), tree_bitset(T)::in)
+    = (tree_bitset(T)::out) is det <= uenum(T).
 
     % filter(Pred, Set, TrueSet, FalseSet) returns the elements of Set
     % for which Pred succeeds, and those for which it fails.
     %
-:- pred filter(pred(T), tree_bitset(T), tree_bitset(T), tree_bitset(T))
+:- pred filter(pred(T)::in(pred(in) is semidet),
+    tree_bitset(T)::in, tree_bitset(T)::out, tree_bitset(T)::out) is det
     <= uenum(T).
-:- mode filter(pred(in) is semidet, in, out, out) is det.
 
     % foldl(Func, Set, Start) calls Func with each element of Set
     % (in sorted order) and an accumulator (with the initial value of Start),
@@ -364,31 +364,34 @@
 :- func foldl(func(T, U) = U, tree_bitset(T), U) = U <= uenum(T).
 
 :- pred foldl(pred(T, U, U), tree_bitset(T), U, U) <= uenum(T).
-:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldl(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode foldl(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
-:- mode foldl(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode foldl(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldl(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldl(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldl(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldl(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldl(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
+:- mode foldl(in(pred(in, in, out) is nondet), in, in, out) is nondet.
+:- mode foldl(in(pred(in, mdi, muo) is nondet), in, mdi, muo) is nondet.
+:- mode foldl(in(pred(in, di, uo) is cc_multi), in, di, uo) is cc_multi.
+:- mode foldl(in(pred(in, in, out) is cc_multi), in, in, out) is cc_multi.
 
 :- pred foldl2(pred(T, U, U, V, V), tree_bitset(T), U, U, V, V) <= uenum(T).
-:- mode foldl2(pred(in, di, uo, di, uo) is det, in, di, uo, di, uo) is det.
-:- mode foldl2(pred(in, in, out, di, uo) is det, in, in, out, di, uo) is det.
-:- mode foldl2(pred(in, in, out, in, out) is det, in, in, out, in, out) is det.
-:- mode foldl2(pred(in, in, out, in, out) is semidet, in, in, out, in, out)
-    is semidet.
-:- mode foldl2(pred(in, in, out, in, out) is nondet, in, in, out, in, out)
-    is nondet.
-:- mode foldl2(pred(in, di, uo, di, uo) is cc_multi, in, di, uo, di, uo)
-    is cc_multi.
-:- mode foldl2(pred(in, in, out, di, uo) is cc_multi, in, in, out, di, uo)
-    is cc_multi.
-:- mode foldl2(pred(in, in, out, in, out) is cc_multi, in, in, out, in, out)
-    is cc_multi.
+:- mode foldl2(in(pred(in, di, uo, di, uo) is det),
+    in, di, uo, di, uo) is det.
+:- mode foldl2(in(pred(in, in, out, di, uo) is det),
+    in, in, out, di, uo) is det.
+:- mode foldl2(in(pred(in, in, out, in, out) is det),
+    in, in, out, in, out) is det.
+:- mode foldl2(in(pred(in, in, out, in, out) is semidet),
+    in, in, out, in, out) is semidet.
+:- mode foldl2(in(pred(in, in, out, in, out) is nondet),
+    in, in, out, in, out) is nondet.
+:- mode foldl2(in(pred(in, di, uo, di, uo) is cc_multi),
+    in, di, uo, di, uo) is cc_multi.
+:- mode foldl2(in(pred(in, in, out, di, uo) is cc_multi),
+    in, in, out, di, uo) is cc_multi.
+:- mode foldl2(in(pred(in, in, out, in, out) is cc_multi),
+    in, in, out, in, out) is cc_multi.
 
     % foldr(Func, Set, Start) calls Func with each element of Set
     % (in reverse sorted order) and an accumulator (with the initial value
@@ -397,27 +400,30 @@
 :- func foldr(func(T, U) = U, tree_bitset(T), U) = U <= uenum(T).
 
 :- pred foldr(pred(T, U, U), tree_bitset(T), U, U) <= uenum(T).
-:- mode foldr(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode foldr(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode foldr(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode foldr(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- mode foldr(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldr(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldr(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldr(in(pred(in, in, out) is nondet), in, in, out) is nondet.
+:- mode foldr(in(pred(in, di, uo) is cc_multi), in, di, uo) is cc_multi.
+:- mode foldr(in(pred(in, in, out) is cc_multi), in, in, out) is cc_multi.
 
 :- pred foldr2(pred(T, U, U, V, V), tree_bitset(T), U, U, V, V) <= uenum(T).
-:- mode foldr2(pred(in, di, uo, di, uo) is det, in, di, uo, di, uo) is det.
-:- mode foldr2(pred(in, in, out, di, uo) is det, in, in, out, di, uo) is det.
-:- mode foldr2(pred(in, in, out, in, out) is det, in, in, out, in, out) is det.
-:- mode foldr2(pred(in, in, out, in, out) is semidet, in, in, out, in, out)
-    is semidet.
-:- mode foldr2(pred(in, in, out, in, out) is nondet, in, in, out, in, out)
-    is nondet.
-:- mode foldr2(pred(in, di, uo, di, uo) is cc_multi, in, di, uo, di, uo)
-    is cc_multi.
-:- mode foldr2(pred(in, in, out, di, uo) is cc_multi, in, in, out, di, uo)
-    is cc_multi.
-:- mode foldr2(pred(in, in, out, in, out) is cc_multi, in, in, out, in, out)
-    is cc_multi.
+:- mode foldr2(in(pred(in, di, uo, di, uo) is det),
+    in, di, uo, di, uo) is det.
+:- mode foldr2(in(pred(in, in, out, di, uo) is det),
+    in, in, out, di, uo) is det.
+:- mode foldr2(in(pred(in, in, out, in, out) is det),
+    in, in, out, in, out) is det.
+:- mode foldr2(in(pred(in, in, out, in, out) is semidet),
+    in, in, out, in, out) is semidet.
+:- mode foldr2(in(pred(in, in, out, in, out) is nondet),
+    in, in, out, in, out) is nondet.
+:- mode foldr2(in(pred(in, di, uo, di, uo) is cc_multi),
+    in, di, uo, di, uo) is cc_multi.
+:- mode foldr2(in(pred(in, in, out, di, uo) is cc_multi),
+    in, in, out, di, uo) is cc_multi.
+:- mode foldr2(in(pred(in, in, out, in, out) is cc_multi),
+    in, in, out, in, out) is cc_multi.
 
 %---------------------------------------------------------------------------%
 
@@ -3786,16 +3792,26 @@ foldl(P, Set, !Acc) :-
     ).
 
 :- pred do_foldl_pred(pred(T, U, U), list(interior_node), U, U) <= uenum(T).
-:- mode do_foldl_pred(pred(in, in, out) is det, in, in, out) is det.
-:- mode do_foldl_pred(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode do_foldl_pred(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode do_foldl_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode do_foldl_pred(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode do_foldl_pred(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode do_foldl_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode do_foldl_pred(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
-:- mode do_foldl_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
-:- mode do_foldl_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode do_foldl_pred(in(pred(in, in, out) is det),
+    in, in, out) is det.
+:- mode do_foldl_pred(in(pred(in, mdi, muo) is det),
+    in, mdi, muo) is det.
+:- mode do_foldl_pred(in(pred(in, di, uo) is det),
+    in, di, uo) is det.
+:- mode do_foldl_pred(in(pred(in, in, out) is semidet),
+    in, in, out) is semidet.
+:- mode do_foldl_pred(in(pred(in, mdi, muo) is semidet),
+    in, mdi, muo) is semidet.
+:- mode do_foldl_pred(in(pred(in, di, uo) is semidet),
+    in, di, uo) is semidet.
+:- mode do_foldl_pred(in(pred(in, in, out) is nondet),
+    in, in, out) is nondet.
+:- mode do_foldl_pred(in(pred(in, mdi, muo) is nondet),
+    in, mdi, muo) is nondet.
+:- mode do_foldl_pred(in(pred(in, in, out) is cc_multi),
+    in, in, out) is cc_multi.
+:- mode do_foldl_pred(in(pred(in, di, uo) is cc_multi),
+    in, di, uo) is cc_multi.
 :- pragma type_spec(pred(do_foldl_pred/4), T = int).
 :- pragma type_spec(pred(do_foldl_pred/4), T = var(_)).
 
@@ -3812,18 +3828,26 @@ do_foldl_pred(P, [H | T], !Acc) :-
     do_foldl_pred(P, T, !Acc).
 
 :- pred leaf_foldl_pred(pred(T, U, U), list(leaf_node), U, U) <= uenum(T).
-:- mode leaf_foldl_pred(pred(in, in, out) is det, in, in, out) is det.
-:- mode leaf_foldl_pred(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode leaf_foldl_pred(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode leaf_foldl_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode leaf_foldl_pred(pred(in, mdi, muo) is semidet, in, mdi, muo)
-    is semidet.
-:- mode leaf_foldl_pred(pred(in, di, uo) is semidet, in, di, uo) is semidet.
-:- mode leaf_foldl_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode leaf_foldl_pred(pred(in, mdi, muo) is nondet, in, mdi, muo) is nondet.
-:- mode leaf_foldl_pred(pred(in, in, out) is cc_multi, in, in, out)
-    is cc_multi.
-:- mode leaf_foldl_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode leaf_foldl_pred(in(pred(in, in, out) is det),
+    in, in, out) is det.
+:- mode leaf_foldl_pred(in(pred(in, mdi, muo) is det),
+    in, mdi, muo) is det.
+:- mode leaf_foldl_pred(in(pred(in, di, uo) is det),
+    in, di, uo) is det.
+:- mode leaf_foldl_pred(in(pred(in, in, out) is semidet),
+    in, in, out) is semidet.
+:- mode leaf_foldl_pred(in(pred(in, mdi, muo) is semidet),
+    in, mdi, muo) is semidet.
+:- mode leaf_foldl_pred(in(pred(in, di, uo) is semidet),
+    in, di, uo) is semidet.
+:- mode leaf_foldl_pred(in(pred(in, in, out) is nondet),
+    in, in, out) is nondet.
+:- mode leaf_foldl_pred(in(pred(in, mdi, muo) is nondet),
+    in, mdi, muo) is nondet.
+:- mode leaf_foldl_pred(in(pred(in, in, out) is cc_multi),
+    in, in, out) is cc_multi.
+:- mode leaf_foldl_pred(in(pred(in, di, uo) is cc_multi),
+    in, di, uo) is cc_multi.
 :- pragma type_spec(pred(leaf_foldl_pred/4), T = int).
 :- pragma type_spec(pred(leaf_foldl_pred/4), T = var(_)).
 
@@ -3847,21 +3871,21 @@ foldl2(P, Set, !AccA, !AccB) :-
 
 :- pred do_foldl2_pred(pred(T, U, U, V, V), list(interior_node), U, U, V, V)
     <= uenum(T).
-:- mode do_foldl2_pred(pred(in, di, uo, di, uo) is det,
+:- mode do_foldl2_pred(in(pred(in, di, uo, di, uo) is det),
     in, di, uo, di, uo) is det.
-:- mode do_foldl2_pred(pred(in, in, out, di, uo) is det,
+:- mode do_foldl2_pred(in(pred(in, in, out, di, uo) is det),
     in, in, out, di, uo) is det.
-:- mode do_foldl2_pred(pred(in, in, out, in, out) is det,
+:- mode do_foldl2_pred(in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
-:- mode do_foldl2_pred(pred(in, in, out, in, out) is semidet,
+:- mode do_foldl2_pred(in(pred(in, in, out, in, out) is semidet),
     in, in, out, in, out) is semidet.
-:- mode do_foldl2_pred(pred(in, in, out, in, out) is nondet,
+:- mode do_foldl2_pred(in(pred(in, in, out, in, out) is nondet),
     in, in, out, in, out) is nondet.
-:- mode do_foldl2_pred(pred(in, di, uo, di, uo) is cc_multi,
+:- mode do_foldl2_pred(in(pred(in, di, uo, di, uo) is cc_multi),
     in, di, uo, di, uo) is cc_multi.
-:- mode do_foldl2_pred(pred(in, in, out, di, uo) is cc_multi,
+:- mode do_foldl2_pred(in(pred(in, in, out, di, uo) is cc_multi),
     in, in, out, di, uo) is cc_multi.
-:- mode do_foldl2_pred(pred(in, in, out, in, out) is cc_multi,
+:- mode do_foldl2_pred(in(pred(in, in, out, in, out) is cc_multi),
     in, in, out, in, out) is cc_multi.
 :- pragma type_spec(pred(do_foldl2_pred/6), T = int).
 :- pragma type_spec(pred(do_foldl2_pred/6), T = var(_)).
@@ -3880,21 +3904,21 @@ do_foldl2_pred(P, [H | T], !AccA, !AccB) :-
 
 :- pred leaf_foldl2_pred(pred(T, U, U, V, V), list(leaf_node), U, U, V, V)
     <= uenum(T).
-:- mode leaf_foldl2_pred(pred(in, di, uo, di, uo) is det,
+:- mode leaf_foldl2_pred(in(pred(in, di, uo, di, uo) is det),
     in, di, uo, di, uo) is det.
-:- mode leaf_foldl2_pred(pred(in, in, out, di, uo) is det,
+:- mode leaf_foldl2_pred(in(pred(in, in, out, di, uo) is det),
     in, in, out, di, uo) is det.
-:- mode leaf_foldl2_pred(pred(in, in, out, in, out) is det,
+:- mode leaf_foldl2_pred(in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
-:- mode leaf_foldl2_pred(pred(in, in, out, in, out) is semidet,
+:- mode leaf_foldl2_pred(in(pred(in, in, out, in, out) is semidet),
     in, in, out, in, out) is semidet.
-:- mode leaf_foldl2_pred(pred(in, in, out, in, out) is nondet,
+:- mode leaf_foldl2_pred(in(pred(in, in, out, in, out) is nondet),
     in, in, out, in, out) is nondet.
-:- mode leaf_foldl2_pred(pred(in, di, uo, di, uo) is cc_multi,
+:- mode leaf_foldl2_pred(in(pred(in, di, uo, di, uo) is cc_multi),
     in, di, uo, di, uo) is cc_multi.
-:- mode leaf_foldl2_pred(pred(in, in, out, di, uo) is cc_multi,
+:- mode leaf_foldl2_pred(in(pred(in, in, out, di, uo) is cc_multi),
     in, in, out, di, uo) is cc_multi.
-:- mode leaf_foldl2_pred(pred(in, in, out, in, out) is cc_multi,
+:- mode leaf_foldl2_pred(in(pred(in, in, out, in, out) is cc_multi),
     in, in, out, in, out) is cc_multi.
 :- pragma type_spec(pred(leaf_foldl2_pred/6), T = int).
 :- pragma type_spec(pred(leaf_foldl2_pred/6), T = var(_)).
@@ -3925,12 +3949,18 @@ foldr(P, Set, !Acc) :-
     ).
 
 :- pred do_foldr_pred(pred(T, U, U), list(interior_node), U, U) <= uenum(T).
-:- mode do_foldr_pred(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode do_foldr_pred(pred(in, in, out) is det, in, in, out) is det.
-:- mode do_foldr_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode do_foldr_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode do_foldr_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode do_foldr_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+:- mode do_foldr_pred(in(pred(in, di, uo) is det),
+    in, di, uo) is det.
+:- mode do_foldr_pred(in(pred(in, in, out) is det),
+    in, in, out) is det.
+:- mode do_foldr_pred(in(pred(in, in, out) is semidet),
+    in, in, out) is semidet.
+:- mode do_foldr_pred(in(pred(in, in, out) is nondet),
+    in, in, out) is nondet.
+:- mode do_foldr_pred(in(pred(in, di, uo) is cc_multi),
+    in, di, uo) is cc_multi.
+:- mode do_foldr_pred(in(pred(in, in, out) is cc_multi),
+    in, in, out) is cc_multi.
 :- pragma type_spec(pred(do_foldr_pred/4), T = int).
 :- pragma type_spec(pred(do_foldr_pred/4), T = var(_)).
 
@@ -3950,13 +3980,18 @@ do_foldr_pred(P, [H | T], !Acc) :-
     ).
 
 :- pred leaf_foldr_pred(pred(T, U, U), list(leaf_node), U, U) <= uenum(T).
-:- mode leaf_foldr_pred(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode leaf_foldr_pred(pred(in, in, out) is det, in, in, out) is det.
-:- mode leaf_foldr_pred(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode leaf_foldr_pred(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode leaf_foldr_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode leaf_foldr_pred(pred(in, in, out) is cc_multi, in, in, out)
-    is cc_multi.
+:- mode leaf_foldr_pred(in(pred(in, di, uo) is det),
+    in, di, uo) is det.
+:- mode leaf_foldr_pred(in(pred(in, in, out) is det),
+    in, in, out) is det.
+:- mode leaf_foldr_pred(in(pred(in, in, out) is semidet),
+    in, in, out) is semidet.
+:- mode leaf_foldr_pred(in(pred(in, in, out) is nondet),
+    in, in, out) is nondet.
+:- mode leaf_foldr_pred(in(pred(in, di, uo) is cc_multi),
+    in, di, uo) is cc_multi.
+:- mode leaf_foldr_pred(in(pred(in, in, out) is cc_multi),
+    in, in, out) is cc_multi.
 :- pragma type_spec(pred(leaf_foldr_pred/4), T = int).
 :- pragma type_spec(pred(leaf_foldr_pred/4), T = var(_)).
 
@@ -3983,21 +4018,21 @@ foldr2(P, Set, !AccA, !AccB) :-
 
 :- pred do_foldr2_pred(pred(T, U, U, V, V), list(interior_node), U, U, V, V)
     <= uenum(T).
-:- mode do_foldr2_pred(pred(in, di, uo, di, uo) is det,
+:- mode do_foldr2_pred(in(pred(in, di, uo, di, uo) is det),
     in, di, uo, di, uo) is det.
-:- mode do_foldr2_pred(pred(in, in, out, di, uo) is det,
+:- mode do_foldr2_pred(in(pred(in, in, out, di, uo) is det),
     in, in, out, di, uo) is det.
-:- mode do_foldr2_pred(pred(in, in, out, in, out) is det,
+:- mode do_foldr2_pred(in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
-:- mode do_foldr2_pred(pred(in, in, out, in, out) is semidet,
+:- mode do_foldr2_pred(in(pred(in, in, out, in, out) is semidet),
     in, in, out, in, out) is semidet.
-:- mode do_foldr2_pred(pred(in, in, out, in, out) is nondet,
+:- mode do_foldr2_pred(in(pred(in, in, out, in, out) is nondet),
     in, in, out, in, out) is nondet.
-:- mode do_foldr2_pred(pred(in, di, uo, di, uo) is cc_multi,
+:- mode do_foldr2_pred(in(pred(in, di, uo, di, uo) is cc_multi),
     in, di, uo, di, uo) is cc_multi.
-:- mode do_foldr2_pred(pred(in, in, out, di, uo) is cc_multi,
+:- mode do_foldr2_pred(in(pred(in, in, out, di, uo) is cc_multi),
     in, in, out, di, uo) is cc_multi.
-:- mode do_foldr2_pred(pred(in, in, out, in, out) is cc_multi,
+:- mode do_foldr2_pred(in(pred(in, in, out, in, out) is cc_multi),
     in, in, out, in, out) is cc_multi.
 :- pragma type_spec(pred(do_foldr2_pred/6), T = int).
 :- pragma type_spec(pred(do_foldr2_pred/6), T = var(_)).
@@ -4019,21 +4054,21 @@ do_foldr2_pred(P, [H | T], !AccA, !AccB) :-
 
 :- pred leaf_foldr2_pred(pred(T, U, U, V, V), list(leaf_node), U, U, V, V)
     <= uenum(T).
-:- mode leaf_foldr2_pred(pred(in, di, uo, di, uo) is det,
+:- mode leaf_foldr2_pred(in(pred(in, di, uo, di, uo) is det),
     in, di, uo, di, uo) is det.
-:- mode leaf_foldr2_pred(pred(in, in, out, di, uo) is det,
+:- mode leaf_foldr2_pred(in(pred(in, in, out, di, uo) is det),
     in, in, out, di, uo) is det.
-:- mode leaf_foldr2_pred(pred(in, in, out, in, out) is det,
+:- mode leaf_foldr2_pred(in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
-:- mode leaf_foldr2_pred(pred(in, in, out, in, out) is semidet,
+:- mode leaf_foldr2_pred(in(pred(in, in, out, in, out) is semidet),
     in, in, out, in, out) is semidet.
-:- mode leaf_foldr2_pred(pred(in, in, out, in, out) is nondet,
+:- mode leaf_foldr2_pred(in(pred(in, in, out, in, out) is nondet),
     in, in, out, in, out) is nondet.
-:- mode leaf_foldr2_pred(pred(in, di, uo, di, uo) is cc_multi,
+:- mode leaf_foldr2_pred(in(pred(in, di, uo, di, uo) is cc_multi),
     in, di, uo, di, uo) is cc_multi.
-:- mode leaf_foldr2_pred(pred(in, in, out, di, uo) is cc_multi,
+:- mode leaf_foldr2_pred(in(pred(in, in, out, di, uo) is cc_multi),
     in, in, out, di, uo) is cc_multi.
-:- mode leaf_foldr2_pred(pred(in, in, out, in, out) is cc_multi,
+:- mode leaf_foldr2_pred(in(pred(in, in, out, in, out) is cc_multi),
     in, in, out, in, out) is cc_multi.
 :- pragma type_spec(pred(leaf_foldr2_pred/6), T = int).
 :- pragma type_spec(pred(leaf_foldr2_pred/6), T = var(_)).
@@ -4057,25 +4092,25 @@ leaf_foldr2_pred(P, [H | T], !AccA, !AccB) :-
     %
 :- pred fold_bits(fold_direction, pred(T, U, U),
     uint, uint, uint, U, U) <= uenum(T).
-:- mode fold_bits(in, pred(in, in, out) is det,
+:- mode fold_bits(in, in(pred(in, in, out) is det),
     in, in, in, in, out) is det.
-:- mode fold_bits(in, pred(in, mdi, muo) is det,
+:- mode fold_bits(in, in(pred(in, mdi, muo) is det),
     in, in, in, mdi, muo) is det.
-:- mode fold_bits(in, pred(in, di, uo) is det,
+:- mode fold_bits(in, in(pred(in, di, uo) is det),
     in, in, in, di, uo) is det.
-:- mode fold_bits(in, pred(in, in, out) is semidet,
+:- mode fold_bits(in, in(pred(in, in, out) is semidet),
     in, in, in, in, out) is semidet.
-:- mode fold_bits(in, pred(in, mdi, muo) is semidet,
+:- mode fold_bits(in, in(pred(in, mdi, muo) is semidet),
     in, in, in, mdi, muo) is semidet.
-:- mode fold_bits(in, pred(in, di, uo) is semidet,
+:- mode fold_bits(in, in(pred(in, di, uo) is semidet),
     in, in, in, di, uo) is semidet.
-:- mode fold_bits(in, pred(in, in, out) is nondet,
+:- mode fold_bits(in, in(pred(in, in, out) is nondet),
     in, in, in, in, out) is nondet.
-:- mode fold_bits(in, pred(in, mdi, muo) is nondet,
+:- mode fold_bits(in, in(pred(in, mdi, muo) is nondet),
     in, in, in, mdi, muo) is nondet.
-:- mode fold_bits(in, pred(in, in, out) is cc_multi,
+:- mode fold_bits(in, in(pred(in, in, out) is cc_multi),
     in, in, in, in, out) is cc_multi.
-:- mode fold_bits(in, pred(in, di, uo) is cc_multi,
+:- mode fold_bits(in, in(pred(in, di, uo) is cc_multi),
     in, in, in, di, uo) is cc_multi.
 :- pragma type_spec(pred(fold_bits/7), T = int).
 :- pragma type_spec(pred(fold_bits/7), T = var(_)).
@@ -4109,21 +4144,21 @@ fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
 
 :- pred fold2_bits(fold_direction, pred(T, U, U, V, V),
     uint, uint, uint, U, U, V, V) <= uenum(T).
-:- mode fold2_bits(in, pred(in, di, uo, di, uo) is det,
+:- mode fold2_bits(in, in(pred(in, di, uo, di, uo) is det),
     in, in, in, di, uo, di, uo) is det.
-:- mode fold2_bits(in, pred(in, in, out, di, uo) is det,
+:- mode fold2_bits(in, in(pred(in, in, out, di, uo) is det),
     in, in, in, in, out, di, uo) is det.
-:- mode fold2_bits(in, pred(in, in, out, in, out) is det,
+:- mode fold2_bits(in, in(pred(in, in, out, in, out) is det),
     in, in, in, in, out, in, out) is det.
-:- mode fold2_bits(in, pred(in, in, out, in, out) is semidet,
+:- mode fold2_bits(in, in(pred(in, in, out, in, out) is semidet),
     in, in, in, in, out, in, out) is semidet.
-:- mode fold2_bits(in, pred(in, in, out, in, out) is nondet,
+:- mode fold2_bits(in, in(pred(in, in, out, in, out) is nondet),
     in, in, in, in, out, in, out) is nondet.
-:- mode fold2_bits(in, pred(in, di, uo, di, uo) is cc_multi,
+:- mode fold2_bits(in, in(pred(in, di, uo, di, uo) is cc_multi),
     in, in, in, di, uo, di, uo) is cc_multi.
-:- mode fold2_bits(in, pred(in, in, out, di, uo) is cc_multi,
+:- mode fold2_bits(in, in(pred(in, in, out, di, uo) is cc_multi),
     in, in, in, in, out, di, uo) is cc_multi.
-:- mode fold2_bits(in, pred(in, in, out, in, out) is cc_multi,
+:- mode fold2_bits(in, in(pred(in, in, out, in, out) is cc_multi),
     in, in, in, in, out, in, out) is cc_multi.
 :- pragma type_spec(pred(fold2_bits/9), T = uint).
 :- pragma type_spec(pred(fold2_bits/9), T = var(_)).

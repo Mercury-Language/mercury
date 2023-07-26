@@ -200,11 +200,11 @@
     is det <= uenum(T).
 
 :- func foldl(func(T, Acc) = Acc, test_bitset(T), Acc) = Acc <= uenum(T).
-:- mode foldl(func(in, in) = out is det, in, in) = out is det.
+:- mode foldl((func(in, in) = out is det), in, in) = out is det.
 
 :- pred foldl(pred(T, Acc, Acc), test_bitset(T), Acc, Acc) <= uenum(T).
-:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldl(in(pred(in, in, out) is semidet), in, in, out) is semidet.
 
 %---------------------------------------------------------------------------%
 

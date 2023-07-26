@@ -139,8 +139,8 @@
     % conditions, then one of the candidates is chosen arbitrarily.
     %
 :- pred search_first(pred(K, L), pred(V, L), rtree(K, V), L, V, L).
-:- mode search_first(pred(in, out) is semidet,
-    pred(in, out) is semidet, in, in, out, out) is semidet.
+:- mode search_first(in(pred(in, out) is semidet),
+    in(pred(in, out) is semidet), in, in, out, out) is semidet.
 
     % search_general_fold(KTest, VPred, T, !A).
     %
@@ -150,26 +150,24 @@
     %
 :- pred search_general_fold(pred(K), pred(K, V, A, A), rtree(K, V),
     A, A).
-:- mode search_general_fold(pred(in) is semidet,
-    pred(in, in, in, out) is det, in, in, out) is det.
-:- mode search_general_fold(pred(in) is semidet,
-    pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode search_general_fold(in(pred(in) is semidet),
+    in(pred(in, in, in, out) is det), in, in, out) is det.
+:- mode search_general_fold(in(pred(in) is semidet),
+    in(pred(in, in, di, uo) is det), in, di, uo) is det.
 
     % Perform a traversal of the rtree, applying an accumulator predicate
     % for each key-value pair.
     %
 :- pred fold(pred(K, V, A, A), rtree(K, V), A, A).
-:- mode fold(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode fold(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode fold(pred(in, in, in, out) is semidet, in, in, out)
-    is semidet.
+:- mode fold(in(pred(in, in, in, out) is det), in, in, out) is det.
+:- mode fold(in(pred(in, in, di, uo) is det), in, di, uo) is det.
+:- mode fold(in(pred(in, in, in, out) is semidet), in, in, out) is semidet.
 
     % Apply a transformation predicate to all the values in an rtree.
     %
 :- pred map_values(pred(K, V, W), rtree(K, V), rtree(K, W)).
-:- mode map_values(pred(in, in, out) is det, in, out) is det.
-:- mode map_values(pred(in, in, out) is semidet, in, out)
-    is semidet.
+:- mode map_values(in(pred(in, in, out) is det), in, out) is det.
+:- mode map_values(in(pred(in, in, out) is semidet), in, out) is semidet.
 
 %---------------------------------------------------------------------------%
 %
@@ -1026,8 +1024,8 @@ maybe_limit(K, P, L, E) :-
     % maximum.
     %
 :- pred search_first_2(rtree_2(K, V), pred(K, E), pred(V, E), E, V, E).
-:- mode search_first_2(in, pred(in, out) is semidet, pred(in, out) is semidet,
-    in, out, out) is semidet.
+:- mode search_first_2(in, in(pred(in, out) is semidet),
+    in(pred(in, out) is semidet), in, out, out) is semidet.
 
 search_first_2(leaf(V), _, C, L, V, E) :-
     maybe_limit(V, C, L, E).
@@ -1131,8 +1129,9 @@ search_first_2(four(K0, T0, K1, T1, K2, T2, K3, T3), P, C, L, V, E) :-
     %
 :- pred search_first_2_two_choices(E, E, rtree_2(K, V), rtree_2(K, V),
     pred(K, E), pred(V, E), E, V, E).
-:- mode search_first_2_two_choices(in, in, in, in, pred(in, out) is semidet,
-    pred(in, out) is semidet, in, out, out) is semidet.
+:- mode search_first_2_two_choices(in, in, in, in,
+    in(pred(in, out) is semidet), in(pred(in, out) is semidet),
+    in, out, out) is semidet.
 
 search_first_2_two_choices(E0, E1, T0, T1, P, C, L, V, E) :-
     ( if compare((<), E0, E1) then
@@ -1144,8 +1143,8 @@ search_first_2_two_choices(E0, E1, T0, T1, P, C, L, V, E) :-
 :- pred search_first_2_three_choices(E::in, E::in, E::in,
     rtree_2(K, V)::in, rtree_2(K, V)::in, rtree_2(K, V)::in,
     pred(K, E)::in(pred(in, out) is semidet),
-    pred(V, E)::in(pred(in, out) is semidet), E::in, V::out, E::out)
-    is semidet.
+    pred(V, E)::in(pred(in, out) is semidet),
+    E::in, V::out, E::out) is semidet.
 
 search_first_2_three_choices(E0, E1, E2, T0, T1, T2, P, C, L, V, E) :-
     R = minimum_of_three(E0, E1, E2),
@@ -1163,8 +1162,8 @@ search_first_2_three_choices(E0, E1, E2, T0, T1, T2, P, C, L, V, E) :-
 :- pred search_first_2_four_choices(E, E, E, E, rtree_2(K, V), rtree_2(K, V),
     rtree_2(K, V), rtree_2(K, V), pred(K, E), pred(V, E), E, V, E).
 :- mode search_first_2_four_choices(in, in, in, in, in, in, in, in,
-    pred(in, out) is semidet, pred(in, out) is semidet, in, out, out)
-    is semidet.
+    in(pred(in, out) is semidet), in(pred(in, out) is semidet),
+    in, out, out) is semidet.
 
 search_first_2_four_choices(E0, E1, E2, E3, T0, T1, T2, T3, P, C, L, V, E) :-
     R = minimum_of_four(E0, E1, E2, E3),
@@ -1194,8 +1193,8 @@ search_first_2_four_choices(E0, E1, E2, E3, T0, T1, T2, T3, P, C, L, V, E) :-
     rtree_2(K, V),
     rtree_2(K, V), rtree_2(K, V), pred(K, E), pred(V, E), E, V, E).
 :- mode search_first_2_try_first_from_four(in, in, in, in, in, in, in,
-    pred(in, out) is semidet, pred(in, out) is semidet, in, out, out)
-    is semidet.
+    in(pred(in, out) is semidet), in(pred(in, out) is semidet),
+    in, out, out) is semidet.
 
 search_first_2_try_first_from_four(E1, E2, E3, T0, T1, T2, T3,
         P, C, L, V, E) :-
@@ -1209,8 +1208,8 @@ search_first_2_try_first_from_four(E1, E2, E3, T0, T1, T2, T3,
 :- pred search_first_2_try_first_from_three(E, E, rtree_2(K, V), rtree_2(K, V),
     rtree_2(K, V), pred(K, E), pred(V, E), E, V, E).
 :- mode search_first_2_try_first_from_three(in, in, in, in, in,
-    pred(in, out) is semidet, pred(in, out) is semidet, in, out, out)
-    is semidet.
+    in(pred(in, out) is semidet), in(pred(in, out) is semidet),
+    in, out, out) is semidet.
 
 search_first_2_try_first_from_three(E1, E2, T0, T1, T2, P, C, L, V, E) :-
     ( if search_first_2(T0, P, C, L, V0, E0) then
@@ -1222,8 +1221,9 @@ search_first_2_try_first_from_three(E1, E2, T0, T1, T2, P, C, L, V, E) :-
 
 :- pred search_first_2_try_first_from_two(E, rtree_2(K, V), rtree_2(K, V),
     pred(K, E), pred(V, E), E, V, E).
-:- mode search_first_2_try_first_from_two(in, in, in, pred(in, out) is semidet,
-    pred(in, out) is semidet, in, out, out) is semidet.
+:- mode search_first_2_try_first_from_two(in, in, in,
+    in(pred(in, out) is semidet), in(pred(in, out) is semidet),
+    in, out, out) is semidet.
 
 search_first_2_try_first_from_two(E1, T0, T1, P, C, L, V, E) :-
     ( if search_first_2(T0, P, C, L, V0, E0) then
@@ -1239,7 +1239,8 @@ search_first_2_try_first_from_two(E1, T0, T1, P, C, L, V, E) :-
 :- pred search_first_2_find_better_solution_one(V, E, E, rtree_2(K, V),
     pred(K, E), pred(V, E), V, E).
 :- mode search_first_2_find_better_solution_one(in, in, in, in,
-    pred(in, out) is semidet, pred(in, out) is semidet, out, out) is det.
+    in(pred(in, out) is semidet), in(pred(in, out) is semidet),
+    out, out) is det.
 
 search_first_2_find_better_solution_one(VM, EM, E0, T0, P, C, V, E) :-
     ( if compare((<), EM, E0) then
@@ -1261,7 +1262,8 @@ search_first_2_find_better_solution_one(VM, EM, E0, T0, P, C, V, E) :-
 :- pred search_first_2_find_better_solution_two(V, E, E, E, rtree_2(K, V),
     rtree_2(K, V), pred(K, E), pred(V, E), V, E).
 :- mode search_first_2_find_better_solution_two(in, in, in, in, in, in,
-    pred(in, out) is semidet, pred(in, out) is semidet, out, out) is det.
+    in(pred(in, out) is semidet), in(pred(in, out) is semidet),
+    out, out) is det.
 
 search_first_2_find_better_solution_two(VM, EM, E0, E1, T0, T1, P, C, V, E) :-
     R = minimum_of_three(EM, E0, E1),
@@ -1280,7 +1282,8 @@ search_first_2_find_better_solution_two(VM, EM, E0, E1, T0, T1, P, C, V, E) :-
 :- pred search_first_2_better_solution_two(V, E, E, rtree_2(K, V),
     rtree_2(K, V), pred(K, E), pred(V, E), V, E).
 :- mode search_first_2_better_solution_two(in, in, in, in, in,
-    pred(in, out) is semidet, pred(in, out) is semidet, out, out) is det.
+    in(pred(in, out) is semidet), in(pred(in, out) is semidet),
+    out, out) is det.
 
 search_first_2_better_solution_two(VM, EM, E1, T0, T1, P, C, V, E) :-
     ( if search_first_2(T0, P, C, EM, V0, F0) then
@@ -1296,7 +1299,8 @@ search_first_2_better_solution_two(VM, EM, E1, T0, T1, P, C, V, E) :-
 :- pred search_first_2_find_better_solution_three(V, E, E, E, E, rtree_2(K, V),
     rtree_2(K, V), rtree_2(K, V), pred(K, E), pred(V, E), V, E).
 :- mode search_first_2_find_better_solution_three(in, in, in, in, in, in, in,
-    in, pred(in, out) is semidet, pred(in, out) is semidet, out, out) is det.
+    in, in(pred(in, out) is semidet), in(pred(in, out) is semidet),
+    out, out) is det.
 
 search_first_2_find_better_solution_three(VM, EM, E0, E1, E2, T0, T1, T2, P,
         C, V, E) :-
@@ -1322,7 +1326,8 @@ search_first_2_find_better_solution_three(VM, EM, E0, E1, E2, T0, T1, T2, P,
 :- pred search_first_2_better_solution_three(V, E, E, E, rtree_2(K, V),
     rtree_2(K, V), rtree_2(K, V), pred(K, E), pred(V, E), V, E).
 :- mode search_first_2_better_solution_three(in, in, in, in, in, in, in,
-    pred(in, out) is semidet, pred(in, out) is semidet, out, out) is det.
+    in(pred(in, out) is semidet), in(pred(in, out) is semidet),
+    out, out) is det.
 
 search_first_2_better_solution_three(VM, EM, E1, E2, T0, T1, T2, P, C, V, E) :-
     ( if search_first_2(T0, P, C, EM, V0, F0) then
@@ -1357,10 +1362,10 @@ search_general_fold(KTest, VPred, rtree(T), !Acc) :-
     %
 :- pred search_general_fold_2(rtree_2(K, V), pred(K),
     pred(K, V, A, A), A, A).
-:- mode search_general_fold_2(in, pred(in) is semidet,
-    pred(in, in, in, out) is det, in, out) is det.
-:- mode search_general_fold_2(in, pred(in) is semidet,
-    pred(in, in, di, uo) is det, di, uo) is det.
+:- mode search_general_fold_2(in, in(pred(in) is semidet),
+    in(pred(in, in, in, out) is det), in, out) is det.
+:- mode search_general_fold_2(in, in(pred(in) is semidet),
+    in(pred(in, in, di, uo) is det), di, uo) is det.
 
 search_general_fold_2(leaf(_), _, _, _, _) :-
     error("search_general_fold_2: unexpected leaf node").
@@ -1410,9 +1415,9 @@ fold(P, rtree(T), !Acc) :-
     rtree.fold_2(P, T, !Acc).
 
 :- pred fold_2(pred(K, V, A, A), rtree_2(K, V), A, A).
-:- mode fold_2(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode fold_2(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode fold_2(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode fold_2(in(pred(in, in, in, out) is det), in, in, out) is det.
+:- mode fold_2(in(pred(in, in, di, uo) is det), in, di, uo) is det.
+:- mode fold_2(in(pred(in, in, in, out) is semidet), in, in, out) is semidet.
 
 fold_2(_, leaf(_), _, _) :-
     error("fold: leaf unexpected").
@@ -1430,9 +1435,9 @@ fold_2(P, four(K0, T0, K1, T1, K2, T2, K3, T3), !Acc) :-
     fold_subtree(P, K3, T3, !Acc).
 
 :- pred fold_subtree(pred(K, V, A, A), K, rtree_2(K, V), A, A).
-:- mode fold_subtree(pred(in, in, in, out) is det, in, in, in, out) is det.
-:- mode fold_subtree(pred(in, in, di, uo) is det, in, in, di, uo) is det.
-:- mode fold_subtree(pred(in, in, in, out) is semidet, in, in, in, out)
+:- mode fold_subtree(in(pred(in, in, in, out) is det), in, in, in, out) is det.
+:- mode fold_subtree(in(pred(in, in, di, uo) is det), in, in, di, uo) is det.
+:- mode fold_subtree(in(pred(in, in, in, out) is semidet), in, in, in, out)
     is semidet.
 
 fold_subtree(P, K, T, !Acc) :-
@@ -1459,8 +1464,8 @@ map_values(P, rtree(T), rtree(U)) :-
     map_values_2(P, T, U).
 
 :- pred map_values_2(pred(K, V, W), rtree_2(K, V), rtree_2(K, W)).
-:- mode map_values_2(pred(in, in, out) is det, in, out) is det.
-:- mode map_values_2(pred(in, in, out) is semidet, in, out) is semidet.
+:- mode map_values_2(in(pred(in, in, out) is det), in, out) is det.
+:- mode map_values_2(in(pred(in, in, out) is semidet), in, out) is semidet.
 
 map_values_2(_, leaf(_), _) :-
     error("map_values_2: unexpected leaf.").
@@ -1480,8 +1485,9 @@ map_values_2(P, four(K0, T0, K1, T1, K2, T2, K3, T3),
     map_values_key_2(P, K3, T3, U3).
 
 :- pred map_values_key_2(pred(K, V, W), K, rtree_2(K, V), rtree_2(K, W)).
-:- mode map_values_key_2(pred(in, in, out) is det, in, in, out) is det.
-:- mode map_values_key_2(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode map_values_key_2(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode map_values_key_2(in(pred(in, in, out) is semidet), in, in, out)
+    is semidet.
 
 map_values_key_2(P, K, T, U) :-
     (
