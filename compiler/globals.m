@@ -396,6 +396,11 @@
     %
 :- func get_maybe_from_ground_term_threshold = maybe(int).
 
+    % Return whether this compiler invocation allows a higher order inst
+    % to be used as a mode.
+    %
+:- func get_allow_ho_insts_as_modes = bool.
+
 :- type maybe_smart_recompilation
     --->    do_not_disable_smart_recompilation
     ;       disable_smart_recompilation.
@@ -1052,6 +1057,9 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
 :- mutable(maybe_from_ground_term_threshold, maybe(int), no, ground,
     [untrailed, attach_to_io_state]).
 
+:- mutable(allow_ho_insts_as_modes, bool, yes, ground,
+    [untrailed, attach_to_io_state]).
+
 :- mutable(disable_smart_recompilation,
     maybe_smart_recompilation, do_not_disable_smart_recompilation, ground,
     [untrailed, attach_to_io_state]).
@@ -1065,11 +1073,18 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
 globals_init_mutables(Globals, !IO) :-
     globals.get_opt_tuple(Globals, OptTuple),
     FromGroundTermThreshold = OptTuple ^ ot_from_ground_term_threshold,
-    set_maybe_from_ground_term_threshold(yes(FromGroundTermThreshold), !IO).
+    set_maybe_from_ground_term_threshold(yes(FromGroundTermThreshold), !IO),
+    globals.lookup_bool_option(Globals, allow_ho_insts_as_modes, Allow),
+    set_allow_ho_insts_as_modes(Allow, !IO).
 
 get_maybe_from_ground_term_threshold = MaybeThreshold :-
     promise_pure (
         semipure get_maybe_from_ground_term_threshold(MaybeThreshold)
+    ).
+
+get_allow_ho_insts_as_modes = Allow :-
+    promise_pure (
+        semipure get_allow_ho_insts_as_modes(Allow)
     ).
 
 io_get_disable_smart_recompilation(DisableSmartRecomp, !IO) :-

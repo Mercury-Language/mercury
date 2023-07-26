@@ -1146,6 +1146,7 @@
             % recompiling most of the modules in the compiler. Having these
             % options permanently here should reduce the need for that.
 
+    ;       allow_ho_insts_as_modes
     ;       ignore_par_conjunctions
     ;       control_granularity
     ;       distance_granularity
@@ -2085,6 +2086,7 @@ optdef(oc_misc, experiment2,                            bool(no)).
 optdef(oc_misc, experiment3,                            bool(no)).
 optdef(oc_misc, experiment4,                            bool(no)).
 optdef(oc_misc, experiment5,                            bool(no)).
+optdef(oc_misc, allow_ho_insts_as_modes,                bool(yes)).
 optdef(oc_misc, ignore_par_conjunctions,                bool(no)).
 optdef(oc_misc, control_granularity,                    bool(no)).
 optdef(oc_misc, distance_granularity,                   int(0)).
@@ -3235,6 +3237,8 @@ long_option("experiment2",          experiment2).
 long_option("experiment3",          experiment3).
 long_option("experiment4",          experiment4).
 long_option("experiment5",          experiment5).
+long_option("allow-ho-insts-as-modes",
+                                    allow_ho_insts_as_modes).
 long_option("ignore-par-conjunctions",
                                     ignore_par_conjunctions).
 long_option("control-granularity",  control_granularity).
@@ -6795,6 +6799,8 @@ options_help_misc(Stream, !IO) :-
         % The `--local-module-id' option is used by `mmc --make'.
         % The `--analysis-file-cache-dir' option is used by `mmc --make'.
 
+%       "--no-allow-ho-insts-as-modes",
+%       "\tDo not allow higher order insts to be used as modes.",
 %       "--ignore-parallel-conjunctions",
 %       "\tReplace parallel conjunctions with plain ones, this is useful",
 %       "\tfor benchmarking. Note that it does not affect implicit",

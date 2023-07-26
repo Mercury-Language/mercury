@@ -69,6 +69,8 @@
 
 :- implementation.
 
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
@@ -222,29 +224,41 @@ parse_higher_order_mode(AllowConstrainedInstVar, VarSet, ContextPieces,
             IsAny = yes
         )
     then
-        % XXX Should update ContextPieces.
-        parse_modes(AllowConstrainedInstVar, VarSet, ContextPieces,
-            BeforeIsArgTerms, MaybeArgModes),
-        parse_determinism(VarSet, DetTerm, MaybeDetism),
-        ( if
-            MaybeArgModes = ok1(ArgModes),
-            MaybeDetism = ok1(Detism)
-        then
-            PredInstInfo = pred_inst_info(pf_predicate, ArgModes,
-                arg_reg_types_unset, Detism),
-            (
-                IsAny = no,
-                Inst = ground(shared, higher_order(PredInstInfo))
-            ;
-                IsAny = yes,
-                Inst = any(shared, higher_order(PredInstInfo))
-            ),
-            Mode = from_to_mode(Inst, Inst),
-            MaybeMode = ok1(Mode)
-        else
-            Specs = get_any_errors1(MaybeArgModes)
-                ++ get_any_errors1(MaybeDetism),
-            MaybeMode = error1(Specs)
+        AllowInstsAsModes = globals.get_allow_ho_insts_as_modes,
+        (
+            AllowInstsAsModes = no,
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+                words("Error: higher order inst is used as a mode."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(BeforeIsTerm),
+                Pieces),
+            MaybeMode = error1([Spec])
+        ;
+            AllowInstsAsModes = yes,
+            % XXX Should update ContextPieces.
+            parse_modes(AllowConstrainedInstVar, VarSet, ContextPieces,
+                BeforeIsArgTerms, MaybeArgModes),
+            parse_determinism(VarSet, DetTerm, MaybeDetism),
+            ( if
+                MaybeArgModes = ok1(ArgModes),
+                MaybeDetism = ok1(Detism)
+            then
+                PredInstInfo = pred_inst_info(pf_predicate, ArgModes,
+                    arg_reg_types_unset, Detism),
+                (
+                    IsAny = no,
+                    Inst = ground(shared, higher_order(PredInstInfo))
+                ;
+                    IsAny = yes,
+                    Inst = any(shared, higher_order(PredInstInfo))
+                ),
+                Mode = from_to_mode(Inst, Inst),
+                MaybeMode = ok1(Mode)
+            else
+                Specs = get_any_errors1(MaybeArgModes)
+                    ++ get_any_errors1(MaybeDetism),
+                MaybeMode = error1(Specs)
+            )
         )
     else if
         BeforeIsTerm =
