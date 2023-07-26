@@ -2,6 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1996-2009, 2011 The University of Melbourne.
+# Copyright (C) 2013, 2015, 2017-2018, 2020, 2022-2023 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -113,7 +114,7 @@ CSHARP_WRAPPER_SCRIPTS = \
 test_mdbrc: mdbrc.in mdbrc
 	@echo making test_mdbrc
 	@ABS_MERCURY_DIR=`(cd $(MERCURY_DIR); /bin/pwd)` ; \
-	ABS_MERCURY_DIR=`$(FIX_PATH_FOR_CC) $${ABS_MERCURY_DIR}` ; \
+	ABS_MERCURY_DIR=`$(FIX_PATH_FOR_WINDOWS) $${ABS_MERCURY_DIR}` ; \
 	sed \
 		-e "s,@DEFAULT_MERCURY_DEBUGGER_DOC@,$${ABS_MERCURY_DIR}/doc/mdb_doc," \
 		-e "s,@DEFAULT_MERCURY_DEBUGGER_INIT_DIR@,$${ABS_MERCURY_DIR}/scripts," \
