@@ -397,12 +397,12 @@
 :- pred put_list(Stream, pred(Stream, T, State, State),
     pred(Stream, State, State), list(T), State, State)
     <= output(Stream, State).
-:- mode put_list(in, pred(in, in, di, uo) is det, pred(in, di, uo) is det,
-    in, di, uo) is det.
-:- mode put_list(in, pred(in, in, di, uo) is cc_multi,
-    pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
-:- mode put_list(in, pred(in, in, di, uo) is cc_multi,
-    pred(in, di, uo) is det, in, di, uo) is cc_multi.
+:- mode put_list(in, in(pred(in, in, di, uo) is det),
+    in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode put_list(in, in(pred(in, in, di, uo) is cc_multi),
+    in(pred(in, di, uo) is cc_multi), in, di, uo) is cc_multi.
+:- mode put_list(in, in(pred(in, in, di, uo) is cc_multi),
+    in(pred(in, di, uo) is det), in, di, uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

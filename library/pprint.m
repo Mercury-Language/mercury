@@ -940,8 +940,8 @@ write(Stream, Width, Doc, !State) :-
     % adapted to work with a strict evaluation order.
     %
 :- pred layout_best(pred(string, T, T), int, doc, T, T).
-:- mode layout_best(pred(in, di, uo) is det, in, in, di, uo) is det.
-:- mode layout_best(pred(in, in, out) is det, in, in, in, out) is det.
+:- mode layout_best(in(pred(in, di, uo) is det), in, in, di, uo) is det.
+:- mode layout_best(in(pred(in, in, out) is det), in, in, in, out) is det.
 
 layout_best(AccPred, Width, Doc, !LayoutStream) :-
     layout_best_acc(AccPred, Width, "", Doc, 0, _UsedWidth, !LayoutStream).
@@ -971,9 +971,9 @@ layout_best(AccPred, Width, Doc, !LayoutStream) :-
     % a more elaborate simple_doc type.
     %
 :- pred layout_best_acc(pred(string, T, T), int, string, doc, int, int, T, T).
-:- mode layout_best_acc(pred(in, di, uo) is det,
+:- mode layout_best_acc(in(pred(in, di, uo) is det),
     in, in, in, in, out, di, uo) is det.
-:- mode layout_best_acc(pred(in, in, out) is det,
+:- mode layout_best_acc(in(pred(in, in, out) is det),
     in, in, in, in, out, in, out) is det.
 
 layout_best_acc(AccPred, Width, AfterNlStr, Doc, !UsedWidth, !LayoutStream) :-
@@ -1067,8 +1067,8 @@ fits_flat_width_left(Doc, WidthAvail, WidthLeft) :-
     % Lay out a doc in its flattened form.
     %
 :- pred layout_flat(pred(string, T, T), doc, int, int, T, T).
-:- mode layout_flat(pred(in, di, uo) is det,  in, in, out, di, uo) is det.
-:- mode layout_flat(pred(in, in, out) is det, in, in, out, in, out) is det.
+:- mode layout_flat(in(pred(in, di, uo) is det),  in, in, out, di, uo) is det.
+:- mode layout_flat(in(pred(in, in, out) is det), in, in, out, in, out) is det.
 
 layout_flat(AccPred, Doc, !UsedWidth, !LayoutStream) :-
     (

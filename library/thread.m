@@ -358,7 +358,7 @@ spawn_native(Goal, Options, Res, !IO) :-
     io::di, io::uo) is cc_multi.
 
 :- pragma foreign_proc("C",
-    spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), MinStackSize::in,
+    spawn_native_2(Goal::in(pred(in, di, uo) is cc_multi), MinStackSize::in,
         Success::out, ThreadId::out, ErrorMsg::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
@@ -375,7 +375,7 @@ spawn_native(Goal, Options, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), _MinStackSize::in,
+    spawn_native_2(Goal::in(pred(in, di, uo) is cc_multi), _MinStackSize::in,
         Success::out, ThreadId::out, ErrorMsg::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
@@ -403,7 +403,7 @@ spawn_native(Goal, Options, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), _MinStackSize::in,
+    spawn_native_2(Goal::in(pred(in, di, uo) is cc_multi), _MinStackSize::in,
         Success::out, ThreadId::out, ErrorMsg::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],

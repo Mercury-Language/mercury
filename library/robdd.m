@@ -260,7 +260,7 @@
     % Existentially quantify away all vars for which the predicate fails.
     %
 :- func restrict_filter(pred(var(T)), robdd(T)) = robdd(T).
-:- mode restrict_filter(pred(in) is semidet, in) = out is det.
+:- mode restrict_filter(in(pred(in) is semidet), in) = out is det.
 
     % restrict_filter(P, D, R):
     %
@@ -270,8 +270,8 @@
     % used to set a depth limit on the existential quantification.
     %
 :- func restrict_filter(pred(var(T)), pred(var(T)), robdd(T)) = robdd(T).
-:- mode restrict_filter(pred(in) is semidet, pred(in) is semidet, in) = out
-    is det.
+:- mode restrict_filter(in(pred(in) is semidet), in(pred(in) is semidet), in)
+    = out is det.
 
 :- func restrict_true_false_vars(vars(T), vars(T), robdd(T)) = robdd(T).
 

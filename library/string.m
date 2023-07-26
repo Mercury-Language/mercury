@@ -1010,7 +1010,7 @@
     % Note the difference to split_at_separator.
     %
 :- func words_separator(pred(char), string) = list(string).
-:- mode words_separator(pred(in) is semidet, in) = out is det.
+:- mode words_separator(in(pred(in) is semidet), in) = out is det.
 
     % words(String) =
     %   words_separator(char.is_whitespace, String).
@@ -1027,7 +1027,7 @@
     % Note the difference to words_separator.
     %
 :- func split_at_separator(pred(char), string) = list(string).
-:- mode split_at_separator(pred(in) is semidet, in) = out is det.
+:- mode split_at_separator(in(pred(in) is semidet), in) = out is det.
 
     % split_at_char(Char, String) =
     %     split_at_separator(unify(Char), String)
@@ -1309,27 +1309,27 @@
     %
 :- func foldl(func(char, A) = A, string, A) = A.
 :- pred foldl(pred(char, A, A), string, A, A).
-:- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode foldl(pred(in, in, out) is multi, in, in, out) is multi.
+:- mode foldl(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldl(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldl(in(pred(in, in, out) is nondet), in, in, out) is nondet.
+:- mode foldl(in(pred(in, in, out) is multi), in, in, out) is multi.
 
     % foldl2(Pred, String, !Acc1, !Acc2):
     % A variant of foldl with two accumulators.
     %
 :- pred foldl2(pred(char, A, A, B, B), string, A, A, B, B).
-:- mode foldl2(pred(in, di, uo, di, uo) is det,
+:- mode foldl2(in(pred(in, di, uo, di, uo) is det),
     in, di, uo, di, uo) is det.
-:- mode foldl2(pred(in, in, out, di, uo) is det,
+:- mode foldl2(in(pred(in, in, out, di, uo) is det),
     in, in, out, di, uo) is det.
-:- mode foldl2(pred(in, in, out, in, out) is det,
+:- mode foldl2(in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
-:- mode foldl2(pred(in, in, out, in, out) is semidet,
+:- mode foldl2(in(pred(in, in, out, in, out) is semidet),
     in, in, out, in, out) is semidet.
-:- mode foldl2(pred(in, in, out, in, out) is nondet,
+:- mode foldl2(in(pred(in, in, out, in, out) is nondet),
     in, in, out, in, out) is nondet.
-:- mode foldl2(pred(in, in, out, in, out) is multi,
+:- mode foldl2(in(pred(in, in, out, in, out) is multi),
     in, in, out, in, out) is multi.
 
     % foldl_between(Pred, String, Start, End, !Acc)
@@ -1340,15 +1340,15 @@
     %
 :- func foldl_between(func(char, A) = A, string, int, int, A) = A.
 :- pred foldl_between(pred(char, A, A), string, int, int, A, A).
-:- mode foldl_between(pred(in, in, out) is det, in, in, in,
+:- mode foldl_between(in(pred(in, in, out) is det), in, in, in,
     in, out) is det.
-:- mode foldl_between(pred(in, di, uo) is det, in, in, in,
+:- mode foldl_between(in(pred(in, di, uo) is det), in, in, in,
     di, uo) is det.
-:- mode foldl_between(pred(in, in, out) is semidet, in, in, in,
+:- mode foldl_between(in(pred(in, in, out) is semidet), in, in, in,
     in, out) is semidet.
-:- mode foldl_between(pred(in, in, out) is nondet, in, in, in,
+:- mode foldl_between(in(pred(in, in, out) is nondet), in, in, in,
     in, out) is nondet.
-:- mode foldl_between(pred(in, in, out) is multi, in, in, in,
+:- mode foldl_between(in(pred(in, in, out) is multi), in, in, in,
     in, out) is multi.
 
     % foldl2_between(Pred, String, Start, End, !Acc1, !Acc2)
@@ -1358,17 +1358,17 @@
     %
 :- pred foldl2_between(pred(char, A, A, B, B),
     string, int, int, A, A, B, B).
-:- mode foldl2_between(pred(in, di, uo, di, uo) is det,
+:- mode foldl2_between(in(pred(in, di, uo, di, uo) is det),
     in, in, in, di, uo, di, uo) is det.
-:- mode foldl2_between(pred(in, in, out, di, uo) is det,
+:- mode foldl2_between(in(pred(in, in, out, di, uo) is det),
     in, in, in, in, out, di, uo) is det.
-:- mode foldl2_between(pred(in, in, out, in, out) is det,
+:- mode foldl2_between(in(pred(in, in, out, in, out) is det),
     in, in, in, in, out, in, out) is det.
-:- mode foldl2_between(pred(in, in, out, in, out) is semidet,
+:- mode foldl2_between(in(pred(in, in, out, in, out) is semidet),
     in, in, in, in, out, in, out) is semidet.
-:- mode foldl2_between(pred(in, in, out, in, out) is nondet,
+:- mode foldl2_between(in(pred(in, in, out, in, out) is nondet),
     in, in, in, in, out, in, out) is nondet.
-:- mode foldl2_between(pred(in, in, out, in, out) is multi,
+:- mode foldl2_between(in(pred(in, in, out, in, out) is multi),
     in, in, in, in, out, in, out) is multi.
 
     % foldr(Pred, String, !Acc):
@@ -1376,11 +1376,11 @@
     %
 :- func foldr(func(char, T) = T, string, T) = T.
 :- pred foldr(pred(char, T, T), string, T, T).
-:- mode foldr(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldr(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
-:- mode foldr(pred(in, in, out) is multi, in, in, out) is multi.
+:- mode foldr(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldr(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldr(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldr(in(pred(in, in, out) is nondet), in, in, out) is nondet.
+:- mode foldr(in(pred(in, in, out) is multi), in, in, out) is multi.
 
     % foldr_between(Pred, String, Start, End, !Acc)
     % is equivalent to foldr(Pred, SubString, !Acc)
@@ -1390,15 +1390,15 @@
     %
 :- func foldr_between(func(char, T) = T, string, int, int, T) = T.
 :- pred foldr_between(pred(char, T, T), string, int, int, T, T).
-:- mode foldr_between(pred(in, in, out) is det, in, in, in,
+:- mode foldr_between(in(pred(in, in, out) is det), in, in, in,
     in, out) is det.
-:- mode foldr_between(pred(in, di, uo) is det, in, in, in,
+:- mode foldr_between(in(pred(in, di, uo) is det), in, in, in,
     di, uo) is det.
-:- mode foldr_between(pred(in, in, out) is semidet, in, in, in,
+:- mode foldr_between(in(pred(in, in, out) is semidet), in, in, in,
     in, out) is semidet.
-:- mode foldr_between(pred(in, in, out) is nondet, in, in, in,
+:- mode foldr_between(in(pred(in, in, out) is nondet), in, in, in,
     in, out) is nondet.
-:- mode foldr_between(pred(in, in, out) is multi, in, in, in,
+:- mode foldr_between(in(pred(in, in, out) is multi), in, in, in,
     in, out) is multi.
 
 %---------------------------------------------------------------------------%
@@ -5161,15 +5161,15 @@ foldl2_between(Pred, String, Start0, End0, !Acc1, !Acc2) :-
     foldl2_between_2(Pred, String, Start, End, !Acc1, !Acc2).
 
 :- pred foldl_between_2(pred(char, A, A), string, int, int, A, A).
-:- mode foldl_between_2(pred(in, di, uo) is det, in, in, in,
+:- mode foldl_between_2(in(pred(in, di, uo) is det), in, in, in,
     di, uo) is det.
-:- mode foldl_between_2(pred(in, in, out) is det, in, in, in,
+:- mode foldl_between_2(in(pred(in, in, out) is det), in, in, in,
     in, out) is det.
-:- mode foldl_between_2(pred(in, in, out) is semidet, in, in, in,
+:- mode foldl_between_2(in(pred(in, in, out) is semidet), in, in, in,
     in, out) is semidet.
-:- mode foldl_between_2(pred(in, in, out) is nondet, in, in, in,
+:- mode foldl_between_2(in(pred(in, in, out) is nondet), in, in, in,
     in, out) is nondet.
-:- mode foldl_between_2(pred(in, in, out) is multi, in, in, in,
+:- mode foldl_between_2(in(pred(in, in, out) is multi), in, in, in,
     in, out) is multi.
 
 foldl_between_2(Pred, String, I, End, !Acc) :-
@@ -5186,17 +5186,17 @@ foldl_between_2(Pred, String, I, End, !Acc) :-
 
 :- pred foldl2_between_2(pred(char, A, A, B, B), string, int, int,
     A, A, B, B).
-:- mode foldl2_between_2(pred(in, di, uo, di, uo) is det,
+:- mode foldl2_between_2(in(pred(in, di, uo, di, uo) is det),
     in, in, in, di, uo, di, uo) is det.
-:- mode foldl2_between_2(pred(in, in, out, di, uo) is det,
+:- mode foldl2_between_2(in(pred(in, in, out, di, uo) is det),
     in, in, in, in, out, di, uo) is det.
-:- mode foldl2_between_2(pred(in, in, out, in, out) is det,
+:- mode foldl2_between_2(in(pred(in, in, out, in, out) is det),
     in, in, in, in, out, in, out) is det.
-:- mode foldl2_between_2(pred(in, in, out, in, out) is semidet,
+:- mode foldl2_between_2(in(pred(in, in, out, in, out) is semidet),
     in, in, in, in, out, in, out) is semidet.
-:- mode foldl2_between_2(pred(in, in, out, in, out) is nondet,
+:- mode foldl2_between_2(in(pred(in, in, out, in, out) is nondet),
     in, in, in, in, out, in, out) is nondet.
-:- mode foldl2_between_2(pred(in, in, out, in, out) is multi,
+:- mode foldl2_between_2(in(pred(in, in, out, in, out) is multi),
     in, in, in, in, out, in, out) is multi.
 
 foldl2_between_2(Pred, String, I, End, !Acc1, !Acc2) :-
@@ -5230,15 +5230,15 @@ foldr_between(Pred, String, Start0, End0, !Acc) :-
     foldr_between_2(Pred, String, Start, End, !Acc).
 
 :- pred foldr_between_2(pred(char, T, T), string, int, int, T, T).
-:- mode foldr_between_2(pred(in, in, out) is det, in, in, in,
+:- mode foldr_between_2(in(pred(in, in, out) is det), in, in, in,
     in, out) is det.
-:- mode foldr_between_2(pred(in, di, uo) is det, in, in, in,
+:- mode foldr_between_2(in(pred(in, di, uo) is det), in, in, in,
     di, uo) is det.
-:- mode foldr_between_2(pred(in, in, out) is semidet, in, in, in,
+:- mode foldr_between_2(in(pred(in, in, out) is semidet), in, in, in,
     in, out) is semidet.
-:- mode foldr_between_2(pred(in, in, out) is nondet, in, in, in,
+:- mode foldr_between_2(in(pred(in, in, out) is nondet), in, in, in,
     in, out) is nondet.
-:- mode foldr_between_2(pred(in, in, out) is multi, in, in, in,
+:- mode foldr_between_2(in(pred(in, in, out) is multi), in, in, in,
     in, out) is multi.
 
 foldr_between_2(Pred, String, Start, I, !Acc) :-

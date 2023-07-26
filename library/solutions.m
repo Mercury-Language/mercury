@@ -30,31 +30,31 @@
     % in which only a single solution is required.
     %
 :- pred solutions(pred(T), list(T)).
-:- mode solutions(pred(out) is multi, out(non_empty_list)) is det.
-:- mode solutions(pred(out) is nondet, out) is det.
+:- mode solutions(in(pred(out) is multi), out(non_empty_list)) is det.
+:- mode solutions(in(pred(out) is nondet), out) is det.
 
 :- func solutions(pred(T)) = list(T).
-:- mode solutions(pred(out) is multi) = out(non_empty_list) is det.
-:- mode solutions(pred(out) is nondet) = out is det.
+:- mode solutions(in(pred(out) is multi)) = out(non_empty_list) is det.
+:- mode solutions(in(pred(out) is nondet)) = out is det.
 
 :- func solutions_set(pred(T)) = set(T).
-:- mode solutions_set(pred(out) is multi) = out is det.
-:- mode solutions_set(pred(out) is nondet) = out is det.
+:- mode solutions_set(in(pred(out) is multi)) = out is det.
+:- mode solutions_set(in(pred(out) is nondet)) = out is det.
 
 :- pred solutions_set(pred(T), set(T)).
-:- mode solutions_set(pred(out) is multi, out) is det.
-:- mode solutions_set(pred(out) is nondet, out) is det.
+:- mode solutions_set(in(pred(out) is multi), out) is det.
+:- mode solutions_set(in(pred(out) is nondet), out) is det.
 
 :- pred unsorted_solutions(pred(T), list(T)).
-:- mode unsorted_solutions(pred(out) is multi, out(non_empty_list))
+:- mode unsorted_solutions(in(pred(out) is multi), out(non_empty_list))
     is cc_multi.
-:- mode unsorted_solutions(pred(out) is nondet, out)
+:- mode unsorted_solutions(in(pred(out) is nondet), out)
     is cc_multi.
 
 :- func aggregate(pred(T), func(T, U) = U, U) = U.
-:- mode aggregate(pred(out) is multi, func(in, in) = out is det, in)
+:- mode aggregate(in(pred(out) is multi), in(func(in, in) = out is det), in)
     = out is det.
-:- mode aggregate(pred(out) is nondet, func(in, in) = out is det, in)
+:- mode aggregate(in(pred(out) is nondet), in(func(in, in) = out is det), in)
     = out is det.
 
     % aggregate/4 generates all the solutions to a predicate,
@@ -66,14 +66,14 @@
     %   list.foldl(AccumulatorPred, Solutions, Acc0, Acc).
     %
 :- pred aggregate(pred(T), pred(T, U, U), U, U).
-:- mode aggregate(pred(out) is multi, pred(in, in, out) is det,
-    in, out) is det.
-:- mode aggregate(pred(out) is multi, pred(in, di, uo) is det,
-    di, uo) is det.
-:- mode aggregate(pred(out) is nondet, pred(in, di, uo) is det,
-    di, uo) is det.
-:- mode aggregate(pred(out) is nondet, pred(in, in, out) is det,
-    in, out) is det.
+:- mode aggregate(in(pred(out) is multi),
+    in(pred(in, in, out) is det), in, out) is det.
+:- mode aggregate(in(pred(out) is multi),
+    in(pred(in, di, uo) is det), di, uo) is det.
+:- mode aggregate(in(pred(out) is nondet),
+    in(pred(in, di, uo) is det), di, uo) is det.
+:- mode aggregate(in(pred(out) is nondet),
+    in(pred(in, in, out) is det), in, out) is det.
 
     % aggregate2/6 generates all the solutions to a predicate,
     % sorts them and removes duplicates, then applies an accumulator
@@ -84,14 +84,14 @@
     %   list.foldl2(AccumulatorPred, Solutions, AccA0, AccA, AccB0, AccB).
     %
 :- pred aggregate2(pred(T), pred(T, U, U, V, V), U, U, V, V).
-:- mode aggregate2(pred(out) is multi, pred(in, in, out, in, out) is det,
-    in, out, in, out) is det.
-:- mode aggregate2(pred(out) is multi, pred(in, in, out, di, uo) is det,
-    in, out, di, uo) is det.
-:- mode aggregate2(pred(out) is nondet, pred(in, in, out, di, uo) is det,
-    in, out, di, uo) is det.
-:- mode aggregate2(pred(out) is nondet, pred(in, in, out, in, out) is det,
-    in, out, in, out) is det.
+:- mode aggregate2(in(pred(out) is multi),
+    in(pred(in, in, out, in, out) is det), in, out, in, out) is det.
+:- mode aggregate2(in(pred(out) is multi),
+    in(pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
+:- mode aggregate2(in(pred(out) is nondet),
+    in(pred(in, in, out, di, uo) is det), in, out, di, uo) is det.
+:- mode aggregate2(in(pred(out) is nondet),
+    in(pred(in, in, out, in, out) is det), in, out, in, out) is det.
 
     % unsorted_aggregate/4 generates all the solutions to a predicate
     % and applies an accumulator predicate to each solution in turn.
@@ -106,26 +106,26 @@
     % first building a list of all the solutions.
     %
 :- pred unsorted_aggregate(pred(T), pred(T, U, U), U, U).
-:- mode unsorted_aggregate(pred(out) is multi, pred(in, in, out) is det,
-    in, out) is cc_multi.
-:- mode unsorted_aggregate(pred(out) is multi, pred(in, in, out) is cc_multi,
-    in, out) is cc_multi.
-:- mode unsorted_aggregate(pred(out) is multi, pred(in, di, uo) is det,
-    di, uo) is cc_multi.
-:- mode unsorted_aggregate(pred(out) is multi, pred(in, di, uo) is cc_multi,
-    di, uo) is cc_multi.
-:- mode unsorted_aggregate(pred(muo) is multi, pred(mdi, di, uo) is det,
-    di, uo) is cc_multi.
-:- mode unsorted_aggregate(pred(out) is nondet, pred(in, di, uo) is det,
-    di, uo) is cc_multi.
-:- mode unsorted_aggregate(pred(out) is nondet, pred(in, di, uo) is cc_multi,
-    di, uo) is cc_multi.
-:- mode unsorted_aggregate(pred(out) is nondet, pred(in, in, out) is det,
-    in, out) is cc_multi.
-:- mode unsorted_aggregate(pred(out) is nondet, pred(in, in, out) is cc_multi,
-    in, out) is cc_multi.
-:- mode unsorted_aggregate(pred(muo) is nondet, pred(mdi, di, uo) is det,
-    di, uo) is cc_multi.
+:- mode unsorted_aggregate(in(pred(out) is multi),
+    in(pred(in, in, out) is det), in, out) is cc_multi.
+:- mode unsorted_aggregate(in(pred(out) is multi),
+    in(pred(in, in, out) is cc_multi), in, out) is cc_multi.
+:- mode unsorted_aggregate(in(pred(out) is multi),
+    in(pred(in, di, uo) is det), di, uo) is cc_multi.
+:- mode unsorted_aggregate(in(pred(out) is multi),
+    in(pred(in, di, uo) is cc_multi), di, uo) is cc_multi.
+:- mode unsorted_aggregate(in(pred(muo) is multi),
+    in(pred(mdi, di, uo) is det), di, uo) is cc_multi.
+:- mode unsorted_aggregate(in(pred(out) is nondet),
+    in(pred(in, di, uo) is det), di, uo) is cc_multi.
+:- mode unsorted_aggregate(in(pred(out) is nondet),
+    in(pred(in, di, uo) is cc_multi), di, uo) is cc_multi.
+:- mode unsorted_aggregate(in(pred(out) is nondet),
+    in(pred(in, in, out) is det), in, out) is cc_multi.
+:- mode unsorted_aggregate(in(pred(out) is nondet),
+    in(pred(in, in, out) is cc_multi), in, out) is cc_multi.
+:- mode unsorted_aggregate(in(pred(muo) is nondet),
+    in(pred(mdi, di, uo) is det), di, uo) is cc_multi.
 
     % unsorted_aggregate2/6 generates all the solutions to a predicate
     % and applies an accumulator predicate to each solution in turn.
@@ -140,22 +140,22 @@
     % first building a list of all the solutions.
     %
 :- pred unsorted_aggregate2(pred(T), pred(T, U, U, V, V), U, U, V, V).
-:- mode unsorted_aggregate2(pred(out) is multi,
-    pred(in, in, out, in, out) is det, in, out, in, out) is cc_multi.
-:- mode unsorted_aggregate2(pred(out) is multi,
-    pred(in, in, out, in, out) is cc_multi, in, out, in, out) is cc_multi.
-:- mode unsorted_aggregate2(pred(out) is multi,
-    pred(in, in, out, di, uo) is det, in, out, di, uo) is cc_multi.
-:- mode unsorted_aggregate2(pred(out) is multi,
-    pred(in, in, out, di, uo) is cc_multi, in, out, di, uo) is cc_multi.
-:- mode unsorted_aggregate2(pred(out) is nondet,
-    pred(in, in, out, in, out) is det, in, out, in, out) is cc_multi.
-:- mode unsorted_aggregate2(pred(out) is nondet,
-    pred(in, in, out, in, out) is cc_multi, in, out, in, out) is cc_multi.
-:- mode unsorted_aggregate2(pred(out) is nondet,
-    pred(in, in, out, di, uo) is det, in, out, di, uo) is cc_multi.
-:- mode unsorted_aggregate2(pred(out) is nondet,
-    pred(in, in, out, di, uo) is cc_multi, in, out, di, uo) is cc_multi.
+:- mode unsorted_aggregate2(in(pred(out) is multi),
+    in(pred(in, in, out, in, out) is det), in, out, in, out) is cc_multi.
+:- mode unsorted_aggregate2(in(pred(out) is multi),
+    in(pred(in, in, out, in, out) is cc_multi), in, out, in, out) is cc_multi.
+:- mode unsorted_aggregate2(in(pred(out) is multi),
+    in(pred(in, in, out, di, uo) is det), in, out, di, uo) is cc_multi.
+:- mode unsorted_aggregate2(in(pred(out) is multi),
+    in(pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
+:- mode unsorted_aggregate2(in(pred(out) is nondet),
+    in(pred(in, in, out, in, out) is det), in, out, in, out) is cc_multi.
+:- mode unsorted_aggregate2(in(pred(out) is nondet),
+    in(pred(in, in, out, in, out) is cc_multi), in, out, in, out) is cc_multi.
+:- mode unsorted_aggregate2(in(pred(out) is nondet),
+    in(pred(in, in, out, di, uo) is det), in, out, di, uo) is cc_multi.
+:- mode unsorted_aggregate2(in(pred(out) is nondet),
+    in(pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
 
     % This is a generalization of unsorted_aggregate which allows the
     % iteration to stop before all solutions have been found.
@@ -180,18 +180,18 @@
     % first building a list of all the solutions.
     %
 :- pred do_while(pred(T), pred(T, bool, T2, T2), T2, T2).
-:- mode do_while(pred(out) is multi, pred(in, out, in, out) is det,
-    in, out) is cc_multi.
-:- mode do_while(pred(out) is multi, pred(in, out, di, uo) is det,
-    di, uo) is cc_multi.
-:- mode do_while(pred(out) is multi, pred(in, out, di, uo) is cc_multi,
-    di, uo) is cc_multi.
-:- mode do_while(pred(out) is nondet, pred(in, out, in, out) is det,
-    in, out) is cc_multi.
-:- mode do_while(pred(out) is nondet, pred(in, out, di, uo) is det,
-    di, uo) is cc_multi.
-:- mode do_while(pred(out) is nondet, pred(in, out, di, uo) is cc_multi,
-    di, uo) is cc_multi.
+:- mode do_while(in(pred(out) is multi),
+    in(pred(in, out, in, out) is det), in, out) is cc_multi.
+:- mode do_while(in(pred(out) is multi),
+    in(pred(in, out, di, uo) is det), di, uo) is cc_multi.
+:- mode do_while(in(pred(out) is multi),
+    in(pred(in, out, di, uo) is cc_multi), di, uo) is cc_multi.
+:- mode do_while(in(pred(out) is nondet),
+    in(pred(in, out, in, out) is det), in, out) is cc_multi.
+:- mode do_while(in(pred(out) is nondet),
+    in(pred(in, out, di, uo) is det), di, uo) is cc_multi.
+:- mode do_while(in(pred(out) is nondet),
+    in(pred(in, out, di, uo) is cc_multi), di, uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -252,9 +252,9 @@ unsorted_aggregate2(Generator, AccumulatorPred, !Acc1, !Acc2) :-
 %---------------------------------------------------------------------------%
 
 :- pred builtin_solutions(pred(T), list(T)).
-:- mode builtin_solutions(pred(out) is multi, out(non_empty_list))
+:- mode builtin_solutions(in(pred(out) is multi), out(non_empty_list))
      is cc_multi.
-:- mode builtin_solutions(pred(out) is nondet, out)
+:- mode builtin_solutions(in(pred(out) is nondet), out)
      is cc_multi.
 
 builtin_solutions(Generator, UnsortedList) :-
@@ -262,14 +262,14 @@ builtin_solutions(Generator, UnsortedList) :-
     assert_num_solutions(Generator, UnsortedList0, UnsortedList).
 
 :- pred assert_num_solutions(pred(T), list(T), list(T)).
-:- mode assert_num_solutions(pred(out) is multi,
+:- mode assert_num_solutions(in(pred(out) is multi),
      in, out(non_empty_list)) is det.
-:- mode assert_num_solutions(pred(out) is nondet,
+:- mode assert_num_solutions(in(pred(out) is nondet),
      in, out) is det.
 
 :- pragma promise_equivalent_clauses(pred(assert_num_solutions/3)).
 
-assert_num_solutions(_Pred::pred(out) is multi,
+assert_num_solutions(_Pred::in(pred(out) is multi),
         List0::in, List::out(non_empty_list)) :-
     (
         List0 = [],
@@ -278,7 +278,7 @@ assert_num_solutions(_Pred::pred(out) is multi,
         List0 = [_ | _],
         List = List0
     ).
-assert_num_solutions(_Pred::pred(out) is nondet, List::in, List::out).
+assert_num_solutions(_Pred::in(pred(out) is nondet), List::in, List::out).
 
 %---------------------------------------------------------------------------%
 %
@@ -288,26 +288,26 @@ assert_num_solutions(_Pred::pred(out) is nondet, List::in, List::out).
 % user wishes. This is basically a generalization of solutions/2.
 
 :- pred builtin_aggregate(pred(T), pred(T, U, U), U, U).
-:- mode builtin_aggregate(pred(out) is multi, pred(in, in, out) is det,
-    in, out) is cc_multi.
-:- mode builtin_aggregate(pred(out) is multi, pred(in, di, uo) is det,
-    di, uo) is cc_multi.
-:- mode builtin_aggregate(pred(out) is multi, pred(in, in, out) is cc_multi,
-    in, out) is cc_multi.
-:- mode builtin_aggregate(pred(out) is multi, pred(in, di, uo) is cc_multi,
-    di, uo) is cc_multi.
-:- mode builtin_aggregate(pred(muo) is multi, pred(mdi, di, uo) is det,
-    di, uo) is cc_multi.
-:- mode builtin_aggregate(pred(out) is nondet, pred(in, di, uo) is det,
-    di, uo) is cc_multi.
-:- mode builtin_aggregate(pred(out) is nondet, pred(in, di, uo) is cc_multi,
-    di, uo) is cc_multi.
-:- mode builtin_aggregate(pred(out) is nondet, pred(in, in, out) is det,
-    in, out) is cc_multi.
-:- mode builtin_aggregate(pred(out) is nondet, pred(in, in, out) is cc_multi,
-    in, out) is cc_multi.
-:- mode builtin_aggregate(pred(muo) is nondet, pred(mdi, di, uo) is det,
-    di, uo) is cc_multi.
+:- mode builtin_aggregate(in(pred(out) is multi),
+    in(pred(in, in, out) is det), in, out) is cc_multi.
+:- mode builtin_aggregate(in(pred(out) is multi),
+    in(pred(in, di, uo) is det), di, uo) is cc_multi.
+:- mode builtin_aggregate(in(pred(out) is multi),
+    in(pred(in, in, out) is cc_multi), in, out) is cc_multi.
+:- mode builtin_aggregate(in(pred(out) is multi),
+    in(pred(in, di, uo) is cc_multi), di, uo) is cc_multi.
+:- mode builtin_aggregate(in(pred(muo) is multi),
+    in(pred(mdi, di, uo) is det), di, uo) is cc_multi.
+:- mode builtin_aggregate(in(pred(out) is nondet),
+    in(pred(in, di, uo) is det), di, uo) is cc_multi.
+:- mode builtin_aggregate(in(pred(out) is nondet),
+    in(pred(in, di, uo) is cc_multi), di, uo) is cc_multi.
+:- mode builtin_aggregate(in(pred(out) is nondet),
+    in(pred(in, in, out) is det), in, out) is cc_multi.
+:- mode builtin_aggregate(in(pred(out) is nondet),
+    in(pred(in, in, out) is cc_multi), in, out) is cc_multi.
+:- mode builtin_aggregate(in(pred(muo) is nondet),
+    in(pred(mdi, di, uo) is det), di, uo) is cc_multi.
 
 % If we're doing heap reclamation on failure, then in order to implement any
 % sort of code that requires terms to survive backtracking, we need to
@@ -417,29 +417,29 @@ builtin_aggregate(GeneratorPred, CollectorPred, !Acc) :-
 %---------------------------------------------------------------------------%
 
 :- pred builtin_aggregate2(pred(T), pred(T, U, U, V, V), U, U, V, V).
-:- mode builtin_aggregate2(pred(out) is multi,
-    pred(in, in, out, in, out) is det,
+:- mode builtin_aggregate2(in(pred(out) is multi),
+    in(pred(in, in, out, in, out) is det),
     in, out, in, out) is cc_multi.
-:- mode builtin_aggregate2(pred(out) is multi,
-    pred(in, in, out, in, out) is cc_multi,
+:- mode builtin_aggregate2(in(pred(out) is multi),
+    in(pred(in, in, out, in, out) is cc_multi),
     in, out, in, out) is cc_multi.
-:- mode builtin_aggregate2(pred(out) is multi,
-    pred(in, in, out, di, uo) is det,
+:- mode builtin_aggregate2(in(pred(out) is multi),
+    in(pred(in, in, out, di, uo) is det),
     in, out, di, uo) is cc_multi.
-:- mode builtin_aggregate2(pred(out) is multi,
-    pred(in, in, out, di, uo) is cc_multi,
+:- mode builtin_aggregate2(in(pred(out) is multi),
+    in(pred(in, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
-:- mode builtin_aggregate2(pred(out) is nondet,
-    pred(in, in, out, in, out) is det,
+:- mode builtin_aggregate2(in(pred(out) is nondet),
+    in(pred(in, in, out, in, out) is det),
     in, out, in, out) is cc_multi.
-:- mode builtin_aggregate2(pred(out) is nondet,
-    pred(in, in, out, in, out) is cc_multi,
+:- mode builtin_aggregate2(in(pred(out) is nondet),
+    in(pred(in, in, out, in, out) is cc_multi),
     in, out, in, out) is cc_multi.
-:- mode builtin_aggregate2(pred(out) is nondet,
-    pred(in, in, out, di, uo) is det,
+:- mode builtin_aggregate2(in(pred(out) is nondet),
+    in(pred(in, in, out, di, uo) is det),
     in, out, di, uo) is cc_multi.
-:- mode builtin_aggregate2(pred(out) is nondet,
-    pred(in, in, out, di, uo) is cc_multi,
+:- mode builtin_aggregate2(in(pred(out) is nondet),
+    in(pred(in, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 
 builtin_aggregate2(GeneratorPred, CollectorPred, !Acc1, !Acc2) :-

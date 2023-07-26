@@ -205,44 +205,44 @@
 %---------------------------------------------------------------------------%
 
 :- pred foldl(pred(int, A, A), ranges, A, A).
-:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldl(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldl(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldl(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldl(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldl(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldl(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
 :- pred foldl2(pred(int, A, A, B, B), ranges, A, A, B, B).
-:- mode foldl2(pred(in, in, out, in, out) is det, in, in, out,
+:- mode foldl2(in(pred(in, in, out, in, out) is det), in, in, out,
     in, out) is det.
-:- mode foldl2(pred(in, in, out, mdi, muo) is det, in, in, out,
+:- mode foldl2(in(pred(in, in, out, mdi, muo) is det), in, in, out,
     mdi, muo) is det.
-:- mode foldl2(pred(in, in, out, di, uo) is det, in, in, out,
+:- mode foldl2(in(pred(in, in, out, di, uo) is det), in, in, out,
     di, uo) is det.
-:- mode foldl2(pred(in, in, out, in, out) is semidet, in, in, out,
+:- mode foldl2(in(pred(in, in, out, in, out) is semidet), in, in, out,
     in, out) is semidet.
-:- mode foldl2(pred(in, in, out, mdi, muo) is semidet, in, in, out,
+:- mode foldl2(in(pred(in, in, out, mdi, muo) is semidet), in, in, out,
     mdi, muo) is semidet.
-:- mode foldl2(pred(in, in, out, di, uo) is semidet, in, in, out,
+:- mode foldl2(in(pred(in, in, out, di, uo) is semidet), in, in, out,
     di, uo) is semidet.
 
 :- pred foldl3(pred(int, A, A, B, B, C, C), ranges, A, A, B, B, C, C).
-:- mode foldl3(pred(in, in, out, in, out, in, out) is det, in,
+:- mode foldl3(in(pred(in, in, out, in, out, in, out) is det), in,
     in, out, in, out, in, out) is det.
-:- mode foldl3(pred(in, in, out, in, out, mdi, muo) is det, in,
+:- mode foldl3(in(pred(in, in, out, in, out, mdi, muo) is det), in,
     in, out, in, out, mdi, muo) is det.
-:- mode foldl3(pred(in, in, out, in, out, di, uo) is det, in,
+:- mode foldl3(in(pred(in, in, out, in, out, di, uo) is det), in,
     in, out, in, out, di, uo) is det.
-:- mode foldl3(pred(in, in, out, in, out, di, uo) is semidet, in,
+:- mode foldl3(in(pred(in, in, out, in, out, di, uo) is semidet), in,
     in, out, in, out, di, uo) is semidet.
 
 :- pred foldr(pred(int, A, A), ranges, A, A).
-:- mode foldr(pred(in, in, out) is det, in, in, out) is det.
-:- mode foldr(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode foldr(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldr(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode foldr(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode foldr(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldr(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldr(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldr(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldr(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldr(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -250,39 +250,41 @@
     % upper bound and threading through an accumulator.
     %
 :- pred range_foldl(pred(int, int, A, A), ranges, A, A).
-:- mode range_foldl(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode range_foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode range_foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode range_foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
-:- mode range_foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo)
+:- mode range_foldl(in(pred(in, in, in, out) is det), in, in, out) is det.
+:- mode range_foldl(in(pred(in, in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode range_foldl(in(pred(in, in, di, uo) is det), in, di, uo) is det.
+:- mode range_foldl(in(pred(in, in, in, out) is semidet), in, in, out)
     is semidet.
-:- mode range_foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode range_foldl(in(pred(in, in, mdi, muo) is semidet), in, mdi, muo)
+    is semidet.
+:- mode range_foldl(in(pred(in, in, di, uo) is semidet), in, di, uo)
+    is semidet.
 
     % As above, but with two accumulators.
     %
 :- pred range_foldl2(pred(int, int, A, A, B, B), ranges, A, A, B, B).
-:- mode range_foldl2(pred(in, in, in, out, in, out) is det,
+:- mode range_foldl2(in(pred(in, in, in, out, in, out) is det),
     in, in, out, in, out) is det.
-:- mode range_foldl2(pred(in, in, in, out, mdi, muo) is det,
+:- mode range_foldl2(in(pred(in, in, in, out, mdi, muo) is det),
     in, in, out, mdi, muo) is det.
-:- mode range_foldl2(pred(in, in, in, out, di, uo) is det,
+:- mode range_foldl2(in(pred(in, in, in, out, di, uo) is det),
     in, in, out, di, uo) is det.
-:- mode range_foldl2(pred(in, in, in, out, in, out) is semidet,
+:- mode range_foldl2(in(pred(in, in, in, out, in, out) is semidet),
     in, in, out, in, out) is semidet.
-:- mode range_foldl2(pred(in, in, in, out, mdi, muo) is semidet,
+:- mode range_foldl2(in(pred(in, in, in, out, mdi, muo) is semidet),
     in, in, out, mdi, muo) is semidet.
-:- mode range_foldl2(pred(in, in, in, out, di, uo) is semidet,
+:- mode range_foldl2(in(pred(in, in, in, out, di, uo) is semidet),
     in, in, out, di, uo) is semidet.
 
 :- pred range_foldr(pred(int, int, A, A), ranges, A, A).
-:- mode range_foldr(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode range_foldr(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode range_foldr(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode range_foldr(pred(in, in, in, out) is semidet, in, in, out)
+:- mode range_foldr(in(pred(in, in, in, out) is det), in, in, out) is det.
+:- mode range_foldr(in(pred(in, in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode range_foldr(in(pred(in, in, di, uo) is det), in, di, uo) is det.
+:- mode range_foldr(in(pred(in, in, in, out) is semidet), in, in, out)
     is semidet.
-:- mode range_foldr(pred(in, in, mdi, muo) is semidet, in, mdi, muo)
+:- mode range_foldr(in(pred(in, in, mdi, muo) is semidet), in, mdi, muo)
     is semidet.
-:- mode range_foldr(pred(in, in, di, uo) is semidet, in, di, uo)
+:- mode range_foldr(in(pred(in, in, di, uo) is semidet), in, di, uo)
     is semidet.
 
 %---------------------------------------------------------------------------%
@@ -384,9 +386,11 @@
     % The invariants on this type are:
     %
     %   1) Each range must be non-empty (i.e., L < H).
-    %   2) The ranges must not overlap or abut (i.e. for any
-    %      value `range(_, H1, range(L2, _, _)' we must have H1 < L2).
+    %   2) The ranges must not overlap or abut
     %   3) The ranges must be in sorted order.
+    %
+    % The second and third invariants together require that for any value
+    % `range(_, H1, range(L2, _, _)', we must have H1 < L2.
     %
     % These invariants ensure that the representation is canonical.
     %
@@ -399,10 +403,9 @@
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_decl("C", "
-
+:- pragma foreign_decl("C",
+"
 typedef MR_Word ML_Ranges;
-
 ").
 
 :- pragma foreign_export("C", ranges.empty = out, "ML_ranges_empty").

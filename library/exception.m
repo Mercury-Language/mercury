@@ -97,11 +97,11 @@
     %       ; Result = exception(_)
     %       ).
     %
-:- pred try(pred(T),                exception_result(T)).
-:- mode try(pred(out) is det,       out(cannot_fail)) is cc_multi.
-:- mode try(pred(out) is semidet,   out)              is cc_multi.
-:- mode try(pred(out) is cc_multi,  out(cannot_fail)) is cc_multi.
-:- mode try(pred(out) is cc_nondet, out)              is cc_multi.
+:- pred try(pred(T),                    exception_result(T)).
+:- mode try(in(pred(out) is det),       out(cannot_fail)) is cc_multi.
+:- mode try(in(pred(out) is semidet),   out)              is cc_multi.
+:- mode try(in(pred(out) is cc_multi),  out(cannot_fail)) is cc_multi.
+:- mode try(in(pred(out) is cc_nondet), out)              is cc_multi.
 
     % try_io(Goal, Result, IO_0, IO):
     %
@@ -121,9 +121,9 @@
     %       ).
     %
 :- pred try_io(pred(T, io, io), exception_result(T), io, io).
-:- mode try_io(pred(out, di, uo) is det,
+:- mode try_io(in(pred(out, di, uo) is det),
     out(cannot_fail), di, uo) is cc_multi.
-:- mode try_io(pred(out, di, uo) is cc_multi,
+:- mode try_io(in(pred(out, di, uo) is cc_multi),
     out(cannot_fail), di, uo) is cc_multi.
 
     % try_store(Goal, Result, Store_0, Store):
@@ -132,9 +132,9 @@
     %
 :- pred try_store(pred(T, store(S), store(S)),
     exception_result(T), store(S), store(S)).
-:- mode try_store(pred(out, di, uo) is det,
+:- mode try_store(in(pred(out, di, uo) is det),
     out(cannot_fail), di, uo) is cc_multi.
-:- mode try_store(pred(out, di, uo) is cc_multi,
+:- mode try_store(in(pred(out, di, uo) is cc_multi),
     out(cannot_fail), di, uo) is cc_multi.
 
     % try_all(Goal, MaybeException, Solutions):
@@ -157,12 +157,12 @@
     %   ).
     %
 :- pred try_all(pred(T), maybe(univ), list(T)).
-:- mode try_all(pred(out) is det,     out, out(nil_or_singleton_list))
+:- mode try_all(in(pred(out) is det),     out, out(nil_or_singleton_list))
     is cc_multi.
-:- mode try_all(pred(out) is semidet, out, out(nil_or_singleton_list))
+:- mode try_all(in(pred(out) is semidet), out, out(nil_or_singleton_list))
     is cc_multi.
-:- mode try_all(pred(out) is multi,   out, out) is cc_multi.
-:- mode try_all(pred(out) is nondet,  out, out) is cc_multi.
+:- mode try_all(in(pred(out) is multi),   out, out) is cc_multi.
+:- mode try_all(in(pred(out) is nondet),  out, out) is cc_multi.
 
 :- inst [] for list/1
     --->    [].
@@ -192,10 +192,10 @@
     % first building a list of the solutions.
     %
 :- pred incremental_try_all(pred(T), pred(exception_result(T), A, A), A, A).
-:- mode incremental_try_all(pred(out) is nondet,
-    pred(in, di, uo) is det, di, uo) is cc_multi.
-:- mode incremental_try_all(pred(out) is nondet,
-    pred(in, in, out) is det, in, out) is cc_multi.
+:- mode incremental_try_all(in(pred(out) is nondet),
+    in(pred(in, di, uo) is det), di, uo) is cc_multi.
+:- mode incremental_try_all(in(pred(out) is nondet),
+    in(pred(in, in, out) is det), in, out) is cc_multi.
 
     % finally(P, PRes, Cleanup, CleanupRes, !IO).
     %
@@ -209,10 +209,10 @@
     % clause (`try {...} finally {...}') in languages such as Java.
     %
 :- pred finally(pred(T, io, io), T, pred(io.res, io, io), io.res, io, io).
-:- mode finally(pred(out, di, uo) is det, out,
-    pred(out, di, uo) is det, out, di, uo) is det.
-:- mode finally(pred(out, di, uo) is cc_multi, out,
-    pred(out, di, uo) is cc_multi, out, di, uo) is cc_multi.
+:- mode finally(in(pred(out, di, uo) is det), out,
+    in(pred(out, di, uo) is det), out, di, uo) is det.
+:- mode finally(in(pred(out, di, uo) is cc_multi), out,
+    in(pred(out, di, uo) is cc_multi), out, di, uo) is cc_multi.
 
     % throw_if_near_stack_limits checks if the program is near
     % the limits of the Mercury stacks, and throws an exception
@@ -321,7 +321,7 @@ rethrow(ExceptionResult) = _ :-
 
 :- pragma promise_equivalent_clauses(pred((try)/2)).
 
-try(Goal::pred(out) is det, Result::out(cannot_fail)) :-
+try(Goal::in(pred(out) is det), Result::out(cannot_fail)) :-
     catch_impl(wrap_success_or_failure(Goal), wrap_exception, Result0),
     (
         Result0 = succeeded(_),
@@ -335,7 +335,7 @@ try(Goal::pred(out) is det, Result::out(cannot_fail)) :-
         ; Result = exception(E) % force cc_multi
         )
     ).
-try(Goal::pred(out) is semidet, Result::out) :-
+try(Goal::in(pred(out) is semidet), Result::out) :-
     catch_impl(wrap_success_or_failure(Goal), wrap_exception, Result0),
     (
         Result0 = succeeded(_),
@@ -349,7 +349,7 @@ try(Goal::pred(out) is semidet, Result::out) :-
         ; Result = exception(E) % force cc_multi
         )
     ).
-try(Goal::pred(out) is cc_multi, Result::out(cannot_fail)) :-
+try(Goal::in(pred(out) is cc_multi), Result::out(cannot_fail)) :-
     catch_impl(wrap_success_or_failure(Goal), wrap_exception, Result0),
     (
         Result0 = succeeded(_),
@@ -361,7 +361,7 @@ try(Goal::pred(out) is cc_multi, Result::out(cannot_fail)) :-
         Result0 = exception(E),
         Result = exception(E)
     ).
-try(Goal::pred(out) is cc_nondet, Result::out) :-
+try(Goal::in(pred(out) is cc_nondet), Result::out) :-
     catch_impl(wrap_success_or_failure(Goal), wrap_exception, Result).
 
 %---------------------------------------------------------------------------%
@@ -383,8 +383,8 @@ try_io(IO_Goal, Result, IO0, IO) :-
     ).
 
 :- pred unsafe_call_io_goal(pred(T, io, io), io, {T, io}).
-:- mode unsafe_call_io_goal(pred(out, di, uo) is det, in, out) is det.
-:- mode unsafe_call_io_goal(pred(out, di, uo) is cc_multi, in, out)
+:- mode unsafe_call_io_goal(in(pred(out, di, uo) is det), in, out) is det.
+:- mode unsafe_call_io_goal(in(pred(out, di, uo) is cc_multi), in, out)
     is cc_multi.
 
 unsafe_call_io_goal(Goal, IO0, {Result, IO}) :-
@@ -415,8 +415,8 @@ try_store(StoreGoal, Result, Store0, Store) :-
 
 :- pred unsafe_call_store_goal(pred(T, store(S), store(S)),
     store(S), {T, store(S)}).
-:- mode unsafe_call_store_goal(pred(out, di, uo) is det, in, out) is det.
-:- mode unsafe_call_store_goal(pred(out, di, uo) is cc_multi, in, out)
+:- mode unsafe_call_store_goal(in(pred(out, di, uo) is det), in, out) is det.
+:- mode unsafe_call_store_goal(in(pred(out, di, uo) is cc_multi), in, out)
     is cc_multi.
 
 unsafe_call_store_goal(Goal, Store0, {Result, Store}) :-
@@ -431,7 +431,7 @@ unsafe_call_store_goal(Goal, Store0, {Result, Store}) :-
 
 :- pragma promise_equivalent_clauses(pred(try_all/3)).
 
-try_all(Goal::pred(out) is det,
+try_all(Goal::in(pred(out) is det),
         MaybeException::out, Solutions::out(nil_or_singleton_list)) :-
     try(Goal, Result),
     (
@@ -443,7 +443,7 @@ try_all(Goal::pred(out) is det,
         Solutions = [],
         MaybeException = yes(Exception)
     ).
-try_all(Goal::pred(out) is semidet,
+try_all(Goal::in(pred(out) is semidet),
         MaybeException::out, Solutions::out(nil_or_singleton_list)) :-
     try(Goal, Result),
     (
@@ -459,13 +459,13 @@ try_all(Goal::pred(out) is semidet,
         Solutions = [],
         MaybeException = yes(Exception)
     ).
-try_all(Goal::pred(out) is multi,
+try_all(Goal::in(pred(out) is multi),
         MaybeException::out, Solutions::out) :-
     unsorted_solutions(catch_impl(wrap_success(Goal), wrap_exception),
         ResultList),
     list.foldl2(process_one_exception_result, ResultList,
         no, MaybeException, [], Solutions).
-try_all(Goal::pred(out) is nondet,
+try_all(Goal::in(pred(out) is nondet),
         MaybeException::out, Solutions::out) :-
     unsorted_solutions(catch_impl(wrap_success(Goal), wrap_exception),
         ResultList),
@@ -494,23 +494,23 @@ incremental_try_all(Goal, AccPred, !Acc) :-
 %---------------------------------------------------------------------------%
 
 :- pragma promise_equivalent_clauses(pred(finally/6)).
-finally(P::(pred(out, di, uo) is det), PRes::out,
-        Cleanup::(pred(out, di, uo) is det), CleanupRes::out,
+finally(P::in(pred(out, di, uo) is det), PRes::out,
+        Cleanup::in(pred(out, di, uo) is det), CleanupRes::out,
         !.IO::di, !:IO::uo) :-
     promise_equivalent_solutions [!:IO, PRes, CleanupRes] (
         finally_2(P, Cleanup, PRes, CleanupRes, !IO)
     ).
-finally(P::(pred(out, di, uo) is cc_multi), PRes::out,
-        Cleanup::(pred(out, di, uo) is cc_multi), CleanupRes::out,
+finally(P::in(pred(out, di, uo) is cc_multi), PRes::out,
+        Cleanup::in(pred(out, di, uo) is cc_multi), CleanupRes::out,
         !.IO::di, !:IO::uo) :-
     finally_2(P, Cleanup, PRes, CleanupRes, !IO).
 
 :- pred finally_2(pred(T, io, io), pred(io.res, io, io), T, io.res,
     io, io).
-:- mode finally_2(pred(out, di, uo) is det,
-    pred(out, di, uo) is det, out, out, di, uo) is cc_multi.
-:- mode finally_2(pred(out, di, uo) is cc_multi,
-    pred(out, di, uo) is cc_multi, out, out, di, uo) is cc_multi.
+:- mode finally_2(in(pred(out, di, uo) is det),
+    in(pred(out, di, uo) is det), out, out, di, uo) is cc_multi.
+:- mode finally_2(in(pred(out, di, uo) is cc_multi),
+    in(pred(out, di, uo) is cc_multi), out, out, di, uo) is cc_multi.
 
 :- pragma promise_pure(pred(finally_2/6)).
 
@@ -627,9 +627,10 @@ unsafe_try_stm(Goal, Result, STM0, STM) :-
     ).
 
 :- pred unsafe_call_transaction_goal(pred(T, stm, stm), stm, {T, stm}).
-:- mode unsafe_call_transaction_goal(pred(out, di, uo) is det, in, out) is det.
-:- mode unsafe_call_transaction_goal(pred(out, di, uo) is cc_multi, in, out)
-    is cc_multi.
+:- mode unsafe_call_transaction_goal(in(pred(out, di, uo) is det),
+    in, out) is det.
+:- mode unsafe_call_transaction_goal(in(pred(out, di, uo) is cc_multi),
+    in, out) is cc_multi.
 
 unsafe_call_transaction_goal(Goal, STM0, {Result, STM}) :-
     unsafe_promise_unique(STM0, STM1),
@@ -638,23 +639,26 @@ unsafe_call_transaction_goal(Goal, STM0, {Result, STM}) :-
 %---------------------------------------------------------------------------%
 
 :- pred wrap_success(pred(T), exception_result(T)).
-:- mode wrap_success(pred(out) is det, out(cannot_fail)) is det.
-:- mode wrap_success(pred(out) is semidet, out(cannot_fail)) is semidet.
-:- mode wrap_success(pred(out) is multi, out(cannot_fail)) is multi.
-:- mode wrap_success(pred(out) is nondet, out(cannot_fail)) is nondet.
-:- mode wrap_success(pred(out) is cc_multi, out(cannot_fail)) is cc_multi.
-:- mode wrap_success(pred(out) is cc_nondet, out(cannot_fail)) is cc_nondet.
+:- mode wrap_success(in(pred(out) is det), out(cannot_fail)) is det.
+:- mode wrap_success(in(pred(out) is semidet), out(cannot_fail)) is semidet.
+:- mode wrap_success(in(pred(out) is multi), out(cannot_fail)) is multi.
+:- mode wrap_success(in(pred(out) is nondet), out(cannot_fail)) is nondet.
+:- mode wrap_success(in(pred(out) is cc_multi), out(cannot_fail)) is cc_multi.
+:- mode wrap_success(in(pred(out) is cc_nondet), out(cannot_fail))
+    is cc_nondet.
 
 wrap_success(Goal, succeeded(R)) :-
     Goal(R).
 
 :- pred wrap_success_or_failure(pred(T), exception_result(T)).
-:- mode wrap_success_or_failure(pred(out) is det, out) is det.
-:- mode wrap_success_or_failure(pred(out) is semidet, out) is det.
-% :- mode wrap_success_or_failure(pred(out) is multi, out) is multi. (unused)
-% :- mode wrap_success_or_failure(pred(out) is nondet, out) is multi. (unused)
-:- mode wrap_success_or_failure(pred(out) is cc_multi, out) is cc_multi.
-:- mode wrap_success_or_failure(pred(out) is cc_nondet, out) is cc_multi.
+:- mode wrap_success_or_failure(in(pred(out) is det), out) is det.
+:- mode wrap_success_or_failure(in(pred(out) is semidet), out) is det.
+% :- mode wrap_success_or_failure(in(pred(out) is multi), out) is multi.
+% (unused)
+% :- mode wrap_success_or_failure(in(pred(out) is nondet), out) is multi.
+% (unused)
+:- mode wrap_success_or_failure(in(pred(out) is cc_multi), out) is cc_multi.
+:- mode wrap_success_or_failure(in(pred(out) is cc_nondet), out) is cc_multi.
 
 wrap_success_or_failure(Goal, Result) :-
     (if Goal(R) then Result = succeeded(R) else Result = failed).
@@ -728,12 +732,12 @@ throw_impl(Univ) :-
 :- pragma promise_equivalent_clauses(pred(catch_impl/3)).
 :- /* impure */
    pred catch_impl(pred(T), handler(T), T).
-:- mode catch_impl(pred(out) is det,       in(handler), out) is det.
-:- mode catch_impl(pred(out) is semidet,   in(handler), out) is semidet.
-:- mode catch_impl(pred(out) is cc_multi,  in(handler), out) is cc_multi.
-:- mode catch_impl(pred(out) is cc_nondet, in(handler), out) is cc_nondet.
-:- mode catch_impl(pred(out) is multi,     in(handler), out) is multi.
-:- mode catch_impl(pred(out) is nondet,    in(handler), out) is nondet.
+:- mode catch_impl(in(pred(out) is det),       in(handler), out) is det.
+:- mode catch_impl(in(pred(out) is semidet),   in(handler), out) is semidet.
+:- mode catch_impl(in(pred(out) is cc_multi),  in(handler), out) is cc_multi.
+:- mode catch_impl(in(pred(out) is cc_nondet), in(handler), out) is cc_nondet.
+:- mode catch_impl(in(pred(out) is multi),     in(handler), out) is multi.
+:- mode catch_impl(in(pred(out) is nondet),    in(handler), out) is nondet.
 
 % By default, we call the external implementation, but specific backends
 % can provide their own definition using foreign_proc.
@@ -748,7 +752,7 @@ catch_impl(Pred, Handler, T) :-
     builtin_catch(Pred, Handler, T).
 
 :- pragma foreign_proc("C#",
-    catch_impl(Pred::pred(out) is det, Handler::in(handler), T::out),
+    catch_impl(Pred::in(pred(out) is det), Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "
     int CSN = exception.ssdb_hooks.on_catch_impl();
@@ -763,7 +767,7 @@ catch_impl(Pred, Handler, T) :-
 ").
 
 :- pragma foreign_proc("C#",
-    catch_impl(Pred::pred(out) is cc_multi, Handler::in(handler), T::out),
+    catch_impl(Pred::in(pred(out) is cc_multi), Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "
     int CSN = exception.ssdb_hooks.on_catch_impl();
@@ -778,7 +782,7 @@ catch_impl(Pred, Handler, T) :-
 ").
 
 :- pragma foreign_proc("C#",
-    catch_impl(_Pred::pred(out) is semidet, _Handler::in(handler), T::out),
+    catch_impl(_Pred::in(pred(out) is semidet), _Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "
     runtime.Errors.SORRY(""catch_impl(semidet)"");
@@ -787,7 +791,8 @@ catch_impl(Pred, Handler, T) :-
 ").
 
 :- pragma foreign_proc("C#",
-    catch_impl(_Pred::pred(out) is cc_nondet, _Handler::in(handler), T::out),
+    catch_impl(_Pred::in(pred(out) is cc_nondet), _Handler::in(handler),
+        T::out),
     [will_not_call_mercury, promise_pure],
 "
     runtime.Errors.SORRY(""catch_impl(cc_nondet)"");
@@ -796,7 +801,7 @@ catch_impl(Pred, Handler, T) :-
 ").
 
 :- pragma foreign_proc("C#",
-    catch_impl(Pred::pred(out) is multi, Handler::in(handler), _T::out),
+    catch_impl(Pred::in(pred(out) is multi), Handler::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
     int CSN = exception.ssdb_hooks.on_catch_impl();
@@ -817,7 +822,7 @@ catch_impl(Pred, Handler, T) :-
 ").
 
 :- pragma foreign_proc("C#",
-    catch_impl(Pred::pred(out) is nondet, Handler::in(handler), _T::out),
+    catch_impl(Pred::in(pred(out) is nondet), Handler::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
     int CSN = exception.ssdb_hooks.on_catch_impl();
@@ -838,7 +843,7 @@ catch_impl(Pred, Handler, T) :-
 ").
 
 :- pragma foreign_proc("Java",
-    catch_impl(Pred::pred(out) is det, Handler::in(handler), T::out),
+    catch_impl(Pred::in(pred(out) is det), Handler::in(handler), T::out),
     [may_call_mercury, promise_pure],
 "
     int CSN = ssdb_hooks.on_catch_impl();
@@ -853,7 +858,7 @@ catch_impl(Pred, Handler, T) :-
 ").
 
 :- pragma foreign_proc("Java",
-    catch_impl(_Pred::pred(out) is semidet, _Handler::in(handler), T::out),
+    catch_impl(_Pred::in(pred(out) is semidet), _Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     // This predicate isn't called anywhere.
@@ -869,7 +874,7 @@ catch_impl(Pred, Handler, T) :-
 ").
 
 :- pragma foreign_proc("Java",
-    catch_impl(Pred::pred(out) is cc_multi, Handler::in(handler), T::out),
+    catch_impl(Pred::in(pred(out) is cc_multi), Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "
     int CSN = ssdb_hooks.on_catch_impl();
@@ -884,7 +889,8 @@ catch_impl(Pred, Handler, T) :-
 ").
 
 :- pragma foreign_proc("Java",
-    catch_impl(_Pred::pred(out) is cc_nondet, _Handler::in(handler), T::out),
+    catch_impl(_Pred::in(pred(out) is cc_nondet), _Handler::in(handler),
+        T::out),
     [will_not_call_mercury, promise_pure],
 "
     // This predicate isn't called anywhere.
@@ -900,7 +906,7 @@ catch_impl(Pred, Handler, T) :-
 ").
 
 :- pragma foreign_proc("Java",
-    catch_impl(Pred::pred(out) is multi, Handler::in(handler), _T::out),
+    catch_impl(Pred::in(pred(out) is multi), Handler::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
     int CSN = ssdb_hooks.on_catch_impl();
@@ -921,7 +927,7 @@ catch_impl(Pred, Handler, T) :-
 ").
 
 :- pragma foreign_proc("Java",
-    catch_impl(Pred::pred(out) is nondet, Handler::in(handler), _T::out),
+    catch_impl(Pred::in(pred(out) is nondet), Handler::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
     int CSN = ssdb_hooks.on_catch_impl();
@@ -948,12 +954,13 @@ catch_impl(Pred, Handler, T) :-
 
 :- /* impure */
    pred builtin_catch(pred(T), handler(T), T).
-:- mode builtin_catch(pred(out) is det, in(handler), out) is det.
-:- mode builtin_catch(pred(out) is semidet, in(handler), out) is semidet.
-:- mode builtin_catch(pred(out) is cc_multi, in(handler), out) is cc_multi.
-:- mode builtin_catch(pred(out) is cc_nondet, in(handler), out) is cc_nondet.
-:- mode builtin_catch(pred(out) is multi, in(handler), out) is multi.
-:- mode builtin_catch(pred(out) is nondet, in(handler), out) is nondet.
+:- mode builtin_catch(in(pred(out) is det), in(handler), out) is det.
+:- mode builtin_catch(in(pred(out) is semidet), in(handler), out) is semidet.
+:- mode builtin_catch(in(pred(out) is cc_multi), in(handler), out) is cc_multi.
+:- mode builtin_catch(in(pred(out) is cc_nondet), in(handler), out)
+    is cc_nondet.
+:- mode builtin_catch(in(pred(out) is multi), in(handler), out) is multi.
+:- mode builtin_catch(in(pred(out) is nondet), in(handler), out) is nondet.
 
 % builtin_throw and builtin_catch are implemented below using
 % hand-coded low-level C code.
@@ -1448,26 +1455,29 @@ public static SsdbHooks ssdb_hooks = new SsdbHooks();
 %---------------------------------------------------------------------------%
 
 :- pred call_goal(pred(T), T).
-:- mode call_goal(pred(out) is det, out) is det.
-:- mode call_goal(pred(out) is semidet, out) is semidet.
-% :- mode call_goal(pred(out) is nondet, out) is nondet. % see comments below
+:- mode call_goal(in(pred(out) is det), out) is det.
+:- mode call_goal(in(pred(out) is semidet), out) is semidet.
+% :- mode call_goal(in(pred(out) is nondet, out) is nondet.
+% see comments below
 
 call_goal(Goal, Result) :-
     Goal(Result).
 
 :- pred call_handler(pred(univ, T), univ, T).
-:- mode call_handler(pred(in, out) is det, in, out) is det.
-% :- mode call_handler(pred(in, out) is semidet, in, out) is semidet. % unused
-% :- mode call_handler(pred(in, out) is nondet, in, out) is nondet.   % unused
+:- mode call_handler(in(pred(in, out) is det), in, out) is det.
+% :- mode call_handler(in(pred(in, out) is semidet, in, out) is semidet.
+% unused
+% :- mode call_handler(in(pred(in, out) is nondet, in, out) is nondet.
+% unused
 
 call_handler(Handler, Exception, Result) :-
     Handler(Exception, Result).
 
-:- pragma foreign_export("C", call_goal(pred(out) is det, out),
+:- pragma foreign_export("C", call_goal(in(pred(out) is det), out),
     "ML_call_goal_det").
-:- pragma foreign_export("C#", call_goal(pred(out) is det, out),
+:- pragma foreign_export("C#", call_goal(in(pred(out) is det), out),
     "ML_call_goal_det").
-:- pragma foreign_export("Java", call_goal(pred(out) is det, out),
+:- pragma foreign_export("Java", call_goal(in(pred(out) is det), out),
     "ML_call_goal_det").
 
 % This causes problems because the LLDS back-end does not let you export
@@ -1476,14 +1486,17 @@ call_handler(Handler, Exception, Result) :-
 % (which `pragma export' procedures use for polymorphically typed arguments)
 % rather than MR_Box.
 
-% :- pragma export(call_goal(pred(out) is nondet,  out),
+% :- pragma export(call_goal(in(pred(out) is nondet),  out),
 %   "ML_call_goal_nondet").
 
-:- pragma foreign_export("C", call_handler(pred(in, out) is det, in, out),
+:- pragma foreign_export("C",
+    call_handler(in(pred(in, out) is det), in, out),
     "ML_call_handler_det").
-:- pragma foreign_export("C#", call_handler(pred(in, out) is det, in, out),
+:- pragma foreign_export("C#",
+    call_handler(in(pred(in, out) is det), in, out),
     "ML_call_handler_det").
-:- pragma foreign_export("Java", call_handler(pred(in, out) is det, in, out),
+:- pragma foreign_export("Java",
+    call_handler(in(pred(in, out) is det), in, out),
     "ML_call_handler_det").
 
 %---------------------------------------------------------------------------%

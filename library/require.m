@@ -102,32 +102,33 @@
     % you should use an explicit if-then-else with a call to error/1,
     % or one of its wrappers, in the "else".
     %
-:- pred require((pred)::((pred) is semidet), string::in) is det.
+:- pred require((pred)::in((pred) is semidet), string::in) is det.
 
     % expect(Goal, Module, Message):
     %
     % Call Goal, and call unexpected(Module, Message) if Goal fails.
     %
-:- pred expect((pred)::((pred) is semidet), string::in, string::in) is det.
+:- pred expect((pred)::in((pred) is semidet), string::in, string::in) is det.
 
     % expect(Goal, Module, Proc, Message):
     %
     % Call Goal, and call unexpected(Module, Proc, Message) if Goal fails.
     %
-:- pred expect((pred)::((pred) is semidet), string::in, string::in,
+:- pred expect((pred)::in((pred) is semidet), string::in, string::in,
     string::in) is det.
 
     % expect_not(Goal, Module, Message):
     %
     % Call Goal, and call unexpected(Module, Message) if Goal succeeds.
     %
-:- pred expect_not((pred)::((pred) is semidet), string::in, string::in) is det.
+:- pred expect_not((pred)::in((pred) is semidet), string::in, string::in)
+    is det.
 
     % expect_not(Goal, Module, Proc, Message):
     %
     % Call Goal, and call unexpected(Module, Proc, Message) if Goal succeeds.
     %
-:- pred expect_not((pred)::((pred) is semidet), string::in, string::in,
+:- pred expect_not((pred)::in((pred) is semidet), string::in, string::in,
     string::in) is det.
 
 %---------------------------------------------------------------------------%

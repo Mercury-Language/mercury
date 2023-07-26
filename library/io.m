@@ -4360,9 +4360,9 @@ binary_input_stream_foldl_io_plain(Stream, Pred, Res, !IO) :-
 :- pred binary_input_stream_foldl_io_chunk(binary_input_stream,
     pred(int, io, io), io.res, io, io).
 :- mode binary_input_stream_foldl_io_chunk(in,
-    (pred(in, di, uo) is det), out, di, uo) is det.
+    in(pred(in, di, uo) is det), out, di, uo) is det.
 :- mode binary_input_stream_foldl_io_chunk(in,
-    (pred(in, di, uo) is cc_multi), out, di, uo) is cc_multi.
+    in(pred(in, di, uo) is cc_multi), out, di, uo) is cc_multi.
 
 binary_input_stream_foldl_io_chunk(Stream, Pred, Res, !IO) :-
     binary_input_stream_foldl_io_inner(chunk_size, Stream, Pred,
