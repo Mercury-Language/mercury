@@ -671,12 +671,12 @@ fold(P, HT, !A) :-
     foldl(fold_p(P), Buckets, !A).
 
 :- pred fold_p(pred(K, V, T, T), hash_table_alist(K, V), T, T).
-:- mode fold_p(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode fold_p(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode fold_p(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode fold_p(pred(in, in, in, out) is semidet, in, in, out) is semidet.
-:- mode fold_p(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode fold_p(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode fold_p(in(pred(in, in, in, out) is det), in, in, out) is det.
+:- mode fold_p(in(pred(in, in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode fold_p(in(pred(in, in, di, uo) is det), in, di, uo) is det.
+:- mode fold_p(in(pred(in, in, in, out) is semidet), in, in, out) is semidet.
+:- mode fold_p(in(pred(in, in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode fold_p(in(pred(in, in, di, uo) is semidet), in, di, uo) is semidet.
 
 fold_p(P, List, !A) :-
     (

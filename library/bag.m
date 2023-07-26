@@ -323,27 +323,27 @@
     % to each value - count pair.
     %
 :- pred foldl(pred(T, int, A, A), bag(T), A, A).
-:- mode foldl(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode foldl(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
-:- mode foldl(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode foldl(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode foldl(in(pred(in, in, in, out) is det), in, in, out) is det.
+:- mode foldl(in(pred(in, in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldl(in(pred(in, in, di, uo) is det), in, di, uo) is det.
+:- mode foldl(in(pred(in, in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldl(in(pred(in, in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldl(in(pred(in, in, di, uo) is semidet), in, di, uo) is semidet.
 
     % As above, but with two accumulators.
     %
 :- pred foldl2(pred(T, int, A, A, B, B), bag(T), A, A, B, B).
-:- mode foldl2(pred(in, in, in, out, in, out) is det, in, in, out,
+:- mode foldl2(in(pred(in, in, in, out, in, out) is det), in, in, out,
     in, out) is det.
-:- mode foldl2(pred(in, in, in, out, mdi, muo) is det, in, in, out,
+:- mode foldl2(in(pred(in, in, in, out, mdi, muo) is det), in, in, out,
     mdi, muo) is det.
-:- mode foldl2(pred(in, in, in, out, di, uo) is det, in, in, out,
+:- mode foldl2(in(pred(in, in, in, out, di, uo) is det), in, in, out,
     di, uo) is det.
-:- mode foldl2(pred(in, in, in, out, in, out) is semidet, in, in, out,
+:- mode foldl2(in(pred(in, in, in, out, in, out) is semidet), in, in, out,
     in, out) is semidet.
-:- mode foldl2(pred(in, in, in, out, mdi, muo) is semidet, in, in, out,
+:- mode foldl2(in(pred(in, in, in, out, mdi, muo) is semidet), in, in, out,
     mdi, muo) is semidet.
-:- mode foldl2(pred(in, in, in, out, di, uo) is semidet, in, in, out,
+:- mode foldl2(in(pred(in, in, in, out, di, uo) is semidet), in, in, out,
     di, uo) is semidet.
 
 %---------------------%

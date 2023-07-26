@@ -66,7 +66,7 @@
 
     % pred_to_bool(P) = (if P then yes else no).
     %
-:- func pred_to_bool((pred)::((pred) is semidet)) = (bool::out) is det.
+:- func pred_to_bool((pred)::in((pred) is semidet)) = (bool::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

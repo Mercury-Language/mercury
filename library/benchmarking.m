@@ -132,14 +132,17 @@
     % In this many times is returned as Time.
     %
 :- pred benchmark_det(pred(T1, T2), T1, T2, int, int).
-:- mode benchmark_det(pred(in, out) is det, in, out, in, out) is cc_multi.
-:- mode benchmark_det(pred(in, out) is cc_multi, in, out, in, out) is cc_multi.
+:- mode benchmark_det(in(pred(in, out) is det), in, out,
+    in, out) is cc_multi.
+:- mode benchmark_det(in(pred(in, out) is cc_multi), in, out,
+    in, out) is cc_multi.
 
     % benchmark_func(Func, In, Out, Repeats, Time) does for functions exactly
     % what benchmark_det does for predicates.
     %
 :- pred benchmark_func(func(T1) = T2, T1, T2, int, int).
-:- mode benchmark_func(func(in) = out is det, in, out, in, out) is cc_multi.
+:- mode benchmark_func(in(func(in) = out is det), in, out,
+    in, out) is cc_multi.
 
     % benchmark_det_io(Pred, In, Out, !State, Repeats, Time) is similar to
     % benchmark_det, except that it is used for benchmarking a det predicate
@@ -150,7 +153,7 @@
     %
 :- pred benchmark_det_io(pred(T1, T2, State, State), T1, T2, State, State,
     int, int).
-:- mode benchmark_det_io(pred(in, out, di, uo) is det, in, out, di, uo,
+:- mode benchmark_det_io(in(pred(in, out, di, uo) is det), in, out, di, uo,
     in, out) is cc_multi.
 
     % benchmark_nondet(Pred, In, Count, Repeats, Time) is for benchmarking
@@ -160,7 +163,7 @@
     % solutions of Pred with input In Repeats times is returned as Time.
     %
 :- pred benchmark_nondet(pred(T1, T2), T1, int, int, int).
-:- mode benchmark_nondet(pred(in, out) is nondet, in, out, in, out)
+:- mode benchmark_nondet(in(pred(in, out) is nondet), in, out, in, out)
     is cc_multi.
 
 %---------------------------------------------------------------------------%
@@ -556,8 +559,10 @@ benchmark_det(Pred, In, Out, Repeats, Time) :-
     ).
 
 :- impure pred benchmark_det_loop(pred(T1, T2), T1, T2, int).
-:- mode benchmark_det_loop(pred(in, out) is det, in, out, in) is det.
-:- mode benchmark_det_loop(pred(in, out) is cc_multi, in, out, in) is cc_multi.
+:- mode benchmark_det_loop(in(pred(in, out) is det), in,
+    out, in) is det.
+:- mode benchmark_det_loop(in(pred(in, out) is cc_multi), in,
+    out, in) is cc_multi.
 
 benchmark_det_loop(Pred, In, Out, Repeats) :-
     % The call to do_nothing/1 here is to make sure the compiler
@@ -604,7 +609,7 @@ benchmark_det_io(Pred, InA, OutA, InB, OutB, Repeats, Time) :-
 
 :- impure pred benchmark_det_loop_io(pred(T1, T2, T3, T3), T1, T2,
     T3, T3, int).
-:- mode benchmark_det_loop_io(pred(in, out, di, uo) is det, in, out,
+:- mode benchmark_det_loop_io(in(pred(in, out, di, uo) is det), in, out,
     di, uo, in) is cc_multi.
 
 benchmark_det_loop_io(Pred, InA, OutA, InB, OutB, Repeats) :-
@@ -629,7 +634,7 @@ benchmark_nondet(Pred, In, Count, Repeats, Time) :-
     ).
 
 :- impure pred benchmark_nondet_loop(pred(T1, T2), T1, int, int).
-:- mode benchmark_nondet_loop(pred(in, out) is nondet, in, out, in) is det.
+:- mode benchmark_nondet_loop(in(pred(in, out) is nondet), in, out, in) is det.
 
 benchmark_nondet_loop(Pred, In, Count, Repeats) :-
     impure new_mutvar(0, SolutionCounter),

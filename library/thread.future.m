@@ -144,7 +144,7 @@ wait(future(Future)) = Value :-
     ).
 
 :- impure pred spawn_impure(impure (pred)).
-:-        mode spawn_impure((pred) is cc_multi) is det.
+:-        mode spawn_impure(in((pred) is cc_multi)) is det.
 
 spawn_impure(Task) :-
     impure make_io_state(IO0),
@@ -154,7 +154,7 @@ spawn_impure(Task) :-
     impure consume_io_state(IO).
 
 :- pred spawn_impure_2(impure (pred), io, io).
-:- mode spawn_impure_2((pred) is cc_multi, di, uo) is cc_multi.
+:- mode spawn_impure_2(in((pred) is cc_multi), di, uo) is cc_multi.
 :- pragma promise_pure(pred(spawn_impure_2/3)).
 
 spawn_impure_2(Task, !IO) :-

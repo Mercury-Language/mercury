@@ -793,12 +793,12 @@ fold(P, HT, !A) :-
     array.foldl(fold_p(P), HT ^ buckets, !A).
 
 :- pred fold_p(pred(K, V, A, A), hash_bucket(K, V), A, A).
-:- mode fold_p(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode fold_p(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode fold_p(pred(in, in, di, uo) is det, in, di, uo) is det.
-:- mode fold_p(pred(in, in, in, out) is semidet, in, in, out) is semidet.
-:- mode fold_p(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode fold_p(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode fold_p(in(pred(in, in, in, out) is det), in, in, out) is det.
+:- mode fold_p(in(pred(in, in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode fold_p(in(pred(in, in, di, uo) is det), in, di, uo) is det.
+:- mode fold_p(in(pred(in, in, in, out) is semidet), in, in, out) is semidet.
+:- mode fold_p(in(pred(in, in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode fold_p(in(pred(in, in, di, uo) is semidet), in, di, uo) is semidet.
 
 fold_p(P, HB, !A) :-
     (
@@ -819,17 +819,17 @@ fold2(P, HT, !A, !B) :-
     array.foldl2(fold2_p(P), HT ^ buckets, !A, !B).
 
 :- pred fold2_p(pred(K, V, A, A, B, B), hash_bucket(K, V), A, A, B, B).
-:- mode fold2_p(pred(in, in, in, out, in, out) is det, in, in, out,
+:- mode fold2_p(in(pred(in, in, in, out, in, out) is det), in, in, out,
     in, out) is det.
-:- mode fold2_p(pred(in, in, in, out, mdi, muo) is det, in, in, out,
+:- mode fold2_p(in(pred(in, in, in, out, mdi, muo) is det), in, in, out,
     mdi, muo) is det.
-:- mode fold2_p(pred(in, in, in, out, di, uo) is det, in, in, out,
+:- mode fold2_p(in(pred(in, in, in, out, di, uo) is det), in, in, out,
     di, uo) is det.
-:- mode fold2_p(pred(in, in, in, out, in, out) is semidet, in, in, out,
+:- mode fold2_p(in(pred(in, in, in, out, in, out) is semidet), in, in, out,
     in, out) is semidet.
-:- mode fold2_p(pred(in, in, in, out, mdi, muo) is semidet, in,in, out,
+:- mode fold2_p(in(pred(in, in, in, out, mdi, muo) is semidet), in,in, out,
     mdi, muo) is semidet.
-:- mode fold2_p(pred(in, in, in, out, di, uo) is semidet, in, in, out,
+:- mode fold2_p(in(pred(in, in, in, out, di, uo) is semidet), in, in, out,
     di, uo) is semidet.
 
 fold2_p(P, HB, !A, !B) :-
@@ -852,17 +852,17 @@ fold3(P, HT, !A, !B, !C) :-
 
 :- pred fold3_p(pred(K, V, A, A, B, B, C, C), hash_bucket(K, V),
     A, A, B, B, C, C).
-:- mode fold3_p(pred(in, in, in, out, in, out, in, out) is det, in,
+:- mode fold3_p(in(pred(in, in, in, out, in, out, in, out) is det), in,
     in, out, in, out, in, out) is det.
-:- mode fold3_p(pred(in, in, in, out, in, out, mdi, muo) is det, in,
+:- mode fold3_p(in(pred(in, in, in, out, in, out, mdi, muo) is det), in,
     in, out, in, out, mdi, muo) is det.
-:- mode fold3_p(pred(in, in, in, out, in, out, di, uo) is det, in,
+:- mode fold3_p(in(pred(in, in, in, out, in, out, di, uo) is det), in,
     in, out, in, out, di, uo) is det.
-:- mode fold3_p(pred(in, in, in, out, in, out, in, out) is semidet, in,
+:- mode fold3_p(in(pred(in, in, in, out, in, out, in, out) is semidet), in,
     in, out, in, out, in, out) is semidet.
-:- mode fold3_p(pred(in, in, in, out, in, out, mdi, muo) is semidet, in,
+:- mode fold3_p(in(pred(in, in, in, out, in, out, mdi, muo) is semidet), in,
     in, out, in, out, mdi, muo) is semidet.
-:- mode fold3_p(pred(in, in, in, out, in, out, di, uo) is semidet, in,
+:- mode fold3_p(in(pred(in, in, in, out, in, out, di, uo) is semidet), in,
     in, out, in, out, di, uo) is semidet.
 
 fold3_p(P, HB, !A, !B, !C) :-

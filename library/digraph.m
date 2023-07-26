@@ -367,10 +367,10 @@
     % have been processed.
     %
 :- pred traverse(digraph(T), pred(T, A, A), pred(T, T, A, A), A, A).
-:- mode traverse(in, pred(in, di, uo) is det,
-    pred(in, in, di, uo) is det, di, uo) is det.
-:- mode traverse(in, pred(in, in, out) is det,
-    pred(in, in, in, out) is det, in, out) is det.
+:- mode traverse(in, in(pred(in, di, uo) is det),
+    in(pred(in, in, di, uo) is det), di, uo) is det.
+:- mode traverse(in, in(pred(in, in, out) is det),
+    in(pred(in, in, in, out) is det), in, out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1393,10 +1393,10 @@ traverse(Graph, ProcessVertex, ProcessEdge, !Acc) :-
 
 :- pred traverse_vertex(digraph(T),
     pred(T, A, A), pred(T, T, A, A), T, digraph_key(T), A, A).
-:- mode traverse_vertex(in, pred(in, di, uo) is det,
-    pred(in, in, di, uo) is det, in, in, di, uo) is det.
-:- mode traverse_vertex(in, pred(in, in, out) is det,
-    pred(in, in, in, out) is det, in, in, in, out) is det.
+:- mode traverse_vertex(in, in(pred(in, di, uo) is det),
+    in(pred(in, in, di, uo) is det), in, in, di, uo) is det.
+:- mode traverse_vertex(in, in(pred(in, in, out) is det),
+    in(pred(in, in, in, out) is det), in, in, in, out) is det.
 
 traverse_vertex(Graph, ProcessVertex, ProcessEdge, Vertex, VertexKey, !Acc) :-
     ProcessVertex(Vertex, !Acc),
@@ -1406,9 +1406,9 @@ traverse_vertex(Graph, ProcessVertex, ProcessEdge, Vertex, VertexKey, !Acc) :-
 
 :- pred traverse_child(digraph(T), pred(T, T, A, A),
     T, digraph_key(T), A, A).
-:- mode traverse_child(in, pred(in, in, di, uo) is det,
+:- mode traverse_child(in, in(pred(in, in, di, uo) is det),
     in, in, di, uo) is det.
-:- mode traverse_child(in, pred(in, in, in, out) is det,
+:- mode traverse_child(in, in(pred(in, in, in, out) is det),
     in, in, in, out) is det.
 
 traverse_child(Graph, ProcessEdge, Parent, ChildKey, !Acc) :-

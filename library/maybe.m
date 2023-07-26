@@ -70,10 +70,10 @@
     % map_maybe(P, yes(Value0), yes(Value)) :- P(Value, Value).
     %
 :- pred map_maybe(pred(T, U), maybe(T), maybe(U)).
-:- mode map_maybe(pred(in, out) is det, in, out) is det.
-:- mode map_maybe(pred(in, out) is semidet, in, out) is semidet.
-:- mode map_maybe(pred(in, out) is multi, in, out) is multi.
-:- mode map_maybe(pred(in, out) is nondet, in, out) is nondet.
+:- mode map_maybe(in(pred(in, out) is det), in, out) is det.
+:- mode map_maybe(in(pred(in, out) is semidet), in, out) is semidet.
+:- mode map_maybe(in(pred(in, out) is multi), in, out) is multi.
+:- mode map_maybe(in(pred(in, out) is nondet), in, out) is nondet.
 
     % fold_maybe(_, no, Acc) = Acc.
     % fold_maybe(F, yes(Value), Acc0) = F(Value, Acc0).
@@ -84,60 +84,66 @@
     % fold_maybe(P, yes(Value), !Acc) :- P(Value, !Acc).
     %
 :- pred fold_maybe(pred(T, A, A), maybe(T), A, A).
-:- mode fold_maybe(pred(in, in, out) is det, in, in, out) is det.
-:- mode fold_maybe(pred(in, mdi, muo) is det, in, mdi, muo) is det.
-:- mode fold_maybe(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode fold_maybe(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode fold_maybe(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
-:- mode fold_maybe(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+:- mode fold_maybe(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode fold_maybe(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode fold_maybe(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode fold_maybe(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode fold_maybe(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode fold_maybe(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
     % As above, but with two accumulators.
     %
 :- pred fold2_maybe(pred(T, A, A, B, B), maybe(T), A, A, B, B).
-:- mode fold2_maybe(pred(in, in, out, in, out) is det,
+:- mode fold2_maybe(in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
-:- mode fold2_maybe(pred(in, in, out, mdi, muo) is det,
+:- mode fold2_maybe(in(pred(in, in, out, mdi, muo) is det),
     in, in, out, mdi, muo) is det.
-:- mode fold2_maybe(pred(in, in, out, di, uo) is det,
+:- mode fold2_maybe(in(pred(in, in, out, di, uo) is det),
     in, in, out, di, uo) is det.
-:- mode fold2_maybe(pred(in, in, out, in, out) is semidet,
+:- mode fold2_maybe(in(pred(in, in, out, in, out) is semidet),
     in, in, out, in, out) is semidet.
-:- mode fold2_maybe(pred(in, in, out, mdi, muo) is semidet,
+:- mode fold2_maybe(in(pred(in, in, out, mdi, muo) is semidet),
     in, in, out, mdi, muo) is semidet.
-:- mode fold2_maybe(pred(in, in, out, di, uo) is semidet,
+:- mode fold2_maybe(in(pred(in, in, out, di, uo) is semidet),
     in, in, out, di, uo) is semidet.
 
     % As above, but with three accumulators.
     %
 :- pred fold3_maybe(pred(T, A, A, B, B, C, C), maybe(T), A, A, B, B, C, C).
-:- mode fold3_maybe(pred(in, in, out, in, out, in, out) is det,
+:- mode fold3_maybe(in(pred(in, in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out) is det.
-:- mode fold3_maybe(pred(in, in, out, in, out, mdi, muo) is det,
+:- mode fold3_maybe(in(pred(in, in, out, in, out, mdi, muo) is det),
     in, in, out, in, out, mdi, muo) is det.
-:- mode fold3_maybe(pred(in, in, out, in, out, di, uo) is det,
+:- mode fold3_maybe(in(pred(in, in, out, in, out, di, uo) is det),
     in, in, out, in, out, di, uo) is det.
-:- mode fold3_maybe(pred(in, in, out, in, out, in, out) is semidet,
+:- mode fold3_maybe(in(pred(in, in, out, in, out, in, out) is semidet),
     in, in, out, in, out, in, out) is semidet.
-:- mode fold3_maybe(pred(in, in, out, in, out, mdi, muo) is semidet,
+:- mode fold3_maybe(in(pred(in, in, out, in, out, mdi, muo) is semidet),
     in, in, out, in, out, mdi, muo) is semidet.
-:- mode fold3_maybe(pred(in, in, out, in, out, di, uo) is semidet,
+:- mode fold3_maybe(in(pred(in, in, out, in, out, di, uo) is semidet),
     in, in, out, in, out, di, uo) is semidet.
 
     % As above, but with four accumulators.
     %
 :- pred fold4_maybe(pred(T, A, A, B, B, C, C, D, D),
     maybe(T), A, A, B, B, C, C, D, D).
-:- mode fold4_maybe(pred(in, in, out, in, out, in, out, in, out) is det,
+:- mode fold4_maybe(
+    in(pred(in, in, out, in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out, in, out) is det.
-:- mode fold4_maybe(pred(in, in, out, in, out, in, out, mdi, muo) is det,
+:- mode fold4_maybe(
+    in(pred(in, in, out, in, out, in, out, mdi, muo) is det),
     in, in, out, in, out, in, out, mdi, muo) is det.
-:- mode fold4_maybe(pred(in, in, out, in, out, in, out, di, uo) is det,
+:- mode fold4_maybe(
+    in(pred(in, in, out, in, out, in, out, di, uo) is det),
     in, in, out, in, out, in, out, di, uo) is det.
-:- mode fold4_maybe(pred(in, in, out, in, out, in, out, in, out) is semidet,
+:- mode fold4_maybe(
+    in(pred(in, in, out, in, out, in, out, in, out) is semidet),
     in, in, out, in, out, in, out, in, out) is semidet.
-:- mode fold4_maybe(pred(in, in, out, in, out, in, out, mdi, muo) is semidet,
+:- mode fold4_maybe(
+    in(pred(in, in, out, in, out, in, out, mdi, muo) is semidet),
     in, in, out, in, out, in, out, mdi, muo) is semidet.
-:- mode fold4_maybe(pred(in, in, out, in, out, in, out, di, uo) is semidet,
+:- mode fold4_maybe(
+    in(pred(in, in, out, in, out, in, out, di, uo) is semidet),
     in, in, out, in, out, in, out, di, uo) is semidet.
 
     % As above, but with five accumulators.
@@ -145,22 +151,22 @@
 :- pred fold5_maybe(pred(T, A, A, B, B, C, C, D, D, E, E),
     maybe(T), A, A, B, B, C, C, D, D, E, E).
 :- mode fold5_maybe(
-    pred(in, in, out, in, out, in, out, in, out, in, out) is det,
+    in(pred(in, in, out, in, out, in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out, in, out, in, out) is det.
 :- mode fold5_maybe(
-    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is det,
+    in(pred(in, in, out, in, out, in, out, in, out, mdi, muo) is det),
     in, in, out, in, out, in, out, in, out, mdi, muo) is det.
 :- mode fold5_maybe(
-    pred(in, in, out, in, out, in, out, in, out, di, uo) is det,
+    in(pred(in, in, out, in, out, in, out, in, out, di, uo) is det),
     in, in, out, in, out, in, out, in, out, di, uo) is det.
 :- mode fold5_maybe(
-    pred(in, in, out, in, out, in, out, in, out, in, out) is semidet,
+    in(pred(in, in, out, in, out, in, out, in, out, in, out) is semidet),
     in, in, out, in, out, in, out, in, out, in, out) is semidet.
 :- mode fold5_maybe(
-    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is semidet,
+    in(pred(in, in, out, in, out, in, out, in, out, mdi, muo) is semidet),
     in, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode fold5_maybe(
-    pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet,
+    in(pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet),
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
     % map_fold_maybe(_, no, no, !Acc).
@@ -168,51 +174,57 @@
     %      P(Value, Value, !Acc).
     %
 :- pred map_fold_maybe(pred(T, U, A, A), maybe(T), maybe(U), A, A).
-:- mode map_fold_maybe(pred(in, out, in, out) is det,
+:- mode map_fold_maybe(in(pred(in, out, in, out) is det),
     in, out, in, out) is det.
-:- mode map_fold_maybe(pred(in, out, mdi, muo) is det,
+:- mode map_fold_maybe(in(pred(in, out, mdi, muo) is det),
     in, out, mdi, muo) is det.
-:- mode map_fold_maybe(pred(in, out, di, uo) is det,
+:- mode map_fold_maybe(in(pred(in, out, di, uo) is det),
     in, out, di, uo) is det.
-:- mode map_fold_maybe(pred(in, out, in, out) is semidet,
+:- mode map_fold_maybe(in(pred(in, out, in, out) is semidet),
     in, out, in, out) is semidet.
-:- mode map_fold_maybe(pred(in, out, mdi, muo) is semidet,
+:- mode map_fold_maybe(in(pred(in, out, mdi, muo) is semidet),
     in, out, mdi, muo) is semidet.
-:- mode map_fold_maybe(pred(in, out, di, uo) is semidet,
+:- mode map_fold_maybe(in(pred(in, out, di, uo) is semidet),
     in, out, di, uo) is semidet.
 
     % As above, but with two accumulators.
     %
 :- pred map_fold2_maybe(pred(T, U, A, A, B, B),
     maybe(T), maybe(U), A, A, B, B).
-:- mode map_fold2_maybe(pred(in, out, in, out, in, out) is det,
+:- mode map_fold2_maybe(in(pred(in, out, in, out, in, out) is det),
     in, out, in, out, in, out) is det.
-:- mode map_fold2_maybe(pred(in, out, in, out, mdi, muo) is det,
+:- mode map_fold2_maybe(in(pred(in, out, in, out, mdi, muo) is det),
     in, out, in, out, mdi, muo) is det.
-:- mode map_fold2_maybe(pred(in, out, in, out, di, uo) is det,
+:- mode map_fold2_maybe(in(pred(in, out, in, out, di, uo) is det),
     in, out, in, out, di, uo) is det.
-:- mode map_fold2_maybe(pred(in, out, in, out, in, out) is semidet,
+:- mode map_fold2_maybe(in(pred(in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out) is semidet.
-:- mode map_fold2_maybe(pred(in, out, in, out, mdi, muo) is semidet,
+:- mode map_fold2_maybe(in(pred(in, out, in, out, mdi, muo) is semidet),
     in, out, in, out, mdi, muo) is semidet.
-:- mode map_fold2_maybe(pred(in, out, in, out, di, uo) is semidet,
+:- mode map_fold2_maybe(in(pred(in, out, in, out, di, uo) is semidet),
     in, out, in, out, di, uo) is semidet.
 
     % As above, but with three accumulators.
     %
 :- pred map_fold3_maybe(pred(T, U, A, A, B, B, C, C),
     maybe(T), maybe(U), A, A, B, B, C, C).
-:- mode map_fold3_maybe(pred(in, out, in, out, in, out, in, out) is det,
+:- mode map_fold3_maybe(
+    in(pred(in, out, in, out, in, out, in, out) is det),
     in, out, in, out, in, out, in, out) is det.
-:- mode map_fold3_maybe(pred(in, out, in, out, in, out, mdi, muo) is det,
+:- mode map_fold3_maybe(
+    in(pred(in, out, in, out, in, out, mdi, muo) is det),
     in, out, in, out, in, out, mdi, muo) is det.
-:- mode map_fold3_maybe(pred(in, out, in, out, in, out, di, uo) is det,
+:- mode map_fold3_maybe(
+    in(pred(in, out, in, out, in, out, di, uo) is det),
     in, out, in, out, in, out, di, uo) is det.
-:- mode map_fold3_maybe(pred(in, out, in, out, in, out, in, out) is semidet,
+:- mode map_fold3_maybe(
+    in(pred(in, out, in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out, in, out) is semidet.
-:- mode map_fold3_maybe(pred(in, out, in, out, in, out, mdi, muo) is semidet,
+:- mode map_fold3_maybe(
+    in(pred(in, out, in, out, in, out, mdi, muo) is semidet),
     in, out, in, out, in, out, mdi, muo) is semidet.
-:- mode map_fold3_maybe(pred(in, out, in, out, in, out, di, uo) is semidet,
+:- mode map_fold3_maybe(
+    in(pred(in, out, in, out, in, out, di, uo) is semidet),
     in, out, in, out, in, out, di, uo) is semidet.
 
     % As above, but with four accumulators.
@@ -220,22 +232,22 @@
 :- pred map_fold4_maybe(pred(T, U, A, A, B, B, C, C, D, D),
     maybe(T), maybe(U), A, A, B, B, C, C, D, D).
 :- mode map_fold4_maybe(
-    pred(in, out, in, out, in, out, in, out, in, out) is det,
+    in(pred(in, out, in, out, in, out, in, out, in, out) is det),
     in, out, in, out, in, out, in, out, in, out) is det.
 :- mode map_fold4_maybe(
-    pred(in, out, in, out, in, out, in, out, mdi, muo) is det,
+    in(pred(in, out, in, out, in, out, in, out, mdi, muo) is det),
     in, out, in, out, in, out, in, out, mdi, muo) is det.
 :- mode map_fold4_maybe(
-    pred(in, out, in, out, in, out, in, out, di, uo) is det,
+    in(pred(in, out, in, out, in, out, in, out, di, uo) is det),
     in, out, in, out, in, out, in, out, di, uo) is det.
 :- mode map_fold4_maybe(
-    pred(in, out, in, out, in, out, in, out, in, out) is semidet,
+    in(pred(in, out, in, out, in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out, in, out, in, out) is semidet.
 :- mode map_fold4_maybe(
-    pred(in, out, in, out, in, out, in, out, mdi, muo) is semidet,
+    in(pred(in, out, in, out, in, out, in, out, mdi, muo) is semidet),
     in, out, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode map_fold4_maybe(
-    pred(in, out, in, out, in, out, in, out, di, uo) is semidet,
+    in(pred(in, out, in, out, in, out, in, out, di, uo) is semidet),
     in, out, in, out, in, out, in, out, di, uo) is semidet.
 
     % As above, but with five accumulators.
@@ -243,22 +255,22 @@
 :- pred map_fold5_maybe(pred(T, U, A, A, B, B, C, C, D, D, E, E),
     maybe(T), maybe(U), A, A, B, B, C, C, D, D, E, E).
 :- mode map_fold5_maybe(
-    pred(in, out, in, out, in, out, in, out, in, out, in, out) is det,
+    in(pred(in, out, in, out, in, out, in, out, in, out, in, out) is det),
     in, out, in, out, in, out, in, out, in, out, in, out) is det.
 :- mode map_fold5_maybe(
-    pred(in, out, in, out, in, out, in, out, in, out, mdi, muo) is det,
+    in(pred(in, out, in, out, in, out, in, out, in, out, mdi, muo) is det),
     in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
 :- mode map_fold5_maybe(
-    pred(in, out, in, out, in, out, in, out, in, out, di, uo) is det,
+    in(pred(in, out, in, out, in, out, in, out, in, out, di, uo) is det),
     in, out, in, out, in, out, in, out, in, out, di, uo) is det.
 :- mode map_fold5_maybe(
-    pred(in, out, in, out, in, out, in, out, in, out, in, out) is semidet,
+    in(pred(in, out, in, out, in, out, in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
 :- mode map_fold5_maybe(
-    pred(in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet,
+    in(pred(in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet),
     in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode map_fold5_maybe(
-    pred(in, out, in, out, in, out, in, out, in, out, di, uo) is semidet,
+    in(pred(in, out, in, out, in, out, in, out, in, out, di, uo) is semidet),
     in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
     % maybe_is_yes(yes(X), X).
@@ -272,10 +284,10 @@
     % Make a maybe value from a semidet predicate.
     %
 :- func pred_to_maybe(pred(T)) = maybe(T).
-:- mode pred_to_maybe(pred(out) is semidet) = out is det.
+:- mode pred_to_maybe(in(pred(out) is semidet)) = out is det.
 
 :- func func_to_maybe((func) = T) = maybe(T).
-:- mode func_to_maybe((func) = out is semidet) = out is det.
+:- mode func_to_maybe(in((func) = out is semidet)) = out is det.
 
     % Return the value from within the maybe or a default value if there is
     % none.

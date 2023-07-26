@@ -358,47 +358,53 @@
     % include leap seconds.
     %
 :- pred foldl_days(pred(date, A, A), date, date, A, A).
-:- mode foldl_days(pred(in, in, out) is det, in, in, in, out) is det.
-:- mode foldl_days(pred(in, mdi, muo) is det, in, in, mdi, muo) is det.
-:- mode foldl_days(pred(in, di, uo) is det, in, in, di, uo) is det.
-:- mode foldl_days(pred(in, in, out) is semidet, in, in, in, out) is semidet.
-:- mode foldl_days(pred(in, mdi, muo) is semidet, in, in, mdi, muo) is semidet.
-:- mode foldl_days(pred(in, di, uo) is semidet, in, in, di, uo) is semidet.
+:- mode foldl_days(in(pred(in, in, out) is det),
+    in, in, in, out) is det.
+:- mode foldl_days(in(pred(in, mdi, muo) is det),
+    in, in, mdi, muo) is det.
+:- mode foldl_days(in(pred(in, di, uo) is det),
+    in, in, di, uo) is det.
+:- mode foldl_days(in(pred(in, in, out) is semidet),
+    in, in, in, out) is semidet.
+:- mode foldl_days(in(pred(in, mdi, muo) is semidet),
+    in, in, mdi, muo) is semidet.
+:- mode foldl_days(in(pred(in, di, uo) is semidet),
+    in, in, di, uo) is semidet.
 
     % foldl2_days(Pred, Start, End, !Acc1, !Acc2):
     % As above, but with two accumulators.
     %
 :- pred foldl2_days(pred(date, A, A, B, B), date, date, A, A, B, B).
-:- mode foldl2_days(pred(in, in, out, in, out) is det, in, in, in, out,
-    in, out) is det.
-:- mode foldl2_days(pred(in, in, out, mdi, muo) is det, in, in, in, out,
-    mdi, muo) is det.
-:- mode foldl2_days(pred(in, in, out, di, uo) is det, in, in, in, out,
-    di, uo) is det.
-:- mode foldl2_days(pred(in, in, out, in, out) is semidet, in, in, in, out,
-    in, out) is semidet.
-:- mode foldl2_days(pred(in, in, out, mdi, muo) is semidet, in, in, in, out,
-    mdi, muo) is semidet.
-:- mode foldl2_days(pred(in, in, out, di, uo) is semidet, in, in, in, out,
-    di, uo) is semidet.
+:- mode foldl2_days(in(pred(in, in, out, in, out) is det),
+    in, in, in, out, in, out) is det.
+:- mode foldl2_days(in(pred(in, in, out, mdi, muo) is det),
+    in, in, in, out, mdi, muo) is det.
+:- mode foldl2_days(in(pred(in, in, out, di, uo) is det),
+    in, in, in, out, di, uo) is det.
+:- mode foldl2_days(in(pred(in, in, out, in, out) is semidet),
+    in, in, in, out, in, out) is semidet.
+:- mode foldl2_days(in(pred(in, in, out, mdi, muo) is semidet),
+    in, in, in, out, mdi, muo) is semidet.
+:- mode foldl2_days(in(pred(in, in, out, di, uo) is semidet),
+    in, in, in, out, di, uo) is semidet.
 
     % foldl3_days(Pred, Start, End, !Acc1, !Acc2, !Acc3):
     % As above, but with three accumulators.
     %
 :- pred foldl3_days(pred(date, A, A, B, B, C, C), date, date,
     A, A, B, B, C, C).
-:- mode foldl3_days(pred(in, in, out, in, out, in, out) is det, in, in,
-    in, out, in, out, in, out) is det.
-:- mode foldl3_days(pred(in, in, out, in, out, mdi, muo) is det, in, in,
-    in, out, in, out, mdi, muo) is det.
-:- mode foldl3_days(pred(in, in, out, in, out, di, uo) is det, in, in,
-    in, out, in, out, di, uo) is det.
-:- mode foldl3_days(pred(in, in, out, in, out, in, out) is semidet, in, in,
-    in, out, in, out, in, out) is semidet.
-:- mode foldl3_days(pred(in, in, out, in, out, mdi, muo) is semidet, in, in,
-    in, out, in, out, mdi, muo) is semidet.
-:- mode foldl3_days(pred(in, in, out, in, out, di, uo) is semidet, in, in,
-    in, out, in, out, di, uo) is semidet.
+:- mode foldl3_days(in(pred(in, in, out, in, out, in, out) is det),
+    in, in, in, out, in, out, in, out) is det.
+:- mode foldl3_days(in(pred(in, in, out, in, out, mdi, muo) is det),
+    in, in, in, out, in, out, mdi, muo) is det.
+:- mode foldl3_days(in(pred(in, in, out, in, out, di, uo) is det),
+    in, in, in, out, in, out, di, uo) is det.
+:- mode foldl3_days(in(pred(in, in, out, in, out, in, out) is semidet),
+    in, in, in, out, in, out, in, out) is semidet.
+:- mode foldl3_days(in(pred(in, in, out, in, out, mdi, muo) is semidet),
+    in, in, in, out, in, out, mdi, muo) is semidet.
+:- mode foldl3_days(in(pred(in, in, out, in, out, di, uo) is semidet),
+    in, in, in, out, in, out, di, uo) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

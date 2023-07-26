@@ -57,15 +57,15 @@
     % accept a thread handle argument, and an exception is thrown if the
     % thread cannot be created.
     %
-:- pred spawn(pred(io, io), io, io).
-:- mode spawn(pred(di, uo) is cc_multi, di, uo) is cc_multi.
+:- pred spawn(pred(io, io)::in(pred(di, uo) is cc_multi),
+    io::di, io::uo) is cc_multi.
 
     % spawn(Closure, Res, IO0, IO) creates a new thread and performs Closure in
     % that thread. On success it returns ok(Thread) where Thread is a handle to
     % the new thread. Otherwise it returns an error.
     %
-:- pred spawn(pred(thread, io, io), maybe_error(thread), io, io).
-:- mode spawn(pred(in, di, uo) is cc_multi, out, di, uo) is cc_multi.
+:- pred spawn(pred(thread, io, io)::in(pred(in, di, uo) is cc_multi),
+    maybe_error(thread)::out, io::di, io::uo) is cc_multi.
 
     % A type representing options that affect thread creation.
     %
@@ -91,8 +91,8 @@
     % spawn_native(Closure, Res, !IO):
     % Same as spawn_native(Closure, init_thread_options, Res, !IO).
     %
-:- pred spawn_native(pred(thread, io, io), maybe_error(thread), io, io).
-:- mode spawn_native(pred(in, di, uo) is cc_multi, out, di, uo) is cc_multi.
+:- pred spawn_native(pred(thread, io, io)::in(pred(in, di, uo) is cc_multi),
+    maybe_error(thread)::out, io::di, io::uo) is cc_multi.
 
     % spawn_native(Closure, Options, Res, IO0, IO):
     % Like spawn/4, but Closure will be performed in a separate "native thread"
@@ -108,10 +108,8 @@
     % Also, some foreign code depends on OS thread-local state so needs to be
     % consistently executed on a dedicated OS thread to be usable.
     %
-:- pred spawn_native(pred(thread, io, io), thread_options, maybe_error(thread),
-    io, io).
-:- mode spawn_native(pred(in, di, uo) is cc_multi, in, out,
-    di, uo) is cc_multi.
+:- pred spawn_native(pred(thread, io, io)::in(pred(in, di, uo) is cc_multi),
+    thread_options::in, maybe_error(thread)::out, io::di, io::uo) is cc_multi.
 
     % yield(IO0, IO) is logically equivalent to (IO = IO0) but
     % operationally, yields the Mercury engine to some other thread
@@ -256,8 +254,8 @@ spawn(Goal, Res, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred spawn_context(pred(thread, io, io), maybe_error(thread), io, io).
-:- mode spawn_context(pred(in, di, uo) is cc_multi, out, di, uo) is cc_multi.
+:- pred spawn_context(pred(thread, io, io)::in(pred(in, di, uo) is cc_multi),
+    maybe_error(thread)::out, io::di, io::uo) is cc_multi.
 
 spawn_context(Goal, Res, !IO) :-
     spawn_context_2(Goal, Success, ThreadId, !IO),
@@ -269,9 +267,8 @@ spawn_context(Goal, Res, !IO) :-
         Res = error("Unable to spawn threads in this grade.")
     ).
 
-:- pred spawn_context_2(pred(thread, io, io), bool, string, io, io).
-:- mode spawn_context_2(pred(in, di, uo) is cc_multi, out, out, di, uo)
-    is cc_multi.
+:- pred spawn_context_2(pred(thread, io, io)::in(pred(in, di, uo) is cc_multi),
+    bool::out, string::out, io::di, io::uo) is cc_multi.
 
 spawn_context_2(_, Res, "", !IO) :-
     ( Res = no
@@ -356,10 +353,9 @@ spawn_native(Goal, Options, Res, !IO) :-
         Res = error(ErrorMsg)
     ).
 
-:- pred spawn_native_2(pred(thread, io, io), uint, bool, thread_id, string,
-    io, io).
-:- mode spawn_native_2(pred(in, di, uo) is cc_multi, in, out, out, out,
-    di, uo) is cc_multi.
+:- pred spawn_native_2(pred(thread, io, io)::in(pred(in, di, uo) is cc_multi),
+    uint::in, bool::out, thread_id::out, string::out,
+    io::di, io::uo) is cc_multi.
 
 :- pragma foreign_proc("C",
     spawn_native_2(Goal::(pred(in, di, uo) is cc_multi), MinStackSize::in,
@@ -730,17 +726,17 @@ failed_to_create_thread:
 #endif // MR_THREAD_SAFE
 ").
 
-:- pred call_back_to_mercury(pred(thread, io, io), thread_id, io, io).
-:- mode call_back_to_mercury(pred(in, di, uo) is cc_multi, in, di, uo)
-    is cc_multi.
+:- pred call_back_to_mercury(
+    pred(thread, io, io)::in(pred(in, di, uo) is cc_multi),
+    thread_id::in, io::di, io::uo) is cc_multi.
 :- pragma foreign_export("C",
-    call_back_to_mercury(pred(in, di, uo) is cc_multi, in, di, uo),
+    call_back_to_mercury(in(pred(in, di, uo) is cc_multi), in, di, uo),
     "ML_call_back_to_mercury_cc_multi").
 :- pragma foreign_export("C#",
-    call_back_to_mercury(pred(in, di, uo) is cc_multi, in, di, uo),
+    call_back_to_mercury(in(pred(in, di, uo) is cc_multi), in, di, uo),
     "ML_call_back_to_mercury_cc_multi").
 :- pragma foreign_export("Java",
-    call_back_to_mercury(pred(in, di, uo) is cc_multi, in, di, uo),
+    call_back_to_mercury(in(pred(in, di, uo) is cc_multi), in, di, uo),
     "ML_call_back_to_mercury_cc_multi").
 
 call_back_to_mercury(Goal, ThreadId, !IO) :-
