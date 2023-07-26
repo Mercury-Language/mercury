@@ -562,9 +562,9 @@ nondet_stack.out: nondet_stack nondet_stack.inp
 	$(MDB_STD) ./nondet_stack < nondet_stack.inp 2>&1 | \
 		sed 's/entry label MR_do_trace_redo_fail_deep/label UNKNOWN/g' \
 		| sed 's/unnamed label 0x.*/unnamed label/' \
-		| sed 's/unnamed label [0-9A-F][0-9A-F]*/unnamed label/' \
+		| sed 's/unnamed label [0-9a-fA-F][0-9a-fA-F]*/unnamed label/' \
 		| sed 's/unnamed entry label 0x.*/unnamed entry label/' \
-		| sed 's/unnamed entry label [0-9A-F][0-9A-F]*/unnamed entry label/' \
+		| sed 's/unnamed entry label [0-9a-fA-F][0-9a-fA-F]*/unnamed entry label/' \
 		| sed 's/label UNKNOWN .*/label UNKNOWN/' \
 		| sed 's/nondet_stack.m:[0-9]*/nondet_stack.m:NNNN/g' \
 		> nondet_stack.out 2>&1
