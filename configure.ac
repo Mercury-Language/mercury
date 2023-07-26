@@ -4508,6 +4508,7 @@ AC_SUBST([C_COMPILER_TYPE])
 
 # Note that changes here may require changes in scripts/ml.in.
 
+AC_MSG_CHECKING([options for static linking])
 LD_STATIC_FLAGS=
 case "$C_COMPILER_TYPE" in
     gcc*|clang*)
@@ -4523,18 +4524,17 @@ case "$FULLARCH" in
         esac
         ;;
 esac
-
-# We can't put the call to MSG_CHECKING at the start of the case statement
-# above, because of the nested check in the lcc case. So we just put it here
-# immediately before the MSG_RESULT call.
-AC_MSG_CHECKING([options for static linking])
 AC_MSG_RESULT($LD_STATIC_FLAGS)
-case "$LD_STATIC_FLAGS" in
-    "")
-        AC_MSG_WARN(
-['mmc --linkage static' and 'ml --static' not implemented with
-****    this C compiler ('$CC').])
-esac
+
+if test "$USING_MICROSOFT_CL_COMPILER" = "no"
+then
+    case "$LD_STATIC_FLAGS" in
+        "")
+          AC_MSG_WARN(
+[options for static linking unknown for this C compiler ('$CC').])
+        ;;
+    esac
+fi
 
 #-----------------------------------------------------------------------------#
 
