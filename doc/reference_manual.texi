@@ -6261,49 +6261,15 @@ are both equivalent to
 @noindent
 but they may be more convenient to write,
 especially in the presence of more arguments.
-@footnote{If there is a single inst or a single mode
-that all instances of a given type are expected to use,
-programmers will often give that inst or mode
-the same name as the name of the type.
-The compiler looks up names in its type table when it expects a type,
-in its inst table when it expects an inst,
-and in its mode table when it expects a mode,
-so this does not confuse the compiler.
-However, this practice @emph{can} confuse Mercury programmers
-who (a) do not know this fact, or (b) are not familiar with this convention.}
-
-As a convenience, the language allows the @samp{in()} wrapper
-around higher order insts, which turn them into higher order modes,
-to be omitted in the mode declarations of predicates and functions.
-@c ZZZ or is that true more generally, of all places that expect modes
-@c but find insts?
-@c I (zs) don't know the answer.
-In those parts of these declarations
-where the compiler expects to find a mode, if it finds an inst instead,
-it implicitly inserts the @samp{in()} around that inst.
-This is why the usual mode of @samp{list.foldl},
-which we introduced above as being
-
-@example
-:- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
-@end example
-
-@noindent
-can also be written as
-
-@example
-:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
-@end example
-
-@noindent
-and is actually written in the source code like this.
-@c ZZZ *Should* it be written like that?
-@c Arguably, it makes the code harder to read for novices.
-
-@c ZZZ can you omit the in(...) wrapper around named insts?
-@c Answer: NO. it is not even true of the inst is an inst name that expands
-@c to a higher order inst, rather than being an *explicit* higher order inst.
-@c ZZZ Next question: *why* is the answer NO?
+@footnote{If all instances of a given type are expected to use
+a single inst or a single mode,
+there is a convention where programmers will give that inst or mode
+the same name as the type.
+This works because types, insts and modes belong to separate namespaces,
+so the names do not conflict.
+Nonetheless, there is usually no need to define a named mode.
+It is clearer to write a mode using @samp{in()} or @samp{out()}
+around a named inst.}
 
 The general form of higher order insts follows one of two patterns,
 one for predicates, and one for functions.
@@ -6344,6 +6310,34 @@ around any instances of these patterns in Mercury code.
 @c modes include higher order insts/modes, which would be too complex to
 @c be useful as an example to novices.
 
+As a convenience,
+the language allows you to write a higher order @emph{mode}
+using the same syntax as a higher order @emph{inst}.
+If @var{HOInst} has the form of a higher order inst,
+then writing @var{HOInst} where a mode is required
+is the same as writing @samp{in(HOInst)},
+which is in turn equivalent to @samp{HOInst >> HOInst}.
+Therefore,
+you can omit @samp{in()} around the higher order inst of an input argument.
+For example,
+
+@example
+:- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
+@end example
+
+@noindent
+can also be written as
+
+@example
+:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
+@end example
+@c ZZZ *Should* it be written like that?
+@c Arguably, it makes the code harder to read for novices.
+
+As usual,
+if a predicate or function has only one mode,
+the @samp{pred} or @samp{func} declaration
+can be combined with the @samp{mode} declaration.
 Consider the declaration of a function
 that computes the intersection of two maps from keys to values:
 
