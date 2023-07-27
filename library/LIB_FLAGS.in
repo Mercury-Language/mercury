@@ -17,7 +17,6 @@
 --no-warn-stdlib-shadowing
 --warn-dead-predicates
 --no-warn-inferred-erroneous
---no-allow-ho-insts-as-modes
 --no-mercury-stdlib-dir
 --no-detect-libgrades
 --strict-sequential 
