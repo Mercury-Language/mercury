@@ -94,14 +94,12 @@ ml_gen_preds(ProgressStream, Target, ConstStructMap, FuncDefns,
     % any post-code-gen HLDS dumps would contain that version. Putting
     % the requantified proc_infos back into !ModuleInfo here makes them
     % available in the post-code-gen HLDS dump.
-    ml_find_and_requantify_procs_for_code_gen(PredIdInfos0, PredIdInfos,
+    ml_find_and_requantify_procs_for_code_gen(PredIdInfos0, [], RevPredIdInfos,
         [], PredProcIds),
-    map.from_sorted_assoc_list(PredIdInfos, PredIdTable),
+    map.from_rev_sorted_assoc_list(RevPredIdInfos, PredIdTable),
     module_info_set_pred_id_table(PredIdTable, !ModuleInfo),
 
-    list.sort(PredProcIds, SortedPredProcIds),
-    set.sorted_list_to_set(SortedPredProcIds, CodeGenPredProcIds),
-
+    set.list_to_set(PredProcIds, CodeGenPredProcIds),
     DepInfo = build_proc_dependency_graph(!.ModuleInfo, CodeGenPredProcIds,
         only_all_calls),
     get_bottom_up_sccs_with_entry_points(!.ModuleInfo, DepInfo,
@@ -125,12 +123,13 @@ ml_gen_preds(ProgressStream, Target, ConstStructMap, FuncDefns,
 
 :- pred ml_find_and_requantify_procs_for_code_gen(
     assoc_list(pred_id, pred_info)::in,
-    assoc_list(pred_id, pred_info)::out,
+    assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
-ml_find_and_requantify_procs_for_code_gen([], [], !CodeGenPredProcIds).
+ml_find_and_requantify_procs_for_code_gen([],
+        !RevPredIdInfos, !CodeGenPredProcIds).
 ml_find_and_requantify_procs_for_code_gen([PredIdInfo0 | PredIdInfos0],
-        [PredIdInfo | PredIdInfos], !CodeGenPredProcIds) :-
+        !RevPredIdInfos, !CodeGenPredProcIds) :-
     PredIdInfo0 = PredId - PredInfo0,
     pred_info_get_status(PredInfo0, PredStatus),
     ( if
@@ -171,8 +170,9 @@ ml_find_and_requantify_procs_for_code_gen([PredIdInfo0 | PredIdInfos0],
         PredProcIds = list.map((func(ProcId) = proc(PredId, ProcId)), ProcIds),
         !:CodeGenPredProcIds = PredProcIds ++ !.CodeGenPredProcIds
     ),
-    ml_find_and_requantify_procs_for_code_gen(PredIdInfos0, PredIdInfos,
-        !CodeGenPredProcIds).
+    !:RevPredIdInfos = [PredIdInfo | !.RevPredIdInfos],
+    ml_find_and_requantify_procs_for_code_gen(PredIdInfos0,
+        !RevPredIdInfos, !CodeGenPredProcIds).
 
     % The specification of the HLDS allows goal_infos to overestimate
     % the set of non-locals. Such overestimates are bad for us for two reasons:
