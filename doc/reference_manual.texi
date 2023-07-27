@@ -6044,12 +6044,12 @@ List = scalar_product(2, [1, 2, 3])
 and so for a suitable implementation of the function @samp{scalar_product/2}
 this would bind @code{List} to @samp{[2, 4, 6]}.
 
-One extremely useful higher-order predicate in the Mercury standard library
+One useful higher-order predicate in the Mercury standard library
 is @samp{solutions/2}, which has the following declaration:
 
 @example
 :- pred solutions(pred(T), list(T)).
-:- mode solutions(pred(out) is nondet, out) is det.
+:- mode solutions(in(pred(out) is nondet), out) is det.
 @end example
 
 The term which you pass to @samp{solutions/2} is a higher-order predicate term.
@@ -6061,7 +6061,7 @@ The declarative semantics of @samp{solutions/2} can be defined as follows:
 @example
 solutions(Pred, List) is true iff
     all [X] (call(Pred, X) <=> list.member(X, List))
-    and List is sorted.
+    and List is sorted without any duplicates.
 @end example
 
 @noindent
@@ -6220,6 +6220,7 @@ The set of mode declarations for @samp{list.foldl} includes
 @c :- mode foldl(in(pred(in, in, out) is multi), in, in, out) is multi.
 @c :- mode foldl(in(pred(in, in, out) is nondet), in, in, out) is nondet.
 
+@noindent
 That means you can pass predicates
 with several different argument mode/determinism combinations
 as the first argument.
@@ -6331,8 +6332,9 @@ can also be written as
 @example
 :- mode foldl(pred(in, in, out) is det, in, in, out) is det.
 @end example
-@c ZZZ *Should* it be written like that?
-@c Arguably, it makes the code harder to read for novices.
+
+@noindent
+though the former may be easier to understand.
 
 As usual,
 if a predicate or function has only one mode,
