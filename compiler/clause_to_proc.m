@@ -70,24 +70,16 @@
 
 copy_clauses_to_proc_for_all_valid_procs(!ModuleInfo) :-
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
-    map.keys(PredIdTable0, PredIds),
-    list.foldl(copy_pred_clauses_to_procs_in_pred_id_table, PredIds,
+    map.map_values(copy_clauses_to_procs_in_pred_info,
         PredIdTable0, PredIdTable),
     module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
 copy_clauses_to_procs_for_pred_in_module_info(PredId, !ModuleInfo) :-
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
-    copy_pred_clauses_to_procs_in_pred_id_table(PredId,
-        PredIdTable0, PredIdTable),
-    module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
-
-:- pred copy_pred_clauses_to_procs_in_pred_id_table(pred_id::in,
-    pred_id_table::in, pred_id_table::out) is det.
-
-copy_pred_clauses_to_procs_in_pred_id_table(PredId, !PredIdTable) :-
-    map.lookup(!.PredIdTable, PredId, PredInfo0),
+    map.lookup(PredIdTable0, PredId, PredInfo0),
     copy_clauses_to_procs_in_pred_info(PredId, PredInfo0, PredInfo),
-    map.det_update(PredId, PredInfo, !PredIdTable).
+    map.det_update(PredId, PredInfo, PredIdTable0, PredIdTable),
+    module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
 :- pred copy_clauses_to_procs_in_pred_info(pred_id::in,
     pred_info::in, pred_info::out) is det.
