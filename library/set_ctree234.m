@@ -322,7 +322,7 @@
     set_ctree234(T)::in, set_ctree234(T)::out, set_ctree234(T)::out) is det.
 
 :- func filter_map(func(T1) = T2, set_ctree234(T1)) = set_ctree234(T2).
-:- mode filter_map((func(in) = out is semidet), in) = out is det.
+:- mode filter_map(in(func(in) = out is semidet), in) = out is det.
 
 :- pred filter_map(pred(T1, T2)::in(pred(in, out) is semidet),
     set_ctree234(T1)::in, set_ctree234(T2)::out) is det.

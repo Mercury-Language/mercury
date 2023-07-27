@@ -331,7 +331,7 @@
     set_bbbtree(T)::in, set_bbbtree(T)::out, set_bbbtree(T)::out) is det.
 
 :- func filter_map(func(T1) = T2, set_bbbtree(T1)) = set_bbbtree(T2).
-:- mode filter_map((func(in) = out is semidet), in) = out is det.
+:- mode filter_map(in(func(in) = out is semidet), in) = out is det.
 
 :- func map(func(T1) = T2, set_bbbtree(T1)) = set_bbbtree(T2).
 

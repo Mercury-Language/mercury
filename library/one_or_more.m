@@ -591,7 +591,7 @@
     % its return value is included in TrueList.
     %
 :- func filter_map(func(X) = Y, one_or_more(X)) = list(Y).
-:- mode filter_map((func(in) = out is semidet), in) = out is det.
+:- mode filter_map(in(func(in) = out is semidet), in) = out is det.
 
     % filter_map(Transformer, List, TrueList) takes a predicate
     % with one input argument and one output argument, and calls it
@@ -819,7 +819,7 @@
     % succeeded.
     %
 :- func filter_map_corresponding(
-    (func(A, B) = R)::(func(in, in) = out is semidet),
+    (func(A, B) = R)::in(func(in, in) = out is semidet),
     one_or_more(A)::in, one_or_more(B)::in) = (list(R)::out) is det.
 :- pred filter_map_corresponding(
     pred(A, B, R)::in(pred(in, in, out) is semidet),

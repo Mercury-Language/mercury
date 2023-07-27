@@ -606,11 +606,11 @@
     % each of the elements of OldArray to create NewArray.
     %
 :- func map(func(T1) = T2, array(T1)) = array(T2).
-%:- mode map(func(in) = out is det, array_ui) = array_uo is det.
-:- mode map(func(in) = out is det, in) = array_uo is det.
+%:- mode map(in(func(in) = out is det), array_ui) = array_uo is det.
+:- mode map(in(func(in) = out is det), in) = array_uo is det.
 
 :- pred map(pred(T1, T2), array(T1), array(T2)).
-%:- mode map(pred(in, out) is det, array_ui, array_uo) is det.
+%:- mode map(in(pred(in, out) is det), array_ui, array_uo) is det.
 :- mode map(in(pred(in, out) is det), in, array_uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -2881,12 +2881,14 @@ foldl(Fn, A, X) =
     do_foldl_func(Fn, A, X, array.min(A), array.max(A)).
 
 :- func do_foldl_func(func(T1, T2) = T2, array(T1), T2, int, int) = T2.
-%:- mode do_foldl_func(func(in, in) = out is det, array_ui, in, in, in)
+%:- mode do_foldl_func(in(func(in, in) = out is det), array_ui, in, in, in)
 %   = out is det.
-:- mode do_foldl_func(func(in, in) = out is det, in, in, in, in) = out is det.
-%:- mode do_foldl_func(func(in, di) = uo is det, array_ui, di, in, in)
+:- mode do_foldl_func(in(func(in, in) = out is det), in, in, in, in) = out
+    is det.
+%:- mode do_foldl_func(in(func(in, di) = uo is det), array_ui, di, in, in)
 %   = uo is det.
-:- mode do_foldl_func(func(in, di) = uo is det, in, di, in, in) = uo is det.
+:- mode do_foldl_func(in(func(in, di) = uo is det), in, di, in, in) = uo
+    is det.
 
 do_foldl_func(Fn, A, X, I, Max) =
     ( if Max < I then

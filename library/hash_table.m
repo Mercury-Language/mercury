@@ -204,8 +204,10 @@
     % Fold a function over the key-value bindings in a hash table.
     %
 :- func fold(func(K, V, T) = T, hash_table(K, V), T) = T.
-:- mode fold(func(in, in, in) = out is det, hash_table_ui, in) = out is det.
-:- mode fold(func(in, in, di) = uo is det, hash_table_ui, di) = uo is det.
+:- mode fold(in(func(in, in, in) = out is det), hash_table_ui, in) = out
+    is det.
+:- mode fold(in(func(in, in, di) = uo is det), hash_table_ui, di) = uo
+    is det.
 
     % Fold a predicate over the key-value bindings in a hash table.
     %
@@ -758,8 +760,8 @@ fold(F, HT, A0) = A :-
     array.foldl(fold_f(F), HT ^ buckets, A0, A).
 
 :- pred fold_f(func(K, V, T) = T, hash_bucket(K, V), T, T).
-:- mode fold_f(func(in, in, in) = out is det, in, in, out) is det.
-:- mode fold_f(func(in, in, di) = uo is det, in, di, uo) is det.
+:- mode fold_f(in(func(in, in, in) = out is det), in, in, out) is det.
+:- mode fold_f(in(func(in, in, di) = uo is det), in, di, uo) is det.
 
 fold_f(F, HB, !A) :-
     (
@@ -775,8 +777,8 @@ fold_f(F, HB, !A) :-
     ).
 
 :- pred foldlf(func(K, V, T) = T, kv_list(K, V), T, T).
-:- mode foldlf(func(in, in, in) = out is det, in, in, out) is det.
-:- mode foldlf(func(in, in, di) = uo is det, in, di, uo) is det.
+:- mode foldlf(in(func(in, in, in) = out is det), in, in, out) is det.
+:- mode foldlf(in(func(in, in, di) = uo is det), in, di, uo) is det.
 
 foldlf(F, KVs, !A) :-
     (

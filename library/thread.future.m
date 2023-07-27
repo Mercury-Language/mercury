@@ -123,7 +123,7 @@ future(Func) = Future :-
     ).
 
 :- impure pred run_future(future(T), (func) = T).
-:-        mode run_future(in, ((func) = out) is det) is cc_multi.
+:-        mode run_future(in, in((func) = out is det)) is cc_multi.
 
 run_future(future(Future), Func) :-
     ( try []

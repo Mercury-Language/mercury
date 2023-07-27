@@ -648,8 +648,8 @@ fold(F, HT, X0) = X :-
     foldl(fold_f(F), Buckets, X0, X).
 
 :- pred fold_f(func(K, V, T) = T, hash_table_alist(K, V), T, T).
-:- mode fold_f(func(in, in, in) = out is det, in, in, out) is det.
-:- mode fold_f(func(in, in, di) = uo is det, in, di, uo) is det.
+:- mode fold_f(in(func(in, in, in) = out is det), in, in, out) is det.
+:- mode fold_f(in(func(in, in, di) = uo is det), in, di, uo) is det.
 
 fold_f(F, List, A0, A) :-
     (

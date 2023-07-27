@@ -585,7 +585,7 @@ benchmark_func(Func, In, Out, Repeats, Time) :-
     ).
 
 :- impure pred benchmark_func_loop(func(T1) = T2, T1, T2, int).
-:- mode benchmark_func_loop(func(in) = out is det, in, out, in) is det.
+:- mode benchmark_func_loop(in(func(in) = out is det), in, out, in) is det.
 
 benchmark_func_loop(Func, In, Out, Repeats) :-
     % The call to do_nothing/1 here is to make sure the compiler

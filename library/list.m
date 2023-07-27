@@ -1119,7 +1119,7 @@
     %
 :- func filter_map_corresponding(func(A, B) = R, list(A), list(B))
     = list(R).
-:- mode filter_map_corresponding(func(in, in) = out is semidet, in, in)
+:- mode filter_map_corresponding(in(func(in, in) = out is semidet), in, in)
     = out is det.
 :- pred filter_map_corresponding(
     pred(A, B, R)::in(pred(in, in, out) is semidet),
@@ -1131,7 +1131,7 @@
     %
 :- func filter_map_corresponding3(func(A, B, C) = R,
     list(A), list(B), list(C)) = list(R).
-:- mode filter_map_corresponding3(func(in, in, in) = out is semidet,
+:- mode filter_map_corresponding3(in(func(in, in, in) = out is semidet),
     in, in, in) = out is det.
 :- pred filter_map_corresponding3(
     pred(A, B, C, R)::in(pred(in, in, in, out) is semidet),

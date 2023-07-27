@@ -1316,9 +1316,9 @@ xor(BM_A, BM_B) = BM :-
     % and 0 inclusive, destructively updating the second bitmap.
     %
 :- pred zip(func(byte, byte) = byte, bitmap, bitmap, bitmap).
-% :- mode zip(func(in, in) = out is det,
+% :- mode zip(in(func(in, in) = out is det),
 %    bitmap_ui, bitmap_di, bitmap_uo) is det.
-:- mode zip(func(in, in) = out is det, in, bitmap_di, bitmap_uo) is det.
+:- mode zip(in(func(in, in) = out is det), in, bitmap_di, bitmap_uo) is det.
 
 zip(Fn, BM_A, BM_B, BM) :-
     ( if num_bits(BM_B) = 0 then
@@ -1328,9 +1328,10 @@ zip(Fn, BM_A, BM_B, BM) :-
     ).
 
 :- pred zip2(byte_index, func(byte, byte) = byte, bitmap, bitmap, bitmap).
-% :- mode zip2(in, func(in, in) = out is det,
+% :- mode zip2(in, in(func(in, in) = out is det),
 %    bitmap_ui, bitmap_di, bitmap_uo) is det.
-:- mode zip2(in, func(in, in) = out is det, in, bitmap_di, bitmap_uo) is det.
+:- mode zip2(in, in(func(in, in) = out is det), in, bitmap_di, bitmap_uo)
+    is det.
 
 zip2(I, Fn, BM_A, BM_B, BM) :-
     ( if I >= 0 then
