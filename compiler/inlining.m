@@ -1017,17 +1017,18 @@ tci_vars_different_constraints(RttiVarMaps, [VarA, VarB | Vars]) :-
 
 %---------------------------------------------------------------------------%
 
-do_inline_call(ModuleInfo, ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
+do_inline_call(ModuleInfo, ExternalTypeParams, ArgVars,
+        CalleePredInfo, CalleeProcInfo,
         TypeVarSet0, TypeVarSet, VarTable0, VarTable,
         RttiVarMaps0, RttiVarMaps, Goal) :-
-    proc_info_get_goal(ProcInfo, CalledGoal),
+    proc_info_get_goal(CalleeProcInfo, CalledGoal),
 
     % Look up the rest of the info for the called procedure.
 
-    pred_info_get_typevarset(PredInfo, CalleeTypeVarSet),
-    proc_info_get_headvars(ProcInfo, HeadVars),
-    proc_info_get_var_table(ProcInfo, CalleeVarTable0),
-    proc_info_get_rtti_varmaps(ProcInfo, CalleeRttiVarMaps0),
+    pred_info_get_typevarset(CalleePredInfo, CalleeTypeVarSet),
+    proc_info_get_headvars(CalleeProcInfo, HeadVars),
+    proc_info_get_var_table(CalleeProcInfo, CalleeVarTable0),
+    proc_info_get_rtti_varmaps(CalleeProcInfo, CalleeRttiVarMaps0),
 
     % Substitute the appropriate types into the type mapping of the called
     % procedure. For example, if we call `:- pred foo(T)' with an argument
@@ -1062,7 +1063,7 @@ do_inline_call(ModuleInfo, ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
     lookup_var_types(CalleeVarTable1, HeadVars, HeadTypes),
     lookup_var_types(VarTable0, ArgVars, ArgTypes),
 
-    pred_info_get_exist_quant_tvars(PredInfo, CalleeExistQVars),
+    pred_info_get_exist_quant_tvars(CalleePredInfo, CalleeExistQVars),
     compute_caller_callee_type_substitution(HeadTypes, ArgTypes,
         ExternalTypeParams, CalleeExistQVars, TypeSubn),
 
