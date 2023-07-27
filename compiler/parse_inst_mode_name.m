@@ -288,34 +288,46 @@ parse_higher_order_mode(AllowConstrainedInstVar, VarSet, ContextPieces,
             IsAny = yes
         )
     then
-        % XXX Should update ContextPieces.
-        parse_modes(AllowConstrainedInstVar, VarSet, ContextPieces,
-            ArgModesTerms, MaybeArgModes0),
-        parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces,
-            RetModeTerm, MaybeRetMode),
-        parse_determinism(VarSet, DetTerm, MaybeDetism),
-        ( if
-            MaybeArgModes0 = ok1(ArgModes0),
-            MaybeRetMode = ok1(RetMode),
-            MaybeDetism = ok1(Detism)
-        then
-            ArgModes = ArgModes0 ++ [RetMode],
-            FuncInstInfo = pred_inst_info(pf_function, ArgModes,
-                arg_reg_types_unset, Detism),
-            (
-                IsAny = no,
-                Inst = ground(shared, higher_order(FuncInstInfo))
-            ;
-                IsAny = yes,
-                Inst = any(shared, higher_order(FuncInstInfo))
-            ),
-            Mode = from_to_mode(Inst, Inst),
-            MaybeMode = ok1(Mode)
-        else
-            Specs = get_any_errors1(MaybeArgModes0)
-                ++ get_any_errors1(MaybeRetMode)
-                ++ get_any_errors1(MaybeDetism),
-            MaybeMode = error1(Specs)
+        AllowInstsAsModes = globals.get_allow_ho_insts_as_modes,
+        (
+            AllowInstsAsModes = no,
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+                words("Error: higher order inst is used as a mode."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(BeforeIsTerm),
+                Pieces),
+            MaybeMode = error1([Spec])
+        ;
+            AllowInstsAsModes = yes,
+            % XXX Should update ContextPieces.
+            parse_modes(AllowConstrainedInstVar, VarSet, ContextPieces,
+                ArgModesTerms, MaybeArgModes0),
+            parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces,
+                RetModeTerm, MaybeRetMode),
+            parse_determinism(VarSet, DetTerm, MaybeDetism),
+            ( if
+                MaybeArgModes0 = ok1(ArgModes0),
+                MaybeRetMode = ok1(RetMode),
+                MaybeDetism = ok1(Detism)
+            then
+                ArgModes = ArgModes0 ++ [RetMode],
+                FuncInstInfo = pred_inst_info(pf_function, ArgModes,
+                    arg_reg_types_unset, Detism),
+                (
+                    IsAny = no,
+                    Inst = ground(shared, higher_order(FuncInstInfo))
+                ;
+                    IsAny = yes,
+                    Inst = any(shared, higher_order(FuncInstInfo))
+                ),
+                Mode = from_to_mode(Inst, Inst),
+                MaybeMode = ok1(Mode)
+            else
+                Specs = get_any_errors1(MaybeArgModes0)
+                    ++ get_any_errors1(MaybeRetMode)
+                    ++ get_any_errors1(MaybeDetism),
+                MaybeMode = error1(Specs)
+            )
         )
     else
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
