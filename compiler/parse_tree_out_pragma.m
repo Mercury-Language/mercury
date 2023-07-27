@@ -523,7 +523,7 @@ mercury_format_pragma_foreign_proc(Lang, FPInfo, S, !U) :-
     add_string(":- pragma foreign_proc(", S, !U),
     ForeignLang = get_foreign_language(Attributes),
     mercury_format_foreign_language_string(ForeignLang, S, !U),
-    add_string(", ", S, !U),
+    add_string(",\n    ", S, !U),
     mercury_format_sym_name(PredName, S, !U),
     (
         PredOrFunc = pf_predicate,
@@ -552,9 +552,9 @@ mercury_format_pragma_foreign_proc(Lang, FPInfo, S, !U) :-
             ResultVars, S, !U),
         add_string(")", S, !U)
     ),
-    add_string(", ", S, !U),
+    add_string(",\n    ", S, !U),
     mercury_format_pragma_foreign_attributes(ProgVarSet, Attributes, S, !U),
-    add_string(", ", S, !U),
+    add_string(",\n", S, !U),
     PragmaCode = fp_impl_ordinary(C_Code, _),
     mercury_format_foreign_code_string(C_Code, S, !U),
     add_string(").\n", S, !U).
