@@ -198,22 +198,29 @@ write_pred(Info, Stream, Lang, ModuleInfo, PredId, PredInfo, !IO) :-
         write_pred_proc_var_name_remap(Stream, VarNameSrc, VarNameRemap, !IO),
 
         get_clause_list_maybe_repeated(ClausesRep, Clauses),
-        ( if
-            % Print the clauses only if (a) we have some, and (b) we haven't
-            % already copied them to the proc_infos.
-            Clauses = [_ | _],
-            FilledInProcIdsInfos = []
-        then
-            set_dump_opts_for_clauses(Info, InfoForClauses),
-            write_clauses(InfoForClauses, Stream, Lang, ModuleInfo,
-                PredId, PredOrFunc, VarNameSrc, no_tvarset_var_table,
-                VarNamePrint, HeadVars, Clauses, !IO)
-        else
-            true
+        (
+            FilledInProcIdsInfos = [],
+            (
+                Clauses = [],
+                ClauseCountReport = report_clause_count(Clauses),
+                io.format(Stream, "%% clause count: %s\n",
+                    [s(ClauseCountReport)], !IO)
+            ;
+                Clauses = [_ | _],
+                set_dump_opts_for_clauses(Info, InfoForClauses),
+                write_clauses(InfoForClauses, Stream, Lang, ModuleInfo,
+                    PredId, PredOrFunc, VarNameSrc, no_tvarset_var_table,
+                    VarNamePrint, HeadVars, Clauses, !IO)
+            )
+        ;
+            FilledInProcIdsInfos = [_ | _],
+            ClauseCountReport = report_clause_count(Clauses),
+            io.format(Stream, "%% clause count: %s\n",
+                [s(ClauseCountReport)], !IO)
         ),
 
         pred_info_get_origin(PredInfo, Origin),
-        OriginStr = dump_origin(TVarSet, VarNamePrint, Origin),
+        OriginStr = dump_origin(TVarSet, VarNamePrint, "% origin: ", Origin),
         io.write_string(Stream, OriginStr, !IO),
         PrintedPred = yes
     else
@@ -250,6 +257,65 @@ output_format_string_values(Stream, [FmtStringValue | FmtStringValues], !IO) :-
         "%% format call: format string in arg %d/%d, values in arg %d/%d\n",
         [i(OrigFmtStr), i(CurFmtStr), i(OrigValues), i(CurValues)], !IO),
     output_format_string_values(Stream, FmtStringValues, !IO).
+
+:- func report_clause_count(list(clause)) = string.
+
+report_clause_count(Clauses) = Report :-
+    count_clause_langs(Clauses, 0, Mer, 0, C, 0, Cs, 0, Java),
+    Total = Mer + C + Cs + Java,
+    ( if Total = 0 then
+        Report = "0"
+    else
+        MerStr = clause_count_to_str("Mercury", Mer),
+        CStr = clause_count_to_str("C", C),
+        CsStr = clause_count_to_str("C#", Cs),
+        JavaStr = clause_count_to_str("Java", Java),
+        list.filter(unify(""), [MerStr, CStr, CsStr, JavaStr], _, LangStrs),
+        (
+            LangStrs = [],
+            unexpected($pred, "LangStrs = []")
+        ;
+            LangStrs = [Report]
+        ;
+            LangStrs = [_, _  | _],
+            LangsStr = string.join_list(", ", LangStrs),
+            string.format("%d total (%s)", [i(Total), s(LangsStr)], Report)
+        )
+    ).
+
+:- pred count_clause_langs(list(clause)::in,
+    int::in, int::out, int::in, int::out, int::in, int::out, int::in, int::out)
+    is det.
+
+count_clause_langs([], !Mer, !C, !Cs, !Java).
+count_clause_langs([Clause | Clauses], !Mer, !C, !Cs, !Java) :-
+    Lang = Clause ^ clause_lang,
+    (
+        Lang = impl_lang_mercury,
+        !:Mer = !.Mer + 1
+    ;
+        Lang = impl_lang_foreign(ForeignLang),
+        (
+            ForeignLang = lang_c,
+            !:C = !.C + 1
+        ;
+            ForeignLang = lang_csharp,
+            !:Cs = !.Cs + 1
+        ;
+            ForeignLang = lang_java,
+            !:Java = !.Java + 1
+        )
+    ),
+    count_clause_langs(Clauses, !Mer, !C, !Cs, !Java).
+
+:- func clause_count_to_str(string, int) = string.
+
+clause_count_to_str(LangStr, Count) = LangReport :-
+    ( if Count = 0 then
+        LangReport = ""
+    else
+        string.format("%d %s", [i(Count), s(LangStr)], LangReport)
+    ).
 
 %---------------------%
 
@@ -334,7 +400,7 @@ write_pred_types(Stream, VarNamePrint, TVarSet, VarTable, RttiVarMaps,
     tvarset::in, constraint_map::in, io::di, io::uo) is det.
 
 write_constraint_map(Stream, VarNamePrint, VarSet, ConstraintMap, !IO) :-
-    io.write_string(Stream, "% Constraint map:\n", !IO),
+    io.write_string(Stream, "% constraint map:\n", !IO),
     map.foldl(write_constraint_map_entry(Stream, VarNamePrint, VarSet),
         ConstraintMap, !IO).
 
@@ -452,7 +518,7 @@ write_clause(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc, VarNameSrc,
         ApplicableModes = selected_modes(Modes),
         ( if string.contains_char(DumpOptions, 'm') then
             io.format(Stream,
-                "%s%% Modes for which this clause applies: ",
+                "%s%% modes for which this clause applies: ",
                 [s(IndentStr)], !IO),
             ModeInts = list.map(proc_id_to_int, Modes),
             write_intlist(Stream, ModeInts, !IO),
@@ -464,7 +530,7 @@ write_clause(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc, VarNameSrc,
         ApplicableModes = unify_in_in_modes,
         ( if string.contains_char(DumpOptions, 'm') then
             io.format(Stream,
-                "%s%% This clause applies only to <in,in> unify modes.\n",
+                "%s%% this clause applies only to <in,in> unify modes.\n",
                 [s(IndentStr)], !IO)
         else
             true
@@ -473,7 +539,7 @@ write_clause(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc, VarNameSrc,
         ApplicableModes = unify_non_in_in_modes,
         ( if string.contains_char(DumpOptions, 'm') then
             io.format(Stream,
-                "%s%% This clause applies only to non <in,in> unify modes.\n",
+                "%s%% this clause applies only to non <in,in> unify modes.\n",
                 [s(IndentStr)], !IO)
         else
             true
@@ -483,7 +549,7 @@ write_clause(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc, VarNameSrc,
         ImplLang = impl_lang_mercury
     ;
         ImplLang = impl_lang_foreign(ForeignLang),
-        io.format(Stream, "%s%% Language of implementation: %s\n",
+        io.format(Stream, "%s%% language of implementation: %s\n",
             [s(IndentStr), s(foreign_language_string(ForeignLang))], !IO)
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -1106,8 +1172,8 @@ write_proc_termination_info(Stream, DumpOptions,  MaybeArgSize,
     ( if string.contains_char(DumpOptions, 't') then
         SizeStr = maybe_arg_size_info_to_string(yes, MaybeArgSize),
         TermStr = maybe_termination_info_to_string(yes, MaybeTermination),
-        io.format(Stream, "%% Arg size properties: %s\n", [s(SizeStr)], !IO),
-        io.format(Stream, "%% Termination properties: %s\n", [s(TermStr)], !IO)
+        io.format(Stream, "%% arg size properties: %s\n", [s(SizeStr)], !IO),
+        io.format(Stream, "%% termination properties: %s\n", [s(TermStr)], !IO)
     else
         true
     ).
@@ -1127,7 +1193,7 @@ write_proc_opt_info(Stream, DumpOptions, VarTable, TVarSet, VarNamePrint,
         string.contains_char(DumpOptions, 'S'),
         MaybeStructureSharing = yes(StructureSharing)
     then
-        io.write_string(Stream, "% Structure sharing: \n", !IO),
+        io.write_string(Stream, "% structure sharing: \n", !IO),
         StructureSharing =
             structure_sharing_domain_and_status(SharingAs, _Status),
         dump_structure_sharing_domain(Stream, VarTable, TVarSet,
@@ -1139,7 +1205,7 @@ write_proc_opt_info(Stream, DumpOptions, VarTable, TVarSet, VarNamePrint,
         string.contains_char(DumpOptions, 'R'),
         MaybeStructureReuse = yes(StructureReuse)
     then
-        io.write_string(Stream, "% Structure reuse: \n", !IO),
+        io.write_string(Stream, "% structure reuse: \n", !IO),
         StructureReuse =
             structure_reuse_domain_and_status(ReuseAs, _ReuseStatus),
         dump_structure_reuse_domain(Stream, VarTable, TVarSet, ReuseAs, !IO)

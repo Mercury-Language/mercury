@@ -570,10 +570,11 @@
 :- func pred_origin_to_dev_string(pred_origin) = string.
 
     % Write out a predicate's origin in a format suitable to describe
-    % a predicate's origin in that predicate's entry in HLDS dumps.
+    % a predicate's origin in that predicate's entry in HLDS dumps,
+    % after the prefix given by the third argument,
     % Moved here from hlds_pred.m.
     %
-:- func dump_origin(tvarset, var_name_print, pred_origin) = string.
+:- func dump_origin(tvarset, var_name_print, string, pred_origin) = string.
 
     % Generated an identification of the predicate with the given origin
     % and name to put into layout structures for the debugger and the deeep
@@ -1188,11 +1189,6 @@ proc_transform_to_dev_string(ProcTransform) = Str :-
     ).
 
 %---------------------------------------------------------------------------%
-
-dump_origin(TVarSet, VarNamePrint, Origin) = Str :-
-    Str = dump_origin(TVarSet, VarNamePrint, "% Origin:", Origin).
-
-:- func dump_origin(tvarset, var_name_print, string, pred_origin) = string.
 
 dump_origin(TVarSet, VarNamePrint, Prefix, Origin) = Str :-
     (
