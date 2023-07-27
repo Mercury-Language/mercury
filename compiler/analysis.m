@@ -1402,7 +1402,8 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModules0,
         % Touch a timestamp file to indicate the last time that this module was
         % analysed.
         module_name_to_write_file_name(Compiler, Globals,
-            ext_analysis(ext_an_date), ThisModule, TimestampFileName, !IO),
+            ext_analysis_ds(ext_an_ds_date), ThisModule,
+            TimestampFileName, !IO),
         get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         get_error_output_stream(ModuleInfo, ErrorStream, !IO),
         touch_datestamp(Globals, ProgressStream, ErrorStream,

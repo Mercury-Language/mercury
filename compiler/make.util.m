@@ -642,14 +642,14 @@ timestamp_extension(ModuleTargetType, Ext) :-
         Ext = ext_int(ext_int_date_int3)
     ;
         ModuleTargetType = module_target_opt,
-        Ext = ext_opt(ext_opt_date_plain)
+        Ext = ext_opt_date(ext_opt_date_plain)
     ;
         ModuleTargetType = module_target_analysis_registry,
         % We need a timestamp file for `.analysis' files because they
         % can be modified in the process of analysing _another_ module.
         % The timestamp is only updated after actually analysing the module
         % that the `.analysis' file corresponds to.
-        Ext = ext_analysis(ext_an_date)
+        Ext = ext_analysis_ds(ext_an_ds_date)
     ;
         % Header files share a timestamp file with their corresponding
         % target code files.

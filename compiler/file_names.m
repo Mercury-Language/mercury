@@ -173,9 +173,15 @@
             % this extension from the ext type.
 
     --->    ext_int(ext_int)
+            % Compiler-generated interface files, and the timestamp files
+            % showing when they were last checked.
+
     ;       ext_opt(ext_opt)
-            % Compiler-generated interface files and optimization files,
-            % and the timestamp files showing when they were last checked.
+            % Compiler-generated optimization files.
+
+    ;       ext_opt_date(ext_opt_date)
+            % Timestamp files showing when their corresponding ext_opt files
+            % were last checked.
 
     ;       ext_mh(ext_mh)
             % Compiler-generated header file for a module that is intended
@@ -282,6 +288,7 @@
             %   with --use-subdirs.
 
     ;       ext_analysis(ext_analysis)
+    ;       ext_analysis_ds(ext_analysis_ds)
             % Compiler-generated files that are part of the incomplete
             % attempt at an intermodule analysis and optimization framework
             % in analysis.m and its clients.
@@ -313,8 +320,10 @@
 
 :- type ext_opt
     --->    ext_opt_plain               % ".opt"
-    ;       ext_opt_trans               % ".trans_opt"
-    ;       ext_opt_date_plain          % ".optdate"
+    ;       ext_opt_trans.              % ".trans_opt"
+
+:- type ext_opt_date
+    --->    ext_opt_date_plain          % ".optdate"
     ;       ext_opt_date_trans.         % ".trace_opt_date"
 
 :- type ext_mh
@@ -337,7 +346,7 @@
     ;       ext_target_date_java.       % ".java_date"
 
     % Note that extensions for object files that differ from .o,
-    % such as .obj with MSVC, 
+    % such as .obj with MSVC,
 :- type ext_obj
     --->    ext_obj_dollar_o            % ".$O"
     ;       ext_obj_dollar_efpo         % ".$(EXT_FOR_PIC_OBJECTS)"
@@ -429,10 +438,12 @@
 
 :- type ext_analysis
     --->    ext_an_analysis             % ".analysis"
-    ;       ext_an_date                 % ".analysis_date"
-    ;       ext_an_status               % ".analysis_status"
     ;       ext_an_imdg                 % ".imdg"
     ;       ext_an_request.             % ".request"
+
+:- type ext_analysis_ds
+    --->    ext_an_ds_date              % ".analysis_date"
+    ;       ext_an_ds_status.           % ".analysis_status"
 
 :- type ext_bytecode
     --->    ext_bc_mbc                  % ".bc"
@@ -685,6 +696,9 @@ extension_to_string(Globals, Ext) = ExtStr :-
         Ext = ext_opt(ExtOpt),
         ext_opt_extension_dir(ExtOpt, ExtStr, _SubDirName)
     ;
+        Ext = ext_opt_date(ExtOptDate),
+        ext_opt_date_extension_dir(ExtOptDate, ExtStr, _SubDirName)
+    ;
         Ext = ext_mh(ExtMh),
         ext_mh_extension(ExtMh, ExtStr)
     ;
@@ -736,6 +750,9 @@ extension_to_string(Globals, Ext) = ExtStr :-
         Ext = ext_analysis(ExtAn),
         ext_analysis_extension_dir(ExtAn, ExtStr, _SubDirName)
     ;
+        Ext = ext_analysis_ds(ExtAnDs),
+        ext_analysis_ds_extension_dir(ExtAnDs, ExtStr, _SubDirName)
+    ;
         Ext = ext_bytecode(ExtByte),
         ext_bytecode_extension_dir(ExtByte, ExtStr, _SubDirName)
     ;
@@ -764,9 +781,13 @@ ext_opt_extension_dir(ext_opt_plain,
     ".opt",            "opts").
 ext_opt_extension_dir(ext_opt_trans,
     ".trans_opt",      "trans_opts").
-ext_opt_extension_dir(ext_opt_date_plain,
+
+:- pred ext_opt_date_extension_dir(ext_opt_date::in, string::out, string::out)
+    is det.
+
+ext_opt_date_extension_dir(ext_opt_date_plain,
     ".optdate",        "optdates").
-ext_opt_extension_dir(ext_opt_date_trans,
+ext_opt_date_extension_dir(ext_opt_date_trans,
     ".trans_opt_date", "trans_opt_dates").
 
 :- pred ext_mh_extension(ext_mh::in, string::out) is det.
@@ -939,14 +960,18 @@ ext_user_ngs_extension_dir(ext_user_ngs_xml,
 
 ext_analysis_extension_dir(ext_an_analysis,
     ".analysis",        "analysiss").
-ext_analysis_extension_dir(ext_an_date,
-    ".analysis_date",   "analysis_dates").
-ext_analysis_extension_dir(ext_an_status,
-    ".analysis_status", "analysis_statuss").
 ext_analysis_extension_dir(ext_an_imdg,
     ".imdg",            "imdgs").
 ext_analysis_extension_dir(ext_an_request,
     ".request",         "requests").
+
+:- pred ext_analysis_ds_extension_dir(ext_analysis_ds::in,
+    string::out, string::out) is det.
+
+ext_analysis_ds_extension_dir(ext_an_ds_date,
+    ".analysis_date",   "analysis_dates").
+ext_analysis_ds_extension_dir(ext_an_ds_status,
+    ".analysis_status", "analysis_statuss").
 
 :- pred ext_bytecode_extension_dir(ext_bytecode::in,
     string::out, string::out) is det.
@@ -1085,6 +1110,7 @@ fact_table_file_name_return_dirs(Globals, From, Ext,
 module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         ModuleName, DirNames, FileName) :-
     (
+        % 1
         (
             Ext = ext_int(ExtInt),
             ext_int_extension_dir(ExtInt, ExtStr, SubDirName)
@@ -1111,6 +1137,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
                 glue_dir_names_file_name(DirNames, BaseNameNoExt, ExtStr)
         )
     ;
+        % 2
         Ext = ext_opt(ExtOpt),
         ext_opt_extension_dir(ExtOpt, ExtStr, SubDirName),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
@@ -1123,32 +1150,52 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             UseSubdirs = yes,
             globals.lookup_bool_option(Globals, use_grade_subdirs,
                 UseGradeSubdirs),
-            ( if
-                UseGradeSubdirs = yes,
-                % XXX The code from which this code is derived had this
-                % comment, which I (zs) don't think adequately describes
-                % the logic behind this confusing code:
-                %
-                % "If we are searching for (rather than writing) the file,
-                % just search in Mercury/<ext>s. This is so that searches
-                % for files in installed libraries work.
-                % `--intermod-directories' is set so this will work."
-                not (
-                    Search = do_search,
-                    ( ExtOpt = ext_opt_plain
-                    ; ExtOpt = ext_opt_trans
-                    )
-                )
-            then
-                make_grade_subdir_file_name(Globals, [SubDirName],
-                    BaseNameNoExt, ExtStr, DirNames, FileName)
-            else
+            (
+                UseGradeSubdirs = no,
                 DirNames = ["Mercury", SubDirName],
                 FileName = glue_dir_names_file_name(DirNames,
                     BaseNameNoExt, ExtStr)
+            ;
+                UseGradeSubdirs = yes,
+                (
+                    Search = do_search,
+                    DirNames = ["Mercury", SubDirName],
+                    FileName = glue_dir_names_file_name(DirNames,
+                        BaseNameNoExt, ExtStr)
+                ;
+                    Search = do_not_search,
+                    make_grade_subdir_file_name(Globals, [SubDirName],
+                        BaseNameNoExt, ExtStr, DirNames, FileName)
+                )
             )
         )
     ;
+        % 3
+        Ext = ext_opt_date(ExtOptDate),
+        ext_opt_date_extension_dir(ExtOptDate, ExtStr, SubDirName),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            DirNames = [],
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseSubdirs = yes,
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubdirs),
+            (
+                UseGradeSubdirs = no,
+                DirNames = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirNames,
+                    BaseNameNoExt, ExtStr)
+            ;
+                UseGradeSubdirs = yes,
+                make_grade_subdir_file_name(Globals, [SubDirName],
+                    BaseNameNoExt, ExtStr, DirNames, FileName)
+            )
+        )
+    ;
+        % 4
         (
             Ext = ext_mh(ExtMh),
             ext_mh_extension(ExtMh, ExtStr)
@@ -1173,6 +1220,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         FileName = BaseNameNoExt ++ ExtStr
     ;
+        % 5
         Ext = ext_mih(ExtMh),
         ext_mih_extension_dir(ExtMh, ExtStr, SubDirName),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
@@ -1208,6 +1256,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             )
         )
     ;
+        % 6
         (
             Ext = ext_target_c_cs(ExtCCs),
             ext_target_c_cs_extension_dir(ExtCCs, ExtStr, SubDirName)
@@ -1240,6 +1289,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             )
         )
     ;
+        % 7
         Ext = ext_target_java(ExtJava),
         ext_target_java_extension_dirs(ExtJava, ExtStr, SubDirNames),
         BaseParentDirs = ["jmercury"],
@@ -1266,6 +1316,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             )
         )
     ;
+        % 8
         (
             Ext = ext_target_obj(ExtObj),
             ext_obj_extension_dir(Globals, ExtObj, ExtStr, SubDirName)
@@ -1295,6 +1346,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             )
         )
     ;
+        % 9
         Ext = ext_target_init_c(ExtInitC),
         ext_init_c_extension_dir(ExtInitC, ExtStr, SubDirName),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
@@ -1319,6 +1371,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             )
         )
     ;
+        % 10
         (
             Ext = ext_exec_gs(ExtExecGs),
             ext_exec_gs_extension_dir(Globals, ExtExecGs, ExtStr, SubDirName)
@@ -1343,6 +1396,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
                 BaseNameNoExt, ExtStr, DirNames, FileName)
         )
     ;
+        % 11
         Ext = ext_mmake_fragment(ExtMf),
         ext_mmake_fragment_extension_dir(ExtMf, ExtStr, SubDirName),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
@@ -1358,6 +1412,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
                 glue_dir_names_file_name(DirNames, BaseNameNoExt, ExtStr)
         )
     ;
+        % 12
         Ext = ext_analysis(ExtAn),
         ext_analysis_extension_dir(ExtAn, ExtStr, SubDirName),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
@@ -1370,30 +1425,48 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             UseSubdirs = yes,
             globals.lookup_bool_option(Globals, use_grade_subdirs,
                 UseGradeSubdirs),
-            ( if
-                UseGradeSubdirs = yes,
-                % XXX The code from which this code is derived had this
-                % comment, which I (zs) don't think adequately describes
-                % the logic behind this confusing code:
-                %
-                % If we are searching for (rather than writing) the file,
-                % just search in Mercury/<ext>s. This is so that searches
-                % for files in installed libraries work.
-                % `--intermod-directories' is set so this will work.
-                not (
-                    Search = do_search,
-                    ( ExtAn = ext_an_analysis
-                    ; ExtAn = ext_an_imdg
-                    ; ExtAn = ext_an_request
-                    )
-                )
-            then
-                make_grade_subdir_file_name(Globals, [SubDirName],
-                    BaseNameNoExt, ExtStr, DirNames, FileName)
-            else
+            (
+                UseGradeSubdirs = no,
                 DirNames = ["Mercury", SubDirName],
                 FileName = glue_dir_names_file_name(DirNames,
                     BaseNameNoExt, ExtStr)
+            ;
+                UseGradeSubdirs = yes,
+                (
+                    Search = do_search,
+                    DirNames = ["Mercury", SubDirName],
+                    FileName = glue_dir_names_file_name(DirNames,
+                        BaseNameNoExt, ExtStr)
+                ;
+                    Search = do_not_search,
+                    make_grade_subdir_file_name(Globals, [SubDirName],
+                        BaseNameNoExt, ExtStr, DirNames, FileName)
+                )
+            )
+        )
+    ;
+        % 13
+        Ext = ext_analysis_ds(ExtAnDs),
+        ext_analysis_ds_extension_dir(ExtAnDs, ExtStr, SubDirName),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        (
+            UseSubdirs = no,
+            DirNames = [],
+            FileName = BaseNameNoExt ++ ExtStr
+        ;
+            UseSubdirs = yes,
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubdirs),
+            (
+                UseGradeSubdirs = no,
+                DirNames = ["Mercury", SubDirName],
+                FileName = glue_dir_names_file_name(DirNames,
+                    BaseNameNoExt, ExtStr)
+            ;
+                UseGradeSubdirs = yes,
+                make_grade_subdir_file_name(Globals, [SubDirName],
+                    BaseNameNoExt, ExtStr, DirNames, FileName)
             )
         )
     ),

@@ -124,6 +124,7 @@
 
 :- import_module libs.options.
 :- import_module libs.pickle.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_sym_name.
@@ -199,7 +200,7 @@ analysis_status_to_string(optimal, "optimal").
 
 read_module_overall_status(Compiler, Globals, ModuleName, ModuleStatus, !IO) :-
     module_name_to_read_file_name(Compiler, Globals,
-        ext_analysis(ext_an_status), ModuleName, MaybeFileName, !IO),
+        ext_analysis_ds(ext_an_ds_status), ModuleName, MaybeFileName, !IO),
     (
         MaybeFileName = ok(FileName),
         read_module_overall_status_2(FileName, ModuleStatus0, !IO)
@@ -270,7 +271,7 @@ read_module_overall_status_2(FileName, ModuleStatus, !IO) :-
 
 write_module_overall_status(Info, Globals, ModuleName, Status, !IO) :-
     module_name_to_write_file_name(Info ^ compiler, Globals,
-        ext_analysis(ext_an_status), ModuleName, FileName, !IO),
+        ext_analysis_ds(ext_an_ds_status), ModuleName, FileName, !IO),
     io.open_output(FileName, OpenResult, !IO),
     (
         OpenResult = ok(Stream),

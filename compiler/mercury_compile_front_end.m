@@ -565,7 +565,8 @@ create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
         update_interface_report_any_error(Globals, ModuleName, OptFileName,
             _UpdateSucceeded, !IO),
         touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
-            ModuleName, ext_opt(ext_opt_date_plain), _TouchSucceeded, !IO),
+            ModuleName, ext_opt_date(ext_opt_date_plain),
+            _TouchSucceeded, !IO),
 
         globals.lookup_bool_option(Globals, experiment5, Experiment5),
         (

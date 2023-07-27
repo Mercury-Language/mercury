@@ -362,7 +362,7 @@ generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
     set.difference(ShortDeps0, LongDeps, ShortDeps1),
     set.delete(ModuleName, ShortDeps1, ShortDeps),
 
-    make_module_file_name(Globals, $pred, ext_opt(ext_opt_date_trans),
+    make_module_file_name(Globals, $pred, ext_opt_date(ext_opt_date_trans),
         ModuleName, TransOptDateFileName, !Cache, !IO),
     construct_trans_opt_deps_rule(Globals, MaybeInclTransOptRule, IntermodDeps,
         TransOptDateFileName, MmakeRulesTransOpt, !Cache, !IO),
@@ -378,7 +378,7 @@ generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
     ),
 
     make_module_file_name(Globals, $pred,
-        ext_opt(ext_opt_date_plain),
+        ext_opt_date(ext_opt_date_plain),
         ModuleName, OptDateFileName, !Cache, !IO),
     make_module_file_name(Globals, $pred,
         ext_target_date(ext_target_date_c),
@@ -678,8 +678,8 @@ construct_build_nested_children_first_rule(Globals, ModuleName, MaybeTopModule,
         NestedModuleNames = [_ | _],
         % XXX EXT
         NestedOtherExts =
-            [ext_opt(ext_opt_date_plain),
-            ext_opt(ext_opt_date_trans),
+            [ext_opt_date(ext_opt_date_plain),
+            ext_opt_date(ext_opt_date_trans),
             ext_target_date(ext_target_date_c),
             % XXX C# We would need this to support targeting C# with mmake.
             % ext_target_date(ext_target_date_cs),

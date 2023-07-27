@@ -472,7 +472,8 @@ output_trans_opt_file(ProgressStream, ErrorStream, !.HLDS, !Specs,
         update_interface_report_any_error(Globals, ModuleName, OptFileName,
             _UpdateSucceeded, !IO),
         touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
-            ModuleName, ext_opt(ext_opt_date_trans), _TouchSucceeded, !IO),
+            ModuleName, ext_opt_date(ext_opt_date_trans),
+            _TouchSucceeded, !IO),
 
         globals.lookup_bool_option(Globals, experiment5, Experiment5),
         (
