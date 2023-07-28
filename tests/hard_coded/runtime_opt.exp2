@@ -1,0 +1,15 @@
+Option `--nondetstack-size-kwords=256 --small-nondetstack-size-kwords=256':
+Hello world (with non-standard options).
+
+Option `--nondet-stack-size-kwords=256 --small-nondet-stack-size-kwords=256':
+Hello world (with non-standard options).
+
+Option `--detstack-size=128 --small-detstack-size=128':
+Hello world (with non-standard options).
+
+Option `--this-is-not-a-real-option':
+The MERCURY_OPTIONS environment variable contains an invalid option.
+Please refer to the Environment Variables section of the Mercury
+User's Guide for details.
+mercury_runtime: unrecognized option: `this-is-not-a-real-option'
+
