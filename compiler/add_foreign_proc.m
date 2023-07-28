@@ -22,8 +22,8 @@
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_pragma_foreign_proc(pred_status::in, item_foreign_proc::in,
-    module_info::in, module_info::out,
+:- pred add_pragma_foreign_proc(item_mercury_status::in, pred_status::in,
+    item_foreign_proc::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -73,13 +73,14 @@ add_pragma_foreign_procs([], !ModuleInfo, !Specs).
 add_pragma_foreign_procs([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
     ImsSubList = ims_sub_list(ItemMercuryStatus, PragmaFPInfos),
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    list.foldl2(add_pragma_foreign_proc(PredStatus), PragmaFPInfos,
-        !ModuleInfo, !Specs),
+    list.foldl2(add_pragma_foreign_proc(ItemMercuryStatus, PredStatus),
+        PragmaFPInfos, !ModuleInfo, !Specs),
     add_pragma_foreign_procs(ImsSubLists, !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 
-add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
+add_pragma_foreign_proc(ItemMercurystatus, PredStatus, PragmaFPInfo,
+        !ModuleInfo, !Specs) :-
     PragmaFPInfo = item_pragma_info(FPInfo, Context, SeqNum),
     FPInfo = pragma_info_foreign_proc(Attributes0, PredSymName, PredOrFunc,
         PragmaVars, ProgVarSet, _InstVarset, PragmaImpl),
@@ -193,7 +194,10 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
             is_applicable_for_current_backend(CurrentBackend, ExtraAttrs) = no
         then
             % Ignore this foreign_proc.
-            true
+            % XXX Why are we treating this form of inapplicability
+            % differently from the pragma being from a not-supported-on-
+            % this-backend language?
+            WarnIfOptInt = yes
         else if
             pred_info_is_imported(!.PredInfo)
         then
@@ -203,7 +207,12 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
                 suffix("."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:Specs = [Spec | !.Specs],
+            ( if list.member(PragmaForeignLanguage, BackendForeignLangs) then
+                WarnIfOptInt = no
+            else
+                WarnIfOptInt = yes
+            )
         else if
             % Don't add clauses for foreign languages other than the ones
             % we can generate code for.
@@ -211,7 +220,8 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
         then
             pred_info_update_goal_type(np_goal_type_foreign,
                 PredInfo0, !:PredInfo),
-            module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
+            module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
+            WarnIfOptInt = yes
         else
             % Add the pragma declaration to the proc_info for this procedure.
             pred_info_get_proc_table(!.PredInfo, Procs),
@@ -259,7 +269,58 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
                 Spec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, Pieces),
                 !:Specs = [Spec | !.Specs]
-            )
+            ),
+            WarnIfOptInt = no
+        ),
+        ( if
+            WarnIfOptInt = yes,
+            ItemMercurystatus =
+                item_defined_in_other_module(item_import_opt_int)
+        then
+            ( if list.member(PragmaForeignLanguage, BackendForeignLangs) then
+                PragmaLangStr = foreign_language_string(PragmaForeignLanguage),
+                OptFrontPieces = [words("Error:"), pragma_decl("foreign_proc"),
+                    words("declaration in a .opt file"),
+                    words("for a foreign language,"),
+                    words(PragmaLangStr), suffix(",")],
+                (
+                    BackendForeignLangs = [],
+                    unexpected($pred, "BackendForeignLangs = []")
+                ;
+                    BackendForeignLangs = [BackendForeignLang],
+                    BackendLangStr =
+                        foreign_language_string(BackendForeignLang),
+                    OptMainPieces = OptFrontPieces ++ [words("which differs"),
+                        words("from the only language supported by"),
+                        words("the current backend, which is"),
+                        words(BackendLangStr), suffix("."), nl]
+                ;
+                    BackendForeignLangs = [_, _ | _],
+                    BackendLangStrs = list.map(foreign_language_string,
+                        BackendForeignLangs),
+                    BackendLangsStr = list_to_pieces(BackendLangStrs),
+                    OptMainPieces = OptFrontPieces ++
+                        [words("which is not one of the languages"),
+                        words("supported by the current backend,"),
+                        words("which are")] ++ BackendLangsStr ++
+                        [suffix("."), nl]
+                )
+            else
+                OptMainPieces = [words("Error:"), pragma_decl("foreign_proc"),
+                    words("declaration in a .opt file"),
+                    words("whose backend attribute states that"),
+                    words("it is not for the current grade."), nl]
+            ),
+            OptPieces = OptMainPieces ++
+                [words("This indicates that the .opt file"),
+                words("was generated for a different grade."),
+                words("You will need to rebuild this file"),
+                words("for the current grade."), nl],
+            OptSpec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, OptPieces),
+            !:Specs = [OptSpec | !.Specs]
+        else
+            true
         )
     ).
 

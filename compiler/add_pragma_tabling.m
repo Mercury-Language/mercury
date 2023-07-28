@@ -575,8 +575,8 @@ create_tabling_statistics_pred(PredOrFunc, PredModuleName, PredName, UserArity,
                 !.VarSet, InstVarSet, StatsImpl),
             PragmaStatsFCInfo =
                 item_pragma_info(StatsFCInfo, Context, item_no_seq_num),
-            add_pragma_foreign_proc(PredStatus, PragmaStatsFCInfo,
-                !ModuleInfo, !Specs)
+            add_pragma_foreign_proc(ItemMercuryStatus, PredStatus,
+                PragmaStatsFCInfo, !ModuleInfo, !Specs)
         ;
             IsTablingSupported = no,
             DummyStatsFuncSymName = qualified(mercury_table_statistics_module,
@@ -666,8 +666,8 @@ create_tabling_reset_pred(PredOrFunc, PredModuleName, PredName, UserArity,
                 !.VarSet, InstVarSet, ResetImpl),
             PragmaResetFCInfo =
                 item_pragma_info(ResetFCInfo, Context, item_no_seq_num),
-            add_pragma_foreign_proc(PredStatus, PragmaResetFCInfo,
-                !ModuleInfo, !Specs)
+            add_pragma_foreign_proc(ItemMercuryStatus, PredStatus,
+                PragmaResetFCInfo, !ModuleInfo, !Specs)
         ;
             IsTablingSupported = no,
             Args = [variable(IO0, Context), variable(IO, Context)],

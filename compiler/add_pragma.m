@@ -781,7 +781,8 @@ add_impl_pragma(ItemMercuryStatus, ItemPragmaInfo, !PragmaTabledCord,
         Pragma = impl_pragma_foreign_proc(FPInfo),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
         PragmaFPInfo = item_pragma_info(FPInfo, Context, SeqNum),
-        add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs)
+        add_pragma_foreign_proc(ItemMercuryStatus, PredStatus, PragmaFPInfo,
+            !ModuleInfo, !Specs)
     ;
         Pragma = impl_pragma_foreign_proc_export(FEInfo),
         add_pragma_foreign_proc_export(FEInfo, Context, !ModuleInfo, !Specs)
@@ -791,7 +792,8 @@ add_impl_pragma(ItemMercuryStatus, ItemPragmaInfo, !PragmaTabledCord,
     ;
         Pragma = impl_pragma_fact_table(FTInfo),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs)
+        add_pragma_fact_table(ItemMercuryStatus, PredStatus, FTInfo, Context,
+            !ModuleInfo, !Specs)
     ;
         Pragma = impl_pragma_tabled(TabledInfo),
         ItemPragmaTabledInfo = item_pragma_info(TabledInfo, Context, SeqNum),
@@ -1046,7 +1048,7 @@ mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
 
 %---------------------%
 
-    % add_pragma_fact_table(FTInfo, Status, Context, !ModuleInfo, !Info):
+    % add_pragma_fact_table(IMS, Status, FTInfo, Context, !ModuleInfo, !Info):
     %
     % Add a `pragma fact_table' declaration to the HLDS. This predicate calls
     % the fact table compiler (fact_table_compile_facts) to create a separate
@@ -1054,11 +1056,13 @@ mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
     % `pragma c_code' to access the table in each mode of the fact table
     % predicate.
     %
-:- pred add_pragma_fact_table(pragma_info_fact_table::in,
-    pred_status::in, prog_context::in, module_info::in, module_info::out,
+:- pred add_pragma_fact_table(item_mercury_status::in, pred_status::in,
+    pragma_info_fact_table::in, prog_context::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
+add_pragma_fact_table(ItemMercuryStatus, PredStatus, FTInfo, Context,
+        !ModuleInfo, !Specs) :-
     FTInfo = pragma_info_fact_table(PredSpec, FileName),
     PredSpec = pred_pfu_name_arity(PFU, PredSymName, UserArity),
     get_matching_pred_ids(!.ModuleInfo, "fact_table", require_one_match,
@@ -1115,8 +1119,8 @@ add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
 
             % Create foreign_procs to access the table in each mode.
             add_fact_table_procs(PredOrFunc, PredSymName,
-                PredStatus, ProcTable,  PrimaryProcId, Context, GenInfo,
-                ProcIds, !ModuleInfo, !Specs)
+                ItemMercuryStatus, PredStatus, ProcTable,  PrimaryProcId,
+                Context, GenInfo, ProcIds, !ModuleInfo, !Specs)
         )
     ;
         MatchingPredIdResult = mpids_error(ErrorSpecs),
@@ -1130,28 +1134,31 @@ add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
     % `pragma foreign_proc' for each mode of the predicate.
     %
 :- pred add_fact_table_procs(pred_or_func::in, sym_name::in,
-    pred_status::in, proc_table::in, proc_id::in, prog_context::in,
-    fact_table_gen_info::in, list(proc_id)::in,
+    item_mercury_status::in, pred_status::in, proc_table::in, proc_id::in,
+    prog_context::in, fact_table_gen_info::in, list(proc_id)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_fact_table_procs(_, _, _, _, _, _, _, [], !ModuleInfo, !Specs).
-add_fact_table_procs(PredOrFunc, SymName, PredStatus, ProcTable,
-        PrimaryProcId, Context, GenInfo, [ProcId | ProcIds],
+add_fact_table_procs(_, _, _, _, _, _, _, _, [], !ModuleInfo, !Specs).
+add_fact_table_procs(PredOrFunc, SymName, ItemMercuryStatus, PredStatus,
+        ProcTable, PrimaryProcId, Context, GenInfo, [ProcId | ProcIds],
         !ModuleInfo, !Specs) :-
-    add_fact_table_proc(PredOrFunc, SymName, PredStatus, ProcTable,
-        PrimaryProcId, Context, GenInfo, ProcId, !ModuleInfo, !Specs),
-    add_fact_table_procs(PredOrFunc, SymName, PredStatus, ProcTable,
-        PrimaryProcId, Context, GenInfo, ProcIds, !ModuleInfo, !Specs).
+    add_fact_table_proc(PredOrFunc, SymName, ItemMercuryStatus, PredStatus,
+        ProcTable, PrimaryProcId, Context, GenInfo, ProcId,
+        !ModuleInfo, !Specs),
+    add_fact_table_procs(PredOrFunc, SymName, ItemMercuryStatus, PredStatus,
+        ProcTable, PrimaryProcId, Context, GenInfo, ProcIds,
+        !ModuleInfo, !Specs).
 
 :- pred add_fact_table_proc(pred_or_func::in, sym_name::in,
-    pred_status::in, proc_table::in, proc_id::in, prog_context::in,
-    fact_table_gen_info::in, proc_id::in,
+    item_mercury_status::in, pred_status::in, proc_table::in, proc_id::in,
+    prog_context::in, fact_table_gen_info::in, proc_id::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_fact_table_proc(PredOrFunc, SymName, PredStatus, ProcTable,
-        PrimaryProcId, Context, GenInfo, ProcId, !ModuleInfo, !Specs) :-
+add_fact_table_proc(PredOrFunc, SymName, ItemMercuryStatus, PredStatus,
+        ProcTable, PrimaryProcId, Context, GenInfo, ProcId,
+        !ModuleInfo, !Specs) :-
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
 
@@ -1169,7 +1176,8 @@ add_fact_table_proc(PredOrFunc, SymName, PredStatus, ProcTable,
     FCInfo = pragma_info_foreign_proc(Attrs, SymName, PredOrFunc, PragmaVars,
         ProgVarSet, InstVarSet, fp_impl_ordinary(C_ProcCode, no)),
     PragmaFCInfo = item_pragma_info(FCInfo, Context, SeqNum),
-    add_pragma_foreign_proc(PredStatus, PragmaFCInfo, !ModuleInfo, !Specs),
+    add_pragma_foreign_proc(ItemMercuryStatus, PredStatus, PragmaFCInfo,
+        !ModuleInfo, !Specs),
     ( if C_ExtraCode = "" then
         true
     else
