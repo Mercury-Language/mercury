@@ -620,7 +620,9 @@ tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp tabled_read_decl.dat
 tabled_typeclass.out: tabled_typeclass tabled_typeclass.inp
 	$(MDB_STD) ./tabled_typeclass < tabled_typeclass.inp 2>&1 | \
 		sed 's/0x[-0-9A-Fa-f]*/0xXXXX/g' | \
-		sed 's/(nil)/0xXXXX/g' \
+		sed 's/(nil)/0xXXXX/g' | \
+		sed 's/stream, [0-9a-fA-F]\{2\}[0-9a-fA-F]*/stream, 0xXXXX/g' | \
+		sed 's/system_error, 0\{2\}0*/system_error, 0xXXXX/g' \
 		> tabled_typeclass.out 2>&1
 
 tailrec1.out: tailrec1 tailrec1.inp tailrec1.data
