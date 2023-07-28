@@ -1,6 +1,9 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% The different exepcted outputs correspond to different interleavings of
+% standard output and error.
+%---------------------------------------------------------------------------%
 
 :- module runtime_opt.
 :- interface.
