@@ -1570,6 +1570,14 @@ of the predicate definitions in the first category.
 </ul>
 The module intermod_order_pred_info.m
 contains utilities needed by both intermod.m and intermod_analysis.m.
+<p>
+The code of intermod.m uses
+intermod_info.m, intermod_decide.m and intermod_status.m as helpers.
+<p>
+The intermod_mark_exported.m module
+updates the statuses of entities that intermod.m <em>would</em> export.
+It is used by compiler invocations whose task is
+something other than the creation of `.opt' files.
 
 <p>
 Most of the remaining HLDS-to-HLDS transformations are optimizations:

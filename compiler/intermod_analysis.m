@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: intermod.m.
+% File: intermod_analysis.m.
 % Main author of the original trans_opt.m: crs.
 % However, this module has been modified so much that not much of the original
 % design is left.

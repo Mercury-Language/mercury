@@ -137,6 +137,7 @@
 :- import_module transform_hlds.dead_proc_elim.
 :- import_module transform_hlds.intermod.
 :- import_module transform_hlds.intermod_analysis.
+:- import_module transform_hlds.intermod_mark_exported.
 
 :- import_module benchmarking.
 :- import_module int.
@@ -629,7 +630,7 @@ mark_entities_in_opt_file_as_opt_exported(IntermodAnalysis,
     ),
     (
         UpdateStatus = yes,
-        intermod.maybe_opt_export_entities(!HLDS)
+        intermod_mark_exported.maybe_opt_export_entities(!HLDS)
     ;
         UpdateStatus = no
     ).
