@@ -117,7 +117,8 @@ MCFLAGS-require_tailrec_3       = -O0 --optimise-tailcalls \
 
 # We compile test_feature_set in grade java because that grade is incompatible
 # with the features in the test require_feature_set pragma.
-MCFLAGS-test_feature_set        = --grade java --verbose-error-messages
+MCFLAGS-test_feature_set        = --grade java --verbose-error-messages \
+                                    --no-intermod-opt
 MCFLAGS-tricky_assert1          = --verbose-error-messages
 MCFLAGS-type_error_use_module   = --verbose-error-messages \
                                     --no-intermodule-optimization
