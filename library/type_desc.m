@@ -265,6 +265,8 @@ import jmercury.runtime.TypeInfo_Struct;
 
 %---------------------------------------------------------------------------%
 
+:- pragma no_determinism_warning(pred(pseudo_type_desc_is_ground/1)).
+
 pseudo_type_desc_is_ground(PseudoTypeDesc) :-
     pseudo_type_ctor_and_args(PseudoTypeDesc, _TypeCtor, ArgPseudos),
     list.all_true(pseudo_type_desc_is_ground, ArgPseudos).
@@ -649,6 +651,7 @@ type_ctor_arity(TypeCtor) = Arity :-
 :- pred make_type_ctor_desc(rtti_implementation.type_info::in,
     rtti_implementation.type_ctor_info::in, type_ctor_desc::out) is det.
 :- pragma consider_used(pred(make_type_ctor_desc/3)).
+:- pragma no_determinism_warning(pred(make_type_ctor_desc/3)).
 
 :- pragma foreign_proc("C#",
     make_type_ctor_desc(TypeInfo::in, TypeCtorInfo::in, TypeCtorDesc::out),
@@ -696,6 +699,7 @@ make_type_ctor_desc(_, _, _) :-
 :- pred make_type_ctor_desc_with_arity(int::in,
     rtti_implementation.type_ctor_info::in, type_ctor_desc::out) is det.
 :- pragma consider_used(pred(make_type_ctor_desc_with_arity/3)).
+:- pragma no_determinism_warning(pred(make_type_ctor_desc_with_arity/3)).
 
 :- pragma foreign_proc("C#",
     make_type_ctor_desc_with_arity(Arity::in, TypeCtorInfo::in,

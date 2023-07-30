@@ -23,7 +23,6 @@
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_qual.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_used_modules.
 :- import_module parse_tree.prog_item.
 
@@ -82,6 +81,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item_stats.
 :- import_module parse_tree.prog_mode.

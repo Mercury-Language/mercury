@@ -787,6 +787,7 @@ collapse_equivalences_pseudo(PTI) = NewPTI :-
     ).
 
 :- func get_layout_equiv(type_layout) = type_info.
+:- pragma no_determinism_warning(func(get_layout_equiv/1)).
 
 :- pragma foreign_proc("C#",
     get_layout_equiv(TypeLayout::in) = (TypeInfo::out),
@@ -1082,7 +1083,7 @@ get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
 
 get_functor_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
         PseudoTypeInfoList, Names) :-
-    TypeFunctors = get_type_functors(TypeCtorInfo),
+    TypeFunctors = get_type_ctor_functors(TypeCtorInfo),
     EnumFunctorDesc = get_enum_functor_desc(TypeCtorRep, FunctorNumber,
         TypeFunctors),
 
@@ -1099,7 +1100,7 @@ get_functor_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
 
 get_functor_foreign_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber,
         FunctorName, Arity, PseudoTypeInfoList, Names) :-
-    TypeFunctors = get_type_functors(TypeCtorInfo),
+    TypeFunctors = get_type_ctor_functors(TypeCtorInfo),
     ForeignEnumFunctorDesc = get_foreign_enum_functor_desc(TypeCtorRep,
         FunctorNumber, TypeFunctors),
 
@@ -1132,6 +1133,7 @@ get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
 %---------------------%
 
 :- func get_var_arity_typeinfo_arity(type_info) = int.
+:- pragma no_determinism_warning(func(get_var_arity_typeinfo_arity/1)).
 
 :- pragma foreign_proc("Java",
     get_var_arity_typeinfo_arity(TypeInfo::in) = (Arity::out),
@@ -1175,6 +1177,7 @@ create_pseudo_type_info(TypeInfo, PseudoTypeInfo) = ArgPseudoTypeInfo :-
 
 :- func make_type_info(type_ctor_info, int, list(pseudo_type_info)) =
     type_info.
+:- pragma no_determinism_warning(func(make_type_info/3)).
 
 :- pragma foreign_proc("C#",
     make_type_info(TypeCtorInfo::in, Arity::in, Args::in) = (TypeInfo::out),
@@ -1223,7 +1226,7 @@ type_info_get_functor_ordinal(TypeInfo, FunctorNum, Ordinal) :-
         ( TypeCtorRep = tcr_enum
         ; TypeCtorRep = tcr_enum_usereq
         ),
-        TypeFunctors = get_type_functors(TypeCtorInfo),
+        TypeFunctors = get_type_ctor_functors(TypeCtorInfo),
         EnumFunctorDesc = get_enum_functor_desc(TypeCtorRep, FunctorNum,
             TypeFunctors),
         EnumValue = enum_functor_value(EnumFunctorDesc),
@@ -1232,7 +1235,7 @@ type_info_get_functor_ordinal(TypeInfo, FunctorNum, Ordinal) :-
         ( TypeCtorRep = tcr_foreign_enum
         ; TypeCtorRep = tcr_foreign_enum_usereq
         ),
-        TypeFunctors = get_type_functors(TypeCtorInfo),
+        TypeFunctors = get_type_ctor_functors(TypeCtorInfo),
         ForeignEnumFunctorDesc = get_foreign_enum_functor_desc(TypeCtorRep,
             FunctorNum, TypeFunctors),
         Ordinal = foreign_enum_functor_ordinal(ForeignEnumFunctorDesc)
@@ -1643,6 +1646,8 @@ type_ctor_name_and_arity(TypeCtorInfo, ModuleName, Name, Arity) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+:- pragma no_determinism_warning(pred(pseudo_type_ctor_and_args/3)).
+
 :- pragma foreign_proc("C#",
     pseudo_type_ctor_and_args(PseudoTypeInfo::in, TypeCtorInfo::out,
         ArgPseudoTypeInfos::out),
@@ -1708,6 +1713,8 @@ pseudo_type_ctor_and_args(_, _, _) :-
 
 %---------------------%
 
+:- pragma no_determinism_warning(pred(is_univ_pseudo_type_info/2)).
+
 :- pragma foreign_proc("C#",
     is_univ_pseudo_type_info(PseudoTypeInfo::in, VarNum::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -1730,6 +1737,8 @@ is_univ_pseudo_type_info(_, _) :-
     private_builtin.sorry("is_univ_pseudo_type_info/2").
 
 %---------------------%
+
+:- pragma no_determinism_warning(pred(is_exist_pseudo_type_info/2)).
 
 :- pragma foreign_proc("C#",
     is_exist_pseudo_type_info(PseudoTypeInfo::in, VarNum::out),
@@ -2707,6 +2716,8 @@ is_exist_pseudo_type_info(_, _) :-
     }
 ").
 
+:- pragma no_determinism_warning(func(construct/3)).
+
 :- pragma foreign_proc("C#",
     construct(TypeInfo::in, FunctorNumber::in, ArgList::in) = (Term::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
@@ -2728,6 +2739,8 @@ construct(_, _, _) = _ :-
     private_builtin.sorry("construct/3").
 
 %---------------------------------------------------------------------------%
+
+:- pragma no_determinism_warning(func(construct_tuple_2/3)).
 
 :- pragma foreign_proc("C#",
     construct_tuple_2(Args::in, ArgTypes::in, Arity::in) = (Tuple::out),
@@ -3595,6 +3608,7 @@ new_type_info(TypeInfo, _) = NewTypeInfo :-
     % Get the pseudo-typeinfo at the given index from the argument types.
     %
 :- func get_pti_from_arg_types(arg_types, int) = pseudo_type_info.
+:- pragma no_determinism_warning(func(get_pti_from_arg_types/2)).
 
 get_pti_from_arg_types(_, _) = _ :-
     sorry($module, "get_pti_from_arg_types").
@@ -3619,6 +3633,7 @@ get_pti_from_arg_types(_, _) = _ :-
     %
 :- pred get_pti_from_type_info_index(type_info::in, int::in, int::in,
     pseudo_type_info::out) is det.
+:- pragma no_determinism_warning(pred(get_pti_from_type_info_index/4)).
 
 get_pti_from_type_info_index(_, _, _, _) :-
     private_builtin.sorry("get_pti_from_type_info_index").
@@ -3924,6 +3939,7 @@ get_subterm(_, _, _, _, _, _, -1) :-
 
 :- some [ArgT] pred get_tuple_subterm(T::in, int::in, type_info::in, ArgT::out)
     is det.
+:- pragma no_determinism_warning(pred(get_tuple_subterm/4)).
 
 get_tuple_subterm(_, _, _, -1) :-
     private_builtin.sorry("get_tuple_subterm").
@@ -4189,6 +4205,7 @@ det_index_or_search_ptag_layout(TypeCtorInfo, PTag, PTagEntry) :-
 
 :- pred index_or_search_ptag_layout(type_ctor_info::in, uint8::in,
     ptag_entry::out) is semidet.
+:- pragma no_determinism_warning(pred(index_or_search_ptag_layout/3)).
 
 index_or_search_ptag_layout(_, _, _) :-
     private_builtin.sorry("index_or_search_ptag_layout").
@@ -4212,6 +4229,7 @@ index_or_search_ptag_layout(_, _, _) :-
 %---------------------%
 
 :- func sectag_locn(ptag_entry) = sectag_locn.
+:- pragma no_determinism_warning(func(sectag_locn/1)).
 
 sectag_locn(_) = _ :-
     private_builtin.sorry("sectag_locn").
@@ -4234,8 +4252,9 @@ sectag_locn(_) = _ :-
 
 %---------------------%
 
-:- pred index_sectag_functor(ptag_entry, int, du_functor_desc).
-:- mode index_sectag_functor(in, in, out) is det.
+:- pred index_sectag_functor(ptag_entry::in, int::in, du_functor_desc::out)
+    is det.
+:- pragma no_determinism_warning(pred(index_sectag_functor/3)).
 
 index_sectag_functor(_, _, _) :-
     private_builtin.sorry("index_sectag_functor").
@@ -4256,8 +4275,8 @@ index_sectag_functor(_, _, _) :-
 
 %---------------------%
 
-:- pred det_index_or_search_sectag_functor(ptag_entry, int, du_functor_desc).
-:- mode det_index_or_search_sectag_functor(in, in, out) is det.
+:- pred det_index_or_search_sectag_functor(ptag_entry::in, int::in,
+    du_functor_desc::out) is det.
 
 det_index_or_search_sectag_functor(PTagEntry, SecTag, FunctorDesc) :-
     ( if index_or_search_sectag_functor(PTagEntry, SecTag, FunctorDesc0) then
@@ -4266,8 +4285,9 @@ det_index_or_search_sectag_functor(PTagEntry, SecTag, FunctorDesc) :-
         unexpected($pred, "no functor for sectag")
     ).
 
-:- pred index_or_search_sectag_functor(ptag_entry, int, du_functor_desc).
-:- mode index_or_search_sectag_functor(in, in, out) is semidet.
+:- pred index_or_search_sectag_functor(ptag_entry::in, int::in,
+    du_functor_desc::out) is semidet.
+:- pragma no_determinism_warning(pred(index_or_search_sectag_functor/3)).
 
 index_or_search_sectag_functor(_, _, _) :-
     private_builtin.sorry("index_or_search_sectag_alternatives").
@@ -4293,6 +4313,7 @@ index_or_search_sectag_functor(_, _, _) :-
 %---------------------%
 
 :- func typeinfo_locns_index(int, exist_info) = typeinfo_locn.
+:- pragma no_determinism_warning(func(typeinfo_locns_index/2)).
 
 typeinfo_locns_index(_, _) = _ :-
     private_builtin.sorry("typeinfo_locns_index").
@@ -4400,6 +4421,7 @@ exist_offset_in_tci(_) = -1i16 :-
 %---------------------%
 
 :- func get_type_info_from_term(U, int16) = type_info.
+:- pragma no_determinism_warning(func(get_type_info_from_term/2)).
 
 get_type_info_from_term(_, _) = _ :-
     private_builtin.sorry("get_type_info_from_term").
@@ -4444,6 +4466,7 @@ get_type_info_from_term(_, _) = _ :-
 %---------------------%
 
 :- func get_typeclass_info_from_term(U, int16) = typeclass_info.
+:- pragma no_determinism_warning(func(get_typeclass_info_from_term/2)).
 
 get_typeclass_info_from_term(_, _) = _ :-
     private_builtin.sorry("get_type_info_from_term").
@@ -4830,8 +4853,8 @@ type_ctor_name(_) = _ :-
 
 %---------------------------------------------------------------------------%
 
-    % XXX exactly the same as get_type_functors
 :- func get_type_ctor_functors(type_ctor_info) = type_functors.
+:- pragma no_determinism_warning(func(get_type_ctor_functors/1)).
 
 :- pragma foreign_proc("C#",
     get_type_ctor_functors(TypeCtorInfo::in) = (Functors::out),
@@ -4854,28 +4877,8 @@ get_type_ctor_functors(_) = _ :-
 
 %---------------------------------------------------------------------------%
 
-:- func get_type_functors(type_ctor_info) = type_functors.
-
-:- pragma foreign_proc("C#",
-    get_type_functors(TypeCtorInfo::in) = (TypeFunctors::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    TypeFunctors = TypeCtorInfo.type_functors;
-").
-
-:- pragma foreign_proc("Java",
-    get_type_functors(TypeCtorInfo::in) = (TypeFunctors::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    TypeFunctors = TypeCtorInfo.type_functors;
-").
-
-get_type_functors(_) = _ :-
-    private_builtin.sorry("get_type_functors").
-
-%---------------------------------------------------------------------------%
-
 :- func get_type_layout(type_ctor_info) = type_layout.
+:- pragma no_determinism_warning(func(get_type_layout/1)).
 
 :- pragma foreign_proc("C#",
     get_type_layout(TypeCtorInfo::in) = (TypeLayout::out),
@@ -4905,6 +4908,7 @@ get_type_layout(_) = _ :-
 %---------------------------------------------------------------------------%
 
 :- func type_ctor_num_functors(type_ctor_info) = int.
+:- pragma no_determinism_warning(func(type_ctor_num_functors/1)).
 
 :- pragma foreign_proc("C#",
     type_ctor_num_functors(TypeCtorInfo::in) = (NumFunctors::out),
@@ -4929,6 +4933,7 @@ type_ctor_num_functors(_) = _ :-
 
 :- pred type_ctor_search_functor_number_map(type_ctor_info::in,
     int::in, int::out) is semidet.
+:- pragma no_determinism_warning(pred(type_ctor_search_functor_number_map/3)).
 
 :- pragma foreign_proc("C#",
     type_ctor_search_functor_number_map(TypeCtorInfo::in, Ordinal::in,
@@ -5159,6 +5164,7 @@ get_du_functor_arg_names(DuFunctorDesc, ArgNames) :-
 %---------------------%
 
 :- func arg_names_index(arg_names, int) = string.
+:- pragma no_determinism_warning(func(arg_names_index/2)).
 
 :- pragma foreign_proc("C#",
     arg_names_index(ArgNames::in, Index::in) = (Name::out),
@@ -5245,6 +5251,7 @@ get_enum_functor_desc(_, Num, TypeFunctors) = EnumFunctorDesc :-
 
 :- pred index_enum_functor_desc(type_ctor_info::in, int::in,
     enum_functor_desc::out) is det.
+:- pragma no_determinism_warning(pred(index_enum_functor_desc/3)).
 
 index_enum_functor_desc(_, _, _) :-
     private_builtin.sorry("index_enum_functor_desc").
@@ -5282,6 +5289,7 @@ det_index_or_search_enum_functor_ordinal(TypeCtorInfo, EnumValue, Ordinal) :-
 
 :- pred index_or_search_enum_functor_ordinal(type_ctor_info::in, int::in,
     int::out) is semidet.
+:- pragma no_determinism_warning(pred(index_or_search_enum_functor_ordinal/3)).
 
 index_or_search_enum_functor_ordinal(_, _, _) :-
     private_builtin.sorry("index_or_search_enum_functor_ordinal").
@@ -5327,6 +5335,7 @@ enum_functor_name(EnumFunctorDesc) = EnumFunctorDesc ^ unsafe_index(0).
 %---------------------%
 
 :- func enum_functor_value(enum_functor_desc) = int.
+:- pragma no_determinism_warning(func(enum_functor_value/1)).
 
 enum_functor_value(_) = _ :-
     private_builtin.sorry("enum_functor_value").
@@ -5350,6 +5359,7 @@ enum_functor_value(_) = _ :-
 :- func get_foreign_enum_functor_desc(type_ctor_rep, int, type_functors)
     = foreign_enum_functor_desc.
 :- mode get_foreign_enum_functor_desc(in(foreign_enum), in, in) = out is det.
+:- pragma no_determinism_warning(func(get_foreign_enum_functor_desc/3)).
 
 get_foreign_enum_functor_desc(_, _, _) = _ :-
     private_builtin.sorry("get_foreign_enum_functor_desc").
@@ -5375,6 +5385,7 @@ get_foreign_enum_functor_desc(_, _, _) = _ :-
 :- func foreign_enum_functor_desc(type_ctor_rep, int, type_functors)
     = foreign_enum_functor_desc.
 :- mode foreign_enum_functor_desc(in(foreign_enum), in, in) = out is det.
+:- pragma no_determinism_warning(func(foreign_enum_functor_desc/3)).
 
 foreign_enum_functor_desc(_, _, _) = _ :-
     private_builtin.sorry("foreign_enum_functor_desc").
@@ -5519,6 +5530,7 @@ notag_functor_arg_type(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(1).
 %---------------------%
 
 :- func notag_functor_arg_name(notag_functor_desc) = string.
+:- pragma no_determinism_warning(func(notag_functor_arg_name/1)).
 
 notag_functor_arg_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(2).
 
@@ -5542,12 +5554,15 @@ notag_functor_arg_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(2).
     % XXX get rid of this
 :- func unsafe_index(int, T) = U.
 :- pragma consider_used(func(unsafe_index/2)).
+:- pragma no_determinism_warning(func(unsafe_index/2)).
+
 :- pragma foreign_proc("C#",
     unsafe_index(_Num::in, _Array::in) = (Item::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     Item = null;
 ").
+
 unsafe_index(_, _) = _ :-
     private_builtin.sorry("rtti_implementation.unsafe_index").
 

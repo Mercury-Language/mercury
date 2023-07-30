@@ -22,8 +22,6 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
-:- import_module list.
-
 %---------------------------------------------------------------------------%
 
 :- func report_warning_too_much_overloading(type_error_clause_context,
@@ -56,6 +54,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module list.
 :- import_module map.
 :- import_module pair.
 :- import_module require.

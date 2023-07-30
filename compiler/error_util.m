@@ -23,7 +23,6 @@
 :- import_module parse_tree.error_spec.
 
 :- import_module bool.
-:- import_module getopt.
 :- import_module list.
 :- import_module maybe.
 
@@ -124,6 +123,7 @@
 
 :- implementation.
 
+:- import_module getopt.
 :- import_module pair.
 :- import_module set.
 :- import_module term_context.

@@ -23,7 +23,6 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -89,6 +88,7 @@
 :- import_module string.
 :- import_module string.builder.
 :- import_module term.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 

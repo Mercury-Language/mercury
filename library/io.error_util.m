@@ -296,6 +296,7 @@ make_win32_error_message(_, _, _, !IO) :-
     %
 :- pred get_exception_object_message(io.system_error::in, string::out,
     io::di, io::uo) is det.
+:- pragma no_determinism_warning(pred(get_exception_object_message/4)).
 
 :- pragma foreign_proc("C#",
     get_exception_object_message(Exception::in, Msg::out, _IO0::di, _IO::uo),

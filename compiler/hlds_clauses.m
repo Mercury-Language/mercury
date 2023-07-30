@@ -31,7 +31,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -427,6 +426,7 @@
 :- import_module map.
 :- import_module require.
 :- import_module string.
+:- import_module varset.
 
 :- type clause_item_numbers
     --->    user_clauses(

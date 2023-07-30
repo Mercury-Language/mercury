@@ -23,7 +23,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
-:- import_module getopt.
 :- import_module io.
 :- import_module list.
 
@@ -80,6 +79,7 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module dir.
+:- import_module getopt.
 :- import_module int.
 :- import_module io.environment.
 :- import_module io.file.

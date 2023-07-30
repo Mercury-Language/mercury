@@ -26,8 +26,6 @@
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.passes_aux.
 :- import_module libs.op_mode.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_baggage.
@@ -37,7 +35,6 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 
 :- type maybe_write_d_file
@@ -65,6 +62,8 @@
 :- import_module libs.options.
 :- import_module make.
 :- import_module make.module_dep_file.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
@@ -81,6 +80,7 @@
 
 :- import_module char.
 :- import_module library.
+:- import_module map.
 :- import_module set.
 :- import_module set_tree234.
 :- import_module solutions.

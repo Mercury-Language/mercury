@@ -5148,6 +5148,7 @@ system_error_win32_error_name(_, _) :-
 %---------------------%
 
 :- pred system_error_exception_name(io.system_error::in, string::out) is det.
+:- pragma no_determinism_warning(pred(system_error_exception_name/2)).
 
 :- pragma foreign_proc("C#",
     system_error_exception_name(Exception::in, Name::out),
