@@ -325,7 +325,7 @@ ifdef FAILED_TESTS_ONLY
 # FAILED_TESTS contains the names of failed tests from subdirectories
 # as well as this directory. We want to run the failed tests from this
 # directory only.
-THIS_DIR_TESTS_TO_RUN := $(shell egrep -v / FAILED_TESTS)
+THIS_DIR_TESTS_TO_RUN := $(shell egrep -s -v / FAILED_TESTS)
 else
 ifdef TESTS_TO_RUN
 THIS_DIR_TESTS_TO_RUN := $(shell echo $(patsubst $(THIS_DIR)/%,%,\

@@ -259,7 +259,9 @@ condition_bug.out: condition_bug condition_bug.inp
 		sed -e 's/stream.m:[0-9]*/stream.m:NNNN/g' | \
 		sed -e 's/term_to_xml.m:[0-9]*/term_to_xml.m:NNNN/g' | \
 		sed 's/0x[-0-9A-Fa-f]*/0xXXXX/g' | \
-		sed 's/(nil)/0xXXXX/g'\
+		sed 's/(nil)/0xXXXX/g' | \
+		sed 's/stream, [0-9a-fA-F]\{2\}[0-9a-fA-F]*/stream, 0xXXXX/g' | \
+		sed 's/system_error, 0\{2\}[0-9]*/system_error, 0xXXXX/g' \
 		> condition_bug.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
@@ -525,7 +527,10 @@ solns.out: solns solns.$(DECLDEBUG_INP)
 
 sort.out: sort sort.inp
 	$(MDB_STD) ./sort sort.input < sort.inp 2>&1 | \
-		sed -e 's/0x[0-9a-f]*/0xNNNN/g' \
+		sed -e 's/0x[0-9a-f]*/0xNNNN/g' | \
+		sed 's/(nil)/0xNNNN/g' | \
+		sed 's/stream, [0-9a-fA-F]\{2\}[0-9a-fA-F]*/stream, 0xNNNN/g' | \
+		sed 's/system_error, 0\{2\}0*/system_error, 0xNNNN/g' \
 		> sort.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 

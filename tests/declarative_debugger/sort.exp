@@ -44,7 +44,7 @@ do_write_string(...)
 Valid? depth io 10
 dd> print io 9
 read_line_as_string_2('<<foreign(stream, 0xNNNN)>>', yes, rlas_ok, 
-  '<<foreign(system_error, (nil))>>', "rafe\n")
+  '<<foreign(system_error, 0xNNNN)>>', "rafe\n")
 dd> depth io 1
 dd> no
 open_stream(...)
