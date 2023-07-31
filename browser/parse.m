@@ -655,6 +655,8 @@ parse_format([Token], Setting) :-
     ).
 
 :- pred parse_format_param(list(token)::in, setting::out) is semidet.
+% XXX Why is this here? It is not used.
+:- pragma consider_used(pred(parse_format_param/2)).
 
 parse_format_param([Token | Tokens], Setting) :-
     Token = token_name(TokenName),

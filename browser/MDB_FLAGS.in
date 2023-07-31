@@ -4,10 +4,11 @@
 --warn-unknown-format-calls
 --warn-non-contiguous-clauses
 --warn-non-contiguous-foreign-procs
---warn-unused-imports
 --warn-inconsistent-pred-order-clauses
+--warn-unused-imports
 --warn-insts-with-functors-without-type
 --warn-suspicious-foreign-code
+--warn-dead-preds
 --warn-implicit-stream-calls
 --warn-potentially-ambiguous-pragma
 --halt-at-warn

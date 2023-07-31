@@ -31,7 +31,6 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
-:- import_module univ.
 
 %---------------------------------------------------------------------------%
 
@@ -106,25 +105,6 @@
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
-    % Estimate the total term size, in characters, We count the number of
-    % characters in the functor, plus two characters for each argument:
-    % "(" and ")" for the first, and ", " for each of the rest, plus the
-    % sizes of the arguments themselves. This is only approximate since it
-    % doesn't take into account all the special cases such as operators.
-    %
-    % This predicate returns not the estimated total term size,
-    % but the difference between the given maximum size the caller
-    % is interested in and the estimated total term size.
-    % This difference is positive if the term is smaller than the
-    % maximum and negative if it is bigger. If the difference is
-    % negative, term_size_left_from_max will return a negative difference
-    % but the value will usually not be accurate, since in such cases
-    % by definition the caller is not interested in the accurate value.
-    %
-:- pred term_size_left_from_max(univ::in, int::in, int::out) is cc_multi.
-:- pred browser_term_size_left_from_max(browser_term::in,
-    int::in, int::out) is cc_multi.
-
 %---------------------------------------------------------------------------%
 
     % save_term_to_file(OutputStream, FileName, Format, BrowserTerm, !IO):
@@ -169,13 +149,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Remove "/dir/../" sequences from a list of directories to yield
-    % a form that lacks ".." entries.
-    % If there are more ".." entries than normal entries, we return
-    % the empty list.
-    %
-:- pred simplify_dirs(list(up_down_dir)::in, list(down_dir)::out) is det.
-
     % True if the given string can be used to cd to the return value of a
     % function.
     %
@@ -214,6 +187,7 @@
 :- import_module term_io.
 :- import_module term_to_xml.
 :- import_module type_desc.
+:- import_module univ.
 
 %---------------------------------------------------------------------------%
 %
@@ -321,6 +295,8 @@ browse_external(InputStream, OutputStream, MaybeModeFunc, Term, !State, !IO) :-
     browse_common(InputStream, debugger_external(OutputStream),
         MaybeFormat, MaybeModeFunc, plain_term(univ(Term)), _, !State, !IO).
 
+%---------------------%
+
 :- pred browse_common(io.text_input_stream::in, debugger::in,
     maybe(portray_format)::in, maybe(browser_mode_func)::in, browser_term::in,
     maybe_track_subterm(list(down_dir))::out,
@@ -347,7 +323,7 @@ browse_main_loop(InputStream, Debugger, !Info, !IO) :-
         Debugger = debugger_external(OutputStream),
         parse.read_browser_command_external(InputStream, Command, !IO)
     ),
-    run_command(Debugger, Command, Quit, !Info, !IO),
+    run_browse_cmd(Debugger, Command, Quit, !Info, !IO),
     (
         Quit = yes,
         % write_string_debugger(Debugger, "quitting...\n", !IO)
@@ -366,36 +342,37 @@ browse_main_loop(InputStream, Debugger, !Info, !IO) :-
 
 prompt = "browser> ".
 
-:- pred run_command(debugger::in, command::in, bool::out,
+%---------------------------------------------------------------------------%
+
+:- pred run_browse_cmd(debugger::in, command::in, bool::out,
     browser_info::in, browser_info::out, io::di, io::uo) is cc_multi.
 
-run_command(Debugger, Command, Quit, !Info, !IO) :-
+run_browse_cmd(Debugger, Command, !:Quit, !Info, !IO) :-
     % Please keep the code implementing commands in the same order
     % as the definition of the command type.
+
+    % This is the default, which is overridden in some places below.
+    !:Quit = no,
 
     % XXX The commands `set', `ls' and `print' should allow the format
     % to be specified by an option. In each case we pass a default format
     % the respective handler.
     (
         Command = cmd_print(PrintOption, MaybePath),
-        do_portray(Debugger, browse, PrintOption, !.Info, MaybePath, !IO),
-        Quit = no
+        run_browse_cmd_print(Debugger, browse, PrintOption, !.Info,
+            MaybePath, !IO)
     ;
         Command = cmd_display,
-        write_string_debugger(Debugger, "command not yet implemented\n", !IO),
-        Quit = no
+        write_string_debugger(Debugger, "command not yet implemented\n", !IO)
     ;
         Command = cmd_write,
-        write_string_debugger(Debugger, "command not yet implemented\n", !IO),
-        Quit = no
+        write_string_debugger(Debugger, "command not yet implemented\n", !IO)
     ;
         Command = cmd_memory_addr(MaybePath),
-        do_print_memory_addr(Debugger, !.Info, MaybePath, !IO),
-        Quit = no
+        run_browse_cmd_memory_addr(Debugger, !.Info, MaybePath, !IO)
     ;
         Command = cmd_cd_no_path,
-        set_path(root_rel([]), !Info),
-        Quit = no
+        set_path(root_rel([]), !Info)
     ;
         Command = cmd_cd_path(Path),
         change_dir(!.Info ^ bri_dirs, Path, NewPwd),
@@ -406,13 +383,11 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
         ;
             Result = deref_error(OKPath, ErrorDir),
             report_deref_error(Debugger, OKPath, ErrorDir, !IO)
-        ),
-        Quit = no
+        )
     ;
         Command = cmd_pwd,
         write_down_path(Debugger, !.Info ^ bri_dirs, !IO),
-        nl_debugger(Debugger, !IO),
-        Quit = no
+        nl_debugger(Debugger, !IO)
     ;
         Command = cmd_track(HowTrack, ShouldAssertInvalid, MaybePath),
         (
@@ -423,51 +398,45 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
                 SubResult = deref_result(_),
                 !Info ^ bri_maybe_track :=
                     track(HowTrack, ShouldAssertInvalid, NewPwd),
-                Quit = yes
+                !:Quit = yes
             ;
                 SubResult = deref_error(_, _),
                 write_string_debugger(Debugger,
-                    "error: cannot track subterm\n", !IO),
-                Quit = no
+                    "error: cannot track subterm\n", !IO)
             )
         ;
             MaybePath = no,
             !Info ^ bri_maybe_track :=
                 track(HowTrack, ShouldAssertInvalid, !.Info ^ bri_dirs),
-            Quit = yes
+            !:Quit = yes
         )
     ;
         Command = cmd_mode_query(Path),
         change_dir(!.Info ^ bri_dirs, Path, NewPwd),
         MaybeModeFunc = !.Info ^ bri_maybe_mode_func,
-        write_term_mode_debugger(Debugger, MaybeModeFunc, NewPwd, !IO),
-        Quit = no
+        run_browse_cmd_mode_query(Debugger, MaybeModeFunc, NewPwd, !IO)
     ;
         Command = cmd_mode_query_no_path,
         MaybeModeFunc = !.Info ^ bri_maybe_mode_func,
-        write_term_mode_debugger(Debugger, MaybeModeFunc, !.Info ^ bri_dirs,
-            !IO),
-        Quit = no
+        Dirs = !.Info ^ bri_dirs,
+        run_browse_cmd_mode_query(Debugger, MaybeModeFunc, Dirs, !IO)
     ;
         Command = cmd_param(ParamCmd),
-        run_param_command(Debugger, ParamCmd, yes, !Info, !IO),
-        Quit = no
+        run_param_command(Debugger, ParamCmd, yes, !Info, !IO)
     ;
         Command = cmd_help,
-        help(Debugger, !IO),
-        Quit = no
+        run_browse_cmnd_help(Debugger, !IO)
     ;
         Command = cmd_quit,
-        Quit = yes
+        !:Quit = yes
     ;
-        Command = cmd_empty,
-        Quit = no
+        Command = cmd_empty
     ;
         Command = cmd_unknown,
-        write_string_debugger(Debugger,
-            "Error: unknown command or syntax error.\n", !IO),
-        write_string_debugger(Debugger, "Type \"help\" for help.\n", !IO),
-        Quit = no
+        Msg =
+            "Error: unknown command or syntax error.\n" ++
+            "Type \"help\" for help.\n",
+        write_string_debugger(Debugger, Msg, !IO)
     ),
     (
         Debugger = debugger_external(OutputStream),
@@ -476,12 +445,14 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
         Debugger = debugger_internal(_)
     ).
 
-:- pred do_portray(debugger::in, browse_caller_type::in,
+%---------------------------------------------------------------------------%
+
+:- pred run_browse_cmd_print(debugger::in, browse_caller_type::in,
     maybe(maybe_option_table(format_option))::in, browser_info::in,
     maybe(path)::in, io::di, io::uo) is cc_multi.
 
-do_portray(Debugger, Caller, MaybeMaybeOptionTable, Info, MaybePath,
-        !IO) :-
+run_browse_cmd_print(Debugger, Caller, MaybeMaybeOptionTable, Info,
+        MaybePath, !IO) :-
     (
         MaybeMaybeOptionTable = no,
         browser_info.get_format(Info, Caller, no, Format),
@@ -508,51 +479,7 @@ do_portray(Debugger, Caller, MaybeMaybeOptionTable, Info, MaybePath,
         )
     ).
 
-:- pred do_print_memory_addr(debugger::in, browser_info::in, maybe(path)::in,
-    io::di, io::uo) is cc_multi.
-
-do_print_memory_addr(Debugger, Info, MaybePath, !IO) :-
-    Dirs0 = Info ^ bri_dirs,
-    (
-        MaybePath = no,
-        Dirs = Dirs0
-    ;
-        MaybePath = yes(Path),
-        change_dir(Dirs0, Path, Dirs)
-    ),
-    deref_subterm(Info ^ bri_term, Dirs, DerefResult),
-    (
-        DerefResult = deref_result(BrowserTerm),
-        (
-            BrowserTerm = plain_term(Univ),
-            Value = univ_value(Univ),
-            get_value_representation(Value, Addr),
-            string.format("addr = %x\n", [i(Addr)], Str)
-        ;
-            BrowserTerm = synthetic_term(_, _, _),
-            Str = "synthetic terms have no addresses\n"
-        ),
-        write_string_debugger(Debugger, Str, !IO)
-    ;
-        DerefResult = deref_error(OKPath, ErrorDir),
-        report_deref_error(Debugger, OKPath, ErrorDir, !IO),
-        nl_debugger(Debugger, !IO)
-    ).
-
-:- pred get_value_representation(T::in, int::out) is cc_multi.
-
-:- pragma foreign_proc("C",
-    get_value_representation(Value::in, Addr::out),
-    [will_not_call_mercury, promise_pure],
-"
-    Addr = (MR_Integer) Value;
-").
-
-% Java doesn't support converting addresses to integers, so we just
-% return zero. For other backends the debugger doesn't yet work,
-% so it doesn't matter what we return.
-get_value_representation(_Value, X) :-
-    cc_multi_equal(0, X).
+%---------------------%
 
 :- pred interpret_format_options(option_table(format_option)::in,
     maybe_error(maybe(portray_format))::out) is det.
@@ -590,9 +517,83 @@ interpret_format_options(OptionTable, MaybeMaybeFormat) :-
 
 bool_format_option_is_true(Format - bool(yes), Format).
 
-:- pred help(debugger::in, io::di, io::uo) is det.
+%---------------------------------------------------------------------------%
 
-help(Debugger, !IO) :-
+:- pred run_browse_cmd_memory_addr(debugger::in, browser_info::in,
+    maybe(path)::in, io::di, io::uo) is cc_multi.
+
+run_browse_cmd_memory_addr(Debugger, Info, MaybePath, !IO) :-
+    Dirs0 = Info ^ bri_dirs,
+    (
+        MaybePath = no,
+        Dirs = Dirs0
+    ;
+        MaybePath = yes(Path),
+        change_dir(Dirs0, Path, Dirs)
+    ),
+    deref_subterm(Info ^ bri_term, Dirs, DerefResult),
+    (
+        DerefResult = deref_result(BrowserTerm),
+        (
+            BrowserTerm = plain_term(Univ),
+            Value = univ_value(Univ),
+            get_value_representation(Value, Addr),
+            string.format("addr = %x\n", [i(Addr)], Str)
+        ;
+            BrowserTerm = synthetic_term(_, _, _),
+            Str = "synthetic terms have no addresses\n"
+        ),
+        write_string_debugger(Debugger, Str, !IO)
+    ;
+        DerefResult = deref_error(OKPath, ErrorDir),
+        report_deref_error(Debugger, OKPath, ErrorDir, !IO),
+        nl_debugger(Debugger, !IO)
+    ).
+
+:- pred get_value_representation(T::in, int::out) is cc_multi.
+
+:- pragma foreign_proc("C",
+    get_value_representation(Value::in, Addr::out),
+    [will_not_call_mercury, promise_pure],
+"
+    Addr = (MR_Integer) Value;
+").
+
+% Java doesn't support converting addresses to integers, so we just
+% return zero. For backends other than C the debugger doesn't yet work,
+% so it doesn't matter what we return.
+get_value_representation(_Value, X) :-
+    cc_multi_equal(0, X).
+
+%---------------------------------------------------------------------------%
+
+:- pred run_browse_cmd_mode_query(debugger::in, maybe(browser_mode_func)::in,
+    list(down_dir)::in, io::di, io::uo) is det.
+
+run_browse_cmd_mode_query(Debugger, MaybeModeFunc, Dirs, !IO) :-
+    (
+        MaybeModeFunc = yes(ModeFunc),
+        Mode = ModeFunc(Dirs),
+        ModeStr = browser_mode_to_string(Mode),
+        write_string_debugger(Debugger, ModeStr ++ "\n", !IO)
+    ;
+        MaybeModeFunc = no,
+        write_string_debugger(Debugger,
+            "Mode information not available.\n", !IO)
+    ).
+
+:- func browser_mode_to_string(browser_term_mode) = string.
+
+browser_mode_to_string(btm_input) = "Input".
+browser_mode_to_string(btm_output) = "Output".
+browser_mode_to_string(btm_not_applicable) = "Not Applicable".
+browser_mode_to_string(btm_unbound) = "Unbound".
+
+%---------------------------------------------------------------------------%
+
+:- pred run_browse_cmnd_help(debugger::in, io::di, io::uo) is det.
+
+run_browse_cmnd_help(Debugger, !IO) :-
     string.append_list([
 "Commands are:\n",
 "\t[print|p|ls] [format_options] [path]\n",
@@ -657,6 +658,16 @@ portray_maybe_path(Debugger, Caller, Format, Info, MaybePath, !IO) :-
         portray_path(Debugger, Caller, Format, Info, Path, !IO)
     ).
 
+:- pred portray_path(debugger::in, browse_caller_type::in,
+    portray_format::in, browser_info::in, path::in,
+    io::di, io::uo) is cc_multi.
+
+portray_path(Debugger, Caller, Format, Info0, Path, !IO) :-
+    set_path(Path, Info0, Info),
+    portray(Debugger, Caller, Format, Info, !IO).
+
+%---------------------%
+
 :- pred portray(debugger::in, browse_caller_type::in,
     portray_format::in, browser_info::in, io::di, io::uo) is cc_multi.
 
@@ -684,13 +695,7 @@ portray(Debugger, Caller, Format, Info, !IO) :-
     ),
     nl_debugger(Debugger, !IO).
 
-:- pred portray_path(debugger::in, browse_caller_type::in,
-    portray_format::in, browser_info::in, path::in,
-    io::di, io::uo) is cc_multi.
-
-portray_path(Debugger, Caller, Format, Info0, Path, !IO) :-
-    set_path(Path, Info0, Info),
-    portray(Debugger, Caller, Format, Info, !IO).
+%---------------------------------------------------------------------------%
 
 :- pred portray_flat(debugger::in, browser_term::in, format_params::in,
     io::di, io::uo) is cc_multi.
@@ -717,6 +722,12 @@ portray_flat(Debugger, BrowserTerm, Params, !IO) :-
             Params ^ depth, BrowserTermStr)
     ),
     write_string_debugger(Debugger, BrowserTermStr, !IO).
+
+    % The maximum estimated size for which we use `io.write'.
+    %
+:- func max_print_size = int.
+
+max_print_size = 60.
 
 :- pred portray_flat_write_browser_term(Stream::in, browser_term::in,
     State::di, State::uo) is cc_multi
@@ -749,88 +760,6 @@ portray_flat_write_browser_term(OutputStream, BrowserTerm, !IO) :-
         )
     ).
 
-:- pred put_comma_space(Stream::in, State::di, State::uo) is det
-    <= stream.writer(Stream, string, State).
-
-put_comma_space(Stream, !State) :-
-    put(Stream, ", ", !State).
-
-:- pred portray_verbose(debugger::in, browser_term::in, format_params::in,
-    io::di, io::uo) is cc_multi.
-
-portray_verbose(Debugger, BrowserTerm, Params, !IO) :-
-    io.stream_db.get_stream_db(StreamDb, !IO),
-    BrowserDb = browser_db(StreamDb),
-    browser_term_to_string_verbose(BrowserDb, BrowserTerm, Params ^ size,
-        Params ^ depth, Params ^ width, Params ^ lines, Str),
-    write_string_debugger(Debugger, Str, !IO).
-
-:- pred portray_pretty(debugger::in, browser_term::in, format_params::in,
-    io::di, io::uo) is det.
-
-portray_pretty(Debugger, BrowserTerm, Params, !IO) :-
-    browser_term_to_string_pretty(Debugger, BrowserTerm, Params ^ width,
-        Params ^ lines, Params ^ size, Params ^ depth, !IO).
-
-:- pred portray_raw_pretty(debugger::in, browser_term::in, format_params::in,
-    io::di, io::uo) is cc_multi.
-
-portray_raw_pretty(Debugger, BrowserTerm, Params, !IO) :-
-    io.stream_db.get_stream_db(StreamDb, !IO),
-    BrowserDb = browser_db(StreamDb),
-    sized_pretty.browser_term_to_string_line(BrowserDb, BrowserTerm,
-        Params ^ width, Params ^ lines, Str),
-    write_string_debugger(Debugger, Str, !IO).
-
-    % The maximum estimated size for which we use `io.write'.
-    %
-:- func max_print_size = int.
-
-max_print_size = 60.
-
-term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
-    ( if MaxSize < 0 then
-        RemainingSize = MaxSize
-    else
-        deconstruct.limited_deconstruct_cc(univ_value(Univ), MaxSize,
-            MaybeFunctorArityArgs),
-        (
-            MaybeFunctorArityArgs = yes({Functor, Arity, Args}),
-            string.length(Functor, FunctorSize),
-            % "()", plus Arity-1 times ", "
-            PrincipalSize = FunctorSize + Arity * 2,
-            MaxArgsSize = MaxSize - PrincipalSize,
-            list.foldl(term_size_left_from_max, Args,
-                MaxArgsSize, RemainingSize)
-        ;
-            MaybeFunctorArityArgs = no,
-            RemainingSize = -1
-        )
-    ;
-        RemainingSize = -1
-    ).
-
-browser_term_size_left_from_max(BrowserTerm, MaxSize, RemainingSize) :-
-    (
-        BrowserTerm = plain_term(Univ),
-        term_size_left_from_max(Univ, MaxSize, RemainingSize)
-    ;
-        BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),
-        string.length(Functor, FunctorSize),
-        list.length(Args, Arity),
-        (
-            MaybeReturn = yes(_),
-            % "()", " = ", plus Arity-1 times ", "
-            PrincipalSize = FunctorSize + Arity * 2 + 3
-        ;
-            MaybeReturn = no,
-            % "()", plus Arity-1 times ", "
-            PrincipalSize = FunctorSize + Arity * 2
-        ),
-        MaxArgsSize = MaxSize - PrincipalSize,
-        list.foldl(term_size_left_from_max, Args, MaxArgsSize, RemainingSize)
-    ).
-
 :- pred write_univ_or_unbound(Stream::in, univ::in, State::di, State::uo)
     is cc_multi
     <= (stream.writer(Stream, string, State),
@@ -843,25 +772,13 @@ write_univ_or_unbound(Stream, Univ, !IO) :-
         string_writer.write_univ(Stream, include_details_cc, Univ, !IO)
     ).
 
-:- pred report_deref_error(debugger::in, list(down_dir)::in, down_dir::in,
-    io::di, io::uo) is det.
+:- pred put_comma_space(Stream::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
-report_deref_error(Debugger, OKPath, ErrorDir, !IO) :-
-    write_string_debugger(Debugger, "error: ", !IO),
-    (
-        OKPath = [_ | _],
-        Context = "in subdir " ++ down_dirs_to_string(OKPath) ++ ": ",
-        write_string_debugger(Debugger, Context, !IO)
-    ;
-        OKPath = []
-    ),
-    Msg = "there is no subterm " ++ down_dir_to_string(ErrorDir) ++ "\n",
-    write_string_debugger(Debugger, Msg, !IO).
+put_comma_space(Stream, !State) :-
+    put(Stream, ", ", !State).
 
-%---------------------------------------------------------------------------%
-%
-% Single-line representation of a term.
-%
+%---------------------%
 
 :- pred browser_term_to_string(browser_db::in, browser_term::in,
     int::in, int::in, string::out) is cc_multi.
@@ -942,6 +859,8 @@ browser_term_to_string_3(BrowserDb, Functor, Args, MaybeReturn,
         )
     ).
 
+%---------------------%
+
 :- pred list_tail_to_string_list(browser_db::in, univ::in,
     int::in, int::in, int::out, int::in, int::in, list(string)::out)
     is cc_multi.
@@ -1003,6 +922,8 @@ list_tail_to_string_list(BrowserDb, TailUniv, MaxSize, Size0, Size,
         TailStrs = [" | ", TailCompressedStr]
     ).
 
+%---------------------%
+
 :- pred args_to_string_list(browser_db::in, list(univ)::in,
     int::in, int::in, int::out, int::in, int::in, list(string)::out)
     is cc_multi.
@@ -1036,6 +957,8 @@ comma_string_list([]) = "".
 comma_string_list([HeadArg | TailArgs]) =
     ", " ++ HeadArg ++ comma_string_list(TailArgs).
 
+%---------------------%
+
 :- pred browser_term_compress(browser_db::in, browser_term::in, string::out)
     is cc_multi.
 
@@ -1053,40 +976,18 @@ browser_term_compress(BrowserDb, BrowserTerm, Str) :-
         )
     ).
 
-%---------------------------------------------------------------------------%
-
-    % Print using the pretty printer from the standard library.
-    % XXX Because the pretty printer doesn't support a combination
-    % of both size and depth, we use the depth, except when depth is 0,
-    % in which case we use the size.
-    %
-:- pred browser_term_to_string_pretty(S::in,
-    browser_term::in, int::in, int::in,
-    int::in, int::in, io::di, io::uo) is det
-    <= stream.writer(S, string, io).
-
-browser_term_to_string_pretty(S, Term, Width, Lines, Size, Depth, !IO) :-
-    (
-        Term = plain_term(Univ),
-        Doc = format_univ(Univ)
-    ;
-        Term = synthetic_term(Functor, Args, MaybeReturn),
-        Doc = synthetic_term_to_doc(Functor, Args, MaybeReturn)
-    ),
-    get_default_formatter_map(Formatters, !IO),
-
-    ( if Depth > 0 then
-        Limit = triangular(Depth)
-    else
-        Limit = linear(Size)
-    ),
-
-    Params = pp_params(Width, Lines, Limit),
-    promise_equivalent_solutions [!:IO] (
-        put_doc(S, include_details_cc, Formatters, Params, Doc, !IO)
-    ).
 
 %---------------------------------------------------------------------------%
+
+:- pred portray_verbose(debugger::in, browser_term::in, format_params::in,
+    io::di, io::uo) is cc_multi.
+
+portray_verbose(Debugger, BrowserTerm, Params, !IO) :-
+    io.stream_db.get_stream_db(StreamDb, !IO),
+    BrowserDb = browser_db(StreamDb),
+    browser_term_to_string_verbose(BrowserDb, BrowserTerm, Params ^ size,
+        Params ^ depth, Params ^ width, Params ^ lines, Str),
+    write_string_debugger(Debugger, Str, !IO).
 
     % Verbose printing. Tree layout with numbered branches.
     % Numbering makes it easier to change to subterms.
@@ -1176,6 +1077,108 @@ unlines([Line | Lines], Str) :-
     string.append(NLine, Strs, Str).
 
 %---------------------------------------------------------------------------%
+
+:- pred portray_pretty(debugger::in, browser_term::in, format_params::in,
+    io::di, io::uo) is det.
+
+portray_pretty(Debugger, BrowserTerm, Params, !IO) :-
+    browser_term_to_string_pretty(Debugger, BrowserTerm, Params ^ width,
+        Params ^ lines, Params ^ size, Params ^ depth, !IO).
+
+    % Print using the pretty printer from the standard library.
+    % XXX Because the pretty printer doesn't support a combination
+    % of both size and depth, we use the depth, except when depth is 0,
+    % in which case we use the size.
+    %
+:- pred browser_term_to_string_pretty(S::in, browser_term::in,
+    int::in, int::in, int::in, int::in, io::di, io::uo) is det
+    <= stream.writer(S, string, io).
+
+browser_term_to_string_pretty(S, Term, Width, Lines, Size, Depth, !IO) :-
+    (
+        Term = plain_term(Univ),
+        Doc = format_univ(Univ)
+    ;
+        Term = synthetic_term(Functor, Args, MaybeReturn),
+        Doc = synthetic_term_to_doc(Functor, Args, MaybeReturn)
+    ),
+    get_default_formatter_map(Formatters, !IO),
+    ( if Depth > 0 then
+        Limit = triangular(Depth)
+    else
+        Limit = linear(Size)
+    ),
+    Params = pp_params(Width, Lines, Limit),
+    promise_equivalent_solutions [!:IO] (
+        put_doc(S, include_details_cc, Formatters, Params, Doc, !IO)
+    ).
+
+    % These two functions are just like pprint.to_doc, except their input
+    % is not a natural term, but a synthetic term defined by a functor, a list
+    % of arguments, and if the synthetic term is a function application, then
+    % the result of that function application.
+    %
+    % The functor name has to be treated specially because '.'s therein
+    % usually denote separators in a module qualified name; the
+    % default pretty_printer formatter does not know this and will quote
+    % such names.
+    %
+:- func synthetic_term_to_doc(string, list(univ), maybe(univ)) = doc.
+
+synthetic_term_to_doc(Functor0, Args, MaybeReturn) = Doc :-
+    ( if
+        ( Functor0 = "!."
+        ; Functor0 = "."
+        ; Functor0 = ".."
+        ; Functor0 = "=.."
+        ; not string.contains_char(Functor0, ('.'))
+        )
+    then
+        Doc0 = format_term(Functor0, Args)
+    else
+        FunctorDoc =
+            qualified_functor_to_doc(string.split_at_char(('.'), Functor0)),
+        (
+            Args = [],
+            Doc0 = FunctorDoc
+        ;
+            Args = [_ | _],
+            Doc0 = indent([
+                FunctorDoc, str("("),
+                    format_list(Args, group([str(", "), nl])),
+                str(")")
+            ])
+        )
+    ),
+    (
+        MaybeReturn = no,
+        Doc = Doc0
+    ;
+        MaybeReturn = yes(Return),
+        Doc = docs([Doc0, str(" = "), format_arg(format_univ(Return))])
+    ).
+
+:- func qualified_functor_to_doc(list(string)) = doc.
+
+qualified_functor_to_doc([]) = str("").
+qualified_functor_to_doc([Part]) = str(term_io.quoted_atom(Part)).
+qualified_functor_to_doc([PartA, PartB | Parts]) =
+    docs([str(term_io.quoted_atom(PartA)), str("."),
+        qualified_functor_to_doc([PartB | Parts])]).
+
+%---------------------------------------------------------------------------%
+
+:- pred portray_raw_pretty(debugger::in, browser_term::in, format_params::in,
+    io::di, io::uo) is cc_multi.
+
+portray_raw_pretty(Debugger, BrowserTerm, Params, !IO) :-
+    io.stream_db.get_stream_db(StreamDb, !IO),
+    BrowserDb = browser_db(StreamDb),
+    sized_pretty.browser_term_to_string_line(BrowserDb, BrowserTerm,
+        Params ^ width, Params ^ lines, Str),
+    write_string_debugger(Debugger, Str, !IO).
+
+%---------------------------------------------------------------------------%
 %
 % Miscellaneous path handling.
 %
@@ -1230,19 +1233,6 @@ deref_subterm(BrowserTerm, Path, Result) :-
         )
     ).
 
-:- pred deref_result_univ_to_browser_term(deref_result(univ)::in,
-    deref_result(browser_term)::out) is det.
-
-deref_result_univ_to_browser_term(SubResult, Result) :-
-    (
-        SubResult = deref_result(SubUniv),
-        SubBrowserTerm = plain_term(SubUniv),
-        Result = deref_result(SubBrowserTerm)
-    ;
-        SubResult = deref_error(OKPath, ErrorDir),
-        Result = deref_error(OKPath, ErrorDir)
-    ).
-
 :- pred deref_subterm_2(univ::in, list(down_dir)::in, list(down_dir)::in,
     deref_result(univ)::out) is cc_multi.
 
@@ -1280,7 +1270,52 @@ deref_subterm_2(Univ, Path, RevPath0, Result) :-
         )
     ).
 
-%---------------------------------------------------------------------------%
+:- pred deref_result_univ_to_browser_term(deref_result(univ)::in,
+    deref_result(browser_term)::out) is det.
+
+deref_result_univ_to_browser_term(SubResult, Result) :-
+    (
+        SubResult = deref_result(SubUniv),
+        SubBrowserTerm = plain_term(SubUniv),
+        Result = deref_result(SubBrowserTerm)
+    ;
+        SubResult = deref_error(OKPath, ErrorDir),
+        Result = deref_error(OKPath, ErrorDir)
+    ).
+
+:- pred report_deref_error(debugger::in, list(down_dir)::in, down_dir::in,
+    io::di, io::uo) is det.
+
+report_deref_error(Debugger, OKPath, ErrorDir, !IO) :-
+    write_string_debugger(Debugger, "error: ", !IO),
+    (
+        OKPath = [_ | _],
+        Context = "in subdir " ++ down_dirs_to_string(OKPath) ++ ": ",
+        write_string_debugger(Debugger, Context, !IO)
+    ;
+        OKPath = []
+    ),
+    Msg = "there is no subterm " ++ down_dir_to_string(ErrorDir) ++ "\n",
+    write_string_debugger(Debugger, Msg, !IO).
+
+:- func down_dir_to_string(down_dir) = string.
+
+down_dir_to_string(down_child_num(Num)) = int_to_string(Num).
+down_dir_to_string(down_child_name(Name)) = Name.
+
+:- func down_dirs_to_string(list(down_dir)) = string.
+
+down_dirs_to_string([]) = "".
+down_dirs_to_string([Dir | Dirs]) = DirStr :-
+    (
+        Dirs = [],
+        DirStr = down_dir_to_string(Dir)
+    ;
+        Dirs = [_ | _],
+        DirStr = down_dir_to_string(Dir) ++ "/" ++ down_dirs_to_string(Dirs)
+    ).
+
+%---------------------%
 
 :- pred set_path(path::in, browser_info::in, browser_info::out) is det.
 
@@ -1300,6 +1335,49 @@ change_dir(PwdDirs, Path, RootRelDirs) :-
         NewDirs = down_to_up_down_dirs(PwdDirs) ++ Dirs
     ),
     simplify_dirs(NewDirs, RootRelDirs).
+
+    % Remove "/dir/../" sequences from a list of directories to yield
+    % a form that lacks ".." entries.
+    % If there are more ".." entries than normal entries, we return
+    % the empty list.
+    %
+:- pred simplify_dirs(list(up_down_dir)::in, list(down_dir)::out) is det.
+
+simplify_dirs(Dirs, SimpleDirs) :-
+    list.reverse(Dirs, RevDirs),
+    simplify_rev_dirs(RevDirs, 0, [], SimpleDirs).
+
+    % simplify_rev_dirs(RevUpDownDirs, ToDelete, !DownDirs):
+    %
+    % Assumes a reverse list of directories and removes redundant `..'
+    % entries by scanning from the bottom most directory to the top,
+    % counting how many `..' occurred (!.ToDelete) and removing entries
+    % accordingly. !DownDirs accumulates the simplified dirs processed so far
+    % so we can be tail recursive.
+    %
+:- pred simplify_rev_dirs(list(up_down_dir)::in, int::in,
+    list(down_dir)::in, list(down_dir)::out) is det.
+
+simplify_rev_dirs([], _, !DownDirs).
+simplify_rev_dirs([RevUpDownDir | RevUpDownDirs], !.ToDelete, !DownDirs) :-
+    (
+        RevUpDownDir = updown_parent,
+        !:ToDelete = !.ToDelete + 1
+    ;
+        (
+            RevUpDownDir = updown_child_num(ChildNum),
+            DownDir = down_child_num(ChildNum)
+        ;
+            RevUpDownDir = updown_child_name(ChildName),
+            DownDir = down_child_name(ChildName)
+        ),
+        ( if !.ToDelete > 0 then
+            !:ToDelete = !.ToDelete - 1
+        else
+            !:DownDirs = [DownDir | !.DownDirs]
+        )
+    ),
+    simplify_rev_dirs(RevUpDownDirs, !.ToDelete, !DownDirs).
 
 %---------------------------------------------------------------------------%
 %
@@ -1322,7 +1400,7 @@ save_term_to_file(OutputStream, FileName, _Format, BrowserTerm, !IO) :-
             BrowserTerm = synthetic_term(Functor, ArgUnivs, MaybeResultUniv),
             io.write_string(FileStream, Functor, !IO),
             io.write_string(FileStream, "(\n", !IO),
-            save_args(FileStream, 1, ArgUnivs, !IO),
+            save_arg_univs(FileStream, 1, ArgUnivs, !IO),
             io.write_string(FileStream, "\n)\n", !IO),
             (
                 MaybeResultUniv = no
@@ -1339,6 +1417,86 @@ save_term_to_file(OutputStream, FileName, _Format, BrowserTerm, !IO) :-
         io.error_message(Error, Msg),
         io.write_string(OutputStream, Msg, !IO)
     ).
+
+:- pred save_univ(io.text_output_stream::in, int::in, univ::in,
+    io::di, io::uo) is cc_multi.
+
+save_univ(OutputStream, Indent, Univ, !IO) :-
+    save_term(OutputStream, Indent, univ_value(Univ), !IO).
+
+:- pred save_term(io.text_output_stream::in, int::in, T::in,
+    io::di, io::uo) is cc_multi.
+
+save_term(OutputStream, Indent, Term, !IO) :-
+    ( if dynamic_cast_to_list(Term, List) then
+        (
+            List = [],
+            write_indent(OutputStream, Indent, !IO),
+            io.write_string(OutputStream, "[]", !IO)
+        ;
+            List = [_ | _],
+            MakeUniv =
+                ( func(Element) = (ElementUniv) :-
+                    ElementUniv = univ(Element)
+                ),
+            Univs = list.map(MakeUniv, List),
+            write_indent(OutputStream, Indent, !IO),
+            io.write_string(OutputStream, "[\n", !IO),
+            save_arg_univs(OutputStream, Indent + 1, Univs, !IO),
+            io.write_string(OutputStream, "\n", !IO),
+            write_indent(OutputStream, Indent, !IO),
+            io.write_string(OutputStream, "]", !IO)
+        )
+    else
+        deconstruct(Term, include_details_cc, Functor, _Arity, Args),
+        write_indent(OutputStream, Indent, !IO),
+        io.write_string(OutputStream, Functor, !IO),
+        (
+            Args = []
+        ;
+            Args = [_ | _],
+            io.write_string(OutputStream, "(\n", !IO),
+            save_arg_univs(OutputStream, Indent + 1, Args, !IO),
+            io.write_string(OutputStream, "\n", !IO),
+            write_indent(OutputStream, Indent, !IO),
+            io.write_string(OutputStream, ")", !IO)
+        )
+    ).
+
+:- pred save_arg_univs(io.text_output_stream::in, int::in, list(univ)::in,
+    io::di, io::uo) is cc_multi.
+
+save_arg_univs(_OutputStream, _Indent, [], !IO).
+save_arg_univs(OutputStream, Indent, [Univ | Univs], !IO) :-
+    save_univ(OutputStream, Indent, Univ, !IO),
+    (
+        Univs = []
+    ;
+        Univs = [_ | _],
+        io.write_string(OutputStream, ",\n", !IO),
+        save_arg_univs(OutputStream, Indent, Univs, !IO)
+    ).
+
+:- some [T2] pred dynamic_cast_to_list(T1::in, list(T2)::out) is semidet.
+
+dynamic_cast_to_list(X, L) :-
+    % The code of this predicate is copied from pprint.m.
+    [ArgTypeDesc] = type_args(type_of(X)),
+    (_ `with_type` ArgType) `has_type` ArgTypeDesc,
+    dynamic_cast(X, L `with_type` list(ArgType)).
+
+:- pred write_indent(io.text_output_stream::in, int::in, io::di, io::uo)
+    is det.
+
+write_indent(OutputStream, Indent, !IO) :-
+    ( if Indent =< 0 then
+        true
+    else
+        io.write_char(OutputStream, ' ', !IO),
+        write_indent(OutputStream, Indent - 1, !IO)
+    ).
+
+%---------------------%
 
 :- type xml_predicate_wrapper
     --->    predicate(
@@ -1385,6 +1543,8 @@ save_term_to_file_xml(OutputStream, FileName, BrowserTerm, !IO) :-
         io.error_message(Error, Msg),
         io.format(OutputStream, "%s\n", [s(Msg)], !IO)
     ).
+
+%---------------------%
 
 save_term_to_file_doc(OutputStream, FileName, BrowserTerm, !IO) :-
     io.open_output(FileName, FileStreamResult, !IO),
@@ -1534,9 +1694,11 @@ launch_web_browser(OutputStream, ErrorStream, CommandStr, !IO) :-
             [s(string.string(Error))], !IO)
     ).
 
+%---------------------------------------------------------------------------%
+
 browser_term_to_html_flat_string(BrowserTerm, Str, Elided, !IO) :-
-    % Mimic portray_flat. We can afford larger sizes in a web browser due to
-    % proportional fonts and horizontal scrolling.
+    % Mimic portray_flat. We can afford larger sizes in a web browser
+    % due to proportional fonts and horizontal scrolling.
     MaxTermSize = 120,
     browser_term_size_left_from_max(BrowserTerm, MaxTermSize, RemainingSize),
     ( if RemainingSize >= 0 then
@@ -1555,83 +1717,68 @@ browser_term_to_html_flat_string(BrowserTerm, Str, Elided, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred save_univ(io.text_output_stream::in, int::in, univ::in,
-    io::di, io::uo) is cc_multi.
+    % Estimate the total term size, in characters, We count the number of
+    % characters in the functor, plus two characters for each argument:
+    % "(" and ")" for the first, and ", " for each of the rest, plus the
+    % sizes of the arguments themselves. This is only approximate since it
+    % doesn't take into account all the special cases such as operators.
+    %
+    % This predicate returns not the estimated total term size,
+    % but the difference between the given maximum size the caller
+    % is interested in and the estimated total term size.
+    % This difference is positive if the term is smaller than the
+    % maximum and negative if it is bigger. If the difference is
+    % negative, term_size_left_from_max will return a negative difference
+    % but the value will usually not be accurate, since in such cases
+    % by definition the caller is not interested in the accurate value.
+    %
+:- pred browser_term_size_left_from_max(browser_term::in,
+    int::in, int::out) is cc_multi.
 
-save_univ(OutputStream, Indent, Univ, !IO) :-
-    save_term(OutputStream, Indent, univ_value(Univ), !IO).
-
-:- pred save_term(io.text_output_stream::in, int::in, T::in,
-    io::di, io::uo) is cc_multi.
-
-save_term(OutputStream, Indent, Term, !IO) :-
-    ( if dynamic_cast_to_list(Term, List) then
-        (
-            List = [],
-            write_indent(OutputStream, Indent, !IO),
-            io.write_string(OutputStream, "[]", !IO)
-        ;
-            List = [_ | _],
-            MakeUniv =
-                ( func(Element) = (ElementUniv) :-
-                    ElementUniv = univ(Element)
-                ),
-            Univs = list.map(MakeUniv, List),
-            write_indent(OutputStream, Indent, !IO),
-            io.write_string(OutputStream, "[\n", !IO),
-            save_args(OutputStream, Indent + 1, Univs, !IO),
-            io.write_string(OutputStream, "\n", !IO),
-            write_indent(OutputStream, Indent, !IO),
-            io.write_string(OutputStream, "]", !IO)
-        )
-    else
-        deconstruct(Term, include_details_cc, Functor, _Arity, Args),
-        write_indent(OutputStream, Indent, !IO),
-        io.write_string(OutputStream, Functor, !IO),
-        (
-            Args = []
-        ;
-            Args = [_ | _],
-            io.write_string(OutputStream, "(\n", !IO),
-            save_args(OutputStream, Indent + 1, Args, !IO),
-            io.write_string(OutputStream, "\n", !IO),
-            write_indent(OutputStream, Indent, !IO),
-            io.write_string(OutputStream, ")", !IO)
-        )
-    ).
-
-:- pred save_args(io.text_output_stream::in, int::in, list(univ)::in,
-    io::di, io::uo) is cc_multi.
-
-save_args(_OutputStream, _Indent, [], !IO).
-save_args(OutputStream, Indent, [Univ | Univs], !IO) :-
-    save_univ(OutputStream, Indent, Univ, !IO),
+browser_term_size_left_from_max(BrowserTerm, MaxSize, RemainingSize) :-
     (
-        Univs = []
+        BrowserTerm = plain_term(Univ),
+        term_size_left_from_max(Univ, MaxSize, RemainingSize)
     ;
-        Univs = [_ | _],
-        io.write_string(OutputStream, ",\n", !IO),
-        save_args(OutputStream, Indent, Univs, !IO)
+        BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),
+        string.length(Functor, FunctorSize),
+        list.length(Args, Arity),
+        (
+            MaybeReturn = yes(_),
+            % "()", " = ", plus Arity-1 times ", "
+            PrincipalSize = FunctorSize + Arity * 2 + 3
+        ;
+            MaybeReturn = no,
+            % "()", plus Arity-1 times ", "
+            PrincipalSize = FunctorSize + Arity * 2
+        ),
+        MaxArgsSize = MaxSize - PrincipalSize,
+        list.foldl(term_size_left_from_max, Args, MaxArgsSize, RemainingSize)
     ).
 
-:- pred write_indent(io.text_output_stream::in, int::in, io::di, io::uo)
-    is det.
+:- pred term_size_left_from_max(univ::in, int::in, int::out) is cc_multi.
 
-write_indent(OutputStream, Indent, !IO) :-
-    ( if Indent =< 0 then
-        true
+term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
+    ( if MaxSize < 0 then
+        RemainingSize = MaxSize
     else
-        io.write_char(OutputStream, ' ', !IO),
-        write_indent(OutputStream, Indent - 1, !IO)
+        deconstruct.limited_deconstruct_cc(univ_value(Univ), MaxSize,
+            MaybeFunctorArityArgs),
+        (
+            MaybeFunctorArityArgs = yes({Functor, Arity, Args}),
+            string.length(Functor, FunctorSize),
+            % "()", plus Arity-1 times ", "
+            PrincipalSize = FunctorSize + Arity * 2,
+            MaxArgsSize = MaxSize - PrincipalSize,
+            list.foldl(term_size_left_from_max, Args,
+                MaxArgsSize, RemainingSize)
+        ;
+            MaybeFunctorArityArgs = no,
+            RemainingSize = -1
+        )
+    ;
+        RemainingSize = -1
     ).
-
-:- some [T2] pred dynamic_cast_to_list(T1::in, list(T2)::out) is semidet.
-
-dynamic_cast_to_list(X, L) :-
-    % The code of this predicate is copied from pprint.m.
-    [ArgTypeDesc] = type_args(type_of(X)),
-    (_ `with_type` ArgType) `has_type` ArgTypeDesc,
-    dynamic_cast(X, L `with_type` list(ArgType)).
 
 %---------------------------------------------------------------------------%
 %
@@ -1639,6 +1786,11 @@ dynamic_cast_to_list(X, L) :-
 %
 
 :- pred show_settings(debugger::in, browser_info::in, io::di, io::uo) is det.
+% XXX Why is this here? Neither this predicate, nor the rest of this section,
+% is used anywhere.
+% XXX There *is* a show_settings predicate in browser_info.m, which is
+% similar, but not identical, to this code.
+:- pragma consider_used(pred(show_settings/4)).
 
 show_settings(Debugger, Info, !IO) :-
     show_settings_caller(Debugger, Info, browse, "Browser", !IO),
@@ -1716,58 +1868,7 @@ size_len      = 10.
 width_len     = 10.
 lines_len     = 10.
 
-simplify_dirs(Dirs, SimpleDirs) :-
-    list.reverse(Dirs, RevDirs),
-    simplify_rev_dirs(RevDirs, 0, [], SimpleDirs).
-
-    % simplify_rev_dirs(RevUpDownDirs, ToDelete, !DownDirs):
-    %
-    % Assumes a reverse list of directories and removes redundant `..'
-    % entries by scanning from the bottom most directory to the top,
-    % counting how many `..' occurred (!.ToDelete) and removing entries
-    % accordingly. !DownDirs accumulates the simplified dirs processed so far
-    % so we can be tail recursive.
-    %
-:- pred simplify_rev_dirs(list(up_down_dir)::in, int::in,
-    list(down_dir)::in, list(down_dir)::out) is det.
-
-simplify_rev_dirs([], _, !DownDirs).
-simplify_rev_dirs([RevUpDownDir | RevUpDownDirs], !.ToDelete, !DownDirs) :-
-    (
-        RevUpDownDir = updown_parent,
-        !:ToDelete = !.ToDelete + 1
-    ;
-        (
-            RevUpDownDir = updown_child_num(ChildNum),
-            DownDir = down_child_num(ChildNum)
-        ;
-            RevUpDownDir = updown_child_name(ChildName),
-            DownDir = down_child_name(ChildName)
-        ),
-        ( if !.ToDelete > 0 then
-            !:ToDelete = !.ToDelete - 1
-        else
-            !:DownDirs = [DownDir | !.DownDirs]
-        )
-    ),
-    simplify_rev_dirs(RevUpDownDirs, !.ToDelete, !DownDirs).
-
-:- func down_dir_to_string(down_dir) = string.
-
-down_dir_to_string(down_child_num(Num)) = int_to_string(Num).
-down_dir_to_string(down_child_name(Name)) = Name.
-
-:- func down_dirs_to_string(list(down_dir)) = string.
-
-down_dirs_to_string([]) = "".
-down_dirs_to_string([Dir | Dirs]) = DirStr :-
-    (
-        Dirs = [],
-        DirStr = down_dir_to_string(Dir)
-    ;
-        Dirs = [_ | _],
-        DirStr = down_dir_to_string(Dir) ++ "/" ++ down_dirs_to_string(Dirs)
-    ).
+%---------------------------------------------------------------------------%
 
 string_is_return_value_alias("r").
 string_is_return_value_alias("res").
@@ -1775,87 +1876,6 @@ string_is_return_value_alias("rv").
 string_is_return_value_alias("result").
 string_is_return_value_alias("return").
 string_is_return_value_alias("ret").
-
-%---------------------------------------------------------------------------%
-
-:- pred write_term_mode_debugger(debugger::in, maybe(browser_mode_func)::in,
-    list(down_dir)::in, io::di, io::uo) is det.
-
-write_term_mode_debugger(Debugger, MaybeModeFunc, Dirs, !IO) :-
-    (
-        MaybeModeFunc = yes(ModeFunc),
-        Mode = ModeFunc(Dirs),
-        ModeStr = browser_mode_to_string(Mode),
-        write_string_debugger(Debugger, ModeStr ++ "\n", !IO)
-    ;
-        MaybeModeFunc = no,
-        write_string_debugger(Debugger,
-            "Mode information not available.\n", !IO)
-    ).
-
-:- func browser_mode_to_string(browser_term_mode) = string.
-
-browser_mode_to_string(btm_input) = "Input".
-browser_mode_to_string(btm_output) = "Output".
-browser_mode_to_string(btm_not_applicable) = "Not Applicable".
-browser_mode_to_string(btm_unbound) = "Unbound".
-
-%---------------------------------------------------------------------------%
-
-    % These two functions are just like pprint.to_doc, except their input
-    % is not a natural term, but a synthetic term defined by a functor, a list
-    % of arguments, and if the synthetic term is a function application, then
-    % the result of that function application.
-    %
-    % The functor name has to be treated specially because '.'s therein
-    % usually denote separators in a module qualified name; the
-    % default pretty_printer formatter does not know this and will quote
-    % such names.
-    %
-:- func synthetic_term_to_doc(string, list(univ), maybe(univ)) = doc.
-
-synthetic_term_to_doc(Functor0, Args, MaybeReturn) = Doc :-
-    ( if
-        ( Functor0 = "!."
-        ; Functor0 = "."
-        ; Functor0 = ".."
-        ; Functor0 = "=.."
-        ; not string.contains_char(Functor0, ('.'))
-        )
-    then
-        Doc0 = format_term(Functor0, Args)
-    else
-        FunctorDoc =
-            qualified_functor_to_doc(string.split_at_char(('.'), Functor0)),
-        (
-            Args = [],
-            Doc0 = FunctorDoc
-        ;
-            Args = [_ | _],
-            Doc0 = indent([
-                FunctorDoc, str("("),
-                    format_list(Args, group([str(", "), nl])),
-                str(")")
-            ])
-        )
-    ),
-    (
-        MaybeReturn = no,
-        Doc = Doc0
-    ;
-        MaybeReturn = yes(Return),
-        Doc = docs([Doc0, str(" = "), format_arg(format_univ(Return))])
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- func qualified_functor_to_doc(list(string)) = doc.
-
-qualified_functor_to_doc([]) = str("").
-qualified_functor_to_doc([Part]) = str(term_io.quoted_atom(Part)).
-qualified_functor_to_doc([PartA, PartB | Parts]) =
-    docs([str(term_io.quoted_atom(PartA)), str("."),
-        qualified_functor_to_doc([PartB | Parts])]).
 
 %---------------------------------------------------------------------------%
 :- end_module mdb.browse.

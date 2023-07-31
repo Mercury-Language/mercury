@@ -276,9 +276,6 @@
 :- pred run_param_command(debugger::in, param_cmd::in, bool::in,
     browser_info::in, browser_info::out, io::di, io::uo) is det.
 
-:- pred show_settings(debugger::in, bool::in, browser_info::in,
-    io::di, io::uo) is det.
-
 :- pred nl_debugger(debugger::in, io::di, io::uo) is det.
 
 :- pred write_string_debugger(debugger::in, string::in, io::di, io::uo) is det.
@@ -840,6 +837,9 @@ run_param_command(Debugger, ParamCmd, ShowPath, !PersistentState, !IO) :-
 % Display predicates.
 %
 
+:- pred show_settings(debugger::in, bool::in, browser_info::in,
+    io::di, io::uo) is det.
+
 show_settings(Debugger, ShowPath, Info, !IO) :-
     show_settings_caller(Debugger, Info, browse, "Browser", !IO),
     show_settings_caller(Debugger, Info, print, "Print", !IO),
@@ -1070,6 +1070,8 @@ caller_params_to_mdb_command(CallerOpt, CallerParams) = Cmds :-
     Cmds = FormatCmd ++ FormatParamCmds.
 
 :- func caller_params_to_desc(caller_params) = string.
+% XXX Why is this here? It is not used.
+:- pragma consider_used(func(caller_params_to_desc/1)).
 
 caller_params_to_desc(caller_params(Format, FlatParams, RawPrettyParams,
         VerboseParams, PrettyParams)) =
@@ -1090,6 +1092,8 @@ format_params_to_mdb_command(CmdCallerOpt, FormatParams) = Cmds :-
     Cmds = DepthCmd ++ SizeCmd ++ WidthCmd ++ LinesCmd.
 
 :- func format_params_to_desc(format_params) = string.
+% XXX Why is this here? It is not used.
+:- pragma consider_used(func(format_params_to_desc/1)).
 
 format_params_to_desc(format_params(Depth, Size, Width, Lines)) =
     "depth " ++ int_to_string(Depth) ++ ", " ++
