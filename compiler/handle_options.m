@@ -2314,8 +2314,7 @@ handle_option_to_option_implications(OpMode, !Globals) :-
         UnusedImports = yes,
         % warn_unused_interface_imports does *part* of the job
         % of warn_unused_imports.
-        globals.set_option(warn_unused_interface_imports, bool(no),
-            !Globals)
+        globals.set_option(warn_unused_interface_imports, bool(no), !Globals)
     ).
 
     % --use-opt-files implies --no-warn-missing-opt-files since
