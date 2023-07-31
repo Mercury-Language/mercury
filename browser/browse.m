@@ -238,8 +238,7 @@
 print_browser_term(OutputStream, CallerType, Term, State, !IO) :-
     print_common(OutputStream, CallerType, no, Term, State, !IO).
 
-print_browser_term_format(OutputStream, CallerType, Format, Term, State,
-        !IO) :-
+print_browser_term_format(OutputStream, CallerType, Format, Term, State, !IO) :-
     print_common(OutputStream, CallerType, yes(Format), Term, State, !IO).
 
 :- pred print_common(io.output_stream::in, browse_caller_type::in,
@@ -646,23 +645,24 @@ portray_maybe_path(Debugger, Caller, MaybeFormat, Info, MaybePath, !IO) :-
     io::di, io::uo) is cc_multi.
 
 portray(Debugger, Caller, MaybeFormat, Info, !IO) :-
+    % XXX Move the next call up to caller.
     browser_info.get_format(Info, Caller, MaybeFormat, Format),
     browser_info.get_format_params(Info, Caller, Format, Params),
     deref_subterm(Info ^ bri_term, Info ^ bri_dirs, SubResult),
     (
-        SubResult = deref_result(SubUniv),
+        SubResult = deref_result(BrowserTerm),
         (
             Format = flat,
-            portray_flat(Debugger, SubUniv, Params, !IO)
+            portray_flat(Debugger, BrowserTerm, Params, !IO)
         ;
             Format = raw_pretty,
-            portray_raw_pretty(Debugger, SubUniv, Params, !IO)
+            portray_raw_pretty(Debugger, BrowserTerm, Params, !IO)
         ;
             Format = verbose,
-            portray_verbose(Debugger, SubUniv, Params, !IO)
+            portray_verbose(Debugger, BrowserTerm, Params, !IO)
         ;
             Format = pretty,
-            portray_pretty(Debugger, SubUniv, Params, !IO)
+            portray_pretty(Debugger, BrowserTerm, Params, !IO)
         )
     ;
         SubResult = deref_error(OKPath, ErrorDir),
@@ -694,15 +694,16 @@ portray_flat(Debugger, BrowserTerm, Params, !IO) :-
     browser_term_size_left_from_max(BrowserTerm, max_print_size,
         RemainingSize),
     ( if RemainingSize >= 0 then
-        io.output_stream(Stream, !IO),
-        portray_flat_write_browser_term(Stream, BrowserTerm, !IO)
+        portray_flat_write_browser_term(string.builder.handle, BrowserTerm,
+            string.builder.init, State),
+        BrowserTermStr = to_string(State)
     else
         io.get_stream_db(StreamDb, !IO),
         BrowserDb = browser_db(StreamDb),
         browser_term_to_string(BrowserDb, BrowserTerm, Params ^ size,
-            Params ^ depth, Str),
-        write_string_debugger(Debugger, Str, !IO)
-    ).
+            Params ^ depth, BrowserTermStr)
+    ),
+    write_string_debugger(Debugger, BrowserTermStr, !IO).
 
 :- pred portray_flat_write_browser_term(Stream::in, browser_term::in,
     State::di, State::uo) is cc_multi
