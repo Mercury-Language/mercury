@@ -252,21 +252,21 @@
 % Non-interactive display.
 %
 
-print_browser_term(OutputStream, CallerType, Term, State, !IO) :-
-    print_common(OutputStream, CallerType, no, Term, State, !IO).
+print_browser_term(OutputStream, Caller, Term, State, !IO) :-
+    print_common(OutputStream, Caller, no, Term, State, !IO).
 
-print_browser_term_format(OutputStream, CallerType, Format, Term, State, !IO) :-
-    print_common(OutputStream, CallerType, yes(Format), Term, State, !IO).
+print_browser_term_format(OutputStream, Caller, Format, Term, State, !IO) :-
+    print_common(OutputStream, Caller, yes(Format), Term, State, !IO).
 
 :- pred print_common(io.text_output_stream::in, browse_caller_type::in,
     maybe(portray_format)::in, browser_term::in,
     browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
-print_common(OutputStream, CallerType, MaybeFormat, BrowserTerm, State, !IO) :-
+print_common(OutputStream, Caller, MaybeFormat, BrowserTerm, State, !IO) :-
     MaybeModeFunc = no,
-    Info = browser_info_init(BrowserTerm, CallerType, MaybeFormat,
+    Info = browser_info_init(BrowserTerm, Caller, MaybeFormat,
         MaybeModeFunc, State),
-    browser_info.get_format(Info, CallerType, MaybeFormat, Format),
+    browser_info.get_format(Info, Caller, MaybeFormat, Format),
 
     % For plain terms, we assume that the variable name has been printed
     % on the first part of the line. If the format is something other than
@@ -279,10 +279,7 @@ print_common(OutputStream, CallerType, MaybeFormat, BrowserTerm, State, !IO) :-
     else
         true
     ),
-    % XXX why different from MaybeFormat?
-    PortrayMaybeFormat = no,
-    portray(debugger_internal(OutputStream), CallerType, PortrayMaybeFormat,
-        Info, !IO).
+    portray(debugger_internal(OutputStream), Caller, Format, Info, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -377,7 +374,7 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
     % as the definition of the command type.
 
     % XXX The commands `set', `ls' and `print' should allow the format
-    % to be specified by an option. In each case we instead pass `no' to
+    % to be specified by an option. In each case we pass a default format
     % the respective handler.
     (
         Command = cmd_print(PrintOption, MaybePath),
@@ -483,11 +480,12 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
     maybe(maybe_option_table(format_option))::in, browser_info::in,
     maybe(path)::in, io::di, io::uo) is cc_multi.
 
-do_portray(Debugger, CallerType, MaybeMaybeOptionTable, Info, MaybePath,
+do_portray(Debugger, Caller, MaybeMaybeOptionTable, Info, MaybePath,
         !IO) :-
     (
         MaybeMaybeOptionTable = no,
-        portray_maybe_path(Debugger, CallerType, no, Info, MaybePath, !IO)
+        browser_info.get_format(Info, Caller, no, Format),
+        portray_maybe_path(Debugger, Caller, Format, Info, MaybePath, !IO)
     ;
         MaybeMaybeOptionTable = yes(MaybeOptionTable),
         (
@@ -495,7 +493,8 @@ do_portray(Debugger, CallerType, MaybeMaybeOptionTable, Info, MaybePath,
             interpret_format_options(OptionTable, FormatResult),
             (
                 FormatResult = ok(MaybeFormat),
-                portray_maybe_path(Debugger, CallerType, MaybeFormat, Info,
+                browser_info.get_format(Info, Caller, MaybeFormat, Format),
+                portray_maybe_path(Debugger, Caller, Format, Info,
                     MaybePath, !IO)
             ;
                 FormatResult = error(Msg),
@@ -646,25 +645,22 @@ help(Debugger, !IO) :-
 %
 
 :- pred portray_maybe_path(debugger::in, browse_caller_type::in,
-    maybe(portray_format)::in, browser_info::in,
-    maybe(path)::in, io::di, io::uo) is cc_multi.
+    portray_format::in, browser_info::in, maybe(path)::in,
+    io::di, io::uo) is cc_multi.
 
-portray_maybe_path(Debugger, Caller, MaybeFormat, Info, MaybePath, !IO) :-
+portray_maybe_path(Debugger, Caller, Format, Info, MaybePath, !IO) :-
     (
         MaybePath = no,
-        portray(Debugger, Caller, MaybeFormat, Info, !IO)
+        portray(Debugger, Caller, Format, Info, !IO)
     ;
         MaybePath = yes(Path),
-        portray_path(Debugger, Caller, MaybeFormat, Info, Path, !IO)
+        portray_path(Debugger, Caller, Format, Info, Path, !IO)
     ).
 
 :- pred portray(debugger::in, browse_caller_type::in,
-    maybe(portray_format)::in, browser_info::in,
-    io::di, io::uo) is cc_multi.
+    portray_format::in, browser_info::in, io::di, io::uo) is cc_multi.
 
-portray(Debugger, Caller, MaybeFormat, Info, !IO) :-
-    % XXX Move the next call up to caller.
-    browser_info.get_format(Info, Caller, MaybeFormat, Format),
+portray(Debugger, Caller, Format, Info, !IO) :-
     browser_info.get_format_params(Info, Caller, Format, Params),
     deref_subterm(Info ^ bri_term, Info ^ bri_dirs, SubResult),
     (
@@ -685,17 +681,16 @@ portray(Debugger, Caller, MaybeFormat, Info, !IO) :-
     ;
         SubResult = deref_error(OKPath, ErrorDir),
         report_deref_error(Debugger, OKPath, ErrorDir, !IO)
-        % write_string_debugger(Debugger, "error: no such subterm")
     ),
     nl_debugger(Debugger, !IO).
 
 :- pred portray_path(debugger::in, browse_caller_type::in,
-    maybe(portray_format)::in, browser_info::in, path::in,
+    portray_format::in, browser_info::in, path::in,
     io::di, io::uo) is cc_multi.
 
-portray_path(Debugger, Caller, MaybeFormat, Info0, Path, !IO) :-
+portray_path(Debugger, Caller, Format, Info0, Path, !IO) :-
     set_path(Path, Info0, Info),
-    portray(Debugger, Caller, MaybeFormat, Info, !IO).
+    portray(Debugger, Caller, Format, Info, !IO).
 
 :- pred portray_flat(debugger::in, browser_term::in, format_params::in,
     io::di, io::uo) is cc_multi.
