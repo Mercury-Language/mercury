@@ -11,6 +11,7 @@
 % This file is only present so that the ssdb library is
 % generated with the correct name.
 %-----------------------------------------------------------------------------%
+
 :- module mer_ssdb.
 
 :- implementation.
