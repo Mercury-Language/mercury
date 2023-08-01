@@ -114,6 +114,8 @@
 :- import_module mdb.declarative_tree.
 :- import_module mdb.io_action.
 :- import_module mdb.parse.
+:- import_module mdb.print_term.
+:- import_module mdb.term_paths.
 :- import_module mdb.term_rep.
 :- import_module mdb.util.
 :- import_module mdbcomp.

@@ -29,6 +29,7 @@
 #include "mdb.browser_info.mh"
 #include "mdb.browser_term.mh"
 #include "mdb.interactive_query.mh"
+#include "mdb.save_term.mh"
 
 #include "type_desc.mh"
 

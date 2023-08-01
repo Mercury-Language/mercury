@@ -164,6 +164,7 @@
 :- import_module mdb.browser_info.
 :- import_module mdb.browser_term.
 :- import_module mdb.listing.
+:- import_module mdb.print_term.
 
 :- pragma foreign_decl("C",
 "
@@ -2049,7 +2050,7 @@ make_arg_univs([Var | Vars], Pos, ArgUnivs) :-
         else
             make_arg_univs(Vars, Pos, ArgUnivs0)
         ),
-        type_to_univ('_' : mdb.browse.unbound, Univ),
+        type_to_univ('_' : mdb.print_term.unbound, Univ),
         ArgUnivs = [Univ | ArgUnivs0]
     ;
         Var = bound_head_var(_, VarPos, Value),
@@ -2058,7 +2059,7 @@ make_arg_univs([Var | Vars], Pos, ArgUnivs) :-
             type_to_univ(Value, Univ)
         else
             make_arg_univs(Vars, Pos, ArgUnivs0),
-            type_to_univ('_' : mdb.browse.unbound, Univ)
+            type_to_univ('_' : mdb.print_term.unbound, Univ)
         ),
         ArgUnivs = [Univ | ArgUnivs0]
     ;

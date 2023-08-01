@@ -1085,7 +1085,8 @@ MR_trace_headvar_num(int var_number, int *arg_pos)
 // its arity is zero. This wastes a word of space but avoids depending on the
 // current typeinfo optimization scheme.
 
-#define unbound_ctor_name MR_NONSTD_TYPE_CTOR_INFO_NAME(mdb__browse, unbound, 0)
+#define unbound_ctor_name \
+    MR_NONSTD_TYPE_CTOR_INFO_NAME(mdb__print_term, unbound, 0)
 
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(unbound_ctor_name);
 

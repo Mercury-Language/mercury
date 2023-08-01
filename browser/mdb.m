@@ -26,6 +26,9 @@
 :- include_module interactive_query.
 :- include_module io_action.
 :- include_module listing.
+:- include_module print_term.
+:- include_module save_term.
+:- include_module term_paths.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

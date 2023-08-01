@@ -29,6 +29,9 @@
 
 :- implementation.
 
+:- import_module mdb.percent_encoding.
+:- import_module mdb.print_term.
+
 :- import_module bool.
 :- import_module char.
 :- import_module construct.
@@ -40,9 +43,6 @@
 :- import_module string.
 :- import_module type_desc.
 :- import_module univ.
-
-:- import_module mdb.browse.
-:- import_module mdb.percent_encoding.
 
 %---------------------------------------------------------------------------%
 
@@ -140,11 +140,11 @@ write_browser_term_in_script(Stream, BrowserTerm, !IO) :-
             Arity = 2,
             flatten_list(Term, ElementUnivs0)
         then
-            length(ElementUnivs0, Length),
+            list.length(ElementUnivs0, Length),
             ( if Length = 1 then
                 Functor = "list of 1 element"
             else
-                Functor = "list of " ++ from_int(Length) ++ " elements"
+                string.format("list of %d elements", [i(Length)], Functor)
             ),
             FlattenedList = yes(ElementUnivs0)
         else
@@ -153,7 +153,7 @@ write_browser_term_in_script(Stream, BrowserTerm, !IO) :-
         )
     ;
         BrowserTerm = synthetic_term(Functor, Args, MaybeResult),
-        Arity = length(Args),
+        list.length(Args, Arity),
         (
             MaybeResult = no,
             TypeName = "<<predicate>>"
@@ -194,7 +194,7 @@ write_browser_term_in_script(Stream, BrowserTerm, !IO) :-
         js_begin_array(Stream, !IO),
         (
             FlattenedList = yes(ElementUnivs),
-            foldl2(write_numbered_element_in_script(Stream),
+            list.foldl2(write_numbered_element_in_script(Stream),
                 ElementUnivs, 1, _ElementNumber, !IO)
         ;
             FlattenedList = no,
