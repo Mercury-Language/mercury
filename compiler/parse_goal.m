@@ -2875,19 +2875,18 @@ parse_atomic_params(Context, Term, VarSet, MaybeComponentsContexts) :-
         )
     else
         (
-            Term = term.functor(_, _, TermContext),
-            Pieces = [words("Invalid atomic goal parameter."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, TermContext, Pieces),
-            MaybeComponentsContexts = error1([Spec])
-        ;
             Term = term.variable(_, TermContext),
-            Pieces = [words("Expected atomic goal parameter, found variable."),
-                nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, TermContext, Pieces),
-            MaybeComponentsContexts = error1([Spec])
-        )
+            StartStr = "A variable such as"
+        ;
+            Term = term.functor(_, _, TermContext),
+            StartStr = "The term"
+        ),
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words(StartStr), quote(TermStr), 
+            words("is not a valid parameter of an atomic goal."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            TermContext, Pieces),
+        MaybeComponentsContexts = error1([Spec])
     ).
 
 :- pred parse_atomic_subterm(string::in, term::in, term::in,
