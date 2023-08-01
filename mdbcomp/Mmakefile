@@ -221,7 +221,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-# Ensure we recompile mdb__version if VERSION is changed.
+# Ensure we recompile mdb.version if VERSION is changed.
 $(os_subdir)mdb.o \
 $(os_subdir)mdb.pic_o \
 	: $(RUNTIME_DIR)/mercury_conf.h
