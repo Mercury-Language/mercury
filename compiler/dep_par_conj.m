@@ -69,13 +69,13 @@
 %   C = X + Y + Z.
 %
 % For each shared variable, we create a new future variable, which serves as
-% the conduit between the producer and the consumers both for synchronization
+% the conduit between the producer and the consumers, both for synchronization
 % and for the transmission of the shared variable's value. Note that we
 % create a new, distinct name for each shared variable in each consumer,
 % so that after the transformation, the only variables that occur in more than
 % one conjunct of the parallel conjunction are the variables that were already
-% ground before the parallel conjunction is entered (these include the future
-% variables).
+% ground before the parallel conjunction is entered. (These include the future
+% variables.)
 %
 % The specialization transformation looks for calls preceded by a contiguous
 % sequence of one or more calls to par_builtin.wait and/or followed by a
@@ -295,8 +295,8 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
         AllowSomePathsOnly = OptTuple ^ ot_allow_some_paths_only_waits,
 
         % We rely on dependency information in order to determine which calls
-        % are recursive. The information is stored within !ModuleInfo so
-        % doesn't need to be kept here, this call simply forces an update.
+        % are recursive. The information is stored within !ModuleInfo, so it
+        % doesn't need to be kept here; this call simply forces an update.
         module_info_rebuild_dependency_info(!ModuleInfo, _),
 
         GoalBeforeDepParConj = !.Goal,
@@ -653,8 +653,9 @@ sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
     ),
     update_instmap(!.Goal, !InstMap).
 
-    % Divide the shared variables into those that are consumed by this
-    % conjunct, and those that are produced by it.
+    % Divide the shared variables into
+    % - those that are consumed by this conjunct, and
+    % - those that are produced by it.
     %
 :- pred consumed_and_produced_vars(module_info::in, instmap::in,
     instmap_delta::in, set_of_progvar::in,
@@ -680,10 +681,10 @@ insert_wait_in_goal_for_proc(ModuleInfo, AllowSomePathsOnly, FutureMap,
         ConsumedVar, !Goal, !VarTable) :-
     insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap,
         ConsumedVar, WaitedOnAllSuccessPaths, !Goal, !VarTable),
-    % If we did not wait on all success paths then we must insert a wait here.
-    % This preserves the invariant that a procedure called with a future
-    % that it should wait on will wait on it in all cases. This way,
-    % any future_get calls after such a call are safe.
+    % If we did not wait on all success paths, then we must insert a wait here.
+    % This preserves the invariant that a procedure is called with a future
+    % that it should wait on, it will actually wait on it in all cases.
+    % This way, any future_get calls after such a call are safe.
     (
         WaitedOnAllSuccessPaths = waited_on_all_success_paths
     ;
@@ -701,14 +702,15 @@ insert_wait_in_goal_for_proc(ModuleInfo, AllowSomePathsOnly, FutureMap,
 :- pred join_branches(waited_on_all_success_paths::in,
     waited_on_all_success_paths::in, waited_on_all_success_paths::out) is det.
 
-join_branches(waited_on_all_success_paths, waited_on_all_success_paths,
-    waited_on_all_success_paths).
-join_branches(waited_on_all_success_paths, not_waited_on_all_success_paths,
-    not_waited_on_all_success_paths).
-join_branches(not_waited_on_all_success_paths, waited_on_all_success_paths,
-    not_waited_on_all_success_paths).
-join_branches(not_waited_on_all_success_paths, not_waited_on_all_success_paths,
-    not_waited_on_all_success_paths).
+join_branches(WaitedA, WaitedB, Waited) :-
+    ( if
+        WaitedA = waited_on_all_success_paths,
+        WaitedB = waited_on_all_success_paths
+    then
+        Waited = waited_on_all_success_paths
+    else
+        Waited = not_waited_on_all_success_paths
+    ).
 
     % insert_wait_in_goal(ModuleInfo, FutureMap, ConsumedVar, Goal0, Goal,
     %   !VarTable):
@@ -734,7 +736,7 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     % InvariantEstablished should be true if AllowSomePathsOnly = no
     % implies WaitedOnAllSuccessPaths0 = waited_on_all_success_paths.
-    ( if var_in_nonlocals(ConsumedVar, Goal0) then
+    ( if var_in_nonlocals(Goal0, ConsumedVar) then
         (
             GoalExpr0 = conj(ConjType, Goals0),
             InvariantEstablished = yes,
@@ -812,7 +814,7 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
         ;
             GoalExpr0 = if_then_else(Quant, Cond, Then0, Else0),
             InvariantEstablished = yes,
-            ( if var_in_nonlocals(ConsumedVar, Cond) then
+            ( if var_in_nonlocals(Cond, ConsumedVar) then
                 % XXX We could try to wait for the shared variable only when
                 % the condition needs it. This would require also waiting
                 % for the shared variable somewhere in the else branch.
@@ -972,25 +974,25 @@ insert_wait_in_plain_conj(_, _, _, _,
 insert_wait_in_plain_conj(ModuleInfo, AllowSomePathsOnly, FutureMap,
         ConsumedVar, WaitedOnAllSuccessPaths,
         [FirstGoal0 | LaterGoals0], Goals, !VarTable) :-
-    ( if var_in_nonlocals(ConsumedVar, FirstGoal0) then
+    ( if var_in_nonlocals(FirstGoal0, ConsumedVar) then
         insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
             FutureMap, ConsumedVar, GoalWaitedOnAllSuccessPaths,
             FirstGoal0, FirstGoal, !VarTable),
         (
             GoalWaitedOnAllSuccessPaths = waited_on_all_success_paths,
-            % We wait for ConsumedVar on all paths FirstGoal1 that can lead
+            % We wait for ConsumedVar on all paths in FirstGoal that can lead
             % to LaterGoals0, so the code in LaterGoals0 will be able to
             % access ConsumedVar without any further waiting.
             WaitedOnAllSuccessPaths = waited_on_all_success_paths,
             LaterGoals = LaterGoals0
         ;
             GoalWaitedOnAllSuccessPaths = not_waited_on_all_success_paths,
-            % We waited for ConsumedVar on some but not all paths in FirstGoal0
+            % We waited for ConsumedVar on some but not all paths in FirstGoal
             % that can lead to LaterGoals0. LaterGoals may therefore also wait
             % for ConsumedVar, and any such waits will also bind ConsumedVar.
             % We do not want both FirstGoal and LaterGoals binding ConsumedVar,
             % so the call to insert_wait_in_goal above has replaced all
-            % occurrences of ConsumedVar in FirstGoal with a fresh variable.
+            % occurrences of ConsumedVar in FirstGoal0 with a fresh variable.
             insert_wait_in_plain_conj(ModuleInfo, AllowSomePathsOnly,
                 FutureMap, ConsumedVar, WaitedOnAllSuccessPaths,
                 LaterGoals0, LaterGoals, !VarTable)
@@ -1032,7 +1034,7 @@ insert_wait_in_plain_conj(ModuleInfo, AllowSomePathsOnly, FutureMap,
 insert_wait_in_par_conj(_, _, _, _, !WaitedInConjunct, [], [], !VarTable).
 insert_wait_in_par_conj(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
         !WaitedInConjunct, [Goal0 | Goals0], [Goal | Goals], !VarTable) :-
-    ( if var_in_nonlocals(ConsumedVar, Goal0) then
+    ( if var_in_nonlocals(Goal0, ConsumedVar) then
         % ConsumedVar appears in Goal0, so wait for it in Goal0, but the code
         % in Goals0 will *not* be able to access ConsumedVar without waiting,
         % since the conjuncts are executed independently.
@@ -1115,7 +1117,7 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
         ; NumSolutions = at_most_many_cc
         ; NumSolutions = at_most_many
         ),
-        ( if var_in_nonlocals(ProducedVar, Goal0) then
+        ( if var_in_nonlocals(Goal0, ProducedVar) then
             (
                 GoalExpr0 = conj(ConjType, Goals0),
                 (
@@ -1147,7 +1149,7 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                 )
             ;
                 GoalExpr0 = if_then_else(QuantVars, Cond, Then0, Else0),
-                expect(var_not_in_nonlocals(ProducedVar, Cond), $pred,
+                expect(var_not_in_nonlocals(Cond, ProducedVar), $pred,
                     "condition binds shared variable"),
                 insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                     Then0, Then, !VarTable),
@@ -1241,7 +1243,7 @@ insert_signal_in_plain_conj(_ModuleInfo, _FutureMap, _ProducedVar,
         [], [], !VarTable).
 insert_signal_in_plain_conj(ModuleInfo, FutureMap, ProducedVar,
         [Goal0 | Goals0], Goals, !VarTable) :-
-    ( if var_in_nonlocals(ProducedVar, Goal0) then
+    ( if var_in_nonlocals(Goal0, ProducedVar) then
         % The first conjunct that mentions ProducedVar should bind ProducedVar.
         % Since we don't recurse in this case, we get here only for the first
         % conjunct.
@@ -1271,7 +1273,7 @@ insert_signal_in_par_conj(_ModuleInfo, _FutureMap, _ProducedVar,
         [], [], !VarTable).
 insert_signal_in_par_conj(ModuleInfo, FutureMap, ProducedVar,
         [Goal0 | Goals0], [Goal | Goals], !VarTable) :-
-    ( if var_in_nonlocals(ProducedVar, Goal0) then
+    ( if var_in_nonlocals(Goal0, ProducedVar) then
         % The first conjunct that mentions ProducedVar should bind ProducedVar.
         % Since we don't recurse in this case, we get here only for the first
         % conjunct.
@@ -1697,7 +1699,7 @@ map_arg_to_new_future(HeadVars, FutureArg, !FutureMap, !VarTable) :-
     lookup_var_entry(!.VarTable, HeadVar, HeadVarEntry),
     HeadVarType = HeadVarEntry ^ vte_type,
     HeadVarName = var_entry_name(HeadVar, HeadVarEntry),
-    make_future_var(HeadVarName, HeadVarType, FutureVar, _FutureVarType, 
+    make_future_var(HeadVarName, HeadVarType, FutureVar, _FutureVarType,
         !VarTable),
     map.det_insert(HeadVar, FutureVar, !FutureMap).
 
@@ -1753,8 +1755,7 @@ specialize_sequences_in_goal(Goal0, Goal, !SpecInfo) :-
         (
             ConjType = plain_conj,
             NonLocals = goal_get_nonlocals(Goal0),
-            specialize_sequences_in_conj(Goals0, Goals, NonLocals,
-                !SpecInfo),
+            specialize_sequences_in_conj(Goals0, Goals, NonLocals, !SpecInfo),
             conj_list_to_goal(Goals, GoalInfo0, Goal)
         ;
             ConjType = parallel_conj,
@@ -1886,7 +1887,8 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
         list.member(ProcId, pred_info_all_non_imported_procids(PredInfo)),
 
         % This test avoids some problems we have had with pushing signals and
-        % waits into callees, in some cases incorrect code is generated.
+        % waits into callees, which could result in incorrect code being
+        % generated.
         % See also a similar check in get_or_create_spec_par_proc/6.
         %
         % Don't push signals or waits into any procedure that contains a new
@@ -2139,16 +2141,21 @@ get_or_create_spec_par_proc(FutureArgs, CallPattern, OrigPPId, MaybeSpecProc,
         %
         % Don't push signals or waits into any procedure that has
         % already been specialised but doesn't match our specialisation.
-        PendingParProcsList = values(!.SpecInfo ^ spec_pending_procs),
-        not (
-            (
-                member(!.SpecInfo ^ spec_done_procs, _, DoneOrPendingParProc)
-            ;
-                member(DoneOrPendingParProc, PendingParProcsList)
-            ),
-            OrigPPId = DoneOrPendingParProc ^ new_ppid
+        (
+            some [DoneParProc] (
+                map.member(!.SpecInfo ^ spec_done_procs, _, DoneParProc),
+                OrigPPId = DoneParProc ^ new_ppid
+            )
+        ;
+            some [PendingParProc] (
+                list.member(_ - PendingParProc,
+                    !.SpecInfo ^ spec_pending_procs),
+                OrigPPId = PendingParProc ^ new_ppid
+            )
         )
     then
+        MaybeSpecProc = will_not_specialise
+    else
         % Queue a new parallel procedure to be made. We add the new specialized
         % predicate and procedure to the module_info now; its final body
         % will be set later.
@@ -2166,8 +2173,6 @@ get_or_create_spec_par_proc(FutureArgs, CallPattern, OrigPPId, MaybeSpecProc,
         !SpecInfo ^ spec_module_info := ModuleInfo,
         !SpecInfo ^ spec_pending_procs := PendingParProcs,
         !SpecInfo ^ spec_rev_proc_map := RevProcMap
-    else
-        MaybeSpecProc = will_not_specialise
     ).
 
 :- pred find_spec_par_proc_for_call_pattern(done_par_procs::in,
@@ -2230,13 +2235,13 @@ should_add_get_goal(NonLocals, FwdGoals, future_var_pair(_, Var)) :-
         % outside the conjunction also uses the variable.
         set_of_var.contains(NonLocals, Var)
     ;
-        % If any of the other goals in the conjunction mention the variable
+        % If any of the other goals in the conjunction mention the variable,
         % then we should also add a get_future variable call. We don't need to
         % check RevGoals, the only reason the variable might be mentioned there
         % would be because it was previously partially instantiated. But since
-        % we are adding a get_future call that does not make sense. I'm
-        % assuming that only free -> ground instantiation state changes are
-        % allowed for these variables.
+        % we are adding a get_future call that does not make sense. I [who?]
+        % am assuming that only free -> ground instantiation state changes
+        % are allowed for these variables.
         member(Goal, FwdGoals),
         GoalNonLocals = goal_get_nonlocals(Goal),
         set_of_var.contains(GoalNonLocals, Var)
@@ -2923,16 +2928,16 @@ should_we_push_signal_in_plain_conj(Var, [Conjunct | Conjuncts], !Signal) :-
     cost_after_signal::in, cost_after_signal::out) is det.
 
 should_we_push_signal_in_par_conj(_Var, [], _OrigSignal, !FinalSignal).
-should_we_push_signal_in_par_conj(Var, [Conjunct | Conjuncts], OrigSignal,
-        !FinalSignal) :-
+should_we_push_signal_in_par_conj(Var, [Conjunct | Conjuncts],
+        OrigSignal, !FinalSignal) :-
     FinalSignal0 = !.FinalSignal,
     should_we_push_signal(Var, Conjunct, OrigSignal, ConjunctSignal),
     (
         ConjunctSignal = not_seen_signal,
         % Neither the goal before the parallel conjunction nor the parallel
         % conjuncts we have looked at so far produce Var.
-        should_we_push_signal_in_par_conj(Var, Conjuncts, OrigSignal,
-            !FinalSignal)
+        should_we_push_signal_in_par_conj(Var, Conjuncts,
+            OrigSignal, !FinalSignal)
     ;
         ConjunctSignal = code_has_no_solutions,
         !:FinalSignal = code_has_no_solutions
@@ -2958,7 +2963,7 @@ should_we_push_signal_in_par_conj(Var, [Conjunct | Conjuncts], OrigSignal,
         !:FinalSignal = seen_signal_non_negligible_cost_after
     ),
     FinalSignal = !.FinalSignal,
-    expect(seen_more_signal(FinalSignal0, FinalSignal), $pred,
+    expect(we_have_seen_more_signal(FinalSignal0, FinalSignal), $pred,
         "final signal goes backwards").
 
 :- pred should_we_push_signal_in_disj(prog_var::in, list(hlds_goal)::in,
@@ -2966,8 +2971,8 @@ should_we_push_signal_in_par_conj(Var, [Conjunct | Conjuncts], OrigSignal,
     cost_after_signal::out) is det.
 
 should_we_push_signal_in_disj(_Var, [], _OrigSignal, code_has_no_solutions).
-should_we_push_signal_in_disj(Var, [FirstGoal | LaterGoals], OrigSignal,
-        Signal) :-
+should_we_push_signal_in_disj(Var, [FirstGoal | LaterGoals],
+        OrigSignal, Signal) :-
     should_we_push_signal(Var, FirstGoal, OrigSignal, SignalFirst),
     (
         SignalFirst = not_seen_signal,
@@ -2984,8 +2989,7 @@ should_we_push_signal_in_disj(Var, [FirstGoal | LaterGoals], OrigSignal,
         ),
         % We want to push the signal only if it is worth pushing
         % into one of the rest of the disjuncts.
-        should_we_push_signal_in_disj(Var, LaterGoals, OrigSignal,
-            Signal0),
+        should_we_push_signal_in_disj(Var, LaterGoals, OrigSignal, Signal0),
         (
             SignalFirst = seen_signal_negligible_cost_after,
             (
@@ -3011,8 +3015,8 @@ should_we_push_signal_in_disj(Var, [FirstGoal | LaterGoals], OrigSignal,
     cost_after_signal::out) is det.
 
 should_we_push_signal_in_cases(_Var, [], _OrigSignal, code_has_no_solutions).
-should_we_push_signal_in_cases(Var, [FirstCase | LaterCases], OrigSignal,
-        Signal) :-
+should_we_push_signal_in_cases(Var, [FirstCase | LaterCases],
+        OrigSignal, Signal) :-
     FirstCase = case(_, _, FirstGoal),
     should_we_push_signal(Var, FirstGoal, OrigSignal, SignalFirst),
     (
@@ -3051,39 +3055,56 @@ should_we_push_signal_in_cases(Var, [FirstCase | LaterCases], OrigSignal,
         )
     ).
 
-:- pred seen_more_signal(cost_after_signal::in, cost_after_signal::in)
+:- pred we_have_seen_more_signal(cost_after_signal::in, cost_after_signal::in)
     is semidet.
 
-seen_more_signal(SignalA, SignalB) :-
-    seen_more_signal_2(SignalA, SignalB) = yes.
+we_have_seen_more_signal(SignalA, SignalB) :-
+    seen_more_signal(SignalA, SignalB) = yes.
 
-:- func seen_more_signal_2(cost_after_signal, cost_after_signal) = bool.
+:- func seen_more_signal(cost_after_signal, cost_after_signal) = bool.
 
-seen_more_signal_2(not_seen_signal, _) = yes.
-seen_more_signal_2(code_has_no_solutions,
-    not_seen_signal) = no.
-seen_more_signal_2(code_has_no_solutions,
-    code_has_no_solutions) = yes.
-seen_more_signal_2(code_has_no_solutions,
-    seen_signal_negligible_cost_after) = no.
-seen_more_signal_2(code_has_no_solutions,
-    seen_signal_non_negligible_cost_after) = no.
-seen_more_signal_2(seen_signal_negligible_cost_after,
-    not_seen_signal) = no.
-seen_more_signal_2(seen_signal_negligible_cost_after,
-    code_has_no_solutions) = yes.
-seen_more_signal_2(seen_signal_negligible_cost_after,
-    seen_signal_negligible_cost_after) = yes.
-seen_more_signal_2(seen_signal_negligible_cost_after,
-    seen_signal_non_negligible_cost_after) = yes.
-seen_more_signal_2(seen_signal_non_negligible_cost_after,
-    not_seen_signal) = no.
-seen_more_signal_2(seen_signal_non_negligible_cost_after,
-    code_has_no_solutions) = yes.
-seen_more_signal_2(seen_signal_non_negligible_cost_after,
-    seen_signal_negligible_cost_after) = no.
-seen_more_signal_2(seen_signal_non_negligible_cost_after,
-    seen_signal_non_negligible_cost_after) = yes.
+seen_more_signal(FinalSignal0, FinalSignal) = SeenMoreSignal :-
+    (
+        FinalSignal0 = not_seen_signal,
+        SeenMoreSignal = yes
+    ;
+        FinalSignal0 = code_has_no_solutions,
+        (
+            ( FinalSignal = not_seen_signal
+            ; FinalSignal = seen_signal_negligible_cost_after
+            ; FinalSignal = seen_signal_non_negligible_cost_after
+            ),
+            SeenMoreSignal = no
+        ;
+            FinalSignal = code_has_no_solutions,
+            SeenMoreSignal = yes
+        )
+    ;
+        FinalSignal0 = seen_signal_negligible_cost_after,
+        (
+            FinalSignal = not_seen_signal,
+            SeenMoreSignal = no
+        ;
+            ( FinalSignal = code_has_no_solutions
+            ; FinalSignal = seen_signal_negligible_cost_after
+            ; FinalSignal = seen_signal_non_negligible_cost_after
+            ),
+            SeenMoreSignal = yes
+        )
+    ;
+        FinalSignal0 = seen_signal_non_negligible_cost_after,
+        (
+            ( FinalSignal = not_seen_signal
+            ; FinalSignal = seen_signal_negligible_cost_after
+            ),
+            SeenMoreSignal = no
+        ;
+            ( FinalSignal = code_has_no_solutions
+            ; FinalSignal = seen_signal_non_negligible_cost_after
+            ),
+            SeenMoreSignal = yes
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -3432,10 +3453,11 @@ find_shared_variables_2(ModuleInfo, ConjunctIndex,
     det_delete_nth(ConjunctIndex, InstMapDeltas, InstMapDeltasB),
     % Keep only nonlocals which were not already bound at the start of the
     % parallel conjunction.
-    Filter = (pred(Var::in) is semidet :-
-        instmap_lookup_var(InstMap, Var, VarInst),
-        not inst_is_bound(ModuleInfo, VarInst)
-    ),
+    Filter =
+        ( pred(Var::in) is semidet :-
+            instmap_lookup_var(InstMap, Var, VarInst),
+            not inst_is_bound(ModuleInfo, VarInst)
+        ),
     UnboundNonlocals = set_of_var.filter(Filter, Nonlocals),
     Changed =
         set_of_var.filter(changed_var(ModuleInfo, InstMapDeltasB),
@@ -3471,15 +3493,15 @@ det_delete_nth(N, List0, List) :-
     list.det_split_list(N, List0, Left, Right),
     List = Left ++ det_tail(Right).
 
-:- pred var_in_nonlocals(prog_var::in, hlds_goal::in) is semidet.
+:- pred var_in_nonlocals(hlds_goal::in, prog_var::in) is semidet.
 
-var_in_nonlocals(Var, Goal) :-
+var_in_nonlocals(Goal, Var) :-
     set_of_var.member(goal_get_nonlocals(Goal), Var).
 
-:- pred var_not_in_nonlocals(prog_var::in, hlds_goal::in) is semidet.
+:- pred var_not_in_nonlocals(hlds_goal::in, prog_var::in) is semidet.
 
-var_not_in_nonlocals(Var, Goal) :-
-    not var_in_nonlocals(Var, Goal).
+var_not_in_nonlocals(Goal, Var) :-
+    not var_in_nonlocals(Goal, Var).
 
 %---------------------------------------------------------------------------%
 %

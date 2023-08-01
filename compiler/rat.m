@@ -132,11 +132,11 @@ X / Y = X * rat.reciprocal(Y).
 
 :- func reciprocal(rat) = rat.
 
-reciprocal(r(Num, Denom)) =
+reciprocal(r(Num, Denom)) = Reciprocal :-
     ( if Num = 0 then
         unexpected($pred, "division by zero")
     else
-        r(signum(Num) * Denom, int.abs(Num))
+        Reciprocal = r(sign_num(Num) * Denom, int.abs(Num))
     ).
 
 numer(r(Num, _)) = Num.
@@ -154,7 +154,7 @@ rat_norm(Num, Denom) = Rat :-
         Rat = r(0, 1)
     else
         G = gcd(Num, Denom),
-        Rat = r((Num * signum(Denom)) // G, int.abs(Denom) // G)
+        Rat = r((Num * sign_num(Denom)) // G, int.abs(Denom) // G)
     ).
 
 :- func gcd(int, int) = int.
@@ -167,18 +167,18 @@ gcd_loop(A, B) = ( if B = 0 then A else gcd_loop(B, A rem B) ).
 
 :- func lcm(int, int) = int.
 
-lcm(A, B) =
+lcm(A, B) = LCM :-
     ( if A = 0 then
-        0
+        LCM = 0
     else if B = 0 then
-        0
+        LCM = 0
     else
-        int.abs((A // gcd(A, B)) * B)
+        LCM = int.abs((A // gcd(A, B)) * B)
     ).
 
-:- func signum(int) = int.
+:- func sign_num(int) = int.
 
-signum(N) = ( if N = 0 then 0 else if N < 0 then -1 else 1 ).
+sign_num(N) = ( if N = 0 then 0 else if N < 0 then -1 else 1 ).
 
     % Builtin comparison does not give a natural ordering on rats.
     %
