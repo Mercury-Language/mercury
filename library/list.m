@@ -39,14 +39,14 @@
 % :- type non_empty_list(T) =< list(T)
 %     --->    [T | list(T)].
 %
-% XXX Including the above subtype definitions generates errors like these:
-% term_conversion.m:199: In clause for predicate `term_to_univ_special_case'/6:
-% term_conversion.m:199:   error: ambiguous overloading causes type ambiguity.
-% term_conversion.m:199:   Possible type assignments include:
-% term_conversion.m:199:   V_95:
-% term_conversion.m:199:     `some [T] (list.list(T))'
-% term_conversion.m:199:   or
-% term_conversion.m:199:     `some [T] (list.non_empty_list(T))'
+% XXX Including the above subtype definitions in the code will mean that
+% every occurrence of the [] and [|] function symbols is ambiguous, in that
+% it could refer to a function symbol in the list type, or in one of the
+% empty_list and non_empty_list types. If you have a clause which has
+% many occurrences of these function symbols, you will exceed the
+% current typechecker's ambiguity limit, which it imposes because every
+% ambiguity doubles the number of type assignments it must keep track of.
+% Until that problem is solved, these subtypes should stay commented out.
 % UNDOC_PART_END
 %---------------------------------------------------------------------------%
 

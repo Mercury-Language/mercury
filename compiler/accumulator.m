@@ -323,7 +323,7 @@ accu_transform_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
             Spec = error_spec($pred, Severity, phase_accumulator_intro, Msgs),
 
             det_univ_to_type(!.Cookie, Specs0),
-            Specs = [Spec | Specs0],
+            Specs = [Spec | Specs0] : list(error_spec),
             type_to_univ(Specs, !:Cookie)
         )
     else

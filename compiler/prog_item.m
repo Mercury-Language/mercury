@@ -595,6 +595,16 @@
                 pti3_mode_defns             :: mode_ctor_checked_map,
 
                 % Items of various kinds in the interface.
+                % XXX The typeclass definitions in .int3 files have invariants
+                % that we cannot yet encode in a subtype. Specifically,
+                % these typeclass definitions are not only guaranteed to have
+                % class_interface_abstract as their tc_class_methods fields
+                % (which is enforced by our use of item_abstract_typeclass_info
+                % here), they are guaranteed to have empty lists as their
+                % tc_superclasses and tc_fundeps fields. However, having
+                % empty_list as a subtype of list is not yet feasible,
+                % for the reason described next to the commented out
+                % empty_list subtype definition in librrary/list.m.
                 pti3_int_typeclasses    :: list(item_abstract_typeclass_info),
                 pti3_int_instances      :: list(item_abstract_instance_info),
                 pti3_int_type_repns         :: type_ctor_repn_map
