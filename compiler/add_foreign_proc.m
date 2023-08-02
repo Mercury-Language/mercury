@@ -189,9 +189,10 @@ add_pragma_foreign_proc(ItemMercurystatus, PredStatus, PragmaFPInfo,
         CurrentBackend = lookup_current_backend(Globals),
         globals.get_backend_foreign_languages(Globals, BackendForeignLangs),
         PragmaForeignLanguage = get_foreign_language(Attributes),
-        ExtraAttrs = get_extra_attributes(Attributes),
+        MaybeForSpecificBackend = get_for_specific_backend(Attributes),
         ( if
-            is_applicable_for_current_backend(CurrentBackend, ExtraAttrs) = no
+            MaybeForSpecificBackend = yes(SpecificBackend),
+            SpecificBackend \= CurrentBackend
         then
             % Ignore this foreign_proc.
             % XXX Why are we treating this form of inapplicability
@@ -321,25 +322,6 @@ add_pragma_foreign_proc(ItemMercurystatus, PredStatus, PragmaFPInfo,
             !:Specs = [OptSpec | !.Specs]
         else
             true
-        )
-    ).
-
-:- func is_applicable_for_current_backend(backend,
-    list(pragma_foreign_proc_extra_attribute)) = bool.
-
-is_applicable_for_current_backend(_CurrentBackend, []) = yes.
-is_applicable_for_current_backend(CurrentBackend, [Attr | Attrs]) = Result :-
-    (
-        ( Attr = refers_to_llds_stack
-        ; Attr = needs_call_standard_output_registers
-        ),
-        Result = is_applicable_for_current_backend(CurrentBackend, Attrs)
-    ;
-        Attr = backend(Backend),
-        ( if Backend = CurrentBackend then
-            Result = is_applicable_for_current_backend(CurrentBackend, Attrs)
-        else
-            Result = no
         )
     ).
 

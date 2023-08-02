@@ -1081,7 +1081,7 @@ compute_block_needs_frame(_Label, Instrs, NeedsFrame) :-
                 ;
                     MaybeDefLabel = yes(_)
                 ;
-                    NeedStack = yes
+                    NeedStack = refers_to_llds_stack
                 )
             ;
                 % If we assign to the succip register, then we need the saved

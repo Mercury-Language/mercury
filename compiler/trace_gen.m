@@ -759,7 +759,8 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     TraceCode1 = singleton(
         llds_instr(foreign_proc_code([], TraceComponents1,
             proc_will_not_call_mercury, no, no, MaybeLayoutLabel,
-            no, MaybeHashDefLabel, yes, proc_may_not_duplicate), "")
+            no, MaybeHashDefLabel, refers_to_llds_stack,
+            proc_may_not_duplicate), "")
     ),
     % Stage 6.
     (
@@ -789,7 +790,7 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         TraceCode3 = singleton(
             llds_instr(foreign_proc_code([], TraceComponents3,
                 proc_will_not_call_mercury, no, no, no, no, no,
-                yes, proc_may_not_duplicate),
+                refers_to_llds_stack, proc_may_not_duplicate),
                 "initialize tail recursion count")
         )
     ;
@@ -807,7 +808,7 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         TraceCode4 = singleton(
             llds_instr(foreign_proc_code([], TraceComponents4,
                 proc_will_not_call_mercury, no, no, no, no, no,
-                yes, proc_may_not_duplicate), "")
+                refers_to_llds_stack, proc_may_not_duplicate), "")
         )
     ;
         MaybeCallTableLval = no,
@@ -1080,7 +1081,7 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
     ForeignLangCode = singleton(
         llds_instr(foreign_proc_code([], ForeignLangComponents,
             proc_will_not_call_mercury, no, no, no, no, no,
-            yes, proc_may_duplicate), "")
+            refers_to_llds_stack, proc_may_duplicate), "")
     ),
     Code = ForeignLangCode ++ MaxfrCode ++ TailRecLvalCode.
 
@@ -1210,7 +1211,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
                 % eliminate this other label.
             llds_instr(foreign_proc_code([], TraceComponents,
                 proc_may_call_mercury, no, no, yes(Label), no, yes(Label),
-                yes, proc_may_not_duplicate), "")
+                refers_to_llds_stack, proc_may_not_duplicate), "")
         ]),
     Code = ProduceCode ++ TailRecResetCode ++ TraceCode.
 

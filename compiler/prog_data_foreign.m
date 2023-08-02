@@ -21,7 +21,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 
-:- import_module bool.
 :- import_module list.
 :- import_module maybe.
 :- import_module set.
@@ -251,32 +250,37 @@ default_export_enum_attributes =
 :- func get_may_call_mercury(pragma_foreign_proc_attributes) =
     proc_may_call_mercury.
 :- func get_thread_safe(pragma_foreign_proc_attributes) = proc_thread_safe.
-:- func get_tabled_for_io(pragma_foreign_proc_attributes) =
-    proc_tabled_for_io.
+:- func get_tabled_for_io(pragma_foreign_proc_attributes)
+    = proc_tabled_for_io.
 :- func get_purity(pragma_foreign_proc_attributes) = purity.
 :- func get_terminates(pragma_foreign_proc_attributes) = proc_terminates.
-:- func get_user_annotated_sharing(pragma_foreign_proc_attributes) =
-    user_annotated_sharing.
-:- func get_may_throw_exception(pragma_foreign_proc_attributes) =
-    proc_may_throw_exception.
-:- func get_ordinary_despite_detism(pragma_foreign_proc_attributes) = bool.
-:- func get_may_modify_trail(pragma_foreign_proc_attributes) =
-    proc_may_modify_trail.
-:- func get_may_call_mm_tabled(pragma_foreign_proc_attributes) =
-    proc_may_call_mm_tabled.
+:- func get_user_annotated_sharing(pragma_foreign_proc_attributes)
+    = user_annotated_sharing.
+:- func get_ordinary_despite_detism(pragma_foreign_proc_attributes)
+    = maybe_ordinary_despite_detism.
+:- func get_may_throw_exception(pragma_foreign_proc_attributes)
+    = proc_may_throw_exception.
+:- func get_may_modify_trail(pragma_foreign_proc_attributes)
+    = proc_may_modify_trail.
+:- func get_may_call_mm_tabled(pragma_foreign_proc_attributes)
+    = proc_may_call_mm_tabled.
 :- func get_box_policy(pragma_foreign_proc_attributes) = box_policy.
-:- func get_affects_liveness(pragma_foreign_proc_attributes) =
-    proc_affects_liveness.
-:- func get_allocates_memory(pragma_foreign_proc_attributes) =
-    proc_allocates_memory.
-:- func get_registers_roots(pragma_foreign_proc_attributes) =
-    proc_registers_roots.
-:- func get_may_duplicate(pragma_foreign_proc_attributes) =
-    maybe(proc_may_duplicate).
-:- func get_may_export_body(pragma_foreign_proc_attributes) =
-    maybe(proc_may_export_body).
-:- func get_extra_attributes(pragma_foreign_proc_attributes)
-    = pragma_foreign_proc_extra_attributes.
+:- func get_affects_liveness(pragma_foreign_proc_attributes)
+    = proc_affects_liveness.
+:- func get_allocates_memory(pragma_foreign_proc_attributes)
+    = proc_allocates_memory.
+:- func get_registers_roots(pragma_foreign_proc_attributes)
+    = proc_registers_roots.
+:- func get_refers_to_llds_stack(pragma_foreign_proc_attributes)
+    = maybe_refers_to_llds_stack.
+:- func get_call_std_out_regs(pragma_foreign_proc_attributes)
+    = maybe_call_std_out_regs.
+:- func get_may_duplicate(pragma_foreign_proc_attributes)
+    = maybe(proc_may_duplicate).
+:- func get_may_export_body(pragma_foreign_proc_attributes)
+    = maybe(proc_may_export_body).
+:- func get_for_specific_backend(pragma_foreign_proc_attributes)
+    = maybe(backend).
 
 :- pred set_may_call_mercury(proc_may_call_mercury::in,
     pragma_foreign_proc_attributes::in,
@@ -299,10 +303,10 @@ default_export_enum_attributes =
 :- pred set_user_annotated_sharing(user_annotated_sharing::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-:- pred set_may_throw_exception(proc_may_throw_exception::in,
+:- pred set_ordinary_despite_detism(maybe_ordinary_despite_detism::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-:- pred set_ordinary_despite_detism(bool::in,
+:- pred set_may_throw_exception(proc_may_throw_exception::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 :- pred set_may_modify_trail(proc_may_modify_trail::in,
@@ -323,13 +327,19 @@ default_export_enum_attributes =
 :- pred set_registers_roots(proc_registers_roots::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
+:- pred set_refers_to_llds_stack(maybe_refers_to_llds_stack::in,
+    pragma_foreign_proc_attributes::in,
+    pragma_foreign_proc_attributes::out) is det.
+:- pred set_call_std_out_regs(maybe_call_std_out_regs::in,
+    pragma_foreign_proc_attributes::in,
+    pragma_foreign_proc_attributes::out) is det.
 :- pred set_may_duplicate(maybe(proc_may_duplicate)::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 :- pred set_may_export_body(maybe(proc_may_export_body)::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
-:- pred add_extra_attribute(pragma_foreign_proc_extra_attribute::in,
+:- pred set_for_specific_backend(maybe(backend)::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
@@ -414,6 +424,10 @@ default_export_enum_attributes =
 :- pred pragma_get_vars_and_var_infos(list(pragma_var)::in,
     list(prog_var)::out, list(foreign_arg_name_mode_box)::out) is det.
 
+:- type maybe_ordinary_despite_detism
+    --->    not_ordinary_despite_detism
+    ;       ordinary_despite_detism.
+
 :- type proc_affects_liveness
     --->    proc_affects_liveness
     ;       proc_does_not_affect_liveness
@@ -465,10 +479,13 @@ default_export_enum_attributes =
             % makes calls back to Mercury and not throwing an exception
             % otherwise.
 
-:- type pragma_foreign_proc_extra_attribute
-    --->    refers_to_llds_stack
-    ;       backend(backend)
-    ;       needs_call_standard_output_registers.
+:- type maybe_refers_to_llds_stack
+    --->    does_not_refer_to_llds_stack
+    ;       refers_to_llds_stack.
+
+:- type maybe_call_std_out_regs
+    --->    no_request_for_call_std_out_regs
+    ;       needs_call_std_out_regs.
             % On the LLDS backend, this foreign_proc needs to put its outputs
             % into the same registers as if it were a call. This is useful
             % if the code of the foreign procedure being invoked can suspend
@@ -477,9 +494,6 @@ default_export_enum_attributes =
             % must put them where calls expect them, but without this
             % attribute, the LLDS code generator could try to put the output
             % somewhere else.
-
-:- type pragma_foreign_proc_extra_attributes ==
-    list(pragma_foreign_proc_extra_attribute).
 
 %---------------------------------------------------------------------------%
 
@@ -497,31 +511,34 @@ default_export_enum_attributes =
                 attr_purity                     :: purity,
                 attr_terminates                 :: proc_terminates,
                 attr_user_annotated_sharing     :: user_annotated_sharing,
-                attr_may_throw_exception        :: proc_may_throw_exception,
                 % The ordinary_despite_detism attribute is not publicly
                 % documented, but it is used in the implementation of
                 % catch_impl for C# and Java in library/exception.m.
-                attr_ordinary_despite_detism    :: bool,
+                attr_ordinary_despite_detism    ::
+                                            maybe_ordinary_despite_detism,
+                attr_may_throw_exception        :: proc_may_throw_exception,
                 attr_may_modify_trail           :: proc_may_modify_trail,
                 attr_may_call_mm_tabled         :: proc_may_call_mm_tabled,
                 attr_box_policy                 :: box_policy,
                 attr_affects_liveness           :: proc_affects_liveness,
                 attr_allocates_memory           :: proc_allocates_memory,
                 attr_registers_roots            :: proc_registers_roots,
+                attr_refers_to_llds_stack       :: maybe_refers_to_llds_stack,
+                attr_call_std_out_regs          :: maybe_call_std_out_regs,
                 attr_may_duplicate              :: maybe(proc_may_duplicate),
                 attr_may_export_body            :: maybe(proc_may_export_body),
-                attr_extra_attributes ::
-                    list(pragma_foreign_proc_extra_attribute)
+                attr_for_specific_backend       :: maybe(backend)
             ).
 
 default_attributes(Language) =
     attributes(Language, proc_may_call_mercury, proc_not_thread_safe,
         proc_not_tabled_for_io, purity_impure, depends_on_mercury_calls,
-        no_user_annotated_sharing, default_exception_behaviour,
-        no, proc_may_modify_trail, proc_default_calls_mm_tabled,
-        bp_native_if_possible, proc_default_affects_liveness,
-        proc_default_allocates_memory, proc_default_registers_roots,
-        no, no, []).
+        no_user_annotated_sharing, not_ordinary_despite_detism,
+        default_exception_behaviour, proc_may_modify_trail,
+        proc_default_calls_mm_tabled, bp_native_if_possible,
+        proc_default_affects_liveness, proc_default_allocates_memory,
+        proc_default_registers_roots, does_not_refer_to_llds_stack,
+        no_request_for_call_std_out_regs, no, no, no).
 
 get_foreign_language(Attrs) = Attrs ^ attr_foreign_language.
 get_may_call_mercury(Attrs) = Attrs ^ attr_may_call_mercury.
@@ -530,56 +547,60 @@ get_tabled_for_io(Attrs) = Attrs ^ attr_tabled_for_io.
 get_purity(Attrs) = Attrs ^ attr_purity.
 get_terminates(Attrs) = Attrs ^ attr_terminates.
 get_user_annotated_sharing(Attrs) = Attrs ^ attr_user_annotated_sharing.
-get_may_throw_exception(Attrs) = Attrs ^ attr_may_throw_exception.
 get_ordinary_despite_detism(Attrs) = Attrs ^ attr_ordinary_despite_detism.
+get_may_throw_exception(Attrs) = Attrs ^ attr_may_throw_exception.
 get_may_modify_trail(Attrs) = Attrs ^ attr_may_modify_trail.
 get_may_call_mm_tabled(Attrs) = Attrs ^ attr_may_call_mm_tabled.
 get_box_policy(Attrs) = Attrs ^ attr_box_policy.
 get_affects_liveness(Attrs) = Attrs ^ attr_affects_liveness.
 get_allocates_memory(Attrs) = Attrs ^ attr_allocates_memory.
 get_registers_roots(Attrs) = Attrs ^ attr_registers_roots.
+get_refers_to_llds_stack(Attrs) = Attrs ^ attr_refers_to_llds_stack.
+get_call_std_out_regs(Attrs) = Attrs ^ attr_call_std_out_regs.
 get_may_duplicate(Attrs) = Attrs ^ attr_may_duplicate.
 get_may_export_body(Attrs) = Attrs ^ attr_may_export_body.
-get_extra_attributes(Attrs) = Attrs ^ attr_extra_attributes.
+get_for_specific_backend(Attrs) = Attrs ^ attr_for_specific_backend.
 
-set_may_call_mercury(MayCallMercury, !Attrs) :-
-    !Attrs ^ attr_may_call_mercury := MayCallMercury.
-set_thread_safe(ThreadSafe, !Attrs) :-
-    !Attrs ^ attr_thread_safe := ThreadSafe.
-set_foreign_language(ForeignLanguage, !Attrs) :-
-    !Attrs ^ attr_foreign_language := ForeignLanguage.
-set_tabled_for_io(TabledForIo, !Attrs) :-
-    !Attrs ^ attr_tabled_for_io := TabledForIo.
-set_purity(Purity, !Attrs) :-
-    !Attrs ^ attr_purity := Purity.
-set_terminates(Terminates, !Attrs) :-
-    !Attrs ^ attr_terminates := Terminates.
-set_user_annotated_sharing(UserSharing, !Attrs) :-
-    !Attrs ^ attr_user_annotated_sharing := UserSharing.
-set_may_throw_exception(MayThrowException, !Attrs) :-
-    !Attrs ^ attr_may_throw_exception := MayThrowException.
-set_ordinary_despite_detism(OrdinaryDespiteDetism, !Attrs) :-
-    !Attrs ^ attr_ordinary_despite_detism := OrdinaryDespiteDetism.
-set_may_modify_trail(MayModifyTrail, !Attrs) :-
-    !Attrs ^ attr_may_modify_trail := MayModifyTrail.
-set_may_call_mm_tabled(MayCallMM_Tabled, !Attrs) :-
-    !Attrs ^ attr_may_call_mm_tabled := MayCallMM_Tabled.
-set_box_policy(BoxPolicyStr, !Attrs) :-
-    !Attrs ^ attr_box_policy := BoxPolicyStr.
-set_affects_liveness(AffectsLiveness, !Attrs) :-
-    !Attrs ^ attr_affects_liveness := AffectsLiveness.
-set_allocates_memory(AllocatesMemory, !Attrs) :-
-    !Attrs ^ attr_allocates_memory := AllocatesMemory.
-set_registers_roots(RegistersRoots, !Attrs) :-
-    !Attrs ^ attr_registers_roots := RegistersRoots.
-set_may_duplicate(MayDuplicate, !Attrs) :-
-    !Attrs ^ attr_may_duplicate := MayDuplicate.
-set_may_export_body(MayExport, !Attrs) :-
-    !Attrs ^ attr_may_export_body := MayExport.
-
-add_extra_attribute(NewAttribute, !Attrs) :-
-    !Attrs ^ attr_extra_attributes :=
-        [NewAttribute | !.Attrs ^ attr_extra_attributes].
+set_may_call_mercury(X, !Attrs) :-
+    !Attrs ^ attr_may_call_mercury := X.
+set_thread_safe(X, !Attrs) :-
+    !Attrs ^ attr_thread_safe := X.
+set_foreign_language(X, !Attrs) :-
+    !Attrs ^ attr_foreign_language := X.
+set_tabled_for_io(X, !Attrs) :-
+    !Attrs ^ attr_tabled_for_io := X.
+set_purity(X, !Attrs) :-
+    !Attrs ^ attr_purity := X.
+set_terminates(X, !Attrs) :-
+    !Attrs ^ attr_terminates := X.
+set_user_annotated_sharing(X, !Attrs) :-
+    !Attrs ^ attr_user_annotated_sharing := X.
+set_ordinary_despite_detism(X, !Attrs) :-
+    !Attrs ^ attr_ordinary_despite_detism := X.
+set_may_throw_exception(X, !Attrs) :-
+    !Attrs ^ attr_may_throw_exception := X.
+set_may_modify_trail(X, !Attrs) :-
+    !Attrs ^ attr_may_modify_trail := X.
+set_may_call_mm_tabled(X, !Attrs) :-
+    !Attrs ^ attr_may_call_mm_tabled := X.
+set_box_policy(X, !Attrs) :-
+    !Attrs ^ attr_box_policy := X.
+set_affects_liveness(X, !Attrs) :-
+    !Attrs ^ attr_affects_liveness := X.
+set_allocates_memory(X, !Attrs) :-
+    !Attrs ^ attr_allocates_memory := X.
+set_registers_roots(X, !Attrs) :-
+    !Attrs ^ attr_registers_roots := X.
+set_refers_to_llds_stack(X, !Attrs) :-
+    !Attrs ^ attr_refers_to_llds_stack := X.
+set_call_std_out_regs(X, !Attrs) :-
+    !Attrs ^ attr_call_std_out_regs := X.
+set_may_duplicate(X, !Attrs) :-
+    !Attrs ^ attr_may_duplicate := X.
+set_may_export_body(X, !Attrs) :-
+    !Attrs ^ attr_may_export_body := X.
+set_for_specific_backend(X, !Attrs) :-
+    !Attrs ^ attr_for_specific_backend := X.
 
 foreign_arg_name_mode_box_project_maybe_name_mode(MaybeNameModeBox)
         = MaybeNameMode :-

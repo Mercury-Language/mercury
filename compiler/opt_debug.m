@@ -1371,7 +1371,7 @@ dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
             ++ dump_maybe_label("fix onlylayout:", MaybeProcLabel, MFOL)
             ++ dump_maybe_label("nofix:", MaybeProcLabel, MNF)
             ++ dump_maybe_label("maybe def:", MaybeProcLabel, MDL)
-            ++ dump_bool_msg("stack slot ref:", SSR)
+            ++ dump_refers_to_llds_stack(SSR)
             ++ dump_may_duplicate(MD) ++ "\n"
             ++ ")"
     ;
@@ -1431,15 +1431,17 @@ dump_maybe_label(_Msg, _MaybeProcLabel, no) = "".
 dump_maybe_label(Msg, MaybeProcLabel, yes(Label)) =
     Msg ++ " " ++ dump_label(MaybeProcLabel, Label) ++ "\n".
 
-:- func dump_bool_msg(string, bool) = string.
-
-dump_bool_msg(Msg, no)  = Msg ++ " no\n".
-dump_bool_msg(Msg, yes) = Msg ++ " yes\n".
-
 :- func dump_may_duplicate(proc_may_duplicate) = string.
 
 dump_may_duplicate(proc_may_duplicate) = "may_duplicate".
 dump_may_duplicate(proc_may_not_duplicate) = "may_not_duplicate".
+
+:- func dump_refers_to_llds_stack(maybe_refers_to_llds_stack) = string.
+
+dump_refers_to_llds_stack(does_not_refer_to_llds_stack) =
+    "does_not_refer_to_llds_stack".
+dump_refers_to_llds_stack(refers_to_llds_stack) =
+    "refers_to_llds_stack".
 
 :- func dump_may_use_atomic(may_use_atomic_alloc) = string.
 

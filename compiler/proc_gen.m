@@ -1268,11 +1268,11 @@ generate_exit(CodeModel, ProcFrameSlots, TraceSlotInfo, ProcContext,
                 DebugStr ++ ", " ++ GeneratorLocnStr ++ ");\n",
             Component = foreign_proc_user_code(no,
                 proc_does_not_affect_liveness, ReturnCodeStr),
-            MD = proc_may_not_duplicate,
             SuccessCode = from_list([
                 llds_instr(livevals(LiveLvals), ""),
                 llds_instr(foreign_proc_code([], [Component],
-                    proc_may_call_mercury, no, no, no, no, no, no, MD), "")
+                    proc_may_call_mercury, no, no, no, no, no,
+                    does_not_refer_to_llds_stack, proc_may_not_duplicate), "")
             ])
         ;
             MaybeSpecialReturn = no,
@@ -1393,11 +1393,12 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
             proc_does_not_affect_liveness, live_lvals_info(set.init), "\t}\n")
     ],
 
-    MD = proc_may_not_duplicate,
     BytecodeInstructions = [
         llds_instr(label(EntryLabel), "Procedure entry point"),
         llds_instr(foreign_proc_code([], BytecodeInstructionsComponents,
-            proc_may_call_mercury, no, no, no, no, no, no, MD), "Entry stub")
+            proc_may_call_mercury, no, no, no, no, no,
+            does_not_refer_to_llds_stack, proc_may_not_duplicate),
+            "Entry stub")
     ].
 
 %---------------------------------------------------------------------------%

@@ -575,7 +575,7 @@
                 fproc_fix_onlylayout    :: maybe(label),
                 fproc_nofix             :: maybe(label),
                 fproc_hash_def_label    :: maybe(label),
-                fproc_stack_slot_ref    :: bool,
+                fproc_stack_slot_ref    :: maybe_refers_to_llds_stack,
                 fproc_maybe_dupl        :: proc_may_duplicate
             )
             % foreign_proc_code(Decls, Components. MayCallMercury,

@@ -608,17 +608,19 @@ foreign_proc_attributes_to_strings(Attrs, VarSet) = StringList :-
     Purity = get_purity(Attrs),
     Terminates = get_terminates(Attrs),
     UserSharing = get_user_annotated_sharing(Attrs),
-    Exceptions = get_may_throw_exception(Attrs),
     OrdinaryDespiteDetism = get_ordinary_despite_detism(Attrs),
+    Exceptions = get_may_throw_exception(Attrs),
     MayModifyTrail = get_may_modify_trail(Attrs),
     MayCallMM_Tabled = get_may_call_mm_tabled(Attrs),
     BoxPolicy = get_box_policy(Attrs),
     AffectsLiveness = get_affects_liveness(Attrs),
     AllocatesMemory = get_allocates_memory(Attrs),
     RegistersRoots = get_registers_roots(Attrs),
+    RefersToLldsStack = get_refers_to_llds_stack(Attrs),
+    CallStdOutRegs = get_call_std_out_regs(Attrs),
     MaybeMayDuplicate = get_may_duplicate(Attrs),
     MaybeMayExportBody = get_may_export_body(Attrs),
-    ExtraAttributes = get_extra_attributes(Attrs),
+    ForSpecificBackend = get_for_specific_backend(Attrs),
     (
         MayCallMercury = proc_may_call_mercury,
         MayCallMercuryStr = "may_call_mercury"
@@ -678,18 +680,18 @@ foreign_proc_attributes_to_strings(Attrs, VarSet) = StringList :-
         UserSharingStrList = []
     ),
     (
+        OrdinaryDespiteDetism = not_ordinary_despite_detism,
+        OrdinaryDespiteDetismStrList = []
+    ;
+        OrdinaryDespiteDetism = ordinary_despite_detism,
+        OrdinaryDespiteDetismStrList = ["ordinary_despite_detism"]
+    ),
+    (
         Exceptions = proc_will_not_throw_exception,
         ExceptionsStrList = ["will_not_throw_exception"]
     ;
         Exceptions = default_exception_behaviour,
         ExceptionsStrList = []
-    ),
-    (
-        OrdinaryDespiteDetism = yes,
-        OrdinaryDespiteDetismStrList = ["ordinary_despite_detism"]
-    ;
-        OrdinaryDespiteDetism = no,
-        OrdinaryDespiteDetismStrList = []
     ),
     (
         MayModifyTrail = proc_may_modify_trail,
@@ -752,6 +754,20 @@ foreign_proc_attributes_to_strings(Attrs, VarSet) = StringList :-
         RegistersRootsStrList = []
     ),
     (
+        RefersToLldsStack = does_not_refer_to_llds_stack,
+        RefersToLldsStackList = []
+    ;
+        RefersToLldsStack = refers_to_llds_stack,
+        RefersToLldsStackList = ["refers_to_llds_stack"]
+    ),
+    (
+        CallStdOutRegs = no_request_for_call_std_out_regs,
+        CallStdOutRegsList = []
+    ;
+        CallStdOutRegs = needs_call_std_out_regs,
+        CallStdOutRegsList = ["needs_call_standard_output_registers"]
+    ),
+    (
         MaybeMayDuplicate = yes(MayDuplicate),
         (
             MayDuplicate = proc_may_duplicate,
@@ -777,14 +793,25 @@ foreign_proc_attributes_to_strings(Attrs, VarSet) = StringList :-
         MaybeMayExportBody = no,
         MayExportBodyStrList = []
     ),
+    (
+        ForSpecificBackend = no,
+        ForSpecificBackendList = []
+    ;
+        ForSpecificBackend = yes(low_level_backend),
+        ForSpecificBackendList = ["low_level_backend"]
+    ;
+        ForSpecificBackend = yes(high_level_backend),
+        ForSpecificBackendList = ["high_level_backend"]
+    ),
     StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr |
         PurityStrList] ++ TerminatesStrList ++ UserSharingStrList ++
-        ExceptionsStrList ++
-        OrdinaryDespiteDetismStrList ++ MayModifyTrailStrList ++
+        OrdinaryDespiteDetismStrList ++
+        ExceptionsStrList ++ MayModifyTrailStrList ++
         MayCallMM_TabledStrList ++ BoxPolicyStrList ++
         AffectsLivenessStrList ++ AllocatesMemoryStrList ++
-        RegistersRootsStrList ++ MayDuplicateStrList ++ MayExportBodyStrList ++
-        list.map(extra_attribute_to_string, ExtraAttributes).
+        RegistersRootsStrList ++ RefersToLldsStackList ++ CallStdOutRegsList ++
+        MayDuplicateStrList ++ MayExportBodyStrList ++
+        ForSpecificBackendList.
 
 :- func user_annotated_sharing_to_string(prog_varset, structure_sharing_domain,
     maybe(user_sharing_type_information)) = string.
@@ -847,15 +874,6 @@ unit_selector_to_string(TypeVarSet, UnitSelector) = String :-
         UnitSelector = termsel(_, _),
         unexpected($pred, "termsel in user-annotated sharing")
     ).
-
-:- func extra_attribute_to_string(pragma_foreign_proc_extra_attribute)
-    = string.
-
-extra_attribute_to_string(refers_to_llds_stack) = "refers_to_llds_stack".
-extra_attribute_to_string(backend(low_level_backend)) = "low_level_backend".
-extra_attribute_to_string(backend(high_level_backend)) = "high_level_backend".
-extra_attribute_to_string(needs_call_standard_output_registers) =
-    "needs_call_standard_output_registers".
 
 %---------------------------------------------------------------------------%
 %

@@ -134,10 +134,10 @@ ml_gen_foreign_proc(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
         CodeModel = model_non,
         OrdinaryDespiteDetism = get_ordinary_despite_detism(Attributes),
         (
-            OrdinaryDespiteDetism = no,
+            OrdinaryDespiteDetism = not_ordinary_despite_detism,
             unexpected($pred, "unexpected code model")
         ;
-            OrdinaryDespiteDetism = yes,
+            OrdinaryDespiteDetism = ordinary_despite_detism,
             OrdinaryKind = kind_semi
         )
     ),

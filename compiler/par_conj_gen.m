@@ -359,7 +359,7 @@ MR_threadscope_post_end_par_conj(&MR_sv(%d));
         live_lvals_info(set.make_singleton_set(SyncTermBaseSlotLval)),
         string.format(CodeTemplate, [i(SyncTermBaseSlot)]))],
     Instr = foreign_proc_code([], Components, proc_will_not_call_mercury,
-        no, no, no, no, no, yes, proc_may_duplicate).
+        no, no, no, no, no, refers_to_llds_stack, proc_may_duplicate).
 
 %-----------------------------------------------------------------------------%
 

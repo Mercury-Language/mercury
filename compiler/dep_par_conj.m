@@ -3146,7 +3146,8 @@ allocate_future(ModuleInfo, SharedVar, Goals, !VarTable,
             Features, Context, AllocGoal)
     ;
         ShouldInline = inline_par_builtins,
-        ForeignAttrs = par_builtin_foreign_proc_attributes(purity_pure, no),
+        ForeignAttrs = par_builtin_foreign_proc_attributes(purity_pure,
+            no_request_for_call_std_out_regs),
         ArgName = foreign_arg(FutureNameVar,
             yes(foreign_arg_name_mode("Name", in_mode)),
             builtin_type(builtin_type_int(int_type_int)),
@@ -3250,7 +3251,8 @@ make_wait_or_get(ModuleInfo, VarTable, FutureVar, ConsumedVar, WaitOrGetPred,
             Features, Context, WaitGoal)
     ;
         ShouldInline = inline_par_builtins,
-        ForeignAttrs = par_builtin_foreign_proc_attributes(Purity, no),
+        ForeignAttrs = par_builtin_foreign_proc_attributes(Purity,
+            no_request_for_call_std_out_regs),
         lookup_var_type(VarTable, FutureVar, FutureVarType),
         lookup_var_type(VarTable, ConsumedVar, ConsumedVarType),
         Arg1 = foreign_arg(FutureVar,
@@ -3287,7 +3289,7 @@ make_signal_goal(ModuleInfo, VarTable, FutureMap, ProducedVar, SignalGoal) :-
     ;
         ShouldInline = inline_par_builtins,
         ForeignAttrs = par_builtin_foreign_proc_attributes(purity_impure,
-            yes(needs_call_standard_output_registers)),
+            needs_call_std_out_regs),
         lookup_var_type(VarTable, FutureVar, FutureVarType),
         lookup_var_type(VarTable, ProducedVar, ProducedVarType),
         Arg1 = foreign_arg(FutureVar,
@@ -3343,32 +3345,23 @@ should_inline_par_builtin_calls(ModuleInfo) = ShouldInline :-
     globals.get_opt_tuple(Globals, OptTuple),
     ShouldInline = OptTuple ^ ot_inline_par_builtins.
 
-:- func par_builtin_foreign_proc_attributes(purity,
-    maybe(pragma_foreign_proc_extra_attribute))
+:- func par_builtin_foreign_proc_attributes(purity, maybe_call_std_out_regs)
     = pragma_foreign_proc_attributes.
 
-par_builtin_foreign_proc_attributes(Purity, MaybeExtraAttr) = Attrs :-
-    some [!Attrs] (
-        !:Attrs = default_attributes(lang_c),
-        set_may_call_mercury(proc_will_not_call_mercury, !Attrs),
-        % Even signal is thread safe, since it does its own locking.
-        set_thread_safe(proc_thread_safe, !Attrs),
-        set_purity(Purity, !Attrs),
-        set_terminates(proc_terminates, !Attrs),
-        set_may_throw_exception(proc_will_not_throw_exception, !Attrs),
-        set_may_modify_trail(proc_will_not_modify_trail, !Attrs),
-        set_affects_liveness(proc_does_not_affect_liveness, !Attrs),
-        set_allocates_memory(proc_allocates_bounded_memory, !Attrs),
-        set_registers_roots(proc_does_not_register_roots, !Attrs),
-        set_may_duplicate(yes(proc_may_duplicate), !Attrs),
-        (
-            MaybeExtraAttr = no
-        ;
-            MaybeExtraAttr = yes(ExtraAttr),
-            add_extra_attribute(ExtraAttr, !Attrs)
-        ),
-        Attrs = !.Attrs
-    ).
+par_builtin_foreign_proc_attributes(Purity, CallStdOutRegs) = !:Attrs :-
+    !:Attrs = default_attributes(lang_c),
+    set_may_call_mercury(proc_will_not_call_mercury, !Attrs),
+    % Even signal is thread safe, since it does its own locking.
+    set_thread_safe(proc_thread_safe, !Attrs),
+    set_purity(Purity, !Attrs),
+    set_terminates(proc_terminates, !Attrs),
+    set_may_throw_exception(proc_will_not_throw_exception, !Attrs),
+    set_may_modify_trail(proc_will_not_modify_trail, !Attrs),
+    set_affects_liveness(proc_does_not_affect_liveness, !Attrs),
+    set_allocates_memory(proc_allocates_bounded_memory, !Attrs),
+    set_registers_roots(proc_does_not_register_roots, !Attrs),
+    set_call_std_out_regs(CallStdOutRegs, !Attrs),
+    set_may_duplicate(yes(proc_may_duplicate), !Attrs).
 
 %---------------------------------------------------------------------------%
 

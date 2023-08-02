@@ -1171,7 +1171,7 @@ add_fact_table_proc(PredOrFunc, SymName, ItemMercuryStatus, PredStatus,
     set_thread_safe(proc_thread_safe, Attrs1, Attrs2),
     % Fact tables procedures should be considered pure.
     set_purity(purity_pure, Attrs2, Attrs3),
-    add_extra_attribute(refers_to_llds_stack, Attrs3, Attrs),
+    set_refers_to_llds_stack(refers_to_llds_stack, Attrs3, Attrs),
     SeqNum = item_no_seq_num,
     FCInfo = pragma_info_foreign_proc(Attrs, SymName, PredOrFunc, PragmaVars,
         ProgVarSet, InstVarSet, fp_impl_ordinary(C_ProcCode, no)),

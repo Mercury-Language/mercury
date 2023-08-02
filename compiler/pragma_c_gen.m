@@ -661,12 +661,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
             MayDupl = proc_may_not_duplicate
         )
     ),
-    ExtraAttributes = get_extra_attributes(Attributes),
-    ( if list.member(refers_to_llds_stack, ExtraAttributes) then
-        RefersToLLDSSTack = yes
-    else
-        RefersToLLDSSTack = no
-    ),
+    RefersToLLDSSTack = get_refers_to_llds_stack(Attributes),
     PragmaCCode = singleton(
         llds_instr(foreign_proc_code(Decls, Components, MayCallMercury,
             no, no, no, MaybeFailLabel, no, RefersToLLDSSTack, MayDupl),

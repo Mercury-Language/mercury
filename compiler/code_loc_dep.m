@@ -1436,10 +1436,10 @@ prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
                     proc_affects_liveness, live_lvals_info(set.init),
                     "\t\tMR_restore_transient_registers();\n")
             ],
-            MD = proc_may_duplicate,
             MarkCode = singleton(
                 llds_instr(foreign_proc_code([], Components,
-                    proc_will_not_call_mercury, no, no, no, no, no, no, MD),
+                    proc_will_not_call_mercury, no, no, no, no, no,
+                    does_not_refer_to_llds_stack, proc_may_duplicate),
                     "")
             )
         ;
@@ -1526,10 +1526,10 @@ generate_semi_commit(SemiCommitInfo, Code, !CI, !CLD) :-
                     proc_does_not_affect_liveness, live_lvals_info(set.init),
                     "\t\tMR_commit_cut();\n")
             ],
-            MD = proc_may_duplicate,
             CutCode = singleton(
                 llds_instr(foreign_proc_code([], Components,
-                    proc_will_not_call_mercury, no, no, no, no, no, no, MD),
+                    proc_will_not_call_mercury, no, no, no, no, no,
+                    does_not_refer_to_llds_stack, proc_may_duplicate),
                     "commit for temp frame hijack")
             )
         ;

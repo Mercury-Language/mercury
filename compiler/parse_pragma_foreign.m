@@ -124,7 +124,6 @@
 :- import_module parse_tree.prog_mode.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module int.
 :- import_module maybe.
 :- import_module one_or_more.
@@ -1086,9 +1085,9 @@ process_attribute(coll_user_annotated_sharing(UserSharing), !Attrs) :-
 process_attribute(coll_will_not_throw_exception, !Attrs) :-
     set_may_throw_exception(proc_will_not_throw_exception, !Attrs).
 process_attribute(coll_backend(Backend), !Attrs) :-
-    add_extra_attribute(backend(Backend), !Attrs).
+    set_for_specific_backend(yes(Backend), !Attrs).
 process_attribute(coll_ordinary_despite_detism, !Attrs) :-
-    set_ordinary_despite_detism(yes, !Attrs).
+    set_ordinary_despite_detism(ordinary_despite_detism, !Attrs).
 process_attribute(coll_may_modify_trail(TrailMod), !Attrs) :-
     set_may_modify_trail(TrailMod, !Attrs).
 process_attribute(coll_may_call_mm_tabled(MayCallTabled), !Attrs) :-
