@@ -1189,6 +1189,9 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
             % XXX The class_decl type is defined in prog_item.m.
             % The reference to that module here is undesirable.
 
+:- type abstract_class_interface =< class_interface
+    --->    class_interface_abstract.
+
 :- type instance_method
     --->    instance_method(
                 instance_method_pf_name_arity   :: pred_pf_name_arity,

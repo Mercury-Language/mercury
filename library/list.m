@@ -32,6 +32,22 @@
     --->    []
     ;       [T | list(T)].
 
+% UNDOC_PART_START
+% :- type empty_list(T) =< list(T)
+%     --->    [].
+%
+% :- type non_empty_list(T) =< list(T)
+%     --->    [T | list(T)].
+%
+% XXX Including the above subtype definitions generates errors like these:
+% term_conversion.m:199: In clause for predicate `term_to_univ_special_case'/6:
+% term_conversion.m:199:   error: ambiguous overloading causes type ambiguity.
+% term_conversion.m:199:   Possible type assignments include:
+% term_conversion.m:199:   V_95:
+% term_conversion.m:199:     `some [T] (list.list(T))'
+% term_conversion.m:199:   or
+% term_conversion.m:199:     `some [T] (list.non_empty_list(T))'
+% UNDOC_PART_END
 %---------------------------------------------------------------------------%
 
     % These instantiation states and modes can be used for instantiation

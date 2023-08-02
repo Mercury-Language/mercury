@@ -151,8 +151,12 @@
     io.text_output_stream::in, item_mode_decl_info::in, io::di, io::uo) is det.
 :- pred mercury_format_item_foreign_enum(merc_out_info::in, S::in,
     item_foreign_enum_info::in, U::di, U::uo) is det <= pt_output(S, U).
+
 :- pred mercury_output_item_typeclass(merc_out_info::in,
     io.text_output_stream::in, item_typeclass_info::in, io::di, io::uo) is det.
+:- pred mercury_format_item_abstract_typeclass(merc_out_info::in,
+    S::in, item_abstract_typeclass_info::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 %
@@ -712,7 +716,7 @@ mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO) :-
             ImpTypeDefns, !IO),
         list.foldl(mercury_format_item_foreign_enum(Info, Stream),
             ImpForeignEnums, !IO),
-        list.foldl(mercury_output_item_typeclass(Info, Stream),
+        list.foldl(mercury_format_item_abstract_typeclass(Info, Stream),
             list.sort(ImpTypeClasses), !IO)
     ).
 
@@ -793,7 +797,7 @@ mercury_output_parse_tree_int3(Info, Stream, ParseTreeInt3, !IO) :-
     list.foldl(mercury_output_item_type_defn(Info, Stream), IntTypeDefns, !IO),
     list.foldl(mercury_output_item_inst_defn(Info, Stream), IntInstDefns, !IO),
     list.foldl(mercury_output_item_mode_defn(Info, Stream), IntModeDefns, !IO),
-    list.foldl(mercury_output_item_typeclass(Info, Stream),
+    list.foldl(mercury_format_item_abstract_typeclass(Info, Stream),
         list.sort(IntTypeClasses), !IO),
     list.foldl(mercury_format_item_abstract_instance(Info, Stream),
         list.sort(IntInstances), !IO),
@@ -1975,6 +1979,20 @@ mercury_output_item_typeclass(Info, Stream, ItemTypeClass, !IO) :-
         )
     ).
 
+mercury_format_item_abstract_typeclass(Info, S, ItemTypeClass, !U) :-
+    ItemTypeClass = item_typeclass_info(ClassName0, Vars, Constraints, FunDeps,
+        class_interface_abstract, VarSet, _Context, _SeqNum),
+    maybe_unqualify_sym_name(Info, ClassName0, ClassName),
+    ClassNameStr = mercury_sym_name_to_string(ClassName),
+    VarStrs = list.map(varset.lookup_name(VarSet), Vars),
+    VarsStr = string.join_list(", ", VarStrs),
+    string.format(":- typeclass %s(%s)", [s(ClassNameStr), s(VarsStr)],
+        StartStr),
+    add_string(StartStr, S, !U),
+    mercury_format_fundeps_and_prog_constraint_list(VarSet, print_name_only,
+        FunDeps, Constraints, S, !U),
+    add_string(".\n", S, !U).
+
 :- pred mercury_format_fundeps_and_prog_constraint_list(tvarset::in,
     var_name_print::in, list(prog_fundep)::in, list(prog_constraint)::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
@@ -2118,8 +2136,6 @@ mercury_output_item_instance(_Info, Stream, ItemInstance, !IO) :-
     ).
 
 item_abstract_instance_to_string(Info, ItemAbstractInstance) = Str :-
-%   mercury_format_item_abstract_instance(Info, unit, ItemAbstractInstance,
-%       "", Str).
     State0 = string.builder.init,
     mercury_format_item_abstract_instance(Info, string.builder.handle,
         ItemAbstractInstance, State0, State),

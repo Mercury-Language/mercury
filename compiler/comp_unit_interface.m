@@ -459,12 +459,12 @@ make_mode_ctor_checked_defn_abstract_for_int3(ModeCtor, CheckedModeDefn0,
 %---------------------------------------------------------------------------%
 
 :- func make_typeclass_abstract_for_int3(item_typeclass_info)
-    = item_typeclass_info.
+    = item_abstract_typeclass_info.
 
-make_typeclass_abstract_for_int3(OrigTypeClass) = TypeClass :-
-    OrigTypeClass = item_typeclass_info(ClassName, ParamsTVars,
-        _Constraints, _FunDeps, _Methods, TVarSet, Context, SeqNum),
+make_typeclass_abstract_for_int3(TypeClass) = AbstractTypeClass :-
     TypeClass = item_typeclass_info(ClassName, ParamsTVars,
+        _Constraints, _FunDeps, _Methods, TVarSet, Context, SeqNum),
+    AbstractTypeClass = item_typeclass_info(ClassName, ParamsTVars,
         [], [], class_interface_abstract, TVarSet, Context, SeqNum).
 
 %---------------------------------------------------------------------------%
@@ -575,7 +575,8 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
         IntPredDecls, IntModeDecls, IntDeclPragmas, IntPromises,
         IntBadClausePreds,
 
-        AbstractImpTypeClasses, [], [], [], [], [], [], [], [], [], [], []).
+        coerce(AbstractImpTypeClasses), [],
+        [], [], [], [], [], [], [], [], [], []).
 
     % Keep the interface part of the given type_ctor_checked_defn unchanged,
     % but modify its implementation-section part by
@@ -833,7 +834,7 @@ generate_interface_int1(Globals, AugMakeIntUnit,
         IntTypeClasses, IntInstances0, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises0, _IntBadClausePreds,
 
-        ImpTypeClasses, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
+        ImpTypeClasses0, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
         _ImpClauses, _ImpForeignExportEnums,
         _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
         _ImpInitialises, _ImpFinalises, _ImpMutables),
@@ -866,6 +867,7 @@ generate_interface_int1(Globals, AugMakeIntUnit,
     % section.
     get_requirements_of_imp_exported_types(IntTypesMap, ImpTypesMap,
         BothTypesMap, NeededImpTypeCtors, ImpModulesNeededByTypeDefns),
+    ImpTypeClasses = list.map(check_typeclass_is_abstract, ImpTypeClasses0),
     list.foldl(record_modules_needed_by_typeclass_imp, ImpTypeClasses,
         set.init, ImpModulesNeededByTypeClassDefns),
     set.union(ImpModulesNeededByTypeClassDefns, ImpModulesNeededByTypeDefns,
@@ -1041,7 +1043,8 @@ record_type_defn_imp(ItemTypeDefn, !ImpTypesMap) :-
     ),
     one_or_more_map.add(TypeCtor, ItemTypeDefn1, !ImpTypesMap).
 
-:- pred record_modules_needed_by_typeclass_imp(item_typeclass_info::in,
+:- pred record_modules_needed_by_typeclass_imp(
+    item_abstract_typeclass_info::in,
     set(module_name)::in, set(module_name)::out) is det.
 
 record_modules_needed_by_typeclass_imp(ItemTypeClass,
@@ -2790,10 +2793,38 @@ make_inst_defn_abstract(InstDefn) =
 make_mode_defn_abstract(ModeDefn) =
     ModeDefn ^ md_mode_defn := abstract_mode_defn.
 
-:- func make_typeclass_abstract(item_typeclass_info) = item_typeclass_info.
+:- func make_typeclass_abstract(item_typeclass_info) =
+    item_abstract_typeclass_info.
 
-make_typeclass_abstract(TypeClassInfo) =
-    TypeClassInfo ^ tc_class_methods := class_interface_abstract.
+make_typeclass_abstract(TypeClassInfo) = AbstractTypeClassInfo :-
+    % XXX AbstractTypeClassInfo = TypeClassInfo ^ tc_class_methods :=
+    %   class_interface_abstract
+    % does not work; it gets an error about TypeClassInfo not being
+    % *already* of type item_abstract_typeclass_info.
+    TypeClassInfo = item_typeclass_info(ClassName, Params,
+        Supers, FunDeps, _, TVarSet, Context, SeqNum),
+    AbstractTypeClassInfo = item_typeclass_info(ClassName, Params,
+        Supers, FunDeps, class_interface_abstract, TVarSet, Context, SeqNum).
+
+:- func check_typeclass_is_abstract(item_typeclass_info)
+    = item_abstract_typeclass_info.
+
+check_typeclass_is_abstract(TypeClassInfo) = AbstractTypeClassInfo :-
+    % XXX AbstractTypeClassInfo = TypeClassInfo ^ tc_class_methods :=
+    %   class_interface_abstract
+    % does not work; it gets an error about TypeClassInfo not being
+    % *already* of type item_abstract_typeclass_info.
+    TypeClassInfo = item_typeclass_info(ClassName, Params,
+        Supers, FunDeps, Methods, TVarSet, Context, SeqNum),
+    (
+        Methods = class_interface_abstract,
+        AbstractTypeClassInfo = item_typeclass_info(ClassName, Params,
+            Supers, FunDeps, class_interface_abstract, TVarSet,
+            Context, SeqNum)
+    ;
+        Methods = class_interface_concrete(_),
+        unexpected($pred, "class_interface_concrete")
+    ).
 
 :- func make_instance_abstract(item_instance_info)
     = item_abstract_instance_info.

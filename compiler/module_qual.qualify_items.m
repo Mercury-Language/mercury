@@ -171,7 +171,7 @@ module_qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
         IntInstDefnMap0, IntInstDefnMap, !Info, !Specs),
     map.map_values_foldl2(module_qualify_mode_ctor_checked_defn,
         IntModeDefnMap0, IntModeDefnMap, !Info, !Specs),
-    list.map_foldl2(module_qualify_item_typeclass(InInt),
+    list.map_foldl2(module_qualify_item_abstract_typeclass(InInt),
         IntTypeClasses0, IntTypeClasses, !Info, !Specs),
     list.map_foldl2(module_qualify_item_abstract_instance(InInt),
         IntInstances0, IntInstances, !Info, !Specs),
@@ -488,6 +488,9 @@ module_qualify_item_mode_defn(QualDefn, InInt, ItemModeDefn0, ItemModeDefn,
 
 module_qualify_item_typeclass(InInt, ItemTypeClass0, ItemTypeClass,
         !Info, !Specs) :-
+    % The definition of this predicate differs from the definition
+    % of module_qualify_item_abstract_typeclass only in that it updates
+    % Interface.
     ItemTypeClass0 = item_typeclass_info(Name, Vars, Constraints0, FunDeps,
         Interface0, VarSet, Context, SeqNum),
     list.length(Vars, Arity),
@@ -508,6 +511,26 @@ module_qualify_item_typeclass(InInt, ItemTypeClass0, ItemTypeClass,
     ItemTypeClass = item_typeclass_info(Name, Vars, Constraints, FunDeps,
         Interface, VarSet, Context, SeqNum).
 
+:- pred module_qualify_item_abstract_typeclass(mq_in_interface::in,
+    item_abstract_typeclass_info::in, item_abstract_typeclass_info::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+module_qualify_item_abstract_typeclass(InInt, ItemTypeClass0, ItemTypeClass,
+        !Info, !Specs) :-
+    % The definition of this predicate differs from the definition
+    % of module_qualify_item_typeclass only in that it does not update
+    % Interface.
+    ItemTypeClass0 = item_typeclass_info(Name, Vars, Constraints0, FunDeps,
+        Interface0, VarSet, Context, SeqNum),
+    list.length(Vars, Arity),
+    ClassId = class_id(Name, Arity),
+    ConstraintErrorContext = mqcec_class_defn(Context, ClassId),
+    qualify_prog_constraint_list(InInt, ConstraintErrorContext,
+        Constraints0, Constraints, !Info, !Specs),
+    ItemTypeClass = item_typeclass_info(Name, Vars, Constraints, FunDeps,
+        Interface0, VarSet, Context, SeqNum).
+
 :- pred module_qualify_item_instance(mq_in_interface::in,
     item_instance_info::in, item_instance_info::out,
     mq_info::in, mq_info::out,
@@ -515,6 +538,8 @@ module_qualify_item_typeclass(InInt, ItemTypeClass0, ItemTypeClass,
 
 module_qualify_item_instance(InInt, ItemInstance0, ItemInstance,
         !Info, !Specs) :-
+    % The definition of this predicate differs from the definition
+    % of module_qualify_item_abstract_instance only in that it updates Body.
     ItemInstance0 = item_instance_info(Name0, Types0, OriginalTypes0,
         Constraints0, Body0, VarSet, ModName, Context, SeqNum),
     list.length(Types0, Arity),

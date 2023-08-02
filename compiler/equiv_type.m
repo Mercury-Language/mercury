@@ -835,7 +835,7 @@ replace_in_parse_tree_int1(ModuleName, TypeEqvMap, InstEqvMap,
         !RecompInfo, !UsedModules, !Specs),
 
     replace_in_list(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
-        replace_in_typeclass_info, ImpTypeClasses0, ImpTypeClasses,
+        replace_in_abstract_typeclass_info, ImpTypeClasses0, ImpTypeClasses,
         !RecompInfo, !UsedModules, !Specs),
 
     ParseTreeInt1 = parse_tree_int1(IntModuleName, IntModuleNameContext,
@@ -1316,6 +1316,12 @@ replace_in_mode_decl_info(ModuleName, MaybeRecord, _TypeEqvMap, InstEqvMap,
         WithInst, MaybeDetism, InstVarSet, Context, SeqNum).
 
 %---------------------%
+%
+% The next two predicates have identical definitions except for the treatment
+% of the class interfaces, but one is for item_typeclass_infos, while the other
+% is for item_abstract_typeclass_infos.
+% XXX Ideally, this should not be necessary.
+%
 
 :- pred replace_in_typeclass_info(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
@@ -1345,6 +1351,29 @@ replace_in_typeclass_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
             !UsedModules, [], Specs),
         ClassInterface = class_interface_concrete(Methods)
     ),
+    ItemName = recomp_item_name(ClassName, Arity),
+    ItemId = recomp_item_id(recomp_typeclass, ItemName),
+    finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo),
+    Info = item_typeclass_info(ClassName, Vars, Constraints, FunDeps,
+        ClassInterface, TVarSet, Context, SeqNum).
+
+:- pred replace_in_abstract_typeclass_info(module_name::in,
+    maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
+    item_abstract_typeclass_info::in, item_abstract_typeclass_info::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_abstract_typeclass_info(ModuleName, MaybeRecord, TypeEqvMap,
+        _InstEqvMap, Info0, Info, !RecompInfo, !UsedModules, Specs) :-
+    Info0 = item_typeclass_info(ClassName, Vars, Constraints0, FunDeps,
+        ClassInterface, TVarSet0, Context, SeqNum),
+    list.length(Vars, Arity),
+    maybe_start_recording_expanded_items(ModuleName, ClassName, !.RecompInfo,
+        ExpandedItems0),
+    replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
+        Constraints0, Constraints, TVarSet0, TVarSet,
+        ExpandedItems0, ExpandedItems, !UsedModules),
+    Specs = [],
     ItemName = recomp_item_name(ClassName, Arity),
     ItemId = recomp_item_id(recomp_typeclass, ItemName),
     finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo),

@@ -1728,7 +1728,7 @@ get_ambiguity_checkables_int1(ParseTreeInt1, Checkables) :-
     ItemTypeDefns = IntTypeDefns ++ ImpTypeDefns,
     ItemInstDefns = IntInstDefns,
     ItemModeDefns = IntModeDefns,
-    ItemTypeClasses = IntTypeClasses ++ ImpTypeClasses,
+    ItemTypeClasses = IntTypeClasses ++ coerce(ImpTypeClasses),
     ItemPredDecls = IntPredDecls,
     Checkables = ambiguity_checkables(ItemTypeDefns,
         ItemInstDefns, ItemModeDefns, ItemTypeClasses, ItemPredDecls).
@@ -1776,7 +1776,7 @@ get_ambiguity_checkables_int3(ParseTreeInt3, Checkables) :-
     expect(unify(ImpModeDefns, []), $pred, "ImpModeDefns != []"),
     IntPredDecls = [],
     Checkables = ambiguity_checkables(IntTypeDefns,
-        IntInstDefns, IntModeDefns, IntTypeClasses, IntPredDecls).
+        IntInstDefns, IntModeDefns, coerce(IntTypeClasses), IntPredDecls).
 
 %---------------------------------------------------------------------------%
 :- end_module recompilation.check.

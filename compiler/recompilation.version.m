@@ -439,7 +439,7 @@ gather_items_in_parse_tree_int1(ParseTreeInt1, GatheredItems) :-
             ImpTypeDefns, !TypeNameMap, !TypeDefnMap),
         % We gather foreign enum info from the type_ctor_defn_maps.
         list.foldl(gather_in_typeclass(ms_implementation),
-            ImpTypeClasses, !ClassMap),
+            coerce(ImpTypeClasses), !ClassMap),
 
         cord.foldl3(apply_decl_pragma_record, !.DeclPragmaRecords,
             !PredMap, !FuncMap, !ClassMap),

@@ -669,8 +669,8 @@ collect_mq_info_in_parse_tree_int3(Role, ParseTreeInt3, !Info) :-
     list.foldl(id_set_insert(Permissions), ModeIds, Modes0, Modes),
     mq_info_set_modes(Modes, !Info),
 
-    list.foldl(collect_mq_info_in_item_typeclass(Permissions), IntTypeClasses,
-        !Info),
+    list.foldl(collect_mq_info_in_item_typeclass(Permissions),
+        coerce(IntTypeClasses), !Info),
     list.foldl(collect_mq_info_in_item_instance, coerce(IntInstances), !Info).
 
 %---------------------------------------------------------------------------%

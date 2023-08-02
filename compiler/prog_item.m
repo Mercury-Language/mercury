@@ -513,7 +513,7 @@
 
                 % Items of various kinds in the interface.
                 pti1_int_typeclasses        :: list(item_typeclass_info),
-                pti1_int_instances        :: list(item_abstract_instance_info),
+                pti1_int_instances      :: list(item_abstract_instance_info),
                 pti1_int_pred_decls         :: list(item_pred_decl_info),
                 pti1_int_mode_decls         :: list(item_mode_decl_info),
                 pti1_int_decl_pragmas       :: list(item_decl_pragma_info),
@@ -524,7 +524,7 @@
                 pti1_type_repns             :: type_ctor_repn_map,
 
                 % Items of various kinds in the implementation.
-                pti1_imp_typeclasses        :: list(item_typeclass_info)
+                pti1_imp_typeclasses    :: list(item_abstract_typeclass_info)
             ).
 
     % A representation of the contents of .int2 files.
@@ -565,7 +565,7 @@
 
                 % Items of various kinds in the interface.
                 pti2_int_typeclasses        :: list(item_typeclass_info),
-                pti2_int_instances        :: list(item_abstract_instance_info),
+                pti2_int_instances      :: list(item_abstract_instance_info),
 
                 % The representations of all types defined in the module,
                 % whether exported or not.
@@ -595,8 +595,8 @@
                 pti3_mode_defns             :: mode_ctor_checked_map,
 
                 % Items of various kinds in the interface.
-                pti3_int_typeclasses        :: list(item_typeclass_info),
-                pti3_int_instances        :: list(item_abstract_instance_info),
+                pti3_int_typeclasses    :: list(item_abstract_typeclass_info),
+                pti3_int_instances      :: list(item_abstract_instance_info),
                 pti3_int_type_repns         :: type_ctor_repn_map
             ).
 
@@ -1414,6 +1414,33 @@
                 tc_superclasses                 :: list(prog_constraint),
                 tc_fundeps                      :: list(prog_fundep),
                 tc_class_methods                :: class_interface,
+                tc_varset                       :: tvarset,
+                tc_context                      :: prog_context,
+                tc_seq_num                      :: item_seq_num
+            ).
+
+:- type item_abstract_typeclass_info =< item_typeclass_info
+    --->    item_typeclass_info(
+                tc_class_name                   :: class_name,
+                tc_class_params                 :: list(tvar),
+                tc_superclasses                 :: list(prog_constraint),
+                tc_fundeps                      :: list(prog_fundep),
+                tc_class_methods                :: abstract_class_interface,
+                tc_varset                       :: tvarset,
+                tc_context                      :: prog_context,
+                tc_seq_num                      :: item_seq_num
+            ).
+
+:- type item_abstract_int3_typeclass_info =< item_typeclass_info
+    --->    item_typeclass_info(
+                tc_class_name                   :: class_name,
+                tc_class_params                 :: list(tvar),
+                % XXX Both of the following should be empty_lists,
+                % if the definition of that subtype in library/list.m
+                % worked.
+                tc_superclasses                 :: list(prog_constraint),
+                tc_fundeps                      :: list(prog_fundep),
+                tc_class_methods                :: abstract_class_interface,
                 tc_varset                       :: tvarset,
                 tc_context                      :: prog_context,
                 tc_seq_num                      :: item_seq_num

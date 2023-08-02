@@ -742,7 +742,7 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
         AccModeDefns0, AccModeDefns),
     acc_sec_list(IntSectionInfo, IntTypeClasses,
         AccTypeClasses0, AccTypeClasses1),
-    acc_sec_list(ImpSectionInfo, ImpTypeClasses,
+    acc_sec_list(ImpSectionInfo, coerce(ImpTypeClasses),
         AccTypeClasses1, AccTypeClasses),
     acc_ims_list(IntItemMercuryStatus, coerce(IntInstances),
         AccInstances0, AccInstances),

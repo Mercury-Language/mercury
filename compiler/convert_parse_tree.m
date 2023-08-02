@@ -528,7 +528,8 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
 :- pred classify_int1_items_imp(list(item)::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
     list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::out,
-    list(item_typeclass_info)::in, list(item_typeclass_info)::out,
+    list(item_abstract_typeclass_info)::in,
+        list(item_abstract_typeclass_info)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 classify_int1_items_imp([], !TypeDefns, !ForeignEnums, !TypeClasses, !Specs).
@@ -539,7 +540,22 @@ classify_int1_items_imp([Item | Items], !TypeDefns, !ForeignEnums,
         !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
     ;
         Item = item_typeclass(ItemTypeClass),
-        !:TypeClasses = [ItemTypeClass | !.TypeClasses]
+        ItemTypeClass = item_typeclass_info(ClassName, Params,
+            Supers, Fundeps, Interface, TVarSet, Context, SeqNum),
+        (
+            Interface = class_interface_abstract,
+            AbstractItemTypeClass = item_typeclass_info(ClassName, Params,
+                Supers, Fundeps, class_interface_abstract, TVarSet,
+                Context, SeqNum),
+            !:TypeClasses = [AbstractItemTypeClass | !.TypeClasses]
+        ;
+            Interface = class_interface_concrete(_),
+            Pieces = [words("A .int file may not contain"),
+                words("a concrete typeclass declaration."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        )
     ;
         Item = item_foreign_enum(ItemForeignEnum),
         !:ForeignEnums = [ItemForeignEnum | !.ForeignEnums]
@@ -853,7 +869,8 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
     list(item_inst_defn_info)::in, list(item_inst_defn_info)::out,
     list(item_mode_defn_info)::in, list(item_mode_defn_info)::out,
-    list(item_typeclass_info)::in, list(item_typeclass_info)::out,
+    list(item_abstract_typeclass_info)::in,
+        list(item_abstract_typeclass_info)::out,
     list(item_abstract_instance_info)::in,
         list(item_abstract_instance_info)::out,
     list(item_type_repn_info)::in, list(item_type_repn_info)::out,
@@ -874,7 +891,51 @@ classify_int3_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         !:ModeDefns = [ItemModeDefn | !.ModeDefns]
     ;
         Item = item_typeclass(ItemTypeClass),
-        !:TypeClasses = [ItemTypeClass | !.TypeClasses]
+        ItemTypeClass = item_typeclass_info(ClassName, Params,
+            Supers, Fundeps, Interface, TVarSet, Context, SeqNum),
+        (
+            Interface = class_interface_abstract,
+            (
+                Supers = [],
+                (
+                    Fundeps = [],
+                    ItemAbstractTypeClass = item_typeclass_info(ClassName,
+                        Params, [], [], class_interface_abstract,
+                        TVarSet, Context, SeqNum),
+                    !:TypeClasses = [ItemAbstractTypeClass | !.TypeClasses]
+                ;
+                    Fundeps = [_ | _],
+                    Pieces = [words("A typeclass declaration in a .int3 file"),
+                        words("may not list any functional dependencies."),
+                        nl],
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_term_to_parse_tree, Context, Pieces),
+                    !:Specs = [Spec | !.Specs]
+                )
+            ;
+                Supers = [_ | _],
+                (
+                    Fundeps = [],
+                    FunDepPieces = [words("or any functional dependencies")]
+                ;
+                    Fundeps = [_ | _],
+                    FunDepPieces = []
+                ),
+                Pieces = [words("A typeclass declaration in a .int3 file"),
+                    words("may not list any superclasses")] ++ FunDepPieces ++
+                    [suffix("."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, Context, Pieces),
+                !:Specs = [Spec | !.Specs]
+            )
+        ;
+            Interface = class_interface_concrete(_),
+            Pieces = [words("A .int3 file may not contain"),
+                words("a concrete typeclass declaration."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        )
     ;
         Item = item_instance(ItemInstance),
         ItemInstance = item_instance_info(ClassName, Types, OrigTypes,
