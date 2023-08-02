@@ -60,7 +60,7 @@
     % predicate in intermod_analysis.m.
     % XXX This is not an elegant arrangement.
     %
-    % Update_interface and touch_interface_datestamp are called from
+    % Update_interface and touch_module_ext_datestamp are called from
     % mercury_compile_front_end.m, since they must be called after
     % the last time anything is appended to the .opt.tmp file.
     %

@@ -614,7 +614,7 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
         then
             % The `.err_date' file is needed because the `.err' file is touched
             % by all phases of compilation, including writing interfaces.
-            touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
+            touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
                 ModuleName, ext_misc_ngs(ext_misc_ngs_err_date),
                 TouchSucceeded, !IO),
             Succeeded = CompileSucceeded `and` TouchSucceeded

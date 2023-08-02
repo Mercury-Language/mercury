@@ -1406,7 +1406,7 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModules0,
             TimestampFileName, !IO),
         get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         get_error_output_stream(ModuleInfo, ErrorStream, !IO),
-        touch_datestamp(Globals, ProgressStream, ErrorStream,
+        touch_file_datestamp(Globals, ProgressStream, ErrorStream,
             TimestampFileName, _Succeeded, !IO)
     ).
 

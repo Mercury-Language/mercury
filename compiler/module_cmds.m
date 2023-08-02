@@ -31,34 +31,35 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type update_interface_result
-    --->    interface_new_or_changed
-    ;       interface_unchanged
-    ;       interface_error.
+:- type dot_tmp_copy_result
+    --->    base_file_new_or_changed
+    ;       base_file_unchanged
+    ;       dot_tmp_copy_error.
 
-    % update_interface_return_changed(Globals, ModuleName, FileName,
+    % copy_dot_tmp_to_base_file_return_changed(Globals, ModuleName, FileName,
     %   Result, !IO):
     %
     % Update the interface file FileName from FileName.tmp if it has changed.
     %
-:- pred update_interface_return_changed(globals::in, module_name::in,
-    file_name::in, update_interface_result::out, io::di, io::uo) is det.
+:- pred copy_dot_tmp_to_base_file_return_changed(globals::in, module_name::in,
+    file_name::in, dot_tmp_copy_result::out, io::di, io::uo) is det.
 
-    % update_interface_return_succeeded(Globals, ModuleName, OutputFileName,
-    %   Succeeded, !IO)
+    % copy_dot_tmp_to_base_file_return_succeeded(Globals, ModuleName,
+    %   OutputFileName, Succeeded, !IO)
     %
-:- pred update_interface_return_succeeded(globals::in,
+:- pred copy_dot_tmp_to_base_file_return_succeeded(globals::in,
     module_name::in, file_name::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-    % update_interface_report_any_error(Globals, ModuleName, OutputFileName,
-    %   Succeeded, !IO)
+    % copy_dot_tmp_to_base_file_report_any_error(Globals, FileKindStr,
+    %   ModuleName, OutputFileName, Succeeded, !IO)
     %
-    % As update_interface_return_succeeded, but also print an error message
-    % if the update did not succeed.
+    % As copy_dot_tmp_to_base_file_return_succeeded, but also print
+    % an error message if the update did not succeed.
     %
-:- pred update_interface_report_any_error(globals::in, module_name::in,
-    file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
+:- pred copy_dot_tmp_to_base_file_report_any_error(globals::in, string::in,
+    module_name::in, file_name::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -97,23 +98,23 @@
 
 %-----------------------------------------------------------------------------%
 
-    % touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
+    % touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
     %   ModuleName, Ext, Succeeded, !IO):
     %
     % Touch the datestamp file `ModuleName.Ext'. Datestamp files are used
     % to record when each of the interface files was last updated.
     %
-:- pred touch_interface_datestamp(globals::in,
+:- pred touch_module_ext_datestamp(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
     module_name::in, ext::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-    % touch_datestamp(Globals, ProgressStream, ErrorStream, FileName,
+    % touch_file_datestamp(Globals, ProgressStream, ErrorStream, FileName,
     %   Succeeded, !IO):
     %
     % Update the modification time for the given file,
     % clobbering the contents of the file.
     %
-:- pred touch_datestamp(globals::in,
+:- pred touch_file_datestamp(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
     file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
@@ -239,7 +240,7 @@
 
 %-----------------------------------------------------------------------------%
 
-update_interface_return_changed(Globals, ModuleName, OutputFileName,
+copy_dot_tmp_to_base_file_return_changed(Globals, ModuleName, OutputFileName,
         Result, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
@@ -254,20 +255,20 @@ update_interface_return_changed(Globals, ModuleName, OutputFileName,
         (
             TmpOutputFileRes = ok(TmpOutputFileStr),
             ( if OutputFileStr = TmpOutputFileStr then
-                Result = interface_unchanged,
+                Result = base_file_unchanged,
                 string.format("%% `%s' has not changed.\n",
                     [s(OutputFileName)], NoChangeMsg),
                 maybe_write_string(ProgressStream, Verbose, NoChangeMsg, !IO),
                 io.file.remove_file(TmpOutputFileName, _, !IO)
             else
-                update_interface_create_file(Globals,
+                copy_dot_tmp_to_base_file_create_file(Globals,
                     ProgressStream, ErrorStream, "CHANGED",
                     OutputFileName, TmpOutputFileName, Result, !IO)
             )
         ;
             TmpOutputFileRes = error(TmpOutputFileError),
             io.error_message(TmpOutputFileError, TmpOutputFileErrorMsg),
-            Result = interface_error,
+            Result = dot_tmp_copy_error,
             % The error message is about TmpOutputFileName, but the
             % message we print does not mention that file name.
             io.format(ErrorStream, "Error creating `%s': %s\n",
@@ -275,45 +276,46 @@ update_interface_return_changed(Globals, ModuleName, OutputFileName,
         )
     ;
         OutputFileRes = error(_),
-        update_interface_create_file(Globals,
+        copy_dot_tmp_to_base_file_create_file(Globals,
             ProgressStream, ErrorStream, "been CREATED",
             OutputFileName, TmpOutputFileName, Result, !IO)
     ).
 
-update_interface_return_succeeded(Globals, ModuleName, OutputFileName,
-        Succeeded, !IO) :-
-    update_interface_return_changed(Globals, ModuleName, OutputFileName,
-        Result, !IO),
+copy_dot_tmp_to_base_file_return_succeeded(Globals, ModuleName,
+        OutputFileName, Succeeded, !IO) :-
+    copy_dot_tmp_to_base_file_return_changed(Globals, ModuleName,
+        OutputFileName, Result, !IO),
     (
-        ( Result = interface_new_or_changed
-        ; Result = interface_unchanged
+        ( Result = base_file_new_or_changed
+        ; Result = base_file_unchanged
         ),
         Succeeded = succeeded
     ;
-        Result = interface_error,
+        Result = dot_tmp_copy_error,
         Succeeded = did_not_succeed
     ).
 
-update_interface_report_any_error(Globals, ModuleName, OutputFileName,
-        Succeeded, !IO) :-
-    update_interface_return_succeeded(Globals, ModuleName, OutputFileName,
-        Succeeded, !IO),
+copy_dot_tmp_to_base_file_report_any_error(Globals, FileKindStr,
+        ModuleName, OutputFileName, Succeeded, !IO) :-
+    copy_dot_tmp_to_base_file_return_succeeded(Globals, ModuleName,
+        OutputFileName, Succeeded, !IO),
     (
         Succeeded = did_not_succeed,
         get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-        report_error(ErrorStream, "problem updating interface files.", !IO)
+        string.format("problem updating %s files.", [s(FileKindStr)], Msg),
+        report_error(ErrorStream, Msg, !IO)
     ;
         Succeeded = succeeded
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred update_interface_create_file(globals::in,
+:- pred copy_dot_tmp_to_base_file_create_file(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
-    string::in, string::in, string::in, update_interface_result::out,
+    string::in, string::in, string::in, dot_tmp_copy_result::out,
     io::di, io::uo) is det.
 
-update_interface_create_file(Globals, ProgressStream, ErrorStream,
+copy_dot_tmp_to_base_file_create_file(Globals, ProgressStream, ErrorStream,
         ChangedStr, OutputFileName, TmpOutputFileName, Result, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     string.format("%% `%s' has %s.\n", [s(OutputFileName), s(ChangedStr)],
@@ -323,10 +325,10 @@ update_interface_create_file(Globals, ProgressStream, ErrorStream,
         TmpOutputFileName, OutputFileName, MoveRes, !IO),
     (
         MoveRes = ok,
-        Result = interface_new_or_changed
+        Result = base_file_new_or_changed
     ;
         MoveRes = error(MoveError),
-        Result = interface_error,
+        Result = dot_tmp_copy_error,
         io.format(ErrorStream, "Error creating `%s': %s\n",
             [s(OutputFileName), s(io.error_message(MoveError))], !IO)
     ),
@@ -583,20 +585,20 @@ make_symlink_or_copy_dir(Globals, ProgressStream, ErrorStream,
 
 %-----------------------------------------------------------------------------%
 
-touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
+touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
         ModuleName, Ext, Succeeded, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred, Ext,
-        ModuleName, OutputFileName, !IO),
-    touch_datestamp(Globals, ProgressStream, ErrorStream, OutputFileName,
+        ModuleName, FileName, !IO),
+    touch_file_datestamp(Globals, ProgressStream, ErrorStream, FileName,
         Succeeded, !IO).
 
-touch_datestamp(Globals, ProgressStream, ErrorStream, OutputFileName,
+touch_file_datestamp(Globals, ProgressStream, ErrorStream, FileName,
         Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(ProgressStream, Verbose,
-        "% Touching `" ++ OutputFileName ++ "'... ", !IO),
+        "% Touching `" ++ FileName ++ "'... ", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
-    io.open_output(OutputFileName, Result, !IO),
+    io.open_output(FileName, Result, !IO),
     (
         Result = ok(OutputStream),
         % This write does the "touching", i.e. the updating of the file's
@@ -609,7 +611,7 @@ touch_datestamp(Globals, ProgressStream, ErrorStream, OutputFileName,
         Result = error(IOError),
         io.error_message(IOError, IOErrorMessage),
         io.format(ErrorStream, "\nError opening `%s' for output: %s.\n",
-            [s(OutputFileName), s(IOErrorMessage)], !IO),
+            [s(FileName), s(IOErrorMessage)], !IO),
         Succeeded = did_not_succeed
     ).
 

@@ -153,7 +153,7 @@ write_short_interface_file_int3(ProgressStream, ErrorStream, Globals,
         EffectivelyErrors = no,
         actually_write_interface_file3(ProgressStream, ErrorStream,
             Globals, ParseTreeInt3, "", no, OutputSucceeded, !IO),
-        touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
+        touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
             ModuleName, ext_int(ext_int_date_int3),
             TouchSucceeded, !IO),
         Succeeded = OutputSucceeded `and` TouchSucceeded
@@ -208,7 +208,7 @@ write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
             actually_write_interface_file0(ProgressStream, ErrorStream,
                 Globals, ParseTreeInt0, "", MaybeTimestamp,
                 OutputSucceeded, !IO),
-            touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
+            touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
                 ModuleName, ext_int(ext_int_date_int0),
                 TouchSucceeded, !IO),
             Succeeded = OutputSucceeded `and` TouchSucceeded
@@ -289,7 +289,7 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
             actually_write_interface_file2(ProgressStream, ErrorStream,
                 Globals, ParseTreeInt2, "", MaybeTimestamp,
                 OutputSucceeded2, !IO),
-            touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
+            touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
                 ModuleName, ext_int(ext_int_date_int12),
                 TouchSucceeded, !IO),
             Succeeded = and_list([OutputSucceeded1, OutputSucceeded2,
@@ -335,8 +335,8 @@ actually_write_interface_file0(ProgressStream, ErrorStream, Globals,
         := MaybeVersionNumbers,
     output_parse_tree_int0(ProgressStream, ErrorStream, NoLineNumGlobals,
         TmpOutputFileName, ParseTreeInt0V, OutputSucceeded, !IO),
-    update_interface_report_any_error(Globals, ModuleName, OutputFileName,
-        UpdateSucceeded, !IO),
+    copy_dot_tmp_to_base_file_report_any_error(Globals, ".int0",
+        ModuleName, OutputFileName, UpdateSucceeded, !IO),
     Succeeded = OutputSucceeded `and` UpdateSucceeded.
 
 :- pred actually_write_interface_file1(
@@ -358,8 +358,8 @@ actually_write_interface_file1(ProgressStream, ErrorStream, Globals,
         := MaybeVersionNumbers,
     output_parse_tree_int1(ProgressStream, ErrorStream, NoLineNumGlobals,
         TmpOutputFileName, ParseTreeInt1V, OutputSucceeded, !IO),
-    update_interface_report_any_error(Globals, ModuleName, OutputFileName,
-        UpdateSucceeded, !IO),
+    copy_dot_tmp_to_base_file_report_any_error(Globals, ".int",
+        ModuleName, OutputFileName, UpdateSucceeded, !IO),
     Succeeded = OutputSucceeded `and` UpdateSucceeded.
 
 :- pred actually_write_interface_file2(
@@ -379,8 +379,8 @@ actually_write_interface_file2(ProgressStream, ErrorStream, Globals,
         := MaybeVersionNumbers,
     output_parse_tree_int2(ProgressStream, ErrorStream, NoLineNumGlobals,
         TmpOutputFileName, ParseTreeInt2V, OutputSucceeded, !IO),
-    update_interface_report_any_error(Globals, ModuleName, OutputFileName,
-        UpdateSucceeded, !IO),
+    copy_dot_tmp_to_base_file_report_any_error(Globals, ".int2",
+        ModuleName, OutputFileName, UpdateSucceeded, !IO),
     Succeeded = OutputSucceeded `and` UpdateSucceeded.
 
 :- pred actually_write_interface_file3(
@@ -396,8 +396,8 @@ actually_write_interface_file3(ProgressStream, ErrorStream, Globals,
     disable_all_line_numbers(Globals, NoLineNumGlobals),
     output_parse_tree_int3(ProgressStream, ErrorStream, NoLineNumGlobals,
         TmpOutputFileName, ParseTreeInt3, OutputSucceeded, !IO),
-    update_interface_report_any_error(Globals, ModuleName, OutputFileName,
-        UpdateSucceeded, !IO),
+    copy_dot_tmp_to_base_file_report_any_error(Globals, ".int3",
+        ModuleName, OutputFileName, UpdateSucceeded, !IO),
     Succeeded = OutputSucceeded `and` UpdateSucceeded.
 
 %---------------------------------------------------------------------------%

@@ -563,9 +563,9 @@ create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
         ),
         io.close_output(TmpOptStream, !IO),
 
-        update_interface_report_any_error(Globals, ModuleName, OptFileName,
-            _UpdateSucceeded, !IO),
-        touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
+        copy_dot_tmp_to_base_file_report_any_error(Globals, ".opt",
+            ModuleName, OptFileName, _UpdateSucceeded, !IO),
+        touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
             ModuleName, ext_opt_date(ext_opt_date_plain),
             _TouchSucceeded, !IO),
 

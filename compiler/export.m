@@ -731,8 +731,8 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
         (
             Errors = [],
             % Rename "<ModuleName>.mh.tmp" to "<ModuleName>.mh".
-            update_interface_report_any_error(Globals, ModuleName, FileName,
-                _Succeeded, !IO)
+            copy_dot_tmp_to_base_file_report_any_error(Globals, ".mh",
+                ModuleName, FileName, _Succeeded, !IO)
         ;
             Errors = [_ | _],
             io.file.remove_file(TmpFileName, _, !IO),

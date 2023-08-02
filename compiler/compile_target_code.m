@@ -1135,7 +1135,7 @@ make_library_init_file(Globals, ProgressStream, ErrorStream,
         ),
 
         io.close_output(InitFileStream, !IO),
-        update_interface_return_succeeded(Globals, MainModuleName,
+        copy_dot_tmp_to_base_file_return_succeeded(Globals, MainModuleName,
             InitFileName, Succeeded1, !IO),
         Succeeded2 = Succeeded0 `and` Succeeded1,
         (
@@ -1388,7 +1388,7 @@ make_init_target_file(Globals, ProgressStream, ErrorStream, MkInit,
     maybe_report_stats(ProgressStream, Stats, !IO),
     (
         MkInitSucceeded = succeeded,
-        update_interface_return_succeeded(Globals, ModuleName,
+        copy_dot_tmp_to_base_file_return_succeeded(Globals, ModuleName,
             InitTargetFileName, UpdateResult, !IO),
         (
             UpdateResult = succeeded,

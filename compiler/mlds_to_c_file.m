@@ -159,8 +159,8 @@ output_c_header_file_opts(MLDS, Opts, Suffix, !:Succeeded, !IO) :-
         mlds_output_hdr_file(HdrOpts, Indent, MLDS), !:Succeeded, !IO),
     (
         !.Succeeded = succeeded,
-        update_interface_report_any_error(Globals, ModuleName, HeaderFileName,
-            !:Succeeded, !IO)
+        copy_dot_tmp_to_base_file_report_any_error(Globals, ".mih",
+            ModuleName, HeaderFileName, !:Succeeded, !IO)
     ;
         !.Succeeded = did_not_succeed
     ).

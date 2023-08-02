@@ -2128,7 +2128,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
             ),
             FindTimestampFiles(ModuleName, TimestampFiles, !IO),
             list.map_foldl(
-                touch_datestamp(Globals, ProgressStream, ErrorStream),
+                touch_file_datestamp(Globals, ProgressStream, ErrorStream),
                 TimestampFiles, _Succeededs, !IO)
         ;
             Succeeded = did_not_succeed

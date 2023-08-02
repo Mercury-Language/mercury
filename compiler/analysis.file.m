@@ -467,7 +467,7 @@ write_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
     find_and_write_analysis_file(Info ^ compiler, Globals,
         add_dot_temp, write_result_entry, ext_analysis(ext_an_analysis),
         ModuleName, ModuleResults, FileName, !IO),
-    update_interface_return_changed(Globals, ModuleName, FileName,
+    copy_dot_tmp_to_base_file_return_changed(Globals, ModuleName, FileName,
         UpdateResult, !IO),
 
     % If analysis file caching is turned on, write the internal represention
@@ -475,7 +475,7 @@ write_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
     globals.lookup_string_option(Globals, analysis_file_cache_dir, CacheDir),
     ( if
         CacheDir \= "",
-        UpdateResult = interface_new_or_changed
+        UpdateResult = base_file_new_or_changed
     then
         CacheFileName = make_cache_filename(CacheDir, FileName),
         write_analysis_cache_file(CacheFileName, ModuleResults, !IO)
