@@ -9,23 +9,19 @@
 %
 
 :- module foreign_type2.
-
 :- interface.
 
 :- import_module io.
 
 :- pred main(io::di, io::uo) is det.
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module type_desc.
 
-:- type coord(T).
-
-:- func new(T, int, int) = coord(T).
-
-:- func x(coord(T)) = int.
-:- func y(coord(T)) = int.
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     C = new(1, 4, 5),
@@ -39,7 +35,9 @@ main(!IO) :-
     io.nl(!IO).
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
+
+:- type coord(T)
+    --->    coord(x :: int, y :: int).
 
 :- pragma foreign_type("C#", coord(T), "coord").
 
@@ -50,6 +48,10 @@ public class coord {
 }
 ").
 
+%---------------------------------------------------------------------------%
+
+:- func new(T, int, int) = coord(T).
+
 :- pragma foreign_proc("C#",
     new(_T::in, X::in, Y::in) = (C::out),
     [will_not_call_mercury, promise_pure],
@@ -58,6 +60,13 @@ public class coord {
     C.x = X;
     C.y = Y;
 ").
+
+new(_, X, Y) = coord(X, Y).
+
+%---------------------------------------------------------------------------%
+
+:- func x(coord(T)) = int.
+:- func y(coord(T)) = int.
 
 :- pragma foreign_proc("C#",
     x(C::in) = (X::out),
@@ -72,15 +81,5 @@ public class coord {
 "
     Y = C.y;
 ").
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-% Mercury implementation
-
-:- type coord(T)
-    --->    coord(x :: int, y :: int).
-
-new(_, X, Y) = coord(X, Y).
 
 %---------------------------------------------------------------------------%

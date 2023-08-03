@@ -163,8 +163,6 @@ add_pragma_foreign_proc(ItemMercurystatus, PredStatus, PragmaFPInfo,
         pred_info_set_clauses_info(ClausesInfo1, !PredInfo),
         module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
 
-        PredInfo0 = !.PredInfo,
-
         % Replace any maybe_thread_safe foreign_proc attributes with
         % the actual thread safety attributes which we get from the
         % `--maybe-thread-safe' option.
@@ -191,38 +189,110 @@ add_pragma_foreign_proc(ItemMercurystatus, PredStatus, PragmaFPInfo,
         PragmaForeignLanguage = get_foreign_language(Attributes),
         MaybeForSpecificBackend = get_for_specific_backend(Attributes),
         ( if
-            MaybeForSpecificBackend = yes(SpecificBackend),
-            SpecificBackend \= CurrentBackend
-        then
-            % Ignore this foreign_proc.
-            % XXX Why are we treating this form of inapplicability
-            % differently from the pragma being from a not-supported-on-
-            % this-backend language?
-            WarnIfOptInt = yes
-        else if
+            % Don't allow definitions, whether clauses or foreign_procs,
+            % for imported predicates/functions. Nota that this applies to
+            % *plain imported( predicates/function, not the *opt-imported*
+            % ones.
             pred_info_is_imported(!.PredInfo)
         then
-            Pieces = [words("Error:"), pragma_decl("foreign_proc"),
-                words("declaration for imported"),
-                qual_pf_sym_name_pred_form_arity(PFSymNameArity),
-                suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
-            !:Specs = [Spec | !.Specs],
-            ( if list.member(PragmaForeignLanguage, BackendForeignLangs) then
-                WarnIfOptInt = no
+            ( if
+                MaybeForSpecificBackend = yes(SpecificBackend),
+                SpecificBackend \= CurrentBackend
+            then
+                % If we don't prevent the generation of an error in this case,
+                % then three test cases in hard_coded will fail:
+                %   backend_external
+                %   backend_external_func
+                %   backend_external_pred
+                % What they all have in common is that their source code
+                % contains FIRST an declaration that marks a predicate
+                % or function as external for one backend, and THEN they have
+                % a foreign_proc specific to the other backend.
+                % Because both items are impl_pragmas, they get added
+                % to the HLDS in their source order, and the code handling
+                % the external pragma changes the status of the affacted
+                % predicate or function from status_local to
+                % status_external(status_local). For the former,
+                % pred_info_is_imported fails; for the latter, it succeeds.
+                % 
+                % There are two sources of error here.
+                %
+                % One is that the pred_status type, which is ancient and thus
+                % predates the addition of pragma that allow a predicate
+                % or function to be declared external only for one backend,
+                % is too crude to record the effect of such a pragma
+                %
+                % The other is that make_hlds_passes.m does not ensure
+                % that all foreign_procs are added to the HLDS before
+                % any external pragmas.
+                %
+                % The second should be easier to fix. Tinkering with
+                % the pred_status type is not worth it; it needs a full
+                % overhaul, not tinkering.
+                true
             else
-                WarnIfOptInt = yes
+                Pieces = [words("Error:"), pragma_decl("foreign_proc"),
+                    words("declaration for imported"),
+                    qual_pf_sym_name_pred_form_arity(PFSymNameArity),
+                    suffix("."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_parse_tree_to_hlds, Context, Pieces),
+                !:Specs = [Spec | !.Specs]
             )
         else if
-            % Don't add clauses for foreign languages other than the ones
-            % we can generate code for.
-            not list.member(PragmaForeignLanguage, BackendForeignLangs)
+            ( if
+                not list.member(PragmaForeignLanguage, BackendForeignLangs)
+            then
+                RejectCause =
+                    wrong_lang(PragmaForeignLanguage, BackendForeignLangs)
+            else if
+                MaybeForSpecificBackend = yes(SpecificBackend),
+                SpecificBackend \= CurrentBackend
+            then
+                RejectCause = right_lang_wrong_backend
+            else
+                fail
+            )
         then
-            pred_info_update_goal_type(np_goal_type_foreign,
-                PredInfo0, !:PredInfo),
-            module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
-            WarnIfOptInt = yes
+            % This foreign_proc is for the wrong language or the wrong backend.
+            % This is ok when coming from a source file, which is allowed
+            % to define a predicate by different foreign_procs for different
+            % target languages and/or backends. This is not ok when coming
+            % from a .opt file, which (if everything is set up properly)
+            % we should be reading only if it has been generated for the
+            % current grade.
+            ( if ItemMercurystatus =
+                item_defined_in_other_module(item_import_opt_int)
+            then
+                report_bad_foreign_proc_in_dot_opt_file(RejectCause, Context,
+                    !Specs)
+            else
+                true
+            ),
+            % XXX The next two calls seem redundant, and in most cases,
+            % they are. However, deleting them results in the failure
+            % of the hard_coded/foreign_type2 test case, with this message:
+            % In clause for function `x'/1:
+            %   error: undefined symbol `foreign_type2.x'/1.
+            %   There are `:- pragma foreign_type' declarations for type
+            %   `foreign_type2.coord'/1, so it is treated as an abstract
+            %   type in all predicates and functions which are not
+            %   implemented for those foreign types.
+            % The reason for this is the fact that convert_cons_defn
+            % in typecheck.m checks whether the goal type is
+            % goal_not_for_promise(np_goal_type_clause_and_foreign),
+            % and it is these two calls that set up the "_and_foreign"
+            % part of that.
+            %
+            % XXX Originally, we executed these two calls only in
+            % the wrong_lang case, and this was enough for fixing the
+            % foreign_type2 test case. Whether we need them in the
+            % right_lang_wrong_backend case is a guess, which would need
+            % a dedicated test case to test. However, since backend-specific
+            % eternal pragmas are intended only for implementors,
+            % this is not an urgent matter.
+            pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
+            module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
         else
             % Add the pragma declaration to the proc_info for this procedure.
             pred_info_get_proc_table(!.PredInfo, Procs),
@@ -270,60 +340,56 @@ add_pragma_foreign_proc(ItemMercurystatus, PredStatus, PragmaFPInfo,
                 Spec = simplest_spec($pred, severity_error,
                     phase_parse_tree_to_hlds, Context, Pieces),
                 !:Specs = [Spec | !.Specs]
-            ),
-            WarnIfOptInt = no
-        ),
-        ( if
-            WarnIfOptInt = yes,
-            ItemMercurystatus =
-                item_defined_in_other_module(item_import_opt_int)
-        then
-            ( if list.member(PragmaForeignLanguage, BackendForeignLangs) then
-                PragmaLangStr = foreign_language_string(PragmaForeignLanguage),
-                OptFrontPieces = [words("Error:"), pragma_decl("foreign_proc"),
-                    words("declaration in a .opt file"),
-                    words("for a foreign language,"),
-                    words(PragmaLangStr), suffix(",")],
-                (
-                    BackendForeignLangs = [],
-                    unexpected($pred, "BackendForeignLangs = []")
-                ;
-                    BackendForeignLangs = [BackendForeignLang],
-                    BackendLangStr =
-                        foreign_language_string(BackendForeignLang),
-                    OptMainPieces = OptFrontPieces ++ [words("which differs"),
-                        words("from the only language supported by"),
-                        words("the current backend, which is"),
-                        words(BackendLangStr), suffix("."), nl]
-                ;
-                    BackendForeignLangs = [_, _ | _],
-                    BackendLangStrs = list.map(foreign_language_string,
-                        BackendForeignLangs),
-                    BackendLangsStr = list_to_pieces(BackendLangStrs),
-                    OptMainPieces = OptFrontPieces ++
-                        [words("which is not one of the languages"),
-                        words("supported by the current backend,"),
-                        words("which are")] ++ BackendLangsStr ++
-                        [suffix("."), nl]
-                )
-            else
-                OptMainPieces = [words("Error:"), pragma_decl("foreign_proc"),
-                    words("declaration in a .opt file"),
-                    words("whose backend attribute states that"),
-                    words("it is not for the current grade."), nl]
-            ),
-            OptPieces = OptMainPieces ++
-                [words("This indicates that the .opt file"),
-                words("was generated for a different grade."),
-                words("You will need to rebuild this file"),
-                words("for the current grade."), nl],
-            OptSpec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, OptPieces),
-            !:Specs = [OptSpec | !.Specs]
-        else
-            true
+            )
         )
     ).
+
+:- type reject_cause
+    --->    wrong_lang(foreign_language, list(foreign_language))
+    ;       right_lang_wrong_backend.
+
+:- pred report_bad_foreign_proc_in_dot_opt_file(reject_cause::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+report_bad_foreign_proc_in_dot_opt_file(RejectCause, Context, !Specs) :-
+    (
+        RejectCause = wrong_lang(PragmaLang, BackendForeignLangs),
+        PragmaLangStr = foreign_language_string(PragmaLang),
+        FrontPieces = [words("Error:"), pragma_decl("foreign_proc"),
+            words("declaration in a .opt file for a foreign language,"),
+            words(PragmaLangStr), suffix(",")],
+        (
+            BackendForeignLangs = [],
+            unexpected($pred, "BackendForeignLangs = []")
+        ;
+            BackendForeignLangs = [BackendForeignLang],
+            BackendLangStr = foreign_language_string(BackendForeignLang),
+            MainPieces = FrontPieces ++ [words("which differs from"),
+                words("the only language supported by the current backend,"),
+                words("which is"), words(BackendLangStr), suffix("."), nl]
+        ;
+            BackendForeignLangs = [_, _ | _],
+            BackendLangStrs =
+                list.map(foreign_language_string, BackendForeignLangs),
+            BackendLangsStr = list_to_pieces(BackendLangStrs),
+            MainPieces = FrontPieces ++ [words("which is not one of the"),
+                words("languages supported by the current backend,"),
+                words("which are")] ++ BackendLangsStr ++ [suffix("."), nl]
+        )
+    ;
+        RejectCause = right_lang_wrong_backend,
+        MainPieces = [words("Error:"), pragma_decl("foreign_proc"),
+            words("declaration in a .opt file"),
+            words("whose backend attribute states that"),
+            words("it is not for the current grade."), nl]
+    ),
+    Pieces = MainPieces ++ [words("This indicates that the .opt file"),
+        words("was generated for a different grade."),
+        words("You will need to rebuild this file"),
+        words("for the current grade."), nl],
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
+    !:Specs = [Spec | !.Specs].
 
     % Add the pragma_foreign_proc goal to the clauses_info for this procedure.
     % To do so, we must also insert unifications between the variables in the

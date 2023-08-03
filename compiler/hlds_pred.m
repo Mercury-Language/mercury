@@ -1848,17 +1848,17 @@ pred_info_update_goal_type(NPGoalType1, !PredInfo) :-
             NPGoalType0 = np_goal_type_clause_and_foreign,
             NPGoalType = NPGoalType0
         ),
-        GoalType = goal_not_for_promise(NPGoalType)
+        GoalType = goal_not_for_promise(NPGoalType),
+        ( if GoalType = GoalType0 then
+            % Avoid unnecessary memory allocation.
+            true
+        else
+            pred_info_set_goal_type(GoalType, !PredInfo)
+        )
     ;
         GoalType0 = goal_for_promise(_),
         unexpected($pred, "promise")
-    ),
-    % ( if GoalType = GoalType0 then
-    %     % Avoid unnecessary memory allocation.
-    %     true
-    % else
-        pred_info_set_goal_type(GoalType, !PredInfo).
-    % ).
+    ).
 
 pred_info_requested_inlining(PredInfo0) :-
     pred_info_get_markers(PredInfo0, Markers),
