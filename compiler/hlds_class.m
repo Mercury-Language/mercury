@@ -434,8 +434,6 @@ acc_pred_proc_ids_for_methods([MethodInfo | MethodInfos], !PredProcIdsCord) :-
     %
 :- type constraint_proof_map == map(prog_constraint, constraint_proof).
 
-:- pred empty_hlds_constraints(hlds_constraints::out) is det.
-
 :- pred init_hlds_constraint_list(list(prog_constraint)::in,
     list(hlds_constraint)::out) is det.
 
@@ -497,9 +495,6 @@ acc_pred_proc_ids_for_methods([MethodInfo | MethodInfos], !PredProcIdsCord) :-
 %---------------------------------------------------------------------------%
 
 :- implementation.
-
-empty_hlds_constraints(Constraints) :-
-    Constraints = hlds_constraints([], [], map.init, map.init).
 
 init_hlds_constraint_list(ProgConstraints, Constraints) :-
     list.map(init_hlds_constraint, ProgConstraints, Constraints).

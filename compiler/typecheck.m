@@ -1583,10 +1583,9 @@ ensure_vars_have_a_type(VarVectorKind, Context, Vars, !TypeAssignSet, !Info) :-
         varset.init(TypeVarSet0),
         varset.new_vars(NumVars, TypeVars, TypeVarSet0, TypeVarSet),
         prog_type.var_list_to_type_list(map.init, TypeVars, Types),
-        empty_hlds_constraints(EmptyConstraints),
         typecheck_var_has_polymorphic_type_list(atas_ensure_have_a_type,
             VarVectorKind, Context, Vars, TypeVarSet, [], Types,
-            EmptyConstraints, !TypeAssignSet, !Info)
+            empty_hlds_constraints, !TypeAssignSet, !Info)
     ).
 
     % Ensure that each variable in Vars has been assigned a single type.
@@ -1609,10 +1608,9 @@ ensure_vars_have_a_single_type(VarVectorKind, Context, Vars,
         Type = type_variable(TypeVar, kind_star),
         list.length(Vars, NumVars),
         list.duplicate(NumVars, Type, Types),
-        empty_hlds_constraints(EmptyConstraints),
         typecheck_var_has_polymorphic_type_list(atas_ensure_have_a_type,
             VarVectorKind, Context, Vars, TypeVarSet, [], Types,
-            EmptyConstraints, !TypeAssignSet, !Info)
+            empty_hlds_constraints, !TypeAssignSet, !Info)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1630,11 +1628,11 @@ typecheck_higher_order_call(GenericCallId, Context, PredVar, Purity, ArgVars,
     VarVectorKind = var_vector_args(arg_vector_generic_call(GenericCallId)),
     % The class context is empty because higher-order predicates
     % are always monomorphic. Similarly for ExistQVars.
-    empty_hlds_constraints(EmptyConstraints),
     ExistQVars = [],
     typecheck_var_has_polymorphic_type_list(atas_higher_order_call(PredVar),
         VarVectorKind, Context, [PredVar | ArgVars], TypeVarSet, ExistQVars,
-        [PredVarType | ArgTypes], EmptyConstraints, !TypeAssignSet, !Info).
+        [PredVarType | ArgTypes], empty_hlds_constraints,
+        !TypeAssignSet, !Info).
 
     % higher_order_pred_type(Purity, N, EvalMethod,
     %   TypeVarSet, PredType, ArgTypes):
@@ -2258,9 +2256,9 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, ArgVars,
             ;
                 TypeAssignSet0 = [_ | _],
                 varset.init(ConsTypeVarSet),
-                empty_hlds_constraints(EmptyConstraints),
                 ConsTypeInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
-                    EmptyConstraints, source_builtin_type(BuiltinTypeName)),
+                    empty_hlds_constraints,
+                    source_builtin_type(BuiltinTypeName)),
                 ConsIdSpec = report_error_unify_var_functor_result(!.Info,
                     UnifyContext, Context, Var, [ConsTypeInfo],
                     ConsId, 0, TypeAssignSet0),
@@ -2624,9 +2622,8 @@ typecheck_var_functor_type(Var, ConsTypeAssign0, !ArgsTypeAssignSet) :-
         then
             % The constraints are empty here because none are added by
             % unification with a functor.
-            empty_hlds_constraints(EmptyConstraints),
             ArgsTypeAssign = args_type_assign(TypeAssign,
-                ConsArgTypes, EmptyConstraints, atas_cons(Source0)),
+                ConsArgTypes, empty_hlds_constraints, atas_cons(Source0)),
             !:ArgsTypeAssignSet = [ArgsTypeAssign | !.ArgsTypeAssignSet]
         else
             true
@@ -2636,9 +2633,8 @@ typecheck_var_functor_type(Var, ConsTypeAssign0, !ArgsTypeAssignSet) :-
         type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
         % The constraints are empty here because none are added by
         % unification with a functor.
-        empty_hlds_constraints(EmptyConstraints),
         ArgsTypeAssign = args_type_assign(TypeAssign,
-            ConsArgTypes, EmptyConstraints, atas_cons(Source0)),
+            ConsArgTypes, empty_hlds_constraints, atas_cons(Source0)),
         !:ArgsTypeAssignSet = [ArgsTypeAssign | !.ArgsTypeAssignSet]
     ).
 
@@ -2898,8 +2894,6 @@ typecheck_info_get_ctor_list(Info, ConsId, Arity, GoalId, ConsInfos,
 
 typecheck_info_get_ctor_list_2(Info, ConsId, Arity, GoalId, ConsInfos,
         DataConsErrors) :-
-    empty_hlds_constraints(EmptyConstraints),
-
     % Check if `ConsId/Arity' has been defined as a constructor in some
     % discriminated union type(s). This gives us a list of possible
     % cons_type_infos.
@@ -2968,7 +2962,7 @@ typecheck_info_get_ctor_list_2(Info, ConsId, Arity, GoalId, ConsInfos,
         construct_type(TypeCtor, [], ConsType),
         varset.init(ConsTypeVarSet),
         ConsInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
-            EmptyConstraints, source_builtin_type(BuiltInTypeName)),
+            empty_hlds_constraints, source_builtin_type(BuiltInTypeName)),
         BuiltinConsInfos = [ConsInfo]
     else
         BuiltinConsInfos = []
@@ -2995,7 +2989,7 @@ typecheck_info_get_ctor_list_2(Info, ConsId, Arity, GoalId, ConsInfos,
         % Tuples can't have existentially typed arguments.
         TupleExistQVars = [],
         TupleConsInfo = cons_type_info(TupleConsTypeVarSet, TupleExistQVars,
-            TupleConsType, TupleArgTypes, EmptyConstraints,
+            TupleConsType, TupleArgTypes, empty_hlds_constraints,
             source_builtin_type("tuple")),
         TupleConsInfos = [TupleConsInfo]
     else
@@ -3730,9 +3724,8 @@ builtin_apply_type(_Info, ConsId, Arity, ConsTypeInfos) :-
     higher_order_func_type(Purity, Arity1, lambda_normal, TypeVarSet, FuncType,
         ArgTypes, RetType),
     ExistQVars = [],
-    empty_hlds_constraints(EmptyConstraints),
     ConsTypeInfos = [cons_type_info(TypeVarSet, ExistQVars, RetType,
-        [FuncType | ArgTypes], EmptyConstraints,
+        [FuncType | ArgTypes], empty_hlds_constraints,
         source_apply(ApplyNameToUse))].
 
     % builtin_field_access_function_type(Info, GoalId, ConsId,
@@ -3980,6 +3973,11 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldSymName,
             )
         )
     ).
+
+:- func empty_hlds_constraints = hlds_constraints.
+
+empty_hlds_constraints =
+    hlds_constraints([], [], map.init, map.init).
 
     % Add new universal constraints for constraints containing variables that
     % have been renamed. These new constraints are the ones that will need
