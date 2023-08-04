@@ -2475,13 +2475,14 @@
     ;       decl_pragma_format_call(pragma_info_format_call)
     ;       decl_pragma_type_spec(pragma_info_type_spec)
     ;       decl_pragma_oisu(pragma_info_oisu)
-    ;       decl_pragma_terminates(pred_pfu_name_arity)
-    ;       decl_pragma_does_not_terminate(pred_pfu_name_arity)
-    ;       decl_pragma_check_termination(pred_pfu_name_arity)
     ;       decl_pragma_termination_info(pragma_info_termination_info)
     ;       decl_pragma_termination2_info(pragma_info_termination2_info)
     ;       decl_pragma_structure_sharing(pragma_info_structure_sharing)
-    ;       decl_pragma_structure_reuse(pragma_info_structure_reuse).
+    ;       decl_pragma_structure_reuse(pragma_info_structure_reuse)
+
+    ;       decl_pragma_terminates(pred_pfu_name_arity)
+    ;       decl_pragma_does_not_terminate(pred_pfu_name_arity)
+    ;       decl_pragma_check_termination(pred_pfu_name_arity).
 
 :- type impl_pragma
     --->    impl_pragma_foreign_decl(pragma_info_foreign_decl)
@@ -2490,16 +2491,17 @@
     ;       impl_pragma_external_proc(pragma_info_external_proc)
     ;       impl_pragma_fact_table(pragma_info_fact_table)
     ;       impl_pragma_tabled(pragma_info_tabled)
+    ;       impl_pragma_require_tail_rec(pragma_info_require_tail_rec)
+    ;       impl_pragma_require_feature_set(pragma_info_require_feature_set)
+
     ;       impl_pragma_inline(pred_pfu_name_arity)
     ;       impl_pragma_no_inline(pred_pfu_name_arity)
     ;       impl_pragma_consider_used(pred_pfu_name_arity)
     ;       impl_pragma_mode_check_clauses(pred_pfu_name_arity)
     ;       impl_pragma_no_detism_warning(pred_pfu_name_arity)
-    ;       impl_pragma_require_tail_rec(pragma_info_require_tail_rec)
     ;       impl_pragma_promise_pure(pred_pfu_name_arity)
     ;       impl_pragma_promise_semipure(pred_pfu_name_arity)
-    ;       impl_pragma_promise_eqv_clauses(pred_pfu_name_arity)
-    ;       impl_pragma_require_feature_set(pragma_info_require_feature_set).
+    ;       impl_pragma_promise_eqv_clauses(pred_pfu_name_arity).
 
 :- type generated_pragma
     --->    gen_pragma_unused_args(pragma_info_unused_args)
@@ -2535,47 +2537,28 @@
 :- type item_trailing ==       item_pragma_info(pragma_info_trailing_info).
 :- type item_mm_tabling ==     item_pragma_info(pragma_info_mm_tabling_info).
 
-    % Foreign language interfacing pragmas.
+%---------------------------------------------------------------------------%
+%
+% Decl pragmas.
+%
 
-:- type pragma_info_foreign_decl
-    --->    pragma_info_foreign_decl(
-                % A foreign language declaration, such as C header code.
-                decl_lang               :: foreign_language,
-                decl_is_local           :: foreign_decl_is_local,
-                decl_decl               :: foreign_literal_or_include
+:- type pragma_info_obsolete_pred
+    --->    pragma_info_obsolete_pred(
+                pred_pfu_name_arity,
+                list(sym_name_arity)
             ).
 
-:- type pragma_info_foreign_code
-    --->    pragma_info_foreign_code(
-                code_lang               :: foreign_language,
-                code_code               :: foreign_literal_or_include
+:- type pragma_info_obsolete_proc
+    --->    pragma_info_obsolete_proc(
+                proc_pf_name_modes,
+                list(sym_name_arity)
             ).
 
-:- type pragma_info_foreign_proc_export
-    --->    pragma_info_foreign_proc_export(
-                exp_maybe_attrs         :: item_maybe_attrs,
-
-                exp_language            :: foreign_language,
-                % Predname, Predicate/function, Modes, foreign function name.
-                exp_pred_id             :: proc_pf_name_modes,
-                exp_foreign_name        :: string,
-
-                % Specified the names of any variables in the modes above.
-                % Used for generating error messages about foreign_export
-                % pragmas for undeclared modes.
-                exp_varaset             :: prog_varset
+:- type pragma_info_format_call
+    --->    pragma_info_format_call(
+                pred_pf_name_arity,
+                one_or_more(format_string_values)
             ).
-
-:- type pragma_info_external_proc
-    --->    pragma_info_external_proc(
-                % The specified procedure(s) is/are implemented outside
-                % of Mercury code, for the named backend if there is one,
-                % or if there isn't a named backend, then for all backends.
-                external_name           :: pred_pf_name_arity,
-                external_maybe_backend  :: maybe(backend)
-            ).
-
-    % Optimization pragmas.
 
 :- type pragma_info_type_spec
     --->    pragma_info_type_spec(
@@ -2631,71 +2614,6 @@
                 tspec_items             :: set(recomp_item_id)
             ).
 
-:- type pragma_info_unused_args
-    --->    pragma_info_unused_args(
-                % This pragma Should only appear in .opt files.
-                unused_proc_id          :: proc_pf_name_arity_mn,
-
-                % The argument positions of the unused arguments.
-                % Used for intermodule unused argument removal.
-                unused_args             :: list(int)
-            ).
-
-:- type pragma_info_exceptions
-    --->    pragma_info_exceptions(
-                % This pragma should only appear in `.opt' and
-                % `.trans_opt' files.
-                exceptions_proc_id      :: proc_pf_name_arity_mn,
-                exceptions_status       :: exception_status
-            ).
-
-:- type pragma_info_trailing_info
-    --->    pragma_info_trailing_info(
-                % This pragma should only appear in `.trans_opt' files.
-                trailing_info_proc_id   :: proc_pf_name_arity_mn,
-                trailing_info_status    :: trailing_status
-            ).
-
-:- type pragma_info_mm_tabling_info
-    --->    pragma_info_mm_tabling_info(
-                % This pragma should only appear in `.opt' and
-                % `.trans_opt' files.
-                mm_tabling_info_proc_id :: proc_pf_name_arity_mn,
-                mm_tabling_info_status  :: mm_tabling_status
-            ).
-
-:- type pragma_info_require_tail_rec
-    --->    pragma_info_require_tail_rec(
-                rtr_proc_id             :: pred_or_proc_pfumm_name,
-                rtr_require_tailrec     :: require_tail_recursion
-
-                % This parameter only makes sense when options contains
-                % either rtro_mutual_rec_only or rtro_all_recursion.
-                % TODO, currently unused, may be used later to implement one
-                % of Zoltan's suggestions here:
-                % http://www.mercurylang.org/list-archives/developers/
-                %   2015-November/016482.html
-                % rtr_maybe_scc           :: maybe(list(
-                %                             pred_or_proc_pfumm_name))
-            ).
-
-    % Evaluation method pragmas.
-
-:- type pragma_info_tabled
-    --->    pragma_info_tabled(
-                % Tabling type, Predname, Arity, PredOrFunc?, Mode?
-                tabled_method           :: tabled_eval_method,
-                tabled_name             :: pred_or_proc_pfumm_name,
-                tabled_attributes       :: maybe(table_attributes)
-            ).
-
-:- type pragma_info_fact_table
-    --->    pragma_info_fact_table(
-                % Predname and Arity, Fact file name.
-                fact_table_pred         :: pred_pfu_name_arity,
-                fact_table_filename     :: string
-            ).
-
 :- type pragma_info_oisu
     --->    pragma_info_oisu(
                 oisu_type_ctor          :: type_ctor,
@@ -2704,19 +2622,21 @@
                 oisu_destroyer_preds    :: list(pred_pf_name_arity)
             ).
 
-    % Termination analysis pragmas.
+% The termination/termination2 pragmas record information
+% about a predicate's or function's termination properties for our
+% two different termination analyzers. Even though they are usually
+% compiler generated, they are decl pragmas, not gen pragmas, because
+% we allow users to include them in Mercury source programs, to tell
+% the analyzers some things that they cannot figure out for themselves,
+% such as the termination properties of foreign language code in
+% foreign_procs.
 
 :- type pragma_info_termination_info
     --->    pragma_info_termination_info(
-                % The list(mer_mode) is the declared argmodes of the
-                % procedure, unless there are no declared argmodes, in which
-                % case the inferred argmodes are used. This pragma is used to
-                % define information about a predicates termination
-                % properties. It is most useful where the compiler has
-                % insufficient information to be able to analyse the
-                % predicate. This includes c_code, and imported predicates.
-                % termination_info pragmas are used in opt and trans_opt
-                % files.
+
+                % The modes represent the declared argmodes of the procedure,
+                % unless there are no declared argmodes, in which case
+                % we use the inferred argmodes.
                 terminfo_pred_id        :: proc_pf_name_modes,
                 terminfo_args           :: maybe(pragma_arg_size_info),
                 terminfo_term           :: maybe(pragma_termination_info)
@@ -2730,7 +2650,13 @@
                 terminfo2_term          :: maybe(pragma_termination_info)
             ).
 
-    % CTGC pragmas: structure sharing / structure reuse analysis.
+% The sharing/reuse pragmas record information about a predicate's or
+% function's properties that are relevant for compile-time garbage
+% collection (ctgx). Even though they are usually compiler generated,
+% they are decl pragmas, not gen pragmas, because we allow users
+% to include them in Mercury source programs, to tell the compiler some things
+% that it cannot figure out for itself, such as the ctgc properties
+% of foreign language code in foreign_procs.
 
 :- type pragma_info_structure_sharing
     --->    pragma_info_structure_sharing(
@@ -2787,30 +2713,123 @@
                 reuse_description       :: maybe(structure_reuse_domain)
             ).
 
-    % Misc pragmas.
+%---------------------------------------------------------------------------%
+%
+% Impl pragmas.
+%
 
-:- type pragma_info_obsolete_pred
-    --->    pragma_info_obsolete_pred(
-                pred_pfu_name_arity,
-                list(sym_name_arity)
+:- type pragma_info_foreign_decl
+    --->    pragma_info_foreign_decl(
+                % A foreign language declaration, such as C header code.
+                decl_lang               :: foreign_language,
+                decl_is_local           :: foreign_decl_is_local,
+                decl_decl               :: foreign_literal_or_include
             ).
 
-:- type pragma_info_obsolete_proc
-    --->    pragma_info_obsolete_proc(
-                proc_pf_name_modes,
-                list(sym_name_arity)
+:- type pragma_info_foreign_code
+    --->    pragma_info_foreign_code(
+                code_lang               :: foreign_language,
+                code_code               :: foreign_literal_or_include
             ).
 
-:- type pragma_info_format_call
-    --->    pragma_info_format_call(
-                pred_pf_name_arity,
-                one_or_more(format_string_values)
+:- type pragma_info_foreign_proc_export
+    --->    pragma_info_foreign_proc_export(
+                exp_maybe_attrs         :: item_maybe_attrs,
+
+                exp_language            :: foreign_language,
+                % Predname, Predicate/function, Modes, foreign function name.
+                exp_pred_id             :: proc_pf_name_modes,
+                exp_foreign_name        :: string,
+
+                % Specified the names of any variables in the modes above.
+                % Used for generating error messages about foreign_export
+                % pragmas for undeclared modes.
+                exp_varaset             :: prog_varset
+            ).
+
+:- type pragma_info_external_proc
+    --->    pragma_info_external_proc(
+                % The specified procedure(s) is/are implemented outside
+                % of Mercury code, for the named backend if there is one,
+                % or if there isn't a named backend, then for all backends.
+                external_name           :: pred_pf_name_arity,
+                external_maybe_backend  :: maybe(backend)
+            ).
+
+:- type pragma_info_fact_table
+    --->    pragma_info_fact_table(
+                % Predname and Arity, Fact file name.
+                fact_table_pred         :: pred_pfu_name_arity,
+                fact_table_filename     :: string
+            ).
+
+:- type pragma_info_tabled
+    --->    pragma_info_tabled(
+                % Tabling type, Predname, Arity, PredOrFunc?, Mode?
+                tabled_method           :: tabled_eval_method,
+                tabled_name             :: pred_or_proc_pfumm_name,
+                tabled_attributes       :: maybe(table_attributes)
+            ).
+
+:- type pragma_info_require_tail_rec
+    --->    pragma_info_require_tail_rec(
+                rtr_proc_id             :: pred_or_proc_pfumm_name,
+                rtr_require_tailrec     :: require_tail_recursion
+
+                % This parameter only makes sense when options contains
+                % either rtro_mutual_rec_only or rtro_all_recursion.
+                % TODO, currently unused, may be used later to implement one
+                % of Zoltan's suggestions here:
+                % http://www.mercurylang.org/list-archives/developers/
+                %   2015-November/016482.html
+                % rtr_maybe_scc           :: maybe(list(
+                %                             pred_or_proc_pfumm_name))
             ).
 
 :- type pragma_info_require_feature_set
     --->    pragma_info_require_feature_set(
                 rfs_feature_set         :: set(required_feature)
             ).
+
+%---------------------------------------------------------------------------%
+%
+% Generated pragmas.
+%
+
+:- type pragma_info_unused_args
+    --->    pragma_info_unused_args(
+                % This pragma Should only appear in .opt files.
+                unused_proc_id          :: proc_pf_name_arity_mn,
+
+                % The argument positions of the unused arguments.
+                % Used for intermodule unused argument removal.
+                unused_args             :: list(int)
+            ).
+
+:- type pragma_info_exceptions
+    --->    pragma_info_exceptions(
+                % This pragma should only appear in `.opt' and
+                % `.trans_opt' files.
+                exceptions_proc_id      :: proc_pf_name_arity_mn,
+                exceptions_status       :: exception_status
+            ).
+
+:- type pragma_info_trailing_info
+    --->    pragma_info_trailing_info(
+                % This pragma should only appear in `.trans_opt' files.
+                trailing_info_proc_id   :: proc_pf_name_arity_mn,
+                trailing_info_status    :: trailing_status
+            ).
+
+:- type pragma_info_mm_tabling_info
+    --->    pragma_info_mm_tabling_info(
+                % This pragma should only appear in `.opt' and
+                % `.trans_opt' files.
+                mm_tabling_info_proc_id :: proc_pf_name_arity_mn,
+                mm_tabling_info_status  :: mm_tabling_status
+            ).
+
+%---------------------------------------------------------------------------%
 
     % These types identify predicates, functions and/or procedures in pragmas.
 
