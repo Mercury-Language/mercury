@@ -74,7 +74,7 @@ collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
         _IntDeclPragmas, IntPromises, _IntBadPreds,
 
         ImpTypeClasses, ImpInstances, _ImpPredDecls, _ImpModeDecls,
-        _ImpClauses, _ImpForeignExportEnums,
+        _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
         _ImpDeclPragmas, _ImpImplPragmas, ImpPromises,
         _ImpInitialises, _ImpFinalises, _ImpMutables),
 

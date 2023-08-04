@@ -570,13 +570,12 @@ create_tabling_statistics_pred(PredOrFunc, PredModuleName, PredName, UserArity,
                 ProcId),
             StatsCode = "MR_get_tabling_stats(&" ++ Global ++ ", &Stats);",
             StatsImpl = fp_impl_ordinary(StatsCode, yes(Context)),
-            StatsFCInfo = pragma_info_foreign_proc(!.Attrs,
+            StatsFCInfo = item_foreign_proc_info(!.Attrs,
                 StatsPredSymName, pf_predicate, [Arg1, Arg2, Arg3],
-                !.VarSet, InstVarSet, StatsImpl),
-            PragmaStatsFCInfo =
-                item_pragma_info(StatsFCInfo, Context, item_no_seq_num),
-            add_pragma_foreign_proc(ItemMercuryStatus, PredStatus,
-                PragmaStatsFCInfo, !ModuleInfo, !Specs)
+                !.VarSet, InstVarSet, StatsImpl, Context, item_no_seq_num),
+            % XXX Should return this instead.
+            add_foreign_proc(ItemMercuryStatus, PredStatus, StatsFCInfo,
+                !ModuleInfo, !Specs)
         ;
             IsTablingSupported = no,
             DummyStatsFuncSymName = qualified(mercury_table_statistics_module,
@@ -596,6 +595,7 @@ create_tabling_statistics_pred(PredOrFunc, PredModuleName, PredName, UserArity,
             StatsClauseInfo = item_clause_info(pf_predicate, StatsPredSymName,
                 Args, !.VarSet, ok2(BodyExpr, []), Context, item_no_seq_num),
             ClauseType = clause_not_for_promise,
+            % XXX Should return this instead.
             module_add_clause(PredStatus, ClauseType, StatsClauseInfo,
                 !ModuleInfo, !QualInfo, !Specs)
         )
@@ -661,13 +661,12 @@ create_tabling_reset_pred(PredOrFunc, PredModuleName, PredName, UserArity,
                 PFSymNameArity, ProcId),
             ResetCode = GlobalVarName ++ ".MR_pt_tablenode.MR_integer = 0;",
             ResetImpl = fp_impl_ordinary(ResetCode, yes(Context)),
-            ResetFCInfo = pragma_info_foreign_proc(!.Attrs,
+            ResetFCInfo = item_foreign_proc_info(!.Attrs,
                 ResetPredSymName, pf_predicate, [Arg1, Arg2],
-                !.VarSet, InstVarSet, ResetImpl),
-            PragmaResetFCInfo =
-                item_pragma_info(ResetFCInfo, Context, item_no_seq_num),
-            add_pragma_foreign_proc(ItemMercuryStatus, PredStatus,
-                PragmaResetFCInfo, !ModuleInfo, !Specs)
+                !.VarSet, InstVarSet, ResetImpl, Context, item_no_seq_num),
+            % XXX Should return this instead.
+            add_foreign_proc(ItemMercuryStatus, PredStatus, ResetFCInfo,
+                !ModuleInfo, !Specs)
         ;
             IsTablingSupported = no,
             Args = [variable(IO0, Context), variable(IO, Context)],
@@ -676,6 +675,7 @@ create_tabling_reset_pred(PredOrFunc, PredModuleName, PredName, UserArity,
             ResetClauseInfo = item_clause_info(pf_predicate, ResetPredSymName,
                 Args, !.VarSet, ok2(BodyExpr, []), Context, item_no_seq_num),
             ClauseType = clause_not_for_promise,
+            % XXX Should return this instead.
             module_add_clause(PredStatus, ClauseType, ResetClauseInfo,
                 !ModuleInfo, !QualInfo, !Specs)
         )

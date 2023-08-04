@@ -778,12 +778,6 @@ add_impl_pragma(ItemMercuryStatus, ItemPragmaInfo, !PragmaTabledCord,
         ForeignBodyCode = foreign_body_code(Lang, BodyCode, Context),
         module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo)
     ;
-        Pragma = impl_pragma_foreign_proc(FPInfo),
-        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        PragmaFPInfo = item_pragma_info(FPInfo, Context, SeqNum),
-        add_pragma_foreign_proc(ItemMercuryStatus, PredStatus, PragmaFPInfo,
-            !ModuleInfo, !Specs)
-    ;
         Pragma = impl_pragma_foreign_proc_export(FEInfo),
         add_pragma_foreign_proc_export(FEInfo, Context, !ModuleInfo, !Specs)
     ;
@@ -1172,17 +1166,18 @@ add_fact_table_proc(PredOrFunc, SymName, ItemMercuryStatus, PredStatus,
     % Fact tables procedures should be considered pure.
     set_purity(purity_pure, Attrs2, Attrs3),
     set_refers_to_llds_stack(refers_to_llds_stack, Attrs3, Attrs),
-    SeqNum = item_no_seq_num,
-    FCInfo = pragma_info_foreign_proc(Attrs, SymName, PredOrFunc, PragmaVars,
-        ProgVarSet, InstVarSet, fp_impl_ordinary(C_ProcCode, no)),
-    PragmaFCInfo = item_pragma_info(FCInfo, Context, SeqNum),
-    add_pragma_foreign_proc(ItemMercuryStatus, PredStatus, PragmaFCInfo,
+    FCInfo = item_foreign_proc_info(Attrs, SymName, PredOrFunc, PragmaVars,
+        ProgVarSet, InstVarSet, fp_impl_ordinary(C_ProcCode, no),
+        Context, item_no_seq_num),
+    % XXX Should return this instead.
+    add_foreign_proc(ItemMercuryStatus, PredStatus, FCInfo,
         !ModuleInfo, !Specs),
     ( if C_ExtraCode = "" then
         true
     else
         ForeignBodyCode = foreign_body_code(lang_c, floi_literal(C_ExtraCode),
             Context),
+        % XXX Should return this instead.
         module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo)
     ).
 

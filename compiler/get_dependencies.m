@@ -355,7 +355,7 @@ acc_implicit_avail_needs_in_parse_tree_module_src(ParseTreeModuleSrc,
         _IntDeclPragmas, IntPromises, _IntBadPreds,
 
         _ImpTypeClasses, ImpInstances, _ImpPredDecls, _ImpModeDecls,
-        ImpClauses, _ImpForeignExportEnums,
+        ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
         _ImpDeclPragmas, ImpImplPragmas, ImpPromises,
         _ImpInitialises, _ImpFinalises, ImpMutables),
 
@@ -648,7 +648,6 @@ acc_implicit_avail_needs_in_impl_pragma(ItemImplPragma,
     ;
         ( ImplPragma = impl_pragma_foreign_decl(_)
         ; ImplPragma = impl_pragma_foreign_code(_)
-        ; ImplPragma = impl_pragma_foreign_proc(_)
         ; ImplPragma = impl_pragma_foreign_proc_export(_)
         ; ImplPragma = impl_pragma_external_proc(_)
         ; ImplPragma = impl_pragma_inline(_)
@@ -1107,13 +1106,16 @@ get_fim_specs(ParseTreeModuleSrc, FIMSpecs) :-
             type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
                 IntTypeDefns, _ImpTypeDefns, ImpForeignEnums),
             % XXX If we collect FIMSpecs in foreign type definitions
-            % in the interface section, and foreign enums in the implementation
-            % section, why do we not collect them in foreign type definitions
-            % in the implementation section?
+            % in the interface section, and foreign procs/enums in the
+            % implementation section, why do we not collect them
+            % in foreign type definitions in the implementation section?
+            ImpForeignProcs = ParseTreeModuleSrc ^ ptms_imp_foreign_procs,
             ImpImplPragmas =  ParseTreeModuleSrc ^ ptms_imp_impl_pragmas,
             set.init(!:SelfImportLangs),
             list.foldl(acc_needed_self_fim_langs_for_type_defn,
                 IntTypeDefns, !SelfImportLangs),
+            list.foldl(acc_needed_self_fim_langs_for_foreign_proc,
+                ImpForeignProcs, !SelfImportLangs),
             list.foldl(acc_needed_self_fim_langs_for_foreign_enum,
                 ImpForeignEnums, !SelfImportLangs),
             list.foldl(acc_needed_self_fim_langs_for_impl_pragma,
@@ -1154,8 +1156,10 @@ get_foreign_code_langs(ParseTreeModuleSrc, Langs) :-
     then
         Langs = set.list_to_set(all_foreign_languages)
     else
+        list.foldl(acc_foreign_code_langs_from_foreign_proc,
+            ParseTreeModuleSrc ^ ptms_imp_foreign_procs, set.init, Langs1),
         list.foldl(acc_foreign_code_langs_from_impl_pragma,
-            ParseTreeModuleSrc ^ ptms_imp_impl_pragmas, set.init, Langs)
+            ParseTreeModuleSrc ^ ptms_imp_impl_pragmas, Langs1, Langs)
     ).
 
 %---------------------%
@@ -1183,8 +1187,7 @@ acc_foreign_include_file_info_from_impl_pragma(ItemImplPragma, !FIFOs) :-
             set.insert(FIFO, !FIFOs)
         )
     ;
-        ( ImplPragma = impl_pragma_foreign_proc(_)
-        ; ImplPragma = impl_pragma_foreign_proc_export(_)
+        ( ImplPragma = impl_pragma_foreign_proc_export(_)
         ; ImplPragma = impl_pragma_fact_table(_)
         ; ImplPragma = impl_pragma_tabled(_)
         ; ImplPragma = impl_pragma_external_proc(_)
@@ -1213,7 +1216,6 @@ acc_fact_tables_from_impl_pragma(ItemImplPragma, !FactTables) :-
     ;
         ( ImplPragma = impl_pragma_foreign_decl(_)
         ; ImplPragma = impl_pragma_foreign_code(_)
-        ; ImplPragma = impl_pragma_foreign_proc(_)
         ; ImplPragma = impl_pragma_foreign_proc_export(_)
         ; ImplPragma = impl_pragma_tabled(_)
         ; ImplPragma = impl_pragma_external_proc(_)
@@ -1242,7 +1244,6 @@ acc_foreign_export_langs_from_impl_pragma(ItemImplPragma, !Langs) :-
     ;
         ( ImplPragma = impl_pragma_foreign_decl(_)
         ; ImplPragma = impl_pragma_foreign_code(_)
-        ; ImplPragma = impl_pragma_foreign_proc(_)
         ; ImplPragma = impl_pragma_fact_table(_)
         ; ImplPragma = impl_pragma_tabled(_)
         ; ImplPragma = impl_pragma_external_proc(_)
@@ -1259,6 +1260,21 @@ acc_foreign_export_langs_from_impl_pragma(ItemImplPragma, !Langs) :-
         )
     ).
 
+:- pred acc_foreign_code_langs_from_foreign_proc(item_foreign_proc_info::in,
+    set(foreign_language)::in, set(foreign_language)::out) is det.
+
+acc_foreign_code_langs_from_foreign_proc(FPInfo, !Langs) :-
+    FPInfo = item_foreign_proc_info(Attrs, _Name, _, _, _, _, _, _, _),
+    Lang = get_foreign_language(Attrs),
+    % NOTE We used to keep a record of the set of foreign languages
+    % in which there was a foreign_proc for a given procedure,
+    % and then chose the one in the *preferred* foreign language.
+    % This made sense when we had the IL backend, which could handle
+    % foreign procs in both IL and C#, but as of Aug 2021, when
+    % we target a foreign language, we accept for it only the
+    % foreign procs in that language, so this mechanism is unnecessary.
+    set.insert(Lang, !Langs).
+
 :- pred acc_foreign_code_langs_from_impl_pragma(item_impl_pragma_info::in,
     set(foreign_language)::in, set(foreign_language)::out) is det.
 
@@ -1268,17 +1284,6 @@ acc_foreign_code_langs_from_impl_pragma(ItemImplPragma, !Langs) :-
         (
             ImplPragma = impl_pragma_foreign_code(FCInfo),
             FCInfo = pragma_info_foreign_code(Lang, _LiteralOrInclude)
-        ;
-            ImplPragma = impl_pragma_foreign_proc(FPInfo),
-            FPInfo = pragma_info_foreign_proc(Attrs, _Name, _, _, _, _, _),
-            Lang = get_foreign_language(Attrs)
-            % NOTE We used to keep a record of the set of foreign languages
-            % in which there was a foreign_proc for a given procedure,
-            % and then chose the one in the *preferred* foreign language.
-            % This made sense when we had the IL backend, which could handle
-            % foreign procs in both IL and C#, but as of Aug 2021, when
-            % we target a foreign language, we accept for it only the
-            % foreign procs in that language, so this mechanism is unnecessary.
         ;
             ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
             FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _, _)

@@ -68,7 +68,7 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
             IntDeclPragmas, IntPromises, _IntBadClauses,
 
             _ImpTypeClasses, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
-            _ImpClauses, _ImpForeignExportEnums,
+            _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
             _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
             _ImpInitialises, _ImpFinalises, _ImpMutables),
         CountIntIncls =

@@ -193,6 +193,8 @@
 
 :- pred acc_needed_self_fim_langs_for_type_defn(item_type_defn_info::in,
     set(foreign_language)::in, set(foreign_language)::out) is det.
+:- pred acc_needed_self_fim_langs_for_foreign_proc(item_foreign_proc_info::in,
+    set(foreign_language)::in, set(foreign_language)::out) is det.
 :- pred acc_needed_self_fim_langs_for_foreign_enum(item_foreign_enum_info::in,
     set(foreign_language)::in, set(foreign_language)::out) is det.
 :- pred acc_needed_self_fim_langs_for_impl_pragma(item_impl_pragma_info::in,
@@ -282,7 +284,6 @@
 :- func wrap_mutable_item(item_mutable_info) = item.
 :- func wrap_type_repn_item(item_type_repn_info) = item.
 
-:- func wrap_foreign_proc(item_foreign_proc) = item.
 :- func wrap_type_spec_pragma_item(item_type_spec) = item.
 :- func wrap_termination_pragma_item(item_termination) = item.
 :- func wrap_termination2_pragma_item(item_termination2) = item.
@@ -1410,6 +1411,10 @@ item_needs_foreign_imports(Item) = Langs :-
             Langs = []
         )
     ;
+        Item = item_foreign_proc(FPInfo),
+        FPInfo = item_foreign_proc_info(Attrs, _, _, _, _, _, _, _, _),
+        Langs = [get_foreign_language(Attrs)]
+    ;
         Item = item_foreign_enum(FEInfo),
         FEInfo = item_foreign_enum_info(Lang, _, _, _, _),
         Langs = [Lang]
@@ -1449,6 +1454,10 @@ acc_needed_self_fim_langs_for_type_defn(ItemTypeDefn, !Langs) :-
         true
     ).
 
+acc_needed_self_fim_langs_for_foreign_proc(FPInfo, !Langs) :-
+    FPInfo = item_foreign_proc_info(Attrs, _, _, _, _, _, _, _, _),
+    set.insert(get_foreign_language(Attrs), !Langs).
+
 acc_needed_self_fim_langs_for_foreign_enum(FEInfo, !Langs) :-
     FEInfo = item_foreign_enum_info(Lang, _, _, _, _),
     set.insert(Lang, !Langs).
@@ -1473,10 +1482,6 @@ impl_pragma_needs_foreign_imports(ImplPragma) = Langs :-
             FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _, _)
         ),
         Langs = [Lang]
-    ;
-        ImplPragma = impl_pragma_foreign_proc(FPInfo),
-        FPInfo = pragma_info_foreign_proc(Attrs, _, _, _, _, _, _),
-        Langs = [get_foreign_language(Attrs)]
     ;
         ( ImplPragma = impl_pragma_external_proc(_)
         ; ImplPragma = impl_pragma_inline(_)
@@ -1523,6 +1528,9 @@ item_desc_pieces(Item) = Pieces :-
     ;
         Item = item_mode_decl(_),
         Pieces = [words("mode declaration")]
+    ;
+        Item = item_foreign_proc(_),
+        Pieces = [pragma_decl("foreign_proc"), words("declaration")]
     ;
         Item = item_foreign_enum(_),
         Pieces = [pragma_decl("foreign_enum"), words("declaration")]
@@ -1623,9 +1631,6 @@ impl_pragma_desc_pieces(Pragma) = Pieces :-
     ;
         Pragma = impl_pragma_foreign_proc_export(_),
         Pieces = [pragma_decl("foreign_export"), words("declaration")]
-    ;
-        Pragma = impl_pragma_foreign_proc(_),
-        Pieces = [pragma_decl("foreign_proc"), words("declaration")]
     ;
         Pragma = impl_pragma_external_proc(External),
         External = pragma_info_external_proc(PFNameArity, _),
@@ -1846,11 +1851,6 @@ wrap_initialise_item(X) = item_initialise(X).
 wrap_finalise_item(X) = item_finalise(X).
 wrap_mutable_item(X) = item_mutable(X).
 wrap_type_repn_item(X) = item_type_repn(X).
-
-wrap_foreign_proc(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Pragma = item_pragma_info(impl_pragma_foreign_proc(Info), Context, SeqNum),
-    Item = item_impl_pragma(Pragma).
 
 wrap_type_spec_pragma_item(X) = Item :-
     X = item_pragma_info(Info, Context, SeqNum),

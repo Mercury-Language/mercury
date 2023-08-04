@@ -204,7 +204,7 @@ parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         PragmasImpl,
         PragmasGenUnusedArgs, PragmasGenExceptions,
         PragmasGenTrailing, PragmasGenMMTabling,
-        Clauses, IntBadClauses),
+        Clauses, ForeignProcs, IntBadClauses),
 
     map.init(DirectArgMap),
     TypeRepnDec = type_repn_decision_data(TypeRepnMap, DirectArgMap,
@@ -450,12 +450,52 @@ parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % Remember attempts to define predicates in the interface.
     module_info_set_int_bad_clauses(IntBadClauses, !ModuleInfo),
 
-    % Add foreign proc definitions
+    % To allow the code of add_foreign_procs to check the foreign_procs
+    % against the purity expected of them, it needs to know what that
+    % actual purity is, and this requires that pragmas that make promises
+    % about the actual purity of the foreign_proc is.
+    %
+    % ZZZ The absence of such code here (which will be fixed within a day or
+    % two) causes the failure of the purity/promise_pure_test and
+    % warnings/purity_warnings test cases. These test cases have always
+    % depended for getting the now-expected output on the relative ordering
+    % between a promise purity pragma on the one hand and a foreign_proc
+    % on the other hand; i.e. if this order were reversed, then we
+    % never would have got the output we have always expected.
+    %
+    % XXX We should deprecate promise_pure and promise_semipure pragmas.
+    % They are now obsolete, because they can be replaced
+    % - by promise_{pure,semipure} scopes in Mercury goals, and
+    % - by promise_{pure,semipure} attributes in foreign_procs.
+    %
+    % XXX We should actually add *all* marker pragmas (i.e. all impl_pragmas
+    % whose code in add_impl_pragma in add_pragma.m consists of one or two
+    % calls to add_pred_marker) here. These pragmas only affect the set
+    % of markers in the pred_info, which does not actually *implement*
+    % the predicate or function; but they may be needed as part of the
+    % the specification that the actual implementation is compared against.
+    %
+    % This is true for foreign_procs (we need to know what purity standard
+    % the foreign_proc should meet, and this is influenced by promise_pure
+    % and promise_semipure pragmas, both of which are marker pragmas).
+    % It is also true for tabled pragmas, which want to check that the
+    % predicate or function to which they apply is not marked to be inlined.
+
+    % Add foreign proc definitions from the program, as well as
     % - for the auxiliary predicates that implement solver types, and
     % - for the rest of the auxiliary predicates that implement mutables.
-    add_pragma_foreign_procs(SolverForeignProcs,
+    % We want to add all foreign procs to !ModuleInfo before we add
+    % any impl pragmas that declare predicates/functions to be external
+    % for one backend, because that complicates the code required to handle
+    % any foreign_procs that apply to the other backend. The root of the
+    % problem there is that the pred_status type has no way to denote
+    % a predicate/function that is local for one backend and external
+    % for the other.
+    add_foreign_procs(ForeignProcs,
         !ModuleInfo, !Specs),
-    add_pragma_foreign_procs(MutableForeignProcs,
+    add_foreign_procs(SolverForeignProcs,
+        !ModuleInfo, !Specs),
+    add_foreign_procs(MutableForeignProcs,
         !ModuleInfo, !Specs),
 
     % Check that the predicates listed in `:- initialise' and `:- finalise'
@@ -689,7 +729,8 @@ add_item_avail(ItemMercuryStatus, Avail, !AncestorAvailModules, !ModuleInfo) :-
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out,
     sec_cord(item_pred_decl_info)::in, sec_cord(item_pred_decl_info)::out,
-    ims_cord(item_foreign_proc)::in, ims_cord(item_foreign_proc)::out,
+    ims_cord(item_foreign_proc_info)::in,
+        ims_cord(item_foreign_proc_info)::out,
     sec_cord(item_mutable_info)::in, sec_cord(item_mutable_info)::out) is det.
 
 add_type_defns([], !ModuleInfo, !FoundInvalidType,
@@ -710,7 +751,8 @@ add_type_defns([SecList | SecLists], !ModuleInfo, !FoundInvalidType,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out,
     sec_cord(item_pred_decl_info)::in, sec_cord(item_pred_decl_info)::out,
-    ims_cord(item_foreign_proc)::in, ims_cord(item_foreign_proc)::out,
+    ims_cord(item_foreign_proc_info)::in,
+        ims_cord(item_foreign_proc_info)::out,
     sec_cord(item_mutable_info)::in, sec_cord(item_mutable_info)::out) is det.
 
 add_type_defn(SectionInfo, TypeStatus, TypeDefnInfo,

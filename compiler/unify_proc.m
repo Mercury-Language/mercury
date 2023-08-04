@@ -878,7 +878,7 @@ build_bulk_unify_foreign_proc(ModuleInfo, Ptag, TermType, TermVarX, TermVarY,
         no, ForeignCode, Context, UnifyRemoteArgWordGoal),
     Goals = WordsGoals ++ [UnifyRemoteArgWordGoal].
 
-:- func pure_proc_foreign_attributes = pragma_foreign_proc_attributes.
+:- func pure_proc_foreign_attributes = foreign_proc_attributes.
 
 pure_proc_foreign_attributes = !:Attrs :-
     !:Attrs = default_attributes(lang_c),

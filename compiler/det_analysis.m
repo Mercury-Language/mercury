@@ -1167,7 +1167,7 @@ det_infer_generic_call(GenericCall, CallDetism, GoalInfo,
         GoalFailingContexts = []
     ).
 
-:- pred det_infer_foreign_proc(pragma_foreign_proc_attributes::in,
+:- pred det_infer_foreign_proc(foreign_proc_attributes::in,
     pred_id::in, proc_id::in, pragma_foreign_proc_impl::in,
     hlds_goal_info::in, soln_context::in,
     list(failing_context)::in, determinism::out, list(failing_context)::out,

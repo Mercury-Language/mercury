@@ -161,7 +161,7 @@
     % "bottom", and in the worst case to "top".
     %
 :- pred add_foreign_proc_sharing(module_info::in, pred_info::in, proc_info::in,
-    pred_proc_id::in, pragma_foreign_proc_attributes::in,
+    pred_proc_id::in, foreign_proc_attributes::in,
     list(foreign_arg)::in, prog_context::in, sharing_as::in, sharing_as::out)
     is det.
 
@@ -657,7 +657,7 @@ add_foreign_proc_sharing(ModuleInfo, PredInfo, ProcInfo, ForeignPPId,
         OldSharing).
 
 :- func sharing_as_for_foreign_proc(module_info,
-    pragma_foreign_proc_attributes, pred_proc_id, prog_context) = sharing_as.
+    foreign_proc_attributes, pred_proc_id, prog_context) = sharing_as.
 
 sharing_as_for_foreign_proc(ModuleInfo, Attributes, ForeignPPId,
         ProgContext) = SharingAs :-
@@ -677,7 +677,7 @@ sharing_as_for_foreign_proc(ModuleInfo, Attributes, ForeignPPId,
     ).
 
 :- pred sharing_as_from_user_annotated_sharing(
-    pragma_foreign_proc_attributes::in, sharing_as::out) is semidet.
+    foreign_proc_attributes::in, sharing_as::out) is semidet.
 
 sharing_as_from_user_annotated_sharing(Attributes, UserSharingAs) :-
     UserSharing = get_user_annotated_sharing(Attributes),

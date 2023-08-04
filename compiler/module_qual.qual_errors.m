@@ -105,6 +105,7 @@
                 maybe(pred_or_func),
                 mq_id
             )
+    ;       mqec_foreign_proc(prog_context)
     ;       mqec_foreign_enum(prog_context)
     ;       mqec_foreign_export_enum(prog_context)
     ;       mqec_pragma_decl(prog_context,
@@ -508,6 +509,10 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
         ErrorContext = mqec_clause_mode_annotation(Context),
         ShouldUnqualId = no,
         Pieces = [words("clause mode annotation")]
+    ;
+        ErrorContext = mqec_foreign_proc(Context),
+        ShouldUnqualId = no,
+        Pieces = [pragma_decl("foreign_proc"), words("declaration")]
     ;
         ErrorContext = mqec_foreign_enum(Context),
         ShouldUnqualId = yes,

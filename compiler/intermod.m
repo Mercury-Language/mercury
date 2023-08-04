@@ -1119,7 +1119,7 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
 
 :- pred intermod_write_foreign_clause(io.text_output_stream::in,
     proc_table::in, pred_or_func::in, var_table::in,
-    pragma_foreign_proc_impl::in, pragma_foreign_proc_attributes::in,
+    pragma_foreign_proc_impl::in, foreign_proc_attributes::in,
     list(foreign_arg)::in, sym_name::in, proc_id::in,
     io::di, io::uo) is det.
 
@@ -1133,9 +1133,10 @@ intermod_write_foreign_clause(Stream, Procs, PredOrFunc, VarTable0, PragmaImpl,
             VarTable0, VarTable),
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
         split_var_table(VarTable, ProgVarSet, _VarTypes),
-        FPInfo = pragma_info_foreign_proc(Attributes, SymName,
-            PredOrFunc, PragmaVars, ProgVarSet, InstVarSet, PragmaImpl),
-        mercury_output_pragma_foreign_proc(Stream, output_mercury, FPInfo, !IO)
+        FPInfo = item_foreign_proc_info(Attributes, SymName,
+            PredOrFunc, PragmaVars, ProgVarSet, InstVarSet, PragmaImpl,
+            term_context.dummy_context, item_no_seq_num),
+        mercury_output_item_foreign_proc(Stream, output_mercury, FPInfo, !IO)
     ;
         MaybeArgModes = no,
         unexpected($pred, "no mode declaration")

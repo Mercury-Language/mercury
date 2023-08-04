@@ -62,7 +62,7 @@
     %
 :- pred implement_mutable(module_params::in, item_mutable_info::in,
     list(item_pred_decl_info)::out,
-    list(item_clause_info)::out, list(item_foreign_proc)::out,
+    list(item_clause_info)::out, list(item_foreign_proc_info)::out,
     item_fproc_export::out,
     cord(foreign_decl_code)::in, cord(foreign_decl_code)::out,
     cord(foreign_body_code)::in, cord(foreign_body_code)::out,
@@ -352,7 +352,7 @@ declare_mutable_aux_preds_for_int0(ModuleName, ItemMutable)
 :- pred declare_and_define_mutable_aux_preds(module_params::in,
     mutable_target_params::in, item_mutable_info::in, string::in,
     list(item_pred_decl_info)::out,
-    list(item_clause_info)::out, list(item_foreign_proc)::out,
+    list(item_clause_info)::out, list(item_foreign_proc_info)::out,
     item_fproc_export::out,
     pred_target_names::in, pred_target_names::out) is det.
 
@@ -514,7 +514,7 @@ declare_pre_init_pred(ModuleName, MutableName, Context, PreInitPredDecl) :-
     %
 :- pred define_pre_init_pred(module_name::in, mutable_target_params::in,
     string::in, mutable_maybe_thread_local::in, prog_context::in, string::in,
-    pragma_foreign_proc_attributes::in, goal::out, item_foreign_proc::out)
+    foreign_proc_attributes::in, goal::out, item_foreign_proc_info::out)
     is det.
 
 define_pre_init_pred(ModuleName, TargetParams, MutableName, Local, Context,
@@ -545,16 +545,16 @@ define_pre_init_pred(ModuleName, TargetParams, MutableName, Local, Context,
         Lang = lang_java,
         unexpected($pred, "preinit for java")
     ),
-    PreInitFCInfo = pragma_info_foreign_proc(Attrs,
+    ForeignProc = item_foreign_proc_info(Attrs,
         PreInitPredName,
         pf_predicate,
         [],             % Args
         varset.init,    % ProgVarSet
         varset.init,    % InstVarSet
-        fp_impl_ordinary(PreInitCode, yes(Context))
+        fp_impl_ordinary(PreInitCode, yes(Context)),
+        Context,
+        item_no_seq_num
     ),
-    ForeignProc =
-        item_pragma_info(PreInitFCInfo, Context, item_no_seq_num),
     CallPreInitExpr = call_expr(Context, PreInitPredName, [], purity_impure).
 
 %---------------------------------------------------------------------------%
@@ -576,8 +576,8 @@ declare_lock_unlock_preds(ModuleName, MutableName, Context,
     %
 :- pred define_lock_unlock_preds(module_name::in, mutable_target_params::in,
     string::in, mutable_maybe_thread_local::in, prog_context::in, string::in,
-    pragma_foreign_proc_attributes::in,
-    {goal, goal}::out, list(item_foreign_proc)::out) is det.
+    foreign_proc_attributes::in,
+    {goal, goal}::out, list(item_foreign_proc_info)::out) is det.
 
 define_lock_unlock_preds(ModuleName, TargetParams, MutableName, Local, Context,
         TargetMutableName, Attrs, LockUnlockExprs, ForeignProcs) :-
@@ -609,26 +609,26 @@ define_lock_unlock_preds(ModuleName, TargetParams, MutableName, Local, Context,
             mutable_lock_pred_name(ModuleName, MutableName),
         UnlockPredName =
             mutable_unlock_pred_name(ModuleName, MutableName),
-        LockFCInfo = pragma_info_foreign_proc(LockAndUnlockAttrs,
+        LockForeignProc = item_foreign_proc_info(LockAndUnlockAttrs,
             LockPredName,
             pf_predicate,
             [],
             varset.init,    % ProgVarSet
             varset.init,    % InstVarSet
-            fp_impl_ordinary(LockForeignProcBodyStr, yes(Context))
+            fp_impl_ordinary(LockForeignProcBodyStr, yes(Context)),
+            Context,
+            item_no_seq_num
         ),
-        UnlockFCInfo = pragma_info_foreign_proc(LockAndUnlockAttrs,
+        UnlockForeignProc = item_foreign_proc_info(LockAndUnlockAttrs,
             UnlockPredName,
             pf_predicate,
             [],
             varset.init,    % ProgVarSet
             varset.init,    % InstVarSet
-            fp_impl_ordinary(UnlockForeignProcBodyStr, yes(Context))
+            fp_impl_ordinary(UnlockForeignProcBodyStr, yes(Context)),
+            Context,
+            item_no_seq_num
         ),
-        LockForeignProc =
-            item_pragma_info(LockFCInfo, Context, item_no_seq_num),
-        UnlockForeignProc =
-            item_pragma_info(UnlockFCInfo, Context, item_no_seq_num),
         ForeignProcs = [LockForeignProc, UnlockForeignProc],
         CallLockExpr0 =
             call_expr(Context, LockPredName, [], purity_impure),
@@ -667,8 +667,8 @@ declare_unsafe_get_set_preds(ModuleName, MutableName, Type, Inst, Context,
 :- pred define_unsafe_get_set_preds(module_params::in,
     mutable_target_params::in, string::in, mer_type::in, mer_inst::in,
     mutable_maybe_thread_local::in, prog_context::in, string::in,
-    pragma_foreign_proc_attributes::in,
-    goal::out, goal::out, list(item_foreign_proc)::out) is det.
+    foreign_proc_attributes::in,
+    goal::out, goal::out, list(item_foreign_proc_info)::out) is det.
 
 define_unsafe_get_set_preds(ModuleParams, TargetParams, MutableName,
         Type, Inst, Local, Context, TargetMutableName, Attrs,
@@ -756,26 +756,26 @@ define_unsafe_get_set_preds(ModuleParams, TargetParams, MutableName,
         mutable_unsafe_get_pred_name(ModuleName, MutableName),
     UnsafeSetPredName =
         mutable_unsafe_set_pred_name(ModuleName, MutableName),
-    UnsafeGetFCInfo = pragma_info_foreign_proc(UnsafeGetAttrs,
+    UnsafeGetForeignProc = item_foreign_proc_info(UnsafeGetAttrs,
         UnsafeGetPredName,
         pf_predicate,
         [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
         VarSetOnlyX,    % ProgVarSet
         varset.init,    % InstVarSet
-        fp_impl_ordinary(UnsafeGetCode, yes(Context))
+        fp_impl_ordinary(UnsafeGetCode, yes(Context)),
+        Context,
+        item_no_seq_num
     ),
-    UnsafeSetFCInfo = pragma_info_foreign_proc(UnsafeSetAttrs,
+    UnsafeSetForeignProc = item_foreign_proc_info(UnsafeSetAttrs,
         UnsafeSetPredName,
         pf_predicate,
         [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
         VarSetOnlyX,    % ProgVarSet
         varset.init,    % InstVarSet
-        fp_impl_ordinary(TrailCode ++ UnsafeSetCode, yes(Context))
+        fp_impl_ordinary(TrailCode ++ UnsafeSetCode, yes(Context)),
+        Context,
+        item_no_seq_num
     ),
-    UnsafeGetForeignProc =
-        item_pragma_info(UnsafeGetFCInfo, Context, item_no_seq_num),
-    UnsafeSetForeignProc =
-        item_pragma_info(UnsafeSetFCInfo, Context, item_no_seq_num),
     ForeignProcs = [UnsafeGetForeignProc, UnsafeSetForeignProc],
     UnsafeGetExpr = call_expr(Context, UnsafeGetPredName,
         [variable(X, Context)], purity_semipure),
@@ -804,8 +804,8 @@ declare_constant_get_set_preds(ModuleName, MutableName, Type, Inst,
 
 :- pred define_constant_get_set_preds(module_name::in,
     mutable_target_params::in, string::in, mer_inst::in, prog_context::in,
-    string::in, pragma_foreign_proc_attributes::in,
-    list(item_foreign_proc)::out) is det.
+    string::in, foreign_proc_attributes::in,
+    list(item_foreign_proc_info)::out) is det.
 
 define_constant_get_set_preds(ModuleName, TargetParams, MutableName, Inst,
         Context, TargetMutableName, Attrs, ForeignProcs) :-
@@ -827,28 +827,28 @@ define_constant_get_set_preds(ModuleName, TargetParams, MutableName, Inst,
         ConstantGetCode = string.format("X = %s;\n", [s(TargetMutableName)]),
         ConstantSetCode = string.format("%s = X;\n", [s(TargetMutableName)])
     ),
-    ConstantGetFCInfo = pragma_info_foreign_proc(ConstantGetAttrs,
+    ConstantGetForeignProc = item_foreign_proc_info(ConstantGetAttrs,
         ConstantGetPredName,
         pf_predicate,
         [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
         VarSetOnlyX,    % ProgVarSet
         varset.init,    % InstVarSet
-        fp_impl_ordinary(ConstantGetCode, yes(Context))
+        fp_impl_ordinary(ConstantGetCode, yes(Context)),
+        Context,
+        item_no_seq_num
     ),
     % NOTE: we don't need to trail the set action, since it is
     % executed only once at initialization time.
-    ConstantSetFCInfo = pragma_info_foreign_proc(ConstantSetAttrs,
+    ConstantSetForeignProc = item_foreign_proc_info(ConstantSetAttrs,
         ConstantSetPredName,
         pf_predicate,
         [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
         VarSetOnlyX,    % ProgVarSet
         varset.init,    % InstVarSet
-        fp_impl_ordinary(ConstantSetCode, yes(Context))
+        fp_impl_ordinary(ConstantSetCode, yes(Context)),
+        Context,
+        item_no_seq_num
     ),
-    ConstantGetForeignProc =
-        item_pragma_info(ConstantGetFCInfo, Context, item_no_seq_num),
-    ConstantSetForeignProc =
-        item_pragma_info(ConstantSetFCInfo, Context, item_no_seq_num),
     ForeignProcs = [ConstantGetForeignProc, ConstantSetForeignProc].
 
 %---------------------------------------------------------------------------%

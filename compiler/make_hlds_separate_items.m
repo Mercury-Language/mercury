@@ -91,6 +91,7 @@
     list(item_trailing)::out,
     list(item_mm_tabling)::out,
     ims_list(item_clause_info)::out,
+    ims_list(item_foreign_proc_info)::out,
     set(pred_pf_name_arity)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -129,6 +130,7 @@
                 ia_pred_decls       :: sec_cord(item_pred_decl_info),
                 ia_mode_decls       :: ims_cord(item_mode_decl_info),
                 ia_clauses          :: ims_cord(item_clause_info),
+                ia_foreign_procs    :: ims_cord(item_foreign_proc_info),
                 ia_foreign_enums    :: ims_tuple_cord(item_foreign_enum_info),
                 ia_fees             :: cord(item_foreign_export_enum_info),
                 ia_decl_pragmas     :: ims_cord(item_decl_pragma_info),
@@ -160,7 +162,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, InclMap, Avails, FIMs,
         DeclPragmasSharing, DeclPragmasReuse,
         ImplPragmas, GenPragmasUnusedArgs, GenPragmasExceptions,
         GenPragmasTrailing, GenPragmasMMTabling,
-        Clauses, IntBadPreds) :-
+        Clauses, ForeignProcs, IntBadPreds) :-
     AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
         AncestorIntSpecs, DirectInt1Specs, IndirectInt2Specs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
@@ -175,7 +177,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, InclMap, Avails, FIMs,
         !:Acc = item_accumulator(cord.init, cord.init,
             cord.init, cord.init, cord.init,
             cord.init, cord.init, cord.init, cord.init,
-            cord.init, cord.init, cord.init,
+            cord.init, cord.init, cord.init, cord.init,
             cord.init, cord.init,
 
             cord.init, cord.init, cord.init, cord.init,
@@ -219,7 +221,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, InclMap, Avails, FIMs,
         !.Acc = item_accumulator(AvailsCord, FIMsCord,
             TypeDefnsAbstractCord, TypeDefnsMercuryCord, TypeDefnsForeignCord,
             InstDefnsCord, ModeDefnsCord, TypeClassesCord, InstancesCord,
-            PredDeclsCord, ModeDeclsCord, ClausesCord,
+            PredDeclsCord, ModeDeclsCord, ClausesCord, ForeignProcsCord,
             ForeignEnumsCord, ForeignExportEnumsCord,
 
             DeclPragmasCord, DeclPragmasTypeSpecCord,
@@ -245,6 +247,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, InclMap, Avails, FIMs,
     PredDecls = cord.list(PredDeclsCord),
     ModeDecls = cord.list(ModeDeclsCord),
     Clauses = cord.list(ClausesCord),
+    ForeignProcs = cord.list(ForeignProcsCord),
     ForeignEnums = cord.list(ForeignEnumsCord),
     ForeignExportEnums = cord.list(ForeignExportEnumsCord),
     DeclPragmas = cord.list(DeclPragmasCord),
@@ -391,8 +394,8 @@ acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc) :-
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, _IntBadPreds,
 
-        SubTypeClasses, SubInstances, SubPredDecls, SubModeDecls, ImpClauses,
-        ImpForeignExportEnums,
+        SubTypeClasses, SubInstances, SubPredDecls, SubModeDecls,
+        ImpClauses, ImpForeignProcs, ImpForeignExportEnums,
         SubDeclPragmas, ImpImplPragmas, SubPromises,
         ImpInitialises, ImpFinalises, SubMutables),
 
@@ -413,7 +416,7 @@ acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc) :-
     !.Acc = item_accumulator(AccAvails0, AccFIMs0,
         AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
         AccInstDefns0, AccModeDefns0, AccTypeClasses0, AccInstances0,
-        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccPredDecls0, AccModeDecls0, AccClauses0, AccForeignProcs0,
         AccForeignEnums0, AccForeignExportEnums0,
         AccDeclPragmas0, AccDeclPragmasTypeSpec0,
         AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
@@ -477,6 +480,8 @@ acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc) :-
         AccModeDecls1, AccModeDecls),
     acc_ims_list(ImpItemMercuryStatus, ImpClauses,
         AccClauses0, AccClauses),
+    acc_ims_list(ImpItemMercuryStatus, ImpForeignProcs,
+        AccForeignProcs0, AccForeignProcs),
     acc_ims_tuple_list(SubItemMercuryStatus, SubForeignEnums,
         AccForeignEnums0, AccForeignEnums),
     AccForeignExportEnums = AccForeignExportEnums0 ++
@@ -500,7 +505,7 @@ acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc) :-
     !:Acc = item_accumulator(AccAvails, AccFIMs,
         AccTypeDefnsAbs, AccTypeDefnsMer, AccTypeDefnsFor,
         AccInstDefns, AccModeDefns, AccTypeClasses, AccInstances,
-        AccPredDecls, AccModeDecls, AccClauses,
+        AccPredDecls, AccModeDecls, AccClauses, AccForeignProcs,
         AccForeignEnums, AccForeignExportEnums,
         AccDeclPragmas, AccDeclPragmasTypeSpec0,
         AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
@@ -548,7 +553,7 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
     !.Acc = item_accumulator(AccAvails0, AccFIMs0,
         AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
         AccInstDefns0, AccModeDefns0, AccTypeClasses0, AccInstances0,
-        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccPredDecls0, AccModeDecls0, AccClauses0, AccForeignProcs0,
         AccForeignEnums0, AccForeignExportEnums0,
         AccDeclPragmas0, AccDeclPragmasTypeSpec0,
         AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
@@ -624,7 +629,7 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
     !:Acc = item_accumulator(AccAvails, AccFIMs,
         AccTypeDefnsAbs, AccTypeDefnsMer, AccTypeDefnsFor,
         AccInstDefns, AccModeDefns, AccTypeClasses, AccInstances,
-        AccPredDecls, AccModeDecls, AccClauses0,
+        AccPredDecls, AccModeDecls, AccClauses0, AccForeignProcs0,
         AccForeignEnums, AccForeignExportEnums0,
         AccDeclPragmas, AccDeclPragmasTypeSpec0,
         AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
@@ -697,7 +702,7 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
     !.Acc = item_accumulator(AccAvails0, AccFIMs0,
         AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
         AccInstDefns0, AccModeDefns0, AccTypeClasses0, AccInstances0,
-        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccPredDecls0, AccModeDecls0, AccClauses0, AccForeignProcs0,
         AccForeignEnums0, AccForeignExportEnums0,
         AccDeclPragmas0, AccDeclPragmasTypeSpec0,
         AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
@@ -760,7 +765,7 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
     !:Acc = item_accumulator(AccAvails, AccFIMs,
         AccTypeDefnsAbs, AccTypeDefnsMer, AccTypeDefnsFor,
         AccInstDefns, AccModeDefns, AccTypeClasses, AccInstances,
-        AccPredDecls, AccModeDecls, AccClauses0,
+        AccPredDecls, AccModeDecls, AccClauses0, AccForeignProcs0,
         AccForeignEnums, AccForeignExportEnums0,
         AccDeclPragmas, AccDeclPragmasTypeSpec0,
         AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
@@ -811,7 +816,7 @@ acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
     !.Acc = item_accumulator(AccAvails0, AccFIMs0,
         AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
         AccInstDefns0, AccModeDefns0, AccTypeClasses0, AccInstances0,
-        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccPredDecls0, AccModeDecls0, AccClauses0, AccForeignProcs0,
         AccForeignEnums0, AccForeignExportEnums0,
         AccDeclPragmas0, AccDeclPragmasTypeSpec0,
         AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
@@ -864,7 +869,7 @@ acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
     !:Acc = item_accumulator(AccAvails, AccFIMs,
         AccTypeDefnsAbs, AccTypeDefnsMer, AccTypeDefnsFor,
         AccInstDefns, AccModeDefns, AccTypeClasses, AccInstances,
-        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccPredDecls0, AccModeDecls0, AccClauses0, AccForeignProcs0,
         AccForeignEnums0, AccForeignExportEnums0,
         AccDeclPragmas0, AccDeclPragmasTypeSpec0,
         AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
@@ -894,7 +899,7 @@ acc_parse_tree_plain_opt(ParseTreePlainOpt, !Acc) :-
     !.Acc = item_accumulator(AccAvails0, AccFIMs0,
         AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
         AccInstDefns0, AccModeDefns0, AccTypeClasses0, AccInstances0,
-        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccPredDecls0, AccModeDecls0, AccClauses0, AccForeignProcs0,
         AccForeignEnums0, AccForeignExportEnums0,
         AccDeclPragmas0, AccDeclPragmasTypeSpec0,
         AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
@@ -924,6 +929,8 @@ acc_parse_tree_plain_opt(ParseTreePlainOpt, !Acc) :-
     acc_sec_list(SectionInfo, PredDecls, AccPredDecls0, AccPredDecls),
     acc_ims_list(ItemMercuryStatus, ModeDecls, AccModeDecls0, AccModeDecls),
     acc_ims_list(ItemMercuryStatus, Clauses, AccClauses0, AccClauses),
+    acc_ims_list(ItemMercuryStatus, ForeignProcs,
+        AccForeignProcs0, AccForeignProcs),
     acc_ims_tuple_list(ItemMercuryStatus, ForeignEnums,
         AccForeignEnums0, AccForeignEnums),
     acc_pred_marker_pragmas(MarkerPragmas,
@@ -940,10 +947,7 @@ acc_parse_tree_plain_opt(ParseTreePlainOpt, !Acc) :-
         cord.from_list(Sharings),
     AccDeclPragmasReuse = AccDeclPragmasReuse0 ++
         cord.from_list(Reuses),
-    OptImplPragmas =
-        list.map(wrap_foreign_proc, ForeignProcs) ++
-        ImplMarkerPragmas,
-    acc_ims_list(ItemMercuryStatus, OptImplPragmas,
+    acc_ims_list(ItemMercuryStatus, ImplMarkerPragmas,
         AccImplPragmas0, AccImplPragmas),
     AccGenPragmasUnusedArgs = AccGenPragmasUnusedArgs0 ++
         cord.from_list(UnusedArgs),
@@ -958,7 +962,7 @@ acc_parse_tree_plain_opt(ParseTreePlainOpt, !Acc) :-
     !:Acc = item_accumulator(AccAvails, AccFIMs,
         AccTypeDefnsAbs, AccTypeDefnsMer, AccTypeDefnsFor,
         AccInstDefns, AccModeDefns, AccTypeClasses, AccInstances,
-        AccPredDecls, AccModeDecls, AccClauses,
+        AccPredDecls, AccModeDecls, AccClauses, AccForeignProcs,
         AccForeignEnums, AccForeignExportEnums0,
         AccDeclPragmas, AccDeclPragmasTypeSpec,
         AccDeclPragmasTermInfo, AccDeclPragmasTerm2Info,
@@ -982,7 +986,7 @@ acc_parse_tree_trans_opt(ParseTreeTransOpt, !Acc) :-
     !.Acc = item_accumulator(AccAvails0, AccFIMs0,
         AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
         AccInstDefns0, AccModeDefns0, AccTypeClasses0, AccInstances0,
-        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccPredDecls0, AccModeDecls0, AccClauses0, AccForeignProcs0,
         AccForeignEnums0, AccForeignExportEnums0,
         AccDeclPragmas0, AccDeclPragmasTypeSpec0,
         AccDeclPragmasTermInfo0, AccDeclPragmasTerm2Info0,
@@ -1011,7 +1015,7 @@ acc_parse_tree_trans_opt(ParseTreeTransOpt, !Acc) :-
     !:Acc = item_accumulator(AccAvails0, AccFIMs0,
         AccTypeDefnsAbs0, AccTypeDefnsMer0, AccTypeDefnsFor0,
         AccInstDefns0, AccModeDefns0, AccTypeClasses0, AccInstances0,
-        AccPredDecls0, AccModeDecls0, AccClauses0,
+        AccPredDecls0, AccModeDecls0, AccClauses0, AccForeignProcs0,
         AccForeignEnums0, AccForeignExportEnums0,
         AccDeclPragmas0, AccDeclPragmasTypeSpec0,
         AccDeclPragmasTermInfo, AccDeclPragmasTerm2Info,
@@ -1080,18 +1084,6 @@ acc_pred_marker_pragmas([ItemMarker | ItemMarkers],
         Item = item_impl_pragma(ImplPragma),
         !:ImplPragmas = [ImplPragma | !.ImplPragmas]
     ).
-
-%---------------------------------------------------------------------------%
-
-    % These functions differ from similar functions in item_util.m in that
-    % they yield an item_decl_pragma_info or item_generated_pragma_info;
-    % they do not convert the resulting pragma into a general item.
-
-:- func wrap_foreign_proc(item_foreign_proc) = item_impl_pragma_info.
-
-wrap_foreign_proc(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Item = item_pragma_info(impl_pragma_foreign_proc(Info), Context, SeqNum).
 
 %---------------------------------------------------------------------------%
 

@@ -30,7 +30,7 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- pred ml_gen_foreign_proc(code_model::in,
-    pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
+    foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
     prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -179,7 +179,7 @@ ml_gen_foreign_proc(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
 
 :- pred ml_gen_foreign_proc_for_csharp_or_java(
     mlds_target_lang::in(java_or_csharp), foreign_proc_detism::in,
-    pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
+    foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
     prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -322,7 +322,7 @@ ml_gen_foreign_proc_for_csharp_or_java(TargetLang, OrdinaryKind, Attributes,
     % for targets other than C, e.g. when compiling to C# or Java.
     %
 :- pred ml_gen_foreign_proc_for_c(foreign_proc_detism::in,
-    pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
+    foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
     prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.

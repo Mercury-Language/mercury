@@ -179,7 +179,7 @@
     % Succeeds if the foreign proc attributes imply that a procedure is
     % terminating.
     %
-:- pred attributes_imply_termination(pragma_foreign_proc_attributes::in)
+:- pred attributes_imply_termination(foreign_proc_attributes::in)
     is semidet.
 
 %---------------------------------------------------------------------------%

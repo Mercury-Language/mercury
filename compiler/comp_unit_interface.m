@@ -146,7 +146,7 @@ generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
         _IntDeclPragmas, _IntPromises, _IntBadClauses,
 
         _ImpTypeClasses, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
-        _ImpClauses, _ImpForeignExportEnums,
+        _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
         _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
         _ImpInitialises, _ImpFinalises, _ImpMutables),
 
@@ -491,7 +491,7 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
         IntDeclPragmas, IntPromises, _IntBadClausePreds,
 
         ImpTypeClasses, ImpInstances0, ImpPredDecls0, ImpModeDecls,
-        _ImpClauses, _ImpForeignExportEnums,
+        _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
         ImpDeclPragmas, _ImpImplPragmas, ImpPromises,
         _ImpInitialises, _ImpFinalises, ImpMutables),
 
@@ -551,7 +551,7 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
         IntDeclPragmas, IntPromises, IntBadClausePreds,
 
         ImpTypeClasses, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
-        _ImpClauses, _ImpForeignExportEnums,
+        _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
         _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
         _ImpInitialises, _ImpFinalises, _ImpMutables),
 
@@ -576,7 +576,7 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
         IntBadClausePreds,
 
         coerce(AbstractImpTypeClasses), [],
-        [], [], [], [], [], [], [], [], [], []).
+        [], [], [], [], [], [], [], [], [], [], []).
 
     % Keep the interface part of the given type_ctor_checked_defn unchanged,
     % but modify its implementation-section part by
@@ -835,7 +835,7 @@ generate_interface_int1(Globals, AugMakeIntUnit,
         IntDeclPragmas, IntPromises0, _IntBadClausePreds,
 
         ImpTypeClasses0, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
-        _ImpClauses, _ImpForeignExportEnums,
+        _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
         _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
         _ImpInitialises, _ImpFinalises, _ImpMutables),
 

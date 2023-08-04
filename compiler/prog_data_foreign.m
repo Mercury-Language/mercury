@@ -241,107 +241,107 @@ default_export_enum_attributes =
     % An abstract type for representing a set of
     % `pragma_foreign_proc_attribute's.
     %
-:- type pragma_foreign_proc_attributes.
+:- type foreign_proc_attributes.
 
-:- func default_attributes(foreign_language) = pragma_foreign_proc_attributes.
+:- func default_attributes(foreign_language) = foreign_proc_attributes.
 
-:- func get_foreign_language(pragma_foreign_proc_attributes) =
+:- func get_foreign_language(foreign_proc_attributes) =
     foreign_language.
-:- func get_may_call_mercury(pragma_foreign_proc_attributes) =
+:- func get_may_call_mercury(foreign_proc_attributes) =
     proc_may_call_mercury.
-:- func get_thread_safe(pragma_foreign_proc_attributes) = proc_thread_safe.
-:- func get_tabled_for_io(pragma_foreign_proc_attributes)
+:- func get_thread_safe(foreign_proc_attributes) = proc_thread_safe.
+:- func get_tabled_for_io(foreign_proc_attributes)
     = proc_tabled_for_io.
-:- func get_purity(pragma_foreign_proc_attributes) = purity.
-:- func get_terminates(pragma_foreign_proc_attributes) = proc_terminates.
-:- func get_user_annotated_sharing(pragma_foreign_proc_attributes)
+:- func get_purity(foreign_proc_attributes) = purity.
+:- func get_terminates(foreign_proc_attributes) = proc_terminates.
+:- func get_user_annotated_sharing(foreign_proc_attributes)
     = user_annotated_sharing.
-:- func get_ordinary_despite_detism(pragma_foreign_proc_attributes)
+:- func get_ordinary_despite_detism(foreign_proc_attributes)
     = maybe_ordinary_despite_detism.
-:- func get_may_throw_exception(pragma_foreign_proc_attributes)
+:- func get_may_throw_exception(foreign_proc_attributes)
     = proc_may_throw_exception.
-:- func get_may_modify_trail(pragma_foreign_proc_attributes)
+:- func get_may_modify_trail(foreign_proc_attributes)
     = proc_may_modify_trail.
-:- func get_may_call_mm_tabled(pragma_foreign_proc_attributes)
+:- func get_may_call_mm_tabled(foreign_proc_attributes)
     = proc_may_call_mm_tabled.
-:- func get_box_policy(pragma_foreign_proc_attributes) = box_policy.
-:- func get_affects_liveness(pragma_foreign_proc_attributes)
+:- func get_box_policy(foreign_proc_attributes) = box_policy.
+:- func get_affects_liveness(foreign_proc_attributes)
     = proc_affects_liveness.
-:- func get_allocates_memory(pragma_foreign_proc_attributes)
+:- func get_allocates_memory(foreign_proc_attributes)
     = proc_allocates_memory.
-:- func get_registers_roots(pragma_foreign_proc_attributes)
+:- func get_registers_roots(foreign_proc_attributes)
     = proc_registers_roots.
-:- func get_refers_to_llds_stack(pragma_foreign_proc_attributes)
+:- func get_refers_to_llds_stack(foreign_proc_attributes)
     = maybe_refers_to_llds_stack.
-:- func get_call_std_out_regs(pragma_foreign_proc_attributes)
+:- func get_call_std_out_regs(foreign_proc_attributes)
     = maybe_call_std_out_regs.
-:- func get_may_duplicate(pragma_foreign_proc_attributes)
+:- func get_may_duplicate(foreign_proc_attributes)
     = maybe(proc_may_duplicate).
-:- func get_may_export_body(pragma_foreign_proc_attributes)
+:- func get_may_export_body(foreign_proc_attributes)
     = maybe(proc_may_export_body).
-:- func get_for_specific_backend(pragma_foreign_proc_attributes)
+:- func get_for_specific_backend(foreign_proc_attributes)
     = maybe(backend).
 
 :- pred set_may_call_mercury(proc_may_call_mercury::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_thread_safe(proc_thread_safe::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_foreign_language(foreign_language::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_tabled_for_io(proc_tabled_for_io::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_purity(purity::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_terminates(proc_terminates::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_user_annotated_sharing(user_annotated_sharing::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_ordinary_despite_detism(maybe_ordinary_despite_detism::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_may_throw_exception(proc_may_throw_exception::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_may_modify_trail(proc_may_modify_trail::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_may_call_mm_tabled(proc_may_call_mm_tabled::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_box_policy(box_policy::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_affects_liveness(proc_affects_liveness::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_allocates_memory(proc_allocates_memory::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_registers_roots(proc_registers_roots::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_refers_to_llds_stack(maybe_refers_to_llds_stack::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_call_std_out_regs(maybe_call_std_out_regs::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_may_duplicate(maybe(proc_may_duplicate)::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_may_export_body(maybe(proc_may_export_body)::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 :- pred set_for_specific_backend(maybe(backend)::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 
     % For foreign_procs, there are two different calling conventions,
     % one for foreign code that may recursively call Mercury code, and another
@@ -502,8 +502,8 @@ default_export_enum_attributes =
     % If you add an attribute, you may need to modify
     % `foreign_proc_attributes_to_strings'.
     %
-:- type pragma_foreign_proc_attributes
-    --->    attributes(
+:- type foreign_proc_attributes
+    --->    foreign_proc_attributes(
                 attr_foreign_language           :: foreign_language,
                 attr_may_call_mercury           :: proc_may_call_mercury,
                 attr_thread_safe                :: proc_thread_safe,
@@ -531,7 +531,8 @@ default_export_enum_attributes =
             ).
 
 default_attributes(Language) =
-    attributes(Language, proc_may_call_mercury, proc_not_thread_safe,
+    foreign_proc_attributes(Language,
+        proc_may_call_mercury, proc_not_thread_safe,
         proc_not_tabled_for_io, purity_impure, depends_on_mercury_calls,
         no_user_annotated_sharing, not_ordinary_despite_detism,
         default_exception_behaviour, proc_may_modify_trail,

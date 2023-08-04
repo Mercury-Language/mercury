@@ -42,7 +42,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred generate_code_for_foreign_proc(code_model::in,
-    pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
+    foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in,
     maybe(trace_expr(trace_runtime))::in, pragma_foreign_proc_impl::in,
     hlds_goal_info::in, llds_code::out,
@@ -441,7 +441,7 @@ generate_runtime_cond_code(Expr, CondRval, !CI) :-
 %---------------------------------------------------------------------------%
 
 :- pred generate_ordinary_foreign_proc_code(code_model::in,
-    pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
+    foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
     maybe(prog_context)::in, hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.

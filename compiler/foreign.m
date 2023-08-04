@@ -140,7 +140,7 @@
 :- pred extrude_pragma_implementation(list(foreign_language)::in,
     list(pragma_var)::in, sym_name::in, pred_or_func::in, prog_context::in,
     module_info::in, module_info::out,
-    pragma_foreign_proc_attributes::in, pragma_foreign_proc_attributes::out,
+    foreign_proc_attributes::in, foreign_proc_attributes::out,
     pragma_foreign_proc_impl::in, pragma_foreign_proc_impl::out) is det.
 
 %-----------------------------------------------------------------------------%

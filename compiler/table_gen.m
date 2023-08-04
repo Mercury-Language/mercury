@@ -3445,7 +3445,7 @@ table_plain_call(ModuleInfo, PredName, ArgVars, InstMapDelta,
 
 :- pred table_call_foreign_proc(module_info::in, string::in,
     list(foreign_arg)::in, list(foreign_arg)::in, instmap_delta::in,
-    determinism::in, purity::in, pragma_foreign_proc_attributes::in,
+    determinism::in, purity::in, foreign_proc_attributes::in,
     string::in, term.context::in, hlds_goal::out) is det.
 
 table_call_foreign_proc(ModuleInfo, PredName, Args, ExtraArgs, InstMapDelta,
@@ -4030,7 +4030,7 @@ var_is_io_state(VarTable, Var) :-
 
 %---------------------------------------------------------------------------%
 
-:- func tabling_c_attributes_dupl = pragma_foreign_proc_attributes.
+:- func tabling_c_attributes_dupl = foreign_proc_attributes.
 
 tabling_c_attributes_dupl = Attrs :-
     Attrs0 = default_attributes(lang_c),
@@ -4038,14 +4038,14 @@ tabling_c_attributes_dupl = Attrs :-
     set_affects_liveness(proc_does_not_affect_liveness, Attrs1, Attrs2),
     set_may_duplicate(yes(proc_may_duplicate), Attrs2, Attrs).
 
-:- func tabling_c_attributes_no_dupl = pragma_foreign_proc_attributes.
+:- func tabling_c_attributes_no_dupl = foreign_proc_attributes.
 
 tabling_c_attributes_no_dupl = Attrs :-
     Attrs0 = default_attributes(lang_c),
     set_may_call_mercury(proc_will_not_call_mercury, Attrs0, Attrs1),
     set_affects_liveness(proc_does_not_affect_liveness, Attrs1, Attrs).
 
-:- func make_generator_c_attributes = pragma_foreign_proc_attributes.
+:- func make_generator_c_attributes = foreign_proc_attributes.
 
 make_generator_c_attributes = Attrs :-
     Attrs0 = default_attributes(lang_c),

@@ -386,6 +386,7 @@
                 % private to this module:
                 %
                 %   clauses
+                %   foreign_procs
                 %   foreign_export_enums
                 %   impl_pragmas
                 %   initialises
@@ -398,6 +399,7 @@
                 ptms_imp_pred_decls         :: list(item_pred_decl_info),
                 ptms_imp_mode_decls         :: list(item_mode_decl_info),
                 ptms_imp_clauses            :: list(item_clause_info),
+                ptms_imp_foreign_procs      :: list(item_foreign_proc_info),
                 ptms_imp_foreign_export_enums ::
                                         list(item_foreign_export_enum_info),
                 ptms_imp_decl_pragmas       :: list(item_decl_pragma_info),
@@ -776,7 +778,7 @@
                 ptpo_pred_decls             :: list(item_pred_decl_info),
                 ptpo_mode_decls             :: list(item_mode_decl_info),
                 ptpo_clauses                :: list(item_clause_info),
-                ptpo_foreign_procs          :: list(item_foreign_proc),
+                ptpo_foreign_procs          :: list(item_foreign_proc_info),
                 ptpo_promises               :: list(item_promise_info),
 
                 ptpo_pred_marker_pragmas    :: list(item_pred_marker),
@@ -1219,6 +1221,7 @@
     ;       item_mode_defn(item_mode_defn_info)
     ;       item_pred_decl(item_pred_decl_info)
     ;       item_mode_decl(item_mode_decl_info)
+    ;       item_foreign_proc(item_foreign_proc_info)
     ;       item_foreign_enum(item_foreign_enum_info)
     ;       item_foreign_export_enum(item_foreign_export_enum_info)
     ;       item_decl_pragma(item_decl_pragma_info)
@@ -1366,6 +1369,25 @@
                 pfm_instvarset                  :: inst_varset,
                 pfm_context                     :: prog_context,
                 pfm_seq_num                     :: item_seq_num
+            ).
+
+:- type item_foreign_proc_info
+    --->    item_foreign_proc_info(
+                % Set of foreign proc attributes, such as:
+                %   what language this code is in
+                %   whether or not the code may call Mercury,
+                %   whether or not the code is thread-safe
+                % PredName, Predicate or Function, Vars/Mode,
+                % VarNames, Foreign Code Implementation Info
+                proc_attrs                      :: foreign_proc_attributes,
+                proc_name                       :: sym_name,
+                proc_p_or_f                     :: pred_or_func,
+                proc_vars                       :: list(pragma_var),
+                proc_varset                     :: prog_varset,
+                proc_instvarset                 :: inst_varset,
+                proc_impl                       :: pragma_foreign_proc_impl,
+                proc_context                    :: prog_context,
+                proc_seq_num                    :: item_seq_num
             ).
 
 :- type item_foreign_enum_info
@@ -2464,7 +2486,6 @@
 :- type impl_pragma
     --->    impl_pragma_foreign_decl(pragma_info_foreign_decl)
     ;       impl_pragma_foreign_code(pragma_info_foreign_code)
-    ;       impl_pragma_foreign_proc(pragma_info_foreign_proc)
     ;       impl_pragma_foreign_proc_export(pragma_info_foreign_proc_export)
     ;       impl_pragma_external_proc(pragma_info_external_proc)
     ;       impl_pragma_fact_table(pragma_info_fact_table)
@@ -2508,7 +2529,6 @@
 :- type item_termination2 ==   item_pragma_info(pragma_info_termination2_info).
 :- type item_struct_sharing == item_pragma_info(pragma_info_structure_sharing).
 :- type item_struct_reuse ==   item_pragma_info(pragma_info_structure_reuse).
-:- type item_foreign_proc ==   item_pragma_info(pragma_info_foreign_proc).
 :- type item_tabled ==         item_pragma_info(pragma_info_tabled).
 :- type item_unused_args ==    item_pragma_info(pragma_info_unused_args).
 :- type item_exceptions ==     item_pragma_info(pragma_info_exceptions).
@@ -2529,23 +2549,6 @@
     --->    pragma_info_foreign_code(
                 code_lang               :: foreign_language,
                 code_code               :: foreign_literal_or_include
-            ).
-
-:- type pragma_info_foreign_proc
-    --->    pragma_info_foreign_proc(
-                % Set of foreign proc attributes, such as:
-                %   what language this code is in
-                %   whether or not the code may call Mercury,
-                %   whether or not the code is thread-safe
-                % PredName, Predicate or Function, Vars/Mode,
-                % VarNames, Foreign Code Implementation Info
-                proc_attrs              :: pragma_foreign_proc_attributes,
-                proc_name               :: sym_name,
-                proc_p_or_f             :: pred_or_func,
-                proc_vars               :: list(pragma_var),
-                proc_varset             :: prog_varset,
-                proc_instvarset         :: inst_varset,
-                proc_impl               :: pragma_foreign_proc_impl
             ).
 
 :- type pragma_info_foreign_proc_export
@@ -3231,6 +3234,9 @@ get_item_context(Item) = Context :-
     ;
         Item = item_mode_decl(ItemModeDecl),
         Context = ItemModeDecl ^ pfm_context
+    ;
+        Item = item_foreign_proc(ItemForeignProc),
+        Context = ItemForeignProc ^ proc_context
     ;
         Item = item_foreign_enum(ItemForeignEnum),
         Context = ItemForeignEnum ^ fe_context

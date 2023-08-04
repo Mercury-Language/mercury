@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1993-2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.add_solver.
 :- interface.
@@ -19,7 +19,7 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type solver_aux_pred_info
     --->    solver_aux_pred_info(
@@ -61,10 +61,10 @@
     % both in this module and in the module that defines the solver type.
     %
 :- pred get_solver_type_aux_pred_defns(compilation_target::in,
-    solver_aux_pred_info::in, list(item_foreign_proc)::out) is det.
+    solver_aux_pred_info::in, list(item_foreign_proc_info)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -78,7 +78,7 @@
 :- import_module string.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_solver_type_aux_pred_decls(SolverAuxPredInfo, PredDecls) :-
     SolverAuxPredInfo = solver_aux_pred_info(TypeSymName, TypeParams,
@@ -174,10 +174,9 @@ get_solver_type_aux_pred_decls(SolverAuxPredInfo, PredDecls) :-
     PredDecls =
         [ToGndPredDecl, ToAnyPredDecl, FromGndPredDecl, FromAnyPredDecl].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-get_solver_type_aux_pred_defns(Target, SolverAuxPredInfo,
-        PragmaForeignProcs) :-
+get_solver_type_aux_pred_defns(Target, SolverAuxPredInfo, ForeignProcs) :-
     SolverAuxPredInfo = solver_aux_pred_info(TypeSymName, TypeParams,
         _TVarSet, SolverTypeDetails, Context),
     list.length(TypeParams, TypeArity),
@@ -226,17 +225,17 @@ get_solver_type_aux_pred_defns(Target, SolverAuxPredInfo,
     XTGPragmaVar = pragma_var(X, "X", in_mode, bp_native_if_possible),
     YTGPragmaVar = pragma_var(Y, "Y", OutGroundMode, bp_native_if_possible),
     ToGroundRepnArgs = [XTGPragmaVar, YTGPragmaVar],
-    ToGroundRepnFPInfo = pragma_info_foreign_proc(
+    ToGroundRepnFPInfo = item_foreign_proc_info(
         Attrs,
         ToGroundRepnSymName,
         pf_function,
         ToGroundRepnArgs,
         ProgVarSet,
         InstVarSet,
-        Impl
+        Impl,
+        Context,
+        item_no_seq_num
     ),
-    PragmaToGroundRepnFPInfo =
-        item_pragma_info(ToGroundRepnFPInfo, Context, item_no_seq_num),
 
     % The `func(in(any)) = out(<i_any>) is det' mode.
     %
@@ -244,17 +243,17 @@ get_solver_type_aux_pred_defns(Target, SolverAuxPredInfo,
     XTAPragmaVar = pragma_var(X, "X", in_any_mode, bp_native_if_possible),
     YTAPragmaVar = pragma_var(Y, "Y", OutAnyMode, bp_native_if_possible),
     ToAnyRepnArgs = [XTAPragmaVar, YTAPragmaVar],
-    ToAnyRepnFPInfo = pragma_info_foreign_proc(
+    ToAnyRepnFPInfo = item_foreign_proc_info(
         Attrs,
         ToAnyRepnSymName,
         pf_function,
         ToAnyRepnArgs,
         ProgVarSet,
         InstVarSet,
-        Impl
+        Impl,
+        Context,
+        item_no_seq_num
     ),
-    PragmaToAnyRepnFPInfo =
-        item_pragma_info(ToAnyRepnFPInfo, Context, item_no_seq_num),
 
     % The `func(in(<i_ground>)) = out is det' mode.
     %
@@ -262,17 +261,17 @@ get_solver_type_aux_pred_defns(Target, SolverAuxPredInfo,
     XFGPragmaVar = pragma_var(X, "X", InGroundMode, bp_native_if_possible),
     YFGPragmaVar = pragma_var(Y, "Y", out_mode, bp_native_if_possible),
     FromGroundRepnArgs = [XFGPragmaVar, YFGPragmaVar],
-    FromGroundRepnFPInfo = pragma_info_foreign_proc(
+    FromGroundRepnFPInfo = item_foreign_proc_info(
         Attrs,
         FromGroundRepnSymName,
         pf_function,
         FromGroundRepnArgs,
         ProgVarSet,
         InstVarSet,
-        Impl
+        Impl,
+        Context,
+        item_no_seq_num
     ),
-    PragmaFromGroundRepnFPInfo =
-        item_pragma_info(FromGroundRepnFPInfo, Context, item_no_seq_num),
 
     % The `func(in(<i_any>)) = out(any) is det' mode.
     %
@@ -280,25 +279,25 @@ get_solver_type_aux_pred_defns(Target, SolverAuxPredInfo,
     XFAPragmaVar = pragma_var(X, "X", InAnyMode, bp_native_if_possible),
     YFAPragmaVar = pragma_var(Y, "Y", out_any_mode, bp_native_if_possible),
     FromAnyRepnArgs = [XFAPragmaVar, YFAPragmaVar],
-    FromAnyRepnFPInfo = pragma_info_foreign_proc(
+    FromAnyRepnFPInfo = item_foreign_proc_info(
         Attrs,
         FromAnyRepnSymName,
         pf_function,
         FromAnyRepnArgs,
         ProgVarSet,
         InstVarSet,
-        Impl
+        Impl,
+        Context,
+        item_no_seq_num
     ),
-    PragmaFromAnyRepnFPInfo =
-        item_pragma_info(FromAnyRepnFPInfo, Context, item_no_seq_num),
 
-    PragmaForeignProcs =
-        [PragmaToGroundRepnFPInfo,
-        PragmaToAnyRepnFPInfo,
-        PragmaFromGroundRepnFPInfo,
-        PragmaFromAnyRepnFPInfo].
+    ForeignProcs =
+        [ToGroundRepnFPInfo,
+        ToAnyRepnFPInfo,
+        FromGroundRepnFPInfo,
+        FromAnyRepnFPInfo].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Obtain the solver type conversion function sym_names from
     % the solver type sym_name.
@@ -337,6 +336,6 @@ solver_conversion_fn_symname(Prefix, TypeCtor) = SymName :-
         SymName = qualified(ModuleName, Name)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.add_solver.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

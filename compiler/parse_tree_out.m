@@ -346,8 +346,9 @@ mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, _IntBadPreds,
 
-        ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls, ImpClauses,
-        ImpForeignExportEnums, ImpDeclPragmas, ImpImplPragmas, ImpPromises,
+        ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
+        ImpClauses, ImpForeignProcs, ImpForeignExportEnums,
+        ImpDeclPragmas, ImpImplPragmas, ImpPromises,
         ImpInitialises, ImpFinalises, ImpMutables),
 
     include_map_to_int_imp_modules(InclMap, IntInclModules, ImpInclModules),
@@ -437,6 +438,8 @@ mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
         ImpModeDecls, !IO),
     list.foldl(mercury_output_item_clause(Info, Stream),
         ImpClauses, !IO),
+    list.foldl(mercury_output_item_foreign_proc(Stream, get_output_lang(Info)),
+        ImpForeignProcs, !IO),
     list.foldl(mercury_format_item_foreign_enum(Info, Stream),
         ImpForeignEnums, !IO),
     list.foldl(mercury_format_item_foreign_export_enum(Info, Stream),
@@ -860,8 +863,8 @@ mercury_output_parse_tree_plain_opt(Info, Stream, ParseTree, !IO) :-
         mercury_output_pragma_type_spec(Stream, Lang),
         list.map(project_pragma_type, TypeSpecs), !IO),
     list.foldl(mercury_output_item_clause(Info, Stream), Clauses, !IO),
-    list.foldl(mercury_output_pragma_foreign_proc(Stream, Lang),
-        list.map(project_pragma_type, ForeignProcs), !IO),
+    list.foldl(mercury_output_item_foreign_proc(Stream, Lang),
+        ForeignProcs, !IO),
     list.foldl(mercury_output_item_promise(Info, Stream), Promises, !IO),
 
     maybe_write_block_start_blank_line(Stream, UnusedArgs, !IO),
@@ -1051,9 +1054,6 @@ mercury_output_items(Info, Stream, [Item | Items], !IO) :-
 
 mercury_output_item(Info, Stream, Item, !IO) :-
     (
-        Item = item_clause(ItemClause),
-        mercury_output_item_clause(Info, Stream, ItemClause, !IO)
-    ;
         Item = item_type_defn(ItemTypeDefn),
         mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO)
     ;
@@ -1069,6 +1069,13 @@ mercury_output_item(Info, Stream, Item, !IO) :-
     ;
         Item = item_mode_decl(ItemModeDecl),
         mercury_output_item_mode_decl(Info, Stream, ItemModeDecl, !IO)
+    ;
+        Item = item_clause(ItemClause),
+        mercury_output_item_clause(Info, Stream, ItemClause, !IO)
+    ;
+        Item = item_foreign_proc(ItemForeignProc),
+        mercury_output_item_foreign_proc(Stream, get_output_lang(Info),
+            ItemForeignProc, !IO)
     ;
         Item = item_foreign_enum(ItemForeignEnum),
         mercury_format_item_foreign_enum(Info, Stream, ItemForeignEnum, !IO)

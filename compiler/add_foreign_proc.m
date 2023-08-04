@@ -18,12 +18,12 @@
 
 :- import_module list.
 
-:- pred add_pragma_foreign_procs(ims_list(item_foreign_proc)::in,
+:- pred add_foreign_procs(ims_list(item_foreign_proc_info)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_pragma_foreign_proc(item_mercury_status::in, pred_status::in,
-    item_foreign_proc::in, module_info::in, module_info::out,
+:- pred add_foreign_proc(item_mercury_status::in, pred_status::in,
+    item_foreign_proc_info::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -69,21 +69,20 @@
 
 %-----------------------------------------------------------------------------%
 
-add_pragma_foreign_procs([], !ModuleInfo, !Specs).
-add_pragma_foreign_procs([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
+add_foreign_procs([], !ModuleInfo, !Specs).
+add_foreign_procs([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
     ImsSubList = ims_sub_list(ItemMercuryStatus, PragmaFPInfos),
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    list.foldl2(add_pragma_foreign_proc(ItemMercuryStatus, PredStatus),
+    list.foldl2(add_foreign_proc(ItemMercuryStatus, PredStatus),
         PragmaFPInfos, !ModuleInfo, !Specs),
-    add_pragma_foreign_procs(ImsSubLists, !ModuleInfo, !Specs).
+    add_foreign_procs(ImsSubLists, !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 
-add_pragma_foreign_proc(ItemMercurystatus, PredStatus, PragmaFPInfo,
+add_foreign_proc(ItemMercurystatus, PredStatus, FPInfo,
         !ModuleInfo, !Specs) :-
-    PragmaFPInfo = item_pragma_info(FPInfo, Context, SeqNum),
-    FPInfo = pragma_info_foreign_proc(Attributes0, PredSymName, PredOrFunc,
-        PragmaVars, ProgVarSet, _InstVarset, PragmaImpl),
+    FPInfo = item_foreign_proc_info(Attributes0, PredSymName, PredOrFunc,
+        PragmaVars, ProgVarSet, _InstVarset, PragmaImpl, Context, SeqNum),
     (
         PredSymName = qualified(PredModuleName, PredName)
     ;
@@ -195,50 +194,13 @@ add_pragma_foreign_proc(ItemMercurystatus, PredStatus, PragmaFPInfo,
             % ones.
             pred_info_is_imported(!.PredInfo)
         then
-            ( if
-                MaybeForSpecificBackend = yes(SpecificBackend),
-                SpecificBackend \= CurrentBackend
-            then
-                % If we don't prevent the generation of an error in this case,
-                % then three test cases in hard_coded will fail:
-                %   backend_external
-                %   backend_external_func
-                %   backend_external_pred
-                % What they all have in common is that their source code
-                % contains FIRST an declaration that marks a predicate
-                % or function as external for one backend, and THEN they have
-                % a foreign_proc specific to the other backend.
-                % Because both items are impl_pragmas, they get added
-                % to the HLDS in their source order, and the code handling
-                % the external pragma changes the status of the affacted
-                % predicate or function from status_local to
-                % status_external(status_local). For the former,
-                % pred_info_is_imported fails; for the latter, it succeeds.
-                % 
-                % There are two sources of error here.
-                %
-                % One is that the pred_status type, which is ancient and thus
-                % predates the addition of pragma that allow a predicate
-                % or function to be declared external only for one backend,
-                % is too crude to record the effect of such a pragma
-                %
-                % The other is that make_hlds_passes.m does not ensure
-                % that all foreign_procs are added to the HLDS before
-                % any external pragmas.
-                %
-                % The second should be easier to fix. Tinkering with
-                % the pred_status type is not worth it; it needs a full
-                % overhaul, not tinkering.
-                true
-            else
-                Pieces = [words("Error:"), pragma_decl("foreign_proc"),
-                    words("declaration for imported"),
-                    qual_pf_sym_name_pred_form_arity(PFSymNameArity),
-                    suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, Pieces),
-                !:Specs = [Spec | !.Specs]
-            )
+            Pieces = [words("Error:"), pragma_decl("foreign_proc"),
+                words("declaration for imported"),
+                qual_pf_sym_name_pred_form_arity(PFSymNameArity),
+                suffix("."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
         else if
             ( if
                 not list.member(PragmaForeignLanguage, BackendForeignLangs)
@@ -315,7 +277,7 @@ add_pragma_foreign_proc(ItemMercurystatus, PredStatus, PragmaFPInfo,
                 pred_info_get_arg_types(!.PredInfo, ArgTypes),
                 pred_info_get_purity(!.PredInfo, Purity),
                 pred_info_get_markers(!.PredInfo, Markers),
-                clauses_info_add_pragma_foreign_proc(PredOrFunc,
+                clauses_info_add_foreign_proc(PredOrFunc,
                     PredModuleName, PredName, PredId, ProcId,
                     ProgVarSet, PragmaVars, ArgTypes,
                     Purity, Attributes, Markers, Context, PragmaImpl,
@@ -396,15 +358,15 @@ report_bad_foreign_proc_in_dot_opt_file(RejectCause, Context, !Specs) :-
     % pragma foreign_proc declaration and the head vars of the pred. Also
     % return the hlds_goal.
     %
-:- pred clauses_info_add_pragma_foreign_proc(pred_or_func::in,
+:- pred clauses_info_add_foreign_proc(pred_or_func::in,
     module_name::in, string::in, pred_id::in, proc_id::in,
     prog_varset::in, list(pragma_var)::in, list(mer_type)::in,
-    purity::in, pragma_foreign_proc_attributes::in, pred_markers::in,
+    purity::in, foreign_proc_attributes::in, pred_markers::in,
     prog_context::in, pragma_foreign_proc_impl::in,
     clauses_info::in, clauses_info::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-clauses_info_add_pragma_foreign_proc(PredOrFunc, PredModuleName, PredName,
+clauses_info_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
         PredId, ProcId, VarSet, PragmaVars, OrigArgTypes,
         Purity, Attributes0, Markers, Context, PragmaImpl0,
         !ClausesInfo, !ModuleInfo, !Specs) :-
@@ -427,21 +389,21 @@ clauses_info_add_pragma_foreign_proc(PredOrFunc, PredModuleName, PredName,
         )
     else
         AllProcIds = pred_info_all_procids(PredInfo),
-        clauses_info_do_add_pragma_foreign_proc(PredOrFunc,
+        clauses_info_do_add_foreign_proc(PredOrFunc,
             PredModuleName, PredName, PredId, ProcId, AllProcIds,
             VarSet, PragmaVars, OrigArgTypes, Purity, Attributes0, Markers,
             Context, PragmaImpl0, !ClausesInfo, !ModuleInfo, !Specs)
     ).
 
-:- pred clauses_info_do_add_pragma_foreign_proc(pred_or_func::in,
+:- pred clauses_info_do_add_foreign_proc(pred_or_func::in,
     module_name::in, string::in, pred_id::in, proc_id::in, list(proc_id)::in,
     prog_varset::in, list(pragma_var)::in, list(mer_type)::in,
-    purity::in, pragma_foreign_proc_attributes::in, pred_markers::in,
+    purity::in, foreign_proc_attributes::in, pred_markers::in,
     prog_context::in, pragma_foreign_proc_impl::in,
     clauses_info::in, clauses_info::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-clauses_info_do_add_pragma_foreign_proc(PredOrFunc, PredModuleName, PredName,
+clauses_info_do_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
         PredId, ProcId, AllProcIds, PVarSet, PragmaVars, OrigArgTypes,
         Purity, Attributes0, Markers, Context, PragmaImpl,
         !ClausesInfo, !ModuleInfo, !Specs) :-
@@ -593,7 +555,7 @@ clauses_info_do_add_pragma_foreign_proc(PredOrFunc, PredModuleName, PredName,
     %
 :- pred maybe_rename_user_annotated_sharing_information(globals::in,
     list(prog_var)::in, list(prog_var)::in, list(mer_type)::in,
-    pragma_foreign_proc_attributes::in, pragma_foreign_proc_attributes::out)
+    foreign_proc_attributes::in, foreign_proc_attributes::out)
     is det.
 
 maybe_rename_user_annotated_sharing_information(Globals,

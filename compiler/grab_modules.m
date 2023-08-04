@@ -1503,7 +1503,7 @@ record_includes_imports_uses_in_parse_tree_module_src(ParseTreeModuleSrc,
     % avails, while {Int,Imp}{Import,Use}Map do not.
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, _,
         InclMap, ImportUseMap,
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
         _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
     map.foldl(record_include(non_abstract_section, yes(non_abstract_section)),

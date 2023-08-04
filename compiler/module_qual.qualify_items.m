@@ -92,7 +92,7 @@ module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
         IntDeclPragmas0, IntPromises0, IntBadPreds,
 
         ImpTypeClasses0, ImpInstances0, ImpPredDecls0, ImpModeDecls0,
-        ImpClauses0, ImpForeignExportEnums0,
+        ImpClauses0, ImpForeignProcs0, ImpForeignExportEnums0,
         ImpDeclPragmas0, ImpImplPragmas0, ImpPromises0,
         ImpInitialises0, ImpFinalises0, ImpMutables0),
 
@@ -128,6 +128,8 @@ module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
         ImpModeDecls0, ImpModeDecls, !Info, !Specs),
     % Clauses don't need to be qualified.
     ImpClauses = ImpClauses0,
+    list.map_foldl2(module_qualify_item_foreign_proc(InImp),
+        ImpForeignProcs0, ImpForeignProcs, !Info, !Specs),
     list.map_foldl2(module_qualify_item_foreign_export_enum(InImp),
         ImpForeignExportEnums0, ImpForeignExportEnums, !Info, !Specs),
     list.map_foldl2(module_qualify_item_decl_pragma(InImp),
@@ -151,8 +153,9 @@ module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntPromises, IntBadPreds,
 
-        ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls, ImpClauses,
-        ImpForeignExportEnums, ImpDeclPragmas, ImpImplPragmas, ImpPromises,
+        ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
+        ImpClauses, ImpForeignProcs, ImpForeignExportEnums,
+        ImpDeclPragmas, ImpImplPragmas, ImpPromises,
         ImpInitialises, ImpFinalises, ImpMutables).
 
 %---------------------------------------------------------------------------%
@@ -681,6 +684,23 @@ module_qualify_item_mode_decl(InInt, ItemModeDecl0, ItemModeDecl,
     ),
     ItemModeDecl = item_mode_decl_info(SymName, PredOrFunc, Modes,
         MaybeWithInst, MaybeDetism, InstVarSet, Context, SeqNum).
+
+:- pred module_qualify_item_foreign_proc(mq_in_interface::in,
+    item_foreign_proc_info::in, item_foreign_proc_info::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+module_qualify_item_foreign_proc(InInt, FPInfo0, FPInfo, !Info, !Specs) :-
+    FPInfo0 = item_foreign_proc_info(Attrs0, Name, PredOrFunc,
+        Vars0, Varset, InstVarset, Impl, Context, SeqNum),
+    ErrorContext = mqec_foreign_proc(Context),
+    qualify_pragma_vars(InInt, ErrorContext, Vars0, Vars, !Info, !Specs),
+    UserSharing0 = get_user_annotated_sharing(Attrs0),
+    qualify_user_sharing(InInt, ErrorContext, UserSharing0, UserSharing,
+        !Info, !Specs),
+    set_user_annotated_sharing(UserSharing, Attrs0, Attrs),
+    FPInfo = item_foreign_proc_info(Attrs, Name, PredOrFunc,
+        Vars, Varset, InstVarset, Impl, Context, SeqNum).
 
 :- pred module_qualify_item_foreign_enum(mq_in_interface::in,
     item_foreign_enum_info::in, item_foreign_enum_info::out,
@@ -1712,19 +1732,6 @@ qualify_impl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
         ; Pragma0 = impl_pragma_require_feature_set(_)
         ),
         Pragma = Pragma0
-    ;
-        Pragma0 = impl_pragma_foreign_proc(FPInfo0),
-        FPInfo0 = pragma_info_foreign_proc(Attrs0, Name, PredOrFunc,
-            Vars0, Varset, InstVarset, Impl),
-        ErrorContext = mqec_pragma_impl(Context, Pragma0),
-        qualify_pragma_vars(InInt, ErrorContext, Vars0, Vars, !Info, !Specs),
-        UserSharing0 = get_user_annotated_sharing(Attrs0),
-        qualify_user_sharing(InInt, ErrorContext, UserSharing0, UserSharing,
-            !Info, !Specs),
-        set_user_annotated_sharing(UserSharing, Attrs0, Attrs),
-        FPInfo = pragma_info_foreign_proc(Attrs, Name, PredOrFunc,
-            Vars, Varset, InstVarset, Impl),
-        Pragma = impl_pragma_foreign_proc(FPInfo)
     ;
         Pragma0 = impl_pragma_tabled(TabledInfo0),
         TabledInfo0 = pragma_info_tabled(EvalMethod, PredOrProcSpec0, Attrs),

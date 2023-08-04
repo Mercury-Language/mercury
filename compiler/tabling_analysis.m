@@ -501,7 +501,7 @@ check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTable, Result,
 
     % Utility procedure for processing goals.
     %
-:- func get_mm_tabling_status_from_attributes(pragma_foreign_proc_attributes)
+:- func get_mm_tabling_status_from_attributes(foreign_proc_attributes)
     = mm_tabling_status.
 
 get_mm_tabling_status_from_attributes(Attributes) =

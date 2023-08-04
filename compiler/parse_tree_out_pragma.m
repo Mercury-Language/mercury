@@ -53,10 +53,10 @@
 :- func mercury_pragma_foreign_decl_to_string(pragma_info_foreign_decl)
     = string.
 
-:- pred mercury_output_pragma_foreign_proc(io.text_output_stream::in,
-    output_lang::in, pragma_info_foreign_proc::in, io::di, io::uo) is det.
-:- func mercury_pragma_foreign_proc_to_string(output_lang,
-    pragma_info_foreign_proc) = string.
+:- pred mercury_output_item_foreign_proc(io.text_output_stream::in,
+    output_lang::in, item_foreign_proc_info::in, io::di, io::uo) is det.
+:- func mercury_item_foreign_proc_to_string(output_lang,
+    item_foreign_proc_info) = string.
 
 :- pred mercury_output_pragma_type_spec(io.text_output_stream::in,
     output_lang::in, pragma_info_type_spec::in, io::di, io::uo) is det.
@@ -199,9 +199,6 @@ mercury_output_item_impl_pragma(Info, Stream, ItemImplPragma, !IO) :-
     ;
         Pragma = impl_pragma_foreign_code(FCInfo),
         mercury_output_pragma_foreign_code(Stream, FCInfo, !IO)
-    ;
-        Pragma = impl_pragma_foreign_proc(FPInfo),
-        mercury_output_pragma_foreign_proc(Stream, Lang, FPInfo, !IO)
     ;
         Pragma = impl_pragma_foreign_proc_export(FPEInfo),
         mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, Stream, !IO)
@@ -504,22 +501,22 @@ mercury_is_source_char(Char) :-
 % Output a foreign_proc pragma.
 %
 
-mercury_output_pragma_foreign_proc(Stream, Lang, FPInfo, !IO) :-
+mercury_output_item_foreign_proc(Stream, Lang, FPInfo, !IO) :-
     mercury_format_pragma_foreign_proc(Lang, FPInfo, Stream, !IO).
 
-mercury_pragma_foreign_proc_to_string(Lang, FPInfo) = Str :-
+mercury_item_foreign_proc_to_string(Lang, FPInfo) = Str :-
     State0 = string.builder.init,
     mercury_format_pragma_foreign_proc(Lang, FPInfo,
         string.builder.handle, State0, State),
     Str = string.builder.to_string(State).
 
 :- pred mercury_format_pragma_foreign_proc(output_lang::in,
-    pragma_info_foreign_proc::in, S::in,
+    item_foreign_proc_info::in, S::in,
     U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pragma_foreign_proc(Lang, FPInfo, S, !U) :-
-    FPInfo = pragma_info_foreign_proc(Attributes, PredName, PredOrFunc, Vars0,
-        ProgVarSet, InstVarSet, PragmaCode),
+    FPInfo = item_foreign_proc_info(Attributes, PredName, PredOrFunc, Vars0,
+        ProgVarSet, InstVarSet, PragmaCode, _Context, _SeqNum),
     add_string(":- pragma foreign_proc(", S, !U),
     ForeignLang = get_foreign_language(Attributes),
     mercury_format_foreign_language_string(ForeignLang, S, !U),
@@ -584,7 +581,7 @@ mercury_format_pragma_foreign_proc_vars(Lang, ProgVarSet, InstVarSet,
 %---------------------%
 
 :- pred mercury_format_pragma_foreign_attributes(prog_varset::in,
-    pragma_foreign_proc_attributes::in, S::in,
+    foreign_proc_attributes::in, S::in,
     U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pragma_foreign_attributes(VarSet, Attributes, S, !U) :-
@@ -598,7 +595,7 @@ mercury_format_pragma_foreign_attributes(VarSet, Attributes, S, !U) :-
     % attributes have one). In particular, the foreign language attribute needs
     % to be handled separately as it belongs at the start of the pragma.
     %
-:- func foreign_proc_attributes_to_strings(pragma_foreign_proc_attributes,
+:- func foreign_proc_attributes_to_strings(foreign_proc_attributes,
     prog_varset) = list(string).
 
 foreign_proc_attributes_to_strings(Attrs, VarSet) = StringList :-

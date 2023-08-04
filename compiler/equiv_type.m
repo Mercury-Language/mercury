@@ -582,7 +582,8 @@ replace_in_parse_tree_module_src(TypeEqvMap, InstEqvMap,
         IntDeclPragmas0, IntPromises, IntBadPreds,
 
         ImpTypeClasses0, ImpInstances0, ImpPredDecls0, ImpModeDecls0,
-        ImpClauses0, ImpForeignExportEnums, ImpDeclPragmas0, ImpImplPragmas0,
+        ImpClauses0, ImpForeignProcs0, ImpForeignExportEnums,
+        ImpDeclPragmas0, ImpImplPragmas,
         ImpPromises, ImpInitialises, ImpFinalises, ImpMutables0),
 
     map.map_values_foldl3(
@@ -627,7 +628,7 @@ replace_in_parse_tree_module_src(TypeEqvMap, InstEqvMap,
         replace_in_decl_pragma_info, ImpDeclPragmas0, ImpDeclPragmas,
         !RecompInfo, !UsedModules, !Specs),
     replace_in_list(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
-        replace_in_impl_pragma_info, ImpImplPragmas0, ImpImplPragmas,
+        replace_in_foreign_proc, ImpForeignProcs0, ImpForeignProcs,
         !RecompInfo, !UsedModules, !Specs),
     replace_in_list(ModuleName, MaybeRecordImp, TypeEqvMap, InstEqvMap,
         replace_in_mutable_info, ImpMutables0, ImpMutables,
@@ -644,7 +645,8 @@ replace_in_parse_tree_module_src(TypeEqvMap, InstEqvMap,
         IntDeclPragmas, IntPromises, IntBadPreds,
 
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
-        ImpClauses, ImpForeignExportEnums, ImpDeclPragmas, ImpImplPragmas,
+        ImpClauses, ImpForeignProcs, ImpForeignExportEnums,
+        ImpDeclPragmas, ImpImplPragmas,
         ImpPromises, ImpInitialises, ImpFinalises, ImpMutables).
 
 :- pred replace_in_ancestor_int_spec(module_name::in,
@@ -1579,55 +1581,16 @@ replace_in_pragma_info_type_spec(ModuleName, MaybeRecord,
 
 %---------------------%
 
-:- pred replace_in_impl_pragma_info(module_name::in,
+:- pred replace_in_foreign_proc(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
-    item_impl_pragma_info::in, item_impl_pragma_info::out,
+    item_foreign_proc_info::in, item_foreign_proc_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
-replace_in_impl_pragma_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        Info0, Info, !RecompInfo, !UsedModules, Specs) :-
-    Info0 = item_pragma_info(Pragma0, Context, SeqNum),
-    (
-        Pragma0 = impl_pragma_foreign_proc(FPInfo0),
-        replace_in_pragma_info_foreign_proc(ModuleName, MaybeRecord,
-            TypeEqvMap, InstEqvMap, FPInfo0, FPInfo,
-            !RecompInfo, !UsedModules, Specs),
-        Pragma = impl_pragma_foreign_proc(FPInfo),
-        Info = item_pragma_info(Pragma, Context, SeqNum)
-    ;
-        ( Pragma0 = impl_pragma_foreign_decl(_)
-        ; Pragma0 = impl_pragma_foreign_code(_)
-        ; Pragma0 = impl_pragma_foreign_proc_export(_)
-        ; Pragma0 = impl_pragma_external_proc(_)
-        ; Pragma0 = impl_pragma_fact_table(_)
-        ; Pragma0 = impl_pragma_inline(_)
-        ; Pragma0 = impl_pragma_no_inline(_)
-        ; Pragma0 = impl_pragma_tabled(_)
-        ; Pragma0 = impl_pragma_consider_used(_)
-        ; Pragma0 = impl_pragma_no_detism_warning(_)
-        ; Pragma0 = impl_pragma_mode_check_clauses(_)
-        ; Pragma0 = impl_pragma_require_feature_set(_)
-        ; Pragma0 = impl_pragma_promise_eqv_clauses(_)
-        ; Pragma0 = impl_pragma_promise_pure(_)
-        ; Pragma0 = impl_pragma_promise_semipure(_)
-        ; Pragma0 = impl_pragma_require_tail_rec(_)
-        ),
-        Info = Info0,
-        Specs = []
-    ).
-
-:- pred replace_in_pragma_info_foreign_proc(module_name::in,
-    maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
-    pragma_info_foreign_proc::in, pragma_info_foreign_proc::out,
-    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_modules::in, used_modules::out, list(error_spec)::out) is det.
-
-replace_in_pragma_info_foreign_proc(ModuleName, MaybeRecord,
-        TypeEqvMap, _InstEqvMap, FPInfo0, FPInfo,
-        !RecompInfo, !UsedModules, []) :-
-    FPInfo0 = pragma_info_foreign_proc(Attrs0, PName, PredOrFunc,
-        ProcVars, ProcVarset, ProcInstVarset, ProcImpl),
+replace_in_foreign_proc(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
+        FPInfo0, FPInfo, !RecompInfo, !UsedModules, []) :-
+    FPInfo0 = item_foreign_proc_info(Attrs0, PName, PredOrFunc,
+        ProcVars, ProcVarset, ProcInstVarset, ProcImpl, Context, SeqNum),
     some [!EquivTypeInfo] (
         maybe_start_recording_expanded_items(ModuleName, PName,
             !.RecompInfo, !:EquivTypeInfo),
@@ -1651,8 +1614,8 @@ replace_in_pragma_info_foreign_proc(ModuleName, MaybeRecord,
         ItemId = recomp_item_id(recomp_foreign_proc, ItemName),
         finish_recording_expanded_items(ItemId, !.EquivTypeInfo, !RecompInfo)
     ),
-    FPInfo = pragma_info_foreign_proc(Attrs, PName, PredOrFunc,
-        ProcVars, ProcVarset, ProcInstVarset, ProcImpl).
+    FPInfo = item_foreign_proc_info(Attrs, PName, PredOrFunc,
+        ProcVars, ProcVarset, ProcInstVarset, ProcImpl, Context, SeqNum).
 
 %---------------------%
 

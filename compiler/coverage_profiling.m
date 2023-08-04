@@ -1246,7 +1246,7 @@ proc_static_cons_id(CoverageInfo, ProcStaticConsId) :-
     % Returns a string containing the Low Level C code for a coverage point.
     %
 :- pred coverage_point_ll_code(coverage_data_type::in,
-    pragma_foreign_proc_attributes::out, pragma_foreign_proc_impl::out) is det.
+    foreign_proc_attributes::out, pragma_foreign_proc_impl::out) is det.
 
 coverage_point_ll_code(CoverageDataType, ForeignProcAttrs, ForeignProcImpl) :-
     some [!ForeignProcAttrs] (

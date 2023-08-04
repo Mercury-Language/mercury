@@ -428,7 +428,7 @@
     module_name::in, string::in, list(foreign_arg)::in, list(foreign_arg)::in,
     list(foreign_arg)::in, instmap_delta::in, mode_no::in,
     determinism::in, purity::in, list(goal_feature)::in,
-    pragma_foreign_proc_attributes::in, maybe(trace_expr(trace_runtime))::in,
+    foreign_proc_attributes::in, maybe(trace_expr(trace_runtime))::in,
     string::in, term_context::in, hlds_goal::out) is det.
 
     % Generate a cast goal. The input and output insts are just ground.

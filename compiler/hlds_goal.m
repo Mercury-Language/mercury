@@ -145,7 +145,7 @@
     ;       call_foreign_proc(
                 % Foreign code from a pragma foreign_proc(...) decl.
 
-                foreign_attr        :: pragma_foreign_proc_attributes,
+                foreign_attr        :: foreign_proc_attributes,
 
                 % The called predicate and its mode.
                 foreign_pred_id     :: pred_id,

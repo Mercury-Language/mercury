@@ -542,7 +542,7 @@ check_goals_for_trail_mods(SCC, VarTable, Goals,
 % Utility procedure for processing goals.
 %
 
-:- func attributes_imply_trail_mod(pragma_foreign_proc_attributes) =
+:- func attributes_imply_trail_mod(foreign_proc_attributes) =
     trailing_status.
 
 attributes_imply_trail_mod(Attributes) =

@@ -175,7 +175,7 @@ check_foreign_code_attributes_in_scc(SCC, !ModuleInfo, !Specs) :-
     ).
 
 :- pred check_foreign_code_attributes_of_proc(module_info::in,
-    pred_proc_id::in, pragma_foreign_proc_attributes::in,
+    pred_proc_id::in, foreign_proc_attributes::in,
     proc_info::in, proc_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 

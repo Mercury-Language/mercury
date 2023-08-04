@@ -70,6 +70,7 @@ gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
                 item_num_pred_decl                  :: int,
                 item_num_mode_decl                  :: int,
                 item_num_fim                        :: int,
+                item_num_foreign_proc               :: int,
                 item_num_foreign_enum               :: int,
                 item_num_foreign_export_enum        :: int,
                 item_num_pragma_term                :: int,
@@ -136,7 +137,7 @@ gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
 
 init_item_stats =
     item_stats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0).
+        0, 0, 0, 0, 0).
 
     % Initialize a goal_stats structure.
     %
@@ -257,6 +258,10 @@ gather_stats_in_item(Item, !ItemStats, !GoalStats) :-
     ;
         Item = item_mode_decl(_),
         !ItemStats ^ item_num_mode_decl := !.ItemStats ^ item_num_mode_decl + 1
+    ;
+        Item = item_foreign_proc(_),
+        !ItemStats ^ item_num_foreign_proc :=
+            !.ItemStats ^ item_num_foreign_proc + 1
     ;
         Item = item_foreign_enum(_),
         !ItemStats ^ item_num_foreign_enum :=
@@ -542,7 +547,7 @@ write_section_stats(Stream, SectionName - SectionStats, !IO) :-
 
 write_item_stats(Stream, SectionName, ItemStats, !IO) :-
     ItemStats = item_stats(Clause, TypeDefn, InstDefn, ModeDefn,
-        PredDecl, ModeDecl, FIM, ForeignEnum, ForeignExportEnum,
+        PredDecl, ModeDecl, FIM, ForeignProc, ForeignEnum, ForeignExportEnum,
         PragmaTerm, PragmaTerm2, PragmaDecl, PragmaImpl,
         PragmaUArgs, PragmaExcp, PragmaTrail, PragmaMM,
         Promise, Typeclass, Instance, Initialise, Finalise, Mutable, TypeRepn),
@@ -553,6 +558,7 @@ write_item_stats(Stream, SectionName, ItemStats, !IO) :-
     write_one_stat(Stream, SectionName, "item_pred_decl", PredDecl, !IO),
     write_one_stat(Stream, SectionName, "item_mode_decl", ModeDecl, !IO),
     write_one_stat(Stream, SectionName, "item_fim", FIM, !IO),
+    write_one_stat(Stream, SectionName, "item_foreign_proc", ForeignProc, !IO),
     write_one_stat(Stream, SectionName, "item_foreign_enum", ForeignEnum, !IO),
     write_one_stat(Stream, SectionName, "item_foreign_export_enum",
         ForeignExportEnum, !IO),

@@ -568,7 +568,7 @@ parse_pragma_ordinary_foreign_proc(ModuleName, VarSet, ForeignLanguage,
     ),
     FlagsContextPieces = cord.from_list([words("In the third argument of"),
         pragma_decl("foreign_proc"), words("declaration:"), nl]),
-    parse_and_check_pragma_foreign_proc_attributes_term(ForeignLanguage,
+    parse_and_check_foreign_proc_attributes_term(ForeignLanguage,
         VarSet, FlagsTerm, FlagsContextPieces, MaybeFlags),
     CodeContext = get_term_context(CodeTerm),
     ( if CodeTerm = term.functor(term.string(Code), [], _) then
@@ -591,11 +591,9 @@ parse_pragma_ordinary_foreign_proc(ModuleName, VarSet, ForeignLanguage,
     then
         varset.coerce(VarSet, ProgVarSet),
         varset.coerce(VarSet, InstVarSet),
-        FPInfo = pragma_info_foreign_proc(Flags, PredName, PredOrFunc,
-            PragmaVars, ProgVarSet, InstVarSet, Impl),
-        Pragma = impl_pragma_foreign_proc(FPInfo),
-        ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-        Item = item_impl_pragma(ItemPragma),
+        FPInfo = item_foreign_proc_info(Flags, PredName, PredOrFunc,
+            PragmaVars, ProgVarSet, InstVarSet, Impl, Context, SeqNum),
+        Item = item_foreign_proc(FPInfo),
         MaybeIOM = ok1(iom_item(Item))
     else
         AllSpecs = get_any_errors1(MaybeImpl) ++
@@ -683,11 +681,11 @@ parse_pragma_foreign_proc_varlist(VarSet, ContextPieces,
     ;       coll_may_duplicate(proc_may_duplicate)
     ;       coll_may_export_body(proc_may_export_body).
 
-:- pred parse_and_check_pragma_foreign_proc_attributes_term(
+:- pred parse_and_check_foreign_proc_attributes_term(
     foreign_language::in, varset::in, term::in, cord(format_piece)::in,
-    maybe1(pragma_foreign_proc_attributes)::out) is det.
+    maybe1(foreign_proc_attributes)::out) is det.
 
-parse_and_check_pragma_foreign_proc_attributes_term(ForeignLanguage, VarSet,
+parse_and_check_foreign_proc_attributes_term(ForeignLanguage, VarSet,
         Term, ContextPieces, MaybeAttributes) :-
     Attributes0 = default_attributes(ForeignLanguage),
     ConflictingAttributes = [
@@ -743,7 +741,7 @@ parse_and_check_pragma_foreign_proc_attributes_term(ForeignLanguage, VarSet,
         coll_may_duplicate(proc_may_not_duplicate) -
             coll_may_export_body(proc_may_export_body)
     ],
-    parse_pragma_foreign_proc_attributes_term(ContextPieces, VarSet, Term,
+    parse_foreign_proc_attributes_term(ContextPieces, VarSet, Term,
         MaybeAttrList),
     (
         MaybeAttrList = ok1(AttrList),
@@ -774,24 +772,24 @@ parse_and_check_pragma_foreign_proc_attributes_term(ForeignLanguage, VarSet,
 
 %---------------------%
 
-:- pred parse_pragma_foreign_proc_attributes_term(cord(format_piece)::in,
+:- pred parse_foreign_proc_attributes_term(cord(format_piece)::in,
     varset::in, term::in,
     maybe1(list(collected_pragma_foreign_proc_attribute))::out) is det.
 
-parse_pragma_foreign_proc_attributes_term(ContextPieces, VarSet, Term,
+parse_foreign_proc_attributes_term(ContextPieces, VarSet, Term,
         MaybeAttrs) :-
     ( if parse_single_pragma_foreign_proc_attribute(VarSet, Term, Attr) then
         MaybeAttrs = ok1([Attr])
     else
-        parse_pragma_foreign_proc_attributes_list(ContextPieces, VarSet,
+        parse_foreign_proc_attributes_list(ContextPieces, VarSet,
             Term, 1, MaybeAttrs)
     ).
 
-:- pred parse_pragma_foreign_proc_attributes_list(cord(format_piece)::in,
+:- pred parse_foreign_proc_attributes_list(cord(format_piece)::in,
     varset::in, term::in, int::in,
     maybe1(list(collected_pragma_foreign_proc_attribute))::out) is det.
 
-parse_pragma_foreign_proc_attributes_list(ContextPieces, VarSet,
+parse_foreign_proc_attributes_list(ContextPieces, VarSet,
         Term, HeadAttrNum, MaybeAttrs) :-
     ( if
         Term = term.functor(term.atom("[]"), [], _)
@@ -800,7 +798,7 @@ parse_pragma_foreign_proc_attributes_list(ContextPieces, VarSet,
     else if
         Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _)
     then
-        parse_pragma_foreign_proc_attributes_list(ContextPieces, VarSet,
+        parse_foreign_proc_attributes_list(ContextPieces, VarSet,
             TailTerm, HeadAttrNum + 1, MaybeTailAttrs),
         ( if
             parse_single_pragma_foreign_proc_attribute(VarSet, HeadTerm,
@@ -1063,12 +1061,12 @@ parse_ordinary_despite_detism(term.functor(term.atom(Functor), [], _)) :-
 
 %---------------------%
 
-    % Update the pragma_foreign_proc_attributes according to the given
+    % Update the foreign_proc_attributes according to the given
     % collected_pragma_foreign_proc_attribute.
     %
 :- pred process_attribute(collected_pragma_foreign_proc_attribute::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
+    foreign_proc_attributes::in,
+    foreign_proc_attributes::out) is det.
 
 process_attribute(coll_may_call_mercury(MayCallMercury), !Attrs) :-
     set_may_call_mercury(MayCallMercury, !Attrs).
@@ -1111,8 +1109,8 @@ process_attribute(coll_may_export_body(MayExport), !Attrs) :-
     % a particular language.
     %
 :- func check_required_attributes(foreign_language,
-        pragma_foreign_proc_attributes, term.context)
-    = maybe1(pragma_foreign_proc_attributes).
+        foreign_proc_attributes, term.context)
+    = maybe1(foreign_proc_attributes).
 
 check_required_attributes(Lang, Attrs, _Context) = MaybeAttrs :-
     (

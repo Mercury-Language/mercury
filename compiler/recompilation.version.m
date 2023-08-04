@@ -1200,6 +1200,19 @@ is_item_changed(Item1, Item2, Changed) :-
             Changed = changed
         )
     ;
+        Item1 = item_foreign_proc(ItemForeignProc1),
+        ItemForeignProc1 = item_foreign_proc_info(Attrs, SyMname,
+            PredOrFunc, Vars, VarSet, InstVarSet, Impl, _, _),
+        ( if
+            Item2 = item_foreign_proc(ItemForeignProc2),
+            ItemForeignProc2 = item_foreign_proc_info(Attrs, SyMname,
+                PredOrFunc, Vars, VarSet, InstVarSet, Impl, _, _)
+        then
+            Changed = unchanged
+        else
+            Changed = changed
+        )
+    ;
         Item1 = item_foreign_enum(ItemForeignEnum1),
         ItemForeignEnum1 =
             item_foreign_enum_info(Lang, TypeCtor, Values, _, _),

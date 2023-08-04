@@ -3346,7 +3346,7 @@ should_inline_par_builtin_calls(ModuleInfo) = ShouldInline :-
     ShouldInline = OptTuple ^ ot_inline_par_builtins.
 
 :- func par_builtin_foreign_proc_attributes(purity, maybe_call_std_out_regs)
-    = pragma_foreign_proc_attributes.
+    = foreign_proc_attributes.
 
 par_builtin_foreign_proc_attributes(Purity, CallStdOutRegs) = !:Attrs :-
     !:Attrs = default_attributes(lang_c),

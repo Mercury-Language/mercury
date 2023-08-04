@@ -48,6 +48,10 @@
 :- type mode_status
     --->    mode_status(new_instmode_status).
 
+    % NOTE Any replacement for this type should take into account
+    % the possibility that a predicate may be declared to be external
+    % for one backend, while being actually defined, by either clauses
+    % or foreign_procs, for another backend.
 :- type pred_status
     --->    pred_status(old_import_status).
 
