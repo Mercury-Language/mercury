@@ -100,7 +100,7 @@ write_proc_stats_for_proc(OutStream, Msg, ModuleInfo,
         PredId, ProcId - ProcInfo, !IO) :-
     NamePieces = describe_one_proc_name(ModuleInfo, should_not_module_qualify,
         proc(PredId, ProcId)),
-    Name = error_pieces_to_string(NamePieces),
+    Name = error_pieces_to_one_line_string(NamePieces),
 
     proc_info_get_goal(ProcInfo, Goal),
     UsedVars0 = set_tree234.init,

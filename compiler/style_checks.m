@@ -350,7 +350,7 @@ desc_pred_item_numbers(PredItemNumbers, PredDescStr) :-
     PredItemNumbers = pred_item_numbers(_, PredInfo, _, _),
     PredPieces =
         describe_one_pred_info_name(should_not_module_qualify, PredInfo),
-    PredDescStr = error_pieces_to_string(PredPieces).
+    PredDescStr = error_pieces_to_one_line_string(PredPieces).
 
 %---------------------------------------------------------------------------%
 

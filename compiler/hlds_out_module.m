@@ -779,7 +779,7 @@ write_dependency_proc(Stream, Prefix, ModuleInfo, PredProcId, !IO) :-
     PredProcId = proc(PredId, ProcId),
     Pieces = describe_one_proc_name(ModuleInfo,
         should_not_module_qualify, PredProcId),
-    Desc = error_pieces_to_string(Pieces),
+    Desc = error_pieces_to_one_line_string(Pieces),
 
     io.format(Stream, "%% %spred %d proc %d, %s\n",
         [s(Prefix), i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId)),

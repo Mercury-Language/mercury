@@ -132,7 +132,7 @@ error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts,
     SuffixPieces = [],
     inst_to_inline_pieces(Info, Expansions0, _InlineExpansions, Inst,
         SuffixPieces, InlinePieces),
-    InlineStr = error_pieces_to_string(InlinePieces),
+    InlineStr = error_pieces_to_one_line_string(InlinePieces),
     % We could base the decision on whether to put the inst inline
     % on criteria other than its length, such as
     %

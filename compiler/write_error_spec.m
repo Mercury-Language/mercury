@@ -115,10 +115,23 @@
 
 %---------------------------------------------------------------------------%
 
-    % Does (almost) the same job as write_error_pieces, but returns
-    % the resulting string instead of printing it out.
+    % These two functions do (almost) the same job as write_error_pieces,
+    % but returns the resulting string instead of printing it out.
     %
-:- func error_pieces_to_string(list(format_piece)) = string.
+    % error_pieces_to_one_line_string returns the string on one single line,
+    % without a final newline. This is good for inputs that are known to be
+    % short by construction, as well as in cases where we use its output
+    % if it is short enough, but switch to doing something else if it is not.
+    %
+    % error_pieces_to_multi_line_string preserves both the line structure
+    % and the indentation structure of the output that write_error_pieces
+    % would generate. The first argument is a prefix that the caller can
+    % specify for every one of the lines in the output. The intended use case
+    % is the printing of e.g. insts in goals' instmap_deltas in HLDS dumps.
+    %
+:- func error_pieces_to_one_line_string(list(format_piece)) = string.
+:- func error_pieces_to_multi_line_string(string, list(format_piece))
+    = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1443,23 +1456,36 @@ find_matching_rp([HeadLine0 | TailLines0], !MidLinesCord, !MidLinesLen,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-error_pieces_to_string(Pieces) = Str :-
+error_pieces_to_one_line_string(Pieces) = Str :-
     convert_pieces_to_lines(yes(80), "", treat_as_first, 0,
         Pieces, _, Lines),
-    LineStrs = list.map(convert_line_to_string, Lines),
+    LineStrs = list.map(convert_line_words_to_string, Lines),
+    Str = string.join_list(" ", LineStrs).
+
+error_pieces_to_multi_line_string(Prefix, Pieces) = Str :-
+    convert_pieces_to_lines(yes(80), "", treat_as_first, 0,
+        Pieces, _, Lines),
+    LineStrs = list.map(convert_line_and_nl_to_string(Prefix), Lines),
     string.append_list(LineStrs, Str).
 
-:- func convert_line_to_string(error_line) = string.
+:- func convert_line_words_to_string(error_line) = string.
 
-convert_line_to_string(Line) = Str :-
+convert_line_words_to_string(Line) = Str :-
+    Line = error_line(_MaybeAvail, _LineIndent, LineWordsStr, _LineWordsLen,
+        _LineParen),
+    Str = LineWordsStr.
+
+:- func convert_line_and_nl_to_string(string, error_line) = string.
+
+convert_line_and_nl_to_string(Prefix, Line) = Str :-
     Line = error_line(_MaybeAvail, LineIndent, LineWordsStr, _LineWordsLen,
         _LineParen),
     ( if LineWordsStr = "" then
         % Don't include the indent.
-        Str = "\n"
+        Str = Prefix ++ "\n"
     else
         IndentStr = indent2_string(LineIndent),
-        Str = IndentStr ++ LineWordsStr ++ "\n"
+        Str = Prefix ++ IndentStr ++ LineWordsStr ++ "\n"
     ).
 
 %---------------------------------------------------------------------------%

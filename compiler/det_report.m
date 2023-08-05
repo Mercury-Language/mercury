@@ -217,7 +217,7 @@ check_determinism_of_proc(PredProcId, !ModuleInfo, !Specs) :-
         PredModePieces = describe_one_pred_name_mode(!.ModuleInfo,
             output_mercury, should_not_module_qualify, PredId,
             InstVarSet, PredArgModes),
-        PredStr = error_pieces_to_string(PredModePieces),
+        PredStr = error_pieces_to_one_line_string(PredModePieces),
         io.format(ProgressStream, "check_determinism_of_proc %s\n",
             [s(PredStr)], !IO)
     ),
@@ -261,7 +261,7 @@ check_determinism_of_imported_proc(ModuleInfo, PredProcId, !Specs) :-
         PredModePieces = describe_one_pred_name_mode(ModuleInfo,
             output_mercury, should_not_module_qualify, PredId,
             InstVarSet, PredArgModes),
-        PredStr = error_pieces_to_string(PredModePieces),
+        PredStr = error_pieces_to_one_line_string(PredModePieces),
         io.format(ProgressStream, "check_determinism_of_imported_proc %s\n",
             [s(PredStr)], !IO)
     ),
