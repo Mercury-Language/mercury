@@ -557,31 +557,8 @@ do_write_error_pieces(Stream, OptionTable, LimitErrorContextsMap, MaybeContext,
             % invocation is not printing verbose errors.
         ;
             Pieces = [_ | _],
-            convert_pieces_to_paragraphs(Pieces, Paragraphs),
-            string.pad_left("", ' ', FixedIndent, FixedIndentStr),
-            PrefixStr = ContextStr ++ FixedIndentStr,
-            PrefixLen = string.count_code_points(PrefixStr),
-            (
-                MaybeMaxWidth = yes(MaxWidth),
-                AvailLen = MaxWidth - PrefixLen,
-                MaybeAvailLen = yes(AvailLen)
-            ;
-                MaybeMaxWidth = no,
-                MaybeAvailLen = no
-            ),
-            FirstIndent = (if TreatAsFirst = treat_as_first then 0 else 1),
-            divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst,
-                FirstIndent, Paragraphs, Lines0),
-            try_to_join_lp_to_rp_lines(Lines0, Lines),
-            trace [compile_time(flag("debug_try_join_lp_to_rp")), io(!TIO)] (
-                io.stderr_stream(StdErr, !TIO),
-                io.write_string(StdErr, "START\n", !TIO),
-                list.foldl(io.write_line(StdErr), Paragraphs, !TIO),
-                list.foldl(io.write_line(StdErr), Lines0, !TIO),
-                io.write_string(StdErr, "JOINED\n", !TIO),
-                list.foldl(io.write_line(StdErr), Lines, !TIO),
-                io.write_string(StdErr, "END\n", !TIO)
-            ),
+            convert_pieces_to_lines(MaybeMaxWidth, ContextStr, TreatAsFirst,
+                FixedIndent, Pieces, PrefixStr, Lines),
             write_msg_lines(Stream, PrefixStr, Lines, !IO)
         )
     ).
@@ -636,6 +613,47 @@ write_msg_line(Stream, PrefixStr, Line, !IO) :-
         % some indentation added, will be separated from LineWords.
         io.format(Stream, "%s%s%s\n",
             [s(PrefixStr), s(IndentStr), s(LineWordsStr)], !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Oversee the whole process of converting
+%
+% - format pieces to paragraphs
+% - paragraphs to lines
+% - optimize the lines.
+%
+
+:- pred convert_pieces_to_lines(maybe(int)::in, string::in,
+    maybe_treat_as_first::in, indent::in, list(format_piece)::in,
+    string::out, list(error_line)::out) is det.
+
+convert_pieces_to_lines(MaybeMaxWidth, ContextStr, TreatAsFirst, FixedIndent,
+        Pieces, PrefixStr, Lines) :-
+    convert_pieces_to_paragraphs(Pieces, Paragraphs),
+    string.pad_left("", ' ', FixedIndent, FixedIndentStr),
+    PrefixStr = ContextStr ++ FixedIndentStr,
+    PrefixLen = string.count_code_points(PrefixStr),
+    (
+        MaybeMaxWidth = yes(MaxWidth),
+        AvailLen = MaxWidth - PrefixLen,
+        MaybeAvailLen = yes(AvailLen)
+    ;
+        MaybeMaxWidth = no,
+        MaybeAvailLen = no
+    ),
+    FirstIndent = (if TreatAsFirst = treat_as_first then 0 else 1),
+    divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst,
+        FirstIndent, Paragraphs, Lines0),
+    try_to_join_lp_to_rp_lines(Lines0, Lines),
+    trace [compile_time(flag("debug_try_join_lp_to_rp")), io(!TIO)] (
+        io.stderr_stream(StdErr, !TIO),
+        io.write_string(StdErr, "START\n", !TIO),
+        list.foldl(io.write_line(StdErr), Paragraphs, !TIO),
+        list.foldl(io.write_line(StdErr), Lines0, !TIO),
+        io.write_string(StdErr, "JOINED\n", !TIO),
+        list.foldl(io.write_line(StdErr), Lines, !TIO),
+        io.write_string(StdErr, "END\n", !TIO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1425,227 +1443,28 @@ find_matching_rp([HeadLine0 | TailLines0], !MidLinesCord, !MidLinesLen,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-error_pieces_to_string(Pieces) =
-    error_pieces_to_string_loop(first_in_msg, Pieces).
+error_pieces_to_string(Pieces) = Str :-
+    convert_pieces_to_lines(yes(80), "", treat_as_first, 0,
+        Pieces, _, Lines),
+    LineStrs = list.map(convert_line_to_string, Lines),
+    string.append_list(LineStrs, Str).
 
-:- func error_pieces_to_string_loop(maybe_first_in_msg, list(format_piece))
-    = string.
+:- func convert_line_to_string(error_line) = string.
 
-error_pieces_to_string_loop(_, []) = "".
-error_pieces_to_string_loop(FirstInMsg, [Piece | Pieces]) = Str :-
-    first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg),
-    TailStr = error_pieces_to_string_loop(TailFirstInMsg, Pieces),
-    (
-        Piece = words(Words),
-        Str = join_string_and_tail(Words, Pieces, TailStr)
-    ;
-        Piece = words_quote(Words),
-        Str = join_string_and_tail(add_quotes(Words), Pieces, TailStr)
-    ;
-        Piece = fixed(Word),
-        Str = join_string_and_tail(Word, Pieces, TailStr)
-    ;
-        Piece = quote(Word),
-        Str = join_string_and_tail(add_quotes(Word), Pieces, TailStr)
-    ;
-        Piece = int_fixed(Int),
-        Str = join_string_and_tail(int_to_string(Int), Pieces, TailStr)
-    ;
-        Piece = int_name(Int),
-        Str = join_string_and_tail(int_name_str(Int), Pieces, TailStr)
-    ;
-        Piece = nth_fixed(Int),
-        Str = join_string_and_tail(nth_fixed_str(Int), Pieces, TailStr)
-    ;
-        Piece = lower_case_next_if_not_first,
-        (
-            FirstInMsg = first_in_msg,
-            Str = TailStr
-        ;
-            FirstInMsg = not_first_in_msg,
-            Str = uncapitalize_first(TailStr)
-        )
-    ;
-        Piece = treat_next_as_first,
-        Str = TailStr
-    ;
-        Piece = prefix(Prefix),
-        Str = Prefix ++ TailStr
-    ;
-        Piece = suffix(Suffix),
-        Str = join_string_and_tail(Suffix, Pieces, TailStr)
-    ;
-        (
-            Piece = qual_sym_name(SymName)
-        ;
-            Piece = unqual_sym_name(SymName0),
-            SymName = unqualified(unqualify_name(SymName0))
-        ),
-        Word = sym_name_to_word(SymName),
-        Str = join_string_and_tail(Word, Pieces, TailStr)
-    ;
-        Piece = name_arity(NameAndArity),
-        Word = name_arity_to_word(NameAndArity),
-        Str = join_string_and_tail(Word, Pieces, TailStr)
-    ;
-        (
-            Piece = qual_sym_name_arity(SymNameAndArity)
-        ;
-            Piece = unqual_sym_name_arity(SymNameAndArity0),
-            SymNameAndArity0 = sym_name_arity(SymName0, Arity),
-            SymName = unqualified(unqualify_name(SymName0)),
-            SymNameAndArity = sym_name_arity(SymName, Arity)
-        ),
-        Word = sym_name_arity_to_word(SymNameAndArity),
-        Str = join_string_and_tail(Word, Pieces, TailStr)
-    ;
-        (
-            Piece = qual_pf_sym_name_pred_form_arity(PFSymNameArity)
-        ;
-            Piece = unqual_pf_sym_name_pred_form_arity(PFSymNameArity0),
-            PFSymNameArity0 = pf_sym_name_arity(PF, SymName0, PredFormArity),
-            SymName = unqualified(unqualify_name(SymName0)),
-            PFSymNameArity = pf_sym_name_arity(PF, SymName, PredFormArity)
-        ),
-        Word = pf_sym_name_pred_form_arity_to_string(PFSymNameArity),
-        Str = join_string_and_tail(Word, Pieces, TailStr)
-    ;
-        (
-            Piece = qual_pf_sym_name_user_arity(PFSymNameArity)
-        ;
-            Piece = unqual_pf_sym_name_user_arity(PFSymNameArity0),
-            PFSymNameArity0 = pred_pf_name_arity(PF, SymName0, UserArity),
-            SymName = unqualified(unqualify_name(SymName0)),
-            PFSymNameArity = pred_pf_name_arity(PF, SymName, UserArity)
-        ),
-        Word = pf_sym_name_user_arity_to_string(PFSymNameArity),
-        Str = join_string_and_tail(Word, Pieces, TailStr)
-    ;
-        (
-            Piece = qual_cons_id_and_maybe_arity(ConsId0),
-            strip_builtin_qualifier_from_cons_id(ConsId0, ConsId)
-        ;
-            Piece = unqual_cons_id_and_maybe_arity(ConsId0),
-            strip_module_qualifier_from_cons_id(ConsId0, ConsId)
-        ),
-        Word = maybe_quoted_cons_id_and_arity_to_string(ConsId),
-        Str = join_string_and_tail(Word, Pieces, TailStr)
-    ;
-        (
-            Piece = qual_type_ctor(TypeCtor),
-            TypeCtor = type_ctor(SymName, Arity)
-        ;
-            Piece = unqual_type_ctor(TypeCtor),
-            TypeCtor = type_ctor(SymName0, Arity),
-            SymName = unqualified(unqualify_name(SymName0))
-        ;
-            Piece = qual_inst_ctor(InstCtor),
-            InstCtor = inst_ctor(SymName, Arity)
-        ;
-            Piece = unqual_inst_ctor(InstCtor),
-            InstCtor = inst_ctor(SymName0, Arity),
-            SymName = unqualified(unqualify_name(SymName0))
-        ;
-            Piece = qual_mode_ctor(ModeCtor),
-            ModeCtor = mode_ctor(SymName, Arity)
-        ;
-            Piece = unqual_mode_ctor(ModeCtor),
-            ModeCtor = mode_ctor(SymName0, Arity),
-            SymName = unqualified(unqualify_name(SymName0))
-        ;
-            Piece = qual_class_id(ClassId),
-            ClassId = class_id(SymName, Arity)
-        ;
-            Piece = unqual_class_id(ClassId),
-            ClassId = class_id(SymName0, Arity),
-            SymName = unqualified(unqualify_name(SymName0))
-        ),
-        SymNameAndArity = sym_name_arity(SymName, Arity),
-        Word = sym_name_arity_to_word(SymNameAndArity),
-        Str = join_string_and_tail(Word, Pieces, TailStr)
-    ;
-        Piece = qual_top_ctor_of_type(Type),
-        type_to_ctor_det(Type, TypeCtor),
-        TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
-        SymNameArity = sym_name_arity(TypeCtorSymName, TypeCtorArity),
-        Word = sym_name_arity_to_word(SymNameArity),
-        Str = join_string_and_tail(Word, Pieces, TailStr)
-    ;
-        Piece = p_or_f(PredOrFunc),
-        Word = pred_or_func_to_string(PredOrFunc),
-        Str = join_string_and_tail(Word, Pieces, TailStr)
-    ;
-        Piece = purity_desc(Purity),
-        Word = purity_to_string(Purity),
-        Str = join_string_and_tail(Word, Pieces, TailStr)
-    ;
-        Piece = a_purity_desc(Purity),
-        Word = a_purity_to_string(Purity),
-        Str = join_string_and_tail(Word, Pieces, TailStr)
-    ;
-        Piece = decl(Decl),
-        Word = add_quotes(":- " ++ Decl),
-        Str = join_string_and_tail(Word, Pieces, TailStr)
-    ;
-        Piece = pragma_decl(PragmaName),
-        Word = add_quotes(":- pragma " ++ PragmaName),
-        Str = join_string_and_tail(Word, Pieces, TailStr)
-    ;
-        Piece = nl,
-        Str = "\n" ++ TailStr
-    ;
-        Piece = nl_indent_delta(_),
-        % There is nothing we can do about the indent delta.
-        Str = "\n" ++ TailStr
-    ;
-        Piece = blank_line,
-        Str = "\n\n" ++ TailStr
-    ;
-        Piece = left_paren_maybe_nl_inc(LP, _LPWordKind),
-        % There is nothing we can do about the indent delta.
-        % _LPWordKind is handled by the call to join_string_and_tail
-        % when we process the *previous* piece.
-        Str = join_string_and_tail(LP ++ "\n", Pieces, TailStr)
-    ;
-        Piece = maybe_nl_dec_right_paren(RP, RPWordKind),
-        % There is nothing we can do about the indent delta.
-        (
-            RPWordKind = rp_plain,
-            Str = join_string_and_tail("\n" ++ RP, Pieces, TailStr)
-        ;
-            RPWordKind = rp_prefix,
-            Str = "\n" ++ RP ++ TailStr
-        )
-    ;
-        ( Piece = invis_order_default_start(_)
-        ; Piece = invis_order_default_end(_)
-        ),
-        Str = TailStr
-    ).
-
-:- func join_string_and_tail(string, list(format_piece), string) = string.
-
-join_string_and_tail(Word, Pieces, TailStr) = Str :-
-    ( if TailStr = "" then
-        Str = Word
+convert_line_to_string(Line) = Str :-
+    Line = error_line(_MaybeAvail, LineIndent, LineWordsStr, _LineWordsLen,
+        _LineParen),
+    ( if LineWordsStr = "" then
+        % Don't include the indent.
+        Str = "\n"
     else
-        ( if
-            Pieces = [NextPiece | _],
-            ( NextPiece = suffix(_)
-            ; NextPiece = left_paren_maybe_nl_inc(_, lp_suffix)
-            )
-        then
-            Str = Word ++ TailStr
-        else
-            Str = Word ++ " " ++ TailStr
-        )
+        IndentStr = indent2_string(LineIndent),
+        Str = IndentStr ++ LineWordsStr ++ "\n"
     ).
 
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
-% Utility predicates used by both do_write_error_pieces and
-% error_pieces_to_string.
+% Utility predicates.
 %
 
 :- type maybe_first_in_msg
