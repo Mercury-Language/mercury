@@ -908,7 +908,7 @@ make_module_dependencies_fatal_error(Globals, OldOutputStream, ErrorStream,
 
     % Display the contents of the `.err' file, then remove it
     % so we don't leave `.err' files lying around for nonexistent modules.
-    globals.set_option(output_compile_error_lines, int(10000),
+    globals.set_option(output_compile_error_lines, maybe_int(no),
         Globals, UnredirectGlobals),
     unredirect_output(UnredirectGlobals, ModuleName, ErrorStream, !Info, !IO),
     module_name_to_file_name(Globals, $pred, ext_user(ext_user_err),

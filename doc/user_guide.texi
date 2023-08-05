@@ -7103,10 +7103,12 @@ not just the first.  Implies @samp{--verbose-recompilation}.
 
 @sp 1
 @item --output-compile-error-lines @var{n}
+@item --no-output-compile-error-lines
 @findex --output-compile-error-lines
 @findex --make
 With @samp{--make}, output the first @var{n} lines of the @samp{.err}
 file after compiling a module (default: 15).
+Specifying --no-output-compile-error-lines removes the limit.
 
 @sp 1
 @item --report-cmd-line-args

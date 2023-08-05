@@ -1327,7 +1327,7 @@ optdef(oc_verbosity, verbose_recompilation,             bool(no)).
 optdef(oc_verbosity, find_all_recompilation_reasons,    bool(no)).
 optdef(oc_verbosity, verbose_make,                      bool(yes)).
 optdef(oc_verbosity, verbose_commands,                  bool(no)).
-optdef(oc_verbosity, output_compile_error_lines,        int(15)).
+optdef(oc_verbosity, output_compile_error_lines,        maybe_int(yes(15))).
 optdef(oc_verbosity, report_cmd_line_args,              bool(no)).
 optdef(oc_verbosity, report_cmd_line_args_in_doterr,    bool(no)).
 optdef(oc_verbosity, statistics,                        bool(no)).
@@ -4458,8 +4458,10 @@ options_help_verbosity(Stream, !IO) :-
         "\tFind all the reasons why a module needs to be recompiled,",
         "\tnot just the first. Implies `--verbose-recompilation'.",
         "--output-compile-error-lines <n>",
+        "--no-output-compile-error-lines>",
         "\tWith `--make', output the first <n> lines of the `.err'",
         "\tfile after compiling a module (default: 15).",
+        "\tSpecifying --no-output-compile-error-lines removes the limit.",
         "--report-cmd-line-args-doterr",
         "\tReport the command line arguments.",
         "--report-cmd-line-args-in-doterr",

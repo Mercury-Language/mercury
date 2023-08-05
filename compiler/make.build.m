@@ -273,11 +273,11 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
         ),
         (
             ErrorFileRes = ok(ErrorFileOutputStream),
-            globals.lookup_int_option(Globals, output_compile_error_lines,
-                LinesToWrite),
+            globals.lookup_maybe_int_option(Globals,
+                output_compile_error_lines, MaybeLinesToWrite),
             io.output_stream(CurrentOutputStream, !IO),
             with_locked_stdout(!.Info,
-                make_write_error_streams(TmpErrorLines, LinesToWrite,
+                make_write_error_streams(TmpErrorLines, MaybeLinesToWrite,
                     ErrorFileOutputStream, CurrentOutputStream),
                 !IO),
             io.close_output(ErrorFileOutputStream, !IO),
@@ -300,27 +300,33 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
     ),
     io.file.remove_file(TmpErrorFileName, _, !IO).
 
-:- pred make_write_error_streams(list(string)::in, int::in,
+:- pred make_write_error_streams(list(string)::in, maybe(int)::in,
     io.text_output_stream::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 
-make_write_error_streams(InputLines, LinesToWrite,
+make_write_error_streams(InputLines, MaybeLinesToWrite,
         FullOutputStream, PartialOutputStream, !IO) :-
     list.foldl(write_line_nl(FullOutputStream), InputLines, !IO),
-    list.split_upto(LinesToWrite, InputLines,
-        InputLinesToWrite, InputLinesNotToWrite),
-    list.foldl(write_line_nl(PartialOutputStream), InputLinesToWrite, !IO),
     (
-        InputLinesNotToWrite = []
+        MaybeLinesToWrite = no,
+        list.foldl(write_line_nl(PartialOutputStream), InputLines, !IO)
     ;
-        InputLinesNotToWrite = [_ | _],
-        io.output_stream_name(FullOutputStream, FullOutputFileName, !IO),
-        % We used to refer to the "error log" being truncated, but
-        % the compiler's output can also contain things that are *not*
-        % error messages, with progress messages being one example.
-        io.format(PartialOutputStream,
-            "... output log truncated, see `%s' for the complete log.\n",
-            [s(FullOutputFileName)], !IO)
+        MaybeLinesToWrite = yes(LinesToWrite),
+        list.split_upto(LinesToWrite, InputLines,
+            InputLinesToWrite, InputLinesNotToWrite),
+        list.foldl(write_line_nl(PartialOutputStream), InputLinesToWrite, !IO),
+        (
+            InputLinesNotToWrite = []
+        ;
+            InputLinesNotToWrite = [_ | _],
+            io.output_stream_name(FullOutputStream, FullOutputFileName, !IO),
+            % We used to refer to the "error log" being truncated, but
+            % the compiler's output can also contain things that are *not*
+            % error messages, with progress messages being one example.
+            io.format(PartialOutputStream,
+                "... output log truncated, see `%s' for the complete log.\n",
+                [s(FullOutputFileName)], !IO)
+        )
     ).
 
 :- pred write_line_nl(io.text_output_stream::in, string::in,
