@@ -167,16 +167,30 @@
     ;       cc_cl_x64(maybe(int))  % MSVC targeting x86_64 (x64).
     ;       cc_unknown.
 
+:- type clang_version
+    --->    clang_version(int, int, int).
+
     % For the csharp backend, which csharp compiler are we using?
     %
 :- type csharp_compiler_type
     --->    csharp_microsoft
     ;       csharp_mono
-    ;       csharp_unknown
-    .
+    ;       csharp_unknown.
 
-:- type clang_version
-    --->    clang_version(int, int, int).
+%---------------------%
+
+    % Which subdirectories should we put new files in, and which subdirectories
+    % should we assume existing files are in?
+:- type subdir_setting
+    --->    use_cur_dir
+            % All files are always in the current directory.
+    ;       use_cur_ngs_subdir
+            % Files can be either in the current directory,
+            % or in a non-grade-specific subdirectory.
+    ;       use_cur_ngs_gs_subdir.
+            % Files can be in the current directory,
+            % in a non-grade-specific subdirectory, or
+            % in a grade-specific subdirectory.
 
 %---------------------%
 
@@ -291,8 +305,8 @@
     termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
-    reuse_strategy::in, maybe(feedback_info)::in, env_type::in,
-    env_type::in, env_type::in, file_install_cmd::in,
+    subdir_setting::in, reuse_strategy::in, maybe(feedback_info)::in,
+    env_type::in, env_type::in, env_type::in, file_install_cmd::in,
     limit_error_contexts_map::in, globals::out) is det.
 
 :- pred get_default_options(globals::in, option_table::out) is det.
@@ -311,6 +325,7 @@
 :- pred get_c_compiler_type(globals::in, c_compiler_type::out) is det.
 :- pred get_csharp_compiler_type(globals::in, csharp_compiler_type::out)
     is det.
+:- pred get_subdir_setting(globals::in, subdir_setting::out) is det.
 :- pred get_reuse_strategy(globals::in, reuse_strategy::out) is det.
 :- pred get_maybe_feedback_info(globals::in, maybe(feedback_info)::out) is det.
 :- pred get_host_env_type(globals::in, env_type::out) is det.
@@ -327,6 +342,8 @@
 :- pred set_options(option_table::in, globals::in, globals::out) is det.
 :- pred set_opt_tuple(opt_tuple::in, globals::in, globals::out) is det.
 :- pred set_op_mode(op_mode::in, globals::in, globals::out) is det.
+:- pred set_subdir_setting(subdir_setting::in,
+    globals::in, globals::out) is det.
 :- pred set_word_size(word_size::in, globals::in, globals::out) is det.
 :- pred set_gc_method(gc_method::in, globals::in, globals::out) is det.
 :- pred set_trace_level(trace_level::in, globals::in, globals::out) is det.
@@ -772,6 +789,7 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
                 % to allow them to be packed together.
                 g_csharp_compiler_type      :: csharp_compiler_type,
                 g_target                    :: compilation_target,
+                g_subdir_setting            :: subdir_setting,
                 g_word_size                 :: word_size,
                 g_gc_method                 :: gc_method,
                 g_termination_norm          :: termination_norm,
@@ -787,13 +805,13 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
 globals_init(DefaultOptions, Options, OptTuple, OpMode,
         Target, WordSize, GC_Method, TerminationNorm, Termination2Norm,
         TraceLevel, TraceSuppress, SSTraceLevel, MaybeThreadSafe,
-        C_CompilerType, CSharp_CompilerType,
+        C_CompilerType, CSharp_CompilerType, SubdirSetting,
         ReuseStrategy, MaybeFeedback, HostEnvType, SystemEnvType,
         TargetEnvType, FileInstallCmd, LimitErrorContextsMap, Globals) :-
     Globals = globals(DefaultOptions, Options, OptTuple, OpMode, TraceSuppress,
         ReuseStrategy, MaybeFeedback, FileInstallCmd, LimitErrorContextsMap,
-        C_CompilerType, CSharp_CompilerType, Target, WordSize, GC_Method,
-        TerminationNorm, Termination2Norm, TraceLevel, SSTraceLevel,
+        C_CompilerType, CSharp_CompilerType, Target, SubdirSetting, WordSize,
+        GC_Method, TerminationNorm, Termination2Norm, TraceLevel, SSTraceLevel,
         MaybeThreadSafe, HostEnvType, SystemEnvType, TargetEnvType).
 
 get_default_options(Globals, Globals ^ g_default_options).
@@ -811,6 +829,7 @@ get_ssdb_trace_level(Globals, Globals ^ g_ssdb_trace_level).
 get_maybe_thread_safe(Globals, Globals ^ g_may_be_thread_safe).
 get_c_compiler_type(Globals, Globals ^ g_c_compiler_type).
 get_csharp_compiler_type(Globals, Globals ^ g_csharp_compiler_type).
+get_subdir_setting(Globals, Globals ^ g_subdir_setting).
 get_reuse_strategy(Globals, Globals ^ g_reuse_strategy).
 get_maybe_feedback_info(Globals, Globals ^ g_maybe_feedback).
 get_host_env_type(Globals, Globals ^ g_host_env_type).
@@ -836,6 +855,9 @@ set_opt_tuple(OptTuple, !Globals) :-
 
 set_op_mode(OpMode, !Globals) :-
     !Globals ^ g_op_mode := OpMode.
+
+set_subdir_setting(X, !Globals) :-
+    !Globals ^ g_subdir_setting := X.
 
 set_word_size(WordSize, !Globals) :-
     !Globals ^ g_word_size := WordSize.

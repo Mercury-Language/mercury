@@ -1101,9 +1101,14 @@ construct_install_shadow_rules(Globals, ModuleName,
 
 construct_subdir_short_rules(Globals, ModuleName,
         MmakeRulesSubDirShorthand, !Cache, !IO) :-
-    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+    globals.get_subdir_setting(Globals, SubdirSetting),
     (
-        UseSubdirs = yes,
+        SubdirSetting = use_cur_dir,
+        MmakeRulesSubDirShorthand = []
+    ;
+        ( SubdirSetting = use_cur_ngs_subdir
+        ; SubdirSetting = use_cur_ngs_gs_subdir
+        ),
         SubDirShorthandOtherExts =
             [ext_target_c_cs(ext_target_c),
             ext_target_obj(ext_obj_dollar_o),
@@ -1114,9 +1119,6 @@ construct_subdir_short_rules(Globals, ModuleName,
         list.map_foldl2(
             construct_subdirs_shorthand_rule(Globals, ModuleName),
             SubDirShorthandOtherExts, MmakeRulesSubDirShorthand, !Cache, !IO)
-    ;
-        UseSubdirs = no,
-        MmakeRulesSubDirShorthand = []
     ).
 
 %---------------------%

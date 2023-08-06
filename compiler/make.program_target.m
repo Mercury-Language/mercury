@@ -573,10 +573,23 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             top_target_file(MainModuleName, linked_target(FileType)),
         linked_target_file_name_full_curdir(Globals, MainModuleName, FileType,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName, !IO),
-        globals.lookup_bool_option(NoLinkObjsGlobals, use_grade_subdirs,
-            UseGradeSubdirs),
+        globals.get_subdir_setting(NoLinkObjsGlobals, SubdirSetting),
+        % XXX Consider making the choice between the two switch arms below
+        % using FullMainModuleLinkedFileName = CurDirMainModuleLinkedFileName,
+        % not using SubdirSetting. The equality test would work even if
+        % we wanted to copy a file from a NON-grade-specific directory.
         (
-            UseGradeSubdirs = yes,
+            ( SubdirSetting = use_cur_dir
+            ; SubdirSetting = use_cur_ngs_subdir
+            ),
+            maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
+                MainModuleLinkedTarget, FullMainModuleLinkedFileName, !Info,
+                UpToDateMsg),
+            % XXX MAKE_STREAM
+            maybe_write_msg(UpToDateMsg, !IO),
+            Succeeded = succeeded
+        ;
+            SubdirSetting = use_cur_ngs_gs_subdir,
             post_link_maybe_make_symlink_or_copy(NoLinkObjsGlobals,
                 ProgressStream, ErrorStream,
                 FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
@@ -595,14 +608,6 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
                 % XXX MAKE_STREAM
                 maybe_write_msg(UpToDateMsg, !IO)
             )
-        ;
-            UseGradeSubdirs = no,
-            maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
-                MainModuleLinkedTarget, FullMainModuleLinkedFileName, !Info,
-                UpToDateMsg),
-            % XXX MAKE_STREAM
-            maybe_write_msg(UpToDateMsg, !IO),
-            Succeeded = succeeded
         )
     ;
         DepsResult = deps_out_of_date,
@@ -1175,16 +1180,18 @@ choose_analysis_cache_dir_name(Globals, DirName) :-
     % to the caller whether they want to create the directory path,
     % the directory path would (or at least, SHOULD) be exactly what
     % this predicate computes.
-    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    globals.lookup_string_option(Globals, target_arch, TargetArch),
+    globals.get_subdir_setting(Globals, SubdirSetting),
     (
-        UseGradeSubdirs = yes,
+        ( SubdirSetting = use_cur_dir
+        ; SubdirSetting = use_cur_ngs_subdir
+        ),
+        DirComponents = ["Mercury", "analysis_cache"]
+    ;
+        SubdirSetting = use_cur_ngs_gs_subdir,
         grade_directory_component(Globals, Grade),
+        globals.lookup_string_option(Globals, target_arch, TargetArch),
         DirComponents = ["Mercury", Grade, TargetArch, "Mercury",
             "analysis_cache"]
-    ;
-        UseGradeSubdirs = no,
-        DirComponents = ["Mercury", "analysis_cache"]
     ),
     DirName = dir.relative_path_name_from_components(DirComponents).
 
@@ -1643,8 +1650,16 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
         Succeeded, !Info, !IO) :-
     % Only remove grade-dependent files after installing if
     % --use-grade-subdirs is not specified by the user.
-    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    CleanAfter = not(UseGradeSubdirs),
+    globals.get_subdir_setting(Globals, SubdirSetting),
+    (
+        ( SubdirSetting = use_cur_dir
+        ; SubdirSetting = use_cur_ngs_subdir
+        ),
+        CleanAfter = yes
+    ;
+        SubdirSetting = use_cur_ngs_gs_subdir,
+        CleanAfter = no
+    ),
 
     % Set up so that grade-dependent files for the current grade
     % don't overwrite the files for the default grade.

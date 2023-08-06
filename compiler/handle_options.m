@@ -724,10 +724,16 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
         FileInstallCmd = install_cmd_user(InstallCmd, InstallCmdDirOption)
     ),
 
+    % The use_cur_dir we pass here as the subdir setting is a dummy;
+    % the real value is set at the very end of this predicate,
+    % We can do this because no code between here and there uses
+    % the value of that field, and we *have* to do this because
+    % the bcode between here and there *can* update the values of
+    % the options from which the subdir setting is computed.
     globals_init(DefaultOptionTable, OptionTable0, !.OptTuple, OpMode, Target,
         WordSize, GC_Method, TermNorm, Term2Norm,
         TraceLevel, TraceSuppress, SSTraceLevel,
-        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType, use_cur_dir,
         ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, FileInstallCmd,
         LimitErrorContextsMap, !:Globals),
@@ -1157,7 +1163,25 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     ),
     globals.set_opt_tuple(!.OptTuple, !Globals),
     postprocess_options_libgrades(!Globals, !Specs),
-    globals_init_mutables(!.Globals, !IO).
+    globals_init_mutables(!.Globals, !IO),
+
+    lookup_bool_option(OptionTable0, setting_only_use_subdirs, UseSubdirs),
+    (
+        UseSubdirs = no,
+        SubdirSetting = use_cur_dir
+    ;
+        UseSubdirs = yes,
+        lookup_bool_option(OptionTable0, setting_only_use_grade_subdirs,
+            UseGradeSubdirs),
+        (
+            UseGradeSubdirs = no,
+            SubdirSetting = use_cur_ngs_subdir
+        ;
+            UseGradeSubdirs = yes,
+            SubdirSetting = use_cur_ngs_gs_subdir
+        )
+    ),
+    globals.set_subdir_setting(SubdirSetting, !Globals).
 
 %---------------------------------------------------------------------------%
 
@@ -2391,7 +2415,7 @@ maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO) :-
     is det.
 
 handle_directory_options(OpMode, !Globals) :-
-    globals.lookup_bool_option(!.Globals, use_grade_subdirs,
+    globals.lookup_bool_option(!.Globals, setting_only_use_grade_subdirs,
         UseGradeSubdirs),
 
     % This is needed for library installation (the library grades
@@ -2407,14 +2431,14 @@ handle_directory_options(OpMode, !Globals) :-
             UseGradeSubdirs = bool.yes
         )
     then
-        globals.set_option(use_subdirs, bool(yes), !Globals)
+        globals.set_option(setting_only_use_subdirs, bool(yes), !Globals)
     else
         true
     ),
 
     % We only perform the library grade install check if we are
     % building a linked target using mmc --make or if we are building
-    % a single source file linked target.  (The library grade install
+    % a single source file linked target. (The library grade install
     % check is *not* compatible with the use of mmake.)
     ( if
         (
@@ -2623,7 +2647,8 @@ handle_directory_options(OpMode, !Globals) :-
     % module_name_to_file_name uses the plain header name, so we need to
     % add the full path to the header files in the current directory,
     % and any directories listed with --search-library-files-directory.
-    globals.lookup_bool_option(!.Globals, use_subdirs, UseSubdirs),
+    globals.lookup_bool_option(!.Globals, setting_only_use_subdirs,
+        UseSubdirs),
     ( if
         (
             UseGradeSubdirs = bool.yes,

@@ -1053,15 +1053,15 @@ get_mercury_std_libs_for_java(Globals, !:StdLibs) :-
 
 list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,
         ListClassFiles, !IO) :-
-    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    AnySubdirs = UseSubdirs `or` UseGradeSubdirs,
+    globals.get_subdir_setting(Globals, SubdirSetting),
     (
-        AnySubdirs = yes,
-        get_class_dir_name(Globals, ClassSubDir)
-    ;
-        AnySubdirs = no,
+        SubdirSetting = use_cur_dir,
         ClassSubDir = dir.this_directory
+    ;
+        ( SubdirSetting = use_cur_ngs_subdir
+        ; SubdirSetting = use_cur_ngs_gs_subdir
+        ),
+        get_class_dir_name(Globals, ClassSubDir)
     ),
 
     list.filter_map(make_nested_class_prefix, MainClassFiles,
@@ -1098,15 +1098,18 @@ list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,
     ).
 
 list_class_files_for_jar_mmake(Globals, ClassFiles, ListClassFiles) :-
-    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    AnySubdirs = UseSubdirs `or` UseGradeSubdirs,
+    globals.get_subdir_setting(Globals, SubdirSetting),
     (
-        AnySubdirs = yes,
+        SubdirSetting = use_cur_dir,
+        ListClassFiles = ClassFiles
+    ;
+        ( SubdirSetting = use_cur_ngs_subdir
+        ; SubdirSetting = use_cur_ngs_gs_subdir
+        ),
         get_class_dir_name(Globals, ClassSubdir),
         % Here we use the `-C' option of jar to change directory during
-        % execution, then use sed to strip away the Mercury/classs/
-        % prefix to the class files.
+        % execution, then use sed to strip away the Mercury/classs/ prefix
+        % to the class files.
         % Otherwise, the class files would be stored as
         %   Mercury/classs/*.class
         % within the jar file, which is not what we want.
@@ -1114,9 +1117,6 @@ list_class_files_for_jar_mmake(Globals, ClassFiles, ListClassFiles) :-
         ListClassFiles = "-C " ++ ClassSubdir ++ " \\\n" ++
             "\t\t`echo "" " ++ ClassFiles ++ """" ++
             " | sed 's| '" ++ ClassSubdir ++ "/| |'`"
-    ;
-        AnySubdirs = no,
-        ListClassFiles = ClassFiles
     ).
 
 :- pred make_nested_class_prefix(string::in, string::out) is semidet.

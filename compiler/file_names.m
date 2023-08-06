@@ -1213,12 +1213,14 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             ext_mmake_fragment_extension_dir(ExtMf, ExtStr, SubDirName)
         ),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        globals.get_subdir_setting(Globals, SubdirSetting),
         (
-            UseSubdirs = no,
+            SubdirSetting = use_cur_dir,
             DirNames = []
         ;
-            UseSubdirs = yes,
+            ( SubdirSetting = use_cur_ngs_subdir
+            ; SubdirSetting = use_cur_ngs_gs_subdir
+            ),
             DirNames = ["Mercury", SubDirName]
         )
     ;
@@ -1235,14 +1237,14 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         % directory only with --no-use-grade-subdirs; with --use-grade-subdirs,
         % they go in a grade subdir.
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        globals.lookup_bool_option(Globals, use_grade_subdirs,
-            UseGradeSubdirs),
+        globals.get_subdir_setting(Globals, SubdirSetting),
         (
-            UseGradeSubdirs = no,
+            ( SubdirSetting = use_cur_dir
+            ; SubdirSetting = use_cur_ngs_subdir
+            ),
             DirNames = []
         ;
-            UseGradeSubdirs = yes,
-            % This implies --use-subdirs as well.
+            SubdirSetting = use_cur_ngs_gs_subdir,
             DirNames = make_grade_subdir_name(Globals, [SubDirName])
         )
     ;
@@ -1260,21 +1262,16 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             DirNames = []
         ;
             Search = do_not_search,
-            globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+            globals.get_subdir_setting(Globals, SubdirSetting),
             (
-                UseSubdirs = no,
+                SubdirSetting = use_cur_dir,
                 DirNames = []
             ;
-                UseSubdirs = yes,
-                globals.lookup_bool_option(Globals, use_grade_subdirs,
-                    UseGradeSubdirs),
-                (
-                    UseGradeSubdirs = no,
-                    DirNames = ["Mercury", SubDirName]
-                ;
-                    UseGradeSubdirs = yes,
-                    DirNames = make_grade_subdir_name(Globals, [SubDirName])
-                )
+                SubdirSetting = use_cur_ngs_subdir,
+                DirNames = ["Mercury", SubDirName]
+            ;
+                SubdirSetting = use_cur_ngs_gs_subdir,
+                DirNames = make_grade_subdir_name(Globals, [SubDirName])
             )
         )
     ;
@@ -1289,26 +1286,21 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             ext_analysis_extension_dir(ExtAn, ExtStr, SubDirName)
         ),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        globals.get_subdir_setting(Globals, SubdirSetting),
         (
-            UseSubdirs = no,
+            SubdirSetting = use_cur_dir,
             DirNames = []
         ;
-            UseSubdirs = yes,
-            globals.lookup_bool_option(Globals, use_grade_subdirs,
-                UseGradeSubdirs),
+            SubdirSetting = use_cur_ngs_subdir,
+            DirNames = ["Mercury", SubDirName]
+        ;
+            SubdirSetting = use_cur_ngs_gs_subdir,
             (
-                UseGradeSubdirs = no,
+                Search = do_search,
                 DirNames = ["Mercury", SubDirName]
             ;
-                UseGradeSubdirs = yes,
-                (
-                    Search = do_search,
-                    DirNames = ["Mercury", SubDirName]
-                ;
-                    Search = do_not_search,
-                    DirNames = make_grade_subdir_name(Globals, [SubDirName])
-                )
+                Search = do_not_search,
+                DirNames = make_grade_subdir_name(Globals, [SubDirName])
             )
         )
     ;
@@ -1344,21 +1336,16 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             ext_analysis_ds_extension_dir(ExtAnDs, ExtStr, SubDirName)
         ),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        globals.get_subdir_setting(Globals, SubdirSetting),
         (
-            UseSubdirs = no,
+            SubdirSetting = use_cur_dir,
             DirNames = []
         ;
-            UseSubdirs = yes,
-            globals.lookup_bool_option(Globals, use_grade_subdirs,
-                UseGradeSubdirs),
-            (
-                UseGradeSubdirs = no,
-                DirNames = ["Mercury", SubDirName]
-            ;
-                UseGradeSubdirs = yes,
-                DirNames = make_grade_subdir_name(Globals, [SubDirName])
-            )
+            SubdirSetting = use_cur_ngs_subdir,
+            DirNames = ["Mercury", SubDirName]
+        ;
+            SubdirSetting = use_cur_ngs_gs_subdir,
+            DirNames = make_grade_subdir_name(Globals, [SubDirName])
         )
     ;
         % The cur_ngs_gs_java group of extensions.
@@ -1367,21 +1354,16 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         ext_target_java_extension_dirs(ExtJava, ExtStr, SubDirNames),
         BaseParentDirs = ["jmercury"],
         mangle_sym_name_for_java(ModuleName, module_qual, "__", BaseNameNoExt),
-        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+        globals.get_subdir_setting(Globals, SubdirSetting),
         (
-            UseSubdirs = no,
+            SubdirSetting = use_cur_dir,
             DirNames = BaseParentDirs
         ;
-            UseSubdirs = yes,
-            globals.lookup_bool_option(Globals, use_grade_subdirs,
-                UseGradeSubdirs),
-            (
-                UseGradeSubdirs = no,
+            SubdirSetting = use_cur_ngs_subdir,
                 DirNames = ["Mercury" |  SubDirNames]
-            ;
-                UseGradeSubdirs = yes,
-                DirNames = make_grade_subdir_name(Globals, SubDirNames)
-            )
+        ;
+            SubdirSetting = use_cur_ngs_gs_subdir,
+            DirNames = make_grade_subdir_name(Globals, SubDirNames)
         )
     ),
     CurDirFileName = BaseNameNoExt ++ ExtStr,
@@ -1518,22 +1500,18 @@ module_name_to_make_var_name(ModuleName, MakeVarName) :-
 %---------------------------------------------------------------------------%
 
 get_class_dir_name(Globals, ClassDirName) :-
-    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+    globals.get_subdir_setting(Globals, SubdirSetting),
     (
-        UseGradeSubdirs = yes,
+        SubdirSetting = use_cur_dir,
+        ClassDirName = "."
+    ;
+        SubdirSetting = use_cur_ngs_subdir,
+        ClassDirName = "Mercury" / "classs"
+    ;
+        SubdirSetting = use_cur_ngs_gs_subdir,
         grade_directory_component(Globals, Grade),
         globals.lookup_string_option(Globals, target_arch, TargetArch),
         ClassDirName = "Mercury" / Grade / TargetArch / "Mercury" / "classs"
-    ;
-        UseGradeSubdirs = no,
-        (
-            UseSubdirs = yes,
-            ClassDirName = "Mercury" / "classs"
-        ;
-            UseSubdirs = no,
-            ClassDirName = "."
-        )
     ).
 
 %---------------------------------------------------------------------------%

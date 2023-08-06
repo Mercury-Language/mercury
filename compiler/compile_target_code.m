@@ -315,17 +315,19 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     join_string_list(C_Flags_List, "", "", " ", CFLAGS),
     gather_compiler_specific_flags(Globals, CC_Specific_CFLAGS),
 
-    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+    globals.get_subdir_setting(Globals, SubdirSetting),
     (
-        UseSubdirs = yes,
+        SubdirSetting = use_cur_dir,
+        SubDirInclOpt = ""
+    ;
+        ( SubdirSetting = use_cur_ngs_subdir
+        ; SubdirSetting = use_cur_ngs_gs_subdir
+        ),
         % The source file (foo.c) will be compiled in a subdirectory
         % (either Mercury/cs, foo.dir, or Mercury/dirs/foo.dir, depending
         % on which of these two options is set) so we need to add `-I.'
         % so it can include header files in the source directory.
         SubDirInclOpt = "-I. "
-    ;
-        UseSubdirs = no,
-        SubDirInclOpt = ""
     ),
 
     gather_c_include_dir_flags(Globals, InclOpt),
@@ -936,20 +938,21 @@ compile_java_files(Globals, ProgressStream, ErrorStream,
         TargetDebugOpt = ""
     ),
 
-    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
+    globals.get_subdir_setting(Globals, SubdirSetting),
     globals.lookup_string_option(Globals, target_arch, TargetArch),
     (
-        UseSubdirs = yes,
+        SubdirSetting = use_cur_dir,
+        DirOpts = ""
+    ;
         (
-            UseGradeSubdirs = yes,
+            SubdirSetting = use_cur_ngs_subdir,
+            SourceDirName = "Mercury"/"javas",
+            DestDirName = "Mercury"/"classs"
+        ;
+            SubdirSetting = use_cur_ngs_gs_subdir,
             grade_directory_component(Globals, Grade),
             SourceDirName = "Mercury"/Grade/TargetArch/"Mercury"/"javas",
             DestDirName = "Mercury"/Grade/TargetArch/"Mercury"/"classs"
-        ;
-            UseGradeSubdirs = no,
-            SourceDirName = "Mercury"/"javas",
-            DestDirName = "Mercury"/"classs"
         ),
         % Javac won't create the destination directory for class files,
         % so we need to do it.
@@ -959,9 +962,6 @@ compile_java_files(Globals, ProgressStream, ErrorStream,
             "-sourcepath ", SourceDirName, " ",
             "-d ", DestDirName, " "
         ])
-    ;
-        UseSubdirs = no,
-        DirOpts = ""
     ),
 
     globals.lookup_string_option(Globals, filterjavac_command, MFilterJavac),
