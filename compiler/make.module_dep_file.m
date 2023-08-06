@@ -851,6 +851,10 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         (
             HaveReadSrc = have_read_module(SourceFileName, _MaybeTimestamp,
                 ParseTreeSrc, ReadModuleErrors),
+            FatalErrorSpecs0 = ReadModuleErrors ^ rm_fatal_error_specs,
+            NonFatalErrorSpecs0 = ReadModuleErrors ^ rm_nonfatal_error_specs,
+            write_error_specs(ErrorStream, Globals,
+                FatalErrorSpecs0 ++ NonFatalErrorSpecs0, !IO),
 
             Fatal = ReadModuleErrors ^ rm_fatal_errors,
             NonFatal = ReadModuleErrors ^ rm_nonfatal_errors,
@@ -876,6 +880,11 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         ;
             HaveReadSrc = have_not_read_module(SourceFileName,
                 ReadModuleErrors),
+            FatalErrorSpecs0 = ReadModuleErrors ^ rm_fatal_error_specs,
+            NonFatalErrorSpecs0 = ReadModuleErrors ^ rm_nonfatal_error_specs,
+            write_error_specs(ErrorStream, Globals,
+                FatalErrorSpecs0 ++ NonFatalErrorSpecs0, !IO),
+
             DisplayErrorReadingFile = yes,
             make_module_dependencies_fatal_error(Globals,
                 OldOutputStream, ErrorStream, SourceFileName, ModuleName,
