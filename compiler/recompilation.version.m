@@ -316,9 +316,9 @@ gather_items_in_parse_tree_int0(ParseTreeInt0, GatheredItems) :-
         _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, _IntPromises,
+        IntDeclPragmas, IntDeclMarkers,_IntPromises,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
-        ImpDeclPragmas, _ImpPromises),
+        ImpDeclPragmas, ImpDeclMarkers, _ImpPromises),
     some [!TypeNameMap, !TypeDefnMap, !InstMap, !ModeMap,
         !ClassMap, !InstanceMap,
         !PredMap, !FuncMap, !DeclPragmaRecords]
@@ -356,6 +356,8 @@ gather_items_in_parse_tree_int0(ParseTreeInt0, GatheredItems) :-
             !PredMap, !FuncMap),
         list.foldl(gather_in_decl_pragma(ms_interface), IntDeclPragmas,
             !DeclPragmaRecords),
+        list.foldl(gather_in_decl_marker(ms_interface), IntDeclMarkers,
+            !DeclPragmaRecords),
         % XXX Not gathering promises is a bug.
         list.foldl2(gather_in_type_defn(ms_implementation),
             ImpTypeDefns, !TypeNameMap, !TypeDefnMap),
@@ -374,6 +376,8 @@ gather_items_in_parse_tree_int0(ParseTreeInt0, GatheredItems) :-
         % We gather foreign enum info from the type_ctor_defn_maps.
         list.foldl(gather_in_decl_pragma(ms_implementation), ImpDeclPragmas,
             !DeclPragmaRecords),
+        list.foldl(gather_in_decl_marker(ms_implementation), ImpDeclMarkers,
+            !DeclPragmaRecords),
         % XXX Not gathering promises is a bug.
         cord.foldl3(apply_decl_pragma_record, !.DeclPragmaRecords,
             !PredMap, !FuncMap, !ClassMap),
@@ -391,7 +395,7 @@ gather_items_in_parse_tree_int1(ParseTreeInt1, GatheredItems) :-
         _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, _IntPromises, IntTypeRepnMap,
+        IntDeclPragmas, IntDeclMarkers, _IntPromises, IntTypeRepnMap,
         ImpTypeClasses),
     some [!TypeNameMap, !TypeDefnMap, !InstMap, !ModeMap,
         !ClassMap, !InstanceMap,
@@ -431,6 +435,8 @@ gather_items_in_parse_tree_int1(ParseTreeInt1, GatheredItems) :-
         list.foldl2(gather_in_mode_decl(ms_interface), IntModeDecls,
             !PredMap, !FuncMap),
         list.foldl(gather_in_decl_pragma(ms_interface), IntDeclPragmas,
+            !DeclPragmaRecords),
+        list.foldl(gather_in_decl_marker(ms_interface), IntDeclMarkers,
             !DeclPragmaRecords),
         % XXX Not gathering promises is a bug.
         list.foldl(gather_in_type_repn(ms_interface),
@@ -522,7 +528,8 @@ gather_items_in_parse_tree_int2(ParseTreeInt2, GatheredItems) :-
 
 :- type decl_pragma_record
     --->    decl_pragma_record(module_section, maybe_pred_or_func_id, item).
-            % XXX RECOMP Item here should be item_decl_pragma_info.
+            % XXX RECOMP Item here should be a type that can store
+            % either an item_decl_pragma_info or an item_decl_marker_info.
 
 %---------------------%
 
@@ -817,12 +824,26 @@ gather_in_instance(Section, ItemInstance, !InstanceMap) :-
 :- pred gather_in_decl_pragma(module_section::in, item_decl_pragma_info::in,
     cord(decl_pragma_record)::in, cord(decl_pragma_record)::out) is det.
 
-gather_in_decl_pragma(Section, ItemDeclPragma, !DeclPragmas) :-
-    ItemDeclPragma = item_pragma_info(DeclPragma, _, _),
+gather_in_decl_pragma(Section, DeclPragma, !DeclPragmas) :-
     gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId),
     (
         MaybePredOrFuncId = yes(PredOrFuncId),
-        Item = item_decl_pragma(ItemDeclPragma),
+        Item = item_decl_pragma(DeclPragma),
+        Record = decl_pragma_record(Section, PredOrFuncId, Item),
+        cord.snoc(Record, !DeclPragmas)
+    ;
+        MaybePredOrFuncId = no
+        % XXX Not doing anything here is probably a bug.
+    ).
+
+:- pred gather_in_decl_marker(module_section::in, item_decl_marker_info::in,
+    cord(decl_pragma_record)::in, cord(decl_pragma_record)::out) is det.
+
+gather_in_decl_marker(Section, DeclMarker, !DeclPragmas) :-
+    gather_decl_marker_for_what_pf_id(DeclMarker, MaybePredOrFuncId),
+    (
+        MaybePredOrFuncId = yes(PredOrFuncId),
+        Item = item_decl_marker(DeclMarker),
         Record = decl_pragma_record(Section, PredOrFuncId, Item),
         cord.snoc(Record, !DeclPragmas)
     ;
@@ -927,31 +948,31 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
 
 :- type maybe_pred_or_func_id == pair(maybe(pred_or_func), sym_name_arity).
 
-:- pred gather_decl_pragma_for_what_pf_id(decl_pragma::in,
+:- pred gather_decl_pragma_for_what_pf_id(item_decl_pragma_info::in,
     maybe(maybe_pred_or_func_id)::out) is det.
 
 gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId) :-
     (
-        DeclPragma = decl_pragma_type_spec(TypeSpecInfo),
-        TypeSpecInfo = pragma_info_type_spec(PFUMM, Name, _, _, _, _),
+        DeclPragma = decl_pragma_type_spec(TypeSpec),
+        TypeSpec = decl_pragma_type_spec_info(PFUMM, Name, _, _, _, _, _, _),
         pfumm_to_maybe_pf_arity_maybe_modes(PFUMM, MaybePredOrFunc,
             user_arity(Arity), _MaybeModes),
         MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
     ;
-        DeclPragma = decl_pragma_obsolete_proc(ObsoleteProcInfo),
-        ObsoleteProcInfo = pragma_info_obsolete_proc(PredNameModesPF, _),
+        DeclPragma = decl_pragma_obsolete_proc(ObsoleteProc),
+        ObsoleteProc = decl_pragma_obsolete_proc_info(PredNameModesPF, _, _, _),
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, Name, Modes),
         adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
         MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ;
-        DeclPragma = decl_pragma_obsolete_pred(ObsoletePredInfo),
-        ObsoletePredInfo = pragma_info_obsolete_pred(PredNameArity, _),
+        DeclPragma = decl_pragma_obsolete_pred(ObsoletePred),
+        ObsoletePred = decl_pragma_obsolete_pred_info(PredNameArity, _, _, _),
         PredNameArity = pred_pfu_name_arity(PFU, Name, user_arity(Arity)),
         MaybePredOrFunc = pfu_to_maybe_pred_or_func(PFU),
         MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
     ;
-        DeclPragma = decl_pragma_format_call(FormatCallInfo),
-        FormatCallInfo = pragma_info_format_call(PredNameArity, _),
+        DeclPragma = decl_pragma_format_call(FormatCall),
+        FormatCall = decl_pragma_format_call_info(PredNameArity, _, _, _),
         PredNameArity = pred_pf_name_arity(PF, Name, user_arity(Arity)),
         MaybePredOrFuncId = yes(yes(PF) - sym_name_arity(Name, Arity))
     ;
@@ -964,33 +985,36 @@ gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId) :-
         % this pragma for the type_ctor named in the pragma.
         MaybePredOrFuncId = no
     ;
-        ( DeclPragma = decl_pragma_terminates(PredNameArity)
-        ; DeclPragma = decl_pragma_does_not_terminate(PredNameArity)
-        ; DeclPragma = decl_pragma_check_termination(PredNameArity)
-        ),
-        PredNameArity = pred_pfu_name_arity(PFU, Name, user_arity(Arity)),
-        MaybePredOrFunc = pfu_to_maybe_pred_or_func(PFU),
-        MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
-    ;
         (
-            DeclPragma = decl_pragma_termination_info(TermInfo),
-            TermInfo = pragma_info_termination_info(PredNameModesPF, _, _)
+            DeclPragma = decl_pragma_termination(TermInfo),
+            TermInfo = decl_pragma_termination_info(PredNameModesPF,
+                _, _, _, _)
         ;
-            DeclPragma = decl_pragma_termination2_info(Term2Info),
-            Term2Info = pragma_info_termination2_info(PredNameModesPF, _, _, _)
-        ;
-            DeclPragma = decl_pragma_structure_sharing(SharingInfo),
-            SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
+            DeclPragma = decl_pragma_termination2(Term2Info),
+            Term2Info = decl_pragma_termination2_info(PredNameModesPF,
                 _, _, _, _, _)
         ;
-            DeclPragma = decl_pragma_structure_reuse(ReuseInfo),
-            ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
-                _, _, _, _, _)
+            DeclPragma = decl_pragma_struct_sharing(SharingInfo),
+            SharingInfo = decl_pragma_struct_sharing_info(PredNameModesPF,
+                _, _, _, _, _, _, _)
+        ;
+            DeclPragma = decl_pragma_struct_reuse(ReuseInfo),
+            ReuseInfo = decl_pragma_struct_reuse_info(PredNameModesPF,
+                _, _, _, _, _, _, _)
         ),
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, Name, Modes),
         adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
         MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ).
+
+:- pred gather_decl_marker_for_what_pf_id(item_decl_marker_info::in,
+    maybe(maybe_pred_or_func_id)::out) is det.
+
+gather_decl_marker_for_what_pf_id(DeclMarker, MaybePredOrFuncId) :-
+    DeclMarker = item_decl_marker_info(_, PredNameArity, _, _),
+    PredNameArity = pred_pfu_name_arity(PFU, Name, user_arity(Arity)),
+    MaybePredOrFunc = pfu_to_maybe_pred_or_func(PFU),
+    MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity)).
 
 %---------------------------------------------------------------------------%
 %
@@ -1239,72 +1263,55 @@ is_item_changed(Item1, Item2, Changed) :-
             Changed = changed
         )
     ;
-        Item1 = item_decl_pragma(ItemDeclPragma1),
-        ItemDeclPragma1 = item_pragma_info(DeclPragma1, _, _),
+        Item1 = item_decl_pragma(DeclPragma1),
         % We do need to compare the variable names in `:- pragma type_spec'
         % declarations because the names of the variables are used to find
         % the corresponding variables in the predicate or function
         % type declaration.
         ( if
-            Item2 = item_decl_pragma(ItemDeclPragma2),
-            ItemDeclPragma2 = item_pragma_info(DeclPragma2, _, _)
+            Item2 = item_decl_pragma(DeclPragma2)
         then
-            ( if
-                DeclPragma1 = decl_pragma_type_spec(TypeSpecInfo1),
-                DeclPragma2 = decl_pragma_type_spec(TypeSpecInfo2),
-                TypeSpecInfo1 = pragma_info_type_spec(PFUMM, Name, SpecName,
-                    TypeSubst1, TVarSet1, _),
-                TypeSpecInfo2 = pragma_info_type_spec(PFUMM, Name, SpecName,
-                    TypeSubst2, TVarSet2, _)
-            then
-                assoc_list.keys_and_values(one_or_more_to_list(TypeSubst1),
-                    TVars1, Types1),
-                assoc_list.keys_and_values(one_or_more_to_list(TypeSubst2),
-                    TVars2, Types2),
-                % XXX kind inference:
-                % we assume vars have kind `star'.
-                KindMap = map.init,
-                prog_type.var_list_to_type_list(KindMap, TVars1, TVarTypes1),
-                prog_type.var_list_to_type_list(KindMap, TVars2, TVarTypes2),
-                ( if
-                    type_list_is_unchanged(
-                        TVarSet1, TVarTypes1 ++ Types1,
-                        TVarSet2, TVarTypes2 ++ Types2,
-                        _, _, _)
-                then
-                    Changed = unchanged
-                else
-                    Changed = changed
-                )
-            else
-                ( if DeclPragma1 = DeclPragma2 then
-                    Changed = unchanged
-                else
-                    Changed = changed
-                )
-            )
+            is_decl_pragma_changed(DeclPragma1, DeclPragma2, Changed)
         else
             Changed = changed
         )
     ;
-        Item1 = item_impl_pragma(ItemImplPragma1),
-        ItemImplPragma1 = item_pragma_info(ImplPragma, _, _),
-        ( if
-            Item2 = item_impl_pragma(ItemImplPragma2),
-            ItemImplPragma2 = item_pragma_info(ImplPragma, _, _)
+        Item1 = item_decl_marker(DeclMarker1),
+        DeclMarker1 = item_decl_marker_info(A, B, _, _),
+        ( if 
+            Item2 = item_decl_marker(DeclMarker2),
+            DeclMarker2 = item_decl_marker_info(A, B, _, _)
         then
             Changed = unchanged
         else
             Changed = changed
         )
     ;
-        Item1 = item_generated_pragma(ItemGenPragma1),
-        ItemGenPragma1 = item_pragma_info(GenPragma, _, _),
+        Item1 = item_impl_pragma(ImplPragma1),
         ( if
-            Item2 = item_generated_pragma(ItemGenPragma2),
-            ItemGenPragma2 = item_pragma_info(GenPragma, _, _)
+            Item2 = item_impl_pragma(ImplPragma2)
+        then
+            is_impl_pragma_changed(ImplPragma1, ImplPragma2, Changed)
+        else
+            Changed = changed
+        )
+    ;
+        Item1 = item_impl_marker(ImplMarker1),
+        ImplMarker1 = item_impl_marker_info(A, B, _, _),
+        ( if 
+            Item2 = item_impl_marker(ImplMarker2),
+            ImplMarker2 = item_impl_marker_info(A, B, _, _)
         then
             Changed = unchanged
+        else
+            Changed = changed
+        )
+    ;
+        Item1 = item_generated_pragma(GenPragma1),
+        ( if
+            Item2 = item_generated_pragma(GenPragma2)
+        then
+            is_gen_pragma_changed(GenPragma1, GenPragma2, Changed)
         else
             Changed = changed
         )
@@ -1386,6 +1393,169 @@ is_item_changed(Item1, Item2, Changed) :-
         % Type representation items record information derived from
         % *other items*. They cannot change unless those other items change.
         Changed = unchanged
+    ).
+
+:- pred is_decl_pragma_changed(
+    item_decl_pragma_info::in, item_decl_pragma_info::in,
+    maybe_changed::out) is det.
+
+is_decl_pragma_changed(DeclPragma1, DeclPragma2, Changed) :-
+    ( if
+        require_complete_switch [DeclPragma1]
+        (
+            DeclPragma1 = decl_pragma_obsolete_pred(ObsoletePred1),
+            DeclPragma2 = decl_pragma_obsolete_pred(ObsoletePred2),
+            ObsoletePred1 = decl_pragma_obsolete_pred_info(A, B, _, _),
+            ObsoletePred2 = decl_pragma_obsolete_pred_info(A, B, _, _)
+        ;
+            DeclPragma1 = decl_pragma_obsolete_proc(ObsoleteProc1),
+            DeclPragma2 = decl_pragma_obsolete_proc(ObsoleteProc2),
+            ObsoleteProc1 = decl_pragma_obsolete_proc_info(A, B, _, _),
+            ObsoleteProc2 = decl_pragma_obsolete_proc_info(A, B, _, _)
+        ;
+            DeclPragma1 = decl_pragma_format_call(FormatCall1),
+            DeclPragma2 = decl_pragma_format_call(FormatCall2),
+            FormatCall1 = decl_pragma_format_call_info(A, B, _, _),
+            FormatCall2 = decl_pragma_format_call_info(A, B, _, _)
+        ;
+            DeclPragma1 = decl_pragma_type_spec(TypeSpec1),
+            DeclPragma2 = decl_pragma_type_spec(TypeSpec2),
+            TypeSpec1 = decl_pragma_type_spec_info(PFUMM, Name, SpecName,
+                TypeSubst1, TVarSet1, _, _, _),
+            TypeSpec2 = decl_pragma_type_spec_info(PFUMM, Name, SpecName,
+                TypeSubst2, TVarSet2, _, _, _),
+            assoc_list.keys_and_values(one_or_more_to_list(TypeSubst1),
+                TVars1, Types1),
+            assoc_list.keys_and_values(one_or_more_to_list(TypeSubst2),
+                TVars2, Types2),
+            % XXX kind inference:
+            % we assume vars have kind `star'.
+            KindMap = map.init,
+            prog_type.var_list_to_type_list(KindMap, TVars1, TVarTypes1),
+            prog_type.var_list_to_type_list(KindMap, TVars2, TVarTypes2),
+            type_list_is_unchanged(
+                TVarSet1, TVarTypes1 ++ Types1,
+                TVarSet2, TVarTypes2 ++ Types2,
+                _, _, _)
+        ;
+            DeclPragma1 = decl_pragma_oisu(OISU1),
+            DeclPragma2 = decl_pragma_oisu(OISU2),
+            OISU1 = decl_pragma_oisu_info(A, B, C, D, _, _),
+            OISU2 = decl_pragma_oisu_info(A, B, C, D, _, _)
+        ;
+            DeclPragma1 = decl_pragma_termination(Term1),
+            DeclPragma2 = decl_pragma_termination(Term2),
+            Term1 = decl_pragma_termination_info(A, B, C, _, _),
+            Term2 = decl_pragma_termination_info(A, B, C, _, _)
+        ;
+            DeclPragma1 = decl_pragma_termination2(Term1),
+            DeclPragma2 = decl_pragma_termination2(Term2),
+            Term1 = decl_pragma_termination2_info(A, B, C, D, _, _),
+            Term2 = decl_pragma_termination2_info(A, B, C, D, _, _)
+        ;
+            DeclPragma1 = decl_pragma_struct_sharing(Sharing1),
+            DeclPragma2 = decl_pragma_struct_sharing(Sharing2),
+            Sharing1 = decl_pragma_struct_sharing_info(A, B, C, D, E, F, _, _),
+            Sharing2 = decl_pragma_struct_sharing_info(A, B, C, D, E, F, _, _)
+        ;
+            DeclPragma1 = decl_pragma_struct_reuse(Reuse1),
+            DeclPragma2 = decl_pragma_struct_reuse(Reuse2),
+            Reuse1 = decl_pragma_struct_reuse_info(A, B, C, D, E, F, _, _),
+            Reuse2 = decl_pragma_struct_reuse_info(A, B, C, D, E, F, _, _)
+        )
+    then
+        Changed = unchanged
+    else
+        Changed = changed
+    ).
+
+:- pred is_impl_pragma_changed(
+    item_impl_pragma_info::in, item_impl_pragma_info::in,
+    maybe_changed::out) is det.
+
+is_impl_pragma_changed(ImplPragma1, ImplPragma2, Changed) :-
+    ( if
+        require_complete_switch [ImplPragma1]
+        (
+            ImplPragma1 = impl_pragma_foreign_decl(Decl1),
+            ImplPragma2 = impl_pragma_foreign_decl(Decl2),
+            Decl1 = impl_pragma_foreign_decl_info(A, B, C, _, _),
+            Decl2 = impl_pragma_foreign_decl_info(A, B, C, _, _)
+        ;
+            ImplPragma1 = impl_pragma_foreign_code(Code1),
+            ImplPragma2 = impl_pragma_foreign_code(Code2),
+            Code1 = impl_pragma_foreign_code_info(A, B, _, _),
+            Code2 = impl_pragma_foreign_code_info(A, B, _, _)
+        ;
+            ImplPragma1 = impl_pragma_fproc_export(Export1),
+            ImplPragma2 = impl_pragma_fproc_export(Export2),
+            % XXX Comparing the names of inst vars seems excessive.
+            Export1 = impl_pragma_fproc_export_info(A, B, C, D, E, _, _),
+            Export2 = impl_pragma_fproc_export_info(A, B, C, D, E, _, _)
+        ;
+            ImplPragma1 = impl_pragma_external_proc(External1),
+            ImplPragma2 = impl_pragma_external_proc(External2),
+            External1 = impl_pragma_external_proc_info(A, B, _, _),
+            External2 = impl_pragma_external_proc_info(A, B, _, _)
+        ;
+            ImplPragma1 = impl_pragma_fact_table(FactTable1),
+            ImplPragma2 = impl_pragma_fact_table(FactTable2),
+            FactTable1 = impl_pragma_fact_table_info(A, B, _, _),
+            FactTable2 = impl_pragma_fact_table_info(A, B, _, _)
+        ;
+            ImplPragma1 = impl_pragma_tabled(Tabled1),
+            ImplPragma2 = impl_pragma_tabled(Tabled2),
+            Tabled1 = impl_pragma_tabled_info(A, B, C, _, _),
+            Tabled2 = impl_pragma_tabled_info(A, B, C, _, _)
+        ;
+            ImplPragma1 = impl_pragma_req_tail_rec(TailRec1),
+            ImplPragma2 = impl_pragma_req_tail_rec(TailRec2),
+            TailRec1 = impl_pragma_req_tail_rec_info(A, B, _, _),
+            TailRec2 = impl_pragma_req_tail_rec_info(A, B, _, _)
+        ;
+            ImplPragma1 = impl_pragma_req_feature_set(FeatureSet1),
+            ImplPragma2 = impl_pragma_req_feature_set(FeatureSet2),
+            FeatureSet1 = impl_pragma_req_feature_set_info(A, _, _),
+            FeatureSet2 = impl_pragma_req_feature_set_info(A, _, _)
+        )
+    then
+        Changed = unchanged
+    else
+        Changed = changed
+    ).
+
+:- pred is_gen_pragma_changed(
+    item_generated_pragma_info::in, item_generated_pragma_info::in,
+    maybe_changed::out) is det.
+
+is_gen_pragma_changed(GenPragma1, GenPragma2, Changed) :-
+    ( if
+        require_complete_switch [GenPragma1]
+        (
+            GenPragma1 = gen_pragma_unused_args(UnusedArgs1),
+            GenPragma2 = gen_pragma_unused_args(UnusedArgs2),
+            UnusedArgs1 = gen_pragma_unused_args_info(A, B, _, _),
+            UnusedArgs2 = gen_pragma_unused_args_info(A, B, _, _)
+        ;
+            GenPragma1 = gen_pragma_exceptions(Exceptions1),
+            GenPragma2 = gen_pragma_exceptions(Exceptions2),
+            Exceptions1 = gen_pragma_exceptions_info(A, B, _, _),
+            Exceptions2 = gen_pragma_exceptions_info(A, B, _, _)
+        ;
+            GenPragma1 = gen_pragma_trailing(Trailing1),
+            GenPragma2 = gen_pragma_trailing(Trailing2),
+            Trailing1 = gen_pragma_trailing_info(A, B, _, _),
+            Trailing2 = gen_pragma_trailing_info(A, B, _, _)
+        ;
+            GenPragma1 = gen_pragma_mm_tabling(MMTabling1),
+            GenPragma2 = gen_pragma_mm_tabling(MMTabling2),
+            MMTabling1 = gen_pragma_mm_tabling_info(A, B, _, _),
+            MMTabling2 = gen_pragma_mm_tabling_info(A, B, _, _)
+        )
+    then
+        Changed = unchanged
+    else
+        Changed = changed
     ).
 
     % Apply a substitution to the existq_tvars, types_and_modes, and

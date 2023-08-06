@@ -60,7 +60,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred unused_args_process_module(module_info::in, module_info::out,
-    list(error_spec)::out, set(pragma_info_unused_args)::out) is det.
+    list(error_spec)::out, set(gen_pragma_unused_args_info)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1789,8 +1789,8 @@ unused_args_fixup_goal_info(UnusedVars, !GoalInfo) :-
 :- pred gather_warnings_and_pragmas(module_info::in, unused_arg_info::in,
     bool::in, bool::in, list(pred_proc_id)::in, set(pred_id)::in,
     list(error_spec)::in, list(error_spec)::out,
-    set(pragma_info_unused_args)::in, set(pragma_info_unused_args)::out)
-    is det.
+    set(gen_pragma_unused_args_info)::in,
+    set(gen_pragma_unused_args_info)::out) is det.
 
 gather_warnings_and_pragmas(_, _, _, _, [], _,
         !Specs, !UnusedArgInfos).
@@ -1971,8 +1971,8 @@ format_arg_list_2(First, List) = Pieces :-
 
 :- pred maybe_gather_unused_args_pragma(pred_info::in, proc_id::in,
     list(int)::in,
-    set(pragma_info_unused_args)::in, set(pragma_info_unused_args)::out)
-    is det.
+    set(gen_pragma_unused_args_info)::in,
+    set(gen_pragma_unused_args_info)::out) is det.
 
 maybe_gather_unused_args_pragma(PredInfo, ProcId, UnusedArgs,
         !UnusedArgInfos) :-
@@ -1992,8 +1992,13 @@ maybe_gather_unused_args_pragma(PredInfo, ProcId, UnusedArgs,
         proc_id_to_int(ProcId, ModeNum),
         PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, PredSymName,
             UserArity, ModeNum),
-        UnusedArgInfo =
-            pragma_info_unused_args(PredNameArityPFMn, UnusedArgs),
+        % We can either collect a set of gen_pragma_unused_args
+        % with dummy contexts and item sequence numbers now,
+        % or we can collect PredNameArityPFMn/UnusedArgs pairs,
+        % and add the dummy contexts and item sequence numbers to them
+        % later. Both should work; this is marginally simpler to program.
+        UnusedArgInfo = gen_pragma_unused_args_info(PredNameArityPFMn,
+            UnusedArgs, dummy_context, item_no_seq_num),
         set.insert(UnusedArgInfo, !UnusedArgInfos)
     else
         true

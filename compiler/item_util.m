@@ -207,9 +207,11 @@
 
 :- func item_desc_pieces(item) = list(format_piece).
 
-:- func decl_pragma_desc_pieces(decl_pragma) = list(format_piece).
-:- func impl_pragma_desc_pieces(impl_pragma) = list(format_piece).
-:- func gen_pragma_desc_pieces(generated_pragma) = list(format_piece).
+:- func decl_pragma_desc_pieces(item_decl_pragma_info) = list(format_piece).
+:- func decl_marker_desc_pieces(item_decl_marker_info) = list(format_piece).
+:- func impl_pragma_desc_pieces(item_impl_pragma_info) = list(format_piece).
+:- func impl_marker_desc_pieces(item_impl_marker_info) = list(format_piece).
+:- func gen_pragma_desc_pieces(item_generated_pragma_info) = list(format_piece).
 
 %---------------------------------------------------------------------------%
 %
@@ -228,8 +230,6 @@
 :- func get_avail_module_name(item_avail) = module_name.
 :- func get_import_module_name(avail_import_info) = module_name.
 :- func get_use_module_name(avail_use_info) = module_name.
-
-:- func project_pragma_type(item_pragma_info(T)) = T.
 
 %---------------------------------------------------------------------------%
 %
@@ -283,25 +283,6 @@
 :- func wrap_finalise_item(item_finalise_info) = item.
 :- func wrap_mutable_item(item_mutable_info) = item.
 :- func wrap_type_repn_item(item_type_repn_info) = item.
-
-:- func wrap_type_spec_pragma_item(item_type_spec) = item.
-:- func wrap_termination_pragma_item(item_termination) = item.
-:- func wrap_termination2_pragma_item(item_termination2) = item.
-:- func wrap_struct_sharing_pragma_item(item_struct_sharing) = item.
-:- func wrap_struct_reuse_pragma_item(item_struct_reuse) = item.
-:- func wrap_unused_args_pragma_item(item_unused_args) = item.
-:- func wrap_exceptions_pragma_item(item_exceptions) = item.
-:- func wrap_trailing_pragma_item(item_trailing) = item.
-:- func wrap_mm_tabling_pragma_item(item_mm_tabling) = item.
-
-:- inst item_decl_or_impl_pragma for item/0
-    --->    item_decl_pragma(ground)
-    ;       item_impl_pragma(ground).
-
-:- func wrap_marker_pragma_item(item_pred_marker::in)
-    = (item::out(item_decl_or_impl_pragma)) is det.
-
-:- func wrap_dummy_pragma_item(T) = item_pragma_info(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -1420,8 +1401,7 @@ item_needs_foreign_imports(Item) = Langs :-
         Langs = [Lang]
     ;
         Item = item_impl_pragma(ItemImplPragma),
-        ItemImplPragma = item_pragma_info(ImplPragma, _, _),
-        Langs = impl_pragma_needs_foreign_imports(ImplPragma)
+        Langs = impl_pragma_needs_foreign_imports(ItemImplPragma)
     ;
         ( Item = item_clause(_)
         ; Item = item_inst_defn(_)
@@ -1430,6 +1410,8 @@ item_needs_foreign_imports(Item) = Langs :-
         ; Item = item_mode_decl(_)
         ; Item = item_foreign_export_enum(_)
         ; Item = item_decl_pragma(_)
+        ; Item = item_decl_marker(_)
+        ; Item = item_impl_marker(_)
         ; Item = item_generated_pragma(_)
         ; Item = item_typeclass(_)
         ; Item = item_instance(_)
@@ -1463,39 +1445,30 @@ acc_needed_self_fim_langs_for_foreign_enum(FEInfo, !Langs) :-
     set.insert(Lang, !Langs).
 
 acc_needed_self_fim_langs_for_impl_pragma(ItemImplPragma, !Langs) :-
-    ItemImplPragma = item_pragma_info(ImplPragma, _, _),
-    set.insert_list(impl_pragma_needs_foreign_imports(ImplPragma), !Langs).
+    set.insert_list(impl_pragma_needs_foreign_imports(ItemImplPragma), !Langs).
 
-:- func impl_pragma_needs_foreign_imports(impl_pragma)
+:- func impl_pragma_needs_foreign_imports(item_impl_pragma_info)
     = list(foreign_language).
 
 impl_pragma_needs_foreign_imports(ImplPragma) = Langs :-
     (
         (
             ImplPragma = impl_pragma_foreign_decl(FDInfo),
-            FDInfo = pragma_info_foreign_decl(Lang, _, _)
+            FDInfo = impl_pragma_foreign_decl_info(Lang, _, _, _, _)
         ;
             ImplPragma = impl_pragma_foreign_code(FCInfo),
-            FCInfo = pragma_info_foreign_code(Lang, _)
+            FCInfo = impl_pragma_foreign_code_info(Lang, _, _, _)
         ;
-            ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
-            FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _, _)
+            ImplPragma = impl_pragma_fproc_export(FPEInfo),
+            FPEInfo = impl_pragma_fproc_export_info(_, Lang, _, _, _, _, _)
         ),
         Langs = [Lang]
     ;
         ( ImplPragma = impl_pragma_external_proc(_)
-        ; ImplPragma = impl_pragma_inline(_)
-        ; ImplPragma = impl_pragma_no_inline(_)
-        ; ImplPragma = impl_pragma_consider_used(_)
-        ; ImplPragma = impl_pragma_no_detism_warning(_)
-        ; ImplPragma = impl_pragma_require_tail_rec(_)
         ; ImplPragma = impl_pragma_tabled(_)
         ; ImplPragma = impl_pragma_fact_table(_)
-        ; ImplPragma = impl_pragma_promise_eqv_clauses(_)
-        ; ImplPragma = impl_pragma_promise_pure(_)
-        ; ImplPragma = impl_pragma_promise_semipure(_)
-        ; ImplPragma = impl_pragma_mode_check_clauses(_)
-        ; ImplPragma = impl_pragma_require_feature_set(_)
+        ; ImplPragma = impl_pragma_req_tail_rec(_)
+        ; ImplPragma = impl_pragma_req_feature_set(_)
         ),
         Langs = []
     ).
@@ -1539,13 +1512,19 @@ item_desc_pieces(Item) = Pieces :-
         Pieces = [pragma_decl("foreign_export_enum"), words("declaration")]
     ;
         Item = item_decl_pragma(ItemDeclPragma),
-        Pieces = decl_pragma_desc_pieces(ItemDeclPragma ^ prag_type)
+        Pieces = decl_pragma_desc_pieces(ItemDeclPragma)
+    ;
+        Item = item_decl_marker(ItemDeclMarker),
+        Pieces = decl_marker_desc_pieces(ItemDeclMarker)
     ;
         Item = item_impl_pragma(ItemImplPragma),
-        Pieces = impl_pragma_desc_pieces(ItemImplPragma ^ prag_type)
+        Pieces = impl_pragma_desc_pieces(ItemImplPragma)
+    ;
+        Item = item_impl_marker(ItemImplMarker),
+        Pieces = impl_marker_desc_pieces(ItemImplMarker)
     ;
         Item = item_generated_pragma(ItemGenPragma),
-        Pieces = gen_pragma_desc_pieces(ItemGenPragma ^ prag_type)
+        Pieces = gen_pragma_desc_pieces(ItemGenPragma)
     ;
         Item = item_promise(ItemPromise),
         PromiseType = ItemPromise ^ prom_type,
@@ -1599,26 +1578,30 @@ decl_pragma_desc_pieces(Pragma) = Pieces :-
         Pragma = decl_pragma_oisu(_),
         Pieces = [pragma_decl("oisu"), words("declaration")]
     ;
-        Pragma = decl_pragma_terminates(_),
-        Pieces = [pragma_decl("terminates"), words("declaration")]
-    ;
-        Pragma = decl_pragma_does_not_terminate(_),
-        Pieces = [pragma_decl("does_not_terminate"), words("declaration")]
-    ;
-        Pragma = decl_pragma_check_termination(_),
-        Pieces = [pragma_decl("check_termination"), words("declaration")]
-    ;
-        Pragma = decl_pragma_termination_info(_),
+        Pragma = decl_pragma_termination(_),
         Pieces = [pragma_decl("termination_info"), words("declaration")]
     ;
-        Pragma = decl_pragma_termination2_info(_),
+        Pragma = decl_pragma_termination2(_),
         Pieces = [pragma_decl("termination2_info"), words("declaration")]
     ;
-        Pragma = decl_pragma_structure_sharing(_),
+        Pragma = decl_pragma_struct_sharing(_),
         Pieces = [pragma_decl("structure_sharing"), words("declaration")]
     ;
-        Pragma = decl_pragma_structure_reuse(_),
+        Pragma = decl_pragma_struct_reuse(_),
         Pieces = [pragma_decl("structure_reuse"), words("declaration")]
+    ).
+
+decl_marker_desc_pieces(Marker) = Pieces :-
+    Marker = item_decl_marker_info(MarkerKind, _, _, _),
+    (
+        MarkerKind = dpmk_terminates,
+        Pieces = [pragma_decl("terminates"), words("declaration")]
+    ;
+        MarkerKind = dpmk_does_not_terminate,
+        Pieces = [pragma_decl("does_not_terminate"), words("declaration")]
+    ;
+        MarkerKind = dpmk_check_termination,
+        Pieces = [pragma_decl("check_termination"), words("declaration")]
     ).
 
 impl_pragma_desc_pieces(Pragma) = Pieces :-
@@ -1629,11 +1612,11 @@ impl_pragma_desc_pieces(Pragma) = Pieces :-
         Pragma = impl_pragma_foreign_decl(_),
         Pieces = [pragma_decl("foreign_decl"), words("declaration")]
     ;
-        Pragma = impl_pragma_foreign_proc_export(_),
+        Pragma = impl_pragma_fproc_export(_),
         Pieces = [pragma_decl("foreign_export"), words("declaration")]
     ;
         Pragma = impl_pragma_external_proc(External),
-        External = pragma_info_external_proc(PFNameArity, _),
+        External = impl_pragma_external_proc_info(PFNameArity, _, _, _),
         PFNameArity = pred_pf_name_arity(PorF, _, _),
         (
             PorF = pf_predicate,
@@ -1643,26 +1626,14 @@ impl_pragma_desc_pieces(Pragma) = Pieces :-
             Pieces = [pragma_decl("external_func"), words("declaration")]
         )
     ;
-        Pragma = impl_pragma_inline(_),
-        Pieces = [pragma_decl("inline"), words("declaration")]
-    ;
-        Pragma = impl_pragma_no_inline(_),
-        Pieces = [pragma_decl("no_inline"), words("declaration")]
-    ;
-        Pragma = impl_pragma_consider_used(_),
-        Pieces = [pragma_decl("consider_used"), words("declaration")]
-    ;
-        Pragma = impl_pragma_no_detism_warning(_),
-        Pieces = [pragma_decl("no_determinism_warning"), words("declaration")]
-    ;
-        Pragma = impl_pragma_require_tail_rec(_),
+        Pragma = impl_pragma_req_tail_rec(_),
         Pieces = [pragma_decl("require_tail_recursion"), words("declaration")]
     ;
         Pragma = impl_pragma_fact_table(_),
         Pieces = [pragma_decl("fact_table"), words("declaration")]
     ;
         Pragma = impl_pragma_tabled(Tabled),
-        Tabled = pragma_info_tabled(TabledMethod, _, _),
+        Tabled = impl_pragma_tabled_info(TabledMethod, _, _, _, _),
         (
             TabledMethod = tabled_memo(_),
             Pieces = [pragma_decl("memo"), words("declaration")]
@@ -1677,21 +1648,37 @@ impl_pragma_desc_pieces(Pragma) = Pieces :-
             unexpected($pred, "eval_table_io")
         )
     ;
-        Pragma = impl_pragma_promise_pure(_),
+        Pragma = impl_pragma_req_feature_set(_),
+        Pieces = [pragma_decl("require_feature_set"), words("declaration")]
+    ).
+
+impl_marker_desc_pieces(Marker) = Pieces :-
+    Marker = item_impl_marker_info(MarkerKind, _, _, _),
+    (
+        MarkerKind = ipmk_inline,
+        Pieces = [pragma_decl("inline"), words("declaration")]
+    ;
+        MarkerKind = ipmk_no_inline,
+        Pieces = [pragma_decl("no_inline"), words("declaration")]
+    ;
+        MarkerKind = ipmk_consider_used,
+        Pieces = [pragma_decl("consider_used"), words("declaration")]
+    ;
+        MarkerKind = ipmk_mode_check_clauses,
+        Pieces = [pragma_decl("mode_check_clauses"), words("declaration")]
+    ;
+        MarkerKind = ipmk_no_detism_warning,
+        Pieces = [pragma_decl("no_determinism_warning"), words("declaration")]
+    ;
+        MarkerKind = ipmk_promise_pure,
         Pieces = [pragma_decl("promise_pure"), words("declaration")]
     ;
-        Pragma = impl_pragma_promise_semipure(_),
+        MarkerKind = ipmk_promise_semipure,
         Pieces = [pragma_decl("promise_semipure"), words("declaration")]
     ;
-        Pragma = impl_pragma_promise_eqv_clauses(_),
+        MarkerKind = ipmk_promise_eqv_clauses,
         Pieces = [pragma_decl("promise_equivalent_clauses"),
             words("declaration")]
-    ;
-        Pragma = impl_pragma_require_feature_set(_),
-        Pieces = [pragma_decl("require_feature_set"), words("declaration")]
-    ;
-        Pragma = impl_pragma_mode_check_clauses(_),
-        Pieces = [pragma_decl("mode_check_clauses"), words("declaration")]
     ).
 
 gen_pragma_desc_pieces(Pragma) = Pieces :-
@@ -1702,10 +1689,10 @@ gen_pragma_desc_pieces(Pragma) = Pieces :-
         Pragma = gen_pragma_exceptions(_),
         Pieces = [pragma_decl("exceptions"), words("declaration")]
     ;
-        Pragma = gen_pragma_trailing_info(_),
+        Pragma = gen_pragma_trailing(_),
         Pieces = [pragma_decl("trailing_info"), words("declaration")]
     ;
-        Pragma = gen_pragma_mm_tabling_info(_),
+        Pragma = gen_pragma_mm_tabling(_),
         Pieces = [pragma_decl("mm_tabling_info"), words("declaration")]
     ).
 
@@ -1738,8 +1725,6 @@ get_import_module_name(AvailImportInfo) = ModuleName :-
 
 get_use_module_name(AvailUseInfo) = ModuleName :-
     AvailUseInfo = avail_use_info(ModuleName, _, _).
-
-project_pragma_type(item_pragma_info(Pragma, _, _)) = Pragma.
 
 %---------------------------------------------------------------------------%
 
@@ -1851,101 +1836,6 @@ wrap_initialise_item(X) = item_initialise(X).
 wrap_finalise_item(X) = item_finalise(X).
 wrap_mutable_item(X) = item_mutable(X).
 wrap_type_repn_item(X) = item_type_repn(X).
-
-wrap_type_spec_pragma_item(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Pragma = item_pragma_info(decl_pragma_type_spec(Info), Context, SeqNum),
-    Item = item_decl_pragma(Pragma).
-
-wrap_termination_pragma_item(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Pragma = item_pragma_info(decl_pragma_termination_info(Info),
-        Context, SeqNum),
-    Item = item_decl_pragma(Pragma).
-
-wrap_termination2_pragma_item(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Pragma = item_pragma_info(decl_pragma_termination2_info(Info),
-        Context, SeqNum),
-    Item = item_decl_pragma(Pragma).
-
-wrap_struct_sharing_pragma_item(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Pragma = item_pragma_info(decl_pragma_structure_sharing(Info),
-        Context, SeqNum),
-    Item = item_decl_pragma(Pragma).
-
-wrap_struct_reuse_pragma_item(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Pragma = item_pragma_info(decl_pragma_structure_reuse(Info),
-        Context, SeqNum),
-    Item = item_decl_pragma(Pragma).
-
-wrap_unused_args_pragma_item(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Pragma = item_pragma_info(gen_pragma_unused_args(Info), Context, SeqNum),
-    Item = item_generated_pragma(Pragma).
-
-wrap_exceptions_pragma_item(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Pragma = item_pragma_info(gen_pragma_exceptions(Info), Context, SeqNum),
-    Item = item_generated_pragma(Pragma).
-
-wrap_trailing_pragma_item(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Pragma = item_pragma_info(gen_pragma_trailing_info(Info), Context, SeqNum),
-    Item = item_generated_pragma(Pragma).
-
-wrap_mm_tabling_pragma_item(X) = Item :-
-    X = item_pragma_info(Info, Context, SeqNum),
-    Pragma = item_pragma_info(gen_pragma_mm_tabling_info(Info),
-        Context, SeqNum),
-    Item = item_generated_pragma(Pragma).
-
-wrap_marker_pragma_item(X) = Item :-
-    X = item_pragma_info(MarkerInfo, Context, SeqNum),
-    MarkerInfo = pragma_info_pred_marker(SymNameArityPF, Kind),
-    SymNameArityPF = pred_pf_name_arity(PrefOrFunc, SymName, Arity),
-    ( PrefOrFunc = pf_predicate, PFU = pfu_predicate
-    ; PrefOrFunc = pf_function, PFU = pfu_function
-    ),
-    SymNameArityMaybePF = pred_pfu_name_arity(PFU, SymName, Arity),
-    (
-        (
-            Kind = pmpk_inline,
-            ImplPragma = impl_pragma_inline(SymNameArityMaybePF)
-        ;
-            Kind = pmpk_noinline,
-            ImplPragma = impl_pragma_no_inline(SymNameArityMaybePF)
-        ;
-            Kind = pmpk_promise_pure,
-            ImplPragma = impl_pragma_promise_pure(SymNameArityMaybePF)
-        ;
-            Kind = pmpk_promise_semipure,
-            ImplPragma = impl_pragma_promise_semipure(SymNameArityMaybePF)
-        ;
-            Kind = pmpk_promise_eqv_clauses,
-            ImplPragma = impl_pragma_promise_eqv_clauses(SymNameArityMaybePF)
-        ;
-            Kind = pmpk_mode_check_clauses,
-            ImplPragma = impl_pragma_mode_check_clauses(SymNameArityMaybePF)
-        ),
-        Pragma = item_pragma_info(ImplPragma, Context, SeqNum),
-        Item = item_impl_pragma(Pragma)
-    ;
-        (
-            Kind = pmpk_terminates,
-            DeclPragma = decl_pragma_terminates(SymNameArityMaybePF)
-        ;
-            Kind = pmpk_does_not_terminate,
-            DeclPragma = decl_pragma_does_not_terminate(SymNameArityMaybePF)
-        ),
-        Pragma = item_pragma_info(DeclPragma, Context, SeqNum),
-        Item = item_decl_pragma(Pragma)
-    ).
-
-wrap_dummy_pragma_item(T) =
-    item_pragma_info(T, dummy_context, item_no_seq_num).
 
 %---------------------------------------------------------------------------%
 

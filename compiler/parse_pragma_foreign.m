@@ -393,10 +393,9 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             MaybeLang = ok1(Lang),
             MaybeLitOrIncl = ok1(LitOrIncl)
         then
-            FDInfo = pragma_info_foreign_decl(Lang, IsLocal, LitOrIncl),
-            Pragma = impl_pragma_foreign_decl(FDInfo),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_impl_pragma(ItemPragma),
+            FD = impl_pragma_foreign_decl_info(Lang, IsLocal, LitOrIncl,
+                Context, SeqNum),
+            Item = item_impl_pragma(impl_pragma_foreign_decl(FD)),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors1(MaybeIsLocal) ++
@@ -462,10 +461,9 @@ parse_pragma_foreign_code(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             MaybeForeignLang = ok1(ForeignLanguage),
             CodeSpecs = []
         then
-            FCInfo = pragma_info_foreign_code(ForeignLanguage, Code),
-            Pragma = impl_pragma_foreign_code(FCInfo),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_impl_pragma(ItemPragma),
+            FC = impl_pragma_foreign_code_info(ForeignLanguage, Code,
+                Context, SeqNum),
+            Item = item_impl_pragma(impl_pragma_foreign_code(FC)),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors1(MaybeForeignLang) ++ CodeSpecs,
@@ -1152,11 +1150,10 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         then
             PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredName, Modes),
             varset.coerce(VarSet, ProgVarSet),
-            FPEInfo = pragma_info_foreign_proc_export(item_origin_user,
-                ForeignLang, PredNameModesPF, Function, ProgVarSet),
-            Pragma = impl_pragma_foreign_proc_export(FPEInfo),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_impl_pragma(ItemPragma),
+            FPE = impl_pragma_fproc_export_info(item_origin_user,
+                ForeignLang, PredNameModesPF, Function, ProgVarSet,
+                Context, SeqNum),
+            Item = item_impl_pragma(impl_pragma_fproc_export(FPE)),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors1(MaybeForeignLang) ++

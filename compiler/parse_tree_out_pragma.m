@@ -28,17 +28,18 @@
 :- pred mercury_output_item_decl_pragma(merc_out_info::in,
     io.text_output_stream::in, item_decl_pragma_info::in,
     io::di, io::uo) is det.
+:- pred mercury_format_item_decl_marker(S::in, item_decl_marker_info::in,
+    U::di, U::uo) is det <= pt_output(S, U).
+
 :- pred mercury_output_item_impl_pragma(merc_out_info::in,
     io.text_output_stream::in, item_impl_pragma_info::in,
     io::di, io::uo) is det.
+:- pred mercury_format_item_impl_marker(S::in, item_impl_marker_info::in,
+    U::di, U::uo) is det <= pt_output(S, U).
+
 :- pred mercury_output_item_generated_pragma(merc_out_info::in,
     io.text_output_stream::in, item_generated_pragma_info::in,
     io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-
-:- pred mercury_output_item_pred_marker(io.text_output_stream::in,
-    pragma_info_pred_marker::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -49,8 +50,8 @@
     pred_pf_name_arity, string) = string.
 
 :- pred mercury_output_pragma_foreign_decl(io.text_output_stream::in,
-    pragma_info_foreign_decl::in, io::di, io::uo) is det.
-:- func mercury_pragma_foreign_decl_to_string(pragma_info_foreign_decl)
+    impl_pragma_foreign_decl_info::in, io::di, io::uo) is det.
+:- func mercury_pragma_foreign_decl_to_string(impl_pragma_foreign_decl_info)
     = string.
 
 :- pred mercury_output_item_foreign_proc(io.text_output_stream::in,
@@ -59,27 +60,27 @@
     item_foreign_proc_info) = string.
 
 :- pred mercury_output_pragma_type_spec(io.text_output_stream::in,
-    output_lang::in, pragma_info_type_spec::in, io::di, io::uo) is det.
+    output_lang::in, decl_pragma_type_spec_info::in, io::di, io::uo) is det.
 
 :- pred mercury_output_pragma_unused_args(io.text_output_stream::in,
-    pragma_info_unused_args::in, io::di, io::uo) is det.
+    gen_pragma_unused_args_info::in, io::di, io::uo) is det.
 
 :- pred mercury_output_pragma_exceptions(io.text_output_stream::in,
-    pragma_info_exceptions::in, io::di, io::uo) is det.
+    gen_pragma_exceptions_info::in, io::di, io::uo) is det.
 
-:- pred mercury_output_pragma_trailing_info(io.text_output_stream::in,
-    pragma_info_trailing_info::in, io::di, io::uo) is det.
+:- pred mercury_output_pragma_trailing(io.text_output_stream::in,
+    gen_pragma_trailing_info::in, io::di, io::uo) is det.
 
-:- pred mercury_output_pragma_mm_tabling_info(io.text_output_stream::in,
-    pragma_info_mm_tabling_info::in, io::di, io::uo) is det.
+:- pred mercury_output_pragma_mm_tabling(io.text_output_stream::in,
+    gen_pragma_mm_tabling_info::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
     % This predicate outputs termination_info pragmas;
     % such annotations can be part of .opt and .trans_opt files.
     %
-:- pred write_pragma_termination_info(io.text_output_stream::in,
-    output_lang::in, pragma_info_termination_info::in, io::di, io::uo) is det.
+:- pred write_pragma_termination(io.text_output_stream::in,
+    output_lang::in, decl_pragma_termination_info::in, io::di, io::uo) is det.
 
     % Return a string representation of the given arg size info.
     % Include the representation of any error infos if the first arg is yes.
@@ -95,16 +96,18 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred write_pragma_termination2_info(io.text_output_stream::in,
-    output_lang::in, pragma_info_termination2_info::in, io::di, io::uo) is det.
+:- pred write_pragma_termination2(io.text_output_stream::in,
+    output_lang::in, decl_pragma_termination2_info::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred write_pragma_structure_sharing_info(io.text_output_stream::in,
-    output_lang::in, pragma_info_structure_sharing::in, io::di, io::uo) is det.
+:- pred write_pragma_struct_sharing(io.text_output_stream::in,
+    output_lang::in, decl_pragma_struct_sharing_info::in,
+    io::di, io::uo) is det.
 
-:- pred write_pragma_structure_reuse_info(io.text_output_stream::in,
-    output_lang::in, pragma_info_structure_reuse::in, io::di, io::uo) is det.
+:- pred write_pragma_struct_reuse(io.text_output_stream::in,
+    output_lang::in, decl_pragma_struct_reuse_info::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -144,162 +147,131 @@
 
 %---------------------------------------------------------------------------%
 
-mercury_output_item_decl_pragma(Info, Stream, ItemDeclPragma, !IO) :-
-    ItemDeclPragma = item_pragma_info(Pragma, Context, _SeqNum),
+mercury_output_item_decl_pragma(Info, Stream, DeclPragma, !IO) :-
+    Context = get_decl_pragma_context(DeclPragma),
     maybe_output_line_number(Info, Context, Stream, !IO),
     Lang = get_output_lang(Info),
     (
-        Pragma = decl_pragma_obsolete_pred(ObsPredInfo),
-        mercury_output_pragma_obsolete_pred(Stream, ObsPredInfo, !IO)
+        DeclPragma = decl_pragma_obsolete_pred(ObsPred),
+        mercury_output_pragma_obsolete_pred(Stream, ObsPred, !IO)
     ;
-        Pragma = decl_pragma_obsolete_proc(ObsProcInfo),
-        mercury_output_pragma_obsolete_proc(Stream, Lang, ObsProcInfo, !IO)
+        DeclPragma = decl_pragma_obsolete_proc(ObsProc),
+        mercury_output_pragma_obsolete_proc(Stream, Lang, ObsProc, !IO)
     ;
-        Pragma = decl_pragma_format_call(FormatCallInfo),
-        mercury_output_pragma_format_call(Stream, FormatCallInfo, !IO)
+        DeclPragma = decl_pragma_format_call(FormatCall),
+        mercury_output_pragma_format_call(Stream, FormatCall, !IO)
     ;
-        Pragma = decl_pragma_type_spec(TypeSpecInfo),
-        mercury_output_pragma_type_spec(Stream, Lang, TypeSpecInfo, !IO)
+        DeclPragma = decl_pragma_type_spec(TypeSpec),
+        mercury_output_pragma_type_spec(Stream, Lang, TypeSpec, !IO)
     ;
-        Pragma = decl_pragma_oisu(OISUInfo),
-        mercury_output_pragma_oisu(Stream, OISUInfo, !IO)
+        DeclPragma = decl_pragma_oisu(OISU),
+        mercury_output_pragma_oisu(Stream, OISU, !IO)
     ;
-        Pragma = decl_pragma_terminates(PredSpec),
-        mercury_format_pragma_decl_pred_pfu_name_arity(
-            "terminates", PredSpec, "", Stream, !IO)
+        DeclPragma = decl_pragma_termination(Term),
+        write_pragma_termination(Stream, Lang, Term, !IO)
     ;
-        Pragma = decl_pragma_does_not_terminate(PredSpec),
-        mercury_format_pragma_decl_pred_pfu_name_arity(
-            "does_not_terminate", PredSpec, "", Stream, !IO)
+        DeclPragma = decl_pragma_termination2(Term2),
+        write_pragma_termination2(Stream, Lang, Term2, !IO)
     ;
-        Pragma = decl_pragma_check_termination(PredSpec),
-        mercury_format_pragma_decl_pred_pfu_name_arity(
-            "check_termination", PredSpec, "", Stream, !IO)
+        DeclPragma = decl_pragma_struct_sharing(Sharing),
+        write_pragma_struct_sharing(Stream, Lang, Sharing, !IO)
     ;
-        Pragma = decl_pragma_termination_info(TermInfo),
-        write_pragma_termination_info(Stream, Lang, TermInfo, !IO)
-    ;
-        Pragma = decl_pragma_termination2_info(Term2Info),
-        write_pragma_termination2_info(Stream, Lang, Term2Info, !IO)
-    ;
-        Pragma = decl_pragma_structure_sharing(SharingInfo),
-        write_pragma_structure_sharing_info(Stream, Lang, SharingInfo, !IO)
-    ;
-        Pragma = decl_pragma_structure_reuse(ReuseInfo),
-        write_pragma_structure_reuse_info(Stream, Lang, ReuseInfo, !IO)
+        DeclPragma = decl_pragma_struct_reuse(Reuse),
+        write_pragma_struct_reuse(Stream, Lang, Reuse, !IO)
     ).
 
-mercury_output_item_impl_pragma(Info, Stream, ItemImplPragma, !IO) :-
-    ItemImplPragma = item_pragma_info(Pragma, Context, _SeqNum),
+mercury_format_item_decl_marker(Stream, DeclMarker, !IO) :-
+    DeclMarker = item_decl_marker_info(MarkerKind, PredSpec, _, _),
+    (
+        MarkerKind = dpmk_terminates,
+        MarkerKindStr = "terminates"
+    ;
+        MarkerKind = dpmk_does_not_terminate, 
+        MarkerKindStr = "does_not_terminate"
+    ;
+        MarkerKind = dpmk_check_termination, 
+        MarkerKindStr = "check_termination"
+    ),
+    mercury_format_pragma_decl_pred_pfu_name_arity(MarkerKindStr,
+        PredSpec, "", Stream, !IO).
+
+mercury_output_item_impl_pragma(Info, Stream, ImplPragma, !IO) :-
+    Context = get_impl_pragma_context(ImplPragma),
     maybe_output_line_number(Info, Context, Stream, !IO),
     Lang = get_output_lang(Info),
     (
-        Pragma = impl_pragma_foreign_decl(FDInfo),
+        ImplPragma = impl_pragma_foreign_decl(FDInfo),
         mercury_output_pragma_foreign_decl(Stream, FDInfo, !IO)
     ;
-        Pragma = impl_pragma_foreign_code(FCInfo),
+        ImplPragma = impl_pragma_foreign_code(FCInfo),
         mercury_output_pragma_foreign_code(Stream, FCInfo, !IO)
     ;
-        Pragma = impl_pragma_foreign_proc_export(FPEInfo),
+        ImplPragma = impl_pragma_fproc_export(FPEInfo),
         mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, Stream, !IO)
     ;
-        Pragma = impl_pragma_external_proc(ExternalInfo),
+        ImplPragma = impl_pragma_external_proc(ExternalInfo),
         mercury_format_pragma_external_proc(ExternalInfo, Stream, !IO)
     ;
-        Pragma = impl_pragma_fact_table(FactTableInfo),
+        ImplPragma = impl_pragma_fact_table(FactTableInfo),
         mercury_format_pragma_fact_table(FactTableInfo, Stream, !IO)
     ;
-        Pragma = impl_pragma_inline(PredSpec),
-        mercury_format_pragma_decl_pred_pfu_name_arity(
-            "inline", PredSpec, "", Stream, !IO)
-    ;
-        Pragma = impl_pragma_no_inline(PredSpec),
-        mercury_format_pragma_decl_pred_pfu_name_arity(
-            "no_inline", PredSpec, "", Stream, !IO)
-    ;
-        Pragma = impl_pragma_tabled(TabledInfo),
+        ImplPragma = impl_pragma_tabled(TabledInfo),
         mercury_output_pragma_tabled(Stream, TabledInfo, !IO)
     ;
-        Pragma = impl_pragma_consider_used(PredSpec),
-        mercury_format_pragma_decl_pred_pfu_name_arity(
-            "consider_used", PredSpec, "", Stream, !IO)
-    ;
-        Pragma = impl_pragma_no_detism_warning(PredSpec),
-        mercury_format_pragma_decl_pred_pfu_name_arity(
-            "no_determinism_warning", PredSpec, "", Stream, !IO)
-    ;
-        Pragma = impl_pragma_mode_check_clauses(PredSpec),
-        mercury_format_pragma_decl_pred_pfu_name_arity(
-            "mode_check_clauses", PredSpec, "", Stream, !IO)
-    ;
-        Pragma = impl_pragma_require_tail_rec(RequireTailrecPragma),
+        ImplPragma = impl_pragma_req_tail_rec(RequireTailrecPragma),
         mercury_output_pragma_require_tail_rec(Stream, Lang,
             RequireTailrecPragma, !IO)
     ;
-        Pragma = impl_pragma_promise_pure(PredSpec),
-        mercury_format_pragma_decl_pred_pfu_name_arity(
-            "promise_pure", PredSpec, "", Stream, !IO)
-    ;
-        Pragma = impl_pragma_promise_semipure(PredSpec),
-        mercury_format_pragma_decl_pred_pfu_name_arity(
-            "promise_semipure", PredSpec, "", Stream, !IO)
-    ;
-        Pragma = impl_pragma_promise_eqv_clauses(PredSpec),
-        mercury_format_pragma_decl_pred_pfu_name_arity(
-            "promise_equivalent_clauses", PredSpec, "", Stream, !IO)
-    ;
-        Pragma = impl_pragma_require_feature_set(RFSInfo),
+        ImplPragma = impl_pragma_req_feature_set(RFSInfo),
         mercury_format_pragma_require_feature_set(RFSInfo, Stream, !IO)
     ).
 
-mercury_output_item_generated_pragma(Info, Stream, ItemGenPragma, !IO) :-
-    ItemGenPragma = item_pragma_info(Pragma, Context, _SeqNum),
+mercury_format_item_impl_marker(Stream, ImplMarker, !IO) :-
+    ImplMarker = item_impl_marker_info(MarkerKind, PredSpec, _, _),
+    (
+        MarkerKind = ipmk_inline,
+        MarkerKindStr = "inline"
+    ;
+        MarkerKind = ipmk_no_inline,
+        MarkerKindStr = "no_inline"
+    ;
+        MarkerKind = ipmk_consider_used,
+        MarkerKindStr = "consider_used"
+    ;
+        MarkerKind = ipmk_mode_check_clauses,
+        MarkerKindStr = "mode_check_clauses"
+    ;
+        MarkerKind = ipmk_no_detism_warning,
+        MarkerKindStr = "no_determinism_warning"
+    ;
+        MarkerKind = ipmk_promise_pure,
+        MarkerKindStr = "promise_pure"
+    ;
+        MarkerKind = ipmk_promise_semipure,
+        MarkerKindStr = "promise_semipure"
+    ;
+        MarkerKind = ipmk_promise_eqv_clauses,
+        MarkerKindStr = "promise_equivalent_clauses"
+    ),
+    mercury_format_pragma_decl_pred_pfu_name_arity(MarkerKindStr,
+        PredSpec, "", Stream, !IO).
+
+mercury_output_item_generated_pragma(Info, Stream, GenPragma, !IO) :-
+    Context = get_gen_pragma_context(GenPragma),
     maybe_output_line_number(Info, Context, Stream, !IO),
     (
-        Pragma = gen_pragma_unused_args(UnusedArgsInfo),
-        mercury_output_pragma_unused_args(Stream, UnusedArgsInfo, !IO)
+        GenPragma = gen_pragma_unused_args(UnusedArgs),
+        mercury_output_pragma_unused_args(Stream, UnusedArgs, !IO)
     ;
-        Pragma = gen_pragma_exceptions(ExceptionsInfo),
-        mercury_output_pragma_exceptions(Stream, ExceptionsInfo, !IO)
+        GenPragma = gen_pragma_exceptions(Exceptions),
+        mercury_output_pragma_exceptions(Stream, Exceptions, !IO)
     ;
-        Pragma = gen_pragma_trailing_info(TrailingInfo),
-        mercury_output_pragma_trailing_info(Stream, TrailingInfo, !IO)
+        GenPragma = gen_pragma_trailing(Trailing),
+        mercury_output_pragma_trailing(Stream, Trailing, !IO)
     ;
-        Pragma = gen_pragma_mm_tabling_info(TablingInfo),
-        mercury_output_pragma_mm_tabling_info(Stream, TablingInfo, !IO)
+        GenPragma = gen_pragma_mm_tabling(Tabling),
+        mercury_output_pragma_mm_tabling(Stream, Tabling, !IO)
     ).
-
-%---------------------------------------------------------------------------%
-
-mercury_output_item_pred_marker(Stream, PredMarker, !IO) :-
-    PredMarker = pragma_info_pred_marker(PredSpec, PredMarkerKind),
-    (
-        PredMarkerKind = pmpk_inline,
-        PragmaName = "inline"
-    ;
-        PredMarkerKind = pmpk_noinline,
-        PragmaName = "no_inline"
-    ;
-        PredMarkerKind = pmpk_promise_eqv_clauses,
-        PragmaName = "promise_equivalent_clauses"
-    ;
-        PredMarkerKind = pmpk_promise_pure,
-        PragmaName = "promise_pure"
-    ;
-        PredMarkerKind = pmpk_promise_semipure,
-        PragmaName = "promise_semipure"
-    ;
-        PredMarkerKind = pmpk_terminates,
-        PragmaName = "terminates"
-    ;
-        PredMarkerKind = pmpk_does_not_terminate,
-        PragmaName = "does_not_terminate"
-    ;
-        PredMarkerKind = pmpk_mode_check_clauses,
-        PragmaName = "mode_check_clauses"
-    ),
-    mercury_format_pragma_decl_pred_pf_name_arity(PragmaName, PredSpec, "",
-        Stream, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -380,11 +352,12 @@ mercury_pragma_foreign_decl_to_string(FDInfo) = Str :-
         string.builder.handle, State0, State),
     Str = string.builder.to_string(State).
 
-:- pred mercury_format_pragma_foreign_decl(pragma_info_foreign_decl::in, S::in,
-    U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_pragma_foreign_decl(impl_pragma_foreign_decl_info::in,
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pragma_foreign_decl(FDInfo, S, !U) :-
-    FDInfo = pragma_info_foreign_decl(Lang, IsLocal, LiteralOrInclude),
+    FDInfo = impl_pragma_foreign_decl_info(Lang, IsLocal, LiteralOrInclude,
+        _, _),
     add_string(":- pragma foreign_decl(", S, !U),
     mercury_format_foreign_language_string(Lang, S, !U),
     add_string(", ", S, !U),
@@ -405,10 +378,10 @@ mercury_format_pragma_foreign_decl(FDInfo, S, !U) :-
 %
 
 :- pred mercury_output_pragma_foreign_code(io.text_output_stream::in,
-    pragma_info_foreign_code::in, io::di, io::uo) is det.
+    impl_pragma_foreign_code_info::in, io::di, io::uo) is det.
 
 mercury_output_pragma_foreign_code(Stream, FCInfo, !IO) :-
-    FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude),
+    FCInfo = impl_pragma_foreign_code_info(Lang, LiteralOrInclude, _, _),
     LangStr = mercury_foreign_language_to_string(Lang),
     LorIStr = foreign_literal_or_include_to_string(LiteralOrInclude),
     io.format(Stream, ":- pragma foreign_code(%s, %s).\n",
@@ -878,12 +851,12 @@ unit_selector_to_string(TypeVarSet, UnitSelector) = String :-
 %
 
 :- pred mercury_format_pragma_foreign_proc_export(output_lang::in,
-    pragma_info_foreign_proc_export::in, S::in,
-    U::di, U::uo) is det <= pt_output(S, U).
+    impl_pragma_fproc_export_info::in, S::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
-mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, S, !U) :-
-    FPEInfo = pragma_info_foreign_proc_export(_Origin, ForeignLang,
-        PredNameModesPF, ExportName, VarSet),
+mercury_format_pragma_foreign_proc_export(Lang, FPE, S, !U) :-
+    FPE = impl_pragma_fproc_export_info(_Origin, ForeignLang,
+        PredNameModesPF, ExportName, VarSet, _, _),
     PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
     add_string(":- pragma foreign_export(", S, !U),
     mercury_format_foreign_language_string(ForeignLang, S, !U),
@@ -912,11 +885,11 @@ mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, S, !U) :-
 % Output an external_proc pragma.
 %
 
-:- pred mercury_format_pragma_external_proc(pragma_info_external_proc::in,
+:- pred mercury_format_pragma_external_proc(impl_pragma_external_proc_info::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_format_pragma_external_proc(ExternalInfo, S, !U) :-
-    ExternalInfo = pragma_info_external_proc(PFNameArity, MaybeBackend),
+mercury_format_pragma_external_proc(External, S, !U) :-
+    External = impl_pragma_external_proc_info(PFNameArity, MaybeBackend, _, _),
     PFNameArity = pred_pf_name_arity(PorF, PredName, user_arity(Arity)),
     PorFStr = pred_or_func_to_str(PorF),
     add_string(":- pragma external_", S, !U),
@@ -951,9 +924,9 @@ backend_to_string(Backend) = Str :-
 % Output a type_spec pragma.
 %
 
-mercury_output_pragma_type_spec(Stream, Lang, TypeSpecInfo, !IO) :-
-    TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName, _SpecModuleName,
-        TypeSubst, VarSet, _),
+mercury_output_pragma_type_spec(Stream, Lang, TypeSpec, !IO) :-
+    TypeSpec = decl_pragma_type_spec_info(PFUMM, PredName, _SpecModuleName,
+        TypeSubst, VarSet, _, _, _),
     io.write_string(Stream, ":- pragma type_spec(", !IO),
     (
         (
@@ -1015,7 +988,8 @@ mercury_output_type_subst(VarSet, VarNamePrint, Var - Type, Stream, !IO) :-
 %
 
 mercury_output_pragma_unused_args(Stream, UnusedArgsInfo, !IO) :-
-    UnusedArgsInfo = pragma_info_unused_args(PredNameArityPFMn, UnusedArgs),
+    UnusedArgsInfo =
+        gen_pragma_unused_args_info(PredNameArityPFMn, UnusedArgs, _, _),
     PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, SymName,
         user_arity(Arity), ModeNum),
     PorFStr = pred_or_func_to_full_str(PredOrFunc),
@@ -1030,8 +1004,9 @@ mercury_output_pragma_unused_args(Stream, UnusedArgsInfo, !IO) :-
 % Output an exceptions pragma.
 %
 
-mercury_output_pragma_exceptions(Stream, ExceptionsInfo, !IO) :-
-    ExceptionsInfo = pragma_info_exceptions(PredNameArityPFMn, ThrowStatus),
+mercury_output_pragma_exceptions(Stream, Exceptions, !IO) :-
+    Exceptions = gen_pragma_exceptions_info(PredNameArityPFMn, ThrowStatus,
+        _, _),
     PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, SymName,
         user_arity(Arity), ModeNum),
     PorFStr = pred_or_func_to_full_str(PredOrFunc),
@@ -1057,12 +1032,12 @@ mercury_output_pragma_exceptions(Stream, ExceptionsInfo, !IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Output a trailing_info pragma.
+% Output a trailing pragma.
 %
 
-mercury_output_pragma_trailing_info(Stream, TrailingInfo, !IO) :-
-    TrailingInfo =
-        pragma_info_trailing_info(PredNameArityPFMn, TrailingStatus),
+mercury_output_pragma_trailing(Stream, Trailing, !IO) :-
+    Trailing = gen_pragma_trailing_info(PredNameArityPFMn, TrailingStatus,
+        _, _),
     PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, SymName,
         user_arity(Arity), ModeNum),
     PorFStr = pred_or_func_to_full_str(PredOrFunc),
@@ -1082,12 +1057,12 @@ mercury_output_pragma_trailing_info(Stream, TrailingInfo, !IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Output a mm_tabling_info pragma.
+% Output a mm_tabling pragma.
 %
 
-mercury_output_pragma_mm_tabling_info(Stream, TablingInfo, !IO) :-
-    TablingInfo = pragma_info_mm_tabling_info(PredNameArityPFMn,
-        MM_TablingStatus),
+mercury_output_pragma_mm_tabling(Stream, MMTabling, !IO) :-
+    MMTabling = gen_pragma_mm_tabling_info(PredNameArityPFMn,
+        MM_TablingStatus, _, _),
     PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, SymName,
         user_arity(Arity), ModeNum),
     PorFStr = pred_or_func_to_full_str(PredOrFunc),
@@ -1111,10 +1086,11 @@ mercury_output_pragma_mm_tabling_info(Stream, TablingInfo, !IO) :-
 %
 
 :- pred mercury_output_pragma_obsolete_pred(io.text_output_stream::in,
-    pragma_info_obsolete_pred::in, io::di, io::uo) is det.
+    decl_pragma_obsolete_pred_info::in, io::di, io::uo) is det.
 
-mercury_output_pragma_obsolete_pred(Stream, ObsoletePredInfo, !IO) :-
-    ObsoletePredInfo = pragma_info_obsolete_pred(PredSpec, ObsoleteInFavourOf),
+mercury_output_pragma_obsolete_pred(Stream, ObsoletePred, !IO) :-
+    ObsoletePred =
+        decl_pragma_obsolete_pred_info(PredSpec, ObsoleteInFavourOf, _, _),
     PredSpec = pred_pfu_name_arity(PFU, PredName, Arity),
     PredStr = mercury_pred_pfu_name_arity_to_string(PFU, PredName, Arity),
     ObsoleteStrs = list.map(wrapped_sym_name_arity_to_string,
@@ -1124,11 +1100,12 @@ mercury_output_pragma_obsolete_pred(Stream, ObsoletePredInfo, !IO) :-
         [s(PredStr), s(ObsoleteStr)], !IO).
 
 :- pred mercury_output_pragma_obsolete_proc(io.text_output_stream::in,
-    output_lang::in, pragma_info_obsolete_proc::in, io::di, io::uo) is det.
+    output_lang::in, decl_pragma_obsolete_proc_info::in,
+    io::di, io::uo) is det.
 
-mercury_output_pragma_obsolete_proc(Stream, Lang, ObsoleteProcInfo, !IO) :-
-    ObsoleteProcInfo =
-        pragma_info_obsolete_proc(PredNameModesPF, ObsoleteInFavourOf),
+mercury_output_pragma_obsolete_proc(Stream, Lang, ObsoleteProc, !IO) :-
+    ObsoleteProc = decl_pragma_obsolete_proc_info(PredNameModesPF,
+        ObsoleteInFavourOf, _, _),
     PredStr = proc_pf_name_modes_to_string(Lang, PredNameModesPF),
     ObsoleteStrs = list.map(wrapped_sym_name_arity_to_string,
         ObsoleteInFavourOf),
@@ -1149,10 +1126,11 @@ wrapped_sym_name_arity_to_string(SNA) = Str :-
 %
 
 :- pred mercury_output_pragma_format_call(io.text_output_stream::in,
-    pragma_info_format_call::in, io::di, io::uo) is det.
+    decl_pragma_format_call_info::in, io::di, io::uo) is det.
 
-mercury_output_pragma_format_call(Stream, FormatCallInfo, !IO) :-
-    FormatCallInfo = pragma_info_format_call(PredSpec, OoMFormatArgsSpecs),
+mercury_output_pragma_format_call(Stream, FormatCall, !IO) :-
+    FormatCall = decl_pragma_format_call_info(PredSpec, OoMFormatArgsSpecs,
+        _, _),
     PredSpec = pred_pf_name_arity(PF, PredName, Arity),
     PredStr = mercury_pred_pf_name_arity_to_string(PF, PredName, Arity),
     OoMFormatArgsSpecs = one_or_more(HeadFormatArgsSpec, TailFormatArgsSpecs),
@@ -1181,17 +1159,17 @@ format_string_values_to_string(FormatStringValues) = Str :-
 %
 
 :- pred mercury_output_pragma_require_tail_rec(io.text_output_stream::in,
-    output_lang::in, pragma_info_require_tail_rec::in, io::di, io::uo) is det.
+    output_lang::in, impl_pragma_req_tail_rec_info::in, io::di, io::uo) is det.
 
 mercury_output_pragma_require_tail_rec(Stream, Lang, RequireTR, !IO) :-
-    RequireTR = pragma_info_require_tail_rec(PredOrProcSpec, Info),
+    RequireTR = impl_pragma_req_tail_rec_info(PredOrProcSpec, Warn, _, _),
     ProcSpecStr = pred_or_proc_pfumm_name_to_string(Lang, PredOrProcSpec),
     (
-        Info = suppress_tailrec_warnings(_),
+        Warn = suppress_tailrec_warnings(_),
         io.format(Stream, ":- pragma warn_tail_recursion(%s, [none]).\n",
             [s(ProcSpecStr)], !IO)
     ;
-        Info = enable_tailrec_warnings(WarnOrError, Type, _),
+        Warn = enable_tailrec_warnings(WarnOrError, Type, _),
         warning_or_error_string(WarnOrError, WarnOrErrorStr),
         require_tailrec_type_string(Type, TypeStr),
         io.format(Stream, ":- pragma warn_tail_recursion(%s, [%s, %s]).\n",
@@ -1245,11 +1223,11 @@ pred_or_proc_pfumm_name_to_string(Lang, PredOrProcSpec)
 %
 
 :- pred mercury_output_pragma_tabled(io.text_output_stream::in,
-    pragma_info_tabled::in, io::di, io::uo) is det.
+    impl_pragma_tabled_info::in, io::di, io::uo) is det.
 
-mercury_output_pragma_tabled(Stream, TabledInfo, !IO) :-
-    TabledInfo =
-        pragma_info_tabled(TabledMethod, PredOrProcSpec, MaybeAttributes),
+mercury_output_pragma_tabled(Stream, Tabled, !IO) :-
+    Tabled = impl_pragma_tabled_info(TabledMethod, PredOrProcSpec,
+        MaybeAttributes, _, _),
     PragmaName = tabled_eval_method_to_pragma_name(TabledMethod),
     (
         MaybeAttributes = yes(Attributes),
@@ -1322,11 +1300,11 @@ mercury_output_pragma_tabled(Stream, TabledInfo, !IO) :-
 % Output a fact_table pragma.
 %
 
-:- pred mercury_format_pragma_fact_table(pragma_info_fact_table::in, S::in,
-    U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_pragma_fact_table(impl_pragma_fact_table_info::in,
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_format_pragma_fact_table(FactTableInfo, S, !U) :-
-    FactTableInfo = pragma_info_fact_table(PredSpec, FileName),
+mercury_format_pragma_fact_table(FactTable, S, !U) :-
+    FactTable = impl_pragma_fact_table_info(PredSpec, FileName, _, _),
     add_string(":- pragma fact_table(", S, !U),
     PredSpec = pred_pfu_name_arity(PFU, PredName, UserArity),
     mercury_format_pred_pfu_name_arity(PFU, PredName, UserArity, S, !U),
@@ -1340,17 +1318,17 @@ mercury_format_pragma_fact_table(FactTableInfo, S, !U) :-
 %
 
 :- pred mercury_output_pragma_oisu(io.text_output_stream::in,
-    pragma_info_oisu::in, io::di, io::uo) is det.
+    decl_pragma_oisu_info::in, io::di, io::uo) is det.
 
-mercury_output_pragma_oisu(Stream, OISUInfo, !IO) :-
-    mercury_format_pragma_oisu(OISUInfo, Stream, !IO).
+mercury_output_pragma_oisu(Stream, OISU, !IO) :-
+    mercury_format_pragma_oisu(OISU, Stream, !IO).
 
-:- pred mercury_format_pragma_oisu(pragma_info_oisu::in, S::in,
+:- pred mercury_format_pragma_oisu(decl_pragma_oisu_info::in, S::in,
     U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_format_pragma_oisu(OISUInfo, S, !U) :-
-    OISUInfo = pragma_info_oisu(TypeCtor, CreatorPreds, MutatorPreds,
-        DestructorPreds),
+mercury_format_pragma_oisu(OISU, S, !U) :-
+    OISU = decl_pragma_oisu_info(TypeCtor, CreatorPreds, MutatorPreds,
+        DestructorPreds, _, _),
     add_string(":- pragma oisu(", S, !U),
     TypeCtor = type_ctor(TypeName, TypeArity),
     mercury_format_bracketed_sym_name_ngt(next_to_graphic_token, TypeName,
@@ -1399,9 +1377,9 @@ mercury_format_pred_pf_name_arity_list_lag(PredSpec, PredSpecs, S, !U) :-
 % Output a termination_info pragma.
 %
 
-write_pragma_termination_info(Stream, Lang, TermInfo, !IO) :-
-    TermInfo = pragma_info_termination_info(PredNameModesPF,
-        MaybeArgSize, MaybeTermination),
+write_pragma_termination(Stream, Lang, Term, !IO) :-
+    Term = decl_pragma_termination_info(PredNameModesPF,
+        MaybeArgSize, MaybeTermination, _, _),
     PredStr = proc_pf_name_modes_to_string(Lang, PredNameModesPF),
     ArgSizeStr = maybe_arg_size_info_to_string(no, MaybeArgSize),
     TermStr = maybe_termination_info_to_string(no, MaybeTermination),
@@ -1461,9 +1439,9 @@ maybe_termination_info_to_string(Verbose, MaybeTerminationInfo) = Str :-
 % Output a termination2_info pragma.
 %
 
-write_pragma_termination2_info(Stream, Lang, Term2Info, !IO) :-
-    Term2Info = pragma_info_termination2_info(PredNameModesPF,
-        MaybeSuccess, MaybeFailure, MaybeTermination),
+write_pragma_termination2(Stream, Lang, Term2, !IO) :-
+    Term2 = decl_pragma_termination2_info(PredNameModesPF,
+        MaybeSuccess, MaybeFailure, MaybeTermination, _, _),
     PredStr = proc_pf_name_modes_to_string(Lang, PredNameModesPF),
     SuccessStr = maybe_pragma_constr_arg_size_info_to_string(MaybeSuccess),
     FailureStr = maybe_pragma_constr_arg_size_info_to_string(MaybeFailure),
@@ -1523,9 +1501,9 @@ maybe_pragma_termination_info_to_string(MaybeTermination) = Str :-
 % Output a structure_sharing pragma.
 %
 
-write_pragma_structure_sharing_info(Stream, Lang, SharingInfo, !IO) :-
-    SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
-        HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeSharingAs),
+write_pragma_struct_sharing(Stream, Lang, Sharing, !IO) :-
+    Sharing = decl_pragma_struct_sharing_info(PredNameModesPF,
+        HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeSharingAs, _, _),
     PredStr = proc_pf_name_modes_to_string(Lang, PredNameModesPF),
     io.format(Stream, ":- pragma structure_sharing(%s, ", [s(PredStr)], !IO),
     % write headvars and types:
@@ -1541,9 +1519,9 @@ write_pragma_structure_sharing_info(Stream, Lang, SharingInfo, !IO) :-
 % Output a structure_reuse pragma.
 %
 
-write_pragma_structure_reuse_info(Stream, Lang, ReuseInfo, !IO) :-
-    ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
-        HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeStructureReuseDomain),
+write_pragma_struct_reuse(Stream, Lang, Reuse, !IO) :-
+    Reuse = decl_pragma_struct_reuse_info(PredNameModesPF, HeadVars,
+        HeadVarTypes, VarSet, TVarSet, MaybeStructureReuseDomain, _, _),
     PredStr = proc_pf_name_modes_to_string(Lang, PredNameModesPF),
     io.format(Stream, ":- pragma structure_reuse(%s, ", [s(PredStr)], !IO),
     % write headvars and types:
@@ -1587,11 +1565,11 @@ write_vars_and_types(Stream, VarSet, TypeVarSet, HeadVars, HeadVarTypes,
 %
 
 :- pred mercury_format_pragma_require_feature_set(
-    pragma_info_require_feature_set::in, S::in,
+    impl_pragma_req_feature_set_info::in, S::in,
     U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pragma_require_feature_set(RFSInfo, S, !U) :-
-    RFSInfo = pragma_info_require_feature_set(Features0),
+    RFSInfo = impl_pragma_req_feature_set_info(Features0, _, _),
     Features = set.to_sorted_list(Features0),
     add_string(":- pragma require_feature_set(", S, !U),
     add_list(mercury_format_required_feature, ", ", Features, S, !U),

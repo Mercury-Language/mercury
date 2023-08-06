@@ -203,7 +203,8 @@ get_explicit_and_implicit_avail_needs_in_parse_tree_plain_opt(
         UseMap, _FIMSpecs, _TypeDefns, _ForeignEnums,
         _InstDefns, _ModeDefns, _TypeClasses, _Instances,
         _PredDecls, _ModeDecls, _Clauses, _ForeignProcs, _Promises,
-        _MarkerPragmas, _TypeSpecs, _UnusedArgs, _TermInfos, _Term2Infos,
+        _DeclMarkers, _ImplMarkers, _TypeSpecs,
+        _UnusedArgs, _TermInfos, _Term2Infos,
         _Exceptions, _Trailings, _MMTablings, _Sharings, _Reuses),
     map.keys_as_set(UseMap, ExplicitModules),
     acc_implicit_avail_needs_in_parse_tree_plain_opt(ParseTreePlainOpt,
@@ -352,12 +353,12 @@ acc_implicit_avail_needs_in_parse_tree_module_src(ParseTreeModuleSrc,
         _TypeSpecs, _InstModeSpecs,
 
         _IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
-        _IntDeclPragmas, IntPromises, _IntBadPreds,
+        _IntDeclPragmas, _IntDeclMarkers, IntPromises, _IntBadPreds,
 
         _ImpTypeClasses, ImpInstances, _ImpPredDecls, _ImpModeDecls,
         ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
-        _ImpDeclPragmas, ImpImplPragmas, ImpPromises,
-        _ImpInitialises, _ImpFinalises, ImpMutables),
+        _ImpDeclPragmas, _ImpDeclMarkers, ImpImplPragmas, _ImpImplMarkers,
+        ImpPromises, _ImpInitialises, _ImpFinalises, ImpMutables),
 
     type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
         _IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
@@ -443,9 +444,9 @@ acc_implicit_avail_needs_in_parse_tree_int0(ParseTreeInt0,
         _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
         TypeCtorCheckedMap, _InstCtorCheckedMap, _ModeCtorCheckedMap,
         _IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
-        _IntDeclPragmas, IntPromises,
+        _IntDeclPragmas, _IntDeclMarkers, IntPromises,
         _ImpTypeClasses, ImpInstances, _ImpPredDecls, _ImpModeDecls,
-        _ImpDeclPragmas, ImpPromises),
+        _ImpDeclPragmas, _ImpDeclMarkers, ImpPromises),
 
     map.foldl_values(acc_implicit_avail_needs_in_type_ctor_checked_defn,
         TypeCtorCheckedMap, !ImplicitAvailNeeds),
@@ -473,7 +474,7 @@ acc_implicit_avail_needs_in_parse_tree_int1(ParseTreeInt1,
         _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
         TypeDefnCheckedMap, _InstDefnCheckedMap, _ModeDefnCheckedMap,
         _IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
-        _IntDeclPragmas, IntPromises, _IntTypeRepnMap,
+        _IntDeclPragmas, _IntDeclMarkers, IntPromises, _IntTypeRepnMap,
         _ImpTypeClasses),
 
     map.foldl_values(acc_implicit_avail_needs_in_type_ctor_checked_defn,
@@ -511,7 +512,8 @@ acc_implicit_avail_needs_in_parse_tree_plain_opt(ParseTreePlainOpt,
         _UsedModuleNames, _FIMSpecs, TypeDefns, _ForeignEnums,
         _InstDefns, _ModeDefns, _TypeClasses, Instances,
         _PredDecls, _ModeDecls, Clauses, _ForeignProcs, _Promises,
-        _MarkerPragmas, _TypeSpecs, _UnusedArgs, _TermInfos, _Term2Infos,
+        _DeclMarkers, _ImplMarkers, _TypeSpecs,
+        _UnusedArgs, _TermInfos, _Term2Infos,
         _Exceptions, _Trailings, _MMTablings, _Sharings, _Reuses),
     list.foldl(acc_implicit_avail_needs_in_type_defn,
         TypeDefns, !ImplicitAvailNeeds),
@@ -625,12 +627,11 @@ acc_implicit_avail_needs_in_instance_method(InstanceMethod,
 :- pred acc_implicit_avail_needs_in_impl_pragma(item_impl_pragma_info::in,
     implicit_avail_needs::in, implicit_avail_needs::out) is det.
 
-acc_implicit_avail_needs_in_impl_pragma(ItemImplPragma,
+acc_implicit_avail_needs_in_impl_pragma(ImplPragma,
         !ImplicitAvailNeeds) :-
-    ItemImplPragma = item_pragma_info(ImplPragma, _Context, _SeqNum),
     (
         ImplPragma = impl_pragma_tabled(TableInfo),
-        TableInfo = pragma_info_tabled(_, _, MaybeAttributes),
+        TableInfo = impl_pragma_tabled_info(_, _, MaybeAttributes, _, _),
         !ImplicitAvailNeeds ^ ian_tabling := do_need_tabling,
         (
             MaybeAttributes = no
@@ -648,19 +649,11 @@ acc_implicit_avail_needs_in_impl_pragma(ItemImplPragma,
     ;
         ( ImplPragma = impl_pragma_foreign_decl(_)
         ; ImplPragma = impl_pragma_foreign_code(_)
-        ; ImplPragma = impl_pragma_foreign_proc_export(_)
+        ; ImplPragma = impl_pragma_fproc_export(_)
         ; ImplPragma = impl_pragma_external_proc(_)
-        ; ImplPragma = impl_pragma_inline(_)
-        ; ImplPragma = impl_pragma_no_inline(_)
-        ; ImplPragma = impl_pragma_consider_used(_)
-        ; ImplPragma = impl_pragma_no_detism_warning(_)
         ; ImplPragma = impl_pragma_fact_table(_)
-        ; ImplPragma = impl_pragma_promise_eqv_clauses(_)
-        ; ImplPragma = impl_pragma_promise_pure(_)
-        ; ImplPragma = impl_pragma_promise_semipure(_)
-        ; ImplPragma = impl_pragma_mode_check_clauses(_)
-        ; ImplPragma = impl_pragma_require_feature_set(_)
-        ; ImplPragma = impl_pragma_require_tail_rec(_)
+        ; ImplPragma = impl_pragma_req_feature_set(_)
+        ; ImplPragma = impl_pragma_req_tail_rec(_)
         )
     ).
 
@@ -1169,15 +1162,16 @@ get_foreign_code_langs(ParseTreeModuleSrc, Langs) :-
     set(foreign_include_file_info)::in, set(foreign_include_file_info)::out)
     is det.
 
-acc_foreign_include_file_info_from_impl_pragma(ItemImplPragma, !FIFOs) :-
-    ItemImplPragma = item_pragma_info(ImplPragma, _, _),
+acc_foreign_include_file_info_from_impl_pragma(ImplPragma, !FIFOs) :-
     (
         (
             ImplPragma = impl_pragma_foreign_decl(FDInfo),
-            FDInfo = pragma_info_foreign_decl(Lang, _, LiteralOrInclude)
+            FDInfo = impl_pragma_foreign_decl_info(Lang, _, LiteralOrInclude,
+                _, _)
         ;
             ImplPragma = impl_pragma_foreign_code(FCInfo),
-            FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude)
+            FCInfo = impl_pragma_foreign_code_info(Lang, LiteralOrInclude,
+                _, _)
         ),
         (
             LiteralOrInclude = floi_literal(_)
@@ -1187,59 +1181,42 @@ acc_foreign_include_file_info_from_impl_pragma(ItemImplPragma, !FIFOs) :-
             set.insert(FIFO, !FIFOs)
         )
     ;
-        ( ImplPragma = impl_pragma_foreign_proc_export(_)
+        ( ImplPragma = impl_pragma_fproc_export(_)
         ; ImplPragma = impl_pragma_fact_table(_)
         ; ImplPragma = impl_pragma_tabled(_)
         ; ImplPragma = impl_pragma_external_proc(_)
-        ; ImplPragma = impl_pragma_inline(_)
-        ; ImplPragma = impl_pragma_no_inline(_)
-        ; ImplPragma = impl_pragma_consider_used(_)
-        ; ImplPragma = impl_pragma_no_detism_warning(_)
-        ; ImplPragma = impl_pragma_require_tail_rec(_)
-        ; ImplPragma = impl_pragma_promise_eqv_clauses(_)
-        ; ImplPragma = impl_pragma_promise_pure(_)
-        ; ImplPragma = impl_pragma_promise_semipure(_)
-        ; ImplPragma = impl_pragma_mode_check_clauses(_)
-        ; ImplPragma = impl_pragma_require_feature_set(_)
+        ; ImplPragma = impl_pragma_req_tail_rec(_)
+        ; ImplPragma = impl_pragma_req_feature_set(_)
         )
     ).
 
 :- pred acc_fact_tables_from_impl_pragma(item_impl_pragma_info::in,
     set(string)::in, set(string)::out) is det.
 
-acc_fact_tables_from_impl_pragma(ItemImplPragma, !FactTables) :-
-    ItemImplPragma = item_pragma_info(ImplPragma, _, _),
+acc_fact_tables_from_impl_pragma(ImplPragma, !FactTables) :-
     (
         ImplPragma = impl_pragma_fact_table(FactTableInfo),
-        FactTableInfo = pragma_info_fact_table(_PredNameArity, FileName),
+        FactTableInfo =
+            impl_pragma_fact_table_info(_PredNameArity, FileName, _, _),
         set.insert(FileName, !FactTables)
     ;
         ( ImplPragma = impl_pragma_foreign_decl(_)
         ; ImplPragma = impl_pragma_foreign_code(_)
-        ; ImplPragma = impl_pragma_foreign_proc_export(_)
+        ; ImplPragma = impl_pragma_fproc_export(_)
         ; ImplPragma = impl_pragma_tabled(_)
         ; ImplPragma = impl_pragma_external_proc(_)
-        ; ImplPragma = impl_pragma_inline(_)
-        ; ImplPragma = impl_pragma_no_inline(_)
-        ; ImplPragma = impl_pragma_consider_used(_)
-        ; ImplPragma = impl_pragma_no_detism_warning(_)
-        ; ImplPragma = impl_pragma_require_tail_rec(_)
-        ; ImplPragma = impl_pragma_promise_eqv_clauses(_)
-        ; ImplPragma = impl_pragma_promise_pure(_)
-        ; ImplPragma = impl_pragma_promise_semipure(_)
-        ; ImplPragma = impl_pragma_mode_check_clauses(_)
-        ; ImplPragma = impl_pragma_require_feature_set(_)
+        ; ImplPragma = impl_pragma_req_tail_rec(_)
+        ; ImplPragma = impl_pragma_req_feature_set(_)
         )
     ).
 
 :- pred acc_foreign_export_langs_from_impl_pragma(item_impl_pragma_info::in,
     set(foreign_language)::in, set(foreign_language)::out) is det.
 
-acc_foreign_export_langs_from_impl_pragma(ItemImplPragma, !Langs) :-
-    ItemImplPragma = item_pragma_info(ImplPragma, _, _),
+acc_foreign_export_langs_from_impl_pragma(ImplPragma, !Langs) :-
     (
-        ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
-        FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _, _),
+        ImplPragma = impl_pragma_fproc_export(FPEInfo),
+        FPEInfo = impl_pragma_fproc_export_info(_, Lang, _, _, _, _, _),
         set.insert(Lang, !Langs)
     ;
         ( ImplPragma = impl_pragma_foreign_decl(_)
@@ -1247,16 +1224,8 @@ acc_foreign_export_langs_from_impl_pragma(ItemImplPragma, !Langs) :-
         ; ImplPragma = impl_pragma_fact_table(_)
         ; ImplPragma = impl_pragma_tabled(_)
         ; ImplPragma = impl_pragma_external_proc(_)
-        ; ImplPragma = impl_pragma_inline(_)
-        ; ImplPragma = impl_pragma_no_inline(_)
-        ; ImplPragma = impl_pragma_consider_used(_)
-        ; ImplPragma = impl_pragma_no_detism_warning(_)
-        ; ImplPragma = impl_pragma_require_tail_rec(_)
-        ; ImplPragma = impl_pragma_promise_eqv_clauses(_)
-        ; ImplPragma = impl_pragma_promise_pure(_)
-        ; ImplPragma = impl_pragma_promise_semipure(_)
-        ; ImplPragma = impl_pragma_mode_check_clauses(_)
-        ; ImplPragma = impl_pragma_require_feature_set(_)
+        ; ImplPragma = impl_pragma_req_tail_rec(_)
+        ; ImplPragma = impl_pragma_req_feature_set(_)
         )
     ).
 
@@ -1278,15 +1247,15 @@ acc_foreign_code_langs_from_foreign_proc(FPInfo, !Langs) :-
 :- pred acc_foreign_code_langs_from_impl_pragma(item_impl_pragma_info::in,
     set(foreign_language)::in, set(foreign_language)::out) is det.
 
-acc_foreign_code_langs_from_impl_pragma(ItemImplPragma, !Langs) :-
-    ItemImplPragma = item_pragma_info(ImplPragma, _, _),
+acc_foreign_code_langs_from_impl_pragma(ImplPragma, !Langs) :-
     (
         (
             ImplPragma = impl_pragma_foreign_code(FCInfo),
-            FCInfo = pragma_info_foreign_code(Lang, _LiteralOrInclude)
+            FCInfo = impl_pragma_foreign_code_info(Lang, _LiteralOrInclude,
+                _, _)
         ;
-            ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
-            FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _, _)
+            ImplPragma = impl_pragma_fproc_export(FPEInfo),
+            FPEInfo = impl_pragma_fproc_export_info(_, Lang, _, _, _, _, _)
         ;
             ImplPragma = impl_pragma_fact_table(_),
             Lang = lang_c
@@ -1303,16 +1272,8 @@ acc_foreign_code_langs_from_impl_pragma(ItemImplPragma, !Langs) :-
         ( ImplPragma = impl_pragma_foreign_decl(_)
         ; ImplPragma = impl_pragma_tabled(_)
         ; ImplPragma = impl_pragma_external_proc(_)
-        ; ImplPragma = impl_pragma_inline(_)
-        ; ImplPragma = impl_pragma_no_inline(_)
-        ; ImplPragma = impl_pragma_consider_used(_)
-        ; ImplPragma = impl_pragma_no_detism_warning(_)
-        ; ImplPragma = impl_pragma_require_tail_rec(_)
-        ; ImplPragma = impl_pragma_promise_eqv_clauses(_)
-        ; ImplPragma = impl_pragma_promise_pure(_)
-        ; ImplPragma = impl_pragma_promise_semipure(_)
-        ; ImplPragma = impl_pragma_mode_check_clauses(_)
-        ; ImplPragma = impl_pragma_require_feature_set(_)
+        ; ImplPragma = impl_pragma_req_tail_rec(_)
+        ; ImplPragma = impl_pragma_req_feature_set(_)
         )
     ).
 

@@ -65,12 +65,12 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
             TypeSpecs, InstModeSpecs,
 
             IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-            IntDeclPragmas, IntPromises, _IntBadClauses,
+            IntDeclPragmas, IntDeclMarkers, IntPromises, _IntBadClauses,
 
             _ImpTypeClasses, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
             _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
-            _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
-            _ImpInitialises, _ImpFinalises, _ImpMutables),
+            _ImpDeclPragmas, _ImpDeclMarkers, _ImpImplPragmas, _ImpImplMarkers,
+            _ImpPromises, _ImpInitialises, _ImpFinalises, _ImpMutables),
         CountIntIncls =
             ( pred(_MN::in, InclInfo::in, Cnt0::in, Cnt::out) is det :-
                 InclInfo = include_module_info(Section, _),
@@ -120,8 +120,16 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
             IntTypeClasses = [],
             IntInstances = [],
             IntPredDecls = [],
-            IntModeDecls = [],
-            IntDeclPragmas = [],
+            % XXX We should delete the next three kinds of entities
+            % from this test.
+            %
+            % Mode declarations, decl pragmas and decl markers all say
+            % something about a predicate or function, and without
+            % a declaration of that predicate or function ALSO in the
+            % interface, they are not useful.
+            IntModeDecls = [],          % we should delete this
+            IntDeclPragmas = [],        % we should delete this
+            IntDeclMarkers = [],        % we should delete this
             IntPromises = []
         then
             generate_no_exports_warning(ModuleName, ModuleNameContext,

@@ -98,7 +98,7 @@
 %
 
 :- pred append_analysis_pragmas_to_opt_file(io.text_output_stream::in,
-    module_info::in, set(pragma_info_unused_args)::in,
+    module_info::in, set(gen_pragma_unused_args_info)::in,
     parse_tree_plain_opt::in, parse_tree_plain_opt::out,
     io::di, io::uo) is det.
 
@@ -147,7 +147,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.item_util.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_pragma.
@@ -202,22 +201,14 @@ append_analysis_pragmas_to_opt_file(Stream, ModuleInfo, UnusedArgsInfosSet,
         write_analysis_pragmas(Stream, TermInfos, TermInfos2, Exceptions,
             TrailingInfos, MMTablingInfos, SharingInfos, ReuseInfos, !IO),
 
-        !ParseTreePlainOpt ^ ptpo_unused_args :=
-            list.map(wrap_dummy_pragma_item, UnusedArgsInfos),
-        !ParseTreePlainOpt ^ ptpo_termination :=
-            list.map(wrap_dummy_pragma_item, TermInfos),
-        !ParseTreePlainOpt ^ ptpo_termination2 :=
-            list.map(wrap_dummy_pragma_item, TermInfos2),
-        !ParseTreePlainOpt ^ ptpo_exceptions :=
-            list.map(wrap_dummy_pragma_item, Exceptions),
-        !ParseTreePlainOpt ^ ptpo_trailing :=
-            list.map(wrap_dummy_pragma_item, TrailingInfos),
-        !ParseTreePlainOpt ^ ptpo_mm_tabling :=
-            list.map(wrap_dummy_pragma_item, MMTablingInfos),
-        !ParseTreePlainOpt ^ ptpo_struct_sharing :=
-            list.map(wrap_dummy_pragma_item, SharingInfos),
-        !ParseTreePlainOpt ^ ptpo_struct_reuse :=
-            list.map(wrap_dummy_pragma_item, ReuseInfos)
+        !ParseTreePlainOpt ^ ptpo_unused_args := UnusedArgsInfos,
+        !ParseTreePlainOpt ^ ptpo_termination := TermInfos,
+        !ParseTreePlainOpt ^ ptpo_termination2 := TermInfos2,
+        !ParseTreePlainOpt ^ ptpo_exceptions := Exceptions,
+        !ParseTreePlainOpt ^ ptpo_trailing := TrailingInfos,
+        !ParseTreePlainOpt ^ ptpo_mm_tabling := MMTablingInfos,
+        !ParseTreePlainOpt ^ ptpo_struct_sharing := SharingInfos,
+        !ParseTreePlainOpt ^ ptpo_struct_reuse := ReuseInfos
     ).
 
 %---------------------%
@@ -248,25 +239,20 @@ write_trans_opt_file(Stream, ModuleInfo, ParseTreeTransOpt, !IO) :-
         TrailingInfos, MMTablingInfos, SharingInfos, ReuseInfos, !IO),
 
     ParseTreeTransOpt = parse_tree_trans_opt(ModuleName, dummy_context,
-        list.map(wrap_dummy_pragma_item, TermInfos),
-        list.map(wrap_dummy_pragma_item, TermInfos2),
-        list.map(wrap_dummy_pragma_item, Exceptions),
-        list.map(wrap_dummy_pragma_item, TrailingInfos),
-        list.map(wrap_dummy_pragma_item, MMTablingInfos),
-        list.map(wrap_dummy_pragma_item, SharingInfos),
-        list.map(wrap_dummy_pragma_item, ReuseInfos)).
+        TermInfos, TermInfos2, Exceptions, TrailingInfos, MMTablingInfos,
+        SharingInfos, ReuseInfos).
 
 %---------------------------------------------------------------------------%
 
 :- pred gather_analysis_pragmas(module_info::in, set(proc_analysis_kind)::in,
     list(order_pred_info)::in,
-    list(pragma_info_termination_info)::out,
-    list(pragma_info_termination2_info)::out,
-    list(pragma_info_exceptions)::out,
-    list(pragma_info_trailing_info)::out,
-    list(pragma_info_mm_tabling_info)::out,
-    list(pragma_info_structure_sharing)::out,
-    list(pragma_info_structure_reuse)::out) is det.
+    list(decl_pragma_termination_info)::out,
+    list(decl_pragma_termination2_info)::out,
+    list(gen_pragma_exceptions_info)::out,
+    list(gen_pragma_trailing_info)::out,
+    list(gen_pragma_mm_tabling_info)::out,
+    list(decl_pragma_struct_sharing_info)::out,
+    list(decl_pragma_struct_reuse_info)::out) is det.
 
 gather_analysis_pragmas(ModuleInfo, ProcAnalysisKinds, OrderPredInfos,
         TermInfos, TermInfos2, Exceptions, TrailingInfos, MMTablingInfos,
@@ -329,37 +315,37 @@ gather_analysis_pragmas(ModuleInfo, ProcAnalysisKinds, OrderPredInfos,
     ).
 
 :- pred write_analysis_pragmas(io.text_output_stream::in,
-    list(pragma_info_termination_info)::in,
-    list(pragma_info_termination2_info)::in,
-    list(pragma_info_exceptions)::in,
-    list(pragma_info_trailing_info)::in,
-    list(pragma_info_mm_tabling_info)::in,
-    list(pragma_info_structure_sharing)::in,
-    list(pragma_info_structure_reuse)::in,
+    list(decl_pragma_termination_info)::in,
+    list(decl_pragma_termination2_info)::in,
+    list(gen_pragma_exceptions_info)::in,
+    list(gen_pragma_trailing_info)::in,
+    list(gen_pragma_mm_tabling_info)::in,
+    list(decl_pragma_struct_sharing_info)::in,
+    list(decl_pragma_struct_reuse_info)::in,
     io::di, io::uo) is det.
 
 write_analysis_pragmas(Stream, TermInfos, TermInfos2, Exceptions,
         TrailingInfos, MMTablingInfos, SharingInfos, ReuseInfos, !IO) :-
     maybe_write_block_start_blank_line(Stream, TermInfos, !IO),
-    list.foldl(write_pragma_termination_info(Stream, output_mercury),
+    list.foldl(write_pragma_termination(Stream, output_mercury),
         TermInfos, !IO),
     maybe_write_block_start_blank_line(Stream, TermInfos2, !IO),
-    list.foldl(write_pragma_termination2_info(Stream, output_mercury),
+    list.foldl(write_pragma_termination2(Stream, output_mercury),
         TermInfos2, !IO),
     maybe_write_block_start_blank_line(Stream, Exceptions, !IO),
     list.foldl(mercury_output_pragma_exceptions(Stream),
         Exceptions, !IO),
     maybe_write_block_start_blank_line(Stream, TrailingInfos, !IO),
-    list.foldl(mercury_output_pragma_trailing_info(Stream),
+    list.foldl(mercury_output_pragma_trailing(Stream),
         TrailingInfos, !IO),
     maybe_write_block_start_blank_line(Stream, MMTablingInfos, !IO),
-    list.foldl(mercury_output_pragma_mm_tabling_info(Stream),
+    list.foldl(mercury_output_pragma_mm_tabling(Stream),
         MMTablingInfos, !IO),
     maybe_write_block_start_blank_line(Stream, SharingInfos, !IO),
-    list.foldl(write_pragma_structure_sharing_info(Stream, output_debug),
+    list.foldl(write_pragma_struct_sharing(Stream, output_debug),
         SharingInfos, !IO),
     maybe_write_block_start_blank_line(Stream, ReuseInfos, !IO),
-    list.foldl(write_pragma_structure_reuse_info(Stream, output_debug),
+    list.foldl(write_pragma_struct_reuse(Stream, output_debug),
         ReuseInfos, !IO).
 
 %---------------------------------------------------------------------------%
@@ -371,8 +357,8 @@ write_analysis_pragmas(Stream, TermInfos, TermInfos2, Exceptions,
     %
 :- pred gather_pragma_termination_for_pred(module_info::in,
     order_pred_info::in,
-    cord(pragma_info_termination_info)::in,
-    cord(pragma_info_termination_info)::out) is det.
+    cord(decl_pragma_termination_info)::in,
+    cord(decl_pragma_termination_info)::out) is det.
 
 gather_pragma_termination_for_pred(ModuleInfo, OrderPredInfo,
         !TermInfosCord) :-
@@ -402,8 +388,8 @@ gather_pragma_termination_for_pred(ModuleInfo, OrderPredInfo,
 
 :- pred gather_pragma_termination_for_proc(order_pred_info::in,
     proc_id::in, proc_info::in,
-    cord(pragma_info_termination_info)::in,
-    cord(pragma_info_termination_info)::out) is det.
+    cord(decl_pragma_termination_info)::in,
+    cord(decl_pragma_termination_info)::out) is det.
 
 gather_pragma_termination_for_proc(OrderPredInfo, _ProcId, ProcInfo,
         !TermInfosCord) :-
@@ -420,8 +406,9 @@ gather_pragma_termination_for_proc(OrderPredInfo, _ProcId, ProcInfo,
         maybe_arg_size_info_to_parse_tree(MaybeArgSize),
     MaybeParseTreeTermination =
         maybe_termination_info_to_parse_tree(MaybeTermination),
-    TermInfo = pragma_info_termination_info(PredNameModesPF,
-        MaybeParseTreeArgSize, MaybeParseTreeTermination),
+    TermInfo = decl_pragma_termination_info(PredNameModesPF,
+        MaybeParseTreeArgSize, MaybeParseTreeTermination,
+        dummy_context, item_no_seq_num),
     cord.snoc(TermInfo, !TermInfosCord).
 
 :- func maybe_arg_size_info_to_parse_tree(maybe(arg_size_info)) =
@@ -471,8 +458,8 @@ maybe_termination_info_to_parse_tree(MaybeTermination)
     %
 :- pred gather_pragma_termination2_for_pred(module_info::in,
     order_pred_info::in,
-    cord(pragma_info_termination2_info)::in,
-    cord(pragma_info_termination2_info)::out) is det.
+    cord(decl_pragma_termination2_info)::in,
+    cord(decl_pragma_termination2_info)::out) is det.
 
 gather_pragma_termination2_for_pred(ModuleInfo, OrderPredInfo,
         !TermInfo2sCord) :-
@@ -497,8 +484,8 @@ gather_pragma_termination2_for_pred(ModuleInfo, OrderPredInfo,
 
 :- pred gather_pragma_termination2_for_proc(order_pred_info::in,
     proc_id::in, proc_info::in,
-    cord(pragma_info_termination2_info)::in,
-    cord(pragma_info_termination2_info)::out) is det.
+    cord(decl_pragma_termination2_info)::in,
+    cord(decl_pragma_termination2_info)::out) is det.
 
 gather_pragma_termination2_for_proc(OrderPredInfo, _ProcId, ProcInfo,
         !TermInfo2sCord) :-
@@ -542,9 +529,9 @@ gather_pragma_termination2_for_proc(OrderPredInfo, _ProcId, ProcInfo,
         MaybePragmaTermination = yes(can_loop(unit))
     ),
 
-    TermInfo2 = pragma_info_termination2_info(PredNameModesPF,
+    TermInfo2 = decl_pragma_termination2_info(PredNameModesPF,
         MaybeSuccessArgSizeInfo, MaybeFailureArgSizeInfo,
-        MaybePragmaTermination),
+        MaybePragmaTermination, dummy_context, item_no_seq_num),
     cord.snoc(TermInfo2, !TermInfo2sCord).
 
 %---------------------%
@@ -597,8 +584,8 @@ lp_term_to_arg_size_term(VarToVarIdMap, LPTerm, ArgSizeTerm) :-
     % Gather any exception pragmas for this predicate.
     %
 :- pred gather_pragma_exceptions_for_pred(module_info::in, order_pred_info::in,
-    cord(pragma_info_exceptions)::in, cord(pragma_info_exceptions)::out)
-    is det.
+    cord(gen_pragma_exceptions_info)::in,
+    cord(gen_pragma_exceptions_info)::out) is det.
 
 gather_pragma_exceptions_for_pred(ModuleInfo, OrderPredInfo,
         !ExceptionsCord) :-
@@ -610,8 +597,8 @@ gather_pragma_exceptions_for_pred(ModuleInfo, OrderPredInfo,
 
 :- pred gather_pragma_exceptions_for_proc(module_info::in,
     order_pred_info::in, proc_id::in, proc_info::in,
-    cord(pragma_info_exceptions)::in, cord(pragma_info_exceptions)::out)
-    is det.
+    cord(gen_pragma_exceptions_info)::in,
+    cord(gen_pragma_exceptions_info)::out) is det.
 
 gather_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !ExceptionsCord) :-
@@ -641,7 +628,8 @@ gather_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
         PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
             PredSymName, UserArity, ModeNum),
         ProcExceptionInfo = proc_exception_info(Status, _),
-        ExceptionInfo = pragma_info_exceptions(PredNameArityPFMn, Status),
+        ExceptionInfo = gen_pragma_exceptions_info(PredNameArityPFMn, Status,
+            dummy_context, item_no_seq_num),
         cord.snoc(ExceptionInfo, !ExceptionsCord)
     else
         true
@@ -653,8 +641,8 @@ gather_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
     %
 :- pred gather_pragma_trailing_info_for_pred(module_info::in,
     order_pred_info::in,
-    cord(pragma_info_trailing_info)::in,
-    cord(pragma_info_trailing_info)::out) is det.
+    cord(gen_pragma_trailing_info)::in,
+    cord(gen_pragma_trailing_info)::out) is det.
 
 gather_pragma_trailing_info_for_pred(ModuleInfo, OrderPredInfo,
         !TrailingInfosCord) :-
@@ -667,8 +655,8 @@ gather_pragma_trailing_info_for_pred(ModuleInfo, OrderPredInfo,
 
 :- pred gather_pragma_trailing_info_for_proc(module_info::in,
     order_pred_info::in, proc_id::in, proc_info::in,
-    cord(pragma_info_trailing_info)::in,
-    cord(pragma_info_trailing_info)::out) is det.
+    cord(gen_pragma_trailing_info)::in,
+    cord(gen_pragma_trailing_info)::out) is det.
 
 gather_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !TrailingInfosCord) :-
@@ -687,7 +675,8 @@ gather_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo,
         PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
             PredSymName, UserArity, ModeNum),
         ProcTrailingInfo = proc_trailing_info(Status, _),
-        TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn, Status),
+        TrailingInfo = gen_pragma_trailing_info(PredNameArityPFMn, Status,
+            dummy_context, item_no_seq_num),
         cord.snoc(TrailingInfo, !TrailingInfosCord)
     else
         true
@@ -699,8 +688,8 @@ gather_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo,
     %
 :- pred gather_pragma_mm_tabling_info_for_pred(module_info::in,
     order_pred_info::in,
-    cord(pragma_info_mm_tabling_info)::in,
-    cord(pragma_info_mm_tabling_info)::out) is det.
+    cord(gen_pragma_mm_tabling_info)::in,
+    cord(gen_pragma_mm_tabling_info)::out) is det.
 
 gather_pragma_mm_tabling_info_for_pred(ModuleInfo, OrderPredInfo,
         !MMTablingInfosCord) :-
@@ -712,8 +701,8 @@ gather_pragma_mm_tabling_info_for_pred(ModuleInfo, OrderPredInfo,
 
 :- pred gather_pragma_mm_tabling_info_for_proc(module_info::in,
     order_pred_info::in, proc_id::in, proc_info::in,
-    cord(pragma_info_mm_tabling_info)::in,
-    cord(pragma_info_mm_tabling_info)::out) is det.
+    cord(gen_pragma_mm_tabling_info)::in,
+    cord(gen_pragma_mm_tabling_info)::out) is det.
 
 gather_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !MMTablingInfosCord) :-
@@ -733,7 +722,8 @@ gather_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo,
             PredSymName, PredArity, ModeNum),
         ProcMMTablingInfo = proc_mm_tabling_info(Status, _),
         MMTablingInfo =
-            pragma_info_mm_tabling_info(PredNameArityPFMn, Status),
+            gen_pragma_mm_tabling_info(PredNameArityPFMn, Status,
+            dummy_context, item_no_seq_num),
         cord.snoc(MMTablingInfo, !MMTablingInfosCord)
     else
         true
@@ -743,8 +733,8 @@ gather_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo,
 
 :- pred gather_pragma_structure_sharing_for_pred(module_info::in,
     order_pred_info::in,
-    cord(pragma_info_structure_sharing)::in,
-    cord(pragma_info_structure_sharing)::out) is det.
+    cord(decl_pragma_struct_sharing_info)::in,
+    cord(decl_pragma_struct_sharing_info)::out) is det.
 
 gather_pragma_structure_sharing_for_pred(ModuleInfo, OrderPredInfo,
         !SharingInfosCord) :-
@@ -757,8 +747,8 @@ gather_pragma_structure_sharing_for_pred(ModuleInfo, OrderPredInfo,
 
 :- pred gather_pragma_structure_sharing_for_proc(module_info::in,
     order_pred_info::in, proc_id::in, proc_info::in,
-    cord(pragma_info_structure_sharing)::in,
-    cord(pragma_info_structure_sharing)::out) is det.
+    cord(decl_pragma_struct_sharing_info)::in,
+    cord(decl_pragma_struct_sharing_info)::out) is det.
 
 gather_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !SharingInfosCord) :-
@@ -782,8 +772,9 @@ gather_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
         proc_info_get_headvars(ProcInfo, HeadVars),
         lookup_var_types(VarTable, HeadVars, HeadVarTypes),
         SharingStatus = structure_sharing_domain_and_status(Sharing, _Status),
-        SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
-            HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Sharing)),
+        SharingInfo = decl_pragma_struct_sharing_info(PredNameModesPF,
+            HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Sharing),
+            dummy_context, item_no_seq_num),
         cord.snoc(SharingInfo, !SharingInfosCord)
     else
         true
@@ -793,8 +784,8 @@ gather_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
 
 :- pred gather_pragma_structure_reuse_for_pred(module_info::in,
     order_pred_info::in,
-    cord(pragma_info_structure_reuse)::in,
-    cord(pragma_info_structure_reuse)::out) is det.
+    cord(decl_pragma_struct_reuse_info)::in,
+    cord(decl_pragma_struct_reuse_info)::out) is det.
 
 gather_pragma_structure_reuse_for_pred(ModuleInfo, OrderPredInfo,
         !ReuseInfosCord) :-
@@ -807,8 +798,8 @@ gather_pragma_structure_reuse_for_pred(ModuleInfo, OrderPredInfo,
 
 :- pred gather_pragma_structure_reuse_for_proc(module_info::in,
     order_pred_info::in, proc_id::in, proc_info::in,
-    cord(pragma_info_structure_reuse)::in,
-    cord(pragma_info_structure_reuse)::out) is det.
+    cord(decl_pragma_struct_reuse_info)::in,
+    cord(decl_pragma_struct_reuse_info)::out) is det.
 
 gather_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !ReuseInfosCord) :-
@@ -833,8 +824,9 @@ gather_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
         lookup_var_types(VarTable, HeadVars, HeadVarTypes),
         StructureReuseDomain =
             structure_reuse_domain_and_status(Reuse, _Status),
-        ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
-            HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Reuse)),
+        ReuseInfo = decl_pragma_struct_reuse_info(PredNameModesPF,
+            HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Reuse),
+            dummy_context, item_no_seq_num),
         cord.snoc(ReuseInfo, !ReuseInfosCord)
     else
         true

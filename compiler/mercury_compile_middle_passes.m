@@ -32,7 +32,7 @@
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 :- pred middle_pass_for_opt_file(io.text_output_stream::in,
-    module_info::in, module_info::out, set(pragma_info_unused_args)::out,
+    module_info::in, module_info::out, set(gen_pragma_unused_args_info)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 :- pred output_trans_opt_file(io.text_output_stream::in,
@@ -45,7 +45,7 @@
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 :- pred maybe_unused_args(io.text_output_stream::in, bool::in, bool::in,
-    set(pragma_info_unused_args)::out, module_info::in, module_info::out,
+    set(gen_pragma_unused_args_info)::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%

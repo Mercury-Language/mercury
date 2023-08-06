@@ -89,12 +89,12 @@ module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
         TypeSpecs, InstModeSpecs,
 
         IntTypeClasses0, IntInstances0, IntPredDecls0, IntModeDecls0,
-        IntDeclPragmas0, IntPromises0, IntBadPreds,
+        IntDeclPragmas0, IntDeclMarkers0, IntPromises0, IntBadPreds,
 
         ImpTypeClasses0, ImpInstances0, ImpPredDecls0, ImpModeDecls0,
         ImpClauses0, ImpForeignProcs0, ImpForeignExportEnums0,
-        ImpDeclPragmas0, ImpImplPragmas0, ImpPromises0,
-        ImpInitialises0, ImpFinalises0, ImpMutables0),
+        ImpDeclPragmas0, ImpDeclMarkers0, ImpImplPragmas0, ImpImplMarkers0,
+        ImpPromises0, ImpInitialises0, ImpFinalises0, ImpMutables0),
 
     map.map_values_foldl2(module_qualify_type_ctor_checked_defn,
         TypeCtorCheckedMap0, TypeCtorCheckedMap, !Info, !Specs),
@@ -151,12 +151,12 @@ module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
         TypeSpecs, InstModeSpecs,
 
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises, IntBadPreds,
+        IntDeclPragmas, IntDeclMarkers0, IntPromises, IntBadPreds,
 
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
         ImpClauses, ImpForeignProcs, ImpForeignExportEnums,
-        ImpDeclPragmas, ImpImplPragmas, ImpPromises,
-        ImpInitialises, ImpFinalises, ImpMutables).
+        ImpDeclPragmas, ImpDeclMarkers0, ImpImplPragmas, ImpImplMarkers0,
+        ImpPromises, ImpInitialises, ImpFinalises, ImpMutables).
 
 %---------------------------------------------------------------------------%
 
@@ -732,28 +732,6 @@ module_qualify_item_foreign_export_enum(InInt, ItemFEE0, ItemFEE,
     mq_info_set_suppress_found_undef(OldSuppressUndef, !Info),
     ItemFEE = item_foreign_export_enum_info(Lang, TypeCtor, Attributes,
         Overrides, Context, SeqNum).
-
-:- pred module_qualify_item_decl_pragma(mq_in_interface::in,
-    item_decl_pragma_info::in, item_decl_pragma_info::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-module_qualify_item_decl_pragma(InInt, ItemDeclPragma0, ItemDeclPragma,
-        !Info, !Specs) :-
-    ItemDeclPragma0 = item_pragma_info(Pragma0, Context, SeqNum),
-    qualify_decl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs),
-    ItemDeclPragma = item_pragma_info(Pragma, Context, SeqNum).
-
-:- pred module_qualify_item_impl_pragma(mq_in_interface::in,
-    item_impl_pragma_info::in, item_impl_pragma_info::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-module_qualify_item_impl_pragma(InInt, ItemImplPragma0, ItemImplPragma,
-        !Info, !Specs) :-
-    ItemImplPragma0 = item_pragma_info(Pragma0, Context, SeqNum),
-    qualify_impl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs),
-    ItemImplPragma = item_pragma_info(Pragma, Context, SeqNum).
 
 % Generated pragmas are always generated fully qualified.
 
@@ -1599,15 +1577,16 @@ qualify_instance_method(DefaultModuleName, InstanceMethod0, InstanceMethod) :-
 % Module qualify pragmas.
 %
 
-:- pred qualify_decl_pragma(mq_in_interface::in, prog_context::in,
-    decl_pragma::in, decl_pragma::out, mq_info::in, mq_info::out,
+:- pred module_qualify_item_decl_pragma(mq_in_interface::in,
+    item_decl_pragma_info::in, item_decl_pragma_info::out,
+    mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_decl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
+module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
     (
         Pragma0 = decl_pragma_type_spec(TypeSpecInfo0),
-        TypeSpecInfo0 = pragma_info_type_spec(PFUMM0, PredName, SpecPredName,
-            Subst0, TVarSet, Items),
+        TypeSpecInfo0 = decl_pragma_type_spec_info(PFUMM0, PredName,
+            SpecPredName, Subst0, TVarSet, Items, Context, SeqNum),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
         (
             PFUMM0 = pfumm_predicate(ModesOrArity0),
@@ -1641,100 +1620,97 @@ qualify_decl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
         qualify_type_spec_subst(InInt, ErrorContext,
             HeadSubst0, HeadSubst, TailSubsts0, TailSubsts, !Info, !Specs),
         Subst = one_or_more(HeadSubst, TailSubsts),
-        TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName, SpecPredName,
-            Subst, TVarSet, Items),
+        TypeSpecInfo = decl_pragma_type_spec_info(PFUMM, PredName,
+            SpecPredName, Subst, TVarSet, Items, Context, SeqNum),
         Pragma = decl_pragma_type_spec(TypeSpecInfo)
     ;
         Pragma0 = decl_pragma_oisu(OISUInfo0),
-        OISUInfo0 = pragma_info_oisu(TypeCtor0, CreatorPreds,
-            MutatorPreds, DestructorPreds),
+        OISUInfo0 = decl_pragma_oisu_info(TypeCtor0, CreatorPreds,
+            MutatorPreds, DestructorPreds, Context, SeqNum),
         % XXX Preds
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
         qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
             !Info, !Specs),
-        OISUInfo = pragma_info_oisu(TypeCtor, CreatorPreds,
-            MutatorPreds, DestructorPreds),
+        OISUInfo = decl_pragma_oisu_info(TypeCtor, CreatorPreds,
+            MutatorPreds, DestructorPreds, Context, SeqNum),
         Pragma = decl_pragma_oisu(OISUInfo)
     ;
-        Pragma0 = decl_pragma_termination_info(TermInfo0),
-        TermInfo0 = pragma_info_termination_info(PredNameModesPF0, Args, Term),
+        Pragma0 = decl_pragma_termination(TermInfo0),
+        TermInfo0 = decl_pragma_termination_info(PredNameModesPF0, Args, Term,
+            Context, SeqNum),
         PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, SymName, Modes0),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
         qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
-        TermInfo = pragma_info_termination_info(PredNameModesPF, Args, Term),
-        Pragma = decl_pragma_termination_info(TermInfo)
+        TermInfo = decl_pragma_termination_info(PredNameModesPF, Args, Term,
+            Context, SeqNum),
+        Pragma = decl_pragma_termination(TermInfo)
     ;
-        Pragma0 = decl_pragma_termination2_info(Term2Info0),
-        Term2Info0 = pragma_info_termination2_info(PredNameModesPF0,
-            SuccessArgs, FailureArgs, Term),
+        Pragma0 = decl_pragma_termination2(Term2Info0),
+        Term2Info0 = decl_pragma_termination2_info(PredNameModesPF0,
+            SuccessArgs, FailureArgs, Term, Context, SeqNum),
         PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, SymName, Modes0),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
         qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
-        Term2Info = pragma_info_termination2_info(PredNameModesPF,
-            SuccessArgs, FailureArgs, Term),
-        Pragma = decl_pragma_termination2_info(Term2Info)
+        Term2Info = decl_pragma_termination2_info(PredNameModesPF,
+            SuccessArgs, FailureArgs, Term, Context, SeqNum),
+        Pragma = decl_pragma_termination2(Term2Info)
     ;
-        Pragma0 = decl_pragma_structure_sharing(SharingInfo0),
-        SharingInfo0 = pragma_info_structure_sharing(PredNameModesPF0,
-            HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeSharing),
+        Pragma0 = decl_pragma_struct_sharing(SharingInfo0),
+        SharingInfo0 = decl_pragma_struct_sharing_info(PredNameModesPF0,
+            HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeSharing,
+            Context, SeqNum),
         PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, SymName, Modes0),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
         qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
-        SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
-            HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeSharing),
-        Pragma = decl_pragma_structure_sharing(SharingInfo)
+        SharingInfo = decl_pragma_struct_sharing_info(PredNameModesPF,
+            HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeSharing,
+            Context, SeqNum),
+        Pragma = decl_pragma_struct_sharing(SharingInfo)
     ;
-        Pragma0 = decl_pragma_structure_reuse(ReuseInfo0),
-        ReuseInfo0 = pragma_info_structure_reuse(PredNameModesPF0,
-            HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeReuse),
+        Pragma0 = decl_pragma_struct_reuse(ReuseInfo0),
+        ReuseInfo0 = decl_pragma_struct_reuse_info(PredNameModesPF0,
+            HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeReuse,
+            Context, SeqNum),
         PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, SymName, Modes0),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
         qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
-        ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
-            HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeReuse),
-        Pragma = decl_pragma_structure_reuse(ReuseInfo)
+        ReuseInfo = decl_pragma_struct_reuse_info(PredNameModesPF,
+            HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeReuse,
+            Context, SeqNum),
+        Pragma = decl_pragma_struct_reuse(ReuseInfo)
     ;
         ( Pragma0 = decl_pragma_obsolete_pred(_)
         ; Pragma0 = decl_pragma_obsolete_proc(_)
         ; Pragma0 = decl_pragma_format_call(_)
-        ; Pragma0 = decl_pragma_terminates(_)
-        ; Pragma0 = decl_pragma_does_not_terminate(_)
-        ; Pragma0 = decl_pragma_check_termination(_)
         ),
         Pragma = Pragma0
     ).
 
-:- pred qualify_impl_pragma(mq_in_interface::in, prog_context::in,
-    impl_pragma::in, impl_pragma::out, mq_info::in, mq_info::out,
+:- pred module_qualify_item_impl_pragma(mq_in_interface::in,
+    item_impl_pragma_info::in, item_impl_pragma_info::out,
+    mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_impl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
+module_qualify_item_impl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
     (
         ( Pragma0 = impl_pragma_foreign_decl(_)
         ; Pragma0 = impl_pragma_foreign_code(_)
         ; Pragma0 = impl_pragma_external_proc(_)
           % The predicate name in the pragma_external_proc is constructed
           % already qualified.
-        ; Pragma0 = impl_pragma_inline(_)
-        ; Pragma0 = impl_pragma_no_inline(_)
-        ; Pragma0 = impl_pragma_consider_used(_)
-        ; Pragma0 = impl_pragma_no_detism_warning(_)
-        ; Pragma0 = impl_pragma_require_tail_rec(_)
         ; Pragma0 = impl_pragma_fact_table(_)
-        ; Pragma0 = impl_pragma_promise_pure(_)
-        ; Pragma0 = impl_pragma_promise_semipure(_)
-        ; Pragma0 = impl_pragma_promise_eqv_clauses(_)
-        ; Pragma0 = impl_pragma_mode_check_clauses(_)
-        ; Pragma0 = impl_pragma_require_feature_set(_)
+        ; Pragma0 = impl_pragma_req_tail_rec(_)
+        ; Pragma0 = impl_pragma_req_feature_set(_)
         ),
         Pragma = Pragma0
     ;
         Pragma0 = impl_pragma_tabled(TabledInfo0),
-        TabledInfo0 = pragma_info_tabled(EvalMethod, PredOrProcSpec0, Attrs),
+        TabledInfo0 = impl_pragma_tabled_info(EvalMethod, PredOrProcSpec0,
+            Attrs, Context, SeqNum),
         PredOrProcSpec0 = pred_or_proc_pfumm_name(PFUMM0, PredSymName),
         (
             PFUMM0 = pfumm_predicate(ModesOrArity0),
@@ -1767,20 +1743,20 @@ qualify_impl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
             PFUMM = PFUMM0
         ),
         PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, PredSymName),
-        TabledInfo = pragma_info_tabled(EvalMethod, PredOrProcSpec, Attrs),
+        TabledInfo = impl_pragma_tabled_info(EvalMethod, PredOrProcSpec,
+            Attrs, Context, SeqNum),
         Pragma = impl_pragma_tabled(TabledInfo)
     ;
-        Pragma0 = impl_pragma_foreign_proc_export(FPEInfo0),
-        FPEInfo0 = pragma_info_foreign_proc_export(Origin, Lang,
-            PredNameModesPF0, CFunc, VarSet),
+        Pragma0 = impl_pragma_fproc_export(FPEInfo0),
+        FPEInfo0 = impl_pragma_fproc_export_info(Origin, Lang,
+            PredNameModesPF0, CFunc, VarSet, Context, SeqNum),
         PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, Name, Modes0),
         ErrorContext = mqec_pragma_impl(Context, Pragma0),
-        qualify_mode_list(InInt, ErrorContext, Modes0, Modes,
-            !Info, !Specs),
+        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, Name, Modes),
-        FPEInfo = pragma_info_foreign_proc_export(Origin, Lang,
-            PredNameModesPF, CFunc, VarSet),
-        Pragma = impl_pragma_foreign_proc_export(FPEInfo)
+        FPEInfo = impl_pragma_fproc_export_info(Origin, Lang,
+            PredNameModesPF, CFunc, VarSet, Context, SeqNum),
+        Pragma = impl_pragma_fproc_export(FPEInfo)
     ).
 
 :- pred qualify_pragma_vars(mq_in_interface::in, mq_error_context::in,

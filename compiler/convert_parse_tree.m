@@ -226,7 +226,8 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
         [], IntInstDefns, [], IntModeDefns,
         [], IntTypeClasses0, [], IntInstances0,
         [], IntPredDecls0, [], RevIntModeDecls,
-        [], _IntForeignEnums, [], IntDeclPragmas0, [], IntPromises0, !Specs),
+        [], _IntForeignEnums, [], IntDeclPragmas0, [], IntDeclMarkers0,
+        [], IntPromises0, !Specs),
     % XXX ITEM_LIST Should we report any misplaced foreign enums in
     % _IntForeignEnums now, or wait until code generation? For now,
     % we do the latter.
@@ -238,13 +239,15 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
     list.sort(IntPredDecls0, IntPredDecls),
     list.reverse(RevIntModeDecls, IntModeDecls),
     list.sort(IntDeclPragmas0, IntDeclPragmas),
+    list.sort(IntDeclMarkers0, IntDeclMarkers),
     list.sort(IntPromises0, IntPromises),
 
     classify_int0_items_int_or_imp(ImpItems, [], ImpTypeDefns,
         [], ImpInstDefns, [], ImpModeDefns,
         [], ImpTypeClasses0, [], ImpInstances0,
         [], ImpPredDecls0, [], RevImpModeDecls,
-        [], ImpForeignEnums, [], ImpDeclPragmas0, [], ImpPromises0, !Specs),
+        [], ImpForeignEnums, [], ImpDeclPragmas0, [], ImpDeclMarkers0,
+        [], ImpPromises0, !Specs),
     ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns),
     ImpInstDefnMap = inst_ctor_defn_items_to_map(ImpInstDefns),
     ImpModeDefnMap = mode_ctor_defn_items_to_map(ImpModeDefns),
@@ -254,6 +257,7 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
     list.reverse(RevImpModeDecls, ImpModeDecls),
     ImpForeignEnumMap = type_ctor_foreign_enum_items_to_map(ImpForeignEnums),
     list.sort(ImpDeclPragmas0, ImpDeclPragmas),
+    list.sort(ImpDeclMarkers0, ImpDeclMarkers),
     list.sort(ImpPromises0, ImpPromises),
 
     create_type_ctor_checked_map(do_not_insist_on_defn,
@@ -269,9 +273,9 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
         SectionImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises,
+        IntDeclPragmas, IntDeclMarkers, IntPromises,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
-        ImpDeclPragmas, ImpPromises).
+        ImpDeclPragmas, ImpDeclMarkers, ImpPromises).
 
 :- pred classify_int0_items_int_or_imp(list(item)::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
@@ -284,16 +288,17 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
     list(item_mode_decl_info)::in, list(item_mode_decl_info)::out,
     list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::out,
     list(item_decl_pragma_info)::in, list(item_decl_pragma_info)::out,
+    list(item_decl_marker_info)::in, list(item_decl_marker_info)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 classify_int0_items_int_or_imp([], !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !PredDecls, !RevModeDecls,
-        !ForeignEnums, !DeclPragmas, !Promises, !Specs).
+        !ForeignEnums, !DeclPragmas, !DeclMarkers, !Promises, !Specs).
 classify_int0_items_int_or_imp([Item | Items], !TypeDefns,
         !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !PredDecls, !RevModeDecls,
-        !ForeignEnums, !DeclPragmas, !Promises, !Specs) :-
+        !ForeignEnums, !DeclPragmas, !DeclMarkers, !Promises, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
@@ -337,6 +342,9 @@ classify_int0_items_int_or_imp([Item | Items], !TypeDefns,
         Item = item_decl_pragma(ItemDeclPragma),
         !:DeclPragmas = [ItemDeclPragma | !.DeclPragmas]
     ;
+        Item = item_decl_marker(ItemDeclMarker),
+        !:DeclMarkers = [ItemDeclMarker | !.DeclMarkers]
+    ;
         Item = item_promise(ItemPromise),
         !:Promises = [ItemPromise | !.Promises]
     ;
@@ -344,6 +352,7 @@ classify_int0_items_int_or_imp([Item | Items], !TypeDefns,
         ; Item = item_foreign_proc(_)
         ; Item = item_foreign_export_enum(_)
         ; Item = item_impl_pragma(_)
+        ; Item = item_impl_marker(_)
         ; Item = item_generated_pragma(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
@@ -358,7 +367,7 @@ classify_int0_items_int_or_imp([Item | Items], !TypeDefns,
     ),
     classify_int0_items_int_or_imp(Items, !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !PredDecls, !RevModeDecls,
-        !ForeignEnums, !DeclPragmas, !Promises, !Specs).
+        !ForeignEnums, !DeclPragmas, !DeclMarkers, !Promises, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -382,8 +391,8 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
         [], IntInstDefns, [], IntModeDefns,
         [], IntTypeClasses0, [], IntInstances0,
         [], IntPredDecls0, [], RevIntModeDecls,
-        [], _IntForeignEnums, [], IntDeclPragmas0, [], IntPromises0,
-        [], IntTypeRepns, !Specs),
+        [], _IntForeignEnums, [], IntDeclPragmas0, [], IntDeclMarkers,
+        [], IntPromises0, [], IntTypeRepns, !Specs),
     % XXX ITEM_LIST Should we report any misplaced foreign enums in
     % _IntForeignEnums now, or wait until code generation? For now,
     % we do the latter.
@@ -418,7 +427,7 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
         MaybeVersionNumbers, InclMap, SectionUseMap, IntFIMSpecs, ImpFIMSpecs,
         IntTypeCheckedMap, IntInstCheckedMap, IntModeCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises, IntTypeRepnMap,
+        IntDeclPragmas, IntDeclMarkers, IntPromises, IntTypeRepnMap,
         ImpTypeClasses).
 
 :- pred classify_int1_items_int(list(item)::in,
@@ -432,16 +441,19 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
     list(item_mode_decl_info)::in, list(item_mode_decl_info)::out,
     list(item_foreign_enum_info)::in, list(item_foreign_enum_info)::out,
     list(item_decl_pragma_info)::in, list(item_decl_pragma_info)::out,
+    list(item_decl_marker_info)::in, list(item_decl_marker_info)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
     list(item_type_repn_info)::in, list(item_type_repn_info)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 classify_int1_items_int([], !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !PredDecls, !ModeDecls,
-        !ForeignEnums, !DeclPragmas, !Promises, !TypeRepns, !Specs).
+        !ForeignEnums, !DeclPragmas, !DeclMarkers,
+        !Promises, !TypeRepns, !Specs).
 classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !PredDecls, !ModeDecls,
-        !ForeignEnums, !DeclPragmas, !Promises, !TypeRepns, !Specs) :-
+        !ForeignEnums, !DeclPragmas, !DeclMarkers,
+        !Promises, !TypeRepns, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         !:TypeDefns = [ItemTypeDefn | !.TypeDefns]
@@ -489,6 +501,9 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         Item = item_decl_pragma(ItemDeclPragma),
         !:DeclPragmas = [ItemDeclPragma | !.DeclPragmas]
     ;
+        Item = item_decl_marker(ItemDeclMarker),
+        !:DeclMarkers = [ItemDeclMarker | !.DeclMarkers]
+    ;
         Item = item_promise(ItemPromise),
         ItemPromise = item_promise_info(PromiseType, _, _, _, Context, _),
         (
@@ -511,6 +526,7 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         ; Item = item_foreign_proc(_)
         ; Item = item_foreign_export_enum(_)
         ; Item = item_impl_pragma(_)
+        ; Item = item_impl_marker(_)
         ; Item = item_generated_pragma(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
@@ -525,7 +541,8 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
     ),
     classify_int1_items_int(Items, !TypeDefns, !InstDefns, !ModeDefns,
         !TypeClasses, !Instances, !PredDecls, !ModeDecls,
-        !ForeignEnums, !DeclPragmas, !Promises, !TypeRepns, !Specs).
+        !ForeignEnums, !DeclPragmas, !DeclMarkers,
+        !Promises, !TypeRepns, !Specs).
 
 :- pred classify_int1_items_imp(list(item)::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
@@ -571,7 +588,9 @@ classify_int1_items_imp([Item | Items], !TypeDefns, !ForeignEnums,
         ; Item = item_foreign_proc(_)
         ; Item = item_foreign_export_enum(_)
         ; Item = item_decl_pragma(_)
+        ; Item = item_decl_marker(_)
         ; Item = item_impl_pragma(_)
+        ; Item = item_impl_marker(_)
         ; Item = item_generated_pragma(_)
         ; Item = item_promise(_)
         ; Item = item_initialise(_)
@@ -708,7 +727,9 @@ classify_int2_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         ; Item = item_foreign_enum(_)
         ; Item = item_foreign_export_enum(_)
         ; Item = item_decl_pragma(_)
+        ; Item = item_decl_marker(_)
         ; Item = item_impl_pragma(_)
+        ; Item = item_impl_marker(_)
         ; Item = item_generated_pragma(_)
         ; Item = item_promise(_)
         ; Item = item_initialise(_)
@@ -746,7 +767,9 @@ classify_int2_items_imp([Item | Items], !TypeDefns, !Specs) :-
         ; Item = item_foreign_enum(_)
         ; Item = item_foreign_export_enum(_)
         ; Item = item_decl_pragma(_)
+        ; Item = item_decl_marker(_)
         ; Item = item_impl_pragma(_)
+        ; Item = item_impl_marker(_)
         ; Item = item_generated_pragma(_)
         ; Item = item_promise(_)
         ; Item = item_initialise(_)
@@ -970,7 +993,9 @@ classify_int3_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         ; Item = item_foreign_enum(_)
         ; Item = item_foreign_export_enum(_)
         ; Item = item_decl_pragma(_)
+        ; Item = item_decl_marker(_)
         ; Item = item_impl_pragma(_)
+        ; Item = item_impl_marker(_)
         ; Item = item_generated_pragma(_)
         ; Item = item_promise(_)
         ; Item = item_initialise(_)
@@ -1002,8 +1027,8 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
     classify_plain_opt_items(Items, [], TypeDefns0, [], ForeignEnums0,
         [], InstDefns0, [], ModeDefns0, [], TypeClasses0, [], Instances0,
         [], PredDecls0, [], RevModeDecls, [], RevClauses0, [], RevForeignProcs,
-        [], Promises0, [], PredMarkers0, [], TypeSpecs0, [], UnusedArgs0,
-        [], TermInfos0, [], Term2Infos0,
+        [], Promises0, [], DeclMarkers0, [], ImplMarkers0,
+        [], TypeSpecs0, [], UnusedArgs0, [], TermInfos0, [], Term2Infos0,
         [], Exceptions0, [], Trailings0, [], MMTablings0,
         [], Sharings0, [], Reuses0, !Specs),
     list.sort(TypeDefns0, TypeDefns),
@@ -1017,7 +1042,8 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
     list.reverse(RevClauses0, Clauses0),
     list.reverse(RevForeignProcs, ForeignProcs),
     list.sort(Promises0, Promises),
-    list.sort(PredMarkers0, PredMarkers),
+    list.sort(DeclMarkers0, DeclMarkers),
+    list.sort(ImplMarkers0, ImplMarkers),
     list.sort(TypeSpecs0, TypeSpecs),
     list.sort(UnusedArgs0, UnusedArgs),
     list.sort(TermInfos0, TermInfos),
@@ -1033,7 +1059,7 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
         UseMap, FIMSpecs, TypeDefns, ForeignEnums,
         InstDefns, ModeDefns, TypeClasses, Instances,
         PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
-        PredMarkers, TypeSpecs, UnusedArgs, TermInfos, Term2Infos,
+        DeclMarkers, ImplMarkers, TypeSpecs, UnusedArgs, TermInfos, Term2Infos,
         Exceptions, Trailings, MMTablings, Sharings, Reuses).
 
 :- pred classify_plain_opt_items(list(item)::in,
@@ -1048,27 +1074,38 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
     list(item_clause_info)::in, list(item_clause_info)::out,
     list(item_foreign_proc_info)::in, list(item_foreign_proc_info)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
-    list(item_pred_marker)::in, list(item_pred_marker)::out,
-    list(item_type_spec)::in, list(item_type_spec)::out,
-    list(item_unused_args)::in, list(item_unused_args)::out,
-    list(item_termination)::in, list(item_termination)::out,
-    list(item_termination2)::in, list(item_termination2)::out,
-    list(item_exceptions)::in, list(item_exceptions)::out,
-    list(item_trailing)::in, list(item_trailing)::out,
-    list(item_mm_tabling)::in, list(item_mm_tabling)::out,
-    list(item_struct_sharing)::in, list(item_struct_sharing)::out,
-    list(item_struct_reuse)::in, list(item_struct_reuse)::out,
+    list(item_decl_marker_info_opt)::in, list(item_decl_marker_info_opt)::out,
+    list(item_impl_marker_info_opt)::in, list(item_impl_marker_info_opt)::out,
+    list(decl_pragma_type_spec_info)::in,
+        list(decl_pragma_type_spec_info)::out,
+    list(gen_pragma_unused_args_info)::in,
+        list(gen_pragma_unused_args_info)::out,
+    list(decl_pragma_termination_info)::in,
+        list(decl_pragma_termination_info)::out,
+    list(decl_pragma_termination2_info)::in,
+        list(decl_pragma_termination2_info)::out,
+    list(gen_pragma_exceptions_info)::in,
+        list(gen_pragma_exceptions_info)::out,
+    list(gen_pragma_trailing_info)::in, list(gen_pragma_trailing_info)::out,
+    list(gen_pragma_mm_tabling_info)::in,
+        list(gen_pragma_mm_tabling_info)::out,
+    list(decl_pragma_struct_sharing_info)::in,
+        list(decl_pragma_struct_sharing_info)::out,
+    list(decl_pragma_struct_reuse_info)::in,
+        list(decl_pragma_struct_reuse_info)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 classify_plain_opt_items([], !TypeDefns, !ForeignEnums,
         !InstDefns, !ModeDefns, !TypeClasses, !Instances,
         !PredDecls, !RevModeDecls, !RevClauses, !RevForeignProcs, !Promises,
-        !PredMarkers, !TypeSpecs, !UnusedArgs, !TermInfos, !Term2Infos,
+        !DeclMarkers, !ImplMarkers, !TypeSpecs,
+        !UnusedArgs, !TermInfos, !Term2Infos,
         !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs).
 classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
         !InstDefns, !ModeDefns, !TypeClasses, !Instances,
         !PredDecls, !RevModeDecls, !RevClauses, !RevForeignProcs, !Promises,
-        !PredMarkers, !TypeSpecs, !UnusedArgs, !TermInfos, !Term2Infos,
+        !DeclMarkers, !ImplMarkers, !TypeSpecs,
+        !UnusedArgs, !TermInfos, !Term2Infos,
         !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefn),
@@ -1104,60 +1141,27 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
         Item = item_promise(ItemPromise),
         !:Promises = [ItemPromise | !.Promises]
     ;
-        Item = item_decl_pragma(ItemDeclPragma),
-        ItemDeclPragma = item_pragma_info(DeclPragma, Context, SeqNum),
+        Item = item_decl_pragma(DeclPragma),
         (
             DeclPragma = decl_pragma_type_spec(TypeSpec),
-            ItemTypeSpec = item_pragma_info(TypeSpec, Context, SeqNum),
-            !:TypeSpecs = [ItemTypeSpec | !.TypeSpecs]
+            !:TypeSpecs = [TypeSpec | !.TypeSpecs]
         ;
-            (
-                DeclPragma = decl_pragma_terminates(SymNameArityMaybePF),
-                Kind = pmpk_terminates
-            ;
-                DeclPragma =
-                    decl_pragma_does_not_terminate(SymNameArityMaybePF),
-                Kind = pmpk_does_not_terminate
-            ),
-            SymNameArityMaybePF =
-                pred_pfu_name_arity(PFU, SymName, Arity),
-            (
-                PFU = pfu_predicate,
-                PredOrFunc = pf_predicate
-            ;
-                PFU = pfu_function,
-                PredOrFunc = pf_function
-            ;
-                PFU = pfu_unknown,
-                % When we create .opt files, we always specify PredOrFunc.
-                unexpected($pred, "PFU = pfu_unknown")
-            ),
-            SymNameArityPF = pred_pf_name_arity(PredOrFunc, SymName, Arity),
-            PredMarker = pragma_info_pred_marker(SymNameArityPF, Kind),
-            ItemPredMarker = item_pragma_info(PredMarker, Context, SeqNum),
-            !:PredMarkers = [ItemPredMarker | !.PredMarkers]
+            DeclPragma = decl_pragma_termination(Term),
+            !:TermInfos = [Term | !.TermInfos]
         ;
-            DeclPragma = decl_pragma_termination_info(Term),
-            ItemTerm = item_pragma_info(Term, Context, SeqNum),
-            !:TermInfos = [ItemTerm | !.TermInfos]
+            DeclPragma = decl_pragma_termination2(Term2),
+            !:Term2Infos = [Term2 | !.Term2Infos]
         ;
-            DeclPragma = decl_pragma_termination2_info(Term2),
-            ItemTerm2 = item_pragma_info(Term2, Context, SeqNum),
-            !:Term2Infos = [ItemTerm2 | !.Term2Infos]
+            DeclPragma = decl_pragma_struct_sharing(Sharing),
+            !:Sharings = [Sharing | !.Sharings]
         ;
-            DeclPragma = decl_pragma_structure_sharing(Sharing),
-            ItemSharing = item_pragma_info(Sharing, Context, SeqNum),
-            !:Sharings = [ItemSharing | !.Sharings]
-        ;
-            DeclPragma = decl_pragma_structure_reuse(Reuse),
-            ItemReuse = item_pragma_info(Reuse, Context, SeqNum),
-            !:Reuses = [ItemReuse | !.Reuses]
+            DeclPragma = decl_pragma_struct_reuse(Reuse),
+            !:Reuses = [Reuse | !.Reuses]
         ;
             ( DeclPragma = decl_pragma_obsolete_pred(_)
             ; DeclPragma = decl_pragma_obsolete_proc(_)
             ; DeclPragma = decl_pragma_format_call(_)
             ; DeclPragma = decl_pragma_oisu(_)
-            ; DeclPragma = decl_pragma_check_termination(_)
             ),
             Pieces = [words("A .opt file may not contain")] ++
                 item_desc_pieces(Item) ++ [suffix("."), nl],
@@ -1166,57 +1170,72 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
             !:Specs = [Spec | !.Specs]
         )
     ;
-        Item = item_impl_pragma(ItemImplPragma),
-        ItemImplPragma = item_pragma_info(ImplPragma, Context, SeqNum),
+        Item = item_decl_marker(DeclMarker),
+        DeclMarker = item_decl_marker_info(Marker, SymNameArityMaybePF,
+            Context, SeqNum),
         (
-            (
-                ImplPragma = impl_pragma_inline(SymNameArityMaybePF),
-                Kind = pmpk_inline
-            ;
-                ImplPragma = impl_pragma_no_inline(SymNameArityMaybePF),
-                Kind = pmpk_noinline
-            ;
-                ImplPragma =
-                    impl_pragma_promise_eqv_clauses(SymNameArityMaybePF),
-                Kind = pmpk_promise_eqv_clauses
-            ;
-                ImplPragma = impl_pragma_promise_pure(SymNameArityMaybePF),
-                Kind = pmpk_promise_pure
-            ;
-                ImplPragma = impl_pragma_promise_semipure(SymNameArityMaybePF),
-                Kind = pmpk_promise_semipure
-            ;
-                ImplPragma =
-                    impl_pragma_mode_check_clauses(SymNameArityMaybePF),
-                Kind = pmpk_mode_check_clauses
+            ( Marker = dpmk_terminates
+            ; Marker = dpmk_does_not_terminate
             ),
-            SymNameArityMaybePF = pred_pfu_name_arity(PFU, SymName, Arity),
+            SymNameArityMaybePF =
+                pred_pfu_name_arity(PFU, SymName, Arity),
             (
-                PFU = pfu_predicate,
-                PredOrFunc = pf_predicate
-            ;
-                PFU = pfu_function,
-                PredOrFunc = pf_function
+                ( PFU = pfu_predicate
+                ; PFU = pfu_function
+                )
             ;
                 PFU = pfu_unknown,
                 % When we create .opt files, we always specify PredOrFunc.
                 unexpected($pred, "PFU = pfu_unknown")
             ),
-            SymNameArityPF = pred_pf_name_arity(PredOrFunc, SymName, Arity),
-            PredMarker = pragma_info_pred_marker(SymNameArityPF, Kind),
-            ItemPredMarker = item_pragma_info(PredMarker, Context, SeqNum),
-            !:PredMarkers = [ItemPredMarker | !.PredMarkers]
+            SubSymNameArityMaybePF = pred_pfu_name_arity(PFU, SymName, Arity),
+            SubDeclMarker = item_decl_marker_info(Marker,
+                SubSymNameArityMaybePF, Context, SeqNum),
+            !:DeclMarkers = [coerce(SubDeclMarker) | !.DeclMarkers]
         ;
-            ( ImplPragma = impl_pragma_foreign_decl(_)
-            ; ImplPragma = impl_pragma_foreign_code(_)
-            ; ImplPragma = impl_pragma_foreign_proc_export(_)
-            ; ImplPragma = impl_pragma_external_proc(_)
-            ; ImplPragma = impl_pragma_fact_table(_)
-            ; ImplPragma = impl_pragma_tabled(_)
-            ; ImplPragma = impl_pragma_consider_used(_)
-            ; ImplPragma = impl_pragma_no_detism_warning(_)
-            ; ImplPragma = impl_pragma_require_tail_rec(_)
-            ; ImplPragma = impl_pragma_require_feature_set(_)
+            Marker = dpmk_check_termination,
+            Pieces = [words("A .opt file may not contain")] ++
+                item_desc_pieces(Item) ++ [suffix("."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_item_context(Item), Pieces),
+            !:Specs = [Spec | !.Specs]
+        )
+    ;
+        Item = item_impl_pragma(_),
+        Pieces = [words("A .opt file may not contain")] ++
+            item_desc_pieces(Item) ++ [suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, get_item_context(Item), Pieces),
+        !:Specs = [Spec | !.Specs]
+    ;
+        Item = item_impl_marker(ImplMarker),
+        ImplMarker = item_impl_marker_info(Marker, SymNameArityMaybePF,
+            Context, SeqNum),
+        (
+            ( Marker = ipmk_inline
+            ; Marker = ipmk_no_inline
+            ; Marker = ipmk_promise_eqv_clauses
+            ; Marker = ipmk_promise_pure
+            ; Marker = ipmk_promise_semipure
+            ; Marker = ipmk_mode_check_clauses
+            ),
+            SymNameArityMaybePF = pred_pfu_name_arity(PFU, SymName, Arity),
+            (
+                ( PFU = pfu_predicate
+                ; PFU = pfu_function
+                )
+            ;
+                PFU = pfu_unknown,
+                % When we create .opt files, we always specify PredOrFunc.
+                unexpected($pred, "PFU = pfu_unknown")
+            ),
+            SubSymNameArityMaybePF = pred_pfu_name_arity(PFU, SymName, Arity),
+            SubImplMarker = item_impl_marker_info(Marker,
+                SubSymNameArityMaybePF, Context, SeqNum),
+            !:ImplMarkers = [coerce(SubImplMarker) | !.ImplMarkers]
+        ;
+            ( Marker = ipmk_consider_used
+            ; Marker = ipmk_no_detism_warning
             ),
             Pieces = [words("A .opt file may not contain")] ++
                 item_desc_pieces(Item) ++ [suffix("."), nl],
@@ -1225,24 +1244,19 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
             !:Specs = [Spec | !.Specs]
         )
     ;
-        Item = item_generated_pragma(ItemGenPragma),
-        ItemGenPragma = item_pragma_info(GenPragma, Context, SeqNum),
+        Item = item_generated_pragma(GenPragma),
         (
             GenPragma = gen_pragma_unused_args(UnusedArgs),
-            ItemUnusedArgs = item_pragma_info(UnusedArgs, Context, SeqNum),
-            !:UnusedArgs = [ItemUnusedArgs | !.UnusedArgs]
+            !:UnusedArgs = [UnusedArgs | !.UnusedArgs]
         ;
             GenPragma = gen_pragma_exceptions(Exception),
-            ItemException = item_pragma_info(Exception, Context, SeqNum),
-            !:Exceptions = [ItemException | !.Exceptions]
+            !:Exceptions = [Exception | !.Exceptions]
         ;
-            GenPragma = gen_pragma_trailing_info(Trailing),
-            ItemTrailing = item_pragma_info(Trailing, Context, SeqNum),
-            !:Trailings = [ItemTrailing | !.Trailings]
+            GenPragma = gen_pragma_trailing(Trailing),
+            !:Trailings = [Trailing | !.Trailings]
         ;
-            GenPragma = gen_pragma_mm_tabling_info(MMTabling),
-            ItemMMTabling = item_pragma_info(MMTabling, Context, SeqNum),
-            !:MMTablings = [ItemMMTabling | !.MMTablings]
+            GenPragma = gen_pragma_mm_tabling(MMTabling),
+            !:MMTablings = [MMTabling | !.MMTablings]
         )
     ;
         ( Item = item_foreign_export_enum(_)
@@ -1260,7 +1274,8 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
     classify_plain_opt_items(Items, !TypeDefns, !ForeignEnums,
         !InstDefns, !ModeDefns, !TypeClasses, !Instances,
         !PredDecls, !RevModeDecls, !RevClauses, !RevForeignProcs, !Promises,
-        !PredMarkers, !TypeSpecs, !UnusedArgs, !TermInfos, !Term2Infos,
+        !DeclMarkers, !ImplMarkers, !TypeSpecs,
+        !UnusedArgs, !TermInfos, !Term2Infos,
         !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs).
 
     % When the compiler writes out a clause to an optimization file,
@@ -1347,13 +1362,19 @@ check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt, ParseTreeTransOpt,
         Sharings, Reuses).
 
 :- pred classify_trans_opt_items(list(item)::in,
-    list(item_termination)::in, list(item_termination)::out,
-    list(item_termination2)::in, list(item_termination2)::out,
-    list(item_exceptions)::in, list(item_exceptions)::out,
-    list(item_trailing)::in, list(item_trailing)::out,
-    list(item_mm_tabling)::in, list(item_mm_tabling)::out,
-    list(item_struct_sharing)::in, list(item_struct_sharing)::out,
-    list(item_struct_reuse)::in, list(item_struct_reuse)::out,
+    list(decl_pragma_termination_info)::in,
+        list(decl_pragma_termination_info)::out,
+    list(decl_pragma_termination2_info)::in,
+        list(decl_pragma_termination2_info)::out,
+    list(gen_pragma_exceptions_info)::in,
+        list(gen_pragma_exceptions_info)::out,
+    list(gen_pragma_trailing_info)::in, list(gen_pragma_trailing_info)::out,
+    list(gen_pragma_mm_tabling_info)::in,
+        list(gen_pragma_mm_tabling_info)::out,
+    list(decl_pragma_struct_sharing_info)::in,
+        list(decl_pragma_struct_sharing_info)::out,
+    list(decl_pragma_struct_reuse_info)::in,
+        list(decl_pragma_struct_reuse_info)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 classify_trans_opt_items([], !TermInfos, !Term2Infos,
@@ -1361,33 +1382,25 @@ classify_trans_opt_items([], !TermInfos, !Term2Infos,
 classify_trans_opt_items([Item | Items], !TermInfos, !Term2Infos,
         !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs) :-
     (
-        Item = item_decl_pragma(ItemDeclPragma),
-        ItemDeclPragma = item_pragma_info(DeclPragma, Context, SeqNum),
+        Item = item_decl_pragma(DeclPragma),
         (
-            DeclPragma = decl_pragma_termination_info(Term),
-            ItemTerm = item_pragma_info(Term, Context, SeqNum),
-            !:TermInfos = [ItemTerm | !.TermInfos]
+            DeclPragma = decl_pragma_termination(Term),
+            !:TermInfos = [Term | !.TermInfos]
         ;
-            DeclPragma = decl_pragma_termination2_info(Term2),
-            ItemTerm2 = item_pragma_info(Term2, Context, SeqNum),
-            !:Term2Infos = [ItemTerm2 | !.Term2Infos]
+            DeclPragma = decl_pragma_termination2(Term2),
+            !:Term2Infos = [Term2 | !.Term2Infos]
         ;
-            DeclPragma = decl_pragma_structure_sharing(Sharing),
-            ItemSharing = item_pragma_info(Sharing, Context, SeqNum),
-            !:Sharings = [ItemSharing | !.Sharings]
+            DeclPragma = decl_pragma_struct_sharing(Sharing),
+            !:Sharings = [Sharing | !.Sharings]
         ;
-            DeclPragma = decl_pragma_structure_reuse(Reuse),
-            ItemReuse = item_pragma_info(Reuse, Context, SeqNum),
-            !:Reuses = [ItemReuse | !.Reuses]
+            DeclPragma = decl_pragma_struct_reuse(Reuse),
+            !:Reuses = [Reuse | !.Reuses]
         ;
             ( DeclPragma = decl_pragma_obsolete_pred(_)
             ; DeclPragma = decl_pragma_obsolete_proc(_)
             ; DeclPragma = decl_pragma_format_call(_)
             ; DeclPragma = decl_pragma_type_spec(_)
             ; DeclPragma = decl_pragma_oisu(_)
-            ; DeclPragma = decl_pragma_terminates(_)
-            ; DeclPragma = decl_pragma_does_not_terminate(_)
-            ; DeclPragma = decl_pragma_check_termination(_)
             ),
             Pieces = [words("A .trans_opt file may not contain")] ++
                 item_desc_pieces(Item) ++ [suffix("."), nl],
@@ -1396,27 +1409,16 @@ classify_trans_opt_items([Item | Items], !TermInfos, !Term2Infos,
             !:Specs = [Spec | !.Specs]
         )
     ;
-        Item = item_impl_pragma(_),
-        Pieces = [words("A .trans_opt file may not contain")] ++
-            item_desc_pieces(Item) ++ [suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_item_context(Item), Pieces),
-        !:Specs = [Spec | !.Specs]
-    ;
-        Item = item_generated_pragma(ItemGenPragma),
-        ItemGenPragma = item_pragma_info(GenPragma, Context, SeqNum),
+        Item = item_generated_pragma(GenPragma),
         (
             GenPragma = gen_pragma_exceptions(Exception),
-            ItemException = item_pragma_info(Exception, Context, SeqNum),
-            !:Exceptions = [ItemException | !.Exceptions]
+            !:Exceptions = [Exception | !.Exceptions]
         ;
-            GenPragma = gen_pragma_trailing_info(Trailing),
-            ItemTrailing = item_pragma_info(Trailing, Context, SeqNum),
-            !:Trailings = [ItemTrailing | !.Trailings]
+            GenPragma = gen_pragma_trailing(Trailing),
+            !:Trailings = [Trailing | !.Trailings]
         ;
-            GenPragma = gen_pragma_mm_tabling_info(MMTabling),
-            ItemMMTabling = item_pragma_info(MMTabling, Context, SeqNum),
-            !:MMTablings = [ItemMMTabling | !.MMTablings]
+            GenPragma = gen_pragma_mm_tabling(MMTabling),
+            !:MMTablings = [MMTabling | !.MMTablings]
         ;
             GenPragma = gen_pragma_unused_args(_),
             Pieces = [words("A .trans_opt file may not contain")] ++
@@ -1438,6 +1440,9 @@ classify_trans_opt_items([Item | Items], !TermInfos, !Term2Infos,
         ; Item = item_clause(_)
         ; Item = item_foreign_proc(_)
         ; Item = item_foreign_export_enum(_)
+        ; Item = item_decl_marker(_)
+        ; Item = item_impl_pragma(_)
+        ; Item = item_impl_marker(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
@@ -1471,7 +1476,8 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         [], RevIntTypeDefns, [], RevIntInstDefns, [], RevIntModeDefns,
         [], RevIntTypeClasses, [], RevIntInstances0,
         [], RevIntPredDecls, [], RevIntModeDecls,
-        [], RevIntDeclPragmas, [], RevIntImplPragmas,
+        [], RevIntDeclPragmas, [], RevIntDeclMarkers,
+        [], RevIntImplPragmas, [], RevIntImplMarkers,
         set.init, IntBadClausePreds, [], RevIntPromises,
         [], RevIntInitialises, [], RevIntFinalises, [], RevIntMutables,
         IntImplicitAvailNeeds0, IntImplicitAvailNeeds,
@@ -1483,7 +1489,9 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         [], RevImpPredDecls, [], RevImpModeDecls,
         [], RevImpClauses, [], RevImpForeignProcs,
         [], RevImpForeignEnums, [], RevImpForeignExportEnums,
-        [], RevImpDeclPragmas, [], RevImpImplPragmas, [], RevImpPromises,
+        [], RevImpDeclPragmas, [], RevImpDeclMarkers,
+        [], RevImpImplPragmas, [], RevImpImplMarkers,
+        [], RevImpPromises,
         [], RevImpInitialises0, [], RevImpFinalises0, [], RevImpMutables0,
         ImpImplicitAvailNeeds0, ImpImplicitAvailNeeds,
         set.init, ImpSelfFIMLangs,
@@ -1500,7 +1508,9 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     list.reverse(RevIntPredDecls, IntPredDecls),
     list.reverse(RevIntModeDecls, IntModeDecls),
     list.reverse(RevIntDeclPragmas, IntDeclPragmas),
+    list.reverse(RevIntDeclMarkers, IntDeclMarkers),
     list.reverse(RevIntImplPragmas, IntImplPragmas),
+    list.reverse(RevIntImplMarkers, IntImplMarkers),
     list.reverse(RevIntPromises, IntPromises),
     list.reverse(RevIntInitialises, IntInitialises),
     list.reverse(RevIntFinalises, IntFinalises),
@@ -1518,7 +1528,9 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     list.reverse(RevImpForeignEnums, ImpForeignEnums),
     list.reverse(RevImpForeignExportEnums, ImpForeignExportEnums),
     list.reverse(RevImpDeclPragmas, ImpDeclPragmas),
+    list.reverse(RevImpDeclMarkers, ImpDeclMarkers),
     list.reverse(RevImpImplPragmas, ImpImplPragmas0),
+    list.reverse(RevImpImplMarkers, ImpImplMarkers0),
     list.reverse(RevImpPromises, ImpPromises),
     list.reverse(RevImpInitialises0, ImpInitialises0),
     list.reverse(RevImpFinalises0, ImpFinalises0),
@@ -1557,6 +1569,7 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     % external even when the external pragma is misplaced, this old behavior
     % prevents a compiler abort on the invalid/type_spec test case.
     ImpImplPragmas = IntImplPragmas ++ ImpImplPragmas0,
+    ImpImplMarkers = IntImplMarkers ++ ImpImplMarkers0,
 
     % By implicitly moving initialise, finalise and mutable declarations
     % from the interface (where they should not be) to the implementation
@@ -1591,12 +1604,12 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         TypeSpecs, InstModeSpecs,
 
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises, IntBadClausePreds,
+        IntDeclPragmas, IntDeclMarkers, IntPromises, IntBadClausePreds,
 
-        ImpTypeClasses, ImpInstances,
-        ImpPredDecls, ImpModeDecls, ImpClauses, ImpForeignProcs,
-        ImpForeignExportEnums, ImpDeclPragmas, ImpImplPragmas, ImpPromises,
-        ImpInitialises, ImpFinalises, ImpMutables).
+        ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
+        ImpClauses, ImpForeignProcs, ImpForeignExportEnums,
+        ImpDeclPragmas, ImpDeclMarkers, ImpImplPragmas, ImpImplMarkers,
+        ImpPromises, ImpInitialises, ImpFinalises, ImpMutables).
 
     % Given a list of instances in the interface section of a
     % parse_tree_module_src that has submodules, return the instances
@@ -1979,7 +1992,9 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     list(item_pred_decl_info)::in, list(item_pred_decl_info)::out,
     list(item_mode_decl_info)::in, list(item_mode_decl_info)::out,
     list(item_decl_pragma_info)::in, list(item_decl_pragma_info)::out,
+    list(item_decl_marker_info)::in, list(item_decl_marker_info)::out,
     list(item_impl_pragma_info)::in, list(item_impl_pragma_info)::out,
+    list(item_impl_marker_info)::in, list(item_impl_marker_info)::out,
     set(pred_pf_name_arity)::in, set(pred_pf_name_arity)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
     list(item_initialise_info)::in, list(item_initialise_info)::out,
@@ -2003,7 +2018,9 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     list(item_foreign_export_enum_info)::in,
         list(item_foreign_export_enum_info)::out,
     list(item_decl_pragma_info)::in, list(item_decl_pragma_info)::out,
+    list(item_decl_marker_info)::in, list(item_decl_marker_info)::out,
     list(item_impl_pragma_info)::in, list(item_impl_pragma_info)::out,
+    list(item_impl_marker_info)::in, list(item_impl_marker_info)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
     list(item_initialise_info)::in, list(item_initialise_info)::out,
     list(item_finalise_info)::in, list(item_finalise_info)::out,
@@ -2017,7 +2034,8 @@ classify_src_items_in_blocks([],
         !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
-        !RevIntDeclPragmas, !RevIntImplPragmas,
+        !RevIntDeclPragmas, !RevIntDeclMarkers,
+        !RevIntImplPragmas, !RevIntImplMarkers,
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntImplicitAvailNeeds, !IntSelfFIMLangs,
@@ -2026,15 +2044,17 @@ classify_src_items_in_blocks([],
         !RevImpTypeClasses, !RevImpInstances,
         !RevImpPredDecls, !RevImpModeDecls, !RevImpClauses,
         !RevImpForeignProcs, !RevImpForeignEnums, !RevImpForeignExportEnums,
-        !RevImpDeclPragmas, !RevImpImplPragmas, !RevImpPromises,
-        !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
+        !RevImpDeclPragmas, !RevImpDeclMarkers,
+        !RevImpImplPragmas, !RevImpImplMarkers,
+        !RevImpPromises, !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
         !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !Specs).
 classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !IntIncls, !IntAvails, !IntFIMSpecMap,
         !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
-        !RevIntDeclPragmas, !RevIntImplPragmas,
+        !RevIntDeclPragmas, !RevIntDeclMarkers,
+        !RevIntImplPragmas, !RevIntImplMarkers,
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntImplicitAvailNeeds, !IntSelfFIMLangs,
@@ -2043,8 +2063,9 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !RevImpTypeClasses, !RevImpInstances,
         !RevImpPredDecls, !RevImpModeDecls, !RevImpClauses,
         !RevImpForeignProcs, !RevImpForeignEnums, !RevImpForeignExportEnums,
-        !RevImpDeclPragmas, !RevImpImplPragmas, !RevImpPromises,
-        !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
+        !RevImpDeclPragmas, !RevImpDeclMarkers,
+        !RevImpImplPragmas, !RevImpImplMarkers,
+        !RevImpPromises, !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
         !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !Specs) :-
     ItemBlock = item_block(_, Section, Incls, Avails, FIMs, Items),
     (
@@ -2057,7 +2078,8 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
             !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
             !RevIntTypeClasses, !RevIntInstances,
             !RevIntPredDecls, !RevIntModeDecls,
-            !RevIntDeclPragmas, !RevIntImplPragmas,
+            !RevIntDeclPragmas, !RevIntDeclMarkers,
+            !RevIntImplPragmas, !RevIntImplMarkers,
             !IntBadClausePreds, !RevIntPromises,
             !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
             !IntImplicitAvailNeeds, !IntSelfFIMLangs, !Specs)
@@ -2071,17 +2093,20 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
             !RevImpTypeDefns, !RevImpInstDefns, !RevImpModeDefns,
             !RevImpTypeClasses, !RevImpInstances,
             !RevImpPredDecls, !RevImpModeDecls, !RevImpClauses,
-            !RevImpForeignProcs, !RevImpForeignEnums, !RevImpForeignExportEnums,
-            !RevImpDeclPragmas, !RevImpImplPragmas, !RevImpPromises,
-            !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
-            !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !Specs)
+            !RevImpForeignProcs, !RevImpForeignEnums,
+            !RevImpForeignExportEnums,
+            !RevImpDeclPragmas, !RevImpDeclMarkers,
+            !RevImpImplPragmas, !RevImpImplMarkers,
+            !RevImpPromises, !RevImpInitialises, !RevImpFinalises,
+            !RevImpMutables, !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !Specs)
     ),
     classify_src_items_in_blocks(ItemBlocks,
         !IntIncls, !IntAvails, !IntFIMSpecMap,
         !RevIntTypeDefns, !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
-        !RevIntDeclPragmas, !RevIntImplPragmas,
+        !RevIntDeclPragmas, !RevIntDeclMarkers,
+        !RevIntImplPragmas, !RevIntImplMarkers,
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntImplicitAvailNeeds, !IntSelfFIMLangs,
@@ -2090,8 +2115,9 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !RevImpTypeClasses, !RevImpInstances,
         !RevImpPredDecls, !RevImpModeDecls, !RevImpClauses,
         !RevImpForeignProcs, !RevImpForeignEnums, !RevImpForeignExportEnums,
-        !RevImpDeclPragmas, !RevImpImplPragmas, !RevImpPromises,
-        !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
+        !RevImpDeclPragmas, !RevImpDeclMarkers,
+        !RevImpImplPragmas, !RevImpImplMarkers,
+        !RevImpPromises, !RevImpInitialises, !RevImpFinalises, !RevImpMutables,
         !ImpImplicitAvailNeeds, !ImpSelfFIMLangs, !Specs).
 
 :- pred classify_foreign_import_module(item_fim::in,
@@ -2129,7 +2155,9 @@ classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
     list(item_pred_decl_info)::in, list(item_pred_decl_info)::out,
     list(item_mode_decl_info)::in, list(item_mode_decl_info)::out,
     list(item_decl_pragma_info)::in, list(item_decl_pragma_info)::out,
+    list(item_decl_marker_info)::in, list(item_decl_marker_info)::out,
     list(item_impl_pragma_info)::in, list(item_impl_pragma_info)::out,
+    list(item_impl_marker_info)::in, list(item_impl_marker_info)::out,
     set(pred_pf_name_arity)::in, set(pred_pf_name_arity)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
     list(item_initialise_info)::in, list(item_initialise_info)::out,
@@ -2142,14 +2170,18 @@ classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
 classify_src_items_int([],
         !RevTypeDefns, !RevInstDefns, !RevModeDefns,
         !RevTypeClasses, !RevInstances, !RevPredDecls, !RevModeDecls,
-        !RevDeclPragmas, !RevImplPragmas, !BadClausePreds,
-        !RevPromises, !RevInitialises, !RevFinalises, !RevMutables,
+        !RevDeclPragmas, !RevDeclMarkers,
+        !RevImplPragmas, !RevImplMarkers,
+        !BadClausePreds, !RevPromises,
+        !RevInitialises, !RevFinalises, !RevMutables,
         !ImplicitAvailNeeds, !SelfFIMLangs, !Specs).
 classify_src_items_int([Item | Items],
         !RevTypeDefns, !RevInstDefns, !RevModeDefns,
         !RevTypeClasses, !RevInstances, !RevPredDecls, !RevModeDecls,
-        !RevDeclPragmas, !RevImplPragmas, !BadClausePreds,
-        !RevPromises, !RevInitialises, !RevFinalises, !RevMutables,
+        !RevDeclPragmas, !RevDeclMarkers,
+        !RevImplPragmas, !RevImplMarkers,
+        !BadClausePreds, !RevPromises,
+        !RevInitialises, !RevFinalises, !RevMutables,
         !ImplicitAvailNeeds, !SelfFIMLangs, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
@@ -2239,17 +2271,20 @@ classify_src_items_int([Item | Items],
         Item = item_decl_pragma(ItemDeclPragma),
         !:RevDeclPragmas = [ItemDeclPragma | !.RevDeclPragmas]
     ;
+        Item = item_decl_marker(ItemDeclMarker),
+        !:RevDeclMarkers = [ItemDeclMarker | !.RevDeclMarkers]
+    ;
         Item = item_impl_pragma(ItemImplPragma),
         error_item_is_exported(Item, !Specs),
         !:RevImplPragmas = [ItemImplPragma | !.RevImplPragmas],
-        ItemImplPragma = item_pragma_info(ImplPragma, _Context, _SeqNum),
         (
-            ImplPragma = impl_pragma_external_proc(ExternalProcInfo),
-            ExternalProcInfo = pragma_info_external_proc(PredPfNameArity, _),
+            ItemImplPragma = impl_pragma_external_proc(ExternalProc),
+            ExternalProc =
+                impl_pragma_external_proc_info(PredPfNameArity, _, _, _),
             set.insert(PredPfNameArity, !BadClausePreds)
         ;
-            ImplPragma = impl_pragma_fact_table(FactTableInfo),
-            FactTableInfo = pragma_info_fact_table(PredSpec, _FileName),
+            ItemImplPragma = impl_pragma_fact_table(FactTable),
+            FactTable = impl_pragma_fact_table_info(PredSpec, _FileName, _, _),
             PredSpec = pred_pfu_name_arity(PFU, SymName, UserArity),
             (
                 PFU = pfu_predicate,
@@ -2282,22 +2317,18 @@ classify_src_items_int([Item | Items],
                 % which one ;-(
             )
         ;
-            ( ImplPragma = impl_pragma_foreign_decl(_)
-            ; ImplPragma = impl_pragma_foreign_code(_)
-            ; ImplPragma = impl_pragma_foreign_proc_export(_)
-            ; ImplPragma = impl_pragma_tabled(_)
-            ; ImplPragma = impl_pragma_inline(_)
-            ; ImplPragma = impl_pragma_no_inline(_)
-            ; ImplPragma = impl_pragma_consider_used(_)
-            ; ImplPragma = impl_pragma_mode_check_clauses(_)
-            ; ImplPragma = impl_pragma_no_detism_warning(_)
-            ; ImplPragma = impl_pragma_require_tail_rec(_)
-            ; ImplPragma = impl_pragma_promise_pure(_)
-            ; ImplPragma = impl_pragma_promise_semipure(_)
-            ; ImplPragma = impl_pragma_promise_eqv_clauses(_)
-            ; ImplPragma = impl_pragma_require_feature_set(_)
+            ( ItemImplPragma = impl_pragma_foreign_decl(_)
+            ; ItemImplPragma = impl_pragma_foreign_code(_)
+            ; ItemImplPragma = impl_pragma_fproc_export(_)
+            ; ItemImplPragma = impl_pragma_tabled(_)
+            ; ItemImplPragma = impl_pragma_req_tail_rec(_)
+            ; ItemImplPragma = impl_pragma_req_feature_set(_)
             )
         )
+    ;
+        Item = item_impl_marker(ItemImplMarker),
+        error_item_is_exported(Item, !Specs),
+        !:RevImplMarkers = [ItemImplMarker | !.RevImplMarkers]
     ;
         Item = item_generated_pragma(_),
         Pieces = [words("A Mercury source file may not contain")] ++
@@ -2340,9 +2371,11 @@ classify_src_items_int([Item | Items],
     classify_src_items_int(Items,
         !RevTypeDefns, !RevInstDefns, !RevModeDefns,
         !RevTypeClasses, !RevInstances, !RevPredDecls, !RevModeDecls,
-        !RevDeclPragmas, !RevImplPragmas,
-        !BadClausePreds, !RevPromises, !RevInitialises, !RevFinalises,
-        !RevMutables, !ImplicitAvailNeeds, !SelfFIMLangs, !Specs).
+        !RevDeclPragmas, !RevDeclMarkers,
+        !RevImplPragmas, !RevImplMarkers,
+        !BadClausePreds, !RevPromises,
+        !RevInitialises, !RevFinalises, !RevMutables,
+        !ImplicitAvailNeeds, !SelfFIMLangs, !Specs).
 
 :- pred classify_src_items_imp(list(item)::in,
     list(item_type_defn_info)::in, list(item_type_defn_info)::out,
@@ -2358,7 +2391,9 @@ classify_src_items_int([Item | Items],
     list(item_foreign_export_enum_info)::in,
         list(item_foreign_export_enum_info)::out,
     list(item_decl_pragma_info)::in, list(item_decl_pragma_info)::out,
+    list(item_decl_marker_info)::in, list(item_decl_marker_info)::out,
     list(item_impl_pragma_info)::in, list(item_impl_pragma_info)::out,
+    list(item_impl_marker_info)::in, list(item_impl_marker_info)::out,
     list(item_promise_info)::in, list(item_promise_info)::out,
     list(item_initialise_info)::in, list(item_initialise_info)::out,
     list(item_finalise_info)::in, list(item_finalise_info)::out,
@@ -2372,16 +2407,18 @@ classify_src_items_imp([],
         !RevTypeClasses, !RevInstances,
         !RevPredDecls, !RevModeDecls, !RevClauses,
         !RevForeignProcs, !RevForeignEnums, !RevForeignExportEnums,
-        !RevDeclPragmas, !RevImplPragmas, !RevPromises,
-        !RevInitialises, !RevFinalises, !RevMutables,
+        !RevDeclPragmas, !RevDeclMarkers,
+        !RevImplPragmas, !RevImplMarkers,
+        !RevPromises, !RevInitialises, !RevFinalises, !RevMutables,
         !ImplicitAvailNeeds, !SelfFIMLangs, !Specs).
 classify_src_items_imp([Item | Items],
         !RevTypeDefns, !RevInstDefns, !RevModeDefns,
         !RevTypeClasses, !RevInstances,
         !RevPredDecls, !RevModeDecls, !RevClauses,
         !RevForeignProcs, !RevForeignEnums, !RevForeignExportEnums,
-        !RevDeclPragmas, !RevImplPragmas, !RevPromises,
-        !RevInitialises, !RevFinalises, !RevMutables,
+        !RevDeclPragmas, !RevDeclMarkers,
+        !RevImplPragmas, !RevImplMarkers,
+        !RevPromises, !RevInitialises, !RevFinalises, !RevMutables,
         !ImplicitAvailNeeds, !SelfFIMLangs, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
@@ -2447,25 +2484,27 @@ classify_src_items_imp([Item | Items],
         Item = item_decl_pragma(ItemDeclPragma),
         !:RevDeclPragmas = [ItemDeclPragma | !.RevDeclPragmas]
     ;
+        Item = item_decl_marker(ItemDeclMarker),
+        !:RevDeclMarkers = [ItemDeclMarker | !.RevDeclMarkers]
+    ;
         Item = item_impl_pragma(ItemImplPragma),
         !:RevImplPragmas = [ItemImplPragma | !.RevImplPragmas],
-        ItemImplPragma = item_pragma_info(ImplPragma, _Context, _SeqNum),
         (
             (
-                ImplPragma = impl_pragma_foreign_code(FCInfo),
-                FCInfo = pragma_info_foreign_code(Lang, _)
+                ItemImplPragma = impl_pragma_foreign_code(FCInfo),
+                FCInfo = impl_pragma_foreign_code_info(Lang, _, _, _)
             ;
-                ImplPragma = impl_pragma_foreign_decl(FDInfo),
-                FDInfo = pragma_info_foreign_decl(Lang, _, _)
+                ItemImplPragma = impl_pragma_foreign_decl(FDInfo),
+                FDInfo = impl_pragma_foreign_decl_info(Lang, _, _, _, _)
             ),
             set.insert(Lang, !SelfFIMLangs)
         ;
-            ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
-            FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _, _),
+            ItemImplPragma = impl_pragma_fproc_export(FPEInfo),
+            FPEInfo = impl_pragma_fproc_export_info(_, Lang, _, _, _, _, _),
             set.insert(Lang, !SelfFIMLangs)
         ;
-            ImplPragma = impl_pragma_tabled(TableInfo),
-            TableInfo = pragma_info_tabled(_, _, MaybeAttributes),
+            ItemImplPragma = impl_pragma_tabled(TableInfo),
+            TableInfo = impl_pragma_tabled_info(_, _, MaybeAttributes, _, _),
             !ImplicitAvailNeeds ^ ian_tabling := do_need_tabling,
             (
                 MaybeAttributes = no
@@ -2481,20 +2520,15 @@ classify_src_items_imp([Item | Items],
                 )
             )
         ;
-            ( ImplPragma = impl_pragma_mode_check_clauses(_)
-            ; ImplPragma = impl_pragma_external_proc(_)
-            ; ImplPragma = impl_pragma_fact_table(_)
-            ; ImplPragma = impl_pragma_inline(_)
-            ; ImplPragma = impl_pragma_no_inline(_)
-            ; ImplPragma = impl_pragma_consider_used(_)
-            ; ImplPragma = impl_pragma_no_detism_warning(_)
-            ; ImplPragma = impl_pragma_require_tail_rec(_)
-            ; ImplPragma = impl_pragma_promise_pure(_)
-            ; ImplPragma = impl_pragma_promise_semipure(_)
-            ; ImplPragma = impl_pragma_promise_eqv_clauses(_)
-            ; ImplPragma = impl_pragma_require_feature_set(_)
+            ( ItemImplPragma = impl_pragma_external_proc(_)
+            ; ItemImplPragma = impl_pragma_fact_table(_)
+            ; ItemImplPragma = impl_pragma_req_tail_rec(_)
+            ; ItemImplPragma = impl_pragma_req_feature_set(_)
             )
         )
+    ;
+        Item = item_impl_marker(ItemImplMarker),
+        !:RevImplMarkers = [ItemImplMarker | !.RevImplMarkers]
     ;
         Item = item_generated_pragma(_),
         Pieces = [words("A Mercury source file may not contain")] ++
@@ -2534,8 +2568,9 @@ classify_src_items_imp([Item | Items],
         !RevTypeClasses, !RevInstances,
         !RevPredDecls, !RevModeDecls, !RevClauses,
         !RevForeignProcs, !RevForeignEnums, !RevForeignExportEnums,
-        !RevDeclPragmas, !RevImplPragmas, !RevPromises,
-        !RevInitialises, !RevFinalises, !RevMutables,
+        !RevDeclPragmas, !RevDeclMarkers,
+        !RevImplPragmas, !RevImplMarkers,
+        !RevPromises, !RevInitialises, !RevFinalises, !RevMutables,
         !ImplicitAvailNeeds, !SelfFIMLangs, !Specs).
 
 :- pred acc_implicit_avail_needs_solver_type(type_details_solver::in,

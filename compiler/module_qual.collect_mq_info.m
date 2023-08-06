@@ -71,12 +71,12 @@ collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
         _TypeSpecs, _InstModeSpecs,
 
         IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
-        _IntDeclPragmas, IntPromises, _IntBadPreds,
+        _IntDeclPragmas, _IntDeclMarkers, IntPromises, _IntBadPreds,
 
         ImpTypeClasses, ImpInstances, _ImpPredDecls, _ImpModeDecls,
         _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
-        _ImpDeclPragmas, _ImpImplPragmas, ImpPromises,
-        _ImpInitialises, _ImpFinalises, _ImpMutables),
+        _ImpDeclPragmas, _ImpDeclMarkers, _ImpImplPragmas, _ImpImplMarkers,
+        ImpPromises, _ImpInitialises, _ImpFinalises, _ImpMutables),
 
     mq_info_get_modules(!.Info, Modules0),
     map.foldl(collect_mq_info_in_included_module_info(IntPermissions),
@@ -229,9 +229,9 @@ collect_mq_info_in_parse_tree_int0(ReadWhy0, ParseTreeInt0, !Info) :-
         ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
-        _IntDeclPragmas, IntPromises,
+        _IntDeclPragmas, _IntDeclMarkers, IntPromises,
         ImpTypeClasses, ImpInstances, _ImpPredDecls, _ImpModeDecls,
-        _ImpDeclPragmas, ImpPromises),
+        _ImpDeclPragmas, _ImpDeclMarkers, ImpPromises),
 
     mq_info_get_modules(!.Info, Modules0),
     map.foldl(collect_mq_info_in_included_module_info(IntPermissions),
@@ -326,7 +326,7 @@ collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info) :-
         _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
         TypeCheckedMap, InstCheckedMap, ModeCheckedMap,
         IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
-        _IntDeclPragmas, IntPromises, _IntTypeRepnMap,
+        _IntDeclPragmas, _IntDeclMarkers, IntPromises, _IntTypeRepnMap,
         _ImpTypeClasses),
 
     mq_info_get_modules(!.Info, Modules0),

@@ -344,12 +344,12 @@ mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
         _TypeSpecs, _InstModeSpecs,
 
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises, _IntBadPreds,
+        IntDeclPragmas, IntDeclMarkers, IntPromises, _IntBadPreds,
 
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
         ImpClauses, ImpForeignProcs, ImpForeignExportEnums,
-        ImpDeclPragmas, ImpImplPragmas, ImpPromises,
-        ImpInitialises, ImpFinalises, ImpMutables),
+        ImpDeclPragmas, ImpDeclMarkers, ImpImplPragmas, ImpImplMarkers,
+        ImpPromises, ImpInitialises, ImpFinalises, ImpMutables),
 
     include_map_to_int_imp_modules(InclMap, IntInclModules, ImpInclModules),
     import_and_or_use_map_to_explicit_int_imp_import_use_maps(ImportUseMap,
@@ -410,6 +410,8 @@ mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
         IntModeDecls, !IO),
     list.foldl(mercury_output_item_decl_pragma(Info, Stream),
         IntDeclPragmas, !IO),
+    list.foldl(mercury_format_item_decl_marker(Stream),
+        IntDeclMarkers, !IO),
     list.foldl(mercury_output_item_promise(Info, Stream),
         IntPromises, !IO),
 
@@ -446,8 +448,12 @@ mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
         ImpForeignExportEnums, !IO),
     list.foldl(mercury_output_item_decl_pragma(Info, Stream),
         ImpDeclPragmas, !IO),
+    list.foldl(mercury_format_item_decl_marker(Stream),
+        ImpDeclMarkers, !IO),
     list.foldl(mercury_output_item_impl_pragma(Info, Stream),
         ImpImplPragmas, !IO),
+    list.foldl(mercury_format_item_impl_marker(Stream),
+        ImpImplMarkers, !IO),
     list.foldl(mercury_output_item_promise(Info, Stream),
         ImpPromises, !IO),
     list.foldl(mercury_output_item_initialise(Info, Stream),
@@ -562,9 +568,9 @@ mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
         ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises,
+        IntDeclPragmas, IntDeclMarkers, IntPromises,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
-        ImpDeclPragmas, ImpPromises),
+        ImpDeclPragmas, ImpDeclMarkers, ImpPromises),
     include_map_to_int_imp_modules(InclMap, IntIncls, ImpIncls),
     map.foldl4(get_imports_uses, ImportUseMap,
         set.init, IntImports, set.init, ImpImports,
@@ -603,6 +609,8 @@ mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
         IntPredOrModeDecls, !IO),
     list.foldl(mercury_output_item_decl_pragma(Info, Stream),
         list.sort(IntDeclPragmas), !IO),
+    list.foldl(mercury_format_item_decl_marker(Stream),
+        list.sort(IntDeclMarkers), !IO),
     list.foldl(mercury_output_item_promise(Info, Stream),
         list.sort(IntPromises), !IO),
 
@@ -620,6 +628,7 @@ mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
         ImpModeDecls = [],
         ImpForeignEnums = [],
         ImpDeclPragmas = [],
+        ImpDeclMarkers = [],
         ImpPromises = []
     then
         true
@@ -650,6 +659,8 @@ mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
             ImpForeignEnums, !IO),
         list.foldl(mercury_output_item_decl_pragma(Info, Stream),
             list.sort(ImpDeclPragmas), !IO),
+        list.foldl(mercury_format_item_decl_marker(Stream),
+            list.sort(ImpDeclMarkers), !IO),
         list.foldl(mercury_output_item_promise(Info, Stream),
             list.sort(ImpPromises), !IO)
     ).
@@ -659,7 +670,7 @@ mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO) :-
         MaybeVersionNumbers, InclMap, UseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises, IntTypeRepnMap,
+        IntDeclPragmas, IntDeclMarkers, IntPromises, IntTypeRepnMap,
         ImpTypeClasses),
     include_map_to_int_imp_modules(InclMap, IntIncls, ImpIncls),
     map.foldl2(get_uses, UseMap, set.init, IntUses, set.init, ImpUses),
@@ -694,6 +705,8 @@ mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO) :-
         IntPredOrModeDecls, !IO),
     list.foldl(mercury_output_item_decl_pragma(Info, Stream),
         list.sort(IntDeclPragmas), !IO),
+    list.foldl(mercury_format_item_decl_marker(Stream),
+        list.sort(IntDeclMarkers), !IO),
     list.foldl(mercury_output_item_promise(Info, Stream),
         list.sort(IntPromises), !IO),
     map.foldl_values(mercury_output_item_type_repn(Info, Stream),
@@ -814,7 +827,7 @@ mercury_output_parse_tree_plain_opt(Info, Stream, ParseTree, !IO) :-
         UseMap, FIMSpecs, TypeDefns, ForeignEnums,
         InstDefns, ModeDefns, TypeClasses, Instances,
         PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
-        PredMarkers, TypeSpecs, UnusedArgs, Terms, Term2s,
+        DeclMarkers, ImplMarkers, TypeSpecs, UnusedArgs, Terms, Term2s,
         Exceptions, Trailings, MMTablings, Sharings, Reuses),
     Lang = get_output_lang(Info),
     io.write_string(Stream, "% .opt file\n", !IO),
@@ -857,40 +870,32 @@ mercury_output_parse_tree_plain_opt(Info, Stream, ParseTree, !IO) :-
         mercury_output_item_pred_decl(Lang, VarNamePrintPredDecl, Stream),
         PredDecls, !IO),
     list.foldl(mercury_output_item_mode_decl(Info, Stream), ModeDecls, !IO),
-    list.foldl(mercury_output_item_pred_marker(Stream),
-        list.map(project_pragma_type, PredMarkers), !IO),
-    list.foldl(
-        mercury_output_pragma_type_spec(Stream, Lang),
-        list.map(project_pragma_type, TypeSpecs), !IO),
+    list.foldl(mercury_format_item_decl_marker(Stream),
+        coerce(DeclMarkers), !IO),
+    list.foldl(mercury_format_item_impl_marker(Stream),
+        coerce(ImplMarkers), !IO),
+    list.foldl(mercury_output_pragma_type_spec(Stream, Lang), TypeSpecs, !IO),
     list.foldl(mercury_output_item_clause(Info, Stream), Clauses, !IO),
     list.foldl(mercury_output_item_foreign_proc(Stream, Lang),
         ForeignProcs, !IO),
     list.foldl(mercury_output_item_promise(Info, Stream), Promises, !IO),
 
     maybe_write_block_start_blank_line(Stream, UnusedArgs, !IO),
-    list.foldl(mercury_output_pragma_unused_args(Stream),
-        list.map(project_pragma_type, UnusedArgs), !IO),
+    list.foldl(mercury_output_pragma_unused_args(Stream), UnusedArgs, !IO),
     maybe_write_block_start_blank_line(Stream, Terms, !IO),
-    list.foldl(write_pragma_termination_info(Stream, Lang),
-        list.map(project_pragma_type, Terms), !IO),
+    list.foldl(write_pragma_termination(Stream, Lang), Terms, !IO),
     maybe_write_block_start_blank_line(Stream, Term2s, !IO),
-    list.foldl(write_pragma_termination2_info(Stream, Lang),
-        list.map(project_pragma_type, Term2s), !IO),
+    list.foldl(write_pragma_termination2(Stream, Lang), Term2s, !IO),
     maybe_write_block_start_blank_line(Stream, Exceptions, !IO),
-    list.foldl(mercury_output_pragma_exceptions(Stream),
-        list.map(project_pragma_type, Exceptions), !IO),
+    list.foldl(mercury_output_pragma_exceptions(Stream), Exceptions, !IO),
     maybe_write_block_start_blank_line(Stream, Trailings, !IO),
-    list.foldl(mercury_output_pragma_trailing_info(Stream),
-        list.map(project_pragma_type, Trailings), !IO),
+    list.foldl(mercury_output_pragma_trailing(Stream), Trailings, !IO),
     maybe_write_block_start_blank_line(Stream, MMTablings, !IO),
-    list.foldl(mercury_output_pragma_mm_tabling_info(Stream),
-        list.map(project_pragma_type, MMTablings), !IO),
+    list.foldl(mercury_output_pragma_mm_tabling(Stream), MMTablings, !IO),
     maybe_write_block_start_blank_line(Stream, Sharings, !IO),
-    list.foldl(write_pragma_structure_sharing_info(Stream, Lang),
-        list.map(project_pragma_type, Sharings), !IO),
+    list.foldl(write_pragma_struct_sharing(Stream, Lang), Sharings, !IO),
     maybe_write_block_start_blank_line(Stream, Reuses, !IO),
-    list.foldl(write_pragma_structure_reuse_info(Stream, Lang),
-        list.map(project_pragma_type, Reuses), !IO).
+    list.foldl(write_pragma_struct_reuse(Stream, Lang), Reuses, !IO).
 
 mercury_output_parse_tree_trans_opt(Info, Stream, ParseTree, !IO) :-
     ParseTree = parse_tree_trans_opt(ModuleName, _Context,
@@ -899,26 +904,19 @@ mercury_output_parse_tree_trans_opt(Info, Stream, ParseTree, !IO) :-
     io.write_string(Stream, "% .trans_opt file\n", !IO),
     mercury_output_module_decl(Stream, "module", ModuleName, !IO),
     maybe_write_block_start_blank_line(Stream, Terms, !IO),
-    list.foldl(write_pragma_termination_info(Stream, Lang),
-        list.map(project_pragma_type, Terms), !IO),
+    list.foldl(write_pragma_termination(Stream, Lang), Terms, !IO),
     maybe_write_block_start_blank_line(Stream, Term2s, !IO),
-    list.foldl(write_pragma_termination2_info(Stream, Lang),
-        list.map(project_pragma_type, Term2s), !IO),
+    list.foldl(write_pragma_termination2(Stream, Lang), Term2s, !IO),
     maybe_write_block_start_blank_line(Stream, Exceptions, !IO),
-    list.foldl(mercury_output_pragma_exceptions(Stream),
-        list.map(project_pragma_type, Exceptions), !IO),
+    list.foldl(mercury_output_pragma_exceptions(Stream), Exceptions, !IO),
     maybe_write_block_start_blank_line(Stream, Trailings, !IO),
-    list.foldl(mercury_output_pragma_trailing_info(Stream),
-        list.map(project_pragma_type, Trailings), !IO),
+    list.foldl(mercury_output_pragma_trailing(Stream), Trailings, !IO),
     maybe_write_block_start_blank_line(Stream, MMTablings, !IO),
-    list.foldl(mercury_output_pragma_mm_tabling_info(Stream),
-        list.map(project_pragma_type, MMTablings), !IO),
+    list.foldl(mercury_output_pragma_mm_tabling(Stream), MMTablings, !IO),
     maybe_write_block_start_blank_line(Stream, Sharings, !IO),
-    list.foldl(write_pragma_structure_sharing_info(Stream, Lang),
-        list.map(project_pragma_type, Sharings), !IO),
+    list.foldl(write_pragma_struct_sharing(Stream, Lang), Sharings, !IO),
     maybe_write_block_start_blank_line(Stream, Reuses, !IO),
-    list.foldl(write_pragma_structure_reuse_info(Stream, Lang),
-        list.map(project_pragma_type, Reuses), !IO).
+    list.foldl(write_pragma_struct_reuse(Stream, Lang), Reuses, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1087,8 +1085,14 @@ mercury_output_item(Info, Stream, Item, !IO) :-
         Item = item_decl_pragma(ItemDeclPragma),
         mercury_output_item_decl_pragma(Info, Stream, ItemDeclPragma, !IO)
     ;
+        Item = item_decl_marker(ItemDeclPragma),
+        mercury_format_item_decl_marker(Stream, ItemDeclPragma, !IO)
+    ;
         Item = item_impl_pragma(ItemImplPragma),
         mercury_output_item_impl_pragma(Info, Stream, ItemImplPragma, !IO)
+    ;
+        Item = item_impl_marker(ItemImplPragma),
+        mercury_format_item_impl_marker(Stream, ItemImplPragma, !IO)
     ;
         Item = item_generated_pragma(ItemGenPragma),
         mercury_output_item_generated_pragma(Info, Stream, ItemGenPragma, !IO)

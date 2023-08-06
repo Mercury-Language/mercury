@@ -73,10 +73,12 @@ gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
                 item_num_foreign_proc               :: int,
                 item_num_foreign_enum               :: int,
                 item_num_foreign_export_enum        :: int,
-                item_num_pragma_term                :: int,
-                item_num_pragma_term2               :: int,
-                item_num_pragma_other_decl          :: int,
+                item_num_pragma_decl_term           :: int,
+                item_num_pragma_decl_term2          :: int,
+                item_num_pragma_decl_other          :: int,
+                item_num_marker_decl                :: int,
                 item_num_pragma_impl                :: int,
+                item_num_marker_impl                :: int,
                 item_num_pragma_unused_args         :: int,
                 item_num_pragma_exceptions          :: int,
                 item_num_pragma_trailing            :: int,
@@ -137,7 +139,7 @@ gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
 
 init_item_stats =
     item_stats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0).
+        0, 0, 0, 0, 0, 0, 0).
 
     % Initialize a goal_stats structure.
     %
@@ -274,9 +276,17 @@ gather_stats_in_item(Item, !ItemStats, !GoalStats) :-
         Item = item_decl_pragma(ItemDeclPragmaInfo),
         gather_stats_in_item_decl_pragma(ItemDeclPragmaInfo, !ItemStats)
     ;
+        Item = item_decl_marker(_),
+        !ItemStats ^ item_num_marker_decl :=
+            !.ItemStats ^ item_num_marker_decl + 1
+    ;
         Item = item_impl_pragma(_),
         !ItemStats ^ item_num_pragma_impl :=
             !.ItemStats ^ item_num_pragma_impl + 1
+    ;
+        Item = item_impl_marker(_),
+        !ItemStats ^ item_num_marker_impl :=
+            !.ItemStats ^ item_num_marker_impl + 1
     ;
         Item = item_generated_pragma(ItemGenPragmaInfo),
         gather_stats_in_item_gen_pragma(ItemGenPragmaInfo, !ItemStats)
@@ -307,51 +317,46 @@ gather_stats_in_item(Item, !ItemStats, !GoalStats) :-
 :- pred gather_stats_in_item_decl_pragma(item_decl_pragma_info::in,
     item_stats::in, item_stats::out) is det.
 
-gather_stats_in_item_decl_pragma(ItemDeclPragmaInfo, !ItemStats) :-
-    ItemDeclPragmaInfo = item_pragma_info(Pragma, _, _),
+gather_stats_in_item_decl_pragma(DeclPragma, !ItemStats) :-
     (
-        Pragma = decl_pragma_termination_info(_),
-        !ItemStats ^ item_num_pragma_term :=
-            !.ItemStats ^ item_num_pragma_term + 1
+        DeclPragma = decl_pragma_termination(_),
+        !ItemStats ^ item_num_pragma_decl_term :=
+            !.ItemStats ^ item_num_pragma_decl_term + 1
     ;
-        Pragma = decl_pragma_termination2_info(_),
-        !ItemStats ^ item_num_pragma_term2 :=
-            !.ItemStats ^ item_num_pragma_term2 + 1
+        DeclPragma = decl_pragma_termination2(_),
+        !ItemStats ^ item_num_pragma_decl_term2 :=
+            !.ItemStats ^ item_num_pragma_decl_term2 + 1
     ;
-        ( Pragma = decl_pragma_format_call(_)
-        ; Pragma = decl_pragma_type_spec(_)
-        ; Pragma = decl_pragma_obsolete_pred(_)
-        ; Pragma = decl_pragma_obsolete_proc(_)
-        ; Pragma = decl_pragma_oisu(_)
-        ; Pragma = decl_pragma_terminates(_)
-        ; Pragma = decl_pragma_does_not_terminate(_)
-        ; Pragma = decl_pragma_check_termination(_)
-        ; Pragma = decl_pragma_structure_sharing(_)
-        ; Pragma = decl_pragma_structure_reuse(_)
+        ( DeclPragma = decl_pragma_format_call(_)
+        ; DeclPragma = decl_pragma_type_spec(_)
+        ; DeclPragma = decl_pragma_obsolete_pred(_)
+        ; DeclPragma = decl_pragma_obsolete_proc(_)
+        ; DeclPragma = decl_pragma_oisu(_)
+        ; DeclPragma = decl_pragma_struct_sharing(_)
+        ; DeclPragma = decl_pragma_struct_reuse(_)
         ),
-        !ItemStats ^ item_num_pragma_other_decl :=
-            !.ItemStats ^ item_num_pragma_other_decl + 1
+        !ItemStats ^ item_num_pragma_decl_other :=
+            !.ItemStats ^ item_num_pragma_decl_other + 1
     ).
 
 :- pred gather_stats_in_item_gen_pragma(item_generated_pragma_info::in,
     item_stats::in, item_stats::out) is det.
 
-gather_stats_in_item_gen_pragma(ItemGenPragmaInfo, !ItemStats) :-
-    ItemGenPragmaInfo = item_pragma_info(Pragma, _, _),
+gather_stats_in_item_gen_pragma(GenPragma, !ItemStats) :-
     (
-        Pragma = gen_pragma_unused_args(_),
+        GenPragma = gen_pragma_unused_args(_),
         !ItemStats ^ item_num_pragma_unused_args :=
             !.ItemStats ^ item_num_pragma_unused_args + 1
     ;
-        Pragma = gen_pragma_exceptions(_),
+        GenPragma = gen_pragma_exceptions(_),
         !ItemStats ^ item_num_pragma_exceptions :=
             !.ItemStats ^ item_num_pragma_exceptions + 1
     ;
-        Pragma = gen_pragma_trailing_info(_),
+        GenPragma = gen_pragma_trailing(_),
         !ItemStats ^ item_num_pragma_trailing :=
             !.ItemStats ^ item_num_pragma_trailing + 1
     ;
-        Pragma = gen_pragma_mm_tabling_info(_),
+        GenPragma = gen_pragma_mm_tabling(_),
         !ItemStats ^ item_num_pragma_mm_tabling :=
             !.ItemStats ^ item_num_pragma_mm_tabling + 1
     ).
@@ -548,7 +553,8 @@ write_section_stats(Stream, SectionName - SectionStats, !IO) :-
 write_item_stats(Stream, SectionName, ItemStats, !IO) :-
     ItemStats = item_stats(Clause, TypeDefn, InstDefn, ModeDefn,
         PredDecl, ModeDecl, FIM, ForeignProc, ForeignEnum, ForeignExportEnum,
-        PragmaTerm, PragmaTerm2, PragmaDecl, PragmaImpl,
+        PragmaDeclTerm, PragmaDeclTerm2, PragmaDeclOther, MarkerDecl,
+        PragmaImpl, MarkerImpl,
         PragmaUArgs, PragmaExcp, PragmaTrail, PragmaMM,
         Promise, Typeclass, Instance, Initialise, Finalise, Mutable, TypeRepn),
     write_one_stat(Stream, SectionName, "item_clause", Clause, !IO),
@@ -562,10 +568,15 @@ write_item_stats(Stream, SectionName, ItemStats, !IO) :-
     write_one_stat(Stream, SectionName, "item_foreign_enum", ForeignEnum, !IO),
     write_one_stat(Stream, SectionName, "item_foreign_export_enum",
         ForeignExportEnum, !IO),
-    write_one_stat(Stream, SectionName, "item_pragma_term", PragmaTerm, !IO),
-    write_one_stat(Stream, SectionName, "item_pragma_term2", PragmaTerm2, !IO),
-    write_one_stat(Stream, SectionName, "item_pragma_decl", PragmaDecl, !IO),
+    write_one_stat(Stream, SectionName, "item_pragma_decl_term",
+        PragmaDeclTerm, !IO),
+    write_one_stat(Stream, SectionName, "item_pragma_decl_term2",
+        PragmaDeclTerm2, !IO),
+    write_one_stat(Stream, SectionName, "item_pragma_decl_other",
+        PragmaDeclOther, !IO),
+    write_one_stat(Stream, SectionName, "item_marker_decl", MarkerDecl, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_impl", PragmaImpl, !IO),
+    write_one_stat(Stream, SectionName, "item_marker_impl", MarkerImpl, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_uargs", PragmaUArgs, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_excp", PragmaExcp, !IO),
     write_one_stat(Stream, SectionName, "item_pragma_trail", PragmaTrail, !IO),

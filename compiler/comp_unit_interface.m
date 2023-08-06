@@ -143,12 +143,12 @@ generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
         _TypeSpecs, _InstModeSpecs,
 
         OrigIntTypeClasses, OrigIntInstances, _IntPredDecls, _IntModeDecls,
-        _IntDeclPragmas, _IntPromises, _IntBadClauses,
+        _IntDeclPragmas, _IntDeclMarkers, _IntPromises, _IntBadClauses,
 
         _ImpTypeClasses, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
         _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
-        _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
-        _ImpInitialises, _ImpFinalises, _ImpMutables),
+        _ImpDeclPragmas, _ImpDeclMarkers, _ImpImplPragmas, _ImpImplMarkers,
+        _ImpPromises, _ImpInitialises, _ImpFinalises, _ImpMutables),
 
     map.foldl(add_only_int_include, OrigInclMap, map.init, IntInclMap),
     IntTypeClasses = list.map(make_typeclass_abstract_for_int3,
@@ -488,12 +488,12 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
         _TypeSpecs, _InstModeSpecs,
 
         IntTypeClasses, IntInstances0, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises, _IntBadClausePreds,
+        IntDeclPragmas, IntDeclMarkers, IntPromises, _IntBadClausePreds,
 
         ImpTypeClasses, ImpInstances0, ImpPredDecls0, ImpModeDecls,
         _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
-        ImpDeclPragmas, _ImpImplPragmas, ImpPromises,
-        _ImpInitialises, _ImpFinalises, ImpMutables),
+        ImpDeclPragmas, ImpDeclMarkers, _ImpImplPragmas, _ImpImplMarkers,
+        ImpPromises, _ImpInitialises, _ImpFinalises, ImpMutables),
 
     import_and_or_use_map_to_explicit_int_imp_import_use_maps(ImportUseMap,
         SectionImportUseMap, _, _, _, _),
@@ -531,9 +531,9 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
         IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises,
+        IntDeclPragmas, IntDeclMarkers, IntPromises,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
-        ImpDeclPragmas, ImpPromises).
+        ImpDeclPragmas, ImpDeclMarkers, ImpPromises).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -548,12 +548,12 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
         TypeSpecs, InstModeSpecs,
 
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises, IntBadClausePreds,
+        IntDeclPragmas, IntDeclMarkers, IntPromises, IntBadClausePreds,
 
         ImpTypeClasses, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
         _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
-        _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
-        _ImpInitialises, _ImpFinalises, _ImpMutables),
+        _ImpDeclPragmas, _ImpDeclMarkers, _ImpImplPragmas, _ImpImplMarkers,
+        _ImpPromises, _ImpInitialises, _ImpFinalises, _ImpMutables),
 
     IntInstancesAbstract = list.map(make_instance_abstract, IntInstances),
     map.map_values_only(pre_grab_pre_qual_type_ctor_checked_defn,
@@ -572,11 +572,11 @@ generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
         TypeSpecs, InstModeSpecs,
 
         IntTypeClasses, coerce(IntInstancesAbstract),
-        IntPredDecls, IntModeDecls, IntDeclPragmas, IntPromises,
-        IntBadClausePreds,
+        IntPredDecls, IntModeDecls, IntDeclPragmas, IntDeclMarkers,
+        IntPromises, IntBadClausePreds,
 
         coerce(AbstractImpTypeClasses), [],
-        [], [], [], [], [], [], [], [], [], [], []).
+        [], [], [], [], [], [], [], [], [], [], [], [], []).
 
     % Keep the interface part of the given type_ctor_checked_defn unchanged,
     % but modify its implementation-section part by
@@ -832,12 +832,12 @@ generate_interface_int1(Globals, AugMakeIntUnit,
         _TypeSpecs, _InstModeSpecs,
 
         IntTypeClasses, IntInstances0, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises0, _IntBadClausePreds,
+        IntDeclPragmas, IntDeclMarkers, IntPromises0, _IntBadClausePreds,
 
         ImpTypeClasses0, _ImpInstances, _ImpPredDecls, _ImpModeDecls,
         _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
-        _ImpDeclPragmas, _ImpImplPragmas, _ImpPromises,
-        _ImpInitialises, _ImpFinalises, _ImpMutables),
+        _ImpDeclPragmas, _ImpDeclMarkers, _ImpImplPragmas, _ImpImplMarkers,
+        _ImpPromises, _ImpInitialises, _ImpFinalises, _ImpMutables),
 
     % Separate out the contents of the interface section(s) from the
     % contents of the implementation section(s). Separate out the
@@ -947,7 +947,8 @@ generate_interface_int1(Globals, AugMakeIntUnit,
         IntFIMSpecs, ImpFIMSpecs,
         IntTypeCtorCheckedMap, IntInstCtorCheckedMap, IntModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises, TypeCtorRepnMap, ImpTypeClasses).
+        IntDeclPragmas, IntDeclMarkers, IntPromises,
+        TypeCtorRepnMap, ImpTypeClasses).
 
 %---------------------%
 

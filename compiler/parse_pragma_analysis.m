@@ -123,11 +123,9 @@ parse_pragma_unused_args(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         then
             PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
                 PredName, user_arity(Arity), ModeNum),
-            UnusedArgsInfo = pragma_info_unused_args(PredNameArityPFMn,
-                UnusedArgs),
-            Pragma = gen_pragma_unused_args(UnusedArgsInfo),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_generated_pragma(ItemPragma),
+            Pragma = gen_pragma_unused_args_info(PredNameArityPFMn,
+                UnusedArgs, Context, SeqNum),
+            Item = item_generated_pragma( gen_pragma_unused_args(Pragma)),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs =
@@ -271,11 +269,9 @@ parse_pragma_termination_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             MaybeMaybeTerminationInfo = ok1(MaybeTerminationInfo)
         then
             PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredName, Modes),
-            TermInfo = pragma_info_termination_info(PredNameModesPF,
-                MaybeArgSizeInfo, MaybeTerminationInfo),
-            Pragma = decl_pragma_termination_info(TermInfo),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_decl_pragma(ItemPragma),
+            Term = decl_pragma_termination_info(PredNameModesPF,
+                MaybeArgSizeInfo, MaybeTerminationInfo, Context, SeqNum),
+            Item = item_decl_pragma(decl_pragma_termination(Term)),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors3(MaybeNameAndModes) ++
@@ -343,11 +339,10 @@ parse_pragma_termination2_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             MaybeMaybeTerminationInfo = ok1(MaybeTerminationInfo)
         then
             PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredName, Modes),
-            Term2Info = pragma_info_termination2_info(PredNameModesPF,
-                SuccessArgSizeInfo, FailureArgSizeInfo, MaybeTerminationInfo),
-            Pragma = decl_pragma_termination2_info(Term2Info),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_decl_pragma(ItemPragma),
+            Term2 = decl_pragma_termination2_info(PredNameModesPF,
+                SuccessArgSizeInfo, FailureArgSizeInfo, MaybeTerminationInfo,
+                Context, SeqNum),
+            Item = item_decl_pragma(decl_pragma_termination2(Term2)),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors3(MaybeNameAndModes) ++
@@ -570,11 +565,9 @@ parse_pragma_structure_sharing(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredName, Modes),
         varset.coerce(VarSet, ProgVarSet),
         varset.coerce(VarSet, TVarSet),
-        SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
-            HeadVars, Types, ProgVarSet, TVarSet, MaybeSharingAs),
-        Pragma = decl_pragma_structure_sharing(SharingInfo),
-        ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-        Item = item_decl_pragma(ItemPragma),
+        Sharing = decl_pragma_struct_sharing_info(PredNameModesPF, HeadVars,
+            Types, ProgVarSet, TVarSet, MaybeSharingAs, Context, SeqNum),
+        Item = item_decl_pragma(decl_pragma_struct_sharing(Sharing)),
         MaybeIOM = ok1(iom_item(Item))
     else
         Pieces = [words("Syntax error in"),
@@ -624,11 +617,9 @@ parse_pragma_structure_reuse(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredName, Modes),
         varset.coerce(VarSet, ProgVarSet),
         varset.coerce(VarSet, TVarSet),
-        ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
-            HeadVars, Types, ProgVarSet, TVarSet, MaybeStructureReuse),
-        Pragma = decl_pragma_structure_reuse(ReuseInfo),
-        ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-        Item = item_decl_pragma(ItemPragma),
+        Reuse = decl_pragma_struct_reuse_info(PredNameModesPF, HeadVars, Types,
+            ProgVarSet, TVarSet, MaybeStructureReuse, Context, SeqNum),
+        Item = item_decl_pragma(decl_pragma_struct_reuse(Reuse)),
         MaybeIOM = ok1(iom_item(Item))
     else
         Pieces = [words("Syntax error in"),
@@ -755,11 +746,9 @@ parse_pragma_exceptions(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         then
             PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
                 PredName, user_arity(Arity), ModeNum),
-            ExceptionsInfo = pragma_info_exceptions(PredNameArityPFMn,
-                ThrowStatus),
-            Pragma = gen_pragma_exceptions(ExceptionsInfo),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_generated_pragma(ItemPragma),
+            Exceptions = gen_pragma_exceptions_info(PredNameArityPFMn,
+                ThrowStatus, Context, SeqNum),
+            Item = item_generated_pragma(gen_pragma_exceptions(Exceptions)),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors1(MaybePredOrFunc) ++
@@ -845,11 +834,9 @@ parse_pragma_trailing_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         then
             PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
                 PredName, user_arity(Arity), ModeNum),
-            TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn,
-                TrailingStatus),
-            Pragma = gen_pragma_trailing_info(TrailingInfo),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_generated_pragma(ItemPragma),
+            Trailing = gen_pragma_trailing_info(PredNameArityPFMn,
+                TrailingStatus, Context, SeqNum),
+            Item = item_generated_pragma(gen_pragma_trailing(Trailing)),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors1(MaybePredOrFunc) ++
@@ -935,11 +922,9 @@ parse_pragma_mm_tabling_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         then
             PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
                 PredName, user_arity(Arity), ModeNum),
-            TablingInfo = pragma_info_mm_tabling_info(PredNameArityPFMn,
-                MMTablingStatus),
-            Pragma = gen_pragma_mm_tabling_info(TablingInfo),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_generated_pragma(ItemPragma),
+            Tabling = gen_pragma_mm_tabling_info(PredNameArityPFMn,
+                MMTablingStatus, Context, SeqNum),
+            Item = item_generated_pragma(gen_pragma_mm_tabling(Tabling)),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors1(MaybePredOrFunc) ++

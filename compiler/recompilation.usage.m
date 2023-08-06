@@ -804,11 +804,11 @@ find_items_used_by_proc_arg_modes(_ProcId, ProcInfo, !Info) :-
     proc_info_get_argmodes(ProcInfo, ArgModes),
     find_items_used_by_modes(ArgModes, !Info).
 
-:- pred find_items_used_by_type_spec(pragma_info_type_spec::in,
+:- pred find_items_used_by_type_spec(decl_pragma_type_spec_info::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_type_spec(TypeSpecInfo, !Info) :-
-    TypeSpecInfo = pragma_info_type_spec(PFUMM, _, _, Subst, _, _),
+    TypeSpecInfo = decl_pragma_type_spec_info(PFUMM, _, _, Subst, _, _, _, _),
     (
         ( PFUMM = pfumm_predicate(ModesOrArity)
         ; PFUMM = pfumm_function(ModesOrArity)

@@ -134,7 +134,7 @@
                 % Type spec pragmas to be placed in the `.opt' file if a
                 % predicate becomes exported.
                 pragma_map          :: multi_map(pred_id,
-                                        pragma_info_type_spec)
+                                        decl_pragma_type_spec_info)
             ).
 
     % Once filled in by simplify_proc.m (for all non-lambda procedures)

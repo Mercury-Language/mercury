@@ -579,11 +579,11 @@ replace_in_parse_tree_module_src(TypeEqvMap, InstEqvMap,
         TypeSpecs, InstModeSpecs,
 
         IntTypeClasses0, IntInstances0, IntPredDecls0, IntModeDecls0,
-        IntDeclPragmas0, IntPromises, IntBadPreds,
+        IntDeclPragmas0, IntDeclMarkers, IntPromises, IntBadPreds,
 
         ImpTypeClasses0, ImpInstances0, ImpPredDecls0, ImpModeDecls0,
         ImpClauses0, ImpForeignProcs0, ImpForeignExportEnums,
-        ImpDeclPragmas0, ImpImplPragmas,
+        ImpDeclPragmas0, ImpDeclMarkers, ImpImplPragmas, ImpImplMarkers,
         ImpPromises, ImpInitialises, ImpFinalises, ImpMutables0),
 
     map.map_values_foldl3(
@@ -642,11 +642,11 @@ replace_in_parse_tree_module_src(TypeEqvMap, InstEqvMap,
         TypeSpecs, InstModeSpecs,
 
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises, IntBadPreds,
+        IntDeclPragmas, IntDeclMarkers, IntPromises, IntBadPreds,
 
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
         ImpClauses, ImpForeignProcs, ImpForeignExportEnums,
-        ImpDeclPragmas, ImpImplPragmas,
+        ImpDeclPragmas, ImpDeclMarkers, ImpImplPragmas, ImpImplMarkers,
         ImpPromises, ImpInitialises, ImpFinalises, ImpMutables).
 
 :- pred replace_in_ancestor_int_spec(module_name::in,
@@ -736,9 +736,9 @@ replace_in_parse_tree_int0(ModuleName, TypeEqvMap, InstEqvMap,
         MaybeVersionNumbers, InclMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
         IntTypeClasses0, IntInstances0, IntPredDecls0, IntModeDecls0,
-        IntDeclPragmas0, IntPromises,
+        IntDeclPragmas0, IntDeclMarkers, IntPromises,
         ImpTypeClasses0, ImpInstances0, ImpPredDecls0, ImpModeDecls0,
-        ImpDeclPragmas0, ImpPromises),
+        ImpDeclPragmas0, ImpDeclMarkers, ImpPromises),
 
     map.map_values_foldl3(
         replace_in_type_ctor_checked_defn(ModuleName,
@@ -785,9 +785,9 @@ replace_in_parse_tree_int0(ModuleName, TypeEqvMap, InstEqvMap,
         MaybeVersionNumbers, InclMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises,
+        IntDeclPragmas, IntDeclMarkers, IntPromises,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
-        ImpDeclPragmas, ImpPromises).
+        ImpDeclPragmas, ImpDeclMarkers, ImpPromises).
 
 :- pred replace_in_parse_tree_int1(module_name::in,
     type_eqv_map::in, inst_eqv_map::in,
@@ -804,7 +804,7 @@ replace_in_parse_tree_int1(ModuleName, TypeEqvMap, InstEqvMap,
         MaybeVersionNumbers, InclMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
         IntTypeClasses0, IntInstances0, IntPredDecls0, IntModeDecls0,
-        IntDeclPragmas0, IntPromises, IntTypeRepnMap0,
+        IntDeclPragmas0, IntDeclMarkers0, IntPromises, IntTypeRepnMap0,
         ImpTypeClasses0),
 
     map.map_values_foldl3(
@@ -844,7 +844,7 @@ replace_in_parse_tree_int1(ModuleName, TypeEqvMap, InstEqvMap,
         MaybeVersionNumbers, InclMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntDeclPragmas, IntPromises, IntTypeRepnMap,
+        IntDeclPragmas, IntDeclMarkers0, IntPromises, IntTypeRepnMap,
         ImpTypeClasses).
 
 :- pred replace_in_parse_tree_int2(module_name::in,
@@ -904,7 +904,8 @@ replace_in_parse_tree_plain_opt(ModuleName, TypeEqvMap, InstEqvMap,
         UsedModuleNames, FIMSpecs, TypeDefns0, ForeignEnums,
         InstDefns0, ModeDefns0, TypeClasses0, Instances0,
         PredDecls0, ModeDecls0, Clauses, ForeignProcs, Promises,
-        MarkerPragmas, TypeSpecs0, UnusedArgs, TermInfos, Term2Infos,
+        DeclMarkers, ImplMarkers,
+        TypeSpecs0, UnusedArgs, TermInfos, Term2Infos,
         Exceptions, Trailings, MMTablings, Sharings, Reuses),
 
     InstDefns = InstDefns0, % XXX See the comment at module top.
@@ -925,7 +926,7 @@ replace_in_parse_tree_plain_opt(ModuleName, TypeEqvMap, InstEqvMap,
         replace_in_mode_decl_info, ModeDecls0, ModeDecls,
         !RecompInfo, !UsedModules, !Specs),
     replace_in_list(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        replace_in_item_type_spec, TypeSpecs0, TypeSpecs,
+        replace_in_decl_pragma_type_spec, TypeSpecs0, TypeSpecs,
         !RecompInfo, !UsedModules, !Specs),
 
     ParseTreePlainOpt = parse_tree_plain_opt(
@@ -933,7 +934,8 @@ replace_in_parse_tree_plain_opt(ModuleName, TypeEqvMap, InstEqvMap,
         UsedModuleNames, FIMSpecs, TypeDefns, ForeignEnums,
         InstDefns, ModeDefns, TypeClasses, Instances,
         PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
-        MarkerPragmas, TypeSpecs, UnusedArgs, TermInfos, Term2Infos,
+        DeclMarkers, ImplMarkers,
+        TypeSpecs, UnusedArgs, TermInfos, Term2Infos,
         Exceptions, Trailings, MMTablings, Sharings, Reuses).
 
 :- pred replace_in_parse_tree_trans_opt(module_name::in,
@@ -1505,57 +1507,38 @@ replace_in_abstract_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
 replace_in_decl_pragma_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        Info0, Info, !RecompInfo, !UsedModules, Specs) :-
-    Info0 = item_pragma_info(Pragma0, Context, SeqNum),
+        DeclPragma0, DeclPragma, !RecompInfo, !UsedModules, Specs) :-
     (
-        Pragma0 = decl_pragma_type_spec(TypeSpecInfo0),
-        replace_in_pragma_info_type_spec(ModuleName, MaybeRecord,
-            TypeEqvMap, InstEqvMap, TypeSpecInfo0, TypeSpecInfo,
+        DeclPragma0 = decl_pragma_type_spec(TypeSpec0),
+        replace_in_decl_pragma_type_spec(ModuleName, MaybeRecord,
+            TypeEqvMap, InstEqvMap, TypeSpec0, TypeSpec,
             !RecompInfo, !UsedModules, Specs),
-        Pragma = decl_pragma_type_spec(TypeSpecInfo),
-        Info = item_pragma_info(Pragma, Context, SeqNum)
+        DeclPragma = decl_pragma_type_spec(TypeSpec)
     ;
-        ( Pragma0 = decl_pragma_obsolete_pred(_)
-        ; Pragma0 = decl_pragma_obsolete_proc(_)
-        ; Pragma0 = decl_pragma_format_call(_)
-        ; Pragma0 = decl_pragma_oisu(_)
-        ; Pragma0 = decl_pragma_terminates(_)
-        ; Pragma0 = decl_pragma_does_not_terminate(_)
-        ; Pragma0 = decl_pragma_check_termination(_)
-        ; Pragma0 = decl_pragma_termination_info(_)
-        ; Pragma0 = decl_pragma_termination2_info(_)
-        ; Pragma0 = decl_pragma_structure_reuse(_)
-        ; Pragma0 = decl_pragma_structure_sharing(_)
+        ( DeclPragma0 = decl_pragma_obsolete_pred(_)
+        ; DeclPragma0 = decl_pragma_obsolete_proc(_)
+        ; DeclPragma0 = decl_pragma_format_call(_)
+        ; DeclPragma0 = decl_pragma_oisu(_)
+        ; DeclPragma0 = decl_pragma_termination(_)
+        ; DeclPragma0 = decl_pragma_termination2(_)
+        ; DeclPragma0 = decl_pragma_struct_reuse(_)
+        ; DeclPragma0 = decl_pragma_struct_sharing(_)
         ),
-        Info = Info0,
+        DeclPragma = DeclPragma0,
         Specs = []
     ).
 
-:- pred replace_in_item_type_spec(module_name::in,
+:- pred replace_in_decl_pragma_type_spec(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
-    item_type_spec::in, item_type_spec::out,
+    decl_pragma_type_spec_info::in, decl_pragma_type_spec_info::out,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
-replace_in_item_type_spec(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
-        Item0, Item, !RecompInfo, !UsedModules, Specs) :-
-    Item0 = item_pragma_info(TypeSpecInfo0, Context, SeqNum),
-    replace_in_pragma_info_type_spec(ModuleName, MaybeRecord,
-        TypeEqvMap, InstEqvMap, TypeSpecInfo0, TypeSpecInfo,
-        !RecompInfo, !UsedModules, Specs),
-    Item = item_pragma_info(TypeSpecInfo, Context, SeqNum).
-
-:- pred replace_in_pragma_info_type_spec(module_name::in,
-    maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
-    pragma_info_type_spec::in, pragma_info_type_spec::out,
-    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_modules::in, used_modules::out, list(error_spec)::out) is det.
-
-replace_in_pragma_info_type_spec(ModuleName, MaybeRecord,
+replace_in_decl_pragma_type_spec(ModuleName, MaybeRecord,
         TypeEqvMap, _InstEqvMap, TypeSpecInfo0, TypeSpecInfo,
         !RecompInfo, !UsedModules, []) :-
-    TypeSpecInfo0 = pragma_info_type_spec(PFUMM, PredName, NewName,
-        Subst0, TVarSet0, ItemIds0),
+    TypeSpecInfo0 = decl_pragma_type_spec_info(PFUMM, PredName, NewName,
+        Subst0, TVarSet0, ItemIds0, Context, SeqNum),
     ( if
         ( !.RecompInfo = no
         ; PredName = qualified(ModuleName, _)
@@ -1576,8 +1559,8 @@ replace_in_pragma_info_type_spec(ModuleName, MaybeRecord,
     ;
         ExpandedItems = eqv_expand_info(_, ItemIds)
     ),
-    TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName, NewName,
-        Subst, TVarSet, ItemIds).
+    TypeSpecInfo = decl_pragma_type_spec_info(PFUMM, PredName, NewName,
+        Subst, TVarSet, ItemIds, Context, SeqNum).
 
 %---------------------%
 

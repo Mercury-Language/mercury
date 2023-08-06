@@ -16,7 +16,7 @@
 
 :- import_module list.
 
-:- pred add_pragma_type_spec(pragma_info_type_spec::in, term.context::in,
+:- pred add_pragma_type_spec(decl_pragma_type_spec_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -56,8 +56,9 @@
 
 %-----------------------------------------------------------------------------%
 
-add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
-    TSInfo = pragma_info_type_spec(PFUMM, SymName, _, _, _, _),
+add_pragma_type_spec(TypeSpec, !ModuleInfo, !QualInfo, !Specs) :-
+    TypeSpec = decl_pragma_type_spec_info(PFUMM, SymName, _, _, _, _,
+        Context, _),
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     (
         (
@@ -100,20 +101,19 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
             [pragma_decl("type_spec"), words("declaration")], !Specs)
     ;
         PredIds = [_ | _],
-        list.foldl3(
-            add_pragma_type_spec_for_pred(TSInfo, Context),
+        list.foldl3(add_pragma_type_spec_for_pred(TypeSpec),
             PredIds, !ModuleInfo, !QualInfo, !Specs)
     ).
 
-:- pred add_pragma_type_spec_for_pred(pragma_info_type_spec::in,
-    prog_context::in, pred_id::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
+:- pred add_pragma_type_spec_for_pred(decl_pragma_type_spec_info::in,
+    pred_id::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pragma_type_spec_for_pred(TSInfo0, Context, PredId,
+add_pragma_type_spec_for_pred(TypeSpec, PredId,
         !ModuleInfo, !QualInfo, !Specs) :-
-    TSInfo0 = pragma_info_type_spec(PFUMM0, SymName, _SpecModuleName, Subst,
-        TVarSet0, _ExpandedItems),
+    TypeSpec = decl_pragma_type_spec_info(PFUMM0, SymName, _SpecModuleName,
+        Subst, TVarSet0, _ExpandedItems, Context, _SeqNum),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     handle_pragma_type_spec_subst(PredInfo0, TVarSet0, Subst, Context,
         MaybeSubstResult),
@@ -146,15 +146,15 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId,
             )
         then
             add_type_spec_version_of_pred(PredId, PredInfo0, PredFormArity,
-                TSInfo0, TVarSet, Types, ExistQVars, ClassContext,
-                SpecProcTable0, SpecProcIds, Context,
+                TypeSpec, TVarSet, Types, ExistQVars, ClassContext,
+                SpecProcTable0, SpecProcIds,
                 SpecPredId, SpecPredStatus, !ModuleInfo),
-            record_type_specialization(TSInfo0, PredId, SpecPredId,
+            record_type_specialization(TypeSpec, PredId, SpecPredId,
                 SpecPredStatus, SpecProcIds, RenamedSubst, TVarSet, PFUMM,
                 !ModuleInfo),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
             maybe_record_type_spec_in_qual_info(PredOrFunc, SymName, UserArity,
-                SpecPredStatus, TSInfo0, !QualInfo)
+                SpecPredStatus, TypeSpec, !QualInfo)
         else
             !:Specs = get_any_errors5(MaybeSpecProcs) ++ !.Specs
         )
@@ -168,16 +168,16 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId,
 subst_desc(TVar - Type) = var_to_int(TVar) - Type.
 
 :- pred add_type_spec_version_of_pred(pred_id::in, pred_info::in,
-    pred_form_arity::in, pragma_info_type_spec::in,
+    pred_form_arity::in, decl_pragma_type_spec_info::in,
     tvarset::in, list(mer_type)::in, existq_tvars::in, prog_constraints::in,
-    proc_table::in, list(proc_id)::in, prog_context::in,
+    proc_table::in, list(proc_id)::in,
     pred_id::out, pred_status::out, module_info::in, module_info::out) is det.
 
 add_type_spec_version_of_pred(PredId, PredInfo0, PredFormArity, TSInfo0,
         TVarSet, Types, ExistQVars, ClassContext, SpecProcTable0, SpecProcIds,
-        Context, SpecPredId, SpecPredStatus, !ModuleInfo) :-
-    TSInfo0 = pragma_info_type_spec(PFUMM0, SymName, SpecModuleName, Subst,
-        TVarSet0, _ExpandedItems),
+        SpecPredId, SpecPredStatus, !ModuleInfo) :-
+    TSInfo0 = decl_pragma_type_spec_info(PFUMM0, SymName, SpecModuleName,
+        Subst, TVarSet0, _ExpandedItems, Context, _SeqNum),
 
     % Remove any imported structure sharing and reuse information
     % for the original procedure as they won't be (directly)
@@ -257,7 +257,7 @@ add_type_spec_version_of_pred(PredId, PredInfo0, PredFormArity, TSInfo0,
     predicate_table_insert(SpecPredInfo, SpecPredId, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
 
-:- pred record_type_specialization(pragma_info_type_spec::in,
+:- pred record_type_specialization(decl_pragma_type_spec_info::in,
     pred_id::in, pred_id::in, pred_status::in, list(proc_id)::in,
     type_subst::in, tvarset::in, pred_func_or_unknown_maybe_modes::in,
     module_info::in, module_info::out) is det.
@@ -293,7 +293,7 @@ record_type_specialization(TSInfo0, PredId, SpecPredId, SpecPredStatus,
     module_info_set_type_spec_info(TypeSpecInfo, !ModuleInfo).
 
 :- pred maybe_record_type_spec_in_qual_info(pred_or_func::in, sym_name::in,
-    user_arity::in, pred_status::in, pragma_info_type_spec::in,
+    user_arity::in, pred_status::in, decl_pragma_type_spec_info::in,
     qual_info::in, qual_info::out) is det.
 
 maybe_record_type_spec_in_qual_info(PredOrFunc, SymName, UserArity, PredStatus,

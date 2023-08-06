@@ -1503,8 +1503,8 @@ record_includes_imports_uses_in_parse_tree_module_src(ParseTreeModuleSrc,
     % avails, while {Int,Imp}{Import,Use}Map do not.
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, _,
         InclMap, ImportUseMap,
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-        _, _, _, _, _, _, _, _, _, _, _, _, _),
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
     map.foldl(record_include(non_abstract_section, yes(non_abstract_section)),
         InclMap, !MaybeAbstractInclMap),
@@ -1633,7 +1633,7 @@ record_includes_imports_uses_in_parse_tree_int0(Ancestors,
         ParseTreeInt0, !ReadModules, !MaybeAbstractInclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
     ParseTreeInt0 = parse_tree_int0(ModuleName, _, _, InclMap, ImportUseMap,
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
     % Both possible values of ReadWhyInt0 call for treating the file contents
     % as non-abstract.
@@ -1662,7 +1662,7 @@ record_includes_imports_uses_in_parse_tree_int1(Ancestors,
         ParseTreeInt1, ReadWhyInt1, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
     ParseTreeInt1 = parse_tree_int1(ModuleName, _, _, InclMap, _,
-        _, _, _, _, _, _, _, _, _, _, _, _, _),
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
     (
         ( ReadWhyInt1 = rwi1_int_import
@@ -1747,7 +1747,7 @@ record_includes_imports_uses_in_parse_tree_plain_opt(Ancestors,
         ParseTreePlainOpt, !ReadModules, !InclMap,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
     ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, _, UseMap,
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     ( if set.contains(Ancestors, ModuleName) then
         Avails = use_map_to_item_avails(UseMap),
         recomp_avails_acc(Avails, !AncestorImportUseMap)
@@ -2233,7 +2233,8 @@ keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
         _UsedModuleNames, _FIMSpecs, _TypeDefns, _ForeignEnums,
         _InstDefns, _ModeDefns, _TypeClasses, _Instances,
         _PredDecls, _ModeDecls, _Clauses, _ForeignProcs, _Promises,
-        _MarkerPragmas, _TypeSpecs, UnusedArgs0, _TermInfos, _Term2Infos,
+        _DeclMarkers, _ImplMarkers, _TypeSpecs,
+        UnusedArgs0, _TermInfos, _Term2Infos,
         _Exceptions, _Trailings, _MMTablings, _Sharings, Reuses0),
     (
         KeepUnusedArgs = opt_unused_args_intermod,
@@ -2251,7 +2252,7 @@ keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
     ),
     ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, ModuleNameContext,
         map.init, set.init, [], [], [], [], [], [], [], [], [], [], [],
-        [], [], UnusedArgs, [], [], [], [], [], [], Reuses).
+        [], [], [], UnusedArgs, [], [], [], [], [], [], Reuses).
 
 :- pred read_plain_opt_files(io.text_output_stream::in, globals::in,
     bool::in, bool::in, list(module_name)::in, set(module_name)::in,

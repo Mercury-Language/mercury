@@ -158,54 +158,43 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
     ;
         (
             PragmaName = "terminates",
-            MakePragma =
-                (func(PredSpec) = decl_pragma_terminates(PredSpec))
+            MarkerKind = dpmk_terminates
         ;
             PragmaName = "does_not_terminate",
-            MakePragma =
-                (func(PredSpec) = decl_pragma_does_not_terminate(PredSpec))
+            MarkerKind = dpmk_does_not_terminate
         ;
             PragmaName = "check_termination",
-            MakePragma =
-                (func(PredSpec) = decl_pragma_check_termination(PredSpec))
+            MarkerKind = dpmk_check_termination
         ),
-        parse_name_arity_decl_pragma(ModuleName, PragmaName, MakePragma,
+        parse_name_arity_decl_pragma(ModuleName, PragmaName, MarkerKind,
             VarSet, ErrorTerm, PragmaTerms, Context, SeqNum, MaybeIOM)
     ;
         (
             PragmaName = "inline",
-            MakePragma =
-                (func(PredSpec) = impl_pragma_inline(PredSpec))
+            MarkerKind = ipmk_inline
         ;
             PragmaName = "no_inline",
-            MakePragma =
-                (func(PredSpec) = impl_pragma_no_inline(PredSpec))
+            MarkerKind = ipmk_no_inline
         ;
             PragmaName = "consider_used",
-            MakePragma =
-                (func(PredSpec) = impl_pragma_consider_used(PredSpec))
-        ;
-            PragmaName = "no_determinism_warning",
-            MakePragma =
-                (func(PredSpec) = impl_pragma_no_detism_warning(PredSpec))
+            MarkerKind = ipmk_consider_used
         ;
             PragmaName = "mode_check_clauses",
-            MakePragma =
-                (func(PredSpec) = impl_pragma_mode_check_clauses(PredSpec))
+            MarkerKind = ipmk_mode_check_clauses
+        ;
+            PragmaName = "no_determinism_warning",
+            MarkerKind = ipmk_no_detism_warning
         ;
             PragmaName = "promise_pure",
-            MakePragma =
-                (func(PredSpec) = impl_pragma_promise_pure(PredSpec))
+            MarkerKind = ipmk_promise_pure
         ;
             PragmaName = "promise_semipure",
-            MakePragma =
-                (func(PredSpec) = impl_pragma_promise_semipure(PredSpec))
+            MarkerKind = ipmk_promise_semipure
         ;
             PragmaName = "promise_equivalent_clauses",
-            MakePragma =
-                (func(PredSpec) = impl_pragma_promise_eqv_clauses(PredSpec))
+            MarkerKind = ipmk_promise_eqv_clauses
         ),
-        parse_name_arity_impl_pragma(ModuleName, PragmaName, MakePragma,
+        parse_name_arity_impl_pragma(ModuleName, PragmaName, MarkerKind,
             VarSet, ErrorTerm, PragmaTerms, Context, SeqNum, MaybeIOM)
     ;
         PragmaName = "require_tail_recursion",
@@ -313,11 +302,11 @@ report_unrecognized_pragma(Context) = Spec :-
 %
 
 :- pred parse_name_arity_decl_pragma(module_name::in, string::in,
-    (func(pred_pfu_name_arity) = decl_pragma)::in(func(in) = out is det),
+    decl_pragma_marker_kind::in,
     varset::in, term::in, list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_name_arity_decl_pragma(ModuleName, PragmaName, MakePragma,
+parse_name_arity_decl_pragma(ModuleName, PragmaName, MarkerKind,
         VarSet, ErrorTerm, PragmaTerms, Context, SeqNum, MaybeIOM) :-
     (
         PragmaTerms = [PragmaTerm],
@@ -325,9 +314,9 @@ parse_name_arity_decl_pragma(ModuleName, PragmaName, MakePragma,
             PragmaTerm, MaybePredSpec),
         (
             MaybePredSpec = ok1(PredSpec),
-            Pragma = MakePragma(PredSpec),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_decl_pragma(ItemPragma),
+            Marker = item_decl_marker_info(MarkerKind, PredSpec,
+                Context, SeqNum),
+            Item = item_decl_marker(Marker),
             MaybeIOM = ok1(iom_item(Item))
         ;
             MaybePredSpec = error1(Specs),
@@ -345,11 +334,11 @@ parse_name_arity_decl_pragma(ModuleName, PragmaName, MakePragma,
    ).
 
 :- pred parse_name_arity_impl_pragma(module_name::in, string::in,
-    (func(pred_pfu_name_arity) = impl_pragma)::in(func(in) = out is det),
+    impl_pragma_marker_kind::in,
     varset::in, term::in, list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_name_arity_impl_pragma(ModuleName, PragmaName, MakePragma,
+parse_name_arity_impl_pragma(ModuleName, PragmaName, MarkerKind,
         VarSet, ErrorTerm, PragmaTerms, Context, SeqNum, MaybeIOM) :-
     (
         PragmaTerms = [PragmaTerm],
@@ -357,9 +346,9 @@ parse_name_arity_impl_pragma(ModuleName, PragmaName, MakePragma,
             PragmaTerm, MaybePredSpec),
         (
             MaybePredSpec = ok1(PredSpec),
-            Pragma = MakePragma(PredSpec),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_impl_pragma(ItemPragma),
+            Marker = item_impl_marker_info(MarkerKind, PredSpec,
+                Context, SeqNum),
+            Item = item_impl_marker(Marker),
             MaybeIOM = ok1(iom_item(Item))
         ;
             MaybePredSpec = error1(Specs),
@@ -449,11 +438,9 @@ parse_pragma_external(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
             ( if partial_sym_name_is_part_of_full(SymName, FullSymName) then
                 PFNameArity = pred_pf_name_arity(PorF, FullSymName,
                     user_arity(Arity)),
-                ExternalInfo =
-                    pragma_info_external_proc(PFNameArity, MaybeBackend),
-                Pragma = impl_pragma_external_proc(ExternalInfo),
-                PragmaInfo = item_pragma_info(Pragma, Context, SeqNum),
-                Item = item_impl_pragma(PragmaInfo),
+                External = impl_pragma_external_proc_info(PFNameArity,
+                    MaybeBackend, Context, SeqNum),
+                Item = item_impl_pragma(impl_pragma_external_proc(External)),
                 MaybeIOM = ok1(iom_item(Item))
             else
                 Pieces = [words("Error: the predicate name in the")] ++
@@ -583,11 +570,9 @@ parse_pragma_obsolete(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             MaybePredSpec = ok1(PredSpec),
             MaybeObsoleteInFavourOf = ok1(ObsoleteInFavourOf)
         then
-            ObsoletePragma =
-                pragma_info_obsolete_pred(PredSpec, ObsoleteInFavourOf),
-            Pragma = decl_pragma_obsolete_pred(ObsoletePragma),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_decl_pragma(ItemPragma),
+            Obsolete = decl_pragma_obsolete_pred_info(PredSpec,
+                ObsoleteInFavourOf, Context, SeqNum),
+            Item = item_decl_pragma(decl_pragma_obsolete_pred(Obsolete)),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs =
@@ -632,11 +617,9 @@ parse_pragma_obsolete_proc(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             MaybeObsoleteInFavourOf = ok1(ObsoleteInFavourOf)
         then
             PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredName, Modes),
-            ObsoletePragma =
-                pragma_info_obsolete_proc(PredNameModesPF, ObsoleteInFavourOf),
-            Pragma = decl_pragma_obsolete_proc(ObsoletePragma),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_decl_pragma(ItemPragma),
+            Obsolete = decl_pragma_obsolete_proc_info(PredNameModesPF,
+                ObsoleteInFavourOf, Context, SeqNum),
+            Item = item_decl_pragma(decl_pragma_obsolete_proc(Obsolete)),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs =
@@ -746,10 +729,9 @@ parse_pragma_format_call(ModuleName, PragmaTerms, ErrorTerm, VarSet,
             MaybePredSpec = ok1(PredSpec),
             MaybeFormatCall = ok1(FormatCall)
         then
-            FormatCallPragma = pragma_info_format_call(PredSpec, FormatCall),
-            Pragma = decl_pragma_format_call(FormatCallPragma),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_decl_pragma(ItemPragma),
+            FormatCallPragma = decl_pragma_format_call_info(PredSpec,
+                FormatCall, Context, SeqNum),
+            Item = item_decl_pragma(decl_pragma_format_call(FormatCallPragma)),
             MaybeIOM = ok1(iom_item(Item))
         else
             IOMSpecs =
@@ -980,10 +962,10 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
             MaybePredOrProcSpec = ok1(PredOrProcSpec),
             MaybeOptions = ok1(Options)
         then
-            PragmaType = impl_pragma_require_tail_rec(
-                pragma_info_require_tail_rec(PredOrProcSpec, Options)),
-            PragmaInfo = item_pragma_info(PragmaType, Context, SeqNum),
-            MaybeIOM = ok1(iom_item(item_impl_pragma(PragmaInfo)))
+            TailRec = impl_pragma_req_tail_rec_info(PredOrProcSpec, Options,
+                Context, SeqNum),
+            Item = item_impl_pragma(impl_pragma_req_tail_rec(TailRec)),
+            MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors1(MaybePredOrProcSpec) ++
                 get_any_errors1(MaybeOptions),
@@ -1205,11 +1187,10 @@ parse_oisu_pragma(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             MaybeMutatorsNamesArities = ok1(MutatorsNamesArities),
             MaybeDestructorsNamesArities = ok1(DestructorsNamesArities)
         then
-            OISUInfo = pragma_info_oisu(TypeCtor, CreatorsNamesArities,
-                MutatorsNamesArities, DestructorsNamesArities),
-            Pragma = decl_pragma_oisu(OISUInfo),
-            ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-            Item = item_decl_pragma(ItemPragma),
+            OISU = decl_pragma_oisu_info(TypeCtor, CreatorsNamesArities,
+                MutatorsNamesArities, DestructorsNamesArities,
+                Context, SeqNum),
+            Item = item_decl_pragma(decl_pragma_oisu(OISU)),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs = get_any_errors1(MaybeTypeCtor) ++
@@ -1298,11 +1279,9 @@ parse_pragma_type_spec(ModuleName, VarSet0, ErrorTerm, PragmaTerms,
                 % The varset is actually a tvarset.
                 varset.coerce(VarSet, TVarSet),
                 TypeSubns = one_or_more(HeadTypeSubn, TailTypeSubns),
-                TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName,
-                    ModuleName, TypeSubns, TVarSet, set.init),
-                Pragma = decl_pragma_type_spec(TypeSpecInfo),
-                ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-                Item = item_decl_pragma(ItemPragma),
+                TypeSpec = decl_pragma_type_spec_info(PFUMM, PredName,
+                    ModuleName, TypeSubns, TVarSet, set.init, Context, SeqNum),
+                Item = item_decl_pragma(decl_pragma_type_spec(TypeSpec)),
                 MaybeIOM = ok1(iom_item(Item))
             else
                 TypeSubnTermStr = describe_error_term(VarSet0, TypeSubnTerm),
@@ -1422,10 +1401,9 @@ parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         (
             MaybePredSpec = ok1(PredSpec),
             ( if FileNameTerm = term.functor(term.string(FileName), [], _) then
-                FactTableInfo = pragma_info_fact_table(PredSpec, FileName),
-                Pragma = impl_pragma_fact_table(FactTableInfo),
-                ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-                Item = item_impl_pragma(ItemPragma),
+                FactTable = impl_pragma_fact_table_info(PredSpec, FileName,
+                    Context, SeqNum),
+                Item = item_impl_pragma(impl_pragma_fact_table(FactTable)),
                 MaybeIOM = ok1(iom_item(Item))
             else
                 FileNameTermStr = describe_error_term(VarSet, FileNameTerm),
@@ -1491,10 +1469,10 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
                 ;
                     FeatureList = [_ | _],
                     FeatureSet = set.list_to_set(FeatureList),
-                    RFSInfo = pragma_info_require_feature_set(FeatureSet),
-                    Pragma = impl_pragma_require_feature_set(RFSInfo),
-                    ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-                    Item = item_impl_pragma(ItemPragma),
+                    RFSInfo = impl_pragma_req_feature_set_info(FeatureSet,
+                        Context, SeqNum),
+                    Pragma = impl_pragma_req_feature_set(RFSInfo),
+                    Item = item_impl_pragma(Pragma),
                     MaybeIOM = ok1(iom_item(Item))
                 )
             )

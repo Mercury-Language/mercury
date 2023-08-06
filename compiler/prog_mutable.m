@@ -63,7 +63,7 @@
 :- pred implement_mutable(module_params::in, item_mutable_info::in,
     list(item_pred_decl_info)::out,
     list(item_clause_info)::out, list(item_foreign_proc_info)::out,
-    item_fproc_export::out,
+    impl_pragma_fproc_export_info::out,
     cord(foreign_decl_code)::in, cord(foreign_decl_code)::out,
     cord(foreign_body_code)::in, cord(foreign_body_code)::out,
     pred_target_names::in, pred_target_names::out) is det.
@@ -353,7 +353,7 @@ declare_mutable_aux_preds_for_int0(ModuleName, ItemMutable)
     mutable_target_params::in, item_mutable_info::in, string::in,
     list(item_pred_decl_info)::out,
     list(item_clause_info)::out, list(item_foreign_proc_info)::out,
-    item_fproc_export::out,
+    impl_pragma_fproc_export_info::out,
     pred_target_names::in, pred_target_names::out) is det.
 
 declare_and_define_mutable_aux_preds(ModuleParams, TargetParams, ItemMutable,
@@ -984,13 +984,11 @@ declare_init_pred(ModuleName, MutableName, Context, InitPredDecl) :-
     %
 :- pred define_init_pred(module_name::in, foreign_language::in,
     item_mutable_info::in, sym_name::in, maybe(goal)::in,
-    item_clause_info::out,
-    item_pragma_info(pragma_info_foreign_proc_export)::out,
+    item_clause_info::out, impl_pragma_fproc_export_info::out,
     pred_target_names::in, pred_target_names::out) is det.
 
 define_init_pred(ModuleName, Lang, ItemMutable, InitSetPredName,
-        MaybeCallPreInitExpr, InitClauseInfo, PragmaFPEInfo,
-        !PredTargetNames) :-
+        MaybeCallPreInitExpr, InitClauseInfo, FPEInfo, !PredTargetNames) :-
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, _Type, _OrigInst, _Inst,
         InitTerm, VarSetMutable, _MutAttrs, Context, SeqNum),
@@ -1023,9 +1021,8 @@ define_init_pred(ModuleName, Lang, ItemMutable, InitSetPredName,
     new_user_init_or_final_pred_target_name(ModuleName, "init", SeqNum,
         InitPredName, user_arity(0), TargetName, !PredTargetNames),
     PredNameModesPF = proc_pf_name_modes(pf_predicate, InitPredName, []),
-    FPEInfo = pragma_info_foreign_proc_export(Origin, Lang,
-        PredNameModesPF, TargetName, VarSetMutable),
-    PragmaFPEInfo = item_pragma_info(FPEInfo, Context, item_no_seq_num).
+    FPEInfo = impl_pragma_fproc_export_info(Origin, Lang, PredNameModesPF,    
+        TargetName, VarSetMutable, Context, item_no_seq_num).
 
 %---------------------------------------------------------------------------%
 

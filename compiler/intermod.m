@@ -88,7 +88,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.item_util.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_misc.
@@ -154,7 +153,7 @@ write_opt_file_initial(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
     then
         ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, dummy_context,
             map.init, set.init, [], [], [], [], [], [], [], [], [], [], [], [],
-            [], [], [], [], [], [], [], [], [])
+            [], [], [], [], [], [], [], [], [], [])
     else
         write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt,
             !IO)
@@ -260,13 +259,13 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
         DeclOrderPredInfos),
     generate_order_pred_infos(ModuleInfo, WriteDefnPredIds,
         DefnOrderPredInfos),
-    PredMarkerPragmasCord0 = cord.init,
     (
         DeclOrderPredInfos = [],
         PredDecls = [],
         ModeDecls = [],
-        PredMarkerPragmasCord1 = PredMarkerPragmasCord0,
-        TypeSpecPragmas = []
+        DeclMarkersCord0 = cord.init,
+        ImplMarkersCord0 = cord.init,
+        TypeSpecs = []
     ;
         DeclOrderPredInfos = [_ | _],
         io.nl(Stream, !IO),
@@ -274,19 +273,18 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
             DeclOrderPredInfos,
             cord.init, PredDeclsCord,
             cord.init, ModeDeclsCord,
-            PredMarkerPragmasCord0, PredMarkerPragmasCord1,
-            cord.init, TypeSpecPragmasCord, !IO),
+            cord.init, DeclMarkersCord0,
+            cord.init, ImplMarkersCord0,
+            cord.init, TypeSpecsCord, !IO),
         PredDecls = cord.list(PredDeclsCord),
         ModeDecls = cord.list(ModeDeclsCord),
-        TypeSpecPragmas = list.map(wrap_dummy_pragma_item,
-            cord.list(TypeSpecPragmasCord))
+        TypeSpecs = cord.list(TypeSpecsCord)
     ),
     % Each of these writes a newline at the start.
     intermod_write_pred_defns(OutInfoForPreds, Stream, ModuleInfo,
-        DefnOrderPredInfos, PredMarkerPragmasCord1, PredMarkerPragmasCord,
-        !IO),
-    PredMarkerPragmas = list.map(wrap_dummy_pragma_item,
-        cord.list(PredMarkerPragmasCord)),
+        DefnOrderPredInfos,
+        DeclMarkersCord0, DeclMarkersCord,
+        ImplMarkersCord0, ImplMarkersCord, !IO),
     Clauses = [],
     ForeignProcs = [],
     % XXX CLEANUP This *may* be a lie, in that some of the predicates we have
@@ -294,13 +292,15 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
     % we switch over completely to creating .opt files purely by building up
     % and then writing out a parse_tree_plain_opt, this shouldn't matter.
     Promises = [],
+    DeclMarkers = cord.list(DeclMarkersCord),
+    ImplMarkers = cord.list(ImplMarkersCord),
 
     module_info_get_name(ModuleInfo, ModuleName),
     ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, dummy_context,
         UseMap, FIMSpecsSet, TypeDefns, ForeignEnums,
         InstDefns, ModeDefns, TypeClasses, Instances,
         PredDecls, ModeDecls, Clauses, ForeignProcs, Promises,
-        PredMarkerPragmas, TypeSpecPragmas, [], [], [], [], [], [], [], []).
+        DeclMarkers, ImplMarkers, TypeSpecs, [], [], [], [], [], [], [], []).
 
 :- type maybe_first
     --->    is_not_first
@@ -608,35 +608,39 @@ intermod_gather_instance(ClassId - InstanceDefn, !InstancesCord) :-
     module_info::in, list(order_pred_info)::in,
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
-    cord(pragma_info_pred_marker)::in, cord(pragma_info_pred_marker)::out,
-    cord(pragma_info_type_spec)::in, cord(pragma_info_type_spec)::out,
+    cord(item_decl_marker_info_opt)::in, cord(item_decl_marker_info_opt)::out,
+    cord(item_impl_marker_info_opt)::in, cord(item_impl_marker_info_opt)::out,
+    cord(decl_pragma_type_spec_info)::in,
+        cord(decl_pragma_type_spec_info)::out,
     io::di, io::uo) is det.
 
 intermod_write_pred_decls(_, _, _, [],
-        !PredDeclsCord, !ModeDeclsCord, !PredMarkerPragmasCord,
-        !TypeSpecPragmasCord, !IO).
+        !PredDeclsCord, !ModeDeclsCord,
+        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !IO).
 intermod_write_pred_decls(MercInfo, Stream, ModuleInfo,
         [OrderPredInfo | OrderPredInfos],
-        !PredDeclsCord, !ModeDeclsCord, !PredMarkerPragmasCord,
-        !TypeSpecPragmasCord, !IO) :-
+        !PredDeclsCord, !ModeDeclsCord,
+        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !IO) :-
     intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
-        !PredDeclsCord, !ModeDeclsCord, !PredMarkerPragmasCord,
-        !TypeSpecPragmasCord, !IO),
+        !PredDeclsCord, !ModeDeclsCord,
+        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !IO),
     intermod_write_pred_decls(MercInfo, Stream, ModuleInfo, OrderPredInfos,
-        !PredDeclsCord, !ModeDeclsCord, !PredMarkerPragmasCord,
-        !TypeSpecPragmasCord, !IO).
+        !PredDeclsCord, !ModeDeclsCord,
+        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !IO).
 
 :- pred intermod_write_pred_decl(merc_out_info::in, io.text_output_stream::in,
     module_info::in, order_pred_info::in,
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
-    cord(pragma_info_pred_marker)::in, cord(pragma_info_pred_marker)::out,
-    cord(pragma_info_type_spec)::in, cord(pragma_info_type_spec)::out,
+    cord(item_decl_marker_info_opt)::in, cord(item_decl_marker_info_opt)::out,
+    cord(item_impl_marker_info_opt)::in, cord(item_impl_marker_info_opt)::out,
+    cord(decl_pragma_type_spec_info)::in,
+        cord(decl_pragma_type_spec_info)::out,
     io::di, io::uo) is det.
 
 intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
-        !PredDeclsCord, !ModeDeclsCord, !PredMarkerPragmasCord,
-        !TypeSpecPragmasCord, !IO) :-
+        !PredDeclsCord, !ModeDeclsCord,
+        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !IO) :-
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
@@ -692,24 +696,23 @@ intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
     map.to_sorted_assoc_list(ProcMap, SortedProcPairs),
     intermod_gather_pred_valid_modes(PredOrFunc, PredSymName,
         SortedProcPairs, ModeDecls),
-    intermod_gather_pred_marker_pragmas(PredInfo, PredMarkerPragmas),
-    intermod_gather_pred_type_spec_pragmas(ModuleInfo, PredId,
-        TypeSpecPragmas),
+    intermod_gather_pred_marker_pragmas(PredInfo, DeclMarkers, ImplMarkers),
+    intermod_gather_pred_type_spec_pragmas(ModuleInfo, PredId, TypeSpecs),
 
     list.foldl(mercury_output_item_mode_decl(MercInfo, Stream),
         ModeDecls, !IO),
-    list.foldl(mercury_output_item_pred_marker(Stream),
-        PredMarkerPragmas, !IO),
+    list.foldl(mercury_format_item_decl_marker(Stream),
+        coerce(DeclMarkers), !IO),
+    list.foldl(mercury_format_item_impl_marker(Stream),
+        coerce(ImplMarkers), !IO),
     Lang = output_mercury,
-    list.foldl(mercury_output_pragma_type_spec(Stream, Lang),
-        TypeSpecPragmas, !IO),
+    list.foldl(mercury_output_pragma_type_spec(Stream, Lang), TypeSpecs, !IO),
 
     cord.snoc(PredDecl, !PredDeclsCord),
     !:ModeDeclsCord = !.ModeDeclsCord ++ cord.from_list(ModeDecls),
-    !:PredMarkerPragmasCord =
-        !.PredMarkerPragmasCord ++ cord.from_list(PredMarkerPragmas),
-    !:TypeSpecPragmasCord =
-        !.TypeSpecPragmasCord ++ cord.from_list(TypeSpecPragmas).
+    !:DeclMarkersCord = !.DeclMarkersCord ++ cord.from_list(DeclMarkers),
+    !:ImplMarkersCord = !.ImplMarkersCord ++ cord.from_list(ImplMarkers),
+    !:TypeSpecsCord = !.TypeSpecsCord ++ cord.from_list(TypeSpecs).
 
 :- pred intermod_gather_pred_valid_modes(pred_or_func::in, sym_name::in,
     assoc_list(proc_id, proc_info)::in, list(item_mode_decl_info)::out) is det.
@@ -738,9 +741,10 @@ intermod_gather_pred_valid_modes(PredOrFunc, PredSymName,
         dummy_context, item_no_seq_num).
 
 :- pred intermod_gather_pred_marker_pragmas(pred_info::in,
-    list(pragma_info_pred_marker)::out) is det.
+    list(item_decl_marker_info_opt)::out, list(item_impl_marker_info_opt)::out)
+    is det.
 
-intermod_gather_pred_marker_pragmas(PredInfo, PredMarkerPragmas) :-
+intermod_gather_pred_marker_pragmas(PredInfo, DeclMarkers, ImplMarkers) :-
     ModuleName = pred_info_module(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredName = pred_info_name(PredInfo),
@@ -749,18 +753,25 @@ intermod_gather_pred_marker_pragmas(PredInfo, PredMarkerPragmas) :-
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     pred_info_get_markers(PredInfo, Markers),
     markers_to_marker_list(Markers, MarkerList),
-    intermod_gather_pred_marker_pragmas_loop(PredOrFunc,
-        PredSymName, UserArity, MarkerList, [], RevPredMarkerPragmas),
-    list.reverse(RevPredMarkerPragmas, PredMarkerPragmas).
+    ( PredOrFunc = pf_predicate, PFU = pfu_predicate
+    ; PredOrFunc = pf_function,  PFU = pfu_function
+    ),
+    intermod_gather_pred_marker_pragmas_loop(PFU,
+        PredSymName, UserArity, MarkerList,
+        [], RevDeclMarkers, [], RevImplMarkers),
+    list.reverse(RevDeclMarkers, DeclMarkers),
+    list.reverse(RevImplMarkers, ImplMarkers).
 
-:- pred intermod_gather_pred_marker_pragmas_loop(pred_or_func::in,
+:- pred intermod_gather_pred_marker_pragmas_loop(pred_func_or_unknown_pf::in,
     sym_name::in, user_arity::in, list(pred_marker)::in,
-    list(pragma_info_pred_marker)::in, list(pragma_info_pred_marker)::out)
+    list(item_decl_marker_info_opt)::in, list(item_decl_marker_info_opt)::out,
+    list(item_impl_marker_info_opt)::in, list(item_impl_marker_info_opt)::out)
     is det.
 
-intermod_gather_pred_marker_pragmas_loop(_, _, _, [], !RevPredMarkerPragmas).
+intermod_gather_pred_marker_pragmas_loop(_, _, _,
+        [], !RevDeclMarkers, !RevImplMarkers).
 intermod_gather_pred_marker_pragmas_loop(PredOrFunc, PredSymName, UserArity,
-        [Marker | Markers], !RevPredMarkerPragmas) :-
+        [Marker | Markers], !RevDeclMarkers, !RevImplMarkers) :-
     (
         % We do not output these markers.
         ( Marker = marker_stub
@@ -798,81 +809,92 @@ intermod_gather_pred_marker_pragmas_loop(PredOrFunc, PredSymName, UserArity,
     ;
         % We do output these markers.
         (
-            Marker = marker_user_marked_inline,
-            PragmaKind = pmpk_inline
-        ;
-            Marker = marker_user_marked_no_inline,
-            PragmaKind = pmpk_noinline
-        ;
-            Marker = marker_promised_pure,
-            PragmaKind = pmpk_promise_pure
-        ;
-            Marker = marker_promised_semipure,
-            PragmaKind = pmpk_promise_semipure
-        ;
-            Marker = marker_promised_equivalent_clauses,
-            PragmaKind = pmpk_promise_eqv_clauses
-        ;
             Marker = marker_terminates,
-            PragmaKind = pmpk_terminates
+            DeclPragmaKind = dpmk_terminates
         ;
             Marker = marker_does_not_terminate,
-            PragmaKind = pmpk_does_not_terminate
+            DeclPragmaKind = dpmk_does_not_terminate
+        ),
+        PredSpec = pred_pfu_name_arity(PredOrFunc, PredSymName, UserArity),
+        DeclMarker = item_decl_marker_info(DeclPragmaKind, PredSpec,
+            dummy_context, item_no_seq_num),
+        !:RevDeclMarkers = [DeclMarker | !.RevDeclMarkers]
+    ;
+        (
+            Marker = marker_user_marked_inline,
+            ImplPragmaKind = ipmk_inline
+        ;
+            Marker = marker_user_marked_no_inline,
+            ImplPragmaKind = ipmk_no_inline
+        ;
+            Marker = marker_promised_pure,
+            ImplPragmaKind = ipmk_promise_pure
         ;
             Marker = marker_mode_check_clauses,
-            PragmaKind = pmpk_mode_check_clauses
+            ImplPragmaKind = ipmk_mode_check_clauses
+        ;
+            Marker = marker_promised_semipure,
+            ImplPragmaKind = ipmk_promise_semipure
+        ;
+            Marker = marker_promised_equivalent_clauses,
+            ImplPragmaKind = ipmk_promise_eqv_clauses
         ),
-        PredSpec = pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
-        PredMarkerInfo = pragma_info_pred_marker(PredSpec, PragmaKind),
-        !:RevPredMarkerPragmas = [PredMarkerInfo | !.RevPredMarkerPragmas]
+        PredSpec = pred_pfu_name_arity(PredOrFunc, PredSymName, UserArity),
+        ImplMarker = item_impl_marker_info(ImplPragmaKind, PredSpec,
+            dummy_context, item_no_seq_num),
+        !:RevImplMarkers = [ImplMarker | !.RevImplMarkers]
     ),
     intermod_gather_pred_marker_pragmas_loop(PredOrFunc, PredSymName,
-        UserArity, Markers, !RevPredMarkerPragmas).
+        UserArity, Markers, !RevDeclMarkers, !RevImplMarkers).
 
 :- pred intermod_gather_pred_type_spec_pragmas(module_info::in, pred_id::in,
-    list(pragma_info_type_spec)::out) is det.
+    list(decl_pragma_type_spec_info)::out) is det.
 
-intermod_gather_pred_type_spec_pragmas(ModuleInfo, PredId, TypeSpecPragmas) :-
+intermod_gather_pred_type_spec_pragmas(ModuleInfo, PredId, TypeSpecs) :-
     module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
     PragmaMap = TypeSpecInfo ^ pragma_map,
-    ( if multi_map.search(PragmaMap, PredId, TypeSpecPragmasPrime) then
-        TypeSpecPragmas = TypeSpecPragmasPrime
+    ( if multi_map.search(PragmaMap, PredId, TypeSpecsPrime) then
+        TypeSpecs = TypeSpecsPrime
     else
-        TypeSpecPragmas = []
+        TypeSpecs = []
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred intermod_write_pred_defns(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, list(order_pred_info)::in,
-    cord(pragma_info_pred_marker)::in, cord(pragma_info_pred_marker)::out,
+    cord(item_decl_marker_info_opt)::in, cord(item_decl_marker_info_opt)::out,
+    cord(item_impl_marker_info_opt)::in, cord(item_impl_marker_info_opt)::out,
     io::di, io::uo) is det.
 
-intermod_write_pred_defns(_, _, _, [], !PredMarkerPragmas, !IO).
+intermod_write_pred_defns(_, _, _, [], !DeclMarkers, !ImplMarkers, !IO).
 intermod_write_pred_defns(OutInfo, Stream, ModuleInfo,
-        [OrderPredInfo | OrderPredInfos], !PredMarkerPragmas, !IO) :-
+        [OrderPredInfo | OrderPredInfos], !DeclMarkers, !ImplMarkers, !IO) :-
     intermod_write_pred_defn(OutInfo, Stream, ModuleInfo, OrderPredInfo,
-        !PredMarkerPragmas, !IO),
+        !DeclMarkers, !ImplMarkers, !IO),
     intermod_write_pred_defns(OutInfo, Stream, ModuleInfo, OrderPredInfos,
-        !PredMarkerPragmas, !IO).
+        !DeclMarkers, !ImplMarkers, !IO).
 
 :- pred intermod_write_pred_defn(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, order_pred_info::in,
-    cord(pragma_info_pred_marker)::in, cord(pragma_info_pred_marker)::out,
+    cord(item_decl_marker_info_opt)::in, cord(item_decl_marker_info_opt)::out,
+    cord(item_impl_marker_info_opt)::in, cord(item_impl_marker_info_opt)::out,
     io::di, io::uo) is det.
 
 intermod_write_pred_defn(OutInfo, Stream, ModuleInfo, OrderPredInfo,
-        !PredMarkerPragmas, !IO) :-
+        !DeclMarkers, !ImplMarkers, !IO) :-
     io.nl(Stream, !IO),
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredSymName = qualified(ModuleName, PredName),
-    intermod_gather_pred_marker_pragmas(PredInfo, PredMarkerPragmas),
-    list.foldl(mercury_output_item_pred_marker(Stream),
-        PredMarkerPragmas, !IO),
-    !:PredMarkerPragmas =
-        !.PredMarkerPragmas ++ cord.from_list(PredMarkerPragmas),
+    intermod_gather_pred_marker_pragmas(PredInfo, DeclMarkers, ImplMarkers),
+    list.foldl(mercury_format_item_decl_marker(Stream),
+        coerce(DeclMarkers), !IO),
+    list.foldl(mercury_format_item_impl_marker(Stream),
+        coerce(ImplMarkers), !IO),
+    !:DeclMarkers = !.DeclMarkers ++ cord.from_list(DeclMarkers),
+    !:ImplMarkers = !.ImplMarkers ++ cord.from_list(ImplMarkers),
     % The type specialization pragmas for exported preds should
     % already be in the interface file.
     pred_info_get_clauses_info(PredInfo, ClausesInfo),

@@ -353,6 +353,7 @@
                 ptms_int_pred_decls         :: list(item_pred_decl_info),
                 ptms_int_mode_decls         :: list(item_mode_decl_info),
                 ptms_int_decl_pragmas       :: list(item_decl_pragma_info),
+                ptms_int_decl_markers       :: list(item_decl_marker_info),
                 ptms_int_promises           :: list(item_promise_info),
 
                 % The set of predicate names for which the interface contains
@@ -403,7 +404,9 @@
                 ptms_imp_foreign_export_enums ::
                                         list(item_foreign_export_enum_info),
                 ptms_imp_decl_pragmas       :: list(item_decl_pragma_info),
+                ptms_imp_decl_markers       :: list(item_decl_marker_info),
                 ptms_imp_impl_pragmas       :: list(item_impl_pragma_info),
+                ptms_imp_impl_markers       :: list(item_impl_marker_info),
                 ptms_imp_promises           :: list(item_promise_info),
                 ptms_imp_initialises        :: list(item_initialise_info),
                 ptms_imp_finalises          :: list(item_finalise_info),
@@ -468,6 +471,7 @@
                 pti0_int_pred_decls         :: list(item_pred_decl_info),
                 pti0_int_mode_decls         :: list(item_mode_decl_info),
                 pti0_int_decl_pragmas       :: list(item_decl_pragma_info),
+                pti0_int_decl_markers       :: list(item_decl_marker_info),
                 pti0_int_promises           :: list(item_promise_info),
 
                 % Items of various kinds in the implementation section.
@@ -476,6 +480,7 @@
                 pti0_imp_pred_decls         :: list(item_pred_decl_info),
                 pti0_imp_mode_decls         :: list(item_mode_decl_info),
                 pti0_imp_decl_pragmas       :: list(item_decl_pragma_info),
+                pti0_imp_decl_markers       :: list(item_decl_marker_info),
                 pti0_imp_promises           :: list(item_promise_info)
             ).
 
@@ -519,6 +524,7 @@
                 pti1_int_pred_decls         :: list(item_pred_decl_info),
                 pti1_int_mode_decls         :: list(item_mode_decl_info),
                 pti1_int_decl_pragmas       :: list(item_decl_pragma_info),
+                pti1_int_decl_markers       :: list(item_decl_marker_info),
                 pti1_int_promises           :: list(item_promise_info),
 
                 % The representations of all types defined in the module,
@@ -781,16 +787,17 @@
                 ptpo_foreign_procs          :: list(item_foreign_proc_info),
                 ptpo_promises               :: list(item_promise_info),
 
-                ptpo_pred_marker_pragmas    :: list(item_pred_marker),
-                ptpo_type_spec_pragmas      :: list(item_type_spec),
-                ptpo_unused_args            :: list(item_unused_args),
-                ptpo_termination            :: list(item_termination),
-                ptpo_termination2           :: list(item_termination2),
-                ptpo_exceptions             :: list(item_exceptions),
-                ptpo_trailing               :: list(item_trailing),
-                ptpo_mm_tabling             :: list(item_mm_tabling),
-                ptpo_struct_sharing         :: list(item_struct_sharing),
-                ptpo_struct_reuse           :: list(item_struct_reuse)
+                ptpo_decl_markers           :: list(item_decl_marker_info_opt),
+                ptpo_impl_markers           :: list(item_impl_marker_info_opt),
+                ptpo_type_specs             :: list(decl_pragma_type_spec_info),
+                ptpo_unused_args        :: list(gen_pragma_unused_args_info),
+                ptpo_termination        :: list(decl_pragma_termination_info),
+                ptpo_termination2       :: list(decl_pragma_termination2_info),
+                ptpo_exceptions         :: list(gen_pragma_exceptions_info),
+                ptpo_trailing           :: list(gen_pragma_trailing_info),
+                ptpo_mm_tabling         :: list(gen_pragma_mm_tabling_info),
+                ptpo_struct_sharing :: list(decl_pragma_struct_sharing_info),
+                ptpo_struct_reuse   :: list(decl_pragma_struct_reuse_info)
             ).
 
 :- type parse_tree_trans_opt
@@ -800,13 +807,13 @@
                 % The context of the `:- module' declaration.
                 ptto_module_name_context    :: prog_context,
 
-                ptto_termination            :: list(item_termination),
-                ptto_termination2           :: list(item_termination2),
-                ptto_exceptions             :: list(item_exceptions),
-                ptto_trailing               :: list(item_trailing),
-                ptto_mm_tabling             :: list(item_mm_tabling),
-                ptto_struct_sharing         :: list(item_struct_sharing),
-                ptto_struct_reuse           :: list(item_struct_reuse)
+                ptto_termination        :: list(decl_pragma_termination_info),
+                ptto_termination2       :: list(decl_pragma_termination2_info),
+                ptto_exceptions         :: list(gen_pragma_exceptions_info),
+                ptto_trailing           :: list(gen_pragma_trailing_info),
+                ptto_mm_tabling         :: list(gen_pragma_mm_tabling_info),
+                ptto_struct_sharing :: list(decl_pragma_struct_sharing_info),
+                ptto_struct_reuse   :: list(decl_pragma_struct_reuse_info)
             ).
 
 %---------------------------------------------------------------------------%
@@ -1225,7 +1232,9 @@
     ;       item_foreign_enum(item_foreign_enum_info)
     ;       item_foreign_export_enum(item_foreign_export_enum_info)
     ;       item_decl_pragma(item_decl_pragma_info)
+    ;       item_decl_marker(item_decl_marker_info)
     ;       item_impl_pragma(item_impl_pragma_info)
+    ;       item_impl_marker(item_impl_marker_info)
     ;       item_generated_pragma(item_generated_pragma_info)
     ;       item_promise(item_promise_info)
     ;       item_typeclass(item_typeclass_info)
@@ -1416,17 +1425,6 @@
                                                     string),
                 fee_context                     :: prog_context,
                 fee_seq_num                     :: item_seq_num
-            ).
-
-:- type item_decl_pragma_info == item_pragma_info(decl_pragma).
-:- type item_impl_pragma_info == item_pragma_info(impl_pragma).
-:- type item_generated_pragma_info == item_pragma_info(generated_pragma).
-:- type item_fproc_export == item_pragma_info(pragma_info_foreign_proc_export).
-:- type item_pragma_info(T)
-    --->    item_pragma_info(
-                prag_type                       :: T,
-                prag_context                    :: prog_context,
-                prag_seq_num                    :: item_seq_num
             ).
 
 :- type item_promise_info
@@ -2469,99 +2467,64 @@
 % Pragmas.
 %
 
-:- type decl_pragma
-    --->    decl_pragma_obsolete_pred(pragma_info_obsolete_pred)
-    ;       decl_pragma_obsolete_proc(pragma_info_obsolete_proc)
-    ;       decl_pragma_format_call(pragma_info_format_call)
-    ;       decl_pragma_type_spec(pragma_info_type_spec)
-    ;       decl_pragma_oisu(pragma_info_oisu)
-    ;       decl_pragma_termination_info(pragma_info_termination_info)
-    ;       decl_pragma_termination2_info(pragma_info_termination2_info)
-    ;       decl_pragma_structure_sharing(pragma_info_structure_sharing)
-    ;       decl_pragma_structure_reuse(pragma_info_structure_reuse)
+:- type item_decl_pragma_info
+    --->    decl_pragma_obsolete_pred(decl_pragma_obsolete_pred_info)
+    ;       decl_pragma_obsolete_proc(decl_pragma_obsolete_proc_info)
+    ;       decl_pragma_format_call(decl_pragma_format_call_info)
+    ;       decl_pragma_type_spec(decl_pragma_type_spec_info)
+    ;       decl_pragma_oisu(decl_pragma_oisu_info)
+    ;       decl_pragma_termination(decl_pragma_termination_info)
+    ;       decl_pragma_termination2(decl_pragma_termination2_info)
+    ;       decl_pragma_struct_sharing(decl_pragma_struct_sharing_info)
+    ;       decl_pragma_struct_reuse(decl_pragma_struct_reuse_info).
 
-    ;       decl_pragma_terminates(pred_pfu_name_arity)
-    ;       decl_pragma_does_not_terminate(pred_pfu_name_arity)
-    ;       decl_pragma_check_termination(pred_pfu_name_arity).
+:- type item_impl_pragma_info
+    --->    impl_pragma_foreign_decl(impl_pragma_foreign_decl_info)
+    ;       impl_pragma_foreign_code(impl_pragma_foreign_code_info)
+    ;       impl_pragma_fproc_export(impl_pragma_fproc_export_info)
+    ;       impl_pragma_external_proc(impl_pragma_external_proc_info)
+    ;       impl_pragma_fact_table(impl_pragma_fact_table_info)
+    ;       impl_pragma_tabled(impl_pragma_tabled_info)
+    ;       impl_pragma_req_tail_rec(impl_pragma_req_tail_rec_info)
+    ;       impl_pragma_req_feature_set(impl_pragma_req_feature_set_info).
 
-:- type impl_pragma
-    --->    impl_pragma_foreign_decl(pragma_info_foreign_decl)
-    ;       impl_pragma_foreign_code(pragma_info_foreign_code)
-    ;       impl_pragma_foreign_proc_export(pragma_info_foreign_proc_export)
-    ;       impl_pragma_external_proc(pragma_info_external_proc)
-    ;       impl_pragma_fact_table(pragma_info_fact_table)
-    ;       impl_pragma_tabled(pragma_info_tabled)
-    ;       impl_pragma_require_tail_rec(pragma_info_require_tail_rec)
-    ;       impl_pragma_require_feature_set(pragma_info_require_feature_set)
-
-    ;       impl_pragma_inline(pred_pfu_name_arity)
-    ;       impl_pragma_no_inline(pred_pfu_name_arity)
-    ;       impl_pragma_consider_used(pred_pfu_name_arity)
-    ;       impl_pragma_mode_check_clauses(pred_pfu_name_arity)
-    ;       impl_pragma_no_detism_warning(pred_pfu_name_arity)
-    ;       impl_pragma_promise_pure(pred_pfu_name_arity)
-    ;       impl_pragma_promise_semipure(pred_pfu_name_arity)
-    ;       impl_pragma_promise_eqv_clauses(pred_pfu_name_arity).
-
-:- type generated_pragma
-    --->    gen_pragma_unused_args(pragma_info_unused_args)
-    ;       gen_pragma_exceptions(pragma_info_exceptions)
-    ;       gen_pragma_trailing_info(pragma_info_trailing_info)
-    ;       gen_pragma_mm_tabling_info(pragma_info_mm_tabling_info).
-
-:- type pred_marker_pragma_kind
-    --->    pmpk_inline
-    ;       pmpk_noinline
-    ;       pmpk_promise_pure
-    ;       pmpk_promise_semipure
-    ;       pmpk_promise_eqv_clauses
-    ;       pmpk_terminates
-    ;       pmpk_does_not_terminate
-    ;       pmpk_mode_check_clauses.
-
-:- type pragma_info_pred_marker
-    --->    pragma_info_pred_marker(
-                pred_pf_name_arity,
-                pred_marker_pragma_kind
-            ).
-
-:- type item_pred_marker ==    item_pragma_info(pragma_info_pred_marker).
-:- type item_type_spec ==      item_pragma_info(pragma_info_type_spec).
-:- type item_termination ==    item_pragma_info(pragma_info_termination_info).
-:- type item_termination2 ==   item_pragma_info(pragma_info_termination2_info).
-:- type item_struct_sharing == item_pragma_info(pragma_info_structure_sharing).
-:- type item_struct_reuse ==   item_pragma_info(pragma_info_structure_reuse).
-:- type item_tabled ==         item_pragma_info(pragma_info_tabled).
-:- type item_unused_args ==    item_pragma_info(pragma_info_unused_args).
-:- type item_exceptions ==     item_pragma_info(pragma_info_exceptions).
-:- type item_trailing ==       item_pragma_info(pragma_info_trailing_info).
-:- type item_mm_tabling ==     item_pragma_info(pragma_info_mm_tabling_info).
+:- type item_generated_pragma_info
+    --->    gen_pragma_unused_args(gen_pragma_unused_args_info)
+    ;       gen_pragma_exceptions(gen_pragma_exceptions_info)
+    ;       gen_pragma_trailing(gen_pragma_trailing_info)
+    ;       gen_pragma_mm_tabling(gen_pragma_mm_tabling_info).
 
 %---------------------------------------------------------------------------%
 %
 % Decl pragmas.
 %
 
-:- type pragma_info_obsolete_pred
-    --->    pragma_info_obsolete_pred(
-                pred_pfu_name_arity,
-                list(sym_name_arity)
+:- type decl_pragma_obsolete_pred_info
+    --->    decl_pragma_obsolete_pred_info(
+                obspred_obsolete_pred   :: pred_pfu_name_arity,
+                obspred_in_favour_of    :: list(sym_name_arity),
+                obspred_context         :: prog_context,
+                obspred_seq_num         :: item_seq_num
             ).
 
-:- type pragma_info_obsolete_proc
-    --->    pragma_info_obsolete_proc(
-                proc_pf_name_modes,
-                list(sym_name_arity)
+:- type decl_pragma_obsolete_proc_info
+    --->    decl_pragma_obsolete_proc_info(
+                obsproc_obsolete_proc   :: proc_pf_name_modes,
+                obsproc_in_favour_of    :: list(sym_name_arity),
+                obsproc_context         :: prog_context,
+                obsproc_seq_num         :: item_seq_num
             ).
 
-:- type pragma_info_format_call
-    --->    pragma_info_format_call(
-                pred_pf_name_arity,
-                one_or_more(format_string_values)
+:- type decl_pragma_format_call_info
+    --->    decl_pragma_format_call_info(
+                format_pred             :: pred_pf_name_arity,
+                format_values           :: one_or_more(format_string_values),
+                format_context          :: prog_context,
+                format_seq_num          :: item_seq_num
             ).
 
-:- type pragma_info_type_spec
-    --->    pragma_info_type_spec(
+:- type decl_pragma_type_spec_info
+    --->    decl_pragma_type_spec_info(
                 tspec_pfumm             :: pred_func_or_unknown_maybe_modes,
 
                 % The existing predicate name.
@@ -2584,7 +2547,7 @@
                 %
                 % All variables in this tvarset have to have explicit names.
                 % If the original pragma contains anonymous variables, the
-                % code constructing this pragma_info_type_spec will give
+                % code constructing this decl_pragma_type_spec will give
                 % those variable names.
                 %
                 % The reason for this requirement is that the process
@@ -2611,15 +2574,20 @@
                 tspec_tvarset           :: tvarset,
 
                 % The equivalence types used.
-                tspec_items             :: set(recomp_item_id)
+                tspec_items             :: set(recomp_item_id),
+
+                tspec_context           :: prog_context,
+                tspec_seq_num           :: item_seq_num
             ).
 
-:- type pragma_info_oisu
-    --->    pragma_info_oisu(
+:- type decl_pragma_oisu_info
+    --->    decl_pragma_oisu_info(
                 oisu_type_ctor          :: type_ctor,
                 oisu_creator_preds      :: list(pred_pf_name_arity),
                 oisu_transformer_preds  :: list(pred_pf_name_arity),
-                oisu_destroyer_preds    :: list(pred_pf_name_arity)
+                oisu_destroyer_preds    :: list(pred_pf_name_arity),
+                oisu_context            :: prog_context,
+                oisu_seq_num            :: item_seq_num
             ).
 
 % The termination/termination2 pragmas record information
@@ -2631,23 +2599,26 @@
 % such as the termination properties of foreign language code in
 % foreign_procs.
 
-:- type pragma_info_termination_info
-    --->    pragma_info_termination_info(
-
+:- type decl_pragma_termination_info
+    --->    decl_pragma_termination_info(
                 % The modes represent the declared argmodes of the procedure,
                 % unless there are no declared argmodes, in which case
                 % we use the inferred argmodes.
                 terminfo_pred_id        :: proc_pf_name_modes,
                 terminfo_args           :: maybe(pragma_arg_size_info),
-                terminfo_term           :: maybe(pragma_termination_info)
+                terminfo_term           :: maybe(pragma_termination_info),
+                terminfo_context        :: prog_context,
+                terminfo_seq_num        :: item_seq_num
             ).
 
-:- type pragma_info_termination2_info
-    --->    pragma_info_termination2_info(
+:- type decl_pragma_termination2_info
+    --->    decl_pragma_termination2_info(
                 terminfo2_pred_id       :: proc_pf_name_modes,
                 terminfo2_args          :: maybe(pragma_constr_arg_size_info),
                 terminfo2_args2         :: maybe(pragma_constr_arg_size_info),
-                terminfo2_term          :: maybe(pragma_termination_info)
+                terminfo2_term          :: maybe(pragma_termination_info),
+                terminfo2_context       :: prog_context,
+                terminfo2_seq_num       :: item_seq_num
             ).
 
 % The sharing/reuse pragmas record information about a predicate's or
@@ -2658,8 +2629,8 @@
 % that it cannot figure out for itself, such as the ctgc properties
 % of foreign language code in foreign_procs.
 
-:- type pragma_info_structure_sharing
-    --->    pragma_info_structure_sharing(
+:- type decl_pragma_struct_sharing_info
+    --->    decl_pragma_struct_sharing_info(
                 % After structure sharing analysis, the compiler generates
                 % structure sharing pragmas to be stored in and read from
                 % optimization interface files.
@@ -2680,11 +2651,14 @@
                 % A `no' would mean that the relevant information is not
                 % available, but in that case, we simply do not write out
                 % this pragma.
-                sharing_description     :: maybe(structure_sharing_domain)
+                sharing_description     :: maybe(structure_sharing_domain),
+
+                sharing_context         :: prog_context,
+                sharing_seq_num         :: item_seq_num
             ).
 
-:- type pragma_info_structure_reuse
-    --->    pragma_info_structure_reuse(
+:- type decl_pragma_struct_reuse_info
+    --->    decl_pragma_struct_reuse_info(
                 % After reuse analysis, the compiler generates structure reuse
                 % pragmas to be stored in and read from optimization interface
                 % files.
@@ -2710,30 +2684,70 @@
                 % A `no' would mean that the relevant information is not
                 % available, but in that case, we simply do not write out
                 % this pragma.
-                reuse_description       :: maybe(structure_reuse_domain)
+                reuse_description       :: maybe(structure_reuse_domain),
+
+                reuse_context           :: prog_context,
+                reuse_seq_num           :: item_seq_num
             ).
+
+:- type item_decl_marker_info
+    --->    item_decl_marker_info(
+                dm_marker_kind          :: decl_pragma_marker_kind,
+                dm_pred_spec            :: pred_pfu_name_arity,
+                dm_context              :: prog_context,
+                dm_seq_num              :: item_seq_num
+            ).
+
+:- type item_decl_marker_info_opt =< item_decl_marker_info
+    --->    item_decl_marker_info(
+                dm_marker_kind          :: decl_pragma_marker_kind_opt,
+                dm_pred_spec            :: pred_pfu_name_arity_pf,
+                dm_context              :: prog_context,
+                dm_seq_num              :: item_seq_num
+            ).
+
+    % XXX The "terminates" and "does_not_terminate" markers are assertions
+    % about the behavior of a given predicate that the compiler may be able
+    % to exploit when compiling other modules. The "check_termination" marker
+    % is not like that: it is a directive that is useful only while
+    % the compiler is working on the module in which it occurs. We should
+    % therefore consider making this an *impl* marker, which would entail
+    % allowing the "check_termination" pragma to occur only in implementation
+    % sections, even when the predicate/function they name is exported.
+:- type decl_pragma_marker_kind
+    --->    dpmk_terminates
+    ;       dpmk_does_not_terminate
+    ;       dpmk_check_termination.
+
+:- type decl_pragma_marker_kind_opt =< decl_pragma_marker_kind
+    --->    dpmk_terminates
+    ;       dpmk_does_not_terminate.
 
 %---------------------------------------------------------------------------%
 %
 % Impl pragmas.
 %
 
-:- type pragma_info_foreign_decl
-    --->    pragma_info_foreign_decl(
+:- type impl_pragma_foreign_decl_info
+    --->    impl_pragma_foreign_decl_info(
                 % A foreign language declaration, such as C header code.
                 decl_lang               :: foreign_language,
                 decl_is_local           :: foreign_decl_is_local,
-                decl_decl               :: foreign_literal_or_include
+                decl_decl               :: foreign_literal_or_include,
+                decl_context            :: prog_context,
+                decl_seq_num            :: item_seq_num
             ).
 
-:- type pragma_info_foreign_code
-    --->    pragma_info_foreign_code(
+:- type impl_pragma_foreign_code_info
+    --->    impl_pragma_foreign_code_info(
                 code_lang               :: foreign_language,
-                code_code               :: foreign_literal_or_include
+                code_code               :: foreign_literal_or_include,
+                code_context            :: prog_context,
+                code_seq_num            :: item_seq_num
             ).
 
-:- type pragma_info_foreign_proc_export
-    --->    pragma_info_foreign_proc_export(
+:- type impl_pragma_fproc_export_info
+    --->    impl_pragma_fproc_export_info(
                 exp_maybe_attrs         :: item_maybe_attrs,
 
                 exp_language            :: foreign_language,
@@ -2744,38 +2758,46 @@
                 % Specified the names of any variables in the modes above.
                 % Used for generating error messages about foreign_export
                 % pragmas for undeclared modes.
-                exp_varaset             :: prog_varset
+                exp_varset              :: prog_varset,
+
+                exp_context             :: prog_context,
+                exp_seq_num             :: item_seq_num
             ).
 
-:- type pragma_info_external_proc
-    --->    pragma_info_external_proc(
+:- type impl_pragma_external_proc_info
+    --->    impl_pragma_external_proc_info(
                 % The specified procedure(s) is/are implemented outside
                 % of Mercury code, for the named backend if there is one,
                 % or if there isn't a named backend, then for all backends.
                 external_name           :: pred_pf_name_arity,
-                external_maybe_backend  :: maybe(backend)
+                external_maybe_backend  :: maybe(backend),
+                external_context        :: prog_context,
+                external_seq_num        :: item_seq_num
             ).
 
-:- type pragma_info_fact_table
-    --->    pragma_info_fact_table(
+:- type impl_pragma_fact_table_info
+    --->    impl_pragma_fact_table_info(
                 % Predname and Arity, Fact file name.
                 fact_table_pred         :: pred_pfu_name_arity,
-                fact_table_filename     :: string
+                fact_table_filename     :: string,
+                fact_table_context      :: prog_context,
+                fact_table_seq_num      :: item_seq_num
             ).
 
-:- type pragma_info_tabled
-    --->    pragma_info_tabled(
+:- type impl_pragma_tabled_info
+    --->    impl_pragma_tabled_info(
                 % Tabling type, Predname, Arity, PredOrFunc?, Mode?
                 tabled_method           :: tabled_eval_method,
                 tabled_name             :: pred_or_proc_pfumm_name,
-                tabled_attributes       :: maybe(table_attributes)
+                tabled_attributes       :: maybe(table_attributes),
+                tabled_context          :: prog_context,
+                tabled_seq_num          :: item_seq_num
             ).
 
-:- type pragma_info_require_tail_rec
-    --->    pragma_info_require_tail_rec(
+:- type impl_pragma_req_tail_rec_info
+    --->    impl_pragma_req_tail_rec_info(
                 rtr_proc_id             :: pred_or_proc_pfumm_name,
-                rtr_require_tailrec     :: require_tail_recursion
-
+                rtr_require_tailrec     :: require_tail_recursion,
                 % This parameter only makes sense when options contains
                 % either rtro_mutual_rec_only or rtro_all_recursion.
                 % TODO, currently unused, may be used later to implement one
@@ -2784,49 +2806,100 @@
                 %   2015-November/016482.html
                 % rtr_maybe_scc           :: maybe(list(
                 %                             pred_or_proc_pfumm_name))
+                rtr_context             :: prog_context,
+                rtr_seq_num             :: item_seq_num
             ).
 
-:- type pragma_info_require_feature_set
-    --->    pragma_info_require_feature_set(
-                rfs_feature_set         :: set(required_feature)
+:- type impl_pragma_req_feature_set_info
+    --->    impl_pragma_req_feature_set_info(
+                rfs_feature_set         :: set(required_feature),
+                rfs_context             :: prog_context,
+                rfs_seq_num             :: item_seq_num
             ).
+
+:- type item_impl_marker_info
+    --->    item_impl_marker_info(
+                im_marker_kind          :: impl_pragma_marker_kind,
+                im_pred_spec            :: pred_pfu_name_arity,
+                im_context              :: prog_context,
+                im_seq_num              :: item_seq_num
+            ).
+
+:- type item_impl_marker_info_opt =< item_impl_marker_info
+    --->    item_impl_marker_info(
+                im_marker_kind          :: impl_pragma_marker_kind_opt,
+                im_pred_spec            :: pred_pfu_name_arity_pf,
+                im_context              :: prog_context,
+                im_seq_num              :: item_seq_num
+            ).
+
+:- type impl_pragma_marker_kind
+    --->    ipmk_inline
+    ;       ipmk_no_inline
+    ;       ipmk_consider_used
+    ;       ipmk_mode_check_clauses
+    ;       ipmk_no_detism_warning
+    ;       ipmk_promise_pure
+    ;       ipmk_promise_semipure
+    ;       ipmk_promise_eqv_clauses.
+
+    % These are the kinds of impl markers that we put into .opt files.
+:- type impl_pragma_marker_kind_opt =< impl_pragma_marker_kind
+    --->    ipmk_inline
+    ;       ipmk_no_inline
+    ;       ipmk_mode_check_clauses
+    ;       ipmk_promise_pure
+    ;       ipmk_promise_semipure
+    ;       ipmk_promise_eqv_clauses.
 
 %---------------------------------------------------------------------------%
 %
 % Generated pragmas.
 %
 
-:- type pragma_info_unused_args
-    --->    pragma_info_unused_args(
+:- type gen_pragma_unused_args_info
+    --->    gen_pragma_unused_args_info(
                 % This pragma Should only appear in .opt files.
                 unused_proc_id          :: proc_pf_name_arity_mn,
 
                 % The argument positions of the unused arguments.
                 % Used for intermodule unused argument removal.
-                unused_args             :: list(int)
+                unused_args             :: list(int),
+
+                unused_context          :: prog_context,
+                unused_seq_num          :: item_seq_num
             ).
 
-:- type pragma_info_exceptions
-    --->    pragma_info_exceptions(
+:- type gen_pragma_exceptions_info
+    --->    gen_pragma_exceptions_info(
                 % This pragma should only appear in `.opt' and
                 % `.trans_opt' files.
                 exceptions_proc_id      :: proc_pf_name_arity_mn,
-                exceptions_status       :: exception_status
+                exceptions_status       :: exception_status,
+
+                exceptions_context      :: prog_context,
+                exceptions_seq_num      :: item_seq_num
             ).
 
-:- type pragma_info_trailing_info
-    --->    pragma_info_trailing_info(
+:- type gen_pragma_trailing_info
+    --->    gen_pragma_trailing_info(
                 % This pragma should only appear in `.trans_opt' files.
-                trailing_info_proc_id   :: proc_pf_name_arity_mn,
-                trailing_info_status    :: trailing_status
+                trailing_proc_id        :: proc_pf_name_arity_mn,
+                trailing_status         :: trailing_status,
+
+                trailing_context        :: prog_context,
+                trailing_seq_num        :: item_seq_num
             ).
 
-:- type pragma_info_mm_tabling_info
-    --->    pragma_info_mm_tabling_info(
+:- type gen_pragma_mm_tabling_info
+    --->    gen_pragma_mm_tabling_info(
                 % This pragma should only appear in `.opt' and
                 % `.trans_opt' files.
-                mm_tabling_info_proc_id :: proc_pf_name_arity_mn,
-                mm_tabling_info_status  :: mm_tabling_status
+                mm_tabling_proc_id      :: proc_pf_name_arity_mn,
+                mm_tabling_status       :: mm_tabling_status,
+
+                mm_tabling_context      :: prog_context,
+                mm_tabling_seq_num      :: item_seq_num
             ).
 
 %---------------------------------------------------------------------------%
@@ -2836,6 +2909,13 @@
 :- type pred_pfu_name_arity
     --->    pred_pfu_name_arity(
                 ppfuna_pfu              :: pred_func_or_unknown,
+                ppfuna_pred_name        :: sym_name,
+                ppfuna_arity            :: user_arity
+            ).
+
+:- type pred_pfu_name_arity_pf =< pred_pfu_name_arity
+    --->    pred_pfu_name_arity(
+                ppfuna_pfu              :: pred_func_or_unknown_pf,
                 ppfuna_pred_name        :: sym_name,
                 ppfuna_arity            :: user_arity
             ).
@@ -2865,6 +2945,10 @@
     --->    pfu_predicate
     ;       pfu_function
     ;       pfu_unknown.
+
+:- type pred_func_or_unknown_pf =< pred_func_or_unknown
+    --->    pfu_predicate
+    ;       pfu_function.
 
 :- type pred_func_or_unknown_maybe_modes
     --->    pfumm_predicate(modes_or_arity)
@@ -3109,6 +3193,9 @@
 %---------------------------------------------------------------------------%
 
 :- func get_item_context(item) = prog_context.
+:- func get_decl_pragma_context(item_decl_pragma_info) = prog_context.
+:- func get_impl_pragma_context(item_impl_pragma_info) = prog_context.
+:- func get_gen_pragma_context(item_generated_pragma_info) = prog_context.
 :- func get_goal_context(goal) = prog_context.
 
 %---------------------------------------------------------------------------%
@@ -3264,13 +3351,19 @@ get_item_context(Item) = Context :-
         Context = ItemForeignExportEnum ^ fee_context
     ;
         Item = item_decl_pragma(ItemDeclPragma),
-        Context = ItemDeclPragma ^ prag_context
+        Context = get_decl_pragma_context(ItemDeclPragma)
+    ;
+        Item = item_decl_marker(ItemDeclMarker),
+        Context = ItemDeclMarker ^ dm_context
     ;
         Item = item_impl_pragma(ItemImplPragma),
-        Context = ItemImplPragma ^ prag_context
+        Context = get_impl_pragma_context(ItemImplPragma)
+    ;
+        Item = item_impl_marker(ItemImplMarker),
+        Context = ItemImplMarker ^ im_context
     ;
         Item = item_generated_pragma(ItemGenPragma),
-        Context = ItemGenPragma ^ prag_context
+        Context = get_gen_pragma_context(ItemGenPragma)
     ;
         Item = item_promise(ItemPromise),
         Context = ItemPromise ^ prom_context
@@ -3292,6 +3385,78 @@ get_item_context(Item) = Context :-
     ;
         Item = item_type_repn(ItemTypeRepn),
         Context = ItemTypeRepn ^ tr_context
+    ).
+
+get_decl_pragma_context(DeclPragma) = Context :-
+    (
+        DeclPragma = decl_pragma_obsolete_pred(ObsPred),
+        Context = ObsPred ^ obspred_context
+    ;
+        DeclPragma = decl_pragma_obsolete_proc(ObsProc),
+        Context = ObsProc ^ obsproc_context
+    ;
+        DeclPragma = decl_pragma_format_call(FormatCall),
+        Context = FormatCall ^ format_context
+    ;
+        DeclPragma = decl_pragma_type_spec(TypeSpec),
+        Context = TypeSpec ^ tspec_context
+    ;
+        DeclPragma = decl_pragma_oisu(OISU),
+        Context = OISU ^ oisu_context
+    ;
+        DeclPragma = decl_pragma_termination(Term),
+        Context = Term ^ terminfo_context
+    ;
+        DeclPragma = decl_pragma_termination2(Term2),
+        Context = Term2 ^ terminfo2_context
+    ;
+        DeclPragma = decl_pragma_struct_sharing(Sharing),
+        Context = Sharing ^ sharing_context
+    ;
+        DeclPragma = decl_pragma_struct_reuse(Reuse),
+        Context = Reuse ^ reuse_context
+    ).
+
+get_impl_pragma_context(ImplPragma) = Context :-
+    (
+        ImplPragma = impl_pragma_foreign_decl(ForeignDecl),
+        Context = ForeignDecl ^ decl_context
+    ;
+        ImplPragma = impl_pragma_foreign_code(ForeignCode),
+        Context = ForeignCode ^ code_context
+    ;
+        ImplPragma = impl_pragma_fproc_export(Export),
+        Context = Export ^ exp_context
+    ;
+        ImplPragma = impl_pragma_external_proc(ExternalProc),
+        Context = ExternalProc ^ external_context
+    ;
+        ImplPragma = impl_pragma_fact_table(FactTable),
+        Context = FactTable ^ fact_table_context
+    ;
+        ImplPragma = impl_pragma_tabled(Tabled),
+        Context = Tabled ^ tabled_context
+    ;
+        ImplPragma = impl_pragma_req_tail_rec(TailRec),
+        Context = TailRec ^ rtr_context
+    ;
+        ImplPragma = impl_pragma_req_feature_set(FeatureSet),
+        Context = FeatureSet ^ rfs_context
+    ).
+
+get_gen_pragma_context(GenPragma) = Context :-
+    (
+        GenPragma = gen_pragma_unused_args(UnusedArgs),
+        Context = UnusedArgs ^ unused_context
+    ;
+        GenPragma = gen_pragma_exceptions(Excps),
+        Context = Excps ^ exceptions_context
+    ;
+        GenPragma = gen_pragma_trailing(Trailing),
+        Context = Trailing ^ trailing_context
+    ;
+        GenPragma = gen_pragma_mm_tabling(MMTabling),
+        Context = MMTabling ^ mm_tabling_context
     ).
 
 get_goal_context(Goal) = Context :-

@@ -198,12 +198,10 @@ parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         InstDefns, ModeDefns, PredDecls, ModeDecls,
         Promises, Typeclasses, Instances, Initialises, Finalises, Mutables,
         TypeRepnMap, ForeignEnums, ForeignExportEnums,
-        PragmasDecl, PragmasDeclTypeSpec,
-        PragmasDeclTermInfo, PragmasDeclTerm2Info,
-        PragmasDeclSharing, PragmasDeclReuse,
-        PragmasImpl,
-        PragmasGenUnusedArgs, PragmasGenExceptions,
-        PragmasGenTrailing, PragmasGenMMTabling,
+        DeclPragmas, DeclMarkers, DeclTypeSpec,
+        DeclTermination, DeclTermination2, DeclSharing, DeclReuse,
+        ImplPragmas, ImplMarkers,
+        GenUnusedArgs, GenExceptions, GenTrailing, GenMMTabling,
         Clauses, ForeignProcs, IntBadClauses),
 
     map.init(DirectArgMap),
@@ -453,33 +451,16 @@ parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % To allow the code of add_foreign_procs to check the foreign_procs
     % against the purity expected of them, it needs to know what that
     % actual purity is, and this requires that pragmas that make promises
-    % about the actual purity of the foreign_proc is.
-    %
-    % ZZZ The absence of such code here (which will be fixed within a day or
-    % two) causes the failure of the purity/promise_pure_test and
-    % warnings/purity_warnings test cases. These test cases have always
-    % depended for getting the now-expected output on the relative ordering
-    % between a promise purity pragma on the one hand and a foreign_proc
-    % on the other hand; i.e. if this order were reversed, then we
-    % never would have got the output we have always expected.
-    %
-    % XXX We should deprecate promise_pure and promise_semipure pragmas.
-    % They are now obsolete, because they can be replaced
-    % - by promise_{pure,semipure} scopes in Mercury goals, and
-    % - by promise_{pure,semipure} attributes in foreign_procs.
-    %
-    % XXX We should actually add *all* marker pragmas (i.e. all impl_pragmas
-    % whose code in add_impl_pragma in add_pragma.m consists of one or two
-    % calls to add_pred_marker) here. These pragmas only affect the set
-    % of markers in the pred_info, which does not actually *implement*
-    % the predicate or function; but they may be needed as part of the
-    % the specification that the actual implementation is compared against.
-    %
-    % This is true for foreign_procs (we need to know what purity standard
-    % the foreign_proc should meet, and this is influenced by promise_pure
-    % and promise_semipure pragmas, both of which are marker pragmas).
-    % It is also true for tabled pragmas, which want to check that the
-    % predicate or function to which they apply is not marked to be inlined.
+    % about the actual purity of the foreign_proc is be added to the HLDS
+    % before foreign_procs. We add impl markers here because they include
+    % promise_pure and promise_semipure markers. We add decl markers here
+    % mainly for symmetry, and to a lesser extent because future decl markers
+    % may for part of the specification that the actual implementation
+    % can be compared against.
+    add_decl_markers(DeclMarkers,
+        !ModuleInfo, !Specs),
+    add_impl_markers(ImplMarkers,
+        !ModuleInfo, !Specs),
 
     % Add foreign proc definitions from the program, as well as
     % - for the auxiliary predicates that implement solver types, and
@@ -546,31 +527,39 @@ parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % This times does have to be after we have processed all predicate
     % and mode declarations, since several pragmas do refer to predicates
     % or to modes of predicates.
-    add_decl_pragmas(PragmasDecl,
+    add_decl_pragmas(DeclPragmas,
         !ModuleInfo, !QualInfo, !Specs),
-    add_decl_pragmas_type_spec(PragmasDeclTypeSpec,
+    add_decl_pragmas_type_spec(DeclTypeSpec,
         !ModuleInfo, !QualInfo, !Specs),
-    add_decl_pragmas_term_info(PragmasDeclTermInfo,
+    add_decl_pragmas_termination(DeclTermination,
         !ModuleInfo, !Specs),
-    add_decl_pragmas_term2_info(PragmasDeclTerm2Info,
+    add_decl_pragmas_termination2(DeclTermination2,
         !ModuleInfo, !Specs),
-    add_decl_pragmas_sharing(PragmasDeclSharing,
+    add_decl_pragmas_sharing(DeclSharing,
         !ModuleInfo, !Specs),
-    add_decl_pragmas_reuse(PragmasDeclReuse,
+    add_decl_pragmas_reuse(DeclReuse,
         !ModuleInfo, !Specs),
 
-    % We want to process tabled pragmas *after* any inline pragmas
-    % (which are also impl pragmas), so that we can detect and report
-    % the problem if a predicate or function has both an inline pragma
-    % and a tabled pragma.
-    add_impl_pragmas(PragmasImpl, cord.init, PragmaTabledCord,
+    % Tabling pragmas are not compatible with some other pragmas.
+    % We used to delay their processing until after other impl pragmas
+    % because we wanted to check check for and report the incompatibility
+    % between tabling pragmas and inline markers in one place (in the code
+    % of add_pragma_tabling.m). This is now handled by the fact that
+    % we add ImplMarkers to the HLDS above. However, tabling is also
+    % incompatibile with fact tables, in that the two do not make sense
+    % together (for a fact table predicate, tabling has no advantages
+    % and adds only overhead). Delaying the addition of PragmasTabled
+    % to the HLDS can simplify detecting this fact. However, at the moment,
+    % pred_infos don't have a marker to say "defined using a fact table".
+    % and without this, we cannot know when to generate such a warning.
+    add_impl_pragmas(ImplPragmas, cord.init, PragmaTabledCord,
         !ModuleInfo, !QualInfo, !Specs),
     PragmasTabled = cord.list(PragmaTabledCord),
     add_impl_pragmas_tabled(PragmasTabled,
         !ModuleInfo, !QualInfo, !Specs),
 
     FPEInfos = cord.list(FPEInfosCord),
-    list.foldl2(add_pragma_info_foreign_proc_export, FPEInfos,
+    list.foldl2(add_pragma_foreign_proc_export, FPEInfos,
         !ModuleInfo, !Specs),
 
     list.foldl(module_add_foreign_decl_code_aux, MutableForeignDeclCodes,
@@ -578,13 +567,13 @@ parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     list.foldl(module_add_foreign_body_code, MutableForeignBodyCodes,
         !ModuleInfo),
 
-    list.foldl2(add_gen_pragma_unused_args, PragmasGenUnusedArgs,
+    list.foldl2(add_gen_pragma_unused_args, GenUnusedArgs,
         !ModuleInfo, !Specs),
-    list.foldl2(add_gen_pragma_exceptions, PragmasGenExceptions,
+    list.foldl2(add_gen_pragma_exceptions, GenExceptions,
         !ModuleInfo, !Specs),
-    list.foldl2(add_gen_pragma_trailing, PragmasGenTrailing,
+    list.foldl2(add_gen_pragma_trailing, GenTrailing,
         !ModuleInfo, !Specs),
-    list.foldl2(add_gen_pragma_mm_tabling, PragmasGenMMTabling,
+    list.foldl2(add_gen_pragma_mm_tabling, GenMMTabling,
         !ModuleInfo, !Specs),
 
     % Check that the declarations for field extraction and update functions
@@ -1014,8 +1003,8 @@ add_promise(PredStatus, PromiseInfo, !ModuleInfo, !QualInfo, !Specs) :-
 %---------------------------------------------------------------------------%
 
 :- pred add_initialises(module_info::in, ims_list(item_initialise_info)::in,
-    cord(item_pragma_info(pragma_info_foreign_proc_export))::in,
-    cord(item_pragma_info(pragma_info_foreign_proc_export))::out,
+    cord(impl_pragma_fproc_export_info)::in,
+    cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -1030,8 +1019,8 @@ add_initialises(ModuleInfo, [ImsList | ImsLists],
 
 :- pred add_initialise(module_info::in, item_mercury_status::in,
     item_initialise_info::in,
-    cord(item_pragma_info(pragma_info_foreign_proc_export))::in,
-    cord(item_pragma_info(pragma_info_foreign_proc_export))::out,
+    cord(impl_pragma_fproc_export_info)::in,
+    cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -1057,8 +1046,8 @@ add_initialise(ModuleInfo, ItemMercuryStatus, Initialise,
     ).
 
 :- pred add_finalises(module_info::in, ims_list(item_finalise_info)::in,
-    cord(item_pragma_info(pragma_info_foreign_proc_export))::in,
-    cord(item_pragma_info(pragma_info_foreign_proc_export))::out,
+    cord(impl_pragma_fproc_export_info)::in,
+    cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -1073,8 +1062,8 @@ add_finalises(ModuleInfo, [ImsList | ImsLists],
 
 :- pred add_finalise(module_info::in, item_mercury_status::in,
     item_finalise_info::in,
-    cord(item_pragma_info(pragma_info_foreign_proc_export))::in,
-    cord(item_pragma_info(pragma_info_foreign_proc_export))::out,
+    cord(impl_pragma_fproc_export_info)::in,
+    cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -1107,8 +1096,8 @@ add_finalise(ModuleInfo, ItemMercuryStatus, FinaliseInfo,
 
 :- pred implement_initialise_finalise(module_info::in, init_or_final::in,
     sym_name::in, user_arity::in, prog_context::in, item_seq_num::in,
-    cord(item_pragma_info(pragma_info_foreign_proc_export))::in,
-    cord(item_pragma_info(pragma_info_foreign_proc_export))::out,
+    cord(impl_pragma_fproc_export_info)::in,
+    cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -1222,10 +1211,10 @@ is_valid_init_or_final_pred(PredInfo, ExpectedHeadModes) :-
 
 :- pred make_pragma_foreign_proc_export(globals::in, sym_name::in,
     list(mer_mode)::in, string::in, compiler_origin::in, prog_context::in,
-    item_pragma_info(pragma_info_foreign_proc_export)::out) is det.
+    impl_pragma_fproc_export_info::out) is det.
 
 make_pragma_foreign_proc_export(Globals, SymName, HeadModes, CName,
-        Origin, Context, PragmaFPEInfo) :-
+        Origin, Context, FPEInfo) :-
     Attrs = item_compiler_attributes(Origin),
     PEOrigin = item_origin_compiler(Attrs),
     globals.get_target(Globals, CompilationTarget),
@@ -1235,9 +1224,8 @@ make_pragma_foreign_proc_export(Globals, SymName, HeadModes, CName,
     % generating any error messages for it, which means that
     % the varset won't be used.
     varset.init(VarSet),
-    FPEInfo = pragma_info_foreign_proc_export(PEOrigin, ExportLang,
-        PredNameModesPF, CName, VarSet),
-    PragmaFPEInfo = item_pragma_info(FPEInfo, Context, item_no_seq_num).
+    FPEInfo = impl_pragma_fproc_export_info(PEOrigin, ExportLang,
+        PredNameModesPF, CName, VarSet, Context, item_no_seq_num).
 
 %---------------------------------------------------------------------------%
 

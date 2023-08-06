@@ -109,10 +109,10 @@
     ;       mqec_foreign_enum(prog_context)
     ;       mqec_foreign_export_enum(prog_context)
     ;       mqec_pragma_decl(prog_context,
-                decl_pragma
+                item_decl_pragma_info
             )
     ;       mqec_pragma_impl(prog_context,
-                impl_pragma
+                item_impl_pragma_info
             )
     ;       mqec_lambda_expr(prog_context)
     ;       mqec_clause_mode_annotation(prog_context)

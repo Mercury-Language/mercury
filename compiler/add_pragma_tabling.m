@@ -16,7 +16,7 @@
 
 :- import_module list.
 
-:- pred module_add_pragma_tabled(pragma_info_tabled::in, prog_context::in,
+:- pred module_add_pragma_tabled(impl_pragma_tabled_info::in,
     item_mercury_status::in, pred_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -65,10 +65,10 @@
 :- import_module term.
 :- import_module varset.
 
-module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
+module_add_pragma_tabled(TabledInfo, ItemMercuryStatus, PredStatus,
         !ModuleInfo, !QualInfo, !Specs) :-
-    TabledInfo = pragma_info_tabled(TabledMethod, PredOrProcSpec,
-        MaybeAttributes),
+    TabledInfo = impl_pragma_tabled_info(TabledMethod, PredOrProcSpec,
+        MaybeAttributes, Context, _SeqNum),
     PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, PredSymName),
     (
         PredSymName = qualified(PredModuleName, PredName)

@@ -43,7 +43,7 @@
     sec_list(item_pred_decl_info)::out,
     ims_list(item_clause_info)::out, ims_list(item_foreign_proc_info)::out,
     list(foreign_decl_code)::out, list(foreign_body_code)::out,
-    cord(item_fproc_export)::out,
+    cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -95,7 +95,8 @@ implement_mutables_if_local(ModuleInfo, UndefInstCtors, SecList, PredDecls,
         ims_cord(item_foreign_proc_info)::out,
     cord(foreign_decl_code)::in, cord(foreign_decl_code)::out,
     cord(foreign_body_code)::in, cord(foreign_body_code)::out,
-    cord(item_fproc_export)::in, cord(item_fproc_export)::out,
+    cord(impl_pragma_fproc_export_info)::in,
+        cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -159,7 +160,8 @@ implement_mutables_sec_loop(ModuleInfo, UndefInstCtors,
     cord(item_foreign_proc_info)::in, cord(item_foreign_proc_info)::out,
     cord(foreign_decl_code)::in, cord(foreign_decl_code)::out,
     cord(foreign_body_code)::in, cord(foreign_body_code)::out,
-    cord(item_fproc_export)::in, cord(item_fproc_export)::out,
+    cord(impl_pragma_fproc_export_info)::in,
+        cord(impl_pragma_fproc_export_info)::out,
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 

@@ -72,11 +72,10 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
             MaybePredOrProcSpec = ok1(PredOrProcSpec),
             (
                 MaybeAttrs = no,
-                TabledInfo =
-                    pragma_info_tabled(TabledMethod0, PredOrProcSpec, no),
-                Pragma = impl_pragma_tabled(TabledInfo),
-                ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-                Item = item_impl_pragma(ItemPragma),
+                Tabled = impl_pragma_tabled_info(TabledMethod0, PredOrProcSpec,
+                    no, Context, SeqNum),
+                ImplPragma = impl_pragma_tabled(Tabled),
+                Item = item_impl_pragma(ImplPragma),
                 MaybeIOM = ok1(iom_item(Item))
             ;
                 MaybeAttrs = yes(AttrsListTerm),
@@ -114,11 +113,10 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                                 unexpected($pred, "non-pragma eval method")
                             )
                         ),
-                        TabledInfo = pragma_info_tabled(TabledMethod,
-                            PredOrProcSpec, yes(Attributes)),
-                        Pragma = impl_pragma_tabled(TabledInfo),
-                        ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
-                        Item = item_impl_pragma(ItemPragma),
+                        Tabled = impl_pragma_tabled_info(TabledMethod,
+                            PredOrProcSpec, yes(Attributes), Context, SeqNum),
+                        ImplPragma = impl_pragma_tabled(Tabled),
+                        Item = item_impl_pragma(ImplPragma),
                         MaybeIOM = ok1(iom_item(Item))
                     ;
                         DuplicateSpecs = [_ | _],
