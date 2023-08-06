@@ -120,16 +120,27 @@
     linked_target_type::in, module_name::in, list(string)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
-    % post_link_make_symlink_or_copy(Globals, ProgressStream, ErrorStream,
-    %   TargetType, MainModuleName, Succeeded, MadeSymlinkOrCopy, !IO)
+:- pred linked_target_file_name(globals::in, module_name::in,
+    linked_target_type::in, file_name::out, io::di, io::uo) is det.
+
+:- pred linked_target_file_name_full_curdir(globals::in, module_name::in,
+    linked_target_type::in, file_name::out, file_name::out,
+    io::di, io::uo) is det.
+
+    % post_link_maybe_make_symlink_or_copy(Globals,
+    %   ProgressStream, ErrorStream, FullFileName, CurDirFileName,
+    %   ModuleName, LinkTargetType, Succeeded, MadeSymlinkOrCopy, !IO):
     %
-    % If `--use-grade-subdirs' is enabled, link or copy the executable or
-    % library into the user's directory after having successfully built it,
-    % if the target does not exist or is not up-to-date.
+    % If FullFileName, which results from converting MainModuleName
+    % and TargetType to a fully specified relative pathname, differs from
+    % CurDirFileName, which is the same filename in the current directory,
+    % then link or copy FileName into the current directory after having
+    % successfully built it, if the target does not exist or is not up-to-date.
     %
-:- pred post_link_make_symlink_or_copy(globals::in,
+:- pred post_link_maybe_make_symlink_or_copy(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
-    linked_target_type::in, module_name::in, maybe_succeeded::out, bool::out,
+    file_name::in, file_name::in,
+    module_name::in, linked_target_type::in, maybe_succeeded::out, bool::out,
     io::di, io::uo) is det.
 
     % shared_libraries_supported(Globals, SharedLibsSupported)
@@ -252,7 +263,6 @@
 :- import_module parse_tree.write_error_spec.
 
 :- import_module dir.
-:- import_module getopt.
 :- import_module io.file.
 :- import_module require.
 :- import_module set.
@@ -1101,10 +1111,11 @@ referenced_dlls(Module, DepModules0) = Modules :-
 make_library_init_file(Globals, ProgressStream, ErrorStream,
         MainModuleName, AllModules, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
-    module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_lib_gs(ext_lib_gs_init), MainModuleName, InitFileName, !IO),
-    TmpInitFileName = InitFileName ++ ".tmp",
-    io.open_output(TmpInitFileName, InitFileRes, !IO),
+    module_name_to_file_name_full_curdir_create_dirs(Globals, $pred,
+        ext_lib_gs(ext_lib_gs_init), MainModuleName,
+        FullInitFileName, CurDirInitFileName, !IO),
+    TmpFullInitFileName = FullInitFileName ++ ".tmp",
+    io.open_output(TmpFullInitFileName, InitFileRes, !IO),
     (
         InitFileRes = ok(InitFileStream),
         list.map(
@@ -1136,31 +1147,20 @@ make_library_init_file(Globals, ProgressStream, ErrorStream,
 
         io.close_output(InitFileStream, !IO),
         copy_dot_tmp_to_base_file_return_succeeded(Globals, MainModuleName,
-            InitFileName, Succeeded1, !IO),
+            FullInitFileName, Succeeded1, !IO),
         Succeeded2 = Succeeded0 `and` Succeeded1,
         (
             Succeeded2 = succeeded,
             % Symlink or copy the .init files to the user's directory
             % if --use-grade-subdirs is enabled.
-            globals.lookup_bool_option(Globals, use_grade_subdirs,
-                UseGradeSubDirs),
-            (
-                UseGradeSubDirs = yes,
-                globals.set_option(use_subdirs, bool(no),
-                    Globals, NoSubdirGlobals0),
-                globals.set_option(use_grade_subdirs, bool(no),
-                    NoSubdirGlobals0, NoSubdirGlobals),
-                module_name_to_file_name(NoSubdirGlobals, $pred,
-                    ext_lib_gs(ext_lib_gs_init),
-                    MainModuleName, UserDirFileName),
+            ( if FullInitFileName = CurDirInitFileName then
+                Succeeded = succeeded
+            else
                 % Remove the target of the symlink/copy in case it already
                 % exists.
-                io.file.remove_file(UserDirFileName, _, !IO),
+                io.file.remove_file(CurDirInitFileName, _, !IO),
                 make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
-                    InitFileName, UserDirFileName, Succeeded, !IO)
-            ;
-                UseGradeSubDirs = no,
-                Succeeded = succeeded
+                    FullInitFileName, CurDirInitFileName, Succeeded, !IO)
             )
         ;
             Succeeded2 = did_not_succeed,
@@ -1170,7 +1170,7 @@ make_library_init_file(Globals, ProgressStream, ErrorStream,
         InitFileRes = error(Error),
         io.progname_base("mercury_compile", ProgName, !IO),
         io.format(ErrorStream, "%s: can't open `%s' for output: %s\n",
-            [s(ProgName), s(TmpInitFileName), s(io.error_message(Error))],
+            [s(ProgName), s(TmpFullInitFileName), s(io.error_message(Error))],
             !IO),
         Succeeded = did_not_succeed
     ).
@@ -1562,21 +1562,21 @@ link(Globals, ProgressStream, ErrorStream, LinkTargetType,
     globals.lookup_bool_option(Globals, statistics, Stats),
 
     maybe_write_string(ProgressStream, Verbose, "% Linking...\n", !IO),
-    link_output_filename(Globals, LinkTargetType, ModuleName, _Ext,
-        OutputFileName, !IO),
+    linked_target_file_name_full_curdir(Globals, ModuleName, LinkTargetType,
+        FullOutputFileName, CurDirOutputFileName, !IO),
     (
         LinkTargetType = executable,
         link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream,
-            LinkTargetType, ModuleName, OutputFileName, ObjectsList,
+            LinkTargetType, ModuleName, FullOutputFileName, ObjectsList,
             LinkSucceeded, !IO)
     ;
         LinkTargetType = static_library,
-        create_archive(Globals, ProgressStream, ErrorStream, OutputFileName,
-            yes, ObjectsList, LinkSucceeded, !IO)
+        create_archive(Globals, ProgressStream, ErrorStream,
+            FullOutputFileName, yes, ObjectsList, LinkSucceeded, !IO)
     ;
         LinkTargetType = shared_library,
         link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream,
-            LinkTargetType, ModuleName, OutputFileName, ObjectsList,
+            LinkTargetType, ModuleName, FullOutputFileName, ObjectsList,
             LinkSucceeded, !IO)
     ;
         ( LinkTargetType = csharp_executable
@@ -1584,63 +1584,95 @@ link(Globals, ProgressStream, ErrorStream, LinkTargetType,
         ),
         % XXX C# see also older predicate compile_csharp_file
         create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream,
-            LinkTargetType, ModuleName, OutputFileName, ObjectsList,
+            LinkTargetType, ModuleName, FullOutputFileName, ObjectsList,
             LinkSucceeded, !IO)
     ;
         ( LinkTargetType = java_executable
         ; LinkTargetType = java_archive
         ),
         create_java_exe_or_lib(Globals, ProgressStream, ErrorStream,
-            LinkTargetType, ModuleName, OutputFileName, ObjectsList,
+            LinkTargetType, ModuleName, FullOutputFileName, ObjectsList,
             LinkSucceeded, !IO)
     ),
     maybe_report_stats(ProgressStream, Stats, !IO),
     (
         LinkSucceeded = succeeded,
-        post_link_make_symlink_or_copy(Globals, ProgressStream, ErrorStream,
-            LinkTargetType, ModuleName, Succeeded, _MadeSymlinkOrCopy, !IO)
+        post_link_maybe_make_symlink_or_copy(Globals,
+            ProgressStream, ErrorStream,
+            FullOutputFileName, CurDirOutputFileName,
+            ModuleName, LinkTargetType, Succeeded, _MadeSymlinkOrCopy, !IO)
     ;
         LinkSucceeded = did_not_succeed,
         Succeeded = did_not_succeed
     ).
 
-:- pred link_output_filename(globals::in, linked_target_type::in,
-    module_name::in, ext::out, string::out, io::di, io::uo) is det.
-
-link_output_filename(Globals, LinkTargetType, ModuleName, Ext,
-        OutputFileName, !IO) :-
+linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
     (
-        LinkTargetType = executable,
-        Ext = ext_exec_gs(ext_exec_exec_opt),
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            Ext, ModuleName, OutputFileName, !IO)
-    ;
-        LinkTargetType = static_library,
-        Ext = ext_lib_gs(ext_lib_gs_lib_opt),
-        module_name_to_lib_file_name_create_dirs(Globals, $pred,
-            "lib", Ext, ModuleName, OutputFileName, !IO)
-    ;
-        LinkTargetType = shared_library,
-        Ext = ext_lib_gs(ext_lib_gs_sh_lib_opt),
-        module_name_to_lib_file_name_create_dirs(Globals, $pred,
-            "lib", Ext, ModuleName, OutputFileName, !IO)
-    ;
-        LinkTargetType = csharp_executable,
-        Ext = ext_exec(ext_exec_exe),
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            Ext, ModuleName, OutputFileName, !IO)
-    ;
-        LinkTargetType = csharp_library,
-        Ext = ext_lib_gs(ext_lib_gs_dll),
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            Ext, ModuleName, OutputFileName, !IO)
-    ;
-        ( LinkTargetType = java_executable
-        ; LinkTargetType = java_archive
+        % Java archives and Java executables get the same filename.
+        % XXX Then why make the distinction in linked_target_type?
+        (
+            TargetType = executable,
+            Ext = ext_exec_gs(ext_exec_exec_opt)
+        ;
+            TargetType = csharp_executable,
+            Ext = ext_exec(ext_exec_exe)
+        ;
+            TargetType = csharp_library,
+            Ext = ext_lib_gs(ext_lib_gs_dll)
+        ;
+            TargetType = java_archive,
+            Ext = ext_lib_gs(ext_lib_gs_jar)
+        ;
+            TargetType = java_executable,
+            Ext = ext_lib_gs(ext_lib_gs_jar)
         ),
-        Ext = ext_lib_gs(ext_lib_gs_jar),
         module_name_to_file_name_create_dirs(Globals, $pred,
-            Ext, ModuleName, OutputFileName, !IO)
+            Ext, ModuleName, FileName, !IO)
+    ;
+        (
+            TargetType = static_library,
+            Ext = ext_lib_gs(ext_lib_gs_lib_opt)
+        ;
+            TargetType = shared_library,
+            Ext = ext_lib_gs(ext_lib_gs_sh_lib_opt)
+        ),
+        module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
+            Ext, ModuleName, FileName, !IO)
+    ).
+
+linked_target_file_name_full_curdir(Globals, ModuleName, TargetType,
+        FullFileName, CurDirFileName, !IO) :-
+    (
+        % Java archives and Java executables get the same filename.
+        % XXX Then why make the distinction in linked_target_type?
+        (
+            TargetType = executable,
+            Ext = ext_exec_gs(ext_exec_exec_opt)
+        ;
+            TargetType = csharp_executable,
+            Ext = ext_exec(ext_exec_exe)
+        ;
+            TargetType = csharp_library,
+            Ext = ext_lib_gs(ext_lib_gs_dll)
+        ;
+            TargetType = java_archive,
+            Ext = ext_lib_gs(ext_lib_gs_jar)
+        ;
+            TargetType = java_executable,
+            Ext = ext_lib_gs(ext_lib_gs_jar)
+        ),
+        module_name_to_file_name_full_curdir_create_dirs(Globals, $pred,
+            Ext, ModuleName, FullFileName, CurDirFileName, !IO)
+    ;
+        (
+            TargetType = static_library,
+            Ext = ext_lib_gs(ext_lib_gs_lib_opt)
+        ;
+            TargetType = shared_library,
+            Ext = ext_lib_gs(ext_lib_gs_sh_lib_opt)
+        ),
+        module_name_to_lib_file_name_full_curdir_create_dirs(Globals, $pred,
+            "lib", Ext, ModuleName, FullFileName, CurDirFileName, !IO)
     ).
 
 :- pred get_launcher_script_extension(globals::in, ext::out) is det.
@@ -1668,7 +1700,7 @@ get_launcher_script_extension(Globals, Ext) :-
     io::di, io::uo) is det.
 
 link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
-        ModuleName, OutputFileName, ObjectsList, Succeeded, !IO) :-
+        ModuleName, FullOutputFileName, ObjectsList, Succeeded, !IO) :-
     (
         LinkTargetType = shared_library,
         CommandOpt = link_shared_lib_command,
@@ -1897,7 +1929,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
                 LTOOpts, " ",
                 TraceOpts, " ",
                 ReserveStackSizeOpt, " ",
-                OutputOpt, quote_shell_cmd_arg(OutputFileName), " ",
+                OutputOpt, quote_shell_cmd_arg(FullOutputFileName), " ",
                 Objects, " ",
                 LinkOptSep, " ",
                 LinkLibraryDirectories, " ",
@@ -1936,7 +1968,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
             then
                 string.format("%s %s %s",
                     [s(StripExeCommand), s(StripExeFlags),
-                    s(quote_shell_cmd_arg(OutputFileName))], StripCmd),
+                    s(quote_shell_cmd_arg(FullOutputFileName))], StripCmd),
                 invoke_system_command_maybe_filter_output(Globals,
                     ProgressStream, ErrorStream, ErrorStream,
                     cmd_verbose_commands, StripCmd, no, Succeeded, !IO)
@@ -2389,47 +2421,26 @@ has_object_file_extension(ObjExt, PicObjExt, FileName) :-
     ; string.suffix(FileName, PicObjExt)
     ).
 
-post_link_make_symlink_or_copy(Globals, ProgressStream, ErrorStream,
-        LinkTargetType, ModuleName, Succeeded, MadeSymlinkOrCopy, !IO) :-
-    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    (
-        UseGradeSubdirs = yes,
-        link_output_filename(Globals, LinkTargetType, ModuleName,
-            Ext, OutputFileName, !IO),
-        % Link/copy the executable into the user's directory.
-        globals.set_option(use_subdirs, bool(no),
-            Globals, NoSubdirGlobals0),
-        globals.set_option(use_grade_subdirs, bool(no),
-            NoSubdirGlobals0, NoSubdirGlobals),
+post_link_maybe_make_symlink_or_copy(Globals, ProgressStream, ErrorStream,
+        FullFileName, CurDirFileName, ModuleName, LinkTargetType,
+        Succeeded, MadeSymlinkOrCopy, !IO) :-
+    ( if FullFileName = CurDirFileName then
+        Succeeded = succeeded,
+        MadeSymlinkOrCopy = no
+    else
+        do_timestamps_match(FullFileName, CurDirFileName,
+            DoTimestampsMatch, !IO),
         (
-            ( LinkTargetType = executable
-            ; LinkTargetType = csharp_executable
-            ; LinkTargetType = csharp_library
-            ; LinkTargetType = java_executable
-            ; LinkTargetType = java_archive
-            ),
-            module_name_to_file_name(NoSubdirGlobals, $pred,
-                Ext, ModuleName, UserDirFileName)
-        ;
-            ( LinkTargetType = static_library
-            ; LinkTargetType = shared_library
-            ),
-            module_name_to_lib_file_name(NoSubdirGlobals, $pred,
-                "lib", Ext, ModuleName, UserDirFileName)
-        ),
-
-        same_timestamp(OutputFileName, UserDirFileName, SameTimestamp, !IO),
-        (
-            SameTimestamp = yes,
+            DoTimestampsMatch = yes,
             Succeeded0 = succeeded,
             MadeSymlinkOrCopy = no
         ;
-            SameTimestamp = no,
+            DoTimestampsMatch = no,
             % Remove the target of the symlink/copy in case it already exists.
-            io.file.remove_file_recursively(UserDirFileName, _, !IO),
+            io.file.remove_file_recursively(CurDirFileName, _, !IO),
 
             make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
-                OutputFileName, UserDirFileName, Succeeded0, !IO),
+                FullFileName, CurDirFileName, Succeeded0, !IO),
             MadeSymlinkOrCopy = yes
         ),
 
@@ -2449,31 +2460,25 @@ post_link_make_symlink_or_copy(Globals, ProgressStream, ErrorStream,
             )
         then
             get_launcher_script_extension(Globals, ScriptExt),
-            module_name_to_file_name(Globals, $pred,
-                ScriptExt, ModuleName, OutputScriptName),
-            module_name_to_file_name(NoSubdirGlobals, $pred,
-                ScriptExt, ModuleName, UserDirScriptName),
+            module_name_to_file_name_full_curdir(Globals, $pred, ScriptExt,
+                ModuleName, FullLauncherName, CurDirLauncherName),
 
-            same_timestamp(OutputScriptName, UserDirScriptName,
-                ScriptSameTimestamp, !IO),
+            do_timestamps_match(FullLauncherName, CurDirLauncherName,
+                DoLauncherTimestampsMatch, !IO),
             (
-                ScriptSameTimestamp = yes,
+                DoLauncherTimestampsMatch = yes,
                 Succeeded = succeeded
             ;
-                ScriptSameTimestamp = no,
+                DoLauncherTimestampsMatch = no,
                 % Remove the target of the symlink/copy in case
                 % it already exists.
-                io.file.remove_file_recursively(UserDirScriptName, _, !IO),
+                io.file.remove_file_recursively(CurDirLauncherName, _, !IO),
                 make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
-                    OutputScriptName, UserDirScriptName, Succeeded, !IO)
+                    FullLauncherName, CurDirLauncherName, Succeeded, !IO)
             )
         else
             Succeeded = Succeeded0
         )
-    ;
-        UseGradeSubdirs = no,
-        Succeeded = succeeded,
-        MadeSymlinkOrCopy = no
     ).
 
 :- pred get_framework_directories(globals::in, string::out) is det.
@@ -2489,10 +2494,10 @@ get_frameworks(Globals, FrameworkOpts) :-
     globals.lookup_accumulating_option(Globals, frameworks, Frameworks),
     join_quoted_string_list(Frameworks, "-framework ", "", " ", FrameworkOpts).
 
-:- pred same_timestamp(string::in, string::in, bool::out, io::di, io::uo)
+:- pred do_timestamps_match(string::in, string::in, bool::out, io::di, io::uo)
     is det.
 
-same_timestamp(FileNameA, FileNameB, SameTimestamp, !IO) :-
+do_timestamps_match(FileNameA, FileNameB, SameTimestamp, !IO) :-
     compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO),
     ( if MaybeCompare = yes(=) then
         SameTimestamp = yes
@@ -2605,14 +2610,12 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
         MercuryLinkage = "static",
         list.member(LibName, MercuryLibs)
     then
-        % If we are linking statically with Mercury libraries, pass the
-        % absolute pathname of the `.a' file for the library.
+        % If we are linking statically with Mercury libraries,
+        % pass the absolute pathname of the `.a' file for the library.
         file_name_to_module_name(LibName, LibModuleName),
-        globals.set_option(use_grade_subdirs, bool(no),
-            Globals, NoSubDirGlobals),
-        module_name_to_lib_file_name(NoSubDirGlobals, $pred, "lib",
-            ext_lib_gs(ext_lib_gs_lib_opt), LibModuleName, LibFileName),
-
+        module_name_to_lib_file_name_full_curdir(Globals, $pred, "lib",
+            ext_lib_gs(ext_lib_gs_lib_opt), LibModuleName,
+            _FullLibFileName, LibFileName),
         search_for_file_returning_dir(MercuryLibDirs,
             LibFileName, MaybeDirName, !IO),
         (
@@ -2637,7 +2640,7 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
     bool::in, list(file_name)::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-create_archive(Globals, ProgressStream, ErrorStream, LibFileName, Quote,
+create_archive(Globals, ProgressStream, ErrorStream, FullLibFileName, Quote,
         ObjectList, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, create_archive_command, ArCmd),
     globals.lookup_accumulating_option(Globals, create_archive_command_flags,
@@ -2657,14 +2660,14 @@ create_archive(Globals, ProgressStream, ErrorStream, LibFileName, Quote,
         join_string_list(ObjectList, "", "", " ", Objects)
     ),
 
-    % NOTE: when using the Windows Library Manager Tool (lib) there must
-    % _not_ be a space between the -OUT: option and its argument.
-    % XXX we actually check the C compiler type here since that is more
+    % NOTE When using the Windows Library Manager Tool (lib),
+    % there must _not_ be a space between the -OUT: option and its argument.
+    % XXX We actually check the C compiler type here, since that is more
     % robust than using the values of the configuration options used for
     % archive creation.
     get_c_compiler_type(Globals, C_CompilerType),
     (
-        % If we are using Visual C then we must be using the Microsoft
+        % If we are using Visual C, then we must be using the Microsoft
         % lib tool.
         ( C_CompilerType = cc_cl_x86(_)
         ; C_CompilerType = cc_cl_x64(_)
@@ -2680,7 +2683,7 @@ create_archive(Globals, ProgressStream, ErrorStream, LibFileName, Quote,
 
     MakeLibCmdArgs = string.append_list([
         ArFlags, " ",
-        ArOutputFlag, ArOutputSpace, LibFileName, " ",
+        ArOutputFlag, ArOutputSpace, FullLibFileName, " ",
         Objects]
     ),
 
@@ -2695,7 +2698,7 @@ create_archive(Globals, ProgressStream, ErrorStream, LibFileName, Quote,
     then
         Succeeded = MakeLibCmdSucceeded
     else
-        RanLibCmd = string.append_list([RanLib, " ", LibFileName]),
+        RanLibCmd = string.append_list([RanLib, " ", FullLibFileName]),
         invoke_system_command(Globals, ProgressStream, ErrorStream,
             ErrorStream, cmd_verbose_commands, RanLibCmd, Succeeded, !IO)
     ).
@@ -2706,12 +2709,12 @@ create_archive(Globals, ProgressStream, ErrorStream, LibFileName, Quote,
     list(file_name)::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
-        MainModuleName, OutputFileName0, SourceList0, Succeeded, !IO) :-
+        MainModuleName, FullOutputFileName0, SourceList0, Succeeded, !IO) :-
     get_system_env_type(Globals, EnvType),
     get_csharp_compiler_type(Globals, CSharpCompilerType),
 
-    OutputFileName = csharp_file_name(EnvType, CSharpCompilerType,
-        OutputFileName0),
+    FullOutputFileName = csharp_file_name(EnvType, CSharpCompilerType,
+        FullOutputFileName0),
     SourceList = list.map(csharp_file_name(EnvType, CSharpCompilerType),
         SourceList0),
 
@@ -2803,7 +2806,7 @@ create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         NoWarnLineNumberOpt,
         DebugOpt,
         TargetOption,
-        "-out:" ++ OutputFileName,
+        "-out:" ++ FullOutputFileName,
         SignAssemblyOpt,
         LinkLibraryDirectories,
         LinkLibraries,
@@ -2823,7 +2826,8 @@ create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         TargetEnvType = env_type_posix
     then
         create_launcher_shell_script(Globals, MainModuleName,
-            write_cli_shell_script(Globals, OutputFileName), Succeeded, !IO)
+            write_cli_shell_script(Globals, FullOutputFileName),
+            Succeeded, !IO)
     else
         Succeeded = Succeeded0
     ).
@@ -2896,7 +2900,7 @@ write_cli_shell_script(Globals, ExeFileName, Stream, !IO) :-
     list(file_name)::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 create_java_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
-        MainModuleName, JarFileName, ObjectList, Succeeded, !IO) :-
+        MainModuleName, FullJarFileName, ObjectList, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, java_archive_command, Jar),
 
     list_class_files_for_jar(Globals, ObjectList, ClassSubDir, ListClassFiles,
@@ -2921,7 +2925,7 @@ create_java_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         io.close_output(Stream, !IO),
 
         Cmd = string.append_list(
-            [Jar, " cf ", JarFileName, " @", TempFileName]),
+            [Jar, " cf ", FullJarFileName, " @", TempFileName]),
         invoke_system_command(Globals, ProgressStream, ErrorStream,
             ErrorStream, cmd_verbose_commands, Cmd, Succeeded0, !IO),
         io.file.remove_file(TempFileName, _, !IO),
@@ -2929,7 +2933,7 @@ create_java_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
             Succeeded0 = succeeded
         ;
             Succeeded0 = did_not_succeed,
-            io.file.remove_file(JarFileName, _, !IO)
+            io.file.remove_file(FullJarFileName, _, !IO)
         )
     ;
         TempFileResult = error(ErrorMessage),

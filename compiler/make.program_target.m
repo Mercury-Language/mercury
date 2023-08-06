@@ -571,25 +571,26 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         DepsResult = deps_up_to_date,
         MainModuleLinkedTarget =
             top_target_file(MainModuleName, linked_target(FileType)),
-        linked_target_file_name(Globals, MainModuleName, FileType,
-            MainModuleLinkedFileName, !IO),
+        linked_target_file_name_full_curdir(Globals, MainModuleName, FileType,
+            FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName, !IO),
         globals.lookup_bool_option(NoLinkObjsGlobals, use_grade_subdirs,
             UseGradeSubdirs),
         (
             UseGradeSubdirs = yes,
-            post_link_make_symlink_or_copy(NoLinkObjsGlobals,
-                ProgressStream, ErrorStream, FileType, MainModuleName,
-                Succeeded, MadeSymlinkOrCopy, !IO),
+            post_link_maybe_make_symlink_or_copy(NoLinkObjsGlobals,
+                ProgressStream, ErrorStream,
+                FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
+                MainModuleName, FileType, Succeeded, MadeSymlinkOrCopy, !IO),
             (
                 MadeSymlinkOrCopy = yes,
                 maybe_symlink_or_copy_linked_target_msg(NoLinkObjsGlobals,
-                    MainModuleLinkedFileName, LinkMsg),
+                    FullMainModuleLinkedFileName, LinkMsg),
                 % XXX MAKE_STREAM
                 maybe_write_msg(LinkMsg, !IO)
             ;
                 MadeSymlinkOrCopy = no,
                 maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
-                    MainModuleLinkedTarget, MainModuleLinkedFileName,
+                    MainModuleLinkedTarget, FullMainModuleLinkedFileName,
                     !Info, UpToDateMsg),
                 % XXX MAKE_STREAM
                 maybe_write_msg(UpToDateMsg, !IO)
@@ -597,7 +598,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         ;
             UseGradeSubdirs = no,
             maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
-                MainModuleLinkedTarget, MainModuleLinkedFileName, !Info,
+                MainModuleLinkedTarget, FullMainModuleLinkedFileName, !Info,
                 UpToDateMsg),
             % XXX MAKE_STREAM
             maybe_write_msg(UpToDateMsg, !IO),
@@ -2131,21 +2132,17 @@ make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
         java_executable,
         java_archive
     ],
-    list.map_foldl(linked_target_file_name(Globals, ModuleName),
-        LinkedTargetTypes, FileNames, !IO),
+    list.map2_foldl(linked_target_file_name_full_curdir(Globals, ModuleName),
+        LinkedTargetTypes, FileNames, ThisDirFileNames, !IO),
     % Remove the symlinks created for `--use-grade-subdirs'.
-    globals.set_option(use_grade_subdirs, bool(no), Globals, NoSubdirGlobals),
-    list.map_foldl(linked_target_file_name(NoSubdirGlobals, ModuleName),
-        LinkedTargetTypes, ThisDirFileNames, !IO),
     % XXX This symlink should not be necessary anymore for `mmc --make'.
-    module_name_to_file_name(NoSubdirGlobals, $pred,
-        ext_lib_gs(ext_lib_gs_init), ModuleName, ThisDirInitFileName),
-
+    module_name_to_file_name_full_curdir(Globals, $pred,
+        ext_lib_gs(ext_lib_gs_init), ModuleName,
+        FullInitFileName, ThisDirInitFileName),
+    FilesToRemove = FileNames ++ ThisDirFileNames ++
+        [FullInitFileName, ThisDirInitFileName],
     list.foldl2(make_remove_file(Globals, very_verbose),
-        FileNames ++ ThisDirFileNames ++ [ThisDirInitFileName],
-        !Info, !IO),
-    remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_lib_gs(ext_lib_gs_init), !Info, !IO),
+        FilesToRemove, !Info, !IO),
     remove_init_files(Globals, very_verbose, ModuleName, !Info, !IO).
 
 :- pred remove_init_files(globals::in, option::in, module_name::in,

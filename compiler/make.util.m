@@ -16,8 +16,6 @@
 :- module make.util.
 :- interface.
 
-:- import_module backend_libs.
-:- import_module backend_libs.compile_target_code.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -57,9 +55,6 @@
 
 :- pred dependency_file_to_file_name(globals::in, dependency_file::in,
     string::out, io::di, io::uo) is det.
-
-:- pred linked_target_file_name(globals::in, module_name::in,
-    linked_target_type::in, file_name::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -305,6 +300,8 @@
 :- implementation.
 
 :- import_module analysis.
+:- import_module backend_libs.
+:- import_module backend_libs.compile_target_code.
 :- import_module make.build.
 :- import_module make.module_dep_file.
 :- import_module parse_tree.find_module.
@@ -387,35 +384,6 @@ dependency_file_to_file_name(Globals, DepFile, FileName, !IO) :-
         get_make_target_file_name(Globals, $pred, TargetFile, FileName, !IO)
     ;
         DepFile = dep_file(FileName)
-    ).
-
-linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
-    (
-        TargetType = executable,
-        module_name_to_file_name(Globals, $pred,
-            ext_exec_gs(ext_exec_exec_opt), ModuleName, FileName)
-    ;
-        TargetType = static_library,
-        module_name_to_lib_file_name(Globals, $pred, "lib",
-            ext_lib_gs(ext_lib_gs_lib_opt), ModuleName, FileName)
-    ;
-        TargetType = shared_library,
-        module_name_to_lib_file_name(Globals, $pred, "lib",
-            ext_lib_gs(ext_lib_gs_sh_lib_opt), ModuleName, FileName)
-    ;
-        TargetType = csharp_executable,
-        module_name_to_file_name(Globals, $pred,
-            ext_exec(ext_exec_exe), ModuleName, FileName)
-    ;
-        TargetType = csharp_library,
-        module_name_to_file_name(Globals, $pred,
-            ext_lib_gs(ext_lib_gs_dll), ModuleName, FileName)
-    ;
-        ( TargetType = java_archive
-        ; TargetType = java_executable
-        ),
-        module_name_to_file_name(Globals, $pred,
-            ext_lib_gs(ext_lib_gs_jar), ModuleName, FileName)
     ).
 
     % XXX Move this below all its callers.

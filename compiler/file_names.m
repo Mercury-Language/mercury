@@ -493,6 +493,10 @@
 
     % Return the file name of the Mercury source for the given module.
     %
+    % Currently we use the convention that the module `foo.bar.baz' should be
+    % named `foo.bar.baz.m', and allow other naming conventions with the
+    % `-f' option.
+    %
 :- pred module_name_to_source_file_name(module_name::in, file_name::out,
     io::di, io::uo) is det.
 
@@ -514,19 +518,29 @@
     % This arrangement allows the first two versions to work *without*
     % being passed an I/O state pair.
     %
-    % Currently we use the convention that the module `foo.bar.baz' should be
-    % named `foo.bar.baz.m', and allow other naming conventions with the
-    % `-f' option.
+    % The versions whose names include "full_curdir" return two filenames.
+    % The first, the "full" filename may be in a non-grade-specific
+    % or in a grade-specific directory, or it can be in the current directory.
+    % The second, the "curdir" filename will always be in the current
+    % directory.
     %
-    % Note that this predicate is also used to create some "phony" Makefile
+    % Note that these predicates are also used to create some "phony" Makefile
     % targets that do not have corresponding files, e.g. `<foo>.clean'.
     %
-:- pred module_name_to_file_name_return_dirs(globals::in, string::in,
-    ext::in, module_name::in, list(dir_name)::out, file_name::out) is det.
-:- pred module_name_to_file_name(globals::in, string::in,
-    ext::in, module_name::in, file_name::out) is det.
-:- pred module_name_to_file_name_create_dirs(globals::in, string::in,
-    ext::in, module_name::in, file_name::out, io::di, io::uo) is det.
+:- pred module_name_to_file_name_return_dirs(globals::in,
+    string::in, ext::in, module_name::in, list(dir_name)::out,
+    file_name::out) is det.
+:- pred module_name_to_file_name(globals::in,
+    string::in, ext::in, module_name::in, file_name::out) is det.
+:- pred module_name_to_file_name_full_curdir(globals::in,
+    string::in, ext::in, module_name::in,
+    file_name::out, file_name::out) is det.
+:- pred module_name_to_file_name_create_dirs(globals::in,
+    string::in, ext::in, module_name::in, file_name::out,
+    io::di, io::uo) is det.
+:- pred module_name_to_file_name_full_curdir_create_dirs(globals::in,
+    string::in, ext::in, module_name::in, file_name::out, file_name::out,
+    io::di, io::uo) is det.
 
     % module_name_to_search_file_name(Globals, From, Ext, Module, FileName):
     %
@@ -557,7 +571,8 @@
     %
     % Like module_name_to_file_name_return_dirs, but also allows a prefix.
     % The variants without the _return_dirs suffix and with the _create_dirs
-    % suffix mean the same thing as with module_name_to_file_name_return_dirs.
+    % suffix, and with full_curdir,  mean the same thing as with
+    % module_name_to_file_name_return_dirs.
     %
     % Used for creating library names, e.g. `lib<foo>.$A' and `lib<foo>.so'.
     %
@@ -566,9 +581,15 @@
     is det.
 :- pred module_name_to_lib_file_name(globals::in, string::in,
     string::in, ext::in, module_name::in, file_name::out) is det.
+:- pred module_name_to_lib_file_name_full_curdir(globals::in, string::in,
+    string::in, ext::in, module_name::in, file_name::out, file_name::out)
+    is det.
 :- pred module_name_to_lib_file_name_create_dirs(globals::in, string::in,
     string::in, ext::in, module_name::in, file_name::out,
     io::di, io::uo) is det.
+:- pred module_name_to_lib_file_name_full_curdir_create_dirs(globals::in,
+    string::in, string::in, ext::in, module_name::in,
+    file_name::out, file_name::out, io::di, io::uo) is det.
 
     % fact_table_file_name_return_dirs(Globals, Ext, FactTableFileName,
     %   DirNames, FileName):
@@ -1042,47 +1063,84 @@ module_name_to_source_file_name(ModuleName, SourceFileName, !IO) :-
 %---------------------------------------------------------------------------%
 
 module_name_to_file_name_return_dirs(Globals, From, Ext,
-        ModuleName, DirNames, FileName) :-
+        ModuleName, DirNames, FullFileName) :-
     module_name_to_file_name_ext(Globals, From, do_not_search, no,
-        Ext, ModuleName, DirNames, FileName).
+        Ext, ModuleName, DirNames, CurDirFileName),
+    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
 
 module_name_to_file_name(Globals, From, Ext,
-        ModuleName, FileName) :-
+        ModuleName, FullFileName) :-
     module_name_to_file_name_ext(Globals, From, do_not_search,
-        yes(do_not_create_dirs), Ext, ModuleName, _DirNames, FileName).
+        yes(do_not_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
+    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
+
+module_name_to_file_name_full_curdir(Globals, From, Ext,
+        ModuleName, FullFileName, CurDirFileName) :-
+    module_name_to_file_name_ext(Globals, From, do_not_search,
+        yes(do_not_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
+    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
 
 module_name_to_file_name_create_dirs(Globals, From, Ext,
-        ModuleName, FileName, !IO) :-
+        ModuleName, FullFileName, !IO) :-
     module_name_to_file_name_ext(Globals, From, do_not_search,
-        yes(do_create_dirs), Ext, ModuleName, DirNames, FileName),
+        yes(do_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
+    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
+    create_any_dirs_on_path(DirNames, !IO).
+
+module_name_to_file_name_full_curdir_create_dirs(Globals, From, Ext,
+        ModuleName, FullFileName, CurDirFileName, !IO) :-
+    module_name_to_file_name_ext(Globals, From, do_not_search,
+        yes(do_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
+    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
     create_any_dirs_on_path(DirNames, !IO).
 
 %---------------------%
 
 module_name_to_search_file_name(Globals, From, Ext,
-        ModuleName, FileName) :-
+        ModuleName, FullFileName) :-
     module_name_to_file_name_ext(Globals, From, do_search,
-        yes(do_not_create_dirs), Ext, ModuleName, _DirNames, FileName).
+        yes(do_not_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
+    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
 
 %---------------------%
 
 module_name_to_lib_file_name_return_dirs(Globals, From, Prefix, Ext,
-        ModuleName, DirNames, FileName) :-
+        ModuleName, DirNames, FullFileName) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
     module_name_to_file_name_ext(Globals, From, do_not_search,
-        no, Ext, FakeModuleName, DirNames, FileName).
+        no, Ext, FakeModuleName, DirNames, CurDirFileName),
+    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
 
 module_name_to_lib_file_name(Globals, From, Prefix, Ext,
-        ModuleName, FileName) :-
+        ModuleName, FullFileName) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
     module_name_to_file_name_ext(Globals, From, do_not_search,
-        yes(do_not_create_dirs), Ext, FakeModuleName, _DirNames, FileName).
+        yes(do_not_create_dirs), Ext, FakeModuleName,
+        DirNames, CurDirFileName),
+    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
+
+module_name_to_lib_file_name_full_curdir(Globals, From, Prefix, Ext,
+        ModuleName, FullFileName, CurDirFileName) :-
+    FakeModuleName = make_fake_module_name(Prefix, ModuleName),
+    module_name_to_file_name_ext(Globals, From, do_not_search,
+        yes(do_not_create_dirs), Ext, FakeModuleName,
+        DirNames, CurDirFileName),
+    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
 
 module_name_to_lib_file_name_create_dirs(Globals, From, Prefix, Ext,
-        ModuleName, FileName, !IO) :-
+        ModuleName, FullFileName, !IO) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
     module_name_to_file_name_ext(Globals, From, do_not_search,
-        yes(do_create_dirs), Ext, FakeModuleName, DirNames, FileName),
+        yes(do_create_dirs), Ext, FakeModuleName, DirNames, CurDirFileName),
+    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
+    create_any_dirs_on_path(DirNames, !IO).
+
+module_name_to_lib_file_name_full_curdir_create_dirs(Globals, From, Prefix,
+        Ext, ModuleName, FullFileName, CurDirFileName, !IO) :-
+    FakeModuleName = make_fake_module_name(Prefix, ModuleName),
+    module_name_to_file_name_ext(Globals, From, do_not_search,
+        yes(do_create_dirs), Ext, FakeModuleName, DirNames, CurDirFileName),
+    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
     create_any_dirs_on_path(DirNames, !IO).
 
 :- func make_fake_module_name(string, module_name) = module_name.
@@ -1095,10 +1153,11 @@ make_fake_module_name(Prefix, ModuleName) = FakeModuleName :-
 %---------------------%
 
 fact_table_file_name_return_dirs(Globals, From, Ext,
-        FactTableFileName, DirNames, FileName) :-
+        FactTableFileName, DirNames, FullFileName) :-
     FakeModuleName = unqualified(FactTableFileName),
     module_name_to_file_name_ext(Globals, From, do_not_search,
-        no, Ext, FakeModuleName, DirNames, FileName).
+        no, Ext, FakeModuleName, DirNames, CurDirFileName),
+    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
 
 %---------------------------------------------------------------------------%
 
@@ -1107,7 +1166,7 @@ fact_table_file_name_return_dirs(Globals, From, Ext,
     list(dir_name)::out, file_name::out) is det.
 
 module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
-        ModuleName, DirNames, FileName) :-
+        ModuleName, DirNames, CurDirFileName) :-
     (
         % The cur group of extensions.
         % 4
@@ -1132,8 +1191,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         % but not all, kinds of executable and library files.
         % XXX Why is that?
         DirNames = [],
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        FileName = BaseNameNoExt ++ ExtStr
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, ".")
     ;
         % The cur_ngs group of extensions.
         % 1
@@ -1158,13 +1216,10 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
             UseSubdirs = no,
-            DirNames = [],
-            FileName = BaseNameNoExt ++ ExtStr
+            DirNames = []
         ;
             UseSubdirs = yes,
-            DirNames = ["Mercury", SubDirName],
-            FileName =
-                glue_dir_names_file_name(DirNames, BaseNameNoExt, ExtStr)
+            DirNames = ["Mercury", SubDirName]
         )
     ;
         % The cur_gs group of extensions.
@@ -1184,13 +1239,11 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             UseGradeSubdirs),
         (
             UseGradeSubdirs = no,
-            DirNames = [],
-            FileName = BaseNameNoExt ++ ExtStr
+            DirNames = []
         ;
             UseGradeSubdirs = yes,
             % This implies --use-subdirs as well.
-            make_grade_subdir_file_name(Globals, [SubDirName],
-                BaseNameNoExt, ExtStr, DirNames, FileName)
+            DirNames = make_grade_subdir_name(Globals, [SubDirName])
         )
     ;
         % The cur_ngs_gs_search_cur group of extensions.
@@ -1204,28 +1257,23 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             % use the plain file name. This is so that searches for files
             % in installed libraries will work. `--c-include-directory' is set
             % so that searches for files in the current directory will work.
-            DirNames = [],
-            FileName = BaseNameNoExt ++ ExtStr
+            DirNames = []
         ;
             Search = do_not_search,
             globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
             (
                 UseSubdirs = no,
-                DirNames = [],
-                FileName = BaseNameNoExt ++ ExtStr
+                DirNames = []
             ;
                 UseSubdirs = yes,
                 globals.lookup_bool_option(Globals, use_grade_subdirs,
                     UseGradeSubdirs),
                 (
                     UseGradeSubdirs = no,
-                    DirNames = ["Mercury", SubDirName],
-                    FileName = glue_dir_names_file_name(DirNames,
-                        BaseNameNoExt, ExtStr)
+                    DirNames = ["Mercury", SubDirName]
                 ;
                     UseGradeSubdirs = yes,
-                    make_grade_subdir_file_name(Globals, [SubDirName],
-                        BaseNameNoExt, ExtStr, DirNames, FileName)
+                    DirNames = make_grade_subdir_name(Globals, [SubDirName])
                 )
             )
         )
@@ -1244,28 +1292,22 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
             UseSubdirs = no,
-            DirNames = [],
-            FileName = BaseNameNoExt ++ ExtStr
+            DirNames = []
         ;
             UseSubdirs = yes,
             globals.lookup_bool_option(Globals, use_grade_subdirs,
                 UseGradeSubdirs),
             (
                 UseGradeSubdirs = no,
-                DirNames = ["Mercury", SubDirName],
-                FileName = glue_dir_names_file_name(DirNames,
-                    BaseNameNoExt, ExtStr)
+                DirNames = ["Mercury", SubDirName]
             ;
                 UseGradeSubdirs = yes,
                 (
                     Search = do_search,
-                    DirNames = ["Mercury", SubDirName],
-                    FileName = glue_dir_names_file_name(DirNames,
-                        BaseNameNoExt, ExtStr)
+                    DirNames = ["Mercury", SubDirName]
                 ;
                     Search = do_not_search,
-                    make_grade_subdir_file_name(Globals, [SubDirName],
-                        BaseNameNoExt, ExtStr, DirNames, FileName)
+                    DirNames = make_grade_subdir_name(Globals, [SubDirName])
                 )
             )
         )
@@ -1305,21 +1347,17 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
             UseSubdirs = no,
-            DirNames = [],
-            FileName = BaseNameNoExt ++ ExtStr
+            DirNames = []
         ;
             UseSubdirs = yes,
             globals.lookup_bool_option(Globals, use_grade_subdirs,
                 UseGradeSubdirs),
             (
                 UseGradeSubdirs = no,
-                DirNames = ["Mercury", SubDirName],
-                FileName = glue_dir_names_file_name(DirNames,
-                    BaseNameNoExt, ExtStr)
+                DirNames = ["Mercury", SubDirName]
             ;
                 UseGradeSubdirs = yes,
-                make_grade_subdir_file_name(Globals, [SubDirName],
-                    BaseNameNoExt, ExtStr, DirNames, FileName)
+                DirNames = make_grade_subdir_name(Globals, [SubDirName])
             )
         )
     ;
@@ -1332,39 +1370,34 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
             UseSubdirs = no,
-            DirNames = BaseParentDirs,
-            FileName = glue_dir_names_file_name(DirNames,
-                BaseNameNoExt, ExtStr)
+            DirNames = BaseParentDirs
         ;
             UseSubdirs = yes,
             globals.lookup_bool_option(Globals, use_grade_subdirs,
                 UseGradeSubdirs),
             (
                 UseGradeSubdirs = no,
-                DirNames = ["Mercury" |  SubDirNames],
-                FileName = glue_dir_names_file_name(DirNames,
-                    BaseNameNoExt, ExtStr)
+                DirNames = ["Mercury" |  SubDirNames]
             ;
                 UseGradeSubdirs = yes,
-                make_grade_subdir_file_name(Globals, SubDirNames,
-                    BaseNameNoExt, ExtStr, DirNames, FileName)
+                DirNames = make_grade_subdir_name(Globals, SubDirNames)
             )
         )
     ),
+    CurDirFileName = BaseNameNoExt ++ ExtStr,
     trace [compile_time(flag("file_name_translations")),
         runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
     (
+        FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
         record_translation(From, Search, StatOnlyMkdir,
-            Ext, ModuleName, FileName, !TIO)
+            Ext, ModuleName, FullFileName, !TIO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred make_grade_subdir_file_name(globals::in, list(dir_name)::in,
-    file_name::in, string::in, list(string)::out, file_name::out) is det.
+:- func make_grade_subdir_name(globals, list(dir_name)) = list(string).
 
-make_grade_subdir_file_name(Globals, SubDirNames, BaseNameNoExt, ExtStr,
-        DirComponents, FileName) :-
+make_grade_subdir_name(Globals, SubDirNames) = GradeSubDirNames :-
     grade_directory_component(Globals, Grade),
     globals.lookup_string_option(Globals, target_arch, TargetArch),
     % The extra "Mercury" is needed so we can use `--intermod-directory
@@ -1372,19 +1405,18 @@ make_grade_subdir_file_name(Globals, SubDirNames, BaseNameNoExt, ExtStr,
     % Mercury/<grade>/<target_arch>' to find the local `.opt' and `.mih'
     % files without messing up the search for the files for installed
     % libraries.
-    DirComponents = ["Mercury", Grade, TargetArch, "Mercury" | SubDirNames],
-    FileName = glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr).
+    GradeSubDirNames = ["Mercury", Grade, TargetArch, "Mercury" | SubDirNames].
 
-:- func glue_dir_names_file_name(list(string), string, string) = string.
+:- func glue_dir_names_base_name(list(string), string) = string.
 
-glue_dir_names_file_name(DirComponents, BaseNameNoExt, ExtStr) = FileName :-
+glue_dir_names_base_name(DirComponents, CurDirFileName) = FullFileName :-
     (
         DirComponents = [],
-        FileName = BaseNameNoExt ++ ExtStr
+        FullFileName = CurDirFileName
     ;
         DirComponents = [_ | _],
-        Components = DirComponents ++ [BaseNameNoExt ++ ExtStr],
-        FileName = dir.relative_path_name_from_components(Components)
+        Components = DirComponents ++ [CurDirFileName],
+        FullFileName = dir.relative_path_name_from_components(Components)
     ).
 
 %---------------------------------------------------------------------------%
