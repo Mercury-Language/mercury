@@ -27,44 +27,44 @@
 
 %---------------------------------------------------------------------------%
 %
-% XXX This interface could be improved in several ways.
+% XXX This interface could be improved.
 %
-% - First, the implementation of this predicate effectively divides
-%   the set of possible values of Ext into classes of extensions,
-%   treating every extension in a given class the same way.
-%   While the code handling some of classes accesses the filesystem,
-%   the code handling some other classes does not. If we put the wrappers
-%   for these two kinds of classes into two separate types, we could
-%   have a version of this predicate for each type, one with and one
-%   without an I/O state pair.
+% Some parts of the compiler, such as choose_analysis_cache_dir_name,
+% want to know which directory should hold files with a given extension,
+% *without* constructing a filename for a module with that extension.
+% It should be possible for them to get that information without
+% duplicating the logic we have here (which violates Don't Repeat Yourself).
 %
-% - Second, calls which search for a source file for reading (that may not
-%   exist) should be separated from calls that construct a file name
-%   to write the file.
+% Separating the process of constructing the directory name from the
+% the process of creating the filename would also allow us to optimize
+% code (such as the code that makes mmakefile fragments) that want
+% to convert many module names to filenames using the same extension,
+% by doing computing the directoy name parts of those filenames just once.
 %
 
     % For some kinds of files, we know exactly in which directory
     % they should be; for other kinds, we may have to search several
     % directories. For the latter, our clients will need to call the
     % module_name_to_search_file_name predicate, which internally sets
-    % MaybeSearch to do_search.
+    % Search to for_search.
     %
-    % Note that do_create_dirs is not compatible with do_search; if you
+    % Note that do_create_dirs is not compatible with for_search; if you
     % know what one of several directories should contain a file, but don't
     % know which one, you have by definition no basis you can use to choose
     % which one to create. This invariant is enforced by the fact that
     % module_name_to_search_file_name always passes do_not_create_dirs
-    % alongside do_search.
+    % alongside for_search.
     %
     % This type is not used in the interface of this module, but it is used
-    % by the *clients* of this module.
+    % by the *clients* of this module, usually to decide whether to call
+    % module_name_to_file_name or module_name_to_search_file_name.
     %
     % Note that module_name_to_search_file_name constructs just the
     % *filename to search for*, and leaves the actual searching to be done
     % by some other system component. Usually, that component is
     % either module_name_to_search_file_name's caller, or *its* caller, etc.
     % However, in some cases (such as .mh/.mih files), we just output
-    % the search file name, and leave it to the target language compiler
+    % the file name to search for, and leave it to the target language compiler
     % to do the searching.
     %
     % XXX This setup makes it hard to build a database of
@@ -72,15 +72,35 @@
     % - which extensions are ever subject to search, and
     % - what the search path of each such extension is.
     %
-    % XXX The function symbols of this type are misnamed. The code in
-    % this module *never* does any searches. What this flag controls
-    % is whether we return a "file name to search for in a list of dirs"
-    % or a "file name where it is known exactly what directory it is in".
-    % The former never has a directory name (as distinct from file name)
-    % component; the latter may have some.
+:- type maybe_for_search
+    --->    not_for_search
+            % We want a "file name where it is known exactly what directory
+            % it is in". The returned filename may contain one or more
+            % directory name components.
+    ;       for_search.
+            % We want a "file name to search for in a list of dirs".
+            % The returned filename will never contain any directory name
+            % components.
+
+    % This type specifies whether you want to search for a file or not.
+    %
+    % XXX This type is not used in this module at all.
+    % It is used by the *clients* of this module,
+    % but it could be moved elsewhere.
+    %
 :- type maybe_search
-    --->    do_search
-    ;       do_not_search.
+    --->    do_not_search
+    ;       do_search.
+
+    % If you want to search for a filename, you first need to work out
+    % what name you need to search for.
+    %
+    % If you don't want to search for a filename, you want to construct
+    % the final filename directly.
+    %
+    % This function does the appropriate conversion in each case.
+    %
+:- func maybe_search_to_maybe_for_search(maybe_search) = maybe_for_search.
 
 %---------------------%
 
@@ -105,7 +125,7 @@
 %   for some string X,
 % - a grade-specific subdirectory, which will be
 %   "Mercury/<grade>/<arch>/Mercury/<X>s" for some string X.
-%   (See make_grade_subdir_file_name) for the rationale for this scheme.)
+%   (See make_grade_subdir_name) for the rationale for this scheme.)
 %
 % Some Java extensions are an exception; they include an extra "jmercury"
 % component in the path.
@@ -139,8 +159,8 @@
 % XXX There are extension classes for which we *do* return directory name
 % components even when constructing a filename to be searched for.
 % It is not (yet) clear to me (zs) whether this is an intentional choice,
-% or whether what we do with do_search is immaterial because we *always*
-% translate those extensions with do_not_search.
+% or whether what we do with for_search is immaterial because we *always*
+% translate those extensions with not_for_search.
 %
 % In the function symbols below,
 % - the "gs" suffix stands for the use of a grade-specific directory, while
@@ -150,7 +170,7 @@
 % Instead of making the role (interface file, target file, object file, etc)
 % be the primary division point, and the directory treatment the second
 % division point, we should make the directory treatment the first one.
-% However, there is no point in dong that until we have firmly, and
+% However, there is no point in doing that until we have firmly, and
 % *explicitly*, decided the directory treatment we want for each and every
 % extension. (The current system was arrived at by piling patch upon patch
 % on a large piece of over-complex code, and cannot be considered to
@@ -709,6 +729,11 @@
 
 %---------------------------------------------------------------------------%
 
+maybe_search_to_maybe_for_search(do_not_search) = not_for_search.
+maybe_search_to_maybe_for_search(do_search) = for_search.
+
+%---------------------------------------------------------------------------%
+
 extension_to_string(Globals, Ext) = ExtStr :-
     (
         Ext = ext_int(ExtInt),
@@ -1064,32 +1089,32 @@ module_name_to_source_file_name(ModuleName, SourceFileName, !IO) :-
 
 module_name_to_file_name_return_dirs(Globals, From, Ext,
         ModuleName, DirNames, FullFileName) :-
-    module_name_to_file_name_ext(Globals, From, do_not_search, no,
+    module_name_to_file_name_ext(Globals, From, not_for_search, no,
         Ext, ModuleName, DirNames, CurDirFileName),
     FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
 
 module_name_to_file_name(Globals, From, Ext,
         ModuleName, FullFileName) :-
-    module_name_to_file_name_ext(Globals, From, do_not_search,
+    module_name_to_file_name_ext(Globals, From, not_for_search,
         yes(do_not_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
     FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
 
 module_name_to_file_name_full_curdir(Globals, From, Ext,
         ModuleName, FullFileName, CurDirFileName) :-
-    module_name_to_file_name_ext(Globals, From, do_not_search,
+    module_name_to_file_name_ext(Globals, From, not_for_search,
         yes(do_not_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
     FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
 
 module_name_to_file_name_create_dirs(Globals, From, Ext,
         ModuleName, FullFileName, !IO) :-
-    module_name_to_file_name_ext(Globals, From, do_not_search,
+    module_name_to_file_name_ext(Globals, From, not_for_search,
         yes(do_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
     FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
     create_any_dirs_on_path(DirNames, !IO).
 
 module_name_to_file_name_full_curdir_create_dirs(Globals, From, Ext,
         ModuleName, FullFileName, CurDirFileName, !IO) :-
-    module_name_to_file_name_ext(Globals, From, do_not_search,
+    module_name_to_file_name_ext(Globals, From, not_for_search,
         yes(do_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
     FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
     create_any_dirs_on_path(DirNames, !IO).
@@ -1098,7 +1123,7 @@ module_name_to_file_name_full_curdir_create_dirs(Globals, From, Ext,
 
 module_name_to_search_file_name(Globals, From, Ext,
         ModuleName, FullFileName) :-
-    module_name_to_file_name_ext(Globals, From, do_search,
+    module_name_to_file_name_ext(Globals, From, for_search,
         yes(do_not_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
     FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
 
@@ -1107,14 +1132,14 @@ module_name_to_search_file_name(Globals, From, Ext,
 module_name_to_lib_file_name_return_dirs(Globals, From, Prefix, Ext,
         ModuleName, DirNames, FullFileName) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
-    module_name_to_file_name_ext(Globals, From, do_not_search,
+    module_name_to_file_name_ext(Globals, From, not_for_search,
         no, Ext, FakeModuleName, DirNames, CurDirFileName),
     FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
 
 module_name_to_lib_file_name(Globals, From, Prefix, Ext,
         ModuleName, FullFileName) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
-    module_name_to_file_name_ext(Globals, From, do_not_search,
+    module_name_to_file_name_ext(Globals, From, not_for_search,
         yes(do_not_create_dirs), Ext, FakeModuleName,
         DirNames, CurDirFileName),
     FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
@@ -1122,7 +1147,7 @@ module_name_to_lib_file_name(Globals, From, Prefix, Ext,
 module_name_to_lib_file_name_full_curdir(Globals, From, Prefix, Ext,
         ModuleName, FullFileName, CurDirFileName) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
-    module_name_to_file_name_ext(Globals, From, do_not_search,
+    module_name_to_file_name_ext(Globals, From, not_for_search,
         yes(do_not_create_dirs), Ext, FakeModuleName,
         DirNames, CurDirFileName),
     FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
@@ -1130,7 +1155,7 @@ module_name_to_lib_file_name_full_curdir(Globals, From, Prefix, Ext,
 module_name_to_lib_file_name_create_dirs(Globals, From, Prefix, Ext,
         ModuleName, FullFileName, !IO) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
-    module_name_to_file_name_ext(Globals, From, do_not_search,
+    module_name_to_file_name_ext(Globals, From, not_for_search,
         yes(do_create_dirs), Ext, FakeModuleName, DirNames, CurDirFileName),
     FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
     create_any_dirs_on_path(DirNames, !IO).
@@ -1138,7 +1163,7 @@ module_name_to_lib_file_name_create_dirs(Globals, From, Prefix, Ext,
 module_name_to_lib_file_name_full_curdir_create_dirs(Globals, From, Prefix,
         Ext, ModuleName, FullFileName, CurDirFileName, !IO) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
-    module_name_to_file_name_ext(Globals, From, do_not_search,
+    module_name_to_file_name_ext(Globals, From, not_for_search,
         yes(do_create_dirs), Ext, FakeModuleName, DirNames, CurDirFileName),
     FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
     create_any_dirs_on_path(DirNames, !IO).
@@ -1155,15 +1180,15 @@ make_fake_module_name(Prefix, ModuleName) = FakeModuleName :-
 fact_table_file_name_return_dirs(Globals, From, Ext,
         FactTableFileName, DirNames, FullFileName) :-
     FakeModuleName = unqualified(FactTableFileName),
-    module_name_to_file_name_ext(Globals, From, do_not_search,
+    module_name_to_file_name_ext(Globals, From, not_for_search,
         no, Ext, FakeModuleName, DirNames, CurDirFileName),
     FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
 
 %---------------------------------------------------------------------------%
 
 :- pred module_name_to_file_name_ext(globals::in, string::in,
-    maybe_search::in, maybe(maybe_create_dirs)::in, ext::in, module_name::in,
-    list(dir_name)::out, file_name::out) is det.
+    maybe_for_search::in, maybe(maybe_create_dirs)::in, ext::in,
+    module_name::in, list(dir_name)::out, file_name::out) is det.
 
 module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         ModuleName, DirNames, CurDirFileName) :-
@@ -1254,14 +1279,14 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         ext_mih_extension_dir(ExtMh, ExtStr, SubDirName),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         (
-            Search = do_search,
+            Search = for_search,
             % If we are searching for (rather than writing) a `.mih' file,
             % use the plain file name. This is so that searches for files
             % in installed libraries will work. `--c-include-directory' is set
             % so that searches for files in the current directory will work.
             DirNames = []
         ;
-            Search = do_not_search,
+            Search = not_for_search,
             globals.get_subdir_setting(Globals, SubdirSetting),
             (
                 SubdirSetting = use_cur_dir,
@@ -1296,10 +1321,10 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
             (
-                Search = do_search,
+                Search = for_search,
                 DirNames = ["Mercury", SubDirName]
             ;
-                Search = do_not_search,
+                Search = not_for_search,
                 DirNames = make_grade_subdir_name(Globals, [SubDirName])
             )
         )
@@ -1546,7 +1571,7 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
     --->    record_key(
                 module_name,
                 ext,
-                maybe_search,
+                maybe_for_search,
                 maybe(maybe_create_dirs)
             ).
 
@@ -1556,7 +1581,7 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
 :- mutable(translations, map(record_key, record_value), map.init, ground,
     [untrailed, attach_to_io_state]).
 
-:- pred record_translation(string::in, maybe_search::in,
+:- pred record_translation(string::in, maybe_for_search::in,
     maybe(maybe_create_dirs)::in, ext::in, module_name::in, string::in,
     io::di, io::uo) is det.
 
@@ -1660,10 +1685,10 @@ gather_translation_stats(Globals, Key, Value, !NumKeys, !NumLookups,
         ExtStr = ExtStr0
     ),
     (
-        Search = do_search,
+        Search = for_search,
         SearchStr = "_search"
     ;
-        Search = do_not_search,
+        Search = not_for_search,
         SearchStr = "_nosearch"
     ),
     (

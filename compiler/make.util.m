@@ -40,10 +40,10 @@
     % get_file_name(Globals, From, Search, TargetFile, FileName, !IO):
     %
     % Compute a file name for the given target file.
-    % `Search' should be `do_search' if the file could be part of an
+    % `Search' should be `forsearch' if the file could be part of an
     % installed library.
     %
-:- pred get_file_name(globals::in, string::in, maybe_search::in,
+:- pred get_file_name(globals::in, string::in, maybe_for_search::in,
     target_file::in, file_name::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -97,9 +97,9 @@
     % `Search' should be `do_search' if the file could be part of an
     % installed library.
     %
-:- pred get_target_timestamp(globals::in, maybe_search::in, target_file::in,
-    maybe_error(timestamp)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred get_target_timestamp(globals::in, maybe_search::in,
+    target_file::in, maybe_error(timestamp)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Find the timestamp of the first file matching the given
     % file name in one of the given directories.
@@ -349,11 +349,11 @@ get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
         ;
             TargetExt = extension(Ext),
             (
-                Search = do_not_search,
+                Search = not_for_search,
                 module_name_to_file_name(Globals, From, Ext,
                     ModuleName, FileName)
             ;
-                Search = do_search,
+                Search = for_search,
                 module_name_to_search_file_name(Globals, From, Ext,
                     ModuleName, FileName)
             )
@@ -362,11 +362,11 @@ get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
             ; TargetExt = fact_table_obj(_, _)
             ),
             (
-                Search = do_not_search,
+                Search = not_for_search,
                 module_target_to_file_name(Globals, From, TargetType,
                     ModuleName, FileName, !IO)
             ;
-                Search = do_search,
+                Search = for_search,
                 module_target_to_search_file_name(Globals, From, TargetType,
                     ModuleName, FileName, !IO)
             )
@@ -507,7 +507,7 @@ target_type_to_target_extension(Target, TargetExt) :-
     ;
         Target = module_target_object_code(PIC),
         maybe_pic_object_file_extension(PIC, ObjExt, _),
-        TargetExt = extension( ext_target_obj(ObjExt))
+        TargetExt = extension(ext_target_obj(ObjExt))
     ;
         Target = module_target_xml_doc,
         TargetExt = extension(ext_user_ngs(ext_user_ngs_xml))
@@ -688,7 +688,8 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
         !IO) :-
     TargetFile = target_file(_ModuleName, TargetType),
     ( if TargetType = module_target_analysis_registry then
-        get_file_name(Globals, $pred, Search, TargetFile, FileName,
+        ForSearch = maybe_search_to_maybe_for_search(Search),
+        get_file_name(Globals, $pred, ForSearch, TargetFile, FileName,
             !Info, !IO),
         get_target_timestamp_analysis_registry(Globals, Search, TargetFile,
             FileName, MaybeTimestamp, !Info, !IO)
@@ -703,7 +704,8 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
         then
             MaybeTimestamp = ok(Timestamp)
         else
-            get_file_name(Globals, $pred, Search, TargetFile, FileName,
+            ForSearch = maybe_search_to_maybe_for_search(Search),
+            get_file_name(Globals, $pred, ForSearch, TargetFile, FileName,
                 !Info, !IO),
             get_target_timestamp_2(Globals, Search, TargetFile,
                 FileName, MaybeTimestamp, !Info, !IO),
