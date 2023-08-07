@@ -51,10 +51,12 @@
 :- import_module make.build.
 :- import_module make.dependencies.
 :- import_module make.deps_set.
+:- import_module make.file_names.
+:- import_module make.hash.
 :- import_module make.module_target.
 :- import_module make.program_target.
+:- import_module make.timestamp.
 :- import_module make.track_flags.
-:- import_module make.util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.

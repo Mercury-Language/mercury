@@ -282,6 +282,17 @@ make.build.m provides the machinery required to bring targets up to date.
 make.make_info.m defines the main data structure
 used by all the make*.m modules above.
 <li>
+make.file_names.m provides mechanisms to compute
+the file names of make targets.
+<li>
+make.hash.m contains code to
+hash the specifications of various entities that `mmc --make' deals with
+in order to make them smaller,
+which makes their comparisons more efficient.
+<li>
+make.timestamp.m contains predicates to get files' timestamps,
+and to compare timestamps.
+<li>
 make.util.m contains utility predicates.
 <li>
 options_file.m reads the options files specified by

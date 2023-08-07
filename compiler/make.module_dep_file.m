@@ -52,7 +52,9 @@
 :- import_module libs.process_util.
 :- import_module libs.timestamp.
 :- import_module make.build.
+:- import_module make.file_names.
 :- import_module make.module_target.
+:- import_module make.timestamp.
 :- import_module make.util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.find_module.

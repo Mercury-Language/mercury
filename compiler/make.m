@@ -29,9 +29,12 @@
 
 :- include_module dependencies.
 :- include_module deps_set.
+:- include_module file_names.
+:- include_module hash.
 :- include_module make_info.
 :- include_module module_target.
 :- include_module program_target.
+:- include_module timestamp.
 :- include_module track_flags.
 :- include_module util.
 

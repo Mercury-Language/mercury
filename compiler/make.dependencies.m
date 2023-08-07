@@ -150,7 +150,9 @@
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
 :- import_module libs.options.
+:- import_module make.file_names.
 :- import_module make.module_dep_file.
+:- import_module make.timestamp.
 :- import_module make.util.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.

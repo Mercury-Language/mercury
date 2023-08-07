@@ -88,7 +88,9 @@
 :- import_module libs.timestamp.
 :- import_module make.build.
 :- import_module make.deps_set.
+:- import_module make.file_names.
 :- import_module make.module_dep_file.
+:- import_module make.timestamp.
 :- import_module make.util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
