@@ -843,6 +843,13 @@ MR_init_conservative_GC(void)
 
     GC_set_oom_fn(MR_oom_func);
 
+    #ifdef MR_THREAD_SAFE
+    // Explicitly put the GC into multithreaded mode. This also launches any
+    // parallel marker threads. Without this, parallel marker threads will not
+    // be started until the first user thread is created.
+    GC_allow_register_threads();
+    #endif // MR_THREAD_SAFE
+
   #endif // MR_BOEHM_GC
 }
 #endif // MR_CONSERVATIVE_GC
