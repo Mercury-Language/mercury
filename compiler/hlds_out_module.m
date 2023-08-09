@@ -210,12 +210,17 @@ write_hlds(Stream, ModuleInfo, !IO) :-
         ( if string.contains_char(DumpOptions, 'M') then
             module_info_get_inst_table(ModuleInfo, InstTable),
             module_info_get_mode_table(ModuleInfo, ModeTable),
+            ( if string.contains_char(DumpOptions, 'Y') then
+                MaybeUseErrorMsgInst = use_error_msg_inst(ModuleInfo)
+            else
+                MaybeUseErrorMsgInst = do_not_use_error_msg_inst
+            ),
             globals.lookup_int_option(Globals, dump_hlds_inst_limit,
                 InstNumLimit),
             globals.lookup_int_option(Globals, dump_hlds_inst_size_limit,
                 InstSizeLimit),
-            write_inst_table(Stream, Lang, InstNumLimit, InstSizeLimit,
-                InstTable, !IO),
+            write_inst_table(Stream, Lang, MaybeUseErrorMsgInst,
+                InstNumLimit, InstSizeLimit, InstTable, !IO),
             write_mode_table(Stream, ModeTable, !IO)
         else
             true

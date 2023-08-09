@@ -7878,6 +7878,8 @@ type and typeclass information
 unify and compare predicates
 @item @samp{X}
 constant structures
+@item @samp{X}
+print insts using indentation to explain structure
 @item @samp{Z}
 information about globals structs representing call and answer tables
 @end table

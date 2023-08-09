@@ -133,6 +133,7 @@
 
 :- implementation.
 
+:- import_module hlds.error_msg_inst.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_pred.
@@ -144,6 +145,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.parse_tree_out_clause.
 :- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_info.
@@ -155,6 +157,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
 :- import_module int.
@@ -422,10 +425,12 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         VarNamePrint, Indent, Follow, GoalExpr, !IO),
     ( if string.contains_char(DumpOptions, 'i') then
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
+        instmap_delta_changed_vars(InstMapDelta, Vars),
         ( if
-            instmap_delta_is_reachable(InstMapDelta),
-            instmap_delta_changed_vars(InstMapDelta, Vars),
-            set_of_var.is_empty(Vars)
+            % InstMapDelta will almost always be reachable,
+            % so any failure is far more likely to come from is_empty failing.
+            set_of_var.is_empty(Vars),
+            instmap_delta_is_reachable(InstMapDelta)
         then
             true
         else
@@ -433,6 +438,15 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
                 ( if instmap_delta_is_unreachable(InstMapDelta) then
                     io.format(Stream, "%s%% new insts: unreachable\n",
                         [s(IndentStr)], !IO)
+                else if string.contains_char(DumpOptions, 'Y') then
+                    instmap_delta_to_assoc_list(InstMapDelta, NewVarInsts),
+                    NewVarInstStrs = list.map(
+                        new_var_inst_msg_to_string(ModuleInfo, VarNameSrc,
+                            VarNamePrint, IndentStr),
+                        NewVarInsts),
+                    io.format(Stream, "%s%% new insts:\n",
+                        [s(IndentStr)], !IO),
+                    list.foldl(io.write_string(Stream), NewVarInstStrs, !IO)
                 else
                     instmap_delta_to_assoc_list(InstMapDelta, NewVarInsts),
                     NewVarInstStrs = list.map(
@@ -578,6 +592,30 @@ new_var_inst_to_string(VarNameSrc, VarNamePrint, IndentStr, Var - Inst)
     InstStr = mercury_inst_to_string(output_debug, InstVarSet, Inst),
     string.format("%s%%   %s -> %s\n",
         [s(IndentStr), s(VarStr), s(InstStr)], Str).
+
+:- func new_var_inst_msg_to_string(module_info, var_name_source,
+    var_name_print, string, pair(prog_var, mer_inst)) = string.
+
+new_var_inst_msg_to_string(ModuleInfo, VarNameSrc, VarNamePrint, IndentStr,
+        Var - Inst) = Str :-
+    VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
+    varset.init(InstVarSet),
+    ShortInstSuffix = [nl],
+    LongInstPrefix = [nl],
+    LongInstSuffix = [nl],
+    InstPieces = error_msg_inst(ModuleInfo, InstVarSet, expand_named_insts,
+        fixed_short_inst, ShortInstSuffix, LongInstPrefix, LongInstSuffix,
+        Inst),
+    ShortInstStr = error_pieces_to_one_line_string(InstPieces),
+    ( if string.count_code_points(ShortInstStr) < 40 then
+        string.format("%s%%   %s -> %s\n",
+            [s(IndentStr), s(VarStr), s(ShortInstStr)], Str)
+    else
+        Prefix = IndentStr ++ "%   ",
+        LongInstStr = error_pieces_to_multi_line_string(Prefix, InstPieces),
+        string.format("%s%%   %s ->\n%s",
+            [s(IndentStr), s(VarStr), s(LongInstStr)], Str)
+    ).
 
 write_goal_list(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         Indent, Separator, Goals, !IO) :-

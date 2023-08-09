@@ -3179,9 +3179,9 @@ long_usage(ProgressStream, !IO) :-
 :- pred convert_dump_alias(string::in, string::out) is semidet.
 
 % None of the 'all' aliases actually include all the options.
-convert_dump_alias("ALL", "abcdEfgilmnprstuvzBCDIMPRSTUZ").
-convert_dump_alias("allD", "abcdEfgilmnprstuvzBCDMPT").
-convert_dump_alias("all", "abcdEfgilmnprstuvzBCMPTZ").
+convert_dump_alias("ALL", "abcdfgilmnprstuvzBCDEIMPRSTUYZ").
+convert_dump_alias("allD", "abcdfgilmnprstuvzBCDEMPTY").
+convert_dump_alias("all", "abcdfgilmnprstuvzBCEMPTZ").
 convert_dump_alias("most", "bcdfgilmnprstvzP").
 convert_dump_alias("cmp", "bdfgilmnprstuvzP").
 convert_dump_alias("trans", "bcdglmnstuvz").
