@@ -264,7 +264,7 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
     (
         TmpErrorLinesRes = ok(TmpErrorLines),
         module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_user(ext_user_err), ModuleName, ErrorFileName, !IO),
+            ext_cur(ext_cur_user_err), ModuleName, ErrorFileName, !IO),
         ErrorFileModules0 = make_info_get_error_file_modules(!.Info),
         ( if set.contains(ErrorFileModules0, ModuleName) then
             io.open_append(ErrorFileName, ErrorFileRes, !IO)

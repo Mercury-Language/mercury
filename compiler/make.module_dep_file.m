@@ -922,7 +922,7 @@ make_module_dependencies_fatal_error(Globals, OldOutputStream, ErrorStream,
     globals.set_option(output_compile_error_lines, maybe_int(no),
         Globals, UnredirectGlobals),
     unredirect_output(UnredirectGlobals, ModuleName, ErrorStream, !Info, !IO),
-    module_name_to_file_name(Globals, $pred, ext_user(ext_user_err),
+    module_name_to_file_name(Globals, $pred, ext_cur(ext_cur_user_err),
         ModuleName, ErrFileName),
     io.file.remove_file(ErrFileName, _, !IO),
 

@@ -593,7 +593,8 @@ make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet, MQInfo,
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     module_name_to_file_name_return_dirs(Globals, $pred,
-        ext_user(ext_user_hlds_dump), ModuleName, DumpDirs, DumpBaseFileName),
+        ext_cur(ext_cur_user_hlds_dump), ModuleName, DumpDirs,
+        DumpBaseFileName),
     % XXX An algorithm that delayed creating DumpDirs until the actual
     % creation of the first HLDS dump would be more efficient in the usual case
     % where the command line arguments don't call for any HLDS dumps,

@@ -714,7 +714,7 @@ construct_intermod_rules(Globals, ModuleName, LongDeps, AllDeps,
     % directly or indirectly.
     (
         Intermod = yes,
-        make_module_file_names_with_suffix(Globals, ext_mh(ext_mh_mh),
+        make_module_file_names_with_suffix(Globals, ext_cur(ext_cur_mh),
             set.to_sorted_list(AllDeps), AllDepsFileNames, !Cache, !IO),
         MmakeRuleMhDeps = mmake_simple_rule("machine_dependent_header_deps",
             mmake_rule_is_not_phony,
@@ -838,7 +838,7 @@ construct_c_header_rules(Globals, ModuleName, AllDeps,
     % `:- pragma foreign_import_module' declarations. In some grades the header
     % file won't actually be built (e.g. LLDS grades for modules not containing
     % `:- pragma export' declarations), but this rule won't do any harm.
-    make_module_file_name(Globals, $pred, ext_mh(ext_mh_mh),
+    make_module_file_name(Globals, $pred, ext_cur(ext_cur_mh),
         ModuleName, MhHeaderFileName, !Cache, !IO),
     make_module_file_name(Globals, $pred, ext_mih(ext_mih_mih),
         ModuleName, MihHeaderFileName, !Cache, !IO),
@@ -1016,7 +1016,7 @@ construct_foreign_import_rules(Globals, AugCompUnit, IntermodDeps,
             % .pic_o file. We need to include dependencies for the latter
             % otherwise invoking mmake with a <module>.pic_o target will break.
             ForeignImportTargets = one_or_more(ObjFileName, [PicObjFileName]),
-            ForeignImportExt = ext_mh(ext_mh_mh),
+            ForeignImportExt = ext_cur(ext_cur_mh),
             gather_foreign_import_deps(Globals, ForeignImportExt,
                 ForeignImportTargets, ForeignImportedModuleNames,
                 MmakeRuleForeignImports, !Cache, !IO),
@@ -2098,11 +2098,13 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
     % XXX Doing _create_dirs for a $A seems strange.
     module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
         ext_lib_gs(ext_lib_gs_dollar_a), ModuleName, LibFileName, !IO),
+    % XXX Doing _create_dirs for an extension that is *always in the current
+    % directory is downright issane.
     module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
-        ext_lib(ext_lib_dollar_efsl), ModuleName, SharedLibFileName, !IO),
+        ext_cur(ext_cur_lib_dollar_efsl), ModuleName, SharedLibFileName, !IO),
     % XXX EXT What is the point of this call, given the call just above?
     module_name_to_lib_file_name(Globals, $pred, "lib",
-        ext_lib(ext_lib_dollar_efsl), ModuleName, MaybeSharedLibFileName),
+        ext_cur(ext_cur_lib_dollar_efsl), ModuleName, MaybeSharedLibFileName),
     module_name_to_file_name(Globals, $pred,
         ext_lib_gs(ext_lib_gs_jar), ModuleName, JarFileName),
 
@@ -2253,17 +2255,19 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
     MaybeTransOptsVarPair = MaybeTransOptsVar - MaybeTransOptsVarSpace,
     MaybeModuleDepsVarPair = MaybeModuleDepsVar - MaybeModuleDepsVarSpace,
 
+    % XXX The following calls to module_name_to_lib_file_name could
+    % be replaced by simpler code.
     module_name_to_lib_file_name(Globals, $pred, "lib",
-        ext_mmake_target(ext_mt_install_ints),
+        ext_cur(ext_cur_pmt_install_ints),
         ModuleName, LibInstallIntsTargetName),
     module_name_to_lib_file_name(Globals, $pred, "lib",
-        ext_mmake_target(ext_mt_install_opts),
+        ext_cur(ext_cur_pmt_install_opts),
         ModuleName, LibInstallOptsTargetName),
     module_name_to_lib_file_name(Globals, $pred, "lib",
-        ext_mmake_target(ext_mt_install_hdrs),
+        ext_cur(ext_cur_pmt_install_hdrs),
         ModuleName, LibInstallHdrsTargetName),
     module_name_to_lib_file_name(Globals, $pred, "lib",
-        ext_mmake_target(ext_mt_install_grade_hdrs),
+        ext_cur(ext_cur_pmt_install_grade_hdrs),
         ModuleName, LibInstallGradeHdrsTargetName),
 
     ModuleMakeVarNameInts = "$(" ++ ModuleMakeVarName ++ ".ints)",
@@ -2474,17 +2478,17 @@ generate_dep_file_collective_targets(Globals, ModuleName,
     list.map_foldl(
         generate_dep_file_collective_target(Globals, ModuleName,
             ModuleMakeVarName), 
-        [{ext_mmake_target(ext_mt_check), ".errs"},
-        {ext_mmake_target(ext_mt_ints), ".dates"},
-        {ext_mmake_target(ext_mt_int3s), ".date3s"},
-        {ext_mmake_target(ext_mt_opts), ".optdates"},
-        {ext_mmake_target(ext_mt_trans_opts), ".trans_opt_dates"},
-        {ext_mmake_target(ext_mt_javas), ".javas"},
-        {ext_mmake_target(ext_mt_classes), ".classes"},
-        {ext_mmake_target(ext_mt_all_ints), ".dates"},
-        {ext_mmake_target(ext_mt_all_int3s), ".date3s"},
-        {ext_mmake_target(ext_mt_all_opts), ".optdates"},
-        {ext_mmake_target(ext_mt_all_trans_opts), ".trans_opt_dates"}],
+        [{ext_cur(ext_cur_pmt_check), ".errs"},
+        {ext_cur(ext_cur_pmt_ints), ".dates"},
+        {ext_cur(ext_cur_pmt_int3s), ".date3s"},
+        {ext_cur(ext_cur_pmt_opts), ".optdates"},
+        {ext_cur(ext_cur_pmt_trans_opts), ".trans_opt_dates"},
+        {ext_cur(ext_cur_pmt_javas), ".javas"},
+        {ext_cur(ext_cur_pmt_classes), ".classes"},
+        {ext_cur(ext_cur_pmt_all_ints), ".dates"},
+        {ext_cur(ext_cur_pmt_all_int3s), ".date3s"},
+        {ext_cur(ext_cur_pmt_all_opts), ".optdates"},
+        {ext_cur(ext_cur_pmt_all_trans_opts), ".trans_opt_dates"}],
         MmakeRules, !IO),
     add_mmake_entries(MmakeRules, !MmakeFile).
 
@@ -2516,10 +2520,10 @@ generate_dep_file_clean_targets(Globals, ModuleName, ModuleMakeVarName,
     % documentation in doc/user_guide.texi.
 
     module_name_to_file_name(Globals, $pred,
-        ext_mmake_target(ext_mt_clean),
+        ext_cur(ext_cur_pmt_clean),
         ModuleName, CleanTargetName),
     module_name_to_file_name(Globals, $pred,
-        ext_mmake_target(ext_mt_realclean),
+        ext_cur(ext_cur_pmt_realclean),
         ModuleName, RealCleanTargetName),
 
     % XXX Put these into a logical order.

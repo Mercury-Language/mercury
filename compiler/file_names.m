@@ -192,7 +192,11 @@
             % filename translations only therefore requires removing
             % this extension from the ext type.
 
-    --->    ext_int(ext_int)
+    --->    ext_cur(ext_cur)
+            % All extensions whose files always get put into the current
+            % directory.
+
+    ;       ext_int(ext_int)
             % Compiler-generated interface files, and the timestamp files
             % showing when they were last checked.
 
@@ -202,11 +206,6 @@
     ;       ext_opt_date(ext_opt_date)
             % Timestamp files showing when their corresponding ext_opt files
             % were last checked.
-
-    ;       ext_mh(ext_mh)
-            % Compiler-generated header file for a module that is intended
-            % for inclusion by user-written C source files.
-            % The extension string is ".mh".
 
     ;       ext_mih(ext_mih)
             % Compiler-generated header file for a module that is intended
@@ -238,7 +237,6 @@
             % a whole program, containing the code needed to initialize
             % various tables for the runtime system.
 
-    ;       ext_exec(ext_exec)
     ;       ext_exec_gs(ext_exec_gs)
             % Executables generated for a whole program.
             %
@@ -259,7 +257,6 @@
             % into a grade subdir if that option is specified, not just some.
             % They should then be copied or linked to the current directory.
 
-    ;       ext_lib(ext_lib)
     ;       ext_lib_gs(ext_lib_gs)
             % Libraries, which may be statically or dynamically linked,
             % generated for a set of modules.
@@ -285,15 +282,6 @@
             % Compiler-generated files that are designed to be bodily included
             % in Mmakefiles.
 
-    ;       ext_mmake_target(ext_mmake_target)
-            % These extensions are used not to create filenames, but to
-            % create mmake target names. Some do refer to real files,
-            % but they can (and some do) refer to these using extension
-            % strings that can contain references to make variables.
-            % Some of the other generated make targets are phony targets,
-            % meaning that they never correspond to real files at all.
-
-    ;       ext_user(ext_user)
     ;       ext_user_ngs(ext_user_ngs)
             % Compiler-generated files that are intended to be read
             % by the programmer.
@@ -329,6 +317,70 @@
 % - the name of an option giving the extension, or
 % - a prefix and the name of an option giving the rest of the extension.
 
+:- type ext_cur
+            % Executables generated for a whole program.
+            %
+            % XXX According to the documentation of the --use-grade-subdirs
+            % option, *all* executables and libraries *should* be put
+            % into a grade subdir if that option is specified, not just some.
+            % They should then be copied or linked to the current directory.
+            % XXX This means moving them to the ext_cur_gs category
+    --->    ext_cur_exec_exe                % ".exe"
+
+            % Libraries, which may be statically or dynamically linked,
+            % generated for a set of modules.
+            %
+            % Two of these extensions are intended to name real files,
+            % but one is intended to name mmake targets.
+            %
+            % XXX According to the documentation of the --use-grade-subdirs
+            % option, *all* executables and libraries *should* be put
+            % into a grade subdir if that option is specified, not just some.
+            % They should then be copied or linked to the current directory.
+            % XXX This means moving them to the ext_cur_gs category
+    ;       ext_cur_lib_dollar_efsl         % ".(EXT_FOR_SHARED_LIB)"
+    ;       ext_cur_lib_lib                 % ".lib"
+    ;       ext_cur_lib_so                  % ".so"
+
+            % Compiler-generated C header file for a module that is intended
+            % for inclusion by user-written C source files.
+            % The extension string is ".mh".
+    ;       ext_cur_mh                      % ".mh"
+
+            % These extensions are used not to create filenames, but to
+            % create mmake target names. Some do refer to real files,
+            % but they can (and some do) refer to these using extension
+            % strings that can contain references to make variables.
+            % Some of the other generated make targets are phony targets,
+            % meaning that they never correspond to real files at all.
+    ;       ext_cur_pmt_all_int3s           % ".all_int3s"
+    ;       ext_cur_pmt_all_ints            % ".all_int3"
+    ;       ext_cur_pmt_all_opts            % ".all_opts"
+    ;       ext_cur_pmt_all_trans_opts      % ".all_trans_opts"
+    ;       ext_cur_pmt_check               % ".check"
+    ;       ext_cur_pmt_classes             % ".classes"
+    ;       ext_cur_pmt_clean               % ".clean"
+    ;       ext_cur_pmt_depend              % ".depend"
+    ;       ext_cur_pmt_install_grade_hdrs  % ".install_grade_hdrs"
+    ;       ext_cur_pmt_install_hdrs        % ".install_hdrs"
+    ;       ext_cur_pmt_install_ints        % ".install_ints"
+    ;       ext_cur_pmt_install_opts        % ".install_opts"
+    ;       ext_cur_pmt_int3s               % ".int3s"
+    ;       ext_cur_pmt_ints                % ".ints"
+    ;       ext_cur_pmt_javas               % ".javas"
+    ;       ext_cur_pmt_opts                % ".opts"
+    ;       ext_cur_pmt_realclean           % ".realclean"
+    ;       ext_cur_pmt_trans_opts          % ".trans_opts"
+
+            % Compiler-generated files that are intended to be read
+            % by the programmer.
+    ;       ext_cur_user_depgraph           % ".dependency_graph"
+    ;       ext_cur_user_err                % ".err"
+    ;       ext_cur_user_hlds_dump          % ".hlds_dump"
+    ;       ext_cur_user_mlds_dump          % ".mlds_dump"
+    ;       ext_cur_user_order              % ".order"
+    ;       ext_cur_user_ugly.              % ".ugly"
+
 :- type ext_int
     --->    ext_int_int0                % ".int0"
     ;       ext_int_int1                % ".int"
@@ -345,9 +397,6 @@
 :- type ext_opt_date
     --->    ext_opt_date_plain          % ".optdate"
     ;       ext_opt_date_trans.         % ".trace_opt_date"
-
-:- type ext_mh
-    --->    ext_mh_mh.                  % ".mh"
 
 :- type ext_mih
     --->    ext_mih_mih.                % ".mih"
@@ -385,9 +434,6 @@
     ;       ext_init_obj_obj_opt        % "_init" ++ object_file_extension
     ;       ext_init_obj_pic_obj_opt.   % "_init" ++ pic_object_file_extension
 
-:- type ext_exec
-    --->    ext_exec_exe.               % ".exe"
-
 :- type ext_exec_gs
     --->    ext_exec_gs_noext           % ""
             % XXX While an empty extension *usually means we are building
@@ -396,11 +442,6 @@
             % libmer_std in the library directory.
     ;       ext_exec_gs_bat             % ".bat"
     ;       ext_exec_exec_opt.          % executable_file_extension
-
-:- type ext_lib
-    --->    ext_lib_dollar_efsl         % ".(EXT_FOR_SHARED_LIB)"
-    ;       ext_lib_lib                 % ".lib"
-    ;       ext_lib_so.                 % ".so"
 
 :- type ext_lib_gs
     --->    ext_lib_gs_dollar_a         % ".$A"
@@ -415,34 +456,6 @@
     --->    ext_mf_d                    % ".d"
     ;       ext_mf_dv                   % ".dv"
     ;       ext_mf_dep.                 % ".dep"
-
-:- type ext_mmake_target
-    --->    ext_mt_all_int3s            % ".all_int3s"
-    ;       ext_mt_all_ints             % ".all_int3"
-    ;       ext_mt_all_opts             % ".all_opts"
-    ;       ext_mt_all_trans_opts       % ".all_trans_opts"
-    ;       ext_mt_check                % ".check"
-    ;       ext_mt_classes              % ".classes"
-    ;       ext_mt_clean                % ".clean"
-    ;       ext_mt_depend               % ".depend"
-    ;       ext_mt_install_grade_hdrs   % ".install_grade_hdrs"
-    ;       ext_mt_install_hdrs         % ".install_hdrs"
-    ;       ext_mt_install_ints         % ".install_ints"
-    ;       ext_mt_install_opts         % ".install_opts"
-    ;       ext_mt_int3s                % ".int3s"
-    ;       ext_mt_ints                 % ".ints"
-    ;       ext_mt_javas                % ".javas"
-    ;       ext_mt_opts                 % ".opts"
-    ;       ext_mt_realclean            % ".realclean"
-    ;       ext_mt_trans_opts.          % ".trans_opts"
-
-:- type ext_user
-    --->    ext_user_depgraph           % ".dependency_graph"
-    ;       ext_user_err                % ".err"
-    ;       ext_user_hlds_dump          % ".hlds_dump"
-    ;       ext_user_mlds_dump          % ".mlds_dump"
-    ;       ext_user_order              % ".order"
-    ;       ext_user_ugly.              % ".ugly"
 
 :- type ext_user_ngs
     --->    ext_user_ngs_defn_ext       % ".defn_extents"
@@ -736,6 +749,9 @@ maybe_search_to_maybe_for_search(do_search) = for_search.
 
 extension_to_string(Globals, Ext) = ExtStr :-
     (
+        Ext = ext_cur(ExtCur),
+        ext_cur_extension(ExtCur, ExtStr)
+    ;
         Ext = ext_int(ExtInt),
         ext_int_extension_dir(ExtInt, ExtStr, _SubDirName)
     ;
@@ -744,9 +760,6 @@ extension_to_string(Globals, Ext) = ExtStr :-
     ;
         Ext = ext_opt_date(ExtOptDate),
         ext_opt_date_extension_dir(ExtOptDate, ExtStr, _SubDirName)
-    ;
-        Ext = ext_mh(ExtMh),
-        ext_mh_extension(ExtMh, ExtStr)
     ;
         Ext = ext_mih(ExtMh),
         ext_mih_extension_dir(ExtMh, ExtStr, _SubDirName)
@@ -769,26 +782,14 @@ extension_to_string(Globals, Ext) = ExtStr :-
         Ext = ext_target_init_obj(ExtInitObj),
         ext_init_obj_extension_dir(Globals, ExtInitObj, ExtStr, _SubDirName)
     ;
-        Ext = ext_exec(ExtExec),
-        ext_exec_extension(ExtExec, ExtStr)
-    ;
         Ext = ext_exec_gs(ExtExecGs),
         ext_exec_gs_extension_dir(Globals, ExtExecGs, ExtStr, _SubDirName)
-    ;
-        Ext = ext_lib(ExtLib),
-        ext_lib_extension(ExtLib, ExtStr)
     ;
         Ext = ext_lib_gs(ExtLibGs),
         ext_lib_gs_extension_dir(Globals, ExtLibGs, ExtStr, _SubDirName)
     ;
         Ext = ext_mmake_fragment(ExtMf),
         ext_mmake_fragment_extension_dir(ExtMf, ExtStr, _SubDirName)
-    ;
-        Ext = ext_mmake_target(ExtMT),
-        ext_mmake_target_extension(ExtMT, ExtStr)
-    ;
-        Ext = ext_user(ExtUser),
-        ext_user_extension(ExtUser, ExtStr)
     ;
         Ext = ext_user_ngs(ExtUserNgs),
         ext_user_ngs_extension_dir(ExtUserNgs, ExtStr, _SubDirName)
@@ -810,6 +811,38 @@ extension_to_string(Globals, Ext) = ExtStr :-
     ).
 
 %---------------------------------------------------------------------------%
+
+:- pred ext_cur_extension(ext_cur::in, string::out) is det.
+
+ext_cur_extension(ext_cur_exec_exe,                 ".exe").
+ext_cur_extension(ext_cur_lib_dollar_efsl,          ".$(EXT_FOR_SHARED_LIB)").
+ext_cur_extension(ext_cur_lib_lib,                  ".lib").
+ext_cur_extension(ext_cur_lib_so,                   ".so").
+ext_cur_extension(ext_cur_mh,                       ".mh").
+ext_cur_extension(ext_cur_pmt_all_int3s,            ".all_int3s").
+ext_cur_extension(ext_cur_pmt_all_ints,             ".all_ints").
+ext_cur_extension(ext_cur_pmt_all_opts,             ".all_opts").
+ext_cur_extension(ext_cur_pmt_all_trans_opts,       ".all_trans_opts").
+ext_cur_extension(ext_cur_pmt_check,                ".check").
+ext_cur_extension(ext_cur_pmt_classes,              ".classes").
+ext_cur_extension(ext_cur_pmt_clean,                ".clean").
+ext_cur_extension(ext_cur_pmt_depend,               ".depend").
+ext_cur_extension(ext_cur_pmt_install_grade_hdrs,   ".install_grade_hdrs").
+ext_cur_extension(ext_cur_pmt_install_hdrs,         ".install_hdrs").
+ext_cur_extension(ext_cur_pmt_install_ints,         ".install_ints").
+ext_cur_extension(ext_cur_pmt_install_opts,         ".install_opts").
+ext_cur_extension(ext_cur_pmt_int3s,                ".int3s").
+ext_cur_extension(ext_cur_pmt_ints,                 ".ints").
+ext_cur_extension(ext_cur_pmt_javas,                ".javas").
+ext_cur_extension(ext_cur_pmt_opts,                 ".opts").
+ext_cur_extension(ext_cur_pmt_realclean,            ".realclean").
+ext_cur_extension(ext_cur_pmt_trans_opts,           ".trans_opts").
+ext_cur_extension(ext_cur_user_depgraph,            ".dependency_graph").
+ext_cur_extension(ext_cur_user_err,                 ".err").
+ext_cur_extension(ext_cur_user_hlds_dump,           ".hlds_dump").
+ext_cur_extension(ext_cur_user_mlds_dump,           ".mlds_dump").
+ext_cur_extension(ext_cur_user_order,               ".order").
+ext_cur_extension(ext_cur_user_ugly,                ".ugly").
 
 :- pred ext_int_extension_dir(ext_int::in, string::out, string::out) is det.
 
@@ -835,10 +868,6 @@ ext_opt_date_extension_dir(ext_opt_date_plain,
     ".optdate",        "optdates").
 ext_opt_date_extension_dir(ext_opt_date_trans,
     ".trans_opt_date", "trans_opt_dates").
-
-:- pred ext_mh_extension(ext_mh::in, string::out) is det.
-
-ext_mh_extension(ext_mh_mh, ".mh").
 
 :- pred ext_mih_extension_dir(ext_mih::in, string::out, string::out) is det.
 
@@ -904,10 +933,6 @@ ext_init_obj_extension_dir(Globals, ext_init_obj_pic_obj_opt, ExtStr, "os") :-
     globals.lookup_string_option(Globals, pic_object_file_extension, ExtStr0),
     ExtStr = "_init" ++ ExtStr0.
 
-:- pred ext_exec_extension(ext_exec::in, string::out) is det.
-
-ext_exec_extension(ext_exec_exe, ".exe").
-
 :- pred ext_exec_gs_extension_dir(globals::in, ext_exec_gs::in,
     string::out, string::out) is det.
 
@@ -916,12 +941,6 @@ ext_exec_gs_extension_dir(_, ext_exec_gs_noext,    "",     "bin").
 ext_exec_gs_extension_dir(_, ext_exec_gs_bat,      ".bat", "bats").
 ext_exec_gs_extension_dir(Globals, ext_exec_exec_opt, ExtStr, "bin") :-
     globals.lookup_string_option(Globals, executable_file_extension, ExtStr).
-
-:- pred ext_lib_extension(ext_lib::in, string::out) is det.
-
-ext_lib_extension(ext_lib_dollar_efsl, ".$(EXT_FOR_SHARED_LIB)").
-ext_lib_extension(ext_lib_lib,          ".lib").
-ext_lib_extension(ext_lib_so,           ".so").
 
 :- pred ext_lib_gs_extension_dir(globals::in, ext_lib_gs::in,
     string::out, string::out) is det.
@@ -946,36 +965,6 @@ ext_lib_gs_extension_dir(Globals, ext_lib_gs_sh_lib_opt, ExtStr, "lib") :-
 ext_mmake_fragment_extension_dir(ext_mf_d,      ".d",   "ds").
 ext_mmake_fragment_extension_dir(ext_mf_dv,     ".dv",  "deps").
 ext_mmake_fragment_extension_dir(ext_mf_dep,    ".dep", "deps").
-
-:- pred ext_mmake_target_extension(ext_mmake_target::in, string::out) is det.
-
-ext_mmake_target_extension(ext_mt_all_int3s,        ".all_int3s").
-ext_mmake_target_extension(ext_mt_all_ints,         ".all_ints").
-ext_mmake_target_extension(ext_mt_all_opts,         ".all_opts").
-ext_mmake_target_extension(ext_mt_all_trans_opts,   ".all_trans_opts").
-ext_mmake_target_extension(ext_mt_check,            ".check").
-ext_mmake_target_extension(ext_mt_classes,          ".classes").
-ext_mmake_target_extension(ext_mt_clean,            ".clean").
-ext_mmake_target_extension(ext_mt_depend,           ".depend").
-ext_mmake_target_extension(ext_mt_install_grade_hdrs, ".install_grade_hdrs").
-ext_mmake_target_extension(ext_mt_install_hdrs,     ".install_hdrs").
-ext_mmake_target_extension(ext_mt_install_ints,     ".install_ints").
-ext_mmake_target_extension(ext_mt_install_opts,     ".install_opts").
-ext_mmake_target_extension(ext_mt_int3s,            ".int3s").
-ext_mmake_target_extension(ext_mt_ints,             ".ints").
-ext_mmake_target_extension(ext_mt_javas,            ".javas").
-ext_mmake_target_extension(ext_mt_opts,             ".opts").
-ext_mmake_target_extension(ext_mt_realclean,        ".realclean").
-ext_mmake_target_extension(ext_mt_trans_opts,       ".trans_opts").
-
-:- pred ext_user_extension(ext_user::in, string::out) is det.
-
-ext_user_extension(ext_user_depgraph,   ".dependency_graph").
-ext_user_extension(ext_user_err,        ".err").
-ext_user_extension(ext_user_hlds_dump,  ".hlds_dump").
-ext_user_extension(ext_user_mlds_dump,  ".mlds_dump").
-ext_user_extension(ext_user_order,      ".order").
-ext_user_extension(ext_user_ugly,       ".ugly").
 
 :- pred ext_user_ngs_extension_dir(ext_user_ngs::in, string::out, string::out)
     is det.
@@ -1194,23 +1183,8 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         ModuleName, DirNames, CurDirFileName) :-
     (
         % The cur group of extensions.
-        % 4
-        (
-            Ext = ext_mh(ExtMh),
-            ext_mh_extension(ExtMh, ExtStr)
-        ;
-            Ext = ext_exec(ExtExec),
-            ext_exec_extension(ExtExec, ExtStr)
-        ;
-            Ext = ext_lib(ExtLib),
-            ext_lib_extension(ExtLib, ExtStr)
-        ;
-            Ext = ext_mmake_target(ExtMT),
-            ext_mmake_target_extension(ExtMT, ExtStr)
-        ;
-            Ext = ext_user(ExtUser),
-            ext_user_extension(ExtUser, ExtStr)
-        ),
+        Ext = ext_cur(ExtCur),
+        ext_cur_extension(ExtCur, ExtStr),
         % Output files intended for use by the user, and phony Mmake target
         % names go in the current directory. So do .mh files, and *some*,
         % but not all, kinds of executable and library files.
@@ -1219,8 +1193,6 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, ".")
     ;
         % The cur_ngs group of extensions.
-        % 1
-        % 11
         (
             Ext = ext_int(ExtInt),
             ext_int_extension_dir(ExtInt, ExtStr, SubDirName)
@@ -1249,8 +1221,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             DirNames = ["Mercury", SubDirName]
         )
     ;
-        % The cur_gs group of extensions.
-        % 10
+        % The ext_cur_gs group of extensions.
         (
             Ext = ext_exec_gs(ExtExecGs),
             ext_exec_gs_extension_dir(Globals, ExtExecGs, ExtStr, SubDirName)
@@ -1273,8 +1244,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             DirNames = make_grade_subdir_name(Globals, [SubDirName])
         )
     ;
-        % The cur_ngs_gs_search_cur group of extensions.
-        % 5
+        % The ext_cur_ngs_gs_max_cur group of extensions.
         Ext = ext_mih(ExtMh),
         ext_mih_extension_dir(ExtMh, ExtStr, SubDirName),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
@@ -1300,9 +1270,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             )
         )
     ;
-        % The cur_ngs_gs_search_ngs group of extensions.
-        % 2
-        % 12
+        % The ext_cur_ngs_gs_max_ngs group of extensions.
         (
             Ext = ext_opt(ExtOpt),
             ext_opt_extension_dir(ExtOpt, ExtStr, SubDirName)
@@ -1329,12 +1297,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             )
         )
     ;
-        % The cur_ngs_gs group of extensions.
-        % 3
-        % 6
-        % 8
-        % 9
-        % 13
+        % The ext_cur_ngs_gs group of extensions.
         (
             Ext = ext_opt_date(ExtOptDate),
             ext_opt_date_extension_dir(ExtOptDate, ExtStr, SubDirName)
@@ -1373,8 +1336,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             DirNames = make_grade_subdir_name(Globals, [SubDirName])
         )
     ;
-        % The cur_ngs_gs_java group of extensions.
-        % 7
+        % The ext_cur_ngs_gs_java group of extensions.
         Ext = ext_target_java(ExtJava),
         ext_target_java_extension_dirs(ExtJava, ExtStr, SubDirNames),
         BaseParentDirs = ["jmercury"],

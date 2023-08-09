@@ -220,7 +220,7 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
             ImpDepsOrdering =
                 digraph.return_sccs_in_from_to_order(ImpDepsGraph),
             output_module_order(Globals, ModuleName,
-                ext_user(ext_user_order), ImpDepsOrdering, !IO)
+                ext_cur(ext_cur_user_order), ImpDepsOrdering, !IO)
         ;
             OutputOrder = no
         ),

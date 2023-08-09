@@ -885,8 +885,8 @@ make_foreign_import_header_code(Globals, FIMSpec, Include, !IO) :-
     FIMSpec = fim_spec(Lang, ModuleName),
     (
         Lang = lang_c,
-        module_name_to_search_file_name(Globals, $pred,
-            ext_mh(ext_mh_mh), ModuleName, HeaderFileName),
+        module_name_to_search_file_name(Globals, $pred, ext_cur(ext_cur_mh),
+            ModuleName, HeaderFileName),
         IncludeString = "#include """ ++ HeaderFileName ++ """\n",
         Include = foreign_decl_code(lang_c, foreign_decl_is_exported,
             floi_literal(IncludeString), dummy_context)

@@ -1607,14 +1607,14 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
             % XXX Should we test
             % ModuleDepInfo ^ contains_foreign_export
             %   = contains_foreign_export?
-            module_name_to_file_name(Globals, $pred, ext_mh(ext_mh_mh),
+            module_name_to_file_name(Globals, $pred, ext_cur(ext_cur_mh),
                 ModuleName, FileName),
             install_file(Globals, FileName, LibDir/"inc", HeaderSucceeded1,
                 !IO),
 
             % This is needed so that the file will be found in Mmake's VPATH.
             install_subdir_file(Globals, SubdirLinkSucceeded, LibDir/"ints",
-                ModuleName, {ext_mh(ext_mh_mh), "mhs"},
+                ModuleName, {ext_cur(ext_cur_mh), "mhs"},
                 HeaderSucceeded2, !IO),
 
             HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2

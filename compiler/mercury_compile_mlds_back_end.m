@@ -450,7 +450,7 @@ maybe_dump_mlds(ProgressStream, Globals, MLDS, StageNum, StageName, !IO) :-
             "% Dumping out raw MLDS...\n", !IO),
         ModuleName = mlds_get_module_name(MLDS),
         module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_user(ext_user_mlds_dump), ModuleName, DumpBaseFileName, !IO),
+            ext_cur(ext_cur_user_mlds_dump), ModuleName, DumpBaseFileName, !IO),
         string.format("%s.%s-%s",
             [s(DumpBaseFileName), s(StageNumStr), s(StageName)], DumpFileName),
         dump_mlds_doc(ProgressStream, Globals, DumpFileName, Doc, !IO),

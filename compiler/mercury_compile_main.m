@@ -1193,7 +1193,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
             else
                 ModuleName = ParseTreeSrc ^ pts_module_name,
                 module_name_to_file_name_create_dirs(Globals, $pred,
-                    ext_user(ext_user_ugly),
+                    ext_cur(ext_cur_user_ugly),
                     ModuleName, UglyFileName, !IO),
                 output_parse_tree_src(ProgressStream, ErrorStream, Globals,
                     UglyFileName, ParseTreeSrc, _Succeeded, !IO)
@@ -1925,7 +1925,7 @@ maybe_write_dependency_graph(ProgressStream, ErrorStream, Verbose, Stats,
             "% Writing dependency graph...", !IO),
         module_info_get_name(!.HLDS, ModuleName),
         module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_user(ext_user_depgraph), ModuleName, DepGraphFileName, !IO),
+            ext_cur(ext_cur_user_depgraph), ModuleName, DepGraphFileName, !IO),
         io.open_output(DepGraphFileName, OpenResult, !IO),
         (
             OpenResult = ok(FileStream),

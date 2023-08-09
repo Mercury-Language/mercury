@@ -172,7 +172,7 @@ output_c_dump_preds(MLDS, Globals, TargetOrDump, Suffix, DumpPredNames, !IO) :-
     module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
     Opts = init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump),
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_user(ext_user_mlds_dump), ModuleName, DumpBaseName, !IO),
+        ext_cur(ext_cur_user_mlds_dump), ModuleName, DumpBaseName, !IO),
     DumpFileName = DumpBaseName ++ Suffix,
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ProcDefns = MLDS ^ mlds_proc_defns,
@@ -306,7 +306,7 @@ mlds_output_src_import(Opts, Stream, _Indent, Import, !IO) :-
     Import = mlds_import(ImportType, ModuleName0),
     (
         ImportType = user_visible_interface,
-        HeaderExt = ext_mh(ext_mh_mh)
+        HeaderExt = ext_cur(ext_cur_mh)
     ;
         ImportType = compiler_visible_interface,
         HeaderExt = ext_mih(ext_mih_mih)

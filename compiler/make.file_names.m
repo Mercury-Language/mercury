@@ -222,7 +222,7 @@ target_type_to_target_extension(Target, TargetExt) :-
         TargetExt = source
     ;
         Target = module_target_errors,
-        TargetExt = extension(ext_user(ext_user_err))
+        TargetExt = extension(ext_cur(ext_cur_user_err))
     ;
         Target = module_target_int0,
         TargetExt = extension(ext_int(ext_int_int0))
@@ -249,7 +249,7 @@ target_type_to_target_extension(Target, TargetExt) :-
         TargetExt = extension(ext_mih(ext_mih_mih))
     ;
         Target = module_target_c_header(header_mh),
-        TargetExt = extension(ext_mh(ext_mh_mh))
+        TargetExt = extension(ext_cur(ext_cur_mh))
     ;
         Target = module_target_c_code,
         TargetExt = extension(ext_target_c_cs(ext_target_c))
