@@ -204,29 +204,29 @@
             % All extensions whose files can get put either into the current
             % directory, or into a grade-specific subdirectory.
 
+    ;       ext_cur_ngs_gs(ext_cur_ngs_gs)
+            % All extensions whose files can get put either into the current
+            % directory, or into a non-grade-specific subdirectory, or into
+            % a grade-specific subdirectory, with search being irrelevant.
+
+    ;       ext_cur_ngs_gs_java(ext_cur_ngs_gs_java)
+            % All extensions using a java-specific set of rules.
+            % With respect to directory structure, they use the same sort
+            % of rules as the ext_cur_ngs_gs extensions, but the specifics
+            % differ, and they also use a different algorithm for converting
+            % module names to file names.
+
     ;       ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur)
             % All extensions whose files can get put either into the current
             % directory, or into a non-grade-specific subdirectory, or into
             % a grade-specific subdirectory, with search being specified
             % restricting the options to just the first alternative.
 
-    ;       ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs)
+    ;       ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs).
             % All extensions whose files can get put either into the current
             % directory, or into a non-grade-specific subdirectory, or into
             % a grade-specific subdirectory, with search being specified
             % restricting the options to just the first two alternatives.
-
-    ;       ext_cur_ngs_gs(ext_cur_ngs_gs)
-            % All extensions whose files can get put either into the current
-            % directory, or into a non-grade-specific subdirectory, or into
-            % a grade-specific subdirectory, with search being irrelevant.
-
-    ;       ext_cur_ngs_gs_java(ext_cur_ngs_gs_java).
-            % All extensions using a java-specific set of rules.
-            % With respect to directory structure, they use the same sort
-            % of rules as the ext_cur_ngs_gs extensions, but the specifics
-            % differ, and they also use a different algorithm for converting
-            % module names to file names.
 
 %---------------------%
 
@@ -234,7 +234,7 @@
 %
 % - either by a string giving the extension (the usual case),
 % - the name of an option giving the extension, or
-% - a prefix and the name of an option giving the rest of the extension.
+% - a prefix, and the name of an option giving the rest of the extension.
 
 :- type ext_cur
             % Executables generated for a whole program.
@@ -394,23 +394,6 @@
     ;       ext_cur_gs_lib_lib_opt          % library_extension
     ;       ext_cur_gs_lib_sh_lib_opt.      % shared_library_extension
 
-:- type ext_cur_ngs_gs_max_cur
-            % Compiler-generated header file for a module that is intended
-            % for inclusion by Mercury-generated C source files.
-    --->    ext_cur_ngs_gs_max_cur_mih.     % ".mih"
-
-:- type ext_cur_ngs_gs_max_ngs
-            % Compiler-generated optimization files.
-    --->    ext_cur_ngs_gs_max_ngs_opt_plain    % ".opt"
-    ;       ext_cur_ngs_gs_max_ngs_opt_trans    % ".trans_opt"
-
-            % Compiler-generated files that are part of the incomplete
-            % attempt at an intermodule analysis and optimization framework
-            % in analysis.m and its clients.
-    ;       ext_cur_ngs_gs_max_ngs_an_analysis  % ".analysis"
-    ;       ext_cur_ngs_gs_max_ngs_an_imdg      % ".imdg"
-    ;       ext_cur_ngs_gs_max_ngs_an_request.  % ".request"
-
 :- type ext_cur_ngs_gs
             % Timestamp files showing when their corresponding .*opt files
             % were last checked.
@@ -433,7 +416,6 @@
             % C files associated not with a module but with a whole program,
             % containing the code needed to initialize various tables for
             % the runtime system.
-
     ;       ext_cur_ngs_gs_init_c           % ".init_c"
 
             % Object files generated for C source files generated for a module
@@ -459,8 +441,8 @@
             % Compiler-generated files that are part of the incomplete
             % attempt at an intermodule analysis and optimization framework
             % in analysis.m and its clients.
-    ;       ext_cur_ngs_gs_an_ds_date       % ".analysis_date"
-    ;       ext_cur_ngs_gs_an_ds_status     % ".analysis_status"
+    ;       ext_cur_ngs_gs_an_ds_date           % ".analysis_date"
+    ;       ext_cur_ngs_gs_an_ds_status         % ".analysis_status"
 
             % Misc extensions.
     ;       ext_cur_ngs_gs_misc_used            % ".used"
@@ -471,12 +453,25 @@
             % The names of these files, and of the directories
             % that store them, are computed by a different algorithm
             % from the ones applicable to C and C# source files.
-    --->    ext_cur_ngs_gs_java_java        % ".java"
-    ;       ext_cur_ngs_gs_java_class.      % ".class"
+    --->    ext_cur_ngs_gs_java_java            % ".java"
+    ;       ext_cur_ngs_gs_java_class.          % ".class"
 
-% XXX The extensions in the two misc categories probably belong
-% in one or another category above, but I (zs) am not sure where
-% each *would* belong.
+:- type ext_cur_ngs_gs_max_cur
+            % Compiler-generated header file for a module that is intended
+            % for inclusion by Mercury-generated C source files.
+    --->    ext_cur_ngs_gs_max_cur_mih.         % ".mih"
+
+:- type ext_cur_ngs_gs_max_ngs
+            % Compiler-generated optimization files.
+    --->    ext_cur_ngs_gs_max_ngs_opt_plain    % ".opt"
+    ;       ext_cur_ngs_gs_max_ngs_opt_trans    % ".trans_opt"
+
+            % Compiler-generated files that are part of the incomplete
+            % attempt at an intermodule analysis and optimization framework
+            % in analysis.m and its clients.
+    ;       ext_cur_ngs_gs_max_ngs_an_analysis  % ".analysis"
+    ;       ext_cur_ngs_gs_max_ngs_an_imdg      % ".imdg"
+    ;       ext_cur_ngs_gs_max_ngs_an_request.  % ".request"
 
 :- func extension_to_string(globals, ext) = string.
 
@@ -722,14 +717,6 @@ extension_to_string(Globals, Ext) = ExtStr :-
         Ext = ext_cur_gs(ExtCurGs),
         ext_cur_gs_extension_dir(Globals, ExtCurGs, ExtStr, _SubDirName)
     ;
-        Ext = ext_cur_ngs_gs_max_cur(ExtCurNgsGsMaxCur),
-        ext_cur_ngs_gs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
-            ExtStr, _SubDirName)
-    ;
-        Ext = ext_cur_ngs_gs_max_ngs(ExtCurNgsGsMaxNgs),
-        ext_cur_ngs_gs_max_ngs_extension_dir(ExtCurNgsGsMaxNgs,
-            ExtStr, _SubDirName)
-    ;
         Ext = ext_cur_ngs_gs(ExtCurNgsGs),
         ext_cur_ngs_gs_extension_dir(Globals, ExtCurNgsGs,
             ExtStr, _SubDirName)
@@ -737,6 +724,14 @@ extension_to_string(Globals, Ext) = ExtStr :-
         Ext = ext_cur_ngs_gs_java(ExtCurNgsGsJava),
         ext_cur_ngs_gs_java_extension_dirs(ExtCurNgsGsJava,
             ExtStr, _SubDirNames)
+    ;
+        Ext = ext_cur_ngs_gs_max_cur(ExtCurNgsGsMaxCur),
+        ext_cur_ngs_gs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
+            ExtStr, _SubDirName)
+    ;
+        Ext = ext_cur_ngs_gs_max_ngs(ExtCurNgsGsMaxNgs),
+        ext_cur_ngs_gs_max_ngs_extension_dir(ExtCurNgsGsMaxNgs,
+            ExtStr, _SubDirName)
     ).
 
 %---------------------------------------------------------------------------%
@@ -807,7 +802,7 @@ ext_cur_ngs_extension_dir(ext_cur_ngs_mf_d,      ".d",   "ds").
 % rule are intentional, though I (zs) don't know the reason for the second.
 ext_cur_ngs_extension_dir(ext_cur_ngs_mf_dv,     ".dv",  "deps").
 ext_cur_ngs_extension_dir(ext_cur_ngs_mf_dep,    ".dep", "deps").
-ext_cur_ngs_extension_dir(ext_cur_ngs_bc_mbc,       ".mbc",       "mbcs").
+ext_cur_ngs_extension_dir(ext_cur_ngs_bc_mbc,    ".mbc", "mbcs").
 ext_cur_ngs_extension_dir(ext_cur_ngs_bc_bytedebug,
     ".bytedebug", "bytedebugs").
 ext_cur_ngs_extension_dir(ext_cur_ngs_misc_module_dep,
@@ -826,55 +821,35 @@ ext_cur_gs_extension_dir(Globals, ext_cur_gs_exec_exec_opt, ExtStr, "bin") :-
     globals.lookup_string_option(Globals, executable_file_extension, ExtStr).
 % XXX EXT While "$As" follows the rule: "delete initial dot, add final 's'",
 % it is *extremely unlikely* to be acceptable directory name.
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_dollar_a,   ".$A",      "$As").
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_archive,    ".a",       "as").
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_dll,        ".dll",     "dlls").
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_init,       ".init",    "inits").
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_jar,        ".jar",     "jars").
+ext_cur_gs_extension_dir(_, ext_cur_gs_lib_dollar_a,   ".$A",   "$As").
+ext_cur_gs_extension_dir(_, ext_cur_gs_lib_archive,    ".a",    "as").
+ext_cur_gs_extension_dir(_, ext_cur_gs_lib_dll,        ".dll",  "dlls").
+ext_cur_gs_extension_dir(_, ext_cur_gs_lib_init,       ".init", "inits").
+ext_cur_gs_extension_dir(_, ext_cur_gs_lib_jar,        ".jar",  "jars").
 ext_cur_gs_extension_dir(Globals, ext_cur_gs_lib_lib_opt, ExtStr, "lib") :-
     globals.lookup_string_option(Globals, library_extension, ExtStr).
 ext_cur_gs_extension_dir(Globals, ext_cur_gs_lib_sh_lib_opt, ExtStr, "lib") :-
     globals.lookup_string_option(Globals, shared_library_extension, ExtStr).
 
-:- pred ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs::in,
-    string::out, string::out) is det.
-
-ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_opt_plain,
-    ".opt",            "opts").
-ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_opt_trans,
-    ".trans_opt",      "trans_opts").
-ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_analysis,
-    ".analysis",        "analysiss").
-ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_imdg,
-    ".imdg",            "imdgs").
-ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_request,
-    ".request",         "requests").
-
-:- pred ext_cur_ngs_gs_max_cur_extension_dir(ext_cur_ngs_gs_max_cur::in,
-    string::out, string::out) is det.
-
-ext_cur_ngs_gs_max_cur_extension_dir(ext_cur_ngs_gs_max_cur_mih,
-    ".mih", "mihs").
-
 :- pred ext_cur_ngs_gs_extension_dir(globals::in, ext_cur_ngs_gs::in,
     string::out, string::out) is det.
 
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_opt_date_plain,
-    ".optdate",        "optdates").
+        ".optdate", "optdates").
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_opt_date_trans,
-    ".trans_opt_date", "trans_opt_dates").
+        ".trans_opt_date", "trans_opt_dates").
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_c,     ".c",    "cs").
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_cs,    ".cs",    "css").
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_date_c,
-    ".c_date",      "c_dates").
+        ".c_date",    "c_dates").
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_date_cs,
-    ".cs_date",     "cs_dates").
+        ".cs_date",   "cs_dates").
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_date_java,
-    ".java_date",   "java_dates").
+        ".java_date", "java_dates").
 % The deviation from the "delete initial dot, add final 's'" rule
 % is intentional.
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_obj_dollar_o,
-    ".$O", "os").
+        ".$O", "os").
 % The deviation from the "delete initial dot, add final 's'" rule
 % is intentional.
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_obj_dollar_efpo,
@@ -901,7 +876,7 @@ ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_init_obj_dollar_o,
 % The deviation from the "delete initial dot, add final 's'" rule
 % is intentional.
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_init_obj_o,
-    "_init.o",      "os").
+        "_init.o",      "os").
 % The deviation from the "delete initial dot, add final 's'" rule
 % is intentional.
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_init_obj_pic_o,
@@ -915,21 +890,41 @@ ext_cur_ngs_gs_extension_dir(Globals, ext_cur_ngs_gs_init_obj_pic_obj_opt,
     globals.lookup_string_option(Globals, pic_object_file_extension, ExtStr0),
     ExtStr = "_init" ++ ExtStr0.
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_an_ds_date,
-    ".analysis_date",   "analysis_dates").
+        ".analysis_date",   "analysis_dates").
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_an_ds_status,
-    ".analysis_status", "analysis_statuss").
+        ".analysis_status", "analysis_statuss").
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_misc_used,
-    ".used",        "useds").
+        ".used",        "useds").
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_misc_track_flags,
-    ".track_flags", "track_flagss").
+        ".track_flags", "track_flagss").
 
 :- pred ext_cur_ngs_gs_java_extension_dirs(ext_cur_ngs_gs_java::in,
     string::out, list(string)::out) is det.
 
 ext_cur_ngs_gs_java_extension_dirs(ext_cur_ngs_gs_java_java,
-    ".java",    ["javas", "jmercury"]).
+        ".java",    ["javas", "jmercury"]).
 ext_cur_ngs_gs_java_extension_dirs(ext_cur_ngs_gs_java_class,
-    ".class",   ["classs", "jmercury"]).
+        ".class",   ["classs", "jmercury"]).
+
+:- pred ext_cur_ngs_gs_max_cur_extension_dir(ext_cur_ngs_gs_max_cur::in,
+    string::out, string::out) is det.
+
+ext_cur_ngs_gs_max_cur_extension_dir(ext_cur_ngs_gs_max_cur_mih,
+        ".mih", "mihs").
+
+:- pred ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs::in,
+    string::out, string::out) is det.
+
+ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_opt_plain,
+        ".opt",        "opts").
+ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_opt_trans,
+        ".trans_opt",  "trans_opts").
+ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_analysis,
+        ".analysis",    "analysiss").
+ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_imdg,
+        ".imdg",        "imdgs").
+ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_request,
+        ".request",     "requests").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1081,7 +1076,6 @@ fact_table_file_name_return_dirs(Globals, From, Ext,
 module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         ModuleName, DirNames, CurDirFileName) :-
     (
-        % The cur group of extensions.
         Ext = ext_cur(ExtCur),
         ext_cur_extension(ExtCur, ExtStr),
         % Output files intended for use by the user, and phony Mmake target
@@ -1091,7 +1085,6 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         DirNames = [],
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, ".")
     ;
-        % The cur_ngs group of extensions.
         Ext = ext_cur_ngs(ExtCurNgs),
         ext_cur_ngs_extension_dir(ExtCurNgs, ExtStr, SubDirName),
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
@@ -1106,7 +1099,6 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             DirNames = ["Mercury", SubDirName]
         )
     ;
-        % The ext_cur_gs group of extensions.
         Ext = ext_cur_gs(ExtCurGs),
         ext_cur_gs_extension_dir(Globals, ExtCurGs, ExtStr, SubDirName),
         % Some kinds of executables and library files go in the current
@@ -1124,7 +1116,38 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             DirNames = make_grade_subdir_name(Globals, [SubDirName])
         )
     ;
-        % The ext_cur_ngs_gs_max_cur group of extensions.
+        Ext = ext_cur_ngs_gs(ExtCurNgsGs),
+        ext_cur_ngs_gs_extension_dir(Globals, ExtCurNgsGs, ExtStr, SubDirName),
+        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
+        globals.get_subdir_setting(Globals, SubdirSetting),
+        (
+            SubdirSetting = use_cur_dir,
+            DirNames = []
+        ;
+            SubdirSetting = use_cur_ngs_subdir,
+            DirNames = ["Mercury", SubDirName]
+        ;
+            SubdirSetting = use_cur_ngs_gs_subdir,
+            DirNames = make_grade_subdir_name(Globals, [SubDirName])
+        )
+    ;
+        Ext = ext_cur_ngs_gs_java(ExtCurNgsGsJava),
+        ext_cur_ngs_gs_java_extension_dirs(ExtCurNgsGsJava,
+            ExtStr, SubDirNames),
+        BaseParentDirs = ["jmercury"],
+        mangle_sym_name_for_java(ModuleName, module_qual, "__", BaseNameNoExt),
+        globals.get_subdir_setting(Globals, SubdirSetting),
+        (
+            SubdirSetting = use_cur_dir,
+            DirNames = BaseParentDirs
+        ;
+            SubdirSetting = use_cur_ngs_subdir,
+                DirNames = ["Mercury" |  SubDirNames]
+        ;
+            SubdirSetting = use_cur_ngs_gs_subdir,
+            DirNames = make_grade_subdir_name(Globals, SubDirNames)
+        )
+    ;
         Ext = ext_cur_ngs_gs_max_cur(ExtCurNgsGsMaxCur),
         ext_cur_ngs_gs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
             ExtStr, SubDirName),
@@ -1151,7 +1174,6 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             )
         )
     ;
-        % The ext_cur_ngs_gs_max_ngs group of extensions.
         Ext = ext_cur_ngs_gs_max_ngs(ExtCurNgsGsMaxNgs),
         ext_cur_ngs_gs_max_ngs_extension_dir(ExtCurNgsGsMaxNgs,
             ExtStr, SubDirName),
@@ -1172,40 +1194,6 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
                 Search = not_for_search,
                 DirNames = make_grade_subdir_name(Globals, [SubDirName])
             )
-        )
-    ;
-        % The ext_cur_ngs_gs group of extensions.
-        Ext = ext_cur_ngs_gs(ExtCurNgsGs),
-        ext_cur_ngs_gs_extension_dir(Globals, ExtCurNgsGs, ExtStr, SubDirName),
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
-        globals.get_subdir_setting(Globals, SubdirSetting),
-        (
-            SubdirSetting = use_cur_dir,
-            DirNames = []
-        ;
-            SubdirSetting = use_cur_ngs_subdir,
-            DirNames = ["Mercury", SubDirName]
-        ;
-            SubdirSetting = use_cur_ngs_gs_subdir,
-            DirNames = make_grade_subdir_name(Globals, [SubDirName])
-        )
-    ;
-        % The ext_cur_ngs_gs_java group of extensions.
-        Ext = ext_cur_ngs_gs_java(ExtCurNgsGsJava),
-        ext_cur_ngs_gs_java_extension_dirs(ExtCurNgsGsJava,
-            ExtStr, SubDirNames),
-        BaseParentDirs = ["jmercury"],
-        mangle_sym_name_for_java(ModuleName, module_qual, "__", BaseNameNoExt),
-        globals.get_subdir_setting(Globals, SubdirSetting),
-        (
-            SubdirSetting = use_cur_dir,
-            DirNames = BaseParentDirs
-        ;
-            SubdirSetting = use_cur_ngs_subdir,
-                DirNames = ["Mercury" |  SubDirNames]
-        ;
-            SubdirSetting = use_cur_ngs_gs_subdir,
-            DirNames = make_grade_subdir_name(Globals, SubDirNames)
         )
     ),
     CurDirFileName = BaseNameNoExt ++ ExtStr,
@@ -1383,6 +1371,7 @@ make_include_file_path(ModuleSourceFileName, OrigFileName, Path) :-
 %
 % After the profile is dumped into a file, the information in it can then be
 % subject to different kinds of postprocessing.
+%
 
 :- type record_key
     --->    record_key(
