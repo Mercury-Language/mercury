@@ -1165,13 +1165,14 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     postprocess_options_libgrades(!Globals, !Specs),
     globals_init_mutables(!.Globals, !IO),
 
-    lookup_bool_option(OptionTable0, setting_only_use_subdirs, UseSubdirs),
+    globals.lookup_bool_option(!.Globals, setting_only_use_subdirs,
+        UseSubdirs),
     (
         UseSubdirs = no,
         SubdirSetting = use_cur_dir
     ;
         UseSubdirs = yes,
-        lookup_bool_option(OptionTable0, setting_only_use_grade_subdirs,
+        globals.lookup_bool_option(!.Globals, setting_only_use_grade_subdirs,
             UseGradeSubdirs),
         (
             UseGradeSubdirs = no,
