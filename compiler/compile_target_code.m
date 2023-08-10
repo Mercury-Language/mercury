@@ -191,7 +191,7 @@
     % the same way as the other extensions we return.
     %
 :- pred maybe_pic_object_file_extension(pic::in,
-    ext_obj::out, ext_init_obj::out) is det.
+    ext_cur_ngs_gs::out, ext_cur_ngs_gs::out) is det.
 
     % This predicate is sort-of the converse of pic_object_file_extension.
     % It tests whether the given extension string is an object file extension
@@ -276,10 +276,10 @@
 compile_c_file(Globals, ProgressStream, ErrorStream, PIC, ModuleName,
         Succeeded, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_target_c_cs(ext_target_c), ModuleName, C_File, !IO),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName, C_File, !IO),
     maybe_pic_object_file_extension(PIC, ExtObj, _),
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_target_obj(ExtObj), ModuleName, O_File, !IO),
+        ext_cur_ngs_gs(ExtObj), ModuleName, O_File, !IO),
     do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
         C_File, O_File, Succeeded, !IO).
 
@@ -1062,7 +1062,7 @@ compile_csharp_file(Globals, ProgressStream, ErrorStream, ModuleAndImports,
     list.map(
         ( pred(Mod::in, Result::out) is det :-
             module_name_to_file_name(Globals, $pred,
-                ext_lib_gs(ext_lib_gs_dll), Mod, FileName),
+                ext_cur_gs(ext_cur_gs_lib_dll), Mod, FileName),
             Result = [Prefix, FileName, " "]
         ), set.to_sorted_list(ReferencedDlls), ReferencedDllsList),
     ReferencedDllsStr = string.append_list(
@@ -1112,7 +1112,7 @@ make_library_init_file(Globals, ProgressStream, ErrorStream,
         MainModuleName, AllModules, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
     module_name_to_file_name_full_curdir_create_dirs(Globals, $pred,
-        ext_lib_gs(ext_lib_gs_init), MainModuleName,
+        ext_cur_gs(ext_cur_gs_lib_init), MainModuleName,
         FullInitFileName, CurDirInitFileName, !IO),
     TmpFullInitFileName = FullInitFileName ++ ".tmp",
     io.open_output(TmpFullInitFileName, InitFileRes, !IO),
@@ -1120,7 +1120,7 @@ make_library_init_file(Globals, ProgressStream, ErrorStream,
         InitFileRes = ok(InitFileStream),
         list.map(
             module_name_to_file_name(Globals, $pred,
-                ext_target_c_cs(ext_target_c)),
+                ext_cur_ngs_gs(ext_cur_ngs_gs_target_c)),
             AllModules, AllTargetFilesList),
         invoke_mkinit(Globals, ProgressStream, ErrorStream, InitFileStream,
             cmd_verbose_commands, MkInit, " -k ", AllTargetFilesList,
@@ -1256,7 +1256,8 @@ do_make_init_obj_file(Globals, ProgressStream, ErrorStream, MustCompile,
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
     make_init_target_file(Globals, ProgressStream, ErrorStream, MkInit,
         ModuleName, ModuleNames,
-        ext_target_c_cs(ext_target_c), ext_target_init_c(ext_init_c),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_init_c),
         StdInitFileNames, StdTraceInitFileNames, SourceDebugInitFileNames,
         MaybeInitTargetFile, !IO),
 
@@ -1264,7 +1265,7 @@ do_make_init_obj_file(Globals, ProgressStream, ErrorStream, MustCompile,
     maybe_pic_object_file_extension(PIC, _, ExtInitObj),
 
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_target_init_obj(ExtInitObj), ModuleName, InitObjFileName, !IO),
+        ext_cur_ngs_gs(ExtInitObj), ModuleName, InitObjFileName, !IO),
     CompileCInitFile =
         ( pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
             do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
@@ -1518,7 +1519,7 @@ link_module_list(ProgressStream, ErrorStream, Modules, ExtraObjFiles,
     get_object_code_type(Globals, TargetType, PIC),
     maybe_pic_object_file_extension(PIC, ObjExt, _),
 
-    join_module_list(Globals, ext_target_obj(ObjExt),
+    join_module_list(Globals, ext_cur_ngs_gs(ObjExt),
         Modules, ObjectsList, !IO),
     (
         TargetType = executable,
@@ -1612,29 +1613,29 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
         % XXX Then why make the distinction in linked_target_type?
         (
             TargetType = executable,
-            Ext = ext_exec_gs(ext_exec_exec_opt)
+            Ext = ext_cur_gs(ext_cur_gs_exec_exec_opt)
         ;
             TargetType = csharp_executable,
             Ext = ext_cur(ext_cur_exec_exe)
         ;
             TargetType = csharp_library,
-            Ext = ext_lib_gs(ext_lib_gs_dll)
+            Ext = ext_cur_gs(ext_cur_gs_lib_dll)
         ;
             TargetType = java_archive,
-            Ext = ext_lib_gs(ext_lib_gs_jar)
+            Ext = ext_cur_gs(ext_cur_gs_lib_jar)
         ;
             TargetType = java_executable,
-            Ext = ext_lib_gs(ext_lib_gs_jar)
+            Ext = ext_cur_gs(ext_cur_gs_lib_jar)
         ),
         module_name_to_file_name_create_dirs(Globals, $pred,
             Ext, ModuleName, FileName, !IO)
     ;
         (
             TargetType = static_library,
-            Ext = ext_lib_gs(ext_lib_gs_lib_opt)
+            Ext = ext_cur_gs(ext_cur_gs_lib_lib_opt)
         ;
             TargetType = shared_library,
-            Ext = ext_lib_gs(ext_lib_gs_sh_lib_opt)
+            Ext = ext_cur_gs(ext_cur_gs_lib_sh_lib_opt)
         ),
         module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
             Ext, ModuleName, FileName, !IO)
@@ -1647,29 +1648,29 @@ linked_target_file_name_full_curdir(Globals, ModuleName, TargetType,
         % XXX Then why make the distinction in linked_target_type?
         (
             TargetType = executable,
-            Ext = ext_exec_gs(ext_exec_exec_opt)
+            Ext = ext_cur_gs(ext_cur_gs_exec_exec_opt)
         ;
             TargetType = csharp_executable,
             Ext = ext_cur(ext_cur_exec_exe)
         ;
             TargetType = csharp_library,
-            Ext = ext_lib_gs(ext_lib_gs_dll)
+            Ext = ext_cur_gs(ext_cur_gs_lib_dll)
         ;
             TargetType = java_archive,
-            Ext = ext_lib_gs(ext_lib_gs_jar)
+            Ext = ext_cur_gs(ext_cur_gs_lib_jar)
         ;
             TargetType = java_executable,
-            Ext = ext_lib_gs(ext_lib_gs_jar)
+            Ext = ext_cur_gs(ext_cur_gs_lib_jar)
         ),
         module_name_to_file_name_full_curdir_create_dirs(Globals, $pred,
             Ext, ModuleName, FullFileName, CurDirFileName, !IO)
     ;
         (
             TargetType = static_library,
-            Ext = ext_lib_gs(ext_lib_gs_lib_opt)
+            Ext = ext_cur_gs(ext_cur_gs_lib_lib_opt)
         ;
             TargetType = shared_library,
-            Ext = ext_lib_gs(ext_lib_gs_sh_lib_opt)
+            Ext = ext_cur_gs(ext_cur_gs_lib_sh_lib_opt)
         ),
         module_name_to_lib_file_name_full_curdir_create_dirs(Globals, $pred,
             "lib", Ext, ModuleName, FullFileName, CurDirFileName, !IO)
@@ -1684,13 +1685,13 @@ get_launcher_script_extension(Globals, Ext) :-
         ( TargetEnvType = env_type_win_cmd
         ; TargetEnvType = env_type_powershell
         ),
-        Ext = ext_exec_gs(ext_exec_gs_bat)
+        Ext = ext_cur_gs(ext_cur_gs_exec_bat)
     ;
         ( TargetEnvType = env_type_posix
         ; TargetEnvType = env_type_cygwin
         ; TargetEnvType = env_type_msys
         ),
-        Ext = ext_exec_gs(ext_exec_gs_noext)
+        Ext = ext_cur_gs(ext_cur_gs_exec_noext)
     ).
 
 :- pred link_exe_or_shared_lib(globals::in,
@@ -2010,14 +2011,14 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             ; TargetType = static_library
             ; TargetType = shared_library
             ),
-            LibExt = ext_lib_gs(ext_lib_gs_lib_opt),
+            LibExt = ext_cur_gs(ext_cur_gs_lib_lib_opt),
             globals.lookup_string_option(Globals, mercury_linkage,
                 MercuryOrCsharpLinkage)
         ;
             ( TargetType = csharp_executable
             ; TargetType = csharp_library
             ),
-            LibExt = ext_lib_gs(ext_lib_gs_dll),
+            LibExt = ext_cur_gs(ext_cur_gs_lib_dll),
             MercuryOrCsharpLinkage = "csharp"
         ;
             ( TargetType = java_executable
@@ -2614,7 +2615,7 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
         % pass the absolute pathname of the `.a' file for the library.
         file_name_to_module_name(LibName, LibModuleName),
         module_name_to_lib_file_name_full_curdir(Globals, $pred, "lib",
-            ext_lib_gs(ext_lib_gs_lib_opt), LibModuleName,
+            ext_cur_gs(ext_cur_gs_lib_lib_opt), LibModuleName,
             _FullLibFileName, LibFileName),
         search_for_file_returning_dir(MercuryLibDirs,
             LibFileName, MaybeDirName, !IO),
@@ -3057,12 +3058,12 @@ make_all_module_command(Command0, MainModule, AllModules, Command, !IO) :-
 maybe_pic_object_file_extension(PIC, ExtObj, ExtInitObj) :-
     (
         PIC = non_pic,
-        ExtObj = ext_obj_obj_opt,
-        ExtInitObj = ext_init_obj_obj_opt
+        ExtObj = ext_cur_ngs_gs_obj_obj_opt,
+        ExtInitObj = ext_cur_ngs_gs_init_obj_obj_opt
     ;
         PIC = pic,
-        ExtObj = ext_obj_pic_obj_opt,
-        ExtInitObj = ext_init_obj_pic_obj_opt
+        ExtObj = ext_cur_ngs_gs_obj_pic_obj_opt,
+        ExtInitObj = ext_cur_ngs_gs_init_obj_pic_obj_opt
     ).
 
 is_maybe_pic_object_file_extension(Globals, ExtStr, PIC) :-
@@ -3231,7 +3232,7 @@ make_standalone_int_body(Globals, ProgressStream, ErrorStream,
         MkInitCmdSucceeded = succeeded,
         get_object_code_type(Globals, executable, PIC),
         maybe_pic_object_file_extension(PIC, ExtObj, _),
-        Ext = ext_target_obj(ExtObj),
+        Ext = ext_cur_ngs_gs(ExtObj),
         ObjFileName = BaseName ++ extension_to_string(Globals, Ext),
         do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
             CFileName, ObjFileName, CompileSucceeded, !IO),

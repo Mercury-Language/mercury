@@ -154,13 +154,14 @@ write_short_interface_file_int3(ProgressStream, ErrorStream, Globals,
         actually_write_interface_file3(ProgressStream, ErrorStream,
             Globals, ParseTreeInt3, "", no, OutputSucceeded, !IO),
         touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
-            ModuleName, ext_int(ext_int_date_int3),
+            ModuleName, ext_cur_ngs(ext_cur_ngs_int_date_int3),
             TouchSucceeded, !IO),
         Succeeded = OutputSucceeded `and` TouchSucceeded
     ;
         EffectivelyErrors = yes,
         report_file_not_written(ErrorStream, Globals, Specs, [], ModuleName,
-            ext_int(ext_int_int3), no, ext_int(ext_int_date_int3), !IO),
+            ext_cur_ngs(ext_cur_ngs_int_int3), no,
+            ext_cur_ngs(ext_cur_ngs_int_date_int3), !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -209,15 +210,15 @@ write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
                 Globals, ParseTreeInt0, "", MaybeTimestamp,
                 OutputSucceeded, !IO),
             touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
-                ModuleName, ext_int(ext_int_date_int0),
+                ModuleName, ext_cur_ngs(ext_cur_ngs_int_date_int0),
                 TouchSucceeded, !IO),
             Succeeded = OutputSucceeded `and` TouchSucceeded
         ;
             EffectiveGetQualSpecs = [_ | _],
             report_file_not_written(ErrorStream, Globals,
                 EffectiveGetQualSpecs, [], ModuleName,
-                ext_int(ext_int_int0), no,
-                ext_int(ext_int_date_int0), !IO),
+                ext_cur_ngs(ext_cur_ngs_int_int0), no,
+                ext_cur_ngs(ext_cur_ngs_int_date_int0), !IO),
             Succeeded = did_not_succeed
         )
     else
@@ -226,8 +227,8 @@ write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
         PrefixPieces = [words("Error reading interface files."),
             nl_indent_delta(-1)],
         report_file_not_written(ErrorStream, Globals, GetSpecs,
-            PrefixPieces, ModuleName, ext_int(ext_int_int0), no,
-            ext_int(ext_int_date_int0), !IO),
+            PrefixPieces, ModuleName, ext_cur_ngs(ext_cur_ngs_int_int0), no,
+            ext_cur_ngs(ext_cur_ngs_int_date_int0), !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -290,7 +291,7 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
                 Globals, ParseTreeInt2, "", MaybeTimestamp,
                 OutputSucceeded2, !IO),
             touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
-                ModuleName, ext_int(ext_int_date_int12),
+                ModuleName, ext_cur_ngs(ext_cur_ngs_int_date_int12),
                 TouchSucceeded, !IO),
             Succeeded = and_list([OutputSucceeded1, OutputSucceeded2,
                 TouchSucceeded])
@@ -298,8 +299,9 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
             EffectiveGetQualSpecs = [_ | _],
             report_file_not_written(ErrorStream, Globals,
                 EffectiveGetQualSpecs, [], ModuleName,
-                ext_int(ext_int_int1), yes(ext_int(ext_int_int2)),
-                ext_int(ext_int_date_int12), !IO),
+                ext_cur_ngs(ext_cur_ngs_int_int1),
+                yes(ext_cur_ngs(ext_cur_ngs_int_int2)),
+                ext_cur_ngs(ext_cur_ngs_int_date_int12), !IO),
             Succeeded = did_not_succeed
         )
     else
@@ -308,9 +310,9 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
         PrefixPieces = [words("Error reading .int3 files."),
             nl_indent_delta(-1)],
         report_file_not_written(ErrorStream, Globals, GetSpecs, PrefixPieces,
-            ModuleName, ext_int(ext_int_int1),
-            yes(ext_int(ext_int_int2)),
-            ext_int(ext_int_date_int12), !IO),
+            ModuleName, ext_cur_ngs(ext_cur_ngs_int_int1),
+            yes(ext_cur_ngs(ext_cur_ngs_int_int2)),
+            ext_cur_ngs(ext_cur_ngs_int_date_int12), !IO),
         Succeeded = did_not_succeed
     ).
 

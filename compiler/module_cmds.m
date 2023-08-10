@@ -862,7 +862,7 @@ use_win32 :-
 %
 
 create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
-    module_name_to_file_name(Globals, $pred, ext_lib_gs(ext_lib_gs_jar),
+    module_name_to_file_name(Globals, $pred, ext_cur_gs(ext_cur_gs_lib_jar),
         MainModuleName, JarFileName),
     get_target_env_type(Globals, TargetEnvType),
     (
@@ -1207,7 +1207,7 @@ get_env_classpath(Classpath, !IO) :-
 
 create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_exec_gs(ext_exec_gs_noext), MainModuleName, FileName, !IO),
+        ext_cur_gs(ext_cur_gs_exec_noext), MainModuleName, FileName, !IO),
 
     get_progress_output_stream(Globals, MainModuleName, ProgressStream, !IO),
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -1246,7 +1246,7 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
 
 create_launcher_batch_file(Globals, MainModuleName, Pred, Succeeded, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_exec_gs(ext_exec_gs_bat), MainModuleName, FileName, !IO),
+        ext_cur_gs(ext_cur_gs_exec_bat), MainModuleName, FileName, !IO),
 
     get_progress_output_stream(Globals, MainModuleName, ProgressStream, !IO),
     globals.lookup_bool_option(Globals, verbose, Verbose),

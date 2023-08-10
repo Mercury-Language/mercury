@@ -66,15 +66,19 @@ file_kind_to_extension(fk_int(IntFileKind), ExtStr) :-
 file_kind_to_extension(fk_opt(OptFileKind), ExtStr) :-
     opt_file_kind_to_extension(OptFileKind, ExtStr, _Ext).
 
-int_file_kind_to_extension(ifk_int0, ".int0", ext_int(ext_int_int0)).
-int_file_kind_to_extension(ifk_int1, ".int",  ext_int(ext_int_int1)).
-int_file_kind_to_extension(ifk_int2, ".int2", ext_int(ext_int_int2)).
-int_file_kind_to_extension(ifk_int3, ".int3", ext_int(ext_int_int3)).
+int_file_kind_to_extension(ifk_int0,
+    ".int0", ext_cur_ngs(ext_cur_ngs_int_int0)).
+int_file_kind_to_extension(ifk_int1,
+    ".int",  ext_cur_ngs(ext_cur_ngs_int_int1)).
+int_file_kind_to_extension(ifk_int2,
+    ".int2", ext_cur_ngs(ext_cur_ngs_int_int2)).
+int_file_kind_to_extension(ifk_int3,
+    ".int3", ext_cur_ngs(ext_cur_ngs_int_int3)).
 
 opt_file_kind_to_extension(ofk_opt, ".opt",
-    ext_opt(ext_opt_plain)).
+    ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain)).
 opt_file_kind_to_extension(ofk_trans_opt, ".trans_opt",
-    ext_opt(ext_opt_trans)).
+    ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans)).
 
 extension_to_file_kind(ExtStr, FileKind) :-
     (

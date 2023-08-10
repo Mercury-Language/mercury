@@ -629,14 +629,14 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         (
             CompilationTarget = target_c,
             maybe_pic_object_file_extension(PIC, ObjExt, _),
-            Ext = ext_target_obj(ObjExt)
+            Ext = ext_cur_ngs_gs(ObjExt)
         ;
             CompilationTarget = target_csharp,
             % There is no separate object code step.
-            Ext = ext_target_c_cs(ext_target_cs)
+            Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs)
         ;
             CompilationTarget = target_java,
-            Ext = ext_target_java(ext_target_java_class)
+            Ext = ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_class)
         ),
         list.map(
             module_name_to_file_name(NoLinkObjsGlobals, $pred, Ext),
@@ -791,7 +791,7 @@ build_java_files(Globals, MainModuleName, ModuleNames, Succeeded,
     maybe_write_msg(MakingMsg, !IO),
     list.map_foldl(
         module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_target_java(ext_target_java_java)),
+            ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)),
         ModuleNames, JavaFiles, !IO),
     % We redirect errors to a file named after the main module.
     prepare_to_redirect_output(MainModuleName, RedirectResult, !Info, !IO),
@@ -1573,20 +1573,21 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
         ( if set.is_empty(Children) then
             Exts0 = []
         else
-            Exts0 = [{ext_int(ext_int_int0), "int0s"}]
+            Exts0 = [{ext_cur_ngs(ext_cur_ngs_int_int0), "int0s"}]
         ),
         globals.get_any_intermod(Globals, AnyIntermod),
         (
             AnyIntermod = yes,
-            Exts1 = [{ext_opt(ext_opt_plain), "opts"} | Exts0]
+            Exts1 = [{ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+                "opts"} | Exts0]
         ;
             AnyIntermod = no,
             Exts1 = Exts0
         ),
-        Exts = [{ext_int(ext_int_int1), "ints"},
-            {ext_int(ext_int_int2), "int2s"},
-            {ext_int(ext_int_int3), "int3s"},
-            {ext_misc_ngs(ext_misc_ngs_module_dep), "module_deps"}
+        Exts = [{ext_cur_ngs(ext_cur_ngs_int_int1), "ints"},
+            {ext_cur_ngs(ext_cur_ngs_int_int2), "int2s"},
+            {ext_cur_ngs(ext_cur_ngs_int_int3), "int3s"},
+            {ext_cur_ngs(ext_cur_ngs_misc_module_dep), "module_deps"}
             | Exts1],
         globals.lookup_string_option(Globals, install_prefix, Prefix),
         LibDir = Prefix/"lib"/"mercury",
@@ -1835,7 +1836,7 @@ install_library_grade_files(Globals, LinkSucceeded0, GradeDir, ModuleName,
 install_grade_init(Globals, GradeDir, ModuleName, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     GradeModulesDir = Prefix / "lib" / "mercury" / "modules" / GradeDir,
-    module_name_to_file_name(Globals, $pred, ext_lib_gs(ext_lib_gs_init),
+    module_name_to_file_name(Globals, $pred, ext_cur_gs(ext_cur_gs_lib_init),
         ModuleName, InitFileName),
     install_file(Globals, InitFileName, GradeModulesDir, Succeeded, !IO).
 
@@ -1862,13 +1863,15 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
         then
             GradeIncDir = LibDir/"lib"/GradeDir/"inc",
             install_subdir_file(Globals, LinkSucceeded, GradeIncDir,
-                ModuleName, {ext_mih(ext_mih_mih), "mihs"},
+                ModuleName,
+                {ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih), "mihs"},
                 HeaderSucceeded1, !IO),
 
             % This is needed so that the file will be found in Mmake's VPATH.
             IntDir = LibDir/"ints",
             install_subdir_file(Globals, LinkSucceeded, IntDir, ModuleName,
-                {ext_mih(ext_mih_mih), "mihs"}, HeaderSucceeded2, !IO),
+                {ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih), "mihs"},
+                HeaderSucceeded2, !IO),
             HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
         else
             HeaderSucceeded = succeeded
@@ -1879,7 +1882,9 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
         (
             AnyIntermod = yes,
             install_subdir_file(Globals, LinkSucceeded, GradeIntDir,
-                ModuleName, {ext_opt(ext_opt_plain), "opts"},
+                ModuleName,
+                {ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+                    "opts"},
                 OptSucceeded, !IO)
         ;
             AnyIntermod = no,
@@ -1890,7 +1895,9 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
         (
             IntermodAnalysis = yes,
             install_subdir_file(Globals, LinkSucceeded, GradeIntDir,
-                ModuleName, {ext_analysis(ext_an_analysis), "analysiss"},
+                ModuleName,
+                {ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_analysis),
+                    "analysiss"},
                 IntermodAnalysisSucceeded, !IO)
         ;
             IntermodAnalysis = no,
@@ -2154,7 +2161,7 @@ make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
     % Remove the symlinks created for `--use-grade-subdirs'.
     % XXX This symlink should not be necessary anymore for `mmc --make'.
     module_name_to_file_name_full_curdir(Globals, $pred,
-        ext_lib_gs(ext_lib_gs_init), ModuleName,
+        ext_cur_gs(ext_cur_gs_lib_init), ModuleName,
         FullInitFileName, ThisDirInitFileName),
     FilesToRemove = FileNames ++ ThisDirFileNames ++
         [FullInitFileName, ThisDirInitFileName],
@@ -2167,11 +2174,11 @@ make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
 
 remove_init_files(Globals, Verbose, ModuleName, !Info, !IO) :-
     remove_make_module_file(Globals, Verbose, ModuleName,
-        ext_target_init_c(ext_init_c), !Info, !IO),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_init_c), !Info, !IO),
     remove_make_module_file(Globals, Verbose, ModuleName,
-        ext_target_init_obj(ext_init_obj_obj_opt), !Info, !IO),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_init_obj_obj_opt), !Info, !IO),
     remove_make_module_file(Globals, Verbose, ModuleName,
-        ext_target_init_obj(ext_init_obj_pic_obj_opt), !Info, !IO).
+        ext_cur_ngs_gs(ext_cur_ngs_gs_init_obj_pic_obj_opt), !Info, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -2197,9 +2204,9 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
         module_target_java_class_code], !Info, !IO),
 
     remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_misc_gs(ext_misc_gs_used), !Info, !IO),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_misc_used), !Info, !IO),
     remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_misc_ngs(ext_misc_ngs_prof), !Info, !IO),
+        ext_cur_ngs(ext_cur_ngs_misc_prof), !Info, !IO),
 
     get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
         !Info, !IO),
@@ -2228,7 +2235,7 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
 
 remove_fact_table_c_file(Globals, FactTableFile, !Info, !IO) :-
     fact_table_file_name_return_dirs(Globals, $pred,
-        ext_target_c_cs(ext_target_c),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
         FactTableFile, _FactTableDirs, FactTableCFile),
     make_remove_file(Globals, very_verbose, FactTableCFile, !Info, !IO).
 
@@ -2279,11 +2286,11 @@ make_module_realclean(Globals, ModuleName, !Info, !IO) :-
             ModuleName),
         Targets, !Info, !IO),
     remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_misc_ngs(ext_misc_ngs_module_dep), !Info, !IO),
+        ext_cur_ngs(ext_cur_ngs_misc_module_dep), !Info, !IO),
     remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_analysis(ext_an_imdg), !Info, !IO),
+        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_imdg), !Info, !IO),
     remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_analysis(ext_an_request), !Info, !IO).
+        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_request), !Info, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module make.program_target.

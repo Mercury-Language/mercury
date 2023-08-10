@@ -582,7 +582,8 @@ fact_table_compile_facts(ModuleInfo, FileName, Context, GenInfo,
     (
         FileResult = ok(FileStream),
         fact_table_file_name_return_dirs(Globals, $pred,
-            ext_target_c_cs(ext_target_c), FileName, Dirs, OutputFileName),
+            ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
+            FileName, Dirs, OutputFileName),
         create_any_dirs_on_path(Dirs, !IO),
         io.open_output(OutputFileName, OpenResult, !IO),
         (

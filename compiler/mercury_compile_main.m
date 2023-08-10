@@ -1362,13 +1362,13 @@ find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
     globals.get_target(Globals, CompilationTarget),
     (
         CompilationTarget = target_c,
-        TargetExt = ext_target_c_cs(ext_target_c)
+        TargetExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_c)
     ;
         CompilationTarget = target_csharp,
-        TargetExt = ext_target_c_cs(ext_target_cs)
+        TargetExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs)
     ;
         CompilationTarget = target_java,
-        TargetExt = ext_target_java(ext_target_java_java)
+        TargetExt = ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)
     ),
     FindTargetFiles =
         usual_find_target_files(Globals, TargetExt).
@@ -1390,13 +1390,13 @@ find_timestamp_files(Globals, FindTimestampFiles) :-
     globals.get_target(Globals, CompilationTarget),
     (
         CompilationTarget = target_c,
-        TimestampExt = ext_target_date(ext_target_date_c)
+        TimestampExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_c)
     ;
         CompilationTarget = target_csharp,
-        TimestampExt = ext_target_date(ext_target_date_cs)
+        TimestampExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_cs)
     ;
         CompilationTarget = target_java,
-        TimestampExt = ext_target_date(ext_target_date_java)
+        TimestampExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_java)
     ),
     FindTimestampFiles =
         find_timestamp_files_2(Globals, TimestampExt).
@@ -2014,7 +2014,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
 
     module_info_get_name(!.HLDS, ModuleName),
     module_name_to_file_name(Globals, $pred,
-        ext_misc_gs(ext_misc_gs_used), ModuleName, UsageFileName),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_misc_used), ModuleName, UsageFileName),
     io.file.remove_file(UsageFileName, _, !IO),
 
     FrontEndErrors =
@@ -2052,7 +2052,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                 ;
                     TargetCodeSucceeded = succeeded,
                     module_name_to_file_name(Globals, $pred,
-                        ext_target_java(ext_target_java_java),
+                        ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
                         ModuleName, JavaFile),
                     compile_java_files(Globals, ProgressStream, ErrorStream,
                         JavaFile, [], Succeeded, !IO),
@@ -2088,12 +2088,13 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                         TargetCodeSucceeded = succeeded,
                         % XXX EXT Why not _create_dirs?
                         module_name_to_file_name(Globals, $pred,
-                            ext_target_c_cs(ext_target_c), ModuleName, C_File),
+                            ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
+                            ModuleName, C_File),
                         get_linked_target_type(Globals, TargetType),
                         get_object_code_type(Globals, TargetType, PIC),
                         maybe_pic_object_file_extension(PIC, ObjExt, _),
                         module_name_to_file_name_create_dirs(Globals, $pred,
-                            ext_target_obj(ObjExt), ModuleName, O_File, !IO),
+                            ext_cur_ngs_gs(ObjExt), ModuleName, O_File, !IO),
                         do_compile_c_file(Globals, ProgressStream, ErrorStream,
                             PIC, C_File, O_File, Succeeded, !IO),
                         maybe_set_exit_status(Succeeded, !IO)
@@ -2168,7 +2169,7 @@ maybe_output_prof_call_graph(ProgressStream, ErrorStream, Verbose, Stats,
         maybe_flush_output(ProgressStream, Verbose, !IO),
         module_info_get_name(!.HLDS, ModuleName),
         module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_misc_ngs(ext_misc_ngs_prof), ModuleName, ProfFileName, !IO),
+            ext_cur_ngs(ext_cur_ngs_misc_prof), ModuleName, ProfFileName, !IO),
         io.open_output(ProfFileName, Res, !IO),
         (
             Res = ok(FileStream),

@@ -304,11 +304,11 @@ foreign_language_module_name(ModuleName, Lang, FullyQualifiedModuleName) :-
 :- pragma no_determinism_warning(pred(foreign_language_file_extension/2)).
 
 foreign_language_file_extension(lang_c,
-    ext_target_c_cs(ext_target_c)).
+    ext_cur_ngs_gs(ext_cur_ngs_gs_target_c)).
 foreign_language_file_extension(lang_csharp,
-    ext_target_c_cs(ext_target_cs)).
+    ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs)).
 foreign_language_file_extension(lang_java,
-    ext_target_java(ext_target_java_java)).
+    ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)).
 
 %-----------------------------------------------------------------------------%
 

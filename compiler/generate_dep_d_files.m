@@ -309,7 +309,7 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
         (
             OutputOrder = yes,
             output_module_order(Globals, ModuleName,
-                ext_user_ngs(ext_user_ngs_order_to),
+                ext_cur_ngs(ext_cur_ngs_user_order_to),
                 TransOptDepsOrdering0, !IO)
         ;
             OutputOrder = no
@@ -319,7 +319,8 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
         list.condense(TransOptDepsOrdering1, TransOptDepsOrdering),
         globals.lookup_accumulating_option(Globals, intermod_directories,
             IntermodDirs),
-        get_opt_deps(Globals, yes, IntermodDirs, ext_opt(ext_opt_trans),
+        get_opt_deps(Globals, yes, IntermodDirs,
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
             TransOptDepsOrdering, TransOptOrder, !IO),
         (
             Mode = output_d_file_only,
@@ -392,7 +393,7 @@ maybe_output_imports_graph(Globals, ModuleName, IntDepsGraph, ImpDepsGraph,
     (
         ImportsGraph = yes,
         module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_user_ngs(ext_user_ngs_imports_graph),
+            ext_cur_ngs(ext_cur_ngs_user_imports_graph),
             ModuleName, FileName, !IO),
         (
             Verbose = no,

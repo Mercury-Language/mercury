@@ -200,7 +200,8 @@ analysis_status_to_string(optimal, "optimal").
 
 read_module_overall_status(Compiler, Globals, ModuleName, ModuleStatus, !IO) :-
     module_name_to_read_file_name(Compiler, Globals,
-        ext_analysis_ds(ext_an_ds_status), ModuleName, MaybeFileName, !IO),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_an_ds_status),
+        ModuleName, MaybeFileName, !IO),
     (
         MaybeFileName = ok(FileName),
         read_module_overall_status_2(FileName, ModuleStatus0, !IO)
@@ -213,7 +214,7 @@ read_module_overall_status(Compiler, Globals, ModuleName, ModuleStatus, !IO) :-
     (
         ModuleStatus0 = optimal,
         module_name_to_read_file_name(Compiler, Globals,
-            ext_analysis(ext_an_request),
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_request),
             ModuleName, MaybeRequestFileName, !IO),
         (
             % There are outstanding requests for this module.
@@ -271,7 +272,8 @@ read_module_overall_status_2(FileName, ModuleStatus, !IO) :-
 
 write_module_overall_status(Info, Globals, ModuleName, Status, !IO) :-
     module_name_to_write_file_name(Info ^ compiler, Globals,
-        ext_analysis_ds(ext_an_ds_status), ModuleName, FileName, !IO),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_an_ds_status),
+        ModuleName, FileName, !IO),
     io.open_output(FileName, OpenResult, !IO),
     (
         OpenResult = ok(Stream),
@@ -303,7 +305,7 @@ read_module_analysis_results(Info, Globals, ModuleName, ModuleResults,
     % as we want to know which results change after we reanalyse the module.
     Compiler = Info ^ compiler,
     module_name_to_read_file_name(Compiler, Globals,
-        ext_analysis(ext_an_analysis),
+        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_analysis),
         ModuleName, MaybeAnalysisFileName, !IO),
     (
         MaybeAnalysisFileName = ok(AnalysisFileName),
@@ -465,7 +467,8 @@ write_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
             [s(sym_name_to_string(ModuleName))], !IO)
     ),
     find_and_write_analysis_file(Info ^ compiler, Globals,
-        add_dot_temp, write_result_entry, ext_analysis(ext_an_analysis),
+        add_dot_temp, write_result_entry,
+        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_analysis),
         ModuleName, ModuleResults, FileName, !IO),
     copy_dot_tmp_to_base_file_return_changed(Globals, ModuleName, FileName,
         UpdateResult, !IO),
@@ -510,7 +513,7 @@ read_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
         !Specs, !IO) :-
     find_and_read_analysis_file(Info ^ compiler, Globals,
         parse_request_entry(Info ^ compiler),
-        ext_analysis(ext_an_request), ModuleName,
+        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_request), ModuleName,
         map.init, ModuleRequests, !Specs, !IO).
 
 :- pred parse_request_entry(Compiler::in, varset::in, term::in,
@@ -566,7 +569,8 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
         !IO) :-
     Compiler = Info ^ compiler,
     module_name_to_write_file_name(Compiler, Globals,
-        ext_analysis(ext_an_request), ModuleName, AnalysisFileName, !IO),
+        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_request),
+        ModuleName, AnalysisFileName, !IO),
     get_debug_analysis_stream(MaybeDebugStream, !IO),
     (
         MaybeDebugStream = no
@@ -647,7 +651,8 @@ write_request_entry(Compiler, OutStream, AnalysisName, FuncId, Request, !IO) :-
 
 read_module_imdg(Info, Globals, ModuleName, ModuleEntries, Specs, !IO) :-
     find_and_read_analysis_file(Info ^ compiler, Globals,
-        parse_imdg_arc(Info ^ compiler), ext_analysis(ext_an_imdg),
+        parse_imdg_arc(Info ^ compiler),
+        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_imdg),
         ModuleName, map.init, ModuleEntries, [], Specs, !IO).
 
 :- pred parse_imdg_arc(Compiler::in, varset::in, term::in,
@@ -703,7 +708,7 @@ parse_imdg_arc(Compiler, VarSet, Term, !Arcs, !Specs) :-
 write_module_imdg(Info, Globals, ModuleName, ModuleEntries, !IO) :-
     find_and_write_analysis_file(Info ^ compiler, Globals,
         do_not_add_dot_temp, write_imdg_arc(Info ^ compiler),
-        ext_analysis(ext_an_imdg), ModuleName,
+        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_imdg), ModuleName,
         ModuleEntries, _FileName, !IO).
 
 :- pred write_imdg_arc(Compiler::in, io.text_output_stream::in,
@@ -780,7 +785,8 @@ find_and_read_analysis_file(Compiler, Globals, ParseEntry,
         ;
             MaybeDebugStream = yes(DebugStream),
             ExtStr = extension_to_string(Globals, Ext),
-            io.format(DebugStream, "Couldn't find %s file for module %s: %s\n",
+            io.format(DebugStream,
+                "Couldn't find %s file for module %s: %s\n",
                 [s(ExtStr), s(sym_name_to_string(ModuleName)),
                 s(Message)], !IO)
         )
@@ -989,7 +995,8 @@ write_module_analysis_func(OutStream, WriteEntry, AnalysisName, FuncId,
 
 empty_request_file(Info, Globals, ModuleName, !IO) :-
     module_name_to_write_file_name(Info ^ compiler, Globals,
-        ext_analysis(ext_an_request), ModuleName, RequestFileName, !IO),
+        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_request),
+        ModuleName, RequestFileName, !IO),
     get_debug_analysis_stream(MaybeDebugStream, !IO),
     (
         MaybeDebugStream = no

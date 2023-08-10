@@ -249,7 +249,7 @@ write_usage_file(ModuleInfo, UsedFileContents, !IO) :-
 
     module_info_get_name(ModuleInfo, ModuleName),
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_misc_gs(ext_misc_gs_used), ModuleName, FileName, !IO),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_misc_used), ModuleName, FileName, !IO),
     io.open_output(FileName, FileResult, !IO),
     (
         FileResult = ok(FileStream),
@@ -635,7 +635,8 @@ module_name_and_used_items_to_string(UsedFileContents,
 %---------------------------------------------------------------------------%
 
 read_used_file_for_module(Globals, ModuleName, ReadUsedFileResult, !IO) :-
-    module_name_to_file_name(Globals, $pred, ext_misc_gs(ext_misc_gs_used),
+    module_name_to_file_name(Globals, $pred,
+        ext_cur_ngs_gs(ext_cur_ngs_gs_misc_used),
         ModuleName, UsedFileName),
     io.read_named_file_as_string(UsedFileName, MaybeUsedFileString, !IO),
     (

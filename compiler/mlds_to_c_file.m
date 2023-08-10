@@ -129,7 +129,8 @@ output_c_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_target_c_cs(ext_target_c), ModuleName, SourceFileName0, !IO),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
+        ModuleName, SourceFileName0, !IO),
     SourceFileName = SourceFileName0 ++ Suffix,
     Indent = 0,
     output_to_file_stream(Globals, ModuleName, SourceFileName,
@@ -146,7 +147,8 @@ output_c_header_file_opts(MLDS, Opts, Suffix, !:Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_mih(ext_mih_mih), ModuleName, MihFileName, !IO),
+        ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih),
+        ModuleName, MihFileName, !IO),
     HeaderFileName = MihFileName ++ Suffix,
     TmpHeaderFileName = HeaderFileName ++ ".tmp",
     globals.lookup_bool_option(Globals, line_numbers_for_c_headers,
@@ -309,7 +311,7 @@ mlds_output_src_import(Opts, Stream, _Indent, Import, !IO) :-
         HeaderExt = ext_cur(ext_cur_mh)
     ;
         ImportType = compiler_visible_interface,
-        HeaderExt = ext_mih(ext_mih_mih)
+        HeaderExt = ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih)
     ),
 
     % Strip off the "mercury" qualifier for standard library modules.

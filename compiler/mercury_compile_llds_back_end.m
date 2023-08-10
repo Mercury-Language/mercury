@@ -934,9 +934,9 @@ llds_c_to_obj(Globals, ProgressStream, ErrorStream, ModuleName,
     maybe_pic_object_file_extension(PIC, ObjExt, _),
     % XXX Why not _create_dirs?
     module_name_to_file_name(Globals, $pred,
-        ext_target_c_cs(ext_target_c), ModuleName, C_File),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName, C_File),
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_target_obj(ObjExt), ModuleName, O_File, !IO),
+        ext_cur_ngs_gs(ObjExt), ModuleName, O_File, !IO),
     compile_target_code.do_compile_c_file(Globals, ProgressStream, ErrorStream,
         PIC, C_File, O_File, Succeeded, !IO).
 
@@ -952,7 +952,7 @@ compile_fact_table_file(Globals, ProgressStream, ErrorStream,
     % XXX EXT
     C_FileName = BaseName ++ ".c",
     O_FileName = BaseName ++ extension_to_string(Globals,
-        ext_target_obj(ExtObj)),
+        ext_cur_ngs_gs(ExtObj)),
     compile_target_code.do_compile_c_file(Globals, ProgressStream, ErrorStream,
         PIC, C_FileName, O_FileName, Succeeded, !IO).
 

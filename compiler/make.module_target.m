@@ -617,7 +617,7 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
             % The `.err_date' file is needed because the `.err' file is touched
             % by all phases of compilation, including writing interfaces.
             touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
-                ModuleName, ext_misc_ngs(ext_misc_ngs_err_date),
+                ModuleName, ext_cur_ngs(ext_cur_ngs_misc_err_date),
                 TouchSucceeded, !IO),
             Succeeded = CompileSucceeded `and` TouchSucceeded
         else
@@ -648,7 +648,7 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
         Task = fact_table_code_to_object_code(PIC, FactTableFileName),
         get_object_extension(Globals, PIC, ObjExt),
         get_fact_table_foreign_code_file(Globals, do_create_dirs,
-            ext_target_obj(ObjExt),
+            ext_cur_ngs_gs(ObjExt),
             FactTableFileName, FactTableForeignCode, !IO),
 
         % Run the compilation in a child process so it can be killed
@@ -672,14 +672,15 @@ build_object_code(Globals, ModuleName, Target, PIC,
     ;
         Target = target_java,
         module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_target_java(ext_target_java_java),
+            ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
             ModuleName, JavaFile, !IO),
         compile_java_files(Globals, ProgressStream, ErrorStream,
             JavaFile, [], Succeeded, !IO)
     ;
         Target = target_csharp,
         module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_target_c_cs(ext_target_cs), ModuleName, CsharpFile, !IO),
+            ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs),
+            ModuleName, CsharpFile, !IO),
         compile_target_code.link(Globals, ProgressStream, ErrorStream,
             csharp_library, ModuleName, [CsharpFile], Succeeded, !IO)
     ).
@@ -728,10 +729,10 @@ get_foreign_code_file(Globals, ModuleName, PIC, Lang, ForeignCodeFile, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred,
         SrcExt, ForeignModName, SrcFileName, !IO),
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_target_obj(ObjExt), ForeignModName, ObjFileName, !IO),
+        ext_cur_ngs_gs(ObjExt), ForeignModName, ObjFileName, !IO),
     ForeignCodeFile = foreign_code_file(Lang, SrcFileName, ObjFileName).
 
-:- pred get_object_extension(globals::in, pic::in, ext_obj::out) is det.
+:- pred get_object_extension(globals::in, pic::in, ext_cur_ngs_gs::out) is det.
 
 get_object_extension(Globals, PIC, ExtObj) :-
     globals.get_target(Globals, CompilationTarget),
@@ -1039,7 +1040,7 @@ find_files_maybe_touched_by_task(Globals, TargetFile, Task,
         TouchedTargetFiles = [TargetFile],
         get_object_extension(Globals, PIC, ObjExt),
         fact_table_file_name_return_dirs(Globals, $pred,
-            ext_target_obj(ObjExt),
+            ext_cur_ngs_gs(ObjExt),
             FactTableName, FactTableDirs, FactTableObjectFile),
         create_any_dirs_on_path(FactTableDirs, !IO),
         TouchedFileNames = [FactTableObjectFile]
@@ -1191,7 +1192,7 @@ external_foreign_code_files(Globals, PIC, ModuleDepInfo, ForeignFiles, !IO) :-
         module_dep_info_get_fact_tables(ModuleDepInfo, FactTableFiles),
         list.map_foldl(
             get_fact_table_foreign_code_file(Globals, do_not_create_dirs,
-                ext_target_obj(ObjExt)),
+                ext_cur_ngs_gs(ObjExt)),
             set.to_sorted_list(FactTableFiles), FactTableForeignFiles, !IO),
         ForeignFiles = FactTableForeignFiles
     ;
@@ -1208,7 +1209,7 @@ get_fact_table_foreign_code_file(Globals, Mkdir, ObjExt,
         FactTableFileName, ForeignCodeFile, !IO) :-
     % XXX EXT Neither of these calls should be needed.
     fact_table_file_name_return_dirs(Globals, $pred,
-        ext_target_c_cs(ext_target_c),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
         FactTableFileName, FactTableDirsC, FactTableCFileName),
     maybe_create_any_dirs_on_path(Mkdir, FactTableDirsC, !IO),
     fact_table_file_name_return_dirs(Globals, $pred, ObjExt,

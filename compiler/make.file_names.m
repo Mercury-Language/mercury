@@ -170,7 +170,7 @@ module_target_to_file_name(Globals, From, TargetType, ModuleName,
         TargetExt = fact_table_obj(PIC, FactFile),
         maybe_pic_object_file_extension(PIC, ObjExt, _),
         fact_table_file_name_return_dirs(Globals, $pred,
-            ext_target_obj(ObjExt), FactFile, _FactDirs, FileName)
+            ext_cur_ngs_gs(ObjExt), FactFile, _FactDirs, FileName)
     ).
 
 :- pred module_target_to_search_file_name(globals::in, string::in,
@@ -198,7 +198,7 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
         maybe_pic_object_file_extension(PIC, ObjExt, _),
         % XXX This call ignores the implicit for_search setting.
         fact_table_file_name_return_dirs(Globals, $pred,
-            ext_target_obj(ObjExt), FactFile, _FactDirs, FileName)
+            ext_cur_ngs_gs(ObjExt), FactFile, _FactDirs, FileName)
     ).
 
 %---------------------------------------------------------------------------%
@@ -225,51 +225,54 @@ target_type_to_target_extension(Target, TargetExt) :-
         TargetExt = extension(ext_cur(ext_cur_user_err))
     ;
         Target = module_target_int0,
-        TargetExt = extension(ext_int(ext_int_int0))
+        TargetExt = extension(ext_cur_ngs(ext_cur_ngs_int_int0))
     ;
         Target = module_target_int1,
-        TargetExt = extension(ext_int(ext_int_int1))
+        TargetExt = extension(ext_cur_ngs(ext_cur_ngs_int_int1))
     ;
         Target = module_target_int2,
-        TargetExt = extension(ext_int(ext_int_int2))
+        TargetExt = extension(ext_cur_ngs(ext_cur_ngs_int_int2))
     ;
         Target = module_target_int3,
-        TargetExt = extension(ext_int(ext_int_int3))
+        TargetExt = extension(ext_cur_ngs(ext_cur_ngs_int_int3))
     ;
         Target = module_target_opt,
-        TargetExt = extension(ext_opt(ext_opt_plain))
+        TargetExt = extension(
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain))
     ;
         Target = module_target_analysis_registry,
-        TargetExt = extension(ext_analysis(ext_an_analysis))
+        TargetExt = extension(
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_analysis))
     ;
         Target = module_target_track_flags,
-        TargetExt = extension(ext_misc_gs(ext_misc_gs_track_flags))
+        TargetExt = extension(ext_cur_ngs_gs(ext_cur_ngs_gs_misc_track_flags))
     ;
         Target = module_target_c_header(header_mih),
-        TargetExt = extension(ext_mih(ext_mih_mih))
+        TargetExt = extension(
+            ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih))
     ;
         Target = module_target_c_header(header_mh),
         TargetExt = extension(ext_cur(ext_cur_mh))
     ;
         Target = module_target_c_code,
-        TargetExt = extension(ext_target_c_cs(ext_target_c))
+        TargetExt = extension(ext_cur_ngs_gs(ext_cur_ngs_gs_target_c))
     ;
         Target = module_target_csharp_code,
         % XXX ".exe" if the module contains main.
-        TargetExt = extension(ext_target_c_cs(ext_target_cs))
+        TargetExt = extension(ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs))
     ;
         Target = module_target_java_code,
-        TargetExt = extension(ext_target_java(ext_target_java_java))
+        TargetExt = extension(ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java))
     ;
         Target = module_target_java_class_code,
-        TargetExt = extension(ext_target_java(ext_target_java_class))
+        TargetExt = extension(ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_class))
     ;
         Target = module_target_object_code(PIC),
         maybe_pic_object_file_extension(PIC, ObjExt, _),
-        TargetExt = extension(ext_target_obj(ObjExt))
+        TargetExt = extension(ext_cur_ngs_gs(ObjExt))
     ;
         Target = module_target_xml_doc,
-        TargetExt = extension(ext_user_ngs(ext_user_ngs_xml))
+        TargetExt = extension(ext_cur_ngs(ext_cur_ngs_user_xml))
     ;
         Target = module_target_foreign_object(PIC, Lang),
         TargetExt = foreign_obj(PIC, Lang)
@@ -354,42 +357,42 @@ timestamp_extension(ModuleTargetType, Ext) :-
         % We need a timestamp file for `.err' files because errors are written
         % to the `.err' file even when writing interfaces. The timestamp
         % is only updated when compiling to target code.
-        Ext = ext_misc_ngs(ext_misc_ngs_err_date)
+        Ext = ext_cur_ngs(ext_cur_ngs_misc_err_date)
     ;
         ModuleTargetType = module_target_int0,
-        Ext = ext_int(ext_int_date_int0)
+        Ext = ext_cur_ngs(ext_cur_ngs_int_date_int0)
     ;
         ModuleTargetType = module_target_int1,
-        Ext = ext_int(ext_int_date_int12)
+        Ext = ext_cur_ngs(ext_cur_ngs_int_date_int12)
     ;
         ModuleTargetType = module_target_int2,
-        Ext = ext_int(ext_int_date_int12)
+        Ext = ext_cur_ngs(ext_cur_ngs_int_date_int12)
     ;
         ModuleTargetType = module_target_int3,
-        Ext = ext_int(ext_int_date_int3)
+        Ext = ext_cur_ngs(ext_cur_ngs_int_date_int3)
     ;
         ModuleTargetType = module_target_opt,
-        Ext = ext_opt_date(ext_opt_date_plain)
+        Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_plain)
     ;
         ModuleTargetType = module_target_analysis_registry,
         % We need a timestamp file for `.analysis' files because they
         % can be modified in the process of analysing _another_ module.
         % The timestamp is only updated after actually analysing the module
         % that the `.analysis' file corresponds to.
-        Ext = ext_analysis_ds(ext_an_ds_date)
+        Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_an_ds_date)
     ;
         % Header files share a timestamp file with their corresponding
         % target code files.
         ( ModuleTargetType = module_target_c_code
         ; ModuleTargetType = module_target_c_header(_)
         ),
-        Ext = ext_target_date(ext_target_date_c)
+        Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_c)
     ;
         ModuleTargetType = module_target_csharp_code,
-        Ext = ext_target_date(ext_target_date_cs)
+        Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_cs)
     ;
         ModuleTargetType = module_target_java_code,
-        Ext = ext_target_date(ext_target_date_java)
+        Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_java)
     ).
 
 %---------------------------------------------------------------------------%

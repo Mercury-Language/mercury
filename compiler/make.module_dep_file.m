@@ -201,7 +201,7 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         MaybeSourceFileTimestamp, !Info, !IO),
 
     module_name_to_file_name(Globals, $pred,
-        ext_misc_ngs(ext_misc_ngs_module_dep), ModuleName, DepFileName),
+        ext_cur_ngs(ext_cur_ngs_misc_module_dep), ModuleName, DepFileName),
     globals.lookup_accumulating_option(Globals, search_directories,
         SearchDirs),
     get_file_timestamp(SearchDirs, DepFileName, MaybeDepFileTimestamp,
@@ -353,7 +353,8 @@ do_write_module_dep_file(Globals, BurdenedModule, !IO) :-
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_misc_ngs(ext_misc_ngs_module_dep), ModuleName, ProgDepFile, !IO),
+        ext_cur_ngs(ext_cur_ngs_misc_module_dep),
+        ModuleName, ProgDepFile, !IO),
     io.open_output(ProgDepFile, ProgDepResult, !IO),
     (
         ProgDepResult = ok(ProgDepStream),
@@ -511,7 +512,7 @@ read_module_dependencies_no_search(Globals, RebuildModuleDeps, ModuleName,
 read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
         !Info, !IO) :-
     module_name_to_search_file_name(Globals, $pred,
-        ext_misc_ngs(ext_misc_ngs_module_dep), ModuleName, ModuleDepFile),
+        ext_cur_ngs(ext_cur_ngs_misc_module_dep), ModuleName, ModuleDepFile),
     search_for_file_returning_dir_and_stream(SearchDirs, ModuleDepFile,
         MaybeDirAndStream, !IO),
     (
@@ -1062,7 +1063,7 @@ cleanup_module_dep_files(Globals, ModuleNames, !Info, !IO) :-
 
 cleanup_module_dep_file(Globals, ModuleName, !Info, !IO) :-
     remove_make_module_file(Globals, verbose_make, ModuleName,
-        ext_misc_ngs(ext_misc_ngs_module_dep), !Info, !IO).
+        ext_cur_ngs(ext_cur_ngs_misc_module_dep), !Info, !IO).
 
 :- pred maybe_write_importing_module(module_name::in,
     maybe(import_or_include)::in, io::di, io::uo) is det.
