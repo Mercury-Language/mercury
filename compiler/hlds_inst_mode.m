@@ -24,16 +24,7 @@
 :- import_module map.
 :- import_module maybe.
 
-:- implementation.
-
-:- import_module pair.
-:- import_module require.
-:- import_module varset.
-
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- interface.
 
     % An inst that is defined to be equivalent to a bound inst may be
     % declared by the programmer to be for a particular type constructor.
@@ -95,7 +86,7 @@
                 inst_status             :: inst_status
             ).
 
-:- type user_inst_table ==          map(inst_ctor, hlds_inst_defn).
+:- type user_inst_table == map(inst_ctor, hlds_inst_defn).
 
 :- type maybe_inst
     --->    inst_unknown
@@ -225,7 +216,70 @@
 :- pred inst_table_set_mostly_uniq_insts(mostly_uniq_inst_table::in,
     inst_table::in, inst_table::out) is det.
 
+%---------------------------------------------------------------------------%
+
+    % The symbol table for modes.
+    %
+:- type mode_table.
+:- type mode_defns == map(mode_ctor, hlds_mode_defn).
+
+    % A hlds_mode_defn stores the information about a mode
+    % definition such as
+    %   :- mode out == free >> ground.
+    % or
+    %   :- mode in(I) == I >> I.
+    % or
+    %   :- mode in_list_skel == in(list_skel).
+    %
+:- type hlds_mode_defn
+    --->    hlds_mode_defn(
+                % The names of the inst parameters (if any).
+                mode_varset     :: inst_varset,
+
+                % The list of the inst parameters (if any).
+                % (e.g. [I] for the second example above.)
+                mode_params     :: list(inst_var),
+
+                % The definition of this mode.
+                mody_body       :: hlds_mode_body,
+
+                % The location of this mode definition in the source code.
+                mode_context    :: prog_context,
+
+                % So intermod.m can tell whether to output this mode.
+                mode_status     :: mode_status
+            ).
+
+    % The only sort of mode definitions allowed are equivalence modes:
+    % the given mode name is defined as being equivalent to some other mode.
+    %
+:- type hlds_mode_body
+    --->    hlds_mode_body(mer_mode).
+
+    % Given a mode table get the mode_id - hlds_mode_defn map.
+    %
+:- pred mode_table_get_mode_defns(mode_table::in, mode_defns::out) is det.
+
+    % Insert a mode_id and corresponding hlds_mode_defn into the mode_table.
+    % Fail if the mode_id is already present in the table.
+    %
+:- pred mode_table_insert(mode_ctor::in, hlds_mode_defn::in,
+    mode_table::in, mode_table::out) is semidet.
+
+:- pred mode_table_init(mode_table::out) is det.
+
+    % Optimize the mode table for lookups.
+    %
+:- pred mode_table_optimize(mode_table::in, mode_table::out) is det.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- implementation.
+
+:- import_module pair.
+:- import_module require.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 %
@@ -245,6 +299,7 @@
 %
 % I expect (though I have not tested it) that the same problem would arise
 % if we turned the subtables of the unify_inst_table into two-stage maps.
+%
 
 :- type inst_pair
     --->    inst_pair(mer_inst, mer_inst).
@@ -566,64 +621,6 @@ inst_table_set_mostly_uniq_insts(X, !InstTable) :-
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-
-:- interface.
-
-    % The symbol table for modes.
-    %
-:- type mode_table.
-:- type mode_defns == map(mode_ctor, hlds_mode_defn).
-
-    % A hlds_mode_defn stores the information about a mode
-    % definition such as
-    %   :- mode out == free >> ground.
-    % or
-    %   :- mode in(I) == I >> I.
-    % or
-    %   :- mode in_list_skel == in(list_skel).
-    %
-:- type hlds_mode_defn
-    --->    hlds_mode_defn(
-                % The names of the inst parameters (if any).
-                mode_varset     :: inst_varset,
-
-                % The list of the inst parameters (if any).
-                % (e.g. [I] for the second example above.)
-                mode_params     :: list(inst_var),
-
-                % The definition of this mode.
-                mody_body       :: hlds_mode_body,
-
-                % The location of this mode definition in the source code.
-                mode_context    :: prog_context,
-
-                % So intermod.m can tell whether to output this mode.
-                mode_status     :: mode_status
-            ).
-
-    % The only sort of mode definitions allowed are equivalence modes:
-    % the given mode name is defined as being equivalent to some other mode.
-    %
-:- type hlds_mode_body
-    --->    hlds_mode_body(mer_mode).
-
-    % Given a mode table get the mode_id - hlds_mode_defn map.
-    %
-:- pred mode_table_get_mode_defns(mode_table::in, mode_defns::out) is det.
-
-    % Insert a mode_id and corresponding hlds_mode_defn into the mode_table.
-    % Fail if the mode_id is already present in the table.
-    %
-:- pred mode_table_insert(mode_ctor::in, hlds_mode_defn::in,
-    mode_table::in, mode_table::out) is semidet.
-
-:- pred mode_table_init(mode_table::out) is det.
-
-    % Optimize the mode table for lookups.
-    %
-:- pred mode_table_optimize(mode_table::in, mode_table::out) is det.
-
-:- implementation.
 
 :- type mode_table == mode_defns.
 
