@@ -481,10 +481,13 @@ intermod_gather_inst(ModuleName, InstCtor, InstDefn, !InstDefnsCord) :-
             IFTC = iftc_applicable_declared(ForTypeCtor),
             MaybeForTypeCtor = yes(ForTypeCtor)
         ;
-            ( IFTC = iftc_applicable_known(_)
+            ( IFTC = iftc_not_bound_inst
+            ; IFTC = iftc_applicable_known(_)
             ; IFTC = iftc_applicable_not_known
-            ; IFTC = iftc_applicable_error
-            ; IFTC = iftc_not_applicable
+            ; IFTC = iftc_applicable_error_unknown_type
+            ; IFTC = iftc_applicable_error_eqv_type(_)
+            ; IFTC = iftc_applicable_error_visibility(_)
+            ; IFTC = iftc_applicable_error_mismatches(_)
             ),
             MaybeForTypeCtor = no
         ),

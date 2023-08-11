@@ -706,9 +706,12 @@ find_items_used_by_inst_defn(Defn, !Info) :-
         IFTC = iftc_applicable_known(MatchingTypeCtors),
         list.foldl(find_items_used_by_type_ctor, MatchingTypeCtors, !Info)
     ;
-        ( IFTC = iftc_applicable_not_known
-        ; IFTC = iftc_applicable_error
-        ; IFTC = iftc_not_applicable
+        ( IFTC = iftc_not_bound_inst
+        ; IFTC = iftc_applicable_not_known
+        ; IFTC = iftc_applicable_error_unknown_type
+        ; IFTC = iftc_applicable_error_eqv_type(_)
+        ; IFTC = iftc_applicable_error_visibility(_)
+        ; IFTC = iftc_applicable_error_mismatches(_)
         )
     ).
 

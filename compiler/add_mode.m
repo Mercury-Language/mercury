@@ -136,7 +136,7 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
         ; EqvInst = constrained_inst_vars(_, _)
         ; EqvInst = defined_inst(_)
         ),
-        IFTC = iftc_not_applicable,
+        IFTC = iftc_not_bound_inst,
         ( if
             MaybeForType = yes(_ForType),
             inst_status_defined_in_this_module(InstStatus) = yes

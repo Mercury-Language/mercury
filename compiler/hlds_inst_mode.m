@@ -29,22 +29,29 @@
     % An inst that is defined to be equivalent to a bound inst may be
     % declared by the programmer to be for a particular type constructor.
 :- type inst_for_type_ctor
-    --->    iftc_not_applicable
+    --->    iftc_not_bound_inst
             % The inst is not defined to be equivalent to a bound inst.
 
     ;       iftc_applicable_declared(type_ctor)
             % The inst is defined to be equivalent to a bound inst,
             % and it is declared to be for this type constructor.
             % This requires that all the top level cons_ids in the bound inst
-            % be function symbols of the given type constructor. Later,
-            % it will also require that this inst be applied only to values
-            % of this type.
+            % be function symbols of the given type constructor.
+            % Until we invoke inst_check.m, this setting is only a claim;
+            % after it has finished, if an inst's iftc field is still
+            % set to this value, it will be a checked fact.
+            %
+            % Later, it will also require that this inst be applied
+            % only to values of this type.
 
     ;       iftc_applicable_not_known
             % The inst is defined to be equivalent to a bound inst.
             % It is not declared to be for a specific type constructor,
             % and the list of type constructors that its cons_ids match
             % is not (yet) known.
+            %
+            % No inst should have this iftc field after inst_check.m's
+            % code has been run.
 
     ;       iftc_applicable_known(list(type_ctor))
             % The inst is defined to be equivalent to a bound inst.
@@ -52,9 +59,30 @@
             % but the list of type constructors that its cons_ids match
             % is known to be the given list of type constructors.
 
-    ;       iftc_applicable_error.
+    ;       iftc_applicable_error_unknown_type
+            % The inst is defined to be equivalent to a bound inst,
+            % and it is declared to be for a specific type constructor,
+            % but that type constructor does not exist.
+
+    ;       iftc_applicable_error_eqv_type(type_ctor)
+            % The inst is defined to be equivalent to a bound inst,
+            % and it is declared to be for a specific type constructor,
+            % but that type constructor is not a du type.
+            % XXX We generate this iftc value only for equivalence types,
+            % not for foreign types, solver types or (imported) abstract types.
+
+    ;       iftc_applicable_error_visibility(type_ctor)
             % The inst is defined to be equivalent to a bound inst.
-            % It is not declared to be for a specific type constructor,
+            % It is declared to be for a specific type constructor,
+            % which is a discriminated union type, but there is a
+            % visibility mismatch; the inst is exported, but the
+            % type constructor is not.
+
+    ;       iftc_applicable_error_mismatches(type_ctor).
+            % The inst is defined to be equivalent to a bound inst.
+            % It is declared to be for a specific type constructor,
+            % which is a discriminated union type of the appropriate
+            % visibility, but the inst does not match its function symbols.
 
     % An `hlds_inst_defn' holds the information we need to store
     % about inst definitions such as

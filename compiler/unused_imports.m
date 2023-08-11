@@ -537,12 +537,16 @@ user_inst_used_modules(_InstCtor, InstDefn, !UsedModules) :-
         InstBody = eqv_inst(Inst),
         mer_inst_used_modules(Visibility, Inst, !UsedModules),
         (
-            ( InstForTypeCtor = iftc_not_applicable
-            ; InstForTypeCtor = iftc_applicable_error
+            ( InstForTypeCtor = iftc_not_bound_inst
             ; InstForTypeCtor = iftc_applicable_not_known
+            ; InstForTypeCtor = iftc_applicable_error_unknown_type
             )
         ;
-            InstForTypeCtor = iftc_applicable_declared(TypeCtor),
+            ( InstForTypeCtor = iftc_applicable_declared(TypeCtor)
+            ; InstForTypeCtor = iftc_applicable_error_visibility(TypeCtor)
+            ; InstForTypeCtor = iftc_applicable_error_eqv_type(TypeCtor)
+            ; InstForTypeCtor = iftc_applicable_error_mismatches(TypeCtor)
+            ),
             type_ctor_used_modules(Visibility, TypeCtor, !UsedModules)
         ;
             InstForTypeCtor = iftc_applicable_known(TypeCtors),

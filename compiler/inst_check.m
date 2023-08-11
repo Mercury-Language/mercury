@@ -293,7 +293,7 @@ check_inst_defn_has_matching_type(WarnInstsWithoutMatchingType,
                 MaybeForTypeKind = no,
                 maybe_issue_no_such_type_error(InstCtor, InstDefn0,
                     ForTypeCtor0, !Specs),
-                IFTC = iftc_not_applicable
+                IFTC = iftc_applicable_error_unknown_type
             ;
                 MaybeForTypeKind = yes(ForTypeKind),
                 check_for_type_bound_insts(ForTypeKind, BoundInsts,
@@ -332,14 +332,16 @@ check_inst_defn_has_matching_type(WarnInstsWithoutMatchingType,
             % We haven't yet had a chance to set IFTC0 to this value.
             unexpected($pred, "bound, IFTC0 = iftc_applicable_known")
         ;
-            IFTC0 = iftc_applicable_error,
+            ( IFTC0 = iftc_applicable_error_unknown_type
+            ; IFTC0 = iftc_applicable_error_eqv_type(_)
+            ; IFTC0 = iftc_applicable_error_visibility(_)
+            ; IFTC0 = iftc_applicable_error_mismatches(_)
+            ),
             % We haven't yet had a chance to set IFTC0 to this value.
-            unexpected($pred, "bound, IFTC0 = iftc_applicable_error")
+            unexpected($pred, "bound, IFTC0 = iftc_applicable_error_X")
         ;
-            IFTC0 = iftc_not_applicable,
-            % A "for type" annotation definitely is applicable to this
-            % inst definition.
-            unexpected($pred, "bound, IFTC0 = iftc_not_applicable")
+            IFTC0 = iftc_not_bound_inst,
+            unexpected($pred, "bound, IFTC0 = iftc_not_bound_inst")
         )
     ;
         ( Inst = any(_, _)
@@ -350,8 +352,8 @@ check_inst_defn_has_matching_type(WarnInstsWithoutMatchingType,
         ; Inst = constrained_inst_vars(_, _)
         ; Inst = defined_inst(_)
         ),
-        expect(unify(IFTC0, iftc_not_applicable), $pred,
-            "not bound, IFTC0 != iftc_not_applicable"),
+        expect(unify(IFTC0, iftc_not_bound_inst), $pred,
+            "not bound, IFTC0 != iftc_not_bound_inst"),
         InstDefn = InstDefn0
     ).
 
@@ -775,14 +777,15 @@ maybe_issue_no_such_type_error(InstCtor, InstDefn, TypeCtor, !Specs) :-
     inst_for_type_ctor::out, list(error_spec)::out) is det.
 
 maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
-        ForTypeKind, Mismatches0, IFTC, !:Specs) :-
-    !:Specs = [],
+        ForTypeKind, Mismatches0, IFTC, Specs) :-
     Context = InstDefn ^ inst_context,
     InstStatus = InstDefn ^ inst_status,
     InstDefinedInThisModule = inst_status_defined_in_this_module(InstStatus),
     (
         ForTypeKind = ftk_builtin(ForTypeCtor, _BuiltinType),
-        Mismatches = Mismatches0
+        Mismatches = Mismatches0,
+        VisSpecs = [],
+        EqvSpecs = []
     ;
         ForTypeKind = ftk_user(ForTypeCtor, ForTypeDefn),
         InstIsExported =
@@ -797,9 +800,9 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
                 words("is not visible outside this module."), nl],
             VisSpec = simplest_spec($pred, severity_error, phase_inst_check,
                 Context, VisPieces),
-            !:Specs = [VisSpec | !.Specs]
+            VisSpecs = [VisSpec]
         else
-            true
+            VisSpecs = []
         ),
         get_type_defn_body(ForTypeDefn, ForTypeDefnBody),
         (
@@ -808,11 +811,13 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
             ; ForTypeDefnBody = hlds_solver_type(_)
             ; ForTypeDefnBody = hlds_abstract_type(_)
             ),
-            Mismatches = Mismatches0
+            Mismatches = Mismatches0,
+            EqvSpecs = []
         ;
             ForTypeDefnBody = hlds_eqv_type(_),
             (
-                Mismatches0 = []
+                Mismatches0 = [],
+                EqvSpecs = []
             ;
                 Mismatches0 = [_ | _],
                 EqvPieces = [words("Error: inst"),
@@ -827,7 +832,7 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
                     words("expands to."), nl],
                 EqvSpec = simplest_spec($pred, severity_error,
                     phase_inst_check, Context, EqvPieces),
-                !:Specs = [EqvSpec | !.Specs]
+                EqvSpecs = [EqvSpec]
             ),
             Mismatches = []
         )
@@ -875,22 +880,35 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
         ),
         MismatchSpec = simplest_spec($pred, severity_error, phase_inst_check,
             Context, MismatchPieces ++ NearMissPieces),
-        !:Specs = [MismatchSpec | !.Specs]
+        MismatchSpecs = [MismatchSpec]
     else
-        true
+        MismatchSpecs = []
     ),
     (
-        !.Specs = [],
-        IFTC = iftc_applicable_declared(ForTypeCtor)
+        EqvSpecs = [_ | _],
+        IFTC = iftc_applicable_error_eqv_type(ForTypeCtor)
     ;
-        !.Specs = [_ | _],
-        IFTC = iftc_applicable_error,
+        EqvSpecs = [],
         (
-            InstDefinedInThisModule = no,
-            !:Specs = []
+            VisSpecs = [_ | _],
+            IFTC = iftc_applicable_error_visibility(ForTypeCtor)
         ;
-            InstDefinedInThisModule = yes
+            VisSpecs = [],
+            (
+                MismatchSpecs = [],
+                IFTC = iftc_applicable_declared(ForTypeCtor)
+            ;
+                MismatchSpecs = [_ | _],
+                IFTC = iftc_applicable_error_mismatches(ForTypeCtor)
+            )
         )
+    ),
+    (
+        InstDefinedInThisModule = no,
+        Specs = []
+    ;
+        InstDefinedInThisModule = yes,
+        Specs = VisSpecs ++ EqvSpecs ++ MismatchSpecs
     ).
 
 :- type near_miss_cons_mismatch
