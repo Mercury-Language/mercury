@@ -254,7 +254,10 @@ inst_merge(Type, InstA, InstB, InstAB, !ModuleInfo) :-
         InstA = bound(_, _, _),
         InstB = bound(_, _, _)
     then
-        inst_merge_2(Type, InstA, InstB, InstAB, !ModuleInfo)
+        % The invocations of inst_expand in inst_merge_2 would do nothing
+        % for bound insts, and after that, inst_merge_2 would call
+        % inst_merge_3 anyway.
+        inst_merge_3(Type, InstA, InstB, InstAB, !ModuleInfo)
     else
         % Check whether this pair of insts is already in the merge_insts table.
         module_info_get_inst_table(!.ModuleInfo, InstTable0),
