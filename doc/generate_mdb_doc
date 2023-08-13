@@ -9,8 +9,8 @@
 
 # Some versions of the info tool will emit single quotes as directional
 # quotation marks (i.e. U+2018 and U+2019). This causes problems because awk
-# on MSYS* / MinGW* systems does not handle UTF-8 encoded input properly.
-# (Apparently, it's some weird Windows code page thing.)
+# on MSYS* / MinGW* / Cygwin* systems does not handle UTF-8 encoded input
+# properly. (Apparently, it's some weird Windows code page thing.)
 # Using the C locale makes info emit the apostrophe character for single quotes.
 # Since that is ASCII, affected versions of awk do not have a problem with it.
 # None of this is an issue on non-Windows systems since their versions of
@@ -18,7 +18,7 @@
 #
 platform=$(uname -a)
 case "$platform" in
-    MINGW*|MSYS*) export LC_ALL=C ;;
+    MINGW*|MSYS*|CYGWIN*) export LC_ALL=C ;;
 esac
 
 # The info menu items that get us to the chapter on debugger commands.
