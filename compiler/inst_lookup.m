@@ -69,8 +69,27 @@
     % inst_unknown or inst_det_unknown *only while a recursive operation
     % on insts is executing steps 1 through 3. As soon as the last recursive
     % call of that operation is finished, all the entries it has set
-    % to inst_unknown or inst_det_unknown should have been set to inst_known or
-    % inst_det_known.
+    % to inst_unknown or inst_det_unknown should have been set to inst_known
+    % or inst_det_known.
+    %
+    % There are two separate reasons why this lookup should always succeed
+    % once the HLDS has been fully built, including module qualification.
+    %
+    % - The module qualification process should find and report any reference
+    %   to undefined user_inst names, and should let the compiler proceed
+    %   any further if it finds any.
+    %
+    % - Non-user_inst inst names should only start being introduced
+    %   by compiler passes that do mode analysis, either as their main task,
+    %   or as a necessary auxiliary component of their main task. These
+    %   compiler passes should not construct non-user_inst inst names
+    %   without ensuring that (a) they put the definition of the inst name
+    %   into the appropriate subtable of the mode table, and (b) ensuring
+    %   that the effect of this update does not get lost. (No compiler pass
+    %   should ever introduce any new *user_inst* inst names, since
+    %   the compiler is not a user. The inst_lookup_debug predicate below
+    %   does introduce such user_inst inst names, but the compiler does
+    %   nothing with the those inst names except print them out.)
     %
 :- pred inst_lookup(module_info::in, inst_name::in, mer_inst::out) is det.
 
