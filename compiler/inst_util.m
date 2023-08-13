@@ -156,18 +156,18 @@ make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo) :-
         % Check whether the inst name is already in the mostly_uniq_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable0),
         inst_table_get_mostly_uniq_insts(InstTable0, MostlyUniqInstTable0),
-        search_insert_mostly_uniq_inst(InstName, MaybeMaybeInst,
+        search_insert_unknown_mostly_uniq_inst(InstName, MaybeOldMaybeInst,
             MostlyUniqInstTable0, MostlyUniqInstTable1),
         (
-            MaybeMaybeInst = yes(MaybeInst),
+            MaybeOldMaybeInst = yes(OldMaybeInst),
             (
-                MaybeInst = inst_known(MostlyUniqInst)
+                OldMaybeInst = inst_known(MostlyUniqInst)
             ;
-                MaybeInst = inst_unknown,
+                OldMaybeInst = inst_unknown,
                 MostlyUniqInst = defined_inst(InstName)
             )
         ;
-            MaybeMaybeInst = no,
+            MaybeOldMaybeInst = no,
             % We have inserted InstName into the table with value
             % `inst_unknown'.
             inst_table_set_mostly_uniq_insts(MostlyUniqInstTable1,
@@ -296,18 +296,18 @@ make_shared_inst(Inst0, Inst, !ModuleInfo) :-
         % Check whether the inst name is already in the shared_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable0),
         inst_table_get_shared_insts(InstTable0, SharedInstTable0),
-        search_insert_shared_inst(InstName, MaybeMaybeInst,
+        search_insert_unknown_shared_inst(InstName, MaybeOldMaybeInst,
             SharedInstTable0, SharedInstTable1),
         (
-            MaybeMaybeInst = yes(MaybeInst),
+            MaybeOldMaybeInst = yes(OldMaybeInst),
             (
-                MaybeInst = inst_known(SharedInst)
+                OldMaybeInst = inst_known(SharedInst)
             ;
-                MaybeInst = inst_unknown,
+                OldMaybeInst = inst_unknown,
                 SharedInst = Inst0
             )
         ;
-            MaybeMaybeInst = no,
+            MaybeOldMaybeInst = no,
             % We have inserted SharedInstKey into the table with value
             % `inst_unknown'.
             inst_table_set_shared_insts(SharedInstTable1,

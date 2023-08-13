@@ -264,18 +264,18 @@ inst_merge(Type, InstA, InstB, InstAB, !ModuleInfo) :-
         inst_table_get_merge_insts(InstTable0, MergeInstTable0),
         MergeInstInfo = merge_inst_info(InstA, InstB),
         MergeInstName = merge_inst(InstA, InstB),
-        search_insert_merge_inst(MergeInstInfo, MaybeMaybeMergedInst,
-            MergeInstTable0, MergeInstTable1),
+        search_insert_unknown_merge_inst(MergeInstInfo,
+            MaybeOldMaybeMergedInst, MergeInstTable0, MergeInstTable1),
         (
-            MaybeMaybeMergedInst = yes(MaybeMergedInst),
+            MaybeOldMaybeMergedInst = yes(OldMaybeMergedInst),
             (
-                MaybeMergedInst = inst_known(InstAB0)
+                OldMaybeMergedInst = inst_known(InstAB0)
             ;
-                MaybeMergedInst = inst_unknown,
+                OldMaybeMergedInst = inst_unknown,
                 InstAB0 = defined_inst(MergeInstName)
             )
         ;
-            MaybeMaybeMergedInst = no,
+            MaybeOldMaybeMergedInst = no,
             % We have inserted MergeInst into the table with value
             % `inst_unknown'.
             inst_table_set_merge_insts(MergeInstTable1,

@@ -157,22 +157,22 @@
 :- pred lookup_mostly_uniq_inst(mostly_uniq_inst_table::in,
     inst_name::in, maybe_inst::out) is det.
 
-:- pred search_insert_unify_inst(
+:- pred search_insert_unknown_unify_inst(
     unify_inst_info::in, maybe(maybe_inst_det)::out,
     unify_inst_table::in, unify_inst_table::out) is det.
-:- pred search_insert_merge_inst(
+:- pred search_insert_unknown_merge_inst(
     merge_inst_info::in, maybe(maybe_inst)::out,
     merge_inst_table::in, merge_inst_table::out) is det.
-:- pred search_insert_ground_inst(
+:- pred search_insert_unknown_ground_inst(
     ground_inst_info::in, maybe(maybe_inst_det)::out,
     ground_inst_table::in, ground_inst_table::out) is det.
-:- pred search_insert_any_inst(
+:- pred search_insert_unknown_any_inst(
     any_inst_info::in, maybe(maybe_inst_det)::out,
     any_inst_table::in, any_inst_table::out) is det.
-:- pred search_insert_shared_inst(
+:- pred search_insert_unknown_shared_inst(
     inst_name::in, maybe(maybe_inst)::out,
     shared_inst_table::in, shared_inst_table::out) is det.
-:- pred search_insert_mostly_uniq_inst(
+:- pred search_insert_unknown_mostly_uniq_inst(
     inst_name::in, maybe(maybe_inst)::out,
     mostly_uniq_inst_table::in, mostly_uniq_inst_table::out) is det.
 
@@ -444,55 +444,59 @@ lookup_mostly_uniq_inst(MostlyUniqInstTable, InstName, MaybeInst) :-
 
 %---------------------------------------------------------------------------%
 
-search_insert_unify_inst(UnifyInstInfo, MaybeMaybeInstDet, !UnifyInstTable) :-
+search_insert_unknown_unify_inst(UnifyInstInfo, MaybeOldMaybeInstDet,
+        !UnifyInstTable) :-
     UnifyInstInfo = unify_inst_info(IsLive, IsReal, InstA, InstB),
     InstPair = inst_pair(InstA, InstB),
     (
         IsLive = is_live, IsReal = real_unify,
         LiveRealTable0 = !.UnifyInstTable ^ uit_live_real,
-        map.search_insert(InstPair, inst_det_unknown, MaybeMaybeInstDet,
+        map.search_insert(InstPair, inst_det_unknown, MaybeOldMaybeInstDet,
             LiveRealTable0, LiveRealTable),
         !UnifyInstTable ^ uit_live_real := LiveRealTable
     ;
         IsLive = is_live, IsReal = fake_unify,
         LiveFakeTable0 = !.UnifyInstTable ^ uit_live_fake,
-        map.search_insert(InstPair, inst_det_unknown, MaybeMaybeInstDet,
+        map.search_insert(InstPair, inst_det_unknown, MaybeOldMaybeInstDet,
             LiveFakeTable0, LiveFakeTable),
         !UnifyInstTable ^ uit_live_fake := LiveFakeTable
     ;
         IsLive = is_dead, IsReal = real_unify,
         DeadRealTable0 = !.UnifyInstTable ^ uit_dead_real,
-        map.search_insert(InstPair, inst_det_unknown, MaybeMaybeInstDet,
+        map.search_insert(InstPair, inst_det_unknown, MaybeOldMaybeInstDet,
             DeadRealTable0, DeadRealTable),
         !UnifyInstTable ^ uit_dead_real := DeadRealTable
     ;
         IsLive = is_dead, IsReal = fake_unify,
         DeadFakeTable0 = !.UnifyInstTable ^ uit_dead_fake,
-        map.search_insert(InstPair, inst_det_unknown, MaybeMaybeInstDet,
+        map.search_insert(InstPair, inst_det_unknown, MaybeOldMaybeInstDet,
             DeadFakeTable0, DeadFakeTable),
         !UnifyInstTable ^ uit_dead_fake := DeadFakeTable
     ).
 
-search_insert_merge_inst(MergeInstInfo, MaybeMaybeInst, !MergeInstTable) :-
-    map.search_insert(MergeInstInfo, inst_unknown, MaybeMaybeInst,
+search_insert_unknown_merge_inst(MergeInstInfo, MaybeOldMaybeInst,
+        !MergeInstTable) :-
+    map.search_insert(MergeInstInfo, inst_unknown, MaybeOldMaybeInst,
         !MergeInstTable).
 
-search_insert_ground_inst(GroundInstInfo, MaybeMaybeInstDet,
+search_insert_unknown_ground_inst(GroundInstInfo, MaybeOldMaybeInstDet,
         !GroundInstTable) :-
-    map.search_insert(GroundInstInfo, inst_det_unknown, MaybeMaybeInstDet,
+    map.search_insert(GroundInstInfo, inst_det_unknown, MaybeOldMaybeInstDet,
         !GroundInstTable).
 
-search_insert_any_inst(AnyInstInfo, MaybeMaybeInstDet, !AnyInstTable) :-
-    map.search_insert(AnyInstInfo, inst_det_unknown, MaybeMaybeInstDet,
+search_insert_unknown_any_inst(AnyInstInfo, MaybeOldMaybeInstDet,
+        !AnyInstTable) :-
+    map.search_insert(AnyInstInfo, inst_det_unknown, MaybeOldMaybeInstDet,
         !AnyInstTable).
 
-search_insert_shared_inst(InstName, MaybeMaybeInst, !SharedInstTable) :-
-    map.search_insert(InstName, inst_unknown, MaybeMaybeInst,
+search_insert_unknown_shared_inst(InstName, MaybeOldMaybeInst,
+        !SharedInstTable) :-
+    map.search_insert(InstName, inst_unknown, MaybeOldMaybeInst,
         !SharedInstTable).
 
-search_insert_mostly_uniq_inst(InstName, MaybeMaybeInst,
+search_insert_unknown_mostly_uniq_inst(InstName, MaybeOldMaybeInst,
         !MostlyUniqInstTable) :-
-    map.search_insert(InstName, inst_unknown, MaybeMaybeInst,
+    map.search_insert(InstName, inst_unknown, MaybeOldMaybeInst,
         !MostlyUniqInstTable).
 
 %---------------------------------------------------------------------------%

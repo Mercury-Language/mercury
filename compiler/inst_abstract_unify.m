@@ -121,14 +121,14 @@ abstractly_unify_inst(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
         inst_table_get_unify_insts(InstTable0, UnifyInstTable0),
         UnifyInstInfo = unify_inst_info(Live, Real, InstA, InstB),
         UnifyInstName = unify_inst(Live, Real, InstA, InstB),
-        search_insert_unify_inst(UnifyInstInfo, MaybeMaybeInst,
+        search_insert_unknown_unify_inst(UnifyInstInfo, MaybeOldMaybeInst,
             UnifyInstTable0, UnifyInstTable1),
         (
-            MaybeMaybeInst = yes(MaybeInst),
+            MaybeOldMaybeInst = yes(OldMaybeInst),
             (
-                MaybeInst = inst_det_known(Inst0, Detism)
+                OldMaybeInst = inst_det_known(Inst0, Detism)
             ;
-                MaybeInst = inst_det_unknown,
+                OldMaybeInst = inst_det_unknown,
                 Inst0 = defined_inst(UnifyInstName),
                 % It is ok to assume that the unification is deterministic
                 % here, because the only time that this will happen is when
@@ -138,7 +138,7 @@ abstractly_unify_inst(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 Detism = detism_det
             )
         ;
-            MaybeMaybeInst = no,
+            MaybeOldMaybeInst = no,
             % We have inserted UnifyInst into the table with value
             % `inst_unknown'.
             inst_table_set_unify_insts(UnifyInstTable1,
@@ -1154,14 +1154,14 @@ make_ground_inst(Live, Uniq1, Real, Inst0, Inst, Detism, !ModuleInfo) :-
         inst_table_get_ground_insts(InstTable0, GroundInstTable0),
         GroundInstInfo = ground_inst_info(InstName, Uniq1, Live, Real),
         GroundInstName = ground_inst(InstName, Uniq1, Live, Real),
-        search_insert_ground_inst(GroundInstInfo, MaybeMaybeInst,
+        search_insert_unknown_ground_inst(GroundInstInfo, MaybeOldMaybeInst,
             GroundInstTable0, GroundInstTable1),
         (
-            MaybeMaybeInst = yes(MaybeInst),
+            MaybeOldMaybeInst = yes(OldMaybeInst),
             (
-                MaybeInst = inst_det_known(GroundInst, Detism)
+                OldMaybeInst = inst_det_known(GroundInst, Detism)
             ;
-                MaybeInst = inst_det_unknown,
+                OldMaybeInst = inst_det_unknown,
                 GroundInst = defined_inst(GroundInstName),
                 Detism = detism_det
                 % We can safely assume this is det, since if it were semidet,
@@ -1169,7 +1169,7 @@ make_ground_inst(Live, Uniq1, Real, Inst0, Inst, Detism, !ModuleInfo) :-
                 % definition.
             )
         ;
-            MaybeMaybeInst = no,
+            MaybeOldMaybeInst = no,
             % We have inserted GroundInstInfo into the table with value
             % `inst_unknown'.
             inst_table_set_ground_insts(GroundInstTable1,
@@ -1277,14 +1277,14 @@ make_any_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
         inst_table_get_any_insts(InstTable0, AnyInstTable0),
         AnyInstInfo = any_inst_info(InstName, Uniq1, Live, Real),
         AnyInstName = any_inst(InstName, Uniq1, Live, Real),
-        search_insert_any_inst(AnyInstInfo, MaybeMaybeInst,
+        search_insert_unknown_any_inst(AnyInstInfo, MaybeOldMaybeInst,
             AnyInstTable0, AnyInstTable1),
         (
-            MaybeMaybeInst = yes(MaybeInst),
+            MaybeOldMaybeInst = yes(OldMaybeInst),
             (
-                MaybeInst = inst_det_known(AnyInst, Detism)
+                OldMaybeInst = inst_det_known(AnyInst, Detism)
             ;
-                MaybeInst = inst_det_unknown,
+                OldMaybeInst = inst_det_unknown,
                 AnyInst = defined_inst(AnyInstName),
                 Detism = detism_det
                 % We can safely assume this is det, since if it were semidet,
@@ -1292,7 +1292,7 @@ make_any_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
                 % definition.
             )
         ;
-            MaybeMaybeInst = no,
+            MaybeOldMaybeInst = no,
             % We have inserted AnyInstKey into the table with value
             % `inst_unknown'.
             inst_table_set_any_insts(AnyInstTable1, InstTable0, InstTable1),
