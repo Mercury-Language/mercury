@@ -41,6 +41,11 @@
     = prog_term.
 :- func inst_test_results_to_term(prog_context, inst_test_results) = prog_term.
 
+:- func is_live_to_str(is_live) = string.
+:- func unify_is_real_to_str(unify_is_real) = string.
+:- func any_inst_uniqueness(uniqueness) = string.
+:- func inst_uniqueness(uniqueness, string) = string.
+
     % Convert an integer to a term representation.
     %
 :- func int_const_to_decimal_term(some_int_const, term.context) = term(T).
@@ -862,25 +867,17 @@ any_pred_inst_info_to_term(Lang, Context, _Uniq, PredInstInfo, Term) :-
 
 %---------------------------------------------------------------------------%
 
-:- func is_live_to_str(is_live) = string.
-
 is_live_to_str(is_live) = "live".
 is_live_to_str(is_dead) = "dead".
 
-:- func unify_is_real_to_str(unify_is_real) = string.
-
 unify_is_real_to_str(real_unify) = "real".
 unify_is_real_to_str(fake_unify) = "fake".
-
-:- func any_inst_uniqueness(uniqueness) = string.
 
 any_inst_uniqueness(shared) = "any".
 any_inst_uniqueness(unique) = "unique_any".
 any_inst_uniqueness(mostly_unique) = "mostly_unique_any".
 any_inst_uniqueness(clobbered) = "clobbered_any".
 any_inst_uniqueness(mostly_clobbered) = "mostly_clobbered_any".
-
-:- func inst_uniqueness(uniqueness, string) = string.
 
 inst_uniqueness(shared, SharedName) = SharedName.
 inst_uniqueness(unique, _) = "unique".

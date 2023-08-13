@@ -69,6 +69,7 @@ OTHER_PROGS = \
 	intermod_user_equality \
 	intermod_user_equality_nested \
 	intermod_user_sharing \
+	merge_inst_bug \
 	module_a \
 	module_b \
 	module_c \

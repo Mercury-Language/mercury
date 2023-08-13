@@ -452,6 +452,11 @@ inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
             list.length(ArgInsts, Arity),
             InstCtor = inst_ctor(SymName, Arity),
             ( if
+                is_unknown_or_missing_user_inst_name(InstName)
+            then
+                name_and_arg_insts_to_pieces(NameInfo, !.Expansions, _,
+                    SymNameStr, ArgInsts, Suffix, Pieces)
+            else if
                 map.search(UserInstTable, InstCtor, InstDefn)
             then
                 name_and_arg_insts_to_pieces(NameInfo, !.Expansions, _,
@@ -543,8 +548,19 @@ inst_name_to_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
                 InstNameStr = "$mostly_uniq_inst"
             ),
             ModuleInfo = Info ^ imi_module_info,
-            inst_lookup(ModuleInfo, InstName, EqvInst),
-            ( if EqvInst = defined_inst(InstName) then
+            inst_lookup_debug(ModuleInfo, InstName, EqvInst),
+            ( if
+                EqvInst = defined_inst(EqvInstName),
+                EqvInstName = user_inst(EqvSymName, EqvArgInsts),
+                is_unknown_or_missing_user_inst_name(EqvInstName)
+            then
+                NameInfo = Info ^ imi_named_insts := dont_expand_named_insts,
+                sym_name_to_min_qual_string(Info, EqvSymName, EqvSymNameStr),
+                name_and_arg_insts_to_pieces(NameInfo, !.Expansions, _,
+                    EqvSymNameStr, EqvArgInsts, Suffix, Pieces)
+            else if
+                EqvInst = defined_inst(InstName)
+            then
                 Pieces = [fixed(InstNameStr) | Suffix]
             else
                 record_internal_inst_name(InstName, InstNameStr, InstNumPieces,
@@ -584,7 +600,14 @@ inst_name_to_inline_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
             inst_table_get_user_insts(InstTable, UserInstTable),
             list.length(ArgInsts, Arity),
             InstCtor = inst_ctor(SymName, Arity),
-            ( if map.search(UserInstTable, InstCtor, InstDefn) then
+            ( if
+                is_unknown_or_missing_user_inst_name(InstName)
+            then
+                name_and_arg_insts_to_inline_pieces(NameInfo, !.Expansions, _,
+                    SymNameStr, ArgInsts, Suffix, Pieces)
+            else if
+                map.search(UserInstTable, InstCtor, InstDefn)
+            then
                 name_and_arg_insts_to_inline_pieces(NameInfo, !.Expansions, _,
                     SymNameStr, ArgInsts, [], NamePieces),
                 NamedNamePieces = [words("named inst") | NamePieces],
@@ -675,8 +698,19 @@ inst_name_to_inline_pieces(Info, !Expansions, InstName, Suffix, Pieces) :-
                 InstNameStr = "$mostly_uniq_inst"
             ),
             ModuleInfo = Info ^ imi_module_info,
-            inst_lookup(ModuleInfo, InstName, EqvInst),
-            ( if EqvInst = defined_inst(InstName) then
+            inst_lookup_debug(ModuleInfo, InstName, EqvInst),
+            ( if
+                EqvInst = defined_inst(EqvInstName),
+                EqvInstName = user_inst(EqvSymName, EqvArgInsts),
+                is_unknown_or_missing_user_inst_name(EqvInstName)
+            then
+                NameInfo = Info ^ imi_named_insts := dont_expand_named_insts,
+                sym_name_to_min_qual_string(Info, EqvSymName, EqvSymNameStr),
+                name_and_arg_insts_to_inline_pieces(NameInfo, !.Expansions, _,
+                    EqvSymNameStr, EqvArgInsts, Suffix, Pieces)
+            else if
+                EqvInst = defined_inst(InstName)
+            then
                 Pieces = [fixed(InstNameStr) | Suffix]
             else
                 record_internal_inst_name(InstName, InstNameStr, InstNumPieces,

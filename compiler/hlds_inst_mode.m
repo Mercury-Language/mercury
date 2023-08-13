@@ -131,6 +131,19 @@
 :- type shared_inst_table.
 :- type mostly_uniq_inst_table.
 
+:- pred search_unify_inst(unify_inst_table::in,
+    unify_inst_info::in, maybe_inst_det::out) is semidet.
+:- pred search_merge_inst(merge_inst_table::in,
+    merge_inst_info::in, maybe_inst::out) is semidet.
+:- pred search_ground_inst(ground_inst_table::in,
+    ground_inst_info::in, maybe_inst_det::out) is semidet.
+:- pred search_any_inst(any_inst_table::in,
+    any_inst_info::in, maybe_inst_det::out) is semidet.
+:- pred search_shared_inst(shared_inst_table::in,
+    inst_name::in, maybe_inst::out) is semidet.
+:- pred search_mostly_uniq_inst(mostly_uniq_inst_table::in,
+    inst_name::in, maybe_inst::out) is semidet.
+
 :- pred lookup_unify_inst(unify_inst_table::in,
     unify_inst_info::in, maybe_inst_det::out) is det.
 :- pred lookup_merge_inst(merge_inst_table::in,
@@ -176,8 +189,16 @@
 :- pred det_update_mostly_uniq_inst(inst_name::in, maybe_inst::in,
     mostly_uniq_inst_table::in, mostly_uniq_inst_table::out) is det.
 
+:- type inst_pair
+    --->    inst_pair(mer_inst, mer_inst).
+
 :- pred unify_insts_to_sorted_pairs(unify_inst_table::in,
     assoc_list(unify_inst_info, maybe_inst_det)::out) is det.
+:- pred unify_insts_to_four_assoc_lists(unify_inst_table::in,
+    assoc_list(inst_pair, maybe_inst_det)::out,
+    assoc_list(inst_pair, maybe_inst_det)::out,
+    assoc_list(inst_pair, maybe_inst_det)::out,
+    assoc_list(inst_pair, maybe_inst_det)::out) is det.
 :- pred merge_insts_to_sorted_pairs(merge_inst_table::in,
     assoc_list(merge_inst_info, maybe_inst)::out) is det.
 :- pred ground_insts_to_sorted_pairs(ground_inst_table::in,
@@ -189,8 +210,11 @@
 :- pred mostly_uniq_insts_to_sorted_pairs(mostly_uniq_inst_table::in,
     assoc_list(inst_name, maybe_inst)::out) is det.
 
-:- pred unify_insts_from_sorted_pairs(
-    assoc_list(unify_inst_info, maybe_inst_det)::in,
+:- pred unify_insts_from_four_assoc_lists(
+    assoc_list(inst_pair, maybe_inst_det)::in,
+    assoc_list(inst_pair, maybe_inst_det)::in,
+    assoc_list(inst_pair, maybe_inst_det)::in,
+    assoc_list(inst_pair, maybe_inst_det)::in,
     unify_inst_table::out) is det.
 :- pred merge_insts_from_sorted_pairs(
     assoc_list(merge_inst_info, maybe_inst)::in,
@@ -306,7 +330,6 @@
 :- implementation.
 
 :- import_module pair.
-:- import_module require.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -329,9 +352,6 @@
 % if we turned the subtables of the unify_inst_table into two-stage maps.
 %
 
-:- type inst_pair
-    --->    inst_pair(mer_inst, mer_inst).
-
 :- type unify_inst_table
     --->    unify_inst_table(
                 uit_live_real   ::  map(inst_pair, maybe_inst_det),
@@ -345,6 +365,44 @@
 :- type any_inst_table ==           map(any_inst_info, maybe_inst_det).
 :- type shared_inst_table ==        map(inst_name, maybe_inst).
 :- type mostly_uniq_inst_table ==   map(inst_name, maybe_inst).
+
+%---------------------------------------------------------------------------%
+
+search_unify_inst(UnifyInstTable, UnifyInstInfo, MaybeInstDet) :-
+    UnifyInstInfo = unify_inst_info(IsLive, IsReal, InstA, InstB),
+    InstPair = inst_pair(InstA, InstB),
+    (
+        IsLive = is_live, IsReal = real_unify,
+        LiveRealTable = UnifyInstTable ^ uit_live_real,
+        map.search(LiveRealTable, InstPair, MaybeInstDet)
+    ;
+        IsLive = is_live, IsReal = fake_unify,
+        LiveFakeTable = UnifyInstTable ^ uit_live_fake,
+        map.search(LiveFakeTable, InstPair, MaybeInstDet)
+    ;
+        IsLive = is_dead, IsReal = real_unify,
+        DeadRealTable = UnifyInstTable ^ uit_dead_real,
+        map.search(DeadRealTable, InstPair, MaybeInstDet)
+    ;
+        IsLive = is_dead, IsReal = fake_unify,
+        DeadFakeTable = UnifyInstTable ^ uit_dead_fake,
+        map.search(DeadFakeTable, InstPair, MaybeInstDet)
+    ).
+
+search_merge_inst(MergeInstTable, MergeInstInfo, MaybeInst) :-
+    map.search(MergeInstTable, MergeInstInfo, MaybeInst).
+
+search_ground_inst(GroundInstTable, GroundInstInfo, MaybeInstDet) :-
+    map.search(GroundInstTable, GroundInstInfo, MaybeInstDet).
+
+search_any_inst(AnyInstTable, AnyInstInfo, MaybeInstDet) :-
+    map.search(AnyInstTable, AnyInstInfo, MaybeInstDet).
+
+search_shared_inst(SharedInstTable, InstName, MaybeInst) :-
+    map.search(SharedInstTable, InstName, MaybeInst).
+
+search_mostly_uniq_inst(MostlyUniqInstTable, InstName, MaybeInst) :-
+    map.search(MostlyUniqInstTable, InstName, MaybeInst).
 
 %---------------------------------------------------------------------------%
 
@@ -489,8 +547,6 @@ unify_insts_to_sorted_pairs(UnifyInstTable, AssocList) :-
     map.to_assoc_list(DeadRealTable, DeadRealPairInsts),
     map.to_assoc_list(DeadFakeTable, DeadFakePairInsts),
     some [!RevAssocList] (
-        % The order in which we generate the four sublists corresponds to
-        % the order in which we take them in unify_insts_from_sorted_pairs.
         !:RevAssocList = [],
         accumulate_unify_insts(is_live, real_unify, LiveRealPairInsts,
             !RevAssocList),
@@ -518,6 +574,17 @@ accumulate_unify_insts(IsLive, IsReal, [PairMaybeInst | PairMaybeInsts],
 
 %---------------------%
 
+unify_insts_to_four_assoc_lists(UnifyInstTable,
+        LiveRealAL, LiveFakeAL, DeadRealAL, DeadFakeAL) :-
+    UnifyInstTable = unify_inst_table(LiveRealTable, LiveFakeTable,
+        DeadRealTable, DeadFakeTable),
+    map.to_sorted_assoc_list(LiveRealTable, LiveRealAL),
+    map.to_sorted_assoc_list(LiveFakeTable, LiveFakeAL),
+    map.to_sorted_assoc_list(DeadRealTable, DeadRealAL),
+    map.to_sorted_assoc_list(DeadFakeTable, DeadFakeAL).
+
+%---------------------%
+
 merge_insts_to_sorted_pairs(MergeInstTable, AssocList) :-
     map.to_sorted_assoc_list(MergeInstTable, AssocList).
 
@@ -535,45 +602,14 @@ mostly_uniq_insts_to_sorted_pairs(MostlyUniqInstTable, AssocList) :-
 
 %---------------------------------------------------------------------------%
 
-unify_insts_from_sorted_pairs(AssocList0, UnifyInstTable) :-
-    % The order in which we take the four sublists corresponds to
-    % the order in which we generate them in unify_insts_to_sorted_pairs.
-    unify_inst_subtable_from_sorted_pairs(is_live, real_unify,
-        AssocList0, AssocList1, [], RevLiveRealAssocList),
-    unify_inst_subtable_from_sorted_pairs(is_live, fake_unify,
-        AssocList1, AssocList2, [], RevLiveFakeAssocList),
-    unify_inst_subtable_from_sorted_pairs(is_dead, real_unify,
-        AssocList2, AssocList3, [], RevDeadRealAssocList),
-    unify_inst_subtable_from_sorted_pairs(is_dead, fake_unify,
-        AssocList3, AssocList4, [], RevDeadFakeAssocList),
-    expect(unify(AssocList4, []), $pred, "AssocList4 != []"),
-    map.from_rev_sorted_assoc_list(RevLiveRealAssocList, LiveRealTable),
-    map.from_rev_sorted_assoc_list(RevLiveFakeAssocList, LiveFakeTable),
-    map.from_rev_sorted_assoc_list(RevDeadRealAssocList, DeadRealTable),
-    map.from_rev_sorted_assoc_list(RevDeadFakeAssocList, DeadFakeTable),
+unify_insts_from_four_assoc_lists(LiveRealAL, LiveFakeAL,
+        DeadRealAL, DeadFakeAL, UnifyInstTable) :-
+    map.from_sorted_assoc_list(LiveRealAL, LiveRealTable),
+    map.from_sorted_assoc_list(LiveFakeAL, LiveFakeTable),
+    map.from_sorted_assoc_list(DeadRealAL, DeadRealTable),
+    map.from_sorted_assoc_list(DeadFakeAL, DeadFakeTable),
     UnifyInstTable = unify_inst_table(LiveRealTable, LiveFakeTable,
         DeadRealTable, DeadFakeTable).
-
-:- pred unify_inst_subtable_from_sorted_pairs(is_live::in, unify_is_real::in,
-    assoc_list(unify_inst_info, maybe_inst_det)::in,
-    assoc_list(unify_inst_info, maybe_inst_det)::out,
-    assoc_list(inst_pair, maybe_inst_det)::in,
-    assoc_list(inst_pair, maybe_inst_det)::out) is det.
-
-unify_inst_subtable_from_sorted_pairs(_ExpLive, _ExpReal,
-        [], [], !RevSubTablePairs).
-unify_inst_subtable_from_sorted_pairs(ExpLive, ExpReal,
-        [Pair | Pairs], LeftOverPairs, !RevSubTablePairs) :-
-    Pair = UnifyInstInfo - MaybeInstDet,
-    UnifyInstInfo = unify_inst_info(Live, Real, InstA, InstB),
-    ( if Live = ExpLive, Real = ExpReal then
-        InstPair = inst_pair(InstA, InstB),
-        !:RevSubTablePairs = [InstPair - MaybeInstDet | !.RevSubTablePairs],
-        unify_inst_subtable_from_sorted_pairs(ExpLive, ExpReal,
-            Pairs, LeftOverPairs, !RevSubTablePairs)
-    else
-        LeftOverPairs = [Pair | Pairs]
-    ).
 
 %---------------------%
 

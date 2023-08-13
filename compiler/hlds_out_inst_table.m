@@ -80,7 +80,7 @@ write_inst_table(Stream, Lang, MaybeUseErrorMsgInst,
 
     io.write_string(Stream, "\n%-------- Unify insts --------\n", !IO),
     list.foldl2(
-        write_key_maybe_inst_det(MaybeUseErrorMsgInst, Stream, Lang,
+        write_key_maybe_inst_det(MaybeUseErrorMsgInst, Stream, Lang, "Unify",
             InstNumLimit, InstSizeLimit,
             write_key_unify_inst(MaybeUseErrorMsgInst)),
         UnifyInstPairs, 0, NumUnifyInsts, !IO),
@@ -89,7 +89,7 @@ write_inst_table(Stream, Lang, MaybeUseErrorMsgInst,
 
     io.write_string(Stream, "\n%-------- Merge insts --------\n", !IO),
     list.foldl2(
-        write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang,
+        write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang, "Merge",
             InstNumLimit, InstSizeLimit,
             write_key_merge_inst(MaybeUseErrorMsgInst)),
         MergeInstPairs, 0, NumMergeInsts, !IO),
@@ -98,7 +98,7 @@ write_inst_table(Stream, Lang, MaybeUseErrorMsgInst,
 
     io.write_string(Stream, "\n%-------- Ground insts --------\n", !IO),
     list.foldl2(
-        write_key_maybe_inst_det(MaybeUseErrorMsgInst, Stream, Lang,
+        write_key_maybe_inst_det(MaybeUseErrorMsgInst, Stream, Lang, "Ground",
             InstNumLimit, InstSizeLimit, write_key_ground_inst),
         GroundInstPairs, 0, NumGroundInsts, !IO),
     io.format(Stream, "\nTotal number of ground insts: %d\n",
@@ -106,7 +106,7 @@ write_inst_table(Stream, Lang, MaybeUseErrorMsgInst,
 
     io.write_string(Stream, "\n%-------- Any insts --------\n", !IO),
     list.foldl2(
-        write_key_maybe_inst_det( MaybeUseErrorMsgInst, Stream, Lang,
+        write_key_maybe_inst_det( MaybeUseErrorMsgInst, Stream, Lang, "Any",
             InstNumLimit, InstSizeLimit, write_key_any_inst),
         AnyInstPairs, 0, NumAnyInsts, !IO),
     io.format(Stream,
@@ -114,7 +114,7 @@ write_inst_table(Stream, Lang, MaybeUseErrorMsgInst,
 
     io.write_string(Stream, "\n%-------- Shared insts --------\n", !IO),
     list.foldl2(
-        write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang,
+        write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang, "Shared",
             InstNumLimit, InstSizeLimit, write_inst_name_nl),
         SharedInstPairs, 0, NumSharedInsts, !IO),
     io.format(Stream, "\nTotal number of shared insts: %d\n",
@@ -122,7 +122,7 @@ write_inst_table(Stream, Lang, MaybeUseErrorMsgInst,
 
     io.write_string(Stream, "\n%-------- MostlyUniq insts --------\n", !IO),
     list.foldl2(
-        write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang,
+        write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang, "MostlyUniq",
             InstNumLimit, InstSizeLimit, write_inst_name_nl),
         MostlyUniqInstPairs, 0, NumMostlyUniqInsts, !IO),
     io.format(Stream, "\nTotal number of mostly uniq insts: %d\n",
@@ -169,23 +169,24 @@ write_inst_params(Stream, InstVar, InstVars, InstVarSet, !IO) :-
     ).
 
 :- pred write_key_maybe_inst(maybe_use_error_msg_inst::in,
-    io.text_output_stream::in, output_lang::in, int::in, int::in,
+    io.text_output_stream::in, output_lang::in, string::in, int::in, int::in,
     pred(io.text_output_stream, output_lang, int, Key, io, io)::
         in(pred(in, in, in, in, di, uo) is det),
     pair(Key, maybe_inst)::in, int::in, int::out, io::di, io::uo) is det.
 
-write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang,
+write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang, Kind,
         InstNumLimit, InstSizeLimit, WriteKey, Key - MaybeInst, !N, !IO) :-
     !:N = !.N + 1,
     ( if !.N =< InstNumLimit then
-        io.format(Stream, "\nEntry %d key\n", [i(!.N)], !IO),
+        io.format(Stream, "\n%s entry %d key\n", [s(Kind), i(!.N)], !IO),
         WriteKey(Stream, Lang, InstSizeLimit, Key, !IO),
         (
             MaybeInst = inst_unknown,
-            io.format(Stream, "Entry %d value UNKNOWN\n", [i(!.N)], !IO)
+            io.format(Stream, "%s entry %d value UNKNOWN\n",
+                [s(Kind), i(!.N)], !IO)
         ;
             MaybeInst = inst_known(Inst),
-            io.format(Stream, "Entry %d value:\n", [i(!.N)], !IO),
+            io.format(Stream, "%s entry %d value:\n", [s(Kind), i(!.N)], !IO),
             write_inst_entry(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
                 Inst, !IO)
         )
@@ -194,26 +195,27 @@ write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang,
     ).
 
 :- pred write_key_maybe_inst_det(maybe_use_error_msg_inst::in,
-    io.text_output_stream::in, output_lang::in, int::in, int::in,
+    io.text_output_stream::in, output_lang::in, string::in, int::in, int::in,
     pred(io.text_output_stream, output_lang, int, Key, io, io)::
         in(pred(in, in, in, in, di, uo) is det),
     pair(Key, maybe_inst_det)::in, int::in, int::out,
     io::di, io::uo) is det.
 
-write_key_maybe_inst_det(MaybeUseErrorMsgInst, Stream, Lang,
+write_key_maybe_inst_det(MaybeUseErrorMsgInst, Stream, Lang, Kind,
         InstNumLimit, InstSizeLimit, WriteKey, Key - MaybeInstDet, !N, !IO) :-
     !:N = !.N + 1,
     ( if !.N =< InstNumLimit then
-        io.format(Stream, "\nEntry %d key\n", [i(!.N)], !IO),
+        io.format(Stream, "\n%s entry %d key\n", [s(Kind), i(!.N)], !IO),
         WriteKey(Stream, Lang, InstSizeLimit, Key, !IO),
         (
             MaybeInstDet = inst_det_unknown,
-            io.format(Stream, "Entry %d value UNKNOWN\n", [i(!.N)], !IO)
+            io.format(Stream, "%s entry %d value UNKNOWN\n",
+                [s(Kind), i(!.N)], !IO)
         ;
             MaybeInstDet = inst_det_known(Inst, Detism),
             DetismStr = determinism_to_string(Detism),
-            io.format(Stream, "Entry %d value (%s):\n",
-                [i(!.N), s(DetismStr)], !IO),
+            io.format(Stream, "%s entry %d value (%s):\n",
+                [s(Kind), i(!.N), s(DetismStr)], !IO),
             write_inst_entry(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
                 Inst, !IO)
         )
