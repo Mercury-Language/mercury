@@ -2,6 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2003, 2005-2012 The University of Melbourne.
+# Copyright (C) 2013-2017, 2019-2020, 2022-2023 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -63,13 +64,15 @@ ifneq ("$(findstring -J\"-Xmx,$(JAVACFLAGS))","")
 JAVACFLAGS   += -J\"-Xmx2048m\"
 endif
 
-# The default C stack size of 1Mb on Windows is not enough to compile the
-# standard library in the hlc.gc grade using a Mercury compiler built in
-# the hlc.gc grade with the MinGW64 GCC or clang.
-# XXX When we support the 64-bit version of the Microsoft toolchain, we will
-# need to do something different here.
+# The default C stack size of 1Mb on Windows is not enough to bootcheck the
+# system using a Mercury compiler built in the hlc.gc grade with MinGW64 GCC,
+# Cygwin GCC or MinGW64 clang.
+# XXX For MSVC, we currently set the stack size in the ml script.
 ifneq ("$(USING_MICROSOFT_CL_COMPILER)", "yes")
 ifneq ("$(findstring x86_64-w64-mingw32,$(FULLARCH))","")
+LDFLAGS += -Wl,--stack=8388608
+endif
+ifneq ("$(findstring x86_64-pc-cygwin,$(FULLARCH))","")
 LDFLAGS += -Wl,--stack=8388608
 endif
 endif
