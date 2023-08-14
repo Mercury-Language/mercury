@@ -140,7 +140,7 @@
     (tfeirn(T)::no_tfeirn) is det.
 :- pragma type_spec(func(restrict_threshold/2), T = mc_type).
 
-:- func restrict_filter(pred(var(T))::(pred(in) is semidet),
+:- func restrict_filter(pred(var(T))::in(pred(in) is semidet),
     tfeirn(T)::ni_tfeirn) = (tfeirn(T)::no_tfeirn) is det.
 :- pragma type_spec(func(restrict_filter/2), T = mc_type).
 

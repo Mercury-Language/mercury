@@ -1736,7 +1736,7 @@ move_goals(CanMove, ModuleInfo, FullyStrict, [BetweenGoal | RevBetweenGoals0],
         RevBetweenGoals0, !BetweenGoals, EndGoal, !MovedGoals).
 
 :- type can_move == pred(module_info, bool, hlds_goal, hlds_goals).
-:- mode can_move == (pred(in, in, in, in) is semidet).
+:- mode can_move == in(pred(in, in, in, in) is semidet).
 
     % Check all goals occurring later in the conjunction to see if they depend
     % on the current goal. A goal depends on the current goal if any of the

@@ -53,7 +53,7 @@
 :- func restrict_threshold(var(T), equiv_vars(T)) = equiv_vars(T).
 
 :- func filter(pred(var(T)), equiv_vars(T)) = equiv_vars(T).
-:- mode filter(pred(in) is semidet, in) = out is det.
+:- mode filter(in(pred(in) is semidet), in) = out is det.
 
 :- pred normalise_known_equivalent_vars(bool::out, vars(T)::in, vars(T)::out,
     equiv_vars(T)::in, equiv_vars(T)::out) is det.

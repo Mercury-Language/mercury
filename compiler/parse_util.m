@@ -119,7 +119,7 @@
 %---------------------------------------------------------------------------%
 
 :- type parser(T) == pred(term, maybe1(T)).
-:- mode parser == (pred(in, out) is det).
+:- mode parser == in(pred(in, out) is det).
 
     % Parse a comma-separated list (misleading described as a "conjunction")
     % of things.
@@ -147,7 +147,7 @@
     % is up to Pred.
     %
 :- pred parse_list_elements(string::in,
-    pred(varset, term, maybe1(T))::(pred(in, in, out) is det),
+    pred(varset, term, maybe1(T))::in(pred(in, in, out) is det),
     varset::in, term::in, maybe1(list(T))::out) is det.
 
 %---------------------------------------------------------------------------%

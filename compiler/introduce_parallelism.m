@@ -795,8 +795,8 @@ maybe_var_reps_match(VarNameTable, yes(VarA), yes(VarB)) :-
     % True when lists have equal length and every corresponding pair of values
     % from the lists satisifies Pred.
     %
-:- pred zip_all_true(pred(A, B), list(A), list(B)).
-:- mode zip_all_true(pred(in, in) is semidet, in, in) is semidet.
+:- pred zip_all_true(pred(A, B)::in(pred(in, in) is semidet),
+    list(A)::in, list(B)::in) is semidet.
 
 zip_all_true(_, [], []).
 zip_all_true(Pred, [A | As], [B | Bs]) :-

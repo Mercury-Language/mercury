@@ -98,7 +98,7 @@
 
 :- func restrict_filter(pred(rep_var), mode_constraint_info,
     mode_constraint) = mode_constraint.
-:- mode restrict_filter(pred(in) is semidet, in, in) = out is det.
+:- mode restrict_filter(in(pred(in) is semidet), in, in) = out is det.
 
 :- pred save_min_var_for_pred(pred_id::in,
     mode_constraint_info::in, mode_constraint_info::out) is det.

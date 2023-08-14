@@ -318,7 +318,7 @@ mc_process_scc(Simple, SCC, !PredConstraintMap, !ModuleInfo) :-
 
 :- pred update_mc_info_t(pred(T, mode_constraint_info, mode_constraint_info),
     T, C, C) <= has_mc_info(C).
-:- mode update_mc_info_t(pred(out, in, out) is det, out, in, out) is det.
+:- mode update_mc_info_t(in(pred(out, in, out) is det), out, in, out) is det.
 
 update_mc_info_t(P, R, !C) :-
     MCInfo0 = !.C ^ mc_info,
@@ -327,8 +327,8 @@ update_mc_info_t(P, R, !C) :-
 
 :- pred update_mc_info(pred(mode_constraint_info, mode_constraint_info),
     C, C) <= has_mc_info(C).
-:- mode update_mc_info(pred(in, out) is det, in, out) is det.
-:- mode update_mc_info(pred(in, out) is semidet, in, out) is semidet.
+:- mode update_mc_info(in(pred(in, out) is det), in, out) is det.
+:- mode update_mc_info(in(pred(in, out) is semidet), in, out) is semidet.
 
 update_mc_info(P, !C) :-
     MCInfo0 = !.C ^ mc_info,
@@ -337,7 +337,7 @@ update_mc_info(P, !C) :-
 
 :- pred update_md_info(pred(T, mode_decl_info, mode_decl_info), T, C, C)
     <= (has_mc_info(C), has_ho_modes(C)).
-:- mode update_md_info(pred(out, in, out) is det, out, in, out) is det.
+:- mode update_md_info(in(pred(out, in, out) is det), out, in, out) is det.
 
 update_md_info(P, R, !C) :-
     MCInfo0 = !.C ^ mc_info,

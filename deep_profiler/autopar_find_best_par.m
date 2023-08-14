@@ -962,7 +962,7 @@ add_one_goal_into_last_par_conj(!Parallelisation) :-
 %---------------------------------------------------------------------------%
 
 :- pred foldl_sub_array(pred(int, T, A, A), array(T), int, int, A, A).
-:- mode foldl_sub_array(pred(in, in, in, out) is det,
+:- mode foldl_sub_array(in(pred(in, in, in, out) is det),
     in, in, in, in, out) is det.
 
 foldl_sub_array(Pred, Array, Index, Last, !Acc) :-

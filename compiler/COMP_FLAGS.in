@@ -11,6 +11,7 @@
 --warn-dead-preds
 --warn-implicit-stream-calls
 --warn-potentially-ambiguous-pragma
+--no-allow-ho-insts-as-modes
 --halt-at-warn
 --no-halt-at-warn-make-int
 --no-halt-at-warn-make-opt

@@ -33,7 +33,7 @@
 :- func restrict_threshold(var(T), imp_vars(T)) = imp_vars(T).
 
 :- func filter(pred(var(T)), imp_vars(T)) = imp_vars(T).
-:- mode filter(pred(in) is semidet, in) = out is det.
+:- mode filter(in(pred(in) is semidet), in) = out is det.
 
 :- func neq_vars(var(T), var(T), imp_vars(T)) = imp_vars(T).
 
@@ -115,7 +115,7 @@ restrict_threshold_2(Threshold, [V - Vs | AL], IM) =
 filter(P, ImpVars) = apply_to_imp_maps(filter_imp_map(P), ImpVars).
 
 :- func filter_imp_map(pred(var(T)), imp_map(T)) = imp_map(T).
-:- mode filter_imp_map(pred(in) is semidet, in) = out is det.
+:- mode filter_imp_map(in(pred(in) is semidet), in) = out is det.
 
 filter_imp_map(P, IM) =
     map.foldl(func(V, Vs, M) =

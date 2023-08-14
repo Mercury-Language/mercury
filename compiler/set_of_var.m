@@ -123,8 +123,8 @@
 % Traversals.
 
 :- pred fold(pred(var(T), Acc, Acc), set_of_var(T), Acc, Acc).
-:- mode fold(pred(in, in, out) is det, in, in, out) is det.
-:- mode fold(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode fold(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode fold(in(pred(in, in, out) is semidet), in, in, out) is semidet.
 
 :- pred fold_func((func(var(T), Acc) = Acc), set_of_var(T), Acc, Acc).
 :- mode fold_func(in((func(in, in) = out) is det), in, in, out) is det.

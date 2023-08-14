@@ -180,8 +180,9 @@ dump_array_options_to_dump_options(Strings, DumpOptions) :-
     DumpOptions = default_dump_options ^ do_arrays := DumpArrayOptions.
 
 :- pred string_list_to_sym_set(pred(string, X), list(string), set(X)).
-:- mode string_list_to_sym_set(pred(in, out) is det, in, out) is det.
-:- mode string_list_to_sym_set(pred(in, out) is semidet, in, out) is semidet.
+:- mode string_list_to_sym_set(in(pred(in, out) is det), in, out) is det.
+:- mode string_list_to_sym_set(in(pred(in, out) is semidet), in, out)
+    is semidet.
 
 string_list_to_sym_set(StrToSym, StrList, Set) :-
     list.map(StrToSym, StrList, List),

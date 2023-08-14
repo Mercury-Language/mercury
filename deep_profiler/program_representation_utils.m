@@ -40,9 +40,9 @@
     % Print a procedure to a string representation using a higher order value
     % to lookup goal attributes.
     %
-:- pred print_proc_to_strings(func(goal_id) = GoalAnn, proc_rep(goal_id),
-    cord(string)) <= goal_annotation(GoalAnn).
-:- mode print_proc_to_strings(func(in) = out is det, in, out) is det.
+:- pred print_proc_to_strings((func(goal_id) = GoalAnn)::in,
+    proc_rep(goal_id)::in, cord(string)::out) is det
+    <= goal_annotation(GoalAnn).
 
     % Print a procedure to a string representation.
     %
@@ -417,9 +417,8 @@ print_proc_to_strings(Lookup, ProcRep, Strings) :-
 print_proc_to_strings(ProcRep, Strings) :-
     print_proc_to_strings_2(id, ProcRep, Strings).
 
-:- pred print_proc_to_strings_2(func(X) = GoalAnn, proc_rep(X),
-    cord(string)) <= goal_annotation(GoalAnn).
-:- mode print_proc_to_strings_2(func(in) = out is det, in, out) is det.
+:- pred print_proc_to_strings_2((func(X) = GoalAnn)::in,
+    proc_rep(X)::in, cord(string)::out) is det <= goal_annotation(GoalAnn).
 
 print_proc_to_strings_2(Lookup, ProcRep, Strings) :-
     ProcRep = proc_rep(ProcLabel, ProcDefnRep),
@@ -784,7 +783,8 @@ print_atomic_goal_to_strings(VarTable, AtomicGoalRep, Strings) :-
 
 :- pred print_args_to_strings(pred(var_name_table, T, string), var_name_table,
     list(T), cord(string)).
-:- mode print_args_to_strings(pred(in, in, out) is det, in, in, out) is det.
+:- mode print_args_to_strings(in(pred(in, in, out) is det), in,
+    in, out) is det.
 
 print_args_to_strings(PrintArg, VarTable, Args, Strings) :-
     (
@@ -798,7 +798,7 @@ print_args_to_strings(PrintArg, VarTable, Args, Strings) :-
 
 :- pred print_args_2_to_strings(pred(var_name_table, T, string),
     var_name_table, list(T), cord(string), cord(string)).
-:- mode print_args_2_to_strings(pred(in, in, out) is det, in, in, in, out)
+:- mode print_args_2_to_strings(in(pred(in, in, out) is det), in, in, in, out)
     is det.
 
 print_args_2_to_strings(_, _, [], _, cord.empty).

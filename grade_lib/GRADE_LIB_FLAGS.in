@@ -13,6 +13,7 @@
 --no-halt-at-warn-make-int
 --no-halt-at-warn-make-opt
 --no-warn-inferred-erroneous
+--no-allow-ho-insts-as-modes
 --no-mercury-stdlib-dir
 --no-detect-libgrades
 -I../library

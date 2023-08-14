@@ -102,7 +102,7 @@
     % Performs a foldl operation over all variables V for which
     % reachable(InstGraph, Var, V) is true.
     %
-:- pred foldl_reachable(pred(prog_var, T, T)::pred(in, in, out) is det,
+:- pred foldl_reachable(pred(prog_var, T, T)::in(pred(in, in, out) is det),
     inst_graph::in, prog_var::in, T::in, T::out) is det.
 
     % foldl_reachable_from_list(Pred, InstGraph, Vars, !Acc):
@@ -111,19 +111,19 @@
     % reachable_from_list(InstGraph, Vars, V) is true.
     %
 :- pred foldl_reachable_from_list(
-    pred(prog_var, T, T)::pred(in, in, out) is det,
+    pred(prog_var, T, T)::in(pred(in, in, out) is det),
     inst_graph::in, list(prog_var)::in, T::in, T::out) is det.
 
     % A version of foldl_reachable with two accumulators.
     %
 :- pred foldl_reachable2(
-    pred(prog_var, T, T, U, U)::pred(in, in, out, in, out) is det,
+    pred(prog_var, T, T, U, U)::in(pred(in, in, out, in, out) is det),
     inst_graph::in, prog_var::in, T::in, T::out, U::in, U::out) is det.
 
     % A version of foldl_reachable_from_list with two accumulators.
     %
 :- pred foldl_reachable_from_list2(
-    pred(prog_var, T, T, U, U)::pred(in, in, out, in, out) is det,
+    pred(prog_var, T, T, U, U)::in(pred(in, in, out, in, out) is det),
     inst_graph::in, list(prog_var)::in, T::in, T::out, U::in, U::out)
     is det.
 
@@ -262,22 +262,24 @@ foldl_reachable(P, InstGraph, Var, !Acc) :-
     % aggregate(reachable(InstGraph, Var), P, !Acc).
     foldl_reachable_aux(P, InstGraph, Var, set.init, !Acc).
 
-:- pred foldl_reachable_aux(pred(prog_var, T, T)::pred(in, in, out) is det,
+:- pred foldl_reachable_aux(pred(prog_var, T, T)::in(pred(in, in, out) is det),
     inst_graph::in, prog_var::in, set(prog_var)::in, T::in, T::out) is det.
 
 foldl_reachable_aux(P, InstGraph, Var, Seen, !Acc) :-
     P(Var, !Acc),
     map.lookup(InstGraph, Var, node(Functors, _)),
-    map.foldl((pred(_ConsId::in, Args::in, MAcc0::in, MAcc::out) is det :-
-        list.foldl((pred(Arg::in, LAcc0::in, LAcc::out) is det :-
-            ( if Arg `set.member` Seen then
-                LAcc = LAcc0
-            else
-                foldl_reachable_aux(P, InstGraph, Arg, Seen `set.insert` Arg,
-                    LAcc0, LAcc)
-            )
-        ), Args, MAcc0, MAcc)
-    ), Functors, !Acc).
+    map.foldl(
+        ( pred(_ConsId::in, Args::in, MAcc0::in, MAcc::out) is det :-
+            list.foldl(
+                ( pred(Arg::in, LAcc0::in, LAcc::out) is det :-
+                    ( if Arg `set.member` Seen then
+                        LAcc = LAcc0
+                    else
+                        foldl_reachable_aux(P, InstGraph, Arg,
+                            Seen `set.insert` Arg, LAcc0, LAcc)
+                    )
+                ), Args, MAcc0, MAcc)
+        ), Functors, !Acc).
 
 foldl_reachable_from_list(P, InstGraph, Vars, !Acc) :-
     list.foldl(foldl_reachable(P, InstGraph), Vars, !Acc).
@@ -288,7 +290,7 @@ foldl_reachable2(P, InstGraph, Var, !Acc1, !Acc2) :-
     foldl_reachable_aux2(P, InstGraph, Var, set.init, !Acc1, !Acc2).
 
 :- pred foldl_reachable_aux2(
-    pred(prog_var, T, T, U, U)::pred(in, in, out, in, out) is det,
+    pred(prog_var, T, T, U, U)::in(pred(in, in, out, in, out) is det),
     inst_graph::in, prog_var::in, set(prog_var)::in, T::in, T::out,
     U::in, U::out) is det.
 

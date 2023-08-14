@@ -497,8 +497,8 @@
     % Transform the annotations on a goal representation. This may change
     % not only the values of the annotations, but also their type.
     %
-:- pred transform_goal_rep(pred(T, U), goal_rep(T), goal_rep(U)).
-:- mode transform_goal_rep(pred(in, out) is det, in, out) is det.
+:- pred transform_goal_rep(pred(T, U)::in(pred(in, out) is det),
+    goal_rep(T)::in, goal_rep(U)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -2042,8 +2042,8 @@ read_switch_can_fail(Bytecode, CanFail, !Pos) :-
     % predicate.
     %
 :- pred read_n_items(pred(T, int, int), int, list(T), int, int).
-:- mode read_n_items(pred(out, in, out) is det, in, out, in, out) is det.
-:- mode read_n_items(pred(out, in, out) is semidet, in, out, in, out)
+:- mode read_n_items(in(pred(out, in, out) is det), in, out, in, out) is det.
+:- mode read_n_items(in(pred(out, in, out) is semidet), in, out, in, out)
     is semidet.
 
 read_n_items(Read, N, Items, !Pos) :-

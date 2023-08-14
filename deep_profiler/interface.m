@@ -160,11 +160,11 @@ filename_mangle(FileName) = MangledFileName :-
 filename_mangle_2([]) = [].
 filename_mangle_2([First | Rest]) = MangledChars :-
     MangledRest = filename_mangle_2(Rest),
-    ( First = ('/') ->
+    ( if First = ('/') then
         MangledChars = [':', '.' | MangledRest]
-    ; First = (':') ->
+    else if First = (':') then
         MangledChars = [':', ':' | MangledRest]
-    ;
+    else
         MangledChars = [First | MangledRest]
     ).
 

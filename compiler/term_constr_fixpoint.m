@@ -431,8 +431,8 @@ pairwise_map(Op, List @ [_, _ | _]) = X :-
     pairwise_map_2(Op, List, [], X0),
     X = pairwise_map(Op, X0).
 
-:- pred pairwise_map_2(func(T, T) = T, list(T), list(T), list(T)).
-:- mode pairwise_map_2(func(in, in) = out is det, in, in, out) is det.
+:- pred pairwise_map_2((func(T, T) = T)::in, list(T)::in,
+    list(T)::in, list(T)::out) is det.
 
 pairwise_map_2(_, [], !Acc).
 pairwise_map_2(_, [X], Acc, [X | Acc]).

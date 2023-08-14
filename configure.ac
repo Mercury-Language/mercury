@@ -586,6 +586,7 @@ EOF
             --verbose \
             $link_static_opt conftest \
             --warn-obsolete-transform-2023-07-03 \
+            --allow-ho-insts-as-modes \
             --no-ssdb \
             </dev/null >&AS_MESSAGE_LOG_FD 2>&1 &&
         test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&

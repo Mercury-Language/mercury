@@ -1962,7 +1962,7 @@ parse_item_type_version_numbers(Term, Result) :-
     ).
 
 :- pred parse_key_version_number(
-    pred(term, string)::(pred(in, out) is semidet), term::in,
+    pred(term, string)::in(pred(in, out) is semidet), term::in,
     maybe1(pair(name_arity, version_number))::out) is det.
 
 parse_key_version_number(ParseName, Term, Result) :-
@@ -1984,7 +1984,7 @@ parse_key_version_number(ParseName, Term, Result) :-
     ).
 
 :- pred parse_item_version_number(
-    pred(term, sym_name)::(pred(in, out) is semidet), term::in,
+    pred(term, sym_name)::in(pred(in, out) is semidet), term::in,
     maybe1(pair(recomp_item_name, version_number))::out) is det.
 
 parse_item_version_number(ParseName, Term, Result) :-

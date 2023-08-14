@@ -111,8 +111,8 @@ output_int(Bits, IntVal, !IO) :-
     output_int(io.write_byte, Bits, IntVal, !IO).
 
 :- pred output_int(pred(int, T, T), int, int, T, T).
-:- mode output_int(pred(in, in, out) is det, in, in, in, out) is det.
-:- mode output_int(pred(in, di, uo) is det, in, in, di, uo) is det.
+:- mode output_int(in(pred(in, in, out) is det), in, in, in, out) is det.
+:- mode output_int(in(pred(in, di, uo) is det), in, in, di, uo) is det.
 
 output_int(Writer, Bits, IntVal, !IO) :-
     int.bits_per_int(IntBits),
@@ -151,8 +151,8 @@ bytecode_int_bytes = 8.
 bits_per_byte = 8.
 
 :- pred output_padding_zeros(pred(int, T, T), int, T, T).
-:- mode output_padding_zeros(pred(in, in, out) is det, in, in, out) is det.
-:- mode output_padding_zeros(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode output_padding_zeros(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode output_padding_zeros(in(pred(in, di, uo) is det), in, di, uo) is det.
 
 output_padding_zeros(Writer, NumBytes, !IO) :-
     ( if NumBytes > 0 then
@@ -164,8 +164,8 @@ output_padding_zeros(Writer, NumBytes, !IO) :-
     ).
 
 :- pred output_int_bytes(pred(int, T, T), int, int, T, T).
-:- mode output_int_bytes(pred(in, in, out) is det, in, in, in, out) is det.
-:- mode output_int_bytes(pred(in, di, uo) is det, in, in, di, uo) is det.
+:- mode output_int_bytes(in(pred(in, in, out) is det), in, in, in, out) is det.
+:- mode output_int_bytes(in(pred(in, di, uo) is det), in, in, di, uo) is det.
 
 output_int_bytes(Writer, ByteNum, IntVal, !IO) :-
     ( if ByteNum >= 0 then
