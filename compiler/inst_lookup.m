@@ -48,7 +48,7 @@
     %       trying to unify are already in the unify inst table with value
     %       inst_det_unknown, then (due to 4 below) we know that the process
     %       of unifying that pair of (sub)insts is already in progress.
-    %       After step 4, he unify_inst we constructed in step 1 for that pair
+    %       After step 4, the unify_inst we constructed in step 1 for that pair
     %       of (sub) insts, which may or may not be InstA and InstB,
     %       will represent the outcome of the unification of that pair of
     %       (sub)insts, so in that case, we return that unify_inst as
