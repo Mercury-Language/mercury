@@ -52,7 +52,7 @@ Specific information is contained in individual README files:
       * [Windows](README.MS-Windows.md)
         ([Visual C](README.MS-VisualC.md),
         [MinGW](README.MinGW),
-        [Cygwin](README.Cygwin))
+        [Cygwin](README.Cygwin.md)
 
   * Other platform information
       * [Cross compilation](README.cross.md)

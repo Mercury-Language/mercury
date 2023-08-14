@@ -56,7 +56,7 @@ shells do the following:
 
    or this one to start the Cygwin shell:
 
-        C:\> C:\CYGWIN\cygwin.bat
+        C:\> C:\cygwin64\Cygwin.bat
 
 (We assume the default installation locations for MinGW/MSYS and Cygwin above.)
 

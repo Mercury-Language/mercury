@@ -31,7 +31,7 @@ build Mercury on Windows.
 
 Three such environments are supported:
 
-1. [Cygwin](https://www.cygwin.com). See [README.Cygwin](README.Cygwin).
+1. [Cygwin](https://www.cygwin.com). See [README.Cygwin.md](README.Cygwin.md).
 
 2. [MSYS](https://osdn.net/projects/mingw/). See [README.MinGW](README.MinGW).
 
