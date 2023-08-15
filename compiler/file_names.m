@@ -477,6 +477,12 @@
 
 %---------------------%
 
+:- func module_name_to_base_file_name_no_ext(ext, module_name) = file_name.
+:- func module_name_to_base_file_name_no_ext_non_java(module_name) = file_name.
+:- func module_name_to_base_file_name_no_ext_java(module_name) = file_name.
+
+%---------------------%
+
 % XXX Most of the predicates below take a "from" string argument,
 % for which the caller is expected pass $pred or some other identification
 % of the call site. This is a temporary measure, intended to help debug
@@ -871,7 +877,7 @@ ext_cur_ngs_gs_extension_dir(Globals, ext_cur_ngs_gs_obj_pic_obj_opt,
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_init_c, "_init.c", "cs").
 % The deviation from the "delete initial dot, add final 's'" rule
 % is intentional.
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_init_obj_dollar_o, 
+ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_init_obj_dollar_o,
         "_init.$O",     "os").
 % The deviation from the "delete initial dot, add final 's'" rule
 % is intentional.
@@ -925,6 +931,30 @@ ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_imdg,
         ".imdg",        "imdgs").
 ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_request,
         ".request",     "requests").
+
+%---------------------------------------------------------------------------%
+
+module_name_to_base_file_name_no_ext(Ext, ModuleName) = BaseNameNoExt :-
+    (
+        ( Ext = ext_cur(_)
+        ; Ext = ext_cur_ngs(_)
+        ; Ext = ext_cur_gs(_)
+        ; Ext = ext_cur_ngs_gs(_)
+        ; Ext = ext_cur_ngs_gs_max_cur(_)
+        ; Ext = ext_cur_ngs_gs_max_ngs(_)
+        ),
+        BaseNameNoExt =
+            module_name_to_base_file_name_no_ext_non_java(ModuleName)
+    ;
+        Ext = ext_cur_ngs_gs_java(_),
+        BaseNameNoExt = module_name_to_base_file_name_no_ext_java(ModuleName)
+    ).
+
+module_name_to_base_file_name_no_ext_non_java(ModuleName) =
+    sym_name_to_string_sep(ModuleName, ".").
+
+module_name_to_base_file_name_no_ext_java(ModuleName) = BaseNameNoExt :-
+    mangle_sym_name_for_java(ModuleName, module_qual, "__", BaseNameNoExt).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1142,7 +1172,7 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             DirNames = BaseParentDirs
         ;
             SubdirSetting = use_cur_ngs_subdir,
-                DirNames = ["Mercury" |  SubDirNames]
+            DirNames = ["Mercury" |  SubDirNames]
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
             DirNames = make_grade_subdir_name(Globals, SubDirNames)
