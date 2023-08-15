@@ -270,10 +270,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- type fact_result
-    --->    ok
-    ;       error.
-
     % Proc_stream contains information about an open sort file for
     % a particular procedure.
     %
@@ -1524,10 +1520,9 @@ write_fact_table_arrays(OutputStream, FactTableSize, ModuleInfo,
             write_primary_hash_table(OutputStream, FactTableSize, ModuleInfo,
                 FactTableProcMap, PrimaryProcId, FileName, DataFileName,
                 StructName, FactArgInfos, WriteDataTable,
-                NumFacts, CreateFactMap, FactMap,
-                PrimaryResult, PrimaryHeaderCode, !Specs, !IO),
+                NumFacts, CreateFactMap, PrimaryResult, !Specs, !IO),
             (
-                PrimaryResult = ok,
+                PrimaryResult = ok(FactMap, PrimaryHeaderCode),
                 write_secondary_hash_tables(OutputStream, FactTableSize,
                     ModuleInfo, FactTableProcMap, StructName,
                     FactArgInfos, FactMap, TailProcFiles,
@@ -1535,7 +1530,7 @@ write_fact_table_arrays(OutputStream, FactTableSize, ModuleInfo,
                 HeaderCode = PrimaryHeaderCode ++ SecondaryHeadCode
             ;
                 PrimaryResult = error,
-                HeaderCode = PrimaryHeaderCode
+                HeaderCode = ""
             )
         ;
             WriteHashTables = do_not_write_hash_tables,
@@ -1662,6 +1657,10 @@ append_data_table(ModuleInfo, OutputFileName, DataFileName, !Specs, !IO) :-
     ),
     delete_temporary_file(DataFileName, !Specs, !IO).
 
+:- type fact_result
+    --->    ok(map(int, int), string)
+    ;       error.
+
     % Write hash tables for the primary key. Create a map from indices in the
     % original input table to the table sorted on the primary key.
     % Write out the data table if required.
@@ -1669,16 +1668,14 @@ append_data_table(ModuleInfo, OutputFileName, DataFileName, !Specs, !IO) :-
 :- pred write_primary_hash_table(io.text_output_stream::in, int::in,
     module_info::in, fact_table_proc_map::in, proc_id::in,
     string::in, string::in, string::in, list(fact_arg_info)::in,
-    maybe_write_data_table::in, int::in,
-    maybe_create_fact_map::in, map(int, int)::out,
-    fact_result::out, string::out,
+    maybe_write_data_table::in, int::in, maybe_create_fact_map::in,
+    fact_result::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 write_primary_hash_table(OutputStream, FactTableSize, ModuleInfo,
         FactTableProcMap, ProcId, FileName, DataFileName,
         StructName, FactArgInfos, WriteDataTable, NumFacts,
-        CreateFactMap, FactMap, Result, HeaderCode, !Specs, !IO) :-
-    map.init(FactMap0),
+        CreateFactMap, Result, !Specs, !IO) :-
     io.open_input(FileName, FileResult, !IO),
     (
         FileResult = ok(FileStream),
@@ -1687,74 +1684,65 @@ write_primary_hash_table(OutputStream, FactTableSize, ModuleInfo,
             io.open_output(DataFileName, OpenResult, !IO),
             (
                 OpenResult = ok(DataStream),
-                MaybeDataStream = yes(DataStream),
-                % output opening brace for first fact array
+                proc_id_to_int(ProcId, ProcIdInt),
+                string.format("%s_hash_table_%d_",
+                    [s(StructName), i(ProcIdInt)], HashTableName),
+                % Note: the type declared here is not necessarily correct.
+                % We declare it just to stop the C compiler emitting warnings.
+                string.format("extern struct MR_fact_table_hash_table_i %s0;\n",
+                    [s(HashTableName)], HeaderCode0),
+                map.lookup(FactTableProcMap, ProcId, FactTableProcInfo),
+                FactTableProcInfo = fact_table_proc_info(FactTableVars, _, _),
+                FactTableModes =
+                    list.map((func(fact_table_var(_, M, _, _)) = M),
+                        FactTableVars),
+                read_sort_file_line(FileStream, FileName,
+                    FactArgInfos, FactTableModes, MaybeFirstFact, !Specs, !IO),
+                % Output opening brace for first fact array,
+                % XXX This design is inelegant.
                 write_new_data_array_opening_brace(DataStream, StructName,
-                    0, !IO)
+                    0, !IO),
+                (
+                    MaybeFirstFact = yes(FirstFact),
+                    build_hash_table(FileStream, FileName, OutputStream,
+                        yes(DataStream), FactTableSize, ModuleInfo,
+                        primary_table, StructName, FactArgInfos,
+                        FactTableModes, 0, HashTableName, 0, FirstFact, 0,
+                        CreateFactMap, map.init, FactMap1, !Specs, !IO),
+                    MaybeFactMap = yes(FactMap1)
+                ;
+                    MaybeFirstFact = no,
+                    MaybeFactMap = no
+                ),
+                % Closing brace for last fact data array.
+                write_closing_brace(DataStream, !IO),
+                write_fact_table_pointer_array(DataStream, FactTableSize,
+                    StructName, NumFacts, HeaderCode1, !IO),
+                io.close_output(DataStream, !IO),
+                (
+                    MaybeFactMap = no,
+                    Result = error
+                ;
+                    MaybeFactMap = yes(FactMap),
+                    HeaderCode = HeaderCode0 ++ HeaderCode1,
+                    Result = ok(FactMap, HeaderCode)
+                )
             ;
                 OpenResult = error(Error),
                 add_file_open_error(no, DataFileName, "output", Error,
                     !Specs, !IO),
-                MaybeDataStream = no
+                Result = error
             )
         ;
             WriteDataTable = do_not_write_data_table,
-            MaybeDataStream = no
-        ),
-        (
-            MaybeDataStream = yes(_),
-            proc_id_to_int(ProcId, ProcIdInt),
-            string.format("%s_hash_table_%d_",
-                [s(StructName), i(ProcIdInt)], HashTableName),
-            % Note: the type declared here is not necessarily correct.
-            % We declare it just to stop the C compiler emitting warnings.
-            string.format("extern struct MR_fact_table_hash_table_i %s0;\n",
-                [s(HashTableName)], HeaderCode0),
-            map.lookup(FactTableProcMap, ProcId, FactTableProcInfo),
-            FactTableProcInfo = fact_table_proc_info(FactTableVars, _, _),
-            FactTableModes = list.map((func(fact_table_var(_, M, _, _)) = M),
-                FactTableVars),
-            read_sort_file_line(FileStream, FileName,
-                FactArgInfos, FactTableModes, MaybeFirstFact, !Specs, !IO),
-            (
-                MaybeFirstFact = yes(FirstFact),
-                build_hash_table(FileStream, FileName, OutputStream,
-                    MaybeDataStream, FactTableSize, ModuleInfo, primary_table,
-                    StructName, FactArgInfos, FactTableModes, 0,
-                    HashTableName, 0, FirstFact, 0,
-                    CreateFactMap, FactMap0, FactMap, !Specs, !IO),
-                Result = ok
-            ;
-                MaybeFirstFact = no,
-                Result = error,
-                FactMap = FactMap0
-            )
-        ;
-            MaybeDataStream = no,
-            Result = error,
-            FactMap = FactMap0,
-            HeaderCode0 = ""
-        ),
-        (
-            MaybeDataStream = yes(DataStream1),
-            % Closing brace for last fact data array.
-            write_closing_brace(DataStream1, !IO),
-            write_fact_table_pointer_array(DataStream1, FactTableSize,
-                StructName, NumFacts, HeaderCode1, !IO),
-            io.close_output(DataStream1, !IO),
-            HeaderCode = HeaderCode0 ++ HeaderCode1
-        ;
-            MaybeDataStream = no,
-            HeaderCode = HeaderCode0
+            Result = error
         ),
         io.close_input(FileStream, !IO),
         delete_temporary_file(FileName, !Specs, !IO)
     ;
         FileResult = error(Error),
         add_file_open_error(no, FileName, "input", Error, !Specs, !IO),
-        Result = error,
-        FactMap = FactMap0,
-        HeaderCode = ""
+        Result = error
     ).
 
     % Build hash tables for non-primary input procs.
