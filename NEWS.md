@@ -56,7 +56,7 @@ Changes that may break compatibility
   operators. (Mercury switched to using `.` as the module name separator
   around 2003.)
 
-* We have dropped support for x86 (32-bit) version of Cygwin.
+* We have dropped support for the x86 (32-bit) version of Cygwin.
 
 Changes to the Mercury standard library
 ---------------------------------------
