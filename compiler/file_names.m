@@ -292,12 +292,22 @@
 
             % Compiler-generated files that are intended to be read
             % by the programmer.
+    ;       ext_cur_user_defn_ext           % ".defn_extents"
+    ;       ext_cur_user_defn_lc            % ".defn_line_counts"
+    ;       ext_cur_user_defns              % ".defns"
     ;       ext_cur_user_depgraph           % ".dependency_graph"
     ;       ext_cur_user_err                % ".err"
     ;       ext_cur_user_hlds_dump          % ".hlds_dump"
+    ;       ext_cur_user_imports_graph      % ".imports_graph"
+    ;       ext_cur_user_lct                % ".local_call_tree"
+    ;       ext_cur_user_lct_order          % ".local_call_tree_order"
     ;       ext_cur_user_mlds_dump          % ".mlds_dump"
+    ;       ext_cur_user_mode_constr        % ".mode_constraints"
     ;       ext_cur_user_order              % ".order"
-    ;       ext_cur_user_ugly.              % ".ugly"
+    ;       ext_cur_user_order_to           % ".order_trans_opt"
+    ;       ext_cur_user_type_repns         % ".type_repns"
+    ;       ext_cur_user_ugly               % ".ugly"
+    ;       ext_cur_user_xml.               % ".xml"
 
 :- type ext_cur_ngs
             % Compiler-generated interface files, and the timestamp files
@@ -309,19 +319,6 @@
     ;       ext_cur_ngs_int_date_int0       % ".date0"
     ;       ext_cur_ngs_int_date_int12      % ".date"
     ;       ext_cur_ngs_int_date_int3       % ".date3"
-
-            % Compiler-generated files that are intended to be read
-            % by the programmer.
-    ;       ext_cur_ngs_user_defn_ext       % ".defn_extents"
-    ;       ext_cur_ngs_user_defn_lc        % ".defn_line_counts"
-    ;       ext_cur_ngs_user_defns          % ".defns"
-    ;       ext_cur_ngs_user_imports_graph  % ".imports_graph"
-    ;       ext_cur_ngs_user_lct            % ".local_call_tree"
-    ;       ext_cur_ngs_user_lct_order      % ".local_call_tree_order"
-    ;       ext_cur_ngs_user_mode_constr    % ".mode_constraints"
-    ;       ext_cur_ngs_user_order_to       % ".order_trans_opt"
-    ;       ext_cur_ngs_user_type_repns     % ".type_repns"
-    ;       ext_cur_ngs_user_xml            % ".xml"
 
             % Compiler-generated files that are designed to be bodily included
             % in Mmakefiles.
@@ -767,12 +764,22 @@ ext_cur_extension(ext_cur_pmt_javas,                ".javas").
 ext_cur_extension(ext_cur_pmt_opts,                 ".opts").
 ext_cur_extension(ext_cur_pmt_realclean,            ".realclean").
 ext_cur_extension(ext_cur_pmt_trans_opts,           ".trans_opts").
+ext_cur_extension(ext_cur_user_defn_ext,            ".defn_extents").
+ext_cur_extension(ext_cur_user_defn_lc,             ".defn_line_counts").
+ext_cur_extension(ext_cur_user_defns,               ".defns").
 ext_cur_extension(ext_cur_user_depgraph,            ".dependency_graph").
 ext_cur_extension(ext_cur_user_err,                 ".err").
 ext_cur_extension(ext_cur_user_hlds_dump,           ".hlds_dump").
+ext_cur_extension(ext_cur_user_imports_graph,       ".imports_graph").
+ext_cur_extension(ext_cur_user_lct,                 ".local_call_tree").
+ext_cur_extension(ext_cur_user_lct_order,           ".local_call_tree_order").
 ext_cur_extension(ext_cur_user_mlds_dump,           ".mlds_dump").
+ext_cur_extension(ext_cur_user_mode_constr,         ".mode_constraints").
 ext_cur_extension(ext_cur_user_order,               ".order").
+ext_cur_extension(ext_cur_user_order_to,            ".order_trans_opt").
+ext_cur_extension(ext_cur_user_type_repns,          ".type_repns").
 ext_cur_extension(ext_cur_user_ugly,                ".ugly").
+ext_cur_extension(ext_cur_user_xml,                 ".xml").
 
 :- pred ext_cur_ngs_extension_dir(ext_cur_ngs::in,
     string::out, string::out) is det.
@@ -784,25 +791,7 @@ ext_cur_ngs_extension_dir(ext_cur_ngs_int_int3,         ".int3",    "int3s").
 ext_cur_ngs_extension_dir(ext_cur_ngs_int_date_int0,    ".date0",   "date0s").
 ext_cur_ngs_extension_dir(ext_cur_ngs_int_date_int12,   ".date",    "dates").
 ext_cur_ngs_extension_dir(ext_cur_ngs_int_date_int3,    ".date3",   "date3s").
-ext_cur_ngs_extension_dir(ext_cur_ngs_user_defn_ext,
-    ".defn_extents", "defn_extentss").
-ext_cur_ngs_extension_dir(ext_cur_ngs_user_defn_lc,
-    ".defn_line_counts", "defn_line_countss").
-ext_cur_ngs_extension_dir(ext_cur_ngs_user_defns,
-    ".defns", "defnss").
-ext_cur_ngs_extension_dir(ext_cur_ngs_user_imports_graph,
-    ".imports_graph", "imports_graphs").
-ext_cur_ngs_extension_dir(ext_cur_ngs_user_lct,
-    ".local_call_tree", "local_call_trees").
-ext_cur_ngs_extension_dir(ext_cur_ngs_user_lct_order,
-    ".local_call_tree_order", "local_call_tree_orders").
-ext_cur_ngs_extension_dir(ext_cur_ngs_user_mode_constr,
-    ".mode_constraints", "mode_constraintss").
-ext_cur_ngs_extension_dir(ext_cur_ngs_user_order_to,
-    ".order_trans_opt", "order_trans_opts").
-ext_cur_ngs_extension_dir(ext_cur_ngs_user_type_repns,
-    ".type_repns", "type_repnss").
-ext_cur_ngs_extension_dir(ext_cur_ngs_user_xml,  ".xml", "xmls").
+
 ext_cur_ngs_extension_dir(ext_cur_ngs_mf_d,      ".d",   "ds").
 % The next two deviations below from the "delete initial dot, add final 's'"
 % rule are intentional, though I (zs) don't know the reason for the second.

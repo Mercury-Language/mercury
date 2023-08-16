@@ -272,7 +272,7 @@ target_type_to_target_extension(Target, TargetExt) :-
         TargetExt = extension(ext_cur_ngs_gs(ObjExt))
     ;
         Target = module_target_xml_doc,
-        TargetExt = extension(ext_cur_ngs(ext_cur_ngs_user_xml))
+        TargetExt = extension(ext_cur(ext_cur_user_xml))
     ;
         Target = module_target_foreign_object(PIC, Lang),
         TargetExt = foreign_obj(PIC, Lang)

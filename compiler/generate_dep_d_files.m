@@ -309,8 +309,7 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
         (
             OutputOrder = yes,
             output_module_order(Globals, ModuleName,
-                ext_cur_ngs(ext_cur_ngs_user_order_to),
-                TransOptDepsOrdering0, !IO)
+                ext_cur(ext_cur_user_order_to), TransOptDepsOrdering0, !IO)
         ;
             OutputOrder = no
         ),
@@ -393,8 +392,7 @@ maybe_output_imports_graph(Globals, ModuleName, IntDepsGraph, ImpDepsGraph,
     (
         ImportsGraph = yes,
         module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur_ngs(ext_cur_ngs_user_imports_graph),
-            ModuleName, FileName, !IO),
+            ext_cur(ext_cur_user_imports_graph), ModuleName, FileName, !IO),
         (
             Verbose = no,
             MaybeProgressStream = no
