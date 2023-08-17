@@ -53,9 +53,12 @@
     ;       simptask_excess_assigns
             % Remove excess assignment unifications.
 
-    ;       simptask_test_after_switch
-            % Optimize away test unifications after switches whose arms
-            % do nothing except set the to-be-tested variable.
+    ;       simptask_merge_code_after_switch
+            % Merge the goal that occurs just after a switch into the switch,
+            % if we can. There are two kinds of situations in which we can
+            % do so. These are described by the comments on the predicates
+            % implementing the transforms, try_to_merge_unify_after_switch
+            % and try_to_merge_switch_after_switch.
 
     ;       simptask_elim_removable_scopes
             % Remove scopes that do not need processing during LLDS code
@@ -189,7 +192,7 @@
                 do_mark_code_model_changes      :: maybe_mark_cm_changes,
                 do_after_front_end              :: maybe_after_front_end,
                 do_excess_assign                :: maybe_elim_excess_assigns,
-                do_test_after_switch            :: maybe_opt_test_after_switch,
+                do_merge_code_after_switch  :: maybe_merge_code_after_switch,
                 do_elim_removable_scopes        :: maybe_elim_removable_scopes,
                 do_opt_duplicate_calls          :: maybe_opt_dup_calls,
                 do_constant_prop                :: maybe_prop_constants,
@@ -236,9 +239,9 @@
 simplify_tasks_to_list(SimplifyTasks) = !:List :-
     SimplifyTasks = simplify_tasks(WarnSimpleCode, WarnDupCalls,
         WarnImplicitStreamCalls, DoFormatCalls, WarnObsolete,
-        MarkCodeModelChanges, AfterFrontEnd, ExcessAssign, TestAfterSwitch,
-        ElimRemovableScopes, OptDuplicateCalls, ConstantProp,
-        OptCommonStructs, OptExtraStructs,
+        MarkCodeModelChanges, AfterFrontEnd, ExcessAssign,
+        MergeCodeAfterSwitch, ElimRemovableScopes,
+        OptDuplicateCalls, ConstantProp, OptCommonStructs, OptExtraStructs,
         TryOptConstStructs, _OptConstStructs, IgnoreParConjs,
         WarnSuspiciousRecursion, WarnNoSolutionDisjunct, SplitSwitchArms),
     !:List = [],
@@ -258,8 +261,8 @@ simplify_tasks_to_list(SimplifyTasks) = !:List :-
         then list.cons(simptask_after_front_end, !List) else true ),
     ( if ExcessAssign = elim_excess_assigns
         then list.cons(simptask_excess_assigns, !List) else true ),
-    ( if TestAfterSwitch = opt_test_after_switch
-        then list.cons(simptask_test_after_switch, !List) else true ),
+    ( if MergeCodeAfterSwitch = merge_code_after_switch
+        then list.cons(simptask_merge_code_after_switch, !List) else true ),
     ( if ElimRemovableScopes = elim_removable_scopes
         then list.cons(simptask_elim_removable_scopes, !List) else true ),
     ( if OptDuplicateCalls = opt_dup_calls
@@ -300,8 +303,8 @@ list_to_simplify_tasks(Globals, List) = Tasks :-
             then after_front_end else not_after_front_end ),
         ( if list.member(simptask_excess_assigns, List)
             then elim_excess_assigns else do_not_elim_excess_assigns ),
-        ( if list.member(simptask_test_after_switch, List)
-            then opt_test_after_switch else do_not_opt_test_after_switch ),
+        ( if list.member(simptask_merge_code_after_switch, List)
+            then merge_code_after_switch else do_not_merge_code_after_switch ),
         ( if list.member(simptask_elim_removable_scopes, List)
             then elim_removable_scopes else do_not_elim_removable_scopes ),
         ( if list.member(simptask_opt_duplicate_calls, List)
@@ -357,7 +360,7 @@ find_simplify_tasks(Globals, WarnThisPass, SimplifyTasks) :-
     ),
     globals.lookup_bool_option(Globals, warn_obsolete, WarnObsolete),
     ExcessAssign = OptTuple ^ ot_elim_excess_assigns,
-    TestAfterSwitch = OptTuple ^ ot_opt_test_after_switch,
+    MergeCodeAfterSwitch = OptTuple ^ ot_merge_code_after_switch,
     OptDuplicateCalls = OptTuple ^ ot_opt_dup_calls,
     ConstantProp = OptTuple ^ ot_prop_constants,
     MarkCodeModelChanges = do_not_mark_code_model_changes,
@@ -386,7 +389,7 @@ find_simplify_tasks(Globals, WarnThisPass, SimplifyTasks) :-
         MarkCodeModelChanges,
         AfterFrontEnd,
         ExcessAssign,
-        TestAfterSwitch,
+        MergeCodeAfterSwitch,
         ElimRemovableScopes,
         OptDuplicateCalls,
         ConstantProp,

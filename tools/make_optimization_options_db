@@ -18,7 +18,7 @@ bool   n    local_constraint_propagation                   prop_local_constraint
 bool   n    optimize_duplicate_calls                       opt_dup_calls
 bool   n    constant_propagation                           prop_constants
 bool   n    excess_assign                                  elim_excess_assigns
-bool   n    test_after_switch                              opt_test_after_switch
+bool   n    merge_code_after_switch                        merge_code_after_switch
 bool   y    optimize_format_calls                          opt_format_calls
 bool   y    split_switch_arms
 bool   n    loop_invariants                                opt_loop_invariants

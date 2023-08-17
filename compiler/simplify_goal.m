@@ -86,6 +86,8 @@
 :- import_module check_hlds.simplify.simplify_goal_unify.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.make_goal.
 :- import_module libs.
 :- import_module libs.options.
@@ -96,6 +98,7 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_db.
 :- import_module transform_hlds.
 :- import_module transform_hlds.pd_cost.
 
@@ -118,10 +121,11 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
         Goal0ContainsTrace = contains_no_trace_goal
     ),
     Detism = goal_info_get_determinism(GoalInfo0),
-    simplify_info_get_module_info(!.Info, ModuleInfo0),
-    goal_can_loop_or_throw_imaf(Goal0, Goal0CanLoopOrThrow,
-        ModuleInfo0, ModuleInfo),
-    simplify_info_set_module_info(ModuleInfo, !Info),
+    some [!ModuleInfo] (
+        simplify_info_get_module_info(!.Info, !:ModuleInfo),
+        goal_can_loop_or_throw_imaf(Goal0, Goal0CanLoopOrThrow, !ModuleInfo),
+        simplify_info_set_module_info(!.ModuleInfo, !Info)
+    ),
     Purity = goal_info_get_purity(GoalInfo0),
     ( if
         % If --no-fully-strict, replace goals with determinism failure
@@ -186,10 +190,12 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
         MaxSoln \= at_most_zero,
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
         NonLocalVars = goal_info_get_nonlocals(GoalInfo0),
-        simplify_info_get_module_info(!.Info, ModuleInfo),
-        simplify_info_get_var_table(!.Info, VarTable),
-        instmap_delta_no_output_vars(ModuleInfo, VarTable,
-            InstMap0, InstMapDelta, NonLocalVars),
+        some [ModuleInfo] (
+            simplify_info_get_module_info(!.Info, ModuleInfo),
+            simplify_info_get_var_table(!.Info, VarTable),
+            instmap_delta_no_output_vars(ModuleInfo, VarTable,
+                InstMap0, InstMapDelta, NonLocalVars)
+        ),
         ( Purity = purity_pure
         ; Purity = purity_semipure
         ),
@@ -278,6 +284,26 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
         NestedContext, InstMap0, !Common, !Info),
     maybe_handle_stack_flush(after, GoalExpr4, !Common),
     enforce_unreachability_invariant(GoalInfo4, GoalInfo, !Info),
+    trace [compile_time(flag("simplify_merge_switch")), io(!IO)] (
+        % If you want to debug one specific goal's transformation, then
+        % - add a goal feature to the goal at the point at which you decide
+        %   you want to debug it, and then
+        % - replace the semidet_fail here with a test for that feature.
+        ( if semidet_fail then
+            io.stderr_stream(StdErr, !IO),
+            simplify_info_get_module_info(!.Info, TraceModuleInfo),
+            simplify_info_get_var_table(!.Info, TraceVarTable),
+            TraceVarNameSrc = vns_var_table(TraceVarTable),
+
+            Goal5 = hlds_goal(GoalExpr4, GoalInfo),
+            io.write_string(StdErr, "\nMerge goal before\n\n", !IO),
+            dump_goal_nl(StdErr, TraceModuleInfo, TraceVarNameSrc, Goal0, !IO),
+            io.write_string(StdErr, "\nMerge goal after\n\n", !IO),
+            dump_goal_nl(StdErr, TraceModuleInfo, TraceVarNameSrc, Goal5, !IO)
+        else
+            true
+        )
+    ),
     Goal = hlds_goal(GoalExpr4, GoalInfo).
 
 %----------------------------------------------------------------------------%

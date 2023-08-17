@@ -66,9 +66,9 @@
 :- type maybe_elim_excess_assigns
     --->    elim_excess_assigns
     ;       do_not_elim_excess_assigns.
-:- type maybe_opt_test_after_switch
-    --->    opt_test_after_switch
-    ;       do_not_opt_test_after_switch.
+:- type maybe_merge_code_after_switch
+    --->    merge_code_after_switch
+    ;       do_not_merge_code_after_switch.
 :- type maybe_opt_format_calls
     --->    opt_format_calls
     ;       do_not_opt_format_calls.
@@ -305,7 +305,7 @@
     ;       oo_opt_dup_calls(bool)
     ;       oo_prop_constants(bool)
     ;       oo_elim_excess_assigns(bool)
-    ;       oo_opt_test_after_switch(bool)
+    ;       oo_merge_code_after_switch(bool)
     ;       oo_opt_format_calls(bool)
     ;       oo_split_switch_arms(bool)
     ;       oo_opt_loop_invariants(bool)
@@ -437,7 +437,7 @@
                 ot_opt_dup_calls              :: maybe_opt_dup_calls,
                 ot_prop_constants             :: maybe_prop_constants,
                 ot_elim_excess_assigns        :: maybe_elim_excess_assigns,
-                ot_opt_test_after_switch      :: maybe_opt_test_after_switch,
+                ot_merge_code_after_switch    :: maybe_merge_code_after_switch,
                 ot_opt_format_calls           :: maybe_opt_format_calls,
                 ot_split_switch_arms          :: maybe_split_switch_arms,
                 ot_opt_loop_invariants        :: maybe_opt_loop_invariants,
@@ -597,7 +597,7 @@ init_opt_tuple = opt_tuple(
         do_not_opt_dup_calls,
         do_not_prop_constants,
         do_not_elim_excess_assigns,
-        do_not_opt_test_after_switch,
+        do_not_merge_code_after_switch,
         opt_format_calls,
         split_switch_arms,
         do_not_opt_loop_invariants,
@@ -768,8 +768,8 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
         OptOption = oo_elim_excess_assigns(Bool),
         update_opt_tuple_bool_elim_excess_assigns(Bool, !OptTuple)
     ;
-        OptOption = oo_opt_test_after_switch(Bool),
-        update_opt_tuple_bool_opt_test_after_switch(Bool, !OptTuple)
+        OptOption = oo_merge_code_after_switch(Bool),
+        update_opt_tuple_bool_merge_code_after_switch(Bool, !OptTuple)
     ;
         OptOption = oo_opt_format_calls(Bool),
         update_opt_tuple_bool_opt_format_calls(Bool, !OptTuple)
@@ -1411,26 +1411,26 @@ update_opt_tuple_bool_elim_excess_assigns(Bool, !OptTuple) :-
         )
     ).
 
-:- pred update_opt_tuple_bool_opt_test_after_switch(bool::in,
+:- pred update_opt_tuple_bool_merge_code_after_switch(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_opt_test_after_switch(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_opt_test_after_switch,
+update_opt_tuple_bool_merge_code_after_switch(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_merge_code_after_switch,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_opt_test_after_switch,
-            !OptTuple ^ ot_opt_test_after_switch := opt_test_after_switch
+            OldValue = do_not_merge_code_after_switch,
+            !OptTuple ^ ot_merge_code_after_switch := merge_code_after_switch
         ;
-            OldValue = opt_test_after_switch
+            OldValue = merge_code_after_switch
         )
     else
         (
-            OldValue = do_not_opt_test_after_switch
+            OldValue = do_not_merge_code_after_switch
         ;
-            OldValue = opt_test_after_switch,
-            !OptTuple ^ ot_opt_test_after_switch := do_not_opt_test_after_switch
+            OldValue = merge_code_after_switch,
+            !OptTuple ^ ot_merge_code_after_switch := do_not_merge_code_after_switch
         )
     ).
 
@@ -3728,7 +3728,7 @@ opts_enabled_at_level(2, [
     oo_opt_common_structs(yes),
     oo_spec_types_user_guided(yes),
     oo_opt_simple_neg(yes),
-    oo_opt_test_after_switch(yes),
+    oo_merge_code_after_switch(yes),
     oo_opt_initializations(yes),
     oo_split_switch_arms(yes)
 ]).

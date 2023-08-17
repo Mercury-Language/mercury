@@ -102,8 +102,10 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_spec.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 :- import_module transform_hlds.
@@ -714,11 +716,30 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
     (
         RerunQuantDelta = rerun_quant_instmap_deltas,
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        some [!VarTable, !RttiVarMaps, !ModuleInfo] (
+        some [!ModuleInfo, !VarTable, !RttiVarMaps] (
             simplify_info_get_var_table(!.Info, !:VarTable),
+            trace [compile_time(flag("simplify_recompute_after")), io(!IO)] (
+                io.stderr_stream(StdErr, !IO),
+                set_of_var.to_sorted_list(NonLocals, NonLocalsList),
+                VarNameSrc = vns_var_table(!.VarTable),
+                NonLocalsStr = mercury_vars_to_string_src(VarNameSrc,
+                    print_name_and_num, NonLocalsList),
+
+                io.write_string(StdErr, "\nBEFORE QUANTIFY\n\n", !IO),
+                io.format(StdErr, "NONLOCALS: %s\n", [s(NonLocalsStr)], !IO),
+                simplify_info_get_module_info(!.Info, TraceModuleInfo),
+                dump_goal_nl(StdErr, TraceModuleInfo, VarNameSrc, !.Goal, !IO)
+            ),
             simplify_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),
             implicitly_quantify_goal_general(ord_nl_maybe_lambda, NonLocals, _,
                 !Goal, !VarTable, !RttiVarMaps),
+            trace [compile_time(flag("simplify_recompute_after")), io(!IO)] (
+                io.stderr_stream(StdErr, !IO),
+                io.write_string(StdErr, "\nAFTER QUANTIFY\n\n", !IO),
+                simplify_info_get_module_info(!.Info, TraceModuleInfo),
+                VarNameSrc = vns_var_table(!.VarTable),
+                dump_goal_nl(StdErr, TraceModuleInfo, VarNameSrc, !.Goal, !IO)
+            ),
 
             simplify_info_set_var_table(!.VarTable, !Info),
             simplify_info_set_rtti_varmaps(!.RttiVarMaps, !Info),
@@ -730,7 +751,15 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
             simplify_info_get_inst_varset(!.Info, InstVarSet),
             recompute_instmap_delta(recomp_atomics, !.VarTable, InstVarSet,
                 InstMap0, !Goal, !ModuleInfo),
-            simplify_info_set_module_info(!.ModuleInfo, !Info)
+            simplify_info_set_module_info(!.ModuleInfo, !Info),
+
+            trace [compile_time(flag("simplify_recompute_after")), io(!IO)] (
+                io.stderr_stream(StdErr, !IO),
+                io.write_string(StdErr, "\nAFTER INSTMAP DELTAS\n\n", !IO),
+                simplify_info_get_module_info(!.Info, TraceModuleInfo),
+                dump_goal_nl(StdErr, TraceModuleInfo,
+                    vns_var_table(!.VarTable), !.Goal, !IO)
+            )
         )
     ;
         RerunQuantDelta = do_not_rerun_quant_instmap_deltas
@@ -740,12 +769,13 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
     (
         RerunDet = rerun_det,
         Detism = goal_info_get_determinism(GoalInfo0),
-        some [!VarTable, !RttiVarMaps, !ModuleInfo, !ProcInfo]
+        det_get_soln_context(Detism, SolnContext),
+        some [!ModuleInfo, !ProcInfo, !VarTable, !RttiVarMaps]
         (
-            det_get_soln_context(Detism, SolnContext),
-
             % Det_infer_goal looks up the proc_info in the module_info for
-            % the var_table, so we have to put them back in the module_info.
+            % the var_table, so we have to put all the proc_info components
+            % we have updated back in the proc_info, which we have have to put
+            % back in the module_info.
             simplify_info_get_module_info(!.Info, !:ModuleInfo),
             simplify_info_get_var_table(!.Info, !:VarTable),
             simplify_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),

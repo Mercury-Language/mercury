@@ -55,6 +55,7 @@
 :- import_module libs.trace_params.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_db.
@@ -62,9 +63,14 @@
 
 :- import_module bool.
 :- import_module cord.
+:- import_module int.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module set.
 :- import_module string.
+:- import_module uint.
+
+%---------------------------------------------------------------------------%
 
 simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, !Common, !Info) :-
@@ -160,6 +166,7 @@ simplify_conj(!.PrevGoals, [HeadGoal0 | TailGoals0], Goals, ConjInfo,
             NestedContext0, InstMap0, !Common, !Info)
     else
         Common0 = !.Common,
+        Info0 = !.Info,
         simplify_goal(HeadGoal0, HeadGoal1, NestedContext0, InstMap0,
             !Common, !Info),
         HeadGoal1 = hlds_goal(HeadGoalExpr1, HeadGoalInfo1),
@@ -182,14 +189,12 @@ simplify_conj(!.PrevGoals, [HeadGoal0 | TailGoals0], Goals, ConjInfo,
             % out which goals are touched and which are not is not easy.
             % (Due to the rebuilding of hlds_goal structures from exprs and
             % infos, the address may change even if the content does not.)
-            %
-            % Note that we cannot process HeadTailGoals1 using the Common
-            % derived from processing Goal1. If we did that, and HeadGoal1
-            % contained X = f(Y1), then that common would remember that,
-            % and when processing HeadTailGoals1, simplify_conj would replace
-            % that unification with X = X, thus "optimising out" the common
-            % structure.
             HeadTailGoals1 = HeadSubGoals1 ++ TailGoals0,
+            % Note that we cannot process HeadTailGoals1 using the Common
+            % derived from processing HeadGoal0. If we did that, and HeadGoal0
+            % contained X = f(Y1), then Common would remember that,
+            % and when processing HeadTailGoals1, simplify_conj would replace
+            % that unification with X := X, thus "defining" X in terms of X.
             !:Common = Common0,
             simplify_conj(!.PrevGoals, HeadTailGoals1, Goals, ConjInfo,
                 NestedContext0, InstMap0, !Common, !Info)
@@ -221,13 +226,79 @@ simplify_conj(!.PrevGoals, [HeadGoal0 | TailGoals0], Goals, ConjInfo,
                 % adjustments of the instmap_deltas of such containing goals.
                 simplify_info_set_rerun_quant_instmap_delta(!Info)
             else
-                try_to_opt_test_after_switch(!PrevGoals, HeadGoal1,
-                    TailGoals0, TailGoals1, ConjInfo, !Info),
+                ( if
+                    simplify_do_merge_code_after_switch(!.Info),
+                    HeadGoal1 = hlds_goal(HeadGoalExpr1, HeadGoalInfo1),
+                    HeadGoalExpr1 =
+                        switch(_SwitchVar, _SwitchCanFail1, _Cases1),
+                    TailGoals0 = [HeadTailGoal0 | TailTailGoals0],
+                    HeadTailGoal0 =
+                        hlds_goal(HeadTailGoalExpr0, HeadTailGoalInfo0),
+                    ( HeadTailGoalExpr0 = unify(_, _, _, _, _)
+                    ; HeadTailGoalExpr0 = switch(_, _, _)
+                    )
+                then
+                    (
+                        HeadTailGoalExpr0 = unify(_, _, _, _, _),
+                        try_to_merge_unify_after_switch(!.Info, ConjInfo,
+                            HeadGoalExpr1, HeadGoalInfo1,
+                            HeadTailGoalExpr0, HeadTailGoalInfo0,
+                            TailTailGoals0, MergeResult)
+                    ;
+                        HeadTailGoalExpr0 = switch(_, _, _),
+                        try_to_merge_switch_after_switch(!.Info,
+                            HeadGoalExpr1, HeadGoalInfo1,
+                            HeadTailGoalExpr0, HeadTailGoalInfo0,
+                            MergeResult)
+                    ),
+                    (
+                        MergeResult = merge_unsuccessful,
+                        !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal1),
+                        TailGoals1 = TailGoals0,
+                        TailInstMap = InstMap1
+                    ;
+                        MergeResult = merge_successful_new_code_simplified(
+                            HeadGoal2, !:Info),
+                        !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal2),
+                        % Let the recursive call to simplify_conj below
+                        % process TailTailGoals0 instead of TailGoals0,
+                        % since the effect of HeadTailGoal0 has now been
+                        % folded into HeadGoal2.
+                        TailGoals1 = TailTailGoals0,
+                        TailInstMap = InstMap1
+                    ;
+                        MergeResult = merge_successful_new_code_not_simplified(
+                            HeadGoal2),
+                        % HeadGoal2 replaces both HeadGoal1 and HeadTailGoal0
+                        % in front of TailTailGoals0. We have processed
+                        % the HeadGoal1 part of HeadGoal2, but not the
+                        % HeadTailGoal0 part, so we must process HeadGoal2
+                        % again. That means starting again, with the initial
+                        % versions of the instmap, the common structure,
+                        % and the simplify_info structure.
+                        TailGoals1 = [HeadGoal2 | TailTailGoals0],
+                        TailInstMap = InstMap0,
+                        !:Common = Common0,
+                        !:Info = Info0,
+                        % We do know that the merge of the two switches
+                        % requires the recomputation of nonlocals sets and
+                        % of instmap deltas, and that sometimes the
+                        % recomputed determinisms can be more precise as well.
+                        simplify_info_set_rerun_quant_instmap_delta(!Info),
+                        simplify_info_set_rerun_det(!Info)
+                    )
+                else
+                    !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal1),
+                    TailGoals1 = TailGoals0,
+                    TailInstMap = InstMap1
+                ),
                 simplify_conj(!.PrevGoals, TailGoals1, Goals, ConjInfo,
-                    NestedContext0, InstMap1, !Common, !Info)
+                    NestedContext0, TailInstMap, !Common, !Info)
             )
         )
     ).
+
+%---------------------%
 
 :- pred delete_tail_unreachable_goals(cord(hlds_goal)::in,
     prog_context::in, hlds_goal::in, list(hlds_goal)::in, list(hlds_goal)::out,
@@ -261,54 +332,64 @@ delete_tail_unreachable_goals(!.PrevGoals, HeadGoalContext0, HeadGoal1,
     ),
     Goals = cord.list(!.PrevGoals).
 
-:- pred try_to_opt_test_after_switch(cord(hlds_goal)::in, cord(hlds_goal)::out,
-    hlds_goal::in, list(hlds_goal)::in, list(hlds_goal)::out,
-    hlds_goal_info::in, simplify_info::in, simplify_info::out) is det.
+%---------------------%
 
-try_to_opt_test_after_switch(!PrevGoals, HeadGoal1,
-        TailGoals0, TailGoals1, ConjInfo, !Info) :-
+:- type merge_code_after_switch_result
+    --->    merge_unsuccessful
+    ;       merge_successful_new_code_simplified(
+                hlds_goal,
+                simplify_info
+            )
+    ;       merge_successful_new_code_not_simplified(
+                hlds_goal
+            ).
+
+    % Look for situations like this:
+    %
+    %   (
+    %       ( X = a
+    %       ; X = b
+    %       ),
+    %       Result = yes
+    %   ;
+    %       ( X = c
+    %       ; X = d(_)
+    %       ),
+    %       Result = no
+    %   ),
+    %   Result = no
+    %
+    % and transform them into
+    %
+    %   ( X = a
+    %   ; X = b
+    %   )
+    %
+    % The idea is to avoid the performance overhead of setting Result
+    % in such switches and testing it afterward.
+    %
+    % The point of switches like this, in which each arm does nothing
+    % except set a flag that is tested after the switch, is that if the
+    % type of X gets a new functor added to it, they get a message if
+    %
+    % - either the --inform-incomplete-switch option is given, or
+    % - the switch is wrapped in a require_complete_switch scope.
+    %
+    % In the latter case, the simplification of the scope containing the
+    % switch will remove the scope wrapper.
+    %
+:- pred try_to_merge_unify_after_switch(simplify_info::in, hlds_goal_info::in,
+    hlds_goal_expr::in(goal_expr_switch), hlds_goal_info::in,
+    hlds_goal_expr::in(goal_expr_unify), hlds_goal_info::in,
+    list(hlds_goal)::in, merge_code_after_switch_result::out) is det.
+
+try_to_merge_unify_after_switch(!.Info, ConjInfo,
+        HeadGoalExpr1, HeadGoalInfo1,
+        HeadTailGoalExpr0, _HeadTailGoalInfo0, TailTailGoals0, Result) :-
+    HeadGoalExpr1 = switch(SwitchVar, SwitchCanFail1, Cases1),
+    HeadTailGoalExpr0 = unify(_LHSVar, _RHS, _UniMode,
+        Unification, _UnifyContext),
     ( if
-        simplify_do_test_after_switch(!.Info),
-        % Look for situations like this:
-        %
-        %   (
-        %       ( X = a
-        %       ; X = b
-        %       ),
-        %       Res = yes
-        %   ;
-        %       ( X = c
-        %       ; X = d(_)
-        %       ),
-        %       Res = no
-        %   ),
-        %   Res = no
-        %
-        % and transform them into
-        %
-        %   ( X = a
-        %   ; X = b
-        %   )
-        %
-        % The idea is to avoid the performance overhead of setting and testing
-        % Res in such switches.
-        %
-        % The point of switches like this, in which each arm does nothing
-        % except set a flag that is tested after the switch, is that if the
-        % type of X gets a new functor added to it, they get a message if
-        %
-        % - either the --inform-incomplete-switch option is given, or
-        % - the switch is wrapped in a require_complete_switch scope.
-        %
-        % In the latter case, the simplification of HeadGoal0 into HeadGoal1
-        % will remove the scope wrapper.
-        %
-        HeadGoal1 = hlds_goal(HeadGoalExpr1, HeadGoalInfo1),
-        HeadGoalExpr1 = switch(SwitchVar, SwitchCanFail1, Cases1),
-        TailGoals0 = [HeadTailGoal0 | TailTailGoals0],
-        HeadTailGoal0 = hlds_goal(HeadTailGoalExpr0, _),
-        HeadTailGoalExpr0 = unify(_LHSVar, _RHS, _UniMode,
-            Unification, _UnifyContext),
         Unification = deconstruct(TestVar, TestConsId, TestArgs, _ArgModes,
             DeconstructCanFail, _CanCGC),
         TestArgs = [],
@@ -319,9 +400,9 @@ try_to_opt_test_after_switch(!PrevGoals, HeadGoal1,
         % If the procedure body can refer to TestVar anywhere other than
         % in HeadGoal0 or HeadTailGoal0, then we cannot eliminate the
         % assignment to TestVar. Since the mode system does not permit
-        % conjuncts before HeadGoal0 to refer to TestVar, the places we need
-        % to check are the conjuncts after HeadTailGoal0 and the code
-        % outside the conjunction as a whole.
+        % conjuncts before HeadGoal0 to refer to TestVar, the places
+        % we need to check are the conjuncts after HeadTailGoal0 and
+        % the code outside the conjunction as a whole.
         %
         % If there are outside references to TestVar, we could still delete
         % RevDiffCases from the switch, while keeping the assignment of
@@ -338,27 +419,22 @@ try_to_opt_test_after_switch(!PrevGoals, HeadGoal1,
     then
         (
             RevDiffCases = [],
-            SwitchCanFail2 = SwitchCanFail1
+            TruncatedSwitchCanFail = SwitchCanFail1
         ;
             RevDiffCases = [_ | _],
-            SwitchCanFail2 = can_fail
+            TruncatedSwitchCanFail = can_fail
         ),
+        list.reverse(RevTruncatedSameCases, TruncatedSameCases),
+        HeadGoalExpr2 =
+            switch(SwitchVar, TruncatedSwitchCanFail, TruncatedSameCases),
+        HeadGoal2 = hlds_goal(HeadGoalExpr2, HeadGoalInfo1),
         % We need to update the determinism fields of the goals.
         % We could try to do that here, but it is simpler to use
         % the existing code for the job.
         simplify_info_set_rerun_det(!Info),
-
-        list.reverse(RevTruncatedSameCases, TruncatedSameCases),
-        HeadGoalExpr2 = switch(SwitchVar, SwitchCanFail2, TruncatedSameCases),
-        HeadGoal2 = hlds_goal(HeadGoalExpr2, HeadGoalInfo1),
-        !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal2),
-        % Let the recursive call to simplify_conj in our caller process
-        % TailTailGoals0 instead of TailGoals, since the effect of
-        % HeadTailGoal0 has now been folded into HeadGoal2.
-        TailGoals1 = TailTailGoals0
+        Result = merge_successful_new_code_simplified(HeadGoal2, !.Info)
     else
-        !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal1),
-        TailGoals1 = TailGoals0
+        Result = merge_unsuccessful
     ).
 
     % See the comment above the call to this predicate.
@@ -399,7 +475,290 @@ no_conjunct_refers_to_var([Goal | Goals], TestVar) :-
     not set_of_var.contains(NonLocals, TestVar),
     no_conjunct_refers_to_var(Goals, TestVar).
 
+%---------------------%
+
+    % Look for situations like this:
+    %
+    %   (
+    %       ( X = a
+    %       ; X = b
+    %       ),
+    %       ... code fragment 1 ...
+    %   ;
+    %       ( X = c
+    %       ; X = d(_)
+    %       ),
+    %       ... code fragment 2 ...
+    %   ),
+    %   (
+    %       ( X = a
+    %       ; X = b
+    %       ),
+    %       ... code fragment 3 ...
+    %   ;
+    %       X = c
+    %       ... code fragment 4 ...
+    %   ;
+    %       X = d(_)
+    %       ... code fragment 5 ...
+    %   ),
+    %
+    % and transform them into
+    %
+    %   (
+    %       ( X = a
+    %       ; X = b
+    %       ),
+    %       ... code fragment 1 ...
+    %       ... code fragment 3 ...
+    %   ;
+    %       X = c,
+    %       ... code fragment 2 ...
+    %       ... code fragment 4 ...
+    %   ;
+    %       X = d(_),
+    %       ... code fragment 2 ...
+    %       ... code fragment 5 ...
+    %   ),
+    %
+    % The idea is that the one merged switch should require fewer branch
+    % instructions, and therefore less time, than the two original switches,
+    % if the two original switches have any commonality at all.
+    %
+:- pred try_to_merge_switch_after_switch(simplify_info::in,
+    hlds_goal_expr::in(goal_expr_switch), hlds_goal_info::in,
+    hlds_goal_expr::in(goal_expr_switch), hlds_goal_info::in,
+    merge_code_after_switch_result::out) is det.
+
+try_to_merge_switch_after_switch(!.Info, FirstGoalExpr, FirstGoalInfo,
+        SecondGoalExpr0, SecondGoalInfo0, Result) :-
+    FirstGoalExpr = switch(FirstSwitchVar, FirstSwitchCanFail, FirstCases),
+    SecondGoalExpr0 =
+        switch(SecondSwitchVar, SecondSwitchCanFail, SecondCases),
+    ( if
+        SecondSwitchVar = FirstSwitchVar,
+        build_maps_first_switch(FirstCases, 1u,
+            map.init, FirstSwitchGoalMap,
+            map.init, FirstSwitchConsIdMap),
+        build_maps_second_switch(SecondCases, 1u, FirstSwitchConsIdMap,
+            map.init, SecondSwitchGoalMap, map.init, CasesConsIdsMap),
+        list.length(FirstCases, FirstSwitchNumCases),
+        list.length(SecondCases, SecondSwitchNumCases),
+        map.count(CasesConsIdsMap, MergedNumCases),
+        MergedNumCases < FirstSwitchNumCases * SecondSwitchNumCases
+    then
+        ( if
+            FirstSwitchCanFail = cannot_fail,
+            SecondSwitchCanFail = cannot_fail
+        then
+            CanFail = cannot_fail
+        else
+            CanFail = can_fail
+        ),
+        map.foldl(
+            construct_and_add_merged_switch_case(!.Info,
+                FirstSwitchGoalMap, SecondSwitchGoalMap),
+            CasesConsIdsMap, [], Cases0),
+        list.sort(Cases0, Cases),
+        GoalExpr = switch(FirstSwitchVar, CanFail, Cases),
+        compute_goal_info_for_merged_goal(FirstGoalInfo, SecondGoalInfo0,
+            GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        Result = merge_successful_new_code_not_simplified(Goal)
+    else
+        Result = merge_unsuccessful
+    ).
+
+%---------------------%
+
+:- pred build_maps_first_switch(list(case)::in, uint::in,
+    map(uint, hlds_goal)::in, map(uint, hlds_goal)::out,
+    map(cons_id, uint)::in, map(cons_id, uint)::out) is det.
+
+build_maps_first_switch([], _, !FirstSwitchGoalMap, !FirstSwitchConsIdMap).
+build_maps_first_switch([Case | Cases], CurCaseNum,
+        !FirstSwitchGoalMap, !FirstSwitchConsIdMap) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    map.det_insert(CurCaseNum, Goal, !FirstSwitchGoalMap),
+    map_rev_insert(CurCaseNum, MainConsId, !FirstSwitchConsIdMap),
+    list.foldl(map_rev_insert(CurCaseNum), OtherConsIds,
+        !FirstSwitchConsIdMap),
+    build_maps_first_switch(Cases, CurCaseNum + 1u,
+        !FirstSwitchGoalMap, !FirstSwitchConsIdMap).
+
+:- pred map_rev_insert(V::in, K::in, map(K, V)::in, map(K, V)::out) is det.
+
+map_rev_insert(Value, Key, !Map) :-
+    map.det_insert(Key, Value, !Map).
+
+:- pred build_maps_second_switch(list(case)::in, uint::in,
+    map(cons_id, uint)::in,
+    map(uint, hlds_goal)::in, map(uint, hlds_goal)::out,
+    map({uint, uint}, one_or_more(cons_id))::in,
+    map({uint, uint}, one_or_more(cons_id))::out) is det.
+
+build_maps_second_switch([], _, _, !SecondSwitchGoalMap, !CasesConsIdsMap).
+build_maps_second_switch([Case | Cases], CurCaseNum, FirstSwitchConsIdMap,
+        !SecondSwitchGoalMap, !CasesConsIdsMap) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    map.det_insert(CurCaseNum, Goal, !SecondSwitchGoalMap),
+    build_maps_second_switch_cons_id(FirstSwitchConsIdMap, CurCaseNum,
+        MainConsId, !CasesConsIdsMap),
+    list.foldl(
+        build_maps_second_switch_cons_id(FirstSwitchConsIdMap, CurCaseNum),
+        OtherConsIds, !CasesConsIdsMap),
+    build_maps_second_switch(Cases, CurCaseNum + 1u, FirstSwitchConsIdMap,
+        !SecondSwitchGoalMap, !CasesConsIdsMap).
+
+:- pred build_maps_second_switch_cons_id(map(cons_id, uint)::in, uint::in,
+    cons_id::in,
+    map({uint, uint}, one_or_more(cons_id))::in,
+    map({uint, uint}, one_or_more(cons_id))::out) is det.
+
+build_maps_second_switch_cons_id(FirstSwitchConsIdMap, SecondSwitchCaseNum,
+        ConsId, !CasesConsIdsMap) :-
+    map.lookup(FirstSwitchConsIdMap, ConsId, FirstSwitchCaseNum),
+    CaseNums = {FirstSwitchCaseNum, SecondSwitchCaseNum},
+    ( if map.search(!.CasesConsIdsMap, CaseNums, OldConsIds) then
+        NewConsIds = one_or_more.cons(ConsId, OldConsIds),
+        map.det_update(CaseNums, NewConsIds, !CasesConsIdsMap)
+    else
+        map.det_insert(CaseNums, one_or_more(ConsId, []), !CasesConsIdsMap)
+    ).
+
+%---------------------%
+
+:- pred construct_and_add_merged_switch_case(simplify_info::in,
+    map(uint, hlds_goal)::in, map(uint, hlds_goal)::in,
+    {uint, uint}::in, one_or_more(cons_id)::in,
+    list(case)::in, list(case)::out) is det.
+
+construct_and_add_merged_switch_case(Info,
+        FirstSwitchGoalMap, SecondSwitchGoalMap,
+        {FirstSwitchCaseNum, SecondSwitchCaseNum}, OoMConsIds, !Cases) :-
+    one_or_more.sort(OoMConsIds, SortedOoMConsIds),
+    SortedOoMConsIds = one_or_more(MainConsId, OtherConsIds),
+    map.lookup(FirstSwitchGoalMap, FirstSwitchCaseNum, FirstGoal),
+    map.lookup(SecondSwitchGoalMap, SecondSwitchCaseNum, SecondGoal),
+    FirstGoal = hlds_goal(FirstGoalExpr, FirstGoalInfo),
+    SecondGoal = hlds_goal(SecondGoalExpr, SecondGoalInfo),
+    ( if FirstGoalExpr = conj(plain_conj, FirstSubGoals) then
+        FirstGoals = FirstSubGoals
+    else
+        FirstGoals = [FirstGoal]
+    ),
+    ( if SecondGoalExpr = conj(plain_conj, SecondSubGoals) then
+        SecondGoals = SecondSubGoals
+    else
+        SecondGoals = [SecondGoal]
+    ),
+    GoalExpr = conj(plain_conj, FirstGoals ++ SecondGoals),
+    compute_goal_info_for_merged_goal(FirstGoalInfo, SecondGoalInfo, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+
+    trace [compile_time(flag("simplify_merge_switch")), io(!IO)] (
+        io.stderr_stream(StdErr, !IO),
+        simplify_info_get_module_info(Info, ModuleInfo),
+        simplify_info_get_var_table(Info, VarTable),
+        VarNameSrc = vns_var_table(VarTable),
+
+        io.write_string(StdErr, "\nFirstGoal\n\n", !IO),
+        dump_goal_nl(StdErr, ModuleInfo, VarNameSrc, FirstGoal, !IO),
+        io.write_string(StdErr, "\nSecondGoal\n\n", !IO),
+        dump_goal_nl(StdErr, ModuleInfo, VarNameSrc, SecondGoal, !IO),
+        io.write_string(StdErr, "\nMERGED GOAL\n\n", !IO),
+        dump_goal_nl(StdErr, ModuleInfo, VarNameSrc, Goal, !IO)
+    ),
+
+    Case = case(MainConsId, OtherConsIds, Goal),
+    !:Cases = [Case | !.Cases].
+
+:- pred compute_goal_info_for_merged_goal(
+    hlds_goal_info::in, hlds_goal_info::in, hlds_goal_info::out) is det.
+
+compute_goal_info_for_merged_goal(FirstGoalInfo, SecondGoalInfo, !:GoalInfo) :-
+    FirstDetism =  goal_info_get_determinism(FirstGoalInfo),
+    SecondDetism = goal_info_get_determinism(SecondGoalInfo),
+    FirstPurity =  goal_info_get_purity(FirstGoalInfo),
+    SecondPurity = goal_info_get_purity(SecondGoalInfo),
+    FirstInstMapDelta =  goal_info_get_instmap_delta(FirstGoalInfo),
+    SecondInstMapDelta = goal_info_get_instmap_delta(SecondGoalInfo),
+    FirstNonLocals =  goal_info_get_nonlocals(FirstGoalInfo),
+    SecondNonLocals = goal_info_get_nonlocals(SecondGoalInfo),
+    FirstFeatures =  goal_info_get_features(FirstGoalInfo),
+    SecondFeatures = goal_info_get_features(SecondGoalInfo),
+
+    % When we are computing the goal_info for the merged switch as a whole,
+    % it is possible for Detism to be too conservative, though still correct.
+    %
+    % Consider a situation where
+    %
+    % - the first switch is det, having N det arms and one erroneous arm.
+    % - the second switch is semidet, having N det arms and one semidet arm;
+    %
+    % The conjunction of the two switches will be considered semidet.
+    % However, in the process of merging the two switches, we may discover
+    % that in the merged switch, the erroneous arm of the first switch
+    % is always followed by the semidet arm of the second switch.
+    % The determinism of the combined arm will then be erroneous.
+    % Since execution cannot reach the end of that combined arm,
+    % and since all the combined arms whose ends *can* be reached are det,
+    % the determinism of the merged switch is actually det.
+    %
+    % This over-conservatism should not affect the rest of the simplification
+    % pass, and code higher up in the call tree will ask determinism analysis
+    % to be rerun to provide accurate info for later passes.
+    det_conjunction_detism(FirstDetism, SecondDetism, Detism),
+    Purity = worst_purity(FirstPurity, SecondPurity),
+    instmap_delta_apply_instmap_delta(FirstInstMapDelta, SecondInstMapDelta,
+        test_size, InstMapDelta),
+    % The NonLocals we compute here may be an overestimate, since it is
+    % possible for a variable to occur ONLY in FirstGoal and in SecondGoal.
+    % The code of the simplification pass should not mind this, and code
+    % higher up in the call tree will ask for quantification to be rerun
+    % to provide accurate info for later passes.
+    set_of_var.union(FirstNonLocals, SecondNonLocals, NonLocals),
+    set.union(FirstFeatures, SecondFeatures, Features),
+
+    % It does not matter whether we take FirstGoalInfo or SecondGoalInfo
+    % as the basis for GoalInfo, because we explicitly set up all of
+    % the fields that the rest of the compiler invocation can pay attention to.
+    %
+    % - The egi_context field is not used by the rest of the simplification
+    %   pass, because it belongs to a compound goal (either a merged
+    %   conjunction or a merged switch) that we don't generate warnings for.
+    %   And all the compiler passes after the first invocation of
+    %   simplification that generate error or warning messages do so for
+    %   for either procedures or calls to procedures, not compound goals.
+    %
+    % - The gi_goal_id and egi_rev_goal_path fields are considered valid
+    %   only bwtween a pass that fills them in, and the next pass that
+    %   can make any changes to the procedure's body goal. Simplification
+    %   can make changes, so it would invalidate those fields even if
+    %   we did merge switches.
+    %
+    % - The egi_goal_mode and egi_maybe_mode_constr field are not yet used.
+    %
+    % - The gi_code_gen_info field is used only by the LLDS backend,
+    %   It is filled in only after the last invocation of simplification.
+    %
+    % - the egi_ho_value_map field is filled in by the closure analysis pass,
+    %   and read by the exception analysis and termination passes. There are
+    %   no invocations of the simplification pass between those passes.
+    %
+    % - the egi_maybe_ctgc, egi_maybe_rbmm and egi_maybe_dp fields
+    %   are used only within their respective passes, and are not meaningful
+    %   outside those passes.
+    !:GoalInfo = FirstGoalInfo,
+    goal_info_set_determinism(Detism, !GoalInfo),
+    goal_info_set_purity(Purity, !GoalInfo),
+    goal_info_set_instmap_delta(InstMapDelta, !GoalInfo),
+    goal_info_set_nonlocals(NonLocals, !GoalInfo),
+    goal_info_set_features(Features, !GoalInfo).
+
 %---------------------------------------------------------------------------%
+
+% XXX move below its callers
 
 :- type var_renaming == map(prog_var, prog_var).
 

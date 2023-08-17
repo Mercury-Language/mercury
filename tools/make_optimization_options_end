@@ -94,7 +94,7 @@ opts_enabled_at_level(2, [
     oo_opt_common_structs(yes),
     oo_spec_types_user_guided(yes),
     oo_opt_simple_neg(yes),
-    oo_opt_test_after_switch(yes),
+    oo_merge_code_after_switch(yes),
     oo_opt_initializations(yes),
     oo_split_switch_arms(yes)
 ]).

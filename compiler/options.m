@@ -770,7 +770,7 @@
     ;       optopt_optimize_duplicate_calls
     ;       optopt_constant_propagation
     ;       optopt_excess_assign
-    ;       optopt_test_after_switch
+    ;       optopt_merge_code_after_switch
     ;       optopt_optimize_format_calls
     ;       optopt_split_switch_arms
     ;       optopt_optimize_saved_vars_const
@@ -1748,7 +1748,7 @@ optdef(oc_opt, optopt_local_constraint_propagation,     bool_special).
 optdef(oc_opt, optopt_optimize_duplicate_calls,         bool_special).
 optdef(oc_opt, optopt_constant_propagation,             bool_special).
 optdef(oc_opt, optopt_excess_assign,                    bool_special).
-optdef(oc_opt, optopt_test_after_switch,                bool_special).
+optdef(oc_opt, optopt_merge_code_after_switch,          bool_special).
 optdef(oc_opt, optopt_optimize_format_calls,            bool_special).
 optdef(oc_opt, optopt_split_switch_arms,                bool_special).
 optdef(oc_opt, optopt_loop_invariants,                  bool_special).
@@ -2678,9 +2678,9 @@ long_option("inline-vars-threshold",        optopt_inline_vars_threshold).
 long_option("const-struct",         optopt_enable_const_struct_user).
 long_option("common-struct",        optopt_common_struct).
 long_option("excess-assign",        optopt_excess_assign).
-long_option("test-after-switch",    optopt_test_after_switch).
-long_option("optimize-format-calls",         optopt_optimize_format_calls).
-long_option("split-switch-arms",         optopt_split_switch_arms).
+long_option("merge-code-after-switch",      optopt_merge_code_after_switch).
+long_option("optimize-format-calls",        optopt_optimize_format_calls).
+long_option("split-switch-arms",        optopt_split_switch_arms).
 long_option("optimize-duplicate-calls", optopt_optimize_duplicate_calls).
 long_option("optimise-duplicate-calls", optopt_optimize_duplicate_calls).
 long_option("optimise-constant-propagation", optopt_constant_propagation).
@@ -3566,9 +3566,9 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_elim_excess_assigns(Bool)
         ;
-            Option = optopt_test_after_switch,
+            Option = optopt_merge_code_after_switch,
             SpecialData = bool(Bool),
-            OptOption = oo_opt_test_after_switch(Bool)
+            OptOption = oo_merge_code_after_switch(Bool)
         ;
             Option = optopt_optimize_format_calls,
             SpecialData = bool(Bool),
@@ -5963,9 +5963,11 @@ options_help_hlds_hlds_optimization(Stream, !IO) :-
         "\tDon't migrate into the end of branched goals.",
         "--excess-assign",
         "\tRemove excess assignment unifications.",
-        % "--test-after-switch",
-        % "\tOptimize away test unifications after switches whose arms",
-        % "\tdo nothing except set the to-be-tested variable.",
+        % "--merge-code-after-switch",
+        % "\tMerge the goal after a switch into the switch, if we can.",
+        % "\tTwo cases in which we can are when that goal just tests.",
+        % "\tthe value of a variable set in the switch, and when that goal,",
+        % "\tis a switch on the same variable.",
         "--no-optimize-format-calls",
         "\tDo not attempt to interpret the format string in calls to",
         "\tstring.format and related predicates at compile time;",
