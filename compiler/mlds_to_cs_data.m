@@ -395,10 +395,10 @@ output_unop_for_csharp(Info, Stream, UnaryOp, Expr, !IO) :-
         UnaryOp = bitwise_complement(IntType),
         (
             ( IntType = int_type_int
-            ; IntType = int_type_uint
             ; IntType = int_type_int32
-            ; IntType = int_type_uint32
             ; IntType = int_type_int64
+            ; IntType = int_type_uint
+            ; IntType = int_type_uint32
             ; IntType = int_type_uint64
             ),
             io.write_string(Stream, "~(", !IO),
@@ -625,15 +625,15 @@ output_int_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
             CastY = "(int) "
         ),
         ( Type = int_type_int,      Cast = ""
-        ; Type = int_type_uint,     Cast = ""
-        ; Type = int_type_int32,    Cast = ""
-        ; Type = int_type_uint32,   Cast = ""
-        ; Type = int_type_int64,    Cast = ""
-        ; Type = int_type_uint64,   Cast = ""
         ; Type = int_type_int8,     Cast = "(sbyte) "
-        ; Type = int_type_uint8,    Cast = "(byte) "
         ; Type = int_type_int16,    Cast = "(short) "
+        ; Type = int_type_int32,    Cast = ""
+        ; Type = int_type_int64,    Cast = ""
+        ; Type = int_type_uint,     Cast = ""
+        ; Type = int_type_uint8,    Cast = "(byte) "
         ; Type = int_type_uint16,   Cast = "(ushort) "
+        ; Type = int_type_uint32,   Cast = ""
+        ; Type = int_type_uint64,   Cast = ""
         ),
         io.write_string(Stream, Cast, !IO),
         io.write_string(Stream, "(", !IO),

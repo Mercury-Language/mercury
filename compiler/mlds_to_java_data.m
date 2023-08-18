@@ -426,10 +426,10 @@ output_unop_for_java(Info, Stream, UnaryOp, Rval, !IO) :-
         UnaryOp = bitwise_complement(IntType),
         (
             ( IntType = int_type_int
-            ; IntType = int_type_uint
             ; IntType = int_type_int32
-            ; IntType = int_type_uint32
             ; IntType = int_type_int64
+            ; IntType = int_type_uint
+            ; IntType = int_type_uint32
             ; IntType = int_type_uint64
             ),
             io.write_string(Stream, "~(", !IO),
