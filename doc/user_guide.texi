@@ -9448,7 +9448,9 @@ be specialized by @samp{--optimize-higher-order} and
 @sp 1
 @item --optimize-constant-propagation
 @findex --optimize-constant-propagation
-Evaluate constant expressions at compile time.
+Given calls to some frequently used library functions and predicates,
+mainly those that do arithmetic,
+evaluate them at compile time, if all their input arguments are constants.
 
 @sp 1
 @item --introduce-accumulators
