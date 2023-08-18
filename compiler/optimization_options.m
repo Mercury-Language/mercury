@@ -3741,6 +3741,7 @@ opts_enabled_at_level(3, [
     oo_deforest(yes),
     oo_prop_constraints(yes),
     oo_prop_local_constraints(yes),
+    oo_prop_constants(yes),
     oo_opt_reassign(yes),
     oo_opt_repeat(4)
 ]).
