@@ -1616,7 +1616,7 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
             Ext = ext_cur_gs(ext_cur_gs_exec_exec_opt)
         ;
             TargetType = csharp_executable,
-            Ext = ext_cur(ext_cur_exec_exe)
+            Ext = ext_cur_gs(ext_cur_gs_exec_exe)
         ;
             TargetType = csharp_library,
             Ext = ext_cur_gs(ext_cur_gs_lib_dll)
@@ -1651,7 +1651,7 @@ linked_target_file_name_full_curdir(Globals, ModuleName, TargetType,
             Ext = ext_cur_gs(ext_cur_gs_exec_exec_opt)
         ;
             TargetType = csharp_executable,
-            Ext = ext_cur(ext_cur_exec_exe)
+            Ext = ext_cur_gs(ext_cur_gs_exec_exe)
         ;
             TargetType = csharp_library,
             Ext = ext_cur_gs(ext_cur_gs_lib_dll)

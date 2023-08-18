@@ -301,12 +301,13 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
             )
         ),
 
-        linked_target_file_name(Globals, MainModuleName, FileType,
-            OutputFileName, !IO),
-        get_file_timestamp([dir.this_directory], OutputFileName,
+        linked_target_file_name_full_curdir(Globals, MainModuleName, FileType,
+            FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName, !IO),
+        get_file_timestamp([dir.this_directory], FullMainModuleLinkedFileName,
             MaybeTimestamp, !Info, !IO),
-        check_dependencies(Globals, OutputFileName, MaybeTimestamp,
-            BuildDepsSucceeded, ObjTargets, BuildDepsResult, !Info, !IO),
+        check_dependencies(Globals, FullMainModuleLinkedFileName,
+            MaybeTimestamp, BuildDepsSucceeded, ObjTargets, BuildDepsResult,
+            !Info, !IO),
         ( if
             DepsSucceeded = succeeded,
             BuildDepsResult \= deps_error
@@ -321,14 +322,16 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
             ;
                 RedirectResult = yes(ErrorStream),
                 build_linked_target(MainModuleName, FileType,
-                    OutputFileName, MaybeTimestamp, AllModules, ObjModules,
-                    CompilationTarget, PIC, DepsSucceeded, BuildDepsResult,
-                    Globals, ErrorStream, Succeeded0, !Info, !IO),
+                    FullMainModuleLinkedFileName,
+                    CurDirMainModuleLinkedFileName, MaybeTimestamp, AllModules,
+                    ObjModules, CompilationTarget, PIC, DepsSucceeded,
+                    BuildDepsResult, Globals, ErrorStream, Succeeded0,
+                    !Info, !IO),
                 unredirect_output(Globals, MainModuleName, ErrorStream,
                     !Info, !IO)
             ),
-            Cleanup = linked_target_cleanup(Globals, MainModuleName,
-                FileType, OutputFileName),
+            Cleanup = linked_target_cleanup(Globals, MainModuleName, FileType,
+                FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName),
             teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
                 Succeeded0, Succeeded, !Info, !IO)
         else
@@ -429,15 +432,16 @@ get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
     ).
 
 :- pred build_linked_target(module_name::in, linked_target_type::in,
-    file_name::in, maybe_error(timestamp)::in, set(module_name)::in,
-    list(module_name)::in, compilation_target::in, pic::in,
-    maybe_succeeded::in, dependencies_result::in,
+    file_name::in, file_name::in, maybe_error(timestamp)::in,
+    set(module_name)::in, list(module_name)::in, compilation_target::in,
+    pic::in, maybe_succeeded::in, dependencies_result::in,
     globals::in, io.text_output_stream::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
-        AllModules, ObjModules, CompilationTarget, PIC, DepsSucceeded,
-        BuildDepsResult, Globals, ErrorStream, Succeeded, !Info, !IO) :-
+build_linked_target(MainModuleName, FileType, FullMainModuleLinkedFileName,
+        CurDirMainModuleLinkedFileName, MaybeTimestamp, AllModules, ObjModules,
+        CompilationTarget, PIC, DepsSucceeded, BuildDepsResult,
+        Globals, ErrorStream, Succeeded, !Info, !IO) :-
     globals.lookup_maybe_string_option(Globals, pre_link_command,
         MaybePreLinkCommand),
     (
@@ -457,22 +461,23 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
     (
         PreLinkSucceeded = succeeded,
         build_linked_target_2(Globals, MainModuleName, FileType,
-            OutputFileName, MaybeTimestamp, AllModules, ObjModules,
-            CompilationTarget, PIC, DepsSucceeded, BuildDepsResult,
-            ErrorStream, Succeeded, !Info, !IO)
+            FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
+            MaybeTimestamp, AllModules, ObjModules, CompilationTarget, PIC,
+            DepsSucceeded, BuildDepsResult, ErrorStream, Succeeded, !Info, !IO)
     ;
         PreLinkSucceeded = did_not_succeed,
         Succeeded = did_not_succeed
     ).
 
 :- pred build_linked_target_2(globals::in, module_name::in,
-    linked_target_type::in, file_name::in, maybe_error(timestamp)::in,
-    set(module_name)::in, list(module_name)::in, compilation_target::in,
-    pic::in, maybe_succeeded::in, dependencies_result::in,
-    io.text_output_stream::in, maybe_succeeded::out,
+    linked_target_type::in, file_name::in, file_name::in,
+    maybe_error(timestamp)::in, set(module_name)::in, list(module_name)::in,
+    compilation_target::in, pic::in, maybe_succeeded::in,
+    dependencies_result::in, io.text_output_stream::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
+build_linked_target_2(Globals, MainModuleName, FileType,
+        FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
         MaybeTimestamp, AllModules, ObjModules, CompilationTarget, PIC,
         DepsSucceeded, BuildDepsResult, ErrorStream, Succeeded, !Info, !IO) :-
     % Clear the option -- we will pass the list of files directly.
@@ -548,9 +553,9 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         ( if DepsResult3 = deps_error then did_not_succeed else succeeded ),
     list.map_foldl2(get_file_timestamp([dir.this_directory]),
         ObjectsToCheck, ExtraObjectTimestamps, !Info, !IO),
-    check_dependency_timestamps(NoLinkObjsGlobals, OutputFileName,
-        MaybeTimestamp, BuildDepsSucceeded, ExtraObjTuples,
-        ExtraObjectTimestamps, ExtraObjectDepsResult, !IO),
+    check_dependency_timestamps(NoLinkObjsGlobals,
+        FullMainModuleLinkedFileName, MaybeTimestamp, BuildDepsSucceeded,
+        ExtraObjTuples, ExtraObjectTimestamps, ExtraObjectDepsResult, !IO),
 
     (
         DepsSucceeded = succeeded,
@@ -565,7 +570,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
     ),
     (
         DepsResult = deps_error,
-        file_error_msg(OutputFileName, ErrorMsg),
+        file_error_msg(FullMainModuleLinkedFileName, ErrorMsg),
         % XXX MAKE_STREAM
         maybe_write_msg_locked(!.Info, ErrorMsg, !IO),
         Succeeded = did_not_succeed
@@ -573,25 +578,14 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         DepsResult = deps_up_to_date,
         MainModuleLinkedTarget =
             top_target_file(MainModuleName, linked_target(FileType)),
-        linked_target_file_name_full_curdir(Globals, MainModuleName, FileType,
-            FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName, !IO),
-        globals.get_subdir_setting(NoLinkObjsGlobals, SubdirSetting),
-        % XXX Consider making the choice between the two switch arms below
-        % using FullMainModuleLinkedFileName = CurDirMainModuleLinkedFileName,
-        % not using SubdirSetting. The equality test would work even if
-        % we wanted to copy a file from a NON-grade-specific directory.
-        (
-            ( SubdirSetting = use_cur_dir
-            ; SubdirSetting = use_cur_ngs_subdir
-            ),
+        ( if FullMainModuleLinkedFileName = CurDirMainModuleLinkedFileName then
             maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
                 MainModuleLinkedTarget, FullMainModuleLinkedFileName, !Info,
                 UpToDateMsg),
             % XXX MAKE_STREAM
             maybe_write_msg(UpToDateMsg, !IO),
             Succeeded = succeeded
-        ;
-            SubdirSetting = use_cur_ngs_gs_subdir,
+        else
             post_link_maybe_make_symlink_or_copy(NoLinkObjsGlobals,
                 ProgressStream, ErrorStream,
                 FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
@@ -613,8 +607,8 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         )
     ;
         DepsResult = deps_out_of_date,
-        maybe_making_filename_msg(NoLinkObjsGlobals, OutputFileName,
-            MakingMsg),
+        maybe_making_filename_msg(NoLinkObjsGlobals,
+            FullMainModuleLinkedFileName, MakingMsg),
         % XXX MAKE_STREAM
         maybe_write_msg(MakingMsg, !IO),
 
@@ -665,14 +659,15 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         (
             Succeeded = succeeded,
             FileTimestamps2 = make_info_get_file_timestamps(!.Info),
-            map.delete(OutputFileName, FileTimestamps2, FileTimestamps),
+            map.delete(FullMainModuleLinkedFileName,
+                FileTimestamps2, FileTimestamps),
             make_info_set_file_timestamps(FileTimestamps, !Info)
             % There is no module_target_type for the linked target,
             % so mki_target_file_timestamps should not contain anything
             % that needs to be invalidated.
         ;
             Succeeded = did_not_succeed,
-            file_error_msg(OutputFileName, ErrorMsg),
+            file_error_msg(FullMainModuleLinkedFileName, ErrorMsg),
             % XXX MAKE_STREAM
             maybe_write_msg_locked(!.Info, ErrorMsg, !IO)
         )
@@ -700,12 +695,20 @@ get_module_foreign_object_files(Globals, PIC, ModuleName, ForeignObjectFiles,
     ).
 
 :- pred linked_target_cleanup(globals::in, module_name::in,
-    linked_target_type::in, file_name::in,
+    linked_target_type::in, file_name::in, file_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-linked_target_cleanup(Globals, MainModuleName, FileType, OutputFileName,
+linked_target_cleanup(Globals, MainModuleName, FileType,
+        FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
         !Info, !IO) :-
-    make_remove_file(Globals, verbose_make, OutputFileName, !Info, !IO),
+    make_remove_file(Globals, verbose_make, FullMainModuleLinkedFileName,
+        !Info, !IO),
+    ( if FullMainModuleLinkedFileName = CurDirMainModuleLinkedFileName then
+        true
+    else
+        make_remove_file(Globals, verbose_make, CurDirMainModuleLinkedFileName,
+            !Info, !IO)
+    ),
     (
         FileType = executable,
         remove_init_files(Globals, verbose_make, MainModuleName, !Info, !IO)

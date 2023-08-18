@@ -237,33 +237,9 @@
 % - a prefix, and the name of an option giving the rest of the extension.
 
 :- type ext_cur
-            % Executables generated for a whole program.
-            %
-            % XXX According to the documentation of the --use-grade-subdirs
-            % option, *all* executables and libraries *should* be put
-            % into a grade subdir if that option is specified, not just some.
-            % They should then be copied or linked to the current directory.
-            % XXX This means moving them to the ext_cur_gs category
-    --->    ext_cur_exec_exe                % ".exe"
-
-            % Libraries, which may be statically or dynamically linked,
-            % generated for a set of modules.
-            %
-            % Two of these extensions are intended to name real files,
-            % but one is intended to name mmake targets.
-            %
-            % XXX According to the documentation of the --use-grade-subdirs
-            % option, *all* executables and libraries *should* be put
-            % into a grade subdir if that option is specified, not just some.
-            % They should then be copied or linked to the current directory.
-            % XXX This means moving them to the ext_cur_gs category
-    ;       ext_cur_lib_dollar_efsl         % ".(EXT_FOR_SHARED_LIB)"
-    ;       ext_cur_lib_lib                 % ".lib"
-    ;       ext_cur_lib_so                  % ".so"
-
             % Compiler-generated C header file for a module that is intended
             % for inclusion by user-written C source files.
-    ;       ext_cur_mh                      % ".mh"
+    --->    ext_cur_mh                      % ".mh"
 
             % These extensions are used not to create filenames, but to
             % create mmake target names. Some do refer to real files,
@@ -370,6 +346,8 @@
             % the name of an executable, it can also mean we are building
             % the name of a phony Mmakefile target for a library, such as
             % libmer_std in the library directory.
+
+    ;       ext_cur_gs_exec_exe             % ".exe"
     ;       ext_cur_gs_exec_bat             % ".bat"
     ;       ext_cur_gs_exec_exec_opt        % executable_file_extension
 
@@ -378,11 +356,13 @@
             %
             % Most of these extensions are intended to name real files,
             % but some are intended to name mmake targets.
-            %
-            % XXX According to the documentation of the --use-grade-subdirs
-            % option, *all* executables and libraries *should* be put
-            % into a grade subdir if that option is specified, not just some.
-            % They should then be copied or linked to the current directory.
+    ;       ext_cur_gs_lib_dollar_efsl      % ".(EXT_FOR_SHARED_LIB)"
+%   ;       ext_cur_gs_lib_lib              % ".lib"
+%   ;       ext_cur_gs_lib_so               % ".so"
+            % NOTE Neither ext_cur_gs_lib_lib nor ext_cur_gs_lib_so are
+            % ever referred to by that name. All references to files with
+            % those extensions use ext_cur_gs_lib_lib_opt and
+            % ext_cur_gs_lib_sh_lib_opt.
     ;       ext_cur_gs_lib_dollar_a         % ".$A"
     ;       ext_cur_gs_lib_archive          % ".a"
     ;       ext_cur_gs_lib_dll              % ".dll"
@@ -741,10 +721,6 @@ extension_to_string(Globals, Ext) = ExtStr :-
 
 :- pred ext_cur_extension(ext_cur::in, string::out) is det.
 
-ext_cur_extension(ext_cur_exec_exe,                 ".exe").
-ext_cur_extension(ext_cur_lib_dollar_efsl,          ".$(EXT_FOR_SHARED_LIB)").
-ext_cur_extension(ext_cur_lib_lib,                  ".lib").
-ext_cur_extension(ext_cur_lib_so,                   ".so").
 ext_cur_extension(ext_cur_mh,                       ".mh").
 ext_cur_extension(ext_cur_pmt_all_int3s,            ".all_int3s").
 ext_cur_extension(ext_cur_pmt_all_ints,             ".all_ints").
@@ -811,16 +787,19 @@ ext_cur_ngs_extension_dir(ext_cur_ngs_misc_prof, ".prof", "profs").
 
 % Launcher scripts go in the `bin' subdirectory.
 ext_cur_gs_extension_dir(_, ext_cur_gs_exec_noext,    "",     "bin").
-ext_cur_gs_extension_dir(_, ext_cur_gs_exec_bat,      ".bat", "bats").
+ext_cur_gs_extension_dir(_, ext_cur_gs_exec_exe,      ".exe", "bin").
+ext_cur_gs_extension_dir(_, ext_cur_gs_exec_bat,      ".bat", "bin").
 ext_cur_gs_extension_dir(Globals, ext_cur_gs_exec_exec_opt, ExtStr, "bin") :-
     globals.lookup_string_option(Globals, executable_file_extension, ExtStr).
-% XXX EXT While "$As" follows the rule: "delete initial dot, add final 's'",
-% it is *extremely unlikely* to be acceptable directory name.
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_dollar_a,   ".$A",   "$As").
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_archive,    ".a",    "as").
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_dll,        ".dll",  "dlls").
+ext_cur_gs_extension_dir(_, ext_cur_gs_lib_dollar_efsl,
+    ".$(EXT_FOR_SHARED_LIB)", "lib").
+% ext_cur_gs_extension_dir(_, ext_cur_gs_lib_lib,        ".lib",  "lib").
+% ext_cur_gs_extension_dir(_, ext_cur_gs_lib_so,         ".so",   "lib").
+ext_cur_gs_extension_dir(_, ext_cur_gs_lib_dollar_a,   ".$A",   "lib").
+ext_cur_gs_extension_dir(_, ext_cur_gs_lib_archive,    ".a",    "lib").
+ext_cur_gs_extension_dir(_, ext_cur_gs_lib_dll,        ".dll",  "lib").
 ext_cur_gs_extension_dir(_, ext_cur_gs_lib_init,       ".init", "inits").
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_jar,        ".jar",  "jars").
+ext_cur_gs_extension_dir(_, ext_cur_gs_lib_jar,        ".jar",  "lib").
 ext_cur_gs_extension_dir(Globals, ext_cur_gs_lib_lib_opt, ExtStr, "lib") :-
     globals.lookup_string_option(Globals, library_extension, ExtStr).
 ext_cur_gs_extension_dir(Globals, ext_cur_gs_lib_sh_lib_opt, ExtStr, "lib") :-
@@ -834,7 +813,7 @@ ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_opt_date_plain,
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_opt_date_trans,
         ".trans_opt_date", "trans_opt_dates").
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_c,     ".c",    "cs").
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_cs,    ".cs",    "css").
+ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_cs,    ".cs",   "css").
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_date_c,
         ".c_date",    "c_dates").
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_date_cs,
@@ -891,7 +870,7 @@ ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_an_ds_status,
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_misc_used,
         ".used",        "useds").
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_misc_track_flags,
-        ".track_flags", "track_flagss").
+        ".track_flags", "track_flags").
 
 :- pred ext_cur_ngs_gs_java_extension_dirs(ext_cur_ngs_gs_java::in,
     string::out, list(string)::out) is det.
@@ -899,7 +878,7 @@ ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_misc_track_flags,
 ext_cur_ngs_gs_java_extension_dirs(ext_cur_ngs_gs_java_java,
         ".java",    ["javas", "jmercury"]).
 ext_cur_ngs_gs_java_extension_dirs(ext_cur_ngs_gs_java_class,
-        ".class",   ["classs", "jmercury"]).
+        ".class",   ["classes", "jmercury"]).
 
 :- pred ext_cur_ngs_gs_max_cur_extension_dir(ext_cur_ngs_gs_max_cur::in,
     string::out, string::out) is det.
@@ -915,7 +894,7 @@ ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_opt_plain,
 ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_opt_trans,
         ".trans_opt",  "trans_opts").
 ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_analysis,
-        ".analysis",    "analysiss").
+        ".analysis",    "analyses").
 ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_imdg,
         ".imdg",        "imdgs").
 ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_request,

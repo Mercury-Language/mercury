@@ -2119,13 +2119,9 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
     % XXX Doing _create_dirs for a $A seems strange.
     module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
         ext_cur_gs(ext_cur_gs_lib_dollar_a), ModuleName, LibFileName, !IO),
-    % XXX Doing _create_dirs for an extension that is *always in the current
-    % directory is downright issane.
     module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
-        ext_cur(ext_cur_lib_dollar_efsl), ModuleName, SharedLibFileName, !IO),
-    % XXX EXT What is the point of this call, given the call just above?
-    module_name_to_lib_file_name(Globals, $pred, "lib",
-        ext_cur(ext_cur_lib_dollar_efsl), ModuleName, MaybeSharedLibFileName),
+        ext_cur_gs(ext_cur_gs_lib_dollar_efsl),
+        ModuleName, SharedLibFileName, !IO),
     module_name_to_file_name(Globals, $pred,
         ext_cur_gs(ext_cur_gs_lib_jar), ModuleName, JarFileName),
 
@@ -2153,7 +2149,7 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
     MmakeRuleLibTargetNonJava = mmake_simple_rule("lib_target_non_java",
         mmake_rule_is_phony,
         LibTargetName,
-        [LibFileName, MaybeSharedLibFileName | AllIntSources],
+        [LibFileName, SharedLibFileName | AllIntSources],
         []),
     MmakeFragmentLibTarget = mmf_conditional_entry(
         mmake_cond_grade_has_component("java"),
