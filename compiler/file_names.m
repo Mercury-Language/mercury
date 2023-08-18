@@ -1158,6 +1158,13 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
         )
     ;
         Ext = ext_cur_ngs_gs_java(ExtCurNgsGsJava),
+        % The Java code generator starts every .java file it creates with
+        % "package jmercury;". When we look for .java (or .class) files
+        % of Mercury modules, we have to specify this module component;
+        % when creating directories, we don't (since the Java compiler
+        % will do that). Code that needs directory paths that include
+        % "jmercury" should call our ancestors; code that needs directory
+        % paths that do not include it should call get_java_dir_path.
         get_java_dir_path(Globals, ExtCurNgsGsJava, DirNames0),
         DirNames = DirNames0 ++ ["jmercury"]
     ;
