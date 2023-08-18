@@ -940,6 +940,7 @@ compile_java_files(Globals, ProgressStream, ErrorStream,
 
     globals.get_subdir_setting(Globals, SubdirSetting),
     globals.lookup_string_option(Globals, target_arch, TargetArch),
+    % ZZZ
     (
         SubdirSetting = use_cur_dir,
         DirOpts = ""
@@ -947,12 +948,12 @@ compile_java_files(Globals, ProgressStream, ErrorStream,
         (
             SubdirSetting = use_cur_ngs_subdir,
             SourceDirName = "Mercury"/"javas",
-            DestDirName = "Mercury"/"classs"
+            DestDirName = "Mercury"/"classes"
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
             grade_directory_component(Globals, Grade),
             SourceDirName = "Mercury"/Grade/TargetArch/"Mercury"/"javas",
-            DestDirName = "Mercury"/Grade/TargetArch/"Mercury"/"classs"
+            DestDirName = "Mercury"/Grade/TargetArch/"Mercury"/"classes"
         ),
         % Javac won't create the destination directory for class files,
         % so we need to do it.
