@@ -80,6 +80,7 @@
 :- import_module parse_tree.module_deps_graph.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_item.
@@ -496,6 +497,46 @@ sym_name_to_node_id(SymName) =
     % Names can't contain "." so use "__"
     % XXX But sym_name_to_string DOES use "." to separate SymName's components.
     "\"" ++ sym_name_to_string(SymName) ++ "\"".
+
+%---------------------------------------------------------------------------%
+
+:- pred output_module_order(globals::in, module_name::in,
+    ext::in, list(set(module_name))::in, io::di, io::uo) is det.
+
+output_module_order(Globals, ModuleName, Ext, DepsOrdering, !IO) :-
+    module_name_to_file_name_create_dirs(Globals, $pred, Ext,
+        ModuleName, OrdFileName, !IO),
+    get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    string.format("%% Creating module order file `%s'...",
+        [s(OrdFileName)], CreatingMsg),
+    maybe_write_string(ProgressStream, Verbose, CreatingMsg, !IO),
+    io.open_output(OrdFileName, OrdResult, !IO),
+    (
+        OrdResult = ok(OrdStream),
+        io.write_list(OrdStream, DepsOrdering, "\n\n",
+            write_module_scc(OrdStream), !IO),
+        io.close_output(OrdStream, !IO),
+        maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
+    ;
+        OrdResult = error(IOError),
+        maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
+        maybe_flush_output(ProgressStream, Verbose, !IO),
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+        io.error_message(IOError, IOErrorMessage),
+        string.format("error opening file `%s' for output: %s",
+            [s(OrdFileName), s(IOErrorMessage)], OrdMessage),
+        report_error(ErrorStream, OrdMessage, !IO)
+    ).
+
+:- pred write_module_scc(io.text_output_stream::in, set(module_name)::in,
+    io::di, io::uo) is det.
+
+write_module_scc(Stream, SCC0, !IO) :-
+    set.to_sorted_list(SCC0, SCC),
+    % XXX This is suboptimal (the stream should be specified once, not twice),
+    % but in the absence of a test case, I (zs) am leaving it alone for now.
+    io.write_list(Stream, SCC, "\n", write_escaped_sym_name(Stream), !IO).
 
 %---------------------------------------------------------------------------%
 
