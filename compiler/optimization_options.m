@@ -3722,6 +3722,7 @@ opts_enabled_at_level(2, [
     oo_opt_repeat(3),
     oo_opt_dups(yes),
     oo_opt_follow_code(yes),
+    oo_prop_constants(yes),
     oo_inline_simple(yes),
     oo_inline_single_use(yes),
     oo_inline_compound_threshold(10),
@@ -3741,7 +3742,6 @@ opts_enabled_at_level(3, [
     oo_deforest(yes),
     oo_prop_constraints(yes),
     oo_prop_local_constraints(yes),
-    oo_prop_constants(yes),
     oo_opt_reassign(yes),
     oo_opt_repeat(4)
 ]).
