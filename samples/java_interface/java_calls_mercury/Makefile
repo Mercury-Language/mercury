@@ -16,7 +16,7 @@ mercury_main: mercury_main.m my_package/JavaMain.class
 	mmc --grade $(GRADE) --make mercury_main --java-classpath .
 
 my_package/JavaMain.class: JavaMain.java libmercury_lib.jar
-	javac JavaMain.java -cp $(MER_JARS):Mercury/classs -d .
+	javac JavaMain.java -cp $(MER_JARS):Mercury/classes -d .
 
 libmercury_lib.jar: mercury_lib.m
 	mmc --grade $(GRADE) --make libmercury_lib

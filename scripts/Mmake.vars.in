@@ -554,7 +554,7 @@ c_dates_subdir=$(SUBDIR)c_dates/
 s_dates_subdir=$(SUBDIR)s_dates/
 pic_s_dates_subdir=$(SUBDIR)pic_s_dates/
 java_dates_subdir=$(SUBDIR)java_dates/
-classes_subdir=$(SUBDIR)classs/
+classes_subdir=$(SUBDIR)classes/
 cs_dates_subdir=$(SUBDIR)cs_dates/
 err_dates_subdir=$(SUBDIR)err_dates/
 
