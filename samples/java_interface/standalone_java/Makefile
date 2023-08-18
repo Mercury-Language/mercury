@@ -18,7 +18,7 @@ MER_JARS = $(MER_LIB_DIR)/mer_std.jar:$(MER_LIB_DIR)/mer_rt.jar
 all: run
 
 JavaMain.class: JavaMain.java mercury_lib.jar
-	$(JAVAC) JavaMain.java -cp $(MER_JARS):Mercury/classs -d .
+	$(JAVAC) JavaMain.java -cp $(MER_JARS):Mercury/classes -d .
 
 mercury_lib.jar: mercury_lib.m
 	$(MMC) --grade $(GRADE) --make libmercury_lib
