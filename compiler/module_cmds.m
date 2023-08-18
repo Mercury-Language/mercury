@@ -1082,7 +1082,7 @@ list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,
     (
         RelevantErrors = [],
         AllClassFiles0 = MainClassFiles ++ NestedClassFiles,
-        % Remove the `Mercury/classs' prefix if present.
+        % Remove the `Mercury/classes' prefix if present.
         ( if ClassSubDir = dir.this_directory then
             AllClassFiles = AllClassFiles0
         else
@@ -1108,10 +1108,10 @@ list_class_files_for_jar_mmake(Globals, ClassFiles, ListClassFiles) :-
         ),
         get_class_dir_name(Globals, ClassSubdir),
         % Here we use the `-C' option of jar to change directory during
-        % execution, then use sed to strip away the Mercury/classs/ prefix
+        % execution, then use sed to strip away the Mercury/classes/ prefix
         % to the class files.
         % Otherwise, the class files would be stored as
-        %   Mercury/classs/*.class
+        %   Mercury/classes/*.class
         % within the jar file, which is not what we want.
         % XXX It would be nice to avoid this dependency on sed.
         ListClassFiles = "-C " ++ ClassSubdir ++ " \\\n" ++

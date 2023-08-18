@@ -1334,12 +1334,12 @@ get_class_dir_name(Globals, ClassDirName) :-
         ClassDirName = "."
     ;
         SubdirSetting = use_cur_ngs_subdir,
-        ClassDirName = "Mercury" / "classs"
+        ClassDirName = "Mercury" / "classes"
     ;
         SubdirSetting = use_cur_ngs_gs_subdir,
         grade_directory_component(Globals, Grade),
         globals.lookup_string_option(Globals, target_arch, TargetArch),
-        ClassDirName = "Mercury" / Grade / TargetArch / "Mercury" / "classs"
+        ClassDirName = "Mercury" / Grade / TargetArch / "Mercury" / "classes"
     ).
 
 %---------------------------------------------------------------------------%
