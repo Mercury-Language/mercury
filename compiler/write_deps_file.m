@@ -1338,8 +1338,7 @@ make_module_file_name(Globals, From, Ext, ModuleName, FileName,
     else
         % The result of module_name_to_file_name is cached to save on
         % temporary string constructions.
-        module_name_to_file_name(Globals, From, Ext,
-            ModuleName, FileName),
+        module_name_to_file_name(Globals, From, Ext, ModuleName, FileName),
         map.det_insert(ModuleNameExt, FileName, !Cache)
     ).
 
@@ -1394,8 +1393,8 @@ get_fact_table_dependencies(Globals, Ext,
 construct_subdirs_shorthand_rule(Globals, ModuleName, Ext,
         MmakeRule, !Cache, !IO) :-
     module_name_to_file_name_stem(ModuleName, ModuleStr),
-    make_module_file_name(Globals, $pred, Ext,
-        ModuleName, Target, !Cache, !IO),
+    make_module_file_name(Globals, $pred, Ext, ModuleName, Target,
+        !Cache, !IO),
     ExtStr = extension_to_string(Globals, Ext),
     ShorthandTarget = ModuleStr ++ ExtStr,
     MmakeRule = mmake_simple_rule("subdir_shorthand_for_" ++ ExtStr,
@@ -2515,8 +2514,7 @@ generate_dep_file_collective_targets(Globals, ModuleName,
 
 generate_dep_file_collective_target(Globals, ModuleName, ModuleMakeVarName,
         {Ext, VarExtension}, MmakeRule, !IO) :-
-    module_name_to_file_name(Globals, $pred, Ext,
-        ModuleName, TargetName),
+    module_name_to_file_name(Globals, $pred, Ext, ModuleName, TargetName),
     Source = string.format("$(%s%s)", [s(ModuleMakeVarName), s(VarExtension)]),
     ExtStr = extension_to_string(Globals, Ext),
     MmakeRule = mmake_simple_rule(
@@ -2536,11 +2534,9 @@ generate_dep_file_clean_targets(Globals, ModuleName, ModuleMakeVarName,
     % If you change the clean targets below, please also update the
     % documentation in doc/user_guide.texi.
 
-    module_name_to_file_name(Globals, $pred,
-        ext_cur(ext_cur_pmt_clean),
+    module_name_to_file_name(Globals, $pred, ext_cur(ext_cur_pmt_clean),
         ModuleName, CleanTargetName),
-    module_name_to_file_name(Globals, $pred,
-        ext_cur(ext_cur_pmt_realclean),
+    module_name_to_file_name(Globals, $pred, ext_cur(ext_cur_pmt_realclean),
         ModuleName, RealCleanTargetName),
 
     % XXX Put these into a logical order.
