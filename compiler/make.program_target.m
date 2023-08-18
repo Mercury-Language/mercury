@@ -1179,12 +1179,11 @@ create_analysis_cache_dir(Globals, Succeeded, CacheDir, !IO) :-
 :- pred choose_analysis_cache_dir_name(globals::in, string::out) is det.
 
 choose_analysis_cache_dir_name(Globals, DirName) :-
-    % XXX This code should be unnecessary.
-    % The code of file_names.m should return filenames as not one string,
-    % but as a <directory path, file name> pair. Besides leaving it up
-    % to the caller whether they want to create the directory path,
-    % the directory path would (or at least, SHOULD) be exactly what
-    % this predicate computes.
+    % XXX FILE_NAMES The relationship of this code with file_names.m
+    % is unclear. On the one hand, the code below follows the same pattern
+    % as each switch arm in ext_to_dir_path. On the other hand, the
+    % subdir name "analysis_cache" is not the subdir name for any of
+    % the extensions defined in the ext type.
     globals.get_subdir_setting(Globals, SubdirSetting),
     (
         ( SubdirSetting = use_cur_dir

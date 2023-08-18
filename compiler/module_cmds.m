@@ -1053,16 +1053,8 @@ get_mercury_std_libs_for_java(Globals, !:StdLibs) :-
 
 list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,
         ListClassFiles, !IO) :-
-    globals.get_subdir_setting(Globals, SubdirSetting),
-    (
-        SubdirSetting = use_cur_dir,
-        ClassSubDir = dir.this_directory
-    ;
-        ( SubdirSetting = use_cur_ngs_subdir
-        ; SubdirSetting = use_cur_ngs_gs_subdir
-        ),
-        get_class_dir_name(Globals, ClassSubDir)
-    ),
+    get_java_dir_path(Globals, ext_cur_ngs_gs_java_class, ClassSubDirPath),
+    ClassSubDir = dir.relative_path_name_from_components(ClassSubDirPath),
 
     list.filter_map(make_nested_class_prefix, MainClassFiles,
         NestedClassPrefixes),
@@ -1098,15 +1090,13 @@ list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,
     ).
 
 list_class_files_for_jar_mmake(Globals, ClassFiles, ListClassFiles) :-
-    globals.get_subdir_setting(Globals, SubdirSetting),
+    get_java_dir_path(Globals, ext_cur_ngs_gs_java_class, ClassSubDirPath),
     (
-        SubdirSetting = use_cur_dir,
+        ClassSubDirPath = [],
         ListClassFiles = ClassFiles
     ;
-        ( SubdirSetting = use_cur_ngs_subdir
-        ; SubdirSetting = use_cur_ngs_gs_subdir
-        ),
-        get_class_dir_name(Globals, ClassSubdir),
+        ClassSubDirPath = [_ | _],
+        ClassSubDir = dir.relative_path_name_from_components(ClassSubDirPath),
         % Here we use the `-C' option of jar to change directory during
         % execution, then use sed to strip away the Mercury/classes/ prefix
         % to the class files.
@@ -1114,9 +1104,9 @@ list_class_files_for_jar_mmake(Globals, ClassFiles, ListClassFiles) :-
         %   Mercury/classes/*.class
         % within the jar file, which is not what we want.
         % XXX It would be nice to avoid this dependency on sed.
-        ListClassFiles = "-C " ++ ClassSubdir ++ " \\\n" ++
+        ListClassFiles = "-C " ++ ClassSubDir ++ " \\\n" ++
             "\t\t`echo "" " ++ ClassFiles ++ """" ++
-            " | sed 's| '" ++ ClassSubdir ++ "/| |'`"
+            " | sed 's| '" ++ ClassSubDir ++ "/| |'`"
     ).
 
 :- pred make_nested_class_prefix(string::in, string::out) is semidet.

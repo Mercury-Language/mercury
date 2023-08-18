@@ -718,8 +718,9 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery,
         io.print_line(StdOutStream, CSC_Type, !IO)
     ;
         OpModeQuery = opmq_output_java_class_dir,
-        get_class_dir_name(Globals, ClassName),
-        io.print_line(StdOutStream, ClassName, !IO)
+        get_java_dir_path(Globals, ext_cur_ngs_gs_java_class, ClassDirNames),
+        ClassDirName = dir.relative_path_name_from_components(ClassDirNames),
+        io.print_line(StdOutStream, ClassDirName, !IO)
     ;
         OpModeQuery = opmq_output_grade_defines,
         output_c_grade_defines(Globals, StdOutStream, !IO)

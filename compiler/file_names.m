@@ -579,6 +579,14 @@
 
 %---------------------------------------------------------------------------%
 
+    % Return the directory path of the directory into which files
+    % with the given extension should be put.
+    %
+:- pred ext_to_dir_path(globals::in, maybe_for_search::in, ext::in,
+    list(dir_name)::out) is det.
+
+%---------------------------------------------------------------------------%
+
     % If the proper place for a file is in a subdirectory (e.g. Mercury/css),
     % but the subdirectory does not exist, which in this case may mean either
     %
@@ -642,7 +650,8 @@
 
     % Return the name of the directory containing Java `.class' files.
     %
-:- pred get_class_dir_name(globals::in, string::out) is det.
+:- pred get_java_dir_path(globals::in, ext_cur_ngs_gs_java::in,
+    list(dir_name)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -689,6 +698,8 @@ maybe_search_to_maybe_for_search(do_search) = for_search.
 
 %---------------------------------------------------------------------------%
 
+:- pragma inline(func(extension_to_string/2)).
+
 extension_to_string(Globals, Ext) = ExtStr :-
     (
         Ext = ext_cur(ExtCur),
@@ -705,7 +716,7 @@ extension_to_string(Globals, Ext) = ExtStr :-
             ExtStr, _SubDirName)
     ;
         Ext = ext_cur_ngs_gs_java(ExtCurNgsGsJava),
-        ext_cur_ngs_gs_java_extension_dirs(ExtCurNgsGsJava,
+        ext_cur_ngs_gs_java_extension_dir(ExtCurNgsGsJava,
             ExtStr, _SubDirNames)
     ;
         Ext = ext_cur_ngs_gs_max_cur(ExtCurNgsGsMaxCur),
@@ -872,13 +883,13 @@ ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_misc_used,
 ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_misc_track_flags,
         ".track_flags", "track_flags").
 
-:- pred ext_cur_ngs_gs_java_extension_dirs(ext_cur_ngs_gs_java::in,
-    string::out, list(string)::out) is det.
+:- pred ext_cur_ngs_gs_java_extension_dir(ext_cur_ngs_gs_java::in,
+    string::out, string::out) is det.
 
-ext_cur_ngs_gs_java_extension_dirs(ext_cur_ngs_gs_java_java,
-        ".java",    ["javas", "jmercury"]).
-ext_cur_ngs_gs_java_extension_dirs(ext_cur_ngs_gs_java_class,
-        ".class",   ["classes", "jmercury"]).
+ext_cur_ngs_gs_java_extension_dir(ext_cur_ngs_gs_java_java,
+        ".java",    "javas").
+ext_cur_ngs_gs_java_extension_dir(ext_cur_ngs_gs_java_class,
+        ".class",   "classes").
 
 :- pred ext_cur_ngs_gs_max_cur_extension_dir(ext_cur_ngs_gs_max_cur::in,
     string::out, string::out) is det.
@@ -902,6 +913,8 @@ ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_request,
 
 %---------------------------------------------------------------------------%
 
+:- pragma inline(func(module_name_to_base_file_name_no_ext/2)).
+
 module_name_to_base_file_name_no_ext(Ext, ModuleName) = BaseNameNoExt :-
     (
         ( Ext = ext_cur(_)
@@ -918,8 +931,12 @@ module_name_to_base_file_name_no_ext(Ext, ModuleName) = BaseNameNoExt :-
         BaseNameNoExt = module_name_to_base_file_name_no_ext_java(ModuleName)
     ).
 
+:- pragma inline(func(module_name_to_base_file_name_no_ext_non_java/1)).
+
 module_name_to_base_file_name_no_ext_non_java(ModuleName) =
     sym_name_to_string_sep(ModuleName, ".").
+
+:- pragma inline(func(module_name_to_base_file_name_no_ext_java/1)).
 
 module_name_to_base_file_name_no_ext_java(ModuleName) = BaseNameNoExt :-
     mangle_sym_name_for_java(ModuleName, module_qual, "__", BaseNameNoExt).
@@ -1073,19 +1090,28 @@ fact_table_file_name_return_dirs(Globals, From, Ext,
 
 module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         ModuleName, DirNames, CurDirFileName) :-
+    ext_to_dir_path(Globals, Search, Ext, DirNames),
+    BaseNameNoExt = module_name_to_base_file_name_no_ext(Ext, ModuleName),
+    ExtStr = extension_to_string(Globals, Ext),
+    CurDirFileName = BaseNameNoExt ++ ExtStr,
+    trace [compile_time(flag("file_name_translations")),
+        runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
     (
-        Ext = ext_cur(ExtCur),
-        ext_cur_extension(ExtCur, ExtStr),
+        FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
+        record_translation(From, Search, StatOnlyMkdir,
+            Ext, ModuleName, FullFileName, !TIO)
+    ).
+
+:- pragma inline(pred(ext_to_dir_path/4)).
+
+ext_to_dir_path(Globals, Search, Ext, DirNames) :-
+    (
+        Ext = ext_cur(_ExtCur),
         % Output files intended for use by the user, and phony Mmake target
-        % names go in the current directory. So do .mh files, and *some*,
-        % but not all, kinds of executable and library files.
-        % XXX Why is that?
-        DirNames = [],
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, ".")
+        % names go in the current directory, and so do .mh files,
+        DirNames = []
     ;
         Ext = ext_cur_ngs(ExtCurNgs),
-        ext_cur_ngs_extension_dir(ExtCurNgs, ExtStr, SubDirName),
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         globals.get_subdir_setting(Globals, SubdirSetting),
         (
             SubdirSetting = use_cur_dir,
@@ -1094,15 +1120,14 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             ( SubdirSetting = use_cur_ngs_subdir
             ; SubdirSetting = use_cur_ngs_gs_subdir
             ),
+            ext_cur_ngs_extension_dir(ExtCurNgs, _ExtStr, SubDirName),
             DirNames = ["Mercury", SubDirName]
         )
     ;
         Ext = ext_cur_gs(ExtCurGs),
-        ext_cur_gs_extension_dir(Globals, ExtCurGs, ExtStr, SubDirName),
-        % Some kinds of executables and library files go in the current
-        % directory only with --no-use-grade-subdirs; with --use-grade-subdirs,
+        % Executables and library files go in the current directory
+        % only with --no-use-grade-subdirs; with --use-grade-subdirs,
         % they go in a grade subdir.
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         globals.get_subdir_setting(Globals, SubdirSetting),
         (
             ( SubdirSetting = use_cur_dir
@@ -1111,45 +1136,32 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
             DirNames = []
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
-            DirNames = make_grade_subdir_name(Globals, [SubDirName])
+            ext_cur_gs_extension_dir(Globals, ExtCurGs, _ExtStr, SubDirName),
+            DirNames = make_grade_subdir_name(Globals, SubDirName)
         )
     ;
         Ext = ext_cur_ngs_gs(ExtCurNgsGs),
-        ext_cur_ngs_gs_extension_dir(Globals, ExtCurNgsGs, ExtStr, SubDirName),
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         globals.get_subdir_setting(Globals, SubdirSetting),
         (
             SubdirSetting = use_cur_dir,
             DirNames = []
         ;
             SubdirSetting = use_cur_ngs_subdir,
+            ext_cur_ngs_gs_extension_dir(Globals, ExtCurNgsGs,
+                _ExtStr, SubDirName),
             DirNames = ["Mercury", SubDirName]
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
-            DirNames = make_grade_subdir_name(Globals, [SubDirName])
+            ext_cur_ngs_gs_extension_dir(Globals, ExtCurNgsGs,
+                _ExtStr, SubDirName),
+            DirNames = make_grade_subdir_name(Globals, SubDirName)
         )
     ;
         Ext = ext_cur_ngs_gs_java(ExtCurNgsGsJava),
-        ext_cur_ngs_gs_java_extension_dirs(ExtCurNgsGsJava,
-            ExtStr, SubDirNames),
-        BaseParentDirs = ["jmercury"],
-        mangle_sym_name_for_java(ModuleName, module_qual, "__", BaseNameNoExt),
-        globals.get_subdir_setting(Globals, SubdirSetting),
-        (
-            SubdirSetting = use_cur_dir,
-            DirNames = BaseParentDirs
-        ;
-            SubdirSetting = use_cur_ngs_subdir,
-            DirNames = ["Mercury" |  SubDirNames]
-        ;
-            SubdirSetting = use_cur_ngs_gs_subdir,
-            DirNames = make_grade_subdir_name(Globals, SubDirNames)
-        )
+        get_java_dir_path(Globals, ExtCurNgsGsJava, DirNames0),
+        DirNames = DirNames0 ++ ["jmercury"]
     ;
         Ext = ext_cur_ngs_gs_max_cur(ExtCurNgsGsMaxCur),
-        ext_cur_ngs_gs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
-            ExtStr, SubDirName),
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         (
             Search = for_search,
             % If we are searching for (rather than writing) a `.mih' file,
@@ -1165,49 +1177,46 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
                 DirNames = []
             ;
                 SubdirSetting = use_cur_ngs_subdir,
+                ext_cur_ngs_gs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
+                    _ExtStr, SubDirName),
                 DirNames = ["Mercury", SubDirName]
             ;
                 SubdirSetting = use_cur_ngs_gs_subdir,
-                DirNames = make_grade_subdir_name(Globals, [SubDirName])
+                ext_cur_ngs_gs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
+                    _ExtStr, SubDirName),
+                DirNames = make_grade_subdir_name(Globals, SubDirName)
             )
         )
     ;
         Ext = ext_cur_ngs_gs_max_ngs(ExtCurNgsGsMaxNgs),
-        ext_cur_ngs_gs_max_ngs_extension_dir(ExtCurNgsGsMaxNgs,
-            ExtStr, SubDirName),
-        BaseNameNoExt = sym_name_to_string_sep(ModuleName, "."),
         globals.get_subdir_setting(Globals, SubdirSetting),
         (
             SubdirSetting = use_cur_dir,
             DirNames = []
         ;
             SubdirSetting = use_cur_ngs_subdir,
+            ext_cur_ngs_gs_max_ngs_extension_dir(ExtCurNgsGsMaxNgs,
+                _ExtStr, SubDirName),
             DirNames = ["Mercury", SubDirName]
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
+            ext_cur_ngs_gs_max_ngs_extension_dir(ExtCurNgsGsMaxNgs,
+                _ExtStr, SubDirName),
             (
                 Search = for_search,
                 DirNames = ["Mercury", SubDirName]
             ;
                 Search = not_for_search,
-                DirNames = make_grade_subdir_name(Globals, [SubDirName])
+                DirNames = make_grade_subdir_name(Globals, SubDirName)
             )
         )
-    ),
-    CurDirFileName = BaseNameNoExt ++ ExtStr,
-    trace [compile_time(flag("file_name_translations")),
-        runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
-    (
-        FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
-        record_translation(From, Search, StatOnlyMkdir,
-            Ext, ModuleName, FullFileName, !TIO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- func make_grade_subdir_name(globals, list(dir_name)) = list(string).
+:- func make_grade_subdir_name(globals, dir_name) = list(string).
 
-make_grade_subdir_name(Globals, SubDirNames) = GradeSubDirNames :-
+make_grade_subdir_name(Globals, SubDirName) = GradeSubDirNames :-
     grade_directory_component(Globals, Grade),
     globals.lookup_string_option(Globals, target_arch, TargetArch),
     % The extra "Mercury" is needed so we can use `--intermod-directory
@@ -1215,7 +1224,7 @@ make_grade_subdir_name(Globals, SubDirNames) = GradeSubDirNames :-
     % Mercury/<grade>/<target_arch>' to find the local `.opt' and `.mih'
     % files without messing up the search for the files for installed
     % libraries.
-    GradeSubDirNames = ["Mercury", Grade, TargetArch, "Mercury" | SubDirNames].
+    GradeSubDirNames = ["Mercury", Grade, TargetArch, "Mercury", SubDirName].
 
 :- func glue_dir_names_base_name(list(string), string) = string.
 
@@ -1327,19 +1336,21 @@ module_name_to_make_var_name(ModuleName, MakeVarName) :-
 
 %---------------------------------------------------------------------------%
 
-get_class_dir_name(Globals, ClassDirName) :-
+get_java_dir_path(Globals, ExtCurNgsGsJava, DirNames) :-
     globals.get_subdir_setting(Globals, SubdirSetting),
     (
         SubdirSetting = use_cur_dir,
-        ClassDirName = "."
+        DirNames = []
     ;
         SubdirSetting = use_cur_ngs_subdir,
-        ClassDirName = "Mercury" / "classes"
+        ext_cur_ngs_gs_java_extension_dir(ExtCurNgsGsJava,
+            _ExtStr, SubDirName),
+        DirNames = ["Mercury", SubDirName]
     ;
         SubdirSetting = use_cur_ngs_gs_subdir,
-        grade_directory_component(Globals, Grade),
-        globals.lookup_string_option(Globals, target_arch, TargetArch),
-        ClassDirName = "Mercury" / Grade / TargetArch / "Mercury" / "classes"
+        ext_cur_ngs_gs_java_extension_dir(ExtCurNgsGsJava,
+            _ExtStr, SubDirName),
+        DirNames = make_grade_subdir_name(Globals, SubDirName)
     ).
 
 %---------------------------------------------------------------------------%
