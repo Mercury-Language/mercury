@@ -252,7 +252,8 @@ comp_gen.out: comp_gen comp_gen.inp
 	|| { grep . $@ /dev/null; exit 1; }
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
-# particular line numbers in the standard library source code.
+# particular memory addresses and line numbers in the standard library source
+# code.
 condition_bug.out: condition_bug condition_bug.inp
 	$(MDB_STD) ./condition_bug < condition_bug.inp 2>&1 | \
 		sed -e 's/io.m:[0-9]*/io.m:NNNN/g' | \
@@ -261,7 +262,8 @@ condition_bug.out: condition_bug condition_bug.inp
 		sed 's/0x[-0-9A-Fa-f]*/0xXXXX/g' | \
 		sed 's/(nil)/0xXXXX/g' | \
 		sed 's/stream, [0-9a-fA-F]\{2\}[0-9a-fA-F]*/stream, 0xXXXX/g' | \
-		sed 's/system_error, 0\{2\}[0-9]*/system_error, 0xXXXX/g' \
+		sed 's/system_error, 0\{2\}[0-9]*/system_error, 0xXXXX/g' | \
+		sed 's/state, 0\{2\}[0-9]*/state, 0xXXXX/g' \
 		> condition_bug.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
