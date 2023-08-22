@@ -46,34 +46,32 @@ run_test({}, !IO) :-
         io.write_string("Single byte bitmap\n", !IO),
         !:BM = bitmap_test_helper_1.new(4, yes),
         io.write_string(to_byte_string(!.BM), !IO),
-        nl(!IO),
-        write(!.BM ^ bit(0), !IO),
-        nl(!IO),
+        io.nl(!IO),
+        io.write_line(!.BM ^ bit(0), !IO),
         !:BM = !.BM ^ bit(1) := no,
         io.write_string(to_byte_string(!.BM), !IO),
-        nl(!IO),
-        write(!.BM ^ bit(1), !IO),
-        nl(!IO),
+        io.nl(!IO),
+        io.write_line(!.BM ^ bit(1), !IO),
         !:BM = !.BM ^ bit(2) := no,
         io.write_string(to_byte_string(!.BM), !IO),
-        nl(!IO),
+        io.nl(!IO),
         write_binary_string(!.BM ^ bits(0, 4), !IO),
-        nl(!IO),
+        io.nl(!IO),
         !:BM = !.BM ^ bits(0, 2) := \ (!.BM ^ bits(0, 2)),
         io.write_string(to_byte_string(!.BM), !IO),
-        nl(!IO),
+        io.nl(!IO),
         !:BM = !.BM ^ bits(0, 0) := !.BM ^ bits(4, 0),
         io.write_string(to_byte_string(!.BM), !IO),
-        nl(!IO)
+        io.nl(!IO)
     ),
     some [!BM] (
         io.write_string("Multi-byte bitmap\n", !IO),
         !:BM = bitmap_test_helper_1.new(20, no),
         io.write_string(to_byte_string(!.BM), !IO),
-        nl(!IO),
+        io.nl(!IO),
         !:BM = flip(!.BM, 1),
         io.write_string(to_byte_string(!.BM), !IO),
-        nl(!IO),
+        io.nl(!IO),
         !:BM = ((((((!.BM  ^ bit(3) := yes)
             ^ bit(6) := yes)
             ^ bit(8) := yes)
@@ -81,26 +79,26 @@ run_test({}, !IO) :-
             ^ bit(12) := yes)
             ^ bit(17) := yes),
         io.write_string(to_byte_string(!.BM), !IO),
-        nl(!IO),
+        io.nl(!IO),
         write_binary_string(!.BM ^ bits(1, 10), !IO),
-        nl(!IO),
+        io.nl(!IO),
         write_binary_string(!.BM ^ bits(8, 12), !IO),
-        nl(!IO),
+        io.nl(!IO),
         !:BM = !.BM ^ bits(6, 12) := \ (!.BM ^ bits(6, 12)),
         io.write_string(to_byte_string(!.BM), !IO),
-        nl(!IO),
+        io.nl(!IO),
         !:BM = flip(!.BM, 6),
         io.write_string(to_byte_string(!.BM), !IO),
-        nl(!IO),
+        io.nl(!IO),
         !:BM = complement(!.BM),
         io.write_string(to_byte_string(!.BM), !IO),
-        nl(!IO),
+        io.nl(!IO),
         !:BM = resize(!.BM, 32, yes),
         io.write_string(to_string(!.BM ^ fst), !IO),
-        nl(!IO),
+        io.nl(!IO),
         functor(!.BM ^ fst, do_not_allow, Functor, _),
         io.write_string(Functor, !IO),
-        nl(!IO)
+        io.nl(!IO)
     ),
     some [!BM] (
         io.write_string("Longer bitmap\n", !IO),
@@ -108,19 +106,19 @@ run_test({}, !IO) :-
         BytePattern = 0b10111001,
         fill_in_alternating_pattern(BytePattern, !BM),
         io.write_string(to_byte_string(!.BM), !IO),
-        nl(!IO),
+        io.nl(!IO),
         !:BM = !.BM ^ bits(6, 12) := \ (!.BM ^ bits(6, 12)),
         io.write_string(to_byte_string(!.BM), !IO),
-        nl(!IO),
+        io.nl(!IO),
         io.write_string("non-overlapping copy_bits\n", !IO),
         !:BM = copy_bits_in_bitmap(!.BM, 12, 64, 32),
         io.write_string(to_byte_string(!.BM), !IO),
-        nl(!IO),
+        io.nl(!IO),
 
         io.write_string("testing builtin.copy\n", !IO),
         builtin.copy(!.BM ^ fst, CopyBM),
         io.write_string(to_byte_string(CopyBM), !IO),
-        nl(!IO),
+        io.nl(!IO),
         ( if CopyBM = !.BM ^ fst then
             io.write_string("Copy succeeded\n", !IO)
         else
@@ -266,29 +264,29 @@ test_copy(SrcStart, DestStart, NumBits, !IO) :-
         !:DestBM = bitmap_test_helper_1.new(BMLength, no),
         !:DestBM = copy_bits(!.SrcBM, SrcStart, !.DestBM, DestStart, NumBits),
         io.write_string(to_byte_string(!.DestBM), !IO),
-        nl(!IO),
+        io.nl(!IO),
 
         io.write_string("Copy to filled bitmap\n", !IO),
         !:DestBM = bitmap_test_helper_1.new(BMLength, yes),
         !:DestBM = copy_bits(!.SrcBM, SrcStart, !.DestBM, DestStart, NumBits),
         io.write_string(to_byte_string(!.DestBM), !IO),
-        nl(!IO),
+        io.nl(!IO),
 
         io.write_string("Copy to alternating bitmap\n", !IO),
         !:DestBM = bitmap_test_helper_1.new(BMLength, yes),
         fill_in_alternating_pattern(0b10101010, !DestBM),
         !:DestBM = copy_bits(!.SrcBM, SrcStart, !.DestBM, DestStart, NumBits),
         io.write_string(to_byte_string(!.DestBM), !IO),
-        nl(!IO),
+        io.nl(!IO),
 
         io.write_string("Copy to same bitmap\n", !IO),
         !:DestBM = copy_bits_in_bitmap(!.SrcBM, SrcStart, DestStart, NumBits),
         io.write_string(to_byte_string(!.DestBM), !IO),
-        nl(!IO)
+        io.nl(!IO)
     ).
 
 :- pred test_set_op(string, (func(tbitmap, tbitmap) = tbitmap), io, io).
-:- mode test_set_op(in, (func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
+:- mode test_set_op(in, in(func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
     di, uo) is det.
 
 test_set_op(OpStr, Op, !IO) :-
@@ -298,20 +296,22 @@ test_set_op(OpStr, Op, !IO) :-
         ), !IO).
 
 :- pred test_binary_op(string, (func(tbitmap, tbitmap) = T), io, io).
-:- mode test_binary_op(in, (func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
-    di, uo) is det.
-:- mode test_binary_op(in, (func(tbitmap_ui, tbitmap_di) = out is det),
-    di, uo) is det.
+:- mode test_binary_op(in,
+    in(func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det), di, uo) is det.
+:- mode test_binary_op(in,
+    in(func(tbitmap_ui, tbitmap_di) = out is det), di, uo) is det.
 
 test_binary_op(OpStr, Op, !IO) :-
     test_binary_op(OpStr, Op, io.write, !IO).
 
 :- pred test_binary_op(string, (func(tbitmap, tbitmap) = T),
     pred(T, io, io), io, io).
-:- mode test_binary_op(in, (func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
-    (pred(in, di, uo) is det), di, uo) is det.
-:- mode test_binary_op(in, (func(tbitmap_ui, tbitmap_di) = out is det),
-    (pred(in, di, uo) is det), di, uo) is det.
+:- mode test_binary_op(in,
+    in(func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
+    in(pred(in, di, uo) is det), di, uo) is det.
+:- mode test_binary_op(in,
+    in(func(tbitmap_ui, tbitmap_di) = out is det),
+    in(pred(in, di, uo) is det), di, uo) is det.
 
 test_binary_op(OpStr, Op, Writer, !IO) :-
     test_binary_op(8, OpStr, Op, Writer, !IO),
@@ -320,10 +320,11 @@ test_binary_op(OpStr, Op, Writer, !IO) :-
 :- pred test_binary_op(int, string, (func(tbitmap, tbitmap) = T),
     pred(T, io, io), io, io).
 :- mode test_binary_op(in, in,
-    (func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
-    (pred(in, di, uo) is det), di, uo) is det.
-:- mode test_binary_op(in, in, (func(tbitmap_ui, tbitmap_di) = out is det),
-    (pred(in, di, uo) is det), di, uo) is det.
+    in(func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
+    in(pred(in, di, uo) is det), di, uo) is det.
+:- mode test_binary_op(in, in,
+    in(func(tbitmap_ui, tbitmap_di) = out is det),
+    in(pred(in, di, uo) is det), di, uo) is det.
 
 test_binary_op(BMLength, OpStr, Op, Writer, !IO) :-
     ZeroedBM = bitmap_test_helper_1.new(BMLength, no),
@@ -353,20 +354,15 @@ test_binary_op(BMLength, OpStr, Op, Writer, !IO) :-
 
 :- pred test_binary_op_2(string, tbitmap, string, (func(tbitmap, tbitmap) = T),
     string, tbitmap, pred(T, io, io), io, io).
-:- mode test_binary_op_2(in, tbitmap_ui,
-    in, (func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det),
-    in, tbitmap_ui, (pred(in, di, uo) is det), di, uo) is det.
-:- mode test_binary_op_2(in, tbitmap_ui,
-    in, (func(in, in) = out is det),
-    in, tbitmap_ui, (pred(in, di, uo) is det), di, uo) is det.
+:- mode test_binary_op_2(in, tbitmap_ui, in,
+    in(func(tbitmap_ui, tbitmap_di) = tbitmap_uo is det), in, tbitmap_ui,
+    in(pred(in, di, uo) is det), di, uo) is det.
+:- mode test_binary_op_2(in, tbitmap_ui, in,
+    in(func(in, in) = out is det), in, tbitmap_ui,
+    in(pred(in, di, uo) is det), di, uo) is det.
 
 test_binary_op_2(BMStr1, BM1, OpStr, Op, BMStr2, BM2, Writer, !IO) :-
-    io.write_string(OpStr, !IO),
-    io.write_string("(", !IO),
-    io.write_string(BMStr1, !IO),
-    io.write_string(", ", !IO),
-    io.write_string(BMStr2, !IO),
-    io.write_string(") = ", !IO),
+    io.format("%s(%s, %s) = ", [s(OpStr), s(BMStr1), s(BMStr2)], !IO),
     Writer(BM1 `Op` copy(BM2), !IO),
     io.nl(!IO).
 
@@ -436,20 +432,14 @@ test_text_io(!IO) :-
     BMa = BMa0 ^ bits(32, 16) := 0b1011011100100101,
     BMb0 = bitmap.init(47, yes),
     BMb = BMb0 ^ bits(11, 16) := 0b1011010110100101,
-    io.write_string("BMa = ", !IO),
-    io.write(BMa, !IO),
-    io.write_string(".\n", !IO),
-    io.write_string("BMb = ", !IO),
-    io.write(BMb, !IO),
-    io.write_string(".\n", !IO),
+    io.format("BMa = %s.\n", [s(string.string(BMa))], !IO),
+    io.format("BMb = %s.\n", [s(string.string(BMb))], !IO),
     io.open_output(FileName, OpenRes, !IO),
     (
         OpenRes = ok(Stream),
 
-        io.write(Stream, BMa, !IO),
-        io.write_string(Stream, ".\n", !IO),
-        io.write(Stream, BMb, !IO),
-        io.write_string(Stream, ".\n", !IO),
+        io.format(Stream, "%s.\n", [s(string.string(BMa))], !IO),
+        io.format(Stream, "%s.\n", [s(string.string(BMb))], !IO),
         io.close_output(Stream, !IO),
         io.open_input(FileName, OpenInputRes, !IO),
         (
@@ -482,7 +472,7 @@ test_text_io(!IO) :-
     ).
 
 :- pred fill_in_alternating_pattern(byte::in,
-            tbitmap::tbitmap_di, tbitmap::tbitmap_uo) is det.
+    tbitmap::tbitmap_di, tbitmap::tbitmap_uo) is det.
 
 fill_in_alternating_pattern(Byte, !BM) :-
     NumBits = !.BM ^ fst ^ num_bits,
@@ -496,7 +486,7 @@ fill_in_alternating_pattern(Byte, !BM) :-
     ).
 
 :- pred fill_in_alternating_pattern(byte_index::in, num_bytes::in, byte::in,
-            tbitmap::tbitmap_di, tbitmap::tbitmap_uo) is det.
+    tbitmap::tbitmap_di, tbitmap::tbitmap_uo) is det.
 
 fill_in_alternating_pattern(Index, NumBytes, Pattern, !BM) :-
     ( if Index >= NumBytes then
@@ -523,65 +513,49 @@ binary_string(Int) = string.int_to_base_string(Int, 2).
 :- pred write_bitmap_result_error(bitmap_result_error::in,
     io::di, io::uo) is det.
 
-write_bitmap_result_error(query(Op, Input, OtherArgs, Output), !IO) :-
-    io.write_string("Error in `", !IO),
-    io.write_string(Op, !IO),
-    io.write_string("(", !IO),
-    io.write(OtherArgs, !IO),
-    io.write_string(")'\ninput bitmap: ", !IO),
-    io.write_string(to_byte_string(Input), !IO),
-    io.nl(!IO),
-    io.write_string("output = ", !IO),
-    io.write_line(Output ^ fst, !IO),
-    io.write_string("expected output = ", !IO),
-    io.write_line(Output ^ snd, !IO).
-
-write_bitmap_result_error(binary_query(Op, Input1, Input2, OtherArgs, Output),
-        !IO) :-
-    io.write_string("Error in `", !IO),
-    io.write_string(Op, !IO),
-    io.write_string("(", !IO),
-    io.write(OtherArgs, !IO),
-    io.write_string(")'\ninput bitmap 1: ", !IO),
-    io.write_string(to_byte_string(Input1), !IO),
-    io.write_string("\ninput bitmap 2: ", !IO),
-    io.write_string(to_byte_string(Input2), !IO),
-    io.nl(!IO),
-    io.write_string("output = ", !IO),
-    io.write_line(Output ^ fst, !IO),
-    io.write_string("expected output = ", !IO),
-    io.write_line(Output ^ snd, !IO).
-
-write_bitmap_result_error(one_argument(Op, Input, OtherArgs, Output), !IO) :-
-    io.write_string("Error in `", !IO),
-    io.write_string(Op, !IO),
-    io.write_string("(", !IO),
-    io.write(OtherArgs, !IO),
-    io.write_string(")'\ninput bitmap: ", !IO),
-    io.write_string(to_byte_string(Input), !IO),
-    io.nl(!IO),
-    io.write_string("output = ", !IO),
-    io.write_string(to_byte_string(Output ^ fst), !IO),
-    io.nl(!IO),
-    io.write_string("expected output = ", !IO),
-    io.write_string(to_byte_string(Output ^ snd), !IO),
-    io.nl(!IO).
-
-write_bitmap_result_error(two_arguments(Op, Input1, Input2, OtherArgs, Output),
-        !IO) :-
-    io.write_string("Error in `", !IO),
-    io.write_string(Op, !IO),
-    io.write_string("(", !IO),
-    io.write(OtherArgs, !IO),
-    io.write_string(")'\ninput bitmap 1: ", !IO),
-    io.write_string(to_byte_string(Input1), !IO),
-    io.nl(!IO),
-    io.write_string("\ninput bitmap 2: ", !IO),
-    io.write_string(to_byte_string(Input2), !IO),
-    io.nl(!IO),
-    io.write_string("output = ", !IO),
-    io.write_string(to_byte_string(Output ^ fst), !IO),
-    io.nl(!IO),
-    io.write_string("expected output = ", !IO),
-    io.write_string(to_byte_string(Output ^ snd), !IO),
-    io.nl(!IO).
+write_bitmap_result_error(Query, !IO) :-
+    (
+        Query = query(Op, Input, OtherArgs, Output),
+        io.format("Error in `%s(%s)'\n",
+            [s(Op), s(string.string(OtherArgs))], !IO),
+        io.format("input bitmap: %s\n",
+            [s(to_byte_string(Input))], !IO),
+        io.format("output: %s\n",
+            [s(string.string(Output ^ fst))], !IO),
+        io.format("expected output: %s\n",
+            [s(string.string(Output ^ snd))], !IO)
+    ;
+        Query = binary_query(Op, Input1, Input2, OtherArgs, Output),
+        io.format("Error in `%s(%s)'\n",
+            [s(Op), s(string.string(OtherArgs))], !IO),
+        io.format("input bitmap 1: %s\n",
+            [s(to_byte_string(Input1))], !IO),
+        io.format("input bitmap 2: %s\n",
+            [s(to_byte_string(Input2))], !IO),
+        io.format("output: %s\n",
+            [s(string.string(Output ^ fst))], !IO),
+        io.format("expected output: %s\n",
+            [s(string.string(Output ^ snd))], !IO)
+    ;
+        Query = one_argument(Op, Input, OtherArgs, Output),
+        io.format("Error in `%s(%s)'\n",
+            [s(Op), s(string.string(OtherArgs))], !IO),
+        io.format("input bitmap: %s\n",
+            [s(to_byte_string(Input))], !IO),
+        io.format("output: %s\n",
+            [s(to_byte_string(Output ^ fst))], !IO),
+        io.format("expected output: %s\n",
+            [s(to_byte_string(Output ^ snd))], !IO)
+    ;
+        Query = two_arguments(Op, Input1, Input2, OtherArgs, Output),
+        io.format("Error in `%s(%s)'\n",
+            [s(Op), s(string.string(OtherArgs))], !IO),
+        io.format("input bitmap 1: %s\n",
+            [s(to_byte_string(Input1))], !IO),
+        io.format("input bitmap 2: %s\n",
+            [s(to_byte_string(Input2))], !IO),
+        io.format("output: %s\n",
+            [s(to_byte_string(Output ^ fst))], !IO),
+        io.format("expected output: %s\n",
+            [s(to_byte_string(Output ^ snd))], !IO)
+    ).
