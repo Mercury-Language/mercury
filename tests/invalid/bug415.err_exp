@@ -15,8 +15,14 @@ bug415.m:046:           '[|]'(
 bug415.m:046:             ( I =< ground ),
 bug415.m:046:             internal $merge_inst #1
 bug415.m:046:             which expands to
-bug415.m:046:               bound([] ; '[|]'(( I =< ground ),
-bug415.m:046:               internal $merge_inst #1))
+bug415.m:046:               bound(
+bug415.m:046:                 []
+bug415.m:046:               ;
+bug415.m:046:                 '[|]'(
+bug415.m:046:                   ( I =< ground ),
+bug415.m:046:                   internal $merge_inst #1
+bug415.m:046:                 )
+bug415.m:046:               )
 bug415.m:046:           )
 bug415.m:046:         )
 bug415.m:046:       )
