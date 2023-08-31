@@ -632,13 +632,15 @@ new_var_inst_msg_to_string(InfoGoal, IndentStr, Var - Inst) = Str :-
     InstPieces = error_msg_inst(ModuleInfo, InstVarSet, expand_named_insts,
         uod_developer(TVarSet), fixed_short_inst, ShortInstSuffix,
         LongInstPrefix, LongInstSuffix, Inst),
-    ShortInstStr = error_pieces_to_one_line_string(InstPieces),
-    ( if string.count_code_points(ShortInstStr) < 40 then
+
+    InstLines = error_pieces_to_std_lines(InstPieces),
+    ( if do_lines_fit_in_n_code_points(40, InstLines) then
+        ShortInstStr = error_lines_to_one_line_string(InstLines),
         string.format("%s%%   %s -> %s\n",
             [s(IndentStr), s(VarStr), s(ShortInstStr)], Str)
     else
         Prefix = IndentStr ++ "%   ",
-        LongInstStr = error_pieces_to_multi_line_string(Prefix, InstPieces),
+        LongInstStr = error_lines_to_multi_line_string(Prefix, InstLines),
         string.format("%s%%   %s ->\n%s",
             [s(IndentStr), s(VarStr), s(LongInstStr)], Str)
     ).

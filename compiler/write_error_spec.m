@@ -115,6 +115,38 @@
 
 %---------------------------------------------------------------------------%
 
+:- type error_line.
+
+    % Convert the given list of pieces to an abstract representation
+    % of the lines of output it corresponds to. The caller can then
+    %
+    % - test whether the text in these lines can fit in a given number
+    %   of characters, using do_lines_fit_in_n_code_points, and
+    % - convert the lines either
+    %   - to a string containing a single line of text
+    %     using error_lines_to_one_line_string, or
+    %   - to a string containing one line of text for each abstract line
+    %     using error_lines_to_multi_line_string.
+    %
+
+:- func error_pieces_to_std_lines(list(format_piece)) = list(error_line).
+
+    % Succeed if and only if the contents of the given lines, if appended
+    % with a space between each pair of successive lines, would fit
+    % in the given number of characters.
+    %
+:- pred do_lines_fit_in_n_code_points(int::in, list(error_line)::in)
+    is semidet.
+
+    % Convert the given abstract representation of lines to either
+    % a string containing a single line of text, or a string containing
+    % one line of text per abstract line.
+    %
+:- func error_lines_to_one_line_string(list(error_line)) = string.
+:- func error_lines_to_multi_line_string(string, list(error_line)) = string.
+
+%---------------------%
+
     % These two functions do (almost) the same job as write_error_pieces,
     % but returns the resulting string instead of printing it out.
     %
@@ -129,9 +161,15 @@
     % specify for every one of the lines in the output. The intended use case
     % is the printing of e.g. insts in goals' instmap_deltas in HLDS dumps.
     %
+    % NOTE If your intention is to generate a single line of output
+    % if the input pieces are short enough, and several lines of output if
+    % they are not, then you are better of calling error_pieces_to_std_lines,
+    % then do_lines_fit_in_n_code_points, and then (depending on the success
+    % or failure of that test) either error_lines_to_one_line_string or
+    % error_lines_to_multi_line_string.
+    %
 :- func error_pieces_to_one_line_string(list(format_piece)) = string.
-:- func error_pieces_to_multi_line_string(string, list(format_piece))
-    = string.
+:- func error_pieces_to_multi_line_string(string, list(format_piece)) = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1456,17 +1494,70 @@ find_matching_rp([HeadLine0 | TailLines0], !MidLinesCord, !MidLinesLen,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-error_pieces_to_one_line_string(Pieces) = Str :-
-    convert_pieces_to_lines(yes(80), "", treat_as_first, 0,
-        Pieces, _, Lines),
+error_pieces_to_std_lines(Pieces) = Lines :-
+    convert_pieces_to_lines(yes(80), "", treat_as_first, 0, Pieces, _, Lines).
+
+do_lines_fit_in_n_code_points(_Max, []).
+do_lines_fit_in_n_code_points(Max, [Line1 | Lines2plus]) :-
+    LineLen1 = error_line_len(Line1),
+    MaxLeft = Max - LineLen1,
+    MaxLeft >= 0,
+    (
+        Lines2plus = []
+    ;
+        Lines2plus = [Line2 | Lines3plus],
+        do_spaces_lines_fit_in_n_code_points(MaxLeft, Line2, Lines3plus)
+    ).
+
+:- pred do_spaces_lines_fit_in_n_code_points(int::in,
+    error_line::in, list(error_line)::in) is semidet.
+
+do_spaces_lines_fit_in_n_code_points(Max, Line1, Lines2plus) :-
+    LineLen1 = error_line_len(Line1),
+    % The extra -1 accounts for the space before Line1.
+    MaxLeft = Max - LineLen1 - 1,
+    MaxLeft >= 0,
+    (
+        Lines2plus = []
+    ;
+        Lines2plus = [Line2 | Lines3plus],
+        do_spaces_lines_fit_in_n_code_points(MaxLeft, Line2, Lines3plus)
+    ).
+
+:- func error_line_len(error_line) = int.
+
+error_line_len(Line) = LineLen :-
+    Line = error_line(MaybeAvail, _LineIndent, LineWordsStr, LineWordsLen,
+        _LineParen),
+    (
+        MaybeAvail = no,
+        LineLen = string.count_code_points(LineWordsStr)
+    ;
+        MaybeAvail = yes(_),
+        LineLen = LineWordsLen
+    ).
+
+%---------------------%
+
+error_lines_to_one_line_string(Lines) = Str :-
     LineStrs = list.map(convert_line_words_to_string, Lines),
     Str = string.join_list(" ", LineStrs).
 
-error_pieces_to_multi_line_string(Prefix, Pieces) = Str :-
-    convert_pieces_to_lines(yes(80), "", treat_as_first, 0,
-        Pieces, _, Lines),
+error_lines_to_multi_line_string(Prefix, Lines) = Str :-
     LineStrs = list.map(convert_line_and_nl_to_string(Prefix), Lines),
     string.append_list(LineStrs, Str).
+
+%---------------------%
+
+error_pieces_to_one_line_string(Pieces) = Str :-
+    Lines = error_pieces_to_std_lines(Pieces),
+    Str = error_lines_to_one_line_string(Lines).
+
+error_pieces_to_multi_line_string(Prefix, Pieces) = Str :-
+    Lines = error_pieces_to_std_lines(Pieces),
+    Str = error_lines_to_multi_line_string(Prefix, Lines).
+
+%---------------------%
 
 :- func convert_line_words_to_string(error_line) = string.
 

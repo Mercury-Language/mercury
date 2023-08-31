@@ -342,13 +342,14 @@ write_inst_name_nl(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit, InstName,
             expand_named_insts, uod_developer(TVarSet),
             fixed_short_inst, ShortInstSuffix,
             LongInstPrefix, LongInstSuffix, InstName),
-        ShortInstNameStr = error_pieces_to_one_line_string(InstNamePieces),
-        ( if string.count_code_points(ShortInstNameStr) < 80 then
+        InstNameLines = error_pieces_to_std_lines(InstNamePieces),
+        ( if do_lines_fit_in_n_code_points(80, InstNameLines) then
+            ShortInstNameStr = error_lines_to_one_line_string(InstNameLines),
             io.format(Stream, "%s\n", [s(ShortInstNameStr)], !IO)
         else
             Prefix = "",
             LongInstNameStr =
-                error_pieces_to_multi_line_string(Prefix, InstNamePieces),
+                error_lines_to_multi_line_string(Prefix, InstNameLines),
             io.format(Stream, "%s", [s(LongInstNameStr)], !IO)
         )
     ).
@@ -373,13 +374,13 @@ write_inst_entry(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
             expand_named_insts, uod_developer(TVarSet),
             fixed_short_inst, ShortInstSuffix,
             LongInstPrefix, LongInstSuffix, Inst),
-        ShortInstStr = error_pieces_to_one_line_string(InstPieces),
-        ( if string.count_code_points(ShortInstStr) < 80 then
+        InstLines = error_pieces_to_std_lines(InstPieces),
+        ( if do_lines_fit_in_n_code_points(80, InstLines) then
+            ShortInstStr = error_lines_to_one_line_string(InstLines),
             io.format(Stream, "%s\n", [s(ShortInstStr)], !IO)
         else
             Prefix = "",
-            LongInstStr =
-                error_pieces_to_multi_line_string(Prefix, InstPieces),
+            LongInstStr = error_lines_to_multi_line_string(Prefix, InstLines),
             io.format(Stream, "%s", [s(LongInstStr)], !IO)
         )
     ).
