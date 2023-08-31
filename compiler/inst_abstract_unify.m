@@ -428,7 +428,6 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 % for these cases, but I am not convinced it is the right thing
                 % to do.
                 % Why are we not handling defined_inst by looking it up?
-                % Why are we not handling free/1 similarly to free/0?
                 % And why are we not aborting for inst_var?
                 fail
             )

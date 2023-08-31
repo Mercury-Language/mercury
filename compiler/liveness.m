@@ -233,15 +233,14 @@ detect_liveness_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
 detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_int_option(Globals, debug_liveness, DebugLiveness),
-    pred_id_to_int(PredId, PredIdInt),
 
     proc_info_get_goal(!.ProcInfo, GoalBeforeQuant),
     proc_info_get_var_table(!.ProcInfo, VarTableBeforeQuant),
 
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nbefore requantify",
-            DebugLiveness, PredIdInt, VarTableBeforeQuant,
-            GoalBeforeQuant, !IO)
+            DebugLiveness, PredId, !.ProcInfo,
+            VarTableBeforeQuant, GoalBeforeQuant, !IO)
     ),
     requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
 
@@ -255,7 +254,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
 
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nbefore liveness",
-            DebugLiveness, PredIdInt, VarTable, GoalAfterQuant, !IO)
+            DebugLiveness, PredId, !.ProcInfo, VarTable, GoalAfterQuant, !IO)
     ),
 
     initial_liveness(ModuleInfo, PredInfo, !.ProcInfo, Liveness0),
@@ -264,7 +263,8 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
 
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nafter liveness",
-            DebugLiveness, PredIdInt, VarTable, GoalAfterLiveness, !IO)
+            DebugLiveness, PredId, !.ProcInfo, VarTable,
+            GoalAfterLiveness, !IO)
     ),
 
     initial_deadness(ModuleInfo, !.ProcInfo, LiveInfo, Deadness0),
@@ -272,7 +272,8 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
         GoalAfterLiveness, GoalAfterDeadness, Deadness0, _),
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nafter deadness",
-            DebugLiveness, PredIdInt, VarTable, GoalAfterDeadness, !IO)
+            DebugLiveness, PredId, !.ProcInfo, VarTable,
+            GoalAfterDeadness, !IO)
     ),
 
     globals.get_trace_level(Globals, TraceLevel),
@@ -294,7 +295,8 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
             VarTable, Liveness0),
         trace [io(!IO)] (
             maybe_debug_liveness(ModuleInfo, "\nafter delay death",
-                DebugLiveness, PredIdInt, VarTable, GoalAfterDelayDeath, !IO)
+                DebugLiveness, PredId, !.ProcInfo, VarTable,
+                GoalAfterDelayDeath, !IO)
         )
     else
         GoalAfterDelayDeath = GoalAfterDeadness
@@ -312,24 +314,28 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
         GoalAfterDelayDeath, Goal, Liveness0, _),
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nafter resume point",
-            DebugLiveness, PredIdInt, VarTable, Goal, !IO)
+            DebugLiveness, PredId, !.ProcInfo, VarTable, Goal, !IO)
     ),
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_liveness_info(Liveness0, !ProcInfo).
 
-:- pred maybe_debug_liveness(module_info::in, string::in, int::in, int::in,
-    var_table::in, hlds_goal::in, io::di, io::uo) is det.
+:- pred maybe_debug_liveness(module_info::in, string::in, int::in, pred_id::in,
+    proc_info::in, var_table::in, hlds_goal::in, io::di, io::uo) is det.
 
-maybe_debug_liveness(ModuleInfo, Message, DebugLiveness, PredIdInt, VarTable,
-        Goal, !IO) :-
+maybe_debug_liveness(ModuleInfo, Message, DebugLiveness, PredId, ProcInfo,
+        VarTable, Goal, !IO) :-
+    pred_id_to_int(PredId, PredIdInt),
     ( if DebugLiveness = PredIdInt then
         io.output_stream(Stream, !IO),
         io.write_string(Stream, Message, !IO),
         io.write_string(Stream, ":\n", !IO),
         module_info_get_globals(ModuleInfo, Globals),
         OutInfo = init_hlds_out_info(Globals, output_debug),
-        write_goal(OutInfo, Stream, ModuleInfo, vns_var_table(VarTable),
-            print_name_and_num, 0, "\n", Goal, !IO)
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        pred_info_get_typevarset(PredInfo, TVarSet),
+        proc_info_get_inst_varset(ProcInfo, InstVarSet),
+        write_goal_nl(OutInfo, Stream, ModuleInfo, vns_var_table(VarTable),
+            print_name_and_num, TVarSet, InstVarSet, 0, "\n", Goal, !IO)
     else
         true
     ).

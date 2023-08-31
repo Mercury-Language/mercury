@@ -907,11 +907,12 @@ intermod_write_pred_defn(OutInfo, Stream, ModuleInfo, OrderPredInfo,
     get_clause_list_maybe_repeated(ClausesRep, Clauses),
 
     pred_info_get_goal_type(PredInfo, GoalType),
+    pred_info_get_typevarset(PredInfo, TVarSet),
     (
         GoalType = goal_for_promise(PromiseType),
         (
             Clauses = [Clause],
-            write_promise(OutInfo, Stream, ModuleInfo, VarTable,
+            write_promise(OutInfo, Stream, ModuleInfo, TVarSet, VarTable,
                 PromiseType, HeadVars, Clause, !IO)
         ;
             ( Clauses = []
@@ -921,8 +922,7 @@ intermod_write_pred_defn(OutInfo, Stream, ModuleInfo, OrderPredInfo,
         )
     ;
         GoalType = goal_not_for_promise(_),
-        pred_info_get_typevarset(PredInfo, TypeVarSet),
-        TypeQual = tvarset_var_table(TypeVarSet, VarTable),
+        TypeQual = tvarset_var_table(TVarSet, VarTable),
         list.foldl(
             intermod_write_clause(OutInfo, Stream, ModuleInfo, PredId,
                 PredSymName, PredOrFunc, VarTable, TypeQual, HeadVars),
@@ -930,11 +930,11 @@ intermod_write_pred_defn(OutInfo, Stream, ModuleInfo, OrderPredInfo,
     ).
 
 :- pred write_promise(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_table::in, promise_type::in, list(prog_var)::in,
-    clause::in, io::di, io::uo) is det.
+    module_info::in, tvarset::in, var_table::in, promise_type::in,
+    list(prog_var)::in, clause::in, io::di, io::uo) is det.
 
-write_promise(Info, Stream, ModuleInfo, VarTable, PromiseType, HeadVars,
-        Clause, !IO) :-
+write_promise(Info, Stream, ModuleInfo, TVarSet, VarTable, PromiseType,
+        HeadVars, Clause, !IO) :-
     % Please *either* keep this code in sync with mercury_output_item_promise
     % in parse_tree_out.m, *or* rewrite it to forward the work to that
     % predicate.
@@ -953,8 +953,11 @@ write_promise(Info, Stream, ModuleInfo, VarTable, PromiseType, HeadVars,
             [s(HeadVarsStr), s(promise_to_string(PromiseType))], !IO)
     ),
     Goal = Clause ^ clause_body,
-    do_write_goal(Info, Stream, ModuleInfo, vns_var_table(VarTable),
-        no_tvarset_var_table, print_name_only, 1, "\n).\n", Goal, !IO).
+    varset.init(InstVarSet),
+    InfoGoal = hlds_out_info_goal(Info, ModuleInfo, 
+        vns_var_table(VarTable), print_name_only,
+        TVarSet, InstVarSet, no_tvarset_var_table),
+    do_write_goal(InfoGoal, Stream, 1, "\n).\n", Goal, !IO).
 
 :- pred intermod_write_clause(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, pred_id::in, sym_name::in, pred_or_func::in,

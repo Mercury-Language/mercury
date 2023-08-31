@@ -172,6 +172,8 @@
 
 :- pred simplify_info_get_pred_proc_id(simplify_info::in,
     pred_proc_id::out) is det.
+:- pred simplify_info_get_tvarset(simplify_info::in,
+    tvarset::out) is det.
 :- pred simplify_info_get_inst_varset(simplify_info::in,
     inst_varset::out) is det.
 :- pred simplify_info_get_fully_strict(simplify_info::in,
@@ -317,9 +319,11 @@
 
 :- type simplify_info_params
     --->    simplify_info_params(
-                % The id of the procedure we are simplifying, and the one
-                % field of its proc_info that we need but never change.
+                % The id of the procedure we are simplifying, and two
+                % fields of its pred_info and proc_info that we need
+                % but never change.
                 sip_pred_proc_id            :: pred_proc_id,
+                sip_tvarset                 :: tvarset,
                 sip_inst_varset             :: inst_varset,
 
                 % The value of the --fully-strict option.
@@ -396,6 +400,7 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
     ),
     globals.get_trace_level(Globals, TraceLevel),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_typevarset(PredInfo, TVarSet),
     EffTraceLevel =
         eff_trace_level_for_proc(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
     globals.lookup_bool_option(Globals, trace_optimized, TraceOptimized0),
@@ -411,7 +416,7 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
         IgnoreMarkedStatic = do_not_ignore_marked_static
     ),
 
-    Params = simplify_info_params(PredProcId, InstVarSet, FullyStrict,
+    Params = simplify_info_params(PredProcId, TVarSet, InstVarSet, FullyStrict,
         EffTraceLevel, TraceOptimized, IgnoreMarkedStatic),
 
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
@@ -508,6 +513,8 @@ simplify_info_get_rerun_det(Info, X) :-
 
 simplify_info_get_pred_proc_id(Info, X) :-
     X = Info ^ simp_params ^ sip_pred_proc_id.
+simplify_info_get_tvarset(Info, X) :-
+    X = Info ^ simp_params ^ sip_tvarset.
 simplify_info_get_inst_varset(Info, X) :-
     X = Info ^ simp_params ^ sip_inst_varset.
 simplify_info_get_fully_strict(Info, X) :-

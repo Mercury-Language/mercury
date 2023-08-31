@@ -938,10 +938,13 @@ transform_direct_arg_in_out_calls_in_proc(ProgressStream, DirectArgProcMap,
     module_info_get_name(!.ModuleInfo, ModuleName),
     trace [compile_time(flag("daio-debug")), io(!IO)] (
         get_debug_output_stream(Globals, ModuleName, Stream, !IO),
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+        pred_info_get_typevarset(PredInfo, TVarSet),
+        proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
         io.format(Stream, "transforming proc(%d, %d)\n",
             [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))], !IO),
         dump_goal_nl(Stream, !.ModuleInfo, vns_var_table(VarTable0),
-            Goal0, !IO)
+            TVarSet, InstVarSet, Goal0, !IO)
     ),
     bimap.init(VarMap0),
     Info0 = daio_info(!.ModuleInfo, DirectArgProcInOutMap, VarTable0, []),
@@ -1406,10 +1409,14 @@ expand_daio_in_unify(GoalInfo0, GoalExpr0, GoalExpr, InstMap0,
         Unification0 = deconstruct(X, ConsId, _Ys, UnifyModes,
             _CanFail, _CanCgc),
         ModuleInfo = !.Info ^ daio_module_info,
+        % If we ever need the names of type and inst variables in dumped goals,
+        % We can add a pred_proc_id field to the daio_info.
+        varset.init(TVarSet),
+        varset.init(InstVarSet),
         trace [compile_time(flag("daio-debug")), io(!IO)] (
             get_daio_debug_stream(!.Info, Stream, !IO),
             dump_goal_nl(Stream, ModuleInfo,
-                vns_var_table(!.Info ^ daio_var_table),
+                vns_var_table(!.Info ^ daio_var_table), TVarSet, InstVarSet,
                 hlds_goal(GoalExpr0, GoalInfo0), !IO),
             io.flush_output(Stream, !IO)
         ),
@@ -1461,7 +1468,8 @@ expand_daio_in_unify(GoalInfo0, GoalExpr0, GoalExpr, InstMap0,
                 get_daio_debug_stream(!.Info, Stream, !IO),
                 io.write_string(Stream, "CopyGoal:\n", !IO),
                 dump_goal_nl(Stream, ModuleInfo,
-                    vns_var_table(!.Info ^ daio_var_table), CopyGoal, !IO),
+                    vns_var_table(!.Info ^ daio_var_table),
+                    TVarSet, InstVarSet, CopyGoal, !IO),
                 io.flush_output(Stream, !IO)
             )
         else

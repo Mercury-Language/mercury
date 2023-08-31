@@ -318,17 +318,19 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
                 )
             then
                 OutInfo = init_hlds_out_info(Globals, output_debug),
+                pred_info_get_typevarset(!.PredInfo, TVarSet),
+                proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
                 io.output_stream(Stream, !IO),
                 io.format(Stream, "Pred/Proc: %s/%s before dep-par-conj:\n",
                     [s(string(PredId)), s(string(ProcId))], !IO),
                 write_goal_nl(OutInfo, Stream, !.ModuleInfo,
                     vns_var_table(!.VarTable), print_name_and_num,
-                    0, "", GoalBeforeDepParConj, !IO),
+                    TVarSet, InstVarSet, 0, "", GoalBeforeDepParConj, !IO),
                 io.nl(Stream, !IO),
                 io.write_string(Stream, "After dep-par-conj:\n", !IO),
                 write_goal_nl(OutInfo, Stream, !.ModuleInfo,
                     vns_var_table(!.VarTable), print_name_and_num,
-                    0, "", !.Goal, !IO)
+                    TVarSet, InstVarSet, 0, "", !.Goal, !IO)
             else
                 true
             )
@@ -1567,12 +1569,14 @@ find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
             then
                 io.output_stream(Stream, !IO),
                 OutInfo = init_hlds_out_info(Globals, output_debug),
+                pred_info_get_typevarset(!.PredInfo, TVarSet),
+                proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
                 io.format(Stream,
                     "About to search %d/%d for dependant par conjs:\n",
                     [i(PredIdInt), i(proc_id_to_int(ProcId))], !IO),
                 write_goal_nl(OutInfo, Stream, !.ModuleInfo,
                     vns_var_table(VarTable), print_name_and_num,
-                    0, "", !.Goal, !IO)
+                    TVarSet, InstVarSet, 0, "", !.Goal, !IO)
             else
                 true
             )

@@ -103,16 +103,19 @@ saved_vars_proc(ProgressStream, PredProcId, !ProcInfo, !ModuleInfo) :-
 
     trace [io(!IO), compile_time(flag("debug_saved_vars"))] (
         OutInfo = hlds_out_util.init_hlds_out_info(Globals, output_debug),
-        io.output_stream(Stream, !IO),
-        io.write_string(Stream, "initial version:\n", !IO),
-        hlds_out_goal.write_goal(OutInfo, Stream, !.ModuleInfo,
-            vns_var_table(VarTable0), print_name_and_num, 0, "\n", Goal0, !IO),
-        io.write_string(Stream, "after transformation:\n", !IO),
-        hlds_out_goal.write_goal(OutInfo, Stream, !.ModuleInfo,
-            vns_var_table(VarTable1), print_name_and_num, 0, "\n", Goal1, !IO),
-        io.write_string(Stream, "final version:\n", !IO),
-        hlds_out_goal.write_goal(OutInfo, Stream, !.ModuleInfo,
-            vns_var_table(VarTable), print_name_and_num, 0, "\n", Goal, !IO)
+        pred_info_get_typevarset(PredInfo, TVarSet),
+        io.write_string(ProgressStream, "initial version:\n", !IO),
+        hlds_out_goal.write_goal(OutInfo, ProgressStream, !.ModuleInfo,
+            vns_var_table(VarTable0), print_name_and_num, TVarSet, InstVarSet,
+            0, "\n", Goal0, !IO),
+        io.write_string(ProgressStream, "after transformation:\n", !IO),
+        hlds_out_goal.write_goal(OutInfo, ProgressStream, !.ModuleInfo,
+            vns_var_table(VarTable1), print_name_and_num, TVarSet, InstVarSet,
+            0, "\n", Goal1, !IO),
+        io.write_string(ProgressStream, "final version:\n", !IO),
+        hlds_out_goal.write_goal(OutInfo, ProgressStream, !.ModuleInfo,
+            vns_var_table(VarTable), print_name_and_num, TVarSet, InstVarSet,
+            0, "\n", Goal, !IO)
     ),
 
     proc_info_set_goal(Goal, !ProcInfo),

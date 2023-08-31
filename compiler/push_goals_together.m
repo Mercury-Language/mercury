@@ -77,6 +77,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -95,11 +96,16 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     PushInfo = push_info(Globals, ModuleName, RttiVarMaps0),
     OutInfo = init_hlds_out_info(Globals, output_debug),
+    % If we ever need the names of any type variables in dumped goals,
+    % we can get our caller to pass us the pred_id.
+    varset.init(TVarSet),
+    proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
     trace [compiletime(flag("debug_push_goals")), io(!IO)] (
         get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
         io.write_string(DebugStream, "Goal before pushes:\n", !IO),
         write_goal_nl(OutInfo, DebugStream, !.ModuleInfo,
-            vns_var_table(VarTable0), print_name_and_num, 0, "", Goal0, !IO)
+            vns_var_table(VarTable0), print_name_and_num,
+            TVarSet, InstVarSet, 0, "", Goal0, !IO)
     ),
     do_push_list(PushInfo, PushGoals, OverallResult, Goal0, Goal1),
     (
@@ -110,8 +116,8 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
             get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
             io.write_string(DebugStream, "Goal after pushes:\n", !IO),
             write_goal_nl(OutInfo, DebugStream, !.ModuleInfo,
-                vns_var_table(VarTable0), print_name_and_num, 0, "",
-                Goal1, !IO)
+                vns_var_table(VarTable0), print_name_and_num,
+                TVarSet, InstVarSet, 0, "", Goal1, !IO)
         ),
 
         % We need to fix up the goal_infos of the goals touched directly or
@@ -134,7 +140,6 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
             HeadVars, _Warnings, Goal1, Goal2,
             VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
         proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
-        proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
         recompute_instmap_delta(no_recomp_atomics, VarTable, InstVarSet,
             InstMap0, Goal2, Goal, !ModuleInfo),
         proc_info_set_goal(Goal, !ProcInfo),
@@ -144,7 +149,8 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
             get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
             io.write_string(DebugStream, "Goal after fixups:\n", !IO),
             write_goal_nl(OutInfo, DebugStream, !.ModuleInfo,
-                vns_var_table(VarTable), print_name_and_num, 0, "", Goal, !IO)
+                vns_var_table(VarTable), print_name_and_num,
+                TVarSet, InstVarSet, 0, "", Goal, !IO)
         )
     ).
 

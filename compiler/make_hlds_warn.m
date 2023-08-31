@@ -175,7 +175,10 @@ warn_singletons(ModuleInfo, PfSymNameArity, VarSet, BodyGoal, SeenQuant,
         io.stderr_stream(StdErr, !IO),
         io.write_string(StdErr,
             "\nWARN_SINGLETONS on the following goal:\n", !IO),
-        dump_goal(StdErr, ModuleInfo, vns_varset(VarSet), BodyGoal, !IO)
+        varset.init(TVarSet),
+        varset.init(InstVarSet),
+        dump_goal(StdErr, ModuleInfo, vns_varset(VarSet), TVarSet, InstVarSet,
+            BodyGoal, !IO)
     ),
 
     Info0 = warn_info(ModuleInfo, PfSymNameArity, VarSet,

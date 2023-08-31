@@ -174,7 +174,7 @@ pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
     io.format(Stream, " initial cost: %d\n", [i(InitialCost)], !IO),
     io.format(Stream, " cost delta: %d\n", [i(CostDelta)], !IO),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     proc_info_get_var_table(ProcInfo, VarTable),
     instmap_restrict(NonLocals, InstMap, InstMap1),
     ArgsStr = mercury_vars_to_string(VarTable, print_name_and_num, Args),
@@ -183,8 +183,10 @@ pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
     module_info_get_globals(ModuleInfo, Globals),
     OutInfo = init_hlds_out_info(Globals, output_debug),
     VarNameSrc = vns_var_table(VarTable),
-    write_goal_nl(OutInfo, Stream, ModuleInfo, VarNameSrc,
-        print_name_and_num, 1, "\n", Goal, !IO),
+    pred_info_get_typevarset(PredInfo, TVarSet),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
+    write_goal_nl(OutInfo, Stream, ModuleInfo, VarNameSrc, print_name_and_num,
+        TVarSet, InstVarSet, 1, "\n", Goal, !IO),
     set.to_sorted_list(Parents, ParentsList),
     ParentStrs = list.map(pred_proc_id_to_dev_string(ModuleInfo), ParentsList),
     ParentsStr = string.join_list(", ", ParentStrs),
@@ -195,7 +197,7 @@ pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
         proc_info_get_goal(ProcInfo, ProcGoal),
         io.write_string(Stream, "Unfolded goal\n", !IO),
         write_goal_nl(OutInfo, Stream, ModuleInfo, VarNameSrc,
-            print_name_and_num, 1, "\n", ProcGoal, !IO)
+            print_name_and_num, TVarSet, InstVarSet, 1, "\n", ProcGoal, !IO)
     ;
         WriteUnfoldedGoal = no
     ).
@@ -256,6 +258,7 @@ pd_debug_output_goal(PDInfo, Msg, Goal, !IO) :-
         get_debug_output_stream(Globals, ModuleName, Stream, !IO),
 
         Goal = hlds_goal(GoalExpr, GoalInfo),
+        pd_info_get_pred_info(PDInfo, PredInfo),
         pd_info_get_proc_info(PDInfo, ProcInfo),
         proc_info_get_var_table(ProcInfo, VarTable),
         pd_info_get_instmap(PDInfo, InstMap),
@@ -266,8 +269,10 @@ pd_debug_output_goal(PDInfo, Msg, Goal, !IO) :-
         InstmapStr = instmap_to_string(VarTable, print_name_and_num,
             1, VarsInstMap),
         io.format(Stream, "%s%s\n", [s(InstmapStr), s(Msg)], !IO),
+        pred_info_get_typevarset(PredInfo, TVarSet),
+        proc_info_get_inst_varset(ProcInfo, InstVarSet),
         write_goal_nl(OutInfo, Stream, ModuleInfo, vns_var_table(VarTable),
-            print_name_and_num, 1, "\n", Goal, !IO),
+            print_name_and_num, TVarSet, InstVarSet, 1, "\n", Goal, !IO),
         io.flush_output(Stream, !IO)
     ).
 

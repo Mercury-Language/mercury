@@ -921,8 +921,8 @@ strip_module_names_from_mode(StripWhat, Mode0, Mode) :-
         Mode = from_to_mode(Initial, Final)
     ;
         Mode0 = user_defined_mode(SymName0, Insts0),
-        strip_module_names_from_inst_list(StripWhat, Insts0, Insts),
         strip_module_names_from_sym_name(StripWhat, SymName0, SymName),
+        strip_module_names_from_inst_list(StripWhat, Insts0, Insts),
         Mode = user_defined_mode(SymName, Insts)
     ).
 

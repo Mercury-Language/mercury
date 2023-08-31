@@ -573,8 +573,11 @@ write_clause(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc, VarNameSrc,
         io.write_string(Stream, ".\n", !IO)
     else
         io.write_string(Stream, " :-\n", !IO),
-        do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent1, ".\n", Goal, !IO)
+        pred_info_get_typevarset(PredInfo, TVarSet),
+        varset.init(InstVarSet),
+        InfoGoal = hlds_out_info_goal(Info, ModuleInfo,
+            VarNameSrc, VarNamePrint, TVarSet, InstVarSet, TypeQual),
+        do_write_goal(InfoGoal, Stream, Indent1, ".\n", Goal, !IO)
     ).
 
 :- pred write_annotated_clause_heads(io.text_output_stream::in,
@@ -784,8 +787,9 @@ write_proc(Info, Stream, VarNamePrint, ModuleInfo, PredId, PredInfo,
         write_clause_head(Stream, ModuleInfo, vns_var_table(VarTable),
             VarNamePrint, PredId, PredOrFunc, HeadTerms, !IO),
         io.write_string(Stream, " :-\n", !IO),
+        proc_info_get_inst_varset(ProcInfo, InstVarSet),
         write_goal(Info, Stream, ModuleInfo, vns_var_table(VarTable),
-            VarNamePrint, Indent1, ".\n", Goal, !IO)
+            VarNamePrint, TVarSet, InstVarSet, Indent1, ".\n", Goal, !IO)
     ).
 
 %---------------------------------------------------------------------------%

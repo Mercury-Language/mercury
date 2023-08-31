@@ -345,9 +345,11 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
                     io.format(Stream, "%% Starting unneededed code pass %d\n",
                         [i(Pass)], !IO),
                     OutInfo = init_hlds_out_info(Globals, output_debug),
+                    pred_info_get_typevarset(PredInfo, TVarSet),
+                    proc_info_get_inst_varset(!.ProcInfo, InstVarSet0),
                     write_goal(OutInfo, Stream, !.ModuleInfo,
                         vns_var_table(VarTable0), print_name_and_num,
-                        0, ".\n", Goal0, !IO)
+                        TVarSet, InstVarSet0, 0, ".\n", Goal0, !IO)
                 else
                     true
                 )

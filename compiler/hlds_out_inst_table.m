@@ -81,8 +81,7 @@ write_inst_table(Stream, Lang, MaybeUseErrorMsgInst,
     io.write_string(Stream, "\n%-------- Unify insts --------\n", !IO),
     list.foldl2(
         write_key_maybe_inst_det(MaybeUseErrorMsgInst, Stream, Lang, "Unify",
-            InstNumLimit, InstSizeLimit,
-            write_key_unify_inst(MaybeUseErrorMsgInst)),
+            InstNumLimit, InstSizeLimit, write_key_unify_inst),
         UnifyInstPairs, 0, NumUnifyInsts, !IO),
     io.format(Stream,
         "\nTotal number of unify insts: %d\n", [i(NumUnifyInsts)], !IO),
@@ -90,8 +89,7 @@ write_inst_table(Stream, Lang, MaybeUseErrorMsgInst,
     io.write_string(Stream, "\n%-------- Merge insts --------\n", !IO),
     list.foldl2(
         write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang, "Merge",
-            InstNumLimit, InstSizeLimit,
-            write_key_merge_inst(MaybeUseErrorMsgInst)),
+            InstNumLimit, InstSizeLimit, write_key_merge_inst),
         MergeInstPairs, 0, NumMergeInsts, !IO),
     io.format(Stream,
         "\nTotal number of merge insts: %d\n", [i(NumMergeInsts)], !IO),
@@ -170,8 +168,9 @@ write_inst_params(Stream, InstVar, InstVars, InstVarSet, !IO) :-
 
 :- pred write_key_maybe_inst(maybe_use_error_msg_inst::in,
     io.text_output_stream::in, output_lang::in, string::in, int::in, int::in,
-    pred(io.text_output_stream, output_lang, int, Key, io, io)::
-        in(pred(in, in, in, in, di, uo) is det),
+    pred(maybe_use_error_msg_inst, io.text_output_stream, output_lang, int,
+        Key, io, io)::
+        in(pred(in, in, in, in, in, di, uo) is det),
     pair(Key, maybe_inst)::in, int::in, int::out, io::di, io::uo) is det.
 
 write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang, Kind,
@@ -179,7 +178,7 @@ write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang, Kind,
     !:N = !.N + 1,
     ( if !.N =< InstNumLimit then
         io.format(Stream, "\n%s entry %d key\n", [s(Kind), i(!.N)], !IO),
-        WriteKey(Stream, Lang, InstSizeLimit, Key, !IO),
+        WriteKey(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit, Key, !IO),
         (
             MaybeInst = inst_unknown,
             io.format(Stream, "%s entry %d value UNKNOWN\n",
@@ -196,8 +195,9 @@ write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang, Kind,
 
 :- pred write_key_maybe_inst_det(maybe_use_error_msg_inst::in,
     io.text_output_stream::in, output_lang::in, string::in, int::in, int::in,
-    pred(io.text_output_stream, output_lang, int, Key, io, io)::
-        in(pred(in, in, in, in, di, uo) is det),
+    pred(maybe_use_error_msg_inst, io.text_output_stream, output_lang, int,
+        Key, io, io)::
+        in(pred(in, in, in, in, in, di, uo) is det),
     pair(Key, maybe_inst_det)::in, int::in, int::out,
     io::di, io::uo) is det.
 
@@ -206,7 +206,7 @@ write_key_maybe_inst_det(MaybeUseErrorMsgInst, Stream, Lang, Kind,
     !:N = !.N + 1,
     ( if !.N =< InstNumLimit then
         io.format(Stream, "\n%s entry %d key\n", [s(Kind), i(!.N)], !IO),
-        WriteKey(Stream, Lang, InstSizeLimit, Key, !IO),
+        WriteKey(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit, Key, !IO),
         (
             MaybeInstDet = inst_det_unknown,
             io.format(Stream, "%s entry %d value UNKNOWN\n",
@@ -265,21 +265,27 @@ write_key_merge_inst(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
     write_inst_entry(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
         InstB, !IO).
 
-:- pred write_key_ground_inst(io.text_output_stream::in, output_lang::in,
+:- pred write_key_ground_inst(maybe_use_error_msg_inst::in,
+    io.text_output_stream::in, output_lang::in,
     int::in, ground_inst_info::in, io::di, io::uo) is det.
 
-write_key_ground_inst(Stream, Lang, InstSizeLimit, GroundInstInfo, !IO) :-
+write_key_ground_inst(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
+        GroundInstInfo, !IO) :-
     GroundInstInfo = ground_inst_info(InstName, Uniq, Live, Real),
     write_uniq_live_real(Stream, Uniq, Live, Real, !IO),
-    write_inst_name_nl(Stream, Lang, InstSizeLimit, InstName, !IO).
+    write_inst_name_nl(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
+        InstName, !IO).
 
-:- pred write_key_any_inst(io.text_output_stream::in, output_lang::in,
+:- pred write_key_any_inst(maybe_use_error_msg_inst::in,
+    io.text_output_stream::in, output_lang::in,
     int::in, any_inst_info::in, io::di, io::uo) is det.
 
-write_key_any_inst(Stream, Lang, InstSizeLimit, AnyInstInfo, !IO) :-
+write_key_any_inst(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
+        AnyInstInfo, !IO) :-
     AnyInstInfo = any_inst_info(InstName, Uniq, Live, Real),
     write_uniq_live_real(Stream, Uniq, Live, Real, !IO),
-    write_inst_name_nl(Stream, Lang, InstSizeLimit, InstName, !IO).
+    write_inst_name_nl(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
+        InstName, !IO).
 
 :- pred write_uniq_live_real(io.text_output_stream::in,
     uniqueness::in, is_live::in, unify_is_real::in, io::di, io::uo) is det.
@@ -316,15 +322,36 @@ write_uniq_live_real(Stream, Uniq, Live, Real, !IO) :-
         io.write_string(Stream, "fake unify\n", !IO)
     ).
 
-:- pred write_inst_name_nl(io.text_output_stream::in, output_lang::in,
-    int::in, inst_name::in, io::di, io::uo) is det.
+:- pred write_inst_name_nl(maybe_use_error_msg_inst::in,
+    io.text_output_stream::in, output_lang::in, int::in, inst_name::in,
+    io::di, io::uo) is det.
 
-write_inst_name_nl(Stream, Lang, InstSizeLimit, InstName, !IO) :-
-    InstNameTerm = inst_name_to_limited_size_term(Lang, InstSizeLimit,
-        InstName),
-    varset.init(VarSet),
-    mercury_output_term_vs(VarSet, print_name_only, InstNameTerm, Stream, !IO),
-    io.nl(Stream, !IO).
+write_inst_name_nl(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit, InstName,
+        !IO) :-
+    (
+        MaybeUseErrorMsgInst = do_not_use_error_msg_inst,
+        write_inst_name_as_term_nl(Stream, Lang, InstSizeLimit, InstName, !IO)
+    ;
+        MaybeUseErrorMsgInst = use_error_msg_inst(ModuleInfo),
+        varset.init(TVarSet),
+        varset.init(InstVarSet),
+        ShortInstSuffix = [nl],
+        LongInstPrefix = [],
+        LongInstSuffix = [nl],
+        InstNamePieces = error_msg_inst_name(ModuleInfo, InstVarSet,
+            expand_named_insts, uod_developer(TVarSet),
+            fixed_short_inst, ShortInstSuffix,
+            LongInstPrefix, LongInstSuffix, InstName),
+        ShortInstNameStr = error_pieces_to_one_line_string(InstNamePieces),
+        ( if string.count_code_points(ShortInstNameStr) < 80 then
+            io.format(Stream, "%s\n", [s(ShortInstNameStr)], !IO)
+        else
+            Prefix = "",
+            LongInstNameStr =
+                error_pieces_to_multi_line_string(Prefix, InstNamePieces),
+            io.format(Stream, "%s", [s(LongInstNameStr)], !IO)
+        )
+    ).
 
 :- pred write_inst_entry(maybe_use_error_msg_inst::in,
     io.text_output_stream::in, output_lang::in, int::in, mer_inst::in,
@@ -334,16 +361,17 @@ write_inst_entry(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
         Inst, !IO) :-
     (
         MaybeUseErrorMsgInst = do_not_use_error_msg_inst,
-        write_inst(Stream, Lang, InstSizeLimit, Inst, !IO),
-        io.nl(Stream, !IO)
+        write_inst_as_term_nl(Stream, Lang, InstSizeLimit, Inst, !IO)
     ;
         MaybeUseErrorMsgInst = use_error_msg_inst(ModuleInfo),
+        varset.init(TVarSet),
         varset.init(InstVarSet),
         ShortInstSuffix = [nl],
         LongInstPrefix = [],
         LongInstSuffix = [nl],
         InstPieces = error_msg_inst(ModuleInfo, InstVarSet,
-            expand_named_insts, fixed_short_inst, ShortInstSuffix,
+            expand_named_insts, uod_developer(TVarSet),
+            fixed_short_inst, ShortInstSuffix,
             LongInstPrefix, LongInstSuffix, Inst),
         ShortInstStr = error_pieces_to_one_line_string(InstPieces),
         ( if string.count_code_points(ShortInstStr) < 80 then
@@ -356,13 +384,26 @@ write_inst_entry(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
         )
     ).
 
-:- pred write_inst(io.text_output_stream::in, output_lang::in, int::in,
-    mer_inst::in, io::di, io::uo) is det.
+:- pred write_inst_name_as_term_nl(io.text_output_stream::in, output_lang::in,
+    int::in, inst_name::in, io::di, io::uo) is det.
 
-write_inst(Stream, Lang, InstSizeLimit, Inst, !IO) :-
+write_inst_name_as_term_nl(Stream, Lang, InstSizeLimit, InstName, !IO) :-
+    InstNameTerm = inst_name_to_limited_size_term(Lang, InstSizeLimit,
+        InstName),
+    varset.init(InstVarSet),
+    mercury_output_term_vs(InstVarSet, print_name_only, InstNameTerm,
+        Stream, !IO),
+    io.nl(Stream, !IO).
+
+:- pred write_inst_as_term_nl(io.text_output_stream::in, output_lang::in,
+    int::in, mer_inst::in, io::di, io::uo) is det.
+
+write_inst_as_term_nl(Stream, Lang, InstSizeLimit, Inst, !IO) :-
     InstTerm = inst_to_limited_size_term(Lang, InstSizeLimit, Inst),
-    varset.init(VarSet),
-    mercury_output_term_vs(VarSet, print_name_only, InstTerm, Stream, !IO).
+    varset.init(InstVarSet),
+    mercury_output_term_vs(InstVarSet, print_name_only, InstTerm,
+        Stream, !IO),
+    io.nl(Stream, !IO).
 
 %---------------------------------------------------------------------------%
 %

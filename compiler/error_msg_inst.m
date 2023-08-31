@@ -32,13 +32,17 @@
     --->    dont_expand_named_insts
     ;       expand_named_insts.
 
+:- type user_or_developer
+    --->    uod_user
+    ;       uod_developer(tvarset).
+
 :- type short_inst
     --->    quote_short_inst
     ;       fixed_short_inst.
 
-    % error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts,
-    %   QuoteShortInst, ShortInstSuffix, LongInstPrefix, LongInstSuffix, Inst0)
-    %   = Pieces:
+    % error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts, UserOrDeveloper,
+    %   QuoteShortInst, ShortInstSuffix, LongInstPrefix, LongInstSuffix,
+    %   Inst0) = Pieces:
     %
     % Format Inst0 for use in an error message, in a short form that fits at
     % the end of the current line if possible, and in a long form that starts
@@ -57,9 +61,14 @@
     % undo the effect of the first.)
     %
 :- func error_msg_inst(module_info, inst_varset, maybe_expand_named_insts,
-    short_inst, list(format_piece),
-    list(format_piece), list(format_piece), mer_inst)
-    = list(format_piece).
+    user_or_developer, short_inst, list(format_piece),
+    list(format_piece), list(format_piece), mer_inst) = list(format_piece).
+
+    % Do the same job as error_msg_inst, but for inst names.
+    %
+:- func error_msg_inst_name(module_info, inst_varset, maybe_expand_named_insts,
+    user_or_developer, short_inst, list(format_piece),
+    list(format_piece), list(format_piece), inst_name) = list(format_piece).
 
 %---------------------------------------------------------------------------%
 
@@ -72,11 +81,13 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_type_util.
 :- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_to_term.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.write_error_spec.
@@ -94,7 +105,8 @@
     --->    inst_msg_info(
                 imi_module_info         :: module_info,
                 imi_inst_varset         :: inst_varset,
-                imi_named_insts         :: maybe_expand_named_insts
+                imi_named_insts         :: maybe_expand_named_insts,
+                imi_audience            :: user_or_developer
             ).
 
 :- type maybe_inline_pieces
@@ -132,14 +144,122 @@
                 ei_inst_num_counter     :: counter
             ).
 
-error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts,
-        QuoteShortInst, ShortInstSuffix, LongInstPrefix, LongInstSuffix, Inst0)
-        = Pieces :-
-    Info = inst_msg_info(ModuleInfo, InstVarSet, ExpandNamedInsts),
-    strip_module_names_from_inst(strip_builtin_module_name, Inst0, Inst),
+error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts, UserOrDeveloper,
+        QuoteShortInst, ShortInstSuffix, LongInstPrefix, LongInstSuffix,
+        Inst) = Pieces :-
+    Info = inst_msg_info(ModuleInfo, InstVarSet, ExpandNamedInsts,
+        UserOrDeveloper),
+    % We used to call strip_module_names_from_inst to strip builtin
+    % module names from all parts of the inst we are asked to convert
+    % to Pieces. This worked well when we used the code in this module
+    % only for generating descriptions of insts for error messages.
+    % However, it became a problem when we
+    %
+    % - started using this code to describe insts in HLDS dumps, *and*
+    % - we modified inst_lookup.m to report inst names that were effectively
+    %   *dangling references*, i.e. references to an entries in the inst tables
+    %   that weren't actually there.
+    %
+    % The sequence of events that led to the problem was as follows.
+    %
+    % - Mode analysis creates an entry in the ground inst table. Both the key
+    %   and the value of this entry contains the same higher order inst, and
+    %   the modes of the arguments of the pred_inst_info have the form
+    %
+    %       user_defined_mode(qualified(unqualified("builtin"), "in"), [])
+    %
+    % - When printing the value in the ground table entry in a HLDS dump,
+    %   the call to strip_module_names_from_inst replaces all the argument
+    %   modes in that pred_inst_info with modes of the form
+    %
+    %       user_defined_mode(unqualified("in"), [])
+    %
+    % - Execution continues to the call to inst_to_pieces below, which calls
+    %   inst_name_to_pieces, which calls inst_lookup_debug. The difference
+    %   in module qualification then causes the search of the ground inst
+    %   table there to fail, which in turn causes inst_lookup_debug to return
+    %   an inst constructed by make_missing_inst_name, which will then contain
+    %   "MISSING_INST" in its name.
+    %
+    % - The occurence of this string in the HLDS dump is *supposed* to mean
+    %   that the process of *constructing* the inst has a bug, but in this case
+    %   it is the process of *printing* the inst that has a bug. This can be
+    %   quite misleading.
+    %
+    % It was misleading enough to cause me, zs, to add a significant amount
+    % of code to help me track down what I thought was a problem in inst
+    % construction, only to find that the problem was in code I previously
+    % added to help find another bug :-) I don't want this to happen again
+    % in the future, so from now on.
+    %
+    % The general approach of the fix is two-fold.
+    %
+    % - First, when we generate Pieces for users, we want to strip any
+    %   module qualifiers for builtin modules from insts only *after*
+    %   we have called inst_lookup_debug on those insts. This should prevent
+    %   the problem above.
+    %
+    % - Second, for insts and inst names that contain other insts or inst
+    %   names, we want to strip away module qualifiers for builtin modules
+    %   only from the parts of the inst or inst name that are *outside*
+    %   the contained insts or inst names. We want to leave the contained
+    %   insts and inst names intact, because if we didn't, the original
+    %   problem could still occur, just for the contained insts/inst names.
+    %   Any builtin module qualifiers in those contained insts/inst names
+    %   would still get stripped away later, when we get to process *them*.
     Expansions0 = expansions_info(map.init, counter.init(1)),
     InlineSuffixPieces = [],
     inst_to_pieces(Info, inline_pieces, Inst, InlineSuffixPieces,
+        InlinePieces, Expansions0, _InlineExpansions),
+    InlineStr = error_pieces_to_one_line_string(InlinePieces),
+    % We could base the decision on whether to put the inst inline
+    % on criteria other than its length, such as
+    %
+    % - on a count of the parentheses in it (which would effectively be
+    %   a test of the inst's depth);
+    % - on a count of the commas in it (which would effectively be a test
+    %   of the number of arguments in the inst); or
+    % - on a composite test, such as "the number of left parentheses
+    %   plus the number of commas cannot exceed six".
+    %
+    % The current test is just a guess; experience will give us feedback.
+    ( if
+        string.length(InlineStr, Len),
+        Len < 40
+    then
+        (
+            QuoteShortInst = quote_short_inst,
+            % An inst that is shown on the same line as English text needs
+            % something to visually separate it from the English text.
+            % The quotes provide that separation.
+            %
+            % Without a small length limit, we would use words_quote
+            % instead of quote to wrap InlineStr.
+            InlinePiece = quote(InlineStr)
+        ;
+            QuoteShortInst = fixed_short_inst,
+            % Our caller has told us that it ensured this separation already.
+            InlinePiece = fixed(InlineStr)
+        ),
+        Pieces = [InlinePiece | ShortInstSuffix]
+    else
+        % Showing the inst on a separate line from the English text
+        % provides enough separation by itself.
+        inst_to_pieces(Info, multi_line_pieces, Inst, LongInstSuffix,
+            MultiLinePieces, Expansions0, _MultiLineExpansions),
+        Pieces = LongInstPrefix ++ MultiLinePieces
+    ).
+
+%---------------------%
+
+error_msg_inst_name(ModuleInfo, InstVarSet, ExpandNamedInsts, UserOrDeveloper,
+        QuoteShortInst, ShortInstSuffix, LongInstPrefix, LongInstSuffix,
+        InstName) = Pieces :-
+    Info = inst_msg_info(ModuleInfo, InstVarSet, ExpandNamedInsts,
+        UserOrDeveloper),
+    Expansions0 = expansions_info(map.init, counter.init(1)),
+    InlineSuffixPieces = [],
+    inst_name_to_pieces(Info, inline_pieces, InstName, InlineSuffixPieces,
         InlinePieces, Expansions0, _InlineExpansions),
     InlineStr = error_pieces_to_one_line_string(InlinePieces),
     % We could base the decision on whether to put the inst inline
@@ -175,7 +295,7 @@ error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts,
     else
         % Showing the inst on a separate line from the English text
         % provides enough separation by itself.
-        inst_to_pieces(Info, multi_line_pieces, Inst, LongInstSuffix,
+        inst_name_to_pieces(Info, multi_line_pieces, InstName, LongInstSuffix,
             MultiLinePieces, Expansions0, _MultiLineExpansions),
         Pieces = LongInstPrefix ++ MultiLinePieces
     ).
@@ -453,39 +573,72 @@ inst_name_to_pieces(Info, MaybeInline, InstName, Suffix, Pieces,
                 )
             )
         ;
-            InstName = typed_inst(_Type, SubInstName),
-            % The user doesn't care about the typed_inst wrapper,
-            % and the wrapper cannot make an inst recursive.
-            inst_name_to_pieces(Info, MaybeInline, SubInstName, Suffix, Pieces,
-                !Expansions)
-        ;
-            InstName = typed_ground(Uniq, _Type),
-            % The user doesn't care about the typed_ground wrapper,
-            % and the wrapper cannot make an inst recursive.
-            EqvInst = ground(Uniq, none_or_default_func),
-            inst_to_pieces(Info, MaybeInline, EqvInst, Suffix, Pieces,
-                !Expansions)
-        ;
+            InstName = typed_inst(Type, SubInstName),
+            Audience = Info ^ imi_audience,
             (
-                InstName = unify_inst(_, _, _, _),
-                InstNameStr = "$unify_inst"
+                Audience = uod_user,
+                % The user doesn't care about the typed_inst wrapper,
+                % and the wrapper cannot make an inst recursive.
+                inst_name_to_pieces(Info, MaybeInline, SubInstName, Suffix,
+                    Pieces, !Expansions)
             ;
-                InstName = merge_inst(_, _),
-                InstNameStr = "$merge_inst"
+                Audience = uod_developer(TVarSet),
+                InstVarSet = Info ^ imi_inst_varset,
+                TypePieces = type_to_pieces(TVarSet, InstVarSet,
+                    print_name_and_num, do_not_add_quotes, [], Type),
+                inst_name_to_pieces(Info, MaybeInline, SubInstName, [],
+                    SubInstNamePieces, !Expansions),
+                (
+                    MaybeInline = multi_line_pieces,
+                    Pieces = [fixed("typed_inst("), nl_indent_delta(1)] ++
+                        TypePieces ++ [suffix(","), nl] ++
+                        SubInstNamePieces ++
+                        [nl_indent_delta(-1), fixed(")") | Suffix]
+                ;
+                    MaybeInline = inline_pieces,
+                    Pieces = [fixed("typed_inst(")] ++
+                        TypePieces ++ [suffix(",")] ++
+                        SubInstNamePieces ++ [suffix(")") | Suffix]
+                )
+            )
+        ;
+            InstName = typed_ground(Uniq, Type),
+            Audience = Info ^ imi_audience,
+            (
+                Audience = uod_user,
+                % The user doesn't care about the typed_inst wrapper,
+                % and the wrapper cannot make an inst recursive.
+                EqvInst = ground(Uniq, none_or_default_func),
+                inst_to_pieces(Info, MaybeInline, EqvInst, Suffix,
+                    Pieces, !Expansions)
             ;
-                InstName = ground_inst(_, _, _, _),
-                InstNameStr = "$ground_inst"
-            ;
-                InstName = any_inst(_, _, _, _),
-                InstNameStr = "$any_inst"
-            ;
-                InstName = shared_inst(_),
-                InstNameStr = "$shared_inst"
-            ;
-                InstName = mostly_uniq_inst(_),
-                InstNameStr = "$mostly_uniq_inst"
+                Audience = uod_developer(TVarSet),
+                InstVarSet = Info ^ imi_inst_varset,
+                TypePieces = type_to_pieces(TVarSet, InstVarSet,
+                    print_name_and_num, do_not_add_quotes, [], Type),
+                UniqStr = inst_uniqueness(Uniq, "shared"),
+                (
+                    MaybeInline = multi_line_pieces,
+                    Pieces = [fixed("typed_ground(" ++ UniqStr ++ ",")] ++
+                        [nl_indent_delta(1)] ++ TypePieces ++
+                        [nl_indent_delta(-1), fixed(")") | Suffix]
+                ;
+                    MaybeInline = inline_pieces,
+                    Pieces = [fixed("typed_ground(" ++ UniqStr ++ ",")] ++
+                        TypePieces ++ [suffix(")") | Suffix]
+                )
+            )
+        ;
+            ( InstName = unify_inst(_, _, _, _)
+            ; InstName = merge_inst(_, _)
+            ; InstName = ground_inst(_, _, _, _)
+            ; InstName = any_inst(_, _, _, _)
+            ; InstName = shared_inst(_)
+            ; InstName = mostly_uniq_inst(_)
             ),
             ModuleInfo = Info ^ imi_module_info,
+            % We need to lookup InstName0, NOT InstName. The reason
+            % is explained in the big comment in error_msg_inst.
             inst_lookup_debug(ModuleInfo, InstName, EqvInst),
             ( if
                 EqvInst = defined_inst(EqvInstName),
@@ -497,29 +650,127 @@ inst_name_to_pieces(Info, MaybeInline, InstName, Suffix, Pieces,
                 name_and_arg_insts_to_pieces(NameInfo, MaybeInline,
                     EqvSymNameStr, EqvArgInsts, Suffix, Pieces,
                     !.Expansions, _)
-            else if
-                EqvInst = defined_inst(InstName)
-            then
-                Pieces = [fixed(InstNameStr) | Suffix]
             else
-                record_internal_inst_name(InstName, InstNameStr, InstNumPieces,
-                    !Expansions),
-                inst_to_pieces(Info, MaybeInline, EqvInst, Suffix, EqvPieces,
-                    !Expansions),
+                Audience = Info ^ imi_audience,
+                compiler_key_inst_name_to_dollar_string(InstName, InstNameStr),
                 (
-                    MaybeInline = multi_line_pieces,
-                    Pieces = InstNumPieces ++
-                        [nl, words("which expands to"),
-                        nl_indent_delta(1) | EqvPieces] ++
-                        [nl_indent_delta(-1) | Suffix]
+                    Audience = uod_user,
+                    ( if EqvInst = defined_inst(InstName) then
+                        Pieces = [fixed(InstNameStr) | Suffix]
+                    else
+                        record_internal_inst_name(InstName, InstNameStr,
+                            InstNumPieces, !Expansions),
+                        inst_to_pieces(Info, MaybeInline, EqvInst, Suffix,
+                            EqvPieces, !Expansions),
+                        (
+                            MaybeInline = multi_line_pieces,
+                            Pieces = InstNumPieces ++
+                                [nl, words("which expands to"),
+                                nl_indent_delta(1) | EqvPieces] ++
+                                [nl_indent_delta(-1) | Suffix]
+                        ;
+                            MaybeInline = inline_pieces,
+                            Pieces = InstNumPieces ++
+                                [words("which expands to"),
+                            prefix("<") | EqvPieces] ++ [suffix(">") | Suffix]
+                        )
+                    )
                 ;
-                    MaybeInline = inline_pieces,
-                    Pieces = InstNumPieces ++
-                        [words("which expands to"),
-                        prefix("<") | EqvPieces] ++ [suffix(">") | Suffix]
+                    Audience = uod_developer(_TVarSet),
+                    (
+                        (
+                            InstName = unify_inst(Live, Real,
+                                SubInstA, SubInstB),
+                            UnifyOrMerge = "unify",
+                            InitialArgs =
+                                [suffix(is_live_to_str(Live) ++ ","),
+                                fixed(unify_is_real_to_str(Real) ++ ",")]
+                        ;
+                            InstName = merge_inst(SubInstA, SubInstB),
+                            UnifyOrMerge = "merge",
+                            InitialArgs = []
+                        ),
+                        SubSuffixA = [],
+                        SubSuffixB = [],
+                        inst_to_pieces(Info, MaybeInline, SubInstA, SubSuffixA,
+                            SubInstPiecesA, !Expansions),
+                        inst_to_pieces(Info, MaybeInline, SubInstB, SubSuffixB,
+                            SubInstPiecesB, !Expansions),
+                        InstNamePieces = [fixed(UnifyOrMerge ++ "(")] ++
+                            InitialArgs ++ [nl_indent_delta(1)] ++
+                            SubInstPiecesA ++ [suffix(","), nl] ++
+                            SubInstPiecesB ++ [nl_indent_delta(-1), fixed(")")]
+                    ;
+                        (
+                            InstName = ground_inst(SubInstName, Uniq,
+                                Live, Real),
+                            GroundOrAny = "ground",
+                            UniqStr = inst_uniqueness(Uniq, "shared")
+                        ;
+                            InstName = any_inst(SubInstName, Uniq, Live, Real),
+                            GroundOrAny = "any",
+                            UniqStr = any_inst_uniqueness(Uniq)
+                        ),
+                        SubSuffix = [],
+                        inst_name_to_pieces(Info, MaybeInline, SubInstName,
+                            SubSuffix, SubInstNamePieces, !Expansions),
+                        InstNamePieces =
+                            [fixed(GroundOrAny ++ "(" ++ UniqStr ++ ","),
+                            fixed(is_live_to_str(Live) ++ ","),
+                            fixed(unify_is_real_to_str(Real) ++ ","),
+                            nl_indent_delta(1)] ++ SubInstNamePieces ++
+                            [nl_indent_delta(-1), fixed(")")]
+                    ;
+                        (
+                            InstName = shared_inst(SubInstName),
+                            SorMU = "shared"
+                        ;
+                            InstName = mostly_uniq_inst(SubInstName),
+                            SorMU = "mostly_uniq"
+                        ),
+                        SubSuffix = [],
+                        inst_name_to_pieces(Info, MaybeInline, SubInstName,
+                            SubSuffix, SubInstNamePieces, !Expansions),
+                        InstNamePieces = [fixed(SorMU ++ "("),
+                            nl_indent_delta(1)] ++ SubInstNamePieces ++
+                            [nl_indent_delta(-1), fixed(")")]
+                    ),
+                    Pieces = InstNamePieces
                 )
             )
         )
+    ).
+
+:- inst compiler_key_inst_name for inst_name/0
+    --->    unify_inst(ground, ground, ground, ground)
+    ;       merge_inst(ground, ground)
+    ;       ground_inst(ground, ground, ground, ground)
+    ;       any_inst(ground, ground, ground, ground)
+    ;       shared_inst(ground)
+    ;       mostly_uniq_inst(ground).
+
+:- pred compiler_key_inst_name_to_dollar_string(
+    inst_name::in(compiler_key_inst_name), string::out) is det.
+
+compiler_key_inst_name_to_dollar_string(InstName, InstNameStr) :-
+    (
+        InstName = unify_inst(_, _, _, _),
+        InstNameStr = "$unify_inst"
+    ;
+        InstName = merge_inst(_, _),
+        InstNameStr = "$merge_inst"
+    ;
+        InstName = ground_inst(_, _, _, _),
+        InstNameStr = "$ground_inst"
+    ;
+        InstName = any_inst(_, _, _, _),
+        InstNameStr = "$any_inst"
+    ;
+        InstName = shared_inst(_),
+        InstNameStr = "$shared_inst"
+    ;
+        InstName = mostly_uniq_inst(_),
+        InstNameStr = "$mostly_uniq_inst"
     ).
 
 :- pred sym_name_to_min_qual_string(inst_msg_info::in,
@@ -530,7 +781,11 @@ sym_name_to_min_qual_string(Info, SymName, SymNameStr) :-
         SymName = qualified(ModuleName, BaseName),
         ModuleInfo = Info ^ imi_module_info,
         module_info_get_name(ModuleInfo, CurModuleName),
-        ( if ModuleName = CurModuleName then
+        ( if
+            ( ModuleName = CurModuleName
+            ; ModuleName = mercury_public_builtin_module
+            )
+        then
             SymNameStr = BaseName
         else
             SymNameStr = sym_name_to_string(SymName)

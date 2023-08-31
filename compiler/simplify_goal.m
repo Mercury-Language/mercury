@@ -293,13 +293,17 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
             io.stderr_stream(StdErr, !IO),
             simplify_info_get_module_info(!.Info, TraceModuleInfo),
             simplify_info_get_var_table(!.Info, TraceVarTable),
+            simplify_info_get_tvarset(!.Info, TVarSet),
+            simplify_info_get_inst_varset(!.Info, InstVarSet),
             TraceVarNameSrc = vns_var_table(TraceVarTable),
 
             Goal5 = hlds_goal(GoalExpr4, GoalInfo),
             io.write_string(StdErr, "\nMerge goal before\n\n", !IO),
-            dump_goal_nl(StdErr, TraceModuleInfo, TraceVarNameSrc, Goal0, !IO),
+            dump_goal_nl(StdErr, TraceModuleInfo, TraceVarNameSrc,
+                TVarSet, InstVarSet, Goal0, !IO),
             io.write_string(StdErr, "\nMerge goal after\n\n", !IO),
-            dump_goal_nl(StdErr, TraceModuleInfo, TraceVarNameSrc, Goal5, !IO)
+            dump_goal_nl(StdErr, TraceModuleInfo, TraceVarNameSrc, 
+                TVarSet, InstVarSet, Goal5, !IO)
         else
             true
         )

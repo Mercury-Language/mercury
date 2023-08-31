@@ -647,6 +647,8 @@ simplify_top_level_goal(NestedContext0, InstMap0, AllowSplitSwitchArms,
             OriginalSimplifyTasks ^ do_switch_split_arms = split_switch_arms,
             AllowSplitSwitchArms = allow_splitting_switch_arms
         then
+            simplify_info_get_tvarset(!.Info, TVarSet),
+            simplify_info_get_inst_varset(!.Info, InstVarSet),
             trace [compile_time(flag("split_switch_arms")),
                 runtime(env("SPLIT_SWITCH_ARMS")),
                 io(!IO)]
@@ -656,7 +658,7 @@ simplify_top_level_goal(NestedContext0, InstMap0, AllowSplitSwitchArms,
                 simplify_info_get_module_info(!.Info, ModuleInfo),
                 simplify_info_get_var_table(!.Info, VarTable),
                 dump_goal_nl(StdErr, ModuleInfo, vns_var_table(VarTable),
-                    !.Goal, !IO)
+                    TVarSet, InstVarSet, !.Goal, !IO)
             ),
             split_switch_arms_in_goal(ToSplitArms, !Goal),
             trace [compile_time(flag("split_switch_arms")),
@@ -668,7 +670,7 @@ simplify_top_level_goal(NestedContext0, InstMap0, AllowSplitSwitchArms,
                 simplify_info_get_module_info(!.Info, ModuleInfo),
                 simplify_info_get_var_table(!.Info, VarTable),
                 dump_goal_nl(StdErr, ModuleInfo, vns_var_table(VarTable),
-                    !.Goal, !IO)
+                    TVarSet, InstVarSet, !.Goal, !IO)
             ),
 
             !.Goal = hlds_goal(_, GoalInfo0),
@@ -717,6 +719,8 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
         RerunQuantDelta = rerun_quant_instmap_deltas,
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
         some [!ModuleInfo, !VarTable, !RttiVarMaps] (
+            simplify_info_get_tvarset(!.Info, TVarSet),
+            simplify_info_get_inst_varset(!.Info, InstVarSet),
             simplify_info_get_var_table(!.Info, !:VarTable),
             trace [compile_time(flag("simplify_recompute_after")), io(!IO)] (
                 io.stderr_stream(StdErr, !IO),
@@ -728,7 +732,8 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
                 io.write_string(StdErr, "\nBEFORE QUANTIFY\n\n", !IO),
                 io.format(StdErr, "NONLOCALS: %s\n", [s(NonLocalsStr)], !IO),
                 simplify_info_get_module_info(!.Info, TraceModuleInfo),
-                dump_goal_nl(StdErr, TraceModuleInfo, VarNameSrc, !.Goal, !IO)
+                dump_goal_nl(StdErr, TraceModuleInfo, VarNameSrc,
+                    TVarSet, InstVarSet, !.Goal, !IO)
             ),
             simplify_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),
             implicitly_quantify_goal_general(ord_nl_maybe_lambda, NonLocals, _,
@@ -738,7 +743,8 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
                 io.write_string(StdErr, "\nAFTER QUANTIFY\n\n", !IO),
                 simplify_info_get_module_info(!.Info, TraceModuleInfo),
                 VarNameSrc = vns_var_table(!.VarTable),
-                dump_goal_nl(StdErr, TraceModuleInfo, VarNameSrc, !.Goal, !IO)
+                dump_goal_nl(StdErr, TraceModuleInfo, VarNameSrc,
+                    TVarSet, InstVarSet, !.Goal, !IO)
             ),
 
             simplify_info_set_var_table(!.VarTable, !Info),
@@ -748,7 +754,6 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
             % in the case where unused variables should no longer be included
             % in the instmap_delta for a goal.
             simplify_info_get_module_info(!.Info, !:ModuleInfo),
-            simplify_info_get_inst_varset(!.Info, InstVarSet),
             recompute_instmap_delta(recomp_atomics, !.VarTable, InstVarSet,
                 InstMap0, !Goal, !ModuleInfo),
             simplify_info_set_module_info(!.ModuleInfo, !Info),
@@ -757,8 +762,9 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
                 io.stderr_stream(StdErr, !IO),
                 io.write_string(StdErr, "\nAFTER INSTMAP DELTAS\n\n", !IO),
                 simplify_info_get_module_info(!.Info, TraceModuleInfo),
-                dump_goal_nl(StdErr, TraceModuleInfo,
-                    vns_var_table(!.VarTable), !.Goal, !IO)
+                VarNameSrc = vns_var_table(!.VarTable),
+                dump_goal_nl(StdErr, TraceModuleInfo, VarNameSrc,
+                    TVarSet, InstVarSet, !.Goal, !IO)
             )
         )
     ;

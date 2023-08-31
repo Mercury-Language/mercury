@@ -1181,7 +1181,7 @@ mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
             mode_info_get_module_info(ModeInfo, ModuleInfo),
             mode_info_get_instvarset(ModeInfo, InstVarSet),
             PredVarInstPieces = error_msg_inst(ModuleInfo, InstVarSet,
-                dont_expand_named_insts, quote_short_inst, [],
+                dont_expand_named_insts, uod_user, quote_short_inst, [],
                 [nl_indent_delta(1)], [nl_indent_delta(-1)], PredVarInst), 
             MismatchPieces = [words("mode error: context requires a"),
                 words(ExpPFStr), words("of"), ExpArityPiece, suffix("."),
@@ -1410,8 +1410,12 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
         io.write_string(Stream, "\t\t", !IO),
         module_info_get_globals(ModuleInfo, Globals),
         OutInfo = init_hlds_out_info(Globals, output_debug),
+        % XXX If we ever need this info, we put add pred_proc_id field
+        % to the write_indented_goal type.
+        varset.init(TVarSet),
+        varset.init(InstVarSet),
         write_goal(OutInfo, Stream, ModuleInfo, vns_var_table(VarTable),
-            print_name_only, 2, ".\n", Goal, !IO)
+            print_name_only, TVarSet, InstVarSet, 2, ".\n", Goal, !IO)
     )
 ].
 
@@ -2127,7 +2131,8 @@ report_inst(ModeInfo, ShortInstQF, ShortInstSuffix,
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_instvarset(ModeInfo, InstVarSet),
     Pieces = error_msg_inst(ModuleInfo, InstVarSet, expand_named_insts,
-        ShortInstQF, ShortInstSuffix, LongInstPrefix, LongInstSuffix, Inst0).
+        uod_user, ShortInstQF, ShortInstSuffix,
+        LongInstPrefix, LongInstSuffix, Inst0).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

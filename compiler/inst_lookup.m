@@ -337,7 +337,7 @@ inst_lookup_debug(ModuleInfo, InstName, Inst) :-
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_ground_insts(InstTable, GroundInstTable),
         string.format("ground_%s_%s_%s",
-            [s(inst_uniqueness(Uniq, "ground")), s(is_live_to_str(Live)),
+            [s(inst_uniqueness(Uniq, "shared")), s(is_live_to_str(Live)),
             s(unify_is_real_to_str(Real))], Desc),
         ( if
             search_ground_inst(GroundInstTable, GroundInstInfo, MaybeInstDet)

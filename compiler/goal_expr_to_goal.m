@@ -1267,9 +1267,11 @@ transform_parse_tree_goal_to_hlds_atomic(LocKind, Goal, Renaming, HLDSGoal,
         get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
         module_info_get_globals(!.ModuleInfo, Globals),
         OutInfo = init_hlds_out_info(Globals, output_debug),
+        varset.init(TVarSet),
+        varset.init(InstVarSet),
         io.write_string(DebugStream, "atomic:\n", !IO),
         write_goal_nl(OutInfo, DebugStream, !.ModuleInfo, vns_varset(!.VarSet),
-            print_name_and_num, 0, "\n", HLDSGoal, !IO)
+            print_name_and_num, TVarSet, InstVarSet, 0, "\n", HLDSGoal, !IO)
     ).
 
 :- pred transform_orelse_goals(loc_kind::in, list(goal)::in,

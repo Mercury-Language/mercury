@@ -217,31 +217,28 @@ stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
     proc_info_set_goal(Goal, !ProcInfo),
     allocate_store_maps(for_stack_opt, !.ModuleInfo, PredProcId, !ProcInfo),
     globals.lookup_int_option(Globals, debug_stack_opt, DebugStackOpt),
-    pred_id_to_int(PredId, PredIdInt),
     trace [io(!IO)] (
-        maybe_write_progress_message(!.ModuleInfo, !.ProcInfo,
-            PredIdInt, DebugStackOpt, "\nbefore stack opt cell", !IO)
+        maybe_write_progress_message(!.ModuleInfo, DebugStackOpt,
+            PredId, !.ProcInfo, "\nbefore stack opt cell", !IO)
     ),
     optimize_live_sets(!.ModuleInfo, OptStackAlloc, !ProcInfo,
-        Changed, DebugStackOpt, PredIdInt),
+        Changed, DebugStackOpt, PredId),
     (
         Changed = yes,
         trace [io(!IO)] (
-            maybe_write_progress_message(!.ModuleInfo, !.ProcInfo,
-                PredIdInt, DebugStackOpt,
-                "\nafter stack opt transformation", !IO)
+            maybe_write_progress_message(!.ModuleInfo, DebugStackOpt,
+                PredId, !.ProcInfo, "\nafter stack opt transformation", !IO)
         ),
         requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
         trace [io(!IO)] (
-            maybe_write_progress_message(!.ModuleInfo, !.ProcInfo,
-                PredIdInt, DebugStackOpt,
-                "\nafter stack opt requantify", !IO)
+            maybe_write_progress_message(!.ModuleInfo, DebugStackOpt,
+                PredId, !.ProcInfo, "\nafter stack opt requantify", !IO)
         ),
         recompute_instmap_delta_proc(recomp_atomics, !ProcInfo, !ModuleInfo),
         trace [io(!IO)] (
-            maybe_write_progress_message(!.ModuleInfo, !.ProcInfo,
-                PredIdInt, DebugStackOpt,
-                "\nafter stack opt recompute instmaps", !IO)
+            maybe_write_progress_message(!.ModuleInfo, DebugStackOpt,
+                PredId, !.ProcInfo, "\nafter stack opt recompute instmaps",
+                !IO)
         )
     ;
         Changed = no
@@ -252,10 +249,10 @@ stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
 init_opt_stack_alloc = opt_stack_alloc(set_of_var.init).
 
 :- pred optimize_live_sets(module_info::in, opt_stack_alloc::in,
-    proc_info::in, proc_info::out, bool::out, int::in, int::in) is det.
+    proc_info::in, proc_info::out, bool::out, int::in, pred_id::in) is det.
 
 optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
-        PredIdInt) :-
+        PredId) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_var_table(!.ProcInfo, VarTable0),
     OptAlloc = opt_stack_alloc(ParConjOwnSlot),
@@ -308,6 +305,7 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
     StackOptInfo0 = stack_opt_info(StackOptParams, InsertMap0, []),
     build_interval_info_in_goal(Goal0, IntervalInfo0, IntervalInfo,
         StackOptInfo0, StackOptInfo),
+    pred_id_to_int(PredId, PredIdInt),
     ( if DebugStackOpt = PredIdInt then
         trace [io(!IO)] (
             get_debug_output_stream(ModuleInfo, DebugStream, !IO),
@@ -1041,22 +1039,26 @@ compress_paths(Paths) = Paths.
 
 % This predicate can help debug the correctness of the transformation.
 
-:- pred maybe_write_progress_message(module_info::in, proc_info::in,
-    int::in, int::in, string::in, io::di, io::uo) is det.
+:- pred maybe_write_progress_message(module_info::in, int::in, pred_id::in,
+    proc_info::in, string::in, io::di, io::uo) is det.
 
-maybe_write_progress_message(ModuleInfo, ProcInfo, PredIdInt, DebugStackOpt,
+maybe_write_progress_message(ModuleInfo, DebugStackOpt, PredId, ProcInfo,
         Message, !IO) :-
+    pred_id_to_int(PredId, PredIdInt),
     ( if DebugStackOpt = PredIdInt then
-        proc_info_get_goal(ProcInfo, Goal),
-        proc_info_get_var_table(ProcInfo, VarTable),
         module_info_get_globals(ModuleInfo, Globals),
+        OutInfo = init_hlds_out_info(Globals, output_debug),
+        proc_info_get_var_table(ProcInfo, VarTable),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        pred_info_get_typevarset(PredInfo, TVarSet),
+        proc_info_get_inst_varset(ProcInfo, InstVarSet),
+        proc_info_get_goal(ProcInfo, Goal),
+
         io.output_stream(Stream, !IO),
         io.write_string(Stream, Message, !IO),
         io.write_string(Stream, ":\n", !IO),
-        OutInfo = init_hlds_out_info(Globals, output_debug),
-        write_goal(OutInfo, Stream, ModuleInfo, vns_var_table(VarTable),
-            print_name_and_num, 0, "\n", Goal, !IO),
-        io.write_string(Stream, "\n", !IO)
+        write_goal_nl(OutInfo, Stream, ModuleInfo, vns_var_table(VarTable),
+            print_name_and_num, TVarSet, InstVarSet, 0, "\n", Goal, !IO)
     else
         true
     ).

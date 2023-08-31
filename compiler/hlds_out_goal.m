@@ -44,13 +44,15 @@
     % (but necessarily for anything else).
     %
 :- pred dump_goal(io.text_output_stream::in, module_info::in,
-    var_name_source::in, hlds_goal::in, io::di, io::uo) is det.
+    var_name_source::in, tvarset::in, inst_varset::in, hlds_goal::in,
+    io::di, io::uo) is det.
 
     % Print a goal in a way that is suitable for debugging the compiler
     % (but necessarily for anything else), followed by a newline.
     %
 :- pred dump_goal_nl(io.text_output_stream::in, module_info::in,
-    var_name_source::in, hlds_goal::in, io::di, io::uo) is det.
+    var_name_source::in, tvarset::in, inst_varset::in, hlds_goal::in,
+    io::di, io::uo) is det.
 
     % Print out an HLDS goal. The integer gives the level of indentation
     % to be used within the goal. The string says what should end the line
@@ -58,22 +60,39 @@
     % also contain other characters before that.
     %
 :- pred write_goal(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, var_name_print::in, int::in,
-    string::in, hlds_goal::in, io::di, io::uo) is det.
+    module_info::in, var_name_source::in, var_name_print::in,
+    tvarset::in, inst_varset::in, int::in, string::in, hlds_goal::in,
+    io::di, io::uo) is det.
 
     % As write_goal, but add a newline at the end.
     %
 :- pred write_goal_nl(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, var_name_print::in, int::in,
-    string::in, hlds_goal::in, io::di, io::uo) is det.
-
-    % TypeQual is tvarset_var_table(TVarset, VarTable)
-    % if all constructors should be module qualified.
-    %
-:- pred do_write_goal(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in, hlds_goal::in,
+    module_info::in, var_name_source::in, var_name_print::in,
+    tvarset::in, inst_varset::in, int::in, string::in, hlds_goal::in,
     io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+:- type hlds_out_info_goal
+    --->    hlds_out_info_goal(
+                hoig_out_info       :: hlds_out_info,
+                hoig_module_info    :: module_info,
+                hoig_var_name_src   :: var_name_source,
+                hoig_var_name_print :: var_name_print,
+                hoig_tvarset        :: tvarset,
+                hoig_inst_varset    :: inst_varset,
+                % This should be tvarset_var_table(TVarset, VarTable)
+                % if all constructors should be module qualified.
+                %
+                % XXX Having the tvarset potentially be present twice
+                % (always in the hoig_tvarset field, and possibly in the
+                % hoig_type_qual field) is not ideal, but the two fields
+                % roles are quite separate.
+                hoig_type_qual      :: type_qual
+            ).
+
+:- pred do_write_goal(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, string::in, hlds_goal::in, io::di, io::uo) is det.
 
     % write_goal_list is used to write both disjunctions and parallel
     % conjunctions. The boolean says whether variables should have
@@ -82,10 +101,8 @@
     % on the line between each goal; it should include a newline character,
     % but may also contain other characters before that.
     %
-:- pred write_goal_list(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in, list(hlds_goal)::in,
-    io::di, io::uo) is det.
+:- pred write_goal_list(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, string::in, list(hlds_goal)::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -103,8 +120,9 @@
     % gives the level of indentation to be used within the rhs.
     %
 :- pred write_unify_rhs(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, inst_varset::in, var_name_print::in,
-    int::in, unify_rhs::in, io::di, io::uo) is det.
+    module_info::in, var_name_source::in, var_name_print::in,
+    tvarset::in, inst_varset::in, int::in, unify_rhs::in,
+    io::di, io::uo) is det.
 
     % Converts the right-hand-side of a unification to a string, similarly to
     % write_unify_rhs, but doesn't print any details for lambda goals.
@@ -174,38 +192,43 @@
 
 %---------------------------------------------------------------------------%
 
-dump_goal(Stream, ModuleInfo, VarNameSrc, Goal, !IO) :-
+dump_goal(Stream, ModuleInfo, VarNameSrc, TVarSet, InstVarSet, Goal, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     Info = init_hlds_out_info(Globals, output_debug),
     VarNamePrint = print_name_and_num,
+    TypeQual = no_tvarset_var_table,
+    InfoGoal = hlds_out_info_goal(Info, ModuleInfo, VarNameSrc, VarNamePrint,
+        TVarSet, InstVarSet, TypeQual),
     Indent = 0,
     Follow = "",
-    TypeQual = no_tvarset_var_table,
-    do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        Indent, Follow, Goal, !IO).
+    do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO).
 
-dump_goal_nl(Stream, ModuleInfo, VarNameSrc, Goal, !IO) :-
-    dump_goal(Stream, ModuleInfo, VarNameSrc, Goal, !IO),
+dump_goal_nl(Stream, ModuleInfo, VarNameSrc, TVarSet, InstVarSet, Goal, !IO) :-
+    dump_goal(Stream, ModuleInfo, VarNameSrc, TVarSet, InstVarSet, Goal, !IO),
     io.nl(Stream, !IO).
 
-write_goal(Info, Stream, ModuleInfo, VarNameSrc, VarNamePrint, Indent, Follow,
-        Goal, !IO) :-
+write_goal(Info, Stream, ModuleInfo, VarNameSrc, VarNamePrint,
+        TVarSet, InstVarSet, Indent, Follow, Goal, !IO) :-
     % Do not type qualify everything.
-    do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, no_tvarset_var_table,
-        VarNamePrint, Indent, Follow, Goal, !IO).
+    TypeQual = no_tvarset_var_table,
+    InfoGoal = hlds_out_info_goal(Info, ModuleInfo, VarNameSrc, VarNamePrint,
+        TVarSet, InstVarSet, TypeQual),
+    do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO).
 
 write_goal_nl(Info, Stream, ModuleInfo, VarNameSrc, VarNamePrint,
-        Indent, Follow, Goal, !IO) :-
+        TVarSet, InstVarSet, Indent, Follow, Goal, !IO) :-
     write_goal(Info, Stream, ModuleInfo, VarNameSrc, VarNamePrint,
-        Indent, Follow, Goal, !IO),
+        TVarSet, InstVarSet, Indent, Follow, Goal, !IO),
     io.nl(Stream, !IO).
 
-do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        Indent, Follow, Goal, !IO) :-
+%---------------------------------------------------------------------------%
+
+do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
     % Write out goal_infos in the form of annotations around goal expressions.
 
     IndentStr = indent2_string(Indent),
     Goal = hlds_goal(GoalExpr, GoalInfo),
+    Info = InfoGoal ^ hoig_out_info,
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if string.contains_char(DumpOptions, 'c') then
         Context = goal_info_get_context(GoalInfo),
@@ -240,6 +263,8 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
     else
         true
     ),
+    VarNameSrc = InfoGoal ^ hoig_var_name_src,
+    VarNamePrint = InfoGoal ^ hoig_var_name_print,
     ( if string.contains_char(DumpOptions, 'p') then
         ( if
             goal_info_maybe_get_pre_deaths(GoalInfo, PreDeaths),
@@ -421,8 +446,7 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
     else
         true
     ),
-    write_goal_expr(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-        VarNamePrint, Indent, Follow, GoalExpr, !IO),
+    write_goal_expr(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO),
     ( if string.contains_char(DumpOptions, 'i') then
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap_delta_changed_vars(InstMapDelta, Vars),
@@ -441,8 +465,7 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
                 else if string.contains_char(DumpOptions, 'Y') then
                     instmap_delta_to_assoc_list(InstMapDelta, NewVarInsts),
                     NewVarInstStrs = list.map(
-                        new_var_inst_msg_to_string(ModuleInfo, VarNameSrc,
-                            VarNamePrint, IndentStr),
+                        new_var_inst_msg_to_string(InfoGoal, IndentStr),
                         NewVarInsts),
                     io.format(Stream, "%s%% new insts:\n",
                         [s(IndentStr)], !IO),
@@ -450,8 +473,7 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
                 else
                     instmap_delta_to_assoc_list(InstMapDelta, NewVarInsts),
                     NewVarInstStrs = list.map(
-                        new_var_inst_to_string(VarNameSrc, VarNamePrint,
-                            IndentStr),
+                        new_var_inst_to_string(InfoGoal, IndentStr),
                         NewVarInsts),
                     io.format(Stream, "%s%% new insts:\n",
                         [s(IndentStr)], !IO),
@@ -582,30 +604,34 @@ do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         true
     ).
 
-:- func new_var_inst_to_string(var_name_source, var_name_print, string,
+:- func new_var_inst_to_string(hlds_out_info_goal, string,
     pair(prog_var, mer_inst)) = string.
 
-new_var_inst_to_string(VarNameSrc, VarNamePrint, IndentStr, Var - Inst)
-        = Str :-
+new_var_inst_to_string(InfoGoal, IndentStr, Var - Inst) = Str :-
+    VarNameSrc = InfoGoal ^ hoig_var_name_src,
+    VarNamePrint = InfoGoal ^ hoig_var_name_print,
     VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
     varset.init(InstVarSet),
     InstStr = mercury_inst_to_string(output_debug, InstVarSet, Inst),
     string.format("%s%%   %s -> %s\n",
         [s(IndentStr), s(VarStr), s(InstStr)], Str).
 
-:- func new_var_inst_msg_to_string(module_info, var_name_source,
-    var_name_print, string, pair(prog_var, mer_inst)) = string.
+:- func new_var_inst_msg_to_string(hlds_out_info_goal, string,
+    pair(prog_var, mer_inst)) = string.
 
-new_var_inst_msg_to_string(ModuleInfo, VarNameSrc, VarNamePrint, IndentStr,
-        Var - Inst) = Str :-
+new_var_inst_msg_to_string(InfoGoal, IndentStr, Var - Inst) = Str :-
+    VarNameSrc = InfoGoal ^ hoig_var_name_src,
+    VarNamePrint = InfoGoal ^ hoig_var_name_print,
     VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
-    varset.init(InstVarSet),
+    ModuleInfo = InfoGoal ^ hoig_module_info,
+    TVarSet = InfoGoal ^ hoig_tvarset,
+    InstVarSet = InfoGoal ^ hoig_inst_varset,
     ShortInstSuffix = [nl],
     LongInstPrefix = [nl],
     LongInstSuffix = [nl],
     InstPieces = error_msg_inst(ModuleInfo, InstVarSet, expand_named_insts,
-        fixed_short_inst, ShortInstSuffix, LongInstPrefix, LongInstSuffix,
-        Inst),
+        uod_developer(TVarSet), fixed_short_inst, ShortInstSuffix,
+        LongInstPrefix, LongInstSuffix, Inst),
     ShortInstStr = error_pieces_to_one_line_string(InstPieces),
     ( if string.count_code_points(ShortInstStr) < 40 then
         string.format("%s%%   %s -> %s\n",
@@ -617,16 +643,13 @@ new_var_inst_msg_to_string(ModuleInfo, VarNameSrc, VarNamePrint, IndentStr,
             [s(IndentStr), s(VarStr), s(LongInstStr)], Str)
     ).
 
-write_goal_list(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        Indent, Separator, Goals, !IO) :-
+write_goal_list(InfoGoal, Stream, Indent, Separator, Goals, !IO) :-
     (
         Goals = [HeadGoal | TailGoals],
         write_indent2(Stream, Indent, !IO),
         io.write_string(Stream, Separator, !IO),
-        do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent + 1, "\n", HeadGoal, !IO),
-        write_goal_list(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Separator, TailGoals, !IO)
+        do_write_goal(InfoGoal, Stream, Indent + 1, "\n", HeadGoal, !IO),
+        write_goal_list(InfoGoal, Stream, Indent, Separator, TailGoals, !IO)
     ;
         Goals = []
     ).
@@ -867,57 +890,43 @@ is_conditional_to_string(IsConditional) = Str :-
 % Write out goal expressions.
 %
 
-:- pred write_goal_expr(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in, hlds_goal_expr::in,
-    io::di, io::uo) is det.
+:- pred write_goal_expr(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, string::in, hlds_goal_expr::in, io::di, io::uo) is det.
 
-write_goal_expr(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        Indent, Follow, GoalExpr, !IO) :-
+write_goal_expr(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     (
         GoalExpr = unify(_, _, _, _, _),
-        write_goal_unify(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Follow, GoalExpr, !IO)
+        write_goal_unify(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
     ;
         GoalExpr = plain_call(_, _, _, _, _, _),
-        write_goal_plain_call(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Follow, GoalExpr, !IO)
+        write_goal_plain_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
     ;
         GoalExpr = generic_call(_, _, _, _, _),
-        write_goal_generic_call(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Follow, GoalExpr, !IO)
+        write_goal_generic_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-        write_goal_foreign_proc(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Follow, GoalExpr, !IO)
+        write_goal_foreign_proc(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
     ;
         GoalExpr = conj(_, _),
-        write_goal_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Follow, GoalExpr, !IO)
+        write_goal_conj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
     ;
         GoalExpr = disj(_),
-        write_goal_disj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Follow, GoalExpr, !IO)
+        write_goal_disj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
     ;
         GoalExpr = switch(_, _, _),
-        write_goal_switch(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Follow, GoalExpr, !IO)
+        write_goal_switch(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
     ;
         GoalExpr = scope(_, _),
-        write_goal_scope(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Follow, GoalExpr, !IO)
+        write_goal_scope(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
     ;
         GoalExpr = if_then_else(_, _, _, _),
-        write_goal_if_then_else(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Follow, GoalExpr, !IO)
+        write_goal_if_then_else(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
     ;
         GoalExpr = negation(_),
-        write_goal_negation(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Follow, GoalExpr, !IO)
+        write_goal_negation(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
     ;
         GoalExpr = shorthand(_),
-        write_goal_shorthand(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Follow, GoalExpr, !IO)
+        write_goal_shorthand(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -925,24 +934,25 @@ write_goal_expr(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
 % Write out unifications.
 %
 
-    % write_goal_unify(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-    %   VarNamePrint, Indent, Follow, GoalExpr, !IO):
+    % write_goal_unify(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO):
     %
     % Write out a unification.
     %
-:- pred write_goal_unify(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in,
-    hlds_goal_expr::in(goal_expr_unify), io::di, io::uo) is det.
+:- pred write_goal_unify(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, string::in, hlds_goal_expr::in(goal_expr_unify),
+    io::di, io::uo) is det.
 
-write_goal_unify(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        Indent, Follow, GoalExpr, !IO) :-
+write_goal_unify(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = unify(LHS, RHS, _, Unification, _),
+    Info = InfoGoal ^ hoig_out_info,
     DumpOptions = Info ^ hoi_dump_hlds_options,
     IndentStr = indent2_string(Indent),
 
+    VarNameSrc = InfoGoal ^ hoig_var_name_src,
+    VarNamePrint = InfoGoal ^ hoig_var_name_print,
     LHSStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, LHS),
     io.format(Stream, "%s%s = ", [s(IndentStr), s(LHSStr)], !IO),
+    TypeQual = InfoGoal ^ hoig_type_qual,
     (
         TypeQual = tvarset_var_table(_, VarTable),
         lookup_var_type(VarTable, LHS, UniType),
@@ -951,10 +961,7 @@ write_goal_unify(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
         TypeQual = no_tvarset_var_table,
         VarType = no
     ),
-    % XXX Fake the inst varset.
-    varset.init(InstVarSet),
-    write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
-        TypeQual, VarNamePrint, Indent, VarType, RHS, !IO),
+    write_unify_rhs_2(InfoGoal, Stream, Indent, VarType, RHS, !IO),
     io.write_string(Stream, Follow, !IO),
     ( if
         ( string.contains_char(DumpOptions, 'u')
@@ -978,25 +985,25 @@ write_goal_unify(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
             else
                 io.nl(Stream, !IO)
             ),
-            write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
-                VarNamePrint, Indent, Unification, !IO)
+            write_unification(InfoGoal, Stream, Indent, Unification, !IO)
         )
     else
         true
     ).
 
-write_unify_rhs(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, VarNamePrint,
-        Indent, RHS, !IO) :-
-    write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
-        no_tvarset_var_table, VarNamePrint, Indent, no, RHS, !IO).
+write_unify_rhs(Info, Stream, ModuleInfo, VarNameSrc, VarNamePrint,
+        TVarSet, InstVarSet, Indent, RHS, !IO) :-
+    TypeQual = no_tvarset_var_table,
+    InfoGoal = hlds_out_info_goal(Info, ModuleInfo, VarNameSrc, VarNamePrint,
+        TVarSet, InstVarSet, TypeQual),
+    write_unify_rhs_2(InfoGoal, Stream, Indent, no, RHS, !IO).
 
-:- pred write_unify_rhs_2(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, inst_varset::in, type_qual::in,
-    var_name_print::in, int::in, maybe(mer_type)::in, unify_rhs::in,
-    io::di, io::uo) is det.
+:- pred write_unify_rhs_2(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, maybe(mer_type)::in, unify_rhs::in, io::di, io::uo) is det.
 
-write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, TypeQual,
-        VarNamePrint, Indent, MaybeType, RHS, !IO) :-
+write_unify_rhs_2(InfoGoal, Stream, Indent, MaybeType, RHS, !IO) :-
+    VarNameSrc = InfoGoal ^ hoig_var_name_src,
+    VarNamePrint = InfoGoal ^ hoig_var_name_print,
     (
         RHS = rhs_var(Var),
         mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO)
@@ -1011,12 +1018,13 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, TypeQual,
         else
             ConsId = ConsId0
         ),
+        ModuleInfo = InfoGoal ^ hoig_module_info,
         RHSStr = functor_cons_id_to_string(ModuleInfo, VarNameSrc,
             VarNamePrint, ConsId, ArgVars),
         io.write_string(Stream, RHSStr, !IO),
         ( if
             MaybeType = yes(Type),
-            TypeQual = tvarset_var_table(TVarSet, _)
+            InfoGoal ^ hoig_type_qual = tvarset_var_table(TVarSet, _)
         then
             io.write_string(Stream, " : ", !IO),
             mercury_output_type(TVarSet, VarNamePrint, Type, Stream, !IO)
@@ -1029,6 +1037,7 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, TypeQual,
         IndentStr = indent2_string(Indent),
         Indent1 = Indent + 1,
         io.write_string(Stream, purity_prefix_to_string(Purity), !IO),
+        Info = InfoGoal ^ hoig_out_info,
         Lang = get_output_lang(Info ^ hoi_merc_out_info),
         (
             PredOrFunc = pf_predicate,
@@ -1045,14 +1054,14 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, TypeQual,
                 io.format(Stream, "(%s)", [s(Functor)], !IO)
             ;
                 VarsModes = [_ | _],
+                InstVarSet = InfoGoal ^ hoig_inst_varset,
                 ModesStr = var_modes_to_string(Lang, VarNameSrc, InstVarSet,
                     VarNamePrint, VarsModes),
                 io.format(Stream, "%s(%s)", [s(Functor), s(ModesStr)], !IO)
             ),
             DetStr = mercury_det_to_string(Det),
             io.format(Stream, " is %s :-\n", [s(DetStr)], !IO),
-            do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-                VarNamePrint, Indent1, "\n", Goal, !IO),
+            do_write_goal(InfoGoal, Stream, Indent1, "\n", Goal, !IO),
             io.format(Stream, "%s)", [s(IndentStr)], !IO)
         ;
             PredOrFunc = pf_function,
@@ -1065,6 +1074,7 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, TypeQual,
             ),
             pred_args_to_func_args(VarsModes, ArgVarsModes, RetVarMode),
             io.write_string(Stream, "(", !IO),
+            InstVarSet = InfoGoal ^ hoig_inst_varset,
             (
                 ArgVarsModes = [],
                 io.format(Stream, "(%s)", [s(Functor)], !IO)
@@ -1080,13 +1090,12 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet, TypeQual,
             DetStr = mercury_det_to_string(Det),
             io.format(Stream, " = (%s) is %s :-\n",
                 [s(RetModeStr), s(DetStr)], !IO),
-            do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-                VarNamePrint, Indent1, "\n", Goal, !IO),
+            do_write_goal(InfoGoal, Stream, Indent1, "\n", Goal, !IO),
             io.format(Stream, "%s)", [s(IndentStr)], !IO)
         ),
         ( if
             MaybeType = yes(Type),
-            TypeQual = tvarset_var_table(TVarSet, _)
+            InfoGoal ^ hoig_type_qual = tvarset_var_table(TVarSet, _)
         then
             io.write_string(Stream, " : ", !IO),
             mercury_output_type(TVarSet, VarNamePrint, Type, Stream, !IO)
@@ -1131,12 +1140,12 @@ unify_rhs_to_string(ModuleInfo, VarTable, VarNamePrint, RHS) = Str :-
         Str = "lambda goal"
     ).
 
-:- pred write_unification(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, inst_varset::in, var_name_print::in,
+:- pred write_unification(hlds_out_info_goal::in, io.text_output_stream::in,
     int::in, unification::in, io::di, io::uo) is det.
 
-write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
-        VarNamePrint, Indent, Unification, !IO) :-
+write_unification(InfoGoal, Stream, Indent, Unification, !IO) :-
+    VarNameSrc = InfoGoal ^ hoig_var_name_src,
+    VarNamePrint = InfoGoal ^ hoig_var_name_print,
     IndentStr = indent2_string(Indent),
     (
         Unification = assign(X, Y),
@@ -1155,10 +1164,10 @@ write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
             Uniqueness, SubInfo),
         VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
         io.format(Stream, "%s%% %s <= ", [s(IndentStr), s(VarStr)], !IO),
-        write_functor_and_submodes(Info, Stream, ModuleInfo,
-            VarNameSrc, InstVarSet, VarNamePrint, Indent, ConsId,
+        write_functor_and_submodes(InfoGoal, Stream, Indent, ConsId,
             ArgVars, ArgModes, !IO),
 
+        Info = InfoGoal ^ hoig_out_info,
         DumpOptions = Info ^ hoi_dump_hlds_options,
         ( if string.contains_char(DumpOptions, 'u') then
             ( if ConsId = cons(_, _, TypeCtor) then
@@ -1237,6 +1246,7 @@ write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
     ;
         Unification = deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail,
             CanCGC),
+        Info = InfoGoal ^ hoig_out_info,
         DumpOptions = Info ^ hoi_dump_hlds_options,
         ( if string.contains_char(DumpOptions, 'G') then
             io.format(Stream, "%s%% Compile time garbage collect: %s\n",
@@ -1254,9 +1264,8 @@ write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
         ),
         io.format(Stream, "%s%% %s %s ",
             [s(IndentStr), s(VarStr), s(OpStr)], !IO),
-        write_functor_and_submodes(Info, Stream, ModuleInfo,
-            VarNameSrc, InstVarSet, VarNamePrint, Indent, ConsId,
-            ArgVars, ArgModes, !IO)
+        write_functor_and_submodes(InfoGoal, Stream, Indent, ConsId, ArgVars,
+            ArgModes, !IO)
     ;
         Unification = complicated_unify(Mode, CanFail, TypeInfoVars),
         (
@@ -1266,6 +1275,7 @@ write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
             CanFail = cannot_fail,
             CanFailStr = "cannot_fail"
         ),
+        InstVarSet = InfoGoal ^ hoig_inst_varset,
         ModeStr = mercury_unify_mode_to_string(InstVarSet, Mode),
         io.format(Stream, "%s%% %s, mode: %s\n",
             [s(IndentStr), s(CanFailStr), s(ModeStr)], !IO),
@@ -1276,32 +1286,34 @@ write_unification(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
             [s(IndentStr), s(TypeInfoVarsStr)], !IO)
     ).
 
-:- pred write_functor_and_submodes(hlds_out_info::in,
-    io.text_output_stream::in, module_info::in,
-    var_name_source::in, inst_varset::in, var_name_print::in, int::in,
+:- pred write_functor_and_submodes(hlds_out_info_goal::in,
+    io.text_output_stream::in, int::in,
     cons_id::in, list(prog_var)::in, list(unify_mode)::in,
     io::di, io::uo) is det.
 
-write_functor_and_submodes(Info, Stream, _ModuleInfo, VarNameSrc, InstVarSet,
-        VarNamePrint, Indent, ConsId, ArgVars, ArgUnifyModes0, !IO) :-
+write_functor_and_submodes(InfoGoal, Stream, Indent, ConsId, ArgVars,
+        ArgUnifyModes0, !IO) :-
     ConsIdStr = cons_id_and_arity_to_string(ConsId),
     (
         ArgVars = [],
         io.format(Stream, "%s\n", [s(ConsIdStr)], !IO)
     ;
         ArgVars = [_ | _],
+        VarNameSrc = InfoGoal ^ hoig_var_name_src,
+        VarNamePrint = InfoGoal ^ hoig_var_name_print,
         ArgVarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
             ArgVars),
         io.format(Stream, "%s(%s)\n", [s(ConsIdStr), s(ArgVarsStr)], !IO),
+        Info = InfoGoal ^ hoig_out_info,
         DumpOptions = Info ^ hoi_dump_hlds_options,
         ( if string.contains_char(DumpOptions, 'a') then
+            InstVarSet = InfoGoal ^ hoig_inst_varset,
             IndentStr = indent2_string(Indent),
             list.map(limit_size_of_unify_mode, ArgUnifyModes0, ArgUnifyModes),
             ( if string.contains_char(DumpOptions, 'y') then
                 io.format(Stream, "%s%% arg-modes\n", [s(IndentStr)], !IO),
-                mercury_output_structured_unify_mode_list(Stream,
-                    output_debug, InstVarSet, do_incl_addr, Indent,
-                    ArgUnifyModes, !IO)
+                mercury_output_structured_unify_mode_list(Stream, output_debug,
+                    InstVarSet, do_incl_addr, Indent, ArgUnifyModes, !IO)
             else
                 write_arg_modes(Stream, InstVarSet, IndentStr, 1,
                     ArgUnifyModes, !IO)
@@ -1425,15 +1437,14 @@ limit_size_of_bound_insts(Levels,
 % Write out ordinary first-order calls.
 %
 
-:- pred write_goal_plain_call(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in,
-    hlds_goal_expr::in(goal_expr_plain_call), io::di, io::uo) is det.
+:- pred write_goal_plain_call(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, string::in, hlds_goal_expr::in(goal_expr_plain_call),
+    io::di, io::uo) is det.
 
-write_goal_plain_call(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-        VarNamePrint, Indent, Follow, GoalExpr, !IO) :-
+write_goal_plain_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin,
         MaybeUnifyContext, PredName),
+    Info = InfoGoal ^ hoig_out_info,
     DumpOptions = Info ^ hoi_dump_hlds_options,
     IndentStr = indent2_string(Indent),
     ( if string.contains_char(DumpOptions, 'b') then
@@ -1454,6 +1465,7 @@ write_goal_plain_call(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         PredOrFunc = pf_predicate,
         PrefixStr = ""
     else if
+        ModuleInfo = InfoGoal ^ hoig_module_info,
         module_info_get_pred_id_table(ModuleInfo, PredIdTable),
         map.search(PredIdTable, PredId, PredInfo)
     then
@@ -1471,6 +1483,8 @@ write_goal_plain_call(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         PrefixStr = "CALL TO DELETED "
     ),
     io.format(Stream, "%s%s", [s(IndentStr), s(PrefixStr)], !IO),
+    VarNameSrc = InfoGoal ^ hoig_var_name_src,
+    VarNamePrint = InfoGoal ^ hoig_var_name_print,
     (
         PredOrFunc = pf_predicate,
         InParenArgVars = ArgVars
@@ -1490,6 +1504,7 @@ write_goal_plain_call(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             [s(IndentStr), i(PredNum), i(ProcNum), s(Follow)], !IO),
         (
             MaybeUnifyContext = yes(CallUnifyContext),
+            TypeQual = InfoGoal ^ hoig_type_qual,
             (
                 TypeQual = tvarset_var_table(_, VarTable),
                 lookup_var_type(VarTable, Var, UniType),
@@ -1502,10 +1517,7 @@ write_goal_plain_call(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
             io.format(Stream, "%s%% unify context: %s = ",
                 [s(IndentStr), s(VarStr)], !IO),
-            % XXX Fake the inst varset.
-            varset.init(InstVarSet),
-            write_unify_rhs_2(Info, Stream, ModuleInfo, VarNameSrc, InstVarSet,
-                TypeQual, VarNamePrint, Indent, VarType, RHS, !IO),
+            write_unify_rhs_2(InfoGoal, Stream, Indent, VarType, RHS, !IO),
             % XXX If we print Follow here, we shouldn't have printed it above.
             io.write_string(Stream, Follow, !IO)
         ;
@@ -1535,15 +1547,16 @@ sym_name_and_args_to_string(VarNameSrc, VarNamePrint, PredName, ArgVars)
 % Write out generic calls.
 %
 
-:- pred write_goal_generic_call(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in,
+:- pred write_goal_generic_call(hlds_out_info_goal::in,
+    io.text_output_stream::in, int::in, string::in,
     hlds_goal_expr::in(goal_expr_generic_call), io::di, io::uo) is det.
 
-write_goal_generic_call(Info, Stream, _ModuleInfo, VarNameSrc, _TypeQual,
-        VarNamePrint, Indent, Follow, GoalExpr, !IO) :-
+write_goal_generic_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = generic_call(GenericCall, ArgVars, Modes, MaybeArgRegs, _),
+    Info = InfoGoal ^ hoig_out_info,
     DumpOptions = Info ^ hoi_dump_hlds_options,
+    VarNameSrc = InfoGoal ^ hoig_var_name_src,
+    VarNamePrint = InfoGoal ^ hoig_var_name_print,
     IndentStr = indent2_string(Indent),
     % XXX We should print more info here.
     (
@@ -1712,17 +1725,16 @@ write_cast_as_pred_or_func(CastType) = PredOrFunc :-
 % Write out calls to foreign procs.
 %
 
-:- pred write_goal_foreign_proc(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in,
+:- pred write_goal_foreign_proc(hlds_out_info_goal::in,
+    io.text_output_stream::in, int::in, string::in,
     hlds_goal_expr::in(goal_expr_foreign_proc), io::di, io::uo) is det.
 
-write_goal_foreign_proc(_Info, Stream, ModuleInfo, VarNameSrc, _TypeQual,
-        VarNamePrint, Indent, Follow, GoalExpr, !IO) :-
-    GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
-        Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
+write_goal_foreign_proc(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
+    GoalExpr = call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
+        MaybeTraceRuntimeCond, PragmaCode),
     ForeignLang = get_foreign_language(Attributes),
     ForeignLangStr = foreign_language_string(ForeignLang),
+    ModuleInfo = InfoGoal ^ hoig_module_info,
     PredStr = pred_id_to_dev_string(ModuleInfo, PredId),
     pred_id_to_int(PredId, PredIdInt),
     proc_id_to_int(ProcId, ProcIdInt),
@@ -1740,11 +1752,10 @@ write_goal_foreign_proc(_Info, Stream, ModuleInfo, VarNameSrc, _TypeQual,
             TraceRuntimeCond, !IO),
         io.write_string(Stream, ")\n", !IO)
     ),
-    % XXX We do not have the TypeVarSet or InstVarSet available here,
-    % but it is only used for printing out the names of the type and inst
-    % variables, which is not essential.
-    varset.init(TypeVarSet),
-    varset.init(InstVarSet),
+    VarNameSrc = InfoGoal ^ hoig_var_name_src,
+    VarNamePrint = InfoGoal ^ hoig_var_name_print,
+    TypeVarSet = InfoGoal ^ hoig_tvarset,
+    InstVarSet = InfoGoal ^ hoig_inst_varset,
     ArgsStr = foreign_args_to_string(VarNameSrc, VarNamePrint,
         TypeVarSet, InstVarSet, IndentStr, "[", "],", Args),
     io.write_string(Stream, ArgsStr, !IO),
@@ -1826,27 +1837,26 @@ foreign_args_to_string_lag(VarNameSrc, VarNamePrint, TypeVarSet, InstVarSet,
 % Write out disjunctions.
 %
 
-:- pred write_goal_conj(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in,
-    hlds_goal_expr::in(goal_expr_conj), io::di, io::uo) is det.
+:- pred write_goal_conj(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, string::in, hlds_goal_expr::in(goal_expr_conj), io::di,
+    io::uo) is det.
 
-write_goal_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        Indent, Follow, GoalExpr, !IO) :-
+write_goal_conj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = conj(ConjType, List),
     (
         List = [Goal | Goals],
         (
             ConjType = plain_conj,
+            Info = InfoGoal ^ hoig_out_info,
             DumpOptions = Info ^ hoi_dump_hlds_options,
             ( if DumpOptions = "" then
-                write_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-                    VarNamePrint, Indent, Follow, ",\n", Goal, Goals, !IO)
+                write_conj(InfoGoal, Stream, Indent, Follow, ",\n",
+                    Goal, Goals, !IO)
             else
                 IndentStr = indent2_string(Indent),
                 io.format(Stream, "%s( %% conjunction\n", [s(IndentStr)], !IO),
-                write_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-                    VarNamePrint, Indent + 1, "\n", ",\n", Goal, Goals, !IO),
+                write_conj(InfoGoal, Stream, Indent + 1, "\n", ",\n",
+                    Goal, Goals, !IO),
                 io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
             )
         ;
@@ -1854,11 +1864,9 @@ write_goal_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
             IndentStr = indent2_string(Indent),
             io.format(Stream, "%s( %% parallel conjunction\n",
                 [s(IndentStr)], !IO),
-            do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-                VarNamePrint, Indent + 1, "\n", Goal, !IO),
+            do_write_goal(InfoGoal, Stream, Indent + 1, "\n", Goal, !IO),
             % See comments at write_goal_list.
-            write_goal_list(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-                VarNamePrint, Indent, "&\n", Goals, !IO),
+            write_goal_list(InfoGoal, Stream, Indent, "&\n", Goals, !IO),
             io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
         )
     ;
@@ -1875,34 +1883,30 @@ write_goal_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
             [s(IndentStr), s(ParStr), s(Follow)], !IO)
     ).
 
-:- pred write_conj(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in, string::in,
-    hlds_goal::in, list(hlds_goal)::in, io::di, io::uo) is det.
+:- pred write_conj(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, string::in, string::in, hlds_goal::in, list(hlds_goal)::in,
+    io::di, io::uo) is det.
 
-write_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        Indent, Follow, Separator, Goal1, Goals1, !IO) :-
+write_conj(InfoGoal, Stream, Indent, Follow, Separator, Goal1, Goals1, !IO) :-
     (
         Goals1 = [Goal2 | Goals2],
+        Info = InfoGoal ^ hoig_out_info,
         DumpOptions = Info ^ hoi_dump_hlds_options,
         ( if DumpOptions = "" then
-            do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-                VarNamePrint, Indent, Separator, Goal1, !IO)
+            do_write_goal(InfoGoal, Stream, Indent, Separator, Goal1, !IO)
         else
             % When generating verbose dumps, we want the comma on its own line,
             % since that way it visually separates the lines after one goal
             % and the lines before the next.
-            do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-                VarNamePrint, Indent, "\n", Goal1, !IO),
+            do_write_goal(InfoGoal, Stream, Indent, "\n", Goal1, !IO),
             IndentStr = indent2_string(Indent),
             io.format(Stream, "%s%s", [s(IndentStr), s(Separator)], !IO)
         ),
-        write_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Follow, Separator, Goal2, Goals2, !IO)
+        write_conj(InfoGoal, Stream, Indent, Follow, Separator,
+            Goal2, Goals2, !IO)
     ;
         Goals1 = [],
-        do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Follow, Goal1, !IO)
+        do_write_goal(InfoGoal, Stream, Indent, Follow, Goal1, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1910,22 +1914,18 @@ write_conj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
 % Write out disjunctions.
 %
 
-:- pred write_goal_disj(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in,
-    hlds_goal_expr::in(goal_expr_disj), io::di, io::uo) is det.
+:- pred write_goal_disj(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, string::in, hlds_goal_expr::in(goal_expr_disj),
+    io::di, io::uo) is det.
 
-write_goal_disj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        Indent, Follow, GoalExpr, !IO) :-
+write_goal_disj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = disj(Disjuncts),
     IndentStr = indent2_string(Indent),
     (
         Disjuncts = [Goal | Goals],
         io.format(Stream, "%s( %% disjunction\n", [s(IndentStr)], !IO),
-        do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent + 1, "\n", Goal, !IO),
-        write_goal_list(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, ";\n", Goals, !IO),
+        do_write_goal(InfoGoal, Stream, Indent + 1, "\n", Goal, !IO),
+        write_goal_list(InfoGoal, Stream, Indent, ";\n", Goals, !IO),
         io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
     ;
         Disjuncts = [],
@@ -1937,60 +1937,52 @@ write_goal_disj(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
 % Write out switches.
 %
 
-:- pred write_goal_switch(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in,
-    hlds_goal_expr::in(goal_expr_switch), io::di, io::uo) is det.
+:- pred write_goal_switch(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, string::in, hlds_goal_expr::in(goal_expr_switch),
+    io::di, io::uo) is det.
 
-write_goal_switch(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        Indent, Follow, GoalExpr, !IO) :-
+write_goal_switch(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = switch(Var, CanFail, CasesList),
     IndentStr = indent2_string(Indent),
     CanFailStr = can_fail_to_string(CanFail),
+    VarNameSrc = InfoGoal ^ hoig_var_name_src,
+    VarNamePrint = InfoGoal ^ hoig_var_name_print,
     VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
     io.format(Stream, "%s( %% %s switch on `%s'\n",
         [s(IndentStr), s(CanFailStr), s(VarStr)], !IO),
     Indent1 = Indent + 1,
     (
         CasesList = [Case | Cases],
-        write_case(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent1, Var, Case, !IO),
-        write_cases(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Var, Cases, !IO)
+        write_case(InfoGoal, Stream, Indent1, Var, Case, !IO),
+        write_cases(InfoGoal, Stream, Indent, Var, Cases, !IO)
     ;
         CasesList = [],
         io.format(Stream, "%sfail\n", [s(IndentStr)], !IO)
     ),
     io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
 
-:- pred write_cases(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, prog_var::in, list(case)::in,
-    io::di, io::uo) is det.
+:- pred write_cases(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, prog_var::in, list(case)::in, io::di, io::uo) is det.
 
-write_cases(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-        VarNamePrint, Indent, Var, CasesList, !IO) :-
+write_cases(InfoGoal, Stream, Indent, Var, CasesList, !IO) :-
     (
         CasesList = [Case | Cases],
         IndentStr = indent2_string(Indent),
         io.format(Stream, "%s;\n", [s(IndentStr)], !IO),
-        write_case(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent + 1, Var, Case, !IO),
-        write_cases(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, Var, Cases, !IO)
+        write_case(InfoGoal, Stream, Indent + 1, Var, Case, !IO),
+        write_cases(InfoGoal, Stream, Indent, Var, Cases, !IO)
     ;
         CasesList = []
     ).
 
-:- pred write_case(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, prog_var::in, case::in,
-    io::di, io::uo) is det.
+:- pred write_case(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, prog_var::in, case::in, io::di, io::uo) is det.
 
-write_case(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        Indent, Var, Case, !IO) :-
+write_case(InfoGoal, Stream, Indent, Var, Case, !IO) :-
     Case = case(MainConsId, OtherConsIds, Goal),
     IndentStr = indent2_string(Indent),
+    VarNameSrc = InfoGoal ^ hoig_var_name_src,
+    VarNamePrint = InfoGoal ^ hoig_var_name_print,
     VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
     % Any module qualifications on the cons_ids would be copies of
     % the module qualification on the type they are from, which can be
@@ -2005,8 +1997,7 @@ write_case(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
     % Var to the functor, since simplify.m and unused_args.m remove
     % the unification. At the moment this is not a problem, since
     % intermod.m works on the unoptimized clauses.
-    do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        Indent, "\n", Goal, !IO).
+    do_write_goal(InfoGoal, Stream, Indent, "\n", Goal, !IO).
 
 project_cons_name_and_tag(TaggedConsId, ConsName, ConsTag) :-
     TaggedConsId = tagged_cons_id(ConsId, ConsTag),
@@ -2027,18 +2018,15 @@ case_comment(VarName, MainConsName, OtherConsNames) = Comment :-
 % Write out negations.
 %
 
-:- pred write_goal_negation(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in, hlds_goal_expr::in(goal_expr_neg),
+:- pred write_goal_negation(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, string::in, hlds_goal_expr::in(goal_expr_neg),
     io::di, io::uo) is det.
 
-write_goal_negation(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-        VarNamePrint, Indent, Follow, GoalExpr, !IO) :-
+write_goal_negation(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = negation(Goal),
     IndentStr = indent2_string(Indent),
     io.format(Stream, "%snot (\n", [s(IndentStr)], !IO),
-    do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        Indent + 1, "\n", Goal, !IO),
+    do_write_goal(InfoGoal, Stream, Indent + 1, "\n", Goal, !IO),
     io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
 
 %---------------------------------------------------------------------------%
@@ -2046,13 +2034,11 @@ write_goal_negation(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
 % Write out if-then-elses.
 %
 
-:- pred write_goal_if_then_else(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in, hlds_goal_expr::in(goal_expr_ite),
-    io::di, io::uo) is det.
+:- pred write_goal_if_then_else(hlds_out_info_goal::in,
+    io.text_output_stream::in, int::in, string::in,
+    hlds_goal_expr::in(goal_expr_ite), io::di, io::uo) is det.
 
-write_goal_if_then_else(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-        VarNamePrint, Indent, Follow, GoalExpr, !IO) :-
+write_goal_if_then_else(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = if_then_else(Vars, Cond, Then, Else),
     IndentStr = indent2_string(Indent),
     (
@@ -2060,19 +2046,19 @@ write_goal_if_then_else(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         SomeVarsStr = ""
     ;
         Vars = [_ | _],
-        VarsStr = mercury_vars_to_string_src(VarNameSrc,
-            print_name_and_num, Vars),
+        VarNameSrc = InfoGoal ^ hoig_var_name_src,
+        VarNamePrint = InfoGoal ^ hoig_var_name_print,
+        VarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint, Vars),
         string.format(" some [%s]", [s(VarsStr)], SomeVarsStr)
     ),
     io.format(Stream, "%s( if%s\n", [s(IndentStr), s(SomeVarsStr)], !IO),
 
     Indent1 = Indent + 1,
-    do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        Indent1, "\n", Cond, !IO),
+    do_write_goal(InfoGoal, Stream, Indent1, "\n", Cond, !IO),
     io.format(Stream, "%sthen\n", [s(IndentStr)], !IO),
-    do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        Indent1, "\n", Then, !IO),
+    do_write_goal(InfoGoal, Stream, Indent1, "\n", Then, !IO),
     io.format(Stream, "%selse\n", [s(IndentStr)], !IO),
+    Info = InfoGoal ^ hoig_out_info,
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if
         DumpOptions \= "",
@@ -2082,8 +2068,7 @@ write_goal_if_then_else(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
     else
         ElseIndent = Indent1
     ),
-    do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual, VarNamePrint,
-        ElseIndent, "\n", Else, !IO),
+    do_write_goal(InfoGoal, Stream, ElseIndent, "\n", Else, !IO),
     io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
 
 %---------------------------------------------------------------------------%
@@ -2091,18 +2076,18 @@ write_goal_if_then_else(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
 % Write out scope goals.
 %
 
-:- pred write_goal_scope(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in,
-    hlds_goal_expr::in(goal_expr_scope), io::di, io::uo) is det.
+:- pred write_goal_scope(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, string::in, hlds_goal_expr::in(goal_expr_scope),
+    io::di, io::uo) is det.
 
-write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-        VarNamePrint, Indent, Follow, GoalExpr, !IO) :-
+write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = scope(Reason, Goal),
     IndentStr = indent2_string(Indent),
     io.write_string(Stream, IndentStr, !IO),
     (
         Reason = exist_quant(Vars, Creator),
+        VarNameSrc = !.InfoGoal ^ hoig_var_name_src,
+        VarNamePrint = !.InfoGoal ^ hoig_var_name_print,
         VarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint, Vars),
         ( Creator = user_quant,     CreatorStr = "user"
         ; Creator = compiler_quant, CreatorStr = "compiler"
@@ -2123,6 +2108,8 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         io.format(Stream, "%s (\n", [s(PromiseStr)], !IO)
     ;
         Reason = promise_solutions(Vars, Kind),
+        VarNameSrc = !.InfoGoal ^ hoig_var_name_src,
+        VarNamePrint = !.InfoGoal ^ hoig_var_name_print,
         VarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint, Vars),
         (
             Kind = equivalent_solutions,
@@ -2149,6 +2136,8 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         io.format(Stream, "%s (\n", [s(ReqStr)], !IO)
     ;
         Reason = require_complete_switch(Var),
+        VarNameSrc = !.InfoGoal ^ hoig_var_name_src,
+        VarNamePrint = !.InfoGoal ^ hoig_var_name_print,
         VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
         io.format(Stream, "require_complete_switch [%s] (\n", [s(VarStr)], !IO)
     ;
@@ -2178,6 +2167,8 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             Detism = detism_erroneous,
             ReqStr = "require_switch_arms_erroneous"
         ),
+        VarNameSrc = !.InfoGoal ^ hoig_var_name_src,
+        VarNamePrint = !.InfoGoal ^ hoig_var_name_print,
         VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
         io.format(Stream, "%s [%s] (\n", [s(ReqStr), s(VarStr)], !IO)
     ;
@@ -2202,6 +2193,8 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         io.write_string(Stream, "% commit(dont_force_pruning)\n", !IO)
     ;
         Reason = from_ground_term(Var, Kind),
+        VarNameSrc = !.InfoGoal ^ hoig_var_name_src,
+        VarNamePrint = !.InfoGoal ^ hoig_var_name_print,
         VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
         ( Kind = from_ground_term_initial,      KindStr = "initial"
         ; Kind = from_ground_term_construct,    KindStr = "construct"
@@ -2215,8 +2208,9 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         % all of the fields of goal infos already filled in.
         % This means printing them is meaningful, and sometimes
         % it is needed to diagnose problems.
-        DumpOptionsBackup = !.Info ^ hoi_dump_hlds_options_backup,
-        !Info ^ hoi_dump_hlds_options := DumpOptionsBackup
+        DumpOptionsBackup =
+            !.InfoGoal ^ hoig_out_info ^ hoi_dump_hlds_options_backup,
+        !InfoGoal ^ hoig_out_info ^ hoi_dump_hlds_options := DumpOptionsBackup
     ;
         Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIO0,
             MutableVars0, QuantVars),
@@ -2245,7 +2239,8 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             ;
                 MaybeRunTime = no
             ),
-            Lang = get_output_lang(!.Info ^ hoi_merc_out_info),
+            Lang = get_output_lang(!.InfoGoal ^ hoig_out_info
+                ^ hoi_merc_out_info),
             (
                 Lang = output_mercury,
                 % After we have read in trace goals as expressions,
@@ -2318,6 +2313,8 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
                 Lang = output_mercury
             ;
                 Lang = output_debug,
+                VarNameSrc = !.InfoGoal ^ hoig_var_name_src,
+                VarNamePrint = !.InfoGoal ^ hoig_var_name_print,
                 QuantVarsStr = mercury_vars_to_string_src(VarNameSrc,
                     VarNamePrint, QuantVars),
                 io.format(Stream, "%s%% quantified vars [%s]\n",
@@ -2335,13 +2332,14 @@ write_goal_scope(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
             UseParentStack = lc_create_frame_on_child_stack,
             UseParentStackStr = "using_child_stack"
         ),
+        VarNameSrc = !.InfoGoal ^ hoig_var_name_src,
+        VarNamePrint = !.InfoGoal ^ hoig_var_name_print,
         LCVarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
             [LCVar, LCSVar]),
         io.format(Stream, "%s%% loop_control_spawn_off_%s(%s) (\n",
             [s(IndentStr), s(UseParentStackStr), s(LCVarsStr)], !IO)
     ),
-    do_write_goal(!.Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-        VarNamePrint, Indent + 1, "\n", Goal, !IO),
+    do_write_goal(!.InfoGoal, Stream, Indent + 1, "\n", Goal, !IO),
     io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
 
 :- pred write_trace_mutable_var_hlds(io.text_output_stream::in, string::in,
@@ -2371,19 +2369,19 @@ maybe_add_comma_newline(Stream, AddCommaNewline, !IO) :-
 % Write out shorthand goals.
 %
 
-:- pred write_goal_shorthand(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, var_name_source::in, type_qual::in,
-    var_name_print::in, int::in, string::in,
-    hlds_goal_expr::in(goal_expr_shorthand), io::di, io::uo) is det.
+:- pred write_goal_shorthand(hlds_out_info_goal::in, io.text_output_stream::in,
+    int::in, string::in, hlds_goal_expr::in(goal_expr_shorthand),
+    io::di, io::uo) is det.
 
-write_goal_shorthand(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-        VarNamePrint, Indent, Follow, GoalExpr, !IO) :-
+write_goal_shorthand(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = shorthand(ShortHand),
     IndentStr = indent2_string(Indent),
     Indent1 = Indent + 1,
     (
         ShortHand = atomic_goal(_GoalType, Outer, Inner, MaybeOutputVars,
             MainGoal, OrElseGoals, _OrElseInners),
+        VarNameSrc = InfoGoal ^ hoig_var_name_src,
+        VarNamePrint = InfoGoal ^ hoig_var_name_print,
         OuterStr = atomic_interface_vars_to_string(VarNameSrc, VarNamePrint,
             "outer", Outer),
         InnerStr = atomic_interface_vars_to_string(VarNameSrc, VarNamePrint,
@@ -2400,10 +2398,9 @@ write_goal_shorthand(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         io.format(Stream, "%satomic [%s %s %s] (\n",
             [s(IndentStr), s(OuterStr), s(InnerStr), s(MaybeOutputVarsStr)],
             !IO),
-        do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent1, "\n", MainGoal, !IO),
-        write_goal_list(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent, "or_else\n", OrElseGoals, !IO),
+        do_write_goal(InfoGoal, Stream, Indent1, "\n", MainGoal, !IO),
+        write_goal_list(InfoGoal, Stream, Indent, "or_else\n",
+            OrElseGoals, !IO),
         io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
     ;
         ShortHand = try_goal(MaybeIO, _, SubGoal),
@@ -2411,6 +2408,8 @@ write_goal_shorthand(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         (
             MaybeIO = yes(try_io_state_vars(IOVarA, IOVarB)),
             Indent1Str = indent2_string(Indent1),
+            VarNameSrc = InfoGoal ^ hoig_var_name_src,
+            VarNamePrint = InfoGoal ^ hoig_var_name_print,
             IOVarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
                 [IOVarA, IOVarB]),
             io.format(Stream, "%s%% io(%s)\n",
@@ -2418,17 +2417,14 @@ write_goal_shorthand(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
         ;
             MaybeIO = no
         ),
-        do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent1, "\n", SubGoal, !IO),
+        do_write_goal(InfoGoal, Stream, Indent1, "\n", SubGoal, !IO),
         io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
     ;
         ShortHand = bi_implication(GoalA, GoalB),
         io.format(Stream, "%s( %% bi-implication\n", [s(IndentStr)], !IO),
-        do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent1, "\n", GoalA, !IO),
+        do_write_goal(InfoGoal, Stream, Indent1, "\n", GoalA, !IO),
         io.format(Stream, "%s<=>\n", [s(IndentStr)], !IO),
-        do_write_goal(Info, Stream, ModuleInfo, VarNameSrc, TypeQual,
-            VarNamePrint, Indent1, "\n", GoalB, !IO),
+        do_write_goal(InfoGoal, Stream, Indent1, "\n", GoalB, !IO),
         io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
     ).
 

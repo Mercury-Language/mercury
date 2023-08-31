@@ -534,11 +534,13 @@ analyze_and_optimize_format_calls(ModuleInfo, PredInfo, ProcInfo,
     module_info_get_globals(ModuleInfo, Globals0),
     globals.set_option(dump_hlds_options, string("vxP"), Globals0, Globals),
     OutInfo = init_hlds_out_info(Globals, output_debug),
+    pred_info_get_typevarset(PredInfo, TVarSet),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
     trace [io(!IO), compiletime(flag("debug_format_call"))] (
         io.output_stream(Stream, !IO),
         io.write_string(Stream, "\n\nBEFORE TRANSFORM:\n", !IO),
         write_goal(OutInfo, Stream, ModuleInfo, vns_var_table(!.VarTable),
-            print_name_and_num, 0, "\n", Goal1, !IO)
+            print_name_and_num, TVarSet, InstVarSet, 0, "\n", Goal1, !IO)
     ),
 
     globals.lookup_bool_option(Globals, warn_unknown_format_calls,
@@ -593,7 +595,7 @@ analyze_and_optimize_format_calls(ModuleInfo, PredInfo, ProcInfo,
             io.output_stream(Stream, !IO),
             io.write_string(Stream, "\n\nAFTER TRANSFORM:\n", !IO),
             write_goal(OutInfo, Stream, ModuleInfo, vns_var_table(!.VarTable),
-                print_name_and_num, 0, "\n", Goal, !IO)
+                print_name_and_num, TVarSet, InstVarSet, 0, "\n", Goal, !IO)
         ),
         MaybeGoal = yes(Goal)
     ).

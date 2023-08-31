@@ -441,12 +441,14 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
     then
         trace [compiletime(flag("lco")), io(!IO)] (
             get_lco_debug_output_stream(Info, DebugStream, !IO),
+            pred_info_get_typevarset(PredInfo, TVarSet),
+            proc_info_get_inst_varset(ProcInfo0, InstVarSet),
             io.write_string(DebugStream, "\ngoal before lco:\n", !IO),
             dump_goal_nl(DebugStream, !.ModuleInfo, vns_var_table(VarTable),
-                Goal0, !IO),
+                TVarSet, InstVarSet, Goal0, !IO),
             io.write_string(DebugStream, "\ngoal after lco:\n", !IO),
             dump_goal_nl(DebugStream, !.ModuleInfo, vns_var_table(VarTable),
-                Goal, !IO)
+                TVarSet, InstVarSet, Goal, !IO)
         ),
         some [!ProcInfo] (
             !:ProcInfo = ProcInfo0,
@@ -905,11 +907,18 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
             get_debug_output_stream(ModuleInfo, DebugStream, !IO),
             VarTable = !.Info ^ lco_var_table,
             VarNameSrc = vns_var_table(VarTable),
+            CurPredInfo = ConstInfo ^ lci_cur_proc_pred,
+            pred_info_get_typevarset(CurPredInfo, TVarSet),
+            proc_info_get_inst_varset(CurProcInfo, InstVarSet),
             io.write_string(DebugStream, "original unifies:\n", !IO),
-            list.foldl(dump_goal_nl(DebugStream, ModuleInfo, VarNameSrc),
+            list.foldl(
+                dump_goal_nl(DebugStream, ModuleInfo, VarNameSrc,
+                    TVarSet, InstVarSet),
                 UnifyGoals, !IO),
             io.write_string(DebugStream, "updated unifies:\n", !IO),
-            list.foldl(dump_goal_nl(DebugStream, ModuleInfo, VarNameSrc),
+            list.foldl(
+                dump_goal_nl(DebugStream, ModuleInfo, VarNameSrc,
+                    TVarSet, InstVarSet),
                 UpdatedUnifyGoals, !IO),
             io.write_string(DebugStream, "addr field ids:\n", !IO),
             map.to_assoc_list(AddrFieldIds, AddrFieldIdsAL),
@@ -1404,8 +1413,8 @@ update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
 
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
-        _PredInfo, ProcInfo),
-    lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
+        PredInfo, ProcInfo),
+    lco_transform_variant_proc(VariantMap, AddrOutArgs, PredInfo, ProcInfo,
         VariantProcInfo, !ModuleInfo),
 
     proc_info_get_headvars(VariantProcInfo, HeadVars),
@@ -1430,9 +1439,10 @@ update_variant_pred_info(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
 %---------------------------------------------------------------------------%
 
 :- pred lco_transform_variant_proc(variant_map::in, list(variant_arg)::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
+    pred_info::in, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
 
-lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
+lco_transform_variant_proc(VariantMap, AddrOutArgs, PredInfo, ProcInfo,
         !:VariantProcInfo, !ModuleInfo) :-
     !:VariantProcInfo = ProcInfo,
     proc_info_get_var_table(ProcInfo, VarTable0),
@@ -1458,11 +1468,13 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
         ;
             Changed = yes,
             io.write_string(DebugStream, "goal before:\n", !IO),
+            pred_info_get_typevarset(PredInfo, TVarSet),
+            proc_info_get_inst_varset(!.VariantProcInfo, InstVarSet),
             dump_goal_nl(DebugStream, !.ModuleInfo, vns_var_table(VarTable),
-                Goal0, !IO),
+                TVarSet, InstVarSet, Goal0, !IO),
             io.write_string(DebugStream, "\ngoal after:\n", !IO),
             dump_goal_nl(DebugStream, !.ModuleInfo, vns_var_table(VarTable),
-                Goal, !IO)
+                TVarSet, InstVarSet, Goal, !IO)
         )
     ),
     proc_info_set_goal(Goal, !VariantProcInfo),
