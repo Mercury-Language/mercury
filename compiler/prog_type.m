@@ -635,7 +635,7 @@ type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod) :-
     TypeCtor = type_ctor(SymName, _Arity),
     (
         SymName = qualified(ModuleSymName, PorFStr),
-        ModuleSymName = unqualified(Qualifier), 
+        ModuleSymName = unqualified(Qualifier),
         (
             Qualifier = "impure",
             Purity = purity_impure,
@@ -835,21 +835,6 @@ strip_module_names_from_type(StripWhat, Type0, Type) :-
 strip_module_names_from_type_list(StripWhat, Types0, Types) :-
     list.map(strip_module_names_from_type(StripWhat), Types0, Types).
 
-:- pred strip_module_names_from_ho_inst_info(strip_what_module_names::in,
-    ho_inst_info::in, ho_inst_info::out) is det.
-
-strip_module_names_from_ho_inst_info(StripWhat, HOInstInfo0, HOInstInfo) :-
-    (
-        HOInstInfo0 = none_or_default_func,
-        HOInstInfo = none_or_default_func
-    ;
-        HOInstInfo0 = higher_order(PredInstInfo0),
-        PredInstInfo0 = pred_inst_info(PorF, Modes0, RegTypes, Detism),
-        strip_module_names_from_mode_list(StripWhat, Modes0, Modes),
-        PredInstInfo = pred_inst_info(PorF, Modes, RegTypes, Detism),
-        HOInstInfo = higher_order(PredInstInfo)
-    ).
-
 %---------------------------------------------------------------------------%
 
 prog_constraints_get_tvars(constraints(Univ, Exist), TVars) :-
@@ -871,18 +856,18 @@ get_unconstrained_tvars(Tvars, Constraints, Unconstrained) :-
 
 %---------------------------------------------------------------------------%
 
+builtin_type_ctors_with_no_hlds_type_defn =
     % Every element of this list must be reflected in the code of
     % builtin_type_ctor in type_ctor_info.m.
-builtin_type_ctors_with_no_hlds_type_defn =
     [ type_ctor(qualified(mercury_public_builtin_module, "int"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "uint"), 0),
       type_ctor(qualified(mercury_public_builtin_module, "int8"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "uint8"), 0),
       type_ctor(qualified(mercury_public_builtin_module, "int16"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "uint16"), 0),
       type_ctor(qualified(mercury_public_builtin_module, "int32"), 0),
-      type_ctor(qualified(mercury_public_builtin_module, "uint32"), 0),
       type_ctor(qualified(mercury_public_builtin_module, "int64"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "uint"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "uint8"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "uint16"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "uint32"), 0),
       type_ctor(qualified(mercury_public_builtin_module, "uint64"), 0),
       type_ctor(qualified(mercury_public_builtin_module, "string"), 0),
       type_ctor(qualified(mercury_public_builtin_module, "character"), 0),
@@ -899,7 +884,7 @@ is_type_ctor_a_builtin_dummy(TypeCtor) = IsBuiltinDummy :-
     TypeCtor = type_ctor(CtorSymName, TypeArity),
     (
         CtorSymName = qualified(ModuleName, TypeName),
-        ( if 
+        ( if
             (
                 TypeName = "state",
                 TypeArity = 0,
@@ -938,8 +923,7 @@ type_is_io_state(Type) :-
 
 type_ctor_is_array(type_ctor(qualified(unqualified("array"), "array"), 1)).
 
-type_ctor_is_bitmap(
-        type_ctor(qualified(unqualified("bitmap"), "bitmap"), 0)).
+type_ctor_is_bitmap(type_ctor(qualified(unqualified("bitmap"), "bitmap"), 0)).
 
 is_introduced_type_info_type(Type) :-
     type_to_ctor(Type, TypeCtor),

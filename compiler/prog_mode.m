@@ -183,6 +183,8 @@
     list(mer_inst)::in, list(mer_inst)::out) is det.
 :- pred strip_module_names_from_inst(strip_what_module_names::in,
     mer_inst::in, mer_inst::out) is det.
+:- pred strip_module_names_from_ho_inst_info(strip_what_module_names::in,
+    ho_inst_info::in, ho_inst_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -1025,18 +1027,15 @@ strip_module_names_from_inst_name(StripWhat, InstName0, InstName) :-
         InstName = typed_inst(Type, SubInstName)
     ).
 
-:- pred strip_module_names_from_ho_inst_info(strip_what_module_names::in,
-    ho_inst_info::in, ho_inst_info::out) is det.
-
 strip_module_names_from_ho_inst_info(StripWhat, HOInstInfo0, HOInstInfo) :-
     (
         HOInstInfo0 = none_or_default_func,
         HOInstInfo = none_or_default_func
     ;
         HOInstInfo0 = higher_order(Pred0),
-        Pred0 = pred_inst_info(PorF, Modes0, ArgRegs, Det),
+        Pred0 = pred_inst_info(PorF, Modes0, ArgRegTypes, Detism),
         strip_module_names_from_mode_list(StripWhat, Modes0, Modes),
-        Pred = pred_inst_info(PorF, Modes, ArgRegs, Det),
+        Pred = pred_inst_info(PorF, Modes, ArgRegTypes, Detism),
         HOInstInfo = higher_order(Pred)
     ).
 
