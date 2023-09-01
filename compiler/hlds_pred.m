@@ -3922,8 +3922,6 @@ proc_info_interface_determinism(ProcInfo, Determinism) :-
         MaybeDeterminism = yes(Determinism)
     ).
 
-    % Return Result = yes if the called predicate is known to never succeed.
-    %
 proc_info_never_succeeds(ProcInfo, CanSucceed) :-
     proc_info_get_declared_determinism(ProcInfo, DeclaredDeterminism),
     (
@@ -4218,18 +4216,6 @@ ensure_all_headvars_are_named_loop([Var | Vars], SeqNum, !VarTable) :-
 
 :- interface.
 
-    % field_extraction_function_args(Args, InputTermArg).
-    % Work out which arguments of a field access correspond to the
-    % field being extracted/set, and which are the container arguments.
-    %
-:- pred field_extraction_function_args(list(prog_var)::in, prog_var::out)
-    is det.
-
-    % field_update_function_args(Args, InputTermArg, FieldArg).
-    %
-:- pred field_update_function_args(list(prog_var)::in, prog_var::out,
-    prog_var::out) is det.
-
     % field_access_function_name(AccessType, FieldName, FuncName).
     %
     % From the access type and the name of the field,
@@ -4253,21 +4239,6 @@ ensure_all_headvars_are_named_loop([Var | Vars], SeqNum, !VarTable) :-
     is semidet.
 
 :- implementation.
-
-field_extraction_function_args(Args, TermInputArg) :-
-    ( if Args = [TermInputArg0] then
-        TermInputArg = TermInputArg0
-    else
-        unexpected($pred, "num_args != 1")
-    ).
-
-field_update_function_args(Args, TermInputArg, FieldArg) :-
-    ( if Args = [TermInputArg0, FieldArg0] then
-        FieldArg = FieldArg0,
-        TermInputArg = TermInputArg0
-    else
-        unexpected($pred, "num_args != 2")
-    ).
 
 field_access_function_name(get, FieldName, FieldName).
 field_access_function_name(set, FieldName, FuncName) :-

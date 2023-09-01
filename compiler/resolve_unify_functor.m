@@ -678,5 +678,34 @@ make_new_var(ModuleInfo, Type, Var, !VarTable) :-
     add_var_entry(Entry, Var, !VarTable).
 
 %---------------------------------------------------------------------------%
+
+    % field_extraction_function_args(Args, InputTermArg).
+    % Work out which arguments of a field access correspond to the
+    % field being extracted/set, and which are the container arguments.
+    %
+:- pred field_extraction_function_args(list(prog_var)::in, prog_var::out)
+    is det.
+
+field_extraction_function_args(Args, TermInputArg) :-
+    ( if Args = [TermInputArg0] then
+        TermInputArg = TermInputArg0
+    else
+        unexpected($pred, "num_args != 1")
+    ).
+
+    % field_update_function_args(Args, InputTermArg, FieldArg).
+    %
+:- pred field_update_function_args(list(prog_var)::in, prog_var::out,
+    prog_var::out) is det.
+
+field_update_function_args(Args, TermInputArg, FieldArg) :-
+    ( if Args = [TermInputArg0, FieldArg0] then
+        FieldArg = FieldArg0,
+        TermInputArg = TermInputArg0
+    else
+        unexpected($pred, "num_args != 2")
+    ).
+
+%---------------------------------------------------------------------------%
 :- end_module check_hlds.resolve_unify_functor.
 %---------------------------------------------------------------------------%
