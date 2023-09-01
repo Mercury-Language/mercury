@@ -17,14 +17,37 @@
 :- interface.
 
 :- import_module hlds.
+:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 
 :- import_module list.
+:- import_module maybe.
 :- import_module set.
+
+%-----------------------------------------------------------------------------%
+
+:- func goal_info_get_maybe_lfu(hlds_goal_info) = maybe(set_of_progvar).
+:- func goal_info_get_maybe_lbu(hlds_goal_info) = maybe(set_of_progvar).
+:- func goal_info_get_maybe_reuse(hlds_goal_info) = maybe(reuse_description).
+
+    % The following functions produce an 'unexpected' error when the
+    % requested values have not been set.
+    %
+:- func goal_info_get_lfu(hlds_goal_info) = set_of_progvar.
+:- func goal_info_get_lbu(hlds_goal_info) = set_of_progvar.
+:- func goal_info_get_reuse(hlds_goal_info) = reuse_description.
+
+:- pred goal_info_set_lfu(set_of_progvar::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_lbu(set_of_progvar::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_reuse(reuse_description::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -86,6 +109,105 @@
 
 :- import_module bool.
 :- import_module map.
+:- import_module require.
+
+%---------------------------------------------------------------------------%
+
+goal_info_get_maybe_lfu(GoalInfo) = MaybeLFU :-
+    MaybeCTGC = goal_info_get_maybe_ctgc(GoalInfo),
+    (
+        MaybeCTGC = yes(CTGC),
+        MaybeLFU = yes(CTGC ^ ctgc_lfu)
+    ;
+        MaybeCTGC = no,
+        MaybeLFU = no
+    ).
+
+goal_info_get_maybe_lbu(GoalInfo) = MaybeLBU :-
+    MaybeCTGC = goal_info_get_maybe_ctgc(GoalInfo),
+    (
+        MaybeCTGC = yes(CTGC),
+        MaybeLBU = yes(CTGC ^ ctgc_lbu)
+    ;
+        MaybeCTGC = no,
+        MaybeLBU = no
+    ).
+
+goal_info_get_maybe_reuse(GoalInfo) = MaybeReuse :-
+    MaybeCTGC = goal_info_get_maybe_ctgc(GoalInfo),
+    (
+        MaybeCTGC = yes(CTGC),
+        MaybeReuse = yes(CTGC ^ ctgc_reuse)
+    ;
+        MaybeCTGC = no,
+        MaybeReuse = no
+    ).
+
+goal_info_get_lfu(GoalInfo) = LFU :-
+    MaybeLFU = goal_info_get_maybe_lfu(GoalInfo),
+    (
+        MaybeLFU = yes(LFU)
+    ;
+        MaybeLFU = no,
+        unexpected($pred,
+            "Requesting LFU information while CTGC field not set.")
+    ).
+
+goal_info_get_lbu(GoalInfo) = LBU :-
+    MaybeLBU = goal_info_get_maybe_lbu(GoalInfo),
+    (
+        MaybeLBU = yes(LBU)
+    ;
+        MaybeLBU = no,
+        unexpected($pred,
+            "Requesting LBU information while CTGC field not set.")
+    ).
+
+goal_info_get_reuse(GoalInfo) = Reuse :-
+    MaybeReuse = goal_info_get_maybe_reuse(GoalInfo),
+    (
+        MaybeReuse = yes(Reuse)
+    ;
+        MaybeReuse = no,
+        unexpected($pred,
+            "Requesting reuse information while CTGC field not set.")
+    ).
+
+goal_info_set_lfu(LFU, !GoalInfo) :-
+    MaybeCTGC0 = goal_info_get_maybe_ctgc(!.GoalInfo),
+    (
+        MaybeCTGC0 = yes(CTGC0)
+    ;
+        MaybeCTGC0 = no,
+        CTGC0 = ctgc_goal_info_init
+    ),
+    CTGC = CTGC0 ^ ctgc_lfu := LFU,
+    MaybeCTGC = yes(CTGC),
+    goal_info_set_maybe_ctgc(MaybeCTGC, !GoalInfo).
+
+goal_info_set_lbu(LBU, !GoalInfo) :-
+    MaybeCTGC0 = goal_info_get_maybe_ctgc(!.GoalInfo),
+    (
+        MaybeCTGC0 = yes(CTGC0)
+    ;
+        MaybeCTGC0 = no,
+        CTGC0 = ctgc_goal_info_init
+    ),
+    CTGC = CTGC0 ^ ctgc_lbu := LBU,
+    MaybeCTGC = yes(CTGC),
+    goal_info_set_maybe_ctgc(MaybeCTGC, !GoalInfo).
+
+goal_info_set_reuse(Reuse, !GoalInfo) :-
+    MaybeCTGC0 = goal_info_get_maybe_ctgc(!.GoalInfo),
+    (
+        MaybeCTGC0 = yes(CTGC0)
+    ;
+        MaybeCTGC0 = no,
+        CTGC0 = ctgc_goal_info_init
+    ),
+    CTGC = CTGC0 ^ ctgc_reuse := Reuse,
+    MaybeCTGC = yes(CTGC),
+    goal_info_set_maybe_ctgc(MaybeCTGC, !GoalInfo).
 
 %---------------------------------------------------------------------------%
 

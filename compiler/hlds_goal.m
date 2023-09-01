@@ -1649,6 +1649,8 @@
 :- pred goal_info_init_context_purity(prog_context::in, purity::in,
     hlds_goal_info::out) is det.
 
+:- func ctgc_goal_info_init = ctgc_goal_info.
+
 :- func impure_init_goal_info(set_of_progvar, instmap_delta, determinism)
     = hlds_goal_info.
 :- func impure_reachable_init_goal_info(set_of_progvar, determinism)
@@ -1717,26 +1719,6 @@
 
 :- func goal_info_get_code_gen_nonlocals(hlds_goal_info) = set_of_progvar.
 :- pred goal_info_set_code_gen_nonlocals(set_of_progvar::in,
-    hlds_goal_info::in, hlds_goal_info::out) is det.
-
-%-----------------------------------------------------------------------------%
-
-:- func goal_info_get_maybe_lfu(hlds_goal_info) = maybe(set_of_progvar).
-:- func goal_info_get_maybe_lbu(hlds_goal_info) = maybe(set_of_progvar).
-:- func goal_info_get_maybe_reuse(hlds_goal_info) = maybe(reuse_description).
-
-    % The following functions produce an 'unexpected' error when the
-    % requested values have not been set.
-    %
-:- func goal_info_get_lfu(hlds_goal_info) = set_of_progvar.
-:- func goal_info_get_lbu(hlds_goal_info) = set_of_progvar.
-:- func goal_info_get_reuse(hlds_goal_info) = reuse_description.
-
-:- pred goal_info_set_lfu(set_of_progvar::in,
-    hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_lbu(set_of_progvar::in,
-    hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_reuse(reuse_description::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -2210,8 +2192,6 @@ hlds_goal_extra_info_init(Context) = ExtraInfo :-
     ExtraInfo = extra_goal_info(Context, rgp_nil, HO_Values,
         make_dummy_goal_mode, no, no, no, no).
 
-:- func ctgc_goal_info_init = ctgc_goal_info.
-
 ctgc_goal_info_init =
     ctgc_goal_info(set_of_var.init, set_of_var.init, no_reuse_info).
 
@@ -2322,104 +2302,6 @@ goal_info_get_code_gen_nonlocals(GoalInfo) =
     % non-locals when structure reuse is not being performed.
 goal_info_set_code_gen_nonlocals(NonLocals, !GoalInfo) :-
     goal_info_set_nonlocals(NonLocals, !GoalInfo).
-
-%-----------------------------------------------------------------------------%
-
-goal_info_get_maybe_lfu(GoalInfo) = MaybeLFU :-
-    MaybeCTGC = GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
-    (
-        MaybeCTGC = yes(CTGC),
-        MaybeLFU = yes(CTGC ^ ctgc_lfu)
-    ;
-        MaybeCTGC = no,
-        MaybeLFU = no
-    ).
-
-goal_info_get_maybe_lbu(GoalInfo) = MaybeLBU :-
-    MaybeCTGC = GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
-    (
-        MaybeCTGC = yes(CTGC),
-        MaybeLBU = yes(CTGC ^ ctgc_lbu)
-    ;
-        MaybeCTGC = no,
-        MaybeLBU = no
-    ).
-
-goal_info_get_maybe_reuse(GoalInfo) = MaybeReuse :-
-    MaybeCTGC = GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
-    (
-        MaybeCTGC = yes(CTGC),
-        MaybeReuse = yes(CTGC ^ ctgc_reuse)
-    ;
-        MaybeCTGC = no,
-        MaybeReuse = no
-    ).
-
-goal_info_get_lfu(GoalInfo) = LFU :-
-    MaybeLFU = goal_info_get_maybe_lfu(GoalInfo),
-    (
-        MaybeLFU = yes(LFU)
-    ;
-        MaybeLFU = no,
-        unexpected($pred,
-            "Requesting LFU information while CTGC field not set.")
-    ).
-
-goal_info_get_lbu(GoalInfo) = LBU :-
-    MaybeLBU = goal_info_get_maybe_lbu(GoalInfo),
-    (
-        MaybeLBU = yes(LBU)
-    ;
-        MaybeLBU = no,
-        unexpected($pred,
-            "Requesting LBU information while CTGC field not set.")
-    ).
-
-goal_info_get_reuse(GoalInfo) = Reuse :-
-    MaybeReuse = goal_info_get_maybe_reuse(GoalInfo),
-    (
-        MaybeReuse = yes(Reuse)
-    ;
-        MaybeReuse = no,
-        unexpected($pred,
-            "Requesting reuse information while CTGC field not set.")
-    ).
-
-goal_info_set_lfu(LFU, !GoalInfo) :-
-    MaybeCTGC0 = !.GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
-    (
-        MaybeCTGC0 = yes(CTGC0)
-    ;
-        MaybeCTGC0 = no,
-        CTGC0 = ctgc_goal_info_init
-    ),
-    CTGC = CTGC0 ^ ctgc_lfu := LFU,
-    MaybeCTGC = yes(CTGC),
-    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
-
-goal_info_set_lbu(LBU, !GoalInfo) :-
-    MaybeCTGC0 = !.GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
-    (
-        MaybeCTGC0 = yes(CTGC0)
-    ;
-        MaybeCTGC0 = no,
-        CTGC0 = ctgc_goal_info_init
-    ),
-    CTGC = CTGC0 ^ ctgc_lbu := LBU,
-    MaybeCTGC = yes(CTGC),
-    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
-
-goal_info_set_reuse(Reuse, !GoalInfo) :-
-    MaybeCTGC0 = !.GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
-    (
-        MaybeCTGC0 = yes(CTGC0)
-    ;
-        MaybeCTGC0 = no,
-        CTGC0 = ctgc_goal_info_init
-    ),
-    CTGC = CTGC0 ^ ctgc_reuse := Reuse,
-    MaybeCTGC = yes(CTGC),
-    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
 
 %-----------------------------------------------------------------------------%
 

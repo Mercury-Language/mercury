@@ -76,6 +76,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module transform_hlds.ctgc.util.
 :- import_module transform_hlds.ctgc.structure_reuse.analysis.
 
 :- import_module bimap.

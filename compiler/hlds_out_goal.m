@@ -176,6 +176,9 @@
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.write_error_spec.
+:- import_module transform_hlds.
+:- import_module transform_hlds.ctgc.
+:- import_module transform_hlds.ctgc.util.
 
 :- import_module bool.
 :- import_module int.

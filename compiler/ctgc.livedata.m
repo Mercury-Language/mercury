@@ -93,6 +93,7 @@
 
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.ctgc.datastruct.
+:- import_module transform_hlds.ctgc.util.
 
 :- import_module pair.
 :- import_module require.

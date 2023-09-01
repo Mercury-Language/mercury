@@ -50,6 +50,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
+:- import_module transform_hlds.ctgc.util.
 
 :- import_module list.
 :- import_module require.
