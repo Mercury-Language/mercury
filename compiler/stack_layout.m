@@ -109,6 +109,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.
 :- import_module libs.globals.

@@ -57,6 +57,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_proc_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 

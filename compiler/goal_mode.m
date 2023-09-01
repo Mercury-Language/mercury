@@ -100,6 +100,7 @@
 :- import_module check_hlds.inst_test.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc_util.
 :- import_module hlds.instmap.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.set_of_var.

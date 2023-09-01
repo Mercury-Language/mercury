@@ -159,6 +159,7 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc_util.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.

@@ -318,6 +318,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_top_functor.
+:- import_module hlds.hlds_proc_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 

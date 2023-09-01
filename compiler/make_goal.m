@@ -148,6 +148,7 @@
 :- implementation.
 
 :- import_module hlds.instmap.
+:- import_module hlds.hlds_proc_util.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.set_of_var.

@@ -85,6 +85,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_proc_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.

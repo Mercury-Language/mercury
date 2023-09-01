@@ -55,6 +55,7 @@
 
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_proc_util.
 :- import_module ll_backend.call_gen.
 :- import_module parse_tree.prog_data.
 

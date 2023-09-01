@@ -230,6 +230,7 @@
 :- import_module check_hlds.mode_top_functor.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_proc_util.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.

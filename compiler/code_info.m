@@ -67,6 +67,7 @@
 :- import_module backend_libs.proc_label.
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
+:- import_module hlds.hlds_proc_util.
 :- import_module libs.options.
 :- import_module ll_backend.code_util.
 :- import_module parse_tree.prog_type.

@@ -139,6 +139,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_proc_util.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.
 :- import_module hlds.var_table_hlds.

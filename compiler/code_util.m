@@ -128,6 +128,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.proc_label.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_proc_util.
 
 :- import_module int.
 :- import_module maybe.

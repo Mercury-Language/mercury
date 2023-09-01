@@ -58,6 +58,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_proc_util.
 :- import_module hlds.passes_aux.
 :- import_module ll_backend.
 :- import_module ll_backend.call_gen.  % XXX for arg passing convention

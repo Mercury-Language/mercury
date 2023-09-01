@@ -67,6 +67,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
