@@ -1721,13 +1721,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % The following functions produce an 'unexpected' error when the
-    % requested values have not been set.
-    %
-:- func goal_info_get_rbmm(hlds_goal_info) = rbmm_goal_info.
-
-%-----------------------------------------------------------------------------%
-
 :- func goal_info_get_maybe_lfu(hlds_goal_info) = maybe(set_of_progvar).
 :- func goal_info_get_maybe_lbu(hlds_goal_info) = maybe(set_of_progvar).
 :- func goal_info_get_maybe_reuse(hlds_goal_info) = maybe(reuse_description).
@@ -2331,15 +2324,6 @@ goal_info_set_code_gen_nonlocals(NonLocals, !GoalInfo) :-
     goal_info_set_nonlocals(NonLocals, !GoalInfo).
 
 %-----------------------------------------------------------------------------%
-
-goal_info_get_rbmm(GoalInfo) = RBMM :-
-    MaybeRBMM = goal_info_get_maybe_rbmm(GoalInfo),
-    (
-        MaybeRBMM = yes(RBMM)
-    ;
-        MaybeRBMM = no,
-        unexpected($pred, "Requesting unavailable RBMM information.")
-    ).
 
 goal_info_get_maybe_lfu(GoalInfo) = MaybeLFU :-
     MaybeCTGC = GoalInfo ^ gi_extra ^ egi_maybe_ctgc,

@@ -542,5 +542,21 @@ collect_rbmm_goal_info_case(ModuleInfo, ProcInfo, Graph,
     !:Case = case(MainConsId, OtherConsIds, Goal).
 
 %---------------------------------------------------------------------------%
+
+   % The following functions produce an 'unexpected' error when the
+    % requested values have not been set.
+    %
+:- func goal_info_get_rbmm(hlds_goal_info) = rbmm_goal_info.
+
+goal_info_get_rbmm(GoalInfo) = RBMM :-
+    MaybeRBMM = goal_info_get_maybe_rbmm(GoalInfo),
+    (
+        MaybeRBMM = yes(RBMM)
+    ;
+        MaybeRBMM = no,
+        unexpected($pred, "Requesting unavailable RBMM information.")
+    ).
+
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.add_rbmm_goal_infos.
 %---------------------------------------------------------------------------%
