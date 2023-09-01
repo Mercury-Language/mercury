@@ -91,6 +91,7 @@
 :- include_module mark_tail_calls.
 :- include_module passes_aux.
 :- include_module pred_name.
+:- include_module var_table_hlds.
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.

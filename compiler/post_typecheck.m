@@ -88,6 +88,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.
+:- import_module hlds.var_table_hlds.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.op_mode.

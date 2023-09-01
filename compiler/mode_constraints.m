@@ -62,6 +62,7 @@
 :- import_module hlds.inst_graph.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module hlds.var_table_hlds.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.

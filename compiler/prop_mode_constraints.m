@@ -87,6 +87,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.make_goal.
 :- import_module hlds.status.
+:- import_module hlds.var_table_hlds.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.

@@ -193,6 +193,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
+:- import_module hlds.var_table_hlds.
 
 :- import_module bool.
 :- import_module map.

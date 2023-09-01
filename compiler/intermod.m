@@ -83,6 +83,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.status.
+:- import_module hlds.var_table_hlds.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.

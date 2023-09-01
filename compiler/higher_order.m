@@ -70,6 +70,7 @@
 :- import_module hlds.quantification.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
+:- import_module hlds.var_table_hlds.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.

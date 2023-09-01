@@ -769,11 +769,15 @@ including the type module_info.
 status.m defines the type that record the import/export status
 of entities such as types, insts, modes, and predicates.
 <li>
-vartypes.m defines the data structure that maps each variable to its types.
+vartypes.m defines the data structure that maps each variable to its type.
 New code should use var_table.m in all passes after typechecking.
 <li>
 var_table.m defines the data structure that maps each variable
 to its name, type, and an indication of whether that type is a dummy type.
+var_table.m itself is part of the parse_tree module
+(because some of its uses occur before the construction of the HLDS),
+so the operations on var_tables that need access to the HLDS
+are in var_table_hlds.m.
 <li>
 Some modules need to provide functionality
 both to modules that use var_tables
