@@ -115,9 +115,6 @@
     var_table::in, list(prog_var)::in, list(mer_mode)::in,
     int::out, int::out) is semidet.
 
-:- pred proc_info_has_higher_order_arg_from_details(module_info::in,
-    var_table::in, list(prog_var)::in) is semidet.
-
 %---------------------------------------------------------------------------%
 %
 % Operations on proc_ids.
@@ -365,18 +362,6 @@ proc_info_has_io_state_pair_2(ModuleInfo, VarTable, ArgNum,
     ),
     proc_info_has_io_state_pair_2(ModuleInfo, VarTable, ArgNum + 1,
         VarModes, !MaybeIn, !MaybeOut).
-
-%---------------------%
-
-proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTable,
-        [HeadVar | HeadVars]) :-
-    (
-        lookup_var_type(VarTable, HeadVar, VarType),
-        type_is_higher_order(VarType)
-    ;
-        proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTable,
-            HeadVars)
-    ).
 
 %---------------------------------------------------------------------------%
 

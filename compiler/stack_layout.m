@@ -1212,13 +1212,20 @@ encode_exec_trace_flags(ModuleInfo, VarTable, HeadVars, ArgModes, !:Flags) :-
     else
         true
     ),
-    ( if
-        proc_info_has_higher_order_arg_from_details(ModuleInfo, VarTable,
-            HeadVars)
-    then
+    ( if some_var_is_higher_order(VarTable, HeadVars) then
         !:Flags = !.Flags + 2
     else
         true
+    ).
+
+:- pred some_var_is_higher_order(var_table::in, list(prog_var)::in) is semidet.
+
+some_var_is_higher_order(VarTable, [HeadVar | HeadVars]) :-
+    (
+        lookup_var_type(VarTable, HeadVar, VarType),
+        type_is_higher_order(VarType)
+    ;
+        some_var_is_higher_order(VarTable, HeadVars)
     ).
 
 %---------------------------------------------------------------------------%
