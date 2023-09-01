@@ -723,6 +723,28 @@ need_trace_goal_proc(NeededReason, TraceGoalPPId, !Queue, !Needed) :-
     record_entity_is_needed(Entity, NeededReason, !Needed),
     queue.put(Entity, !Queue).
 
+    % Return true if the given evaluation method uses a per-procedure
+    % tabling pointer. If so, the back-end must generate a declaration
+    % for the variable to hold the table.
+    %
+:- func tabled_eval_method_has_per_proc_tabling_pointer(tabled_eval_method)
+    = bool.
+
+tabled_eval_method_has_per_proc_tabling_pointer(TabledMethod) = TablingPtr :-
+    (
+        ( TabledMethod = tabled_io(_, _)
+        ; TabledMethod = tabled_minimal(own_stacks_consumer)
+        ),
+        TablingPtr = no
+    ;
+        ( TabledMethod = tabled_loop_check
+        ; TabledMethod = tabled_memo(_)
+        ; TabledMethod = tabled_minimal(stack_copy)
+        ; TabledMethod = tabled_minimal(own_stacks_generator)
+        ),
+        TablingPtr = yes
+    ).
+
 %-----------------------------------------------------------------------------%
 
 :- pred dead_proc_examine_goals(module_info::in, pred_proc_id::in,

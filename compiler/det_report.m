@@ -541,6 +541,90 @@ check_determinism_for_eval_method(ProcInfo, !Specs) :-
         true
     ).
 
+    % Check if the given evaluation method is allowed with
+    % the given determinism.
+    %
+:- func valid_determinism_for_tabled_eval_method(tabled_eval_method,
+    determinism) = bool.
+
+valid_determinism_for_tabled_eval_method(TabledMethod, Detism) = Valid :-
+    (
+        ( TabledMethod = tabled_loop_check
+        ; TabledMethod = tabled_memo(_)
+        ),
+        determinism_components(Detism, _, MaxSoln),
+        (
+            MaxSoln = at_most_zero,
+            Valid = no
+        ;
+            ( MaxSoln = at_most_one
+            ; MaxSoln = at_most_many
+            ; MaxSoln = at_most_many_cc
+            ),
+            Valid = yes
+        )
+    ;
+        TabledMethod = tabled_io(_, _),
+        unexpected($pred, "called after tabling phase")
+    ;
+        TabledMethod = tabled_minimal(_),
+        % The following reasons specify why a particular determinism is
+        % incompatible with minimal model tabling.
+        %
+        % Reason 1:
+        % Determinism analysis isn't yet smart enough to know whether
+        % a cannot_fail execution path is guaranteed not to go through a call
+        % to a predicate that is mutually recursive with this one, which
+        % (if this predicate is minimal model) is the only way that the
+        % predicate can be properly cannot_fail. The problem is that
+        % in general, the mutually recursive predicate may be in
+        % another module.
+        %
+        % Reason 2:
+        % The transformation, as currently implemented, assumes that
+        % it is possible to reach the call table tip, and generates HLDS
+        % that refers to the introduced variable representing this tip.
+        % This variable however, will be optimized away if the code
+        % cannot succeed, causing a code generator abort.
+        %
+        % Reason 3:
+        % Minimal model semantics requires computing to a fixpoint, and
+        % this is incompatible with the notion of committed choice.
+        %
+        % Reason 4:
+        % Doing the analysis required to ensure that a predicate can't have
+        % more than one solution is much harder if the predicate concerned is
+        % minimal_model. In theory, this analysis could be done, but it would
+        % take a lot of programming, and since there is a simple workaround
+        % (make the predicate nondet, and check the number of solutions at the
+        % caller), this would not be cost-effective.
+        (
+            Detism = detism_det,
+            Valid = no                  % Reason 1
+        ;
+            Detism = detism_semi,
+            Valid = no                  % Reason 4
+        ;
+            Detism = detism_multi,      % Reason 1
+            Valid = yes
+        ;
+            Detism = detism_non,
+            Valid = yes
+        ;
+            Detism = detism_cc_multi,   % Reason 3
+            Valid = no
+        ;
+            Detism = detism_cc_non,     % Reason 3
+            Valid = no
+        ;
+            Detism = detism_erroneous,  % Reason 2
+            Valid = no
+        ;
+            Detism = detism_failure,    % Reason 2
+            Valid = no
+        )
+    ).
+
 %---------------------------------------------------------------------------%
 
 :- pred check_determinism_if_pred_is_main(pred_info::in, proc_info::in,

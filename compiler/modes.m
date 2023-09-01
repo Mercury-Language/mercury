@@ -1745,6 +1745,16 @@ only_fully_in_out_modes(ModuleInfo, [Mode | Modes]) :-
     ),
     only_fully_in_out_modes(ModuleInfo, Modes).
 
+    % Return true if the given evaluation method requires the arguments
+    % of the procedure using it to be non-unique.
+    %
+:- func tabled_eval_method_destroys_uniqueness(tabled_eval_method) = bool.
+
+tabled_eval_method_destroys_uniqueness(tabled_loop_check) = yes.
+tabled_eval_method_destroys_uniqueness(tabled_io(_, _)) = no.
+tabled_eval_method_destroys_uniqueness(tabled_memo(_)) = yes.
+tabled_eval_method_destroys_uniqueness(tabled_minimal(_)) = yes.
+
 :- pred only_nonunique_modes(module_info::in, list(mer_mode)::in) is semidet.
 
 only_nonunique_modes(_, []).

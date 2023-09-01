@@ -170,6 +170,7 @@
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
@@ -383,6 +384,24 @@ det_infer_proc(PredProcId, Debug, !ModuleInfo, !Specs, !Changed) :-
 
     maybe_record_change_print_inferred(!.ModuleInfo, Debug, PredProcId,
         OldDetism, NewDetism, !Changed).
+
+    % Return the change a given evaluation method can do to a given
+    % determinism.
+    %
+:- func eval_method_change_determinism(eval_method, determinism) = determinism.
+
+eval_method_change_determinism(eval_normal, Detism) = Detism.
+eval_method_change_determinism(eval_tabled(TabledMethoed), Detism)  =
+    tabled_eval_method_change_determinism(TabledMethoed, Detism).
+
+:- func tabled_eval_method_change_determinism(tabled_eval_method, determinism)
+    = determinism.
+
+tabled_eval_method_change_determinism(tabled_loop_check, Detism) = Detism.
+tabled_eval_method_change_determinism(tabled_io(_, _), Detism) = Detism.
+tabled_eval_method_change_determinism(tabled_memo(_), Detism) = Detism.
+tabled_eval_method_change_determinism(tabled_minimal(_), Detism0) = Detism :-
+    det_conjunction_detism(detism_semi, Detism0, Detism).
 
 %---------------------%
 

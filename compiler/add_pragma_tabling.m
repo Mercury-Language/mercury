@@ -348,6 +348,23 @@ module_add_pragma_tabled_for_pred(TabledMethod0, PFUMM,
         )
     ).
 
+    % Return true if the given evaluation method requires a
+    % stratification check.
+    %
+:- func tabled_eval_method_needs_stratification(tabled_eval_method) = bool.
+
+tabled_eval_method_needs_stratification(TabledMethod) = NeedsStratification :-
+    (
+        ( TabledMethod = tabled_loop_check
+        ; TabledMethod = tabled_memo(_)
+        ; TabledMethod = tabled_io(_, _)
+        ),
+        NeedsStratification = no
+    ;
+        TabledMethod = tabled_minimal(_),
+        NeedsStratification = yes
+    ).
+
 :- pred set_eval_method_create_aux_preds_list(pred_or_func::in,
     module_name::in, string::in, user_arity::in,
     assoc_list(proc_id, proc_info)::in, aux_tabling_maybe_single_proc::in,
