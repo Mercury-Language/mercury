@@ -45,8 +45,6 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- type hlds_goals == list(hlds_goal).
-
 :- type hlds_goal
     --->    hlds_goal(
                 hg_expr             :: hlds_goal_expr,
@@ -379,14 +377,18 @@
     --->    user_quant
     ;       compiler_quant.
 
-    % Each scope that is created from the expansion of a ground term above
-    % a certain size is classified into one of these four categories.
-    % The categories are for scopes that (a) construct a ground term, (b)
-    % take an existing ground term and test whether it has a given shape, and
-    % (c) everything else (perhaps some parts of the term are matched and some
-    % parts are bound, or some invariant listed below is not guaranteed), and
-    % (d) scopes that have not yet been classified into one of these three
-    % categories.
+    % We classify each scope that we create from the expansion of a ground term
+    % above a certain size into one of these four categories.
+    % The categories are
+    %
+    % - from_ground_term_construct for scopes that construct a ground term,
+    % - from_ground_term_construct for scopes that take an existing ground
+    %   term and test whether it has a given shape,
+    % - from_ground_term_other for scopes that are neither construct nor
+    %   deconstruct in that they do not guarantee the invariants of either
+    %   (perhaps some parts of the term are matched and some parts are bound),
+    % - from_ground_term_initial for scopes that have not yet been classified
+    %   into one of the above three categories.
     %
     % Many parts of the compiler have special code for handling
     % from_ground_term_construct scopes, code that avoids scanning the code
@@ -408,15 +410,17 @@
     %    conjunction will be filled in similarly.
     % 4. None of the these unifications constructs a higher order value.
     % 5. The unifications are ordered such that a variable constructed by
-    %    all unifications except the last occurs exactly once, as a functor
+    %    all unifications except the last occurs exactly once outside
+    %    its constructing unification, and that occurrence will be as a functor
     %    argument of a later unification (bottom up order).
     %
     % From_ground_term_deconstruct scopes obey invariants 1 and 2, and they
     % also obey invariant 6:
     %
     % 6. The unifications are ordered such that a variable on the LHS of
-    %    all unifications except the first occurs exactly once, as a functor
-    %    argument on the RHS of an *earlier* unification (top down order).
+    %    all unifications except the first occurs exactly once outside that
+    %    uniication, as a functor argument on the RHS of an *earlier*
+    %    unification (top down order).
     %
     % From_ground_term_initial scopes obey invariant 1, and they obey weak
     % forms of invariants 2 and 6. The difference is that some of the
@@ -425,6 +429,9 @@
     % applies to a unification, it does not remove the scope or change its
     % kind. The post_typecheck phase, executed as part of the purity pass,
     % will eventually change the kind to from_ground_term_other.
+    %
+    % For now, we don't optimize from_ground_term_other scopes, so there are
+    % no invariants required of them.
     %
     % Up to the first invocation of mode analysis, all from_ground_term scopes
     % will have kind from_ground_term_initial. After that, they will have
@@ -439,9 +446,6 @@
     % which is the only pass that looks for from_head features, and which looks
     % in all scopes *except* from_ground_term_construct scopes.
     %
-    % For now, we don't optimize from_ground_term_other scopes, so there are
-    % no invariants required of them.
-    %
     % An alternative design would be to have the mode checker turn any scope
     % that it currently keeps as from_ground_term_construct into a new kind
     % of generic call, one which basically says "this goal binds this variable
@@ -455,7 +459,11 @@
     % in most parts of the compiler to handle this new kind of goal.
     % Using from_ground_term_construct, on the other hand, allows us to keep
     % using the existing code for scopes in e.g. the type checker and the code
-    % generator.
+    % generator. Because of this tradeoff, we current *do* replace
+    % from_ground_term_construct scopes with construct unification using
+    % a ground_term_const cons_id, but only during the simplification pass
+    % after semantic analysis, and only if option settings allow this
+    % replacement.
     %
 :- type from_ground_term_kind
     --->    from_ground_term_initial
@@ -2091,7 +2099,8 @@ rbmm_info_init =
                 % Before the final simplification pass, the determinism and
                 % instmap_delta might not be consistent with regard to
                 % unreachability, but both will be conservative approximations,
-                % so if either says a goal is unreachable then it is.
+                % so if either says that a goal is unreachable, then the goal
+                % *is* unreachable.
                 %
                 % Normally the instmap_delta will list only the nonlocal
                 % variables of the goal.
@@ -2108,7 +2117,7 @@ rbmm_info_init =
                 % which optimisers may wish to know about.
 /*  5 */        gi_features         :: set(goal_feature),
 
-                % An value that uniquely identifies this goal in its procedure.
+                % An id that uniquely identifies this goal in its procedure.
 /*  6 */        gi_goal_id          :: goal_id,
 
 /*  7 */        gi_code_gen_info    :: hlds_goal_code_gen_info,

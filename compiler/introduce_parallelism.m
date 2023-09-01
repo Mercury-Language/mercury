@@ -398,9 +398,9 @@ cpc_get_first_goal(CPC, FirstGoal) :-
 :- type find_first_goal_result
     --->    did_not_find_first_goal
     ;       found_first_goal(
-                ffg_goals_before        :: hlds_goals,
+                ffg_goals_before        :: list(hlds_goal),
                 ffg_goal                :: hlds_goal,
-                ffg_goals_after         :: hlds_goals
+                ffg_goals_after         :: list(hlds_goal)
             ).
 
 :- pred find_first_goal(pard_goal::in, list(hlds_goal)::in,
@@ -433,12 +433,12 @@ find_first_goal(GoalRep, [Goal | Goals], ProcRepInfo, VarNameTable, !.Instmap,
 
 :- type par_conjunction_and_remaining_goals
     --->    par_conjunction_and_remaining_goals(
-                pcrg_par_conjunction            :: hlds_goals,
-                pcrg_remaining_goals            :: hlds_goals
+                pcrg_par_conjunction            :: list(hlds_goal),
+                pcrg_remaining_goals            :: list(hlds_goal)
             ).
 
 :- pred build_par_conjunction(prog_rep_info::in, var_name_table::in,
-    instmap::in, hlds_goals::in, candidate_par_conjunction::in,
+    instmap::in, list(hlds_goal)::in, candidate_par_conjunction::in,
     maybe_error(par_conjunction_and_remaining_goals)::out) is det.
 
 build_par_conjunction(ProcRepInfo, VarNameTable, Instmap0, !.Goals, CPC,
@@ -485,8 +485,9 @@ build_par_conjunction(ProcRepInfo, VarNameTable, Instmap0, !.Goals, CPC,
     ).
 
 :- pred build_par_conjuncts(prog_rep_info::in, var_name_table::in,
-    list(seq_conj)::in, maybe(hlds_goals)::out,
-    hlds_goals::in, hlds_goals::out, instmap::in, instmap::out) is det.
+    list(seq_conj)::in, maybe(list(hlds_goal))::out,
+    list(hlds_goal)::in, list(hlds_goal)::out, instmap::in, instmap::out)
+    is det.
 
 build_par_conjuncts(_, _, [], yes([]), !Goals, !Instmap).
 build_par_conjuncts(ProcRepInfo, VarNameTable, [GoalRep | GoalReps],
@@ -512,8 +513,9 @@ build_par_conjuncts(ProcRepInfo, VarNameTable, [GoalRep | GoalReps],
     ).
 
 :- pred build_seq_conjuncts(prog_rep_info::in, var_name_table::in,
-    list(pard_goal)::in, maybe(hlds_goals)::out,
-    hlds_goals::in, hlds_goals::out, instmap::in, instmap::out) is det.
+    list(pard_goal)::in, maybe(list(hlds_goal))::out,
+    list(hlds_goal)::in, list(hlds_goal)::out, instmap::in, instmap::out)
+    is det.
 
 build_seq_conjuncts(_, _, [], yes([]), !Goals, !Instmap).
 build_seq_conjuncts(ProcRepInfo, VarNameTable, [GoalRep | GoalReps],

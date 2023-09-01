@@ -195,7 +195,7 @@ determine_dead_deconstructions_2_with_progress(Background, TopGoal,
         !DeadCellTable).
 
 :- pred determine_dead_deconstructions_2_disj(detect_bg_info::in,
-    hlds_goals::in, sharing_as::in, sharing_as::out,
+    list(hlds_goal)::in, sharing_as::in, sharing_as::out,
     dead_cell_table::in, dead_cell_table::out) is det.
 
 determine_dead_deconstructions_2_disj(Background, Goals,

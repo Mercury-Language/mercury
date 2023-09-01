@@ -1328,7 +1328,7 @@ insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
 %
 
 :- pred reorder_indep_par_conj(pred_proc_id::in, var_table::in, instmap::in,
-    hlds_goals::in, hlds_goal_info::in, hlds_goal::out,
+    list(hlds_goal)::in, hlds_goal_info::in, hlds_goal::out,
     module_info::in, module_info::out) is det.
 
 reorder_indep_par_conj(PredProcId, VarTable, InstMapBefore, Conjuncts0,
@@ -1383,7 +1383,7 @@ reorder_indep_par_conj_2(SCC, VarTable, InstMapBefore, [Goal | Goals0],
     ).
 
 :- pred push_goal_into_conj(var_table::in, instmap::in, hlds_goal::in,
-    instmap::in, hlds_goals::in, maybe(hlds_goals)::out,
+    instmap::in, list(hlds_goal)::in, maybe(list(hlds_goal))::out,
     module_info::in, module_info::out) is det.
 
 push_goal_into_conj(_, _, Goal, _, [], yes([Goal]), !ModuleInfo).
@@ -3122,7 +3122,7 @@ seen_more_signal(FinalSignal0, FinalSignal) = SeenMoreSignal :-
     % to FutureVar to FutureMap, and generate the goal AllocGoal that calls
     % `par_builtin.new_future/1' to allocate FutureVar.
     %
-:- pred allocate_future(module_info::in, prog_var::in, hlds_goals::out,
+:- pred allocate_future(module_info::in, prog_var::in, list(hlds_goal)::out,
     var_table::in, var_table::out, future_map::in, future_map::out,
     ts_string_table::in, ts_string_table::out) is det.
 

@@ -1204,7 +1204,7 @@ make_handle_event(ModuleInfo, ProcName, ArgVars, HandleEventGoal) :-
     % ssdb_proc_id.
     %
 :- pred make_proc_id_construction(module_info::in, pred_info::in,
-    hlds_goals::out, prog_var::out, var_table::in, var_table::out) is det.
+    list(hlds_goal)::out, prog_var::out, var_table::in, var_table::out) is det.
 
 make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar, !VarTable) :-
     pred_info_get_origin(PredInfo, Origin),

@@ -1172,7 +1172,7 @@ call_call_2(ConjNonLocals, EarlierGoal, BetweenGoals, MaybeLaterGoal,
     % Create a new procedure for a conjunction to be deforested, then
     % recursively process that procedure.
     %
-:- pred create_deforest_goal(hlds_goal::in, hlds_goals::in,
+:- pred create_deforest_goal(hlds_goal::in, list(hlds_goal)::in,
     maybe(hlds_goal)::in, hlds_goal::in, set_of_progvar::in, bool::in,
     proc_pair::in, int::in, maybe(pred_proc_id)::in, maybe(hlds_goal)::out,
     pd_info::in, pd_info::out) is det.
@@ -1611,7 +1611,7 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgVars,
     map.search(Versions, NonGeneralisedPredProcId,
         NonGeneralisedVersion),
     NonGeneralisedVersion = version_info(NonGeneralisedGoal, _,
-        NonGeneralisedArgVars, NonGeneralisedArgTypes,_,_,_,_,_),
+        NonGeneralisedArgVars, NonGeneralisedArgTypes, _, _, _, _, _),
     pd_util.goals_match(ModuleInfo, NonGeneralisedGoal,
         NonGeneralisedArgVars, NonGeneralisedArgTypes,
         RenamedFirstVersionGoal, !.VarTable,
@@ -1719,8 +1719,8 @@ reorder_conj(DeforestInfo0, DeforestInfo,
         BetweenGoals, LaterGoal, LaterBranchInfo, DeforestBranches).
 
 :- pred move_goals(can_move::can_move, module_info::in, bool::in,
-    hlds_goals::in, hlds_goals::in, hlds_goals::out,
-    hlds_goal::in, hlds_goals::in, hlds_goals::out) is det.
+    list(hlds_goal)::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    hlds_goal::in, list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 move_goals(_, _, _, [], !BetweenGoals, _, !MovedGoal).
 move_goals(CanMove, ModuleInfo, FullyStrict, [BetweenGoal | RevBetweenGoals0],
@@ -1736,7 +1736,7 @@ move_goals(CanMove, ModuleInfo, FullyStrict, [BetweenGoal | RevBetweenGoals0],
     move_goals(CanMove, ModuleInfo, FullyStrict,
         RevBetweenGoals0, !BetweenGoals, EndGoal, !MovedGoals).
 
-:- type can_move == pred(module_info, bool, hlds_goal, hlds_goals).
+:- type can_move == pred(module_info, bool, hlds_goal, list(hlds_goal)).
 :- mode can_move == in(pred(in, in, in, in) is semidet).
 
     % Check all goals occurring later in the conjunction to see if they depend
@@ -1775,7 +1775,7 @@ can_move_goal_backward(ModuleInfo, FullyStrict, ThisGoal, Goals) :-
     % extra information about the arguments.
     %
 :- pred push_goal_into_goal(set_of_progvar::in, set(int)::in,
-    hlds_goal::in, hlds_goals::in, hlds_goal::in, hlds_goal::out,
+    hlds_goal::in, list(hlds_goal)::in, hlds_goal::in, hlds_goal::out,
     pd_info::in, pd_info::out) is det.
 
 push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
@@ -1847,9 +1847,10 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
     deforest_goal(Goal3, Goal, !PDInfo),
     pd_info_set_instmap(InstMap0, !PDInfo).
 
-:- pred append_goal_to_disjuncts(hlds_goals::in, hlds_goal::in,
-    set_of_progvar::in, int::in, set(int)::in, hlds_goals::in, hlds_goals::out,
-    pd_info::in, pd_info::out) is det.
+:- pred append_goal_to_disjuncts(list(hlds_goal)::in, hlds_goal::in,
+    set_of_progvar::in, int::in, set(int)::in,
+    list(hlds_goal)::in, list(hlds_goal)::out, pd_info::in, pd_info::out)
+    is det.
 
 append_goal_to_disjuncts(_, _, _, _, _, [], [], !PDInfo).
 append_goal_to_disjuncts(BetweenGoals, GoalToAppend, NonLocals,
@@ -1862,9 +1863,9 @@ append_goal_to_disjuncts(BetweenGoals, GoalToAppend, NonLocals,
     append_goal_to_disjuncts(BetweenGoals, GoalToAppend,
         NonLocals, NextBranch, Branches, Goals0, Goals, !PDInfo).
 
-:- pred append_goal_to_cases(prog_var::in, hlds_goals::in,
+:- pred append_goal_to_cases(prog_var::in, list(hlds_goal)::in,
     hlds_goal::in, set_of_progvar::in, int::in, set(int)::in,
-    list(case)::in,list(case)::out, pd_info::in, pd_info::out) is det.
+    list(case)::in, list(case)::out, pd_info::in, pd_info::out) is det.
 
 append_goal_to_cases(_, _, _, _, _, _, [], [], !PDInfo).
 append_goal_to_cases(Var, BetweenGoals, GoalToAppend, NonLocals,
@@ -1880,7 +1881,7 @@ append_goal_to_cases(Var, BetweenGoals, GoalToAppend, NonLocals,
     append_goal_to_cases(Var, BetweenGoals, GoalToAppend,
         NonLocals, NextCase, Branches, Cases0, Cases, !PDInfo).
 
-:- pred append_goal(hlds_goal::in, hlds_goals::in,
+:- pred append_goal(hlds_goal::in, list(hlds_goal)::in,
     hlds_goal::in, set_of_progvar::in, int::in, set(int)::in,
     hlds_goal::out, pd_info::in, pd_info::out) is det.
 

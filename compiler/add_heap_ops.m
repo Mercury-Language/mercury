@@ -242,7 +242,7 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
         unexpected($pred, "shorthand")
     ).
 
-:- pred conj_add_heap_ops(hlds_goals::in, hlds_goals::out,
+:- pred conj_add_heap_ops(list(hlds_goal)::in, list(hlds_goal)::out,
     heap_ops_info::in, heap_ops_info::out) is det.
 
 conj_add_heap_ops(Goals0, Goals, !Info) :-

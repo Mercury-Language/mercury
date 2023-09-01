@@ -289,8 +289,6 @@
                 prim_nonlocals :: nonlocal_vars
             ).
 
-:- type abstract_goals == list(abstract_goal).
-
     % This type is used to keep track of intramodule recursion during
     % the build pass.
     %

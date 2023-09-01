@@ -354,7 +354,7 @@ goal_expr_add_trail_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
         unexpected($pred, "shorthand")
     ).
 
-:- pred conj_add_trail_ops(hlds_goals::in, hlds_goals::out,
+:- pred conj_add_trail_ops(list(hlds_goal)::in, list(hlds_goal)::out,
     trail_ops_info::in, trail_ops_info::out) is det.
 
 conj_add_trail_ops(Goals0, Goals, !Info) :-

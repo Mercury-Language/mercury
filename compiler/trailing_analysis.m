@@ -525,7 +525,7 @@ check_goal_for_trail_mods(SCC, VarTable, Goal, Result, MaybeAnalysisStatus,
     ).
 
 :- pred check_goals_for_trail_mods(scc::in, var_table::in,
-    hlds_goals::in, trailing_status::out, maybe(analysis_status)::out,
+    list(hlds_goal)::in, trailing_status::out, maybe(analysis_status)::out,
     module_info::in, module_info::out) is det.
 
 check_goals_for_trail_mods(SCC, VarTable, Goals,

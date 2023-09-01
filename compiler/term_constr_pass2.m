@@ -311,7 +311,7 @@ find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize,
     ).
 
 :- pred find_edges_in_disj(abstract_proc::in, abstract_scc::in,
-    module_info::in, int::in, polyhedron::in, abstract_goals::in,
+    module_info::in, int::in, polyhedron::in, list(abstract_goal)::in,
     int::in, int::out, polyhedra::in, polyhedra::out, edges::in, edges::out,
     bool::in, bool::out) is det.
 

@@ -516,11 +516,11 @@ build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
 % Additional predicates for abstracting (parallel) conjunctions.
 %
 
-:- pred build_abstract_conj(hlds_goals::in, abstract_goal::out,
+:- pred build_abstract_conj(list(hlds_goal)::in, abstract_goal::out,
     tti_traversal_info::in, tti_traversal_info::out) is det.
 
 build_abstract_conj(Conjuncts, AbstractGoal, !Info) :-
-    list.map_foldl(build_abstract_goal,Conjuncts, AbstractGoals0, !Info),
+    list.map_foldl(build_abstract_goal, Conjuncts, AbstractGoals0, !Info),
     AbstractGoals = simplify_conjuncts(AbstractGoals0),
     AbstractGoal = term_conj(AbstractGoals, [], []).
 
@@ -647,7 +647,7 @@ build_non_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal,
 
 :- type disj_info
     --->    switch(prog_var, list(case))
-    ;       non_switch(hlds_goals).
+    ;       non_switch(list(hlds_goal)).
 
 :- pred build_abstract_disj(disj_info::in, abstract_goal::out,
     tti_traversal_info::in, tti_traversal_info::out) is det.
@@ -672,8 +672,8 @@ build_abstract_disj(Type, AbstractGoal, !Info) :-
         AbstractGoal = term_disj(AbstractGoals, DisjSize, [], [])
     ).
 
-:- pred build_abstract_disj_acc(hlds_goals::in, abstract_goals::in,
-    abstract_goals::out,
+:- pred build_abstract_disj_acc(list(hlds_goal)::in,
+    list(abstract_goal)::in, list(abstract_goal)::out,
     tti_traversal_info::in, tti_traversal_info::out) is det.
 
 build_abstract_disj_acc([], !AbstractGoals, !Info).
@@ -694,7 +694,7 @@ build_abstract_disj_acc([Goal | Goals], !AbstractGoals, !Info) :-
     % goal and conjoining that to the rest.
     %
 :- pred build_abstract_switch_acc(prog_var::in, list(case)::in,
-    abstract_goals::in, abstract_goals::out,
+    list(abstract_goal)::in, list(abstract_goal)::out,
     tti_traversal_info::in, tti_traversal_info::out) is det.
 
 build_abstract_switch_acc(_, [], !AbstractGoals, !Info).

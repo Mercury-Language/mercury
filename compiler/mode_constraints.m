@@ -561,7 +561,7 @@ number_robdd_variables_at_goal_path(InstGraph, GoalId, ParentNonLocals,
         ), InstGraph, Vars, !NRInfo).
 
 :- pred number_robdd_variables_in_goals(inst_graph::in, set_of_progvar::in,
-    set_of_progvar::out, hlds_goals::in, hlds_goals::out,
+    set_of_progvar::out, list(hlds_goal)::in, list(hlds_goal)::out,
     number_robdd_info::in, number_robdd_info::out) is det.
 
 number_robdd_variables_in_goals(_, _, Occurring, [], [], !RInfo) :-
@@ -1585,7 +1585,7 @@ conj_constraints_process_var(UseKnownVars, KnownTrue, KnownFalse, GoalId,
 
 :- pred conj_subgoal_constraints(set_of_progvar::in, can_succeed::out,
     mode_constraint::in, mode_constraint::out,
-    hlds_goals::in, hlds_goals::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
     goal_constraints_info::in, goal_constraints_info::out) is det.
 
 conj_subgoal_constraints(_, yes, !Constraint, [], [], !GCInfo).
@@ -1599,7 +1599,7 @@ conj_subgoal_constraints(NonLocals, CanSucceed, !Constraint,
 
 :- pred disj_constraints(set_of_progvar::in, can_succeed::out,
     mode_constraint::in, mode_constraint::out,
-    hlds_goals::in, hlds_goals::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
     list(goal_id)::in, list(goal_id)::out,
     goal_constraints_info::in, goal_constraints_info::out) is det.
 

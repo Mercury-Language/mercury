@@ -488,7 +488,7 @@ add_lt_constraint(A, B, !OCI) :-
     % proposition that it is produced at a Goal in Goals, for every Goal in
     % Goals it is nonlocal to.
     %
-:- pred make_conjuncts_nonlocal_repvars(pred_id::in, hlds_goals::in,
+:- pred make_conjuncts_nonlocal_repvars(pred_id::in, list(hlds_goal)::in,
     prog_var_at_conjuncts_map::out) is det.
 
 make_conjuncts_nonlocal_repvars(PredId, Goals, RepvarMap) :-

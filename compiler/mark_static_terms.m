@@ -157,13 +157,13 @@ goal_mark_static_terms(Goal0, Goal, !SI) :-
         unexpected($pred, "shorthand")
     ).
 
-:- pred conj_mark_static_terms(hlds_goals::in, hlds_goals::out,
+:- pred conj_mark_static_terms(list(hlds_goal)::in, list(hlds_goal)::out,
     static_info::in, static_info::out) is det.
 
 conj_mark_static_terms(Goals0, Goals, !SI) :-
     list.map_foldl(goal_mark_static_terms, Goals0, Goals, !SI).
 
-:- pred disj_mark_static_terms(hlds_goals::in, hlds_goals::out,
+:- pred disj_mark_static_terms(list(hlds_goal)::in, list(hlds_goal)::out,
     static_info::in) is det.
 
 disj_mark_static_terms([], [], _).

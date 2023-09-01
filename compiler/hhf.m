@@ -327,7 +327,7 @@ convert_unify_to_hhf(RHS0, NonLocals, GoalInfo0, X, Mode, Unif, Context,
 
 :- pred make_unifications(list(prog_var)::in, list(prog_var)::in,
     hlds_goal_info::in, unify_mode::in, unification::in, unify_context::in,
-    hlds_goals::out) is det.
+    list(hlds_goal)::out) is det.
 
 make_unifications([], [], _, _, _, _, []).
 make_unifications([_ | _], [], _, _, _, _, _) :-
@@ -343,7 +343,8 @@ make_unifications([A | As], [B | Bs], GI0, M, U, C,
 
 :- pred add_unifications(list(prog_var)::in, set_of_progvar::in,
     hlds_goal_info::in, unify_mode::in, unification::in, unify_context::in,
-    list(prog_var)::out, hlds_goals::out, hhf_info::in, hhf_info::out) is det.
+    list(prog_var)::out, list(hlds_goal)::out,
+    hhf_info::in, hhf_info::out) is det.
 
 add_unifications([], _, _, _, _, _, [], [], !HI).
 add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-

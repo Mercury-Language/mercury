@@ -357,7 +357,7 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
 %     mode_order_disj(OrElseGoals, !GoalInfo),
 %     Goal = atomic_goal(GoalType, Outer, Inner, Vars, MainGoal, OrElseGoals).
 
-:- pred mode_order_disj(hlds_goals::in,
+:- pred mode_order_disj(list(hlds_goal)::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
 mode_order_disj([], !GoalInfo).
@@ -389,7 +389,7 @@ combine_mode_vars_sets(GI, !GoalInfo) :-
     !GoalInfo ^ need_visible_vars
         := NeedVisibleVars0 `set_of_var.union` GI ^ need_visible_vars.
 
-:- pred union_mode_vars_sets(hlds_goals::in,
+:- pred union_mode_vars_sets(list(hlds_goal)::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
 union_mode_vars_sets(Goals, !GoalInfo) :-
@@ -424,7 +424,7 @@ goal_info_copy_mode_var_sets(GI, !GoalInfo) :-
     !GoalInfo ^ need_visible_vars := GI ^ need_visible_vars.
 
 :- pred mode_order_conj(goal_forward_path_map::in,
-    hlds_goals::in, hlds_goals::out) is det.
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
     GoalMap = list.foldl(

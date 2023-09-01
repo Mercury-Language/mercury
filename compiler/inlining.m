@@ -667,7 +667,7 @@ is_flat_simple_goal(hlds_goal(GoalExpr, _)) :-
         GoalExpr = unify(_, _, _, _, _)
     ).
 
-:- pred is_flat_simple_goal_list(hlds_goals::in) is semidet.
+:- pred is_flat_simple_goal_list(list(hlds_goal)::in) is semidet.
 
 is_flat_simple_goal_list([]).
 is_flat_simple_goal_list([Goal | Goals]) :-

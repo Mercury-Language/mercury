@@ -370,7 +370,7 @@ post_process_abstract_goal(Locals, Info, GoalPolyhedron0, !Polyhedron) :-
     %
     %  ((((empty \/ A ) \/ B ) \/ C ) \/ D)
     %
-:- pred term_traverse_abstract_disj_linearly(abstract_goals::in,
+:- pred term_traverse_abstract_disj_linearly(list(abstract_goal)::in,
     size_vars::in, fixpoint_info::in, polyhedron::in, polyhedron::out) is det.
 
 term_traverse_abstract_disj_linearly(Goals, Locals, Info, !Polyhedron) :-
@@ -393,8 +393,8 @@ term_traverse_abstract_disj_linearly_2(Info, Locals, Goal, !Polyhedron) :-
     %
     % XXX This code is currently unused.
     %
-:- pred term_traverse_abstract_disj_pairwise(abstract_goals::in, size_vars::in,
-    fixpoint_info::in, polyhedron::in, polyhedron::out) is det.
+:- pred term_traverse_abstract_disj_pairwise(list(abstract_goal)::in,
+    size_vars::in, fixpoint_info::in, polyhedron::in, polyhedron::out) is det.
 :- pragma consider_used(pred(term_traverse_abstract_disj_pairwise/5)).
 
 term_traverse_abstract_disj_pairwise(Goals, Locals, Info, !Polyhedron) :-

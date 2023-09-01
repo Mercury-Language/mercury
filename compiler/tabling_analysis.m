@@ -392,7 +392,7 @@ check_goal_for_mm_tabling(SCC, VarTable, Goal, Result, MaybeAnalysisStatus,
     ).
 
 :- pred check_goals_for_mm_tabling(scc::in, var_table::in,
-    hlds_goals::in, mm_tabling_status::out, maybe(analysis_status)::out,
+    list(hlds_goal)::in, mm_tabling_status::out, maybe(analysis_status)::out,
     module_info::in, module_info::out) is det.
 
 check_goals_for_mm_tabling(SCC, VarTable, Goals, Result, MaybeAnalysisStatus,

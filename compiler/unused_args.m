@@ -1633,7 +1633,7 @@ rename_apart_unused_foreign_arg(Arg0, Arg, !Subst, !Info, !Changed) :-
 
     % Remove useless unifications from a list of conjuncts.
     %
-:- pred unused_args_fixup_conjuncts(hlds_goals::in, hlds_goals::out,
+:- pred unused_args_fixup_conjuncts(list(hlds_goal)::in, list(hlds_goal)::out,
     fixup_info::in, fixup_info::out, bool::in, bool::out) is det.
 
 unused_args_fixup_conjuncts([], [], !Info, !Changed).
@@ -1656,7 +1656,7 @@ unused_args_fixup_conjuncts([Goal0 | Goals0], Goals, !Info, !Changed) :-
     % We can't remove unused goals from the list of disjuncts as we do
     % for conjuncts, since that would change the determinism of the goal.
     %
-:- pred unused_args_fixup_disjuncts(hlds_goals::in, hlds_goals::out,
+:- pred unused_args_fixup_disjuncts(list(hlds_goal)::in, list(hlds_goal)::out,
     fixup_info::in, fixup_info::out, bool::in, bool::out) is det.
 
 unused_args_fixup_disjuncts([], [], !Info, !Changed).

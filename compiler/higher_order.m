@@ -691,7 +691,7 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
     % specialization information before the conjunct, then merge the
     % results to give the specialization information after the conjunction.
     %
-:- pred ho_traverse_parallel_conj(hlds_goals::in, hlds_goals::out,
+:- pred ho_traverse_parallel_conj(list(hlds_goal)::in, list(hlds_goal)::out,
     higher_order_info::in, higher_order_info::out) is det.
 
 ho_traverse_parallel_conj(Goals0, Goals, !Info) :-
@@ -708,7 +708,7 @@ ho_traverse_parallel_conj(Goals0, Goals, !Info) :-
     ).
 
 :- pred ho_traverse_parallel_conj_loop(pre_branch_info::in,
-    hlds_goals::in, hlds_goals::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
     list(post_branch_info)::in, list(post_branch_info)::out,
     higher_order_info::in, higher_order_info::out) is det.
 

@@ -566,7 +566,7 @@ compute_match_table(Background, DeadCellTable, Goal, MatchTable) :-
         Goal, ContinuationGoals, multi_map.init, MatchTable).
 
 :- pred compute_match_table_goal_list(background_info::in, dead_cell_table::in,
-    hlds_goals::in, match_table::in, match_table::out) is det.
+    list(hlds_goal)::in, match_table::in, match_table::out) is det.
 
 compute_match_table_goal_list(Background, DeadCellTable, Goals, !Table) :-
     (
@@ -578,7 +578,7 @@ compute_match_table_goal_list(Background, DeadCellTable, Goals, !Table) :-
     ).
 
 :- pred compute_match_table_with_continuation(background_info::in,
-    dead_cell_table::in, hlds_goal::in, hlds_goals::in,
+    dead_cell_table::in, hlds_goal::in, list(hlds_goal)::in,
     match_table::in, match_table::out) is det.
 
 compute_match_table_with_continuation(Background, DeadCellTable,
@@ -670,14 +670,14 @@ compute_match_table_with_continuation(Background, DeadCellTable,
     ).
 
 :- pred compute_match_table_in_disjs(background_info::in, dead_cell_table::in,
-    hlds_goals::in, list(match_table)::out) is det.
+    list(hlds_goal)::in, list(match_table)::out) is det.
 
 compute_match_table_in_disjs(Background, DeadCellTable, Branches, Tables) :-
     list.map(compute_match_table(Background, DeadCellTable),
         Branches, Tables).
 
 :- pred compute_match_table_in_disjunction(background_info::in,
-    dead_cell_table::in, hlds_goals::in, hlds_goals::in,
+    dead_cell_table::in, list(hlds_goal)::in, list(hlds_goal)::in,
     match_table::in, match_table::out) is det.
 
 compute_match_table_in_disjunction(Background, DeadCellTable, DisjGoals, Cont,
@@ -698,8 +698,8 @@ compute_match_table_in_disjunction(Background, DeadCellTable, DisjGoals, Cont,
         CommonDeadVarsDisjTables),
     list.foldl(multi_map.merge, CommonDeadVarsDisjTables, !Table).
 
-:- pred process_possible_common_dead_vars(background_info::in, hlds_goals::in,
-    list(match_table)::in, list(match_table)::out) is det.
+:- pred process_possible_common_dead_vars(background_info::in,
+    list(hlds_goal)::in, list(match_table)::in, list(match_table)::out) is det.
 
 process_possible_common_dead_vars(Background, Cont, DisjTables,
         ExtraTables) :-
@@ -732,7 +732,7 @@ common_var_with_list(Table, List0) = List :-
     Set = set.intersect(list_to_set(List0), list_to_set(Keys)),
     List = set.to_sorted_list(Set).
 
-:- pred process_common_var(background_info::in, hlds_goals::in,
+:- pred process_common_var(background_info::in, list(hlds_goal)::in,
     list(match_table)::in, dead_var::in, match_table::out) is semidet.
 
 process_common_var(Background, Cont, DisjTables, CommonDeadVar, Table) :-
@@ -783,8 +783,8 @@ match_get_decon_specs(Match) = Match ^ decon_specs.
     %
     % XXX What is the thing with the degrees here?
     %
-:- pred find_best_match_in_conjunction(background_info::in, hlds_goals::in,
-    match::in, match::out) is det.
+:- pred find_best_match_in_conjunction(background_info::in,
+    list(hlds_goal)::in, match::in, match::out) is det.
 
 find_best_match_in_conjunction(Background, Goals, !Match) :-
     Match0 = !.Match,
@@ -800,7 +800,7 @@ find_best_match_in_conjunction(Background, Goals, !Match) :-
     % the reuses is counted as a possibility for reuse, hence is reflected in
     % the degree of the final match description.
     %
-:- pred find_match_in_disjunction(background_info::in, hlds_goals::in,
+:- pred find_match_in_disjunction(background_info::in, list(hlds_goal)::in,
     match::in, match::out) is det.
 
 find_match_in_disjunction(Background, Branches, !Match) :-

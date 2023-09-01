@@ -448,7 +448,7 @@ par_conj_get_loop_control_par_conjs_lag(Conj, Conjs, SelfPredProcId,
         )
     ).
 
-:- pred conj_get_loop_control_par_conjs(hlds_goals::in, pred_proc_id::in,
+:- pred conj_get_loop_control_par_conjs(list(hlds_goal)::in, pred_proc_id::in,
     seen_usable_recursion::in(seen_usable_recursion_continue),
     seen_usable_recursion::out) is det.
 

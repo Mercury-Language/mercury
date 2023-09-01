@@ -1326,7 +1326,7 @@ count_load_stores_for_call(CountInfo, Inputs, Outputs, MaybeNeedAcrossCall,
 
 %-----------------------------------------------------------------------------%
 
-:- pred count_load_stores_in_conj(hlds_goals::in, count_info::in,
+:- pred count_load_stores_in_conj(list(hlds_goal)::in, count_info::in,
     count_state::in, count_state::out) is det.
 
 count_load_stores_in_conj([], _CountInfo, !CountState).
@@ -1334,7 +1334,7 @@ count_load_stores_in_conj([Goal | Goals], CountInfo, !CountState) :-
     count_load_stores_in_goal(Goal, CountInfo, !CountState),
     count_load_stores_in_conj(Goals, CountInfo, !CountState).
 
-:- pred count_load_stores_in_disj(hlds_goals::in, count_info::in,
+:- pred count_load_stores_in_disj(list(hlds_goal)::in, count_info::in,
     count_state::in, count_state::out) is det.
 
 count_load_stores_in_disj([], _CountInfo, !CountState).
@@ -1858,7 +1858,8 @@ fix_calls_in_goal(TransformMap, Goal0, Goal, !VarTable, !RttiVarMaps) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred fix_calls_in_conj(transform_map::in, hlds_goals::in, hlds_goals::out,
+:- pred fix_calls_in_conj(transform_map::in, list(hlds_goal)::in,
+list(hlds_goal)::out,
     var_table::in, var_table::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
 fix_calls_in_conj(_, [], [], !VarTable, !RttiVarMaps).
@@ -1873,7 +1874,7 @@ fix_calls_in_conj(TransformMap, [Goal0 | Goals0], Goals,
     ).
 
 :- pred fix_calls_in_goal_list(transform_map::in,
-    hlds_goals::in, hlds_goals::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
     var_table::in, var_table::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
 fix_calls_in_goal_list(_, [], [], !VarTable, !RttiVarMaps).

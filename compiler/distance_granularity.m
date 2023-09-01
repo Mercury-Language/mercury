@@ -451,8 +451,8 @@ apply_dg_to_plain_call(!GoalExpr, CallerPredId, PredIdSpecialized,
 
     % Apply the distance granularity transformation to a conjunction.
     %
-:- pred apply_dg_to_conj(hlds_goals::in, hlds_goals::in, hlds_goals::out,
-    pred_id::in, proc_id::in, pred_id::in, sym_name::in,
+:- pred apply_dg_to_conj(list(hlds_goal)::in, list(hlds_goal)::in,
+    list(hlds_goal)::out, pred_id::in, proc_id::in, pred_id::in, sym_name::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out, int::in,
     bool::in, maybe(prog_var)::in, maybe(prog_var)::out,
     bool::in, bool::out) is det.
@@ -486,7 +486,7 @@ apply_dg_to_conj([Goal0 | Goals], !GoalsAcc, CallerPredId, CallerProcId,
     % Create the if_then_else goal surrounding the recursive plain call as
     % shown in the example.
     %
-:- pred create_if_then_else_goal(hlds_goals::in, hlds_goal_info::in,
+:- pred create_if_then_else_goal(list(hlds_goal)::in, hlds_goal_info::in,
     maybe(prog_var)::in, pred_id::in, proc_id::in, int::in, hlds_goal::out,
     proc_info::in, proc_info::out, module_info::in) is det.
 

@@ -3593,7 +3593,7 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
 
 %---------------------------------------------------------------------------%
 
-:- pred create_instmap_delta(hlds_goals::in, instmap_delta::out) is det.
+:- pred create_instmap_delta(list(hlds_goal)::in, instmap_delta::out) is det.
 
 create_instmap_delta([], IMD) :-
     IMD = instmap_delta_bind_no_var.

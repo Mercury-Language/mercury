@@ -309,7 +309,7 @@ add_vars_to_lfu_in_goal_expr(ForceInUse, Expr0, Expr) :-
     ).
 
 :- pred add_vars_to_lfu_in_goals(set_of_progvar::in,
-    hlds_goals::in, hlds_goals::out) is det.
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 add_vars_to_lfu_in_goals(_, [], []).
 add_vars_to_lfu_in_goals(ForceInUse, [Goal0 | Goals0], [Goal | Goals]) :-
