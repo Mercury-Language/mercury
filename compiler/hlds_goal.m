@@ -35,7 +35,6 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -1723,14 +1722,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func goal_info_add_nonlocals_make_impure(hlds_goal_info, set_of_progvar)
-    = hlds_goal_info.
-:- pred make_impure(hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred add_impurity_if_needed(bool::in,
-    hlds_goal_info::in, hlds_goal_info::out) is det.
-
-%-----------------------------------------------------------------------------%
-
 :- type contains_trace_goal
     --->    contains_trace_goal
     ;       contains_no_trace_goal.
@@ -1757,12 +1748,6 @@
 :- pred goal_info_remove_feature(goal_feature::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_has_feature(hlds_goal_info::in, goal_feature::in) is semidet.
-
-    % Set the 'goal_is_mdprof_inst' field in the goal_dp_info structure
-    % in the given goal info structure.
-    %
-:- pred goal_info_set_mdprof_inst(goal_is_mdprof_inst::in,
-    hlds_goal_info::in, hlds_goal_info::out) is det.
 
 :- pred goal_set_context(term_context::in, hlds_goal::in, hlds_goal::out)
     is det.
@@ -2267,36 +2252,6 @@ goal_info_set_code_gen_nonlocals(NonLocals, !GoalInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-goal_info_add_nonlocals_make_impure(!.GoalInfo, NewNonLocals) = !:GoalInfo :-
-    NonLocals0 = goal_info_get_nonlocals(!.GoalInfo),
-    NonLocals = set_of_var.union(NonLocals0, NewNonLocals),
-    goal_info_set_nonlocals(NonLocals, !GoalInfo),
-    make_impure(!GoalInfo).
-
-make_impure(!GoalInfo) :-
-    Purity = goal_info_get_purity(!.GoalInfo),
-    (
-        Purity = purity_impure
-        % We don't add not_impure_for_determinism, since we want to
-        % keep the existing determinism.
-    ;
-        ( Purity = purity_pure
-        ; Purity = purity_semipure
-        ),
-        goal_info_set_purity(purity_impure, !GoalInfo),
-        goal_info_add_feature(feature_not_impure_for_determinism, !GoalInfo)
-    ).
-
-add_impurity_if_needed(AddedImpurity, !GoalInfo) :-
-    (
-        AddedImpurity = no
-    ;
-        AddedImpurity = yes,
-        make_impure(!GoalInfo)
-    ).
-
-%-----------------------------------------------------------------------------%
-
 worst_contains_trace(contains_trace_goal, contains_trace_goal) =
     contains_trace_goal.
 worst_contains_trace(contains_trace_goal, contains_no_trace_goal) =
@@ -2357,19 +2312,6 @@ goal_info_remove_feature(OldFeature, !GoalInfo) :-
 goal_info_has_feature(GoalInfo, Feature) :-
     Features = goal_info_get_features(GoalInfo),
     set.member(Feature, Features).
-
-%-----------------------------------------------------------------------------%
-
-goal_info_set_mdprof_inst(IsMDProfInst, !GoalInfo) :-
-    goal_info_get_maybe_dp_info(!.GoalInfo) = MaybeDPInfo0,
-    (
-        MaybeDPInfo0 = yes(dp_goal_info(_, DPCoverageInfo)),
-        MaybeDPInfo = yes(dp_goal_info(IsMDProfInst, DPCoverageInfo))
-    ;
-        MaybeDPInfo0 = no,
-        MaybeDPInfo = yes(dp_goal_info(IsMDProfInst, no))
-    ),
-    goal_info_set_maybe_dp_info(MaybeDPInfo, !GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -3202,28 +3144,31 @@ goal_list_nonlocals(Goals, NonLocals) :-
     set_of_var.union_list(GoalNonLocals, NonLocals).
 
 goal_list_instmap_delta(Goals, InstMapDelta) :-
-    ApplyDelta = (pred(Goal::in, Delta0::in, Delta::out) is det :-
-        Goal = hlds_goal(_, GoalInfo),
-        Delta1 = goal_info_get_instmap_delta(GoalInfo),
-        instmap_delta_apply_instmap_delta(Delta0, Delta1, test_size, Delta)
-    ),
+    ApplyDelta =
+        ( pred(Goal::in, Delta0::in, Delta::out) is det :-
+            Goal = hlds_goal(_, GoalInfo),
+            Delta1 = goal_info_get_instmap_delta(GoalInfo),
+            instmap_delta_apply_instmap_delta(Delta0, Delta1, test_size, Delta)
+        ),
     instmap_delta_init_reachable(InstMapDelta0),
     list.foldl(ApplyDelta, Goals, InstMapDelta0, InstMapDelta).
 
 goal_list_determinism(Goals, Determinism) :-
-    ComputeDeterminism = (pred(Goal::in, Det0::in, Det::out) is det :-
-        Goal = hlds_goal(_, GoalInfo),
-        Det1 = goal_info_get_determinism(GoalInfo),
-        det_conjunction_detism(Det0, Det1, Det)
-    ),
+    ComputeDeterminism =
+        ( pred(Goal::in, Det0::in, Det::out) is det :-
+            Goal = hlds_goal(_, GoalInfo),
+            Det1 = goal_info_get_determinism(GoalInfo),
+            det_conjunction_detism(Det0, Det1, Det)
+        ),
     list.foldl(ComputeDeterminism, Goals, detism_det, Determinism).
 
 goal_list_purity(Goals, GoalsPurity) :-
-    ComputePurity = (pred(Goal::in, Purity0::in, Purity::out) is det :-
-        Goal = hlds_goal(_, GoalInfo),
-        Purity1 = goal_info_get_purity(GoalInfo),
-        worst_purity(Purity0, Purity1) = Purity
-    ),
+    ComputePurity =
+        ( pred(Goal::in, Purity0::in, Purity::out) is det :-
+            Goal = hlds_goal(_, GoalInfo),
+            Purity1 = goal_info_get_purity(GoalInfo),
+            worst_purity(Purity0, Purity1) = Purity
+        ),
     list.foldl(ComputePurity, Goals, purity_pure, GoalsPurity).
 
 %-----------------------------------------------------------------------------%

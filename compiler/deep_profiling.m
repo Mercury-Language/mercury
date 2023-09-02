@@ -27,6 +27,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
 
+:- import_module bool.
 :- import_module list.
 :- import_module maybe.
 
@@ -53,6 +54,9 @@
 
 :- pred generate_var_c_ptr(string::in, prog_var::out,
     var_table::in, var_table::out) is det.
+
+:- pred add_impurity_if_needed(bool::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -94,7 +98,6 @@
 :- import_module transform_hlds.dead_proc_elim.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module cord.
 :- import_module counter.
 :- import_module int.
@@ -1927,6 +1930,60 @@ generate_var_int(Name, Var, !VarTable) :-
 generate_var_c_ptr(Name, Var, !VarTable) :-
     Entry = vte(Name, c_pointer_type, is_not_dummy_type),
     add_var_entry(Entry, Var, !VarTable).
+
+%-----------------------------------------------------------------------------%
+
+:- func goal_info_add_nonlocals_make_impure(hlds_goal_info, set_of_progvar)
+    = hlds_goal_info.
+
+goal_info_add_nonlocals_make_impure(!.GoalInfo, NewNonLocals) = !:GoalInfo :-
+    NonLocals0 = goal_info_get_nonlocals(!.GoalInfo),
+    NonLocals = set_of_var.union(NonLocals0, NewNonLocals),
+    goal_info_set_nonlocals(NonLocals, !GoalInfo),
+    make_impure(!GoalInfo).
+
+:- pred make_impure(hlds_goal_info::in, hlds_goal_info::out) is det.
+
+make_impure(!GoalInfo) :-
+    Purity = goal_info_get_purity(!.GoalInfo),
+    (
+        Purity = purity_impure
+        % We don't add not_impure_for_determinism, since we want to
+        % keep the existing determinism.
+    ;
+        ( Purity = purity_pure
+        ; Purity = purity_semipure
+        ),
+        goal_info_set_purity(purity_impure, !GoalInfo),
+        goal_info_add_feature(feature_not_impure_for_determinism, !GoalInfo)
+    ).
+
+add_impurity_if_needed(AddedImpurity, !GoalInfo) :-
+    (
+        AddedImpurity = no
+    ;
+        AddedImpurity = yes,
+        make_impure(!GoalInfo)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    % Set the 'goal_is_mdprof_inst' field in the goal_dp_info structure
+    % in the given goal info structure.
+    %
+:- pred goal_info_set_mdprof_inst(goal_is_mdprof_inst::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+
+goal_info_set_mdprof_inst(IsMDProfInst, !GoalInfo) :-
+    goal_info_get_maybe_dp_info(!.GoalInfo) = MaybeDPInfo0,
+    (
+        MaybeDPInfo0 = yes(dp_goal_info(_, DPCoverageInfo)),
+        MaybeDPInfo = yes(dp_goal_info(IsMDProfInst, DPCoverageInfo))
+    ;
+        MaybeDPInfo0 = no,
+        MaybeDPInfo = yes(dp_goal_info(IsMDProfInst, no))
+    ),
+    goal_info_set_maybe_dp_info(MaybeDPInfo, !GoalInfo).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.deep_profiling.
