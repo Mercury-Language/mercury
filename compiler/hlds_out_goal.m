@@ -151,6 +151,8 @@
 
 :- implementation.
 
+:- import_module check_hlds.
+:- import_module check_hlds.mode_ordering.
 :- import_module hlds.error_msg_inst.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_out.hlds_out_mode.

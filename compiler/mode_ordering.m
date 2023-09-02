@@ -16,8 +16,11 @@
 
 :- import_module check_hlds.mode_constraint_robdd.
 :- import_module hlds.
+:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.
+:- import_module parse_tree.set_of_var.
 
 :- import_module io.
 :- import_module list.
@@ -39,24 +42,38 @@
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+
+:- pred goal_info_get_occurring_vars(hlds_goal_info::in, set_of_progvar::out)
+    is det.
+:- pred goal_info_get_producing_vars(hlds_goal_info::in, set_of_progvar::out)
+    is det.
+:- pred goal_info_get_consuming_vars(hlds_goal_info::in, set_of_progvar::out)
+    is det.
+:- pred goal_info_get_make_visible_vars(hlds_goal_info::in,
+    set_of_progvar::out) is det.
+:- pred goal_info_get_need_visible_vars(hlds_goal_info::in,
+    set_of_progvar::out) is det.
+
+:- pred goal_info_set_occurring_vars(set_of_progvar::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module check_hlds.clause_to_proc.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.inst_graph.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mode_robdd.
 :- import_module mode_robdd.tfeirn.
-:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module digraph.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module solutions.
@@ -645,6 +662,147 @@ report_ordering_mode_errors(_, !IO).
 
 lookup_pred_constraint(PCM, PredId, MC, MCI) :-
     map.lookup(PCM, PredId, pci(MC, MCI)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred goal_info_set_producing_vars(set_of_progvar::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_consuming_vars(set_of_progvar::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_make_visible_vars(set_of_progvar::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_need_visible_vars(set_of_progvar::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+
+goal_info_get_occurring_vars(GoalInfo, OccurringVars) :-
+    MMCI = goal_info_get_maybe_mode_constr(GoalInfo),
+    (
+        MMCI = yes(MCI),
+        OccurringVars = MCI ^ mci_occurring_vars
+    ;
+        MMCI = no,
+        OccurringVars = set_of_var.init
+    ).
+
+goal_info_get_producing_vars(GoalInfo, ProducingVars) :-
+    MMCI = goal_info_get_maybe_mode_constr(GoalInfo),
+    (
+        MMCI = yes(MCI),
+        ProducingVars = MCI ^ mci_producing_vars
+    ;
+        MMCI = no,
+        ProducingVars = set_of_var.init
+    ).
+
+goal_info_get_consuming_vars(GoalInfo, ConsumingVars) :-
+    MMCI = goal_info_get_maybe_mode_constr(GoalInfo),
+    (
+        MMCI = yes(MCI),
+        ConsumingVars = MCI ^ mci_consuming_vars
+    ;
+        MMCI = no,
+        ConsumingVars = set_of_var.init
+    ).
+
+goal_info_get_make_visible_vars(GoalInfo, MakeVisibleVars) :-
+    MMCI = goal_info_get_maybe_mode_constr(GoalInfo),
+    (
+        MMCI = yes(MCI),
+        MakeVisibleVars = MCI ^ mci_make_visible_vars
+    ;
+        MMCI = no,
+        MakeVisibleVars = set_of_var.init
+    ).
+
+goal_info_get_need_visible_vars(GoalInfo, NeedVisibleVars) :-
+    MMCI = goal_info_get_maybe_mode_constr(GoalInfo),
+    (
+        MMCI = yes(MCI),
+        NeedVisibleVars = MCI ^ mci_need_visible_vars
+    ;
+        MMCI = no,
+        NeedVisibleVars = set_of_var.init
+    ).
+
+goal_info_set_occurring_vars(OccurringVars, !GoalInfo) :-
+    MMCI0 = goal_info_get_maybe_mode_constr(!.GoalInfo),
+    (
+        MMCI0 = yes(MCI0),
+        MCI = MCI0 ^ mci_occurring_vars := OccurringVars
+    ;
+        MMCI0 = no,
+        set_of_var.init(ProducingVars),
+        set_of_var.init(ConsumingVars),
+        set_of_var.init(MakeVisibleVars),
+        set_of_var.init(NeedVisibleVars),
+        MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
+            ConsumingVars, MakeVisibleVars, NeedVisibleVars)
+    ),
+    goal_info_set_maybe_mode_constr(yes(MCI), !GoalInfo).
+
+goal_info_set_producing_vars(ProducingVars, !GoalInfo) :-
+    MMCI0 = goal_info_get_maybe_mode_constr(!.GoalInfo),
+    (
+        MMCI0 = yes(MCI0),
+        MCI = MCI0 ^ mci_producing_vars := ProducingVars
+    ;
+        MMCI0 = no,
+        set_of_var.init(OccurringVars),
+        set_of_var.init(ConsumingVars),
+        set_of_var.init(MakeVisibleVars),
+        set_of_var.init(NeedVisibleVars),
+        MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
+            ConsumingVars, MakeVisibleVars, NeedVisibleVars)
+    ),
+    goal_info_set_maybe_mode_constr(yes(MCI), !GoalInfo).
+
+goal_info_set_consuming_vars(ConsumingVars, !GoalInfo) :-
+    MMCI0 = goal_info_get_maybe_mode_constr(!.GoalInfo),
+    (
+        MMCI0 = yes(MCI0),
+        MCI = MCI0 ^ mci_consuming_vars := ConsumingVars
+    ;
+        MMCI0 = no,
+        set_of_var.init(OccurringVars),
+        set_of_var.init(ProducingVars),
+        set_of_var.init(MakeVisibleVars),
+        set_of_var.init(NeedVisibleVars),
+        MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
+            ConsumingVars, MakeVisibleVars, NeedVisibleVars)
+    ),
+    goal_info_set_maybe_mode_constr(yes(MCI), !GoalInfo).
+
+goal_info_set_make_visible_vars(MakeVisibleVars, !GoalInfo) :-
+    MMCI0 = goal_info_get_maybe_mode_constr(!.GoalInfo),
+    (
+        MMCI0 = yes(MCI0),
+        MCI = MCI0 ^ mci_make_visible_vars := MakeVisibleVars
+    ;
+        MMCI0 = no,
+        set_of_var.init(OccurringVars),
+        set_of_var.init(ProducingVars),
+        set_of_var.init(ConsumingVars),
+        set_of_var.init(NeedVisibleVars),
+        MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
+            ConsumingVars, MakeVisibleVars, NeedVisibleVars)
+    ),
+    goal_info_set_maybe_mode_constr(yes(MCI), !GoalInfo).
+
+goal_info_set_need_visible_vars(NeedVisibleVars, !GoalInfo) :-
+    MMCI0 = goal_info_get_maybe_mode_constr(!.GoalInfo),
+    (
+        MMCI0 = yes(MCI0),
+        MCI = MCI0 ^ mci_need_visible_vars := NeedVisibleVars
+    ;
+        MMCI0 = no,
+        set_of_var.init(OccurringVars),
+        set_of_var.init(ProducingVars),
+        set_of_var.init(ConsumingVars),
+        set_of_var.init(MakeVisibleVars),
+        MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
+            ConsumingVars, MakeVisibleVars, NeedVisibleVars)
+    ),
+    goal_info_set_maybe_mode_constr(yes(MCI), !GoalInfo).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.mode_ordering.
