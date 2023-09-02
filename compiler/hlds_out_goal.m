@@ -297,7 +297,7 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
         true
     ),
     ( if string.contains_char(DumpOptions, 'B') then
-        ProducingVars = GoalInfo ^ producing_vars,
+        goal_info_get_producing_vars(GoalInfo, ProducingVars),
         ( if set_of_var.is_non_empty(ProducingVars) then
             set_of_var.to_sorted_list(ProducingVars, ProducingVarsList),
             ProducingVarsStr = mercury_vars_to_string_src(VarNameSrc,
@@ -308,7 +308,7 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
             true
         ),
 
-        ConsumingVars = GoalInfo ^ consuming_vars,
+        goal_info_get_consuming_vars(GoalInfo, ConsumingVars),
         ( if set_of_var.is_non_empty(ConsumingVars) then
             set_of_var.to_sorted_list(ConsumingVars, ConsumingVarsList),
             ConsumingVarsStr = mercury_vars_to_string_src(VarNameSrc,
@@ -319,7 +319,7 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
             true
         ),
 
-        MakeVisibleVars = GoalInfo ^ make_visible_vars,
+        goal_info_get_make_visible_vars(GoalInfo, MakeVisibleVars),
         ( if set_of_var.is_non_empty(MakeVisibleVars) then
             set_of_var.to_sorted_list(MakeVisibleVars, MakeVisibleVarsList),
             MakeVisibleVarsStr = mercury_vars_to_string_src(VarNameSrc,
@@ -330,7 +330,7 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
             true
         ),
 
-        NeedVisibleVars = GoalInfo ^ need_visible_vars,
+        goal_info_get_need_visible_vars(GoalInfo, NeedVisibleVars),
         ( if set_of_var.is_non_empty(NeedVisibleVars) then
             set_of_var.to_sorted_list(NeedVisibleVars, NeedVisibleVarsList),
             NeedVisibleVarsStr = mercury_vars_to_string_src(VarNameSrc,

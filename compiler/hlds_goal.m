@@ -1745,20 +1745,6 @@
 :- pred goal_info_set_need_visible_vars(set_of_progvar::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
-:- func producing_vars(hlds_goal_info) = set_of_progvar.
-:- func 'producing_vars :='(hlds_goal_info, set_of_progvar) = hlds_goal_info.
-
-:- func consuming_vars(hlds_goal_info) = set_of_progvar.
-:- func 'consuming_vars :='(hlds_goal_info, set_of_progvar) = hlds_goal_info.
-
-:- func make_visible_vars(hlds_goal_info) = set_of_progvar.
-:- func 'make_visible_vars :='(hlds_goal_info, set_of_progvar)
-    = hlds_goal_info.
-
-:- func need_visible_vars(hlds_goal_info) = set_of_progvar.
-:- func 'need_visible_vars :='(hlds_goal_info, set_of_progvar)
-    = hlds_goal_info.
-
 %-----------------------------------------------------------------------------%
 
 :- func goal_info_add_nonlocals_make_impure(hlds_goal_info, set_of_progvar)
@@ -2434,30 +2420,6 @@ goal_info_set_need_visible_vars(NeedVisibleVars, !GoalInfo) :-
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
     !GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := yes(MCI).
-
-producing_vars(GoalInfo) = ProducingVars :-
-    goal_info_get_producing_vars(GoalInfo, ProducingVars).
-
-'producing_vars :='(GoalInfo0, ProducingVars) = GoalInfo :-
-    goal_info_set_producing_vars(ProducingVars, GoalInfo0, GoalInfo).
-
-consuming_vars(GoalInfo) = ConsumingVars :-
-    goal_info_get_consuming_vars(GoalInfo, ConsumingVars).
-
-'consuming_vars :='(GoalInfo0, ConsumingVars) = GoalInfo :-
-    goal_info_set_consuming_vars(ConsumingVars, GoalInfo0, GoalInfo).
-
-make_visible_vars(GoalInfo) = MakeVisibleVars :-
-    goal_info_get_make_visible_vars(GoalInfo, MakeVisibleVars).
-
-'make_visible_vars :='(GoalInfo0, MakeVisibleVars) = GoalInfo :-
-    goal_info_set_make_visible_vars(MakeVisibleVars, GoalInfo0, GoalInfo).
-
-need_visible_vars(GoalInfo) = NeedVisibleVars :-
-    goal_info_get_need_visible_vars(GoalInfo, NeedVisibleVars).
-
-'need_visible_vars :='(GoalInfo0, NeedVisibleVars) = GoalInfo :-
-    goal_info_set_need_visible_vars(NeedVisibleVars, GoalInfo0, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
