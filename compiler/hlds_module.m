@@ -9,14 +9,9 @@
 % File: hlds_module.m.
 % Main authors: fjh, conway.
 %
-% This module defines the main part of the High Level Data Structure or HLDS
-% that deals with issues that concern the module as a whole.
-%
-% The main data structures defined here are the types
-%
-%   module_info
-%
-% There is a separate interface section for each of these.
+% This module defines the main part of the High Level Data Structure or HLDS,
+% the module_info type, which deals with issues that concern the module
+% as a whole.
 %
 %---------------------------------------------------------------------------%
 
@@ -712,11 +707,11 @@
 :- import_module string.
 
     % The module_info, module_sub_info and module_rare_info types
-    % constitute a single logical data structure split into three parts
-    % for efficiency purposes.
+    % constitute a single logical data structure that has been split
+    % into three parts for efficiency purposes.
     %
-    % The module_info type contains the most frequently accessed and updated
-    % pieces of information about the module.
+    % The module_info type itself contains the most frequently accessed
+    % and updated pieces of information about the module.
     %
     % We keep the other pieces of information we need about the module
     % in the module_sub_info or the module_rare_info types. Those that are
@@ -734,7 +729,7 @@
     %   its uses are concentrated in a few pieces of code that read it
     %   only when they start and write it only when they finish.
     %
-    % - Another reason is that it is used only when a compiler option
+    % - Another reason is that the field is used only when a compiler option
     %   is given, and it is rarely given.
 
     % Please keep the order of the fields in module_info, module_sub_info
