@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1998, 2006, 2011 The University of Melbourne.
+% Copyright (C) 2015, 2019, 2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -451,39 +452,43 @@ postprocess_output_style_2(no, no, no, no, no, no, no, no, no, no, yes,
 %-----------------------------------------------------------------------------%
 
 options_help(!IO) :-
-    io.write_strings([
-        "Output styles:\n",
-        "\t--help\n",
-        "\t\tOutput this help.\n",
-        "\t-v, --version\n",
-        "\t\tOutput version info.\n",
-        "\t-c, -C <num>, --context <num>\n",
-        "\t\tOutput <num> (default 2) lines of copied context.\n",
-        "\t-u, -U <num>, --unified <num>\n",
-        "\t\tOutput <num> (default 2) lines of unified context.\n",
-        "\t\t-L <label>, --label <label>  Use <label> instead of file name.\n",
-        "\t-e, --ed\n",
-        "\t\tOutput an ed script.\n",
-        "\t-f, --forward-ed\n",
-        "\t\tProduce output similar to --ed, not useful to ed(1),\n",
-        "\t\tand in the opposite order.\n",
-        "\t-n, --rcs\n",
-        "\t\tOutput an RCS format diff.\n",
-        "\t-q, --brief\n",
-        "\t\tOutput only whether or not files differ.\n",
-        "\t-D <name>, --ifdef <name>\n",
-        "\t\tProduce output in #ifdef <name> format.\n",
-        "\t-y, --side-by-side\n",
-        "\t\tProduce output in side-by-side format.\n",
-        "\t\t-w <num>, --width <num>  Output at most <num> (default 130)\n",
-        "\t\t\tcharacters per line.\n",
-        "\t\t--left-column  Output only the left column of common lines.\n",
-        "\t\t--suppress-common-lines  Do not output common lines.\n",
-        "\nMatching options:\n",
-        "\t-d, --minimal\n",
-        "\t\tTry hard to find as small a set of changes as possible.\n",
-        "\t-B, --ignore-blank-lines\n",
-        "\t\tIgnore changes whose lines are all blank.\n"
+    io.write_string("Output styles:\n", !IO),
+    io.write_prefixed_lines("\t", [
+        "--help",
+        "\tOutput this help.",
+        "-v, --version",
+        "\tOutput version info.",
+        "-c, -C <num>, --context <num>",
+        "\tOutput <num> (default 2) lines of copied context.",
+        "-u, -U <num>, --unified <num>",
+        "\tOutput <num> (default 2) lines of unified context.",
+        "\t-L <label>, --label <label>  Use <label> instead of file name.",
+        "-e, --ed",
+        "\tOutput an ed script.",
+        "-f, --forward-ed",
+        "\tProduce output similar to --ed, not useful to ed(1),",
+        "\tand in the opposite order.",
+        "-n, --rcs",
+        "\tOutput an RCS format diff.",
+        "-q, --brief",
+        "\tOutput only whether or not files differ.",
+        "-D <name>, --ifdef <name>",
+        "\tProduce output in #ifdef <name> format.",
+        "-y, --side-by-side",
+        "\tProduce output in side-by-side format.",
+        "\t-w <num>, --width <num>  Output at most <num> (default 130)",
+        "\t\tcharacters per line.",
+        "\t--left-column  Output only the left column of common lines.",
+        "\t--suppress-common-lines  Do not output common lines."
+    ], !IO),
+    io.nl(!IO),
+
+    io.write_string("Matching options:\n", !IO),
+    io.write_prefixed_lines("\t", [
+        "-d, --minimal",
+        "\tTry hard to find as small a set of changes as possible.",
+        "-B, --ignore-blank-lines",
+        "\tIgnore changes whose lines are all blank."
     ], !IO).
 
 %-----------------------------------------------------------------------------%

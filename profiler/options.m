@@ -1,7 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 2000-2001, 2004-2006, 2011 The University of Melbourne.
+% Copyright (C) 1995-1997, 2000-2001, 2004-2006, 2011-2012 The University of Melbourne.
+% Copyright (C) 2015, 2019, 2021, 2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -84,6 +85,7 @@ short_option('C', countfile).
 short_option('c', call_graph).
 short_option('d', dynamic_cg).
 short_option('D', declfile).
+short_option('?', help).
 short_option('h', help).
 short_option('L', libraryfile).
 short_option('m', profile_memory_words).
@@ -165,60 +167,73 @@ valid_profile_option("memory-words", "Prof.MemoryWords").
 valid_profile_option("memory-cells", "Prof.MemoryCells").
 valid_profile_option("time", "Prof.Counts").
 
-options_help(OutputStream, !IO) :-
-    io.write_strings(OutputStream, [
-        "-h, --help\n",
-        "\t\tPrint this usage message.\n",
-        "\n",
-        "Profiler Options:\n",
-        "\t-c, --call-graph\n",
-        "\t\tInclude the call graph profile.\n",
-        "\t-d, --use-dynamic\n",
-        "\t\tBuild the call graph dynamically.\n",
-        "\t-p, --profile {time, memory-words, memory-cells}\n",
-        "\t\tSelect what to profile: time, amount of memory allocated, or\n",
-        "\t\tnumber of memory allocations (regardless of size).\n",
-        "\t-m\n",
-        "\t\tSame as `--profile memory-words'\n",
-        "\t-M\n",
-        "\t\tSame as `--profile memory-cells'.\n",
-        "\t-t\n",
-        "\t\tSame as `--profile time'.\n",
-        "\t--no-demangle\n",
-        "\t\tOutput the mangled predicate and function names.\n",
-        "\n",
-        "Filename Options:\n",
-        "\t-C <file>, --count-file <file>\n",
-        "\t\tName of the count file. Usually `Prof.Counts',\n",
-        "\t\t`Prof.MemoryWords', or `Prof.MemoryCells'.\n",
-        "\t-D <file>, --declaration-file <file>\n",
-        "\t\tName of the declaration file. Usually `Prof.Decl'.\n",
-        "\t-P <file>, --call-pair-file <file>\n",
-        "\t\tName of the call-pair file. Usually `Prof.CallPair'.\n",
-        "\t-L <file>, --library-callgraph <file>\n",
-        "\t\tName of the file which contains the call graph for\n",
-        "\t\tthe library modules.\n",
-        "\n",
-        "Snapshot options:\n",
-        "\t-s, --snapshots\n",
-        "\t\tShow summary of heap objects at the times\n",
-        "\t\t`benchmarking.report_memory_attribution' was called.\n",
-        "\t\tThis overrides other profiler modes.\n",
-        "\t--snapshots-file <file>\n",
-        "\t\tName of the snapshots file. Usually `Prof.Snapshots'.\n",
-        "\t-T, --snapshots-by-type\n",
-        "\t\tGroup results by type.\n",
-        "\t-b, --snapshots-brief\n",
-        "\t\tGenerate a brief profile.\n",
-        "\t-r, --snapshots-include-runtime\n",
-        "\t\tInclude internal Mercury runtime structures in the\n",
-        "\t\tprofile. These are excluded by default.\n",
-        "\n",
-        "Verbosity Options:\n",
-        "\t-v, --verbose\n",
-        "\t\tOutput progress messages at each stage.\n",
-        "\t-V, --very-verbose\n",
-        "\t\tOutput very verbose progress messages.\n"], !IO).
+options_help(Stream, !IO) :-
+    io.write_strings(Stream, [
+        "\t-?, -h, --help\n",
+        "\t\tPrint this usage message.\n"
+    ], !IO),
+    io.nl(Stream, !IO),
+
+    io.write_string(Stream, "Profiler Options:\n", !IO),
+    io.write_prefixed_lines(Stream, "\t", [
+        "-c, --call-graph",
+        "\tInclude the call graph profile.",
+        "-d, --use-dynamic",
+        "\tBuild the call graph dynamically.",
+        "-p, --profile {time, memory-words, memory-cells}",
+        "\tSelect what to profile: time, amount of memory allocated, or",
+        "\tnumber of memory allocations (regardless of size).",
+        "-m",
+        "\tSame as `--profile memory-words'",
+        "-M",
+        "\tSame as `--profile memory-cells'.",
+        "-t",
+        "\tSame as `--profile time'.",
+        "--no-demangle",
+        "\tOutput the mangled predicate and function names."
+    ], !IO),
+    io.nl(Stream, !IO),
+
+    io.write_string(Stream, "Filename Options:\n", !IO),
+    io.write_prefixed_lines(Stream, "\t", [
+        "-C <file>, --count-file <file>",
+        "\tName of the count file. Usually `Prof.Counts',",
+        "\t`Prof.MemoryWords', or `Prof.MemoryCells'.",
+        "-D <file>, --declaration-file <file>",
+        "\tName of the declaration file. Usually `Prof.Decl'.",
+        "-P <file>, --call-pair-file <file>",
+        "\tName of the call-pair file. Usually `Prof.CallPair'.",
+        "-L <file>, --library-callgraph <file>",
+        "\tName of the file which contains the call graph for",
+        "\tthe library modules."
+    ], !IO),
+    io.nl(Stream, !IO),
+
+    io.write_string(Stream, "Snapshot options:\n", !IO),
+    io.write_prefixed_lines(Stream, "\t", [
+        "-s, --snapshots",
+        "\tShow summary of heap objects at the times",
+        "\t`benchmarking.report_memory_attribution' was called.",
+        "\tThis overrides other profiler modes.",
+        "--snapshots-file <file>",
+        "\tName of the snapshots file. Usually `Prof.Snapshots'.",
+        "-T, --snapshots-by-type",
+        "\tGroup results by type.",
+        "-b, --snapshots-brief",
+        "\tGenerate a brief profile.",
+        "-r, --snapshots-include-runtime",
+        "\tInclude internal Mercury runtime structures in the",
+        "\tprofile. These are excluded by default."
+    ], !IO),
+    io.nl(Stream, !IO),
+
+    io.write_string(Stream, "Verbosity Options:\n", !IO),
+    io.write_prefixed_lines(Stream, "\t", [
+        "-v, --verbose",
+        "\tOutput progress messages at each stage.",
+        "-V, --very-verbose\n",
+        "\tOutput very verbose progress messages."
+    ], !IO).
 
 %---------------------------------------------------------------------------%
 
