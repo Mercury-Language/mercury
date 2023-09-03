@@ -462,7 +462,7 @@ long_usage(OutStream, !IO) :-
     io.write_string(OutStream,
         "\tArguments are assumed to Mercury trace count files.\n", !IO),
     io.write_string(OutStream, "Options:\n", !IO),
-    write_tabbed_lines(OutStream, [
+    io.write_prefixed_lines(OutStream, "\t", [
         "-?, -h, --help",
         "\tPrint help about using mcov (on the standard output) and exit",
         "\twithout doing any further processing.",
@@ -488,14 +488,6 @@ long_usage(OutStream, !IO) :-
         %"\tInclude information about labels in the mdbcomp library in the",
         %"\treports.".
     ], !IO).
-
-:- pred write_tabbed_lines(io.text_output_stream::in, list(string)::in,
-    io::di, io::uo) is det.
-
-write_tabbed_lines(_OutStream, [], !IO).
-write_tabbed_lines(OutStream, [Str | Strs], !IO) :-
-    io.format(OutStream, "\t%s\n", [s(Str)], !IO),
-    write_tabbed_lines(OutStream, Strs, !IO).
 
 %---------------------------------------------------------------------------%
 

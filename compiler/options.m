@@ -4178,7 +4178,7 @@ options_help(Stream, !IO) :-
 
 options_help_warning(Stream, !IO) :-
     io.write_string(Stream, "\nWarning Options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "-w, --inhibit-warnings",
         "\tDisable all warning messages.",
         "--inhibit-style-warnings",
@@ -4441,7 +4441,7 @@ options_help_warning(Stream, !IO) :-
 
 options_help_verbosity(Stream, !IO) :-
     io.write_string(Stream, "\nVerbosity Options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "-v, --verbose",
         "\tOutput progress messages at each stage in the compilation.",
         "-V, --very-verbose",
@@ -4585,7 +4585,7 @@ options_help_verbosity(Stream, !IO) :-
 
 options_help_output(Stream, !IO) :-
     io.write_string(Stream, "\nOutput Options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "These options are mutually exclusive.",
         "Only the first one specified will apply.",
         "If none of these options are specified, the default action",
@@ -4711,7 +4711,7 @@ options_help_output(Stream, !IO) :-
 
 options_help_aux_output(Stream, !IO) :-
     io.write_string(Stream, "\nAuxiliary Output Options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
 % These are commented out until the compiler consistently does
 % what these options say it should do when specified.
 %       "--error-output-suffix .xyz",
@@ -5036,7 +5036,7 @@ options_help_semantics(Stream, !IO) :-
         "(See the Mercury language reference manual ", !IO),
     io.write_string(Stream,
         "for detailed explanations.)\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "--no-reorder-conj",
         "\tExecute conjunctions left-to-right except where the modes imply",
         "\tthat reordering is unavoidable.",
@@ -5076,7 +5076,7 @@ options_help_semantics(Stream, !IO) :-
 options_help_ctgc(Stream, !IO) :-
     io.write_string(Stream,
         "\nCompile Time Garbage Collection Options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "--structure-sharing",
         "\tPerform structure sharing analysis.",
         "--structure-sharing-widening <n>",
@@ -5116,7 +5116,7 @@ options_help_ctgc(Stream, !IO) :-
 
 options_help_termination(Stream, !IO) :-
     io.write_string(Stream, "\nTermination Analysis Options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "--enable-term, --enable-termination",
         "\tAnalyse each predicate to discover if it terminates.",
         "--chk-term, --check-term, --check-termination",
@@ -5195,7 +5195,7 @@ options_help_termination(Stream, !IO) :-
 
 options_help_compilation_model(Stream, !IO) :-
     io.write_string(Stream, "\nCompilation model options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "The following compilation options affect the generated",
         "code in such a way that the entire program must be",
         "compiled with the same setting of these options,",
@@ -5203,7 +5203,7 @@ options_help_compilation_model(Stream, !IO) :-
         "library which has been compiled with the same setting."
     ], !IO),
     io.write_string(Stream, "\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "-s <grade>, --grade <grade>",
         "\tSelect the compilation model. The <grade> should be one of",
         "\tthe base grades `none', `reg', `asm_fast', `hlc', `java' or,",
@@ -5233,7 +5233,7 @@ options_help_compilation_model(Stream, !IO) :-
 
     io.write_string(Stream,
         "\n    Target selection compilation model options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         %"--target c\t\t\t(grades: none, reg, jump, fast,",
         %"\t\t\t\t\tasm_jump, asm_fast, hl, hlc)",
         "--target c\t\t\t(grades: none, reg, asm_fast, hlc)",
@@ -5267,7 +5267,7 @@ options_help_compilation_model(Stream, !IO) :-
         "\n    Optional feature compilation model options:\n", !IO),
     io.write_string(Stream,
         "\n      Debugging\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "--debug\t\t\t\t(grade modifier: `.debug')",
         "\tEnable Mercury-level debugging.",
         "\tSee the Debugging chapter of the Mercury User's Guide",
@@ -5289,7 +5289,7 @@ options_help_compilation_model(Stream, !IO) :-
     ], !IO),
     io.write_string(Stream,
         "\n      Profiling\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "-p, --profiling, --time-profiling",
         "\t\t\t\t(grade modifier: `.prof')",
         "\tEnable time and call profiling. Insert profiling hooks in the",
@@ -5397,7 +5397,7 @@ options_help_compilation_model(Stream, !IO) :-
 
     io.write_string(Stream,
         "\n      Miscellaneous optional features\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "--gc {none, boehm, hgc, accurate, automatic}",
         "--garbage-collection {none, boehm, hgc, accurate, automatic}",
         "\t\t\t\t(`java' and `csharp' grades",
@@ -5450,7 +5450,7 @@ options_help_compilation_model(Stream, !IO) :-
 
     io.write_string(Stream,
         "\n    LLDS back-end compilation model options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         %"--gcc-global-registers\t\t(grades: reg, fast, asm_fast)",
         %"--no-gcc-global-registers\t(grades: none, jump, asm_jump)",
         "--gcc-global-registers\t\t(grades: reg, asm_fast)",
@@ -5489,7 +5489,7 @@ options_help_compilation_model(Stream, !IO) :-
 
     io.write_string(Stream,
         "\n    MLDS back-end compilation model options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "-H, --high-level-code\t\t\t(grades: hlc, csharp, java)",
         "\tUse an alternative back-end that generates high-level code",
         "\trather than the very low-level code that is generated by our",
@@ -5531,7 +5531,7 @@ options_help_compilation_model(Stream, !IO) :-
         "\n    Developer compilation model options:\n", !IO),
     io.write_string(Stream,
         "\n      Data representation\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "--num-ptag-bits <n>           (This option is not for general use.)",
         "\tUse <n> primary tag bits."
         % Normally, The --num-tag-bits option is used only by the compiler.
@@ -5595,7 +5595,7 @@ options_help_compilation_model(Stream, !IO) :-
     ], !IO),
     io.write_string(Stream,
         "\n      Developer optional features\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "--use-minimal-model-stack-copy",
         "(This option is not for general use.)",
         "\tEnable the use of the standard form of minimal model tabling.",
@@ -5713,7 +5713,7 @@ options_help_compilation_model(Stream, !IO) :-
 
 options_help_code_generation(Stream, !IO) :-
     io.write_string(Stream, "\nCode generation options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
 %       "--table-debug",
 %       "\tEnables the generation of code that helps to debug tabling",
 %       "\tprimitives.",
@@ -5805,7 +5805,7 @@ options_help_code_generation(Stream, !IO) :-
     ], !IO),
 
     io.write_string(Stream, "\n    Code generation target options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "--branch-delay-slot    \t(This option is not for general use.)",
         "\tAssume that branch instructions have a delay slot.",
         "--num-real-r-regs <n>  \t(This option is not for general use.)",
@@ -5827,7 +5827,7 @@ options_help_code_generation(Stream, !IO) :-
 
 options_help_optimization(Stream, !IO) :-
     io.write_string(Stream, "\nOptimization Options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         % This is for use by Mercury.config only.
     %   "--default-opt-level -O<n>",
     %   "\tSet the default optimization level to <n>.",
@@ -5886,7 +5886,7 @@ options_help_optimization(Stream, !IO) :-
 options_help_hlds_hlds_optimization(Stream, !IO) :-
     io.write_string(Stream,
         "\n    High-level (HLDS -> HLDS) optimizations:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "--no-inlining",
         "\tDisable all forms of inlining.",
         "--no-inline-simple",
@@ -6152,7 +6152,7 @@ options_help_hlds_hlds_optimization(Stream, !IO) :-
 options_help_hlds_llds_optimization(Stream, !IO) :-
     io.write_string(Stream,
         "\n    Medium-level (HLDS -> LLDS) optimizations:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "--no-smart-indexing",
         "\tGenerate switches as simple if-then-else chains;",
         "\tdisable string hashing and integer table-lookup indexing.",
@@ -6229,7 +6229,7 @@ options_help_hlds_llds_optimization(Stream, !IO) :-
 options_help_llds_llds_optimization(Stream, !IO) :-
     io.write_string(Stream,
         "\n    Low-level (LLDS -> LLDS) optimizations:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "--no-common-data",
         "\tDisable optimization of common data structures.",
         "--no-common-layout-data",
@@ -6288,7 +6288,7 @@ options_help_llds_llds_optimization(Stream, !IO) :-
 
 options_help_mlds_mlds_optimization(Stream, !IO) :-
     io.write_string(Stream, "\n    MLDS -> MLDS optimizations:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "--no-mlds-optimize",
         "\tDisable the MLDS->MLDS optimization passes.",
         "--no-mlds-peephole",
@@ -6318,7 +6318,7 @@ options_help_mlds_mlds_optimization(Stream, !IO) :-
 options_help_output_optimization(Stream, !IO) :-
     io.write_string(Stream,
         "\n    Output-level (LLDS -> C) optimizations:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "--use-macro-for-redo-fail",
         "\tEmit the fail or redo macro instead of a branch",
         "\tto the fail or redo code in the runtime system.",
@@ -6347,7 +6347,7 @@ options_help_output_optimization(Stream, !IO) :-
 
 options_help_target_code_compilation(Stream, !IO) :-
     io.write_string(Stream, "\n    Target code compilation:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "\tNote that if you are using Mmake, you need to pass these",
         "\toptions to the target code compiler (e.g. `mgnuc')",
         "\trather than to `mmc'.",
@@ -6444,7 +6444,7 @@ options_help_target_code_compilation(Stream, !IO) :-
 
 options_help_link(Stream, !IO) :-
     io.write_string(Stream, "\nLink Options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "-o <filename>, --output-file <filename>",
         "\tSpecify the name of the final executable.",
         "\t(The default executable name is the same as the name",
@@ -6619,7 +6619,7 @@ options_help_link(Stream, !IO) :-
 
 options_help_build_system(Stream, !IO) :-
     io.write_string(Stream, "\nBuild System Options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "-m, --make",
         "\tTreat the non-option arguments to `mmc' as files to make,",
         "\trather than source files. Build or rebuild the specified files",
@@ -6781,7 +6781,7 @@ options_help_build_system(Stream, !IO) :-
 
 options_help_misc(Stream, !IO) :-
     io.write_string(Stream, "\nMiscellaneous Options:\n", !IO),
-    write_tabbed_lines(Stream, [
+    io.write_prefixed_lines(Stream, "\t", [
         "--filenames-from-stdin",
         "\tRead then compile a newline terminated module name or",
         "\tfile name from the standard input. Repeat this until EOF",
@@ -6836,14 +6836,6 @@ options_help_misc(Stream, !IO) :-
         "\tUse the specified profiling feedback file which may currently",
         "\tonly be processed for implicit parallelism."
     ], !IO).
-
-:- pred write_tabbed_lines(io.text_output_stream::in, list(string)::in,
-    io::di, io::uo) is det.
-
-write_tabbed_lines(_, [], !IO).
-write_tabbed_lines(Stream, [Str | Strs], !IO) :-
-    io.format(Stream, "\t%s\n", [s(Str)], !IO),
-    write_tabbed_lines(Stream, Strs, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module libs.options.

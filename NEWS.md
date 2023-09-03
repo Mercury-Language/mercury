@@ -319,6 +319,8 @@ Changes to the Mercury standard library
     - pred `system_error_is_success/1`
     - pred `write_binary_string_utf8/3`
     - pred `write_binary_string_utf8/4`
+    - pred `write_prefixed_lines/4`
+    - pred `write_prefixed_lines/5`
 
 * The following obsolete predicates have been removed:
 

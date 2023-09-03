@@ -1210,6 +1210,18 @@
 :- pred write_strings(io.text_output_stream::in, list(string)::in,
     io::di, io::uo) is det.
 
+    % write_prefixed_lines(Prefix, Lines, !IO):
+    % write_prefixed_lines(Stream, Prefix, Lines, !IO):
+    %
+    % Write each line in Lines to the current output stream or to the
+    % specified output stream. Write Prefix before each line and write
+    % a newline after each line.
+    %
+:- pred write_prefixed_lines(string::in, list(string)::in, io::di, io::uo)
+    is det.
+:- pred write_prefixed_lines(io.text_output_stream::in, string::in,
+    list(string)::in, io::di, io::uo) is det.
+
     % Writes the specified arguments to the current output stream
     % or to the specified output stream.
     %
@@ -3821,6 +3833,17 @@ write_strings(_Stream, [], !IO).
 write_strings(Stream, [S | Ss], !IO) :-
     write_string(Stream, S, !IO),
     write_strings(Stream, Ss, !IO).
+
+%---------------------%
+
+write_prefixed_lines(Prefix, Lines, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_prefixed_lines(Stream, Prefix, Lines, !IO).
+
+write_prefixed_lines(_, _, [], !IO).
+write_prefixed_lines(Stream, Prefix, [Str | Strs], !IO) :-
+    io.format(Stream, "%s%s\n", [s(Prefix), s(Str)], !IO),
+    write_prefixed_lines(Stream, Prefix, Strs, !IO).
 
 %---------------------%
 
