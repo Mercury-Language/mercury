@@ -1161,7 +1161,7 @@ should_we_use_analysis_cache_dir(Globals, Info, UseAnalysisCacheDir, !IO) :-
     string::out, io::di, io::uo) is det.
 
 create_analysis_cache_dir(Globals, Succeeded, CacheDir, !IO) :-
-    choose_analysis_cache_dir_name(Globals, CacheDir),
+    analysis_cache_dir_name(Globals, CacheDir),
     verbose_make_two_part_msg(Globals, "Creating", CacheDir, CreatingMsg),
     % XXX MAKE_STREAM
     maybe_write_msg(CreatingMsg, !IO),
@@ -1175,29 +1175,6 @@ create_analysis_cache_dir(Globals, Succeeded, CacheDir, !IO) :-
             [s(CacheDir), s(io.error_message(Error))], !IO),
         Succeeded = did_not_succeed
     ).
-
-:- pred choose_analysis_cache_dir_name(globals::in, string::out) is det.
-
-choose_analysis_cache_dir_name(Globals, DirName) :-
-    % XXX FILE_NAMES The relationship of this code with file_names.m
-    % is unclear. On the one hand, the code below follows the same pattern
-    % as each switch arm in ext_to_dir_path. On the other hand, the
-    % subdir name "analysis_cache" is not the subdir name for any of
-    % the extensions defined in the ext type.
-    globals.get_subdir_setting(Globals, SubdirSetting),
-    (
-        ( SubdirSetting = use_cur_dir
-        ; SubdirSetting = use_cur_ngs_subdir
-        ),
-        DirComponents = ["Mercury", "analysis_cache"]
-    ;
-        SubdirSetting = use_cur_ngs_gs_subdir,
-        grade_directory_component(Globals, Grade),
-        globals.lookup_string_option(Globals, target_arch, TargetArch),
-        DirComponents = ["Mercury", Grade, TargetArch, "Mercury",
-            "analysis_cache"]
-    ),
-    DirName = dir.relative_path_name_from_components(DirComponents).
 
 :- pred remove_cache_dir(globals::in, string::in,
     make_info::in, make_info::out, io::di, io::uo) is det.

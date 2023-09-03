@@ -125,7 +125,7 @@
 %   for some string X,
 % - a grade-specific subdirectory, which will be
 %   "Mercury/<grade>/<arch>/Mercury/<X>s" for some string X.
-%   (See make_grade_subdir_name) for the rationale for this scheme.)
+%   (See make_gs_dir_names) for the rationale for this scheme.)
 %
 % Some Java extensions are an exception; they include an extra "jmercury"
 % component in the path.
@@ -584,6 +584,8 @@
     %
 :- pred ext_to_dir_path(globals::in, maybe_for_search::in, ext::in,
     list(dir_name)::out) is det.
+
+:- pred analysis_cache_dir_name(globals::in, string::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1121,7 +1123,7 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
             ; SubdirSetting = use_cur_ngs_gs_subdir
             ),
             ext_cur_ngs_extension_dir(ExtCurNgs, _ExtStr, SubDirName),
-            DirNames = ["Mercury", SubDirName]
+            DirNames = make_ngs_dir_names(SubDirName)
         )
     ;
         Ext = ext_cur_gs(ExtCurGs),
@@ -1137,7 +1139,7 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
             ext_cur_gs_extension_dir(Globals, ExtCurGs, _ExtStr, SubDirName),
-            DirNames = make_grade_subdir_name(Globals, SubDirName)
+            DirNames = make_gs_dir_names(Globals, SubDirName)
         )
     ;
         Ext = ext_cur_ngs_gs(ExtCurNgsGs),
@@ -1149,12 +1151,12 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
             SubdirSetting = use_cur_ngs_subdir,
             ext_cur_ngs_gs_extension_dir(Globals, ExtCurNgsGs,
                 _ExtStr, SubDirName),
-            DirNames = ["Mercury", SubDirName]
+            DirNames = make_ngs_dir_names(SubDirName)
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
             ext_cur_ngs_gs_extension_dir(Globals, ExtCurNgsGs,
                 _ExtStr, SubDirName),
-            DirNames = make_grade_subdir_name(Globals, SubDirName)
+            DirNames = make_gs_dir_names(Globals, SubDirName)
         )
     ;
         Ext = ext_cur_ngs_gs_java(ExtCurNgsGsJava),
@@ -1186,12 +1188,12 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
                 SubdirSetting = use_cur_ngs_subdir,
                 ext_cur_ngs_gs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
                     _ExtStr, SubDirName),
-                DirNames = ["Mercury", SubDirName]
+                DirNames = make_ngs_dir_names(SubDirName)
             ;
                 SubdirSetting = use_cur_ngs_gs_subdir,
                 ext_cur_ngs_gs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
                     _ExtStr, SubDirName),
-                DirNames = make_grade_subdir_name(Globals, SubDirName)
+                DirNames = make_gs_dir_names(Globals, SubDirName)
             )
         )
     ;
@@ -1204,26 +1206,50 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
             SubdirSetting = use_cur_ngs_subdir,
             ext_cur_ngs_gs_max_ngs_extension_dir(ExtCurNgsGsMaxNgs,
                 _ExtStr, SubDirName),
-            DirNames = ["Mercury", SubDirName]
+            DirNames = make_ngs_dir_names(SubDirName)
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
             ext_cur_ngs_gs_max_ngs_extension_dir(ExtCurNgsGsMaxNgs,
                 _ExtStr, SubDirName),
             (
                 Search = for_search,
-                DirNames = ["Mercury", SubDirName]
+                DirNames = make_ngs_dir_names(SubDirName)
             ;
                 Search = not_for_search,
-                DirNames = make_grade_subdir_name(Globals, SubDirName)
+                DirNames = make_gs_dir_names(Globals, SubDirName)
             )
         )
     ).
 
 %---------------------------------------------------------------------------%
 
-:- func make_grade_subdir_name(globals, dir_name) = list(string).
+analysis_cache_dir_name(Globals, DirName) :-
+    globals.get_subdir_setting(Globals, SubdirSetting),
+    (
+        ( SubdirSetting = use_cur_dir
+        ; SubdirSetting = use_cur_ngs_subdir
+        ),
+        DirComponents = make_ngs_dir_names("analysis_cache")
+    ;
+        SubdirSetting = use_cur_ngs_gs_subdir,
+        DirComponents = make_gs_dir_names(Globals, "analysis_cache")
+    ),
+    DirName = dir.relative_path_name_from_components(DirComponents).
 
-make_grade_subdir_name(Globals, SubDirName) = GradeSubDirNames :-
+%---------------------------------------------------------------------------%
+%
+% Return the directory path of the non-grade-specific and the
+% grade-specific directory whose last component is the given string.
+%
+
+:- func make_ngs_dir_names(dir_name) = list(dir_name).
+
+make_ngs_dir_names(SubDirName) = NgsSubDirNames :-
+    NgsSubDirNames = ["Mercury", SubDirName].
+
+:- func make_gs_dir_names(globals, dir_name) = list(dir_name).
+
+make_gs_dir_names(Globals, SubDirName) = GsSubDirNames :-
     grade_directory_component(Globals, Grade),
     globals.lookup_string_option(Globals, target_arch, TargetArch),
     % The extra "Mercury" is needed so we can use `--intermod-directory
@@ -1231,7 +1257,9 @@ make_grade_subdir_name(Globals, SubDirName) = GradeSubDirNames :-
     % Mercury/<grade>/<target_arch>' to find the local `.opt' and `.mih'
     % files without messing up the search for the files for installed
     % libraries.
-    GradeSubDirNames = ["Mercury", Grade, TargetArch, "Mercury", SubDirName].
+    GsSubDirNames = ["Mercury", Grade, TargetArch, "Mercury", SubDirName].
+
+%---------------------------------------------------------------------------%
 
 :- func glue_dir_names_base_name(list(string), string) = string.
 
@@ -1352,12 +1380,12 @@ get_java_dir_path(Globals, ExtCurNgsGsJava, DirNames) :-
         SubdirSetting = use_cur_ngs_subdir,
         ext_cur_ngs_gs_java_extension_dir(ExtCurNgsGsJava,
             _ExtStr, SubDirName),
-        DirNames = ["Mercury", SubDirName]
+        DirNames = make_ngs_dir_names(SubDirName)
     ;
         SubdirSetting = use_cur_ngs_gs_subdir,
         ext_cur_ngs_gs_java_extension_dir(ExtCurNgsGsJava,
             _ExtStr, SubDirName),
-        DirNames = make_grade_subdir_name(Globals, SubDirName)
+        DirNames = make_gs_dir_names(Globals, SubDirName)
     ).
 
 %---------------------------------------------------------------------------%
