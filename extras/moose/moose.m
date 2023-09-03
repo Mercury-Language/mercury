@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2004, 2006, 2011 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2020-2022 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2020-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %---------------------------------------------------------------------------%
@@ -496,13 +496,13 @@ help(!IO) :-
     io.stderr_stream(StdErr, !IO),
     io.write_string(StdErr, "\
 usage: moose <options> file ...
-    -h|--help        help
+    -h|--help           help
     -a|--dump-action    dump the action table
-    -f|--dump-first        dump the FIRST sets
-    -a|--dump-follow    dump the FOLLOW sets
-    -a|--dump-goto        dump the goto table
-    -a|--dump-items        dump the item sets
-    -a|--dump-rules        dump the flattened rules
+    -f|--dump-first     dump the FIRST sets
+    -F|--dump-follow    dump the FOLLOW sets
+    -g|--dump-goto      dump the goto table
+    -i|--dump-items     dump the item sets
+    -r|--dump-rules     dump the flattened rules
 ", !IO).
 
 %---------------------------------------------------------------------------%
