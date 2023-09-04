@@ -616,13 +616,15 @@ construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
             CDateFileName, JavaDateFileName])),
     TargetGroups = one_or_more(TargetGroup, []),
 
-    SourceFileNameGroup = [make_singleton_file_name_group(SourceFileName)],
+    SourceFileNameGroup =
+        [make_singleton_file_name_group("source", SourceFileName)],
     % If the module contains nested submodules, then the `.int0' file
     % must first be built.
     ( if set.is_empty(PublicChildren) then
         Int0FileNameGroups = []
     else
-        Int0FileNameGroups = [make_singleton_file_name_group(Int0FileName)]
+        Int0FileNameGroups =
+            [make_singleton_file_name_group("int0", Int0FileName)]
     ),
     make_module_file_name_group_with_suffix(Globals,
         "ancestors", ext_cur_ngs(ext_cur_ngs_int_int0),
@@ -930,11 +932,11 @@ construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
     MmakeRuleParentDates = mmake_general_rule("self_and_parent_date_deps",
         mmake_rule_is_not_phony,
         one_or_more(
-            mmake_file_name_group("",
+            mmake_file_name_group("date files",
                 one_or_more(DateFileName,
                     [Date0FileName | AncestorDateFileNames])),
             []),
-        [make_singleton_file_name_group(SourceFileName)] ++
+        [make_singleton_file_name_group("source", SourceFileName)] ++
             make_file_name_group("ancestor int0", AncestorInt0FileNames) ++
             make_file_name_group("long dep int3s", LongDepInt3FileNames) ++
             make_file_name_group("short dep int3s", ShortDepInt3FileNames),
@@ -948,7 +950,7 @@ construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
             mmake_file_name_group("date0s",
                 one_or_more(Date0FileName, AncestorDate0FileNames)),
             []),
-        [make_singleton_file_name_group(SourceFileName)] ++
+        [make_singleton_file_name_group("source", SourceFileName)] ++
             make_file_name_group("long dep int3s", LongDepInt3FileNames) ++
             make_file_name_group("short dep int3s", ShortDepInt3FileNames),
         []),

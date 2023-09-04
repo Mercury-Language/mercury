@@ -264,9 +264,10 @@
 :- func make_file_name_group(string, list(mmake_file_name))
     = list(mmake_file_name_group).
 
-    % Return an anonymous file name group containing just the given file name.
+    % Return a file name group with the given name containing just
+    % the given file name.
     %
-:- func make_singleton_file_name_group(mmake_file_name)
+:- func make_singleton_file_name_group(string, mmake_file_name)
     = mmake_file_name_group.
 
     % Return an action that prints nothing and does nothing,
@@ -533,23 +534,27 @@ write_block_comment_line(OutStream, Comment, !IO) :-
     list(mmake_file_name_group)::in, io::di, io::uo) is det.
 
 maybe_write_group_names(OutStream, TargetOrSource, Groups, !IO) :-
-    GroupNames = list.map(project_group_name, Groups),
-    ( if string.append_list(GroupNames) = "" then
+    ( if all_group_names_are_empty(Groups) then
         % There are no group names to write out.
         true
     else
         io.format(OutStream, "# %s group names:\n", [s(TargetOrSource)], !IO),
-        list.foldl(write_group_name(OutStream), GroupNames, !IO)
+        list.foldl(write_group_name(OutStream), Groups, !IO)
     ).
 
-:- func project_group_name(mmake_file_name_group) = string.
+:- pred all_group_names_are_empty(list(mmake_file_name_group)::in) is semidet.
 
-project_group_name(mmake_file_name_group(GroupName, _)) = GroupName.
+all_group_names_are_empty([]).
+all_group_names_are_empty([Group | Groups]) :-
+    Group = mmake_file_name_group(GroupName, _),
+    GroupName = "",
+    all_group_names_are_empty(Groups).
 
-:- pred write_group_name(io.text_output_stream::in, string::in,
+:- pred write_group_name(io.text_output_stream::in, mmake_file_name_group::in,
     io::di, io::uo) is det.
 
-write_group_name(OutStream, GroupName0, !IO) :-
+write_group_name(OutStream, Group, !IO) :-
+    Group = mmake_file_name_group(GroupName0, _),
     ( if GroupName0 = "" then
         GroupName = "(unnamed)"
     else
@@ -793,8 +798,8 @@ make_file_name_group(GroupName, FileNames) = Groups :-
             one_or_more(HeadFileName, TailFileNames))]
     ).
 
-make_singleton_file_name_group(FileName) =
-    mmake_file_name_group("", one_or_more(FileName, [])).
+make_singleton_file_name_group(GroupName, FileName) =
+    mmake_file_name_group(GroupName, one_or_more(FileName, [])).
 
 silent_noop_action = "@:".
 
