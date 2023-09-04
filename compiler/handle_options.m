@@ -3157,12 +3157,12 @@ long_usage(ProgressStream, !IO) :-
     write_copyright_notice(ProgressStream, !IO),
     io.write_strings(ProgressStream, [
         "Usage: mmc [<options>] <arguments>\n",
-        "Arguments:\n",
-        "\tArguments ending in `.m' are assumed to be source file names.\n",
-        "\tArguments that do not end in `.m' ",
-            "are assumed to be module names.\n",
-        "\tArguments in the form @file ",
-            "are replaced with the contents of the file.\n"
+        "Arguments:\n"
+    ], !IO),
+    io.write_prefixed_lines(ProgressStream, "\t", [
+        "Arguments ending in `.m' are assumed to be source file names.",
+        "Arguments that do not end in `.m' are assumed to be module names.",
+        "Arguments in the form @file are replaced with the contents of the file."
     ], !IO),
     io.write_string(ProgressStream, "Options:\n", !IO),
     options_help(ProgressStream, !IO).

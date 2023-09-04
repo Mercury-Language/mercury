@@ -125,22 +125,24 @@ long_usage(OutputStream, !IO) :-
     io.write_strings(OutputStream, [
         "Usage: ", ProgName, " [<options>] [<files>]\n",
         "\n",
-        "Description:\n",
-        "\t`mprof' produces execution profiles for Mercury programs.\n",
-        "\tIt outputs a flat profile and optionally also a hierarchical\n",
-        "\t(call graph based) profile based on data collected during program\n",
-        "\texecution.\n",
-        "\n",
-        "Arguments:\n",
-        "\tIf no <files> are specified, then the `--use-dynamic' option\n",
-        "\tis implied: the call graph will be built dynamically.\n",
-        "\tOtherwise, the <files> specified should be the `.prof' file\n",
-        "\tfor every module in the program.  The `.prof' files, which are\n",
-        "\tgenerated automatically by the Mercury compiler, contain the\n",
-        "\tprogram's static call graph.\n",
-        "\n",
-        "Options:\n"
-        ], !IO),
+        "Description:\n"
+    ], !IO),
+    io.write_prefixed_lines(OutputStream, "\t", [
+        "`mprof' produces execution profiles for Mercury programs.",
+        "It outputs a flat profile and optionally also a hierarchical",
+        "(call graph based) profile based on data collected during program",
+        "execution."
+    ], !IO),
+    io.write_string(OutputStream, "\nArguments:\n", !IO),
+    io.write_prefixed_lines(OutputStream, "\t", [
+        "If no <files> are specified, then the `--use-dynamic' option",
+        "is implied: the call graph will be built dynamically.",
+        "Otherwise, the <files> specified should be the `.prof' file",
+        "for every module in the program. The `.prof' files, which are",
+        "generated automatically by the Mercury compiler, contain the",
+        "program's static call graph."
+    ], !IO),
+    io.write_string(OutputStream, "\nOptions:\n", !IO),
     options_help(OutputStream, !IO).
 
 :- pred write_copyright_notice(io.text_output_stream::in, io::di, io::uo)
