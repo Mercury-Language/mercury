@@ -288,20 +288,21 @@ processFile(Filename, Abbrev, F0, F, P0 - ST0, P, !IO) :-
 usage(!IO) :-
     io.stderr_stream(StdErr, !IO),
     io.write_strings(StdErr, [
-"Melbourne University Z typechecker, version 0.1\n",
-"Copyright (C) 1996, 1997, 1998 The University of Melbourne\n",
-"Usage: muz [options] <filename(s)>\n",
-"Options:\n",
-    "\t-a-, --no-abbreviate\n",
-        "\t\tTurn off use of type abbreviations.\n",
-    "\t-t <toolkit>, --toolkit <toolkit>\n",
-        "\t\tTypecheck with the specified toolkit, overiding the\n",
-        "\t\tbuiltin default and MUZ_TOOLKIT environment variable\n",
-        "\t\t(-t- for typechecking without a toolkit).\n",
-
-    "\t-?, -h, --help\n",
-        "\t\tPrint this usage message.\n",
-    "\t-d, --debug\n",
-        "\t\tWrite debugging information to stdout.\n"
+        "Melbourne University Z typechecker, version 0.1\n",
+        "Copyright (C) 1996, 1997, 1998 The University of Melbourne\n",
+        "Usage: muz [options] <filename(s)>\n",
+        "Options:\n"
+    ], !IO),
+    io.write_prefixed_lines(StdErr, "\t", [
+        "-a-, --no-abbreviate",
+        "\tTurn off use of type abbreviations.",
+        "-t <toolkit>, --toolkit <toolkit>",
+        "\tTypecheck with the specified toolkit, overiding the",
+        "\tbuiltin default and MUZ_TOOLKIT environment variable",
+        "\t(-t- for typechecking without a toolkit).",
+        "-?, -h, --help",
+        "\tPrint this usage message.",
+        "-d, --debug",
+        "\tWrite debugging information to stdout."
     ], !IO),
     io.set_exit_status(1, !IO).
