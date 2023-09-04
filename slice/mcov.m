@@ -436,26 +436,23 @@ write_path_port_for_user(OutStream, port_and_path(Port, Path), !IO) :-
 short_usage(OutStream, !IO) :-
     io.progname_base("mcov", ProgName, !IO),
     library.version(Version, FullArch),
-    io.write_strings(OutStream, [
-        "Mercury Coverage Testing Tool, version ", Version,
-            ", on ", FullArch, ".\n",
-        "Copyright (C) 2006-2007, 2010-2012 The University of Melbourne\n",
-        "Copyright (C) 2014-2016, 2020-2023 The Mercury team\n",
-        "Usage: ", ProgName, " [<options>] [<files>]\n",
-        "Use `", ProgName, " --help' for more information.\n"
-    ], !IO).
+    io.format(OutStream,
+        "Mercury Coverage Testing Tool, version %s, on %s\n",
+        [s(Version), s(FullArch)], !IO),
+    write_copyright_notice(OutStream, !IO),
+    io.format(OutStream, "Usage: %s [<options>] [<files>]\n",
+        [s(ProgName)], !IO),
+    io.format(OutStream, "Use `%s --help' for more information.\n",
+        [s(ProgName)], !IO).
 
 :- pred long_usage(io.text_output_stream::in, io::di, io::uo) is det.
 
 long_usage(OutStream, !IO) :-
     library.version(Version, FullArch),
     io.format(OutStream,
-        "Name: mcov -- Mercury Coverage Testing Tool, version %s, on %s\n",
+        "Name: mcov - Mercury Coverage Testing Tool, version %s, on %s\n",
         [s(Version), s(FullArch)], !IO),
-    io.write_string(OutStream,
-        "Copyright (C) 2006-2007, 2010-2012 The University of Melbourne\n", !IO),
-    io.write_string(OutStream,
-        "Copyright (C) 2014-2016, 2020-2023 The Mercury team\n", !IO),
+    write_copyright_notice(OutStream, !IO),
     io.write_string(OutStream, "Usage: mcov [<options>] <arguments>\n", !IO),
     io.write_string(OutStream, "Arguments:\n", !IO),
     io.write_string(OutStream,
@@ -486,6 +483,15 @@ long_usage(OutStream, !IO) :-
         %"--no-ignore-mdbcomp",
         %"\tInclude information about labels in the mdbcomp library in the",
         %"\treports.".
+    ], !IO).
+
+:- pred write_copyright_notice(io.text_output_stream::in, io::di, io::uo)
+    is det.
+
+write_copyright_notice(OutStream, !IO) :-
+    io.write_strings(OutStream, [
+        "Copyright (C) 2006-2007, 2010-2012 The University of Melbourne\n",
+        "Copyright (C) 2014-2016, 2020-2023 The Mercury team\n"
     ], !IO).
 
 %---------------------------------------------------------------------------%

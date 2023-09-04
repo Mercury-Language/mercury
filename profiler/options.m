@@ -231,7 +231,7 @@ options_help(Stream, !IO) :-
     io.write_prefixed_lines(Stream, "\t", [
         "-v, --verbose",
         "\tOutput progress messages at each stage.",
-        "-V, --very-verbose\n",
+        "-V, --very-verbose",
         "\tOutput very verbose progress messages."
     ], !IO).
 

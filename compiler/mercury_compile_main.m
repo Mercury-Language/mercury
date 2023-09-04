@@ -651,7 +651,7 @@ do_op_mode(ProgressStream, ErrorStream, Globals, OpMode, DetectedGradeFlags,
             FileNamesFromStdin = no
         then
             io.stderr_stream(StdErr, !IO),
-            usage(StdErr, !IO)
+            short_usage(StdErr, !IO)
         else
             do_op_mode_args(ProgressStream, ErrorStream, Globals,
                 OpModeArgs, InvokedByMmcMake, FileNamesFromStdin,

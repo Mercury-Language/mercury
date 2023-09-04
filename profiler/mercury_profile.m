@@ -87,7 +87,7 @@ postprocess_options(Args, !IO) :-
         Args = [_ | _]
     ).
 
-    % Display error message and then usage message.
+    % Display error message and then short usage message.
     %
 :- pred usage_error(string::in, io::di, io::uo) is det.
 
@@ -96,33 +96,33 @@ usage_error(ErrorMessage, !IO) :-
     io.stderr_stream(StdErr, !IO),
     io.format(StdErr, "%s: %s\n", [s(ProgName), s(ErrorMessage)], !IO),
     io.set_exit_status(1, !IO),
-    usage(StdErr, !IO).
+    short_usage(StdErr, !IO).
 
-    % Display usage message.
+    % Display short_usage message.
     %
-:- pred usage(io.text_output_stream::in, io::di, io::uo) is det.
+:- pred short_usage(io.text_output_stream::in, io::di, io::uo) is det.
 
-usage(OutputStream, !IO) :-
+short_usage(OutputStream, !IO) :-
     io.progname_base("mprof", ProgName, !IO),
-    library.version(Version, Fullarch),
-    io.write_strings(OutputStream, [
-        "mprof - Mercury profiler, version ", Version, ", on ", Fullarch, "\n",
-        "Copyright (C) 1995-2012 The University of Melbourne\n",
-        "Copyright (C) 2013-2023 The Mercury team\n",
-        "Usage: ", ProgName, " [<options>] [<files>]\n",
-        "Use `", ProgName, " --help' for more information.\n"
-    ], !IO).
+    library.version(Version, FullArch),
+    io.format(OutputStream, "mprof - Mercury profiler, version %s, on %s\n",
+        [s(Version), s(FullArch)], !IO),
+    write_copyright_notice(OutputStream, !IO),
+    io.format(OutputStream, "Usage: %s[<options>] [<files>]\n",
+        [s(ProgName)], !IO),
+    io.format(OutputStream, "Use `%s --help' for more information.\n",
+        [s(ProgName)], !IO).
 
 :- pred long_usage(io.text_output_stream::in, io::di, io::uo) is det.
 
 long_usage(OutputStream, !IO) :-
     io.progname_base("mprof", ProgName, !IO),
-    library.version(Version, Fullarch),
+    library.version(Version, FullArch),
+    io.format(OutputStream,
+        "Name: mprof - Mercury profiler, version %s, on %s\n",
+        [s(Version), s(FullArch)], !IO),
+    write_copyright_notice(OutputStream, !IO),
     io.write_strings(OutputStream, [
-        "Name: mprof - Mercury profiler, version ", Version, ", on ",
-        Fullarch, "\n",
-        "Copyright (C) 1995-2012 The University of Melbourne\n",
-        "Copyright (C) 2013-2023 The Mercury team\n\n",
         "Usage: ", ProgName, " [<options>] [<files>]\n",
         "\n",
         "Description:\n",
@@ -142,6 +142,15 @@ long_usage(OutputStream, !IO) :-
         "Options:\n"
         ], !IO),
     options_help(OutputStream, !IO).
+
+:- pred write_copyright_notice(io.text_output_stream::in, io::di, io::uo)
+    is det.
+
+write_copyright_notice(OutputStream, !IO) :-
+    io.write_strings(OutputStream, [
+        "Copyright (C) 1995-2012 The University of Melbourne\n",
+        "Copyright (C) 2013-2023 The Mercury team\n"
+    ], !IO).
 
 %---------------------------------------------------------------------------%
 

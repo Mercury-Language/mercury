@@ -53,9 +53,9 @@
 :- pred usage_errors(io.text_output_stream::in, globals::in,
     list(error_spec)::in, io::di, io::uo) is det.
 
-    % Display usage message.
+    % Display short usage message.
     %
-:- pred usage(io.text_output_stream::in, io::di, io::uo) is det.
+:- pred short_usage(io.text_output_stream::in, io::di, io::uo) is det.
 
     % Display long usage message for help.
     %
@@ -3116,12 +3116,10 @@ disable_smart_recompilation(ProgressStream, OptionDescr, !Globals, !IO) :-
 %---------------------------------------------------------------------------%
 
 display_compiler_version(ProgressStream, !IO) :-
-    library.version(Version, Fullarch),
-    io.write_strings(ProgressStream, [
-        "Mercury Compiler, version ", Version, ", on ", Fullarch, "\n",
-        "Copyright (C) 1993-2012 The University of Melbourne\n",
-        "Copyright (C) 2013-2023 The Mercury team\n"
-    ], !IO).
+    library.version(Version, FullArch),
+    io.format(ProgressStream, "Mercury Compiler, version %s, on %s\n",
+        [s(Version), s(FullArch)], !IO),
+    write_copyright_notice(ProgressStream, !IO).
 
 usage_errors(ErrorStream, Globals, Specs, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
@@ -3131,9 +3129,10 @@ usage_errors(ErrorStream, Globals, Specs, !IO) :-
 :- mutable(already_printed_usage, bool, no, ground,
     [untrailed, attach_to_io_state]).
 
-usage(ProgressStream, !IO) :-
-    % usage is called from many places; ensure that we don't print the
+short_usage(ProgressStream, !IO) :-
+    % short_usage is called from many places; ensure that we don't print the
     % duplicate copies of the message.
+    % XXX The above doesn't seem to be true anymore.
     get_already_printed_usage(AlreadyPrinted, !IO),
     (
         AlreadyPrinted = no,
@@ -3152,20 +3151,30 @@ long_usage(ProgressStream, !IO) :-
     % copies of the long usage message. We can print both a short and along
     % usage message, but there is no simple way to avoid that.
     library.version(Version, Fullarch),
-    Template =
-        "Name: mmc -- Melbourne Mercury Compiler, version %s on %s\n" ++
-        "Copyright (C) 1993-2012 The University of Melbourne\n" ++
-        "Copyright (C) 2013-2023 The Mercury team\n" ++
-        "Usage: mmc [<options>] <arguments>\n" ++
-        "Arguments:\n" ++
-        "\tArguments ending in `.m' are assumed to be source file names.\n" ++
-        "\tArguments that do not end in `.m' " ++
-            "are assumed to be module names.\n" ++
-        "\tArguments in the form @file " ++
-            "are replaced with the contents of the file.\n",
-    io.format(ProgressStream, Template, [s(Version), s(Fullarch)], !IO),
+    io.format(ProgressStream,
+        "Name: mmc - Melbourne Mercury Compiler, version %s, on %s\n",
+        [s(Version), s(Fullarch)], !IO),
+    write_copyright_notice(ProgressStream, !IO),
+    io.write_strings(ProgressStream, [
+        "Usage: mmc [<options>] <arguments>\n",
+        "Arguments:\n",
+        "\tArguments ending in `.m' are assumed to be source file names.\n",
+        "\tArguments that do not end in `.m' ",
+            "are assumed to be module names.\n",
+        "\tArguments in the form @file ",
+            "are replaced with the contents of the file.\n"
+    ], !IO),
     io.write_string(ProgressStream, "Options:\n", !IO),
     options_help(ProgressStream, !IO).
+
+:- pred write_copyright_notice(io.text_output_stream::in, io::di, io::uo)
+    is det.
+
+write_copyright_notice(Stream, !IO) :-
+    io.write_strings(Stream, [
+        "Copyright (C) 1993-2012 The University of Melbourne\n",
+        "Copyright (C) 2013-2023 The Mercury team\n"
+    ], !IO).
 
 %---------------------------------------------------------------------------%
 
