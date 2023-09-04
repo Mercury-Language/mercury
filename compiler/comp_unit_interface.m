@@ -2202,14 +2202,15 @@ generate_interface_int2(AugMakeIntUnit,
     IntTypeClasses = ParseTreeModuleSrc ^ ptms_int_typeclasses,
     IntInstances = ParseTreeModuleSrc ^ ptms_int_instances,
 
-    some [!UnqualSymNames, !UsedModuleNames] (
+    some [!UnqualSymNames, !UsedModuleNames, !ImpEqvUsedModuleNames] (
         !:UnqualSymNames = no_unqual_symnames,
         set.init(!:UsedModuleNames),
+        set.init(!:ImpEqvUsedModuleNames),
 
-        map.foldl5(restrict_type_ctor_checked_defn_for_int2,
+        map.foldl6(restrict_type_ctor_checked_defn_for_int2,
             TypeCtorCheckedMap,
             map.init, ShortTypeCtorCheckedMap,
-            !UnqualSymNames, !UsedModuleNames,
+            !UnqualSymNames, !UsedModuleNames, !ImpEqvUsedModuleNames,
             set.init, ShortIntImplicitFIMLangs,
             set.init, ShortImpImplicitFIMLangs),
 
@@ -2229,12 +2230,14 @@ generate_interface_int2(AugMakeIntUnit,
         ShortIntInstances = cord.list(ShortIntInstancesCord),
 
         UnqualSymNames = !.UnqualSymNames,
-        UsedModuleNames = !.UsedModuleNames
+        UsedModuleNames = !.UsedModuleNames,
+        ImpEqvUsedModuleNames = !.ImpEqvUsedModuleNames
     ),
 
     ImportUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
     map.foldl(
-        make_imports_into_uses_int_only(UnqualSymNames, UsedModuleNames),
+        make_imports_into_uses_maybe_implicit_int2(UnqualSymNames,
+            UsedModuleNames, ImpEqvUsedModuleNames),
         ImportUseMap, map.init, ShortUseOnlyMap),
 
     % If there is nothing involving a foreign language in the interface,
@@ -2276,19 +2279,21 @@ fim_spec_is_for_needed_language(NeededLangs, FIMSpec) :-
     FIMSpec = fim_spec(Lang, _ModuleName),
     set.contains(NeededLangs, Lang).
 
-:- pred make_imports_into_uses_int_only(
-    maybe_unqual_symnames::in, set(module_name)::in,
+:- pred make_imports_into_uses_maybe_implicit_int2(
+    maybe_unqual_symnames::in, set(module_name)::in, set(module_name)::in,
     module_name::in, maybe_implicit_import_and_or_use::in,
     section_use_map::in, section_use_map::out) is det.
 
-make_imports_into_uses_int_only(UnqualSymNames, UsedModuleNames,
+make_imports_into_uses_maybe_implicit_int2(UnqualSymNames,
+        UsedModuleNames, ImpEqvUsedModuleNames,
         ModuleName, ImportUse0, !ShortUseOnlyMap) :-
     ( if
         UnqualSymNames = no_unqual_symnames,
-        not set.contains(UsedModuleNames, ModuleName)
+        not set.contains(UsedModuleNames, ModuleName),
+        not set.contains(ImpEqvUsedModuleNames, ModuleName)
     then
         % If every sym_name in the .int2 file is fully module qualified,
-        % then we keep every use_module declarations only for the modules
+        % then we keep use_module declarations only for the modules
         % that they name.
         % This requires UsedModuleNames to cover even implicitly used
         % module names.
@@ -2296,7 +2301,10 @@ make_imports_into_uses_int_only(UnqualSymNames, UsedModuleNames,
     else
         (
             ImportUse0 = explicit_avail(Explicit0),
-            ( if make_imports_into_uses_int_only(Explicit0, Explicit) then
+            ( if
+                make_imports_into_uses_int2(ImpEqvUsedModuleNames, ModuleName,
+                    Explicit0, Explicit)
+            then
                 map.det_insert(ModuleName, Explicit, !ShortUseOnlyMap)
             else
                 true
@@ -2305,7 +2313,8 @@ make_imports_into_uses_int_only(UnqualSymNames, UsedModuleNames,
             ImportUse0 = implicit_avail(_Implicit0, MaybeExplicit0),
             ( if
                 MaybeExplicit0 = yes(Explicit0),
-                make_imports_into_uses_int_only(Explicit0, Explicit)
+                make_imports_into_uses_int2(ImpEqvUsedModuleNames, ModuleName,
+                    Explicit0, Explicit)
             then
                 map.det_insert(ModuleName, Explicit, !ShortUseOnlyMap)
             else
@@ -2314,10 +2323,11 @@ make_imports_into_uses_int_only(UnqualSymNames, UsedModuleNames,
         )
     ).
 
-:- pred make_imports_into_uses_int_only(section_import_and_or_use::in,
-    section_use::out) is semidet.
+:- pred make_imports_into_uses_int2(set(module_name)::in, module_name::in,
+    section_import_and_or_use::in, section_use::out) is semidet.
 
-make_imports_into_uses_int_only(Explicit0, Explicit) :-
+make_imports_into_uses_int2(ImpEqvUsedModuleNames, ModuleName,
+        Explicit0, Explicit) :-
     require_complete_switch [Explicit0]
     (
         ( Explicit0 = int_import(IntContext)
@@ -2326,10 +2336,14 @@ make_imports_into_uses_int_only(Explicit0, Explicit) :-
         ),
         Explicit = int_use(IntContext)
     ;
-        ( Explicit0 = imp_import(_ImpContext)
-        ; Explicit0 = imp_use(_ImpContext)
+        ( Explicit0 = imp_import(ImpContext)
+        ; Explicit0 = imp_use(ImpContext)
         ),
-        fail
+        ( if set.contains(ImpEqvUsedModuleNames, ModuleName) then
+            Explicit = imp_use(ImpContext)
+        else
+            fail
+        )
     ).
 
 %---------------------%
@@ -2339,11 +2353,13 @@ make_imports_into_uses_int_only(Explicit0, Explicit) :-
     type_ctor_checked_map::in, type_ctor_checked_map::out,
     maybe_unqual_symnames::in, maybe_unqual_symnames::out,
     set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out,
     set(foreign_language)::in, set(foreign_language)::out,
     set(foreign_language)::in, set(foreign_language)::out) is det.
 
 restrict_type_ctor_checked_defn_for_int2(TypeCtor, TypeCtorCheckedDefn0,
-        !ShortTypeCtorCheckedMap, !MaybeUnqual, !ModuleNames,
+        !ShortTypeCtorCheckedMap, !MaybeUnqual,
+        !ModuleNames, !ImpEqvModuleNames,
         !IntImplicitFIMLangs, !ImpImplicitFIMLangs) :-
     % For now, we need the implementation sections of .int2 files to contain
     % all the information that other modules reading that .int file will need
@@ -2377,11 +2393,15 @@ restrict_type_ctor_checked_defn_for_int2(TypeCtor, TypeCtorCheckedDefn0,
         TypeCtorCheckedDefn0 =
             checked_defn_solver(SolverTypeDefn0, SrcDefnsSolver0),
         SolverTypeDefn = SolverTypeDefn0,
-        SrcDefnsSolver0 = src_defns_solver(MaybeIntDefn0, MaybeImpDefn),
+        SrcDefnsSolver0 =
+            src_defns_solver(MaybeIntTypeDefn0, MaybeImpTypeDefn),
         maybe.map_fold3_maybe(restrict_type_ctor_int_defn_for_int2,
-            MaybeIntDefn0, MaybeIntDefn,
-            !MaybeUnqual, !ModuleNames, !IntImplicitFIMLangs),
-        SrcDefnsSolver = src_defns_solver(MaybeIntDefn, MaybeImpDefn),
+            MaybeIntTypeDefn0, MaybeIntTypeDefn,
+            !MaybeUnqual, !ImpEqvModuleNames, !ImpImplicitFIMLangs),
+        maybe.fold3_maybe(get_int2_modules_langs_from_int1_imp_type,
+            MaybeImpTypeDefn,
+            !MaybeUnqual, !ImpEqvModuleNames, !ImpImplicitFIMLangs),
+        SrcDefnsSolver = src_defns_solver(MaybeIntTypeDefn, MaybeImpTypeDefn),
         TypeCtorCheckedDefn =
             checked_defn_solver(SolverTypeDefn, SrcDefnsSolver)
     ;
@@ -2392,7 +2412,8 @@ restrict_type_ctor_checked_defn_for_int2(TypeCtor, TypeCtorCheckedDefn0,
         list.map_foldl3(restrict_type_ctor_int_defn_for_int2,
             IntTypeDefns0, IntTypeDefns,
             !MaybeUnqual, !ModuleNames, !IntImplicitFIMLangs),
-        get_int2_langs_from_int1_imp_types(ImpTypeDefns, !ImpImplicitFIMLangs),
+        list.foldl3(get_int2_modules_langs_from_int1_imp_type, ImpTypeDefns,
+            !MaybeUnqual, !ImpEqvModuleNames, !ImpImplicitFIMLangs),
         % Foreign enums are never included in .int2 files.
         SrcDefnsStd = src_defns_std(IntTypeDefns, ImpTypeDefns, []),
         TypeCtorCheckedDefn = checked_defn_std(StdTypeDefn, SrcDefnsStd)
@@ -2554,21 +2575,46 @@ get_int2_items_from_int1_int_instance([InstanceInfo | InstanceInfos],
 
 %---------------------%
 
-:- pred get_int2_langs_from_int1_imp_types(list(item_type_defn_info)::in,
+:- pred get_int2_modules_langs_from_int1_imp_type(item_type_defn_info::in,
+    maybe_unqual_symnames::in, maybe_unqual_symnames::out,
+    set(module_name)::in, set(module_name)::out,
     set(foreign_language)::in, set(foreign_language)::out) is det.
 
-get_int2_langs_from_int1_imp_types([], !ImpImplicitFIMLangs).
-get_int2_langs_from_int1_imp_types([ImpTypeDefn | ImpTypeDefns],
-        !ImpImplicitFIMLangs) :-
+get_int2_modules_langs_from_int1_imp_type(ImpTypeDefn,
+        !MaybeUnqual, !ImpEqvModuleNames, !ImpImplicitFIMLangs) :-
     TypeDefn = ImpTypeDefn ^ td_ctor_defn,
-    ( if TypeDefn = parse_tree_foreign_type(DetailsForeign) then
+    (
+        TypeDefn = parse_tree_du_type(_DetailsDu)
+        % XXX DetailsDu cannot refer to other modules in its MaybeCanon
+        % field, but it *can* refer to other modules in the argument types
+        % of its constructors.
+        % zs: This *should* be ok, in that the code consuming the .int2 file
+        % should not need to do anything with the types of those arguments,
+        % but I would like to see a correctness argument for that.
+    ;
+        TypeDefn = parse_tree_sub_type(_)
+        % The consideration just above about the types of constructors
+        % in du types applies also to subtypes.
+    ;
+        TypeDefn = parse_tree_solver_type(_),
+        % TypeDefn cannot refer to other modules.
+        unexpected($pred, "parse_tree_abstract_type")
+    ;
+        TypeDefn = parse_tree_abstract_type(_)
+        % TypeDefn cannot refer to other modules.
+    ;
+        TypeDefn = parse_tree_foreign_type(_DetailsForeign),
+        % Foreign types can never refer to Mercury code in other modules,
+        % though they can refer to *target language* code in other modules.
+        TypeDefn = parse_tree_foreign_type(DetailsForeign),
         DetailsForeign = type_details_foreign(ForeignType, _, _),
         Lang = foreign_type_language(ForeignType),
         set.insert(Lang, !ImpImplicitFIMLangs)
-    else
-        true
-    ),
-    get_int2_langs_from_int1_imp_types(ImpTypeDefns, !ImpImplicitFIMLangs).
+    ;
+        TypeDefn = parse_tree_eqv_type(DetailsEqv),
+        DetailsEqv = type_details_eqv(EqvType),
+        accumulate_modules_in_type(EqvType, !MaybeUnqual, !ImpEqvModuleNames)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -3063,13 +3109,12 @@ accumulate_modules_in_type(Type, !MaybeUnqual, !ModuleNames) :-
     ;
         ( Type = tuple_type(ArgTypes, _Kind)
         ; Type = apply_n_type(_TVar, ArgTypes, _Kind)
-        ; Type = higher_order_type(_PredOrFunc, ArgTypes,
-            _HOInstInfo, _Purity, _EvalMethod)
+        ; Type = higher_order_type(_PorF, ArgTypes, _HO, _Purity, _Eval)
         ),
         accumulate_modules_in_types(ArgTypes, !MaybeUnqual, !ModuleNames)
     ;
-        Type = kinded_type(ArgType, _Kind),
-        accumulate_modules_in_type(ArgType, !MaybeUnqual, !ModuleNames)
+        Type = kinded_type(KindedType, _Kind),
+        accumulate_modules_in_type(KindedType, !MaybeUnqual, !ModuleNames)
     ).
 
 %---------------------%
@@ -3077,15 +3122,15 @@ accumulate_modules_in_type(Type, !MaybeUnqual, !ModuleNames) :-
 :- pred accumulate_modules_in_qual_types(list(mer_type)::in,
     set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_modules_in_qual_types([], !Modules).
-accumulate_modules_in_qual_types([Type | Types], !Modules) :-
-    accumulate_modules_in_qual_type(Type, !Modules),
-    accumulate_modules_in_qual_types(Types, !Modules).
+accumulate_modules_in_qual_types([], !ModuleNames).
+accumulate_modules_in_qual_types([Type | Types], !ModuleNames) :-
+    accumulate_modules_in_qual_type(Type, !ModuleNames),
+    accumulate_modules_in_qual_types(Types, !ModuleNames).
 
 :- pred accumulate_modules_in_qual_type(mer_type::in,
     set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_modules_in_qual_type(Type, !Modules) :-
+accumulate_modules_in_qual_type(Type, !ModuleNames) :-
     (
         % Do nothing for these types - they cannot affect the set of
         % implementation imports in an interface file.
@@ -3093,30 +3138,30 @@ accumulate_modules_in_qual_type(Type, !Modules) :-
         ; Type = builtin_type(_)
         )
     ;
-        Type = defined_type(TypeName, ArgTypes, _),
-        det_sym_name_get_module_name(TypeName, ModuleName),
-        set.insert(ModuleName, !Modules),
-        accumulate_modules_in_qual_types(ArgTypes, !Modules)
+        Type = defined_type(SymName, ArgTypes, _Kind),
+        det_sym_name_get_module_name(SymName, ModuleName),
+        set.insert(ModuleName, !ModuleNames),
+        accumulate_modules_in_qual_types(ArgTypes, !ModuleNames)
     ;
-        Type = kinded_type(KindedType, _),
-        accumulate_modules_in_qual_type(KindedType, !Modules)
-    ;
-        ( Type = tuple_type(ArgTypes, _)
-        ; Type = apply_n_type(_, ArgTypes, _)
-        ; Type = higher_order_type(_, ArgTypes, _HOInstInfo, _, _)
+        ( Type = tuple_type(ArgTypes, _Kind)
+        ; Type = apply_n_type(_TVar, ArgTypes, _Kind)
+        ; Type = higher_order_type(_PorF, ArgTypes, _HO, _Purity, _Eval)
         ),
         % XXX ITEM_LIST accumulate modules from _HOInstInfo
-        accumulate_modules_in_qual_types(ArgTypes, !Modules)
+        accumulate_modules_in_qual_types(ArgTypes, !ModuleNames)
+    ;
+        Type = kinded_type(KindedType, _Kind),
+        accumulate_modules_in_qual_type(KindedType, !ModuleNames)
     ).
 
 :- pred accumulate_modules_in_qual_type_ctor(type_ctor::in,
     set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_modules_in_qual_type_ctor(TypeCtor, !Modules) :-
+accumulate_modules_in_qual_type_ctor(TypeCtor, !ModuleNames) :-
     TypeCtor = type_ctor(SymName, _Arity),
     (
         SymName = qualified(ModuleName, _),
-        set.insert(ModuleName, !Modules)
+        set.insert(ModuleName, !ModuleNames)
     ;
         SymName = unqualified(_)
         % Our ancestor generate_interfaces_int1_int2 should be invoked

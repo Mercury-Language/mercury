@@ -46,6 +46,7 @@ NON_DECLDEBUG_PROGS =
 
 OTHER_PROGS = \
 	bug100 \
+	bug563 \
 	exported_foreign_type \
 	foreign_du_field \
 	func_int_bug_main \

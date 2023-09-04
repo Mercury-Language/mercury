@@ -782,8 +782,10 @@ grab_module_int2_files(ProgressStream, Globals, Why, ReadWhy2,
         maybe_log_augment_decision(Why, ifk_int2, ReadWhy2, ModuleName,
             decided_to_read, !IO),
         process_module_int2(ProgressStream, Globals, ReadWhy2, ModuleName,
-            IntUses, !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO),
-        set.union(IntUses, !IntIndirectImports)
+            IntUses, ImpUses,
+            !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO),
+        set.union(IntUses, !IntIndirectImports),
+        set.union(ImpUses, !ImpIndirectImports)
     else
         maybe_log_augment_decision(Why, ifk_int2, ReadWhy2, ModuleName,
             decided_not_to_read, !IO)
@@ -1000,14 +1002,15 @@ process_module_int1(ProgressStream, Globals, ReadWhy1, ModuleName,
     ).
 
 :- pred process_module_int2(io.text_output_stream::in, globals::in,
-    read_why_int2::in, module_name::in, set(module_name)::out,
+    read_why_int2::in, module_name::in,
+    set(module_name)::out, set(module_name)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     module_baggage::in, module_baggage::out,
     aug_compilation_unit::in, aug_compilation_unit::out,
     io::di, io::uo) is det.
 
-process_module_int2(ProgressStream, Globals, ReadWhy2, ModuleName, IntUses,
-        !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO) :-
+process_module_int2(ProgressStream, Globals, ReadWhy2, ModuleName,
+        IntUses, ImpUses, !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO) :-
     do_we_need_timestamps(!.Baggage, ReturnTimestamp),
     maybe_read_module_int2(ProgressStream, Globals, do_search, ModuleName,
         ReturnTimestamp, HaveReadInt2, !HaveReadModuleMaps, !IO),
@@ -1031,14 +1034,15 @@ process_module_int2(ProgressStream, Globals, ReadWhy2, ModuleName, IntUses,
                 !AugCompUnit)
         ),
         map.foldl2(get_uses, ParseTreeInt2 ^ pti2_use_map,
-            set.init, IntUses, set.init, _ImpUses),
+            set.init, IntUses, set.init, ImpUses),
         maybe_record_interface_timestamp(ModuleName, ifk_int2,
             recomp_avail_imp_use, MaybeTimestamp, !Baggage),
         aug_compilation_unit_maybe_add_module_version_numbers(ModuleName,
             ParseTreeInt2 ^ pti2_maybe_version_numbers, !AugCompUnit)
     ;
         HaveReadInt2 = have_not_read_module(_FileName, Errors),
-        set.init(IntUses)
+        set.init(IntUses),
+        set.init(ImpUses)
     ),
     module_baggage_add_errors(Errors, !Baggage).
 

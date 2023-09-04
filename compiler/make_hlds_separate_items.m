@@ -848,8 +848,8 @@ acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
         AccMutables0, AccTypeRepns0),
 
     section_use_map_to_item_avails(UseMap, IntAvails, ImpAvails),
-    expect(unify(ImpAvails, []), $pred, "ImpAvails != []"),
-    acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails0, AccAvails),
+    acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails0, AccAvails1),
+    acc_ims_avails(ImpItemMercuryStatus, ImpAvails, AccAvails1, AccAvails),
     IntFIMs = list.map(fim_spec_to_item, set.to_sorted_list(IntFIMSpecs)),
     ImpFIMs = list.map(fim_spec_to_item, set.to_sorted_list(ImpFIMSpecs)),
     AccFIMs = AccFIMs0 ++ cord.from_list(IntFIMs) ++ cord.from_list(ImpFIMs),
