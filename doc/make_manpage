@@ -1,7 +1,7 @@
 #!/usr/bin/awk -f
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1997-1998, 2002, 2006 The University of Melbourne.
-# Copyright (C) 2019 The Mercury team.
+# Copyright (C) 2013, 2019, 2023 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -186,7 +186,7 @@ name == "mprof_merge_runs" && section == "Usage" && /^\t\t./ {
 
     # Ensure Copyright messages start on new line.
     if (line ~ /^Copyright \(C\)/) {
-        new_para = 1
+        next
     }
 
     if (new_para) {

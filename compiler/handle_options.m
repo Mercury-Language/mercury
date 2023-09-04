@@ -3091,7 +3091,7 @@ long_usage(Stream, !IO) :-
     library.version(Version, Fullarch),
     Template =
         "Name: mmc -- Melbourne Mercury Compiler, version %s on %s\n" ++
-        "Copyright: Copyright (C) 1993-2012 The University of Melbourne\n" ++
+        "Copyright (C) 1993-2012 The University of Melbourne\n" ++
         "Copyright (C) 2013-2023 The Mercury team\n" ++
         "Usage: mmc [<options>] <arguments>\n" ++
         "Arguments:\n" ++
