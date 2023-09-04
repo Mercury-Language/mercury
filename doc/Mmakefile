@@ -2,7 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1996-2007, 2009-2012 The University of Melbourne.
-# Copyright (C) 2013-2017, 2019-2020, 2022 The Mercury team.
+# Copyright (C) 2013-2017, 2019-2020, 2022-2023 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -23,9 +23,9 @@ include $(MERCURY_DIR)/Mmake.common
 MANPAGE_PROGS = c2init mmc mgnuc ml mmake mdb mprof \
 		mprof_merge_runs mtags mercury_config
 
-mmc.1: ../compiler/options.m
+mmc.1: ../compiler/handle_options.m ../compiler/options.m
 
-mprof.1: ../profiler/options.m
+mprof.1: ../profiler/mercury_profile.m ../profiler/options.m
 
 # This variable specifies the (top-level) TexInfo files.
 # The mapping of these names to `.info' file names is not regular,
