@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 expandtab
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007, 2010-2012 The University of Melbourne.
-% Copyright (C) 2015-2016 The Mercury team.
+% Copyright (C) 2014-2016, 2020-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -440,7 +440,7 @@ short_usage(OutStream, !IO) :-
         "Mercury Coverage Testing Tool, version ", Version,
             ", on ", FullArch, ".\n",
         "Copyright (C) 2006-2007, 2010-2012 The University of Melbourne\n",
-        "Copyright (C) 2015-2016 The Mercury team\n",
+        "Copyright (C) 2014-2016, 2020-2023 The Mercury team\n",
         "Usage: ", ProgName, " [<options>] [<files>]\n",
         "Use `", ProgName, " --help' for more information.\n"
     ], !IO).
@@ -453,10 +453,9 @@ long_usage(OutStream, !IO) :-
         "Name: mcov -- Mercury Coverage Testing Tool, version %s, on %s\n",
         [s(Version), s(FullArch)], !IO),
     io.write_string(OutStream,
-        "Copyright: Copyright (C) 2006-2007, 2010-2012 " ++
-        "The University of Melbourne\n", !IO),
+        "Copyright (C) 2006-2007, 2010-2012 The University of Melbourne\n", !IO),
     io.write_string(OutStream,
-        "           Copyright (C) 2015-2016 The Mercury team\n", !IO),
+        "Copyright (C) 2014-2016, 2020-2023 The Mercury team\n", !IO),
     io.write_string(OutStream, "Usage: mcov [<options>] <arguments>\n", !IO),
     io.write_string(OutStream, "Arguments:\n", !IO),
     io.write_string(OutStream,
