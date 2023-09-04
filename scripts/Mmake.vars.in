@@ -51,12 +51,7 @@ endif
 UNIX_MERCURY_EXTRA_INT_DIRS = $(foreach dir, $(MERCURY_EXTRA_INT_DIRS),\
 				$(shell @CYGPATHU@ "$(dir)"))
 
-ifdef MERC_INT_DIR
-    UNIX_MERC_INT_DIR = $(shell @CYGPATHU@ "$(MERC_INT_DIR)")
-else
-    UNIX_MERC_INT_DIR =
-endif
-   
+UNIX_MERC_INT_DIR = $(shell @CYGPATHU@ "$(MERC_INT_DIR)")
 UNIX_MERCURY_EXTRA_INIT_DIRS = $(foreach dir, $(MERCURY_EXTRA_INIT_DIRS),\
 				$(shell @CYGPATHU@ "$(dir)"))
 
