@@ -87,6 +87,16 @@ postprocess_options(Args, !IO) :-
         Args = [_ | _]
     ).
 
+%---------------------------------------------------------------------------%
+
+:- pred display_version(io.text_output_stream::in, io::di, io::uo) is det.
+
+display_version(OutputStream, !IO) :-
+    library.version(Version, FullArch),
+    io.format(OutputStream, "Mercury profiler, version %s, on %s\n",
+        [s(Version), s(FullArch)], !IO),
+    write_copyright_notice(OutputStream, !IO).
+
     % Display error message and then short usage message.
     %
 :- pred usage_error(string::in, io::di, io::uo) is det.
@@ -104,10 +114,7 @@ usage_error(ErrorMessage, !IO) :-
 
 short_usage(OutputStream, !IO) :-
     io.progname_base("mprof", ProgName, !IO),
-    library.version(Version, FullArch),
-    io.format(OutputStream, "mprof - Mercury profiler, version %s, on %s\n",
-        [s(Version), s(FullArch)], !IO),
-    write_copyright_notice(OutputStream, !IO),
+    display_version(OutputStream, !IO),
     io.format(OutputStream, "Usage: %s[<options>] [<files>]\n",
         [s(ProgName)], !IO),
     io.format(OutputStream, "Use `%s --help' for more information.\n",
@@ -160,13 +167,12 @@ write_copyright_notice(OutputStream, !IO) :-
 
 main_2(Args, !IO) :-
     globals.io_get_globals(Globals, !IO),
-    globals.lookup_bool_option(Globals, help, Help),
     io.stdout_stream(StdOut, !IO),
-    (
-        Help = yes,
+    ( if globals.lookup_bool_option(Globals, help, yes) then
         long_usage(StdOut, !IO)
-    ;
-        Help = no,
+    else if globals.lookup_bool_option(Globals, version, yes) then
+        display_version(StdOut, !IO)
+    else
         globals.lookup_bool_option(Globals, snapshots, Snapshots),
         (
             Snapshots = yes,

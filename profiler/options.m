@@ -50,7 +50,8 @@
     ;       snapshots_include_runtime
     ;       snapshots_recalc_size       % developers only
     % Miscellaneous Options
-    ;       help.
+    ;       help
+    ;       version.
 
 :- type option_table == option_table(option).
 
@@ -120,6 +121,7 @@ long_option("snapshots-recalc-size", snapshots_recalc_size).
 long_option("use-dynamic",          dynamic_cg).
 long_option("verbose",              verbose).
 long_option("very-verbose",         very_verbose).
+long_option("version",              version).
 
     % Verbosity Options
 option_default(verbose,                 bool(no)).
@@ -146,6 +148,7 @@ option_default(snapshots_recalc_size,   bool(yes)).
 
     % Miscellaneous Options
 option_default(help,                    bool(no)).
+option_default(version,                 bool(no)).
 
 special_handler(profile, string(WhatToProfile), !.OptionTable, Result) :-
     ( if valid_profile_option(WhatToProfile, CountFile) then
@@ -168,9 +171,11 @@ valid_profile_option("memory-cells", "Prof.MemoryCells").
 valid_profile_option("time", "Prof.Counts").
 
 options_help(Stream, !IO) :-
-    io.write_strings(Stream, [
-        "\t-?, -h, --help\n",
-        "\t\tPrint this usage message.\n"
+    io.write_prefixed_lines(Stream, "\t", [
+        "-?, -h, --help",
+        "\tPrint this usage message.",
+        "--version",
+        "\tPrint version information."
     ], !IO),
     io.nl(Stream, !IO),
 

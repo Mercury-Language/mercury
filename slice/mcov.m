@@ -59,6 +59,9 @@ main(!IO) :-
         ( if lookup_bool_option(OptionTable, help, yes) then
             io.stdout_stream(StdOutStream, !IO),
             long_usage(StdOutStream, !IO)
+        else if lookup_bool_option(OptionTable, version, yes) then
+            io.stdout_stream(StdOutStream, !IO),
+            display_version(StdOutStream, !IO)
         else
             do_coverage_testing(OptionTable, Args, !IO)
         )
@@ -431,15 +434,20 @@ write_path_port_for_user(OutStream, port_and_path(Port, Path), !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred short_usage(io.text_output_stream::in, io::di, io::uo) is det.
+:- pred display_version(io.text_output_stream::in, io::di, io::uo) is det.
 
-short_usage(OutStream, !IO) :-
-    io.progname_base("mcov", ProgName, !IO),
+display_version(OutStream, !IO) :-
     library.version(Version, FullArch),
     io.format(OutStream,
         "Mercury Coverage Testing Tool, version %s, on %s\n",
         [s(Version), s(FullArch)], !IO),
-    write_copyright_notice(OutStream, !IO),
+    write_copyright_notice(OutStream, !IO).
+
+:- pred short_usage(io.text_output_stream::in, io::di, io::uo) is det.
+
+short_usage(OutStream, !IO) :-
+    io.progname_base("mcov", ProgName, !IO),
+    display_version(OutStream, !IO),
     io.format(OutStream, "Usage: %s [<options>] [<files>]\n",
         [s(ProgName)], !IO),
     io.format(OutStream, "Use `%s --help' for more information.\n",
@@ -462,6 +470,8 @@ long_usage(OutStream, !IO) :-
         "-?, -h, --help",
         "\tPrint help about using mcov (on the standard output) and exit",
         "\twithout doing any further processing.",
+        "--version",
+        "\tPrint version information.",
         "-v, --verbose",
         "\tPrint the name of each trace count file as it is added to the union",
         "-d, --detailed",
@@ -498,6 +508,7 @@ write_copyright_notice(OutStream, !IO) :-
 
 :- type option
     --->    help
+    ;       version
     ;       verbose
     ;       detailed
     ;       modules
@@ -520,6 +531,7 @@ short_option('o', output_filename).
 :- pred long_option(string::in, option::out) is semidet.
 
 long_option("help",             help).
+long_option("version",          version).
 long_option("verbose",          verbose).
 long_option("detailed",         detailed).
 long_option("module",           modules).
@@ -532,6 +544,7 @@ long_option("ignore-mdbcomp",   ignore_mdbcomp).
 :- pred option_default(option::out, option_data::out) is multi.
 
 option_default(help,            bool(no)).
+option_default(version,         bool(no)).
 option_default(verbose,         bool(no)).
 option_default(detailed,        bool(no)).
 option_default(modules,         accumulating([])).
