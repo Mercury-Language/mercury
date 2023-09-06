@@ -301,13 +301,15 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
             )
         ),
 
+        % XXX MAKE_STREAM
+        io.output_stream(ProgressStream, !IO),
         linked_target_file_name_full_curdir(Globals, MainModuleName, FileType,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName, !IO),
         get_file_timestamp([dir.this_directory], FullMainModuleLinkedFileName,
             MaybeTimestamp, !Info, !IO),
-        check_dependencies(Globals, FullMainModuleLinkedFileName,
-            MaybeTimestamp, BuildDepsSucceeded, ObjTargets, BuildDepsResult,
-            !Info, !IO),
+        check_dependencies(ProgressStream, Globals,
+            FullMainModuleLinkedFileName, MaybeTimestamp, BuildDepsSucceeded,
+            ObjTargets, BuildDepsResult, !Info, !IO),
         ( if
             DepsSucceeded = succeeded,
             BuildDepsResult \= deps_error
@@ -330,9 +332,7 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
                 unredirect_output(Globals, MainModuleName, ErrorStream,
                     !Info, !IO)
             ),
-            % XXX MAKE_STREAM
-            io.output_stream(CleanupProgressStream, !IO),
-            Cleanup = linked_target_cleanup(CleanupProgressStream, Globals,
+            Cleanup = linked_target_cleanup(ProgressStream, Globals,
                 MainModuleName, FileType,
                 FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName),
             teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
@@ -538,9 +538,9 @@ build_linked_target_2(Globals, MainModuleName, FileType,
     ObjectsToCheck = InitObjects ++ LinkObjects,
 
     % Report errors if any of the extra objects aren't present.
-    list.map_foldl2(get_dependency_status(NoLinkObjsGlobals),
-        list.map((func(F) = dep_file(F)), ObjectsToCheck), ExtraObjTuples,
-        !Info, !IO),
+    ObjectsToCheckDepFiles = list.map((func(F) = dep_file(F)), ObjectsToCheck),
+    list.map_foldl2(get_dependency_status(ProgressStream, NoLinkObjsGlobals),
+        ObjectsToCheckDepFiles, ExtraObjTuples, !Info, !IO),
     ( if
         some [ExtraObjTuple] (
             list.member(ExtraObjTuple, ExtraObjTuples),

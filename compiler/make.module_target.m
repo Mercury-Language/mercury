@@ -121,8 +121,10 @@
 %---------------------------------------------------------------------------%
 
 make_module_target(ExtraOptions, Globals, Dep, Succeeded, !Info, !IO) :-
-    get_dependency_status(Globals, Dep, {_Dep, _DepFileName, Status},
-        !Info, !IO),
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
+    get_dependency_status(ProgressStream, Globals,
+        Dep, {_Dep, _DepFileName, Status}, !Info, !IO),
     (
         Status = deps_status_error,
         Succeeded = did_not_succeed
@@ -312,7 +314,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
 make_dependency_files(Globals, TargetFile, TargetFileName, DepFilesToMake,
         TouchedTargetFiles, TouchedFiles, DepsResult, !Info, !IO) :-
     % XXX MAKE_STREAM
-    io.output_stream(DebugStream, !IO),
+    io.output_stream(ProgressStream, !IO),
 
     % Build the dependencies.
     KeepGoing = make_info_get_keep_going(!.Info),
@@ -328,7 +330,7 @@ make_dependency_files(Globals, TargetFile, TargetFileName, DepFilesToMake,
             string.format("%s: error making dependencies\n",
                 [s(TargetFileName)]),
             DebugMsg),
-        maybe_write_msg(DebugStream, DebugMsg, !IO),
+        maybe_write_msg(ProgressStream, DebugMsg, !IO),
         DepsResult = deps_error
     ;
         MakeDepsSucceeded = succeeded,
@@ -337,7 +339,7 @@ make_dependency_files(Globals, TargetFile, TargetFileName, DepFilesToMake,
                 string.format("%s: target file does not exist\n",
                     [s(TargetFileName)]),
                 DebugMsg),
-            maybe_write_msg(DebugStream, DebugMsg, !IO),
+            maybe_write_msg(ProgressStream, DebugMsg, !IO),
             DepsResult = deps_out_of_date
         else
             ( if
@@ -402,7 +404,7 @@ make_dependency_files(Globals, TargetFile, TargetFileName, DepFilesToMake,
                     TargetFileNameB, !Info, !IO),
                 expect(unify(TargetFileName, TargetFileNameB), $pred,
                     "TargetFileName mismatch"),
-                check_dependencies(Globals, TargetFileNameB,
+                check_dependencies(ProgressStream, Globals, TargetFileNameB,
                     MaybeOldestTimestamp, MakeDepsSucceeded, DepFilesToMake,
                     DepsResult, !Info, !IO)
             )

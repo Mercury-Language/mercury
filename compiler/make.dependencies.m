@@ -92,7 +92,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred get_dependency_status(globals::in, dependency_file::in,
+:- pred get_dependency_status(io.text_output_stream::in, globals::in,
+    dependency_file::in,
     {dependency_file, maybe(file_name), dependency_status}::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -103,17 +104,19 @@
     ;       deps_out_of_date
     ;       deps_error.
 
-    % check_dependencies(Globals, TargetFileName, TargetFileTimestamp,
+    % check_dependencies(ProgressStream, Globals,
+    %   TargetFileName, TargetFileTimestamp,
     %   BuildDepsSucceeded, Dependencies, Result, !IO)
     %
     % Check that all the dependency targets are up-to-date.
     %
-:- pred check_dependencies(globals::in, file_name::in,
-    maybe_error(timestamp)::in, maybe_succeeded::in, list(dependency_file)::in,
-    dependencies_result::out,
+:- pred check_dependencies(io.text_output_stream::in, globals::in,
+    file_name::in, maybe_error(timestamp)::in, maybe_succeeded::in,
+    list(dependency_file)::in, dependencies_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % check_dependencies(Globals, TargetFileName, TargetFileTimestamp,
+    % check_dependencies(ProgressStream, Globals,
+    %   TargetFileName, TargetFileTimestamp,
     %   BuildDepsSucceeded, Dependencies, Result, !IO)
     %
     % Check that all the dependency files are up-to-date.
@@ -1365,7 +1368,7 @@ make_local_module_id_option(ModuleName, Opts0, Opts) :-
 
 %---------------------------------------------------------------------------%
 
-get_dependency_status(Globals, Dep, Tuple, !Info, !IO) :-
+get_dependency_status(ProgressStream, Globals, Dep, Tuple, !Info, !IO) :-
     (
         Dep = dep_file(TargetFileName),
         MaybeTargetFileName = yes(TargetFileName),
@@ -1380,7 +1383,7 @@ get_dependency_status(Globals, Dep, Tuple, !Info, !IO) :-
             ;
                 MaybeTimestamp = error(Error),
                 Status = deps_status_error,
-                io.format("** Error: %s\n", [s(Error)], !IO)
+                io.format(ProgressStream, "** Error: %s\n", [s(Error)], !IO)
             ),
             version_hash_table.det_insert(Dep, Status,
                 DepStatusMap0, DepStatusMap),
@@ -1389,8 +1392,6 @@ get_dependency_status(Globals, Dep, Tuple, !Info, !IO) :-
     ;
         Dep = dep_target(Target),
         Target = target_file(ModuleName, FileType),
-        % XXX MAKE_STREAM
-        io.output_stream(ProgressStream, !IO),
         ( if
             ( FileType = module_target_source
             ; FileType = module_target_track_flags
@@ -1446,7 +1447,7 @@ get_dependency_status(Globals, Dep, Tuple, !Info, !IO) :-
                         % XXX MAKE_STREAM
                         % Try to write this with one call to avoid
                         % interleaved output when doing parallel builds.
-                        io.write_string(ErrorMsg, !IO)
+                        io.write_string(ProgressStream, ErrorMsg, !IO)
                     )
                 )
             ),
@@ -1485,16 +1486,14 @@ get_dependency_file_name(Globals, Tuple0, Tuple, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-check_dependencies(Globals, TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
-        DepFiles, DepsResult, !Info, !IO) :-
-    list.map_foldl2(get_dependency_status(Globals), DepFiles, DepStatusTuples,
-        !Info, !IO),
+check_dependencies(ProgressStream, Globals, TargetFileName, MaybeTimestamp,
+        BuildDepsSucceeded, DepFiles, DepsResult, !Info, !IO) :-
+    list.map_foldl2(get_dependency_status(ProgressStream, Globals),
+        DepFiles, DepStatusTuples, !Info, !IO),
     list.filter(
         ( pred(({_, _, DepStatus})::in) is semidet :-
             DepStatus \= deps_status_up_to_date
         ), DepStatusTuples, UnbuiltDependencyTuples0),
-    % XXX MAKE_STREAM
-    io.output_stream(DebugStream, !IO),
     (
         UnbuiltDependencyTuples0 = [_ | _],
         get_dependency_file_names(Globals,
@@ -1503,7 +1502,7 @@ check_dependencies(Globals, TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
             describe_unbuilt_dependencies(TargetFileName,
                 UnbuiltDependencyTuples),
             DebugMsg),
-        maybe_write_msg(DebugStream, DebugMsg, !IO),
+        maybe_write_msg(ProgressStream, DebugMsg, !IO),
         DepsResult = deps_error
     ;
         UnbuiltDependencyTuples0 = [],
@@ -1511,7 +1510,7 @@ check_dependencies(Globals, TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
             string.format("%s: finished dependencies\n",
                 [s(TargetFileName)]),
             DebugMsg),
-        maybe_write_msg(DebugStream, DebugMsg, !IO),
+        maybe_write_msg(ProgressStream, DebugMsg, !IO),
         list.map_foldl2(get_dependency_timestamp(Globals), DepFiles,
             DepTimestamps, !Info, !IO),
 

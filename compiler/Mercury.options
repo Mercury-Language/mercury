@@ -92,7 +92,6 @@ MCFLAGS-check_hlds.prop_mode_constraints     += --no-warn-implicit-stream-calls
 MCFLAGS-hlds.hlds_error_util                 += --no-warn-implicit-stream-calls
 MCFLAGS-hlds.inst_graph                      += --no-warn-implicit-stream-calls
 MCFLAGS-make.build                           += --no-warn-implicit-stream-calls
-MCFLAGS-make.dependencies                    += --no-warn-implicit-stream-calls
 MCFLAGS-make.module_dep_file                 += --no-warn-implicit-stream-calls
 MCFLAGS-make.module_target                   += --no-warn-implicit-stream-calls
 MCFLAGS-make.program_target                  += --no-warn-implicit-stream-calls
