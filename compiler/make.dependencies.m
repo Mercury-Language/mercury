@@ -92,9 +92,15 @@
 
 %---------------------------------------------------------------------------%
 
+:- type dependency_status_result
+    --->    dependency_status_result(
+                dependency_file,
+                maybe(file_name),
+                dependency_status
+            ).
+
 :- pred get_dependency_status(io.text_output_stream::in, globals::in,
-    dependency_file::in,
-    {dependency_file, maybe(file_name), dependency_status}::out,
+    dependency_file::in, dependency_status_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -123,7 +129,7 @@
     %
 :- pred check_dependency_timestamps(globals::in, file_name::in,
     maybe_error(timestamp)::in, maybe_succeeded::in,
-    list({dependency_file, maybe(file_name), dependency_status})::in,
+    list(dependency_status_result)::in,
     list(maybe_error(timestamp))::in, dependencies_result::out,
     io::di, io::uo) is det.
 
@@ -1368,7 +1374,7 @@ make_local_module_id_option(ModuleName, Opts0, Opts) :-
 
 %---------------------------------------------------------------------------%
 
-get_dependency_status(ProgressStream, Globals, Dep, Tuple, !Info, !IO) :-
+get_dependency_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
     (
         Dep = dep_file(TargetFileName),
         MaybeTargetFileName = yes(TargetFileName),
@@ -1457,32 +1463,38 @@ get_dependency_status(ProgressStream, Globals, Dep, Tuple, !Info, !IO) :-
             make_info_set_dependency_status(DepStatusMap, !Info)
         )
     ),
-    Tuple = {Dep, MaybeTargetFileName, Status}.
+    Result = dependency_status_result(Dep, MaybeTargetFileName, Status).
 
 %---------------------------------------------------------------------------%
 
+    % This type is similar to dependency_status_result, but its second argument
+    % has type file_name, not maybe(file_name).
+:- type dependency_status_known_file
+    --->    dependency_status_known_file(
+                dependency_file,
+                file_name,
+                dependency_status
+            ).
+
 :- pred get_dependency_file_names(globals::in,
-    list({dependency_file, maybe(file_name), dependency_status})::in,
-    list({dependency_file, file_name, dependency_status})::out,
-    io::di, io::uo) is det.
+    list(dependency_status_result)::in,
+    list(dependency_status_known_file)::out, io::di, io::uo) is det.
 
 get_dependency_file_names(Globals, Tuples0, Tuples, !IO) :-
     list.map_foldl(get_dependency_file_name(Globals), Tuples0, Tuples, !IO).
 
-:- pred get_dependency_file_name(globals::in,
-    {dependency_file, maybe(file_name), dependency_status}::in,
-    {dependency_file, file_name, dependency_status}::out,
-    io::di, io::uo) is det.
+:- pred get_dependency_file_name(globals::in, dependency_status_result::in,
+    dependency_status_known_file::out, io::di, io::uo) is det.
 
 get_dependency_file_name(Globals, Tuple0, Tuple, !IO) :-
-    Tuple0 = {Dep, MaybeTargetFileName, Status},
+    Tuple0 = dependency_status_result(Dep, MaybeTargetFileName, Status),
     (
         MaybeTargetFileName = yes(TargetFileName)
     ;
         MaybeTargetFileName = no,
         dependency_file_to_file_name(Globals, Dep, TargetFileName, !IO)
     ),
-    Tuple = {Dep, TargetFileName, Status}.
+    Tuple = dependency_status_known_file(Dep, TargetFileName, Status).
 
 %---------------------------------------------------------------------------%
 
@@ -1491,7 +1503,7 @@ check_dependencies(ProgressStream, Globals, TargetFileName, MaybeTimestamp,
     list.map_foldl2(get_dependency_status(ProgressStream, Globals),
         DepFiles, DepStatusTuples, !Info, !IO),
     list.filter(
-        ( pred(({_, _, DepStatus})::in) is semidet :-
+        ( pred(dependency_status_result(_, _, DepStatus)::in) is semidet :-
             DepStatus \= deps_status_up_to_date
         ), DepStatusTuples, UnbuiltDependencyTuples0),
     (
@@ -1520,8 +1532,7 @@ check_dependencies(ProgressStream, Globals, TargetFileName, MaybeTimestamp,
     ).
 
 :- pred describe_unbuilt_dependencies(file_name::in,
-    list({dependency_file, file_name, dependency_status})::in,
-    string::out) is det.
+    list(dependency_status_known_file)::in, string::out) is det.
 
 describe_unbuilt_dependencies(TargetFileName, UnbuiltDependencies,
         UnbuiltDependenciesDesc) :-
@@ -1532,11 +1543,11 @@ describe_unbuilt_dependencies(TargetFileName, UnbuiltDependencies,
     string.append_list([Header | UnbuiltDependencyDescs],
         UnbuiltDependenciesDesc).
 
-:- pred describe_target_dependency_status(
-    {dependency_file, file_name, dependency_status}::in, string::out) is det.
+:- pred describe_target_dependency_status(dependency_status_known_file::in,
+    string::out) is det.
 
 describe_target_dependency_status(DepTuple, Desc) :-
-    DepTuple = {_, DepTargetFileName, DepStatus},
+    DepTuple = dependency_status_known_file(_, DepTargetFileName, DepStatus),
     (
         DepStatus = deps_status_not_considered,
         DepStatusStr = "deps_status_not_considered"
@@ -1556,8 +1567,7 @@ describe_target_dependency_status(DepTuple, Desc) :-
     % XXX Move this predicate *below* its only caller.
     %
 :- pred check_dependencies_timestamps_missing_deps_msg(file_name::in,
-    maybe_succeeded::in,
-    list({dependency_file, file_name, dependency_status})::in,
+    maybe_succeeded::in, list(dependency_status_known_file)::in,
     list(maybe_error(timestamp))::in, string::out) is det.
 
 check_dependencies_timestamps_missing_deps_msg(TargetFileName,
@@ -1568,7 +1578,8 @@ check_dependencies_timestamps_missing_deps_msg(TargetFileName,
         ( pred(Pair::in, Tuple::out) is semidet :-
             Pair = Tuple - error(_)
         ), DepTimestampAL, ErrorDepTuples),
-    ErrorFileNames = list.map((func({_, FN, _}) = FN), ErrorDepTuples),
+    GetFileName = (func(dependency_status_known_file(_, FN, _)) = FN),
+    ErrorFileNames = list.map(GetFileName, ErrorDepTuples),
     list.sort(ErrorFileNames, SortedErrorFileNames),
     SortedErrorFileNamesStr = string.join_list(", ", SortedErrorFileNames),
     % This line can get very long.
@@ -1663,7 +1674,7 @@ newer_timestamp([H | T], Timestamp) :-
     ).
 
 :- pred describe_newer_dependencies(string::in, maybe_error(timestamp)::in,
-    list({dependency_file, file_name, dependency_status})::in,
+    list(dependency_status_known_file)::in,
     list(maybe_error(timestamp))::in, string::out) is det.
 
 describe_newer_dependencies(TargetFileName, MaybeTimestamp,
@@ -1688,12 +1699,11 @@ describe_newer_dependencies(TargetFileName, MaybeTimestamp,
     string.append_list([Header | NewerDepsDescs], Desc).
 
 :- pred describe_dependency_file_and_timestamp(
-    pair({dependency_file, file_name, dependency_status},
-        maybe_error(timestamp))::in,
+    pair(dependency_status_known_file, maybe_error(timestamp))::in,
     string::out) is det.
 
 describe_dependency_file_and_timestamp(DepFileTuple - MaybeTimestamp, Desc) :-
-    DepFileTuple = {DepFile, DepFileName, _},
+    DepFileTuple = dependency_status_known_file(DepFile, DepFileName, _),
     string.format("\t%s %s %s\n",
         [s(string(DepFile)), s(DepFileName), s(string(MaybeTimestamp))], Desc).
 

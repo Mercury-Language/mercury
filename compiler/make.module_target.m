@@ -124,7 +124,8 @@ make_module_target(ExtraOptions, Globals, Dep, Succeeded, !Info, !IO) :-
     % XXX MAKE_STREAM
     io.output_stream(ProgressStream, !IO),
     get_dependency_status(ProgressStream, Globals,
-        Dep, {_Dep, _DepFileName, Status}, !Info, !IO),
+        Dep, StatusResult, !Info, !IO),
+    StatusResult = dependency_status_result(_Dep, _DepFileName, Status),
     (
         Status = deps_status_error,
         Succeeded = did_not_succeed

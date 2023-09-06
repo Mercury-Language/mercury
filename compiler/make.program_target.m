@@ -544,7 +544,7 @@ build_linked_target_2(Globals, MainModuleName, FileType,
     ( if
         some [ExtraObjTuple] (
             list.member(ExtraObjTuple, ExtraObjTuples),
-            ExtraObjTuple = {_, _, deps_status_error}
+            ExtraObjTuple = dependency_status_result(_, _, deps_status_error)
         )
     then
         DepsResult3 = deps_error
