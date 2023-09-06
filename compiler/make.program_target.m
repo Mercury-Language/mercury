@@ -330,7 +330,10 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
                 unredirect_output(Globals, MainModuleName, ErrorStream,
                     !Info, !IO)
             ),
-            Cleanup = linked_target_cleanup(Globals, MainModuleName, FileType,
+            % XXX MAKE_STREAM
+            io.output_stream(CleanupProgressStream, !IO),
+            Cleanup = linked_target_cleanup(CleanupProgressStream, Globals,
+                MainModuleName, FileType,
                 FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName),
             teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
                 Succeeded0, Succeeded, !Info, !IO)
@@ -485,10 +488,9 @@ build_linked_target_2(Globals, MainModuleName, FileType,
     globals.set_option(link_objects, accumulating([]),
         Globals, NoLinkObjsGlobals),
 
-    % XXX STREAM This preserves old behavior, but our caller
+    % XXX MAKE_STREAM This preserves old behavior, but our caller
     % should pass to us a progress stream *explicitly*.
-    io.output_stream(OutputStream, !IO),
-    ProgressStream = OutputStream,
+    io.output_stream(ProgressStream, !IO),
 
     % Remake the `_init.o' file.
     % XXX We should probably make a `_init.o' file for shared
@@ -571,8 +573,7 @@ build_linked_target_2(Globals, MainModuleName, FileType,
     (
         DepsResult = deps_error,
         file_error_msg(FullMainModuleLinkedFileName, ErrorMsg),
-        % XXX MAKE_STREAM
-        maybe_write_msg_locked(!.Info, ErrorMsg, !IO),
+        maybe_write_msg_locked(ProgressStream, !.Info, ErrorMsg, !IO),
         Succeeded = did_not_succeed
     ;
         DepsResult = deps_up_to_date,
@@ -582,8 +583,7 @@ build_linked_target_2(Globals, MainModuleName, FileType,
             maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
                 MainModuleLinkedTarget, FullMainModuleLinkedFileName, !Info,
                 UpToDateMsg),
-            % XXX MAKE_STREAM
-            maybe_write_msg(UpToDateMsg, !IO),
+            maybe_write_msg(ProgressStream, UpToDateMsg, !IO),
             Succeeded = succeeded
         else
             post_link_maybe_make_symlink_or_copy(NoLinkObjsGlobals,
@@ -594,23 +594,20 @@ build_linked_target_2(Globals, MainModuleName, FileType,
                 MadeSymlinkOrCopy = yes,
                 maybe_symlink_or_copy_linked_target_msg(NoLinkObjsGlobals,
                     FullMainModuleLinkedFileName, LinkMsg),
-                % XXX MAKE_STREAM
-                maybe_write_msg(LinkMsg, !IO)
+                maybe_write_msg(ProgressStream, LinkMsg, !IO)
             ;
                 MadeSymlinkOrCopy = no,
                 maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
                     MainModuleLinkedTarget, FullMainModuleLinkedFileName,
                     !Info, UpToDateMsg),
-                % XXX MAKE_STREAM
-                maybe_write_msg(UpToDateMsg, !IO)
+                maybe_write_msg(ProgressStream, UpToDateMsg, !IO)
             )
         )
     ;
         DepsResult = deps_out_of_date,
         maybe_making_filename_msg(NoLinkObjsGlobals,
             FullMainModuleLinkedFileName, MakingMsg),
-        % XXX MAKE_STREAM
-        maybe_write_msg(MakingMsg, !IO),
+        maybe_write_msg(ProgressStream, MakingMsg, !IO),
 
         % Find the extra object files for externally compiled foreign
         % procedures and fact tables. We don't need to include these in the
@@ -668,8 +665,7 @@ build_linked_target_2(Globals, MainModuleName, FileType,
         ;
             Succeeded = did_not_succeed,
             file_error_msg(FullMainModuleLinkedFileName, ErrorMsg),
-            % XXX MAKE_STREAM
-            maybe_write_msg_locked(!.Info, ErrorMsg, !IO)
+            maybe_write_msg_locked(ProgressStream, !.Info, ErrorMsg, !IO)
         )
     ).
 
@@ -694,24 +690,25 @@ get_module_foreign_object_files(Globals, PIC, ModuleName, ForeignObjectFiles,
         unexpected($pred, "error in dependencies")
     ).
 
-:- pred linked_target_cleanup(globals::in, module_name::in,
-    linked_target_type::in, file_name::in, file_name::in,
+:- pred linked_target_cleanup(io.text_output_stream::in, globals::in,
+    module_name::in, linked_target_type::in, file_name::in, file_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-linked_target_cleanup(Globals, MainModuleName, FileType,
+linked_target_cleanup(ProgressStream, Globals, MainModuleName, FileType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
         !Info, !IO) :-
-    make_remove_file(Globals, verbose_make, FullMainModuleLinkedFileName,
-        !Info, !IO),
+    remove_file_for_make(ProgressStream, Globals, verbose_make,
+        FullMainModuleLinkedFileName, !Info, !IO),
     ( if FullMainModuleLinkedFileName = CurDirMainModuleLinkedFileName then
         true
     else
-        make_remove_file(Globals, verbose_make, CurDirMainModuleLinkedFileName,
-            !Info, !IO)
+        remove_file_for_make(ProgressStream, Globals, verbose_make,
+            CurDirMainModuleLinkedFileName, !Info, !IO)
     ),
     (
         FileType = executable,
-        remove_init_files(Globals, verbose_make, MainModuleName, !Info, !IO)
+        remove_init_files(ProgressStream, Globals, verbose_make,
+            MainModuleName, !Info, !IO)
     ;
         ( FileType = static_library
         ; FileType = shared_library
@@ -791,7 +788,8 @@ build_java_files(Globals, MainModuleName, ModuleNames, Succeeded,
         !Info, !IO) :-
     verbose_make_one_part_msg(Globals, "Making Java class files", MakingMsg),
     % XXX MAKE_STREAM
-    maybe_write_msg(MakingMsg, !IO),
+    io.output_stream(ProgressStream, !IO),
+    maybe_write_msg(ProgressStream, MakingMsg, !IO),
     list.map_foldl(
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)),
@@ -877,16 +875,20 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
         AllModulesSet, !Info, !IO),
     make_info_set_rebuild_module_deps(RebuildModuleDeps, !Info),
     AllModules = set.to_sorted_list(AllModulesSet),
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
     (
         TargetType = misc_target_clean,
         Succeeded = succeeded,
         list.foldl2(make_module_clean(Globals), AllModules, !Info, !IO),
-        remove_init_files(Globals, very_verbose, MainModuleName, !Info, !IO)
+        remove_init_files(ProgressStream, Globals, very_verbose,
+            MainModuleName, !Info, !IO)
     ;
         TargetType = misc_target_realclean,
         Succeeded = succeeded,
         make_main_module_realclean(Globals, MainModuleName, !Info, !IO),
-        list.foldl2(make_module_realclean(Globals), AllModules, !Info, !IO)
+        list.foldl2(make_module_realclean(ProgressStream, Globals), AllModules,
+            !Info, !IO)
     ;
         TargetType = misc_target_build_all(ModuleTargetType),
         get_target_modules(Globals, ModuleTargetType, AllModules,
@@ -1161,17 +1163,18 @@ should_we_use_analysis_cache_dir(Globals, Info, UseAnalysisCacheDir, !IO) :-
     string::out, io::di, io::uo) is det.
 
 create_analysis_cache_dir(Globals, Succeeded, CacheDir, !IO) :-
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
     analysis_cache_dir_name(Globals, CacheDir),
     verbose_make_two_part_msg(Globals, "Creating", CacheDir, CreatingMsg),
-    % XXX MAKE_STREAM
-    maybe_write_msg(CreatingMsg, !IO),
+    maybe_write_msg(ProgressStream, CreatingMsg, !IO),
     dir.make_directory(CacheDir, MakeRes, !IO),
     (
         MakeRes = ok,
         Succeeded = succeeded
     ;
         MakeRes = error(Error),
-        io.format("Error: making directory %s: %s\n",
+        io.format(ProgressStream, "Error: making directory %s: %s\n",
             [s(CacheDir), s(io.error_message(Error))], !IO),
         Succeeded = did_not_succeed
     ).
@@ -1180,9 +1183,10 @@ create_analysis_cache_dir(Globals, Succeeded, CacheDir, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 remove_cache_dir(Globals, CacheDir, !Info, !IO) :-
-    verbose_make_two_part_msg(Globals, "Removing", CacheDir, RemovingMsg),
     % XXX MAKE_STREAM
-    maybe_write_msg(RemovingMsg, !IO),
+    io.output_stream(ProgressStream, !IO),
+    verbose_make_two_part_msg(Globals, "Removing", CacheDir, RemovingMsg),
+    maybe_write_msg(ProgressStream, RemovingMsg, !IO),
     io.file.remove_file_recursively(CacheDir, _, !IO).
 
 %---------------------------------------------------------------------------%
@@ -1246,6 +1250,8 @@ build_analysis_files_1(Globals, MainModuleName, AllModules, Succeeded,
 
 build_analysis_files_2(Globals, MainModuleName, TargetModules,
         LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO) :-
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
     KeepGoing = make_info_get_keep_going(!.Info),
     foldl2_make_module_targets(KeepGoing, LocalModulesOpts, Globals,
         make_dependency_list(TargetModules, module_target_analysis_registry),
@@ -1263,8 +1269,7 @@ build_analysis_files_2(Globals, MainModuleName, TargetModules,
         InvalidModules, SuboptimalModules, !IO),
     ( if list.is_not_empty(InvalidModules) then
         maybe_reanalyse_modules_msg(Globals, ReanalysingMsg),
-        % XXX MAKE_STREAM
-        maybe_write_msg(ReanalysingMsg, !IO),
+        maybe_write_msg(ProgressStream, ReanalysingMsg, !IO),
         list.foldl(reset_analysis_registry_dependency_status,
             InvalidModules, !Info),
         build_analysis_files_2(Globals, MainModuleName, TargetModules,
@@ -1274,8 +1279,7 @@ build_analysis_files_2(Globals, MainModuleName, TargetModules,
             SuboptimalModules, !Info),
         make_info_set_reanalysis_passes(ReanalysisPasses - 1, !Info),
         maybe_reanalyse_modules_msg(Globals, ReanalysingMsg),
-        % XXX MAKE_STREAM
-        maybe_write_msg(ReanalysingMsg, !IO),
+        maybe_write_msg(ProgressStream, ReanalysingMsg, !IO),
         build_analysis_files_2(Globals, MainModuleName, TargetModules,
             LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)
     else
@@ -1648,9 +1652,10 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
     OptionArgs0 = make_info_get_option_args(!.Info),
     OptionArgs = OptionArgs0 ++ ["--grade", Grade, "--use-grade-subdirs"],
 
-    verbose_make_two_part_msg(Globals, "Installing grade", Grade, InstallMsg),
     % XXX MAKE_STREAM
-    maybe_write_msg(InstallMsg, !IO),
+    io.output_stream(ProgressStream, !IO),
+    verbose_make_two_part_msg(Globals, "Installing grade", Grade, InstallMsg),
+    maybe_write_msg(ProgressStream, InstallMsg, !IO),
 
     lookup_mmc_options(make_info_get_options_variables(!.Info), MaybeMCFlags),
     (
@@ -1658,9 +1663,6 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
         get_default_options(Globals, DefaultOptionTable),
         DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
         AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
-        % XXX MAKE_STREAM
-        io.output_stream(CurStream, !IO),
-        ProgressStream = CurStream,
         handle_given_options(ProgressStream, DefaultOptionTable, AllFlags,
             _, _, OptionsSpecs, LibGlobals, !IO)
     ;
@@ -2104,13 +2106,14 @@ maybe_make_grade_clean(Globals, Clean, ModuleName, AllModules, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_grade_clean(Globals, ModuleName, AllModules, !Info, !IO) :-
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
     grade_directory_component(Globals, Grade),
     % XXX MAKE_EXTRA_PERIOD
     string.format("Cleaning up grade-dependent files for `%s' in grade %s.",
         [s(escaped_sym_name_to_string(ModuleName)), s(Grade)], Part1),
     verbose_make_one_part_msg(Globals, Part1, CleaningMsg),
-    % XXX MAKE_STREAM
-    maybe_write_msg(CleaningMsg, !IO),
+    maybe_write_msg(ProgressStream, CleaningMsg, !IO),
 
     make_main_module_realclean(Globals, ModuleName, !Info, !IO),
     list.foldl2(make_module_clean(Globals), AllModules, !Info, !IO).
@@ -2119,12 +2122,13 @@ make_grade_clean(Globals, ModuleName, AllModules, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
     % XXX MAKE_EXTRA_PERIOD
     string.format("Removing executable and library files for `%s'.",
         [s(escaped_sym_name_to_string(ModuleName))], Part1),
     verbose_make_one_part_msg(Globals, Part1, CleaningMsg),
-    % XXX MAKE_STREAM
-    maybe_write_msg(CleaningMsg, !IO),
+    maybe_write_msg(ProgressStream, CleaningMsg, !IO),
 
     LinkedTargetTypes = [
         executable,
@@ -2144,19 +2148,20 @@ make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
         FullInitFileName, ThisDirInitFileName),
     FilesToRemove = FileNames ++ ThisDirFileNames ++
         [FullInitFileName, ThisDirInitFileName],
-    list.foldl2(make_remove_file(Globals, very_verbose),
+    list.foldl2(remove_file_for_make(ProgressStream, Globals, very_verbose),
         FilesToRemove, !Info, !IO),
-    remove_init_files(Globals, very_verbose, ModuleName, !Info, !IO).
+    remove_init_files(ProgressStream, Globals, very_verbose, ModuleName,
+        !Info, !IO).
 
-:- pred remove_init_files(globals::in, option::in, module_name::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred remove_init_files(io.text_output_stream::in, globals::in, option::in,
+    module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
-remove_init_files(Globals, Verbose, ModuleName, !Info, !IO) :-
-    remove_make_module_file(Globals, Verbose, ModuleName,
+remove_init_files(ProgressStream, Globals, Verbose, ModuleName, !Info, !IO) :-
+    remove_module_file_for_make(ProgressStream, Globals, Verbose, ModuleName,
         ext_cur_ngs_gs(ext_cur_ngs_gs_init_c), !Info, !IO),
-    remove_make_module_file(Globals, Verbose, ModuleName,
+    remove_module_file_for_make(ProgressStream, Globals, Verbose, ModuleName,
         ext_cur_ngs_gs(ext_cur_ngs_gs_init_obj_obj_opt), !Info, !IO),
-    remove_make_module_file(Globals, Verbose, ModuleName,
+    remove_module_file_for_make(ProgressStream, Globals, Verbose, ModuleName,
         ext_cur_ngs_gs(ext_cur_ngs_gs_init_obj_pic_obj_opt), !Info, !IO).
 
 %---------------------------------------------------------------------------%
@@ -2165,16 +2170,17 @@ remove_init_files(Globals, Verbose, ModuleName, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_module_clean(Globals, ModuleName, !Info, !IO) :-
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
     % XXX MAKE_EXTRA_PERIOD
     string.format("Cleaning up target files for module `%s'.",
         [s(escaped_sym_name_to_string(ModuleName))], Part1),
     verbose_make_one_part_msg(Globals, Part1, CleaningMsg),
-    % XXX MAKE_STREAM
-    maybe_write_msg(CleaningMsg, !IO),
+    maybe_write_msg(ProgressStream, CleaningMsg, !IO),
 
     list.foldl2(
-        remove_make_target_file_by_name(Globals, $pred, very_verbose,
-            ModuleName),
+        remove_make_target_file_by_name(ProgressStream, Globals, $pred,
+            very_verbose, ModuleName),
         [module_target_errors,
         module_target_c_code,
         module_target_c_header(header_mih),
@@ -2182,10 +2188,10 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
         module_target_java_code,
         module_target_java_class_code], !Info, !IO),
 
-    remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_cur_ngs_gs(ext_cur_ngs_gs_misc_used), !Info, !IO),
-    remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_cur_ngs(ext_cur_ngs_misc_prof), !Info, !IO),
+    remove_module_file_for_make(ProgressStream, Globals, very_verbose,
+        ModuleName, ext_cur_ngs_gs(ext_cur_ngs_gs_misc_used), !Info, !IO),
+    remove_module_file_for_make(ProgressStream, Globals, very_verbose,
+        ModuleName, ext_cur_ngs(ext_cur_ngs_misc_prof), !Info, !IO),
 
     get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
         !Info, !IO),
@@ -2198,78 +2204,84 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
         FactTableFiles = []
     ),
 
-    list.foldl2(remove_fact_table_c_file(Globals), FactTableFiles, !Info, !IO),
+    list.foldl2(remove_fact_table_c_file(ProgressStream, Globals),
+        FactTableFiles, !Info, !IO),
 
     foreign_language_module_name(ModuleName, lang_c, CCodeModule),
-    remove_make_target_file_by_name(Globals, $pred, very_verbose, CCodeModule,
-        module_target_c_code, !Info, !IO),
+    remove_make_target_file_by_name(ProgressStream, Globals, $pred,
+        very_verbose, CCodeModule, module_target_c_code, !Info, !IO),
 
-    remove_object_and_assembler_files(Globals, ModuleName, pic,
-        FactTableFiles, !Info, !IO),
-    remove_object_and_assembler_files(Globals, ModuleName, non_pic,
-        FactTableFiles, !Info, !IO).
+    remove_object_and_assembler_files(ProgressStream, Globals,
+        ModuleName, pic, FactTableFiles, !Info, !IO),
+    remove_object_and_assembler_files(ProgressStream, Globals,
+        ModuleName, non_pic, FactTableFiles, !Info, !IO).
 
-:- pred remove_fact_table_c_file(globals::in, string::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred remove_fact_table_c_file(io.text_output_stream::in, globals::in,
+    string::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
-remove_fact_table_c_file(Globals, FactTableFile, !Info, !IO) :-
+remove_fact_table_c_file(ProgressStream, Globals, FactTableFile, !Info, !IO) :-
     fact_table_file_name_return_dirs(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
         FactTableFile, _FactTableDirs, FactTableCFile),
-    make_remove_file(Globals, very_verbose, FactTableCFile, !Info, !IO).
+    remove_file_for_make(ProgressStream, Globals, very_verbose,
+        FactTableCFile, !Info, !IO).
 
-:- pred remove_object_and_assembler_files(globals::in, module_name::in,
-    pic::in, list(file_name)::in,
+:- pred remove_object_and_assembler_files(io.text_output_stream::in,
+    globals::in, module_name::in, pic::in, list(file_name)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-remove_object_and_assembler_files(Globals, ModuleName, PIC, FactTableFiles,
-        !Info, !IO) :-
-    remove_make_target_file_by_name(Globals, $pred, very_verbose, ModuleName,
-        module_target_object_code(PIC), !Info, !IO),
-    remove_make_target_file_by_name(Globals, $pred, very_verbose, ModuleName,
-        module_target_foreign_object(PIC, lang_c), !Info, !IO),
+remove_object_and_assembler_files(ProgressStream, Globals, ModuleName, PIC,
+        FactTableFiles, !Info, !IO) :-
+    remove_make_target_file_by_name(ProgressStream, Globals, $pred,
+        very_verbose, ModuleName, module_target_object_code(PIC), !Info, !IO),
+    remove_make_target_file_by_name(ProgressStream, Globals, $pred,
+        very_verbose, ModuleName, module_target_foreign_object(PIC, lang_c),
+        !Info, !IO),
     list.foldl2(
-        remove_fact_table_object_and_assembler_files(Globals, ModuleName, PIC),
+        remove_fact_table_object_and_assembler_files(ProgressStream, Globals,
+            ModuleName, PIC),
         FactTableFiles, !Info, !IO).
 
-:- pred remove_fact_table_object_and_assembler_files(globals::in,
-    module_name::in, pic::in, file_name::in,
+:- pred remove_fact_table_object_and_assembler_files(io.text_output_stream::in,
+    globals::in, module_name::in, pic::in, file_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-remove_fact_table_object_and_assembler_files(Globals, ModuleName, PIC,
-        FactTableFile, !Info, !IO) :-
-    remove_make_target_file_by_name(Globals, $pred, very_verbose,
-        ModuleName, module_target_fact_table_object(PIC, FactTableFile),
-        !Info, !IO).
+remove_fact_table_object_and_assembler_files(ProgressStream, Globals,
+        ModuleName, PIC, FactTableFile, !Info, !IO) :-
+    remove_make_target_file_by_name(ProgressStream, Globals, $pred,
+        very_verbose, ModuleName,
+        module_target_fact_table_object(PIC, FactTableFile), !Info, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred make_module_realclean(globals::in, module_name::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred make_module_realclean(io.text_output_stream::in, globals::in,
+    module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_module_realclean(Globals, ModuleName, !Info, !IO) :-
+make_module_realclean(ProgressStream, Globals, ModuleName, !Info, !IO) :-
     make_module_clean(Globals, ModuleName, !Info, !IO),
 
     string.format("Cleaning up interface files for module `%s'",
         [s(escaped_sym_name_to_string(ModuleName))], Part1),
     verbose_make_one_part_msg(Globals, Part1, CleaningMsg),
-    % XXX MAKE_STREAM
-    maybe_write_msg(CleaningMsg, !IO),
+    maybe_write_msg(ProgressStream, CleaningMsg, !IO),
     Targets = [module_target_int0, module_target_int1, module_target_int2,
         module_target_int3, module_target_opt,
         module_target_analysis_registry,
         module_target_c_header(header_mh),
         module_target_track_flags],
     list.foldl2(
-        remove_make_target_file_by_name(Globals, $pred, very_verbose,
-            ModuleName),
+        remove_make_target_file_by_name(ProgressStream, Globals, $pred,
+            very_verbose, ModuleName),
         Targets, !Info, !IO),
-    remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_cur_ngs(ext_cur_ngs_misc_module_dep), !Info, !IO),
-    remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_imdg), !Info, !IO),
-    remove_make_module_file(Globals, very_verbose, ModuleName,
-        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_request), !Info, !IO).
+    remove_module_file_for_make(ProgressStream, Globals, very_verbose,
+        ModuleName, ext_cur_ngs(ext_cur_ngs_misc_module_dep),
+        !Info, !IO),
+    remove_module_file_for_make(ProgressStream, Globals, very_verbose,
+        ModuleName, ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_imdg),
+        !Info, !IO),
+    remove_module_file_for_make(ProgressStream, Globals, very_verbose,
+        ModuleName, ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_request),
+        !Info, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module make.program_target.

@@ -299,7 +299,8 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
                 [s(DepFileName), s(SearchDirsString)]),
             DebugMsg),
         % XXX MAKE_STREAM
-        maybe_write_msg(DebugMsg, !IO),
+        io.output_stream(DebugStream, !IO),
+        maybe_write_msg(DebugStream, DebugMsg, !IO),
 
         % Try to make the dependencies. This will succeed when the module name
         % doesn't match the file name and the dependencies for this module
@@ -548,7 +549,8 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
                 ModuleDepFile, ErrorMsg),
             DebugMsg),
         % XXX MAKE_STREAM
-        maybe_write_msg(DebugMsg, !IO),
+        io.output_stream(DebugStream, !IO),
+        maybe_write_msg(DebugStream, DebugMsg, !IO),
         read_module_dependencies_remake(Globals, RebuildModuleDeps,
             ModuleName, !Info, !IO)
     ).
@@ -1049,8 +1051,10 @@ cleanup_int3_files(Globals, ModuleNames, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 cleanup_int3_file(Globals, ModuleName, !Info, !IO) :-
-    remove_make_target_file_by_name(Globals, $pred, very_verbose,
-        ModuleName, module_target_int3, !Info, !IO).
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
+    remove_make_target_file_by_name(ProgressStream, Globals, $pred,
+        very_verbose, ModuleName, module_target_int3, !Info, !IO).
 
 :- pred cleanup_module_dep_files(globals::in, list(module_name)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -1062,8 +1066,10 @@ cleanup_module_dep_files(Globals, ModuleNames, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 cleanup_module_dep_file(Globals, ModuleName, !Info, !IO) :-
-    remove_make_module_file(Globals, verbose_make, ModuleName,
-        ext_cur_ngs(ext_cur_ngs_misc_module_dep), !Info, !IO).
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
+    remove_module_file_for_make(ProgressStream, Globals, verbose_make,
+        ModuleName, ext_cur_ngs(ext_cur_ngs_misc_module_dep), !Info, !IO).
 
 :- pred maybe_write_importing_module(module_name::in,
     maybe(import_or_include)::in, io::di, io::uo) is det.

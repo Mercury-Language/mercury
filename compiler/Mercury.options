@@ -98,7 +98,6 @@ MCFLAGS-make.module_target                   += --no-warn-implicit-stream-calls
 MCFLAGS-make.program_target                  += --no-warn-implicit-stream-calls
 MCFLAGS-make.top_level                       += --no-warn-implicit-stream-calls
 MCFLAGS-make.track_flags                     += --no-warn-implicit-stream-calls
-MCFLAGS-make.util                            += --no-warn-implicit-stream-calls
 MCFLAGS-mode_robdd.implications              += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.error_util                += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.find_module               += --no-warn-implicit-stream-calls

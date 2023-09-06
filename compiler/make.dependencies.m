@@ -1389,6 +1389,8 @@ get_dependency_status(Globals, Dep, Tuple, !Info, !IO) :-
     ;
         Dep = dep_target(Target),
         Target = target_file(ModuleName, FileType),
+        % XXX MAKE_STREAM
+        io.output_stream(ProgressStream, !IO),
         ( if
             ( FileType = module_target_source
             ; FileType = module_target_track_flags
@@ -1404,8 +1406,7 @@ get_dependency_status(Globals, Dep, Tuple, !Info, !IO) :-
             MaybeTargetFileName = yes(TargetFileName),
             maybe_warn_up_to_date_target_msg(Globals, TopTargetFile,
                 TargetFileName, !Info, UpToDateMsg),
-            % XXX MAKE_STREAM
-            maybe_write_msg(UpToDateMsg, !IO),
+            maybe_write_msg(ProgressStream, UpToDateMsg, !IO),
             Status = deps_status_up_to_date
         else if
             DepStatusMap0 = make_info_get_dependency_status(!.Info),
@@ -1492,6 +1493,8 @@ check_dependencies(Globals, TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
         ( pred(({_, _, DepStatus})::in) is semidet :-
             DepStatus \= deps_status_up_to_date
         ), DepStatusTuples, UnbuiltDependencyTuples0),
+    % XXX MAKE_STREAM
+    io.output_stream(DebugStream, !IO),
     (
         UnbuiltDependencyTuples0 = [_ | _],
         get_dependency_file_names(Globals,
@@ -1500,8 +1503,7 @@ check_dependencies(Globals, TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
             describe_unbuilt_dependencies(TargetFileName,
                 UnbuiltDependencyTuples),
             DebugMsg),
-        % XXX MAKE_STREAM
-        maybe_write_msg(DebugMsg, !IO),
+        maybe_write_msg(DebugStream, DebugMsg, !IO),
         DepsResult = deps_error
     ;
         UnbuiltDependencyTuples0 = [],
@@ -1509,7 +1511,7 @@ check_dependencies(Globals, TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
             string.format("%s: finished dependencies\n",
                 [s(TargetFileName)]),
             DebugMsg),
-        maybe_write_msg(DebugMsg, !IO),
+        maybe_write_msg(DebugStream, DebugMsg, !IO),
         list.map_foldl2(get_dependency_timestamp(Globals), DepFiles,
             DepTimestamps, !Info, !IO),
 
@@ -1584,14 +1586,15 @@ check_dependencies_timestamps_missing_deps_msg(TargetFileName,
 
 check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
         BuildDepsSucceeded, DepFileTuples0, DepTimestamps, DepsResult, !IO) :-
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
     (
         MaybeTimestamp = error(_),
         DepsResult = deps_out_of_date,
         debug_make_msg(Globals,
             string.format("%s does not exist.\n", [s(TargetFileName)]),
             DebugMsg),
-        % XXX MAKE_STREAM
-        maybe_write_msg(DebugMsg, !IO)
+        maybe_write_msg(ProgressStream, DebugMsg, !IO)
     ;
         MaybeTimestamp = ok(Timestamp),
         ( if error_in_timestamps(DepTimestamps) then
@@ -1606,8 +1609,7 @@ check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
                 check_dependencies_timestamps_missing_deps_msg(
                     TargetFileName, BuildDepsSucceeded, DepFileTuples,
                     DepTimestamps, MissingDepsMsg),
-                % XXX MAKE_STREAM
-                io.write_string(MissingDepsMsg, !IO)
+                io.write_string(ProgressStream, MissingDepsMsg, !IO)
             ;
                 BuildDepsSucceeded = did_not_succeed,
                 debug_make_msg(Globals,
@@ -1615,8 +1617,7 @@ check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
                         TargetFileName, BuildDepsSucceeded, DepFileTuples,
                         DepTimestamps),
                     MaybeMissingDepsMsg),
-                % XXX MAKE_STREAM
-                maybe_write_msg(MaybeMissingDepsMsg, !IO)
+                maybe_write_msg(ProgressStream, MaybeMissingDepsMsg, !IO)
             )
         else
             globals.lookup_bool_option(Globals, rebuild, Rebuild),
@@ -1635,8 +1636,7 @@ check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
                         describe_newer_dependencies(TargetFileName,
                             MaybeTimestamp, DepFileTuples, DepTimestamps),
                         DebugMsg),
-                    % XXX MAKE_STREAM
-                    maybe_write_msg(DebugMsg, !IO),
+                    maybe_write_msg(ProgressStream, DebugMsg, !IO),
                     DepsResult = deps_out_of_date
                 else
                     DepsResult = deps_up_to_date

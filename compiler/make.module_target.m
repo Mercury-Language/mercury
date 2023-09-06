@@ -199,11 +199,12 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
     list.foldl(update_target_status(deps_status_being_built),
         TouchedTargetFiles, !Info),
 
+    % XXX MAKE_STREAM
+    io.output_stream(DebugStream, !IO),
     debug_make_msg(Globals,
         string.format("%s: checking dependencies\n", [s(TargetFileName)]),
         CheckingMsg),
-    % XXX MAKE_STREAM
-    maybe_write_msg(CheckingMsg, !IO),
+    maybe_write_msg(DebugStream, CheckingMsg, !IO),
 
     ( if CompilationTaskType = process_module(_) then
         module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
@@ -288,16 +289,16 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
             ExtraOptions, Succeeded, !Info, !IO)
     ;
         DepsResult = deps_up_to_date,
+        % XXX MAKE_STREAM
+        io.output_stream(ProgressStream, !IO),
         TopTargetFile = top_target_file(ModuleName, module_target(TargetType)),
         maybe_warn_up_to_date_target_msg(Globals, TopTargetFile,
             TargetFileName, !Info, UpToDateMsg),
-        % XXX MAKE_STREAM
-        maybe_write_msg(UpToDateMsg, !IO),
+        maybe_write_msg(ProgressStream, UpToDateMsg, !IO),
         debug_make_msg(Globals,
             string.format("%s: up to date\n", [s(TargetFileName)]),
             DebugMsg),
-        % XXX MAKE_STREAM
-        maybe_write_msg(DebugMsg, !IO),
+        maybe_write_msg(ProgressStream, DebugMsg, !IO),
         Succeeded = succeeded,
         list.foldl(update_target_status(deps_status_up_to_date),
             [TargetFile | TouchedTargetFiles], !Info)
@@ -310,6 +311,9 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
 
 make_dependency_files(Globals, TargetFile, TargetFileName, DepFilesToMake,
         TouchedTargetFiles, TouchedFiles, DepsResult, !Info, !IO) :-
+    % XXX MAKE_STREAM
+    io.output_stream(DebugStream, !IO),
+
     % Build the dependencies.
     KeepGoing = make_info_get_keep_going(!.Info),
     foldl2_make_module_targets(KeepGoing, [], Globals, DepFilesToMake,
@@ -321,11 +325,10 @@ make_dependency_files(Globals, TargetFile, TargetFileName, DepFilesToMake,
     (
         MakeDepsSucceeded = did_not_succeed,
         debug_make_msg(Globals,
-            string.format("%s: error msking dependencies\n",
+            string.format("%s: error making dependencies\n",
                 [s(TargetFileName)]),
             DebugMsg),
-        % XXX MAKE_STREAM
-        maybe_write_msg(DebugMsg, !IO),
+        maybe_write_msg(DebugStream, DebugMsg, !IO),
         DepsResult = deps_error
     ;
         MakeDepsSucceeded = succeeded,
@@ -334,8 +337,7 @@ make_dependency_files(Globals, TargetFile, TargetFileName, DepFilesToMake,
                 string.format("%s: target file does not exist\n",
                     [s(TargetFileName)]),
                 DebugMsg),
-            % XXX MAKE_STREAM
-            maybe_write_msg(DebugMsg, !IO),
+            maybe_write_msg(DebugStream, DebugMsg, !IO),
             DepsResult = deps_out_of_date
         else
             ( if
@@ -441,9 +443,10 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
     % XXX MAKE_FILENAME Either our caller should be able to give us
     % TargetFileName, or we could compute it here, and give it to code below.
     get_make_target_file_name(Globals, $pred, TargetFile, TargetFileName, !IO),
-    maybe_making_filename_msg(Globals, TargetFileName, MakingMsg),
     % XXX MAKE_STREAM
-    maybe_write_msg(MakingMsg, !IO),
+    io.output_stream(ProgressStream, !IO),
+    maybe_making_filename_msg(Globals, TargetFileName, MakingMsg),
+    maybe_write_msg(ProgressStream, MakingMsg, !IO),
     TargetFile = target_file(ModuleName, _TargetType),
     CompilationTask = task_and_options(Task, TaskOptions),
     ExtraAndTaskOptions = ExtraOptions ++ TaskOptions,
@@ -548,10 +551,12 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
 
 cleanup_files(Globals, MaybeArgFileName, TouchedTargetFiles, TouchedFiles,
         !MakeInfo, !IO) :-
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
     % XXX Remove `.int.tmp' files.
-    list.foldl2(remove_make_target_file(Globals, $pred, very_verbose),
-        TouchedTargetFiles, !MakeInfo, !IO),
-    list.foldl2(make_remove_file(Globals, very_verbose),
+    list.foldl2(remove_make_target_file(ProgressStream, Globals, $pred,
+        very_verbose), TouchedTargetFiles, !MakeInfo, !IO),
+    list.foldl2(remove_file_for_make(ProgressStream, Globals, very_verbose),
         TouchedFiles, !MakeInfo, !IO),
     (
         MaybeArgFileName = yes(ArgFileName2),
@@ -868,7 +873,8 @@ record_made_target_given_maybe_touched_files(Globals, Succeeded,
         TargetStatus = deps_status_error,
         file_error_msg(TargetFileName, ErrorMsg),
         % XXX MAKE_STREAM
-        maybe_write_msg_locked(!.Info, ErrorMsg, !IO)
+        io.output_stream(ErrorStream, !IO),
+        maybe_write_msg_locked(ErrorStream, !.Info, ErrorMsg, !IO)
     ),
 
     list.foldl(update_target_status(TargetStatus), TouchedTargetFiles, !Info),
@@ -927,11 +933,12 @@ delete_analysis_registry_timestamps(Globals, FileName, _, !Timestamps) :-
 
 delete_timestamp(Globals, TouchedFile, !Timestamps) :-
     trace [io(!IO)] (
+        % XXX MAKE_STREAM
+        io.output_stream(DebugStream, !IO),
         debug_make_msg(Globals,
             string.format("Deleting timestamp for %s\n", [s(TouchedFile)]),
             DebugMsg),
-        % XXX MAKE_STREAM
-        maybe_write_msg(DebugMsg, !IO)
+        maybe_write_msg(DebugStream, DebugMsg, !IO)
     ),
     map.delete(TouchedFile, !Timestamps).
 

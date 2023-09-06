@@ -41,23 +41,26 @@
 
     % Remove the target file and the corresponding timestamp file.
     %
-:- pred remove_make_target_file(globals::in, string::in, option::in,
-    target_file::in, make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred remove_make_target_file(io.text_output_stream::in, globals::in,
+    string::in, option::in, target_file::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Remove the target file and the corresponding timestamp file.
     %
-:- pred remove_make_target_file_by_name(globals::in, string::in, option::in,
-    module_name::in, module_target_type::in, make_info::in, make_info::out,
+:- pred remove_make_target_file_by_name(io.text_output_stream::in, globals::in,
+    string::in, option::in, module_name::in, module_target_type::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+    % remove_module_file_for_make(ProgressStream, Globals, VerboseOption,
+    %   ModuleName, Extension, !Info, !IO).
+    %
+:- pred remove_module_file_for_make(io.text_output_stream::in, globals::in,
+    option::in, module_name::in, ext::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-    % remove_make_module_file(Globals, VerboseOption, ModuleName, Extension,
-    %   !Info, !IO).
-    %
-:- pred remove_make_module_file(globals::in, option::in, module_name::in,
-    ext::in, make_info::in, make_info::out, io::di, io::uo) is det.
-
-:- pred make_remove_file(globals::in, option::in, file_name::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred remove_file_for_make(io.text_output_stream::in, globals::in,
+    option::in, file_name::in, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -172,8 +175,6 @@
 
     % Write out a message from mmc --make, if the message is not empty.
     %
-:- pred maybe_write_msg(string::in,
-    io::di, io::uo) is det.
 :- pred maybe_write_msg(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
 
@@ -183,8 +184,6 @@
     % XXX The current stream, or the specified stream, may be a stream
     % OTHER THAN stdout.
     %
-:- pred maybe_write_msg_locked(make_info::in,
-    string::in, io::di, io::uo) is det.
 :- pred maybe_write_msg_locked(io.text_output_stream::in, make_info::in,
     string::in, io::di, io::uo) is det.
 
@@ -216,40 +215,42 @@
 
 %---------------------------------------------------------------------------%
 
-remove_make_target_file(Globals, From, VerboseOption, Target, !Info, !IO) :-
+remove_make_target_file(ProgressStream, Globals, From, VerboseOption, Target,
+        !Info, !IO) :-
     Target = target_file(ModuleName, TargetType),
-    remove_make_target_file_by_name(Globals, From, VerboseOption,
-        ModuleName, TargetType, !Info, !IO).
+    remove_make_target_file_by_name(ProgressStream, Globals, From,
+        VerboseOption, ModuleName, TargetType, !Info, !IO).
 
 %---------------------%
 
-remove_make_target_file_by_name(Globals, From, VerboseOption,
+remove_make_target_file_by_name(ProgressStream, Globals, From, VerboseOption,
         ModuleName, TargetType, !Info, !IO) :-
     module_target_to_file_name(Globals, From, TargetType,
         ModuleName, FileName, !IO),
-    make_remove_file(Globals, VerboseOption, FileName, !Info, !IO),
+    remove_file_for_make(ProgressStream, Globals, VerboseOption, FileName,
+        !Info, !IO),
     ( if timestamp_extension(TargetType, TimestampExt) then
-        remove_make_module_file(Globals, VerboseOption, ModuleName,
-            TimestampExt, !Info, !IO)
+        remove_module_file_for_make(ProgressStream, Globals, VerboseOption,
+            ModuleName, TimestampExt, !Info, !IO)
     else
         true
     ).
 
 %---------------------%
 
-remove_make_module_file(Globals, VerboseOption, ModuleName, Ext,
-        !Info, !IO) :-
-    module_name_to_file_name(Globals, $pred, Ext,
-        ModuleName, FileName),
-    make_remove_file(Globals, VerboseOption, FileName, !Info, !IO).
+remove_module_file_for_make(ProgressStream, Globals, VerboseOption,
+        ModuleName, Ext, !Info, !IO) :-
+    module_name_to_file_name(Globals, $pred, Ext, ModuleName, FileName),
+    remove_file_for_make(ProgressStream, Globals, VerboseOption,
+        FileName, !Info, !IO).
 
 %---------------------%
 
-make_remove_file(Globals, VerboseOption, FileName, !Info, !IO) :-
+remove_file_for_make(ProgressStream, Globals, VerboseOption, FileName,
+        !Info, !IO) :-
     option_set_two_part_msg(Globals, VerboseOption,
         "Removing", FileName, RemovingMsg),
-    % XXX MAKE_STREAM
-    maybe_write_msg(RemovingMsg, !IO),
+    maybe_write_msg(ProgressStream, RemovingMsg, !IO),
     io.file.remove_file_recursively(FileName, _, !IO),
     FileTimestamps0 = make_info_get_file_timestamps(!.Info),
     map.delete(FileName, FileTimestamps0, FileTimestamps),
@@ -429,10 +430,6 @@ maybe_symlink_or_copy_linked_target_msg(Globals, FileName, Msg) :-
 
 %---------------------%
 
-maybe_write_msg(Msg, !IO) :-    
-    io.output_stream(OutStream, !IO),
-    maybe_write_msg(OutStream, Msg, !IO).
-
 maybe_write_msg(OutStream, Msg, !IO) :-    
     ( if Msg = "" then
         true
@@ -440,10 +437,6 @@ maybe_write_msg(OutStream, Msg, !IO) :-
         io.write_string(OutStream, Msg, !IO),
         io.flush_output(OutStream, !IO)
     ).
-
-maybe_write_msg_locked(Info, Msg, !IO) :-    
-    io.output_stream(OutStream, !IO),
-    maybe_write_msg_locked(OutStream, Info, Msg, !IO).
 
 maybe_write_msg_locked(OutStream, Info, Msg, !IO) :-    
     ( if Msg = "" then
