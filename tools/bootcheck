@@ -1879,10 +1879,25 @@ EOF
                         library,mr_float.java)
                             compare_file=false
                             ;;
+                        library,bitmap.java)
+                            compare_file=false
+                            ;;
+                        library,fat_sparse_bitset.java)
+                            compare_file=false
+                            ;;
+                        library,fatter_sparse_bitset.java)
+                            compare_file=false
+                            ;;
                         library,sparse_bitset.java)
                             compare_file=false
                             ;;
+                        library,test_bitset.java)
+                            compare_file=false
+                            ;;
                         library,tree_bitset.java)
+                            compare_file=false
+                            ;;
+                        library,version_bitmap.java)
                             compare_file=false
                             ;;
                         profiler,snapshots.java)
@@ -1892,6 +1907,9 @@ EOF
                             compare_file=false
                             ;;
                         deep_profiler,measurement_units.java)
+                            compare_file=false
+                            ;;
+                        deep_profiler,read_profile.java)
                             compare_file=false
                             ;;
                     esac
