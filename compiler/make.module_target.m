@@ -140,8 +140,8 @@ make_module_target(ExtraOptions, Globals, Dep, Succeeded, !Info, !IO) :-
         ;
             Dep = dep_target(TargetFile),
             TargetFile = target_file(ModuleName, TargetType),
-            get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-                !Info, !IO),
+            get_module_dependencies(ProgressStream, Globals,
+                ModuleName, MaybeModuleDepInfo, !Info, !IO),
             (
                 MaybeModuleDepInfo = no_module_dep_info,
                 Succeeded = did_not_succeed,
@@ -323,7 +323,8 @@ make_dependency_files(Globals, TargetFile, TargetFileName, DepFilesToMake,
         MakeDepsSucceeded, !Info, !IO),
 
     % Check that the target files exist.
-    list.map_foldl2(get_target_timestamp(Globals, do_not_search),
+    list.map_foldl2(
+        get_target_timestamp(ProgressStream, Globals, do_not_search),
         TouchedTargetFiles, TargetTimestamps, !Info, !IO),
     (
         MakeDepsSucceeded = did_not_succeed,
@@ -1064,8 +1065,10 @@ find_files_maybe_touched_by_task(Globals, TargetFile, Task,
 find_files_maybe_touched_by_process_module(Globals, TargetFile, Task,
         TouchedTargetFiles, TouchedFileNames, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
-    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-        !Info, !IO),
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
+    get_module_dependencies(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo)
     ;
@@ -1081,8 +1084,8 @@ find_files_maybe_touched_by_process_module(Globals, TargetFile, Task,
     NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
     SourceFileModuleNames = [ModuleName | NestedSubModules],
 
-    list.map_foldl2(get_module_dependencies(Globals), NestedSubModules,
-        MaybeNestedModuleDepInfos, !Info, !IO),
+    list.map_foldl2(get_module_dependencies(ProgressStream, Globals),
+        NestedSubModules, MaybeNestedModuleDepInfos, !Info, !IO),
     ( if
         list.map(
             ( pred(some_module_dep_info(MDI)::in, MDI::out) is semidet),

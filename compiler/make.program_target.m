@@ -244,7 +244,10 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
             make_dependency_list(ObjModulesNonnested, IntermediateTargetType),
         ObjTargets = make_dependency_list(ObjModules, ObjectTargetType),
 
-        list.map_foldl2(get_foreign_object_targets(Globals, PIC),
+        % XXX MAKE_STREAM
+        io.output_stream(ProgressStream, !IO),
+        list.map_foldl2(
+            get_foreign_object_targets(ProgressStream, Globals, PIC),
             ObjModules, ForeignObjTargetsList, !Info, !IO),
         ForeignObjTargets = list.condense(ForeignObjTargetsList),
 
@@ -301,8 +304,6 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
             )
         ),
 
-        % XXX MAKE_STREAM
-        io.output_stream(ProgressStream, !IO),
         linked_target_file_name_full_curdir(Globals, MainModuleName, FileType,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName, !IO),
         get_file_timestamp([dir.this_directory], FullMainModuleLinkedFileName,
@@ -365,9 +366,12 @@ order_target_modules(Globals, Modules, OrderedModules, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 pair_module_with_timestamp(Globals, Module, Timestamp - Module, !Info, !IO) :-
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
     Search = do_not_search,
     Target = target_file(Module, module_target_source),
-    get_target_timestamp(Globals, Search, Target, MaybeTimestamp, !Info, !IO),
+    get_target_timestamp(ProgressStream, Globals, Search, Target,
+        MaybeTimestamp, !Info, !IO),
     (
         MaybeTimestamp = ok(Timestamp)
     ;
@@ -392,12 +396,12 @@ compare_paired_modules(TimeA - ModuleA, TimeB - ModuleB, Res) :-
         compare(Res, ModuleA, ModuleB)
     ).
 
-:- pred get_foreign_object_targets(globals::in, pic::in, module_name::in,
-    list(dependency_file)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred get_foreign_object_targets(io.text_output_stream::in, globals::in,
+    pic::in, module_name::in, list(dependency_file)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
-        !Info, !IO) :-
+get_foreign_object_targets(ProgressStream, Globals, PIC,
+        ModuleName, ObjectTargets, !Info, !IO) :-
     % Find externally compiled foreign code files for
     % `:- pragma foreign_proc' declarations.
     %
@@ -405,8 +409,8 @@ get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
     % external_foreign_code_files.
 
     globals.get_target(Globals, CompilationTarget),
-    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-        !Info, !IO),
+    get_module_dependencies(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo)
     ;
@@ -613,7 +617,8 @@ build_linked_target_2(Globals, MainModuleName, FileType,
         % procedures and fact tables. We don't need to include these in the
         % timestamp checking above -- they will have been checked when the
         % module's object file was built.
-        list.map_foldl2(get_module_foreign_object_files(Globals, PIC),
+        list.map_foldl2(
+            get_module_foreign_object_files(ProgressStream, Globals, PIC),
             AllModulesList, ForeignObjectFileLists, !Info, !IO),
         ForeignObjects = list.condense(ForeignObjectFileLists),
 
@@ -669,14 +674,14 @@ build_linked_target_2(Globals, MainModuleName, FileType,
         )
     ).
 
-:- pred get_module_foreign_object_files(globals::in, pic::in,
-    module_name::in, list(file_name)::out,
+:- pred get_module_foreign_object_files(io.text_output_stream::in, globals::in,
+    pic::in, module_name::in, list(file_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_module_foreign_object_files(Globals, PIC, ModuleName, ForeignObjectFiles,
-        !MakeInfo, !IO) :-
-    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-        !MakeInfo, !IO),
+get_module_foreign_object_files(ProgressStream, Globals, PIC,
+        ModuleName, ForeignObjectFiles, !MakeInfo, !IO) :-
+    get_module_dependencies(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !MakeInfo, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         external_foreign_code_files(Globals, PIC, ModuleDepInfo,
@@ -765,10 +770,12 @@ out_of_date_java_modules(Globals, ObjModules, OutOfDateModules, !Info, !IO) :-
             !Info, !IO),
         JavaTarget = target_file(ModuleName, module_target_java_code),
         ClassTarget = target_file(ModuleName, module_target_java_class_code),
-        get_target_timestamp(Globals, do_not_search, JavaTarget,
-            MaybeJavaTimestamp, !Info, !IO),
-        get_target_timestamp(Globals, do_not_search, ClassTarget,
-            MaybeClassTimestamp, !Info, !IO),
+        % XXX MAKE_STREAM
+        io.output_stream(ProgressStream, !IO),
+        get_target_timestamp(ProgressStream, Globals, do_not_search,
+            JavaTarget, MaybeJavaTimestamp, !Info, !IO),
+        get_target_timestamp(ProgressStream, Globals, do_not_search,
+            ClassTarget, MaybeClassTimestamp, !Info, !IO),
         ( if
             MaybeJavaTimestamp = ok(JavaTimestamp),
             MaybeClassTimestamp = ok(ClassTimestamp),
@@ -891,8 +898,8 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
             !Info, !IO)
     ;
         TargetType = misc_target_build_all(ModuleTargetType),
-        get_target_modules(Globals, ModuleTargetType, AllModules,
-            TargetModules, !Info, !IO),
+        get_target_modules(ProgressStream, Globals, ModuleTargetType,
+            AllModules, TargetModules, !Info, !IO),
         KeepGoing = make_info_get_keep_going(!.Info),
         ( if Succeeded0 = did_not_succeed, KeepGoing = do_not_keep_going then
             Succeeded = did_not_succeed
@@ -941,15 +948,16 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
             LibSucceeded, !Info, !Specs, !IO),
         (
             LibSucceeded = succeeded,
-            install_library(Globals, MainModuleName, Succeeded, !Info, !IO)
+            install_library(ProgressStream, Globals,
+                MainModuleName, Succeeded, !Info, !IO)
         ;
             LibSucceeded = did_not_succeed,
             Succeeded = did_not_succeed
         )
     ;
         TargetType = misc_target_build_xml_docs,
-        get_target_modules(Globals, module_target_xml_doc, AllModules,
-            TargetModules, !Info, !IO),
+        get_target_modules(ProgressStream, Globals, module_target_xml_doc,
+            AllModules, TargetModules, !Info, !IO),
         KeepGoing = make_info_get_keep_going(!.Info),
         ( if Succeeded0 = did_not_succeed, KeepGoing = do_not_keep_going then
             Succeeded = did_not_succeed
@@ -1020,8 +1028,10 @@ make_all_interface_files(Globals, AllModules0, Succeeded, !Info, !IO) :-
 
 collect_modules_with_children(Globals, ModuleName, !ParentModules,
         !Info, !IO) :-
-    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-        !Info, !IO),
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
+    get_module_dependencies(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         module_dep_info_get_children(ModuleDepInfo, Children),
@@ -1226,8 +1236,11 @@ build_analysis_files(Globals, MainModuleName, AllModules,
 
 build_analysis_files_1(Globals, MainModuleName, AllModules, Succeeded,
         !Info, !IO) :-
-    get_target_modules(Globals, module_target_analysis_registry, AllModules,
-        TargetModules0, !Info, !IO),
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
+    get_target_modules(ProgressStream, Globals,
+        module_target_analysis_registry, AllModules, TargetModules0,
+        !Info, !IO),
     reverse_ordered_modules(make_info_get_module_dependencies(!.Info),
         TargetModules0, TargetModules1),
     % Filter out the non-local modules so we don't try to reanalyse them.
@@ -1288,30 +1301,31 @@ build_analysis_files_2(Globals, MainModuleName, TargetModules,
 
 %---------------------------------------------------------------------------%
 
-:- pred get_target_modules(globals::in, module_target_type::in,
-    list(module_name)::in, list(module_name)::out,
+:- pred get_target_modules(io.text_output_stream::in, globals::in,
+    module_target_type::in, list(module_name)::in, list(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_target_modules(Globals, TargetType, AllModules, TargetModules,
-        !Info, !IO) :-
+get_target_modules(ProgressStream, Globals, TargetType,
+        AllModules, TargetModules, !Info, !IO) :-
     ( if TargetType = module_target_errors then
         % `.err' files are only produced for the top-level module
         % in each source file.
-        list.foldl3(get_non_nested_target_modules(Globals), AllModules,
-            cord.init, TargetModulesCord, !Info, !IO),
+        list.foldl3(
+            get_non_nested_target_modules(ProgressStream, Globals),
+            AllModules, cord.init, TargetModulesCord, !Info, !IO),
         TargetModules = cord.list(TargetModulesCord)
     else
         TargetModules = AllModules
     ).
 
-:- pred get_non_nested_target_modules(globals::in, module_name::in,
-    cord(module_name)::in, cord(module_name)::out,
+:- pred get_non_nested_target_modules(io.text_output_stream::in, globals::in,
+    module_name::in, cord(module_name)::in, cord(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_non_nested_target_modules(Globals, ModuleName, !TargetModulesCord,
-        !Info, !IO) :-
-    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-        !Info, !IO),
+get_non_nested_target_modules(ProgressStream, Globals, ModuleName,
+        !TargetModulesCord, !Info, !IO) :-
+    get_module_dependencies(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
     ( if
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         module_dep_info_get_source_file_module_name(ModuleDepInfo,
@@ -1498,10 +1512,12 @@ build_java_library(Globals, MainModuleName, Succeeded, !Info, !Specs, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred install_library(globals::in, module_name::in, maybe_succeeded::out,
+:- pred install_library(io.text_output_stream::in, globals::in,
+    module_name::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-install_library(Globals, MainModuleName, Succeeded, !Info, !IO) :-
+install_library(ProgressStream, Globals, MainModuleName, Succeeded,
+        !Info, !IO) :-
     find_reachable_local_modules(Globals, MainModuleName, DepsSucceeded,
         AllModules0, !Info, !IO),
     AllModules = set.to_sorted_list(AllModules0),
@@ -1510,7 +1526,8 @@ install_library(Globals, MainModuleName, Succeeded, !Info, !IO) :-
         DepsSucceeded = succeeded,
         DirSucceeded = succeeded
     then
-        list.map_foldl2(install_ints_and_headers(Globals, LinkSucceeded),
+        list.map_foldl2(
+            install_ints_and_headers(ProgressStream, Globals, LinkSucceeded),
             AllModules, IntsSucceeded, !Info, !IO),
         install_extra_headers(Globals, ExtraHdrsSucceeded, !IO),
 
@@ -1535,14 +1552,14 @@ install_library(Globals, MainModuleName, Succeeded, !Info, !IO) :-
         Succeeded = did_not_succeed
     ).
 
-:- pred install_ints_and_headers(globals::in, maybe_succeeded::in,
-    module_name::in, maybe_succeeded::out,
+:- pred install_ints_and_headers(io.text_output_stream::in, globals::in,
+    maybe_succeeded::in, module_name::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
-        !Info, !IO) :-
-    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-        !Info, !IO),
+install_ints_and_headers(ProgressStream, Globals, SubdirLinkSucceeded,
+        ModuleName, Succeeded, !Info, !IO) :-
+    get_module_dependencies(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         % We always install the `.int0' files for a library even though they
@@ -1759,6 +1776,8 @@ install_library_grade_2(Globals, LinkSucceeded0, ModuleName, AllModules,
 
 install_library_grade_files(Globals, LinkSucceeded0, GradeDir, ModuleName,
         AllModules, Succeeded, !Info, !IO) :-
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
     make_grade_install_dirs(Globals, GradeDir, DirResult, LinkSucceeded1, !IO),
     LinkSucceeded = LinkSucceeded0 `and` LinkSucceeded1,
     (
@@ -1800,7 +1819,8 @@ install_library_grade_files(Globals, LinkSucceeded0, GradeDir, ModuleName,
         ),
 
         list.map_foldl2(
-            install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir),
+            install_grade_ints_and_headers(ProgressStream, Globals,
+                LinkSucceeded, GradeDir),
             AllModules, IntsHeadersSucceeded, !Info, !IO),
         Succeeded = and_list(
             [LibsSucceeded, InitSucceeded | IntsHeadersSucceeded])
@@ -1823,14 +1843,14 @@ install_grade_init(Globals, GradeDir, ModuleName, Succeeded, !IO) :-
 
     % Install the `.opt', `.analysis' and `.mih' files for the current grade.
     %
-:- pred install_grade_ints_and_headers(globals::in, maybe_succeeded::in,
-    string::in, module_name::in, maybe_succeeded::out,
+:- pred install_grade_ints_and_headers(io.text_output_stream::in, globals::in,
+    maybe_succeeded::in, string::in, module_name::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
-        Succeeded, !Info, !IO) :-
-    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-        !Info, !IO),
+install_grade_ints_and_headers(ProgressStream, Globals, LinkSucceeded,
+        GradeDir, ModuleName, Succeeded, !Info, !IO) :-
+    get_module_dependencies(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(_ModuleDepInfo),
         globals.lookup_string_option(Globals, install_prefix, Prefix),
@@ -2193,8 +2213,8 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
     remove_module_file_for_make(ProgressStream, Globals, very_verbose,
         ModuleName, ext_cur_ngs(ext_cur_ngs_misc_prof), !Info, !IO),
 
-    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-        !Info, !IO),
+    get_module_dependencies(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         module_dep_info_get_fact_tables(ModuleDepInfo, FactTableFilesSet),

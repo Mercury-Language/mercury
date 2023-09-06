@@ -34,12 +34,12 @@
     % Dependencies are generated on demand, not by a `mmc --make depend'
     % command, so this predicate may need to read the source for the module.
     %
-:- pred get_module_dependencies(globals::in, module_name::in,
-    maybe_module_dep_info::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred get_module_dependencies(io.text_output_stream::in, globals::in,
+    module_name::in, maybe_module_dep_info::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-:- pred write_module_dep_file(globals::in, burdened_module::in,
-    io::di, io::uo) is det.
+:- pred write_module_dep_file(io.text_output_stream::in, globals::in,
+    burdened_module::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -118,12 +118,13 @@ version_number(module_dep_file_v2, 2).
 
 %---------------------------------------------------------------------------%
 
-get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo, !Info, !IO) :-
+get_module_dependencies(ProgressStream, Globals, ModuleName,
+        MaybeModuleDepInfo, !Info, !IO) :-
     RebuildModuleDeps = make_info_get_rebuild_module_deps(!.Info),
     (
         ModuleName = unqualified(_),
-        maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-            MaybeModuleDepInfo, !Info, !IO)
+        maybe_get_module_dependencies(ProgressStream, Globals,
+            RebuildModuleDeps, ModuleName, MaybeModuleDepInfo, !Info, !IO)
     ;
         ModuleName = qualified(_, _),
         % For submodules, we need to generate the dependencies for the
@@ -133,25 +134,24 @@ get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo, !Info, !IO) :-
         % as a side effect of generating the parent's dependencies.
         AncestorsAndSelf = get_ancestors(ModuleName) ++ [ModuleName],
         Error0 = no,
-        maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
-            AncestorsAndSelf, Error0, !Info, !IO),
+        maybe_get_modules_dependencies(ProgressStream, Globals,
+            RebuildModuleDeps, AncestorsAndSelf, Error0, !Info, !IO),
 
         ModuleDepMap = make_info_get_module_dependencies(!.Info),
         map.lookup(ModuleDepMap, ModuleName, MaybeModuleDepInfo)
     ).
 
-:- pred maybe_get_modules_dependencies(globals::in,
+:- pred maybe_get_modules_dependencies(io.text_output_stream::in, globals::in,
     maybe_rebuild_module_deps::in, list(module_name)::in, bool::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-maybe_get_modules_dependencies(_Globals, _RebuildModuleDeps,
-        [], _, !Info, !IO).
-maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
+maybe_get_modules_dependencies(_, _, _, [], _, !Info, !IO).
+maybe_get_modules_dependencies(ProgressStream, Globals, RebuildModuleDeps,
         [ModuleName | ModuleNames], !.Error, !Info, !IO) :-
     (
         !.Error = no,
-        maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-            MaybeModuleDepInfo, !Info, !IO),
+        maybe_get_module_dependencies(ProgressStream, Globals,
+            RebuildModuleDeps, ModuleName, MaybeModuleDepInfo, !Info, !IO),
         (
             MaybeModuleDepInfo = some_module_dep_info(_)
         ;
@@ -167,29 +167,29 @@ maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
         map.set(ModuleName, no_module_dep_info, ModuleDepMap0, ModuleDepMap),
         make_info_set_module_dependencies(ModuleDepMap, !Info)
     ),
-    maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
+    maybe_get_modules_dependencies(ProgressStream, Globals, RebuildModuleDeps,
         ModuleNames, !.Error, !Info, !IO).
 
-:- pred maybe_get_module_dependencies(globals::in,
+:- pred maybe_get_module_dependencies(io.text_output_stream::in, globals::in,
     maybe_rebuild_module_deps::in, module_name::in, maybe_module_dep_info::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-        MaybeModuleDepInfo, !Info, !IO) :-
+maybe_get_module_dependencies(ProgressStream, Globals, RebuildModuleDeps,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO) :-
     ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
     ( if map.search(ModuleDepMap0, ModuleName, MaybeModuleDepInfo0) then
         MaybeModuleDepInfo = MaybeModuleDepInfo0
     else
-        do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-            MaybeModuleDepInfo, !Info, !IO)
+        do_get_module_dependencies(ProgressStream, Globals, RebuildModuleDeps,
+            ModuleName, MaybeModuleDepInfo, !Info, !IO)
     ).
 
-:- pred do_get_module_dependencies(globals::in, maybe_rebuild_module_deps::in,
-    module_name::in, maybe_module_dep_info::out,
+:- pred do_get_module_dependencies(io.text_output_stream::in, globals::in,
+    maybe_rebuild_module_deps::in, module_name::in, maybe_module_dep_info::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-        !:MaybeModuleDepInfo, !Info, !IO) :-
+do_get_module_dependencies(ProgressStream, Globals, RebuildModuleDeps,
+        ModuleName, !:MaybeModuleDepInfo, !Info, !IO) :-
     % We can't just use
     %   `get_target_timestamp(ModuleName - source, ..)'
     % because that could recursively call get_module_dependencies,
@@ -280,10 +280,11 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
                 )
             ;
                 MaybeSourceFileTimestamp1 = error(Message),
-                io.format("** Error reading file `%s' " ++
+                io.format(ProgressStream,
+                    "** Error reading file `%s' " ++
                     "to generate dependencies: %s.\n",
                     [s(SourceFileName1), s(Message)], !IO),
-                maybe_write_importing_module(ModuleName,
+                maybe_write_importing_module(ProgressStream, ModuleName,
                     make_info_get_importing_module(!.Info), !IO)
             )
         else
@@ -298,9 +299,7 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
                 "Module dependencies file '%s' not found in directories %s.\n",
                 [s(DepFileName), s(SearchDirsString)]),
             DebugMsg),
-        % XXX MAKE_STREAM
-        io.output_stream(DebugStream, !IO),
-        maybe_write_msg(DebugStream, DebugMsg, !IO),
+        maybe_write_msg(ProgressStream, DebugMsg, !IO),
 
         % Try to make the dependencies. This will succeed when the module name
         % doesn't match the file name and the dependencies for this module
@@ -330,7 +329,7 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
 
 %---------------------------------------------------------------------------%
 
-write_module_dep_file(Globals, BurdenedModule0, !IO) :-
+write_module_dep_file(ProgressStream, Globals, BurdenedModule0, !IO) :-
     BurdenedModule0 = burdened_module(Baggage0, ParseTreeModuleSrc),
     Baggage0 = module_baggage(SourceFileName, _SourceFileDir,
         SourceFileModuleName, MaybeTopModule, _MaybeTimestampMap,
@@ -345,12 +344,12 @@ write_module_dep_file(Globals, BurdenedModule0, !IO) :-
         GrabbedFileMap, Errors),
 
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
-    do_write_module_dep_file(Globals, BurdenedModule, !IO).
+    do_write_module_dep_file(ProgressStream, Globals, BurdenedModule, !IO).
 
-:- pred do_write_module_dep_file(globals::in, burdened_module::in,
-    io::di, io::uo) is det.
+:- pred do_write_module_dep_file(io.text_output_stream::in, globals::in,
+    burdened_module::in, io::di, io::uo) is det.
 
-do_write_module_dep_file(Globals, BurdenedModule, !IO) :-
+do_write_module_dep_file(ProgressStream, Globals, BurdenedModule, !IO) :-
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     module_name_to_file_name_create_dirs(Globals, $pred,
@@ -365,7 +364,7 @@ do_write_module_dep_file(Globals, BurdenedModule, !IO) :-
     ;
         ProgDepResult = error(Error),
         io.error_message(Error, Msg),
-        io.format("Error opening %s for output: %s\n",
+        io.format(ProgressStream, "Error opening %s for output: %s\n",
             [s(ProgDepFile), s(Msg)], !IO),
         io.set_exit_status(1, !IO)
     ).
@@ -516,6 +515,8 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
         ext_cur_ngs(ext_cur_ngs_misc_module_dep), ModuleName, ModuleDepFile),
     search_for_file_returning_dir_and_stream(SearchDirs, ModuleDepFile,
         MaybeDirAndStream, !IO),
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
     (
         MaybeDirAndStream = ok(path_name_and_stream(ModuleDir, DepStream)),
         mercury_term_parser.read_term(DepStream, TermResult, !IO),
@@ -538,7 +539,7 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
             read_module_dependencies_remake_msg(RebuildModuleDeps,
                 ModuleDir ++ "/" ++ ModuleDepFile, ErrorMsg, Msg),
             % XXX MAKE_STREAM
-            io.write_string(Msg, !IO),
+            io.write_string(ProgressStream, Msg, !IO),
             read_module_dependencies_remake(Globals, RebuildModuleDeps,
                 ModuleName, !Info, !IO)
         )
@@ -548,9 +549,7 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
             read_module_dependencies_remake_msg(RebuildModuleDeps,
                 ModuleDepFile, ErrorMsg),
             DebugMsg),
-        % XXX MAKE_STREAM
-        io.output_stream(DebugStream, !IO),
-        maybe_write_msg(DebugStream, DebugMsg, !IO),
+        maybe_write_msg(ProgressStream, DebugMsg, !IO),
         read_module_dependencies_remake(Globals, RebuildModuleDeps,
             ModuleName, !Info, !IO)
     ).
@@ -912,9 +911,12 @@ make_module_dependencies_fatal_error(Globals, OldOutputStream, ErrorStream,
     io.set_output_stream(OldOutputStream, _, !IO),
     (
         DisplayErrorReadingFile = yes,
-        io.format("** Error reading file `%s' to generate dependencies.\n",
+        % XXX MAKE_STREAM
+        io.output_stream(ProgressStream, !IO),
+        io.format(ProgressStream,
+            "** Error reading file `%s' to generate dependencies.\n",
             [s(SourceFileName)], !IO),
-        maybe_write_importing_module(ModuleName,
+        maybe_write_importing_module(ProgressStream, ModuleName,
             make_info_get_importing_module(!.Info), !IO)
     ;
         DisplayErrorReadingFile = no
@@ -1008,7 +1010,10 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
     ),
 
     setup_checking_for_interrupt(CookieWMDF, !IO),
-    list.foldl(do_write_module_dep_file(Globals), BurdenedModules, !IO),
+    % XXX MAKE_STREAM
+    io.output_stream(WriteProgressStream, !IO),
+    list.foldl(do_write_module_dep_file(WriteProgressStream, Globals),
+        BurdenedModules, !IO),
     CleanupWMDF = cleanup_module_dep_files(Globals, SubModuleNames),
     teardown_checking_for_interrupt(VeryVerbose, CookieWMDF,
         CleanupWMDF, succeeded, _Succeeded, !Info, !IO),
@@ -1071,21 +1076,27 @@ cleanup_module_dep_file(Globals, ModuleName, !Info, !IO) :-
     remove_module_file_for_make(ProgressStream, Globals, verbose_make,
         ModuleName, ext_cur_ngs(ext_cur_ngs_misc_module_dep), !Info, !IO).
 
-:- pred maybe_write_importing_module(module_name::in,
-    maybe(import_or_include)::in, io::di, io::uo) is det.
+:- pred maybe_write_importing_module(io.text_output_stream::in,
+    module_name::in, maybe(import_or_include)::in, io::di, io::uo) is det.
 
-maybe_write_importing_module(_, no, !IO).
-maybe_write_importing_module(ModuleName, yes(ImportOrInclude), !IO) :-
+maybe_write_importing_module(ProgressStream, ModuleName, MaybeIoI, !IO) :-
     (
-        ImportOrInclude = ioi_import(ImportingModuleName),
-        io.format("** Module `%s' is imported by module `%s'.\n",
-            [s(escaped_sym_name_to_string(ModuleName)),
-            s(escaped_sym_name_to_string(ImportingModuleName))], !IO)
+        MaybeIoI = no
     ;
-        ImportOrInclude = ioi_include(IncludingModuleName),
-        io.format("** Module `%s' is included by module `%s'.\n",
-            [s(escaped_sym_name_to_string(ModuleName)),
-            s(escaped_sym_name_to_string(IncludingModuleName))], !IO)
+        MaybeIoI = yes(ImportOrInclude),
+        (
+            ImportOrInclude = ioi_import(ImportingModuleName),
+            io.format(ProgressStream,
+                "** Module `%s' is imported by module `%s'.\n",
+                [s(escaped_sym_name_to_string(ModuleName)),
+                s(escaped_sym_name_to_string(ImportingModuleName))], !IO)
+        ;
+            ImportOrInclude = ioi_include(IncludingModuleName),
+            io.format(ProgressStream,
+                "** Module `%s' is included by module `%s'.\n",
+                [s(escaped_sym_name_to_string(ModuleName)),
+                s(escaped_sym_name_to_string(IncludingModuleName))], !IO)
+        )
     ).
 
 %---------------------------------------------------------------------------%

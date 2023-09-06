@@ -41,9 +41,9 @@
 
     % Find the timestamp for the given dependency file.
     %
-:- pred get_dependency_timestamp(globals::in, dependency_file::in,
-    maybe_error(timestamp)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred get_dependency_timestamp(io.text_output_stream::in, globals::in,
+    dependency_file::in, maybe_error(timestamp)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
     % get_target_timestamp(Globals, Search, TargetFile, Timestamp)
     %
@@ -51,8 +51,8 @@
     % `Search' should be `do_search' if the file could be part of an
     % installed library.
     %
-:- pred get_target_timestamp(globals::in, maybe_search::in,
-    target_file::in, maybe_error(timestamp)::out,
+:- pred get_target_timestamp(io.text_output_stream::in, globals::in,
+    maybe_search::in, target_file::in, maybe_error(timestamp)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Find the timestamp of the first file matching the given
@@ -119,16 +119,16 @@ get_timestamp_file_timestamp(Globals, target_file(ModuleName, TargetType),
 
 %---------------------------------------------------------------------------%
 
-get_dependency_timestamp(Globals, DependencyFile, MaybeTimestamp, !Info,
-        !IO) :-
+get_dependency_timestamp(ProgressStream, Globals, DependencyFile,
+        MaybeTimestamp, !Info, !IO) :-
     (
         DependencyFile = dep_file(FileName),
         SearchDirs = [dir.this_directory],
         get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO)
     ;
         DependencyFile = dep_target(Target),
-        get_target_timestamp(Globals, do_search, Target, MaybeTimestamp0,
-            !Info, !IO),
+        get_target_timestamp(ProgressStream, Globals, do_search, Target,
+            MaybeTimestamp0, !Info, !IO),
         ( if
             Target = target_file(_, module_target_c_header(header_mih)),
             MaybeTimestamp0 = ok(_)
@@ -146,15 +146,15 @@ get_dependency_timestamp(Globals, DependencyFile, MaybeTimestamp, !Info,
 
 %---------------------------------------------------------------------------%
 
-get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
-        !IO) :-
+get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
+        MaybeTimestamp, !Info, !IO) :-
     TargetFile = target_file(_ModuleName, TargetType),
     ( if TargetType = module_target_analysis_registry then
         ForSearch = maybe_search_to_maybe_for_search(Search),
         get_file_name(Globals, $pred, ForSearch, TargetFile, FileName,
             !Info, !IO),
-        get_target_timestamp_analysis_registry(Globals, Search, TargetFile,
-            FileName, MaybeTimestamp, !Info, !IO)
+        get_target_timestamp_analysis_registry(ProgressStream, Globals,
+            Search, TargetFile, FileName, MaybeTimestamp, !Info, !IO)
     else
         % This path is hit very frequently so it is worth caching timestamps
         % by target_file. It avoids having to compute a file name for a
@@ -169,8 +169,8 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
             ForSearch = maybe_search_to_maybe_for_search(Search),
             get_file_name(Globals, $pred, ForSearch, TargetFile, FileName,
                 !Info, !IO),
-            get_target_timestamp_2(Globals, Search, TargetFile,
-                FileName, MaybeTimestamp, !Info, !IO),
+            get_target_timestamp_2(ProgressStream, Globals,
+                Search, TargetFile, FileName, MaybeTimestamp, !Info, !IO),
             (
                 MaybeTimestamp = ok(Timestamp),
                 TargetFileTimestamps1 =
@@ -192,12 +192,13 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
     % `.analysis_status' file says the `.analysis' file is invalid,
     % then we treat it as out of date.
     %
-:- pred get_target_timestamp_analysis_registry(globals::in, maybe_search::in,
-    target_file::in, file_name::in, maybe_error(timestamp)::out,
+:- pred get_target_timestamp_analysis_registry(io.text_output_stream::in,
+    globals::in, maybe_search::in, target_file::in, file_name::in,
+    maybe_error(timestamp)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_target_timestamp_analysis_registry(Globals, Search, TargetFile, FileName,
-        MaybeTimestamp, !Info, !IO) :-
+get_target_timestamp_analysis_registry(ProgressStream, Globals, Search,
+        TargetFile, FileName, MaybeTimestamp, !Info, !IO) :-
     TargetFile = target_file(ModuleName, _TargetType),
     FileTimestamps0 = make_info_get_file_timestamps(!.Info),
     ( if map.search(FileTimestamps0, FileName, MaybeTimestamp0) then
@@ -208,8 +209,8 @@ get_target_timestamp_analysis_registry(Globals, Search, TargetFile, FileName,
             ( Status = optimal
             ; Status = suboptimal
             ),
-            get_target_timestamp_2(Globals, Search, TargetFile, FileName,
-                MaybeTimestamp, !Info, !IO)
+            get_target_timestamp_2(ProgressStream, Globals, Search, TargetFile,
+                FileName, MaybeTimestamp, !Info, !IO)
         ;
             Status = invalid,
             MaybeTimestamp = error("invalid module"),
@@ -219,12 +220,13 @@ get_target_timestamp_analysis_registry(Globals, Search, TargetFile, FileName,
         )
     ).
 
-:- pred get_target_timestamp_2(globals::in, maybe_search::in, target_file::in,
-    file_name::in, maybe_error(timestamp)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred get_target_timestamp_2(io.text_output_stream::in, globals::in,
+    maybe_search::in, target_file::in, file_name::in,
+    maybe_error(timestamp)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_target_timestamp_2(Globals, Search, TargetFile, FileName, MaybeTimestamp,
-        !Info, !IO) :-
+get_target_timestamp_2(ProgressStream, Globals, Search, TargetFile, FileName,
+        MaybeTimestamp, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     (
         Search = do_search,
@@ -244,9 +246,8 @@ get_target_timestamp_2(Globals, Search, TargetFile, FileName, MaybeTimestamp,
         % it just means that a library wasn't compiled with
         % `--intermodule-optimization'.
         % Similarly for `.analysis' files.
-
-        get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-            !Info, !IO),
+        get_module_dependencies(ProgressStream, Globals,
+            ModuleName, MaybeModuleDepInfo, !Info, !IO),
         ( if
             MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
             module_dep_info_get_source_file_dir(ModuleDepInfo, ModuleDir),

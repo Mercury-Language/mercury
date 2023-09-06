@@ -701,8 +701,10 @@ non_intermod_direct_imports(Globals, ModuleIndex, Succeeded, Modules,
 non_intermod_direct_imports_uncached(Globals, ModuleIndex, Succeeded, Modules,
         !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-        !Info, !IO),
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
+    get_module_dependencies(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
 
@@ -896,8 +898,10 @@ find_module_foreign_imports(Languages, Globals, ModuleIndex, Succeeded,
 find_module_foreign_imports_uncached(Languages, Globals, ModuleIndex,
         Succeeded, ForeignModules, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-        !Info, !IO),
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
+    get_module_dependencies(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         module_dep_info_get_fims(ModuleDepInfo, FIMSpecs),
@@ -923,8 +927,10 @@ find_module_foreign_imports_uncached(Languages, Globals, ModuleIndex,
 
 fact_table_files(Globals, ModuleIndex, Succeeded, Files, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-        !Info, !IO),
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
+    get_module_dependencies(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         Succeeded = succeeded,
@@ -945,8 +951,10 @@ fact_table_files(Globals, ModuleIndex, Succeeded, Files, !Info, !IO) :-
 foreign_include_files(Globals, ModuleIndex, Succeeded, Files, !Info, !IO) :-
     globals.get_backend_foreign_languages(Globals, Languages),
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-        !Info, !IO),
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
+    get_module_dependencies(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         Succeeded = succeeded,
@@ -1247,8 +1255,10 @@ find_transitive_module_dependencies_uncached(KeepGoing, DependenciesType,
         Modules = union(Modules0, Modules1)
     else
         module_index_to_name(!.Info, ModuleIndex, ModuleName),
-        get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-            !Info, !IO),
+        % XXX MAKE_STREAM
+        io.output_stream(ProgressStream, !IO),
+        get_module_dependencies(ProgressStream, Globals,
+            ModuleName, MaybeModuleDepInfo, !Info, !IO),
         (
             MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
             module_dep_info_get_source_file_dir(ModuleDepInfo, ModuleDir),
@@ -1346,8 +1356,10 @@ remove_nested_modules(Globals, Modules0, Modules, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 collect_nested_modules(Globals, ModuleName, !NestedModules, !Info, !IO) :-
-    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-        !Info, !IO),
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
+    get_module_dependencies(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
@@ -1382,7 +1394,8 @@ get_dependency_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
         ( if version_hash_table.search(DepStatusMap0, Dep, StatusPrime) then
             Status = StatusPrime
         else
-            get_dependency_timestamp(Globals, Dep, MaybeTimestamp, !Info, !IO),
+            get_dependency_timestamp(ProgressStream, Globals,
+                Dep, MaybeTimestamp, !Info, !IO),
             (
                 MaybeTimestamp = ok(_),
                 Status = deps_status_up_to_date
@@ -1427,8 +1440,8 @@ get_dependency_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
             get_make_target_file_name(Globals, $pred, Target, TargetFileName,
                 !IO),
             MaybeTargetFileName = yes(TargetFileName),
-            get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-                !Info, !IO),
+            get_module_dependencies(ProgressStream, Globals,
+                ModuleName, MaybeModuleDepInfo, !Info, !IO),
             (
                 MaybeModuleDepInfo = no_module_dep_info,
                 Status = deps_status_error
@@ -1440,8 +1453,8 @@ get_dependency_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
                 else
                     % Targets from libraries are always considered to be
                     % up-to-date if they exist.
-                    get_target_timestamp(Globals, do_search, Target,
-                        MaybeTimestamp, !Info, !IO),
+                    get_target_timestamp(ProgressStream, Globals, do_search,
+                        Target, MaybeTimestamp, !Info, !IO),
                     (
                         MaybeTimestamp = ok(_),
                         Status = deps_status_up_to_date
@@ -1523,8 +1536,8 @@ check_dependencies(ProgressStream, Globals, TargetFileName, MaybeTimestamp,
                 [s(TargetFileName)]),
             DebugMsg),
         maybe_write_msg(ProgressStream, DebugMsg, !IO),
-        list.map_foldl2(get_dependency_timestamp(Globals), DepFiles,
-            DepTimestamps, !Info, !IO),
+        list.map_foldl2(get_dependency_timestamp(ProgressStream, Globals),
+            DepFiles, DepTimestamps, !Info, !IO),
 
         check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
             BuildDepsSucceeded, DepStatusTuples,

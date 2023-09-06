@@ -94,8 +94,10 @@ get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
         % In some cases the module name won't match the file name
         % (module mdb.parse might be in parse.m or mdb.m), so we need to
         % look up the file name here.
-        get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
-            !Info, !IO),
+        % XXX MAKE_STREAM
+        io.output_stream(ProgressStream, !IO),
+        get_module_dependencies(ProgressStream, Globals,
+            ModuleName, MaybeModuleDepInfo, !Info, !IO),
         (
             MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
             module_dep_info_get_source_file_name(ModuleDepInfo, FileName)

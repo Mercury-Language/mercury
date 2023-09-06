@@ -246,7 +246,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         (
             OutputMMCMakeDeps = yes,
             BurdenedModule0 = burdened_module(Baggage0, ParseTreeModuleSrc),
-            make.module_dep_file.write_module_dep_file(Globals,
+            make.module_dep_file.write_module_dep_file(ProgressStream, Globals,
                 BurdenedModule0, !IO)
         ;
             OutputMMCMakeDeps = no
