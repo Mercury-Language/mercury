@@ -1878,7 +1878,7 @@ install_grade_ints_and_headers(Globals, LinkSucceeded, GradeDir, ModuleName,
             install_subdir_file(Globals, LinkSucceeded, GradeIntDir,
                 ModuleName,
                 {ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_analysis),
-                    "analysiss"},
+                    "analyses"},
                 IntermodAnalysisSucceeded, !IO)
         ;
             IntermodAnalysis = no,
@@ -2037,7 +2037,7 @@ make_grade_install_dirs(Globals, Grade, Result, LinkResult, !IO) :-
         make_directory(GradeIncSubdir/"mihs", Result4, !IO),
         make_directory(GradeIntsSubdir/"opts", Result5, !IO),
         make_directory(GradeIntsSubdir/"trans_opts", Result6, !IO),
-        make_directory(GradeIntsSubdir/"analysiss", Result7, !IO),
+        make_directory(GradeIntsSubdir/"analyses", Result7, !IO),
         Results = [Result4, Result5, Result6, Result7 | Results0]
     ),
     print_mkdir_errors(Results, Result, !IO).

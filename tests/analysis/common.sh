@@ -1,3 +1,4 @@
+#-----------------------------------------------------------------------------#
 # vim: ft=sh ts=8 sts=4 sw=4 et
 #-----------------------------------------------------------------------------#
 # Common functions shared by the test scripts in the analysis_* directories.
@@ -11,7 +12,7 @@ failed () {
 
 check_result () {
     # args: file pattern
-    if ! grep -q -e "$2" Mercury/analysiss/$1.analysis
+    if ! grep -q -e "$2" Mercury/analyses/$1.analysis
     then
         failed
     fi
@@ -19,15 +20,21 @@ check_result () {
 
 check_statuses () {
     case "`cat Mercury/analysis_statuss/* | tr -d '\n'`" in
-        $1) ;;
-        *) failed
+        $1)
+            ;;
+        *)
+            failed
+            ;;
     esac
 }
 
 check_no_requests () {
     case "`ls Mercury/requests`" in
-        "") ;;
-        *) failed
+        "")
+            ;;
+        *)
+            failed
+            ;;
     esac
 }
 
