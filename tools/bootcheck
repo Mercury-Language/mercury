@@ -1916,10 +1916,28 @@ EOF
                     ;;
                 csharp*)
                     case "${dir},${base_file}" in
+                        library,bitmap.cs)
+                            compare_file=false
+                            ;;
+                        library,fat_sparse_bitset.cs)
+                            compare_file=false
+                            ;;
+                        library,fatter_sparse_bitset.cs)
+                            compare_file=false
+                            ;;
                         library,sparse_bitset.cs)
                             compare_file=false
                             ;;
+                        library,test_bitmap.cs)
+                            compare_file=false
+                            ;;
+                        library,test_bitset.cs)
+                            compare_file=false
+                            ;;
                         library,tree_bitset.cs)
+                            compare_file=false
+                            ;;
+                        library,version_bitmap.cs)
                             compare_file=false
                             ;;
                         profiler,snapshots.cs)
@@ -1929,6 +1947,9 @@ EOF
                             compare_file=false
                             ;;
                         deep_profiler,measurement_units.cs)
+                            compare_file=false
+                            ;;
+                        deep_profiler,read_profile.cs)
                             compare_file=false
                             ;;
                     esac
