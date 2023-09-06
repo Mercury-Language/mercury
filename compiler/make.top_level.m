@@ -205,13 +205,16 @@ report_target_with_dir_component(ProgName, Target) = Spec :-
 make_top_target(Globals, Target, Succeeded, !Info, !IO) :-
     Target = top_target_file(ModuleName, TargetType),
     globals.lookup_bool_option(Globals, track_flags, TrackFlags),
+    get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
     (
         TrackFlags = no,
         TrackFlagsSucceeded = succeeded
     ;
         TrackFlags = yes,
-        make_track_flags_files(Globals, ModuleName, TrackFlagsSucceeded,
-            !Info, !IO)
+        % XXX MAKE_STREAM
+        io.output_stream(ProgressStream, !IO),
+        make_track_flags_files(ErrorStream, ProgressStream, Globals,
+            ModuleName, TrackFlagsSucceeded, !Info, !IO)
     ),
     (
         TrackFlagsSucceeded = succeeded,
@@ -226,13 +229,11 @@ make_top_target(Globals, Target, Succeeded, !Info, !IO) :-
                 ProgramTargetType),
             make_linked_target(Globals, LinkedTargetFile, Succeeded,
                 !Info, [], Specs, !IO),
-            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
             write_error_specs(ErrorStream, Globals, Specs, !IO)
         ;
             TargetType = misc_target(MiscTargetType),
             make_misc_target(Globals, ModuleName - MiscTargetType, Succeeded,
                 !Info, [], Specs, !IO),
-            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
             write_error_specs(ErrorStream, Globals, Specs, !IO)
         )
     ;

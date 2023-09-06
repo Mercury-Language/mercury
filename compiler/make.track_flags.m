@@ -28,11 +28,12 @@
     % Generate the .track_flags files for local modules reachable from the
     % target module. The files contain hashes of the options which are set for
     % that particular module (deliberately ignoring some options), and are only
-    % updated if they have changed since the last --make run. We use hashes as
-    % the full option tables are quite large.
+    % updated if they have changed since the last --make run. We use hashes
+    % as the full option tables are quite large.
     %
-:- pred make_track_flags_files(globals::in, module_name::in,
-    maybe_succeeded::out,
+:- pred make_track_flags_files(io.text_output_stream::in,
+    io.text_output_stream::in, globals::in,
+    module_name::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -70,14 +71,15 @@
                 lh_hash     :: string
             ).
 
-make_track_flags_files(Globals, ModuleName, Succeeded, !Info, !IO) :-
+make_track_flags_files(ErrorStream, ProgressStream, Globals, ModuleName,
+        Succeeded, !Info, !IO) :-
     find_reachable_local_modules(Globals, ModuleName, Succeeded0, ModuleNames,
         !Info, !IO),
     (
         Succeeded0 = succeeded,
         DummyLastHash = last_hash([], ""),
-        foldl3_make_track_flags_for_modules_loop(Globals,
-            set.to_sorted_list(ModuleNames),
+        foldl3_make_track_flags_for_modules_loop(ErrorStream, ProgressStream,
+            Globals, set.to_sorted_list(ModuleNames),
             Succeeded, DummyLastHash, _LastHash, !Info, !IO)
     ;
         Succeeded0 = did_not_succeed,
@@ -86,20 +88,22 @@ make_track_flags_files(Globals, ModuleName, Succeeded, !Info, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred foldl3_make_track_flags_for_modules_loop(globals::in,
+:- pred foldl3_make_track_flags_for_modules_loop(io.text_output_stream::in,
+    io.text_output_stream::in, globals::in,
     list(module_name)::in, maybe_succeeded::out, last_hash::in, last_hash::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-foldl3_make_track_flags_for_modules_loop(_Globals, [],
-        succeeded, !LastHash, !Info, !IO).
-foldl3_make_track_flags_for_modules_loop(Globals, [ModuleName | ModuleNames],
-        Succeeded, !LastHash, !Info, !IO) :-
-    make_track_flags_files_for_module(Globals, ModuleName, Succeeded0,
-        !LastHash, !Info, !IO),
+foldl3_make_track_flags_for_modules_loop(_ErrorStream, _ProgressStream,
+        _Globals, [], succeeded, !LastHash, !Info, !IO).
+foldl3_make_track_flags_for_modules_loop(ErrorStream, ProgressStream,
+        Globals, [ModuleName | ModuleNames], Succeeded,
+        !LastHash, !Info, !IO) :-
+    make_track_flags_files_for_module(ErrorStream, ProgressStream,
+        Globals, ModuleName, Succeeded0, !LastHash, !Info, !IO),
     (
         Succeeded0 = succeeded,
-        foldl3_make_track_flags_for_modules_loop(Globals, ModuleNames,
-            Succeeded, !LastHash, !Info, !IO)
+        foldl3_make_track_flags_for_modules_loop(ErrorStream, ProgressStream,
+            Globals, ModuleNames, Succeeded, !LastHash, !Info, !IO)
     ;
         Succeeded0 = did_not_succeed,
         Succeeded = did_not_succeed
@@ -107,12 +111,13 @@ foldl3_make_track_flags_for_modules_loop(Globals, [ModuleName | ModuleNames],
 
 %---------------------------------------------------------------------------%
 
-:- pred make_track_flags_files_for_module(globals::in, module_name::in,
+:- pred make_track_flags_files_for_module(io.text_output_stream::in,
+    io.text_output_stream::in, globals::in, module_name::in,
     maybe_succeeded::out, last_hash::in, last_hash::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_track_flags_files_for_module(Globals, ModuleName, Succeeded,
-        !LastHash, !Info, !IO) :-
+make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals,
+        ModuleName, Succeeded, !LastHash, !Info, !IO) :-
     lookup_mmc_module_options(make_info_get_options_variables(!.Info),
         ModuleName, MaybeModuleOptionArgs),
     (
@@ -136,17 +141,25 @@ make_track_flags_files_for_module(Globals, ModuleName, Succeeded,
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur_ngs_gs(ext_cur_ngs_gs_misc_track_flags),
             ModuleName, HashFileName, !IO),
-        compare_hash_file(Globals, HashFileName, Hash, Same, !IO),
+        compare_hash_file(ProgressStream, Globals, HashFileName,
+            Hash, Same, !IO),
         (
             Same = yes,
             Succeeded = succeeded
         ;
             Same = no,
-            write_hash_file(HashFileName, Hash, Succeeded, !IO)
+            write_hash_file(ProgressStream, HashFileName, Hash, Succeeded, !IO)
         )
     ;
         MaybeModuleOptionArgs = error1(LookupSpecs),
-        write_error_specs(Globals, LookupSpecs, !IO),
+        % XXX ErrorStream is the error stream for the top target,
+        % which may or may NOT be ModuleName. It is not clear to me (zs)
+        % whether the right place to write LookupSpecs is ErrorStream,
+        % or a stream wrting to the .err file of ModuleName.
+        % I also don't think we have a good basis for deciding the answer
+        % to that question until we have practical experience with
+        % compiler invocations that lead execution to this spot.
+        write_error_specs(ErrorStream, Globals, LookupSpecs, !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -267,10 +280,10 @@ include_option_in_hash(InconsequentialOptionsSet, Option - OptionData) :-
         fail
     ).
 
-:- pred compare_hash_file(globals::in, string::in, string::in, bool::out,
-    io::di, io::uo) is det.
+:- pred compare_hash_file(io.text_output_stream::in, globals::in,
+    string::in, string::in, bool::out, io::di, io::uo) is det.
 
-compare_hash_file(Globals, FileName, Hash, Same, !IO) :-
+compare_hash_file(ProgressStream, Globals, FileName, Hash, Same, !IO) :-
     io.open_input(FileName, OpenResult, !IO),
     (
         OpenResult = ok(Stream),
@@ -298,23 +311,23 @@ compare_hash_file(Globals, FileName, Hash, Same, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         Verbose = yes,
-        io.write_string("% ", !IO),
-        io.write_string(FileName, !IO),
         (
             Same = yes,
-            io.write_string(" does not need updating.\n", !IO)
+            io.format(ProgressStream, "%% %s does not need updating.\n",
+                [s(FileName)], !IO)
         ;
             Same = no,
-            io.write_string(" will be UPDATED.\n", !IO)
+            io.format(ProgressStream, "%% %s will be UPDATED.\n",
+                [s(FileName)], !IO)
         )
     ;
         Verbose = no
     ).
 
-:- pred write_hash_file(string::in, string::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
+:- pred write_hash_file(io.text_output_stream::in, string::in, string::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
 
-write_hash_file(FileName, Hash, Succeeded, !IO) :-
+write_hash_file(ProgressStream, FileName, Hash, Succeeded, !IO) :-
     io.open_output(FileName, OpenResult, !IO),
     (
         OpenResult = ok(Stream),
@@ -323,7 +336,7 @@ write_hash_file(FileName, Hash, Succeeded, !IO) :-
         Succeeded = succeeded
     ;
         OpenResult = error(Error),
-        io.format("Error creating `%s': %s\n",
+        io.format(ProgressStream, "Error creating `%s': %s\n",
             [s(FileName), s(io.error_message(Error))], !IO),
         Succeeded = did_not_succeed
     ).
