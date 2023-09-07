@@ -3116,9 +3116,9 @@ disable_smart_recompilation(ProgressStream, OptionDescr, !Globals, !IO) :-
 %---------------------------------------------------------------------------%
 
 display_compiler_version(ProgressStream, !IO) :-
-    library.version(Version, FullArch),
-    io.format(ProgressStream, "Mercury Compiler, version %s, on %s\n",
-        [s(Version), s(FullArch)], !IO),
+    library.version(Version, _FullArch),
+    io.format(ProgressStream, "Mercury Compiler, version %s\n",
+        [s(Version)], !IO),
     write_copyright_notice(ProgressStream, !IO).
 
 usage_errors(ErrorStream, Globals, Specs, !IO) :-
@@ -3150,10 +3150,10 @@ long_usage(ProgressStream, !IO) :-
     % long_usage is called from only one place, so can't print duplicate
     % copies of the long usage message. We can print both a short and along
     % usage message, but there is no simple way to avoid that.
-    library.version(Version, Fullarch),
+    library.version(Version, _Fullarch),
     io.format(ProgressStream,
-        "Name: mmc - Melbourne Mercury Compiler, version %s, on %s\n",
-        [s(Version), s(Fullarch)], !IO),
+        "Name: mmc - Melbourne Mercury Compiler, version %s\n",
+        [s(Version)], !IO),
     write_copyright_notice(ProgressStream, !IO),
     io.write_strings(ProgressStream, [
         "Usage: mmc [<options>] <arguments>\n",

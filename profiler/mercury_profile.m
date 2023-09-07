@@ -92,9 +92,9 @@ postprocess_options(Args, !IO) :-
 :- pred display_version(io.text_output_stream::in, io::di, io::uo) is det.
 
 display_version(OutputStream, !IO) :-
-    library.version(Version, FullArch),
-    io.format(OutputStream, "Mercury profiler, version %s, on %s\n",
-        [s(Version), s(FullArch)], !IO),
+    library.version(Version, _FullArch),
+    io.format(OutputStream, "Mercury profiler, version %s\n",
+        [s(Version)], !IO),
     write_copyright_notice(OutputStream, !IO).
 
     % Display error message and then short usage message.
@@ -124,10 +124,10 @@ short_usage(OutputStream, !IO) :-
 
 long_usage(OutputStream, !IO) :-
     io.progname_base("mprof", ProgName, !IO),
-    library.version(Version, FullArch),
+    library.version(Version, _FullArch),
     io.format(OutputStream,
-        "Name: mprof - Mercury profiler, version %s, on %s\n",
-        [s(Version), s(FullArch)], !IO),
+        "Name: mprof - Mercury profiler, version %s\n",
+        [s(Version)], !IO),
     write_copyright_notice(OutputStream, !IO),
     io.write_strings(OutputStream, [
         "Usage: ", ProgName, " [<options>] [<files>]\n",
