@@ -3144,7 +3144,6 @@ long_option("typecheck-ambiguity-error-limit",
 long_option("help",                 help).
 long_option("version",              version).
 long_option("filenames-from-stdin", filenames_from_stdin).
-long_option("fullarch",             target_arch).
 long_option("target-arch",          target_arch).
 long_option("cross-compiling",      cross_compiling).
 long_option("local-module-id",      local_module_id).
@@ -6799,9 +6798,8 @@ options_help_misc(Stream, !IO) :-
         "--version",
         "\tDisplay the compiler version.",
 
-        % The `--target-arch' options is reserved for use by the
-        % `Mercury.config' file. The `--fullarch' option is a deprecated
-        % synonym for this.
+        % The `--target-arch' option is reserved for use by the
+        % `Mercury.config' file.
 
 % This option has no effect now.
 %       "--cross-compiling",

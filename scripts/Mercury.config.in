@@ -115,7 +115,7 @@ DEFAULT_MCFLAGS=\
 		--shlib-linker-install-name-flag "@SHLIB_INSTALL_NAME_FLAG@" \
 		--linker-allow-undefined-flag "@ALLOW_UNDEFINED@" \
 		--linker-error-undefined-flag "@ERROR_UNDEFINED@" \
-		--fullarch "$(MERCURY_TARGET_ARCH)" \
+		--target-arch "$(MERCURY_TARGET_ARCH)" \
 		--install-prefix "@PREFIX@" \
 		--num-real-r-regs "@NUM_REAL_R_REGS@" \
 		--num-real-r-temps "@NUM_REAL_R_TEMPS@" \
