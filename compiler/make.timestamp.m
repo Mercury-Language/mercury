@@ -246,7 +246,7 @@ get_target_timestamp_2(ProgressStream, Globals, Search, TargetFile, FileName,
         % it just means that a library wasn't compiled with
         % `--intermodule-optimization'.
         % Similarly for `.analysis' files.
-        get_module_dependencies(ProgressStream, Globals,
+        get_maybe_module_dep_info(ProgressStream, Globals,
             ModuleName, MaybeModuleDepInfo, !Info, !IO),
         ( if
             MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),

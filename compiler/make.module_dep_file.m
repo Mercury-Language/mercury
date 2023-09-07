@@ -34,7 +34,7 @@
     % Dependencies are generated on demand, not by a `mmc --make depend'
     % command, so this predicate may need to read the source for the module.
     %
-:- pred get_module_dependencies(io.text_output_stream::in, globals::in,
+:- pred get_maybe_module_dep_info(io.text_output_stream::in, globals::in,
     module_name::in, maybe_module_dep_info::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -118,12 +118,12 @@ version_number(module_dep_file_v2, 2).
 
 %---------------------------------------------------------------------------%
 
-get_module_dependencies(ProgressStream, Globals, ModuleName,
+get_maybe_module_dep_info(ProgressStream, Globals, ModuleName,
         MaybeModuleDepInfo, !Info, !IO) :-
     RebuildModuleDeps = make_info_get_rebuild_module_deps(!.Info),
     (
         ModuleName = unqualified(_),
-        maybe_get_module_dependencies(ProgressStream, Globals,
+        maybe_get_maybe_module_dep_info(ProgressStream, Globals,
             RebuildModuleDeps, ModuleName, MaybeModuleDepInfo, !Info, !IO)
     ;
         ModuleName = qualified(_, _),
@@ -134,23 +134,23 @@ get_module_dependencies(ProgressStream, Globals, ModuleName,
         % as a side effect of generating the parent's dependencies.
         AncestorsAndSelf = get_ancestors(ModuleName) ++ [ModuleName],
         Error0 = no,
-        maybe_get_modules_dependencies(ProgressStream, Globals,
+        maybe_record_modules_maybe_module_dep_infos(ProgressStream, Globals,
             RebuildModuleDeps, AncestorsAndSelf, Error0, !Info, !IO),
 
         ModuleDepMap = make_info_get_module_dependencies(!.Info),
         map.lookup(ModuleDepMap, ModuleName, MaybeModuleDepInfo)
     ).
 
-:- pred maybe_get_modules_dependencies(io.text_output_stream::in, globals::in,
-    maybe_rebuild_module_deps::in, list(module_name)::in, bool::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred maybe_record_modules_maybe_module_dep_infos(io.text_output_stream::in,
+    globals::in, maybe_rebuild_module_deps::in, list(module_name)::in,
+    bool::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
-maybe_get_modules_dependencies(_, _, _, [], _, !Info, !IO).
-maybe_get_modules_dependencies(ProgressStream, Globals, RebuildModuleDeps,
-        [ModuleName | ModuleNames], !.Error, !Info, !IO) :-
+maybe_record_modules_maybe_module_dep_infos(_, _, _, [], _, !Info, !IO).
+maybe_record_modules_maybe_module_dep_infos(ProgressStream, Globals,
+        RebuildModuleDeps, [ModuleName | ModuleNames], !.Error, !Info, !IO) :-
     (
         !.Error = no,
-        maybe_get_module_dependencies(ProgressStream, Globals,
+        maybe_get_maybe_module_dep_info(ProgressStream, Globals,
             RebuildModuleDeps, ModuleName, MaybeModuleDepInfo, !Info, !IO),
         (
             MaybeModuleDepInfo = some_module_dep_info(_)
@@ -167,128 +167,132 @@ maybe_get_modules_dependencies(ProgressStream, Globals, RebuildModuleDeps,
         map.set(ModuleName, no_module_dep_info, ModuleDepMap0, ModuleDepMap),
         make_info_set_module_dependencies(ModuleDepMap, !Info)
     ),
-    maybe_get_modules_dependencies(ProgressStream, Globals, RebuildModuleDeps,
-        ModuleNames, !.Error, !Info, !IO).
+    maybe_record_modules_maybe_module_dep_infos(ProgressStream, Globals,
+        RebuildModuleDeps, ModuleNames, !.Error, !Info, !IO).
 
-:- pred maybe_get_module_dependencies(io.text_output_stream::in, globals::in,
+:- pred maybe_get_maybe_module_dep_info(io.text_output_stream::in, globals::in,
     maybe_rebuild_module_deps::in, module_name::in, maybe_module_dep_info::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-maybe_get_module_dependencies(ProgressStream, Globals, RebuildModuleDeps,
+maybe_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
         ModuleName, MaybeModuleDepInfo, !Info, !IO) :-
     ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
     ( if map.search(ModuleDepMap0, ModuleName, MaybeModuleDepInfo0) then
         MaybeModuleDepInfo = MaybeModuleDepInfo0
     else
-        do_get_module_dependencies(ProgressStream, Globals, RebuildModuleDeps,
-            ModuleName, MaybeModuleDepInfo, !Info, !IO)
+        do_get_maybe_module_dep_info(ProgressStream, Globals,
+            RebuildModuleDeps, ModuleName, MaybeModuleDepInfo, !Info, !IO)
     ).
 
-:- pred do_get_module_dependencies(io.text_output_stream::in, globals::in,
+:- pred do_get_maybe_module_dep_info(io.text_output_stream::in, globals::in,
     maybe_rebuild_module_deps::in, module_name::in, maybe_module_dep_info::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-do_get_module_dependencies(ProgressStream, Globals, RebuildModuleDeps,
+do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
         ModuleName, !:MaybeModuleDepInfo, !Info, !IO) :-
-    % We can't just use
-    %   `get_target_timestamp(ModuleName - source, ..)'
-    % because that could recursively call get_module_dependencies,
-    % leading to an infinite loop. Just using module_name_to_file_name
-    % will fail if the module name doesn't match the file name, but
-    % that case is handled below.
-    module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
-    get_file_timestamp([dir.this_directory], SourceFileName,
-        MaybeSourceFileTimestamp, !Info, !IO),
-
-    module_name_to_file_name(Globals, $pred,
-        ext_cur_ngs(ext_cur_ngs_misc_module_dep), ModuleName, DepFileName),
     globals.lookup_accumulating_option(Globals, search_directories,
         SearchDirs),
+    ModuleDepExt = ext_cur_ngs(ext_cur_ngs_misc_module_dep),
+    module_name_to_file_name(Globals, $pred, ModuleDepExt,
+        ModuleName, DepFileName),
     get_file_timestamp(SearchDirs, DepFileName, MaybeDepFileTimestamp,
         !Info, !IO),
     (
-        MaybeSourceFileTimestamp = ok(SourceFileTimestamp),
         MaybeDepFileTimestamp = ok(DepFileTimestamp),
-        ( if
-            ( RebuildModuleDeps = do_not_rebuild_module_deps
-            ; compare((>), DepFileTimestamp, SourceFileTimestamp)
-            )
-        then
-            % Since the source file was found in this directory, do not use
-            % module_dep files which might be for installed copies
-            % of the module.
-            %
-            % XXX SourceFileName may not actually be the correct source file
-            % for the required module. Usually the purported source file would
-            % have a later timestamp than the .module_dep file, though, so the
-            % other branch would be taken.
-            read_module_dependencies_no_search(Globals, RebuildModuleDeps,
-                ModuleName, !Info, !IO)
-        else
-            make_module_dependencies(Globals, ModuleName, !Info, !IO)
-        )
-    ;
-        MaybeSourceFileTimestamp = error(_),
-        MaybeDepFileTimestamp = ok(DepFileTimestamp),
-        read_module_dependencies_search(Globals, RebuildModuleDeps,
-            ModuleName, !Info, !IO),
-
-        % Check for the case where the module name doesn't match the
-        % source file name (e.g. parse.m contains module mdb.parse).
-        % Get the correct source file name from the module dependency file,
-        % then check whether the module dependency file is up to date.
-
-        map.lookup(make_info_get_module_dependencies(!.Info), ModuleName,
-            !:MaybeModuleDepInfo),
-        ( if
-            !.MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo0),
-            module_dep_info_get_source_file_dir(ModuleDepInfo0, ModuleDir),
-            ModuleDir = dir.this_directory
-        then
-            module_dep_info_get_source_file_name(ModuleDepInfo0,
-                SourceFileName1),
-            get_file_timestamp([dir.this_directory], SourceFileName1,
-                MaybeSourceFileTimestamp1, !Info, !IO),
-            (
-                MaybeSourceFileTimestamp1 = ok(SourceFileTimestamp1),
-                ( if
-                    ( RebuildModuleDeps = do_not_rebuild_module_deps
-                    ; compare((>), DepFileTimestamp, SourceFileTimestamp1)
-                    )
-                then
-                    true
-                else
-                    % XXX The existence of a .module_dep file reflects a
-                    % previous state of the workspace which may not match the
-                    % current workspace.
-                    %
-                    % Here is a (contrived) case where we run into an issue:
-                    % 1. create prog.m which imports the standard library lexer
-                    %    module
-                    % 2. copy the standard library lexer.m file to the current
-                    %    directory for editing
-                    % 3. run mmc --make; it creates lexer.module_dep
-                    % 4. change lexer.m into a submodule of prog
-                    % 5. run mmc --make again, it no longer works
-                    %
-                    % The local lexer.module_dep prevents mmc --make finding
-                    % the lexer.module_dep from the standard library, even
-                    % though there is no longer any local source file for the
-                    % `lexer' module.
-
-                    make_module_dependencies(Globals, ModuleName, !Info, !IO)
+        % We can't just use
+        %   `get_target_timestamp(ModuleName - source, ..)'
+        % because that could recursively call get_maybe_module_dep_info,
+        % leading to an infinite loop. Just using module_name_to_file_name
+        % will fail if the module name doesn't match the file name, but
+        % that case is handled below.
+        module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
+        get_file_timestamp([dir.this_directory], SourceFileName,
+            MaybeSourceFileTimestamp, !Info, !IO),
+        (
+            MaybeSourceFileTimestamp = ok(SourceFileTimestamp),
+            ( if
+                ( RebuildModuleDeps = do_not_rebuild_module_deps
+                ; compare((>), DepFileTimestamp, SourceFileTimestamp)
                 )
-            ;
-                MaybeSourceFileTimestamp1 = error(Message),
-                io.format(ProgressStream,
-                    "** Error reading file `%s' " ++
-                    "to generate dependencies: %s.\n",
-                    [s(SourceFileName1), s(Message)], !IO),
-                maybe_write_importing_module(ProgressStream, ModuleName,
-                    make_info_get_importing_module(!.Info), !IO)
+            then
+                % Since the source file was found in this directory,
+                % do not use module_dep files which might be for
+                % installed copies of the module.
+                %
+                % XXX SourceFileName may not actually be the correct source
+                % file for the required module. Usually the purported source
+                % file would have a later timestamp than the .module_dep file,
+                % though, so the other branch would be taken.
+                read_module_dependencies_no_search(Globals, RebuildModuleDeps,
+                    ModuleName, !Info, !IO)
+            else
+                make_module_dependencies(Globals, ModuleName, !Info, !IO)
             )
-        else
-            true
+        ;
+            MaybeSourceFileTimestamp = error(_),
+            read_module_dependencies_search(Globals, RebuildModuleDeps,
+                ModuleName, !Info, !IO),
+
+            % Check for the case where the module name doesn't match the
+            % source file name (e.g. parse.m contains module mdb.parse).
+            % Get the correct source file name from the module dependency file,
+            % then check whether the module dependency file is up to date.
+            map.lookup(make_info_get_module_dependencies(!.Info), ModuleName,
+                !:MaybeModuleDepInfo),
+            ( if
+                !.MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo0),
+                module_dep_info_get_source_file_dir(ModuleDepInfo0, ModuleDir),
+                ModuleDir = dir.this_directory
+            then
+                module_dep_info_get_source_file_name(ModuleDepInfo0,
+                    SourceFileName1),
+                get_file_timestamp([dir.this_directory], SourceFileName1,
+                    MaybeSourceFileTimestamp1, !Info, !IO),
+                (
+                    MaybeSourceFileTimestamp1 = ok(SourceFileTimestamp1),
+                    ( if
+                        ( RebuildModuleDeps = do_not_rebuild_module_deps
+                        ; compare((>), DepFileTimestamp, SourceFileTimestamp1)
+                        )
+                    then
+                        true
+                    else
+                        % XXX The existence of a .module_dep file reflects
+                        % a previous state of the workspace, which may not
+                        % match the current workspace.
+                        %
+                        % Here is a (contrived) case where we run into
+                        % an issue:
+                        % 1. create prog.m which imports the standard library
+                        %    mercury_term_lexer module
+                        % 2. copy the standard library mercury_term_lexer.m
+                        %    file to the current directory for editing
+                        % 3. run mmc --make; it creates
+                        %    mercury_term_lexer.module_dep
+                        % 4. change mercury_term_lexer.m into a submodule
+                        %    of prog
+                        % 5. run mmc --make again, it no longer works
+                        %
+                        % The local lexer.module_dep prevents mmc --make
+                        % finding the mercury_term_lexer.module_dep
+                        % from the standard library, even though there is
+                        % no longer any local source file for the
+                        % `mercury_term_lexer' module.
+                        make_module_dependencies(Globals, ModuleName,
+                            !Info, !IO)
+                    )
+                ;
+                    MaybeSourceFileTimestamp1 = error(Message),
+                    io.format(ProgressStream,
+                        "** Error reading file `%s' " ++
+                        "to generate dependencies: %s.\n",
+                        [s(SourceFileName1), s(Message)], !IO),
+                    maybe_write_importing_module(ProgressStream, ModuleName,
+                        make_info_get_importing_module(!.Info), !IO)
+                )
+            else
+                true
+            )
         )
     ;
         MaybeDepFileTimestamp = error(_),

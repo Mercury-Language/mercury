@@ -96,7 +96,7 @@ get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
         % look up the file name here.
         % XXX MAKE_STREAM
         io.output_stream(ProgressStream, !IO),
-        get_module_dependencies(ProgressStream, Globals,
+        get_maybe_module_dep_info(ProgressStream, Globals,
             ModuleName, MaybeModuleDepInfo, !Info, !IO),
         (
             MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),

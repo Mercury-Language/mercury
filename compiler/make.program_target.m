@@ -409,7 +409,7 @@ get_foreign_object_targets(ProgressStream, Globals, PIC,
     % external_foreign_code_files.
 
     globals.get_target(Globals, CompilationTarget),
-    get_module_dependencies(ProgressStream, Globals,
+    get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo)
@@ -680,7 +680,7 @@ build_linked_target_2(Globals, MainModuleName, FileType,
 
 get_module_foreign_object_files(ProgressStream, Globals, PIC,
         ModuleName, ForeignObjectFiles, !MakeInfo, !IO) :-
-    get_module_dependencies(ProgressStream, Globals,
+    get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !MakeInfo, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
@@ -1030,7 +1030,7 @@ collect_modules_with_children(Globals, ModuleName, !ParentModules,
         !Info, !IO) :-
     % XXX MAKE_STREAM
     io.output_stream(ProgressStream, !IO),
-    get_module_dependencies(ProgressStream, Globals,
+    get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
@@ -1324,7 +1324,7 @@ get_target_modules(ProgressStream, Globals, TargetType,
 
 get_non_nested_target_modules(ProgressStream, Globals, ModuleName,
         !TargetModulesCord, !Info, !IO) :-
-    get_module_dependencies(ProgressStream, Globals,
+    get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     ( if
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
@@ -1558,7 +1558,7 @@ install_library(ProgressStream, Globals, MainModuleName, Succeeded,
 
 install_ints_and_headers(ProgressStream, Globals, SubdirLinkSucceeded,
         ModuleName, Succeeded, !Info, !IO) :-
-    get_module_dependencies(ProgressStream, Globals,
+    get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
@@ -1849,7 +1849,7 @@ install_grade_init(Globals, GradeDir, ModuleName, Succeeded, !IO) :-
 
 install_grade_ints_and_headers(ProgressStream, Globals, LinkSucceeded,
         GradeDir, ModuleName, Succeeded, !Info, !IO) :-
-    get_module_dependencies(ProgressStream, Globals,
+    get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(_ModuleDepInfo),
@@ -2213,7 +2213,7 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
     remove_module_file_for_make(ProgressStream, Globals, very_verbose,
         ModuleName, ext_cur_ngs(ext_cur_ngs_misc_prof), !Info, !IO),
 
-    get_module_dependencies(ProgressStream, Globals,
+    get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),

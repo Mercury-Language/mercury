@@ -140,7 +140,7 @@ make_module_target(ExtraOptions, Globals, Dep, Succeeded, !Info, !IO) :-
         ;
             Dep = dep_target(TargetFile),
             TargetFile = target_file(ModuleName, TargetType),
-            get_module_dependencies(ProgressStream, Globals,
+            get_maybe_module_dep_info(ProgressStream, Globals,
                 ModuleName, MaybeModuleDepInfo, !Info, !IO),
             (
                 MaybeModuleDepInfo = no_module_dep_info,
@@ -1067,7 +1067,7 @@ find_files_maybe_touched_by_process_module(Globals, TargetFile, Task,
     TargetFile = target_file(ModuleName, TargetType),
     % XXX MAKE_STREAM
     io.output_stream(ProgressStream, !IO),
-    get_module_dependencies(ProgressStream, Globals,
+    get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo)
@@ -1084,7 +1084,7 @@ find_files_maybe_touched_by_process_module(Globals, TargetFile, Task,
     NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
     SourceFileModuleNames = [ModuleName | NestedSubModules],
 
-    list.map_foldl2(get_module_dependencies(ProgressStream, Globals),
+    list.map_foldl2(get_maybe_module_dep_info(ProgressStream, Globals),
         NestedSubModules, MaybeNestedModuleDepInfos, !Info, !IO),
     ( if
         list.map(

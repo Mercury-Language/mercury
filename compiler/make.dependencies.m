@@ -703,7 +703,7 @@ non_intermod_direct_imports_uncached(Globals, ModuleIndex, Succeeded, Modules,
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     % XXX MAKE_STREAM
     io.output_stream(ProgressStream, !IO),
-    get_module_dependencies(ProgressStream, Globals,
+    get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
@@ -900,7 +900,7 @@ find_module_foreign_imports_uncached(Languages, Globals, ModuleIndex,
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     % XXX MAKE_STREAM
     io.output_stream(ProgressStream, !IO),
-    get_module_dependencies(ProgressStream, Globals,
+    get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
@@ -929,7 +929,7 @@ fact_table_files(Globals, ModuleIndex, Succeeded, Files, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     % XXX MAKE_STREAM
     io.output_stream(ProgressStream, !IO),
-    get_module_dependencies(ProgressStream, Globals,
+    get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
@@ -953,7 +953,7 @@ foreign_include_files(Globals, ModuleIndex, Succeeded, Files, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     % XXX MAKE_STREAM
     io.output_stream(ProgressStream, !IO),
-    get_module_dependencies(ProgressStream, Globals,
+    get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
@@ -1257,7 +1257,7 @@ find_transitive_module_dependencies_uncached(KeepGoing, DependenciesType,
         module_index_to_name(!.Info, ModuleIndex, ModuleName),
         % XXX MAKE_STREAM
         io.output_stream(ProgressStream, !IO),
-        get_module_dependencies(ProgressStream, Globals,
+        get_maybe_module_dep_info(ProgressStream, Globals,
             ModuleName, MaybeModuleDepInfo, !Info, !IO),
         (
             MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
@@ -1358,7 +1358,7 @@ remove_nested_modules(Globals, Modules0, Modules, !Info, !IO) :-
 collect_nested_modules(Globals, ModuleName, !NestedModules, !Info, !IO) :-
     % XXX MAKE_STREAM
     io.output_stream(ProgressStream, !IO),
-    get_module_dependencies(ProgressStream, Globals,
+    get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
@@ -1440,7 +1440,7 @@ get_dependency_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
             get_make_target_file_name(Globals, $pred, Target, TargetFileName,
                 !IO),
             MaybeTargetFileName = yes(TargetFileName),
-            get_module_dependencies(ProgressStream, Globals,
+            get_maybe_module_dep_info(ProgressStream, Globals,
                 ModuleName, MaybeModuleDepInfo, !Info, !IO),
             (
                 MaybeModuleDepInfo = no_module_dep_info,
