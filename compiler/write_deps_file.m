@@ -139,6 +139,10 @@
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
+
+:- pred record_write_deps_file_cache_stats(io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -167,6 +171,7 @@
 :- import_module require.
 :- import_module sparse_bitset.
 :- import_module string.
+:- import_module uint.
 
 :- type module_file_name_cache == map(module_name_and_ext, file_name).
 
@@ -520,7 +525,7 @@ construct_trans_opt_deps_rule(Globals, MaybeInclTransOptRule, IntermodDeps,
         ),
         % Note that maybe_read_dependency_file searches for
         % this exact pattern.
-        make_module_file_names_with_suffix(Globals,
+        make_module_file_names_with_ext(Globals,
             ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
             set.to_sorted_list(TransOptDeps), TransOptDepsFileNames,
             !Cache, !IO),
@@ -626,20 +631,20 @@ construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
         Int0FileNameGroups =
             [make_singleton_file_name_group("int0", Int0FileName)]
     ),
-    make_module_file_name_group_with_suffix(Globals,
+    make_module_file_name_group_with_ext(Globals,
         "ancestors", ext_cur_ngs(ext_cur_ngs_int_int0),
         Ancestors, AncestorSourceGroups, !Cache, !IO),
-    make_module_file_name_group_with_suffix(Globals,
+    make_module_file_name_group_with_ext(Globals,
         "long deps", ext_cur_ngs(ext_cur_ngs_int_int1),
         LongDeps, LongDepsSourceGroups, !Cache, !IO),
-    make_module_file_name_group_with_suffix(Globals,
+    make_module_file_name_group_with_ext(Globals,
         "short deps", ext_cur_ngs(ext_cur_ngs_int_int2),
         ShortDeps, ShortDepsSourceGroups, !Cache, !IO),
-    make_module_file_name_group_with_suffix(Globals,
+    make_module_file_name_group_with_ext(Globals,
         "type_repn self dep", ext_cur_ngs(ext_cur_ngs_int_int1),
         set.make_singleton_set(ModuleName), TypeRepnSelfDepGroups,
         !Cache, !IO),
-    make_module_file_name_group_with_suffix(Globals,
+    make_module_file_name_group_with_ext(Globals,
         "type_repn ancestor dep", ext_cur_ngs(ext_cur_ngs_int_int1),
         get_ancestors_set(ModuleName), TypeRepnAncestorsDepGroups,
         !Cache, !IO),
@@ -719,7 +724,7 @@ construct_intermod_rules(Globals, ModuleName, LongDeps, AllDeps,
     % directly or indirectly.
     (
         Intermod = yes,
-        make_module_file_names_with_suffix(Globals, ext_cur(ext_cur_mh),
+        make_module_file_names_with_ext(Globals, ext_cur(ext_cur_mh),
             set.to_sorted_list(AllDeps), AllDepsFileNames, !Cache, !IO),
         MmakeRuleMhDeps = mmake_simple_rule("machine_dependent_header_deps",
             mmake_rule_is_not_phony,
@@ -771,10 +776,10 @@ construct_intermod_rules(Globals, ModuleName, LongDeps, AllDeps,
         ),
 
         OptInt0Deps = set.union_list(list.map(get_ancestors_set, OptDeps)),
-        make_module_file_names_with_suffix(Globals,
+        make_module_file_names_with_ext(Globals,
             ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
             OptDeps, OptDepsFileNames, !Cache, !IO),
-        make_module_file_names_with_suffix(Globals,
+        make_module_file_names_with_ext(Globals,
             ext_cur_ngs(ext_cur_ngs_int_int0), set.to_sorted_list(OptInt0Deps),
             OptInt0DepsFileNames, !Cache, !IO),
         MmakeRuleDateOptInt0Deps = mmake_flat_rule("dates_on_opts_and_int0s",
@@ -787,7 +792,7 @@ construct_intermod_rules(Globals, ModuleName, LongDeps, AllDeps,
             MaybeTransOptDeps1 = yes(TransOptDeps2),
             ErrDateTargets = one_or_more(ErrFileName,
                 [CDateFileName, JavaDateFileName]),
-            make_module_file_names_with_suffix(Globals,
+            make_module_file_names_with_ext(Globals,
                 ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
                 TransOptDeps2, TransOptDepsOptFileNames, !Cache, !IO),
             MmakeRuleTransOptOpts = mmake_flat_rule("dates_on_trans_opts",
@@ -826,7 +831,7 @@ construct_c_header_rules(Globals, ModuleName, AllDeps,
         % we generate the header files for imported modules before compiling
         % the C files, since the generated C files #include those header files.
         Targets = one_or_more(PicObjFileName, [ObjFileName]),
-        make_module_file_names_with_suffix(Globals,
+        make_module_file_names_with_ext(Globals,
             ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih),
             set.to_sorted_list(AllDeps), AllDepsFileNames, !Cache, !IO),
         MmakeRuleObjOnMihs = mmake_flat_rule("objs_on_mihs",
@@ -916,16 +921,16 @@ construct_module_dep_fragment(Globals, ModuleName, CFileName,
 construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
         Date0FileName, DateFileName, Ancestors, LongDeps, ShortDeps,
         MmakeRulesParentDates, !Cache, !IO) :-
-    make_module_file_names_with_suffix(Globals,
+    make_module_file_names_with_ext(Globals,
         ext_cur_ngs(ext_cur_ngs_int_date_int12),
         set.to_sorted_list(Ancestors), AncestorDateFileNames, !Cache, !IO),
-    make_module_file_names_with_suffix(Globals,
+    make_module_file_names_with_ext(Globals,
         ext_cur_ngs(ext_cur_ngs_int_int0),
         set.to_sorted_list(Ancestors), AncestorInt0FileNames, !Cache, !IO),
-    make_module_file_names_with_suffix(Globals,
+    make_module_file_names_with_ext(Globals,
         ext_cur_ngs(ext_cur_ngs_int_int3),
         set.to_sorted_list(LongDeps), LongDepInt3FileNames, !Cache, !IO),
-    make_module_file_names_with_suffix(Globals,
+    make_module_file_names_with_ext(Globals,
         ext_cur_ngs(ext_cur_ngs_int_int3),
         set.to_sorted_list(ShortDeps), ShortDepInt3FileNames, !Cache, !IO),
 
@@ -941,7 +946,7 @@ construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
             make_file_name_group("long dep int3s", LongDepInt3FileNames) ++
             make_file_name_group("short dep int3s", ShortDepInt3FileNames),
         []),
-    make_module_file_names_with_suffix(Globals,
+    make_module_file_names_with_ext(Globals,
         ext_cur_ngs(ext_cur_ngs_int_date_int0),
         set.to_sorted_list(Ancestors), AncestorDate0FileNames, !Cache, !IO),
     MmakeRuleParentDate0s = mmake_general_rule("self_and_parent_date0_deps",
@@ -1290,7 +1295,7 @@ gather_nested_deps(Globals, ModuleName, NestedDeps, Ext, MmakeRule,
         !Cache, !IO) :-
     make_module_file_name(Globals, $pred, Ext,
         ModuleName, ModuleExtName, !Cache, !IO),
-    make_module_file_names_with_suffix(Globals, Ext,
+    make_module_file_names_with_ext(Globals, Ext,
         NestedDeps, NestedDepsFileNames, !Cache, !IO),
     ExtStr = extension_to_string(Globals, Ext),
     MmakeRule = mmake_simple_rule("nested_deps_for_" ++ ExtStr,
@@ -1306,7 +1311,7 @@ gather_nested_deps(Globals, ModuleName, NestedDeps, Ext, MmakeRule,
 
 gather_foreign_import_deps(Globals, ForeignImportExt, ForeignImportTargets,
         ForeignImportedModuleNames, MmakeRule, !Cache, !IO) :-
-    make_module_file_names_with_suffix(Globals, ForeignImportExt,
+    make_module_file_names_with_ext(Globals, ForeignImportExt,
         ForeignImportedModuleNames, ForeignImportedFileNames, !Cache, !IO),
     ForeignImportExtStr = extension_to_string(Globals,
         ForeignImportExt),
@@ -1317,49 +1322,6 @@ gather_foreign_import_deps(Globals, ForeignImportExt, ForeignImportTargets,
         ForeignImportTargets,
         ForeignImportedFileNames,
         []).
-
-%---------------------------------------------------------------------------%
-
-:- pred make_module_file_name(globals::in, string::in, ext::in,
-    module_name::in, file_name::out,
-    module_file_name_cache::in, module_file_name_cache::out,
-    io::di, io::uo) is det.
-
-make_module_file_name(Globals, From, Ext, ModuleName, FileName,
-        !Cache, !IO) :-
-    % XXX This should be a complete switch on Ext, with an
-    % explcit decision for each category of extension about whether
-    % it is worth caching files with those extensions.
-    ModuleNameExt = module_name_and_ext(ModuleName, Ext),
-    ( if map.search(!.Cache, ModuleNameExt, FileName0) then
-        FileName = FileName0
-    else
-        % The result of module_name_to_file_name is cached to save on
-        % temporary string constructions.
-        module_name_to_file_name(Globals, From, Ext, ModuleName, FileName),
-        map.det_insert(ModuleNameExt, FileName, !Cache)
-    ).
-
-:- pred make_module_file_names_with_suffix(globals::in, ext::in,
-    list(module_name)::in, list(mmake_file_name)::out,
-    module_file_name_cache::in, module_file_name_cache::out,
-    io::di, io::uo) is det.
-
-make_module_file_names_with_suffix(Globals, Ext, Modules, FileNames,
-        !Cache, !IO) :-
-    list.map_foldl2(make_module_file_name(Globals, $pred, Ext),
-        Modules, FileNames, !Cache, !IO).
-
-:- pred make_module_file_name_group_with_suffix(globals::in, string::in,
-    ext::in, set(module_name)::in, list(mmake_file_name_group)::out,
-    module_file_name_cache::in, module_file_name_cache::out,
-    io::di, io::uo) is det.
-
-make_module_file_name_group_with_suffix(Globals, GroupName, Ext,
-        Modules, Groups, !Cache, !IO) :-
-    list.map_foldl2(make_module_file_name(Globals, $pred, Ext),
-        set.to_sorted_list(Modules), FileNames, !Cache, !IO),
-    Groups = make_file_name_group(GroupName, FileNames).
 
 %---------------------------------------------------------------------------%
 
@@ -1583,22 +1545,23 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         ModuleMakeVarName ++ ".dep_errs",
         list.map(add_suffix(".dep_err"), SourceFiles)),
 
-    make_module_file_names_with_suffix(Globals,
+    make_module_file_names_with_ext(Globals,
         ext_cur_gs(ext_cur_gs_exec_noext),
         Modules, ModulesSourceFileNames, !Cache, !IO),
     MmakeVarModuleMods = mmake_var_defn_list(ModuleMakeVarName ++ ".mods",
         ModulesSourceFileNames),
 
     % The modules for which we need to generate .int0 files.
-    ModulesWithSubModules = list.filter(
+    HasSubmodules =
         ( pred(Module::in) is semidet :-
             map.lookup(DepsMap, Module, deps(_, BurdenedModule)),
             ParseTreeModuleSrc = BurdenedModule ^ bm_module,
             IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
             not map.is_empty(IncludeMap)
-        ), Modules),
+        ),
+    list.filter(HasSubmodules, Modules, ModulesWithSubModules),
 
-    make_module_file_names_with_suffix(Globals,
+    make_module_file_names_with_ext(Globals,
         ext_cur_gs(ext_cur_gs_exec_noext),
         ModulesWithSubModules, ModulesWithSubModulesSourceFileNames,
         !Cache, !IO),
@@ -1616,7 +1579,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     ),
     ForeignModules = list.map((func({A, _C}) = A), ForeignModulesAndExts),
 
-    make_module_file_names_with_suffix(Globals,
+    make_module_file_names_with_ext(Globals,
         ext_cur_gs(ext_cur_gs_exec_noext),
         ForeignModules, ForeignModulesFileNames, !Cache, !IO),
     MmakeVarForeignModules =
@@ -1636,7 +1599,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     % XXX This rule looks wrong: why are we looking for (a) stuff with an
     % unknown suffix in (b) the os_subdir, when we (c) refer to it
     % using a make variable whose name ends in "_cs"?
-    % Of course, since ForeignModulesAndExts is always zero with our current
+    % Of course, since ForeignModulesAndExts is always [] with our current
     % set of target languages, this does not matter.
     MmakeVarForeignFileNames =
         mmake_var_defn_list(ModuleMakeVarName ++ ".foreign_cs",
@@ -1699,7 +1662,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     % `module\$*.class', hence the "\\$$*.class" below.
     % If no such files exist, Make will use the pattern verbatim,
     % so we enclose the pattern in a `wildcard' function to prevent this.
-    % Evaluating the .classes variable can be slow so we make it conditional
+    % Evaluating the .classes variable can be slow, so we make it conditional
     % on the grade.
     MmakeVarClassesJava = mmake_var_defn_list(ModuleMakeVarName ++ ".classes",
         [string.format("$(%s.mods:%%=$(classes_subdir)%%.class)",
@@ -2582,7 +2545,7 @@ generate_dep_file_clean_targets(Globals, ModuleName, ModuleMakeVarName,
     % Return a command to delete the files in $(ModuleMakeVarNameExtension).
     %
     % XXX Xargs doesn't handle special characters in the file names correctly.
-    % This is currently not a problem in practice as we never generate
+    % This is currently not a problem in practice, as we never generate
     % file names containing special characters.
     %
     % Any fix for this problem will also require a fix in `mmake.in'.
@@ -2724,6 +2687,224 @@ compare_module_names(Sym1, Sym2, Result) :-
     Str1 = sym_name_to_string(Sym1),
     Str2 = sym_name_to_string(Sym2),
     compare(Result, Str1, Str2).
+
+%---------------------------------------------------------------------------%
+
+:- pred make_module_file_name_group_with_ext(globals::in, string::in,
+    ext::in, set(module_name)::in, list(mmake_file_name_group)::out,
+    module_file_name_cache::in, module_file_name_cache::out,
+    io::di, io::uo) is det.
+
+make_module_file_name_group_with_ext(Globals, GroupName, Ext,
+        ModuleSet, Groups, !Cache, !IO) :-
+    set.to_sorted_list(ModuleSet, Modules),
+    make_module_file_names_with_ext(Globals, Ext, Modules, FileNames,
+        !Cache, !IO),
+    Groups = make_file_name_group(GroupName, FileNames).
+
+    % The call to module_name_to_file_name in make_module_file_name below
+    % constructs the filename from three components: the directory path,
+    % the module name itself, and the extension string. The first and third
+    % components depend only on Ext, not on ModuleName, which means that
+    % we *could* compute those parts here with:
+    %
+    %   ext_to_dir_path(Globals, not_for_search, Ext, DirNames),
+    %   (
+    %       DirNames = [],
+    %       MaybeDirPath = no
+    %   ;
+    %       DirNames = [_ | _],
+    %       DirPath = dir.relative_path_name_from_components(DirNames),
+    %       MaybeDirPath = yes(DirPath)
+    %   ),
+    %   ExtStr = extension_to_string(Globals, Ext),
+    %
+    % and then use
+    %
+    %   % This code performs the job of
+    %   %   module_name_to_file_name(Globals, From, Ext, ModuleName, FileName)
+    %   % but with the directory path and extension string parts done just
+    %   % once in make_module_file_names_with_ext, instead of being repeated
+    %   % each time here.
+    %   BaseNameNoExt = module_name_to_base_file_name_no_ext(Ext, ModuleName),
+    %   BaseName = BaseNameNoExt ++ ExtStr,
+    %   (
+    %       MaybeDirPath = no,
+    %       FileName = BaseName
+    %   ;
+    %       MaybeDirPath = yes(DirPath),
+    %       FileName =
+    %           dir.relative_path_name_from_components([DirPath, BaseName])
+    %   ),
+    %
+    % in make_module_file_name to construct FileName.
+    %
+    % We have tried this out. It works, but the performance of the updated
+    % compiler is indistinguishable from the performance of the pre-update
+    % compiler. (See the thread on m-rev on 2023 Sep 7.) And since this
+    % approach requires two versions of make_module_file_name, one that has
+    % the first and third components as arguments (for the call here)
+    % and one that does not (for all the other calls above) would be
+    % a double maintenance burden. This is why we don't use this approach.
+    %
+:- pred make_module_file_names_with_ext(globals::in, ext::in,
+    list(module_name)::in, list(mmake_file_name)::out,
+    module_file_name_cache::in, module_file_name_cache::out,
+    io::di, io::uo) is det.
+
+make_module_file_names_with_ext(Globals, Ext, Modules, FileNames,
+        !Cache, !IO) :-
+    list.map_foldl2(make_module_file_name(Globals, $pred, Ext),
+        Modules, FileNames, !Cache, !IO).
+
+:- pred make_module_file_name(globals::in, string::in, ext::in,
+    module_name::in, file_name::out,
+    module_file_name_cache::in, module_file_name_cache::out,
+    io::di, io::uo) is det.
+
+make_module_file_name(Globals, From, Ext, ModuleName, FileName,
+        !Cache, !IO) :-
+    % See the analysis of gathered statistics below for why we use the cache
+    % for filenames with *all* extensions.
+    ModuleNameExt = module_name_and_ext(ModuleName, Ext),
+    ( if map.search(!.Cache, ModuleNameExt, FileName0) then
+        trace [
+            compile_time(flag("write_deps_file_cache")),
+            run_time(env("WRITE_DEPS_FILE_CACHE")),
+            io(!TIO)
+        ] (
+            record_cache_hit(Ext, !TIO)
+        ),
+        FileName = FileName0
+    else
+        trace [
+            compile_time(flag("write_deps_file_cache")),
+            run_time(env("WRITE_DEPS_FILE_CACHE")),
+            io(!TIO)
+        ] (
+            record_cache_miss(Ext, !TIO)
+        ),
+        module_name_to_file_name(Globals, From, Ext, ModuleName, FileName),
+        % We cache result of the translation, in order to save on
+        % temporary string construction.
+        map.det_insert(ModuleNameExt, FileName, !Cache)
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% The code in this section is invoked only if both the compile time and
+% the runtime conditions of the trace goals in make_module_file_name are met.
+% Its job is to gather statistics about
+%
+% - how many times we try to translate filenames with each extension, and
+% - what the hit rates of the cache is for each extension.
+%
+% The data gathered here, written out by record_write_deps_file_cache_stats,
+% can be summarized by tools/write_deps_file_stats.
+%
+% The output of that tool from one bootcheck (which was an asm_fast.gc
+% bootcheck with intermodule optimization) is as follows.
+%
+% number of lookups:           4334750
+% number of hits:              3020344
+% number of misses:            1314406
+% hit %:                         69.68
+% 
+% ----------------------------------------------------------
+% 
+% extension                                                #exec #lookup  hit%
+% 
+% ext_cur(ext_cur_mh)                                       5649 1716651 60.18
+% ext_cur_gs(ext_cur_gs_exec_noext)                         1680    4570  4.51
+% ext_cur_ngs(ext_cur_ngs_int_date_int0)                    5649   12345 17.20
+% ext_cur_ngs(ext_cur_ngs_int_date_int12)                   5649   12345 17.20
+% ext_cur_ngs(ext_cur_ngs_int_date_int3)                    5649    8408  0.00
+% ext_cur_ngs(ext_cur_ngs_int_int0)                         5649   53435 71.04
+% ext_cur_ngs(ext_cur_ngs_int_int1)                         5649  584321 87.35
+% ext_cur_ngs(ext_cur_ngs_int_int2)                         5649  126253  0.00
+% ext_cur_ngs(ext_cur_ngs_int_int3)                         5649  689821 72.47
+% ext_cur_ngs(ext_cur_ngs_misc_module_dep)                  5649    8408  0.00
+% ext_cur_ngs_gs(ext_cur_ngs_gs_obj_dollar_o)               5649    8408  0.00
+% ext_cur_ngs_gs(ext_cur_ngs_gs_obj_pic_o)                  5649    8408  0.00
+% ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_plain)             5649    8622  1.61
+% ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_trans)             5649    8622  1.61
+% ext_cur_ngs_gs(ext_cur_ngs_gs_target_c)                   5649    8408  0.00
+% ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_c)              5649    8622  1.61
+% ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_java)           5649    8622  1.61
+% ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)             5649    8408  0.00
+% ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih)        5649    8491  0.00
+% ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain)  5649  572752 87.54
+% ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans)  5649  468830 92.29
+%
+% This indicates that for each extension we actually invoke
+% make_module_file_name with, either
+%
+% - the cache has a good hit rate for that extension's translations, or
+% - the extension is translated too few times for its hit rate to matter,
+%
+
+:- type cache_stats
+    --->    cache_stats(
+                lookups     :: uint,
+                misses      :: uint
+            ).
+
+:- type file_name_cache_stats == map(ext, cache_stats).
+
+:- mutable(module_file_name_cache_stats, file_name_cache_stats, map.init,
+    ground, [untrailed, attach_to_io_state]).
+
+:- pred record_cache_miss(ext::in, io::di, io::uo) is det.
+
+record_cache_miss(Ext, !IO) :-
+    get_module_file_name_cache_stats(Map0, !IO),
+    % The first access can, and will, be a miss.
+    ( if map.search(Map0, Ext, Stats0) then
+        Stats0 = cache_stats(Lookups0, Misses0),
+        Stats = cache_stats(Lookups0 + 1u, Misses0 + 1u),
+        map.det_update(Ext, Stats, Map0, Map)
+    else
+        Stats = cache_stats(1u, 1u),
+        map.det_insert(Ext, Stats, Map0, Map)
+    ),
+    set_module_file_name_cache_stats(Map, !IO).
+
+:- pred record_cache_hit(ext::in, io::di, io::uo) is det.
+
+record_cache_hit(Ext, !IO) :-
+    get_module_file_name_cache_stats(Map0, !IO),
+    % A hit cannot be the first reference to Ext;
+    % it must be preceded by a miss.
+    map.lookup(Map0, Ext, Stats0),
+    Stats0 = cache_stats(Lookups0, Misses0),
+    Stats = cache_stats(Lookups0 + 1u, Misses0),
+    map.det_update(Ext, Stats, Map0, Map),
+    set_module_file_name_cache_stats(Map, !IO).
+
+%---------------------%
+
+record_write_deps_file_cache_stats(!IO) :-
+    get_module_file_name_cache_stats(Map, !IO),
+    ( if map.is_empty(Map) then
+        true
+    else
+        io.open_append("/tmp/WRITE_DEPS_FILE_CACHE_STATS", Result, !IO),
+        (
+            Result = error(_)
+        ;
+            Result = ok(OutStream),
+            map.foldl(write_cache_stats_entry(OutStream), Map, !IO),
+            io.close_output(OutStream, !IO)
+        )
+    ).
+
+:- pred write_cache_stats_entry(io.text_output_stream::in,
+    ext::in, cache_stats::in, io::di, io::uo) is det.
+
+write_cache_stats_entry(OutStream, Ext, Stats, !IO) :-
+    Stats = cache_stats(Lookups, Misses),
+    io.format(OutStream, "%-55s %8u %8u\n",
+        [s(string.string(Ext)), u(Lookups), u(Misses)], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.write_deps_file.

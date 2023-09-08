@@ -34,15 +34,14 @@
 % Predicates to isolate system dependencies.
 %
 
-    % Returns the default separator between components of a pathname --
-    % '/' on Unix systems and '\\' on Microsoft Windows systems.
+    % Return the default separator between components of a pathname,
+    % which is '/' on Unix systems and '\\' on Microsoft Windows systems.
     %
 :- func directory_separator = character.
 :- pred directory_separator(character::out) is det.
 
     % Is the character a directory separator.
-    % On Microsoft Windows systems this will succeed for '/'
-    % as well as '\\'.
+    % On Microsoft Windows systems, this will succeed for both '/' and '\\'.
     %
 :- pred is_directory_separator(character).
 :- mode is_directory_separator(in) is semidet.
@@ -123,8 +122,8 @@
     %   'X:\', which specifies the root directory of drive X,
     %       where X is any letter.
     %   '\', which specifies the root directory of the current drive.
-    %   '\\server\share\', which specifies a UNC (Universal Naming
-    %       Convention) root directory for a network drive.
+    %   '\\server\share\', which specifies a UNC (Universal Naming Convention)
+    %       root directory for a network drive.
     %
     % Note that 'X:' is not a Windows root directory -- it specifies the
     % current directory on drive X, where X is any letter.
@@ -864,8 +863,7 @@ DirName0/FileName0 = PathName :-
     then
         unexpected($pred, "second argument is absolute")
     else if
-        % Check that FileName is not a relative path
-        % of the form "C:foo".
+        % Check that FileName is not a relative path of the form "C:foo".
         use_windows_paths,
         Length = length(FileName),
         ( if Length >= 2 then
@@ -884,21 +882,18 @@ DirName0/FileName0 = PathName :-
     else if
         DirNameLength = length(DirName),
         (
-            % Check for construction of relative paths
-            % of the form "C:foo".
+            % Check for construction of relative paths of the form "C:foo".
             use_windows_paths,
             DirNameLength = 2,
             char.is_alpha(string.unsafe_index(DirName, 0)),
             string.unsafe_index(DirName, 1) = (':')
         ;
             % Do not introduce duplicate directory separators.
-            % On Windows \\foo (a UNC server specification) is
-            % not equivalent to \foo (the directory X:\foo, where
-            % X is the current drive).
+            % On Windows \\foo (a UNC server specification) is not equivalent
+            % to \foo (the directory X:\foo, where X is the current drive).
             ( if DirNameLength > 0 then
                 ends_with_directory_separator(DirName, DirNameLength, _)
             else
-
                 fail
             )
         )

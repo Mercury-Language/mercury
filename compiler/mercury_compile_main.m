@@ -90,6 +90,7 @@
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.source_file_map.
 :- import_module parse_tree.split_parse_tree_src.
+:- import_module parse_tree.write_deps_file.
 :- import_module parse_tree.write_error_spec.
 :- import_module parse_tree.write_module_interface_files.
 :- import_module recompilation.
@@ -152,6 +153,7 @@ real_main(!IO) :-
         io.format(ErrorStream, "%s\n", [s(io.error_message(E))], !IO),
         io.set_exit_status(1, !IO)
     ),
+    record_write_deps_file_cache_stats(!IO),
     record_instmap_delta_restrict_stats(!IO),
     close_any_specific_compiler_streams(!IO).
 
