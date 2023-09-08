@@ -580,69 +580,83 @@ dirname(S, dir.dirname(S)).
 %---------------------------------------------------------------------------%
 
     % Remove repeated path separators.
+    % XXX That is not ALL that this function does.
     %
 :- func canonicalize_path_chars(list(char)) = list(char).
 
-canonicalize_path_chars(FileName0) = FileName :-
+canonicalize_path_chars(FileNameChars0) = FileNameChars :-
     ( if
         % Windows allows path names of the form "\\server\share".
         % These path names are referred to as UNC path names.
         ( use_windows_paths ; io.have_cygwin ),
-        FileName0 = [Char1 | FileName1],
+        FileNameChars0 = [Char1 | FileNameChars1],
         is_directory_separator(Char1)
     then
-        % On Cygwin "//" is different to "\\"
-        % ("//" is the Cygwin root directory, "\\" is
-        % the root directory of the current drive).
+        canonicalize_later_path_chars(FileNameChars1, FileNameChars2),
+        % On Cygwin, "//" is different to "\\" in that
+        %
+        %  - "//" is the Cygwin root directory, while
+        %  - "\\" is the root directory of the current drive.
         ( if io.have_cygwin then
             CanonicalChar1 = Char1
         else
             CanonicalChar1 = directory_separator
         ),
-        FileName2 = canonicalize_path_chars_2(FileName1, []),
-
         % "\\" is not a UNC path name, so it is equivalent to "\".
         ( if
-            FileName2 = [Char2],
+            FileNameChars2 = [Char2],
             is_directory_separator(Char2)
         then
-            FileName = [CanonicalChar1]
+            FileNameChars = [CanonicalChar1]
         else
-            FileName = [CanonicalChar1 | FileName2]
+            FileNameChars = [CanonicalChar1 | FileNameChars2]
         )
     else
-        FileName = canonicalize_path_chars_2(FileName0, [])
+        canonicalize_later_path_chars(FileNameChars0, FileNameChars)
     ).
 
-:- func canonicalize_path_chars_2(list(char), list(char)) = list(char).
+:- pred canonicalize_later_path_chars(list(char)::in, list(char)::out) is det.
 
-canonicalize_path_chars_2([], RevFileName) = reverse(RevFileName).
-canonicalize_path_chars_2([C0 | FileName0], RevFileName0) =
-        canonicalize_path_chars_2(FileName0, RevFileName) :-
+canonicalize_later_path_chars(FileNameChars0, FileNameChars) :-
+    RevFileNameChars0 = [],
+    canonicalize_later_path_chars_acc(FileNameChars0,
+        RevFileNameChars0, RevFileNameChars),
+    list.reverse(RevFileNameChars, FileNameChars).
+
+:- pred canonicalize_later_path_chars_acc(list(char)::in,
+    list(char)::in, list(char)::out) is det.
+
+canonicalize_later_path_chars_acc([], !RevFileNameChars).
+canonicalize_later_path_chars_acc([C0 | FileNameChars0], !RevFileNameChars) :-
     % Convert all directory separators to the standard separator
     % for the platform, if that does not change the meaning.
-    % On Cygwin, "\foo\bar" (relative to root of current drive)
-    % is different to "/foo/bar" (relative to Cygwin root directory),
-    % so we cannot convert separators.
-    ( if
-        not io.have_cygwin,
-        is_directory_separator(C0)
-    then
-        C = directory_separator
+    ( if is_directory_separator(C0) then
+        % On Cygwin, "\foo\bar" (relative to root of current drive)
+        % is different to "/foo/bar" (relative to Cygwin root directory),
+        % so we cannot convert separators.
+        ( if io.have_cygwin then
+            C1 = C0
+        else
+            C1 = directory_separator
+        ),
+        % Remove repeated directory separators.
+        % (Actually, we delete the first separator, and keep the second
+        % separator, at least for now, since the next iteration may remove
+        % that as well, if the input contains three or more in a row.)
+        ( if
+            FileNameChars0 = [C2 | _],
+            dir.is_directory_separator(C2)
+        then
+            % Repeated separators; don't add C1 to !RevFileNameChars.
+            true
+        else
+            % C1 is not followed by a duplicated separator.
+            !:RevFileNameChars = [C1 | !.RevFileNameChars]
+        )
     else
-        C = C0
+        !:RevFileNameChars = [C0 | !.RevFileNameChars]
     ),
-
-    % Remove repeated directory separators.
-    ( if
-        dir.is_directory_separator(C),
-        FileName0 = [C2 | _],
-        dir.is_directory_separator(C2)
-    then
-        RevFileName = RevFileName0
-    else
-        RevFileName = [C | RevFileName0]
-    ).
+    canonicalize_later_path_chars_acc(FileNameChars0, !RevFileNameChars).
 
 :- func remove_trailing_dir_separator(list(char)) = list(char).
 
