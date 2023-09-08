@@ -173,11 +173,6 @@
 :- import_module string.
 :- import_module uint.
 
-:- type module_file_name_cache == map(module_name_and_ext, file_name).
-
-:- type module_name_and_ext
-    --->    module_name_and_ext(module_name, ext).
-
 %---------------------------------------------------------------------------%
 
 write_dependency_file(Globals, BurdenedAugCompUnit, IntermodDeps, AllDeps,
@@ -2690,6 +2685,8 @@ compare_module_names(Sym1, Sym2, Result) :-
 
 %---------------------------------------------------------------------------%
 
+:- type module_file_name_cache == map(ext, map(module_name, file_name)).
+
 :- pred make_module_file_name_group_with_ext(globals::in, string::in,
     ext::in, set(module_name)::in, list(mmake_file_name_group)::out,
     module_file_name_cache::in, module_file_name_cache::out,
@@ -2764,18 +2761,32 @@ make_module_file_names_with_ext(Globals, Ext, Modules, FileNames,
 
 make_module_file_name(Globals, From, Ext, ModuleName, FileName,
         !Cache, !IO) :-
+    % We cache result of the translation, in order to save on
+    % temporary string construction.
     % See the analysis of gathered statistics below for why we use the cache
     % for filenames with *all* extensions.
-    ModuleNameExt = module_name_and_ext(ModuleName, Ext),
-    ( if map.search(!.Cache, ModuleNameExt, FileName0) then
-        trace [
-            compile_time(flag("write_deps_file_cache")),
-            run_time(env("WRITE_DEPS_FILE_CACHE")),
-            io(!TIO)
-        ] (
-            record_cache_hit(Ext, !TIO)
-        ),
-        FileName = FileName0
+    ( if map.search(!.Cache, Ext, ExtMap0) then
+        ( if map.search(ExtMap0, ModuleName, CachedFileName) then
+            trace [
+                compile_time(flag("write_deps_file_cache")),
+                run_time(env("WRITE_DEPS_FILE_CACHE")),
+                io(!TIO)
+            ] (
+                record_cache_hit(Ext, !TIO)
+            ),
+            FileName = CachedFileName
+        else
+            trace [
+                compile_time(flag("write_deps_file_cache")),
+                run_time(env("WRITE_DEPS_FILE_CACHE")),
+                io(!TIO)
+            ] (
+                record_cache_miss(Ext, !TIO)
+            ),
+            module_name_to_file_name(Globals, From, Ext, ModuleName, FileName),
+            map.det_insert(ModuleName, FileName, ExtMap0, ExtMap),
+            map.det_update(Ext, ExtMap, !Cache)
+        )
     else
         trace [
             compile_time(flag("write_deps_file_cache")),
@@ -2785,9 +2796,8 @@ make_module_file_name(Globals, From, Ext, ModuleName, FileName,
             record_cache_miss(Ext, !TIO)
         ),
         module_name_to_file_name(Globals, From, Ext, ModuleName, FileName),
-        % We cache result of the translation, in order to save on
-        % temporary string construction.
-        map.det_insert(ModuleNameExt, FileName, !Cache)
+        ExtMap = map.singleton(ModuleName, FileName),
+        map.det_insert(Ext, ExtMap, !Cache)
     ).
 
 %---------------------------------------------------------------------------%
