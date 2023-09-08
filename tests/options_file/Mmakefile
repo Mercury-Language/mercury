@@ -19,7 +19,7 @@ include ../Mmake.common
 %.runtest: %.optfile_res ;
 
 %.optfile_out: %.m %.options_file
-	-$(MC) --make-interface $*.m > /dev/null 2>1&
+	-$(MC) --make-interface $*.m > /dev/null 2>&1
 	if $(MC) -V --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 		--options-file $*.options_file \
 		--dump-options-file $*.optfile_out $*.m ; \
