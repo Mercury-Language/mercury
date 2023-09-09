@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2007, 2009-2014 The University of Melbourne.
-% Copyright (C) 2013-2022 The Mercury team.
+% Copyright (C) 2013-2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -21,6 +21,10 @@
     %
 :- pred version(string::out, string::out) is det.
 
+    % Return the package version.
+    %
+:- func package_version = string.
+
 :- implementation.
 
 % Everything below here is not intended to be part of the public interface,
@@ -30,6 +34,7 @@
 
     % Is a module or submodule intended to be documented in the library
     % reference manual, or not?
+    %
 :- type doc_or_undoc
     --->    doc
     ;       undoc.
@@ -257,6 +262,30 @@
 "
     Version = jmercury.runtime.Constants.MR_VERSION;
     Fullarch = jmercury.runtime.Constants.MR_FULLARCH;
+").
+
+:- pragma no_inline(func(package_version/0)).
+
+:- pragma foreign_proc("C",
+    package_version = (Package::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    MR_ConstString package_string = MR_PKGVERSION;
+    Package = (MR_String) (MR_Word) package_string;
+").
+
+:- pragma foreign_proc("C#",
+    package_version = (Package::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Package = runtime.Constants.MR_PKGVERSION;
+").
+
+:- pragma foreign_proc("Java",
+    package_version = (Package::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Package = jmercury.runtime.Constants.MR_PKGVERSION;
 ").
 
 %---------------------------------------------------------------------------%

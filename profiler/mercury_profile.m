@@ -93,8 +93,14 @@ postprocess_options(Args, !IO) :-
 
 display_version(OutputStream, !IO) :-
     library.version(Version, _FullArch),
-    io.format(OutputStream, "Mercury profiler, version %s\n",
-        [s(Version)], !IO),
+    io.format(OutputStream, "Mercury profiler, version %s", [s(Version)],
+        !IO),
+    Package = library.package_version,
+    ( if Package = "" then
+        io.nl(OutputStream, !IO)
+    else
+        io.format(OutputStream, " (%s)\n", [s(Package)], !IO)
+    ),
     write_copyright_notice(OutputStream, !IO).
 
     % Display error message and then short usage message.
@@ -109,12 +115,13 @@ usage_error(ErrorMessage, !IO) :-
     short_usage(StdErr, !IO).
 
     % Display short_usage message.
-    %
+    % XXX the only place we call short_usage is in usage_error above.
+    % Also: why does the default name of the executable differ betweeen
+    % the two?
 :- pred short_usage(io.text_output_stream::in, io::di, io::uo) is det.
 
 short_usage(OutputStream, !IO) :-
     io.progname_base("mprof", ProgName, !IO),
-    display_version(OutputStream, !IO),
     io.format(OutputStream, "Usage: %s[<options>] [<files>]\n",
         [s(ProgName)], !IO),
     io.format(OutputStream, "Use `%s --help' for more information.\n",
@@ -124,10 +131,7 @@ short_usage(OutputStream, !IO) :-
 
 long_usage(OutputStream, !IO) :-
     io.progname_base("mprof", ProgName, !IO),
-    library.version(Version, _FullArch),
-    io.format(OutputStream,
-        "Name: mprof - Mercury profiler, version %s\n",
-        [s(Version)], !IO),
+    io.write_string(OutputStream, "Name: mprof - Mercury profiler\n", !IO),
     write_copyright_notice(OutputStream, !IO),
     io.write_strings(OutputStream, [
         "Usage: ", ProgName, " [<options>] [<files>]\n",

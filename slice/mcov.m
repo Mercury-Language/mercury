@@ -439,15 +439,20 @@ write_path_port_for_user(OutStream, port_and_path(Port, Path), !IO) :-
 display_version(OutStream, !IO) :-
     library.version(Version, _FullArch),
     io.format(OutStream,
-        "Mercury Coverage Testing Tool, version %s\n",
+        "Mercury Coverage Testing Tool, version %s",
         [s(Version)], !IO),
+    Package = library.package_version,
+    ( if Package = "" then
+        io.nl(OutStream, !IO)
+    else
+        io.format(OutStream, " (%s)\n", [s(Package)], !IO)
+    ),
     write_copyright_notice(OutStream, !IO).
 
 :- pred short_usage(io.text_output_stream::in, io::di, io::uo) is det.
 
 short_usage(OutStream, !IO) :-
     io.progname_base("mcov", ProgName, !IO),
-    display_version(OutStream, !IO),
     io.format(OutStream, "Usage: %s [<options>] [<files>]\n",
         [s(ProgName)], !IO),
     io.format(OutStream, "Use `%s --help' for more information.\n",
@@ -456,10 +461,8 @@ short_usage(OutStream, !IO) :-
 :- pred long_usage(io.text_output_stream::in, io::di, io::uo) is det.
 
 long_usage(OutStream, !IO) :-
-    library.version(Version, _FullArch),
-    io.format(OutStream,
-        "Name: mcov - Mercury Coverage Testing Tool, version %s\n",
-        [s(Version)], !IO),
+    io.write_string(OutStream,
+        "Name: mcov - Mercury Coverage Testing Tool\n", !IO),
     write_copyright_notice(OutStream, !IO),
     io.write_string(OutStream, "Usage: mcov [<options>] <arguments>\n", !IO),
     io.write_string(OutStream, "Arguments:\n", !IO),

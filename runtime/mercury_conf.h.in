@@ -479,6 +479,10 @@
 
 #define MR_FULLARCH "unknown"
 
+// What package version is this? (Taken from configure --with-pkgversion.)
+
+#define MR_PKGVERSION ""
+
 // Should we build the Mercury libraries as Windows DLLs?
 
 #undef MR_USE_DLLS

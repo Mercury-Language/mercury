@@ -3,7 +3,7 @@
 // @configure_input@
 //
 // Copyright (C) 2001-2004 The University of Melbourne.
-// Copyright (C) 2018 The Mercury team.
+// Copyright (C) 2018, 2023 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 //
 // This class is used to store miscellaneous Mercury-related constants.
@@ -15,4 +15,5 @@ package jmercury.runtime;
 public class Constants {
     public static final java.lang.String MR_VERSION = "@VERSION@";
     public static final java.lang.String MR_FULLARCH = "@FULLARCH@";
+    public static final java.lang.String MR_PKGVERSION = "@PACKAGE@";
 }

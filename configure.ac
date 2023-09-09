@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
-# Copyright (C) 2013-2022 The Mercury team.
+# Copyright (C) 2013-2023 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -102,6 +102,25 @@ AC_SUBST(RECONFIGURE_ARGS)
 AC_CONFIG_HEADERS(runtime/mercury_conf.h robdd/robdd_conf.h)
 DEFAULT_PREFIX="/usr/local/mercury-`. ./VERSION; echo $VERSION`"
 AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
+
+#-----------------------------------------------------------------------------#
+#
+# Let the user specify an optional package version.
+#
+
+AC_ARG_WITH(pkgversion,
+    AS_HELP_STRING([--with-pkgversion],
+    [Specify the package version for version and usage messages.]),
+    [PACKAGE="$withval"], [PACKAGE=])
+
+case "$PACKAGE" in
+    yes)
+        AC_MSG_ERROR(missing argument to --with-pkgversion=... option)
+        exit 1
+        ;;
+esac
+AC_DEFINE_UNQUOTED(MR_PKGVERSION, "$PACKAGE")
+AC_SUBST(PACKAGE)
 
 #-----------------------------------------------------------------------------#
 #

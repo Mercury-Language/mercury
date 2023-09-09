@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=cs
 //
 // Copyright (C) 2003-2004, 2010-2011 The University of Melbourne.
-// Copyright (C) 2014-2018, 2021 The Mercury team.
+// Copyright (C) 2014-2018, 2021, 2023 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 //
 
@@ -1122,6 +1122,7 @@ public class Constants
 
     public static readonly string MR_VERSION    = "@VERSION@";
     public static readonly string MR_FULLARCH   = "@FULLARCH@";
+    public static readonly string MR_PKGVERSION = "@PACKAGE@";
 }
 
 /*---------------------------------------------------------------------------*/
