@@ -321,7 +321,7 @@
             % To me (zs), this argues in favor of .err_date files
             % belonging in a grade-specific directory. The fact that
             % it would obviously be harder to people to find them there
-            % is no relevant, since people shouldn't *have* to find
+            % is not relevant, since people shouldn't *have* to find
             % .err_date files.
             % XXX zs and juliensf agree on this.
     ;       ext_cur_ngs_misc_prof.          % ".prof"
