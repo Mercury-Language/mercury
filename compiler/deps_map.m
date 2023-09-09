@@ -99,6 +99,7 @@
 :- import_module cord.
 :- import_module maybe.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module term_context.
 
 %---------------------------------------------------------------------------%
@@ -125,40 +126,67 @@ get_submodule_kind(ModuleName, DepsMap) = Kind :-
 %---------------------------------------------------------------------------%
 
 generate_deps_map(Globals, Search, ModuleName, !DepsMap, !Specs, !IO) :-
-    generate_deps_map_loop(Globals, Search, map.singleton(ModuleName, []),
-        !DepsMap, !Specs, !IO).
+    SeenModules0 = set_tree234.init,
+    ModuleExpectationContexts0 = map.singleton(ModuleName, []),
+    generate_deps_map_loop(Globals, Search, SeenModules0,
+        ModuleExpectationContexts0, !DepsMap, !Specs, !IO).
 
     % Values of this type map each module name to the list of contexts
     % that mention it, and thus establish an expectation that a module
     % with that name exists.
     %
+    % The code uses ModuleExpCs as short for "module expectation contexts".
+    %
 :- type expectation_contexts_map == map(module_name, expectation_contexts).
 :- type expectation_contexts == list(term_context).
 
 :- pred generate_deps_map_loop(globals::in, maybe_search::in,
-    expectation_contexts_map::in, deps_map::in, deps_map::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    set_tree234(module_name)::in, expectation_contexts_map::in,
+    deps_map::in, deps_map::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
-generate_deps_map_loop(Globals, Search, !.Modules, !DepsMap, !Specs, !IO) :-
-    ( if map.remove_smallest(Module, ExpectationContexts, !Modules) then
+generate_deps_map_loop(Globals, Search, !.SeenModules, !.ModuleExpCs,
+        !DepsMap, !Specs, !IO) :-
+    ( if map.remove_smallest(Module, ExpectationContexts, !ModuleExpCs) then
+        set_tree234.insert(Module, !SeenModules),
         generate_deps_map_step(Globals, Search, Module, ExpectationContexts,
-            !Modules, !DepsMap, !Specs, !IO),
+            !.SeenModules, !ModuleExpCs, !DepsMap, !Specs, !IO),
         generate_deps_map_loop(Globals, Search,
-            !.Modules, !DepsMap, !Specs, !IO)
+            !.SeenModules, !.ModuleExpCs, !DepsMap, !Specs, !IO)
     else
         % If we can't remove the smallest, then the set of modules to be
         % processed is empty.
         true
     ).
 
+    % generate_deps_map_step(Globals, Search, Module, ExpectationContexts,
+    %   SeenModules0, !ModuleExpCs, !DepsMap, !Specs, !IO):
+    %
+    % Process Module, which we expect *should* exist due to the code
+    % at ExpectationContexts, by finding out which other modules it depends on,
+    % and adding them to !ModuleExpCs and !DepsMap to be processed later.
+    %
+    % SeenModules0 is the set of modules that we have either already processed
+    % with generate_deps_map_step, or are currently processing. It is therefore
+    % the set of modules that we don't need to add to !ModuleExpCs.
+    % We *could* add them to !ModuleExpCs, and we once did, since the
+    % presence of Module in !.DepsMap with an already_processed flag
+    % will prevent us from processing them again anyway, but the extra
+    % recursive calls to generate_deps_map_loop are quite annoying to anyone
+    % who wants to step through this code.
+    %
+    % Benchmarking on a laptop shows that representing SeenModules0
+    % using set_tree234s generates a very small speedup, while using
+    % plain sets generates a very small slowdown.
+    %
 :- pred generate_deps_map_step(globals::in, maybe_search::in,
-    module_name::in, expectation_contexts::in,
+    module_name::in, expectation_contexts::in, set_tree234(module_name)::in,
     expectation_contexts_map::in, expectation_contexts_map::out,
-    deps_map::in, deps_map::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    deps_map::in, deps_map::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
 generate_deps_map_step(Globals, Search, Module, ExpectationContexts,
-        !Modules, !DepsMap, !Specs, !IO) :-
+        SeenModules0, !ModuleExpCs, !DepsMap, !Specs, !IO) :-
     % Look up the module's dependencies, and determine whether
     % it has been processed yet.
     lookup_or_find_dependencies(Globals, Search, Module, ExpectationContexts,
@@ -175,106 +203,115 @@ generate_deps_map_step(Globals, Search, Module, ExpectationContexts,
     then
         Deps = deps(already_processed, BurdenedModule),
         map.det_update(Module, Deps, !DepsMap),
-        % We could keep a list of the modules we have already processed
-        % and subtract it from the sets of modules we add here, but doing that
-        % actually leads to a small slowdown.
         ParseTreeModuleSrc = BurdenedModule ^ bm_module,
 
         ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
         AncestorModuleNames = get_ancestors_set(ModuleName),
         ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
-        set.foldl(add_module_name_and_context(ModuleNameContext),
-            AncestorModuleNames, !Modules),
+        set.foldl(add_module_name_and_context(SeenModules0, ModuleNameContext),
+            AncestorModuleNames, !ModuleExpCs),
 
         IntFIMs = ParseTreeModuleSrc ^ ptms_int_fims,
         ImpFIMs = ParseTreeModuleSrc ^ ptms_imp_fims,
-        map.foldl(add_fim_module_with_context, IntFIMs, !Modules),
-        map.foldl(add_fim_module_with_context, ImpFIMs, !Modules),
+        map.foldl(add_fim_module_with_context(SeenModules0),
+            IntFIMs, !ModuleExpCs),
+        map.foldl(add_fim_module_with_context(SeenModules0),
+            ImpFIMs, !ModuleExpCs),
 
         InclMap = ParseTreeModuleSrc ^ ptms_include_map,
-        map.foldl(add_public_include_module_with_context, InclMap, !Modules),
+        map.foldl(add_public_include_module_with_context(SeenModules0),
+            InclMap, !ModuleExpCs),
 
         ImportUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
-        map.foldl(add_avail_module_with_context, ImportUseMap, !Modules)
+        map.foldl(add_avail_module_with_context(SeenModules0),
+            ImportUseMap, !ModuleExpCs)
     else
         % Either MaybeDeps0 = no, or Done0 = already_processed.
         true
     ).
 
-:- pred add_public_include_module_with_context(module_name::in,
-    include_module_info::in,
+:- pred add_public_include_module_with_context(set_tree234(module_name)::in,
+    module_name::in, include_module_info::in,
     expectation_contexts_map::in, expectation_contexts_map::out) is det.
 
-add_public_include_module_with_context(ModuleName, InclInfo, !Modules) :-
+add_public_include_module_with_context(SeenModules0, ModuleName, InclInfo,
+        !ModuleExpCs) :-
     InclInfo = include_module_info(Section, Context),
     (
         Section = ms_interface,
-        ( if map.search(!.Modules, ModuleName, OldContexts) then
-            Contexts = [Context | OldContexts],
-            map.det_update(ModuleName, Contexts, !Modules)
-        else
-            map.det_insert(ModuleName, [Context], !Modules)
-        )
+        add_module_name_and_context(SeenModules0, Context, ModuleName,
+            !ModuleExpCs)
     ;
         Section = ms_implementation
     ).
 
-:- pred add_section_import_and_or_use_context(module_name::in,
-    section_import_and_or_use::in,
+:- pred add_avail_module_with_context(set_tree234(module_name)::in,
+    module_name::in, maybe_implicit_import_and_or_use::in,
     expectation_contexts_map::in, expectation_contexts_map::out) is det.
 
-add_section_import_and_or_use_context(ModuleName, SectionImportUse,
-        !Modules) :-
+add_avail_module_with_context(SeenModules0, ModuleName, MaybeImplicit,
+        !ModuleExpCs) :-
+    (
+        MaybeImplicit = explicit_avail(SectionImportUse),
+        add_section_import_and_or_use_context(SeenModules0, ModuleName,
+            SectionImportUse, !ModuleExpCs)
+    ;
+        MaybeImplicit = implicit_avail(_, MaybeSectionImportUse),
+        (
+            MaybeSectionImportUse = no,
+            add_module_name_and_context(SeenModules0, dummy_context,
+                ModuleName, !ModuleExpCs)
+        ;
+            MaybeSectionImportUse = yes(SectionImportUse),
+            add_section_import_and_or_use_context(SeenModules0, ModuleName,
+                SectionImportUse, !ModuleExpCs)
+        )
+    ).
+
+:- pred add_section_import_and_or_use_context(set_tree234(module_name)::in,
+    module_name::in, section_import_and_or_use::in,
+    expectation_contexts_map::in, expectation_contexts_map::out) is det.
+
+add_section_import_and_or_use_context(SeenModules0, ModuleName,
+        SectionImportUse, !ModuleExpCs) :-
     (
         ( SectionImportUse = int_import(Context)
         ; SectionImportUse = int_use(Context)
         ; SectionImportUse = imp_import(Context)
         ; SectionImportUse = imp_use(Context)
         ),
-        add_module_name_and_context(Context, ModuleName, !Modules)
+        add_module_name_and_context(SeenModules0, Context, ModuleName,
+            !ModuleExpCs)
     ;
         SectionImportUse = int_use_imp_import(IntContext, ImpContext),
-        add_module_name_and_context(IntContext, ModuleName, !Modules),
-        add_module_name_and_context(ImpContext, ModuleName, !Modules)
+        add_module_name_and_context(SeenModules0, IntContext, ModuleName,
+            !ModuleExpCs),
+        add_module_name_and_context(SeenModules0, ImpContext, ModuleName,
+            !ModuleExpCs)
     ).
 
-:- pred add_avail_module_with_context(module_name::in,
-    maybe_implicit_import_and_or_use::in,
+:- pred add_fim_module_with_context(set_tree234(module_name)::in,
+    fim_spec::in, term_context::in,
     expectation_contexts_map::in, expectation_contexts_map::out) is det.
 
-add_avail_module_with_context(ModuleName, MaybeImplicit, !Modules) :-
-    (
-        MaybeImplicit = explicit_avail(SectionImportUse),
-        add_section_import_and_or_use_context(ModuleName, SectionImportUse,
-            !Modules)
-    ;
-        MaybeImplicit = implicit_avail(_, MaybeSectionImportUse),
-        (
-            MaybeSectionImportUse = no,
-            add_module_name_and_context(dummy_context, ModuleName,
-                !Modules)
-        ;
-            MaybeSectionImportUse = yes(SectionImportUse),
-            add_section_import_and_or_use_context(ModuleName, SectionImportUse,
-                !Modules)
-        )
-    ).
-
-:- pred add_fim_module_with_context(fim_spec::in, term_context::in,
-    expectation_contexts_map::in, expectation_contexts_map::out) is det.
-
-add_fim_module_with_context(FIMSpec, Context, !Modules) :-
+add_fim_module_with_context(SeenModules0, FIMSpec, Context, !ModuleExpCs) :-
     FIMSpec = fim_spec(_Lang, ModuleName),
-    add_module_name_and_context(Context, ModuleName, !Modules).
+    add_module_name_and_context(SeenModules0, Context, ModuleName,
+        !ModuleExpCs).
 
-:- pred add_module_name_and_context(term_context::in, module_name::in,
+:- pred add_module_name_and_context(set_tree234(module_name)::in,
+    term_context::in, module_name::in,
     expectation_contexts_map::in, expectation_contexts_map::out) is det.
 
-add_module_name_and_context(Context, ModuleName, !Modules) :-
-    ( if map.search(!.Modules, ModuleName, OldContexts) then
-        map.det_update(ModuleName, [Context | OldContexts], !Modules)
+add_module_name_and_context(SeenModules0, Context, ModuleName, !ModuleExpCs) :-
+    ( if set_tree234.contains(SeenModules0, ModuleName) then
+        true
     else
-        map.det_insert(ModuleName, [Context], !Modules)
+        ( if map.search(!.ModuleExpCs, ModuleName, OldContexts) then
+            map.det_update(ModuleName, [Context | OldContexts], !ModuleExpCs)
+        else
+            map.det_insert(ModuleName, [Context], !ModuleExpCs)
+        )
     ).
 
 %---------------------%
@@ -294,14 +331,17 @@ lookup_or_find_dependencies(Globals, Search, ModuleName, ExpectationContexts,
         MaybeDeps = yes(Deps)
     else
         read_dependencies(Globals, Search, ModuleName, ExpectationContexts,
-            BurdenedModuleList, !Specs, !IO),
+            BurdenedModules, !Specs, !IO),
         (
-            BurdenedModuleList = [_ | _],
-            list.foldl(insert_into_deps_map, BurdenedModuleList, !DepsMap),
+            BurdenedModules = [_ | _],
+            list.foldl(insert_into_deps_map, BurdenedModules, !DepsMap),
+            % We can do a map.lookup here even though a map.search above
+            % failed because ModuleName should be one of the BurdenedModules
+            % the call above just added to !DepsMap.
             map.lookup(!.DepsMap, ModuleName, Deps),
             MaybeDeps = yes(Deps)
         ;
-            BurdenedModuleList = [],
+            BurdenedModules = [],
             MaybeDeps = no
         )
     ).
@@ -310,6 +350,15 @@ insert_into_deps_map(BurdenedModule, !DepsMap) :-
     ParseTreeModuleSrc = BurdenedModule ^ bm_module,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     Deps = deps(not_yet_processed, BurdenedModule),
+    % NOTE Redirecting this call to map.det_insert leads to a clean bootcheck
+    % with one exception: it causes the failure of the invalid_make_int/sub_c
+    % test case, with this message:
+    %
+    % Uncaught Mercury exception:
+    % Software Error: map.det_insert: key already present
+    %   Key Type: mdbcomp.sym_name.sym_name
+    %   Key Value: qualified(unqualified("sub_c_helper_1"), "sub1")
+    %   Value Type: parse_tree.deps_map.deps
     map.set(ModuleName, Deps, !DepsMap).
 
     % Read a module to determine the (direct) dependencies of that module
@@ -350,8 +399,9 @@ read_dependencies(Globals, Search, ModuleName, ExpectationContexts,
         %   A third class is nested submodules which are not found because
         %   they are looked up as if they were separate submodules. This is
         %   exemplified by the tests/invalid_make_int/sub_c test case,
-        %   where sub_c.m imports sub_a.sub_1, but sub_a.sub_1.m does not
-        %   exist, because sub_1 is a nested submodule inside sub_a.m.
+        %   where sub_c.m imports sub_c_helper_1.sub_1, but
+        %   sub_c_helper_1.sub_1.m does not exist, because sub_1 is a
+        %   nested submodule inside sub_c_helper_1.m.
         %
         %   It is arguable whether including the first two categories
         %   among the main module's dependencies in the .dv file
@@ -365,7 +415,7 @@ read_dependencies(Globals, Search, ModuleName, ExpectationContexts,
         %   would require changing the expected output of the sub_c test case.
         %
         %   The commented out code below is a possible replacement of this
-        %   switch and the call following it. We could use it if decide
+        %   switch and the call following it. We could use it if we decide
         %   not to put dummy parse_tree_srcs into the deps_map. Switching
         %   to it bootchecks, though only with a different expected output
         %   for the sub_c test case.
