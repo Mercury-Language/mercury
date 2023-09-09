@@ -108,10 +108,13 @@
     module_name::in, maybe_error(path_name_and_stream)::out,
     io::di, io::uo) is det.
 
+    % find_module_name(ErrorStream, ProgressStream, Globals,
+    %  FileName, MaybeModuleName, !IO):
+    %
     % Read the first item from the given file to find the module name.
     %
-:- pred find_module_name(globals::in, file_name::in, maybe(module_name)::out,
-    io::di, io::uo) is det.
+:- pred find_module_name(io.text_output_stream::in, globals::in,
+    file_name::in, maybe(module_name)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -335,7 +338,7 @@ find_source_error(ModuleName, Dirs, MaybeBetterMatch) = Msg :-
 
 %---------------------------------------------------------------------------%
 
-find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
+find_module_name(ProgressStream, Globals, FileName, MaybeModuleName, !IO) :-
     io.open_input(FileName, OpenRes, !IO),
     (
         OpenRes = ok(FileStream),
@@ -356,7 +359,7 @@ find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
         MaybeModuleName = yes(ModuleName),
         % XXX We don't check whether ModuleName was actually read
         % from the named file; it could just be DefaultModuleName.
-        write_error_specs(Globals, Specs, !IO)
+        write_error_specs(ProgressStream, Globals, Specs, !IO)
     ;
         OpenRes = error(Error),
         ErrorMsg = io.error_message(Error),
@@ -366,7 +369,7 @@ find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
         Spec = simplest_no_context_spec($pred, severity_error,
             phase_read_files, Pieces),
         % XXX Should return maybe1(module_name), not maybe(module_name).
-        write_error_spec(Globals, Spec, !IO),
+        write_error_spec(ProgressStream, Globals, Spec, !IO),
         MaybeModuleName = no
     ).
 

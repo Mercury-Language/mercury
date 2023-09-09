@@ -68,10 +68,12 @@
 
 %-----------------------------------------------------------------------------%
 
+    % write_source_file_map(Globals, ProgressStream, FileNames, !IO):
+    %
     % Given a list of file names, produce the Mercury.modules file.
     %
-:- pred write_source_file_map(globals::in, list(string)::in,
-    io::di, io::uo) is det.
+:- pred write_source_file_map(io.text_output_stream::in,
+    globals::in, list(string)::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -239,15 +241,16 @@ parse_source_file_map(Lines, ModulesFileName, CurLineNumber, ErrorMsg,
 
 %-----------------------------------------------------------------------------%
 
-write_source_file_map(Globals, FileNames, !IO) :-
+write_source_file_map(ProgressStream, Globals, FileNames, !IO) :-
     % XXX We print error messages to stderr, because there is no appropriate
     % module name we can give to globals.get_error_output_stream.
     ModulesFileName = modules_file_name,
     io.open_output(ModulesFileName, FileResult, !IO),
     (
         FileResult = ok(FileStream),
-        list.foldl2(write_source_file_map_2(Globals, FileStream), FileNames,
-            bimap.init, _, !IO),
+        list.foldl2(
+            write_source_file_map_2(ProgressStream, FileStream, Globals),
+            FileNames, bimap.init, _, !IO),
         io.close_output(FileStream, !IO)
     ;
         FileResult = error(Error),
@@ -258,22 +261,21 @@ write_source_file_map(Globals, FileNames, !IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-:- pred write_source_file_map_2(globals::in, io.text_output_stream::in,
-    file_name::in,
+:- pred write_source_file_map_2(io.text_output_stream::in,
+    io.text_output_stream::in, globals::in, file_name::in,
     bimap(module_name, file_name)::in, bimap(module_name, file_name)::out,
     io::di, io::uo) is det.
 
-write_source_file_map_2(Globals, MapStream, FileName,
-        SeenModules0, SeenModules, !IO) :-
-    find_module_name(Globals, FileName, MaybeModuleName, !IO),
+write_source_file_map_2(ProgressStream, MapStream, Globals,
+        FileName, SeenModules0, SeenModules, !IO) :-
+    find_module_name(ProgressStream, Globals, FileName, MaybeModuleName, !IO),
     (
         MaybeModuleName = yes(ModuleName),
         ( if
             bimap.search(SeenModules0, ModuleName, PrevFileName),
             PrevFileName \= FileName
         then
-            io.stderr_stream(StdErr, !IO),
-            io.format(StdErr,
+            io.format(ProgressStream,
                 "mercury_compile: " ++
                 "module `%s' defined in multiple files: %s, %s\n.",
                 [s(sym_name_to_string(ModuleName)),

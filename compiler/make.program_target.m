@@ -1684,15 +1684,17 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
             _, _, OptionsSpecs, LibGlobals, !IO)
     ;
         MaybeMCFlags = error1(LookupSpecs),
-        write_error_specs(Globals, LookupSpecs, !IO),
+        % XXX MAKE_STREAM
+        io.output_stream(ErrorStreamA, !IO),
+        write_error_specs(ErrorStreamA, Globals, LookupSpecs, !IO),
         % Errors should have been caught before.
         unexpected($pred, "bad DEFAULT_MCFLAGS")
     ),
 
     (
         OptionsSpecs = [_ | _],
-        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-        usage_errors(ErrorStream, Globals, OptionsSpecs, !IO),
+        get_error_output_stream(Globals, ModuleName, ErrorStreamB, !IO),
+        usage_errors(ErrorStreamB, Globals, OptionsSpecs, !IO),
         Succeeded = did_not_succeed
     ;
         OptionsSpecs = [],
@@ -1760,7 +1762,9 @@ install_library_grade_2(Globals, LinkSucceeded0, ModuleName, AllModules,
             Info2, _Info, !IO)
     ;
         LibSucceeded = did_not_succeed,
-        write_error_specs(Globals, Specs, !IO),
+        % XXX MAKE_STREAM
+        io.output_stream(ErrorStream, !IO),
+        write_error_specs(ErrorStream, Globals, Specs, !IO),
         Succeeded = did_not_succeed
     ).
 

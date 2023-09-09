@@ -43,9 +43,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % write_error_spec(Globals, Spec, !IO):
     % write_error_spec(Stream, Globals, Spec, !IO):
-    % write_error_specs(Globals, Specs, !IO):
     % write_error_specs(Stream, Globals, Specs, !IO):
     %
     % Write out the error message(s) specified by Spec or Specs, minus the
@@ -63,14 +61,8 @@
     % will not be changed. This will happen even if the severity means
     % that something should have been printed out.
     %
-:- pred write_error_spec(globals::in,
-    error_spec::in, io::di, io::uo) is det.
-:- pragma obsolete(pred(write_error_spec/4), [write_error_spec/5]).
 :- pred write_error_spec(io.text_output_stream::in, globals::in,
     error_spec::in, io::di, io::uo) is det.
-:- pred write_error_specs(globals::in,
-    list(error_spec)::in, io::di, io::uo) is det.
-:- pragma obsolete(pred(write_error_specs/4), [write_error_specs/5]).
 :- pred write_error_specs(io.text_output_stream::in, globals::in,
     list(error_spec)::in, io::di, io::uo) is det.
 
@@ -241,10 +233,6 @@
 % for verbose_once message to be printed by each of several invocations
 % of write_error_specs, in practice it won't happen.
 
-write_error_spec(Globals, Spec, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_error_spec(Stream, Globals, Spec, !IO).
-
 write_error_spec(Stream, Globals, Spec, !IO) :-
     globals.get_options(Globals, OptionTable),
     globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
@@ -252,10 +240,6 @@ write_error_spec(Stream, Globals, Spec, !IO) :-
         Spec, set.init, _, !IO).
 
 %---------------------%
-
-write_error_specs(Globals, Specs0, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_error_specs(Stream, Globals, Specs0, !IO).
 
 write_error_specs(Stream, Globals, Specs0, !IO) :-
     globals.get_options(Globals, OptionTable),

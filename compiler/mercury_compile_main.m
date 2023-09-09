@@ -635,7 +635,8 @@ do_op_mode(ProgressStream, ErrorStream, Globals, OpMode, DetectedGradeFlags,
             OptionVariables, OptionArgs, Args, !IO)
     ;
         OpMode = opm_top_generate_source_file_mapping,
-        source_file_map.write_source_file_map(Globals, Args, !IO)
+        source_file_map.write_source_file_map(ProgressStream, Globals,
+            Args, !IO)
     ;
         OpMode = opm_top_generate_standalone_interface(StandaloneIntBasename),
         do_op_mode_standalone_interface(ProgressStream, ErrorStream, Globals,
