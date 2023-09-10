@@ -84,7 +84,7 @@
     % output streams.
     %
 :- pred prepare_to_redirect_output(module_name::in,
-    maybe(io.text_output_stream)::out,
+    io.text_output_stream::in, maybe(io.text_output_stream)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Close the module error output stream.
@@ -94,8 +94,8 @@
     % output streams.
     %
 :- pred unredirect_output(globals::in, module_name::in,
-    io.text_output_stream::in, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io.text_output_stream::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -241,7 +241,8 @@ setup_for_build_with_module_options(DefaultOptionTable, InvokedByMmcMake,
 
 %---------------------------------------------------------------------------%
 
-prepare_to_redirect_output(_ModuleName, MaybeErrorStream, !Info, !IO) :-
+prepare_to_redirect_output(_ModuleName, ProgressStream, MaybeErrorStream,
+        !Info, !IO) :-
     % Write the output to a temporary file first, to make it easy
     % to just print the part of the error file that relates to the
     % current command. It will be appended to the error file later.
@@ -253,10 +254,11 @@ prepare_to_redirect_output(_ModuleName, MaybeErrorStream, !Info, !IO) :-
         ErrorFileResult = error(ErrorMessage),
         MaybeErrorStream = no,
         with_locked_stdout(!.Info,
-            write_error_creating_temp_file(ErrorMessage), !IO)
+            write_error_creating_temp_file(ProgressStream, ErrorMessage), !IO)
     ).
 
-unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
+unredirect_output(Globals, ModuleName, ProgressStream, ErrorOutputStream,
+        !Info, !IO) :-
     io.output_stream_name(ErrorOutputStream, TmpErrorFileName, !IO),
     io.close_output(ErrorOutputStream, !IO),
 
@@ -291,12 +293,15 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
         ;
             ErrorFileRes = error(Error),
             with_locked_stdout(!.Info,
-                write_error_opening_file(TmpErrorFileName, Error), !IO)
+                write_error_opening_file(ProgressStream, TmpErrorFileName,
+                    Error),
+                !IO)
         )
     ;
         TmpErrorLinesRes = error(Error),
         with_locked_stdout(!.Info,
-            write_error_opening_file(TmpErrorFileName, Error), !IO)
+            write_error_opening_file(ProgressStream, TmpErrorFileName, Error),
+            !IO)
     ),
     io.file.remove_file(TmpErrorFileName, _, !IO).
 
@@ -333,20 +338,20 @@ make_write_error_streams(InputLines, MaybeLinesToWrite,
     io::di, io::uo) is det.
 
 write_line_nl(Stream, Line, !IO) :-
-    io.write_string(Stream, Line, !IO),
-    io.nl(Stream, !IO).
+    io.format(Stream, "%s\n", [s(Line)], !IO).
 
-:- pred write_error_opening_file(string::in, io.error::in, io::di, io::uo)
-    is det.
+:- pred write_error_opening_file(io.text_output_stream::in, string::in,
+    io.error::in, io::di, io::uo) is det.
 
-write_error_opening_file(FileName, Error, !IO) :-
-    io.format("Error opening `%s': %s\n",
+write_error_opening_file(ProgressStream, FileName, Error, !IO) :-
+    io.format(ProgressStream, "Error opening `%s': %s\n",
         [s(FileName), s(io.error_message(Error))], !IO).
 
-:- pred write_error_creating_temp_file(string::in, io::di, io::uo) is det.
+:- pred write_error_creating_temp_file(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-write_error_creating_temp_file(ErrorMessage, !IO) :-
-    io.write_string(ErrorMessage ++ "\n", !IO).
+write_error_creating_temp_file(ProgressStream, ErrorMessage, !IO) :-
+    io.write_string(ProgressStream, ErrorMessage ++ "\n", !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -317,8 +317,8 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
         then
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             setup_checking_for_interrupt(Cookie, !IO),
-            prepare_to_redirect_output(MainModuleName, RedirectResult,
-                !Info, !IO),
+            prepare_to_redirect_output(MainModuleName, ProgressStream,
+                RedirectResult, !Info, !IO),
             (
                 RedirectResult = no,
                 Succeeded0 = did_not_succeed
@@ -330,8 +330,8 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
                     ObjModules, CompilationTarget, PIC, DepsSucceeded,
                     BuildDepsResult, Globals, ErrorStream, Succeeded0,
                     !Info, !IO),
-                unredirect_output(Globals, MainModuleName, ErrorStream,
-                    !Info, !IO)
+                unredirect_output(Globals, MainModuleName,
+                    ProgressStream, ErrorStream, !Info, !IO)
             ),
             Cleanup = linked_target_cleanup(ProgressStream, Globals,
                 MainModuleName, FileType,
@@ -802,7 +802,8 @@ build_java_files(Globals, MainModuleName, ModuleNames, Succeeded,
             ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)),
         ModuleNames, JavaFiles, !IO),
     % We redirect errors to a file named after the main module.
-    prepare_to_redirect_output(MainModuleName, RedirectResult, !Info, !IO),
+    prepare_to_redirect_output(MainModuleName, ProgressStream,
+        RedirectResult, !Info, !IO),
     (
         RedirectResult = no,
         Succeeded = did_not_succeed
@@ -810,7 +811,8 @@ build_java_files(Globals, MainModuleName, ModuleNames, Succeeded,
         RedirectResult = yes(ErrorStream),
         build_java_files_2(JavaFiles, Globals, ErrorStream, Succeeded,
             !Info, !IO),
-        unredirect_output(Globals, MainModuleName, ErrorStream, !Info, !IO)
+        unredirect_output(Globals, MainModuleName,
+            ProgressStream, ErrorStream, !Info, !IO)
     ).
 
 :- pred build_java_files_2(list(string)::in, globals::in,

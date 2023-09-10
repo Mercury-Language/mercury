@@ -838,7 +838,10 @@ read_module_dependencies_remake_msg(RebuildModuleDeps, ModuleDepsFile,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
-    prepare_to_redirect_output(ModuleName, MaybeErrorStream, !Info, !IO),
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
+    prepare_to_redirect_output(ModuleName, ProgressStream, MaybeErrorStream,
+        !Info, !IO),
     (
         MaybeErrorStream = yes(ErrorStream),
         % Both make_module_dependencies_fatal_error and
@@ -846,6 +849,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         % but factoring that call out of the latter would be non-trivial,
         % and is better left for when we replace the whole redirect/unredirect
         % machinery with the use of explicit streams.
+        % XXX This sets OldOutputStream = ProgressStream.
         io.set_output_stream(ErrorStream, OldOutputStream, !IO),
         % XXX Why ask for the timestamp if we then ignore it?
         % NOTE: Asking for a timestamp and then ignoring it *could* make sense
@@ -913,10 +917,10 @@ make_module_dependencies_fatal_error(Globals, OldOutputStream, ErrorStream,
     Specs0 = get_read_module_specs(ReadModuleErrors),
     write_error_specs(ErrorStream, Globals, Specs0, !IO),
     io.set_output_stream(OldOutputStream, _, !IO),
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
     (
         DisplayErrorReadingFile = yes,
-        % XXX MAKE_STREAM
-        io.output_stream(ProgressStream, !IO),
         io.format(ProgressStream,
             "** Error reading file `%s' to generate dependencies.\n",
             [s(SourceFileName)], !IO),
@@ -930,7 +934,8 @@ make_module_dependencies_fatal_error(Globals, OldOutputStream, ErrorStream,
     % so we don't leave `.err' files lying around for nonexistent modules.
     globals.set_option(output_compile_error_lines, maybe_int(no),
         Globals, UnredirectGlobals),
-    unredirect_output(UnredirectGlobals, ModuleName, ErrorStream, !Info, !IO),
+    unredirect_output(UnredirectGlobals, ModuleName,
+        ProgressStream, ErrorStream, !Info, !IO),
     module_name_to_file_name(Globals, $pred, ext_cur(ext_cur_user_err),
         ModuleName, ErrFileName),
     io.file.remove_file(ErrFileName, _, !IO),
@@ -1024,7 +1029,8 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
 
     record_made_target(Globals, MadeTarget, MadeTargetFileName,
         process_module(task_make_int3), Succeeded, !Info, !IO),
-    unredirect_output(Globals, ModuleName, ErrorStream, !Info, !IO).
+    unredirect_output(Globals, ModuleName,
+        WriteProgressStream, ErrorStream, !Info, !IO).
 
 :- pred make_info_add_module_and_imports_as_dep(burdened_module::in,
     make_info::in, make_info::out) is det.

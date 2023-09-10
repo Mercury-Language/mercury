@@ -498,7 +498,8 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
             ExtraAndTaskOptions, MayBuild, !IO),
         (
             MayBuild = may_build(AllOptionArgs, BuildGlobals),
-            prepare_to_redirect_output(ModuleName, RedirectResult, !Info, !IO),
+            prepare_to_redirect_output(ModuleName, ProgressStream,
+                RedirectResult, !Info, !IO),
             (
                 RedirectResult = no,
                 Succeeded0 = did_not_succeed
@@ -507,7 +508,8 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
                 build_target_2(ModuleName, Task, MaybeArgFileName,
                     ModuleDepInfo, BuildGlobals, AllOptionArgs, ErrorStream,
                     Succeeded0, !Info, !IO),
-                unredirect_output(Globals, ModuleName, ErrorStream, !Info, !IO)
+                unredirect_output(Globals, ModuleName,
+                    ProgressStream, ErrorStream, !Info, !IO)
             )
         ;
             MayBuild = may_not_build(Specs),
