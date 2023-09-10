@@ -5,10 +5,10 @@
 :- module int_impl_imports.
 :- interface.
 
-:- use_module int_impl_imports_2.
+:- use_module int_impl_imports_helper_1.
 
-:- type foo == int_impl_imports_2.bar.
+:- type foo == int_impl_imports_helper_1.bar.
 
 :- implementation.
 
-:- import_module int_impl_imports_2.
+:- import_module int_impl_imports_helper_1.

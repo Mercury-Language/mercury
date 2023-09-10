@@ -9,13 +9,13 @@
 :- module bug100.
 :- interface.
 
-:- import_module bug100_3.
+:- import_module bug100_helper_2.
 :- import_module unit.
 
     % We need this import to get that tc2(unit) superclass constraint
     % is satisfied.
     %
-:- import_module bug100_2.
+:- import_module bug100_helper_1.
 
 :- typeclass tc(T) <= tc2(T) where [].
 

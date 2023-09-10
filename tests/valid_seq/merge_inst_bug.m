@@ -17,12 +17,12 @@
 %       MergeInstInfo = MergeInstInfo0
 %   ).
 %
-% The bug is that the the changed and the unchanged cases each have
-% the code meant for the other. The unchanged case having the code meant
-% for the changed case leads to a tiny slowdown. The changed case having
-% the code meant for the unchanged case means that the replacement of
-% any equivalence types within this merge_inst_info, which occurs as a key
-% in the merge_inst_table, does not get done. Since this replacement *does*
+% The bug is that the changed and the unchanged cases each have the code
+% meant for the other. The unchanged case having the code meant for the
+% changed case leads to a tiny slowdown. The changed case having the code
+% meant for the unchanged case means that the replacement of any equivalence
+% types within this merge_inst_info, which occurs as a key in the
+% merge_inst_table, does not get done. Since this replacement *does*
 % get done to merge_insts that occur both in values in inst tables and in
 % the instmap_deltas attached to goals, the latter become dangling references.
 % Any later attempt to look up these dangling reference merge_insts in the

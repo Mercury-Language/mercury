@@ -12,7 +12,7 @@
 
 :- implementation.
 
-:- import_module constraint_proof_bug_lib.
+:- import_module constraint_proof_bug_helper_1.
 :- import_module io.
 :- import_module require.
 :- import_module string.

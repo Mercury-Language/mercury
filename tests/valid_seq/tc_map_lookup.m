@@ -15,7 +15,7 @@
 
 :- implementation.
 
-:- import_module tc_map_lookup_2.
+:- import_module tc_map_lookup_helper_1.
 
 main(!IO) :-
     io.write_string("hi.\n", !IO).

@@ -24,7 +24,7 @@
 
 :- implementation.
 
-:- import_module xml_event_read_helper.
+:- import_module xml_event_read_helper_1.
 
 main(!IO) :-
     V = get_value("hello"),

@@ -1,12 +1,10 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+%
+% This test was originally called func_int_bug_main.
+%
 
 :- module func_int_bug.
-:- interface.
-
-:- func foo = (int::out) is det.
-
 :- implementation.
-
-foo = 6.
+:- import_module func_int_bug_helper_1.

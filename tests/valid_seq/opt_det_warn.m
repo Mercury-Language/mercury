@@ -13,7 +13,7 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module opt_det_warn_2.
+:- import_module opt_det_warn_helper_1.
 
 main(!IO) :-
     foo(!IO).

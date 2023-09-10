@@ -3,38 +3,36 @@
 %---------------------------------------------------------------------------%
 
 :- module transitive_instance.
-
 :- interface.
 
 :- type t.
 
 :- implementation.
 
-:- import_module transitive_instance.sub2.
+:- import_module transitive_instance.transitive_instance_helper_2.
 
 :- type t
     --->    some [T] c(T) => c2(T).
 
-:- module transitive_instance.sub1.
-
+%---------------------------------------------------------------------------%
+    :- module transitive_instance.transitive_instance_helper_1.
     :- interface.
 
     :- typeclass c1(T) where [].
-
     :- instance c1(int).
 
     :- implementation.
 
     :- instance c1(int) where [].
 
-:- end_module transitive_instance.sub1.
+    :- end_module transitive_instance.transitive_instance_helper_1.
+%---------------------------------------------------------------------------%
 
-:- module transitive_instance.sub2.
-
+%---------------------------------------------------------------------------%
+    :- module transitive_instance.transitive_instance_helper_2.
     :- interface.
 
-    :- import_module transitive_instance.sub1.
-
+    :- import_module transitive_instance.transitive_instance_helper_1.
     :- typeclass c2(T) <= c1(T) where [].
 
     :- instance c2(int).
@@ -43,4 +41,5 @@
 
     :- instance c2(int) where [].
 
-:- end_module transitive_instance.sub2.
+    :- end_module transitive_instance.transitive_instance_helper_2.
+%---------------------------------------------------------------------------%

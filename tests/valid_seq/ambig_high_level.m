@@ -12,9 +12,9 @@
 
 :- implementation.
 
-% :- import_module ambig_confuse1.
-% :- import_module ambig_confuse2.
-:- import_module ambig_types_high_level.
+% :- import_module ambig_pred_helper_1.     % DO NOT UNCOMMENT
+% :- import_module ambig_pred_helper_2.     % DO NOT UNCOMMENT
+:- import_module ambig_high_level_helper_1.
 
 main(!IO) :-
     X = foo,

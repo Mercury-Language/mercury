@@ -19,10 +19,10 @@
 
 :- implementation.
 
-:- import_module ambig_confuse1.
-:- import_module ambig_confuse2.
-:- import_module ambig_confuse3.
-:- import_module ambig_types.
+:- import_module ambig_pred_helper_1.
+:- import_module ambig_pred_helper_2.
+:- import_module ambig_pred_helper_3.
+:- import_module ambig_pred_helper_4.
 
 main(!IO) :-
     ambig(_, _, _),

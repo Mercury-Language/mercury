@@ -23,8 +23,8 @@ TYPECLASS_PROGS = \
 C_PROGS =
 
 C_INTERFACE_PROGS = \
-	intermod_pragma_import \
-	test_xmlreader
+	foreign_proc_import \
+	xmlreader
 
 SOLVER_PROGS =
 
@@ -47,41 +47,38 @@ NON_DECLDEBUG_PROGS =
 OTHER_PROGS = \
 	bug100 \
 	bug563 \
+	call_impure_in_opt \
+	char_escape_opt \
+	dcg_bug \
 	empty_submodule \
 	exported_foreign_type \
+	exported_lambda \
+	field_access_funcs \
 	foreign_du_field \
-	func_int_bug_main \
+	func_int_bug \
+	head_var_unify_uniq \
+	indirect_import_one_path \
+	indirect_import_two_paths \
 	int_impl_imports \
-	intermod_bug_nested \
-	intermod_char \
-	intermod_dcg_bug \
-	intermod_impure \
-	intermod_lambda \
-	intermod_nested \
-	intermod_nested_module \
-	intermod_nested_module_bug \
-	intermod_nested_uniq \
-	intermod_quote \
-	intermod_record \
-	intermod_test \
-	intermod_type_spec \
-	intermod_typeclass \
-	intermod_typeclass_exist \
-	intermod_ua_type_spec \
-	intermod_user_equality \
-	intermod_user_equality_nested \
-	intermod_user_sharing \
 	merge_inst_bug \
-	module_a \
-	module_b \
-	module_c \
-	module_d \
-	module_e \
-	nested_mod_type_bug \
-	nested_module_bug \
+	mode_from_int0_opt \
+	nested_module_ambiguity \
 	opt_det_warn \
-	parsing_bug_main \
+	opt_file_quote \
+	overload_resolution \
+	parsing_bug \
+	read_submod_opt \
+	sharing_in_opt \
+	spurious_match \
+	to_submods_opt \
 	transitive_instance \
+	type_exported_to_submods \
+	type_spec_vars \
+	typeclass_exist_opt \
+	typeclass_in_opt \
+	unused_args_type_spec \
+	user_eq_pred_nested \
+	user_eq_pred_nonnested \
 	xml_event_read
 
 # XXX The following tests are not valid under the current Mercury
@@ -90,10 +87,10 @@ OTHER_PROGS = \
 #	constraint_proof_bug
 
 # XXX mmake should automatically handle these two dependencies.
-$(dates_subdir)intermod_nested_module2.date: \
-	$(date0s_subdir)intermod_nested_module2.date0
-$(dates_subdir)intermod_user_equality_nested2.date: \
-	$(date0s_subdir)intermod_user_equality_nested2.date0
+$(dates_subdir)read_submod_opt_helper_1.date: \
+	$(date0s_subdir)read_submod_opt_helper_1.date0
+$(dates_subdir)user_eq_pred_nested_helper_1.date: \
+	$(date0s_subdir)user_eq_pred_nested_helper_1.date0
 
 include ../valid/Mmake.valid.common
 
