@@ -3116,7 +3116,7 @@ disable_smart_recompilation(ProgressStream, OptionDescr, !Globals, !IO) :-
 %---------------------------------------------------------------------------%
 
 display_compiler_version(ProgressStream, !IO) :-
-    library.version(Version, _FullArch),
+    Version = library.mercury_version,
     io.format(ProgressStream, "Mercury Compiler, version %s", [s(Version)],
         !IO),
     Package = library.package_version,

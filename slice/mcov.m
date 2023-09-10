@@ -437,7 +437,7 @@ write_path_port_for_user(OutStream, port_and_path(Port, Path), !IO) :-
 :- pred display_version(io.text_output_stream::in, io::di, io::uo) is det.
 
 display_version(OutStream, !IO) :-
-    library.version(Version, _FullArch),
+    Version = library.mercury_version,
     io.format(OutStream,
         "Mercury Coverage Testing Tool, version %s",
         [s(Version)], !IO),

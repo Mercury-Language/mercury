@@ -21,7 +21,15 @@
     %
 :- pred version(string::out, string::out) is det.
 
-    % Return the package version.
+    % Return the Mercury version string.
+    %
+:- func mercury_version = string.
+
+    % Return the architecture string.
+    %
+:- func architecture = string.
+
+    % Return the package version string.
     %
 :- func package_version = string.
 
@@ -227,42 +235,76 @@
 :- import_module term_size_prof_builtin.
 :- import_module test_bitset.
 
-% version must be implemented using pragma foreign_proc,
-% so we can get at the MR_VERSION and MR_FULLARCH configuration parameters.
-% We can't just generate library.m from library.m.in at configuration time,
-% because that would cause bootstrapping problems: we might not have
-% a working Mercury compiler to compile library.m with.
+%---------------------------------------------------------------------------%
 
-:- pragma no_inline(pred(library.version/2)).
+version(Version, Fullarch) :-
+    Version = mercury_version,
+    Fullarch = architecture.
+
+%---------------------%
+
+% mercury_version, architecture and package_version must be implemented using
+% pragma foreign_proc, so we can get at the MR_VERSION, MR_FULLARCH and
+% MR_PACKAGE configuration parameters (and their C# and Java equivalents).
+% We cannot just generate library.m from library.m.in at configuration time,
+% because that would cause bootstrapping problems: we might not have a working
+% Mercury compiler to compile library.m with.
+
+:- pragma no_inline(func(mercury_version/0)).
 
 :- pragma foreign_proc("C",
-    version(Version::out, Fullarch::out),
+    mercury_version = (Version::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     MR_ConstString version_string = MR_VERSION;
-    MR_ConstString fullarch_string = MR_FULLARCH;
-
-    // We need to cast away const here, because Mercury declares Version
-    // and Fullarch to have type MR_String, not MR_ConstString.
+    // We need to cast away const here, because Mercury declares Version to
+    // have type MR_String, not MR_ConstString.
     Version = (MR_String) (MR_Word) version_string;
+").
+
+:- pragma foreign_proc("C#",
+    mercury_version = (Version::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Version = runtime.Constants.MR_VERSION;
+").
+
+:- pragma foreign_proc("Java",
+    mercury_version = (Version::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Version = jmercury.runtime.Constants.MR_VERSION;
+").
+
+%---------------------%
+
+:- pragma no_inline(func(architecture/0)).
+
+:- pragma foreign_proc("C",
+    architecture = (Fullarch::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    MR_ConstString fullarch_string = MR_FULLARCH;
+    // We need to cast away const here, because Mercury declares Fullarch to
+    // have type MR_String, not MR_ConstString.
     Fullarch = (MR_String) (MR_Word) fullarch_string;
 ").
 
 :- pragma foreign_proc("C#",
-    version(Version::out, Fullarch::out),
+    architecture = (Fullarch::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Version = runtime.Constants.MR_VERSION;
     Fullarch = runtime.Constants.MR_FULLARCH;
 ").
 
 :- pragma foreign_proc("Java",
-    version(Version::out, Fullarch::out),
+    architecture = (Fullarch::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Version = jmercury.runtime.Constants.MR_VERSION;
     Fullarch = jmercury.runtime.Constants.MR_FULLARCH;
 ").
+
+%---------------------%
 
 :- pragma no_inline(func(package_version/0)).
 
@@ -271,6 +313,8 @@
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     MR_ConstString package_string = MR_PKGVERSION;
+    // We need to cast away const here, because Mercury declares Package to
+    // have type MR_String, not MR_ConstString.
     Package = (MR_String) (MR_Word) package_string;
 ").
 

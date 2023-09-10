@@ -479,6 +479,14 @@ Changes to the Mercury standard library
     - pred `have_make_temp_directory/0`
     - pred `get_temp_directory/3`
 
+### Changes to the `library` module
+
+* The following functions have been added:
+
+    - func `architecture/0`
+    - func `mercury_version/0`
+    - func `package_version/`
+
 ### Changes to the `list` module
 
 * The following predicates and functions have been added:

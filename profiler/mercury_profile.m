@@ -92,7 +92,7 @@ postprocess_options(Args, !IO) :-
 :- pred display_version(io.text_output_stream::in, io::di, io::uo) is det.
 
 display_version(OutputStream, !IO) :-
-    library.version(Version, _FullArch),
+    Version = library.mercury_version,
     io.format(OutputStream, "Mercury profiler, version %s", [s(Version)],
         !IO),
     Package = library.package_version,
