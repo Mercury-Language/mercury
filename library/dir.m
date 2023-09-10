@@ -388,6 +388,38 @@ is_directory_separator(Char) :-
 is_directory_separator_semidet(Char) :-
     dir.is_directory_separator(Char).
 
+    % Is the input character either the standard or alternate directory
+    % separator for the current platform? If yes, then
+    % - on non-cygwin systems, it will return the standard separator;
+    % - on cygwin systems, where in some circumstances such replacements
+    %   would change the meaning of a pathname, it will return
+    %   the input character.
+    % If the input character is not a directory separator, then fail.
+    %
+:- pred is_directory_separator_return_canon(character::in, character::out)
+    is semidet.
+
+is_directory_separator_return_canon(Char, StdChar) :-
+    ( if Char = dir.directory_separator then
+        StdChar = Char
+    else if Char = dir.alt_directory_separator then
+        % On Cygwin, "//" is different to "\\" in that
+        %
+        %  - "//" is the Cygwin root directory, while
+        %  - "\\" is the root directory of the current drive.
+        %
+        % On Cygwin, "\foo\bar" (relative to root of current drive)
+        % is different to "/foo/bar" (relative to Cygwin root directory),
+        % so we cannot convert separators.
+        ( if io.have_cygwin then
+            StdChar = Char
+        else
+            StdChar = dir.directory_separator
+        )
+    else
+        fail
+    ).
+
 :- pred ends_with_directory_separator(string::in, int::in, int::out)
     is semidet.
 
@@ -589,27 +621,18 @@ canonicalize_path_chars(FileNameChars0) = FileNameChars :-
         % Windows allows path names of the form "\\server\share".
         % These path names are referred to as UNC path names.
         ( use_windows_paths ; io.have_cygwin ),
-        FileNameChars0 = [Char1 | FileNameChars1],
-        is_directory_separator(Char1)
+        FileNameChars0 = [HeadChar | TailChars],
+        is_directory_separator_return_canon(HeadChar, CanonHeadChar)
     then
-        canonicalize_later_path_chars(FileNameChars1, FileNameChars2),
-        % On Cygwin, "//" is different to "\\" in that
-        %
-        %  - "//" is the Cygwin root directory, while
-        %  - "\\" is the root directory of the current drive.
-        ( if io.have_cygwin then
-            CanonicalChar1 = Char1
-        else
-            CanonicalChar1 = directory_separator
-        ),
+        canonicalize_later_path_chars(TailChars, CanonTailChars),
         % "\\" is not a UNC path name, so it is equivalent to "\".
         ( if
-            FileNameChars2 = [Char2],
-            is_directory_separator(Char2)
+            CanonTailChars = [OnlyCanonTailChar],
+            is_directory_separator(OnlyCanonTailChar)
         then
-            FileNameChars = [CanonicalChar1]
+            FileNameChars = [CanonHeadChar]
         else
-            FileNameChars = [CanonicalChar1 | FileNameChars2]
+            FileNameChars = [CanonHeadChar | CanonTailChars]
         )
     else
         canonicalize_later_path_chars(FileNameChars0, FileNameChars)
@@ -627,36 +650,61 @@ canonicalize_later_path_chars(FileNameChars0, FileNameChars) :-
     list(char)::in, list(char)::out) is det.
 
 canonicalize_later_path_chars_acc([], !RevFileNameChars).
-canonicalize_later_path_chars_acc([C0 | FileNameChars0], !RevFileNameChars) :-
+canonicalize_later_path_chars_acc([HeadChar | TailChars], !RevFileNameChars) :-
     % Convert all directory separators to the standard separator
     % for the platform, if that does not change the meaning.
-    ( if is_directory_separator(C0) then
-        % On Cygwin, "\foo\bar" (relative to root of current drive)
-        % is different to "/foo/bar" (relative to Cygwin root directory),
-        % so we cannot convert separators.
-        ( if io.have_cygwin then
-            C1 = C0
-        else
-            C1 = directory_separator
-        ),
+    ( if is_directory_separator_return_canon(HeadChar, CanonHeadChar) then
         % Remove repeated directory separators.
         % (Actually, we delete the first separator, and keep the second
         % separator, at least for now, since the next iteration may remove
         % that as well, if the input contains three or more in a row.)
         ( if
-            FileNameChars0 = [C2 | _],
-            dir.is_directory_separator(C2)
+            TailChars = [FirstTailChar | _],
+            dir.is_directory_separator(FirstTailChar)
         then
-            % Repeated separators; don't add C1 to !RevFileNameChars.
+            % Repeated separators; don't add CanonHeadChar
+            % to !RevFileNameChars.
             true
         else
-            % C1 is not followed by a duplicated separator.
-            !:RevFileNameChars = [C1 | !.RevFileNameChars]
+            % HeadChar is not followed by a duplicated separator.
+            !:RevFileNameChars = [CanonHeadChar | !.RevFileNameChars]
         )
     else
-        !:RevFileNameChars = [C0 | !.RevFileNameChars]
+        !:RevFileNameChars = [HeadChar | !.RevFileNameChars]
     ),
-    canonicalize_later_path_chars_acc(FileNameChars0, !RevFileNameChars).
+    canonicalize_later_path_chars_acc(TailChars, !RevFileNameChars).
+
+:- pred is_path_string_canonical(string::in) is semidet.
+
+is_path_string_canonical(Path) :-
+    is_path_string_canonical_loop(Path, 0, prev_char_is_not_separator).
+
+:- type canon_prev_char
+    --->    prev_char_is_not_separator
+    ;       prev_char_is_separator.
+
+:- pred is_path_string_canonical_loop(string::in, int::in, canon_prev_char::in)
+    is semidet.
+
+is_path_string_canonical_loop(Path, CurIndex, PrevChar) :-
+    ( if string.index_next(Path, CurIndex, NextIndex, Char) then
+        ( if dir.is_directory_separator_return_canon(Char, CanonChar) then
+            % Two consecutive directory separators may not occur
+            % in a canonical path.
+            PrevChar = prev_char_is_not_separator,
+            % A directory separator may not occur in a canonical path
+            % without itself being a canonical separator.
+            Char = CanonChar,
+            is_path_string_canonical_loop(Path, NextIndex,
+                prev_char_is_separator)
+        else
+            is_path_string_canonical_loop(Path, NextIndex,
+                prev_char_is_not_separator)
+        )
+    else
+        % We have come to the end of Path.
+        true
+    ).
 
 :- func remove_trailing_dir_separator(list(char)) = list(char).
 
@@ -868,43 +916,32 @@ dotnet_path_name_is_absolute_2(_) :-
 %---------------------------------------------------------------------------%
 
 DirName0/FileName0 = PathName :-
-    DirName = string.from_char_list(canonicalize_path_chars(
-        string.to_char_list(DirName0))),
-    FileName = string.from_char_list(canonicalize_path_chars(
-        string.to_char_list(FileName0))),
-    ( if
-        dir.path_name_is_absolute(FileName)
-    then
+    ( if is_path_string_canonical(DirName0) then
+        DirName = DirName0
+    else
+        DirName = string.from_char_list(canonicalize_path_chars(
+            string.to_char_list(DirName0)))
+    ),
+    ( if is_path_string_canonical(FileName0) then
+        FileName = FileName0
+    else
+        FileName = string.from_char_list(canonicalize_path_chars(
+            string.to_char_list(FileName0)))
+    ),
+    ( if dir.path_name_is_absolute(FileName) then
         unexpected($pred, "second argument is absolute")
-    else if
-        % Check that FileName is not a relative path of the form "C:foo".
-        use_windows_paths,
-        Length = length(FileName),
-        ( if Length >= 2 then
-            char.is_alpha(string.unsafe_index(FileName, 0)),
-            string.unsafe_index(FileName, 1) = (':'),
-            ( if Length > 2 then
-                not is_directory_separator(string.unsafe_index(FileName, 2))
-            else
-                true
-            )
-        else
-            fail
-        )
-    then
+    else if dir.path_name_is_cur_drive_relative(FileName) then
         unexpected($pred, "second argument is a current drive relative path")
     else if
-        DirNameLength = length(DirName),
         (
             % Check for construction of relative paths of the form "C:foo".
-            use_windows_paths,
-            DirNameLength = 2,
-            char.is_alpha(string.unsafe_index(DirName, 0)),
-            string.unsafe_index(DirName, 1) = (':')
+            path_name_names_drive_letter(FileName, ThirdCharIndex),
+            not string.index_next(FileName, ThirdCharIndex, _, _)
         ;
             % Do not introduce duplicate directory separators.
-            % On Windows \\foo (a UNC server specification) is not equivalent
+            % On Windows, \\foo (a UNC server specification) is not equivalent
             % to \foo (the directory X:\foo, where X is the current drive).
+            string.length(DirName, DirNameLength),
             ( if DirNameLength > 0 then
                 ends_with_directory_separator(DirName, DirNameLength, _)
             else
@@ -922,6 +959,43 @@ DirName0/FileName0 = PathName :-
             string.char_to_string(dir.directory_separator),
             FileName])
     ).
+
+    % Is FileName a relative path of the form "C:foo"?
+    %
+:- pred path_name_is_cur_drive_relative(string::in) is semidet.
+
+path_name_is_cur_drive_relative(FileName) :-
+    % In the following, C stands for any drive letter, and xyz for
+    % non-special characters that can occur in filenames.
+    ( if path_name_names_drive_letter(FileName, ThirdCharIndex) then
+        ( if string.index_next(FileName, ThirdCharIndex, _, ThirdChar) then
+            ( if is_directory_separator(ThirdChar) then
+                % FileName is "C:/xyz", which is a cur drive path,
+                % but an absolute one.
+                fail
+            else
+                % FileName is "C:xyz", which is a cur drive relative path.
+                true
+            )
+        else
+            % FileName is "C:", which is a cur drive relative path.
+            true
+        )
+    else
+        % FileName cannot start with "C:".
+        fail
+    ).
+
+:- pred path_name_names_drive_letter(string::in, int::out) is semidet.
+
+path_name_names_drive_letter(FileName, ThirdCharIndex) :-
+    use_windows_paths,
+    string.index_next(FileName, 0, SecondCharIndex, FirstChar),
+    string.index_next(FileName, SecondCharIndex, ThirdCharIndex, SecondChar),
+    % SecondChar is *much* more unlikely to be ':'
+    % than FirstChar is to pass is_alpha.
+    SecondChar = (':'),
+    char.is_alpha(FirstChar).
 
 make_path_name(DirName, FileName) = DirName/FileName.
 
