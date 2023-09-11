@@ -142,29 +142,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Print the mc_constraint it is passed in a human readable format.
-    %
-:- pred pretty_print_constraint(io.text_output_stream::in, mc_varset::in,
-    mc_constraint::in, io::di, io::uo) is det.
-
-    % Print the mc_constraints it is passed in a human readable format.
-    %
-:- pred pretty_print_constraints(io.text_output_stream::in, mc_varset::in,
-    list(mc_constraint)::in, io::di, io::uo) is det.
-
-    % Print the mc_constraints it is passed in a human readable format.
-    %
-:- pred dump_constraints_and_annotations(io.text_output_stream::in,
-    globals::in, mc_varset::in, list(mc_ann_constraint)::in,
-    io::di, io::uo) is det.
-
-    % Print a list of models for the constraint system.
-    %
-:- pred pretty_print_solutions(io.text_output_stream::in, mc_varset::in,
-    list(mc_bindings)::in, io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
-
     % Return a representation of the empty set of constraints.
     %
 :- func init_pred_p_c_constraints = pred_p_c_constraints.
@@ -286,6 +263,29 @@
     %
 :- pred xor(mc_varset::in, prog_context::in, mc_var::in, mc_var::in,
     pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % Print the mc_constraints it is passed in a human readable format.
+    %
+:- pred dump_constraints_and_annotations(io.text_output_stream::in,
+    globals::in, mc_varset::in, list(mc_ann_constraint)::in,
+    io::di, io::uo) is det.
+
+    % Print the mc_constraint it is passed in a human readable format.
+    %
+:- pred pretty_print_constraint(io.text_output_stream::in, mc_varset::in,
+    mc_constraint::in, io::di, io::uo) is det.
+
+    % Print the mc_constraints it is passed in a human readable format.
+    %
+:- pred pretty_print_constraints(io.text_output_stream::in, mc_varset::in,
+    list(mc_constraint)::in, io::di, io::uo) is det.
+
+    % Print a list of models for the constraint system.
+    %
+:- pred pretty_print_solutions(io.text_output_stream::in, mc_varset::in,
+    list(mc_bindings)::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -416,7 +416,7 @@ xor(MCVarSet, Context, A, B, !Constraints) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Dumping constraints for --debug-mode-constraints
+% Dumping constraints for --debug-mode-constraints.
 %
 
 dump_constraints_and_annotations(OutputStream, Globals, VarSet,

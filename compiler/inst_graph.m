@@ -137,10 +137,16 @@
     list(prog_var)::in, list(prog_var)::in, prog_var::out, prog_var::out)
     is nondet.
 
+:- pred corresponding_members(list(T)::in, list(U)::in, T::out, U::out)
+    is nondet.
+
     % Merge two inst_graphs by renaming the variables in the second inst_graph.
     % Also return the variable substitution map.
     %
-:- pred merge(inst_graph::in, prog_varset::in, inst_graph::in, prog_varset::in,
+    % XXX This predicate is unused.
+    %
+:- pred merge_inst_graphs(inst_graph::in, prog_varset::in,
+    inst_graph::in, prog_varset::in,
     inst_graph::out, prog_varset::out, map(prog_var, prog_var)::out) is det.
 
 %   % Join two inst_graphs together by taking the maximum unrolling
@@ -154,11 +160,6 @@
     %
 :- pred dump_inst_graph(io.text_output_stream::in, prog_varset::in,
     inst_graph::in, io::di, io::uo) is det.
-
-    % XXX This should probably go in list.m.
-    %
-:- pred corresponding_members(list(T)::in, list(U)::in, T::out, U::out)
-    is nondet.
 
     % Values of this type are intended to contain all the info related
     % to inst_graphs for a predicate that needs to be stored in the pred_info.
@@ -299,19 +300,22 @@ foldl_reachable2(P, InstGraph, Var, !Acc1, !Acc2) :-
 foldl_reachable_aux2(P, InstGraph, Var, Seen, !Acc1, !Acc2) :-
     P(Var, !Acc1, !Acc2),
     map.lookup(InstGraph, Var, node(Functors, _)),
-    map.foldl2((pred(_ConsId::in, Args::in, MAcc10::in, MAcc1::out,
+    map.foldl2(
+        ( pred(_ConsId::in, Args::in, MAcc10::in, MAcc1::out,
             MAcc20::in, MAcc2::out) is det :-
-        list.foldl2((pred(Arg::in, LAccA0::in, LAccA::out,
-                LAccB0::in, LAccB::out) is det :-
-            ( if Arg `set.member` Seen then
-                LAccA = LAccA0,
-                LAccB = LAccB0
-            else
-                foldl_reachable_aux2(P, InstGraph, Arg, Seen `set.insert` Arg,
-                    LAccA0, LAccA, LAccB0, LAccB)
-            )
-        ), Args, MAcc10, MAcc1, MAcc20, MAcc2)
-    ), Functors, !Acc1, !Acc2).
+            list.foldl2(
+                ( pred(Arg::in, LAccA0::in, LAccA::out,
+                        LAccB0::in, LAccB::out) is det :-
+                    ( if Arg `set.member` Seen then
+                        LAccA = LAccA0,
+                        LAccB = LAccB0
+                    else
+                        foldl_reachable_aux2(P, InstGraph, Arg,
+                            Seen `set.insert` Arg,
+                            LAccA0, LAccA, LAccB0, LAccB)
+                    )
+            ), Args, MAcc10, MAcc1, MAcc20, MAcc2)
+        ), Functors, !Acc1, !Acc2).
 
 foldl_reachable_from_list2(P, InstGraph, Vars, !Acc1, !Acc2) :-
     list.foldl2(foldl_reachable2(P, InstGraph), Vars,
@@ -367,25 +371,27 @@ corresponding_members([A | _], [B | _], A, B).
 corresponding_members([_ | As], [_ | Bs], A, B) :-
     corresponding_members(As, Bs, A, B).
 
-merge(InstGraph0, VarSet0, NewInstGraph, NewVarSet, InstGraph, VarSet,
-        Renaming) :-
+merge_inst_graphs(InstGraph0, VarSet0, NewInstGraph, NewVarSet,
+        InstGraph, VarSet, Renaming) :-
     varset.merge_renaming_without_names(VarSet0, NewVarSet, VarSet, Renaming),
-    map.foldl((pred(Var0::in, Node0::in, IG0::in, IG::out) is det :-
-        Node0 = node(Functors0, MaybeParent),
-        map.map_values_only(
-            (pred(Args0::in, Args::out) is det :-
-                map.apply_to_list(Args0, Renaming, Args)),
-            Functors0, Functors),
-        Node = node(Functors, MaybeParent),
-        map.lookup(Renaming, Var0, Var),
-        map.det_insert(Var, Node, IG0, IG)
-    ), NewInstGraph, InstGraph0, InstGraph).
+    map.foldl(
+        ( pred(Var0::in, Node0::in, IG0::in, IG::out) is det :-
+            Node0 = node(Functors0, MaybeParent),
+            map.map_values_only(
+                ( pred(Args0::in, Args::out) is det :-
+                    map.apply_to_list(Args0, Renaming, Args)
+                ), Functors0, Functors),
+            Node = node(Functors, MaybeParent),
+            map.lookup(Renaming, Var0, Var),
+            map.det_insert(Var, Node, IG0, IG)
+        ), NewInstGraph, InstGraph0, InstGraph).
 
 %-----------------------------------------------------------------------------%
 
 % join(InstGraphA, VarSetA, InstGraphB, VarSetB,
 %       InstGraph, VarSet) :-
-%   solutions((pred(V::out) is nondet :-
+%   solutions(
+%       ( pred(V::out) is nondet :-
 %           map.member(InstGraphB, V, node(_, top_level))
 %       ), VarsB),
 %   list.foldl2(join_nodes(InstGraphB, VarSetB), VarsB, InstGraphA,
