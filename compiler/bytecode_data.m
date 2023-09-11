@@ -23,34 +23,41 @@
 %---------------------------------------------------------------------------%
 
     % XXX This assumes strings contain 8-bit characters.
-:- pred output_string(string::in, io::di, io::uo) is det.
+    %
+:- pred output_string(io.binary_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-:- pred output_byte(int::in, io::di, io::uo) is det.
+:- pred output_byte(io.binary_output_stream::in, int::in,
+    io::di, io::uo) is det.
 
     % Spit out an `int' in a portable `highest common denominator' format.
     % This format is: big-endian, 64-bit, 2's-complement int.
     %
     % NOTE: We -assume- the machine architecture uses 2's-complement.
     %
-:- pred output_int(int::in, io::di, io::uo) is det.
+:- pred output_int(io.binary_output_stream::in, int::in,
+    io::di, io::uo) is det.
 
     % Same as output_int, except only use 32 bits.
     %
-:- pred output_int32(int::in, io::di, io::uo) is det.
+:- pred output_int32(io.binary_output_stream::in, int::in,
+    io::di, io::uo) is det.
 
     % Spit out a `short' in a portable format.
     % This format is: big-endian, 16-bit, 2's-complement.
     %
     % NOTE: We -assume- the machine architecture uses 2's-complement.
     %
-:- pred output_short(int::in, io::di, io::uo) is det.
+:- pred output_short(io.binary_output_stream::in, int::in,
+    io::di, io::uo) is det.
 
     % Spit out a `float' in a portable `highest common denominator format.
     % This format is: big-endian, 64-bit, IEEE-754 floating point value.
     %
     % NOTE: We -assume- the machine architecture uses IEEE-754.
     %
-:- pred output_float(float::in, io::di, io::uo) is det.
+:- pred output_float(io.binary_output_stream::in, float::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -65,10 +72,10 @@
 
 %-----------------------------------------------------------------------------%
 
-output_string(Val, !IO) :-
+output_string(BinaryOutputStream, Val, !IO) :-
     string_to_byte_list(Val, List),
-    list.foldl(io.write_byte, List, !IO),
-    io.write_byte(0, !IO).
+    list.foldl(io.write_byte(BinaryOutputStream), List, !IO),
+    io.write_byte(BinaryOutputStream, 0, !IO).
 
 :- pred string_to_byte_list(string::in, list(int)::out) is det.
 
@@ -83,38 +90,37 @@ string_to_byte_list(Val, List) :-
     list.map(ToInt, Chars, List0),
     list.append(List0, [0], List).
 
-output_byte(Val, !IO) :-
+output_byte(BinaryOutputStream, Val, !IO) :-
     ( if Val < 256 then
-        io.write_byte(Val, !IO)
+        io.write_byte(BinaryOutputStream, Val, !IO)
     else
         unexpected($pred, "byte does not fit in eight bits")
     ).
 
-output_int(IntVal, !IO) :-
+output_int(BinaryOutputStream, IntVal, !IO) :-
     int.bits_per_int(IntBits),
     ( if IntBits > bytecode_int_bits then
         unexpected($pred,
             "size of int is larger than size of bytecode integer.")
     else
-        output_int(bytecode_int_bits, IntVal, !IO)
+        output_int_general(BinaryOutputStream, io.write_byte,
+            bytecode_int_bits, IntVal, !IO)
     ).
 
-output_int32(IntVal, !IO) :-
-    output_int(32, IntVal, !IO).
+output_int32(BinaryOutputStream, IntVal, !IO) :-
+    output_int_general(BinaryOutputStream, io.write_byte, 32, IntVal, !IO).
 
-output_short(Val, !IO) :-
-    output_int(16, Val, !IO).
+output_short(BinaryOutputStream, Val, !IO) :-
+    output_int_general(BinaryOutputStream, io.write_byte, 16, Val, !IO).
 
-:- pred output_int(int::in, int::in, io::di, io::uo) is det.
+:- pred output_int_general(io.binary_output_stream,
+    pred(io.binary_output_stream, int, T, T), int, int, T, T).
+:- mode output_int_general(in, in(pred(in, in, in, out) is det),
+    in, in, in, out) is det.
+:- mode output_int_general(in, in(pred(in, in, di, uo) is det),
+    in, in, di, uo) is det.
 
-output_int(Bits, IntVal, !IO) :-
-    output_int(io.write_byte, Bits, IntVal, !IO).
-
-:- pred output_int(pred(int, T, T), int, int, T, T).
-:- mode output_int(in(pred(in, in, out) is det), in, in, in, out) is det.
-:- mode output_int(in(pred(in, di, uo) is det), in, in, di, uo) is det.
-
-output_int(Writer, Bits, IntVal, !IO) :-
+output_int_general(BinaryOutputStream, Writer, Bits, IntVal, !IO) :-
     int.bits_per_int(IntBits),
     ( if
         Bits < IntBits,
@@ -133,10 +139,10 @@ output_int(Writer, Bits, IntVal, !IO) :-
     else
         ZeroPadBytes = 0
     ),
-    output_padding_zeros(Writer, ZeroPadBytes, !IO),
+    output_padding_zeros(BinaryOutputStream, Writer, ZeroPadBytes, !IO),
     BytesToDump = Bits // bits_per_byte,
     FirstByteToDump = BytesToDump - ZeroPadBytes - 1,
-    output_int_bytes(Writer, FirstByteToDump, IntVal, !IO).
+    output_int_bytes(BinaryOutputStream, Writer, FirstByteToDump, IntVal, !IO).
 
 :- func bytecode_int_bits = int.
 
@@ -150,44 +156,50 @@ bytecode_int_bytes = 8.
 
 bits_per_byte = 8.
 
-:- pred output_padding_zeros(pred(int, T, T), int, T, T).
-:- mode output_padding_zeros(in(pred(in, in, out) is det), in, in, out) is det.
-:- mode output_padding_zeros(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- pred output_padding_zeros(io.binary_output_stream,
+    pred(io.binary_output_stream, int, T, T), int, T, T).
+:- mode output_padding_zeros(in, in(pred(in, in, in, out) is det),
+    in, in, out) is det.
+:- mode output_padding_zeros(in, in(pred(in, in, di, uo) is det),
+    in, di, uo) is det.
 
-output_padding_zeros(Writer, NumBytes, !IO) :-
+output_padding_zeros(BinaryOutputStream, Writer, NumBytes, !IO) :-
     ( if NumBytes > 0 then
-        Writer(0, !IO),
+        Writer(BinaryOutputStream, 0, !IO),
         NumBytes1 = NumBytes - 1,
-        output_padding_zeros(Writer, NumBytes1, !IO)
+        output_padding_zeros(BinaryOutputStream, Writer, NumBytes1, !IO)
     else
         true
     ).
 
-:- pred output_int_bytes(pred(int, T, T), int, int, T, T).
-:- mode output_int_bytes(in(pred(in, in, out) is det), in, in, in, out) is det.
-:- mode output_int_bytes(in(pred(in, di, uo) is det), in, in, di, uo) is det.
+:- pred output_int_bytes(io.binary_output_stream,
+    pred(io.binary_output_stream, int, T, T), int, int, T, T).
+:- mode output_int_bytes(in, in(pred(in, in, in, out) is det),
+    in, in, in, out) is det.
+:- mode output_int_bytes(in, in(pred(in, in, di, uo) is det),
+    in, in, di, uo) is det.
 
-output_int_bytes(Writer, ByteNum, IntVal, !IO) :-
+output_int_bytes(BinaryOutputStream, Writer, ByteNum, IntVal, !IO) :-
     ( if ByteNum >= 0 then
         BitShifts = ByteNum * bits_per_byte,
         Byte = (IntVal >> BitShifts) mod (1 << bits_per_byte),
         ByteNum1 = ByteNum - 1,
-        Writer(Byte, !IO),
-        output_int_bytes(Writer, ByteNum1, IntVal, !IO)
+        Writer(BinaryOutputStream, Byte, !IO),
+        output_int_bytes(BinaryOutputStream, Writer, ByteNum1, IntVal, !IO)
     else
         true
     ).
 
-output_float(Val, !IO) :-
+output_float(BinaryOutputStream, Val, !IO) :-
     float_to_float64_bytes(Val, B0, B1, B2, B3, B4, B5, B6, B7),
-    output_byte(B0, !IO),
-    output_byte(B1, !IO),
-    output_byte(B2, !IO),
-    output_byte(B3, !IO),
-    output_byte(B4, !IO),
-    output_byte(B5, !IO),
-    output_byte(B6, !IO),
-    output_byte(B7, !IO).
+    output_byte(BinaryOutputStream, B0, !IO),
+    output_byte(BinaryOutputStream, B1, !IO),
+    output_byte(BinaryOutputStream, B2, !IO),
+    output_byte(BinaryOutputStream, B3, !IO),
+    output_byte(BinaryOutputStream, B4, !IO),
+    output_byte(BinaryOutputStream, B5, !IO),
+    output_byte(BinaryOutputStream, B6, !IO),
+    output_byte(BinaryOutputStream, B7, !IO).
 
     % Convert a `float' to the representation used in the bytecode.
     % That is, a sequence of eight bytes.

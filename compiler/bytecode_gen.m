@@ -27,8 +27,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred gen_module(module_info::in, list(byte_code)::out,
-    io::di, io::uo) is det.
+:- pred generate_bytecode_for_module(io.text_output_stream::in,
+    module_info::in, list(byte_code)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -86,51 +86,58 @@
 
 %---------------------------------------------------------------------------%
 
-gen_module(ModuleInfo, Code, !IO) :-
+generate_bytecode_for_module(ProgressStream, ModuleInfo, Code, !IO) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-    gen_preds(ModuleInfo, PredIds, CodeTree, !IO),
-    Code = cord.list(CodeTree).
+    generate_bytecode_for_preds(ProgressStream, ModuleInfo, PredIds,
+        CodeCord, !IO),
+    Code = cord.list(CodeCord).
 
-:- pred gen_preds(module_info::in, list(pred_id)::in, cord(byte_code)::out,
-    io::di, io::uo) is det.
+:- pred generate_bytecode_for_preds(io.text_output_stream::in, module_info::in,
+    list(pred_id)::in, cord(byte_code)::out, io::di, io::uo) is det.
 
-gen_preds(_ModuleInfo, [], empty, !IO).
-gen_preds(ModuleInfo, [PredId | PredIds], Code, !IO) :-
+generate_bytecode_for_preds(_ProgressStream, _ModuleInfo, [], empty, !IO).
+generate_bytecode_for_preds(ProgressStream, ModuleInfo, [PredId | PredIds],
+        CodeCord, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_all_non_imported_procids(PredInfo),
     (
         ProcIds = [],
-        PredCode = empty
+        PredCodeCord = empty
     ;
         ProcIds = [_ | _],
-        gen_pred(PredId, ProcIds, PredInfo, ModuleInfo, ProcsCode, !IO),
+        generate_bytecode_for_pred_procs(ProgressStream, ModuleInfo,
+            PredId, PredInfo, ProcIds, ProcsCodeCord, !IO),
         PredName = predicate_name(ModuleInfo, PredId),
-        list.length(ProcIds, ProcsCount),
+        list.length(ProcIds, NumProcs),
         pred_info_get_orig_arity(PredInfo, pred_form_arity(Arity)),
         get_is_func(PredInfo, IsFuncCode),
-        EnterCode = cord.singleton(byte_enter_pred(PredName, Arity, IsFuncCode,
-            ProcsCount)),
-        EndofCode = cord.singleton(byte_endof_pred),
-        PredCode = EnterCode ++ ProcsCode ++ EndofCode
+        EnterCodeCord = cord.singleton(
+            byte_enter_pred(PredName, Arity, IsFuncCode, NumProcs)),
+        EndofCodeCord = cord.singleton(byte_endof_pred),
+        PredCodeCord = EnterCodeCord ++ ProcsCodeCord ++ EndofCodeCord
     ),
-    gen_preds(ModuleInfo, PredIds, OtherCode, !IO),
-    Code = PredCode ++ OtherCode.
+    generate_bytecode_for_preds(ProgressStream, ModuleInfo, PredIds,
+        PredsCodeCord, !IO),
+    CodeCord = PredCodeCord ++ PredsCodeCord.
 
-:- pred gen_pred(pred_id::in, list(proc_id)::in, pred_info::in,
-    module_info::in, cord(byte_code)::out, io::di, io::uo) is det.
+:- pred generate_bytecode_for_pred_procs(io.text_output_stream::in,
+    module_info::in, pred_id::in, pred_info::in, list(proc_id)::in,
+    cord(byte_code)::out, io::di, io::uo) is det.
 
-gen_pred(_PredId, [], _PredInfo, _ModuleInfo, empty, !IO).
-gen_pred(PredId, [ProcId | ProcIds], PredInfo, ModuleInfo, Code, !IO) :-
-    maybe_write_proc_progress_message(ModuleInfo, "Generating bytecode for",
-        proc(PredId, ProcId), !IO),
-    gen_proc(ProcId, PredInfo, ModuleInfo, ProcCode),
-    gen_pred(PredId, ProcIds, PredInfo, ModuleInfo, ProcsCode, !IO),
+generate_bytecode_for_pred_procs(_, _, _, _, [], empty, !IO).
+generate_bytecode_for_pred_procs(ProgressStream, ModuleInfo, PredId, PredInfo,
+        [ProcId | ProcIds], Code, !IO) :-
+    maybe_write_proc_progress_message(ProgressStream, ModuleInfo,
+        "Generating bytecode for", proc(PredId, ProcId), !IO),
+    generate_bytecode_for_proc(ModuleInfo, PredInfo, ProcId, ProcCode),
+    generate_bytecode_for_pred_procs(ProgressStream, ModuleInfo,
+        PredId, PredInfo, ProcIds, ProcsCode, !IO),
     Code = ProcCode ++ ProcsCode.
 
-:- pred gen_proc(proc_id::in, pred_info::in,
-    module_info::in, cord(byte_code)::out) is det.
+:- pred generate_bytecode_for_proc(module_info::in, pred_info::in, proc_id::in,
+    cord(byte_code)::out) is det.
 
-gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
+generate_bytecode_for_proc(ModuleInfo, PredInfo, ProcId, Code) :-
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
 
@@ -144,9 +151,9 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
     set_of_var.insert_list(ArgVars, GoalVars, Vars),
     set_of_var.to_sorted_list(Vars, VarList),
     map.init(VarMap0),
-    create_varmap(VarList, VarTable, 0, VarMap0, VarMap, VarInfos),
+    create_bytecode_varmap(VarList, VarTable, 0, VarMap0, VarMap, VarInfos),
 
-    init_byte_info(ModuleInfo, VarMap, VarTable, ByteInfo0),
+    init_byte_info(ModuleInfo, VarTable, VarMap, ByteInfo0),
     get_next_label(ZeroLabel, ByteInfo0, ByteInfo1),
 
     proc_info_arg_info(ProcInfo, ArgInfo),
@@ -169,7 +176,7 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
         ByteInfo2 = ByteInfo1
     ),
 
-    gen_goal(Goal, ByteInfo2, ByteInfo3, GoalCode),
+    generate_bytecode_for_goal(Goal, ByteInfo2, ByteInfo3, GoalCode),
     get_next_label(EndLabel, ByteInfo3, ByteInfo),
     get_counts(ByteInfo, LabelCount, TempCount),
 
@@ -198,26 +205,28 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred gen_goal(hlds_goal::in, byte_info::in, byte_info::out,
+:- pred generate_bytecode_for_goal(hlds_goal::in,
+    byte_info::in, byte_info::out,
     cord(byte_code)::out) is det.
 
-gen_goal(hlds_goal(GoalExpr, GoalInfo), !ByteInfo, Code) :-
-    gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, GoalCode),
+generate_bytecode_for_goal(Goal, !ByteInfo, Code) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    generate_bytecode_for_goal_expr(GoalExpr, GoalInfo, !ByteInfo, GoalCode),
     Context = goal_info_get_context(GoalInfo),
     Line = term_context.context_line(Context),
     Code = cord.singleton(byte_context(Line)) ++ GoalCode.
 
-:- pred gen_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
+:- pred generate_bytecode_for_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
     byte_info::in, byte_info::out, cord(byte_code)::out) is det.
 
-gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
+generate_bytecode_for_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
     (
         GoalExpr = generic_call(GenericCallType,
             ArgVars, ArgModes, _, Detism),
         (
             GenericCallType = higher_order(PredVar, _, _, _),
-            gen_higher_order_call(PredVar, ArgVars, ArgModes, Detism,
-                !.ByteInfo, Code)
+            generate_bytecode_for_higher_order_call(PredVar, ArgVars, ArgModes,
+                Detism, !.ByteInfo, Code)
         ;
             ( GenericCallType = class_method(_, _, _, _)
             ; GenericCallType = cast(_)
@@ -235,17 +244,19 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         (
             BuiltinState = not_builtin,
             Detism = goal_info_get_determinism(GoalInfo),
-            gen_call(PredId, ProcId, ArgVars, Detism, !.ByteInfo, Code)
+            generate_bytecode_for_plain_call(PredId, ProcId, ArgVars, Detism,
+                !.ByteInfo, Code)
         ;
             BuiltinState = inline_builtin,
-            gen_builtin(PredId, ProcId, ArgVars, !.ByteInfo, Code)
+            generate_bytecode_for_builtin(PredId, ProcId, ArgVars,
+                !.ByteInfo, Code)
         )
     ;
         GoalExpr = unify(_Var, _RHS, _Mode, Unification, _),
-        gen_unify(Unification, !.ByteInfo, Code)
+        generate_bytecode_for_unify(Unification, !.ByteInfo, Code)
     ;
         GoalExpr = negation(Goal),
-        gen_goal(Goal, !ByteInfo, SomeCode),
+        generate_bytecode_for_goal(Goal, !ByteInfo, SomeCode),
         get_next_label(EndLabel, !ByteInfo),
         get_next_temp(FrameTemp, !ByteInfo),
         EnterCode = cord.singleton(byte_enter_negation(FrameTemp, EndLabel)),
@@ -254,7 +265,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         Code =  EnterCode ++ SomeCode ++ EndofCode
     ;
         GoalExpr = scope(_, InnerGoal),
-        gen_goal(InnerGoal, !ByteInfo, InnerCode),
+        generate_bytecode_for_goal(InnerGoal, !ByteInfo, InnerCode),
         OuterDetism = goal_info_get_determinism(GoalInfo),
         InnerGoal = hlds_goal(_, InnerGoalInfo),
         InnerDetism = goal_info_get_determinism(InnerGoalInfo),
@@ -270,7 +281,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         )
     ;
         GoalExpr = conj(plain_conj, GoalList),
-        gen_conj(GoalList, !ByteInfo, Code)
+        generate_bytecode_for_conjuncts(GoalList, !ByteInfo, Code)
     ;
         GoalExpr = conj(parallel_conj, _GoalList),
         sorry($pred, "bytecode_gen of parallel conjunction")
@@ -282,7 +293,8 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         ;
             GoalList = [_ | _],
             get_next_label(EndLabel, !ByteInfo),
-            gen_disj(GoalList, EndLabel, !ByteInfo, DisjCode),
+            generate_bytecode_for_disjuncts(GoalList, EndLabel,
+                !ByteInfo, DisjCode),
             EnterCode = cord.singleton(byte_enter_disjunction(EndLabel)),
             EndofCode = cord.from_list([byte_endof_disjunction,
                 byte_label(EndLabel)]),
@@ -291,7 +303,8 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
     ;
         GoalExpr = switch(Var, _, CasesList),
         get_next_label(EndLabel, !ByteInfo),
-        gen_switch(CasesList, Var, EndLabel, !ByteInfo, SwitchCode),
+        generate_bytecode_for_cases(CasesList, Var, EndLabel, !ByteInfo,
+            SwitchCode),
         map_var(!.ByteInfo, Var, ByteVar),
         EnterCode = cord.singleton(byte_enter_switch(ByteVar, EndLabel)),
         EndofCode = cord.from_list([byte_endof_switch, byte_label(EndLabel)]),
@@ -301,9 +314,9 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         get_next_label(EndLabel, !ByteInfo),
         get_next_label(ElseLabel, !ByteInfo),
         get_next_temp(FrameTemp, !ByteInfo),
-        gen_goal(Cond, !ByteInfo, CondCode),
-        gen_goal(Then, !ByteInfo, ThenCode),
-        gen_goal(Else, !ByteInfo, ElseCode),
+        generate_bytecode_for_goal(Cond, !ByteInfo, CondCode),
+        generate_bytecode_for_goal(Then, !ByteInfo, ThenCode),
+        generate_bytecode_for_goal(Else, !ByteInfo, ElseCode),
         EnterIfCode = cord.singleton(
             byte_enter_if(ElseLabel, EndLabel, FrameTemp)),
         EnterThenCode = cord.singleton(byte_enter_then(FrameTemp)),
@@ -359,11 +372,12 @@ gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
 
     % Generate bytecode for a higher order call.
     %
-:- pred gen_higher_order_call(prog_var::in, list(prog_var)::in,
-    list(mer_mode)::in, determinism::in, byte_info::in, cord(byte_code)::out)
-    is det.
+:- pred generate_bytecode_for_higher_order_call(prog_var::in,
+    list(prog_var)::in, list(mer_mode)::in, determinism::in,
+    byte_info::in, cord(byte_code)::out) is det.
 
-gen_higher_order_call(PredVar, ArgVars, ArgModes, Detism, ByteInfo, Code) :-
+generate_bytecode_for_higher_order_call(PredVar, ArgVars, ArgModes, Detism,
+        ByteInfo, Code) :-
     determinism_to_code_model(Detism, CodeModel),
     get_module_info(ByteInfo, ModuleInfo),
     list.map(get_var_type(ByteInfo), ArgVars, ArgTypes),
@@ -397,10 +411,12 @@ gen_higher_order_call(PredVar, ArgVars, ArgModes, Detism, ByteInfo, Code) :-
 
     % Generate bytecode for an ordinary call.
     %
-:- pred gen_call(pred_id::in, proc_id::in, list(prog_var)::in,
-    determinism::in, byte_info::in, cord(byte_code)::out) is det.
+:- pred generate_bytecode_for_plain_call(pred_id::in, proc_id::in,
+    list(prog_var)::in, determinism::in, byte_info::in,
+    cord(byte_code)::out) is det.
 
-gen_call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
+generate_bytecode_for_plain_call(PredId, ProcId, ArgVars, Detism,
+        ByteInfo, Code) :-
     get_module_info(ByteInfo, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_arg_info(ProcInfo, ArgInfo),
@@ -434,10 +450,10 @@ gen_call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
 
     % Generate bytecode for a call to a builtin.
     %
-:- pred gen_builtin(pred_id::in, proc_id::in, list(prog_var)::in,
-    byte_info::in, cord(byte_code)::out) is det.
+:- pred generate_bytecode_for_builtin(pred_id::in, proc_id::in,
+    list(prog_var)::in, byte_info::in, cord(byte_code)::out) is det.
 
-gen_builtin(PredId, ProcId, Args, ByteInfo, Code) :-
+generate_bytecode_for_builtin(PredId, ProcId, Args, ByteInfo, Code) :-
     get_module_info(ByteInfo, ModuleInfo),
     ModuleName = predicate_module(ModuleInfo, PredId),
     PredName = predicate_name(ModuleInfo, PredId),
@@ -463,12 +479,12 @@ gen_builtin(PredId, ProcId, Args, ByteInfo, Code) :-
 map_test(ByteInfo, TestExpr, Code) :-
     (
         TestExpr = binary(Binop, X, Y),
-        map_arg(ByteInfo, X, ByteX),
-        map_arg(ByteInfo, Y, ByteY),
+        arg_to_bytecode(ByteInfo, X, ByteX),
+        arg_to_bytecode(ByteInfo, Y, ByteY),
         Code = cord.singleton(byte_builtin_bintest(Binop, ByteX, ByteY))
     ;
         TestExpr = unary(Unop, X),
-        map_arg(ByteInfo, X, ByteX),
+        arg_to_bytecode(ByteInfo, X, ByteX),
         Code = cord.singleton(byte_builtin_untest(Unop, ByteX))
     ).
 
@@ -479,13 +495,13 @@ map_test(ByteInfo, TestExpr, Code) :-
 map_assign(ByteInfo, Var, Expr, Code) :-
     (
         Expr = binary(Binop, X, Y),
-        map_arg(ByteInfo, X, ByteX),
-        map_arg(ByteInfo, Y, ByteY),
+        arg_to_bytecode(ByteInfo, X, ByteX),
+        arg_to_bytecode(ByteInfo, Y, ByteY),
         map_var(ByteInfo, Var, ByteVar),
         Code = cord.singleton(byte_builtin_binop(Binop, ByteX, ByteY, ByteVar))
     ;
         Expr = unary(Unop, X),
-        map_arg(ByteInfo, X, ByteX),
+        arg_to_bytecode(ByteInfo, X, ByteX),
         map_var(ByteInfo, Var, ByteVar),
         Code = cord.singleton(byte_builtin_unop(Unop, ByteX, ByteVar))
     ;
@@ -495,10 +511,10 @@ map_assign(ByteInfo, Var, Expr, Code) :-
         Code = cord.singleton(byte_assign(ByteVar, ByteX))
     ).
 
-:- pred map_arg(byte_info::in, simple_expr(prog_var)::in(simple_arg_expr),
-    byte_arg::out) is det.
+:- pred arg_to_bytecode(byte_info::in,
+    simple_expr(prog_var)::in(simple_arg_expr), byte_arg::out) is det.
 
-map_arg(ByteInfo, Expr, ByteArg) :-
+arg_to_bytecode(ByteInfo, Expr, ByteArg) :-
     (
         Expr = leaf(Var),
         map_var(ByteInfo, Var, ByteVar),
@@ -542,22 +558,23 @@ map_arg(ByteInfo, Expr, ByteArg) :-
 
     % Generate bytecode for a unification.
     %
-:- pred gen_unify(unification::in, byte_info::in, cord(byte_code)::out) is det.
+:- pred generate_bytecode_for_unify(unification::in, byte_info::in,
+    cord(byte_code)::out) is det.
 
-gen_unify(Unification, ByteInfo, Code) :-
+generate_bytecode_for_unify(Unification, ByteInfo, Code) :-
     (
         Unification = construct(Var, ConsId, Args, UniModes, _, _, _),
         map_var(ByteInfo, Var, ByteVar),
         map_vars(ByteInfo, Args, ByteArgs),
-        map_cons_id(ByteInfo, ConsId, ByteConsId),
+        cons_id_to_bytecode(ByteInfo, ConsId, ByteConsId),
         ( if ByteConsId = byte_pred_const(_, _, _, _, _) then
             Code = cord.singleton(
                 byte_construct(ByteVar, ByteConsId, ByteArgs))
         else
-            % Don't call map_arg_dirs until after
+            % Don't call arg_dir_to_bytecode until after
             % the pred_const test fails, since the arg-modes on
             % unifications that create closures aren't like other arg-modes.
-            map_arg_dirs(UniModes, Args, ByteInfo, Dirs),
+            arg_dir_to_bytecode(UniModes, Args, ByteInfo, Dirs),
             ( if all_dirs_same(Dirs, to_var) then
                 Code = cord.singleton(
                     byte_construct(ByteVar, ByteConsId, ByteArgs))
@@ -571,8 +588,8 @@ gen_unify(Unification, ByteInfo, Code) :-
         Unification = deconstruct(Var, ConsId, Args, UniModes, _, _),
         map_var(ByteInfo, Var, ByteVar),
         map_vars(ByteInfo, Args, ByteArgs),
-        map_cons_id(ByteInfo, ConsId, ByteConsId),
-        map_arg_dirs(UniModes, Args, ByteInfo, Dirs),
+        cons_id_to_bytecode(ByteInfo, ConsId, ByteConsId),
+        arg_dir_to_bytecode(UniModes, Args, ByteInfo, Dirs),
         ( if all_dirs_same(Dirs, to_arg) then
             Code = cord.singleton(
                 byte_deconstruct(ByteVar, ByteConsId, ByteArgs))
@@ -600,7 +617,7 @@ gen_unify(Unification, ByteInfo, Code) :-
             unexpected($pred, "simple_test between different types")
         ),
 
-        ByteInfo = byte_info(_, _, ModuleInfo, _, _),
+        get_module_info(ByteInfo, ModuleInfo),
         TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
         (
             TypeCategory = ctor_cat_builtin(cat_builtin_int(int_type_int)),
@@ -675,15 +692,16 @@ gen_unify(Unification, ByteInfo, Code) :-
         unexpected($pred, "complicated unify")
     ).
 
-:- pred map_arg_dirs(list(unify_mode)::in, list(prog_var)::in,
+:- pred arg_dir_to_bytecode(list(unify_mode)::in, list(prog_var)::in,
     byte_info::in, list(byte_dir)::out) is det.
 
-map_arg_dirs([], [], _, []).
-map_arg_dirs([], [_|_], _, _) :-
+arg_dir_to_bytecode([], [], _, []).
+arg_dir_to_bytecode([], [_|_], _, _) :-
     unexpected($pred, "length mismatch").
-map_arg_dirs([_|_], [], _, _) :-
+arg_dir_to_bytecode([_|_], [], _, _) :-
     unexpected($pred, "length mismatch").
-map_arg_dirs([UnifyMode | UnifyModes], [Arg | Args], ByteInfo, [Dir | Dirs]) :-
+arg_dir_to_bytecode([UnifyMode | UnifyModes], [Arg | Args], ByteInfo,
+        [Dir | Dirs]) :-
     get_module_info(ByteInfo, ModuleInfo),
     get_var_type(ByteInfo, Arg, Type),
     UnifyMode = unify_modes_li_lf_ri_rf(VarInitInst, VarFinalInst,
@@ -710,7 +728,7 @@ map_arg_dirs([UnifyMode | UnifyModes], [Arg | Args], ByteInfo, [Dir | Dirs]) :-
     else
         unexpected($pred, "invalid mode for (de)construct unification")
     ),
-    map_arg_dirs(UnifyModes, Args, ByteInfo, Dirs).
+    arg_dir_to_bytecode(UnifyModes, Args, ByteInfo, Dirs).
 
 :- pred all_dirs_same(list(byte_dir)::in, byte_dir::in) is semidet.
 
@@ -722,26 +740,27 @@ all_dirs_same([Dir | Dirs], Dir) :-
 
     % Generate bytecode for a conjunction.
     %
-:- pred gen_conj(list(hlds_goal)::in, byte_info::in, byte_info::out,
-    cord(byte_code)::out) is det.
+:- pred generate_bytecode_for_conjuncts(list(hlds_goal)::in,
+    byte_info::in, byte_info::out, cord(byte_code)::out) is det.
 
-gen_conj([], !ByteInfo, empty).
-gen_conj([Goal | Goals], !ByteInfo, Code) :-
-    gen_goal(Goal, !ByteInfo, ThisCode),
-    gen_conj(Goals, !ByteInfo, OtherCode),
+generate_bytecode_for_conjuncts([], !ByteInfo, empty).
+generate_bytecode_for_conjuncts([Goal | Goals], !ByteInfo, Code) :-
+    generate_bytecode_for_goal(Goal, !ByteInfo, ThisCode),
+    generate_bytecode_for_conjuncts(Goals, !ByteInfo, OtherCode),
     Code = ThisCode ++ OtherCode.
 
 %---------------------------------------------------------------------------%
 
     % Generate bytecode for each disjunct of a disjunction.
     %
-:- pred gen_disj(list(hlds_goal)::in, int::in,
+:- pred generate_bytecode_for_disjuncts(list(hlds_goal)::in, int::in,
     byte_info::in, byte_info::out,  cord(byte_code)::out) is det.
 
-gen_disj([], _, _, _, _) :-
+generate_bytecode_for_disjuncts([], _, _, _, _) :-
     unexpected($pred, "empty disjunction").
-gen_disj([Disjunct | Disjuncts], EndLabel, !ByteInfo, Code) :-
-    gen_goal(Disjunct, !ByteInfo, ThisCode),
+generate_bytecode_for_disjuncts([Disjunct | Disjuncts], EndLabel,
+        !ByteInfo, Code) :-
+    generate_bytecode_for_goal(Disjunct, !ByteInfo, ThisCode),
     (
         Disjuncts = [],
         EnterCode = cord.singleton(byte_enter_disjunct(-1)),
@@ -749,7 +768,8 @@ gen_disj([Disjunct | Disjuncts], EndLabel, !ByteInfo, Code) :-
         Code = EnterCode ++ ThisCode ++ EndofCode
     ;
         Disjuncts = [_ | _],
-        gen_disj(Disjuncts, EndLabel, !ByteInfo, OtherCode),
+        generate_bytecode_for_disjuncts(Disjuncts, EndLabel, !ByteInfo,
+            OtherCode),
         get_next_label(NextLabel, !ByteInfo),
         EnterCode = cord.singleton(byte_enter_disjunct(NextLabel)),
         EndofCode = cord.from_list([byte_endof_disjunct(EndLabel),
@@ -761,16 +781,16 @@ gen_disj([Disjunct | Disjuncts], EndLabel, !ByteInfo, Code) :-
 
     % Generate bytecode for each arm of a switch.
     %
-:- pred gen_switch(list(case)::in, prog_var::in, int::in,
+:- pred generate_bytecode_for_cases(list(case)::in, prog_var::in, int::in,
     byte_info::in, byte_info::out, cord(byte_code)::out) is det.
 
-gen_switch([], _, _, !ByteInfo, empty).
-gen_switch([Case | Cases], Var, EndLabel, !ByteInfo, Code) :-
+generate_bytecode_for_cases([], _, _, !ByteInfo, empty).
+generate_bytecode_for_cases([Case | Cases], Var, EndLabel, !ByteInfo, Code) :-
     Case = case(MainConsId, OtherConsIds, Goal),
-    map_cons_id(!.ByteInfo, MainConsId, ByteMainConsId),
-    list.map(map_cons_id(!.ByteInfo), OtherConsIds, ByteOtherConsIds),
-    gen_goal(Goal, !ByteInfo, GoalCode),
-    gen_switch(Cases, Var, EndLabel, !ByteInfo, CasesCode),
+    cons_id_to_bytecode(!.ByteInfo, MainConsId, ByteMainConsId),
+    list.map(cons_id_to_bytecode(!.ByteInfo), OtherConsIds, ByteOtherConsIds),
+    generate_bytecode_for_goal(Goal, !ByteInfo, GoalCode),
+    generate_bytecode_for_cases(Cases, Var, EndLabel, !ByteInfo, CasesCode),
     get_next_label(NextLabel, !ByteInfo),
     EnterCode = cord.singleton(byte_enter_switch_arm(ByteMainConsId,
         ByteOtherConsIds, NextLabel)),
@@ -780,9 +800,10 @@ gen_switch([Case | Cases], Var, EndLabel, !ByteInfo, Code) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred map_cons_id(byte_info::in, cons_id::in, byte_cons_id::out) is det.
+:- pred cons_id_to_bytecode(byte_info::in, cons_id::in, byte_cons_id::out)
+    is det.
 
-map_cons_id(ByteInfo, ConsId, ByteConsId) :-
+cons_id_to_bytecode(ByteInfo, ConsId, ByteConsId) :-
     get_module_info(ByteInfo, ModuleInfo),
     (
         ConsId = cons(Functor, Arity, _TypeCtor),
@@ -793,14 +814,14 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
             unexpected($pred, "unqualified cons")
         ),
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
-        map_cons_tag(ConsTag, ByteConsTag),
+        cons_tag_to_bytecode(ConsTag, ByteConsTag),
         ByteConsId = byte_cons(ModuleName, FunctorName, Arity, ByteConsTag)
     ;
         ConsId = tuple_cons(Arity),
         ModuleName = unqualified("builtin"),
         FunctorName = "{}",
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
-        map_cons_tag(ConsTag, ByteConsTag),
+        cons_tag_to_bytecode(ConsTag, ByteConsTag),
         % XXX We should have a byte_tuple_cons separate from byte_cons.
         ByteConsId = byte_cons(ModuleName, FunctorName, Arity, ByteConsTag)
     ;
@@ -867,9 +888,9 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
         sorry($pred, "bytecode cannot implement deep profiling")
     ).
 
-:- pred map_cons_tag(cons_tag::in, byte_cons_tag::out) is det.
+:- pred cons_tag_to_bytecode(cons_tag::in, byte_cons_tag::out) is det.
 
-map_cons_tag(ConsTag, ByteConsTag) :-
+cons_tag_to_bytecode(ConsTag, ByteConsTag) :-
     (
         ConsTag = no_tag,
         ByteConsTag = byte_no_tag
@@ -963,35 +984,35 @@ ptag_to_int(Ptag) = PtagInt :-
 
 %---------------------------------------------------------------------------%
 
-:- pred create_varmap(list(prog_var)::in, var_table::in,
-    int::in, map(prog_var, byte_var)::in, map(prog_var, byte_var)::out,
+:- pred create_bytecode_varmap(list(prog_var)::in, var_table::in, int::in,
+    map(prog_var, byte_var)::in, map(prog_var, byte_var)::out,
     list(byte_var_info)::out) is det.
 
-create_varmap([], _, _, !VarMap, []).
-create_varmap([Var | VarList], VarTable, N0, !VarMap, VarInfos) :-
+create_bytecode_varmap([], _, _, !VarMap, []).
+create_bytecode_varmap([Var | VarList], VarTable, N0, !VarMap, VarInfos) :-
     map.det_insert(Var, N0, !VarMap),
     lookup_var_entry(VarTable, Var, VarEntry),
     VarName = var_entry_name(Var, VarEntry),
     VarType = VarEntry ^ vte_type,
-    create_varmap(VarList, VarTable, N0 + 1, !VarMap, VarInfosTail),
+    create_bytecode_varmap(VarList, VarTable, N0 + 1, !VarMap, VarInfosTail),
     VarInfos = [var_info(VarName, VarType) | VarInfosTail].
 
 %---------------------------------------------------------------------------%(
 
 :- type byte_info
     --->    byte_info(
-                byteinfo_varmap         :: map(prog_var, byte_var),
-                byteinfo_var_table      :: var_table,
                 byteinfo_moduleinfo     :: module_info,
+                byteinfo_var_table      :: var_table,
+                byteinfo_varmap         :: map(prog_var, byte_var),
                 byteinfo_label_counter  :: counter,
                 byteinfo_temp_counter   :: counter
             ).
 
-:- pred init_byte_info(module_info::in, map(prog_var, byte_var)::in,
-    var_table::in, byte_info::out) is det.
+:- pred init_byte_info(module_info::in, var_table::in,
+    map(prog_var, byte_var)::in, byte_info::out) is det.
 
-init_byte_info(ModuleInfo, VarMap, VarTable, ByteInfo) :-
-    ByteInfo = byte_info(VarMap, VarTable, ModuleInfo,
+init_byte_info(ModuleInfo, VarTable, VarMap, ByteInfo) :-
+    ByteInfo = byte_info(ModuleInfo, VarTable, VarMap,
         counter.init(0), counter.init(0)).
 
 :- pred get_module_info(byte_info::in, module_info::out) is det.

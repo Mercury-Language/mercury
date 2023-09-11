@@ -841,7 +841,8 @@ maybe_bytecodes(ProgressStream, HLDS0, Verbose, Stats, !DumpInfo, !IO) :-
         maybe_write_string(ProgressStream, Verbose,
             "% Generating bytecodes...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        bytecode_gen.gen_module(HLDS1, Bytecode, !IO),
+        bytecode_gen.generate_bytecode_for_module(ProgressStream, HLDS1,
+            Bytecode, !IO),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO),
         module_info_get_name(HLDS1, ModuleName),
@@ -853,7 +854,7 @@ maybe_bytecodes(ProgressStream, HLDS0, Verbose, Stats, !DumpInfo, !IO) :-
         maybe_write_string(ProgressStream, Verbose, BytedebugFile, !IO),
         maybe_write_string(ProgressStream, Verbose, "'...", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        debug_bytecode_file(BytedebugFile, Bytecode, !IO),
+        debug_bytecode_file(ProgressStream, BytedebugFile, Bytecode, !IO),
         maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur_ngs(ext_cur_ngs_bc_mbc), ModuleName, BytecodeFile, !IO),
@@ -862,7 +863,7 @@ maybe_bytecodes(ProgressStream, HLDS0, Verbose, Stats, !DumpInfo, !IO) :-
         maybe_write_string(ProgressStream, Verbose, BytecodeFile, !IO),
         maybe_write_string(ProgressStream, Verbose, "'...", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        output_bytecode_file(BytecodeFile, Bytecode, !IO),
+        output_bytecode_file(ProgressStream, BytecodeFile, Bytecode, !IO),
         maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;

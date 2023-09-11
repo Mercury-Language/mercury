@@ -78,9 +78,6 @@ MCFLAGS-check_hlds.unique_modes           = --inline-vars-threshold 10000
 
 MCFLAGS-make.util                         += --no-halt-at-warn
 
-MCFLAGS-backend_libs.bytecode_data           += --no-warn-implicit-stream-calls
-MCFLAGS-bytecode_backend.bytecode            += --no-warn-implicit-stream-calls
-MCFLAGS-bytecode_backend.bytecode_gen        += --no-warn-implicit-stream-calls
 MCFLAGS-check_hlds.abstract_mode_constraints += --no-warn-implicit-stream-calls
 MCFLAGS-check_hlds.build_mode_constraints    += --no-warn-implicit-stream-calls
 MCFLAGS-check_hlds.mcsolver                  += --no-warn-implicit-stream-calls

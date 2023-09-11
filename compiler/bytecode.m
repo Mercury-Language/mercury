@@ -144,15 +144,15 @@
 :- type byte_pred_id    ==  string.
 :- type byte_proc_id    ==  int.
 :- type byte_label_id   ==  int.
-:- type byte_var    ==  int.
-:- type byte_temp   ==  int.
+:- type byte_var        ==  int.
+:- type byte_temp       ==  int.
 :- type byte_is_func    ==  int.    % 0 if a predicate, 1 if a function
 
-:- pred output_bytecode_file(string::in, list(byte_code)::in,
-    io::di, io::uo) is det.
+:- pred output_bytecode_file(io.text_output_stream::in, string::in,
+    list(byte_code)::in, io::di, io::uo) is det.
 
-:- pred debug_bytecode_file(string::in, list(byte_code)::in,
-    io::di, io::uo) is det.
+:- pred debug_bytecode_file(io.text_output_stream::in, string::in,
+    list(byte_code)::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -172,406 +172,496 @@
 
 bytecode.version(9).
 
-output_bytecode_file(FileName, ByteCodes, !IO) :-
+output_bytecode_file(ProgressStream, FileName, ByteCodes, !IO) :-
     io.open_binary_output(FileName, Result, !IO),
     (
         Result = ok(FileStream),
-        io.set_binary_output_stream(FileStream, OutputStream, !IO),
         bytecode.version(Version),
-        output_short(Version, !IO),
-        output_bytecode_list(ByteCodes, !IO),
-        io.set_binary_output_stream(OutputStream, _, !IO),
+        output_short(FileStream, Version, !IO),
+        output_bytecode_list(FileStream, ByteCodes, !IO),
         io.close_binary_output(FileStream, !IO)
     ;
         Result = error(_),
         io.progname_base("byte.m", ProgName, !IO),
-        io.write_string("\n", !IO),
-        io.write_string(ProgName, !IO),
-        io.write_string(": can't open `", !IO),
-        io.write_string(FileName, !IO),
-        io.write_string("' for output\n", !IO),
+        io.format(ProgressStream, "\n%s: can't open `%s' for output\n",
+            [s(ProgName), s(FileName)], !IO),
         io.set_exit_status(1, !IO)
     ).
 
-debug_bytecode_file(FileName, ByteCodes, !IO) :-
+debug_bytecode_file(ProgressStream, FileName, ByteCodes, !IO) :-
     io.open_output(FileName, Result, !IO),
     (
         Result = ok(FileStream),
-        io.set_output_stream(FileStream, OutputStream, !IO),
         bytecode.version(Version),
-        io.write_string("bytecode_version ", !IO),
-        io.write_int(Version, !IO),
-        io.write_string("\n", !IO),
-        debug_bytecode_list(ByteCodes, !IO),
-        io.set_output_stream(OutputStream, _, !IO),
+        io.format(FileStream, "bytecode_version %d\n", [i(Version)], !IO),
+        debug_bytecode_list(FileStream, ByteCodes, !IO),
         io.close_output(FileStream, !IO)
     ;
         Result = error(_),
         io.progname_base("byte.m", ProgName, !IO),
-        io.write_string("\n", !IO),
-        io.write_string(ProgName, !IO),
-        io.write_string(": can't open `", !IO),
-        io.write_string(FileName, !IO),
-        io.write_string("' for output\n", !IO),
+        io.format(ProgressStream, "\n%s: can't open `%s' for output\n",
+            [s(ProgName), s(FileName)], !IO),
         io.set_exit_status(1, !IO)
     ).
 
-:- pred output_bytecode_list(list(byte_code)::in, io::di, io::uo) is det.
+:- pred output_bytecode_list(io.binary_output_stream::in, list(byte_code)::in,
+    io::di, io::uo) is det.
 
-output_bytecode_list([], !IO).
-output_bytecode_list([ByteCode | ByteCodes], !IO) :-
+output_bytecode_list(_BinaryOutputStream, [], !IO).
+output_bytecode_list(BinaryOutputStream, [ByteCode | ByteCodes], !IO) :-
     byte_code(ByteCode, Byte),
-    io.write_byte(Byte, !IO),
-    output_args(ByteCode, !IO),
-    output_bytecode_list(ByteCodes, !IO).
+    io.write_byte(BinaryOutputStream, Byte, !IO),
+    output_args(BinaryOutputStream, ByteCode, !IO),
+    output_bytecode_list(BinaryOutputStream, ByteCodes, !IO).
 
-:- pred debug_bytecode_list(list(byte_code)::in, io::di, io::uo) is det.
+:- pred debug_bytecode_list(io.text_output_stream::in, list(byte_code)::in,
+    io::di, io::uo) is det.
 
-debug_bytecode_list([], !IO).
-debug_bytecode_list([ByteCode | ByteCodes], !IO) :-
+debug_bytecode_list(_OutputStream, [], !IO).
+debug_bytecode_list(OutputStream, [ByteCode | ByteCodes], !IO) :-
     byte_debug(ByteCode, Debug),
-    debug_string(Debug, !IO),
-    debug_args(ByteCode, !IO),
-    io.write_char('\n', !IO),
-    debug_bytecode_list(ByteCodes, !IO).
+    debug_string(OutputStream, Debug, !IO),
+    debug_args(OutputStream, ByteCode, !IO),
+    io.write_char(OutputStream, '\n', !IO),
+    debug_bytecode_list(OutputStream, ByteCodes, !IO).
 
-:- pred output_args(byte_code::in, io::di, io::uo) is det.
+:- pred output_args(io.binary_output_stream::in, byte_code::in,
+    io::di, io::uo) is det.
 
-output_args(byte_enter_pred(PredId, PredArity, IsFunc, ProcCount), !IO) :-
-    output_pred_id(PredId, !IO),
-    output_length(PredArity, !IO),
-    output_is_func(IsFunc, !IO),
-    output_length(ProcCount, !IO).
-output_args(byte_endof_pred, !IO).
-output_args(byte_enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount,
-        Vars), !IO) :-
-    output_proc_id(ProcId, !IO),
-    output_determinism(Detism, !IO),
-    output_length(LabelCount, !IO),
-    output_label_id(LabelId, !IO),
-    output_length(TempCount, !IO),
-    list.length(Vars, VarCount),
-    output_length(VarCount, !IO),
-    output_var_infos(Vars, !IO).
-output_args(byte_endof_proc, !IO).
-output_args(byte_label(LabelId), !IO) :-
-    output_label_id(LabelId, !IO).
-output_args(byte_enter_disjunction(LabelId), !IO) :-
-    output_label_id(LabelId, !IO).
-output_args(byte_endof_disjunction, !IO).
-output_args(byte_enter_disjunct(LabelId), !IO) :-
-    output_label_id(LabelId, !IO).
-output_args(byte_endof_disjunct(LabelId), !IO) :-
-    output_label_id(LabelId, !IO).
-output_args(byte_enter_switch(Var, LabelId), !IO) :-
-    output_var(Var, !IO),
-    output_label_id(LabelId, !IO).
-output_args(byte_endof_switch, !IO).
-output_args(byte_enter_switch_arm(MainConsId, OtherConsIds, NextLabelId),
-        !IO) :-
-    output_cons_id(MainConsId, !IO),
-    % The interpreter doesn't yet implement switch arms with more than one
-    % function symbol.
-    expect(unify(OtherConsIds, []), $pred, "OtherConsIds"),
-    output_label_id(NextLabelId, !IO).
-output_args(byte_endof_switch_arm(LabelId), !IO) :-
-    output_label_id(LabelId, !IO).
-output_args(byte_enter_if(ElseLabelId, FollowLabelId, FramePtrTemp), !IO) :-
-    output_label_id(ElseLabelId, !IO),
-    output_label_id(FollowLabelId, !IO),
-    output_temp(FramePtrTemp, !IO).
-output_args(byte_enter_then(FramePtrTemp), !IO) :-
-    output_temp(FramePtrTemp, !IO).
-output_args(byte_endof_then(FollowLabelId), !IO) :-
-    output_label_id(FollowLabelId, !IO).
-output_args(byte_enter_else(FramePtrTemp), !IO) :-
-    output_temp(FramePtrTemp, !IO).
-output_args(byte_endof_if, !IO).
-output_args(byte_enter_negation(FramePtrTemp, LabelId), !IO) :-
-    output_temp(FramePtrTemp, !IO),
-    output_label_id(LabelId, !IO).
-output_args(byte_endof_negation_goal(FramePtrTemp), !IO) :-
-    output_temp(FramePtrTemp, !IO).
-output_args(byte_endof_negation, !IO).
-output_args(byte_enter_commit(Temp), !IO) :-
-    output_temp(Temp, !IO).
-output_args(byte_endof_commit(Temp), !IO) :-
-    output_temp(Temp, !IO).
-output_args(byte_assign(Var1, Var2), !IO) :-
-    output_var(Var1, !IO),
-    output_var(Var2, !IO).
-output_args(byte_test(Var1, Var2, TestId), !IO) :-
-    output_var(Var1, !IO),
-    output_var(Var2, !IO),
-    output_test_id(TestId, !IO).
-output_args(byte_construct(Var, ConsId, Vars), !IO) :-
-    output_var(Var, !IO),
-    output_cons_id(ConsId, !IO),
-    list.length(Vars, Length),
-    output_length(Length, !IO),
-    output_vars(Vars, !IO).
-output_args(byte_deconstruct(Var, ConsId, Vars), !IO) :-
-    output_var(Var, !IO),
-    output_cons_id(ConsId, !IO),
-    list.length(Vars, Length),
-    output_length(Length, !IO),
-    output_vars(Vars, !IO).
-output_args(byte_complex_construct(Var, ConsId, VarDirs), !IO) :-
-    output_var(Var, !IO),
-    output_cons_id(ConsId, !IO),
-    list.length(VarDirs, Length),
-    output_length(Length, !IO),
-    output_var_dirs(VarDirs, !IO).
-output_args(byte_complex_deconstruct(Var, ConsId, VarDirs), !IO) :-
-    output_var(Var, !IO),
-    output_cons_id(ConsId, !IO),
-    list.length(VarDirs, Length),
-    output_length(Length, !IO),
-    output_var_dirs(VarDirs, !IO).
-output_args(byte_place_arg(RegType, RegNum, Var), !IO) :-
-    output_reg(RegType, RegNum, !IO),
-    output_var(Var, !IO).
-output_args(byte_pickup_arg(RegType, RegNum, Var), !IO) :-
-    output_reg(RegType, RegNum, !IO),
-    output_var(Var, !IO).
-output_args(byte_call(ModuleId, PredId, Arity, IsFunc, ProcId), !IO) :-
-    output_module_id(ModuleId, !IO),
-    output_pred_id(PredId, !IO),
-    output_length(Arity, !IO),
-    output_is_func(IsFunc, !IO),
-    output_proc_id(ProcId, !IO).
-output_args(byte_higher_order_call(PredVar, InVarCount, OutVarCount, Detism),
-        !IO) :-
-    output_var(PredVar, !IO),
-    output_length(InVarCount, !IO),
-    output_length(OutVarCount, !IO),
-    output_determinism(Detism, !IO).
-output_args(byte_builtin_binop(Binop, Var1, Var2, Var3), !IO) :-
-    output_binop(Binop, !IO),
-    output_arg(Var1, !IO),
-    output_arg(Var2, !IO),
-    output_var(Var3, !IO).
-output_args(byte_builtin_unop(Unop, Var1, Var2), !IO) :-
-    output_unop(Unop, !IO),
-    output_arg(Var1, !IO),
-    output_var(Var2, !IO).
-output_args(byte_builtin_bintest(Binop, Var1, Var2), !IO) :-
-    output_binop(Binop, !IO),
-    output_arg(Var1, !IO),
-    output_arg(Var2, !IO).
-output_args(byte_builtin_untest(Unop, Var1), !IO) :-
-    output_unop(Unop, !IO),
-    output_arg(Var1, !IO).
-output_args(byte_semidet_succeed, !IO).
-output_args(byte_semidet_success_check, !IO).
-output_args(byte_fail, !IO).
-output_args(byte_context(Line), !IO) :-
-    output_short(Line, !IO).
-output_args(byte_not_supported, !IO).
+output_args(BinaryOutputStream, ByteCode, !IO) :-
+    (
+        ByteCode = byte_enter_pred(PredId, PredArity, IsFunc, ProcCount),
+        output_pred_id(BinaryOutputStream, PredId, !IO),
+        output_length(BinaryOutputStream, PredArity, !IO),
+        output_is_func(BinaryOutputStream, IsFunc, !IO),
+        output_length(BinaryOutputStream, ProcCount, !IO)
+    ;
+        ByteCode = byte_endof_pred
+    ;
+        ByteCode = byte_enter_proc(ProcId, Detism, LabelCount, LabelId,
+            TempCount, Vars),
+        list.length(Vars, NumVars),
+        output_proc_id(BinaryOutputStream, ProcId, !IO),
+        output_determinism(BinaryOutputStream, Detism, !IO),
+        output_length(BinaryOutputStream, LabelCount, !IO),
+        output_label_id(BinaryOutputStream, LabelId, !IO),
+        output_length(BinaryOutputStream, TempCount, !IO),
+        output_length(BinaryOutputStream, NumVars, !IO),
+        output_var_infos(BinaryOutputStream, Vars, !IO)
+    ;
+        ByteCode = byte_endof_proc
+    ;
+        ByteCode = byte_label(LabelId),
+        output_label_id(BinaryOutputStream, LabelId, !IO)
+    ;
+        ByteCode = byte_enter_disjunction(LabelId),
+        output_label_id(BinaryOutputStream, LabelId, !IO)
+    ;
+        ByteCode = byte_endof_disjunction
+    ;
+        ByteCode = byte_enter_disjunct(LabelId),
+        output_label_id(BinaryOutputStream, LabelId, !IO)
+    ;
+        ByteCode = byte_endof_disjunct(LabelId),
+        output_label_id(BinaryOutputStream, LabelId, !IO)
+    ;
+        ByteCode = byte_enter_switch(Var, LabelId),
+        output_var(BinaryOutputStream, Var, !IO),
+        output_label_id(BinaryOutputStream, LabelId, !IO)
+    ;
+        ByteCode = byte_endof_switch
+    ;
+        ByteCode = byte_enter_switch_arm(MainConsId, OtherConsIds,
+            NextLabelId),
+        output_cons_id(BinaryOutputStream, MainConsId, !IO),
+        % The interpreter doesn't yet implement switch arms with more than one
+        % function symbol.
+        expect(unify(OtherConsIds, []), $pred, "OtherConsIds"),
+        output_label_id(BinaryOutputStream, NextLabelId, !IO)
+    ;
+        ByteCode = byte_endof_switch_arm(LabelId),
+        output_label_id(BinaryOutputStream, LabelId, !IO)
+    ;
+        ByteCode = byte_enter_if(ElseLabelId, FollowLabelId, FramePtrTemp),
+        output_label_id(BinaryOutputStream, ElseLabelId, !IO),
+        output_label_id(BinaryOutputStream, FollowLabelId, !IO),
+        output_temp(BinaryOutputStream, FramePtrTemp, !IO)
+    ;
+        ByteCode = byte_enter_then(FramePtrTemp),
+        output_temp(BinaryOutputStream, FramePtrTemp, !IO)
+    ;
+        ByteCode = byte_endof_then(FollowLabelId),
+        output_label_id(BinaryOutputStream, FollowLabelId, !IO)
+    ;
+        ByteCode = byte_enter_else(FramePtrTemp),
+        output_temp(BinaryOutputStream, FramePtrTemp, !IO)
+    ;
+        ByteCode = byte_endof_if
+    ;
+        ByteCode = byte_enter_negation(FramePtrTemp, LabelId),
+        output_temp(BinaryOutputStream, FramePtrTemp, !IO),
+        output_label_id(BinaryOutputStream, LabelId, !IO)
+    ;
+        ByteCode = byte_endof_negation_goal(FramePtrTemp),
+        output_temp(BinaryOutputStream, FramePtrTemp, !IO)
+    ;
+        ByteCode = byte_endof_negation
+    ;
+        ByteCode = byte_enter_commit(Temp),
+        output_temp(BinaryOutputStream, Temp, !IO)
+    ;
+        ByteCode = byte_endof_commit(Temp),
+        output_temp(BinaryOutputStream, Temp, !IO)
+    ;
+        ByteCode = byte_assign(Var1, Var2),
+        output_var(BinaryOutputStream, Var1, !IO),
+        output_var(BinaryOutputStream, Var2, !IO)
+    ;
+        ByteCode = byte_test(Var1, Var2, TestId),
+        output_var(BinaryOutputStream, Var1, !IO),
+        output_var(BinaryOutputStream, Var2, !IO),
+        output_test_id(BinaryOutputStream, TestId, !IO)
+    ;
+        ByteCode = byte_construct(Var, ConsId, Vars),
+        list.length(Vars, NumVars),
+        output_var(BinaryOutputStream, Var, !IO),
+        output_cons_id(BinaryOutputStream, ConsId, !IO),
+        output_length(BinaryOutputStream, NumVars, !IO),
+        output_vars(BinaryOutputStream, Vars, !IO)
+    ;
+        ByteCode = byte_deconstruct(Var, ConsId, Vars),
+        list.length(Vars, NumVars),
+        output_var(BinaryOutputStream, Var, !IO),
+        output_cons_id(BinaryOutputStream, ConsId, !IO),
+        output_length(BinaryOutputStream, NumVars, !IO),
+        output_vars(BinaryOutputStream, Vars, !IO)
+    ;
+        ByteCode = byte_complex_construct(Var, ConsId, VarDirs),
+        list.length(VarDirs, NumVarsDirs),
+        output_var(BinaryOutputStream, Var, !IO),
+        output_cons_id(BinaryOutputStream, ConsId, !IO),
+        output_length(BinaryOutputStream, NumVarsDirs, !IO),
+        output_var_dirs(BinaryOutputStream, VarDirs, !IO)
+    ;
+        ByteCode = byte_complex_deconstruct(Var, ConsId, VarDirs),
+        list.length(VarDirs, NumVarsDirs),
+        output_var(BinaryOutputStream, Var, !IO),
+        output_cons_id(BinaryOutputStream, ConsId, !IO),
+        output_length(BinaryOutputStream, NumVarsDirs, !IO),
+        output_var_dirs(BinaryOutputStream, VarDirs, !IO)
+    ;
+        ByteCode = byte_place_arg(RegType, RegNum, Var),
+        output_reg(BinaryOutputStream, RegType, RegNum, !IO),
+        output_var(BinaryOutputStream, Var, !IO)
+    ;
+        ByteCode = byte_pickup_arg(RegType, RegNum, Var),
+        output_reg(BinaryOutputStream, RegType, RegNum, !IO),
+        output_var(BinaryOutputStream, Var, !IO)
+    ;
+        ByteCode = byte_call(ModuleId, PredId, Arity, IsFunc, ProcId),
+        output_module_id(BinaryOutputStream, ModuleId, !IO),
+        output_pred_id(BinaryOutputStream, PredId, !IO),
+        output_length(BinaryOutputStream, Arity, !IO),
+        output_is_func(BinaryOutputStream, IsFunc, !IO),
+        output_proc_id(BinaryOutputStream, ProcId, !IO)
+    ;
+        ByteCode = byte_higher_order_call(PredVar, InVarCount, OutVarCount,
+            Detism),
+        output_var(BinaryOutputStream, PredVar, !IO),
+        output_length(BinaryOutputStream, InVarCount, !IO),
+        output_length(BinaryOutputStream, OutVarCount, !IO),
+        output_determinism(BinaryOutputStream, Detism, !IO)
+    ;
+        ByteCode = byte_builtin_binop(Binop, Var1, Var2, Var3),
+        output_binop(BinaryOutputStream, Binop, !IO),
+        output_arg(BinaryOutputStream, Var1, !IO),
+        output_arg(BinaryOutputStream, Var2, !IO),
+        output_var(BinaryOutputStream, Var3, !IO)
+    ;
+        ByteCode = byte_builtin_unop(Unop, Var1, Var2),
+        output_unop(BinaryOutputStream, Unop, !IO),
+        output_arg(BinaryOutputStream, Var1, !IO),
+        output_var(BinaryOutputStream, Var2, !IO)
+    ;
+        ByteCode = byte_builtin_bintest(Binop, Var1, Var2),
+        output_binop(BinaryOutputStream, Binop, !IO),
+        output_arg(BinaryOutputStream, Var1, !IO),
+        output_arg(BinaryOutputStream, Var2, !IO)
+    ;
+        ByteCode = byte_builtin_untest(Unop, Var1),
+        output_unop(BinaryOutputStream, Unop, !IO),
+        output_arg(BinaryOutputStream, Var1, !IO)
+    ;
+        ByteCode = byte_semidet_succeed
+    ;
+        ByteCode = byte_semidet_success_check
+    ;
+        ByteCode = byte_fail
+    ;
+        ByteCode = byte_context(Line),
+        output_short(BinaryOutputStream, Line, !IO)
+    ;
+        ByteCode = byte_not_supported
+    ).
 
-:- pred debug_args(byte_code::in, io::di, io::uo) is det.
+:- pred debug_args(io.text_output_stream::in, byte_code::in,
+    io::di, io::uo) is det.
 
-debug_args(byte_enter_pred(PredId, PredArity, IsFunc, ProcsCount), !IO) :-
-    debug_pred_id(PredId, !IO),
-    debug_length(PredArity, !IO),
-    debug_is_func(IsFunc, !IO),
-    debug_length(ProcsCount, !IO).
-debug_args(byte_endof_pred, !IO).
-debug_args(byte_enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount,
-        Vars), !IO) :-
-    debug_proc_id(ProcId, !IO),
-    debug_determinism(Detism, !IO),
-    debug_length(LabelCount, !IO),
-    debug_label_id(LabelId, !IO),
-    debug_length(TempCount, !IO),
-    list.length(Vars, VarCount),
-    debug_length(VarCount, !IO),
-    debug_var_infos(Vars, !IO).
-debug_args(byte_endof_proc, !IO).
-debug_args(byte_label(LabelId), !IO) :-
-    debug_label_id(LabelId, !IO).
-debug_args(byte_enter_disjunction(LabelId), !IO) :-
-    debug_label_id(LabelId, !IO).
-debug_args(byte_endof_disjunction, !IO).
-debug_args(byte_enter_disjunct(LabelId), !IO) :-
-    debug_label_id(LabelId, !IO).
-debug_args(byte_endof_disjunct(LabelId), !IO) :-
-    debug_label_id(LabelId, !IO).
-debug_args(byte_enter_switch(Var, LabelId), !IO) :-
-    debug_var(Var, !IO),
-    debug_label_id(LabelId, !IO).
-debug_args(byte_endof_switch, !IO).
-debug_args(byte_enter_switch_arm(MainConsId, OtherConsIds,
-        NextLabelId), !IO) :-
-    debug_cons_id(MainConsId, !IO),
-    list.foldl(debug_cons_id, OtherConsIds, !IO),
-    debug_label_id(NextLabelId, !IO).
-debug_args(byte_endof_switch_arm(LabelId), !IO) :-
-    debug_label_id(LabelId, !IO).
-debug_args(byte_enter_if(ElseLabelId, FollowLabelId, FramePtrTemp), !IO) :-
-    debug_label_id(ElseLabelId, !IO),
-    debug_label_id(FollowLabelId, !IO),
-    debug_temp(FramePtrTemp, !IO).
-debug_args(byte_enter_then(FramePtrTemp), !IO) :-
-    debug_temp(FramePtrTemp, !IO).
-debug_args(byte_endof_then(FollowLabelId), !IO) :-
-    debug_label_id(FollowLabelId, !IO).
-debug_args(byte_enter_else(FramePtrTemp), !IO) :-
-    debug_temp(FramePtrTemp, !IO).
-debug_args(byte_endof_if, !IO).
-debug_args(byte_enter_negation(FramePtrTemp, LabelId), !IO) :-
-    debug_temp(FramePtrTemp, !IO),
-    debug_label_id(LabelId, !IO).
-debug_args(byte_endof_negation_goal(FramePtrTemp), !IO) :-
-    debug_temp(FramePtrTemp, !IO).
-debug_args(byte_endof_negation, !IO).
-debug_args(byte_enter_commit(Temp), !IO) :-
-    debug_temp(Temp, !IO).
-debug_args(byte_endof_commit(Temp), !IO) :-
-    debug_temp(Temp, !IO).
-debug_args(byte_assign(Var1, Var2), !IO) :-
-    debug_var(Var1, !IO),
-    debug_var(Var2, !IO).
-debug_args(byte_test(Var1, Var2, TestId), !IO) :-
-    debug_var(Var1, !IO),
-    debug_var(Var2, !IO),
-    debug_test_id(TestId, !IO).
-debug_args(byte_construct(Var, ConsId, Vars), !IO) :-
-    debug_var(Var, !IO),
-    debug_cons_id(ConsId, !IO),
-    list.length(Vars, Length),
-    debug_length(Length, !IO),
-    debug_vars(Vars, !IO).
-debug_args(byte_deconstruct(Var, ConsId, Vars), !IO) :-
-    debug_var(Var, !IO),
-    debug_cons_id(ConsId, !IO),
-    list.length(Vars, Length),
-    debug_length(Length, !IO),
-    debug_vars(Vars, !IO).
-debug_args(byte_complex_construct(Var, ConsId, VarDirs), !IO) :-
-    debug_var(Var, !IO),
-    debug_cons_id(ConsId, !IO),
-    list.length(VarDirs, Length),
-    debug_length(Length, !IO),
-    debug_var_dirs(VarDirs, !IO).
-debug_args(byte_complex_deconstruct(Var, ConsId, VarDirs), !IO) :-
-    debug_var(Var, !IO),
-    debug_cons_id(ConsId, !IO),
-    list.length(VarDirs, Length),
-    debug_length(Length, !IO),
-    debug_var_dirs(VarDirs, !IO).
-debug_args(byte_place_arg(RegType, RegNum, Var), !IO) :-
-    debug_reg(RegType, RegNum, !IO),
-    debug_var(Var, !IO).
-debug_args(byte_pickup_arg(RegType, RegNum, Var), !IO) :-
-    debug_reg(RegType, RegNum, !IO),
-    debug_var(Var, !IO).
-debug_args(byte_call(ModuleId, PredId, Arity, IsFunc, ProcId), !IO) :-
-    debug_module_id(ModuleId, !IO),
-    debug_pred_id(PredId, !IO),
-    debug_length(Arity, !IO),
-    debug_is_func(IsFunc, !IO),
-    debug_proc_id(ProcId, !IO).
-debug_args(byte_higher_order_call(PredVar, InVarCount, OutVarCount, Detism),
-        !IO) :-
-    debug_var(PredVar, !IO),
-    debug_length(InVarCount, !IO),
-    debug_length(OutVarCount, !IO),
-    debug_determinism(Detism, !IO).
-debug_args(byte_builtin_binop(Binop, Var1, Var2, Var3), !IO) :-
-    debug_binop(Binop, !IO),
-    debug_arg(Var1, !IO),
-    debug_arg(Var2, !IO),
-    debug_var(Var3, !IO).
-debug_args(byte_builtin_unop(Unop, Var1, Var2), !IO) :-
-    debug_unop(Unop, !IO),
-    debug_arg(Var1, !IO),
-    debug_var(Var2, !IO).
-debug_args(byte_builtin_bintest(Binop, Var1, Var2), !IO) :-
-    debug_binop(Binop, !IO),
-    debug_arg(Var1, !IO),
-    debug_arg(Var2, !IO).
-debug_args(byte_builtin_untest(Unop, Var1), !IO) :-
-    debug_unop(Unop, !IO),
-    debug_arg(Var1, !IO).
-debug_args(byte_semidet_succeed, !IO).
-debug_args(byte_semidet_success_check, !IO).
-debug_args(byte_fail, !IO).
-debug_args(byte_context(Line), !IO) :-
-    debug_int(Line, !IO).
-debug_args(byte_not_supported, !IO).
+debug_args(OutputStream, ByteCode, !IO) :-
+    (
+        ByteCode = byte_enter_pred(PredId, PredArity, IsFunc, ProcsCount),
+        debug_pred_id(OutputStream, PredId, !IO),
+        debug_length(OutputStream, PredArity, !IO),
+        debug_is_func(OutputStream, IsFunc, !IO),
+        debug_length(OutputStream, ProcsCount, !IO)
+    ;
+        ByteCode = byte_endof_pred
+    ;
+        ByteCode = byte_enter_proc(ProcId, Detism, LabelCount, LabelId,
+            TempCount, Vars),
+        list.length(Vars, VarCount),
+        debug_proc_id(OutputStream, ProcId, !IO),
+        debug_determinism(OutputStream, Detism, !IO),
+        debug_length(OutputStream, LabelCount, !IO),
+        debug_label_id(OutputStream, LabelId, !IO),
+        debug_length(OutputStream, TempCount, !IO),
+        debug_length(OutputStream, VarCount, !IO),
+        debug_var_infos(OutputStream, Vars, !IO)
+    ;
+        ByteCode = byte_endof_proc
+    ;
+        ByteCode = byte_label(LabelId),
+        debug_label_id(OutputStream, LabelId, !IO)
+    ;
+        ByteCode = byte_enter_disjunction(LabelId),
+        debug_label_id(OutputStream, LabelId, !IO)
+    ;
+        ByteCode = byte_endof_disjunction
+    ;
+        ByteCode = byte_enter_disjunct(LabelId),
+        debug_label_id(OutputStream, LabelId, !IO)
+    ;
+        ByteCode = byte_endof_disjunct(LabelId),
+        debug_label_id(OutputStream, LabelId, !IO)
+    ;
+        ByteCode = byte_enter_switch(Var, LabelId),
+        debug_var(OutputStream, Var, !IO),
+        debug_label_id(OutputStream, LabelId, !IO)
+    ;
+        ByteCode = byte_endof_switch
+    ;
+        ByteCode = byte_enter_switch_arm(MainConsId, OtherConsIds,
+            NextLabelId),
+        debug_cons_id(OutputStream, MainConsId, !IO),
+        list.foldl(debug_cons_id(OutputStream), OtherConsIds, !IO),
+        debug_label_id(OutputStream, NextLabelId, !IO)
+    ;
+        ByteCode = byte_endof_switch_arm(LabelId),
+        debug_label_id(OutputStream, LabelId, !IO)
+    ;
+        ByteCode = byte_enter_if(ElseLabelId, FollowLabelId, FramePtrTemp),
+        debug_label_id(OutputStream, ElseLabelId, !IO),
+        debug_label_id(OutputStream, FollowLabelId, !IO),
+        debug_temp(OutputStream, FramePtrTemp, !IO)
+    ;
+        ByteCode = byte_enter_then(FramePtrTemp),
+        debug_temp(OutputStream, FramePtrTemp, !IO)
+    ;
+        ByteCode = byte_endof_then(FollowLabelId),
+        debug_label_id(OutputStream, FollowLabelId, !IO)
+    ;
+        ByteCode = byte_enter_else(FramePtrTemp),
+        debug_temp(OutputStream, FramePtrTemp, !IO)
+    ;
+        ByteCode = byte_endof_if
+    ;
+        ByteCode = byte_enter_negation(FramePtrTemp, LabelId),
+        debug_temp(OutputStream, FramePtrTemp, !IO),
+        debug_label_id(OutputStream, LabelId, !IO)
+    ;
+        ByteCode = byte_endof_negation_goal(FramePtrTemp),
+        debug_temp(OutputStream, FramePtrTemp, !IO)
+    ;
+        ByteCode = byte_endof_negation
+    ;
+        ByteCode = byte_enter_commit(Temp),
+        debug_temp(OutputStream, Temp, !IO)
+    ;
+        ByteCode = byte_endof_commit(Temp),
+        debug_temp(OutputStream, Temp, !IO)
+    ;
+        ByteCode = byte_assign(Var1, Var2),
+        debug_var(OutputStream, Var1, !IO),
+        debug_var(OutputStream, Var2, !IO)
+    ;
+        ByteCode = byte_test(Var1, Var2, TestId),
+        debug_var(OutputStream, Var1, !IO),
+        debug_var(OutputStream, Var2, !IO),
+        debug_test_id(OutputStream, TestId, !IO)
+    ;
+        ByteCode = byte_construct(Var, ConsId, Vars),
+        list.length(Vars, NumVars),
+        debug_var(OutputStream, Var, !IO),
+        debug_cons_id(OutputStream, ConsId, !IO),
+        debug_length(OutputStream, NumVars, !IO),
+        debug_vars(OutputStream, Vars, !IO)
+    ;
+        ByteCode = byte_deconstruct(Var, ConsId, Vars),
+        list.length(Vars, NumVars),
+        debug_var(OutputStream, Var, !IO),
+        debug_cons_id(OutputStream, ConsId, !IO),
+        debug_length(OutputStream, NumVars, !IO),
+        debug_vars(OutputStream, Vars, !IO)
+    ;
+        ByteCode = byte_complex_construct(Var, ConsId, VarDirs),
+        list.length(VarDirs, Length),
+        debug_var(OutputStream, Var, !IO),
+        debug_cons_id(OutputStream, ConsId, !IO),
+        debug_length(OutputStream, Length, !IO),
+        debug_var_dirs(OutputStream, VarDirs, !IO)
+    ;
+        ByteCode = byte_complex_deconstruct(Var, ConsId, VarDirs),
+        list.length(VarDirs, NumVarDirs),
+        debug_var(OutputStream, Var, !IO),
+        debug_cons_id(OutputStream, ConsId, !IO),
+        debug_length(OutputStream, NumVarDirs, !IO),
+        debug_var_dirs(OutputStream, VarDirs, !IO)
+    ;
+        ByteCode = byte_place_arg(RegType, RegNum, Var),
+        debug_reg(OutputStream, RegType, RegNum, !IO),
+        debug_var(OutputStream, Var, !IO)
+    ;
+        ByteCode = byte_pickup_arg(RegType, RegNum, Var),
+        debug_reg(OutputStream, RegType, RegNum, !IO),
+        debug_var(OutputStream, Var, !IO)
+    ;
+        ByteCode = byte_call(ModuleId, PredId, Arity, IsFunc, ProcId),
+        debug_module_id(OutputStream, ModuleId, !IO),
+        debug_pred_id(OutputStream, PredId, !IO),
+        debug_length(OutputStream, Arity, !IO),
+        debug_is_func(OutputStream, IsFunc, !IO),
+        debug_proc_id(OutputStream, ProcId, !IO)
+    ;
+        ByteCode = byte_higher_order_call(PredVar, InVarCount, OutVarCount,
+            Detism),
+        debug_var(OutputStream, PredVar, !IO),
+        debug_length(OutputStream, InVarCount, !IO),
+        debug_length(OutputStream, OutVarCount, !IO),
+        debug_determinism(OutputStream, Detism, !IO)
+    ;
+        ByteCode = byte_builtin_binop(Binop, Var1, Var2, Var3),
+        debug_binop(OutputStream, Binop, !IO),
+        debug_arg(OutputStream, Var1, !IO),
+        debug_arg(OutputStream, Var2, !IO),
+        debug_var(OutputStream, Var3, !IO)
+    ;
+        ByteCode = byte_builtin_unop(Unop, Var1, Var2),
+        debug_unop(OutputStream, Unop, !IO),
+        debug_arg(OutputStream, Var1, !IO),
+        debug_var(OutputStream, Var2, !IO)
+    ;
+        ByteCode = byte_builtin_bintest(Binop, Var1, Var2),
+        debug_binop(OutputStream, Binop, !IO),
+        debug_arg(OutputStream, Var1, !IO),
+        debug_arg(OutputStream, Var2, !IO)
+    ;
+        ByteCode = byte_builtin_untest(Unop, Var1),
+        debug_unop(OutputStream, Unop, !IO),
+        debug_arg(OutputStream, Var1, !IO)
+    ;
+        ByteCode = byte_semidet_succeed
+    ;
+        ByteCode = byte_semidet_success_check
+    ;
+        ByteCode = byte_fail
+    ;
+        ByteCode = byte_context(Line),
+        debug_int(OutputStream, Line, !IO)
+    ;
+        ByteCode = byte_not_supported
+    ).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_var_infos(list(byte_var_info)::in, io::di, io::uo) is det.
+:- pred output_var_infos(io.binary_output_stream::in, list(byte_var_info)::in,
+    io::di, io::uo) is det.
 
-output_var_infos([], !IO).
-output_var_infos([Var | Vars], !IO) :-
-    output_var_info(Var, !IO),
-    output_var_infos(Vars, !IO).
+output_var_infos(_BinaryOutputStream, [], !IO).
+output_var_infos(BinaryOutputStream, [Var | Vars], !IO) :-
+    output_var_info(BinaryOutputStream, Var, !IO),
+    output_var_infos(BinaryOutputStream, Vars, !IO).
 
-:- pred output_var_info(byte_var_info::in, io::di, io::uo) is det.
+:- pred output_var_info(io.binary_output_stream::in, byte_var_info::in,
+    io::di, io::uo) is det.
 
-output_var_info(var_info(Name, _), !IO) :-
-    output_string(Name, !IO).
+output_var_info(BinaryOutputStream, var_info(Name, _), !IO) :-
+    output_string(BinaryOutputStream, Name, !IO).
 
-:- pred debug_var_infos(list(byte_var_info)::in, io::di, io::uo) is det.
+:- pred debug_var_infos(io.text_output_stream::in, list(byte_var_info)::in,
+    io::di, io::uo) is det.
 
-debug_var_infos([], !IO).
-debug_var_infos([Var | Vars], !IO) :-
-    debug_var_info(Var, !IO),
-    debug_var_infos(Vars, !IO).
+debug_var_infos(_OutputStream, [], !IO).
+debug_var_infos(OutputStream, [Var | Vars], !IO) :-
+    debug_var_info(OutputStream, Var, !IO),
+    debug_var_infos(OutputStream, Vars, !IO).
 
-:- pred debug_var_info(byte_var_info::in, io::di, io::uo) is det.
+:- pred debug_var_info(io.text_output_stream::in, byte_var_info::in,
+    io::di, io::uo) is det.
 
-debug_var_info(var_info(Name, _), !IO) :-
-    debug_string(Name, !IO).
+debug_var_info(OutputStream, var_info(Name, _), !IO) :-
+    debug_string(OutputStream, Name, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_determinism(determinism::in, io::di, io::uo) is det.
+:- pred output_determinism(io.binary_output_stream::in, determinism::in,
+    io::di, io::uo) is det.
 
-output_determinism(Detism, !IO) :-
+output_determinism(BinaryOutputStream, Detism, !IO) :-
     determinism_code(Detism, Code),
-    output_byte(Code, !IO).
+    output_byte(BinaryOutputStream, Code, !IO).
 
-:- pred debug_determinism(determinism::in, io::di, io::uo) is det.
+:- pred debug_determinism(io.text_output_stream::in, determinism::in,
+    io::di, io::uo) is det.
 
-debug_determinism(Detism, !IO) :-
+debug_determinism(OutputStream, Detism, !IO) :-
     determinism_debug(Detism, Debug),
-    debug_string(Debug, !IO).
+    debug_string(OutputStream, Debug, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_reg(byte_reg_type::in, int::in, io::di, io::uo) is det.
+:- pred output_reg(io.binary_output_stream::in, byte_reg_type::in, int::in,
+    io::di, io::uo) is det.
 
-output_reg(byte_reg_r, N, !IO) :-
-    output_byte(N, !IO).
+output_reg(BinaryOutputStream, byte_reg_r, N, !IO) :-
+    output_byte(BinaryOutputStream, N, !IO).
 
-:- pred debug_reg(byte_reg_type::in, int::in, io::di, io::uo) is det.
+:- pred debug_reg(io.text_output_stream::in, byte_reg_type::in, int::in,
+    io::di, io::uo) is det.
 
-debug_reg(byte_reg_r, N, !IO) :-
-    debug_int(N, !IO).
+debug_reg(OutputStream, byte_reg_r, N, !IO) :-
+    debug_int(OutputStream, N, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_is_func(byte_is_func::in, io::di, io::uo) is det.
+:- pred output_is_func(io.binary_output_stream::in, byte_is_func::in,
+    io::di, io::uo) is det.
 
-output_is_func(IsFunc, !IO) :-
+output_is_func(BinaryOutputStream, IsFunc, !IO) :-
     ( if ( IsFunc = 1 ; IsFunc = 0 ) then
-        output_byte(IsFunc, !IO)
+        output_byte(BinaryOutputStream, IsFunc, !IO)
     else
         unexpected($pred,
             "invalid predicate or function specified in bytecode")
     ).
 
-:- pred debug_is_func(byte_is_func::in, io::di, io::uo) is det.
+:- pred debug_is_func(io.text_output_stream::in, byte_is_func::in,
+    io::di, io::uo) is det.
 
-debug_is_func(IsFunc, !IO) :-
+debug_is_func(OutputStream, IsFunc, !IO) :-
     ( if IsFunc = 1 then
-        debug_string("func", !IO)
+        debug_string(OutputStream, "func", !IO)
     else if IsFunc = 0 then
-        debug_string("pred", !IO)
+        debug_string(OutputStream, "pred", !IO)
     else
         unexpected($pred,
             "invalid predicate or function specifier in bytecode.")
@@ -579,395 +669,467 @@ debug_is_func(IsFunc, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred output_length(int::in, io::di, io::uo) is det.
+:- pred output_length(io.binary_output_stream::in, int::in,
+    io::di, io::uo) is det.
 
-output_length(Length, !IO) :-
-    output_short(Length, !IO).
+output_length(BinaryOutputStream, Length, !IO) :-
+    output_short(BinaryOutputStream, Length, !IO).
 
-:- pred debug_length(int::in, io::di, io::uo) is det.
+:- pred debug_length(io.text_output_stream::in, int::in,
+    io::di, io::uo) is det.
 
-debug_length(Length, !IO) :-
-    debug_int(Length, !IO).
+debug_length(OutputStream, Length, !IO) :-
+    debug_int(OutputStream, Length, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_arg(byte_arg::in, io::di, io::uo) is det.
+:- pred output_arg(io.binary_output_stream::in, byte_arg::in,
+    io::di, io::uo) is det.
 
-output_arg(byte_arg_var(Var), !IO) :-
-    output_byte(0, !IO),
-    output_var(Var, !IO).
-output_arg(byte_arg_int_const(IntVal), !IO) :-
-    output_byte(1, !IO),
-    output_int(IntVal, !IO).
-output_arg(byte_arg_float_const(FloatVal), !IO) :-
-    output_byte(2, !IO),
-    output_float(FloatVal, !IO).
-output_arg(byte_arg_uint_const(_), _, _) :-
+output_arg(BinaryOutputStream, byte_arg_var(Var), !IO) :-
+    output_byte(BinaryOutputStream, 0, !IO),
+    output_var(BinaryOutputStream, Var, !IO).
+output_arg(BinaryOutputStream, byte_arg_int_const(IntVal), !IO) :-
+    output_byte(BinaryOutputStream, 1, !IO),
+    output_int(BinaryOutputStream, IntVal, !IO).
+output_arg(BinaryOutputStream, byte_arg_float_const(FloatVal), !IO) :-
+    output_byte(BinaryOutputStream, 2, !IO),
+    output_float(BinaryOutputStream, FloatVal, !IO).
+output_arg(_, byte_arg_uint_const(_), _, _) :-
     unexpected($pred, "NYI uint constants in bytecode").
-output_arg(byte_arg_int8_const(_), _, _) :-
+output_arg(_, byte_arg_int8_const(_), _, _) :-
     unexpected($pred, "NYI int8 constants in bytecode").
-output_arg(byte_arg_uint8_const(_), _, _) :-
+output_arg(_, byte_arg_uint8_const(_), _, _) :-
     unexpected($pred, "NYI uint8 constants in bytecode").
-output_arg(byte_arg_int16_const(_), _, _) :-
+output_arg(_, byte_arg_int16_const(_), _, _) :-
     unexpected($pred, "NYI int16 constants in bytecode").
-output_arg(byte_arg_uint16_const(_), _, _) :-
+output_arg(_, byte_arg_uint16_const(_), _, _) :-
     unexpected($pred, "NYI uint16 constants in bytecode").
-output_arg(byte_arg_int32_const(_), _, _) :-
+output_arg(_, byte_arg_int32_const(_), _, _) :-
     unexpected($pred, "NYI int32 constants in bytecode").
-output_arg(byte_arg_uint32_const(_), _, _) :-
+output_arg(_, byte_arg_uint32_const(_), _, _) :-
     unexpected($pred, "NYI uint32 constants in bytecode").
-output_arg(byte_arg_int64_const(_), _, _) :-
+output_arg(_, byte_arg_int64_const(_), _, _) :-
     unexpected($pred, "NYI int64 constants in bytecode").
-output_arg(byte_arg_uint64_const(_), _, _) :-
+output_arg(_, byte_arg_uint64_const(_), _, _) :-
     unexpected($pred, "NYI uint64 constants in bytecode").
 
-:- pred debug_arg(byte_arg::in, io::di, io::uo) is det.
-
-debug_arg(byte_arg_var(Var), !IO) :-
-    debug_string("var", !IO),
-    debug_var(Var, !IO).
-debug_arg(byte_arg_int_const(IntVal), !IO) :-
-    debug_string("int", !IO),
-    debug_int(IntVal, !IO).
-debug_arg(byte_arg_uint_const(UIntVal), !IO) :-
-    debug_string("uint", !IO),
-    debug_uint(UIntVal, !IO).
-debug_arg(byte_arg_int8_const(Int8Val), !IO) :-
-    debug_string("int8", !IO),
-    debug_int8(Int8Val, !IO).
-debug_arg(byte_arg_uint8_const(UInt8Val), !IO) :-
-    debug_string("uint8", !IO),
-    debug_uint8(UInt8Val, !IO).
-debug_arg(byte_arg_int16_const(Int16Val), !IO) :-
-    debug_string("int16", !IO),
-    debug_int16(Int16Val, !IO).
-debug_arg(byte_arg_uint16_const(UInt16Val), !IO) :-
-    debug_string("uint16", !IO),
-    debug_uint16(UInt16Val, !IO).
-debug_arg(byte_arg_int32_const(Int32Val), !IO) :-
-    debug_string("int32", !IO),
-    debug_int32(Int32Val, !IO).
-debug_arg(byte_arg_uint32_const(UInt32Val), !IO) :-
-    debug_string("uint32", !IO),
-    debug_uint32(UInt32Val, !IO).
-debug_arg(byte_arg_int64_const(Int64Val), !IO) :-
-    debug_string("int64", !IO),
-    debug_int64(Int64Val, !IO).
-debug_arg(byte_arg_uint64_const(UInt64Val), !IO) :-
-    debug_string("uint64", !IO),
-    debug_uint64(UInt64Val, !IO).
-debug_arg(byte_arg_float_const(FloatVal), !IO) :-
-    debug_string("float", !IO),
-    debug_float(FloatVal, !IO).
-
-%---------------------------------------------------------------------------%
-
-:- pred output_var(byte_var::in, io::di, io::uo) is det.
-
-output_var(Var, !IO) :-
-    output_short(Var, !IO).
-
-:- pred output_vars(list(byte_var)::in, io::di, io::uo) is det.
-
-output_vars([], !IO).
-output_vars([Var | Vars], !IO) :-
-    output_var(Var, !IO),
-    output_vars(Vars, !IO).
-
-:- pred debug_var(byte_var::in, io::di, io::uo) is det.
-
-debug_var(Var, !IO) :-
-    debug_int(Var, !IO).
-
-:- pred debug_vars(list(byte_var)::in, io::di, io::uo) is det.
-
-debug_vars([], !IO).
-debug_vars([Var | Vars], !IO) :-
-    debug_var(Var, !IO),
-    debug_vars(Vars, !IO).
-
-%---------------------------------------------------------------------------%
-
-:- pred output_temp(byte_temp::in, io::di, io::uo) is det.
-
-output_temp(Var, !IO) :-
-    output_short(Var, !IO).
-
-:- pred debug_temp(byte_temp::in, io::di, io::uo) is det.
-
-debug_temp(Var, !IO) :-
-    debug_int(Var, !IO).
-
-%---------------------------------------------------------------------------%
-
-:- pred output_dir(byte_dir::in, io::di, io::uo) is det.
-
-output_dir(to_arg, !IO) :-
-    output_byte(0, !IO).
-output_dir(to_var, !IO) :-
-    output_byte(1, !IO).
-output_dir(to_none, !IO) :-
-    output_byte(2, !IO).
-
-:- pred output_var_dirs(assoc_list(byte_var, byte_dir)::in,
+:- pred debug_arg(io.text_output_stream::in, byte_arg::in,
     io::di, io::uo) is det.
 
-output_var_dirs([], !IO).
-output_var_dirs([Var - Dir | VarDirs], !IO) :-
-    output_var(Var, !IO),
-    output_dir(Dir, !IO),
-    output_var_dirs(VarDirs, !IO).
+debug_arg(OutputStream, byte_arg_var(Var), !IO) :-
+    debug_string(OutputStream, "var", !IO),
+    debug_var(OutputStream, Var, !IO).
+debug_arg(OutputStream, byte_arg_int_const(IntVal), !IO) :-
+    debug_string(OutputStream, "int", !IO),
+    debug_int(OutputStream, IntVal, !IO).
+debug_arg(OutputStream, byte_arg_uint_const(UIntVal), !IO) :-
+    debug_string(OutputStream, "uint", !IO),
+    debug_uint(OutputStream, UIntVal, !IO).
+debug_arg(OutputStream, byte_arg_int8_const(Int8Val), !IO) :-
+    debug_string(OutputStream, "int8", !IO),
+    debug_int8(OutputStream, Int8Val, !IO).
+debug_arg(OutputStream, byte_arg_uint8_const(UInt8Val), !IO) :-
+    debug_string(OutputStream, "uint8", !IO),
+    debug_uint8(OutputStream, UInt8Val, !IO).
+debug_arg(OutputStream, byte_arg_int16_const(Int16Val), !IO) :-
+    debug_string(OutputStream, "int16", !IO),
+    debug_int16(OutputStream, Int16Val, !IO).
+debug_arg(OutputStream, byte_arg_uint16_const(UInt16Val), !IO) :-
+    debug_string(OutputStream, "uint16", !IO),
+    debug_uint16(OutputStream, UInt16Val, !IO).
+debug_arg(OutputStream, byte_arg_int32_const(Int32Val), !IO) :-
+    debug_string(OutputStream, "int32", !IO),
+    debug_int32(OutputStream, Int32Val, !IO).
+debug_arg(OutputStream, byte_arg_uint32_const(UInt32Val), !IO) :-
+    debug_string(OutputStream, "uint32", !IO),
+    debug_uint32(OutputStream, UInt32Val, !IO).
+debug_arg(OutputStream, byte_arg_int64_const(Int64Val), !IO) :-
+    debug_string(OutputStream, "int64", !IO),
+    debug_int64(OutputStream, Int64Val, !IO).
+debug_arg(OutputStream, byte_arg_uint64_const(UInt64Val), !IO) :-
+    debug_string(OutputStream, "uint64", !IO),
+    debug_uint64(OutputStream, UInt64Val, !IO).
+debug_arg(OutputStream, byte_arg_float_const(FloatVal), !IO) :-
+    debug_string(OutputStream, "float", !IO),
+    debug_float(OutputStream, FloatVal, !IO).
 
-:- pred debug_dir(byte_dir::in, io::di, io::uo) is det.
+%---------------------------------------------------------------------------%
 
-debug_dir(to_arg, !IO) :-
-    debug_string("to_arg", !IO).
-debug_dir(to_var, !IO) :-
-    debug_string("to_var", !IO).
-debug_dir(to_none, !IO) :-
-    debug_string("to_none", !IO).
-
-:- pred debug_var_dirs(assoc_list(byte_var, byte_dir)::in,
+:- pred output_var(io.binary_output_stream::in, byte_var::in,
     io::di, io::uo) is det.
 
-debug_var_dirs([], !IO).
-debug_var_dirs([Var - Dir | VarDirs], !IO) :-
-    debug_var(Var, !IO),
-    debug_dir(Dir, !IO),
-    debug_var_dirs(VarDirs, !IO).
+output_var(BinaryOutputStream, Var, !IO) :-
+    output_short(BinaryOutputStream, Var, !IO).
+
+:- pred output_vars(io.binary_output_stream::in, list(byte_var)::in,
+    io::di, io::uo) is det.
+
+output_vars(_BinaryOutputStream, [], !IO).
+output_vars(BinaryOutputStream, [Var | Vars], !IO) :-
+    output_var(BinaryOutputStream, Var, !IO),
+    output_vars(BinaryOutputStream, Vars, !IO).
+
+:- pred debug_var(io.text_output_stream::in, byte_var::in,
+    io::di, io::uo) is det.
+
+debug_var(OutputStream, Var, !IO) :-
+    debug_int(OutputStream, Var, !IO).
+
+:- pred debug_vars(io.text_output_stream::in, list(byte_var)::in,
+    io::di, io::uo) is det.
+
+debug_vars(_OutputStream, [], !IO).
+debug_vars(OutputStream, [Var | Vars], !IO) :-
+    debug_var(OutputStream, Var, !IO),
+    debug_vars(OutputStream, Vars, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_test_id(byte_test_id::in, io::di, io::uo) is det.
+:- pred output_temp(io.binary_output_stream::in, byte_temp::in,
+    io::di, io::uo) is det.
 
-output_test_id(int_test, !IO)    :- output_byte(0, !IO).
-output_test_id(char_test, !IO)   :- output_byte(1, !IO).
-output_test_id(string_test, !IO) :- output_byte(2, !IO).
-output_test_id(float_test, !IO)  :- output_byte(3, !IO).
-output_test_id(enum_test, !IO)   :- output_byte(4, !IO).
-output_test_id(dummy_test, !IO)  :- output_byte(5, !IO).
+output_temp(BinaryOutputStream, Var, !IO) :-
+    output_short(BinaryOutputStream, Var, !IO).
 
-:- pred debug_test_id(byte_test_id::in, io::di, io::uo) is det.
+:- pred debug_temp(io.text_output_stream::in, byte_temp::in,
+    io::di, io::uo) is det.
 
-debug_test_id(int_test, !IO)     :- debug_string("int", !IO).
-debug_test_id(char_test, !IO)    :- debug_string("char", !IO).
-debug_test_id(string_test, !IO)  :- debug_string("string", !IO).
-debug_test_id(float_test, !IO)   :- debug_string("float", !IO).
-debug_test_id(enum_test, !IO)    :- debug_string("enum", !IO).
-debug_test_id(dummy_test, !IO)   :- debug_string("dummy", !IO).
+debug_temp(OutputStream, Var, !IO) :-
+    debug_int(OutputStream, Var, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_module_id(byte_module_id::in, io::di, io::uo) is det.
+:- pred output_dir(io.binary_output_stream::in, byte_dir::in,
+    io::di, io::uo) is det.
 
-output_module_id(ModuleId, !IO) :-
-    output_string(sym_name_to_string(ModuleId), !IO).
+output_dir(BinaryOutputStream, to_arg, !IO) :-
+    output_byte(BinaryOutputStream, 0, !IO).
+output_dir(BinaryOutputStream, to_var, !IO) :-
+    output_byte(BinaryOutputStream, 1, !IO).
+output_dir(BinaryOutputStream, to_none, !IO) :-
+    output_byte(BinaryOutputStream, 2, !IO).
 
-:- pred debug_module_id(byte_module_id::in, io::di, io::uo) is det.
+:- pred output_var_dirs(io.binary_output_stream::in,
+    assoc_list(byte_var, byte_dir)::in, io::di, io::uo) is det.
 
-debug_module_id(ModuleId, !IO) :-
-    debug_sym_name(ModuleId, !IO).
+output_var_dirs(_BinaryOutputStream, [], !IO).
+output_var_dirs(BinaryOutputStream, [Var - Dir | VarDirs], !IO) :-
+    output_var(BinaryOutputStream, Var, !IO),
+    output_dir(BinaryOutputStream, Dir, !IO),
+    output_var_dirs(BinaryOutputStream, VarDirs, !IO).
 
-%---------------------------------------------------------------------------%
+:- pred debug_dir(io.text_output_stream::in, byte_dir::in,
+    io::di, io::uo) is det.
 
-:- pred output_pred_id(byte_pred_id::in, io::di, io::uo) is det.
+debug_dir(OutputStream, to_arg, !IO) :-
+    debug_string(OutputStream, "to_arg", !IO).
+debug_dir(OutputStream, to_var, !IO) :-
+    debug_string(OutputStream, "to_var", !IO).
+debug_dir(OutputStream, to_none, !IO) :-
+    debug_string(OutputStream, "to_none", !IO).
 
-output_pred_id(PredId, !IO) :-
-    output_string(PredId, !IO).
+:- pred debug_var_dirs(io.text_output_stream::in,
+    assoc_list(byte_var, byte_dir)::in, io::di, io::uo) is det.
 
-:- pred debug_pred_id(byte_pred_id::in, io::di, io::uo) is det.
-
-debug_pred_id(PredId, !IO) :-
-    debug_string(PredId, !IO).
-
-%---------------------------------------------------------------------------%
-
-:- pred output_proc_id(byte_proc_id::in, io::di, io::uo) is det.
-
-output_proc_id(ProcId, !IO) :-
-    output_byte(ProcId, !IO).
-
-:- pred debug_proc_id(byte_proc_id::in, io::di, io::uo) is det.
-
-debug_proc_id(ProcId, !IO) :-
-    debug_int(ProcId, !IO).
-
-%---------------------------------------------------------------------------%
-
-:- pred output_label_id(int::in, io::di, io::uo) is det.
-
-output_label_id(LabelId, !IO) :-
-    output_short(LabelId, !IO).
-
-:- pred debug_label_id(int::in, io::di, io::uo) is det.
-
-debug_label_id(LabelId, !IO) :-
-    debug_int(LabelId, !IO).
+debug_var_dirs(_OutputStream, [], !IO).
+debug_var_dirs(OutputStream, [Var - Dir | VarDirs], !IO) :-
+    debug_var(OutputStream, Var, !IO),
+    debug_dir(OutputStream, Dir, !IO),
+    debug_var_dirs(OutputStream, VarDirs, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_cons_id(byte_cons_id::in, io::di, io::uo) is det.
+:- pred output_test_id(io.binary_output_stream::in, byte_test_id::in,
+    io::di, io::uo) is det.
 
-output_cons_id(byte_cons(ModuleId, Functor, Arity, Tag), !IO) :-
-    output_byte(0, !IO),
-    output_module_id(ModuleId, !IO),
-    output_string(Functor, !IO),
-    output_short(Arity, !IO),
-    output_tag(Tag, !IO).
-output_cons_id(byte_int_const(IntVal), !IO) :-
-    output_byte(1, !IO),
-    output_int(IntVal, !IO).
-output_cons_id(byte_string_const(StringVal), !IO) :-
-    output_byte(2, !IO),
-    output_string(StringVal, !IO).
-output_cons_id(byte_float_const(FloatVal), !IO) :-
-    output_byte(3, !IO),
-    output_float(FloatVal, !IO).
-output_cons_id(byte_pred_const(ModuleId, PredId, Arity, IsFunc, ProcId),
-        !IO) :-
-    output_byte(4, !IO),
-    output_module_id(ModuleId, !IO),
-    output_pred_id(PredId, !IO),
-    output_length(Arity, !IO),
-    output_is_func(IsFunc, !IO),
-    output_proc_id(ProcId, !IO).
-output_cons_id(byte_type_ctor_info_const(ModuleId, TypeName, TypeArity),
-        !IO) :-
-    output_byte(6, !IO),
-    output_module_id(ModuleId, !IO),
-    output_string(TypeName, !IO),
-    output_byte(TypeArity, !IO).
-output_cons_id(byte_char_const(Char), !IO) :-
-    output_byte(7, !IO),
-    char.to_int(Char, Byte),
-    output_byte(Byte, !IO).
-    % XXX
-output_cons_id(byte_base_typeclass_info_const(_, _, _), !IO) :-
-    sorry($pred, "bytecode for typeclass not yet implemented."),
-    output_byte(8, !IO).
-output_cons_id(byte_type_info_cell_constructor, !IO) :-
-    sorry($pred, "bytecode for type_info_cell_constructor " ++
-        "not yet implemented."),
-    output_byte(9, !IO).
-output_cons_id(byte_typeclass_info_cell_constructor, !IO) :-
-    sorry($pred, "bytecode for typeclass_info_cell_constructor " ++
-        "not yet implemented."),
-    output_byte(10, !IO).
+output_test_id(BinaryOutputStream, Test, !IO) :-
+    ( Test = int_test,      TestId = 0
+    ; Test = char_test,     TestId = 1
+    ; Test = string_test,   TestId = 2
+    ; Test = float_test,    TestId = 3
+    ; Test = enum_test,     TestId = 4
+    ; Test = dummy_test,    TestId = 5
+    ),
+    output_byte(BinaryOutputStream, TestId, !IO).
 
-:- pred debug_cons_id(byte_cons_id::in, io::di, io::uo) is det.
+:- pred debug_test_id(io.text_output_stream::in, byte_test_id::in,
+    io::di, io::uo) is det.
 
-debug_cons_id(byte_cons(ModuleId, Functor, Arity, Tag), !IO) :-
-    debug_string("functor", !IO),
-    debug_sym_name(ModuleId, !IO),
-    debug_string(Functor, !IO),
-    debug_int(Arity, !IO),
-    debug_tag(Tag, !IO).
-debug_cons_id(byte_int_const(IntVal), !IO) :-
-    debug_string("int_const", !IO),
-    debug_int(IntVal, !IO).
-debug_cons_id(byte_string_const(StringVal), !IO) :-
-    debug_string("string_const", !IO),
-    debug_cstring(StringVal, !IO).
-debug_cons_id(byte_float_const(FloatVal), !IO) :-
-    debug_string("float_const", !IO),
-    debug_float(FloatVal, !IO).
-debug_cons_id(byte_pred_const(ModuleId, PredId, Arity, IsFunc, ProcId), !IO) :-
-    debug_string("pred_const", !IO),
-    debug_module_id(ModuleId, !IO),
-    debug_pred_id(PredId, !IO),
-    debug_length(Arity, !IO),
-    debug_is_func(IsFunc, !IO),
-    debug_proc_id(ProcId, !IO).
-debug_cons_id(byte_type_ctor_info_const(ModuleId, TypeName, TypeArity), !IO) :-
-    debug_string("type_ctor_info_const", !IO),
-    debug_module_id(ModuleId, !IO),
-    debug_string(TypeName, !IO),
-    debug_int(TypeArity, !IO).
-debug_cons_id(byte_base_typeclass_info_const(ModuleId,
-        class_id(ClassName, ClassArity), Instance), !IO) :-
-    debug_string("base_typeclass_info_const", !IO),
-    debug_module_id(ModuleId, !IO),
-    debug_string("class_id", !IO),
-    debug_sym_name(ClassName, !IO),
-    debug_string("/", !IO),
-    debug_int(ClassArity, !IO),
-    debug_string(Instance, !IO).
-debug_cons_id(byte_char_const(Char), !IO) :-
-    debug_string("char_const", !IO),
-    string.from_char_list([Char], String),
-    debug_string(String, !IO).
-debug_cons_id(byte_type_info_cell_constructor, !IO) :-
-    debug_string("type_info_cell_constructor", !IO).
-debug_cons_id(byte_typeclass_info_cell_constructor, !IO) :-
-    debug_string("typeclass_info_cell_constructor", !IO).
+debug_test_id(OutputStream, Test, !IO) :-
+    ( Test = int_test,      TestStr = "int"
+    ; Test = char_test,     TestStr = "char"
+    ; Test = string_test,   TestStr = "string"
+    ; Test = float_test,    TestStr = "float"
+    ; Test = enum_test,     TestStr = "enum"
+    ; Test = dummy_test,    TestStr = "dummy"
+    ),
+    debug_string(OutputStream, TestStr, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_tag(byte_cons_tag::in, io::di, io::uo) is det.
+:- pred output_module_id(io.binary_output_stream::in, byte_module_id::in,
+    io::di, io::uo) is det.
 
-output_tag(byte_unshared_tag(Primary), !IO) :-
-    output_byte(0, !IO),
-    output_byte(Primary, !IO).
-output_tag(byte_shared_remote_tag(Primary, Secondary), !IO) :-
-    output_byte(1, !IO),
-    output_byte(Primary, !IO),
-    output_int(Secondary, !IO).
-output_tag(byte_shared_local_tag(Primary, Secondary), !IO) :-
-    output_byte(2, !IO),
-    output_byte(Primary, !IO),
-    output_int(Secondary, !IO).
-output_tag(byte_enum_tag(Enum), !IO) :-
-    output_byte(3, !IO),
-    output_byte(Enum, !IO).
-output_tag(byte_no_tag, !IO) :-
-    output_byte(4, !IO).
+output_module_id(BinaryOutputStream, ModuleId, !IO) :-
+    output_string(BinaryOutputStream, sym_name_to_string(ModuleId), !IO).
 
-:- pred debug_tag(byte_cons_tag::in, io::di, io::uo) is det.
+:- pred debug_module_id(io.text_output_stream::in, byte_module_id::in,
+    io::di, io::uo) is det.
 
-debug_tag(byte_unshared_tag(Primary), !IO) :-
-    debug_string("unshared_tag", !IO),
-    debug_int(Primary, !IO).
-debug_tag(byte_shared_remote_tag(Primary, Secondary), !IO) :-
-    debug_string("shared_remote_tag", !IO),
-    debug_int(Primary, !IO),
-    debug_int(Secondary, !IO).
-debug_tag(byte_shared_local_tag(Primary, Secondary), !IO) :-
-    debug_string("shared_local_tag", !IO),
-    debug_int(Primary, !IO),
-    debug_int(Secondary, !IO).
-debug_tag(byte_enum_tag(Enum), !IO) :-
-    debug_string("enum_tag", !IO),
-    debug_int(Enum, !IO).
-debug_tag(byte_no_tag, !IO) :-
-    debug_string("no_tag", !IO).
+debug_module_id(OutputStream, ModuleId, !IO) :-
+    debug_sym_name(OutputStream, ModuleId, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_binop(binary_op::in, io::di, io::uo) is det.
+:- pred output_pred_id(io.binary_output_stream::in, byte_pred_id::in,
+    io::di, io::uo) is det.
 
-output_binop(Binop, !IO) :-
+output_pred_id(BinaryOutputStream, PredId, !IO) :-
+    output_string(BinaryOutputStream, PredId, !IO).
+
+:- pred debug_pred_id(io.text_output_stream::in, byte_pred_id::in,
+    io::di, io::uo) is det.
+
+debug_pred_id(OutputStream, PredId, !IO) :-
+    debug_string(OutputStream, PredId, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred output_proc_id(io.binary_output_stream::in, byte_proc_id::in,
+    io::di, io::uo) is det.
+
+output_proc_id(BinaryOutputStream, ProcId, !IO) :-
+    output_byte(BinaryOutputStream, ProcId, !IO).
+
+:- pred debug_proc_id(io.text_output_stream::in, byte_proc_id::in,
+    io::di, io::uo) is det.
+
+debug_proc_id(OutputStream, ProcId, !IO) :-
+    debug_int(OutputStream, ProcId, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred output_label_id(io.binary_output_stream::in, int::in,
+    io::di, io::uo) is det.
+
+output_label_id(BinaryOutputStream, LabelId, !IO) :-
+    output_short(BinaryOutputStream, LabelId, !IO).
+
+:- pred debug_label_id(io.text_output_stream::in, int::in,
+    io::di, io::uo) is det.
+
+debug_label_id(OutputStream, LabelId, !IO) :-
+    debug_int(OutputStream, LabelId, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred output_cons_id(io.binary_output_stream::in, byte_cons_id::in,
+    io::di, io::uo) is det.
+
+output_cons_id(BinaryOutputStream, ConsId, !IO) :-
+    (
+        ConsId = byte_cons(ModuleId, Functor, Arity, Tag),
+        output_byte(BinaryOutputStream, 0, !IO),
+        output_module_id(BinaryOutputStream, ModuleId, !IO),
+        output_string(BinaryOutputStream, Functor, !IO),
+        output_short(BinaryOutputStream, Arity, !IO),
+        output_tag(BinaryOutputStream, Tag, !IO)
+    ;
+        ConsId = byte_int_const(IntVal),
+        output_byte(BinaryOutputStream, 1, !IO),
+        output_int(BinaryOutputStream, IntVal, !IO)
+    ;
+        ConsId = byte_string_const(StringVal),
+        output_byte(BinaryOutputStream, 2, !IO),
+        output_string(BinaryOutputStream, StringVal, !IO)
+    ;
+        ConsId = byte_float_const(FloatVal),
+        output_byte(BinaryOutputStream, 3, !IO),
+        output_float(BinaryOutputStream, FloatVal, !IO)
+    ;
+        ConsId = byte_pred_const(ModuleId, PredId, Arity, IsFunc, ProcId),
+        output_byte(BinaryOutputStream, 4, !IO),
+        output_module_id(BinaryOutputStream, ModuleId, !IO),
+        output_pred_id(BinaryOutputStream, PredId, !IO),
+        output_length(BinaryOutputStream, Arity, !IO),
+        output_is_func(BinaryOutputStream, IsFunc, !IO),
+        output_proc_id(BinaryOutputStream, ProcId, !IO)
+    ;
+        ConsId = byte_type_ctor_info_const(ModuleId, TypeName, TypeArity),
+        output_byte(BinaryOutputStream, 6, !IO),
+        output_module_id(BinaryOutputStream, ModuleId, !IO),
+        output_string(BinaryOutputStream, TypeName, !IO),
+        output_byte(BinaryOutputStream, TypeArity, !IO)
+    ;
+        ConsId = byte_char_const(Char),
+        char.to_int(Char, Byte),
+        output_byte(BinaryOutputStream, 7, !IO),
+        output_byte(BinaryOutputStream, Byte, !IO)
+    ;
+        % XXX
+        ConsId = byte_base_typeclass_info_const(_, _, _),
+        output_byte(BinaryOutputStream, 8, !IO),
+        sorry($pred, "bytecode for typeclass not yet implemented.")
+    ;
+        ConsId = byte_type_info_cell_constructor,
+        output_byte(BinaryOutputStream, 9, !IO),
+        sorry($pred, "bytecode for type_info_cell_constructor " ++
+            "not yet implemented.")
+    ;
+        ConsId = byte_typeclass_info_cell_constructor,
+        output_byte(BinaryOutputStream, 10, !IO),
+        sorry($pred, "bytecode for typeclass_info_cell_constructor " ++
+            "not yet implemented.")
+    ).
+
+:- pred debug_cons_id(io.text_output_stream::in, byte_cons_id::in,
+    io::di, io::uo) is det.
+
+debug_cons_id(OutputStream, ConsId, !IO) :-
+    (
+        ConsId = byte_cons(ModuleId, Functor, Arity, Tag),
+        debug_string(OutputStream, "functor", !IO),
+        debug_sym_name(OutputStream, ModuleId, !IO),
+        debug_string(OutputStream, Functor, !IO),
+        debug_int(OutputStream, Arity, !IO),
+        debug_tag(OutputStream, Tag, !IO)
+    ;
+        ConsId = byte_int_const(IntVal),
+        debug_string(OutputStream, "int_const", !IO),
+        debug_int(OutputStream, IntVal, !IO)
+    ;
+        ConsId = byte_string_const(StringVal),
+        debug_string(OutputStream, "string_const", !IO),
+        debug_cstring(OutputStream, StringVal, !IO)
+    ;
+        ConsId = byte_float_const(FloatVal),
+        debug_string(OutputStream, "float_const", !IO),
+        debug_float(OutputStream, FloatVal, !IO)
+    ;
+        ConsId = byte_pred_const(ModuleId, PredId, Arity, IsFunc, ProcId),
+        debug_string(OutputStream, "pred_const", !IO),
+        debug_module_id(OutputStream, ModuleId, !IO),
+        debug_pred_id(OutputStream, PredId, !IO),
+        debug_length(OutputStream, Arity, !IO),
+        debug_is_func(OutputStream, IsFunc, !IO),
+        debug_proc_id(OutputStream, ProcId, !IO)
+    ;
+        ConsId = byte_type_ctor_info_const(ModuleId, TypeName, TypeArity),
+        debug_string(OutputStream, "type_ctor_info_const", !IO),
+        debug_module_id(OutputStream, ModuleId, !IO),
+        debug_string(OutputStream, TypeName, !IO),
+        debug_int(OutputStream, TypeArity, !IO)
+    ;
+        ConsId = byte_base_typeclass_info_const(ModuleId, ClassId, Instance),
+        ClassId = class_id(ClassName, ClassArity),
+        debug_string(OutputStream, "base_typeclass_info_const", !IO),
+        debug_module_id(OutputStream, ModuleId, !IO),
+        debug_string(OutputStream, "class_id", !IO),
+        debug_sym_name(OutputStream, ClassName, !IO),
+        debug_string(OutputStream, "/", !IO),
+        debug_int(OutputStream, ClassArity, !IO),
+        debug_string(OutputStream, Instance, !IO)
+    ;
+        ConsId = byte_char_const(Char),
+        string.from_char_list([Char], String),
+        debug_string(OutputStream, "char_const", !IO),
+        debug_string(OutputStream, String, !IO)
+    ;
+        ConsId = byte_type_info_cell_constructor,
+        debug_string(OutputStream, "type_info_cell_constructor", !IO)
+    ;
+        ConsId = byte_typeclass_info_cell_constructor,
+        debug_string(OutputStream, "typeclass_info_cell_constructor", !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred output_tag(io.binary_output_stream::in, byte_cons_tag::in,
+    io::di, io::uo) is det.
+
+output_tag(OutputStream, ConsTag, !IO) :-
+    (
+        ConsTag = byte_unshared_tag(Primary),
+        output_byte(OutputStream, 0, !IO),
+        output_byte(OutputStream, Primary, !IO)
+    ;
+        ConsTag = byte_shared_remote_tag(Primary, Secondary),
+        output_byte(OutputStream, 1, !IO),
+        output_byte(OutputStream, Primary, !IO),
+        output_int(OutputStream, Secondary, !IO)
+    ;
+        ConsTag = byte_shared_local_tag(Primary, Secondary),
+        output_byte(OutputStream, 2, !IO),
+        output_byte(OutputStream, Primary, !IO),
+        output_int(OutputStream, Secondary, !IO)
+    ;
+        ConsTag = byte_enum_tag(Enum),
+        output_byte(OutputStream, 3, !IO),
+        output_byte(OutputStream, Enum, !IO)
+    ;
+        ConsTag = byte_no_tag,
+        output_byte(OutputStream, 4, !IO)
+    ).
+
+:- pred debug_tag(io.text_output_stream::in, byte_cons_tag::in,
+    io::di, io::uo) is det.
+
+debug_tag(BinaryOutputStream, ConsTag, !IO) :-
+    (
+        ConsTag = byte_unshared_tag(Primary),
+        debug_string(BinaryOutputStream, "unshared_tag", !IO),
+        debug_int(BinaryOutputStream, Primary, !IO)
+    ;
+        ConsTag = byte_shared_remote_tag(Primary, Secondary),
+        debug_string(BinaryOutputStream, "shared_remote_tag", !IO),
+        debug_int(BinaryOutputStream, Primary, !IO),
+        debug_int(BinaryOutputStream, Secondary, !IO)
+    ;
+        ConsTag = byte_shared_local_tag(Primary, Secondary),
+        debug_string(BinaryOutputStream, "shared_local_tag", !IO),
+        debug_int(BinaryOutputStream, Primary, !IO),
+        debug_int(BinaryOutputStream, Secondary, !IO)
+    ;
+        ConsTag = byte_enum_tag(Enum),
+        debug_string(BinaryOutputStream, "enum_tag", !IO),
+        debug_int(BinaryOutputStream, Enum, !IO)
+    ;
+        ConsTag = byte_no_tag,
+        debug_string(BinaryOutputStream, "no_tag", !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred output_binop(io.binary_output_stream::in, binary_op::in,
+    io::di, io::uo) is det.
+
+output_binop(OutputStream, Binop, !IO) :-
     binop_code(Binop, Code),
-    output_byte(Code, !IO).
+    output_byte(OutputStream, Code, !IO).
 
-:- pred debug_binop(binary_op::in, io::di, io::uo) is det.
+:- pred debug_binop(io.text_output_stream::in, binary_op::in,
+    io::di, io::uo) is det.
 
-debug_binop(Binop, !IO) :-
+debug_binop(BinaryOutputStream, Binop, !IO) :-
     binop_debug(Binop, Debug),
-    debug_string(Debug, !IO).
+    debug_string(BinaryOutputStream, Debug, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_unop(unary_op::in, io::di, io::uo) is det.
+:- pred output_unop(io.binary_output_stream::in, unary_op::in,
+    io::di, io::uo) is det.
 
-output_unop(Unop, !IO) :-
+output_unop(BinaryOutputStream, Unop, !IO) :-
     unop_code(Unop, Code),
-    output_byte(Code, !IO).
+    output_byte(BinaryOutputStream, Code, !IO).
 
-:- pred debug_unop(unary_op::in, io::di, io::uo) is det.
+:- pred debug_unop(io.text_output_stream::in, unary_op::in,
+    io::di, io::uo) is det.
 
-debug_unop(Unop, !IO) :-
+debug_unop(OutputStream, Unop, !IO) :-
     unop_debug(Unop, Debug),
-    debug_string(Debug, !IO).
+    debug_string(OutputStream, Debug, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1629,97 +1791,114 @@ unop_debug(bitwise_complement(int_type_uint64), "bitwise_complement(uint64)").
 
     % debug_cstring prints a string quoted in the manner of C.
     %
-:- pred debug_cstring(string::in, io::di, io::uo) is det.
+:- pred debug_cstring(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-debug_cstring(Str, !IO) :-
-    io.output_stream(Stream, !IO),
-    output_quoted_string_c(Stream, Str, !IO),
+debug_cstring(OutputStream, Str, !IO) :-
+    output_quoted_string_c(OutputStream, Str, !IO),
     % XXX: We need the trailing space in case something follows
     % the string as a bytecode argument. This is not very elegant.
-    io.write_char(Stream, ' ', !IO).
+    io.write_char(OutputStream, ' ', !IO).
 
-:- pred debug_string(string::in, io::di, io::uo) is det.
+:- pred debug_string(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-debug_string(Val, !IO) :-
-    io.write_string(Val, !IO),
-    io.write_char(' ', !IO).
+debug_string(OutputStream, Val, !IO) :-
+    io.write_string(OutputStream, Val, !IO),
+    io.write_char(OutputStream, ' ', !IO).
 
-:- pred debug_int(int::in, io::di, io::uo) is det.
+:- pred debug_int(io.text_output_stream::in, int::in,
+    io::di, io::uo) is det.
 
-debug_int(Val, !IO) :-
-    io.write_int(Val, !IO),
-    io.write_char(' ', !IO).
+debug_int(OutputStream, Val, !IO) :-
+    io.write_int(OutputStream, Val, !IO),
+    io.write_char(OutputStream, ' ', !IO).
 
-:- pred debug_uint(uint::in, io::di, io::uo) is det.
+:- pred debug_uint(io.text_output_stream::in, uint::in,
+    io::di, io::uo) is det.
 
-debug_uint(Val, !IO) :-
-    io.write_uint(Val, !IO),
-    io.write_char(' ', !IO).
+debug_uint(OutputStream, Val, !IO) :-
+    io.write_uint(OutputStream, Val, !IO),
+    io.write_char(OutputStream, ' ', !IO).
 
-:- pred debug_int8(int8::in, io::di, io::uo) is det.
+:- pred debug_int8(io.text_output_stream::in, int8::in,
+    io::di, io::uo) is det.
 
-debug_int8(Val, !IO) :-
-    io.write_int8(Val, !IO),
-    io.write_char(' ', !IO).
+debug_int8(OutputStream, Val, !IO) :-
+    io.write_int8(OutputStream, Val, !IO),
+    io.write_char(OutputStream, ' ', !IO).
 
-:- pred debug_uint8(uint8::in, io::di, io::uo) is det.
+:- pred debug_uint8(io.text_output_stream::in, uint8::in,
+    io::di, io::uo) is det.
 
-debug_uint8(Val, !IO) :-
-    io.write_uint8(Val, !IO),
-    io.write_char(' ', !IO).
+debug_uint8(OutputStream, Val, !IO) :-
+    io.write_uint8(OutputStream, Val, !IO),
+    io.write_char(OutputStream, ' ', !IO).
 
-:- pred debug_int16(int16::in, io::di, io::uo) is det.
+:- pred debug_int16(io.text_output_stream::in, int16::in,
+    io::di, io::uo) is det.
 
-debug_int16(Val, !IO) :-
-    io.write_int16(Val, !IO),
-    io.write_char(' ', !IO).
+debug_int16(OutputStream, Val, !IO) :-
+    io.write_int16(OutputStream, Val, !IO),
+    io.write_char(OutputStream, ' ', !IO).
 
-:- pred debug_uint16(uint16::in, io::di, io::uo) is det.
+:- pred debug_uint16(io.text_output_stream::in, uint16::in,
+    io::di, io::uo) is det.
 
-debug_uint16(Val, !IO) :-
-    io.write_uint16(Val, !IO),
-    io.write_char(' ', !IO).
+debug_uint16(OutputStream, Val, !IO) :-
+    io.write_uint16(OutputStream, Val, !IO),
+    io.write_char(OutputStream, ' ', !IO).
 
-:- pred debug_int32(int32::in, io::di, io::uo) is det.
+:- pred debug_int32(io.text_output_stream::in, int32::in,
+    io::di, io::uo) is det.
 
-debug_int32(Val, !IO) :-
-    io.write_int32(Val, !IO),
-    io.write_char(' ', !IO).
+debug_int32(OutputStream, Val, !IO) :-
+    io.write_int32(OutputStream, Val, !IO),
+    io.write_char(OutputStream, ' ', !IO).
 
-:- pred debug_uint32(uint32::in, io::di, io::uo) is det.
+:- pred debug_uint32(io.text_output_stream::in, uint32::in,
+    io::di, io::uo) is det.
 
-debug_uint32(Val, !IO) :-
-    io.write_uint32(Val, !IO),
-    io.write_char(' ', !IO).
+debug_uint32(OutputStream, Val, !IO) :-
+    io.write_uint32(OutputStream, Val, !IO),
+    io.write_char(OutputStream, ' ', !IO).
 
-:- pred debug_int64(int64::in, io::di, io::uo) is det.
+:- pred debug_int64(io.text_output_stream::in, int64::in,
+    io::di, io::uo) is det.
 
-debug_int64(Val, !IO) :-
-    io.write_int64(Val, !IO),
-    io.write_char(' ', !IO).
+debug_int64(OutputStream, Val, !IO) :-
+    io.write_int64(OutputStream, Val, !IO),
+    io.write_char(OutputStream, ' ', !IO).
 
-:- pred debug_uint64(uint64::in, io::di, io::uo) is det.
+:- pred debug_uint64(io.text_output_stream::in, uint64::in,
+    io::di, io::uo) is det.
 
-debug_uint64(Val, !IO) :-
-    io.write_uint64(Val, !IO),
-    io.write_char(' ', !IO).
+debug_uint64(OutputStream, Val, !IO) :-
+    io.write_uint64(OutputStream, Val, !IO),
+    io.write_char(OutputStream, ' ', !IO).
 
-:- pred debug_float(float::in, io::di, io::uo) is det.
+:- pred debug_float(io.text_output_stream::in, float::in,
+    io::di, io::uo) is det.
 
-debug_float(Val, !IO) :-
-    io.write_float(Val, !IO),
-    io.write_char(' ', !IO).
+debug_float(OutputStream, Val, !IO) :-
+    io.write_float(OutputStream, Val, !IO),
+    io.write_char(OutputStream, ' ', !IO).
 
-:- pred debug_sym_name(sym_name::in, io::di, io::uo) is det.
+:- pred debug_sym_name(io.text_output_stream::in, sym_name::in,
+    io::di, io::uo) is det.
 
-debug_sym_name(unqualified(Val), !IO) :-
-    io.write_string(Val, !IO),
-    io.write_char(' ', !IO).
-debug_sym_name(qualified(Module, Val), !IO) :-
-    debug_sym_name(Module, !IO),
-    io.write_char(':', !IO),
-    io.write_string(Val, !IO),
-    io.write_char(' ', !IO).
+debug_sym_name(OutputStream, SymName, !IO) :-
+    (
+        SymName = unqualified(BaseName),
+        io.write_string(OutputStream, BaseName, !IO),
+        io.write_char(OutputStream, ' ', !IO)
+    ;
+        SymName = qualified(ModuleName, BaseName),
+        debug_sym_name(OutputStream, ModuleName, !IO),
+        io.write_char(OutputStream, '.', !IO),
+        io.write_string(OutputStream, BaseName, !IO),
+        io.write_char(OutputStream, ' ', !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module bytecode_backend.bytecode.
