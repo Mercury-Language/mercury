@@ -22,6 +22,8 @@
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
 
+:- import_module io.
+
 %-----------------------------------------------------------------------------%
 
     % For each of the entries in the reuse table:
@@ -39,7 +41,8 @@
     % and recording the pred-proc-id to the reuse pred-proc-id mappings in
     % module_info.
     %
-:- pred create_reuse_procedures(reuse_as_table::in, reuse_as_table::out,
+:- pred create_reuse_procedures(io.text_output_stream::in,
+    reuse_as_table::in, reuse_as_table::out,
     module_info::in, module_info::out) is det.
 
     % Create a copy of the predicate/procedure information specified by the
@@ -89,7 +92,7 @@
 
 %-----------------------------------------------------------------------------%
 
-create_reuse_procedures(!ReuseTable, !ModuleInfo) :-
+create_reuse_procedures(ProgressStream, !ReuseTable, !ModuleInfo) :-
     % This process can be split into separate steps:
     % - determine all the pred-proc-ids of procedure with conditional reuse;
     % - create duplicates of these procedures;
@@ -114,17 +117,23 @@ create_reuse_procedures(!ReuseTable, !ModuleInfo) :-
     % versions of procedures we can take advantage of potential reuse
     % opportunities.
     list.foldl(
-        check_cond_apply_reuse_in_proc(convert_potential_reuse, !.ReuseTable),
+        check_cond_apply_reuse_in_proc(ProgressStream, convert_potential_reuse,
+            !.ReuseTable),
         ReuseCondPPIds, !ModuleInfo),
     list.foldl(
-        check_cond_apply_reuse_in_proc(convert_potential_reuse, !.ReuseTable),
+        check_cond_apply_reuse_in_proc(ProgressStream, convert_potential_reuse,
+            !.ReuseTable),
         ExistingReusePPIds, !ModuleInfo),
 
     % In the original procedures, only the unconditional reuse opportunities
     % can be taken.
-    list.foldl(apply_reuse_in_proc(leave_potential_reuse, !.ReuseTable),
+    list.foldl(
+        apply_reuse_in_proc(ProgressStream, leave_potential_reuse,
+            !.ReuseTable),
         CondOrigPPIds, !ModuleInfo),
-    list.foldl(apply_reuse_in_proc(leave_potential_reuse, !.ReuseTable),
+    list.foldl(
+        apply_reuse_in_proc(ProgressStream, leave_potential_reuse,
+            !.ReuseTable),
         UncondOrigPPIds, !ModuleInfo).
 
     % Separate procedures in the reuse table into those with some conditional
@@ -253,12 +262,12 @@ create_fresh_pred_proc_info_copy_2(PredProcId, PredInfo, ProcInfo,
     %
     % XXX the same problem occurs with `--intermodule-optimisation'
     %
-:- pred check_cond_apply_reuse_in_proc(convert_potential_reuse::in,
-    reuse_as_table::in, pred_proc_id::in, module_info::in, module_info::out)
-    is det.
+:- pred check_cond_apply_reuse_in_proc(io.text_output_stream::in,
+    convert_potential_reuse::in, reuse_as_table::in, pred_proc_id::in,
+    module_info::in, module_info::out) is det.
 
-check_cond_apply_reuse_in_proc(ConvertPotentialReuse, ReuseTable, ReusePPId,
-        !ModuleInfo) :-
+check_cond_apply_reuse_in_proc(ProgressStream, ConvertPotentialReuse,
+        ReuseTable, ReusePPId, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
@@ -267,8 +276,8 @@ check_cond_apply_reuse_in_proc(ConvertPotentialReuse, ReuseTable, ReusePPId,
         IntermodAnalysis = yes,
         OpMode \= opm_top_args(opma_augment(opmau_make_analysis_registry), _)
     then
-        structure_reuse_answer_harsher_than_in_analysis_registry(!.ModuleInfo,
-            ReuseTable, ReusePPId, IsHarsher)
+        structure_reuse_answer_harsher_than_in_analysis_registry(
+            ProgressStream, !.ModuleInfo, ReuseTable, ReusePPId, IsHarsher)
     else
         IsHarsher = no
     ),
@@ -276,12 +285,12 @@ check_cond_apply_reuse_in_proc(ConvertPotentialReuse, ReuseTable, ReusePPId,
         IsHarsher = yes,
         % Ignoring potential reuse is equivalent to having only unconditional
         % structure reuse.
-        apply_reuse_in_proc(leave_potential_reuse, ReuseTable, ReusePPId,
-            !ModuleInfo)
+        apply_reuse_in_proc(ProgressStream, leave_potential_reuse,
+            ReuseTable, ReusePPId, !ModuleInfo)
     ;
         IsHarsher = no,
-        apply_reuse_in_proc(ConvertPotentialReuse, ReuseTable, ReusePPId,
-            !ModuleInfo)
+        apply_reuse_in_proc(ProgressStream, ConvertPotentialReuse,
+            ReuseTable, ReusePPId, !ModuleInfo)
     ).
 
     % Process the goal of the procedure with the given pred_proc_id so that
@@ -290,13 +299,15 @@ check_cond_apply_reuse_in_proc(ConvertPotentialReuse, ReuseTable, ReusePPId,
     % reuse version (if of course, that is in accordance with the reuse
     % annotations).
     %
-:- pred apply_reuse_in_proc(convert_potential_reuse::in, reuse_as_table::in,
-    pred_proc_id::in, module_info::in, module_info::out) is det.
+:- pred apply_reuse_in_proc(io.text_output_stream::in,
+    convert_potential_reuse::in, reuse_as_table::in, pred_proc_id::in,
+    module_info::in, module_info::out) is det.
 
-apply_reuse_in_proc(ConvertPotentialReuse, ReuseTable, PPId, !ModuleInfo) :-
+apply_reuse_in_proc(ProgressStream, ConvertPotentialReuse, ReuseTable, PPId,
+        !ModuleInfo) :-
     trace [io(!IO)] (
-        maybe_write_proc_progress_message(!.ModuleInfo, "Apply reuse ",
-            PPId, !IO)
+        maybe_write_proc_progress_message(ProgressStream, !.ModuleInfo,
+            "Apply reuse ", PPId, !IO)
     ),
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, !:ProcInfo),

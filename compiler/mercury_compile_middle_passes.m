@@ -1167,7 +1167,7 @@ maybe_structure_sharing_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(ProgressStream, Verbose,
             "% Structure sharing analysis...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        perform_structure_sharing_analysis(!HLDS),
+        perform_structure_sharing_analysis(ProgressStream, !HLDS),
         transform_hlds.ctgc.selector.reset_tables(!IO),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
@@ -1190,7 +1190,7 @@ maybe_structure_reuse_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(ProgressStream, Verbose,
             "% Structure reuse analysis...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        perform_structure_reuse_analysis(!HLDS),
+        perform_structure_reuse_analysis(ProgressStream, !HLDS),
         transform_hlds.ctgc.selector.reset_tables(!IO),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)

@@ -57,14 +57,15 @@
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
 
 :- import_module bool.
+:- import_module io.
 
 %---------------------------------------------------------------------------%
 
     % Perform structure reuse analysis on the procedures defined in the
     % current module.
     %
-:- pred perform_structure_reuse_analysis(module_info::in, module_info::out)
-    is det.
+:- pred perform_structure_reuse_analysis(io.text_output_stream::in,
+    module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -84,7 +85,8 @@
 :- instance to_term(structure_reuse_answer).
 
 :- pred structure_reuse_answer_harsher_than_in_analysis_registry(
-    module_info::in, reuse_as_table::in, pred_proc_id::in, bool::out) is det.
+    io.text_output_stream::in, module_info::in, reuse_as_table::in,
+    pred_proc_id::in, bool::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -123,7 +125,6 @@
 
 :- import_module bimap.
 :- import_module int.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -136,7 +137,7 @@
 
 %---------------------------------------------------------------------------%
 
-perform_structure_reuse_analysis(!ModuleInfo):-
+perform_structure_reuse_analysis(ProgressStream, !ModuleInfo):-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
 
@@ -175,18 +176,16 @@ perform_structure_reuse_analysis(!ModuleInfo):-
         % "Local Backward Use" information, and fill in all the goal_id slots
         % as well.
         trace [io(!IO)] (
-            get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
-            maybe_write_string(DebugStream, VeryVerbose,
+            maybe_write_string(ProgressStream, VeryVerbose,
                 "% Annotating in use information...", !IO)
         ),
         process_valid_nonimported_procs(
             update_proc(annotate_in_use_information), !ModuleInfo),
         trace [io(!IO)] (
-            get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
-            maybe_write_string(DebugStream, VeryVerbose, "done.\n", !IO),
-            maybe_write_string(DebugStream, VeryVerbose,
+            maybe_write_string(ProgressStream, VeryVerbose, "done.\n", !IO),
+            maybe_write_string(ProgressStream, VeryVerbose,
                 "% Reuse table before intermediate reuse:\n", !IO),
-            reuse_as_table_maybe_dump(DebugStream, VeryVerbose, !.ModuleInfo,
+            reuse_as_table_maybe_dump(ProgressStream, VeryVerbose, !.ModuleInfo,
                 !.ReuseTable, !IO)
         ),
 
@@ -199,49 +198,46 @@ perform_structure_reuse_analysis(!ModuleInfo):-
 
         % Determine information about possible direct reuses.
         trace [io(!IO)] (
-            get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
-            maybe_write_string(DebugStream, VeryVerbose,
+            maybe_write_string(ProgressStream, VeryVerbose,
                 "% Reuse table after intermediate reuse:\n", !IO),
-            reuse_as_table_maybe_dump(DebugStream, VeryVerbose, !.ModuleInfo,
+            reuse_as_table_maybe_dump(ProgressStream, VeryVerbose, !.ModuleInfo,
                 !.ReuseTable, !IO),
-            maybe_write_string(DebugStream, VeryVerbose,
+            maybe_write_string(ProgressStream, VeryVerbose,
                 "% Direct reuse...\n", !IO)
         ),
-        direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable),
+        direct_reuse_pass(ProgressStream, SharingTable, !ModuleInfo,
+            !ReuseTable),
         trace [io(!IO)] (
-            get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
-            maybe_write_string(DebugStream, VeryVerbose,
+            maybe_write_string(ProgressStream, VeryVerbose,
                 "% Direct reuse: done.\n", !IO),
-            reuse_as_table_maybe_dump(DebugStream, VeryVerbose, !.ModuleInfo,
+            reuse_as_table_maybe_dump(ProgressStream, VeryVerbose, !.ModuleInfo,
                 !.ReuseTable, !IO)
         ),
 
         % Determine information about possible indirect reuses.
         trace [io(!IO)] (
-            get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
-            maybe_write_string(DebugStream, VeryVerbose,
+            maybe_write_string(ProgressStream, VeryVerbose,
                 "% Indirect reuse...\n", !IO)
         ),
         indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, DepProcs0,
             InternalRequests, IntermodRequests0),
         trace [io(!IO)] (
-            get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
-            maybe_write_string(DebugStream, VeryVerbose,
+            maybe_write_string(ProgressStream, VeryVerbose,
                 "% Indirect reuse: done.\n", !IO),
-            reuse_as_table_maybe_dump(DebugStream, VeryVerbose, !.ModuleInfo,
+            reuse_as_table_maybe_dump(ProgressStream, VeryVerbose, !.ModuleInfo,
                 !.ReuseTable, !IO)
         ),
 
         % Handle requests for "intermediate" reuse versions of procedures
         % and repeat the analyses.
         globals.lookup_int_option(Globals, structure_reuse_repeat, Repeats),
-        handle_structure_reuse_requests(Repeats, SharingTable,
+        handle_structure_reuse_requests(ProgressStream, Repeats, SharingTable,
             InternalRequests, !ReuseTable, !ModuleInfo, DepProcs0, DepProcs,
             IntermodRequests0, IntermodRequests),
 
         % Create reuse versions of procedures. Update goals to reuse cells
         % and call reuse versions of procedures.
-        create_reuse_procedures(!ReuseTable, !ModuleInfo),
+        create_reuse_procedures(ProgressStream, !ReuseTable, !ModuleInfo),
 
         ReuseTable = !.ReuseTable
     ),
@@ -303,7 +299,8 @@ perform_structure_reuse_analysis(!ModuleInfo):-
     % exported themselves).
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     bimap.foldl(
-        remove_useless_reuse_proc(!.ModuleInfo, VeryVerbose, ReuseInfoMap),
+        remove_useless_reuse_proc(ProgressStream, !.ModuleInfo, VeryVerbose,
+            ReuseInfoMap),
         ReuseVersionMap, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
 
@@ -317,29 +314,32 @@ perform_structure_reuse_analysis(!ModuleInfo):-
     %
     % XXX this is temporary only; we shouldn't be redoing so much work.
     %
-:- pred handle_structure_reuse_requests(int::in, sharing_as_table::in,
-    set(sr_request)::in, reuse_as_table::in, reuse_as_table::out,
+:- pred handle_structure_reuse_requests(io.text_output_stream::in,
+    int::in, sharing_as_table::in, set(sr_request)::in,
+    reuse_as_table::in, reuse_as_table::out,
     module_info::in, module_info::out,
     set(ppid_no_clobbers)::in, set(ppid_no_clobbers)::out,
     set(sr_request)::in, set(sr_request)::out) is det.
 
-handle_structure_reuse_requests(Repeats, SharingTable, Requests,
-        !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests) :-
+handle_structure_reuse_requests(ProgressStream, Repeats, SharingTable,
+        Requests, !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests) :-
     ( if Repeats > 0 then
-        handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
+        handle_structure_reuse_requests_2(ProgressStream, Repeats,
+            SharingTable, Requests,
             !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests)
     else
         true
     ).
 
-:- pred handle_structure_reuse_requests_2(int::in, sharing_as_table::in,
-    set(sr_request)::in, reuse_as_table::in, reuse_as_table::out,
+:- pred handle_structure_reuse_requests_2(io.text_output_stream::in,
+    int::in, sharing_as_table::in, set(sr_request)::in,
+    reuse_as_table::in, reuse_as_table::out,
     module_info::in, module_info::out,
     set(ppid_no_clobbers)::in, set(ppid_no_clobbers)::out,
     set(sr_request)::in, set(sr_request)::out) is det.
 
-handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
-        !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests) :-
+handle_structure_reuse_requests_2(ProgressStream, Repeats, SharingTable,
+        Requests, !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
 
@@ -350,14 +350,12 @@ handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
 
     % Perform direct reuse analysis on the new procedures.
     trace [io(!IO)] (
-        get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
         maybe_write_string(ProgressStream, VeryVerbose,
             "% Repeating direct reuse...\n", !IO)
     ),
-    direct_reuse_process_specific_procs(SharingTable, NewPPIds,
+    direct_reuse_process_specific_procs(ProgressStream, SharingTable, NewPPIds,
         !ModuleInfo, !ReuseTable),
     trace [io(!IO)] (
-        get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
         maybe_write_string(ProgressStream, VeryVerbose, "% done.\n", !IO)
     ),
 
@@ -368,7 +366,6 @@ handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
     % only need to check that calls which previously had no reuse opportunity
     % might be able to call the new procedures.
     trace [io(!IO)] (
-        get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
         maybe_write_string(ProgressStream, VeryVerbose,
             "% Repeating indirect reuse...\n", !IO)
     ),
@@ -376,23 +373,21 @@ handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
         NewDepProcs, NewRequests, !IntermodRequests),
     !:DepProcs = set.union(NewDepProcs, !.DepProcs),
     trace [io(!IO)] (
-        get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
         maybe_write_string(ProgressStream, VeryVerbose, "% done.\n", !IO)
     ),
 
     ( if set.is_empty(NewRequests) then
         trace [io(!IO)] (
-            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             maybe_write_string(ProgressStream, VeryVerbose,
                 "% No more structure reuse requests.\n", !IO)
         )
     else
         trace [io(!IO)] (
-            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             maybe_write_string(ProgressStream, VeryVerbose,
                 "% Outstanding structure reuse requests exist.\n", !IO)
         ),
-        handle_structure_reuse_requests(Repeats - 1, SharingTable, NewRequests,
+        handle_structure_reuse_requests(ProgressStream, Repeats - 1,
+            SharingTable, NewRequests,
             !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests)
     ).
 
@@ -1033,8 +1028,8 @@ record_intermod_requests(ModuleInfo, sr_request(PPId, NoClobbers),
 % for structure_reuse.versions
 %
 
-structure_reuse_answer_harsher_than_in_analysis_registry(ModuleInfo,
-        ReuseTable, ReusePPId, Harsher) :-
+structure_reuse_answer_harsher_than_in_analysis_registry(ProgressStream,
+        ModuleInfo, ReuseTable, ReusePPId, Harsher) :-
     module_info_get_analysis_info(ModuleInfo, AnalysisInfo),
 
     % Find the original pred_proc_id and no-clobber list that this reuse
@@ -1063,17 +1058,16 @@ structure_reuse_answer_harsher_than_in_analysis_registry(ModuleInfo,
                 runtime(env("HARSHER_ANSWER_CHECK")),
                 io(!IO)
             ] (
-                get_debug_output_stream(ModuleInfo, DebugStream, !IO),
                 ReusePPIdStr =
                     pred_proc_id_to_dev_string(ModuleInfo, ReusePPId),
-                io.format(DebugStream,
+                io.format(ProgressStream,
                     "Structure reuse answer for %s\n" ++
                     "has harsher conditions than listed in analysis file.\n",
                     [s(ReusePPIdStr)], !IO),
-                io.write_string(DebugStream, "was: ", !IO),
-                io.write_line(DebugStream, OldAnswer, !IO),
-                io.write_string(DebugStream, "now: ", !IO),
-                io.write_line(DebugStream, NewAnswer, !IO)
+                io.write_string(ProgressStream, "was: ", !IO),
+                io.write_line(ProgressStream, OldAnswer, !IO),
+                io.write_string(ProgressStream, "now: ", !IO),
+                io.write_line(ProgressStream, NewAnswer, !IO)
             )
         else
             Harsher = no
@@ -1097,13 +1091,13 @@ lookup_new_structure_reuse_answer(ModuleInfo, ReuseTable, ReusePPId,
 
 %---------------------------------------------------------------------------%
 
-:- pred remove_useless_reuse_proc(module_info::in, bool::in,
-    map(pred_proc_id, reuse_as_and_status)::in,
+:- pred remove_useless_reuse_proc(io.text_output_stream::in, module_info::in,
+    bool::in, map(pred_proc_id, reuse_as_and_status)::in,
     ppid_no_clobbers::in, pred_proc_id::in,
     predicate_table::in, predicate_table::out) is det.
 
-remove_useless_reuse_proc(ModuleInfo, VeryVerbose, ReuseAsMap, _, PPId,
-        !PredTable) :-
+remove_useless_reuse_proc(ProgressStream, ModuleInfo, VeryVerbose,
+        ReuseAsMap, _, PPId, !PredTable) :-
     map.lookup(ReuseAsMap, PPId, ReuseAs_Status),
     ReuseAs_Status = reuse_as_and_status(ReuseAs, _),
     % XXX perhaps we can also remove reuse procedures with only unconditional
@@ -1113,7 +1107,6 @@ remove_useless_reuse_proc(ModuleInfo, VeryVerbose, ReuseAsMap, _, PPId,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
                 PPIdStr = pred_proc_id_to_dev_string(ModuleInfo, PPId),
                 io.format(ProgressStream, "%% Removing useless reuse %s\n",
                     [s(PPIdStr)], !IO)

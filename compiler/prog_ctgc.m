@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006, 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: prog_ctgc.m.
 % Main author: nancy.
@@ -12,8 +12,8 @@
 % Utility operations (parsing, printing, renaming) for compile-time garbage
 % collection related information, i.e. structure sharing and structure reuse.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.prog_ctgc.
 :- interface.
@@ -31,7 +31,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Parsing routines.
 %
@@ -57,7 +57,7 @@
 :- pred parse_user_annotated_sharing(varset::in, term::in,
     user_annotated_sharing::out) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Printing routines.
 %
@@ -139,7 +139,7 @@
     var_name_source::in, tvarset::in, maybe(structure_reuse_domain)::in,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Renaming operations.
 %
@@ -182,8 +182,8 @@
     tsubst::in, structure_reuse_domain::in,
     structure_reuse_domain::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -205,7 +205,7 @@
 :- import_module term_int.
 :- import_module term_vars.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Parsing routines.
 %
@@ -432,7 +432,7 @@ parse_structure_reuse_domain(Term) = ReuseDomain :-
             "error while parsing reuse domain (term not a functor)")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 parse_user_annotated_sharing(!.Varset, Term, UserSharing) :-
     (
@@ -519,7 +519,7 @@ parse_user_annotated_datastruct_term(Term, Datastruct) :-
 
 mer_type_to_typesel(Type, typesel(Type)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Printing routines.
 %
@@ -628,7 +628,7 @@ print_structure_sharing_domain(Stream, VarNameSrc, TypeVarSet, VerboseTop,
 
 do_print_structure_sharing_domain(Stream, VarNameSrc, TypeVarSet, VerboseTop,
         MaybeThreshold, Start, Separator, End, SharingAs, !IO) :-
-    io.write_string(Start, !IO),
+    io.write_string(Stream, Start, !IO),
     (
         SharingAs = structure_sharing_top(Msgs),
         (
@@ -724,7 +724,7 @@ print_structure_reuse_domain(Stream, VarNameSrc, TypeVarSet, ReuseDomain,
             Separator, ReuseConditions, !IO),
         io.write_string(Stream, "])", !IO)
     ),
-    io.write_string(End, !IO).
+    io.write_string(Stream, End, !IO).
 
 print_interface_maybe_structure_reuse_domain(Stream, VarNameSrc, TypeVarSet,
         MaybeReuseDomain, !IO) :-
@@ -739,7 +739,7 @@ print_interface_maybe_structure_reuse_domain(Stream, VarNameSrc, TypeVarSet,
         io.write_string(Stream, ")", !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Renaming operations.
 %
@@ -778,7 +778,7 @@ rename_structure_sharing_domain(Dict, TypeSubst,
         structure_sharing_real(!.List), structure_sharing_real(!:List)):-
     rename_structure_sharing(Dict, TypeSubst, !List).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 rename_user_annotated_sharing(HeadVars, NewHeadVars, NewTypes,
         !UserSharing) :-
@@ -813,7 +813,7 @@ rename_user_annotated_sharing(HeadVars, NewHeadVars, NewTypes,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 rename_structure_reuse_condition(Dict, TypeSubst,
         structure_reuse_condition(DeadNodes, LiveNodes, Sharing),
@@ -833,6 +833,6 @@ rename_structure_reuse_domain(Dict, TypeSubst, has_conditional_reuse(Conds),
         has_conditional_reuse(RenConds)):-
     rename_structure_reuse_conditions(Dict, TypeSubst, Conds, RenConds).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_ctgc.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
