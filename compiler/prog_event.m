@@ -60,8 +60,6 @@
 
 :- implementation.
 
-:- import_module libs.
-:- import_module libs.file_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
@@ -95,7 +93,8 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
     % those tools are not yet mature enough. When they are, we should switch
     % to using them.
 
-    open_temp_input(TermFileResult, read_specs_file(SpecsFileName), !IO),
+    make_temp_file_and_open_it(read_specs_file(SpecsFileName),
+        TermFileResult, !IO),
     (
         TermFileResult = ok({TermFileName, TermStream}),
         io.read(TermStream, TermReadRes, !IO),
@@ -134,6 +133,46 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
             phase_term_to_parse_tree, Pieces),
         ErrorSpecs = [ErrorSpec]
     ).
+
+    % make_temp_file_and_open_it(WritePred, Result, !IO):
+    %
+    % Create a temporary file and call WritePred which will write data to it.
+    % If successful, return the file's name and a freshly opened input stream.
+    % On error, remove the temporary file.
+    %
+:- pred make_temp_file_and_open_it(
+    pred(string, maybe_error, io, io)::in(pred(in, out, di, uo) is det),
+    maybe_error({string, text_input_stream})::out,
+    io::di, io::uo) is det.
+
+make_temp_file_and_open_it(WritePred, Result, !IO) :-
+    io.file.make_temp_file(TempFileResult, !IO),
+    (
+        TempFileResult = ok(TempFileName),
+        WritePred(TempFileName, PredResult, !IO),
+        (
+            PredResult = ok,
+            io.open_input(TempFileName, OpenResult, !IO),
+            (
+                OpenResult = ok(Stream),
+                Result = ok({TempFileName, Stream})
+            ;
+                OpenResult = error(Error),
+                Result = error(format("could not open `%s': %s",
+                    [s(TempFileName), s(error_message(Error))])),
+                io.file.remove_file(TempFileName, _, !IO)
+            )
+        ;
+            PredResult = error(ErrorMessage),
+            io.file.remove_file(TempFileName, _, !IO),
+            Result = error(ErrorMessage)
+        )
+    ;
+        TempFileResult = error(Error),
+        Result = error(format("could not create temporary file: %s",
+            [s(error_message(Error))]))
+    ).
+
 
 :- pred read_specs_file(string::in, string::in, maybe_error::out,
     io::di, io::uo) is det.

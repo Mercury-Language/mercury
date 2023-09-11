@@ -2913,7 +2913,7 @@ create_java_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
     % extremely long. We create the temporary file in the current directory to
     % avoid problems under Cygwin, where absolute paths will be interpreted
     % incorrectly when passed to a non-Cygwin jar program.
-    open_temp_output(".", "mtmp", "", TempFileResult, !IO),
+    open_temp_output_with_naming_scheme(".", "mtmp", "", TempFileResult, !IO),
     (
         TempFileResult = ok({TempFileName, Stream}),
         list.foldl(write_jar_class_argument(Stream, ClassSubDir),

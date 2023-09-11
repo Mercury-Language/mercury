@@ -86,8 +86,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred report_error(string::in, io::di, io::uo) is det.
-:- pragma obsolete(pred(report_error/3), [report_error/4]).
 :- pred report_error(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
 
@@ -113,20 +111,12 @@
     % returns the file's name and output stream. On error, any temporary
     % file will be removed.
     %
-:- pred open_temp_output(string::in, string::in, string::in,
+:- pred open_temp_output_with_naming_scheme(string::in, string::in, string::in,
     maybe_error({string, text_output_stream})::out, io::di, io::uo) is det.
 
+    % As above, but with any old name and location for the temporary file.
+    %
 :- pred open_temp_output(maybe_error({string, text_output_stream})::out,
-    io::di, io::uo) is det.
-
-    % open_temp_input(Result, WritePred, !IO):
-    %
-    % Create a temporary file and call WritePred which will write data to it.
-    % If successful Result returns the file's name and a freshly opened
-    % input stream. On error any temporary file will be removed.
-    %
-:- pred open_temp_input(maybe_error({string, text_input_stream})::out,
-    pred(string, maybe_error, io, io)::in(pred(in, out, di, uo) is det),
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -333,10 +323,6 @@ unable_to_open_file(ErrorStream, FileName, IOErr, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-report_error(ErrorMessage, !IO) :-
-    io.output_stream(Stream, !IO),
-    report_error(Stream, ErrorMessage, !IO).
-
 report_error(Stream, ErrorMessage, !IO) :-
     io.format(Stream, "Error: %s\n", [s(ErrorMessage)], !IO),
     io.flush_output(Stream, !IO),
@@ -369,19 +355,19 @@ make_install_dir_command(Globals, SourceDirName, InstallDir) = Command :-
 
 %---------------------------------------------------------------------------%
 
-open_temp_output(Dir, Prefix, Suffix, Result, !IO) :-
+open_temp_output_with_naming_scheme(Dir, Prefix, Suffix, Result, !IO) :-
     % XXX Both open_temp_output and io.make_temp_file are ambiguous.
     io.file.make_temp_file(Dir, Prefix, Suffix, TempFileResult, !IO),
-    open_temp_output_2(TempFileResult, Result, !IO).
+    open_temp_file(TempFileResult, Result, !IO).
 
 open_temp_output(Result, !IO) :-
     io.file.make_temp_file(TempFileResult, !IO),
-    open_temp_output_2(TempFileResult, Result, !IO).
+    open_temp_file(TempFileResult, Result, !IO).
 
-:- pred open_temp_output_2(io.res(string)::in,
+:- pred open_temp_file(io.res(string)::in,
     maybe_error({string, text_output_stream})::out, io::di, io::uo) is det.
 
-open_temp_output_2(TempFileResult, Result, !IO) :-
+open_temp_file(TempFileResult, Result, !IO) :-
     (
         TempFileResult = ok(TempFileName),
         io.open_output(TempFileName, OpenResult, !IO),
@@ -394,34 +380,6 @@ open_temp_output_2(TempFileResult, Result, !IO) :-
             Result = error(format(
                 "could not open temporary file `%s': %s",
                 [s(TempFileName), s(error_message(Error))]))
-        )
-    ;
-        TempFileResult = error(Error),
-        Result = error(format("could not create temporary file: %s",
-            [s(error_message(Error))]))
-    ).
-
-open_temp_input(Result, Pred, !IO) :-
-    io.file.make_temp_file(TempFileResult, !IO),
-    (
-        TempFileResult = ok(TempFileName),
-        Pred(TempFileName, PredResult, !IO),
-        (
-            PredResult = ok,
-            io.open_input(TempFileName, OpenResult, !IO),
-            (
-                OpenResult = ok(Stream),
-                Result = ok({TempFileName, Stream})
-            ;
-                OpenResult = error(Error),
-                Result = error(format("could not open `%s': %s",
-                    [s(TempFileName), s(error_message(Error))])),
-                io.file.remove_file(TempFileName, _, !IO)
-            )
-        ;
-            PredResult = error(ErrorMessage),
-            io.file.remove_file(TempFileName, _, !IO),
-            Result = error(ErrorMessage)
         )
     ;
         TempFileResult = error(Error),
