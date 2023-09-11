@@ -681,8 +681,8 @@ grab_module_int0_files_for_acu(ProgressStream, Globals, Why, ReadWhy0,
         [ModuleName | ModuleNames], !DirectImports, !DirectUses,
         !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO) :-
     ( if should_read_interface(!.Baggage, ModuleName, ifk_int0) then
-        maybe_log_augment_decision(Why, ifk_int0, ReadWhy0, ModuleName,
-            decided_to_read, !IO),
+        maybe_log_augment_decision(ProgressStream, Why, ifk_int0, ReadWhy0,
+            ModuleName, decided_to_read, !IO),
         process_module_int0_for_acu(ProgressStream, Globals, ReadWhy0,
             ModuleName, IntImports, ImpImports, IntUses, ImpUses,
             !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO),
@@ -691,8 +691,8 @@ grab_module_int0_files_for_acu(ProgressStream, Globals, Why, ReadWhy0,
         set.union(IntUses, !DirectUses),
         set.union(ImpUses, !DirectUses)
     else
-        maybe_log_augment_decision(Why, ifk_int0, ReadWhy0, ModuleName,
-            decided_not_to_read, !IO)
+        maybe_log_augment_decision(ProgressStream, Why, ifk_int0, ReadWhy0,
+            ModuleName, decided_not_to_read, !IO)
     ),
     grab_module_int0_files_for_acu(ProgressStream, Globals, Why, ReadWhy0,
         ModuleNames, !DirectImports, !DirectUses,
@@ -715,8 +715,8 @@ grab_module_int0_files_for_amiu(ProgressStream, Globals, Why,
         !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO) :-
     ReadWhy0 = rwi0_section,
     ( if should_read_interface(!.Baggage, ModuleName, ifk_int0) then
-        maybe_log_augment_decision(Why, ifk_int0, ReadWhy0, ModuleName,
-            decided_to_read, !IO),
+        maybe_log_augment_decision(ProgressStream, Why, ifk_int0, ReadWhy0,
+            ModuleName, decided_to_read, !IO),
         process_module_int0_for_amiu(ProgressStream, Globals, ModuleName,
             IntImports, ImpImports, IntUses, ImpUses,
             !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO),
@@ -725,8 +725,8 @@ grab_module_int0_files_for_amiu(ProgressStream, Globals, Why,
         set.union(IntUses, !DirectUses),
         set.union(ImpUses, !DirectUses)
     else
-        maybe_log_augment_decision(Why, ifk_int0, ReadWhy0, ModuleName,
-            decided_not_to_read, !IO)
+        maybe_log_augment_decision(ProgressStream, Why, ifk_int0, ReadWhy0,
+            ModuleName, decided_not_to_read, !IO)
     ),
     grab_module_int0_files_for_amiu(ProgressStream, Globals, Why, ModuleNames,
         !DirectImports, !DirectUses,
@@ -748,16 +748,16 @@ grab_module_int1_files(ProgressStream, Globals, Why, ReadWhy1,
         [ModuleName | ModuleNames], !IntIndirectImports, !ImpIndirectImports,
         !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO) :-
     ( if should_read_interface(!.Baggage, ModuleName, ifk_int1) then
-        maybe_log_augment_decision(Why, ifk_int1, ReadWhy1, ModuleName,
-            decided_to_read, !IO),
+        maybe_log_augment_decision(ProgressStream, Why, ifk_int1, ReadWhy1,
+            ModuleName, decided_to_read, !IO),
         process_module_int1(ProgressStream, Globals, ReadWhy1, ModuleName,
             IntUses, ImpUses, !HaveReadModuleMaps,
             !Baggage, !AugCompUnit, !IO),
         set.union(IntUses, !IntIndirectImports),
         set.union(ImpUses, !ImpIndirectImports)
     else
-        maybe_log_augment_decision(Why, ifk_int1, ReadWhy1, ModuleName,
-            decided_not_to_read, !IO)
+        maybe_log_augment_decision(ProgressStream, Why, ifk_int1, ReadWhy1,
+            ModuleName, decided_not_to_read, !IO)
     ),
     grab_module_int1_files(ProgressStream, Globals, Why, ReadWhy1,
         ModuleNames, !IntIndirectImports, !ImpIndirectImports,
@@ -779,16 +779,16 @@ grab_module_int2_files(ProgressStream, Globals, Why, ReadWhy2,
         [ModuleName | ModuleNames], !IntIndirectImports, !ImpIndirectImports,
         !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO) :-
     ( if should_read_interface(!.Baggage, ModuleName, ifk_int2) then
-        maybe_log_augment_decision(Why, ifk_int2, ReadWhy2, ModuleName,
-            decided_to_read, !IO),
+        maybe_log_augment_decision(ProgressStream, Why, ifk_int2, ReadWhy2,
+            ModuleName, decided_to_read, !IO),
         process_module_int2(ProgressStream, Globals, ReadWhy2, ModuleName,
             IntUses, ImpUses,
             !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO),
         set.union(IntUses, !IntIndirectImports),
         set.union(ImpUses, !ImpIndirectImports)
     else
-        maybe_log_augment_decision(Why, ifk_int2, ReadWhy2, ModuleName,
-            decided_not_to_read, !IO)
+        maybe_log_augment_decision(ProgressStream, Why, ifk_int2, ReadWhy2,
+            ModuleName, decided_not_to_read, !IO)
     ),
     grab_module_int2_files(ProgressStream, Globals, Why, ReadWhy2,
         ModuleNames, !IntIndirectImports, !ImpIndirectImports,
@@ -808,14 +808,14 @@ grab_module_int3_files(ProgressStream, Globals, Why, ReadWhy3,
         [ModuleName | ModuleNames], !IntIndirectImports, !HaveReadModuleMaps,
         !Baggage, !AugMakeIntUnit, !IO) :-
     ( if should_read_interface(!.Baggage, ModuleName, ifk_int3) then
-        maybe_log_augment_decision(Why, ifk_int3, ReadWhy3, ModuleName,
-            decided_to_read, !IO),
+        maybe_log_augment_decision(ProgressStream, Why, ifk_int3, ReadWhy3,
+            ModuleName, decided_to_read, !IO),
         process_module_int3(ProgressStream, Globals, ReadWhy3, ModuleName,
             IntImports, !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO),
         set.union(IntImports, !IntIndirectImports)
     else
-        maybe_log_augment_decision(Why, ifk_int3, ReadWhy3, ModuleName,
-            decided_not_to_read, !IO)
+        maybe_log_augment_decision(ProgressStream, Why, ifk_int3, ReadWhy3,
+            ModuleName, decided_not_to_read, !IO)
     ),
     grab_module_int3_files(ProgressStream, Globals, Why, ReadWhy3,
         ModuleNames, !IntIndirectImports, !HaveReadModuleMaps,
@@ -1116,13 +1116,15 @@ process_module_int3(ProgressStream, Globals, ReadWhy3, ModuleName, IntImports,
     --->    decided_not_to_read
     ;       decided_to_read.
 
-:- pred maybe_log_augment_decision(string::in, int_file_kind::in, T::in,
-    module_name::in, read_decision::in, io::di, io::uo) is det.
+:- pred maybe_log_augment_decision(io.text_output_stream::in, string::in,
+    int_file_kind::in, T::in, module_name::in, read_decision::in,
+    io::di, io::uo) is det.
 % Inlining calls to this predicate effectively optimizes it away
 % if the trace condition is not met, as it usually won't be.
-:- pragma inline(pred(maybe_log_augment_decision/7)).
+:- pragma inline(pred(maybe_log_augment_decision/8)).
 
-maybe_log_augment_decision(Why, IntFileKind, ReadWhy, ModuleName, Read, !IO) :-
+maybe_log_augment_decision(ProgressStream, Why, IntFileKind, ReadWhy,
+        ModuleName, Read, !IO) :-
     trace [compile_time(flag("log_augment_decisions")),
         runtime(env("LOG_AUGMENT_DECISION")), io(!TIO)]
     (
@@ -1141,7 +1143,7 @@ maybe_log_augment_decision(Why, IntFileKind, ReadWhy, ModuleName, Read, !IO) :-
             Read = decided_to_read,
             ReadStr = "decided to read"
         ),
-        io.format("AUGMENT_LOG %s, %s, %s, %s: %s\n",
+        io.format(ProgressStream, "AUGMENT_LOG %s, %s, %s, %s: %s\n",
             [s(Why), s(ModuleNameStr), s(ExtStr), s(WhyStr), s(ReadStr)], !TIO)
     ).
 

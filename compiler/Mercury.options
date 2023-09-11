@@ -82,21 +82,7 @@ MCFLAGS-make.module_dep_file                 += --no-warn-implicit-stream-calls
 MCFLAGS-make.module_target                   += --no-warn-implicit-stream-calls
 MCFLAGS-make.program_target                  += --no-warn-implicit-stream-calls
 MCFLAGS-make.top_level                       += --no-warn-implicit-stream-calls
-MCFLAGS-parse_tree.grab_modules              += --no-warn-implicit-stream-calls
 MCFLAGS-top_level.mercury_compile_main       += --no-warn-implicit-stream-calls
-
-# These modules call predicates that write out error_specs without
-# specifying the stream to write to, which have now been marked as obsolete.
-MCFLAGS-make.program_target                  += --no-warn-obsolete
-MCFLAGS-parse_tree.find_module               += --no-warn-obsolete
-MCFLAGS-parse_tree.grab_modules              += --no-warn-obsolete
-MCFLAGS-parse_tree.read_modules              += --no-warn-obsolete
-MCFLAGS-top_level.mercury_compile_front_end  += --no-warn-obsolete
-MCFLAGS-top_level.mercury_compile_llds_back_end += --no-warn-obsolete
-MCFLAGS-top_level.mercury_compile_main       += --no-warn-obsolete
-MCFLAGS-top_level.mercury_compile_make_hlds  += --no-warn-obsolete
-MCFLAGS-top_level.mercury_compile_middle_passes += --no-warn-obsolete
-MCFLAGS-top_level.mercury_compile_mlds_back_end += --no-warn-obsolete
 
 # Bug workarounds.
 

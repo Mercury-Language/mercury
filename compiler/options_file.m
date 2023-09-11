@@ -36,8 +36,8 @@
 
 :- func options_variables_init(environment_var_map) = options_variables.
 
-    % read_options_files_named_in_options_file_option(OptionSearchDirs,
-    %   OptionsFiles, Variables, Specs, UndefSpecs, !IO):
+    % read_options_files_named_in_options_file_option(ProgressStream,
+    %   OptionSearchDirs, OptionsFiles, Variables, Specs, UndefSpecs, !IO):
     %
     % Given OptionSearchDirs, the value of the options_search_directories
     % option, and OptionsFiles, the value of the options_files option,
@@ -51,11 +51,12 @@
     % of warnings, which should be printed only if the option
     % warn_undefined_options_variables is set.
     %
-:- pred read_options_files_named_in_options_file_option(list(string)::in,
+:- pred read_options_files_named_in_options_file_option(
+    io.text_output_stream::in, list(string)::in,
     list(string)::in, options_variables::out,
     list(error_spec)::out, list(error_spec)::out, io::di, io::uo) is det.
 
-    % read_named_options_file(OptionsPathName, !Variables,
+    % read_named_options_file(ProgressStream, OptionsPathName, !Variables,
     %   Specs, UndefSpecs, !IO) :-
     %
     % Read the given options file, without searching
@@ -67,11 +68,12 @@
     % of warnings, which should be printed only if the option
     % warn_undefined_options_variables is set.
     %
-:- pred read_named_options_file(file_name::in,
+:- pred read_named_options_file(io.text_output_stream::in, file_name::in,
     options_variables::in, options_variables::out,
     list(error_spec)::out, list(error_spec)::out, io::di, io::uo) is det.
 
-    % read_args_file(OptionsFile, MaybeMCFlags, Specs, UndefSpecs, !IO):
+    % read_args_file(ProgressStream, OptionsFile, MaybeMCFlags,
+    %   Specs, UndefSpecs, !IO):
     %
     % Read a single options file. No searching will be done. The result is
     % the value of the variable MCFLAGS obtained from the file, ignoring
@@ -88,7 +90,7 @@
     % XXX But see the comments near the only call to this predicate
     % in mercury_compile_main.m.
     %
-:- pred read_args_file(file_name::in,
+:- pred read_args_file(io.text_output_stream::in, file_name::in,
     maybe(list(string))::out, list(error_spec)::out, list(error_spec)::out,
     io::di, io::uo) is det.
 
@@ -192,23 +194,24 @@ options_variables_init(EnvVarMap) = Variables :-
 
 %---------------------------------------------------------------------------%
 
-read_options_files_named_in_options_file_option(OptionSearchDirs, OptionsFiles,
-        Variables, Specs, UndefSpecs, !IO) :-
+read_options_files_named_in_options_file_option(ProgressStream,
+        OptionSearchDirs, OptionsFiles, Variables, Specs, UndefSpecs, !IO) :-
     io.environment.get_environment_var_map(EnvVarMap, !IO),
     Variables0 = options_variables_init(EnvVarMap),
     list.foldl5(
-        read_options_file_set_params(OptionSearchDirs), OptionsFiles,
-        Variables0, Variables,
+        read_options_file_set_params(ProgressStream, OptionSearchDirs),
+        OptionsFiles, Variables0, Variables,
         [], IOSpecs, [], ParseSpecs, [], UndefSpecs, !IO),
     Specs = IOSpecs ++ ParseSpecs.
 
-:- pred read_options_file_set_params(list(string)::in, string::in,
+:- pred read_options_file_set_params(io.text_output_stream::in,
+    list(string)::in, string::in,
     options_variables::in, options_variables::out,
     list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-read_options_file_set_params(OptionSearchDirs, OptionsFile,
+read_options_file_set_params(ProgressStream, OptionSearchDirs, OptionsFile,
         !Variables, !IOSpecs, !ParseSpecs, !UndefSpecs, !IO) :-
     MaybeDirName = no,
     ( if OptionsFile = "Mercury.options" then
@@ -218,14 +221,15 @@ read_options_file_set_params(OptionSearchDirs, OptionsFile,
         MaybeSearch = search(OptionSearchDirs),
         IsOptionsFileOptional = options_file_must_exist
     ),
-    SearchInfo = search_info(MaybeDirName, MaybeSearch),
+    SearchInfo = search_info(ProgressStream, MaybeDirName, MaybeSearch),
     read_options_file_params(SearchInfo, pre_stack_base, IsOptionsFileOptional,
         OptionsFile, !Variables, !IOSpecs, !ParseSpecs, !UndefSpecs, !IO).
 
 %---------------------%
 
-read_named_options_file(OptionsPathName, !Variables, Specs, UndefSpecs, !IO) :-
-    SearchInfo = search_info(no, no_search),
+read_named_options_file(ProgressStream, OptionsPathName,
+        !Variables, Specs, UndefSpecs, !IO) :-
+    SearchInfo = search_info(ProgressStream, no, no_search),
     read_options_file_params(SearchInfo, pre_stack_base,
         options_file_must_exist, OptionsPathName, !Variables,
         [], IOSpecs, [], ParseSpecs, [], UndefSpecs, !IO),
@@ -233,10 +237,11 @@ read_named_options_file(OptionsPathName, !Variables, Specs, UndefSpecs, !IO) :-
 
 %---------------------%
 
-read_args_file(OptionsFile, MaybeMCFlags, Specs, UndefSpecs, !IO) :-
+read_args_file(ProgressStream, OptionsFile, MaybeMCFlags,
+        Specs, UndefSpecs, !IO) :-
     io.environment.get_environment_var_map(EnvVarMap, !IO),
     Variables0 = options_variables_init(EnvVarMap),
-    read_named_options_file(OptionsFile, Variables0, Variables,
+    read_named_options_file(ProgressStream, OptionsFile, Variables0, Variables,
         Specs0, UndefSpecs, !IO),
     % Ignore settings in the environment -- the parent mmc process
     % will have included those in the file.
@@ -277,8 +282,9 @@ read_args_file(OptionsFile, MaybeMCFlags, Specs, UndefSpecs, !IO) :-
 
 :- type search_info
     --->    search_info(
-                maybe(dir_name),
-                search
+                si_progress_stream  :: io.text_output_stream,
+                si_maybe_dir_name   :: maybe(dir_name),
+                si_search           :: search
             ).
 
 :- type is_options_file_optional
@@ -325,31 +331,30 @@ read_args_file(OptionsFile, MaybeMCFlags, Specs, UndefSpecs, !IO) :-
 read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
         OptionsPathName, !Variables,
         !IOSpecs, !ParseSpecs, !UndefSpecs, !IO) :-
-    % Note that any debugging output we generate goes to stderr.
+    SearchInfo = search_info(ProgressStream, MaybeDirName, Search),
     % Reading the options file is an activity that is not specific
     % to any module, so it cannot go to a module-specific debug output file.
+    % This is why we direct any debugging output we generate to ProgressStream,
+    % which is a non-module-specific destination.
     ( if OptionsPathName = "-" then
         check_include_for_infinite_recursion(PreStack0, "-", CheckResult),
         (
             CheckResult = include_ok(InclStack0),
             % Read from standard input.
             trace [compiletime(flag("options_file_debug")), io(!TIO)] (
-                io.stderr_stream(DebugStream, !TIO),
-                io.write_string(DebugStream,
+                io.write_string(ProgressStream,
                     "Reading options file from stdin... ", !TIO)
             ),
-            SearchInfo = search_info(_MaybeDirName, Search),
-            SubSearchInfo = search_info(yes(dir.this_directory), Search),
+            SubSearchInfo =
+                SearchInfo ^ si_maybe_dir_name := yes(dir.this_directory),
             read_options_lines(SubSearchInfo, InclStack0,
                 io.stdin_stream, "stdin", 1, !Variables,
                 !IOSpecs, !ParseSpecs, !UndefSpecs, !IO),
             trace [compiletime(flag("options_file_debug")), io(!TIO)] (
-                io.stderr_stream(DebugStream, !TIO),
-                io.format(DebugStream, "done.\n", [], !TIO)
+                io.format(ProgressStream, "done.\n", [], !TIO)
             ),
             trace [compiletime(flag("options_file_debug_stdin")), io(!TIO)] (
-                io.stderr_stream(DebugStream, !TIO),
-                dump_options_file(DebugStream, "DUMP_OPTIONS_FILE",
+                dump_options_file(ProgressStream, "DUMP_OPTIONS_FILE",
                     !.Variables, !TIO)
             )
         ;
@@ -358,11 +363,9 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
         )
     else
         trace [compiletime(flag("options_file_debug")), io(!TIO)] (
-            io.stderr_stream(DebugStream, !TIO),
-            io.format(DebugStream, "Searching for options file %s... ",
+            io.format(ProgressStream, "Searching for options file %s... ",
                 [s(OptionsPathName)], !TIO)
         ),
-        SearchInfo = search_info(MaybeDirName, Search),
         (
             Search = search(SearchDirs)
         ;
@@ -407,26 +410,24 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
             MaybeDirAndStream =
                 ok(path_name_and_stream(FoundDir, FoundStream)),
             trace [compiletime(flag("options_file_debug")), io(!TIO)] (
-                io.stderr_stream(DebugStream, !TIO),
-                io.format(DebugStream, "done.\n", [], !TIO)
+                io.format(ProgressStream, "done.\n", [], !TIO)
             ),
             check_include_for_infinite_recursion(PreStack0,
                 FoundDir / FileToFind, CheckResult),
             (
                 CheckResult = include_ok(InclStack0),
                 trace [compiletime(flag("options_file_debug")), io(!TIO)] (
-                    io.stderr_stream(DebugStream, !TIO),
-                    io.format(DebugStream, "Reading options file %s... ",
+                    io.format(ProgressStream, "Reading options file %s... ",
                         [s(FoundDir/FileToFind)], !TIO)
                 ),
 
-                SubSearchInfo = search_info(yes(FoundDir), Search),
+                SubSearchInfo =
+                    SearchInfo ^ si_maybe_dir_name := yes(FoundDir),
                 read_options_lines(SubSearchInfo, InclStack0,
                     FoundStream, FileToFind, 1, !Variables,
                     !IOSpecs, !ParseSpecs, !UndefSpecs, !IO),
                 trace [compiletime(flag("options_file_debug")), io(!TIO)] (
-                    io.stderr_stream(DebugStream, !TIO),
-                    io.format(DebugStream, "done.\n", [], !TIO)
+                    io.format(ProgressStream, "done.\n", [], !TIO)
                 )
             ;
                 CheckResult = include_error(CheckSpec),
@@ -436,8 +437,7 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
         ;
             MaybeDirAndStream = error(Error),
             trace [compiletime(flag("options_file_debug")), io(!TIO)] (
-                io.stderr_stream(DebugStream, !TIO),
-                io.format(DebugStream, "unsuccessful.\n", [], !TIO)
+                io.format(ProgressStream, "unsuccessful.\n", [], !TIO)
             ),
             (
                 IsOptionsFileOptional = options_file_must_exist,
@@ -1621,7 +1621,7 @@ lookup_variable_value(Variables, VarName, ValueChars, !UndefVarNames) :-
 
 %---------------------------------------------------------------------------%
 
-dump_options_file(DebugStream, FileName, Variables, !IO) :-
+dump_options_file(ProgressStream, FileName, Variables, !IO) :-
     io.open_output(FileName, OpenResult, !IO),
     (
         OpenResult = ok(DumpStream),
@@ -1630,7 +1630,7 @@ dump_options_file(DebugStream, FileName, Variables, !IO) :-
     ;
         OpenResult = error(Error),
         ErrorMsg = io.error_message(Error),
-        io.format(DebugStream, "mercury_compile: %s\n", [s(ErrorMsg)], !IO),
+        io.format(ProgressStream, "mercury_compile: %s\n", [s(ErrorMsg)], !IO),
         io.set_exit_status(1, !IO)
     ).
 
