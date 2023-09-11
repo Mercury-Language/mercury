@@ -152,7 +152,8 @@
     % Print the given inst_graph over the given varset in a format
     % suitable for debugging output.
     %
-:- pred dump(inst_graph::in, prog_varset::in, io::di, io::uo) is det.
+:- pred dump_inst_graph(io.text_output_stream::in, prog_varset::in,
+    inst_graph::in, io::di, io::uo) is det.
 
     % XXX This should probably go in list.m.
     %
@@ -193,6 +194,7 @@
 
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module term.
 :- import_module term_io.
 :- import_module varset.
@@ -397,46 +399,49 @@ merge(InstGraph0, VarSet0, NewInstGraph, NewVarSet, InstGraph, VarSet,
 
 %-----------------------------------------------------------------------------%
 
-dump(InstGraph, VarSet, !IO) :-
-    map.foldl(dump_node(VarSet), InstGraph, !IO).
+dump_inst_graph(OutStream, VarSet, InstGraph, !IO) :-
+    map.foldl(dump_inst_graph_node(OutStream, VarSet), InstGraph, !IO).
 
-:- pred dump_node(prog_varset::in, prog_var::in, node::in,
-    io::di, io::uo) is det.
+:- pred dump_inst_graph_node(io.text_output_stream::in, prog_varset::in,
+    prog_var::in, node::in, io::di, io::uo) is det.
 
-dump_node(VarSet, Var, Node, !IO) :-
-    Node = node(Functors, MaybeParent),
-    io.write_string("%% ", !IO),
-    term_io.write_variable(VarSet, Var, !IO),
-    io.write_string(": ", !IO),
+dump_inst_graph_node(OutStream, VarSet, Var, Node, !IO) :-
+    Node = node(Functors, MaybeParentVar),
+    VarStr = term_io.variable_to_string(VarSet, Var),
     (
-        MaybeParent = parent(Parent),
-        term_io.write_variable(VarSet, Parent, !IO)
+        MaybeParentVar = parent(ParentVar),
+        ParentVarStr = term_io.variable_to_string(VarSet, ParentVar),
+        io.format(OutStream, "%%%% %s: %s\n",
+            [s(VarStr), s(ParentVarStr)], !IO)
     ;
-        MaybeParent = top_level
+        MaybeParentVar = top_level,
+        io.format(OutStream, "%%%% %s:\n", [s(VarStr)], !IO)
     ),
-    io.nl(!IO),
-    map.foldl(dump_functor(VarSet), Functors, !IO).
+    map.foldl(dump_inst_graph_cons_id_args(OutStream, VarSet), Functors, !IO).
 
-:- pred dump_functor(prog_varset::in, cons_id::in, list(prog_var)::in,
-    io::di, io::uo) is det.
+:- pred dump_inst_graph_cons_id_args(io.text_output_stream::in,
+    prog_varset::in, cons_id::in, list(prog_var)::in, io::di, io::uo) is det.
 
-dump_functor(VarSet, ConsId, Args, !IO) :-
-    io.write_string("%%\t", !IO),
-    io.write_string(cons_id_and_arity_to_string(ConsId), !IO),
+dump_inst_graph_cons_id_args(OutStream, VarSet, ConsId, Args, !IO) :-
+    ConsIdStr = cons_id_and_arity_to_string(ConsId),
+    io.format(OutStream, "%%%%\t%s", [s(ConsIdStr)], !IO),
     (
         Args = [_ | _],
-        io.write_char('(', !IO),
-        io.write_list(Args, ", ", dump_var(VarSet), !IO),
-        io.write_char(')', !IO)
+        io.write_char(OutStream, '(', !IO),
+        list.gap_foldl(
+            dump_var(OutStream, VarSet), io.write_string(OutStream, ", "),
+            Args, !IO),
+        io.write_char(OutStream, ')', !IO)
     ;
         Args = []
     ),
-    io.nl(!IO).
+    io.nl(OutStream, !IO).
 
-:- pred dump_var(prog_varset::in, prog_var::in, io::di, io::uo) is det.
+:- pred dump_var(io.text_output_stream::in, prog_varset::in, prog_var::in,
+    io::di, io::uo) is det.
 
-dump_var(VarSet, Var, !IO) :-
-    term_io.write_variable(VarSet, Var, !IO).
+dump_var(OutStream, VarSet, Var, !IO) :-
+    term_io.write_variable(OutStream, VarSet, Var, !IO).
 
 %-----------------------------------------------------------------------------%
 

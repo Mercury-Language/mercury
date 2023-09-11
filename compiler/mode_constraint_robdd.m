@@ -48,7 +48,12 @@
 :- type mode_constraint_info.
 :- type threshold.
 
-:- func init_mode_constraint_info(bool) = mode_constraint_info.
+:- func init_mode_constraint_info(io.text_output_stream, bool)
+    = mode_constraint_info.
+
+:- pred mci_get_debug_stream(mode_constraint_info::in,
+    io.text_output_stream::out) is det.
+
 :- func mci_set_pred_id(mode_constraint_info, pred_id) = mode_constraint_info.
 
 :- type rep_var
@@ -170,6 +175,7 @@
 
 :- type mode_constraint_info
     --->    mode_constraint_info(
+                mci_debug_stream        :: io.text_output_stream,
                 mci_varset              :: varset(mc_type),
                 mci_varmap              :: mode_constraint_varmap,
                 mci_pred_id             :: pred_id,
@@ -190,12 +196,16 @@
 :- type threshold
     --->    threshold(mode_constraint_var).
 
-init_mode_constraint_info(Simple) = MCI :-
+init_mode_constraint_info(DebugStream, Simple) = MCI :-
     VarSet0 = varset.init,
     varset.new_var(ZeroVar, VarSet0, VarSet),
     PredId = hlds_pred.initial_pred_id,
-    MCI = mode_constraint_info(VarSet, bimap.init, PredId, stack.init,
-        map.init, map.init, set_of_var.init, ZeroVar, Simple, map.init).
+    MCI = mode_constraint_info(DebugStream, VarSet, bimap.init, PredId,
+        stack.init, map.init, map.init, set_of_var.init, ZeroVar, Simple,
+        map.init).
+
+mci_get_debug_stream(MCI, X) :-
+    X = MCI ^ mci_debug_stream.
 
 mci_set_pred_id(MCI, PredId) = MCI ^ mci_pred_id := PredId.
 
@@ -300,14 +310,15 @@ get_interesting_vars_for_pred(MCI, PredId, Vars) :-
     MinVars = MCI ^ mci_min_vars,
     MaxVars = MCI ^ mci_max_vars,
     VarSet = MCI ^ mci_varset,
-    Vars = ( set.sorted_list_to_set `compose`
-        list.filter(
-            ( pred(V::in) is semidet :-
-                compare(<, map.lookup(MinVars, PredId), V),
-                \+ compare(<, map.lookup(MaxVars, PredId), V)
-            )
-        ) `compose` varset.vars
-    )(VarSet).
+    Vars =
+        ( set.sorted_list_to_set `compose`
+            list.filter(
+                ( pred(V::in) is semidet :-
+                    compare(<, map.lookup(MinVars, PredId), V),
+                    not compare(<, map.lookup(MaxVars, PredId), V)
+                )
+            ) `compose` varset.vars
+        )(VarSet).
 
 set_input_nodes(Constraint0, Constraint, !MCI) :-
     VarMap = !.MCI ^ mci_varmap,
@@ -316,7 +327,7 @@ set_input_nodes(Constraint0, Constraint, !MCI) :-
     bimap.ordinates(VarMap, Keys),
     Constraint1 = ensure_normalised(Constraint0),
     solutions.solutions(
-        (pred(ProgVar::out) is nondet :-
+        ( pred(ProgVar::out) is nondet :-
             list.member(Key, Keys),
             Key = key(in(ProgVar), PredId, LambdaPath),
             bimap.lookup(VarMap, Key, RobddVar),

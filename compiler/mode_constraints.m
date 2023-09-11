@@ -114,6 +114,8 @@
 ].
 
 mc_process_module(ProgressStream, !ModuleInfo, !IO) :-
+    % This will do for now.
+    DebugStream = ProgressStream,
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, simple_mode_constraints, Simple),
@@ -126,7 +128,7 @@ mc_process_module(ProgressStream, !ModuleInfo, !IO) :-
         get_predicate_sccs(!.ModuleInfo, SCCs),
 
         % Stage 1: Process SCCs bottom-up to determine variable producers.
-        list.foldl2(mc_process_scc(Simple), SCCs,
+        list.foldl2(mc_process_scc(ProgressStream, DebugStream, Simple), SCCs,
             map.init, PredConstraintMap, !ModuleInfo),
 
         % Stage 2: Process SCCs top-down to determine execution order of
@@ -169,7 +171,7 @@ mc_process_module(ProgressStream, !ModuleInfo, !IO) :-
             Debug = yes,
             ConstraintVarSet = mc_varset(VarInfo),
             trace [io(!TIO)] (
-                pretty_print_pred_constraints_map(!.ModuleInfo,
+                pretty_print_pred_constraints_map(DebugStream, !.ModuleInfo,
                     ConstraintVarSet, AbstractModeConstraints, !TIO)
             )
         ;
@@ -186,7 +188,8 @@ mc_process_module(ProgressStream, !ModuleInfo, !IO) :-
             Debug = yes,
             trace [io(!TIO)] (
                 list.foldl(
-                    ordering_mode_constraints.dump_goal_paths(!.ModuleInfo),
+                    ordering_mode_constraints.dump_goal_paths(DebugStream,
+                        !.ModuleInfo),
                     SCCs, !TIO)
             )
         ;
@@ -202,16 +205,14 @@ dump_abstract_constraints(ModuleInfo, ConstraintVarSet, ModeConstraints,
         ext_cur(ext_cur_user_mode_constr), ModuleName, FileName, !IO),
     OutputFile = FileName,
 
-    io.open_output(OutputFile, IOResult, !IO),
+    io.open_output(OutputFile, OpenResult, !IO),
     (
-        IOResult = ok(OutputStream),
-        io.set_output_stream(OutputStream, OldOutStream, !IO),
-        pretty_print_pred_constraints_map(ModuleInfo, ConstraintVarSet,
-            ModeConstraints, !IO),
-        io.set_output_stream(OldOutStream, _, !IO),
-        io.close_output(OutputStream, !IO)
+        OpenResult = ok(FileStream),
+        pretty_print_pred_constraints_map(FileStream, ModuleInfo,
+            ConstraintVarSet, ModeConstraints, !IO),
+        io.close_output(FileStream, !IO)
     ;
-        IOResult = error(_),
+        OpenResult = error(_),
         unexpected($pred, "failed to open " ++ FileName ++ " for output.")
     ).
 
@@ -273,22 +274,26 @@ correct_nonlocals_in_clause_body(Headvars, !Goals, !VarSet, !VarTypes,
             "Quantification error during constraints based mode analysis")
     ).
 
-:- pred mc_process_scc(bool::in, list(pred_id)::in,
+:- pred mc_process_scc(io.text_output_stream::in, io.text_output_stream::in,
+    bool::in, list(pred_id)::in,
     pred_constraint_map::in, pred_constraint_map::out,
     module_info::in, module_info::out) is det.
 
-mc_process_scc(Simple, SCC, !PredConstraintMap, !ModuleInfo) :-
+mc_process_scc(ProgressStream, DebugStream, Simple, SCC,
+        !PredConstraintMap, !ModuleInfo) :-
     some [!ModeConstraint, !MCI] (
         !:ModeConstraint = one,
-        !:MCI = init_mode_constraint_info(Simple),
+        !:MCI = init_mode_constraint_info(DebugStream, Simple),
         list.foldl2(number_robdd_variables_in_pred, SCC, !ModuleInfo, !MCI),
 
         save_threshold(!.MCI, Threshold),
-        mc_process_scc_pass_1(SCC, SCC, !ModeConstraint, !MCI, !ModuleInfo),
+        mc_process_scc_pass_1(ProgressStream, SCC, SCC,
+            !ModeConstraint, !MCI, !ModuleInfo),
 
         !:ModeConstraint = restrict_threshold(Threshold, !.ModeConstraint),
         !:ModeConstraint = ensure_normalised(!.ModeConstraint),
-        mc_process_scc_pass_2(SCC, !.ModeConstraint, !.MCI, !ModuleInfo),
+        mc_process_scc_pass_2(ProgressStream, SCC,
+            !.ModeConstraint, !.MCI, !ModuleInfo),
 
         Insert =
             ( pred(PredId::in, PCM0::in, PCM::out) is det :-
@@ -592,39 +597,44 @@ number_robdd_variables_in_cases(InstGraph, NonLocals, Occurring,
 
 %-----------------------------------------------------------------------------%
 
-:- pred mc_process_scc_pass_1(list(pred_id)::in,
+:- pred mc_process_scc_pass_1(io.text_output_stream::in,
+    list(pred_id)::in, list(pred_id)::in,
+    mode_constraint::in, mode_constraint::out,
+    mode_constraint_info::in, mode_constraint_info::out,
+    module_info::in, module_info::out) is det.
+
+mc_process_scc_pass_1(_, [], _, !ModeConstraint, !MCI, !ModuleInfo).
+mc_process_scc_pass_1(ProgressStream, [PredId | PredIds], SCC,
+        !ModeConstraint, !MCI, !ModuleInfo) :-
+    !:MCI = mci_set_pred_id(!.MCI, PredId),
+    mc_process_pred(ProgressStream, PredId, SCC,
+        !ModeConstraint, !MCI, !ModuleInfo),
+    mc_process_scc_pass_1(ProgressStream, PredIds, SCC,
+        !ModeConstraint, !MCI, !ModuleInfo).
+
+:- pred mc_process_scc_pass_2(io.text_output_stream::in, list(pred_id)::in,
+    mode_constraint::in, mode_constraint_info::in,
+    module_info::in, module_info::out) is det.
+
+mc_process_scc_pass_2(_, [], _, _, !ModuleInfo).
+mc_process_scc_pass_2(ProgressStream, [PredId | PredIds], ModeConstraint, MCI,
+        !ModuleInfo) :-
+    mc_process_pred_2(ProgressStream, PredId, ModeConstraint,
+        mci_set_pred_id(MCI, PredId), !ModuleInfo),
+    mc_process_scc_pass_2(ProgressStream, PredIds, ModeConstraint, MCI,
+        !ModuleInfo).
+
+:- pred mc_process_pred(io.text_output_stream::in, pred_id::in,
     list(pred_id)::in,
     mode_constraint::in, mode_constraint::out,
     mode_constraint_info::in, mode_constraint_info::out,
     module_info::in, module_info::out) is det.
 
-mc_process_scc_pass_1([], _, !ModeConstraint, !MCI, !ModuleInfo).
-mc_process_scc_pass_1([PredId | PredIds], SCC,
+mc_process_pred(ProgressStream, PredId, SCC,
         !ModeConstraint, !MCI, !ModuleInfo) :-
-    !:MCI = mci_set_pred_id(!.MCI, PredId),
-    mc_process_pred(PredId, SCC, !ModeConstraint, !MCI, !ModuleInfo),
-    mc_process_scc_pass_1(PredIds, SCC, !ModeConstraint, !MCI, !ModuleInfo).
-
-:- pred mc_process_scc_pass_2(list(pred_id)::in,
-    mode_constraint::in, mode_constraint_info::in,
-    module_info::in, module_info::out) is det.
-
-mc_process_scc_pass_2([], _, _, !ModuleInfo).
-mc_process_scc_pass_2([PredId | PredIds], ModeConstraint, MCI, !ModuleInfo) :-
-    mc_process_pred_2(PredId, ModeConstraint,
-        mci_set_pred_id(MCI, PredId), !ModuleInfo),
-    mc_process_scc_pass_2(PredIds, ModeConstraint, MCI, !ModuleInfo).
-
-:- pred mc_process_pred(pred_id::in, list(pred_id)::in,
-    mode_constraint::in, mode_constraint::out,
-    mode_constraint_info::in, mode_constraint_info::out,
-    module_info::in, module_info::out) is det.
-
-mc_process_pred(PredId, SCC, !ModeConstraint, !MCI,
-        !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     trace [io(!IO)] (
-        maybe_write_pred_progress_message(!.ModuleInfo,
+        maybe_write_pred_progress_message(ProgressStream, !.ModuleInfo,
             "Calculating mode constraints for ", PredId, !IO)
     ),
 
@@ -674,10 +684,12 @@ mc_process_pred(PredId, SCC, !ModeConstraint, !MCI,
     ),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
-:- pred mc_process_pred_2(pred_id::in, mode_constraint::in,
-    mode_constraint_info::in, module_info::in, module_info::out) is det.
+:- pred mc_process_pred_2(io.text_output_stream::in, pred_id::in,
+    mode_constraint::in, mode_constraint_info::in,
+    module_info::in, module_info::out) is det.
 
-mc_process_pred_2(PredId, ModeConstraint, MCI0, !ModuleInfo) :-
+mc_process_pred_2(_ProgressStream, PredId, ModeConstraint, MCI0,
+        !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_inst_graph_info(PredInfo0, InstGraphInfo),
     InstGraph = InstGraphInfo ^ implementation_inst_graph,
@@ -1035,8 +1047,8 @@ do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
     ho_modes::in, mode_constraint::in, mode_constraint::out,
     mode_constraint_info::in, mode_constraint_info::out) is det.
 
-process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
-        InstGraph, HOModes0, !Constraint, !MCI) :-
+process_clauses_info(ModuleInfo, SCC, !ClausesInfo, InstGraph, HOModes0,
+        !Constraint, !MCI) :-
     % XXX If this code is ever actually used, it should be updated
     % to use VarTable instead of VarTypes.
     clauses_info_get_var_table(!.ClausesInfo, VarTable0),
@@ -1046,7 +1058,8 @@ process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            inst_graph.dump(InstGraph, VarSet0, !IO)
+            mci_get_debug_stream(!.MCI, DebugStream),
+            inst_graph.dump_inst_graph(DebugStream, VarSet0, InstGraph, !IO)
         )
     ;
         VeryVerbose = no

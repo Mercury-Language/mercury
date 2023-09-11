@@ -144,23 +144,24 @@
 
     % Print the mc_constraint it is passed in a human readable format.
     %
-:- pred pretty_print_constraint(mc_varset::in, mc_constraint::in,
-    io::di, io::uo) is det.
+:- pred pretty_print_constraint(io.text_output_stream::in, mc_varset::in,
+    mc_constraint::in, io::di, io::uo) is det.
 
     % Print the mc_constraints it is passed in a human readable format.
     %
-:- pred pretty_print_constraints(mc_varset::in, list(mc_constraint)::in,
-    io::di, io::uo) is det.
+:- pred pretty_print_constraints(io.text_output_stream::in, mc_varset::in,
+    list(mc_constraint)::in, io::di, io::uo) is det.
 
     % Print the mc_constraints it is passed in a human readable format.
     %
-:- pred dump_constraints_and_annotations(globals::in, mc_varset::in,
-    list(mc_ann_constraint)::in, io::di, io::uo) is det.
+:- pred dump_constraints_and_annotations(io.text_output_stream::in,
+    globals::in, mc_varset::in, list(mc_ann_constraint)::in,
+    io::di, io::uo) is det.
 
     % Print a list of models for the constraint system.
     %
-:- pred pretty_print_solutions(mc_varset::in, list(mc_bindings)::in,
-    io::di, io::uo) is det.
+:- pred pretty_print_solutions(io.text_output_stream::in, mc_varset::in,
+    list(mc_bindings)::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -168,7 +169,8 @@
     %
 :- func init_pred_p_c_constraints = pred_p_c_constraints.
 
-    % add_constraint(MCVarSet, Context, Constraint, !PredPCConstraints):
+    % add_constraint(DebugStream, MCVarSet, Context, Constraint,
+    %   !PredPCConstraints):
     %
     % Add the constraint given by Constraint (whose vars are described by
     % MCVarSet, and which comes from Context) to the constraint system
@@ -177,8 +179,8 @@
 :- pred add_constraint(mc_varset::in, prog_context::in, mc_constraint::in,
     pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
 
-    % add_proc_specific_constraint(MCVarSet, Context, ProcId, Constraint,
-    %   !PredPCConstraints):
+    % add_proc_specific_constraint(DebugStream, MCVarSet, Context,
+    %   ProcId, Constraint, !PredPCConstraints):
     %
     % Add the constraint given by Constraint to the constraint system in
     % PredPCConstraints, and associate it specifically with the given
@@ -251,8 +253,8 @@
     % Context should be the context of the goal or declaration that imposed
     % this constraint.
     %
-:- pred equiv_disj(mc_varset::in, prog_context::in,
-    mc_var::in, list(mc_var)::in,
+:- pred equiv_disj(mc_varset::in, prog_context::in, mc_var::in,
+    list(mc_var)::in,
     pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
 
     % at_most_one(MCVarSet, Context, MCVars, !Constraints) constrains MCVars in
@@ -318,8 +320,10 @@ add_constraint(MCVarSet, Context, Constraint, !PredPCConstraints) :-
         run_time(env("GOAL_MODE_CONSTRAINTS")),
         io(!IO)
     ] (
-        io.write_string("add constraint ", !IO),
-        pretty_print_constraint(MCVarSet, Constraint, !IO)
+        % XXX STREAM
+        io.output_stream(OutputStream, !IO),
+        io.write_string(OutputStream, "add constraint ", !IO),
+        pretty_print_constraint(OutputStream, MCVarSet, Constraint, !IO)
     ),
 
     AllProcsConstraints = !.PredPCConstraints ^ ppcc_allproc_constraints,
@@ -335,9 +339,11 @@ add_proc_specific_constraint(MCVarSet, Context, ProcId, Constraint,
         run_time(env("GOAL_MODE_CONSTRAINTS")),
         io(!IO)
     ] (
-        io.format("add proc-specific constraint for proc %d ",
+        % XXX STREAM
+        io.output_stream(OutputStream, !IO),
+        io.format(OutputStream, "add proc-specific constraint for proc %d ",
             [i(proc_id_to_int(ProcId))], !IO),
-        pretty_print_constraint(MCVarSet, Constraint, !IO)
+        pretty_print_constraint(OutputStream, MCVarSet, Constraint, !IO)
     ),
 
     ProcConstraints = !.PredPCConstraints ^ ppcc_procspec_constraints,
@@ -381,113 +387,123 @@ proc_specific_annotated_constraints(ProcId, PredPCConstraints) =
 %
 
 equiv_no(MCVarSet, Context, MCVar, !Constraints) :-
-    add_constraint(MCVarSet, Context, mc_atomic(equiv_bool(MCVar, no)),
-        !Constraints).
+    add_constraint(MCVarSet, Context,
+        mc_atomic(equiv_bool(MCVar, no)), !Constraints).
 
 equivalent(MCVarSet, Context, MCVars, !Constraints) :-
-    add_constraint(MCVarSet, Context, mc_atomic(equivalent(MCVars)),
-        !Constraints).
+    add_constraint(MCVarSet, Context,
+        mc_atomic(equivalent(MCVars)), !Constraints).
 
 equiv_disj(MCVarSet, Context, X, Ys, !Constraints) :-
-    add_constraint(MCVarSet, Context, mc_atomic(equiv_disj(X, Ys)),
-        !Constraints).
+    add_constraint(MCVarSet, Context,
+        mc_atomic(equiv_disj(X, Ys)), !Constraints).
 
 at_most_one(MCVarSet, Context, MCVars, !Constraints) :-
-    add_constraint(MCVarSet, Context, mc_atomic(at_most_one(MCVars)),
-        !Constraints).
+    add_constraint(MCVarSet, Context,
+        mc_atomic(at_most_one(MCVars)), !Constraints).
 
 not_both(MCVarSet, Context, A, B, !Constraints) :-
-    add_constraint(MCVarSet, Context, mc_atomic(at_most_one([A, B])),
-        !Constraints).
+    add_constraint(MCVarSet, Context,
+        mc_atomic(at_most_one([A, B])), !Constraints).
 
 exactly_one(MCVarSet, Context, MCVars, !Constraints) :-
-    add_constraint(MCVarSet, Context, mc_atomic(exactly_one(MCVars)),
-        !Constraints).
+    add_constraint(MCVarSet, Context,
+        mc_atomic(exactly_one(MCVars)), !Constraints).
 
 xor(MCVarSet, Context, A, B, !Constraints) :-
-    add_constraint(MCVarSet, Context, mc_atomic(exactly_one([A, B])),
-        !Constraints).
+    add_constraint(MCVarSet, Context,
+        mc_atomic(exactly_one([A, B])), !Constraints).
 
 %-----------------------------------------------------------------------------%
 %
 % Dumping constraints for --debug-mode-constraints
 %
 
-dump_constraints_and_annotations(Globals, VarSet, AnnConstraints, !IO) :-
+dump_constraints_and_annotations(OutputStream, Globals, VarSet,
+        AnnConstraints, !IO) :-
     Indent = 0,
-    list.foldl(dump_ann_constraint(Globals, VarSet, Indent), AnnConstraints,
-        !IO).
+    list.foldl(dump_ann_constraint(OutputStream, Globals, VarSet, Indent),
+        AnnConstraints, !IO).
 
     % Dumps a list of constraints using the same constraint annotation
     % at indent level indicated by the int.
     %
-:- pred dump_constraints(globals::in, mc_varset::in, int::in,
-    mc_annotation::in, list(mc_constraint)::in, io::di, io::uo) is det.
+:- pred dump_constraints(io.text_output_stream::in, globals::in, mc_varset::in,
+    int::in, mc_annotation::in, list(mc_constraint)::in, io::di, io::uo) is det.
 
-dump_constraints(Globals, VarSet, Indent, Annotation, Constraints, !IO) :-
-    list.foldl(dump_constraint(Globals, VarSet, Indent, Annotation),
+dump_constraints(OutputStream, Globals, VarSet, Indent, Annotation,
+        Constraints, !IO) :-
+    list.foldl(
+        dump_constraint(OutputStream, Globals, VarSet, Indent, Annotation),
         Constraints, !IO).
 
-:- pred dump_ann_constraint(globals::in, mc_varset::in, int::in,
-    mc_ann_constraint::in, io::di, io::uo) is det.
+:- pred dump_ann_constraint(io.text_output_stream::in, globals::in,
+    mc_varset::in, int::in, mc_ann_constraint::in, io::di, io::uo) is det.
 
-dump_ann_constraint(Globals, VarSet, Indent, AnnConstraint, !IO) :-
+dump_ann_constraint(OutputStream, Globals, VarSet, Indent,
+        AnnConstraint, !IO) :-
     AnnConstraint = mc_ann_constraint(Constraint, Annotation),
-    dump_constraint(Globals, VarSet, Indent, Annotation, Constraint, !IO).
+    dump_constraint(OutputStream, Globals, VarSet, Indent,
+        Annotation, Constraint, !IO).
 
     % Prints one mc_constraint to the output. The int is an indent level.
     %
-:- pred dump_constraint(globals::in, mc_varset::in, int::in, mc_annotation::in,
-    mc_constraint::in, io::di, io::uo) is det.
+:- pred dump_constraint(io.text_output_stream::in, globals::in, mc_varset::in,
+    int::in, mc_annotation::in, mc_constraint::in, io::di, io::uo) is det.
 
-dump_constraint(Globals, VarSet, Indent, Annotation, Constraint, !IO) :-
+dump_constraint(OutputStream, Globals, VarSet, Indent, Annotation,
+        Constraint, !IO) :-
     (
         Constraint = mc_disj(Constraints),
         Context = context(Annotation),
-        write_error_pieces(Globals, Context, Indent, [words("disj(")], !IO),
-        dump_constraints(Globals, VarSet, Indent+1, Annotation, Constraints,
-            !IO),
-        write_error_pieces(Globals, Context, Indent, [words(") end disj")],
-            !IO)
+        write_error_pieces(OutputStream, Globals, Context, Indent,
+            [words("disj(")], !IO),
+        dump_constraints(OutputStream, Globals, VarSet, Indent + 1,
+            Annotation, Constraints, !IO),
+        write_error_pieces(OutputStream, Globals, Context, Indent,
+            [words(") end disj")], !IO)
     ;
         Constraint = mc_conj(Constraints),
         Context = context(Annotation),
-        write_error_pieces(Globals, Context, Indent, [words("conj(")], !IO),
-        dump_constraints(Globals, VarSet, Indent+1, Annotation, Constraints,
-            !IO),
-        write_error_pieces(Globals, Context, Indent, [words(") end conj")],
-            !IO)
+        write_error_pieces(OutputStream, Globals, Context, Indent,
+            [words("conj(")], !IO),
+        dump_constraints(OutputStream, Globals, VarSet, Indent+1,
+            Annotation, Constraints, !IO),
+        write_error_pieces(OutputStream, Globals, Context, Indent,
+            [words(") end conj")], !IO)
     ;
         Constraint = mc_atomic(AtomicConstraint),
-        dump_var_constraint(Globals, VarSet, Indent, Annotation,
+        dump_var_constraint(OutputStream, Globals, VarSet, Indent, Annotation,
             AtomicConstraint, !IO)
     ).
 
     % Prints a var_constraint to the output. The int is an indent level.
     %
-:- pred dump_var_constraint(globals::in, mc_varset::in, int::in,
-    mc_annotation::in, var_constraint::in, io::di, io::uo) is det.
+:- pred dump_var_constraint(io.text_output_stream::in, globals::in,
+    mc_varset::in, int::in, mc_annotation::in, var_constraint::in,
+    io::di, io::uo) is det.
 
-dump_var_constraint(Globals, VarSet, Indent, Annotation, Constraint, !IO) :-
+dump_var_constraint(OutputStream, Globals, VarSet, Indent, Annotation,
+        Constraint, !IO) :-
     (
         Constraint = equiv_bool(X, Val),
         mc_var_list_to_string(VarSet, [X], VarName),
         mc_var_val_to_string(Val, ValString),
         Context = context(Annotation),
-        write_error_pieces(Globals, Context, Indent,
+        write_error_pieces(OutputStream, Globals, Context, Indent,
             [words(VarName ++ " = " ++ ValString)], !IO)
     ;
         Constraint = equivalent(Xs),
         mc_var_list_to_string(VarSet, Xs, VarsString),
         Context = context(Annotation),
-        write_error_pieces(Globals, Context, Indent,
+        write_error_pieces(OutputStream, Globals, Context, Indent,
             [words("equivalent(" ++ VarsString ++ ")")], !IO)
     ;
         Constraint = implies(X, Y),
         mc_var_list_to_string(VarSet, [X], XName),
         mc_var_list_to_string(VarSet, [Y], YName),
         Context = context(Annotation),
-        write_error_pieces(Globals, Context, Indent,
+        write_error_pieces(OutputStream, Globals, Context, Indent,
             [words(XName ++ " -> " ++ YName)], !IO)
     ;
         Constraint = equiv_disj(X, Xs),
@@ -495,19 +511,19 @@ dump_var_constraint(Globals, VarSet, Indent, Annotation, Constraint, !IO) :-
         mc_var_list_to_string(VarSet, Xs, XsString),
         Context = context(Annotation),
         Pieces = [words(XName ++ " <-> disj(" ++ XsString ++ ")")],
-        write_error_pieces(Globals, Context, Indent, Pieces, !IO)
+        write_error_pieces(OutputStream, Globals, Context, Indent, Pieces, !IO)
     ;
         Constraint = at_most_one(Xs),
         mc_var_list_to_string(VarSet, Xs, XsString),
         Pieces = [words("at_most_one(" ++ XsString ++ ")")],
         Context = context(Annotation),
-        write_error_pieces(Globals, Context, Indent, Pieces, !IO)
+        write_error_pieces(OutputStream, Globals, Context, Indent, Pieces, !IO)
     ;
         Constraint = exactly_one(Xs),
         mc_var_list_to_string(VarSet, Xs, XsString),
         Pieces = [words("exactly_one(" ++ XsString ++ ")")],
         Context = context(Annotation),
-        write_error_pieces(Globals, Context, Indent, Pieces, !IO)
+        write_error_pieces(OutputStream, Globals, Context, Indent, Pieces, !IO)
     ).
 
     % mc_var_list_to_string(VarSet, MCVars, MCVarsString):
@@ -537,149 +553,156 @@ mc_var_val_to_string(no, "no").
 % Pretty printing predicates for the formulae type, and others
 %
 
-pretty_print_constraint(VarSet, Constraint, !IO) :-
+pretty_print_constraint(OutputStream, VarSet, Constraint, !IO) :-
     Indent = "",
-    pretty_print_constraint_indent(VarSet, Indent, Constraint, !IO).
+    pretty_print_constraint_indent(OutputStream, VarSet, Indent,
+        Constraint, !IO).
 
-pretty_print_constraints(VarSet, Constraints, !IO) :-
+pretty_print_constraints(OutputStream, VarSet, Constraints, !IO) :-
     Indent = "",
-    pretty_print_constraints_indent(VarSet, Indent, Constraints, !IO).
+    pretty_print_constraints_indent(OutputStream, VarSet, Indent,
+        Constraints, !IO).
 
     % Prints one mc_constraint to the output stream. Always puts
     % a new line at the end.
     %
-:- pred pretty_print_constraint_indent(mc_varset::in, string::in,
-    mc_constraint::in, io::di, io::uo) is det.
+:- pred pretty_print_constraint_indent(io.text_output_stream::in,
+    mc_varset::in, string::in, mc_constraint::in, io::di, io::uo) is det.
 
-pretty_print_constraint_indent(VarSet, Indent, Constraint, !IO) :-
+pretty_print_constraint_indent(OutputStream, VarSet, Indent,
+        Constraint, !IO) :-
     (
         Constraint = mc_disj(Constraints),
-        io.write_string(Indent, !IO),
-        io.write_string("disj(\n", !IO),
-        pretty_print_constraints_indent(VarSet, "\t" ++ Indent, Constraints,
-            !IO),
-        io.write_string(Indent, !IO),
-        io.write_string(") end disj\n", !IO)
+        io.write_string(OutputStream, Indent, !IO),
+        io.write_string(OutputStream, "disj(\n", !IO),
+        pretty_print_constraints_indent(OutputStream, VarSet, "\t" ++ Indent,
+            Constraints, !IO),
+        io.write_string(OutputStream, Indent, !IO),
+        io.write_string(OutputStream, ") end disj\n", !IO)
     ;
         Constraint = mc_conj(Constraints),
-        io.write_string(Indent, !IO),
-        io.write_string("conj(\n", !IO),
-        pretty_print_constraints_indent(VarSet, "\t" ++ Indent, Constraints,
-            !IO),
-        io.write_string(Indent, !IO),
-        io.write_string(") end conj\n", !IO)
+        io.write_string(OutputStream, Indent, !IO),
+        io.write_string(OutputStream, "conj(\n", !IO),
+        pretty_print_constraints_indent(OutputStream, VarSet, "\t" ++ Indent,
+            Constraints, !IO),
+        io.write_string(OutputStream, Indent, !IO),
+        io.write_string(OutputStream, ") end conj\n", !IO)
     ;
         Constraint = mc_atomic(AtomicConstraint),
-        io.write_string(Indent, !IO),
-        pretty_print_var_constraint(VarSet, AtomicConstraint, !IO),
-        io.nl(!IO)
+        io.write_string(OutputStream, Indent, !IO),
+        pretty_print_var_constraint(OutputStream, VarSet,
+            AtomicConstraint, !IO),
+        io.nl(OutputStream, !IO)
     ).
 
     % Same as before, but with an indent argument used to indent
     % conjunctions and disjunctions of constraints.
     %
-:- pred pretty_print_constraints_indent(mc_varset::in, string::in,
-    list(mc_constraint)::in, io::di, io::uo) is det.
+:- pred pretty_print_constraints_indent(io.text_output_stream::in,
+    mc_varset::in, string::in, list(mc_constraint)::in, io::di, io::uo) is det.
 
-pretty_print_constraints_indent(_VarSet, _Indent, [], !IO).
-pretty_print_constraints_indent(VarSet, Indent, [Constraint | Constraints],
-        !IO) :-
-    pretty_print_constraint_indent(VarSet, Indent, Constraint, !IO),
-    pretty_print_constraints_indent(VarSet, Indent, Constraints, !IO).
+pretty_print_constraints_indent(_OutputStream, _VarSet, _Indent, [], !IO).
+pretty_print_constraints_indent(OutputStream, VarSet, Indent,
+        [Constraint | Constraints], !IO) :-
+    pretty_print_constraint_indent(OutputStream, VarSet, Indent,
+        Constraint, !IO),
+    pretty_print_constraints_indent(OutputStream, VarSet, Indent,
+        Constraints, !IO).
 
     % Prints a var_constraint to the screen. No indents, no line return.
     %
-:- pred pretty_print_var_constraint(mc_varset::in, var_constraint::in,
-    io::di, io::uo) is det.
+:- pred pretty_print_var_constraint(io.text_output_stream::in, mc_varset::in,
+    var_constraint::in, io::di, io::uo) is det.
 
-pretty_print_var_constraint(VarSet, Constraint, !IO) :-
+pretty_print_var_constraint(OutputStream, VarSet, Constraint, !IO) :-
     (
         Constraint = equiv_bool(X, TF),
-        pretty_print_mc_var(VarSet, X, !IO),
-        io.write_string(" = ", !IO),
-        io.print(TF, !IO)
+        pretty_print_mc_var(OutputStream, VarSet, X, !IO),
+        io.write_string(OutputStream, " = ", !IO),
+        io.print(OutputStream, TF, !IO)
     ;
         Constraint = equivalent(Xs),
-        io.write_string("equivalent(", !IO),
-        pretty_print_mc_vars(VarSet, Xs, !IO),
-        io.write_string(")", !IO)
+        io.write_string(OutputStream, "equivalent(", !IO),
+        pretty_print_mc_vars(OutputStream, VarSet, Xs, !IO),
+        io.write_string(OutputStream, ")", !IO)
     ;
         Constraint = implies(X, Y),
-        pretty_print_mc_var(VarSet, X, !IO),
-        io.write_string(" -> ", !IO),
-        pretty_print_mc_var(VarSet, Y, !IO)
+        pretty_print_mc_var(OutputStream, VarSet, X, !IO),
+        io.write_string(OutputStream, " -> ", !IO),
+        pretty_print_mc_var(OutputStream, VarSet, Y, !IO)
     ;
         Constraint = equiv_disj(X, Xs),
-        pretty_print_mc_var(VarSet, X, !IO),
-        io.write_string(" <-> disj(", !IO),
-        pretty_print_mc_vars(VarSet, Xs, !IO),
-        io.write_string(")", !IO)
+        pretty_print_mc_var(OutputStream, VarSet, X, !IO),
+        io.write_string(OutputStream, " <-> disj(", !IO),
+        pretty_print_mc_vars(OutputStream, VarSet, Xs, !IO),
+        io.write_string(OutputStream, ")", !IO)
     ;
         Constraint = at_most_one(Xs),
-        io.write_string("at_most_one(", !IO),
-        pretty_print_mc_vars(VarSet, Xs, !IO),
-        io.write_string(")", !IO)
+        io.write_string(OutputStream, "at_most_one(", !IO),
+        pretty_print_mc_vars(OutputStream, VarSet, Xs, !IO),
+        io.write_string(OutputStream, ")", !IO)
     ;
         Constraint = exactly_one(Xs),
-        io.write_string("exactly_one(", !IO),
-        pretty_print_mc_vars(VarSet, Xs, !IO),
-        io.write_string(")", !IO)
+        io.write_string(OutputStream, "exactly_one(", !IO),
+        pretty_print_mc_vars(OutputStream, VarSet, Xs, !IO),
+        io.write_string(OutputStream, ")", !IO)
     ).
 
     % Prints a constraint var to the screen. No indents, no line return.
     % Simply uses the variable's name from the varset.
     %
-:- pred pretty_print_mc_var(mc_varset::in, mc_var::in,
-    io::di, io::uo) is det.
+:- pred pretty_print_mc_var(io.text_output_stream::in, mc_varset::in,
+    mc_var::in, io::di, io::uo) is det.
 
-pretty_print_mc_var(VarSet, Var, !IO) :-
+pretty_print_mc_var(OutputStream, VarSet, Var, !IO) :-
     varset.lookup_name(VarSet, Var, VarName),
-    io.write_string(VarName, !IO).
+    io.write_string(OutputStream, VarName, !IO).
 
     % Prints a comma separated list of constraint variables.
     %
-:- pred pretty_print_mc_vars(mc_varset::in, list(mc_var)::in,
-    io::di, io::uo) is det.
+:- pred pretty_print_mc_vars(io.text_output_stream::in, mc_varset::in,
+    list(mc_var)::in, io::di, io::uo) is det.
 
-pretty_print_mc_vars(_VarSet, [], !IO).
-pretty_print_mc_vars(VarSet, [Var | Vars], !IO) :-
-    pretty_print_mc_var(VarSet, Var, !IO),
+pretty_print_mc_vars(_OutputStream, _VarSet, [], !IO).
+pretty_print_mc_vars(OutputStream, VarSet, [Var | Vars], !IO) :-
+    pretty_print_mc_var(OutputStream, VarSet, Var, !IO),
     (
         Vars = []
     ;
         Vars = [_ | _],
-        io.write_string(", ", !IO),
-        pretty_print_mc_vars(VarSet, Vars, !IO)
+        io.write_string(OutputStream, ", ", !IO),
+        pretty_print_mc_vars(OutputStream, VarSet, Vars, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
 
     % Prints a list of models for the constraint system.
     %
-pretty_print_solutions(VarSet, Solutions, !IO) :-
-    list.foldl2(pretty_print_bindings(VarSet), Solutions, 0, _,  !IO).
+pretty_print_solutions(OutputStream, VarSet, Solutions, !IO) :-
+    list.foldl2(pretty_print_bindings(OutputStream, VarSet), Solutions,
+        0, _,  !IO).
 
     % Prints the variable bindings of this solution, one per line.
     %
-:- pred pretty_print_bindings(mc_varset::in, mc_bindings::in,
-    int::in, int::out, io::di, io::uo) is det.
+:- pred pretty_print_bindings(io.text_output_stream::in, mc_varset::in,
+    mc_bindings::in, int::in, int::out, io::di, io::uo) is det.
 
-pretty_print_bindings(VarSet, Bindings, N, N + 1, !IO) :-
-    io.write_string("Solution " ++ string.from_int(N) ++ ":\n{\n", !IO),
+pretty_print_bindings(OutputStream, VarSet, Bindings, N, N + 1, !IO) :-
+    io.write_string(OutputStream,
+        "Solution " ++ string.from_int(N) ++ ":\n{\n", !IO),
     Variables = map.keys(Bindings),
-    list.foldl(pretty_print_binding(VarSet, Bindings), Variables, !IO),
-    io.write_string("}\n", !IO).
+    list.foldl(pretty_print_binding(OutputStream, VarSet, Bindings),
+        Variables, !IO),
+    io.write_string(OutputStream, "}\n", !IO).
 
-:- pred pretty_print_binding(mc_varset::in, mc_bindings::in, mc_var::in,
-    io::di, io::uo) is det.
+:- pred pretty_print_binding(io.text_output_stream::in, mc_varset::in,
+    mc_bindings::in, mc_var::in, io::di, io::uo) is det.
 
-pretty_print_binding(VarSet, Bindings, Var, !IO) :-
-    io.write_string("    ", !IO),
-    io.write_string(varset.lookup_name(VarSet, Var), !IO),
-    io.write_string(" = ", !IO),
+pretty_print_binding(OutputStream, VarSet, Bindings, Var, !IO) :-
+    VarName = varset.lookup_name(VarSet, Var),
     map.lookup(Bindings, Var, Value),
-    io.print(Value, !IO),
-    io.nl(!IO).
+    ValueStr = string.string(Value),
+    io.format(OutputStream, "    %s = %s\n", [s(VarName), s(ValueStr)], !IO).
 
 %----------------------------------------------------------------------------%
 :- end_module check_hlds.abstract_mode_constraints.

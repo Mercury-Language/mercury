@@ -323,10 +323,12 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
 
         trace [compile_time(flag("type_error_diagnosis")), io(!IO)]
         (
+            % XXX STREAM
+            io.output_stream(OutputStream, !IO),
             PredNumber = pred_id_to_int(PredId),
             FileName = term_context.context_file(Context),
             LineNumber = term_context.context_line(Context),
-            io.format("=== Predicate %d [%s: %d] ===\n",
+            io.format(OutputStream, "=== Predicate %d [%s: %d] ===\n",
                 [i(PredNumber), s(FileName), i(LineNumber)], !IO)
         ),
 
@@ -352,7 +354,9 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         list.foldl(goal_to_constraint(!.Environment), !.Goals, !TCInfo),
         trace [compile_time(flag("type_error_diagnosis")), io(!IO)]
         (
-            print_pred_constraint(!.TCInfo, ProgVarSet, !IO)
+            % XXX STREAM
+            io.output_stream(OutputStream, !IO),
+            print_pred_constraint(OutputStream, !.TCInfo, ProgVarSet, !IO)
         ),
 
         % Solve all the constraints.
@@ -363,7 +367,10 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
             map.init, ReplacementMap, DomainMap0, DomainMap),
         trace [compile_time(flag("type_error_diagnosis")), io(!IO)]
         (
-            print_constraint_solution(!.TCInfo, ProgVarSet, DomainMap, !IO)
+            % XXX STREAM
+            io.output_stream(OutputStream, !IO),
+            print_constraint_solution(OutputStream, !.TCInfo, ProgVarSet,
+                DomainMap, !IO)
         ),
 
         % Update the HLDS with the results of the solving and report any
@@ -438,12 +445,14 @@ set_goal_pred_id(PredId, Goal0, MaybeGoal) :-
     ( if GoalExpr0 = plain_call(_, _, _, _, _, CallSymName) then
         trace [compile_time(flag("type_error_diagnosis")), io(!IO)]
         (
+            % XXX STREAM
+            io.output_stream(OutputStream, !IO),
             Context = goal_info_get_context(GoalInfo),
             PredName = sym_name_to_string(CallSymName),
             FileName = term_context.context_file(Context),
             LineNumber = term_context.context_line(Context),
             PredIdInt = pred_id_to_int(PredId),
-            io.format("  Predicate %s (%s:%d) has id %d\n",
+            io.format(OutputStream, "  Predicate %s (%s:%d) has id %d\n",
                 [s(PredName), s(FileName), i(LineNumber), i(PredIdInt)], !IO)
         ),
         GoalExpr = GoalExpr0 ^ call_pred_id := PredId,
@@ -1170,7 +1179,10 @@ find_type_constraint_solutions(Context, ProgVarSet, DomainMap, !TCInfo) :-
             % labeling to report (this should be rare in real programs).
             trace [compile_time(flag("type_error_reporting")), io(!IO)]
             (
-                io.write_string("\nUnsatisfiability error\n", !IO)
+                % XXX STREAM
+                io.output_stream(OutputStream, !IO),
+                io.write_string(OutputStream,
+                    "\nUnsatisfiability error\n", !IO)
             ),
             map.to_assoc_list(FirstSolution, SolutionAssocList),
             list.filter_map(has_empty_domain, SolutionAssocList, ErrorTVars),
@@ -1188,11 +1200,13 @@ find_type_constraint_solutions(Context, ProgVarSet, DomainMap, !TCInfo) :-
             ;
                 LaterSolutions = [_ | _],
                 % Ambiguity error (many solutions).
-                list.foldl(map.union(type_domain_union), Solutions, map.init,
-                    DomainMap),
+                list.foldl(map.union(type_domain_union), Solutions,
+                    map.init, DomainMap),
                 trace [compile_time(flag("type_error_reporting")), io(!IO)]
                 (
-                    io.write_string("\nAmbiguity error\n", !IO)
+                    % XXX STREAM
+                    io.output_stream(OutputStream, !IO),
+                    io.write_string(OutputStream, "\nAmbiguity error\n", !IO)
                 )
             )
         )
@@ -1207,8 +1221,10 @@ solve_constraint_labeling(TVarSet, VarConstraints, ConstraintMap0, DomainMap0,
         Guesses, Solution) :-
     trace [compile_time(flag("type_constraint_prop")), io(!IO)]
     (
+        % XXX STREAM
+        io.output_stream(OutputStream, !IO),
         map.to_assoc_list(Guesses, GuessesAssocList),
-        list.foldl(print_guess(TVarSet), GuessesAssocList, !IO)
+        list.foldl(print_guess(OutputStream, TVarSet), GuessesAssocList, !IO)
     ),
     map.union(type_domain_intersect, Guesses, DomainMap0, GuessMap),
     solve_constraint(TVarSet, VarConstraints, ConstraintMap0, ConstraintMap1,
@@ -1324,11 +1340,15 @@ propagate(TVarSet, VarConstraints, ConstraintId, !ConstraintMap, !DomainMap) :-
     % Print the changes to the domain map.
     trace [compile_time(flag("type_constraint_prop")), io(!IO)]
     (
-        io.format("Constraint %d:\n", [i(ConstraintId)], !IO),
+        % XXX STREAM
+        io.output_stream(OutputStream, !IO),
+        io.format(OutputStream, "Constraint %d:\n", [i(ConstraintId)], !IO),
         map.to_sorted_assoc_list(NewDomainMap, NewDomainAssocList),
-        list.foldl(print_domain_map_change(TVarSet, !.DomainMap),
+        list.foldl(
+            print_domain_map_change(OutputStream, TVarSet, !.DomainMap),
             NewDomainAssocList, !IO),
-        print_constraint_change(TVarSet, Constraint0, Constraint, !IO)
+        print_constraint_change(OutputStream, TVarSet,
+            Constraint0, Constraint, !IO)
     ),
     !:DomainMap = NewDomainMap,
     map.det_update(ConstraintId, Constraint, !ConstraintMap),
@@ -2146,9 +2166,11 @@ min_unsat_constraints(TCInfo, D, P, !MinUnsats) :-
     set.union(P, D, Union),
     trace [compile_time(flag("type_error_diagnosis")), io(!IO)]
     (
+        % XXX STREAM
+        io.output_stream(OutputStream, !IO),
         list.map(string.int_to_string, set.to_sorted_list(Union), Ids),
-        io.print("\n    Constraints " ++ string.join_list(", ", Ids) ++ "\n",
-            !IO)
+        io.print(OutputStream,
+            "\n    Constraints " ++ string.join_list(", ", Ids) ++ "\n", !IO)
     ),
     % Remove all constraints which are not part of the subset currently
     % being examined.
@@ -2207,25 +2229,26 @@ conj_constraint_get_context(Constraint, Constraint ^ tconstr_context).
 % Constraint printing.
 %
 
-:- pred print_guess(tvarset::in, pair(tvar, type_domain)::in, io::di, io::uo)
-    is det.
-:- pragma consider_used(pred(print_guess/4)).
+:- pred print_guess(io.text_output_stream::in, tvarset::in,
+    pair(tvar, type_domain)::in, io::di, io::uo) is det.
+:- pragma consider_used(pred(print_guess/5)).
 
-print_guess(TVarSet, Guess, !IO) :-
-    io.print("        Guessing ", !IO),
-    print_type_domain(TVarSet, Guess, !IO).
+print_guess(OutputStream, TVarSet, Guess, !IO) :-
+    io.print(OutputStream, "        Guessing ", !IO),
+    print_type_domain(OutputStream, TVarSet, Guess, !IO).
 
     % If one or more conjunction constraints have become unsatisfiable, print
     % out those constraints.
     %
-:- pred print_constraint_change(tvarset::in, type_constraint::in,
-    type_constraint::in, io::di, io::uo) is det.
+:- pred print_constraint_change(io.text_output_stream::in, tvarset::in,
+    type_constraint::in, type_constraint::in, io::di, io::uo) is det.
 
-print_constraint_change(TVarSet, Constraint0, Constraint1, !IO) :-
+print_constraint_change(OutputStream, TVarSet, Constraint0, Constraint1,
+        !IO) :-
     (
         Constraint0 = tconstr_conj(ConjConstraints0),
         Constraint1 = tconstr_conj(ConjConstraints1),
-        print_conj_constraint_change(TVarSet,
+        print_conj_constraint_change(OutputStream, TVarSet,
             ConjConstraints0, ConjConstraints1, !IO)
     ;
         Constraint0 = tconstr_conj(_),
@@ -2238,22 +2261,25 @@ print_constraint_change(TVarSet, Constraint0, Constraint1, !IO) :-
     ;
         Constraint0 = tconstr_disj(DisjConstraints0, MaybeSingleton0),
         Constraint1 = tconstr_disj(DisjConstraints1, MaybeSingleton1),
-        list.foldl_corresponding(print_conj_constraint_change(TVarSet),
+        list.foldl_corresponding(
+            print_conj_constraint_change(OutputStream, TVarSet),
             DisjConstraints0, DisjConstraints1, !IO),
         ( if
             MaybeSingleton0 = no,
             MaybeSingleton1 = yes(_)
         then
-            io.write_string("  Disjunction reduced to one disjunct\n", !IO)
+            io.write_string(OutputStream,
+                "  Disjunction reduced to one disjunct\n", !IO)
         else
             true
         )
     ).
 
-:- pred print_conj_constraint_change(tvarset::in, conj_type_constraint::in,
-    conj_type_constraint::in, io::di, io::uo) is det.
+:- pred print_conj_constraint_change(io.text_output_stream::in, tvarset::in,
+    conj_type_constraint::in, conj_type_constraint::in, io::di, io::uo) is det.
 
-print_conj_constraint_change(TVarSet, ConjConstraintA, ConjConstraintB, !IO) :-
+print_conj_constraint_change(OutputStream, TVarSet,
+        ConjConstraintA, ConjConstraintB, !IO) :-
     ConjConstraintA = ctconstr(_, ActivityA, _, _, _),
     ConjConstraintB = ctconstr(_, ActivityB, _, _, _),
     ( if
@@ -2262,59 +2288,70 @@ print_conj_constraint_change(TVarSet, ConjConstraintA, ConjConstraintB, !IO) :-
     then
         conj_constraint_to_string(4, TVarSet, ConjConstraintA,
             ConstraintString),
-        io.write_string("  Conjunction marked unsatisfiable:\n", !IO),
-        io.write_string(ConstraintString ++ "\n", !IO)
+        io.write_string(OutputStream,
+            "  Conjunction marked unsatisfiable:\n", !IO),
+        io.write_string(OutputStream, ConstraintString ++ "\n", !IO)
     else
         true
     ).
 
-:- pred print_domain_map_change(tvarset::in, type_domain_map::in,
-    pair(tvar, type_domain)::in, io::di, io::uo) is det.
-:- pragma consider_used(pred(print_domain_map_change/5)).
+:- pred print_domain_map_change(io.text_output_stream::in, tvarset::in,
+    type_domain_map::in, pair(tvar, type_domain)::in, io::di, io::uo) is det.
+:- pragma consider_used(pred(print_domain_map_change/6)).
 
-print_domain_map_change(TVarSet, OldDomainMap, TVar - NewDomain, !IO) :-
+print_domain_map_change(OutputStream, TVarSet, OldDomainMap,
+        TVar - NewDomain, !IO) :-
     ( if map.search(OldDomainMap, TVar, OldDomain) then
         ( if equal_domain(OldDomain, NewDomain) then
             true
         else
-            io.write_string("  Old domain:", !IO),
-            print_type_domain(TVarSet, pair(TVar, OldDomain), !IO),
-            io.write_string("  New domain:", !IO),
-            print_type_domain(TVarSet, pair(TVar, NewDomain), !IO)
+            io.write_string(OutputStream, "  Old domain:", !IO),
+            print_type_domain(OutputStream, TVarSet,
+                pair(TVar, OldDomain), !IO),
+            io.write_string(OutputStream, "  New domain:", !IO),
+            print_type_domain(OutputStream, TVarSet,
+                pair(TVar, NewDomain), !IO)
         )
     else
-        io.write_string("  New domain added:", !IO),
-        print_type_domain(TVarSet, pair(TVar, NewDomain), !IO)
+        io.write_string(OutputStream, "  New domain added:", !IO),
+        print_type_domain(OutputStream, TVarSet, pair(TVar, NewDomain), !IO)
     ).
 
-:- pred print_constraint_solution(type_constraint_info::in,
-    prog_varset::in, type_domain_map::in, io::di, io::uo) is det.
+:- pred print_constraint_solution(io.text_output_stream::in,
+    type_constraint_info::in, prog_varset::in, type_domain_map::in,
+    io::di, io::uo) is det.
 
-print_constraint_solution(TCInfo, ProgVarSet, DomainMap, !IO) :-
+print_constraint_solution(OutputStream, TCInfo, ProgVarSet, DomainMap, !IO) :-
     bimap.to_assoc_list(TCInfo ^ tconstr_var_map, VarMapAL),
     list.map(pair.fst, VarMapAL, ProgVars),
     list.map(pair.snd, VarMapAL, RelevantTVars),
     list.map(find_type_domain(DomainMap), RelevantTVars, RelevantDomains),
 
-    io.print("\n", !IO),
-    list.foldl_corresponding(print_prog_var_domain(TCInfo ^ tconstr_tvarset,
-        ProgVarSet), ProgVars, RelevantDomains, !IO).
+    io.print(OutputStream, "\n", !IO),
+    list.foldl_corresponding(
+        print_prog_var_domain(OutputStream, TCInfo ^ tconstr_tvarset,
+            ProgVarSet),
+        ProgVars, RelevantDomains, !IO).
 
-:- pred print_prog_var_domain(tvarset::in, prog_varset::in, prog_var::in,
-    type_domain::in, io::di, io::uo) is det.
-
-print_prog_var_domain(TVarSet, ProgVarSet, ProgVar, Domain, !IO) :-
-    type_domain_to_string(TVarSet, Domain, DomainName),
-    VarName = mercury_var_to_name_only_vs(ProgVarSet, ProgVar),
-    io.print("  " ++ VarName ++ " -> {" ++ DomainName ++ "}\n", !IO).
-
-:- pred print_type_domain(tvarset::in, pair(tvar, type_domain)::in,
+:- pred print_prog_var_domain(io.text_output_stream::in,
+    tvarset::in, prog_varset::in, prog_var::in, type_domain::in,
     io::di, io::uo) is det.
 
-print_type_domain(TVarSet, TVar - Domain, !IO) :-
+print_prog_var_domain(OutputStream, TVarSet, ProgVarSet, ProgVar,
+        Domain, !IO) :-
+    type_domain_to_string(TVarSet, Domain, DomainName),
+    VarName = mercury_var_to_name_only_vs(ProgVarSet, ProgVar),
+    io.print(OutputStream,
+        "  " ++ VarName ++ " -> {" ++ DomainName ++ "}\n", !IO).
+
+:- pred print_type_domain(io.text_output_stream::in, tvarset::in,
+    pair(tvar, type_domain)::in, io::di, io::uo) is det.
+
+print_type_domain(OutputStream, TVarSet, TVar - Domain, !IO) :-
     type_domain_to_string(TVarSet, Domain, DomainName),
     TVarName = mercury_var_to_string_vs(TVarSet, print_name_and_num, TVar),
-    io.print("  " ++ TVarName ++ " -> {" ++ DomainName ++ "}\n", !IO).
+    io.print(OutputStream,
+        "  " ++ TVarName ++ " -> {" ++ DomainName ++ "}\n", !IO).
 
 :- pred type_domain_to_string(tvarset::in, type_domain::in, string::out)
     is det.
@@ -2333,25 +2370,28 @@ type_domain_to_string(TVarSet, Domain, DomainName) :-
         DomainName = string.join_list(", ", DomainTypeNames)
     ).
 
-:- pred print_pred_constraint(type_constraint_info::in, prog_varset::in,
+:- pred print_pred_constraint(io.text_output_stream::in,
+    type_constraint_info::in, prog_varset::in, io::di, io::uo) is det.
+
+print_pred_constraint(OutputStream, TCInfo, ProgVarSet, !IO) :-
+    TCInfo =
+        tconstr_info(VarMap, _, ConstraintMap, VarConstraints, TVarSet, _),
+    bimap.to_assoc_list(VarMap, VarMapAssocList),
+    list.foldl(
+        print_var_constraints(OutputStream, ConstraintMap, VarConstraints,
+            TVarSet, ProgVarSet),
+        VarMapAssocList, !IO).
+
+:- pred print_var_constraints(io.text_output_stream::in,
+    type_constraint_map::in, var_constraint_map::in,
+    tvarset::in, prog_varset::in, pair(prog_var, tvar)::in,
     io::di, io::uo) is det.
 
-print_pred_constraint(TCInfo, ProgVarSet, !IO) :-
-    TCInfo = tconstr_info(VarMap, _, ConstraintMap, VarConstraints, TVarSet,
-        _),
-    bimap.to_assoc_list(VarMap, VarMapAssocList),
-    list.foldl(print_var_constraints(ConstraintMap, VarConstraints,
-        TVarSet, ProgVarSet), VarMapAssocList, !IO).
-
-:- pred print_var_constraints(type_constraint_map::in, var_constraint_map::in,
-    tvarset::in, prog_varset::in, pair(prog_var, tvar)::in, io::di, io::uo)
-    is det.
-
-print_var_constraints(ConstraintMap, VarConstraints, TVarSet, ProgVarSet,
-        Var - TVar, !IO) :-
+print_var_constraints(OutputStream, ConstraintMap, VarConstraints,
+        TVarSet, ProgVarSet, Var - TVar, !IO) :-
     VarName = mercury_var_to_string_vs(ProgVarSet, print_name_and_num, Var),
     TVarName = mercury_var_to_string_vs(TVarSet, print_name_and_num, TVar),
-    io.print(VarName ++ " -> " ++ TVarName ++ "\n", !IO),
+    io.print(OutputStream, VarName ++ " -> " ++ TVarName ++ "\n", !IO),
     ( if map.search(VarConstraints, TVar, ConstraintIds0) then
         ConstraintIds = ConstraintIds0
     else
@@ -2360,7 +2400,7 @@ print_var_constraints(ConstraintMap, VarConstraints, TVarSet, ProgVarSet,
     list.map(constraint_to_string(2, TVarSet, ConstraintMap), ConstraintIds,
         StringReps),
     String = string.join_list(",\n", StringReps),
-    io.print(String ++ "\n", !IO).
+    io.print(OutputStream, String ++ "\n", !IO).
 
 :- pred constraint_to_string(int::in, tvarset::in, type_constraint_map::in,
     type_constraint_id::in, string::out) is det.

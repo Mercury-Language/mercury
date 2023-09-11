@@ -511,7 +511,9 @@ solve(SCs, Bindings) :-
     solve(SCs, map.init, Bindings0),
     bind_equivalent_vars(SCs, Bindings0, Bindings),
     trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
-        io.nl(!IO)
+        % XXX STREAM
+        io.output_stream(OutputStream, !IO),
+        io.nl(OutputStream, !IO)
     ).
 
     % solve(SCs, Bs0, Bs) succeeds if Bs satisfies the constraints SCs,
@@ -578,14 +580,19 @@ solve_assgt(SCs, (X `assign` V), Bs0, Bs) :-
             true
         else
             trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
-                io.write_string(mc_var_to_string(X) ++ " conflict", !IO)
+                % XXX STREAM
+                io.output_stream(OutputStream, !IO),
+                io.write_string(OutputStream,
+                    mc_var_to_string(X) ++ " conflict", !IO)
             )
         ),
         V  = V0,
         Bs = Bs0
     else
         trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
-            io.write_string(".", !IO)
+            % XXX STREAM
+            io.output_stream(OutputStream, !IO),
+            io.write_string(OutputStream, ".", !IO)
         ),
         % XXX
         Bs1 = Bs0 ^ elem(X) := V,
@@ -623,14 +630,18 @@ solve_complex_cstrt(SCs, X, V, eqv_disj(Y, Zs), Bs0, Bs) :-
         (
             V  = yes,
             trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
-                io.write_string("1<", !IO)
+                % XXX STREAM
+                io.output_stream(OutputStream, !IO),
+                io.write_string(OutputStream, "1<", !IO)
             ),
             not all_no(Bs0, Zs),
             Bs = Bs0
         ;
             V  = no,
             trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
-                io.write_string("0<", !IO)
+                % XXX STREAM
+                io.output_stream(OutputStream, !IO),
+                io.write_string(OutputStream, "0<", !IO)
             ),
             solve_assgts(SCs, list.map(func(Z) = Z `assign` no, Zs), Bs0, Bs)
         )
@@ -639,13 +650,17 @@ solve_complex_cstrt(SCs, X, V, eqv_disj(Y, Zs), Bs0, Bs) :-
         (
             V = yes,
             trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
-                io.write_string(">1", !IO)
+                % XXX STREAM
+                io.output_stream(OutputStream, !IO),
+                io.write_string(OutputStream, ">1", !IO)
             ),
             solve_assgt(SCs, Y `assign` yes, Bs0, Bs)
         ;
             V = no,
             trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
-                io.write_string(">0", !IO)
+                % XXX STREAM
+                io.output_stream(OutputStream, !IO),
+                io.write_string(OutputStream, ">0", !IO)
             ),
             ( if all_no(Bs0, Zs) then
                 solve_assgt(SCs, Y `assign` no, Bs0, Bs)
@@ -759,8 +774,11 @@ solve_var(SCs, X, Bs0, Bs) :-
     else
         ( V = yes ; V = no ),
         trace [compiletime(flag("debug_mcsolver")), io(!IO)] (
-            write_string("\n" ++ mc_var_to_string(X) ++ " = ", !IO),
-            print(V, !IO)
+            % XXX STREAM
+            io.output_stream(OutputStream, !IO),
+            io.write_string(OutputStream,
+                "\n" ++ mc_var_to_string(X) ++ " = ", !IO),
+            io.print(OutputStream, V, !IO)
         ),
         solve_assgt(SCs, X `assign` V, Bs0, Bs)
     ).

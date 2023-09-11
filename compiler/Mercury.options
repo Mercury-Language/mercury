@@ -78,23 +78,12 @@ MCFLAGS-check_hlds.unique_modes           = --inline-vars-threshold 10000
 
 MCFLAGS-make.util                         += --no-halt-at-warn
 
-MCFLAGS-check_hlds.abstract_mode_constraints += --no-warn-implicit-stream-calls
-MCFLAGS-check_hlds.build_mode_constraints    += --no-warn-implicit-stream-calls
-MCFLAGS-check_hlds.mcsolver                  += --no-warn-implicit-stream-calls
-MCFLAGS-check_hlds.mode_constraint_robdd     += --no-warn-implicit-stream-calls
-MCFLAGS-check_hlds.mode_constraints          += --no-warn-implicit-stream-calls
-MCFLAGS-check_hlds.old_type_constraints      += --no-warn-implicit-stream-calls
-MCFLAGS-check_hlds.ordering_mode_constraints += --no-warn-implicit-stream-calls
-MCFLAGS-check_hlds.prop_mode_constraints     += --no-warn-implicit-stream-calls
-MCFLAGS-hlds.hlds_error_util                 += --no-warn-implicit-stream-calls
-MCFLAGS-hlds.inst_graph                      += --no-warn-implicit-stream-calls
 MCFLAGS-make.module_dep_file                 += --no-warn-implicit-stream-calls
 MCFLAGS-make.module_target                   += --no-warn-implicit-stream-calls
 MCFLAGS-make.program_target                  += --no-warn-implicit-stream-calls
 MCFLAGS-make.top_level                       += --no-warn-implicit-stream-calls
 MCFLAGS-mode_robdd.implications              += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.error_util                += --no-warn-implicit-stream-calls
-MCFLAGS-parse_tree.find_module               += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.grab_modules              += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.prog_ctgc                 += --no-warn-implicit-stream-calls
 MCFLAGS-top_level.mercury_compile_main       += --no-warn-implicit-stream-calls
@@ -108,8 +97,6 @@ MCFLAGS-transform_hlds.ctgc.structure_sharing.analysis \
 
 # These modules call predicates that write out error_specs without
 # specifying the stream to write to, which have now been marked as obsolete.
-MCFLAGS-check_hlds.ordering_mode_constraints += --no-warn-obsolete
-MCFLAGS-check_hlds.prop_mode_constraints     += --no-warn-obsolete
 MCFLAGS-make.program_target                  += --no-warn-obsolete
 MCFLAGS-parse_tree.find_module               += --no-warn-obsolete
 MCFLAGS-parse_tree.grab_modules              += --no-warn-obsolete

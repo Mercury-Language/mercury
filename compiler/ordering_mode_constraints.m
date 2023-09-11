@@ -91,13 +91,13 @@
 
 %-----------------------------------------------------------------------------%
 
-    % dump_goal_paths(ModuleInfo, PredIds, !IO)
+    % dump_goal_paths(OutputStream, ModuleInfo, PredIds, !IO)
     %
     % Dumps the goal paths of each goal in the order they appear for each
     % predicate in PredIds for the purposes of visually checking re-ordering.
     %
-:- pred dump_goal_paths(module_info::in, list(pred_id)::in, io::di, io::uo)
-    is det.
+:- pred dump_goal_paths(io.text_output_stream::in, module_info::in,
+    list(pred_id)::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -694,34 +694,34 @@ topological_sort_min_reordering(Constraints0, Conjuncts0, Ordering) :-
 
 %-----------------------------------------------------------------------------%
 
-dump_goal_paths(ModuleInfo, PredIds0, !IO) :-
+dump_goal_paths(OutputStream, ModuleInfo, PredIds0, !IO) :-
     % Process only predicates from this module.
     list.filter(module_info_pred_status_is_imported(ModuleInfo),
         PredIds0, _, PredIds),
-    list.foldl(dump_pred_goal_paths(ModuleInfo), PredIds, !IO).
+    list.foldl(dump_pred_goal_paths(OutputStream, ModuleInfo), PredIds, !IO).
 
     % dump_pred_goal_paths(ModuleInfo, PredId, !IO)
     %
     % Dumps the goal paths of each goal in the order they appear for
     % predicate PredId for the purposes of visually checking re-ordering.
     %
-:- pred dump_pred_goal_paths(module_info::in, pred_id::in, io::di, io::uo)
-    is det.
+:- pred dump_pred_goal_paths(io.text_output_stream::in, module_info::in,
+    pred_id::in, io::di, io::uo) is det.
 
-dump_pred_goal_paths(ModuleInfo, PredId, !IO) :-
+dump_pred_goal_paths(OutputStream, ModuleInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     ProcIds = map.keys(ProcTable),
 
     % Start with a blank line.
     module_info_get_globals(ModuleInfo, Globals),
-    write_error_pieces_plain(Globals, [fixed("")], !IO),
+    write_error_pieces_plain(OutputStream, Globals, [fixed("")], !IO),
 
     PredHeaderFormat = [words("Goal paths for")] ++
         describe_one_pred_info_name(should_module_qualify, PredInfo) ++
         [suffix("."), nl],
 
-    write_error_pieces_plain(Globals, PredHeaderFormat, !IO),
+    write_error_pieces_plain(OutputStream, Globals, PredHeaderFormat, !IO),
 
     (
         ProcIds = [],
@@ -730,46 +730,48 @@ dump_pred_goal_paths(ModuleInfo, PredId, !IO) :-
         get_clause_list_maybe_repeated(ClausesRep, Clauses),
         Goals = list.map(func(Clause) = clause_body(Clause), Clauses),
         Indent = 0,
-        list.foldl(dump_goal_goal_paths(Globals, Indent), Goals, !IO)
+        list.foldl(dump_goal_goal_paths(OutputStream, Globals, Indent),
+            Goals, !IO)
     ;
         ProcIds = [_ | _],
-        list.foldl(dump_proc_goal_paths(Globals, ProcTable), ProcIds, !IO)
+        list.foldl(dump_proc_goal_paths(OutputStream, Globals, ProcTable),
+            ProcIds, !IO)
     ).
 
-    % dump_proc_goal_paths(Globals, ProcTable, ProcId, !IO)
+    % dump_proc_goal_paths(OutputStream, Globals, ProcTable, ProcId, !IO)
     %
     % Dumps the goal paths of each goal in the order they appear for
     % procedure ProcId for the purposes of visually checking re-ordering.
     %
-:- pred dump_proc_goal_paths(globals::in, proc_table::in, proc_id::in,
-    io::di, io::uo) is det.
+:- pred dump_proc_goal_paths(io.text_output_stream::in, globals::in,
+    proc_table::in, proc_id::in, io::di, io::uo) is det.
 
-dump_proc_goal_paths(Globals, ProcTable, ProcId, !IO) :-
+dump_proc_goal_paths(OutputStream, Globals, ProcTable, ProcId, !IO) :-
     ProcIdString = string.from_int(proc_id_to_int(ProcId)),
     ProcHeaderFormat = [words("mode"), words(ProcIdString), suffix(":")],
-    write_error_pieces_plain(Globals, ProcHeaderFormat, !IO),
+    write_error_pieces_plain(OutputStream, Globals, ProcHeaderFormat, !IO),
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_get_goal(ProcInfo, Goal),
     Indent = 0,
-    dump_goal_goal_paths(Globals, Indent, Goal, !IO).
+    dump_goal_goal_paths(OutputStream, Globals, Indent, Goal, !IO).
 
-    % dump_goal_goal_paths(Globals, Indent, Goal, !IO)
+    % dump_goal_goal_paths(OutputStream, Globals, Indent, Goal, !IO)
     %
     % Dumps the goal paths for this goal at the indent depth Indent, then
     % recurses for each sub-goal at one further level of indent,
     % in the order they appear, for the purposes of visually checking
     % re-ordering.
     %
-:- pred dump_goal_goal_paths(globals::in, int::in, hlds_goal::in,
-    io::di, io::uo) is det.
+:- pred dump_goal_goal_paths(io.text_output_stream::in, globals::in,
+    int::in, hlds_goal::in, io::di, io::uo) is det.
 
-dump_goal_goal_paths(Globals, Indent, Goal, !IO) :-
+dump_goal_goal_paths(OutputStream, Globals, Indent, Goal, !IO) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     GoalId = goal_info_get_goal_id(GoalInfo),
     GoalId = goal_id(GoalIdNum),
     GoalIdPieces = [words(string.int_to_string(GoalIdNum)), nl],
-    write_error_pieces_maybe_with_context(Globals, no, Indent, GoalIdPieces,
-        !IO),
+    write_error_pieces_maybe_with_context(OutputStream, Globals, no, Indent,
+        GoalIdPieces, !IO),
 
     % Dump the goal paths for each subgoal in GoalExpr at SubGoalIndent,
     % in the order they appear, for the purposes of visually checking
@@ -784,30 +786,36 @@ dump_goal_goal_paths(Globals, Indent, Goal, !IO) :-
         % There are no subgoals to recurse on.
     ;
         GoalExpr = conj(_, Goals),
-        list.foldl(dump_goal_goal_paths(Globals, SubGoalIndent), Goals, !IO)
+        list.foldl(dump_goal_goal_paths(OutputStream, Globals, SubGoalIndent),
+            Goals, !IO)
     ;
         GoalExpr = disj(Goals),
-        list.foldl(dump_goal_goal_paths(Globals, SubGoalIndent), Goals, !IO)
+        list.foldl(dump_goal_goal_paths(OutputStream, Globals, SubGoalIndent),
+            Goals, !IO)
     ;
         GoalExpr = switch(_, _, _),
         unexpected($pred, "switch")
     ;
         GoalExpr = if_then_else(_, CondGoal, ThenGoal, ElseGoal),
         Goals = [CondGoal, ThenGoal, ElseGoal],
-        list.foldl(dump_goal_goal_paths(Globals, SubGoalIndent), Goals, !IO)
+        list.foldl(dump_goal_goal_paths(OutputStream, Globals, SubGoalIndent),
+            Goals, !IO)
     ;
         GoalExpr = negation(SubGoal),
-        dump_goal_goal_paths(Globals, SubGoalIndent, SubGoal, !IO)
+        dump_goal_goal_paths(OutputStream, Globals, SubGoalIndent,
+            SubGoal, !IO)
     ;
         GoalExpr = scope(_, SubGoal),
-        dump_goal_goal_paths(Globals, SubGoalIndent, SubGoal, !IO)
+        dump_goal_goal_paths(OutputStream, Globals, SubGoalIndent,
+            SubGoal, !IO)
     ;
         GoalExpr = shorthand(ShortHand),
         (
             ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
             Goals = [MainGoal | OrElseGoals],
-            list.foldl(dump_goal_goal_paths(Globals, SubGoalIndent), Goals,
-                !IO)
+            list.foldl(
+                dump_goal_goal_paths(OutputStream, Globals, SubGoalIndent),
+                Goals, !IO)
         ;
             ShortHand = try_goal(_, _, _),
             unexpected($pred, "try_goal")

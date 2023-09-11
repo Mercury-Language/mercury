@@ -72,8 +72,9 @@
     % the information in the pred_constraints_map, indicating which
     % predicate each set of constraints applies to.
     %
-:- pred pretty_print_pred_constraints_map(module_info::in, mc_varset::in,
-    pred_constraints_map::in, io::di, io::uo) is det.
+:- pred pretty_print_pred_constraints_map(io.text_output_stream::in,
+    module_info::in, mc_varset::in, pred_constraints_map::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -509,61 +510,67 @@ module_info_pred_status_is_imported(ModuleInfo, PredId) :-
     % based on the default filename for the module followed by the
     % predicate's name.
     %
-pretty_print_pred_constraints_map(ModuleInfo, ConstraintVarSet,
+pretty_print_pred_constraints_map(OutputStream, ModuleInfo, ConstraintVarSet,
         PredConstraintsMap, !IO) :-
     ConstrainedPreds = map.keys(PredConstraintsMap),
     list.foldl(
-        pretty_print_pred_constraints(ModuleInfo, ConstraintVarSet,
-            PredConstraintsMap),
+        pretty_print_pred_constraints(OutputStream, ModuleInfo,
+            ConstraintVarSet, PredConstraintsMap),
         ConstrainedPreds, !IO).
 
     % Print the constraints for the specified predicate from the
     % pred_constraints_map to the current output stream in a human
     % readable format.
     %
-:- pred pretty_print_pred_constraints(module_info::in, mc_varset::in,
-    pred_constraints_map::in, pred_id::in, io::di, io::uo) is det.
+:- pred pretty_print_pred_constraints(io.text_output_stream::in,
+    module_info::in, mc_varset::in, pred_constraints_map::in, pred_id::in,
+    io::di, io::uo) is det.
 
-pretty_print_pred_constraints(ModuleInfo, ConstraintVarSet,
+pretty_print_pred_constraints(OutputStream, ModuleInfo, ConstraintVarSet,
         PredConstraintsMap, PredId, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
 
     % Start with a blank line.
-    write_error_pieces_plain(Globals, [fixed("")], !IO),
+    write_error_pieces_plain(OutputStream, Globals, [fixed("")], !IO),
 
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    write_error_pieces_plain(Globals, [words("Constraints for")] ++
+    write_error_pieces_plain(OutputStream, Globals,
+        [words("Constraints for")] ++
         describe_one_pred_info_name(should_module_qualify, PredInfo) ++
         [suffix(":")], !IO),
 
     map.lookup(PredConstraintsMap, PredId, {_, PredConstraints}),
     AllProcAnnConstraints = allproc_annotated_constraints(PredConstraints),
-    dump_constraints_and_annotations(Globals, ConstraintVarSet,
+    dump_constraints_and_annotations(OutputStream, Globals, ConstraintVarSet,
         AllProcAnnConstraints, !IO),
     list.foldl(
-        pretty_print_proc_constraints(ModuleInfo, ConstraintVarSet,
-            PredConstraints, PredId),
+        pretty_print_proc_constraints(OutputStream, ModuleInfo,
+            ConstraintVarSet, PredConstraints, PredId),
         pred_info_all_procids(PredInfo), !IO).
 
     % Puts the constraints specific to the procedure indicated from
     % the pred_p_c_constraints to the current output stream in human
     % readable format.
     %
-:- pred pretty_print_proc_constraints(module_info::in, mc_varset::in,
-    pred_p_c_constraints::in, pred_id::in, proc_id::in, io::di, io::uo) is det.
+:- pred pretty_print_proc_constraints(io.text_output_stream::in,
+    module_info::in, mc_varset::in, pred_p_c_constraints::in,
+    pred_id::in, proc_id::in, io::di, io::uo) is det.
 
-pretty_print_proc_constraints(ModuleInfo, ConstraintVarSet, PredConstraints,
-        PredId, ProcId, !IO) :-
+pretty_print_proc_constraints(OutputStream, ModuleInfo, ConstraintVarSet,
+        PredConstraints, PredId, ProcId, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
 
     % Start with a blank line.
-    write_error_pieces_plain(Globals, [fixed("")], !IO),
+    write_error_pieces_plain(OutputStream, Globals, [fixed("")], !IO),
 
-    write_error_pieces_plain(Globals, describe_one_proc_name(ModuleInfo,
-        should_module_qualify, proc(PredId, ProcId)) ++ [suffix(":")], !IO),
+    PredProcId = proc(PredId, ProcId),
+    ProcNamePieces =
+        describe_one_proc_name(ModuleInfo, should_module_qualify, PredProcId),
+    write_error_pieces_plain(OutputStream, Globals,
+        ProcNamePieces ++ [suffix(":")], !IO),
     ProcSpecAnnConstraints =
         proc_specific_annotated_constraints(ProcId, PredConstraints),
-    dump_constraints_and_annotations(Globals, ConstraintVarSet,
+    dump_constraints_and_annotations(OutputStream, Globals, ConstraintVarSet,
         ProcSpecAnnConstraints, !IO).
 
 %----------------------------------------------------------------------------%
