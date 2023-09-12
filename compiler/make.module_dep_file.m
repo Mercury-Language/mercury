@@ -223,15 +223,16 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
                 % file for the required module. Usually the purported source
                 % file would have a later timestamp than the .module_dep file,
                 % though, so the other branch would be taken.
-                read_module_dependencies_no_search(Globals, RebuildModuleDeps,
-                    ModuleName, !Info, !IO)
+                read_module_dependencies_no_search(ProgressStream, Globals,
+                    RebuildModuleDeps, ModuleName, !Info, !IO)
             else
-                make_module_dependencies(Globals, ModuleName, !Info, !IO)
+                make_module_dependencies(ProgressStream, Globals,
+                    ModuleName, !Info, !IO)
             )
         ;
             MaybeSourceFileTimestamp = error(_),
-            read_module_dependencies_search(Globals, RebuildModuleDeps,
-                ModuleName, !Info, !IO),
+            read_module_dependencies_search(ProgressStream, Globals,
+                RebuildModuleDeps, ModuleName, !Info, !IO),
 
             % Check for the case where the module name doesn't match the
             % source file name (e.g. parse.m contains module mdb.parse).
@@ -278,8 +279,8 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
                         % from the standard library, even though there is
                         % no longer any local source file for the
                         % `mercury_term_lexer' module.
-                        make_module_dependencies(Globals, ModuleName,
-                            !Info, !IO)
+                        make_module_dependencies(ProgressStream, Globals,
+                            ModuleName, !Info, !IO)
                     )
                 ;
                     MaybeSourceFileTimestamp1 = error(Message),
@@ -311,7 +312,8 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
         % is in another directory.
         (
             RebuildModuleDeps = do_rebuild_module_deps,
-            make_module_dependencies(Globals, ModuleName, !Info, !IO)
+            make_module_dependencies(ProgressStream, Globals, ModuleName,
+                !Info, !IO)
         ;
             RebuildModuleDeps = do_not_rebuild_module_deps,
             ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
@@ -489,46 +491,44 @@ contains_foreign_export_to_string(ContainsForeignExport,
 
 %---------------------------------------------------------------------------%
 
-:- pred read_module_dependencies_search(globals::in,
+:- pred read_module_dependencies_search(io.text_output_stream::in, globals::in,
     maybe_rebuild_module_deps::in, module_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-read_module_dependencies_search(Globals, RebuildModuleDeps, ModuleName,
-        !Info, !IO) :-
+read_module_dependencies_search(ProgressStream, Globals, RebuildModuleDeps,
+        ModuleName, !Info, !IO) :-
     globals.lookup_accumulating_option(Globals, search_directories,
         SearchDirs),
-    read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs,
-        ModuleName, !Info, !IO).
+    read_module_dependencies_2(ProgressStream, Globals, RebuildModuleDeps,
+        SearchDirs, ModuleName, !Info, !IO).
 
-:- pred read_module_dependencies_no_search(globals::in,
-    maybe_rebuild_module_deps::in, module_name::in,
+:- pred read_module_dependencies_no_search(io.text_output_stream::in,
+    globals::in, maybe_rebuild_module_deps::in, module_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-read_module_dependencies_no_search(Globals, RebuildModuleDeps, ModuleName,
-        !Info, !IO) :-
-    read_module_dependencies_2(Globals, RebuildModuleDeps,
+read_module_dependencies_no_search(ProgressStream, Globals, RebuildModuleDeps,
+        ModuleName, !Info, !IO) :-
+    read_module_dependencies_2(ProgressStream, Globals, RebuildModuleDeps,
         [dir.this_directory], ModuleName, !Info, !IO).
 
-:- pred read_module_dependencies_2(globals::in, maybe_rebuild_module_deps::in,
-    list(dir_name)::in, module_name::in, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred read_module_dependencies_2(io.text_output_stream::in, globals::in,
+    maybe_rebuild_module_deps::in, list(dir_name)::in, module_name::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
-        !Info, !IO) :-
+read_module_dependencies_2(ProgressStream, Globals, RebuildModuleDeps,
+        SearchDirs, ModuleName, !Info, !IO) :-
     module_name_to_search_file_name(Globals, $pred,
         ext_cur_ngs(ext_cur_ngs_misc_module_dep), ModuleName, ModuleDepFile),
     search_for_file_returning_dir_and_stream(SearchDirs, ModuleDepFile,
         MaybeDirAndStream, !IO),
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
     (
         MaybeDirAndStream = ok(path_name_and_stream(ModuleDir, DepStream)),
         mercury_term_parser.read_term(DepStream, TermResult, !IO),
         io.close_input(DepStream, !IO),
         (
             TermResult = term(_, Term),
-            read_module_dependencies_3(Globals, SearchDirs, ModuleName,
-                ModuleDir, ModuleDepFile, Term, Result, !Info, !IO)
+            read_module_dependencies_3(ProgressStream, Globals, SearchDirs,
+                ModuleName, ModuleDir, ModuleDepFile, Term, Result, !Info, !IO)
         ;
             TermResult = eof,
             Result = error("unexpected eof")
@@ -544,8 +544,8 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
                 ModuleDir ++ "/" ++ ModuleDepFile, ErrorMsg, Msg),
             % XXX MAKE_STREAM
             io.write_string(ProgressStream, Msg, !IO),
-            read_module_dependencies_remake(Globals, RebuildModuleDeps,
-                ModuleName, !Info, !IO)
+            read_module_dependencies_remake(ProgressStream, Globals,
+                RebuildModuleDeps, ModuleName, !Info, !IO)
         )
     ;
         MaybeDirAndStream = error(ErrorMsg),
@@ -554,16 +554,16 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
                 ModuleDepFile, ErrorMsg),
             DebugMsg),
         maybe_write_msg(ProgressStream, DebugMsg, !IO),
-        read_module_dependencies_remake(Globals, RebuildModuleDeps,
-            ModuleName, !Info, !IO)
+        read_module_dependencies_remake(ProgressStream, Globals,
+            RebuildModuleDeps, ModuleName, !Info, !IO)
     ).
 
-:- pred read_module_dependencies_3(globals::in, list(dir_name)::in,
-    module_name::in, dir_name::in, file_name::in, term::in, maybe_error::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred read_module_dependencies_3(io.text_output_stream::in, globals::in,
+    list(dir_name)::in, module_name::in, dir_name::in, file_name::in, term::in,
+    maybe_error::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
-read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
-        ModuleDepFile, Term, Result, !Info, !IO) :-
+read_module_dependencies_3(ProgressStream, Globals, SearchDirs, ModuleName,
+        ModuleDir, ModuleDepFile, Term, Result, !Info, !IO) :-
     ( if
         parse_module_summary_file(ModuleName, ModuleDir, Term, ModuleSummary)
     then
@@ -601,7 +601,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
             NestedSubModules =
                 get_nested_children_list_of_top_module(MaybeTopModule),
             list.foldl2(
-                read_module_dependencies_2(Globals,
+                read_module_dependencies_2(ProgressStream, Globals,
                     do_not_rebuild_module_deps, SearchDirs),
                 NestedSubModules, !Info, !IO),
             ( if some_bad_module_dependency(!.Info, NestedSubModules) then
@@ -802,15 +802,16 @@ check_regular_file_exists(FileName, FileExists, !IO) :-
 
     % Something went wrong reading the dependencies, so just rebuild them.
     %
-:- pred read_module_dependencies_remake(globals::in,
+:- pred read_module_dependencies_remake(io.text_output_stream::in, globals::in,
     maybe_rebuild_module_deps::in, module_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-read_module_dependencies_remake(Globals, RebuildModuleDeps, ModuleName,
-        !Info, !IO) :-
+read_module_dependencies_remake(ProgressStream, Globals, RebuildModuleDeps,
+        ModuleName, !Info, !IO) :-
     (
         RebuildModuleDeps = do_rebuild_module_deps,
-        make_module_dependencies(Globals, ModuleName, !Info, !IO)
+        make_module_dependencies(ProgressStream, Globals, ModuleName,
+            !Info, !IO)
     ;
         RebuildModuleDeps = do_not_rebuild_module_deps
     ).
@@ -834,12 +835,10 @@ read_module_dependencies_remake_msg(RebuildModuleDeps, ModuleDepsFile,
     % get_module_dependencies ensures this by making the dependencies
     % for all parent modules of the requested module first.
     %
-:- pred make_module_dependencies(globals::in, module_name::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred make_module_dependencies(io.text_output_stream::in, globals::in,
+    module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
+make_module_dependencies(ProgressStream, Globals, ModuleName, !Info, !IO) :-
     prepare_to_redirect_output(ModuleName, ProgressStream, MaybeErrorStream,
         !Info, !IO),
     (
@@ -849,8 +848,6 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         % but factoring that call out of the latter would be non-trivial,
         % and is better left for when we replace the whole redirect/unredirect
         % machinery with the use of explicit streams.
-        % XXX This sets OldOutputStream = ProgressStream.
-        io.set_output_stream(ErrorStream, OldOutputStream, !IO),
         % XXX Why ask for the timestamp if we then ignore it?
         % NOTE: Asking for a timestamp and then ignoring it *could* make sense
         % if we recorded HaveReadSrc in a have_read_module_map, because
@@ -873,7 +870,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             ( if set.is_non_empty(Fatal) then
                 DisplayErrorReadingFile = yes,
                 make_module_dependencies_fatal_error(Globals,
-                    OldOutputStream, ErrorStream, SourceFileName, ModuleName,
+                    ProgressStream, ErrorStream, SourceFileName, ModuleName,
                     ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO)
             else if set.contains(NonFatal, rme_unexpected_module_name) then
                 % If the source file does not contain the expected module, then
@@ -882,11 +879,11 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                 % which the user needs to delete manually.
                 DisplayErrorReadingFile = no,
                 make_module_dependencies_fatal_error(Globals,
-                    OldOutputStream, ErrorStream, SourceFileName, ModuleName,
+                    ProgressStream, ErrorStream, SourceFileName, ModuleName,
                     ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO)
             else
                 make_module_dependencies_no_fatal_error(Globals,
-                    OldOutputStream, ErrorStream, SourceFileName, ModuleName,
+                    ProgressStream, ErrorStream, SourceFileName, ModuleName,
                     ParseTreeSrc, ReadModuleErrors, !Info, !IO)
             )
         ;
@@ -899,7 +896,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
 
             DisplayErrorReadingFile = yes,
             make_module_dependencies_fatal_error(Globals,
-                OldOutputStream, ErrorStream, SourceFileName, ModuleName,
+                ProgressStream, ErrorStream, SourceFileName, ModuleName,
                 ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO)
         )
     ;
@@ -911,14 +908,11 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
     file_name::in, module_name::in, read_module_errors::in, bool::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_module_dependencies_fatal_error(Globals, OldOutputStream, ErrorStream,
+make_module_dependencies_fatal_error(Globals, ProgressStream, ErrorStream,
         SourceFileName, ModuleName, ReadModuleErrors, DisplayErrorReadingFile,
         !Info, !IO) :-
     Specs0 = get_read_module_specs(ReadModuleErrors),
     write_error_specs(ErrorStream, Globals, Specs0, !IO),
-    io.set_output_stream(OldOutputStream, _, !IO),
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
     (
         DisplayErrorReadingFile = yes,
         io.format(ProgressStream,
@@ -961,14 +955,9 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
     SubModuleNames = list.map(parse_tree_module_src_project_name,
          ParseTreeModuleSrcs),
 
-    % io.set_output_stream(ErrorStream, _, !IO),
     % XXX Why are we ignoring all previously reported errors?
     io.set_exit_status(0, !IO),
     write_error_specs(ErrorStream, Globals, Specs, !IO),
-    % XXX MAKE_STREAM
-    % XXX Now that we pass ErrorStream to write_error_specs instead of
-    % setting the output stream to ErrorStream, this may now be redundant.
-    io.set_output_stream(OldOutputStream, _, !IO),
 
     list.foldl(make_info_add_module_and_imports_as_dep,
         BurdenedModules, !Info),
