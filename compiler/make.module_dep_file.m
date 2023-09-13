@@ -945,7 +945,7 @@ make_module_dependencies_fatal_error(Globals, ProgressStream, ErrorStream,
     read_module_errors::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
+make_module_dependencies_no_fatal_error(Globals, ProgressStream, ErrorStream,
         SourceFileName, ModuleName, ParseTreeSrc, ReadModuleErrors,
         !Info, !IO) :-
     parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
@@ -974,7 +974,7 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
     NonFatalErrors = ReadModuleErrors ^ rm_nonfatal_errors,
     ( if set.is_empty(NonFatalErrors) then
         maybe_making_filename_msg(Globals, MadeTargetFileName, MakingMsg),
-        maybe_write_msg(OldOutputStream, MakingMsg, !IO),
+        maybe_write_msg(ProgressStream, MakingMsg, !IO),
         setup_checking_for_interrupt(CookieMSI, !IO),
 
         globals.get_default_options(Globals, DefaultOptionTable),
@@ -987,20 +987,19 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
             OptionVariables, OptionArgs, ExtraOptions, MayBuild, !IO),
         (
             MayBuild = may_not_build(MSISpecs),
+            % XXX MAKE_STREAM
             write_error_specs(ErrorStream, Globals, MSISpecs, !IO),
             Succeeded0 = did_not_succeed
         ;
             MayBuild = may_build(_AllOptions, BuildGlobals),
             % Printing progress to the current output stream
             % preserves old behavior.
-            % XXX MAKE_STREAM
-            % XXX Our caller should pass us ProgressStream.
-            io.output_stream(ProgressStream, !IO),
             make_int3_files(ProgressStream, ErrorStream, BuildGlobals,
                 ParseTreeModuleSrcs, Succeeded0, !Info, !IO)
         ),
 
-        CleanupMSI = cleanup_int3_files(Globals, SubModuleNames),
+        CleanupMSI =
+            cleanup_int3_files(ProgressStream, Globals, SubModuleNames),
         teardown_checking_for_interrupt(VeryVerbose, CookieMSI,
             CleanupMSI, Succeeded0, Succeeded, !Info, !IO)
     else
@@ -1008,19 +1007,17 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
     ),
 
     setup_checking_for_interrupt(CookieWMDF, !IO),
-    % XXX MAKE_STREAM
-    io.output_stream(WriteProgressStream, !IO),
-    list.foldl(do_write_module_dep_file(WriteProgressStream, Globals),
+    list.foldl(do_write_module_dep_file(ProgressStream, Globals),
         BurdenedModules, !IO),
-    CleanupWMDF = cleanup_module_dep_files(Globals, SubModuleNames),
+    CleanupWMDF =
+        cleanup_module_dep_files(ProgressStream, Globals, SubModuleNames),
     teardown_checking_for_interrupt(VeryVerbose, CookieWMDF,
         CleanupWMDF, succeeded, _Succeeded, !Info, !IO),
 
-    record_made_target(WriteProgressStream, Globals,
-        MadeTarget, MadeTargetFileName, process_module(task_make_int3),
-        Succeeded, !Info, !IO),
-    unredirect_output(Globals, ModuleName,
-        WriteProgressStream, ErrorStream, !Info, !IO).
+    record_made_target(ProgressStream, Globals, MadeTarget, MadeTargetFileName,
+        process_module(task_make_int3), Succeeded, !Info, !IO),
+    unredirect_output(Globals, ModuleName, ProgressStream, ErrorStream,
+        !Info, !IO).
 
 :- pred make_info_add_module_and_imports_as_dep(burdened_module::in,
     make_info::in, make_info::out) is det.
@@ -1046,33 +1043,33 @@ make_int3_files(ProgressStream, ErrorStream, Globals,
         ParseTreeModuleSrcs, Succeededs, !IO),
     Succeeded = and_list(Succeededs).
 
-:- pred cleanup_int3_files(globals::in, list(module_name)::in,
+:- pred cleanup_int3_files(io.text_output_stream::in, globals::in,
+    list(module_name)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-cleanup_int3_files(Globals, ModuleNames, !Info, !IO) :-
-    list.foldl2(cleanup_int3_file(Globals), ModuleNames, !Info, !IO).
+cleanup_int3_files(ProgressStream, Globals, ModuleNames, !Info, !IO) :-
+    list.foldl2(cleanup_int3_file(ProgressStream, Globals), ModuleNames,
+        !Info, !IO).
 
-:- pred cleanup_int3_file(globals::in, module_name::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred cleanup_int3_file(io.text_output_stream::in, globals::in,
+    module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
-cleanup_int3_file(Globals, ModuleName, !Info, !IO) :-
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
+cleanup_int3_file(ProgressStream, Globals, ModuleName, !Info, !IO) :-
     remove_make_target_file_by_name(ProgressStream, Globals, $pred,
         very_verbose, ModuleName, module_target_int3, !Info, !IO).
 
-:- pred cleanup_module_dep_files(globals::in, list(module_name)::in,
+:- pred cleanup_module_dep_files(io.text_output_stream::in, globals::in,
+    list(module_name)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-cleanup_module_dep_files(Globals, ModuleNames, !Info, !IO) :-
-    list.foldl2(cleanup_module_dep_file(Globals), ModuleNames, !Info, !IO).
+cleanup_module_dep_files(ProgressStream, Globals, ModuleNames, !Info, !IO) :-
+    list.foldl2(cleanup_module_dep_file(ProgressStream, Globals),
+        ModuleNames, !Info, !IO).
 
-:- pred cleanup_module_dep_file(globals::in, module_name::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred cleanup_module_dep_file(io.text_output_stream::in, globals::in,
+    module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
-cleanup_module_dep_file(Globals, ModuleName, !Info, !IO) :-
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
+cleanup_module_dep_file(ProgressStream, Globals, ModuleName, !Info, !IO) :-
     remove_module_file_for_make(ProgressStream, Globals, verbose_make,
         ModuleName, ext_cur_ngs(ext_cur_ngs_misc_module_dep), !Info, !IO).
 
