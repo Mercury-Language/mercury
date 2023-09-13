@@ -2129,7 +2129,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
             then
                 construct_used_file_contents(!.HLDS, RecompInfo,
                     MaybeTopModule, TimestampMap, UsedFileContents),
-                write_usage_file(!.HLDS, UsedFileContents, !IO)
+                write_usage_file(ProgressStream, !.HLDS, UsedFileContents, !IO)
             else
                 true
             ),

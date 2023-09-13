@@ -142,8 +142,8 @@
     %
 :- func used_file_version_number = int.
 
-:- pred write_usage_file(module_info::in, used_file_contents::in,
-    io::di, io::uo) is det.
+:- pred write_usage_file(io.text_output_stream::in, module_info::in,
+    used_file_contents::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -238,13 +238,12 @@ init_resolved_used_items =
 
 used_file_version_number = 2.
 
-write_usage_file(ModuleInfo, UsedFileContents, !IO) :-
+write_usage_file(ProgressStream, ModuleInfo, UsedFileContents, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     % XXX We should output to progress stream and error stream,
     % not CurStream.
-    io.output_stream(CurStream, !IO),
-    maybe_write_string(CurStream, Verbose,
+    maybe_write_string(ProgressStream, Verbose,
         "% Writing recompilation compilation dependency information\n", !IO),
 
     module_info_get_name(ModuleInfo, ModuleName),
@@ -258,7 +257,7 @@ write_usage_file(ModuleInfo, UsedFileContents, !IO) :-
     ;
         FileResult = error(IOError),
         io.error_message(IOError, IOErrorMessage),
-        io.format(CurStream, "\nError opening `%s' for output: %s.\n",
+        io.format(ProgressStream, "\nError opening `%s' for output: %s.\n",
             [s(FileName), s(IOErrorMessage)], !IO),
         io.set_exit_status(1, !IO)
     ).

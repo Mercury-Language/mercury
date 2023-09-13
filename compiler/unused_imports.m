@@ -33,14 +33,15 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
+:- import_module io.
 :- import_module list.
 
     % This predicate issues a warning for each import_module
     % which is not directly used in this module, plus those
     % which are in the interface but should be in the implementation.
     %
-:- pred warn_about_unused_imports(module_info::in, list(error_spec)::out)
-    is det.
+:- pred warn_about_unused_imports(io.text_output_stream::in, module_info::in,
+    list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -54,7 +55,6 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_inst_mode.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.passes_aux.
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -69,7 +69,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
@@ -82,9 +81,9 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-warn_about_unused_imports(ModuleInfo, Specs) :-
+warn_about_unused_imports(ProgressStream, ModuleInfo, Specs) :-
     module_info_get_name(ModuleInfo, ModuleName),
-    find_all_non_warn_modules(ModuleInfo, UsedModules),
+    find_all_non_warn_modules(ProgressStream, ModuleInfo, UsedModules),
 
     module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
     map.to_assoc_list(AvailModuleMap, ModuleAvails),
@@ -112,7 +111,6 @@ warn_about_unused_imports(ModuleInfo, Specs) :-
     trace [compile_time(flag("debug_unused_imports")),
         runtime(env("DEBUG_UNUSED_IMPORTS")), io(!IO)]
     (
-        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         io.write_string(ProgressStream, "warn_about_unused_imports\n", !IO),
         io.nl(ProgressStream, !IO),
         io.write_string(ProgressStream, "AvailInterfaceModules\n", !IO),
@@ -351,9 +349,10 @@ generate_unused_import_warning(ModuleName, UnusedModuleName, ImportOrUse,
     % generate unused module warnings about because the user cannot
     % eliminate their import.
     %
-:- pred find_all_non_warn_modules(module_info::in, used_modules::out) is det.
+:- pred find_all_non_warn_modules(io.text_output_stream::in, module_info::in,
+    used_modules::out) is det.
 
-find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
+find_all_non_warn_modules(ProgressStream, ModuleInfo, !:UsedModules) :-
     % Each parent module of the current module has imports that are
     % inherited by this module, so we have to add the used modules
     % of the parents to the set of used modules, as an import in the parent
@@ -377,11 +376,13 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
 
     module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
     const_struct_db_get_structs(ConstStructDb, ConstStructs),
-    list.foldl(const_struct_used_modules, ConstStructs, !UsedModules),
+    list.foldl(const_struct_used_modules(ProgressStream), ConstStructs,
+        !UsedModules),
     UsedModulesConstStruct = !.UsedModules,
 
     module_info_get_pred_id_table(ModuleInfo, PredIdTable),
-    map.foldl(pred_info_used_modules(ModuleInfo), PredIdTable, !UsedModules),
+    map.foldl(pred_info_used_modules(ProgressStream), PredIdTable,
+        !UsedModules),
     UsedModulesPredInfo = !.UsedModules,
 
     module_info_get_class_table(ModuleInfo, ClassTable),
@@ -389,7 +390,7 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
     UsedModulesClass = !.UsedModules,
 
     module_info_get_instance_table(ModuleInfo, InstanceTable),
-    map.foldl(class_instances_used_modules(ModuleInfo),
+    map.foldl(class_instances_used_modules(ProgressStream, ModuleInfo),
         InstanceTable, !UsedModules),
     UsedModulesInstance = !.UsedModules,
 
@@ -412,7 +413,6 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
     trace [compile_time(flag("dump_used_modules_summary")),
         runtime(env("DUMP_USED_MODULES_SUMMARY")), io(!IO)]
     (
-        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         io.nl(ProgressStream, !IO),
         UsedModulesHistory = [
             "initial"         - UsedModulesInit,
@@ -606,22 +606,23 @@ class_used_modules(class_id(Name, _Arity), ClassDefn, !UsedModules) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred class_instances_used_modules(module_info::in,
-    class_id::in, list(hlds_instance_defn)::in,
+:- pred class_instances_used_modules(io.text_output_stream::in,
+    module_info::in, class_id::in, list(hlds_instance_defn)::in,
     used_modules::in, used_modules::out) is det.
 
-class_instances_used_modules(ModuleInfo, ClassId, InstanceDefns,
-        !UsedModules) :-
+class_instances_used_modules(ProgressStream, ModuleInfo,
+        ClassId, InstanceDefns, !UsedModules) :-
     module_info_get_name(ModuleInfo, ThisModuleName),
-    list.foldl(instance_used_modules(ModuleInfo, ThisModuleName, ClassId),
+    list.foldl(
+        instance_used_modules(ProgressStream, ThisModuleName, ClassId),
         InstanceDefns, !UsedModules).
 
-:- pred instance_used_modules(module_info::in, module_name::in,
-    class_id::in, hlds_instance_defn::in,
+:- pred instance_used_modules(io.text_output_stream::in,
+    module_name::in, class_id::in, hlds_instance_defn::in,
     used_modules::in, used_modules::out) is det.
 
-instance_used_modules(ModuleInfo, ThisModuleName, ClassId, InstanceDefn,
-        !UsedModules) :-
+instance_used_modules(ProgressStream, ThisModuleName,
+        ClassId, InstanceDefn, !UsedModules) :-
     ClassId = class_id(ClassName, ClassArity),
     InstanceDefn = hlds_instance_defn(InstanceModuleName, InstanceStatus,
         _TVarSet, _OriginalTypes, Types, Constraints, _MaybeContext, _ProofMap,
@@ -629,7 +630,6 @@ instance_used_modules(ModuleInfo, ThisModuleName, ClassId, InstanceDefn,
 
     ( if ThisModuleName = InstanceModuleName then
         trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
-            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
             io.format(ProgressStream,
                 "instance_used_modules: class id %s/%d, instance in %s\n",
                 [s(sym_name_to_string(ClassName)), i(ClassArity),
@@ -652,10 +652,11 @@ instance_used_modules(ModuleInfo, ThisModuleName, ClassId, InstanceDefn,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred const_struct_used_modules(pair(int, const_struct)::in,
-    used_modules::in, used_modules::out) is det.
+:- pred const_struct_used_modules(io.text_output_stream::in,
+    pair(int, const_struct)::in, used_modules::in, used_modules::out) is det.
 
-const_struct_used_modules(ConstNum - ConstStruct, !UsedModules) :-
+const_struct_used_modules(ProgressStream, ConstNum - ConstStruct,
+        !UsedModules) :-
     % Every const_struct in the const_struct_db was put there because
     % it is used in module. None of the uses can be in the interface.
 
@@ -678,15 +679,14 @@ const_struct_used_modules(ConstNum - ConstStruct, !UsedModules) :-
             ( if set.is_empty(NewImpModules) then
                 true
             else
-                % The compiler normally writes to stderr. but without an
-                % explicit stream argument, write_doc writes to stdout.
-                io.output_stream(Stream, !IO),
-                io.format(Stream, "in const_struct #%d\n", [i(ConstNum)], !IO),
-                io.write_string(Stream, "new implementation modules: ", !IO),
-                output_module_name_set_nl(Stream, NewImpModules, !IO),
                 ConstStructDoc = pretty_printer.format(ConstStruct),
-                pretty_printer.write_doc(Stream, ConstStructDoc, !IO),
-                io.write_string(Stream, "------\n",!IO)
+                io.format(ProgressStream,
+                    "in const_struct #%d\n", [i(ConstNum)], !IO),
+                io.write_string(ProgressStream,
+                    "new implementation modules: ", !IO),
+                output_module_name_set_nl(ProgressStream, NewImpModules, !IO),
+                pretty_printer.write_doc(ProgressStream, ConstStructDoc, !IO),
+                io.write_string(ProgressStream, "------\n",!IO)
             )
         )
     ;
@@ -708,10 +708,10 @@ const_struct_arg_used_modules(ConstStructArg, !UsedModules) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred pred_info_used_modules(module_info::in, pred_id::in, pred_info::in,
-    used_modules::in, used_modules::out) is det.
+:- pred pred_info_used_modules(io.text_output_stream::in,
+    pred_id::in, pred_info::in, used_modules::in, used_modules::out) is det.
 
-pred_info_used_modules(ModuleInfo, PredId, PredInfo, !UsedModules) :-
+pred_info_used_modules(ProgressStream, PredId, PredInfo, !UsedModules) :-
     pred_info_get_status(PredInfo, PredStatus),
     DefinedInThisModule = pred_status_defined_in_this_module(PredStatus),
     (
@@ -736,7 +736,6 @@ pred_info_used_modules(ModuleInfo, PredId, PredInfo, !UsedModules) :-
         trace [compile_time(flag("dump_used_modules_pred_info")),
             runtime(env("DUMP_USED_MODULES_PRED_INFO")), io(!IO)]
         (
-            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo),
             pred_info_get_module_name(PredInfo, PredModuleName),
             pred_info_get_name(PredInfo, PredName),
@@ -769,9 +768,7 @@ pred_info_used_modules(ModuleInfo, PredId, PredInfo, !UsedModules) :-
         )
     ;
         DefinedInThisModule = no,
-
         trace [compile_time(flag("dump_used_modules_verbose")), io(!IO)] (
-            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo),
             pred_info_get_module_name(PredInfo, PredModuleName),
             pred_info_get_name(PredInfo, PredName),

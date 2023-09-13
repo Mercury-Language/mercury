@@ -242,7 +242,8 @@ unneeded_process_proc_msg(ProgressStream, PredProcId,
     % sets are accurate reflections of the true needs of goals.
     unneeded_pre_process_proc(!ProcInfo),
     PredProcId = proc(PredId, _),
-    unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, 1, _Successful).
+    unneeded_process_proc(ProgressStream, PredId, 1, _Successful,
+        !ProcInfo, !ModuleInfo).
 
 :- pred unneeded_pre_process_proc(proc_info::in, proc_info::out) is det.
 
@@ -300,10 +301,12 @@ unneeded_pre_process_proc(!ProcInfo) :-
                 uci_containing_goal_map :: containing_goal_map
             ).
 
-:- pred unneeded_process_proc(proc_info::in, proc_info::out,
-    module_info::in, module_info::out, pred_id::in, int::in, bool::out) is det.
+:- pred unneeded_process_proc(io.text_output_stream::in,
+    pred_id::in, int::in, bool::out,
+    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
+unneeded_process_proc(ProgressStream, PredId, Pass, Successful,
+        !ProcInfo, !ModuleInfo) :-
     fill_goal_id_slots_in_proc(!.ModuleInfo, ContainingGoalMap, !ProcInfo),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_var_table(!.ProcInfo, VarTable0),
@@ -331,24 +334,25 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
     ;
         Debug = yes,
         trace [io(!IO)] (
-            io.output_stream(Stream, !IO),
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
             PredName = pred_info_name(PredInfo),
             globals.lookup_accumulating_option(Globals,
                 unneeded_code_debug_pred_name, DebugPredNames),
             (
                 DebugPredNames = [],
-                io.format(Stream, "%% Starting unneededed code pass %d\n",
+                io.format(ProgressStream,
+                    "%% Starting unneededed code pass %d\n",
                     [i(Pass)], !IO)
             ;
                 DebugPredNames = [_ | _],
                 ( if list.member(PredName, DebugPredNames) then
-                    io.format(Stream, "%% Starting unneededed code pass %d\n",
+                    io.format(ProgressStream,
+                        "%% Starting unneededed code pass %d\n",
                         [i(Pass)], !IO),
                     OutInfo = init_hlds_out_info(Globals, output_debug),
                     pred_info_get_typevarset(PredInfo, TVarSet),
                     proc_info_get_inst_varset(!.ProcInfo, InstVarSet0),
-                    write_goal(OutInfo, Stream, !.ModuleInfo,
+                    write_goal(OutInfo, ProgressStream, !.ModuleInfo,
                         vns_var_table(VarTable0), print_name_and_num,
                         TVarSet, InstVarSet0, 0, ".\n", Goal0, !IO)
                 else
@@ -383,7 +387,8 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
         ( if Pass > 3 then
             true
         else
-            unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass + 1, _)
+            unneeded_process_proc(ProgressStream, PredId, Pass + 1, _,
+                !ProcInfo, !ModuleInfo)
         ),
         Successful = yes
     ;
