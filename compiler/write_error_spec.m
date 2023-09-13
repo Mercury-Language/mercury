@@ -78,10 +78,6 @@
     % Display the given error message, without a context and with standard
     % indentation.
     %
-:- pred write_error_pieces_plain(globals::in, list(format_piece)::in,
-    io::di, io::uo) is det.
-:- pragma obsolete(pred(write_error_pieces_plain/4),
-    [write_error_pieces_plain/5]).
 :- pred write_error_pieces_plain(io.text_output_stream::in, globals::in,
     list(format_piece)::in, io::di, io::uo) is det.
 
@@ -90,17 +86,10 @@
     % Display `Pieces' as the error message, with `Context' as a context
     % and indent by `Indent'.
     %
-:- pred write_error_pieces(globals::in, prog_context::in, int::in,
-    list(format_piece)::in, io::di, io::uo) is det.
 :- pred write_error_pieces(io.text_output_stream::in, globals::in,
     prog_context::in, int::in,
     list(format_piece)::in, io::di, io::uo) is det.
 
-:- pred write_error_pieces_maybe_with_context(globals::in,
-    maybe(prog_context)::in, int::in, list(format_piece)::in,
-    io::di, io::uo) is det.
-:- pragma obsolete(pred(write_error_pieces_maybe_with_context/6),
-    [write_error_pieces_maybe_with_context/7]).
 :- pred write_error_pieces_maybe_with_context(io.text_output_stream::in,
     globals::in, maybe(prog_context)::in, int::in, list(format_piece)::in,
     io::di, io::uo) is det.
@@ -175,9 +164,6 @@
     % Report a warning, and set the exit status to error if the
     % --halt-at-warn option is set.
     %
-:- pred report_warning(globals::in,
-    prog_context::in, int::in, list(format_piece)::in, io::di, io::uo) is det.
-:- pragma obsolete(pred(report_warning/6), [report_warning/7]).
 :- pred report_warning(io.text_output_stream::in, globals::in,
     prog_context::in, int::in, list(format_piece)::in, io::di, io::uo) is det.
 
@@ -504,10 +490,6 @@ write_msg_components(Stream, OptionTable, LimitErrorContextsMap, MaybeContext,
 
 %---------------------------------------------------------------------------%
 
-write_error_pieces_plain(Globals, Pieces, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_error_pieces_plain(Stream, Globals, Pieces, !IO).
-
 write_error_pieces_plain(Stream, Globals, Pieces, !IO) :-
     globals.get_options(Globals, OptionTable),
     globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
@@ -516,10 +498,6 @@ write_error_pieces_plain(Stream, Globals, Pieces, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-write_error_pieces(Globals, Context, Indent, Pieces, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_error_pieces(Stream, Globals, Context, Indent, Pieces, !IO).
-
 write_error_pieces(Stream, Globals, Context, Indent, Pieces, !IO) :-
     globals.get_options(Globals, OptionTable),
     globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
@@ -527,12 +505,6 @@ write_error_pieces(Stream, Globals, Context, Indent, Pieces, !IO) :-
         yes(Context), treat_as_first, Indent, Pieces, !IO).
 
 %---------------------%
-
-write_error_pieces_maybe_with_context(Globals, MaybeContext,
-        Indent, Pieces, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_error_pieces_maybe_with_context(Stream, Globals, MaybeContext,
-        Indent, Pieces, !IO).
 
 write_error_pieces_maybe_with_context(Stream, Globals, MaybeContext, Indent,
         Pieces, !IO) :-
@@ -1725,10 +1697,6 @@ pre_hlds_maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-report_warning(Globals, Context, Indent, Pieces, !IO) :-
-    io.output_stream(Stream, !IO),
-    report_warning(Stream, Globals, Context, Indent, Pieces, !IO).
 
 report_warning(Stream, Globals, Context, Indent, Pieces, !IO) :-
     record_warning(Globals, !IO),
