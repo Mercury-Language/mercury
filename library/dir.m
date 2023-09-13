@@ -935,8 +935,8 @@ DirName0/FileName0 = PathName :-
     else if
         (
             % Check for construction of relative paths of the form "C:foo".
-            path_name_names_drive_letter(FileName, ThirdCharIndex),
-            not string.index_next(FileName, ThirdCharIndex, _, _)
+            path_name_names_drive_letter(DirName, ThirdCharIndex),
+            not string.index_next(DirName, ThirdCharIndex, _, _)
         ;
             % Do not introduce duplicate directory separators.
             % On Windows, \\foo (a UNC server specification) is not equivalent
