@@ -164,6 +164,15 @@
     list(dependency_file)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
+    % This predicate does the exact same job as the one above,
+    % but reorders the argument list to fit the shape required by the build2
+    % higher order type in make.program_target.m.
+    %
+:- pred foldl2_make_module_targets_maybe_parallel_build2(maybe_keep_going::in,
+    list(string)::in, globals::in, list(dependency_file)::in,
+    io.text_output_stream::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 
     % A lock to prevent interleaved output to standard output from parallel
@@ -438,6 +447,11 @@ foldl2_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts,
         foldl2_make_module_targets(KeepGoing, ExtraOpts,
             ProgressStream, Globals, Targets, Succeeded, !Info, !IO)
     ).
+
+foldl2_make_module_targets_maybe_parallel_build2(KeepGoing, ExtraOpts,
+        Globals, Targets, ProgressStream, Succeeded, !Info, !IO) :-
+    foldl2_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts,
+        ProgressStream, Globals, Targets, Succeeded, !Info, !IO).
 
 %---------------------%
 

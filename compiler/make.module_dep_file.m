@@ -1016,8 +1016,9 @@ make_module_dependencies_no_fatal_error(Globals, OldOutputStream, ErrorStream,
     teardown_checking_for_interrupt(VeryVerbose, CookieWMDF,
         CleanupWMDF, succeeded, _Succeeded, !Info, !IO),
 
-    record_made_target(Globals, MadeTarget, MadeTargetFileName,
-        process_module(task_make_int3), Succeeded, !Info, !IO),
+    record_made_target(WriteProgressStream, Globals,
+        MadeTarget, MadeTargetFileName, process_module(task_make_int3),
+        Succeeded, !Info, !IO),
     unredirect_output(Globals, ModuleName,
         WriteProgressStream, ErrorStream, !Info, !IO).
 

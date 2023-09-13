@@ -134,7 +134,8 @@ make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals,
             Hash = HashPrime
         else
             get_default_options(Globals, DefaultOptionTable),
-            option_table_hash(DefaultOptionTable, AllOptionArgs, Hash, !IO),
+            option_table_hash(ProgressStream, DefaultOptionTable,
+                AllOptionArgs, Hash, !IO),
             !:LastHash = last_hash(AllOptionArgs, Hash)
         ),
 
@@ -165,10 +166,11 @@ make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals,
 
 %---------------------------------------------------------------------------%
 
-:- pred option_table_hash(option_table::in, list(string)::in, string::out,
-    io::di, io::uo) is det.
+:- pred option_table_hash(io.text_output_stream::in, option_table::in,
+    list(string)::in, string::out, io::di, io::uo) is det.
 
-option_table_hash(DefaultOptionTable, AllOptionArgs, Hash, !IO) :-
+option_table_hash(ProgressStream, DefaultOptionTable, AllOptionArgs,
+        Hash, !IO) :-
     % This code is part of the --track-flags implementation. We hash the
     % options in the updated globals because they include module-specific
     % options. The hash is then compared with the hash stored in the
@@ -231,9 +233,6 @@ option_table_hash(DefaultOptionTable, AllOptionArgs, Hash, !IO) :-
     % updates on mutables (e.g. for disabling smart recompilation)
     % whose effects persist *beyond* the processing of a given module.
     %
-    % XXX MAKE_STREAM
-    io.output_stream(CurStream, !IO),
-    ProgressStream = CurStream,
     handle_given_options(ProgressStream, DefaultOptionTable, AllOptionArgs,
         _, _, OptionsErrors, AllOptionArgsGlobals, !IO),
     (

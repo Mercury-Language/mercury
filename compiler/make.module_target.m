@@ -46,15 +46,16 @@
     globals::in, dependency_file::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % record_made_target(Globals, TargetFile, TargetFileName, Task,
-    %   MakeSucceeded, !Info, !IO):
+    % record_made_target(ProgressStream, Globals, TargetFile,
+    %   TargetFileName, Task, MakeSucceeded, !Info, !IO):
     %
     % Record whether building a target succeeded or not.
     % Makes sure any timestamps for files which may have changed
     % in building the target are recomputed next time they are needed.
     % Exported for use by make.module_dep_file.write_module_dep_file.
     %
-:- pred record_made_target(globals::in, target_file::in, file_name::in,
+:- pred record_made_target(io.text_output_stream::in, globals::in,
+    target_file::in, file_name::in,
     compilation_task_type::in, maybe_succeeded::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -200,17 +201,15 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
     TargetFile = target_file(ModuleName, TargetType),
     get_make_target_file_name(Globals, $pred, TargetFile, TargetFileName, !IO),
     CompilationTaskAndOptions = task_and_options(CompilationTaskType, _),
-    find_files_maybe_touched_by_task(Globals, TargetFile,
+    find_files_maybe_touched_by_task(ProgressStream, Globals, TargetFile,
         CompilationTaskType, TouchedTargetFiles, TouchedFiles, !Info, !IO),
     list.foldl(update_target_status(deps_status_being_built),
         TouchedTargetFiles, !Info),
 
-    % XXX MAKE_STREAM
-    io.output_stream(DebugStream, !IO),
     debug_make_msg(Globals,
         string.format("%s: checking dependencies\n", [s(TargetFileName)]),
         CheckingMsg),
-    maybe_write_msg(DebugStream, CheckingMsg, !IO),
+    maybe_write_msg(ProgressStream, CheckingMsg, !IO),
 
     ( if CompilationTaskType = process_module(_) then
         module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
@@ -289,8 +288,8 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
         set.delete(top_target_file(ModuleName, module_target(TargetType)),
             Targets0, Targets),
         make_info_set_command_line_targets(Targets, !Info),
-        build_target(Globals, CompilationTaskAndOptions, TargetFile,
-            ModuleDepInfo, TouchedTargetFiles, TouchedFiles,
+        build_target(ProgressStream, Globals, CompilationTaskAndOptions,
+            TargetFile, ModuleDepInfo, TouchedTargetFiles, TouchedFiles,
             ExtraOptions, Succeeded, !Info, !IO)
     ;
         DepsResult = deps_up_to_date,
@@ -400,8 +399,8 @@ make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
                 % The fact that a hlc.gc bootcheck does not cause the
                 % call to expect below to throw an exception seems to argue
                 % against the last alternative above.
-                get_file_name(Globals, $pred, not_for_search, TargetFile,
-                    TargetFileNameB, !Info, !IO),
+                get_file_name(ProgressStream, Globals, $pred, not_for_search,
+                    TargetFile, TargetFileNameB, !Info, !IO),
                 expect(unify(TargetFileName, TargetFileNameB), $pred,
                     "TargetFileName mismatch"),
                 check_dependencies(ProgressStream, Globals, TargetFileNameB,
@@ -434,19 +433,18 @@ force_reanalysis_of_suboptimal_module(Globals, ModuleName, ForceReanalysis,
 
 %---------------------------------------------------------------------------%
 
-:- pred build_target(globals::in, compilation_task_type_and_options::in,
+:- pred build_target(io.text_output_stream::in, globals::in,
+    compilation_task_type_and_options::in,
     target_file::in, module_dep_info::in, list(target_file)::in,
     list(file_name)::in, list(string)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
-        TouchedTargetFiles, TouchedFiles, ExtraOptions, Succeeded,
-        !Info, !IO) :-
+build_target(ProgressStream, Globals, CompilationTask, TargetFile,
+        ModuleDepInfo, TouchedTargetFiles, TouchedFiles, ExtraOptions,
+        Succeeded, !Info, !IO) :-
     % XXX MAKE_FILENAME Either our caller should be able to give us
     % TargetFileName, or we could compute it here, and give it to code below.
     get_make_target_file_name(Globals, $pred, TargetFile, TargetFileName, !IO),
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
     maybe_making_filename_msg(Globals, TargetFileName, MakingMsg),
     maybe_write_msg(ProgressStream, MakingMsg, !IO),
     TargetFile = target_file(ModuleName, _TargetType),
@@ -483,7 +481,7 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         ArgFileNameRes = ok,
         get_real_milliseconds(Time0, !IO),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-        Cleanup = cleanup_files(Globals, MaybeArgFileName,
+        Cleanup = cleanup_files(ProgressStream, Globals, MaybeArgFileName,
             TouchedTargetFiles, TouchedFiles),
         setup_checking_for_interrupt(Cookie, !IO),
         get_default_options(Globals, DefaultOptionTable),
@@ -522,9 +520,9 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         ),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
             Succeeded0, Succeeded, !Info, !IO),
-        record_made_target_given_maybe_touched_files(Globals, Succeeded,
-            TargetFile, TargetFileName, TouchedTargetFiles, TouchedFiles,
-            !Info, !IO),
+        record_made_target_given_maybe_touched_files(ProgressStream, Globals,
+            Succeeded, TargetFile, TargetFileName,
+            TouchedTargetFiles, TouchedFiles, !Info, !IO),
         get_real_milliseconds(Time, !IO),
 
         globals.lookup_bool_option(Globals, show_make_times, ShowMakeTimes),
@@ -548,14 +546,12 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         Succeeded = did_not_succeed
     ).
 
-:- pred cleanup_files(globals::in, maybe(string)::in,
-    list(target_file)::in, list(string)::in,
+:- pred cleanup_files(io.text_output_stream::in, globals::in,
+    maybe(string)::in, list(target_file)::in, list(string)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-cleanup_files(Globals, MaybeArgFileName, TouchedTargetFiles, TouchedFiles,
-        !MakeInfo, !IO) :-
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
+cleanup_files(ProgressStream, Globals, MaybeArgFileName,
+        TouchedTargetFiles, TouchedFiles, !MakeInfo, !IO) :-
     % XXX Remove `.int.tmp' files.
     list.foldl2(remove_make_target_file(ProgressStream, Globals, $pred,
         very_verbose), TouchedTargetFiles, !MakeInfo, !IO),
@@ -850,22 +846,22 @@ target_is_java :-
 
 %---------------------------------------------------------------------------%
 
-record_made_target(Globals, TargetFile, TargetFileName,
+record_made_target(ProgressStream, Globals, TargetFile, TargetFileName,
         CompilationTask, Succeeded, !Info, !IO) :-
-    find_files_maybe_touched_by_task(Globals, TargetFile, CompilationTask,
-        TouchedTargetFiles, TouchedFiles, !Info, !IO),
-    record_made_target_given_maybe_touched_files(Globals, Succeeded,
-        TargetFile, TargetFileName, TouchedTargetFiles, TouchedFiles,
-        !Info, !IO).
+    find_files_maybe_touched_by_task(ProgressStream, Globals, TargetFile,
+        CompilationTask, TouchedTargetFiles, TouchedFiles, !Info, !IO),
+    record_made_target_given_maybe_touched_files(ProgressStream, Globals,
+        Succeeded, TargetFile, TargetFileName,
+        TouchedTargetFiles, TouchedFiles, !Info, !IO).
 
-:- pred record_made_target_given_maybe_touched_files(globals::in,
-    maybe_succeeded::in, target_file::in, string::in,
+:- pred record_made_target_given_maybe_touched_files(io.text_output_stream::in,
+    globals::in, maybe_succeeded::in, target_file::in, string::in,
     list(target_file)::in, list(file_name)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-record_made_target_given_maybe_touched_files(Globals, Succeeded,
-        TargetFile, TargetFileName, TouchedTargetFiles, OtherTouchedFiles,
-        !Info, !IO) :-
+record_made_target_given_maybe_touched_files(ProgressStream, Globals,
+        Succeeded, TargetFile, TargetFileName,
+        TouchedTargetFiles, OtherTouchedFiles, !Info, !IO) :-
     (
         Succeeded = succeeded,
         TargetStatus = deps_status_up_to_date
@@ -873,22 +869,21 @@ record_made_target_given_maybe_touched_files(Globals, Succeeded,
         Succeeded = did_not_succeed,
         TargetStatus = deps_status_error,
         file_error_msg(TargetFileName, ErrorMsg),
-        % XXX MAKE_STREAM
-        io.output_stream(ErrorStream, !IO),
-        maybe_write_msg_locked(ErrorStream, !.Info, ErrorMsg, !IO)
+        maybe_write_msg_locked(ProgressStream, !.Info, ErrorMsg, !IO)
     ),
 
     list.foldl(update_target_status(TargetStatus), TouchedTargetFiles, !Info),
 
-    list.map_foldl2(get_file_name(Globals, $pred, not_for_search),
+    list.map_foldl2(
+        get_file_name(ProgressStream, Globals, $pred, not_for_search),
         TouchedTargetFiles, TouchedTargetFileNames, !Info, !IO),
 
     some [!FileTimestamps] (
         !:FileTimestamps = make_info_get_file_timestamps(!.Info),
-        list.foldl(delete_timestamp(Globals), TouchedTargetFileNames,
-            !FileTimestamps),
-        list.foldl(delete_timestamp(Globals), OtherTouchedFiles,
-            !FileTimestamps),
+        list.foldl(delete_timestamp(ProgressStream, Globals),
+            TouchedTargetFileNames, !FileTimestamps),
+        list.foldl(delete_timestamp(ProgressStream, Globals),
+            OtherTouchedFiles, !FileTimestamps),
 
         % When an .analysis file is made, that potentially invalidates other
         % .analysis files so we have to delete their timestamps. The exact list
@@ -896,7 +891,8 @@ record_made_target_given_maybe_touched_files(Globals, Succeeded,
         % corresponding .imdg file. But it is simpler to just delete the
         % timestamps of all the .analysis files that we know about.
         ( if TargetFile = target_file(_, module_target_analysis_registry) then
-            map.foldl(delete_analysis_registry_timestamps(Globals),
+            map.foldl(
+                delete_analysis_registry_timestamps(ProgressStream, Globals),
                 !.FileTimestamps, !FileTimestamps)
         else
             true
@@ -918,28 +914,27 @@ update_target_status(TargetStatus, TargetFile, !Info) :-
     version_hash_table.set(Dep, TargetStatus, DepStatusMap0, DepStatusMap),
     make_info_set_dependency_status(DepStatusMap, !Info).
 
-:- pred delete_analysis_registry_timestamps(globals::in, string::in,
-    maybe_error(timestamp)::in,
+:- pred delete_analysis_registry_timestamps(io.text_output_stream::in,
+    globals::in, string::in, maybe_error(timestamp)::in,
     file_timestamps::in, file_timestamps::out) is det.
 
-delete_analysis_registry_timestamps(Globals, FileName, _, !Timestamps) :-
+delete_analysis_registry_timestamps(ProgressStream, Globals, FileName, _,
+        !Timestamps) :-
     ( if string.suffix(FileName, ".analysis") then
-        delete_timestamp(Globals, FileName, !Timestamps)
+        delete_timestamp(ProgressStream, Globals, FileName, !Timestamps)
     else
         true
     ).
 
-:- pred delete_timestamp(globals::in, string::in,
+:- pred delete_timestamp(io.text_output_stream::in, globals::in, string::in,
     file_timestamps::in, file_timestamps::out) is det.
 
-delete_timestamp(Globals, TouchedFile, !Timestamps) :-
+delete_timestamp(ProgressStream, Globals, TouchedFile, !Timestamps) :-
     trace [io(!IO)] (
-        % XXX MAKE_STREAM
-        io.output_stream(DebugStream, !IO),
         debug_make_msg(Globals,
             string.format("Deleting timestamp for %s\n", [s(TouchedFile)]),
             DebugMsg),
-        maybe_write_msg(DebugStream, DebugMsg, !IO)
+        maybe_write_msg(ProgressStream, DebugMsg, !IO)
     ),
     map.delete(TouchedFile, !Timestamps).
 
@@ -1021,16 +1016,18 @@ get_compilation_task_and_options(Target, Result) :-
 
     % Find the files which could be touched by a compilation task.
     %
-:- pred find_files_maybe_touched_by_task(globals::in, target_file::in,
-    compilation_task_type::in, list(target_file)::out, list(file_name)::out,
+:- pred find_files_maybe_touched_by_task(io.text_output_stream::in,
+    globals::in, target_file::in, compilation_task_type::in,
+    list(target_file)::out, list(file_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-find_files_maybe_touched_by_task(Globals, TargetFile, Task,
+find_files_maybe_touched_by_task(ProgressStream, Globals, TargetFile, Task,
         TouchedTargetFiles, TouchedFileNames, !Info, !IO) :-
     (
         Task = process_module(ModuleTask),
-        find_files_maybe_touched_by_process_module(Globals, TargetFile,
-            ModuleTask, TouchedTargetFiles, TouchedFileNames, !Info, !IO)
+        find_files_maybe_touched_by_process_module(ProgressStream, Globals,
+            TargetFile, ModuleTask, TouchedTargetFiles, TouchedFileNames,
+            !Info, !IO)
     ;
         Task = target_code_to_object_code(_),
         TouchedTargetFiles = [TargetFile],
@@ -1054,16 +1051,14 @@ find_files_maybe_touched_by_task(Globals, TargetFile, Task,
         TouchedFileNames = [FactTableObjectFile]
     ).
 
-:- pred find_files_maybe_touched_by_process_module(globals::in,
-    target_file::in, module_compilation_task_type::in, list(target_file)::out,
-    list(file_name)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred find_files_maybe_touched_by_process_module(io.text_output_stream::in,
+    globals::in, target_file::in, module_compilation_task_type::in,
+    list(target_file)::out, list(file_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-find_files_maybe_touched_by_process_module(Globals, TargetFile, Task,
-        TouchedTargetFiles, TouchedFileNames, !Info, !IO) :-
+find_files_maybe_touched_by_process_module(ProgressStream, Globals,
+        TargetFile, Task, TouchedTargetFiles, TouchedFileNames, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
     get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (

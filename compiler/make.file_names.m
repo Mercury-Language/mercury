@@ -39,8 +39,8 @@
     % `Search' should be `for_search' if the file could be part of an
     % installed library.
     %
-:- pred get_file_name(globals::in, string::in, maybe_for_search::in,
-    target_file::in, file_name::out,
+:- pred get_file_name(io.text_output_stream::in, globals::in, string::in,
+    maybe_for_search::in, target_file::in, file_name::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 :- pred dependency_file_to_file_name(globals::in, dependency_file::in,
@@ -88,14 +88,14 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-get_file_name(Globals, From, Search, TargetFile, FileName, !Info, !IO) :-
+% XXX MAKE Give this predicate a more descriptive name.
+get_file_name(ProgressStream, Globals, From, Search, TargetFile, FileName,
+        !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     ( if TargetType = module_target_source then
         % In some cases the module name won't match the file name
         % (module mdb.parse might be in parse.m or mdb.m), so we need to
         % look up the file name here.
-        % XXX MAKE_STREAM
-        io.output_stream(ProgressStream, !IO),
         get_maybe_module_dep_info(ProgressStream, Globals,
             ModuleName, MaybeModuleDepInfo, !Info, !IO),
         (

@@ -151,8 +151,8 @@ get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
     TargetFile = target_file(_ModuleName, TargetType),
     ( if TargetType = module_target_analysis_registry then
         ForSearch = maybe_search_to_maybe_for_search(Search),
-        get_file_name(Globals, $pred, ForSearch, TargetFile, FileName,
-            !Info, !IO),
+        get_file_name(ProgressStream, Globals, $pred, ForSearch,
+            TargetFile, FileName, !Info, !IO),
         get_target_timestamp_analysis_registry(ProgressStream, Globals,
             Search, TargetFile, FileName, MaybeTimestamp, !Info, !IO)
     else
@@ -167,8 +167,8 @@ get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
             MaybeTimestamp = ok(Timestamp)
         else
             ForSearch = maybe_search_to_maybe_for_search(Search),
-            get_file_name(Globals, $pred, ForSearch, TargetFile, FileName,
-                !Info, !IO),
+            get_file_name(ProgressStream, Globals, $pred, ForSearch,
+                TargetFile, FileName, !Info, !IO),
             get_target_timestamp_2(ProgressStream, Globals,
                 Search, TargetFile, FileName, MaybeTimestamp, !Info, !IO),
             (
