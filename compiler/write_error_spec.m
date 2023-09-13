@@ -494,7 +494,7 @@ write_msg_components(Stream, OptionTable, LimitErrorContextsMap, MaybeContext,
         !:PrintedSome = printed_something
     ;
         Component = print_anything(Anything),
-        print_anything(Anything, !IO),
+        print_anything(Stream, Anything, !IO),
         !:First = do_not_treat_as_first,
         !:PrintedSome = printed_something
     ),

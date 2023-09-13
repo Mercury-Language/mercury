@@ -285,7 +285,8 @@
             % that help debug the compiler itself.
 
 :- typeclass print_anything(T) where [
-    pred print_anything(T::in, io::di, io::uo) is det
+    pred print_anything(io.text_output_stream::in, T::in,
+        io::di, io::uo) is det
 ].
 
 %---------------------------------------------------------------------------%

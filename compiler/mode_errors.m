@@ -1406,16 +1406,17 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
     --->    write_indented_goal(module_info, var_table, hlds_goal).
 
 :- instance error_spec.print_anything(write_indented_goal) where [
-    ( print_anything(write_indented_goal(ModuleInfo, VarTable, Goal), !IO) :-
-        io.output_stream(Stream, !IO),
-        io.write_string(Stream, "\t\t", !IO),
+    ( print_anything(OutputStream, WIG, !IO) :-
+        WIG = write_indented_goal(ModuleInfo, VarTable, Goal),
         module_info_get_globals(ModuleInfo, Globals),
         OutInfo = init_hlds_out_info(Globals, output_debug),
+        VarNameSrc = vns_var_table(VarTable),
         % XXX If we ever need this info, we put add pred_proc_id field
         % to the write_indented_goal type.
         varset.init(TVarSet),
         varset.init(InstVarSet),
-        write_goal(OutInfo, Stream, ModuleInfo, vns_var_table(VarTable),
+        io.write_string(OutputStream, "\t\t", !IO),
+        write_goal(OutInfo, OutputStream, ModuleInfo, VarNameSrc,
             print_name_only, TVarSet, InstVarSet, 2, ".\n", Goal, !IO)
     )
 ].
