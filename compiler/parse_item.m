@@ -2214,8 +2214,8 @@ pred_or_func_decl_pieces(pf_predicate) =
 
 % :- interface.
 %
-% :- pred write_item_to_stream(io.output_stream::in, item::in, io::di, io::uo)
-%     is det.
+% :- pred write_item_to_stream(io.text_output_stream::in, item::in,
+%     io::di, io::uo) is det.
 %
 % :- pred write_item_to_stdout(item::in, io::di, io::uo) is det.
 %
