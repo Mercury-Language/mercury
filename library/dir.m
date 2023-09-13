@@ -687,7 +687,7 @@ is_path_string_canonical(Path) :-
     is semidet.
 
 is_path_string_canonical_loop(Path, CurIndex, PrevChar) :-
-    ( if string.index_next(Path, CurIndex, NextIndex, Char) then
+    ( if string.unsafe_index_next(Path, CurIndex, NextIndex, Char) then
         ( if dir.is_directory_separator_return_canon(Char, CanonChar) then
             % Two consecutive directory separators may not occur
             % in a canonical path.
@@ -930,23 +930,21 @@ DirName0/FileName0 = PathName :-
     ),
     ( if dir.path_name_is_absolute(FileName) then
         unexpected($pred, "second argument is absolute")
-    else if dir.path_name_is_cur_drive_relative(FileName) then
-        unexpected($pred, "second argument is a current drive relative path")
+    else if dir.path_name_is_drive_letter_relative_path(FileName) then
+        unexpected($pred, "second argument is a drive-letter relative path")
     else if
         (
-            % Check for construction of relative paths of the form "C:foo".
-            path_name_names_drive_letter(DirName, ThirdCharIndex),
-            not string.index_next(DirName, ThirdCharIndex, _, _)
+            % If DirName has the form "C:", then we don't need or want
+            % to add a directory separator after it; the colon is enough.
+            path_name_starts_with_drive_letter_colon(DirName, ThirdCharIndex),
+            not string.unsafe_index_next(DirName, ThirdCharIndex, _, _)
         ;
             % Do not introduce duplicate directory separators.
             % On Windows, \\foo (a UNC server specification) is not equivalent
             % to \foo (the directory X:\foo, where X is the current drive).
             string.length(DirName, DirNameLength),
-            ( if DirNameLength > 0 then
-                ends_with_directory_separator(DirName, DirNameLength, _)
-            else
-                fail
-            )
+            DirNameLength > 0,
+            ends_with_directory_separator(DirName, DirNameLength, _)
         )
     then
         PathName = DirName ++ FileName
@@ -960,38 +958,44 @@ DirName0/FileName0 = PathName :-
             FileName])
     ).
 
-    % Is FileName a relative path of the form "C:foo"?
+    % Is FileName a drive letter relative path of the form "C:foo"?
     %
-:- pred path_name_is_cur_drive_relative(string::in) is semidet.
+:- pred path_name_is_drive_letter_relative_path(string::in) is semidet.
 
-path_name_is_cur_drive_relative(FileName) :-
+path_name_is_drive_letter_relative_path(FileName) :-
     % In the following, C stands for any drive letter, and xyz for
     % non-special characters that can occur in filenames.
-    ( if path_name_names_drive_letter(FileName, ThirdCharIndex) then
-        ( if string.index_next(FileName, ThirdCharIndex, _, ThirdChar) then
+    ( if
+        path_name_starts_with_drive_letter_colon(FileName, ThirdCharIndex)
+    then
+        ( if
+            string.unsafe_index_next(FileName, ThirdCharIndex, _, ThirdChar)
+        then
             ( if is_directory_separator(ThirdChar) then
-                % FileName is "C:/xyz", which is a cur drive path,
+                % FileName is "C:\xyz", which is a drive letter path,
                 % but an absolute one.
                 fail
             else
-                % FileName is "C:xyz", which is a cur drive relative path.
+                % FileName is "C:xyz", which is a drive letter relative path.
                 true
             )
         else
-            % FileName is "C:", which is a cur drive relative path.
+            % FileName is "C:", which is a drive letter relative path.
             true
         )
     else
-        % FileName cannot start with "C:".
+        % FileName does not start with "C:".
         fail
     ).
 
-:- pred path_name_names_drive_letter(string::in, int::out) is semidet.
+:- pred path_name_starts_with_drive_letter_colon(string::in, int::out)
+    is semidet.
 
-path_name_names_drive_letter(FileName, ThirdCharIndex) :-
+path_name_starts_with_drive_letter_colon(FileName, ThirdCharIndex) :-
     use_windows_paths,
-    string.index_next(FileName, 0, SecondCharIndex, FirstChar),
-    string.index_next(FileName, SecondCharIndex, ThirdCharIndex, SecondChar),
+    string.unsafe_index_next(FileName, 0, SecondCharIndex, FirstChar),
+    string.unsafe_index_next(FileName, SecondCharIndex, ThirdCharIndex,
+        SecondChar),
     % SecondChar is *much* more unlikely to be ':'
     % than FirstChar is to pass is_alpha.
     SecondChar = (':'),
