@@ -79,8 +79,6 @@ MCFLAGS-check_hlds.unique_modes           = --inline-vars-threshold 10000
 MCFLAGS-make.util                         += --no-halt-at-warn
 
 MCFLAGS-make.module_target                   += --no-warn-implicit-stream-calls
-MCFLAGS-make.program_target                  += --no-warn-implicit-stream-calls
-MCFLAGS-make.top_level                       += --no-warn-implicit-stream-calls
 MCFLAGS-top_level.mercury_compile_main       += --no-warn-implicit-stream-calls
 
 # Bug workarounds.

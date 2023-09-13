@@ -32,11 +32,12 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred make_process_compiler_args(globals::in, list(string)::in,
-    options_variables::in, list(string)::in, list(file_name)::in,
-    io::di, io::uo) is det.
+:- pred make_process_compiler_args(io.text_output_stream::in, globals::in,
+    list(string)::in, options_variables::in, list(string)::in,
+    list(file_name)::in, io::di, io::uo) is det.
 
-:- pred make_top_target(globals::in, top_target_file::in, maybe_succeeded::out,
+:- pred make_top_target(io.text_output_stream::in, globals::in,
+    top_target_file::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -77,8 +78,8 @@
 
 %---------------------------------------------------------------------------%
 
-make_process_compiler_args(Globals, DetectedGradeFlags, OptionsVariables,
-        OptionArgs, Targets0, !IO) :-
+make_process_compiler_args(ProgressStream, Globals, DetectedGradeFlags,
+        OptionsVariables, OptionArgs, Targets0, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
     get_main_target_if_needed(ProgName, OptionsVariables,
         Targets0, MaybeTargets0),
@@ -123,7 +124,7 @@ make_process_compiler_args(Globals, DetectedGradeFlags, OptionsVariables,
 
         % Build the targets, stopping on any errors if `--keep-going'
         % was not set.
-        foldl2_make_top_targets(KeepGoing, Globals,
+        foldl2_make_top_targets(KeepGoing, ProgressStream, Globals,
             ClassifiedTargets, Succeeded, MakeInfo0, _MakeInfo, !IO),
         maybe_set_exit_status(Succeeded, !IO)
     ).
@@ -202,7 +203,7 @@ report_target_with_dir_component(ProgName, Target) = Spec :-
 
 %---------------------%
 
-make_top_target(Globals, Target, Succeeded, !Info, !IO) :-
+make_top_target(ProgressStream, Globals, Target, Succeeded, !Info, !IO) :-
     Target = top_target_file(ModuleName, TargetType),
     globals.lookup_bool_option(Globals, track_flags, TrackFlags),
     get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
@@ -211,8 +212,6 @@ make_top_target(Globals, Target, Succeeded, !Info, !IO) :-
         TrackFlagsSucceeded = succeeded
     ;
         TrackFlags = yes,
-        % XXX MAKE_STREAM
-        io.output_stream(ProgressStream, !IO),
         make_track_flags_files(ErrorStream, ProgressStream, Globals,
             ModuleName, TrackFlagsSucceeded, !Info, !IO)
     ),
@@ -221,19 +220,19 @@ make_top_target(Globals, Target, Succeeded, !Info, !IO) :-
         (
             TargetType = module_target(ModuleTargetType),
             TargetFile = target_file(ModuleName, ModuleTargetType),
-            make_module_target([], Globals, dep_target(TargetFile), Succeeded,
-                !Info, !IO)
+            make_module_target([], ProgressStream, Globals,
+                dep_target(TargetFile), Succeeded, !Info, !IO)
         ;
             TargetType = linked_target(ProgramTargetType),
             LinkedTargetFile = linked_target_file(ModuleName,
                 ProgramTargetType),
-            make_linked_target(Globals, LinkedTargetFile, Succeeded,
-                !Info, [], Specs, !IO),
+            make_linked_target(ProgressStream, Globals, LinkedTargetFile,
+                Succeeded, !Info, [], Specs, !IO),
             write_error_specs(ErrorStream, Globals, Specs, !IO)
         ;
             TargetType = misc_target(MiscTargetType),
-            make_misc_target(Globals, ModuleName - MiscTargetType, Succeeded,
-                !Info, [], Specs, !IO),
+            make_misc_target(ProgressStream, Globals,
+                ModuleName - MiscTargetType, Succeeded, !Info, [], Specs, !IO),
             write_error_specs(ErrorStream, Globals, Specs, !IO)
         )
     ;

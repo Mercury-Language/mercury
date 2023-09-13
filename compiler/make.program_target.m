@@ -36,9 +36,10 @@
     %
     % Build a library or an executable.
     %
-:- pred make_linked_target(globals::in, linked_target_file::in,
-    maybe_succeeded::out, make_info::in, make_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+:- pred make_linked_target(io.text_output_stream::in, globals::in,
+    linked_target_file::in, maybe_succeeded::out,
+    make_info::in, make_info::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
     % make_misc_target(Globals, Target, Succeeded, !Info, !Specs, !IO):
     %
@@ -46,15 +47,16 @@
     % installation, and building all files of a given type for all
     % modules in the program.
     %
-:- pred make_misc_target(globals::in, pair(module_name, misc_target_type)::in,
-    maybe_succeeded::out, make_info::in, make_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+:- pred make_misc_target(io.text_output_stream::in, globals::in,
+    pair(module_name, misc_target_type)::in, maybe_succeeded::out,
+    make_info::in, make_info::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
     % install_library_grade(LinkSucceeded0, ModuleName, AllModules,
-    %   Globals, Grade, Succeeded, !Info, !IO)
+    %   ProgressStream, Globals, Grade, Succeeded, !Info, !IO)
     %
 :- pred install_library_grade(maybe_succeeded::in,
-    module_name::in, list(module_name)::in,
+    module_name::in, list(module_name)::in, io.text_output_stream::in,
     globals::in, string::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -109,8 +111,8 @@
 
 %---------------------------------------------------------------------------%
 
-make_linked_target(Globals, LinkedTargetFile, LinkedTargetSucceeded,
-        !Info, !Specs, !IO) :-
+make_linked_target(ProgressStream, Globals, LinkedTargetFile,
+        LinkedTargetSucceeded, !Info, !Specs, !IO) :-
     LinkedTargetFile = linked_target_file(_MainModuleName, FileType),
     (
         FileType = shared_library,
@@ -141,7 +143,8 @@ make_linked_target(Globals, LinkedTargetFile, LinkedTargetSucceeded,
         (
             LibgradeCheckSpecs = [],
             maybe_with_analysis_cache_dir_3(Globals,
-                make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions),
+                make_linked_target_1(ProgressStream, Globals, LinkedTargetFile,
+                    ExtraOptions),
                 LinkedTargetSucceeded, !Info, !Specs, !IO)
         ;
             LibgradeCheckSpecs = [_ | _],
@@ -150,12 +153,13 @@ make_linked_target(Globals, LinkedTargetFile, LinkedTargetSucceeded,
         )
     ).
 
-:- pred make_linked_target_1(globals::in, linked_target_file::in,
-    list(string)::in, maybe_succeeded::out, make_info::in, make_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+:- pred make_linked_target_1(io.text_output_stream::in, globals::in,
+    linked_target_file::in, list(string)::in, maybe_succeeded::out,
+    make_info::in, make_info::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
-make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions, Succeeded,
-        !Info, !Specs, !IO) :-
+make_linked_target_1(ProgressStream, Globals, LinkedTargetFile, ExtraOptions,
+        Succeeded, !Info, !Specs, !IO) :-
     LinkedTargetFile = linked_target_file(MainModuleName, _FileType),
 
     % When using `--intermodule-analysis', perform an analysis pass first.
@@ -166,7 +170,7 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions, Succeeded,
         IntermodAnalysis),
     (
         IntermodAnalysis = yes,
-        make_misc_target_builder(Globals, MainModuleName,
+        make_misc_target_builder(ProgressStream, Globals, MainModuleName,
             misc_target_build_analyses, IntermodAnalysisSucceeded,
             !Info, !Specs, !IO)
     ;
@@ -184,8 +188,8 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions, Succeeded,
             OptionVariables, OptionArgs, ExtraOptions, MayBuild, !IO),
         (
             MayBuild = may_build(_AllOptionArgs, BuildGlobals),
-            make_linked_target_2(BuildGlobals, LinkedTargetFile,
-                Succeeded, !Info, !IO)
+            make_linked_target_2(ProgressStream, BuildGlobals,
+                LinkedTargetFile, Succeeded, !Info, !IO)
         ;
             MayBuild = may_not_build(Specs),
             get_error_output_stream(Globals, MainModuleName, ErrorStream, !IO),
@@ -197,11 +201,12 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions, Succeeded,
         Succeeded = did_not_succeed
     ).
 
-:- pred make_linked_target_2(globals::in, linked_target_file::in,
-    maybe_succeeded::out,
+:- pred make_linked_target_2(io.text_output_stream::in, globals::in,
+    linked_target_file::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
+make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
+        !Info, !IO) :-
     LinkedTargetFile = linked_target_file(MainModuleName, FileType),
     find_reachable_local_modules(Globals, MainModuleName, DepsSucceeded,
         AllModules, !Info, !IO),
@@ -244,8 +249,6 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
             make_dependency_list(ObjModulesNonnested, IntermediateTargetType),
         ObjTargets = make_dependency_list(ObjModules, ObjectTargetType),
 
-        % XXX MAKE_STREAM
-        io.output_stream(ProgressStream, !IO),
         list.map_foldl2(
             get_foreign_object_targets(ProgressStream, Globals, PIC),
             ObjModules, ForeignObjTargetsList, !Info, !IO),
@@ -255,16 +258,16 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
         % This prevents a problem when two parallel branches try to generate
         % the same missing interface file later.
 
-        make_all_interface_files(Globals, AllModulesList, IntsSucceeded,
-            !Info, !IO),
+        make_all_interface_files(ProgressStream, Globals, AllModulesList,
+            IntsSucceeded, !Info, !IO),
         ( if
             IntsSucceeded = did_not_succeed,
             KeepGoing = do_not_keep_going
         then
             BuildDepsSucceeded = did_not_succeed
         else
-            foldl2_make_module_targets_maybe_parallel(KeepGoing,
-                [], Globals, IntermediateTargetsNonnested,
+            foldl2_make_module_targets_maybe_parallel(KeepGoing, [],
+                ProgressStream, Globals, IntermediateTargetsNonnested,
                 BuildDepsSucceeded0, !Info, !IO),
             (
                 BuildDepsSucceeded0 = succeeded,
@@ -278,15 +281,15 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
                         globals.set_option(rebuild, bool(no),
                             Globals, NoRebuildGlobals),
                         foldl2_make_module_targets_maybe_parallel(KeepGoing,
-                            [], NoRebuildGlobals, ObjTargets,
+                            [], ProgressStream, NoRebuildGlobals, ObjTargets,
                             BuildDepsSucceeded1, !Info, !IO)
                     ;
                         BuildJavaSucceeded = did_not_succeed,
                         BuildDepsSucceeded1 = did_not_succeed
                     )
                 else
-                    foldl2_make_module_targets_maybe_parallel(KeepGoing,
-                        [], Globals, ObjTargets,
+                    foldl2_make_module_targets_maybe_parallel(KeepGoing, [],
+                        ProgressStream, Globals, ObjTargets,
                         BuildDepsSucceeded1, !Info, !IO)
                 )
             ;
@@ -296,8 +299,8 @@ make_linked_target_2(Globals, LinkedTargetFile, Succeeded, !Info, !IO) :-
             (
                 BuildDepsSucceeded1 = succeeded,
                 foldl2_make_module_targets(KeepGoing, [],
-                    Globals, ForeignObjTargets, BuildDepsSucceeded,
-                    !Info, !IO)
+                    ProgressStream, Globals, ForeignObjTargets,
+                    BuildDepsSucceeded, !Info, !IO)
             ;
                 BuildDepsSucceeded1 = did_not_succeed,
                 BuildDepsSucceeded = did_not_succeed
@@ -842,8 +845,8 @@ delete_java_class_timestamps(FileName, MaybeTimestamp, !Timestamps) :-
 
 %---------------------------------------------------------------------------%
 
-make_misc_target(Globals, MainModuleName - TargetType, Succeeded,
-        !Info, !Specs, !IO) :-
+make_misc_target(ProgressStream, Globals, MainModuleName - TargetType,
+        Succeeded, !Info, !Specs, !IO) :-
     get_default_options(Globals, DefaultOptionTable),
     DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
     OptionVariables = make_info_get_options_variables(!.Info),
@@ -854,7 +857,7 @@ make_misc_target(Globals, MainModuleName - TargetType, Succeeded,
         OptionVariables, OptionArgs, ExtraOptions, MayBuild, !IO),
     (
         MayBuild = may_build(_AllOptionArgs, BuildGlobals),
-        make_misc_target_builder(BuildGlobals, MainModuleName,
+        make_misc_target_builder(ProgressStream, BuildGlobals, MainModuleName,
             TargetType, Succeeded, !Info, !Specs, !IO)
     ;
         MayBuild = may_not_build(Specs),
@@ -863,12 +866,13 @@ make_misc_target(Globals, MainModuleName - TargetType, Succeeded,
         Succeeded = did_not_succeed
     ).
 
-:- pred make_misc_target_builder(globals::in, module_name::in,
-    misc_target_type::in, maybe_succeeded::out, make_info::in, make_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+:- pred make_misc_target_builder(io.text_output_stream::in, globals::in,
+    module_name::in, misc_target_type::in, maybe_succeeded::out,
+    make_info::in, make_info::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
-make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
-        !Info, !Specs, !IO) :-
+make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
+        Succeeded, !Info, !Specs, !IO) :-
     % Don't rebuild .module_dep files when cleaning up.
     RebuildModuleDeps = make_info_get_rebuild_module_deps(!.Info),
     ( if
@@ -884,8 +888,6 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
         AllModulesSet, !Info, !IO),
     make_info_set_rebuild_module_deps(RebuildModuleDeps, !Info),
     AllModules = set.to_sorted_list(AllModulesSet),
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
     (
         TargetType = misc_target_clean,
         Succeeded = succeeded,
@@ -909,8 +911,8 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
             % Ensure all interface files are present before continuing.
             % This prevents a problem when two parallel branches
             % try to generate the same missing interface file later.
-            make_all_interface_files(Globals, AllModules, Succeeded1,
-                !Info, !IO),
+            make_all_interface_files(ProgressStream, Globals, AllModules,
+                Succeeded1, !Info, !IO),
             ( if
                 Succeeded1 = did_not_succeed,
                 KeepGoing = do_not_keep_going
@@ -918,8 +920,8 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
                 Succeeded = did_not_succeed
             else
                 maybe_with_analysis_cache_dir_2(Globals,
-                    foldl2_make_module_targets_maybe_parallel(KeepGoing,
-                        [], Globals,
+                    foldl2_make_module_targets_maybe_parallel(KeepGoing, [],
+                        ProgressStream, Globals,
                         make_dependency_list(TargetModules, ModuleTargetType)),
                     Succeeded2, !Info, !IO),
                 Succeeded = Succeeded0 `and` Succeeded1 `and` Succeeded2
@@ -928,17 +930,18 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
     ;
         TargetType = misc_target_build_analyses,
         maybe_with_analysis_cache_dir_2(Globals,
-            build_analysis_files(Globals, MainModuleName, AllModules,
-                Succeeded0),
+            build_analysis_files(ProgressStream, Globals, MainModuleName,
+                AllModules, Succeeded0),
             Succeeded, !Info, !IO)
     ;
         TargetType = misc_target_build_library,
-        make_all_interface_files(Globals, AllModules, IntSucceeded,
-            !Info, !IO),
+        make_all_interface_files(ProgressStream, Globals, AllModules,
+            IntSucceeded, !Info, !IO),
         (
             IntSucceeded = succeeded,
             maybe_with_analysis_cache_dir_3(Globals,
-                build_library(MainModuleName, AllModules, Globals),
+                build_library(MainModuleName, AllModules,
+                    ProgressStream, Globals),
                 Succeeded, !Info, !Specs, !IO)
         ;
             IntSucceeded = did_not_succeed,
@@ -946,8 +949,9 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
         )
     ;
         TargetType = misc_target_install_library,
-        make_misc_target(Globals, MainModuleName - misc_target_build_library,
-            LibSucceeded, !Info, !Specs, !IO),
+        make_misc_target(ProgressStream, Globals,
+            MainModuleName - misc_target_build_library, LibSucceeded,
+            !Info, !Specs, !IO),
         (
             LibSucceeded = succeeded,
             install_library(ProgressStream, Globals,
@@ -965,7 +969,7 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
             Succeeded = did_not_succeed
         else
             foldl2_make_module_targets(KeepGoing, [],
-                Globals,
+                ProgressStream, Globals,
                 make_dependency_list(TargetModules, module_target_xml_doc),
                 Succeeded1, !Info, !IO),
             Succeeded = Succeeded0 `and` Succeeded1
@@ -974,14 +978,15 @@ make_misc_target_builder(Globals, MainModuleName, TargetType, Succeeded,
 
 %---------------------------------------------------------------------------%
 
-:- pred make_all_interface_files(globals::in, list(module_name)::in,
-    maybe_succeeded::out,
+:- pred make_all_interface_files(io.text_output_stream::in, globals::in,
+    list(module_name)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_all_interface_files(Globals, AllModules0, Succeeded, !Info, !IO) :-
+make_all_interface_files(ProgressStream, Globals, AllModules0, Succeeded,
+        !Info, !IO) :-
     remove_nested_modules(Globals, AllModules0, NonnestedModules, !Info, !IO),
-    list.foldl3(collect_modules_with_children(Globals), NonnestedModules,
-        [], ParentModules, !Info, !IO),
+    list.foldl3(collect_modules_with_children(ProgressStream, Globals),
+        NonnestedModules, [], ParentModules, !Info, !IO),
     Int3s = make_dependency_list(NonnestedModules, module_target_int3),
     Int0s = make_dependency_list(ParentModules, module_target_int0),
     Int1s = make_dependency_list(NonnestedModules, module_target_int1),
@@ -997,20 +1002,20 @@ make_all_interface_files(Globals, AllModules0, Succeeded, !Info, !IO) :-
     % Private interfaces (.int0) need to be made before building long interface
     % files in parallel, otherwise two processes may try to build the same
     % private interface file.
-    foldl2_make_module_targets_maybe_parallel(KeepGoing, [], Globals, Int3s,
-        Succeeded0, !Info, !IO),
+    foldl2_make_module_targets_maybe_parallel(KeepGoing, [],
+        ProgressStream, Globals, Int3s, Succeeded0, !Info, !IO),
     (
         Succeeded0 = succeeded,
         foldl2_make_module_targets(KeepGoing, [],
-            Globals, Int0s, Succeeded1, !Info, !IO),
+            ProgressStream, Globals, Int0s, Succeeded1, !Info, !IO),
         (
             Succeeded1 = succeeded,
             foldl2_make_module_targets_maybe_parallel(KeepGoing, [],
-                Globals, Int1s, Succeeded2, !Info, !IO),
+                ProgressStream, Globals, Int1s, Succeeded2, !Info, !IO),
             (
                 Succeeded2 = succeeded,
                 foldl2_make_module_targets_maybe_parallel(KeepGoing, [],
-                    Globals, Opts, Succeeded, !Info, !IO)
+                    ProgressStream, Globals, Opts, Succeeded, !Info, !IO)
             ;
                 Succeeded2 = did_not_succeed,
                 Succeeded = did_not_succeed
@@ -1024,14 +1029,12 @@ make_all_interface_files(Globals, AllModules0, Succeeded, !Info, !IO) :-
         Succeeded = did_not_succeed
     ).
 
-:- pred collect_modules_with_children(globals::in, module_name::in,
-    list(module_name)::in, list(module_name)::out,
+:- pred collect_modules_with_children(io.text_output_stream::in, globals::in,
+    module_name::in, list(module_name)::in, list(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-collect_modules_with_children(Globals, ModuleName, !ParentModules,
-        !Info, !IO) :-
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
+collect_modules_with_children(ProgressStream, Globals, ModuleName,
+        !ParentModules, !Info, !IO) :-
     get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
@@ -1203,11 +1206,12 @@ remove_cache_dir(Globals, CacheDir, !Info, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred build_analysis_files(globals::in, module_name::in,
-    list(module_name)::in, maybe_succeeded::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred build_analysis_files(io.text_output_stream::in, globals::in,
+    module_name::in, list(module_name)::in, maybe_succeeded::in,
+    maybe_succeeded::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
-build_analysis_files(Globals, MainModuleName, AllModules,
+build_analysis_files(ProgressStream, Globals, MainModuleName, AllModules,
         Succeeded0, Succeeded, !Info, !IO) :-
     KeepGoing = make_info_get_keep_going(!.Info),
     ( if
@@ -1220,7 +1224,8 @@ build_analysis_files(Globals, MainModuleName, AllModules,
         % This prevents a problem when two parallel branches try to generate
         % the same missing interface file later.
         % (Although we can't actually build analysis files in parallel yet.)
-        make_all_interface_files(Globals, AllModules, Succeeded1, !Info, !IO),
+        make_all_interface_files(ProgressStream, Globals, AllModules,
+            Succeeded1, !Info, !IO),
         ( if
             Succeeded1 = did_not_succeed,
             KeepGoing = do_not_keep_going
@@ -1251,24 +1256,23 @@ build_analysis_files_1(Globals, MainModuleName, AllModules, Succeeded,
         LocalModulesOpts, !Info, !IO),
     (
         Succeeded0 = succeeded,
-        build_analysis_files_2(Globals, MainModuleName, TargetModules,
-            LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)
+        build_analysis_files_2(ProgressStream, Globals, MainModuleName,
+            TargetModules, LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)
     ;
         Succeeded0 = did_not_succeed,
         Succeeded = did_not_succeed
     ).
 
-:- pred build_analysis_files_2(globals::in, module_name::in,
-    list(module_name)::in, list(string)::in,
+:- pred build_analysis_files_2(io.text_output_stream::in, globals::in,
+    module_name::in, list(module_name)::in, list(string)::in,
     maybe_succeeded::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-build_analysis_files_2(Globals, MainModuleName, TargetModules,
+build_analysis_files_2(ProgressStream, Globals, MainModuleName, TargetModules,
         LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO) :-
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
     KeepGoing = make_info_get_keep_going(!.Info),
-    foldl2_make_module_targets(KeepGoing, LocalModulesOpts, Globals,
+    foldl2_make_module_targets(KeepGoing, LocalModulesOpts, ProgressStream,
+        Globals,
         make_dependency_list(TargetModules, module_target_analysis_registry),
         Succeeded1, !Info, !IO),
     % Maybe we should have an option to reanalyse cliques before moving
@@ -1287,16 +1291,16 @@ build_analysis_files_2(Globals, MainModuleName, TargetModules,
         maybe_write_msg(ProgressStream, ReanalysingMsg, !IO),
         list.foldl(reset_analysis_registry_dependency_status,
             InvalidModules, !Info),
-        build_analysis_files_2(Globals, MainModuleName, TargetModules,
-            LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)
+        build_analysis_files_2(ProgressStream, Globals, MainModuleName,
+            TargetModules, LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)
     else if list.is_not_empty(SuboptimalModules) then
         list.foldl(reset_analysis_registry_dependency_status,
             SuboptimalModules, !Info),
         make_info_set_reanalysis_passes(ReanalysisPasses - 1, !Info),
         maybe_reanalyse_modules_msg(Globals, ReanalysingMsg),
         maybe_write_msg(ProgressStream, ReanalysingMsg, !IO),
-        build_analysis_files_2(Globals, MainModuleName, TargetModules,
-            LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)
+        build_analysis_files_2(ProgressStream, Globals, MainModuleName,
+            TargetModules, LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)
     else
         Succeeded = Succeeded0 `and` Succeeded1
     ).
@@ -1431,34 +1435,36 @@ reset_analysis_registry_dependency_status(ModuleName, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred build_library(module_name::in, list(module_name)::in, globals::in,
-    maybe_succeeded::out, make_info::in, make_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+:- pred build_library(module_name::in, list(module_name)::in,
+    io.text_output_stream::in, globals::in, maybe_succeeded::out,
+    make_info::in, make_info::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
-build_library(MainModuleName, AllModules, Globals, Succeeded,
+build_library(MainModuleName, AllModules, ProgressStream, Globals, Succeeded,
         !Info, !Specs, !IO) :-
     globals.get_target(Globals, Target),
     (
         Target = target_c,
-        build_c_library(Globals, MainModuleName, AllModules, Succeeded,
-            !Info, !Specs, !IO)
+        build_c_library(ProgressStream, Globals, MainModuleName, AllModules,
+            Succeeded, !Info, !Specs, !IO)
     ;
         Target = target_csharp,
-        build_csharp_library(Globals, MainModuleName, Succeeded,
-            !Info, !Specs, !IO)
+        build_csharp_library(ProgressStream, Globals, MainModuleName,
+            Succeeded, !Info, !Specs, !IO)
     ;
         Target = target_java,
-        build_java_library(Globals, MainModuleName, Succeeded,
-            !Info, !Specs, !IO)
+        build_java_library(ProgressStream, Globals, MainModuleName,
+            Succeeded, !Info, !Specs, !IO)
     ).
 
-:- pred build_c_library(globals::in, module_name::in, list(module_name)::in,
-    maybe_succeeded::out, make_info::in, make_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+:- pred build_c_library(io.text_output_stream::in, globals::in,
+    module_name::in, list(module_name)::in, maybe_succeeded::out,
+    make_info::in, make_info::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
-build_c_library(Globals, MainModuleName, AllModules, Succeeded,
+build_c_library(ProgressStream, Globals, MainModuleName, AllModules, Succeeded,
         !Info, !Specs, !IO) :-
-    make_linked_target(Globals,
+    make_linked_target(ProgressStream, Globals,
         linked_target_file(MainModuleName, static_library),
         StaticSucceeded, !Info, !Specs, !IO),
     shared_libraries_supported(Globals, SharedLibsSupported),
@@ -1466,7 +1472,7 @@ build_c_library(Globals, MainModuleName, AllModules, Succeeded,
         StaticSucceeded = succeeded,
         (
             SharedLibsSupported = yes,
-            make_linked_target(Globals,
+            make_linked_target(ProgressStream, Globals,
                 linked_target_file(MainModuleName, shared_library),
                 SharedLibsSucceeded, !Info, !Specs, !IO)
         ;
@@ -1477,12 +1483,11 @@ build_c_library(Globals, MainModuleName, AllModules, Succeeded,
         % the .c files.
         (
             SharedLibsSucceeded = succeeded,
+            % ZZZ
             % Errors while making the .init file should be very rare.
             % XXX STREAM This preserves old behavior, but our caller
             % should pass to us a progress stream *explicitly*.
-            io.output_stream(OutputStream, !IO),
-            ProgressStream = OutputStream,
-            ErrorStream = OutputStream,
+            ErrorStream = ProgressStream,
             make_library_init_file(Globals, ProgressStream, ErrorStream,
                 MainModuleName, AllModules, Succeeded, !IO)
         ;
@@ -1494,21 +1499,23 @@ build_c_library(Globals, MainModuleName, AllModules, Succeeded,
         Succeeded = did_not_succeed
     ).
 
-:- pred build_csharp_library(globals::in, module_name::in,
-    maybe_succeeded::out, make_info::in, make_info::out,
+:- pred build_csharp_library(io.text_output_stream::in, globals::in,
+    module_name::in, maybe_succeeded::out, make_info::in, make_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-build_csharp_library(Globals, MainModuleName, Succeeded, !Info, !Specs, !IO) :-
-    make_linked_target(Globals,
+build_csharp_library(ProgressStream, Globals, MainModuleName, Succeeded,
+        !Info, !Specs, !IO) :-
+    make_linked_target(ProgressStream, Globals,
         linked_target_file(MainModuleName, csharp_library),
         Succeeded, !Info, !Specs, !IO).
 
-:- pred build_java_library(globals::in, module_name::in,
-    maybe_succeeded::out, make_info::in, make_info::out,
+:- pred build_java_library(io.text_output_stream::in, globals::in,
+    module_name::in, maybe_succeeded::out, make_info::in, make_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-build_java_library(Globals, MainModuleName, Succeeded, !Info, !Specs, !IO) :-
-    make_linked_target(Globals,
+build_java_library(ProgressStream, Globals, MainModuleName, Succeeded,
+        !Info, !Specs, !IO) :-
+    make_linked_target(ProgressStream, Globals,
         linked_target_file(MainModuleName, java_archive),
         Succeeded, !Info, !Specs, !IO).
 
@@ -1523,7 +1530,8 @@ install_library(ProgressStream, Globals, MainModuleName, Succeeded,
     find_reachable_local_modules(Globals, MainModuleName, DepsSucceeded,
         AllModules0, !Info, !IO),
     AllModules = set.to_sorted_list(AllModules0),
-    make_install_dirs(Globals, DirSucceeded, LinkSucceeded, !IO),
+    make_install_dirs(ProgressStream, Globals,
+        DirSucceeded, LinkSucceeded, !IO),
     ( if
         DepsSucceeded = succeeded,
         DirSucceeded = succeeded
@@ -1534,8 +1542,8 @@ install_library(ProgressStream, Globals, MainModuleName, Succeeded,
         install_extra_headers(Globals, ExtraHdrsSucceeded, !IO),
 
         grade_directory_component(Globals, Grade),
-        install_library_grade_files(Globals, LinkSucceeded, Grade,
-            MainModuleName, AllModules, GradeSucceeded, !Info, !IO),
+        install_library_grade_files(ProgressStream, Globals, LinkSucceeded,
+            Grade, MainModuleName, AllModules, GradeSucceeded, !Info, !IO),
         ( if
             and_list([ExtraHdrsSucceeded | IntsSucceeded]) = succeeded,
             GradeSucceeded = succeeded
@@ -1546,7 +1554,7 @@ install_library(ProgressStream, Globals, MainModuleName, Succeeded,
             LibGrades = list.delete_all(LibGrades0, Grade),
             foldl2_install_library_grades(KeepGoing,
                 LinkSucceeded, MainModuleName, AllModules,
-                Globals, LibGrades, Succeeded, !Info, !IO)
+                ProgressStream, Globals, LibGrades, Succeeded, !Info, !IO)
         else
             Succeeded = did_not_succeed
         )
@@ -1651,8 +1659,8 @@ install_extra_header(Globals, IncDir, FileName, !Succeeded, !IO) :-
     install_file(Globals, FileName, IncDir, InstallSucceeded, !IO),
     !:Succeeded = !.Succeeded `and` InstallSucceeded.
 
-install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
-        Succeeded, !Info, !IO) :-
+install_library_grade(LinkSucceeded0, ModuleName, AllModules,
+        ProgressStream, Globals, Grade, Succeeded, !Info, !IO) :-
     % Only remove grade-dependent files after installing if
     % --use-grade-subdirs is not specified by the user.
     globals.get_subdir_setting(Globals, SubdirSetting),
@@ -1671,8 +1679,6 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
     OptionArgs0 = make_info_get_option_args(!.Info),
     OptionArgs = OptionArgs0 ++ ["--grade", Grade, "--use-grade-subdirs"],
 
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
     verbose_make_two_part_msg(Globals, "Installing grade", Grade, InstallMsg),
     maybe_write_msg(ProgressStream, InstallMsg, !IO),
 
@@ -1686,17 +1692,15 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
             _, _, OptionsSpecs, LibGlobals, !IO)
     ;
         MaybeMCFlags = error1(LookupSpecs),
-        % XXX MAKE_STREAM
-        io.output_stream(ErrorStreamA, !IO),
-        write_error_specs(ErrorStreamA, Globals, LookupSpecs, !IO),
+        write_error_specs(ProgressStream, Globals, LookupSpecs, !IO),
         % Errors should have been caught before.
         unexpected($pred, "bad DEFAULT_MCFLAGS")
     ),
 
     (
         OptionsSpecs = [_ | _],
-        get_error_output_stream(Globals, ModuleName, ErrorStreamB, !IO),
-        usage_errors(ErrorStreamB, Globals, OptionsSpecs, !IO),
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+        usage_errors(ErrorStream, Globals, OptionsSpecs, !IO),
         Succeeded = did_not_succeed
     ;
         OptionsSpecs = [],
@@ -1720,7 +1724,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
         globals.lookup_bool_option(LibGlobals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
         call_in_forked_process(
-            install_library_grade_2(LibGlobals, LinkSucceeded0,
+            install_library_grade_2(ProgressStream, LibGlobals, LinkSucceeded0,
                 ModuleName, AllModules, !.Info, CleanAfter),
             Succeeded0, !IO),
         Cleanup = maybe_make_grade_clean(LibGlobals, CleanAfter, ModuleName,
@@ -1729,6 +1733,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
             Succeeded0, Succeeded, !Info, !IO)
     ).
 
+% XXX Move out of between install_library_grade and install_library_grade_2.
 :- func remove_grade_dependent_targets(dependency_file, dependency_status,
     version_hash_table(dependency_file, dependency_status)) =
     version_hash_table(dependency_file, dependency_status).
@@ -1746,20 +1751,21 @@ remove_grade_dependent_targets(File, _Status, StatusMap0) = StatusMap :-
         StatusMap = StatusMap0
     ).
 
-:- pred install_library_grade_2(globals::in, maybe_succeeded::in,
-    module_name::in, list(module_name)::in, make_info::in,
+:- pred install_library_grade_2(io.text_output_stream::in, globals::in,
+    maybe_succeeded::in, module_name::in, list(module_name)::in, make_info::in,
     bool::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-install_library_grade_2(Globals, LinkSucceeded0, ModuleName, AllModules,
-        Info0, CleanAfter, Succeeded, !IO) :-
-    make_misc_target(Globals, ModuleName - misc_target_build_library,
-        LibSucceeded, Info0, Info1, [], Specs, !IO),
+install_library_grade_2(ProgressStream, Globals, LinkSucceeded0,
+        ModuleName, AllModules, Info0, CleanAfter, Succeeded, !IO) :-
+    make_misc_target(ProgressStream, Globals,
+        ModuleName - misc_target_build_library, LibSucceeded,
+        Info0, Info1, [], Specs, !IO),
     (
         LibSucceeded = succeeded,
         % `GradeDir' differs from `Grade' in that it is in canonical form.
         grade_directory_component(Globals, GradeDir),
-        install_library_grade_files(Globals, LinkSucceeded0, GradeDir,
-            ModuleName, AllModules, Succeeded, Info1, Info2, !IO),
+        install_library_grade_files(ProgressStream, Globals, LinkSucceeded0,
+            GradeDir, ModuleName, AllModules, Succeeded, Info1, Info2, !IO),
         maybe_make_grade_clean(Globals, CleanAfter, ModuleName, AllModules,
             Info2, _Info, !IO)
     ;
@@ -1776,15 +1782,15 @@ install_library_grade_2(Globals, LinkSucceeded0, ModuleName, AllModules,
     % NOTE: changes here may require changes to
     %       file_util.get_install_name_option/4.
     %
-:- pred install_library_grade_files(globals::in, maybe_succeeded::in,
-    string::in, module_name::in, list(module_name)::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+:- pred install_library_grade_files(io.text_output_stream::in, globals::in,
+    maybe_succeeded::in, string::in, module_name::in, list(module_name)::in,
+    maybe_succeeded::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
-install_library_grade_files(Globals, LinkSucceeded0, GradeDir, ModuleName,
-        AllModules, Succeeded, !Info, !IO) :-
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
-    make_grade_install_dirs(Globals, GradeDir, DirResult, LinkSucceeded1, !IO),
+install_library_grade_files(ProgressStream, Globals, LinkSucceeded0, GradeDir,
+        ModuleName, AllModules, Succeeded, !Info, !IO) :-
+    make_grade_install_dirs(ProgressStream, Globals, GradeDir,
+        DirResult, LinkSucceeded1, !IO),
     LinkSucceeded = LinkSucceeded0 `and` LinkSucceeded1,
     (
         DirResult = succeeded,
@@ -2002,10 +2008,10 @@ install_directory(Globals, SourceDirName, InstallDir, Succeeded, !IO) :-
     invoke_system_command(Globals, ProgressStream, ErrorStream, OutputStream,
         cmd_verbose, Command, Succeeded, !IO).
 
-:- pred make_install_dirs(globals::in,
+:- pred make_install_dirs(io.text_output_stream::in, globals::in,
     maybe_succeeded::out, maybe_succeeded::out, io::di, io::uo) is det.
 
-make_install_dirs(Globals, Result, LinkResult, !IO) :-
+make_install_dirs(ProgressStream, Globals, Result, LinkResult, !IO) :-
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     LibDir = Prefix/"lib"/"mercury",
     make_directory(LibDir/"inc", Result1, !IO),
@@ -2031,12 +2037,14 @@ make_install_dirs(Globals, Result, LinkResult, !IO) :-
             ), Subdirs, MkDirResults, !IO),
         Results = Results0 ++ MkDirResults
     ),
-    print_mkdir_errors(Results, Result, !IO).
+    print_mkdir_errors(ProgressStream, Results, Result, !IO).
 
-:- pred make_grade_install_dirs(globals::in, string::in,
-    maybe_succeeded::out, maybe_succeeded::out, io::di, io::uo) is det.
+:- pred make_grade_install_dirs(io.text_output_stream::in, globals::in,
+    string::in, maybe_succeeded::out, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
-make_grade_install_dirs(Globals, Grade, Result, LinkResult, !IO) :-
+make_grade_install_dirs(ProgressStream, Globals, Grade,
+        Result, LinkResult, !IO) :-
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     LibDir = Prefix/"lib"/"mercury",
 
@@ -2066,18 +2074,24 @@ make_grade_install_dirs(Globals, Grade, Result, LinkResult, !IO) :-
         make_directory(GradeIntsSubdir/"analyses", Result7, !IO),
         Results = [Result4, Result5, Result6, Result7 | Results0]
     ),
-    print_mkdir_errors(Results, Result, !IO).
+    print_mkdir_errors(ProgressStream, Results, Result, !IO).
 
-:- pred print_mkdir_errors(list(io.res)::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
+:- pred print_mkdir_errors(io.text_output_stream::in, list(io.res)::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
 
-print_mkdir_errors([], succeeded, !IO).
-print_mkdir_errors([ok | Rest], Succeeded, !IO) :-
-    print_mkdir_errors(Rest, Succeeded, !IO).
-print_mkdir_errors([error(Error) | Rest], did_not_succeed, !IO) :-
-    io.format("Error creating installation directories: %s\n",
-        [s(io.error_message(Error))], !IO),
-    print_mkdir_errors(Rest, _, !IO).
+print_mkdir_errors(_ProgressStream, [], succeeded, !IO).
+print_mkdir_errors(ProgressStream, [Result | Results], Succeeded, !IO) :-
+    (
+        Result = ok,
+        print_mkdir_errors(ProgressStream, Results, Succeeded, !IO)
+    ;
+        Result = error(Error),
+        io.format(ProgressStream,
+            "Error creating installation directories: %s\n",
+            [s(io.error_message(Error))], !IO),
+        print_mkdir_errors(ProgressStream, Results, _, !IO),
+        Succeeded = did_not_succeed
+    ).
 
 :- pred make_install_symlink(globals::in, string::in, string::in,
     maybe_succeeded::out, io::di, io::uo) is det.

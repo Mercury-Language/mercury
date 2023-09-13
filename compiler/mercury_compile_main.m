@@ -633,9 +633,8 @@ do_op_mode(ProgressStream, ErrorStream, Globals, OpMode, DetectedGradeFlags,
         % pass filenames_from_stdin=yes to any subcompilations.
         globals.set_option(filenames_from_stdin, bool(no),
             Globals, MakeGlobals),
-        % XXX STREAM
-        make_process_compiler_args(MakeGlobals, DetectedGradeFlags,
-            OptionVariables, OptionArgs, Args, !IO)
+        make_process_compiler_args(ProgressStream, MakeGlobals,
+            DetectedGradeFlags, OptionVariables, OptionArgs, Args, !IO)
     ;
         OpMode = opm_top_generate_source_file_mapping,
         source_file_map.write_source_file_map(ProgressStream, Globals,

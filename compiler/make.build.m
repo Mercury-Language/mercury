@@ -106,21 +106,24 @@
     % foldl2_pred_with_status(Globals, T, Succeeded, !Info).
     %
 :- type foldl2_pred_with_status(T, Info, IO) ==
-    pred(globals, T, maybe_succeeded, Info, Info, IO, IO).
-:- inst foldl2_pred_with_status == (pred(in, in, out, in, out, di, uo) is det).
+    pred(io.text_output_stream, globals, T, maybe_succeeded,
+        Info, Info, IO, IO).
+:- inst foldl2_pred_with_status ==
+    (pred(in, in, in, out, in, out, di, uo) is det).
 
-    % foldl2_make_module_targets(KeepGoing, ExtraOptions, Globals,
-    %   Targets, Succeeded, !Info, !IO).
+    % foldl2_make_module_targets(KeepGoing, ExtraOptions, ProgressStream,
+    %   Globals, Targets, Succeeded, !Info, !IO).
     %
     % Invoke make_module_target, with any ExtraOptions, on each element of
     % Targets, stopping at errors unless KeepGoing = do_keep_going.
     %
 :- pred foldl2_make_module_targets(maybe_keep_going::in, list(string)::in,
-    globals::in, list(dependency_file)::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    io.text_output_stream::in, globals::in, list(dependency_file)::in,
+    maybe_succeeded::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
     % foldl2_install_library_grades(KeepGoing, LinkSucceeded, MainModuleName,
-    %   AllModules, Globals, LibGrades, Succeeded, !Info, !IO):
+    %   AllModules, ProgressStream, Globals, LibGrades, Succeeded, !Info, !IO):
     %
     % Invoke install_library_grade(LinkSucceeded, MainModuleName, AllModules,
     % ...) on each grade in LibGrades, stopping at errors unless KeepGoing =
@@ -128,23 +131,25 @@
     %
 :- pred foldl2_install_library_grades(maybe_keep_going::in,
     maybe_succeeded::in, module_name::in, list(module_name)::in,
-    globals::in, list(string)::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    io.text_output_stream::in, globals::in, list(string)::in,
+    maybe_succeeded::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
-    % foldl2_make_top_targets(KeepGoing, Globals, TopTargets, Succeeded,
-    %   !Info, !IO).
+    % foldl2_make_top_targets(KeepGoing, ProgressStream, ProgressStream,
+    %   Globals, TopTargets, Succeeded, !Info, !IO).
     %
     % Invoke make_top_target on each element of TopTargets, stopping at errors
     % unless KeepGoing = do_keep_going.
     %
 :- pred foldl2_make_top_targets(maybe_keep_going::in,
-    globals::in, list(top_target_file)::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    io.text_output_stream::in, globals::in, list(top_target_file)::in,
+    maybe_succeeded::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
     % foldl2_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts,
-    %   Globals, Targets, Succeeded, !Info, !IO):
+    %   ProgressStream, Globals, Targets, Succeeded, !Info, !IO):
     %
     % Like foldl2_make_module_targets, but if parallel make is enabled,
     % it tries to perform a first pass that overlaps execution of several
@@ -155,8 +160,8 @@
     % concurrently, in any order, and multiple times.
     %
 :- pred foldl2_make_module_targets_maybe_parallel(maybe_keep_going::in,
-    list(string)::in,
-    globals::in, list(dependency_file)::in, maybe_succeeded::out,
+    list(string)::in, io.text_output_stream::in, globals::in,
+    list(dependency_file)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -356,43 +361,44 @@ write_error_creating_temp_file(ProgressStream, ErrorMessage, !IO) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-foldl2_make_module_targets(KeepGoing, ExtraOptions, Globals, Targets,
-        Succeeded, !Info, !IO) :-
+foldl2_make_module_targets(KeepGoing, ExtraOptions, ProgressStream, Globals,
+        Targets, Succeeded, !Info, !IO) :-
     foldl2_maybe_stop_at_error_loop(KeepGoing,
         make_module_target(ExtraOptions),
-        Globals, Targets, succeeded, Succeeded, !Info, !IO).
+        ProgressStream, Globals, Targets, succeeded, Succeeded, !Info, !IO).
 
-foldl2_install_library_grades(KeepGoing, LinkSucceeded, MainModuleName,
-        AllModules, Globals, LibGrades, Succeeded, !Info, !IO) :-
+foldl2_install_library_grades(KeepGoing, LinkSucceeded,
+        MainModuleName, AllModules, ProgressStream, Globals,
+        LibGrades, Succeeded, !Info, !IO) :-
     foldl2_maybe_stop_at_error_loop(KeepGoing,
         install_library_grade(LinkSucceeded, MainModuleName, AllModules),
-        Globals, LibGrades, succeeded, Succeeded, !Info, !IO).
+        ProgressStream, Globals, LibGrades, succeeded, Succeeded, !Info, !IO).
 
-foldl2_make_top_targets(KeepGoing, Globals, Targets,
+foldl2_make_top_targets(KeepGoing, ProgressStream, Globals, Targets,
         Succeeded, !Info, !IO) :-
     foldl2_maybe_stop_at_error_loop(KeepGoing, make_top_target,
-        Globals, Targets, succeeded, Succeeded, !Info, !IO).
+        ProgressStream, Globals, Targets, succeeded, Succeeded, !Info, !IO).
 
 %---------------------%
 
 :- pred foldl2_maybe_stop_at_error_loop(maybe_keep_going::in,
     foldl2_pred_with_status(T, Info, IO)::in(foldl2_pred_with_status),
-    globals::in, list(T)::in, maybe_succeeded::in, maybe_succeeded::out,
-    Info::in, Info::out, IO::di, IO::uo) is det.
+    io.text_output_stream::in, globals::in, list(T)::in, maybe_succeeded::in,
+    maybe_succeeded::out, Info::in, Info::out, IO::di, IO::uo) is det.
 
-foldl2_maybe_stop_at_error_loop(_KeepGoing, _P, _Globals,
+foldl2_maybe_stop_at_error_loop(_KeepGoing, _P, _ProgressStream, _Globals,
         [], !Succeeded, !Info, !IO).
-foldl2_maybe_stop_at_error_loop(KeepGoing, P, Globals,
-        [T | Ts], !Succeeded, !Info, !IO) :-
-    P(Globals, T, NewSucceeded, !Info, !IO),
+foldl2_maybe_stop_at_error_loop(KeepGoing, P, ProgressStream, Globals,
+        [Target | Targets], !Succeeded, !Info, !IO) :-
+    P(ProgressStream, Globals, Target, NewSucceeded, !Info, !IO),
     ( if
         ( NewSucceeded = succeeded
         ; KeepGoing = do_keep_going
         )
     then
         !:Succeeded = !.Succeeded `and` NewSucceeded,
-        foldl2_maybe_stop_at_error_loop(KeepGoing, P, Globals, Ts,
-            !Succeeded, !Info, !IO)
+        foldl2_maybe_stop_at_error_loop(KeepGoing, P, ProgressStream, Globals,
+            Targets, !Succeeded, !Info, !IO)
     else
         !:Succeeded = did_not_succeed
     ).
@@ -402,8 +408,8 @@ foldl2_maybe_stop_at_error_loop(KeepGoing, P, Globals,
 % Parallel (concurrent) fold.
 %
 
-foldl2_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts, Globals,
-        Targets, Succeeded, !Info, !IO) :-
+foldl2_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts,
+        ProgressStream, Globals, Targets, Succeeded, !Info, !IO) :-
     globals.lookup_int_option(Globals, jobs, Jobs),
     ( if
         Jobs > 1,
@@ -413,22 +419,24 @@ foldl2_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts, Globals,
         % First pass.
         MakeTarget = make_module_target(ExtraOpts),
         foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs,
-            MakeTarget, Globals, Targets, Succeeded0, !Info, !IO),
+            MakeTarget, ProgressStream, Globals, Targets, Succeeded0,
+            !Info, !IO),
         % Second pass (sequential).
         (
             Succeeded0 = succeeded,
-            % Disable the `--rebuild' option during the sequential pass
-            % otherwise all the targets will be built a second time.
+            % Disable the `--rebuild' option during the sequential pass,
+            % to prevent all the targets being rebuilt a second time.
             globals.set_option(rebuild, bool(no), Globals, NoRebuildGlobals),
             foldl2_make_module_targets(KeepGoing, ExtraOpts,
-                NoRebuildGlobals, Targets, Succeeded, !Info, !IO)
+                ProgressStream, NoRebuildGlobals, Targets, Succeeded,
+                !Info, !IO)
         ;
             Succeeded0 = did_not_succeed,
             Succeeded = did_not_succeed
         )
     else
         foldl2_make_module_targets(KeepGoing, ExtraOpts,
-            Globals, Targets, Succeeded, !Info, !IO)
+            ProgressStream, Globals, Targets, Succeeded, !Info, !IO)
     ).
 
 %---------------------%
@@ -436,24 +444,24 @@ foldl2_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts, Globals,
 :- pred foldl2_maybe_stop_at_error_parallel_processes(maybe_keep_going::in,
     int::in,
     foldl2_pred_with_status(T, make_info, io)::in(foldl2_pred_with_status),
-    globals::in, list(T)::in, maybe_succeeded::out,
+    io.text_output_stream::in, globals::in, list(T)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
-        Globals, Targets, Succeeded, !Info, !IO) :-
+        ProgressStream, Globals, Targets, Succeeded, !Info, !IO) :-
     TotalTasks = list.length(Targets),
     create_job_ctl(TotalTasks, MaybeJobCtl, !IO),
     (
         MaybeJobCtl = yes(JobCtl),
         make_info_set_maybe_stdout_lock(yes(JobCtl), !Info),
         list.foldl2(
-            start_worker_process(Globals, KeepGoing, MakeTarget, Targets,
-                JobCtl, !.Info),
+            start_worker_process(ProgressStream, Globals, KeepGoing,
+                MakeTarget, Targets, JobCtl, !.Info),
             2 .. Jobs, [], Pids, !IO),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
-        worker_loop(Globals, KeepGoing, MakeTarget, Targets, JobCtl,
-            succeeded, Succeeded0, !Info, !IO),
+        worker_loop(ProgressStream, Globals, KeepGoing, MakeTarget, Targets,
+            JobCtl, succeeded, Succeeded0, !Info, !IO),
         Cleanup = worker_loop_signal_cleanup(JobCtl, Pids),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
             Succeeded0, Succeeded1, !Info, !IO),
@@ -467,15 +475,17 @@ foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
 
 %---------------------%
 
-:- pred start_worker_process(globals::in, maybe_keep_going::in,
+:- pred start_worker_process(io.text_output_stream::in, globals::in,
+    maybe_keep_going::in,
     foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
     list(T)::in, job_ctl::in, Info::in, int::in, list(pid)::in, list(pid)::out,
     io::di, io::uo) is det.
 
-start_worker_process(Globals, KeepGoing, MakeTarget, Targets, JobCtl, Info,
-        _ChildN, !Pids, !IO) :-
+start_worker_process(ProgressStream, Globals, KeepGoing, MakeTarget, Targets,
+        JobCtl, Info, _ChildN, !Pids, !IO) :-
     start_in_forked_process(
-        child_worker(Globals, KeepGoing, MakeTarget, Targets, JobCtl, Info),
+        child_worker(ProgressStream, Globals, KeepGoing, MakeTarget, Targets,
+            JobCtl, Info),
         MaybePid, !IO),
     (
         MaybePid = yes(Pid),
@@ -484,32 +494,35 @@ start_worker_process(Globals, KeepGoing, MakeTarget, Targets, JobCtl, Info,
         MaybePid = no
     ).
 
-:- pred child_worker(globals::in, maybe_keep_going::in,
+:- pred child_worker(io.text_output_stream::in, globals::in,
+    maybe_keep_going::in,
     foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
     list(T)::in, job_ctl::in, Info::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-child_worker(Globals, KeepGoing, MakeTarget, Targets, JobCtl, !.Info,
-        Succeeded, !IO) :-
+child_worker(ProgressStream, Globals, KeepGoing, MakeTarget, Targets, JobCtl,
+        !.Info, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     setup_checking_for_interrupt(Cookie, !IO),
-    worker_loop(Globals, KeepGoing, MakeTarget, Targets, JobCtl,
-        succeeded, Succeeded0, !Info, !IO),
+    worker_loop(ProgressStream, Globals, KeepGoing, MakeTarget, Targets,
+        JobCtl, succeeded, Succeeded0, !Info, !IO),
     Cleanup = worker_loop_signal_cleanup(JobCtl, []),
     teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
         Succeeded0, Succeeded, !.Info, _Info, !IO).
 
-:- pred worker_loop(globals::in, maybe_keep_going::in,
+:- pred worker_loop(io.text_output_stream::in, globals::in,
+    maybe_keep_going::in,
     foldl2_pred_with_status(T, Info, io)::in(foldl2_pred_with_status),
     list(T)::in, job_ctl::in, maybe_succeeded::in, maybe_succeeded::out,
     Info::in, Info::out, io::di, io::uo) is det.
 
-worker_loop(Globals, KeepGoing, MakeTarget, Targets, JobCtl,
-        !Succeeded, !Info, !IO) :-
+worker_loop(ProgressStream, Globals, KeepGoing, MakeTarget, Targets,
+        JobCtl, !Succeeded, !Info, !IO) :-
     accept_task(JobCtl, TaskNumber, !IO),
     ( if TaskNumber >= 0 then
         Target = list.det_index0(Targets, TaskNumber),
-        MakeTarget(Globals, Target, TargetSucceeded, !Info, !IO),
+        MakeTarget(ProgressStream, Globals, Target, TargetSucceeded,
+            !Info, !IO),
         (
             TargetSucceeded = succeeded,
             mark_task_done(JobCtl, TaskNumber, !IO)
@@ -519,8 +532,8 @@ worker_loop(Globals, KeepGoing, MakeTarget, Targets, JobCtl,
             mark_task_error(JobCtl, TaskNumber, KeepGoingBool, !IO),
             !:Succeeded = did_not_succeed
         ),
-        worker_loop(Globals, KeepGoing, MakeTarget, Targets, JobCtl,
-            !Succeeded, !Info, !IO)
+        worker_loop(ProgressStream, Globals, KeepGoing, MakeTarget, Targets,
+            JobCtl, !Succeeded, !Info, !IO)
     else
         % No more tasks.
         true

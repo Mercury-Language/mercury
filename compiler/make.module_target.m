@@ -34,15 +34,16 @@
 
 %---------------------------------------------------------------------------%
 
-    % make_module_target(ExtraOpts, Globals, Target, Succeeded, !Info, !IO):
+    % make_module_target(ExtraOpts, ProgressStream, Globals, Target,
+    %   Succeeded, !Info, !IO):
     %
     % Make a target corresponding to a single module, possibly with
     % extra command line options.
     %
     % ExtraOpts must be the first argument, because we curry it.
     %
-:- pred make_module_target(list(string)::in, globals::in,
-    dependency_file::in, maybe_succeeded::out,
+:- pred make_module_target(list(string)::in, io.text_output_stream::in,
+    globals::in, dependency_file::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % record_made_target(Globals, TargetFile, TargetFileName, Task,
@@ -120,9 +121,8 @@
 
 %---------------------------------------------------------------------------%
 
-make_module_target(ExtraOptions, Globals, Dep, Succeeded, !Info, !IO) :-
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
+make_module_target(ExtraOptions, ProgressStream, Globals, Dep, Succeeded,
+        !Info, !IO) :-
     get_dependency_status(ProgressStream, Globals,
         Dep, StatusResult, !Info, !IO),
     StatusResult = dependency_status_result(_Dep, _DepFileName, Status),
@@ -167,11 +167,12 @@ make_module_target(ExtraOptions, Globals, Dep, Succeeded, !Info, !IO) :-
                 then
                     NestedTargetFile =
                         target_file(SourceFileModuleName, TargetType),
-                    make_module_target(ExtraOptions, Globals,
+                    make_module_target(ExtraOptions, ProgressStream, Globals,
                         dep_target(NestedTargetFile), Succeeded, !Info, !IO)
                 else
-                    make_module_target_file_main_path(ExtraOptions, Globals,
-                        TargetFile, CompilationTaskAndOptions, ModuleDepInfo,
+                    make_module_target_file_main_path(ExtraOptions,
+                        ProgressStream, Globals, TargetFile,
+                        CompilationTaskAndOptions, ModuleDepInfo,
                         Succeeded, !Info, !IO)
                 )
             )
@@ -187,13 +188,15 @@ make_module_target(ExtraOptions, Globals, Dep, Succeeded, !Info, !IO) :-
         )
     ).
 
-:- pred make_module_target_file_main_path(list(string)::in, globals::in,
+:- pred make_module_target_file_main_path(list(string)::in,
+    io.text_output_stream::in, globals::in,
     target_file::in, compilation_task_type_and_options::in,
     module_dep_info::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
-        CompilationTaskAndOptions, ModuleDepInfo, Succeeded, !Info, !IO) :-
+make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
+        TargetFile, CompilationTaskAndOptions, ModuleDepInfo, Succeeded,
+        !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     get_make_target_file_name(Globals, $pred, TargetFile, TargetFileName, !IO),
     CompilationTaskAndOptions = task_and_options(CompilationTaskType, _),
@@ -249,12 +252,11 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
             DepFiles0, DepFilesPlainSet),
         list.map_foldl(dependency_file_to_file_name(Globals),
             set.to_sorted_list(DepFilesPlainSet), DepFileNames, !IO),
-        % XXX MAKE_STREAM
-        io.format("%s: dependencies:\n", [s(TargetFileName)], !IO),
+        io.format(ProgressStream, "%s: dependencies:\n",
+            [s(TargetFileName)], !IO),
         WriteDepFileName =
             ( pred(FN::in, SIO0::di, SIO::uo) is det :-
-                % XXX MAKE_STREAM
-                io.format("\t%s\n", [s(FN)], SIO0, SIO)
+                io.format(ProgressStream, "\t%s\n", [s(FN)], SIO0, SIO)
             ),
         list.foldl(WriteDepFileName, DepFileNames, !IO)
     ),
@@ -265,8 +267,8 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
     then
         DepsResult = deps_error
     else
-        make_dependency_files(Globals, TargetFile, TargetFileName,
-            DepFilesToMake, TouchedTargetFiles, TouchedFiles,
+        make_dependency_files(ProgressStream, Globals, TargetFile,
+            TargetFileName, DepFilesToMake, TouchedTargetFiles, TouchedFiles,
             DepsResult0, !Info, !IO),
         (
             DepsSucceeded = succeeded,
@@ -292,8 +294,6 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
             ExtraOptions, Succeeded, !Info, !IO)
     ;
         DepsResult = deps_up_to_date,
-        % XXX MAKE_STREAM
-        io.output_stream(ProgressStream, !IO),
         TopTargetFile = top_target_file(ModuleName, module_target(TargetType)),
         maybe_warn_up_to_date_target_msg(Globals, TopTargetFile,
             TargetFileName, !Info, UpToDateMsg),
@@ -307,20 +307,18 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
             [TargetFile | TouchedTargetFiles], !Info)
     ).
 
-:- pred make_dependency_files(globals::in, target_file::in, file_name::in,
-    list(dependency_file)::in, list(target_file)::in, list(file_name)::in,
-    dependencies_result::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred make_dependency_files(io.text_output_stream::in, globals::in,
+    target_file::in, file_name::in, list(dependency_file)::in,
+    list(target_file)::in, list(file_name)::in, dependencies_result::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_dependency_files(Globals, TargetFile, TargetFileName, DepFilesToMake,
-        TouchedTargetFiles, TouchedFiles, DepsResult, !Info, !IO) :-
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
-
+make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
+        DepFilesToMake, TouchedTargetFiles, TouchedFiles, DepsResult,
+        !Info, !IO) :-
     % Build the dependencies.
     KeepGoing = make_info_get_keep_going(!.Info),
-    foldl2_make_module_targets(KeepGoing, [], Globals, DepFilesToMake,
-        MakeDepsSucceeded, !Info, !IO),
+    foldl2_make_module_targets(KeepGoing, [], ProgressStream, Globals,
+        DepFilesToMake, MakeDepsSucceeded, !Info, !IO),
 
     % Check that the target files exist.
     list.map_foldl2(
@@ -506,8 +504,8 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
             ;
                 RedirectResult = yes(ErrorStream),
                 build_target_2(ModuleName, Task, MaybeArgFileName,
-                    ModuleDepInfo, BuildGlobals, AllOptionArgs, ErrorStream,
-                    Succeeded0, !Info, !IO),
+                    ModuleDepInfo, BuildGlobals, AllOptionArgs,
+                    ProgressStream, ErrorStream, Succeeded0, !Info, !IO),
                 unredirect_output(Globals, ModuleName,
                     ProgressStream, ErrorStream, !Info, !IO)
             )
@@ -535,7 +533,7 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
             DiffSecs = float(Time - Time0) / 1000.0,
             % Avoid cluttering the screen with short running times.
             ( if DiffSecs >= 0.5 then
-                io.format("Making %s took %.2fs\n",
+                io.format(ProgressStream, "Making %s took %.2fs\n",
                     [s(TargetFileName), f(DiffSecs)], !IO)
             else
                 true
@@ -545,8 +543,7 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         )
     ;
         ArgFileNameRes = error(ArgFileError),
-        % XXX MAKE_STREAM
-        io.format(stderr_stream, "Could not create temporary file: %s\n",
+        io.format(ProgressStream, "Could not create temporary file: %s\n",
             [s(error_message(ArgFileError))], !IO),
         Succeeded = did_not_succeed
     ).
@@ -573,14 +570,12 @@ cleanup_files(Globals, MaybeArgFileName, TouchedTargetFiles, TouchedFiles,
 
 :- pred build_target_2(module_name::in, compilation_task_type::in,
     maybe(file_name)::in, module_dep_info::in, globals::in,
-    list(string)::in, io.text_output_stream::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    list(string)::in, io.text_output_stream::in, io.text_output_stream::in,
+    maybe_succeeded::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
 build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
-        AllOptionArgs, ErrorStream, Succeeded, !Info, !IO) :-
-    % XXX MAKE_STREAM Printing progress messages to the current output stream
-    % is an attempt to preserve old behavior.
-    io.output_stream(ProgressStream, !IO),
+        AllOptionArgs, ProgressStream, ErrorStream, Succeeded, !Info, !IO) :-
     (
         Task = process_module(ModuleTask),
         ModuleArg = sym_name_to_string(ModuleName),
@@ -592,8 +587,8 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
             % XXX Don't write the default options.
             AllArgStrs = list.map(quote_shell_cmd_arg, AllArgs),
             AllArgsStr = string.join_list(" ", AllArgStrs),
-            % XXX MAKE_STREAM
-            io.format("Invoking self `mmc %s'\n", [s(AllArgsStr)], !IO)
+            io.format(ProgressStream, "Invoking self `mmc %s'\n",
+                [s(AllArgsStr)], !IO)
         ;
             Verbose = no
         ),
@@ -836,7 +831,7 @@ invoke_mmc(Globals, ProgressStream, ErrorStream,
         ArgFileOpenRes = error(Error),
         Succeeded = did_not_succeed,
         io.error_message(Error, ErrorMsg),
-        io.format("Error opening `%s' for output: %s\n",
+        io.format(ProgressStream, "Error opening `%s' for output: %s\n",
             [s(ArgFileName), s(ErrorMsg)], !IO)
     ),
     io.file.remove_file(ArgFileName, _, !IO).
