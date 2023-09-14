@@ -982,7 +982,7 @@ make_module_dependencies_no_fatal_error(Globals, ProgressStream, ErrorStream,
         OptionVariables = make_info_get_options_variables(!.Info),
         OptionArgs = make_info_get_option_args(!.Info),
         ExtraOptions = ["--make-short-interface"],
-        setup_for_build_with_module_options(DefaultOptionTable,
+        setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
             invoked_by_mmc_make, ModuleName, DetectedGradeFlags,
             OptionVariables, OptionArgs, ExtraOptions, MayBuild, !IO),
         (

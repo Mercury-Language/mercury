@@ -49,9 +49,9 @@
             % All the arguments for the build, and the globals we have set up
             % for the build.
 
-    % setup_for_build_with_module_options(DefaultOptionTable, InvokedByMmcMake,
-    %   ModuleName, DetectedGradeFlags, OptionVariables, OptionArgs,
-    %   ExtraOptions, MayBuild, !Info, !IO):
+    % setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
+    %   InvokedByMmcMake, ModuleName, DetectedGradeFlags,
+    %   OptionVariables, OptionArgs, ExtraOptions, MayBuild, !Info, !IO):
     %
     % Set up for building some compiler-generated file for ModuleName,
     % Return, in MayBuild, the full argument list for that compiler invocation,
@@ -69,8 +69,9 @@
     % XXX The type of ExtraOptions should be assoc_list(option, option_data),
     % or possibly just a maybe(op_mode). not list(string),
     %
-:- pred setup_for_build_with_module_options(option_table(option)::in,
-    maybe_invoked_by_mmc_make::in, module_name::in, list(string)::in,
+:- pred setup_for_build_with_module_options(io.text_output_stream::in,
+    option_table(option)::in, maybe_invoked_by_mmc_make::in,
+    module_name::in, list(string)::in,
     options_variables::in, list(string)::in, list(string)::in,
     may_build::out, io::di, io::uo) is det.
 
@@ -213,8 +214,8 @@
 
 %---------------------------------------------------------------------------%
 
-setup_for_build_with_module_options(DefaultOptionTable, InvokedByMmcMake,
-        ModuleName, DetectedGradeFlags, OptionVariables,
+setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
+        InvokedByMmcMake, ModuleName, DetectedGradeFlags, OptionVariables,
         OptionArgs, ExtraOptions, MayBuild, !IO) :-
     lookup_mmc_module_options(OptionVariables, ModuleName,
         MaybeModuleOptionArgs),
@@ -239,9 +240,6 @@ setup_for_build_with_module_options(DefaultOptionTable, InvokedByMmcMake,
         ),
         AllOptionArgs = InvokedByMake ++ DetectedGradeFlags ++
             ModuleOptionArgs ++ OptionArgs ++ ExtraOptions ++ UseSubdirs,
-        % XXX STREAM
-        io.output_stream(CurStream, !IO),
-        ProgressStream = CurStream,
         handle_given_options(ProgressStream, DefaultOptionTable, AllOptionArgs,
             _, _, OptionSpecs, BuildGlobals, !IO),
         (
@@ -276,19 +274,19 @@ unredirect_output(Globals, ModuleName, ProgressStream, ErrorOutputStream,
     io.output_stream_name(ErrorOutputStream, TmpErrorFileName, !IO),
     io.close_output(ErrorOutputStream, !IO),
 
-    io.read_named_file_as_lines(TmpErrorFileName, TmpErrorLinesRes, !IO),
+    io.read_named_file_as_lines(TmpErrorFileName, TmpErrorLinesResult, !IO),
     (
-        TmpErrorLinesRes = ok(TmpErrorLines),
+        TmpErrorLinesResult = ok(TmpErrorLines),
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur(ext_cur_user_err), ModuleName, ErrorFileName, !IO),
         ErrorFileModules0 = make_info_get_error_file_modules(!.Info),
         ( if set.contains(ErrorFileModules0, ModuleName) then
-            io.open_append(ErrorFileName, ErrorFileRes, !IO)
+            io.open_append(ErrorFileName, ErrorFileResult, !IO)
         else
-            io.open_output(ErrorFileName, ErrorFileRes, !IO)
+            io.open_output(ErrorFileName, ErrorFileResult, !IO)
         ),
         (
-            ErrorFileRes = ok(ErrorFileOutputStream),
+            ErrorFileResult = ok(ErrorFileOutputStream),
             globals.lookup_maybe_int_option(Globals,
                 output_compile_error_lines, MaybeLinesToWrite),
             io.output_stream(CurrentOutputStream, !IO),
@@ -305,14 +303,14 @@ unredirect_output(Globals, ModuleName, ProgressStream, ErrorOutputStream,
             set.insert(ModuleName, ErrorFileModules1, ErrorFileModules),
             make_info_set_error_file_modules(ErrorFileModules, !Info)
         ;
-            ErrorFileRes = error(Error),
+            ErrorFileResult = error(Error),
             with_locked_stdout(!.Info,
                 write_error_opening_file(ProgressStream, TmpErrorFileName,
                     Error),
                 !IO)
         )
     ;
-        TmpErrorLinesRes = error(Error),
+        TmpErrorLinesResult = error(Error),
         with_locked_stdout(!.Info,
             write_error_opening_file(ProgressStream, TmpErrorFileName, Error),
             !IO)

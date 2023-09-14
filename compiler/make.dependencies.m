@@ -70,13 +70,13 @@
     % Find all modules in the current directory which are reachable
     % (by import or include) from the given module.
     %
-:- pred find_reachable_local_modules(globals::in, module_name::in,
-    maybe_succeeded::out, set(module_name)::out,
+:- pred find_reachable_local_modules(io.text_output_stream::in, globals::in,
+    module_name::in, maybe_succeeded::out, set(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Remove all nested modules from a list of modules.
     %
-:- pred remove_nested_modules(globals::in,
+:- pred remove_nested_modules(io.text_output_stream::in, globals::in,
     list(module_name)::in, list(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -86,8 +86,8 @@
     % from the given module. Return a list of `--local-module-id' options
     % suitable for the command line.
     %
-:- pred make_local_module_id_options(globals::in, module_name::in,
-    maybe_succeeded::out, list(string)::out,
+:- pred make_local_module_id_options(io.text_output_stream::in, globals::in,
+    module_name::in, maybe_succeeded::out, list(string)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -127,11 +127,10 @@
     %
     % Check that all the dependency files are up-to-date.
     %
-:- pred check_dependency_timestamps(globals::in, file_name::in,
-    maybe_error(timestamp)::in, maybe_succeeded::in,
-    list(dependency_status_result)::in,
-    list(maybe_error(timestamp))::in, dependencies_result::out,
-    io::di, io::uo) is det.
+:- pred check_dependency_timestamps(io.text_output_stream::in, globals::in,
+    file_name::in, maybe_error(timestamp)::in, maybe_succeeded::in,
+    list(dependency_status_result)::in, list(maybe_error(timestamp))::in,
+    dependencies_result::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -683,8 +682,10 @@ non_intermod_direct_imports(Globals, ModuleIndex, Succeeded, Modules,
     ( if map.search(CachedNonIntermodDirectImports0, ModuleIndex, Result0) then
         Result0 = deps_result(Succeeded, Modules)
     else
-        non_intermod_direct_imports_uncached(Globals, ModuleIndex, Succeeded,
-            Modules, !Info, !IO),
+        % XXX MAKE_STREAM
+        io.output_stream(ProgressStream, !IO),
+        non_intermod_direct_imports_uncached(ProgressStream, Globals,
+            ModuleIndex, Succeeded, Modules, !Info, !IO),
         Result = deps_result(Succeeded, Modules),
         CachedNonIntermodDirectImports1 =
             make_info_get_cached_non_intermod_direct_imports(!.Info),
@@ -694,15 +695,14 @@ non_intermod_direct_imports(Globals, ModuleIndex, Succeeded, Modules,
             CachedNonIntermodDirectImports, !Info)
     ).
 
-:- pred non_intermod_direct_imports_uncached(globals::in, module_index::in,
+:- pred non_intermod_direct_imports_uncached(io.text_output_stream::in,
+    globals::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-non_intermod_direct_imports_uncached(Globals, ModuleIndex, Succeeded, Modules,
-        !Info, !IO) :-
+non_intermod_direct_imports_uncached(ProgressStream, Globals, ModuleIndex,
+        Succeeded, Modules, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
     get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
@@ -751,8 +751,10 @@ indirect_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     ( if map.search(CachedIndirectImports0, ModuleIndex, CachedResult) then
         CachedResult = deps_result(Succeeded, Modules)
     else
-        indirect_imports_uncached(Globals, direct_imports, ModuleIndex,
-            Succeeded, Modules, !Info, !IO),
+        % XXX MAKE_STREAM
+        io.output_stream(ProgressStream, !IO),
+        indirect_imports_uncached(ProgressStream, Globals, direct_imports,
+            ModuleIndex, Succeeded, Modules, !Info, !IO),
         Result = deps_result(Succeeded, Modules),
         CachedIndirectImports1 = make_info_get_cached_indirect_imports(!.Info),
         map.det_insert(ModuleIndex, Result,
@@ -770,16 +772,19 @@ indirect_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
 
 non_intermod_indirect_imports(Globals, ModuleIndex, Succeeded, Modules,
         !Info, !IO) :-
-    indirect_imports_uncached(Globals, non_intermod_direct_imports,
-        ModuleIndex, Succeeded, Modules, !Info, !IO).
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
+    indirect_imports_uncached(ProgressStream, Globals,
+        non_intermod_direct_imports, ModuleIndex, Succeeded, Modules,
+        !Info, !IO).
 
-:- pred indirect_imports_uncached(globals::in,
+:- pred indirect_imports_uncached(io.text_output_stream::in, globals::in,
     find_module_deps(module_index)::in(find_module_deps),
     module_index::in, maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-indirect_imports_uncached(Globals, FindDirectImports, ModuleIndex, Succeeded,
-        IndirectImports, !Info, !IO) :-
+indirect_imports_uncached(ProgressStream, Globals, FindDirectImports,
+        ModuleIndex, Succeeded, IndirectImports, !Info, !IO) :-
     FindDirectImports(Globals, ModuleIndex, DirectSucceeded, DirectImports,
         !Info, !IO),
     % XXX The original version of this code by stayl had the line assigning
@@ -794,7 +799,7 @@ indirect_imports_uncached(Globals, FindDirectImports, ModuleIndex, Succeeded,
         IndirectImports = init
     else
         deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
-            find_transitive_implementation_imports, Globals,
+            find_transitive_implementation_imports(ProgressStream), Globals,
             to_sorted_list(DirectImports), succeeded, IndirectSucceeded,
             init, IndirectImports0, !Info, !IO),
         IndirectImports = difference(
@@ -819,8 +824,10 @@ intermod_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
             Transitive),
         (
             Transitive = yes,
-            find_transitive_implementation_imports(Globals, ModuleIndex,
-                Succeeded, Modules, !Info, !IO)
+            % XXX MAKE_STREAM
+            io.output_stream(ProgressStream, !IO),
+            find_transitive_implementation_imports(ProgressStream, Globals,
+                ModuleIndex, Succeeded, Modules, !Info, !IO)
         ;
             Transitive = no,
             non_intermod_direct_imports(Globals, ModuleIndex, Succeeded,
@@ -847,19 +854,22 @@ foreign_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     intermod_imports(Globals, ModuleIndex, IntermodSucceeded, IntermodModules,
         !Info, !IO),
     KeepGoing = make_info_get_keep_going(!.Info),
+    % XXX MAKE_STREAM
+    io.output_stream(ProgressStream, !IO),
     deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
-        find_module_foreign_imports(set.list_to_set(Languages)),
+        find_module_foreign_imports(ProgressStream,
+            set.list_to_set(Languages)),
         Globals, to_sorted_list(insert(IntermodModules, ModuleIndex)),
         succeeded, ForeignSucceeded, init, Modules, !Info, !IO),
     Succeeded = IntermodSucceeded `and` ForeignSucceeded.
 
-:- pred find_module_foreign_imports(set(foreign_language)::in,
-    globals::in, module_index::in,
+:- pred find_module_foreign_imports(io.text_output_stream::in,
+    set(foreign_language)::in, globals::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-find_module_foreign_imports(Languages, Globals, ModuleIndex, Succeeded,
-        ForeignModules, !Info, !IO) :-
+find_module_foreign_imports(ProgressStream, Languages, Globals, ModuleIndex,
+        Succeeded, ForeignModules, !Info, !IO) :-
     % Languages should be constant for the duration of the process,
     % so is unnecessary to include in the cache key.
     CachedForeignImports0 =
@@ -867,13 +877,14 @@ find_module_foreign_imports(Languages, Globals, ModuleIndex, Succeeded,
     ( if map.search(CachedForeignImports0, ModuleIndex, CachedResult) then
         CachedResult = deps_result(Succeeded, ForeignModules)
     else
-        find_transitive_implementation_imports(Globals, ModuleIndex,
-            Succeeded0, ImportedModules, !Info, !IO),
+        find_transitive_implementation_imports(ProgressStream, Globals,
+            ModuleIndex, Succeeded0, ImportedModules, !Info, !IO),
         (
             Succeeded0 = succeeded,
             KeepGoing = make_info_get_keep_going(!.Info),
             deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
-                find_module_foreign_imports_uncached(Languages),
+                find_module_foreign_imports_uncached(ProgressStream,
+                    Languages),
                 Globals, to_sorted_list(insert(ImportedModules, ModuleIndex)),
                 succeeded, Succeeded, init, ForeignModules, !Info, !IO),
             Result = deps_result(Succeeded, ForeignModules),
@@ -890,16 +901,14 @@ find_module_foreign_imports(Languages, Globals, ModuleIndex, Succeeded,
         )
     ).
 
-:- pred find_module_foreign_imports_uncached(set(foreign_language)::in,
-    globals::in, module_index::in,
+:- pred find_module_foreign_imports_uncached(io.text_output_stream::in,
+    set(foreign_language)::in, globals::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-find_module_foreign_imports_uncached(Languages, Globals, ModuleIndex,
-        Succeeded, ForeignModules, !Info, !IO) :-
+find_module_foreign_imports_uncached(ProgressStream, Languages, Globals,
+        ModuleIndex, Succeeded, ForeignModules, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
     get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
@@ -1063,27 +1072,29 @@ cache_computed_module_deps(Label, FindDeps, Globals, ModuleIndex, Succeeded,
 
     % XXX Document me.
     %
-:- pred deps_set_foldl3_find_trans_deps(maybe_keep_going::in,
-    transitive_dependencies_type::in, process_modules_where::in,
-    globals::in, list(module_index)::in,
+:- pred deps_set_foldl3_find_trans_deps(io.text_output_stream::in,
+    maybe_keep_going::in, transitive_dependencies_type::in,
+    process_modules_where::in, globals::in, list(module_index)::in,
     maybe_succeeded::in, maybe_succeeded::out,
     deps_set(module_index)::in, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-deps_set_foldl3_find_trans_deps(_KeepGoing, _DependenciesType,
+deps_set_foldl3_find_trans_deps(_ProgressStream, _KeepGoing, _DependenciesType,
         _IsModuleInCurDir, _Globals, [], !Succeeded, !Acc, !Info, !IO).
-deps_set_foldl3_find_trans_deps(KeepGoing, DependenciesType,
+deps_set_foldl3_find_trans_deps(ProgressStream, KeepGoing, DependenciesType,
         IsModuleInCurDir, Globals, [T | Ts], !Succeeded, !Acc, !Info, !IO) :-
-    find_transitive_module_dependencies_uncached(KeepGoing, DependenciesType,
-        IsModuleInCurDir, Globals, T, NewSucceeded, !Acc, !Info, !IO),
+    find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
+        DependenciesType, IsModuleInCurDir, Globals, T, NewSucceeded,
+        !Acc, !Info, !IO),
     ( if
         ( NewSucceeded = succeeded
         ; KeepGoing = do_keep_going
         )
     then
         !:Succeeded = !.Succeeded `and` NewSucceeded,
-        deps_set_foldl3_find_trans_deps(KeepGoing, DependenciesType,
-            IsModuleInCurDir, Globals, Ts, !Succeeded, !Acc, !Info, !IO)
+        deps_set_foldl3_find_trans_deps(ProgressStream, KeepGoing,
+            DependenciesType, IsModuleInCurDir, Globals, Ts, !Succeeded,
+            !Acc, !Info, !IO)
     else
         !:Succeeded = did_not_succeed
     ).
@@ -1187,32 +1198,33 @@ deps_set_foldl3_maybe_stop_at_error_find_union_fi(KeepGoing,
 
 %---------------------------------------------------------------------------%
 
-find_reachable_local_modules(Globals, ModuleName, Succeeded, Modules,
-        !Info, !IO) :-
+find_reachable_local_modules(ProgressStream, Globals, ModuleName, Succeeded,
+        Modules, !Info, !IO) :-
     module_name_to_index(ModuleName, ModuleIndex, !Info),
-    find_transitive_module_dependencies(Globals, all_dependencies,
-        process_only_modules_in_cur_dir, ModuleIndex, Succeeded, Modules0,
-        !Info, !IO),
+    find_transitive_module_dependencies(ProgressStream, Globals,
+        all_dependencies, process_only_modules_in_cur_dir, ModuleIndex,
+        Succeeded, Modules0, !Info, !IO),
     module_index_set_to_plain_set(!.Info, Modules0, Modules).
 
-:- pred find_transitive_implementation_imports(globals::in, module_index::in,
+:- pred find_transitive_implementation_imports(io.text_output_stream::in,
+    globals::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-find_transitive_implementation_imports(Globals, ModuleIndex,
+find_transitive_implementation_imports(ProgressStream, Globals, ModuleIndex,
         Succeeded, Modules, !Info, !IO) :-
-    find_transitive_module_dependencies(Globals, all_imports,
+    find_transitive_module_dependencies(ProgressStream, Globals, all_imports,
         process_modules_anywhere, ModuleIndex, Succeeded, Modules0,
         !Info, !IO),
     Modules = insert(Modules0, ModuleIndex).
 
-:- pred find_transitive_module_dependencies(globals::in,
-    transitive_dependencies_type::in,
+:- pred find_transitive_module_dependencies(io.text_output_stream::in,
+    globals::in, transitive_dependencies_type::in,
     process_modules_where::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-find_transitive_module_dependencies(Globals, DependenciesType,
+find_transitive_module_dependencies(ProgressStream, Globals, DependenciesType,
         IsModuleInCurDir, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     DepsRoot = transitive_dependencies_root(ModuleIndex, DependenciesType,
         IsModuleInCurDir),
@@ -1221,7 +1233,7 @@ find_transitive_module_dependencies(Globals, DependenciesType,
         Result0 = deps_result(Succeeded, Modules)
     else
         KeepGoing = make_info_get_keep_going(!.Info),
-        find_transitive_module_dependencies_uncached(KeepGoing,
+        find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
             DependenciesType, IsModuleInCurDir, Globals, ModuleIndex,
             Succeeded, init, Modules, !Info, !IO),
         Result = deps_result(Succeeded, Modules),
@@ -1231,15 +1243,16 @@ find_transitive_module_dependencies(Globals, DependenciesType,
         make_info_set_cached_transitive_dependencies(CachedTransDeps, !Info)
     ).
 
-:- pred find_transitive_module_dependencies_uncached(maybe_keep_going::in,
-    transitive_dependencies_type::in, process_modules_where::in, globals::in,
+:- pred find_transitive_module_dependencies_uncached(io.text_output_stream::in,
+    maybe_keep_going::in, transitive_dependencies_type::in,
+    process_modules_where::in, globals::in,
     module_index::in, maybe_succeeded::out,
     deps_set(module_index)::in, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-find_transitive_module_dependencies_uncached(KeepGoing, DependenciesType,
-        IsModuleInCurDir, Globals, ModuleIndex, Succeeded, Modules0, Modules,
-        !Info, !IO) :-
+find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
+        DependenciesType, IsModuleInCurDir, Globals, ModuleIndex, Succeeded,
+        Modules0, Modules, !Info, !IO) :-
     ( if
         member(ModuleIndex, Modules0)
     then
@@ -1255,8 +1268,6 @@ find_transitive_module_dependencies_uncached(KeepGoing, DependenciesType,
         Modules = union(Modules0, Modules1)
     else
         module_index_to_name(!.Info, ModuleIndex, ModuleName),
-        % XXX MAKE_STREAM
-        io.output_stream(ProgressStream, !IO),
         get_maybe_module_dep_info(ProgressStream, Globals,
             ModuleName, MaybeModuleDepInfo, !Info, !IO),
         (
@@ -1270,8 +1281,8 @@ find_transitive_module_dependencies_uncached(KeepGoing, DependenciesType,
                     ModuleDir = dir.this_directory
                 )
             then
-                do_find_transitive_module_dependencies_uncached(KeepGoing,
-                    DependenciesType, IsModuleInCurDir, Globals,
+                do_find_transitive_module_dependencies_uncached(ProgressStream,
+                    KeepGoing, DependenciesType, IsModuleInCurDir, Globals,
                     ModuleIndex, ModuleName, ModuleDepInfo, Succeeded,
                     Modules0, Modules, !Info, !IO)
             else
@@ -1285,16 +1296,17 @@ find_transitive_module_dependencies_uncached(KeepGoing, DependenciesType,
         )
     ).
 
-:- pred do_find_transitive_module_dependencies_uncached(maybe_keep_going::in,
+:- pred do_find_transitive_module_dependencies_uncached(
+    io.text_output_stream::in, maybe_keep_going::in,
     transitive_dependencies_type::in, process_modules_where::in, globals::in,
     module_index::in, module_name::in, module_dep_info::in,
     maybe_succeeded::out,
     deps_set(module_index)::in, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-do_find_transitive_module_dependencies_uncached(KeepGoing, DependenciesType,
-        IsModuleInCurDir, Globals, ModuleIndex, ModuleName, ModuleDepInfo,
-        Succeeded, Modules0, Modules, !Info, !IO) :-
+do_find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
+        DependenciesType, IsModuleInCurDir, Globals, ModuleIndex, ModuleName,
+        ModuleDepInfo, Succeeded, Modules0, Modules, !Info, !IO) :-
     module_dep_info_get_fims(ModuleDepInfo, FIMSpecs),
     module_dep_info_get_module_name(ModuleDepInfo, MDI_ModuleName),
     expect(unify(ModuleName, MDI_ModuleName), $pred,
@@ -1334,30 +1346,32 @@ do_find_transitive_module_dependencies_uncached(KeepGoing, DependenciesType,
     Modules1 = insert(Modules0, ModuleIndex),
     OldImportingModule = make_info_get_importing_module(!.Info),
     make_info_set_importing_module(yes(ioi_import(ModuleName)), !Info),
-    deps_set_foldl3_find_trans_deps(KeepGoing, DependenciesType,
-        IsModuleInCurDir, Globals, to_sorted_list(ImportsToCheckSet),
+    deps_set_foldl3_find_trans_deps(ProgressStream, KeepGoing,
+        DependenciesType, IsModuleInCurDir, Globals,
+        to_sorted_list(ImportsToCheckSet),
         succeeded, SucceededImports, Modules1, Modules2, !Info, !IO),
     make_info_set_importing_module(yes(ioi_include(ModuleName)), !Info),
-    deps_set_foldl3_find_trans_deps(KeepGoing, DependenciesType,
-        IsModuleInCurDir, Globals, to_sorted_list(IncludesToCheckSet),
+    deps_set_foldl3_find_trans_deps(ProgressStream, KeepGoing,
+        DependenciesType, IsModuleInCurDir, Globals,
+        to_sorted_list(IncludesToCheckSet),
         succeeded, SucceededIncludes, Modules2, Modules, !Info, !IO),
     make_info_set_importing_module(OldImportingModule, !Info),
     Succeeded = SucceededImports `and` SucceededIncludes.
 
 %---------------------------------------------------------------------------%
 
-remove_nested_modules(Globals, Modules0, Modules, !Info, !IO) :-
-    list.foldl3(collect_nested_modules(Globals), Modules0,
+remove_nested_modules(ProgressStream, Globals, Modules0, Modules,
+        !Info, !IO) :-
+    list.foldl3(collect_nested_modules(ProgressStream, Globals), Modules0,
         set.init, NestedModules, !Info, !IO),
     list.negated_filter(set.contains(NestedModules), Modules0, Modules).
 
-:- pred collect_nested_modules(globals::in, module_name::in,
-    set(module_name)::in, set(module_name)::out,
+:- pred collect_nested_modules(io.text_output_stream::in, globals::in,
+    module_name::in, set(module_name)::in, set(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-collect_nested_modules(Globals, ModuleName, !NestedModules, !Info, !IO) :-
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
+collect_nested_modules(ProgressStream, Globals, ModuleName,
+        !NestedModules, !Info, !IO) :-
     get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
@@ -1371,10 +1385,10 @@ collect_nested_modules(Globals, ModuleName, !NestedModules, !Info, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-make_local_module_id_options(Globals, ModuleName, Succeeded, Options,
-        !Info, !IO) :-
-    find_reachable_local_modules(Globals, ModuleName, Succeeded, LocalModules,
-        !Info, !IO),
+make_local_module_id_options(ProgressStream, Globals, ModuleName,
+        Succeeded, Options, !Info, !IO) :-
+    find_reachable_local_modules(ProgressStream, Globals, ModuleName,
+        Succeeded, LocalModules, !Info, !IO),
     set.fold(make_local_module_id_option, LocalModules, [], Options).
 
 :- pred make_local_module_id_option(module_name::in, list(string)::in,
@@ -1539,8 +1553,8 @@ check_dependencies(ProgressStream, Globals, TargetFileName, MaybeTimestamp,
         list.map_foldl2(get_dependency_timestamp(ProgressStream, Globals),
             DepFiles, DepTimestamps, !Info, !IO),
 
-        check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
-            BuildDepsSucceeded, DepStatusTuples,
+        check_dependency_timestamps(ProgressStream, Globals, TargetFileName,
+            MaybeTimestamp, BuildDepsSucceeded, DepStatusTuples,
             DepTimestamps, DepsResult, !IO)
     ).
 
@@ -1607,10 +1621,9 @@ check_dependencies_timestamps_missing_deps_msg(TargetFileName,
         Msg = DoNotExistMsg
     ).
 
-check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
-        BuildDepsSucceeded, DepFileTuples0, DepTimestamps, DepsResult, !IO) :-
-    % XXX MAKE_STREAM
-    io.output_stream(ProgressStream, !IO),
+check_dependency_timestamps(ProgressStream, Globals, TargetFileName,
+        MaybeTimestamp, BuildDepsSucceeded, DepFileTuples0, DepTimestamps,
+        DepsResult, !IO) :-
     (
         MaybeTimestamp = error(_),
         DepsResult = deps_out_of_date,

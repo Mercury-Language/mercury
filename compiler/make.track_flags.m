@@ -73,8 +73,8 @@
 
 make_track_flags_files(ErrorStream, ProgressStream, Globals, ModuleName,
         Succeeded, !Info, !IO) :-
-    find_reachable_local_modules(Globals, ModuleName, Succeeded0, ModuleNames,
-        !Info, !IO),
+    find_reachable_local_modules(ProgressStream, Globals, ModuleName,
+        Succeeded0, ModuleNames, !Info, !IO),
     (
         Succeeded0 = succeeded,
         DummyLastHash = last_hash([], ""),
