@@ -839,10 +839,10 @@ read_module_dependencies_remake_msg(RebuildModuleDeps, ModuleDepsFile,
     module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_module_dependencies(ProgressStream, Globals, ModuleName, !Info, !IO) :-
-    prepare_to_redirect_output(ModuleName, ProgressStream, MaybeErrorStream,
-        !Info, !IO),
+    open_module_error_stream(ModuleName, ProgressStream,
+        MaybeErrorStream, !Info, !IO),
     (
-        MaybeErrorStream = yes(ErrorStream),
+        MaybeErrorStream = es_ok(ErrorStream),
         % Both make_module_dependencies_fatal_error and
         % make_module_dependencies_no_fatal_error call unredirect_output,
         % but factoring that call out of the latter would be non-trivial,
@@ -857,6 +857,11 @@ make_module_dependencies(ProgressStream, Globals, ModuleName, !Info, !IO) :-
         read_module_src(MaybeProgressStream, Globals, rrm_get_deps(ModuleName),
             do_not_ignore_errors, do_not_search, ModuleName, [],
             always_read_module(do_return_timestamp), HaveReadSrc, !IO),
+        % XXX If execution will follow a path on which we call
+        % make_module_dependencies_fatal_error, then as its almost-last act,
+        % make_module_dependencies_fatal_error will delete Module.err.
+        % Since that is a possibility, why write to ModuleName.err
+        % *unconditionally*?
         (
             HaveReadSrc = have_read_module(SourceFileName, _MaybeTimestamp,
                 ParseTreeSrc, ReadModuleErrors),
@@ -900,7 +905,7 @@ make_module_dependencies(ProgressStream, Globals, ModuleName, !Info, !IO) :-
                 ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO)
         )
     ;
-        MaybeErrorStream = no
+        MaybeErrorStream = es_error_already_reported
     ).
 
 :- pred make_module_dependencies_fatal_error(globals::in,
@@ -928,7 +933,7 @@ make_module_dependencies_fatal_error(Globals, ProgressStream, ErrorStream,
     % so we don't leave `.err' files lying around for nonexistent modules.
     globals.set_option(output_compile_error_lines, maybe_int(no),
         Globals, UnredirectGlobals),
-    unredirect_output(UnredirectGlobals, ModuleName,
+    close_module_error_stream_handle_errors(UnredirectGlobals, ModuleName,
         ProgressStream, ErrorStream, !Info, !IO),
     module_name_to_file_name(Globals, $pred, ext_cur(ext_cur_user_err),
         ModuleName, ErrFileName),
@@ -1016,8 +1021,8 @@ make_module_dependencies_no_fatal_error(Globals, ProgressStream, ErrorStream,
 
     record_made_target(ProgressStream, Globals, MadeTarget, MadeTargetFileName,
         process_module(task_make_int3), Succeeded, !Info, !IO),
-    unredirect_output(Globals, ModuleName, ProgressStream, ErrorStream,
-        !Info, !IO).
+    close_module_error_stream_handle_errors(Globals, ModuleName,
+        ProgressStream, ErrorStream, !Info, !IO).
 
 :- pred make_info_add_module_and_imports_as_dep(burdened_module::in,
     make_info::in, make_info::out) is det.

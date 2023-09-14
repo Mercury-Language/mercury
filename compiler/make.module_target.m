@@ -492,30 +492,29 @@ build_target(ProgressStream, Globals, CompilationTask, TargetFile,
             invoked_by_mmc_make, ModuleName,
             DetectedGradeFlags, OptionVariables, OptionArgs,
             ExtraAndTaskOptions, MayBuild, !IO),
+        % XXX MAKE A significant number of test case failures in the
+        % tests/invalid directory are caused by a missing final line,
+        % "For more information, recompile with `-E'.". I (zs) think that
+        % calling maybe_print_delayed_error_messages here should fix this.
         (
             MayBuild = may_build(AllOptionArgs, BuildGlobals),
-            prepare_to_redirect_output(ModuleName, ProgressStream,
-                RedirectResult, !Info, !IO),
+            open_module_error_stream(ModuleName, ProgressStream,
+                MaybeErrorStream, !Info, !IO),
             (
-                RedirectResult = no,
+                MaybeErrorStream = es_error_already_reported,
                 Succeeded0 = did_not_succeed
             ;
-                RedirectResult = yes(ErrorStream),
+                MaybeErrorStream = es_ok(ErrorStream),
                 build_target_2(ModuleName, Task, MaybeArgFileName,
                     ModuleDepInfo, BuildGlobals, AllOptionArgs,
                     ProgressStream, ErrorStream, Succeeded0, !Info, !IO),
-                unredirect_output(Globals, ModuleName,
+                close_module_error_stream_handle_errors(Globals, ModuleName,
                     ProgressStream, ErrorStream, !Info, !IO)
             )
         ;
             MayBuild = may_not_build(Specs),
             get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
             write_error_specs(ErrorStream, Globals, Specs, !IO),
-            % XXX MAKE A significant number of test case failures in the
-            % tests/invalid directory are caused by a missing final line,
-            % "For more information, recompile with `-E'.". I (zs) think
-            % that calling maybe_print_delayed_error_messages here should
-            % fix this.
             Succeeded0 = did_not_succeed
         ),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,

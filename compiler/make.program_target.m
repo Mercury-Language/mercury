@@ -324,21 +324,21 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
         then
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             setup_checking_for_interrupt(Cookie, !IO),
-            prepare_to_redirect_output(MainModuleName, ProgressStream,
-                RedirectResult, !Info, !IO),
+            open_module_error_stream(MainModuleName, ProgressStream,
+                MaybeErrorStream, !Info, !IO),
             (
-                RedirectResult = no,
+                MaybeErrorStream = es_error_already_reported,
                 Succeeded0 = did_not_succeed
             ;
-                RedirectResult = yes(ErrorStream),
+                MaybeErrorStream = es_ok(ErrorStream),
                 build_linked_target(MainModuleName, FileType,
                     FullMainModuleLinkedFileName,
                     CurDirMainModuleLinkedFileName, MaybeTimestamp, AllModules,
                     ObjModules, CompilationTarget, PIC, DepsSucceeded,
                     BuildDepsResult, ProgressStream, ErrorStream, Globals,
                     Succeeded0, !Info, !IO),
-                unredirect_output(Globals, MainModuleName,
-                    ProgressStream, ErrorStream, !Info, !IO)
+                close_module_error_stream_handle_errors(Globals,
+                    MainModuleName, ProgressStream, ErrorStream, !Info, !IO)
             ),
             Cleanup = linked_target_cleanup(ProgressStream, Globals,
                 MainModuleName, FileType,
@@ -803,16 +803,16 @@ build_java_files(ProgressStream, Globals, MainModuleName, ModuleNames,
             ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)),
         ModuleNames, JavaFiles, !IO),
     % We redirect errors to a file named after the main module.
-    prepare_to_redirect_output(MainModuleName, ProgressStream,
-        RedirectResult, !Info, !IO),
+    open_module_error_stream(MainModuleName, ProgressStream,
+        MaybeErrorStream, !Info, !IO),
     (
-        RedirectResult = no,
+        MaybeErrorStream = es_error_already_reported,
         Succeeded = did_not_succeed
     ;
-        RedirectResult = yes(ErrorStream),
+        MaybeErrorStream = es_ok(ErrorStream),
         build_java_files_2(ProgressStream, ErrorStream, Globals, JavaFiles,
             Succeeded, !Info, !IO),
-        unredirect_output(Globals, MainModuleName,
+        close_module_error_stream_handle_errors(Globals, MainModuleName,
             ProgressStream, ErrorStream, !Info, !IO)
     ).
 

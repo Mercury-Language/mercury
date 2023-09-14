@@ -32,7 +32,6 @@
 :- import_module getopt.
 :- import_module io.
 :- import_module list.
-:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
@@ -77,24 +76,28 @@
 
 %---------------------%
 
+:- type error_stream_result
+    --->    es_ok(io.text_output_stream)
+    ;       es_error_already_reported.
+
     % Produce an output stream which writes to the error file
     % for the given module.
     %
-    % XXX We should do away with this predicate altogether,
-    % and just have every part of the compiler write to explicitly specified
-    % output streams.
+    % If we return es_ok(ErrorStream), then the caller should call
+    % close_module_error_stream_handle_errors once it has finished writing
+    % to ErrorStream.
     %
-:- pred prepare_to_redirect_output(module_name::in,
-    io.text_output_stream::in, maybe(io.text_output_stream)::out,
+:- pred open_module_error_stream(module_name::in,
+    io.text_output_stream::in, error_stream_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % Close the module error output stream.
+    % Close the module error output stream, and
     %
-    % XXX We should do away with this predicate altogether,
-    % and just have every part of the compiler write to explicitly specified
-    % output streams.
+    % - put its contents in the module's .err file, and
+    % - echo its contents on the progress output stream, to the extent
+    %   allowed by the options.
     %
-:- pred unredirect_output(globals::in, module_name::in,
+:- pred close_module_error_stream_handle_errors(globals::in, module_name::in,
     io.text_output_stream::in, io.text_output_stream::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -208,6 +211,7 @@
 :- import_module char.
 :- import_module int.
 :- import_module io.file.
+:- import_module maybe.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -253,7 +257,7 @@ setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
 
 %---------------------------------------------------------------------------%
 
-prepare_to_redirect_output(_ModuleName, ProgressStream, MaybeErrorStream,
+open_module_error_stream(_ModuleName, ProgressStream, MaybeErrorStream,
         !Info, !IO) :-
     % Write the output to a temporary file first, to make it easy
     % to just print the part of the error file that relates to the
@@ -261,16 +265,16 @@ prepare_to_redirect_output(_ModuleName, ProgressStream, MaybeErrorStream,
     open_temp_output(ErrorFileResult, !IO),
     (
         ErrorFileResult = ok({_ErrorFileName, ErrorOutputStream}),
-        MaybeErrorStream = yes(ErrorOutputStream)
+        MaybeErrorStream = es_ok(ErrorOutputStream)
     ;
         ErrorFileResult = error(ErrorMessage),
-        MaybeErrorStream = no,
         with_locked_stdout(!.Info,
-            write_error_creating_temp_file(ProgressStream, ErrorMessage), !IO)
+            write_error_creating_temp_file(ProgressStream, ErrorMessage), !IO),
+        MaybeErrorStream = es_error_already_reported
     ).
 
-unredirect_output(Globals, ModuleName, ProgressStream, ErrorOutputStream,
-        !Info, !IO) :-
+close_module_error_stream_handle_errors(Globals, ModuleName,
+        ProgressStream, ErrorOutputStream, !Info, !IO) :-
     io.output_stream_name(ErrorOutputStream, TmpErrorFileName, !IO),
     io.close_output(ErrorOutputStream, !IO),
 
