@@ -1405,9 +1405,8 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModules0,
             ext_cur_ngs_gs(ext_cur_ngs_gs_an_ds_date), ThisModule,
             TimestampFileName, !IO),
         get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
-        get_error_output_stream(ModuleInfo, ErrorStream, !IO),
-        touch_file_datestamp(Globals, ProgressStream, ErrorStream,
-            TimestampFileName, _Succeeded, !IO)
+        touch_file_datestamp(Globals, ProgressStream, TimestampFileName,
+            _Succeeded, !IO)
     ).
 
 :- pred load_module_imdg(globals::in, module_name::in,

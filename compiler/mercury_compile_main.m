@@ -1161,10 +1161,12 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         OpModeArgs = opma_generate_dependencies,
         (
             FileOrModule = fm_file(FileName),
-            generate_dep_file_for_file(Globals0, FileName, DepSpecs, !IO)
+            generate_dep_file_for_file(ProgressStream, Globals0, FileName,
+                DepSpecs, !IO)
         ;
             FileOrModule = fm_module(ModuleName),
-            generate_dep_file_for_module(Globals0, ModuleName, DepSpecs, !IO)
+            generate_dep_file_for_module(ProgressStream, Globals0, ModuleName,
+                DepSpecs, !IO)
         ),
         write_error_specs(ErrorStream, Globals0, DepSpecs, !IO),
         ModulesToLink = [],
@@ -1173,10 +1175,12 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         OpModeArgs = opma_generate_dependency_file,
         (
             FileOrModule = fm_file(FileName),
-            generate_d_file_for_file(Globals0, FileName, DepSpecs, !IO)
+            generate_d_file_for_file(ProgressStream, Globals0, FileName,
+                DepSpecs, !IO)
         ;
             FileOrModule = fm_module(ModuleName),
-            generate_d_file_for_module(Globals0, ModuleName, DepSpecs, !IO)
+            generate_d_file_for_module(ProgressStream, Globals0, ModuleName,
+                DepSpecs, !IO)
         ),
         write_error_specs(ErrorStream, Globals0, DepSpecs, !IO),
         ModulesToLink = [],
@@ -1215,8 +1219,8 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         ExtraObjFiles = []
     ;
         OpModeArgs = opma_augment(OpModeAugment),
-        find_modules_to_recompile(Globals0, Globals, FileOrModule,
-            ModulesToRecompile, !HaveReadModuleMaps, !IO),
+        find_modules_to_recompile(ProgressStream, Globals0, Globals,
+            FileOrModule, ModulesToRecompile, !HaveReadModuleMaps, !IO),
         ( if ModulesToRecompile = some_modules([]) then
             % XXX Currently smart recompilation is disabled if mmc is linking
             % the executable, because it doesn't know how to check whether
@@ -1301,13 +1305,13 @@ do_process_compiler_arg_make_interface(ProgressStream, ErrorStream, Globals0,
 version_numbers_return_timestamp(no) = dont_return_timestamp.
 version_numbers_return_timestamp(yes) = do_return_timestamp.
 
-:- pred find_modules_to_recompile(globals::in, globals::out,
-    file_or_module::in, modules_to_recompile::out,
+:- pred find_modules_to_recompile(io.text_output_stream::in, globals::in,
+    globals::out, file_or_module::in, modules_to_recompile::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-find_modules_to_recompile(Globals0, Globals, FileOrModule, ModulesToRecompile,
-        !HaveReadModuleMaps, !IO) :-
+find_modules_to_recompile(ProgressStream, Globals0, Globals, FileOrModule,
+        ModulesToRecompile, !HaveReadModuleMaps, !IO) :-
     globals.lookup_bool_option(Globals0, smart_recompilation, Smart0),
     io_get_disable_smart_recompilation(DisableSmart, !IO),
     (
@@ -1342,9 +1346,9 @@ find_modules_to_recompile(Globals0, Globals, FileOrModule, ModulesToRecompile,
         % first order code.
         find_smart_recompilation_target_files(Globals, FindTargetFiles),
         find_timestamp_files(Globals, FindTimestampFiles),
-        recompilation.check.should_recompile(Globals, ModuleName,
-            FindTargetFiles, FindTimestampFiles, ModulesToRecompile,
-            !HaveReadModuleMaps, !IO)
+        recompilation.check.should_recompile(ProgressStream, Globals,
+            ModuleName, FindTargetFiles, FindTimestampFiles,
+            ModulesToRecompile, !HaveReadModuleMaps, !IO)
     ;
         Smart = no,
         ModulesToRecompile = all_modules
@@ -1609,7 +1613,7 @@ read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
             % We don't search `--search-directories' for source files
             % because that can result in the generated interface files
             % being created in the wrong directory.
-            read_module_src(maybe.no, Globals0, rrm_std(ModuleName),
+            read_module_src(ProgressStream, Globals0, rrm_std,
                 do_not_ignore_errors, do_not_search, ModuleName, [],
                 always_read_module(ReturnTimestamp), HaveReadSrc, !IO),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
@@ -1653,9 +1657,9 @@ read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
             % We don't search `--search-directories' for source files
             % because that can result in the generated interface files
             % being created in the wrong directory.
-            read_module_src_from_file(Globals0, FileName, FileNameDotM,
-                rrm_file, do_not_search, always_read_module(ReturnTimestamp),
-                HaveReadSrc, !IO),
+            read_module_src_from_file(ProgressStream, Globals0,
+                FileName, FileNameDotM, rrm_file, do_not_search,
+                always_read_module(ReturnTimestamp), HaveReadSrc, !IO),
             io_get_disable_smart_recompilation(DisableSmart, !IO),
             (
                 DisableSmart = disable_smart_recompilation,
@@ -2135,7 +2139,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
             ),
             FindTimestampFiles(ModuleName, TimestampFiles, !IO),
             list.map_foldl(
-                touch_file_datestamp(Globals, ProgressStream, ErrorStream),
+                touch_file_datestamp(Globals, ProgressStream),
                 TimestampFiles, _Succeededs, !IO)
         ;
             Succeeded = did_not_succeed

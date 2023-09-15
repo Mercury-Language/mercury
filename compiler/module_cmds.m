@@ -98,24 +98,21 @@
 
 %-----------------------------------------------------------------------------%
 
-    % touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
+    % touch_module_ext_datestamp(Globals, ProgressStream,
     %   ModuleName, Ext, Succeeded, !IO):
     %
     % Touch the datestamp file `ModuleName.Ext'. Datestamp files are used
     % to record when each of the interface files was last updated.
     %
-:- pred touch_module_ext_datestamp(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+:- pred touch_module_ext_datestamp(globals::in, io.text_output_stream::in,
     module_name::in, ext::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-    % touch_file_datestamp(Globals, ProgressStream, ErrorStream, FileName,
-    %   Succeeded, !IO):
+    % touch_file_datestamp(Globals, ProgressStream, FileName, Succeeded, !IO):
     %
     % Update the modification time for the given file,
     % clobbering the contents of the file.
     %
-:- pred touch_file_datestamp(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+:- pred touch_file_datestamp(globals::in, io.text_output_stream::in,
     file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -585,32 +582,30 @@ make_symlink_or_copy_dir(Globals, ProgressStream, ErrorStream,
 
 %-----------------------------------------------------------------------------%
 
-touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
-        ModuleName, Ext, Succeeded, !IO) :-
+touch_module_ext_datestamp(Globals, ProgressStream, ModuleName, Ext,
+    Succeeded, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred, Ext,
         ModuleName, FileName, !IO),
-    touch_file_datestamp(Globals, ProgressStream, ErrorStream, FileName,
-        Succeeded, !IO).
+    touch_file_datestamp(Globals, ProgressStream, FileName, Succeeded, !IO).
 
-touch_file_datestamp(Globals, ProgressStream, ErrorStream, FileName,
-        Succeeded, !IO) :-
+touch_file_datestamp(Globals, ProgressStream, FileName, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(ProgressStream, Verbose,
         "% Touching `" ++ FileName ++ "'... ", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
     io.open_output(FileName, Result, !IO),
     (
-        Result = ok(OutputStream),
+        Result = ok(FileStream),
         % This write does the "touching", i.e. the updating of the file's
         % time of last modification.
-        io.write_string(OutputStream, "\n", !IO),
-        io.close_output(OutputStream, !IO),
+        io.write_string(FileStream, "\n", !IO),
+        io.close_output(FileStream, !IO),
         maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
         Succeeded = succeeded
     ;
         Result = error(IOError),
         io.error_message(IOError, IOErrorMessage),
-        io.format(ErrorStream, "\nError opening `%s' for output: %s.\n",
+        io.format(ProgressStream, "\nError opening `%s' for output: %s.\n",
             [s(FileName), s(IOErrorMessage)], !IO),
         Succeeded = did_not_succeed
     ).

@@ -58,8 +58,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_deps_map(globals::in, maybe_search::in, module_name::in,
-    deps_map::in, deps_map::out,
+:- pred generate_deps_map(io.text_output_stream::in, globals::in,
+    maybe_search::in, module_name::in, deps_map::in, deps_map::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
     % Insert a new entry into the deps_map. If the module already occurred
@@ -125,10 +125,11 @@ get_submodule_kind(ModuleName, DepsMap) = Kind :-
 
 %---------------------------------------------------------------------------%
 
-generate_deps_map(Globals, Search, ModuleName, !DepsMap, !Specs, !IO) :-
+generate_deps_map(ProgressStream, Globals, Search, ModuleName,
+        !DepsMap, !Specs, !IO) :-
     SeenModules0 = set_tree234.init,
     ModuleExpectationContexts0 = map.singleton(ModuleName, []),
-    generate_deps_map_loop(Globals, Search, SeenModules0,
+    generate_deps_map_loop(ProgressStream, Globals, Search, SeenModules0,
         ModuleExpectationContexts0, !DepsMap, !Specs, !IO).
 
     % Values of this type map each module name to the list of contexts
@@ -140,27 +141,29 @@ generate_deps_map(Globals, Search, ModuleName, !DepsMap, !Specs, !IO) :-
 :- type expectation_contexts_map == map(module_name, expectation_contexts).
 :- type expectation_contexts == list(term_context).
 
-:- pred generate_deps_map_loop(globals::in, maybe_search::in,
-    set_tree234(module_name)::in, expectation_contexts_map::in,
-    deps_map::in, deps_map::out, list(error_spec)::in, list(error_spec)::out,
-    io::di, io::uo) is det.
+:- pred generate_deps_map_loop(io.text_output_stream::in, globals::in,
+    maybe_search::in, set_tree234(module_name)::in,
+    expectation_contexts_map::in, deps_map::in, deps_map::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-generate_deps_map_loop(Globals, Search, !.SeenModules, !.ModuleExpCs,
-        !DepsMap, !Specs, !IO) :-
+generate_deps_map_loop(ProgressStream, Globals, Search,
+        !.SeenModules, !.ModuleExpCs, !DepsMap, !Specs, !IO) :-
     ( if map.remove_smallest(Module, ExpectationContexts, !ModuleExpCs) then
         set_tree234.insert(Module, !SeenModules),
-        generate_deps_map_step(Globals, Search, Module, ExpectationContexts,
-            !.SeenModules, !ModuleExpCs, !DepsMap, !Specs, !IO),
-        generate_deps_map_loop(Globals, Search,
-            !.SeenModules, !.ModuleExpCs, !DepsMap, !Specs, !IO)
+        generate_deps_map_step(ProgressStream, Globals, Search,
+            Module, ExpectationContexts, !.SeenModules,
+            !ModuleExpCs, !DepsMap, !Specs, !IO),
+        generate_deps_map_loop(ProgressStream, Globals, Search, !.SeenModules,
+            !.ModuleExpCs, !DepsMap, !Specs, !IO)
     else
         % If we can't remove the smallest, then the set of modules to be
         % processed is empty.
         true
     ).
 
-    % generate_deps_map_step(Globals, Search, Module, ExpectationContexts,
-    %   SeenModules0, !ModuleExpCs, !DepsMap, !Specs, !IO):
+    % generate_deps_map_step(ProgressStream, Globals, Search,
+    %   Module, ExpectationContexts, SeenModules0,
+    %   !ModuleExpCs, !DepsMap, !Specs, !IO):
     %
     % Process Module, which we expect *should* exist due to the code
     % at ExpectationContexts, by finding out which other modules it depends on,
@@ -179,18 +182,20 @@ generate_deps_map_loop(Globals, Search, !.SeenModules, !.ModuleExpCs,
     % using set_tree234s generates a very small speedup, while using
     % plain sets generates a very small slowdown.
     %
-:- pred generate_deps_map_step(globals::in, maybe_search::in,
-    module_name::in, expectation_contexts::in, set_tree234(module_name)::in,
+:- pred generate_deps_map_step(io.text_output_stream::in, globals::in,
+    maybe_search::in, module_name::in, expectation_contexts::in,
+    set_tree234(module_name)::in,
     expectation_contexts_map::in, expectation_contexts_map::out,
     deps_map::in, deps_map::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
-generate_deps_map_step(Globals, Search, Module, ExpectationContexts,
-        SeenModules0, !ModuleExpCs, !DepsMap, !Specs, !IO) :-
+generate_deps_map_step(ProgressStream, Globals, Search,
+        Module, ExpectationContexts, SeenModules0,
+        !ModuleExpCs, !DepsMap, !Specs, !IO) :-
     % Look up the module's dependencies, and determine whether
     % it has been processed yet.
-    lookup_or_find_dependencies(Globals, Search, Module, ExpectationContexts,
-        MaybeDeps0, !DepsMap, !Specs, !IO),
+    lookup_or_find_dependencies(ProgressStream, Globals, Search,
+        Module, ExpectationContexts, MaybeDeps0, !DepsMap, !Specs, !IO),
 
     % If the module hadn't been processed yet, then add its imports, parents,
     % and public children to the list of dependencies we need to generate,
@@ -320,18 +325,18 @@ add_module_name_and_context(SeenModules0, Context, ModuleName, !ModuleExpCs) :-
     % If we don't know its dependencies, read the module and
     % save the dependencies in the dependency map.
     %
-:- pred lookup_or_find_dependencies(globals::in, maybe_search::in,
-    module_name::in, expectation_contexts::in,
+:- pred lookup_or_find_dependencies(io.text_output_stream::in, globals::in,
+    maybe_search::in, module_name::in, expectation_contexts::in,
     maybe(deps)::out, deps_map::in, deps_map::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-lookup_or_find_dependencies(Globals, Search, ModuleName, ExpectationContexts,
-        MaybeDeps, !DepsMap, !Specs, !IO) :-
+lookup_or_find_dependencies(ProgressStream, Globals, Search,
+        ModuleName, ExpectationContexts, MaybeDeps, !DepsMap, !Specs, !IO) :-
     ( if map.search(!.DepsMap, ModuleName, Deps) then
         MaybeDeps = yes(Deps)
     else
-        read_dependencies(Globals, Search, ModuleName, ExpectationContexts,
-            BurdenedModules, !Specs, !IO),
+        read_dependencies(ProgressStream, Globals, Search, ModuleName,
+            ExpectationContexts, BurdenedModules, !Specs, !IO),
         (
             BurdenedModules = [_ | _],
             list.foldl(insert_into_deps_map, BurdenedModules, !DepsMap),
@@ -365,17 +370,17 @@ insert_into_deps_map(BurdenedModule, !DepsMap) :-
     % and any nested submodules it contains. Return the burdened_module
     % structure for both the named module and each of its nested submodules.
     %
-:- pred read_dependencies(globals::in, maybe_search::in,
-    module_name::in, expectation_contexts::in, list(burdened_module)::out,
+:- pred read_dependencies(io.text_output_stream::in, globals::in,
+    maybe_search::in, module_name::in, expectation_contexts::in,
+    list(burdened_module)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-read_dependencies(Globals, Search, ModuleName, ExpectationContexts,
-        BurdenedModules, !Specs, !IO) :-
+read_dependencies(ProgressStream, Globals, Search, ModuleName,
+        ExpectationContexts, BurdenedModules, !Specs, !IO) :-
     % XXX If HaveReadModuleSrc contains error messages, any parse tree
     % it may also contain may not be complete, and the rest of this predicate
     % may work on incorrect data.
-    MaybeProgressStream = maybe.no,
-    read_module_src(MaybeProgressStream, Globals, rrm_get_deps(ModuleName),
+    read_module_src(ProgressStream, Globals, rrm_get_deps,
         ignore_errors, Search, ModuleName, ExpectationContexts,
         always_read_module(dont_return_timestamp), HaveReadModuleSrc, !IO),
     (

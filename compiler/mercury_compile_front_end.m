@@ -566,7 +566,7 @@ create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
 
         copy_dot_tmp_to_base_file_report_any_error(Globals, ".opt",
             ModuleName, OptFileName, _UpdateSucceeded, !IO),
-        touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
+        touch_module_ext_datestamp(Globals, ProgressStream,
             ModuleName, ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_plain),
             _TouchSucceeded, !IO),
 

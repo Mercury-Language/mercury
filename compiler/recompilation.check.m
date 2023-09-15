@@ -41,7 +41,7 @@
 :- inst find_timestamp_file_names ==
    (pred(in, out, di, uo) is det).
 
-    % should_recompile(Globals, ModuleName, FindTargetFiles,
+    % should_recompile(ProgressStream, Globals, ModuleName, FindTargetFiles,
     %   FindTimestampFiles, ModulesToRecompile, HaveReadModuleMaps)
     %
     % Process the `.used'  files for the given module and all its
@@ -55,8 +55,8 @@
     % recompilation checking, returned to avoid rereading them
     % if recompilation is required.
     %
-:- pred should_recompile(globals::in, module_name::in,
-    find_target_file_names::in(find_target_file_names),
+:- pred should_recompile(io.text_output_stream::in, globals::in,
+    module_name::in, find_target_file_names::in(find_target_file_names),
     find_timestamp_file_names::in(find_timestamp_file_names),
     modules_to_recompile::out,
     have_read_module_maps::in, have_read_module_maps::out,
@@ -102,16 +102,17 @@
 
 %---------------------------------------------------------------------------%
 
-should_recompile(Globals, ModuleName, FindTargetFiles, FindTimestampFiles,
-        ModulesToRecompile, HaveReadModuleMaps0, HaveReadModuleMaps, !IO) :-
+should_recompile(ProgressStream, Globals, ModuleName,
+        FindTargetFiles, FindTimestampFiles, ModulesToRecompile,
+        HaveReadModuleMaps0, HaveReadModuleMaps, !IO) :-
     globals.lookup_bool_option(Globals, find_all_recompilation_reasons,
         FindAll),
     ResolvedUsedItems0 = init_resolved_used_items,
     Info0 = recompilation_check_info(ModuleName, no, [], HaveReadModuleMaps0,
         ResolvedUsedItems0, set.init, some_modules([]), FindAll, []),
     % XXX How do we know ModuleName is not an inline submodule?
-    should_recompile_2(Globals, is_not_inline_submodule, FindTargetFiles,
-        FindTimestampFiles, ModuleName, Info0, Info, !IO),
+    should_recompile_2(ProgressStream, Globals, is_not_inline_submodule,
+        FindTargetFiles, FindTimestampFiles, ModuleName, Info0, Info, !IO),
     ModulesToRecompile = Info ^ rci_modules_to_recompile,
     HaveReadModuleMaps = Info ^ rci_have_read_module_maps.
 
@@ -119,21 +120,22 @@ should_recompile(Globals, ModuleName, FindTargetFiles, FindTimestampFiles,
     --->    is_not_inline_submodule
     ;       is_inline_submodule.
 
-:- pred should_recompile_2(globals::in, maybe_is_inline_submodule::in,
+:- pred should_recompile_2(io.text_output_stream::in, globals::in,
+    maybe_is_inline_submodule::in,
     find_target_file_names::in(find_target_file_names),
     find_timestamp_file_names::in(find_timestamp_file_names), module_name::in,
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det.
 
-should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
-        ModuleName, !Info, !IO) :-
+should_recompile_2(ProgressStream, Globals, IsSubModule, FindTargetFiles,
+        FindTimestampFiles, ModuleName, !Info, !IO) :-
     !Info ^ rci_module_name := ModuleName,
     !Info ^ rci_sub_modules := [],
     read_used_file_for_module(Globals, ModuleName, ReadUsedFileResult, !IO),
     (
         ReadUsedFileResult = used_file_ok(UsedFile),
-        should_recompile_3(Globals, UsedFile, IsSubModule, FindTargetFiles,
-            MaybeStoppingReason, !Info, !IO),
+        should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
+            FindTargetFiles, MaybeStoppingReason, !Info, !IO),
         (
             MaybeStoppingReason = no,
             Reasons = !.Info ^ rci_recompilation_reasons
@@ -146,20 +148,18 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
             % when catching that exception.)
             Reasons = [StoppingReason]
         ),
-        get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
         (
             Reasons = [],
             FindTimestampFiles(ModuleName, TimestampFiles, !IO),
-            maybe_write_recompilation_message(Globals, ProgressStream,
+            maybe_write_recompilation_message(ProgressStream, Globals,
                 write_not_recompiling_message(ModuleName), !IO),
-            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
             list.map_foldl(
-                touch_file_datestamp(Globals, ProgressStream, ErrorStream),
+                touch_file_datestamp(Globals, ProgressStream),
                 TimestampFiles, _Succeededs, !IO)
         ;
             Reasons = [_ | _],
             add_module_to_recompile(ModuleName, !Info),
-            maybe_write_recompilation_message(Globals, ProgressStream,
+            maybe_write_recompilation_message(ProgressStream, Globals,
                 write_reasons_message(Globals, ModuleName,
                     list.reverse(Reasons)),
                 !IO)
@@ -175,14 +175,13 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
             % !.Info ^ rci_sub_modules"?
             !Info ^ rci_is_inline_sub_module := yes,
             list.foldl2(
-                should_recompile_2(Globals, is_inline_submodule,
-                    FindTargetFiles, FindTimestampFiles),
+                should_recompile_2(ProgressStream, Globals,
+                    is_inline_submodule, FindTargetFiles, FindTimestampFiles),
                 !.Info ^ rci_sub_modules, !Info, !IO)
         )
     ;
         ReadUsedFileResult = used_file_error(UsedFileError),
-        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-        maybe_write_recompilation_message(Globals, ErrorStream,
+        maybe_write_recompilation_message(ProgressStream, Globals,
             write_used_file_error(Globals, ModuleName, UsedFileError),
             !IO),
         !Info ^ rci_modules_to_recompile := all_modules
@@ -236,15 +235,15 @@ write_used_file_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
     ),
     write_error_spec(Stream, Globals, Spec, !IO).
 
-:- pred should_recompile_3(globals::in, used_file::in,
-    maybe_is_inline_submodule::in,
+:- pred should_recompile_3(io.text_output_stream::in, globals::in,
+    used_file::in, maybe_is_inline_submodule::in,
     find_target_file_names::in(find_target_file_names),
     maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det.
 
-should_recompile_3(Globals, UsedFile, IsSubModule, FindTargetFiles,
-        MaybeStoppingReason, !Info, !IO) :-
+should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
+        FindTargetFiles, MaybeStoppingReason, !Info, !IO) :-
     % WARNING: any exceptions thrown before the sub_modules field is set
     % in the recompilation_check_info must set the modules_to_recompile field
     % to `all', or else the nested submodules will not be checked
@@ -264,9 +263,8 @@ should_recompile_3(Globals, UsedFile, IsSubModule, FindTargetFiles,
     ;
         IsSubModule = is_not_inline_submodule,
         % If the module has changed, recompile.
-        MaybeProgressStream = maybe.no,
         ModuleName = !.Info ^ rci_module_name,
-        read_module_src(MaybeProgressStream, Globals, rrm_std(ModuleName),
+        read_module_src(ProgressStream, Globals, rrm_std,
             do_not_ignore_errors, do_search, ModuleName, [],
             dont_read_module_if_match(RecordedTimestamp), HaveReadSrc, !IO),
         (
@@ -319,7 +317,7 @@ should_recompile_3(Globals, UsedFile, IsSubModule, FindTargetFiles,
             require_recompilation_if_not_up_to_date(RecordedTimestamp),
             TargetFiles,
             MaybeStoppingReason0, MaybeStoppingReason1, !Info, !IO),
-        check_imported_modules(Globals, UsedModules,
+        check_imported_modules(ProgressStream, Globals, UsedModules,
             MaybeStoppingReason1, MaybeStoppingReason, !Info, !IO)
     ).
 
@@ -362,21 +360,23 @@ require_recompilation_if_not_up_to_date(RecordedTimestamp, TargetFile,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred check_imported_modules(globals::in, list(recomp_used_module)::in,
+:- pred check_imported_modules(io.text_output_stream::in, globals::in,
+    list(recomp_used_module)::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det.
 
-check_imported_modules(_Globals, [], !MaybeStoppingReason, !Info, !IO).
-check_imported_modules(Globals, [HeadUsedModule | TailUsedModules],
-        !MaybeStoppingReason, !Info, !IO) :-
+check_imported_modules(_, _, [], !MaybeStoppingReason, !Info, !IO).
+check_imported_modules(ProgressStream, Globals,
+        [HeadUsedModule | TailUsedModules], !MaybeStoppingReason,
+        !Info, !IO) :-
     (
         !.MaybeStoppingReason = yes(_)
     ;
         !.MaybeStoppingReason = no,
-        check_imported_module(Globals, HeadUsedModule,
+        check_imported_module(ProgressStream, Globals, HeadUsedModule,
             !:MaybeStoppingReason, !Info, !IO),
-        check_imported_modules(Globals, TailUsedModules,
+        check_imported_modules(ProgressStream, Globals, TailUsedModules,
             !MaybeStoppingReason, !Info, !IO)
     ).
 
@@ -385,10 +385,10 @@ check_imported_modules(Globals, [HeadUsedModule | TailUsedModules],
 :- typeclass check_imported_module_int_file(PT) where [
     pred cim_search_mapN(have_read_module_map(PT)::in,
         module_name::in, have_read_module(PT)::out) is semidet,
-    pred cim_read_module_intN(globals::in, read_reason_msg::in,
-        maybe_ignore_errors::in, maybe_search::in, module_name::in,
-        read_module_and_timestamps::in, have_read_module(PT)::out,
-        io::di, io::uo) is det,
+    pred cim_read_module_intN(io.text_output_stream::in, globals::in,
+        read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
+        module_name::in, read_module_and_timestamps::in,
+        have_read_module(PT)::out, io::di, io::uo) is det,
     pred cim_record_read_file_intN(module_name::in, file_name::in,
         module_timestamp::in, PT::in, read_module_errors::in,
         recompilation_check_info::in, recompilation_check_info::out) is det,
@@ -402,7 +402,7 @@ check_imported_modules(Globals, [HeadUsedModule | TailUsedModules],
     ( cim_search_mapN(HRMM, ModuleName, HaveReadModule) :-
         map.search(HRMM, ModuleName, HaveReadModule)
     ),
-    pred(cim_read_module_intN/9) is read_module_int0_no_stream,
+    pred(cim_read_module_intN/10) is read_module_int0,
     pred(cim_record_read_file_intN/7) is record_read_file_int0,
     ( cim_get_version_numbersN(PT, VN) :-
         PT ^ pti0_maybe_version_numbers = version_numbers(VN)
@@ -414,7 +414,7 @@ check_imported_modules(Globals, [HeadUsedModule | TailUsedModules],
     ( cim_search_mapN(HRMM, ModuleName, HaveReadModule) :-
         map.search(HRMM, ModuleName, HaveReadModule)
     ),
-    pred(cim_read_module_intN/9) is read_module_int1_no_stream,
+    pred(cim_read_module_intN/10) is read_module_int1,
     pred(cim_record_read_file_intN/7) is record_read_file_int1,
     ( cim_get_version_numbersN(PT, VN) :-
         PT ^ pti1_maybe_version_numbers = version_numbers(VN)
@@ -426,7 +426,7 @@ check_imported_modules(Globals, [HeadUsedModule | TailUsedModules],
     ( cim_search_mapN(HRMM, ModuleName, HaveReadModule) :-
         map.search(HRMM, ModuleName, HaveReadModule)
     ),
-    pred(cim_read_module_intN/9) is read_module_int2_no_stream,
+    pred(cim_read_module_intN/10) is read_module_int2,
     pred(cim_record_read_file_intN/7) is record_read_file_int2,
     ( cim_get_version_numbersN(PT, VN) :-
         PT ^ pti2_maybe_version_numbers = version_numbers(VN)
@@ -438,7 +438,7 @@ check_imported_modules(Globals, [HeadUsedModule | TailUsedModules],
     ( cim_search_mapN(HRMM, ModuleName, HaveReadModule) :-
         map.search(HRMM, ModuleName, HaveReadModule)
     ),
-    pred(cim_read_module_intN/9) is read_module_int3_no_stream,
+    pred(cim_read_module_intN/10) is read_module_int3,
     pred(cim_record_read_file_intN/7) is record_read_file_int3,
     ( cim_get_version_numbersN(_PT, _VN) :-
         fail
@@ -452,12 +452,13 @@ check_imported_modules(Globals, [HeadUsedModule | TailUsedModules],
     % compilation has changed, and if so whether the items have changed
     % in a way which should cause a recompilation.
     %
-:- pred check_imported_module(globals::in, recomp_used_module::in,
-    maybe(recompile_reason)::out,
+:- pred check_imported_module(io.text_output_stream::in, globals::in,
+    recomp_used_module::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det.
 
-check_imported_module(Globals, UsedModule, MaybeStoppingReason, !Info, !IO) :-
+check_imported_module(ProgressStream, Globals, UsedModule, MaybeStoppingReason,
+        !Info, !IO) :-
     UsedModule = recomp_used_module(ImportedModuleName, ModuleTimestamp,
         MaybeUsedVersionNumbers),
     ModuleTimestamp =
@@ -474,34 +475,36 @@ check_imported_module(Globals, UsedModule, MaybeStoppingReason, !Info, !IO) :-
     HaveReadModuleMaps = !.Info ^ rci_have_read_module_maps,
     (
         IntFileKind = ifk_int0,
-        check_imported_module_intN(Globals, ImportedModuleName,
+        check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
             ModuleTimestamp, MaybeUsedVersionNumbers,
             HaveReadModuleMaps ^ hrmm_int0, MaybeStoppingReason, !Info, !IO)
     ;
         IntFileKind = ifk_int1,
-        check_imported_module_intN(Globals, ImportedModuleName,
+        check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
             ModuleTimestamp, MaybeUsedVersionNumbers,
             HaveReadModuleMaps ^ hrmm_int1, MaybeStoppingReason, !Info, !IO)
     ;
         IntFileKind = ifk_int2,
-        check_imported_module_intN(Globals, ImportedModuleName,
+        check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
             ModuleTimestamp, MaybeUsedVersionNumbers,
             HaveReadModuleMaps ^ hrmm_int2, MaybeStoppingReason, !Info, !IO)
     ;
         IntFileKind = ifk_int3,
-        check_imported_module_intN(Globals, ImportedModuleName,
+        check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
             ModuleTimestamp, MaybeUsedVersionNumbers,
             HaveReadModuleMaps ^ hrmm_int3, MaybeStoppingReason, !Info, !IO)
     ).
 
-:- pred check_imported_module_intN(globals::in, module_name::in,
-    module_timestamp::in, maybe(module_item_version_numbers)::in,
+:- pred check_imported_module_intN(io.text_output_stream::in, globals::in,
+    module_name::in, module_timestamp::in,
+    maybe(module_item_version_numbers)::in,
     have_read_module_map(PT)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det <= check_imported_module_int_file(PT).
 
-check_imported_module_intN(Globals, ImportedModuleName, ModuleTimestamp,
-        MaybeUsedVersionNumbers, HRMM, MaybeStoppingReason, !Info, !IO) :-
+check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
+        ModuleTimestamp, MaybeUsedVersionNumbers, HRMM, MaybeStoppingReason,
+        !Info, !IO) :-
     ModuleTimestamp =
         module_timestamp(_FileKind, RecordedTimestamp, _RecompAvail),
     ( if
@@ -515,9 +518,9 @@ check_imported_module_intN(Globals, ImportedModuleName, ModuleTimestamp,
         HaveReadModuleIntN = HaveReadModuleIntNPrime
     else
         Recorded = bool.no,
-        cim_read_module_intN(Globals, rrm_std(ImportedModuleName),
-            do_not_ignore_errors, do_search, ImportedModuleName,
-            dont_read_module_if_match(RecordedTimestamp),
+        cim_read_module_intN(ProgressStream, Globals,
+            rrm_std, do_not_ignore_errors, do_search,
+            ImportedModuleName, dont_read_module_if_match(RecordedTimestamp),
             HaveReadModuleIntN, !IO)
     ),
     (
@@ -1500,16 +1503,16 @@ record_read_file_int3(ModuleName, FileName, ModuleTimestamp, ParseTreeInt3,
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_write_recompilation_message(globals::in,
-    io.text_output_stream::in,
+:- pred maybe_write_recompilation_message(io.text_output_stream::in,
+    globals::in,
     pred(io.text_output_stream, io, io)::in(pred(in, di, uo) is det),
     io::di, io::uo) is det.
 
-maybe_write_recompilation_message(Globals, Stream, P, !IO) :-
+maybe_write_recompilation_message(ProgressStream, Globals, P, !IO) :-
     globals.lookup_bool_option(Globals, verbose_recompilation, Verbose),
     (
         Verbose = yes,
-        P(Stream, !IO)
+        P(ProgressStream, !IO)
     ;
         Verbose = no
     ).

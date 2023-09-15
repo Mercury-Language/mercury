@@ -153,7 +153,7 @@ write_short_interface_file_int3(ProgressStream, ErrorStream, Globals,
         EffectivelyErrors = no,
         actually_write_interface_file3(ProgressStream, ErrorStream,
             Globals, ParseTreeInt3, "", no, OutputSucceeded, !IO),
-        touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
+        touch_module_ext_datestamp(Globals, ProgressStream,
             ModuleName, ext_cur_ngs(ext_cur_ngs_int_date_int3),
             TouchSucceeded, !IO),
         Succeeded = OutputSucceeded `and` TouchSucceeded
@@ -209,7 +209,7 @@ write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
             actually_write_interface_file0(ProgressStream, ErrorStream,
                 Globals, ParseTreeInt0, "", MaybeTimestamp,
                 OutputSucceeded, !IO),
-            touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
+            touch_module_ext_datestamp(Globals, ProgressStream,
                 ModuleName, ext_cur_ngs(ext_cur_ngs_int_date_int0),
                 TouchSucceeded, !IO),
             Succeeded = OutputSucceeded `and` TouchSucceeded
@@ -290,7 +290,7 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
             actually_write_interface_file2(ProgressStream, ErrorStream,
                 Globals, ParseTreeInt2, "", MaybeTimestamp,
                 OutputSucceeded2, !IO),
-            touch_module_ext_datestamp(Globals, ProgressStream, ErrorStream,
+            touch_module_ext_datestamp(Globals, ProgressStream,
                 ModuleName, ext_cur_ngs(ext_cur_ngs_int_date_int12),
                 TouchSucceeded, !IO),
             Succeeded = and_list([OutputSucceeded1, OutputSucceeded2,
@@ -331,8 +331,9 @@ actually_write_interface_file0(ProgressStream, ErrorStream, Globals,
     disable_all_line_numbers(Globals, NoLineNumGlobals),
     % We handle any failure to read in the old interface version as
     % every item in the module source being brand new.
-    maybe_read_old_int0_and_compare_for_smart_recomp(NoLineNumGlobals,
-        ParseTreeInt0, MaybeTimestamp, MaybeVersionNumbers, !IO),
+    maybe_read_old_int0_and_compare_for_smart_recomp(ProgressStream,
+        NoLineNumGlobals, ParseTreeInt0, MaybeTimestamp,
+        MaybeVersionNumbers, !IO),
     ParseTreeInt0V = ParseTreeInt0 ^ pti0_maybe_version_numbers
         := MaybeVersionNumbers,
     output_parse_tree_int0(ProgressStream, ErrorStream, NoLineNumGlobals,
@@ -354,8 +355,9 @@ actually_write_interface_file1(ProgressStream, ErrorStream, Globals,
     disable_all_line_numbers(Globals, NoLineNumGlobals),
     % We handle any failure to read in the old interface version as
     % every item in the module source being brand new.
-    maybe_read_old_int1_and_compare_for_smart_recomp(NoLineNumGlobals,
-        ParseTreeInt1, MaybeTimestamp, MaybeVersionNumbers, !IO),
+    maybe_read_old_int1_and_compare_for_smart_recomp(ProgressStream,
+        NoLineNumGlobals, ParseTreeInt1, MaybeTimestamp,
+        MaybeVersionNumbers, !IO),
     ParseTreeInt1V = ParseTreeInt1 ^ pti1_maybe_version_numbers
         := MaybeVersionNumbers,
     output_parse_tree_int1(ProgressStream, ErrorStream, NoLineNumGlobals,
@@ -375,8 +377,9 @@ actually_write_interface_file2(ProgressStream, ErrorStream, Globals,
     construct_int_file_name(Globals, ModuleName, ifk_int2, ExtraSuffix,
         OutputFileName, TmpOutputFileName, !IO),
     disable_all_line_numbers(Globals, NoLineNumGlobals),
-    maybe_read_old_int2_and_compare_for_smart_recomp(NoLineNumGlobals,
-        ParseTreeInt2, MaybeTimestamp, MaybeVersionNumbers, !IO),
+    maybe_read_old_int2_and_compare_for_smart_recomp(ProgressStream,
+        NoLineNumGlobals, ParseTreeInt2, MaybeTimestamp,
+        MaybeVersionNumbers, !IO),
     ParseTreeInt2V = ParseTreeInt2 ^ pti2_maybe_version_numbers
         := MaybeVersionNumbers,
     output_parse_tree_int2(ProgressStream, ErrorStream, NoLineNumGlobals,
@@ -426,12 +429,13 @@ disable_all_line_numbers(Globals, NoLineNumGlobals) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_read_old_int0_and_compare_for_smart_recomp(globals::in,
-    parse_tree_int0::in, maybe(timestamp)::in, maybe_version_numbers::out,
-    io::di, io::uo) is det.
+:- pred maybe_read_old_int0_and_compare_for_smart_recomp(
+    io.text_output_stream::in, globals::in, parse_tree_int0::in,
+    maybe(timestamp)::in, maybe_version_numbers::out, io::di, io::uo) is det.
 
-maybe_read_old_int0_and_compare_for_smart_recomp(NoLineNumGlobals,
-        ParseTreeInt0, MaybeTimestamp, MaybeVersionNumbers, !IO) :-
+maybe_read_old_int0_and_compare_for_smart_recomp(ProgressStream,
+        NoLineNumGlobals, ParseTreeInt0, MaybeTimestamp,
+        MaybeVersionNumbers, !IO) :-
     should_generate_item_version_numbers(NoLineNumGlobals,
         WantVersionNumbers, !IO),
     (
@@ -440,9 +444,8 @@ maybe_read_old_int0_and_compare_for_smart_recomp(NoLineNumGlobals,
         % Find the timestamp of the current module.
         insist_on_timestamp(MaybeTimestamp, Timestamp),
         % Read in the previous version of the file.
-        MaybeProgressStream = maybe.no,
-        read_module_int0(MaybeProgressStream, NoLineNumGlobals,
-            rrm_old(ModuleName), ignore_errors, do_search, ModuleName,
+        read_module_int0(ProgressStream, NoLineNumGlobals,
+            rrm_old, ignore_errors, do_search, ModuleName,
             always_read_module(dont_return_timestamp), HaveReadInt0, !IO),
         (
             HaveReadInt0 = have_read_module(_FN, _MTS,
@@ -466,12 +469,13 @@ maybe_read_old_int0_and_compare_for_smart_recomp(NoLineNumGlobals,
         MaybeVersionNumbers = no_version_numbers
     ).
 
-:- pred maybe_read_old_int1_and_compare_for_smart_recomp(globals::in,
-    parse_tree_int1::in, maybe(timestamp)::in, maybe_version_numbers::out,
-    io::di, io::uo) is det.
+:- pred maybe_read_old_int1_and_compare_for_smart_recomp(
+    io.text_output_stream::in, globals::in, parse_tree_int1::in,
+    maybe(timestamp)::in, maybe_version_numbers::out, io::di, io::uo) is det.
 
-maybe_read_old_int1_and_compare_for_smart_recomp(NoLineNumGlobals,
-        ParseTreeInt1, MaybeTimestamp, MaybeVersionNumbers, !IO) :-
+maybe_read_old_int1_and_compare_for_smart_recomp(ProgressStream,
+        NoLineNumGlobals, ParseTreeInt1, MaybeTimestamp,
+        MaybeVersionNumbers, !IO) :-
     should_generate_item_version_numbers(NoLineNumGlobals,
         WantVersionNumbers, !IO),
     (
@@ -480,9 +484,8 @@ maybe_read_old_int1_and_compare_for_smart_recomp(NoLineNumGlobals,
         % Find the timestamp of the current module.
         insist_on_timestamp(MaybeTimestamp, Timestamp),
         % Read in the previous version of the file.
-        MaybeProgressStream = maybe.no,
-        read_module_int1(MaybeProgressStream, NoLineNumGlobals,
-            rrm_old(ModuleName), ignore_errors, do_search, ModuleName,
+        read_module_int1(ProgressStream, NoLineNumGlobals,
+            rrm_old, ignore_errors, do_search, ModuleName,
             always_read_module(dont_return_timestamp), HaveReadInt1, !IO),
         (
             HaveReadInt1 = have_read_module(_FN, _MTS,
@@ -506,12 +509,13 @@ maybe_read_old_int1_and_compare_for_smart_recomp(NoLineNumGlobals,
         MaybeVersionNumbers = no_version_numbers
     ).
 
-:- pred maybe_read_old_int2_and_compare_for_smart_recomp(globals::in,
-    parse_tree_int2::in, maybe(timestamp)::in, maybe_version_numbers::out,
-    io::di, io::uo) is det.
+:- pred maybe_read_old_int2_and_compare_for_smart_recomp(
+    io.text_output_stream::in, globals::in, parse_tree_int2::in,
+    maybe(timestamp)::in, maybe_version_numbers::out, io::di, io::uo) is det.
 
-maybe_read_old_int2_and_compare_for_smart_recomp(NoLineNumGlobals,
-        ParseTreeInt2, MaybeTimestamp, MaybeVersionNumbers, !IO) :-
+maybe_read_old_int2_and_compare_for_smart_recomp(ProgressStream,
+        NoLineNumGlobals, ParseTreeInt2, MaybeTimestamp,
+        MaybeVersionNumbers, !IO) :-
     should_generate_item_version_numbers(NoLineNumGlobals,
         WantVersionNumbers, !IO),
     (
@@ -520,9 +524,8 @@ maybe_read_old_int2_and_compare_for_smart_recomp(NoLineNumGlobals,
         % Find the timestamp of the current module.
         insist_on_timestamp(MaybeTimestamp, Timestamp),
         % Read in the previous version of the file.
-        MaybeProgressStream = maybe.no,
-        read_module_int2(MaybeProgressStream, NoLineNumGlobals,
-            rrm_old(ModuleName), ignore_errors, do_search, ModuleName,
+        read_module_int2(ProgressStream, NoLineNumGlobals,
+            rrm_old, ignore_errors, do_search, ModuleName,
             always_read_module(dont_return_timestamp), HaveReadInt2, !IO),
         (
             HaveReadInt2 = have_read_module(_FN, _MTS,

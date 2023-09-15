@@ -27,7 +27,8 @@
 :- import_module io.
 :- import_module list.
 
-    % generate_dep_file_for_module(Globals, ModuleName, Specs, !IO):
+    % generate_dep_file_for_module(ProgressStream, Globals, ModuleName,
+    %   Specs, !IO):
     %
     % Generate the per-program makefile dependencies file (`.dep' file)
     % for a program whose top-level module is `ModuleName'. This involves
@@ -36,32 +37,34 @@
     % (`.d' files) for all those modules. Return any errors and/or warnings
     % to be printed in Specs.
     %
-:- pred generate_dep_file_for_module(globals::in, module_name::in,
-    list(error_spec)::out, io::di, io::uo) is det.
+:- pred generate_dep_file_for_module(io.text_output_stream::in, globals::in,
+    module_name::in, list(error_spec)::out, io::di, io::uo) is det.
 
-    % generate_dep_file_for_file(Globals, FileName, Specs, !IO):
+    % generate_dep_file_for_file(ProgressStream, Globals, FileName,
+    %   Specs, !IO):
     %
     % Same as generate_dep_file_for_module, but takes a file name
     % instead of a module name.
     %
-:- pred generate_dep_file_for_file(globals::in, file_name::in,
-    list(error_spec)::out, io::di, io::uo) is det.
+:- pred generate_dep_file_for_file(io.text_output_stream::in, globals::in,
+    file_name::in, list(error_spec)::out, io::di, io::uo) is det.
 
-    % generate_d_file_for_module(Globals, ModuleName, Specs, !IO):
+    % generate_d_file_for_module(ProgressStream, Globals, ModuleName,
+    %   Specs, !IO):
     %
     % Generate the per-module makefile dependency file ('.d' file)
     % for the given module.
     %
-:- pred generate_d_file_for_module(globals::in, module_name::in,
-    list(error_spec)::out, io::di, io::uo) is det.
+:- pred generate_d_file_for_module(io.text_output_stream::in, globals::in,
+    module_name::in, list(error_spec)::out, io::di, io::uo) is det.
 
-    % generate_d_file_for_file(Globals, FileName, Specs, !IO):
+    % generate_d_file_for_file(ProgressStream, Globals, FileName, Specs, !IO):
     %
     % Same as generate_d_file_for_module, but takes a file name
     % instead of a module name.
     %
-:- pred generate_d_file_for_file(globals::in, file_name::in,
-    list(error_spec)::out, io::di, io::uo) is det.
+:- pred generate_d_file_for_file(io.text_output_stream::in, globals::in,
+    file_name::in, list(error_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -107,38 +110,40 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_dep_file_for_module(Globals, ModuleName, Specs, !IO) :-
+generate_dep_file_for_module(ProgressStream, Globals, ModuleName,
+        Specs, !IO) :-
     map.init(DepsMap),
-    generate_dependencies(Globals, output_all_dependencies, do_not_search,
-        ModuleName, DepsMap, Specs, !IO).
+    generate_dependencies(ProgressStream, Globals, output_all_dependencies,
+        do_not_search, ModuleName, DepsMap, Specs, !IO).
 
-generate_dep_file_for_file(Globals, FileName, Specs, !IO) :-
-    build_initial_deps_map_for_file(Globals, FileName,
+generate_dep_file_for_file(ProgressStream, Globals, FileName, Specs, !IO) :-
+    build_initial_deps_map_for_file(ProgressStream, Globals, FileName,
         ModuleName, DepsMap0, !IO),
-    generate_dependencies(Globals, output_all_dependencies, do_not_search,
-        ModuleName, DepsMap0, Specs, !IO).
+    generate_dependencies(ProgressStream, Globals, output_all_dependencies,
+        do_not_search, ModuleName, DepsMap0, Specs, !IO).
 
-generate_d_file_for_module(Globals, ModuleName, Specs, !IO) :-
+generate_d_file_for_module(ProgressStream, Globals, ModuleName, Specs, !IO) :-
     map.init(DepsMap),
-    generate_dependencies(Globals, output_d_file_only, do_search,
-        ModuleName, DepsMap, Specs, !IO).
+    generate_dependencies(ProgressStream, Globals, output_d_file_only,
+        do_search, ModuleName, DepsMap, Specs, !IO).
 
-generate_d_file_for_file(Globals, FileName, Specs, !IO) :-
-    build_initial_deps_map_for_file(Globals, FileName,
+generate_d_file_for_file(ProgressStream, Globals, FileName, Specs, !IO) :-
+    build_initial_deps_map_for_file(ProgressStream, Globals, FileName,
         ModuleName, DepsMap0, !IO),
-    generate_dependencies(Globals, output_d_file_only, do_search,
-        ModuleName, DepsMap0, Specs, !IO).
+    generate_dependencies(ProgressStream, Globals, output_d_file_only,
+        do_search, ModuleName, DepsMap0, Specs, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred build_initial_deps_map_for_file(globals::in, file_name::in,
-    module_name::out, deps_map::out, io::di, io::uo) is det.
+:- pred build_initial_deps_map_for_file(io.text_output_stream::in, globals::in,
+    file_name::in, module_name::out, deps_map::out, io::di, io::uo) is det.
 
-build_initial_deps_map_for_file(Globals, FileName, ModuleName, DepsMap, !IO) :-
+build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
+        DepsMap, !IO) :-
     % Read in the top-level file (to figure out its module name).
     FileNameDotM = FileName ++ ".m",
-    read_module_src_from_file(Globals, FileName, FileNameDotM, rrm_file,
-        do_not_search, always_read_module(dont_return_timestamp),
+    read_module_src_from_file(ProgressStream, Globals, FileName, FileNameDotM,
+        rrm_file, do_not_search, always_read_module(dont_return_timestamp),
         HaveReadModuleSrc, !IO),
     (
         HaveReadModuleSrc = have_read_module(_FN, _MTS,
@@ -165,15 +170,15 @@ build_initial_deps_map_for_file(Globals, FileName, ModuleName, DepsMap, !IO) :-
     --->    output_d_file_only
     ;       output_all_dependencies.
 
-:- pred generate_dependencies(globals::in, generate_dependencies_mode::in,
-    maybe_search::in, module_name::in, deps_map::in,
-    list(error_spec)::out, io::di, io::uo) is det.
+:- pred generate_dependencies(io.text_output_stream::in, globals::in,
+    generate_dependencies_mode::in, maybe_search::in, module_name::in,
+    deps_map::in, list(error_spec)::out, io::di, io::uo) is det.
 
-generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
-        !:Specs, !IO) :-
+generate_dependencies(ProgressStream, Globals, Mode, Search, ModuleName,
+        DepsMap0, !:Specs, !IO) :-
     % First, build up a map of the dependencies.
-    generate_deps_map(Globals, Search, ModuleName, DepsMap0, DepsMap,
-        [], !:Specs, !IO),
+    generate_deps_map(ProgressStream, Globals, Search, ModuleName,
+        DepsMap0, DepsMap, [], !:Specs, !IO),
 
     % Check whether we could read the main `.m' file.
     map.lookup(DepsMap, ModuleName, ModuleDep),
@@ -211,7 +216,7 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
         map.values(DepsMap, DepsList),
         deps_list_to_deps_graph(DepsList, DepsMap, IntDepsGraph0, IntDepsGraph,
             ImpDepsGraph0, ImpDepsGraph),
-        maybe_output_imports_graph(Globals, ModuleName,
+        maybe_output_imports_graph(ProgressStream, Globals, ModuleName,
             IntDepsGraph, ImpDepsGraph, !IO),
 
         globals.lookup_bool_option(Globals, generate_module_order,
@@ -220,7 +225,7 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
             OutputOrder = yes,
             ImpDepsOrdering =
                 digraph.return_sccs_in_from_to_order(ImpDepsGraph),
-            output_module_order(Globals, ModuleName,
+            output_module_order(ProgressStream, Globals, ModuleName,
                 ext_cur(ext_cur_user_order), ImpDepsOrdering, !IO)
         ;
             OutputOrder = no
@@ -230,9 +235,8 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
             io(!TIO)]
         (
             digraph.to_assoc_list(ImpDepsGraph, ImpDepsAL),
-            get_debug_output_stream(Globals, ModuleName, DebugStream, !TIO),
-            io.write_string(DebugStream, "ImpDepsAL:\n", !TIO),
-            list.foldl(io.write_line(DebugStream), ImpDepsAL, !TIO)
+            io.write_string(ProgressStream, "ImpDepsAL:\n", !TIO),
+            list.foldl(io.write_line(ProgressStream), ImpDepsAL, !TIO)
         ),
 
         % Compute the indirect dependencies: they are equal to the composition
@@ -309,7 +313,7 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
             digraph.return_sccs_in_from_to_order(TransOptDepsGraph),
         (
             OutputOrder = yes,
-            output_module_order(Globals, ModuleName,
+            output_module_order(ProgressStream, Globals, ModuleName,
                 ext_cur(ext_cur_user_order_to), TransOptDepsOrdering0, !IO)
         ;
             OutputOrder = no
@@ -383,11 +387,12 @@ lookup_module_and_imports_in_deps_map(DepsMap, ModuleName) = ModuleDepInfo :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_output_imports_graph(globals::in, module_name::in,
-    digraph(sym_name)::in, digraph(sym_name)::in, io::di, io::uo) is det.
+:- pred maybe_output_imports_graph(io.text_output_stream::in, globals::in,
+    module_name::in, digraph(sym_name)::in, digraph(sym_name)::in,
+    io::di, io::uo) is det.
 
-maybe_output_imports_graph(Globals, ModuleName, IntDepsGraph, ImpDepsGraph,
-        !IO) :-
+maybe_output_imports_graph(ProgressStream, Globals, ModuleName,
+        IntDepsGraph, ImpDepsGraph, !IO) :-
     globals.lookup_bool_option(Globals, imports_graph, ImportsGraph),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     (
@@ -395,16 +400,12 @@ maybe_output_imports_graph(Globals, ModuleName, IntDepsGraph, ImpDepsGraph,
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur(ext_cur_user_imports_graph), ModuleName, FileName, !IO),
         (
-            Verbose = no,
-            MaybeProgressStream = no
+            Verbose = no
         ;
             Verbose = yes,
-            get_progress_output_stream(Globals, ModuleName,
-                ProgressStream0, !IO),
-            io.format(ProgressStream0,
+            io.format(ProgressStream,
                 "%% Creating imports graph file `%s'...",
-                [s(FileName)], !IO),
-            MaybeProgressStream = yes(ProgressStream0)
+                [s(FileName)], !IO)
         ),
         io.open_output(FileName, ImpResult, !IO),
         (
@@ -416,25 +417,24 @@ maybe_output_imports_graph(Globals, ModuleName, IntDepsGraph, ImpDepsGraph,
             write_graph(ImpStream, "imports", sym_name_to_node_id, Deps, !IO),
             io.close_output(ImpStream, !IO),
             (
-                MaybeProgressStream = no
+                Verbose = no
             ;
-                MaybeProgressStream = yes(ProgressStream),
+                Verbose = yes,
                 io.write_string(ProgressStream, " done.\n", !IO)
             )
         ;
             ImpResult = error(IOError),
             (
-                MaybeProgressStream = no
+                Verbose = no
             ;
-                MaybeProgressStream = yes(ProgressStream),
+                Verbose = yes,
                 io.write_string(ProgressStream, " failed.\n", !IO),
                 io.flush_output(ProgressStream, !IO)
             ),
-            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
             io.error_message(IOError, IOErrorMessage),
             string.format("error opening file `%s' for output: %s\n",
                 [s(FileName), s(IOErrorMessage)], ImpMessage),
-            report_error(ErrorStream, ImpMessage, !IO)
+            report_error(ProgressStream, ImpMessage, !IO)
         )
     ;
         ImportsGraph = no
@@ -500,13 +500,14 @@ sym_name_to_node_id(SymName) =
 
 %---------------------------------------------------------------------------%
 
-:- pred output_module_order(globals::in, module_name::in,
-    ext::in, list(set(module_name))::in, io::di, io::uo) is det.
+:- pred output_module_order(io.text_output_stream::in, globals::in,
+    module_name::in, ext::in, list(set(module_name))::in,
+    io::di, io::uo) is det.
 
-output_module_order(Globals, ModuleName, Ext, DepsOrdering, !IO) :-
+output_module_order(ProgressStream, Globals, ModuleName, Ext,
+        DepsOrdering, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred, Ext,
         ModuleName, OrdFileName, !IO),
-    get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     string.format("%% Creating module order file `%s'...",
         [s(OrdFileName)], CreatingMsg),
@@ -522,11 +523,10 @@ output_module_order(Globals, ModuleName, Ext, DepsOrdering, !IO) :-
         OrdResult = error(IOError),
         maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
         io.error_message(IOError, IOErrorMessage),
         string.format("error opening file `%s' for output: %s",
             [s(OrdFileName), s(IOErrorMessage)], OrdMessage),
-        report_error(ErrorStream, OrdMessage, !IO)
+        report_error(ProgressStream, OrdMessage, !IO)
     ).
 
 :- pred write_module_scc(io.text_output_stream::in, set(module_name)::in,
