@@ -839,10 +839,10 @@ read_module_dependencies_remake_msg(RebuildModuleDeps, ModuleDepsFile,
     module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_module_dependencies(ProgressStream, Globals, ModuleName, !Info, !IO) :-
-    open_module_error_stream(ModuleName, ProgressStream,
+    open_module_error_stream(Globals, ModuleName, ProgressStream,
         MaybeErrorStream, !Info, !IO),
     (
-        MaybeErrorStream = es_ok(ErrorStream),
+        MaybeErrorStream = es_ok(MESI, ErrorStream),
         % Both make_module_dependencies_fatal_error and
         % make_module_dependencies_no_fatal_error call unredirect_output,
         % but factoring that call out of the latter would be non-trivial,
@@ -875,8 +875,9 @@ make_module_dependencies(ProgressStream, Globals, ModuleName, !Info, !IO) :-
             ( if set.is_non_empty(Fatal) then
                 DisplayErrorReadingFile = yes,
                 make_module_dependencies_fatal_error(Globals,
-                    ProgressStream, ErrorStream, SourceFileName, ModuleName,
-                    ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO)
+                    ProgressStream, MESI, ErrorStream, SourceFileName,
+                    ModuleName, ReadModuleErrors, DisplayErrorReadingFile,
+                    !Info, !IO)
             else if set.contains(NonFatal, rme_unexpected_module_name) then
                 % If the source file does not contain the expected module, then
                 % do not make the .module_dep file; it would leave a
@@ -884,12 +885,13 @@ make_module_dependencies(ProgressStream, Globals, ModuleName, !Info, !IO) :-
                 % which the user needs to delete manually.
                 DisplayErrorReadingFile = no,
                 make_module_dependencies_fatal_error(Globals,
-                    ProgressStream, ErrorStream, SourceFileName, ModuleName,
-                    ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO)
+                    ProgressStream, MESI, ErrorStream, SourceFileName,
+                    ModuleName, ReadModuleErrors, DisplayErrorReadingFile,
+                    !Info, !IO)
             else
                 make_module_dependencies_no_fatal_error(Globals,
-                    ProgressStream, ErrorStream, SourceFileName, ModuleName,
-                    ParseTreeSrc, ReadModuleErrors, !Info, !IO)
+                    ProgressStream, MESI, ErrorStream, SourceFileName,
+                    ModuleName, ParseTreeSrc, ReadModuleErrors, !Info, !IO)
             )
         ;
             HaveReadSrc = have_not_read_module(SourceFileName,
@@ -901,7 +903,7 @@ make_module_dependencies(ProgressStream, Globals, ModuleName, !Info, !IO) :-
 
             DisplayErrorReadingFile = yes,
             make_module_dependencies_fatal_error(Globals,
-                ProgressStream, ErrorStream, SourceFileName, ModuleName,
+                ProgressStream, MESI, ErrorStream, SourceFileName, ModuleName,
                 ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO)
         )
     ;
@@ -909,13 +911,14 @@ make_module_dependencies(ProgressStream, Globals, ModuleName, !Info, !IO) :-
     ).
 
 :- pred make_module_dependencies_fatal_error(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+    io.text_output_stream::in,
+    module_error_stream_info::in, io.text_output_stream::in,
     file_name::in, module_name::in, read_module_errors::in, bool::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_module_dependencies_fatal_error(Globals, ProgressStream, ErrorStream,
-        SourceFileName, ModuleName, ReadModuleErrors, DisplayErrorReadingFile,
-        !Info, !IO) :-
+make_module_dependencies_fatal_error(Globals, ProgressStream,
+        MESI, ErrorStream, SourceFileName, ModuleName,
+        ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO) :-
     Specs0 = get_read_module_specs(ReadModuleErrors),
     write_error_specs(ErrorStream, Globals, Specs0, !IO),
     (
@@ -934,7 +937,7 @@ make_module_dependencies_fatal_error(Globals, ProgressStream, ErrorStream,
     globals.set_option(output_compile_error_lines, maybe_int(no),
         Globals, UnredirectGlobals),
     close_module_error_stream_handle_errors(UnredirectGlobals, ModuleName,
-        ProgressStream, ErrorStream, !Info, !IO),
+        ProgressStream, MESI, ErrorStream, !Info, !IO),
     module_name_to_file_name(Globals, $pred, ext_cur(ext_cur_user_err),
         ModuleName, ErrFileName),
     io.file.remove_file(ErrFileName, _, !IO),
@@ -945,14 +948,15 @@ make_module_dependencies_fatal_error(Globals, ProgressStream, ErrorStream,
     make_info_set_module_dependencies(ModuleDepMap, !Info).
 
 :- pred make_module_dependencies_no_fatal_error(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+    io.text_output_stream::in,
+    module_error_stream_info::in, io.text_output_stream::in,
     file_name::in, module_name::in, parse_tree_src::in,
     read_module_errors::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_module_dependencies_no_fatal_error(Globals, ProgressStream, ErrorStream,
-        SourceFileName, ModuleName, ParseTreeSrc, ReadModuleErrors,
-        !Info, !IO) :-
+make_module_dependencies_no_fatal_error(Globals, ProgressStream,
+        MESI, ErrorStream, SourceFileName, ModuleName, ParseTreeSrc,
+        ReadModuleErrors, !Info, !IO) :-
     parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
         ParseTreeSrc, ReadModuleErrors, Specs, BurdenedModules),
     ParseTreeModuleSrcs = list.map((func(burdened_module(_, PTMS)) = PTMS),
@@ -1022,7 +1026,7 @@ make_module_dependencies_no_fatal_error(Globals, ProgressStream, ErrorStream,
     record_made_target(ProgressStream, Globals, MadeTarget, MadeTargetFileName,
         process_module(task_make_int3), Succeeded, !Info, !IO),
     close_module_error_stream_handle_errors(Globals, ModuleName,
-        ProgressStream, ErrorStream, !Info, !IO).
+        ProgressStream, MESI, ErrorStream, !Info, !IO).
 
 :- pred make_info_add_module_and_imports_as_dep(burdened_module::in,
     make_info::in, make_info::out) is det.

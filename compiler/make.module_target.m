@@ -498,18 +498,18 @@ build_target(ProgressStream, Globals, CompilationTask, TargetFile,
         % calling maybe_print_delayed_error_messages here should fix this.
         (
             MayBuild = may_build(AllOptionArgs, BuildGlobals),
-            open_module_error_stream(ModuleName, ProgressStream,
+            open_module_error_stream(Globals, ModuleName, ProgressStream,
                 MaybeErrorStream, !Info, !IO),
             (
                 MaybeErrorStream = es_error_already_reported,
                 Succeeded0 = did_not_succeed
             ;
-                MaybeErrorStream = es_ok(ErrorStream),
+                MaybeErrorStream = es_ok(MESI, ErrorStream),
                 build_target_2(ModuleName, Task, MaybeArgFileName,
                     ModuleDepInfo, BuildGlobals, AllOptionArgs,
                     ProgressStream, ErrorStream, Succeeded0, !Info, !IO),
                 close_module_error_stream_handle_errors(Globals, ModuleName,
-                    ProgressStream, ErrorStream, !Info, !IO)
+                    ProgressStream, MESI, ErrorStream, !Info, !IO)
             )
         ;
             MayBuild = may_not_build(Specs),
