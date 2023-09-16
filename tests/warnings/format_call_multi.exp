@@ -1,17 +1,17 @@
 format_call_multi.m:030: Mismatched format and values in call to predicate
-format_call_multi.m:030:   `m12.log_msg'/5:
+format_call_multi.m:030:   `format_call_multi_helper_1.log_msg'/5:
 format_call_multi.m:030:   The first conversion specifier uses the specifier
 format_call_multi.m:030:   character `d', but the corresponding input is a
 format_call_multi.m:030:   string. The only specifier applicable to strings is
 format_call_multi.m:030:   %s.
 format_call_multi.m:039: Mismatched format and values in call to predicate
-format_call_multi.m:039:   `m12.log_msg'/5:
+format_call_multi.m:039:   `format_call_multi_helper_1.log_msg'/5:
 format_call_multi.m:039:   The first conversion specifier uses the specifier
 format_call_multi.m:039:   character `d', but the corresponding input is a
 format_call_multi.m:039:   string. The only specifier applicable to strings is
 format_call_multi.m:039:   %s.
 format_call_multi.m:052: Mismatched format and values in call to predicate
-format_call_multi.m:052:   `m12.log_msg'/5:
+format_call_multi.m:052:   `format_call_multi_helper_1.log_msg'/5:
 format_call_multi.m:052:   The first conversion specifier uses the specifier
 format_call_multi.m:052:   character `d', but the corresponding input is a
 format_call_multi.m:052:   string. The only specifier applicable to strings is

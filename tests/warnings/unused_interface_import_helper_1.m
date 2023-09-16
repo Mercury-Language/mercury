@@ -2,7 +2,15 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module unused_interface_import3.
+:- module unused_interface_import_helper_1.
 :- interface.
 
-:- typeclass tc2(T) where [].
+:- import_module unit.
+
+:- import_module unused_interface_import_helper_2.
+
+:- instance tc2(unit).
+
+:- implementation.
+
+:- instance tc2(unit) where [].

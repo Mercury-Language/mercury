@@ -14,7 +14,7 @@
 
 :- implementation.
 
-:- import_module format_call_warning_helper.
+:- import_module format_call_warning_helper_1.
 
 :- import_module int.
 :- import_module list.

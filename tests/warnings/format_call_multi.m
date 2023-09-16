@@ -16,7 +16,7 @@
 
 :- implementation.
 
-:- import_module m12.
+:- import_module format_call_multi_helper_1.
 
 :- import_module int.
 :- import_module list.

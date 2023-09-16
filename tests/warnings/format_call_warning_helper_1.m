@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module format_call_warning_helper.
+:- module format_call_warning_helper_1.
 :- interface.
 
 :- import_module io.

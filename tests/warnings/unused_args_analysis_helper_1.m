@@ -2,21 +2,12 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module inst_with_no_type_2.
+:- module unused_args_analysis_helper_1.
 
 :- interface.
 
-:- import_module io.
-
-:- type t.
-
-:- pred p(t::in, io::di, io::uo) is det.
+:- pred p2(int::in, int::out) is det.
 
 :- implementation.
 
-:- type t
-    --->    ft.
-
-:- pragma inline(p/3).
-p(T, !IO) :-
-    io.write(T, !IO).
+p2(_, 1).

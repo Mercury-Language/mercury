@@ -10,7 +10,7 @@
 
 :- implementation.
 
-:- import_module unused_args_analysis2.
+:- import_module unused_args_analysis_helper_1.
 
 p(X, Y) :-
     p2(X, Y).

@@ -86,9 +86,9 @@
 
 :- implementation.
 
-:- import_module io.
+:- import_module inst_with_no_type_helper_1.
 
-:- import_module inst_with_no_type_2.
+:- import_module io.
 
     % Even though t is defined in the implementation of inst_with_no_type_2,
     % we should get a warning for the following insts, since the function

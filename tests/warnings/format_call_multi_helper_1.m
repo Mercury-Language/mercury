@@ -4,7 +4,7 @@
 % "mini"-G12 -- a simplified version of the main G12 runtime.
 %-----------------------------------------------------------------------------%
 
-:- module m12.
+:- module format_call_multi_helper_1.
 :- interface.
 
 :- import_module io.
@@ -14,8 +14,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- typeclass m12.state(S).
-:- instance m12.state(io).
+:- typeclass format_call_multi_helper_1.state(S).
+:- instance format_call_multi_helper_1.state(io).
 
 :- pred solve_first(solve(T), maybe(T), io, io).
 :- mode solve_first(in(solve_semidet), out, di, uo) is cc_multi.
@@ -27,7 +27,7 @@
 %-----------------------------------------------------------------------------%
 
 :- type ss.
-:- instance m12.state(ss).
+:- instance format_call_multi_helper_1.state(ss).
 
 :- type solve(T)        == pred(T, ss, ss).
 :- inst solve_det       == (pred(out, mdi, muo) is det).
@@ -39,7 +39,7 @@
 %-----------------------------------------------------------------------------%
 
 :- type ps.
-:- instance m12.state(ps).
+:- instance format_call_multi_helper_1.state(ps).
 
 :- type propagate(T)        == pred(T, ps, ps).
 :- inst propagate_det       == (pred(out, di, uo) is det).
@@ -52,7 +52,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred log_msg(int, string, list(poly_type), S, S) <= m12.state(S).
+:- pred log_msg(int, string, list(poly_type), S, S)
+    <= format_call_multi_helper_1.state(S).
 :- mode log_msg(in, in, in, mdi, muo) is det.
 :- mode log_msg(in, in, in,  di,  uo) is det.
 :- pragma format_call(pred(log_msg/5),  format_string_values(2, 3)).
@@ -67,14 +68,14 @@
 
 %-----------------------------------------------------------------------------%
 
-:- typeclass m12.state(S) where [].
+:- typeclass format_call_multi_helper_1.state(S) where [].
 
-:- instance m12.state(io) where [].
+:- instance format_call_multi_helper_1.state(io) where [].
 
 :- type ss
     --->    dummy_solver_state.
 
-:- instance m12.state(ss) where [].
+:- instance format_call_multi_helper_1.state(ss) where [].
 
 solve_first(Pred, MaybeSolution, !IO) :-
     ( if unsafe_solve(Pred, Solution) then
@@ -100,7 +101,7 @@ unsafe_solve(Pred, Solution) :-
 :- type ps
     --->    dummy_propagation_state.
 
-:- instance m12.state(ps) where [].
+:- instance format_call_multi_helper_1.state(ps) where [].
 
 invoke(Pred, Output, !SS) :-
     some [!PS] (
@@ -159,7 +160,7 @@ do_format_log_msg(L, FormatString, PolyList, !IO) :-
 set_log_level_io(K, !IO) :-
     set_log_level_var(K, !IO).
 
-:- func get_log_level(S) = int <= m12.state(S).
+:- func get_log_level(S) = int <= format_call_multi_helper_1.state(S).
 :- mode get_log_level(mui) = out is det.
 :- mode get_log_level(ui) = out is det.
 
@@ -168,7 +169,7 @@ get_log_level(_S) = K :-
         semipure get_log_level_var(K)
     ).
 
-:- pred get_log_level(int, S, S) <= m12.state(S).
+:- pred get_log_level(int, S, S) <= format_call_multi_helper_1.state(S).
 :- mode get_log_level(out, mdi, muo) is det.
 :- mode get_log_level(out, di, uo) is det.
 
@@ -178,5 +179,5 @@ get_log_level(K, !S) :-
     ).
 
 %-----------------------------------------------------------------------------%
-:- end_module m12.
+:- end_module format_call_multi_helper_1.
 %-----------------------------------------------------------------------------%

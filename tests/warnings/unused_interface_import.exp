@@ -1,4 +1,5 @@
 unused_interface_import.m:009: In module `unused_interface_import':
-unused_interface_import.m:009:   warning: module `unused_interface_import2' is
-unused_interface_import.m:009:   imported in the interface, but it is not used
-unused_interface_import.m:009:   in the interface.
+unused_interface_import.m:009:   warning: module
+unused_interface_import.m:009:   `unused_interface_import_helper_1' is imported
+unused_interface_import.m:009:   in the interface, but it is not used in the
+unused_interface_import.m:009:   interface.
