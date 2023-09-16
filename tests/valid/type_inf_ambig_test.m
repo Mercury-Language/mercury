@@ -6,7 +6,7 @@
 % predicate-at-a-time rather than clause-at-a-time.
 % Mercury 0.6 failed this test.
 
-:- module type_inf_ambig_test .
+:- module type_inf_ambig_test.
 
 :- interface.
 :- import_module io.

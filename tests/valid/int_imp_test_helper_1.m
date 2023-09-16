@@ -15,7 +15,7 @@
 % on the absence of any such duplication.
 %
 
-:- module int_imp_test_2.
+:- module int_imp_test_helper_1.
 :- interface.
 
 :- import_module bool.

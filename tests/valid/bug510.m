@@ -55,7 +55,7 @@
 
 :- implementation.
 
-:- import_module bug510a.
+:- import_module bug510_helper_1.
 
 % :- import_module sparse_bitset.
 

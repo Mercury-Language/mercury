@@ -41,8 +41,12 @@
 
 :- implementation.
 
-:- import_module string.
 :- import_module int.
+:- import_module io.
+:- import_module map.
+:- import_module string.
+:- import_module version_array.
+:- import_module version_array2d.
 
 %% Creating data for MERTing:
 
@@ -250,11 +254,6 @@ score_nbestlist(_, _) = [].
 :- type ngram == list(word).
 :- type approved_per_sent == map(ngram, int).
           % how many times was each ngram seen
-
-:- import_module io.
-:- import_module map.
-:- import_module version_array.
-:- import_module version_array2d.
 
 :- pred debugstr(string::in, T::in, io::di, io::uo) is det.
 

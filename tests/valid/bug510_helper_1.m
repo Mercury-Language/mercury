@@ -2,11 +2,11 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module bug510a.
+:- module bug510_helper_1.
 
 :- interface.
 
-:- import_module bug510b.
+:- import_module bug510_helper_2.
 :- import_module list.
 
 :- type bar_set == foo_set.

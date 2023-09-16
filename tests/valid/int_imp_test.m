@@ -5,7 +5,7 @@
 :- module int_imp_test.
 :- interface.
 
-:- import_module int_imp_test_2.
+:- import_module int_imp_test_helper_1.
 
 :- type t0
     --->    f0(t1, t2).
