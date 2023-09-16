@@ -1,20 +1,24 @@
-MCFLAGS-direct_arg_cyclic =             --intermod-opt
-MCFLAGS-direct_arg_cyclic_helper_1 =    --intermod-opt
-MCFLAGS-direct_arg_cyclic_helper_2 =    --intermod-opt
-MCFLAGS-direct_arg_intermod =           --intermod-opt
-MCFLAGS-direct_arg_intermod_helper_1 =  --intermod-opt
-MCFLAGS-direct_arg_intermod_helper_2 =  --intermod-opt
-MCFLAGS-g12_fe_bug = 			        --intermod-opt
-MCFLAGS-g12_fe_bug.g12_fe_bug_helper_1 = --intermod-opt --no-warn-interface-imports
-MCFLAGS-g12_fe_bug.g12_fe_bug_helper_2 = --intermod-opt
-MCFLAGS-g12_fe_bug.g12_fe_bug_helper_2.g12_fe_bug_helper_3 = --intermod-opt
+# vim: ts=4 sw=4 expandtab
 
-MCFLAGS-impl_def_literal     = --no-intermod-opt --no-warn-simple-code
-MCFLAGS-impl_def_literal.sub = --no-intermod-opt --no-warn-simple-code
+MCFLAGS-direct_arg_cyclic               = --intermod-opt
+MCFLAGS-direct_arg_cyclic_helper_1      = --intermod-opt
+MCFLAGS-direct_arg_cyclic_helper_2      = --intermod-opt
+MCFLAGS-direct_arg_intermod             = --intermod-opt
+MCFLAGS-direct_arg_intermod_helper_1    = --intermod-opt
+MCFLAGS-direct_arg_intermod_helper_2    = --intermod-opt
+MCFLAGS-g12_fe_bug                      = --intermod-opt
+MCFLAGS-g12_fe_bug.g12_fe_bug_helper_1  = --intermod-opt \
+                                            --no-warn-interface-imports
+MCFLAGS-g12_fe_bug.g12_fe_bug_helper_2  = --intermod-opt
+MCFLAGS-g12_fe_bug.g12_fe_bug_helper_2.g12_fe_bug_helper_3 = \
+                                        --intermod-opt
+
+MCFLAGS-impl_def_literal            = --no-intermod-opt --no-warn-simple-code
+MCFLAGS-impl_def_literal.sub        = --no-intermod-opt --no-warn-simple-code
 
 # --intermod-opt causes impl_def_literal to abort during the STM
 # transformation (bug #136). Its use here is disabled until that is fixed.
 
-MCFLAGS-nested_intermod	=	    --intermod-opt
-MCFLAGS-nested_intermod_helper_1 = --intermod-opt
-MCFLAGS-non_word_mutable =	    --intermod-opt --no-intermodule-analysis
+MCFLAGS-nested_intermod             = --intermod-opt
+MCFLAGS-nested_intermod_helper_1    = --intermod-opt
+MCFLAGS-non_word_mutable            = --intermod-opt --no-intermodule-analysis

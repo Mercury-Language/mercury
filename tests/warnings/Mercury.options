@@ -1,91 +1,81 @@
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=4 sw=4 expandtab
 
 # XXX The warnings for this module are reported twice when compiling with
 # --intermodule-optimization due to a performance bug in the handling
 # of assertions, which causes typechecking to be run twice.
-MCFLAGS-ambiguous_overloading	= --no-intermodule-optimization
+MCFLAGS-ambiguous_overloading   = --no-intermodule-optimization
 
 # We need to explicitly enable these optimizations because
 # the arg_order_rearrangement warning doesn't show up at
 # lower optimization levels.
-MCFLAGS-arg_order_rearrangment	= \
-				--introduce-accumulators \
-				--excess-assign --common-struct \
-				--trace-optimized
+MCFLAGS-arg_order_rearrangment  = --introduce-accumulators \
+                                    --excess-assign --common-struct \
+                                    --trace-optimized
 
-MCFLAGS-bug412			= --warn-unused-imports
-MCFLAGS-duplicate_call		= --warn-duplicate-calls
-MCFLAGS-duplicate_const		= --warn-duplicate-calls
+MCFLAGS-bug412                  = --warn-unused-imports
+MCFLAGS-duplicate_call          = --warn-duplicate-calls
+MCFLAGS-duplicate_const         = --warn-duplicate-calls
 
-MCFLAGS-empty_interface		= -E
+MCFLAGS-empty_interface         = -E
 
-MCFLAGS-disabled_warning    	= --warn-unknown-format-calls
-MCFLAGS-format_call_warning    	= --warn-unknown-format-calls
+MCFLAGS-disabled_warning        = --warn-unknown-format-calls
+MCFLAGS-format_call_warning     = --warn-unknown-format-calls
 
-MCFLAGS-unused_args_analysis    = \
-				--intermodule-analysis \
-				--optimize-unused-args \
-				--warn-unused-args
-MCFLAGS-unused_args_analysis2   = \
-				--intermodule-analysis \
-				--optimize-unused-args \
-				--trace-optimized
-MCFLAGS-unused_args_test	= --warn-unused-args
-MCFLAGS-unused_import		= --warn-interface-imports
-MCFLAGS-inference_test		= --infer-all
-MCFLAGS-save			= --warn-implicit-stream-calls
+MCFLAGS-unused_args_analysis    = --intermodule-analysis \
+                                    --optimize-unused-args \
+                                    --warn-unused-args
+MCFLAGS-unused_args_analysis2   = --intermodule-analysis \
+                                    --optimize-unused-args \
+                                    --trace-optimized
+MCFLAGS-unused_args_test        = --warn-unused-args
+MCFLAGS-unused_import           = --warn-interface-imports
+MCFLAGS-inference_test          = --infer-all
+MCFLAGS-save                    = --warn-implicit-stream-calls
 
 # The infinite loop warning in simple_code.m doesn't show up unless
 # the common-struct optimization is enabled (because proving that
 # the recursive call is an infinite loop relies on argument equivalence
 # information, which is only computed when the common-struct optimization
 # is enabled).
-MCFLAGS-simple_code		= --common-struct
+MCFLAGS-simple_code             = --common-struct
 
 # We need to explicitly enable these optimizations because
 # some of the infinite recursion warnings don't show up at
 # lower optimization levels.
-MCFLAGS-infinite_recursion	= --excess-assign --common-struct
+MCFLAGS-infinite_recursion      = --excess-assign --common-struct
 
-MCFLAGS-suspicious_recursion	= --warn-suspicious-recursion -E
+MCFLAGS-suspicious_recursion    = --warn-suspicious-recursion -E
 
-MCFLAGS-warn_stubs		= --allow-stubs --warn-unused-args
+MCFLAGS-warn_stubs              = --allow-stubs --warn-unused-args
 
 # For tests that involve the termination analysis, we need
 # to make sure that it is enabled, otherwise the tests will fail.
-MCFLAGS-pragma_term_conflict	= --enable-termination
-MCFLAGS-term_indirect_warning	= --check-termination
-MCFLAGS-foreign_term_invalid	= --enable-termination
-MCFLAGS-non_term_user_special	= --enable-termination
+MCFLAGS-pragma_term_conflict    = --enable-termination
+MCFLAGS-term_indirect_warning   = --check-termination
+MCFLAGS-foreign_term_invalid    = --enable-termination
+MCFLAGS-non_term_user_special   = --enable-termination
 
-MCFLAGS-warn_dead_procs 	= --warn-dead-procs --infer-all
-MCFLAGS-warn_dead_procs_trace	= --warn-dead-procs
+MCFLAGS-warn_dead_procs         = --warn-dead-procs --infer-all
+MCFLAGS-warn_dead_procs_trace   = --warn-dead-procs
 
-MCFLAGS-non_stratification	= \
-				--warn-non-stratification \
-				--verbose-error-messages
+MCFLAGS-non_stratification      = --warn-non-stratification \
+                                    --verbose-error-messages
 
-MCFLAGS-inst_with_no_type	= \
-				--warn-insts-without-matching-type \
-				--intermodule-optimization \
-				--no-intermodule-analysis
+MCFLAGS-inst_with_no_type       = --warn-insts-without-matching-type \
+                                    --intermodule-optimization \
+                                    --no-intermodule-analysis
 
-MCFLAGS-warn_contiguous_foreign = \
-				--warn-non-contiguous-clauses \
-				--no-warn-non-contiguous-foreign-procs
-MCFLAGS-warn_non_contiguous	= \
-				--warn-non-contiguous-foreign-procs
-MCFLAGS-warn_non_contiguous_foreign = \
-				--warn-non-contiguous-foreign-procs
-MCFLAGS-warn_non_contiguous_foreign_group = \
-				--warn-non-contiguous-clauses \
-				--no-warn-non-contiguous-foreign-procs
+MCFLAGS-warn_contiguous_foreign = --warn-non-contiguous-clauses \
+                                    --no-warn-non-contiguous-foreign-procs
+MCFLAGS-warn_non_contiguous     = --warn-non-contiguous-foreign-procs
+MCFLAGS-warn_non_contiguous_foreign = --warn-non-contiguous-foreign-procs
+MCFLAGS-warn_non_contiguous_foreign_group = --warn-non-contiguous-clauses \
+                                    --no-warn-non-contiguous-foreign-procs
 
-MCFLAGS-non_contiguous_decls = --warn-non-contiguous-decls
-MCFLAGS-inconsistent_pred_order = \
-				--warn-inconsistent-pred-order
+MCFLAGS-non_contiguous_decls    = --warn-non-contiguous-decls
+MCFLAGS-inconsistent_pred_order = --warn-inconsistent-pred-order
 
-MCFLAGS-warn_self_import	= --warn-simple-code
-MCFLAGS-warn_return  		= --warn-suspicious-foreign-procs
-MCFLAGS-warn_succ_ind		= --warn-suspicious-foreign-procs
+MCFLAGS-warn_self_import        = --warn-simple-code
+MCFLAGS-warn_return             = --warn-suspicious-foreign-procs
+MCFLAGS-warn_succ_ind           = --warn-suspicious-foreign-procs
 MCFLAGS-suspicious_foreign_code = --warn-suspicious-foreign-code

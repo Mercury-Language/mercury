@@ -1,7 +1,8 @@
+# vim: ts=4 sw=4 expandtab
 
-MCFLAGS-looptest = --infer-all
-MCFLAGS-test_exceptions =   --no-warn-simple-code --no-warn-det-decls-too-lax
+MCFLAGS-looptest            = --infer-all
+MCFLAGS-test_exceptions     = --no-warn-simple-code --no-warn-det-decls-too-lax
 MCFLAGS-test_exceptions_func = --no-warn-det-decls-too-lax
-MCFLAGS-test_loop_check =   --no-warn-simple-code --no-warn-det-decls-too-lax
-MCFLAGS-test_memo =         --no-warn-simple-code --no-warn-det-decls-too-lax
-MCFLAGS-test_try_all =      --no-warn-simple-code --no-warn-det-decls-too-lax
+MCFLAGS-test_loop_check     = --no-warn-simple-code --no-warn-det-decls-too-lax
+MCFLAGS-test_memo           = --no-warn-simple-code --no-warn-det-decls-too-lax
+MCFLAGS-test_try_all        = --no-warn-simple-code --no-warn-det-decls-too-lax

@@ -1,5 +1,6 @@
+# vim: ts=4 sw=4 expandtab
+
 # Turn on trail usage optimization for these tests since that is
 # what they are testing.
-#
-MCFLAGS-tu_test1 = --analyse-trail-usage
-MCFLAGS-tu_test2 = --analyse-trail-usage
+MCFLAGS-tu_test1    = --analyse-trail-usage
+MCFLAGS-tu_test2    = --analyse-trail-usage

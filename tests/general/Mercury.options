@@ -1,15 +1,17 @@
+# vim: ts=4 sw=4 expandtab
+
 # mode_inf, mode_inf_bug and mode_inference_reorder need to be compiled
 # with `--infer-all'.
-MCFLAGS-mode_inf =                  --infer-all
-MCFLAGS-mode_inf_bug =              --infer-all
-MCFLAGS-mode_inference_reorder =    --infer-all
+MCFLAGS-mode_inf                        = --infer-all
+MCFLAGS-mode_inf_bug                    = --infer-all
+MCFLAGS-mode_inference_reorder          = --infer-all
 
-MCFLAGS-ho_spec_branch_bug = --optimize-higher-order
+MCFLAGS-ho_spec_branch_bug              = --optimize-higher-order
 
 # The intermod_type test is a regression test for a bug that occurred only
 # when intermodule optimization was enabled.
-MCFLAGS-intermod_type =             --intermodule-optimization
-MCFLAGS-intermod_type2 =            --intermodule-optimization
+MCFLAGS-intermod_type                   = --intermodule-optimization
+MCFLAGS-intermod_type2                  = --intermodule-optimization
 
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), string_test needs to be linked
@@ -20,7 +22,7 @@ MCFLAGS-intermod_type2 =            --intermodule-optimization
 # compile with debugging information, it is very difficult to debug.
 # It is much easier to just work around it this way rather than
 # tracking it down.
-MLFLAGS-string_test = --no-strip
+MLFLAGS-string_test                     = --no-strip
 
 # If the compiler is built in a deep profiling grade then attempting to
 # compile these tests with `--warn-known-bad-format-call' will abort since the
@@ -30,8 +32,8 @@ MLFLAGS-string_test = --no-strip
 # the entire point of them is to check that string.format aborts when
 # passed an invalid format string.
 #
-MCFLAGS-string_format_test_2 = --no-warn-known-bad-format-calls
-MCFLAGS-string_format_test_3 = --no-warn-known-bad-format-calls
+MCFLAGS-string_format_test_2            = --no-warn-known-bad-format-calls
+MCFLAGS-string_format_test_3            = --no-warn-known-bad-format-calls
 
-MCFLAGS-unreachable =               --no-warn-det-decls-too-lax
-MCFLAGS-unused_arg_determinism =    --no-warn-det-decls-too-lax
+MCFLAGS-unreachable                     = --no-warn-det-decls-too-lax
+MCFLAGS-unused_arg_determinism          = --no-warn-det-decls-too-lax

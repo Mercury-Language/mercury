@@ -1,40 +1,41 @@
+# vim: ts=4 sw=4 expandtab
 
 # The completion test requires mdb to use readline, even though
 # the input is not a terminal.
-MCFLAGS-completion = --runtime-flags --force-readline
-C2INITFLAGS-completion = --runtime-flags --force-readline
+MCFLAGS-completion              = --runtime-flags --force-readline
+C2INITFLAGS-completion          = --runtime-flags --force-readline
 
 # The debugger can't know about type class declarations unless we generate
 # the new type of RTTI for them.
-MCFLAGS-class_decl = --new-type-class-rtti
+MCFLAGS-class_decl              = --new-type-class-rtti
 
 # The label_layout test is for a bug that showed up only with --opt-space.
-MCFLAGS-label_layout = --opt-space
+MCFLAGS-label_layout            = --opt-space
 
-MCFLAGS-io_tab_goto = --trace-table-io-all
-MCFLAGS-no_inline_builtins = --no-inline-builtins
-MCFLAGS-poly_io_retry = --trace-table-io-all
-MCFLAGS-poly_io_retry2 = --trace-table-io-all
-MCFLAGS-print_io_actions = --trace-table-io-all
-MCFLAGS-queens_rep = --trace rep
-MCFLAGS-scripts = --trace rep
-MCFLAGS-shallow = --trace shallow
-MCFLAGS-shallow2 = --trace deep
-MCFLAGS-tabled_read = --trace-table-io-all
-MCFLAGS-tabled_read_unitize = --trace-table-io-all
-MCFLAGS-tabled_read_decl = --trace-table-io-all
-MCFLAGS-tabled_typeclass = --trace-table-io-all
+MCFLAGS-io_tab_goto             = --trace-table-io-all
+MCFLAGS-no_inline_builtins      = --no-inline-builtins
+MCFLAGS-poly_io_retry           = --trace-table-io-all
+MCFLAGS-poly_io_retry2          = --trace-table-io-all
+MCFLAGS-print_io_actions        = --trace-table-io-all
+MCFLAGS-queens_rep              = --trace rep
+MCFLAGS-scripts                 = --trace rep
+MCFLAGS-shallow                 = --trace shallow
+MCFLAGS-shallow2                = --trace deep
+MCFLAGS-tabled_read             = --trace-table-io-all
+MCFLAGS-tabled_read_unitize     = --trace-table-io-all
+MCFLAGS-tabled_read_decl        = --trace-table-io-all
+MCFLAGS-tabled_typeclass        = --trace-table-io-all
 # By default, we reclaim heap on failure in non-Boehm-gc grades.
 # The extra stack slots required for this reclamation cause spurious
 # differences from the expected output on the nondet_stack test case.
 # The optimization level also affects stack frame sizes.
-MCFLAGS-nondet_stack = -O2 --no-reclaim-heap-on-failure
+MCFLAGS-nondet_stack            = -O2 --no-reclaim-heap-on-failure
 # We test the behavior of comparisons both with and without index predicates.
 # The --compare-specialization flag creates index predicates for type
 # constructors with three or more alternatives. The optimization level
 # is fixed to fix the event numbers in the input script; this is needed
 # because one cannot (yet) put breakpoints on unify, compare and index preds.
-MCFLAGS-uci = -O2 --compare-specialization 2
+MCFLAGS-uci                     = -O2 --compare-specialization 2
 # uci_index is a regression test. We used to get a garbage value for the call
 # sequence number of the index predicate, which shouldn't have had debugging
 # enabled in the first place. The --compare-specialization option was required 
@@ -42,22 +43,20 @@ MCFLAGS-uci = -O2 --compare-specialization 2
 # intermodule optimization was required to export the type, and thus its unify,
 # compare and index predicates. The bug occurred only in asm_fast.gc, not
 # asm_fast.gc.debug.tr.
-MCFLAGS-uci_index = --compare-specialization 2 --intermodule-optimization
+MCFLAGS-uci_index       = --compare-specialization 2 --intermodule-optimization
 
-MCFLAGS-user_event = --event-set-file-name user_event_spec
+MCFLAGS-user_event              = --event-set-file-name user_event_spec
+MCFLAGS-user_event_shallow      = --event-set-file-name user_event_spec \
+                                    --trace shallow -O2
+MCFLAGS-user_event_shallow_exported = --event-set-file-name user_event_spec_3 \
+                                    --trace shallow
+MCFLAGS-user_event_2            = --event-set-file-name user_event_spec_2
+MCFLAGS-synth_attr              = --event-set-file-name synth_attr_spec
+MCFLAGS-synth_attr_impure       = --event-set-file-name synth_attr_impure_spec
 
-MCFLAGS-user_event_shallow = --event-set-file-name user_event_spec \
-    --trace shallow -O2
-MCFLAGS-user_event_shallow_exported = --event-set-file-name user_event_spec_3 --trace shallow
-
-MCFLAGS-user_event_2 = --event-set-file-name user_event_spec_2
-
-MCFLAGS-synth_attr = --event-set-file-name synth_attr_spec
-MCFLAGS-synth_attr_impure = --event-set-file-name synth_attr_impure_spec
-
-MCFLAGS-tailrec1 = --trace deep --exec-trace-tail-rec --trace-table-io-all
+MCFLAGS-tailrec1    = --trace deep --exec-trace-tail-rec --trace-table-io-all
 
 # We need to use shared libraries for interactive queries to work.
 # The following is necessary for shared libraries to work on Linux.
-MLFLAGS-interactive = --shared
-MERCURY_LINKAGE-interactive = shared
+MLFLAGS-interactive             = --shared
+MERCURY_LINKAGE-interactive     = shared

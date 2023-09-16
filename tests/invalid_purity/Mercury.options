@@ -1,7 +1,8 @@
+# vim: ts=4 sw=4 expandtab
 # Include the verbose part of the error message where we have one.
-#
-MCFLAGS-impure_func_t5 		= --verbose-error-messages
-MCFLAGS-impure_pred_t1 		= --verbose-error-messages
-MCFLAGS-impure_pred_t1_fixed	= --verbose-error-messages
-MCFLAGS-impure_pred_t2		= --verbose-error-messages
-MCFLAGS-purity_type_error	= --verbose-error-messages
+
+MCFLAGS-impure_func_t5          = --verbose-error-messages
+MCFLAGS-impure_pred_t1          = --verbose-error-messages
+MCFLAGS-impure_pred_t1_fixed    = --verbose-error-messages
+MCFLAGS-impure_pred_t2          = --verbose-error-messages
+MCFLAGS-purity_type_error       = --verbose-error-messages

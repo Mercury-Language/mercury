@@ -1,6 +1,8 @@
-LIB_DIRS = install/lib/mercury
+# vim: ts=4 sw=4 expandtab
 
-LIBRARIES-complex_test = complex_numbers
-MCFLAGS-complex_test = --linkage shared
+LIB_DIRS                    = install/lib/mercury
 
-LIBRARIES-linkage_test = linkage_test2
+LIBRARIES-complex_test      = complex_numbers
+MCFLAGS-complex_test        = --linkage shared
+
+LIBRARIES-linkage_test      = linkage_test2

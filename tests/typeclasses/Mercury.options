@@ -1,26 +1,26 @@
+# vim: ts=4 sw=4 expandtab
 
-MCFLAGS-abstract_instance = --infer-all
+MCFLAGS-abstract_instance           = --infer-all
 
-MCFLAGS-complicated_constraint = --no-inlining \
-	--user-guided-type-specialization
+MCFLAGS-complicated_constraint      = --no-inlining \
+    --user-guided-type-specialization
 
-MCFLAGS-existential_type_classes = --infer-all
-MCFLAGS-extra_typeinfo = --optimize-higher-order --no-type-specialization \
-				--body-typeinfo-liveness
-MCFLAGS-inference_test = --infer-all
-MCFLAGS-inference_test_2 = --infer-all
-MCFLAGS-intermod_typeclass_bug = --intermodule-optimization
-MCFLAGS-intermod_typeclass_bug2 = --intermodule-optimization
+MCFLAGS-existential_type_classes    = --infer-all
+MCFLAGS-extra_typeinfo              = --optimize-higher-order \
+    --no-type-specialization --body-typeinfo-liveness
+MCFLAGS-inference_test              = --infer-all
+MCFLAGS-inference_test_2            = --infer-all
+MCFLAGS-intermod_typeclass_bug      = --intermodule-optimization
+MCFLAGS-intermod_typeclass_bug2     = --intermodule-optimization
 MCFLAGS-lambda_multi_constraint_same_tvar = --infer-all
-MCFLAGS-no_fundep_infer = --infer-all
+MCFLAGS-no_fundep_infer             = --infer-all
 
-	# Check that the exported specialized versions are still created.
-MCFLAGS-type_spec_2 = --no-user-guided-type-specialization
-MCFLAGS-unbound_tvar = --no-user-guided-type-specialisation
-MCFLAGS-unqualified_method = --intermodule-optimization
-MCFLAGS-unqualified_method2 = --intermodule-optimization
-MCFLAGS-unqualified_method3 = --intermodule-optimization
-MCFLAGS-module_test_m1 = --infer-all
-MCFLAGS-module_test_m2 = --infer-all
-MCFLAGS-module_test = --infer-all
-
+# Check that the exported specialized versions are still created.
+MCFLAGS-type_spec_2                 = --no-user-guided-type-specialization
+MCFLAGS-unbound_tvar                = --no-user-guided-type-specialisation
+MCFLAGS-unqualified_method          = --intermodule-optimization
+MCFLAGS-unqualified_method2         = --intermodule-optimization
+MCFLAGS-unqualified_method3         = --intermodule-optimization
+MCFLAGS-module_test_m1              = --infer-all
+MCFLAGS-module_test_m2              = --infer-all
+MCFLAGS-module_test                 = --infer-all

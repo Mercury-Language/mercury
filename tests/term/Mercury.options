@@ -1,64 +1,68 @@
-MCFLAGS-ack=--term-norm=simple
-MCFLAGS-append=--term-norm=simple
-MCFLAGS-arit_exp=--term-norm=simple
-MCFLAGS-associative=--term-norm=simple
-MCFLAGS-dds1_2=--term-norm=simple
-MCFLAGS-dds3_13=--term-norm=simple
-MCFLAGS-dds3_14=--term-norm=simple 
-MCFLAGS-dds3_15=--term-norm=simple
-MCFLAGS-dds3_17=--term-norm=simple
-MCFLAGS-dds3_8=--term-norm=simple
-MCFLAGS-exception_analysis_test=--analyse-exceptions --no-warn-inferred-erroneous --no-warn-simple-code
-MCFLAGS-exception_analysis_test2=--analyse-exceptions --no-warn-inferred-erroneous
-MCFLAGS-existential_error1=--term-norm=num-data-elems
-MCFLAGS-existential_error2=--term-norm=num-data-elems
-MCFLAGS-existential_error3=--term-norm=num-data-elems
-MCFLAGS-fold=--term-norm=simple
-MCFLAGS-generic_call=--analyse-closures
-MCFLAGS-inf_const_bug=--term-norm=total
-MCFLAGS-my_list=--term-norm=simple
-MCFLAGS-lte=--term-norm=simple
-MCFLAGS-my_map=--term-norm=simple
-MCFLAGS-member=--term-norm=simple
-MCFLAGS-mergesort=--term-norm=simple
-MCFLAGS-mergesort_ap=--term-norm=simple
-MCFLAGS-mergesort_t=--term-norm=simple
-MCFLAGS-mmatrix=--term-norm=simple 
-MCFLAGS-money=--term-norm=simple
-MCFLAGS-naive_rev=--term-norm=simple
-MCFLAGS-occur=--term-norm=simple
-MCFLAGS-ordered=--term-norm=simple
-MCFLAGS-overlap=--term-norm=simple
-MCFLAGS-permutation=--term-norm=simple
-MCFLAGS-pl1_1=--term-norm=simple
-MCFLAGS-pl1_2=--term-norm=simple
-MCFLAGS-pl2_3_1=--term-norm=simple
-MCFLAGS-pl3_1_1=--term-norm=simple
-MCFLAGS-pl3_5_6=--term-norm=simple
-MCFLAGS-pl3_5_6a=--term-norm=simple
-MCFLAGS-pl4_01=--term-norm=simple
-MCFLAGS-pl4_4_3=--term-norm=simple
-MCFLAGS-pl4_4_6a=--term-norm=simple
-MCFLAGS-pl4_5_2=--term-norm=simple
-MCFLAGS-pl4_5_3a=--term-norm=simple
-MCFLAGS-pl5_2_2=--term-norm=simple
-MCFLAGS-pl6_1_1=--term-norm=simple
-MCFLAGS-pl7_2_9=--term-norm=simple
-MCFLAGS-pl7_6_2a=--term-norm=simple
-MCFLAGS-pl7_6_2b=--term-norm=simple
-MCFLAGS-pl7_6_2c=--term-norm=simple
-MCFLAGS-pl8_2_1=--term-norm=simple
-MCFLAGS-pl8_2_1a=--term-norm=simple
-MCFLAGS-pl8_3_1=--term-norm=simple
-MCFLAGS-pl8_3_1a=--term-norm=simple
-MCFLAGS-pl8_4_1=--term-norm=simple
-MCFLAGS-pl8_4_2=--term-norm=simple
-MCFLAGS-pragma_non_term=--term-norm=simple
-MCFLAGS-pragma_term=--term-norm=simple
-MCFLAGS-promise_will_not_throw=--analyse-exceptions
-MCFLAGS-queens=--term-norm=simple
-MCFLAGS-quicksort=--term-norm=simple
-MCFLAGS-select=--term-norm=simple
-MCFLAGS-subset=--term-norm=simple
-MCFLAGS-sum=--term-norm=simple
-MCFLAGS-vangelder=--term-norm=simple
+# vim: ts=4 sw=4 expandtab
+
+MCFLAGS-ack                         = --term-norm=simple
+MCFLAGS-append                      = --term-norm=simple
+MCFLAGS-arit_exp                    = --term-norm=simple
+MCFLAGS-associative                 = --term-norm=simple
+MCFLAGS-dds1_2                      = --term-norm=simple
+MCFLAGS-dds3_13                     = --term-norm=simple
+MCFLAGS-dds3_14                     = --term-norm=simple 
+MCFLAGS-dds3_15                     = --term-norm=simple
+MCFLAGS-dds3_17                     = --term-norm=simple
+MCFLAGS-dds3_8                      = --term-norm=simple
+MCFLAGS-exception_analysis_test     = --analyse-exceptions \
+    --no-warn-inferred-erroneous --no-warn-simple-code
+MCFLAGS-exception_analysis_test2    = --analyse-exceptions \
+    --no-warn-inferred-erroneous
+MCFLAGS-existential_error1          = --term-norm=num-data-elems
+MCFLAGS-existential_error2          = --term-norm=num-data-elems
+MCFLAGS-existential_error3          = --term-norm=num-data-elems
+MCFLAGS-fold                        = --term-norm=simple
+MCFLAGS-generic_call                = --analyse-closures
+MCFLAGS-inf_const_bug               = --term-norm=total
+MCFLAGS-my_list                     = --term-norm=simple
+MCFLAGS-lte                         = --term-norm=simple
+MCFLAGS-my_map                      = --term-norm=simple
+MCFLAGS-member                      = --term-norm=simple
+MCFLAGS-mergesort                   = --term-norm=simple
+MCFLAGS-mergesort_ap                = --term-norm=simple
+MCFLAGS-mergesort_t                 = --term-norm=simple
+MCFLAGS-mmatrix                     = --term-norm=simple 
+MCFLAGS-money                       = --term-norm=simple
+MCFLAGS-naive_rev                   = --term-norm=simple
+MCFLAGS-occur                       = --term-norm=simple
+MCFLAGS-ordered                     = --term-norm=simple
+MCFLAGS-overlap                     = --term-norm=simple
+MCFLAGS-permutation                 = --term-norm=simple
+MCFLAGS-pl1_1                       = --term-norm=simple
+MCFLAGS-pl1_2                       = --term-norm=simple
+MCFLAGS-pl2_3_1                     = --term-norm=simple
+MCFLAGS-pl3_1_1                     = --term-norm=simple
+MCFLAGS-pl3_5_6                     = --term-norm=simple
+MCFLAGS-pl3_5_6a                    = --term-norm=simple
+MCFLAGS-pl4_01                      = --term-norm=simple
+MCFLAGS-pl4_4_3                     = --term-norm=simple
+MCFLAGS-pl4_4_6a                    = --term-norm=simple
+MCFLAGS-pl4_5_2                     = --term-norm=simple
+MCFLAGS-pl4_5_3a                    = --term-norm=simple
+MCFLAGS-pl5_2_2                     = --term-norm=simple
+MCFLAGS-pl6_1_1                     = --term-norm=simple
+MCFLAGS-pl7_2_9                     = --term-norm=simple
+MCFLAGS-pl7_6_2a                    = --term-norm=simple
+MCFLAGS-pl7_6_2b                    = --term-norm=simple
+MCFLAGS-pl7_6_2c                    = --term-norm=simple
+MCFLAGS-pl8_2_1                     = --term-norm=simple
+MCFLAGS-pl8_2_1a                    = --term-norm=simple
+MCFLAGS-pl8_3_1                     = --term-norm=simple
+MCFLAGS-pl8_3_1a                    = --term-norm=simple
+MCFLAGS-pl8_4_1                     = --term-norm=simple
+MCFLAGS-pl8_4_2                     = --term-norm=simple
+MCFLAGS-pragma_non_term             = --term-norm=simple
+MCFLAGS-pragma_term                 = --term-norm=simple
+MCFLAGS-promise_will_not_throw      = --analyse-exceptions
+MCFLAGS-queens                      = --term-norm=simple
+MCFLAGS-quicksort                   = --term-norm=simple
+MCFLAGS-select                      = --term-norm=simple
+MCFLAGS-subset                      = --term-norm=simple
+MCFLAGS-sum                         = --term-norm=simple
+MCFLAGS-vangelder                   = --term-norm=simple

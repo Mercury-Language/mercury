@@ -1,7 +1,9 @@
+# vim: ts=4 sw=4 expandtab
+
 # typeclass_method_pragma_r calls a predicate with a
 # `:- pragma obsolete' declaration.
-MCFLAGS-typeclass_method_pragma_r = --no-halt-at-warn
+MCFLAGS-typeclass_method_pragma_r   = --no-halt-at-warn
 
 # This module tests recompilation of a module which depends on a module
 # for which no version numbers have been computed.
-MCFLAGS-no_version_numbers_r_2 = --no-smart-recompilation
+MCFLAGS-no_version_numbers_r_2      = --no-smart-recompilation
