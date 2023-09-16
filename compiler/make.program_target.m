@@ -363,11 +363,16 @@ order_target_modules(ProgressStream, Globals, Modules, OrderedModules,
         OrderByTimestamp = yes,
         list.map_foldl2(pair_module_with_timestamp(ProgressStream, Globals),
             Modules, PairedModules, !Info, !IO),
-        list.sort(compare_paired_modules, PairedModules, OrderedPairs),
+        list.sort(compare_paired_modules, PairedModules, RevOrderedPairs),
+        % More recently touched files, i.e. files with *larger* timestamps,
+        % should appear *earlier* in the list.
+        list.reverse(RevOrderedPairs, OrderedPairs),
         list.map(pair.snd, OrderedPairs, OrderedModules)
     ;
         OrderByTimestamp = no,
-        OrderedModules = Modules
+        list.map(pair_module_with_name, Modules, PairedModules),
+        list.sort(compare_paired_modules, PairedModules, OrderedPairs),
+        list.map(pair.snd, OrderedPairs, OrderedModules)
     ).
 
 :- pred pair_module_with_timestamp(io.text_output_stream::in, globals::in,
@@ -387,21 +392,28 @@ pair_module_with_timestamp(ProgressStream, Globals, Module,
         Timestamp = oldest_timestamp
     ).
 
-:- pred compare_paired_modules(pair(timestamp, module_name)::in,
-    pair(timestamp, module_name)::in, comparison_result::out) is det.
+:- pred pair_module_with_name(module_name::in,
+    pair(string, module_name)::out) is det.
 
-compare_paired_modules(TimeA - ModuleA, TimeB - ModuleB, Res) :-
-    compare(TimeRes, TimeA, TimeB),
+pair_module_with_name(Module, Name - Module) :-
+    Name = sym_name_to_string(Module).
+
+:- pred compare_paired_modules(pair(T, module_name)::in,
+    pair(T, module_name)::in, comparison_result::out) is det.
+
+compare_paired_modules(KeyA - ModuleA, KeyB - ModuleB, Result) :-
+    compare(KeyResult, KeyA, KeyB),
     % More recently touched files should appear earlier in the list.
     (
-        TimeRes = (<),
-        Res = (>)
+        ( KeyResult = (<)
+        ; KeyResult = (>)
+        ),
+        Result = KeyResult
     ;
-        TimeRes = (>),
-        Res = (<)
-    ;
-        TimeRes = (=),
-        compare(Res, ModuleA, ModuleB)
+        KeyResult = (=),
+        ModuleAStr = sym_name_to_string(ModuleA),
+        ModuleBStr = sym_name_to_string(ModuleB),
+        compare(Result, ModuleAStr, ModuleBStr)
     ).
 
 :- pred get_foreign_object_targets(io.text_output_stream::in, globals::in,
@@ -1250,7 +1262,7 @@ build_analysis_files_1(ProgressStream, Globals, MainModuleName, AllModules,
     get_target_modules(ProgressStream, Globals,
         module_target_analysis_registry, AllModules, TargetModules0,
         !Info, !IO),
-    reverse_ordered_modules(make_info_get_module_dependencies(!.Info),
+    get_reverse_ordered_modules(make_info_get_module_dependencies(!.Info),
         TargetModules0, TargetModules1),
     % Filter out the non-local modules so we don't try to reanalyse them.
     list.filter(list.contains(AllModules), TargetModules1, TargetModules),
@@ -1352,10 +1364,11 @@ get_non_nested_target_modules(ProgressStream, Globals, ModuleName,
     % dependent modules (modules which form a clique in the dependency graph)
     % are returned adjacent in the list in arbitrary order.
     %
-:- pred reverse_ordered_modules(map(module_name, maybe_module_dep_info)::in,
+:- pred get_reverse_ordered_modules(
+    map(module_name, maybe_module_dep_info)::in,
     list(module_name)::in, list(module_name)::out) is det.
 
-reverse_ordered_modules(ModuleDeps, Modules0, Modules) :-
+get_reverse_ordered_modules(ModuleDeps, Modules0, Modules) :-
     list.foldl2(
         add_module_relations(lookup_module_dep_info_in_maybe_map(ModuleDeps)),
         Modules0, digraph.init, _IntDepsGraph, digraph.init, ImpDepsGraph),
