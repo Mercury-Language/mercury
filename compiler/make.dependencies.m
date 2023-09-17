@@ -83,7 +83,7 @@
                 dependency_status
             ).
 
-:- pred xget_dependency_status(io.text_output_stream::in, globals::in,
+:- pred get_dependency_status(io.text_output_stream::in, globals::in,
     dependency_file::in, dependency_status_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -868,7 +868,8 @@ find_module_foreign_imports(ProgressStream, Languages, Globals, ModuleIndex,
                 find_module_foreign_imports_uncached(ProgressStream,
                     Languages),
                 Globals, to_sorted_list(insert(ImportedModules, ModuleIndex)),
-                succeeded, Succeeded, deps_set_init, ForeignModules, !Info, !IO),
+                succeeded, Succeeded, deps_set_init, ForeignModules,
+                !Info, !IO),
             Result = deps_result(Succeeded, ForeignModules),
             CachedForeignImports1 =
                 make_info_get_cached_transitive_foreign_imports(!.Info),
@@ -909,6 +910,20 @@ find_module_foreign_imports_uncached(ProgressStream, Languages, Globals,
         ForeignModules = deps_set_init,
         Succeeded = did_not_succeed
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred find_transitive_implementation_imports(io.text_output_stream::in,
+    globals::in, module_index::in,
+    maybe_succeeded::out, deps_set(module_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+find_transitive_implementation_imports(ProgressStream, Globals, ModuleIndex,
+        Succeeded, Modules, !Info, !IO) :-
+    find_transitive_module_dependencies(ProgressStream, Globals, all_imports,
+        process_modules_anywhere, ModuleIndex, Succeeded, Modules0,
+        !Info, !IO),
+    Modules = insert(Modules0, ModuleIndex).
 
 %---------------------------------------------------------------------------%
 
@@ -1187,18 +1202,6 @@ find_reachable_local_modules(ProgressStream, Globals, ModuleName, Succeeded,
         all_dependencies, process_only_modules_in_cur_dir, ModuleIndex,
         Succeeded, Modules0, !Info, !IO),
     module_index_set_to_plain_set(!.Info, Modules0, Modules).
-
-:- pred find_transitive_implementation_imports(io.text_output_stream::in,
-    globals::in, module_index::in,
-    maybe_succeeded::out, deps_set(module_index)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-find_transitive_implementation_imports(ProgressStream, Globals, ModuleIndex,
-        Succeeded, Modules, !Info, !IO) :-
-    find_transitive_module_dependencies(ProgressStream, Globals, all_imports,
-        process_modules_anywhere, ModuleIndex, Succeeded, Modules0,
-        !Info, !IO),
-    Modules = insert(Modules0, ModuleIndex).
 
 :- pred find_transitive_module_dependencies(io.text_output_stream::in,
     globals::in, transitive_dependencies_type::in,
