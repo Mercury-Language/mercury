@@ -269,10 +269,18 @@ including executables, libraries and cleanup.
 make.module_target.m handles targets built by a compilation action
 associated with a single module, for example making interface files.
 <li>
-make.dependencies.m computes dependencies between targets and between modules.
+make.dependencies.m computes what other targets a target depends on.
+<li>
+make.check_up_to_date.m does what its name says:
+it checks whether the files that a target depends on are up-to-date.
 <li>
 make.deps_map.m provides an efficient representation of purpose-specific sets
 for use by make.dependencies.m.
+<li>
+make.deps_cache.m provides caches for make.dependencies.m.
+<li>
+make.find_local_modules.m finds the modules in the current directory
+that are reachable from a given module.
 <li>
 make.module_dep_file.m records dependency information for each module
 between compilations.

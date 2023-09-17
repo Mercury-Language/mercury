@@ -23,7 +23,6 @@
 :- module make.deps_set.
 :- interface.
 
-:- import_module make.dependencies.
 :- import_module make.make_info.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.

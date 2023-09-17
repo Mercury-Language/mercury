@@ -44,7 +44,7 @@
 :- import_module libs.handle_options.
 :- import_module libs.md5.
 :- import_module libs.options.
-:- import_module make.dependencies.
+:- import_module make.find_local_modules.
 :- import_module make.options_file.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.

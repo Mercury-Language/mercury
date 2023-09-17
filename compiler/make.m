@@ -27,9 +27,12 @@
 
 :- implementation.
 
+:- include_module check_up_to_date.
 :- include_module dependencies.
+:- include_module deps_cache.
 :- include_module deps_set.
 :- include_module file_names.
+:- include_module find_local_modules.
 :- include_module hash.
 :- include_module make_info.
 :- include_module module_target.

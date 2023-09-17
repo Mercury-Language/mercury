@@ -50,7 +50,6 @@
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module make.build.
-:- import_module make.dependencies.
 :- import_module make.deps_set.
 :- import_module make.file_names.
 :- import_module make.hash.

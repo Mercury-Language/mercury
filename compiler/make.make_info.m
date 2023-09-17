@@ -22,8 +22,9 @@
 :- import_module libs.globals.
 :- import_module libs.timestamp.
 :- import_module make.build.
-:- import_module make.dependencies.
+:- import_module make.deps_cache.
 :- import_module make.deps_set.
+:- import_module make.find_local_modules.
 :- import_module make.options_file.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -152,6 +153,20 @@
                 mim_reverse_map         :: version_array(module_name),
                 mim_counter             :: uint
             ).
+
+:- type dependency_file
+    --->    dep_target(target_file)
+            % A target which could be made.
+
+    ;       dep_file(file_name).
+            % An ordinary file which `mmc --make' does not know how to rebuild.
+
+    % Like dependency_file but refers to a module by index instead of by name,
+    % which is more efficient when the name is not required.
+    %
+:- type dependency_file_with_module_index
+    --->    dfmi_target(module_index, module_target_type)
+    ;       dfmi_file(file_name).
 
 :- type dependency_file_index_map
     --->    dependency_file_index_map(

@@ -24,7 +24,6 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.maybe_util.
-:- import_module make.dependencies.
 :- import_module make.make_info.
 :- import_module parse_tree.
 :- import_module parse_tree.module_dep_info.
@@ -89,6 +88,8 @@
 :- import_module libs.shell_util.
 :- import_module libs.timestamp.
 :- import_module make.build.
+:- import_module make.check_up_to_date.
+:- import_module make.dependencies.
 :- import_module make.deps_set.
 :- import_module make.file_names.
 :- import_module make.module_dep_file.

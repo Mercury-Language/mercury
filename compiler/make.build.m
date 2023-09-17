@@ -15,13 +15,10 @@
 :- module make.build.
 :- interface.
 
-% XXX The import of make.dependencies.m is for dependency_file.
-% It is an undesirable dependency.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.maybe_util.
 :- import_module libs.options.
-:- import_module make.dependencies.
 :- import_module make.make_info.
 :- import_module make.options_file.
 :- import_module mdbcomp.

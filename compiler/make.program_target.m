@@ -77,7 +77,8 @@
 :- import_module libs.shell_util.
 :- import_module libs.timestamp.
 :- import_module make.build.
-:- import_module make.dependencies.
+:- import_module make.check_up_to_date.
+:- import_module make.find_local_modules.
 :- import_module make.hash.
 :- import_module make.module_dep_file.
 :- import_module make.module_target.
