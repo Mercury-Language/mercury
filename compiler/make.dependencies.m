@@ -74,12 +74,6 @@
     module_name::in, maybe_succeeded::out, set(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % Remove all nested modules from a list of modules.
-    %
-:- pred remove_nested_modules(io.text_output_stream::in, globals::in,
-    list(module_name)::in, list(module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
 %---------------------------------------------------------------------------%
 
     % Find all modules in the current directory which are reachable (by import)
@@ -164,7 +158,6 @@
 :- import_module make.util.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.prog_data_foreign.
 
@@ -1356,31 +1349,6 @@ do_find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
         succeeded, SucceededIncludes, Modules2, Modules, !Info, !IO),
     make_info_set_importing_module(OldImportingModule, !Info),
     Succeeded = SucceededImports `and` SucceededIncludes.
-
-%---------------------------------------------------------------------------%
-
-remove_nested_modules(ProgressStream, Globals, Modules0, Modules,
-        !Info, !IO) :-
-    list.foldl3(collect_nested_modules(ProgressStream, Globals), Modules0,
-        set.init, NestedModules, !Info, !IO),
-    list.negated_filter(set.contains(NestedModules), Modules0, Modules).
-
-:- pred collect_nested_modules(io.text_output_stream::in, globals::in,
-    module_name::in, set(module_name)::in, set(module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-collect_nested_modules(ProgressStream, Globals, ModuleName,
-        !NestedModules, !Info, !IO) :-
-    get_maybe_module_dep_info(ProgressStream, Globals,
-        ModuleName, MaybeModuleDepInfo, !Info, !IO),
-    (
-        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-        module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
-        NestedSubModules = get_nested_children_of_top_module(MaybeTopModule),
-        set.union(NestedSubModules, !NestedModules)
-    ;
-        MaybeModuleDepInfo = no_module_dep_info
-    ).
 
 %---------------------------------------------------------------------------%
 

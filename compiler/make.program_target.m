@@ -86,6 +86,7 @@
 :- import_module make.util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.module_deps_graph.
@@ -246,7 +247,7 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
         ObjModulesAlpha = AllModulesList,
         order_target_modules(ProgressStream, Globals,
             ObjModulesAlpha, ObjModules, !Info, !IO),
-        remove_nested_modules(ProgressStream, Globals,
+        filter_out_nested_modules(ProgressStream, Globals,
             ObjModules, ObjModulesNonnested, !Info, !IO),
         IntermediateTargetsNonnested =
             make_dependency_list(ObjModulesNonnested, IntermediateTargetType),
@@ -995,7 +996,7 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
 
 make_all_interface_files(ProgressStream, Globals, AllModules0, Succeeded,
         !Info, !IO) :-
-    remove_nested_modules(ProgressStream, Globals,
+    filter_out_nested_modules(ProgressStream, Globals,
         AllModules0, NonnestedModules, !Info, !IO),
     list.foldl3(collect_modules_with_children(ProgressStream, Globals),
         NonnestedModules, [], ParentModules, !Info, !IO),
@@ -2343,6 +2344,37 @@ make_module_realclean(ProgressStream, Globals, ModuleName, !Info, !IO) :-
     remove_module_file_for_make(ProgressStream, Globals, very_verbose,
         ModuleName, ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_request),
         !Info, !IO).
+
+%---------------------------------------------------------------------------%
+
+    % Remove all nested modules from a list of modules.
+    %
+:- pred filter_out_nested_modules(io.text_output_stream::in, globals::in,
+    list(module_name)::in, list(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+filter_out_nested_modules(ProgressStream, Globals, Modules0, Modules,
+        !Info, !IO) :-
+    list.foldl3(collect_nested_modules(ProgressStream, Globals), Modules0,
+        set.init, NestedModules, !Info, !IO),
+    list.negated_filter(set.contains(NestedModules), Modules0, Modules).
+
+:- pred collect_nested_modules(io.text_output_stream::in, globals::in,
+    module_name::in, set(module_name)::in, set(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+collect_nested_modules(ProgressStream, Globals, ModuleName,
+        !NestedModules, !Info, !IO) :-
+    get_maybe_module_dep_info(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
+    (
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+        module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
+        NestedSubModules = get_nested_children_of_top_module(MaybeTopModule),
+        set.union(NestedSubModules, !NestedModules)
+    ;
+        MaybeModuleDepInfo = no_module_dep_info
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module make.program_target.
