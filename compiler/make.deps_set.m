@@ -40,6 +40,34 @@
 :- type deps_set(T) == sparse_bitset(T).
 % :- type deps_set(T) == tree_bitset(T).
 
+:- func deps_set_init = deps_set(T).
+
+:- pred deps_set_insert(T::in, deps_set(T)::in, deps_set(T)::out)
+     is det <= uenum(T).
+:- pred deps_set_delete(T::in, deps_set(T)::in, deps_set(T)::out)
+     is det <= uenum(T).
+
+:- func deps_set_union(deps_set(T), deps_set(T)) = deps_set(T).
+:- pred deps_set_union(deps_set(T)::in, deps_set(T)::in, deps_set(T)::out)
+    is det.
+
+:- func deps_set_difference(deps_set(T), deps_set(T)) = deps_set(T).
+
+:- func list_to_deps_set(list(T)) = deps_set(T) <= uenum(T).
+:- pred list_to_deps_set(list(T)::in, deps_set(T)::out) is det <= uenum(T).
+
+:- func deps_set_to_sorted_list(deps_set(T)) = list(T) <= uenum(T).
+
+:- pred deps_set_foldl(
+    pred(T, A, A)::in(pred(in, in, out) is det),
+    deps_set(T)::in, A::in, A::out) is det <= uenum(T).
+
+:- pred deps_set_foldl2(
+    pred(T, A, A, B, B)::in(pred(in, in, out, in, out) is det),
+    deps_set(T)::in, A::in, A::out, B::in, B::out) is det <= uenum(T).
+
+%---------------------------------------------------------------------------%
+
 :- type module_index.
 :- instance uenum(module_index).
 
@@ -99,6 +127,43 @@
 
 %---------------------------------------------------------------------------%
 %
+% Operations on deps_sets.
+%
+
+deps_set_init = sparse_bitset.init.
+
+deps_set_insert(X, !Set) :-
+    sparse_bitset.insert(X, !Set).
+
+deps_set_delete(X, !Set) :-
+    sparse_bitset.delete(X, !Set).
+
+deps_set_union(SetA, SetB) = Set :-
+    Set = sparse_bitset.union(SetA, SetB).
+
+deps_set_union(SetA, SetB, Set) :-
+    sparse_bitset.union(SetA, SetB, Set).
+
+deps_set_difference(SetA, SetB) = Set :-
+    Set = sparse_bitset.difference(SetA, SetB).
+
+list_to_deps_set(List) = Set :-
+    Set = sparse_bitset.list_to_set(List).
+
+list_to_deps_set(List, Set) :-
+    sparse_bitset.list_to_set(List, Set).
+
+deps_set_to_sorted_list(Set) = SortedList :-
+    SortedList = sparse_bitset.to_sorted_list(Set).
+
+deps_set_foldl(Pred, Set, !Acc1) :-
+    sparse_bitset.foldl(Pred, Set, !Acc1).
+
+deps_set_foldl2(Pred, Set, !Acc1, !Acc2) :-
+    sparse_bitset.foldl2(Pred, Set, !Acc1, !Acc2).
+
+%---------------------------------------------------------------------------%
+%
 % Bitset indices.
 %
 
@@ -122,23 +187,25 @@
 
 module_name_to_index(ModuleName, Index, !Info) :-
     Map0 = make_info_get_module_index_map(!.Info),
-    Map0 = module_index_map(Forward0, _Reverse0, _Size0),
-    ( if version_hash_table.search(Forward0, ModuleName, Index0) then
+    Map0 = module_index_map(ForwardMap0, _ReverseMap0, _USize0),
+    ( if version_hash_table.search(ForwardMap0, ModuleName, Index0) then
         Index = Index0
     else
-        Map0 = module_index_map(_Forward0, Reverse0, USize0),
+        Map0 = module_index_map(_ForwardMap0, ReverseMap0, USize0),
         Slot = USize0,
         Index = module_index(USize0),
         USize = USize0 + 1u,
-        version_hash_table.det_insert(ModuleName, Index, Forward0, Forward),
-        CurReverseSize = version_array.size(Reverse0),
-        ( if cast_to_int(USize) > CurReverseSize then
-            NewReverseSize = increase_array_size(CurReverseSize),
-            version_array.resize(NewReverseSize, ModuleName, Reverse0, Reverse)
+        version_hash_table.det_insert(ModuleName, Index,
+            ForwardMap0, ForwardMap),
+        RevSize0 = version_array.size(ReverseMap0),
+        ( if cast_to_int(USize) > RevSize0 then
+            RevSize = increase_array_size(RevSize0),
+            version_array.resize(RevSize, ModuleName, ReverseMap0, ReverseMap)
         else
-            version_array.set(cast_to_int(Slot), ModuleName, Reverse0, Reverse)
+            version_array.set(uint.cast_to_int(Slot), ModuleName,
+                ReverseMap0, ReverseMap)
         ),
-        Map = module_index_map(Forward, Reverse, USize),
+        Map = module_index_map(ForwardMap, ReverseMap, USize),
         make_info_set_module_index_map(Map, !Info)
     ).
 
@@ -149,37 +216,37 @@ increase_array_size(N) = (if N = 0 then 1 else N * 2).
 %---------------------%
 
 module_names_to_index_set(ModuleNames, IndexSet, !Info) :-
-    module_names_to_index_set_2(ModuleNames,
-        sparse_bitset.init, IndexSet, !Info).
+    module_names_to_index_set_loop(ModuleNames,
+        deps_set_init, IndexSet, !Info).
 
-:- pred module_names_to_index_set_2(list(module_name)::in,
+:- pred module_names_to_index_set_loop(list(module_name)::in,
     deps_set(module_index)::in, deps_set(module_index)::out,
     make_info::in, make_info::out) is det.
 
-module_names_to_index_set_2([], !IndexSet, !Info).
-module_names_to_index_set_2([ModuleName | ModuleNames], !Set, !Info) :-
+module_names_to_index_set_loop([], !IndexSet, !Info).
+module_names_to_index_set_loop([ModuleName | ModuleNames], !Set, !Info) :-
     module_name_to_index(ModuleName, ModuleIndex, !Info),
-    sparse_bitset.insert(ModuleIndex, !Set),
-    module_names_to_index_set_2(ModuleNames, !Set, !Info).
+    deps_set_insert(ModuleIndex, !Set),
+    module_names_to_index_set_loop(ModuleNames, !Set, !Info).
 
 %---------------------------------------------------------------------------%
 
 module_index_to_name(Info, Index, ModuleName) :-
     make_info_get_module_index_map(Info) =
-        module_index_map(_Forward, Reverse, _Size),
+        module_index_map(_ForwardMap, ReverseMap, _Size),
     Index = module_index(I),
-    ModuleName = version_array.lookup(Reverse, cast_to_int(I)).
+    ModuleName = version_array.lookup(ReverseMap, uint.cast_to_int(I)).
 
 %---------------------%
 
 module_index_set_to_plain_set(Info, ModuleIndices, Modules) :-
-    foldl(module_index_set_to_plain_set_2(Info), ModuleIndices,
+    deps_set_foldl(acc_module_index_set_to_plain_set(Info), ModuleIndices,
         set.init, Modules).
 
-:- pred module_index_set_to_plain_set_2(make_info::in, module_index::in,
+:- pred acc_module_index_set_to_plain_set(make_info::in, module_index::in,
     set(module_name)::in, set(module_name)::out) is det.
 
-module_index_set_to_plain_set_2(Info, ModuleIndex, !Set) :-
+acc_module_index_set_to_plain_set(Info, ModuleIndex, !Set) :-
     module_index_to_name(Info, ModuleIndex, ModuleName),
     set.insert(ModuleName, !Set).
 
@@ -187,37 +254,38 @@ module_index_set_to_plain_set_2(Info, ModuleIndex, !Set) :-
 
 dependency_file_to_index(DepFile, Index, !Info) :-
     Map0 = make_info_get_dep_file_index_map(!.Info),
-    ForwardMap0 = Map0 ^ dfim_forward_map,
+    Map0 = dependency_file_index_map(ForwardMap0, _ReverseMap0, _USize0),
     ( if version_hash_table.search(ForwardMap0, DepFile, Index0) then
         Index = Index0
     else
-        Map0 = dependency_file_index_map(Forward0, Reverse0, USize0),
+        Map0 = dependency_file_index_map(_ForwardMap0, ReverseMap0, USize0),
         Slot = USize0,
         Index = dependency_file_index(USize0),
         USize = USize0 + 1u,
-        version_hash_table.det_insert(DepFile, Index, Forward0, Forward),
-        TrueSize = version_array.size(Reverse0),
-        ( if cast_to_int(USize) > TrueSize then
-            NewSize = increase_array_size(TrueSize),
-            version_array.resize(NewSize, DepFile, Reverse0, Reverse)
+        version_hash_table.det_insert(DepFile, Index, ForwardMap0, ForwardMap),
+        RevSize0 = version_array.size(ReverseMap0),
+        ( if uint.cast_to_int(USize) > RevSize0 then
+            RevSize = increase_array_size(RevSize0),
+            version_array.resize(RevSize, DepFile, ReverseMap0, ReverseMap)
         else
-            version_array.set(cast_to_int(Slot), DepFile, Reverse0, Reverse)
+            version_array.set(uint.cast_to_int(Slot), DepFile,
+                ReverseMap0, ReverseMap)
         ),
-        Map = dependency_file_index_map(Forward, Reverse, USize),
+        Map = dependency_file_index_map(ForwardMap, ReverseMap, USize),
         make_info_set_dep_file_index_map(Map, !Info)
     ).
 
 %---------------------%
 
 dependency_files_to_index_set(DepFiles, DepIndexSet, !Info) :-
-    list.foldl2(dependency_files_to_index_set_2, DepFiles,
-        init, DepIndexSet, !Info).
+    list.foldl2(acc_dependency_files_to_index_set, DepFiles,
+        deps_set_init, DepIndexSet, !Info).
 
-:- pred dependency_files_to_index_set_2(dependency_file::in,
+:- pred acc_dependency_files_to_index_set(dependency_file::in,
     deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
     make_info::in, make_info::out) is det.
 
-dependency_files_to_index_set_2(DepFile0, !Set, !Info) :-
+acc_dependency_files_to_index_set(DepFile0, !Set, !Info) :-
     (
         DepFile0 = dep_target(target_file(ModuleName, TargetType)),
         module_name_to_index(ModuleName, ModuleIndex, !Info),
@@ -227,7 +295,7 @@ dependency_files_to_index_set_2(DepFile0, !Set, !Info) :-
         DepFile = dfmi_file(FileName)
     ),
     dependency_file_to_index(DepFile, DepIndex, !Info),
-    insert(DepIndex, !Set).
+    deps_set_insert(DepIndex, !Set).
 
 %---------------------------------------------------------------------------%
 
@@ -236,9 +304,9 @@ dependency_files_to_index_set_2(DepFile0, !Set, !Info) :-
 
 index_to_dependency_file(Info, Index, DepFile) :-
     make_info_get_dep_file_index_map(Info) =
-        dependency_file_index_map(_Forward, Reverse, _Size),
+        dependency_file_index_map(_ForwardMap, ReverseMap, _Size),
     Index = dependency_file_index(I),
-    version_array.lookup(Reverse, cast_to_int(I), DepFile0),
+    version_array.lookup(ReverseMap, cast_to_int(I), DepFile0),
     (
         DepFile0 = dfmi_target(ModuleIndex, FileType),
         module_index_to_name(Info, ModuleIndex, ModuleName),
@@ -251,15 +319,15 @@ index_to_dependency_file(Info, Index, DepFile) :-
 %---------------------%
 
 dependency_file_index_set_to_plain_set(Info, DepIndices, DepFiles) :-
-    foldl(dependency_file_index_set_to_plain_set_2(Info), DepIndices,
-        [], DepFilesList),
+    deps_set_foldl(acc_dependency_file_index_set_to_plain_set(Info),
+        DepIndices, [], DepFilesList),
     DepFiles = set.list_to_set(DepFilesList).
 
-:- pred dependency_file_index_set_to_plain_set_2(make_info::in,
+:- pred acc_dependency_file_index_set_to_plain_set(make_info::in,
     dependency_file_index::in,
     list(dependency_file)::in, list(dependency_file)::out) is det.
 
-dependency_file_index_set_to_plain_set_2(Info, DepIndex, List0, List) :-
+acc_dependency_file_index_set_to_plain_set(Info, DepIndex, List0, List) :-
     index_to_dependency_file(Info, DepIndex, DepFile),
     List = [DepFile | List0].
 
