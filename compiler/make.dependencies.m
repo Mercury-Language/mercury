@@ -76,16 +76,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Find all modules in the current directory which are reachable (by import)
-    % from the given module. Return a list of `--local-module-id' options
-    % suitable for the command line.
-    %
-:- pred make_local_module_id_options(io.text_output_stream::in, globals::in,
-    module_name::in, maybe_succeeded::out, list(string)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-
 :- type dependency_status_result
     --->    dependency_status_result(
                 dependency_file,
@@ -93,7 +83,7 @@
                 dependency_status
             ).
 
-:- pred get_dependency_status(io.text_output_stream::in, globals::in,
+:- pred xget_dependency_status(io.text_output_stream::in, globals::in,
     dependency_file::in, dependency_status_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -1349,21 +1339,6 @@ do_find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
         succeeded, SucceededIncludes, Modules2, Modules, !Info, !IO),
     make_info_set_importing_module(OldImportingModule, !Info),
     Succeeded = SucceededImports `and` SucceededIncludes.
-
-%---------------------------------------------------------------------------%
-
-make_local_module_id_options(ProgressStream, Globals, ModuleName,
-        Succeeded, Options, !Info, !IO) :-
-    find_reachable_local_modules(ProgressStream, Globals, ModuleName,
-        Succeeded, LocalModules, !Info, !IO),
-    set.fold(make_local_module_id_option, LocalModules, [], Options).
-
-:- pred make_local_module_id_option(module_name::in, list(string)::in,
-    list(string)::out) is det.
-
-make_local_module_id_option(ModuleName, Opts0, Opts) :-
-    ModuleNameStr = sym_name_to_string(ModuleName),
-    Opts = ["--local-module-id", ModuleNameStr | Opts0].
 
 %---------------------------------------------------------------------------%
 
