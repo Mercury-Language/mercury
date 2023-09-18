@@ -1,7 +1,11 @@
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 et
-% MR_reset_trail() in rotd-2008-09-04 and before was not
-% resetting MR_trail_ptr;
+%---------------------------------------------------------------------------%
 %
+% MR_reset_trail() in rotd-2008-09-04 and before
+% was not resetting MR_trail_ptr.
+%
+
 :- module tr_reset_bug.
 :- interface.
 

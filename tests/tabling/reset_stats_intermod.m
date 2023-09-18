@@ -17,7 +17,7 @@
 
 :- implementation.
 
-:- import_module reset_stats_intermod_2.
+:- import_module reset_stats_intermod_helper_1.
 
 :- pragma require_feature_set([memo]).
 

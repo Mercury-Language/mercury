@@ -3,13 +3,13 @@
 # With the Mercury system as of 17 September 1998,
 # tc_minimal works on some machines even in the presence of a known bug
 # if inlining is turned on, so we turn inlining off to make the test tougher.
-MCFLAGS-tc_minimal              = --no-inlining
+MCFLAGS-tc_minimal                      = --no-inlining
 
-MCFLAGS-reset_stats_intermod    = --intermodule-optimisation
-MCFLAGS-reset_stats_intermod_2  = --intermodule-optimisation
+MCFLAGS-reset_stats_intermod            = --intermodule-optimisation
+MCFLAGS-reset_stats_intermod_helper_1   = --intermodule-optimisation
 
 # We want to test the operation of the code that catches the infinite loop
 # at *runtime*, so we don't want a warning about the infinite loop,
 # turned into an error by --halt-at-warn, to cause the failure of test case
 # at *compile* time.
-MCFLAGS-loopcheck               = --no-warn-simple-code
+MCFLAGS-loopcheck                       = --no-warn-simple-code

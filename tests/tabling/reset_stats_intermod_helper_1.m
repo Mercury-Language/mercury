@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module reset_stats_intermod_2.
+:- module reset_stats_intermod_helper_1.
 :- interface.
 
 :- import_module int.
