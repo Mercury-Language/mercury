@@ -36,7 +36,7 @@
 
 :- type who.
 
-:- type runq    == list(pair(int, list(who))).
+:- type runq == list(pair(int, list(who))).
 
 %---------------------------------------------------------------------------%
 
