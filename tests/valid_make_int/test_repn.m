@@ -5,7 +5,7 @@
 :- module test_repn.
 :- interface.
 
-:- import_module test_repn_sub.
+:- import_module test_repn_helper_1.
 
 :- import_module char.
 

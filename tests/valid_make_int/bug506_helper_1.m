@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 
-:- module bug506_sub.
+:- module bug506_helper_1.
 :- interface.
 
 :- type (rule)

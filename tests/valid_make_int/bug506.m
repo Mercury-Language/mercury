@@ -5,7 +5,7 @@
 :- module bug506.
 :- interface.
 
-:- import_module bug506_sub.
+:- import_module bug506_helper_1.
 
 :- func make_rule(int) = (rule).
 

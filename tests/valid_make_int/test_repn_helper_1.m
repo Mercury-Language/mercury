@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 
-:- module test_repn_sub.
+:- module test_repn_helper_1.
 :- interface.
 
 :- import_module bool.
