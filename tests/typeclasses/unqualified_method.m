@@ -12,7 +12,7 @@
 
 :- implementation.
 
-:- import_module unqualified_method2.
+:- import_module unqualified_method_helper_1.
 
 main(!IO) :-
     print_modified(1, !IO).

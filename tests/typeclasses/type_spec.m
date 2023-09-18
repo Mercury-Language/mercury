@@ -56,7 +56,7 @@
 
 :- implementation.
 
-:- import_module type_spec_2.
+:- import_module type_spec_helper_1.
 
 :- instance comparable_t(int) where [
     pred(compare_t/3) is compare_int

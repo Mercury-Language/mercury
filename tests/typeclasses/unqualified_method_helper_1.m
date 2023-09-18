@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module unqualified_method2.
+:- module unqualified_method_helper_1.
 
 :- interface.
 
@@ -15,7 +15,7 @@
 :- instance class(int).
 
 :- implementation.
-:- import_module unqualified_method3.
+:- import_module unqualified_method_helper_2.
 
 :- instance class(int) where [
     pred(print_modified/3) is print_modified_int

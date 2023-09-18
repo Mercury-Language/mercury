@@ -15,8 +15,8 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module module_test_m1.
-:- import_module module_test_m2.
+:- import_module module_test_helper_1.
+:- import_module module_test_helper_2.
 
 main(!IO) :-
     run(a_t1, !IO),

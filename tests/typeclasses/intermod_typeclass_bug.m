@@ -13,7 +13,7 @@
 :- implementation.
 
 :- import_module char.
-:- import_module intermod_typeclass_bug2.
+:- import_module intermod_typeclass_bug_helper_1.
 
 main(!IO) :-
     p('a', Int1),

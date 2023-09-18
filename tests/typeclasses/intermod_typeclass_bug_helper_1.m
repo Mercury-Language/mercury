@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module intermod_typeclass_bug2.
+:- module intermod_typeclass_bug_helper_1.
 
 :- interface.
 

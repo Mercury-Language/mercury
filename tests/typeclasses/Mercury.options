@@ -1,6 +1,6 @@
 # vim: ts=4 sw=4 expandtab
 
-MCFLAGS-abstract_instance           = --infer-all
+MCFLAGS-abstract_instance_helper_1  = --infer-all
 
 MCFLAGS-complicated_constraint      = --no-inlining \
     --user-guided-type-specialization
@@ -16,11 +16,11 @@ MCFLAGS-lambda_multi_constraint_same_tvar = --infer-all
 MCFLAGS-no_fundep_infer             = --infer-all
 
 # Check that the exported specialized versions are still created.
-MCFLAGS-type_spec_2                 = --no-user-guided-type-specialization
+MCFLAGS-type_spec_helper_1          = --no-user-guided-type-specialization
 MCFLAGS-unbound_tvar                = --no-user-guided-type-specialisation
 MCFLAGS-unqualified_method          = --intermodule-optimization
-MCFLAGS-unqualified_method2         = --intermodule-optimization
-MCFLAGS-unqualified_method3         = --intermodule-optimization
-MCFLAGS-module_test_m1              = --infer-all
-MCFLAGS-module_test_m2              = --infer-all
+MCFLAGS-unqualified_method_helper_1 = --intermodule-optimization
+MCFLAGS-unqualified_method_helper_2 = --intermodule-optimization
 MCFLAGS-module_test                 = --infer-all
+MCFLAGS-module_test_helper_1        = --infer-all
+MCFLAGS-module_test_helper_2        = --infer-all

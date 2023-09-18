@@ -6,7 +6,7 @@
 % to check that the declared specializations are still created, to avoid
 % link errors if importing modules are compiled with type specialization.
 
-:- module type_spec_2.
+:- module type_spec_helper_1.
 
 :- interface.
 

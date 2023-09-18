@@ -2,9 +2,9 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module module_test_m2.
+:- module module_test_helper_2.
 :- interface.
-:- import_module module_test_m1.
+:- import_module module_test_helper_1.
 
 :- type t2.
 :- func a_t2 = t2.
@@ -17,7 +17,7 @@
 :- type t2
     --->    t2(int).
 
-:- instance runnable(t2) where [pred(run/3) is run_t2].
+:- instance runnable(t2) where    [pred(run/3) is run_t2].
 :- instance runnable(float) where [pred(run/3) is run_float].
 
 a_t2 = t2(2).
