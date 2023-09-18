@@ -8,6 +8,9 @@
 %
 % File: make.find_local_modules.m.
 %
+% This module contains code to find the modules in the current directory
+% that are reachable from a given module.
+%
 %---------------------------------------------------------------------------%
 
 :- module make.find_local_modules.

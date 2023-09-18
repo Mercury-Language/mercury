@@ -8,6 +8,9 @@
 %
 % File: make.deps_cache.m.
 %
+% This module defines the types of the caches used by make.dependencies.m.
+% The caches themselves are stored in make_infos.
+%
 %---------------------------------------------------------------------------%
 
 :- module make.deps_cache.
