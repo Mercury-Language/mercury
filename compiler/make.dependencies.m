@@ -243,7 +243,7 @@ compiled_code_dependencies(Globals) = Deps :-
         foreign_include_files `files_of` self,
         module_target_int1 `of` self,
         module_target_int1 `of` ancestors,
-        find_own_imports_012
+        imports_012
     ],
 
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
@@ -364,16 +364,6 @@ get_intermod_imports_their_ancestors_and_012(Globals, ModuleIndex,
             succeeded, Succeeded2, deps_set_init, Result, !Info, !IO),
         Succeeded = Succeeded1 `and` Succeeded2
     ).
-
-:- pred find_own_imports_012(globals::in, module_index::in,
-    maybe_succeeded::out, deps_set(dependency_file_index)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-find_own_imports_012(Globals, ModuleIndex, Succeeded, Result, !Info, !IO) :-
-    KeepGoing = make_info_get_keep_going(!.Info),
-    deps_set_foldl3_maybe_stop_at_error_find_union_fi(KeepGoing,
-        imports_012, Globals, [ModuleIndex],
-        succeeded, Succeeded, deps_set_init, Result, !Info, !IO).
 
 %---------------------------------------------------------------------------%
 
