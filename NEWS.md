@@ -506,6 +506,8 @@ Changes to the Mercury standard library
     - pred `intersperse_list_last/4`
     - pred `is_singleton/2`
     - pred `last_gap_foldl/6`
+    - func `map_corresponding4/5`
+    - pred `map_corresponding4/6`
     - func `take_while_not/2`
     - pred `take_while_not/3`
     - pred `take_while_not/4`
@@ -656,6 +658,15 @@ Changes to the Mercury standard library
     - pred `randcount/3`
     - pred `permutation/4`
             (replacement: `random.shuffle_list/4` or `random.shuffle_list/5`)
+
+### Changes to the `rbtree` module
+
+* The following predicates and functions have been added:
+
+    - func `foldr/3`
+    - pred `foldr/4`
+    - pred `foldr2/6`
+    - pred `foldr_values/4`
 
 ### Changes to the `set` module
 

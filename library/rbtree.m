@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2000, 2003-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2019, 2021, 2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -244,6 +244,40 @@
     mdi, muo) is semidet.
 :- mode foldl2_values(in(pred(in, in, out, di, uo) is semidet), in, in, out,
     di, uo) is semidet.
+
+:- func foldr(func(K, V, A) = A, rbtree(K, V), A) = A.
+:- pred foldr(pred(K, V, A, A), rbtree(K, V), A, A).
+:- mode foldr(in(pred(in, in, in, out) is det), in, in, out) is det.
+:- mode foldr(in(pred(in, in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldr(in(pred(in, in, di, uo) is det), in, di, uo) is det.
+:- mode foldr(in(pred(in, in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldr(in(pred(in, in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldr(in(pred(in, in, di, uo) is semidet), in, di, uo) is semidet.
+
+:- pred foldr2(pred(K, V, A, A, B, B), rbtree(K, V), A, A, B, B).
+:- mode foldr2(in(pred(in, in, in, out, in, out) is det),
+    in, in, out, in, out) is det.
+:- mode foldr2(in(pred(in, in, in, out, mdi, muo) is det),
+    in, in, out, mdi, muo) is det.
+:- mode foldr2(in(pred(in, in, in, out, di, uo) is det),
+    in, in, out, di, uo) is det.
+:- mode foldr2(in(pred(in, in, di, uo, di, uo) is det),
+    in, di, uo, di, uo) is det.
+:- mode foldr2(in(pred(in, in, in, out, in, out) is semidet),
+    in, in, out, in, out) is semidet.
+:- mode foldr2(in(pred(in, in, in, out, mdi, muo) is semidet),
+    in, in, out, mdi, muo) is semidet.
+:- mode foldr2(in(pred(in, in, in, out, di, uo) is semidet),
+    in, in, out, di, uo) is semidet.
+
+:- pred foldr_values(pred(V, A, A), rbtree(K, V), A, A).
+:- mode foldr_values(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldr_values(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldr_values(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldr_values(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldr_values(in(pred(in, mdi, muo) is semidet), in, mdi, muo)
+    is semidet.
+:- mode foldr_values(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
 :- func map_values(func(K, V) = W, rbtree(K, V)) = rbtree(K, W).
 :- pred map_values(pred(K, V, W), rbtree(K, V), rbtree(K, W)).
@@ -1125,6 +1159,46 @@ foldl2_values(Pred, black(_K, V, Left, Right), !Acc1, !Acc2) :-
     rbtree.foldl2_values(Pred, Left, !Acc1, !Acc2),
     Pred(V, !Acc1, !Acc2),
     rbtree.foldl2_values(Pred, Right, !Acc1, !Acc2).
+
+%---------------------------------------------------------------------------%
+
+foldr(F, T, A) = B :-
+    P = ( pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
+    rbtree.foldr(P, T, A, B).
+
+foldr(_Pred, empty, !Acc).
+foldr(Pred, red(K, V, Left, Right), !Acc) :-
+    rbtree.foldr(Pred, Right, !Acc),
+    Pred(K, V, !Acc),
+    rbtree.foldr(Pred, Left, !Acc).
+foldr(Pred, black(K, V, Left, Right), !Acc) :-
+    rbtree.foldr(Pred, Right, !Acc),
+    Pred(K, V, !Acc),
+    rbtree.foldr(Pred, Left, !Acc).
+
+%---------------------------------------------------------------------------%
+
+foldr2(_, empty, !Acc1, !Acc2).
+foldr2(Pred, red(K, V, Left, Right), !Acc1, !Acc2) :-
+    rbtree.foldr2(Pred, Right, !Acc1, !Acc2),
+    Pred(K, V, !Acc1, !Acc2),
+    rbtree.foldr2(Pred, Left, !Acc1, !Acc2).
+foldr2(Pred, black(K, V, Left, Right), !Acc1, !Acc2) :-
+    rbtree.foldr2(Pred, Right, !Acc1, !Acc2),
+    Pred(K, V, !Acc1, !Acc2),
+    rbtree.foldr2(Pred, Left, !Acc1, !Acc2).
+
+%---------------------------------------------------------------------------%
+
+foldr_values(_Pred, empty, !Acc).
+foldr_values(Pred, red(_K, V, Left, Right), !Acc) :-
+    rbtree.foldr_values(Pred, Right, !Acc),
+    Pred(V, !Acc),
+    rbtree.foldr_values(Pred, Left, !Acc).
+foldr_values(Pred, black(_K, V, Left, Right), !Acc) :-
+    rbtree.foldr_values(Pred, Right, !Acc),
+    Pred(V, !Acc),
+    rbtree.foldr_values(Pred, Left, !Acc).
 
 %---------------------------------------------------------------------------%
 

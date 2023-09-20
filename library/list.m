@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2022 The Mercury team.
+% Copyright (C) 2013-2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1126,6 +1126,20 @@
     in, in, in, out) is det.
 :- mode map_corresponding3(in(pred(in, in, in, out) is semidet),
     in, in, in, out) is semidet.
+
+    % map_corresponding4(F, [A1, .. An], [B1, .. Bn], [C1, .. Cn],
+    %   [D1, .. Dn]) = [F(A1, B1, C1, D1), .., F(An, Bn, Cn, Dn)].
+    %
+    % Raises an exception if the list arguments differ in length.
+    %
+:- func map_corresponding4(func(A, B, C, D) = R, list(A), list(B), list(C),
+    list(D)) = list(R).
+:- pred map_corresponding4(pred(A, B, C, D, R), list(A), list(B), list(C),
+    list(D), list(R)).
+:- mode map_corresponding4(in(pred(in, in, in, in, out) is det),
+    in, in, in, in, out) is det.
+:- mode map_corresponding4(in(pred(in, in, in, in, out) is semidet),
+    in, in, in, in, out) is semidet.
 
 %---------------------%
 
@@ -3589,6 +3603,46 @@ map_corresponding3(P, A, B, C, R) :-
         A = [],
         B = [],
         C = []
+    then
+        R = []
+    else
+        unexpected($pred, "mismatched list lengths")
+    ).
+
+map_corresponding4(F, A, B, C, D) =
+    ( if
+        A = [AH | AT],
+        B = [BH | BT],
+        C = [CH | CT],
+        D = [DH | DT]
+    then
+        [F(AH, BH, CH, DH) | list.map_corresponding4(F, AT, BT, CT, DT)]
+    else if
+        A = [],
+        B = [],
+        C = [],
+        D = []
+    then
+        []
+    else
+        unexpected($pred, "mismatched list lengths")
+    ).
+
+map_corresponding4(P, A, B, C, D, R) :-
+    ( if
+        A = [AH | AT],
+        B = [BH | BT],
+        C = [CH | CT],
+        D = [DH | DT]
+    then
+        P(AH, BH, CH, DH, RH),
+        list.map_corresponding4(P, AT, BT, CT, DT, RT),
+        R = [RH | RT]
+    else if
+        A = [],
+        B = [],
+        C = [],
+        D = []
     then
         R = []
     else
