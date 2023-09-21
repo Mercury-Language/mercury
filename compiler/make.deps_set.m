@@ -50,6 +50,8 @@
 :- pred deps_set_union(deps_set(T)::in, deps_set(T)::in, deps_set(T)::out)
     is det.
 
+:- func deps_set_union_list(list(deps_set(T))) = deps_set(T).
+
 :- func deps_set_difference(deps_set(T), deps_set(T)) = deps_set(T).
 
 :- func list_to_deps_set(list(T)) = deps_set(T) <= uenum(T).
@@ -64,6 +66,8 @@
 :- pred deps_set_foldl2(
     pred(T, A, A, B, B)::in(pred(in, in, out, in, out) is det),
     deps_set(T)::in, A::in, A::out, B::in, B::out) is det <= uenum(T).
+
+:- pred deps_set_member(T::in, deps_set(T)::in) is semidet <= uenum(T).
 
 %---------------------------------------------------------------------------%
 
@@ -143,6 +147,9 @@ deps_set_union(SetA, SetB) = Set :-
 deps_set_union(SetA, SetB, Set) :-
     sparse_bitset.union(SetA, SetB, Set).
 
+deps_set_union_list(Sets) = Set :-
+    Set = sparse_bitset.union_list(Sets).
+
 deps_set_difference(SetA, SetB) = Set :-
     Set = sparse_bitset.difference(SetA, SetB).
 
@@ -160,6 +167,9 @@ deps_set_foldl(Pred, Set, !Acc1) :-
 
 deps_set_foldl2(Pred, Set, !Acc1, !Acc2) :-
     sparse_bitset.foldl2(Pred, Set, !Acc1, !Acc2).
+
+deps_set_member(Item, Set) :-
+    sparse_bitset.member(Item, Set).
 
 %---------------------------------------------------------------------------%
 %
