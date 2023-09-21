@@ -30,6 +30,11 @@
     --->    path_name_and_stream(string, io.text_input_stream).
             % The string may be a file name or a dir name.
 
+:- type path_name_and_contents
+    --->    path_name_and_contents(string, string).
+            % The first string may be a file name or a dir name.
+            % The second string is the contents of the file.
+
 %---------------------%
 
     % search_for_file(Dirs, FileName, MaybeFilePathName, !IO):
@@ -57,7 +62,7 @@
 
 %---------------------%
 
-    % search_for_file_returning_dir(Dirs, FileName, MaybeDirName !IO):
+    % search_for_file_returning_dir(Dirs, FileName, MaybeDirName, !IO):
     %
     % Search Dirs for FileName. If found, return the name of the directory
     % in which the file was found.
@@ -66,7 +71,7 @@
     maybe_error(dir_name)::out, io::di, io::uo) is det.
 
     % search_for_file_returning_dir_and_stream(Dirs, FileName,
-    %   MaybeDirNameAndStream !IO):
+    %   MaybeDirNameAndStream, !IO):
     %
     % Search Dirs for FileName. If found, return the name of the directory
     % in which the file was found, and an open input stream reading
@@ -74,6 +79,16 @@
     %
 :- pred search_for_file_returning_dir_and_stream(list(dir_name)::in,
     file_name::in, maybe_error(path_name_and_stream)::out,
+    io::di, io::uo) is det.
+
+    % search_for_file_returning_dir_and_contents(Dirs, FileName,
+    %   MaybeDirNameAndContents, !IO):
+    %
+    % Search Dirs for FileName. If found, return the name of the directory
+    % in which the file was found, and the contents of the file as a string.
+    %
+:- pred search_for_file_returning_dir_and_contents(list(dir_name)::in,
+    file_name::in, maybe_error(path_name_and_contents)::out,
     io::di, io::uo) is det.
 
 %---------------------%
@@ -223,6 +238,39 @@ search_for_file_returning_dir_and_stream_loop(AllDirs, Dirs, FileName,
             MaybeHeadStream = error(_),
             search_for_file_returning_dir_and_stream_loop(AllDirs, TailDirs,
                 FileName, MaybeDirNameAndStream, !IO)
+        )
+    ).
+
+%---------------------%
+
+search_for_file_returning_dir_and_contents(Dirs, FileName,
+        MaybeDirPathNameAndContents, !IO) :-
+    search_for_file_returning_dir_and_contents_loop(Dirs, Dirs, FileName,
+        MaybeDirPathNameAndContents, !IO).
+
+:- pred search_for_file_returning_dir_and_contents_loop(list(dir_name)::in,
+    list(dir_name)::in, file_name::in, maybe_error(path_name_and_contents)::out,
+    io::di, io::uo) is det.
+
+search_for_file_returning_dir_and_contents_loop(AllDirs, Dirs, FileName,
+        MaybeDirNameAndContents, !IO) :-
+    (
+        Dirs = [],
+        Msg = cannot_find_in_dirs_msg(FileName, AllDirs),
+        MaybeDirNameAndContents = error(Msg)
+    ;
+        Dirs = [HeadDir | TailDirs],
+        make_path_name_noncanon(HeadDir, FileName, HeadFilePathNameNC),
+        io.read_named_file_as_string_wf(HeadFilePathNameNC,
+            MaybeHeadContents, !IO),
+        (
+            MaybeHeadContents = ok(HeadContents),
+            MaybeDirNameAndContents =
+                ok(path_name_and_contents(HeadDir, HeadContents))
+        ;
+            MaybeHeadContents = error(_),
+            search_for_file_returning_dir_and_contents_loop(AllDirs, TailDirs,
+                FileName, MaybeDirNameAndContents, !IO)
         )
     ).
 
