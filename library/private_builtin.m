@@ -453,7 +453,7 @@ builtin_compare_solver_type(Res, _X, _Y) :-
     % Suppress determinism warning.
     ( if semidet_succeed then
         % XXX see the comment above regarding RTTI.
-        %Message = "call to compare/3 for solver type `"
+        % Message = "call to compare/3 for solver type `"
         %    ++ type_name(type_of(X)) ++ "'",
         Message = "call to generated compare/3 for solver type",
         error(Message)
@@ -1572,7 +1572,7 @@ nyi_foreign_type_compare(Result, _, _) :-
     [will_not_call_mercury, thread_safe, promise_semipure,
         does_not_affect_liveness],
 "
-    /* All uses of this predicate should override the body. */
+    // All uses of this predicate should override the body.
     MR_fatal_error(""trace_evaluate_runtime_condition called"");
 ").
 :- pragma foreign_proc("C#",
@@ -1590,7 +1590,7 @@ nyi_foreign_type_compare(Result, _, _) :-
         does_not_affect_liveness, may_not_duplicate],
 "
     if (true) {
-        /* All uses of this predicate should override the body. */
+        // All uses of this predicate should override the body.
         throw new java.lang.RuntimeException(
             ""trace_evaluate_runtime_condition called"");
     }
@@ -1956,14 +1956,14 @@ compare_local_int32_bitfields(_, _, _, Result) :-
     % to ensure that reordering doesn't cause the wrong mode to be selected.
     %
 :- impure pred var(T).
-:-    mode var(ui) is failure.
-:-    mode var(in) is failure.
-:-    mode var(unused) is det.
+:- mode var(ui) is failure.
+:- mode var(in) is failure.
+:- mode var(unused) is det.
 
 :- impure pred nonvar(T).
-:-    mode nonvar(ui) is det.
-:-    mode nonvar(in) is det.
-:-    mode nonvar(unused) is failure.
+:- mode nonvar(ui) is det.
+:- mode nonvar(in) is det.
+:- mode nonvar(unused) is failure.
 
     % no_clauses/1 is used to report a run-time error when there is a call
     % to a procedure for which there are no clauses, and the procedure was
@@ -2058,10 +2058,8 @@ const MR_TypeCtorInfo ML_type_info_for_type_info =
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 0);
 
 const MR_TypeCtorInfo ML_type_info_for_pseudo_type_info =
-    /*
-    ** For the time being, we handle pseudo_type_infos the same way
-    ** as we handle type_infos.
-    */
+    // For the time being, we handle pseudo_type_infos the same way
+    // as we handle type_infos.
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 0);
 
 const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_univ = {
@@ -2091,10 +2089,8 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_type_info = {
 
 const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
     &MR_TYPE_CTOR_INFO_NAME(list, list, 1),
-    /*
-    ** For the time being, we handle pseudo_type_infos the same way
-    ** as we handle type_infos.
-    */
+    // For the time being, we handle pseudo_type_infos the same way
+    // as we handle type_infos.
     { (MR_TypeInfo) &ML_type_info_for_type_info }
 };
 
