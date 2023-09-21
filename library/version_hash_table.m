@@ -33,22 +33,21 @@
 :- type hash_pred(K) == (pred(K,  int)).
 :- inst hash_pred    == (pred(in, out) is det).
 
-    % init(HashPred, N, MaxOccupancy)
-    % constructs a new hash table with initial size 2 ^ N that is
-    % doubled whenever MaxOccupancy is achieved; elements are indexed
-    % using HashPred.
+    % init(HashPred, N, MaxOccupancy):
+    %
+    % Construct a new hash table with initial size 2 ^ N that is doubled
+    % whenever MaxOccupancy is achieved. Elements are indexed using HashPred.
     %
     % HashPred must compute a hash for a given key.
     % N must be greater than 0.
     % MaxOccupancy must be in (0.0, 1.0).
     %
-    % XXX Values too close to the limits may cause bad things
-    % to happen.
+    % XXX Values too close to the limits may cause bad things to happen.
     %
 :- func init(hash_pred(K)::in(hash_pred), int::in, float::in) =
     (version_hash_table(K, V)::out) is det.
 
-    % unsafe_init(HashPred, N, MaxOccupancy)
+    % unsafe_init(HashPred, N, MaxOccupancy):
     %
     % Like init/3, but the constructed hash table is backed by a
     % non-thread-safe version array. It is unsafe to concurrently access
@@ -98,14 +97,14 @@
     %
 :- func copy(version_hash_table(K, V)) = version_hash_table(K, V).
 
-    % Search for the value associated with the given key. Fail
-    % if there is no entry for the key.
+    % Search for the value associated with the given key.
+    % Fail if there is no entry for the key.
     %
 :- func search(version_hash_table(K, V), K) = V is semidet.
 :- pred search(version_hash_table(K, V)::in, K::in, V::out) is semidet.
 
-    % Lookup the value associated with the given key. Throw an exception
-    % if there is no entry for the key.
+    % Lookup the value associated with the given key.
+    % Throw an exception if there is no entry for the key.
     %
 :- func lookup(version_hash_table(K, V), K) = V.
 :- pred lookup(version_hash_table(K, V)::in, K::in, V::out) is det.
@@ -113,10 +112,10 @@
     % Field access for hash tables.
     % `HT ^ elem(K)' is equivalent to `lookup(HT, K)'.
     %
-:- func version_hash_table(K, V) ^ elem(K) = V.
+:- func elem(K, version_hash_table(K, V)) = V.
 
-    % Insert key-value binding into a hash table. If one is already there,
-    % then the previous value is overwritten.
+    % Insert key-value binding into a hash table.
+    % If one is already there, then overwrite the previous value.
     %
 :- func set(version_hash_table(K, V), K, V) = version_hash_table(K, V).
 :- pred set(K::in, V::in,
@@ -127,22 +126,22 @@
     %
 :- func 'elem :='(K, version_hash_table(K, V), V) = version_hash_table(K, V).
 
-    % Insert a key-value binding into a hash table. An exception is thrown
-    % if a binding for the key is already present.
+    % Insert a key-value binding into a hash table.
+    % Throw an exception if a binding for the key is already present.
     %
 :- func det_insert(version_hash_table(K, V), K, V) = version_hash_table(K, V).
 :- pred det_insert(K::in, V::in,
     version_hash_table(K, V)::in, version_hash_table(K, V)::out) is det.
 
-    % Change a key-value binding in a hash table. Throw exception
-    % if a binding for the key does not already exist.
+    % Change a key-value binding in a hash table.
+    % Throw exception if a binding for the key does not already exist.
     %
 :- func det_update(version_hash_table(K, V), K, V) = version_hash_table(K, V).
 :- pred det_update(K::in, V::in,
     version_hash_table(K, V)::in, version_hash_table(K, V)::out) is det.
 
-    % Delete the entry for the given key, leaving the hash table
-    % unchanged if there is no such entry.
+    % Delete the entry for the given key. If there is no such entry,
+    % leave the hash table unchanged.
     %
 :- func delete(version_hash_table(K, V), K) = version_hash_table(K, V).
 :- pred delete(K::in,
@@ -160,17 +159,17 @@
 :- func from_assoc_list(hash_pred(K)::in(hash_pred), int::in, float::in,
     assoc_list(K, V)::in) = (version_hash_table(K, V)::out) is det.
 
-    % A simpler version of from_assoc_list/4, the values for N and
+    % A simpler version of from_assoc_list/4, in which the values for N and
     % MaxOccupancy are configured with defaults such as in init_default/1
     %
 :- func from_assoc_list(hash_pred(K)::in(hash_pred), assoc_list(K, V)::in) =
     (version_hash_table(K, V)::out) is det.
 
-    % Fold a function over the key-value bindings in a hash table.
+    % Fold a function over the key-value bindings in the given hash table.
     %
 :- func fold(func(K, V, T) = T, version_hash_table(K, V), T) = T.
 
-    % Fold a predicate over the key-value bindings in a hash table.
+    % Fold a predicate over the key-value bindings in the given hash table.
     %
 :- pred fold(pred(K, V, T, T), version_hash_table(K, V), T, T).
 :- mode fold(in(pred(in, in, in, out) is det), in, in, out) is det.
@@ -182,8 +181,9 @@
 
 %---------------------------------------------------------------------------%
 
-    % Test if two version_hash_tables are equal. This predicate is used by
-    % unifications on the version_hash_table type.
+    % Test if two version_hash_tables are equal.
+    % Unifications on the version_hash_table type are defined
+    % by this predicate.
     %
 :- pred equal(version_hash_table(K, V)::in, version_hash_table(K, V)::in)
     is semidet.
@@ -219,9 +219,9 @@
 
 :- type buckets(K, V) == version_array(hash_table_alist(K, V)).
 
-    % Assuming a decent hash function, there should be few collisions so each
-    % bucket will usually contain an empty list or a singleton. Including a
-    % singleton constructor therefore reduces memory consumption.
+    % Assuming a decent hash function, there should be few collisions,
+    % so each bucket will usually contain an empty list or a singleton.
+    % Including a singleton constructor therefore reduces memory consumption.
     %
 :- type hash_table_alist(K, V)
     --->    ht_nil
@@ -302,7 +302,7 @@ find_slot(HT, K) = H :-
 
 find_slot_2(HashPred, K, NumBuckets, H) :-
     HashPred(K, Hash),
-    % Since NumBuckets is a power of two we can avoid mod.
+    % Since NumBuckets is a power of two, we can avoid mod.
     H = Hash /\ (NumBuckets - 1).
 
 %---------------------------------------------------------------------------%
@@ -357,14 +357,19 @@ lookup(HT, K, V) :-
         error($pred, "key not found")
     ).
 
-elem(K, HT) = lookup(HT, K).
+elem(K, HT) = V :-
+    lookup(HT, K, V).
 
 %---------------------------------------------------------------------------%
 
 set(HT0, K, V) = HT :-
+    set(K, V, HT0, HT).
+
+set(K, V, HT0, HT) :-
     H = find_slot(HT0, K),
-    promise_equivalent_solutions [NumOccupants0, MaxOccupants, HashPred,
-            Buckets0] (
+    promise_equivalent_solutions
+        [NumOccupants0, MaxOccupants, HashPred, Buckets0]
+    (
         HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0)
     ),
     version_array.lookup(Buckets0, H, AL0),
@@ -405,9 +410,8 @@ set(HT0, K, V) = HT :-
         )
     ).
 
-set(K, V, HT, set(HT, K, V)).
-
-'elem :='(K, HT, V) = set(HT, K, V).
+'elem :='(K, HT0, V) = HT :-
+    set(K, V, HT0, HT).
 
 :- pred alist_replace(hash_table_alist(K, V)::in, K::in, V::in,
     hash_table_alist(K, V)::out) is semidet.
@@ -467,6 +471,9 @@ det_insert(K, V, HT, det_insert(HT, K, V)).
 %---------------------------------------------------------------------------%
 
 det_update(HT0, K, V) = HT :-
+    det_update(K, V, HT0, HT).
+
+det_update(K, V, HT0, HT) :-
     H = find_slot(HT0, K),
     promise_equivalent_solutions [Buckets0] (
         Buckets0 = HT0 ^ ht_buckets
@@ -482,11 +489,12 @@ det_update(HT0, K, V) = HT :-
         HT = HT0 ^ ht_buckets := Buckets
     ).
 
-det_update(K, V, HT, det_update(HT, K, V)).
-
 %---------------------------------------------------------------------------%
 
 delete(HT0, K) = HT :-
+    delete(K, HT0, HT).
+
+delete(K, HT0, HT) :-
     H = find_slot(HT0, K),
     promise_equivalent_solutions
         [NumOccupants0, MaxOccupants, HashPred, Buckets0]
@@ -501,8 +509,6 @@ delete(HT0, K) = HT :-
     else
         HT = HT0
     ).
-
-delete(K, HT, delete(HT, K)).
 
 :- pred alist_remove(hash_table_alist(K, V)::in, K::in,
     hash_table_alist(K, V)::out) is semidet.
@@ -532,7 +538,7 @@ to_assoc_list(HT) = AL :-
     promise_equivalent_solutions [Buckets] (
         Buckets = HT ^ ht_buckets
     ),
-    foldl(to_assoc_list_2, Buckets, [], AL).
+    version_array.foldl(to_assoc_list_2, Buckets, [], AL).
 
 :- pred to_assoc_list_2(hash_table_alist(K, V)::in,
     assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
@@ -563,7 +569,7 @@ from_assoc_list(HashPred, AList) = HT :-
 
 from_assoc_list_2([], !HT).
 from_assoc_list_2([K - V | T], !HT) :-
-    set(K, V, !HT),
+    version_hash_table.set(K, V, !HT),
     from_assoc_list_2(T, !HT).
 
 %---------------------------------------------------------------------------%
@@ -645,7 +651,7 @@ fold(F, HT, X0) = X :-
     promise_equivalent_solutions [Buckets] (
         Buckets = HT ^ ht_buckets
     ),
-    foldl(fold_f(F), Buckets, X0, X).
+    version_array.foldl(fold_f(F), Buckets, X0, X).
 
 :- pred fold_f(func(K, V, T) = T, hash_table_alist(K, V), T, T).
 :- mode fold_f(in(func(in, in, in) = out is det), in, in, out) is det.
@@ -668,7 +674,7 @@ fold(P, HT, !A) :-
     promise_equivalent_solutions [Buckets] (
         Buckets = HT ^ ht_buckets
     ),
-    foldl(fold_p(P), Buckets, !A).
+    version_array.foldl(fold_p(P), Buckets, !A).
 
 :- pred fold_p(pred(K, V, T, T), hash_table_alist(K, V), T, T).
 :- mode fold_p(in(pred(in, in, in, out) is det), in, in, out) is det.
@@ -692,27 +698,32 @@ fold_p(P, List, !A) :-
 
 %---------------------------------------------------------------------------%
 
-equal(A, B) :-
-    ( if private_builtin.pointer_equal(A, B) then
+equal(HashTableA, HashTableB) :-
+    ( if private_builtin.pointer_equal(HashTableA, HashTableB) then
         true
     else
-        % We cannot deconstruct a non-canonical type in this all-solutions
-        % context (because the unification and call to fold may fail).
-        % Therefore we call num_occupants.
-        NumA = num_occupants(A),
-        NumB = num_occupants(B),
+        % This is an all-solutions context, because the unification
+        % and the call to fold may fail. We therefore cannot deconstruct
+        % HashTableA and HashTableB, whose type is non-canonical.
+        % This is why we call num_occupants.
+        NumA = num_occupants(HashTableA),
+        NumB = num_occupants(HashTableB),
         NumA = NumB,
-        % Test whether each item in A also occurs in B. Since A and B have
-        % the same number of items, if this is true, then we also know that
-        % there is no item in B that does not also occur in A.
-        fold(compare_item(B), A, unit, _)
+        % Test whether each item in HashTableA also occurs in HashTableB.
+        % Since HashTableA and HashTableB have the same number of items,
+        % if the fold succeeds, then we also know that there is no item
+        % in HashTableB that does not also occur in HashTableA.
+        version_hash_table.fold(compare_item(HashTableB), HashTableA, unit, _)
     ).
 
 :- pred compare_item(version_hash_table(K, V)::in, K::in, V::in,
     unit::in, unit::out) is semidet.
 
-compare_item(Table, K, V, unit, unit) :-
-    search(Table, K, V).
+compare_item(HashTableB, KeyA, ValueA, unit, unit) :-
+    % Fail
+    % - if the key from HashTableA does not occur in HashTableB, or
+    % - if the key does occcur in HashTableB, but with a different value.
+    version_hash_table.search(HashTableB, KeyA, ValueA).
 
 %---------------------------------------------------------------------------%
 :- end_module version_hash_table.
