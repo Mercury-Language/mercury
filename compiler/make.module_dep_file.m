@@ -24,11 +24,11 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_dep_info.
 
 :- import_module io.
-:- import_module term.
 
 %---------------------------------------------------------------------------%
 
@@ -44,8 +44,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_module_dep_file_term(module_name::in, dir_name::in, term::in,
-    module_dep_summary::out) is semidet.
+:- pred read_module_dep_file(dir_name::in, file_name::in, string::in,
+    module_name::in, maybe1(module_dep_summary, string)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -65,9 +65,11 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module mercury_term_parser.
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module term.
 :- import_module term_int.
 :- import_module term_io.
 
@@ -259,6 +261,40 @@ contains_foreign_export_to_string(ContainsForeignExport,
     ).
 
 %---------------------------------------------------------------------------%
+
+read_module_dep_file(DepFileDir, DepFileName, DepFileContents, ModuleName,
+        Result) :-
+    % Since .module_dep files are automatically generated, errors in them
+    % should be vanishingly rare. However, this also means that if and when
+    % they do occur, any errors are likely to be quite obscure. In such
+    % cases, knowing *for sure* exactly *which* .module_dep file has
+    % the error would be one of the first pieces of information that
+    % any person looking to track down the problem would wan.
+    % This is why we include DepFileDir in the pathname we pass
+    % to read_term_from_string.
+    DepFilePathName = DepFileDir / DepFileName,
+    mercury_term_parser.read_term_from_string(DepFilePathName,
+        DepFileContents, _EndPos, TermResult),
+    (
+        TermResult = term(_, Term),
+        ( if
+            parse_module_dep_file_term(ModuleName, DepFileDir, Term,
+                ModuleSummary)
+        then
+            Result = ok1(ModuleSummary)
+        else
+            Result = error1("failed to parse term")
+        )
+    ;
+        TermResult = eof,
+        Result = error1("unexpected eof")
+    ;
+        TermResult = error(Error, _),
+        Result = error1("parse error: " ++ Error)
+    ).
+
+:- pred parse_module_dep_file_term(module_name::in, dir_name::in, term::in,
+    module_dep_summary::out) is semidet.
 
 parse_module_dep_file_term(ModuleName, DepFileDir, Term, ModuleSummary) :-
     atom_term(Term, "module", ModuleArgs),

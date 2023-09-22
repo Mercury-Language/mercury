@@ -21,45 +21,56 @@
 
 %---------------------------------------------------------------------------%
 
-:- type maybe1(T1)
-    --->    error1(list(error_spec))
+:- type maybe1(T1, E)
+    --->    error1(E)
     ;       ok1(T1).
 
-:- type maybe2(T1, T2)
-    --->    error2(list(error_spec))
+:- type maybe2(T1, T2, E)
+    --->    error2(E)
     ;       ok2(T1, T2).
 
-:- type maybe3(T1, T2, T3)
-    --->    error3(list(error_spec))
+:- type maybe3(T1, T2, T3, E)
+    --->    error3(E)
     ;       ok3(T1, T2, T3).
 
-:- type maybe4(T1, T2, T3, T4)
-    --->    error4(list(error_spec))
+:- type maybe4(T1, T2, T3, T4, E)
+    --->    error4(E)
     ;       ok4(T1, T2, T3, T4).
 
-:- type maybe5(T1, T2, T3, T4, T5)
-    --->    error5(list(error_spec))
+:- type maybe5(T1, T2, T3, T4, T5, E)
+    --->    error5(E)
     ;       ok5(T1, T2, T3, T4, T5).
+
+:- type maybe1(T1) ==
+    maybe1(T1, list(error_spec)).
+:- type maybe2(T1, T2) ==
+    maybe2(T1, T2, list(error_spec)).
+:- type maybe3(T1, T2, T3) ==
+    maybe3(T1, T2, T3, list(error_spec)).
+:- type maybe4(T1, T2, T3, T4) ==
+    maybe4(T1, T2, T3, T4, list(error_spec)).
+:- type maybe5(T1, T2, T3, T4, T5) ==
+    maybe5(T1, T2, T3, T4, T5, list(error_spec)).
 
 %---------------------%
 
-:- inst maybe1(I) for maybe1/1
+:- inst maybe1(I) for maybe1/2
     --->    error1(ground)
     ;       ok1(I).
 
-:- inst maybe2(I1, I2) for maybe2/2
+:- inst maybe2(I1, I2) for maybe2/3
     --->    error2(ground)
     ;       ok2(I1, I2).
 
-:- inst maybe3(I1, I2, I3) for maybe3/3
+:- inst maybe3(I1, I2, I3) for maybe3/4
     --->    error3(ground)
     ;       ok3(I1, I2, I3).
 
-:- inst maybe4(I1, I2, I3, I4) for maybe4/4
+:- inst maybe4(I1, I2, I3, I4) for maybe4/5
     --->    error4(ground)
     ;       ok4(I1, I2, I3, I4).
 
-:- inst maybe5(I1, I2, I3, I4, I5) for maybe5/5
+:- inst maybe5(I1, I2, I3, I4, I5) for maybe5/6
     --->    error5(ground)
     ;       ok5(I1, I2, I3, I4, I5).
 

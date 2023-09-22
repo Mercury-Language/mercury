@@ -58,6 +58,7 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.find_module.
 :- import_module parse_tree.item_util.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.parse_error.
@@ -75,10 +76,8 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module mercury_term_parser.
 :- import_module set.
 :- import_module string.
-:- import_module term.
 
 %---------------------------------------------------------------------------%
 
@@ -187,7 +186,7 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
                 % file for the required module. Usually the purported source
                 % file would have a later timestamp than the .module_dep file,
                 % though, so the other branch would be taken.
-                read_module_dep_file(ProgressStream, Globals,
+                find_and_read_module_dep_file(ProgressStream, Globals,
                     RebuildModuleDeps, [dir.this_directory], ModuleName,
                     !Info, !IO)
             else
@@ -196,7 +195,7 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
             )
         ;
             MaybeSourceFileTimestamp = error(_),
-            read_module_dep_file(ProgressStream, Globals,
+            find_and_read_module_dep_file(ProgressStream, Globals,
                 RebuildModuleDeps, SearchDirs, ModuleName, !Info, !IO),
 
             % Check for the case where the module name doesn't match the
@@ -301,11 +300,11 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
 
 %---------------------------------------------------------------------------%
 
-:- pred read_module_dep_file(io.text_output_stream::in, globals::in,
+:- pred find_and_read_module_dep_file(io.text_output_stream::in, globals::in,
     maybe_rebuild_module_deps::in, list(dir_name)::in, module_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
+find_and_read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
         SearchDirs, ModuleName, !Info, !IO) :-
     module_name_to_search_file_name(Globals, $pred,
         ext_cur_ngs(ext_cur_ngs_misc_module_dep), ModuleName, DepFileName),
@@ -314,35 +313,16 @@ read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
     (
         MaybeDirAndContents = ok(DirAndContents),
         DirAndContents = path_name_and_contents(DepFileDir, DepFileContents),
-        % Since .module_dep files are automatically generated, errors in them
-        % should be vanishingly rare. However, this also means that if and when
-        % they do occur, any errors are likely to be quite obscure. In such
-        % cases, knowing *for sure* exactly *which* .module_dep file has
-        % the error would be one of the first pieces of information that
-        % any person looking to track down the problem would wan.
-        % This is why we include DepFileDir in the pathname we pass
-        % to read_term_from_string.
-        DepFilePathName = DepFileDir / DepFileName,
-        mercury_term_parser.read_term_from_string(DepFilePathName,
-            DepFileContents, _EndPos, TermResult),
+        read_module_dep_file(DepFileDir, DepFileName, DepFileContents,
+            ModuleName, ParseResult),
         (
-            TermResult = term(_, Term),
-            ( if
-                parse_module_dep_file_term(ModuleName, DepFileDir, Term,
-                    ModuleSummary)
-            then
-                handle_parsed_module_dep_file(ProgressStream, Globals,
-                    SearchDirs, ModuleName, DepFileDir, DepFileName,
-                    ModuleSummary, Result, !Info, !IO)
-            else
-                Result = error("failed to parse term")
-            )
+            ParseResult = ok1(ModuleSummary),
+            handle_parsed_module_dep_file(ProgressStream, Globals,
+                SearchDirs, ModuleName, DepFileDir, DepFileName,
+                ModuleSummary, Result, !Info, !IO)
         ;
-            TermResult = eof,
-            Result = error("unexpected eof")
-        ;
-            TermResult = error(ParseError, _),
-            Result = error("parse error: " ++ ParseError)
+            ParseResult = error1(ParseErrorMsg),
+            Result = error(ParseErrorMsg)
         ),
         (
             Result = ok
@@ -419,7 +399,7 @@ handle_parsed_module_dep_file(ProgressStream, Globals, SearchDirs, ModuleName,
         NestedSubModules =
             get_nested_children_list_of_top_module(MaybeTopModule),
         list.foldl2(
-            read_module_dep_file(ProgressStream, Globals,
+            find_and_read_module_dep_file(ProgressStream, Globals,
                 do_not_rebuild_module_deps, SearchDirs),
             NestedSubModules, !Info, !IO),
         ( if some_bad_module_dependency(!.Info, NestedSubModules) then
