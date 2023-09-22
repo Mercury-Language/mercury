@@ -80,8 +80,8 @@
 :- import_module backend_libs.compile_target_code.
 :- import_module libs.options.
 :- import_module make.file_names.
+:- import_module make.get_module_dep_info.
 :- import_module make.hash.
-:- import_module make.module_dep_file.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.find_module.

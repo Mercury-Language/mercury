@@ -283,7 +283,11 @@ make.find_local_modules.m finds the modules in the current directory
 that are reachable from a given module.
 <li>
 make.module_dep_file.m records dependency information for each module
-between compilations.
+between compilations in .module_dep files.
+<li>
+make.get_module_dep_info.m uses
+the facilities exported by make.module_dep_file.m
+to read .module_dep files, or, if needed, to create them.
 <li>
 make.build.m provides the machinery required to bring targets up to date.
 <li>

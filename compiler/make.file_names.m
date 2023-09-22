@@ -78,7 +78,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
-:- import_module make.module_dep_file.
+:- import_module make.get_module_dep_info.
 :- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.prog_foreign.
 

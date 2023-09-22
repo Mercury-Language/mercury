@@ -18,6 +18,7 @@
 :- interface.
 
 :- include_module build.
+:- include_module get_module_dep_info.
 :- include_module module_dep_file.
 :- include_module options_file.
 :- include_module top_level.

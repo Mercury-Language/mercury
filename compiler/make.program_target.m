@@ -79,8 +79,8 @@
 :- import_module make.build.
 :- import_module make.check_up_to_date.
 :- import_module make.find_local_modules.
+:- import_module make.get_module_dep_info.
 :- import_module make.hash.
-:- import_module make.module_dep_file.
 :- import_module make.module_target.
 :- import_module make.options_file.
 :- import_module make.timestamp.

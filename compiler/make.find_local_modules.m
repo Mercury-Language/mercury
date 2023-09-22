@@ -51,7 +51,7 @@
 
 :- implementation.
 
-:- import_module make.module_dep_file.
+:- import_module make.get_module_dep_info.
 :- import_module parse_tree.
 :- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.prog_data_foreign.

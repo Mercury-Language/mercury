@@ -54,7 +54,7 @@
 :- import_module libs.options.
 :- import_module make.deps_cache.
 :- import_module make.find_local_modules.
-:- import_module make.module_dep_file.
+:- import_module make.get_module_dep_info.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
