@@ -53,7 +53,7 @@ Options:
 
 If neither the -o nor the -s option is given, then the trace counts are put
 into a file whose name is automatically generated. This name will start with
-the prefix ".mercury_trace_counts", followed by a mangled version of the
+the prefix \".mercury_trace_counts\", followed by a mangled version of the
 name of the executable, and then the process id.
 
 The -o and -s options are mutually exclusive.
