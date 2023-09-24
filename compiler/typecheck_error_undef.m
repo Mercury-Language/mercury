@@ -112,58 +112,33 @@ report_error_undef_pred(ClauseContext, Context, SymNameArity) = Spec :-
         OtherIds = [_ | _],
         predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
         find_pred_arities(PredIdTable, OtherIds, PredFormArities),
-        Spec = report_error_pred_num_args(ClauseContext, Context,
+        Spec = report_error_pred_wrong_arity(ClauseContext, Context,
             PFSymNameArity, PredFormArities)
     ;
         OtherIds = [],
-        InClauseForPieces = in_clause_for_pieces(ClauseContext),
-        InClauseForComponent = always(InClauseForPieces),
-
         is_undef_pred_reference_special(ClauseContext, PFSymNameArity,
             UndefClass),
         (
             UndefClass = undef_special(SpecialComponents),
-            UndefMsg = simple_msg(Context,
+            InClauseForPieces = in_clause_for_pieces(ClauseContext),
+            InClauseForComponent = always(InClauseForPieces),
+            Msg = simple_msg(Context,
                 [InClauseForComponent | SpecialComponents]),
-            Msgs = [UndefMsg]
+            Spec = error_spec($pred, severity_error, phase_type_check, [Msg])
         ;
             UndefClass = undef_ordinary(MissingImportModules, AddeddumPieces),
-            MainPieces = [words("error: undefined"),
-                qual_pf_sym_name_pred_form_arity(PFSymNameArity),
-                suffix("."), nl],
-            UndefMsg = simple_msg(Context,
-                [InClauseForComponent, always(MainPieces ++ AddeddumPieces)]),
-
-            predicate_table_lookup_pf_sym(PredicateTable,
-                may_be_partially_qualified, pf_function, SymName,
-                FuncOtherIds),
-            (
-                FuncOtherIds = [_ | _],
-                KindMsg = report_error_func_instead_of_pred(Context),
-                KindMsgs = [KindMsg]
-            ;
-                FuncOtherIds = [],
-                KindMsgs = []
-            ),
-            PossibleModuleQuals =
-                find_possible_pf_missing_module_qualifiers(PredicateTable,
-                    pf_predicate, SymName),
-            set.list_to_set(PossibleModuleQuals, PossibleModuleQualsSet0),
-            set.delete_list(MissingImportModules,
-                PossibleModuleQualsSet0, PossibleModuleQualsSet),
-            QualMsgs = report_any_missing_module_qualifiers(ClauseContext,
-                Context, "predicate", PossibleModuleQualsSet),
-            Msgs = [UndefMsg] ++ KindMsgs ++ QualMsgs
-        ),
-        Spec = error_spec($pred, severity_error, phase_type_check, Msgs)
+            Spec = report_error_pred_wrong_name(ClauseContext, Context,
+                PredicateTable, PFSymNameArity, MissingImportModules,
+                AddeddumPieces)
+        )
     ).
 
 %---------------------%
 
-:- func report_error_pred_num_args(type_error_clause_context, prog_context,
+:- func report_error_pred_wrong_arity(type_error_clause_context, prog_context,
     pf_sym_name_arity, list(pred_form_arity)) = error_spec.
 
-report_error_pred_num_args(ClauseContext, Context, PFSymNameArity,
+report_error_pred_wrong_arity(ClauseContext, Context, PFSymNameArity,
         AllPredFormArities) = Spec :-
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
     PredFormArity = pred_form_arity(PredFormArityInt),
@@ -371,44 +346,50 @@ report_apply_instead_of_pred = Components :-
 
 %---------------------%
 
+:- func report_error_pred_wrong_name(type_error_clause_context, prog_context,
+    predicate_table, pf_sym_name_arity, list(module_name), list(format_piece))
+    = error_spec.
+
+report_error_pred_wrong_name(ClauseContext, Context, PredicateTable,
+        PFSymNameArity, MissingImportModules, AddeddumPieces) = Spec :-
+    InClauseForPieces = in_clause_for_pieces(ClauseContext),
+    InClauseForComponent = always(InClauseForPieces),
+    MainPieces = [words("error: undefined"),
+        qual_pf_sym_name_pred_form_arity(PFSymNameArity),
+        suffix("."), nl],
+    UndefMsg = simple_msg(Context,
+        [InClauseForComponent, always(MainPieces ++ AddeddumPieces)]),
+
+    PFSymNameArity = pf_sym_name_arity(_, SymName, _PredFormArity),
+    predicate_table_lookup_pf_sym(PredicateTable, may_be_partially_qualified,
+        pf_function, SymName, FuncOtherIds),
+    (
+        FuncOtherIds = [_ | _],
+        KindMsg = report_error_func_instead_of_pred(Context),
+        KindMsgs = [KindMsg]
+    ;
+        FuncOtherIds = [],
+        KindMsgs = []
+    ),
+    PossibleModuleQuals =
+        find_possible_pf_missing_module_qualifiers(PredicateTable,
+            pf_predicate, SymName),
+    set.list_to_set(PossibleModuleQuals, PossibleModuleQualsSet0),
+    set.delete_list(MissingImportModules,
+        PossibleModuleQualsSet0, PossibleModuleQualsSet),
+    QualMsgs = report_any_missing_module_qualifiers(ClauseContext,
+        Context, "predicate", PossibleModuleQualsSet),
+    Msgs = [UndefMsg] ++ KindMsgs ++ QualMsgs,
+    Spec = error_spec($pred, severity_error, phase_type_check, Msgs).
+
+%---------------------%
+
 :- func report_error_func_instead_of_pred(prog_context) = error_msg.
 
 report_error_func_instead_of_pred(Context) = Msg :-
     Pieces = [words("(There is a *function* with that name, however."), nl,
         words("Perhaps you forgot to add"), quote(" = ..."), suffix("?)"), nl],
     Msg = simplest_msg(Context, Pieces).
-
-%---------------------%
-
-:- func find_possible_pf_missing_module_qualifiers(predicate_table,
-    pred_or_func, sym_name) = list(module_name).
-
-find_possible_pf_missing_module_qualifiers(PredicateTable,
-        PredOrFunc, SymName) = ModuleNames :-
-    predicate_table_lookup_pf_raw_name(PredicateTable, PredOrFunc,
-        unqualify_name(SymName), PredIds),
-    list.foldl(accumulate_matching_pf_module_names(PredicateTable, SymName),
-        PredIds, [], ModuleNames).
-
-:- pred accumulate_matching_pf_module_names(predicate_table::in, sym_name::in,
-    pred_id::in, list(module_name)::in, list(module_name)::out) is det.
-
-accumulate_matching_pf_module_names(PredicateTable, SymName, PredId,
-        !ModuleNames) :-
-    predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
-    map.lookup(PredIdTable, PredId, PredInfo),
-    pred_info_get_module_name(PredInfo, ModuleName),
-    (
-        SymName = unqualified(_),
-        !:ModuleNames = [ModuleName | !.ModuleNames]
-    ;
-        SymName = qualified(SymModuleName, _),
-        ( if partial_sym_name_matches_full(SymModuleName, ModuleName) then
-            !:ModuleNames = [ModuleName | !.ModuleNames]
-        else
-            true
-        )
-    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -843,6 +824,38 @@ should_report_no_clauses(ModuleInfo, PredInfo) = ShouldReport :-
 %
 % Utility predicates useful in more than one of the exported predicates.
 %
+
+:- func find_possible_pf_missing_module_qualifiers(predicate_table,
+    pred_or_func, sym_name) = list(module_name).
+
+find_possible_pf_missing_module_qualifiers(PredicateTable,
+        PredOrFunc, SymName) = ModuleNames :-
+    predicate_table_lookup_pf_raw_name(PredicateTable, PredOrFunc,
+        unqualify_name(SymName), PredIds),
+    list.foldl(accumulate_matching_pf_module_names(PredicateTable, SymName),
+        PredIds, [], ModuleNames).
+
+:- pred accumulate_matching_pf_module_names(predicate_table::in, sym_name::in,
+    pred_id::in, list(module_name)::in, list(module_name)::out) is det.
+
+accumulate_matching_pf_module_names(PredicateTable, SymName, PredId,
+        !ModuleNames) :-
+    predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
+    map.lookup(PredIdTable, PredId, PredInfo),
+    pred_info_get_module_name(PredInfo, ModuleName),
+    (
+        SymName = unqualified(_),
+        !:ModuleNames = [ModuleName | !.ModuleNames]
+    ;
+        SymName = qualified(SymModuleName, _),
+        ( if partial_sym_name_matches_full(SymModuleName, ModuleName) then
+            !:ModuleNames = [ModuleName | !.ModuleNames]
+        else
+            true
+        )
+    ).
+
+%---------------------%
 
 :- func report_any_missing_module_qualifiers(type_error_clause_context,
     prog_context, string, set(module_name)) = list(error_msg).
